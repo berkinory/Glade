@@ -153,7 +153,6 @@ export const DownloadIcon = adaptIcon(IconDownload);
 
 export const BELL_ICON_NAME = "notes";
 export const BellIcon: LucideIcon = centralIconWrapper(BELL_ICON_NAME);
-export const ClockIcon = centralIconWrapper("clock");
 export const EllipsisIcon = adaptIcon(IconDots);
 export const ExternalLinkIcon = adaptIcon(IconExternalLink);
 export const EyeIcon = adaptIcon(IconEye);

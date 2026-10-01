@@ -76,13 +76,6 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
       "Show the standalone Chats list in the sidebar footer chats not tied to a project. sidebar section",
   },
   {
-    id: "general:automation-run-threads",
-    section: "general",
-    title: "Automation runs",
-    keywords:
-      "Show the thread each standalone automation run creates in the sidebar. hide automation run threads clutter scheduled",
-  },
-  {
     id: "general:environment-default-open",
     section: "general",
     title: "Open by default",

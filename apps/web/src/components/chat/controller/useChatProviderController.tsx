@@ -3,9 +3,8 @@ import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { resolveComputerInvocationMode } from "@glade/shared/computer/computerInvocation";
 import { resolveLatestTailUserMessageEditTarget } from "@glade/shared/threads/conversationEdit";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useLayoutEffect } from "react";
 import { deriveAgentActivityTimelineState } from "~/components/chat/agentActivity.logic";
-import { useChatAutomationSetup } from "~/components/chat/useChatAutomationSetup";
 import { useChatLocalDispatch } from "~/components/chat/useChatLocalDispatch";
 import { useChatPendingInteractions } from "~/components/chat/useChatPendingInteractions";
 import { useChatProviderModels } from "~/components/chat/useChatProviderModels";
@@ -45,7 +44,6 @@ export function useChatProviderController({
     setComposerTrigger,
     setComposerHighlightedItemId,
 
-    setComposerDraftPrompt,
     isRevertingCheckpoint,
   } = session;
   const {
@@ -278,41 +276,12 @@ export function useChatProviderController({
     return editTarget.editable ? (editTarget.messageId as MessageId) : null;
   })();
 
-  const hasQueueableLiveTurn = hasLiveTurn && activeThread?.session?.activeTurnId != null;
+  const activeThreadIdRef = useRef(threadId);
+  useLayoutEffect(() => {
+    activeThreadIdRef.current = threadId;
+  }, [threadId]);
 
-  const {
-    automationProjects,
-    automationThreads,
-    automationData,
-    automationDraftForm,
-    setAutomationDraftForm,
-    automationDraftWarnings,
-    setAutomationDraftWarnings,
-    setAutomationDraftWarningContext,
-    acknowledgedAutomationWarnings,
-    setAcknowledgedAutomationWarnings,
-    automationDraftOpen,
-    setAutomationDraftOpen,
-    setAutomationDraftDialogOpen,
-    isAutomationDraftSubmitting,
-    setIsAutomationDraftSubmitting,
-    automationDraftSubmittingRef,
-    pendingAutomationConversation,
-    setPendingAutomationConversation,
-    activeThreadIdRef,
-    pendingAutomationConversationRef,
-    hasLiveTurnRef,
-    isPendingSetupBubbleId,
-    cancelAutomationConversation,
-    toggleAutomationWarning,
-    updateAutomationDraftForm,
-    resetAutomationDraftState,
-  } = useChatAutomationSetup({
-    threadId,
-    hasLiveTurn,
-    promptRef,
-    setComposerDraftPrompt,
-  });
+  const hasQueueableLiveTurn = hasLiveTurn && activeThread?.session?.activeTurnId != null;
 
   const isWorking =
     hasLiveTurn || isSendBusy || isConnecting || isRevertingCheckpoint || isAwaitingTurnStart;
@@ -407,32 +376,7 @@ export function useChatProviderController({
     activeTurnIdForTranscript,
     editableUserMessageId,
     hasQueueableLiveTurn,
-    automationProjects,
-    automationThreads,
-    automationData,
-    automationDraftForm,
-    setAutomationDraftForm,
-    automationDraftWarnings,
-    setAutomationDraftWarnings,
-    setAutomationDraftWarningContext,
-    acknowledgedAutomationWarnings,
-    setAcknowledgedAutomationWarnings,
-    automationDraftOpen,
-    setAutomationDraftOpen,
-    setAutomationDraftDialogOpen,
-    isAutomationDraftSubmitting,
-    setIsAutomationDraftSubmitting,
-    automationDraftSubmittingRef,
-    pendingAutomationConversation,
-    setPendingAutomationConversation,
     activeThreadIdRef,
-    pendingAutomationConversationRef,
-    hasLiveTurnRef,
-    isPendingSetupBubbleId,
-    cancelAutomationConversation,
-    toggleAutomationWarning,
-    updateAutomationDraftForm,
-    resetAutomationDraftState,
     isWorking,
     hasStreamingAssistantText,
     activeTurnLayoutLive,

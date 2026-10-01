@@ -205,14 +205,6 @@ const makeProviderTextGeneration = Effect.gen(function* () {
       call("generateDiffSummary", input, (impl, value) => impl.generateDiffSummary(value)),
     generateBranchName: (input: TextGen.BranchNameGenerationInput) =>
       call("generateBranchName", input, (impl, value) => impl.generateBranchName(value)),
-    generateAutomationIntent: (input: TextGen.AutomationIntentGenerationInput) =>
-      call("generateAutomationIntent", input, (impl, value) =>
-        impl.generateAutomationIntent(value),
-      ),
-    evaluateAutomationCompletion: (input: TextGen.AutomationCompletionEvaluationInput) =>
-      call("evaluateAutomationCompletion", input, (impl, value) =>
-        impl.evaluateAutomationCompletion(value),
-      ),
   } satisfies TextGen.TextGenerationShape;
 });
 

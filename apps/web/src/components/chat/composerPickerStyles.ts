@@ -16,25 +16,17 @@ export const COMPOSER_TOOLBAR_TRIGGER_TEXT_CLASS_NAME =
 
 export const COMPOSER_TOOLBAR_PICKER_TRIGGER_CLASS_NAME = `inline-flex cursor-pointer items-center gap-1.5 px-2 py-1 ${COMPOSER_TOOLBAR_CAPSULE_HOVER_CLASS_NAME} ${COMPOSER_TOOLBAR_TRIGGER_TEXT_CLASS_NAME}`;
 
-export const COMPOSER_PICKER_MODEL_SUBMENU_HEIGHT_CLASS_NAME =
-  "[--available-height:min(20rem,55vh)]";
-
 export const COMPOSER_PICKER_SEARCH_HEADER_CLASS_NAME =
   "sticky z-20 shrink-0 border-b border-[color:color-mix(in_srgb,var(--foreground)_6%,transparent)] bg-transparent px-1.5 pb-1.5 pt-1";
 
 export const COMPOSER_PICKER_SEARCH_INPUT_CLASS_NAME =
   "rounded-lg border-[color:color-mix(in_srgb,var(--foreground)_8%,transparent)] bg-[color-mix(in_srgb,white_92%,transparent)] shadow-none before:hidden has-focus-visible:border-[color:color-mix(in_srgb,var(--foreground)_14%,transparent)] has-focus-visible:ring-0 [&_input]:font-sans [&_input]:placeholder:text-muted-foreground/55";
 
-export const COMPOSER_PICKER_MODEL_LIST_MAX_HEIGHT_CLASS_NAME =
-  "max-h-[min(var(--available-height,20rem),20rem)]";
-
 export const COMPOSER_PICKER_MODEL_LIST_SCROLL_CLASS_NAME = "composer-picker-scroll";
 
 export const COMPOSER_PICKER_RADIUS_CLASS_NAME = "rounded-[0.875rem]";
 
 export const COMPOSER_PICKER_OPTION_RADIUS_CLASS_NAME = "rounded-[0.625rem]";
-
-export const COMPOSER_PICKER_MODEL_GROUP_HEADER_CLASS_NAME = `grid w-full grid-cols-[0.75rem_minmax(0,1fr)_2.5rem] items-center gap-x-1.5 ${COMPOSER_PICKER_RADIUS_CLASS_NAME} px-2 py-1 text-left text-ui-xs font-medium text-muted-foreground/80 outline-none transition-colors hover:bg-[color-mix(in_srgb,var(--foreground)_4%,transparent)] focus-visible:ring-0`;
 
 export const COMPOSER_MUTED_ACCENT_TEXT_CLASS_NAME = MUTED_LABEL_TEXT_CLASS_NAME;
 
@@ -118,8 +110,6 @@ export const COMPOSER_COMMAND_MENU_ITEM_CLASS_NAME =
 export const COMPOSER_COMMAND_MENU_ITEM_ACTIVE_CLASS_NAME =
   "bg-[var(--color-background-button-secondary)] text-[var(--color-text-foreground)]";
 
-export const COMPOSER_INPUT_SURFACE_BANNER_CLASS_NAME = `chat-composer-surface-banner border-b ${RAISED_SURFACE_BORDER_CLASS_NAME} bg-[var(--color-background-elevated-secondary)]`;
-
 export const COMPOSER_INLINE_ACTION_PILL_CLASS_NAME =
   "shrink-0 rounded-md border border-[color:var(--color-border-light)] px-2.5 py-0.5 text-foreground/90 transition-colors hover:bg-[var(--color-background-button-secondary-hover)] hover:text-foreground";
 
@@ -127,7 +117,6 @@ export const RUNTIME_FULL_ACCESS_ACCENT_CLASS_NAME =
   "text-[var(--runtime-full-access-accent)] hover:opacity-85";
 
 export const RUNTIME_AUTO_ACCENT_CLASS_NAME = "text-[var(--color-text-accent)] hover:opacity-85";
-export const RUNTIME_AUTO_ICON_ACCENT_CLASS_NAME = "text-[var(--color-text-accent)]";
 
 export const COMPOSER_EDITOR_LINE_HEIGHT_CLASS_NAME = "leading-relaxed";
 export const COMPOSER_EDITOR_TEXT_CLASS_NAME = "text-chat";

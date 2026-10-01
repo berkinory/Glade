@@ -268,15 +268,6 @@ export function SettingsGeneralPanel(props: {
           resetLabel: "chats section",
           ariaLabel: "Show the Chats section in the sidebar",
         })}
-
-        {renderBooleanSettingRow({
-          settingKey: "showAutomationRunThreads",
-          title: "Automation runs",
-          description:
-            "Show the thread each standalone automation run creates. Runs stay listed on the automation's page either way; threads owned by dedicated or heartbeat automations always stay visible.",
-          resetLabel: "automation runs",
-          ariaLabel: "Show automation run threads in the sidebar",
-        })}
       </SettingsSection>
 
       <div id={SETTINGS_TARGETS.environmentPanel} className="space-y-6">

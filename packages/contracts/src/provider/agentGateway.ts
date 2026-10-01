@@ -53,7 +53,6 @@ export const GladeContextResult = Schema.Struct({
     threadRead: Schema.Boolean,
     threadCreate: Schema.Boolean,
     threadWait: Schema.Boolean,
-    automations: Schema.Boolean,
   }),
 });
 export type GladeContextResult = typeof GladeContextResult.Type;

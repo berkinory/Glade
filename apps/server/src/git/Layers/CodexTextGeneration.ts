@@ -25,8 +25,6 @@ import {
 } from "../Services/TextGeneration.ts";
 import {
   buildBranchNamePrompt,
-  buildAutomationIntentPrompt,
-  buildAutomationCompletionEvaluationPrompt,
   buildCommitMessagePrompt,
   buildDiffSummaryPrompt,
   buildPrContentPrompt,
@@ -582,49 +580,11 @@ const makeCodexTextGeneration = Effect.gen(function* () {
     });
   };
 
-  const generateAutomationIntent: TextGenerationShape["generateAutomationIntent"] = (input) => {
-    const { prompt, outputSchemaJson } = buildAutomationIntentPrompt({
-      message: input.message,
-      ...(input.defaultMode ? { defaultMode: input.defaultMode } : {}),
-      nowIso: input.nowIso,
-    });
-
-    return runCodexJson({
-      operation: "generateAutomationIntent",
-      cwd: input.cwd,
-      prompt,
-      outputSchemaJson,
-      ...(input.codexHomePath ? { codexHomePath: input.codexHomePath } : {}),
-      ...(input.model ? { model: input.model } : {}),
-      ...(input.modelSelection ? { modelSelection: input.modelSelection } : {}),
-      ...(input.providerOptions ? { providerOptions: input.providerOptions } : {}),
-    });
-  };
-
-  const evaluateAutomationCompletion: TextGenerationShape["evaluateAutomationCompletion"] = (
-    input,
-  ) => {
-    const { prompt, outputSchemaJson } = buildAutomationCompletionEvaluationPrompt(input);
-
-    return runCodexJson({
-      operation: "evaluateAutomationCompletion",
-      cwd: input.cwd,
-      prompt,
-      outputSchemaJson,
-      ...(input.codexHomePath ? { codexHomePath: input.codexHomePath } : {}),
-      ...(input.model ? { model: input.model } : {}),
-      ...(input.modelSelection ? { modelSelection: input.modelSelection } : {}),
-      ...(input.providerOptions ? { providerOptions: input.providerOptions } : {}),
-    });
-  };
-
   return {
     generateCommitMessage,
     generatePrContent,
     generateDiffSummary,
     generateBranchName,
-    generateAutomationIntent,
-    evaluateAutomationCompletion,
   } satisfies TextGenerationShape;
 });
 

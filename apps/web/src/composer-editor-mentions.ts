@@ -58,11 +58,7 @@ const SKILL_TOKEN_REGEX = /(^|\s)([$/])([a-zA-Z][a-zA-Z0-9_:-]*)(?=\s)/g;
 const DISPLAY_SKILL_TOKEN_REGEX = /(^|\s)([$/])([a-zA-Z][a-zA-Z0-9_:-]*)(?=\s|$)/g;
 const SLASH_COMMAND_CHIP_TOKEN_REGEX = /(^|\s)\/([a-zA-Z][a-zA-Z0-9_-]*)(?=\s)/i;
 
-const COMPOSER_SLASH_COMMAND_CHIP_NAMES = new Set<ComposerSlashCommand>([
-  "automation",
-
-  "computer-use",
-]);
+const COMPOSER_SLASH_COMMAND_CHIP_NAMES = new Set<ComposerSlashCommand>(["computer-use"]);
 
 const LINK_TOKEN_TYPING_PATTERN = `${LINK_TOKEN_SOURCE}(?=\\s)`;
 const LINK_TOKEN_DISPLAY_PATTERN = `${LINK_TOKEN_SOURCE}(?=\\s|$)`;

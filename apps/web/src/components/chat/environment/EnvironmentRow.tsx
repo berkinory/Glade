@@ -38,7 +38,7 @@ export function EnvironmentSectionDivider() {
   return <div className="my-1 border-t border-[color:var(--color-border-light)]" />;
 }
 
-export function EnvironmentSectionLabel({ children }: { children: ReactNode }) {
+function EnvironmentSectionLabel({ children }: { children: ReactNode }) {
   return <p className={ENVIRONMENT_PANEL_SECTION_LABEL_CLASS_NAME}>{children}</p>;
 }
 

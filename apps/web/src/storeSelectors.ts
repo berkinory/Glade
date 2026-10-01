@@ -1,6 +1,5 @@
 import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { ThreadEnvironmentMode } from "@glade/contracts/orchestration/threadEntities";
-import { isAutomationRunThread } from "@glade/shared/threads/automationMode";
 
 import type { AppState } from "./storeState";
 import { ACCOUNT_RATE_LIMIT_ACTIVITY_KINDS } from "./lib/rateLimits";
@@ -398,22 +397,9 @@ export function createComposerThreadMentionSourcesSelector(): (
   };
 }
 
-export interface SidebarThreadVisibilityOptions {
-  readonly hideAutomationRunThreads?: boolean;
-}
-
-export function isSidebarThreadVisible(
-  thread: SidebarThreadSummary,
-  options?: SidebarThreadVisibilityOptions,
-): boolean {
-  if (!options?.hideAutomationRunThreads) return true;
-  if (thread.isPinned) return true;
-  return !isAutomationRunThread(thread);
-}
-
-export function createSidebarDisplayThreadsSelector(
-  options?: SidebarThreadVisibilityOptions,
-): (state: AppState) => readonly SidebarThreadSummary[] {
+export function createSidebarDisplayThreadsSelector(): (
+  state: AppState,
+) => readonly SidebarThreadSummary[] {
   const selectSidebarSummaries = createSidebarThreadSummariesSelector();
   let previousSummaries: readonly SidebarThreadSummary[] | undefined;
   let previousDisplaySummaries: readonly SidebarThreadSummary[] = [];
@@ -426,18 +412,15 @@ export function createSidebarDisplayThreadsSelector(
 
     previousSummaries = sidebarSummaries;
     previousDisplaySummaries = sidebarSummaries.filter(
-      (thread) =>
-        !thread.parentThreadId &&
-        thread.archivedAt == null &&
-        isSidebarThreadVisible(thread, options),
+      (thread) => !thread.parentThreadId && thread.archivedAt == null,
     );
     return previousDisplaySummaries;
   };
 }
 
-export function createSidebarTreeThreadsSelector(
-  options?: SidebarThreadVisibilityOptions,
-): (state: AppState) => readonly SidebarThreadSummary[] {
+export function createSidebarTreeThreadsSelector(): (
+  state: AppState,
+) => readonly SidebarThreadSummary[] {
   const selectSidebarSummaries = createSidebarThreadSummariesSelector();
   let previousSummaries: readonly SidebarThreadSummary[] | undefined;
   let previousTreeSummaries: readonly SidebarThreadSummary[] = [];
@@ -449,9 +432,7 @@ export function createSidebarTreeThreadsSelector(
     }
 
     previousSummaries = sidebarSummaries;
-    previousTreeSummaries = sidebarSummaries.filter(
-      (thread) => thread.archivedAt == null && isSidebarThreadVisible(thread, options),
-    );
+    previousTreeSummaries = sidebarSummaries.filter((thread) => thread.archivedAt == null);
     return previousTreeSummaries;
   };
 }

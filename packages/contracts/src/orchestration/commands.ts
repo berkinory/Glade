@@ -347,7 +347,7 @@ export const ThreadTurnStartCommand = Schema.Struct({
   dispatchMode: Schema.optional(TurnDispatchMode).pipe(
     Schema.withDecodingDefault(() => DEFAULT_TURN_DISPATCH_MODE),
   ),
-  // Set by the automation engine when it dispatches a turn. Clients cannot set it:
+  // Set by the server when it dispatches a turn. Clients cannot set it:
   // ClientThreadTurnStartCommand omits the field, so decoding strips any spoofed value.
   dispatchOrigin: Schema.optional(MessageDispatchOrigin),
   runtimeMode: RuntimeMode.pipe(Schema.withDecodingDefault(() => DEFAULT_RUNTIME_MODE)),

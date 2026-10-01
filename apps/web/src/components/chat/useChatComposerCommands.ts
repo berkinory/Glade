@@ -13,7 +13,6 @@ import {
   type QueuedComposerChatTurn,
 } from "../../composerDraftDomain";
 import { useComposerSlashCommands } from "../../hooks/useComposerSlashCommands";
-import { extractChatAutomationInvocation } from "../../lib/automationIntent";
 import { syncTerminalContextsByIds, terminalContextIdListsEqual } from "../../lib/terminalContext";
 import {
   promptStillMatchesActiveHistoryBrowse,
@@ -509,22 +508,6 @@ export function useChatComposerCommands({
 
     const { snapshot, trigger } = resolveActiveComposerTrigger();
     const menuIsActive = composerMenuOpenRef.current || trigger !== null;
-    if (
-      key === "Enter" &&
-      !event.shiftKey &&
-      !menuIsActive &&
-      extractChatAutomationInvocation(snapshot.value) !== null
-    ) {
-      void onSend(
-        undefined,
-        resolveFollowUpDispatchMode({
-          behavior: settings.followUpBehavior,
-          hasLiveTurn,
-          useOppositeBehavior: event.metaKey || event.ctrlKey,
-        }),
-      );
-      return true;
-    }
 
     if (menuIsActive && isLocalFolderBrowserOpen) {
       if (key === "ArrowDown") {

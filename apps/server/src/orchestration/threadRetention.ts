@@ -5,7 +5,6 @@ import {
   type OrchestrationReadModel,
   type OrchestrationShellSnapshot,
 } from "@glade/contracts/orchestration/snapshots";
-import { automationContinuationThreadId } from "@glade/shared/threads/automationMode";
 import { Effect } from "effect";
 import { randomUUID } from "node:crypto";
 
@@ -14,10 +13,6 @@ import { GitCore } from "../git/Services/GitCore";
 import { pruneProjectedArchivedManagedWorktrees } from "../git/managedWorktrees";
 import type { OrchestrationEngineShape } from "./Services/OrchestrationEngine";
 import type { ProjectionSnapshotQueryShape } from "./Services/ProjectionSnapshotQuery";
-import {
-  AutomationRepository,
-  type AutomationRepositoryShape,
-} from "../persistence/Services/AutomationRepository";
 import { ServerLifecycleEvents } from "../server/lifecycle/serverLifecycleEvents";
 
 export const THREAD_RETENTION_COMMAND_ID_PREFIX = "thread-retention:";
@@ -79,23 +74,6 @@ function isThreadBusy(thread: RetentionThread): boolean {
   return false;
 }
 
-function listRetentionProtectedThreadIds(
-  automationRepository: AutomationRepositoryShape,
-): Effect.Effect<ReadonlySet<ThreadId>, TaggedFailure> {
-  return automationRepository.list({ includeArchived: false }).pipe(
-    Effect.map((result) => {
-      const protectedThreadIds = new Set<ThreadId>();
-      for (const definition of result.definitions) {
-        const continuationThreadId = automationContinuationThreadId(definition);
-        if (definition.enabled && continuationThreadId !== null) {
-          protectedThreadIds.add(continuationThreadId);
-        }
-      }
-      return protectedThreadIds;
-    }),
-  );
-}
-
 function chunkThreadIds(
   threadIds: Iterable<ThreadId>,
   size = THREAD_RETENTION_BATCH_SIZE,
@@ -144,12 +122,7 @@ const publishRetentionMaintenance = Effect.fn("publishRetentionMaintenance")(fun
     );
 });
 
-function isThreadEligibleForRetention(
-  thread: RetentionThread,
-  cutoffMs: number,
-  protectedThreadIds: ReadonlySet<ThreadId>,
-): boolean {
-  if (protectedThreadIds.has(thread.id)) return false;
+function isThreadEligibleForRetention(thread: RetentionThread, cutoffMs: number): boolean {
   if (thread.isPinned === true) return false;
   if (isThreadBusy(thread)) return false;
   const lastActivityMs = getThreadLastActivityMs(thread);
@@ -159,7 +132,6 @@ function isThreadEligibleForRetention(
 function getRetentionArchiveRootIds(
   readModel: Pick<OrchestrationReadModel, "threads"> | Pick<OrchestrationShellSnapshot, "threads">,
   nowMs = Date.now(),
-  protectedThreadIds: ReadonlySet<ThreadId> = new Set(),
 ): ThreadId[] {
   const cutoffMs = nowMs - THREAD_RETENTION_UNUSED_MS;
   const activeThreads = new Map<ThreadId, RetentionThread>();
@@ -172,7 +144,7 @@ function getRetentionArchiveRootIds(
   const eligibleThreadIds = new Set<ThreadId>();
   const childIdsByParentId = new Map<ThreadId, ThreadId[]>();
   for (const thread of activeThreads.values()) {
-    if (isThreadEligibleForRetention(thread, cutoffMs, protectedThreadIds)) {
+    if (isThreadEligibleForRetention(thread, cutoffMs)) {
       eligibleThreadIds.add(thread.id);
     }
     const parentThreadId = thread.parentThreadId ?? null;
@@ -209,12 +181,10 @@ function getRetentionArchiveRootIds(
 const runThreadRetentionSweep = Effect.fn("runThreadRetentionSweep")(function* (
   orchestrationEngine: OrchestrationEngineShape,
   projectionSnapshotQuery: ProjectionSnapshotQueryShape,
-  automationRepository: AutomationRepositoryShape,
   pruneArchivedManagedWorktrees: Effect.Effect<void, TaggedFailure>,
 ) {
   const shellSnapshot = yield* projectionSnapshotQuery.getShellSnapshot();
-  const protectedThreadIds = yield* listRetentionProtectedThreadIds(automationRepository);
-  const archiveRootIds = getRetentionArchiveRootIds(shellSnapshot, Date.now(), protectedThreadIds);
+  const archiveRootIds = getRetentionArchiveRootIds(shellSnapshot);
   const totalCandidateCount = archiveRootIds.length;
   let archivedCount = 0;
 
@@ -290,7 +260,6 @@ export const startThreadRetentionJob = Effect.fn("startThreadRetentionJob")(func
   orchestrationEngine: OrchestrationEngineShape,
   projectionSnapshotQuery: ProjectionSnapshotQueryShape,
 ) {
-  const automationRepository = yield* AutomationRepository;
   const config = yield* ServerConfig;
   const git = yield* GitCore;
   const pruneArchivedManagedWorktrees = pruneProjectedArchivedManagedWorktrees({
@@ -305,7 +274,6 @@ export const startThreadRetentionJob = Effect.fn("startThreadRetentionJob")(func
     yield* runThreadRetentionSweep(
       orchestrationEngine,
       projectionSnapshotQuery,
-      automationRepository,
       pruneArchivedManagedWorktrees,
     );
     return yield* Effect.forever(
@@ -314,7 +282,6 @@ export const startThreadRetentionJob = Effect.fn("startThreadRetentionJob")(func
           runThreadRetentionSweep(
             orchestrationEngine,
             projectionSnapshotQuery,
-            automationRepository,
             pruneArchivedManagedWorktrees,
           ),
         ),

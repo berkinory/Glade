@@ -54,17 +54,6 @@ function workLogSubagentsEqual(
   });
 }
 
-function workLogAutomationsEqual(a: WorkLogEntry["automation"], b: WorkLogEntry["automation"]) {
-  if (a === b) return true;
-  if (!a || !b) return false;
-  return (
-    a.id === b.id &&
-    a.name === b.name &&
-    a.cadenceLabel === b.cadenceLabel &&
-    a.proposalState === b.proposalState
-  );
-}
-
 function workLogGladeThreadCreationsEqual(
   a: WorkLogEntry["gladeThreadCreation"],
   b: WorkLogEntry["gladeThreadCreation"],
@@ -179,7 +168,6 @@ function workLogEntryContentEqual(a: WorkLogEntry, b: WorkLogEntry): boolean {
     stringArraysEqual(a.changedFiles, b.changedFiles) &&
     workLogSubagentActionsEqual(a.subagentAction, b.subagentAction) &&
     workLogSubagentsEqual(a.subagents, b.subagents) &&
-    workLogAutomationsEqual(a.automation, b.automation) &&
     workLogGladeThreadCreationsEqual(a.gladeThreadCreation, b.gladeThreadCreation) &&
     workLogLiveActivitiesEqual(a.liveActivity, b.liveActivity) &&
     workLogToolDetailsEqual(a.toolDetails, b.toolDetails)

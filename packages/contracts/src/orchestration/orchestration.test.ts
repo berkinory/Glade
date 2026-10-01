@@ -356,9 +356,9 @@ it.effect("decodes thread.created runtime mode for historical events", () =>
 
 it.effect("strips client-sent dispatchOrigin from thread.turn.start commands", () =>
   Effect.gen(function* () {
-    // dispatchOrigin is server-assigned (automation engine only). The client command schema
+    // dispatchOrigin is server-assigned. The client command schema
     // deliberately omits it, so a spoofed value must not survive decoding — otherwise any WS client
-    // could fake the "Sent via Automation" label.
+    // could fake the server-assigned message origin.
     const command = yield* decodeClientOrchestrationCommand({
       type: "thread.turn.start",
       commandId: "cmd-turn-start-origin",
@@ -370,7 +370,7 @@ it.effect("strips client-sent dispatchOrigin from thread.turn.start commands", (
         attachments: [],
       },
       dispatchMode: "queue",
-      dispatchOrigin: "automation",
+      dispatchOrigin: "agent",
       runtimeMode: "full-access",
 
       createdAt: "2026-01-01T00:00:00.000Z",

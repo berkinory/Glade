@@ -1,4 +1,3 @@
-import type { AutomationDefinition } from "@glade/contracts/automation/automation";
 import type { EditorId } from "@glade/contracts/settings/editor";
 import type {
   MessageId,
@@ -26,10 +25,6 @@ import { ArrowUpRightIcon, ChangesIcon, GitHubIcon, SettingsIcon } from "~/lib/i
 import { cn } from "~/lib/utils";
 
 import { EnvironmentEditorSection } from "./EnvironmentEditorSection";
-import {
-  EnvironmentAutomationsSection,
-  type EnvironmentAutomationPanelItem,
-} from "./EnvironmentAutomationsSection";
 import { EnvironmentUsageSection } from "./EnvironmentUsageSection";
 import { EnvironmentLocalServersSection } from "./EnvironmentLocalServersSection";
 import { EnvironmentPullRequestSection } from "./EnvironmentPullRequestSection";
@@ -71,8 +66,6 @@ export interface EnvironmentPanelProps {
 
   diffOpen: boolean;
 
-  threadAutomations: readonly EnvironmentAutomationPanelItem[];
-
   diffDisabledReason?: string | null;
 
   diffTotals: RepoDiffTotals;
@@ -98,8 +91,6 @@ export interface EnvironmentPanelProps {
   onCopyProjectInstructionsToNotes: () => void;
 
   onToggleDiff: () => void;
-
-  onOpenAutomation: (definition: AutomationDefinition) => void;
 
   onOpenGithubRepository?: (url: string) => void;
 
@@ -132,7 +123,6 @@ export function EnvironmentPanel({
   activeProvider,
   showGitActions,
   diffOpen,
-  threadAutomations,
   diffDisabledReason: diffDisabledReasonProp,
   diffTotals,
   branchToolbar,
@@ -145,7 +135,6 @@ export function EnvironmentPanel({
   onProjectInstructionsChange,
   onCopyProjectInstructionsToNotes,
   onToggleDiff,
-  onOpenAutomation,
   onOpenGithubRepository,
   onJumpToPinnedMessage,
   onTogglePinnedMessageDone,
@@ -169,19 +158,6 @@ export function EnvironmentPanel({
 
   const content = (
     <div className="flex flex-col gap-0.5 p-1.5">
-      {threadAutomations.length > 0 ? (
-        <>
-          <EnvironmentAutomationsSection
-            automations={threadAutomations}
-            onOpenAutomation={(definition) => {
-              onOpenAutomation(definition);
-              onClose();
-            }}
-          />
-          <EnvironmentSectionDivider />
-        </>
-      ) : null}
-
       <div className="flex items-center justify-between gap-2 px-2 pb-0.5 pt-0.5">
         <EnvironmentPanelTitle>Environment</EnvironmentPanelTitle>
         {}

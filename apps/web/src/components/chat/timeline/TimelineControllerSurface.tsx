@@ -65,7 +65,6 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
     onImageExpand,
     timestampFormat,
     onOpenAgentActivity,
-    onOpenAutomation,
     computerControlEnabled,
     onEnableComputerControl,
     activeTurnInProgress,
@@ -144,7 +143,6 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
               onImageExpand={onImageExpand}
               timestampFormat={timestampFormat}
               {...(onOpenAgentActivity ? { onOpenAgentActivity } : {})}
-              {...(onOpenAutomation ? { onOpenAutomation } : {})}
               {...(computerControlEnabled !== undefined ? { computerControlEnabled } : {})}
               {...(onEnableComputerControl ? { onEnableComputerControl } : {})}
             />

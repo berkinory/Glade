@@ -47,7 +47,6 @@ import { stripDiffSearchParams } from "~/diffRouteSearch";
 import { startSelectionChat } from "~/lib/selectionChat";
 import { cn } from "~/lib/utils";
 import { ProjectImportLandingBanner } from "~/projectImport/ProjectImportLandingBanner";
-import { AutomationDialog } from "~/routes/-automationFormDialog";
 import { ChatComposerSurface } from "./ChatComposerSurface";
 import { undoTurnFiles } from "../chatTaskActions";
 import { createChatPresentation } from "./chatPresentation";
@@ -99,7 +98,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     onComposerDragOver,
     onComposerDragLeave,
     onComposerDrop,
-    submitAutomationDraft,
     pendingProviderHandoff,
     providerHandoffBusy,
     setPendingProviderHandoff,
@@ -139,8 +137,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     isEmptyChatLanding,
     activeTurnInProgress,
     pinnedMessageIds,
-    canPinMessage,
-    handleTogglePinMessageGuarded,
+    handleTogglePinMessage,
 
     enteringUserMessageIds,
     tailAnchor,
@@ -261,13 +258,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     [navigate],
   );
 
-  const onOpenAutomation = useCallback(
-    (automationId: string) => {
-      void navigate({ to: "/automations/$automationId", params: { automationId } });
-    },
-    [navigate],
-  );
-
   useThreadErrorToast({
     threadId: activeThread?.id ?? null,
     error: activeThread?.error ?? null,
@@ -292,16 +282,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
       setDismissedRateLimitBannerKey(activeRateLimitBannerDismissalKey);
   };
   const {
-    automationDraftForm,
-    automationDraftOpen,
-    automationProjects,
-    automationThreads,
-    automationDraftWarnings,
-    acknowledgedAutomationWarnings,
-    toggleAutomationWarning,
-    setAutomationDraftDialogOpen,
-    updateAutomationDraftForm,
-    isAutomationDraftSubmitting,
     isWorking,
     activeTurnIdForTranscript,
     openAgentActivityDetail,
@@ -377,7 +357,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     );
   }
   const presentation = createChatPresentation(controller, activeThread, {
-    onOpenAutomation,
     mainContentWidth,
     previewSession,
     previewLayout,
@@ -523,23 +502,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
         onOpenChange={setRenameDialogOpen}
         onSave={handleRenameActiveThread}
       />
-      {automationDraftForm ? (
-        <AutomationDialog
-          open={automationDraftOpen}
-          form={automationDraftForm}
-          projects={automationProjects}
-          threads={automationThreads}
-          warnings={automationDraftWarnings}
-          acknowledgedWarningIds={acknowledgedAutomationWarnings}
-          onToggleWarning={toggleAutomationWarning}
-          onOpenChange={setAutomationDraftDialogOpen}
-          onFormChange={updateAutomationDraftForm}
-          onSubmit={(...args: Parameters<typeof submitAutomationDraft>) => {
-            void submitAutomationDraft(...args).catch(reportChatActionFailure);
-          }}
-          busy={isAutomationDraftSubmitting}
-        />
-      ) : null}
 
       {}
       <ProviderHealthBanner
@@ -670,8 +632,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                     timelineControllerRef={timelineControllerRef}
                     findHighlightStore={threadFindHighlightStore}
                     pinnedMessageIds={pinnedMessageIds}
-                    canPinMessage={canPinMessage}
-                    onTogglePinMessage={handleTogglePinMessageGuarded}
+                    onTogglePinMessage={handleTogglePinMessage}
                     onForkFromMessage={handleForkFromMessage}
                     forkProvider={activeThread.modelSelection.provider}
                     enteringUserMessageIds={enteringUserMessageIds}
@@ -689,7 +650,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                     turnDiffSummaryByAssistantMessageId={turnDiffSummaryByAssistantMessageId}
                     onOpenTurnDiff={onOpenTurnDiff}
                     onOpenThread={onNavigateToThread}
-                    onOpenAutomation={onOpenAutomation}
                     computerControlEnabled={enableComputerControl}
                     onEnableComputerControl={handleEnableComputerControlFromDenial}
                     onUndoTurnFiles={(turnCounts) => {

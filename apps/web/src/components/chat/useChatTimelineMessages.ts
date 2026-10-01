@@ -7,7 +7,6 @@ import {
   revokeBlobPreviewUrl,
   revokeUserMessagePreviewUrls,
 } from "../ChatView.logic.worktree";
-import type { PendingAutomationConversation } from "./useChatAutomationSetup";
 const ATTACHMENT_PREVIEW_HANDOFF_TTL_MS = 5000;
 function revokeBlobPreviewUrlsAfterPaint(previewUrls: readonly string[]): void {
   if (previewUrls.length === 0 || typeof window === "undefined") {
@@ -24,14 +23,9 @@ function revokeBlobPreviewUrlsAfterPaint(previewUrls: readonly string[]): void {
 interface ChatTimelineMessagesInput {
   threadId: ThreadId;
   activeThread: Thread | undefined;
-  pendingAutomationConversation: PendingAutomationConversation | null;
 }
 
-export function useChatTimelineMessages({
-  threadId,
-  activeThread,
-  pendingAutomationConversation,
-}: ChatTimelineMessagesInput) {
+export function useChatTimelineMessages({ threadId, activeThread }: ChatTimelineMessagesInput) {
   const [optimisticUserMessages, setOptimisticUserMessages] = useState<ChatMessage[]>([]);
   const optimisticUserMessagesRef = useRef(optimisticUserMessages);
 
@@ -159,14 +153,6 @@ export function useChatTimelineMessages({
             return changed ? { ...message, attachments } : message;
           });
 
-    // Gated on the originating thread so a same-pane switch never leaks the previous thread's setup
-    // into the newly rendered conversation (the reset effect runs after the first render, so the guard
-    // must be here too).
-    const setupBubbles =
-      pendingAutomationConversation && pendingAutomationConversation.threadId === threadId
-        ? pendingAutomationConversation.bubbles
-        : [];
-
     let pendingMessages = optimisticUserMessages;
     if (optimisticUserMessages.length > 0) {
       const serverIds = new Set(serverMessagesWithPreviewHandoff.map((message) => message.id));
@@ -176,14 +162,8 @@ export function useChatTimelineMessages({
       pendingMessages.length === 0
         ? serverMessagesWithPreviewHandoff
         : [...serverMessagesWithPreviewHandoff, ...pendingMessages];
-    return setupBubbles.length === 0 ? withPending : [...withPending, ...setupBubbles];
-  }, [
-    serverMessages,
-    attachmentPreviewHandoffByMessageId,
-    optimisticUserMessages,
-    pendingAutomationConversation,
-    threadId,
-  ]);
+    return withPending;
+  }, [serverMessages, attachmentPreviewHandoffByMessageId, optimisticUserMessages]);
 
   useEffect(() => {
     if (!activeThread?.id) return;

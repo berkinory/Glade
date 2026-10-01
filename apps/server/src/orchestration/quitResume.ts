@@ -199,7 +199,7 @@ function planQuitResumeTurns(input: {
         attachments: [],
       },
       dispatchMode: "queue",
-      dispatchOrigin: "automation",
+      dispatchOrigin: "agent",
       runtimeMode: thread.runtimeMode,
 
       resumePrecondition,

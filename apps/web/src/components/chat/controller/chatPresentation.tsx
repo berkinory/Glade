@@ -1,4 +1,3 @@
-import { type AutomationDefinition } from "@glade/contracts/automation/automation";
 import BranchToolbar, { RuntimeUsageControls } from "~/components/BranchToolbar";
 import { resolveActiveThreadTitle } from "../../ChatView.logic.worktree";
 import { FolderClosed } from "~/components/FolderClosed";
@@ -24,14 +23,12 @@ import { toastManager } from "~/components/ui/toast";
 import { resolveSubagentPresentationForThread } from "~/lib/subagentPresentation";
 import { buildDraftThreadRenameCreateInput, dispatchThreadRename } from "~/lib/threadRename";
 import { cn } from "~/lib/utils";
-import { automationsForThread } from "~/routes/-automations.shared";
 import { COMPOSER_EXTRAS_PANEL_ID } from "./chatViewSupport";
 import type { ChatController } from "./useChatController";
 export function createChatPresentation(
   controller: ChatController,
   activeThread: NonNullable<ChatController["session"]["activeThread"]>,
   surface: {
-    onOpenAutomation: (automationId: string) => void;
     mainContentWidth: number;
     previewSession: ComputerPreviewSession | undefined;
     previewLayout: ComputerPreviewLayout | undefined;
@@ -87,7 +84,6 @@ export function createChatPresentation(
   const {
     selectedProvider,
     selectedRuntimeModel,
-    automationData,
     activeTaskList,
     workflowRunState,
     composerSubagentStripItems,
@@ -129,7 +125,7 @@ export function createChatPresentation(
     composerTraitSelection,
   } = controller.submission;
   const { scheduleComposerFocus, isVoiceRecording, isVoiceTranscribing } = controller.composer;
-  const { onOpenAutomation, mainContentWidth, previewSession, previewLayout } = surface;
+  const { mainContentWidth, previewSession, previewLayout } = surface;
 
   const activeThreadDisplayTitle = resolveActiveThreadTitle({
     title: activeThread.title,
@@ -314,11 +310,6 @@ export function createChatPresentation(
     </div>
   ) : null;
 
-  const threadAutomationItems = automationsForThread(
-    automationData.definitions,
-    activeThread.id,
-  ).map((definition) => ({ definition }));
-
   const environmentPanelProps: Omit<EnvironmentPanelProps, "open" | "variant"> = {
     gitCwd: threadWorkspaceCwd,
     openInTarget: threadWorkspaceCwd,
@@ -331,7 +322,6 @@ export function createChatPresentation(
     activeProvider: activeThread.session?.provider ?? activeThread.modelSelection.provider,
     showGitActions,
     diffOpen: resolvedDiffOpen,
-    threadAutomations: threadAutomationItems,
     diffDisabledReason,
     diffTotals: repoDiffTotals,
     branchToolbar: branchToolbarProps,
@@ -344,7 +334,6 @@ export function createChatPresentation(
     onProjectInstructionsChange: setProjectInstructions,
     onCopyProjectInstructionsToNotes: handleCopyProjectInstructionsToNotes,
     onToggleDiff,
-    onOpenAutomation: (definition: AutomationDefinition) => onOpenAutomation(definition.id),
     onOpenGithubRepository: openBrowserUrl,
     onJumpToPinnedMessage: handleJumpToPinnedMessage,
     onTogglePinnedMessageDone: handleTogglePinnedMessageDone,

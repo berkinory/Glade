@@ -6,7 +6,7 @@ Glade is a local-first orchestration application with three main runtime surface
 - the server/runtime in `apps/server`;
 - the Electron desktop shell in `apps/desktop`.
 
-The server owns durable orchestration, provider sessions, Git/worktree state, terminals, automation, device/browser integrations, and the typed HTTP/WebSocket RPC surface. Provider-native protocols stay behind adapter boundaries; the web app consumes Glade contracts rather than talking to coding-agent CLIs directly.
+The server owns durable orchestration, provider sessions, Git/worktree state, terminals, device/browser integrations, and the typed HTTP/WebSocket RPC surface. Provider-native protocols stay behind adapter boundaries; the web app consumes Glade contracts rather than talking to coding-agent CLIs directly.
 
 ```text
 ┌──────────────────────────────────────────────┐
@@ -20,7 +20,7 @@ The server owns durable orchestration, provider sessions, Git/worktree state, te
 │ wsRpc / HTTP routes                          │
 │ OrchestrationEngine + projections            │
 │ ProviderService + ProviderAdapterRegistry    │
-│ Git · terminals · automation · workspace     │
+│ Git · terminals · workspace                  │
 │ browser and device integrations               │
 └──────────────┬───────────────────────┬───────┘
                │                       │

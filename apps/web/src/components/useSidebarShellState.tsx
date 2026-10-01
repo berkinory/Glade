@@ -1,4 +1,3 @@
-import { ensureNativeApi } from "~/nativeApi";
 import {
   useEffect,
   startTransition,
@@ -8,9 +7,7 @@ import {
   useState,
   type MouseEvent,
 } from "react";
-import { type AutomationListResult } from "@glade/contracts/automation/automation";
 import { ProjectId, SpaceId, ThreadId } from "@glade/contracts/core/baseSchemas";
-import { pluralize } from "@glade/shared/text/text";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useAppSettings } from "../appSettings";
@@ -24,7 +21,6 @@ import {
   createProjectLastActivityAtSelector,
   createSidebarThreadSummariesSelector,
   createSidebarTreeThreadsSelector,
-  isSidebarThreadVisible,
 } from "../storeSelectors";
 import { serverConfigQueryOptions } from "../lib/serverReactQuery";
 import { readNativeApi } from "../nativeApi";
@@ -32,12 +28,6 @@ import { isHomeChatContainerProject } from "../lib/chatProjects";
 import { useComposerDraftStore } from "../composerDraftStore";
 import { useProjectPreferencesStore } from "../projectPreferencesStore";
 import { type SidebarThreadSummary } from "../types";
-import {
-  applyAutomationEvent,
-  automationAttentionCount,
-  automationQueryKey,
-  groupAutomationsByContinuedThread,
-} from "../routes/-automations.shared";
 import { shouldRenderTerminalWorkspace } from "./ChatView.logic.subagents";
 import { hasUnreadActivity as hasUnreadActivityOutsideActiveThread } from "./SidebarActivityView.logic";
 import { type SidebarSearchPaletteMode } from "./SidebarSearchPalette";
@@ -131,38 +121,6 @@ export function useSidebarShellState() {
   const isOnSettings = useLocation({
     select: (loc) => loc.pathname === "/settings",
   });
-
-  const isOnAutomations = pathname.startsWith("/automations");
-
-  const automationListQuery = useQuery({
-    queryKey: automationQueryKey,
-    queryFn: () => ensureNativeApi().automation.list({}),
-  });
-
-  useEffect(() => {
-    const api = ensureNativeApi();
-    return api.automation.onEvent((event) => {
-      queryClient.setQueryData<AutomationListResult>(automationQueryKey, (prev) =>
-        applyAutomationEvent(prev, event),
-      );
-    });
-  }, [queryClient]);
-
-  const automationAttentionBadge = (() => {
-    const data = automationListQuery.data;
-    if (!data) return null;
-    const count = automationAttentionCount(data.runs);
-    return count > 0
-      ? {
-          text: String(count),
-          accessibleLabel: `${count} ${pluralize(count, "automation needs", "automations need")} attention`,
-        }
-      : null;
-  })();
-
-  const automationsByThreadId = groupAutomationsByContinuedThread(
-    automationListQuery.data?.definitions ?? [],
-  );
 
   const { settings: appSettings, serverSettings, updateSettings } = useAppSettings();
 
@@ -381,12 +339,7 @@ export function useSidebarShellState() {
 
   const selectSidebarThreads = useMemo(() => createSidebarThreadSummariesSelector(), []);
 
-  const hideAutomationRunThreads = !appSettings.showAutomationRunThreads;
-
-  const selectSidebarTreeThreads = useMemo(
-    () => createSidebarTreeThreadsSelector({ hideAutomationRunThreads }),
-    [hideAutomationRunThreads],
-  );
+  const selectSidebarTreeThreads = useMemo(() => createSidebarTreeThreadsSelector(), []);
 
   const sidebarThreads = useStore(selectSidebarThreads);
 
@@ -402,7 +355,6 @@ export function useSidebarShellState() {
   );
 
   const visibleSidebarActivityThreads = sidebarThreads.filter((thread) => {
-    if (!isSidebarThreadVisible(thread, { hideAutomationRunThreads })) return false;
     const project = projectById.get(thread.projectId);
     return (
       !isHomeChatContainerProject(project, { homeDir, chatWorkspaceRoot }) ||
@@ -624,9 +576,6 @@ export function useSidebarShellState() {
     navigate,
     queryClient,
     isOnSettings,
-    isOnAutomations,
-    automationAttentionBadge,
-    automationsByThreadId,
     appSettings,
     serverSettings,
     updateSettings,
@@ -680,7 +629,6 @@ export function useSidebarShellState() {
     setOptimisticPinnedStateByProjectId,
     activeSidebarThreadId,
     visualActiveSidebarThreadId,
-    hideAutomationRunThreads,
     sidebarThreads,
     sidebarTreeThreads,
     projectLastActivityAt,

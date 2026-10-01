@@ -11,14 +11,7 @@ import type { ModelSelection, ProviderStartOptions } from "@glade/contracts/prov
 import { GitCommandError, TextGenerationError } from "../Errors.ts";
 import { type GitManagerShape } from "../Services/GitManager.ts";
 import { GitHubCli } from "../Services/GitHubCli.ts";
-import {
-  type AutomationIntentGenerationInput,
-  type AutomationIntentGenerationResult,
-  type AutomationCompletionEvaluationInput,
-  type AutomationCompletionEvaluationResult,
-  type TextGenerationShape,
-  TextGeneration,
-} from "../Services/TextGeneration.ts";
+import { type TextGenerationShape, TextGeneration } from "../Services/TextGeneration.ts";
 import { GitCoreLive } from "./GitCore.ts";
 import { GitCore } from "../Services/GitCore.ts";
 import { createGitHubCliWithFakeGh, type FakeGhScenario } from "../testing/fakeGitHubCli.ts";
@@ -69,12 +62,6 @@ interface FakeGitTextGeneration {
     model?: string;
     modelSelection?: ModelSelection;
   }) => Effect.Effect<{ branch: string }, TextGenerationError>;
-  generateAutomationIntent: (
-    input: AutomationIntentGenerationInput,
-  ) => Effect.Effect<AutomationIntentGenerationResult, TextGenerationError>;
-  evaluateAutomationCompletion: (
-    input: AutomationCompletionEvaluationInput,
-  ) => Effect.Effect<AutomationCompletionEvaluationResult, TextGenerationError>;
 }
 
 function makeTempDir(
@@ -157,26 +144,6 @@ function createTextGeneration(overrides: Partial<FakeGitTextGeneration> = {}): T
       Effect.succeed({
         branch: "update-workflow",
       }),
-    generateAutomationIntent: () =>
-      Effect.succeed({
-        isAutomation: true,
-        confidence: 1,
-        language: null,
-        name: "Check site",
-        taskPrompt: "Check the site",
-        schedule: { type: "interval", everySeconds: 3600 },
-        mode: "heartbeat",
-        completionPolicy: { type: "none" },
-        missingFields: [],
-        needsConfirmation: false,
-        reason: null,
-      }),
-    evaluateAutomationCompletion: () =>
-      Effect.succeed({
-        stopMatched: false,
-        confidence: 0.2,
-        reason: "Stop condition was not met.",
-      }),
     ...overrides,
   };
 
@@ -220,28 +187,6 @@ function createTextGeneration(overrides: Partial<FakeGitTextGeneration> = {}): T
           (cause) =>
             new TextGenerationError({
               operation: "generateBranchName",
-              detail: "fake text generation failed",
-              ...(cause !== undefined ? { cause } : {}),
-            }),
-        ),
-      ),
-    generateAutomationIntent: (input) =>
-      implementation.generateAutomationIntent(input).pipe(
-        Effect.mapError(
-          (cause) =>
-            new TextGenerationError({
-              operation: "generateAutomationIntent",
-              detail: "fake text generation failed",
-              ...(cause !== undefined ? { cause } : {}),
-            }),
-        ),
-      ),
-    evaluateAutomationCompletion: (input) =>
-      implementation.evaluateAutomationCompletion(input).pipe(
-        Effect.mapError(
-          (cause) =>
-            new TextGenerationError({
-              operation: "evaluateAutomationCompletion",
               detail: "fake text generation failed",
               ...(cause !== undefined ? { cause } : {}),
             }),

@@ -1,12 +1,5 @@
 import type { LucideIcon } from "~/lib/icons";
-import {
-  BotIcon,
-  ClockIcon,
-  GitBranchIcon,
-  GitPullRequestIcon,
-  GlobeIcon,
-  KeyboardIcon,
-} from "~/lib/icons";
+import { BotIcon, GitBranchIcon, GitPullRequestIcon, GlobeIcon, KeyboardIcon } from "~/lib/icons";
 
 const GLADE_DOCS_URL = "https://github.com/berkinory/Glade/blob/main/docs";
 
@@ -68,16 +61,6 @@ export const TOUR_CARDS: ReadonlyArray<TourCard> = [
     highlights: ["Shared Chromium surface", "Element annotations"],
     docsHref: `${GLADE_DOCS_URL}/core-concepts.md`,
     icon: GlobeIcon,
-  },
-  {
-    id: "automations",
-    label: "Automations",
-    title: "Hand off work that should keep moving",
-    description:
-      "Schedule recurring runs and let Glade bring you back when something needs attention. Scheduled does not mean autonomous approval.",
-    highlights: ["Interval, daily, cron schedules", "Natural-language stop conditions"],
-    docsHref: `${GLADE_DOCS_URL}/core-concepts.md`,
-    icon: ClockIcon,
   },
   {
     id: "shortcuts",

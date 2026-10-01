@@ -91,7 +91,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
     spaces,
     threadsHydrated,
     homeDir,
-    automationsByThreadId,
     handleNewThread,
     newThreadShortcutLabel,
     setCreateProjectDialogOpen,
@@ -351,7 +350,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
     const projectLabel = resolvePinnedThreadProjectLabel(thread.projectId);
     const rightMetaChips = resolveThreadRowMetaChips({
       thread,
-      threadAutomations: automationsByThreadId.get(thread.id),
     });
     const threadStatus = resolveThreadStatusForSidebar(thread);
     const isSubagentThread = Boolean(thread.parentThreadId);
@@ -489,7 +487,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
       : "text-muted-foreground/34";
     const rightMetaChips = resolveThreadRowMetaChips({
       thread,
-      threadAutomations: automationsByThreadId.get(thread.id),
     });
     const isSubagentThread = Boolean(thread.parentThreadId);
     const leadingPr = isSubagentThread || thread.forkSourceThreadId ? null : pr;

@@ -147,7 +147,7 @@
   }
 
   /* ─── Content seam (sidebar ↔ route divider) ──────────────────────────────────
-     Chat, settings, automations, and the other route surfaces share one
+     Chat, settings, and the other route surfaces share one
      square content edge. The visible seam belongs to the content surface; the
      SidebarRail remains only the resize hit-area so a second line is never drawn. */
 

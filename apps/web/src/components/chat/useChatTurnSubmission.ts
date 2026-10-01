@@ -42,7 +42,6 @@ import { createWorktreeSetupResolution, deriveComposerSendState } from "../ChatV
 import { resolveEnvironmentPanelPreferenceAfterFirstSend } from "../ChatView.logic.worktree";
 import { toastManager } from "../ui/toast";
 import type { ChatTurnSubmissionControllerInput } from "./chatSendTypes";
-import { handleChatAutomationSend } from "./handleChatAutomationSend";
 import { prepareChatSendWorkspace } from "./prepareChatSendWorkspace";
 import { buildQueuedComposerPreviewText } from "./queuedComposerPreview";
 import { resolveChatPromptCaptures } from "./resolveChatPromptCaptures";
@@ -79,17 +78,7 @@ export function useChatTurnSubmission({
     selectedProvider,
     selectedModel,
     selectedPromptEffort,
-    pendingAutomationConversationRef,
-    setPendingAutomationConversation,
-    pendingAutomationConversation,
     activeThreadIdRef,
-    hasLiveTurnRef,
-    automationProjects,
-    setAutomationDraftWarningContext,
-    setAutomationDraftForm,
-    setAutomationDraftWarnings,
-    setAcknowledgedAutomationWarnings,
-    setAutomationDraftOpen,
   } = provider;
   const { lateComposerSendHandlersRef, setQueuedSteerGate } = turn;
   const {
@@ -113,7 +102,6 @@ export function useChatTurnSubmission({
     composerPullRequestContexts,
 
     enqueueQueuedComposerTurn,
-    setComposerDraftPrompt,
     setComposerTrigger,
     clearProjectDraftThreadId,
     setDraftThreadContext,
@@ -137,7 +125,7 @@ export function useChatTurnSubmission({
     waitForPendingComposerImages,
     computerControlChangeSequence,
   } = composer;
-  const { clearComposerInput, prepareAutomationFormForCreate, createAutomationFromForm } = actions;
+  const { clearComposerInput } = actions;
   const {
     activeProject,
     isServerThread,
@@ -352,8 +340,6 @@ export function useChatTurnSubmission({
         const handledSlashCommand =
           await lateSendHandlers.handleStandaloneSlashCommand(trimmedPromptForSend);
         if (handledSlashCommand) {
-          pendingAutomationConversationRef.current = null;
-          setPendingAutomationConversation(null);
           return true;
         }
       }
@@ -374,38 +360,6 @@ export function useChatTurnSubmission({
       }
       if (!activeProject) return false;
 
-      if (queuedChatTurn === null) {
-        const handled = await handleChatAutomationSend({
-          threadId,
-          pendingAutomationConversation,
-          trimmedPromptForSend,
-          threadWorkspaceCwd,
-          activeProject,
-          api,
-          activeThreadIdRef,
-          pendingAutomationConversationRef,
-          hasLiveTurn,
-          hasLiveTurnRef,
-          hasPromptOnlySendableContent,
-          promptRef,
-          setComposerDraftPrompt,
-          activeThread,
-          setComposerTrigger,
-          armTranscriptAutoFollow,
-          setPendingAutomationConversation,
-          automationProjects,
-          selectedModelSelectionForSend,
-          setAutomationDraftWarningContext,
-          setAutomationDraftForm,
-          setAutomationDraftWarnings,
-          setAcknowledgedAutomationWarnings,
-          setAutomationDraftOpen,
-          prepareAutomationFormForCreate,
-          createAutomationFromForm,
-          providerOptionsForDispatchForSend,
-        });
-        if (handled) return true;
-      }
       if (dispatchSettings.computerControlMode === "request") {
         const computerPermission = readLocalComputerPermissionBridge();
         const activeThreadBeforeCheck = activeThreadIdRef.current;
@@ -848,7 +802,6 @@ export function useChatTurnSubmission({
       composerPullRequestContexts,
 
       enqueueQueuedComposerTurn,
-      setComposerDraftPrompt,
       setComposerTrigger,
       clearProjectDraftThreadId,
       setDraftThreadContext,
@@ -862,21 +815,9 @@ export function useChatTurnSubmission({
       selectedProvider,
       selectedModel,
       selectedPromptEffort,
-      pendingAutomationConversationRef,
-      setPendingAutomationConversation,
-      pendingAutomationConversation,
       activeThreadIdRef,
-      hasLiveTurnRef,
-      automationProjects,
-      setAutomationDraftWarningContext,
-      setAutomationDraftForm,
-      setAutomationDraftWarnings,
-      setAcknowledgedAutomationWarnings,
-      setAutomationDraftOpen,
       armTranscriptAutoFollow,
       tailAnchorScrollInFlightRef,
-      prepareAutomationFormForCreate,
-      createAutomationFromForm,
       providerStatuses,
       setOptimisticUserMessages,
       executePreparedTurn,

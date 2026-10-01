@@ -1,10 +1,4 @@
 import { assert, describe, it } from "@effect/vitest";
-
-import type {
-  AutomationCreateInput,
-  AutomationDefinition,
-  AutomationUpdateInput,
-} from "@glade/contracts/automation/automation";
 import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import type {
@@ -15,20 +9,12 @@ import type {
 import type { ProviderKind, ThreadId as ThreadIdType } from "@glade/contracts/core/baseSchemas";
 import type { ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
 import type { ServerProviderStatus } from "@glade/contracts/server/server";
-import {
-  AutomationId,
-  MessageId,
-  ProjectId,
-  ThreadId,
-  TurnId,
-} from "@glade/contracts/core/baseSchemas";
+import { MessageId, ProjectId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { isTemporaryWorktreeBranch } from "@glade/shared/git/git";
 
 import { Cause, Deferred, Effect, Exit, Fiber, Layer, Option, Stream } from "effect";
 import { TestClock } from "effect/testing";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-
-import { AutomationService } from "../../automation/Services/AutomationService.ts";
 import { GitCore } from "../../git/Services/GitCore.ts";
 import { GitManager } from "../../git/Services/GitManager.ts";
 import { OrchestrationEngineService } from "../../orchestration/Services/OrchestrationEngine.ts";
@@ -199,10 +185,6 @@ const listDefaultTestModels: (typeof ProviderDiscoveryService)["Service"]["listM
 
 interface GatewayHarness {
   readonly dispatched: Array<OrchestrationCommand>;
-  readonly automationCreates: Array<AutomationCreateInput>;
-  readonly automationUpdates: Array<AutomationUpdateInput>;
-  readonly automationDeletes: Array<{ id: string }>;
-  readonly automationMemoryUpdates: Array<{ automationId: string | null; content: string }>;
   readonly worktreeCreates: Array<{
     ref?: string;
     newBranch?: string;
@@ -241,44 +223,6 @@ interface GatewayHarness {
   }) => Effect.Effect<{ status: number; body?: unknown }>;
 }
 
-function makeAutomationDefinition(
-  overrides: Partial<AutomationDefinition> = {},
-): AutomationDefinition {
-  return {
-    id: AutomationId.makeUnsafe("automation-1"),
-    projectId: PROJECT_ID,
-    sourceThreadId: ThreadId.makeUnsafe("thread-parent"),
-    name: "Monitor children",
-    prompt: "check children",
-    schedule: { type: "interval", everySeconds: 300 },
-    enabled: true,
-    nextRunAt: NOW,
-    modelSelection: { provider: "codex", model: "gpt-5.5" },
-    runtimeMode: "approval-required",
-
-    worktreeMode: "local",
-    mode: "heartbeat",
-    targetThreadId: ThreadId.makeUnsafe("thread-parent"),
-    maxIterations: 50,
-    stopAfterConsecutiveFailures: 3,
-    consecutiveFailureCount: 0,
-    disabledReason: null,
-    disabledAt: null,
-    completionPolicyVersion: 0,
-    completionPolicyUpdatedAt: NOW,
-    minimumIntervalSeconds: 60,
-    maxRuntimeSeconds: 3600,
-    retryPolicy: { type: "none" },
-    misfirePolicy: "coalesce",
-    acknowledgedRisks: ["local-checkout"],
-    iterationCount: 0,
-    createdAt: NOW,
-    updatedAt: NOW,
-    archivedAt: null,
-    ...overrides,
-  };
-}
-
 const VALID_TOKENS: Record<string, string> = {
   "token-parent": "thread-parent",
   "token-parent-claude": "thread-parent",
@@ -289,7 +233,6 @@ const VALID_TOKENS: Record<string, string> = {
 
 function makeHarnessLayer(
   threads: ReadonlyArray<OrchestrationThreadShell>,
-  automationDefinitions: ReadonlyArray<AutomationDefinition> = [],
   options: {
     readonly listModels?: (typeof ProviderDiscoveryService)["Service"]["listModels"];
     readonly threadDetails?: ReadonlyMap<string, OrchestrationThread>;
@@ -333,26 +276,12 @@ function makeHarnessLayer(
     readonly providerRuntimeEvents?: ReadonlyArray<PersistedProviderRuntimeEvent>;
     readonly operationalDiagnostics?: ReadonlyArray<OperationalDiagnostic>;
     readonly providerDeliveryBlockers?: ReadonlyArray<ProviderBlockingDeliveryEvidence>;
-    readonly automationRuns?: ReadonlyArray<{
-      readonly id: string;
-      readonly automationId: AutomationDefinition["id"];
-    }>;
-
-    readonly callerAutomationRun?: {
-      readonly callerThreadId: string;
-      readonly id: string;
-      readonly automationId: AutomationDefinition["id"];
-    };
 
     readonly computerService?: Layer.Layer<ComputerService>;
   } = {},
 ) {
   const inFlightRequests = makeAgentGatewayInFlightRequestRegistry();
   const dispatched: Array<OrchestrationCommand> = [];
-  const automationCreates: Array<AutomationCreateInput> = [];
-  const automationMemoryUpdates: Array<{ automationId: string | null; content: string }> = [];
-  const automationUpdates: Array<AutomationUpdateInput> = [];
-  const automationDeletes: Array<{ id: string }> = [];
   const worktreeCreates: Array<{
     ref?: string;
     newBranch?: string;
@@ -395,12 +324,7 @@ function makeHarnessLayer(
                 ? new Set(["thread:read"] as const)
                 : token === "token-parent-computer"
                   ? new Set(["thread:read", "computer:control"] as const)
-                  : new Set([
-                      "thread:read",
-                      "thread:write",
-                      "automation:write",
-                      "diagnostics:read",
-                    ] as const),
+                  : new Set(["thread:read", "thread:write", "diagnostics:read"] as const),
           }
         : null;
     },
@@ -663,70 +587,6 @@ function makeHarnessLayer(
         ),
       ),
   } as unknown as (typeof OrchestrationEngineService)["Service"]);
-
-  const automationLayer = Layer.succeed(AutomationService, {
-    create: (input: AutomationCreateInput) =>
-      Effect.sync(() => {
-        automationCreates.push(input);
-        return {
-          ...input,
-          id: "automation-1",
-          enabled: input.enabled ?? true,
-          nextRunAt: NOW,
-          completionPolicyVersion: 0,
-          completionPolicyUpdatedAt: NOW,
-          iterationCount: 0,
-          createdAt: NOW,
-          updatedAt: NOW,
-          archivedAt: null,
-        };
-      }),
-    update: (input: AutomationUpdateInput) =>
-      Effect.sync(() => {
-        automationUpdates.push(input);
-        return { id: input.id };
-      }),
-    delete: (input: { id: string }) =>
-      Effect.sync(() => {
-        automationDeletes.push(input);
-      }),
-    list: (input?: { projectId?: string; includeArchived?: boolean }) =>
-      Effect.succeed({
-        definitions: automationDefinitions
-          .filter((definition) =>
-            input?.projectId ? definition.projectId === input.projectId : true,
-          )
-          .filter((definition) => (input?.includeArchived ? true : definition.archivedAt === null)),
-        runs: [],
-        memories: [],
-      }),
-    listRunsForDefinition: (input: { automationId: AutomationDefinition["id"]; limit: number }) =>
-      Effect.succeed(
-        (options.automationRuns ?? [])
-          .filter((run) => run.automationId === input.automationId)
-          .slice(0, input.limit),
-      ),
-    resolveCallerRun: (input: { callerThreadId: string; callerTurnId: string | null }) => {
-      const callerRun = options.callerAutomationRun;
-      return Effect.succeed(
-        callerRun &&
-          input.callerTurnId !== null &&
-          callerRun.callerThreadId === input.callerThreadId
-          ? Option.some(callerRun)
-          : Option.none(),
-      );
-    },
-    getMemory: () => Effect.succeed(null),
-    updateMemory: (input: { automationId: string | null; content: string }) =>
-      Effect.sync(() => {
-        automationMemoryUpdates.push({ automationId: input.automationId, content: input.content });
-        return {
-          automationId: input.automationId ?? "automation-1",
-          content: input.content,
-          updatedAt: NOW,
-        };
-      }),
-  } as unknown as (typeof AutomationService)["Service"]);
 
   const gitLayer = Layer.succeed(GitCore, {
     withMutation: <A, E, R>(_cwd: string, effect: Effect.Effect<A, E, R>) => effect,
@@ -1172,7 +1032,6 @@ function makeHarnessLayer(
     Layer.provide(credentialsLayer),
     Layer.provide(snapshotLayer),
     Layer.provide(engineLayer),
-    Layer.provide(automationLayer),
     Layer.provide(gitLayer),
     Layer.provide(gitManagerLayer),
     Layer.provide(providerDiscoveryLayer),
@@ -1211,10 +1070,6 @@ function makeHarnessLayer(
         );
     return {
       dispatched,
-      automationCreates,
-      automationUpdates,
-      automationDeletes,
-      automationMemoryUpdates,
       worktreeCreates,
       gitExecutions,
       fetchedPullRequests,
@@ -1555,7 +1410,6 @@ describe("AgentGateway", () => {
           gatewayOperationIndex: 0,
         }),
       ],
-      [],
       { interruptedOperations: [interrupted] },
     );
     return Effect.gen(function* () {
@@ -1607,7 +1461,7 @@ describe("AgentGateway", () => {
         createdAt: NOW,
         updatedAt: NOW,
       };
-      const { gatewayLayer, makeHarness } = makeHarnessLayer(baseThreads, [], {
+      const { gatewayLayer, makeHarness } = makeHarnessLayer(baseThreads, {
         interruptedOperations: [interrupted],
         existingWorktrees: {
           "agent/unrelated-after-crash": "/tmp/unrelated-after-crash",
@@ -1662,7 +1516,7 @@ describe("AgentGateway", () => {
         createdAt: NOW,
         updatedAt: NOW,
       };
-      const { gatewayLayer, makeHarness } = makeHarnessLayer(baseThreads, [], {
+      const { gatewayLayer, makeHarness } = makeHarnessLayer(baseThreads, {
         interruptedOperations: [interrupted],
         existingWorktrees: {
           "agent/recorded-but-replaced": "/tmp/different-registration",
@@ -1715,7 +1569,7 @@ describe("AgentGateway", () => {
       createdAt: NOW,
       updatedAt: NOW,
     };
-    const { gatewayLayer, makeHarness } = makeHarnessLayer(baseThreads, [], {
+    const { gatewayLayer, makeHarness } = makeHarnessLayer(baseThreads, {
       interruptedOperations: [interrupted],
       existingWorktrees: { "agent/same-path-replacement": plannedPath },
     });
@@ -1765,7 +1619,7 @@ describe("AgentGateway", () => {
       createdAt: NOW,
       updatedAt: NOW,
     };
-    const { gatewayLayer, makeHarness } = makeHarnessLayer(baseThreads, [], {
+    const { gatewayLayer, makeHarness } = makeHarnessLayer(baseThreads, {
       interruptedOperations: [interrupted],
       existingWorktrees: { "agent/verified-owned-worktree": plannedPath },
       verifiedOwnershipTokens: ["ownership-verified-owned-worktree"],
@@ -1825,15 +1679,6 @@ describe("AgentGateway", () => {
           name: "glade_set_thread_archived",
           args: { threadId: "thread-child", archived: true },
         },
-
-        {
-          name: "glade_create_automation",
-          args: { name: "late monitor", prompt: "late" },
-        },
-        {
-          name: "glade_cancel_automation",
-          args: { automationId: "automation-1" },
-        },
       ];
 
       for (const attempt of attempts) {
@@ -1845,9 +1690,6 @@ describe("AgentGateway", () => {
         );
       }
       assert.equal(harness.dispatched.length, 0);
-      assert.deepEqual(harness.automationCreates, []);
-      assert.deepEqual(harness.automationUpdates, []);
-      assert.deepEqual(harness.automationDeletes, []);
 
       const read = yield* harness.callTool({
         token: "token-parent",
@@ -1972,7 +1814,7 @@ describe("AgentGateway", () => {
   });
 
   it.effect("coalesces concurrent identical creation calls onto one operation", () => {
-    const { gatewayLayer, makeHarness } = makeHarnessLayer(baseThreads, [], {
+    const { gatewayLayer, makeHarness } = makeHarnessLayer(baseThreads, {
       dispatchDelayMs: 15,
     });
     return Effect.gen(function* () {
@@ -2015,7 +1857,7 @@ describe("AgentGateway", () => {
   });
 
   it.effect("rejects an unavailable or unauthenticated provider before dispatch", () => {
-    const { gatewayLayer, makeHarness } = makeHarnessLayer(baseThreads, [], {
+    const { gatewayLayer, makeHarness } = makeHarnessLayer(baseThreads, {
       providerStatuses: [
         {
           provider: "claudeAgent",
@@ -2081,7 +1923,7 @@ describe("AgentGateway", () => {
   it.effect(
     "safely removes a just-created worktree when its ownership marker cannot persist",
     () => {
-      const { gatewayLayer, makeHarness } = makeHarnessLayer(baseThreads, [], {
+      const { gatewayLayer, makeHarness } = makeHarnessLayer(baseThreads, {
         failRecordWorktreeOwnership: true,
       });
       return Effect.gen(function* () {
@@ -2120,7 +1962,7 @@ describe("AgentGateway", () => {
   it.effect("compensates a worktree when the MCP request fiber is interrupted mid-create", () => {
     const worktreeCreated = Deferred.makeUnsafe<void>();
     const releaseWorktreeCreate = Deferred.makeUnsafe<void>();
-    const { gatewayLayer, makeHarness } = makeHarnessLayer(baseThreads, [], {
+    const { gatewayLayer, makeHarness } = makeHarnessLayer(baseThreads, {
       pauseAfterWorktreeCreate: {
         entered: worktreeCreated,
         release: releaseWorktreeCreate,
@@ -2171,7 +2013,7 @@ describe("AgentGateway", () => {
   it.effect("compensates a created thread when its MCP request fiber is interrupted", () => {
     const threadCreated = Deferred.makeUnsafe<void>();
     const releaseThreadCreate = Deferred.makeUnsafe<void>();
-    const { gatewayLayer, makeHarness } = makeHarnessLayer(baseThreads, [], {
+    const { gatewayLayer, makeHarness } = makeHarnessLayer(baseThreads, {
       pauseAfterDispatch: {
         commandType: "thread.create",
         entered: threadCreated,
@@ -2223,7 +2065,7 @@ describe("AgentGateway", () => {
 
   it.effect("compensates operation-owned threads and worktrees after dispatch failure", () => {
     let turnStarts = 0;
-    const { gatewayLayer, makeHarness } = makeHarnessLayer(baseThreads, [], {
+    const { gatewayLayer, makeHarness } = makeHarnessLayer(baseThreads, {
       failDispatch: (command) => {
         if (command.type !== "thread.turn.start") return false;
         turnStarts += 1;
@@ -2274,7 +2116,7 @@ describe("AgentGateway", () => {
   });
 
   it.effect("compensates successful dispatches when the replayable result cannot persist", () => {
-    const { gatewayLayer, makeHarness } = makeHarnessLayer(baseThreads, [], {
+    const { gatewayLayer, makeHarness } = makeHarnessLayer(baseThreads, {
       failOperationComplete: true,
     });
     return Effect.gen(function* () {
@@ -2310,7 +2152,7 @@ describe("AgentGateway", () => {
   });
 
   it.effect("keeps a durable compensating status when cleanup itself fails", () => {
-    const { gatewayLayer, makeHarness } = makeHarnessLayer(baseThreads, [], {
+    const { gatewayLayer, makeHarness } = makeHarnessLayer(baseThreads, {
       failDispatch: (command) =>
         command.type === "thread.turn.start" || command.type === "thread.delete",
     });
@@ -2484,15 +2326,6 @@ describe("AgentGateway", () => {
       tool: "glade_interrupt_thread",
       args: { threadId: "thread-full-access" },
     },
-    {
-      name: "heartbeat",
-      tool: "glade_create_automation",
-      args: {
-        name: "escalate",
-        prompt: "keep running privileged work",
-        targetThreadId: "thread-full-access",
-      },
-    },
   ]) {
     it.effect(`rejects ${scenario.name} targeting a higher-privileged thread`, () => {
       const { gatewayLayer, makeHarness } = makeHarnessLayer([
@@ -2509,7 +2342,6 @@ describe("AgentGateway", () => {
         assert.isTrue(isToolError(response.result));
         assert.include(toolErrorText(response.result), "full-access");
         assert.equal(harness.dispatched.length, 0);
-        assert.equal(harness.automationCreates.length, 0);
       }).pipe(Effect.provide(gatewayLayer));
     });
   }
@@ -2605,222 +2437,6 @@ describe("AgentGateway", () => {
       assert.isTrue(isToolError(response.result));
       assert.include(toolErrorText(response.result), "approval-required");
       assert.equal(harness.dispatched.length, 0);
-    }).pipe(Effect.provide(gatewayLayer));
-  });
-
-  it.effect(
-    "requires an explicit flag and bounded loop for sub-minute automation schedules",
-    () => {
-      const { gatewayLayer, makeHarness } = makeHarnessLayer(baseThreads);
-      return Effect.gen(function* () {
-        const harness = yield* makeHarness;
-        const rejected = yield* harness.callTool({
-          token: "token-parent",
-          name: "glade_create_automation",
-          args: {
-            name: "Fast monitor",
-            prompt: "Check quickly.",
-            schedule: { type: "interval", everySeconds: 15 },
-          },
-        });
-        assert.isTrue(isToolError(rejected.result));
-        assert.include(toolErrorText(rejected.result), "fastInterval");
-
-        const accepted = yield* harness.callTool({
-          token: "token-parent",
-          name: "glade_create_automation",
-          args: {
-            name: "Fast monitor",
-            prompt: "Check quickly.",
-            schedule: { type: "interval", everySeconds: 15 },
-            fastInterval: true,
-          },
-        });
-        assert.isFalse(isToolError(accepted.result), toolErrorText(accepted.result));
-        const created = harness.automationCreates[0]!;
-        assert.equal(created.maxIterations, 10);
-        assert.include(created.acknowledgedRisks ?? [], "fast-interval");
-        // The default cooldown must not exceed the schedule spacing, or the acknowledged fast interval
-        // would silently degrade to cooldown cadence.
-        assert.equal(created.heartbeatCooldownSeconds, 15);
-      }).pipe(Effect.provide(gatewayLayer));
-    },
-  );
-
-  it.effect("rejects cancelling a standalone automation from an unrelated run", () => {
-    const { gatewayLayer, makeHarness } = makeHarnessLayer(
-      baseThreads,
-      [
-        makeAutomationDefinition({
-          id: AutomationId.makeUnsafe("automation-standalone"),
-          mode: "standalone",
-          sourceThreadId: ThreadId.makeUnsafe("thread-creator"),
-          targetThreadId: null,
-        }),
-      ],
-      {
-        callerAutomationRun: {
-          callerThreadId: "thread-parent",
-          id: "run-other-1",
-          automationId: AutomationId.makeUnsafe("automation-unrelated"),
-        },
-      },
-    );
-    return Effect.gen(function* () {
-      const harness = yield* makeHarness;
-      const response = yield* harness.callTool({
-        token: "token-parent",
-        name: "glade_cancel_automation",
-        args: { automationId: "automation-standalone" },
-      });
-      assert.isTrue(isToolError(response.result));
-      assert.deepEqual(harness.automationUpdates, []);
-    }).pipe(Effect.provide(gatewayLayer));
-  });
-
-  it.effect("rejects automation cancellation when the caller cannot own or drive it", () => {
-    const { gatewayLayer, makeHarness } = makeHarnessLayer(
-      [
-        ...baseThreads,
-        makeThreadShell("thread-elevated", { runtimeMode: "full-access" }),
-        makeThreadShell("thread-other"),
-      ],
-      [
-        makeAutomationDefinition({
-          id: AutomationId.makeUnsafe("automation-elevated"),
-          sourceThreadId: ThreadId.makeUnsafe("thread-other"),
-          targetThreadId: ThreadId.makeUnsafe("thread-elevated"),
-          runtimeMode: "full-access",
-          acknowledgedRisks: ["full-access", "local-checkout"],
-        }),
-      ],
-    );
-    return Effect.gen(function* () {
-      const harness = yield* makeHarness;
-      const response = yield* harness.callTool({
-        token: "token-parent",
-        name: "glade_cancel_automation",
-        args: { automationId: "automation-elevated" },
-      });
-      assert.isTrue(isToolError(response.result));
-      assert.include(toolErrorText(response.result), "full-access");
-      assert.deepEqual(harness.automationUpdates, []);
-      assert.deepEqual(harness.automationDeletes, []);
-    }).pipe(Effect.provide(gatewayLayer));
-  });
-
-  it.effect("rejects ambiguous partial automation updates", () => {
-    const { gatewayLayer, makeHarness } = makeHarnessLayer(baseThreads, [
-      makeAutomationDefinition(),
-    ]);
-    return Effect.gen(function* () {
-      const harness = yield* makeHarness;
-      const response = yield* harness.callTool({
-        token: "token-parent",
-        name: "glade_update_automation",
-        args: {
-          automationId: "automation-1",
-          name: "Only a name",
-        },
-      });
-
-      assert.isTrue(isToolError(response.result));
-      assert.deepEqual(harness.automationUpdates, []);
-    }).pipe(Effect.provide(gatewayLayer));
-  });
-
-  it.effect("rejects invalid automation targets before create or update", () => {
-    const standalone = makeAutomationDefinition({
-      id: AutomationId.makeUnsafe("automation-standalone"),
-      mode: "standalone",
-      targetThreadId: null,
-    });
-    const { gatewayLayer, makeHarness } = makeHarnessLayer(baseThreads, [standalone], {
-      providerStatuses: [
-        {
-          provider: "claudeAgent",
-          status: "error",
-          available: false,
-          authStatus: "unauthenticated",
-          checkedAt: NOW,
-          message: "Claude is not authenticated.",
-        },
-      ],
-    });
-    return Effect.gen(function* () {
-      const harness = yield* makeHarness;
-      const create = (target: Record<string, unknown>) =>
-        harness.callTool({
-          token: "token-parent",
-          name: "glade_create_automation",
-          args: {
-            name: "Rejected target",
-            prompt: "This must not be created.",
-            mode: "standalone",
-            schedule: { type: "interval", everySeconds: 300 },
-            target,
-          },
-        });
-
-      const unavailableModel = yield* create({ provider: "codex", model: "gpt-5.6-sol-low" });
-      assert.equal(
-        (toolResultJson(unavailableModel.result).error as { code: string }).code,
-        "model_unavailable",
-      );
-      const unavailableProvider = yield* create({
-        provider: "claudeAgent",
-        model: "claude-sonnet-5",
-      });
-      assert.equal(
-        (toolResultJson(unavailableProvider.result).error as { code: string }).code,
-        "provider_unavailable",
-      );
-      const invalidOption = yield* create({
-        provider: "codex",
-        model: "gpt-5.6-sol",
-        options: { reasoningEffort: "ultra" },
-      });
-      assert.equal(
-        (toolResultJson(invalidOption.result).error as { code: string }).code,
-        "model_option_unavailable",
-      );
-
-      const inventedOption = yield* create({
-        provider: "codex",
-        model: "gpt-5.6-sol",
-        options: { inventedOption: "invented-value" },
-      });
-      assert.equal(
-        (toolResultJson(inventedOption.result).error as { code: string }).code,
-        "model_option_unavailable",
-      );
-      assert.deepEqual(harness.automationCreates, []);
-
-      const updated = yield* harness.callTool({
-        token: "token-parent",
-        name: "glade_update_automation",
-        args: {
-          automationId: standalone.id,
-          name: standalone.name,
-          prompt: standalone.prompt,
-          schedule: standalone.schedule,
-          enabled: true,
-          maxIterations: standalone.maxIterations,
-          stopAfterConsecutiveFailures: standalone.stopAfterConsecutiveFailures,
-          notificationPolicy: "all",
-          completionPolicy: { type: "none" },
-          target: {
-            provider: "codex",
-            model: "gpt-6-astra",
-            options: { reasoningEffort: "ultra" },
-          },
-        },
-      });
-      assert.equal(
-        (toolResultJson(updated.result).error as { code: string }).code,
-        "model_option_unavailable",
-      );
-      assert.deepEqual(harness.automationUpdates, []);
     }).pipe(Effect.provide(gatewayLayer));
   });
 

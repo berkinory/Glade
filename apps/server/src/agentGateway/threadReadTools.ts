@@ -105,7 +105,6 @@ export function makeThreadReadTools(input: ThreadReadToolsInput): ReadonlyArray<
             threadCreate: turnId !== null && context.callerCapabilities.has("thread:write"),
             threadWait: context.callerCapabilities.has("thread:read"),
             diagnostics: context.callerCapabilities.has("diagnostics:read"),
-            automations: turnId !== null && context.callerCapabilities.has("automation:write"),
           },
         });
       }).pipe(Effect.catch((error) => Effect.succeed(mcpToolResultError(errorText(error))))),

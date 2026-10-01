@@ -208,8 +208,6 @@ const AppSettingsSchema = Schema.Struct({
     withDefaults(() => []),
   ),
 
-  showAutomationRunThreads: Schema.Boolean.pipe(withDefaults(() => true)),
-
   environmentPanelDefaultOpen: Schema.Boolean.pipe(withDefaults(() => false)),
   showEnvironmentUsage: Schema.Boolean.pipe(withDefaults(() => true)),
   showEnvironmentRepository: Schema.Boolean.pipe(withDefaults(() => true)),

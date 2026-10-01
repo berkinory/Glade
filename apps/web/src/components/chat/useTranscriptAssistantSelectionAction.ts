@@ -39,7 +39,6 @@ interface UseTranscriptAssistantSelectionActionOptions {
     addComposerAssistantSelectionToDraft: (
       selection: ComposerAssistantSelectionAttachment,
     ) => boolean;
-    canReferenceAssistantSelection?: (selection: TranscriptAssistantSelection) => boolean;
     scheduleComposerFocus: () => void;
   };
   events: {
@@ -64,7 +63,6 @@ export function useTranscriptAssistantSelectionAction(
     composerFilesRef,
     composerAssistantSelectionsRef,
     addComposerAssistantSelectionToDraft,
-    canReferenceAssistantSelection,
     scheduleComposerFocus,
   } = options.composer;
   const {
@@ -156,11 +154,7 @@ export function useTranscriptAssistantSelectionAction(
       }
 
       const selectionState = readTranscriptAssistantSelection({ container });
-      if (
-        !selectionState ||
-        (canReferenceAssistantSelection &&
-          !canReferenceAssistantSelection(selectionState.selection))
-      ) {
+      if (!selectionState) {
         setPendingTranscriptSelectionAction(null);
         return;
       }
@@ -181,15 +175,6 @@ export function useTranscriptAssistantSelectionAction(
   const commitTranscriptAssistantSelection = () => {
     const pendingSelection = pendingTranscriptSelectionAction;
     if (!pendingSelection) {
-      return;
-    }
-
-    if (
-      canReferenceAssistantSelection &&
-      !canReferenceAssistantSelection(pendingSelection.selection)
-    ) {
-      setPendingTranscriptSelectionAction(null);
-      window.getSelection()?.removeAllRanges();
       return;
     }
 

@@ -16,11 +16,7 @@ export const buildEmbeddedClaudeSystemPromptAppend = (
     "Do not present the host app as Claude Code unless the user is explicitly asking about Claude Code.",
     "Treat the current working directory as the active workspace for the task.",
     "When the user asks about the current project, codebase, or repository, proactively inspect files in the current working directory before asking the user where to look.",
-    renderGladeHarnessPolicy({
-      gatewayControlAvailable,
-      enableComputerControl,
-      automationAuthoring: "tool-descriptions",
-    }),
+    renderGladeHarnessPolicy({ gatewayControlAvailable, enableComputerControl }),
   ].join("\n");
 
 export function claudeSubagentSteerContext(message: string): string {

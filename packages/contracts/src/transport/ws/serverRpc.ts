@@ -28,8 +28,6 @@ import {
   ServerVoicePrewarmResult,
   ServerVoiceTranscriptionInput,
   ServerVoiceTranscriptionResult,
-  ServerGenerateAutomationIntentInput,
-  ServerGenerateAutomationIntentResult,
   ServerUpsertKeybindingInput,
   ServerUpsertKeybindingResult,
   ServerLifecycleStreamEvent,
@@ -156,15 +154,6 @@ export const WsServerTranscribeVoiceRpc = Rpc.make(WS_METHODS.serverTranscribeVo
   success: ServerVoiceTranscriptionResult,
   error: WsRpcError,
 });
-
-export const WsServerGenerateAutomationIntentRpc = Rpc.make(
-  WS_METHODS.serverGenerateAutomationIntent,
-  {
-    payload: ServerGenerateAutomationIntentInput,
-    success: ServerGenerateAutomationIntentResult,
-    error: WsRpcError,
-  },
-);
 
 export const WsServerUpsertKeybindingRpc = Rpc.make(WS_METHODS.serverUpsertKeybinding, {
   payload: ServerUpsertKeybindingInput,

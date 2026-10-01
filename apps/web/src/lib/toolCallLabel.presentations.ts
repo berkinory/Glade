@@ -260,41 +260,6 @@ export const GLADE_MCP_TOOL_PRESENTATIONS = {
     completed: "Glade updated a thread",
     failed: "Glade couldn't update a thread",
   },
-  glade_create_automation: {
-    running: "Glade is creating an automation",
-    completed: "Glade created an automation",
-    failed: "Glade couldn't create an automation",
-  },
-  glade_list_automations: {
-    running: "Glade is listing automations",
-    completed: "Glade listed automations",
-    failed: "Glade couldn't list automations",
-  },
-  glade_view_automation: {
-    running: "Glade is viewing an automation",
-    completed: "Glade viewed an automation",
-    failed: "Glade couldn't view an automation",
-  },
-  glade_update_automation: {
-    running: "Glade is updating an automation",
-    completed: "Glade updated an automation",
-    failed: "Glade couldn't update an automation",
-  },
-  glade_update_automation_memory: {
-    running: "Glade is updating automation memory",
-    completed: "Glade updated automation memory",
-    failed: "Glade couldn't update automation memory",
-  },
-  glade_report_automation_result: {
-    running: "Glade is reporting an automation result",
-    completed: "Glade reported an automation result",
-    failed: "Glade couldn't report an automation result",
-  },
-  glade_cancel_automation: {
-    running: "Glade is stopping an automation",
-    completed: "Glade stopped an automation",
-    failed: "Glade couldn't stop an automation",
-  },
   ...GLADE_BROWSER_TOOL_PRESENTATIONS,
   ...GLADE_COMPUTER_TOOL_PRESENTATIONS,
 } as const satisfies Record<string, GladeMcpToolPresentation>;

@@ -43,7 +43,6 @@ import {
   isPlainRuntimeNoticeWorkEntry,
   isReasoningUpdateWorkEntry,
 } from "./agentActivity.logic";
-import { AutomationCreatedCard } from "./AutomationCreatedCard";
 import { ConnectedComputerSetupRequiredCard } from "./ComputerSetupRequiredCard";
 import { ComputerControlDeniedCard } from "./ComputerControlDeniedCard";
 import ChatMarkdown from "../ChatMarkdown";
@@ -422,7 +421,6 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
   turnId?: TurnId;
   onOpenTurnDiff?: (turnId: TurnId, filePath?: string) => void;
   onOpenAgentActivity?: (activityId: string) => void;
-  onOpenAutomation?: (automationId: string) => void;
   computerControlEnabled?: boolean;
   onEnableComputerControl?: () => void;
   timestampFormat: TimestampFormat;
@@ -438,7 +436,6 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
     turnId,
     onOpenTurnDiff,
     onOpenAgentActivity,
-    onOpenAutomation,
     computerControlEnabled,
     onEnableComputerControl,
     timestampFormat,
@@ -531,25 +528,6 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
           textFontSizePx={textFontSizePx}
           metaFontSizePx={chatMetaFontSizePx}
           {...(onEnableComputerControl ? { onEnable: onEnableComputerControl } : {})}
-        />
-      </div>
-    );
-  }
-
-  // A created-automation row renders as its own card instead of a tool-call line. Kept after the
-  // hooks above so the early return never changes hook order.
-  const automation = workEntry.automation;
-  if (automation) {
-    return (
-      <div className={cn(compact ? "py-0.5" : "py-1")}>
-        <AutomationCreatedCard
-          automationId={automation.id}
-          name={automation.name}
-          cadenceLabel={automation.cadenceLabel}
-          {...(automation.proposalState ? { proposalState: automation.proposalState } : {})}
-          textFontSizePx={textFontSizePx}
-          metaFontSizePx={chatMetaFontSizePx}
-          {...(onOpenAutomation ? { onOpen: () => onOpenAutomation(automation.id) } : {})}
         />
       </div>
     );

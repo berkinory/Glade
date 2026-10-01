@@ -402,7 +402,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
         return;
       }
 
-      if (item.command === "model" || item.command === "rename" || item.command === "automation") {
+      if (item.command === "model" || item.command === "rename") {
         const replacement = `/${item.command} `;
         const replacementRangeEnd = extendReplacementRangeForTrailingSpace(
           snapshot.value,

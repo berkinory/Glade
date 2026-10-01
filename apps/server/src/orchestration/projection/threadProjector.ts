@@ -235,9 +235,7 @@ export function makeThreadProjector(input: {
               messages,
             }),
           });
-          // Automation-dispatched turns run with the automation's modes but must not repaint the thread's
-          // persisted modes: on a heartbeat target thread the user's own composer selection has to survive
-          // the automation turn.
+          // Replaying retired scheduled turns must preserve the user's persisted composer modes.
           const adoptTurnModes = event.payload.dispatchOrigin !== "automation";
           yield* projectionThreadRepository.upsert({
             ...existingRow.value,

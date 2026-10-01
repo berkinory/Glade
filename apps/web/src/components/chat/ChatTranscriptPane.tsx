@@ -52,7 +52,6 @@ interface ChatTranscriptPaneProps {
   listRef: RefObject<LegendListRef | null>;
   timelineControllerRef?: RefObject<MessagesTimelineController | null>;
   pinnedMessageIds?: ReadonlySet<MessageId>;
-  canPinMessage?: (messageId: MessageId) => boolean;
   onTogglePinMessage?: (messageId: MessageId) => void;
   onForkFromMessage?: (messageId: MessageId) => void;
   forkProvider?: "codex" | "claudeAgent";
@@ -83,7 +82,6 @@ interface ChatTranscriptPaneProps {
   onOpenAgentActivity?: ComponentProps<typeof MessagesTimeline>["onOpenAgentActivity"];
   onOpenTurnDiff: (turnId: TurnId, filePath?: string) => void;
   onOpenThread: (threadId: ThreadId) => void;
-  onOpenAutomation?: ComponentProps<typeof MessagesTimeline>["onOpenAutomation"];
   computerControlEnabled?: ComponentProps<typeof MessagesTimeline>["computerControlEnabled"];
   onEnableComputerControl?: ComponentProps<typeof MessagesTimeline>["onEnableComputerControl"];
   onUndoTurnFiles?: ComponentProps<typeof MessagesTimeline>["onUndoTurnFiles"];
@@ -130,7 +128,6 @@ export function ChatTranscriptPane({
   listRef,
   timelineControllerRef,
   pinnedMessageIds,
-  canPinMessage,
   onTogglePinMessage,
   onForkFromMessage,
   forkProvider,
@@ -159,7 +156,6 @@ export function ChatTranscriptPane({
   onOpenAgentActivity,
   onOpenTurnDiff,
   onOpenThread,
-  onOpenAutomation,
   computerControlEnabled,
   onEnableComputerControl,
   onUndoTurnFiles,
@@ -246,7 +242,6 @@ export function ChatTranscriptPane({
             listRef={listRef}
             {...(timelineControllerRef ? { controllerRef: timelineControllerRef } : {})}
             {...(pinnedMessageIds ? { pinnedMessageIds } : {})}
-            {...(canPinMessage ? { canPinMessage } : {})}
             {...(onTogglePinMessage ? { onTogglePinMessage } : {})}
             {...(onForkFromMessage ? { onForkFromMessage } : {})}
             {...(forkProvider ? { forkProvider } : {})}
@@ -261,7 +256,6 @@ export function ChatTranscriptPane({
             turnDiffSummaryByAssistantMessageId={turnDiffSummaryByAssistantMessageId}
             onOpenTurnDiff={onOpenTurnDiff}
             onOpenThread={onOpenThread}
-            {...(onOpenAutomation ? { onOpenAutomation } : {})}
             {...(computerControlEnabled !== undefined ? { computerControlEnabled } : {})}
             {...(onEnableComputerControl ? { onEnableComputerControl } : {})}
             {...(onUndoTurnFiles ? { onUndoTurnFiles } : {})}

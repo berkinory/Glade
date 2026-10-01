@@ -22,7 +22,6 @@ import {
   BotIcon,
   CircleAlertIcon,
   CircleCheckIcon,
-  ClockIcon,
   LoaderIcon,
   SteerIcon,
   WorktreeIcon,
@@ -78,7 +77,6 @@ const USER_TURN_MARKER_PRESENTATION: Record<
   UserTurnMarkerKind,
   { readonly Icon: LucideIcon; readonly label: string }
 > = {
-  automation: { Icon: ClockIcon, label: "Sent via Automation" },
   agent: { Icon: BotIcon, label: "Sent by agent" },
   steer: { Icon: SteerIcon, label: "Steering conversation" },
 };
@@ -230,8 +228,6 @@ export interface MessagesTimelineProps {
 
   pinnedMessageIds?: ReadonlySet<MessageId>;
 
-  canPinMessage?: (messageId: MessageId) => boolean;
-
   onTogglePinMessage?: (messageId: MessageId) => void;
 
   onForkFromMessage?: (messageId: MessageId) => void;
@@ -256,8 +252,6 @@ export interface MessagesTimelineProps {
   onOpenAgentActivity?: (activityId: string) => void;
   onOpenTurnDiff: (turnId: TurnId, filePath?: string) => void;
   onOpenThread?: (threadId: ThreadId) => void;
-
-  onOpenAutomation?: (automationId: string) => void;
 
   computerControlEnabled?: boolean;
 

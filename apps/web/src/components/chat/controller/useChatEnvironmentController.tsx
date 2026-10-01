@@ -1,6 +1,5 @@
 import { useCallback, useRef } from "react";
 import { prepareTerminalSession } from "../../terminal/terminalStartup";
-import { MessageId } from "@glade/contracts/core/baseSchemas";
 import { resolveThreadWorkspaceState } from "@glade/shared/threads/threadEnvironment";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useState } from "react";
@@ -155,7 +154,6 @@ export function useChatEnvironmentController({
 
     hasStreamingAssistantText,
     pendingUserInputs,
-    isPendingSetupBubbleId,
     providerOptionsForDispatch,
     enableComputerControl,
     computerControlMode,
@@ -419,8 +417,6 @@ export function useChatEnvironmentController({
       composerFilesRef,
       composerAssistantSelectionsRef,
       addComposerAssistantSelectionToDraft,
-      canReferenceAssistantSelection: (selection) =>
-        !isPendingSetupBubbleId(MessageId.makeUnsafe(selection.assistantMessageId)),
       scheduleComposerFocus,
     },
     events: {

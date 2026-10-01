@@ -2,10 +2,10 @@
 
 Glade is a Bun/Turbo monorepo. Runtime ownership is split across the app workspaces, while shared schemas and cross-runtime helpers live under `packages`.
 
-- `/apps/server` — The authoritative Glade backend and private `@glade/cli` package. Owns orchestration/persistence, provider adapters and health/discovery, Git/worktrees, terminals, automation, workspace files, HTTP/WebSocket RPC, and the bundled web client used outside Vite development.
+- `/apps/server` — The authoritative Glade backend and private `@glade/cli` package. Owns orchestration/persistence, provider adapters and health/discovery, Git/worktrees, terminals, workspace files, HTTP/WebSocket RPC, and the bundled web client used outside Vite development.
 - `/apps/web` — React + Vite application. Owns presentation, client transport/state coordination, chat/composer/editor/dock surfaces, and subscription-driven projection of server-authoritative state.
 - `/apps/desktop` — Electron host for the shared web client. Supervises a desktop-scoped Glade server process and provides native window, update, IPC, browser-automation, and other OS/Electron integrations.
-- `/packages/contracts` — Shared Effect Schema and TypeScript contracts for orchestration, provider/session/model data, RPC methods, settings, keybindings, automation, device/browser surfaces, and other cross-process payloads. Imports use domain subpaths such as `@glade/contracts/core/baseSchemas` and `@glade/contracts/transport/ws/rpc`; RPC registrations live in domain modules such as `transport/ws/terminalRpc`, while `transport/ws/rpc` composes the feature group. There is no root barrel.
+- `/packages/contracts` — Shared Effect Schema and TypeScript contracts for orchestration, provider/session/model data, RPC methods, settings, keybindings, device/browser surfaces, and other cross-process payloads. Imports use domain subpaths such as `@glade/contracts/core/baseSchemas` and `@glade/contracts/transport/ws/rpc`; RPC registrations live in domain modules such as `transport/ws/terminalRpc`, while `transport/ws/rpc` composes the feature group. There is no root barrel.
 - `/packages/shared` — Runtime modules consumed by at least two applications, grouped into platform, transport, threads, computer, browser, git, HTTP, text, provider and workspace domains. Server-only workers, stream decoders, filesystem durability and settings merge code live in the server. Uses explicit subpath exports (for example `@glade/shared/git/git` and `@glade/shared/threads/threadWorkspace`) rather than one catch-all barrel.
 - `/scripts` — Repository-level development, packaging, release, migration-lineage and smoke-test tooling. Package-specific scripts remain with their owning app when they depend on that workspace's package context or Turbo task ownership.
 
@@ -32,9 +32,8 @@ shared validation boundary with its own contract.
 
 Migration 1 is the current schema baseline. Validators for later migrations stay
 with their released migration to preserve the interpretation of persisted data.
-Generic error-to-string conversion lives in `text/errorMessages`; automation redaction
-and router/device fallback messages remain domain policies rather than a generic
-formatter with switches.
+Generic error-to-string conversion lives in `text/errorMessages`; router/device fallback messages
+remain domain policies rather than a generic formatter with switches.
 
 Scalar boundary readers preserve distinct policies: `text/text` owns raw, non-empty,
 non-blank and normalized string values; `transport/payloadValues` owns arrays and

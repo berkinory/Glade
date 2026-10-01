@@ -12,8 +12,6 @@ import type { useStore } from "../../store";
 import type { Project, Thread } from "../../types";
 import type { QueuedSteerGate } from "../ChatView.logic.dispatch";
 import type { TurnDispatchSettings } from "../ChatView.logic.subagents";
-import type { useChatAutomationCreation } from "./useChatAutomationCreation";
-import type { useChatAutomationSetup } from "./useChatAutomationSetup";
 import type { useChatComposerDraft } from "./useChatComposerDraft";
 import type { useChatLocalDispatch } from "./useChatLocalDispatch";
 import type { useChatPendingInteractions } from "./useChatPendingInteractions";
@@ -210,39 +208,11 @@ export interface ChatTurnSubmissionInput {
   selectedPromptEffort: ReturnType<typeof useChatProviderModels>["selectedPromptEffort"];
   turnDispatchSettings: TurnDispatchSettings;
   computerControlChangeSequence: RefObject<number>;
-  pendingAutomationConversationRef: ReturnType<
-    typeof useChatAutomationSetup
-  >["pendingAutomationConversationRef"];
-  setPendingAutomationConversation: ReturnType<
-    typeof useChatAutomationSetup
-  >["setPendingAutomationConversation"];
-  pendingAutomationConversation: ReturnType<
-    typeof useChatAutomationSetup
-  >["pendingAutomationConversation"];
-  activeThreadIdRef: ReturnType<typeof useChatAutomationSetup>["activeThreadIdRef"];
-  hasLiveTurnRef: ReturnType<typeof useChatAutomationSetup>["hasLiveTurnRef"];
-  automationProjects: ReturnType<typeof useChatAutomationSetup>["automationProjects"];
-  setAutomationDraftWarningContext: ReturnType<
-    typeof useChatAutomationSetup
-  >["setAutomationDraftWarningContext"];
-  setAutomationDraftForm: ReturnType<typeof useChatAutomationSetup>["setAutomationDraftForm"];
-  setAutomationDraftWarnings: ReturnType<
-    typeof useChatAutomationSetup
-  >["setAutomationDraftWarnings"];
-  setAcknowledgedAutomationWarnings: ReturnType<
-    typeof useChatAutomationSetup
-  >["setAcknowledgedAutomationWarnings"];
-  setAutomationDraftOpen: ReturnType<typeof useChatAutomationSetup>["setAutomationDraftOpen"];
+  activeThreadIdRef: RefObject<ThreadId>;
   armTranscriptAutoFollow: ReturnType<typeof useChatTranscriptScroll>["armTranscriptAutoFollow"];
   tailAnchorScrollInFlightRef: ReturnType<
     typeof useChatTranscriptScroll
   >["tailAnchorScrollInFlightRef"];
-  prepareAutomationFormForCreate: ReturnType<
-    typeof useChatAutomationCreation
-  >["prepareAutomationFormForCreate"];
-  createAutomationFromForm: ReturnType<
-    typeof useChatAutomationCreation
-  >["createAutomationFromForm"];
   providerStatuses: ReturnType<typeof useChatProviderStatus>["providerStatuses"];
   rememberCustomBinaryPathForDispatch: ReturnType<
     typeof useChatProviderStatus
@@ -283,17 +253,7 @@ export type ChatTurnSubmissionControllerInput = {
     | "selectedProvider"
     | "selectedModel"
     | "selectedPromptEffort"
-    | "pendingAutomationConversationRef"
-    | "setPendingAutomationConversation"
-    | "pendingAutomationConversation"
     | "activeThreadIdRef"
-    | "hasLiveTurnRef"
-    | "automationProjects"
-    | "setAutomationDraftWarningContext"
-    | "setAutomationDraftForm"
-    | "setAutomationDraftWarnings"
-    | "setAcknowledgedAutomationWarnings"
-    | "setAutomationDraftOpen"
   >;
   turn: Pick<ChatTurnSubmissionInput, "lateComposerSendHandlersRef" | "setQueuedSteerGate">;
   session: Pick<
@@ -364,10 +324,7 @@ export type ChatTurnSubmissionControllerInput = {
     | "isVoiceTranscribing"
     | "waitForPendingComposerImages"
   >;
-  actions: Pick<
-    ChatTurnSubmissionInput,
-    "clearComposerInput" | "prepareAutomationFormForCreate" | "createAutomationFromForm"
-  >;
+  actions: Pick<ChatTurnSubmissionInput, "clearComposerInput">;
   workspace: Pick<
     ChatTurnSubmissionInput,
     | "activeProject"

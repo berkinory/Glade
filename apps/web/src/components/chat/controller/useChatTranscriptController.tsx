@@ -56,9 +56,7 @@ export function useChatTranscriptController({
     activePendingProgress,
     isWorking,
     pendingApprovals,
-    pendingAutomationConversation,
     agentActivityTimelineState,
-    isPendingSetupBubbleId,
     serverConfigQuery,
     selectedProvider,
     providerModelDiscoveryCwd,
@@ -164,7 +162,6 @@ export function useChatTranscriptController({
     useChatTimelineMessages({
       threadId,
       activeThread,
-      pendingAutomationConversation,
     });
 
   const promptHistory = (() => {
@@ -216,15 +213,6 @@ export function useChatTranscriptController({
     handleRenamePinnedMessage,
     handleNotesChange,
   } = usePinnedMessageActions({ activeThreadId, pinnedMessages });
-
-  const handleTogglePinMessageGuarded = (messageId: MessageId) => {
-    if (isPendingSetupBubbleId(messageId)) {
-      return;
-    }
-    handleTogglePinMessage(messageId);
-  };
-
-  const canPinMessage = (messageId: MessageId) => !isPendingSetupBubbleId(messageId);
 
   const handleCopyProjectInstructionsToNotes = () => {
     if (!activeThreadId) {
@@ -430,8 +418,7 @@ export function useChatTranscriptController({
     handleUnpinMessage,
     handleRenamePinnedMessage,
     handleNotesChange,
-    handleTogglePinMessageGuarded,
-    canPinMessage,
+    handleTogglePinMessage,
     handleCopyProjectInstructionsToNotes,
     handleJumpToPinnedMessage,
     threadDetailHydration,

@@ -1,5 +1,3 @@
-import type { TaggedFailure } from "../../platform/operationError.ts";
-
 import { computerSpaceDesignationForMessages } from "../../computer/computerSpaceDesignation.ts";
 import { randomUUID } from "node:crypto";
 
@@ -16,13 +14,11 @@ import {
   MessageId,
   ThreadId,
   TurnId,
-  type ProjectId,
   type ProviderKind,
 } from "@glade/contracts/core/baseSchemas";
 import { GLADE_GATEWAY_MAX_THREADS_PER_OPERATION } from "@glade/contracts/provider/agentGateway";
 
 import {
-  type ModelSelection,
   type ProviderApprovalDecision,
   type RuntimeMode,
   type TurnDispatchMode,
@@ -36,8 +32,6 @@ import { GitManager } from "../../git/Services/GitManager.ts";
 import { ServerConfig } from "../../server/config.ts";
 import { OrchestrationEngineService } from "../../orchestration/Services/OrchestrationEngine.ts";
 import { ProjectionSnapshotQuery } from "../../orchestration/Services/ProjectionSnapshotQuery.ts";
-import { AutomationService } from "../../automation/Services/AutomationService.ts";
-import { buildAutomationProposalActivity } from "../../automation/proposalActivity.ts";
 import { ProjectionTurnRepository } from "../../persistence/Services/ProjectionTurns.ts";
 import { OrchestrationEventStore } from "../../persistence/Services/OrchestrationEventStore.ts";
 import { OrchestrationEventDeliveryRepository } from "../../persistence/Services/OrchestrationEventDeliveries.ts";
@@ -51,7 +45,6 @@ import { ProviderHealth } from "../../provider/Services/ProviderHealth.ts";
 import { ServerSettingsService } from "../../settings/serverSettings.ts";
 import {
   AGENT_GATEWAY_TARGET_OPTIONS_DESCRIPTION,
-  resolveAgentGatewayTarget,
   type AgentGatewayProviderAvailability,
 } from "../targetResolver.ts";
 import { mcpToolResultError, mcpToolResultJson } from "../protocol.ts";
@@ -73,7 +66,6 @@ import { makeAgentGatewayMcpTransport } from "../mcpTransport.ts";
 import { deliverGatewayCompletions } from "../completionDelivery.ts";
 import { recoverInterruptedAgentGatewayOperations } from "../startupRecovery.ts";
 import { makeCreateThreadsHandler } from "../creationCoordinator.ts";
-import { makeAgentGatewayAutomationTools } from "../automationTools.ts";
 import { makeAgentGatewayBrowserTools } from "../browserTools.ts";
 import { makeAgentGatewayComputerBrowserTools } from "../computerBrowserTools.ts";
 import { computerApprovalDisplayArgs } from "../computerApprovalDisplay.ts";
@@ -104,7 +96,6 @@ const makeAgentGateway = Effect.gen(function* () {
   const credentials = yield* AgentGatewayCredentials;
   const snapshotQuery = yield* ProjectionSnapshotQuery;
   const orchestrationEngine = yield* OrchestrationEngineService;
-  const automationService = yield* AutomationService;
   const git = yield* GitCore;
   const gitManager = yield* GitManager;
   const providerDiscovery = yield* ProviderDiscoveryService;
@@ -181,31 +172,6 @@ const makeAgentGateway = Effect.gen(function* () {
         }),
       ),
     );
-
-  const resolveAutomationTarget = (input: {
-    readonly target: ModelSelection;
-    readonly projectId: ProjectId;
-  }): Effect.Effect<ModelSelection, TaggedFailure> =>
-    Effect.gen(function* () {
-      const project = yield* snapshotQuery.getProjectShellById(input.projectId).pipe(
-        Effect.mapError((error) => new ToolInputError(errorText(error))),
-        Effect.flatMap(
-          Option.match({
-            onNone: () =>
-              Effect.fail(new ToolInputError(`Project "${input.projectId}" was not found.`)),
-            onSome: Effect.succeed,
-          }),
-        ),
-      );
-      const providerAvailabilities = yield* loadProviderAvailabilities;
-      const availability = providerAvailabilities.get(input.target.provider);
-      return yield* resolveAgentGatewayTarget({
-        target: input.target,
-        discovery: providerDiscovery,
-        ...(availability !== undefined ? { availability } : {}),
-        cwd: project.workspaceRoot,
-      });
-    });
 
   // Privilege boundary shared by every tool that makes another thread execute work or mutates another
   // thread's state: a caller must not drive a thread that runs with more privileges than the user
@@ -707,28 +673,6 @@ const makeAgentGateway = Effect.gen(function* () {
       }).pipe(Effect.catch((error) => Effect.succeed(mcpToolResultError(errorText(error))))),
   };
 
-  const automationTools = makeAgentGatewayAutomationTools({
-    automationService,
-    requireThreadShell,
-    assertCallerMayDriveThread,
-    resolveAutomationTarget,
-    surfaceAutomationProposal: ({ callerThreadId, definition }) => {
-      const createdAt = isoNow();
-      return orchestrationEngine
-        .dispatch({
-          type: "thread.activity.append",
-          commandId: CommandId.makeUnsafe(`agent:${randomUUID()}:automation-proposal`),
-          threadId: callerThreadId,
-          activity: buildAutomationProposalActivity({
-            definition,
-            proposalState: "pending",
-          }),
-          createdAt,
-        })
-        .pipe(Effect.asVoid);
-    },
-  });
-
   const resolveWorkspaceRoot = (context: ToolContext) =>
     Effect.gen(function* () {
       const thread = yield* requireThreadShell(context.callerThreadId);
@@ -1044,8 +988,6 @@ const makeAgentGateway = Effect.gen(function* () {
     setThreadTitle,
     setThreadPullRequest,
     setThreadArchived,
-
-    ...automationTools,
     ...browserTools,
     ...(computerService?.supported === true
       ? makeAgentGatewayComputerTools({

@@ -38,7 +38,6 @@ import { SidebarActivityView } from "./SidebarActivityView";
 import { SidebarIconButton } from "./SidebarIconButton";
 import { SidebarLeadingIcon } from "./SidebarLeadingIcon";
 import { SidebarPrimaryAction } from "./SidebarPrimaryAction";
-import { RailAutomationsPanel } from "./RailAutomationsPanel";
 import { SIDEBAR_PANEL_TITLE_CLASS_NAME, SidebarPanelTitle } from "./SidebarPanelTitle";
 import { SidebarSectionToolbar } from "./SidebarSectionToolbar";
 import { SidebarGlyph } from "./sidebarGlyphs";
@@ -155,10 +154,8 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     allProjectsExpanded,
     prByThreadId,
     isManualProjectSorting,
-    isOnAutomations,
     openFeedbackDialog,
     handleBackToThreads,
-    railRouteItemIds,
     railShortcuts,
     railSpacesProject,
   } = context;
@@ -238,7 +235,7 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     </div>
   );
 
-  const isOnThreadsSection = !isOnSettings && !isOnAutomations;
+  const isOnThreadsSection = !isOnSettings;
 
   const sidebarHelpMenuProps = {
     onOpenShortcuts: () => void navigate({ to: "/settings", search: { section: "shortcuts" } }),
@@ -268,22 +265,6 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
         },
       }),
     ),
-    ...railRouteItemIds.map((id): AppRailItem => {
-      const item = sidebarNavDescriptors[id];
-      return {
-        id,
-        glyphs: railItemGlyphs(id),
-        label: item.label,
-        badge: item.badge,
-        active: railActiveItem === id,
-        onSelect: () => {
-          selectRailRouteItem(id);
-          item.onClick();
-        },
-        onMouseEnter: item.onMouseEnter,
-        onFocus: item.onFocus,
-      };
-    }),
   ];
 
   const railShortcutItems: AppRailItem[] = railShortcuts.flatMap((shortcut): AppRailItem[] => {
@@ -359,8 +340,6 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
   ];
 
   const panelSidebarNavIds = isRailLayout ? SIDEBAR_NAV_ITEM_IDS.slice(0, 1) : SIDEBAR_NAV_ITEM_IDS;
-
-  const showRailAutomationsPanel = isRailLayout && isOnAutomations;
 
   const showRailSpacesPanel =
     isRailLayout && railPanelView === "spaces" && !isOnSettings && !activityViewEnabled;
@@ -444,8 +423,6 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
               }}
             />
           </SidebarGroup>
-        ) : showRailAutomationsPanel ? (
-          <RailAutomationsPanel />
         ) : (
           <>
             <div
@@ -671,11 +648,7 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
             </div>
           </>
         )}
-        {!isOnSettings &&
-        !activityViewEnabled &&
-        !showRailSpacesPanel &&
-        !showRailAutomationsPanel &&
-        chatsSectionVisible ? (
+        {!isOnSettings && !activityViewEnabled && !showRailSpacesPanel && chatsSectionVisible ? (
           <SidebarGroup className="sidebar-surface-enter px-1.5 pt-1 pb-2">
             <div className="group/collapsible">
               <div className="group/project-header relative">

@@ -526,9 +526,7 @@ export function applyOrchestrationEvent(
             event.payload.modelSelection !== undefined
               ? normalizeModelSelection(event.payload.modelSelection, thread.modelSelection)
               : thread.modelSelection;
-          // Automation-dispatched turns must not repaint the thread's persisted modes (mirrors the server
-          // projection): the automation's modes govern its own turn only, while the user's composer selection
-          // stays put.
+          // Historical scheduled turns preserve the user's composer modes, matching server replay.
           const adoptTurnModes = event.payload.dispatchOrigin !== "automation";
           const runtimeMode = adoptTurnModes ? event.payload.runtimeMode : thread.runtimeMode;
 

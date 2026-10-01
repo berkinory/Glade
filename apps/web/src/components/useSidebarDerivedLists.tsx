@@ -1,11 +1,11 @@
 import { useStore } from "../store";
 import { useRailShellStore } from "../railShellStore";
 import { useSidebarStateStore } from "../sidebarStateStore";
-import { ClockIcon, NewThreadIcon } from "~/lib/icons";
+import { NewThreadIcon } from "~/lib/icons";
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 import { ProjectId, SpaceId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { MAX_PINNED_PROJECTS } from "@glade/contracts/orchestration/threadEntities";
-import { SIDEBAR_NAV_ITEM_IDS, type SidebarNavItemId } from "../sidebarNavOrdering";
+import { type SidebarNavItemId } from "../sidebarNavOrdering";
 import { buildRailSpacesSections, resolveRailShortcuts } from "../appRail.logic";
 import { isMacNavigatorPlatform } from "../lib/utils";
 import { isOrdinarySpaceProject } from "../lib/spaces";
@@ -51,10 +51,7 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     isRailLayout,
     homeDir,
     chatWorkspaceRoot,
-    navigate,
     isOnSettings,
-    isOnAutomations,
-    automationAttentionBadge,
     appSettings,
     routeThreadId,
     routeSearch,
@@ -110,18 +107,7 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
       onMouseEnter: prefetchModelsForPrimaryNewThread,
       onFocus: prefetchModelsForPrimaryNewThread,
     },
-    automations: {
-      icon: ClockIcon,
-      label: "Automations",
-      active: isOnAutomations,
-      badge: automationAttentionBadge,
-      onClick: () => {
-        void navigate({ to: "/automations" });
-      },
-    },
   };
-
-  const railRouteItemIds = SIDEBAR_NAV_ITEM_IDS.filter((id) => id !== "newThread");
 
   const sidebarThreadsByProjectId = groupSidebarThreadsByProjectId(sidebarTreeThreads);
 
@@ -501,7 +487,6 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
   return {
     ...context,
     sidebarNavDescriptors,
-    railRouteItemIds,
     handleProjectTitlePointerDownCapture,
     handleEditProjectSave,
     sortedProjects,

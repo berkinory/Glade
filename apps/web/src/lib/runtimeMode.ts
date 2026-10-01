@@ -7,7 +7,7 @@ import {
   providerSupportsAutoRuntimeMode,
 } from "@glade/shared/threads/runtimeMode";
 
-export { normalizeRuntimeModeForProvider, providerSupportsAutoRuntimeMode };
+export { normalizeRuntimeModeForProvider };
 
 export function providerModelSupportsAutoRuntimeMode(
   provider: ProviderKind,

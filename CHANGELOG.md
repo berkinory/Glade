@@ -21,6 +21,10 @@
 - Every thinking level a provider offers is available, including newer ones.
 - Codex installed with its standalone installer now gets update notices and one-click updates.
 
+### Removed
+
+- Automations are no longer available.
+
 ## 0.1.0 - 2026-10-01
 
 ### New

@@ -122,7 +122,6 @@ import {
   WsServerReadThreadDiagnosticsRpc,
   WsServerPrewarmVoiceRpc,
   WsServerTranscribeVoiceRpc,
-  WsServerGenerateAutomationIntentRpc,
   WsServerUpsertKeybindingRpc,
   WsSubscribeServerLifecycleRpc,
   WsSubscribeServerConfigRpc,
@@ -139,19 +138,6 @@ import {
   WsProviderListModelsRpc,
   WsProviderListAgentsRpc,
 } from "./providerRpc";
-import {
-  WsAutomationListRpc,
-  WsAutomationGetMemoryRpc,
-  WsAutomationCreateRpc,
-  WsAutomationUpdateRpc,
-  WsAutomationDeleteRpc,
-  WsAutomationRunNowRpc,
-  WsAutomationCancelRunRpc,
-  WsAutomationMarkRunReadRpc,
-  WsAutomationArchiveRunRpc,
-  WsAutomationResolveProposalRpc,
-  WsSubscribeAutomationEventsRpc,
-} from "./automationRpc";
 
 export const WsFeatureRpcGroup = RpcGroup.make(
   WsOrchestrationDispatchCommandRpc,
@@ -262,7 +248,6 @@ export const WsFeatureRpcGroup = RpcGroup.make(
   WsServerReadThreadDiagnosticsRpc,
   WsServerPrewarmVoiceRpc,
   WsServerTranscribeVoiceRpc,
-  WsServerGenerateAutomationIntentRpc,
   WsServerUpsertKeybindingRpc,
   WsSubscribeServerLifecycleRpc,
   WsSubscribeServerConfigRpc,
@@ -281,15 +266,4 @@ export const WsFeatureRpcGroup = RpcGroup.make(
   WsProviderReadPluginRpc,
   WsProviderListModelsRpc,
   WsProviderListAgentsRpc,
-  WsAutomationListRpc,
-  WsAutomationGetMemoryRpc,
-  WsAutomationCreateRpc,
-  WsAutomationUpdateRpc,
-  WsAutomationDeleteRpc,
-  WsAutomationRunNowRpc,
-  WsAutomationCancelRunRpc,
-  WsAutomationMarkRunReadRpc,
-  WsAutomationArchiveRunRpc,
-  WsAutomationResolveProposalRpc,
-  WsSubscribeAutomationEventsRpc,
 );

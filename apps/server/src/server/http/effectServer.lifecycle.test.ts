@@ -75,7 +75,7 @@ describe("server runtime pipeline startup", () => {
           reconcileSettledOpenTurns: Effect.sync(() => void order.push("open-turn-ledger-pruned")),
         },
         reconcileRestartStuckTurns: Effect.sync(() => void order.push("restart-turns-settled")),
-        reactors: [reactor("automation-scheduler"), reactor("provider-runtime-reconciler")],
+        reactors: [reactor("provider-runtime-reconciler")],
         subscriptionsScope,
       }),
     );
@@ -84,7 +84,6 @@ describe("server runtime pipeline startup", () => {
       "runtime-journal-replayed",
       "restart-turns-settled",
       "open-turn-ledger-pruned",
-      "automation-scheduler-started",
       "provider-runtime-reconciler-started",
     ]);
   });

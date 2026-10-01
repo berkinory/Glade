@@ -369,13 +369,6 @@ export class ProfileStatsArchive extends ServiceMap.Service<
 const makeProfileStatsArchive = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
   const checkpointStore = yield* CheckpointStore;
-  const threadDeletedAutomationRunResultJson = JSON.stringify({
-    outcome: "needs-attention",
-    summary: "Automation run was interrupted because its thread was deleted.",
-    severity: "warning",
-    unread: true,
-    archivedAt: null,
-  });
 
   const hasThreadPurgeFence: ProfileStatsArchiveShape["hasThreadPurgeFence"] = ({ threadId }) =>
     Effect.gen(function* () {
@@ -765,18 +758,6 @@ const makeProfileStatsArchive = Effect.gen(function* () {
       yield* sql`DELETE FROM message_text_segments WHERE thread_id = ${threadId}`;
       yield* sql`DELETE FROM projection_thread_sessions WHERE thread_id = ${threadId}`;
       yield* sql`DELETE FROM projection_turns WHERE thread_id = ${threadId}`;
-      yield* sql`
-        UPDATE automation_runs
-        SET status = 'interrupted',
-            error = 'Automation run was interrupted because its thread was deleted.',
-            result_json = ${threadDeletedAutomationRunResultJson},
-            finished_at = COALESCE(finished_at, ${deletedAt}),
-            updated_at = ${deletedAt},
-            lease_expires_at = NULL,
-            claimed_by = NULL
-        WHERE thread_id = ${threadId}
-          AND status NOT IN ('succeeded', 'failed', 'cancelled', 'interrupted', 'skipped')
-      `;
       yield* sql`DELETE FROM projection_threads WHERE thread_id = ${threadId}`;
 
       return true;

@@ -57,7 +57,6 @@ export function railProjectGlyphs(
 const RAIL_ITEM_GLYPH_NAMES: Record<RailItemId, string> = {
   home: "home-roof-door",
   spaces: "folders",
-  automations: "clock",
   settings: "settings-gear-4",
 };
 

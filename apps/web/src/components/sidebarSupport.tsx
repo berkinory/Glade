@@ -1,7 +1,6 @@
 import {
   ChatBubbleIcon,
   CircleQuestionIcon,
-  ClockIcon,
   GiftIcon,
   KeyboardIcon,
   BellIcon,
@@ -13,7 +12,6 @@ import { GoRepoForked } from "react-icons/go";
 import { useEffect, lazy, useState, type ComponentType, type ReactNode } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { type AutomationDefinition } from "@glade/contracts/automation/automation";
 import { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import { WS_GITHUB_PROJECT_PROVISIONING_CAPABILITY } from "@glade/contracts/transport/ws/wsCompatibility";
@@ -22,7 +20,6 @@ import { shortcutLabelForCommand, threadJumpCommandForIndex } from "../keybindin
 import { onNativeApiServerCapabilitiesChange, readNativeApiServerCapability } from "../nativeApi";
 import { resolveThreadEnvironmentPresentation } from "../lib/threadEnvironment";
 import { type Thread } from "../types";
-import { formatCadence } from "../routes/-automations.shared";
 import { APP_RAIL_GLYPH_CLASS_NAME, appRailButtonClassName } from "./AppRail";
 import { SidebarIconButton, sidebarIconButtonSlotClass } from "./SidebarIconButton";
 import { SidebarGlyph, sidebarGlyphClass } from "./sidebarGlyphs";
@@ -251,39 +248,15 @@ function resolveWorktreeBadgeLabel(
 }
 
 export type ThreadMetaChip = {
-  id: "automation" | "fork" | "worktree";
+  id: "fork" | "worktree";
   tooltip: string;
   icon: ReactNode;
 };
 
 export function resolveThreadRowMetaChips(input: {
   thread: Pick<Thread, "forkSourceThreadId" | "envMode" | "worktreePath">;
-
-  threadAutomations?: readonly AutomationDefinition[] | undefined;
 }): ThreadMetaChip[] {
   const chips: ThreadMetaChip[] = [];
-  const threadAutomations = input.threadAutomations;
-  if (threadAutomations && threadAutomations.length > 0) {
-    const anyEnabled = threadAutomations.some((automation) => automation.enabled);
-    const firstAutomation = threadAutomations[0]!;
-    const tooltip =
-      threadAutomations.length === 1
-        ? `${firstAutomation.name} · ${
-            firstAutomation.enabled ? formatCadence(firstAutomation.schedule) : "Paused"
-          }`
-        : `${threadAutomations.length} automations`;
-    chips.push({
-      id: "automation",
-      tooltip,
-      icon: (
-        <SidebarGlyph
-          icon={ClockIcon}
-          variant="meta"
-          className={anyEnabled ? "text-muted-foreground/55" : "text-muted-foreground/40"}
-        />
-      ),
-    });
-  }
 
   if (input.thread.forkSourceThreadId) {
     chips.push({

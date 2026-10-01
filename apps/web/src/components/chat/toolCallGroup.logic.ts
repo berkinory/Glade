@@ -35,7 +35,6 @@ export function isSummarizableToolCallEntry(entry: WorkLogEntry): boolean {
   return (
     entry.tone === "tool" &&
     !entry.gladeThreadCreation &&
-    !entry.automation &&
     !entry.subagentAction &&
     (entry.subagents?.length ?? 0) === 0
   );

@@ -66,15 +66,6 @@ export function toPersistenceSqlOrDecodeError(
       : toPersistenceSqlError(sqlOperation)(cause);
 }
 
-export function toPersistenceDecodeCauseError(operation: string) {
-  return (cause: unknown): PersistenceDecodeError =>
-    new PersistenceDecodeError({
-      operation,
-      issue: `Failed to execute ${operation}`,
-      cause,
-    });
-}
-
 export class ProjectionStateIncompleteError extends Schema.TaggedErrorClass<ProjectionStateIncompleteError>()(
   "ProjectionStateIncompleteError",
   {
@@ -141,5 +132,3 @@ export type ProjectionRepositoryError =
 export type AuthPairingLinkRepositoryError = PersistenceSqlError | PersistenceDecodeError;
 
 export type AuthSessionRepositoryError = PersistenceSqlError | PersistenceDecodeError;
-
-export type AutomationRepositoryError = PersistenceSqlError | PersistenceDecodeError;

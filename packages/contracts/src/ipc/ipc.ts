@@ -33,26 +33,6 @@ import type {
   AuthWebSocketTokenResult,
 } from "../transport/auth/auth";
 import type {
-  AutomationCancelRunInput,
-  AutomationCancelRunResult,
-  AutomationArchiveRunInput,
-  AutomationCreateInput,
-  AutomationDefinition,
-  AutomationDeleteInput,
-  AutomationGetMemoryInput,
-  AutomationListInput,
-  AutomationListResult,
-  AutomationMarkRunReadInput,
-  AutomationMemory,
-  AutomationResolveProposalInput,
-  AutomationResolveProposalResult,
-  AutomationRunActionResult,
-  AutomationRunNowInput,
-  AutomationRunNowResult,
-  AutomationStreamEvent,
-  AutomationUpdateInput,
-} from "../automation/automation";
-import type {
   GitCheckoutInput,
   GitActionProgressEvent,
   GitWorktreeSetupProgressEvent,
@@ -193,8 +173,6 @@ import type {
   ServerDiagnosticsResult,
   ServerReadThreadDiagnosticsInput,
   ServerReadThreadDiagnosticsResult,
-  ServerGenerateAutomationIntentInput,
-  ServerGenerateAutomationIntentResult,
   ServerGetEnvironmentResult,
   ServerConsumeCodexResetCreditInput,
   ServerConsumeCodexResetCreditResult,
@@ -841,9 +819,6 @@ export interface NativeApi {
     readThreadDiagnostics: (
       input: ServerReadThreadDiagnosticsInput,
     ) => Promise<ServerReadThreadDiagnosticsResult>;
-    generateAutomationIntent: (
-      input: ServerGenerateAutomationIntentInput,
-    ) => Promise<ServerGenerateAutomationIntentResult>;
     prewarmVoice?: (input: ServerVoicePrewarmInput) => Promise<ServerVoicePrewarmResult>;
     transcribeVoice: (
       input: ServerVoiceTranscriptionInput,
@@ -914,21 +889,6 @@ export interface NativeApi {
     onDomainEvent: (callback: (event: OrchestrationEvent) => void) => () => void;
     onShellEvent: (callback: (event: OrchestrationShellStreamItem) => void) => () => void;
     onThreadEvent: (callback: (event: OrchestrationThreadStreamItem) => void) => () => void;
-  };
-  automation: {
-    list: (input?: AutomationListInput) => Promise<AutomationListResult>;
-    getMemory: (input: AutomationGetMemoryInput) => Promise<AutomationMemory | null>;
-    create: (input: AutomationCreateInput) => Promise<AutomationDefinition>;
-    update: (input: AutomationUpdateInput) => Promise<AutomationDefinition>;
-    delete: (input: AutomationDeleteInput) => Promise<void>;
-    runNow: (input: AutomationRunNowInput) => Promise<AutomationRunNowResult>;
-    cancelRun: (input: AutomationCancelRunInput) => Promise<AutomationCancelRunResult>;
-    markRunRead: (input: AutomationMarkRunReadInput) => Promise<AutomationRunActionResult>;
-    archiveRun: (input: AutomationArchiveRunInput) => Promise<AutomationRunActionResult>;
-    resolveProposal: (
-      input: AutomationResolveProposalInput,
-    ) => Promise<AutomationResolveProposalResult>;
-    onEvent: (callback: (event: AutomationStreamEvent) => void) => () => void;
   };
   browser: BrowserControlMethods & {
     annotations: BrowserAnnotationMethods;

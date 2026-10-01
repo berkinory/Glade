@@ -70,7 +70,6 @@ export interface WorkLogEntry {
   requestKind?: WorkLogRequestKind;
   subagents?: ReadonlyArray<WorkLogSubagent>;
   subagentAction?: WorkLogSubagentAction;
-  automation?: WorkLogAutomation;
   gladeThreadCreation?: WorkLogGladeThreadCreation;
 
   computerControlDenied?: WorkLogComputerControlDenied;
@@ -100,13 +99,6 @@ export interface WorkLogLiveActivity {
   detail?: string;
   progress?: number;
   elapsedSeconds?: number;
-}
-
-export interface WorkLogAutomation {
-  id: string;
-  name: string;
-  cadenceLabel: string;
-  proposalState?: "pending" | "accepted" | "dismissed";
 }
 
 interface WorkLogComputerControlDenied {

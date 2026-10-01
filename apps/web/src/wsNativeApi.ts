@@ -38,7 +38,6 @@ import {
 import type { TerminalEvent } from "@glade/contracts/terminal/terminal";
 import { WS_CHANNELS, WS_METHODS, type WsWelcomePayload } from "@glade/contracts/transport/ws/ws";
 import type { WsBootstrapNegotiateResult } from "@glade/contracts/transport/ws/wsCompatibility";
-import type { AutomationStreamEvent } from "@glade/contracts/automation/automation";
 import {
   COMPUTER_WS_CHANNELS,
   COMPUTER_WS_METHODS,
@@ -134,7 +133,6 @@ function omitNullUserInputAnswers(
 }
 const terminalEventListeners = createListenerRegistry<TerminalEvent>();
 const projectDevServerEventListeners = createListenerRegistry<ProjectDevServerEvent>();
-const automationEventListeners = createListenerRegistry<AutomationStreamEvent>();
 const computerEventListeners = createListenerRegistry<ComputerEvent>();
 const orchestrationDomainEventListeners = createListenerRegistry<OrchestrationEvent>();
 const orchestrationShellEventListeners = createListenerRegistry<OrchestrationShellStreamItem>();
@@ -152,7 +150,6 @@ function clearWsNativeApiListeners(): void {
   projectProvisionProgressListeners.clear();
   terminalEventListeners.clear();
   projectDevServerEventListeners.clear();
-  automationEventListeners.clear();
   computerEventListeners.clear();
   orchestrationDomainEventListeners.clear();
   orchestrationShellEventListeners.clear();
@@ -338,9 +335,6 @@ export function createWsNativeApi(): NativeApi {
   });
   transport.subscribe(WS_CHANNELS.projectDevServerEvent, (message) => {
     projectDevServerEventListeners.emit(message.data);
-  });
-  transport.subscribe(WS_CHANNELS.automationEvent, (message) => {
-    automationEventListeners.emit(message.data);
   });
   transport.subscribe(COMPUTER_WS_CHANNELS.event, (message) => {
     computerEventListeners.emit(message.data);
@@ -587,10 +581,6 @@ export function createWsNativeApi(): NativeApi {
       getDiagnostics: () => transport.request(WS_METHODS.serverGetDiagnostics),
       readThreadDiagnostics: (input) =>
         transport.request(WS_METHODS.serverReadThreadDiagnostics, input),
-      generateAutomationIntent: (input) =>
-        transport.request(WS_METHODS.serverGenerateAutomationIntent, input, {
-          timeoutMs: null,
-        }),
       prewarmVoice: (input) => transport.request(WS_METHODS.serverPrewarmVoice, input),
       transcribeVoice: async (input) => {
         try {
@@ -683,19 +673,6 @@ export function createWsNativeApi(): NativeApi {
       },
       onShellEvent: orchestrationShellEventListeners.subscribe,
       onThreadEvent: orchestrationThreadEventListeners.subscribe,
-    },
-    automation: {
-      list: (input) => transport.request(WS_METHODS.automationList, input),
-      getMemory: (input) => transport.request(WS_METHODS.automationGetMemory, input),
-      create: (input) => transport.request(WS_METHODS.automationCreate, input),
-      update: (input) => transport.request(WS_METHODS.automationUpdate, input),
-      delete: (input) => transport.request(WS_METHODS.automationDelete, input),
-      runNow: (input) => transport.request(WS_METHODS.automationRunNow, input),
-      cancelRun: (input) => transport.request(WS_METHODS.automationCancelRun, input),
-      markRunRead: (input) => transport.request(WS_METHODS.automationMarkRunRead, input),
-      archiveRun: (input) => transport.request(WS_METHODS.automationArchiveRun, input),
-      resolveProposal: (input) => transport.request(WS_METHODS.automationResolveProposal, input),
-      onEvent: automationEventListeners.subscribe,
     },
     computer: {
       getStatus: (input) => transport.request(COMPUTER_WS_METHODS.getStatus, input),

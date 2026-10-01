@@ -4,7 +4,6 @@ import { ServiceMap } from "effect";
 export type AgentGatewayCapability =
   | "thread:read"
   | "thread:write"
-  | "automation:write"
   | "diagnostics:read"
   | "browser:control"
   | "device:control"

@@ -15,7 +15,6 @@ import {
   COMPUTER_WS_METHODS,
   type ComputerEvent,
 } from "@glade/contracts/computer/computer";
-import type { AutomationStreamEvent } from "@glade/contracts/automation/automation";
 import type {
   GitActionProgressEvent,
   GitCreateDetachedWorktreeResult,
@@ -136,14 +135,6 @@ export class WsTransport extends WsTransportBase {
             (event: ProjectDevServerEvent) => this.emit(WS_CHANNELS.projectDevServerEvent, event),
             restartChannel,
           );
-        } else if (channel === WS_CHANNELS.automationEvent) {
-          this.startStream(
-            client,
-            "automation.events",
-            client[WS_METHODS.subscribeAutomationEvents]({}),
-            (event: AutomationStreamEvent) => this.emit(WS_CHANNELS.automationEvent, event),
-            restartChannel,
-          );
         } else if (channel === COMPUTER_WS_CHANNELS.event) {
           this.startStream(
             client,
@@ -184,7 +175,6 @@ export class WsTransport extends WsTransportBase {
     else if (channel === WS_CHANNELS.terminalEvent) void this.stopStream("terminal.events");
     else if (channel === WS_CHANNELS.projectDevServerEvent)
       void this.stopStream("project.devServers");
-    else if (channel === WS_CHANNELS.automationEvent) void this.stopStream("automation.events");
     else if (channel === COMPUTER_WS_CHANNELS.event) void this.stopStream("computer.events");
     else if (channel === ORCHESTRATION_WS_CHANNELS.domainEvent)
       void this.stopStream("orchestration.domain");

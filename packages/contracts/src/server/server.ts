@@ -9,15 +9,9 @@ import {
 } from "../core/baseSchemas";
 import { KeybindingRule, ResolvedKeybindingsConfig } from "../settings/keybindings";
 import { EditorId } from "../settings/editor";
-import { ModelSelection, ProviderStartOptions } from "../provider/sessionPolicy";
 import { ProviderKind } from "../core/baseSchemas";
 import { ServerSettingsPatch, ServerSettingsView } from "../settings/settings";
 import { ExecutionEnvironmentDescriptor } from "../workspace/environment";
-import {
-  AutomationCompletionPolicy,
-  AutomationMode,
-  AutomationSchedule,
-} from "../automation/automation";
 
 export const SERVER_VOICE_TRANSCRIPTION_MAX_AUDIO_BYTES = 10 * 1024 * 1024;
 const SERVER_VOICE_TRANSCRIPTION_MAX_AUDIO_BASE64_CHARS = 14_000_000;
@@ -376,48 +370,6 @@ export const ServerVoiceTranscriptionResult = Schema.Struct({
   text: TrimmedNonEmptyString,
 });
 export type ServerVoiceTranscriptionResult = typeof ServerVoiceTranscriptionResult.Type;
-
-export const ServerAutomationIntentMissingField = Schema.Literals([
-  "schedule",
-  "taskPrompt",
-  "name",
-  "mode",
-]);
-export type ServerAutomationIntentMissingField = typeof ServerAutomationIntentMissingField.Type;
-
-export const ServerGenerateAutomationIntentInput = Schema.Struct({
-  cwd: TrimmedNonEmptyString,
-  message: TrimmedNonEmptyString.check(Schema.isMaxLength(16_000)),
-  defaultMode: Schema.optional(AutomationMode),
-  nowIso: IsoDateTime,
-  codexHomePath: Schema.optional(TrimmedNonEmptyString),
-  providerOptions: Schema.optional(ProviderStartOptions),
-  textGenerationModel: Schema.optional(TrimmedNonEmptyString),
-  textGenerationModelSelection: Schema.optional(ModelSelection),
-});
-export type ServerGenerateAutomationIntentInput = typeof ServerGenerateAutomationIntentInput.Type;
-
-export const ServerGenerateAutomationIntentResult = Schema.Struct({
-  isAutomation: Schema.Boolean,
-  confidence: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)).check(
-    Schema.isLessThanOrEqualTo(1),
-  ),
-  language: Schema.NullOr(TrimmedNonEmptyString.check(Schema.isMaxLength(80))),
-  name: Schema.NullOr(TrimmedNonEmptyString.check(Schema.isMaxLength(160))),
-  taskPrompt: Schema.NullOr(TrimmedNonEmptyString.check(Schema.isMaxLength(64_000))),
-  schedule: Schema.NullOr(AutomationSchedule),
-  mode: Schema.NullOr(AutomationMode),
-  maxIterations: Schema.optional(Schema.NullOr(PositiveInt)).pipe(
-    Schema.withDecodingDefault(() => null),
-  ),
-  completionPolicy: Schema.optional(AutomationCompletionPolicy).pipe(
-    Schema.withDecodingDefault(() => ({ type: "none" as const })),
-  ),
-  missingFields: Schema.Array(ServerAutomationIntentMissingField),
-  needsConfirmation: Schema.Boolean,
-  reason: Schema.NullOr(Schema.String.check(Schema.isMaxLength(500))),
-});
-export type ServerGenerateAutomationIntentResult = typeof ServerGenerateAutomationIntentResult.Type;
 
 export const ServerUpsertKeybindingInput = Schema.Struct({
   rule: KeybindingRule,

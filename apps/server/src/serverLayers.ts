@@ -5,9 +5,6 @@ import { AgentGatewayLive } from "./agentGateway/Layers/AgentGateway";
 import { AgentGatewayOperationRepositoryLive } from "./agentGateway/Layers/AgentGatewayOperationRepository";
 import { AgentGatewayCredentialsWithSecretsLive } from "./agentGateway/Layers/AgentGatewayCredentials";
 import { BrowserAutomationHostLive } from "./browserAutomation/Layers/BrowserAutomationHost";
-import { AutomationRunReactorLive } from "./automation/Layers/AutomationRunReactor";
-import { AutomationSchedulerLive } from "./automation/Layers/AutomationScheduler";
-import { AutomationServiceLive } from "./automation/Layers/AutomationService";
 import { CheckpointDiffQueryLive } from "./checkpointing/Layers/CheckpointDiffQuery";
 import { CheckpointStoreLive } from "./checkpointing/Layers/CheckpointStore";
 import { CheckpointReactorLive } from "./orchestration/Layers/CheckpointReactor";
@@ -40,7 +37,6 @@ import { ServerSettingsLive } from "./settings/serverSettings";
 import { WorkspaceLayerLive } from "./workspace/runtimeLayer";
 import { ProjectFaviconResolverLive } from "./project/Layers/ProjectFaviconResolver";
 import { ServerEnvironmentLive } from "./environment/Layers/ServerEnvironment";
-import { AutomationRepositoryLive } from "./persistence/Layers/AutomationRepository";
 import { ProjectionTurnRepositoryLive } from "./persistence/Layers/ProjectionTurns";
 import { OrchestrationEventDeliveryRepositoryLive } from "./persistence/Layers/OrchestrationEventDeliveries";
 import { ProviderRuntimeEventRepositoryLive } from "./persistence/Layers/ProviderRuntimeEvents";
@@ -131,24 +127,8 @@ function makeServerRuntimeServicesLayer(
     authControlPlaneLayer,
     serverAuthLayer,
   );
-  const automationServiceLayer = AutomationServiceLive.pipe(
-    Layer.provideMerge(AutomationRepositoryLive),
-    Layer.provideMerge(ProjectionTurnRepositoryLive),
-    Layer.provideMerge(GitCoreLive),
-    Layer.provideMerge(TextGenerationLayerLive),
-    Layer.provideMerge(ServerSettingsLive),
-    Layer.provideMerge(runtimeServicesLayer),
-  );
-  const automationSchedulerLayer = AutomationSchedulerLive.pipe(
-    Layer.provideMerge(automationServiceLayer),
-    Layer.provideMerge(AutomationRepositoryLive),
-  );
-  const automationRunReactorLayer = AutomationRunReactorLive.pipe(
-    Layer.provideMerge(automationServiceLayer),
-  );
   const agentGatewayLayer = AgentGatewayLive.pipe(
     Layer.provideMerge(agentGatewayCredentialsLayer),
-    Layer.provideMerge(automationServiceLayer),
     Layer.provideMerge(runtimeServicesLayer),
     Layer.provideMerge(GitLayerLive),
     Layer.provideMerge(ProjectionTurnRepositoryLive),
@@ -171,11 +151,7 @@ function makeServerRuntimeServicesLayer(
     agentGatewayCredentialsLayer,
     agentGatewayLayer,
     BrowserAutomationHostLive,
-    automationServiceLayer,
-    automationSchedulerLayer,
-    automationRunReactorLayer,
     managedAttachmentCleanupLayer,
-    AutomationRepositoryLive,
     AgentGatewayOperationRepositoryLive,
     providerHealthLayer,
     pullRequestServiceLayer,

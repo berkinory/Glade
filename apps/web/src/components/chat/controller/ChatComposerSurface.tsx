@@ -11,7 +11,6 @@ import { ComposerComputerControlEffortHint } from "~/components/chat/ComposerCom
 import { ComposerExpiredUserInputNotice } from "~/components/chat/ComposerExpiredUserInputNotice";
 import { ComposerExtrasPanel } from "~/components/chat/ComposerExtrasPanel";
 
-import { ComposerInputBanners } from "~/components/chat/ComposerInputBanners";
 import { ComposerLiveChangesHeader } from "~/components/chat/ComposerLiveChangesHeader";
 import { ComposerLocalDirectoryMenu } from "~/components/chat/ComposerLocalDirectoryMenu";
 import { ComposerPendingApprovalPanel } from "~/components/chat/ComposerPendingApprovalPanel";
@@ -210,9 +209,6 @@ export function ChatComposerSurface({
     onCancelActivePendingUserInput,
     expiredQuestionDrafts,
     composerProviderState,
-
-    pendingAutomationConversation,
-    cancelAutomationConversation,
     serverConfigQuery,
     activePendingProgress,
     selectedComposerMentions,
@@ -479,17 +475,6 @@ export function ChatComposerSurface({
                 composerOverlayOpen && !isComposerApprovalState && "overflow-visible",
               )}
             >
-              <ComposerInputBanners
-                roundedTopReset={false}
-                automationSetup={
-                  !activePendingApproval &&
-                  pendingUserInputs.length === 0 &&
-                  pendingAutomationConversation &&
-                  pendingAutomationConversation.threadId === threadId
-                    ? { onCancel: cancelAutomationConversation }
-                    : null
-                }
-              />
               <div
                 className={cn(
                   COMPOSER_EDITOR_PADDING_CLASS_NAME,

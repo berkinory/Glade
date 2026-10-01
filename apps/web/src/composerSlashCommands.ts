@@ -75,7 +75,6 @@ function shouldKeepBuiltInSlashCommandDespiteNativeCollision(
   command: ComposerSlashCommand,
 ): boolean {
   return (
-    command === "automation" ||
     command === "computer-use" ||
     command === "export" ||
     command === "feedback" ||
@@ -93,7 +92,6 @@ export function shouldHideProviderNativeCommandFromComposerMenu(
   const normalizedCommand = normalizeComposerSlashCommandName(command);
   const appCommandIsAvailable = options.availableAppCommands?.has(normalizedCommand) ?? true;
   return (
-    normalizedCommand === "automation" ||
     normalizedCommand === "computer-use" ||
     normalizedCommand === "debug" ||
     normalizedCommand === "default" ||
@@ -201,12 +199,6 @@ const COMPOSER_SLASH_COMMAND_DEFINITIONS: Record<
     command: "feedback",
     label: "/feedback",
     description: "Send feedback to the Glade team",
-    source: "app",
-  },
-  automation: {
-    command: "automation",
-    label: "/automation",
-    description: "Create a scheduled automation from this prompt",
     source: "app",
   },
 };
@@ -380,7 +372,6 @@ export function getAvailableComposerSlashCommands(input: {
           ...(input.canOfferExportCommand ? (["export"] as const) : []),
           "rename",
           "feedback",
-          "automation",
         ]
       : [
           ...(input.canOfferForkCommand ? (["fork"] as const) : []),
@@ -388,7 +379,6 @@ export function getAvailableComposerSlashCommands(input: {
           "rename",
           "computer-use",
           "feedback",
-          "automation",
         ];
   return availableCommands.filter((command) => !collidingNativeCommandNames.has(command));
 }

@@ -9,7 +9,6 @@ import { resolveCommittedProviderModel } from "../../ChatView.logic.worktree";
 import { type ComposerModelSelectionOptions } from "~/components/chat/ComposerModelPicker";
 import { collectForegroundRunningSubagentStripItems } from "~/components/chat/ComposerSubagentStrip.logic";
 import { resolveRuntimeModelDescriptor } from "~/components/chat/runtimeModelCapabilities";
-import { useChatAutomationCreation } from "~/components/chat/useChatAutomationCreation";
 import { useChatKeyboardShortcuts } from "~/components/chat/useChatKeyboardShortcuts";
 import { toastManager } from "~/components/ui/toast";
 import { useComposerDraftStore } from "~/composerDraftStore";
@@ -384,15 +383,6 @@ export function useChatActionsController({
       updateSelectedComposerSkills,
     ],
   );
-
-  const { createAutomationFromForm, prepareAutomationFormForCreate, submitAutomationDraft } =
-    useChatAutomationCreation({
-      workspace,
-      provider,
-      session,
-      turn: { clearComposerInput },
-      transcript,
-    });
   return {
     onInterruptFromStopControl,
     pendingProviderHandoff,
@@ -409,8 +399,5 @@ export function useChatActionsController({
     threadMentionDropzoneProps,
     confirmProviderHandoff,
     clearComposerInput,
-    createAutomationFromForm,
-    prepareAutomationFormForCreate,
-    submitAutomationDraft,
   } as const;
 }

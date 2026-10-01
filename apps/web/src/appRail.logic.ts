@@ -95,7 +95,6 @@ function matchesRoute(pathname: string, route: string): boolean {
 }
 
 function railItemForPathname(pathname: string): RailRouteItemId | null {
-  if (matchesRoute(pathname, "/automations")) return "automations";
   if (matchesRoute(pathname, "/settings")) return "settings";
   return null;
 }

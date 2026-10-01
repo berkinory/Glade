@@ -9,9 +9,6 @@ import * as SqlClient from "effect/unstable/sql/SqlClient";
 
 import { agentGatewayRouteLayer } from "../../agentGateway/httpRoute";
 import { AgentGatewayCredentials } from "../../agentGateway/Services/AgentGatewayCredentials";
-import { AutomationRunReactor } from "../../automation/Services/AutomationRunReactor";
-import { AutomationScheduler } from "../../automation/Services/AutomationScheduler";
-import { AutomationService } from "../../automation/Services/AutomationService";
 import {
   clearPersistedServerRuntimeState,
   makePersistedServerRuntimeState,
@@ -71,9 +68,6 @@ export interface ServerShape {
     | Path.Path
     | Keybindings
     | ManagedAttachmentCleanup
-    | AutomationRunReactor
-    | AutomationScheduler
-    | AutomationService
     | ServerLifecycleEvents
     | OrchestrationEngineService
     | OrchestrationReactor
@@ -120,9 +114,8 @@ export function closeServerRuntimePipeline(input: {
 // The orchestration reactor starts first: runtime ingestion replays the provider events the
 // previous process journaled but never ingested, so a turn whose terminal event reached the journal
 // completes normally instead of being reported as interrupted. The remaining reactors start last,
-// because their first pass reads thread state (a heartbeat automation skips a target thread with an
-// active turn, the runtime reconciler settles stale running turns) and a restart-orphaned turn
-// still reads as running until reconciliation settles it.
+// because they read thread state and a restart-orphaned turn still reads as running until
+// reconciliation settles it.
 export function startServerRuntimePipeline<R>(input: {
   readonly orchestrationReactor: Pick<
     OrchestrationReactorShape,
@@ -158,8 +151,6 @@ export const createEffectServer = Effect.fn(function* (
     });
   }
   const agentGatewayCredentials = yield* AgentGatewayCredentials;
-  const automationRunReactor = yield* AutomationRunReactor;
-  const automationScheduler = yield* AutomationScheduler;
   const keybindings = yield* Keybindings;
   const managedAttachmentCleanup = yield* ManagedAttachmentCleanup;
   const lifecycleEvents = yield* ServerLifecycleEvents;
@@ -245,13 +236,7 @@ export const createEffectServer = Effect.fn(function* (
     reconcileRestartStuckTurns: reconcileRestartStuckTurns.pipe(
       Effect.provide(ProjectionPendingInteractionRepositoryLive),
     ),
-    reactors: [
-      automationScheduler,
-      automationRunReactor,
-      threadDeletionReactor,
-      providerSessionReaper,
-      providerRuntimeReconciler,
-    ],
+    reactors: [threadDeletionReactor, providerSessionReaper, providerRuntimeReconciler],
     subscriptionsScope,
   });
   yield* readiness.markOrchestrationSubscriptionsReady;

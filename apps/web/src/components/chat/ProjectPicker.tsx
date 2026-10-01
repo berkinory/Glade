@@ -11,7 +11,6 @@ import {
 } from "react";
 import { type ProjectDirectoryEntry } from "@glade/contracts/workspace/project";
 import { type ProjectId, type SpaceId } from "@glade/contracts/core/baseSchemas";
-import { useAppSettings } from "../../appSettings";
 import { readNativeApi } from "../../nativeApi";
 import { useStore } from "../../store";
 import { createSidebarDisplayThreadsSelector } from "../../storeSelectors";
@@ -160,14 +159,7 @@ export const ProjectPicker = memo(function ProjectPicker({
   const searchPlaceholder = searchPlaceholderProp ?? "Search projects";
   const projects = useStore((state) => state.projects);
   const spaces = useStore((state) => state.spaces);
-  const { settings } = useAppSettings();
-  const hideAutomationRunThreads = !settings.showAutomationRunThreads;
-  const sidebarThreads = useStore(
-    useMemo(
-      () => createSidebarDisplayThreadsSelector({ hideAutomationRunThreads }),
-      [hideAutomationRunThreads],
-    ),
-  );
+  const sidebarThreads = useStore(useMemo(() => createSidebarDisplayThreadsSelector(), []));
   const activeSpaceId = useSpacesUiStore((state) => state.activeSpaceId);
   const voidSpace = useVoidSpace();
   const homeDir = useWorkspacePathsStore((state) => state.homeDir);

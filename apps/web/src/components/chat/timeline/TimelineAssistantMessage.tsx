@@ -72,7 +72,6 @@ export function renderTimelineAssistantMessage(
   const {
     activeTurnInProgress,
     pinnedMessageIds,
-    canPinMessage,
     onTogglePinMessage,
     onForkFromMessage,
     timestampFormat,
@@ -80,7 +79,6 @@ export function renderTimelineAssistantMessage(
     onImageExpand,
     onOpenTurnDiff,
     onOpenAgentActivity,
-    onOpenAutomation,
     computerControlEnabled,
     onEnableComputerControl,
     isWorking,
@@ -144,13 +142,11 @@ export function renderTimelineAssistantMessage(
       streaming: row.assistantCopyStreaming,
     });
     const messagePinned = pinnedMessageIds?.has(row.message.id) ?? false;
-    const messageCanPin = canPinMessage?.(row.message.id) ?? true;
 
     const showPinToggle =
-      messageCanPin && Boolean(onTogglePinMessage) && (assistantCopyState.visible || messagePinned);
+      Boolean(onTogglePinMessage) && (assistantCopyState.visible || messagePinned);
 
     const showForkAction =
-      messageCanPin &&
       Boolean(onForkFromMessage) &&
       assistantCopyState.visible &&
       Boolean(
@@ -246,7 +242,6 @@ export function renderTimelineAssistantMessage(
           onOpenTurnDiff={onOpenTurnDiff}
           timestampFormat={timestampFormat}
           {...(onOpenAgentActivity ? { onOpenAgentActivity } : {})}
-          {...(onOpenAutomation ? { onOpenAutomation } : {})}
           {...(computerControlEnabled !== undefined ? { computerControlEnabled } : {})}
           {...(onEnableComputerControl ? { onEnableComputerControl } : {})}
           {...(turnSummary?.turnId ? { turnId: turnSummary.turnId } : {})}
@@ -368,7 +363,6 @@ export function renderTimelineAssistantMessage(
                   onImageExpand={onImageExpand}
                   timestampFormat={timestampFormat}
                   {...(onOpenAgentActivity ? { onOpenAgentActivity } : {})}
-                  {...(onOpenAutomation ? { onOpenAutomation } : {})}
                   {...(computerControlEnabled !== undefined ? { computerControlEnabled } : {})}
                   {...(onEnableComputerControl ? { onEnableComputerControl } : {})}
                 />
@@ -390,7 +384,6 @@ export function renderTimelineAssistantMessage(
           onImageExpand={onImageExpand}
           timestampFormat={timestampFormat}
           {...(onOpenAgentActivity ? { onOpenAgentActivity } : {})}
-          {...(onOpenAutomation ? { onOpenAutomation } : {})}
           {...(computerControlEnabled !== undefined ? { computerControlEnabled } : {})}
           {...(onEnableComputerControl ? { onEnableComputerControl } : {})}
         />

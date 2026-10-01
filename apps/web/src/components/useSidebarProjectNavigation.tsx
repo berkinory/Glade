@@ -6,7 +6,6 @@ import { MAX_PINNED_PROJECTS } from "@glade/contracts/orchestration/threadEntiti
 import { type OrchestrationShellSnapshot } from "@glade/contracts/orchestration/snapshots";
 import { ProjectId, SpaceId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { newCommandId } from "../lib/utils";
-import { isSidebarThreadVisible } from "../storeSelectors";
 import {
   resolveCurrentProjectTargetId,
   resolveLatestProjectTargetIdWithFallback,
@@ -67,7 +66,6 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
     latestPinnedMutationVersionByProjectIdRef,
     optimisticPinnedStateByProjectId,
     setOptimisticPinnedStateByProjectId,
-    hideAutomationRunThreads,
     sidebarThreads,
     projectLastActivityAt,
     projectById,
@@ -220,11 +218,7 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
 
   const focusMostRecentThreadForProject = (projectId: ProjectId) => {
     const latestThread = sortThreadsForSidebar(
-      sidebarThreads.filter(
-        (thread) =>
-          thread.projectId === projectId &&
-          isSidebarThreadVisible(thread, { hideAutomationRunThreads }),
-      ),
+      sidebarThreads.filter((thread) => thread.projectId === projectId),
       appSettings.sidebarThreadSortOrder,
     )[0];
     if (!latestThread) return;
@@ -373,11 +367,7 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
   const handleOpenProjectFromSearch = (projectId: string) => {
     const typedProjectId = ProjectId.makeUnsafe(projectId);
 
-    const hasProjectThread = sidebarThreads.some(
-      (thread) =>
-        thread.projectId === typedProjectId &&
-        isSidebarThreadVisible(thread, { hideAutomationRunThreads }),
-    );
+    const hasProjectThread = sidebarThreads.some((thread) => thread.projectId === typedProjectId);
     if (hasProjectThread) {
       focusMostRecentThreadForProject(typedProjectId);
       return;

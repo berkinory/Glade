@@ -30,7 +30,6 @@ import type {
   DerivedWorkLogEntry,
   ProviderContextLifecycleInfo,
   ProviderContextLifecycleReason,
-  WorkLogAutomation,
   WorkLogEntry,
   WorkLogGladeCreatedThread,
   WorkLogGladeThreadCreation,
@@ -169,10 +168,6 @@ function shouldKeepActivityForWorkLog(
     return true;
   }
 
-  if (activity.kind === "automation.created") {
-    return true;
-  }
-
   if (activity.kind === CHECKPOINT_REVERT_FAILED_ACTIVITY_KIND) {
     return true;
   }
@@ -201,32 +196,6 @@ function isQuietTurnLifecycleActivity(activity: OrchestrationThreadActivity): bo
 
 function isUninformativeCommandStartEntry(entry: DerivedWorkLogEntry): boolean {
   return entry.activityKind === "tool.started" && entry.suppressStandaloneCommandStart === true;
-}
-
-function extractWorkLogAutomation(
-  payload: Record<string, unknown> | null,
-): WorkLogAutomation | null {
-  if (!payload) {
-    return null;
-  }
-  const id = typeof payload.automationId === "string" ? payload.automationId : null;
-  const name = typeof payload.automationName === "string" ? payload.automationName : null;
-  if (!id || !name) {
-    return null;
-  }
-  const cadenceLabel = typeof payload.cadenceLabel === "string" ? payload.cadenceLabel : "";
-  const proposalState =
-    payload.proposalState === "pending" ||
-    payload.proposalState === "accepted" ||
-    payload.proposalState === "dismissed"
-      ? payload.proposalState
-      : undefined;
-  return {
-    id,
-    name,
-    cadenceLabel,
-    ...(proposalState ? { proposalState } : {}),
-  };
 }
 
 function extractWorkLogGladeThreadCreation(
@@ -475,12 +444,6 @@ function toDerivedWorkLogEntry(activity: OrchestrationThreadActivity): DerivedWo
   const subagentAction = extractCollabAction(payload, subagents);
   if (subagentAction) {
     entry.subagentAction = subagentAction;
-  }
-  if (activity.kind === "automation.created") {
-    const automation = extractWorkLogAutomation(payload);
-    if (automation) {
-      entry.automation = automation;
-    }
   }
   if (activity.kind === "glade.threads.created") {
     const gladeThreadCreation = extractWorkLogGladeThreadCreation(payload);

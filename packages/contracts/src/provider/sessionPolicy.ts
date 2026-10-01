@@ -85,6 +85,7 @@ export type TurnDispatchMode = typeof TurnDispatchMode.Type;
 
 export const DEFAULT_TURN_DISPATCH_MODE: TurnDispatchMode = "queue";
 
+// Retired origins remain decodable in persisted conversation history.
 export const MessageDispatchOrigin = Schema.Literals(["user", "automation", "agent"]);
 
 export type MessageDispatchOrigin = typeof MessageDispatchOrigin.Type;
