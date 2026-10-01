@@ -278,7 +278,7 @@ export function ThemePackEditor({
             />
             {systemUiFont ? (
               <span className="text-ui-sm text-muted-foreground">
-                Use system UI font is on; theme fonts are not applied.
+                Use system font is on; theme fonts are not applied.
               </span>
             ) : null}
           </div>

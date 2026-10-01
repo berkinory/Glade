@@ -98,12 +98,13 @@ export function NotificationsSettingsPanel({
     <div className="space-y-6">
       <SettingsSection title="Activity alerts">
         <SettingsRow
-          title="Activity toasts"
+          id="setting-activity-toasts"
+          title="In-app notifications"
           description="Show an in-app toast when a chat or managed terminal agent finishes or needs input."
           resetAction={
             settings.enableTaskCompletionToasts !== defaults.enableTaskCompletionToasts ? (
               <SettingResetButton
-                label="activity toasts"
+                label="in-app notifications"
                 onClick={() =>
                   updateSettings({
                     enableTaskCompletionToasts: defaults.enableTaskCompletionToasts,
@@ -118,12 +119,13 @@ export function NotificationsSettingsPanel({
               onCheckedChange={(checked) =>
                 updateSettings({ enableTaskCompletionToasts: Boolean(checked) })
               }
-              aria-label="Activity toast notifications"
+              aria-label="In-app notifications"
             />
           }
         />
 
         <SettingsRow
+          id="setting-desktop-notifications"
           title="Desktop notifications"
           description="Show an OS notification when a chat or managed terminal agent finishes or needs input while the app is in the background."
           status={

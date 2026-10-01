@@ -79,10 +79,11 @@ export function ModelsSettingsPanel({
 
   return (
     <div className="space-y-6">
-      <SettingsSection title="Generation defaults">
+      <SettingsSection title="Git generation">
         <SettingsRow
-          title="Git writing model"
-          description="Used for generated commit messages, PR titles, and branch names."
+          id="setting-git-writing-model"
+          title="Git generation model"
+          description="Generates commit messages, PR titles, and branch names; chat reply models stay unchanged."
           resetAction={
             isGitTextGenerationModelDirty ? (
               <SettingResetButton

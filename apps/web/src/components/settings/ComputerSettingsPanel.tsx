@@ -345,9 +345,6 @@ export function ComputerSettingsPanel({
     cursorColorMode !== (defaults.agentCursorColorMode ?? DEFAULT_AGENT_CURSOR_COLOR_MODE) ||
     (settings.agentCursorFillColor ?? "") !== (defaults.agentCursorFillColor ?? "") ||
     (settings.agentCursorRimColor ?? "") !== (defaults.agentCursorRimColor ?? "");
-  const previewDirty =
-    settings.autoOpenComputerPane !== defaults.autoOpenComputerPane ||
-    settings.computerPreviewSize !== defaults.computerPreviewSize;
 
   return (
     <div className="space-y-6">
@@ -378,6 +375,9 @@ export function ComputerSettingsPanel({
         <p className="px-2 text-ui text-muted-foreground">
           Enable Computer by default in any chat. Leave this off and use /computer-use for one
           request without adding Computer tools to ordinary turns.
+        </p>
+        <p className="px-2 text-ui text-muted-foreground">
+          Use Stop in the chat to interrupt computer control.
         </p>
         <SettingsCard>
           {showAttentionRow ? (
@@ -441,51 +441,76 @@ export function ComputerSettingsPanel({
           </SettingsRow>
           {}
           <SettingsRow
-            title="Preview"
-            description="Show the live preview the first time an agent acts on the desktop in a chat. Compact keeps it small and glanceable; Large gives it the full wide card."
+            id="setting-automatic-preview"
+            title="Automatic preview"
+            description="Open the live preview when an agent first uses the desktop in a chat."
             resetAction={
-              previewDirty ? (
+              settings.autoOpenComputerPane !== defaults.autoOpenComputerPane ? (
                 <SettingResetButton
-                  label="preview"
+                  label="automatic preview"
                   onClick={() =>
-                    updateSettings({
-                      autoOpenComputerPane: defaults.autoOpenComputerPane,
-                      computerPreviewSize: defaults.computerPreviewSize,
-                    })
+                    updateSettings({ autoOpenComputerPane: defaults.autoOpenComputerPane })
                   }
                 />
               ) : null
             }
             control={
-              <div className="flex w-full items-center gap-3 sm:w-auto sm:justify-end">
-                <Switch
-                  checked={settings.autoOpenComputerPane}
-                  onCheckedChange={(checked) =>
-                    updateSettings({ autoOpenComputerPane: Boolean(checked) })
+              <Switch
+                checked={settings.autoOpenComputerPane}
+                onCheckedChange={(checked) =>
+                  updateSettings({ autoOpenComputerPane: Boolean(checked) })
+                }
+                aria-label="Open computer preview automatically"
+              />
+            }
+          />
+          <SettingsRow
+            id="setting-preview-size"
+            title="Preview size"
+            description="Choose the size used whenever the computer preview is open."
+            resetAction={
+              settings.computerPreviewSize !== defaults.computerPreviewSize ? (
+                <SettingResetButton
+                  label="preview size"
+                  onClick={() =>
+                    updateSettings({ computerPreviewSize: defaults.computerPreviewSize })
                   }
-                  aria-label="Show the computer preview automatically when an agent drives the desktop"
                 />
-                <SettingsSegmentedControl<ComputerPreviewSize>
-                  value={settings.computerPreviewSize}
-                  onValueChange={(value) => updateSettings({ computerPreviewSize: value })}
-                  options={[
-                    { value: "compact", label: "Compact" },
-                    { value: "large", label: "Large" },
-                  ]}
-                  ariaLabel="In-chat computer preview size"
-                />
-              </div>
+              ) : null
+            }
+            control={
+              <SettingsSegmentedControl<ComputerPreviewSize>
+                value={settings.computerPreviewSize}
+                onValueChange={(value) => updateSettings({ computerPreviewSize: value })}
+                options={[
+                  { value: "compact", label: "Compact" },
+                  { value: "large", label: "Large" },
+                ]}
+                ariaLabel="Computer preview size"
+              />
             }
           />
         </SettingsCard>
       </SettingsSectionShell>
 
+      {hasNativePermissionSetup && computerPermissionState ? (
+        <ComputerPermissionSection
+          panes={COMPUTER_PERMISSION_PANES}
+          permissionKinds={COMPUTER_PERMISSIONS}
+          feature="Computer control"
+          state={computerPermissionState}
+          onStateChange={setComputerPermissionState}
+          guidePane={guidePane}
+          onGuidePaneChange={setGuidePane}
+          showRecheck={false}
+        />
+      ) : null}
       <ComputerGettingStarted />
       <ComputerAuditHistorySection />
 
       {}
       <SettingsSectionShell
-        title="Advanced"
+        title="Backend diagnostics"
         action={
           <Button
             size="xs"
@@ -500,18 +525,6 @@ export function ComputerSettingsPanel({
       >
         <DisclosureRegion open={advancedOpen}>
           <div className="flex flex-col gap-4">
-            {hasNativePermissionSetup && computerPermissionState ? (
-              <ComputerPermissionSection
-                panes={COMPUTER_PERMISSION_PANES}
-                permissionKinds={COMPUTER_PERMISSIONS}
-                feature="Computer control"
-                state={computerPermissionState}
-                onStateChange={setComputerPermissionState}
-                guidePane={guidePane}
-                onGuidePaneChange={setGuidePane}
-                showRecheck={false}
-              />
-            ) : null}
             <SettingsCard>
               {status && availabilityView.kind === "ready" ? (
                 <SettingsRow

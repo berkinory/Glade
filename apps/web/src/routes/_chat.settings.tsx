@@ -244,11 +244,24 @@ function SettingsRouteView() {
   useEffect(() => {
     if (!settingsTarget) return;
     const frame = window.requestAnimationFrame(() => {
-      document
-        .getElementById(settingsTarget)
-        ?.scrollIntoView({ block: "start", behavior: "smooth" });
+      const element = document.getElementById(settingsTarget);
+      if (!element) return;
+      element.scrollIntoView({
+        block: "start",
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "instant"
+          : "smooth",
+      });
+      element.setAttribute("tabindex", "-1");
+      element.focus({ preventScroll: true });
+      element.classList.add("ring-2", "ring-primary", "rounded-lg");
     });
-    return () => window.cancelAnimationFrame(frame);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      const element = document.getElementById(settingsTarget);
+      element?.classList.remove("ring-2", "ring-primary", "rounded-lg");
+      element?.removeAttribute("tabindex");
+    };
   }, [activeSection, settingsTarget]);
 
   async function restoreDefaults() {
@@ -274,7 +287,7 @@ function SettingsRouteView() {
   const renderBooleanSettingRow = (config: {
     settingKey: BooleanSettingKey;
     title: string;
-    description: string;
+    description?: string;
     resetLabel: string;
     ariaLabel: string;
   }) => {
@@ -282,6 +295,7 @@ function SettingsRouteView() {
     const isChanged = settings[settingKey] !== defaults[settingKey];
     return (
       <SettingsRow
+        id={`setting-${settingKey}`}
         title={title}
         description={description}
         resetAction={
@@ -317,7 +331,6 @@ function SettingsRouteView() {
           ) : null
         }
       >
-        {}
         <div id={settingRowAnchorId("Theme")} className="scroll-mt-24 pb-1.5">
           <ThemeModePicker value={theme} onValueChange={setTheme} ariaLabel="Theme preference" />
         </div>
@@ -410,9 +423,10 @@ function SettingsRouteView() {
         </SettingsSection>
       ) : null}
 
-      <SettingsSection title="Typography and spacing">
+      <SettingsSection title="Interface typography and layout">
         <SettingsRow
-          title="Use system UI font"
+          id="setting-use-system-ui-font"
+          title="Use system font"
           description="Ignore the theme's custom UI font and render the interface with the native system font (SF Pro on macOS)."
           resetAction={
             !systemUiFont ? (
@@ -423,12 +437,13 @@ function SettingsRouteView() {
             <Switch
               checked={systemUiFont}
               onCheckedChange={(checked) => setSystemUiFont(Boolean(checked))}
-              aria-label="Use system UI font"
+              aria-label="Use system font"
             />
           }
         />
 
         <SettingsRow
+          id="setting-ui-density"
           title="UI density"
           description="Control spacing in the sidebar, composer, chat gutters, and settings rows without changing font size."
           resetAction={
@@ -459,6 +474,7 @@ function SettingsRouteView() {
         />
 
         <SettingsRow
+          id="setting-chat-width"
           title="Chat width"
           description="Control how wide the chat column grows. Wide and Full give tables and wide content more room."
           resetAction={
@@ -489,12 +505,13 @@ function SettingsRouteView() {
         />
 
         <SettingsRow
-          title="Base font size"
+          id="setting-base-font-size"
+          title="App font size"
           description="Adjust the app text base in pixels. Chat and UI typography scale proportionally from this value."
           resetAction={
             settings.chatFontSizePx !== defaults.chatFontSizePx ? (
               <SettingResetButton
-                label="base font size"
+                label="app font size"
                 onClick={() =>
                   updateSettings({
                     chatFontSizePx: defaults.chatFontSizePx,
@@ -522,14 +539,26 @@ function SettingsRouteView() {
                     chatFontSizePx: normalizeChatFontSizePx(Number(nextValue)),
                   });
                 }}
-                aria-label="Base font size in pixels"
+                aria-label="App font size in pixels"
               />
               <span className="text-ui leading-snug text-muted-foreground">px</span>
             </div>
           }
         />
 
+        {shouldShowFontSmoothing
+          ? renderBooleanSettingRow({
+              settingKey: "enableNativeFontSmoothing",
+              title: "Font smoothing",
+              description: "Use macOS-style antialiasing for lighter, crisper text rendering.",
+              resetLabel: "font smoothing",
+              ariaLabel: "Enable font smoothing",
+            })
+          : null}
+      </SettingsSection>
+      <SettingsSection title="Terminal typography">
         <SettingsRow
+          id="setting-terminal-font-size"
           title="Terminal font size"
           description="Adjust terminal text independently from the app and chat font size."
           resetAction={
@@ -571,6 +600,7 @@ function SettingsRouteView() {
         />
 
         <SettingsRow
+          id="setting-terminal-font"
           title="Terminal font"
           description="Type any monospace font installed on this device (e.g. Fira Code). Leave empty for the default. Fonts that aren't installed fall back to the system monospace."
           resetAction={
@@ -633,26 +663,17 @@ function SettingsRouteView() {
             </div>
           }
         />
-
-        {shouldShowFontSmoothing
-          ? renderBooleanSettingRow({
-              settingKey: "enableNativeFontSmoothing",
-              title: "Font smoothing",
-              description: "Use macOS-style antialiasing for lighter, crisper text rendering.",
-              resetLabel: "font smoothing",
-              ariaLabel: "Enable font smoothing",
-            })
-          : null}
       </SettingsSection>
 
-      <SettingsSection title="Editor">
+      <SettingsSection title="Composer">
         <SettingsRow
-          title="Caret style"
-          description="Choose the cursor shape when editing a file."
+          id="setting-caret-style"
+          title="Composer cursor"
+          description="Choose the cursor shape when writing a message."
           resetAction={
             settings.editorCaretStyle !== defaults.editorCaretStyle ? (
               <SettingResetButton
-                label="caret style"
+                label="composer cursor"
                 onClick={() => updateSettings({ editorCaretStyle: DEFAULT_EDITOR_CARET_STYLE })}
               />
             ) : null
@@ -661,15 +682,16 @@ function SettingsRouteView() {
             <SettingsSegmentedControl
               value={settings.editorCaretStyle}
               onValueChange={(editorCaretStyle) => updateSettings({ editorCaretStyle })}
-              ariaLabel="Editor caret style"
+              ariaLabel="Composer cursor"
               options={EDITOR_CARET_STYLE_OPTIONS}
             />
           }
         />
       </SettingsSection>
 
-      <SettingsSection title="Time and reading">
+      <SettingsSection title="Time">
         <SettingsRow
+          id="setting-time-format"
           title="Time format"
           description="System default follows your browser or OS clock preference."
           resetAction={
@@ -719,8 +741,9 @@ function SettingsRouteView() {
     <div className="space-y-6">
       <SettingsSection title="Conversation">
         <SettingsRow
+          id="setting-follow-up-behavior"
           title="Follow-up behavior"
-          description="Choose whether messages sent during an active turn wait in the queue or steer the current run. Ctrl/Cmd+Enter uses the opposite behavior for one message."
+          description="Queue waits for the current response; Steer redirects it. Ctrl/Cmd+Enter uses the opposite action."
           resetAction={
             settings.followUpBehavior !== defaults.followUpBehavior ? (
               <SettingResetButton
@@ -753,15 +776,44 @@ function SettingsRouteView() {
 
         {renderBooleanSettingRow({
           settingKey: "composerEffortSlider",
-          title: "Effort slider",
-          description:
-            "Show effort as a slider at the bottom of the composer's model picker, with fast mode and reset alongside it, instead of separate Effort and Speed rows.",
-          resetLabel: "effort slider",
-          ariaLabel: "Show effort slider in the composer",
+          title: "Show effort control",
+          description: "Adjust reasoning effort when choosing a model for a chat.",
+          resetLabel: "effort control",
+          ariaLabel: "Show effort control",
         })}
       </SettingsSection>
 
-      <SettingsSection title="Explorer">
+      <SettingsSection title="Confirmations">
+        {renderBooleanSettingRow({
+          settingKey: "confirmThreadDelete",
+          title: "Confirm before deleting a chat",
+          description: "Deleting a chat removes its history.",
+          resetLabel: "delete confirmation",
+          ariaLabel: "Confirm before deleting a chat",
+        })}
+
+        {renderBooleanSettingRow({
+          settingKey: "confirmThreadArchive",
+          title: "Confirm before archiving a chat",
+          description: "Archived chats can be restored from Archived chats.",
+          resetLabel: "archive confirmation",
+          ariaLabel: "Confirm before archiving a chat",
+        })}
+
+        {renderBooleanSettingRow({
+          settingKey: "confirmTerminalTabClose",
+          title: "Confirm before closing a terminal",
+          description: "Ask before closing a terminal tab and clearing its history.",
+          resetLabel: "terminal close confirmation",
+          ariaLabel: "Confirm terminal tab close",
+        })}
+      </SettingsSection>
+    </div>
+  );
+
+  const renderFilesPanel = () => (
+    <div className="space-y-6">
+      <SettingsSection title="File visibility">
         {renderBooleanSettingRow({
           settingKey: "hideIgnoredFiles",
           title: "Hide ignored files",
@@ -770,8 +822,7 @@ function SettingsRouteView() {
           ariaLabel: "Hide ignored files",
         })}
       </SettingsSection>
-
-      <SettingsSection title="Review">
+      <SettingsSection title="Diff display">
         {renderBooleanSettingRow({
           settingKey: "showPullRequestDiffColors",
           title: "Pull request diff colors",
@@ -789,46 +840,17 @@ function SettingsRouteView() {
           ariaLabel: "Wrap diff lines by default",
         })}
       </SettingsSection>
-
-      <SettingsSection title="Safety confirmations">
-        {renderBooleanSettingRow({
-          settingKey: "confirmThreadDelete",
-          title: "Delete confirmation",
-          description: "Ask before deleting a thread and its chat history.",
-          resetLabel: "delete confirmation",
-          ariaLabel: "Confirm thread deletion",
-        })}
-
-        {renderBooleanSettingRow({
-          settingKey: "confirmThreadArchive",
-          title: "Archive confirmation",
-          description: "Ask before archiving a thread.",
-          resetLabel: "archive confirmation",
-          ariaLabel: "Confirm thread archive",
-        })}
-
-        {renderBooleanSettingRow({
-          settingKey: "confirmTerminalTabClose",
-          title: "Terminal close confirmation",
-          description: "Ask before closing a terminal tab and clearing its history.",
-          resetLabel: "terminal close confirmation",
-          ariaLabel: "Confirm terminal tab close",
-        })}
-      </SettingsSection>
     </div>
   );
 
   const renderRouteOwnedPanel = () => {
     switch (activeSection) {
       case "general":
-        return (
-          <SettingsGeneralPanel
-            onRestoreDefaults={() => void restoreDefaults()}
-            renderBooleanSettingRow={renderBooleanSettingRow}
-          />
-        );
+        return <SettingsGeneralPanel renderBooleanSettingRow={renderBooleanSettingRow} />;
       case "appearance":
         return renderAppearancePanel();
+      case "files":
+        return renderFilesPanel();
       case "behavior":
         return renderBehaviorPanel();
       case "shortcuts":
@@ -879,7 +901,7 @@ function SettingsRouteView() {
                 activeSection === "profile" ? "max-w-3xl" : "max-w-2xl",
               )}
             >
-              {activeSection !== "profile" ? (
+              {
                 <div className="mb-8">
                   <div className="min-w-0">
                     <h1 className="flex items-center gap-2 text-xl font-medium tracking-tight text-foreground">
@@ -898,10 +920,10 @@ function SettingsRouteView() {
                     </p>
                   </div>
                 </div>
-              ) : null}
+              }
 
               {renderRouteOwnedPanel()}
-              {}
+
               <div className="contents">
                 <NotificationsSettingsPanel
                   active={activeSection === "notifications"}
@@ -909,21 +931,36 @@ function SettingsRouteView() {
                   defaults={defaults}
                   updateSettings={updateSettings}
                 />
-
                 <ComputerSettingsPanel
                   active={activeSection === "computer"}
                   settings={settings}
                   defaults={defaults}
                   updateSettings={updateSettings}
                 />
-                <WorktreesSettingsPanel active={activeSection === "worktrees"} />
                 <ArchivedSettingsPanel active={activeSection === "archived"} />
                 <ModelsSettingsPanel
-                  active={activeSection === "models"}
+                  active={activeSection === "worktrees"}
                   settings={settings}
                   defaults={defaults}
                   updateSettings={updateSettings}
                 />
+                {activeSection === "worktrees" ? (
+                  <div className="mt-6 space-y-6">
+                    <SettingsSection title="Worktree cleanup">
+                      {renderBooleanSettingRow({
+                        settingKey: "archiveDeletesOrphanedWorktree",
+                        title: "Delete worktree on archive",
+                        description:
+                          "After Archive's Undo period, remove a clean worktree only if the task has stopped and no other task uses it. Its branch remains available for recovery.",
+                        resetLabel: "delete worktree on archive",
+                        ariaLabel: "Delete worktree on archive",
+                      })}
+                    </SettingsSection>
+                    <SettingsSectionShell title="Managed worktrees" id="setting-managed-worktrees">
+                      <WorktreesSettingsPanel active />
+                    </SettingsSectionShell>
+                  </div>
+                ) : null}
                 <ProvidersSettingsPanel
                   active={activeSection === "providers"}
                   settings={settings}
@@ -932,17 +969,16 @@ function SettingsRouteView() {
                   updateSettingsAndWait={updateSettingsAndWait}
                   resetEpoch={resetEpoch}
                 />
-
                 <AdvancedSettingsPanel
                   active={activeSection === "advanced"}
                   onOpenReleaseHistory={() => setReleaseHistoryOpen(true)}
-                  resetEpoch={resetEpoch}
+                  onRestoreDefaults={() => void restoreDefaults()}
                 />
               </div>
             </div>
           </div>
         </div>
-        {}
+
         <ReleaseHistoryDialog
           open={releaseHistoryOpen}
           onOpenChange={setReleaseHistoryOpen}

@@ -101,11 +101,11 @@ Keep separate working directories when starting several tasks in the same reposi
 ### Cleaning up worktrees
 
 Deleting a task offers to delete its worktree when no other task uses it. Turn on **Delete worktree
-on archive** in **Settings → General** to remove a finished task's clean checkout after its Undo
+on archive** in **Settings → Git & worktrees** to remove a finished task's clean checkout after its Undo
 period ends. If another task still refers to the checkout, the session has not stopped, or Git finds
 uncommitted changes, the checkout stays. Automatic archive cleanup preserves its branch so commits
 remain recoverable. Restoring an archived task later restores its conversation, but a removed
-checkout must be recreated from that branch before work resumes. **Settings → Managed worktrees**
+checkout must be recreated from that branch before work resumes. **Settings → Git & worktrees**
 lists managed worktrees for explicit removal. Those removals also delete the temporary `glade/*`
 branch, its empty managed folder, and recovery
 snapshots cached for that path. Automatic retention keeps the 15 most recently archived worktrees

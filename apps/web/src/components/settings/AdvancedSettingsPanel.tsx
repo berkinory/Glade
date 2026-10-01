@@ -2,28 +2,23 @@ import { useQuery } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 
 import { logoutCurrentBrowserSession } from "~/authLogout";
+import { useOnboardingDialogStore } from "~/onboarding/onboardingDialogStore";
+import { ResetIcon } from "~/lib/icons";
 import { APP_VERSION } from "~/branding";
-import { resolveAndPersistPreferredEditor } from "~/editorPreferences";
-import { DisclosureChevron } from "~/components/ui/DisclosureChevron";
-import { DisclosureRegion } from "~/components/ui/DisclosureRegion";
 import { Button } from "~/components/ui/button";
 import { toastManager } from "~/components/ui/toast";
 import { ensureNativeApi, readNativeApi } from "~/nativeApi";
-import { serverAuthSessionQueryOptions, serverConfigQueryOptions } from "~/lib/serverReactQuery";
-import { cn } from "~/lib/utils";
-import { SETTINGS_INSET_LIST_CLASS_NAME } from "~/settingsPanelStyles";
+import { serverAuthSessionQueryOptions } from "~/lib/serverReactQuery";
 import { useStore } from "~/store";
 import { createAllThreadsMessagelessSelector, createThreadShellsSelector } from "~/storeSelectors";
-import { useSettingsRestoreSignal } from "./SettingControls";
 import { SettingsRow, SettingsSection } from "./SettingsPanelPrimitives";
 import { DesktopUpdateSettingsRow } from "./DesktopUpdateSettingsRow";
 
 export function AdvancedSettingsPanel(props: {
   active: boolean;
   onOpenReleaseHistory: () => void;
-  resetEpoch: number;
+  onRestoreDefaults: () => void;
 }) {
-  const configQuery = useQuery(serverConfigQueryOptions());
   const authSessionQuery = useQuery(serverAuthSessionQueryOptions());
   const syncServerReadModel = useStore((store) => store.syncServerReadModel);
 
@@ -32,45 +27,13 @@ export function AdvancedSettingsPanel(props: {
   const projectCount = useStore((store) => store.projects.length);
   const threadsHydrated = useStore((store) => store.threadsHydrated);
 
-  const [isOpeningKeybindings, setIsOpeningKeybindings] = useState(false);
   const [isRepairingLocalState, setIsRepairingLocalState] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [showRecoveryTools, setShowRecoveryTools] = useState(false);
-  const [openKeybindingsError, setOpenKeybindingsError] = useState<string | null>(null);
 
-  useSettingsRestoreSignal(props.resetEpoch, () => {
-    setShowRecoveryTools(false);
-    setOpenKeybindingsError(null);
-  });
-
-  const keybindingsConfigPath = configQuery.data?.keybindingsConfigPath ?? null;
-  const availableEditors = configQuery.data?.availableEditors;
   const shouldOfferRecoveryTools = useMemo(() => {
     if (!threadsHydrated || projectCount === 0) return false;
     return threadShells.length === 0 || allThreadsMessageless;
   }, [allThreadsMessageless, projectCount, threadShells.length, threadsHydrated]);
-
-  const openKeybindingsFile = useCallback(() => {
-    if (!keybindingsConfigPath) return;
-    setOpenKeybindingsError(null);
-    setIsOpeningKeybindings(true);
-    const editor = resolveAndPersistPreferredEditor(availableEditors ?? []);
-    if (!editor) {
-      setOpenKeybindingsError("No available editors found.");
-      setIsOpeningKeybindings(false);
-      return;
-    }
-    void ensureNativeApi()
-      .shell.openInEditor(keybindingsConfigPath, editor)
-      .catch((error) => {
-        setOpenKeybindingsError(
-          error instanceof Error ? error.message : "Unable to open keybindings file.",
-        );
-      })
-      .finally(() => {
-        setIsOpeningKeybindings(false);
-      });
-  }, [availableEditors, keybindingsConfigPath]);
 
   const repairLocalState = useCallback(async () => {
     if (isRepairingLocalState) return;
@@ -151,42 +114,15 @@ export function AdvancedSettingsPanel(props: {
           />
         </SettingsSection>
       ) : null}
-
-      <SettingsSection title="Developer tools">
+      <SettingsSection title="Recovery">
         <SettingsRow
-          title="Keybindings"
-          description="Open the persisted `keybindings.json` file to edit advanced bindings directly."
-          status={
-            <>
-              <span className="block break-all font-mono text-ui-sm text-foreground">
-                {keybindingsConfigPath ?? "Resolving keybindings path..."}
-              </span>
-              {openKeybindingsError ? (
-                <span className="mt-1 block text-destructive">{openKeybindingsError}</span>
-              ) : (
-                <span className="mt-1 block">Opens in your preferred editor.</span>
-              )}
-            </>
-          }
-          control={
-            <Button
-              size="xs"
-              variant="outline"
-              disabled={!keybindingsConfigPath || isOpeningKeybindings}
-              onClick={openKeybindingsFile}
-            >
-              {isOpeningKeybindings ? "Opening..." : "Open file"}
-            </Button>
-          }
-        />
-
-        <SettingsRow
+          id="setting-recovery-tools"
           title="Recovery tools"
           description="Rebuild local project indexes without clearing existing chats when the local state gets out of sync."
           status={
             shouldOfferRecoveryTools
               ? "Visible because projects exist but no chat history is currently available."
-              : "Shown automatically only when recovery actions are relevant."
+              : "Available when projects exist but chat history is missing."
           }
           control={
             <Button
@@ -198,45 +134,13 @@ export function AdvancedSettingsPanel(props: {
               {isRepairingLocalState ? "Repairing..." : "Repair state"}
             </Button>
           }
-        >
-          {shouldOfferRecoveryTools ? (
-            <div className="mt-3 border-t border-border/70 pt-3">
-              <button
-                type="button"
-                className="flex w-full items-center justify-between text-left"
-                aria-expanded={showRecoveryTools}
-                onClick={() => setShowRecoveryTools((current) => !current)}
-              >
-                <span className="text-ui leading-snug font-medium text-muted-foreground">
-                  What this does
-                </span>
-                <DisclosureChevron
-                  open={showRecoveryTools}
-                  className="size-4 shrink-0 text-muted-foreground"
-                />
-              </button>
-              <DisclosureRegion
-                open={showRecoveryTools}
-                contentClassName={cn(
-                  "mt-3 px-3 py-3 text-ui leading-snug text-muted-foreground",
-                  SETTINGS_INSET_LIST_CLASS_NAME,
-                )}
-              >
-                <div>
-                  Rebuilds local project indexes and refreshes project snapshots. Existing chats
-                  stay in place.
-                </div>
-              </DisclosureRegion>
-            </div>
-          ) : null}
-        </SettingsRow>
+        />
       </SettingsSection>
-
       <SettingsSection title="About">
         <DesktopUpdateSettingsRow />
         <SettingsRow
+          id="setting-version"
           title="Version"
-          description="Current application version."
           control={
             <code className="text-ui leading-snug font-medium text-muted-foreground">
               {APP_VERSION}
@@ -244,11 +148,39 @@ export function AdvancedSettingsPanel(props: {
           }
         />
         <SettingsRow
+          id="setting-release-history"
           title="Release history"
-          description="A running log of every update, newest first. Same notes the post-update dialog shows, kept here so you can revisit them any time."
           control={
             <Button size="sm" variant="outline" onClick={props.onOpenReleaseHistory}>
               View release history
+            </Button>
+          }
+        />
+      </SettingsSection>
+      <SettingsSection title="Getting started">
+        <SettingsRow
+          id="setting-welcome-tour"
+          title="Welcome tour"
+          description="Replay the first-run setup: feature tour, provider selection, appearance, and first project."
+          control={
+            <Button
+              variant="outline"
+              onClick={() => useOnboardingDialogStore.getState().openDialog()}
+            >
+              Open welcome tour
+            </Button>
+          }
+        />
+      </SettingsSection>
+      <SettingsSection title="Reset settings">
+        <SettingsRow
+          id="setting-restore-defaults"
+          title="Restore defaults"
+          description="Reset Glade preferences, theme customizations, and provider preferences."
+          control={
+            <Button size="sm" variant="outline" onClick={() => props.onRestoreDefaults()}>
+              <ResetIcon className="size-3.5" />
+              Restore defaults
             </Button>
           }
         />

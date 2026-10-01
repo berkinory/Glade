@@ -56,10 +56,10 @@ export function PluginsSettingsPanel() {
           mutation.reset();
         }}
       />
-      <SettingsSection title="Native plugin inventory">
+      <SettingsSection title="Installed and loaded plugins">
         <SettingsRow
           title="Refresh plugins"
-          description="Installed plugins and plugins loaded in the selected session are shown separately."
+          description="Installed plugins and plugins loaded in the selected chat are shown separately."
           actions={
             <Button
               size="sm"
@@ -144,7 +144,7 @@ export function PluginsSettingsPanel() {
       {query.data?.canInstall && context.provider === "claudeAgent" ? (
         <SettingsSection title="Install plugin">
           <SettingsRow
-            title="Native plugin identifier"
+            title="Plugin identifier"
             description="Use name@marketplace from a marketplace configured in Claude Code."
             actions={
               <Input

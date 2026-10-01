@@ -18,11 +18,6 @@ import {
   type SettingsSearchEntry,
 } from "../settingsSearchIndex";
 import {
-  SIDEBAR_ROW_HOVER_CLASS_NAME,
-  SIDEBAR_ROW_IDLE_TEXT_CLASS_NAME,
-  SIDEBAR_THREAD_ROW_BASE_CLASS_NAME,
-} from "../sidebarRowStyles";
-import {
   SETTINGS_SIDEBAR_ICON_CLASS_NAME,
   SETTINGS_SIDEBAR_ITEM_CLASS_NAME,
   SETTINGS_SIDEBAR_ITEM_LABEL_CLASS_NAME,
@@ -56,21 +51,12 @@ function SettingsSearchResultRow(props: {
         <SidebarLeadingIcon size="sm" tone="text-inherit">
           <CentralIcon name={icon} className={SETTINGS_SIDEBAR_ICON_CLASS_NAME} />
         </SidebarLeadingIcon>
-        <span className={SETTINGS_SIDEBAR_ITEM_LABEL_CLASS_NAME}>
-          {settingsSectionLabel(entry.section)}
+        <span className="min-w-0 text-left">
+          <span className="block text-ui">{entry.title}</span>
+          <span className="block text-ui-xs text-muted-foreground">
+            {settingsSectionLabel(entry.section)}
+          </span>
         </span>
-      </button>
-      <button
-        type="button"
-        className={cn(
-          SIDEBAR_THREAD_ROW_BASE_CLASS_NAME,
-          SIDEBAR_ROW_IDLE_TEXT_CLASS_NAME,
-          SIDEBAR_ROW_HOVER_CLASS_NAME,
-          "flex items-center",
-        )}
-        onClick={() => onSelect(entry)}
-      >
-        <span className="min-w-0 truncate">{entry.title}</span>
       </button>
     </li>
   );

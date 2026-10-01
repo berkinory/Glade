@@ -79,7 +79,7 @@ export function SettingsSelectControl({
 
 export type SettingsSegmentedOption<T extends string> = {
   value: T;
-  label: string;
+  label: ReactNode;
 };
 
 export function SettingsSegmentedControl<T extends string>({
@@ -102,7 +102,7 @@ export function SettingsSegmentedControl<T extends string>({
     <div
       role="radiogroup"
       aria-label={ariaLabel}
-      className="inline-flex w-full items-center gap-1 sm:w-auto"
+      className="inline-flex w-full flex-wrap items-center gap-1 sm:w-auto"
     >
       {options.map((option) => {
         const isActive = option.value === value;

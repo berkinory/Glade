@@ -8,7 +8,7 @@ const SETTINGS_SECTION_IDS = [
   "shortcuts",
   "worktrees",
   "archived",
-  "models",
+  "files",
   "providers",
   "skills",
   "mcp",
@@ -18,7 +18,7 @@ const SETTINGS_SECTION_IDS = [
 ] as const;
 
 export type SettingsSectionId = (typeof SETTINGS_SECTION_IDS)[number];
-export type SettingsNavGroupId = "personal" | "computer" | "coding" | "system" | "archived";
+export type SettingsNavGroupId = "app" | "workspace" | "agents";
 
 export const SETTINGS_TARGETS = {
   providerUpdates: "provider-updates",
@@ -32,7 +32,6 @@ export type SettingsNavItem = {
   description: string;
 
   icon: string;
-  eyebrow: string;
 
   badge?: string;
 };
@@ -41,141 +40,123 @@ export const SETTINGS_NAV_GROUPS: ReadonlyArray<{
   id: SettingsNavGroupId;
   label: string;
 }> = [
-  { id: "personal", label: "Personal" },
-  { id: "computer", label: "Computer" },
-  { id: "coding", label: "Coding" },
-  { id: "system", label: "System" },
-  { id: "archived", label: "Archived" },
+  { id: "app", label: "App" },
+  { id: "workspace", label: "Workspace" },
+  { id: "agents", label: "Agents" },
 ] as const;
 
 export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
   {
     id: "general",
-    group: "personal",
+    group: "app",
     label: "General",
     description: "Choose defaults for new chats, navigation, and the Environment panel.",
     icon: "settings-gear-4",
-    eyebrow: "Workflow defaults",
-  },
-  {
-    id: "profile",
-    group: "personal",
-    label: "Profile",
-    description: "Your local activity, streaks, and a shareable stats card.",
-    icon: "user",
-    eyebrow: "Your stats",
   },
   {
     id: "appearance",
-    group: "personal",
+    group: "app",
     label: "Appearance",
     description: "Customize the theme, typography, density, and time format.",
     icon: "color-palette",
-    eyebrow: "Visual language",
   },
   {
     id: "notifications",
-    group: "personal",
+    group: "app",
     label: "Notifications",
     description: "Choose how Glade tells you when work finishes or needs attention.",
     icon: "bell",
-    eyebrow: "Alerts",
-  },
-  {
-    id: "behavior",
-    group: "personal",
-    label: "Chat behavior",
-    description: "Control live responses, follow-ups, review defaults, and safety confirmations.",
-    icon: "settings-slider-hor",
-    eyebrow: "Interaction rules",
   },
   {
     id: "shortcuts",
-    group: "personal",
-    label: "Keybindings",
+    group: "app",
+    label: "Keyboard shortcuts",
     description: "Capture, customize, and add shortcuts for every Glade command.",
     icon: "shortcut",
-    eyebrow: "Key bindings",
   },
   {
-    id: "usage",
-    group: "personal",
-    label: "Usage & limits",
-    description: "See remaining quota and credits for every signed-in provider.",
-    icon: "gauge",
-    eyebrow: "Provider limits",
-  },
-  {
-    id: "computer",
-    group: "computer",
-    label: "Computer use",
-    description: "Let agents see and control this computer's desktop, and check backend status.",
-    icon: "computer-use",
-    eyebrow: "Desktop control",
-  },
-  {
-    id: "providers",
-    group: "coding",
-    label: "Agent providers",
-    description: "Choose visible coding agents and manage their installed CLI tools.",
-    icon: "puzzle",
-    eyebrow: "Coding agents",
-  },
-  {
-    id: "models",
-    group: "coding",
-    label: "Models & writing",
-    description: "Choose the model used for Git writing.",
-    icon: "brain",
-    eyebrow: "Model configuration",
-  },
-  {
-    id: "skills",
-    group: "coding",
-    label: "Agent skills",
-    description: "Review reusable workflows discovered across all configured providers.",
-    icon: "building-blocks",
-    eyebrow: "Reusable workflows",
-  },
-  {
-    id: "mcp",
-    group: "coding",
-    label: "MCP servers",
-    description: "Manage native tools, connections and authentication.",
-    icon: "puzzle",
-    eyebrow: "External tools",
-  },
-  {
-    id: "plugins",
-    group: "coding",
-    label: "Agent plugins",
-    description: "Manage native installed plugins and session loading.",
-    icon: "building-blocks",
-    eyebrow: "Provider extensions",
-  },
-  {
-    id: "worktrees",
-    group: "coding",
-    label: "Managed worktrees",
-    description: "Review and clean up isolated workspaces created by Glade.",
-    icon: "branch-simple",
-    eyebrow: "Workspace management",
+    id: "profile",
+    group: "app",
+    label: "Activity",
+    description: "Your local activity, streaks, and a shareable stats card.",
+    icon: "user",
   },
   {
     id: "advanced",
-    group: "system",
-    label: "System tools",
-    description: "Manage sessions, recovery tools, low-level keybindings, and version details.",
+    group: "app",
+    label: "Advanced",
+    description: "Manage connections, recovery, updates, and app defaults.",
     icon: "toolbox",
-    eyebrow: "System tools",
+  },
+  {
+    id: "behavior",
+    group: "workspace",
+    label: "Chat",
+    description: "Choose how chats respond and when to ask for confirmation.",
+    icon: "settings-slider-hor",
+  },
+  {
+    id: "files",
+    group: "workspace",
+    label: "Files & diffs",
+    description: "Choose which files appear and how diffs are displayed.",
+    icon: "branch-simple",
+  },
+  {
+    id: "worktrees",
+    group: "workspace",
+    label: "Git & worktrees",
+    description: "Configure Git generation and clean up worktrees created by Glade.",
+    icon: "branch-simple",
   },
   {
     id: "archived",
-    group: "archived",
-    label: "Archived threads",
-    description: "Find and restore threads you previously archived.",
+    group: "workspace",
+    label: "Archived chats",
+    description: "Find and restore archived chats.",
     icon: "archive",
-    eyebrow: "Thread management",
+  },
+  {
+    id: "providers",
+    group: "agents",
+    label: "Providers",
+    description: "Choose visible coding agents and manage their installed CLI tools.",
+    icon: "puzzle",
+  },
+  {
+    id: "skills",
+    group: "agents",
+    label: "Skills",
+    description: "Review reusable workflows discovered across all configured providers.",
+    icon: "building-blocks",
+  },
+  {
+    id: "mcp",
+    group: "agents",
+    label: "MCP servers",
+    description: "Manage native tools, connections and authentication.",
+    icon: "puzzle",
+  },
+  {
+    id: "plugins",
+    group: "agents",
+    label: "Plugins",
+    description: "Manage native installed plugins and session loading.",
+    icon: "building-blocks",
+  },
+  {
+    id: "computer",
+    group: "agents",
+    label: "Computer use",
+    description: "Let agents see and control this computer's desktop, and check backend status.",
+    icon: "computer-use",
+  },
+  {
+    id: "usage",
+    group: "agents",
+    label: "Usage & limits",
+    description: "See remaining quota and credits for every signed-in provider.",
+    icon: "gauge",
   },
 ];
 
@@ -191,5 +172,6 @@ export function normalizeSettingsSection(value: unknown): SettingsSectionId {
   if (typeof value !== "string") {
     return "general";
   }
+  if (value === "models") return "worktrees";
   return SETTINGS_SECTION_IDS.find((candidate) => candidate === value) ?? "general";
 }

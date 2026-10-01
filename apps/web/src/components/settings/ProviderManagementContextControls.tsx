@@ -25,7 +25,7 @@ export function ProviderManagementContextControls({
       ? `project:${context.cwd}`
       : "provider";
   return (
-    <SettingsSection title="Provider context">
+    <SettingsSection title="Scope">
       <SettingsRow
         title="Provider"
         actions={
@@ -43,20 +43,20 @@ export function ProviderManagementContextControls({
         }
       />
       <SettingsRow
-        title="Workspace or session"
-        description="A session shows its live servers and loaded plugins. Workspace changes use that project's native configuration."
+        title="Project or chat"
+        description="A chat shows its live servers and loaded plugins; a project uses its native configuration."
         actions={
           <SettingsSelectControl
             value={value}
             valueContent={
               context.threadId
                 ? (threads.find((thread) => thread.id === context.threadId)?.title ??
-                  "Session unavailable")
+                  "Chat unavailable")
                 : context.cwd
                   ? (projects.find((project) => project.cwd === context.cwd)?.name ?? context.cwd)
                   : "Provider defaults"
             }
-            ariaLabel="Provider workspace or session"
+            ariaLabel="Provider project or chat"
             onValueChange={(selected) => {
               const thread = threads.find((thread) => `thread:${thread.id}` === selected);
               if (thread) {
@@ -82,7 +82,7 @@ export function ProviderManagementContextControls({
             ))}
             {threads.map((thread) => (
               <SelectItem key={thread.id} value={`thread:${thread.id}`}>
-                Session: {thread.title}
+                Chat: {thread.title}
               </SelectItem>
             ))}
           </SettingsSelectControl>

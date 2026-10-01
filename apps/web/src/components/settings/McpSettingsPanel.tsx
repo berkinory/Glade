@@ -51,10 +51,10 @@ export function McpSettingsPanel() {
           mutation.reset();
         }}
       />
-      <SettingsSection title="Native MCP servers">
+      <SettingsSection title="Servers">
         <SettingsRow
-          title="Refresh native status"
-          description="Claude toggles affect the selected session. Codex reconnect reloads MCP servers across the provider runtime."
+          title="Server status"
+          description="Claude toggles affect the selected chat. Codex reconnect reloads MCP servers across the provider runtime."
           actions={
             <Button
               size="sm"

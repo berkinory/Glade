@@ -332,7 +332,7 @@ export function ArchivedSettingsPanel({ active }: { readonly active: boolean }) 
         toastManager.add({
           type: "success",
           title: "Thread deleted",
-          description: "The archived thread has been permanently removed.",
+          description: "The archived chat has been permanently removed.",
         });
       } catch (error) {
         toastManager.add({
@@ -358,7 +358,7 @@ export function ArchivedSettingsPanel({ active }: { readonly active: boolean }) 
     );
     if (rootThreadIds.length === 0) return;
     const confirmed = await api.dialogs.confirm(
-      `Permanently delete all ${rootThreadIds.length} archived ${pluralize(rootThreadIds.length, "thread")}?\n\nThis will remove them and their conversation history forever.`,
+      `Permanently delete all ${rootThreadIds.length} archived ${pluralize(rootThreadIds.length, "chat")}?\n\nThis will remove them and their conversation history forever.`,
     );
     if (!confirmed) return;
     setIsDeletingAll(true);
@@ -376,8 +376,8 @@ export function ArchivedSettingsPanel({ active }: { readonly active: boolean }) 
     } catch (error) {
       toastManager.add({
         type: "error",
-        title: "Could not delete all archived threads",
-        description: error instanceof Error ? error.message : "Unable to delete the threads.",
+        title: "Could not delete all archived chats",
+        description: error instanceof Error ? error.message : "Unable to delete the chats.",
       });
     } finally {
       setIsDeletingAll(false);
@@ -412,9 +412,9 @@ export function ArchivedSettingsPanel({ active }: { readonly active: boolean }) 
         <div className="mx-auto mb-3 flex size-11 items-center justify-center rounded-full border border-border/70 bg-background/70 text-muted-foreground">
           <ArchiveIcon className="size-5" />
         </div>
-        <div className="text-ui-lg font-medium text-foreground">No archived threads</div>
+        <div className="text-ui-lg font-medium text-foreground">No archived chats</div>
         <div className="mt-1 text-ui leading-snug text-muted-foreground">
-          Archived threads will appear here and can be restored to the sidebar.
+          Archived chats will appear here and can be restored to the sidebar.
         </div>
       </SettingsEmptyState>
     );
@@ -424,7 +424,7 @@ export function ArchivedSettingsPanel({ active }: { readonly active: boolean }) 
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2">
         <span className="text-ui-sm text-muted-foreground">
-          {archivedThreadCount} archived {pluralize(archivedThreadCount, "thread")}
+          {archivedThreadCount} archived {pluralize(archivedThreadCount, "chat")}
         </span>
         <Button
           size="xs"

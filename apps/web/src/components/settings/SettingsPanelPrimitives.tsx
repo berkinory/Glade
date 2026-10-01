@@ -153,7 +153,7 @@ export function SettingsListRow({
           ) : null}
         </div>
         {actions != null ? (
-          <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto sm:justify-end">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:max-w-[55%] sm:justify-end">
             {actions}
           </div>
         ) : null}
@@ -163,6 +163,7 @@ export function SettingsListRow({
 }
 
 export function SettingsRow({
+  id,
   title,
   description,
   status,
@@ -172,14 +173,15 @@ export function SettingsRow({
   onClick,
 }: {
   title: ReactNode;
-  description: string;
+  id?: string;
+  description?: string | undefined;
   status?: ReactNode;
   resetAction?: ReactNode;
   control?: ReactNode;
   children?: ReactNode;
   onClick?: () => void;
 }) {
-  const anchorId = typeof title === "string" ? settingRowAnchorId(title) : undefined;
+  const anchorId = id ?? (typeof title === "string" ? settingRowAnchorId(title) : undefined);
   return (
     <div
       id={anchorId}
@@ -196,15 +198,19 @@ export function SettingsRow({
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex min-h-5 items-center gap-1.5">
             <h3 className={SETTINGS_CARD_ROW_TITLE_CLASS_NAME}>{title}</h3>
-            <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center">
-              {resetAction}
-            </span>
+            {resetAction ? (
+              <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center">
+                {resetAction}
+              </span>
+            ) : null}
           </div>
-          <p className={SETTINGS_CARD_ROW_DESCRIPTION_CLASS_NAME}>{description}</p>
+          {description ? (
+            <p className={SETTINGS_CARD_ROW_DESCRIPTION_CLASS_NAME}>{description}</p>
+          ) : null}
           {status ? <div className="pt-1 text-ui-sm text-muted-foreground">{status}</div> : null}
         </div>
         {control ? (
-          <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto sm:justify-end">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:max-w-[55%] sm:justify-end">
             {control}
           </div>
         ) : null}

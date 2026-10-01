@@ -12,10 +12,9 @@ import {
   type SettingsSegmentedOption,
 } from "../components/settings/SettingControls";
 import { SettingsRow, SettingsSection } from "../components/settings/SettingsPanelPrimitives";
-import { Button } from "../components/ui/button";
 import { SelectItem } from "../components/ui/select";
-import { ResetIcon } from "../lib/icons";
-import { useOnboardingDialogStore } from "../onboarding/onboardingDialogStore";
+import { CentralIcon } from "../lib/central-icons";
+import { WorktreeIcon } from "../lib/icons";
 import { SETTINGS_TARGETS } from "../settingsNavigation";
 
 const SIDEBAR_LAYOUT_OPTIONS = [
@@ -45,21 +44,21 @@ type BooleanSettingKey = {
 }[keyof AppSettings];
 
 export function SettingsGeneralPanel(props: {
-  onRestoreDefaults: () => void;
   renderBooleanSettingRow: (config: {
     settingKey: BooleanSettingKey;
     title: string;
-    description: string;
+    description?: string;
     resetLabel: string;
     ariaLabel: string;
   }) => ReactNode;
 }) {
   const { settings, defaults, updateSettings } = useAppSettings();
-  const { onRestoreDefaults, renderBooleanSettingRow } = props;
+  const { renderBooleanSettingRow } = props;
   return (
     <div className="space-y-6">
-      <SettingsSection title="Core defaults">
+      <SettingsSection title="New chats">
         <SettingsRow
+          id="setting-default-provider"
           title="Default provider"
           description="Provider used for new chats until you pick a model. New chats then reuse your most recent model and options."
           resetAction={
@@ -98,8 +97,9 @@ export function SettingsGeneralPanel(props: {
         />
 
         <SettingsRow
-          title="New threads"
-          description="Pick the default workspace mode for newly created draft threads."
+          id="setting-new-threads"
+          title="New chats"
+          description="Choose where new chats work."
           resetAction={
             settings.defaultThreadEnvMode !== defaults.defaultThreadEnvMode ? (
               <SettingResetButton
@@ -113,46 +113,31 @@ export function SettingsGeneralPanel(props: {
             ) : null
           }
           control={
-            <SettingsSelectControl
+            <SettingsSegmentedControl
               value={settings.defaultThreadEnvMode}
-              onValueChange={(value) => {
-                if (value !== "local" && value !== "worktree") return;
-                updateSettings({
-                  defaultThreadEnvMode: value,
-                });
-              }}
-              ariaLabel="Default thread mode"
-              valueContent={settings.defaultThreadEnvMode === "worktree" ? "New worktree" : "Local"}
-            >
-              <SelectItem hideIndicator value="local">
-                Local
-              </SelectItem>
-              <SelectItem hideIndicator value="worktree">
-                New worktree
-              </SelectItem>
-            </SettingsSelectControl>
-          }
-        />
-
-        {renderBooleanSettingRow({
-          settingKey: "archiveDeletesOrphanedWorktree",
-          title: "Delete worktree on archive",
-          description:
-            "After Archive's Undo period, remove a clean worktree only if the task has stopped and no other task uses it. Its branch remains available for recovery.",
-          resetLabel: "delete worktree on archive",
-          ariaLabel: "Delete worktree on archive",
-        })}
-
-        <SettingsRow
-          title="Welcome tour"
-          description="Replay the first-run setup: feature tour, provider selection, appearance, and first project."
-          control={
-            <Button
-              variant="outline"
-              onClick={() => useOnboardingDialogStore.getState().openDialog()}
-            >
-              Open welcome tour
-            </Button>
+              onValueChange={(value) => updateSettings({ defaultThreadEnvMode: value })}
+              ariaLabel="New chat workspace"
+              options={[
+                {
+                  value: "local",
+                  label: (
+                    <>
+                      <CentralIcon name="macbook-air" className="size-3.5" />
+                      Local
+                    </>
+                  ),
+                },
+                {
+                  value: "worktree",
+                  label: (
+                    <>
+                      <WorktreeIcon className="size-3.5" />
+                      New worktree
+                    </>
+                  ),
+                },
+              ]}
+            />
           }
         />
       </SettingsSection>
@@ -182,6 +167,7 @@ export function SettingsGeneralPanel(props: {
         }
 
         <SettingsRow
+          id="setting-project-order"
           title="Project order"
           description="Controls how projects are arranged in the main sidebar."
           resetAction={
@@ -270,23 +256,24 @@ export function SettingsGeneralPanel(props: {
         })}
       </SettingsSection>
 
-      <div id={SETTINGS_TARGETS.environmentPanel} className="space-y-6">
+      <div
+        id={SETTINGS_TARGETS.environmentPanel}
+        className="space-y-4 rounded-lg border border-border p-3"
+      >
         <SettingsSection title="Environment panel">
           {renderBooleanSettingRow({
             settingKey: "environmentPanelDefaultOpen",
             title: "Open by default",
-            description:
-              "Open the chat Environment panel automatically on normal threads. When off, the panel stays closed until you open it. Your last open/close also updates this preference.",
+            description: "Opening or closing the panel also updates this preference.",
             resetLabel: "environment panel default open",
-            ariaLabel: "Open the Environment panel by default on normal threads",
+            ariaLabel: "Open the Environment panel by default on chats",
           })}
         </SettingsSection>
 
-        <SettingsSection title="Code and status">
+        <SettingsSection title="Panel contents">
           {renderBooleanSettingRow({
             settingKey: "showEnvironmentUsage",
             title: "Usage",
-            description: "Show the provider usage row in the chat Environment panel.",
             resetLabel: "usage section",
             ariaLabel: "Show the Usage section in the Environment panel",
           })}
@@ -312,17 +299,13 @@ export function SettingsGeneralPanel(props: {
           {renderBooleanSettingRow({
             settingKey: "showEnvironmentEditor",
             title: "Editor",
-            description: "Show the Open in editor picker in the chat Environment panel.",
             resetLabel: "editor section",
             ariaLabel: "Show the Editor section in the Environment panel",
           })}
-        </SettingsSection>
 
-        <SettingsSection title="Context and notes">
           {renderBooleanSettingRow({
             settingKey: "showEnvironmentPinned",
             title: "Pinned messages",
-            description: "Show the pinned-messages checklist in the Environment panel.",
             resetLabel: "pinned messages section",
             ariaLabel: "Show the Pinned messages section in the Environment panel",
           })}
@@ -338,25 +321,11 @@ export function SettingsGeneralPanel(props: {
           {renderBooleanSettingRow({
             settingKey: "showEnvironmentNotepad",
             title: "Notepad",
-            description: "Show the per-thread notepad in the Environment panel.",
             resetLabel: "notepad section",
             ariaLabel: "Show the Notepad section in the Environment panel",
           })}
         </SettingsSection>
       </div>
-
-      <SettingsSection title="Reset settings">
-        <SettingsRow
-          title="Restore defaults"
-          description="Reset Glade preferences, theme customizations, and provider preferences."
-          control={
-            <Button size="sm" variant="outline" onClick={() => onRestoreDefaults()}>
-              <ResetIcon className="size-3.5" />
-              Restore defaults
-            </Button>
-          }
-        />
-      </SettingsSection>
     </div>
   );
 }

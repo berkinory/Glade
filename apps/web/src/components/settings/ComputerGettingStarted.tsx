@@ -37,7 +37,7 @@ export function ComputerGettingStarted() {
         <SettingsCard>
           <SettingsRow
             title="Ask for a task"
-            description="Type /computer-use followed by your task, for example: “/computer-use open Calculator and calculate 123 × 45.” This enables Computer for that request only. The default setting below can enable it on every turn."
+            description="Type /computer-use followed by your task, for example: “/computer-use open Calculator and calculate 123 × 45.” This enables Computer for that request only. Turn on Computer control to enable it for every turn."
           />
           <SettingsRow
             title="Approve the task"

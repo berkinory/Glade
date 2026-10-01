@@ -4,6 +4,8 @@
 
 ### Improved
 
+- Settings are easier to navigate, with clearer names, related controls grouped together and more useful search.
+
 - Settings show desktop notification permissions and bring provider configuration into one place.
 
 - New chats show models instantly instead of reloading them each time.

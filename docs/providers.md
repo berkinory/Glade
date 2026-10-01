@@ -139,7 +139,7 @@ link in its reply.
 
 **Settings > MCP servers** shows native server status for the selected provider, workspace or active session. Supported actions include authentication, reconnect, enable/disable and scoped configuration changes. Claude enable/disable applies only to the selected session; persisted changes apply to a later session. Codex reconnect reloads its provider MCP runtime. Concurrent Codex configuration edits require a refresh rather than overwriting a newer native configuration. The managed Glade gateway cannot be removed or disabled here.
 
-**Settings > Agent plugins** separates installed plugins from plugins loaded in the selected session. Claude changes use the native CLI and reload API. The Codex plugin library retains marketplace and detail views. Native reload failures remain visible even when installation succeeded.
+**Settings > Plugins** separates installed plugins from plugins loaded in the selected session. Claude changes use the native CLI and reload API. The Codex plugin library retains marketplace and detail views. Native reload failures remain visible even when installation succeeded.
 
 Shared skills load through each provider's native loader. Claude uses a local skills-only plugin bridge that links the original folders, preserving bundled resources; Codex receives additional native skill roots. Skill contents are not pasted into outgoing prompts. Claude enablement controls apply to Glade sessions, with changes taking effect in a new session. The allowlist governs Skill tool invocation; it does not restrict filesystem access through other tools.
 

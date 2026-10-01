@@ -617,10 +617,11 @@ export function ProvidersSettingsPanel({
 
   return (
     <div id={SETTINGS_TARGETS.providerUpdates} className="space-y-6">
-      <SettingsSection title="Advanced provider configuration">
+      <SettingsSection title="Provider configuration">
         <SettingsRow
+          id="setting-providers"
           title="Providers"
-          description="Enable providers, choose which installed CLIs appear in the picker, and drag to reorder. Expand a provider for CLI paths, tools and setup guides. Disabling preserves threads and running turns; hiding only changes the picker."
+          description="Enable providers, choose which installed CLIs appear in the picker, and drag to reorder. Expand a provider for CLI paths, tools and setup guides. Disabling preserves chats and running turns; hiding only changes the picker."
           status={
             providerEnablementMutationPending
               ? "Saving provider activity"

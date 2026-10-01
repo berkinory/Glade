@@ -6,6 +6,7 @@ import type {
 import { useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { resolveAndPersistPreferredEditor } from "~/editorPreferences";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { ShortcutKbd } from "~/components/ui/shortcut-kbd";
@@ -28,7 +29,7 @@ import {
   SETTINGS_CARD_ROW_DESCRIPTION_CLASS_NAME,
   SETTINGS_CARD_ROW_TITLE_CLASS_NAME,
 } from "~/settingsPanelStyles";
-import { SettingsCard, SettingsEmptyState } from "./SettingsPanelPrimitives";
+import { SettingsCard, SettingsEmptyState, SettingsRow } from "./SettingsPanelPrimitives";
 
 const EMPTY_KEYBINDINGS: ResolvedKeybindingsConfig = [];
 
@@ -54,6 +55,33 @@ export function KeyboardShortcutsSettingsPanel() {
   const [isSaving, setIsSaving] = useState(false);
   const serverConfigQuery = useQuery(serverConfigQueryOptions());
   const queryClient = useQueryClient();
+  const [isOpeningKeybindings, setIsOpeningKeybindings] = useState(false);
+  const [openKeybindingsError, setOpenKeybindingsError] = useState<string | null>(null);
+  const keybindingsConfigPath = serverConfigQuery.data?.keybindingsConfigPath ?? null;
+  const availableEditors = serverConfigQuery.data?.availableEditors;
+
+  const openKeybindingsFile = () => {
+    if (!keybindingsConfigPath) return;
+    setOpenKeybindingsError(null);
+    setIsOpeningKeybindings(true);
+    const editor = resolveAndPersistPreferredEditor(availableEditors ?? []);
+    if (!editor) {
+      setOpenKeybindingsError("No available editors found.");
+      setIsOpeningKeybindings(false);
+      return;
+    }
+    void ensureNativeApi()
+      .shell.openInEditor(keybindingsConfigPath, editor)
+      .catch((error) => {
+        setOpenKeybindingsError(
+          error instanceof Error ? error.message : "Unable to open keybindings file.",
+        );
+      })
+      .finally(() => {
+        setIsOpeningKeybindings(false);
+      });
+  };
+
   const keybindings = serverConfigQuery.data?.keybindings ?? EMPTY_KEYBINDINGS;
   const platform = getNavigatorPlatform();
 
@@ -140,19 +168,45 @@ export function KeyboardShortcutsSettingsPanel() {
 
   return (
     <div className="space-y-4">
+      <SettingsRow
+        id="setting-shortcuts-file"
+        title="Open shortcuts file"
+        description="Edit advanced shortcuts in your preferred editor."
+        status={
+          <>
+            <span className="block break-all font-mono text-ui-sm text-foreground">
+              {keybindingsConfigPath ?? "Resolving keybindings path..."}
+            </span>
+            {openKeybindingsError ? (
+              <span className="mt-1 block text-destructive">{openKeybindingsError}</span>
+            ) : null}
+          </>
+        }
+        control={
+          <Button
+            size="xs"
+            variant="outline"
+            disabled={!keybindingsConfigPath || isOpeningKeybindings}
+            onClick={openKeybindingsFile}
+          >
+            <CentralIcon name="folder" className="size-3.5" />
+            {isOpeningKeybindings ? "Opening..." : "Open file"}
+          </Button>
+        }
+      />
       <div className="rounded-lg bg-muted/45 px-3 py-2.5 text-ui leading-relaxed text-muted-foreground">
         Capture up to two modifiers and one key. Changes are saved directly to{" "}
         <code>keybindings.json</code>.
       </div>
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-ui-lg font-medium text-foreground">Keybindings</h3>
+          <h3 className="text-ui-lg font-medium text-foreground">Keyboard shortcuts</h3>
           <p className="mt-0.5 text-ui-sm text-muted-foreground">
             Customize built-in commands and their context conditions.
           </p>
         </div>
         <Button size="sm" variant="outline" onClick={beginAdding} disabled={isAdding || isSaving}>
-          Set keybinding
+          Set shortcut
         </Button>
       </div>
       {isAdding ? (
@@ -192,7 +246,7 @@ export function KeyboardShortcutsSettingsPanel() {
                 size="sm"
                 nativeInput
                 placeholder="For example, !terminalFocus"
-                aria-label="Condition for new keybinding"
+                aria-label="Condition for new shortcut"
                 value={whenValue}
                 onChange={(event) => setWhenValue(event.target.value)}
               />
@@ -204,7 +258,7 @@ export function KeyboardShortcutsSettingsPanel() {
             </p>
             <div className="flex gap-2">
               <Button size="sm" disabled={!keyValue || isSaving} onClick={() => void saveBinding()}>
-                {isSaving ? "Saving..." : "Save keybinding"}
+                {isSaving ? "Saving..." : "Save shortcut"}
               </Button>
               <Button size="sm" variant="outline" disabled={isSaving} onClick={cancelCapture}>
                 Cancel
@@ -237,7 +291,6 @@ export function KeyboardShortcutsSettingsPanel() {
           className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/70"
         />
       </div>
-
       {filteredSections.length > 0 ? (
         <SettingsCard>
           <div className="flex items-center justify-between gap-4 px-3 py-2 text-ui-sm font-medium text-muted-foreground">

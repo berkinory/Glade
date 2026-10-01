@@ -66,7 +66,7 @@ const AVAILABLE_NOW_DEFINITIONS: readonly ShortcutDefinition[] = [
   },
   {
     command: "sidebar.search",
-    label: "Search projects and threads",
+    label: "Search projects and chats",
     description: "Open the sidebar search palette from anywhere in the app.",
   },
   {
@@ -76,7 +76,7 @@ const AVAILABLE_NOW_DEFINITIONS: readonly ShortcutDefinition[] = [
   },
   {
     command: "sidebar.importThread",
-    label: "Import thread",
+    label: "Import chat",
     description: "Bring an existing conversation into the current workspace.",
   },
   {
@@ -92,13 +92,13 @@ const AVAILABLE_NOW_DEFINITIONS: readonly ShortcutDefinition[] = [
   ...SPACE_JUMP_DEFINITIONS,
   {
     command: "chat.new",
-    label: "New thread",
-    description: "Start a fresh thread in the current project, or the most recent one.",
+    label: "New chat",
+    description: "Start a fresh chat in the current project, or the most recent one.",
   },
   {
     command: "chat.newLatestProject",
-    label: "New thread in latest project",
-    description: "Jump back into the most recently used project with a new thread.",
+    label: "New chat in latest project",
+    description: "Jump back into the most recently used project with a new chat.",
   },
   {
     command: ["chat.newChat", "chat.newLocal"],
@@ -107,13 +107,13 @@ const AVAILABLE_NOW_DEFINITIONS: readonly ShortcutDefinition[] = [
   },
   {
     command: "chat.newClaude",
-    label: "New Claude thread",
-    description: "Start a fresh thread with Claude selected.",
+    label: "New Claude chat",
+    description: "Start a fresh chat with Claude selected.",
   },
   {
     command: "chat.newCodex",
-    label: "New Codex thread",
-    description: "Start a fresh thread with Codex selected.",
+    label: "New Codex chat",
+    description: "Start a fresh chat with Codex selected.",
   },
   {
     command: "chat.split",
@@ -155,7 +155,7 @@ const AVAILABLE_NOW_DEFINITIONS: readonly ShortcutDefinition[] = [
   {
     command: "settings.usage",
     label: "Open usage settings",
-    description: "Open Settings → Usage for provider quota and token totals.",
+    description: "Open Settings → Usage & limits for provider quota and token totals.",
   },
   {
     command: "composer.focus.toggle",
@@ -164,13 +164,13 @@ const AVAILABLE_NOW_DEFINITIONS: readonly ShortcutDefinition[] = [
   },
   {
     command: "chat.find",
-    label: "Find in thread",
+    label: "Find in chat",
     description: "Search the current transcript and jump to each matching message.",
   },
   {
     command: "terminal.toggle",
     label: "Toggle terminal",
-    description: "Show or hide the terminal surface for the active thread.",
+    description: "Show or hide the terminal surface for the active chat.",
   },
   {
     command: "terminal.split",
@@ -225,7 +225,7 @@ const AVAILABLE_NOW_DEFINITIONS: readonly ShortcutDefinition[] = [
   {
     command: "browser.toggle",
     label: "Toggle browser",
-    description: "Reveal the built-in browser panel for the active thread.",
+    description: "Reveal the built-in browser panel for the active chat.",
   },
   {
     command: "thread.copyId",
@@ -234,18 +234,18 @@ const AVAILABLE_NOW_DEFINITIONS: readonly ShortcutDefinition[] = [
   },
   {
     command: "chat.visible.previous",
-    label: "Previous visible thread",
-    description: "Cycle to the previous thread that is currently visible in the sidebar.",
+    label: "Previous visible chat",
+    description: "Cycle to the previous chat that is currently visible in the sidebar.",
   },
   {
     command: "chat.visible.next",
-    label: "Next visible thread",
-    description: "Cycle to the next thread that is currently visible in the sidebar.",
+    label: "Next visible chat",
+    description: "Cycle to the next chat that is currently visible in the sidebar.",
   },
   {
     command: "editor.openFavorite",
     label: "Open in favorite editor",
-    description: "Send the current thread or workspace target to your preferred editor.",
+    description: "Send the current chat or workspace target to your preferred editor.",
   },
   {
     command: "editor.file.save",
@@ -255,7 +255,7 @@ const AVAILABLE_NOW_DEFINITIONS: readonly ShortcutDefinition[] = [
   {
     command: "git.commitAndPush",
     label: "Commit and push",
-    description: "Commit pending changes and push the active thread's repo.",
+    description: "Commit pending changes and push the active chat's repo.",
   },
 ] as const;
 
@@ -264,7 +264,7 @@ const THREAD_JUMP_DEFINITIONS: readonly ShortcutDefinition[] = Array.from(
   (_, index) => ({
     command: `thread.jump.${index + 1}` as KeybindingCommand,
     label: `Jump to visible thread ${index + 1}`,
-    description: "Focus a visible thread directly from the sidebar number row.",
+    description: "Focus a visible chat directly from the sidebar number row.",
   }),
 );
 
@@ -272,7 +272,7 @@ const WORKSPACE_DEFINITIONS: readonly ShortcutDefinition[] = [
   {
     command: "terminal.workspace.newFullWidth",
     label: "Open full-width terminal workspace",
-    description: "Expand the active thread into the workspace terminal layout.",
+    description: "Expand the active chat into the workspace terminal layout.",
   },
   {
     command: "terminal.workspace.terminal",
@@ -379,7 +379,7 @@ export function buildShortcutSheetSections(
       id: "shortcuts.show",
       command: null,
       binding: null,
-      label: "Show keybindings",
+      label: "Keyboard shortcuts",
       description: "Open this sheet from anywhere without leaving your current context.",
       shortcutLabel: modSlashLabel(options.platform),
     },
