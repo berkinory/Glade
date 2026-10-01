@@ -67,7 +67,21 @@ export function turnModelSelectionCte(
       pt.thread_id AS thread_id,
       pt.turn_id AS turn_id,
       MAX(json_extract(e.payload_json, '$.modelSelection.provider')) AS provider,
-      MAX(json_extract(e.payload_json, '$.modelSelection.model')) AS model
+      COALESCE(
+        (SELECT CASE WHEN COUNT(DISTINCT json_extract(r.event_json, '$.payload.model')) = 1
+          THEN MAX(json_extract(r.event_json, '$.payload.model')) END
+         FROM provider_runtime_events r
+         WHERE r.thread_id = pt.thread_id AND r.turn_id = pt.turn_id
+           AND r.event_type = 'turn.started'
+           AND json_valid(r.event_json)
+           AND json_extract(r.event_json, '$.provider') =
+             MAX(json_extract(e.payload_json, '$.modelSelection.provider'))
+           AND NULLIF(TRIM(json_extract(r.event_json, '$.payload.model')), '') IS NOT NULL
+           AND json_extract(r.event_json, '$.payload.model') != 'provider-default'
+           AND NOT (json_extract(r.event_json, '$.provider') = 'claudeAgent'
+             AND json_extract(r.event_json, '$.payload.model') = 'default')),
+        MAX(json_extract(e.payload_json, '$.modelSelection.model'))
+      ) AS model
     FROM orchestration_events e
     JOIN projection_turns pt
       ON pt.thread_id = ${turnThreadMatch}

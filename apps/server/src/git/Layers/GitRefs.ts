@@ -3,7 +3,6 @@ import { DEFAULT_GIT_RECENT_COMMIT_LIMIT, type GitRecentCommit } from "@glade/co
 import { GitCommandError } from "../Errors.ts";
 import type { GitCoreShape } from "../Services/GitCore.ts";
 import { GitCommands } from "../Services/GitCommands.ts";
-import { GitStatus } from "../Services/GitStatus.ts";
 import { GitRefs } from "../Services/GitRefs.ts";
 import { parseRemoteNames } from "./GitStatus.ts";
 import { createGitCommandError, isMissingGitCwdError } from "./GitCommands.ts";
@@ -75,7 +74,6 @@ function parseRemoteRefWithRemoteNames(
 const makeGitRefs = Effect.gen(function* () {
   const fileSystem = yield* FileSystem.FileSystem;
   const { execute, executeGit, runGitStdout } = yield* GitCommands;
-  const { readBranchContext } = yield* GitStatus;
   const readBranchRecency = (cwd: string): Effect.Effect<Map<string, number>, GitCommandError> =>
     Effect.gen(function* () {
       const branchRecency = yield* executeGit(
@@ -380,18 +378,43 @@ const makeGitRefs = Effect.gen(function* () {
       const commits = page.slice(0, limit);
       if (commits.length === 0) return { commits, hasMore: false };
 
-      const context = yield* readBranchContext(input.cwd);
-      const upstream = context.upstreamRef
-        ? yield* executeGit(
-            "GitCore.listRecentCommits.upstream",
-            input.cwd,
-            ["rev-parse", "--symbolic-full-name", "@{upstream}"],
-            { timeoutMs: 5_000, allowNonZeroExit: true, maxOutputBytes: 4_096 },
-          )
-        : null;
-      const hasRemoteUpstream =
-        upstream?.code === 0 && upstream.stdout.trim().startsWith("refs/remotes/");
-      const outgoing = hasRemoteUpstream
+      const refs = yield* executeGit(
+        "GitCore.listRecentCommits.refs",
+        input.cwd,
+        [
+          "for-each-ref",
+          "--format=%(objectname)%00%(*objectname)%00%(refname)%00%(symref)%00%(HEAD)%00%(upstream)",
+          "refs/heads",
+          "refs/remotes",
+          "refs/tags",
+        ],
+        { timeoutMs: 10_000, maxOutputBytes: 4_000_000 },
+      );
+      const tagsBySha = new Map<string, string[]>();
+      const branchesBySha = new Map<string, string[]>();
+      let upstreamRef: string | null = null;
+      for (const line of refs.stdout.split("\n")) {
+        const [objectSha, peeledSha, refname, symref, head, upstream] = line.split("\0");
+        if (!objectSha || !refname || symref) continue;
+        if (head === "*") upstreamRef = upstream || null;
+        if (refname.startsWith("refs/tags/")) {
+          const sha = peeledSha || objectSha;
+          const tags = tagsBySha.get(sha) ?? [];
+          tags.push(refname.slice("refs/tags/".length));
+          tagsBySha.set(sha, tags);
+        } else {
+          const name = refname.startsWith("refs/heads/")
+            ? refname.slice("refs/heads/".length)
+            : refname.startsWith("refs/remotes/")
+              ? refname.slice("refs/remotes/".length)
+              : null;
+          if (!name) continue;
+          const branches = branchesBySha.get(objectSha) ?? [];
+          branches.push(name);
+          branchesBySha.set(objectSha, branches);
+        }
+      }
+      const outgoing = upstreamRef?.startsWith("refs/remotes/")
         ? yield* executeGit(
             "GitCore.listRecentCommits.outgoing",
             input.cwd,
@@ -403,56 +426,13 @@ const makeGitRefs = Effect.gen(function* () {
               ...(query ? ["--fixed-strings", "--regexp-ignore-case", `--grep=${query}`] : []),
               "HEAD",
               "--not",
-              "@{upstream}",
+              upstreamRef,
+              "--",
             ],
             { timeoutMs: 10_000, allowNonZeroExit: true },
           )
         : null;
       const unpushed = outgoing?.code === 0 ? new Set(outgoing.stdout.trim().split("\n")) : null;
-      const tagResult = yield* executeGit(
-        "GitCore.listRecentCommits.tags",
-        input.cwd,
-        [
-          "for-each-ref",
-          "--format=%(objectname)%00%(*objectname)%00%(refname:strip=2)%00",
-          "refs/tags",
-        ],
-        { timeoutMs: 10_000, maxOutputBytes: 2_000_000 },
-      );
-      const tagsBySha = new Map<string, string[]>();
-      for (const line of tagResult.stdout.split("\n")) {
-        const [objectSha, peeledSha, tagName] = line.split("\0");
-        if (!objectSha || !tagName) continue;
-        const sha = peeledSha || objectSha;
-        const tags = tagsBySha.get(sha) ?? [];
-        tags.push(tagName);
-        tagsBySha.set(sha, tags);
-      }
-      const branchResult = yield* executeGit(
-        "GitCore.listRecentCommits.branches",
-        input.cwd,
-        [
-          "for-each-ref",
-          "--format=%(objectname)%00%(refname)%00%(symref)",
-          "refs/heads",
-          "refs/remotes",
-        ],
-        { timeoutMs: 10_000, maxOutputBytes: 2_000_000 },
-      );
-      const branchesBySha = new Map<string, string[]>();
-      for (const line of branchResult.stdout.split("\n")) {
-        const [sha, refname, symref] = line.split("\0");
-        if (!sha || !refname || symref) continue;
-        const name = refname.startsWith("refs/heads/")
-          ? refname.slice("refs/heads/".length)
-          : refname.startsWith("refs/remotes/")
-            ? refname.slice("refs/remotes/".length)
-            : null;
-        if (!name) continue;
-        const branches = branchesBySha.get(sha) ?? [];
-        branches.push(name);
-        branchesBySha.set(sha, branches);
-      }
       return {
         hasMore,
         commits: commits.map((commit) => ({

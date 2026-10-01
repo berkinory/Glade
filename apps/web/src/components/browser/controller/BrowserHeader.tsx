@@ -281,8 +281,8 @@ export function BrowserHeader({
   const annotationMethods = api?.browser.annotations;
   return (
     <div className={"flex min-w-0 flex-1 items-center gap-2"}>
-      <div className="relative flex min-w-0 flex-1 items-center gap-2 [-webkit-app-region:no-drag]">
-        <div className="flex shrink-0 items-center gap-1 [-webkit-app-region:no-drag]">
+      <div className="relative flex min-w-0 flex-1 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1">
           <Button
             type="button"
             variant="ghost"
@@ -426,7 +426,7 @@ export function BrowserHeader({
           </div>
         ) : null}
       </div>
-      <div className="flex shrink-0 items-center gap-1 [-webkit-app-region:no-drag]">
+      <div className="flex shrink-0 items-center gap-1">
         <BrowserVaultButton />
         <BrowserAnnotationButton
           controller={annotationController}

@@ -23,6 +23,7 @@
     "prepare": "effect-language-service patch",
     "generate:codex-protocol": "bun scripts/generate-codex-protocol.ts",
     "typecheck": "bun ../../node_modules/@typescript/native/bin/tsc --noEmit --tsBuildInfoFile node_modules/.cache/typescript-native.tsbuildinfo",
+    "measure:git-latency": "bun scripts/measureGitLatency.ts",
     "test": "vitest run --maxWorkers=1 --no-file-parallelism"
   },
   "dependencies": {

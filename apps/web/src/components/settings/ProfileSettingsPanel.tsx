@@ -356,7 +356,11 @@ function ModelUsageRow({
           ) : (
             <CentralIcon name="chart-2" className="size-3.5 shrink-0 text-muted-foreground" />
           )}
-          <span className="truncate">{model}</span>
+          <span className="truncate">
+            {model === "unknown"
+              ? `Unknown model (${provider === "unknown" ? "unknown provider" : formatProviderLabel(provider)})`
+              : model}
+          </span>
         </span>
         <span className="shrink-0 tabular-nums text-muted-foreground">{percent}%</span>
       </div>

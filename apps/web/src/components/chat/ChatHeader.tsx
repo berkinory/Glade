@@ -9,7 +9,7 @@ import { FiGitBranch } from "react-icons/fi";
 import { HiMiniArrowsPointingOut } from "react-icons/hi2";
 import { TbExchange } from "react-icons/tb";
 import GitActionsControl from "../GitActionsControl";
-import { PanelRightCloseIcon } from "~/lib/icons";
+import { PanelRightCloseIcon, PencilIcon } from "~/lib/icons";
 import {
   CHAT_HEADER_TOGGLE_CLASS_NAME,
   ChatHeaderIconButton,
@@ -255,16 +255,25 @@ export function ChatHeader({
                 <h2
                   className="max-w-[clamp(12rem,42vw,36rem)] truncate font-system-ui text-ui font-normal text-foreground"
                   title={activeThreadTitle}
-                  onDoubleClick={() => onRenameThread()}
                 >
                   {activeThreadTitle}
                 </h2>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <ChatHeaderIconButton label="Rename chat" onClick={onRenameThread}>
+                        <PencilIcon className="size-3.5" />
+                      </ChatHeaderIconButton>
+                    }
+                  />
+                  <TooltipPopup side="bottom">Rename chat</TooltipPopup>
+                </Tooltip>
               </div>
             </div>
           </div>
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-2 [-webkit-app-region:no-drag]">
+      <div className="flex shrink-0 items-center gap-2">
         {!minimalChrome && !hideHandoffControls && !environment ? (
           <ProviderUsageMenuControl provider={activeProvider} />
         ) : null}

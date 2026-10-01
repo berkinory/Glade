@@ -83,3 +83,13 @@ Windows reads the app's WinRT toast notification setting and links to notificati
 settings when changes are needed. Linux has no portable authorization query;
 Glade reports that limitation separately from unsupported notifications. Browser
 clients use the browser permission API and direct blocked users to site settings.
+
+## Native header hit regions
+
+The existing 46 px header uses `drag-region` for unused space, including title text and gaps between controls. Apply `no-drag` to interactive targets rather than their layout containers. Native inputs, links, buttons, supported interactive roles, editable content and draggable tabs are excluded by shared CSS. Portalled dialog/menu/popover/select/combobox/tooltip surfaces also exclude dragging. Keep resize handles interactive and retain caption controls after drag regions in document order.
+
+Chat renaming uses the explicit Rename chat pencil button. Title double-click is reserved for the operating system's title-bar preference. Glade does not implement custom movement or a maximize handler; Electron/native hit testing owns drag, snap, zoom and supported window-menu behavior. Browser clients keep ordinary pointer behavior.
+
+Verify through the real Dev launcher, using an isolated home when another instance is running. Check blank areas at the top, middle and bottom of chat/sidebar/dock/browser/settings headers, controls and gaps, menus/dialogs, rename and resize handles. Repeat with docks open/closed, narrow windows, larger text, zoom, fullscreen and maximized state. On Windows/Linux check caption buttons, native menu and supported snap; on macOS check traffic lights and the configured double-click action. DOM screenshots do not establish native hit testing.
+
+The macOS Dev verification exercised settings navigation and native double-click zoom from 1100×780 to 1710×1072. Coordinate dragging was blocked by the native automation tool with `windowNotFoundAtPosition`; movement is not claimed verified. Rename, Windows/Linux native input, snap/window menus, multiple-display scaling and the complete layout matrix remain unverified.

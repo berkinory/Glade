@@ -1,3 +1,4 @@
+import { normalizeModelSlug } from "@glade/shared/provider/model";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ProfileStats } from "@glade/contracts/server/stats";
 import { nonEmptyTrimmed } from "@glade/shared/text/text";
@@ -94,6 +95,15 @@ export function normalizeProviderKind(value: unknown): ProviderKind | "unknown" 
     : "unknown";
 }
 
+export function normalizeUsageModel(
+  model: string | null | undefined,
+  provider: ProviderKind | "unknown",
+): string {
+  return (
+    normalizeModelSlug(model, provider === "claudeAgent" ? "claudeAgent" : "codex") ?? "unknown"
+  );
+}
+
 interface TokenModelUsageCount {
   readonly provider: ProviderKind | "unknown";
   readonly model: string;
@@ -124,7 +134,7 @@ export function aggregateTokenActivity(rows: ReadonlyArray<TokenDayRow>): TokenA
     if (provider !== "unknown") {
       tokensByProvider.set(provider, (tokensByProvider.get(provider) ?? 0) + tokens);
     }
-    const model = nonEmptyTrimmed(row.model) ?? "unknown";
+    const model = normalizeUsageModel(row.model, provider);
     const providerModelKey = `${provider}\u0000${model}`;
     const existing = tokensByProviderModel.get(providerModelKey);
     if (existing) {

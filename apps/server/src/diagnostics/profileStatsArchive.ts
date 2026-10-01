@@ -1,3 +1,4 @@
+import { normalizeProviderKind, normalizeUsageModel } from "./profileActivity";
 import { asNonBlankString } from "@glade/shared/text/text";
 import type { TaggedFailure } from "../platform/operationError.ts";
 
@@ -35,6 +36,7 @@ interface PurgeThreadRow {
 
 interface TurnEventRow {
   readonly payloadJson: string | null;
+  readonly model: string | null;
 }
 
 interface TokenActivityRow {
@@ -182,8 +184,7 @@ function hasProfileStatsContribution(input: {
   );
 }
 
-// Mirrors the per-turn extraction in profileStats.queryTurnInsights: the turn event's own
-// modelSelection wins, otherwise the thread's selection applies.
+// Match live attribution: a later thread model is not evidence of a historical turn model.
 function aggregateThreadTurnSnapshotRows(
   events: ReadonlyArray<TurnEventRow>,
   threadModelSelectionJson: string | null,
@@ -208,7 +209,10 @@ function aggregateThreadTurnSnapshotRows(
     }
     const selection = eventSelection ?? threadSelection;
     const provider = selection?.provider ?? null;
-    const model = selection?.model ?? null;
+    const model = normalizeUsageModel(
+      event.model ?? eventSelection?.model,
+      normalizeProviderKind(provider),
+    );
     const reasoning = selection?.reasoning ?? null;
     const key = `${provider ?? ""}\u0000${model ?? ""}\u0000${reasoning ?? ""}`;
     const existing = counts.get(key);
@@ -237,11 +241,7 @@ function resolveTokenProviderModel(
 ): { readonly provider: string | null; readonly model: string | null } {
   const stampedProvider = asNonBlankString(row.provider) ?? null;
   const provider = stampedProvider ?? fallbackSelection?.provider ?? null;
-  const model =
-    asNonBlankString(row.model) ??
-    (stampedProvider === null || stampedProvider === fallbackSelection?.provider
-      ? (fallbackSelection?.model ?? null)
-      : null);
+  const model = asNonBlankString(row.model) ?? "unknown";
   return { provider, model };
 }
 
@@ -566,8 +566,13 @@ const makeProfileStatsArchive = Effect.gen(function* () {
       const projectId = thread.projectId ?? null;
 
       const turnEventRows = yield* sql<TurnEventRow>`
-        SELECT e.payload_json AS payloadJson
+        WITH turn_model AS (${turnModelSelectionCte(sql, { threadId })})
+        SELECT e.payload_json AS payloadJson, tm.model AS model
         FROM orchestration_events e
+        LEFT JOIN projection_turns pt
+          ON pt.thread_id = ${threadId}
+         AND pt.pending_message_id = json_extract(e.payload_json, '$.messageId')
+        LEFT JOIN turn_model tm ON tm.thread_id = pt.thread_id AND tm.turn_id = pt.turn_id
         LEFT JOIN projection_thread_messages m
           ON m.message_id = json_extract(e.payload_json, '$.messageId')
         WHERE e.event_type = 'thread.turn-start-requested'

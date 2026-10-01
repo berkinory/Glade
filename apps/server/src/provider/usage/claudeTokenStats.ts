@@ -19,10 +19,7 @@ export function claudeTokenActivityCtes(
     ),
     claude_completed_ranked AS (
       SELECT a.thread_id, a.turn_id, a.activity_id, a.created_at, a.payload_json,
-        COALESCE(tm.model, CASE WHEN json_valid(th.model_selection_json)
-          AND (json_extract(a.payload_json, '$.provider') IS NULL
-            OR json_extract(a.payload_json, '$.provider') = json_extract(th.model_selection_json, '$.provider'))
-          THEN json_extract(th.model_selection_json, '$.model') END, 'unknown') AS model,
+        COALESCE(tm.model, 'unknown') AS model,
         pm.dispatch_origin,
         ROW_NUMBER() OVER (
           PARTITION BY a.thread_id, a.turn_id

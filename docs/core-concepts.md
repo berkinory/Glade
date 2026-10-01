@@ -263,3 +263,7 @@ across restart. Continue resumes that push; Abort restores the pre-rebase state 
 Externally started rebases never acquire an automatic push. If an operation finished outside Glade,
 the pending push requires an explicit Resume or Cancel. Conflicts without an operation, such as a
 stash conflict, offer file resolution without a misleading rebase abort action.
+
+## Activity model attribution
+
+Activity uses the model recorded for a historical turn or its reliable provider usage evidence. Older default selections without a recoverable model appear as Unknown model with the provider name. They retain their tokens and turns, including after chat deletion. Changing a chat's model does not relabel its earlier unknown usage. Token statistics and the turn-count fallback use the same grouping; their metrics remain distinct.

@@ -659,7 +659,29 @@ input {
 .drag-region input,
 .drag-region textarea,
 .drag-region select,
-.drag-region a {
+.drag-region a,
+.drag-region [role="button"],
+.drag-region [role="tab"],
+.drag-region [role="slider"],
+.drag-region [role="separator"][tabindex],
+.drag-region [role="combobox"],
+.drag-region [role="checkbox"],
+.drag-region [role="radio"],
+.drag-region [role="switch"],
+.drag-region [contenteditable="true"],
+.drag-region [draggable="true"] {
+  -webkit-app-region: no-drag;
+}
+
+/* Portals can overlap caption regions without being descendants of a header. */
+[data-slot="dialog-backdrop"],
+[data-slot="dialog-popup"],
+[data-slot="menu-popup"],
+[data-slot="menu-sub-content"],
+[data-slot="popover-popup"],
+[data-slot="select-popup"],
+[data-slot="combobox-popup"],
+[data-slot="tooltip-popup"] {
   -webkit-app-region: no-drag;
 }
 

@@ -36,6 +36,7 @@ import {
   arcName,
   compareNullableText,
   normalizeProviderKind,
+  normalizeUsageModel,
   percent1,
   deriveInitials,
   sanitizeHandle,
@@ -107,20 +108,7 @@ const makeProfileStatsQuery = Effect.gen(function* () {
               END,
               'unknown'
             ) AS provider,
-            COALESCE(
-              tm.model,
-              CASE
-                WHEN th.model_selection_json IS NOT NULL
-                  AND json_valid(th.model_selection_json)
-                  AND (
-                    json_extract(a.payload_json, '$.provider') IS NULL
-                    OR json_extract(a.payload_json, '$.provider') =
-                      json_extract(th.model_selection_json, '$.provider')
-                  )
-                THEN json_extract(th.model_selection_json, '$.model')
-              END,
-              'unknown'
-            ) AS model,
+            COALESCE(tm.model, 'unknown') AS model,
             CAST(json_extract(a.payload_json, '$.totalProcessedTokens') AS INTEGER) AS tp,
             CAST(json_extract(a.payload_json, '$.usedTokens') AS INTEGER) AS ut,
             pm.dispatch_origin AS dispatch_origin,
@@ -297,24 +285,12 @@ const makeProfileStatsQuery = Effect.gen(function* () {
 
   const queryTurnInsights = () =>
     sql<TurnInsightRow>`
-        WITH per_turn AS (
+        WITH turn_model AS (${turnModelSelectionCte(sql)}), per_turn AS (
           SELECT
-            CASE
-              WHEN json_type(e.payload_json, '$.modelSelection') = 'object'
-              THEN json_extract(e.payload_json, '$.modelSelection.provider')
-              ELSE CASE
-                WHEN t.model_selection_json IS NOT NULL AND json_valid(t.model_selection_json)
-                THEN json_extract(t.model_selection_json, '$.provider')
-              END
-            END AS provider,
-            CASE
-              WHEN json_type(e.payload_json, '$.modelSelection') = 'object'
-              THEN json_extract(e.payload_json, '$.modelSelection.model')
-              ELSE CASE
-                WHEN t.model_selection_json IS NOT NULL AND json_valid(t.model_selection_json)
-                THEN json_extract(t.model_selection_json, '$.model')
-              END
-            END AS model,
+            COALESCE(tm.provider, json_extract(e.payload_json, '$.modelSelection.provider'),
+              CASE WHEN json_valid(t.model_selection_json)
+                THEN json_extract(t.model_selection_json, '$.provider') END) AS provider,
+            COALESCE(tm.model, json_extract(e.payload_json, '$.modelSelection.model'), 'unknown') AS model,
             CASE
               WHEN json_type(e.payload_json, '$.modelSelection') = 'object'
               THEN COALESCE(
@@ -332,6 +308,10 @@ const makeProfileStatsQuery = Effect.gen(function* () {
           FROM orchestration_events e
           JOIN projection_threads t
             ON t.thread_id = COALESCE(json_extract(e.payload_json, '$.threadId'), e.stream_id)
+          LEFT JOIN projection_turns pt
+            ON pt.thread_id = t.thread_id
+           AND pt.pending_message_id = json_extract(e.payload_json, '$.messageId')
+          LEFT JOIN turn_model tm ON tm.thread_id = pt.thread_id AND tm.turn_id = pt.turn_id
           LEFT JOIN projection_thread_messages um
             ON um.thread_id = COALESCE(json_extract(e.payload_json, '$.threadId'), e.stream_id)
            AND um.message_id = json_extract(e.payload_json, '$.messageId')
@@ -489,8 +469,8 @@ const makeProfileStatsQuery = Effect.gen(function* () {
 
       for (const row of turnInsightRows) {
         const count = num(row.count);
-        const provider = nonEmptyTrimmed(row.provider) ?? null;
-        const model = nonEmptyTrimmed(row.model) ?? null;
+        const provider = normalizeProviderKind(row.provider);
+        const model = normalizeUsageModel(row.model, provider);
         const providerModelKey = `${provider ?? ""}\u0000${model ?? ""}`;
         const existingProviderModel = providerModelCounts.get(providerModelKey);
         if (existingProviderModel) {

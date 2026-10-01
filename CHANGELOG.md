@@ -4,6 +4,8 @@
 
 ### Improved
 
+- History loads faster with fewer repeated Git reads.
+- Empty space across the top bar supports window dragging and native title-bar actions more consistently.
 - File links open in Explorer, while turn changes and file diffs are available together in Source Control.
 - Source Control and History stay up to date automatically, and the latest unpushed commit can be undone without losing its changes.
 - Push synchronizes incoming commits automatically, and Source Control shows conflicts with actions to resolve or cancel the operation.
@@ -11,6 +13,7 @@
 
 ### Fixed
 
+- Activity keeps usage with missing historical model information without assigning it to a newer model.
 - The message input no longer briefly changes size when switching chats.
 
 ## 0.1.1 - 2026-10-01
