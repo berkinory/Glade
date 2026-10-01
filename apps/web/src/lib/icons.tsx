@@ -26,7 +26,6 @@ import {
   IconChevronRight,
   IconChevronUp,
   IconCircleCheck,
-  IconColumns2,
   IconDots,
   IconDownload,
   IconExternalLink,
@@ -38,7 +37,6 @@ import {
   IconFolderOpen,
   IconHistory,
   IconInfoCircle,
-  IconLayoutDistributeHorizontal,
   IconListCheck,
   IconListDetails,
   IconLoader2,
@@ -138,7 +136,6 @@ export const CircleCheckIcon = adaptIcon(IconCircleCheck);
 export const CircleQuestionIcon: LucideIcon = centralIconWrapper("circle-questionmark");
 export const ArrowUpCircleIcon: LucideIcon = centralIconWrapper("arrow-up-circle");
 export const CloudSyncIcon = centralIconWrapper("cloud-sync");
-export const Columns2Icon = adaptIcon(IconColumns2);
 export const ChangesIcon = centralIconWrapper("changes");
 export const COPY_ICON_NAME = "square-behind-square-6";
 export const CopyIcon = centralIconWrapper(COPY_ICON_NAME);
@@ -228,7 +225,6 @@ export const Plus = adaptIcon(IconPlus);
 export const PlusIcon = adaptIcon(IconPlus);
 export const RefreshCwIcon = adaptIcon(IconRefresh);
 export const RotateCcwIcon = adaptIcon(IconRotate2);
-export const Rows3Icon = adaptIcon(IconLayoutDistributeHorizontal);
 export const SearchIcon: LucideIcon = centralIconWrapper("magnifying-glass");
 
 export const SettingsIcon: LucideIcon = centralIconWrapper("settings-gear-4");

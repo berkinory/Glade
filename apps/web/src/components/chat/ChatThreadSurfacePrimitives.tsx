@@ -1,64 +1,16 @@
 import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, useEffect, useState } from "react";
 
 import ChatView from "../ChatView";
-import {
-  DiffPanelHeaderSkeleton,
-  DiffPanelLoadingState,
-  DiffPanelShell,
-  type DiffPanelMode,
-} from "../DiffPanelShell";
-import type { DiffFileEditRequest } from "../../lib/diffEditBaseRev";
 import type { SplitViewPanePanelState } from "../../splitViewModel";
 import { CHAT_BACKGROUND_CLASS_NAME } from "./composerPickerStyles";
 import { Spinner } from "../ui/spinner";
 import { cn } from "~/lib/utils";
 import { scheduleDeferredChatMount } from "./deferredChatMount";
 
-const DiffPanel = lazy(() => import("../DiffPanel"));
 export const LazyBrowserPanel = lazy(() => import("../BrowserPanel"));
 
 export const noopChatSurfaceAction = () => {};
-
-function DiffLoadingFallback(props: { mode: DiffPanelMode }) {
-  return (
-    <DiffPanelShell mode={props.mode} header={<DiffPanelHeaderSkeleton />}>
-      <DiffPanelLoadingState label="Loading diff viewer..." />
-    </DiffPanelShell>
-  );
-}
-
-export function LazyDiffPanel(props: {
-  mode: DiffPanelMode;
-  initialViewKind?: "repo" | "turn";
-  threadId?: ThreadId | null;
-  panelState?: Pick<SplitViewPanePanelState, "panel" | "diffTurnId" | "diffFilePath">;
-  onUpdatePanelState?: (
-    patch: Partial<Pick<SplitViewPanePanelState, "panel" | "diffTurnId" | "diffFilePath">>,
-  ) => void;
-  onClosePanel?: () => void;
-  liveRefreshEnabled?: boolean;
-  queriesEnabled?: boolean;
-  onEditFile?: (request: DiffFileEditRequest) => void;
-}) {
-  return (
-    <Suspense fallback={<DiffLoadingFallback mode={props.mode} />}>
-      <DiffPanel
-        mode={props.mode}
-        {...(props.initialViewKind ? { initialViewKind: props.initialViewKind } : {})}
-        {...(props.threadId !== undefined ? { threadId: props.threadId } : {})}
-        {...(props.panelState ? { panelState: props.panelState } : {})}
-        {...(props.onUpdatePanelState ? { onUpdatePanelState: props.onUpdatePanelState } : {})}
-        {...(props.onClosePanel ? { onClosePanel: props.onClosePanel } : {})}
-        {...(props.liveRefreshEnabled !== undefined
-          ? { liveRefreshEnabled: props.liveRefreshEnabled }
-          : {})}
-        {...(props.queriesEnabled !== undefined ? { queriesEnabled: props.queriesEnabled } : {})}
-        {...(props.onEditFile ? { onEditFile: props.onEditFile } : {})}
-      />
-    </Suspense>
-  );
-}
 
 export function ChatMountLoader() {
   return (

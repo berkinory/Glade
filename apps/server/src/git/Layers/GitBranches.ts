@@ -1,3 +1,4 @@
+import { synchronizePush } from "../pushSynchronization";
 import { Effect, Exit, Layer } from "effect";
 import { parseGitHubRepositoryNameWithOwnerFromRemoteUrl } from "@glade/shared/git/githubRepository";
 import { GitCheckoutDirtyWorktreeError, GitCommandError } from "../Errors.ts";
@@ -112,14 +113,12 @@ function parseStashEntries(input: string): StashEntry[] {
 }
 
 const makeGitBranches = Effect.gen(function* () {
-  const { executeGit, runGit, runGitStdout } = yield* GitCommands;
+  const { execute, executeGit, runGit, runGitStdout } = yield* GitCommands;
   const {
     branchExists,
-    remoteBranchExists,
     resolveCurrentUpstream,
     refreshCheckedOutBranchUpstream,
     resolvePrimaryRemoteName,
-    resolveBaseBranchForNoUpstream,
     statusDetails,
   } = yield* GitStatus;
   const listStashEntries = (
@@ -227,103 +226,56 @@ const makeGitBranches = Effect.gen(function* () {
       return remoteName;
     });
 
-  const pushCurrentBranch: GitCoreShape["pushCurrentBranch"] = (cwd, fallbackBranch) =>
+  const pushCurrentBranch: GitCoreShape["pushCurrentBranch"] = (
+    cwd,
+    _fallbackBranch,
+    allowIntegration = true,
+  ) =>
     Effect.gen(function* () {
-      const details = yield* statusDetails(cwd);
-      const branch = details.branch ?? fallbackBranch;
-      if (!branch) {
+      const branch = (yield* runGitStdout("push", cwd, ["symbolic-ref", "--short", "HEAD"])).trim();
+      const upstream = yield* resolveCurrentUpstream(cwd);
+      const configuredUpstream = (yield* runGitStdout(
+        "push",
+        cwd,
+        ["config", "--get", `branch.${branch}.merge`],
+        true,
+      )).trim();
+      if (!upstream && configuredUpstream)
         return yield* createGitCommandError(
-          "GitCore.pushCurrentBranch",
+          "push",
           cwd,
           ["push"],
-          "Cannot push from detached HEAD.",
+          "The configured upstream is unavailable. Fetch or repair the upstream configuration before pushing.",
         );
-      }
-
-      const hasNoLocalDelta = details.aheadCount === 0 && details.behindCount === 0;
-      if (hasNoLocalDelta) {
-        if (details.hasUpstream) {
-          return {
-            status: "skipped_up_to_date" as const,
-            branch,
-            ...(details.upstreamRef ? { upstreamBranch: details.upstreamRef } : {}),
-          };
-        }
-
-        const comparableBaseBranch = yield* resolveBaseBranchForNoUpstream(cwd, branch).pipe(
-          Effect.catch(() => Effect.succeed(null)),
-        );
-        if (comparableBaseBranch) {
-          const publishRemoteName = yield* resolvePushRemoteName(cwd, branch).pipe(
-            Effect.catch(() => Effect.succeed(null)),
-          );
-          if (!publishRemoteName) {
-            return {
-              status: "skipped_up_to_date" as const,
-              branch,
-            };
-          }
-
-          const hasRemoteBranch = yield* remoteBranchExists(cwd, publishRemoteName, branch).pipe(
-            Effect.catch(() => Effect.succeed(false)),
-          );
-          if (hasRemoteBranch) {
-            return {
-              status: "skipped_up_to_date" as const,
-              branch,
-            };
-          }
-        }
-      }
-
-      if (!details.hasUpstream) {
-        const publishRemoteName = yield* resolvePushRemoteName(cwd, branch);
-        if (!publishRemoteName) {
-          return yield* createGitCommandError(
-            "GitCore.pushCurrentBranch",
-            cwd,
-            ["push"],
-            "Cannot push because no git remote is configured for this repository.",
-          );
-        }
-        yield* runGit("GitCore.pushCurrentBranch.pushWithUpstream", cwd, [
+      const configuredRemote =
+        (yield* runGitStdout(
           "push",
-          "-u",
-          publishRemoteName,
+          cwd,
+          ["config", "--get", `branch.${branch}.pushRemote`],
+          true,
+        )).trim() ||
+        (yield* runGitStdout("push", cwd, ["config", "--get", "remote.pushDefault"], true)).trim();
+      if (upstream && configuredRemote && configuredRemote !== upstream.remoteName)
+        return yield* createGitCommandError(
+          "push",
+          cwd,
+          ["push"],
+          "Push remote differs from upstream. Configure matching destinations before automatic synchronization.",
+        );
+      const remote = upstream?.remoteName ?? (yield* resolvePushRemoteName(cwd, branch));
+      if (!remote)
+        return yield* createGitCommandError("push", cwd, ["push"], "No remote is configured.");
+      return yield* synchronizePush(
+        {
+          cwd,
           branch,
-        ]);
-        return {
-          status: "pushed" as const,
-          branch,
-          upstreamBranch: `${publishRemoteName}/${branch}`,
-          setUpstream: true,
-        };
-      }
-
-      const currentUpstream = yield* resolveCurrentUpstream(cwd).pipe(
-        Effect.catch(() => Effect.succeed(null)),
+          remote,
+          target: upstream?.upstreamBranch ?? branch,
+          hasUpstream: upstream !== null,
+          allowIntegration,
+        },
+        execute,
       );
-      if (currentUpstream) {
-        yield* runGit("GitCore.pushCurrentBranch.pushUpstream", cwd, [
-          "push",
-          currentUpstream.remoteName,
-          `HEAD:${currentUpstream.upstreamBranch}`,
-        ]);
-        return {
-          status: "pushed" as const,
-          branch,
-          upstreamBranch: currentUpstream.upstreamRef,
-          setUpstream: false,
-        };
-      }
-
-      yield* runGit("GitCore.pushCurrentBranch.push", cwd, ["push"]);
-      return {
-        status: "pushed" as const,
-        branch,
-        ...(details.upstreamRef ? { upstreamBranch: details.upstreamRef } : {}),
-        setUpstream: false,
-      };
     });
 
   const pullCurrentBranch: GitCoreShape["pullCurrentBranch"] = (cwd) =>

@@ -34,7 +34,11 @@ export const DockExplorerPane = function DockExplorerPane(props: {
   const [searchQuery, setSearchQuery] = useState("");
   const [codeQuery, setCodeQuery] = useState("");
   const [searchMode, setSearchMode] = useState(false);
-  const [revealPosition, setRevealPosition] = useState<{ lineNumber: number; requestId: number }>();
+  const [revealPosition, setRevealPosition] = useState<{
+    lineNumber: number;
+    column?: number;
+    requestId: number;
+  }>();
 
   const revealRequest = useExplorerRevealRequestStore(
     (state) => state.requestsByThreadId[props.threadId],
@@ -43,7 +47,11 @@ export const DockExplorerPane = function DockExplorerPane(props: {
     if (!revealRequest) return;
     setSearchQuery("");
     setSearchMode(false);
-    setRevealPosition(undefined);
+    setRevealPosition(
+      revealRequest.position
+        ? { ...revealRequest.position, requestId: revealRequest.nonce }
+        : undefined,
+    );
     if (revealRequest.filePath) setSelectedFilePath(revealRequest.filePath);
     const workspaceRoot = props.workspaceRoot;
     let cancelled = false;

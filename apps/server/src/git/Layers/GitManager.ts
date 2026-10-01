@@ -1,3 +1,4 @@
+import { readGitOperation } from "../gitOperationState";
 import { toResolvedPullRequest } from "../gitPullRequestSummary";
 import { randomUUID } from "node:crypto";
 import { realpathSync } from "node:fs";
@@ -1740,6 +1741,12 @@ export const makeGitManager = Effect.gen(function* () {
       let currentPhase: GitActionProgressPhase | null = null;
 
       const runAction = Effect.gen(function* () {
+        const operation = yield* readGitOperation(input.cwd, gitCore.execute);
+        if (operation.kind || operation.conflicts.length)
+          return yield* gitManagerError(
+            "runStackedAction",
+            "Resolve the current Git operation or conflicts first.",
+          );
         const initialStatus = yield* gitCore.statusDetails(input.cwd);
         const textGenerationParams: GitTextGenerationParams = {
           textGenerationModel: input.textGenerationModel,
@@ -1863,7 +1870,11 @@ export const makeGitManager = Effect.gen(function* () {
                 Effect.flatMap(() =>
                   Effect.gen(function* () {
                     currentPhase = "push";
-                    return yield* gitCore.pushCurrentBranch(input.cwd, currentBranch);
+                    return yield* gitCore.pushCurrentBranch(
+                      input.cwd,
+                      currentBranch,
+                      input.allowIntegration,
+                    );
                   }),
                 ),
               )

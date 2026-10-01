@@ -64,10 +64,6 @@ export function formatChatFileReference(reference: ChatFileReference): string {
   return token;
 }
 
-export function buildWhyChangedPrompt(path: string): string {
-  return `Why did we implement the changes in ${formatComposerMentionToken(path)}?`;
-}
-
 export function buildWhyLinesPrompt(reference: ChatFileReference): string {
   const token = formatComposerMentionToken(reference.path);
   if (typeof reference.startLine !== "number") {
@@ -75,10 +71,6 @@ export function buildWhyLinesPrompt(reference: ChatFileReference): string {
   }
   const endLine = reference.endLine ?? reference.startLine;
   return `Why were ${formatLineRangeLabel(reference.startLine, endLine)} in ${token} implemented this way? Check git blame/history for the relevant commits and explain the reasoning.`;
-}
-
-export function buildDiffSelectionReference(path: string, snippet: string): string {
-  return formatChatFileReference({ path, snippet });
 }
 
 export function appendComposerPromptText(threadId: ThreadId, text: string): void {
@@ -155,14 +147,6 @@ export interface SelectionWithin {
   endColumn: number;
 }
 
-export function normalizeSelectionSnippet(text: string): string | null {
-  const normalized = text
-    .replace(/\r\n/g, "\n")
-    .replace(/^\n+|\n+$/g, "")
-    .trim();
-  return normalized.length === 0 ? null : normalized;
-}
-
 function getSelectionRangeWithin(
   container: HTMLElement,
 ): { selection: Selection; range: Range; selectedText: string } | null {
@@ -206,4 +190,12 @@ export function getSelectionSnippetWithin(container: HTMLElement): { snippet: st
 
   const snippet = normalizeSelectionSnippet(scoped.selection.toString());
   return snippet === null ? null : { snippet };
+}
+
+function normalizeSelectionSnippet(text: string): string | null {
+  const normalized = text
+    .replace(/\r\n/g, "\n")
+    .replace(/^\n+|\n+$/g, "")
+    .trim();
+  return normalized.length === 0 ? null : normalized;
 }

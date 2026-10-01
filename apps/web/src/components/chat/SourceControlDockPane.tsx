@@ -1,13 +1,10 @@
 import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
-import { useEffect, useState } from "react";
-
-import type { DiffFileEditRequest } from "~/lib/diffEditBaseRev";
 import type { SourceControlView } from "~/rightDockStore.logic";
 import { cn } from "~/lib/utils";
-import { ChangesIcon, DiffIcon, HistoryIcon } from "~/lib/icons";
+import { ChangesIcon, HistoryIcon } from "~/lib/icons";
 import { GitPanel } from "./GitPanel";
 import { SourceControlHistory } from "./SourceControlHistory";
-import { LazyDiffPanel } from "./ChatThreadSurfacePrimitives";
+import { SourceControlTurnChanges } from "./SourceControlTurnChanges";
 
 export function SourceControlDockPane(props: {
   threadId: ThreadId;
@@ -16,20 +13,9 @@ export function SourceControlDockPane(props: {
   view: SourceControlView;
   diffTurnId: TurnId | null;
   diffFilePath: string | null;
-  active: boolean;
   onViewChange: (view: SourceControlView) => void;
-  onReviewSelectionChange: (patch: {
-    diffTurnId?: TurnId | null;
-    diffFilePath?: string | null;
-  }) => void;
-  onEditFile: (request: DiffFileEditRequest) => void;
-  onClose: () => void;
+  onCurrentChanges: () => void;
 }) {
-  const [reviewOpened, setReviewOpened] = useState(props.view === "review");
-  useEffect(() => {
-    if (props.view === "review") setReviewOpened(true);
-  }, [props.view]);
-
   return (
     <div className="flex h-full min-h-0 w-full flex-col">
       <div
@@ -37,61 +23,54 @@ export function SourceControlDockPane(props: {
         aria-label="Source control views"
         className="flex shrink-0 gap-1 border-b border-border/70 px-3 py-1.5"
       >
-        {(["changes", "review", "history"] as const).map((view) => (
+        {(["changes", "history"] as const).map((view) => (
           <button
             key={view}
             type="button"
             role="tab"
             aria-selected={props.view === view}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-ui-sm font-medium transition-colors",
+              "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-ui-sm font-medium",
               props.view === view
                 ? "bg-sidebar-accent text-foreground"
-                : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
+                : "text-muted-foreground hover:bg-sidebar-accent/60",
             )}
             onClick={() => props.onViewChange(view)}
           >
             {view === "changes" ? (
               <ChangesIcon className="size-3.5" />
-            ) : view === "review" ? (
-              <DiffIcon className="size-3.5" />
             ) : (
               <HistoryIcon className="size-3.5" />
             )}
-            {view === "changes" ? "Changes" : view === "review" ? "Review" : "History"}
+            {view === "changes" ? "Changes" : "History"}
           </button>
         ))}
       </div>
       <div className="min-h-0 flex-1">
-        <div className={cn("h-full min-h-0", props.view !== "changes" && "hidden")}>
+        {props.view === "history" ? (
+          <SourceControlHistory
+            key={props.workspaceRoot}
+            cwd={props.workspaceRoot}
+            onOpenFile={props.onOpenFile}
+          />
+        ) : props.diffTurnId ? (
+          <SourceControlTurnChanges
+            key={props.diffTurnId}
+            threadId={props.threadId}
+            turnId={props.diffTurnId}
+            filePath={props.diffFilePath}
+            cwd={props.workspaceRoot}
+            onOpenFile={props.onOpenFile}
+            onCurrentChanges={props.onCurrentChanges}
+          />
+        ) : (
           <GitPanel
+            selectedFilePath={props.diffFilePath}
             threadId={props.threadId}
             workspaceRoot={props.workspaceRoot}
             onOpenFile={props.onOpenFile}
           />
-        </div>
-        {reviewOpened || props.view === "review" ? (
-          <div className={cn("h-full min-h-0", props.view !== "review" && "hidden")}>
-            <LazyDiffPanel
-              mode="sidebar"
-              initialViewKind="turn"
-              threadId={props.threadId}
-              panelState={{
-                panel: props.view === "review" ? "diff" : null,
-                diffTurnId: props.diffTurnId,
-                diffFilePath: props.diffFilePath,
-              }}
-              onUpdatePanelState={props.onReviewSelectionChange}
-              onClosePanel={props.onClose}
-              onEditFile={props.onEditFile}
-              liveRefreshEnabled={props.active && props.view === "review"}
-              queriesEnabled={props.active && props.view === "review"}
-            />
-          </div>
-        ) : null}
-        {props.view === "history" ? (
-          <SourceControlHistory key={props.workspaceRoot} cwd={props.workspaceRoot} />
-        ) : null}
+        )}
       </div>
     </div>
   );

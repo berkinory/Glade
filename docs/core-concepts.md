@@ -237,3 +237,29 @@ uses an alias. Include the extension for other files, such as `[[guide.pdf]]`.
 Regular Markdown links remain relative to the document directory. Code, escaped
 Wiki syntax, embeds, and heading/block links are left literal; this is basic file
 navigation rather than full Obsidian support.
+
+### Source Control history and synchronized push
+
+Source Control contains Changes and History. Turn-summary links select the exact turn checkpoint
+inside Changes; **Current changes** returns to the working tree. **Show file** reveals the current
+file in Explorer and preserves editor drafts. Deleted or unavailable files are identified explicitly.
+
+History follows local Git changes, including commits, resets and branch switches made outside Glade.
+**Undo commit** applies only to the latest eligible unpublished commit. It preserves the index,
+working-tree edits and untracked files, and restores the message into an empty commit draft.
+Root commits, merge commits, detached HEAD, published commits and active operations cannot be undone.
+Glade refreshes every configured remote before revalidating publication and HEAD; a failed fetch
+blocks undo. Branches without an upstream are checked against all remote-tracking refs and tags.
+
+Push fetches its destination, fast-forwards an exclusively behind branch, or rebases unpublished
+local commits before a normal push. Integration requires saved editors and a clean working tree;
+direct pushes can keep local edits. No automatic stash or force push is performed. Mismatched
+fetch/push destinations, outgoing merge commits and published outgoing commits require manual
+integration. A concurrent remote update can reject the normal push safely; retry Push to synchronize.
+
+Conflicts are listed with links to Explorer. Stage resolved files, then use the controls for the
+actual operation. A rebase initiated by Push retains its pending push in worktree-local Git metadata
+across restart. Continue resumes that push; Abort restores the pre-rebase state and cancels it.
+Externally started rebases never acquire an automatic push. If an operation finished outside Glade,
+the pending push requires an explicit Resume or Cancel. Conflicts without an operation, such as a
+stash conflict, offer file resolution without a misleading rebase abort action.

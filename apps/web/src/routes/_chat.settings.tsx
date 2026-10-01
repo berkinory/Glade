@@ -834,8 +834,7 @@ function SettingsRouteView() {
         {renderBooleanSettingRow({
           settingKey: "diffWordWrap",
           title: "Diff line wrapping",
-          description:
-            "Set the default wrap state when the diff panel opens. The in-panel wrap toggle only affects the current diff session.",
+          description: "Wrap long lines in Source Control diffs.",
           resetLabel: "diff line wrapping",
           ariaLabel: "Wrap diff lines by default",
         })}

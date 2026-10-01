@@ -27,8 +27,6 @@ See the full schema for more details: [`packages/contracts/src/settings/keybindi
   { "key": "mod+shift+o", "command": "chat.new", "when": "!terminalFocus" },
   { "key": "mod+shift+n", "command": "chat.newLocal", "when": "!terminalFocus" },
   { "key": "cmd+l", "command": "composer.focus.toggle", "when": "!terminalFocus" },
-  { "key": "alt+arrowdown", "command": "diff.change.next", "when": "!terminalFocus" },
-  { "key": "alt+arrowup", "command": "diff.change.previous", "when": "!terminalFocus" },
   { "key": "mod+o", "command": "editor.openFavorite" },
   { "key": "mod+s", "command": "editor.file.save", "when": "!terminalFocus" }
 ]
@@ -61,8 +59,6 @@ Invalid rules are ignored. Invalid config files are ignored. Warnings are logged
 - `terminal.close`: close/kill the focused terminal (in focused terminal context by default)
 - `chat.new`: create a new chat thread preserving the active thread's branch/worktree state
 - `chat.newLocal`: create a new chat thread for the active project in a new environment (local/worktree determined by app settings (default `local`))
-- `diff.change.next`: scroll Source control's Review view to the next changed file
-- `diff.change.previous`: scroll Source control's Review view to the previous changed file
 - `composer.focus.toggle`: focus or blur the chat prompt composer
 - `thread.copyId`: copy the active thread's ID to the clipboard
 - `editor.openFavorite`: open current project/worktree in the last-used editor

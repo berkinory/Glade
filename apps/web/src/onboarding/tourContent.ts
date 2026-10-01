@@ -46,7 +46,7 @@ export const TOUR_CARDS: ReadonlyArray<TourCard> = [
     description:
       "A task is complete only after you understand and verify its result, not when the provider reports it is finished. Inspect diffs, run terminals, then commit, push, and open a pull request without leaving the workspace.",
     highlights: [
-      "Diff review with file tree",
+      "Turn changes and Git history in Source Control",
       "Commit → push → PR",
       "Native pull-request workspace",
     ],

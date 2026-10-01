@@ -272,6 +272,7 @@ export interface GitCoreShape {
   readonly pushCurrentBranch: (
     cwd: string,
     fallbackBranch: string | null,
+    allowIntegration?: boolean,
   ) => Effect.Effect<GitPushResult, GitCommandError>;
 
   readonly readRangeContext: (

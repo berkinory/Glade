@@ -1,3 +1,4 @@
+import { useAppSettings } from "~/appSettings";
 import {
   FileDiff,
   type FileDiffMetadata,
@@ -45,13 +46,14 @@ export function FileDiffCard(props: {
   renderHeaderTrailing?: () => ReactNode;
   onLineClick?: ((line: DiffLineClickProps) => void) | undefined;
 }) {
+  const { settings } = useAppSettings();
   return (
     <FileDiff
       fileDiff={props.fileDiff}
       options={{
         diffStyle: props.diffStyle ?? "unified",
         lineDiffType: "word",
-        overflow: props.overflow ?? "scroll",
+        overflow: props.overflow ?? (settings.diffWordWrap ? "wrap" : "scroll"),
         theme: resolveDiffThemeName(props.theme),
         themeType: props.theme,
         unsafeCSS: buildDiffPanelUnsafeCSS(props.theme),

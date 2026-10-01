@@ -110,29 +110,6 @@ function isCheckpointTemporarilyUnavailable(error: unknown): boolean {
   );
 }
 
-export function resolveCheckpointDiffQueryDisplayState(input: {
-  isLoading: boolean;
-  isFetching: boolean;
-  data: unknown;
-  error: unknown;
-}): { isLoading: boolean; error: string | null; refreshStatus: string | null } {
-  const hasData = input.data != null;
-  const capacityDelayed =
-    isRpcCapacityExceededError(input.error) && input.error.retryable !== false;
-  return {
-    isLoading: input.isLoading || (input.isFetching && !hasData),
-    error:
-      input.isFetching || input.error == null || capacityDelayed
-        ? null
-        : normalizeCheckpointErrorMessage(input.error),
-    refreshStatus: capacityDelayed
-      ? input.isFetching
-        ? "Refreshing diff..."
-        : "Diff refresh delayed."
-      : null,
-  };
-}
-
 export function checkpointDiffQueryOptions(input: CheckpointDiffQueryInput) {
   const decodedRequest = decodeCheckpointDiffRequest(input);
 

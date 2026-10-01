@@ -6,7 +6,11 @@ import { Cause, Duration, Effect, Queue, Stream } from "effect";
 import { GitCommandError } from "./Errors";
 import type { GitCoreShape } from "./Services/GitCore";
 
-function watchGitDirectory(cwd: string, directory: string): Stream.Stream<void, GitCommandError> {
+function watchGitDirectory(
+  cwd: string,
+  directory: string,
+  worktree = false,
+): Stream.Stream<void, GitCommandError> {
   return Stream.callback<void, GitCommandError>((queue) =>
     Effect.acquireRelease(
       Effect.try({
@@ -19,9 +23,26 @@ function watchGitDirectory(cwd: string, directory: string): Stream.Stream<void, 
               .join("/")
               .replace(/\.lock$/, "");
             if (
+              worktree &&
+              name
+                ?.split("/")
+                .some((part) => [".git", "node_modules", "dist", ".turbo"].includes(part))
+            )
+              return;
+            if (
+              !worktree &&
               name &&
               !["HEAD", "index", "config", "config.worktree", "packed-refs"].includes(name) &&
-              !name.startsWith("refs/")
+              !name.startsWith("refs/") &&
+              !name.startsWith("rebase-") &&
+              !name.startsWith("sequencer/") &&
+              ![
+                "MERGE_HEAD",
+                "CHERRY_PICK_HEAD",
+                "REVERT_HEAD",
+                "sequencer",
+                "glade-push.json",
+              ].includes(name)
             )
               return;
             Queue.offerUnsafe(queue, undefined);
@@ -64,13 +85,27 @@ function watchGitDirectory(cwd: string, directory: string): Stream.Stream<void, 
 
 async function metadataFingerprint(directories: readonly string[]): Promise<string> {
   const paths = directories.flatMap((directory) =>
-    ["HEAD", "index", "config", "config.worktree", "packed-refs", "refs"].map((name) =>
-      path.join(directory, name),
-    ),
+    [
+      "HEAD",
+      "index",
+      "config",
+      "config.worktree",
+      "packed-refs",
+      "refs",
+      "rebase-merge",
+      "rebase-apply",
+      "MERGE_HEAD",
+      "CHERRY_PICK_HEAD",
+      "REVERT_HEAD",
+      "sequencer",
+      "glade-push.json",
+    ].map((name) => path.join(directory, name)),
   );
-  for (const directory of directories) {
+  for (const directory of directories.flatMap((directory) =>
+    ["refs", "rebase-merge", "rebase-apply", "sequencer"].map((name) => path.join(directory, name)),
+  )) {
     const refs = await fs
-      .readdir(path.join(directory, "refs"), { recursive: true, withFileTypes: true })
+      .readdir(directory, { recursive: true, withFileTypes: true })
       .catch((cause: unknown) => {
         if (
           typeof cause === "object" &&
@@ -82,7 +117,7 @@ async function metadataFingerprint(directories: readonly string[]): Promise<stri
         throw cause;
       });
     for (const entry of refs) {
-      if (entry.isDirectory()) paths.push(path.join(entry.parentPath, entry.name));
+      paths.push(path.join(entry.parentPath, entry.name));
     }
   }
   return (
@@ -116,7 +151,7 @@ export function watchGitRepository(cwd: string, execute: GitCoreShape["execute"]
     }).pipe(
       Effect.map((result) => {
         const directories = [...new Set(result.stdout.trim().split("\n"))];
-        return Stream.mergeAll(
+        const metadata = Stream.mergeAll(
           directories.map((directory) => watchGitDirectory(cwd, directory)),
           { concurrency: "unbounded" },
         ).pipe(
@@ -136,6 +171,10 @@ export function watchGitRepository(cwd: string, execute: GitCoreShape["execute"]
           ),
           Stream.changes,
           Stream.map(() => undefined),
+        );
+        return Stream.merge(
+          metadata,
+          watchGitDirectory(cwd, cwd, true).pipe(Stream.debounce(Duration.millis(300))),
         );
       }),
     ),

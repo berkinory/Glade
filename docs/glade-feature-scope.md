@@ -61,7 +61,7 @@ are not exposed in this first version.
 
 ## Source Control
 
-Review panels expose a toolbar button to switch between stacked and split diffs in one click.
+Source Control combines current changes, immutable turn checkpoint diffs and commit history. Turn diffs offer a return to current changes; Show file opens the working-tree file in Explorer. Ordinary chat file links reveal files in Explorer, including supplied line and column targets.
 
 Source Control shows outgoing and incoming commit counts to the left of Fetch when
 the branch has an upstream. Incoming counts reflect the last fetched remote state.
@@ -71,7 +71,8 @@ Filtering searches commit messages across the branch, including unloaded pages.
 Selecting a commit shows its read-only patch below the list with file diffs
 initially collapsed; large patches are capped and marked partial. The detail pane
 uses 60% of the available height, as does the Changes diff pane.
-Commit rows offer an icon menu to copy the full hash, short hash, or subject.
+Commit rows offer an icon menu to copy the full hash, short hash, or subject, and undo
+the latest eligible unpublished commit while preserving staged and unstaged changes.
 History rows show author initials, relative time, and tags. Commits reachable
 from the tracked remote branch have a green up arrow; newer local commits have
 a yellow commit icon.
@@ -81,8 +82,12 @@ Repositories without a remote upstream show neither icon.
 
 The right dock supports staged-only commits with a workspace-scoped message draft
 and Cmd/Ctrl+Enter, AI message generation from staged changes without index or commit mutations, fetch across configured remotes, fast-forward-only pull, push of existing commits, and the
-shared branch picker. Commit message generation uses the configured model, enables advertised fast mode, and disables thinking or selects the lowest advertised effort. Its 90-second deadline includes model discovery. The commit button stays aligned with the first input line. Rebase lets users choose a target branch, resolve and stage
-conflicts, then continue or abort. Starting a rebase does not stash changes automatically.
+shared branch picker. Commit message generation uses the configured model, enables advertised fast mode, and disables thinking or selects the lowest advertised effort. Its 90-second deadline includes model discovery. The commit button stays aligned with the first input line.
+Push fetches its destination, fast-forwards incoming history or rebases unpublished
+local commits before pushing normally. Integration requires saved editors and a clean
+working tree; it never uses automatic stashing or force push. Source Control shows
+conflicted files and operation-specific Continue and Abort actions. A push interrupted
+by rebase conflicts retains its recovery intent across restart.
 File menus add selected untracked files to the repository-root `.gitignore` using
 literal, rooted paths; tracked files remain tracked and existing ignore rules are preserved.
 

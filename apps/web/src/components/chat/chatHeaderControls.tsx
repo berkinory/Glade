@@ -201,8 +201,6 @@ export function ChatHeaderSplitDivider() {
   return <div aria-hidden="true" className="w-px self-stretch bg-border" />;
 }
 
-export type DiffRenderMode = "stacked" | "split";
-
 type ChatHeaderControlTone = "plain" | "outline";
 
 function chatHeaderControlVariant(

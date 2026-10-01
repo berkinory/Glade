@@ -203,20 +203,6 @@ function buildPatchCacheKey(patch: string, scope = "diff-panel"): string {
   return `${scope}:${normalizedPatch.length}:${primary}:${secondary}`;
 }
 
-const PARTIAL_DIFF_COPY_NOTICE =
-  "[Glade: partial diff. Output was truncated at the size limit; some files or changes may be missing.]";
-
-export function resolveDiffCopyText(patch: string | undefined, truncated = false): string | null {
-  if (typeof patch !== "string") {
-    return null;
-  }
-  if (patch.trim().length === 0) {
-    return null;
-  }
-  const noticeSeparator = patch.endsWith("\n") ? "\n" : "\n\n";
-  return truncated ? `${patch}${noticeSeparator}${PARTIAL_DIFF_COPY_NOTICE}\n` : patch;
-}
-
 export type RenderablePatch =
   | {
       kind: "files";
@@ -322,7 +308,7 @@ export function splitRepoRelativePath(path: string): { dir: string; name: string
 
 let diffPathCollator: Intl.Collator | undefined;
 
-export function compareDiffPaths(left: string, right: string): number {
+function compareDiffPaths(left: string, right: string): number {
   diffPathCollator ??= new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
   return diffPathCollator.compare(left, right);
 }

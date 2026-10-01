@@ -98,7 +98,7 @@ function markdownPreviewCwd(workspaceRoot: string | null, filePath: string): str
 }
 
 export interface WorkspaceFilePreviewProps {
-  revealPosition?: { lineNumber: number; requestId: number } | undefined;
+  revealPosition?: { lineNumber: number; column?: number; requestId: number } | undefined;
   workspaceRoot: string | null;
 
   filePath: string | null;

@@ -673,7 +673,7 @@ const makeWsRpcHandlersLayer = () =>
 
       const refreshGitStatusAfter = <A, E, R>(cwd: string, effect: Effect.Effect<A, E, R>) =>
         effect.pipe(
-          Effect.tap(() =>
+          Effect.onExit(() =>
             gitStatusBroadcaster.refreshStatus(cwd).pipe(Effect.catchCause(() => Effect.void)),
           ),
         );
@@ -1618,6 +1618,21 @@ const makeWsRpcHandlersLayer = () =>
               .withMutation(input.cwd, sourceControlActions(git).rebase(input))
               .pipe(Effect.onExit(() => refreshGitStatusInBackground(input.cwd))),
             "Failed to rebase",
+          ),
+        [WS_METHODS.gitCheckUndoCommit]: (input) =>
+          rpcEffect(
+            git.withMutation(input.cwd, sourceControlActions(git).checkUndoCommit(input.cwd)),
+            "Failed to establish undo eligibility",
+          ),
+        [WS_METHODS.gitUndoCommit]: (input) =>
+          rpcEffect(
+            git
+              .withMutation(
+                input.cwd,
+                sourceControlActions(git).undoCommit(input.cwd, input.expectedHead),
+              )
+              .pipe(Effect.onExit(() => refreshGitStatusInBackground(input.cwd))),
+            "Failed to undo commit",
           ),
         [WS_METHODS.gitRebaseState]: (input) =>
           rpcEffect(

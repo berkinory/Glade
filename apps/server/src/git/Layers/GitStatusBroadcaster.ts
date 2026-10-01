@@ -59,7 +59,7 @@ export const GitStatusBroadcasterLive = Layer.effect(
     const updateCachedLocalStatus = (
       cwd: string,
       local: GitStatusLocalResult,
-      options?: { readonly publish?: boolean },
+      options?: { readonly publish?: boolean; readonly force?: boolean },
     ) =>
       Effect.gen(function* () {
         const nextLocal = makeCachedStatusValue(local);
@@ -69,7 +69,7 @@ export const GitStatusBroadcasterLive = Layer.effect(
           return [previous.local?.fingerprint !== nextLocal.fingerprint, nextCache] as const;
         });
 
-        if (options?.publish && shouldPublish) {
+        if (options?.publish && (shouldPublish || options.force)) {
           yield* PubSub.publish(changesPubSub, {
             cwd,
             event: { _tag: "localUpdated", local },
@@ -82,7 +82,7 @@ export const GitStatusBroadcasterLive = Layer.effect(
     const updateCachedRemoteStatus = (
       cwd: string,
       remote: GitStatusRemoteResult | null,
-      options?: { readonly publish?: boolean },
+      options?: { readonly publish?: boolean; readonly force?: boolean },
     ) =>
       Effect.gen(function* () {
         const nextRemote = makeCachedStatusValue(remote);
@@ -92,7 +92,7 @@ export const GitStatusBroadcasterLive = Layer.effect(
           return [previous.remote?.fingerprint !== nextRemote.fingerprint, nextCache] as const;
         });
 
-        if (options?.publish && shouldPublish) {
+        if (options?.publish && (shouldPublish || options.force)) {
           yield* PubSub.publish(changesPubSub, {
             cwd,
             event: { _tag: "remoteUpdated", remote },
@@ -102,7 +102,10 @@ export const GitStatusBroadcasterLive = Layer.effect(
         return remote;
       });
 
-    const loadStatus = (cwd: string, options?: { readonly publish?: boolean }) =>
+    const loadStatus = (
+      cwd: string,
+      options?: { readonly publish?: boolean; readonly force?: boolean },
+    ) =>
       Effect.gen(function* () {
         const status = yield* gitManager.status({ cwd });
         const local = yield* updateCachedLocalStatus(cwd, splitLocalStatus(status), options);
@@ -142,14 +145,14 @@ export const GitStatusBroadcasterLive = Layer.effect(
         const local = yield* updateCachedLocalStatus(
           normalizedCwd,
           splitLocalStatusDetails(details),
-          { publish: true },
+          { publish: true, force: true },
         );
         const cached = yield* getCachedStatus(normalizedCwd);
         if (cached?.remote)
           yield* updateCachedRemoteStatus(
             normalizedCwd,
             splitRemoteStatusDetails(details, cached.remote.value),
-            { publish: true },
+            { publish: true, force: true },
           );
         return local;
       });

@@ -1,68 +1,46 @@
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { create } from "zustand";
+import { useCommitDrafts } from "./commitDraftStore";
 import BranchToolbar from "../BranchToolbar";
 import { Button } from "../ui/button";
 import { IconButton } from "../ui/icon-button";
 import { SourceControlCommitInput } from "./SourceControlCommitInput";
 import { Tooltip, TooltipTrigger, TooltipPopup } from "../ui/tooltip";
 import { Spinner } from "../ui/spinner";
-import { Menu, MenuItem, MenuTrigger } from "../ui/menu";
 import { toastManager } from "../ui/toast";
-import {
-  AlertDialog,
-  AlertDialogPopup,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogClose,
-} from "../ui/alert-dialog";
 import {
   IconCloudDownload,
   IconArrowBarToDown,
   IconArrowBarToUp,
-  IconGitCompare,
   IconRefreshAlert,
   IconArrowUp,
   IconArrowDown,
 } from "@tabler/icons-react";
-import { gitBranchesQueryOptions, gitStatusQueryOptions } from "../../lib/gitQueryOptions";
+import { gitStatusQueryOptions } from "../../lib/gitQueryOptions";
 import {
   gitRebaseStateQueryOptions,
   gitSourceControlActionMutationOptions,
   type SourceControlAction,
 } from "~/lib/gitReactQuery";
 import { hasUnsavedWorkspaceEditors } from "~/lib/workspaceEditorSession";
-import { ComposerPickerMenuPopup } from "./ComposerPickerMenuPopup";
-
-const useCommitDrafts = create<{
-  messages: Record<string, string>;
-  set: (cwd: string, message: string) => void;
-}>((set) => ({
-  messages: {},
-  set: (cwd, message) => set((state) => ({ messages: { ...state.messages, [cwd]: message } })),
-}));
 
 export function SourceControlToolbar({
   cwd,
   threadId,
   stagedCount,
   busy,
+  onOpenFile,
 }: {
   cwd: string;
   threadId: ThreadId;
   stagedCount: number;
   busy: boolean;
+  onOpenFile: (path: string) => void;
 }) {
   const queryClient = useQueryClient();
   const message = useCommitDrafts((state) => state.messages[cwd] ?? "");
   const setDraft = useCommitDrafts((state) => state.set);
-  const [rebaseTarget, setRebaseTarget] = useState<string | null>(null);
-  const [rebaseMenuOpen, setRebaseMenuOpen] = useState(false);
   const status = useQuery(gitStatusQueryOptions(cwd));
-  const branches = useQuery({ ...gitBranchesQueryOptions(cwd), enabled: rebaseMenuOpen });
   const rebase = useQuery(gitRebaseStateQueryOptions(cwd));
   const mutation = useMutation(gitSourceControlActionMutationOptions({ cwd, queryClient }));
   const disabled = busy || mutation.isPending;
@@ -70,6 +48,8 @@ export function SourceControlToolbar({
   const canCommit =
     !disabled &&
     !rebasing &&
+    !rebase.data?.conflicts.length &&
+    !rebase.data?.pendingPush &&
     !rebase.isPending &&
     !rebase.isError &&
     stagedCount > 0 &&
@@ -102,7 +82,7 @@ export function SourceControlToolbar({
                   ? "Pull complete"
                   : request.action === "push"
                     ? "Push complete"
-                    : "Rebase updated",
+                    : "Git operation updated",
           });
       },
       onError: (error) =>
@@ -170,7 +150,13 @@ export function SourceControlToolbar({
         <IconButton
           label="Pull (fast-forward only)"
           tooltip="Pull"
-          disabled={disabled || rebasing}
+          disabled={
+            disabled ||
+            rebasing ||
+            rebase.isPending ||
+            rebase.isError ||
+            Boolean(rebase.data?.conflicts.length)
+          }
           onClick={() => run({ action: "pull" })}
         >
           {mutation.isPending && mutation.variables?.action === "pull" ? (
@@ -182,7 +168,13 @@ export function SourceControlToolbar({
         <IconButton
           label="Push commits"
           tooltip="Push"
-          disabled={disabled || rebasing}
+          disabled={
+            disabled ||
+            rebasing ||
+            rebase.isPending ||
+            rebase.isError ||
+            Boolean(rebase.data?.conflicts.length)
+          }
           onClick={() => run({ action: "push" })}
         >
           {mutation.isPending && mutation.variables?.action === "push" ? (
@@ -191,62 +183,6 @@ export function SourceControlToolbar({
             <IconArrowBarToUp className="size-4" />
           )}
         </IconButton>
-        <Menu open={rebaseMenuOpen} onOpenChange={setRebaseMenuOpen}>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <MenuTrigger
-                  render={
-                    <Button
-                      size="icon-xs"
-                      variant="ghost"
-                      aria-label="Rebase onto branch"
-                      disabled={disabled || rebasing || rebase.isPending || rebase.isError}
-                    />
-                  }
-                />
-              }
-            >
-              {mutation.isPending && mutation.variables?.action === "rebase" ? (
-                <Spinner className="size-4" />
-              ) : (
-                <IconGitCompare className="size-4" />
-              )}
-            </TooltipTrigger>
-            <TooltipPopup>Rebase onto branch</TooltipPopup>
-          </Tooltip>
-          <ComposerPickerMenuPopup align="end" className="max-h-72 overflow-y-auto">
-            <div className="px-2 py-1 text-ui-xs text-muted-foreground">Rebase onto…</div>
-            {branches.isLoading ? (
-              <Spinner className="m-2 size-4" />
-            ) : branches.error ? (
-              <div className="max-w-64 p-2 text-ui-sm text-destructive">
-                {branches.error.message}
-              </div>
-            ) : (
-              branches.data?.branches
-                .filter((branch) => !branch.current)
-                .map((branch) => (
-                  <MenuItem
-                    key={`${branch.isRemote ? "remote" : "local"}:${branch.name}`}
-                    onClick={() =>
-                      setRebaseTarget(
-                        `${branch.isRemote ? "refs/remotes/" : "refs/heads/"}${branch.name}`,
-                      )
-                    }
-                  >
-                    <IconGitCompare className="size-4" />
-                    {branch.name}
-                  </MenuItem>
-                ))
-            )}
-            {!branches.isLoading &&
-            !branches.isError &&
-            !branches.data?.branches.some((branch) => !branch.current) ? (
-              <div className="p-2 text-ui-sm text-muted-foreground">No other branches</div>
-            ) : null}
-          </ComposerPickerMenuPopup>
-        </Menu>
       </div>
       {rebase.isError ? (
         <button
@@ -255,29 +191,51 @@ export function SourceControlToolbar({
           title={rebase.error.message}
           onClick={() => void rebase.refetch()}
         >
-          <IconRefreshAlert className="size-3.5" /> Rebase status unavailable · Retry
+          <IconRefreshAlert className="size-3.5" /> Git operation status unavailable · Retry
         </button>
       ) : null}
-      {rebasing ? (
+      {rebase.data?.conflicts.map((path) => (
+        <button
+          key={path}
+          type="button"
+          className="truncate text-left text-ui-sm text-destructive"
+          onClick={() => onOpenFile(path)}
+        >
+          Conflict: {path}
+        </button>
+      ))}
+      {rebasing || rebase.data?.pendingPush ? (
         <div className="flex flex-col gap-2">
           <p className="text-ui-sm text-muted-foreground">
-            Rebase in progress. Resolve conflicts, stage the files, then continue.
+            {rebasing
+              ? `${rebase.data?.kind} in progress. Resolve conflicts, stage the files, then continue.`
+              : "The previous push was interrupted. Resume or cancel it."}
           </p>
           <div className="flex gap-2">
             <Button
               size="sm"
               disabled={disabled}
-              onClick={() => run({ action: "rebase", rebase: { action: "continue" } })}
+              onClick={() =>
+                run({
+                  action: "rebase",
+                  rebase: { action: "continue", operation: rebase.data?.kind ?? "rebase" },
+                })
+              }
             >
-              Continue rebase
+              {rebasing ? `Continue ${rebase.data?.kind}` : "Resume push"}
             </Button>
             <Button
               size="sm"
               variant="outline"
               disabled={disabled}
-              onClick={() => run({ action: "rebase", rebase: { action: "abort" } })}
+              onClick={() =>
+                run({
+                  action: "rebase",
+                  rebase: { action: "abort", operation: rebase.data?.kind ?? "rebase" },
+                })
+              }
             >
-              Abort rebase
+              {rebasing ? `Abort ${rebase.data?.kind}` : "Cancel push"}
             </Button>
           </div>
         </div>
@@ -296,36 +254,6 @@ export function SourceControlToolbar({
           onCommit={() => run({ action: "commit", message: message.trim() })}
         />
       )}
-      <AlertDialog
-        open={rebaseTarget !== null}
-        onOpenChange={(open) => {
-          if (!open) setRebaseTarget(null);
-        }}
-      >
-        <AlertDialogPopup>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Rebase current branch?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Replay this branch’s commits onto{" "}
-              {rebaseTarget?.replace(/^refs\/(heads|remotes)\//, "")}. This rewrites commit history.
-              Commit or stash local changes first.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogClose render={<Button variant="outline" />}>Cancel</AlertDialogClose>
-            <Button
-              disabled={disabled}
-              onClick={() => {
-                if (!rebaseTarget) return;
-                run({ action: "rebase", rebase: { action: "start", target: rebaseTarget } });
-                setRebaseTarget(null);
-              }}
-            >
-              Rebase
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogPopup>
-      </AlertDialog>
     </div>
   );
 }

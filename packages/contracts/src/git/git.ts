@@ -223,6 +223,7 @@ export const GitRunStackedActionInput = Schema.Struct({
   // The user explicitly chose to leave working-tree changes out of a push/create_pr, so the
   // dirty-tree safety guard must not reject the action.
   allowDirtyWorkingTree: Schema.optional(Schema.Boolean),
+  allowIntegration: Schema.optional(Schema.Boolean),
   filePaths: Schema.optional(
     Schema.Array(TrimmedNonEmptyStringSchema).check(Schema.isMinLength(1)),
   ),
@@ -792,12 +793,21 @@ export const GitRebaseInput = Schema.Union([
   Schema.Struct({
     cwd: TrimmedNonEmptyStringSchema,
     action: Schema.Literals(["continue", "abort"]),
+    operation: Schema.optional(
+      Schema.Literals(["rebase", "merge", "cherry-pick", "revert", "sequencer"]),
+    ),
   }),
 ]);
 export type GitRebaseInput = typeof GitRebaseInput.Type;
 export const GitRebaseStateInput = GitStatusInput;
 export type GitRebaseStateInput = typeof GitRebaseStateInput.Type;
-export const GitRebaseStateResult = Schema.Struct({ inProgress: Schema.Boolean });
+export const GitRebaseStateResult = Schema.Struct({
+  inProgress: Schema.Boolean,
+  kind: Schema.NullOr(Schema.Literals(["rebase", "merge", "cherry-pick", "revert", "sequencer"])),
+  conflicts: Schema.Array(Schema.String),
+  pendingPush: Schema.Boolean,
+  undoableHead: Schema.NullOr(Schema.String),
+});
 export type GitRebaseStateResult = typeof GitRebaseStateResult.Type;
 
 export const GitGenerateCommitMessageInput = Schema.Struct({
@@ -812,3 +822,11 @@ export const GitGenerateCommitMessageResult = Schema.Struct({
   message: TrimmedNonEmptyStringSchema,
 });
 export type GitGenerateCommitMessageResult = typeof GitGenerateCommitMessageResult.Type;
+
+export const GitUndoCommitInput = Schema.Struct({
+  cwd: TrimmedNonEmptyString,
+  expectedHead: TrimmedNonEmptyString,
+});
+export type GitUndoCommitInput = typeof GitUndoCommitInput.Type;
+export const GitUndoCommitResult = Schema.Struct({ message: Schema.String });
+export type GitUndoCommitResult = typeof GitUndoCommitResult.Type;

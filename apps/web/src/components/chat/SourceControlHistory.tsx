@@ -1,5 +1,9 @@
+import { useCommitDrafts } from "./commitDraftStore";
+import { gitRebaseStateQueryOptions } from "~/lib/gitReactQuery";
+import { invalidateGitQueriesForCwds } from "~/lib/gitQueryOptions";
+import { ShowSourceFile } from "./ShowSourceFile";
 import type { GitRecentCommit } from "@glade/contracts/git/git";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { IconTag } from "@tabler/icons-react";
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
@@ -14,7 +18,7 @@ import { copyTextToClipboard } from "../../lib/clipboard";
 import { showContextMenuFallback } from "~/contextMenuFallback";
 import { GIT_COMMIT_CONTEXT_MENU_ICONS } from "~/lib/contextMenuIcons";
 import { getRenderablePatch, resolveFileDiffPath } from "~/lib/diffRendering";
-import { gitStatusQueryOptions } from "../../lib/gitQueryOptions";
+import { gitQueryKeys, gitStatusQueryOptions } from "../../lib/gitQueryOptions";
 import {
   ArrowUpIcon,
   ChevronDownIcon,
@@ -38,10 +42,26 @@ const ROW_HEIGHT = 60;
 async function showCommitContextMenu(
   commit: GitRecentCommit,
   event: MouseEvent<HTMLButtonElement>,
+  undo: (() => void) | undefined,
+  cwd: string,
 ) {
   event.preventDefault();
+  let eligible = false;
+  if (undo) {
+    try {
+      eligible = (await ensureNativeApi().git.checkUndoCommit({ cwd })) === commit.sha;
+    } catch (error) {
+      toastManager.add({
+        type: "error",
+        title: "Could not establish undo eligibility",
+        description:
+          error instanceof Error ? error.message : "Remote publication state is unavailable.",
+      });
+    }
+  }
   const action = await showContextMenuFallback(
     [
+      ...(eligible ? [{ id: "undo", label: "Undo commit" }] : []),
       { id: "hash", label: "Copy commit hash", icon: GIT_COMMIT_CONTEXT_MENU_ICONS.hash },
       { id: "short-hash", label: "Copy short hash", icon: GIT_COMMIT_CONTEXT_MENU_ICONS.shortHash },
       { id: "subject", label: "Copy commit subject", icon: GIT_COMMIT_CONTEXT_MENU_ICONS.subject },
@@ -49,6 +69,10 @@ async function showCommitContextMenu(
     { x: event.clientX, y: event.clientY },
   );
   if (!action) return;
+  if (action === "undo") {
+    undo?.();
+    return;
+  }
   const value =
     action === "hash" ? commit.sha : action === "short-hash" ? commit.shortSha : commit.subject;
   try {
@@ -58,7 +82,12 @@ async function showCommitContextMenu(
   }
 }
 
-function CommitDetail(props: { cwd: string; commit: GitRecentCommit; onClose: () => void }) {
+function CommitDetail(props: {
+  cwd: string;
+  commit: GitRecentCommit;
+  onClose: () => void;
+  onOpenFile: (path: string) => void;
+}) {
   const { resolvedTheme } = useTheme();
   const [expandedPaths, setExpandedPaths] = useState<ReadonlySet<string>>(() => new Set());
   const detail = useQuery({
@@ -120,7 +149,8 @@ function CommitDetail(props: { cwd: string; commit: GitRecentCommit; onClose: ()
                   className="diff-render-file mb-2 rounded-md"
                   onClickCapture={(event) => {
                     const target = event.target as HTMLElement;
-                    if (!target.closest("[data-diff-file-header]")) return;
+                    if (target.closest("button") || !target.closest("[data-diff-file-header]"))
+                      return;
                     setExpandedPaths((current) => {
                       const next = new Set(current);
                       if (next.has(path)) next.delete(path);
@@ -134,12 +164,15 @@ function CommitDetail(props: { cwd: string; commit: GitRecentCommit; onClose: ()
                     theme={resolvedTheme as "light" | "dark"}
                     collapsed={!expanded}
                     renderHeaderTrailing={() => (
-                      <ChevronDownIcon
-                        className={cn(
-                          "size-3.5 text-muted-foreground transition-transform",
-                          expanded && "rotate-180",
-                        )}
-                      />
+                      <>
+                        <ShowSourceFile cwd={props.cwd} file={file} onOpenFile={props.onOpenFile} />
+                        <ChevronDownIcon
+                          className={cn(
+                            "size-3.5 text-muted-foreground transition-transform",
+                            expanded && "rotate-180",
+                          )}
+                        />
+                      </>
                     )}
                   />
                 </div>
@@ -158,7 +191,13 @@ function CommitDetail(props: { cwd: string; commit: GitRecentCommit; onClose: ()
   );
 }
 
-function CommitRow(props: { commit: GitRecentCommit; selected: boolean; onSelect: () => void }) {
+function CommitRow(props: {
+  cwd: string;
+  commit: GitRecentCommit;
+  selected: boolean;
+  onSelect: () => void;
+  undo?: (() => void) | undefined;
+}) {
   const { commit } = props;
   const relativeTime = formatRelativeTime(commit.committedAt);
   return (
@@ -166,7 +205,7 @@ function CommitRow(props: { commit: GitRecentCommit; selected: boolean; onSelect
       type="button"
       aria-pressed={props.selected}
       onClick={props.onSelect}
-      onContextMenu={(event) => void showCommitContextMenu(commit, event)}
+      onContextMenu={(event) => void showCommitContextMenu(commit, event, props.undo, props.cwd)}
       className={cn(
         "flex h-full w-full items-center gap-2 px-3 text-left hover:bg-sidebar-accent/60",
         props.selected && "bg-sidebar-accent",
@@ -242,14 +281,39 @@ function CommitRow(props: { commit: GitRecentCommit; selected: boolean; onSelect
   );
 }
 
-export function SourceControlHistory(props: { cwd: string | null }) {
+export function SourceControlHistory(props: {
+  cwd: string | null;
+  onOpenFile: (path: string) => void;
+}) {
+  const queryClient = useQueryClient();
+  const eligibility = useQuery(gitRebaseStateQueryOptions(props.cwd));
+  const undo = useMutation({
+    mutationKey: ["git", "mutation", "undo", props.cwd],
+    mutationFn: (expectedHead: string) => {
+      if (!props.cwd) throw new Error("Repository unavailable.");
+      return ensureNativeApi().git.undoCommit({ cwd: props.cwd, expectedHead });
+    },
+    onSuccess: ({ message }) => {
+      if (props.cwd && !(useCommitDrafts.getState().messages[props.cwd] ?? "").trim())
+        useCommitDrafts.getState().set(props.cwd, message);
+      setSelectedSha(null);
+    },
+    onError: (error) =>
+      toastManager.add({
+        type: "error",
+        title: "Could not undo commit",
+        description: error.message,
+      }),
+    onSettled: () =>
+      props.cwd ? invalidateGitQueriesForCwds(queryClient, [props.cwd]) : undefined,
+  });
   const [filter, setFilter] = useState("");
   const search = useDeferredValue(filter.trim());
   const [selectedSha, setSelectedSha] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const status = useQuery({ ...gitStatusQueryOptions(props.cwd), enabled: props.cwd !== null });
   const history = useInfiniteQuery({
-    queryKey: ["git", "history", props.cwd, search],
+    queryKey: [...gitQueryKeys.history(props.cwd), search],
     initialPageParam: 0,
     queryFn: ({ pageParam }) => {
       if (!props.cwd) throw new Error("Git commits are unavailable.");
@@ -264,7 +328,7 @@ export function SourceControlHistory(props: { cwd: string | null }) {
       lastPage.hasMore ? pages.length * PAGE_SIZE : undefined,
     enabled: props.cwd !== null,
     staleTime: 30_000,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
   });
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
@@ -357,6 +421,12 @@ export function SourceControlHistory(props: { cwd: string | null }) {
               >
                 {row.index < commits.length ? (
                   <CommitRow
+                    cwd={props.cwd!}
+                    undo={
+                      !undo.isPending && eligibility.data?.undoableHead === commits[row.index]!.sha
+                        ? () => undo.mutate(commits[row.index]!.sha)
+                        : undefined
+                    }
                     commit={commits[row.index]!}
                     selected={selectedSha === commits[row.index]!.sha}
                     onSelect={() =>
@@ -389,6 +459,7 @@ export function SourceControlHistory(props: { cwd: string | null }) {
         <CommitDetail
           key={selected.sha}
           cwd={props.cwd}
+          onOpenFile={props.onOpenFile}
           commit={selected}
           onClose={() => setSelectedSha(null)}
         />

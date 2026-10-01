@@ -212,7 +212,7 @@ export function SingleChatSurface(props: {
     panel:
       activePane?.kind === "browser"
         ? "browser"
-        : activePane?.kind === "git" && activePane.sourceControlView === "review"
+        : activePane?.kind === "git" && activePane.sourceControlView === "changes"
           ? "diff"
           : null,
     diffTurnId: activePane?.kind === "git" ? activePane.diffTurnId : null,
@@ -223,10 +223,10 @@ export function SingleChatSurface(props: {
 
   const handleToggleDiff = () => {
     requestImmediateDockHydration("git");
-    if (activePane?.kind === "git" && activePane.sourceControlView === "review") {
+    if (activePane?.kind === "git" && activePane.sourceControlView === "changes") {
       setDockOpen(props.threadId, false);
     } else {
-      openPane(props.threadId, { kind: "git", sourceControlView: "review" });
+      openPane(props.threadId, { kind: "git", sourceControlView: "changes" });
     }
   };
   const handleToggleBrowser = () => {
@@ -249,7 +249,7 @@ export function SingleChatSurface(props: {
     requestImmediateDockHydration("git");
     openPane(props.threadId, {
       kind: "git",
-      sourceControlView: "review",
+      sourceControlView: "changes",
       diffTurnId: turnId,
       diffFilePath: filePath ?? null,
     });
@@ -257,8 +257,9 @@ export function SingleChatSurface(props: {
 
   const handleOpenWorkspaceSearchFile = useCallback(
     (relativePath: string) => {
-      requestImmediateDockHydration("file");
-      openPane(props.threadId, { kind: "file", filePath: relativePath });
+      requestImmediateDockHydration("explorer");
+      openPane(props.threadId, { kind: "explorer" });
+      requestExplorerFileReveal(props.threadId, relativePath);
     },
     [requestImmediateDockHydration, openPane, props.threadId],
   );
@@ -328,8 +329,16 @@ export function SingleChatSurface(props: {
         if (!targetPath) {
           return false;
         }
-        requestImmediateDockHydration("file");
-        openPane(props.threadId, { kind: "file", filePath: targetPath });
+        requestImmediateDockHydration("explorer");
+        openPane(props.threadId, { kind: "explorer" });
+        const position = /:(\d+)(?::(\d+))?$/.exec(path);
+        requestExplorerFileReveal(
+          props.threadId,
+          targetPath,
+          position
+            ? { lineNumber: Number(position[1]), column: Number(position[2] ?? 1) }
+            : undefined,
+        );
         return true;
       },
       prefetchFile: prefetchOpenerFile,
@@ -395,7 +404,7 @@ export function SingleChatSurface(props: {
       requestImmediateDockHydration("git");
       openPane(props.threadId, {
         kind: "git",
-        sourceControlView: "review",
+        sourceControlView: "changes",
         diffTurnId: panelPatch.diffTurnId ?? null,
         diffFilePath: panelPatch.diffFilePath ?? null,
       });
@@ -562,22 +571,12 @@ export function SingleChatSurface(props: {
               view={pane.sourceControlView}
               diffTurnId={pane.diffTurnId}
               diffFilePath={pane.diffFilePath}
-              active={context.isActive && dockState.open}
               onViewChange={(sourceControlView) =>
                 updatePane(props.threadId, pane.id, { sourceControlView })
               }
-              onReviewSelectionChange={(patch) =>
-                updatePane(props.threadId, pane.id, {
-                  diffTurnId: patch.diffTurnId ?? null,
-                  diffFilePath: patch.diffFilePath ?? null,
-                })
+              onCurrentChanges={() =>
+                updatePane(props.threadId, pane.id, { diffTurnId: null, diffFilePath: null })
               }
-              onEditFile={(request) => {
-                requestImmediateDockHydration("explorer");
-                openPane(props.threadId, { kind: "explorer" });
-                requestExplorerFileReveal(props.threadId, request.filePath);
-              }}
-              onClose={() => closePane(props.threadId, pane.id)}
             />
           </Suspense>
         );

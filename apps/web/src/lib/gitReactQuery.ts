@@ -6,6 +6,7 @@ import type {
 import type { ModelSelection, ProviderStartOptions } from "@glade/contracts/provider/sessionPolicy";
 import type { NativeApi } from "@glade/contracts/ipc/ipc";
 import { mutationOptions, queryOptions, type QueryClient } from "@tanstack/react-query";
+import { hasUnsavedWorkspaceEditors } from "./workspaceEditorSession";
 import { ensureNativeApi } from "../nativeApi";
 import { invalidateProjectFileQueriesForCwds } from "./projectReactQuery";
 import {
@@ -175,6 +176,7 @@ export function gitRunStackedActionMutationOptions(input: {
     ) =>
       api.git.runStackedAction({
         actionId,
+        allowIntegration: !hasUnsavedWorkspaceEditors(input.queryClient, cwd),
         cwd,
         action,
         ...(commitMessage ? { commitMessage } : {}),
@@ -299,7 +301,12 @@ export type SourceControlAction =
   | { action: "ignore"; paths: string[] }
   | {
       action: "rebase";
-      rebase: { action: "start"; target: string } | { action: "continue" | "abort" };
+      rebase:
+        | { action: "start"; target: string }
+        | {
+            action: "continue" | "abort";
+            operation?: "rebase" | "merge" | "cherry-pick" | "revert" | "sequencer";
+          };
     };
 
 export function gitRebaseStateQueryOptions(cwd: string | null) {
@@ -308,7 +315,8 @@ export function gitRebaseStateQueryOptions(cwd: string | null) {
     enabled: cwd !== null,
     queryFn: () => ensureNativeApi().git.rebaseState({ cwd: cwd! }),
     staleTime: 5_000,
-    refetchInterval: 10_000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 }
 
@@ -339,6 +347,7 @@ export function gitSourceControlActionMutationOptions(input: {
               action: "push",
               actionId: crypto.randomUUID(),
               allowDirtyWorkingTree: true,
+              allowIntegration: !hasUnsavedWorkspaceEditors(input.queryClient, cwd),
             });
             break;
           case "ignore":
@@ -349,7 +358,7 @@ export function gitSourceControlActionMutationOptions(input: {
             if (rebase.action === "start") {
               if (!rebase.target) throw new Error("Select a branch to rebase onto.");
               await api.git.rebase({ cwd, action: "start", target: rebase.target });
-            } else await api.git.rebase({ cwd, action: rebase.action });
+            } else await api.git.rebase({ cwd, ...rebase });
             break;
           }
         }

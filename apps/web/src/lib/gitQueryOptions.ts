@@ -1,4 +1,3 @@
-import { DEFAULT_GIT_RECENT_COMMIT_LIMIT } from "@glade/contracts/git/git";
 import type { GitReadWorkingTreeDiffInput } from "@glade/contracts/git/git";
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { ensureNativeApi } from "../nativeApi";
@@ -12,7 +11,6 @@ const GIT_STATUS_REFETCH_INTERVAL_MS = 900_000;
 const GIT_BRANCHES_STALE_TIME_MS = 15_000;
 const GIT_BRANCHES_REFETCH_INTERVAL_MS = 900_000;
 const GIT_WORKING_TREE_DIFF_STALE_TIME_MS = 5_000;
-const GIT_BLAME_LINE_STALE_TIME_MS = 30_000;
 export const GIT_WORKING_TREE_DIFF_LIVE_REFETCH_INTERVAL_MS = 4_000;
 
 export function isGitExpensiveReadCapacityError(
@@ -25,6 +23,7 @@ const GIT_EXPENSIVE_READ_RETRY_OPTIONS = EXPENSIVE_READ_RETRY_OPTIONS;
 
 export const gitQueryKeys = {
   all: ["git"] as const,
+  history: (cwd: string | null) => ["git", "history", cwd] as const,
   statuses: ["git", "status"] as const,
   pullRequests: ["git", "pull-request"] as const,
   githubRepository: (cwd: string | null) => ["git", "github-repository", cwd] as const,
@@ -166,7 +165,9 @@ async function refetchFreshGitQueries(
 }
 
 async function refreshGitAvailability(queryClient: QueryClient, cwd: string): Promise<void> {
+  await queryClient.resetQueries({ queryKey: gitQueryKeys.history(cwd) });
   await Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["git", "rebase-state", cwd] }),
     queryClient.invalidateQueries({
       queryKey: gitQueryKeys.githubRepository(cwd),
       exact: true,
@@ -454,26 +455,6 @@ function resolveGitCompareRef(
   return trimmed.length > 0 ? trimmed : null;
 }
 
-export function gitRecentCommitsQueryOptions(input: {
-  cwd: string | null;
-  limit?: number;
-  enabled?: boolean;
-}) {
-  const limit = input.limit ?? DEFAULT_GIT_RECENT_COMMIT_LIMIT;
-  return queryOptions({
-    queryKey: gitQueryKeys.recentCommits(input.cwd, limit),
-    queryFn: async () => {
-      const api = ensureNativeApi();
-      if (!input.cwd) throw new Error("Git commits are unavailable.");
-      return api.git.listRecentCommits({ cwd: input.cwd, limit });
-    },
-    enabled: (input.enabled ?? true) && input.cwd !== null,
-    staleTime: GIT_BRANCHES_STALE_TIME_MS,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-  });
-}
-
 export function gitBranchesQueryOptions(cwd: string | null) {
   return queryOptions({
     queryKey: gitQueryKeys.branches(cwd),
@@ -638,40 +619,5 @@ export function gitSourceControlFilesQueryOptions(cwd: string | null) {
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     ...GIT_EXPENSIVE_READ_RETRY_OPTIONS,
-  });
-}
-
-export function gitBlameLineQueryOptions(input: {
-  cwd: string | null;
-  filePath: string | null;
-  line: number | null;
-  rev?: string | undefined;
-  base?: "branch" | undefined;
-  enabled?: boolean;
-}) {
-  const rev = input.rev ?? null;
-  const base = input.base ?? null;
-  return queryOptions({
-    queryKey: gitQueryKeys.blameLine(input.cwd, input.filePath, input.line, rev, base),
-    queryFn: async () => {
-      const api = ensureNativeApi();
-      if (!input.cwd || !input.filePath || input.line === null) {
-        throw new Error("Git blame is unavailable.");
-      }
-      return api.git.blameLine({
-        cwd: input.cwd,
-        filePath: input.filePath,
-        line: input.line,
-        ...(rev !== null ? { rev } : {}),
-        ...(base !== null ? { base } : {}),
-      });
-    },
-    enabled:
-      (input.enabled ?? true) &&
-      input.cwd !== null &&
-      input.filePath !== null &&
-      input.line !== null,
-    staleTime: GIT_BLAME_LINE_STALE_TIME_MS,
-    retry: false,
   });
 }

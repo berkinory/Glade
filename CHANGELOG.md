@@ -4,6 +4,9 @@
 
 ### Improved
 
+- File links open in Explorer, while turn changes and file diffs are available together in Source Control.
+- Source Control and History stay up to date automatically, and the latest unpushed commit can be undone without losing its changes.
+- Push synchronizes incoming commits automatically, and Source Control shows conflicts with actions to resolve or cancel the operation.
 - Models load faster on first use, with a balanced initial reasoning effort when you have not chosen one.
 
 ### Fixed

@@ -1,4 +1,10 @@
 import {
+  WorkspaceFileOpenerContext,
+  resolveWorkspaceFileOpenTarget,
+  resolveWorkspaceDirectoryOpenTarget,
+} from "~/lib/workspaceFileOpener";
+import { requestExplorerFileReveal, requestExplorerReveal } from "~/explorerRevealRequestStore";
+import {
   type ProjectId,
   type ProviderKind,
   type ThreadId,
@@ -51,7 +57,11 @@ import {
   type SplitViewPanePanelState,
 } from "../../splitViewModel";
 import { useStore } from "../../store";
-import { createThreadShellsSelector } from "../../storeSelectors";
+import {
+  createThreadShellsSelector,
+  createThreadSelector,
+  createProjectSelector,
+} from "../../storeSelectors";
 import {
   normalizeSingleSearchFromPane,
   resolveSplitPaneMaximizeDecision,
@@ -346,6 +356,38 @@ function SplitPaneSurface(props: {
     side: SplitDropSide;
   }) => void;
 }) {
+  const thread = useStore(useMemo(() => createThreadSelector(props.threadId), [props.threadId]));
+  const project = useStore(
+    useMemo(() => createProjectSelector(thread?.projectId), [thread?.projectId]),
+  );
+  const workspaceRoot = thread?.worktreePath ?? project?.cwd ?? null;
+  const [explorerOpen, setExplorerOpen] = useState(false);
+  const { onUpdatePanelState } = props;
+  const fileOpener = useMemo(
+    () => ({
+      openFile: (path: string) => {
+        if (!props.threadId || !workspaceRoot) return false;
+        const directory = resolveWorkspaceDirectoryOpenTarget(path, workspaceRoot);
+        const file = resolveWorkspaceFileOpenTarget(path, workspaceRoot);
+        if (directory === null && !file) return false;
+        setExplorerOpen(true);
+        onUpdatePanelState({ panel: "diff" });
+        if (directory !== null) requestExplorerReveal(props.threadId, directory);
+        else if (file) {
+          const position = /:(\d+)(?::(\d+))?$/.exec(path);
+          requestExplorerFileReveal(
+            props.threadId,
+            file,
+            position
+              ? { lineNumber: Number(position[1]), column: Number(position[2] ?? 1) }
+              : undefined,
+          );
+        }
+        return true;
+      },
+    }),
+    [props.threadId, onUpdatePanelState, workspaceRoot],
+  );
   const paneScopeId = splitViewPaneScopeId(props.splitView.id, props.paneId);
   const panelOpen = props.panelState.panel !== null;
   const shouldRenderPanelContent = panelOpen || props.panelState.hasOpenedPanel;
@@ -364,82 +406,92 @@ function SplitPaneSurface(props: {
   };
 
   return (
-    <div
-      className={cn(
-        "group relative flex min-h-0 min-w-0 flex-1 [contain:layout_style_paint]",
-        CHAT_BACKGROUND_CLASS_NAME,
-      )}
-    >
-      <ChatPaneDropOverlay
-        paneScopeId={paneScopeId}
-        canDropInDirection={props.canDropInDirection}
-        excludedThreadIds={props.excludedThreadIds}
-        onDrop={handleDrop}
-        className="flex min-h-0 min-w-0 flex-1"
+    <WorkspaceFileOpenerContext.Provider value={fileOpener}>
+      <div
+        className={cn(
+          "group relative flex min-h-0 min-w-0 flex-1 [contain:layout_style_paint]",
+          CHAT_BACKGROUND_CLASS_NAME,
+        )}
       >
-        <SidebarInset
-          className={cn(
-            "min-h-0 min-w-0 overflow-hidden overscroll-y-none text-foreground transition-shadow",
-            props.isFocused ? "ring-2 ring-inset ring-primary/70" : "",
-          )}
-          surfaceClassName={CHAT_BACKGROUND_CLASS_NAME}
-          onMouseDown={props.onFocus}
+        <ChatPaneDropOverlay
+          paneScopeId={paneScopeId}
+          canDropInDirection={props.canDropInDirection}
+          excludedThreadIds={props.excludedThreadIds}
+          onDrop={handleDrop}
+          className="flex min-h-0 min-w-0 flex-1"
         >
-          {props.threadId ? (
-            <DeferredChatView
-              threadId={props.threadId}
-              paneScopeId={paneScopeId}
-              deferMount={props.deferChatMount}
-              surfaceMode="split"
-              isFocusedPane={props.isFocused}
-              panelState={props.panelState}
-              onToggleDiff={props.onToggleDiff}
-              onToggleBrowser={props.onToggleBrowser}
-              onOpenBrowserUrl={props.onOpenBrowserUrl}
-              onOpenTurnDiff={props.onOpenTurnDiff}
-              onMaximize={props.onMaximize}
-              onChangeThread={props.onChooseThread}
-              onMounted={props.onChatMounted}
-            />
-          ) : (
-            <SplitPaneEmptyState
-              isFocused={props.isFocused}
-              onFocus={props.onFocus}
-              threads={props.threads}
-              projects={props.projects}
-              excludedThreadIds={props.excludedThreadIds}
-              onSelectThread={props.onSelectThread}
-            />
-          )}
-          {props.threadId && props.showFloatingBrowser ? (
-            <FloatingBrowserPanel
-              key={props.threadId}
-              threadId={props.threadId}
-              onClose={props.onCloseFloatingBrowser}
-              onPopToSidebar={props.onPopFloatingBrowser}
-            />
-          ) : null}
-        </SidebarInset>
-      </ChatPaneDropOverlay>
-      <SplitPaneEmbeddedPanel
-        splitViewId={props.splitView.id}
-        paneId={props.paneId}
-        paneScopeId={paneScopeId}
-        panelOpen={panelOpen && shouldRenderPanelContent}
-        panel={props.panelState.panel}
-        threadId={props.threadId}
-        onClosePanel={props.onClosePanel}
-        panelState={props.panelState}
-        isFocused={props.isFocused}
-        onUpdatePanelState={props.onUpdatePanelState}
-      />
-      {props.isFocused ? (
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-[0.9px] z-20 border border-[color-mix(in_srgb,var(--info)_45%,transparent)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--info)_12%,transparent)] transition-opacity duration-100"
+          <SidebarInset
+            className={cn(
+              "min-h-0 min-w-0 overflow-hidden overscroll-y-none text-foreground transition-shadow",
+              props.isFocused ? "ring-2 ring-inset ring-primary/70" : "",
+            )}
+            surfaceClassName={CHAT_BACKGROUND_CLASS_NAME}
+            onMouseDown={props.onFocus}
+          >
+            {props.threadId ? (
+              <DeferredChatView
+                threadId={props.threadId}
+                paneScopeId={paneScopeId}
+                deferMount={props.deferChatMount}
+                surfaceMode="split"
+                isFocusedPane={props.isFocused}
+                panelState={props.panelState}
+                onToggleDiff={() => {
+                  setExplorerOpen(false);
+                  props.onToggleDiff();
+                }}
+                onToggleBrowser={props.onToggleBrowser}
+                onOpenBrowserUrl={props.onOpenBrowserUrl}
+                onOpenTurnDiff={(turnId, filePath) => {
+                  setExplorerOpen(false);
+                  props.onOpenTurnDiff(turnId, filePath);
+                }}
+                onMaximize={props.onMaximize}
+                onChangeThread={props.onChooseThread}
+                onMounted={props.onChatMounted}
+              />
+            ) : (
+              <SplitPaneEmptyState
+                isFocused={props.isFocused}
+                onFocus={props.onFocus}
+                threads={props.threads}
+                projects={props.projects}
+                excludedThreadIds={props.excludedThreadIds}
+                onSelectThread={props.onSelectThread}
+              />
+            )}
+            {props.threadId && props.showFloatingBrowser ? (
+              <FloatingBrowserPanel
+                key={props.threadId}
+                threadId={props.threadId}
+                onClose={props.onCloseFloatingBrowser}
+                onPopToSidebar={props.onPopFloatingBrowser}
+              />
+            ) : null}
+          </SidebarInset>
+        </ChatPaneDropOverlay>
+        <SplitPaneEmbeddedPanel
+          explorerOpen={explorerOpen}
+          workspaceRoot={workspaceRoot}
+          splitViewId={props.splitView.id}
+          paneId={props.paneId}
+          paneScopeId={paneScopeId}
+          panelOpen={panelOpen && shouldRenderPanelContent}
+          panel={props.panelState.panel}
+          threadId={props.threadId}
+          onClosePanel={props.onClosePanel}
+          panelState={props.panelState}
+          isFocused={props.isFocused}
+          onUpdatePanelState={props.onUpdatePanelState}
         />
-      ) : null}
-    </div>
+        {props.isFocused ? (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-[0.9px] z-20 border border-[color-mix(in_srgb,var(--info)_45%,transparent)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--info)_12%,transparent)] transition-opacity duration-100"
+          />
+        ) : null}
+      </div>
+    </WorkspaceFileOpenerContext.Provider>
   );
 }
 

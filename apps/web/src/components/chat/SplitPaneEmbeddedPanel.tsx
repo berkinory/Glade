@@ -1,3 +1,5 @@
+import { DockExplorerPane } from "./DockExplorerPane";
+import { SplitSourceControl } from "./SplitSourceControl";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { Schema } from "effect";
 import {
@@ -17,7 +19,7 @@ import {
   removePanelResizeOverlay,
 } from "../../lib/panelResize";
 import type { PaneId, SplitViewId, SplitViewPanePanelState } from "../../splitViewModel";
-import { LazyBrowserPanel, LazyDiffPanel } from "./ChatThreadSurfacePrimitives";
+import { LazyBrowserPanel } from "./ChatThreadSurfacePrimitives";
 import { PanelStateMessage } from "./PanelStateMessage";
 
 const SPLIT_PANE_PANEL_DEFAULT_WIDTH_PX = 22 * 16;
@@ -29,6 +31,8 @@ const RIGHT_PANEL_SIDEBAR_WIDTH_STORAGE_KEY = "chat_right_panel_width";
 // Split panes cannot reuse the desktop Sidebar primitive because it positions the panel against the
 // viewport. This embedded shell keeps browser/diff content anchored to the pane.
 export function SplitPaneEmbeddedPanel(props: {
+  explorerOpen: boolean;
+  workspaceRoot: string | null;
   splitViewId: SplitViewId;
   paneId: PaneId;
   paneScopeId: string;
@@ -162,14 +166,20 @@ export function SplitPaneEmbeddedPanel(props: {
             onClosePanel={props.onClosePanel}
           />
         </Suspense>
-      ) : (
-        <LazyDiffPanel
-          mode="sidebar"
+      ) : props.explorerOpen ? (
+        <DockExplorerPane
           threadId={props.threadId}
-          onClosePanel={props.onClosePanel}
-          panelState={props.panelState}
-          liveRefreshEnabled={props.isFocused}
-          onUpdatePanelState={props.onUpdatePanelState}
+          workspaceRoot={props.workspaceRoot}
+          isVisible={props.isFocused}
+        />
+      ) : (
+        <SplitSourceControl
+          threadId={props.threadId}
+          turnId={props.panelState.diffTurnId}
+          filePath={props.panelState.diffFilePath}
+          onCurrentChanges={() =>
+            props.onUpdatePanelState({ diffTurnId: null, diffFilePath: null })
+          }
         />
       )}
     </div>

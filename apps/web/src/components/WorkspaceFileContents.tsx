@@ -184,7 +184,7 @@ function createPierreEditor(options: PierreEditorOptions<undefined>) {
 }
 
 type EditableFileContentsProps = {
-  revealPosition?: { lineNumber: number; requestId: number } | undefined;
+  revealPosition?: { lineNumber: number; column?: number; requestId: number } | undefined;
   path: string;
   contents: string;
   cacheKey: string;
@@ -204,7 +204,10 @@ export function EditableFileContents(props: EditableFileContentsProps) {
   revealRef.current = props.revealPosition;
   useEffect(() => {
     if (props.revealPosition && !props.hidden)
-      pierreRef.current?.focus({ lineNumber: props.revealPosition.lineNumber });
+      pierreRef.current?.focus({
+        lineNumber: props.revealPosition.lineNumber,
+        character: Math.max(0, (props.revealPosition.column ?? 1) - 1),
+      });
   }, [props.revealPosition, props.hidden]);
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const editorId = useId();
@@ -263,7 +266,11 @@ export function EditableFileContents(props: EditableFileContentsProps) {
       onAttach: (editor) => {
         pierreRef.current = editor;
         attachEditor();
-        if (revealRef.current) editor.focus({ lineNumber: revealRef.current.lineNumber });
+        if (revealRef.current)
+          editor.focus({
+            lineNumber: revealRef.current.lineNumber,
+            character: Math.max(0, (revealRef.current.column ?? 1) - 1),
+          });
       },
       onChange: (nextFile) => {
         const contents = nextFile.contents;

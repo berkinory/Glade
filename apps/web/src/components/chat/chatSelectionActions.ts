@@ -35,20 +35,6 @@ export function getActiveSelectionRect(): DOMRect | null {
   return getSelectionRect(selection);
 }
 
-export function closestThroughShadow(start: Node | null, selector: string): HTMLElement | null {
-  let node: Node | null = start;
-  while (node) {
-    const element = node instanceof HTMLElement ? node : node.parentElement;
-    const match = element?.closest<HTMLElement>(selector) ?? null;
-    if (match) {
-      return match;
-    }
-    const root = (element ?? node).getRootNode();
-    node = root instanceof ShadowRoot ? root.host : null;
-  }
-  return null;
-}
-
 function selectionContainerForNode(node: Node | null): HTMLElement | null {
   if (!node) {
     return null;

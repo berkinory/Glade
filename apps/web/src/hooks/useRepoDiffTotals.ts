@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { gitWorkingTreeDiffStatsQueryOptions } from "../lib/gitQueryOptions";
-import { useRepoDiffScope } from "~/repoDiffScopeStore";
 
 export interface RepoDiffTotals {
   additions: number;
@@ -23,13 +22,10 @@ export function useRepoDiffTotals({
 }): RepoDiffTotals {
   const refetchInterval = refetchIntervalProp ?? false;
 
-  const { scope: repoDiffScope, compareRef: repoDiffCompareRef } = useRepoDiffScope(gitCwd);
-
   const { data: totals } = useQuery(
     gitWorkingTreeDiffStatsQueryOptions({
       cwd: gitCwd,
-      scope: repoDiffScope,
-      compareRef: repoDiffCompareRef,
+      scope: "workingTree",
       enabled: isGitRepo,
       refetchInterval,
     }),

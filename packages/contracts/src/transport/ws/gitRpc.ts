@@ -56,6 +56,8 @@ import {
   GitFetchInput,
   GitIgnorePathsInput,
   GitRebaseInput,
+  GitUndoCommitInput,
+  GitUndoCommitResult,
   GitRebaseStateInput,
   GitRebaseStateResult,
   GitRevertUnstagedFileInput,
@@ -330,5 +332,17 @@ export const WsGitUnstageFilesRpc = Rpc.make(WS_METHODS.gitUnstageFiles, {
 export const WsGitHandoffThreadRpc = Rpc.make(WS_METHODS.gitHandoffThread, {
   payload: GitHandoffThreadInput,
   success: GitHandoffThreadResult,
+  error: WsRpcError,
+});
+
+export const WsGitUndoCommitRpc = Rpc.make(WS_METHODS.gitUndoCommit, {
+  payload: GitUndoCommitInput,
+  success: GitUndoCommitResult,
+  error: WsRpcError,
+});
+
+export const WsGitCheckUndoCommitRpc = Rpc.make(WS_METHODS.gitCheckUndoCommit, {
+  payload: GitStatusInput,
+  success: Schema.NullOr(Schema.String),
   error: WsRpcError,
 });

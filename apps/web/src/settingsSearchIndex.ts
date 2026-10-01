@@ -302,7 +302,7 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     section: "files",
     title: "Diff line wrapping",
     target: "setting-diffWordWrap",
-    keywords: "Set the default wrap state when the diff panel opens. word wrap",
+    keywords: "Wrap long lines in Source Control diffs. word wrap",
   },
   {
     id: "behavior:delete-confirmation",

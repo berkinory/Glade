@@ -1,3 +1,7 @@
+import { refreshPublicationRefs } from "./gitPublication";
+import { readGitOperation } from "./gitOperationState";
+import { pushIntent } from "./pushSynchronization";
+import { undoCommitActions } from "./undoCommit";
 import { constants } from "node:fs";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
@@ -17,44 +21,53 @@ export function sourceControlActions(git: GitCoreShape) {
 
   const rebaseState = (cwd: string) =>
     Effect.gen(function* () {
-      const result = yield* run(cwd, [
-        "rev-parse",
-        "--path-format=absolute",
-        "--git-path",
-        "rebase-merge",
-        "--git-path",
-        "rebase-apply",
-      ]);
-      const states = yield* io(cwd, () =>
-        Promise.all(
-          result.stdout
-            .trim()
-            .split("\n")
-            .map(async (directory) => {
-              try {
-                return (await fs.stat(directory)).isDirectory();
-              } catch (error) {
-                if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
-                throw error;
-              }
-            }),
-        ),
-      );
-      return { inProgress: states.some(Boolean) };
+      const operation = yield* readGitOperation(cwd, git.execute);
+      const inProgress = operation.kind !== null;
+      const pendingPush = (yield* pushIntent(cwd, git.execute).read()) !== null;
+      return {
+        ...operation,
+        inProgress,
+        pendingPush,
+        undoableHead:
+          inProgress || pendingPush || operation.conflicts.length
+            ? null
+            : ((yield* undoCommitActions(git).candidate(cwd))?.sha ?? null),
+      };
     });
 
   return {
     rebaseState,
+    checkUndoCommit: (cwd: string) =>
+      Effect.gen(function* () {
+        yield* refreshPublicationRefs(cwd, git.execute);
+        return (yield* rebaseState(cwd)).undoableHead;
+      }),
+    undoCommit: (cwd: string, expectedHead: string) =>
+      Effect.gen(function* () {
+        if ((yield* rebaseState(cwd)).undoableHead !== expectedHead)
+          return yield* fail(cwd, "Finish or abort the current operation before undoing a commit.");
+        return yield* undoCommitActions(git).undo(cwd, expectedHead);
+      }),
     commitStaged: (cwd: string, message: string) =>
       Effect.gen(function* () {
         if ((yield* rebaseState(cwd)).inProgress)
-          return yield* fail(cwd, "Finish or abort the rebase before committing.");
+          return yield* fail(cwd, "Finish or abort the current Git operation before committing.");
         yield* git.commit(cwd, message, "", { timeoutMs: 120_000 });
       }),
     fetch: (cwd: string) => run(cwd, ["fetch", "--all", "--prune"]).pipe(Effect.asVoid),
     rebase: (input: GitRebaseInput) =>
       Effect.gen(function* () {
-        const active = (yield* rebaseState(input.cwd)).inProgress;
+        const state = yield* rebaseState(input.cwd);
+        if (input.action !== "start" && input.operation && input.operation !== "rebase") {
+          if (state.kind !== input.operation || input.operation === "sequencer")
+            return yield* fail(
+              input.cwd,
+              "This operation requires manual recovery in the terminal.",
+            );
+          yield* run(input.cwd, ["-c", "core.editor=true", input.operation, `--${input.action}`]);
+          return;
+        }
+        const active = state.kind === "rebase";
         if (input.action === "start") {
           if (active) return yield* fail(input.cwd, "A rebase is already in progress.");
 
@@ -72,8 +85,47 @@ export function sourceControlActions(git: GitCoreShape) {
             target.stdout.trim(),
           ]);
         } else {
-          if (!active) return yield* fail(input.cwd, "There is no rebase in progress.");
+          const intent = pushIntent(input.cwd, git.execute);
+          const pending = yield* intent.read();
+          if (!active) {
+            if (!pending || state.inProgress)
+              return yield* fail(input.cwd, "There is no matching push to recover.");
+            const branch = (yield* run(input.cwd, [
+              "symbolic-ref",
+              "--short",
+              "HEAD",
+            ])).stdout.trim();
+            if (input.action === "continue" && branch !== pending.branch)
+              return yield* fail(
+                input.cwd,
+                "Return to the original branch before resuming this push.",
+              );
+            yield* intent.clear();
+            if (input.action === "continue") yield* git.pushCurrentBranch(input.cwd, branch);
+            return;
+          }
+          if (pending) {
+            const original = (yield* run(input.cwd, ["rev-parse", "ORIG_HEAD"])).stdout.trim();
+            if (original !== pending.head)
+              return yield* fail(
+                input.cwd,
+                "The rebase no longer matches the pending push. Resolve it manually.",
+              );
+          }
           yield* run(input.cwd, ["-c", "core.editor=true", "rebase", `--${input.action}`]);
+          if (pending) {
+            yield* intent.clear();
+            if (input.action === "continue" && !(yield* rebaseState(input.cwd)).inProgress) {
+              const branch = (yield* run(input.cwd, [
+                "symbolic-ref",
+                "--short",
+                "HEAD",
+              ])).stdout.trim();
+              if (branch !== pending.branch)
+                return yield* fail(input.cwd, "Branch changed; push was not resumed.");
+              yield* git.pushCurrentBranch(input.cwd, branch);
+            }
+          }
         }
       }),
     ignorePaths: (cwd: string, paths: readonly string[]) =>

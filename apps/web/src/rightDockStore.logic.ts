@@ -13,7 +13,7 @@ const RIGHT_DOCK_PANE_KINDS = [
 
 export type RightDockPaneKind = (typeof RIGHT_DOCK_PANE_KINDS)[number];
 type PullRequestInitialTab = "summary" | "timeline" | "code";
-export type SourceControlView = "changes" | "review" | "history";
+export type SourceControlView = "changes" | "history";
 
 const RIGHT_DOCK_PANE_KIND_SET: ReadonlySet<string> = new Set(RIGHT_DOCK_PANE_KINDS);
 
@@ -74,12 +74,7 @@ function sanitizePersistedPane(value: unknown): RightDockPane | null {
   return {
     id: candidate.id,
     kind: candidate.kind === "diff" ? "git" : candidate.kind,
-    sourceControlView:
-      candidate.kind === "diff" || candidate.sourceControlView === "review"
-        ? "review"
-        : candidate.sourceControlView === "history"
-          ? "history"
-          : "changes",
+    sourceControlView: candidate.sourceControlView === "history" ? "history" : "changes",
     diffTurnId: typeof candidate.diffTurnId === "string" ? (candidate.diffTurnId as TurnId) : null,
     diffFilePath: typeof candidate.diffFilePath === "string" ? candidate.diffFilePath : null,
     filePath: typeof candidate.filePath === "string" ? candidate.filePath : null,

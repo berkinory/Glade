@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { focusManager, useQueryClient } from "@tanstack/react-query";
 import type { GitStatusResult } from "@glade/contracts/git/git";
 import { mergeGitStatusParts } from "@glade/shared/git/git";
 
@@ -37,9 +37,12 @@ export function useGitStatusPush() {
               if (event._tag === "localUpdated") return { ...current, ...event.local };
               return mergeGitStatusParts(current, event.remote);
             });
-            if (event._tag !== "localUpdated") return;
+            void queryClient.resetQueries({ queryKey: gitQueryKeys.history(cwd) });
             for (const queryKey of [
               gitQueryKeys.branches(cwd),
+              ["git", "rebase-state", cwd],
+              ["git", "recent-commits", cwd],
+              ["git", "stash-info", cwd],
               gitQueryKeys.workingTreeDiffs(cwd),
               gitQueryKeys.sourceControlFiles(cwd),
             ])
@@ -57,7 +60,16 @@ export function useGitStatusPush() {
         reconcile();
     });
     reconcile();
+    const stopFocus = focusManager.subscribe((focused) => {
+      if (!focused) return;
+      for (const cwd of subscriptions.keys()) {
+        void queryClient.resetQueries({ queryKey: gitQueryKeys.history(cwd) });
+        void queryClient.invalidateQueries({ queryKey: ["git", "rebase-state", cwd] });
+        void queryClient.invalidateQueries({ queryKey: gitQueryKeys.sourceControlFiles(cwd) });
+      }
+    });
     return () => {
+      stopFocus();
       unsubscribe();
       subscriptions.forEach((stop) => stop());
     };

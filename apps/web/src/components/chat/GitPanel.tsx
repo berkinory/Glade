@@ -1,9 +1,10 @@
+import { ShowSourceFile } from "./ShowSourceFile";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { SourceControlToolbar } from "./SourceControlToolbar";
 
 import { type FileDiffMetadata } from "@pierre/diffs/react";
 import { useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useState, type MouseEvent } from "react";
 
 import { showGitFileContextMenu } from "./gitFileContextMenu";
 import { useTheme } from "~/hooks/useTheme";
@@ -50,11 +51,22 @@ interface SelectedFile {
   path: string;
 }
 
-function SelectedFileDiff(props: { fileDiff: FileDiffMetadata; theme: "light" | "dark" }) {
+function SelectedFileDiff(props: {
+  fileDiff: FileDiffMetadata;
+  theme: "light" | "dark";
+  cwd: string;
+  onOpenFile: (path: string) => void;
+}) {
   return (
     <FileDiffSurface className="h-full min-h-0 overflow-auto px-2 py-2">
       <div className="diff-render-file rounded-md">
-        <FileDiffCard fileDiff={props.fileDiff} theme={props.theme} />
+        <FileDiffCard
+          fileDiff={props.fileDiff}
+          theme={props.theme}
+          renderHeaderTrailing={() => (
+            <ShowSourceFile cwd={props.cwd} file={props.fileDiff} onOpenFile={props.onOpenFile} />
+          )}
+        />
       </div>
     </FileDiffSurface>
   );
@@ -64,6 +76,7 @@ export function GitPanel(props: {
   threadId: ThreadId;
   workspaceRoot: string | null;
   onOpenFile: (path: string) => void;
+  selectedFilePath?: string | null;
 }) {
   const queryClient = useQueryClient();
   const { resolvedTheme } = useTheme();
@@ -71,6 +84,9 @@ export function GitPanel(props: {
   const cwd = props.workspaceRoot;
 
   const [selected, setSelected] = useState<SelectedFile | null>(null);
+  useEffect(() => {
+    if (props.selectedFilePath) setSelected({ section: "unstaged", path: props.selectedFilePath });
+  }, [props.selectedFilePath]);
   const [fileSelection, setFileSelection] = useState<GitFileSelection | null>(null);
   const [reverting, setReverting] = useState<readonly SourceFile[] | null>(null);
 
@@ -262,6 +278,7 @@ export function GitPanel(props: {
         threadId={props.threadId}
         stagedCount={stagedFiles.length}
         busy={mutating}
+        onOpenFile={props.onOpenFile}
       />
       <div
         data-git-files-scroll=""
@@ -353,6 +370,8 @@ export function GitPanel(props: {
           ) : selectedFileDiff ? (
             <SelectedFileDiff
               key={`${buildFileDiffRenderKey(selectedFileDiff)}:${theme}`}
+              cwd={cwd}
+              onOpenFile={props.onOpenFile}
               fileDiff={selectedFileDiff}
               theme={theme}
             />
