@@ -28,6 +28,7 @@ export const ORCHESTRATION_WS_METHODS = {
   getShellSnapshot: "orchestration.getShellSnapshot",
   getThreadDetailSnapshot: "orchestration.getThreadDetailSnapshot",
   dispatchCommand: "orchestration.dispatchCommand",
+  prepareHandoff: "orchestration.prepareHandoff",
   importThread: "orchestration.importThread",
   listProjectImports: "orchestration.listProjectImports",
   importProject: "orchestration.importProject",
@@ -259,6 +260,7 @@ export const OrchestrationUnsubscribeThreadInput = Schema.Struct({
 export type OrchestrationUnsubscribeThreadInput = typeof OrchestrationUnsubscribeThreadInput.Type;
 
 export const OrchestrationRpcSchemas = {
+  prepareHandoff: { input: Schema.Struct({ threadId: ThreadId }), output: Schema.Void },
   previewWorkspaceRestore: { input: PreviewWorkspaceRestoreInput, output: WorkspaceRestorePreview },
   getSnapshot: {
     input: OrchestrationGetSnapshotInput,

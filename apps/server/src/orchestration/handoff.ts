@@ -38,17 +38,6 @@ function earlierSummaryHeader(omittedCount: number): string {
     : "Earlier conversation summary:";
 }
 
-function listImportedHandoffMessages(
-  thread: Pick<OrchestrationThread, "messages">,
-): ReadonlyArray<OrchestrationMessage> {
-  return thread.messages.filter(
-    (message) =>
-      message.source === "handoff-import" &&
-      (message.role === "user" || message.role === "assistant") &&
-      message.streaming === false,
-  );
-}
-
 export function hasNativeHandoffMessages(thread: Pick<OrchestrationThread, "messages">): boolean {
   return thread.messages.some(
     (message) =>
@@ -56,24 +45,6 @@ export function hasNativeHandoffMessages(thread: Pick<OrchestrationThread, "mess
       (message.source === "native" || message.source === "async-user-input") &&
       message.streaming === false,
   );
-}
-
-export function hasNativeAssistantMessagesBefore(
-  thread: Pick<OrchestrationThread, "messages">,
-  currentMessageId?: string,
-): boolean {
-  const currentIndex =
-    currentMessageId === undefined
-      ? thread.messages.length
-      : thread.messages.findIndex((message) => message.id === currentMessageId);
-  if (currentIndex <= 0) {
-    return false;
-  }
-  return thread.messages.slice(0, currentIndex).some((message) => {
-    return (
-      message.role === "assistant" && message.source === "native" && message.streaming === false
-    );
-  });
 }
 
 export function listPriorTranscriptMessages(
@@ -162,23 +133,6 @@ function buildImportedMessagesBootstrapText(input: {
 
   const joined = sections.join("\n\n").trim();
   return truncateText(joined, maxChars);
-}
-
-export function buildHandoffBootstrapText(
-  thread: Pick<OrchestrationThread, "title" | "branch" | "worktreePath" | "handoff" | "messages">,
-  maxChars = BOOTSTRAP_TRANSCRIPT_CHAR_BUDGET,
-): string | null {
-  const importedMessages = listImportedHandoffMessages(thread);
-  if (importedMessages.length === 0 || thread.handoff === null) {
-    return null;
-  }
-
-  return buildImportedMessagesBootstrapText({
-    thread,
-    importedMessages,
-    intro: `This conversation was handed off from ${thread.handoff.sourceProvider}.`,
-    maxChars,
-  });
 }
 
 export function buildPriorTranscriptBootstrapText(

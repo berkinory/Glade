@@ -173,3 +173,9 @@ export const WsPreviewWorkspaceRestoreRpc = Rpc.make(
     error: WsRpcError,
   },
 );
+
+export const WsOrchestrationPrepareHandoffRpc = Rpc.make(ORCHESTRATION_WS_METHODS.prepareHandoff, {
+  payload: OrchestrationRpcSchemas.prepareHandoff.input,
+  success: OrchestrationRpcSchemas.prepareHandoff.output,
+  error: WsRpcError,
+});

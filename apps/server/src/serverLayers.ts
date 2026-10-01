@@ -1,3 +1,5 @@
+import { HandoffPreparationLive } from "./orchestration/Layers/HandoffPreparation";
+import { HandoffGenerationLive } from "./provider/Layers/HandoffGeneration";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { Layer } from "effect";
 
@@ -77,12 +79,18 @@ function makeServerRuntimeServicesLayer(
     Layer.provideMerge(runtimeServicesLayer),
     Layer.provideMerge(GitLayerLive),
   );
+  const handoffPreparationLayer = HandoffPreparationLive.pipe(
+    Layer.provideMerge(runtimeServicesLayer),
+    Layer.provideMerge(HandoffGenerationLive),
+    Layer.provideMerge(ServerSettingsLive),
+  );
   const providerCommandReactorLayer = ProviderCommandReactorLive.pipe(
     Layer.provideMerge(runtimeServicesLayer),
     Layer.provideMerge(providerHealthLayer),
     Layer.provideMerge(OrchestrationEventDeliveryRepositoryLive),
     Layer.provideMerge(GitCoreLive),
     Layer.provideMerge(TextGenerationLayerLive),
+    Layer.provideMerge(handoffPreparationLayer),
     Layer.provideMerge(ServerSettingsLive),
     Layer.provideMerge(AgentGatewayOperationRepositoryLive),
   );
@@ -154,6 +162,7 @@ function makeServerRuntimeServicesLayer(
     managedAttachmentCleanupLayer,
     AgentGatewayOperationRepositoryLive,
     providerHealthLayer,
+    handoffPreparationLayer,
     pullRequestServiceLayer,
     orchestrationReactorLayer,
     providerCommandReactorLayer,

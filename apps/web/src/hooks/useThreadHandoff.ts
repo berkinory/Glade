@@ -1,3 +1,4 @@
+import { toastManager } from "../components/ui/toast";
 import { resolveProviderModelSelection } from "~/lib/providerModelSelection";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -7,8 +8,6 @@ import { useComposerDraftStore } from "../composerDraftStore";
 import { useProviderStatusesForLocalConfig } from "./useProviderStatusesForLocalConfig";
 import { useRefreshProviderStatusesNow } from "./useProviderStatusRefresh";
 import {
-  buildThreadHandoffImportedActivities,
-  buildThreadHandoffImportedMessages,
   canCreateThreadHandoff,
   isEligibleHandoffTargetProvider,
   resolveThreadHandoffModelSelection,
@@ -34,6 +33,7 @@ export function useThreadHandoff() {
     targetProvider: ProviderKind,
     selectedModel?: ModelSelection,
     selectedRuntimeMode?: Thread["runtimeMode"],
+    continuationGoal?: string,
   ): Promise<Thread["id"]> => {
     const api = readNativeApi();
     if (!api) {
@@ -70,8 +70,6 @@ export function useThreadHandoff() {
 
     const nextThreadId = newThreadId();
     const createdAt = new Date().toISOString();
-    const importedMessages = buildThreadHandoffImportedMessages(thread);
-    const importedActivities = buildThreadHandoffImportedActivities(thread);
     const { copyTransferableComposerState, stickyModelSelectionByProvider } =
       useComposerDraftStore.getState();
 
@@ -105,19 +103,10 @@ export function useThreadHandoff() {
       associatedWorktreeRef:
         thread.associatedWorktreeRef ?? thread.associatedWorktreeBranch ?? thread.branch ?? null,
       createBranchFlowCompleted: thread.createBranchFlowCompleted ?? false,
-      importedMessages: [...importedMessages],
+      importedMessages: [],
+      ...(continuationGoal ? { continuationGoal } : {}),
       createdAt,
     });
-
-    for (const activity of importedActivities) {
-      await api.orchestration.dispatchCommand({
-        type: "thread.activity.append",
-        commandId: newCommandId(),
-        threadId: nextThreadId,
-        activity,
-        createdAt,
-      });
-    }
 
     copyTransferableComposerState(thread.id, nextThreadId);
 
@@ -128,6 +117,18 @@ export function useThreadHandoff() {
       params: { threadId: nextThreadId },
     });
 
+    try {
+      await api.orchestration.prepareHandoff({ threadId: nextThreadId });
+    } catch (cause) {
+      toastManager.add({
+        type: "error",
+        title: "Handoff context needs preparation",
+        description:
+          cause instanceof Error
+            ? cause.message
+            : "Retry preparation in the new chat. The source and draft are intact.",
+      });
+    }
     return nextThreadId;
   };
 

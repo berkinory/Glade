@@ -137,7 +137,9 @@ capabilities from the installed runtime and account.
 On an existing task, the model picker lists connected providers and offers a shortcut to add more. Choosing a model from another provider
 opens a confirmation dialog. Confirming creates a new task with the selected provider and model,
 imports the conversation, and keeps the working environment. The original task remains available.
-The new provider receives the imported context with your first message. The new task shows the provider transition in the transcript and its current provider in the sidebar.
+Glade freezes the complete durable conversation at handoff creation and prepares a structured record with the selected destination model. The record preserves constraints, decisions, unfinished work, and cited original evidence; the source provider does not need remaining quota. Preparation uses an isolated request and does not begin the task.
+
+The new provider receives the prepared context with your first message. Preparation can be cancelled or retried in the new task without creating another task or clearing your draft. Omitted messages and activity remain available through source retrieval at the frozen boundary. The new task shows the provider transition in the transcript and its current provider in the sidebar.
 
 Use a handoff when:
 

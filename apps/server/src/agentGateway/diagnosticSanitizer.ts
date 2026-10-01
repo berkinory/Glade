@@ -24,7 +24,7 @@ const USAGE_COUNTER_KEYS = new Set([
 ]);
 type UsageContext = "event" | "payload" | "usage" | "cumulative" | undefined;
 
-function redactSensitiveDiagnosticString(value: string): string {
+export function redactDiagnosticText(value: string): string {
   return redactSensitiveProcessArgs(value)
     .replace(
       /\b((?:authorization|proxy-authorization)\s*:\s*)(?:(?:basic|bearer)\s+)?[^\s,;]+/giu,
@@ -40,6 +40,27 @@ function redactSensitiveDiagnosticString(value: string): string {
     );
 }
 
+// Preparation needs complete log evidence rather than diagnostic preview truncation.
+export function redactDiagnosticValue(value: unknown): unknown {
+  if (typeof value === "string") return redactDiagnosticText(value);
+  if (Array.isArray(value)) return value.map(redactDiagnosticValue);
+  if (value === null || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [
+      key,
+      SENSITIVE_KEY.test(key) &&
+      !(
+        USAGE_COUNTER_KEYS.has(key) &&
+        typeof entry === "number" &&
+        Number.isSafeInteger(entry) &&
+        entry >= 0
+      )
+        ? "[redacted]"
+        : redactDiagnosticValue(entry),
+    ]),
+  );
+}
+
 export function sanitizeDiagnosticValue(value: unknown, depth = 0): unknown {
   const isUsageEvent =
     value !== null &&
@@ -52,7 +73,7 @@ export function sanitizeDiagnosticValue(value: unknown, depth = 0): unknown {
 function sanitizeValue(value: unknown, depth: number, usageContext: UsageContext): unknown {
   if (value === null || typeof value === "number" || typeof value === "boolean") return value;
   if (typeof value === "string") {
-    const redacted = redactSensitiveDiagnosticString(value);
+    const redacted = redactDiagnosticText(value);
     return redacted.length <= MAX_STRING_CHARS
       ? redacted
       : `${redacted.slice(0, MAX_STRING_CHARS)}… [truncated ${redacted.length - MAX_STRING_CHARS} chars]`;

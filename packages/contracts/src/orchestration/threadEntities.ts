@@ -300,11 +300,63 @@ export const OrchestrationMessage = Schema.Struct({
 
 export type OrchestrationMessage = typeof OrchestrationMessage.Type;
 
+const HandoffClaim = Schema.Struct({
+  text: Schema.String,
+  state: Schema.Literals(["fact", "proposal", "attempted", "confirmed", "failed", "unknown"]),
+  sourceRefs: Schema.Array(Schema.String),
+});
+
+export const HandoffRecord = Schema.Struct({
+  objective: HandoffClaim,
+  scopeChanges: Schema.Array(HandoffClaim),
+  constraints: Schema.Array(HandoffClaim),
+  decisions: Schema.Array(HandoffClaim),
+  completedWork: Schema.Array(HandoffClaim),
+  files: Schema.Array(HandoffClaim),
+  repositoryState: Schema.Array(HandoffClaim),
+  verification: Schema.Array(HandoffClaim),
+  unresolved: Schema.Array(HandoffClaim),
+  rejectedApproaches: Schema.Array(HandoffClaim),
+  nextSteps: Schema.Array(HandoffClaim),
+  requiredSourceRefs: Schema.Array(Schema.String),
+  sourcePassages: Schema.Array(Schema.Struct({ sourceRef: Schema.String, text: Schema.String })),
+});
+export type HandoffRecord = typeof HandoffRecord.Type;
+
+export const HandoffPreparation = Schema.Struct({
+  formatVersion: Schema.Literal(1),
+  inputIdentity: Schema.String,
+  goal: Schema.String,
+  modelSelection: ModelSelection,
+  record: HandoffRecord,
+  passes: NonNegativeInt,
+  estimatedInputTokens: NonNegativeInt,
+  estimatedOutputTokens: NonNegativeInt,
+  inputTokens: Schema.NullOr(NonNegativeInt),
+  outputTokens: Schema.NullOr(NonNegativeInt),
+  elapsedMs: NonNegativeInt,
+});
+export type HandoffPreparation = typeof HandoffPreparation.Type;
+
 export const ThreadHandoff = Schema.Struct({
   sourceThreadId: ThreadId,
   sourceProvider: ProviderKind,
   importedAt: IsoDateTime,
   bootstrapStatus: ThreadHandoffBootstrapStatus,
+  sourceBoundarySequence: Schema.optional(NonNegativeInt),
+  continuationGoal: Schema.optional(Schema.String),
+  sourceMessages: Schema.optional(
+    Schema.Array(
+      Schema.Struct({
+        sourceMessageId: MessageId,
+        importedMessageId: MessageId,
+        originThreadId: Schema.optional(ThreadId),
+        originMessageId: Schema.optional(MessageId),
+        originBoundarySequence: Schema.optional(NonNegativeInt),
+      }),
+    ),
+  ),
+  preparation: Schema.optional(HandoffPreparation),
 });
 
 export type ThreadHandoff = typeof ThreadHandoff.Type;

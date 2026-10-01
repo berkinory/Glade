@@ -7,6 +7,7 @@ import {
 import * as RpcGroup from "effect/unstable/rpc/RpcGroup";
 import {
   WsOrchestrationDispatchCommandRpc,
+  WsOrchestrationPrepareHandoffRpc,
   WsOrchestrationImportThreadRpc,
   WsListProjectImportsRpc,
   WsImportProjectRpc,
@@ -143,6 +144,7 @@ import {
 
 export const WsFeatureRpcGroup = RpcGroup.make(
   WsOrchestrationDispatchCommandRpc,
+  WsOrchestrationPrepareHandoffRpc,
   WsOrchestrationImportThreadRpc,
   WsListProjectImportsRpc,
   WsImportProjectRpc,

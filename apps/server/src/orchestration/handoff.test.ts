@@ -1,12 +1,8 @@
-import { MessageId, ThreadId } from "@glade/contracts/core/baseSchemas";
+import { MessageId } from "@glade/contracts/core/baseSchemas";
 import { type OrchestrationMessage } from "@glade/contracts/orchestration/threadEntities";
 import { describe, expect, it } from "vitest";
 
-import {
-  buildHandoffBootstrapText,
-  buildPriorTranscriptBootstrapText,
-  listPriorTranscriptMessages,
-} from "./handoff.ts";
+import { buildPriorTranscriptBootstrapText, listPriorTranscriptMessages } from "./handoff.ts";
 
 const message = (
   index: number,
@@ -30,20 +26,6 @@ const thread = (messages: ReadonlyArray<OrchestrationMessage>) => ({
   messages,
 });
 
-function hasUnpairedSurrogate(text: string): boolean {
-  for (let index = 0; index < text.length; index += 1) {
-    const codeUnit = text.charCodeAt(index);
-    if (codeUnit >= 0xd800 && codeUnit <= 0xdbff) {
-      const nextCodeUnit = text.charCodeAt(index + 1);
-      if (!(nextCodeUnit >= 0xdc00 && nextCodeUnit <= 0xdfff)) return true;
-      index += 1;
-    } else if (codeUnit >= 0xdc00 && codeUnit <= 0xdfff) {
-      return true;
-    }
-  }
-  return false;
-}
-
 describe("listPriorTranscriptMessages", () => {
   it("preserves prior message identity and order while excluding incomplete and empty text", () => {
     const first = message(0, "user", "  keep this text  ");
@@ -62,33 +44,6 @@ describe("listPriorTranscriptMessages", () => {
     expect(result[0]).toBe(first);
     expect(result[1]).toBe(second);
     expect(listPriorTranscriptMessages(thread(messages), first.id)).toEqual([]);
-  });
-});
-
-describe("buildHandoffBootstrapText", () => {
-  it("does not split a surrogate pair at the earlier-message summary boundary", () => {
-    const boundaryMessage = {
-      ...message(0, "assistant", `${"a".repeat(316)}📌 reminder`),
-      source: "handoff-import" as const,
-    };
-    const recentMessages = Array.from({ length: 6 }, (_, index) => ({
-      ...message(index + 1, index % 2 === 0 ? "user" : "assistant", `recent-${index}`),
-      source: "handoff-import" as const,
-    }));
-    const text = buildHandoffBootstrapText({
-      ...thread([boundaryMessage, ...recentMessages]),
-      handoff: {
-        sourceThreadId: ThreadId.makeUnsafe("source-thread"),
-        sourceProvider: "claudeAgent",
-        importedAt: "2026-07-08T00:00:00.000Z",
-        bootstrapStatus: "pending",
-      },
-    });
-
-    expect(text).not.toBeNull();
-    expect(text!.length).toBeLessThanOrEqual(32_000);
-    expect(text).toContain(`${"a".repeat(316)}...`);
-    expect(hasUnpairedSurrogate(text!)).toBe(false);
   });
 });
 

@@ -1,3 +1,5 @@
+import { readHandoffSourceSnapshot } from "../orchestration/handoff/sourceSnapshot";
+import { readActivityPassage } from "./activityPassage";
 import type { TaggedFailure } from "../platform/operationError.ts";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
@@ -32,6 +34,7 @@ import {
   errorText,
   readBooleanArg,
   readStringArg,
+  readNumberArg,
   readStringArrayArg,
   ToolInputError,
 } from "./toolInput.ts";
@@ -60,7 +63,34 @@ export function makeThreadDiagnosticTools(input: {
         type: "object",
         properties: {
           threadId: { type: "string" },
+          activityId: {
+            type: "string",
+            description:
+              "Read one frozen activity payload without log clipping. Requires throughSequence.",
+          },
+          detailPath: {
+            type: "array",
+            items: { type: "string" },
+            description: "Payload path, using returned keys or array indices.",
+          },
+          detailOffsetChars: {
+            type: "integer",
+            minimum: 0,
+            description: "String character offset or container key offset, default 0.",
+          },
+          maxDetailChars: {
+            type: "integer",
+            minimum: 50,
+            maximum: 20000,
+            description:
+              "Bounded text slice, default 4000. Follow nextOffsetChars to read the remainder.",
+          },
           cursor: { type: "string" },
+          throughSequence: {
+            type: "integer",
+            minimum: 1,
+            description: "Frozen handoff boundary. Keep the same boundary while paging.",
+          },
           limit: { type: "number", description: "Default 50, max 200." },
           turnId: { type: "string" },
           kinds: { type: "array", items: { type: "string" } },
@@ -80,7 +110,43 @@ export function makeThreadDiagnosticTools(input: {
         yield* input.requireThreadShell(threadId);
         const turnId = readStringArg(args, "turnId") ?? null;
         const kinds = readStringArrayArg(args, "kinds") ?? [];
-        const filterFingerprint = diagnosticFilterFingerprint({ turnId, kinds });
+        const throughSequence = readNumberArg(args, "throughSequence");
+        if (
+          throughSequence !== undefined &&
+          (!Number.isSafeInteger(throughSequence) || throughSequence < 1)
+        )
+          throw new ToolInputError("throughSequence must be a positive event sequence.");
+        const activityId = readStringArg(args, "activityId");
+        if (activityId) {
+          if (throughSequence === undefined)
+            throw new ToolInputError("A frozen throughSequence is required with activityId.");
+          const frozen = yield* readHandoffSourceSnapshot(
+            input.eventStore,
+            ThreadId.makeUnsafe(threadId),
+            throughSequence,
+          );
+          const activity = frozen.activities.find((entry) => entry.id === activityId);
+          if (!activity)
+            throw new ToolInputError("The activity is unavailable at the frozen source boundary.");
+          return mcpToolResultJson({
+            threadId,
+            throughSequence,
+            activityId,
+            kind: activity.kind,
+            summary: activity.summary,
+            detailPage: readActivityPassage({
+              payload: activity.payload,
+              path: readStringArrayArg(args, "detailPath") ?? [],
+              offset: readNumberArg(args, "detailOffsetChars") ?? 0,
+              maxChars: readNumberArg(args, "maxDetailChars") ?? 4000,
+            }),
+          });
+        }
+        const filterFingerprint = diagnosticFilterFingerprint({
+          turnId,
+          kinds,
+          throughSequence: throughSequence === undefined ? null : String(throughSequence),
+        });
         const cursor = decodeDiagnosticCursor(readStringArg(args, "cursor"), {
           kind: "activity",
           threadId,
@@ -90,7 +156,12 @@ export function makeThreadDiagnosticTools(input: {
         const includeDetails = readBooleanArg(args, "includeDetails") ?? false;
         const limit = includeDetails ? Math.min(requestedLimit, 50) : requestedLimit;
         const activityCoverage = yield* input.diagnostics.getActivityCoverage(threadId);
-        const highWaterSequence = cursor?.highWaterSequence ?? activityCoverage.highWaterSequence;
+        const highWaterSequence =
+          cursor?.highWaterSequence ??
+          Math.min(
+            throughSequence ?? activityCoverage.highWaterSequence,
+            activityCoverage.highWaterSequence,
+          );
         const rows = yield* input.diagnostics.listActivities({
           threadId,
           throughSequenceInclusive: highWaterSequence,

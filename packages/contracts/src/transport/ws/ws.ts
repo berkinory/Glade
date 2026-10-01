@@ -286,6 +286,7 @@ const WebSocketRequestBody = Schema.Union([
     ORCHESTRATION_WS_METHODS.dispatchCommand,
     Schema.Struct({ command: ClientOrchestrationCommand }),
   ),
+  tagRequestBody(ORCHESTRATION_WS_METHODS.prepareHandoff, Schema.Struct({ threadId: ThreadId })),
   tagRequestBody(ORCHESTRATION_WS_METHODS.importThread, OrchestrationImportThreadInput),
   tagRequestBody(ORCHESTRATION_WS_METHODS.listProjectImports, ListProjectImportsInput),
   tagRequestBody(ORCHESTRATION_WS_METHODS.importProject, ImportProjectInput),

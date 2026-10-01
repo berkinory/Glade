@@ -1,3 +1,5 @@
+import type { OrchestrationEventStoreShape } from "../persistence/Services/OrchestrationEventStore";
+import { readHandoffSourceSnapshot } from "../orchestration/handoff/sourceSnapshot";
 import type { TaggedFailure } from "../platform/operationError.ts";
 import { GLADE_GATEWAY_MAX_THREADS_PER_OPERATION } from "@glade/contracts/provider/agentGateway";
 import { ThreadId, TurnId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
@@ -49,6 +51,7 @@ const LIST_THREADS_DEFAULT_LIMIT = 50;
 const LIST_THREADS_MAX_LIMIT = 200;
 
 export interface ThreadReadToolsInput {
+  readonly eventStore: OrchestrationEventStoreShape;
   readonly snapshotQuery: ProjectionSnapshotQueryShape;
   readonly projectionTurns: ProjectionTurnRepositoryShape;
   readonly providerDiscovery: ProviderDiscoveryServiceShape;
@@ -290,6 +293,12 @@ export function makeThreadReadTools(input: ThreadReadToolsInput): ReadonlyArray<
         properties: {
           threadId: { type: "string", description: "Thread to read." },
           cursor: { type: "string", description: "Pagination cursor from a previous call." },
+          throughSequence: {
+            type: "integer",
+            minimum: 1,
+            description:
+              "Frozen handoff event boundary. Keep the same value on every page; later source history is excluded.",
+          },
           messageLimit: {
             type: "integer",
             minimum: 1,
@@ -340,6 +349,7 @@ export function makeThreadReadTools(input: ThreadReadToolsInput): ReadonlyArray<
         const messageOffsetChars = readNumberArg(args, "messageOffsetChars");
         const messageId = readStringArg(args, "messageId");
         const messageVersion = readStringArg(args, "messageVersion");
+        const throughSequence = readNumberArg(args, "throughSequence");
         const detail = yield* snapshotQuery.getThreadDetailById(ThreadId.makeUnsafe(threadId)).pipe(
           Effect.mapError((error) => new ToolInputError(errorText(error))),
           Effect.flatMap(
@@ -351,7 +361,14 @@ export function makeThreadReadTools(input: ThreadReadToolsInput): ReadonlyArray<
         );
         return mcpToolResultJson(
           summarizeThreadDetail({
-            thread: detail,
+            thread:
+              throughSequence === undefined
+                ? detail
+                : yield* readHandoffSourceSnapshot(
+                    input.eventStore,
+                    ThreadId.makeUnsafe(threadId),
+                    throughSequence,
+                  ),
             cursor,
             messageLimit,
             maxMessageChars,

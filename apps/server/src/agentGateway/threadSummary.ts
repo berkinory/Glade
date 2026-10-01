@@ -84,6 +84,11 @@ interface AgentThreadMessageSummary {
   readonly text: string;
   readonly truncated: boolean;
   readonly dispatchOrigin?: string;
+  readonly originalSource?: {
+    readonly threadId: string;
+    readonly messageId: string;
+    readonly throughSequence?: number | undefined;
+  };
   readonly createdAt: string;
 }
 
@@ -418,7 +423,22 @@ export function summarizeThreadDetail(input: {
     lastError: thread.session?.lastError ?? null,
     createdAt: thread.createdAt,
     updatedAt: thread.updatedAt,
-    messages: page.messages,
+    messages: page.messages.map((message) => {
+      const source = thread.handoff?.sourceMessages?.find(
+        (entry) => entry.importedMessageId === message.messageId,
+      );
+      return source
+        ? {
+            ...message,
+            originalSource: {
+              threadId: source.originThreadId ?? thread.handoff!.sourceThreadId,
+              messageId: source.originMessageId ?? source.sourceMessageId,
+              throughSequence:
+                source.originBoundarySequence ?? thread.handoff?.sourceBoundarySequence,
+            },
+          }
+        : message;
+    }),
     totalMessages: page.totalMessages,
     effectiveMessageLimit: page.effectiveMessageLimit,
     effectiveMaxMessageChars: page.effectiveMaxMessageChars,

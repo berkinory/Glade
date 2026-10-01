@@ -58,12 +58,13 @@ function compareThreadActivities(
 function upsertThreadActivity(
   activities: ReadonlyArray<OrchestrationThread["activities"][number]>,
   activity: OrchestrationThread["activities"][number],
+  historyLimit: number,
 ): ReadonlyArray<OrchestrationThread["activities"][number]> {
   const existingIndex = activities.findIndex((entry) => entry.id === activity.id);
   if (existingIndex >= 0 && compareThreadActivities(activities[existingIndex]!, activity) === 0) {
     const next = [...activities];
     next[existingIndex] = activity;
-    return next.slice(-MAX_THREAD_ACTIVITIES);
+    return next.slice(-historyLimit);
   }
 
   const withoutExisting =
@@ -72,7 +73,7 @@ function upsertThreadActivity(
       : [...activities.slice(0, existingIndex), ...activities.slice(existingIndex + 1)];
   const last = withoutExisting.at(-1);
   if (!last || compareThreadActivities(last, activity) <= 0) {
-    return [...withoutExisting, activity].slice(-MAX_THREAD_ACTIVITIES);
+    return [...withoutExisting, activity].slice(-historyLimit);
   }
 
   let low = 0;
@@ -86,7 +87,7 @@ function upsertThreadActivity(
     }
   }
   return [...withoutExisting.slice(0, low), activity, ...withoutExisting.slice(low)].slice(
-    -MAX_THREAD_ACTIVITIES,
+    -historyLimit,
   );
 }
 
@@ -98,6 +99,7 @@ export type ProjectionEffect = Effect.Effect<
 export function projectActivityEvent(
   nextBase: OrchestrationReadModel,
   event: Extract<OrchestrationEvent, { type: "thread.activity-appended" }>,
+  historyLimit = MAX_THREAD_ACTIVITIES,
 ): ProjectionEffect {
   switch (event.type) {
     case "thread.activity-appended":
@@ -113,10 +115,14 @@ export function projectActivityEvent(
             return nextBase;
           }
 
-          const activities = upsertThreadActivity(thread.activities, {
-            ...payload.activity,
-            sequence: payload.activity.sequence ?? event.sequence,
-          });
+          const activities = upsertThreadActivity(
+            thread.activities,
+            {
+              ...payload.activity,
+              sequence: payload.activity.sequence ?? event.sequence,
+            },
+            historyLimit,
+          );
 
           return {
             ...nextBase,

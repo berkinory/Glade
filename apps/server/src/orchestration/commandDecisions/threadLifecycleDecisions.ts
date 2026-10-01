@@ -1,3 +1,4 @@
+import { handoffMessageReference } from "../handoff/sourceReferences";
 import { MessageId } from "@glade/contracts/core/baseSchemas";
 import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import { Effect } from "effect";
@@ -147,6 +148,36 @@ export function decideThreadLifecycleCommand({
           });
         }
 
+        if (
+          sourceThread.deletedAt !== null ||
+          sourceThread.session?.status === "running" ||
+          sourceThread.session?.status === "starting" ||
+          sourceThread.latestTurn?.state === "running" ||
+          sourceThread.pendingInteractions?.some(
+            (interaction) => interaction.status !== "confirmed",
+          )
+        ) {
+          return yield* new OrchestrationCommandInvariantError({
+            commandType: command.type,
+            detail:
+              "Stop the source turn and resolve pending approvals or questions before preparing a handoff.",
+          });
+        }
+        const sourceMessages = sourceThread.messages.filter(
+          (message) =>
+            (message.role === "user" || message.role === "assistant") && !message.streaming,
+        );
+        if (sourceMessages.length === 0) {
+          return yield* new OrchestrationCommandInvariantError({
+            commandType: command.type,
+            detail: "The source conversation has no completed messages to transfer.",
+          });
+        }
+        const importedMessages = sourceMessages.map((message) => ({
+          ...message,
+          messageId: MessageId.makeUnsafe(`handoff:${command.threadId}:${message.id}`),
+        }));
+
         const createdEvent: Omit<OrchestrationEvent, "sequence"> = {
           ...withEventBase({
             aggregateKind: "thread",
@@ -162,8 +193,8 @@ export function decideThreadLifecycleCommand({
             modelSelection: command.modelSelection,
             runtimeMode: command.runtimeMode,
 
-            ...resolveCreatedThreadWorkspaceMetadata(command),
-            createBranchFlowCompleted: command.createBranchFlowCompleted,
+            ...resolveCreatedThreadWorkspaceMetadata(sourceThread),
+            createBranchFlowCompleted: sourceThread.createBranchFlowCompleted,
             isPinned: false,
             parentThreadId: null,
             subagentAgentId: null,
@@ -175,6 +206,18 @@ export function decideThreadLifecycleCommand({
               sourceProvider: sourceThread.modelSelection.provider,
               importedAt: command.createdAt,
               bootstrapStatus: "pending",
+              sourceBoundarySequence: readModel.snapshotSequence,
+              continuationGoal:
+                command.continuationGoal ??
+                "Continue the unfinished work, preserving the latest scope and constraints.",
+              sourceMessages: importedMessages.map((message, index) =>
+                handoffMessageReference(
+                  sourceThread,
+                  sourceMessages[index]!,
+                  message.messageId,
+                  readModel.snapshotSequence,
+                ),
+              ),
             },
             createdAt: command.createdAt,
             updatedAt: command.createdAt,
@@ -182,7 +225,7 @@ export function decideThreadLifecycleCommand({
         };
 
         const importedMessageEvents: ReadonlyArray<Omit<OrchestrationEvent, "sequence">> =
-          command.importedMessages.map((message) => ({
+          importedMessages.map((message) => ({
             ...withEventBase({
               aggregateKind: "thread",
               aggregateId: command.threadId,

@@ -211,6 +211,7 @@ const ThreadHandoffCreateCommand = Schema.Struct({
     Schema.withDecodingDefault(() => false),
   ),
   importedMessages: Schema.Array(ThreadHandoffImportedMessage),
+  continuationGoal: Schema.optional(Schema.String),
   createdAt: IsoDateTime,
 });
 

@@ -52,12 +52,7 @@ import {
   ProviderContextLifecycleReason,
   ProviderContextLifecycleEvidence,
 } from "./contextLifecycle";
-import {
-  hasNativeAssistantMessagesBefore,
-  buildHandoffBootstrapText,
-  listPriorTranscriptMessages,
-  buildPriorTranscriptBootstrapText,
-} from "../handoff.ts";
+import { listPriorTranscriptMessages, buildPriorTranscriptBootstrapText } from "../handoff.ts";
 import { checkpointRefForThreadMessageStart } from "../../checkpointing/Utils.ts";
 import { type ProviderTurnStartResult } from "@glade/contracts/provider/provider";
 import { isStaleClaudeResumeError } from "./interactionPolicy";
@@ -66,6 +61,7 @@ import { makeProviderSessionConfiguration } from "./sessionConfiguration";
 import { PendingInterruptEscalation, PendingContextBootstrapAttempt } from "./runtimeState";
 import { makeProviderContextBootstrap } from "./contextBootstrap";
 import { ThreadSessionSettings } from "../Services/ThreadSessionSettings.ts";
+import { HandoffPreparation } from "../Services/HandoffPreparation";
 import { ProviderDeliveryGate } from "../Services/ProviderDeliveryGate.ts";
 
 export function makeProviderTurnDispatch(input: {
@@ -307,17 +303,32 @@ export function makeProviderTurnDispatch(input: {
     // own words.
     const boundaryMessageText = authoredMessageText;
     const bootstrapBudgetMessageText = `${boundaryMessageText}${mentionContextSuffix}`;
-    const shouldBootstrapHandoff =
-      thread.handoff?.bootstrapStatus === "pending" &&
-      !hasNativeAssistantMessagesBefore(thread, transcriptBoundaryMessageId);
+    const shouldBootstrapHandoff = thread.handoff?.bootstrapStatus === "pending";
     const handoffBootstrapAvailableChars = availableProviderContextChars({
       tag: "handoff_context",
       messageText: bootstrapBudgetMessageText,
       wrapLatestUserMessage: true,
     });
     const handoffBootstrapText =
-      shouldBootstrapHandoff && handoffBootstrapAvailableChars > 0
-        ? buildHandoffBootstrapText(thread, handoffBootstrapAvailableChars)
+      shouldBootstrapHandoff && input.reviewTarget === undefined
+        ? yield* Effect.gen(function* () {
+            const preparation = yield* Effect.serviceOption(HandoffPreparation);
+            if (Option.isNone(preparation) || handoffBootstrapAvailableChars === 0) {
+              return yield* new ProviderAdapterValidationError({
+                provider: selectedProvider as ProviderKind,
+                operation: "thread.turn.start",
+                issue:
+                  "The handoff context cannot be prepared. Retry preparation or shorten the latest message.",
+              });
+            }
+            return yield* preparation.value.prepare({
+              threadId: input.threadId,
+              modelSelection: input.modelSelection ?? thread.modelSelection,
+              providerOptions: input.providerOptions,
+              latestRequest: bootstrapBudgetMessageText,
+              attachmentCount: input.attachments?.length ?? 0,
+            });
+          })
         : null;
 
     const interruptEscalation = pendingInterruptEscalations.get(input.threadId);
@@ -684,12 +695,15 @@ export function makeProviderTurnDispatch(input: {
       completeInterruptEscalation(input.threadId, interruptEscalation);
     }
     if (handoffBootstrapText && thread.handoff !== null && input.reviewTarget === undefined) {
+      const preparedThread = Option.getOrUndefined(
+        yield* projectionSnapshotQuery.getThreadShellById(input.threadId),
+      );
       yield* orchestrationEngine.dispatch({
         type: "thread.meta.update",
         commandId: serverCommandId("handoff-bootstrap-complete"),
         threadId: input.threadId,
         handoff: {
-          ...thread.handoff,
+          ...(preparedThread?.handoff ?? thread.handoff),
           bootstrapStatus: "completed",
         },
       });

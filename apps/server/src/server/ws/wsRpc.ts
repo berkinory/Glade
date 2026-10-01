@@ -1,3 +1,4 @@
+import { HandoffPreparation } from "../../orchestration/Services/HandoffPreparation";
 import { readGitSidebarSummary } from "../../git/gitSidebarSummary";
 import { ProviderManagement } from "../../provider/Services/ProviderManagement.ts";
 import { sourceControlActions } from "../../git/sourceControlActions.ts";
@@ -363,6 +364,7 @@ const makeWsRpcHandlersLayer = () =>
       const open = yield* Open;
       const orchestrationEngine = yield* OrchestrationEngineService;
       const providerCommandReactor = yield* ProviderCommandReactor;
+      const handoffPreparation = yield* HandoffPreparation;
       const path = yield* Path.Path;
       const pullRequests = yield* PullRequestService;
       const profileStatsQuery = yield* ProfileStatsQuery;
@@ -892,11 +894,37 @@ const makeWsRpcHandlersLayer = () =>
           );
 
       return AdmittedWsFeatureRpcGroup.of({
+        [ORCHESTRATION_WS_METHODS.prepareHandoff]: (input) =>
+          rpcEffect(
+            handoffPreparation.prepare(input).pipe(Effect.asVoid),
+            "Failed to prepare handoff context",
+          ),
         [ORCHESTRATION_WS_METHODS.dispatchCommand]: (command) =>
           rpcEffect(
             Effect.gen(function* () {
               const { command: normalizedCommand, prepareWorkspaceRoot } =
                 yield* normalizeDispatchCommand({ command });
+              if (
+                normalizedCommand.type === "thread.turn.start" &&
+                normalizedCommand.reviewTarget === undefined
+              ) {
+                yield* handoffPreparation.prepare({
+                  threadId: normalizedCommand.threadId,
+                  modelSelection: normalizedCommand.modelSelection,
+                  providerOptions: normalizedCommand.providerOptions,
+                  latestRequest: normalizedCommand.message.text,
+                  attachmentCount: normalizedCommand.message.attachments.length,
+                });
+              }
+              if (
+                normalizedCommand.type === "thread.turn.interrupt" &&
+                (yield* handoffPreparation.cancel(normalizedCommand.threadId))
+              ) {
+                return {
+                  sequence: (yield* projectionReadModelQuery.getSnapshotSequence())
+                    .snapshotSequence,
+                };
+              }
               const result = yield* dispatchOrchestrationCommand(normalizedCommand);
               // Only scaffold managed workspace-root subdirectories (Inbox/Outbox/work/outputs) AFTER the decider
               // has accepted the command. A rejected dispatch (e.g. a cross-kind workspace-root ownership

@@ -1,3 +1,4 @@
+import { HandoffPreparationNotice } from "./HandoffPreparationNotice";
 import { type MessageId, type ThreadId, type TurnId } from "@glade/contracts/core/baseSchemas";
 import { type LegendListRef } from "@legendapp/list/react";
 import {
@@ -217,6 +218,7 @@ export function ChatTranscriptPane({
         terminalWorkspaceTerminalTabActive ? "pointer-events-none invisible" : "",
       )}
     >
+      <HandoffPreparationNotice key={activeThreadId} threadId={activeThreadId} />
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
         {agentActivityDetail && onCloseAgentActivityDetail ? (
           <AgentActivityDetailView

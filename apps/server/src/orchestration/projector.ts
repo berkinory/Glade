@@ -22,6 +22,7 @@ export function createEmptyReadModel(nowIso: string): OrchestrationReadModel {
 export function projectEvent(
   model: OrchestrationReadModel,
   event: OrchestrationEvent,
+  historyLimit?: number,
 ): Effect.Effect<OrchestrationReadModel, OrchestrationProjectorDecodeError> {
   const nextBase: OrchestrationReadModel = {
     ...model,
@@ -55,16 +56,16 @@ export function projectEvent(
       return projectTurnEvent(nextBase, event);
     case "thread.async-user-input-answered":
     case "thread.message-sent":
-      return projectMessageEvent(nextBase, event);
+      return projectMessageEvent(nextBase, event, historyLimit);
     case "thread.interaction-mode-set":
     case "thread.proposed-plan-upserted":
       return Effect.succeed(nextBase);
     case "thread.turn-diff-completed":
     case "thread.reverted":
     case "thread.conversation-rolled-back":
-      return projectHistoryEvent(nextBase, event);
+      return projectHistoryEvent(nextBase, event, historyLimit);
     case "thread.activity-appended":
-      return projectActivityEvent(nextBase, event);
+      return projectActivityEvent(nextBase, event, historyLimit);
     default:
       return Effect.succeed(nextBase);
   }

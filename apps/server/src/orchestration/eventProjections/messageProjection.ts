@@ -85,6 +85,7 @@ export function projectMessageEvent(
       type: "thread.async-user-input-answered" | "thread.message-sent";
     }
   >,
+  historyLimit = MAX_THREAD_MESSAGES,
 ): ProjectionEffect {
   switch (event.type) {
     case "thread.async-user-input-answered":
@@ -229,9 +230,9 @@ export function projectMessageEvent(
                 })
               : undefined;
           cappedMessages =
-            thread.messages.length >= MAX_THREAD_MESSAGES
+            thread.messages.length >= historyLimit
               ? [
-                  ...thread.messages.slice(thread.messages.length - MAX_THREAD_MESSAGES + 1),
+                  ...thread.messages.slice(thread.messages.length - historyLimit + 1),
                   {
                     ...message,
                     ...(nextSegments !== undefined ? { textSegments: nextSegments } : {}),

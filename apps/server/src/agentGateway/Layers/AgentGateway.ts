@@ -203,6 +203,7 @@ const makeAgentGateway = Effect.gen(function* () {
     });
 
   const readTools = makeThreadReadTools({
+    eventStore,
     snapshotQuery,
     projectionTurns,
     providerDiscovery,

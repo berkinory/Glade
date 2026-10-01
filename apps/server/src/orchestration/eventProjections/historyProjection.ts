@@ -121,6 +121,7 @@ export function projectHistoryEvent(
     OrchestrationEvent,
     { type: "thread.turn-diff-completed" | "thread.reverted" | "thread.conversation-rolled-back" }
   >,
+  historyLimit?: number,
 ): ProjectionEffect {
   switch (event.type) {
     case "thread.turn-diff-completed":
@@ -161,7 +162,7 @@ export function projectHistoryEvent(
           checkpoint,
         ]
           .toSorted((left, right) => left.checkpointTurnCount - right.checkpointTurnCount)
-          .slice(-MAX_THREAD_CHECKPOINTS);
+          .slice(-(historyLimit ?? MAX_THREAD_CHECKPOINTS));
 
         // Turn-diff placeholders can fire before the assistant message is finalized — they must not erase a
         // real id that thread.message-sent has already recorded.
@@ -219,7 +220,7 @@ export function projectHistoryEvent(
           const checkpoints = thread.checkpoints
             .filter((entry) => entry.checkpointTurnCount <= payload.turnCount)
             .toSorted((left, right) => left.checkpointTurnCount - right.checkpointTurnCount)
-            .slice(-MAX_THREAD_CHECKPOINTS);
+            .slice(-(historyLimit ?? MAX_THREAD_CHECKPOINTS));
           const retainedTurnIds = new Set(checkpoints.map((checkpoint) => checkpoint.turnId));
           const retainedMessages = retainThreadMessagesAfterRevert(
             thread.messages,
@@ -230,7 +231,7 @@ export function projectHistoryEvent(
             retainedMessages,
             new Set(retainedMessages.map((message) => message.id)),
             event.sequence,
-          ).slice(-MAX_THREAD_MESSAGES);
+          ).slice(-(historyLimit ?? MAX_THREAD_MESSAGES));
 
           const activities = retainThreadActivitiesAfterRevert(thread.activities, retainedTurnIds);
 
@@ -299,7 +300,7 @@ export function projectHistoryEvent(
           const checkpoints = thread.checkpoints
             .filter((checkpoint) => !rollback.removedTurnIds.has(checkpoint.turnId))
             .toSorted((left, right) => left.checkpointTurnCount - right.checkpointTurnCount)
-            .slice(-MAX_THREAD_CHECKPOINTS);
+            .slice(-(historyLimit ?? MAX_THREAD_CHECKPOINTS));
 
           const activities = thread.activities.filter(
             (activity) => activity.turnId === null || !rollback.removedTurnIds.has(activity.turnId),
@@ -314,7 +315,7 @@ export function projectHistoryEvent(
                 messages,
                 new Set(messages.map((message) => message.id)),
                 event.sequence,
-              ).slice(-MAX_THREAD_MESSAGES),
+              ).slice(-(historyLimit ?? MAX_THREAD_MESSAGES)),
 
               activities,
               latestTurn:

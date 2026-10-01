@@ -5,8 +5,6 @@ import { randomUUID } from "./utils";
 
 const TRAILING_ASSISTANT_SELECTIONS_PATTERN =
   /\n*<assistant_selection>\n([\s\S]*?)\n<\/assistant_selection>\s*$/;
-const EMBEDDED_ASSISTANT_SELECTIONS_PATTERN =
-  /\n*<assistant_selection>\n[\s\S]*?\n<\/assistant_selection>(?=\n*(<terminal_context>\n[\s\S]*?\n<\/terminal_context>\s*)?(<file_comments>\n[\s\S]*?\n<\/file_comments>\s*)?(<pasted_text>\n[\s\S]*?\n<\/pasted_text>\s*)?(<pull_request_context>\n[\s\S]*?\n<\/pull_request_context>\s*)?$)/;
 
 export interface ExtractedAssistantSelections {
   promptText: string;
@@ -133,10 +131,6 @@ export function extractTrailingAssistantSelections(prompt: string): ExtractedAss
     promptText: prompt.slice(0, match.index).replace(/\n+$/, ""),
     selections: parseAssistantSelectionEntries(match[1] ?? ""),
   };
-}
-
-export function stripEmbeddedAssistantSelections(prompt: string): string {
-  return prompt.replace(EMBEDDED_ASSISTANT_SELECTIONS_PATTERN, "");
 }
 
 function parseAssistantSelectionEntries(block: string): ParsedAssistantSelectionEntry[] {

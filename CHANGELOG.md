@@ -4,6 +4,7 @@
 
 ### Improved
 
+- Provider handoffs preserve key decisions and unfinished work, with access to earlier conversation details when needed.
 - Explorer navigation can be hidden to give files more room, and highlighted file rows are easier to distinguish.
 - History loads faster with fewer repeated Git reads.
 - Empty space across the top bar supports window dragging and native title-bar actions more consistently.

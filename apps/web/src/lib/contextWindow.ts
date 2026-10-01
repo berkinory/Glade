@@ -42,7 +42,7 @@ export interface ContextWindowMeterDisplay {
   readonly ariaLabel: string;
 }
 
-export function isCompletedContextCompaction(activity: OrchestrationThreadActivity): boolean {
+function isCompletedContextCompaction(activity: OrchestrationThreadActivity): boolean {
   if (activity.kind !== "context-compaction") {
     return false;
   }

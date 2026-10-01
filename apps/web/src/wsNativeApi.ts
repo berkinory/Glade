@@ -625,10 +625,15 @@ export function createWsNativeApi(): NativeApi {
       getShellSnapshot: () => transport.request(ORCHESTRATION_WS_METHODS.getShellSnapshot),
       getThreadDetailSnapshot: (input) =>
         transport.request(ORCHESTRATION_WS_METHODS.getThreadDetailSnapshot, input),
+      prepareHandoff: (input) =>
+        transport.request(ORCHESTRATION_WS_METHODS.prepareHandoff, input, { timeoutMs: null }),
       dispatchCommand: (command) => {
-        return transport.request(ORCHESTRATION_WS_METHODS.dispatchCommand, {
-          command: omitNullUserInputAnswers(command),
-        });
+        const payload = { command: omitNullUserInputAnswers(command) };
+        return command.type === "thread.turn.start"
+          ? transport.request(ORCHESTRATION_WS_METHODS.dispatchCommand, payload, {
+              timeoutMs: null,
+            })
+          : transport.request(ORCHESTRATION_WS_METHODS.dispatchCommand, payload);
       },
       importThread: (input) => transport.request(ORCHESTRATION_WS_METHODS.importThread, input),
       listProjectImports: (input) =>

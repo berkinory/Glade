@@ -499,8 +499,12 @@ const makeOrchestrationEngine = Effect.gen(function* () {
     command: OrchestrationCommand,
     model: OrchestrationReadModel,
     threadId: ThreadId,
+    fullHistory = false,
   ): Effect.Effect<OrchestrationReadModel, OrchestrationDispatchError> =>
-    projectionSnapshotQuery.getThreadDetailById(threadId).pipe(
+    (fullHistory
+      ? projectionSnapshotQuery.getThreadDetailForExportById(threadId)
+      : projectionSnapshotQuery.getThreadDetailById(threadId)
+    ).pipe(
       Effect.map((threadOption) =>
         Option.match(threadOption, {
           onNone: () => model,
@@ -522,6 +526,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
   ): Effect.Effect<OrchestrationReadModel, OrchestrationDispatchError> => {
     switch (command.type) {
       case "thread.handoff.create":
+        return loadThreadDetailForDecider(command, commandReadModel, command.sourceThreadId, true);
       case "thread.fork.create":
         return loadThreadDetailForDecider(command, commandReadModel, command.sourceThreadId);
       case "thread.turn.start":
