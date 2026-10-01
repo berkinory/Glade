@@ -90,7 +90,7 @@ import { resolveThreadWorkspaceCwd } from "../../checkpointing/Utils.ts";
 // policy here adds tens of thousands of context characters per round without adding authority or
 // safety.
 const AGENT_GATEWAY_INSTRUCTIONS =
-  "Glade tools are thread-scoped. Use browser_* only for Glade's shared in-app browser runtime; follow the provider-delivered <glade_host_context> for full policy.";
+  "Glade tools operate under this session's thread identity and capabilities. Use the provider-delivered <glade_host_context> for host policy and each tool's description for its inputs, effects and recovery rules. Use browser_* only for Glade's shared in-app browser runtime.";
 
 const makeAgentGateway = Effect.gen(function* () {
   const credentials = yield* AgentGatewayCredentials;
@@ -240,14 +240,15 @@ const makeAgentGateway = Effect.gen(function* () {
     definition: {
       name: "glade_create_threads",
       description:
-        "Create an exact batch of 1–20 standalone Glade threads. Worktree threads start on a Glade-managed temporary branch pinned at baseRef (or the selected checkout's HEAD) and copy local checkout changes plus .worktreeinclude files when the ref is that checkout's HEAD; on the first turn Glade may rename the branch after the prompt and publish it. Validation/preflight failures create nothing and may be corrected with the same requestId; durable retries replay the exact operation.",
+        "Create one exact plan of 1-20 standalone Glade threads. For a plural request, the array length must equal the requested count; do not add candidates, retries or verification workers.\nSelect targets from glade_capabilities and respect its operation limits. Worktree threads start on a managed temporary branch pinned at baseRef or the selected checkout's HEAD. When pinned at that HEAD, they copy local checkout changes and .worktreeinclude files. The first turn may rename and publish the branch.\nA confirmed validation/preflight rejection before an operationId creates no durable work: correct that rejected plan using the same requestId. Once an operationId exists, retries must use the same requestId and unchanged plan. After an ambiguous response, retry the unchanged request to recover its outcome; never assume nothing was created. A terminal failure does not authorize replacement threads.\nReport per-thread failures. Acceptance is not completion; use glade_wait_for_threads when the user requested outcomes.",
       inputSchema: {
         type: "object",
         properties: {
           requestId: {
             type: "string",
             maxLength: 256,
-            description: "Stable id for this exact user-requested creation plan.",
+            description:
+              "Stable identity of this exact creation plan. Keep it on rejection correction and unchanged durable retries.",
           },
           threads: {
             type: "array",
@@ -259,7 +260,7 @@ const makeAgentGateway = Effect.gen(function* () {
                 notifyCreatorOnComplete: {
                   type: "boolean",
                   description:
-                    "Passively return the initial run result to this creating thread. Does not wake the creator.",
+                    "Passively deliver the initial run result to the creator; does not wake it or replace waiting.",
                 },
                 prompt: { type: "string" },
                 title: { type: "string" },
@@ -271,7 +272,7 @@ const makeAgentGateway = Effect.gen(function* () {
                 baseRef: {
                   type: "string",
                   description:
-                    "Local Git revision, #PR, or GitHub pull-request URL the worktree is pinned at. Defaults to the selected checkout's HEAD.",
+                    "Local Git revision, #PR or GitHub PR URL to pin the worktree. Defaults to the selected checkout's HEAD.",
                 },
                 runtimeMode: {
                   type: "string",
@@ -309,15 +310,20 @@ const makeAgentGateway = Effect.gen(function* () {
     definition: {
       name: "glade_create_thread",
       description:
-        "Create exactly one standalone Glade thread. Worktree threads start on a Glade-managed temporary branch pinned at baseRef; on the first turn Glade may rename the branch after the prompt and publish it. For two or more threads use one glade_create_threads call instead.",
+        "Create one standalone Glade thread for user-requested work. Use glade_create_threads for two or more threads; do not satisfy a plural request with repeated single-thread calls.\nSelect a provider/model and options from glade_capabilities. Worktree threads start on a Glade-managed temporary branch pinned at baseRef; the first turn may rename and publish that branch.\nA confirmed validation/preflight rejection before an operationId creates no durable work: correct that rejected plan using the same requestId. Once an operationId exists, retries must use the same requestId and unchanged plan. After an ambiguous response, retry the unchanged request to recover its outcome; never assume nothing was created. A terminal failure does not authorize replacement threads.\nCreation acceptance is not task completion. When results are requested, wait for the returned thread with glade_wait_for_threads.",
       inputSchema: {
         type: "object",
         properties: {
-          requestId: { type: "string", maxLength: 256 },
+          requestId: {
+            type: "string",
+            maxLength: 256,
+            description:
+              "Stable identity of this user-requested creation plan; reuse it according to the retry rules.",
+          },
           notifyCreatorOnComplete: {
             type: "boolean",
             description:
-              "Passively return the initial run result to this creating thread. Does not wake the creator.",
+              "Passively deliver the initial run result to the creating thread. Does not wake the creator or replace explicit waiting.",
           },
           prompt: { type: "string" },
           title: { type: "string" },
@@ -335,7 +341,7 @@ const makeAgentGateway = Effect.gen(function* () {
           baseRef: {
             type: "string",
             description:
-              "Local Git revision, #PR, or GitHub pull-request URL the worktree is pinned at. Defaults to the selected checkout's HEAD.",
+              "Local Git revision, #PR or GitHub PR URL for the worktree. Defaults to the selected checkout's HEAD.",
           },
           runtimeMode: {
             type: "string",
@@ -561,17 +567,17 @@ const makeAgentGateway = Effect.gen(function* () {
     definition: {
       name: "glade_set_thread_pull_request",
       description:
-        "Associate a pull request with a Glade thread. Use this after successfully creating the pull request that represents that thread's own deliverable. Do not associate pull requests that the thread only reviews, references, or discusses. Defaults to your own thread when threadId is omitted.",
+        "Associate a PR with the Glade thread that owns its deliverable. Use after successfully creating that PR. A PR only reviewed, referenced or discussed must not be associated.\nThis tool records an association; it does not create, push or merge a PR. Confirm the association result and report any failure rather than claiming the PR is linked.",
       inputSchema: {
         type: "object",
         properties: {
           threadId: {
             type: "string",
-            description: "Thread that owns the pull request. Defaults to your own thread.",
+            description: "Deliverable owner; defaults to the caller's thread when omitted.",
           },
           reference: {
             type: "string",
-            description: "GitHub pull request URL or number resolvable from the thread repository.",
+            description: "GitHub PR URL or number resolvable in the owning thread's repository.",
           },
         },
         required: ["reference"],

@@ -66,7 +66,10 @@ export interface WorkflowSubagentThreadRef {
 }
 
 export function buildWorkflowResumePrompt(scriptPath: string, runId: string): string {
-  return `Resume the workflow by invoking the Workflow tool with {"scriptPath": ${JSON.stringify(scriptPath)}, "resumeFromRunId": ${JSON.stringify(runId)}}. Do not modify the script.`;
+  return `Resume the existing workflow with the Workflow tool:
+{"scriptPath":${JSON.stringify(scriptPath)},"resumeFromRunId":${JSON.stringify(runId)}}
+
+Preserve the script and use the returned run status to determine the outcome. If resumption fails or the tool is unavailable, report that result; do not silently start a replacement run or modify the script.`;
 }
 
 interface WorkflowProgressEntry {

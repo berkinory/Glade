@@ -16,7 +16,6 @@ import type { ProviderDiscoveryServiceShape } from "../provider/Services/Provide
 import { GLADE_HARNESS_POLICY_VERSION } from "./harnessPolicy.ts";
 import { mcpToolResultError, mcpToolResultJson } from "./protocol.ts";
 import {
-  AGENT_GATEWAY_TARGET_OPTIONS_DESCRIPTION,
   agentGatewayTargetOptionGuidance,
   loadAgentGatewayProviderCatalog,
   type AgentGatewayProviderAvailability,
@@ -117,7 +116,8 @@ export function makeThreadReadTools(input: ThreadReadToolsInput): ReadonlyArray<
     requiredCapability: "thread:read",
     definition: {
       name: "glade_capabilities",
-      description: `List canonical Glade provider/model targets, exact provider option keys, examples, and gateway limits used to validate thread creation. ${AGENT_GATEWAY_TARGET_OPTIONS_DESCRIPTION}`,
+      description:
+        "Discover canonical provider/model targets, provider option contracts and limits for Glade thread creation. Use returned providers[].models[].slug values for model identifiers and check availability before selecting a requested target. Do not guess a slug or silently switch models.\n\nFor the selected provider/model, use targetConstruction[provider].optionsByModel[model] when supplied, otherwise providerOptions. Preserve exact option keys and valueType; use allowedValues unless allowsCustomValue explicitly permits another value. Omit options the user did not request to inherit provider settings. Do not drop or substitute an explicitly requested unsupported option; report the mismatch.",
       inputSchema: { type: "object", properties: {}, additionalProperties: false },
       annotations: {
         title: "Glade capabilities",
@@ -177,7 +177,7 @@ export function makeThreadReadTools(input: ThreadReadToolsInput): ReadonlyArray<
     definition: {
       name: "glade_list_projects",
       description:
-        "List Glade projects (id, title, workspace root). The system-managed Chats container is not a project and is excluded. Use before creating a thread in another project.",
+        "List Glade projects with their ids, titles and workspace roots. The system-managed Chats container is excluded.\nUse this tool before creating a thread in another project. Match the requested project to returned evidence; do not invent a projectId or choose between ambiguous matches without resolving the ambiguity.",
       inputSchema: { type: "object", properties: {}, additionalProperties: false },
       annotations: { title: "List Glade projects", ...READ_ONLY_TOOL_ANNOTATIONS },
     },
@@ -287,51 +287,53 @@ export function makeThreadReadTools(input: ThreadReadToolsInput): ReadonlyArray<
     requiredCapability: "thread:read",
     definition: {
       name: "glade_read_thread",
-      description: `Read one Glade thread's status and recent messages (newest last). Pass nextCursor as cursor to page older messages. To read one settled long message losslessly, pass the summary's index, messageId, and messageVersion with messageOffsetChars 0, then follow messagePage.nextOffsetChars with the same identity and version.`,
+      description:
+        "Read one Glade thread's status and conversation. Use this for user requests, assistant replies and reported task results; use activity/runtime tools for execution evidence absent from the transcript.\nTranscript pages are newest-last. Pass returned nextCursor as cursor to read older messages. A bounded message summary is not its complete text.\nFor a settled message that needs full inspection, pass messageIndex from its returned summary index, plus messageId and messageVersion with messageOffsetChars 0. Follow messagePage.nextOffsetChars using that same identity and version until absent. If coordinates are stale, refresh the summary instead of combining slices from different versions.\nFor frozen handoff evidence, keep throughSequence unchanged on every page. Later history is excluded; frozen evidence does not prove current workspace state.",
       inputSchema: {
         type: "object",
         properties: {
           threadId: { type: "string", description: "Thread to read." },
-          cursor: { type: "string", description: "Pagination cursor from a previous call." },
+          cursor: {
+            type: "string",
+            description: "Opaque nextCursor from a previous transcript page; do not construct one.",
+          },
           throughSequence: {
             type: "integer",
             minimum: 1,
-            description:
-              "Frozen handoff event boundary. Keep the same value on every page; later source history is excluded.",
+            description: "Frozen handoff event boundary, unchanged throughout retrieval.",
           },
           messageLimit: {
             type: "integer",
             minimum: 1,
             maximum: READ_THREAD_MAX_MESSAGE_LIMIT,
-            description: `Messages per transcript page (default 20, max ${READ_THREAD_MAX_MESSAGE_LIMIT}).`,
+            description: `Transcript messages per page; default 20, maximum ${READ_THREAD_MAX_MESSAGE_LIMIT}.`,
           },
           maxMessageChars: {
             type: "integer",
             minimum: 50,
             maximum: READ_THREAD_MAX_MESSAGE_CHARS,
-            description: `Characters per message or single-message slice (default 1500, max ${READ_THREAD_MAX_MESSAGE_CHARS}). The response reports the effective value.`,
+            description: `Characters per summary or single-message slice; default 1500, maximum ${READ_THREAD_MAX_MESSAGE_CHARS}. Inspect the reported effective value.`,
           },
           messageIndex: {
             type: "integer",
             minimum: 0,
             description:
-              "Current transcript index of one message to read losslessly; messageId and messageVersion detect stale coordinates.",
+              "Returned index of the settled message; requires its messageId and messageVersion.",
           },
           messageOffsetChars: {
             type: "integer",
             minimum: 0,
             description:
-              "Character offset within messageIndex (default 0); follow messagePage.nextOffsetChars until absent.",
+              "Character offset for that message; start at 0 and follow messagePage.nextOffsetChars.",
           },
           messageId: {
             type: "string",
-            description:
-              "Message identity returned in each message summary; required with messageIndex.",
+            description: "Returned message identity, required for messageIndex.",
           },
           messageVersion: {
             type: "string",
             description:
-              "Opaque version returned in each message summary; required with messageIndex so slices stay bound to one snapshot.",
+              "Returned snapshot version, required for messageIndex and unchanged across its slices.",
           },
         },
         required: ["threadId"],
@@ -385,7 +387,9 @@ export function makeThreadReadTools(input: ThreadReadToolsInput): ReadonlyArray<
     requiredCapability: "thread:read",
     definition: {
       name: "glade_wait_for_threads",
-      description: `Wait for the pinned turns of 1–20 Glade threads and return every outcome in input order. Assistant summaries are capped at ${WAIT_THREAD_SUMMARY_MAX_CHARS} characters; use each result's readThread call to page the full transcript. Timeouts only report progress; they never retry, replace, cancel, or create work.`,
+      description: `Wait for pinned turns of 1-20 Glade threads. Outcomes are returned in input order. Inspect each outcome's status; a failed or interrupted turn is not a successful task.
+Reuse returned pinned runIds when continuing the same wait so a later turn is not mistaken for the requested run. On timeout, preserve the targets and pins and continue waiting when results are still requested; timeout never retries, replaces, cancels or creates work.
+Assistant summaries are capped at ${WAIT_THREAD_SUMMARY_MAX_CHARS} characters. Use each result's supplied readThread call and lossless message pages when the full output is needed to assess or synthesize results. Report every requested outcome, including failures and unresolved work.`,
       inputSchema: {
         type: "object",
         properties: {
@@ -399,13 +403,15 @@ export function makeThreadReadTools(input: ThreadReadToolsInput): ReadonlyArray<
             type: "array",
             maxItems: GLADE_GATEWAY_MAX_THREADS_PER_OPERATION,
             items: { type: ["string", "null"] },
-            description: "Optional pinned turn ids from a prior wait. Must match threadIds length.",
+            description:
+              "Optional pinned turn ids from an earlier wait; must match threadIds length and order.",
           },
           timeoutMs: {
             type: "integer",
             minimum: 0,
             maximum: 60_000,
-            description: "Long-poll duration; defaults to 30000ms.",
+            description:
+              "Long-poll duration; default 30000ms. A timeout is a progress result, not task completion.",
           },
         },
         required: ["threadIds"],

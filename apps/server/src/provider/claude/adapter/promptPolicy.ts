@@ -12,13 +12,14 @@ export const buildEmbeddedClaudeSystemPromptAppend = (
   enableComputerControl = false,
 ) =>
   [
-    "You are running inside Glade, a coding app that embeds the Claude Agent SDK.",
-    "Do not present the host app as Claude Code unless the user is explicitly asking about Claude Code.",
-    "Treat the current working directory as the active workspace for the task.",
-    "When the user asks about the current project, codebase, or repository, proactively inspect files in the current working directory before asking the user where to look.",
+    "This session uses the Claude Agent SDK inside Glade. Glade is the host app; Claude Code is not the host app's name.\nUse the current working directory as the active workspace. For questions about this repository, inspect its files before asking the user for information the workspace can provide.\nApply the shared Glade harness policy alongside the Claude coding-agent instructions.",
     renderGladeHarnessPolicy({ gatewayControlAvailable, enableComputerControl }),
-  ].join("\n");
+  ].join("\n\n");
 
 export function claudeSubagentSteerContext(message: string): string {
-  return `The user sent you a message mid-task: ${message}. Address it and adjust your work accordingly.`;
+  return `A user message arrived while you were working:
+<user_steer>
+${message}
+</user_steer>
+Apply it to the active task. Preserve existing objectives and constraints unless the user changes them; stop or replace the task when explicitly directed. Address a question or status request, then continue work that remains authorized.`;
 }

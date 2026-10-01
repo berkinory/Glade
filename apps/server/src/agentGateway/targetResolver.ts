@@ -48,7 +48,7 @@ export interface AgentGatewayProviderAvailability {
 }
 
 export const AGENT_GATEWAY_TARGET_OPTIONS_DESCRIPTION =
-  "Provider-specific target options. Use targetConstruction[provider].optionsByModel[model] when present; otherwise use providerOptions. Preserve each option's exact key and valueType. allowedValues are authoritative unless allowsCustomValue is true.";
+  "For the selected provider/model, use targetConstruction[provider].optionsByModel[model] when supplied, otherwise providerOptions. Preserve exact option keys and valueType; use allowedValues unless allowsCustomValue explicitly permits another value. Omit options the user did not request to inherit provider settings. Do not drop or substitute an explicitly requested unsupported option; report the mismatch.";
 
 type AgentGatewayTargetOptionValue = string | number | boolean;
 
@@ -155,7 +155,7 @@ export function agentGatewayTargetOptionGuidance(
       .map((option) => option.key)
       .filter((key) => key !== primaryOptionKey),
     optionSelectionRule:
-      "Use the exact keys, types and values in optionsByModel. Omit options to inherit provider settings.",
+      "Use the selected model's exact optionsByModel keys, value types and allowed values. Omit unrequested options to inherit provider settings; preserve explicit requests or report unsupported values rather than silently substituting them.",
     providerOptions,
     optionsByModel,
     exampleTarget:

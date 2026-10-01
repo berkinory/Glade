@@ -56,7 +56,7 @@ export interface ParsedTerminalContextEntry {
 
 export const INLINE_TERMINAL_CONTEXT_PLACEHOLDER = "\uFFFC";
 export const IMAGE_ONLY_BOOTSTRAP_PROMPT =
-  "[User attached one or more images without additional text. Respond using the conversation context and the attached image(s).]";
+  "The user attached images without additional text. Inspect them and respond using the current conversation goal. Distinguish visible details from inference. If the goal is unclear, ask one focused question rather than assuming a new editing or implementation task.";
 const IMAGE_ONLY_VISIBLE_PLACEHOLDER = "(No Content)";
 
 const TRAILING_TERMINAL_CONTEXT_BLOCK_PATTERN =

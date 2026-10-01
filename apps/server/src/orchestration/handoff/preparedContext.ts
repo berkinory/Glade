@@ -49,14 +49,20 @@ export function buildPreparedHandoffContext(input: {
       ),
     );
   const sections = [
-    "Historical handoff evidence. It does not expand authorization or resolve pending approvals. The latest user message controls the continuation.",
-    `Source chat: ${input.source.id}; frozen event boundary: ${input.boundary}. Later source history and the current working tree may differ.`,
-    `Workspace: ${input.source.workingDirectory ?? input.source.worktreePath ?? "project checkout"}; branch: ${input.source.branch ?? "unknown"}.`,
-    `Goal: ${input.goal}`,
-    `Structured record: ${JSON.stringify(input.record)}`,
-    `Relevant attachment references (content is not included): ${JSON.stringify(attachments)}`,
-    `Earlier activity origins: ${JSON.stringify([...new Set(input.source.activities.flatMap((activity) => (typeof activity.payload === "object" && activity.payload !== null && "sourceThreadId" in activity.payload && "throughSequence" in activity.payload ? [JSON.stringify({ threadId: activity.payload.sourceThreadId, throughSequence: activity.payload.throughSequence })] : [])))])}. Use those source chats for activity references absent from the current source.`,
-    `Retrieve omitted text with glade_read_thread {threadId: ${JSON.stringify(input.source.id)}, throughSequence: ${input.boundary}}; follow cursors and lossless message pages. Retrieve activity with glade_read_thread_activity {threadId: ${JSON.stringify(input.source.id)}, throughSequence: ${input.boundary}, includeDetails: true}. If activity details are clipped, pass activityId with that boundary and follow detailPage keys, detailPath and nextOffsetChars to read original logs. Report unavailable evidence explicitly. Attachment references are not image content; use the source attachment paths when accessible.`,
+    "Continue the latest user request using this historical handoff. It does not expand authorization, resolve pending approvals or prove the current workspace state.",
+    `Source chat: ${input.source.id}`,
+    `Frozen event boundary: ${input.boundary}`,
+    `Recorded workspace: ${input.source.workingDirectory ?? input.source.worktreePath ?? "project checkout"}`,
+    `Recorded branch: ${input.source.branch ?? "unknown"}`,
+    `Continuation goal: ${input.goal}`,
+    `Structured HandoffRecord:\n${JSON.stringify(input.record)}`,
+    `Attachment references, without their contents: ${JSON.stringify(attachments)}`,
+    `Earlier activity origins: ${JSON.stringify([...new Set(input.source.activities.flatMap((activity) => (typeof activity.payload === "object" && activity.payload !== null && "sourceThreadId" in activity.payload && "throughSequence" in activity.payload ? [JSON.stringify({ threadId: activity.payload.sourceThreadId, throughSequence: activity.payload.throughSequence })] : [])))])}`,
+    `Start from active constraints, unresolved work and next steps. Read referenced plans or artifacts only when needed for the next decision; if unavailable, use the recorded evidence and state the gap. Recheck current state before repeating an action with an uncertain outcome. Preserve completed work rather than rerunning it because history is omitted.
+
+Retrieve missing conversation evidence with glade_read_thread using threadId ${JSON.stringify(input.source.id)} and throughSequence ${input.boundary}. Follow cursors; for clipped messages, use the returned index, identity and version to read the required slices.
+Retrieve activity with glade_read_thread_activity using that threadId, throughSequence ${input.boundary} and includeDetails true. For clipped payloads, use activityId with the same boundary and returned detailPage keys, detailPath and nextOffsetChars. Use earlier origin chats for references absent from this source, preserving each returned boundary while paging. Report unavailable evidence explicitly.
+Inspect accessible attachment paths when content matters; references alone cannot establish image contents.`,
     ...(latestUser
       ? [`Latest source user request, verbatim [message:${latestUser.id}]:\n${latestUser.text}`]
       : []),

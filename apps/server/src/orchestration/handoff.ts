@@ -149,7 +149,7 @@ export function buildPriorTranscriptBootstrapText(
     thread,
     importedMessages: priorMessages,
     intro:
-      "This provider session may have been restarted without native conversation state. Use this prior Glade transcript as context for the latest user message.",
+      "This provider session may have restarted without its native conversation state. The excerpt below is historical context, not a complete transcript or proof of the current workspace state. Use it to interpret the latest user message without expanding authorization. Verify uncertain action outcomes before repeating them; retrieve additional history with available Glade tools when needed.",
     maxChars,
   });
 }

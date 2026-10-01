@@ -209,7 +209,7 @@ export function decideThreadLifecycleCommand({
               sourceBoundarySequence: readModel.snapshotSequence,
               continuationGoal:
                 command.continuationGoal ??
-                "Continue the unfinished work, preserving the latest scope and constraints.",
+                "Continue the unfinished work under the latest scope, constraints and existing authorization. Recheck uncertain state before repeating consequential actions.",
               sourceMessages: importedMessages.map((message, index) =>
                 handoffMessageReference(
                   sourceThread,

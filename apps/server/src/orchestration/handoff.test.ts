@@ -96,10 +96,10 @@ describe("buildPriorTranscriptBootstrapText", () => {
     const currentMessage = message(11, "user", "current turn");
     const messages = [...earlierMessages, ...recentPlainMessages, newestMessage, currentMessage];
 
-    const text = buildPriorTranscriptBootstrapText(thread(messages), "message-11", 600);
+    const text = buildPriorTranscriptBootstrapText(thread(messages), "message-11", 800);
 
     expect(text).not.toBeNull();
-    expect(text!.length).toBeLessThanOrEqual(600);
+    expect(text!.length).toBeLessThanOrEqual(800);
 
     expect(text).toContain("NEWEST-START");
     expect(text).toContain("NEWEST-END-UNIQUE-MARKER");

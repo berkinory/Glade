@@ -373,13 +373,14 @@ describe("Claude subagentLifecycle", () => {
       assert.deepEqual(yield* invokeHook(undefined), {});
 
       const delivered = yield* invokeHook("task-steer-1");
-      assert.deepEqual(delivered, {
-        hookSpecificOutput: {
-          hookEventName: "PreToolUse",
-          additionalContext:
-            "The user sent you a message mid-task: Focus on the tests. Address it and adjust your work accordingly.",
-        },
-      });
+      if (!("hookSpecificOutput" in delivered)) return assert.fail("Expected steer context.");
+      const output = delivered.hookSpecificOutput;
+      if (!output || !("additionalContext" in output)) return assert.fail("Expected steer text.");
+      assert.equal(output.hookEventName, "PreToolUse");
+      assert.include(
+        output.additionalContext ?? "",
+        "<user_steer>\nFocus on the tests\n</user_steer>",
+      );
 
       assert.deepEqual(yield* invokeHook("task-steer-1"), {});
 

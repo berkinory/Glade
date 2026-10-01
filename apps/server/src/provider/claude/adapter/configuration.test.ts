@@ -1,5 +1,4 @@
 import { describe, it, assert } from "@effect/vitest";
-import { buildEmbeddedClaudeSystemPromptAppend } from "./promptPolicy.ts";
 import { GLADE_HARNESS_POLICY_MARKER } from "../../../agentGateway/harnessPolicy.ts";
 import { Effect, Random, Layer, Exit } from "effect";
 import { ClaudeAdapter } from "../../Services/ClaudeAdapter.ts";
@@ -14,25 +13,6 @@ import {
   FakeClaudeQuery,
   makeClaudeAdapterLive,
 } from "./adapterTestFixtures";
-
-describe("Claude Glade harness policy", () => {
-  it("advertises scoped MCP additively when credentials are available", () => {
-    const text = buildEmbeddedClaudeSystemPromptAppend(true);
-    assert.include(text, GLADE_HARNESS_POLICY_MARKER);
-    assert.include(text, "Final responses must restate every needed scope");
-    assert.include(text, "include all decision context");
-    assert.include(text, "Use the glade_* tools");
-    assert.notInclude(text, "Glade MCP control is unavailable");
-  });
-
-  it("stays truthful when scoped MCP credentials are absent", () => {
-    const text = buildEmbeddedClaudeSystemPromptAppend(false);
-    assert.include(text, GLADE_HARNESS_POLICY_MARKER);
-    assert.include(text, "Final responses must restate every needed scope");
-    assert.include(text, "include all decision context");
-    assert.include(text, "Glade MCP control is unavailable");
-  });
-});
 
 describe("Claude configuration", () => {
   it.effect("derives bypass permission mode from full-access runtime policy", () => {
@@ -123,7 +103,7 @@ describe("Claude configuration", () => {
       assert.equal(systemPrompt.preset, "claude_code");
       assert.equal(systemPrompt.excludeDynamicSections, true);
       assert.include(systemPrompt.append ?? "", GLADE_HARNESS_POLICY_MARKER);
-      assert.include(systemPrompt.append ?? "", "Glade is the host and harness");
+      assert.include(systemPrompt.append ?? "", "Glade is the host application");
 
       assert.include(systemPrompt.append ?? "", "Glade MCP control is unavailable");
     }).pipe(

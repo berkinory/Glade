@@ -95,7 +95,7 @@ export function runningChatsQuitCopy(
 }
 
 export function quitResumeContinuationPrompt(appName = "Glade"): string {
-  return `${appName} was closed while this chat was still running. Continue where you left off.`;
+  return `${appName} closed while this chat was running. Resume the unfinished task under its latest scope and constraints. Check the last action's outcome and current state before repeating it; interrupted execution is not proof of success or failure.`;
 }
 
 export interface StopRunningChatsForQuitInput {
