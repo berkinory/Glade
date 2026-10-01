@@ -1,5 +1,11 @@
 # Glade Changelog
 
+## 0.1.2 - Unreleased
+
+### Fixed
+
+- The message input no longer briefly changes size when switching chats.
+
 ## 0.1.1 - 2026-10-01
 
 ### New

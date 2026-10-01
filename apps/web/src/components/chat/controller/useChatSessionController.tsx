@@ -331,8 +331,6 @@ export function useChatSessionController(props: ChatViewProps) {
 
   const [isComposerExtrasPanelOpen, setIsComposerExtrasPanelOpen] = useState(false);
 
-  const [secondaryChromePlaceholderHeight, setSecondaryChromePlaceholderHeight] = useState(88);
-
   const [composerHighlightedItemId, setComposerHighlightedItemId] = useState<string | null>(null);
 
   const [pullRequestDialogState, setPullRequestDialogState] =
@@ -408,8 +406,6 @@ export function useChatSessionController(props: ChatViewProps) {
   );
 
   const pendingComposerFocusRef = useRef(false);
-
-  const composerFormHeightRef = useRef(0);
 
   const composerSelectLockRef = useRef(false);
 
@@ -583,8 +579,6 @@ export function useChatSessionController(props: ChatViewProps) {
     setComposerCommandPicker,
     isComposerExtrasPanelOpen,
     setIsComposerExtrasPanelOpen,
-    secondaryChromePlaceholderHeight,
-    setSecondaryChromePlaceholderHeight,
 
     composerHighlightedItemId,
     setComposerHighlightedItemId,
@@ -610,7 +604,6 @@ export function useChatSessionController(props: ChatViewProps) {
     commitAndPushTriggerRef,
     onRegisterCommitAndPushTrigger,
     pendingComposerFocusRef,
-    composerFormHeightRef,
     composerSelectLockRef,
     composerMenuOpenRef,
     composerMenuItemsRef,

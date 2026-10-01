@@ -71,8 +71,6 @@ export function useChatEnvironmentController({
     composerFooterDemotionWidthsRef,
     setComposerFooterTier,
     composerFooterLayoutSyncRef,
-    composerFormHeightRef,
-    setSecondaryChromePlaceholderHeight,
 
     setPullRequestDialogState,
     setComposerHighlightedItemId,
@@ -468,13 +466,6 @@ export function useChatEnvironmentController({
     };
     composerFooterLayoutSyncRef.current = syncComposerFooterLayout;
 
-    const measuredHeight = Math.ceil(composerForm.getBoundingClientRect().height);
-    composerFormHeightRef.current = measuredHeight;
-    if (measuredHeight > 0) {
-      setSecondaryChromePlaceholderHeight((current) =>
-        current === measuredHeight ? current : measuredHeight,
-      );
-    }
     syncComposerFooterLayout();
     if (typeof ResizeObserver === "undefined") return;
 
@@ -483,15 +474,6 @@ export function useChatEnvironmentController({
       if (!entry) return;
 
       syncComposerFooterLayout();
-
-      const nextHeight = entry.contentRect.height;
-      composerFormHeightRef.current = nextHeight;
-      const roundedNextHeight = Math.ceil(nextHeight);
-      if (roundedNextHeight > 0) {
-        setSecondaryChromePlaceholderHeight((current) =>
-          current === roundedNextHeight ? current : roundedNextHeight,
-        );
-      }
     });
 
     observer.observe(composerForm);
@@ -504,9 +486,7 @@ export function useChatEnvironmentController({
     composerFooterTierRef,
     composerFooterDemotionWidthsRef,
     composerFooterLayoutSyncRef,
-    setSecondaryChromePlaceholderHeight,
     composerFormRef,
-    composerFormHeightRef,
     activeThread?.id,
     composerFooterHasWideActions,
     isInactiveSplitPane,

@@ -613,16 +613,20 @@ function ComposerPromptEditorInner({
     }
 
     isApplyingControlledUpdateRef.current = true;
-    editor.update(() => {
-      const shouldRewriteEditorState =
-        previousSnapshot.value !== value || contextsChanged || mentionsChanged;
-      if (shouldRewriteEditorState) {
-        $setComposerEditorPrompt(value, terminalContexts, mentionReferences);
-      }
-      if (shouldRewriteEditorState || isFocused) {
-        $setSelectionAtComposerOffset(normalizedCursor);
-      }
-    });
+    // Commit controlled draft changes before paint so a thread switch cannot show the old height.
+    editor.update(
+      () => {
+        const shouldRewriteEditorState =
+          previousSnapshot.value !== value || contextsChanged || mentionsChanged;
+        if (shouldRewriteEditorState) {
+          $setComposerEditorPrompt(value, terminalContexts, mentionReferences);
+        }
+        if (shouldRewriteEditorState || isFocused) {
+          $setSelectionAtComposerOffset(normalizedCursor);
+        }
+      },
+      { discrete: true },
+    );
     queueMicrotask(() => {
       isApplyingControlledUpdateRef.current = false;
     });

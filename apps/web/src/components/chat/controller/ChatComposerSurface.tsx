@@ -23,7 +23,6 @@ import { ContextWindowMeter } from "~/components/chat/ContextWindowMeter";
 import { COMPUTER_CONTROL_HINT_EFFORT } from "~/components/chat/composerComputerControlHint";
 import { WorkflowRunCard } from "~/components/chat/WorkflowRunCard";
 import {
-  CHAT_COLUMN_FRAME_CLASS_NAME,
   COMPOSER_COMMAND_MENU_FLOATING_WRAPPER_CLASS_NAME,
   COMPOSER_EDITOR_PADDING_CLASS_NAME,
   COMPOSER_INPUT_SHELL_CLASS_NAME,
@@ -52,7 +51,6 @@ export function ChatComposerSurface({
 }) {
   const { threadId } = useChatThreadContext();
   const {
-    secondaryChromeReady,
     shouldRenderChatPaneContent,
     activeTurnLiveDiffState,
     settledThreadBranchMismatch,
@@ -119,7 +117,6 @@ export function ChatComposerSurface({
     isComposerFooterCompact,
 
     composerSendState,
-    secondaryChromePlaceholderHeight,
     setComposerDraftProviderModelOptions,
     updateSettings,
     removeComposerImageFromDraft,
@@ -263,7 +260,7 @@ export function ChatComposerSurface({
   } = presentation;
   const heldMessageId = activeThread?.claudeCacheReview?.messageId;
   const heldMessage = activeThread?.messages.find((message) => message.id === heldMessageId);
-  return secondaryChromeReady && shouldRenderChatPaneContent ? (
+  return shouldRenderChatPaneContent ? (
     <div
       className={cn(isCenteredEmptyLanding ? "w-full overflow-visible" : "contents")}
       data-empty-landing-composer-block={isCenteredEmptyLanding ? "true" : undefined}
@@ -700,12 +697,5 @@ export function ChatComposerSurface({
         </ComposerColumnFrame>
       </form>
     </div>
-  ) : (
-    <div aria-hidden="true" className="w-full overflow-visible" data-chat-composer-form="deferred">
-      <div
-        className={cn(COMPOSER_INPUT_SURFACE_CLASS_NAME, CHAT_COLUMN_FRAME_CLASS_NAME)}
-        style={{ height: secondaryChromePlaceholderHeight }}
-      />
-    </div>
-  );
+  ) : null;
 }
