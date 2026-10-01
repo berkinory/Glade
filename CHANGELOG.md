@@ -1,77 +1,54 @@
 # Glade Changelog
 
-## 0.0.6 - Unreleased
+## 0.1.0 - 2026-10-01
 
 ### New
 
-- You can approve an action that Codex auto-review denied.
+- Approve an action that Codex auto-review denied. ([eb7837583](https://github.com/berkinory/Glade/commit/eb78375833ad3f1d5d1638e193c8db5cf081eb9a))
 - Manage native MCP servers and installed provider plugins from Settings. ([748d6d5cf](https://github.com/berkinory/Glade/commit/748d6d5cfe806e3b423f8bac4128cf7594d34637))
-
-### Removed
-
-- Debug mode was removed.
-- Plan mode and proposed plans were removed.
-- Thread goals were removed.
-- The device simulator panel and agent device controls were removed.
-- The Kanban board was removed.
-- Claude cache-review prompts, context overrides, and the Ultrathink picker were removed; context management stays with Claude Code. ([e8adbfda4](https://github.com/berkinory/Glade/commit/e8adbfda42ab44edc3ecce4038e19a4f7d433026))
-- Cursor, Grok, and OpenCode providers and their integrations were removed.
-- Standalone Pull Requests page and sidebar entry were removed.
-- Editor view and its separate workspace layout were removed; editing stays in Explorer.
+- MCP servers can ask for form input or a browser step in both Codex and Claude. ([9f80da564](https://github.com/berkinory/Glade/commit/9f80da564c6714d7ae42ef7250e6e9885a386806))
 
 ### Improved
 
-- Codex chats share one background process and use less memory.
-- Terminals open faster and load image support only when needed.
-- Streaming replies write far less to disk.
-
-- Diffs open faster and stay responsive in large changes.
-
-- Long code blocks stream more smoothly while preserving text selection.
-
-- Conversation compaction uses the same server checks for both providers; Claude accepts optional instructions.
-
-- The sidebar starts far fewer background Git and GitHub commands, and Git status updates as soon as the repository changes.
-
-- The file explorer and change lists stay fast and light in large repositories.
-
-- Chat titles come from Codex and Claude directly, and renames carry over to their own session lists.
-
-- Deleting a chat also deletes its native session history; Codex chats archive and unarchive in Codex too.
-
-- Claude subagents use only your native agents, with progress and controls from the provider.
-
-- File changes appear live while an agent works, and model settings changed outside Glade stay in sync.
-
-- Model choices and options follow the connected provider, with explicit provider defaults and live Claude effort and speed changes. ([e8adbfda4](https://github.com/berkinory/Glade/commit/e8adbfda42ab44edc3ecce4038e19a4f7d433026))
-- Shared skills load natively with their bundled resources. ([e8adbfda4](https://github.com/berkinory/Glade/commit/e8adbfda42ab44edc3ecce4038e19a4f7d433026))
-- Codex uses your existing configuration directly. ([e8adbfda4](https://github.com/berkinory/Glade/commit/e8adbfda42ab44edc3ecce4038e19a4f7d433026))
-- Development installs use published Effect beta packages with the existing process safety fixes.
-- Effect diagnostics now check every package with the same severity. Provider, persistence and gateway failures retain tagged error channels and explicit layer dependencies.
-- Development sessions can be stopped together with `bun run dev:stop`. ([b6978857c](https://github.com/berkinory/Glade/commit/b6978857c2a682bf85e05e191d6365bed0c955f1))
-- File search results show plain names, and chat find uses a compact, clickable row. ([21b19f418](https://github.com/berkinory/Glade/commit/21b19f418356ba91b240e29bc0d6058c71aa0110), [3cc479149](https://github.com/berkinory/Glade/commit/3cc4791490acf77e2030a08df60cbbfb0fcd48b9))
-- File editing keeps line numbers aligned and shows clearer caret, active line, and text selection. Caret shape is configurable in Appearance, and Cmd+Y redoes edits on macOS. ([044002601](https://github.com/berkinory/Glade/commit/0440026018eb78b0a797d23c65c4cf42ada7c3a1))
-- Project chat lists use Show more and reset when collapsed; Chats scrolls without paging controls. ([a0648f1f4](https://github.com/berkinory/Glade/commit/a0648f1f4477318f92e3e6bbc9afb0683d9370d3))
+- Models and their options come from the connected provider, and Claude effort and speed changes apply live. ([e8adbfda4](https://github.com/berkinory/Glade/commit/e8adbfda42ab44edc3ecce4038e19a4f7d433026))
+- Codex uses your existing configuration, and shared skills load natively with their bundled resources. ([e8adbfda4](https://github.com/berkinory/Glade/commit/e8adbfda42ab44edc3ecce4038e19a4f7d433026))
+- Provider settings changed outside Glade stay in sync, and file changes appear live while an agent works. ([d5053b634](https://github.com/berkinory/Glade/commit/d5053b634ecf0de806463d8fd952cd900e7a3140), [eebea4ee1](https://github.com/berkinory/Glade/commit/eebea4ee177e87f655ea94cca1557d9d8da3fced))
+- Chat titles come from Codex and Claude, and renames carry over to their own session lists. ([9a27e0529](https://github.com/berkinory/Glade/commit/9a27e0529ed04e443b68e63cb3ba16daec34e51a))
+- Deleting a chat also deletes its provider session history, and Codex chats archive and unarchive in Codex too. ([5a763f43f](https://github.com/berkinory/Glade/commit/5a763f43f2103eb300770c5cbac8a6c9f585eced), [92732a3e2](https://github.com/berkinory/Glade/commit/92732a3e287957a3e198cb8b832e17d0702d75e7))
+- Claude subagents use only your own agents, with progress and controls from Claude. ([52e4baddf](https://github.com/berkinory/Glade/commit/52e4baddf7efcffe4fc39b688a21bd36be48446c), [75499ba29](https://github.com/berkinory/Glade/commit/75499ba29f12e338df48276940abd6753a5a18d8))
+- Compacting a conversation works the same way for both providers, and Claude accepts optional instructions. ([7a67e2738](https://github.com/berkinory/Glade/commit/7a67e2738809fd287d8857363c51695a34b5b4aa), [fbe18418f](https://github.com/berkinory/Glade/commit/fbe18418f9a16d7b9e3610440bbcf1b3fa4f281c))
+- Codex chats share background processes and use less memory. ([e2b4c8bff](https://github.com/berkinory/Glade/commit/e2b4c8bff2a11549da0f55c340f820164ca6e02a))
+- Streaming replies write far less to disk, and long code blocks stream smoothly without losing text selection. ([0cfe0c1aa](https://github.com/berkinory/Glade/commit/0cfe0c1aacebafaf4bb191c3014f621c91a50560), [ace77e5a5](https://github.com/berkinory/Glade/commit/ace77e5a5f0115e4656e7d373297760f703a7c27))
+- Diffs open faster and stay responsive in large changes. ([26630491f](https://github.com/berkinory/Glade/commit/26630491fdc7c977a33e97d27ce803bcd26a2503))
+- Terminals open faster and load image support only when needed. ([aa68a5b9c](https://github.com/berkinory/Glade/commit/aa68a5b9ceed3dd95a872f9b39d310069182ca22))
+- The sidebar runs far fewer Git and GitHub commands, and Git status updates as soon as the repository changes. ([de41433be](https://github.com/berkinory/Glade/commit/de41433bef10fed92ed4deb41c27c2cb0109a590), [064d6e282](https://github.com/berkinory/Glade/commit/064d6e28271f013969a1da074ecdd2b512c814e0), [d43377a6a](https://github.com/berkinory/Glade/commit/d43377a6a990267c70191b15a8d8611f5278474e))
+- Explorer and change lists stay fast and light in large repositories. ([c8c7e7b52](https://github.com/berkinory/Glade/commit/c8c7e7b52014f34cb786b4c82c5345c38f09fd5a), [a534ba276](https://github.com/berkinory/Glade/commit/a534ba27673be1f7e7f271bb58927869987f692d))
+- File editing shows clearer line numbers, caret, active line and selection; the caret shape is configurable in Appearance, and Cmd+Y redoes edits on macOS. ([2f9639902](https://github.com/berkinory/Glade/commit/2f96399020d872b47c04e2aa88e322eb469ca7fb))
+- File search and chat find show plain names in compact, clickable rows. ([ae61cbc2d](https://github.com/berkinory/Glade/commit/ae61cbc2d4515822e4d208035de5184ccf4dac83), [316ad0dc2](https://github.com/berkinory/Glade/commit/316ad0dc2d57edae695bcceb09dd65827b8f1c24))
+- Project chat lists use Show more and reset when collapsed, and queued messages have clear edit and delete actions. ([aa2b7e3e3](https://github.com/berkinory/Glade/commit/aa2b7e3e3f54110b476f0c60f7fe0b8a731acae1), [338b4f7ec](https://github.com/berkinory/Glade/commit/338b4f7ec23c5335cb8d7be422feb4b76c210562))
+- Development sessions can be stopped together with `bun run dev:stop`. ([eea24f94e](https://github.com/berkinory/Glade/commit/eea24f94e9d4f57a9ced8e0e3a0cf0bbd59cbdc2))
 
 ### Fixed
 
-- Editing or reverting a message restores only its file changes, and asks before overwriting later edits.
+- Editing or reverting a message restores only its own file changes and asks before overwriting later edits. ([5217e4aae](https://github.com/berkinory/Glade/commit/5217e4aaef56c944891cf3cdb16c0487545f32fa))
+- Forking from a message no longer carries later conversation into the new chat. ([fd105bd80](https://github.com/berkinory/Glade/commit/fd105bd80a0cc9ae6c91e129e115f3436bdda017))
+- Computer Use and gateway rules reliably reach Codex sessions. ([48174bbc7](https://github.com/berkinory/Glade/commit/48174bbc7714e995c3088b45bcfa05c364c62fb3))
+- Built-in Claude commands such as /cost and /context show their output. ([dd07529ef](https://github.com/berkinory/Glade/commit/dd07529ef96d90aa71391e6c7ca25e83b8237434))
+- Images generated by Codex load from their real saved file instead of a guessed path. ([c545e809b](https://github.com/berkinory/Glade/commit/c545e809b2d5e842bf788b23e21378725def7bfa))
+- Unsaved file edits stay available across navigation and are marked in Explorer. ([1c07fbc37](https://github.com/berkinory/Glade/commit/1c07fbc37ea348958280b5b676c0a99712c9a1a1))
+- General search shows clear chat and project labels and keeps chat workspaces out of project results. ([316ad0dc2](https://github.com/berkinory/Glade/commit/316ad0dc2d57edae695bcceb09dd65827b8f1c24))
+- Code editor search controls stay steady as match counts change. ([116b9680b](https://github.com/berkinory/Glade/commit/116b9680bda0e3350aa4c3b47262b503494cb3e0))
+- Editing a sent message sends with Enter and uses standard action buttons. ([3b7dd8d11](https://github.com/berkinory/Glade/commit/3b7dd8d115ef0769e226ac9b44de7349c42dbe4f))
 
-- Forking from a message no longer carries later conversation into the new chat.
+### Removed
 
-- MCP servers can request forms and browser input in both Codex and Claude without stalling.
-
-- Computer Use and gateway rules now reliably reach Codex sessions.
-
-- Built-in Claude commands such as /cost and /context now show their output.
-
-- Messages held by the retired Claude cache-review flow remain visible and can be released explicitly. ([e8adbfda4](https://github.com/berkinory/Glade/commit/e8adbfda42ab44edc3ecce4038e19a4f7d433026))
-- Route chunk warm-up avoids synthetic thread loader matches that can be evicted during startup navigation.
-- Projection recovery preserves the original failure when another catch-up is queued; packaged startup checks report cleanup failures without hiding the startup failure.
-- Unsaved file edits stay available across navigation and are marked in Explorer. ([e114f536b](https://github.com/berkinory/Glade/commit/e114f536b27169e38c380a465a70a809003047e9))
-- General search shows plain matches with clear chat and project labels, and keeps chat workspaces out of project results. ([21b19f418](https://github.com/berkinory/Glade/commit/21b19f418356ba91b240e29bc0d6058c71aa0110))
-- Search controls in the code editor stay steady as match counts change. ([b35d8a37e](https://github.com/berkinory/Glade/commit/b35d8a37e8a6da363a59e53ab8d4b843b4647100))
-- Editing a sent message now sends with Enter and uses standard action buttons. ([08a7cc320](https://github.com/berkinory/Glade/commit/08a7cc320a355f499d4f1486ae8b4d431a3a850a))
+- Plan mode, proposed plans, thread goals and debug mode were removed; provider permission modes remain. ([10d6a0d27](https://github.com/berkinory/Glade/commit/10d6a0d2713bc6f8b8ee8582537b8be04b1e17ce), [8c5d109e2](https://github.com/berkinory/Glade/commit/8c5d109e2349357f25851f28f746c358446708a1), [49b49937e](https://github.com/berkinory/Glade/commit/49b49937e7e4995f784ec84d6f224b424f80690d))
+- The Kanban board was removed. ([3c122db07](https://github.com/berkinory/Glade/commit/3c122db072cc129e0ee7a823d7b44f02ae282a5d))
+- The device simulator and its agent controls were removed; Computer Use remains. ([f5ed0905c](https://github.com/berkinory/Glade/commit/f5ed0905c7e52b2db9cf471ca66d320d8373fc84))
+- Claude cache-review prompts, context overrides and the Ultrathink picker were removed; Claude Code manages context itself. ([e8adbfda4](https://github.com/berkinory/Glade/commit/e8adbfda42ab44edc3ecce4038e19a4f7d433026))
+- Cursor, Grok and OpenCode providers were removed. ([604a0c3ce](https://github.com/berkinory/Glade/commit/604a0c3ceaf4ead71fffc203970b03f4e9be41df))
+- The standalone Pull Requests page and the separate editor view were removed; editing stays in Explorer. ([b13a0569f](https://github.com/berkinory/Glade/commit/b13a0569f17534f8e663472a17d5523343198a61), [01b3a6ccf](https://github.com/berkinory/Glade/commit/01b3a6ccf27073ca22e8959a68c6bc1a6c4f2fe5))
+- Data from 0.0.x previews is not carried over. Glade 0.1.0 refuses to open a preview database; move `state.sqlite` out of the Glade data folder to start fresh. ([7a8a22f63](https://github.com/berkinory/Glade/commit/7a8a22f63347e6bfd15edf03a005acbe5d53905b))
 
 ## 0.0.5 - 2026-09-29
 

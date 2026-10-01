@@ -2,66 +2,240 @@ import type { WhatsNewEntry } from "./logic";
 
 export const WHATS_NEW_ENTRIES: readonly WhatsNewEntry[] = [
   {
-    version: "0.0.6",
-    date: "Unreleased",
+    version: "0.1.0",
+    date: "2026-10-01",
     features: [
       {
-        id: "development-session-stop",
-        title: "Improved",
-        description: "Stop development sessions together with bun run dev:stop.",
-        commit: "b6978857c2a682bf85e05e191d6365bed0c955f1",
+        id: "approve-an-action-that-codex",
+        title: "New",
+        description: "Approve an action that Codex auto-review denied.",
+        commit: "eb78375833ad3f1d5d1638e193c8db5cf081eb9a",
       },
       {
-        id: "file-search-and-chat-find",
-        title: "Improved",
-        description: "File search shows plain names, and chat find uses a compact, clickable row.",
-        commit: "3cc4791490acf77e2030a08df60cbbfb0fcd48b9",
+        id: "manage-native-mcp-servers-installed",
+        title: "New",
+        description: "Manage native MCP servers and installed provider plugins from Settings.",
+        commit: "748d6d5cfe806e3b423f8bac4128cf7594d34637",
       },
       {
-        id: "editor-appearance",
+        id: "mcp-servers-ask-form-input",
+        title: "New",
+        description:
+          "MCP servers can ask for form input or a browser step in both Codex and Claude.",
+        commit: "9f80da564c6714d7ae42ef7250e6e9885a386806",
+      },
+      {
+        id: "models-options-come-connected-provider",
         title: "Improved",
         description:
-          "File editing has clearer line numbers, caret, active line, and selection. Choose the caret shape in Appearance, and redo edits with Cmd+Y on macOS.",
-        commit: "0440026018eb78b0a797d23c65c4cf42ada7c3a1",
+          "Models and their options come from the connected provider, and Claude effort and speed changes apply live.",
+        commit: "e8adbfda42ab44edc3ecce4038e19a4f7d433026",
       },
       {
-        id: "queued-message-actions",
-        title: "Improved",
-        description: "Queued messages have clear edit and delete actions.",
-        commit: "0cac2f02c1fbf2cd1e5f64b632ed2da5c4933e4a",
-      },
-      {
-        id: "project-chat-lists",
+        id: "codex-uses-your-existing-configuration",
         title: "Improved",
         description:
-          "Project chat lists use Show more and reset when collapsed; Chats scrolls without paging controls.",
-        commit: "a0648f1f4477318f92e3e6bbc9afb0683d9370d3",
+          "Codex uses your existing configuration, and shared skills load natively with their bundled resources.",
+        commit: "e8adbfda42ab44edc3ecce4038e19a4f7d433026",
       },
       {
-        id: "unsaved-editor-drafts",
+        id: "provider-settings-changed-outside-glade",
+        title: "Improved",
+        description:
+          "Provider settings changed outside Glade stay in sync, and file changes appear live while an agent works.",
+        commit: "d5053b634ecf0de806463d8fd952cd900e7a3140",
+      },
+      {
+        id: "chat-titles-come-codex-claude",
+        title: "Improved",
+        description:
+          "Chat titles come from Codex and Claude, and renames carry over to their own session lists.",
+        commit: "9a27e0529ed04e443b68e63cb3ba16daec34e51a",
+      },
+      {
+        id: "deleting-chat-deletes-provider-session",
+        title: "Improved",
+        description:
+          "Deleting a chat also deletes its provider session history, and Codex chats archive and unarchive in Codex too.",
+        commit: "5a763f43f2103eb300770c5cbac8a6c9f585eced",
+      },
+      {
+        id: "claude-subagents-use-only-your",
+        title: "Improved",
+        description:
+          "Claude subagents use only your own agents, with progress and controls from Claude.",
+        commit: "52e4baddf7efcffe4fc39b688a21bd36be48446c",
+      },
+      {
+        id: "compacting-conversation-works-same-way",
+        title: "Improved",
+        description:
+          "Compacting a conversation works the same way for both providers, and Claude accepts optional instructions.",
+        commit: "7a67e2738809fd287d8857363c51695a34b5b4aa",
+      },
+      {
+        id: "codex-chats-share-background-processes",
+        title: "Improved",
+        description: "Codex chats share background processes and use less memory.",
+        commit: "e2b4c8bff2a11549da0f55c340f820164ca6e02a",
+      },
+      {
+        id: "streaming-replies-write-far-less",
+        title: "Improved",
+        description:
+          "Streaming replies write far less to disk, and long code blocks stream smoothly without losing text selection.",
+        commit: "0cfe0c1aacebafaf4bb191c3014f621c91a50560",
+      },
+      {
+        id: "diffs-open-faster-stay-responsive",
+        title: "Improved",
+        description: "Diffs open faster and stay responsive in large changes.",
+        commit: "26630491fdc7c977a33e97d27ce803bcd26a2503",
+      },
+      {
+        id: "terminals-open-faster-load-image",
+        title: "Improved",
+        description: "Terminals open faster and load image support only when needed.",
+        commit: "aa68a5b9ceed3dd95a872f9b39d310069182ca22",
+      },
+      {
+        id: "sidebar-runs-far-fewer-git",
+        title: "Improved",
+        description:
+          "The sidebar runs far fewer Git and GitHub commands, and Git status updates as soon as the repository changes.",
+        commit: "de41433bef10fed92ed4deb41c27c2cb0109a590",
+      },
+      {
+        id: "explorer-change-lists-stay-fast",
+        title: "Improved",
+        description: "Explorer and change lists stay fast and light in large repositories.",
+        commit: "c8c7e7b52014f34cb786b4c82c5345c38f09fd5a",
+      },
+      {
+        id: "file-editing-shows-clearer-line",
+        title: "Improved",
+        description:
+          "File editing shows clearer line numbers, caret, active line and selection; the caret shape is configurable in Appearance, and Cmd+Y redoes edits on macOS.",
+        commit: "2f96399020d872b47c04e2aa88e322eb469ca7fb",
+      },
+      {
+        id: "file-search-chat-find-show",
+        title: "Improved",
+        description: "File search and chat find show plain names in compact, clickable rows.",
+        commit: "ae61cbc2d4515822e4d208035de5184ccf4dac83",
+      },
+      {
+        id: "project-chat-lists-use-show",
+        title: "Improved",
+        description:
+          "Project chat lists use Show more and reset when collapsed, and queued messages have clear edit and delete actions.",
+        commit: "aa2b7e3e3f54110b476f0c60f7fe0b8a731acae1",
+      },
+      {
+        id: "editing-reverting-message-restores-only",
+        title: "Fixed",
+        description:
+          "Editing or reverting a message restores only its own file changes and asks before overwriting later edits.",
+        commit: "5217e4aaef56c944891cf3cdb16c0487545f32fa",
+      },
+      {
+        id: "forking-message-no-longer-carries",
+        title: "Fixed",
+        description:
+          "Forking from a message no longer carries later conversation into the new chat.",
+        commit: "fd105bd80a0cc9ae6c91e129e115f3436bdda017",
+      },
+      {
+        id: "computer-use-gateway-rules-reliably",
+        title: "Fixed",
+        description: "Computer Use and gateway rules reliably reach Codex sessions.",
+        commit: "48174bbc7714e995c3088b45bcfa05c364c62fb3",
+      },
+      {
+        id: "built-claude-commands-such-cost",
+        title: "Fixed",
+        description: "Built-in Claude commands such as /cost and /context show their output.",
+        commit: "dd07529ef96d90aa71391e6c7ca25e83b8237434",
+      },
+      {
+        id: "images-generated-by-codex-load",
+        title: "Fixed",
+        description:
+          "Images generated by Codex load from their real saved file instead of a guessed path.",
+        commit: "c545e809b2d5e842bf788b23e21378725def7bfa",
+      },
+      {
+        id: "unsaved-file-edits-stay-available",
         title: "Fixed",
         description:
           "Unsaved file edits stay available across navigation and are marked in Explorer.",
-        commit: "e114f536b27169e38c380a465a70a809003047e9",
+        commit: "1c07fbc37ea348958280b5b676c0a99712c9a1a1",
       },
       {
-        id: "general-search-results",
+        id: "general-search-shows-clear-chat",
         title: "Fixed",
         description:
-          "General search shows plain matches with clear chat and project labels, and keeps chat workspaces out of project results.",
-        commit: "21b19f418356ba91b240e29bc0d6058c71aa0110",
+          "General search shows clear chat and project labels and keeps chat workspaces out of project results.",
+        commit: "316ad0dc2d57edae695bcceb09dd65827b8f1c24",
       },
       {
-        id: "editor-search-layout",
+        id: "code-editor-search-controls-stay",
         title: "Fixed",
         description: "Code editor search controls stay steady as match counts change.",
-        commit: "b35d8a37e8a6da363a59e53ab8d4b843b4647100",
+        commit: "116b9680bda0e3350aa4c3b47262b503494cb3e0",
       },
       {
-        id: "sent-message-editing",
+        id: "editing-sent-message-sends-enter",
         title: "Fixed",
         description: "Editing a sent message sends with Enter and uses standard action buttons.",
-        commit: "08a7cc320a355f499d4f1486ae8b4d431a3a850a",
+        commit: "3b7dd8d115ef0769e226ac9b44de7349c42dbe4f",
+      },
+      {
+        id: "plan-mode-proposed-plans-thread",
+        title: "Removed",
+        description:
+          "Plan mode, proposed plans, thread goals and debug mode were removed; provider permission modes remain.",
+        commit: "10d6a0d2713bc6f8b8ee8582537b8be04b1e17ce",
+      },
+      {
+        id: "kanban-board-was-removed",
+        title: "Removed",
+        description: "The Kanban board was removed.",
+        commit: "3c122db072cc129e0ee7a823d7b44f02ae282a5d",
+      },
+      {
+        id: "device-simulator-agent-controls-were",
+        title: "Removed",
+        description:
+          "The device simulator and its agent controls were removed; Computer Use remains.",
+        commit: "f5ed0905c7e52b2db9cf471ca66d320d8373fc84",
+      },
+      {
+        id: "claude-cache-review-prompts-context",
+        title: "Removed",
+        description:
+          "Claude cache-review prompts, context overrides and the Ultrathink picker were removed; Claude Code manages context itself.",
+        commit: "e8adbfda42ab44edc3ecce4038e19a4f7d433026",
+      },
+      {
+        id: "cursor-grok-opencode-providers-were",
+        title: "Removed",
+        description: "Cursor, Grok and OpenCode providers were removed.",
+        commit: "604a0c3ceaf4ead71fffc203970b03f4e9be41df",
+      },
+      {
+        id: "standalone-pull-requests-page-separate",
+        title: "Removed",
+        description:
+          "The standalone Pull Requests page and the separate editor view were removed; editing stays in Explorer.",
+        commit: "b13a0569f17534f8e663472a17d5523343198a61",
+      },
+      {
+        id: "data-00x-previews-not-carried",
+        title: "Removed",
+        description:
+          "Data from 0.0.x previews is not carried over. Glade 0.1.0 refuses to open a preview database; move state.sqlite out of the Glade data folder to start fresh.",
+        commit: "7a8a22f63347e6bfd15edf03a005acbe5d53905b",
       },
     ],
   },
