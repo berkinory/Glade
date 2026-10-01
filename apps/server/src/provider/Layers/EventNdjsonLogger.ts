@@ -1,23 +1,16 @@
-/**
- * Provider event logger helper.
- *
- * Best-effort writer for observability logs. Each record is formatted as a
- * single effect-style text line in a thread-scoped file. Failures are
- * downgraded to warnings so provider runtime behavior is unaffected.
- */
 import path from "node:path";
 
-import type { ThreadId } from "@glade/contracts";
-import { RotatingFileSink } from "@glade/shared/logging";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { RotatingFileSink } from "@glade/shared/platform/logging";
 import { Effect, Exit, Logger, Scope } from "effect";
 
-import { stripDiagnosticImages } from "../stripDiagnosticImages.ts";
-import { toSafeThreadAttachmentSegment } from "../../attachmentStore.ts";
+import { stripDiagnosticImages } from "../core/stripDiagnosticImages.ts";
+import { toSafeThreadAttachmentSegment } from "../../attachments/attachmentStore.ts";
 import {
   ensurePrivateDirectorySync,
   ensurePrivateFileSync,
   PRIVATE_FILE_MODE,
-} from "../../privatePathPermissions.ts";
+} from "../../platform/filesystem/privatePathPermissions.ts";
 
 const DEFAULT_MAX_BYTES = 10 * 1024 * 1024;
 const DEFAULT_MAX_FILES = 10;

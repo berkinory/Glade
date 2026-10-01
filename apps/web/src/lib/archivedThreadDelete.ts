@@ -1,9 +1,5 @@
-// FILE: archivedThreadDelete.ts
-// Purpose: Coordinates archived-thread deletion with immediate local removal.
-// Layer: Web orchestration helper
-// Exports: deleteArchivedThreadsFromClient
-
-import type { NativeApi, ThreadId } from "@glade/contracts";
+import type { NativeApi } from "@glade/contracts/ipc/ipc";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import { reconcileDeletedThreadsFromClient } from "./deletedThreadClientReconciliation";
 import { newCommandId } from "./utils";
@@ -14,7 +10,6 @@ interface DeleteArchivedThreadsFromClientInput {
   removeDeletedThreadFromClientState: (threadId: ThreadId) => void;
 }
 
-// Deletes a group of archived threads and reconciles successful ids once at the end.
 export async function deleteArchivedThreadsFromClient(
   input: DeleteArchivedThreadsFromClientInput,
 ): Promise<void> {

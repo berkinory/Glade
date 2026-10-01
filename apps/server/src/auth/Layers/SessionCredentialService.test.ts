@@ -3,7 +3,7 @@ import { Deferred, Duration, Effect, Fiber, Layer, Ref } from "effect";
 import { TestClock } from "effect/testing";
 import { describe, expect, it } from "vitest";
 
-import { ServerConfig } from "../../config";
+import { ServerConfig } from "../../server/config";
 import { SqlitePersistenceMemory } from "../../persistence/Layers/Sqlite";
 import { ServerSecretStoreLive } from "./ServerSecretStore";
 import {

@@ -1,17 +1,9 @@
-// FILE: rightDockStore.logic.ts
-// Purpose: Pure, testable transitions for the right dock (tabbed multi-pane right sidebar).
-// Layer: UI state helpers
-// Exports: dock pane types, default-state factory, and immutable open/close/activate helpers.
+import { isRecord } from "@glade/shared/transport/payloadValues";
+import type { ProjectId, TurnId } from "@glade/contracts/core/baseSchemas";
+import { sanitizeStringKeyedRecord } from "./persistedRecord";
 
-import type { ProjectId, TurnId } from "@glade/contracts";
-import { isPlainObject, sanitizeStringKeyedRecord } from "./persistedRecord";
-
-// Single source of truth for the dock pane kinds. The union type, the runtime
-// validator, the per-kind metadata map, and the add-menu order are all derived
-// from this list so they can never drift apart.
 const RIGHT_DOCK_PANE_KINDS = [
   "browser",
-  "device",
   "explorer",
   "file",
   "terminal",
@@ -29,10 +21,10 @@ export interface RightDockPane {
   id: string;
   kind: RightDockPaneKind;
   sourceControlView: SourceControlView;
-  // Review remembers which turn/file it was opened on.
+
   diffTurnId: TurnId | null;
   diffFilePath: string | null;
-  // file panes preview one workspace-relative file.
+
   filePath: string | null;
   pullRequestProjectId: ProjectId | null;
   pullRequestRepository: string | null;
@@ -46,11 +38,8 @@ export interface RightDockThreadState {
   activePaneId: string | null;
 }
 
-// File previews are the only multi-instance dock kind.
 const MULTI_INSTANCE_PANE_KINDS: ReadonlySet<RightDockPaneKind> = new Set(["file"]);
 
-// Kinds that can only ever have one instance per host thread, derived as
-// "every kind that is not multi-instance" so the two sets can never drift.
 const SINGLETON_PANE_KINDS: ReadonlySet<RightDockPaneKind> = new Set(
   RIGHT_DOCK_PANE_KINDS.filter((kind) => !MULTI_INSTANCE_PANE_KINDS.has(kind)),
 );
@@ -71,12 +60,8 @@ function isRightDockPaneKind(value: unknown): value is RightDockPaneKind {
   return typeof value === "string" && RIGHT_DOCK_PANE_KIND_SET.has(value);
 }
 
-// Persisted dock state predates the current pane-kind union, so a stale entry
-// (e.g. a kind that was renamed or removed) can crash the dock during render.
-// Drop any pane we no longer understand and keep the active tab pointing at a
-// surviving pane.
 function sanitizePersistedPane(value: unknown): RightDockPane | null {
-  if (!isPlainObject(value)) {
+  if (!isRecord(value)) {
     return null;
   }
   const candidate = value;
@@ -120,7 +105,7 @@ function sanitizePersistedPane(value: unknown): RightDockPane | null {
 }
 
 function sanitizeRightDockThreadState(value: unknown): RightDockThreadState {
-  if (!isPlainObject(value)) {
+  if (!isRecord(value)) {
     return createDefaultRightDockState();
   }
   const candidate = value;
@@ -191,9 +176,6 @@ function createPane(input: OpenPaneInput): RightDockPane {
   };
 }
 
-// Payload to merge into an existing singleton pane when re-opening it. Only
-// overwrite content metadata when the caller explicitly targets new content,
-// so a bare re-open/toggle keeps the pane focused on what it currently shows.
 function singletonPaneReopenPatch(input: OpenPaneInput): Partial<RightDockPane> | null {
   if (input.kind === "git" && input.sourceControlView !== undefined) {
     return {
@@ -219,8 +201,6 @@ function singletonPaneReopenPatch(input: OpenPaneInput): Partial<RightDockPane> 
   return null;
 }
 
-// Multi-instance file panes reuse an existing pane when it already shows the
-// requested path, so re-clicking a file focuses its tab instead of duplicating it.
 function findMatchingMultiInstancePane(
   state: RightDockThreadState,
   input: OpenPaneInput,
@@ -239,9 +219,6 @@ function findSingletonPane(
   return state.panes.find((pane) => pane.kind === kind);
 }
 
-// Opens (or focuses) a pane and makes the dock visible. Singleton kinds reuse
-// the existing pane and merge diff metadata; multi-instance kinds add a new
-// pane unless one already shows the same content (thread / file).
 export function openPaneInState(
   state: RightDockThreadState,
   input: OpenPaneInput,
@@ -369,9 +346,8 @@ export function updatePaneInState(
   return changed ? { ...state, panes: nextPanes } : state;
 }
 
-// Header toggles behave like a visibility switch for a singleton kind: if that
-// kind is the active visible pane, collapse the dock (preserving tabs);
-// otherwise open/focus it.
+// Header toggles behave like a visibility switch for a singleton kind: if that kind is the active
+// visible pane, collapse the dock (preserving tabs); otherwise open/focus it.
 export function toggleSingletonPaneInState(
   state: RightDockThreadState,
   input: OpenPaneInput,

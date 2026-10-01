@@ -10,7 +10,6 @@ work** — its conversation, provider session, working environment, tool activit
 | Workspace        | The complete Glade application and the projects available in it     |
 | Project          | A local folder, preferably a Git repository                         |
 | Task             | One durable unit of work inside a project                           |
-| Goal             | An explicit persistent objective attached to one task               |
 | Turn             | One user instruction followed by the provider's work and response   |
 | Provider session | The coding-agent session attached to the task                       |
 | Environment      | The local checkout or isolated Git worktree where the task operates |
@@ -22,7 +21,7 @@ using separate worktrees also have separate working directories and branches.
 
 - **Sidebar** — projects, spaces, tasks, and activity requiring attention. Prod and Dev builds offer a
   rail layout (Settings → General → Sidebar layout): a fixed column of icon tabs for Home, Spaces,
-  Kanban, Automations, and Settings, with the thread panel beside it and the
+  Automations and Settings, with the thread panel beside it and the
   route shown as a card inset from the window.
 - **Conversation** — user messages, agent responses, plans, tools, approvals, and subagent activity
 - **Composer** — objectives, attachments, provider selection, model selection, and task controls
@@ -79,11 +78,6 @@ task when the work needs a different owner, branch, or review boundary.
 Provider sessions running inside Glade can use the built-in agent gateway to create tasks, wait for
 them, read transcripts, and coordinate their work. The gateway is available through provider MCP
 tools within those sessions; it does not require external agent pairing.
-
-For work that should continue across several turns, set a deliberate
-thread goal. A goal can continue after a
-clean turn, but queued user work, approvals, questions, interruptions, failures, and pause rules
-remain in control.
 
 Use a thread fork when a new task should inherit
 the conversation or split from one exact turn. Use a

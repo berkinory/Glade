@@ -1,14 +1,4 @@
-// FILE: ThreadHoverCardContent.tsx
-// Purpose: Rich hover-card body shown when hovering a sidebar thread/chat row —
-//          the title with a relative time on the header line, then project,
-//          source folder, git branch, worktree identity, pull request, and the chat's current
-//          model rows when available.
-// Layer: Sidebar UI component
-// Exports: ThreadHoverCardContent
-// Why: Shared by both the pinned and the nested thread-row tooltips so the two
-//      surfaces cannot drift apart.
-
-import type { OrchestrationThreadPullRequest } from "@glade/contracts";
+import type { OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/threadEntities";
 import type { MouseEvent, ReactNode } from "react";
 
 import { FastModeIcon, GitBranchIcon, WorktreeIcon } from "~/lib/icons";
@@ -21,7 +11,7 @@ import {
   PR_STATE_PRESENTATION_ICONS,
   resolvePrStatePresentation,
 } from "./pullRequest/pullRequestStatePresentation";
-import type { ThreadStatusPill } from "./Sidebar.logic";
+import type { ThreadStatusPill } from "./Sidebar.logic.statusTypes";
 import { SidebarStatusTrailingGlyph } from "./SidebarStatusTrailingGlyph";
 import {
   SIDEBAR_HOVER_CARD_CONTAINER_PADDING_CLASS_NAME,
@@ -30,23 +20,20 @@ import {
 
 export type ThreadHoverCardContentProps = {
   title: string;
-  /** Pre-formatted relative time (e.g. "2h"); omitted when unavailable. */
   timeLabel: string | null;
-  projectName: string | null;
-  /** Project cwd, used to render the matching folder/favicon glyph. */
-  projectCwd: string | null;
-  projectAppearance: ProjectAppearance | null;
-  /** Underlying project folder/repo name, shown for worktree-backed chats. */
-  sourceProjectName: string | null;
-  branch: string | null;
-  /** Last path segment of the associated worktree path. */
-  worktreeName: string | null;
-  /** The same resolved PR shown on the thread row. */
+  project: {
+    name: string | null;
+    cwd: string | null;
+    appearance: ProjectAppearance | null;
+    sourceName: string | null;
+  };
+  workspace: {
+    branch: string | null;
+    worktreeName: string | null;
+  };
   pullRequest: OrchestrationThreadPullRequest | null;
   onOpenPullRequest: (event: MouseEvent<HTMLElement>, prUrl: string) => void;
-  /** Provider/model/effort currently selected for this chat. */
   model: ThreadModelSummary | null;
-  /** Current live/actionable state, shown as text so compact row glyphs stay discoverable. */
   status: ThreadStatusPill | null;
 };
 
@@ -62,8 +49,6 @@ function MetaRow({ icon, children }: { icon: ReactNode; children: string }) {
   );
 }
 
-// Model row: provider glyph, model name, then the reasoning/effort label so the
-// line reads like the composer's model trigger.
 function ModelRow({ model }: { model: ThreadModelSummary }) {
   return (
     <span className={META_ROW_CLASS_NAME}>
@@ -82,17 +67,20 @@ function ModelRow({ model }: { model: ThreadModelSummary }) {
 export function ThreadHoverCardContent({
   title,
   timeLabel,
-  projectName,
-  projectCwd,
-  projectAppearance,
-  sourceProjectName,
-  branch,
-  worktreeName,
+  project,
+  workspace,
   pullRequest,
   onOpenPullRequest,
   model,
   status,
 }: ThreadHoverCardContentProps) {
+  const {
+    name: projectName,
+    cwd: projectCwd,
+    appearance: projectAppearance,
+    sourceName: sourceProjectName,
+  } = project;
+  const { branch, worktreeName } = workspace;
   const hasMeta =
     Boolean(projectName) ||
     Boolean(sourceProjectName) ||

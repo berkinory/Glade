@@ -1,9 +1,9 @@
-import { collectErrorMessages } from "@glade/shared/errorMessages";
-import { MessageId, type ThreadId } from "@glade/contracts";
+import { collectErrorMessages } from "@glade/shared/text/errorMessages";
+import { MessageId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   ASYNC_USER_INPUT_ALREADY_ANSWERED,
   formatAsyncUserInputResponse,
-} from "@glade/shared/asyncUserInput";
+} from "@glade/shared/threads/asyncUserInput";
 import { useCallback } from "react";
 import { newCommandId, randomUUID } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
@@ -37,7 +37,7 @@ export function useAsyncUserInputResponse(threadId: ThreadId) {
           asyncUserInputResponse: { messageId, answers: [...answers] },
           dispatchMode: "steer",
           runtimeMode: thread.runtimeMode,
-          interactionMode: thread.interactionMode,
+
           createdAt: new Date().toISOString(),
         });
       } catch (error) {
@@ -51,8 +51,8 @@ export function useAsyncUserInputResponse(threadId: ThreadId) {
         await api.orchestration.subscribeThread(buildThreadSubscribeInput(threadId));
         return;
       }
-      // A competing client may have answered first. Refresh the authoritative
-      // response; a refresh failure must not turn accepted input into a retry.
+      // A competing client may have answered first. Refresh the authoritative response; a refresh failure
+      // must not turn accepted input into a retry.
       clearThreadDetailResumeCursor(threadId);
       void api.orchestration.subscribeThread(buildThreadSubscribeInput(threadId)).catch(() => {});
     },

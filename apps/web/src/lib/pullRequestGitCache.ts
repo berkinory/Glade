@@ -1,11 +1,6 @@
-// Synchronizes Git-backed PR badges and Environment snapshots with PR actions.
-// Remote identity reaches every cached worktree without touching unrelated repositories.
-import type {
-  GitPullRequestSnapshotResult,
-  GitStatusResult,
-  PullRequestDetailInput,
-} from "@glade/contracts";
-import { parseGitHubRepositoryNameWithOwnerFromPullRequestUrl } from "@glade/shared/githubRepository";
+import type { GitPullRequestSnapshotResult, GitStatusResult } from "@glade/contracts/git/git";
+import type { PullRequestDetailInput } from "@glade/contracts/git/pullRequests";
+import { parseGitHubRepositoryNameWithOwnerFromPullRequestUrl } from "@glade/shared/git/githubRepository";
 import type { QueryClient, QueryFilters, QueryKey } from "@tanstack/react-query";
 
 import {
@@ -56,8 +51,7 @@ export function pullRequestGitQueryFilters(
     queryKey: ["git"],
     predicate: (query) => {
       const key = query.queryKey;
-      // Include the existing project-root PR invalidation in the same pass, avoiding
-      // duplicate refetches when the open Environment belongs to that root.
+
       if (workspaceRoot !== undefined && key[1] === "pull-request" && key[2] === workspaceRoot) {
         return true;
       }
@@ -84,8 +78,6 @@ function patchCachedPullRequest(
   return data.pr ? { ...data, pr: { ...data.pr, ...patch } } : data;
 }
 
-/** Keep action-owned fields optimistic when a Git poll/focus refetch starts after onMutate's
- * cancellation. The complete remote payload still refreshes every field not owned by the action. */
 export function preserveActivePullRequestActionGitFields<T extends GitPullRequestCache>(
   queryClient: QueryClient,
   data: T,
@@ -104,7 +96,6 @@ export function preserveActivePullRequestActionGitFields<T extends GitPullReques
   return Object.keys(patch).length > 0 ? (patchCachedPullRequest(data, patch) as T) : data;
 }
 
-// Called after cancelling matching reads so their old response cannot erase the optimistic state.
 export function optimisticallyPatchPullRequestGitCaches(
   queryClient: QueryClient,
   input: PullRequestIdentity,
@@ -129,7 +120,6 @@ export function optimisticallyPatchPullRequestGitCaches(
   return rollback;
 }
 
-// Restore only action-owned fields; a checkout or newer Git/check data must survive failure.
 export function rollbackPullRequestGitCaches(input: {
   queryClient: QueryClient;
   identity: PullRequestIdentity;

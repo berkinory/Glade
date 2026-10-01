@@ -1,4 +1,5 @@
-import { EDITORS, EditorId, NativeApi } from "@glade/contracts";
+import { EDITORS, EditorId } from "@glade/contracts/settings/editor";
+import { NativeApi } from "@glade/contracts/ipc/ipc";
 import { getLocalStorageItem, setLocalStorageItem, useLocalStorage } from "./hooks/useLocalStorage";
 
 const LAST_EDITOR_KEY = "glade:last-editor";

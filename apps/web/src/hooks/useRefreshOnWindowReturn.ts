@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 
-/** Refresh native state after returning from System Settings, without polling or requesting grants. */
 function subscribeToWindowReturn(refresh: () => unknown): () => void {
   let pending = false;
   let disposed = false;

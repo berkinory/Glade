@@ -1,11 +1,7 @@
-import {
-  ProjectId,
-  ThreadId,
-  TurnId,
-  type OrchestrationCommand,
-  type OrchestrationShellSnapshot,
-  type ProviderSession,
-} from "@glade/contracts";
+import { ProjectId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
+import { type OrchestrationCommand } from "@glade/contracts/orchestration/commands";
+import { type OrchestrationShellSnapshot } from "@glade/contracts/orchestration/snapshots";
+import { type ProviderSession } from "@glade/contracts/provider/provider";
 import { Effect, Layer, Option } from "effect";
 import { describe, expect, it, vi } from "vitest";
 
@@ -151,7 +147,7 @@ describe("ProviderRuntimeReconcilerLive", () => {
     await Effect.gen(function* () {
       const reconciler = yield* ProviderRuntimeReconciler;
       yield* reconciler.reconcileNow;
-      // The projection can remain stale for another observation cycle.
+
       yield* reconciler.reconcileNow;
       bindingStatus = "error";
       providerSession = {
@@ -163,9 +159,6 @@ describe("ProviderRuntimeReconcilerLive", () => {
       yield* reconciler.reconcileNow;
     }).pipe(Effect.provide(layer), Effect.runPromise);
 
-    // Session repair dispatches first so a partial failure still unsticks the
-    // thread, and `updatedAt` is the dispatch time rather than the terminal
-    // session's original timestamp (which would freeze the staleness clock).
     expect(commands.map((command) => command.type)).toEqual([
       "thread.session.set",
       "thread.activity.append",

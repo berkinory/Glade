@@ -1,8 +1,3 @@
-// FILE: PickerPanelShell.tsx
-// Purpose: Share the visual shell used by combobox-style pickers in chat surfaces.
-// Layer: Chat picker UI
-// Depends on: shared input styling plus caller-provided content slots.
-
 import { useEffect, useRef, type ReactNode } from "react";
 import { SearchIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
@@ -20,7 +15,6 @@ import {
   PICKER_PANEL_PLAIN_SEARCH_INPUT_CLASS_NAME,
 } from "./pickerPanelStyles";
 
-/** Keys a search field inside a menu must let through so list navigation keeps working. */
 export const MENU_NAVIGATION_KEYS = new Set([
   "ArrowDown",
   "ArrowUp",
@@ -44,12 +38,7 @@ export function PickerPanelShell(props: {
   widthClassName?: string;
   bleedParentPadding?: boolean;
   listMaxHeightClassName?: string;
-  /**
-   * `"plain"` is the dense picker panel: the search area drops all field chrome (no border,
-   * fill, ring, or shadow) down to a magnifier + placeholder over a single hairline divider,
-   * and the body loses its extra padding so the list chrome owns the 4px gutter on its own.
-   * `"default"` keeps the bordered search field used by the composer submenus.
-   */
+
   variant?: "default" | "plain";
 }) {
   const {

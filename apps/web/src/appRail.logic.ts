@@ -1,11 +1,4 @@
-// FILE: appRail.logic.ts
-// Purpose: Pure rules for the rail layout's tab strip: item ids, route item order, and
-//          which item is active for a pathname, plus the Spaces panel's section list.
-// Layer: Web shell logic
-// Exports: rail item ids/types,
-//          reconcileActiveRailItem, buildRailSpacesSections
-
-import type { ProjectId, SpaceId } from "@glade/contracts";
+import type { ProjectId, SpaceId } from "@glade/contracts/core/baseSchemas";
 
 import {
   groupItemsBySpace,
@@ -18,23 +11,16 @@ import {
 import type { SidebarNavItemId } from "./sidebarNavOrdering";
 import type { Space } from "./types";
 
-/** Rail items that switch the panel content instead of navigating. */
 export const RAIL_PANEL_ITEM_IDS = ["home", "spaces"] as const;
 export type RailPanelItemId = (typeof RAIL_PANEL_ITEM_IDS)[number];
 export const RAIL_PANEL_ITEM_LABELS: Record<RailPanelItemId, string> = {
   home: "Home",
   spaces: "Spaces",
 };
-/** Rail items that navigate to a route. "New thread" stays in the panel, never the rail. */
+
 export type RailRouteItemId = Exclude<SidebarNavItemId, "newThread"> | "settings";
 export type RailItemId = RailPanelItemId | RailRouteItemId;
 
-/**
- * Route items for the top of the rail, in the user's persisted nav order. Hidden items
- * drop out unless their route is active (the same rule the classic nav rows use).
- * Settings is a bottom item, so it is not listed here.
- */
-/** A Space or a single project the user added to the rail from its "…" menu. */
 export type RailShortcut =
   | { readonly kind: "space"; readonly key: string; readonly spaceId: SpaceId | null }
   | { readonly kind: "project"; readonly key: string; readonly projectId: ProjectId };
@@ -50,10 +36,6 @@ export function railProjectShortcutKey(projectId: ProjectId): string {
   return `${PROJECT_SHORTCUT_PREFIX}${projectId}`;
 }
 
-/**
- * The persisted shortcut keys that still point at something, in their saved order: unknown,
- * deleted, and duplicate entries drop out (Void always exists).
- */
 export function resolveRailShortcuts(input: {
   keys: readonly string[];
   spaceIds: ReadonlySet<SpaceId>;
@@ -79,15 +61,10 @@ export function resolveRailShortcuts(input: {
   return shortcuts;
 }
 
-/** Adds a shortcut at the end of the rail, or removes it when it is already there. */
 export function toggleRailShortcutKey(keys: readonly string[], key: string): string[] {
   return keys.includes(key) ? keys.filter((entry) => entry !== key) : [...keys, key];
 }
 
-/**
- * The shortcut that stands for what the panel shows, so exactly one rail item is active:
- * a pinned Space while Home shows that Space, a pinned project while Spaces shows its threads.
- */
 export function resolveActiveRailShortcutKey(input: {
   activeItem: RailItemId;
   activeSpaceId: SpaceId | null;
@@ -113,32 +90,19 @@ export function resolveActiveRailShortcutKey(input: {
   return null;
 }
 
-/**
- * Whether the panel column shows next to the rail for the active item. Every section either
- * owns a panel (Home/Spaces: projects and threads; Automations and Settings: their own
- * lists) or takes the full width: Kanban is one board.
- */
-export function railItemShowsPanel(id: RailItemId): boolean {
-  return id !== "kanban";
-}
-
 function matchesRoute(pathname: string, route: string): boolean {
   return pathname === route || pathname.startsWith(`${route}/`);
 }
 
-/** The route rail item that owns a pathname, or null for thread and chat-index routes. */
 function railItemForPathname(pathname: string): RailRouteItemId | null {
-  if (matchesRoute(pathname, "/kanban")) return "kanban";
   if (matchesRoute(pathname, "/automations")) return "automations";
   if (matchesRoute(pathname, "/settings")) return "settings";
   return null;
 }
 
-/**
- * Re-syncs the active item after navigation: a route item wins when the pathname is its
- * route (shortcut, deep link, command palette); otherwise the current panel item
- * is active, so exactly one rail item is active at a time.
- */
+// Re-syncs the active item after navigation: a route item wins when the pathname is its route
+// (shortcut, deep link, command palette); otherwise the current panel item is active, so exactly
+// one rail item is active at a time.
 export function reconcileActiveRailItem(input: {
   current: RailItemId;
   pathname: string;
@@ -154,12 +118,8 @@ export interface RailSpacesSection<T> {
   readonly items: ReadonlyArray<T>;
 }
 
-/**
- * Spaces panel sections in the shared picker order (active space, Void, the rest, then
- * spaces the snapshot has not caught up with). Empty spaces stay listed so they can show
- * their empty state; an empty Void is dropped because it is only the unfiled bucket,
- * unless it is the only section there is.
- */
+// Empty spaces stay listed so they can show their empty state; an empty Void is dropped because it
+// is only the unfiled bucket, unless it is the only section there is.
 export function buildRailSpacesSections<T>(input: {
   items: ReadonlyArray<T>;
   spaces: ReadonlyArray<Space>;

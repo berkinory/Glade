@@ -1,9 +1,4 @@
-// FILE: ComputerPermissionGuide.tsx
-// Purpose: Guided macOS permission setup for Computer control — deep-links
-//          the exact System Settings pane and explains granting access to this installed build.
-// Layer: Settings UI component
-
-import type { DesktopComputerSettingsPane } from "@glade/contracts";
+import type { DesktopComputerSettingsPane } from "@glade/contracts/ipc/ipc";
 
 import { Button } from "~/components/ui/button";
 import { Spinner } from "~/components/ui/spinner";

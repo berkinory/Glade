@@ -20,11 +20,9 @@ import { ThreadDeletionReactorLive } from "./orchestration/Layers/ThreadDeletion
 import { TurnCheckpointCoordinatorLive } from "./orchestration/Layers/TurnCheckpointCoordinator";
 import { OrchestrationLayerLive } from "./orchestration/runtimeLayer";
 
-import { DevServerManagerLive } from "./devServerManager";
-import { DeviceServiceLive } from "./device/Layers/DeviceService";
-import type { DeviceService } from "./device/Services/DeviceService";
+import { DevServerManagerLive } from "./workspace/devServers/devServerManager";
 import { ComputerServiceLive } from "./computer/Layers/ComputerService";
-import { KeybindingsLive } from "./keybindings";
+import { KeybindingsLive } from "./settings/Layers/Keybindings";
 import { GitCoreLive } from "./git/Layers/GitCore";
 import { GitLayerLive, TextGenerationLayerLive } from "./git/runtimeLayer";
 import { TerminalLayerLive } from "./terminal/runtimeLayer";
@@ -34,11 +32,11 @@ import { ServerAuthLive } from "./auth/Layers/ServerAuth";
 import { ServerAuthPolicyLive } from "./auth/Layers/ServerAuthPolicy";
 import { ServerSecretStoreLive } from "./auth/Layers/ServerSecretStore";
 import { SessionCredentialServiceLive } from "./auth/Layers/SessionCredentialService";
-import { ProfileStatsQueryLive } from "./profileStats";
-import { ProfileStatsArchiveLive } from "./profileStatsArchive";
-import { ServerLifecycleEventsLive } from "./serverLifecycleEvents";
-import { ServerRuntimeStartupLive } from "./serverRuntimeStartup";
-import { ServerSettingsLive } from "./serverSettings";
+import { ProfileStatsQueryLive } from "./diagnostics/Layers/ProfileStatsQuery";
+import { ProfileStatsArchiveLive } from "./diagnostics/profileStatsArchive";
+import { ServerLifecycleEventsLive } from "./server/lifecycle/serverLifecycleEvents";
+import { ServerRuntimeStartupLive } from "./server/runtime/serverRuntimeStartup";
+import { ServerSettingsLive } from "./settings/serverSettings";
 import { WorkspaceLayerLive } from "./workspace/runtimeLayer";
 import { ProjectFaviconResolverLive } from "./project/Layers/ProjectFaviconResolver";
 import { ServerEnvironmentLive } from "./environment/Layers/ServerEnvironment";
@@ -47,23 +45,10 @@ import { ProjectionTurnRepositoryLive } from "./persistence/Layers/ProjectionTur
 import { OrchestrationEventDeliveryRepositoryLive } from "./persistence/Layers/OrchestrationEventDeliveries";
 import { ProviderRuntimeEventRepositoryLive } from "./persistence/Layers/ProviderRuntimeEvents";
 import { ThreadDiagnosticsQueryLive } from "./diagnostics/Layers/ThreadDiagnosticsQuery";
-import { ManagedAttachmentCleanupLive } from "./managedAttachmentCleanup";
+import { ManagedAttachmentCleanupLive } from "./attachments/managedAttachmentCleanup";
 import { PullRequestServiceLive } from "./pullRequests/Layers/PullRequestService";
 import { ProviderHealthLive } from "./provider/Layers/ProviderHealth";
-import { makeServerProviderLayer } from "./provider/runtimeLayer";
-
-function provideThreadDeletionReactorDeviceService<
-  ReactorServices,
-  ReactorError,
-  ReactorRequirements,
-  DeviceError,
-  DeviceRequirements,
->(
-  reactorLayer: Layer.Layer<ReactorServices, ReactorError, ReactorRequirements>,
-  deviceServiceLayer: Layer.Layer<DeviceService, DeviceError, DeviceRequirements>,
-) {
-  return reactorLayer.pipe(Layer.provideMerge(deviceServiceLayer));
-}
+import { makeServerProviderLayer } from "./provider/core/runtimeLayer";
 
 function makeServerRuntimeServicesLayer(
   options: {
@@ -81,8 +66,6 @@ function makeServerRuntimeServicesLayer(
   );
 
   const runtimeServicesLayer = Layer.mergeAll(
-    OrchestrationLayerLive,
-    checkpointStoreLayer,
     checkpointDiffQueryLayer,
     RuntimeReceiptBusLive,
     TurnCheckpointCoordinatorLive,
@@ -119,16 +102,13 @@ function makeServerRuntimeServicesLayer(
     Layer.provideMerge(checkpointReactorLayer),
     Layer.provideMerge(threadGitMetadataReactorLayer),
   );
-  const threadDeletionReactorLayer = provideThreadDeletionReactorDeviceService(
-    ThreadDeletionReactorLive.pipe(
-      Layer.provideMerge(profileStatsArchiveLayer),
-      Layer.provideMerge(OrchestrationLayerLive),
-      Layer.provideMerge(TerminalLayerLive),
-      Layer.provideMerge(GitCoreLive),
-    ),
-    DeviceServiceLive,
+  const threadDeletionReactorLayer = ThreadDeletionReactorLive.pipe(
+    Layer.provideMerge(profileStatsArchiveLayer),
+    Layer.provideMerge(OrchestrationLayerLive),
+    Layer.provideMerge(TerminalLayerLive),
+    Layer.provideMerge(GitCoreLive),
   );
-  // Shares the single memoized TerminalManager with the top-level TerminalLayerLive.
+
   const devServerManagerLayer = DevServerManagerLive.pipe(Layer.provide(TerminalLayerLive));
   const sessionCredentialLayer = SessionCredentialServiceLive.pipe(
     Layer.provide(ServerSecretStoreLive),
@@ -179,9 +159,7 @@ function makeServerRuntimeServicesLayer(
     Layer.provideMerge(ServerSettingsLive),
     Layer.provideMerge(providerHealthLayer),
     Layer.provideMerge(BrowserAutomationHostLive),
-    // The gateway exposes device_* tools only where a backend can exist, but it
-    // resolves the service on every platform to make that decision.
-    Layer.provideMerge(DeviceServiceLive),
+
     Layer.provideMerge(ComputerServiceLive),
   );
   const pullRequestServiceLayer = PullRequestServiceLive.pipe(
@@ -206,7 +184,6 @@ function makeServerRuntimeServicesLayer(
     threadGitMetadataReactorLayer,
     threadDeletionReactorLayer,
     devServerManagerLayer,
-    DeviceServiceLive,
     ComputerServiceLive,
     GitLayerLive,
     TextGenerationLayerLive,
@@ -223,19 +200,12 @@ function makeServerRuntimeServicesLayer(
   ).pipe(Layer.provideMerge(NodeServices.layer));
 }
 
-/**
- * Compose the two top-level server graphs around one credential layer. Provider
- * adapters issue tokens from this registry and the HTTP gateway verifies those
- * same tokens, so constructing them independently would break scoped MCP.
- */
 export function makeServerApplicationLayers() {
   const agentGatewayCredentialsLayer = AgentGatewayCredentialsWithSecretsLive;
   const runtimeServicesLayer = makeServerRuntimeServicesLayer({
     agentGatewayCredentialsLayer,
   });
-  // Provider start/discovery gates must observe the same settings instance as
-  // the RPC layer. Reusing this layer in the final graph lets Effect memoize a
-  // single ServerSettings service instead of capturing private defaults.
+
   const providerLayer = makeServerProviderLayer({ agentGatewayCredentialsLayer }).pipe(
     Layer.provideMerge(ServerSettingsLive),
   );

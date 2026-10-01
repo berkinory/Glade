@@ -1,10 +1,3 @@
-// FILE: AutomationRiskConfirmPopover.tsx
-// Purpose: Anchored confirm popover for inline automation edits that need consent
-// (risky worktree modes, mode changes that claim or release a thread).
-// Layer: Web components (automation)
-// The popover is controlled and anchored to the row control that requested it: the
-// change is held as pending state by the caller and only patched on Confirm.
-
 import type * as React from "react";
 
 import { Button } from "~/components/ui/button";
@@ -29,7 +22,7 @@ export function AutomationRiskConfirmPopover({
   readonly confirmLabel: string;
   readonly confirmDisabled?: boolean;
   readonly onConfirm: () => void;
-  /** Optional extra content between the copy and the actions (e.g. a thread picker). */
+
   readonly children?: React.ReactNode;
 }) {
   return (

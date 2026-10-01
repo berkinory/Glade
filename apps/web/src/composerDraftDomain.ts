@@ -1,23 +1,22 @@
 import type { PendingUserInputRecoveryDraft } from "./pendingUserInputRecovery";
 import type { ComposerComputerControlMode } from "./computerControlMode";
-// FILE: composerDraftDomain.ts
-// Purpose: Defines composer draft state, stable defaults, and content/project normalization.
-// Exports: Internal domain primitives plus public facade types.
 
 import {
   type ModelSelection,
-  type OrchestrationLatestTurn,
-  type OrchestrationThreadPullRequest,
-  type ProjectId,
-  type ProviderInteractionMode,
-  type ProviderKind,
-  type ProviderMentionReference,
-  type ProviderModelOptions,
-  type ProviderSkillReference,
   type ProviderStartOptions,
   type RuntimeMode,
+} from "@glade/contracts/provider/sessionPolicy";
+import { type OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/threadEntities";
+import {
+  type ProjectId,
+  type ProviderKind,
   type ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
+import {
+  type ProviderMentionReference,
+  type ProviderSkillReference,
+} from "@glade/contracts/provider/providerDiscovery";
+import { type ProviderModelOptions } from "@glade/contracts/provider/model";
 import * as Equal from "effect/Equal";
 import * as Schema from "effect/Schema";
 
@@ -43,12 +42,11 @@ import {
   type ChatAssistantSelectionAttachment,
   type ChatFileAttachment,
   type ChatImageAttachment,
-  DEFAULT_INTERACTION_MODE,
   DEFAULT_RUNTIME_MODE,
 } from "./types";
 
 export const COMPOSER_DRAFT_STORAGE_KEY = "glade:composer-drafts:v1";
-export const COMPOSER_DRAFT_STORAGE_VERSION = 6;
+export const COMPOSER_DRAFT_STORAGE_VERSION = 7;
 export type DraftThreadEnvMode = "local" | "worktree";
 
 export const PersistedComposerImageAttachment = Schema.Struct({
@@ -115,45 +113,18 @@ export interface QueuedComposerChatTurn {
   enableComputerControl?: boolean | undefined;
   computerControlMode?: ComposerComputerControlMode | undefined;
   computerControlGeneration?: number | undefined;
-  sourceProposedPlan?: NonNullable<OrchestrationLatestTurn["sourceProposedPlan"]> | undefined;
+
   runtimeMode: RuntimeMode;
-  interactionMode: ProviderInteractionMode;
+
   envMode: DraftThreadEnvMode;
 }
 
-export interface RestoredComposerSourceProposedPlan {
-  threadId: ThreadId;
-  restoredPrompt: string;
-  sourceProposedPlan: NonNullable<OrchestrationLatestTurn["sourceProposedPlan"]>;
-}
-
-export interface QueuedComposerPlanFollowUp {
-  id: string;
-  kind: "plan-follow-up";
-  createdAt: string;
-  previewText: string;
-  text: string;
-  interactionMode: "default" | "plan";
-  selectedProvider: ProviderKind;
-  selectedModel: string | null;
-  selectedPromptEffort: string | null;
-  modelSelection: ModelSelection;
-  providerOptionsForDispatch?: ProviderStartOptions | undefined;
-  enableComputerControl?: boolean | undefined;
-  computerControlMode?: ComposerComputerControlMode | undefined;
-  computerControlGeneration?: number | undefined;
-  runtimeMode: RuntimeMode;
-}
-
-export type QueuedComposerTurn = QueuedComposerChatTurn | QueuedComposerPlanFollowUp;
+export type QueuedComposerTurn = QueuedComposerChatTurn;
 
 export interface ComposerThreadDraftState {
   pendingUserInputDrafts?: Record<string, PendingUserInputRecoveryDraft>;
   prompt: string;
-  // Non-null only while composer prompt-history browsing is active: the user's
-  // real draft, kept safe while `prompt` temporarily holds a recalled history
-  // entry. Restored (and cleared) when a browse is interrupted by a thread
-  // switch or reload.
+
   promptHistorySavedDraft: ComposerPromptHistorySavedDraft | null;
   images: ComposerImageAttachment[];
   files: ComposerFileAttachment[];
@@ -168,11 +139,11 @@ export interface ComposerThreadDraftState {
   skills: ProviderSkillReference[];
   mentions: ProviderMentionReference[];
   queuedTurns: QueuedComposerTurn[];
-  restoredSourceProposedPlan?: RestoredComposerSourceProposedPlan | null;
+
   modelSelectionByProvider: Partial<Record<ProviderKind, ModelSelection>>;
   activeProvider: ProviderKind | null;
   runtimeMode: RuntimeMode | null;
-  interactionMode: ProviderInteractionMode | null;
+
   enableComputerControl?: boolean | undefined;
   computerControlMode?: ComposerComputerControlMode | undefined;
   computerControlGeneration?: number | undefined;
@@ -182,15 +153,13 @@ export interface DraftThreadState {
   projectId: ProjectId;
   createdAt: string;
   runtimeMode: RuntimeMode;
-  interactionMode: ProviderInteractionMode;
+
   branch: string | null;
   worktreePath: string | null;
   workingDirectory?: string | null;
   lastKnownPr?: OrchestrationThreadPullRequest | null;
   envMode: DraftThreadEnvMode;
-  // Goal staged before the thread exists server-side; persisted via
-  // `thread.meta.update` when the first send promotes the draft.
-  goal?: string;
+
   promotedTo?: ThreadId;
 }
 
@@ -200,23 +169,20 @@ export interface DraftThreadMutationOptions {
   workingDirectory?: string | null;
   lastKnownPr?: OrchestrationThreadPullRequest | null;
   createdAt?: string;
-  // Explicitly `| undefined`: callers forward a `ThreadWorkspacePatch`, whose `envMode` is
-  // optional in the same way, and under `exactOptionalPropertyTypes` a bare `?:` would reject
-  // that spread even though the value sets are identical ("local" | "worktree").
+
   envMode?: DraftThreadEnvMode | undefined;
   runtimeMode?: RuntimeMode;
-  interactionMode?: ProviderInteractionMode;
-  // Empty string clears the staged goal; undefined leaves it unchanged.
-  goal?: string;
 }
 
 type DraftThreadCreatedAtMode = "accept-empty" | "preserve-existing-on-empty";
 
-interface ProjectDraftThread extends DraftThreadState {
+type ProjectDraftThread = DraftThreadState & {
   threadId: ThreadId;
-}
+};
 
 export interface ComposerDraftStoreState {
+  focusRequestsByThreadId: Record<string, number>;
+  requestFocus: (threadId: ThreadId) => void;
   setPendingUserInputDrafts: (
     threadId: ThreadId,
     drafts: Record<string, PendingUserInputRecoveryDraft>,
@@ -233,13 +199,8 @@ export interface ComposerDraftStoreState {
     threadId: ThreadId,
     options?: DraftThreadMutationOptions,
   ) => void;
-  /**
-   * Registers a standalone draft thread without claiming the project's
-   * composer-draft mapping. Unlike setProjectDraftThreadId this never replaces
-   * (and therefore never deletes) the mapped draft, so any number of standalone
-   * drafts — e.g. kanban tasks — can coexist per project. Create-only: an
-   * existing draft thread is left untouched.
-   */
+  // Unlike setProjectDraftThreadId this never replaces (and therefore never deletes) the mapped
+  // draft, so any number of standalone drafts can coexist per project.
   registerDraftThread: (
     threadId: ThreadId,
     options: {
@@ -250,17 +211,13 @@ export interface ComposerDraftStoreState {
       workingDirectory?: string | null;
       envMode?: DraftThreadEnvMode;
       runtimeMode?: RuntimeMode;
-      interactionMode?: ProviderInteractionMode;
     },
   ) => void;
   setDraftThreadContext: (
     threadId: ThreadId,
     options: DraftThreadMutationOptions & { projectId?: ProjectId },
   ) => void;
-  /**
-   * Moves an existing draft into a project's primary draft slot while deleting
-   * the draft that used to occupy that slot, if no other project still maps it.
-   */
+
   moveDraftThreadToProject: (
     threadId: ThreadId,
     projectId: ProjectId,
@@ -310,10 +267,7 @@ export interface ComposerDraftStoreState {
     },
   ) => void;
   setRuntimeMode: (threadId: ThreadId, runtimeMode: RuntimeMode | null | undefined) => void;
-  setInteractionMode: (
-    threadId: ThreadId,
-    interactionMode: ProviderInteractionMode | null | undefined,
-  ) => void;
+
   setComputerControlMode: (
     threadId: ThreadId,
     mode: ComposerComputerControlMode,
@@ -369,10 +323,7 @@ export interface ComposerDraftStoreState {
     attachments: PersistedComposerImageAttachment[],
   ) => Promise<ComposerAttachmentPersistenceResult>;
   copyTransferableComposerState: (sourceThreadId: ThreadId, targetThreadId: ThreadId) => void;
-  setRestoredSourceProposedPlan: (
-    threadId: ThreadId,
-    source: RestoredComposerSourceProposedPlan | null,
-  ) => void;
+
   clearComposerContent: (
     threadId: ThreadId,
     options?: { readonly preservePreviewUrls?: boolean },
@@ -405,8 +356,6 @@ export function buildDraftThreadState(input: {
       ? (existingThread?.worktreePath ?? null)
       : (options.worktreePath ?? null);
   const nextPromotedTo = existingThread?.promotedTo;
-  const nextGoal =
-    options?.goal === undefined ? existingThread?.goal : options.goal.trim() || undefined;
 
   return {
     projectId: input.projectId,
@@ -416,8 +365,7 @@ export function buildDraftThreadState(input: {
       mode: input.createdAtMode,
     }),
     runtimeMode: options?.runtimeMode ?? existingThread?.runtimeMode ?? DEFAULT_RUNTIME_MODE,
-    interactionMode:
-      options?.interactionMode ?? existingThread?.interactionMode ?? DEFAULT_INTERACTION_MODE,
+
     branch:
       options?.branch === undefined ? (existingThread?.branch ?? null) : (options.branch ?? null),
     worktreePath: nextWorktreePath,
@@ -431,7 +379,7 @@ export function buildDraftThreadState(input: {
         : (options.lastKnownPr ?? null),
     envMode:
       options?.envMode ?? (nextWorktreePath ? "worktree" : (existingThread?.envMode ?? "local")),
-    ...(nextGoal ? { goal: nextGoal } : {}),
+
     ...(nextPromotedTo ? { promotedTo: nextPromotedTo } : {}),
   };
 }
@@ -448,13 +396,11 @@ export function draftThreadStatesEqual(
     left.projectId === right.projectId &&
     left.createdAt === right.createdAt &&
     left.runtimeMode === right.runtimeMode &&
-    left.interactionMode === right.interactionMode &&
     left.branch === right.branch &&
     left.worktreePath === right.worktreePath &&
     (left.workingDirectory ?? null) === (right.workingDirectory ?? null) &&
     Equal.equals(left.lastKnownPr ?? null, right.lastKnownPr ?? null) &&
     left.envMode === right.envMode &&
-    (left.goal ?? "") === (right.goal ?? "") &&
     left.promotedTo === right.promotedTo
   );
 }
@@ -493,16 +439,11 @@ export function createEmptyThreadDraft(): ComposerThreadDraftState {
     skills: [],
     mentions: [],
     queuedTurns: [],
-    restoredSourceProposedPlan: null,
+
     modelSelectionByProvider: {},
     activeProvider: null,
     runtimeMode: null,
-    interactionMode: null,
-    // Tri-state: undefined means "no explicit choice". A chat that has not
-    // started yet then follows the machine-wide computerControlEnabled
-    // setting (off by default), including while permission setup is needed; its
-    // first send records the resolved value here so later setting changes leave
-    // the chat alone. A chat with turns and no recorded choice is off.
+
     enableComputerControl: undefined,
   };
 }
@@ -693,7 +634,7 @@ export function captureComposerPromptHistorySavedDraft(input: {
   const { threadId, draft, prompt } = input;
   return {
     prompt,
-    // Keep the same image objects here: ownership moves from visible composer to saved snapshot.
+
     images: [...draft.images],
     files: [...draft.files],
     nonPersistedImageIds: [...draft.nonPersistedImageIds],
@@ -740,9 +681,8 @@ export function buildTransferredComposerDraft(input: {
     mentions: [...sourceDraft.mentions],
     enableComputerControl: sourceDraft.enableComputerControl,
     computerControlMode: sourceDraft.computerControlMode,
-    // Revocation generations belong to the target thread, never the copied prompt.
+
     computerControlGeneration: base.computerControlGeneration ?? 0,
-    restoredSourceProposedPlan: null,
   };
 }
 
@@ -806,16 +746,23 @@ export function shouldRemoveDraft(draft: ComposerThreadDraftState): boolean {
     draft.skills.length === 0 &&
     draft.mentions.length === 0 &&
     draft.queuedTurns.length === 0 &&
-    draft.restoredSourceProposedPlan == null &&
     Object.keys(draft.modelSelectionByProvider).length === 0 &&
     draft.activeProvider === null &&
     draft.runtimeMode === null &&
-    draft.interactionMode === null &&
-    // An explicit false is still content: it records the user's choice to keep
-    // computer control off in this chat when the new-chat default is on.
     draft.enableComputerControl === undefined &&
     draft.computerControlMode === undefined
   );
+}
+
+export function putComposerDraft(
+  state: Pick<ComposerDraftStoreState, "draftsByThreadId">,
+  threadId: ThreadId,
+  draft: ComposerThreadDraftState,
+): Pick<ComposerDraftStoreState, "draftsByThreadId"> {
+  const draftsByThreadId = { ...state.draftsByThreadId };
+  if (shouldRemoveDraft(draft)) delete draftsByThreadId[threadId];
+  else draftsByThreadId[threadId] = draft;
+  return { draftsByThreadId };
 }
 
 const EMPTY_IMAGES: ComposerImageAttachment[] = [];
@@ -859,11 +806,11 @@ const EMPTY_THREAD_DRAFT = Object.freeze<ComposerThreadDraftState>({
   skills: EMPTY_SKILLS,
   mentions: EMPTY_MENTIONS,
   queuedTurns: EMPTY_QUEUED_TURNS,
-  restoredSourceProposedPlan: null,
+
   modelSelectionByProvider: EMPTY_MODEL_SELECTION_BY_PROVIDER,
   activeProvider: null,
   runtimeMode: null,
-  interactionMode: null,
+
   enableComputerControl: undefined,
 });
 

@@ -1,10 +1,3 @@
-// FILE: MentionChipIcon.tsx
-// Purpose: Shared icon renderer for mention chips. Keeps file, folder, and
-//          plugin glyphs identical between Lexical composer chips and React
-//          sent-message chips.
-// Layer: UI shared component/helper
-// Exports: MentionChipIcon, createMentionChipIconElement
-
 import { getFileIconUrl, getFolderIconUrl, inferEntryKindFromPath } from "~/file-icons";
 import {
   findThreadProviderMentionReferenceForToken,
@@ -16,15 +9,14 @@ import { createCentralIconElement } from "~/lib/central-icons";
 import { MessageCircleIcon, PluginIcon } from "~/lib/icons";
 import { COMPOSER_INLINE_CHIP_INLINE_ICON_CLASS_NAME } from "../composerInlineChip";
 import { FileEntryIcon } from "./FileEntryIcon";
-import type { ProviderMentionReference } from "@glade/contracts";
-import { threadIdFromThreadMentionPath } from "@glade/shared/threadMentions";
+import type { ProviderMentionReference } from "@glade/contracts/provider/providerDiscovery";
+import { threadIdFromThreadMentionPath } from "@glade/shared/threads/threadMentions";
 import { useStore } from "~/store";
 import { resolveThreadDisplayProvider } from "~/lib/threadDisplayProvider";
 import { ProviderIcon } from "../ProviderIcon";
 
 export type { MentionChipKind };
 
-// `className` sizes the glyph per surface (composer token vs timeline echo).
 export const MentionChipIcon = function MentionChipIcon(props: {
   path: string;
   theme: "light" | "dark";
@@ -70,7 +62,6 @@ export const MentionChipIcon = function MentionChipIcon(props: {
   );
 };
 
-// Lexical composer builds its mention chips outside React.
 export function createMentionChipIconElement(
   path: string,
   kind: MentionChipKind = "path",

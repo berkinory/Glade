@@ -1,19 +1,15 @@
-// FILE: focusedChatContext.ts
-// Purpose: Resolves the currently focused chat context across single and split chat surfaces.
-// Layer: Route-aware UI helpers
-// Exports: hook used by shortcut, discovery, and thread creation flows
-
-import { ThreadId, type ThreadId as ThreadIdType } from "@glade/contracts";
+import { ThreadId, type ThreadId as ThreadIdType } from "@glade/contracts/core/baseSchemas";
 import { useMemo } from "react";
 import { useParams } from "@tanstack/react-router";
-import { type DraftThreadState, useComposerDraftStore } from "./composerDraftStore";
+import type { DraftThreadState } from "./composerDraftDomain";
+import { useComposerDraftStore } from "./composerDraftStore";
 import { useDiffRouteSearch } from "./hooks/useDiffRouteSearch";
 import {
   resolveSplitViewFocusedPaneThreadId,
   selectSplitView,
-  type SplitView,
   useSplitViewStore,
 } from "./splitViewStore";
+import { type SplitView } from "./splitViewModel";
 import { useStore } from "./store";
 import { createProjectSelector, createThreadSelector } from "./storeSelectors";
 import type { Project, Thread } from "./types";

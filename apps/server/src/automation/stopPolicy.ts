@@ -1,4 +1,4 @@
-import { DEFAULT_AUTOMATION_STOP_AFTER_CONSECUTIVE_FAILURES } from "@glade/contracts";
+import { DEFAULT_AUTOMATION_STOP_AFTER_CONSECUTIVE_FAILURES } from "@glade/contracts/automation/automation";
 
 export function resolveAutomationStopPolicy(
   input: {

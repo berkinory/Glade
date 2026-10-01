@@ -1,17 +1,6 @@
-// FILE: environmentPullRequest.logic.ts
-// Purpose: Pure display/prompt helpers for the Environment panel "Pull request" section —
-//          check-rollup summaries, review-comment display models, the repair prompts that
-//          hand comments / failing checks / conflicts to the agent, and the composer
-//          context cards ("Repair", "Add to chat") that carry those prompts.
-// Layer: Web domain helpers (no React)
-
-import type {
-  GitPullRequestCheck,
-  GitPullRequestComment,
-  PullRequestCheck,
-  PullRequestComment,
-} from "@glade/contracts";
-import { pluralize } from "@glade/shared/text";
+import type { GitPullRequestCheck, GitPullRequestComment } from "@glade/contracts/git/git";
+import type { PullRequestCheck, PullRequestComment } from "@glade/contracts/git/pullRequests";
+import { pluralize } from "@glade/shared/text/text";
 
 import {
   type PullRequestContextDraft,
@@ -26,8 +15,6 @@ export interface PullRequestChecksSummary {
   tone: PullRequestChecksTone;
 }
 
-// Single tone → status-color contract for the check rollup, shared by the Environment section
-// icon and the detail panel's summary text so both agree on what "failing"/"pending" looks like.
 export const PULL_REQUEST_CHECKS_TONE_TEXT_CLASS: Record<PullRequestChecksTone, string> = {
   failure: "text-destructive",
   pending: "text-warning",
@@ -35,7 +22,6 @@ export const PULL_REQUEST_CHECKS_TONE_TEXT_CLASS: Record<PullRequestChecksTone, 
   none: "",
 };
 
-// Failure outranks pending so a red state never hides behind "N pending checks".
 export function summarizePullRequestChecks(
   checks: ReadonlyArray<GitPullRequestCheck>,
 ): PullRequestChecksSummary {
@@ -70,8 +56,6 @@ export const PULL_REQUEST_CHECK_STATUS_LABELS: Record<GitPullRequestCheck["statu
   cancelled: "Cancelled",
 };
 
-// Check names alone can collide (matrix jobs, re-runs, a check run named like an old commit
-// status), so list keys combine name + url and disambiguate exact duplicates by occurrence.
 export function withStableCheckKeys(
   checks: ReadonlyArray<GitPullRequestCheck>,
 ): Array<{ key: string; check: GitPullRequestCheck }> {
@@ -87,12 +71,10 @@ export function withStableCheckKeys(
 export interface PullRequestDiffStat {
   additions: number;
   deletions: number;
-  /** e.g. "3 files" — null when the file count was not reported */
+
   filesLabel: string | null;
 }
 
-// Null when gh reported no diff sizes at all, so the panel can omit the row instead of
-// showing a misleading "+0 −0".
 export function summarizePullRequestDiffStat(pr: {
   additions: number | null;
   deletions: number | null;
@@ -128,23 +110,22 @@ function truncate(text: string, maxLength: number): string {
   return text.length > maxLength ? `${text.slice(0, maxLength - 1).trimEnd()}…` : text;
 }
 
-// Bots (and humans) often lead with markdown/HTML noise — severity badges like
-// `<sub>![P2 Badge](https://img.shields.io/…)</sub>`, headings, bold, links; strip it so the
-// popup reads like the GitHub review list. Badge images keep their alt label minus the
-// "Badge" suffix ("P2 Badge" → "P2") because the severity is real signal.
+// Bots (and humans) often lead with markdown/HTML noise — severity badges like `<sub>![P2
+// Badge](https://img.shields.io/…)</sub>`, headings, bold, links; strip it so the popup reads like
+// the GitHub review list. Badge images keep their alt label minus the "Badge" suffix ("P2 Badge" →
+// "P2") because the severity is real signal.
 function stripInlineMarkdown(line: string): string {
   const codeSpans: string[] = [];
-  // Inline code may contain JSX/generic syntax like `<Button>` or `Promise<T>`.
-  // Protect it before stripping HTML wrapper tags so the display text keeps the code.
+
   const protectedLine = line.replace(/`([^`]*?)`/g, (_match, code: string) => {
     const index = codeSpans.push(code) - 1;
     return `\u0000code-span-${index}\u0000`;
   });
   const stripped = protectedLine
-    .replace(/!\[\s*badge\s*\]\([^)]*\)/gi, "") // image whose alt is only "Badge" → nothing
-    .replace(/!\[([^\]]*?)(?:\s+badge)?\]\([^)]*\)/gi, "$1") // markdown image → alt text
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1") // markdown link → link text
-    .replace(/<\/?[a-zA-Z][^<>]*>/g, "") // HTML tags (<sub>, <img …>, <details>, …)
+    .replace(/!\[\s*badge\s*\]\([^)]*\)/gi, "")
+    .replace(/!\[([^\]]*?)(?:\s+badge)?\]\([^)]*\)/gi, "$1")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/<\/?[a-zA-Z][^<>]*>/g, "")
     .replace(/^#{1,6}\s+/, "")
     .replace(/\*\*(.+?)\*\*/g, "$1")
     .replace(/__(.+?)__/g, "$1")
@@ -156,8 +137,6 @@ function stripInlineMarkdown(line: string): string {
   );
 }
 
-// True for lines that are nothing but images/HTML (e.g. a shields.io severity badge on its
-// own line). Their stripped remnant ("P2") is a prefix, not a standalone title.
 function isDecorationOnlyLine(line: string): boolean {
   if (line.trim().length === 0) {
     return false;
@@ -173,9 +152,6 @@ function isDecorationOnlyLine(line: string): boolean {
 export function describePullRequestComment(
   comment: GitPullRequestComment,
 ): PullRequestCommentDisplay {
-  // Strip markup per line before picking the title so a leading badge line cannot shadow
-  // the real summary line below it. Bot description markers can span lines, so remove them
-  // from the whole body first without hiding unrelated HTML comments quoted as code.
   const lines = comment.body
     .replace(DESCRIPTION_METADATA_MARKER_PATTERN, "")
     .split("\n")
@@ -185,8 +161,7 @@ export function describePullRequestComment(
   if (!first) {
     return { title: "(empty comment)", snippet: null };
   }
-  // A badge-only first line folds into the next line: "P2" + "Missing null check" reads as
-  // one title instead of a cryptic "P2" row.
+
   const second = lines[1];
   const titleText = first.decorationOnly && second ? `${first.text} ${second.text}` : first.text;
   const snippetStart = first.decorationOnly && second ? 2 : 1;
@@ -203,7 +178,7 @@ export function describePullRequestComment(
 
 const FIX_PROMPT_COMMENT_BODY_MAX_LENGTH = 1_500;
 const FIX_PROMPT_FIELD_MAX_LENGTH = 300;
-// Keeps the pasted prompt bounded even when GitHub reports many open review threads.
+
 const FIX_PROMPT_MAX_COMMENTS = 20;
 
 function formatFixPromptInlineField(value: string): string {
@@ -222,8 +197,6 @@ function formatFixPromptCommentHeading(comment: GitPullRequestComment): string {
   return context.length > 0 ? `Comment ${context.join(" ")}` : "Comment";
 }
 
-// Numbered, quoted review comments (bounded) shared by the comments-only and the
-// "everything" repair prompts so both quote a comment identically.
 function formatReviewCommentItems(input: {
   prUrl: string;
   comments: ReadonlyArray<GitPullRequestComment>;
@@ -240,7 +213,6 @@ function formatReviewCommentItems(input: {
     : items;
 }
 
-// Embed the visible review batch so one Fix action creates one coherent composer prompt.
 function buildFixReviewCommentsPrompt(input: {
   prNumber: number;
   prUrl: string;
@@ -254,7 +226,6 @@ function buildFixReviewCommentsPrompt(input: {
   ].join("\n\n");
 }
 
-/** Checks the agent can act on: failed or cancelled runs (pending/skipped/neutral are not). */
 function failingPullRequestChecks(
   checks: ReadonlyArray<GitPullRequestCheck>,
 ): GitPullRequestCheck[] {
@@ -270,8 +241,6 @@ function formatFailingCheckItems(checks: ReadonlyArray<GitPullRequestCheck>): st
     });
 }
 
-// Handed to the agent by Repair → Failing checks. The git snapshot only knows check names
-// and URLs, so the prompt asks the agent to reproduce the failure locally first.
 function buildFixFailingChecksPrompt(input: {
   prNumber: number;
   prUrl: string;
@@ -288,7 +257,6 @@ function buildFixFailingChecksPrompt(input: {
   ].join("\n\n");
 }
 
-// Repair → Everything: one prompt that covers every actionable item the snapshot reports.
 function buildRepairEverythingPrompt(input: {
   prNumber: number;
   prUrl: string;
@@ -403,9 +371,6 @@ export function buildFixFindingsPrompt(input: {
   ].join("\n\n");
 }
 
-// Handed to the agent by the conflicts row's "Fix" button. The prompt names the PR branch
-// as it exists on GitHub but points the agent at the current checkout: fork threads check
-// the PR out under a different local branch name (e.g. `glade/pr-N/<branch>`).
 export function buildResolveConflictsPrompt(input: {
   prNumber: number;
   prUrl: string;
@@ -426,7 +391,7 @@ export interface PullRequestRepairAvailability {
   comments: number;
   failingChecks: number;
   conflicts: boolean;
-  /** Everything the Repair menu could hand off, for the trigger's count badge. */
+
   total: number;
 }
 
@@ -466,7 +431,6 @@ function joinCardList(parts: ReadonlyArray<string>): string {
   return truncate(parts.join(", "), CARD_SUBTITLE_MAX_LENGTH);
 }
 
-/** Plain-language state line for the reference card and prompt: "Draft", "Open, has conflicts". */
 function describePullRequestState(pr: PullRequestCardSource): string {
   if (pr.state !== "open") {
     return pr.state === "merged" ? "Merged" : "Closed";
@@ -478,7 +442,6 @@ function describePullRequestState(pr: PullRequestCardSource): string {
   return parts.join(", ");
 }
 
-// "Add to chat": the PR itself as context, without asking the agent to do anything yet.
 function buildPullRequestReferencePrompt(pr: PullRequestCardSource): string {
   const diffStat = summarizePullRequestDiffStat(pr);
   const sizeLine = diffStat
@@ -511,8 +474,6 @@ export function createPullRequestContextDraft(input: {
   };
 }
 
-// Builds the composer card for one Repair / Add to chat choice, or null when the snapshot
-// has nothing for that scope (the menu disables those entries, so null is a guard).
 export function buildPullRequestContextCard(input: {
   scope: PullRequestContextScope;
   pr: PullRequestCardSource;

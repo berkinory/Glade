@@ -1,24 +1,12 @@
-import { redactSensitiveProcessArgs } from "../processArgumentRedaction.ts";
+import { redactSensitiveProcessArgs } from "../platform/processArgumentRedaction.ts";
 
 const SENSITIVE_KEY = /(?:authorization|cookie|credential|password|secret|token|api[-_]?key)/i;
 const MAX_STRING_CHARS = 4_000;
 const MAX_ARRAY_ITEMS = 50;
 const MAX_OBJECT_KEYS = 50;
-/**
- * Tool payloads nest deeper than ordinary diagnostics: a projected activity
- * carries `data.rawOutput.details.structuredContent` before the driver's own
- * result begins (browser bind results put the `tabs` inventory one level
- * below that). At the former 5 the packaged E2E's own `glade_read_thread_*`
- * reads returned `"[depth limit]"` for exactly the tab list the model needed
- * to recover its target/tab ids. 12 clears every projected tool envelope with
- * room to spare; the item/key/string caps still bound the output, and secret
- * redaction runs at every level.
- */
+
 const MAX_DEPTH = 12;
 
-// Only the normalized usage event has a known numeric counter schema. Keep
-// credentials, element tokens and provider-authored payloads redacted even when
-// they borrow one of these names elsewhere in the diagnostic envelope.
 const USAGE_COUNTER_KEYS = new Set([
   "usedTokens",
   "totalProcessedTokens",

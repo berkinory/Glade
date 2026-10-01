@@ -1,4 +1,4 @@
-import type { OrchestrationMessage } from "@glade/contracts";
+import type { OrchestrationMessage } from "@glade/contracts/orchestration/threadEntities";
 import { Effect } from "effect";
 import { describe, expect, it, vi } from "vitest";
 
@@ -65,7 +65,7 @@ describe("makeComputerForegroundConsent", () => {
       userRequestedVisibleUse: true,
     });
     expect(loadMessages).toHaveBeenCalledOnce();
-    // A new turn starts over.
+
     expect(await consent.resolveForegroundAuthorization(context("turn-2"))).toEqual({
       userRequestedVisibleUse: false,
     });

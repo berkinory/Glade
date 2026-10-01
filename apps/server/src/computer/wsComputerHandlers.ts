@@ -1,6 +1,6 @@
 import type { AgentGatewaySessionRegistryShape } from "../agentGateway/Services/AgentGatewaySessionRegistry";
 import { computerApprovalGate } from "./ComputerApprovalGate.ts";
-/** WebSocket handlers for the computer RPC group. */
+
 import {
   COMPUTER_WS_METHODS,
   type ComputerActionResult,
@@ -10,8 +10,6 @@ import {
   type ComputerGetScreenSizeInput,
   type ComputerGetScreenSizeResult,
   type ComputerGetStateInput,
-  type ComputerGetAuditHistoryInput,
-  type ComputerGetAuditHistoryResult,
   type ComputerGetStatusInput,
   type ComputerHotkeyInput,
   type ComputerInputClickInput,
@@ -36,8 +34,12 @@ import {
   type ComputerSetControlEnabledInput,
   type ComputerTypeTextInput,
   type ThreadComputerState,
-  WsRpcError,
-} from "@glade/contracts";
+} from "@glade/contracts/computer/computer";
+import {
+  type ComputerGetAuditHistoryInput,
+  type ComputerGetAuditHistoryResult,
+} from "@glade/contracts/computer/computerAudit";
+import { WsRpcError } from "@glade/contracts/transport/ws/rpcErrors";
 import { Effect } from "effect";
 
 import { NO_COMPUTER_CAPABILITIES } from "./ComputerBackend.ts";
@@ -45,13 +47,6 @@ import type { ComputerManager } from "./ComputerManager.ts";
 import { withDesktopOperationSignal } from "./DesktopOperationQueue.ts";
 import type { ComputerServiceShape } from "./Services/ComputerService.ts";
 
-/**
- * Shown only when no computer service started at all, so it cannot name the
- * missing piece the way a live backend's `availability()` does — a backend that
- * exists always reports its own reason, and this is the case where there is no
- * backend to ask. It therefore names the requirement every tier shares rather
- * than any one tier's dependencies.
- */
 const UNSUPPORTED_MESSAGE = "No computer backend is available on this server.";
 
 function unsupported<A>(): Effect.Effect<A, WsRpcError> {
@@ -157,17 +152,14 @@ export function makeWsComputerHandlers(
         kind: "backend-unavailable" as const,
         message: UNSUPPORTED_MESSAGE,
       },
-      // Nothing supervises a backend that was never started, so the health
-      // of one is permanently the boot-time verdict.
+
       health: {
         status: "unavailable" as const,
         consecutiveFailures: 0,
         reconnects: 0,
         captureAvailable: false,
       },
-      // A backend that was never started can do nothing, and saying so is
-      // what keeps the panel's badges and the tool descriptions from
-      // advertising a desktop this host has not got.
+
       capabilities: NO_COMPUTER_CAPABILITIES,
     } satisfies ComputerStatusResult;
     const unsupportedState = (input: ComputerThreadInput) =>
@@ -313,10 +305,6 @@ export function makeWsComputerHandlers(
   };
 }
 
-/**
- * A pane click carries a resolved desktop point, so it goes straight to the
- * coordinate path of the manager — no AT-SPI tree read, no semantic matching.
- */
 function userInputClick(
   manager: ComputerManager,
   input: ComputerInputClickInput,
@@ -333,8 +321,6 @@ function userInputKey(
   manager: ComputerManager,
   input: ComputerInputKeyInput,
 ): Promise<ComputerActionResult> {
-  // A repeated modifier would be pressed twice and released twice, which reads
-  // as a tap of that modifier on the way out of the chord.
   const modifiers = [...new Set(input.modifiers ?? [])];
   return modifiers.length === 0
     ? manager.pressKey(undefined, input.key)

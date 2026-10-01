@@ -1,26 +1,21 @@
-// FILE: ChatView.selectors.ts
-// Purpose: Keep ChatView's thread-scoped selectors off the component hot path and out of the render file.
-// Exports: lineage/work-log selector factories used by ChatView.
-
 import {
   type MessageId,
   ThreadId,
   type ThreadId as ThreadIdType,
   type TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
 
 import type { AppState } from "../storeState";
 import { collectByIds, getThreadFromState } from "../threadDerivation";
 import type {
   ChatMessage,
-  ProposedPlan,
   Thread,
   ThreadSession,
   ThreadShell,
   ThreadTurnState,
   TurnDiffSummary,
 } from "../types";
-import type { WorkLogEntry } from "../session-logic";
+import type { WorkLogEntry } from "../workLog.types";
 
 const EMPTY_LINEAGE_ACTIVITIES: Thread["activities"] = [];
 
@@ -32,8 +27,7 @@ type ThreadSliceRefs = {
   messages: Record<MessageId, ChatMessage> | undefined;
   activityIds: readonly string[] | undefined;
   activities: Record<string, Thread["activities"][number]> | undefined;
-  proposedPlanIds: readonly string[] | undefined;
-  proposedPlans: Record<string, ProposedPlan> | undefined;
+
   turnDiffIds: readonly TurnId[] | undefined;
   turnDiffs: Record<TurnId, TurnDiffSummary> | undefined;
 };
@@ -60,8 +54,7 @@ function collectThreadSliceRefs(state: AppState, threadId: ThreadIdType): Thread
     messages: state.messageByThreadId?.[threadId],
     activityIds: state.activityIdsByThreadId?.[threadId],
     activities: state.activityByThreadId?.[threadId],
-    proposedPlanIds: state.proposedPlanIdsByThreadId?.[threadId],
-    proposedPlans: state.proposedPlanByThreadId?.[threadId],
+
     turnDiffIds: state.turnDiffIdsByThreadId?.[threadId],
     turnDiffs: state.turnDiffSummaryByThreadId?.[threadId],
   };
@@ -88,8 +81,6 @@ function threadSliceRefsEqual(left: ThreadSliceRefs | undefined, right: ThreadSl
     left.messages === right.messages &&
     left.activityIds === right.activityIds &&
     left.activities === right.activities &&
-    left.proposedPlanIds === right.proposedPlanIds &&
-    left.proposedPlans === right.proposedPlans &&
     left.turnDiffIds === right.turnDiffIds &&
     left.turnDiffs === right.turnDiffs
   );
@@ -319,8 +310,6 @@ export function createThreadLineageSelector(threadId: ThreadIdType | null) {
       currentThreadId = thread.parentThreadId ?? null;
     }
 
-    // Breadcrumb labels only need shells plus parent activity identity hints;
-    // avoid subscribing this header path to message/session/diff slices.
     const selectedIdsChanged = !shallowEqualThreadIds(previousSelectedThreadIds, selectedThreadIds);
     const nextSliceRefs = new Map<ThreadIdType, ThreadLineageSliceRefs>();
     let sliceRefsChanged = selectedIdsChanged;

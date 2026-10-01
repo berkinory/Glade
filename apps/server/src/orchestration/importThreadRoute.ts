@@ -1,31 +1,22 @@
-// FILE: importThreadRoute.ts
-// Purpose: Imports provider-native sessions and binds them to Glade thread projections.
-// Layer: Orchestration command handler
-// Exports: makeImportThreadHandler.
-
-import {
-  CommandId,
-  type OrchestrationImportThreadInput,
-  type ProviderKind,
-  type ThreadHandoffImportedMessage,
-  type ThreadId,
-} from "@glade/contracts";
+import { CommandId, type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type OrchestrationImportThreadInput } from "@glade/contracts/orchestration/rpc";
+import { type ThreadHandoffImportedMessage } from "@glade/contracts/orchestration/commands";
 import {
   deriveAssociatedWorktreeMetadata,
   workspaceRootsEqual,
-} from "@glade/shared/threadWorkspace";
+} from "@glade/shared/threads/threadWorkspace";
 import type { FileSystem, Path } from "effect";
 import { Data, Effect, Option } from "effect";
 
 import { resolveThreadWorkspaceCwd } from "../checkpointing/Utils";
-import { loadClaudeAgentSdk } from "../provider/claudeAgentSdk.ts";
-import { ensureProviderEnabled } from "../provider/enabledProviderAdapter";
+import { loadClaudeAgentSdk } from "../provider/claude/claudeAgentSdk.ts";
+import { ensureProviderEnabled } from "../provider/core/enabledProviderAdapter";
 import type { OrchestrationEngineShape } from "./Services/OrchestrationEngine";
 import type { ProjectionSnapshotQueryShape } from "./Services/ProjectionSnapshotQuery";
 import type { ProviderThreadSnapshot } from "../provider/Services/ProviderAdapter";
 import type { ProviderAdapterRegistryShape } from "../provider/Services/ProviderAdapterRegistry";
 import type { ProviderServiceShape } from "../provider/Services/ProviderService";
-import type { ServerSettingsShape } from "../serverSettings";
+import type { ServerSettingsShape } from "../settings/serverSettings";
 import { parseManagedWorktreeWorkspaceRoot } from "../workspace/managedWorktree";
 import { mapClaudeSessionMessages, mapCodexSnapshotMessages } from "./importedThreadMessages";
 
@@ -370,8 +361,6 @@ export function makeImportThreadHandler(options: ImportThreadHandlerOptions) {
       }
     }).pipe(
       Effect.onError(() =>
-        // Startup precedes history materialization. Roll it back when import
-        // cannot finish so no provider child or persisted binding is orphaned.
         options.providerService.stopSession({ threadId: thread.id }).pipe(Effect.ignore),
       ),
     );

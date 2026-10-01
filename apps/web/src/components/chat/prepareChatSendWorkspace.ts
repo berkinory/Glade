@@ -1,27 +1,23 @@
-import {
-  DEFAULT_MODEL_BY_PROVIDER,
-  RuntimeMode,
-  ThreadId,
-  type ModelSelection,
-} from "@glade/contracts";
+import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
+import { RuntimeMode, type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   GENERIC_CHAT_THREAD_TITLE,
   buildPromptThreadTitleFallback,
-} from "@glade/shared/chatThreads";
-import { getDefaultModel } from "@glade/shared/model";
+} from "@glade/shared/threads/chatThreads";
 import type { QueryClient } from "@tanstack/react-query";
-import { gitStatusQueryOptions } from "~/lib/gitReactQuery";
+import { gitStatusQueryOptions } from "../../lib/gitQueryOptions";
 import { newCommandId, newProjectId } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
 import { setupProjectScript } from "~/projectScripts";
-import {
-  useComposerDraftStore,
-  type BrowserAnnotationDraft,
-  type ComposerAssistantSelectionAttachment,
-  type ComposerFileAttachment,
-  type ComposerImageAttachment,
-  type DraftThreadEnvMode,
-} from "../../composerDraftStore";
+import { useComposerDraftStore } from "../../composerDraftStore";
+import type { BrowserAnnotationDraft } from "../../lib/browserAnnotations";
+import type {
+  ComposerAssistantSelectionAttachment,
+  ComposerFileAttachment,
+  ComposerImageAttachment,
+  DraftThreadEnvMode,
+} from "../../composerDraftDomain";
 import { formatAssistantSelectionTitleSeed } from "../../lib/assistantSelections";
 import { formatBrowserAnnotationLabel } from "../../lib/browserAnnotations";
 import { resolveFirstSendTarget } from "../../lib/chatFirstSend";
@@ -106,10 +102,7 @@ export async function prepareChatSendWorkspace({
   const threadIdForSend = activeThread.id;
   const isFirstMessage = !isServerThread || !hasNativeUserMessages;
   const firstSendCreatedAt = new Date();
-  let firstComposerImageNameForTitle: string | null = null;
-  if (composerImagesForSend.length > 0) {
-    firstComposerImageNameForTitle = composerImagesForSend[0]?.name ?? null;
-  }
+  const firstComposerImageNameForTitle = composerImagesForSend[0]?.name ?? null;
   let titleSeed = trimmedPromptForSend;
   if (!titleSeed) {
     if (firstComposerImageNameForTitle) {
@@ -131,18 +124,18 @@ export async function prepareChatSendWorkspace({
       titleSeed = GENERIC_CHAT_THREAD_TITLE;
     }
   }
-  // Keep the optimistic label short while the server asks Codex for a better summary.
+
   const title = buildPromptThreadTitleFallback(titleSeed);
   const currentStoreState = useStore.getState();
-  // Keep an optimistically selected Space across the command/snapshot race. The server
-  // validates this best-effort target and degrades genuinely stale/deleted ids to Void.
+  // Keep an optimistically selected Space across the command/snapshot race. The server validates this
+  // best-effort target and degrades genuinely stale/deleted ids to Void.
   const activeSpaceIdForSend = readActiveSpaceId();
   const firstSendDefaultModelSelection = buildModelSelection(
     selectedModelSelectionForSend.provider,
     selectedModelSelectionForSend.model ||
       selectedModelForSend ||
-      getDefaultModel(selectedModelSelectionForSend.provider) ||
-      DEFAULT_MODEL_BY_PROVIDER.codex,
+      PROVIDER_DEFAULT_MODEL ||
+      PROVIDER_DEFAULT_MODEL,
     selectedModelSelectionForSend.options,
   );
   const firstSendTarget = resolveFirstSendTarget({
@@ -191,10 +184,7 @@ export async function prepareChatSendWorkspace({
     if (firstSendTarget.kind === "create-project") {
       const projectId = newProjectId();
       const createdAt = firstSendCreatedAt.toISOString();
-      // Managed chat rows stay global; a folder mention creates an ordinary project and
-      // should inherit the Space where the first send originated. Resolved before the
-      // `try`: a value block inside a try body makes React Compiler bail out on the whole
-      // component.
+
       const createProjectSpaceFields =
         firstSendTarget.creation.kind === "project" ? { spaceId: activeSpaceIdForSend } : {};
       try {
@@ -222,7 +212,6 @@ export async function prepareChatSendWorkspace({
           throw error;
         }
 
-        // If the server already knows this workspace root, reuse that project and continue.
         const { snapshot, project: recoveredProject } =
           await waitForRecoverableProjectForDuplicateCreate({
             message: description,
@@ -263,8 +252,8 @@ export async function prepareChatSendWorkspace({
     nextAssociatedWorktreeRef = null;
   }
 
-  // The branch query can finish just after the user chooses New worktree. Use the
-  // resolved active branch at send time instead of rejecting an otherwise valid fast send.
+  // The branch query can finish just after the user chooses New worktree. Use the resolved active
+  // branch at send time instead of rejecting an otherwise valid fast send.
   if (
     isFirstMessage &&
     nextThreadEnvMode === "worktree" &&
@@ -274,9 +263,9 @@ export async function prepareChatSendWorkspace({
     nextThreadBranch = activeRootBranch ?? null;
   }
 
-  // A settled local thread keeps its historical branch until the user resumes it, so the
-  // composer can explain the branch change. Refresh Git status before sending because the
-  // cached branch query may still be loading or may lag behind an out-of-band checkout.
+  // A settled local thread keeps its historical branch until the user resumes it, so the composer can
+  // explain the branch change. Refresh Git status before sending because the cached branch query may
+  // still be loading or may lag behind an out-of-band checkout.
   if (shouldResumeSettledLocalThread) {
     if (!gitBranchSourceCwd) {
       setStoreThreadError(threadIdForSend, "Unable to determine the current branch.");
@@ -307,8 +296,6 @@ export async function prepareChatSendWorkspace({
       ? nextThreadBranch
       : null;
 
-  // In worktree mode, require an explicit base branch so we don't silently
-  // fall back to local execution when branch selection is missing.
   const shouldCreateWorktree =
     isFirstMessage && nextThreadEnvMode === "worktree" && !nextThreadWorktreePath;
   if (shouldCreateWorktree && !nextThreadBranch) {
@@ -323,8 +310,7 @@ export async function prepareChatSendWorkspace({
     ? setupProjectScript(targetProjectScriptsForSend)
     : null;
   const worktreeSetupScriptName = setupScriptForWorktree?.name ?? null;
-  // Branching off the checkout's current branch also carries its uncommitted
-  // changes into the worktree, which the setup card surfaces as its own step.
+
   const worktreeCopiesLocalChanges =
     Boolean(baseBranchForWorktree) && baseBranchForWorktree === activeRootBranch;
   return {

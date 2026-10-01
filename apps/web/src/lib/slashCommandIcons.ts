@@ -1,10 +1,3 @@
-// FILE: slashCommandIcons.ts
-// Purpose: Single source of truth mapping built-in slash commands to their glyph,
-//          shared by the composer command menu, the Lexical inline chip, and the
-//          read-only echo in sent messages so `/goal` looks the same everywhere.
-// Layer: Web UI utility
-// Exports: slashCommandIcon
-
 import {
   BotIcon,
   BrainIcon,
@@ -13,8 +6,7 @@ import {
   ComputerUseIcon,
   EraserIcon,
   FastModeIcon,
-  GitForkIcon,
-  GoalIcon,
+  GitBranchIcon,
   InfoIcon,
   ListTodoIcon,
   type LucideIcon,
@@ -22,9 +14,6 @@ import {
   Minimize2,
 } from "./icons";
 
-// Reuse the app's existing icon components for each concept so slash commands
-// stay coherent with how plan/fork/review/model/etc. appear everywhere else.
-// Don't introduce bespoke glyphs here — map to the shared `~/lib/icons` exports.
 const SLASH_COMMAND_ICONS: Record<string, LucideIcon> = {
   clear: EraserIcon,
   compact: Minimize2,
@@ -34,16 +23,15 @@ const SLASH_COMMAND_ICONS: Record<string, LucideIcon> = {
   debug: BugIcon,
   default: MessageCircleIcon,
   review: BugIcon,
-  fork: GitForkIcon,
+  fork: GitBranchIcon,
   status: InfoIcon,
   subagents: BotIcon,
   feedback: BugIcon,
   automation: ClockIcon,
-  goal: GoalIcon,
+
   "computer-use": ComputerUseIcon,
 };
 
-/** Glyph for a slash command, falling back to `fallback` for unmapped commands. */
 export function slashCommandIcon(command: string, fallback: LucideIcon): LucideIcon {
   return SLASH_COMMAND_ICONS[command] ?? fallback;
 }

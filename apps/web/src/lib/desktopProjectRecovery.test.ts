@@ -1,12 +1,8 @@
-// FILE: desktopProjectRecovery.test.ts
-// Purpose: Verifies desktop startup detects snapshots where threads outlive visible project rows.
-
+import { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
-  ProjectId,
-  ThreadId,
   type OrchestrationReadModel,
   type OrchestrationShellSnapshot,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/snapshots";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -46,7 +42,7 @@ function makeThread(
       model: "gpt-5.3-codex",
     },
     runtimeMode: "approval-required",
-    interactionMode: "default",
+
     envMode: "local",
     branch: null,
     worktreePath: null,
@@ -64,14 +60,14 @@ function makeThread(
     latestUserMessageAt: null,
     hasPendingApprovals: false,
     hasPendingUserInput: false,
-    hasActionableProposedPlan: false,
+
     createdAt: "2026-04-20T08:00:00.000Z",
     updatedAt: "2026-04-20T08:00:00.000Z",
     archivedAt: null,
     deletedAt: null,
     messages: [],
     activities: [],
-    proposedPlans: [],
+
     checkpoints: [],
     session: null,
     ...overrides,
@@ -117,7 +113,7 @@ function makeShellSnapshot(
         title: thread.title,
         modelSelection: thread.modelSelection,
         runtimeMode: thread.runtimeMode,
-        interactionMode: thread.interactionMode,
+
         envMode: thread.envMode,
         branch: thread.branch,
         worktreePath: thread.worktreePath,
@@ -135,7 +131,7 @@ function makeShellSnapshot(
         latestUserMessageAt: thread.latestUserMessageAt,
         hasPendingApprovals: thread.hasPendingApprovals,
         hasPendingUserInput: thread.hasPendingUserInput,
-        hasActionableProposedPlan: thread.hasActionableProposedPlan,
+
         createdAt: thread.createdAt,
         updatedAt: thread.updatedAt,
         archivedAt: thread.archivedAt,

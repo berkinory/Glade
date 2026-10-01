@@ -1,0 +1,26 @@
+import { describe, expect, it } from "vitest";
+
+import { threadExportBlockedReason } from "./threadExport";
+
+const settledMessages = [{ streaming: false }, { streaming: false }];
+
+describe("threadExportBlockedReason", () => {
+  it("allows export for a settled thread", () => {
+    expect(threadExportBlockedReason({ latestTurn: null, messages: settledMessages })).toBeNull();
+  });
+
+  it("blocks export while the latest turn is running", () => {
+    expect(
+      threadExportBlockedReason({ latestTurn: { state: "running" }, messages: settledMessages }),
+    ).toMatch(/still running/);
+  });
+
+  it("blocks export while any message is still streaming", () => {
+    expect(
+      threadExportBlockedReason({
+        latestTurn: { state: "completed" },
+        messages: [...settledMessages, { streaming: true }],
+      }),
+    ).toMatch(/streaming/);
+  });
+});

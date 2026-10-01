@@ -1,0 +1,34 @@
+{
+  "$schema": "https://unpkg.com/knip@6.38.0/schema.json",
+  "cycles": { "dynamicImports": true },
+  // Host tools and Electron's built-in filesystem are not npm dependencies.
+  "ignoreBinaries": ["rustc", "pkill", "pgrep", "mkfifo"],
+  "ignoreDependencies": ["original-fs"],
+  "ignore": ["apps/server/src/provider/codex/protocol/generated/**"],
+  "ignoreIssues": {
+    // The vendored UI kit retains its reusable public component surface.
+    "apps/web/src/components/ui/**": ["exports", "types"],
+    // Distinct RPC/event contracts deliberately share schemas without changing their names.
+    "packages/contracts/src/**": ["duplicates"],
+    "apps/server/src/persistence/Services/ProjectionPendingInteractions.ts": ["duplicates"],
+  },
+  "workspaces": {
+    ".": {
+      // The compiler is invoked by its package path, not by its binary name.
+      "ignoreDependencies": ["@typescript/native"],
+    },
+    "apps/server": {
+      // The CLI embeds web build output; Turbo needs this dependency edge.
+      "ignoreDependencies": ["@glade/web"],
+    },
+    "apps/desktop": {
+      "entry": ["scripts/source-desktop-bootstrap.cjs", "scripts/find-cua-artifact.mjs"],
+    },
+    "scripts": {
+      // Artwork generation is documented in docs/release.md; notarization is a builder hook.
+      "entry": ["generate-brand-assets.ts", "notarize-mac-app.ts"],
+      // The packaging CLI resolves this module through createRequire.
+      "ignoreDependencies": ["electron-builder"],
+    },
+  },
+}

@@ -6,12 +6,12 @@ import type {
   AuthCreatePairingCredentialInput,
   AuthPairingCredentialResult,
   AuthPairingLink,
-  AuthSessionId,
   AuthSessionState,
   AuthWebSocketTokenResult,
   ServerAuthDescriptor,
   ServerAuthSessionMethod,
-} from "@glade/contracts";
+} from "@glade/contracts/transport/auth/auth";
+import type { AuthSessionId } from "@glade/contracts/core/baseSchemas";
 import { Data, DateTime, ServiceMap } from "effect";
 import type { Effect } from "effect";
 

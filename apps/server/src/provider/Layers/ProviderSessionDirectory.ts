@@ -1,8 +1,12 @@
-import { ProviderKind, type ThreadId } from "@glade/contracts";
+import { isRecord } from "@glade/shared/transport/payloadValues";
+import { ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { Effect, Layer, Option, Schema } from "effect";
 
 import { ProviderSessionRuntimeRepository } from "../../persistence/Services/ProviderSessionRuntime.ts";
-import { ProviderSessionDirectoryPersistenceError, ProviderValidationError } from "../Errors.ts";
+import {
+  ProviderSessionDirectoryPersistenceError,
+  ProviderValidationError,
+} from "../core/Errors.ts";
 import {
   ProviderSessionDirectory,
   type ProviderRuntimeBinding,
@@ -31,10 +35,6 @@ function decodeProviderKind(
       detail: `Unknown persisted provider '${providerName}'.`,
     }),
   );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function mergeRuntimePayload(
@@ -74,9 +74,7 @@ const makeProviderSessionDirectory = Effect.gen(function* () {
                   runtimePayload: value.runtimePayload,
                 }),
               ),
-              // A binding for a provider that no longer exists behaves like no
-              // binding at all: the thread starts a fresh session instead of the
-              // whole lookup failing.
+
               Effect.catchTag("ProviderSessionDirectoryPersistenceError", (error) =>
                 Effect.logDebug("provider session directory ignored unknown persisted provider", {
                   threadId: value.threadId,

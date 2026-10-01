@@ -1,14 +1,10 @@
-// FILE: release-artifact-provenance.ts
-// Purpose: Hashes collected release assets and proves platform signing before upload.
-// Layer: Release/build helper
-
 import { spawnSync } from "node:child_process";
 import { hashFile } from "./file-digest.ts";
 import { lstatSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-import { matchesDistinguishedName } from "@glade/shared/windowsCertificate";
+import { matchesDistinguishedName } from "../../apps/desktop/src/main/updates/windowsCertificate";
 
 export type ReleaseArtifactPlatform = "linux" | "mac" | "win";
 
@@ -142,7 +138,7 @@ async function collectReleaseArtifactDigests(
 ): Promise<ReadonlyArray<ReleaseArtifactDigest>> {
   const fileNames = (artifactFileNames ?? readdirSync(assetsDirectory))
     .filter((fileName) => !fileName.endsWith(".provenance.json"))
-    .sort((left, right) => left.localeCompare(right));
+    .toSorted((left, right) => left.localeCompare(right));
   if (new Set(fileNames).size !== fileNames.length) {
     throw new Error("Release artifact file names must be unique.");
   }

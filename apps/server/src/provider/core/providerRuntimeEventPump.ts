@@ -1,0 +1,312 @@
+import type { TaggedFailure } from "../../platform/operationError.ts";
+
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
+import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
+import { Cause, Effect, Stream } from "effect";
+
+import type {
+  ProviderRuntimeEventPumpHealth,
+  ProviderRuntimeEventPumpStatus,
+} from "../Services/ProviderService.ts";
+
+const DEFAULT_RETRY_BASE_DELAY_MS = 25;
+const DEFAULT_RETRY_MAX_DELAY_MS = 2_000;
+
+const DEFAULT_DEGRADED_HEAL_AFTER_SUCCESSES = 100;
+
+export interface ProviderRuntimeEventPumpOptions<R> {
+  readonly provider: ProviderKind;
+  readonly stream: Stream.Stream<ProviderRuntimeEvent>;
+  readonly processEvent: (event: ProviderRuntimeEvent) => Effect.Effect<void, TaggedFailure, R>;
+  readonly processBatch?: (
+    events: ReadonlyArray<ProviderRuntimeEvent>,
+    processEvent: (event: ProviderRuntimeEvent) => Effect.Effect<void, never, R>,
+  ) => Effect.Effect<void, never, R>;
+  readonly isStopping?: Effect.Effect<boolean>;
+  readonly updateHealth: (health: ProviderRuntimeEventPumpHealth) => void;
+  readonly isPermanentFailure?: (cause: Cause.Cause<unknown>) => boolean;
+  readonly quarantineEvent?: (
+    event: ProviderRuntimeEvent,
+    cause: string,
+  ) => Effect.Effect<void, TaggedFailure, R>;
+  readonly retry?: { readonly baseDelayMs?: number; readonly maxDelayMs?: number };
+  readonly degradedHealAfterSuccesses?: number;
+}
+
+function retryDelayMs(attempt: number, baseDelayMs: number, maxDelayMs: number): number {
+  const exponent = Math.min(8, Math.max(0, attempt - 1));
+  return Math.min(maxDelayMs, baseDelayMs * 2 ** exponent);
+}
+
+function shouldLogRetry(attempt: number): boolean {
+  return attempt === 1 || (attempt & (attempt - 1)) === 0;
+}
+
+function health(input: {
+  readonly provider: ProviderKind;
+  readonly status: ProviderRuntimeEventPumpStatus;
+  readonly consecutiveFailures: number;
+  readonly lastEventAt?: string;
+  readonly lastError?: string;
+  readonly quarantinedEvents?: number;
+  readonly lastQuarantinedEventId?: string;
+  readonly lastQuarantinedAt?: string;
+}): ProviderRuntimeEventPumpHealth {
+  return {
+    provider: input.provider,
+    status: input.status,
+    consecutiveFailures: input.consecutiveFailures,
+    updatedAt: new Date().toISOString(),
+    ...(input.lastEventAt !== undefined ? { lastEventAt: input.lastEventAt } : {}),
+    ...(input.lastError !== undefined ? { lastError: input.lastError } : {}),
+    ...(input.quarantinedEvents !== undefined
+      ? { quarantinedEvents: input.quarantinedEvents }
+      : {}),
+    ...(input.lastQuarantinedEventId !== undefined
+      ? { lastQuarantinedEventId: input.lastQuarantinedEventId }
+      : {}),
+    ...(input.lastQuarantinedAt !== undefined
+      ? { lastQuarantinedAt: input.lastQuarantinedAt }
+      : {}),
+  };
+}
+
+export function runProviderRuntimeEventPump<R>(
+  options: ProviderRuntimeEventPumpOptions<R>,
+): Effect.Effect<void, never, R> {
+  const retryBaseDelayMs = Math.max(
+    1,
+    Math.floor(options.retry?.baseDelayMs ?? DEFAULT_RETRY_BASE_DELAY_MS),
+  );
+  const retryMaxDelayMs = Math.max(
+    retryBaseDelayMs,
+    Math.floor(options.retry?.maxDelayMs ?? DEFAULT_RETRY_MAX_DELAY_MS),
+  );
+  const degradedHealAfterSuccesses = Math.max(
+    1,
+    Math.floor(options.degradedHealAfterSuccesses ?? DEFAULT_DEGRADED_HEAL_AFTER_SUCCESSES),
+  );
+  let lastEventAt: string | undefined;
+  let quarantinedEvents = 0;
+  let successesSinceQuarantine = 0;
+  let lastQuarantinedEventId: string | undefined;
+  let lastQuarantinedAt: string | undefined;
+
+  const noteSuccessAndMaybeHeal = (): boolean => {
+    if (quarantinedEvents === 0) return false;
+    successesSinceQuarantine += 1;
+    if (successesSinceQuarantine < degradedHealAfterSuccesses) return false;
+    quarantinedEvents = 0;
+    successesSinceQuarantine = 0;
+    return true;
+  };
+
+  const setHealth = (
+    status: ProviderRuntimeEventPumpStatus,
+    consecutiveFailures: number,
+    lastError?: string,
+  ) =>
+    Effect.sync(() =>
+      options.updateHealth(
+        health({
+          provider: options.provider,
+          status,
+          consecutiveFailures,
+          ...(lastEventAt !== undefined ? { lastEventAt } : {}),
+          ...(lastError !== undefined ? { lastError } : {}),
+          quarantinedEvents,
+          ...(lastQuarantinedEventId !== undefined ? { lastQuarantinedEventId } : {}),
+          ...(lastQuarantinedAt !== undefined ? { lastQuarantinedAt } : {}),
+        }),
+      ),
+    );
+
+  const persistQuarantineReliably = (
+    event: ProviderRuntimeEvent,
+    detail: string,
+    attempt = 1,
+  ): Effect.Effect<void, never, R> =>
+    Effect.suspend(() => {
+      if (!options.quarantineEvent) {
+        return Effect.void;
+      }
+      return options.quarantineEvent(event, detail).pipe(
+        Effect.catchCause((cause) => {
+          if (Cause.hasInterruptsOnly(cause)) {
+            return Effect.interrupt;
+          }
+          const delayMs = retryDelayMs(attempt, retryBaseDelayMs, retryMaxDelayMs);
+          const quarantineDetail = Cause.pretty(cause);
+          return setHealth("recovering", attempt, quarantineDetail).pipe(
+            Effect.andThen(
+              Effect.logWarning("provider.runtime_event_pump.retrying_quarantine", {
+                provider: options.provider,
+                eventId: event.eventId,
+                eventType: event.type,
+                attempt,
+                delayMs,
+                cause: quarantineDetail,
+              }),
+            ),
+            Effect.andThen(Effect.sleep(delayMs)),
+            Effect.andThen(persistQuarantineReliably(event, detail, attempt + 1)),
+          );
+        }),
+      );
+    });
+
+  const processEventReliably = (
+    event: ProviderRuntimeEvent,
+    attempt = 1,
+  ): Effect.Effect<void, never, R> =>
+    Effect.suspend(() =>
+      options.processEvent(event).pipe(
+        Effect.tap(() =>
+          Effect.suspend(() => {
+            lastEventAt = event.createdAt;
+            const healed = noteSuccessAndMaybeHeal();
+            return (
+              healed
+                ? Effect.logInfo("provider.runtime_event_pump.recovered_from_degraded", {
+                    provider: options.provider,
+                    consecutiveSuccesses: degradedHealAfterSuccesses,
+                  })
+                : Effect.void
+            ).pipe(Effect.andThen(setHealth(quarantinedEvents > 0 ? "degraded" : "healthy", 0)));
+          }),
+        ),
+        Effect.catchCause((cause) => {
+          if (Cause.hasInterruptsOnly(cause)) {
+            return Effect.interrupt;
+          }
+
+          const detail = Cause.pretty(cause);
+          if (options.isPermanentFailure?.(cause) === true) {
+            return persistQuarantineReliably(event, detail).pipe(
+              Effect.andThen(
+                Effect.sync(() => {
+                  quarantinedEvents += 1;
+                  successesSinceQuarantine = 0;
+                  lastQuarantinedEventId = event.eventId;
+                  lastQuarantinedAt = new Date().toISOString();
+                }),
+              ),
+              Effect.andThen(
+                Effect.logError("provider.runtime_event_pump.quarantined_event", {
+                  provider: options.provider,
+                  eventId: event.eventId,
+                  eventType: event.type,
+                  threadId: event.threadId,
+                  turnId: event.turnId,
+                  cause: detail,
+                }),
+              ),
+              Effect.andThen(setHealth("degraded", 0, detail)),
+            );
+          }
+
+          const delayMs = retryDelayMs(attempt, retryBaseDelayMs, retryMaxDelayMs);
+          const retryLog = shouldLogRetry(attempt)
+            ? Effect.logWarning("provider.runtime_event_pump.retrying_event", {
+                provider: options.provider,
+                eventId: event.eventId,
+                eventType: event.type,
+                threadId: event.threadId,
+                turnId: event.turnId,
+                attempt,
+                delayMs,
+                cause: detail,
+              })
+            : Effect.void;
+          return setHealth("recovering", attempt, detail).pipe(
+            Effect.andThen(retryLog),
+            Effect.andThen(Effect.sleep(delayMs)),
+            Effect.andThen(processEventReliably(event, attempt + 1)),
+          );
+        }),
+      ),
+    );
+
+  const runStreamOnce = () => {
+    const processBatch = options.processBatch;
+    if (!processBatch) return Stream.runForEach(options.stream, processEventReliably);
+    const pending: ProviderRuntimeEvent[] = [];
+    const processPending = (event: ProviderRuntimeEvent) =>
+      processEventReliably(event).pipe(
+        Effect.tap(() =>
+          Effect.sync(() => {
+            const index = pending.indexOf(event);
+            if (index !== -1) pending.splice(index, 1);
+          }),
+        ),
+      );
+    return Stream.runForEach(
+      options.stream.pipe(
+        Stream.tap((event) =>
+          Effect.sync(() => {
+            pending.push(event);
+          }),
+        ),
+        Stream.groupedWithin(256, "100 millis"),
+      ),
+      (events) => processBatch(events, processPending),
+    ).pipe(
+      // Stream aggregation discards its unfinished group when upstream stops. Own that tail
+      // until publication succeeds so shutdown and adapter failures cannot lose partial text.
+      Effect.ensuring(
+        Effect.suspend(() =>
+          pending.length > 0 ? processBatch([...pending], processPending) : Effect.void,
+        ),
+      ),
+    );
+  };
+
+  const supervise = (restartAttempt = 0): Effect.Effect<void, never, R> =>
+    setHealth(restartAttempt === 0 ? "healthy" : "recovering", restartAttempt).pipe(
+      Effect.andThen(runStreamOnce()),
+      Effect.matchCauseEffect({
+        onFailure: (cause) => {
+          if (Cause.hasInterruptsOnly(cause)) {
+            return Effect.interrupt;
+          }
+          const attempt = restartAttempt + 1;
+          const delayMs = retryDelayMs(attempt, retryBaseDelayMs, retryMaxDelayMs);
+          const detail = Cause.pretty(cause);
+          return setHealth("recovering", attempt, detail).pipe(
+            Effect.andThen(
+              Effect.logError("provider.runtime_event_pump.stream_failed", {
+                provider: options.provider,
+                attempt,
+                delayMs,
+                cause: detail,
+              }),
+            ),
+            Effect.andThen(Effect.sleep(delayMs)),
+            Effect.andThen(supervise(attempt)),
+          );
+        },
+        onSuccess: () =>
+          (options.isStopping ?? Effect.succeed(false)).pipe(
+            Effect.flatMap((stopping) => {
+              if (stopping) return Effect.void;
+              const attempt = restartAttempt + 1;
+              const delayMs = retryDelayMs(attempt, retryBaseDelayMs, retryMaxDelayMs);
+              const detail = "Adapter runtime event stream ended unexpectedly.";
+              return setHealth("recovering", attempt, detail).pipe(
+                Effect.andThen(
+                  Effect.logWarning("provider.runtime_event_pump.stream_ended", {
+                    provider: options.provider,
+                    attempt,
+                    delayMs,
+                  }),
+                ),
+                Effect.andThen(Effect.sleep(delayMs)),
+                Effect.andThen(supervise(attempt)),
+              );
+            }),
+          ),
+      }),
+    );
+
+  return supervise();
+}

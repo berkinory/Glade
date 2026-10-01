@@ -1,4 +1,4 @@
-import type { ContextMenuItem } from "@glade/contracts";
+import type { ContextMenuItem } from "@glade/contracts/ipc/ipc";
 import { createCentralIconElement } from "./lib/central-icons";
 import { isInlineSvgMenuIcon } from "./lib/nativeMenuIcons";
 
@@ -17,11 +17,6 @@ function createMenuIconElement(icon: string): HTMLElement | null {
   return wrapper;
 }
 
-/**
- * Imperative DOM-based context menu that matches the app's Base UI menu styling.
- * Shows a positioned dropdown and returns a promise that resolves
- * with the clicked item id, or null if dismissed.
- */
 export function showContextMenuFallback<T extends string>(
   items: readonly ContextMenuItem<T>[],
   position?: { x: number; y: number },
@@ -89,7 +84,6 @@ export function showContextMenuFallback<T extends string>(
       const item = items[i]!;
       const isDestructive = item.destructive === true || item.id === "delete";
 
-      // Keep explicit groups visible in the browser fallback; destructive items remain isolated by default.
       if ((item.separatorBefore === true || isDestructive) && i > 0) {
         const sep = document.createElement("div");
         sep.className = "mx-2.5 my-1 h-px bg-border";
@@ -126,7 +120,6 @@ export function showContextMenuFallback<T extends string>(
     document.body.appendChild(overlay);
     document.body.appendChild(menu);
 
-    // Adjust if menu overflows viewport
     requestAnimationFrame(() => {
       const rect = menu.getBoundingClientRect();
       if (rect.right > window.innerWidth) {

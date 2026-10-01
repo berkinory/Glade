@@ -1,14 +1,5 @@
-// FILE: useTerminalSurfaceController.ts
-// Purpose: Terminal-store controller for the right-dock terminal pane. Owns the
-//          store selector slice, focus-request bump, and standard create/split/tab/
-//          move/activate/close handlers.
-// Layer: Web terminal UI hook
-// Note: ChatView is intentionally NOT a consumer — it adds split limits, placeholder
-//       thread cleanup, and split-view navigation, so it shares only the lower-level
-//       terminalSession helpers instead of this controller.
-
-import { type ThreadId } from "@glade/contracts";
-import { type TerminalCliKind } from "@glade/shared/terminalThreads";
+import { type ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type TerminalCliKind } from "@glade/shared/threads/terminalThreads";
 import { useState } from "react";
 
 import { useAppSettings } from "~/appSettings";

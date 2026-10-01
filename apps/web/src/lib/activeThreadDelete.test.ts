@@ -1,8 +1,4 @@
-// FILE: activeThreadDelete.test.ts
-// Purpose: Characterizes shared active-thread deletion ordering and failure boundaries.
-// Layer: Web orchestration helper tests
-
-import { ProjectId, ThreadId } from "@glade/contracts";
+import { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const harness = vi.hoisted(() => ({

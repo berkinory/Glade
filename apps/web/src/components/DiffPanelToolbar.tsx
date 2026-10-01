@@ -1,11 +1,5 @@
-// FILE: DiffPanelToolbar.tsx
-// Purpose: Unified review toolbar for the diff panel — scope picker, stats, file jump,
-//          view options, git actions, and turn selection. Picker chrome matches the
-//          Environment panel (EnvironmentRow triggers + ComposerPickerMenuPopup menus).
-// Layer: Diff panel UI
-
 import type { FileDiffMetadata } from "@pierre/diffs/react";
-import type { ThreadId, TurnId } from "@glade/contracts";
+import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { FaPlusMinus } from "react-icons/fa6";
 import { useState, type ReactNode } from "react";
 
@@ -69,7 +63,6 @@ import {
 } from "./ui/menu";
 const DIFF_PANEL_PICKER_ICON_CLASS_NAME = "size-3.5 shrink-0 text-[var(--color-text-foreground)]";
 
-/** Tighter than EnvironmentRow — dock header has no 16px icon gutter column. */
 const DIFF_PANEL_PICKER_TRIGGER_CLASS_NAME = cn(
   "flex h-8 min-w-0 max-w-[min(38%,11rem)] cursor-pointer items-center gap-1.5 rounded-lg py-1 pl-1.5 pr-2 text-left",
   "text-ui font-normal text-[var(--color-text-foreground)]",

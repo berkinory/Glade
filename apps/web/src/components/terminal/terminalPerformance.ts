@@ -1,9 +1,3 @@
-// FILE: terminalPerformance.ts
-// Purpose: Lightweight opt-in measurements for terminal output parse latency.
-// Layer: Terminal runtime diagnostics
-// Exports: observeTerminalWriteParsed
-// Depends on: Browser performance APIs and localStorage
-
 interface TerminalWriteSample {
   runtimeKey: string;
   bytes: number;
@@ -42,7 +36,6 @@ function getTerminalPerfStore() {
   return window.__gladeTerminalPerf;
 }
 
-// Records a write only after xterm reports that its parser consumed the data.
 export function observeTerminalWriteParsed(input: {
   runtimeKey: string;
   bytes: number;

@@ -1,25 +1,25 @@
+import { isObjectRecord } from "@glade/shared/transport/payloadValues";
 import { randomUUID } from "node:crypto";
 
 import {
   ApprovalRequestId,
   EventId,
-  ProviderApprovalDecision,
-  ProviderRuntimeEvent,
   RuntimeRequestId,
   RuntimeSessionId,
-  ProviderSession,
-  ProviderTurnStartResult,
   ThreadId,
   TurnId,
   ProviderKind,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
+import { ProviderApprovalDecision } from "@glade/contracts/provider/sessionPolicy";
+import { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
+import { ProviderSession, ProviderTurnStartResult } from "@glade/contracts/provider/provider";
 import { Effect, PubSub, Stream } from "effect";
 
 import {
   ProviderAdapterSessionNotFoundError,
   ProviderAdapterValidationError,
   type ProviderAdapterError,
-} from "../src/provider/Errors.ts";
+} from "../src/provider/core/Errors.ts";
 import type {
   ProviderAdapterShape,
   ProviderThreadSnapshot,
@@ -48,7 +48,6 @@ type FixtureProviderRuntimeEvent = {
   readonly [key: string]: unknown;
 };
 
-// Temporary alias while fixtures migrate to the new name.
 export type LegacyProviderRuntimeEvent = FixtureProviderRuntimeEvent;
 
 interface SessionState {
@@ -59,10 +58,6 @@ interface SessionState {
   readonly queuedResponses: Array<TestTurnResponse>;
   readonly rollbackCalls: Array<number>;
   deferredCompletionEvents: Array<ProviderRuntimeEvent>;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }
 
 function normalizeTurnState(value: unknown): "completed" | "failed" | "interrupted" | "cancelled" {
@@ -106,13 +101,13 @@ function normalizeFixtureEvent(rawEvent: Record<string, unknown>): ProviderRunti
       return {
         ...rawEvent,
         type: "turn.started",
-        payload: isRecord(rawEvent.payload) ? rawEvent.payload : {},
+        payload: isObjectRecord(rawEvent.payload) ? rawEvent.payload : {},
       } as ProviderRuntimeEvent;
     case "turn.completed":
       return {
         ...rawEvent,
         type: "turn.completed",
-        payload: isRecord(rawEvent.payload)
+        payload: isObjectRecord(rawEvent.payload)
           ? rawEvent.payload
           : {
               state: normalizeTurnState(rawEvent.status),
@@ -191,6 +186,7 @@ export interface TestProviderAdapterHarness {
     response: TestTurnResponse,
   ) => Effect.Effect<void, never>;
   readonly getStartCount: () => number;
+  readonly getSendCount: () => number;
   readonly getRollbackCalls: (threadId: ThreadId) => ReadonlyArray<number>;
   readonly getInterruptCalls: (threadId: ThreadId) => ReadonlyArray<TurnId | undefined>;
   readonly listActiveSessionIds: () => ReadonlyArray<ThreadId>;
@@ -286,8 +282,10 @@ export const makeTestProviderAdapterHarness = (options?: MakeTestProviderAdapter
         return session;
       });
 
+    let sendCount = 0;
     const sendTurn: ProviderAdapterShape<ProviderAdapterError>["sendTurn"] = (input) =>
       Effect.gen(function* () {
+        sendCount += 1;
         const state = sessions.get(input.threadId);
         if (!state) {
           return yield* missingSessionEffect(provider, input.threadId);
@@ -508,9 +506,7 @@ export const makeTestProviderAdapterHarness = (options?: MakeTestProviderAdapter
 
     const adapter: ProviderAdapterShape<ProviderAdapterError> = {
       provider,
-      capabilities: {
-        sessionModelSwitch: "in-session",
-      },
+      capabilities: {},
       startSession,
       sendTurn,
       interruptTurn,
@@ -555,6 +551,7 @@ export const makeTestProviderAdapterHarness = (options?: MakeTestProviderAdapter
     };
 
     const getStartCount = (): number => sessionCount;
+    const getSendCount = (): number => sendCount;
 
     const getInterruptCalls = (threadId: ThreadId): ReadonlyArray<TurnId | undefined> => {
       const calls = interruptCallsBySession.get(threadId);
@@ -587,6 +584,7 @@ export const makeTestProviderAdapterHarness = (options?: MakeTestProviderAdapter
       queueTurnResponse,
       queueTurnResponseForNextSession,
       getStartCount,
+      getSendCount,
       getRollbackCalls,
       getInterruptCalls,
       listActiveSessionIds,

@@ -1,16 +1,8 @@
-// FILE: PullRequestCodeTab.tsx
-// Purpose: The Code tab of the pull request detail surface — owns the diff query and the
-//          patch viewport. Lazy-loaded by PullRequestDetailPanel so the diff renderer and its
-//          worker infrastructure never ship to users who only read the list or Summary.
-// Layer: Pull request presentation
-// Exports: default PullRequestCodeTab (for React.lazy)
-
-import type { PullRequestDetail, PullRequestDetailInput } from "@glade/contracts";
+import type { PullRequestDetail, PullRequestDetailInput } from "@glade/contracts/git/pullRequests";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
 import { DiffPanelPatchViewport } from "~/components/DiffPanelPatchViewport";
-import { DiffWorkerPoolProvider } from "~/components/DiffWorkerPoolProvider";
 import { DiffPanelLoadingState } from "~/components/DiffPanelShell";
 import { useTheme } from "~/hooks/useTheme";
 import {
@@ -18,7 +10,7 @@ import {
   sortFileDiffsByPath,
   summarizeRenderablePatchStats,
 } from "~/lib/diffRendering";
-import { pullRequestDiffQueryOptions } from "~/lib/pullRequestReactQuery";
+import { pullRequestDiffQueryOptions } from "../../lib/pullRequestQueryOptions";
 import { cn } from "~/lib/utils";
 import { PullRequestDiffStat } from "./PullRequestDiffStat";
 import { PullRequestMetaLine } from "./PullRequestMetaLine";
@@ -36,9 +28,6 @@ function PullRequestCodeTab({
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(() => new Set());
   const diffQuery = useQuery(pullRequestDiffQueryOptions(input));
 
-  // Parse once per distinct patch (mirroring DiffPanel): every collapse toggle
-  // and theme change re-renders this tab, and the patch can be up to 8 MiB.
-  // Totals come from the parsed result rather than a second full parse.
   const patch = diffQuery.data?.patch;
   const renderablePatch = useMemo(
     () => getRenderablePatch(patch, `pull-request:${input.projectId}:${input.number}`),
@@ -54,64 +43,62 @@ function PullRequestCodeTab({
   );
 
   return (
-    <DiffWorkerPoolProvider>
-      <div className="flex h-full min-h-0 flex-col">
-        {diffQuery.data?.truncated ? (
-          <PullRequestWarningNote shape="banner">
-            Diff exceeded 8 MiB and was truncated.
-          </PullRequestWarningNote>
-        ) : null}
-        {patchTotals ? (
-          <PullRequestMetaLine
-            className={cn(
-              PR_META_TEXT_CLASS_NAME,
-              "border-b border-border/60 px-3 py-2 text-muted-foreground",
-            )}
-          >
-            <span>{patchTotals.fileCount} files</span>
-            <PullRequestDiffStat
-              additions={patchTotals.additions}
-              deletions={patchTotals.deletions}
-              tone="diff"
-            />
-          </PullRequestMetaLine>
-        ) : null}
-        {diffQuery.isPending ? (
-          <DiffPanelLoadingState label="Loading pull request diff…" />
-        ) : (
-          <DiffPanelPatchViewport
-            renderablePatch={renderablePatch}
-            renderableFiles={renderableFiles}
-            resolvedTheme={resolvedTheme}
-            diffRenderMode="split"
-            diffWordWrap
-            workspaceRoot={detail.workspaceRoot}
-            collapsedFiles={collapsedFiles}
-            onToggleFileCollapsed={(key) =>
-              setCollapsedFiles((current) => {
-                const next = new Set(current);
-                if (next.has(key)) next.delete(key);
-                else next.add(key);
-                return next;
-              })
-            }
-            isLoading={diffQuery.isFetching}
-            hasNoChanges={diffQuery.isSuccess && !renderablePatch}
-            error={
-              diffQuery.isError
-                ? diffQuery.error instanceof Error
-                  ? diffQuery.error.message
-                  : "Could not load diff."
-                : null
-            }
-            loadingLabel="Loading pull request diff…"
-            emptyLabel="This pull request has no file changes."
-            unavailableLabel="The pull request diff is unavailable."
-            viewKind="repo"
+    <div className="flex h-full min-h-0 flex-col">
+      {diffQuery.data?.truncated ? (
+        <PullRequestWarningNote shape="banner">
+          Diff exceeded 8 MiB and was truncated.
+        </PullRequestWarningNote>
+      ) : null}
+      {patchTotals ? (
+        <PullRequestMetaLine
+          className={cn(
+            PR_META_TEXT_CLASS_NAME,
+            "border-b border-border/60 px-3 py-2 text-muted-foreground",
+          )}
+        >
+          <span>{patchTotals.fileCount} files</span>
+          <PullRequestDiffStat
+            additions={patchTotals.additions}
+            deletions={patchTotals.deletions}
+            tone="diff"
           />
-        )}
-      </div>
-    </DiffWorkerPoolProvider>
+        </PullRequestMetaLine>
+      ) : null}
+      {diffQuery.isPending ? (
+        <DiffPanelLoadingState label="Loading pull request diff…" />
+      ) : (
+        <DiffPanelPatchViewport
+          renderablePatch={renderablePatch}
+          renderableFiles={renderableFiles}
+          resolvedTheme={resolvedTheme}
+          diffRenderMode="split"
+          diffWordWrap
+          workspaceRoot={detail.workspaceRoot}
+          collapsedFiles={collapsedFiles}
+          onToggleFileCollapsed={(key) =>
+            setCollapsedFiles((current) => {
+              const next = new Set(current);
+              if (next.has(key)) next.delete(key);
+              else next.add(key);
+              return next;
+            })
+          }
+          isLoading={diffQuery.isFetching}
+          hasNoChanges={diffQuery.isSuccess && !renderablePatch}
+          error={
+            diffQuery.isError
+              ? diffQuery.error instanceof Error
+                ? diffQuery.error.message
+                : "Could not load diff."
+              : null
+          }
+          loadingLabel="Loading pull request diff…"
+          emptyLabel="This pull request has no file changes."
+          unavailableLabel="The pull request diff is unavailable."
+          viewKind="repo"
+        />
+      )}
+    </div>
   );
 }
 

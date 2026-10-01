@@ -91,10 +91,7 @@ const makeThreadDiagnosticsQuery = Effect.gen(function* () {
     );
   };
 
-  // Retention is enforced every Nth insert rather than on each one: the two
-  // DELETEs cost a scan per write, while a bounded lag of a few rows past the
-  // cap or the 30-day window is invisible to readers. The first insert of a
-  // process still prunes, so a restart never inherits an unbounded backlog.
+  // The first insert of a process still prunes, so a restart never inherits an unbounded backlog.
   let insertsSinceRetentionPrune = OPERATIONAL_DIAGNOSTIC_RETENTION_PRUNE_INTERVAL;
 
   const recordOperationalDiagnostic: ThreadDiagnosticsQueryShape["recordOperationalDiagnostic"] = (

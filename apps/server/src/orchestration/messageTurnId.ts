@@ -1,4 +1,4 @@
-import type { TurnId } from "@glade/contracts";
+import type { TurnId } from "@glade/contracts/core/baseSchemas";
 
 export function resolveStableMessageTurnId(input: {
   readonly existingTurnId?: TurnId | null | undefined;

@@ -1,5 +1,6 @@
-import type { OrchestrationPendingInteraction, ThreadId } from "@glade/contracts";
-import { pendingRequestInstanceKey } from "@glade/shared/threadSummary";
+import type { OrchestrationPendingInteraction } from "@glade/contracts/orchestration/threadEntities";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { pendingRequestInstanceKey } from "@glade/shared/threads/threadSummary";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useComposerDraftStore, useComposerThreadDraft } from "../../composerDraftStore";
 import type { PendingUserInput } from "../../pendingInteractionDerivation";
@@ -48,8 +49,6 @@ export function usePendingUserInputDrafts(
     [threadId],
   );
 
-  // Command acceptance is not delivery. Keep the answer through transient
-  // failures and only discard it after authoritative settlement.
   useEffect(() => {
     const confirmed = new Set(
       (interactions ?? [])

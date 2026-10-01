@@ -1,14 +1,10 @@
-// FILE: useBrowserAnnotations.ts
-// Purpose: Owns the continuous desktop annotation session and marker projection lifecycle.
-// Layer: BrowserPanel hook
-
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   BrowserAnnotationEvent,
   BrowserAnnotationMethods,
   BrowserAnnotationSession,
-  ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/browser/browserAnnotations";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import type { BrowserAnnotationDraft } from "../../lib/browserAnnotations";
 import {
@@ -46,8 +42,6 @@ interface UseBrowserAnnotationsInput {
   readonly onError: (message: string | null) => void;
 }
 
-// Main survives renderer reloads, so a module-local 1,2,3 counter could move
-// backwards and leave stale badges projected after the web shell reloads.
 let nextProjectionVersion = Date.now() * 1_000;
 
 function nextBrowserAnnotationProjectionVersion(): number {

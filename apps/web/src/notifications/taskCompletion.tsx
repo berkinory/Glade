@@ -1,9 +1,4 @@
-// FILE: taskCompletion.tsx
-// Purpose: Bridges thread completion and attention-needed events to in-app toasts and OS notifications.
-// Layer: Notification runtime
-// Exports: TaskCompletionNotifications and browser permission helpers
-
-import { ThreadId } from "@glade/contracts";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useMemo, useEffect, useRef, useState } from "react";
 import { toastManager } from "../components/ui/toast";
@@ -41,7 +36,6 @@ function isBrowserNotificationSupported(): boolean {
   return typeof window !== "undefined" && "Notification" in window;
 }
 
-// Browsers require secure contexts and a user gesture before asking for permission.
 export function readBrowserNotificationPermissionState(): BrowserNotificationPermissionState {
   if (typeof window === "undefined") {
     return "unsupported";
@@ -78,8 +72,6 @@ interface ThreadNotificationCopy {
   body: string;
 }
 
-// Notification opens are generic thread activations, so they clear splitViewId
-// instead of resurrecting a hidden split pairing.
 function focusThread(threadId: Thread["id"], navigate: ReturnType<typeof useNavigate>): void {
   void navigate({
     to: "/$threadId",
@@ -176,8 +168,7 @@ export function TaskCompletionNotifications() {
   });
   const previousThreadsRef = useRef<readonly Thread[]>([]);
   const previousTerminalStateRef = useRef(terminalStateByThreadId);
-  // Lazy state init: evaluated once, keeping the impure Date.now() call out
-  // of re-renders (useRef(Date.now()) re-evaluates its argument every render).
+
   const [runtimeStartedAtMs] = useState(() => Date.now());
   const readyRef = useRef(false);
   const notifiedCompletionKeysRef = useRef(new Set<string>());
@@ -332,6 +323,7 @@ export function TaskCompletionNotifications() {
     threads,
     threadsHydrated,
     visibleThreadIds,
+    runtimeStartedAtMs,
   ]);
 
   return null;

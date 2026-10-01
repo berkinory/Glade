@@ -10,7 +10,6 @@ export interface StateStorage<R = unknown> {
 type SynchronousStateStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
 export interface DeferredPersistStorage<S> extends PersistStorage<S> {
-  /** Serialize the latest captured state and write it through synchronously. */
   flush: () => void;
 }
 
@@ -27,8 +26,6 @@ export function createMemoryStorage(): SynchronousStateStorage {
   };
 }
 
-// Use one backing store for both draft persistence and direct storage reads.
-// Some non-browser runtimes expose a partial global localStorage object.
 const memoryAppStorage = createMemoryStorage();
 export const appStorage: SynchronousStateStorage =
   typeof window !== "undefined" &&
@@ -38,27 +35,9 @@ export const appStorage: SynchronousStateStorage =
     ? window.localStorage
     : memoryAppStorage;
 
-/**
- * A zustand-persist-compatible storage that defers BOTH `partialize` and
- * `JSON.stringify` off the hot `set()` path.
- *
- * `createJSONStorage` (the zustand default) runs `partialize(get())` and the full
- * `JSON.stringify` of the entire store synchronously on every state change; only
- * the underlying `localStorage.setItem` I/O can be debounced. For large stores
- * (e.g. drafts carrying base64 image attachments) that per-keystroke serialization
- * is the dominant cost and stalls typing.
- *
- * Here, `setItem` only captures the latest `StorageValue` reference. The expensive
- * `partialize` + `JSON.stringify` runs a single time inside the debounced flush,
- * over the most recent captured state. The persisted bytes are identical to
- * `createJSONStorage` + a `partialize` config for the same final state — only
- * *when* serialization happens changes. At most one debounce window of changes can
- * be lost on a crash; wire `flush()` to `pagehide`/`visibilitychange` to bound that.
- *
- * IMPORTANT: pass `partialize` here and DO NOT also set `partialize` in the persist
- * config, otherwise partialize would run eagerly on every `set()` (defeating the
- * deferral) and then again at flush.
- */
+// Defer partialize and serialization together: default persist serialization otherwise remains
+// synchronous on every keystroke. Configure partialize only here, and flush on
+// pagehide/visibilitychange to bound crash loss.
 interface PageHideEventTarget {
   readonly addEventListener: (type: string, listener: () => void) => void;
 }
@@ -72,13 +51,6 @@ export interface FlushBeforePageHideEnv {
   readonly document?: PageVisibilityTarget | undefined;
 }
 
-/**
- * Flush a debounced/deferred storage before the page goes away, so at most one
- * debounce window of changes can be lost. Wires `beforeunload`, `pagehide`, and
- * `visibilitychange`→hidden — the latter two fire on mobile/bfcache navigations
- * where `beforeunload` does not. No-ops when the DOM globals are unavailable
- * (SSR / non-browser test environments), and is injectable for testing.
- */
 export function flushStorageBeforePageHide(
   flush: () => void,
   env: FlushBeforePageHideEnv = {
@@ -86,10 +58,6 @@ export function flushStorageBeforePageHide(
     document: typeof document !== "undefined" ? document : undefined,
   },
 ): void {
-  // Guard each capability separately: SSR-style test environments stub partial
-  // globals (e.g. a `document` with only `documentElement`), and this runs at
-  // module scope in store files — a missing listener API must degrade to a
-  // no-op, never crash module evaluation.
   const win = env.window;
   if (typeof win?.addEventListener === "function") {
     win.addEventListener("beforeunload", flush);
@@ -112,10 +80,6 @@ export function createDeferredPersistStorage<State, Persisted = State>(options: 
 }): DeferredPersistStorage<Persisted> {
   const { getStorage, partialize, debounceMs = 300 } = options;
 
-  // Latest pending write, captured lazily. Serialization is deferred to flush time.
-  // zustand's persist calls setItem with the FULL store state as `value.state`
-  // (there must be no `partialize` in the persist config — see the doc above), so
-  // it is typed as `Persisted` per the PersistStorage contract but is really `State`.
   let pending: { readonly name: string; readonly value: StorageValue<Persisted> } | null = null;
 
   const writePending = (): void => {
@@ -124,8 +88,7 @@ export function createDeferredPersistStorage<State, Persisted = State>(options: 
     }
     const { name, value } = pending;
     pending = null;
-    // Mirror zustand's `{ state, version }` StorageValue key order so the produced
-    // bytes stay identical to createJSONStorage for the same state.
+
     getStorage().setItem(
       name,
       JSON.stringify({

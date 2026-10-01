@@ -1,4 +1,4 @@
-import type { ThreadId } from "@glade/contracts";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useEffect, useEffectEvent } from "react";
 
 export function useBrowserPanelDesktopBridge(input: {

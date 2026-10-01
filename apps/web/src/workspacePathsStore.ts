@@ -1,8 +1,3 @@
-// FILE: workspacePathsStore.ts
-// Purpose: Cache server-reported filesystem roots needed before the welcome payload arrives.
-// Layer: Server configuration state
-// Exports: useWorkspacePathsStore
-
 import { create } from "zustand";
 import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
 
@@ -44,7 +39,6 @@ export const useWorkspacePathsStore = create<WorkspacePathsStoreState>()(
       chatWorkspaceRoot: null,
       setHomeDir: (homeDir) =>
         set((state) => {
-          // `undefined` means server config has not arrived yet; keep the last known value.
           if (homeDir === undefined) {
             return state;
           }
@@ -53,7 +47,6 @@ export const useWorkspacePathsStore = create<WorkspacePathsStoreState>()(
         }),
       setChatWorkspaceRoot: (chatWorkspaceRoot) =>
         set((state) => {
-          // `undefined` means server config has not arrived yet; keep the last known value.
           if (chatWorkspaceRoot === undefined) {
             return state;
           }

@@ -175,7 +175,7 @@ describe("ComputerAuditLog", () => {
     log.record({ tool: "computer_click", args: { index: -1 }, effect: "verified" });
     await log.flush();
     const lines = (await readFile(filePath, "utf8")).trim().split("\n");
-    // Compaction keeps a bounded newest tail ending in the record just written.
+
     expect(lines.length).toBeLessThan(COMPUTER_AUDIT_MAX_ENTRIES);
     expect(lines.length).toBeGreaterThan(0);
     expect(JSON.parse(lines.at(-1)!).args).toEqual({ index: -1 });
@@ -183,7 +183,7 @@ describe("ComputerAuditLog", () => {
 
   it("swallows write failures instead of failing the recorded action", async () => {
     const dir = await tempDir();
-    // A path whose parent is a file can never be opened.
+
     const blocker = join(dir, "blocker");
     await writeFile(blocker, "x");
     const log = new ComputerAuditLog(join(blocker, "computer-audit.jsonl"));
@@ -195,8 +195,7 @@ describe("ComputerAuditLog", () => {
     const dir = await tempDir();
     const filePath = join(dir, "computer-audit.jsonl");
     const legacy = await fs.open(filePath, "w", 0o600);
-    // Sparse history makes a full-file read materially larger than the allowed
-    // evidence tail without allocating that prefix in the fixture itself.
+
     const prefixBytes = 16 * COMPUTER_AUDIT_MAX_BYTES;
     await legacy.truncate(prefixBytes);
     const tail =

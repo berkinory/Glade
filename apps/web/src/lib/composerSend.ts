@@ -1,25 +1,15 @@
-// FILE: composerSend.ts
-// Purpose: Shared composer send helpers for attachment intake, prompt formatting, and upload payloads.
-// Layer: Web composer utility
-// Depends on: provider/model contracts plus composer draft attachment shapes.
-
 import {
   type ChatFileAttachment,
   type ChatImageAttachment,
-  MessageId,
-  type ModelSelection,
   PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
   PROVIDER_SEND_TURN_MAX_FILE_BYTES,
-  type ClaudeCodeEffort,
-  type ProviderKind,
   type UploadChatAttachment,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/threadEntities";
+import { MessageId } from "@glade/contracts/core/baseSchemas";
 import {
   ATTACHMENT_CANCEL_ROUTE_PATH,
   ATTACHMENT_UPLOAD_ROUTE_PATH,
-} from "@glade/shared/binaryTransfer";
-import { applyClaudePromptEffortPrefix, getModelCapabilities } from "@glade/shared/model";
-import { parseComputerInvocation } from "@glade/shared/computerInvocation";
+} from "@glade/shared/transport/binaryTransfer";
 
 import {
   cloneComposerImageAttachment,
@@ -40,11 +30,8 @@ const ATTACHMENT_CANCEL_CONCURRENCY = 2;
 const ATTACHMENT_CANCEL_BODY_MAX_BYTES = 512;
 
 export { cloneComposerImageAttachment };
-export { effectiveComposerAttachmentCount } from "./composerAttachmentCapacity";
 
-export const FILE_SIZE_LIMIT_LABEL = `${Math.round(
-  PROVIDER_SEND_TURN_MAX_FILE_BYTES / (1024 * 1024),
-)}MB`;
+const FILE_SIZE_LIMIT_LABEL = `${Math.round(PROVIDER_SEND_TURN_MAX_FILE_BYTES / (1024 * 1024))}MB`;
 
 export interface ComposerImageBuildResult {
   images: ComposerImageAttachment[];
@@ -68,7 +55,6 @@ function composerImageAttachmentFromFile(file: File): ComposerImageAttachment {
   };
 }
 
-// Centralizes the shared file/count/size guard while each attachment type maps its own draft shape.
 function collectComposerAttachmentFiles(input: {
   files: readonly File[];
   existingAttachmentCount: number;
@@ -102,11 +88,6 @@ function collectComposerAttachmentFiles(input: {
   return { files, error };
 }
 
-/**
- * Asynchronous image intake for every user-facing composer entry point. Count
- * checks happen before decoding, and accepted files are optimized one at a time
- * to avoid concurrent full-resolution canvas allocations.
- */
 export async function prepareComposerImageAttachmentsFromFiles(input: {
   files: readonly File[];
   existingAttachmentCount: number;
@@ -136,7 +117,6 @@ export async function prepareComposerImageAttachmentsFromFiles(input: {
   return { images, error };
 }
 
-// Converts non-image File objects into in-memory file attachment drafts.
 export function buildComposerFileAttachmentsFromFiles(input: {
   files: readonly File[];
   existingAttachmentCount: number;
@@ -161,8 +141,6 @@ export function buildComposerFileAttachmentsFromFiles(input: {
   return { files, error: result.error };
 }
 
-// Draft persistence and previews still need a local data URL. Network sends use
-// the bounded binary upload path below and never place this value on RPC.
 export function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -181,7 +159,7 @@ export function readFileAsDataUrl(file: File): Promise<string> {
       ) {
         reject(
           new Error(
-            `Could not read '${file.name || "item"}'. Paths with spaces or special characters may need a path mention (@\"…\") instead of a file attachment.`,
+            `Could not read '${file.name || "item"}'. Paths with spaces or special characters may need a path mention (@"…") instead of a file attachment.`,
           ),
         );
         return;
@@ -192,47 +170,13 @@ export function readFileAsDataUrl(file: File): Promise<string> {
   });
 }
 
-// Provider-specific prompt massaging. Claude prompt-injected efforts must be
-// applied before filtering skill/mention references and before dispatch.
-export function formatOutgoingComposerPrompt(params: {
-  provider: ProviderKind;
-  model: string | null;
-  effort: string | null;
-  text: string;
-}): string {
-  const caps = getModelCapabilities(params.provider, params.model);
-  if (params.effort && caps.promptInjectedEffortLevels.includes(params.effort)) {
-    const computerInvocation = parseComputerInvocation(params.text);
-    if (computerInvocation) {
-      const prompt = applyClaudePromptEffortPrefix(
-        computerInvocation.prompt,
-        params.effort as ClaudeCodeEffort | null,
-      );
-      return `/computer-use ${prompt}`;
-    }
-    return applyClaudePromptEffortPrefix(params.text, params.effort as ClaudeCodeEffort | null);
-  }
-  return params.text;
-}
-
-export function resolvePromptEffortFromModelSelection(
-  modelSelection: ModelSelection,
-): string | null {
-  switch (modelSelection.provider) {
-    case "codex":
-      return modelSelection.options?.reasoningEffort ?? null;
-    case "claudeAgent":
-      return modelSelection.options?.effort ?? null;
-  }
-}
-
 export interface StagedComposerAttachments {
   readonly attachments: UploadChatAttachment[];
-  /** Marks an accepted dispatch as authoritative. Cleanup becomes a no-op. */
+
   readonly commit: () => void;
-  /** Best-effort compensation for a rejected/abandoned dispatch. Never rejects. */
+
   readonly cleanup: () => Promise<void>;
-  /** Runs dispatch with commit-on-success and cleanup-on-failure semantics. */
+
   readonly runWithDispatch: <A>(
     dispatch: (attachments: UploadChatAttachment[]) => Promise<A>,
   ) => Promise<A>;
@@ -264,8 +208,8 @@ async function cancelManagedAttachments(attachmentIds: readonly string[]): Promi
           body,
         });
       } catch {
-        // Staged attachments also have a server-owned expiry. Compensation is
-        // deliberately best-effort and must never replace the dispatch/upload error.
+        // Staged attachments also have a server-owned expiry. Compensation is deliberately best-effort and
+        // must never replace the dispatch/upload error.
       }
     }
   };
@@ -289,8 +233,6 @@ export async function stageUploadComposerAttachments(input: {
     text: selection.text,
   }));
 
-  // Upload sequentially so selecting several maximum-size files never creates a
-  // burst of concurrent body buffers. The RPC turn then carries only short ids.
   const managedAttachmentIds: string[] = [];
   try {
     for (const attachment of [...input.images, ...(input.files ?? [])]) {
@@ -354,12 +296,8 @@ export async function stageUploadComposerAttachments(input: {
   return { attachments, commit, cleanup, runWithDispatch };
 }
 
-/**
- * Persisted image attachments that still back a blob but
- * have not yet hydrated into the live `images` array. Right after a reload,
- * the attachment loader hydrates these asynchronously from IndexedDB; sending
- * before that finishes must not silently drop them.
- */
+// Right after a reload, the attachment loader hydrates these asynchronously from IndexedDB; sending
+// before that finishes must not silently drop them.
 export function findPendingBlobComposerAttachments(input: {
   persistedAttachments: ReadonlyArray<PersistedComposerImageAttachment>;
   images: ReadonlyArray<ComposerImageAttachment>;
@@ -370,13 +308,6 @@ export function findPendingBlobComposerAttachments(input: {
   );
 }
 
-/**
- * Reads pending blob-backed persisted attachments (see
- * `findPendingBlobComposerAttachments`) from IndexedDB and reconstructs them
- * as live `ComposerImageAttachment`s so a send in flight can include them.
- * An attachment whose blob is missing or fails to read is skipped rather than
- * failing the whole send — the caller keeps sending whatever did hydrate.
- */
 export async function hydratePendingBlobComposerAttachments(
   pending: ReadonlyArray<PersistedComposerImageAttachment>,
 ): Promise<ComposerImageAttachment[]> {

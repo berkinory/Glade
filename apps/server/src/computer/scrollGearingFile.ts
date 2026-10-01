@@ -1,19 +1,11 @@
-/**
- * The durable half of scroll gearing: per-app travel-per-pixel ratios that
- * outlive a window.
- *
- * The in-memory `ScrollGearingStore` is the hot path keyed by exact window —
- * the strongest signal, because an inner scroller's gearing belongs to the
- * surface, not the process. But windows churn while toolkits persist: the
- * same Chromium build gears every window it opens the same way, so a window
- * nobody has measured yet can inherit what its app already taught us instead
- * of starting at pixel-true 1 and paying a probe scroll to find out.
- *
- * Nothing here is a security boundary. A corrupt or hand-edited file degrades
- * to no entries — planning then assumes gearing 1, exactly as if the app had
- * never been measured — and never to a failure, because wrong gearing at
- * worst means an off-target scroll, not a refused one.
- */
+// The in-memory `ScrollGearingStore` is the hot path keyed by exact window — the strongest signal,
+// because an inner scroller's gearing belongs to the surface, not the process. But windows churn
+// while toolkits persist: the same Chromium build gears every window it opens the same way, so a
+// window nobody has measured yet can inherit what its app already taught us instead of starting at
+// pixel-true 1 and paying a probe scroll to find out. Nothing here is a security boundary. A
+// corrupt or hand-edited file degrades to no entries — planning then assumes gearing 1, exactly as
+// if the app had never been measured — and never to a failure, because wrong gearing at worst means
+// an off-target scroll, not a refused one.
 import { readFileSync } from "node:fs";
 import { mkdir, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
@@ -24,9 +16,8 @@ import {
   SCROLL_GEARING_SMOOTHING,
 } from "./scrollCalibration.ts";
 
-/** How many apps keep a durable gearing before the stalest is forgotten. */
 const MAX_APP_ENTRIES = 64;
-/** File envelope version; unknown versions read as empty rather than fail. */
+
 const FILE_VERSION = 1;
 
 interface AppGearingEntry {
@@ -77,22 +68,13 @@ export class ScrollGearingFile {
         });
       }
       while (this.apps.size > MAX_APP_ENTRIES) this.evictStalest();
-    } catch {
-      // Missing or corrupt state means "never measured", not "broken".
-    }
+    } catch {}
   }
 
-  /** The app's learned ratio, or undefined when it has never been measured. */
   get(appKey: string | undefined): number | undefined {
     return appKey === undefined ? undefined : this.apps.get(appKey)?.gearing;
   }
 
-  /**
-   * Folds one accepted window observation into the app's durable entry under
-   * the same admissibility rules the hot store applies, then schedules a
-   * write. Entries are smoothed identically so an app whose toolkit changes
-   * converges the same way a window does.
-   */
   learn(appKey: string | undefined, injected: number, traveled: number): void {
     if (appKey === undefined) return;
     if (!Number.isFinite(injected) || !Number.isFinite(traveled)) return;
@@ -114,7 +96,6 @@ export class ScrollGearingFile {
     void this.persist();
   }
 
-  /** The least-recently-updated entry goes first — staleness, not recency of insertion. */
   private evictStalest(): void {
     let stalest: { key: string; updatedAt: number } | undefined;
     for (const [key, entry] of this.apps) {
@@ -124,11 +105,8 @@ export class ScrollGearingFile {
     if (stalest !== undefined) this.apps.delete(stalest.key);
   }
 
-  /**
-   * Atomic rename write behind a serialized chain, matching the control-state
-   * persistence contract. Write failures are swallowed into the chain tail —
-   * gearing is an optimization, and a disk error must not fail a scroll.
-   */
+  // Write failures are swallowed into the chain tail — gearing is an optimization, and a disk error
+  // must not fail a scroll.
   private persist(): Promise<void> {
     if (!this.filePath) return Promise.resolve();
     const filePath = this.filePath;

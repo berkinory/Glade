@@ -1,7 +1,7 @@
 import {
   createStalePendingInteractionMatcher,
   respondingInteractionReclaimCutoff,
-} from "@glade/shared/pendingInteractions";
+} from "@glade/shared/threads/pendingInteractions";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as SqlSchema from "effect/unstable/sql/SqlSchema";
 import { Array as Arr, Effect, Layer, Option, Schema } from "effect";
@@ -83,7 +83,6 @@ const makeProjectionPendingInteractionRepository = Effect.gen(function* () {
     `,
   });
 
-  // Read only response failures for candidate callbacks, never whole transcripts.
   const failureActivities = SqlSchema.findAll({
     Request: Schema.Struct({ threadId: Schema.optionalKey(Schema.String) }),
     Result: Schema.Struct({

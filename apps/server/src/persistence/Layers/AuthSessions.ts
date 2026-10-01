@@ -1,4 +1,4 @@
-import { AuthSessionId } from "@glade/contracts";
+import { AuthSessionId } from "@glade/contracts/core/baseSchemas";
 import { DateTime, Effect, Layer, Option, Schema } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as SqlSchema from "effect/unstable/sql/SqlSchema";

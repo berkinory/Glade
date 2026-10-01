@@ -10,18 +10,14 @@ interface ThreadControlState {
   readonly chatGeneration?: number;
 }
 
-/** Frozen request generations prevent old queued consent from surviving a disable. */
+// Frozen request generations prevent old queued consent from surviving a disable.
 export class ComputerControlState {
   private readonly threads = new Map<string, ThreadControlState>();
   private writes = Promise.resolve();
-  /**
-   * Per-thread operation chain. Queued-dispatch and edit-resend admissions for
-   * the same thread race through admitControl concurrently; without
-   * serialization their read-modify-write sequences interleave and the last
-   * writer silently wins. Chaining keeps every mutation ordered per thread
-   * while reads stay synchronous. Entries are removed once their tail settles
-   * so threads do not accumulate here beyond the threads map itself.
-   */
+  // Queued-dispatch and edit-resend admissions for the same thread race through admitControl
+  // concurrently; without serialization their read-modify-write sequences interleave and the last
+  // writer silently wins. Entries are removed once their tail settles so threads do not accumulate
+  // here beyond the threads map itself.
   private readonly threadChains = new Map<string, Promise<void>>();
   private loadError: Error | undefined;
 
@@ -47,7 +43,7 @@ export class ComputerControlState {
       }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
-      // A broken consent file disables Computer, not ordinary coding or server boot.
+
       this.loadError = new Error(
         "Computer authorization state could not be loaded; control remains disabled.",
         { cause: error },
@@ -101,12 +97,6 @@ export class ComputerControlState {
     });
   }
 
-  /**
-   * Runs the operation after every earlier operation for this thread settles,
-   * successfully or not. The returned promise settles exactly like the
-   * operation itself; the stored tail never rejects so a failure cannot stall
-   * later work.
-   */
   private serialize(threadId: string, operation: () => Promise<void>): Promise<void> {
     const previous = this.threadChains.get(threadId) ?? Promise.resolve();
     const next = previous.then(operation, operation);

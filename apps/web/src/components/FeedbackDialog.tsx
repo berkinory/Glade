@@ -1,8 +1,3 @@
-// FILE: FeedbackDialog.tsx
-// Purpose: Collects categorized Glade feedback with privacy-safe diagnostics.
-// Layer: Shared UI component
-// Depends on: Feedback delivery logic and the shared dialog primitives.
-
 import { useEffect, useRef, useState } from "react";
 import {
   buildFeedbackSubmission,
@@ -59,9 +54,7 @@ export function FeedbackDialog({ open, context, onOpenChange }: FeedbackDialogPr
         <DialogHeader className="gap-0 px-5 pt-5 pb-3">
           <DialogTitle className="text-xl tracking-[-0.01em]">Share feedback</DialogTitle>
         </DialogHeader>
-        {/* The form state lives below DialogPopup, which unmounts its children
-            once the close transition ends — every open starts from a blank
-            form without a reset effect, and closing never flashes empty. */}
+        {}
         <FeedbackDialogForm isSending={isSending} onSubmit={handleSubmit} />
       </DialogPopup>
     </Dialog>
@@ -109,12 +102,10 @@ function FeedbackDialogForm({
               variant={selected ? "secondary" : "outline"}
               size="sm"
               aria-pressed={selected}
-              // Reference pills breathe at ~14px per side; the default `sm`
-              // padding (10px) crams the label against the pill wall.
               className="rounded-full px-3.5 font-normal"
               disabled={isSending}
-              // Keeps the caret (and the field's focus ring) in the details
-              // textarea, so picking a category never interrupts typing.
+              // Keeps the caret (and the field's focus ring) in the details textarea, so picking a category never
+              // interrupts typing.
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => setCategory(selected ? null : option.value)}
             >

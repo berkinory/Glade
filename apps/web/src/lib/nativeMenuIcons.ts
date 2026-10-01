@@ -1,13 +1,6 @@
-// FILE: nativeMenuIcons.ts
-// Purpose: Rasterize Central icons or inline SVG into PNG template images for native context menus.
-// Layer: web platform utility
-// Exports: withNativeMenuIcons, isInlineSvgMenuIcon
-// Depends on: Central icon asset URLs and DOM canvas rasterization.
-
-import type { ContextMenuItem, DesktopContextMenuItem } from "@glade/contracts";
+import type { ContextMenuItem, DesktopContextMenuItem } from "@glade/contracts/ipc/ipc";
 import { getCentralIconUrl } from "./central-icons";
 
-// macOS menus reserve a 16pt image slot; render at 2x so Retina menus stay crisp.
 const NATIVE_MENU_ICON_POINTS = 16;
 const NATIVE_MENU_ICON_SCALE = 2;
 
@@ -53,7 +46,6 @@ function resolveIconDataUrl(icon: string): Promise<string | null> {
   const pending = rasterizeMenuIcon(icon)
     .catch(() => null)
     .then((dataUrl) => {
-      // Let a transient asset failure retry on the next menu open.
       if (!dataUrl) iconDataUrlCache.delete(icon);
       return dataUrl;
     });

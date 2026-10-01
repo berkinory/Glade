@@ -1,6 +1,3 @@
-// FILE: EnvironmentUsageSection.logic.ts
-// Purpose: Pure compact-summary decisions for provider rows in the Environment panel.
-
 import type { ProviderUsageDisplayRow } from "~/lib/providerUsageDisplay";
 
 export interface EnvironmentProviderUsageSummary {

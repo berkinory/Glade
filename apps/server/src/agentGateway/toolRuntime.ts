@@ -1,4 +1,4 @@
-import type { ProviderKind } from "@glade/contracts";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { Effect } from "effect";
 
 import type { AgentGatewayTargetError } from "./targetResolver.ts";
@@ -35,12 +35,7 @@ interface ProviderSessionPrincipal {
 export interface ToolContext {
   readonly principal: ProviderSessionPrincipal;
   readonly callerThreadId: string;
-  /**
-   * The caller thread as a human would name it, for surfaces the human sees -
-   * today the agent cursor's badge on the desktop. Null when the thread has no
-   * title yet, which is not an error: the surface falls back to a generic
-   * label rather than showing a thread id.
-   */
+
   readonly callerThreadLabel: string | null;
   readonly callerSessionKey: string;
   readonly callerProvider: ProviderKind;
@@ -60,25 +55,15 @@ export interface ToolEntry {
   readonly handler: ToolHandler;
   readonly requiredCapability: AgentGatewayCapability;
   readonly requiresActiveTurn?: boolean;
-  /**
-   * Callable by exact name but withheld from `tools/list`: the advertised
-   * catalog stays small while a tool the model already knows — or finds
-   * through computer_help — still dispatches. Discovery-only is not a
-   * permission: capability checks, approval and audit all apply unchanged.
-   */
+
   readonly discoveryOnly?: boolean;
 }
 
-/**
- * Narrow a tool catalog to what one caller may actually invoke.
- *
- * The gateway builds its catalog once and gates per call, so without
- * this a `tools/list` advertises tools whose every invocation is denied — the
- * caller pays prompt tokens for them and learns they are unusable only by
- * failing. Capabilities are fixed when a credential is issued (granting or
- * revoking one restarts the session), so a filtered list can never go stale
- * mid-session and no `listChanged` notification is owed.
- */
+// The gateway builds its catalog once and gates per call, so without this a `tools/list` advertises
+// tools whose every invocation is denied — the caller pays prompt tokens for them and learns they
+// are unusable only by failing. Capabilities are fixed when a credential is issued (granting or
+// revoking one restarts the session), so a filtered list can never go stale mid-session and no
+// `listChanged` notification is owed.
 export function filterToolsByCapability<
   Capability extends string,
   Tool extends { readonly requiredCapability: Capability },

@@ -1,8 +1,4 @@
-// FILE: archivedThreadDelete.test.ts
-// Purpose: Verifies archived-thread delete coordination without rendering settings UI.
-// Layer: Web orchestration helper tests
-
-import { ThreadId } from "@glade/contracts";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { describe, expect, it, vi } from "vitest";
 
 import { deleteArchivedThreadsFromClient } from "./archivedThreadDelete";

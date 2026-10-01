@@ -1,9 +1,6 @@
-import {
-  ThreadId,
-  type ModelSlug,
-  type ProviderKind,
-  type ResolvedKeybindingsConfig,
-} from "@glade/contracts";
+import { ThreadId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { type ModelSlug } from "@glade/contracts/provider/model";
+import { type ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import { useEffect } from "react";
 import { readStarredModelSlugs } from "~/lib/starredModels";
@@ -15,12 +12,12 @@ import { isEditableEventTarget } from "../../lib/editableEventTarget";
 import { isTerminalFocused } from "../../lib/terminalFocus";
 import type { Project } from "../../types";
 import { type Thread } from "../../types";
-import { resolveCycledModelSlug } from "../ChatView.logic";
+import { resolveCycledModelSlug } from "../ChatView.logic.worktree";
 import { collectForegroundRunningSubagentStripItems } from "./ComposerSubagentStrip.logic";
 import { eventTargetsInAppBrowser, shouldCaptureChatFindShortcut } from "./threadFind.logic";
 import { useChatProjectScripts } from "./useChatProjectScripts";
 import { useChatProviderModels } from "./useChatProviderModels";
-import { useChatTerminalController } from "./useChatTerminalController";
+import type { ThreadTerminalState } from "~/terminalStateNormalization";
 import { useChatWorkLog } from "./useChatWorkLog";
 import { useComposerVoiceController } from "./useComposerVoiceController";
 import { toastManager } from "../ui/toast";
@@ -48,11 +45,10 @@ function canHandleComposerPickerShortcut(
   );
 }
 interface ChatKeyboardShortcutsInput {
-  onToggleTerminal: (() => void) | undefined;
-  onOpenTerminal: (() => void) | undefined;
-  expandTerminalWorkspace: ReturnType<typeof useChatTerminalController>["expandTerminalWorkspace"];
-  onToggleDevicePanel: (() => void) | undefined;
-  onSplitSurface: (() => void) | undefined;
+  onToggleTerminal?: () => void;
+  onOpenTerminal?: () => void;
+  expandTerminalWorkspace: () => void;
+  onSplitSurface?: () => void;
   surfaceMode: "single" | "split";
   isFocusedPane: boolean;
   activeThreadId: ThreadId | null;
@@ -64,14 +60,10 @@ interface ChatKeyboardShortcutsInput {
   isVoiceRecording: ReturnType<typeof useComposerVoiceController>["isVoiceRecording"];
   isVoiceTranscribing: ReturnType<typeof useComposerVoiceController>["isVoiceTranscribing"];
   isComposerApprovalState: boolean;
-  terminalState: ReturnType<typeof useChatTerminalController>["terminalState"];
-  terminalWorkspaceOpen: ReturnType<typeof useChatTerminalController>["terminalWorkspaceOpen"];
-  terminalWorkspaceTerminalTabActive: ReturnType<
-    typeof useChatTerminalController
-  >["terminalWorkspaceTerminalTabActive"];
-  terminalWorkspaceChatTabActive: ReturnType<
-    typeof useChatTerminalController
-  >["terminalWorkspaceChatTabActive"];
+  terminalState: ThreadTerminalState;
+  terminalWorkspaceOpen: boolean;
+  terminalWorkspaceTerminalTabActive: boolean;
+  terminalWorkspaceChatTabActive: boolean;
   keybindings: ResolvedKeybindingsConfig;
   toggleComposerFocus: () => void;
   shouldRenderChatPaneContent: boolean;
@@ -84,25 +76,17 @@ interface ChatKeyboardShortcutsInput {
   selectedModel: string;
   onProviderModelSelect: (provider: ProviderKind, model: ModelSlug) => Promise<void>;
   handleTraitsPickerOpenChange: (open: boolean) => void;
-  toggleTerminalVisibility: ReturnType<
-    typeof useChatTerminalController
-  >["toggleTerminalVisibility"];
-  setTerminalOpen: ReturnType<typeof useChatTerminalController>["setTerminalOpen"];
-  splitTerminalRight: ReturnType<typeof useChatTerminalController>["splitTerminalRight"];
-  splitTerminalLeft: ReturnType<typeof useChatTerminalController>["splitTerminalLeft"];
-  splitTerminalDown: ReturnType<typeof useChatTerminalController>["splitTerminalDown"];
-  splitTerminalUp: ReturnType<typeof useChatTerminalController>["splitTerminalUp"];
-  closeTerminal: ReturnType<typeof useChatTerminalController>["closeTerminal"];
-  createTerminalFromShortcut: ReturnType<
-    typeof useChatTerminalController
-  >["createTerminalFromShortcut"];
-  openNewFullWidthTerminal: ReturnType<
-    typeof useChatTerminalController
-  >["openNewFullWidthTerminal"];
-  closeActiveWorkspaceView: ReturnType<
-    typeof useChatTerminalController
-  >["closeActiveWorkspaceView"];
-  setTerminalWorkspaceTab: ReturnType<typeof useChatTerminalController>["setTerminalWorkspaceTab"];
+  toggleTerminalVisibility: () => void;
+  setTerminalOpen: (open: boolean) => void;
+  splitTerminalRight: () => void;
+  splitTerminalLeft: () => void;
+  splitTerminalDown: () => void;
+  splitTerminalUp: () => void;
+  closeTerminal: (terminalId: string) => Promise<void>;
+  createTerminalFromShortcut: () => void;
+  openNewFullWidthTerminal: () => void;
+  closeActiveWorkspaceView: () => void;
+  setTerminalWorkspaceTab: (tab: "terminal" | "chat") => void;
   onToggleDiff: () => void;
   commitAndPushTriggerRef: RefObject<(() => void) | null>;
   showGitActions: boolean;
@@ -114,60 +98,147 @@ interface ChatKeyboardShortcutsInput {
   activeThread: Thread | undefined;
 }
 
+type ChatKeyboardShortcutsControllerInput = {
+  props: Pick<ChatKeyboardShortcutsInput, "onToggleTerminal" | "onOpenTerminal" | "onSplitSurface">;
+  workspace: Pick<
+    ChatKeyboardShortcutsInput,
+    | "expandTerminalWorkspace"
+    | "activeThreadId"
+    | "terminalState"
+    | "terminalWorkspaceOpen"
+    | "terminalWorkspaceTerminalTabActive"
+    | "terminalWorkspaceChatTabActive"
+    | "toggleTerminalVisibility"
+    | "setTerminalOpen"
+    | "splitTerminalRight"
+    | "splitTerminalLeft"
+    | "splitTerminalDown"
+    | "splitTerminalUp"
+    | "closeTerminal"
+    | "createTerminalFromShortcut"
+    | "openNewFullWidthTerminal"
+    | "closeActiveWorkspaceView"
+    | "setTerminalWorkspaceTab"
+    | "activeProject"
+  >;
+  session: Pick<
+    ChatKeyboardShortcutsInput,
+    | "surfaceMode"
+    | "isFocusedPane"
+    | "composerFormRef"
+    | "setThreadFindOpen"
+    | "setThreadFindFocusNonce"
+    | "commitAndPushTriggerRef"
+    | "activeThread"
+  >;
+  provider: Pick<
+    ChatKeyboardShortcutsInput,
+    | "hasLiveTurn"
+    | "composerSubagentStripItems"
+    | "modelOptionsByProvider"
+    | "selectedProvider"
+    | "selectedModel"
+  >;
+  turn: Pick<
+    ChatKeyboardShortcutsInput,
+    | "onInterruptFromStopControl"
+    | "onBackgroundAllForegroundSubagentStripItems"
+    | "onProviderModelSelect"
+    | "copyThreadIdToClipboard"
+  >;
+  composer: Pick<
+    ChatKeyboardShortcutsInput,
+    | "isVoiceRecording"
+    | "isVoiceTranscribing"
+    | "toggleComposerFocus"
+    | "handleModelPickerOpenChange"
+    | "scheduleComposerFocus"
+    | "handleTraitsPickerOpenChange"
+  >;
+  transcript: Pick<ChatKeyboardShortcutsInput, "isComposerApprovalState">;
+  discovery: Pick<
+    ChatKeyboardShortcutsInput,
+    | "keybindings"
+    | "shouldRenderChatPaneContent"
+    | "onToggleDiff"
+    | "showGitActions"
+    | "isGitRepo"
+    | "onToggleBrowser"
+  >;
+  environment: Pick<ChatKeyboardShortcutsInput, "runProjectScript">;
+};
 export function useChatKeyboardShortcuts({
-  onToggleTerminal,
-  onOpenTerminal,
-  expandTerminalWorkspace,
-  onToggleDevicePanel,
-  onSplitSurface,
-  surfaceMode,
-  isFocusedPane,
-  activeThreadId,
-  hasLiveTurn,
-  composerFormRef,
-  onInterruptFromStopControl,
-  composerSubagentStripItems,
-  onBackgroundAllForegroundSubagentStripItems,
-  isVoiceRecording,
-  isVoiceTranscribing,
-  isComposerApprovalState,
-  terminalState,
-  terminalWorkspaceOpen,
-  terminalWorkspaceTerminalTabActive,
-  terminalWorkspaceChatTabActive,
-  keybindings,
-  toggleComposerFocus,
-  shouldRenderChatPaneContent,
-  setThreadFindOpen,
-  setThreadFindFocusNonce,
-  handleModelPickerOpenChange,
-  scheduleComposerFocus,
-  modelOptionsByProvider,
-  selectedProvider,
-  selectedModel,
-  onProviderModelSelect,
-  handleTraitsPickerOpenChange,
-  toggleTerminalVisibility,
-  setTerminalOpen,
-  splitTerminalRight,
-  splitTerminalLeft,
-  splitTerminalDown,
-  splitTerminalUp,
-  closeTerminal,
-  createTerminalFromShortcut,
-  openNewFullWidthTerminal,
-  closeActiveWorkspaceView,
-  setTerminalWorkspaceTab,
-  onToggleDiff,
-  commitAndPushTriggerRef,
-  showGitActions,
-  isGitRepo,
-  onToggleBrowser,
-  copyThreadIdToClipboard,
-  activeProject,
-  runProjectScript,
-  activeThread,
-}: ChatKeyboardShortcutsInput) {
+  props,
+  workspace,
+  session,
+  provider,
+  turn,
+  composer,
+  transcript,
+  discovery,
+  environment,
+}: ChatKeyboardShortcutsControllerInput) {
+  const { onToggleTerminal, onOpenTerminal, onSplitSurface } = props;
+  const {
+    expandTerminalWorkspace,
+    activeThreadId,
+    terminalState,
+    terminalWorkspaceOpen,
+    terminalWorkspaceTerminalTabActive,
+    terminalWorkspaceChatTabActive,
+    toggleTerminalVisibility,
+    setTerminalOpen,
+    splitTerminalRight,
+    splitTerminalLeft,
+    splitTerminalDown,
+    splitTerminalUp,
+    closeTerminal,
+    createTerminalFromShortcut,
+    openNewFullWidthTerminal,
+    closeActiveWorkspaceView,
+    setTerminalWorkspaceTab,
+    activeProject,
+  } = workspace;
+  const {
+    surfaceMode,
+    isFocusedPane,
+    composerFormRef,
+    setThreadFindOpen,
+    setThreadFindFocusNonce,
+    commitAndPushTriggerRef,
+    activeThread,
+  } = session;
+  const {
+    hasLiveTurn,
+    composerSubagentStripItems,
+    modelOptionsByProvider,
+    selectedProvider,
+    selectedModel,
+  } = provider;
+  const {
+    onInterruptFromStopControl,
+    onBackgroundAllForegroundSubagentStripItems,
+    onProviderModelSelect,
+    copyThreadIdToClipboard,
+  } = turn;
+  const {
+    isVoiceRecording,
+    isVoiceTranscribing,
+    toggleComposerFocus,
+    handleModelPickerOpenChange,
+    scheduleComposerFocus,
+    handleTraitsPickerOpenChange,
+  } = composer;
+  const { isComposerApprovalState } = transcript;
+  const {
+    keybindings,
+    shouldRenderChatPaneContent,
+    onToggleDiff,
+    showGitActions,
+    isGitRepo,
+    onToggleBrowser,
+  } = discovery;
+  const { runProjectScript } = environment;
   useEffect(() => {
     const revealTerminal = () => {
       if (onOpenTerminal) {
@@ -180,9 +251,16 @@ export function useChatKeyboardShortcuts({
       return;
     }
 
+    const terminalSplitActions = new Map([
+      ["terminal.split", splitTerminalRight],
+      ["terminal.splitRight", splitTerminalRight],
+      ["terminal.splitLeft", splitTerminalLeft],
+      ["terminal.splitDown", splitTerminalDown],
+      ["terminal.splitUp", splitTerminalUp],
+    ]);
     const handler = (event: globalThis.KeyboardEvent) => {
       if (!activeThreadId || event.defaultPrevented) return;
-      // Mirror terminal interrupt semantics without stealing regular copy shortcuts.
+
       if (
         hasLiveTurn &&
         isMacNavigatorPlatform() &&
@@ -198,12 +276,7 @@ export function useChatKeyboardShortcuts({
         onInterruptFromStopControl();
         return;
       }
-      // Ctrl+B mirrors the native CLI: background all foreground running
-      // subagents. Literal Ctrl on every platform, but stays out of the
-      // terminal, where Ctrl+B is real shell input (readline cursor-back,
-      // tmux prefix), and out of text-editing surfaces, where Ctrl+B is the
-      // native macOS "move cursor back" binding. Silent no-op (event
-      // untouched) when nothing qualifies.
+
       if (
         event.ctrlKey &&
         !event.metaKey &&
@@ -248,8 +321,6 @@ export function useChatKeyboardShortcuts({
       }
 
       if (command === "chat.find") {
-        // The editor lives in a shadow root. Let its own find handler receive
-        // the shortcut before this capture-phase chat handler consumes it.
         if (
           event
             .composedPath()
@@ -297,7 +368,7 @@ export function useChatKeyboardShortcuts({
           direction,
         });
         if (!nextSlug) return;
-        onProviderModelSelect(selectedProvider, nextSlug as ModelSlug);
+        void onProviderModelSelect(selectedProvider, nextSlug as ModelSlug);
         return;
       }
 
@@ -328,46 +399,14 @@ export function useChatKeyboardShortcuts({
         return;
       }
 
-      if (command === "terminal.split" || command === "terminal.splitRight") {
+      const splitTerminal = terminalSplitActions.get(command);
+      if (splitTerminal) {
         event.preventDefault();
         event.stopPropagation();
         if (!terminalState.terminalOpen) {
           setTerminalOpen(true);
         }
-        splitTerminalRight();
-        revealTerminal();
-        return;
-      }
-
-      if (command === "terminal.splitLeft") {
-        event.preventDefault();
-        event.stopPropagation();
-        if (!terminalState.terminalOpen) {
-          setTerminalOpen(true);
-        }
-        splitTerminalLeft();
-        revealTerminal();
-        return;
-      }
-
-      if (command === "terminal.splitDown") {
-        event.preventDefault();
-        event.stopPropagation();
-        if (!terminalState.terminalOpen) {
-          setTerminalOpen(true);
-        }
-        splitTerminalDown();
-        revealTerminal();
-        return;
-      }
-
-      if (command === "terminal.splitUp") {
-        event.preventDefault();
-        event.stopPropagation();
-        if (!terminalState.terminalOpen) {
-          setTerminalOpen(true);
-        }
-        splitTerminalUp();
+        splitTerminal();
         revealTerminal();
         return;
       }
@@ -376,7 +415,7 @@ export function useChatKeyboardShortcuts({
         event.preventDefault();
         event.stopPropagation();
         if (!terminalState.terminalOpen) return;
-        closeTerminal(terminalState.activeTerminalId);
+        void closeTerminal(terminalState.activeTerminalId);
         return;
       }
 
@@ -437,10 +476,7 @@ export function useChatKeyboardShortcuts({
           commitAndPushTriggerRef.current();
           return;
         }
-        // No registered trigger inside a git-enabled thread means the action just
-        // isn't runnable right now (clean tree, behind upstream, action in flight)
-        // — tell the user instead of eating the chord silently. Outside git threads
-        // the chord falls through untouched.
+
         if (showGitActions && isGitRepo) {
           event.preventDefault();
           event.stopPropagation();
@@ -460,15 +496,6 @@ export function useChatKeyboardShortcuts({
         return;
       }
 
-      if (command === "device.toggle") {
-        event.preventDefault();
-        event.stopPropagation();
-        // Unlike the browser this works in a plain tab, but only against a macOS
-        // server; the surface leaves the handler unwired when it cannot host one.
-        onToggleDevicePanel?.();
-        return;
-      }
-
       if (command === "chat.split") {
         event.preventDefault();
         event.stopPropagation();
@@ -478,8 +505,6 @@ export function useChatKeyboardShortcuts({
         return;
       }
 
-      // The handler already bailed out when no thread is open, so the active thread id
-      // is always the one the user is looking at (the focused pane when split).
       if (command === "thread.copyId") {
         event.preventDefault();
         event.stopPropagation();
@@ -522,7 +547,6 @@ export function useChatKeyboardShortcuts({
     terminalWorkspaceOpen,
     terminalWorkspaceTerminalTabActive,
     onToggleBrowser,
-    onToggleDevicePanel,
     onToggleDiff,
     onInterruptFromStopControl,
     onSplitSurface,

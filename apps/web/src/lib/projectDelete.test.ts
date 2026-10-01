@@ -1,7 +1,4 @@
-// FILE: projectDelete.test.ts
-// Purpose: Verifies project deletion reconciles local state only after server acceptance.
-
-import { ProjectId } from "@glade/contracts";
+import { ProjectId } from "@glade/contracts/core/baseSchemas";
 import { describe, expect, it, vi } from "vitest";
 
 import { deleteProjectFromClient } from "./projectDelete";

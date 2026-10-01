@@ -1,22 +1,11 @@
-// FILE: workspaceFileOpener.ts
-// Purpose: Context + helpers that let file references rendered deep in the
-//          chat tree (markdown links, mention chips, work-log rows) open in an
-//          in-app workspace file viewer (right-dock file pane or editor pane)
-//          instead of an external editor.
-// Layer: Web UI helpers
-// Exports: WorkspaceFileOpenerContext, useWorkspaceFileOpener,
-//          resolveWorkspaceFileOpenTarget,
-//          resolveDockFileOpenTarget,
-//          openWorkspaceFileReference, prefetchWorkspaceFile
-
-import { isSupportedLocalPreviewFilePath } from "@glade/shared/localPreviewFiles";
+import { isSupportedLocalPreviewFilePath } from "@glade/shared/browser/localPreviewFiles";
 import {
   isLocalAbsolutePath,
   isWorkspaceRelativePathSafe,
   localPathsEqual,
   workspaceRelativePathOf,
-} from "@glade/shared/path";
-import { isScratchWorkspacePath } from "@glade/shared/threadWorkspace";
+} from "@glade/shared/platform/path";
+import { isScratchWorkspacePath } from "@glade/shared/threads/threadWorkspace";
 import type { QueryClient } from "@tanstack/react-query";
 import { createContext, useContext } from "react";
 
@@ -25,13 +14,8 @@ import { readNativeApi } from "../nativeApi";
 import { projectReadFileQueryOptions } from "./projectReactQuery";
 
 export interface WorkspaceFileOpener {
-  /**
-   * Opens a file referenced in the chat. Returns true when the reference was
-   * handled by an in-app viewer; false tells the caller to fall back to the
-   * external editor (path outside the workspace, no viewer on this surface).
-   */
   openFile: (path: string) => boolean;
-  /** Optional hover warm-up for the file contents + syntax highlighter. */
+
   prefetchFile?: (path: string) => void;
 }
 
@@ -41,8 +25,6 @@ export function useWorkspaceFileOpener(): WorkspaceFileOpener | null {
   return useContext(WorkspaceFileOpenerContext);
 }
 
-// Trailing `:line` / `:line:col` suffix carried by resolved markdown file links.
-// The in-app viewer previews whole files, so the position is dropped.
 const FILE_POSITION_SUFFIX_PATTERN = /:\d+(?::\d+)?$/;
 const TRAILING_PATH_SEPARATOR_PATTERN = /[\\/]+$/;
 const GLADE_PUBLIC_ASSET_PATH_PREFIXES = [
@@ -63,15 +45,6 @@ function resolveGladePublicAssetOpenTarget(path: string, workspaceRoot: string |
   return isWorkspaceRelativePathSafe(relativePath) ? relativePath : null;
 }
 
-/**
- * Maps directory references that can be identified without a filesystem probe
- * to the workspace-relative path expected by the Explorer. The workspace root
- * is always known to be a directory; descendants are treated as directories
- * only when the reference keeps an explicit trailing separator.
- *
- * An empty string means the workspace root itself. Null means the reference is
- * not a known in-workspace directory and should continue through file opening.
- */
 export function resolveWorkspaceDirectoryOpenTarget(
   rawPath: string,
   workspaceRoot: string | null,
@@ -83,8 +56,7 @@ export function resolveWorkspaceDirectoryOpenTarget(
   if (withoutPosition.length === 0) {
     return null;
   }
-  // Relative Markdown links can retain harmless "." segments after cwd is
-  // joined. Keep ".." intact so the containment checks still reject traversal.
+
   const directoryPath = withoutPosition
     .replaceAll("\\", "/")
     .split("/")
@@ -103,12 +75,6 @@ export function resolveWorkspaceDirectoryOpenTarget(
   return workspaceRelativePathOf(withoutTrailingSeparators, workspaceRoot);
 }
 
-/**
- * Maps a chat file reference (workspace-relative, or absolute as produced by
- * `resolveMarkdownFileLinkTarget`, optionally with a `:line:col` suffix) to the
- * workspace-relative path the file-read RPC expects. Returns null when the
- * reference points outside the workspace.
- */
 export function resolveWorkspaceFileOpenTarget(
   rawPath: string,
   workspaceRoot: string | null,
@@ -127,21 +93,10 @@ export function resolveWorkspaceFileOpenTarget(
   if (workspaceRelativePath) {
     return workspaceRelativePath;
   }
-  // CentralIcon assets are linked in chat as Vite root URLs
-  // (`/central-icons-...`) but the file viewer needs the repo path.
+
   return resolveGladePublicAssetOpenTarget(withoutPosition, workspaceRoot);
 }
 
-/**
- * Out-of-workspace fallback for surfaces that can preview binary files: a
- * session that starts before its chat workspace exists runs in a scratch
- * directory under the OS temp dir, and the agent references those files by
- * absolute path. Images and PDFs stream through the allowlisted local-image
- * route (which also serves the scratch root), so they can still open in-app.
- * Anything else returns null — the text file-read RPC only accepts
- * workspace-relative paths, so those references fall back to the external
- * editor.
- */
 function resolveScratchPreviewFileOpenTarget(rawPath: string): string | null {
   const withoutPosition = rawPath.trim().replace(FILE_POSITION_SUFFIX_PATTERN, "");
   if (!isScratchWorkspacePath(withoutPosition)) {
@@ -150,8 +105,6 @@ function resolveScratchPreviewFileOpenTarget(rawPath: string): string | null {
   return isSupportedLocalPreviewFilePath(withoutPosition) ? withoutPosition : null;
 }
 
-// Right-dock file panes can show workspace files plus absolute local paths.
-// Relative paths still require a workspace; absolute paths are read as-is.
 export function resolveDockFileOpenTarget(
   rawPath: string,
   workspaceRoot: string | null,
@@ -172,12 +125,6 @@ export function resolveDockFileOpenTarget(
   return resolveScratchPreviewFileOpenTarget(rawPath);
 }
 
-/**
- * Shared activation path for clickable file references: try the surface's
- * in-app viewer first, fall back to the preferred external editor when the
- * reference isn't viewable in-app (path outside the workspace, no opener).
- * Pass a null opener to force the external editor (e.g. meta/ctrl-click).
- */
 export function openWorkspaceFileReference(opener: WorkspaceFileOpener | null, path: string): void {
   if (opener?.openFile(path)) {
     return;
@@ -190,27 +137,15 @@ export function openWorkspaceFileReference(opener: WorkspaceFileOpener | null, p
   }
 }
 
-/**
- * Hover warm-up so the file pane opens instantly: file contents go through the
- * shared React Query cache, and the matching Shiki highlighter loads in the
- * background. The highlighter module is imported dynamically so chat-adjacent
- * chunks don't pull Shiki eagerly.
- */
 export function prefetchWorkspaceFile(
   queryClient: QueryClient,
   workspaceRoot: string,
   relativePath: string,
 ): void {
-  // Images and PDFs stream through the local-image HTTP route, so there is no
-  // text read to warm and no syntax highlighter to load.
   if (isSupportedLocalPreviewFilePath(relativePath)) {
     return;
   }
-  // Bare filenames (no directory) usually do not exist at the workspace root and
-  // make the read RPC fall back to a tracked-index lookup, which can build the
-  // workspace index. Skip warming those on hover so a pointer sweep over many
-  // such references never triggers repeated index builds; the click-to-open
-  // path still resolves them on demand.
+
   if (!relativePath.includes("/")) {
     return;
   }

@@ -1,55 +1,23 @@
 import {
   PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
   PROVIDER_SEND_TURN_MAX_IMAGE_BYTES,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/threadEntities";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type {
-  ComposerImageAttachment,
+import {
+  type ComposerImageAttachment,
   PersistedComposerImageAttachment,
-} from "../composerDraftStore";
+} from "../composerDraftDomain";
 import * as composerImageBlobStore from "./composerImageBlobStore";
 import {
   buildComposerFileAttachmentsFromFiles,
   stageUploadComposerAttachments,
-  effectiveComposerAttachmentCount,
   findPendingBlobComposerAttachments,
   hydratePendingBlobComposerAttachments,
   readFileAsDataUrl,
   prepareComposerImageAttachmentsFromFiles,
-  formatOutgoingComposerPrompt,
 } from "./composerSend";
-
-describe("Computer command with provider prompt formatting", () => {
-  it("keeps the Glade command first when Claude uses a prompt-injected effort", () => {
-    expect(
-      formatOutgoingComposerPrompt({
-        provider: "claudeAgent",
-        model: "claude-opus-4-6",
-        effort: "ultrathink",
-        text: "/computer-use open Calculator",
-      }),
-    ).toBe("/computer-use Ultrathink:\nopen Calculator");
-  });
-  it("keeps ordinary prompts and providers on their existing formatting path", () => {
-    expect(
-      formatOutgoingComposerPrompt({
-        provider: "claudeAgent",
-        model: "claude-opus-4-6",
-        effort: "ultrathink",
-        text: "Explain this change",
-      }),
-    ).toBe("Ultrathink:\nExplain this change");
-    expect(
-      formatOutgoingComposerPrompt({
-        provider: "codex",
-        model: "gpt-5.6-sol",
-        effort: "high",
-        text: "/computer-use open Calculator",
-      }),
-    ).toBe("/computer-use open Calculator");
-  });
-});
+import { effectiveComposerAttachmentCount } from "./composerAttachmentCapacity";
 
 describe("composerSend attachment builders", () => {
   const originalCreateObjectUrl = URL.createObjectURL;
@@ -370,7 +338,7 @@ describe("composerSend attachment builders", () => {
     const cancelledIds = fetchMock.mock.calls
       .slice(2)
       .map(([, options]) => JSON.parse(String(options?.body)).attachmentId)
-      .sort();
+      .toSorted();
     expect(cancelledIds).toEqual(ids.toSorted());
   });
 
@@ -546,5 +514,3 @@ describe("hydratePendingBlobComposerAttachments", () => {
     expect(result).toEqual([expect.objectContaining({ id: "ok" })]);
   });
 });
-
-describe("resolvePromptEffortFromModelSelection", () => {});

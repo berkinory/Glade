@@ -1,16 +1,10 @@
-// FILE: startContainerChat.ts
-// Purpose: Ensure the Home chat container project, then open a thread inside it.
-// Layer: Web orchestration helper
-// Exports: Container-chat startup.
-
-import type { ProjectId, ThreadId } from "@glade/contracts";
+import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { NewThreadOptions } from "./threadBootstrap";
 
 export type StartContainerChatResult =
   | { ok: true; threadId: ThreadId | null }
   | { ok: false; error: string };
 
-/** Resolves the Home container project, then starts a thread inside it. */
 export async function startContainerChat(input: {
   readonly ensureProjectId: () => Promise<ProjectId | null>;
   readonly handleNewThread: (

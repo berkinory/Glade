@@ -1,4 +1,13 @@
 import { LexicalComposer, type InitialConfigType } from "@lexical/react/LexicalComposer";
+import {
+  clampExpandedCursor,
+  getAbsoluteOffsetForPoint,
+  $getComposerRootLength,
+  $setSelectionAtComposerOffset,
+  $readSelectionOffsetFromEditorState,
+  $readExpandedSelectionOffsetFromEditorState,
+} from "./composerEditorSelection";
+import { $setComposerEditorPrompt, collectTerminalContextIds } from "./composerEditorPrompt";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
@@ -6,16 +15,10 @@ import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { PlainTextPlugin } from "@lexical/react/LexicalPlainTextPlugin";
 import {
-  $createRangeSelection,
   $getSelection,
-  $setSelection,
   $isElementNode,
-  $isLineBreakNode,
   $isRangeSelection,
   $isTextNode,
-  $createLineBreakNode,
-  $createParagraphNode,
-  $createTextNode,
   KEY_ARROW_DOWN_COMMAND,
   KEY_ARROW_LEFT_COMMAND,
   KEY_ARROW_RIGHT_COMMAND,
@@ -29,8 +32,6 @@ import {
   TextNode,
   $getRoot,
   $nodesOfType,
-  type ElementNode,
-  type LexicalNode,
   type EditorState,
 } from "lexical";
 import {
@@ -56,15 +57,13 @@ import {
 import {
   matchComposerLinkToken,
   matchComposerSlashCommandChipToken,
-  splitPromptIntoComposerSegments,
 } from "~/composer-editor-mentions";
 import { parseBareComposerLink } from "~/lib/linkChips";
 import { type TerminalContextDraft } from "~/lib/terminalContext";
 import { shouldCollapsePastedText } from "~/lib/composerPastedText";
-import type { ProviderMentionReference } from "@glade/contracts";
+import type { ProviderMentionReference } from "@glade/contracts/provider/providerDiscovery";
 import { useStore } from "~/store";
 import { createComposerThreadMentionSourcesSelector } from "~/storeSelectors";
-import { resolveThreadDisplayProvider } from "~/lib/threadDisplayProvider";
 import { cn } from "~/lib/utils";
 import {
   COMPOSER_EDITOR_CONTENT_RESET_CLASS_NAME,
@@ -74,27 +73,16 @@ import {
 } from "./chat/composerPickerStyles";
 import {
   ComposerMentionNode,
-  ComposerSkillNode,
-  ComposerSlashCommandNode,
-  ComposerAgentMentionNode,
   ComposerTerminalContextNode,
-  ComposerLinkNode,
-  $createComposerMentionNode,
-  $createComposerSkillNode,
   $createComposerSlashCommandNode,
-  $createComposerAgentMentionNode,
-  $createComposerTerminalContextNode,
   $createComposerLinkNode,
   isComposerInlineTokenNode,
   COMPOSER_NODE_CLASSES,
-  type ComposerInlineTokenNode,
 } from "./composer-nodes";
 
 const COMPOSER_EDITOR_HMR_KEY = `composer-editor-${Math.random().toString(36).slice(2)}`;
 
 const ComposerRemoveTerminalContextContext = createContext<(contextId: string) => void>(() => {});
-
-// Node classes imported from ./composer-nodes
 
 function terminalContextSignature(contexts: ReadonlyArray<TerminalContextDraft>): string {
   return contexts
@@ -115,386 +103,6 @@ function terminalContextSignature(contexts: ReadonlyArray<TerminalContextDraft>)
 
 function mentionReferencesSignature(mentions: ReadonlyArray<ProviderMentionReference>): string {
   return mentions.map((mention) => `${mention.name}\u0000${mention.path}`).join("\u0001");
-}
-
-function clampExpandedCursor(value: string, cursor: number): number {
-  if (!Number.isFinite(cursor)) return value.length;
-  return Math.max(0, Math.min(value.length, Math.floor(cursor)));
-}
-
-function getComposerInlineTokenTextLength(_node: ComposerInlineTokenNode): 1 {
-  return 1;
-}
-
-function getComposerInlineTokenExpandedTextLength(node: ComposerInlineTokenNode): number {
-  return node.getTextContentSize();
-}
-
-function getAbsoluteOffsetForInlineTokenPoint(
-  node: ComposerInlineTokenNode,
-  absoluteOffset: number,
-  pointOffset: number,
-): number {
-  return absoluteOffset + (pointOffset > 0 ? getComposerInlineTokenTextLength(node) : 0);
-}
-
-function getExpandedAbsoluteOffsetForInlineTokenPoint(
-  node: ComposerInlineTokenNode,
-  absoluteOffset: number,
-  pointOffset: number,
-): number {
-  return absoluteOffset + (pointOffset > 0 ? getComposerInlineTokenExpandedTextLength(node) : 0);
-}
-
-function findSelectionPointForInlineToken(
-  node: ComposerInlineTokenNode,
-  remainingRef: { value: number },
-): { key: string; offset: number; type: "element" } | null {
-  const parent = node.getParent();
-  if (!parent || !$isElementNode(parent)) return null;
-  const index = node.getIndexWithinParent();
-  if (remainingRef.value === 0) {
-    return {
-      key: parent.getKey(),
-      offset: index,
-      type: "element",
-    };
-  }
-  if (remainingRef.value === getComposerInlineTokenTextLength(node)) {
-    return {
-      key: parent.getKey(),
-      offset: index + 1,
-      type: "element",
-    };
-  }
-  remainingRef.value -= getComposerInlineTokenTextLength(node);
-  return null;
-}
-
-function getComposerNodeTextLength(node: LexicalNode): number {
-  if (isComposerInlineTokenNode(node)) {
-    return getComposerInlineTokenTextLength(node);
-  }
-  if ($isTextNode(node)) {
-    return node.getTextContentSize();
-  }
-  if ($isLineBreakNode(node)) {
-    return 1;
-  }
-  if ($isElementNode(node)) {
-    return node.getChildren().reduce((total, child) => total + getComposerNodeTextLength(child), 0);
-  }
-  return 0;
-}
-
-function getComposerNodeExpandedTextLength(node: LexicalNode): number {
-  if (isComposerInlineTokenNode(node)) {
-    return getComposerInlineTokenExpandedTextLength(node);
-  }
-  if ($isTextNode(node)) {
-    return node.getTextContentSize();
-  }
-  if ($isLineBreakNode(node)) {
-    return 1;
-  }
-  if ($isElementNode(node)) {
-    return node
-      .getChildren()
-      .reduce((total, child) => total + getComposerNodeExpandedTextLength(child), 0);
-  }
-  return 0;
-}
-
-function getAbsoluteOffsetForPoint(node: LexicalNode, pointOffset: number): number {
-  let offset = 0;
-  let current: LexicalNode | null = node;
-
-  while (current) {
-    const nextParent = current.getParent() as LexicalNode | null;
-    if (!nextParent || !$isElementNode(nextParent)) {
-      break;
-    }
-    const siblings = nextParent.getChildren();
-    const index = current.getIndexWithinParent();
-    for (let i = 0; i < index; i += 1) {
-      const sibling = siblings[i];
-      if (!sibling) continue;
-      offset += getComposerNodeTextLength(sibling);
-    }
-    current = nextParent;
-  }
-
-  if (node instanceof ComposerLinkNode || node instanceof ComposerTerminalContextNode) {
-    return getAbsoluteOffsetForInlineTokenPoint(node, offset, pointOffset);
-  }
-
-  if ($isTextNode(node)) {
-    if (
-      node instanceof ComposerMentionNode ||
-      node instanceof ComposerSkillNode ||
-      node instanceof ComposerSlashCommandNode ||
-      node instanceof ComposerAgentMentionNode
-    ) {
-      return getAbsoluteOffsetForInlineTokenPoint(node, offset, pointOffset);
-    }
-    return offset + Math.min(pointOffset, node.getTextContentSize());
-  }
-
-  if ($isLineBreakNode(node)) {
-    return offset + Math.min(pointOffset, 1);
-  }
-
-  if ($isElementNode(node)) {
-    const children = node.getChildren();
-    const clampedOffset = Math.max(0, Math.min(pointOffset, children.length));
-    for (let i = 0; i < clampedOffset; i += 1) {
-      const child = children[i];
-      if (!child) continue;
-      offset += getComposerNodeTextLength(child);
-    }
-    return offset;
-  }
-
-  return offset;
-}
-
-function getExpandedAbsoluteOffsetForPoint(node: LexicalNode, pointOffset: number): number {
-  let offset = 0;
-  let current: LexicalNode | null = node;
-
-  while (current) {
-    const nextParent = current.getParent() as LexicalNode | null;
-    if (!nextParent || !$isElementNode(nextParent)) {
-      break;
-    }
-    const siblings = nextParent.getChildren();
-    const index = current.getIndexWithinParent();
-    for (let i = 0; i < index; i += 1) {
-      const sibling = siblings[i];
-      if (!sibling) continue;
-      offset += getComposerNodeExpandedTextLength(sibling);
-    }
-    current = nextParent;
-  }
-
-  if (node instanceof ComposerLinkNode || node instanceof ComposerTerminalContextNode) {
-    return getExpandedAbsoluteOffsetForInlineTokenPoint(node, offset, pointOffset);
-  }
-
-  if ($isTextNode(node)) {
-    if (
-      node instanceof ComposerMentionNode ||
-      node instanceof ComposerSkillNode ||
-      node instanceof ComposerSlashCommandNode ||
-      node instanceof ComposerAgentMentionNode
-    ) {
-      return getExpandedAbsoluteOffsetForInlineTokenPoint(node, offset, pointOffset);
-    }
-    return offset + Math.min(pointOffset, node.getTextContentSize());
-  }
-
-  if ($isLineBreakNode(node)) {
-    return offset + Math.min(pointOffset, 1);
-  }
-
-  if ($isElementNode(node)) {
-    const children = node.getChildren();
-    const clampedOffset = Math.max(0, Math.min(pointOffset, children.length));
-    for (let i = 0; i < clampedOffset; i += 1) {
-      const child = children[i];
-      if (!child) continue;
-      offset += getComposerNodeExpandedTextLength(child);
-    }
-    return offset;
-  }
-
-  return offset;
-}
-
-function findSelectionPointAtOffset(
-  node: LexicalNode,
-  remainingRef: { value: number },
-): { key: string; offset: number; type: "text" | "element" } | null {
-  if (
-    node instanceof ComposerMentionNode ||
-    node instanceof ComposerSkillNode ||
-    node instanceof ComposerSlashCommandNode ||
-    node instanceof ComposerAgentMentionNode ||
-    node instanceof ComposerLinkNode ||
-    node instanceof ComposerTerminalContextNode
-  ) {
-    return findSelectionPointForInlineToken(node, remainingRef);
-  }
-
-  if ($isTextNode(node)) {
-    const size = node.getTextContentSize();
-    if (remainingRef.value <= size) {
-      return {
-        key: node.getKey(),
-        offset: remainingRef.value,
-        type: "text",
-      };
-    }
-    remainingRef.value -= size;
-    return null;
-  }
-
-  if ($isLineBreakNode(node)) {
-    const parent = node.getParent();
-    if (!parent) return null;
-    const index = node.getIndexWithinParent();
-    if (remainingRef.value === 0) {
-      return {
-        key: parent.getKey(),
-        offset: index,
-        type: "element",
-      };
-    }
-    if (remainingRef.value === 1) {
-      return {
-        key: parent.getKey(),
-        offset: index + 1,
-        type: "element",
-      };
-    }
-    remainingRef.value -= 1;
-    return null;
-  }
-
-  if ($isElementNode(node)) {
-    const children = node.getChildren();
-    for (const child of children) {
-      const point = findSelectionPointAtOffset(child, remainingRef);
-      if (point) {
-        return point;
-      }
-    }
-    if (remainingRef.value === 0) {
-      return {
-        key: node.getKey(),
-        offset: children.length,
-        type: "element",
-      };
-    }
-  }
-
-  return null;
-}
-
-function $getComposerRootLength(): number {
-  const root = $getRoot();
-  const children = root.getChildren();
-  return children.reduce((sum, child) => sum + getComposerNodeTextLength(child), 0);
-}
-
-function $setSelectionAtComposerOffset(nextOffset: number): void {
-  const root = $getRoot();
-  const composerLength = $getComposerRootLength();
-  const boundedOffset = Math.max(0, Math.min(nextOffset, composerLength));
-  const remainingRef = { value: boundedOffset };
-  const point = findSelectionPointAtOffset(root, remainingRef) ?? {
-    key: root.getKey(),
-    offset: root.getChildren().length,
-    type: "element" as const,
-  };
-  const selection = $createRangeSelection();
-  selection.anchor.set(point.key, point.offset, point.type);
-  selection.focus.set(point.key, point.offset, point.type);
-  $setSelection(selection);
-}
-
-function $readSelectionOffsetFromEditorState(fallback: number): number {
-  const selection = $getSelection();
-  if (!$isRangeSelection(selection) || !selection.isCollapsed()) {
-    return fallback;
-  }
-  const anchorNode = selection.anchor.getNode();
-  const offset = getAbsoluteOffsetForPoint(anchorNode, selection.anchor.offset);
-  const composerLength = $getComposerRootLength();
-  return Math.max(0, Math.min(offset, composerLength));
-}
-
-function $readExpandedSelectionOffsetFromEditorState(fallback: number): number {
-  const selection = $getSelection();
-  if (!$isRangeSelection(selection) || !selection.isCollapsed()) {
-    return fallback;
-  }
-  const anchorNode = selection.anchor.getNode();
-  const offset = getExpandedAbsoluteOffsetForPoint(anchorNode, selection.anchor.offset);
-  const expandedLength = $getRoot().getTextContent().length;
-  return Math.max(0, Math.min(offset, expandedLength));
-}
-
-function $appendTextWithLineBreaks(parent: ElementNode, text: string): void {
-  const lines = text.split("\n");
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index] ?? "";
-    if (line.length > 0) {
-      parent.append($createTextNode(line));
-    }
-    if (index < lines.length - 1) {
-      parent.append($createLineBreakNode());
-    }
-  }
-}
-
-function $setComposerEditorPrompt(
-  prompt: string,
-  terminalContexts: ReadonlyArray<TerminalContextDraft>,
-  mentionReferences: ReadonlyArray<ProviderMentionReference> = [],
-): void {
-  const root = $getRoot();
-  root.clear();
-  const paragraph = $createParagraphNode();
-  root.append(paragraph);
-
-  const segments = splitPromptIntoComposerSegments(prompt, terminalContexts, mentionReferences);
-  for (const segment of segments) {
-    if (segment.type === "mention") {
-      const thread = segment.threadId
-        ? useStore.getState().sidebarThreadSummaryById[segment.threadId]
-        : undefined;
-      const provider = thread ? resolveThreadDisplayProvider(thread) : undefined;
-      paragraph.append(
-        $createComposerMentionNode(segment.path, segment.kind, provider, segment.threadId),
-      );
-      continue;
-    }
-    if (segment.type === "skill") {
-      const prefixedName = `${segment.prefix ?? "$"}${segment.name}`;
-      paragraph.append($createComposerSkillNode(prefixedName));
-      continue;
-    }
-    if (segment.type === "slash-command") {
-      paragraph.append($createComposerSlashCommandNode(segment.command));
-      continue;
-    }
-    if (segment.type === "terminal-context") {
-      if (segment.context) {
-        paragraph.append($createComposerTerminalContextNode(segment.context));
-      }
-      continue;
-    }
-    if (segment.type === "agent-mention") {
-      paragraph.append($createComposerAgentMentionNode(segment.alias, segment.color));
-      continue;
-    }
-    if (segment.type === "link") {
-      paragraph.append($createComposerLinkNode(segment.url));
-      continue;
-    }
-    $appendTextWithLineBreaks(paragraph, segment.text);
-  }
-}
-
-function collectTerminalContextIds(node: LexicalNode): string[] {
-  if (node instanceof ComposerTerminalContextNode) {
-    return [node.__context.id];
-  }
-  if ($isElementNode(node)) {
-    return node.getChildren().flatMap((child) => collectTerminalContextIds(child));
-  }
-  return [];
 }
 
 export interface ComposerPromptEditorHandle {
@@ -522,10 +130,7 @@ interface ComposerPromptEditorProps {
   ariaLabel?: string | undefined;
   className?: string;
   onRemoveTerminalContext: (contextId: string) => void;
-  /**
-   * Invoked when a sufficiently large text paste should collapse into an attachment
-   * card instead of inserting raw text. When omitted, pastes insert as text.
-   */
+
   onCollapsePastedText?: (text: string) => void;
   onChange: (
     nextValue: string,
@@ -790,17 +395,14 @@ function ComposerSlashCommandTransformPlugin() {
   return null;
 }
 
-// Converts a bare URL into a link chip as soon as a delimiter follows it while typing, mirroring
-// the read-only message bubble. The controlled value→editor sync never re-tokenizes user input
-// (the editor text already equals the prompt string, so the rewrite is skipped), so live chipping
-// must run as a node transform. A chip's text content is the raw URL, so the serialized prompt is
-// unchanged and selection/length stay stable.
+// The controlled value→editor sync never re-tokenizes user input (the editor text already equals
+// the prompt string, so the rewrite is skipped), so live chipping must run as a node transform. A
+// chip's text content is the raw URL, so the serialized prompt is unchanged and selection/length
+// stay stable.
 function ComposerLinkTransformPlugin() {
   const [editor] = useLexicalComposerContext();
 
   useEffect(() => {
-    // registerNodeTransform(TextNode) fires only for plain text nodes; the chip subclasses have
-    // their own node types and are skipped. The isComposerInlineTokenNode guard is defensive.
     return editor.registerNodeTransform(TextNode, (node) => {
       if (isComposerInlineTokenNode(node)) {
         return;
@@ -820,9 +422,6 @@ function ComposerLinkTransformPlugin() {
   return null;
 }
 
-// A paste whose entire payload is one bare URL chips immediately, with no trailing delimiter,
-// matching how the sent-message bubble renders it. Mixed or prose pastes fall through to the
-// default handler; ComposerLinkTransformPlugin then chips any delimiter-terminated URLs in them.
 function ComposerLinkPastePlugin() {
   const [editor] = useLexicalComposerContext();
 
@@ -835,10 +434,7 @@ function ComposerLinkPastePlugin() {
         if (!url) {
           return false;
         }
-        // Command listeners already run inside an editor update, so read the selection and insert
-        // synchronously here (a nested editor.update would be deferred, letting the default paste
-        // also run — a double insert). When there is no caret to insert at, fall through to the
-        // default paste so the URL is still pasted as text and the transform chips it later.
+
         const selection = $getSelection();
         if (!$isRangeSelection(selection)) {
           return false;
@@ -854,10 +450,8 @@ function ComposerLinkPastePlugin() {
   return null;
 }
 
-// Thread mention chips resolve their provider icon from the sidebar summaries,
-// which may not be loaded yet when a draft is restored (and can change after a
-// provider handoff). Refresh the stored provider on existing chips whenever the
-// summaries change so the icon never stays stale.
+// Refresh the stored provider on existing chips whenever the summaries change so the icon never
+// stays stale.
 function ComposerThreadMentionProviderPlugin() {
   const [editor] = useLexicalComposerContext();
   const threadMentionSources = useStore(
@@ -894,10 +488,9 @@ function ComposerThreadMentionProviderPlugin() {
   return null;
 }
 
-// A sufficiently large text paste collapses into an attachment card instead of
-// flooding the editor. Intercepting at the Lexical command level (rather than the
-// React onPaste prop) is required: Lexical's own paste listener would otherwise
-// insert the raw text before a bubbled React handler could preventDefault.
+// Intercepting at the Lexical command level (rather than the React onPaste prop) is required:
+// Lexical's own paste listener would otherwise insert the raw text before a bubbled React handler
+// could preventDefault.
 function ComposerBigPastePlugin(props: { onCollapsePastedText: (text: string) => void }) {
   const [editor] = useLexicalComposerContext();
   const onCollapseRef = useRef(props.onCollapsePastedText);
@@ -914,7 +507,7 @@ function ComposerBigPastePlugin(props: { onCollapsePastedText: (text: string) =>
         if (!clipboardData) {
           return false;
         }
-        // Image/file pastes are handled by the composer dropzone — never collapse them.
+
         if (clipboardData.files.length > 0) {
           return false;
         }
@@ -949,7 +542,7 @@ function ComposerPromptEditorInner({
   onPaste,
   editorRef,
 }: ComposerPromptEditorInnerProps) {
-  const mentionReferences = mentionReferencesProp ?? [];
+  const mentionReferences = useMemo(() => mentionReferencesProp ?? [], [mentionReferencesProp]);
   const [editor] = useLexicalComposerContext();
   const onChangeRef = useRef(onChange);
   const initialCursor = clampCollapsedComposerCursor(value, cursor);
@@ -970,9 +563,7 @@ function ComposerPromptEditorInner({
     onChangeRef.current = onChange;
   }, [onChange]);
 
-  // Disabling the editor (e.g. while a turn dispatch is connecting) turns off
-  // contenteditable, which drops browser focus to <body>. Remember whether the
-  // composer owned focus at disable time and hand it back once re-enabled, so
+  // Remember whether the composer owned focus at disable time and hand it back once re-enabled, so
   // sending a message never silently kicks the user out of the input.
   const restoreFocusOnEnableRef = useRef(false);
   useEffect(() => {
@@ -1076,7 +667,6 @@ function ComposerPromptEditorInner({
     editor.getRootElement()?.blur();
   }, [editor]);
 
-  // Keep global shortcuts decoupled from Lexical's root element details.
   const isEditorFocused = useCallback(() => {
     const rootElement = editor.getRootElement();
     return Boolean(
@@ -1272,7 +862,7 @@ export const ComposerPromptEditor = forwardRef<
 ) {
   const initialValueRef = useRef(value);
   const initialTerminalContextsRef = useRef(terminalContexts);
-  // Normalize once at the wrapper boundary so the inner editor can treat mention refs as concrete.
+
   const normalizedMentionReferences = mentionReferences ?? [];
   const initialMentionReferencesRef = useRef(normalizedMentionReferences);
   const initialConfig: InitialConfigType = {

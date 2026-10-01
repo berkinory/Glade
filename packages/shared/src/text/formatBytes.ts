@@ -1,0 +1,19 @@
+function trimTrailingZero(value: string): string {
+  return value.endsWith(".0") ? value.slice(0, -2) : value;
+}
+
+export function formatBytes(bytes: number): string {
+  const normalized = Number.isFinite(bytes) ? Math.max(0, Math.floor(bytes)) : 0;
+  if (normalized < 1024) {
+    return `${normalized} B`;
+  }
+  const kib = normalized / 1024;
+  if (kib < 1024) {
+    return `${trimTrailingZero(kib.toFixed(1))} KB`;
+  }
+  const mib = kib / 1024;
+  if (mib < 1024) {
+    return `${mib.toFixed(1)} MB`;
+  }
+  return `${(mib / 1024).toFixed(1)} GB`;
+}

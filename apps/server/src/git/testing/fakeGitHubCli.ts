@@ -1,19 +1,11 @@
-// FILE: fakeGitHubCli.ts
-// Purpose: Shared test fake for the GitHubCli service with scripted `gh` responses
-//          and a call log for command assertions.
-// Layer: Server test utility (imported by *.test.ts only; never by production code)
-// Note: list responses decode through the live layer's decodePullRequestListJson so raw
-//       gh-shaped fixtures ("OPEN", "CONFLICTING", …) normalize exactly like production.
-
 import { spawnSync } from "node:child_process";
 
 import { Effect } from "effect";
+import type { GitPullRequestCheck, GitPullRequestComment } from "@glade/contracts/git/git";
 import type {
-  GitPullRequestCheck,
-  GitPullRequestComment,
   PullRequestMergeCapabilities,
   PullRequestStack,
-} from "@glade/contracts";
+} from "@glade/contracts/git/pullRequests";
 
 import { GitHubCliError } from "../Errors.ts";
 import { decodePullRequestListJson } from "../Layers/GitHubCli.ts";
@@ -247,7 +239,7 @@ export function createGitHubCliWithFakeGh(scenario: FakeGhScenario = {}): {
   };
 
   const listPullRequestsWithState = (
-    input: { cwd: string; headSelector: string; limit?: number },
+    input: { cwd: string; headSelector?: string; limit?: number },
     options: { state: "open" | "all"; defaultLimit: number },
   ) =>
     execute({
@@ -255,8 +247,7 @@ export function createGitHubCliWithFakeGh(scenario: FakeGhScenario = {}): {
       args: [
         "pr",
         "list",
-        "--head",
-        input.headSelector,
+        ...(input.headSelector ? ["--head", input.headSelector] : []),
         "--state",
         options.state,
         "--limit",

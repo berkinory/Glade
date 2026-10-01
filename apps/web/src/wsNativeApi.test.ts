@@ -1,26 +1,25 @@
-// FILE: wsNativeApi.test.ts
-// Purpose: Verifies the WebSocket-backed NativeApi adapter and push listener fanout.
-// Layer: Web transport tests
-// Depends on: wsTransport mock plus contracts channel constants.
-
 import {
   ApprovalRequestId,
   CommandId,
-  type ContextMenuItem,
   EventId,
-  ORCHESTRATION_WS_CHANNELS,
-  ORCHESTRATION_WS_METHODS,
-  type OrchestrationEvent,
   ProjectId,
   ThreadId,
+} from "@glade/contracts/core/baseSchemas";
+import { type ContextMenuItem } from "@glade/contracts/ipc/ipc";
+import {
+  ORCHESTRATION_WS_CHANNELS,
+  ORCHESTRATION_WS_METHODS,
+} from "@glade/contracts/orchestration/rpc";
+import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
+import {
   type WsPushChannel,
   type WsPushData,
   type WsPushMessage,
   WS_CHANNELS,
   WS_METHODS,
   type WsPush,
-  type ServerProviderStatus,
-} from "@glade/contracts";
+} from "@glade/contracts/transport/ws/ws";
+import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const requestMock = vi.fn<(...args: Array<unknown>) => Promise<unknown>>();
@@ -56,7 +55,7 @@ const subscribeMock = vi.fn<
   };
 });
 
-vi.mock("./wsTransport", () => {
+vi.mock("./wsTransport.implementation", () => {
   return {
     WsTransport: class MockWsTransport {
       request = requestMock;
@@ -323,6 +322,7 @@ describe("wsNativeApi", () => {
       createdAt: "2026-02-24T00:00:00.000Z",
       type: "output",
       data: "hello",
+      outputSequence: 1,
     } as const;
     emitPush(WS_CHANNELS.terminalEvent, terminalEvent);
 
@@ -409,22 +409,6 @@ describe("wsNativeApi", () => {
     expect(requestMock).toHaveBeenCalledWith(ORCHESTRATION_WS_METHODS.dispatchCommand, {
       command,
     });
-  });
-
-  it("runs thread-title regeneration without a client timeout", async () => {
-    requestMock.mockResolvedValue({ status: "renamed", title: "Backend auth" });
-    const { createWsNativeApi } = await import("./wsNativeApi");
-
-    const api = createWsNativeApi();
-    await api.orchestration.regenerateThreadTitle({
-      threadId: ThreadId.makeUnsafe("thread-1"),
-    });
-
-    expect(requestMock).toHaveBeenCalledWith(
-      ORCHESTRATION_WS_METHODS.regenerateThreadTitle,
-      { threadId: "thread-1" },
-      { timeoutMs: null },
-    );
   });
 
   it("omits null user-input answers before dispatching to orchestration", async () => {

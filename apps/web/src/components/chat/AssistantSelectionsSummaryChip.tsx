@@ -1,8 +1,4 @@
-// FILE: AssistantSelectionsSummaryChip.tsx
-// Purpose: Renders the compact assistant-selection count chip used in composer and user bubbles.
-// Layer: Chat attachment presentation
-
-import { pluralize } from "@glade/shared/text";
+import { pluralize } from "@glade/shared/text/text";
 
 import { MessageCircleIcon } from "~/lib/icons";
 import { type ChatAssistantSelectionAttachment } from "../../types";

@@ -1,14 +1,3 @@
-/**
- * Composer Lexical Nodes
- *
- * Custom nodes for the composer editor:
- * - ComposerMentionNode: File/path mentions (@path)
- * - ComposerSkillNode: Skill mentions ($skill or /skill)
- * - ComposerSlashCommandNode: app-level slash commands (/automation, /goal, /computer-use)
- * - ComposerAgentMentionNode: Agent mentions (@alias(task))
- * - ComposerTerminalContextNode: Terminal context blocks
- */
-
 import {
   $applyNodeReplacement,
   DecoratorNode,
@@ -19,7 +8,7 @@ import {
   type SerializedTextNode,
   type Spread,
 } from "lexical";
-import type { ProviderKind } from "@glade/contracts";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -49,8 +38,6 @@ import { InlineLinkChip } from "../InlineLinkChip";
 import { ComposerPendingTerminalContextChip } from "../chat/ComposerPendingTerminalContexts";
 import { createMentionChipIconElement, type MentionChipKind } from "../chat/MentionChipIcon";
 import { ProviderIcon } from "../ProviderIcon";
-
-// ── Serialized Types ──────────────────────────────────────────────────
 
 export type SerializedComposerMentionNode = Spread<
   {
@@ -110,10 +97,6 @@ export type SerializedComposerTerminalContextNode = Spread<
   SerializedLexicalNode
 >;
 
-// ── Helper Functions ──────────────────────────────────────────────────
-
-// Shared boilerplate for the imperative Lexical chip hosts: clear prior content
-// and make the token unselectable so the caret skips over it as one unit.
 function resetInlineChipContainer(container: HTMLElement): void {
   container.textContent = "";
   container.style.setProperty("user-select", "none");
@@ -170,8 +153,6 @@ function renderSkillChipDom(container: HTMLElement, name: string): void {
   }
 }
 
-// Slash-command glyphs are static per command, so each one is rendered to markup
-// once and reused for every chip instance / DOM update.
 const slashCommandIconMarkupCache = new Map<ComposerSlashCommand, string>();
 
 function slashCommandIconMarkup(command: ComposerSlashCommand): string {
@@ -227,8 +208,6 @@ function renderAgentMentionChipDom(container: HTMLElement, alias: string, color:
 function ComposerLinkDecorator(props: { url: string }) {
   return <InlineLinkChip url={props.url} />;
 }
-
-// ── ComposerMentionNode ───────────────────────────────────────────────
 
 export class ComposerMentionNode extends TextNode {
   __kind: MentionChipKind;
@@ -351,8 +330,6 @@ export function $createComposerMentionNode(
   return $applyNodeReplacement(new ComposerMentionNode(path, kind, provider, threadId));
 }
 
-// ── ComposerSkillNode ─────────────────────────────────────────────────
-
 export class ComposerSkillNode extends TextNode {
   __skillName: string;
 
@@ -425,8 +402,6 @@ export class ComposerSkillNode extends TextNode {
 export function $createComposerSkillNode(name: string): ComposerSkillNode {
   return $applyNodeReplacement(new ComposerSkillNode(name));
 }
-
-// ── ComposerSlashCommandNode ──────────────────────────────────────────
 
 export class ComposerSlashCommandNode extends TextNode {
   __command: ComposerSlashCommand;
@@ -503,8 +478,6 @@ export function $createComposerSlashCommandNode(
   return $applyNodeReplacement(new ComposerSlashCommandNode(command));
 }
 
-// ── ComposerAgentMentionNode ──────────────────────────────────────────
-
 export class ComposerAgentMentionNode extends TextNode {
   __alias: string;
   __color: string;
@@ -524,7 +497,6 @@ export class ComposerAgentMentionNode extends TextNode {
   }
 
   constructor(alias: string, color: string, key?: NodeKey) {
-    // The text content is just @alias - parentheses are regular text
     super(`@${alias}`, key);
     this.__alias = alias;
     this.__color = color;
@@ -585,8 +557,6 @@ export function $createComposerAgentMentionNode(
   return $applyNodeReplacement(new ComposerAgentMentionNode(alias, color));
 }
 
-// ── ComposerLinkNode ──────────────────────────────────────────────────
-
 export class ComposerLinkNode extends DecoratorNode<ReactElement> {
   __url: string;
 
@@ -641,8 +611,6 @@ export class ComposerLinkNode extends DecoratorNode<ReactElement> {
 export function $createComposerLinkNode(url: string): ComposerLinkNode {
   return $applyNodeReplacement(new ComposerLinkNode(url));
 }
-
-// ── ComposerTerminalContextNode ───────────────────────────────────────
 
 function ComposerTerminalContextDecorator(props: { context: TerminalContextDraft }) {
   return <ComposerPendingTerminalContextChip context={props.context} />;
@@ -708,8 +676,6 @@ export function $createComposerTerminalContextNode(
   return $applyNodeReplacement(new ComposerTerminalContextNode(context));
 }
 
-// ── Type Guards & Utilities ───────────────────────────────────────────
-
 export type ComposerInlineTokenNode =
   | ComposerMentionNode
   | ComposerSkillNode
@@ -731,7 +697,6 @@ export function isComposerInlineTokenNode(
   );
 }
 
-/** All node classes for Lexical registration */
 export const COMPOSER_NODE_CLASSES = [
   ComposerMentionNode,
   ComposerSkillNode,

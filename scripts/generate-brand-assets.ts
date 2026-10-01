@@ -1,5 +1,3 @@
-// Regenerate platform exports from the same vector used by the application.
-// Requires ImageMagick and Xcode 26 on macOS; no network access is used.
 import { spawnSync } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";

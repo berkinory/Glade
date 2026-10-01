@@ -1,5 +1,6 @@
-import { ThreadId, type DesktopComputerState } from "@glade/contracts";
-import { COMPUTER_PERMISSION_KINDS } from "@glade/shared/computerGrants";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type DesktopComputerState } from "@glade/contracts/ipc/ipc";
+import { COMPUTER_PERMISSIONS } from "@glade/shared/computer/computerGrants";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useComputerControlModeChange } from "./useComputerControlModeChange";
@@ -67,7 +68,7 @@ describe("Computer activation permission guide", () => {
       f.change(mode);
       await vi.waitFor(() =>
         expect(f.permissions.startPermissionSetup).toHaveBeenCalledExactlyOnceWith(
-          COMPUTER_PERMISSION_KINDS,
+          COMPUTER_PERMISSIONS,
         ),
       );
       expect(f.setMode).toHaveBeenCalledWith("test", mode, { revokeQueued: false, generation: 4 });

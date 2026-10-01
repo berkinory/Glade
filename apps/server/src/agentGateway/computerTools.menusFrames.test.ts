@@ -1,7 +1,7 @@
 import { Effect } from "effect";
 import { describe, expect, it, vi } from "vitest";
 
-import type { ProviderKind } from "@glade/contracts";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 
 import { ComputerBackendError } from "../computer/ComputerBackend.ts";
 import { ComputerManager } from "../computer/ComputerManager.ts";
@@ -58,8 +58,7 @@ async function setup(
   const manager = new ComputerManager({ backend, actionSettleMs: 0 });
   const tools = makeAgentGatewayComputerTools({
     manager,
-    // These tests exercise menu execution; the never-raise gate has explicit
-    // refusal coverage in computerTools.test.ts.
+
     resolveForegroundAuthorization: async () => ({ userRequestedVisibleUse: true }),
     ...(authorizeAction ? { authorizeAction } : {}),
   });
@@ -76,8 +75,6 @@ async function setup(
   };
   return { backend, manager, tools, byName, call };
 }
-
-/** A backend that never implemented the optional app/frame/menu methods. */
 
 describe("computer_set_window_frame", () => {
   it("is approval-gated and moves the exact window, reporting a verified result", async () => {
@@ -108,7 +105,7 @@ describe("computer_set_window_frame", () => {
     expect(payload.action).toBe("computer_set_window_frame");
     expect(payload.windowId).toBe("fake-calculator");
     expect(payload.delivery).toMatchObject({ verified: "confirmed", effect: "verified" });
-    // The fake's own window list is the readback the result stands on.
+
     const windows = await backend.listWindows();
     expect(windows.find((window) => window.id === "fake-calculator")?.bounds).toEqual({
       x: 200,
@@ -209,7 +206,7 @@ describe("computer_invoke_menu", () => {
     });
     expect(result.isError).toBe(true);
     expect(resultText(result)).toContain("disabled");
-    // The refusal is persistent state, not a one-off: a replay is refused too.
+
     const replay = await call("computer_invoke_menu", {
       window_id: "fake-terminal",
       path: ["Edit", "Undo"],
@@ -233,9 +230,6 @@ describe("tool-name registry", () => {
       "computer_set_window_minimized",
       "computer_set_app_visibility",
     ]) {
-      // A served tool that the registry does not own dies two ways: the
-      // denial card cannot route it and the provider permission path treats
-      // it as foreign.
       expect(byName.has(name), `gateway serves ${name}`).toBe(true);
       expect(GLADE_COMPUTER_TOOL_NAMES).toContain(name);
       expect(canonicalGladeComputerToolName(`glade_${name}`)).toBe(name);

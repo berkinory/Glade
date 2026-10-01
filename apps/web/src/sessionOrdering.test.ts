@@ -1,7 +1,7 @@
-import { ThreadId, TurnId } from "@glade/contracts";
+import { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { expect, it } from "vitest";
-import { applyOrchestrationEvents } from "./storeEventReducer";
-import { applyShellEvent, syncServerThreadDetailHotPath } from "./storeProjection";
+import { applyOrchestrationEvents } from "./storeEventReducer.batch";
+import { applyShellEvent, syncServerThreadDetailHotPath } from "./storeProjection.synchronization";
 import {
   makeDomainEvent,
   makeReadModelThread,
@@ -36,8 +36,6 @@ it("keeps stop available across delayed session snapshots and accepts actual com
   ]);
   const runningTurn = threadsOf(state)[0]!.latestTurn;
 
-  // These are separate subscriptions: shell snapshots can lag behind the live
-  // thread event even while carrying the current latestTurn projection.
   const delayed = makeReadModelThread({ session: readySession, latestTurn: runningTurn });
   state = applyShellEvent(state, {
     kind: "thread-upserted",
@@ -47,7 +45,6 @@ it("keeps stop available across delayed session snapshots and accepts actual com
       latestUserMessageAt: null,
       hasPendingApprovals: false,
       hasPendingUserInput: false,
-      hasActionableProposedPlan: false,
     },
   });
   expect(threadsOf(state)[0]!.session?.status).toBe("running");

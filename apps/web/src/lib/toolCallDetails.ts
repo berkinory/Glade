@@ -1,11 +1,8 @@
-// FILE: toolCallDetails.ts
-// Purpose: Extract bounded command/edit details from provider tool lifecycle payloads.
-// Layer: Web transcript data utility
-// Exports: deriveWorkLogToolDetails, mergeWorkLogToolDetails
-// Depends on: provider runtime item metadata already truncated by server ingestion
-
-import type { ToolLifecycleItemType } from "@glade/contracts";
-import { stripTrailingToolExitCode as stripTrailingExitCode } from "@glade/shared/toolOutputSummary";
+import { nonEmptyTrimmed } from "@glade/shared/text/text";
+import { asFiniteNumber } from "@glade/shared/transport/payloadValues";
+import { asRecord } from "@glade/shared/transport/payloadValues";
+import type { ToolLifecycleItemType } from "@glade/contracts/provider/runtimeMetadata";
+import { stripTrailingToolExitCode as stripTrailingExitCode } from "../features/chat/timeline/toolOutputSummary";
 
 type WorkLogRequestKind = "command" | "file-read" | "file-change" | "permissions" | "tool";
 
@@ -46,27 +43,9 @@ export interface DeriveWorkLogToolDetailsInput {
   toolTitle?: string | undefined;
 }
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
-}
-
-function asTrimmedString(value: unknown): string | null {
-  if (typeof value !== "string") {
-    return null;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
-function asFiniteNumber(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
-}
-
 function firstString(...values: unknown[]): string | undefined {
   for (const value of values) {
-    const normalized = asTrimmedString(value);
+    const normalized = nonEmptyTrimmed(value) ?? null;
     if (normalized) {
       return normalized;
     }
@@ -114,7 +93,7 @@ function outputText(value: unknown): string | undefined {
 }
 
 function outputExitCode(value: unknown): number | undefined {
-  const normalized = asTrimmedString(value);
+  const normalized = nonEmptyTrimmed(value) ?? null;
   return normalized ? stripTrailingExitCode(normalized).exitCode : undefined;
 }
 
@@ -125,7 +104,6 @@ function commandEqualsDetail(command: string | undefined, detail: string | undef
   return command.trim() === stripTrailingExitCode(detail).output;
 }
 
-// Collects command output without stringifying the full payload; ingestion already bounds each field.
 function extractToolOutputDetails(input: {
   payload: Record<string, unknown> | null;
   detail?: string | undefined;

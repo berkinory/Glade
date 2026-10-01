@@ -1,18 +1,13 @@
-// FILE: store.ts
-// Purpose: Public Zustand facade for normalized orchestration state and local UI actions.
-// Exports: Stable store API plus pure transitions re-exported from focused modules.
-
 import { Fragment, type ReactNode, createElement, useEffect } from "react";
+import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import {
-  type OrchestrationEvent,
   type OrchestrationReadModel,
   type OrchestrationShellSnapshot,
   type OrchestrationShellStreamEvent,
-  type SpaceId,
-  type ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/snapshots";
+import { type SpaceId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { Debouncer } from "@tanstack/react-pacer";
-import { resolveThreadBranchRegressionGuard } from "@glade/shared/git";
+import { resolveThreadBranchRegressionGuard } from "@glade/shared/git/git";
 import { create } from "zustand";
 
 import {
@@ -20,30 +15,34 @@ import {
   projectAppearanceEquals,
   type ProjectAppearance,
 } from "./lib/projectAppearance";
-import { resolveCreateBranchFlowCompletedMerge } from "./storeNormalization";
+import { resolveCreateBranchFlowCompletedMerge } from "./storeNormalization.shared";
+import { applySpaceOrder } from "./storeProjection.records";
 import {
-  applySpaceOrder,
   applyShellEvent,
-  applyThreadUpdate,
-  clearThreadDetailSyncFailureInClientState,
-  evictThreadDetailFromClientState,
-  markThreadDetailSyncFailedInClientState,
-  removeDeletedProjectFromClientState,
-  removeDeletedThreadFromClientState,
   syncServerReadModel,
   syncServerShellSnapshot,
   syncServerThreadDetail,
   syncServerThreadDetailHotPath,
-} from "./storeProjection";
-import { applyOrchestrationEvents, applyOrchestrationEventsHotPath } from "./storeEventReducer";
+} from "./storeProjection.synchronization";
+import {
+  applyThreadUpdate,
+  removeDeletedProjectFromClientState,
+  removeDeletedThreadFromClientState,
+} from "./storeProjection.mutations";
+import {
+  clearThreadDetailSyncFailureInClientState,
+  evictThreadDetailFromClientState,
+  markThreadDetailSyncFailedInClientState,
+} from "./storeProjection.threadState";
+import {
+  applyOrchestrationEvents,
+  applyOrchestrationEventsHotPath,
+} from "./storeEventReducer.batch";
 import { persistState, readPersistedState, rememberProjectState } from "./storePersistence";
 import { initialState, type AppState } from "./storeState";
 import type { Project, ThreadWorkspacePatch } from "./types";
 
 type ReadModelThread = OrchestrationReadModel["threads"][number];
-
-export type { AppState } from "./storeState";
-export { EMPTY_THREAD_IDS } from "./storeState";
 
 const debouncedPersistState = new Debouncer(persistState, { wait: 500 });
 
@@ -254,8 +253,6 @@ function setThreadWorkspace(
   });
 }
 
-// ── Zustand store ────────────────────────────────────────────────────
-
 interface AppStore extends AppState {
   syncServerShellSnapshot: (snapshot: OrchestrationShellSnapshot) => void;
   syncServerThreadDetail: (thread: ReadModelThread) => void;
@@ -304,9 +301,7 @@ export const useStore = create<AppStore>((set) => ({
     ),
   evictThreadDetail: (threadId) =>
     set((state) => evictThreadDetailFromClientState(state, threadId)),
-  // Dropping a batch of leases evicts several threads at once. Every store update
-  // re-runs the retention reconcile, so folding them into one write keeps that at
-  // a single pass instead of one per thread.
+
   evictThreadDetails: (threadIds) =>
     set((state) => {
       let nextState: AppState = state;
@@ -349,9 +344,6 @@ export const useStore = create<AppStore>((set) => ({
     set((state) => setThreadWorkspace(state, threadId, patch)),
 }));
 
-// Persist state changes with debouncing to avoid localStorage thrashing.
-// Project snapshots only depend on `state.projects` (immutable — every project mutation
-// produces a new array), so skip them on the streaming hot path where only thread slices move.
 let lastRememberedProjects: readonly Project[] | undefined;
 useStore.subscribe((state) => {
   if (state.projects !== lastRememberedProjects) {
@@ -361,7 +353,6 @@ useStore.subscribe((state) => {
   debouncedPersistState.maybeExecute(state);
 });
 
-// Flush pending writes synchronously before page unload to prevent data loss.
 if (typeof window !== "undefined") {
   window.addEventListener("beforeunload", () => {
     persistAppStateNow();

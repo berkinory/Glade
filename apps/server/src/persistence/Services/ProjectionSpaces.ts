@@ -1,5 +1,5 @@
-/** Durable projection repository for custom Spaces. Void remains virtual (`spaceId = null`). */
-import { IsoDateTime, NonNegativeInt, SpaceIconName, SpaceId, SpaceName } from "@glade/contracts";
+import { IsoDateTime, NonNegativeInt, SpaceId } from "@glade/contracts/core/baseSchemas";
+import { SpaceIconName, SpaceName } from "@glade/contracts/orchestration/threadEntities";
 import { Option, Schema, ServiceMap } from "effect";
 import type { Effect } from "effect";
 

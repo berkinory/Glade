@@ -1,4 +1,4 @@
-import type { UserInputQuestion } from "@glade/contracts";
+import type { UserInputQuestion } from "@glade/contracts/provider/runtimePayloads";
 import { useEffect, useEffectEvent, useRef, type ReactNode } from "react";
 import {
   derivePendingUserInputProgress,
@@ -48,9 +48,6 @@ export function UserInputQuestionForm({
     onAdvanceRef.current = onAdvance;
   }, [onAdvance]);
 
-  // Cancel a pending auto-advance on unmount, and whenever the active question
-  // changes or a response is attempted. The version also catches immediate
-  // failures whose true/false loading state React batches into a single render.
   useEffect(() => {
     return () => {
       if (autoAdvanceTimerRef.current !== null) {
@@ -86,8 +83,8 @@ export function UserInputQuestionForm({
       "key" | "metaKey" | "ctrlKey" | "altKey" | "target" | "preventDefault" | "stopPropagation"
     >,
   ) => {
-    // Consume digit shortcuts even when this form has no matching option or is
-    // submitting; another prompt's global listener must not handle them.
+    // Consume digit shortcuts even when this form has no matching option or is submitting; another
+    // prompt's global listener must not handle them.
     if (keyboardShortcuts === "local" && /^[1-9]$/.test(event.key)) event.stopPropagation();
     if (!activeQuestion || isResponding || event.metaKey || event.ctrlKey || event.altKey) return;
     const target = event.target;
@@ -104,8 +101,6 @@ export function UserInputQuestionForm({
   };
   const handleEffectShortcut = useEffectEvent(handleShortcut);
 
-  // Blocking composer prompts keep global shortcuts. Inline forms only respond
-  // to keys inside themselves, so multiple open questions cannot answer each other.
   useEffect(() => {
     if (keyboardShortcuts !== "global" || !activeQuestion || isResponding) return;
     const handler = (event: KeyboardEvent) => handleEffectShortcut(event);
@@ -130,6 +125,17 @@ export function UserInputQuestionForm({
       <div className="flex items-start justify-between gap-3">
         <p className="min-w-0 text-ui-lg font-medium leading-snug text-foreground/90">
           {activeQuestion.question}
+          {activeQuestion.elicitation?.url &&
+          /^https?:\/\//u.test(activeQuestion.elicitation.url) ? (
+            <a
+              href={activeQuestion.elicitation.url}
+              target="_blank"
+              rel="noreferrer"
+              className="block text-ui text-primary underline"
+            >
+              Open MCP request
+            </a>
+          ) : null}
         </p>
         {showNavigation ? (
           <div className="flex shrink-0 items-center gap-0.5 pt-px text-muted-foreground/70">

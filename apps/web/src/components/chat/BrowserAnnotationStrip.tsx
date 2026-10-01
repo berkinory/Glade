@@ -1,8 +1,4 @@
-// FILE: BrowserAnnotationStrip.tsx
-// Purpose: Keep browser annotations to one compact row, with overflow available on demand.
-// Layer: Chat attachment presentation
-
-import { pluralize } from "@glade/shared/text";
+import { pluralize } from "@glade/shared/text/text";
 
 import type { BrowserAnnotationDraft } from "~/lib/browserAnnotations";
 import { cn } from "~/lib/utils";

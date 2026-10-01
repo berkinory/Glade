@@ -1,13 +1,8 @@
-// FILE: providerReactQuery.ts
-// Purpose: Builds React Query options for provider-backed orchestration RPC calls.
-// Layer: Web data fetching helpers
-// Depends on: native API bridge, orchestration contracts, and React Query.
-
 import {
   OrchestrationGetFullThreadDiffInput,
   OrchestrationGetTurnDiffInput,
-  ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/rpc";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { queryOptions } from "@tanstack/react-query";
 import { Option, Schema } from "effect";
 import { ensureNativeApi } from "../nativeApi";
@@ -24,6 +19,7 @@ interface CheckpointDiffQueryInput {
   toTurnCount: number | null;
   ignoreWhitespace: boolean;
   cacheScope?: string | null;
+  live?: boolean;
   enabled?: boolean;
 }
 
@@ -41,7 +37,6 @@ export const providerQueryKeys = {
     ] as const,
 };
 
-/** Keep polling while placeholder checkpoints are still being written. */
 const CHECKPOINT_DIFF_PENDING_REFETCH_INTERVAL_MS = 2_000;
 const CHECKPOINT_DIFF_PENDING_REFETCH_MAX_ATTEMPTS = 12;
 
@@ -111,7 +106,6 @@ function isCheckpointTemporarilyUnavailable(error: unknown): boolean {
   const message = asCheckpointErrorMessage(error).toLowerCase();
   return (
     message.includes("exceeds current turn count") ||
-    // Placeholder checkpoint rows can arrive before the checkpoint writer finishes.
     message.includes("checkpoint diff is not available yet")
   );
 }
@@ -155,13 +149,13 @@ export function checkpointDiffQueryOptions(input: CheckpointDiffQueryInput) {
         }
         return await api.orchestration.getTurnDiff(decodedRequest.value.input);
       } catch (error) {
-        // Keep the transport's typed backpressure contract for retry and display policies.
         if (isRpcCapacityExceededError(error)) throw error;
         throw new Error(normalizeCheckpointErrorMessage(error), { cause: error });
       }
     },
     enabled: (input.enabled ?? true) && !!input.threadId && decodedRequest._tag === "Some",
     staleTime: Infinity,
+    gcTime: input.live ? 0 : 5 * 60_000,
     retry: (failureCount, error) => {
       if (isRpcCapacityExceededError(error)) {
         return shouldRetryExpensiveRead(failureCount, error);

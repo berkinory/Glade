@@ -1,25 +1,26 @@
-// FILE: useSidebarProjectRunController.ts
-// Purpose: Owns Sidebar project-run discovery, server attribution, dialog state, and lifecycle actions.
-// Layer: Web Sidebar controller hook
-// Exports: useSidebarProjectRunController
-
 import {
+  type ProjectDevServer,
   type ProjectDiscoveredScriptTarget,
-  type ProjectId,
-  type ServerLocalServerProcess,
-} from "@glade/contracts";
-import { localServerAddressLabel, localServerMatchesRun } from "@glade/shared/localServers";
+} from "@glade/contracts/workspace/project";
+import { type ProjectId } from "@glade/contracts/core/baseSchemas";
+import { type ServerLocalServerProcess } from "@glade/contracts/server/server";
+import { localServerAddressLabel, localServerMatchesRun } from "@glade/shared/browser/localServers";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { findDeepestWorkspaceRootMatch } from "../components/Sidebar.logic";
+import { findDeepestWorkspaceRootMatch } from "../components/Sidebar.logic.status";
 import { toastManager } from "../components/ui/toast";
 import { isHomeChatContainerProject } from "../lib/chatProjects";
-import { projectDiscoverScriptsQueryOptions } from "../lib/projectReactQuery";
+import {
+  projectDiscoverScriptsQueryOptions,
+  projectDevServersQueryOptions,
+  projectQueryKeys,
+  upsertProjectDevServer,
+  removeProjectDevServer,
+} from "../lib/projectReactQuery";
 import { serverQueryKeys, sidebarLocalServersQueryOptions } from "../lib/serverReactQuery";
 import { newCommandId } from "../lib/utils";
 import { readNativeApi } from "../nativeApi";
-import { useProjectRunStore, type ProjectRunState } from "../projectRunStore";
 import {
   selectPrimaryProjectRunCommand,
   upsertProjectRunCommandScripts,
@@ -32,7 +33,7 @@ export function firstLocalServerUrl(server: ServerLocalServerProcess): string | 
 }
 
 function findTrackedProjectRunServer(
-  run: ProjectRunState | null | undefined,
+  run: ProjectDevServer | null | undefined,
   servers: readonly ServerLocalServerProcess[],
 ): ServerLocalServerProcess | null {
   if (!run) {
@@ -48,9 +49,20 @@ export function useSidebarProjectRunController(input: {
   readonly chatWorkspaceRoot: string | null;
 }) {
   const queryClient = useQueryClient();
-  const projectRunsByProjectId = useProjectRunStore((state) => state.runsByProjectId);
-  const storeUpsertProjectRun = useProjectRunStore((state) => state.upsertRun);
-  const storeRemoveProjectRun = useProjectRunStore((state) => state.removeRun);
+  const projectRunsQuery = useQuery(projectDevServersQueryOptions());
+  const projectRunsByProjectId = useMemo(() => {
+    const runs: Record<ProjectId, ProjectDevServer> = {};
+    for (const server of projectRunsQuery.data?.servers ?? []) runs[server.projectId] = server;
+    return runs;
+  }, [projectRunsQuery.data?.servers]);
+  const storeUpsertProjectRun = useCallback(
+    (server: ProjectDevServer) => upsertProjectDevServer(queryClient, server),
+    [queryClient],
+  );
+  const storeRemoveProjectRun = useCallback(
+    (projectId: ProjectId) => removeProjectDevServer(queryClient, projectId),
+    [queryClient],
+  );
   const [dialogProjectId, setDialogProjectId] = useState<ProjectId | null>(null);
   const [dialogCommandDraft, setDialogCommandDraft] = useState("");
 
@@ -201,10 +213,8 @@ export function useSidebarProjectRunController(input: {
       } catch (error) {
         try {
           const { servers } = await api.projects.listDevServers();
-          useProjectRunStore.getState().replaceAll(servers);
-        } catch {
-          // The dev-server event stream remains the final reconciliation path.
-        }
+          queryClient.setQueryData(projectQueryKeys.devServers(), { servers });
+        } catch {}
         toastManager.add({
           type: "error",
           title: "Failed to stop run",

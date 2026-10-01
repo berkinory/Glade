@@ -1,13 +1,13 @@
 import { realpathSync } from "node:fs";
 
-import { Effect, Layer, PubSub, Ref, Stream } from "effect";
+import { Effect, Layer, PubSub, RcMap, Ref, Schedule, Stream } from "effect";
 import type {
   GitStatusLocalResult,
   GitStatusRemoteResult,
   GitStatusResult,
   GitStatusStreamEvent,
-} from "@glade/contracts";
-import { mergeGitStatusParts } from "@glade/shared/git";
+} from "@glade/contracts/git/git";
+import { mergeGitStatusParts } from "@glade/shared/git/git";
 
 import { GitCore } from "../Services/GitCore";
 import { GitManager } from "../Services/GitManager";
@@ -26,6 +26,8 @@ import {
   splitRemoteStatus,
   splitRemoteStatusDetails,
 } from "../gitStatusCache";
+
+import { watchGitRepository } from "../gitRepositoryChanges";
 
 interface GitStatusChange {
   readonly cwd: string;
@@ -112,11 +114,10 @@ export const GitStatusBroadcasterLive = Layer.effect(
       Effect.gen(function* () {
         const normalizedCwd = normalizeCwd(input.cwd);
         const cached = yield* getCachedStatus(normalizedCwd);
-        // Only probe git for details when the cached remote metadata could still be
-        // reused. `statusDetails` spawns several git subprocesses, and a full status
-        // load runs it again, so probing against expired cache state would double the
-        // git work on every poll (the sidebar polls at 60 s against a 30 s TTL, so the
-        // reuse check could never pass on that path).
+        // Only probe git for details when the cached remote metadata could still be reused. `statusDetails`
+        // spawns several git subprocesses, and a full status load runs it again, so probing against expired
+        // cache state would double the git work on every poll (the sidebar polls at 60 s against a 30 s
+        // TTL, so the reuse check could never pass on that path).
         if (cached?.remote && isCachedRemoteStatusFresh({ cached })) {
           const details = yield* gitCore.statusDetails(normalizedCwd);
           if (canReuseCachedRemoteStatus({ cached, details })) {
@@ -134,26 +135,88 @@ export const GitStatusBroadcasterLive = Layer.effect(
     const refreshStatus: GitStatusBroadcasterShape["refreshStatus"] = (cwd) =>
       loadStatus(normalizeCwd(cwd), { publish: true });
 
-    const refreshLocalStatus: GitStatusBroadcasterShape["refreshLocalStatus"] = (cwd) =>
-      refreshStatus(cwd).pipe(Effect.map(splitLocalStatus));
+    const refreshLocalStatus: GitStatusBroadcasterShape["refreshLocalStatus"] = (cwd) => {
+      const normalizedCwd = normalizeCwd(cwd);
+      return Effect.gen(function* () {
+        const details = yield* gitCore.statusDetails(normalizedCwd, { refreshUpstream: false });
+        const local = yield* updateCachedLocalStatus(
+          normalizedCwd,
+          splitLocalStatusDetails(details),
+          { publish: true },
+        );
+        const cached = yield* getCachedStatus(normalizedCwd);
+        if (cached?.remote)
+          yield* updateCachedRemoteStatus(
+            normalizedCwd,
+            splitRemoteStatusDetails(details, cached.remote.value),
+            { publish: true },
+          );
+        return local;
+      });
+    };
+
+    const fullSubscribers = new Map<string, number>();
+    const watchers = yield* RcMap.make({
+      lookup: (cwd: string) =>
+        watchGitRepository(cwd, gitCore.execute).pipe(
+          Stream.tapError((error) =>
+            Effect.logWarning("Repository watcher failed; retrying", error),
+          ),
+          Stream.retry(Schedule.spaced("5 seconds")),
+          Stream.runForEach(() =>
+            Effect.gen(function* () {
+              if (fullSubscribers.has(cwd)) yield* refreshLocalStatus(cwd);
+              const summary = yield* gitCore.summary(cwd);
+              yield* PubSub.publish(changesPubSub, {
+                cwd,
+                event: { _tag: "summaryUpdated", summary },
+              });
+            }).pipe(
+              Effect.catch((error) => Effect.logWarning("Watched Git refresh failed", error)),
+            ),
+          ),
+          Effect.forkScoped,
+        ),
+    });
 
     const streamStatus: GitStatusBroadcasterShape["streamStatus"] = (input) =>
       Stream.unwrap(
         Effect.gen(function* () {
           const normalizedCwd = normalizeCwd(input.cwd);
           const subscription = yield* PubSub.subscribe(changesPubSub);
-          const status = yield* getStatus({ cwd: normalizedCwd });
-          const snapshot: GitStatusStreamEvent = {
-            _tag: "snapshot",
-            local: splitLocalStatus(status),
-            remote: splitRemoteStatus(status),
-          };
+          if (!input.summaryOnly)
+            yield* Effect.acquireRelease(
+              Effect.sync(() =>
+                fullSubscribers.set(normalizedCwd, (fullSubscribers.get(normalizedCwd) ?? 0) + 1),
+              ),
+              () =>
+                Effect.sync(() => {
+                  const remaining = (fullSubscribers.get(normalizedCwd) ?? 1) - 1;
+                  if (remaining > 0) fullSubscribers.set(normalizedCwd, remaining);
+                  else fullSubscribers.delete(normalizedCwd);
+                }),
+            );
+          yield* RcMap.get(watchers, normalizedCwd);
+          const snapshot: GitStatusStreamEvent = input.summaryOnly
+            ? { _tag: "summaryUpdated", summary: yield* gitCore.summary(normalizedCwd) }
+            : yield* getStatus({ cwd: normalizedCwd }).pipe(
+                Effect.map((status) => ({
+                  _tag: "snapshot" as const,
+                  local: splitLocalStatus(status),
+                  remote: splitRemoteStatus(status),
+                })),
+              );
 
           return Stream.concat(
             Stream.make(snapshot),
             Stream.fromSubscription(subscription).pipe(
               Stream.filter((change) => change.cwd === normalizedCwd),
               Stream.map((change) => change.event),
+              Stream.filter((event) =>
+                input.summaryOnly
+                  ? event._tag === "summaryUpdated"
+                  : event._tag !== "summaryUpdated",
+              ),
             ),
           );
         }),

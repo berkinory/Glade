@@ -1,10 +1,5 @@
-// FILE: providerOrdering.ts
-// Purpose: Keeps provider picker ordering stable across settings, search, and menus.
-// Layer: Web settings utility
-// Exports: default order, normalization, and order comparison helpers.
-
-import type { ProviderKind } from "@glade/contracts";
-import { PROVIDER_DESCRIPTORS } from "@glade/shared/providerMetadata";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
 
 export const DEFAULT_PROVIDER_ORDER: readonly ProviderKind[] = PROVIDER_DESCRIPTORS.map(
   (descriptor) => descriptor.kind,

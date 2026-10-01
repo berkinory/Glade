@@ -1,8 +1,10 @@
-import type { OrchestrationReadModel, OrchestrationShellSnapshot } from "@glade/contracts";
+import type {
+  OrchestrationReadModel,
+  OrchestrationShellSnapshot,
+} from "@glade/contracts/orchestration/snapshots";
 
 type EmptyRouteRestoreRefreshHandler = () => Promise<boolean>;
 
-/** Wait for projection catch-up before a full rebuild on large state DBs. */
 const EMPTY_ROUTE_PROJECTION_POLL_ATTEMPTS = 12;
 const EMPTY_ROUTE_PROJECTION_POLL_INTERVAL_MS = 500;
 
@@ -45,13 +47,6 @@ function delay(ms: number): Promise<void> {
   });
 }
 
-/**
- * Recover an empty route shell without bypassing EventRouter's sequence fence.
- *
- * Full projection rebuilds thrash multi-GB state DBs and hold the server
- * maintenance lock for minutes. Poll the lightweight shell first so catch-up
- * can win, then use one full snapshot probe before calling repair.
- */
 export async function runEmptyRouteRestoreRefresh(input: {
   readonly getShellSnapshot: () => Promise<OrchestrationShellSnapshot>;
   readonly getSnapshot: () => Promise<OrchestrationReadModel>;
@@ -75,19 +70,13 @@ export async function runEmptyRouteRestoreRefresh(input: {
     }
   }
 
-  // The full projection is only a recovery probe. Applying it here would bypass
-  // EventRouter's shell sequence fence, which is the race this coordinator exists
-  // to remove. If it already contains threads, re-read the shell projection and
-  // let EventRouter apply that snapshot through its normal fenced path.
+  // Applying it here would bypass EventRouter's shell sequence fence, which is the race this
+  // coordinator exists to remove.
   const readModel = await input.getSnapshot();
   if (readModel.threads.length > 0) {
     return await applyFreshShellSnapshot();
   }
 
-  // Repair may rebuild projections, but its returned full read model has no
-  // EventRouter shell fence. Ignore the payload and consume a fresh shell
-  // snapshot after repair instead. Server-side repairState also coalesces and
-  // cools down concurrent rebuilds on large DBs.
   await input.repairState();
   return await applyFreshShellSnapshot();
 }

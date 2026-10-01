@@ -1,11 +1,7 @@
-// FILE: useThreadActivationController.ts
-// Purpose: Centralize sidebar thread activation side effects around the pure activation policy.
-// Exports: useThreadActivationController
-
 import type { useNavigate } from "@tanstack/react-router";
-import type { ThreadId } from "@glade/contracts";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { LastThreadRoute } from "../chatRouteRestore";
-import { type PaneId, type SplitView, type SplitViewId } from "../splitViewStore";
+import { type PaneId, type SplitView, type SplitViewId } from "../splitViewModel";
 import { selectThreadTerminalState } from "../terminalStateStore";
 import type { SidebarThreadSummary } from "../types";
 import {
@@ -36,7 +32,6 @@ export type ThreadActivationControllerInput = {
   terminalStateByThreadId: ThreadTerminalStateById;
 };
 
-// Runs the complete sidebar activation side-effect chain for one thread intent.
 function activateThreadFromSidebarIntent(
   input: ThreadActivationControllerInput,
   threadId: ThreadId,
@@ -108,7 +103,6 @@ function activateThreadFromSidebarIntent(
   });
 }
 
-// Opens the target as a single chat while preserving chat-vs-terminal entry point.
 function activateThreadSingle(input: ThreadActivationControllerInput, threadId: ThreadId): void {
   if (!input.sidebarThreadSummaryById[threadId]) return;
 

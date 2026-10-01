@@ -3,7 +3,7 @@ import {
   isUncPath,
   isWindowsAbsolutePath,
   isWindowsDrivePath,
-} from "@glade/shared/path";
+} from "@glade/shared/platform/path";
 import { getNavigatorPlatform, isWindowsPlatform } from "./utils";
 
 function isRootPath(value: string): boolean {

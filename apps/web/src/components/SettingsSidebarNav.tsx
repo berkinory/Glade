@@ -1,10 +1,3 @@
-// FILE: SettingsSidebarNav.tsx
-// Purpose: Settings section sidebar navigation with central icons and reference-style pill rows.
-//          Doubles as a settings search surface: typing swaps the section list for ranked
-//          row matches (same behavior as the editor file search), each jumping to its section.
-// Layer: UI component
-// Exports: SettingsSidebarNav
-
 import { type KeyboardEvent as ReactKeyboardEvent, useState } from "react";
 
 import { CentralIcon } from "~/lib/central-icons";
@@ -40,7 +33,6 @@ import {
   SETTINGS_SIDEBAR_SECTION_LABEL_CLASS_NAME,
 } from "../settingsSidebarNavStyles";
 
-// Cap the result list so a broad query stays a quick scan rather than a wall of rows.
 const SETTINGS_SEARCH_RESULTS_LIMIT = 12;
 
 const SETTINGS_SECTION_ICON_BY_ID = new Map<SettingsSectionId, string>(
@@ -53,8 +45,7 @@ function SettingsSearchResultRow(props: {
 }) {
   const { entry, onSelect } = props;
   const icon = SETTINGS_SECTION_ICON_BY_ID.get(entry.section) ?? "settings-gear-4";
-  // Mirrors the project header + nested thread layout: the section reuses the nav row
-  // (muted icon + label) and the matched setting sits below as an indented thread-style row.
+
   return (
     <li>
       <button
@@ -87,15 +78,10 @@ function SettingsSearchResultRow(props: {
 
 export function SettingsSidebarNav(props: {
   activeSection: SettingsSectionId;
-  /** Null hides the "Back to app" row (the rail layout navigates with the rail instead). */
+
   onBack: (() => void) | null;
   onSelectSection: (section: SettingsSectionId, options?: { target?: string }) => void;
-  /**
-   * Which conditionally-rendered rows exist on this machine, so the search
-   * cannot offer a row the panel does not draw. Passed in rather than read here:
-   * this component is a pure nav, and the one fact it needs is owned by a
-   * surface that already has it.
-   */
+
   searchContext?: SettingsSearchContext | undefined;
 }) {
   const { onSelectSection } = props;

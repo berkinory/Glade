@@ -4,14 +4,18 @@ import {
   ApprovalRequestId,
   EventId,
   ProviderItemId,
+  ThreadId,
+  TurnId,
+} from "@glade/contracts/core/baseSchemas";
+import {
   type ProviderApprovalDecision,
+  type ProviderUserInputAnswers,
+} from "@glade/contracts/provider/sessionPolicy";
+import {
   type ProviderEvent,
   type ProviderSession,
   type ProviderTurnStartResult,
-  type ProviderUserInputAnswers,
-  ThreadId,
-  TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/provider";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { afterAll, it, vi } from "@effect/vitest";
 
@@ -21,10 +25,10 @@ import {
   CodexAppServerManager,
   type CodexAppServerStartSessionInput,
   type CodexAppServerSendTurnInput,
-} from "../../codexAppServerManager.ts";
-import { ServerConfig } from "../../config.ts";
-import { CodexSessionStartError } from "../../codexErrorClassification.ts";
-import { ProviderAdapterValidationError } from "../Errors.ts";
+} from "../codex/codexAppServerManager.ts";
+import { ServerConfig } from "../../server/config.ts";
+import { CodexSessionStartError } from "../codex/codexErrorClassification.ts";
+import { ProviderAdapterValidationError } from "../core/Errors.ts";
 import { CodexAdapter } from "../Services/CodexAdapter.ts";
 import { ProviderSessionDirectory } from "../Services/ProviderSessionDirectory.ts";
 import { makeCodexAdapterLive } from "./CodexAdapter.ts";
@@ -262,8 +266,7 @@ validationLayer("CodexAdapterLive validation", (it) => {
         effort: "high",
         serviceTier: "fast",
         runtimeMode: "full-access",
-        // The manager owns Codex session restarts, so it carries the capability
-        // facts its gateway lease derives from.
+
         agentGatewayCapabilityInput: { enableComputerControl: false },
       });
     }),
@@ -364,7 +367,6 @@ turnPreparationLayer("CodexAdapterLive turn input preparation", (it) => {
             fastMode: true,
           },
         },
-        interactionMode: "plan" as const,
       };
 
       yield* adapter.sendTurn(input);
@@ -382,7 +384,7 @@ turnPreparationLayer("CodexAdapterLive turn input preparation", (it) => {
           "",
           "<attached_files>",
           "The user attached the following file(s), saved on disk. Read/extract them with your tools as needed; do not assume their contents.",
-          `- \"notes.txt\" - text/plain - 5 B - ${filePath}`,
+          `- "notes.txt" - text/plain - 5 B - ${filePath}`,
           "</attached_files>",
         ].join("\n"),
         skills: [{ name: "check-code", path: "/skills/check-code/SKILL.md" }],
@@ -390,7 +392,7 @@ turnPreparationLayer("CodexAdapterLive turn input preparation", (it) => {
         model: "gpt-5.3-codex",
         effort: "high",
         serviceTier: "fast",
-        interactionMode: "plan",
+
         attachments: [
           {
             type: "localImage",
@@ -684,9 +686,9 @@ lifecycleLayer("CodexAdapterLive lifecycle", (it) => {
         itemId: asItemId("img_call_1"),
         payload: {
           item: {
-            type: "image_generation_call",
+            type: "imageGeneration",
             id: "img_call_1",
-            saved_path: "/tmp/provider-thread-1/img_call_1.png",
+            savedPath: "/tmp/provider-thread-1/img_call_1.png",
             result: "large-inline-base64",
           },
         },
@@ -756,45 +758,6 @@ lifecycleLayer("CodexAdapterLive lifecycle", (it) => {
     }),
   );
 
-  it.effect("maps completed plan items to canonical proposed-plan completion events", () =>
-    Effect.gen(function* () {
-      const adapter = yield* CodexAdapter;
-      const firstEventFiber = yield* Stream.runHead(adapter.streamEvents).pipe(Effect.forkChild);
-
-      const event: ProviderEvent = {
-        id: asEventId("evt-plan-complete"),
-        kind: "notification",
-        provider: "codex",
-        createdAt: new Date().toISOString(),
-        method: "item/completed",
-        threadId: asThreadId("thread-1"),
-        turnId: asTurnId("turn-1"),
-        itemId: asItemId("plan_1"),
-        payload: {
-          item: {
-            type: "Plan",
-            id: "plan_1",
-            text: "## Final plan\n\n- one\n- two",
-          },
-        },
-      };
-
-      lifecycleManager.emit("event", event);
-      const firstEvent = yield* Fiber.join(firstEventFiber);
-
-      assert.equal(firstEvent._tag, "Some");
-      if (firstEvent._tag !== "Some") {
-        return;
-      }
-      assert.equal(firstEvent.value.type, "turn.proposed.completed");
-      if (firstEvent.value.type !== "turn.proposed.completed") {
-        return;
-      }
-      assert.equal(firstEvent.value.turnId, "turn-1");
-      assert.equal(firstEvent.value.payload.planMarkdown, "## Final plan\n\n- one\n- two");
-    }),
-  );
-
   it.effect("maps session/closed lifecycle events to canonical session.exited runtime events", () =>
     Effect.gen(function* () {
       const adapter = yield* CodexAdapter;
@@ -842,7 +805,10 @@ lifecycleLayer("CodexAdapterLive lifecycle", (it) => {
         payload: {
           error: {
             message: "Reconnecting... 2/5",
+            codexErrorInfo: "serverOverloaded",
           },
+          threadId: "thread-1",
+          turnId: "turn-1",
           willRetry: true,
         },
       } satisfies ProviderEvent);
@@ -1328,9 +1294,6 @@ lifecycleLayer("CodexAdapterLive lifecycle", (it) => {
         const adapter = yield* CodexAdapter;
         const firstEventFiber = yield* Stream.runHead(adapter.streamEvents).pipe(Effect.forkChild);
 
-        // `item/agentMessage/completed` has no explicit mapping (only the
-        // `item/agentMessage/delta` stream does); before the passthrough
-        // fallback this event produced no runtime event at all.
         lifecycleManager.emit("event", {
           id: asEventId("evt-unmapped-agent-message-completed"),
           kind: "notification",
@@ -1361,7 +1324,7 @@ lifecycleLayer("CodexAdapterLive lifecycle", (it) => {
         if (firstEvent.value.type !== "event.unmapped") {
           return;
         }
-        // Raw native type/label is carried as the title source.
+
         assert.equal(firstEvent.value.payload.nativeType, "item/agentMessage/completed");
         assert.equal(firstEvent.value.payload.detail, "Finished the refactor");
         const serialized = JSON.stringify(firstEvent.value);
@@ -1371,16 +1334,16 @@ lifecycleLayer("CodexAdapterLive lifecycle", (it) => {
         assert.deepEqual(firstEvent.value.raw?.payload, {
           gladeSanitized: true,
         });
-        // Provider refs still resolved from the raw event.
+
         assert.equal(firstEvent.value.itemId, "agent_message_9");
         assert.equal(firstEvent.value.providerRefs?.providerItemId, "agent_message_9");
       }),
   );
 });
 
-afterAll(() => {
+afterAll(async () => {
   if (lifecycleManager.stopAllImpl.mock.calls.length === 0) {
-    lifecycleManager.stopAll();
+    await lifecycleManager.stopAll();
   }
   assert.ok(lifecycleManager.stopAllImpl.mock.calls.length >= 1);
 });

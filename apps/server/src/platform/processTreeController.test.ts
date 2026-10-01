@@ -9,9 +9,8 @@ import {
   inspectProcessTree,
   parseProcessChildrenMap,
   signalOwnedChildProcess,
-  type CapturedProcess,
-  type ProcessChildrenMap,
 } from "./processTreeController";
+import { type CapturedProcess, type ProcessChildrenMap } from "./processTreeModel";
 
 function windowsTree(): ProcessChildrenMap {
   return new Map([
@@ -194,8 +193,6 @@ describe("Windows process-tree controller", () => {
   });
 });
 
-// A minimal but realistic POSIX table: pid 1 (launchd) parents the whole
-// user session; pid 4242 is a provider root with one grandchild.
 function sessionSnapshot(): ProcessChildrenMap {
   return new Map([
     [0, [{ pid: 1, command: "/sbin/launchd" }]],
@@ -221,9 +218,9 @@ describe("unsafe process-tree root guard", () => {
     expect(killer.capture(process.pid)).toEqual({ descendants: [], captureComplete: false });
   });
 
-  // Positive capture outcomes go through captureProcessTree's injected win32
-  // path: `capture()` refuses to run on Windows hosts (the sync API cannot
-  // query CIM), so asserting `captureComplete: true` there is platform-bound.
+  // Positive capture outcomes go through captureProcessTree's injected win32 path: `capture()`
+  // refuses to run on Windows hosts (the sync API cannot query CIM), so asserting `captureComplete:
+  // true` there is platform-bound.
   it("proves absence when the root pid is missing from a complete snapshot", async () => {
     const tree = await captureProcessTree(0x7fff_fffe, {
       platform: "win32",
@@ -262,8 +259,8 @@ describe("unsafe process-tree root guard", () => {
       killer.signal({
         rootPid,
         signal: "SIGTERM",
-        // Even a caller-supplied tree claiming launchd's descendants must not
-        // be honored; signalTree runs its own live walk for pid 1.
+        // Even a caller-supplied tree claiming launchd's descendants must not be honored; signalTree runs
+        // its own live walk for pid 1.
         tree: {
           captureComplete: true,
           descendants: [{ pid: 501, command: "loginwindow" }],
@@ -430,9 +427,9 @@ it.skipIf(process.platform !== "darwin")(
   "captures and verifies native start times independently of the parent locale",
   async () => {
     const previousLocale = process.env.LC_ALL;
-    // Self-roots fail closed by design, so root at a spawned shell instead of
-    // the test process; its sleep grandchild is the captured identity, and it
-    // must still be alive when `inspect` re-verifies it below.
+    // Self-roots fail closed by design, so root at a spawned shell instead of the test process; its
+    // sleep grandchild is the captured identity, and it must still be alive when `inspect` re-verifies
+    // it below.
     const child = spawn("/bin/sh", ["-c", "sleep 3 & wait"], { stdio: "ignore" });
     const exited = once(child, "exit");
     try {
@@ -449,11 +446,11 @@ it.skipIf(process.platform !== "darwin")(
         await new Promise((resolve) => setTimeout(resolve, 25));
       }
       expect(captured).toBeDefined();
-      // Spawned via `sh -c`, so argv[0] is `sleep` rather than a full path.
+
       expect(captured?.command).toBe("sleep 3");
       expect(captured?.startedAt).toMatch(/^(Sun|Mon|Tue|Wed|Thu|Fri|Sat) [A-Z][a-z]{2} /);
       if (!captured) throw new Error("Owned test child was not captured");
-      // Both probes must use the same stable locale, even if the parent changes it.
+
       process.env.LC_ALL = "fr_FR.UTF-8";
       expect(killer.inspect?.({ descendants: [captured] })).toEqual({
         verified: true,

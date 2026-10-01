@@ -1,13 +1,7 @@
-// FILE: splitViewStore.ts
-// Purpose: Persists split chat surfaces as a recursive pane tree (depth-cap 2 = up to 2x2 grid).
-// Layer: UI state store
-// Exports: pane/split types, tree-aware selectors, and id-based mutation helpers used by sidebar and route surfaces
-
-import { type ProjectId, type ThreadId, type TurnId } from "@glade/contracts";
+import { type ProjectId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-import { type ChatRightPanel } from "./diffRouteSearch";
 import { randomUUID } from "./lib/utils";
 import {
   canSubdividePane,
@@ -22,48 +16,17 @@ import {
   type LegacySplitViewLike,
 } from "./splitView.logic";
 
-export type SplitViewId = string;
-export type PaneId = string;
-export type SplitDirection = "horizontal" | "vertical";
-// "first" maps to the top/left side of a split; "second" maps to the bottom/right side.
-export type SplitDropSide = "first" | "second";
-
-export interface SplitViewPanePanelState {
-  panel: ChatRightPanel | null;
-  diffTurnId: TurnId | null;
-  diffFilePath: string | null;
-  hasOpenedPanel: boolean;
-  lastOpenPanel: ChatRightPanel;
-}
-
-export interface LeafPane {
-  kind: "leaf";
-  id: PaneId;
-  threadId: ThreadId | null;
-  panel: SplitViewPanePanelState;
-}
-
-export interface SplitNode {
-  kind: "split";
-  id: PaneId;
-  direction: SplitDirection;
-  // first = left (horizontal) | top (vertical); second = right | bottom.
-  first: Pane;
-  second: Pane;
-  ratio: number;
-}
-
-export type Pane = LeafPane | SplitNode;
-
-export interface SplitView {
-  id: SplitViewId;
-  sourceThreadId: ThreadId;
-  ownerProjectId: ProjectId;
-  root: Pane;
-  focusedPaneId: PaneId;
-  createdAt: string;
-  updatedAt: string;
-}
+import type {
+  SplitViewId,
+  PaneId,
+  SplitDirection,
+  SplitDropSide,
+  SplitViewPanePanelState,
+  LeafPane,
+  SplitNode,
+  Pane,
+  SplitView,
+} from "./splitViewModel";
 
 interface CreateFromThreadInput {
   sourceThreadId: ThreadId;
@@ -112,10 +75,6 @@ interface SplitViewStore {
   setHasHydrated: (hasHydrated: boolean) => void;
 }
 
-// Keep the v1 suffix stable while using the Glade namespace; legacy
-// `glade:*` and `glade:*` keys are copied over by
-// `storageKeyMigration` before this store hydrates, so older payloads still
-// flow through the v1 -> v2 schema migration below.
 const SPLIT_VIEW_STORAGE_KEY = "glade:split-view-state:v1";
 const SPLIT_VIEW_STORAGE_VERSION = 2;
 const DEFAULT_RATIO = 0.5;
@@ -294,7 +253,6 @@ function updateSplitView(
   };
 }
 
-// Re-anchor only to threads that are not already the source of another split view.
 function resolveNextSourceThreadId(input: {
   root: Pane;
   splitViewId: SplitViewId;
@@ -310,8 +268,6 @@ function resolveNextSourceThreadId(input: {
   return null;
 }
 
-// --- selectors ---
-
 // Returns the threadId of the focused leaf, falling back to the first non-empty leaf when the
 // focused pane is empty (so the UI never shows an "empty" thread when something is open elsewhere).
 export function resolveSplitViewFocusedThreadId(splitView: SplitView): ThreadId | null {
@@ -325,7 +281,6 @@ export function resolveSplitViewFocusedThreadId(splitView: SplitView): ThreadId 
   return null;
 }
 
-// Strict variant: returns the focused leaf's threadId without any fallback (used for routing handoff).
 export function resolveSplitViewFocusedPaneThreadId(splitView: SplitView): ThreadId | null {
   return findLeafPaneById(splitView.root, splitView.focusedPaneId)?.threadId ?? null;
 }
@@ -352,8 +307,6 @@ export function selectSplitView(splitViewId: SplitViewId | null) {
   return (store: SplitViewStore) =>
     splitViewId ? (store.splitViewsById[splitViewId] ?? null) : null;
 }
-
-// --- store ---
 
 export const useSplitViewStore = create<SplitViewStore>()(
   persist(
@@ -726,8 +679,7 @@ export const useSplitViewStore = create<SplitViewStore>()(
           state?.setHasHydrated(true);
         };
       },
-      // Pre-v2 storage used a flat left/right pane shape. We migrate any persisted state to the
-      // tree shape; if migration cannot recover anything, we silently drop it instead of crashing.
+
       migrate: (persistedState, version) => {
         if (version >= SPLIT_VIEW_STORAGE_VERSION) {
           return persistedState as SplitViewStoreState;

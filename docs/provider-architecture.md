@@ -44,6 +44,20 @@ Discovery follows a parallel read path: RPC handlers delegate provider model, ag
 
 This separation is important: orchestration does not consume arbitrary native protocol frames. Provider-native information crosses the adapter boundary only through controlled canonical fields such as `providerRefs`, opaque resume cursors, selected thread identifiers, and the sanitized/raw diagnostic envelope carried by runtime events. Those fields exist where orchestration or recovery needs native identity while the rest of the protocol and subprocess behavior remains adapter-owned.
 
+## Native boundaries
+
+Codex protocol artifacts come from the pinned 0.158.0 CLI. `bun run --filter @glade/cli generate:codex-protocol -- --check` verifies reproducible generation. JSON Schema validates known native responses, notifications and server requests at ingress; unknown notifications are skipped, while unknown requests receive a method-not-found response. Model and MCP discovery follow native cursors.
+
+`provider/core/compatibility.ts` owns the admission baseline. Claude uses the configured executable resolved against its child environment, with no bundled CLI fallback. Codex launch passes managed MCP and shell-secret exclusions as native arguments while leaving the user's provider home and configuration files authoritative.
+
+Codex chat and discovery sessions lease one app-server per executable, provider home, launch arguments, extra skill roots and effective environment. The pool owns the transport, global request IDs and native thread routing; session state and gateway authority remain separate. Gateway credentials are supplied in each thread's MCP HTTP configuration, never in the shared process environment. Resume reloads that configuration before the thread becomes ready.
+
+Stopping a session interrupts its active turn and unsubscribes its native thread. Other leases keep the process alive; the last lease tears down the complete process tree and awaits exit proof. Shared crashes close all affected sessions and apply bounded restart backoff. The existing provider idle timeout still retires chat leases. Native Codex retains unsubscribed thread contexts according to its own lifecycle and creates configured MCP clients per thread, so sharing the app-server does not promise a shared MCP child process.
+
+The explicit `provider-default` selection is an internal contract marker. Adapters omit the model override for it. Native descriptors own model options; shared code retains legacy selections without guessing model-family capabilities. Claude applies acknowledged live flags, and native context usage replaces Glade budget overrides. Historical cache-review records remain readable only for explicit held-message recovery.
+
+`ProviderManagement` owns validation and protects managed gateway configuration before routing native MCP/plugin actions to adapters. Its contracts keep session-only actions distinct from persistent changes. Native failures retain their kind and retry state; an upstream retry without an attempt count does not acquire an invented counter. Codex account limits come from native account APIs instead of an undocumented HTTP endpoint or credential refresh implementation.
+
 ## Provider-specific state
 
 Provider configuration is split across typed server settings, discovery/health services, and adapter start options. A provider integration may contribute:
@@ -78,8 +92,19 @@ Prefer capability-driven behavior and existing shared protocol helpers. Do not a
 - `apps/server/src/provider/Layers/ProviderAdapterRegistry.ts` — concrete provider registry
 - `apps/server/src/provider/Layers/ProviderService.ts` — session-aware lifecycle routing
 - `apps/server/src/provider/Layers/ProviderDiscoveryService.ts` — model/agent/skill/command/plugin discovery routing
-- `apps/server/src/provider/boundedCallbackIngress.ts` — bounded callback-producer ingress policy
+- `apps/server/src/provider/core/boundedCallbackIngress.ts` — bounded callback-producer ingress policy
 - `apps/server/src/orchestration/Layers/ProviderCommandReactor.ts` — orchestration intent to provider calls
 - `apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.ts` — provider events to durable orchestration
-- `packages/contracts/src/orchestration.ts` — provider kinds, runtime modes, session/turn contracts
-- `packages/shared/src/providerMetadata.ts` — shared provider metadata
+- `packages/contracts/src/core/baseSchemas.ts` — provider kinds and entity identifiers
+- `packages/contracts/src/provider/sessionPolicy.ts` — model selections, runtime modes and provider policy
+- `packages/contracts/src/provider/runtimeMetadata.ts` — provider references, lifecycle states and event identity
+- `packages/contracts/src/provider/runtimePayloads.ts` — provider payload and workflow schemas
+- `packages/contracts/src/provider/runtimeEvents.ts` — provider event schemas and their canonical union
+- `packages/contracts/src/orchestration/threadEntities.ts` — durable session, thread and turn contracts
+- `packages/shared/src/provider/providerMetadata.ts` — shared provider metadata
+
+Glade renders harness policy once per provider. Codex receives it as `developerInstructions` on thread start, resume and fork; no collaboration-mode payload is sent. Claude receives the same policy through the preset system prompt append. Local probes with Codex 0.158.0 and Claude 2.1.283 confirmed the marker, Computer Use rules and gateway rules in model-visible instructions. The retired Codex collaboration-mode channel did not deliver them.
+
+Edit, revert and file undo preview scoped checkpoint restores before confirmation. Each removed turn contributes its git diff paths, with the first affected turn start as the restore target and the last affected turn end as the expected workspace state. Later file changes require explicit consent per path, and a fingerprint is revalidated before provider rollback and again before restoring. The real git index and unrelated files are preserved. Claude rollback starts its replacement native session before deleting the superseded history.
+
+Claude agent discovery uses only the SDK’s `supportedAgents()` results. The SDK exposes name, description and model, without the originating configuration file path, so Glade does not fabricate an “open agent file” action. Claude child-message delivery uses its existing `PreToolUse` hook and the composer states that delivery occurs at the next tool call. Native task messages own lifecycle and progress. The isolated `claudeWorkflowRuntime.ts` reader remains because workflow child model and effort metadata are absent from those task messages.

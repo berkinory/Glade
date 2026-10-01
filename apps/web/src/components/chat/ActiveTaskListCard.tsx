@@ -1,9 +1,4 @@
-// FILE: ActiveTaskListCard.tsx
-// Purpose: Renders the active plan/task activity panel used above the composer.
-// Layer: Chat composer UI
-// Exports: ActiveTaskListCard
-
-import { pluralize } from "@glade/shared/text";
+import { pluralize } from "@glade/shared/text/text";
 import {
   PiArrowsInSimple,
   PiArrowsOutSimple,
@@ -20,7 +15,7 @@ import {
   ComposerStackedPanelRowLabel,
   ComposerStackedPanelRowMain,
 } from "./ComposerStackedPanelContent";
-import { COMPOSER_STACKED_PANEL_DIVIDER_CLASS_NAME } from "./ComposerStackedPanel";
+import { COMPOSER_STACKED_PANEL_DIVIDER_CLASS_NAME } from "./composerStackedPanelStyles";
 import {
   COMPOSER_STACKED_PANEL_BODY_PADDING_CLASS_NAME,
   COMPOSER_STACKED_PANEL_FOOTER_ROW_CLASS_NAME,
@@ -37,7 +32,6 @@ interface ActiveTaskListCardProps {
   onOpenSidebar: () => void;
 }
 
-// Maps task state to the compact status glyph shown in the activity list.
 function taskStatusIcon(status: ActiveTaskListState["tasks"][number]["status"]) {
   if (status === "completed") {
     return <CheckIcon className="size-3" />;

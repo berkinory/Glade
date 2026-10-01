@@ -1,4 +1,4 @@
-import type { OrchestrationEvent } from "@glade/contracts";
+import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import { Effect, Option } from "effect";
 
 import type { ProjectionRepositoryError } from "../persistence/Errors.ts";
@@ -15,7 +15,6 @@ export const PROJECT_METADATA_SNAPSHOT_PROJECTORS = [
   "projection.projects",
   "projection.threads",
   "projection.thread-messages",
-  "projection.thread-proposed-plans",
   "projection.thread-activities",
   "projection.thread-sessions",
   "projection.checkpoints",

@@ -1,15 +1,10 @@
-// FILE: computerProvisioning.test.ts
-// Purpose: Pin the one "set up computer control" vocabulary the chat card and the
-//          settings panel now share.
-// Layer: Web UI logic tests
-
 import type {
   ComputerProvisionResult,
   ComputerStatusResult,
-  DesktopComputerState,
-} from "@glade/contracts";
+} from "@glade/contracts/computer/computer";
+import type { DesktopComputerState } from "@glade/contracts/ipc/ipc";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { COMPUTER_PERMISSION_KINDS } from "@glade/shared/computerGrants";
+import { COMPUTER_PERMISSIONS } from "@glade/shared/computer/computerGrants";
 
 import {
   computerProvisionErrorToast,
@@ -61,8 +56,8 @@ describe("prepareComputerPermissionGuide", () => {
         isCurrent: () => true,
       }),
     ).resolves.toBe(false);
-    expect(getPermissionState).toHaveBeenCalledExactlyOnceWith(COMPUTER_PERMISSION_KINDS);
-    expect(startPermissionSetup).toHaveBeenCalledExactlyOnceWith(COMPUTER_PERMISSION_KINDS);
+    expect(getPermissionState).toHaveBeenCalledExactlyOnceWith(COMPUTER_PERMISSIONS);
+    expect(startPermissionSetup).toHaveBeenCalledExactlyOnceWith(COMPUTER_PERMISSIONS);
     expect(getStatus).not.toHaveBeenCalled();
   });
   it("does not open setup after cancellation overtakes the grant check", async () => {
@@ -225,9 +220,6 @@ describe("computerProvisionOutcome", () => {
 
 describe("computer provision toasts", () => {
   it("names the outstanding grants through the shared ordering", () => {
-    // Not hand-written: a second spelling of "Screen Recording and
-    // Accessibility" here against the card's ordering is exactly the drift
-    // `listComputerPermissions` exists to prevent.
     const toast = computerProvisionStartToast(["screenRecording", "accessibility"]);
     expect(toast.description).toContain("Accessibility and Screen Recording");
     expect(toast.type).toBe("info");
@@ -249,7 +241,7 @@ describe("computer provision toasts", () => {
       ),
     );
     expect(incomplete.type).toBe("warning");
-    // The server's own sentence, not a second account of it.
+
     expect(incomplete.description).toBe("Asked macOS.");
   });
 

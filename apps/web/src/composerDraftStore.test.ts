@@ -1,4 +1,4 @@
-import { ProjectId, ThreadId } from "@glade/contracts";
+import { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { selectComposerThreadDraft } from "./composerDraftDomain";
 import {
@@ -108,7 +108,7 @@ describe("composerDraftStore project draft thread mapping", () => {
       workingDirectory: null,
       envMode: "worktree",
       runtimeMode: "full-access",
-      interactionMode: "default",
+
       createdAt: "2026-01-01T00:00:00.000Z",
       lastKnownPr: null,
     });
@@ -119,7 +119,7 @@ describe("composerDraftStore project draft thread mapping", () => {
       workingDirectory: null,
       envMode: "worktree",
       runtimeMode: "full-access",
-      interactionMode: "default",
+
       createdAt: "2026-01-01T00:00:00.000Z",
       lastKnownPr: null,
     });
@@ -134,26 +134,6 @@ describe("composerDraftStore project draft thread mapping", () => {
     useComposerDraftStore.getState().setPrompt(otherThreadId, "thread b updated");
 
     expect(useComposerDraftStore.getState().draftsByThreadId[threadId]).toBe(threadADraft);
-  });
-
-  it("stages, trims, and clears a draft goal via context updates", () => {
-    const store = useComposerDraftStore.getState();
-    store.setProjectDraftThreadId(projectId, threadId, {});
-    expect(useComposerDraftStore.getState().getDraftThread(threadId)?.goal).toBeUndefined();
-
-    store.setDraftThreadContext(threadId, { goal: "  ship the snake game  " });
-    expect(useComposerDraftStore.getState().getDraftThread(threadId)?.goal).toBe(
-      "ship the snake game",
-    );
-
-    // Unrelated context updates keep the staged goal.
-    store.setDraftThreadContext(threadId, { branch: "feature/goal" });
-    expect(useComposerDraftStore.getState().getDraftThread(threadId)?.goal).toBe(
-      "ship the snake game",
-    );
-
-    store.setDraftThreadContext(threadId, { goal: "" });
-    expect(useComposerDraftStore.getState().getDraftThread(threadId)?.goal).toBeUndefined();
   });
 
   it("registers a standalone draft for staged navigation", () => {
@@ -481,23 +461,12 @@ describe("composerDraftStore runtime and interaction settings", () => {
     expect(useComposerDraftStore.getState().draftsByThreadId[threadId]?.runtimeMode).toBe("auto");
   });
 
-  it("stores interaction mode overrides in the composer draft", () => {
-    const store = useComposerDraftStore.getState();
-
-    store.setInteractionMode(threadId, "debug");
-
-    expect(useComposerDraftStore.getState().draftsByThreadId[threadId]?.interactionMode).toBe(
-      "debug",
-    );
-  });
-
   it("removes empty settings-only drafts when overrides are cleared", () => {
     const store = useComposerDraftStore.getState();
 
     store.setRuntimeMode(threadId, "approval-required");
-    store.setInteractionMode(threadId, "plan");
+
     store.setRuntimeMode(threadId, null);
-    store.setInteractionMode(threadId, null);
 
     expect(useComposerDraftStore.getState().draftsByThreadId[threadId]).toBeUndefined();
   });

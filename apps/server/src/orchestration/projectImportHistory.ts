@@ -1,12 +1,11 @@
-import type {
-  ProjectImportProvider,
-  ProviderStartOptions,
-  ThreadHandoffImportedMessage,
-  ThreadId,
-} from "@glade/contracts";
+import type { ProjectImportProvider } from "@glade/contracts/workspace/projectImport";
+import type { ProviderStartOptions } from "@glade/contracts/provider/sessionPolicy";
+import type { ThreadHandoffImportedMessage } from "@glade/contracts/orchestration/commands";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
+import type { ProviderAdapterError, ProviderUnsupportedError } from "../provider/core/Errors.ts";
 import { Data, Effect } from "effect";
-import { loadClaudeAgentSdk } from "../provider/claudeAgentSdk";
-import { readClaudeImportMessageDates } from "../provider/claudeProjectImport";
+import { loadClaudeAgentSdk } from "../provider/claude/claudeAgentSdk";
+import { readClaudeImportMessageDates } from "../provider/claude/claudeProjectImport";
 import type { ProviderAdapterRegistryShape } from "../provider/Services/ProviderAdapterRegistry";
 import { mapClaudeSessionMessages, mapCodexSnapshotMessages } from "./importedThreadMessages";
 
@@ -44,11 +43,14 @@ export interface ReadProjectImportHistoryInput {
 export function makeProjectImportHistoryReader(registry: ProviderAdapterRegistryShape) {
   return Effect.fn(function* (
     input: ReadProjectImportHistoryInput,
-  ): Effect.fn.Return<ReadonlyArray<ThreadHandoffImportedMessage>, unknown> {
+  ): Effect.fn.Return<
+    ReadonlyArray<ThreadHandoffImportedMessage>,
+    ProjectImportError | ProviderAdapterError | ProviderUnsupportedError
+  > {
     if (input.provider === "claudeAgent") {
       const messages = yield* projectImportPromise(async () => {
         const sdk = await loadClaudeAgentSdk();
-        // The fork has a new identity. Read that frozen copy, never the mutable original.
+
         const [history, dates] = await Promise.all([
           sdk.getSessionMessages(input.nativeId, { dir: input.sourceCwd }),
           readClaudeImportMessageDates({ sessionId: input.nativeId, configDir: input.sourceHome }),

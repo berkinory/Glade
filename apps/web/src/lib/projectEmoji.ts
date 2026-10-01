@@ -1,8 +1,3 @@
-// FILE: projectEmoji.ts
-// Purpose: The emoji the project picker offers, with search words. Curated and bundled so the
-//          picker works offline; any other emoji can still be typed or pasted into the search.
-// Layer: Web lib (data)
-
 export interface ProjectEmojiOption {
   readonly emoji: string;
   readonly keywords: string;
@@ -13,7 +8,6 @@ function entries(list: ReadonlyArray<readonly [string, string]>): ProjectEmojiOp
 }
 
 export const PROJECT_EMOJI_OPTIONS: ReadonlyArray<ProjectEmojiOption> = entries([
-  // Work and making things
   ["🚀", "rocket launch ship startup"],
   ["💡", "idea light bulb"],
   ["⚡", "lightning fast speed power"],
@@ -79,7 +73,7 @@ export const PROJECT_EMOJI_OPTIONS: ReadonlyArray<ProjectEmojiOption> = entries(
   ["✉️", "envelope email mail"],
   ["🛒", "cart shopping store ecommerce"],
   ["🏷️", "tag label price"],
-  // Study, health, and life
+
   ["🎓", "graduation cap school study education"],
   ["🏫", "school education"],
   ["🧮", "abacus math"],
@@ -110,7 +104,7 @@ export const PROJECT_EMOJI_OPTIONS: ReadonlyArray<ProjectEmojiOption> = entries(
   ["🍳", "cooking egg food recipe"],
   ["🍷", "wine drink"],
   ["🍰", "cake dessert"],
-  // Nature and animals
+
   ["🌱", "seedling plant grow green"],
   ["🌿", "herb leaf plant nature"],
   ["🌳", "tree nature forest"],
@@ -139,7 +133,7 @@ export const PROJECT_EMOJI_OPTIONS: ReadonlyArray<ProjectEmojiOption> = entries(
   ["🦀", "crab rust sea animal"],
   ["🐍", "snake python animal"],
   ["🐘", "elephant php animal"],
-  // Faces and hands
+
   ["😀", "grin smile happy face"],
   ["😎", "cool sunglasses face"],
   ["🤓", "nerd glasses face"],

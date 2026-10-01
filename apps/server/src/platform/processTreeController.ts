@@ -1,8 +1,4 @@
-// FILE: processTreeController.ts
-// Purpose: Captures, inspects, and signals owned process trees across platforms.
-// Layer: Server platform runtime
-
-import { spawnProcessSync } from "@glade/shared/processRuntime";
+import { spawnProcessSync } from "@glade/shared/platform/processRuntime";
 import treeKill from "tree-kill";
 
 import { captureWindowsProcessChildrenMap } from "./windowsProcessSnapshot";
@@ -12,67 +8,17 @@ const PROCESS_TREE_CAPTURE_ATTEMPTS = 2;
 const PROCESS_TREE_SCAN_MAX_BUFFER_BYTES = 8_388_608;
 const PROCESS_COMMAND_SCAN_MAX_BUFFER_BYTES = 8_388_608;
 
-export type ProcessChildrenMap = Map<number, Array<CapturedProcess>>;
-export type ProcessIdentityMap = Map<number, CapturedProcess>;
-
-export interface CapturedProcess {
-  readonly pid: number;
-  readonly command: string;
-  /** POSIX lstart or Windows CIM CreationDate; rejects observed PID reuse. */
-  readonly startedAt?: string;
-}
-
-export interface CapturedProcessTree {
-  readonly descendants: CapturedProcess[];
-  /** False when the platform process snapshot failed and descendant absence is unproven. */
-  readonly captureComplete?: boolean;
-}
-
-export interface CapturedProcessTreeInspection {
-  /** False when the process table could not be read, so exit cannot be proven. */
-  readonly verified: boolean;
-  readonly survivors: CapturedProcess[];
-}
-
-export type TerminalKillSignal = "SIGTERM" | "SIGKILL";
-
-export interface ProcessTreeKiller {
-  capture(rootPid: number): CapturedProcessTree;
-  inspect?(tree: CapturedProcessTree): CapturedProcessTreeInspection;
-  signal(input: {
-    readonly rootPid: number;
-    readonly signal: TerminalKillSignal;
-    readonly tree: CapturedProcessTree;
-    /**
-     * True only when `tree.descendants` were identity-verified immediately
-     * before this signal. This lets Windows use CIM CreationDate verification
-     * without falling back to POSIX `ps` before forced descendant cleanup.
-     */
-    readonly verifiedDescendants?: boolean | undefined;
-    readonly includeRootTree?: boolean | undefined;
-    readonly onError: (
-      error: Error,
-      context: { readonly pid: number; readonly source: "tree-kill" | "captured" },
-    ) => void;
-  }): void;
-}
-
-export interface ProcessTreeKillerDependencies {
-  readonly captureChildrenMap: () => ProcessChildrenMap | null;
-  readonly readCurrentProcesses: (pids: readonly number[]) => ProcessIdentityMap | null;
-  readonly signalPid: (pid: number, signal: TerminalKillSignal) => Error | null;
-  readonly signalTree: (
-    rootPid: number,
-    signal: TerminalKillSignal,
-    callback: (error?: Error | null) => void,
-  ) => void;
-}
-
-export interface PlatformProcessTreeOptions {
-  readonly platform?: NodeJS.Platform;
-  readonly processTreeKiller?: ProcessTreeKiller;
-  readonly captureWindowsChildren?: () => Promise<ProcessChildrenMap | null>;
-}
+import type {
+  ProcessChildrenMap,
+  ProcessIdentityMap,
+  CapturedProcess,
+  CapturedProcessTree,
+  CapturedProcessTreeInspection,
+  TerminalKillSignal,
+  ProcessTreeKiller,
+  ProcessTreeKillerDependencies,
+  PlatformProcessTreeOptions,
+} from "./processTreeModel";
 
 function isSignalablePid(pid: number): boolean {
   return Number.isSafeInteger(pid) && pid > 1 && pid <= 0x7fffffff;
@@ -103,7 +49,7 @@ export function collectDescendantProcesses(
   childrenByParentPid: ProcessChildrenMap,
 ): CapturedProcess[] {
   const descendants: CapturedProcess[] = [];
-  const stack = [...(childrenByParentPid.get(parentPid) ?? [])].reverse();
+  const stack = [...(childrenByParentPid.get(parentPid) ?? [])].toReversed();
   const visited = new Set<number>([parentPid]);
 
   while (stack.length > 0) {
@@ -113,7 +59,7 @@ export function collectDescendantProcesses(
     descendants.push(child);
 
     const nestedChildren = childrenByParentPid.get(child.pid) ?? [];
-    for (const nestedChild of [...nestedChildren].reverse()) {
+    for (const nestedChild of [...nestedChildren].toReversed()) {
       stack.push(nestedChild);
     }
   }
@@ -124,7 +70,6 @@ export function collectDescendantProcesses(
 function captureProcessChildrenMapSync(): ProcessChildrenMap | null {
   try {
     const result = spawnProcessSync("ps", ["-eo", "pid=,ppid=,lstart=,command="], {
-      // lstart uses locale-dependent %c; the parser expects the C locale's five tokens.
       env: { ...process.env, LC_ALL: "C" },
       encoding: "utf8",
       maxBuffer: PROCESS_TREE_SCAN_MAX_BUFFER_BYTES,
@@ -152,7 +97,7 @@ function readCurrentProcesses(pids: readonly number[]): ProcessIdentityMap | nul
       },
     );
     if (result.error) return null;
-    // ps exits 1 when none of the requested PIDs exist; other errors are unknown.
+
     if (result.status !== 0 && (result.status !== 1 || result.stderr.trim().length > 0))
       return null;
     return processesByPid(parseProcessChildrenMap(result.stdout, true));
@@ -188,12 +133,9 @@ function capturedProcessesForSignal(
   });
 }
 
-/**
- * Roots a teardown must never collect or signal: pid <= 1 (launchd/init),
- * out-of-range values, and this process itself. A fake or stale pid reaching
- * teardown (a test handle claiming pid 1 walked launchd's whole descendant
- * tree and SIGTERM'd the user session) must fail closed, not kill.
- */
+// Roots a teardown must never collect or signal: pid <= 1 (launchd/init), out-of-range values, and
+// this process itself. A fake or stale pid reaching teardown (a test handle claiming pid 1 walked
+// launchd's whole descendant tree and SIGTERM'd the user session) must fail closed, not kill.
 function isUnsafeProcessTreeRoot(rootPid: number): boolean {
   return !isSignalablePid(rootPid) || rootPid === globalThis.process.pid;
 }
@@ -215,8 +157,8 @@ export function createProcessTreeKiller(
         return { descendants: [], captureComplete: false };
       }
       if (globalThis.process.platform === "win32") {
-        // The synchronous terminal compatibility API cannot query CIM safely.
-        // Windows teardown owners must use captureProcessTree below.
+        // The synchronous terminal compatibility API cannot query CIM safely. Windows teardown owners must
+        // use captureProcessTree below.
         return { descendants: [], captureComplete: false };
       }
       let childrenByParentPid: ProcessChildrenMap | null = null;
@@ -228,10 +170,7 @@ export function createProcessTreeKiller(
         childrenByParentPid = deps.captureChildrenMap();
       }
       if (!childrenByParentPid) return { descendants: [], captureComplete: false };
-      // A root absent from the snapshot — neither a child of another process
-      // nor a parent key — is provably not running, and refusing to collect
-      // also closes the stale-pid kill path. Sparse maps may legitimately list
-      // a live root only as a parent key, so parentage alone counts as presence.
+
       if (!childrenByParentPid.has(rootPid) && !processesByPid(childrenByParentPid).has(rootPid)) {
         return { descendants: [], captureComplete: true };
       }
@@ -269,9 +208,6 @@ export function createProcessTreeKiller(
       includeRootTree = true,
       onError,
     }) => {
-      // Refuse even when a caller supplies its own tree: signalTree (tree-kill)
-      // walks the live process table itself, so an unsafe rootPid would kill
-      // far more than `tree.descendants`.
       if (isUnsafeProcessTreeRoot(rootPid)) return;
       const capturedProcesses = capturedProcessesForSignal(
         tree.descendants,
@@ -301,13 +237,12 @@ function processesByPid(childrenByParentPid: ProcessChildrenMap): Map<number, Ca
 }
 
 function sameCapturedIdentity(expected: CapturedProcess, current: CapturedProcess): boolean {
-  // Start time adds evidence to the existing command check. POSIX lstart has
-  // second resolution: it must not authorize a different command on its own.
+  // Start time adds evidence to the existing command check. POSIX lstart has second resolution: it
+  // must not authorize a different command on its own.
   if (expected.command !== current.command) return false;
   return expected.startedAt === undefined || current.startedAt === expected.startedAt;
 }
 
-/** Capture descendants using the native platform observer. */
 export async function captureProcessTree(
   rootPid: number,
   options: PlatformProcessTreeOptions = {},
@@ -329,7 +264,6 @@ export async function captureProcessTree(
   };
 }
 
-/** A fresh OS observation, independent of Node's potentially delayed exit notification. */
 export async function isProcessRunning(
   rootPid: number,
   options: PlatformProcessTreeOptions = {},
@@ -347,15 +281,13 @@ export async function isProcessRunning(
       timeout: PROCESS_TREE_SCAN_TIMEOUT_MS,
     });
     if (result.error || result.status !== 0) return false;
-    // kill(pid, 0) also succeeds for zombies. Accept only live POSIX process states;
-    // Z (zombie), X (dead), missing output, and unknown states cannot prove liveness.
+
     return /^[RSDITUWt]/.test(result.stdout.trim());
   } catch {
     return false;
   }
 }
 
-/** Inspect the exact captured identities; snapshot failure is never interpreted as exit. */
 export async function inspectProcessTree(
   tree: CapturedProcessTree,
   options: PlatformProcessTreeOptions = {},
@@ -387,7 +319,6 @@ export async function inspectProcessTree(
   };
 }
 
-/** Signal an owned tree through one platform boundary (taskkill /T on Windows via tree-kill). */
 export function signalProcessTree(input: {
   readonly rootPid: number;
   readonly signal: TerminalKillSignal;
@@ -411,13 +342,10 @@ export function signalProcessTree(input: {
   });
 }
 
-/**
- * Signal one owned child the way the host platform can honor it. POSIX callers
- * keep Node's direct, synchronous `child.kill` (a stopped git or CLI must not
- * depend on `ps`/`pgrep` being installed); Windows routes through the tree
- * boundary because a `.cmd` shim runs under cmd.exe and only `taskkill /T`
- * reaches the real command behind it.
- */
+// Signal one owned child the way the host platform can honor it. POSIX callers keep Node's direct,
+// synchronous `child.kill` (a stopped git or CLI must not depend on `ps`/`pgrep` being installed);
+// Windows routes through the tree boundary because a `.cmd` shim runs under cmd.exe and only
+// `taskkill /T` reaches the real command behind it.
 export function signalOwnedChildProcess(
   child: { readonly pid?: number | undefined; kill(signal?: NodeJS.Signals): unknown },
   signal: TerminalKillSignal,

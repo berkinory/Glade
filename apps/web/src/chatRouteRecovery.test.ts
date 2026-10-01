@@ -1,4 +1,4 @@
-import type { NativeApi } from "@glade/contracts";
+import type { NativeApi } from "@glade/contracts/ipc/ipc";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { refreshEmptyRouteRestoreSnapshot } from "./chatRouteRecovery";

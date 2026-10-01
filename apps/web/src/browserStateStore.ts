@@ -1,14 +1,9 @@
-/**
- * Lightweight browser metadata cache keyed by thread.
- *
- * The live browser surface stays in Electron; the web app only keeps enough
- * state to render tabs/toolbars and survive thread switches predictably.
- */
-
-import type { ThreadBrowserState, ThreadId } from "@glade/contracts";
+import { isRecord } from "@glade/shared/transport/payloadValues";
+import type { ThreadBrowserState } from "@glade/contracts/ipc/ipc";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { isPlainObject, sanitizeStringKeyedRecord } from "./persistedRecord";
+import { sanitizeStringKeyedRecord } from "./persistedRecord";
 
 const BROWSER_STATE_STORAGE_KEY = "glade:browser-state:v1";
 const BROWSER_HISTORY_LIMIT = 12;
@@ -29,8 +24,11 @@ export interface BrowserHistoryEntry {
 interface BrowserStateStore {
   threadStatesByThreadId: Record<string, ThreadBrowserState | undefined>;
   recentHistoryByThreadId: Record<string, BrowserHistoryEntry[] | undefined>;
+  floatingRequestedByThreadId: Record<string, true | undefined>;
   upsertThreadState: (state: ThreadBrowserState) => void;
   removeThreadState: (threadId: ThreadId) => void;
+  requestFloating: (threadId: ThreadId) => void;
+  dismissFloating: (threadId: ThreadId) => void;
 }
 
 function normalizeHistoryUrl(url: string): string {
@@ -83,7 +81,7 @@ function sameBrowserHistoryEntries(
 }
 
 function sanitizeBrowserHistoryEntry(rawEntry: unknown): BrowserHistoryEntry | null {
-  if (!isPlainObject(rawEntry)) {
+  if (!isRecord(rawEntry)) {
     return null;
   }
   const { url, title, tabId } = rawEntry;
@@ -93,8 +91,8 @@ function sanitizeBrowserHistoryEntry(rawEntry: unknown): BrowserHistoryEntry | n
   return { url, title, tabId };
 }
 
-// Drops malformed persisted history so a corrupt entry can never reach the
-// upsert path (which dereferences `entry.url`) or render as a broken tab.
+// Drops malformed persisted history so a corrupt entry can never reach the upsert path (which
+// dereferences `entry.url`) or render as a broken tab.
 function sanitizeRecentHistoryByThreadId(value: unknown): Record<string, BrowserHistoryEntry[]> {
   return sanitizeStringKeyedRecord(value, (rawEntries) => {
     if (!Array.isArray(rawEntries)) {
@@ -104,8 +102,7 @@ function sanitizeRecentHistoryByThreadId(value: unknown): Record<string, Browser
       .map(sanitizeBrowserHistoryEntry)
       .filter((entry): entry is BrowserHistoryEntry => entry !== null)
       .slice(0, BROWSER_HISTORY_LIMIT);
-    // Drop threads whose history fully fails validation so we don't retain
-    // empty placeholder keys in storage.
+
     return entries.length > 0 ? entries : null;
   });
 }
@@ -138,13 +135,31 @@ export const useBrowserStateStore = create<BrowserStateStore>()(
     (set) => ({
       threadStatesByThreadId: {},
       recentHistoryByThreadId: {},
+      floatingRequestedByThreadId: {},
+      requestFloating: (threadId) =>
+        set((current) =>
+          current.floatingRequestedByThreadId[threadId]
+            ? current
+            : {
+                floatingRequestedByThreadId: {
+                  ...current.floatingRequestedByThreadId,
+                  [threadId]: true,
+                },
+              },
+        ),
+      dismissFloating: (threadId) =>
+        set((current) => {
+          if (!current.floatingRequestedByThreadId[threadId]) return current;
+          const floatingRequestedByThreadId = { ...current.floatingRequestedByThreadId };
+          delete floatingRequestedByThreadId[threadId];
+          return { floatingRequestedByThreadId };
+        }),
       upsertThreadState: (state) =>
         set((current) => {
           const previousState = current.threadStatesByThreadId[state.threadId];
-          // Main pushes state before some invoke Promises resolve. A delayed
-          // response can therefore arrive after a newer onState snapshot; it
-          // must never roll browser chrome (or the renderer binding inputs)
-          // back to an older tab/runtime generation.
+          // Main pushes state before some invoke Promises resolve. A delayed response can therefore arrive
+          // after a newer onState snapshot; it must never roll browser chrome (or the renderer binding
+          // inputs) back to an older tab/runtime generation.
           if (previousState && previousState.version >= state.version) {
             return current;
           }
@@ -223,4 +238,10 @@ export function selectThreadBrowserHistory(
   threadId: ThreadId,
 ): (store: BrowserStateStore) => BrowserHistoryEntry[] {
   return (store) => store.recentHistoryByThreadId[threadId] ?? EMPTY_BROWSER_HISTORY;
+}
+
+export function selectFloatingBrowserRequested(
+  threadId: ThreadId,
+): (store: BrowserStateStore) => boolean {
+  return (store) => store.floatingRequestedByThreadId[threadId] === true;
 }

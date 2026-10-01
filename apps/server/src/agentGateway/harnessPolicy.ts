@@ -2,7 +2,6 @@ import { computerToolInstructions } from "./computerGuidance.ts";
 
 import { AUTOMATION_AUTHORING_GUIDANCE } from "./automationAuthoringGuidance.ts";
 
-/** Canonical, versioned host policy delivered to every supported provider. */
 export const GLADE_HARNESS_POLICY_VERSION = "2026-09-20.1";
 export const GLADE_HARNESS_POLICY_MARKER = `[Glade harness policy ${GLADE_HARNESS_POLICY_VERSION}]`;
 
@@ -12,11 +11,6 @@ export interface GladeHarnessCapabilities {
   readonly enableComputerControl?: boolean | undefined;
 }
 
-/**
- * Render one truthful policy. Providers without a safely thread-scoped MCP
- * connection still receive host identity, but are never told they can mutate
- * Glade resources.
- */
 export function renderGladeHarnessPolicy(capabilities: GladeHarnessCapabilities): string {
   const controlPolicy = capabilities.gatewayControlAvailable
     ? [
@@ -24,7 +18,6 @@ export function renderGladeHarnessPolicy(capabilities: GladeHarnessCapabilities)
         "Give a completion report: outcome, checks, limitations. Inspect browser_screenshot({kind:'proof'}); embed artifactPath as ![Result description](/absolute/path.png), also for generated images. No secrets or invented proof; skip open-only proof.",
         "When explicitly asked for E2E/end-to-end tests, call glade_e2e_review. Do not load it for unrelated work.",
         "For any-language requests involving Glade's integrated, embedded, or in-app browser, use browser_* autonomously as its canonical, complete control surface; never substitute Chrome, Computer Use, Playwright, OS-automation tools/skills, or change the user's active chat. Detailed rules live in each tool description.",
-        "For any-language iOS app or simulator request, call device_* directly and autonomously as the canonical, complete control surface; never use xcrun simctl, AppleScript, Appium, idb, open Simulator.app, or substitute mobile/OS-automation tools/skills, because the user watches the streamed pane. Detailed rules live in each tool description.",
         "For thread discovery and diagnosis, use glade_list_threads, glade_read_thread, glade_read_thread_activity, glade_read_thread_events, glade_read_thread_runtime_events, and glade_diagnose_thread before SQLite or process logs. Use host storage only when tool coverage says required evidence is unavailable.",
         "After successfully creating a pull request for the current thread's own deliverable, call glade_set_thread_pull_request with its URL. Never associate a pull request that the thread only reviews, references, or discusses.",
         "Provider-native subagent or Task tools are implementation details: they do not create Glade threads and must not substitute for an explicit request to create Glade threads.",
@@ -38,7 +31,7 @@ export function renderGladeHarnessPolicy(capabilities: GladeHarnessCapabilities)
         "Mode controls execution: heartbeat appends to an idle target thread; standalone opens a fresh thread per independent run; dedicated reuses one automation-owned thread so runs build on each other without writing into another thread.",
         "Prefer dedicated for ongoing observation or tracking: standalone runs cannot see prior runs beyond memory, while dedicated keeps one growing thread.",
         'Mode does not restrict stop conditions. completionPolicy {"type":"ai-evaluated","stopWhen":"..."} works in both modes and disables the automation when the clause matches a successful run; prefer it over encoding the stop condition in the prompt. maxIterations remains the backstop, and an automation-dispatched run may always call glade_cancel_automation on its own automation.',
-        // Claude discovers these same instructions on create/update tool schemas.
+
         ...(capabilities.automationAuthoring === "tool-descriptions"
           ? []
           : [AUTOMATION_AUTHORING_GUIDANCE]),
@@ -65,7 +58,3 @@ export function renderGladeHarnessPolicy(capabilities: GladeHarnessCapabilities)
       : []),
   ].join("\n");
 }
-
-export const GLADE_GATEWAY_HARNESS_POLICY = renderGladeHarnessPolicy({
-  gatewayControlAvailable: true,
-});

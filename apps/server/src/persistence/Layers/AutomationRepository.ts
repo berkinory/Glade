@@ -9,13 +9,10 @@ import {
   AutomationSchedule,
   DEFAULT_AUTOMATION_STOP_AFTER_CONSECUTIVE_FAILURES,
   DEFAULT_AUTOMATION_RUNTIME_MODE,
-  ModelSelection,
-  NonNegativeInt,
-  ProviderStartOptions,
-  ProjectId,
-  TurnId,
-} from "@glade/contracts";
-import { automationRequiresTargetThread } from "@glade/shared/automationMode";
+} from "@glade/contracts/automation/automation";
+import { ModelSelection, ProviderStartOptions } from "@glade/contracts/provider/sessionPolicy";
+import { NonNegativeInt, ProjectId, TurnId } from "@glade/contracts/core/baseSchemas";
+import { automationRequiresTargetThread } from "@glade/shared/threads/automationMode";
 import { Effect, Layer, Option, Schema } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as SqlSchema from "effect/unstable/sql/SqlSchema";
@@ -82,7 +79,7 @@ const AutomationDefinitionDbRow = Schema.Struct({
   modelSelection: Schema.fromJsonString(ModelSelection),
   providerOptions: Schema.NullOr(Schema.fromJsonString(ProviderStartOptions)),
   runtimeMode: AutomationDefinition.fields.runtimeMode,
-  interactionMode: AutomationDefinition.fields.interactionMode,
+
   worktreeMode: AutomationDefinition.fields.worktreeMode,
   mode: AutomationDefinition.fields.mode,
   targetThreadId: AutomationDefinition.fields.targetThreadId,
@@ -157,10 +154,11 @@ function withResultDefaults(run: AutomationRun): NonNullable<AutomationRun["resu
 const decodeDefinition = Schema.decodeUnknownEffect(AutomationDefinition);
 const decodeRun = Schema.decodeUnknownEffect(AutomationRun);
 
-/** Upper bound on how many run rows the list query returns to a client snapshot. */
 const MAX_RUN_LIST_ROWS = 500;
 
-class AutomationRunClaimRejected extends Error {}
+class AutomationRunClaimRejected extends Error {
+  readonly _tag = "AutomationRunClaimRejected";
+}
 
 const ClaimAutomationIterationInput = Schema.Struct({
   id: AutomationDefinition.fields.id,
@@ -204,7 +202,6 @@ const makeAutomationRepository = Effect.gen(function* () {
           model_selection_json,
           provider_options_json,
           runtime_mode,
-          interaction_mode,
           worktree_mode,
           mode,
           target_thread_id,
@@ -242,7 +239,6 @@ const makeAutomationRepository = Effect.gen(function* () {
           ${definition.modelSelection},
           ${definition.providerOptions},
           ${definition.runtimeMode},
-          ${definition.interactionMode},
           ${definition.worktreeMode},
           ${definition.mode},
           ${definition.targetThreadId},
@@ -288,7 +284,6 @@ const makeAutomationRepository = Effect.gen(function* () {
           model_selection_json AS "modelSelection",
           provider_options_json AS "providerOptions",
           runtime_mode AS "runtimeMode",
-          interaction_mode AS "interactionMode",
           worktree_mode AS "worktreeMode",
           mode,
           target_thread_id AS "targetThreadId",
@@ -339,7 +334,6 @@ const makeAutomationRepository = Effect.gen(function* () {
             model_selection_json = ${definition.modelSelection},
             provider_options_json = ${definition.providerOptions},
             runtime_mode = ${definition.runtimeMode},
-            interaction_mode = ${definition.interactionMode},
             worktree_mode = ${definition.worktreeMode},
             mode = ${definition.mode},
             target_thread_id = ${definition.targetThreadId},
@@ -408,7 +402,6 @@ const makeAutomationRepository = Effect.gen(function* () {
           model_selection_json AS "modelSelection",
           provider_options_json AS "providerOptions",
           runtime_mode AS "runtimeMode",
-          interaction_mode AS "interactionMode",
           worktree_mode AS "worktreeMode",
           mode,
           target_thread_id AS "targetThreadId",
@@ -462,7 +455,6 @@ const makeAutomationRepository = Effect.gen(function* () {
           definitions.model_selection_json AS "modelSelection",
           definitions.provider_options_json AS "providerOptions",
           definitions.runtime_mode AS "runtimeMode",
-          definitions.interaction_mode AS "interactionMode",
           definitions.worktree_mode AS "worktreeMode",
           definitions.mode,
           definitions.target_thread_id AS "targetThreadId",
@@ -1055,11 +1047,6 @@ const makeAutomationRepository = Effect.gen(function* () {
       `,
   });
 
-  // Writes a new result but carries the triage fields (archivedAt/unread) over from the
-  // existing row atomically, so a background update can never clobber a concurrent user
-  // archive/mark-read landing between the run reload and this write.
-  // unread is round-tripped through json() so it stays a JSON boolean rather than the
-  // 0/1 that json_extract yields.
   const markRunResultPreservingTriageRow = SqlSchema.void({
     Request: MarkAutomationRunResultInput,
     execute: ({ id, result, updatedAt }) =>
@@ -1552,11 +1539,10 @@ const makeAutomationRepository = Effect.gen(function* () {
       modelSelection: input.modelSelection,
       ...(input.providerOptions ? { providerOptions: input.providerOptions } : {}),
       runtimeMode: input.runtimeMode ?? DEFAULT_AUTOMATION_RUNTIME_MODE,
-      interactionMode: input.interactionMode ?? "default",
+
       worktreeMode: input.worktreeMode ?? "auto",
       mode,
-      // Only heartbeat takes a caller-supplied thread. A dedicated automation starts
-      // without one and claims the thread its first run creates.
+
       targetThreadId: automationRequiresTargetThread(mode) ? (input.targetThreadId ?? null) : null,
       proposalState: input.proposalState ?? null,
       notificationPolicy: input.notificationPolicy ?? "all",
@@ -1722,9 +1708,7 @@ const makeAutomationRepository = Effect.gen(function* () {
       turnId: null,
       triggerType: run.trigger.type,
     }).pipe(Effect.mapError(toPersistenceSqlError("AutomationRepository.createRun:insert")));
-    // Scheduled runs dedupe on (automationId, scheduledFor) via INSERT OR IGNORE +
-    // the partial unique index, so a re-run of the same occurrence returns the existing
-    // row. Manual runs are never deduped and are read back by their own run id.
+
     if (run.trigger.type === "scheduled") {
       return inserted.pipe(
         Effect.flatMap(() =>

@@ -1,17 +1,9 @@
-// FILE: ActivityHeatmap.tsx
-// Purpose: GitHub-style contribution heatmap shared by the Profile page and the
-// shareable card. Renders columns of week × weekday cells with pre-bucketed
-// intensity. Sizing uses inline px so html-to-image reproduces it exactly.
-// Layer: web profile feature.
-
 import { type CSSProperties } from "react";
-import type { ProfileHeatmapCell } from "@glade/contracts";
+import type { ProfileHeatmapCell } from "@glade/contracts/server/stats";
 import { cn } from "~/lib/utils";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { formatCompact, formatShortDate } from "./profileFormatting";
 
-// Single-hue ramp built from the theme accent (`--info`, defaults to blue-500) for the
-// in-app page (level 0 → 4). Mixes toward transparent so it sits well on light/dark.
 const APP_HEATMAP_INTENSITY_CLASSES: readonly string[] = [
   "bg-muted/70 dark:bg-white/[0.06]",
   "bg-[color-mix(in_srgb,var(--info)_24%,transparent)]",
@@ -20,10 +12,6 @@ const APP_HEATMAP_INTENSITY_CLASSES: readonly string[] = [
   "bg-[var(--info)]",
 ];
 
-// Accent ramp for the exported card. Mixes toward white so the steps stay opaque on the
-// card's white background and reproduce identically via html-to-image. Level 0 mirrors the
-// in-app heatmap's empty cell (`bg-muted/70`, i.e. black ~2.8%) flattened to an opaque color
-// on white, so the exported image matches the empty-box color shown in the app.
 export const CARD_HEATMAP_INTENSITY_CLASSES: readonly string[] = [
   "bg-[color-mix(in_srgb,black_2.8%,white)]",
   "bg-[color-mix(in_srgb,var(--info)_22%,white)]",
@@ -49,30 +37,24 @@ const MONTH_LABELS = [
 
 interface ActivityHeatmapProps {
   readonly cells: ReadonlyArray<ProfileHeatmapCell>;
-  readonly cellSize?: number;
-  readonly gap?: number;
-  readonly radius?: number;
   readonly intensityClasses?: readonly string[];
-  readonly showMonths?: boolean;
-  readonly monthsPosition?: "top" | "bottom";
-  readonly monthLabelClassName?: string;
-  /**
-   * Stretch columns to fill the container width (responsive square cells) instead
-   * of using a fixed `cellSize`. Used by the in-app panel so the grid never scrolls
-   * horizontally; the exported card keeps fixed px so html-to-image is exact.
-   */
-  readonly fill?: boolean;
-  /**
-   * In `fill` mode, stretch week columns across the container. When set, `maxCellSize`
-   * caps each square cell's maximum size; columns shrink below that cap if needed so the
-   * grid never overflows horizontally.
-   */
-  readonly maxCellSize?: number;
-  /** Show a styled tooltip on hover. Leave off for the exported card (html-to-image). */
-  readonly tooltip?: boolean;
-  /** Noun used in the tooltip, e.g. "prompts" or "tokens". */
-  readonly tooltipUnit?: string;
   readonly className?: string;
+  readonly layout?: {
+    readonly cellSize?: number;
+    readonly gap?: number;
+    readonly radius?: number;
+    readonly fill?: boolean;
+    readonly maxCellSize?: number;
+  };
+  readonly months?: {
+    readonly show?: boolean;
+    readonly position?: "top" | "bottom";
+    readonly labelClassName?: string;
+  };
+  readonly tooltip?: {
+    readonly show?: boolean;
+    readonly unit?: string;
+  };
 }
 
 function heatmapTooltipText(cell: ProfileHeatmapCell, unit: string): string {
@@ -95,28 +77,23 @@ interface Column {
 
 export function ActivityHeatmap({
   cells,
-  cellSize: cellSizeProp,
-  gap: gapProp,
-  radius: radiusProp,
   intensityClasses: intensityClassesProp,
-  showMonths: showMonthsProp,
-  monthsPosition: monthsPositionProp,
-  monthLabelClassName,
-  fill: fillProp,
-  maxCellSize,
-  tooltip: tooltipProp,
-  tooltipUnit: tooltipUnitProp,
   className,
+  layout,
+  months,
+  tooltip: tooltipOptions,
 }: ActivityHeatmapProps) {
-  const cellSize = cellSizeProp ?? 13;
-  const gap = gapProp ?? 3;
-  const radius = radiusProp ?? 4;
+  const cellSize = layout?.cellSize ?? 13;
+  const gap = layout?.gap ?? 3;
+  const radius = layout?.radius ?? 4;
   const intensityClasses = intensityClassesProp ?? APP_HEATMAP_INTENSITY_CLASSES;
-  const showMonths = showMonthsProp ?? false;
-  const monthsPosition = monthsPositionProp ?? "top";
-  const fill = fillProp ?? false;
-  const tooltip = tooltipProp ?? false;
-  const tooltipUnit = tooltipUnitProp ?? "prompts";
+  const showMonths = months?.show ?? false;
+  const monthsPosition = months?.position ?? "top";
+  const monthLabelClassName = months?.labelClassName;
+  const fill = layout?.fill ?? false;
+  const maxCellSize = layout?.maxCellSize;
+  const tooltip = tooltipOptions?.show ?? false;
+  const tooltipUnit = tooltipOptions?.unit ?? "prompts";
   const columns: Column[] = [];
   if (cells.length > 0) {
     const slots: Slot[] = [];

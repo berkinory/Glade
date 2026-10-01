@@ -1,13 +1,5 @@
-// FILE: SidebarActivityView.tsx
-// Purpose: Task-feed sidebar surface — every thread is a 2-line task row
-//          (provider + title / project + branch) grouped by status, with settle.
-// Layer: Sidebar UI component
-// Exports: SidebarActivityView
-
 import {
-  useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type MouseEvent,
@@ -15,8 +7,9 @@ import {
   type ReactNode,
 } from "react";
 
-import type { OrchestrationThreadPullRequest, ProjectId, ThreadId } from "@glade/contracts";
-import { resolveThreadEnvironmentMode } from "@glade/shared/threadEnvironment";
+import type { OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/threadEntities";
+import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
+import { resolveThreadEnvironmentMode } from "@glade/shared/threads/threadEnvironment";
 
 import {
   AddPlusIcon,
@@ -45,12 +38,12 @@ import { ProviderIcon } from "./ProviderIcon";
 import { PrStateChip } from "./pullRequest/PrStateChip";
 import {
   createSidebarThreadHoverAnchorId,
-  resolveSidebarThreadListPaging,
   resolveThreadDisplayBranch,
   resolveThreadProjectLabel,
   resolveThreadStatusTrailingIndicator,
   type ThreadStatusPill,
-} from "./Sidebar.logic";
+} from "./Sidebar.logic.statusTypes";
+import { resolveSidebarThreadListPaging } from "./Sidebar.logic.status";
 import {
   buildActivityViewModel,
   collectActivityScopeOptions,
@@ -94,7 +87,6 @@ const ACTIVITY_LIST_BASE_LIMIT = 20;
 const ACTIVITY_LIST_PAGE_SIZE = 20;
 const EMPTY_PROJECT_GROUPS: ActivityProjectGroup[] = [];
 
-/** Keeps a row action (pin, archive, done) from also opening the thread. */
 function stopRowActivation(event: MouseEvent) {
   event.preventDefault();
   event.stopPropagation();
@@ -148,13 +140,9 @@ function ActivityThreadRow({
     threadId: thread.id,
   });
   const actionToneClassName = "text-muted-foreground/42";
-  // One trailing slot, top-right, shared by every status: the accent dot for an
-  // unread completion and the running spinner (or state dot) for everything
-  // else — same rule and same glyphs the classic thread/project rows use.
+
   const trailingStatus = resolveThreadStatusTrailingIndicator({ status, isActive });
-  // Rename/context-menu gestures live on the row wrapper (not the title button) so
-  // they also fire over the trailing status and hover-action cluster, which are
-  // absolutely positioned siblings of the button.
+
   const rowGestures = createSidebarThreadRowGestures({
     threadId: thread.id,
     onRename,
@@ -171,6 +159,7 @@ function ActivityThreadRow({
             data-thread-hover-anchor={hoverAnchorId}
             className="group/activity-row relative"
             data-thread-item
+            data-sidebar-thread-id={thread.id}
             {...rowGestures}
           />
         }
@@ -178,8 +167,6 @@ function ActivityThreadRow({
         <button
           type="button"
           onClick={onOpen}
-          // Same native drag as the classic thread rows: drop on a chat pane to
-          // split, or on a composer to @mention the chat.
           draggable
           onDragStart={(event) => beginThreadDrag(event, thread.id)}
           onDragEnd={endThreadDrag}
@@ -194,7 +181,7 @@ function ActivityThreadRow({
           <span
             className={cn(
               "flex min-w-0 items-center gap-1.5 overflow-hidden pr-5 transition-[padding] duration-120 ease-out",
-              // Yield the title row to the hover action cluster (pin + archive + done).
+
               "group-hover/activity-row:pr-[4.25rem] group-focus-within/activity-row:pr-[4.25rem]",
             )}
           >
@@ -255,9 +242,8 @@ function ActivityThreadRow({
         ) : null}
         <span
           className="absolute top-1 right-1 inline-flex items-center gap-1 opacity-0 transition-opacity group-hover/activity-row:opacity-100 group-focus-within/activity-row:opacity-100"
-          // Double-clicking an action button toggles it twice; it must not also open
-          // the row's rename dialog. Pointer-up is the touch/pen double-tap signal,
-          // so keep action taps out of that detector too.
+          // Double-clicking an action button toggles it twice; it must not also open the row's rename dialog.
+          // Pointer-up is the touch/pen double-tap signal, so keep action taps out of that detector too.
           onDoubleClick={stopRowActivation}
           onPointerUp={(event) => event.stopPropagation()}
         >
@@ -299,7 +285,7 @@ function ActivitySectionLabel({
   onContextMenu,
 }: {
   label: string;
-  /** Project blocks carry the same right-click menu as a classic project row. */
+
   onContextMenu?: (position: SidebarRowContextMenuPosition) => void;
 }) {
   return (
@@ -321,11 +307,6 @@ function ActivitySectionLabel({
   );
 }
 
-/**
- * Collapsible section (Pinned, Earlier, Settled): the same label + inline
- * disclosure chevron the classic "Chats" header uses, with the shared
- * disclosure motion. Section-to-section spacing is owned by the parent list.
- */
 function ActivityCollapsibleSection({
   label,
   open,
@@ -360,10 +341,6 @@ function ActivityCollapsibleSection({
   );
 }
 
-/**
- * The header doubles as the activity scope switcher: clicking it opens the
- * project menu, and its label always reflects the currently visible scope.
- */
 function ActivityScopeMenu({
   options,
   projectById,
@@ -444,10 +421,6 @@ function ActivityScopeMenu({
   );
 }
 
-/**
- * Header filter control: picks how the feed groups its sections (by time or by
- * project) and hosts "Mark all as read" below that choice.
- */
 function ActivityFilterMenu({
   groupMode,
   onChangeGroupMode,
@@ -558,7 +531,7 @@ export function SidebarActivityView({
   onVisibleThreadIdsChange: (threadIds: readonly ThreadId[]) => void;
   resolveThreadStatus: (thread: SidebarThreadSummary) => ThreadStatusPill | null;
   onOpenThread: (threadId: ThreadId) => void;
-  /** PR chip click: plain click opens it in the thread, cmd/ctrl/middle-click on GitHub. */
+
   onOpenThreadPullRequest: (
     event: MouseEvent<HTMLElement>,
     thread: SidebarThreadSummary,
@@ -567,21 +540,21 @@ export function SidebarActivityView({
   onSetThreadSettled: (threadId: ThreadId, settled: boolean) => void;
   onToggleThreadPinned: (threadId: ThreadId) => void;
   onArchiveThread: (threadId: ThreadId) => void;
-  /** Records a completion as seen (the classic sidebar's markThreadVisited). */
+
   onMarkThreadRead: (threadId: ThreadId, completedAt?: string) => void;
-  /** Double-click a row (the classic sidebar's rename gesture). */
+
   onRenameThread: (threadId: ThreadId) => void;
-  /** Touch/pen double-tap fallback for the same rename gesture. */
+
   onThreadRenamePointerUp: (event: ReactPointerEvent<HTMLElement>, threadId: ThreadId) => void;
-  /** Right-click a row: the full thread menu, including Copy Thread ID. */
+
   onThreadContextMenu: (threadId: ThreadId, position: SidebarRowContextMenuPosition) => void;
-  /** Right-click a project block header: the same menu a classic project row opens. */
+
   onProjectContextMenu: (projectId: ProjectId, position: SidebarRowContextMenuPosition) => void;
-  /** Same rich hover card the classic thread rows show at the sidebar edge. */
+
   renderThreadHoverCard: (thread: SidebarThreadSummary, anchorId: string) => ReactNode;
-  /** Starts a new chat in the current or most recently used ordinary project. */
+
   onCreateChat: () => void;
-  /** Same "Add project" action the Projects section header runs. */
+
   onAddProject: () => void;
 }) {
   const [scopeSelection, setScopeSelection] = useState<ActivityScopeSelection>(null);
@@ -595,20 +568,10 @@ export function SidebarActivityView({
     () => new Map(),
   );
 
-  const isRealProject = useCallback(
-    (projectId: ProjectId) => projectById.get(projectId)?.kind === "project",
-    [projectById],
-  );
-  // The feed derivations below are pure and `threads` is reference-stable
-  // across most sidebar renders, so each is memoized on its own inputs instead
-  // of re-running six passes and four sorts over every activity thread per render.
-  // Scope options and the unread sweep intentionally ignore the active scope:
-  // the menu must keep offering every project, and "Mark all as read" means all.
-  const scopeOptions = useMemo(
-    () => collectActivityScopeOptions(threads, isRealProject),
-    [isRealProject, threads],
-  );
-  const unreadThreads = useMemo(() => collectUnreadActivityThreads(threads), [threads]);
+  const isRealProject = (projectId: ProjectId) => projectById.get(projectId)?.kind === "project";
+
+  const scopeOptions = collectActivityScopeOptions(threads, isRealProject);
+  const unreadThreads = collectUnreadActivityThreads(threads);
 
   const { scope: activeScope, projectFilterIds } = resolveActivityScope(
     scopeSelection,
@@ -618,35 +581,24 @@ export function SidebarActivityView({
     if (scopeSelection !== activeScope) setScopeSelection(activeScope);
   }, [activeScope, scopeSelection]);
 
-  const model = useMemo(
-    () =>
-      buildActivityViewModel({
-        threads,
-        pinnedThreadIdSet,
-        settledOverrideByThreadId,
-        projectFilterIds,
-      }),
-    [pinnedThreadIdSet, projectFilterIds, settledOverrideByThreadId, threads],
-  );
+  const model = buildActivityViewModel({
+    threads,
+    pinnedThreadIdSet,
+    settledOverrideByThreadId,
+    projectFilterIds,
+  });
   const scopedPinnedThreads = model.pinned;
-  // Coarse clock so the date bucketing memo stays effective across renders that
-  // happen within the same minute; buckets are day-granular anyway.
+
   const nowMs = Math.floor(Date.now() / 60_000) * 60_000;
-  const { recent: recentThreads, rest: remainingActiveThreads } = useMemo(
-    () => splitRecentActivityThreads(model.active, { nowMs }),
-    [model.active, nowMs],
+  const { recent: recentThreads, rest: remainingActiveThreads } = splitRecentActivityThreads(
+    model.active,
+    { nowMs },
   );
-  const dateBuckets = useMemo(
-    () => splitActivityThreadsByDateBucket(remainingActiveThreads, nowMs),
-    [nowMs, remainingActiveThreads],
-  );
-  const projectGroups = useMemo(
-    () =>
-      groupMode === "project"
-        ? groupActivityThreadsByProject(model.active, isRealProject)
-        : EMPTY_PROJECT_GROUPS,
-    [groupMode, isRealProject, model.active],
-  );
+  const dateBuckets = splitActivityThreadsByDateBucket(remainingActiveThreads, nowMs);
+  const projectGroups =
+    groupMode === "project"
+      ? groupActivityThreadsByProject(model.active, isRealProject)
+      : EMPTY_PROJECT_GROUPS;
 
   const earlierPaging = resolveSidebarThreadListPaging({
     totalCount: dateBuckets.earlier.length,
@@ -674,40 +626,24 @@ export function SidebarActivityView({
     };
   });
 
-  const visibleThreadIds = useMemo(
-    () =>
-      collectVisibleActivityThreadIds({
-        groupMode,
-        pinnedOpen,
-        pinned: scopedPinnedThreads,
-        recent: recentThreads,
-        today: dateBuckets.today,
-        yesterday: dateBuckets.yesterday,
-        earlierOpen,
-        earlier: dateBuckets.earlier.slice(0, earlierPaging.previewLimit),
-        projectGroups: pagedProjectGroups.map((group) => group.threads),
-        settledOpen,
-        settled: model.settled.slice(0, settledPaging.previewLimit),
-      }),
-    [
-      dateBuckets.earlier,
-      dateBuckets.today,
-      dateBuckets.yesterday,
-      earlierOpen,
-      earlierPaging.previewLimit,
-      groupMode,
-      model.settled,
-      pagedProjectGroups,
-      pinnedOpen,
-      recentThreads,
-      scopedPinnedThreads,
-      settledOpen,
-      settledPaging.previewLimit,
-    ],
-  );
+  const visibleThreadIds = collectVisibleActivityThreadIds({
+    groupMode,
+    pinnedOpen,
+    pinned: scopedPinnedThreads,
+    recent: recentThreads,
+    today: dateBuckets.today,
+    yesterday: dateBuckets.yesterday,
+    earlierOpen,
+    earlier: dateBuckets.earlier.slice(0, earlierPaging.previewLimit),
+    projectGroups: pagedProjectGroups.map((group) => group.threads),
+    settledOpen,
+    settled: model.settled.slice(0, settledPaging.previewLimit),
+  });
   const visibleThreadIdsFingerprint = visibleThreadIds.join("\0");
   const visibleThreadIdsRef = useRef(visibleThreadIds);
-  visibleThreadIdsRef.current = visibleThreadIds;
+  useEffect(() => {
+    visibleThreadIdsRef.current = visibleThreadIds;
+  }, [visibleThreadIds]);
   useEffect(() => {
     onVisibleThreadIdsChange(visibleThreadIdsRef.current);
   }, [onVisibleThreadIdsChange, visibleThreadIdsFingerprint]);
@@ -733,10 +669,6 @@ export function SidebarActivityView({
       isSettled={isSettled}
       isPinned={pinnedThreadIdSet.has(thread.id)}
       pr={
-        // An explicit null from the resolver means the persisted PR was ruled out (e.g. the
-        // checkout moved on); falling back to raw lastKnownPr would resurrect that stale
-        // badge. Rows not yet covered (revealed by paging a paint before the parent's map
-        // catches up) get the same resolution without live status instead.
         prByThreadId.has(thread.id)
           ? (prByThreadId.get(thread.id) ?? null)
           : resolveThreadPullRequestFallback({
@@ -763,9 +695,6 @@ export function SidebarActivityView({
   const renderActiveRow = (thread: SidebarThreadSummary) =>
     renderRow(thread, isThreadSettledForActivity(thread, settledOverrideByThreadId));
 
-  // The placeholder speaks for the whole surface, so it may only appear when no
-  // section has rows — a feed with nothing active but a populated Pinned or Done
-  // section is not empty.
   const isEmpty =
     model.active.length === 0 && model.settled.length === 0 && scopedPinnedThreads.length === 0;
   const emptyLabel =
@@ -789,8 +718,7 @@ export function SidebarActivityView({
         </ActivityCollapsibleSection>
       ) : null}
 
-      {/* `group/project-header` is the marker SidebarSectionToolbar reveals on, so
-          the header's create actions fade in exactly like a project row's. */}
+      {}
       <div className="group/project-header relative flex h-7 items-center gap-1 px-2 py-0.5">
         <ActivityScopeMenu
           options={scopeOptions}

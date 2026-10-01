@@ -1,11 +1,7 @@
-// FILE: useThreadHandoff.ts
-// Purpose: Creates provider-to-provider handoff threads from the active web state.
-// Layer: Web hook
-// Exports: useThreadHandoff
-
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { type ModelSelection, type ProviderKind } from "@glade/contracts";
+import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { useComposerDraftStore } from "../composerDraftStore";
 import { useProviderStatusesForLocalConfig } from "./useProviderStatusesForLocalConfig";
 import { useRefreshProviderStatusesNow } from "./useProviderStatusRefresh";
@@ -94,7 +90,7 @@ export function useThreadHandoff() {
           stickyModelSelectionByProvider,
         }),
       runtimeMode: selectedRuntimeMode ?? thread.runtimeMode,
-      interactionMode: thread.interactionMode,
+
       envMode: thread.envMode ?? (thread.worktreePath ? "worktree" : "local"),
       branch: thread.branch,
       worktreePath: thread.worktreePath,

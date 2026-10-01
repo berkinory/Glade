@@ -1,16 +1,3 @@
-// FILE: PdfFilePreview.tsx
-// Purpose: In-app PDF viewer surface. Renders our own toolbar (file name, page
-//          navigation, zoom) over a continuously-scrolling, centered stack of
-//          pdf.js-rendered pages — replacing the browser's built-in PDF iframe so
-//          the chrome matches the rest of Glade. Modeled on how Codex vendors a
-//          custom pdf.js viewer (canvas + text layer + clickable links).
-//          This component is the orchestrator: document load, container
-//          measurement, page navigation, and zoom each live in their own hook
-//          (usePdfDocument / useContainerSize / usePdfPageNavigation /
-//          usePdfZoomController) and are composed here.
-// Layer: Web chat/editor file-preview component
-// Exports: PdfFilePreview
-
 import { useEffect, useState } from "react";
 
 import { basenameOfPath } from "~/file-icons";
@@ -25,21 +12,18 @@ import { PdfPageView } from "./pdf/PdfPageView";
 import { PdfViewerToolbar } from "./pdf/PdfViewerToolbar";
 
 export function PdfFilePreview(props: {
-  /**
-   * Workspace-relative path of the PDF (resolved server-side against cwd), or an
-   * allowlisted absolute path (e.g. inside a session's scratch workspace).
-   */
   filePath: string;
   cwd: string | null | undefined;
   previewGrant?: string | null | undefined;
   cacheKey?: string | number | undefined;
-  /** Pre-resolved target for the "Open in editor" control in the toolbar. */
+
   openInTarget: string | null;
   className?: string;
   onReload?: (() => void) | undefined;
   onPreviewReady?: (() => void) | undefined;
   onPreviewError?: (() => void) | undefined;
 }) {
+  const { onPreviewReady, onPreviewError } = props;
   const previewUrl = buildLocalImageUrl({
     src: props.filePath,
     cwd: props.cwd ?? undefined,
@@ -51,11 +35,11 @@ export function PdfFilePreview(props: {
 
   useEffect(() => {
     if (doc.status === "ready") {
-      props.onPreviewReady?.();
+      onPreviewReady?.();
     } else if (doc.status === "error") {
-      props.onPreviewError?.();
+      onPreviewError?.();
     }
-  }, [doc.status, props.onPreviewError, props.onPreviewReady]);
+  }, [doc.status, onPreviewError, onPreviewReady]);
 
   const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);
   const containerSize = useContainerSize(scrollRoot);

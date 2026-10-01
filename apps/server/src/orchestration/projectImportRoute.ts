@@ -1,35 +1,30 @@
 import { homedir } from "node:os";
 import nodePath from "node:path";
+import { CommandId, ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
+import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import {
-  CommandId,
-  DEFAULT_MODEL_BY_PROVIDER,
-  ProjectId,
-  ThreadId,
   type ImportProjectInput,
   type ImportProjectResult,
   type ListProjectImportsInput,
   type ListProjectImportsResult,
   type ProjectImportProvider,
-  type ProviderStartOptions,
-} from "@glade/contracts";
-import { isWorkspaceRootWithin, workspaceRootsEqual } from "@glade/shared/threadWorkspace";
-import { providerStartOptionsFromServerSettings } from "@glade/shared/serverSettings";
+} from "@glade/contracts/workspace/projectImport";
+import { type ProviderStartOptions } from "@glade/contracts/provider/sessionPolicy";
+import { isWorkspaceRootWithin, workspaceRootsEqual } from "@glade/shared/threads/threadWorkspace";
+import { providerStartOptionsFromServerSettings } from "../settings/settingsPatches";
 import { Effect } from "effect";
 import type {
   ProjectImportRepository,
   ProjectImportOrigin,
 } from "../persistence/projectImportRepository";
-import { discoverClaudeProjects } from "../provider/claudeProjectImport";
-import {
-  discoverCodexProjects,
-  resolveCodexProjectImportHome,
-} from "../provider/codexProjectImport";
-import { ensureProviderEnabled } from "../provider/enabledProviderAdapter";
-import { makeKeyedLock } from "../provider/keyedLock";
-import type { NativeProjectImportCatalog } from "../provider/projectImportTypes";
+import { discoverClaudeProjects } from "../provider/claude/claudeProjectImport";
+import { resolveCodexProjectImportHome } from "../provider/codex/codexProjectImport";
+import { ensureProviderEnabled } from "../provider/core/enabledProviderAdapter";
+import { makeKeyedLock } from "../provider/core/keyedLock";
+import type { NativeProjectImportCatalog } from "../provider/core/projectImportTypes";
 import type { ProviderAdapterRegistryShape } from "../provider/Services/ProviderAdapterRegistry";
 import type { ProviderServiceShape } from "../provider/Services/ProviderService";
-import type { ServerSettingsShape } from "../serverSettings";
+import type { ServerSettingsShape } from "../settings/serverSettings";
 import {
   buildProjectImportCatalog,
   type ResolvedImportProject,
@@ -70,17 +65,25 @@ export function makeProjectImportHandlers(options: ProjectImportRouteOptions) {
     string,
     { session: ResolvedImportSession; projectKey: string; expiresAt: number }
   >();
-  // One native copy at a time bounds subprocesses, and serializes project creation
-  // and origin reservations across browser clients sharing this server.
+
   const imports = makeKeyedLock<string>();
   const readHistory =
     options.readHistory ?? makeProjectImportHistoryReader(options.providerAdapterRegistry);
-  const discover =
-    options.discover ??
-    ((provider, homePath) =>
-      provider === "codex"
-        ? discoverCodexProjects(homePath ? { homePath } : undefined)
-        : discoverClaudeProjects());
+  const discover = Effect.fn(function* (
+    provider: ProjectImportProvider,
+    providerOptions: ProviderStartOptions,
+  ) {
+    if (options.discover)
+      return yield* projectImportPromise(() =>
+        options.discover!(provider, providerOptions.codex?.homePath),
+      );
+    if (provider === "claudeAgent")
+      return yield* projectImportPromise(() => discoverClaudeProjects());
+    const adapter = yield* options.providerAdapterRegistry.getByProvider("codex");
+    if (!adapter.discoverProjects)
+      return yield* new ProjectImportError({ message: "Codex session discovery is unavailable." });
+    return yield* adapter.discoverProjects(providerOptions);
+  });
 
   const readKnownBindings = Effect.fn(function* (
     destinations: ReturnType<typeof makeProjectImportDestinations>,
@@ -109,24 +112,12 @@ export function makeProjectImportHandlers(options: ProjectImportRouteOptions) {
     const results = yield* Effect.forEach(
       providers,
       (provider) =>
-        projectImportPromise(async () => {
-          try {
-            return {
-              provider,
-              catalog: await discover(
-                provider,
-                provider === "codex" ? settings.providers.codex.homePath : undefined,
-              ),
-              error: null,
-            };
-          } catch (error) {
-            return {
-              provider,
-              catalog: null,
-              error: error instanceof Error ? error.message : String(error),
-            };
-          }
-        }),
+        discover(provider, providerStartOptionsFromServerSettings(settings)).pipe(
+          Effect.map((catalog) => ({ provider, catalog, error: null })),
+          Effect.catch((error) =>
+            Effect.succeed({ provider, catalog: null, error: error.message }),
+          ),
+        ),
       { concurrency: 2 },
     );
     const readModel = yield* options.orchestrationEngine.getReadModel();
@@ -351,7 +342,7 @@ export function makeProjectImportHandlers(options: ProjectImportRouteOptions) {
         const modelSelection =
           project.defaultModelSelection?.provider === source.provider
             ? project.defaultModelSelection
-            : { provider: source.provider, model: DEFAULT_MODEL_BY_PROVIDER[source.provider] };
+            : { provider: source.provider, model: PROVIDER_DEFAULT_MODEL };
         const sourceDirectoryExists = yield* projectImportPromise(() =>
           importDirectoryExists(source.cwd),
         );
@@ -402,7 +393,7 @@ export function makeProjectImportHandlers(options: ProjectImportRouteOptions) {
             title: source.title,
             modelSelection,
             runtimeMode: "approval-required",
-            interactionMode: "default",
+
             envMode: worktreePath ? "worktree" : "local",
             branch: null,
             worktreePath,
@@ -416,10 +407,9 @@ export function makeProjectImportHandlers(options: ProjectImportRouteOptions) {
         const providerOptions: ProviderStartOptions =
           source.provider === "codex"
             ? { codex: configuredOptions.codex }
-            : { claudeAgent: { ...(claudeBinaryPath ? { binaryPath: claudeBinaryPath } : {}) } };
+            : { claudeAgent: claudeBinaryPath ? { binaryPath: claudeBinaryPath } : {} };
         const runtimeCwd = workingDirectory ?? (directoryExists ? workspaceRoot : undefined);
-        // The ledger and native binding survive failures. Retrying the same origin
-        // resumes this frozen copy, while deterministic command IDs prevent replay.
+
         const importHistory = Effect.gen(function* () {
           const copied = yield* options.providerService.importExternalThread!({
             threadId,
@@ -456,8 +446,8 @@ export function makeProjectImportHandlers(options: ProjectImportRouteOptions) {
             });
           }
         });
-        // Cleanup failure must be surfaced. It cannot be silently reported as a
-        // successful import with an unproven provider process still attached.
+        // Cleanup failure must be surfaced. It cannot be silently reported as a successful import with an
+        // unproven provider process still attached.
         yield* Effect.uninterruptibleMask((restore) =>
           Effect.gen(function* () {
             const result = yield* Effect.exit(restore(importHistory));

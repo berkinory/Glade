@@ -1,10 +1,12 @@
-import { ThreadId, type ModelSelection, type ProviderModelOptions } from "@glade/contracts";
-import {
-  useComposerDraftStore,
-  type ComposerFileAttachment,
-  type ComposerImageAttachment,
-  type QueuedComposerTurn,
-} from "./composerDraftStore";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
+import { type ProviderModelOptions } from "@glade/contracts/provider/model";
+import { useComposerDraftStore } from "./composerDraftStore";
+import type {
+  ComposerFileAttachment,
+  ComposerImageAttachment,
+  QueuedComposerTurn,
+} from "./composerDraftDomain";
 import type { TerminalContextDraft } from "./lib/terminalContext";
 import type { BrowserAnnotationDraft } from "./lib/browserAnnotations";
 
@@ -104,22 +106,7 @@ export function makeTerminalContext(input: {
 }
 
 export function makeQueuedTurn(id: string): QueuedComposerTurn {
-  return {
-    id,
-    kind: "plan-follow-up",
-    createdAt: "2026-03-13T12:00:00.000Z",
-    previewText: `queued ${id}`,
-    text: `queued ${id}`,
-    interactionMode: "plan",
-    selectedProvider: "codex",
-    selectedModel: "gpt-5",
-    selectedPromptEffort: null,
-    modelSelection: {
-      provider: "codex",
-      model: "gpt-5",
-    },
-    runtimeMode: "full-access",
-  };
+  return { ...makeQueuedChatTurn(id), terminalContexts: [], skills: [], mentions: [] };
 }
 
 export function makeQueuedChatTurn(
@@ -149,12 +136,9 @@ export function makeQueuedChatTurn(
       provider: "codex",
       model: "gpt-5",
     },
-    sourceProposedPlan: {
-      threadId: ThreadId.makeUnsafe("thread-source-plan"),
-      planId: "plan-1",
-    },
+
     runtimeMode: "full-access",
-    interactionMode: "default",
+
     envMode: "local",
   };
 }

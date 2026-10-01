@@ -1,10 +1,4 @@
-// FILE: ComposerModelPickerRow.tsx
-// Purpose: One model row of the composer model picker — name, mod+digit hint, star toggle,
-//   and (for models with an effort ladder, in menu mode) a hover side block that picks model + effort at once.
-// Layer: Chat composer presentation
-// Depends on: composer trait resolution, starred model keys, and shared menu primitives.
-
-import { type ProviderModelDescriptor } from "@glade/contracts";
+import { type ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
 
 import { type StarredModel, starredModelSlotKey } from "~/lib/starredModels";
 import { cn } from "~/lib/utils";
@@ -32,20 +26,18 @@ import { PICKER_PANEL_ROW_SELECTED_CLASS_NAME } from "./pickerPanelStyles";
 import { getProviderIconClassName } from "./ProviderModelPicker";
 import { resolveRuntimeModelDescriptor } from "./runtimeModelCapabilities";
 
-// Each row resolves its own traits, so a long catalog only recomputes the rows whose
-// inputs changed instead of the whole list on every keystroke.
 export function ComposerModelPickerRow(props: {
   row: PickerRow;
-  /** "⌘1"-style hint, or null beyond the addressable rows. */
+
   shortcutHint: string | null;
-  /** Provider options the row's model would run with (drives its effort + star state). */
+
   providerOptions: ProviderOptions | undefined;
   runtimeModels: ReadonlyArray<ProviderModelDescriptor> | null | undefined;
   prompt: string;
-  /** `starredModelSlotKey`s of every starred preset. */
+
   starredModelSlots: ReadonlySet<string>;
   onSelect: (row: PickerRow) => void;
-  /** Null hides the hover effort side block (the picker's footer slider owns effort). */
+
   onSelectEffort: ((row: PickerRow, effort: string) => void) | null;
   onToggleStar: (entry: StarredModel) => void;
   onUnstarModel: (entry: Pick<StarredModel, "provider" | "model">) => void;
@@ -65,17 +57,13 @@ export function ComposerModelPickerRow(props: {
   const starEntry: StarredModel = row.preset ?? {
     provider: row.provider,
     model: row.model,
-    ...resolveStarredTraits(selection),
+    ...resolveStarredTraits(selection, props.providerOptions),
   };
-  // Provider rows ignore the pinned traits: the provider's current traits are shared by
-  // all of its models, so matching them would hide the star of every other preset.
+
   const starred = row.preset !== null || props.starredModelSlots.has(starredModelSlotKey(row));
-  // Starred rows already pin their effort; Ultrathink locks the ladder to the prompt.
+
   const onSelectEffort = props.onSelectEffort;
-  const effortLevels =
-    onSelectEffort !== null && row.preset === null && !selection.ultrathinkPromptControlled
-      ? selection.effortLevels
-      : [];
+  const effortLevels = onSelectEffort !== null && row.preset === null ? selection.effortLevels : [];
   const RowProviderIcon = PROVIDER_ICON_COMPONENT_BY_PROVIDER[row.provider];
   const rowClassName = cn("pe-1", row.selected && PICKER_PANEL_ROW_SELECTED_CLASS_NAME);
   const starButton = (
@@ -133,7 +121,6 @@ export function ComposerModelPickerRow(props: {
       <MenuItem
         aria-current={row.selected ? "true" : undefined}
         className={rowClassName}
-        // The picker decides whether a pick closes it (slider mode keeps it open).
         closeOnClick={false}
         onClick={() => props.onSelect(row)}
       >
@@ -146,7 +133,6 @@ export function ComposerModelPickerRow(props: {
       <MenuSubTrigger
         aria-current={row.selected ? "true" : undefined}
         className={rowClassName}
-        // Clicking the row keeps the current effort; the side block picks another.
         onClick={() => props.onSelect(row)}
         onKeyDown={(event) => {
           if (event.key !== "Enter") return;

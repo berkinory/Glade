@@ -1,16 +1,13 @@
-import { ThreadId } from "@glade/contracts";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useEffect } from "react";
-import {
-  type ComposerImageAttachment,
-  type PersistedComposerImageAttachment,
-  useComposerDraftStore,
-} from "../../composerDraftStore";
+import type {
+  ComposerImageAttachment,
+  PersistedComposerImageAttachment,
+} from "../../composerDraftDomain";
+import { useComposerDraftStore } from "../../composerDraftStore";
 
 import { readFileAsDataUrl } from "../../lib/composerSend";
 
-// Shared by the live-composer and prompt-history attachment sync effects:
-// Images are persisted as data URLs. Serialization failures retain the previous
-// attachment record so an unreadable file does not erase a saved attachment.
 async function stagePersistedComposerImageAttachments(input: {
   threadId: ThreadId;
   images: ReadonlyArray<ComposerImageAttachment>;
@@ -93,7 +90,7 @@ export function useComposerAttachmentPersistence({
       if (cancelled) {
         return;
       }
-      // Stage attachments in persisted draft state first so persist middleware can write them.
+
       void syncComposerDraftPersistedAttachments(threadId, staged);
     })();
     return () => {

@@ -1,19 +1,10 @@
-// FILE: threadHandoff.ts
-// Purpose: Builds client-side handoff commands and imported transcript payloads.
-// Layer: Web handoff utilities
-// Exports: target-provider, title, transcript, and model-selection helpers.
-
-import {
-  EventId,
-  MessageId,
-  type OrchestrationThreadActivity,
-  ProviderKind,
-  type ModelSelection,
-  type ServerProviderStatus,
-  type ServerSettingsView,
-  type ThreadHandoffImportedMessage,
-} from "@glade/contracts";
-import { getDefaultModel } from "@glade/shared/model";
+import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
+import { EventId, MessageId, ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { type OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
+import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
+import { type ThreadHandoffImportedMessage } from "@glade/contracts/orchestration/commands";
+import { type ServerProviderStatus } from "@glade/contracts/server/server";
+import { type ServerSettingsView } from "@glade/contracts/settings/settings";
 import { type Thread } from "../types";
 import { DEFAULT_PROVIDER_ORDER } from "../providerOrdering";
 import { stripEmbeddedAssistantSelections } from "./assistantSelections";
@@ -72,7 +63,6 @@ export function resolveAvailableHandoffTargetProviders(input: {
   );
 }
 
-// Preserve the visible source thread name when creating the destination thread.
 export function resolveThreadHandoffTitle(thread: Pick<Thread, "title">): string {
   const title = thread.title.trim().replace(/\s+/g, " ");
   return title.length > 0 ? title : "Handoff";
@@ -80,8 +70,7 @@ export function resolveThreadHandoffTitle(thread: Pick<Thread, "title">): string
 
 export function buildThreadHandoffImportedMessages(
   thread: Pick<Thread, "messages">,
-  // Forking from a message footer carries only the transcript up to that turn, so
-  // the new thread starts exactly where the user clicked. Omitted = whole thread.
+
   options?: { readonly throughMessageId?: MessageId | null },
 ): ReadonlyArray<ThreadHandoffImportedMessage> {
   const importable = thread.messages.filter(isImportableThreadMessage);
@@ -99,10 +88,7 @@ export function buildThreadHandoffImportedMessages(
       const visibleAndContextText = stripEmbeddedAssistantSelections(
         extractedBrowserAnnotations.promptText,
       );
-      // Browser annotation ids and tab ids are scoped to the source thread's
-      // live browser session. Carrying them into a handoff would advertise an
-      // exact-page navigation target that the destination thread cannot
-      // resolve, so import only the visible user/context text.
+
       importedText = visibleAndContextText;
     }
     const importedMessage: ThreadHandoffImportedMessage = {
@@ -138,8 +124,6 @@ export function buildThreadHandoffImportedMessages(
 export function buildThreadHandoffImportedActivities(
   thread: Pick<Thread, "activities">,
 ): ReadonlyArray<OrchestrationThreadActivity> {
-  // Activity appends are not transactional. Start context history at the latest
-  // durable boundary so a partial handoff can never persist already-invalid usage.
   let latestCompactionIndex = -1;
   for (let index = thread.activities.length - 1; index >= 0; index -= 1) {
     const activity = thread.activities[index];
@@ -216,7 +200,7 @@ export function resolveThreadHandoffModelSelection(input: {
   if (isCompatibleSelection(input.projectDefaultModelSelection)) {
     return input.projectDefaultModelSelection;
   }
-  const defaultModel = getDefaultModel(input.targetProvider);
+  const defaultModel = PROVIDER_DEFAULT_MODEL;
   return {
     provider: input.targetProvider,
     model: defaultModel,

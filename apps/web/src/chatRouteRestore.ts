@@ -1,8 +1,3 @@
-// FILE: chatRouteRestore.ts
-// Purpose: Validates saved chat routes before restoring them from startup or sidebar navigation.
-// Layer: Route helper
-// Exports: last-thread route resolver plus empty-startup fallback policy helpers.
-
 export type LastThreadRoute = {
   threadId: string;
   splitViewId?: string | undefined;
@@ -37,7 +32,6 @@ export function resolveRestorableThreadRoute(input: {
   return lastThreadRoute;
 }
 
-// Route fallback guards separate a stale URL from a temporarily empty startup snapshot.
 export function shouldStartRememberedRouteRecovery(input: {
   lastThreadRoute: LastThreadRoute | null;
   availableThreadCount: number;

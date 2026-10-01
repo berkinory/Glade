@@ -1,8 +1,5 @@
-// FILE: composerDraftAttachments.ts
-// Purpose: Owns composer attachment identity, blob lifetime, persistence verification, and hydration.
-// Exports: Attachment transitions used by persistence and action construction.
-
-import { type ThreadId } from "@glade/contracts";
+import { asRecord } from "@glade/shared/transport/payloadValues";
+import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import * as Schema from "effect/Schema";
 
 import {
@@ -22,11 +19,9 @@ import { getLocalStorageItem } from "./hooks/useLocalStorage";
 import { deleteComposerImageBlob } from "./lib/composerImageBlobStore";
 
 const composerAttachmentPersistenceQueueByThreadId = new Map<string, Promise<void>>();
-// Tracks the newest in-flight sync per (slot, thread) so a superseded verification knows not to
-// commit. Entries are retired by `syncPersistedAttachmentsForSlot` once the newest sync settles.
+
 const composerAttachmentSyncGenerationByKey = new Map<string, number>();
 
-/** Test-only leak probe: number of (slot, thread) sync generations still tracked. */
 export function pendingComposerAttachmentSyncGenerationCount(): number {
   return composerAttachmentSyncGenerationByKey.size;
 }
@@ -60,8 +55,6 @@ function enqueueComposerAttachmentPersistence<Result>(
 }
 
 function composerImageDedupKey(image: ComposerImageAttachment): string {
-  // Keep this independent from File.lastModified so dedupe is stable for hydrated
-  // images reconstructed from localStorage (which get a fresh lastModified value).
   return `${image.mimeType}\u0000${image.sizeBytes}\u0000${image.name}`;
 }
 
@@ -191,10 +184,7 @@ export function deletePersistedComposerImageBlobs(
   );
   if (candidateBlobKeys.size === 0) return;
 
-  // Several product flows copy composer state before the destination is ever
-  // mounted. Those drafts temporarily share the source blob key, so ownership
-  // must be checked after the current store mutation has committed.
-  Promise.resolve().then(() => {
+  void Promise.resolve().then(() => {
     const draftsByThreadId = getDraftsByThreadId();
     for (const blobKey of candidateBlobKeys) {
       if (isComposerImageBlobReferenced(draftsByThreadId, blobKey)) continue;
@@ -302,19 +292,11 @@ type PersistedAttachmentIdsRead =
   | { available: true; attachmentIds: string[] }
   | { available: false };
 
-function asUnknownRecord(value: unknown): Record<string, unknown> | null {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
-}
-
 function readPersistedComposerDraftsRecord(): Record<string, unknown> | null {
-  const persisted = asUnknownRecord(
-    getLocalStorageItem(COMPOSER_DRAFT_STORAGE_KEY, Schema.Unknown),
-  );
+  const persisted = asRecord(getLocalStorageItem(COMPOSER_DRAFT_STORAGE_KEY, Schema.Unknown));
   if (!persisted || persisted.version !== COMPOSER_DRAFT_STORAGE_VERSION) return null;
-  const state = asUnknownRecord(persisted.state);
-  return state ? asUnknownRecord(state.draftsByThreadId) : null;
+  const state = asRecord(persisted.state);
+  return state ? asRecord(state.draftsByThreadId) : null;
 }
 
 function decodePersistedAttachmentIds(value: unknown): string[] | null {
@@ -323,10 +305,7 @@ function decodePersistedAttachmentIds(value: unknown): string[] | null {
   for (const candidate of value) {
     try {
       attachmentIds.push(Schema.decodeUnknownSync(PersistedComposerImageAttachment)(candidate).id);
-    } catch {
-      // Ignore unrelated malformed entries. The attempted attachment still has
-      // to decode successfully and appear below before its native capture is acknowledged.
-    }
+    } catch {}
   }
   return attachmentIds;
 }
@@ -383,7 +362,7 @@ export const PROMPT_HISTORY_ATTACHMENT_SLOT: ComposerAttachmentSlot = {
       ? { ...draft, promptHistorySavedDraft: { ...draft.promptHistorySavedDraft, ...updates } }
       : draft,
   readStoredAttachmentIds: (storedDraft) => {
-    const savedDraft = asUnknownRecord(storedDraft.promptHistorySavedDraft);
+    const savedDraft = asRecord(storedDraft.promptHistorySavedDraft);
     if (!savedDraft) return null;
     return decodePersistedAttachmentIds(savedDraft.attachments ?? []);
   },
@@ -399,7 +378,7 @@ function readPersistedAttachmentIdsFromStorage(
     return { available: false };
   }
   try {
-    const draft = asUnknownRecord(readPersistedComposerDraftsRecord()?.[threadId]);
+    const draft = asRecord(readPersistedComposerDraftsRecord()?.[threadId]);
     if (!draft) return { available: false };
     const attachmentIds = slot.readStoredAttachmentIds(draft);
     if (!attachmentIds) return { available: false };
@@ -464,8 +443,6 @@ function verifyPersistedAttachmentsForSlot(
       return { draftsByThreadId: nextDraftsByThreadId };
     });
   } else {
-    // Superseded by a newer sync for this slot: report on this call's own
-    // attachments without rolling back the newer staged draft state.
     const current = get().draftsByThreadId[threadId];
     if (current) verifyDraft(current);
   }
@@ -495,9 +472,6 @@ export function syncPersistedAttachmentsForSlot(
   const generation = (composerAttachmentSyncGenerationByKey.get(generationKey) ?? 0) + 1;
   composerAttachmentSyncGenerationByKey.set(generationKey, generation);
   try {
-    // Stage synchronously: a reload right after this call must already see the
-    // attempted attachments in the persisted snapshot, even while an earlier
-    // sync for this thread is still verifying.
     const currentDraft = get().draftsByThreadId[threadId];
     const previousAttachments = currentDraft
       ? (slot.read(currentDraft)?.persistedAttachments ?? [])
@@ -529,8 +503,7 @@ export function syncPersistedAttachmentsForSlot(
   } catch (error) {
     return Promise.reject(error);
   }
-  // Verification stays serialized per thread (across both slots) so overlapping
-  // verifications cannot roll back each other's committed state.
+
   const verification = enqueueComposerAttachmentPersistence(threadId, () =>
     verifyPersistedAttachmentsForSlot(
       threadId,
@@ -542,10 +515,7 @@ export function syncPersistedAttachmentsForSlot(
       flushPersistStorage,
     ),
   );
-  // Mirror the persistence-queue cleanup above: the generation counter only exists so a newer
-  // sync can invalidate an in-flight one. Once the newest sync for this key has settled there is
-  // nothing left to invalidate, so drop the entry instead of leaking one per (slot, thread)
-  // forever. The guard keeps an older sync's cleanup from erasing a newer generation.
+
   return verification.finally(() => {
     if (composerAttachmentSyncGenerationByKey.get(generationKey) === generation) {
       composerAttachmentSyncGenerationByKey.delete(generationKey);

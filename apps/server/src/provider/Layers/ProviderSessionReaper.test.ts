@@ -1,12 +1,10 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
+import { type ProviderKind, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import {
-  type ProviderKind,
   type ProviderSession,
   type ProviderSessionStartInput,
-  ThreadId,
-  TurnId,
-  type OrchestrationThreadShell,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/provider";
+import { type OrchestrationThreadShell } from "@glade/contracts/orchestration/threadEntities";
 import { Effect, Exit, Layer, Option, Scope, Stream } from "effect";
 import { describe, expect, it, vi } from "vitest";
 
@@ -14,7 +12,7 @@ import { SqlitePersistenceMemory } from "../../persistence/Layers/Sqlite.ts";
 import { ProviderSessionRuntimeRepositoryLive } from "../../persistence/Layers/ProviderSessionRuntime.ts";
 import { ProjectionSnapshotQuery } from "../../orchestration/Services/ProjectionSnapshotQuery";
 import { fakeProjectionSnapshotQuery } from "../../orchestration/testing/fakeProjectionSnapshotQuery";
-import { ProviderUnsupportedError } from "../Errors.ts";
+import { ProviderUnsupportedError } from "../core/Errors.ts";
 import type { ProviderAdapterShape } from "../Services/ProviderAdapter.ts";
 import { ProviderAdapterRegistry } from "../Services/ProviderAdapterRegistry.ts";
 import {
@@ -94,6 +92,7 @@ function makeProviderServiceStub(input: {
     getCapabilities: () => unsupported(),
     rollbackConversation: () => unsupported(),
     compactThread: () => unsupported(),
+    updateNativeHistory: () => unsupported(),
     closeRuntimeEvents: Effect.void,
     streamEvents: Stream.empty,
   };
@@ -128,7 +127,7 @@ function makeFakeAdapter(provider: ProviderKind) {
 
   const adapter: ProviderAdapterShape<never> = {
     provider,
-    capabilities: { sessionModelSwitch: "in-session" },
+    capabilities: {},
     startSession,
     sendTurn: () => unsupported(),
     interruptTurn: () => Effect.void,

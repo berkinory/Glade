@@ -1,6 +1,3 @@
-// FILE: check-windows-runtime-boundary.ts
-// Purpose: Prevents application/provider code from reintroducing Windows process workarounds.
-
 import fs from "node:fs";
 import path from "node:path";
 
@@ -11,7 +8,10 @@ const scopedRoots = [
   "apps/server/src/git",
   "apps/desktop/src",
 ] as const;
-const scopedFiles = ["apps/server/src/open.ts", "apps/server/src/processRunner.ts"] as const;
+const scopedFiles = [
+  "apps/server/src/workspace/editor/open.ts",
+  "apps/server/src/platform/processRunner.ts",
+] as const;
 
 function walk(relativeRoot: string): string[] {
   const absoluteRoot = path.join(repoRoot, relativeRoot);
@@ -37,8 +37,8 @@ function isProviderOrGit(file: string): boolean {
 function ownsNodeSpawnPolicy(file: string): boolean {
   return (
     isProviderOrGit(file) ||
-    file === "apps/server/src/open.ts" ||
-    file === "apps/server/src/processRunner.ts" ||
+    file === "apps/server/src/workspace/editor/open.ts" ||
+    file === "apps/server/src/platform/processRunner.ts" ||
     file === "apps/desktop/src/voiceTranscription.ts" ||
     file === "apps/desktop/src/electronUpdaterSecurity.ts"
   );
@@ -86,7 +86,7 @@ for (const file of files) {
       report(file, "Effect commands must be created through makeEffectProcessCommand");
     }
     if (
-      file !== "apps/server/src/provider/skillsCatalog.ts" &&
+      file !== "apps/server/src/provider/core/skillsCatalog.ts" &&
       /process\.platform\s*[!=]==?\s*["']win32["']/.test(source)
     ) {
       report(file, "provider/Git process policy must not branch on win32");

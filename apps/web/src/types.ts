@@ -1,45 +1,47 @@
-// FILE: types.ts
-// Purpose: Shared web-app view models for threads, projects, terminal layout, and sidebar rows.
-// Exports: Runtime UI types consumed across store, routes, and components.
-
 import type {
   ModelSelection,
-  MessageDispatchOrigin,
-  OrchestrationMessageSource,
+  RuntimeMode,
+  ThreadCreationSource,
+} from "@glade/contracts/provider/sessionPolicy";
+import type {
+  ChatImageAttachment as ContractChatImageAttachment,
+  ChatFileAttachment as ContractChatFileAttachment,
+  ChatAssistantSelectionAttachment as ContractChatAssistantSelectionAttachment,
+  OrchestrationMessage,
+  OrchestrationThread,
   OrchestrationPendingInteraction,
-  TurnDispatchMode,
   OrchestrationLatestTurn,
   OrchestrationThreadPullRequest,
-  OrchestrationProposedPlanId,
   PinnedMessage,
   PendingClaudeCacheReview,
-  ThreadGoalAchievement,
   OrchestrationSessionStatus,
   OrchestrationThreadActivity,
+  OrchestrationSpaceShell,
   ThreadHandoff,
   ProjectScript as ContractProjectScript,
+  ThreadEnvironmentMode,
+} from "@glade/contracts/orchestration/threadEntities";
+import type {
   ThreadId,
   ProjectId,
   SpaceId,
-  SpaceIconName,
   TurnId,
   MessageId,
-  ProviderMentionReference,
-  ProviderSkillReference,
   ProviderKind,
   CheckpointRef,
-  ProviderInteractionMode,
-  ProjectKind,
-  RuntimeMode,
-  ThreadCreationSource,
-  ThreadEnvironmentMode,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
+import type { ProjectKind } from "@glade/contracts/workspace/project";
 import type { ProjectAppearance } from "./lib/projectAppearance";
+
+type MutableContractFields<T> = {
+  -readonly [Key in keyof T]: NonNullable<T[Key]> extends readonly (infer Item)[]
+    ? Item[] | Extract<T[Key], null | undefined>
+    : T[Key];
+};
 
 export type SessionPhase = "disconnected" | "connecting" | "ready" | "running";
 export const DEFAULT_RUNTIME_MODE: RuntimeMode = "full-access";
 
-export const DEFAULT_INTERACTION_MODE: ProviderInteractionMode = "default";
 export const DEFAULT_THREAD_TERMINAL_HEIGHT = 280;
 export const DEFAULT_THREAD_TERMINAL_ID = "default";
 export const MAX_TERMINALS_PER_GROUP = 6;
@@ -75,67 +77,26 @@ export interface ThreadTerminalGroup {
   layout: ThreadTerminalLayoutNode;
 }
 
-export interface ChatImageAttachment {
-  type: "image";
-  id: string;
-  name: string;
-  mimeType: string;
-  sizeBytes: number;
+export type ChatImageAttachment = MutableContractFields<ContractChatImageAttachment> & {
   previewUrl?: string;
-}
-
-export interface ChatFileAttachment {
-  type: "file";
-  id: string;
-  name: string;
-  mimeType: string;
-  sizeBytes: number;
-}
-
-export interface ChatAssistantSelectionAttachment {
-  type: "assistant-selection";
-  id: string;
-  assistantMessageId: string;
-  text: string;
-}
+};
+export type ChatFileAttachment = MutableContractFields<ContractChatFileAttachment>;
+export type ChatAssistantSelectionAttachment = MutableContractFields<
+  Omit<ContractChatAssistantSelectionAttachment, "assistantMessageId">
+> & { assistantMessageId: string };
 
 export type ChatAttachment =
   | ChatImageAttachment
   | ChatFileAttachment
   | ChatAssistantSelectionAttachment;
 
-type OrchestrationMessageTextSegment = import("@glade/contracts").OrchestrationMessageTextSegment;
-
-export interface ChatMessage {
-  id: MessageId;
-  role: "user" | "assistant" | "system";
-  text: string;
-  /** Slices of streamed assistant text between row-making provider events. */
-  textSegments?: OrchestrationMessageTextSegment[];
-  asyncUserInput?: import("@glade/contracts").AsyncUserInput;
-  attachments?: ChatAttachment[];
-  skills?: ProviderSkillReference[];
-  mentions?: ProviderMentionReference[];
-  dispatchMode?: TurnDispatchMode;
-  dispatchOrigin?: MessageDispatchOrigin;
-  startsNewTurn?: boolean;
-  turnId?: TurnId | null;
-  createdAt: string;
-  updatedAt?: string;
-  completedAt?: string | undefined;
-  streaming: boolean;
-  source?: OrchestrationMessageSource;
-}
-
-export interface ProposedPlan {
-  id: OrchestrationProposedPlanId;
-  turnId: TurnId | null;
-  planMarkdown: string;
-  implementedAt: string | null;
-  implementationThreadId: ThreadId | null;
-  createdAt: string;
-  updatedAt: string;
-}
+export type ChatMessage = MutableContractFields<
+  Omit<OrchestrationMessage, "attachments" | "turnId" | "source" | "updatedAt">
+> &
+  Partial<MutableContractFields<Pick<OrchestrationMessage, "turnId" | "source" | "updatedAt">>> & {
+    attachments?: ChatAttachment[];
+    completedAt?: string | undefined;
+  };
 
 interface TurnDiffFileChange {
   path: string;
@@ -155,9 +116,6 @@ export interface TurnDiffSummary {
   checkpointTurnCounts?: number[] | undefined;
 }
 
-// Ephemeral client-side progress of the "New worktree" first-send setup
-// sequence (create branch → create worktree → copy changes → link thread →
-// start session). Rendered as a transient transcript row; never persisted.
 export type WorktreeSetupStepId =
   | "create-branch"
   | "create-worktree"
@@ -177,10 +135,6 @@ export interface WorktreeSetupSnapshot {
   steps: WorktreeSetupStep[];
 }
 
-/**
- * User choice made from the worktree setup card while preparation is in
- * flight: abandon the send entirely, or redirect it to the local checkout.
- */
 export type WorktreeSetupResolutionAction = "cancel" | "work-locally";
 
 export interface Project {
@@ -190,27 +144,20 @@ export interface Project {
   remoteName: string;
   folderName: string;
   localName: string | null;
-  /** Local look in the sidebar and rail; missing or null is the default folder. */
+
   appearance?: ProjectAppearance | null;
   cwd: string;
   defaultModelSelection: ModelSelection | null;
   expanded: boolean;
   isPinned?: boolean;
-  /** Missing on renderer state written before Spaces; normalized snapshots always set it. */
+
   spaceId?: SpaceId | null;
   createdAt?: string | undefined;
   updatedAt?: string | undefined;
   scripts: ProjectScript[];
 }
 
-export interface Space {
-  id: SpaceId;
-  name: string;
-  icon: SpaceIconName;
-  sortOrder: number;
-  createdAt: string;
-  updatedAt: string;
-}
+export type Space = OrchestrationSpaceShell;
 
 interface ThreadWorkspaceState {
   envMode?: ThreadEnvironmentMode | undefined;
@@ -223,42 +170,29 @@ interface ThreadWorkspaceState {
   createBranchFlowCompleted?: boolean;
 }
 
-export interface ThreadWorkspacePatch {
-  envMode?: ThreadEnvironmentMode | undefined;
-  branch?: string | null;
-  worktreePath?: string | null;
-  workingDirectory?: string | null;
-  associatedWorktreePath?: string | null;
-  associatedWorktreeBranch?: string | null;
-  associatedWorktreeRef?: string | null;
-  createBranchFlowCompleted?: boolean;
-}
+export type ThreadWorkspacePatch = Partial<ThreadWorkspaceState>;
 
-export interface Thread extends ThreadWorkspaceState {
-  id: ThreadId;
+export interface Thread
+  extends
+    ThreadWorkspaceState,
+    MutableContractFields<
+      Pick<
+        OrchestrationThread,
+        "id" | "projectId" | "title" | "modelSelection" | "runtimeMode" | "createdAt" | "latestTurn"
+      >
+    > {
   codexThreadId: string | null;
-  projectId: ProjectId;
-  title: string;
-  modelSelection: ModelSelection;
-  runtimeMode: RuntimeMode;
-  interactionMode: ProviderInteractionMode;
   session: ThreadSession | null;
   messages: ChatMessage[];
-  proposedPlans: ProposedPlan[];
+
   error: string | null;
-  createdAt: string;
   archivedAt?: string | null;
   settledAt?: string | null;
   updatedAt?: string | undefined;
   isPinned?: boolean;
   pinnedMessages?: PinnedMessage[];
   notes?: string;
-  goal?: string;
-  goalStartedAt?: string | null;
-  goalPausedAt?: string | null;
-  goalAchievements?: ThreadGoalAchievement[];
-  latestTurn: OrchestrationLatestTurn | null;
-  pendingSourceProposedPlan?: OrchestrationLatestTurn["sourceProposedPlan"];
+
   lastVisitedAt?: string | undefined;
   parentThreadId?: ThreadId | null;
   creationSource?: ThreadCreationSource | null;
@@ -269,66 +203,26 @@ export interface Thread extends ThreadWorkspaceState {
   forkSourceThreadId?: ThreadId | null;
   handoff?: ThreadHandoff | null;
   claudeCacheReview?: PendingClaudeCacheReview | null;
-  /** Client projection cursor shared by shell and detail cache-review updates. */
+
   claudeCacheReviewSequence?: number;
   lastKnownPr?: OrchestrationThreadPullRequest | null;
   latestUserMessageAt?: string | null;
   latestHumanMessageAt?: string | null;
   hasPendingApprovals?: boolean;
   hasPendingUserInput?: boolean;
-  hasActionableProposedPlan?: boolean;
+
   pendingInteractions?: OrchestrationPendingInteraction[];
   turnDiffSummaries: TurnDiffSummary[];
   activities: OrchestrationThreadActivity[];
 }
 
-export interface ThreadShell extends ThreadWorkspaceState {
-  id: ThreadId;
-  codexThreadId: string | null;
-  projectId: ProjectId;
-  title: string;
-  modelSelection: ModelSelection;
-  runtimeMode: RuntimeMode;
-  interactionMode: ProviderInteractionMode;
-  error: string | null;
-  createdAt: string;
-  archivedAt?: string | null;
-  settledAt?: string | null;
-  updatedAt?: string | undefined;
-  isPinned?: boolean;
-  // Per-thread workspace annotations carried through the normalized projection so
-  // `getThreadFromState` reconstructs them (the shell is the source of truth for a Thread).
-  // These do not arrive on the sidebar shell snapshot, so the snapshot path preserves them
-  // from the previous shell rather than clobbering with `undefined`.
-  pinnedMessages?: PinnedMessage[];
-  notes?: string;
-  goal?: string;
-  goalStartedAt?: string | null;
-  goalPausedAt?: string | null;
-  goalAchievements?: ThreadGoalAchievement[];
-  parentThreadId?: ThreadId | null;
-  creationSource?: ThreadCreationSource | null;
-  sourceThreadId?: ThreadId | null;
-  subagentAgentId?: string | null;
-  subagentNickname?: string | null;
-  subagentRole?: string | null;
-  forkSourceThreadId?: ThreadId | null;
-  handoff?: ThreadHandoff | null;
-  claudeCacheReview?: PendingClaudeCacheReview | null;
-  claudeCacheReviewSequence?: number;
-  lastKnownPr?: OrchestrationThreadPullRequest | null;
-  latestUserMessageAt?: string | null;
-  latestHumanMessageAt?: string | null;
-  hasPendingApprovals?: boolean;
-  hasPendingUserInput?: boolean;
-  hasActionableProposedPlan?: boolean;
-  pendingInteractions?: OrchestrationPendingInteraction[];
-  lastVisitedAt?: string | undefined;
-}
+export type ThreadShell = Omit<
+  Thread,
+  "session" | "messages" | "latestTurn" | "turnDiffSummaries" | "activities"
+>;
 
 export interface ThreadTurnState {
   latestTurn: OrchestrationLatestTurn | null;
-  pendingSourceProposedPlan?: OrchestrationLatestTurn["sourceProposedPlan"];
 }
 
 export interface SidebarThreadSummary {
@@ -336,7 +230,7 @@ export interface SidebarThreadSummary {
   projectId: ProjectId;
   title: string;
   modelSelection: ModelSelection;
-  interactionMode: ProviderInteractionMode;
+
   envMode?: ThreadEnvironmentMode | undefined;
   branch: string | null;
   worktreePath: string | null;
@@ -361,14 +255,13 @@ export interface SidebarThreadSummary {
   latestHumanMessageAt?: string | null;
   hasPendingApprovals: boolean;
   hasPendingUserInput: boolean;
-  hasActionableProposedPlan: boolean;
+
   hasLiveTailWork: boolean;
   forkSourceThreadId?: ThreadId | null;
   handoff?: ThreadHandoff | null;
   lastKnownPr?: OrchestrationThreadPullRequest | null;
 }
 
-/** Lightweight composer identity that ignores live turn/status churn. */
 export interface ComposerThreadMentionSource {
   id: ThreadId;
   projectId: ProjectId;

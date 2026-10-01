@@ -1,23 +1,7 @@
-// FILE: composerProviderRegistry.tsx
-// Purpose: Normalizes provider-specific composer state for display and dispatch.
-// Layer: Chat composer orchestration
-// Depends on: shared model helpers and runtime model discovery metadata.
-
-import {
-  type ModelSlug,
-  type ProviderKind,
-  type ProviderModelDescriptor,
-  type ProviderModelOptions,
-} from "@glade/contracts";
-import {
-  getDefaultEffort,
-  hasEffortLevel,
-  isClaudeUltrathinkPrompt,
-  normalizeClaudeModelOptions,
-  trimOrNull,
-} from "@glade/shared/model";
-import { classifyCodexReasoningEffortSupport } from "../../lib/codexReasoningEffort";
-import { getRuntimeAwareModelCapabilities } from "./runtimeModelCapabilities";
+import { type ModelSlug, type ProviderModelOptions } from "@glade/contracts/provider/model";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { type ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
+import { normalizeClaudeModelOptions } from "@glade/shared/provider/model";
 
 export type ComposerProviderStateInput = {
   provider: ProviderKind;
@@ -37,74 +21,18 @@ export type ComposerProviderState = {
 };
 
 export function getComposerProviderState(input: ComposerProviderStateInput): ComposerProviderState {
-  const { provider, model, runtimeModel, prompt, modelOptions } = input;
-  const caps = getRuntimeAwareModelCapabilities({ provider, model, runtimeModel });
-
-  let rawEffort: string | null = null;
-  let normalizedOptions: ProviderModelOptions[ProviderKind] | undefined;
-
-  switch (provider) {
-    case "codex": {
-      const providerOptions = modelOptions?.codex;
-      rawEffort = trimOrNull(providerOptions?.reasoningEffort);
-      const defaultReasoningEffort = getDefaultEffort(caps);
-      const reasoningEffortSupport = classifyCodexReasoningEffortSupport({
-        model,
-        effort: rawEffort,
-        ...(runtimeModel ? { runtimeModel } : {}),
-      });
-      const reasoningEffort =
-        rawEffort &&
-        reasoningEffortSupport !== "unsupported" &&
-        rawEffort !== defaultReasoningEffort
-          ? rawEffort
-          : undefined;
-      const fastModeEnabled = caps.supportsFastMode && providerOptions?.fastMode === true;
-      const nextOptions = {
-        ...(reasoningEffort ? { reasoningEffort } : {}),
-        ...(fastModeEnabled || providerOptions?.fastMode === false
-          ? { fastMode: fastModeEnabled }
-          : {}),
-      };
-      normalizedOptions = Object.keys(nextOptions).length > 0 ? nextOptions : undefined;
-      break;
-    }
-    case "claudeAgent": {
-      const providerOptions = modelOptions?.claudeAgent;
-      rawEffort = trimOrNull(providerOptions?.effort);
-      normalizedOptions = normalizeClaudeModelOptions(model, providerOptions);
-      break;
-    }
+  const options = input.modelOptions?.[input.provider];
+  if (input.provider === "claudeAgent") {
+    const normalized = normalizeClaudeModelOptions(input.model, input.modelOptions?.claudeAgent);
+    return {
+      provider: input.provider,
+      promptEffort: normalized?.effort ?? null,
+      modelOptionsForDispatch: normalized,
+    };
   }
-
-  const draftEffort = trimOrNull(rawEffort);
-  const defaultEffort = getDefaultEffort(caps);
-  const isPromptInjected = draftEffort
-    ? caps.promptInjectedEffortLevels.includes(draftEffort)
-    : false;
-  const promptEffort =
-    draftEffort &&
-    !isPromptInjected &&
-    (provider === "codex"
-      ? classifyCodexReasoningEffortSupport({
-          model,
-          effort: draftEffort,
-          ...(runtimeModel ? { runtimeModel } : {}),
-        }) !== "unsupported"
-      : hasEffortLevel(caps, draftEffort))
-      ? draftEffort
-      : defaultEffort && hasEffortLevel(caps, defaultEffort)
-        ? defaultEffort
-        : null;
-
-  const ultrathinkActive =
-    caps.promptInjectedEffortLevels.length > 0 && isClaudeUltrathinkPrompt(prompt);
-
   return {
-    provider,
-    promptEffort,
-    modelOptionsForDispatch: normalizedOptions,
-    ...(ultrathinkActive ? { composerFrameClassName: "ultrathink-frame" } : {}),
-    ...(ultrathinkActive ? { modelPickerIconClassName: "ultrathink-chroma" } : {}),
+    provider: input.provider,
+    promptEffort: input.modelOptions?.codex?.reasoningEffort ?? null,
+    modelOptionsForDispatch: options,
   };
 }

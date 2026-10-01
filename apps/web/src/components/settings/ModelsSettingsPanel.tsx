@@ -1,14 +1,10 @@
-// FILE: ModelsSettingsPanel.tsx
-// Purpose: Own model-setting discovery, selection, and custom-model editing workflows.
-// Layer: Settings panel
-
 import {
-  DEFAULT_GIT_TEXT_GENERATION_MODEL,
+  PROVIDER_DEFAULT_MODEL,
   GIT_TEXT_GENERATION_PROVIDERS,
   PROVIDER_DISPLAY_NAMES,
   type GitTextGenerationProvider,
-  type ProviderKind,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/model";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
@@ -37,7 +33,7 @@ export function ModelsSettingsPanel({
 
   const { textGenerationModel, textGenerationProvider } = settings;
   const currentGitTextGenerationProvider = textGenerationProvider ?? "codex";
-  const currentGitTextGenerationModel = textGenerationModel ?? DEFAULT_GIT_TEXT_GENERATION_MODEL;
+  const currentGitTextGenerationModel = textGenerationModel ?? PROVIDER_DEFAULT_MODEL;
   const gitWritingModelHintByProvider = useMemo<Partial<Record<ProviderKind, string | null>>>(
     () => ({ [currentGitTextGenerationProvider]: currentGitTextGenerationModel }),
     [currentGitTextGenerationModel, currentGitTextGenerationProvider],

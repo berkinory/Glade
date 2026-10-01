@@ -1,8 +1,3 @@
-// FILE: DesktopSettingsPanels.tsx
-// Purpose: Own settings panels whose behavior depends on browser or desktop-native lifecycles.
-// Layer: Settings UI components
-// Exports: NotificationsSettingsPanel, ComputerSettingsPanel
-
 import { useEffect, useState } from "react";
 
 import type { AppSettingsBinding } from "~/appSettings";

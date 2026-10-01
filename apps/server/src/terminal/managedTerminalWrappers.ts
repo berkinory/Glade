@@ -1,7 +1,3 @@
-// FILE: managedTerminalWrappers.ts
-// Purpose: Create Superset-style managed command wrappers so terminal agent identity is canonical
-// and survives zsh startup that rewrites PATH.
-
 import fs from "node:fs";
 import path from "node:path";
 
@@ -12,14 +8,14 @@ import {
   GLADE_TERMINAL_CLI_KIND_ENV_KEY,
   type TerminalAgentHookEventType,
   type ManagedTerminalCliKind,
-} from "@glade/shared/terminalThreads";
+} from "@glade/shared/threads/terminalThreads";
 
-import { envPathKeyFor, resolveExecutable } from "../executableLookup.ts";
+import { envPathKeyFor, resolveExecutable } from "@glade/shared/platform/executable";
 import {
   ensurePrivateDirectorySync,
   PRIVATE_EXECUTABLE_FILE_MODE,
   PRIVATE_FILE_MODE,
-} from "../privatePathPermissions";
+} from "../platform/filesystem/privatePathPermissions";
 
 export interface ManagedTerminalWrapperState {
   binDir: string | null;
@@ -31,7 +27,7 @@ export interface ManagedTerminalWrapperState {
 }
 
 function shellQuote(value: string): string {
-  return `'${value.replaceAll("'", `'\"'\"'`)}'`;
+  return `'${value.replaceAll("'", `'"'"'`)}'`;
 }
 
 function buildHookOscSequence(eventType: TerminalAgentHookEventType): string {
@@ -48,7 +44,7 @@ else
 fi
 
 _glade_extract_event() {
-  printf '%s' "$_glade_hook_input" | sed -n "s/.*\\\"$1\\\"[[:space:]]*:[[:space:]]*\\\"\\([^\\\"]*\\)\\\".*/\\1/p" | head -n 1
+  printf '%s' "$_glade_hook_input" | sed -n "s/.*\\"$1\\"[[:space:]]*:[[:space:]]*\\"\\([^\\"]*\\)\\".*/\\1/p" | head -n 1
 }
 
 _glade_event="$(_glade_extract_event hook_event_name)"
@@ -239,9 +235,7 @@ function writeFileIfChanged(filePath: string, content: string, mode: number): vo
   }
   try {
     fs.chmodSync(filePath, mode);
-  } catch {
-    // Best effort.
-  }
+  } catch {}
 }
 
 function buildManagedZshRc(quotedZshDir: string): string {

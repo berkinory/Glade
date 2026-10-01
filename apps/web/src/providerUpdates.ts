@@ -1,19 +1,11 @@
-// FILE: providerUpdates.ts
-// Purpose: Shared provider-update filtering and refresh cadence for global toasts and settings.
-// Layer: Web settings/notification utility
-// Exports: update candidate helpers, notification keys, and auto-refresh timing.
-
-import {
-  PROVIDER_DISPLAY_NAMES,
-  type ProviderKind,
-  type ServerProviderStatus,
-  type ServerSettings,
-} from "@glade/contracts";
+import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { type ServerProviderStatus } from "@glade/contracts/server/server";
+import { type ServerSettings } from "@glade/contracts/settings/settings";
 
 export const PROVIDER_UPDATE_INITIAL_REFRESH_DELAY_MS = 10_000;
 export const PROVIDER_UPDATE_REFRESH_INTERVAL_MS = 60 * 60 * 1_000;
-// The server stops provider commands after two minutes. This slightly longer
-// client watchdog also covers a stalled transport so loading UI always settles.
+
 const PROVIDER_UPDATE_REQUEST_TIMEOUT_MS = 2 * 60_000 + 15_000;
 
 function formatUpdateTimeout(timeoutMs: number): string {
@@ -76,8 +68,6 @@ export function isProviderUpdateActive(provider: ServerProviderStatus): boolean 
   return provider.updateState?.status === "queued" || provider.updateState?.status === "running";
 }
 
-// A provider whose latest version Glade cannot look up stays "unknown" and offers
-// updates as a manual action.
 export function isProviderLatestVersionKnowable(provider: ServerProviderStatus): boolean {
   return provider.versionAdvisory?.latestVersionKnowable !== false;
 }
@@ -92,7 +82,6 @@ export function shouldOfferProviderUpdateAction(provider: ServerProviderStatus):
   );
 }
 
-// Header affordance: reserved for providers Glade can actually assert are outdated.
 export function shouldPromptProviderUpdate(provider: ServerProviderStatus): boolean {
   return shouldOfferProviderUpdateAction(provider) && isProviderLatestVersionKnowable(provider);
 }
@@ -107,7 +96,6 @@ function isProviderEnabled(
   return serverSettings.providers[provider]?.enabled !== false;
 }
 
-// Central visibility gate used by both global toasts and Settings update rows.
 export function shouldShowProviderUpdateStatus(input: ProviderUpdateVisibilityInput): boolean {
   const advisory = input.provider.versionAdvisory;
   const hiddenProviderSet = input.hiddenProviderSet ?? new Set(input.hiddenProviders ?? []);

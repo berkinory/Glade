@@ -6,7 +6,6 @@ export function isModelDesktopObservationActive(): boolean {
   return observation.getStore()?.active === true;
 }
 
-/** Detached continuations lose observation authority when their operation ends. */
 export async function withModelDesktopObservation<A>(observe: () => Promise<A>): Promise<A> {
   const scope = { active: true };
   try {

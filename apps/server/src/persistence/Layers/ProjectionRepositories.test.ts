@@ -1,11 +1,4 @@
-import {
-  MessageId,
-  ProjectId,
-  SpaceId,
-  ThreadId,
-  TurnId,
-  type PendingClaudeCacheReview,
-} from "@glade/contracts";
+import { ProjectId, SpaceId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { assert, it } from "@effect/vitest";
 import { Effect, Layer, Option } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
@@ -20,6 +13,10 @@ import { ProjectionThreadRepository } from "../Services/ProjectionThreads.ts";
 import { ProjectionStateRepository } from "../Services/ProjectionState.ts";
 import { ProjectionTurnRepository } from "../Services/ProjectionTurns.ts";
 
+class InjectedFailure extends Error {
+  readonly _tag = "InjectedFailure";
+}
+
 const projectionRepositoriesLayer = it.layer(
   Layer.mergeAll(
     ProjectionProjectRepositoryLive.pipe(Layer.provideMerge(SqlitePersistenceMemory)),
@@ -31,92 +28,6 @@ const projectionRepositoriesLayer = it.layer(
 );
 
 projectionRepositoriesLayer("Projection repositories", (it) => {
-  it.effect("persists cache reviews, preserves omitted reviews, and clears them explicitly", () =>
-    Effect.gen(function* () {
-      const threads = yield* ProjectionThreadRepository;
-      const sql = yield* SqlClient.SqlClient;
-      const threadId = ThreadId.makeUnsafe("thread-cache-review");
-      const projectId = ProjectId.makeUnsafe("project-cache-review");
-      const now = "2026-09-16T10:00:00.000Z";
-      const thread = {
-        threadId,
-        projectId,
-        title: "Cache review",
-        modelSelection: { provider: "claudeAgent" as const, model: "claude-opus-4-6" },
-        runtimeMode: "full-access" as const,
-        interactionMode: "default" as const,
-        envMode: "local" as const,
-        branch: null,
-        worktreePath: null,
-        associatedWorktreePath: null,
-        associatedWorktreeBranch: null,
-        associatedWorktreeRef: null,
-        createBranchFlowCompleted: false,
-        lastKnownPr: null,
-        latestTurnId: null,
-        handoff: null,
-        pinnedMessages: null,
-        notes: null,
-        goal: null,
-        latestUserMessageAt: null,
-        pendingApprovalCount: 0,
-        pendingUserInputCount: 0,
-        hasActionableProposedPlan: 0,
-        createdAt: now,
-        updatedAt: now,
-        deletedAt: null,
-      };
-      const review: PendingClaudeCacheReview = {
-        reviewId: "cache-review-1",
-        messageId: MessageId.makeUnsafe("pending-cache-message"),
-        sourceEventSequence: 7,
-        assessment: {
-          nativeSessionId: "native-cache-session",
-          observedAt: now,
-          contextTokens: 850_000,
-          ttlSeconds: 3_600,
-          state: "likely-expired",
-          source: "session-start",
-        },
-        status: "pending",
-        createdAt: now,
-      };
-
-      // Old callers omit the additive field when creating or updating a row.
-      yield* threads.upsert(thread);
-      assert.isNull(Option.getOrNull(yield* threads.getById({ threadId }))?.claudeCacheReview);
-      yield* threads.upsert({ ...thread, claudeCacheReview: review });
-      assert.deepStrictEqual(
-        Option.getOrNull(yield* threads.getById({ threadId }))?.claudeCacheReview,
-        review,
-      );
-      yield* threads.upsert({ ...thread, title: "Renamed while awaiting a decision" });
-      assert.deepStrictEqual(
-        (yield* threads.listByProjectId({ projectId }))[0]?.claudeCacheReview,
-        review,
-      );
-
-      const uncertain: PendingClaudeCacheReview = {
-        ...review,
-        status: "uncertain",
-        compactionTurnId: TurnId.makeUnsafe("compact-cache-turn"),
-        error: "The provider delivery outcome could not be confirmed.",
-      };
-      yield* threads.upsert({ ...thread, claudeCacheReview: uncertain });
-      assert.deepStrictEqual(
-        Option.getOrNull(yield* threads.getById({ threadId }))?.claudeCacheReview,
-        uncertain,
-      );
-      yield* threads.upsert({ ...thread, claudeCacheReview: null });
-      assert.isNull(Option.getOrNull(yield* threads.getById({ threadId }))?.claudeCacheReview);
-      const [row] = yield* sql<{ readonly review: string | null }>`
-        SELECT claude_cache_review_json AS review FROM projection_threads
-        WHERE thread_id = ${threadId}
-      `;
-      assert.isNull(row?.review);
-    }),
-  );
-
   it.effect("clears active and soft-deleted project assignments for a deleted space", () =>
     Effect.gen(function* () {
       const projects = yield* ProjectionProjectRepository;
@@ -202,7 +113,9 @@ projectionRepositoriesLayer("Projection repositories", (it) => {
       `;
       const row = rows[0];
       if (!row) {
-        return yield* Effect.fail(new Error("Expected projection_projects row to exist."));
+        return yield* Effect.fail(
+          new InjectedFailure("Expected projection_projects row to exist."),
+        );
       }
 
       assert.strictEqual(
@@ -237,7 +150,7 @@ projectionRepositoriesLayer("Projection repositories", (it) => {
           model: "claude-opus-4-6",
         },
         runtimeMode: "full-access",
-        interactionMode: "default",
+
         envMode: "local",
         branch: null,
         worktreePath: null,
@@ -250,11 +163,11 @@ projectionRepositoriesLayer("Projection repositories", (it) => {
         handoff: null,
         pinnedMessages: null,
         notes: null,
-        goal: null,
+
         latestUserMessageAt: null,
         pendingApprovalCount: 0,
         pendingUserInputCount: 0,
-        hasActionableProposedPlan: 0,
+
         createdAt: "2026-03-24T00:00:00.000Z",
         updatedAt: "2026-03-24T00:00:00.000Z",
         deletedAt: null,
@@ -269,7 +182,7 @@ projectionRepositoriesLayer("Projection repositories", (it) => {
       `;
       const row = rows[0];
       if (!row) {
-        return yield* Effect.fail(new Error("Expected projection_threads row to exist."));
+        return yield* Effect.fail(new InjectedFailure("Expected projection_threads row to exist."));
       }
 
       assert.strictEqual(
@@ -325,7 +238,7 @@ projectionRepositoriesLayer("Projection repositories", (it) => {
         title: threadId,
         modelSelection: { provider: "codex" as const, model: "gpt-5.5" },
         runtimeMode: "approval-required" as const,
-        interactionMode: "default" as const,
+
         envMode: "local" as const,
         branch: null,
         worktreePath: null,
@@ -338,11 +251,11 @@ projectionRepositoriesLayer("Projection repositories", (it) => {
         handoff: null,
         pinnedMessages: null,
         notes: null,
-        goal: null,
+
         latestUserMessageAt: null,
         pendingApprovalCount: 0,
         pendingUserInputCount: 0,
-        hasActionableProposedPlan: 0,
+
         createdAt: now,
         updatedAt: now,
         deletedAt,
@@ -353,8 +266,7 @@ projectionRepositoriesLayer("Projection repositories", (it) => {
         threadId: ThreadId.makeUnsafe("thread-wait-active"),
         turnId: TurnId.makeUnsafe("turn-wait-active"),
         pendingMessageId: null,
-        sourceProposedPlanThreadId: null,
-        sourceProposedPlanId: null,
+
         assistantMessageId: null,
         state: "running",
         requestedAt: now,
@@ -369,8 +281,7 @@ projectionRepositoriesLayer("Projection repositories", (it) => {
         threadId: ThreadId.makeUnsafe("thread-wait-deleted"),
         turnId: TurnId.makeUnsafe("turn-wait-deleted"),
         pendingMessageId: null,
-        sourceProposedPlanThreadId: null,
-        sourceProposedPlanId: null,
+
         assistantMessageId: null,
         state: "completed",
         requestedAt: now,

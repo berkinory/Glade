@@ -1,7 +1,3 @@
-// FILE: ChatMarkdownFind.tsx
-// Purpose: Applies in-thread find decoration after markdown parsing.
-// Layer: Web chat presentation helper
-
 import React, { useMemo, type ReactNode } from "react";
 
 import {
@@ -36,7 +32,10 @@ export function ChatFindRenderProvider(props: {
   children: ReactNode;
 }) {
   const ranges = useMemo(
-    () => collectCaseInsensitiveSubstringRanges(props.sourceText, props.query),
+    () =>
+      normalizeFindQuery(props.query).length === 0
+        ? EMPTY_CHAT_FIND_RENDER_STATE.ranges
+        : collectCaseInsensitiveSubstringRanges(props.sourceText, props.query),
     [props.query, props.sourceText],
   );
   const value = useMemo<ChatFindRenderState>(
@@ -92,16 +91,17 @@ function renderFindWrappedText(
   return renderFindTextParts(splitTextWithFindMatches(text, query, activeRange, sourceOffset));
 }
 
-export function FindAwareMarkdownText(props: { text: string; sourceOffset: number }) {
+export function useFindTextRenderer() {
   const highlight = React.useContext(ChatFindRenderContext);
-  return renderFindTextParts(
-    splitTextWithFindRanges(
-      props.text,
-      highlight.ranges,
-      highlight.activeRange,
-      props.sourceOffset,
-    ),
-  );
+  return (text: string, sourceOffset: number) =>
+    renderFindTextParts(
+      splitTextWithFindRanges(text, highlight.ranges, highlight.activeRange, sourceOffset),
+    );
+}
+
+export function FindAwareMarkdownText(props: { text: string; sourceOffset: number }) {
+  const renderText = useFindTextRenderer();
+  return renderText(props.text, props.sourceOffset);
 }
 
 export function FindAwareCodeFallback(props: {

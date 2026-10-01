@@ -1,4 +1,6 @@
-import type { AsyncUserInput, MessageId, UserInputQuestion } from "@glade/contracts";
+import type { AsyncUserInput } from "@glade/contracts/orchestration/asyncUserInput";
+import type { MessageId } from "@glade/contracts/core/baseSchemas";
+import type { UserInputQuestion } from "@glade/contracts/provider/runtimePayloads";
 import { useMemo, useRef, useState } from "react";
 import { CircleQuestionIcon, CheckIcon } from "~/lib/icons";
 import {
@@ -22,7 +24,6 @@ export function AsyncUserInputCard({
   input: AsyncUserInput;
   onRespond?: ((messageId: MessageId, answers: readonly string[]) => Promise<void>) | undefined;
 }) {
-  // Native questions have no IDs. Their positions are stable within this message.
   const questions = useMemo<ReadonlyArray<UserInputQuestion>>(
     () =>
       input.questions.map((question, index) => ({

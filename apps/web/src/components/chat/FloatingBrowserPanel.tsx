@@ -1,8 +1,3 @@
-// FILE: FloatingBrowserPanel.tsx
-// Purpose: Draggable, resizable browser host that overlays one chat surface.
-// Layer: Chat surface UI
-// Depends on: the shared browser panel and panel-resize pointer overlay.
-
 import {
   type PointerEvent as ReactPointerEvent,
   Suspense,
@@ -12,8 +7,8 @@ import {
   useRef,
   useState,
 } from "react";
-import type { ThreadId } from "@glade/contracts";
-import { CHAT_SURFACE_HEADER_HEIGHT_PX } from "@glade/shared/desktopChrome";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { CHAT_SURFACE_HEADER_HEIGHT_PX } from "@glade/shared/platform/desktopChrome";
 
 import { EllipsisIcon, PanelRightCloseIcon, XIcon } from "../../lib/icons";
 import { requestBrowserPanelBoundsSync } from "../../lib/browserPanelBoundsSync";

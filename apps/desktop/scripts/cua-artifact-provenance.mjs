@@ -1,8 +1,5 @@
 export const LINUX_CUA_INPUT_SCOPE = "owned-headless-browser";
 
-// The CLI delegates cursor-theme authoring to the sibling executable. AT-SPI
-// observations use Rust/zbus; the GNOME extension sources are also embedded in
-// the driver, and these files preserve the upstream manual installation route.
 export const LINUX_CUA_SIDECAR_PATHS = [
   "cua-cursor-theme",
   "wayland-helper/install.sh",

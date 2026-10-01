@@ -1,13 +1,8 @@
-// FILE: pinnedMessages.ts
-// Purpose: Pure transforms + dispatch helpers for per-thread pinned messages and notes.
-// Layer: Chat environment panel + message timeline helpers.
-
 import {
   PINNED_MESSAGE_LABEL_MAX_CHARS,
-  type MessageId,
   type PinnedMessage,
-  type ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/threadEntities";
+import { type MessageId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   addPinnedMessage,
   clampThreadNotes,
@@ -17,20 +12,14 @@ import {
   setPinnedMessageDone,
   setPinnedMessageLabel,
   togglePinnedMessageDone,
-} from "@glade/shared/pinnedMessages";
+} from "@glade/shared/threads/pinnedMessages";
 
 import { newCommandId } from "./lib/utils";
 import { readNativeApi } from "./nativeApi";
 
-// Strip the most common leading block markers (headings, list bullets, blockquotes)
-// and inline emphasis so an auto-derived label reads as plain prose.
 const LEADING_BLOCK_MARKER_PATTERN = /^\s*(?:#{1,6}\s+|>+\s*|[-*+]\s+|\d+[.)]\s+)/;
 const INLINE_EMPHASIS_PATTERN = /[*_`~]+/g;
 
-/**
- * Derive a human-readable label from a pinned message's text: the first non-empty
- * line, lightly de-marked and truncated. Returns "" when there is no usable text.
- */
 function derivePinLabel(messageText: string): string {
   const normalized = messageText.replace(/\r\n/g, "\n");
   let firstLine = "";
@@ -53,11 +42,8 @@ function derivePinLabel(messageText: string): string {
     : cleaned;
 }
 
-/**
- * Resolve the label to render for a pin: an explicit user override wins, otherwise
- * the auto-derived label from the message text. Returns "" when the message text is
- * unavailable and there is no override (callers render their own fallback).
- */
+// Resolve the label to render for a pin: an explicit user override wins, otherwise the auto-derived
+// label from the message text.
 export function displayLabelFor(pin: PinnedMessage, messageText: string | undefined): string {
   const override = pin.label?.trim();
   if (override) {
@@ -112,7 +98,6 @@ export function setPinDone(
   return setPinnedMessageDone(pins, messageId, done);
 }
 
-/** Set (or clear, with `null`) a pin's user-provided label. Empty input clears it. */
 export function setPinLabel(
   pins: readonly PinnedMessage[] | undefined,
   messageId: MessageId,

@@ -1,9 +1,6 @@
-// FILE: ProviderUsagePanelContent.tsx
-// Purpose: Render a provider usage summary panel that can show both classic
-// rate-limit rows and archive-derived local usage lines in the same popover.
-
-import type { ProviderKind, ServerCodexResetCredits } from "@glade/contracts";
-import { providerUsageLabel } from "@glade/shared/providerUsage";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
+import type { ServerCodexResetCredits } from "@glade/contracts/server/server";
+import { providerUsageLabel } from "@glade/shared/provider/providerUsage";
 
 import { ExternalLinkIcon, TriangleAlertIcon } from "~/lib/icons";
 import type { OpenUsageUsageLine } from "~/lib/openUsageRateLimits";

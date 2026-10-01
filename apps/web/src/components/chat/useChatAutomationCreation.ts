@@ -1,18 +1,17 @@
+import { useChatThreadContext } from "./ChatThreadContext";
+import { EventId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
-  EventId,
-  ProviderInteractionMode,
   RuntimeMode,
-  ThreadId,
-  type AutomationSchedule,
   type ModelSelection,
   type ProviderStartOptions,
-} from "@glade/contracts";
-import { automationRequiresTargetThread } from "@glade/shared/automationMode";
+} from "@glade/contracts/provider/sessionPolicy";
+import { type AutomationSchedule } from "@glade/contracts/automation/automation";
+import { automationRequiresTargetThread } from "@glade/shared/threads/automationMode";
 import {
   GENERIC_CHAT_THREAD_TITLE,
   buildPromptThreadTitleFallback,
-} from "@glade/shared/chatThreads";
-import { deriveAssociatedWorktreeMetadata } from "@glade/shared/threadWorkspace";
+} from "@glade/shared/threads/chatThreads";
+import { deriveAssociatedWorktreeMetadata } from "@glade/shared/threads/threadWorkspace";
 import type { QueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { promoteThreadCreate } from "~/lib/threadCreatePromotion";
@@ -21,8 +20,8 @@ import { readNativeApi } from "~/nativeApi";
 import { dispatchThreadNotes } from "~/pinnedMessages";
 import {
   mergeProjectInstructionsIntoThreadNotes,
-  useProjectInstructionsStore,
-} from "~/projectInstructionsStore";
+  useProjectPreferencesStore,
+} from "~/projectPreferencesStore";
 import {
   acknowledgedRiskIdsForDraft,
   hasBlockingAutomationDraftWarnings,
@@ -96,7 +95,7 @@ interface ChatAutomationCreationInput {
   threadNotes: string;
   selectedModelSelection: ModelSelection;
   runtimeMode: RuntimeMode;
-  interactionMode: ProviderInteractionMode;
+
   automationDraftForm: ReturnType<typeof useChatAutomationSetup>["automationDraftForm"];
   automationDraftWarnings: ReturnType<typeof useChatAutomationSetup>["automationDraftWarnings"];
   acknowledgedAutomationWarnings: ReturnType<
@@ -104,26 +103,48 @@ interface ChatAutomationCreationInput {
   >["acknowledgedAutomationWarnings"];
 }
 
+type ChatAutomationCreationControllerInput = {
+  workspace: Pick<
+    ChatAutomationCreationInput,
+    "activeProject" | "isServerThread" | "activeThreadAssociatedWorktree" | "runtimeMode"
+  >;
+  provider: Pick<
+    ChatAutomationCreationInput,
+    | "automationDraftSubmittingRef"
+    | "providerOptionsForDispatch"
+    | "setIsAutomationDraftSubmitting"
+    | "resetAutomationDraftState"
+    | "selectedModelSelection"
+    | "automationDraftForm"
+    | "automationDraftWarnings"
+    | "acknowledgedAutomationWarnings"
+  >;
+  session: Pick<ChatAutomationCreationInput, "activeThread" | "queryClient">;
+  turn: Pick<ChatAutomationCreationInput, "clearComposerInput">;
+  transcript: Pick<ChatAutomationCreationInput, "threadNotes">;
+};
 export function useChatAutomationCreation({
-  threadId,
-  activeProject,
-  automationDraftSubmittingRef,
-  isServerThread,
-  activeThread,
-  providerOptionsForDispatch,
-  setIsAutomationDraftSubmitting,
-  queryClient,
-  clearComposerInput,
-  resetAutomationDraftState,
-  activeThreadAssociatedWorktree,
-  threadNotes,
-  selectedModelSelection,
-  runtimeMode,
-  interactionMode,
-  automationDraftForm,
-  automationDraftWarnings,
-  acknowledgedAutomationWarnings,
-}: ChatAutomationCreationInput) {
+  workspace,
+  provider,
+  session,
+  turn,
+  transcript,
+}: ChatAutomationCreationControllerInput) {
+  const { threadId } = useChatThreadContext();
+  const { activeProject, isServerThread, activeThreadAssociatedWorktree, runtimeMode } = workspace;
+  const {
+    automationDraftSubmittingRef,
+    providerOptionsForDispatch,
+    setIsAutomationDraftSubmitting,
+    resetAutomationDraftState,
+    selectedModelSelection,
+    automationDraftForm,
+    automationDraftWarnings,
+    acknowledgedAutomationWarnings,
+  } = provider;
+  const { activeThread, queryClient } = session;
+  const { clearComposerInput } = turn;
+  const { threadNotes } = transcript;
   const createAutomationFromForm = useCallback(
     async (input: {
       readonly form: AutomationFormState;
@@ -240,7 +261,6 @@ export function useChatAutomationCreation({
       readonly titleSeed: string;
       readonly threadModelSelection: ModelSelection;
       readonly threadRuntimeMode: RuntimeMode;
-      readonly threadInteractionMode: ProviderInteractionMode;
     }): Promise<ThreadId | null> => {
       const api = readNativeApi();
       if (!api || !activeProject || !activeThread) {
@@ -256,8 +276,7 @@ export function useChatAutomationCreation({
       }
 
       const title = buildPromptThreadTitleFallback(input.titleSeed || GENERIC_CHAT_THREAD_TITLE);
-      // Nested function so the `try` body holds no value blocks — see the comment on
-      // `deleteEmptyTerminalThread` above for why React Compiler requires this shape.
+
       const promoteDraftForAutomation = async (): Promise<ThreadId | null> => {
         const result = await promoteThreadCreate(
           {
@@ -268,7 +287,7 @@ export function useChatAutomationCreation({
             title,
             modelSelection: input.threadModelSelection,
             runtimeMode: input.threadRuntimeMode,
-            interactionMode: input.threadInteractionMode,
+
             envMode: activeThread.envMode ?? (activeThread.worktreePath ? "worktree" : "local"),
             branch: activeThread.branch ?? null,
             worktreePath: activeThread.worktreePath ?? null,
@@ -292,7 +311,7 @@ export function useChatAutomationCreation({
         }
 
         const inheritedProjectInstructions =
-          useProjectInstructionsStore.getState().instructionsByProjectId[activeProject.id] ?? "";
+          useProjectPreferencesStore.getState().instructionsByProjectId[activeProject.id] ?? "";
         const inheritedThreadNotes = mergeProjectInstructionsIntoThreadNotes({
           threadNotes,
           projectInstructions: inheritedProjectInstructions,
@@ -336,13 +355,10 @@ export function useChatAutomationCreation({
         return { form, activityThreadId };
       }
 
-      // Draft review can keep the local draft ID in the form; promote it only when
-      // the automation is actually submitted so cancelling review leaves no empty thread.
       const targetThreadId = await ensureAutomationTargetThread({
         titleSeed: form.prompt || form.name,
         threadModelSelection: selectedModelSelection,
         threadRuntimeMode: runtimeMode,
-        threadInteractionMode: interactionMode,
       });
       if (!targetThreadId) {
         return null;
@@ -355,7 +371,7 @@ export function useChatAutomationCreation({
     [
       activeThread,
       ensureAutomationTargetThread,
-      interactionMode,
+
       isServerThread,
       runtimeMode,
       selectedModelSelection,

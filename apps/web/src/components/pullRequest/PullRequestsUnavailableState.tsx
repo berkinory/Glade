@@ -1,10 +1,3 @@
-// FILE: PullRequestsUnavailableState.tsx
-// Purpose: Actionable empty state for the pull requests surface when the GitHub CLI is missing,
-//          unauthenticated, or a request otherwise failed — each case gets a short explanation
-//          and a copyable terminal command instead of a dead end.
-// Layer: Pull request presentation
-// Exports: PullRequestsUnavailableState
-
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "~/components/ui/button";
@@ -17,7 +10,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "~/components/ui/empty";
-import { copyTextToClipboard } from "~/hooks/useCopyToClipboard";
+import { copyTextToClipboard } from "../../lib/clipboard";
 import { CheckIcon, CopyIcon, GitPullRequestIcon, TriangleAlertIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { ensureNativeApi } from "~/nativeApi";
@@ -40,7 +33,6 @@ function githubCliInstallCommand(platform: string): string | null {
   return null;
 }
 
-/** A single copyable terminal command — the `brew install gh` / `gh auth login` affordances. */
 function CommandLine({ command }: { command: string }) {
   const [copied, setCopied] = useState(false);
   const mountedRef = useRef(true);
@@ -112,7 +104,7 @@ export function PullRequestsUnavailableState({
   onRetry,
 }: {
   error: unknown;
-  /** Optional refetch hook so "Retry" re-runs the failed query instead of reloading the app. */
+
   onRetry?: () => void;
 }) {
   const unavailable = isPullRequestsUnavailableError(error) ? error : null;

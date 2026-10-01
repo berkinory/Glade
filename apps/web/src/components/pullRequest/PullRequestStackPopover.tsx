@@ -1,11 +1,4 @@
-// FILE: PullRequestStackPopover.tsx
-// Purpose: Compact stack position control plus a full bottom-to-top stack navigator for the
-//          pull request detail header. GitHub stack state stays visible without duplicating a
-//          second pull request surface.
-// Layer: Pull request presentation
-// Exports: PullRequestStackPopover
-
-import type { PullRequestStack } from "@glade/contracts";
+import type { PullRequestStack } from "@glade/contracts/git/pullRequests";
 import { useState } from "react";
 
 import { CHAT_HEADER_CONTROL_CLASS_NAME } from "~/components/chat/chatHeaderControls";

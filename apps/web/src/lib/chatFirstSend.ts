@@ -1,5 +1,6 @@
-import { DEFAULT_MODEL_BY_PROVIDER, type ModelSelection } from "@glade/contracts";
-import { workspaceRootsEqual } from "@glade/shared/threadWorkspace";
+import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
+import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
+import { workspaceRootsEqual } from "@glade/shared/threads/threadWorkspace";
 
 import type { Project } from "../types";
 import { buildChatWorkspaceFolderPath } from "./chatWorkspaceFolders";
@@ -55,7 +56,7 @@ export function resolveFirstSendTarget(input: {
     input.defaultModelSelection ??
     ({
       provider: "codex",
-      model: DEFAULT_MODEL_BY_PROVIDER.codex,
+      model: PROVIDER_DEFAULT_MODEL,
     } satisfies ModelSelection);
   const {
     activeProject,
@@ -76,8 +77,6 @@ export function resolveFirstSendTarget(input: {
     };
   }
 
-  // Home-chat folder mentions intentionally escape the generic-chat workspace and become
-  // normal projects.
   if (!selectedWorkspaceRoot) {
     if (!chatWorkspaceRoot) {
       return {

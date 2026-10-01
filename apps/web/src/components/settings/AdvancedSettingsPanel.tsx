@@ -1,8 +1,3 @@
-// FILE: AdvancedSettingsPanel.tsx
-// Purpose: Own advanced settings state and workflows for auth, keybindings, and recovery.
-// Layer: Settings UI components
-// Exports: AdvancedSettingsPanel
-
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 
@@ -31,7 +26,7 @@ export function AdvancedSettingsPanel(props: {
   const configQuery = useQuery(serverConfigQueryOptions());
   const authSessionQuery = useQuery(serverAuthSessionQueryOptions());
   const syncServerReadModel = useStore((store) => store.syncServerReadModel);
-  // Keep these subscriptions inside the only panel that uses recovery eligibility.
+
   const threadShells = useStore(useMemo(() => createThreadShellsSelector(), []));
   const allThreadsMessageless = useStore(useMemo(() => createAllThreadsMessagelessSelector(), []));
   const projectCount = useStore((store) => store.projects.length);

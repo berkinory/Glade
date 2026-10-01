@@ -6,11 +6,10 @@ import {
   type ComputerAuditHistoryEntry,
   type ComputerGetAuditHistoryInput,
   type ComputerGetAuditHistoryResult,
-} from "@glade/contracts";
+} from "@glade/contracts/computer/computerAudit";
 import { Schema } from "effect";
 import { computerAuditTailLines, readComputerAuditFileTail } from "./computerAuditFile.ts";
 
-/** One request never reads arbitrary paths or scans an unbounded legacy log. */
 const COMPUTER_AUDIT_HISTORY_MAX_BYTES = 2 * 1024 * 1024;
 const COMPUTER_AUDIT_HISTORY_MAX_ROWS = 10_000;
 const MAX_LINE_BYTES = 64 * 1024;
@@ -60,9 +59,7 @@ function parseCursor(cursor: string | undefined): AuditPosition | undefined {
     ) {
       return { file: value.file, offset: value.offset, fingerprint: value.fingerprint };
     }
-  } catch {
-    // A cursor is a position only; it never supplies a filesystem path.
-  }
+  } catch {}
   throw new Error("Invalid Computer activity cursor. Refresh the history to continue.");
 }
 
@@ -107,14 +104,11 @@ function projectEntry(line: Buffer, position: AuditPosition): ComputerAuditHisto
   }
 }
 
-/**
- * Read only the configured local log and two conventional rotations. The
- * writer currently compacts in place; supporting these fixed suffixes also
- * preserves history from existing log rotation without directory enumeration.
- * File identity + byte offset preserves duplicate records during normal
- * appends/rotation. A unique fingerprint can recover a retained cursor after
- * compaction; ambiguous or expired cursors return an explicit truncated page.
- */
+// Read only the configured local log and two conventional rotations. The writer currently compacts
+// in place; supporting these fixed suffixes also preserves history from existing log rotation
+// without directory enumeration. File identity + byte offset preserves duplicate records during
+// normal appends/rotation. A unique fingerprint can recover a retained cursor after compaction;
+// ambiguous or expired cursors return an explicit truncated page.
 export async function readComputerAuditHistory(
   filePath: string | undefined,
   input: ComputerGetAuditHistoryInput,

@@ -57,11 +57,6 @@ function tokenStartForCursor(text: string, cursor: number): number {
   return index + 1;
 }
 
-// Finds the `/` that opens the slash token the cursor sits in. The slash may be
-// at the line start OR immediately after whitespace, so `/command` is detected
-// mid-line (e.g. after an existing chip) — matching how `$skill` and `@mention`
-// already behave. Returns the latest such slash before the cursor on the
-// current line, or -1 when the cursor is not within a slash token region.
 function slashTokenStartForCursor(text: string, lineStart: number, cursor: number): number {
   let slashStart = -1;
   for (let index = lineStart; index < cursor; index += 1) {
@@ -87,7 +82,6 @@ export function expandCollapsedComposerCursor(text: string, cursorInput: number)
 
   for (const segment of segments) {
     if (segment.type === "mention") {
-      // Quoted tokens (`@"name with spaces"`) are longer than path.length + 1.
       const expandedLength = segment.tokenLength ?? segment.path.length + 1;
       if (remaining <= 1) {
         return expandedCursor + (remaining === 0 ? 0 : expandedLength);
@@ -115,7 +109,6 @@ export function expandCollapsedComposerCursor(text: string, cursorInput: number)
       continue;
     }
     if (segment.type === "agent-mention") {
-      // @alias = 1 + alias.length
       const expandedLength = segment.alias.length + 1;
       if (remaining <= 1) {
         return expandedCursor + (remaining === 0 ? 0 : expandedLength);
@@ -193,7 +186,6 @@ export function collapseExpandedComposerCursor(text: string, cursorInput: number
 
   for (const segment of segments) {
     if (segment.type === "mention") {
-      // Quoted tokens (`@"name with spaces"`) are longer than path.length + 1.
       const expandedLength = segment.tokenLength ?? segment.path.length + 1;
       if (remaining === 0) {
         return collapsedCursor;
@@ -230,7 +222,6 @@ export function collapseExpandedComposerCursor(text: string, cursorInput: number
       continue;
     }
     if (segment.type === "agent-mention") {
-      // @alias = 1 + alias.length
       const expandedLength = segment.alias.length + 1;
       if (remaining === 0) {
         return collapsedCursor;
@@ -313,15 +304,11 @@ export function detectComposerTrigger(text: string, cursorInput: number): Compos
     const commandMatch = /^\/(\S*)$/.exec(region);
     if (commandMatch) {
       const commandQuery = commandMatch[1] ?? "";
-      // Command names are `[a-z-]+` (see parseStandaloneComposerSlashCommand), so a
-      // query containing "/" can never be a command — e.g. a typed path or "/and/or"
-      // after a space. Treat it as plain text instead of opening an empty picker.
+
       if (commandQuery.includes("/")) {
         return null;
       }
-      // `/model` opens the model picker; every other `/query` (known or unknown)
-      // stays in the slash-command lane so provider-native commands and skills
-      // can be suggested without borrowing the `$skill` flow.
+
       if (commandQuery.toLowerCase() === "model") {
         return {
           kind: "slash-model",
@@ -360,9 +347,6 @@ export function detectComposerTrigger(text: string, cursorInput: number): Compos
     };
   }
 
-  // An unclosed `@"..."` mention spans whitespace, so a pure whitespace-bounded
-  // token won't catch it. Look back on the line for the last `@"` that hasn't
-  // been closed yet and treat everything after it as the active mention query.
   const quotedMentionStart = linePrefix.lastIndexOf('@"');
   if (quotedMentionStart !== -1) {
     const afterOpen = linePrefix.slice(quotedMentionStart + 2);
@@ -380,10 +364,9 @@ export function detectComposerTrigger(text: string, cursorInput: number): Compos
     return null;
   }
 
-  // Support adjacent mentions like `@foo@bar` by anchoring the active trigger
-  // to the last `@` within the whitespace-bounded word. Without this, a chain
-  // like `@foo@b` would expose the whole chain as the replacement range, so
-  // picking an item would clobber the earlier chip. Emails like `user@host`
+  // Support adjacent mentions like `@foo@bar` by anchoring the active trigger to the last `@` within
+  // the whitespace-bounded word. Without this, a chain like `@foo@b` would expose the whole chain as
+  // the replacement range, so picking an item would clobber the earlier chip. Emails like `user@host`
   // stay unaffected because the enclosing word doesn't start with `@`.
   const lastAtInToken = token.lastIndexOf("@");
   const mentionStart = tokenStart + lastAtInToken;

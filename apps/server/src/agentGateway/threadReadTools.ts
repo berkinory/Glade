@@ -1,10 +1,7 @@
-import {
-  GLADE_GATEWAY_MAX_THREADS_PER_OPERATION,
-  ThreadId,
-  TurnId,
-  type OrchestrationThreadShell,
-  type ProviderKind,
-} from "@glade/contracts";
+import type { TaggedFailure } from "../platform/operationError.ts";
+import { GLADE_GATEWAY_MAX_THREADS_PER_OPERATION } from "@glade/contracts/provider/agentGateway";
+import { ThreadId, TurnId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { type OrchestrationThreadShell } from "@glade/contracts/orchestration/threadEntities";
 import { Effect, Option } from "effect";
 
 import {
@@ -57,12 +54,12 @@ export interface ThreadReadToolsInput {
   readonly providerDiscovery: ProviderDiscoveryServiceShape;
   readonly loadProviderAvailabilities: Effect.Effect<
     ReadonlyMap<ProviderKind, AgentGatewayProviderAvailability>,
-    unknown,
+    TaggedFailure,
     never
   >;
   readonly requireThreadShell: (
     threadId: string,
-  ) => Effect.Effect<OrchestrationThreadShell, unknown, never>;
+  ) => Effect.Effect<OrchestrationThreadShell, TaggedFailure, never>;
   readonly workspacePaths: SpaceAssignmentWorkspacePaths;
 }
 
@@ -334,7 +331,7 @@ export function makeThreadReadTools(input: ThreadReadToolsInput): ReadonlyArray<
       },
       annotations: { title: "Read a Glade thread", ...READ_ONLY_TOOL_ANNOTATIONS },
     },
-    handler: (args, context) =>
+    handler: (args, _context) =>
       Effect.gen(function* () {
         const threadId = readStringArg(args, "threadId", { required: true })!;
         const cursor = readStringArg(args, "cursor");

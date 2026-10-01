@@ -1,28 +1,13 @@
-// FILE: toolCallGroup.logic.ts
-// Purpose: Summarizes a settled run of tool-call work entries into one compact
-//          label ("Ran 2 commands, Edited 2 files, Searched 3 files") for the
-//          collapsed tool-group disclosure in the transcript.
-// Layer: Web chat presentation helpers
-// Exports: MIN_COLLAPSIBLE_TOOL_GROUP_SIZE, workEntryRowCount,
-//          multiFileEditLabel,
-//          ToolCallGroupSummary, isSummarizableToolCallEntry,
-//          summarizeToolCallGroup
+import { pluralize } from "@glade/shared/text/text";
+import { isFileChangeWorkLogEntry, type WorkLogEntry } from "../../workLog.types";
+import { deriveReadableCommandDisplay } from "../../lib/toolCallLabel.commands";
 
-import { pluralize } from "@glade/shared/text";
-import { isFileChangeWorkLogEntry, type WorkLogEntry } from "../../session-logic";
-import { deriveReadableCommandDisplay } from "../../lib/toolCallLabel";
-
-// A single tool row collapses into nothing useful; only runs of 2+ rows fold.
 export const MIN_COLLAPSIBLE_TOOL_GROUP_SIZE = 2;
 
-// Rows an entry occupies when listed: a file-change call renders one
-// "Edited <file>" row per changed file, so one patch can be a whole column.
-// Fold thresholds count these rows, not calls.
 export function workEntryRowCount(entry: WorkLogEntry): number {
   return isFileChangeWorkLogEntry(entry) ? Math.max(1, entry.changedFiles?.length ?? 0) : 1;
 }
 
-// One-line label for a call that would list several edited-file rows.
 export function multiFileEditLabel(entry: WorkLogEntry): string | null {
   const rowCount = workEntryRowCount(entry);
   return rowCount > 1 ? summaryPartLabel("edit", rowCount, true) : null;
@@ -42,14 +27,10 @@ export interface ToolCallGroupSummary {
   entryCount: number;
   // A group with in-flight work must never present itself as settled.
   hasRunningEntry: boolean;
-  // First summarized entry: the collapsed row borrows its icon so the summary
-  // keeps the same leading glyph as the first tool row it folds away.
+
   iconEntry: WorkLogEntry;
 }
 
-// Rich rows (subagent strips, automation cards, thread-creation recaps) and
-// non-tool tones (errors, approvals, info) must stay individually visible, so
-// they never fold into a summary group.
 export function isSummarizableToolCallEntry(entry: WorkLogEntry): boolean {
   return (
     entry.tone === "tool" &&
@@ -87,8 +68,7 @@ function classifyToolCallSummaryCategory(entry: WorkLogEntry): ToolCallSummaryCa
     if (command) {
       return classifyCommandVerb(deriveReadableCommandDisplay(command).verb);
     }
-    // Structured command actions (e.g. Codex read/search) carry the verb as the
-    // derived tool title without any shell command string.
+
     const titleVerb = entry.toolTitle?.trim().split(/\s+/, 1)[0] ?? "";
     return classifyCommandVerb(titleVerb);
   }
@@ -104,8 +84,6 @@ function classifyToolCallSummaryCategory(entry: WorkLogEntry): ToolCallSummaryCa
   return "other";
 }
 
-// Distinct-file identity for an edit/read entry. Entries with no file info
-// count as one unit each so the total never under-reports work.
 function entryFileKeys(entry: WorkLogEntry): ReadonlyArray<string> {
   if (entry.changedFiles && entry.changedFiles.length > 0) {
     return entry.changedFiles;

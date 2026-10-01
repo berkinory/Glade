@@ -1,11 +1,4 @@
-// FILE: PullRequestTimelineTab.tsx
-// Purpose: The Timeline tab of the pull request detail surface — renders the chronological
-//          event list (opened, commits, comments/reviews, merged/closed) produced by
-//          buildPullRequestTimelineEvents as a simple left-rail timeline.
-// Layer: Pull request presentation
-// Exports: PullRequestTimelineTab
-
-import type { PullRequestDetail } from "@glade/contracts";
+import type { PullRequestDetail } from "@glade/contracts/git/pullRequests";
 import { formatRelativeTime } from "~/lib/relativeTime";
 import { buildPullRequestTimelineEvents } from "./pullRequestDetail.logic";
 import { PR_BODY_TEXT_CLASS_NAME, PR_META_TEXT_CLASS_NAME } from "./pullRequestText";

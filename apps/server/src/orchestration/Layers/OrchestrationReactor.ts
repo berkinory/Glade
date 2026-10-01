@@ -19,9 +19,7 @@ const makeOrchestrationReactor = Effect.gen(function* () {
     yield* checkpointReactor.start;
     yield* threadGitMetadataReactor.start;
     yield* providerRuntimeIngestion.start;
-    // Install every runtime observer before provider command dispatch can
-    // begin. Reverse-order finalization then drains provider commands first,
-    // runtime ingestion, Git metadata, and checkpoints.
+
     yield* providerCommandReactor.start;
   });
 

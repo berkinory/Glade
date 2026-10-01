@@ -1,14 +1,14 @@
+import type { ProjectEntry } from "@glade/contracts/workspace/project";
 import type {
-  ProjectEntry,
   ProviderAgentDescriptor,
   ProviderArtifactsState,
   ProviderNativeCommandDescriptor,
-  ProviderKind,
   ProviderMentionReference,
   ProviderPluginDescriptor,
   ProviderSkillDescriptor,
-} from "@glade/contracts";
-import { getAgentMentionAutocompleteAliases } from "@glade/contracts";
+} from "@glade/contracts/provider/providerDiscovery";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { getAgentMentionAutocompleteAliases } from "../lib/agentMentions";
 import {
   buildCommandSearchFields,
   buildPluginSearchFields,
@@ -29,7 +29,7 @@ import {
   getProviderNativeSlashCommandSearchTerms,
   shouldHideProviderNativeCommandFromComposerMenu,
 } from "../composerSlashCommands";
-import { threadMentionPathForThreadId } from "@glade/shared/threadMentions";
+import { threadMentionPathForThreadId } from "@glade/shared/threads/threadMentions";
 
 import type { ComposerCommandItem } from "../components/chat/ComposerCommandMenu";
 import type { ProviderModelOption } from "../providerModelOptions";
@@ -103,10 +103,6 @@ function makeUniqueMentionName(input: {
   }
 }
 
-// Mention tokens/chips resolve back to their reference by name, so two chats
-// sharing a title would be indistinguishable once inserted (wrong provider
-// icon, ambiguous context). Build friendly project-qualified names first, then
-// guarantee uniqueness across the final serialized names with a stable id suffix.
 function withDisambiguatedMentionNames(
   candidates: ReadonlyArray<Omit<ThreadMentionCandidate, "mentionName">>,
 ): ThreadMentionCandidate[] {
@@ -184,8 +180,6 @@ function buildThreadMentionCandidates(input: {
   );
 }
 
-// Resolves the mention a dropped chat row should insert: the exact name/path the
-// `@` menu would produce, or null when that chat is not mentionable here.
 export function resolveThreadMentionForThreadId(input: {
   readonly threads: readonly ComposerThreadMentionSource[];
   readonly projects: readonly Project[];
@@ -265,55 +259,57 @@ export function buildSearchableModelOptions(input: {
 }
 
 export function useComposerCommandMenuItems(input: {
-  composerTrigger: ComposerTrigger | null;
-  provider: ProviderKind;
-  providerPlugins: readonly ComposerPluginSuggestion[];
-  providerNativeCommands: readonly ProviderNativeCommandDescriptor[];
-  providerSkills: readonly ProviderSkillDescriptor[];
-  workspaceEntries: readonly ProjectEntry[];
-  searchableModelOptions: readonly SearchableModelOption[];
-  supportsFastSlashCommand: boolean;
-  canOfferCompactCommand: boolean;
-  canOfferReviewCommand: boolean;
-  canOfferForkCommand: boolean;
-  canOfferExportCommand: boolean;
-  surfaceAppSlashCommands?: ReadonlySet<string>;
-  /** Artifact publishing state reported by provider command discovery. */
-  providerArtifacts?: ProviderArtifactsState | undefined;
-  dynamicAgents: readonly ProviderAgentDescriptor[];
-  threadMentionSources?: {
-    readonly threads: readonly ComposerThreadMentionSource[];
-    readonly projects: readonly Project[];
-    readonly currentThreadId: string | null;
+  trigger: { composerTrigger: ComposerTrigger | null };
+  catalog: {
+    provider: ProviderKind;
+    providerPlugins: readonly ComposerPluginSuggestion[];
+    providerNativeCommands: readonly ProviderNativeCommandDescriptor[];
+    providerSkills: readonly ProviderSkillDescriptor[];
+    searchableModelOptions: readonly SearchableModelOption[];
+    providerArtifacts?: ProviderArtifactsState | undefined;
+    dynamicAgents: readonly ProviderAgentDescriptor[];
+  };
+  references: {
+    workspaceEntries: readonly ProjectEntry[];
+    threadMentionSources?: {
+      readonly threads: readonly ComposerThreadMentionSource[];
+      readonly projects: readonly Project[];
+      readonly currentThreadId: string | null;
+    };
+  };
+  commands: {
+    supportsFastSlashCommand: boolean;
+    canOfferCompactCommand: boolean;
+    canOfferReviewCommand: boolean;
+    canOfferForkCommand: boolean;
+    canOfferExportCommand: boolean;
   };
 }): ComposerCommandItem[] {
+  const { composerTrigger } = input.trigger;
   const {
-    composerTrigger,
     provider,
     providerPlugins,
     providerNativeCommands,
     providerSkills,
-    workspaceEntries,
     searchableModelOptions,
+    providerArtifacts,
+    dynamicAgents,
+  } = input.catalog;
+  const { workspaceEntries, threadMentionSources } = input.references;
+  const {
     supportsFastSlashCommand,
     canOfferCompactCommand,
     canOfferReviewCommand,
     canOfferForkCommand,
     canOfferExportCommand,
-    surfaceAppSlashCommands,
-    providerArtifacts,
-    dynamicAgents,
-    threadMentionSources,
-  } = input;
+  } = input.commands;
 
   if (!composerTrigger) return [];
 
-  // Keep trigger-specific discovery outside ChatView so the view mostly orchestrates state.
   if (composerTrigger.kind === "mention") {
     const query = normalizeProviderDiscoveryText(composerTrigger.query);
 
     const agentItems: ComposerCommandItem[] = (() => {
-      // Use dynamic agents when available, fallback to static
       if (dynamicAgents.length > 0) {
         return rankProviderDiscoveryItems(dynamicAgents, query, ({ name, displayName }) => [
           { value: name },
@@ -328,9 +324,12 @@ export function useComposerCommandMenuItems(input: {
           description: displayName,
         }));
       }
-      // Static fallback
+
       return rankProviderDiscoveryItems(
-        getAgentMentionAutocompleteAliases(provider),
+        getAgentMentionAutocompleteAliases(
+          provider,
+          searchableModelOptions.filter((model) => model.provider === provider),
+        ),
         query,
         ({ alias, displayName }) => [{ value: alias }, { value: displayName }],
       ).map(({ alias, displayName, color }) => ({
@@ -354,7 +353,15 @@ export function useComposerCommandMenuItems(input: {
       plugin,
       mention,
       label: plugin.interface?.displayName ?? plugin.name,
-      description: plugin.interface?.shortDescription ?? plugin.source.path,
+      description:
+        plugin.interface?.shortDescription ??
+        (plugin.source.type === "local"
+          ? plugin.source.path
+          : plugin.source.type === "git"
+            ? plugin.source.url
+            : plugin.source.type === "npm"
+              ? plugin.source.package
+              : plugin.name),
     }));
     const localRootItems =
       matchesLocalFolderMentionShortcut(composerTrigger.query) && composerTrigger.query !== "/"
@@ -381,8 +388,7 @@ export function useComposerCommandMenuItems(input: {
           query: composerTrigger.query,
         })
       : [];
-    // Keep mention suggestions ordered by primary intent: plugins and chats
-    // first, then local context, then subagent delegation targets.
+
     return [...pluginItems, ...threadItems, ...localRootItems, ...pathItems, ...agentItems];
   }
 
@@ -397,11 +403,8 @@ export function useComposerCommandMenuItems(input: {
       canOfferExportCommand,
       providerNativeCommandNames: providerNativeCommands.map((command) => command.name),
     });
-    const visibleAppCommands = surfaceAppSlashCommands
-      ? availableCommands.filter((command) => surfaceAppSlashCommands.has(command))
-      : availableCommands;
-    const visibleAppCommandSet = new Set(visibleAppCommands);
-    const builtInItems = filterComposerSlashCommands(composerTrigger.query, visibleAppCommands).map(
+    const visibleAppCommandSet = new Set(availableCommands);
+    const builtInItems = filterComposerSlashCommands(composerTrigger.query, availableCommands).map(
       (definition) => ({
         id: `slash:${definition.command}`,
         type: "slash-command" as const,
@@ -443,8 +446,7 @@ export function useComposerCommandMenuItems(input: {
         artifacts: providerArtifacts,
       }),
     }));
-    // `/` is the universal picker surface; provider dispatch can adapt the
-    // visible slash token to backend-specific skill syntax when needed.
+
     const skillItems: ComposerCommandItem[] = rankProviderDiscoveryItems(
       providerSkills,
       query,

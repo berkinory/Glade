@@ -1,10 +1,4 @@
-// Purpose: Branch/worktree picker for the chat toolbar.
-// Coordinates branch checkout/create actions and decorates rows with git metadata.
-// Depends on: git React Query helpers, native API mutations, and toolbar selection rules.
-// Note: the "Create branch" footer row uses raw <button> because it is a
-// menu-item-style affordance inside a ComboboxPopup, not a generic action.
-import type { GitBranch, GitStashInfoResult, GitStatusResult, NativeApi } from "@glade/contracts";
-import { pluralize } from "@glade/shared/text";
+import type { GitBranch, GitStashInfoResult, GitStatusResult } from "@glade/contracts/git/git";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ChevronDownIcon, PlusIcon, SearchIcon } from "~/lib/icons";
@@ -27,7 +21,7 @@ import {
   gitQueryKeys,
   gitStatusQueryOptions,
   refreshGitQueriesScoped,
-} from "../lib/gitReactQuery";
+} from "../lib/gitQueryOptions";
 import { readNativeApi } from "../nativeApi";
 import { parsePullRequestReference } from "../pullRequestReference";
 import {
@@ -59,6 +53,7 @@ import {
   ComboboxTrigger,
 } from "./ui/combobox";
 import { Input } from "./ui/input";
+import { toBranchActionErrorMessage, handleCheckoutError } from "./branchCheckoutRecovery";
 import { toastManager } from "./ui/toast";
 import {
   ENVIRONMENT_ROW_CLASS_NAME,
@@ -78,25 +73,26 @@ import {
 } from "./chat/pickerPanelStyles";
 import type { ThreadWorkspacePatch } from "../types";
 
-/**
- * Where the selector is rendered. `toolbar` keeps the compact composer-footer pill;
- * `panel` makes the trigger a full-width Environment panel row and drops its menu
- * downward instead of upward.
- */
 export type BranchSelectorVariant = "toolbar" | "panel" | "compact";
 
 interface BranchToolbarBranchSelectorProps {
-  activeProjectCwd: string;
-  activeThreadBranch: string | null;
-  activeWorktreePath: string | null;
-  branchCwd: string | null;
-  effectiveEnvMode: EnvMode;
-  envLocked: boolean;
-  hasServerThread: boolean;
-  isThreadSettled: boolean;
-  onSetThreadWorkspace: (patch: ThreadWorkspacePatch) => void;
-  onCheckoutPullRequestRequest?: (reference: string) => void;
-  onComposerFocusRequest?: () => void;
+  workspace: {
+    activeProjectCwd: string;
+    activeThreadBranch: string | null;
+    activeWorktreePath: string | null;
+    branchCwd: string | null;
+    effectiveEnvMode: EnvMode;
+  };
+  thread: {
+    envLocked: boolean;
+    hasServerThread: boolean;
+    isThreadSettled: boolean;
+  };
+  actions: {
+    onSetThreadWorkspace: (patch: ThreadWorkspacePatch) => void;
+    onCheckoutPullRequestRequest?: (reference: string) => void;
+    onComposerFocusRequest?: () => void;
+  };
   variant?: BranchSelectorVariant;
 }
 
@@ -106,239 +102,6 @@ type StashDiscardDialogState = {
   info: GitStashInfoResult | null;
   loading: boolean;
 };
-
-function toBranchActionErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "An error occurred.";
-}
-
-const DIRTY_WORKTREE_ERROR_PATTERN =
-  /Uncommitted changes block checkout to ([^:\n]+):\s*\n((?:\s*-\s*.+(?:\n|$))+)/;
-const STASH_CONFLICT_PATTERN = /Stash could not be applied|Stash applied with merge conflicts/;
-const UNRESOLVED_INDEX_PATTERN = /you need to resolve your current index/i;
-const GIT_INDEX_LOCK_PATTERN =
-  /(?:Unable to create '([^']*\.git\/index\.lock)'|Another git process seems to be running|\.git\/index\.lock.*File exists)/i;
-const GIT_INDEX_WRITE_PATTERN = /could not write index/i;
-let activeBranchRecoveryToastId: ReturnType<typeof toastManager.add> | null = null;
-
-function closeActiveBranchRecoveryToast(): void {
-  if (!activeBranchRecoveryToastId) return;
-  toastManager.close(activeBranchRecoveryToastId);
-  activeBranchRecoveryToastId = null;
-}
-
-function addBranchRecoveryToast(input: Parameters<typeof toastManager.add>[0]) {
-  closeActiveBranchRecoveryToast();
-  activeBranchRecoveryToastId = toastManager.add(input);
-  return activeBranchRecoveryToastId;
-}
-
-function parseDirtyWorktreeError(error: unknown): { branch: string; files: string[] } | null {
-  const detail = error instanceof Error ? error.message : String(error);
-  const match = DIRTY_WORKTREE_ERROR_PATTERN.exec(detail);
-  if (!match?.[1] || !match[2]) return null;
-  const files = match[2]
-    .split(/\r?\n/)
-    .map((line) => line.replace(/^\s*-\s*/, "").trim())
-    .filter((line) => line.length > 0);
-  if (files.length === 0) return null;
-  return {
-    branch: match[1].trim(),
-    files,
-  };
-}
-
-function isStashConflictError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return STASH_CONFLICT_PATTERN.test(message);
-}
-
-function isUnresolvedIndexError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return UNRESOLVED_INDEX_PATTERN.test(message);
-}
-
-function parseGitIndexLockError(error: unknown): { lockPath: string | null } | null {
-  const message = error instanceof Error ? error.message : String(error);
-  const match = GIT_INDEX_LOCK_PATTERN.exec(message);
-  if (!match) return null;
-  return {
-    lockPath: match[1]?.trim() || null,
-  };
-}
-
-function isGitIndexWriteError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return GIT_INDEX_WRITE_PATTERN.test(message);
-}
-
-function formatDirtyWorktreeDescription(files: string[]): string {
-  const basenames = files.map((file) => file.split("/").pop() ?? file);
-  if (basenames.length <= 3) {
-    return `${basenames.join(", ")} ${pluralize(basenames.length, "has", "have")} uncommitted changes. Commit or stash before switching.`;
-  }
-  const remaining = basenames.length - 2;
-  return `${basenames.slice(0, 2).join(", ")} and ${remaining} other ${pluralize(remaining, "file")} have uncommitted changes. Commit or stash before switching.`;
-}
-
-function handleCheckoutError(
-  error: unknown,
-  input: {
-    api: NativeApi;
-    branch: string;
-    cwd: string;
-    fallbackTitle: string;
-    onSuccess: () => void;
-    runBranchAction: (
-      action: () => Promise<void>,
-      options?: { readonly refreshCwds?: readonly string[] },
-    ) => void;
-    onRequestDiscardStash: (input: { cwd: string }) => void;
-  },
-): void {
-  // Recovery always acts on input.cwd, which can differ from the selector's own checkout
-  // (e.g. "Stash & Switch" from a dedicated worktree back to the project root), so every
-  // retry passes it as the awaited refresh scope instead of relying on the default.
-  const retryRefreshOptions = { refreshCwds: [input.cwd] } as const;
-  const retryStashAndCheckout = async (): Promise<void> => {
-    await input.api.git.stashAndCheckout({ cwd: input.cwd, branch: input.branch });
-    input.onSuccess();
-  };
-
-  const addGitIndexLockToast = (error: unknown): void => {
-    const lockError = parseGitIndexLockError(error);
-    if (!lockError) return;
-    const lockFileLabel = lockError.lockPath
-      ? lockError.lockPath.split("/").slice(-2).join("/")
-      : ".git/index.lock";
-    addBranchRecoveryToast({
-      type: "error",
-      title: "Git index is locked.",
-      description: `${lockFileLabel} already exists. Close any running Git operation, remove the stale lock file if none is running, then retry.`,
-      data: { copyText: toBranchActionErrorMessage(error) },
-      actionProps: {
-        children: "Remove lock & retry",
-        onClick: () => {
-          input.runBranchAction(async () => {
-            try {
-              await input.api.git.removeIndexLock({ cwd: input.cwd });
-              await retryStashAndCheckout();
-            } catch (retryError) {
-              handleCheckoutError(retryError, input);
-            }
-          }, retryRefreshOptions);
-        },
-      },
-    });
-  };
-
-  const addGitIndexWriteToast = (error: unknown): void => {
-    addBranchRecoveryToast({
-      type: "error",
-      title: "Git index could not be written.",
-      description:
-        "Git could not update the repository index. Retry after any current Git operation finishes.",
-      data: { copyText: toBranchActionErrorMessage(error) },
-      actionProps: {
-        children: "Retry stash & switch",
-        onClick: () => {
-          input.runBranchAction(async () => {
-            try {
-              await retryStashAndCheckout();
-            } catch (retryError) {
-              handleCheckoutError(retryError, input);
-            }
-          }, retryRefreshOptions);
-        },
-      },
-    });
-  };
-
-  const dirtyWorktree = parseDirtyWorktreeError(error);
-  if (dirtyWorktree) {
-    const copyText = toBranchActionErrorMessage(error);
-    addBranchRecoveryToast({
-      type: "warning",
-      title: "Uncommitted changes block checkout.",
-      description: formatDirtyWorktreeDescription(dirtyWorktree.files),
-      data: { copyText },
-      actionProps: {
-        children: "Stash & Switch",
-        onClick: () => {
-          closeActiveBranchRecoveryToast();
-          input.runBranchAction(async () => {
-            try {
-              await retryStashAndCheckout();
-            } catch (stashError) {
-              if (parseGitIndexLockError(stashError)) {
-                addGitIndexLockToast(stashError);
-                return;
-              }
-              if (isGitIndexWriteError(stashError)) {
-                addGitIndexWriteToast(stashError);
-                return;
-              }
-              if (isStashConflictError(stashError)) {
-                input.onSuccess();
-                addBranchRecoveryToast({
-                  type: "warning",
-                  title: "Changes saved, but not reapplied.",
-                  description:
-                    "Glade switched branches and kept your changes in a stash because they could not be restored onto this branch cleanly.",
-                  data: { copyText: toBranchActionErrorMessage(stashError) },
-                  actionProps: {
-                    children: "Discard stash",
-                    className:
-                      "text-destructive [:hover,[data-pressed]]:bg-destructive/10 [:hover,[data-pressed]]:text-destructive",
-                    onClick: () => {
-                      closeActiveBranchRecoveryToast();
-                      input.onRequestDiscardStash({ cwd: input.cwd });
-                    },
-                  },
-                });
-                return;
-              }
-              if (parseDirtyWorktreeError(stashError)) {
-                addBranchRecoveryToast({
-                  type: "error",
-                  title: "Cannot switch branches.",
-                  description:
-                    "Some conflicting files are not covered by git stash, such as ignored files. Move or remove them before switching.",
-                  data: { copyText: toBranchActionErrorMessage(stashError) },
-                });
-                return;
-              }
-              addBranchRecoveryToast({
-                type: "error",
-                title: "Failed to stash and switch.",
-                description: toBranchActionErrorMessage(stashError),
-                data: { copyText: toBranchActionErrorMessage(stashError) },
-              });
-            }
-          }, retryRefreshOptions);
-        },
-      },
-    });
-    return;
-  }
-
-  if (parseGitIndexLockError(error)) {
-    addGitIndexLockToast(error);
-    return;
-  }
-  if (isGitIndexWriteError(error)) {
-    addGitIndexWriteToast(error);
-    return;
-  }
-
-  addBranchRecoveryToast({
-    type: "error",
-    title: isUnresolvedIndexError(error)
-      ? "Unresolved conflicts in the repository."
-      : input.fallbackTitle,
-    description: toBranchActionErrorMessage(error),
-    data: { copyText: toBranchActionErrorMessage(error) },
-  });
-}
 
 function getBranchTriggerLabel(input: {
   activeWorktreePath: string | null;
@@ -374,17 +137,15 @@ function getCurrentBranchChangeSummary(
 }
 
 export function BranchToolbarBranchSelector({
-  activeProjectCwd,
-  activeThreadBranch,
-  activeWorktreePath,
-  branchCwd,
-  effectiveEnvMode,
-  envLocked,
-  hasServerThread,
-  isThreadSettled,
-  onSetThreadWorkspace,
-  onCheckoutPullRequestRequest,
-  onComposerFocusRequest,
+  workspace: {
+    activeProjectCwd,
+    activeThreadBranch,
+    activeWorktreePath,
+    branchCwd,
+    effectiveEnvMode,
+  },
+  thread: { envLocked, hasServerThread, isThreadSettled },
+  actions: { onSetThreadWorkspace, onCheckoutPullRequestRequest, onComposerFocusRequest },
   variant: variantProp,
 }: BranchToolbarBranchSelectorProps) {
   const variant = variantProp ?? "toolbar";
@@ -480,19 +241,17 @@ export function BranchToolbarBranchSelector({
     onSetThreadWorkspace,
   ]);
 
-  const runBranchAction = (
-    action: () => Promise<void>,
-    options?: { readonly refreshCwds?: readonly string[] },
-  ) => {
-    startBranchActionTransition(async () => {
-      await action().catch(() => undefined);
-      // Only the acted-on checkout gates re-enabling the selector; the remaining cached
-      // repos (checked-out markers in sibling worktrees) refresh in the background so a
-      // slow unrelated worktree cannot hold the selector disabled.
-      const awaitedCwds = options?.refreshCwds ?? (branchCwd ? [branchCwd] : []);
-      await refreshGitQueriesScoped(queryClient, awaitedCwds).catch(() => undefined);
-    });
-  };
+  const runBranchAction = useCallback(
+    (action: () => Promise<void>, options?: { readonly refreshCwds?: readonly string[] }) => {
+      startBranchActionTransition(async () => {
+        await action().catch(() => undefined);
+
+        const awaitedCwds = options?.refreshCwds ?? (branchCwd ? [branchCwd] : []);
+        await refreshGitQueriesScoped(queryClient, awaitedCwds).catch(() => undefined);
+      });
+    },
+    [branchCwd, queryClient],
+  );
 
   const openCreateBranchDialog = useCallback(() => {
     setCreateBranchName(canPrefillCreateBranch && !hasExactBranchMatch ? trimmedBranchQuery : "");
@@ -553,7 +312,6 @@ export function BranchToolbarBranchSelector({
     const api = readNativeApi();
     if (!api || !branchCwd || isBranchActionPending) return;
 
-    // In new-worktree mode, selecting a branch sets the base branch.
     if (isSelectingWorktreeBase) {
       onSetThreadWorkspace({ branch: branch.name, worktreePath: null });
       setIsBranchMenuOpen(false);
@@ -567,7 +325,6 @@ export function BranchToolbarBranchSelector({
       branch,
     });
 
-    // If the branch already lives in a worktree, point the thread there.
     if (selectionTarget.reuseExistingWorktree) {
       onSetThreadWorkspace({
         branch: branch.name,

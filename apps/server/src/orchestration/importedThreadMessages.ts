@@ -1,10 +1,6 @@
-// FILE: importedThreadMessages.ts
-// Purpose: Normalizes provider-native transcript snapshots into Glade import messages.
-// Layer: Orchestration import mapping
-// Exports: Codex and Claude transcript mappers.
-
 import type { SessionMessage as ClaudeSessionMessage } from "@anthropic-ai/claude-agent-sdk";
-import { MessageId, type ThreadHandoffImportedMessage, type ThreadId } from "@glade/contracts";
+import { MessageId, type ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type ThreadHandoffImportedMessage } from "@glade/contracts/orchestration/commands";
 
 function readTranscriptTextParts(value: unknown): ReadonlyArray<string> {
   if (!Array.isArray(value)) return [];
@@ -39,7 +35,6 @@ interface CodexImportTurn {
 }
 
 type ClaudeImportMessage = ClaudeSessionMessage & {
-  // The SDK omits timestamps; the import reader can recover these by UUID from JSONL.
   readonly timestamp?: unknown;
   readonly createdAt?: unknown;
   readonly updatedAt?: unknown;
@@ -54,7 +49,6 @@ interface PendingImportMessage {
 }
 
 function readTimestamp(value: unknown): number | undefined {
-  // Codex turn times are Unix seconds; enriched local records may use milliseconds.
   const milliseconds =
     typeof value === "number"
       ? Math.abs(value) < 1e12
@@ -79,8 +73,6 @@ function finalizeImportedMessages(
       : Date.parse(importedAt) - 1;
 
   return messages.map((message) => {
-    // Projections sort by timestamp and ID. Distinct milliseconds preserve source order
-    // when native records have absent/equal times, without depending on UUID ordering.
     const createdAt = Math.max(message.createdAt ?? previousTimestamp + 1, previousTimestamp + 1);
     previousTimestamp = createdAt;
     return {

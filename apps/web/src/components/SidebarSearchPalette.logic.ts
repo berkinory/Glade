@@ -1,12 +1,9 @@
-// Purpose: Scores sidebar palette results for actions, themes, projects, and chat threads.
-// Keeps search local and deterministic so the palette can rank title hits above
-// message-content hits while still surfacing a useful snippet for chat matches.
 import type { ComponentType } from "react";
 
-import type { ProviderKind } from "@glade/contracts";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { basenameOfPath } from "../file-icons";
 import type { ProjectAppearance } from "../lib/projectAppearance";
-import type { ThemeMode, ThemeVariant } from "../theme/theme.logic";
+import type { ThemeMode, ThemeVariant } from "../theme/themeModel";
 
 export interface SidebarSearchAction {
   id: string;
@@ -14,14 +11,11 @@ export interface SidebarSearchAction {
   description: string;
   keywords?: readonly string[];
   shortcutLabel?: string | null;
-  /** Dynamic actions (e.g. "Switch to <space>") execute this instead of a wired-up prop. */
+
   run?: () => void;
-  /** Overrides the id-keyed icon map for actions whose glyph is data (a space's icon). */
+
   icon?: ComponentType<{ className?: string }>;
-  /**
-   * Type-to-jump targets (one per space) only appear once the user types; listing them
-   * all in the empty palette would push threads and projects below the fold.
-   */
+
   requiresQuery?: boolean;
 }
 
@@ -70,7 +64,6 @@ export interface SidebarSearchThread {
   }[];
 }
 
-/** Field-wise equality so a rebuilt search thread list can keep its previous identity. */
 export function areSidebarSearchThreadListsEqual(
   previous: readonly SidebarSearchThread[],
   next: readonly SidebarSearchThread[],

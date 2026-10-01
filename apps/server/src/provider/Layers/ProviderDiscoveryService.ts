@@ -1,5 +1,5 @@
+import { DEFAULT_SERVER_SETTINGS } from "@glade/contracts/settings/settings";
 import {
-  DEFAULT_SERVER_SETTINGS,
   type ProviderComposerCapabilities,
   ProviderGetComposerCapabilitiesInput,
   ProviderListAgentsInput,
@@ -9,15 +9,14 @@ import {
   ProviderListPluginsInput,
   ProviderModelDescriptor,
   ProviderListSkillsInput,
-  type ProviderListSkillsResult,
   ProviderReadPluginInput,
-  type ProviderSkillDescriptor,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/providerDiscovery";
 import { Effect, Exit, Layer, Option, Queue, Schema, SchemaIssue } from "effect";
 
-import { ServerConfig } from "../../config.ts";
-import { ServerSettingsService } from "../../serverSettings.ts";
-import { ProviderValidationError } from "../Errors.ts";
+import { modelDiscoveryContext } from "../core/modelDiscoveryContext.ts";
+import { ServerConfig } from "../../server/config.ts";
+import { ServerSettingsService } from "../../settings/serverSettings.ts";
+import { ProviderValidationError } from "../core/Errors.ts";
 import type { ProviderDiscoveryError } from "../Services/ProviderDiscoveryService.ts";
 import { ProviderAdapterRegistry } from "../Services/ProviderAdapterRegistry.ts";
 import {
@@ -28,17 +27,13 @@ import {
   type PersistedModelCatalogEntryInput,
   makeProviderModelDiscoveryCache,
   providerModelDiscoveryCacheKey,
-} from "../providerModelDiscoveryCache.ts";
+} from "../core/providerModelDiscoveryCache.ts";
 import {
   readProviderModelCatalogCache,
   resolveProviderModelCatalogCachePath,
   writeProviderModelCatalogCache,
-} from "../providerModelCatalogCache.ts";
-import {
-  discoverSkillsCatalog,
-  filterDisabledSkills,
-  mergeSkillsIntoCatalog,
-} from "../skillsCatalog.ts";
+} from "../core/providerModelCatalogCache.ts";
+import { filterDisabledSkills } from "../core/skillsCatalog.ts";
 
 const decodeInputOrValidationError = <S extends Schema.Top>(input: {
   readonly operation: string;
@@ -100,17 +95,12 @@ const make = Effect.gen(function* () {
   const registry = yield* ProviderAdapterRegistry;
   const serverConfig = yield* ServerConfig;
   const serverSettings = yield* ServerSettingsService;
-  // One catalog cache for every provider: adapters that spawn a CLI process
-  // per listModels call share stale-while-revalidate, single-flight, and
-  // failure-replay behaviour with adapters that reuse a running process.
-  // Snapshots persist to stateDir so a restart reopens the picker with
-  // last-known models instead of a fresh discovery wait.
+
   const catalogCachePath = resolveProviderModelCatalogCachePath({
     stateDir: serverConfig.stateDir,
   });
   const persistedCatalogs = yield* readProviderModelCatalogCache(catalogCachePath);
-  // Writes serialize through a queue so concurrent cache mutations can't race
-  // the atomic file write.
+  // Writes serialize through a queue so concurrent cache mutations can't race the atomic file write.
   const catalogWriteQueue =
     yield* Queue.unbounded<ReadonlyArray<PersistedModelCatalogEntryInput>>();
   const writeCatalogSnapshot = (entries: ReadonlyArray<PersistedModelCatalogEntryInput>) =>
@@ -122,13 +112,9 @@ const make = Effect.gen(function* () {
         }),
       ),
     );
-  // Registered before the writer fiber: finalizers run LIFO, so at scope close
-  // the writer is interrupted first and this then drains anything still queued.
-  // The newest snapshot always reaches disk even on shutdown.
+
   yield* Effect.addFinalizer(() =>
     Effect.suspend(() => {
-      // Queue.takeAll would block on an empty queue; takeUnsafe drains
-      // synchronously so the newest queued snapshot wins.
       let latest: ReadonlyArray<PersistedModelCatalogEntryInput> | undefined;
       for (
         let taken = Queue.takeUnsafe(catalogWriteQueue);
@@ -143,8 +129,6 @@ const make = Effect.gen(function* () {
   yield* Effect.forkScoped(
     Effect.forever(
       Effect.flatMap(Queue.take(catalogWriteQueue), (first) => {
-        // Coalesce bursts: each queued item is a full snapshot, so drain to the
-        // newest before writing (e.g. several providers discovered at boot).
         let latest = first;
         for (
           let taken = Queue.takeUnsafe(catalogWriteQueue);
@@ -188,8 +172,7 @@ const make = Effect.gen(function* () {
       const capabilities = adapter.getComposerCapabilities
         ? yield* adapter.getComposerCapabilities()
         : disabledCapabilitiesForProvider(parsed.provider);
-      // The unified Glade skills catalog backs skill discovery for every
-      // provider, including ones without native skill support.
+
       return {
         ...capabilities,
         supportsSkillMentions: true,
@@ -212,46 +195,22 @@ const make = Effect.gen(function* () {
         };
       }
       const adapter = yield* registry.getByProvider(parsed.provider);
-      const nativeResult: ProviderListSkillsResult | null = adapter.listSkills
-        ? yield* adapter
-            .listSkills(parsed)
-            .pipe(
-              Effect.catch((error) =>
-                Effect.logWarning(
-                  "provider-native skill discovery failed; serving the Glade skills catalog only",
-                  { provider: parsed.provider, error },
-                ).pipe(Effect.as(null)),
-              ),
-            )
-        : null;
-      const catalogSkills = yield* Effect.tryPromise(() =>
-        discoverSkillsCatalog({
-          cwd: parsed.cwd,
-          homeDir: serverConfig.homeDir,
-          gladeBaseDir: serverConfig.baseDir,
-          provider: parsed.provider,
-          ...(parsed.forceReload !== undefined ? { forceReload: parsed.forceReload } : {}),
-        }),
-      ).pipe(
-        Effect.catchCause((cause) =>
-          Effect.logWarning("glade skills catalog discovery failed", {
-            provider: parsed.provider,
-            cause,
-          }).pipe(Effect.as([] as ProviderSkillDescriptor[])),
+      if (!adapter.listSkills) return { skills: [], source: "unsupported", cached: false };
+      const nativeResult = yield* adapter.listSkills(parsed);
+      const settings = yield* serverSettings.getSettings.pipe(
+        Effect.mapError(
+          (cause) =>
+            new ProviderValidationError({
+              operation: "ProviderDiscoveryService.listSkills",
+              issue: "Skill enablement settings are unavailable.",
+              cause,
+            }),
         ),
       );
-      const merged = mergeSkillsIntoCatalog({
-        native: nativeResult?.skills ?? [],
-        catalog: catalogSkills,
-      });
-      const settings = yield* serverSettings.getSettings.pipe(
-        Effect.orElseSucceed(() => DEFAULT_SERVER_SETTINGS),
-      );
       return {
-        skills: filterDisabledSkills(merged, settings.skills.disabled),
-        source: nativeResult?.source ? `${nativeResult.source}+glade.catalog` : "glade.catalog",
-        cached: nativeResult?.cached ?? false,
-      } satisfies ProviderListSkillsResult;
+        ...nativeResult,
+        skills: filterDisabledSkills(nativeResult.skills, settings.skills.disabled),
+      };
     });
 
   const listCommands: ProviderDiscoveryServiceShape["listCommands"] = (input) =>
@@ -279,8 +238,7 @@ const make = Effect.gen(function* () {
       if (parsed.provider !== "claudeAgent") {
         return yield* adapter.listCommands(parsed);
       }
-      // Server-owned like the session start options, so discovery lists the
-      // same commands a new Claude session will actually have.
+
       const settings = yield* serverSettings.getSettings.pipe(
         Effect.orElseSucceed(() => DEFAULT_SERVER_SETTINGS),
       );
@@ -366,13 +324,31 @@ const make = Effect.gen(function* () {
           cached: false,
         };
       }
+      const context = yield* modelDiscoveryContext({
+        request: parsed,
+        settings: yield* serverSettings.getSettings.pipe(
+          Effect.mapError(
+            (cause) =>
+              new ProviderValidationError({
+                operation: "ProviderDiscoveryService.listModels",
+                issue: "Provider settings are unavailable.",
+                cause,
+              }),
+          ),
+        ),
+        homeDir: serverConfig.homeDir,
+      });
+      const request = { ...parsed, binaryPath: context.binaryPath };
       const listModelsFromAdapter = adapter.listModels;
-      const discover = Effect.suspend(() => listModelsFromAdapter(parsed)).pipe(
+      const discover = Effect.suspend(() => listModelsFromAdapter(request)).pipe(
         Effect.flatMap((result) =>
           isolateMalformedModelDescriptors({ provider: parsed.provider, result }),
         ),
       );
-      return yield* modelDiscoveryCache.lookup(providerModelDiscoveryCacheKey(parsed), discover);
+      return yield* modelDiscoveryCache.lookup(
+        { ...providerModelDiscoveryCacheKey(request), contextIdentity: context.identity },
+        discover,
+      );
     });
 
   const listAgents: ProviderDiscoveryServiceShape["listAgents"] = (input) =>

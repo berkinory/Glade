@@ -1,12 +1,4 @@
-// FILE: OnboardingDialog.tsx
-// Purpose: First-run welcome tour: intro → feature tour → agents → appearance → project → done.
-//          Owns step navigation and the per-run results the final summary reads.
-// Layer: Web UI overlay (mounted once from the root route)
-//
-// The popup is a fixed 800×540 frame for every step so the window never resizes as the
-// user moves through the tour; hero steps (welcome, done) center their content in it.
-
-import { VISIBLE_PROVIDER_DESCRIPTORS } from "../providerCatalog";
+import { PROVIDER_DESCRIPTORS as VISIBLE_PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
 import { useEffect, useState } from "react";
 
 import { useAppSettings } from "~/appSettings";
@@ -24,7 +16,7 @@ import { useTheme } from "~/hooks/useTheme";
 import { CheckIcon } from "~/lib/icons";
 import { findProviderStatus } from "~/lib/providerAvailability";
 import { cn } from "~/lib/utils";
-import { CODE_THEME_OPTIONS } from "~/theme/theme.logic";
+import { CODE_THEME_OPTIONS } from "../theme/theme.logic.shared";
 import { ONBOARDING_INSET_CLASS_NAME } from "./layout";
 import {
   classifyProviderSetup,
@@ -63,7 +55,6 @@ const STEP_DESCRIPTIONS: Record<Exclude<OnboardingStep, "done">, string> = {
   project: `A project is a folder ${APP_BASE_NAME} works in. Git repositories unlock branches, worktrees, diffs and pull requests.`,
 };
 
-/** Welcome and Done are hero steps: centered header, no step counter, centered body. */
 function isHeroStep(step: OnboardingStep): boolean {
   return step === "welcome" || step === "done";
 }
@@ -211,8 +202,6 @@ export function OnboardingDialog(props: {
   onOpenChange: (open: boolean) => void;
   onComplete: () => void;
 }) {
-  // Project creation cannot be aborted: closing the tour mid-create would report a skip
-  // while a project still appears afterwards, so dismissal waits for it to settle.
   const [projectBusy, setProjectBusy] = useState(false);
   const handleOpenChange = (open: boolean) => {
     if (!open && projectBusy) return;
@@ -221,7 +210,7 @@ export function OnboardingDialog(props: {
   return (
     <Dialog open={props.open} onOpenChange={handleOpenChange}>
       <DialogPopup showCloseButton className="h-[540px] max-h-full max-w-[800px]">
-        {/* Remount per open so a replay from Settings starts at the first step. */}
+        {}
         {props.open ? (
           <OnboardingFlow
             onComplete={props.onComplete}

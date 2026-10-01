@@ -1,12 +1,12 @@
+import { type ProjectEntry } from "@glade/contracts/workspace/project";
+import { type ModelSlug } from "@glade/contracts/provider/model";
 import {
-  type ProjectEntry,
-  type ModelSlug,
   type ProviderNativeCommandDescriptor,
   type ProviderMentionReference,
-  type ProviderKind,
   type ProviderPluginDescriptor,
   type ProviderSkillDescriptor,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/providerDiscovery";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { type ReactNode } from "react";
 import { type ComposerTriggerKind } from "../../composer-logic";
 import { type ComposerSlashCommand } from "../../composerSlashCommands";
@@ -57,12 +57,6 @@ function commandMenuTitle(
       return "Model";
     case "fast":
       return "Fast Mode";
-    case "plan":
-      return "Plan Mode";
-    case "debug":
-      return "Debug Mode";
-    case "default":
-      return "Default Mode";
     case "review":
       return "Code Review";
     case "fork":
@@ -107,8 +101,6 @@ function commandMenuTrailingMeta(item: ComposerCommandItem): string | null {
     return `/${item.command}`;
   }
 
-  // Right-align the parent path so many same-named entries (e.g. worktrees) stay
-  // distinguishable without crowding the name column.
   if (item.type === "path") {
     return item.description.length > 0 ? item.description : null;
   }
@@ -117,8 +109,6 @@ function commandMenuTrailingMeta(item: ComposerCommandItem): string | null {
 }
 
 function commandMenuSecondaryText(item: ComposerCommandItem): string | null {
-  // The menu is driven from the composer, so focus never reaches the warning icon:
-  // the row itself has to say why the command will not work.
   if (item.type === "provider-native-command" && item.notice) {
     return item.notice.summary;
   }
@@ -173,7 +163,7 @@ export type ComposerCommandItem =
       command: ProviderNativeCommandDescriptor["name"];
       label: string;
       description: string;
-      /** Why the command cannot fully work right now: row text plus a warning tooltip. */
+
       notice?: ProviderCommandNotice | null;
     }
   | {
@@ -376,7 +366,6 @@ export function ComposerCommandMenu(props: {
       }}
       footer={
         props.triggerKind === "mention" ? (
-          /* This footer is informational copy, not a selectable result group. */
           <div className="pt-0.5 pb-2">
             <p
               className={cn(
@@ -421,9 +410,6 @@ export function ComposerCommandMenu(props: {
   );
 }
 
-// Files mirror the recap / diff changed-files treatment (FileEntryIcon at
-// size-3.5 with the same dimmed foreground) so a file reads identically whether
-// it appears in a turn summary or in the composer.
 const COMPOSER_COMMAND_ITEM_FILE_ICON_CLASSNAME =
   "size-3.5 text-[var(--color-text-foreground)] opacity-70 dark:opacity-80";
 
@@ -465,9 +451,6 @@ function commandMenuItemGlyph(item: ComposerCommandItem, theme: "light" | "dark"
     case "slash-command":
       return commandMenuSlashGlyph(item.command, TerminalIcon);
     case "provider-native-command":
-      // Provider native commands surface skills (e.g. Claude exposes skills as
-      // slash commands), so default to the skill block glyph used for skill
-      // tokens in the composer/timeline — named commands still keep their icon.
       return commandMenuSlashGlyph(item.command, SkillCubeIcon);
     case "model":
       return <BrainIcon className={cls} />;

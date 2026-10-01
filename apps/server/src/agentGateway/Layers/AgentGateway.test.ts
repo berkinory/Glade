@@ -4,25 +4,26 @@ import type {
   AutomationCreateInput,
   AutomationDefinition,
   AutomationUpdateInput,
-  OrchestrationCommand,
-  OrchestrationEvent,
+} from "@glade/contracts/automation/automation";
+import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
+import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
+import type {
   OrchestrationProjectShell,
   OrchestrationThread,
   OrchestrationThreadShell,
-  ProviderKind,
-  ProviderModelDescriptor,
-  ServerProviderStatus,
-  ThreadId as ThreadIdType,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/threadEntities";
+import type { ProviderKind, ThreadId as ThreadIdType } from "@glade/contracts/core/baseSchemas";
+import type { ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
+import type { ServerProviderStatus } from "@glade/contracts/server/server";
 import {
   AutomationId,
-  DEFAULT_MODEL_BY_PROVIDER,
   MessageId,
   ProjectId,
   ThreadId,
   TurnId,
-} from "@glade/contracts";
-import { isTemporaryWorktreeBranch } from "@glade/shared/git";
+} from "@glade/contracts/core/baseSchemas";
+import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
+import { isTemporaryWorktreeBranch } from "@glade/shared/git/git";
 
 import { Cause, Deferred, Effect, Exit, Fiber, Layer, Option, Stream } from "effect";
 import { TestClock } from "effect/testing";
@@ -50,8 +51,8 @@ import type { ProviderBlockingDeliveryEvidence } from "../../persistence/Service
 import { ProviderDiscoveryService } from "../../provider/Services/ProviderDiscoveryService.ts";
 
 import { ProviderHealth } from "../../provider/Services/ProviderHealth.ts";
-import { ServerConfig } from "../../config.ts";
-import { ServerSettingsService } from "../../serverSettings.ts";
+import { ServerConfig } from "../../server/config.ts";
+import { ServerSettingsService } from "../../settings/serverSettings.ts";
 import { AgentGateway } from "../Services/AgentGateway.ts";
 import { AgentGatewayCredentials } from "../Services/AgentGatewayCredentials.ts";
 import {
@@ -63,6 +64,10 @@ import { ComputerService } from "../../computer/Services/ComputerService.ts";
 
 import { recordCreatedWorktreeInPlan } from "../operationPlan.ts";
 import { makeAgentGatewayInFlightRequestRegistry } from "../inFlightRequestRegistry.ts";
+
+class InjectedFailure extends Error {
+  readonly _tag = "InjectedFailure";
+}
 
 const NOW = "2026-03-01T10:00:00.000Z";
 const PROJECT_ID = ProjectId.makeUnsafe("project-1");
@@ -93,7 +98,7 @@ function makeThreadShell(
     title: `Thread ${id}`,
     modelSelection: { provider: "codex", model: "gpt-5.5" },
     runtimeMode: "approval-required",
-    interactionMode: "default",
+
     envMode: "local",
     branch: null,
     worktreePath: null,
@@ -135,7 +140,7 @@ function makeThreadDetail(shell: OrchestrationThreadShell): OrchestrationThread 
     deletedAt: null,
     pinnedMessages: [],
     messages: [],
-    proposedPlans: [],
+
     activities: [],
     checkpoints: [],
   };
@@ -146,7 +151,7 @@ const listDefaultTestModels: (typeof ProviderDiscoveryService)["Service"]["listM
 }) => {
   const modelsByProvider: Record<string, ReadonlyArray<ProviderModelDescriptor>> = {
     codex: [
-      { slug: DEFAULT_MODEL_BY_PROVIDER.codex, name: "GPT-6 Astra" },
+      { slug: PROVIDER_DEFAULT_MODEL, name: "GPT-6 Astra" },
       { slug: "gpt-5.5", name: "GPT-5.5" },
       {
         slug: "gpt-5.6-terra",
@@ -250,7 +255,7 @@ function makeAutomationDefinition(
     nextRunAt: NOW,
     modelSelection: { provider: "codex", model: "gpt-5.5" },
     runtimeMode: "approval-required",
-    interactionMode: "default",
+
     worktreeMode: "local",
     mode: "heartbeat",
     targetThreadId: ThreadId.makeUnsafe("thread-parent"),
@@ -332,13 +337,13 @@ function makeHarnessLayer(
       readonly id: string;
       readonly automationId: AutomationDefinition["id"];
     }>;
-    /** The automation run that dispatched the caller's active turn, if any. */
+
     readonly callerAutomationRun?: {
       readonly callerThreadId: string;
       readonly id: string;
       readonly automationId: AutomationDefinition["id"];
     };
-    /** Serves the computer_* family in the tool catalog (denial paths only need the names). */
+
     readonly computerService?: Layer.Layer<ComputerService>;
   } = {},
 ) {
@@ -647,7 +652,7 @@ function makeHarnessLayer(
               );
             }
             const result = options.failDispatch?.(command)
-              ? Effect.fail(new Error("injected dispatch failure"))
+              ? Effect.fail(new InjectedFailure("injected dispatch failure"))
               : Effect.succeed({ sequence: dispatched.length });
             if (options.pauseAfterDispatch?.commandType !== command.type) return result;
             return Deferred.succeed(options.pauseAfterDispatch.entered, undefined).pipe(
@@ -724,7 +729,7 @@ function makeHarnessLayer(
   } as unknown as (typeof AutomationService)["Service"]);
 
   const gitLayer = Layer.succeed(GitCore, {
-    withMutation: (_cwd: string, effect: Effect.Effect<unknown, unknown, unknown>) => effect,
+    withMutation: <A, E, R>(_cwd: string, effect: Effect.Effect<A, E, R>) => effect,
     execute: (input: { operation: string; cwd: string; args: ReadonlyArray<string> }) =>
       Effect.sync(() => {
         gitExecutions.push(input);
@@ -786,7 +791,7 @@ function makeHarnessLayer(
       }),
     recordWorktreeOwnership: (input: { path: string; branch: string | null; token: string }) =>
       options.failRecordWorktreeOwnership
-        ? Effect.fail(new Error("injected ownership marker failure"))
+        ? Effect.fail(new InjectedFailure("injected ownership marker failure"))
         : Effect.sync(() => {
             verifiedOwnershipTokens.add(input.token);
             return {
@@ -808,7 +813,7 @@ function makeHarnessLayer(
       }).pipe(
         Effect.flatMap(() =>
           options.failRemoveWorktree
-            ? Effect.fail(new Error("injected worktree removal failure"))
+            ? Effect.fail(new InjectedFailure("injected worktree removal failure"))
             : Effect.void,
         ),
       ),
@@ -818,7 +823,7 @@ function makeHarnessLayer(
       }).pipe(
         Effect.flatMap(() =>
           options.failDeleteBranch
-            ? Effect.fail(new Error("injected branch deletion failure"))
+            ? Effect.fail(new InjectedFailure("injected branch deletion failure"))
             : Effect.void,
         ),
       ),
@@ -828,7 +833,7 @@ function makeHarnessLayer(
       }).pipe(
         Effect.flatMap(() =>
           options.failDeleteBranch
-            ? Effect.fail(new Error("injected branch deletion failure"))
+            ? Effect.fail(new InjectedFailure("injected branch deletion failure"))
             : Effect.void,
         ),
       ),
@@ -892,7 +897,7 @@ function makeHarnessLayer(
       isOutputSettled: () => Effect.succeed(true),
       hasCompletedRun: () => Effect.succeed(true),
       initialFailure: () => Effect.succeed(null),
-      hasGoalHistory: () => Effect.succeed(false),
+
       saveResult: () => Effect.void,
       delivered: () => Effect.void,
       claimContext: () => Effect.succeed(""),
@@ -1020,7 +1025,7 @@ function makeHarnessLayer(
       now: string;
     }) => {
       if (options.failOperationComplete) {
-        return Effect.fail(new Error("injected operation completion failure"));
+        return Effect.fail(new InjectedFailure("injected operation completion failure"));
       }
       return Effect.gen(function* () {
         yield* Effect.sync(() => {
@@ -1098,8 +1103,7 @@ function makeHarnessLayer(
         threadId: ThreadId.makeUnsafe(pinned.threadId),
         turnId: TurnId.makeUnsafe(pinned.turnId),
         pendingMessageId: null,
-        sourceProposedPlanThreadId: null,
-        sourceProposedPlanId: null,
+
         assistantMessageId:
           pinned.assistantMessageId === null
             ? null
@@ -1124,8 +1128,7 @@ function makeHarnessLayer(
           threadId: ThreadId.makeUnsafe(threadId),
           turnId: TurnId.makeUnsafe(turnId),
           pendingMessageId: null,
-          sourceProposedPlanThreadId: null,
-          sourceProposedPlanId: null,
+
           assistantMessageId: turn.assistantMessageId,
           state: turn.state,
           requestedAt: turn.requestedAt,
@@ -1381,15 +1384,6 @@ describe("AgentGateway", () => {
         "capability_denied",
       );
 
-      const setGoal = yield* harness.callTool({
-        token: "token-parent-readonly",
-        name: "glade_set_thread_goal",
-        args: { goal: "Must not run" },
-      });
-      assert.equal(
-        (toolResultJson(setGoal.result).error as { code: string }).code,
-        "capability_denied",
-      );
       assert.equal(harness.dispatched.length, 0);
     }).pipe(Effect.provide(gatewayLayer));
   });
@@ -1473,16 +1467,14 @@ describe("AgentGateway", () => {
       const create = harness.dispatched[0]!;
       assert.equal(create.type, "thread.create");
       if (create.type === "thread.create") {
-        // Gateway-created threads are ordinary top-level threads, not subagents.
         assert.strictEqual("parentThreadId" in create, false);
         assert.strictEqual("subagentNickname" in create, false);
         assert.equal(create.modelSelection.provider, "claudeAgent");
-        assert.equal(create.modelSelection.model, DEFAULT_MODEL_BY_PROVIDER.claudeAgent);
-        // Project and runtime mode default from the calling thread.
+        assert.equal(create.modelSelection.model, PROVIDER_DEFAULT_MODEL);
+
         assert.equal(create.projectId, PROJECT_ID);
         assert.equal(create.runtimeMode, "approval-required");
-        // Same placeholder title flow as UI threads so the first-turn reactor
-        // replaces it with a model-generated title.
+
         assert.equal(create.title, "analyze the feature");
       }
       const turn = harness.dispatched[1]!;
@@ -1833,10 +1825,7 @@ describe("AgentGateway", () => {
           name: "glade_set_thread_archived",
           args: { threadId: "thread-child", archived: true },
         },
-        {
-          name: "glade_set_thread_goal",
-          args: { threadId: "thread-child", goal: "Late goal" },
-        },
+
         {
           name: "glade_create_automation",
           args: { name: "late monitor", prompt: "late" },
@@ -2179,10 +2168,6 @@ describe("AgentGateway", () => {
     }).pipe(Effect.provide(gatewayLayer));
   });
 
-  // Regression guard: with the setup script inside the uninterruptible creation
-  // section, the interrupt below would stall for the script's full 30s runtime
-  // and trip the test timeout instead of compensating promptly.
-
   it.effect("compensates a created thread when its MCP request fiber is interrupted", () => {
     const threadCreated = Deferred.makeUnsafe<void>();
     const releaseThreadCreate = Deferred.makeUnsafe<void>();
@@ -2488,63 +2473,46 @@ describe("AgentGateway", () => {
     }).pipe(Effect.provide(gatewayLayer));
   });
 
-  it.effect("rejects sends that would drive a higher-privileged thread", () => {
-    const { gatewayLayer, makeHarness } = makeHarnessLayer([
-      ...baseThreads,
-      makeThreadShell("thread-full-access", { runtimeMode: "full-access" }),
-    ]);
-    return Effect.gen(function* () {
-      const harness = yield* makeHarness;
-      const response = yield* harness.callTool({
-        token: "token-parent",
-        name: "glade_send_message",
-        args: { threadId: "thread-full-access", message: "run something dangerous" },
-      });
-      assert.isTrue(isToolError(response.result));
-      assert.include(toolErrorText(response.result), "full-access");
-      assert.equal(harness.dispatched.length, 0);
-    }).pipe(Effect.provide(gatewayLayer));
-  });
-
-  it.effect("rejects interrupts that would drive a higher-privileged thread", () => {
-    const { gatewayLayer, makeHarness } = makeHarnessLayer([
-      ...baseThreads,
-      makeThreadShell("thread-full-access", { runtimeMode: "full-access" }),
-    ]);
-    return Effect.gen(function* () {
-      const harness = yield* makeHarness;
-      const response = yield* harness.callTool({
-        token: "token-parent",
-        name: "glade_interrupt_thread",
-        args: { threadId: "thread-full-access" },
-      });
-      assert.isTrue(isToolError(response.result));
-      assert.include(toolErrorText(response.result), "full-access");
-      assert.equal(harness.dispatched.length, 0);
-    }).pipe(Effect.provide(gatewayLayer));
-  });
-
-  it.effect("rejects heartbeats that would target a higher-privileged thread", () => {
-    const { gatewayLayer, makeHarness } = makeHarnessLayer([
-      ...baseThreads,
-      makeThreadShell("thread-full-access", { runtimeMode: "full-access" }),
-    ]);
-    return Effect.gen(function* () {
-      const harness = yield* makeHarness;
-      const response = yield* harness.callTool({
-        token: "token-parent",
-        name: "glade_create_automation",
-        args: {
-          name: "escalate",
-          prompt: "keep running privileged work",
-          targetThreadId: "thread-full-access",
-        },
-      });
-      assert.isTrue(isToolError(response.result));
-      assert.include(toolErrorText(response.result), "full-access");
-      assert.equal(harness.automationCreates.length, 0);
-    }).pipe(Effect.provide(gatewayLayer));
-  });
+  for (const scenario of [
+    {
+      name: "send",
+      tool: "glade_send_message",
+      args: { threadId: "thread-full-access", message: "run something dangerous" },
+    },
+    {
+      name: "interrupt",
+      tool: "glade_interrupt_thread",
+      args: { threadId: "thread-full-access" },
+    },
+    {
+      name: "heartbeat",
+      tool: "glade_create_automation",
+      args: {
+        name: "escalate",
+        prompt: "keep running privileged work",
+        targetThreadId: "thread-full-access",
+      },
+    },
+  ]) {
+    it.effect(`rejects ${scenario.name} targeting a higher-privileged thread`, () => {
+      const { gatewayLayer, makeHarness } = makeHarnessLayer([
+        ...baseThreads,
+        makeThreadShell("thread-full-access", { runtimeMode: "full-access" }),
+      ]);
+      return Effect.gen(function* () {
+        const harness = yield* makeHarness;
+        const response = yield* harness.callTool({
+          token: "token-parent",
+          name: scenario.tool,
+          args: scenario.args,
+        });
+        assert.isTrue(isToolError(response.result));
+        assert.include(toolErrorText(response.result), "full-access");
+        assert.equal(harness.dispatched.length, 0);
+        assert.equal(harness.automationCreates.length, 0);
+      }).pipe(Effect.provide(gatewayLayer));
+    });
+  }
 
   it.effect("rejects sends from worktree-isolated callers to local-checkout threads", () => {
     const { gatewayLayer, makeHarness } = makeHarnessLayer([
@@ -2605,7 +2573,6 @@ describe("AgentGateway", () => {
       assert.include(toolErrorText(rejected.result), "isolated worktree");
       assert.equal(harness.dispatched.length, 0);
 
-      // Omitting environment defaults to an isolated worktree, not local.
       const defaulted = yield* harness.callTool({
         token: "token-parent",
         name: "glade_create_thread",
@@ -2673,8 +2640,8 @@ describe("AgentGateway", () => {
         const created = harness.automationCreates[0]!;
         assert.equal(created.maxIterations, 10);
         assert.include(created.acknowledgedRisks ?? [], "fast-interval");
-        // The default cooldown must not exceed the schedule spacing, or the
-        // acknowledged fast interval would silently degrade to cooldown cadence.
+        // The default cooldown must not exceed the schedule spacing, or the acknowledged fast interval
+        // would silently degrade to cooldown cadence.
         assert.equal(created.heartbeatCooldownSeconds, 15);
       }).pipe(Effect.provide(gatewayLayer));
     },
@@ -2817,7 +2784,7 @@ describe("AgentGateway", () => {
         (toolResultJson(invalidOption.result).error as { code: string }).code,
         "model_option_unavailable",
       );
-      // Unknown option keys must reach the resolver instead of being silently stripped.
+
       const inventedOption = yield* create({
         provider: "codex",
         model: "gpt-5.6-sol",
@@ -2844,7 +2811,7 @@ describe("AgentGateway", () => {
           completionPolicy: { type: "none" },
           target: {
             provider: "codex",
-            model: DEFAULT_MODEL_BY_PROVIDER.codex,
+            model: PROVIDER_DEFAULT_MODEL,
             options: { reasoningEffort: "ultra" },
           },
         },
@@ -2881,13 +2848,6 @@ describe("AgentGateway", () => {
       assert.isTrue(isToolError(archive.result));
       assert.include(toolErrorText(archive.result), "full-access");
 
-      const setGoal = yield* harness.callTool({
-        token: "token-parent",
-        name: "glade_set_thread_goal",
-        args: { threadId: "thread-elevated", goal: "Escalated goal" },
-      });
-      assert.isTrue(isToolError(setGoal.result));
-      assert.include(toolErrorText(setGoal.result), "full-access");
       assert.equal(harness.dispatched.length, 0);
     }).pipe(Effect.provide(gatewayLayer));
   });

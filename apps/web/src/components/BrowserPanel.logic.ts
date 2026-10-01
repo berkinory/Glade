@@ -1,25 +1,19 @@
-// FILE: BrowserPanel.logic.ts
-// Purpose: Holds address-bar rules plus renderer lifecycle guards for the in-app browser panel.
-// Layer: Component logic helper
-// Exports: address helpers, panel hide scheduling, and one-shot renderer-loss recovery
-// Depends on: shared browser URL rules, browser tab metadata, and thread-local browser history
-
 import {
   BROWSER_BLANK_URL,
   BROWSER_SEARCH_URL_PREFIX,
   normalizeBrowserUrlInput,
   resolveFloatingBrowserGuestLayout,
-} from "@glade/shared/browserSession";
+} from "@glade/shared/browser/browserSession";
 import type {
   BrowserAnnotationEvent,
   BrowserAnnotationMarker,
   BrowserAnnotationTheme,
-  BrowserTabState,
-  ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/browser/browserAnnotations";
+import type { BrowserTabState } from "@glade/contracts/ipc/ipc";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { BrowserHistoryEntry } from "../browserStateStore";
 import type { BrowserAnnotationDraft } from "../lib/browserAnnotations";
-import { resolveDesktopDipRectFromCssRect } from "@glade/shared/desktopChrome";
+import { resolveDesktopDipRectFromCssRect } from "@glade/shared/platform/desktopChrome";
 
 export function resolveBrowserRuntimePresentation(input: {
   native: boolean;
@@ -64,11 +58,6 @@ interface BrowserRendererLossHandlerInput<TRenderer> {
   readonly recover: (recovery: BrowserRendererRecovery) => void;
 }
 
-/**
- * Coalesces Electron's overlapping guest-loss signals into one renderer
- * replacement. The current-renderer guard also makes a queued event from an
- * older guest harmless after its successor has attached.
- */
 export function createBrowserRendererLossHandler<TRenderer>({
   renderer,
   rendererGeneration,
@@ -92,7 +81,6 @@ export function createBrowserRendererLossHandler<TRenderer>({
 }
 
 export interface BrowserPanelHideScheduler {
-  /** Claims the thread's live browser surface until the returned release function is called. */
   readonly acquire: (threadId: string) => () => void;
   readonly cancel: (threadId: string) => void;
   readonly schedule: (threadId: string, hide: () => void) => void;
@@ -103,11 +91,6 @@ export interface BrowserPanelRendererHandoff {
   readonly waitForDetach: (threadId: string) => Promise<void>;
 }
 
-/**
- * Serializes renderer guest replacement across dock/floating BrowserPanel instances.
- * React can mount the replacement before the old panel's IPC cleanup has completed;
- * waiting here keeps browserManager's duplicate-runtime guard from stranding the guest.
- */
 export function createBrowserPanelRendererHandoff(): BrowserPanelRendererHandoff {
   const pendingByThreadId = new Map<string, Promise<void>>();
 
@@ -134,12 +117,6 @@ export function createBrowserPanelRendererHandoff(): BrowserPanelRendererHandoff
 
 type BrowserPanelHideTimer = ReturnType<typeof globalThis.setTimeout>;
 
-/**
- * Defers renderer teardown by one task so React StrictMode's development-only
- * setup/cleanup/setup cycle can cancel the passive hide before it reaches the
- * desktop human-control boundary. A real unmount has no matching setup and
- * therefore still calls hide on the next task.
- */
 export function createBrowserPanelHideScheduler(
   setTimer: (callback: () => void) => BrowserPanelHideTimer = (callback) =>
     globalThis.setTimeout(callback, 0),
@@ -156,9 +133,6 @@ export function createBrowserPanelHideScheduler(
   }
 
   function acquire(threadId: string): () => void {
-    // A new live host takes over before the previous host's cleanup necessarily runs.
-    // Cancelling here also handles the opposite React commit order, where cleanup queued
-    // the hide before the replacement host mounted.
     cancel(threadId);
     liveHostCountByThreadId.set(threadId, (liveHostCountByThreadId.get(threadId) ?? 0) + 1);
 
@@ -190,11 +164,6 @@ export function createBrowserPanelHideScheduler(
   return { acquire, cancel, schedule };
 }
 
-/**
- * Electron guest surfaces can paint above React portals regardless of CSS
- * z-index. Hide the guest while browser-owned chrome or another app overlay is
- * open so that the DOM surface remains the topmost interactive layer.
- */
 export function shouldOccludeBrowserWebview(input: {
   showLocalServersHome: boolean;
   browserActionsMenuOpen: boolean;
@@ -203,15 +172,6 @@ export function shouldOccludeBrowserWebview(input: {
   return input.showLocalServersHome || input.browserActionsMenuOpen || input.hasObscuringOverlay;
 }
 
-/**
- * Checks only the hit-test entries above a browser surface.
- *
- * `document.elementsFromPoint()` continues past the surface into its ancestors
- * and then into sibling content behind it. Treating every visible entry as an
- * obstruction makes an overlaid browser hide itself whenever the chat behind it
- * is also hit-testable. The first surface/descendant entry is the compositor
- * boundary; anything after it is not eligible to occlude the browser.
- */
 export function hasObscuringHitStackElementAboveSurface<TElement>(
   hitElements: readonly TElement[],
   input: {
@@ -233,9 +193,6 @@ export function hasObscuringHitStackElementAboveSurface<TElement>(
     }
   }
 
-  // If the surface is absent from the hit-test stack, the remaining entries are
-  // ambiguous (and commonly represent content behind the floating panel). Do
-  // not hide the browser based on that incomplete stack.
   return false;
 }
 
@@ -280,11 +237,8 @@ export interface BrowserChromeStatus {
   label: string;
 }
 
-// Address and tab controls share the same radius and border treatment;
-// the tab strip overrides the height and type size for compact chrome.
 export const BROWSER_CHROME_CONTROL_CLASS_NAME = "h-8 rounded-lg border text-ui leading-snug";
-// The address field's filled look, reused by the active tab so the selected tab visually
-// matches the search input (same border tone + faint fill).
+
 export const BROWSER_CHROME_CONTROL_FILLED_CLASS_NAME = "border-border bg-background/70";
 
 export function browserAnnotationDraftFromCommittedEvent(
@@ -417,10 +371,7 @@ export function browserAnnotationTheme(
   return {
     mode,
     accent: resolvedBrowserAnnotationColor(root, "--color-text-accent", fallback.accent),
-    // The overlay renders inside the guest page without the backdrop blur the
-    // composer sits on, so a translucent surface (--composer-surface is ~14%
-    // transparent in light mode) would let page content show through the cards.
-    // The opaque control token is the same fill without the glass assumption.
+
     surface: resolvedBrowserAnnotationColor(
       root,
       "--color-background-control-opaque",
@@ -473,7 +424,6 @@ export function formatBrowserAnnotationActionError(
   return "Couldn't start annotation mode. Try again.";
 }
 
-// Hides about:blank from the address bar so new tabs behave like real browsers.
 export function browserAddressDisplayValue(
   tab: Pick<BrowserTabState, "url"> | null | undefined,
 ): string {
@@ -481,11 +431,10 @@ export function browserAddressDisplayValue(
   return nextUrl === BROWSER_BLANK_URL ? "" : nextUrl;
 }
 
-// Component-facing alias for the shared desktop/web browser URL normalizer.
 export const normalizeBrowserAddressInput = normalizeBrowserUrlInput;
 
-// A raw file:// URL must never reach Electron's renderer-owned <webview>. Main translates it
-// to Glade's directory-scoped preview protocol after adopting the guest.
+// A raw file:// URL must never reach Electron's renderer-owned <webview>. Main translates it to
+// Glade's directory-scoped preview protocol after adopting the guest.
 export function browserWebviewInitialUrl(url: string): string {
   try {
     return new URL(url).protocol === "file:" ? BROWSER_BLANK_URL : url;
@@ -522,7 +471,6 @@ function pushSuggestion(
   suggestions.push(suggestion);
 }
 
-// Builds browser-like suggestions from the typed query, open tabs, and recent history.
 export function buildBrowserAddressSuggestions(
   input: BuildBrowserAddressSuggestionsInput,
 ): BrowserAddressSuggestion[] {
@@ -583,7 +531,6 @@ export function buildBrowserAddressSuggestions(
   return suggestions.slice(0, BROWSER_SUGGESTION_LIMIT);
 }
 
-// Only shows transient browser state; the address field already reflects the active URL.
 export function resolveBrowserChromeStatus(input: {
   localError: string | null;
   threadLastError: string | null | undefined;
@@ -622,7 +569,6 @@ export function resolveBrowserChromeStatus(input: {
   return null;
 }
 
-// Decides when browser state should replace the visible address input.
 export function resolveBrowserAddressSync(
   input: ResolveBrowserAddressSyncInput,
 ): BrowserAddressSyncDecision {
@@ -661,8 +607,8 @@ export function resolveBrowserAddressSync(
   };
 }
 
-// Bounds keys used to include a bare ":hidden" suffix. Hidden keys now carry a
-// zoom token (`renderer:hidden:zoom-1`), so callers must not use endsWith(":hidden").
+// Bounds keys used to include a bare ":hidden" suffix. Hidden keys now carry a zoom token
+// (`renderer:hidden:zoom-1`), so callers must not use endsWith(":hidden").
 export function isBrowserPanelBoundsHiddenKey(key: string): boolean {
   return key.includes(":hidden");
 }
@@ -671,8 +617,6 @@ export function applyBrowserWebviewPresentation(
   stage: HTMLElement,
   input: { floating: boolean; slotWidth: number; slotHeight: number },
 ): void {
-  // Scale a CSS stage around a frozen 1280×800 guest. Transforming the
-  // <webview> itself during drag/resize blacks the guest and can kill CDP.
   if (!input.floating) {
     stage.style.position = "absolute";
     stage.style.inset = "0";

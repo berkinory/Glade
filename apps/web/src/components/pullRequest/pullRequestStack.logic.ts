@@ -1,4 +1,8 @@
-import type { PullRequestDetail, PullRequestStack, PullRequestStackEntry } from "@glade/contracts";
+import type {
+  PullRequestDetail,
+  PullRequestStack,
+  PullRequestStackEntry,
+} from "@glade/contracts/git/pullRequests";
 
 export type PullRequestStackAssessment = {
   readonly label:
@@ -13,7 +17,6 @@ export type PullRequestStackAssessment = {
   readonly blocker: string | null;
 };
 
-/** Entries affected by merging the selected PR, ordered from the base branch upwards. */
 function pullRequestStackTargetEntries(
   stack: PullRequestStack,
 ): ReadonlyArray<PullRequestStackEntry> {

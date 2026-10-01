@@ -1,13 +1,13 @@
+import { asRecord } from "@glade/shared/transport/payloadValues";
 import * as FS from "node:fs";
 import * as Net from "node:net";
 import * as OS from "node:os";
 
-import type { BrowserToolName, ProviderKind, ThreadId } from "@glade/contracts";
+import type { BrowserToolName } from "@glade/contracts/browser/automation/browserAutomationToolCatalogue";
+import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 
 const FRAME_HEADER_BYTES = 4;
-// A bounded 8 MiB PNG expands to roughly 10.7 MiB as base64 inside the
-// snapshot host envelope. Leave protocol overhead while keeping the private
-// transport capped well below arbitrary-memory framing.
+
 const MAX_FRAME_BYTES = 12 * 1024 * 1024;
 const CONNECT_TIMEOUT_MS = 5_000;
 const INFO_TIMEOUT_MS = 5_000;
@@ -58,12 +58,6 @@ export class BrowserHostRpcError extends Error {
     this.kind = kind;
     this.data = data;
   }
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
 }
 
 function encodeFrame(message: unknown): Buffer {
@@ -261,7 +255,7 @@ export interface BrowserHostToolCall {
   readonly threadId: ThreadId;
   readonly name: BrowserToolName;
   readonly arguments: Record<string, unknown>;
-  /** Server-resolved authenticated thread workspace. Never sourced from MCP arguments. */
+
   readonly workspaceRoot?: string;
   readonly timeoutMs: number;
   readonly signal?: AbortSignal;
@@ -302,9 +296,7 @@ export async function callBrowserHostTool(input: BrowserHostToolCall): Promise<u
     );
     assertCompatibleHostInfo(hostInfo, input.sessionKey);
     const executeBudget = Math.floor(remainingOrThrow(deadline, "executeTool"));
-    // The desktop validates the public timeout lower bound. If transport/auth
-    // overhead consumed all but a sub-action quantum, fail here instead of
-    // manufacturing a fresh desktop budget beyond the caller's deadline.
+
     if (executeBudget < MIN_DESKTOP_TIMEOUT_MS) {
       throw new BrowserHostRpcError("timeout", "Browser host executeTool timed out.");
     }
@@ -351,9 +343,7 @@ export function resolveBrowserHostCapability(env: NodeJS.ProcessEnv = process.en
   } finally {
     try {
       FS.closeSync(fd);
-    } catch {
-      // The inherited one-shot descriptor may already have been closed by the runtime.
-    }
+    } catch {}
   }
   return inheritedCapabilityFromFd;
 }

@@ -1,74 +1,124 @@
-// FILE: computerToolPresentation.ts
-// Purpose: Say what a desktop tool call actually does, in the words a person would use,
-//          for the approval card and the transcript.
-// Layer: Web UI logic
-// Exports: COMPUTER_TOOL_TITLES, describeComputerToolCall
-//
-// Every browser tool has a curated presentation and every computer tool had
-// none, so an approval for the most consequential thing Glade can do — moving a
-// pointer on the user's own machine — read
-// `mcp__glade__computer_click  x 812  y 344`, which is the raw wire call. The
-// decision the user is being asked to make is "click *what*", and the answer is
-// assembled here: verb, where, and which window, resolved from the window list
-// the pane already receives rather than left as an opaque id.
+import { asNonBlankString } from "@glade/shared/text/text";
+import { asFiniteNumber } from "@glade/shared/transport/payloadValues";
+import { asRecord } from "@glade/shared/transport/payloadValues";
+import type { ComputerWindow } from "@glade/contracts/computer/computer";
 
-import type { ComputerWindow } from "@glade/contracts";
+export const COMPUTER_TOOL_DESCRIPTORS = {
+  computer_screenshot: ["Take a screenshot", "taking a screenshot", "took a screenshot"],
+  computer_get_state: ["Read the screen", "reading the screen", "read the screen"],
+  computer_get_screen_size: ["Measure the screen", "measuring the screen", "measured the screen"],
+  computer_list_windows: ["Find open windows", "listing windows", "listed the windows"],
+  computer_list_apps: ["List apps", "listing apps", "listed the apps"],
+  computer_verify_state: ["Verify state", "checking desktop state", "checked desktop state"],
+  computer_zoom: ["Zoom into a window", "zooming into a window", "zoomed into a window"],
+  computer_get_accessibility_tree: [
+    "List apps and windows",
+    "listing apps and windows",
+    "listed apps and windows",
+  ],
+  computer_get_cursor_position: [
+    "Read the cursor position",
+    "reading the cursor position",
+    "read the cursor position",
+  ],
+  computer_help: [
+    "Read the Computer playbook",
+    "reading the Computer playbook",
+    "read the Computer playbook",
+  ],
+  computer_click: ["Click", "clicking the desktop", "clicked the desktop"],
+  computer_move_cursor: ["Move the agent cursor", "moving the cursor", "moved the cursor"],
+  computer_drag: ["Drag", "dragging on the desktop", "dragged on the desktop"],
+  computer_scroll: ["Scroll", "scrolling the desktop", "scrolled the desktop"],
+  computer_type_text: ["Type", "typing on the desktop", "typed on the desktop"],
+  computer_press_key: ["Press a key", "pressing a key", "pressed a key"],
+  computer_set_value: ["Set a field", "setting a field", "set a field"],
+  computer_select_text: ["Select text", "selecting text", "selected text"],
+  computer_perform_action: ["Activate a control", "activating a control", "activated a control"],
+  computer_launch_app: ["Open an app", "opening an app", "opened an app"],
+  computer_activate_window: ["Activate a window", "activating a window", "activated a window"],
+  computer_set_window_frame: [
+    "Move or resize a window",
+    "moving or resizing a window",
+    "moved or resized a window",
+  ],
+  computer_invoke_menu: ["Invoke a menu item", "invoking a menu item", "invoked a menu item"],
+  computer_kill_app: ["Force-quit an app", "force-quitting an app", "force-quit an app"],
+  computer_set_window_minimized: [
+    "Minimize or restore a window",
+    "changing a window's visibility",
+    "changed a window's visibility",
+  ],
+  computer_set_app_visibility: [
+    "Hide or unhide an app",
+    "changing an app's visibility",
+    "changed an app's visibility",
+  ],
+  computer_wait: ["Wait", "waiting for the desktop", "waited for the desktop"],
+  computer_read_clipboard: ["Read the clipboard", "reading the clipboard", "read the clipboard"],
+  computer_write_clipboard: [
+    "Write to the clipboard",
+    "writing to the clipboard",
+    "wrote to the clipboard",
+  ],
+  computer_paste: ["Paste text", "pasting text", "pasted text"],
+  computer_run: ["Run a sequence", "running a desktop sequence", "ran a desktop sequence"],
+  computer_inspect: ["Inspect the computer", "inspecting the computer", "inspected the computer"],
+  computer_spaces: [
+    "Inspect desktop Spaces",
+    "inspecting desktop Spaces",
+    "inspected desktop Spaces",
+  ],
+  computer_browser_state: [
+    "Read the browser page",
+    "reading the browser page",
+    "read the browser page",
+  ],
+  computer_browser_prepare: ["Prepare a browser", "preparing a browser", "prepared a browser"],
+  computer_browser_navigate: [
+    "Open a browser page",
+    "opening a browser page",
+    "opened a browser page",
+  ],
+  computer_browser_click: [
+    "Click in the browser",
+    "clicking in the browser",
+    "clicked in the browser",
+  ],
+  computer_browser_type: [
+    "Type in a browser field",
+    "typing in a browser field",
+    "typed in a browser field",
+  ],
+  computer_browser_dialog: [
+    "Handle a browser dialog",
+    "handling a browser dialog",
+    "handled a browser dialog",
+  ],
+  computer_browser_upload: [
+    "Attach files in the browser",
+    "attaching files in the browser",
+    "attached files in the browser",
+  ],
+  computer_browser_download: ["Download a file", "downloading a file", "downloaded a file"],
+  computer_browser_pointer: [
+    "Use the pointer in the browser",
+    "using the pointer in the browser",
+    "used the pointer in the browser",
+  ],
+  computer_browser_press: [
+    "Press Enter in the browser",
+    "pressing Enter in the browser",
+    "pressed Enter in the browser",
+  ],
+} as const satisfies Record<string, readonly [title: string, present: string, past: string]>;
 
-/** The gateway's Computer tools, and the verb each one performs. */
-export const COMPUTER_TOOL_TITLES = {
-  computer_screenshot: "Take a screenshot",
-  computer_get_state: "Read the screen",
-  computer_get_screen_size: "Measure the screen",
-  computer_list_windows: "Find open windows",
-  computer_list_apps: "List apps",
-  computer_verify_state: "Verify state",
-  computer_zoom: "Zoom into a window",
-  computer_get_accessibility_tree: "List apps and windows",
-  computer_get_cursor_position: "Read the cursor position",
-  computer_help: "Read the Computer playbook",
-  computer_click: "Click",
-  computer_move_cursor: "Move the agent cursor",
-  computer_drag: "Drag",
-  computer_scroll: "Scroll",
-  computer_type_text: "Type",
-  computer_press_key: "Press a key",
-  computer_set_value: "Set a field",
-  computer_select_text: "Select text",
-  computer_perform_action: "Activate a control",
-  computer_launch_app: "Open an app",
-  computer_activate_window: "Activate a window",
-  computer_set_window_frame: "Move or resize a window",
-  computer_invoke_menu: "Invoke a menu item",
-  computer_kill_app: "Force-quit an app",
-  computer_set_window_minimized: "Minimize or restore a window",
-  computer_set_app_visibility: "Hide or unhide an app",
-  computer_wait: "Wait",
-  computer_read_clipboard: "Read the clipboard",
-  computer_write_clipboard: "Write to the clipboard",
-  computer_paste: "Paste text",
-  computer_run: "Run a sequence",
-  computer_inspect: "Inspect the computer",
-  computer_spaces: "Inspect desktop Spaces",
-  computer_browser_state: "Read the browser page",
-  computer_browser_prepare: "Prepare a browser",
-  computer_browser_navigate: "Open a browser page",
-  computer_browser_click: "Click in the browser",
-  computer_browser_type: "Type in a browser field",
-  computer_browser_dialog: "Handle a browser dialog",
-  computer_browser_upload: "Attach files in the browser",
-  computer_browser_download: "Download a file",
-  computer_browser_pointer: "Use the pointer in the browser",
-  computer_browser_press: "Press Enter in the browser",
-} as const;
+export type ComputerToolName = keyof typeof COMPUTER_TOOL_DESCRIPTORS;
 
-export type ComputerToolName = keyof typeof COMPUTER_TOOL_TITLES;
+export const COMPUTER_TOOL_TITLES = Object.fromEntries(
+  Object.entries(COMPUTER_TOOL_DESCRIPTORS).map(([tool, [title]]) => [tool, title]),
+) as Record<ComputerToolName, string>;
 
-/**
- * The bare tool name inside whatever wrapping a provider applied, or null.
- * Providers surface the same gateway tool as `computer_click`,
- * `mcp__glade__computer_click`, and other permutations, so identity is
- * recovered from the suffix rather than matched exactly.
- */
 export function computerToolName(candidate: string | null | undefined): ComputerToolName | null {
   if (!candidate) return null;
   const normalized = candidate
@@ -83,20 +133,15 @@ export function computerToolName(candidate: string | null | undefined): Computer
 
 export interface ComputerToolCallDescription {
   readonly tool: ComputerToolName;
-  /** One line: verb, target, window. Never the raw arguments. */
+
   readonly summary: string;
-  /** The arguments worth showing, already named and formatted. */
+
   readonly params: ReadonlyArray<{ readonly name: string; readonly value: string }>;
 }
 
-/**
- * "Click on “Save” in Safari — Google".
- *
- * `windows` is the live window list, used only to turn an opaque `window_id`
- * into the app and title a person recognises. Without a match the id is dropped
- * rather than printed: an id tells the user nothing they can check against what
- * is on their screen.
- */
+// "Click on “Save” in Safari — Google". `windows` is the live window list, used only to turn an
+// opaque `window_id` into the app and title a person recognises. Without a match the id is dropped
+// rather than printed: an id tells the user nothing they can check against what is on their screen.
 export function describeComputerToolCall(input: {
   readonly toolName: string | null | undefined;
   readonly args: Readonly<Record<string, unknown>> | undefined;
@@ -106,7 +151,7 @@ export function describeComputerToolCall(input: {
   if (tool === null) return null;
   const args = input.args ?? {};
   if (tool === "computer_inspect") {
-    const selectedTool = readString(args.tool);
+    const selectedTool = asNonBlankString(args.tool) ?? null;
     if (
       selectedTool === "computer_read_clipboard" ||
       selectedTool === "computer_zoom" ||
@@ -116,7 +161,7 @@ export function describeComputerToolCall(input: {
     ) {
       const description = describeComputerToolCall({
         toolName: selectedTool,
-        args: readRecord(args.arguments) ?? undefined,
+        args: asRecord(args.arguments) ?? undefined,
         windows: input.windows,
       })!;
       return {
@@ -136,8 +181,8 @@ export function describeComputerToolCall(input: {
     };
     return {
       tool,
-      summary: Object.hasOwn(summaries, readString(args.operation) ?? "list")
-        ? summaries[readString(args.operation) ?? "list"]!
+      summary: Object.hasOwn(summaries, asNonBlankString(args.operation) ?? "list")
+        ? summaries[asNonBlankString(args.operation) ?? "list"]!
         : "Check a desktop Space operation",
       params: describeParams(tool, args, input.windows),
     };
@@ -149,18 +194,17 @@ export function describeComputerToolCall(input: {
       params: describeParams(tool, args, input.windows),
     };
   }
-  // The visibility pair's flag is the verb's direction: an approval that reads
-  // "Minimize or restore" makes the user guess which half is being asked for.
+
   const verb =
-    tool === "computer_press_key" && readString(args.key)
+    tool === "computer_press_key" && (asNonBlankString(args.key) ?? null)
       ? "Press"
       : tool === "computer_launch_app"
         ? "Open"
         : tool === "computer_activate_window"
           ? `Switch to ${
-              readString(args.app_name) ??
-              readString(args.application) ??
-              readString(args.app) ??
+              asNonBlankString(args.app_name) ??
+              asNonBlankString(args.application) ??
+              asNonBlankString(args.app) ??
               resolveWindow(args.window_id, input.windows) ??
               ""
             }`.trimEnd()
@@ -192,23 +236,20 @@ export function describeComputerToolCall(input: {
   return { tool, summary, params: describeParams(tool, args, input.windows) };
 }
 
-/** true/false pick the verb's direction; anything else keeps the generic title. */
 function directionVerb(flag: unknown, whenTrue: string, whenFalse: string): string | undefined {
   return flag === true ? whenTrue : flag === false ? whenFalse : undefined;
 }
 
-/** "in Safari" — the pid resolved through the window list, or "" when it cannot be. */
 function describePidTarget(
   args: Readonly<Record<string, unknown>>,
   windows: readonly ComputerWindow[] | undefined,
 ): string {
-  const pid = readNumber(args.pid);
+  const pid = asFiniteNumber(args.pid) ?? null;
   if (pid === null || !windows) return "";
   const app = windows.find((window) => window.pid === pid)?.appName?.trim();
   return app ? `in ${app}` : "";
 }
 
-/** "at (812, 344) in Safari — Google", "on “Save” in Notes", or "". */
 function describeTarget(
   args: Readonly<Record<string, unknown>>,
   windows: readonly ComputerWindow[] | undefined,
@@ -216,12 +257,16 @@ function describeTarget(
   alwaysShowCoordinates = false,
 ): string {
   const parts: string[] = [];
-  const label = readString(args.label);
-  const x = readNumber(args.x);
-  const y = readNumber(args.y);
+  const label = asNonBlankString(args.label) ?? null;
+  const x = asFiniteNumber(args.x) ?? null;
+  const y = asFiniteNumber(args.y) ?? null;
   const coordinates = x !== null && y !== null ? `at (${x}, ${y})` : null;
   const window = resolveWindow(args.window_id, windows);
-  const app = readString(args.app_name) ?? readString(args.application) ?? readString(args.app);
+  const app =
+    asNonBlankString(args.app_name) ??
+    asNonBlankString(args.application) ??
+    asNonBlankString(args.app) ??
+    null;
   if (label) {
     parts.push(`${labelPreposition} “${label}”`);
   } else if (alwaysShowCoordinates && coordinates) {
@@ -232,10 +277,7 @@ function describeTarget(
   } else if (app) {
     parts.push(`in ${app}`);
   }
-  // Coordinates appear only when nothing else names the target: a window or
-  // app title is what a person checks against their screen, and the raw pair
-  // stays in the parameter rows either way. Zoom is the exception — the region
-  // is the whole point of the call.
+
   if (parts.length === 0 && coordinates) {
     parts.push(coordinates);
   }
@@ -246,19 +288,18 @@ function describeDragTarget(
   args: Readonly<Record<string, unknown>>,
   windows: readonly ComputerWindow[] | undefined,
 ): string {
-  const from = readRecord(args.from);
-  const to = readRecord(args.to);
+  const from = asRecord(args.from);
+  const to = asRecord(args.to);
   if (!from || !to) return "";
   const fromTarget = describeTarget(from, windows).replace(/^on /, "");
   const toTarget = describeTarget(to, windows).replace(/^on /, "");
   return fromTarget && toTarget ? `from ${fromTarget} to ${toTarget}` : "";
 }
 
-/** The thing being typed, pressed, or scrolled — the part that is not a target. */
 function describePayload(tool: ComputerToolName, args: Readonly<Record<string, unknown>>): string {
-  // Values typed into a field or copied to the clipboard can be credentials or
-  // other private data. The expanded parameter list may show the exact action
-  // being approved, but transcript summaries must never repeat that content.
+  // Values typed into a field or copied to the clipboard can be credentials or other private data.
+  // The expanded parameter list may show the exact action being approved, but transcript summaries
+  // must never repeat that content.
   if (
     tool === "computer_type_text" ||
     tool === "computer_set_value" ||
@@ -269,12 +310,12 @@ function describePayload(tool: ComputerToolName, args: Readonly<Record<string, u
     return "";
   }
   if (tool === "computer_press_key") {
-    const key = readString(args.key);
+    const key = asNonBlankString(args.key) ?? null;
     return key === null ? "" : keyboardShortcut(key);
   }
   if (tool === "computer_scroll") {
-    const dx = readNumber(args.delta_x) ?? 0;
-    const dy = readNumber(args.delta_y) ?? 0;
+    const dx = asFiniteNumber(args.delta_x) ?? 0;
+    const dy = asFiniteNumber(args.delta_y) ?? 0;
     if (dy !== 0) return dy > 0 ? "down" : "up";
     if (dx !== 0) return dx > 0 ? "right" : "left";
     return "";
@@ -287,8 +328,8 @@ function describePayload(tool: ComputerToolName, args: Readonly<Record<string, u
     const path = readStringArray(args.path);
     return path.length > 0 ? truncate(path.join(" → "), 80) : "";
   }
-  if (tool === "computer_wait" && !readString(args.label)) {
-    const durationMs = readNumber(args.duration_ms);
+  if (tool === "computer_wait" && !(asNonBlankString(args.label) ?? null)) {
+    const durationMs = asFiniteNumber(args.duration_ms) ?? null;
     if (durationMs === null) return "";
     return durationMs >= 1_000 && durationMs % 1_000 === 0
       ? `for ${durationMs / 1_000} ${durationMs === 1_000 ? "second" : "seconds"}`
@@ -346,9 +387,8 @@ function describeBrowserAction(
   return COMPUTER_TOOL_TITLES[tool];
 }
 
-/** A page's domain is useful context; credentials, paths and query values are not a tool title. */
 function browserSite(value: unknown): string | null {
-  const url = readString(value);
+  const url = asNonBlankString(value) ?? null;
   if (!url) return null;
   try {
     const parsed = new URL(url);
@@ -361,7 +401,7 @@ function browserSite(value: unknown): string | null {
 }
 
 function appName(value: unknown): string | null {
-  const name = readString(value)?.trim();
+  const name = (asNonBlankString(value) ?? null)?.trim();
   if (!name) return null;
   const basename = name
     .split(/[\\/]/)
@@ -408,29 +448,27 @@ function keyboardShortcut(value: string): string {
     .join(" + ");
 }
 
-/**
- * The argument rows, named for a reader rather than for the wire. A coordinate
- * pair is one row, not two, because it is one fact.
- */
+// The argument rows, named for a reader rather than for the wire. A coordinate pair is one row, not
+// two, because it is one fact.
 function describeParams(
   tool: ComputerToolName,
   args: Readonly<Record<string, unknown>>,
   windows: readonly ComputerWindow[] | undefined,
 ): ReadonlyArray<{ readonly name: string; readonly value: string }> {
   const rows: Array<{ name: string; value: string }> = [];
-  const nativeSpaceId = readNumber(args.space_id);
+  const nativeSpaceId = asFiniteNumber(args.space_id) ?? null;
   if (tool === "computer_spaces" && nativeSpaceId !== null)
     rows.push({ name: "Space ID", value: String(nativeSpaceId) });
-  const x = readNumber(args.x);
-  const y = readNumber(args.y);
+  const x = asFiniteNumber(args.x) ?? null;
+  const y = asFiniteNumber(args.y) ?? null;
   if (x !== null && y !== null) {
     rows.push({
       name: tool === "computer_set_window_frame" ? "New position" : "Position",
       value: `${x}, ${y}`,
     });
   }
-  const width = readNumber(args.width);
-  const height = readNumber(args.height);
+  const width = asFiniteNumber(args.width) ?? null;
+  const height = asFiniteNumber(args.height) ?? null;
   if (
     (tool === "computer_set_window_frame" || tool === "computer_zoom") &&
     width !== null &&
@@ -442,44 +480,45 @@ function describeParams(
     const path = readStringArray(args.path);
     if (path.length > 0) rows.push({ name: "Menu", value: truncate(path.join(" → "), 200) });
   }
-  const label = readString(args.label);
+  const label = asNonBlankString(args.label) ?? null;
   if (label) rows.push({ name: "Target", value: label });
-  const role = readString(args.role);
+  const role = asNonBlankString(args.role) ?? null;
   if (role) rows.push({ name: "Role", value: role });
   const window = resolveWindow(args.window_id, windows);
   if (window) rows.push({ name: "Window", value: window });
-  const text = readString(args.text) ?? readString(args.value);
+  const text = asNonBlankString(args.text) ?? asNonBlankString(args.value) ?? null;
   if (text !== null && text.length > 0) {
     rows.push({
-      // The clipboard is not a text field, and calling both "Text" is how a
-      // clipboard write reads as typing into whatever has focus.
       name: tool === "computer_write_clipboard" ? "Clipboard" : "Text",
       value: truncate(text, 200),
     });
   }
-  const key = readString(args.key);
+  const key = asNonBlankString(args.key) ?? null;
   if (key) rows.push({ name: "Key", value: keyboardShortcut(key) });
   const keys = readStringArray(args.keys);
   if (keys.length > 0) rows.push({ name: "Shortcut", value: keys.map(keyName).join(" + ") });
-  const dx = readNumber(args.delta_x);
-  const dy = readNumber(args.delta_y);
+  const dx = asFiniteNumber(args.delta_x) ?? null;
+  const dy = asFiniteNumber(args.delta_y) ?? null;
   if (dx !== null || dy !== null) {
     rows.push({ name: "Scroll", value: `${dx ?? 0}, ${dy ?? 0}` });
   }
-  // The range is what is being approved — show it as one fact, the way a
-  // coordinate pair is.
+
   if (tool === "computer_select_text") {
-    const start = readNumber(args.start);
-    const length = readNumber(args.length);
+    const start = asFiniteNumber(args.start) ?? null;
+    const length = asFiniteNumber(args.length) ?? null;
     if (start !== null && length !== null) {
       rows.push({ name: "Range", value: `${start}, ${length}` });
     }
   }
-  const action = readString(args.action);
+  const action = asNonBlankString(args.action) ?? null;
   if (action && !tool.startsWith("computer_browser_")) rows.push({ name: "Action", value: action });
-  const topic = readString(args.topic);
+  const topic = asNonBlankString(args.topic) ?? null;
   if (topic) rows.push({ name: "Topic", value: topic });
-  const app = readString(args.app) ?? readString(args.name) ?? readString(args.bundle_id);
+  const app =
+    asNonBlankString(args.app) ??
+    asNonBlankString(args.name) ??
+    asNonBlankString(args.bundle_id) ??
+    null;
   if (app) rows.push({ name: "App", value: app });
   if (tool.startsWith("computer_browser_")) {
     const site = browserSite(args.url);
@@ -493,22 +532,19 @@ function describeParams(
       });
     }
   }
-  // The off-screen flag changes what the launch does to the user's screen, so
-  // the card shows it rather than letting "Open an app" read as ordinary.
+
   if (tool === "computer_launch_app" && args.hidden === true) {
     rows.push({ name: "Hidden", value: "yes" });
   }
-  // The pid is what the call actually targeted; the app name resolved into the
-  // summary is the friendly gloss, not a substitute for the real argument.
+
   if (tool === "computer_set_app_visibility") {
-    const pid = readNumber(args.pid);
+    const pid = asFiniteNumber(args.pid) ?? null;
     if (pid !== null) rows.push({ name: "PID", value: `${pid}` });
   }
-  // A run approves the whole list at once, so the list is what the card must
-  // show: each step's verb, in order, never its arguments.
+
   if (tool === "computer_run" && Array.isArray(args.steps)) {
     const kinds = args.steps
-      .map((step) => readString(readRecord(step)?.type))
+      .map((step) => asNonBlankString(asRecord(step)?.type) ?? null)
       .filter((kind): kind is string => kind !== null);
     rows.push({
       name: "Steps",
@@ -532,7 +568,7 @@ function resolveWindow(
   windowId: unknown,
   windows: readonly ComputerWindow[] | undefined,
 ): string | null {
-  const id = readString(windowId);
+  const id = asNonBlankString(windowId) ?? null;
   if (!id || !windows) return null;
   const match = windows.find((window) => window.id === id);
   if (!match) return null;
@@ -542,24 +578,10 @@ function resolveWindow(
   return app || (title ? truncate(title, 48) : null);
 }
 
-function readString(value: unknown): string | null {
-  return typeof value === "string" && value.trim().length > 0 ? value : null;
-}
-
-function readNumber(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
 function readStringArray(value: unknown): readonly string[] {
   return Array.isArray(value)
     ? value.filter((entry): entry is string => typeof entry === "string")
     : [];
-}
-
-function readRecord(value: unknown): Readonly<Record<string, unknown>> | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Readonly<Record<string, unknown>>)
-    : null;
 }
 
 function truncate(value: string, max: number): string {

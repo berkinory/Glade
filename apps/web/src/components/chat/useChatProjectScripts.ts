@@ -1,9 +1,6 @@
-import {
-  ThreadId,
-  type KeybindingCommand,
-  type ProjectId,
-  type ProjectScript,
-} from "@glade/contracts";
+import { ThreadId, type ProjectId } from "@glade/contracts/core/baseSchemas";
+import { type KeybindingCommand } from "@glade/contracts/settings/keybindings";
+import { type ProjectScript } from "@glade/contracts/orchestration/threadEntities";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
@@ -19,15 +16,15 @@ import {
 } from "~/projectScripts";
 import { runProjectCommandInTerminal } from "~/projectTerminalRunner";
 import { isElectron } from "../../env";
-import type { ThreadTerminalState } from "../../terminalStateStore";
+import type { ThreadTerminalState } from "../../terminalStateNormalization";
 import { useTerminalStateStore } from "../../terminalStateStore";
 import type { Project, Thread } from "../../types";
 import { DEFAULT_THREAD_TERMINAL_ID } from "../../types";
 import {
   LAST_INVOKED_SCRIPT_BY_PROJECT_KEY,
   LastInvokedScriptByProjectSchema,
-  resolveProjectScriptTerminalTarget,
-} from "../ChatView.logic";
+} from "../ChatView.logic.session";
+import { resolveProjectScriptTerminalTarget } from "../ChatView.logic.subagents";
 import { type NewProjectScriptInput } from "../ProjectScriptsControl";
 import { randomTerminalId } from "../terminal/terminalIds";
 import { toastManager } from "../ui/toast";
@@ -98,8 +95,6 @@ export function useChatProjectScripts({
       }
       requestTerminalFocus();
 
-      // React Compiler cannot lower value blocks directly inside `try`; keep
-      // those expressions in the nested function while retaining error handling.
       const runScriptInTargetTerminal = async () => {
         const { metadata } = await runProjectCommandInTerminal({
           api,
@@ -255,8 +250,7 @@ export function useChatProjectScripts({
       const nextScripts = activeProject.scripts.filter((script) => script.id !== scriptId);
 
       const deletedName = activeProject.scripts.find((s) => s.id === scriptId)?.name;
-      // Resolved before the `try`: a value block (`??`) inside a try body makes React
-      // Compiler bail out on the whole component.
+
       const deletedScriptToastTitle = `Deleted action "${deletedName ?? "Unknown"}"`;
 
       try {

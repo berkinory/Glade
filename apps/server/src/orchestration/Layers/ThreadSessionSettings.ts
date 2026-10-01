@@ -1,0 +1,59 @@
+import { Effect, Layer } from "effect";
+import type { ModelSelection, ProviderStartOptions } from "@glade/contracts/provider/sessionPolicy";
+import { ThreadSessionSettings } from "../Services/ThreadSessionSettings.ts";
+
+export const ThreadSessionSettingsLive = Layer.effect(
+  ThreadSessionSettings,
+  Effect.acquireRelease(
+    Effect.sync(() => {
+      const modelSelections = new Map<string, ModelSelection>();
+      const providerOptions = new Map<string, ProviderStartOptions>();
+      const computerControl = new Map<string, boolean>();
+      const editResendStartKeys = new Set<string>();
+      const clearEditResendStartsForThread = (threadId: string) => {
+        const prefix = `${threadId}:`;
+        for (const key of editResendStartKeys) {
+          if (key.startsWith(prefix)) editResendStartKeys.delete(key);
+        }
+      };
+      const settings = {
+        getModelSelection: (threadId: string) => modelSelections.get(threadId),
+        hasModelSelection: (threadId: string) => modelSelections.has(threadId),
+        setModelSelection: (threadId: string, selection: ModelSelection) => {
+          modelSelections.set(threadId, selection);
+        },
+        getProviderOptions: (threadId: string) => providerOptions.get(threadId),
+        setProviderOptions: (threadId: string, options: ProviderStartOptions) => {
+          providerOptions.set(threadId, options);
+        },
+        getComputerControl: (threadId: string) => computerControl.get(threadId),
+        setComputerControl: (threadId: string, enabled: boolean) => {
+          computerControl.set(threadId, enabled);
+        },
+        markEditResendStart: (threadId: string, messageId: string) => {
+          editResendStartKeys.add(`${threadId}:${messageId}`);
+        },
+        clearEditResendStart: (threadId: string, messageId: string) => {
+          editResendStartKeys.delete(`${threadId}:${messageId}`);
+        },
+        clearEditResendStartsForThread,
+        clearThread: (threadId: string) => {
+          modelSelections.delete(threadId);
+          providerOptions.delete(threadId);
+          computerControl.delete(threadId);
+          clearEditResendStartsForThread(threadId);
+        },
+      };
+      return {
+        settings,
+        dispose: () => {
+          modelSelections.clear();
+          providerOptions.clear();
+          computerControl.clear();
+          editResendStartKeys.clear();
+        },
+      };
+    }),
+    (state) => Effect.sync(state.dispose),
+  ).pipe(Effect.map((state) => state.settings)),
+);

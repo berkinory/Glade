@@ -1,9 +1,4 @@
-// FILE: repoDiffScopeStore.ts
-// Purpose: Persists the active repo diff scope shared by the diff panel and header badge.
-// Layer: Web UI state store
-// Exports: repo diff scope labels, validation, and a persisted Zustand store.
-
-import type { GitReadWorkingTreeDiffInput } from "@glade/contracts";
+import type { GitReadWorkingTreeDiffInput } from "@glade/contracts/git/git";
 import { useMemo } from "react";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
@@ -53,10 +48,7 @@ function isRepoDiffScope(value: string): value is RepoDiffScope {
 
 interface RepoDiffScopeStore {
   scope: RepoDiffScope;
-  /**
-   * Compare refs are repository-specific: a branch or SHA picked for one
-   * project is usually meaningless in another, so they are keyed by cwd.
-   */
+
   compareRefs: Readonly<Record<string, string>>;
   setScope: (scope: RepoDiffScope) => void;
   setCompareRef: (cwd: string, compareRef: string | null) => void;
@@ -82,10 +74,6 @@ function sanitizeRepoDiffCompareRefs(value: unknown): Record<string, string> {
   return compareRefs;
 }
 
-/**
- * The ref scope only makes sense with a ref for the repository being shown;
- * a repository without one falls back to the default scope.
- */
 function resolveRepoDiffScopeSelection(
   scope: RepoDiffScope,
   compareRef: string | null,
@@ -116,8 +104,8 @@ export const useRepoDiffScopeStore = create<RepoDiffScopeStore>()(
       name: REPO_DIFF_SCOPE_STORAGE_KEY,
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ scope: state.scope, compareRefs: state.compareRefs }),
-      // Validate the persisted state on rehydrate: an unknown/legacy value would
-      // otherwise flow into the diff request and the label lookup unchecked.
+      // Validate the persisted state on rehydrate: an unknown/legacy value would otherwise flow into the
+      // diff request and the label lookup unchecked.
       merge: (persisted, current) => {
         const persistedState = persisted as { scope?: unknown; compareRefs?: unknown } | undefined;
         const persistedScope = persistedState?.scope;
@@ -134,11 +122,6 @@ export const useRepoDiffScopeStore = create<RepoDiffScopeStore>()(
   ),
 );
 
-/**
- * Reads the scope for one repository. Every mounted consumer resolves its own
- * cwd here, so split panes showing different repositories never contend over
- * a single "active" repository.
- */
 export function useRepoDiffScope(cwd: string | null): RepoDiffScopeSelection {
   const scope = useRepoDiffScopeStore((store) => store.scope);
   const compareRef = useRepoDiffScopeStore((store) =>

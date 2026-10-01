@@ -1,10 +1,7 @@
-import {
-  ThreadId,
-  type ModelSelection,
-  type ProviderKind,
-  type ServerProviderStatus,
-} from "@glade/contracts";
-import { normalizeModelSlug } from "@glade/shared/model";
+import { ThreadId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
+import { type ServerProviderStatus } from "@glade/contracts/server/server";
+import { normalizeModelSlug } from "@glade/shared/provider/model";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useProviderStatusesForLocalConfig } from "~/hooks/useProviderStatusesForLocalConfig";
@@ -25,7 +22,7 @@ import { type Thread } from "../../types";
 import {
   shouldShowComposerModelBootstrapSkeleton,
   threadHasProviderLockingActivity,
-} from "../ChatView.logic";
+} from "../ChatView.logic.worktree";
 import { AVAILABLE_PROVIDER_OPTIONS } from "./ProviderModelPicker";
 import { getComposerProviderState } from "./composerProviderRegistry";
 import { resolveRuntimeModelDescriptor } from "./runtimeModelCapabilities";
@@ -61,8 +58,8 @@ export function useChatProviderModels({
       activeThread.messages.length > 0 ||
       activeThread.session !== null),
   );
-  // Forks import source history as fork-import rows. Those imports must not lock the
-  // provider picker before the Side produces its first native turn (#810).
+  // Forks import source history as fork-import rows. Those imports must not lock the provider picker
+  // before the Side produces its first native turn (#810).
   const hasProviderLockingActivity = Boolean(
     activeThread && threadHasProviderLockingActivity(activeThread),
   );
@@ -77,7 +74,6 @@ export function useChatProviderModels({
   const selectedProvider = useMemo<ProviderKind>(
     () =>
       lockedProvider ??
-      // Keep an unstarted draft pinned to its explicit provider; availability is validated at send time.
       selectedProviderByThreadId ??
       resolveAvailableProviderPreference({
         preferredProvider: preferredDraftProvider,
@@ -192,13 +188,7 @@ export function useChatProviderModels({
       selectedModelOptionsForDispatch,
       selectedProvider === "claudeAgent" ? selectedRuntimeModel?.supportsAutoMode : undefined,
     );
-  }, [
-    draftModelSelectionForSelectedProvider,
-    selectedModel,
-    selectedModelOptionsForDispatch,
-    selectedProvider,
-    selectedRuntimeModel,
-  ]);
+  }, [selectedModel, selectedModelOptionsForDispatch, selectedProvider, selectedRuntimeModel]);
   const providerOptionsForDispatch = useMemo(() => getProviderStartOptions(settings), [settings]);
   const selectedModelForPicker =
     selectedModelSelection.provider === selectedProvider

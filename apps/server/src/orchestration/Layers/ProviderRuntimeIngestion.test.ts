@@ -2,25 +2,23 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import type {
-  OrchestrationEvent,
-  OrchestrationReadModel,
-  OrchestrationThread,
-  ProviderKind,
-  ProviderRuntimeEvent,
-  ProviderSession,
-} from "@glade/contracts";
+import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
+import type { OrchestrationReadModel } from "@glade/contracts/orchestration/snapshots";
+import type { OrchestrationThread } from "@glade/contracts/orchestration/threadEntities";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
+import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
+import type { ProviderSession } from "@glade/contracts/provider/provider";
 import {
   ApprovalRequestId,
   CommandId,
-  DEFAULT_PROVIDER_INTERACTION_MODE,
   EventId,
   MessageId,
   ProjectId,
   RuntimeItemId,
   ThreadId,
   TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
+
 import { Effect, Exit, Layer, ManagedRuntime, Option, PubSub, Scope, Stream } from "effect";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -53,7 +51,7 @@ import { ComputerManager } from "../../computer/ComputerManager.ts";
 
 import { ComputerService } from "../../computer/Services/ComputerService.ts";
 import { ProjectionSnapshotQuery } from "../Services/ProjectionSnapshotQuery.ts";
-import { ServerConfig } from "../../config.ts";
+import { ServerConfig } from "../../server/config.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
@@ -88,7 +86,7 @@ function createProviderServiceHarness(options?: { readonly persistedStream?: boo
     sendTurn: () => unsupported(),
     steerTurn: () => unsupported(),
     startReview: () => unsupported(),
-    forkThread: () => Effect.succeed(null),
+    forkThread: () => unsupported(),
     interruptTurn: () => unsupported(),
     stopTask: () => unsupported(),
     backgroundTask: () => unsupported(),
@@ -99,15 +97,15 @@ function createProviderServiceHarness(options?: { readonly persistedStream?: boo
     listSessions: () => Effect.succeed([...runtimeSessions]),
     getCapabilities: (provider) =>
       Effect.succeed({
-        sessionModelSwitch: "in-session",
         supportsLiveTurnDiffPatch: provider === "codex",
       }),
     rollbackConversation: () => unsupported(),
     compactThread: () => unsupported(),
+    updateNativeHistory: () => unsupported(),
     closeRuntimeEvents: Effect.void,
     streamEvents: Stream.fromPubSub(runtimeEventPubSub),
-    // Only the already-persisted path uses this; when present the ingestion
-    // ignores `streamEvents`, so ordinary harnesses must not provide it.
+    // Only the already-persisted path uses this; when present the ingestion ignores `streamEvents`, so
+    // ordinary harnesses must not provide it.
     ...(options?.persistedStream === true
       ? { streamPersistedEvents: Stream.fromPubSub(persistedEventPubSub) }
       : {}),
@@ -222,12 +220,6 @@ function emitPendingUserInputRequest(
   });
 }
 
-/**
- * Emits an approval request that names no turn, the shape a Codex MCP
- * elicitation (no `turnId` in its JSON-RPC params) or a Claude `canUseTool`
- * callback with no bound turn state produces.
- */
-
 const pendingInteractionStatus = (
   thread: OrchestrationThread | undefined,
   requestId: string,
@@ -259,7 +251,7 @@ async function waitForProjectedThread(
 type ProviderRuntimeTestReadModel = OrchestrationReadModel;
 type ProviderRuntimeTestThread = ProviderRuntimeTestReadModel["threads"][number];
 type ProviderRuntimeTestMessage = ProviderRuntimeTestThread["messages"][number];
-type ProviderRuntimeTestProposedPlan = ProviderRuntimeTestThread["proposedPlans"][number];
+
 type ProviderRuntimeTestActivity = ProviderRuntimeTestThread["activities"][number];
 
 describe("ProviderRuntimeIngestion", () => {
@@ -406,7 +398,7 @@ describe("ProviderRuntimeIngestion", () => {
           provider: "codex",
           model: "gpt-5-codex",
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
@@ -439,8 +431,6 @@ describe("ProviderRuntimeIngestion", () => {
       updatedAt: createdAt,
     });
 
-    // `engine.getReadModel()` is the command-side model; pending-interaction
-    // rows and their counts only exist in the projection, so read them there.
     const readProjectedThread = async (
       threadId: ThreadId = ThreadId.makeUnsafe("thread-1"),
     ): Promise<OrchestrationThread | undefined> =>
@@ -470,8 +460,7 @@ describe("ProviderRuntimeIngestion", () => {
         message: "Recovered durable provider output",
       },
     };
-    // This is the exact command the runtime event dispatches. Persisting it
-    // first models a crash after orchestration acceptance but before cursor ack.
+
     await Effect.runPromise(
       harness.engine.dispatch({
         type: "thread.activity.append",
@@ -536,10 +525,9 @@ describe("ProviderRuntimeIngestion", () => {
       `provider:${rejectedEvent.eventId}:thread-activity-append:${lateThreadId}:runtime.warning:${rejectedEvent.eventId}`,
     );
 
-    // Model a durable rejection: the exact command this event replays into was
-    // already rejected by an invariant (thread-2 did not exist yet when it was
-    // first dispatched), so every replay raises PreviouslyRejected — retrying
-    // the journal row can never succeed.
+    // Model a durable rejection: the exact command this event replays into was already rejected by an
+    // invariant (thread-2 did not exist yet when it was first dispatched), so every replay raises
+    // PreviouslyRejected — retrying the journal row can never succeed.
     await expect(
       Effect.runPromise(
         harness.engine.dispatch({
@@ -575,7 +563,7 @@ describe("ProviderRuntimeIngestion", () => {
           provider: "codex",
           model: "cursor-default",
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
@@ -723,7 +711,7 @@ describe("ProviderRuntimeIngestion", () => {
     const push = (event: ProviderRuntimeEvent) =>
       Effect.runPromise(harness.runtimeEventRepository.append(event));
     const eventId = (suffix: string) => asEventId(`evt-segment-${suffix}`);
-    // Plan text before any tool activity.
+
     await push({
       type: "content.delta",
       eventId: eventId("1"),
@@ -744,14 +732,13 @@ describe("ProviderRuntimeIngestion", () => {
       itemId,
       payload: { streamKind: "assistant_text", delta: "scan files." },
     });
-    // A tool call runs between the second and third text deltas.
+
     const toolItemId = asItemId("tool-segment-interleave");
     await push({
       type: "item.started",
       eventId: eventId("3"),
       provider: "codex",
-      // Provider events can share the same millisecond. The causal event
-      // boundary must still split assistant text around the tool row.
+
       createdAt: "2026-07-14T00:10:01.000Z",
       threadId,
       turnId,
@@ -830,9 +817,7 @@ describe("ProviderRuntimeIngestion", () => {
     ).toEqual([
       {
         startedAt: "2026-07-14T00:10:00.000Z",
-        // Live (streaming) delivery stamps each segment with its own last
-        // delta's emit time, so endedAt reflects when that slice actually
-        // finished arriving rather than the terminal event's time.
+
         endedAt: "2026-07-14T00:10:01.000Z",
         text: "Plan: scan files.",
       },
@@ -843,8 +828,7 @@ describe("ProviderRuntimeIngestion", () => {
       },
       {
         startedAt: "2026-07-14T00:10:40.000Z",
-        // The trailing segment closes when the message completes rather than
-        // at its last delta, since no later boundary exists to stamp it.
+
         endedAt: "2026-07-14T00:10:45.000Z",
         text: "Done.",
       },
@@ -916,10 +900,8 @@ describe("ProviderRuntimeIngestion", () => {
     );
     expect(pendingInteractionStatus(pendingThread, "req-interrupted-user-input")).toBe("pending");
 
-    // A Stop rotates the lifecycle generation without emitting `session.started`,
-    // so the interrupted turn's terminal event is the only settlement signal
-    // left. Without it the row stayed `pending` forever and the sidebar kept
-    // showing "Awaiting Input" on an idle thread.
+    // A Stop rotates the lifecycle generation without emitting `session.started`, so the interrupted
+    // turn's terminal event is the only settlement signal left.
     harness.emit({
       type: "turn.completed",
       eventId: asEventId("evt-turn-completed-interrupted-user-input"),
@@ -985,7 +967,6 @@ describe("ProviderRuntimeIngestion", () => {
     const pending = await harness.readProjectedThread();
     expect(pendingInteractionStatus(pending, requestId)).toBe("pending");
 
-    // Only the provider's live callback owner can settle this request.
     harness.emit({
       ...common,
       type: "request.resolved",
@@ -1013,8 +994,6 @@ describe("ProviderRuntimeIngestion", () => {
       (thread) => thread.hasPendingUserInput === true,
     );
 
-    // A session.exited from a different generation says nothing about this
-    // row's runtime, so it must leave the request answerable.
     harness.emit({
       type: "session.exited",
       eventId: asEventId("evt-session-exited-other-generation"),
@@ -1136,15 +1115,14 @@ describe("ProviderRuntimeIngestion", () => {
       ),
     );
 
-    // Replay the same image_generation_end event with a fresh eventId (provider would use a
-    // new id even for an idempotent replay). The dedup guard should prevent any further
-    // delta or complete dispatches because the target message already references the image.
+    // Replay the same image_generation_end event with a fresh eventId (provider would use a new id even
+    // for an idempotent replay). The dedup guard should prevent any further delta or complete
+    // dispatches because the target message already references the image.
     harness.emit({
       ...imageEvent,
       eventId: asEventId("evt-replay-image-complete-2"),
     });
 
-    // Give the ingestion worker a beat to process the replay.
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     const finalText = await Effect.runPromise(
@@ -1157,7 +1135,6 @@ describe("ProviderRuntimeIngestion", () => {
       ),
     );
 
-    // Same text, still finalized, and the image markdown is not duplicated.
     expect(finalText).toBe(eventCountBeforeReplay);
     const occurrences = finalText.split(`![Generated image](${imagePath})`).length - 1;
     expect(occurrences).toBe(1);
@@ -1238,72 +1215,6 @@ describe("ProviderRuntimeIngestion", () => {
     });
   });
 
-  it("finalizes buffered proposed-plan deltas into a first-class proposed plan on turn completion", async () => {
-    const harness = await createHarness();
-    const now = new Date().toISOString();
-
-    harness.emit({
-      type: "turn.started",
-      eventId: asEventId("evt-turn-started-plan-buffer"),
-      provider: "codex",
-      createdAt: now,
-      threadId: asThreadId("thread-1"),
-      turnId: asTurnId("turn-plan-buffer"),
-    });
-
-    await waitForThread(
-      harness.engine,
-      (thread) =>
-        thread.session?.status === "running" && thread.session?.activeTurnId === "turn-plan-buffer",
-    );
-
-    harness.emit({
-      type: "turn.proposed.delta",
-      eventId: asEventId("evt-plan-delta-1"),
-      provider: "codex",
-      createdAt: now,
-      threadId: asThreadId("thread-1"),
-      turnId: asTurnId("turn-plan-buffer"),
-      payload: {
-        delta: "## Buffered plan\n\n- first",
-      },
-    });
-    harness.emit({
-      type: "turn.proposed.delta",
-      eventId: asEventId("evt-plan-delta-2"),
-      provider: "codex",
-      createdAt: now,
-      threadId: asThreadId("thread-1"),
-      turnId: asTurnId("turn-plan-buffer"),
-      payload: {
-        delta: "\n- second",
-      },
-    });
-    harness.emit({
-      type: "turn.completed",
-      eventId: asEventId("evt-turn-completed-plan-buffer"),
-      provider: "codex",
-      createdAt: now,
-      threadId: asThreadId("thread-1"),
-      turnId: asTurnId("turn-plan-buffer"),
-      payload: {
-        state: "completed",
-      },
-    });
-
-    const thread = await waitForThread(harness.engine, (entry) =>
-      entry.proposedPlans.some(
-        (proposedPlan: ProviderRuntimeTestProposedPlan) =>
-          proposedPlan.id === "plan:thread-1:turn:turn-plan-buffer",
-      ),
-    );
-    const proposedPlan = thread.proposedPlans.find(
-      (entry: ProviderRuntimeTestProposedPlan) =>
-        entry.id === "plan:thread-1:turn:turn-plan-buffer",
-    );
-    expect(proposedPlan?.planMarkdown).toBe("## Buffered plan\n\n- first\n- second");
-  });
-
   it("binds overlapping same-thread delivery modes in provider turn order", async () => {
     const harness = await createHarness();
     const now = new Date().toISOString();
@@ -1320,7 +1231,7 @@ describe("ProviderRuntimeIngestion", () => {
           attachments: [],
         },
         assistantDeliveryMode: "buffered",
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         createdAt: now,
       }),
@@ -1337,7 +1248,7 @@ describe("ProviderRuntimeIngestion", () => {
           attachments: [],
         },
         assistantDeliveryMode: "streaming",
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         createdAt: now,
       }),
@@ -1432,7 +1343,7 @@ describe("ProviderRuntimeIngestion", () => {
         projectId: asProjectId("project-1"),
         title: "Buffered Thread",
         modelSelection: { provider: "codex", model: "gpt-5-codex" },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
@@ -1469,7 +1380,7 @@ describe("ProviderRuntimeIngestion", () => {
           attachments: [],
         },
         assistantDeliveryMode: "streaming",
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         createdAt: now,
       }),
@@ -1486,7 +1397,7 @@ describe("ProviderRuntimeIngestion", () => {
           attachments: [],
         },
         assistantDeliveryMode: "buffered",
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         createdAt: now,
       }),
@@ -1604,8 +1515,6 @@ describe("ProviderRuntimeIngestion", () => {
       secondThreadId,
     );
 
-    // A terminal event for the buffered turn must neither erase its policy for
-    // late events nor disturb the still-active streaming turn on another thread.
     harness.emit({
       type: "content.delta",
       eventId: asEventId("evt-late-delta-overlap-buffered"),
@@ -2067,10 +1976,9 @@ describe("ProviderRuntimeIngestion", () => {
       }),
     );
 
-    // A later provider event for the same child must not try to resurrect the
-    // tombstoned thread: `thread.create` would be rejected, and the rejection is
-    // stored against a deterministic command id, so every later replay of this
-    // event would fail on the stored rejection.
+    // A later provider event for the same child must not try to resurrect the tombstoned thread:
+    // `thread.create` would be rejected, and the rejection is stored against a deterministic command
+    // id, so every later replay of this event would fail on the stored rejection.
     harness.emit({
       ...collabEvent,
       eventId: asEventId("evt-collab-deleted-child-2"),
@@ -2082,8 +1990,6 @@ describe("ProviderRuntimeIngestion", () => {
     const child = readModel.threads.find((thread) => thread.id === childThreadId);
     expect(child?.deletedAt).not.toBeNull();
 
-    // The journal keeps flowing: a blocked row would pin the cursor and stall
-    // every thread's projection.
     harness.emit({
       type: "runtime.warning",
       eventId: asEventId("evt-after-deleted-child"),
@@ -2126,10 +2032,9 @@ describe("ProviderRuntimeIngestion", () => {
       },
     };
 
-    // Bind the child-create command id to a rejected command, the way a build
-    // that reshaped provider command ids leaves receipts the next build can
-    // never reuse. The startup rebuild runs on the server's boot path, so a row
-    // it can never replay must degrade to a warning, not a crash loop.
+    // Bind the child-create command id to a rejected command, the way a build that reshaped provider
+    // command ids leaves receipts the next build can never reuse. The startup rebuild runs on the
+    // server's boot path, so a row it can never replay must degrade to a warning, not a crash loop.
     const rejected = await Effect.runPromise(
       Effect.result(
         harness.engine.dispatch({
@@ -2141,7 +2046,7 @@ describe("ProviderRuntimeIngestion", () => {
           projectId: asProjectId("project-1"),
           title: "Duplicate",
           modelSelection: { provider: "codex", model: "gpt-5-codex" },
-          interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
           runtimeMode: "approval-required",
           branch: null,
           worktreePath: null,
@@ -2344,8 +2249,7 @@ describe("ProviderRuntimeIngestion", () => {
         ),
       );
     }
-    // Every notification arrives while the first one's drain is still in
-    // flight, so the rest must be picked up as pages by that drain.
+
     for (const row of rows) harness.emitPersisted(row);
     const target = rows.at(-1)!.sequence;
     const deadline = Date.now() + 5_000;
@@ -2364,8 +2268,7 @@ describe("ProviderRuntimeIngestion", () => {
       `,
     );
     expect(acks.at(-1)?.toSequence).toBe(target);
-    // One acknowledgement for the first notification, then the backlog in
-    // (at most) pages; never one transaction per event.
+
     expect(acks.length).toBeLessThan(rows.length);
     expect(acks.length).toBeLessThanOrEqual(4);
   });

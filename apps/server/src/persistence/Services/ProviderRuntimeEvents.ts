@@ -1,4 +1,4 @@
-import type { ProviderRuntimeEvent } from "@glade/contracts";
+import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import { ServiceMap } from "effect";
 import type { Effect } from "effect";
 
@@ -19,6 +19,12 @@ export interface ProviderRuntimeEventRepositoryShape {
   readonly append: (
     event: ProviderRuntimeEvent,
   ) => Effect.Effect<PersistedProviderRuntimeEvent, ProviderRuntimeEventRepositoryError>;
+  readonly appendBatch: (
+    events: ReadonlyArray<ProviderRuntimeEvent>,
+  ) => Effect.Effect<
+    ReadonlyArray<PersistedProviderRuntimeEvent>,
+    ProviderRuntimeEventRepositoryError
+  >;
   readonly getHighWaterSequence: Effect.Effect<number, PersistenceSqlError>;
   readonly readAfter: (input: {
     readonly sequenceExclusive: number;
@@ -68,13 +74,7 @@ export interface ProviderRuntimeEventRepositoryShape {
     readonly eventSequence: number;
     readonly updatedAt: string;
   }) => Effect.Effect<boolean, PersistenceSqlError>;
-  /**
-   * Acknowledge every stored row in (cursor, throughSequence] in one
-   * transaction. Equivalent to calling advanceConsumerCursor for each of those
-   * rows in order, including open-turn bookkeeping and retention, but paying
-   * one commit per drained page instead of one per event. Returns false when
-   * the cursor is not positioned exactly below those rows.
-   */
+
   readonly advanceConsumerCursorThrough: (input: {
     readonly consumerName: string;
     readonly throughSequence: number;

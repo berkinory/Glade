@@ -1,37 +1,38 @@
-/**
- * CodexAdapterLive - Scoped live implementation for the Codex provider adapter.
- *
- * Wraps `CodexAppServerManager` behind the `CodexAdapter` service contract and
- * maps manager failures into the shared `ProviderAdapterError` algebra.
- *
- * @module CodexAdapterLive
- */
+import { decodeCodexGuardianReview } from "../codex/protocol/decode.ts";
+import { asArray, asFiniteNumber } from "@glade/shared/transport/payloadValues";
+import { asString, nonEmptyTrimmed } from "@glade/shared/text/text";
+import { asObjectRecord } from "@glade/shared/transport/payloadValues";
+import { AsyncUserInputQuestions } from "@glade/contracts/orchestration/asyncUserInput";
+import { type ChatAttachment } from "@glade/contracts/orchestration/threadEntities";
 import {
-  AsyncUserInputQuestions,
-  type ChatAttachment,
+  type ModelSelection,
+  type ProviderUserInputAnswers,
+  ProviderApprovalDecision,
+} from "@glade/contracts/provider/sessionPolicy";
+import {
   type CanonicalItemType,
   type CanonicalRequestType,
-  type ModelSelection,
+} from "@glade/contracts/provider/runtimeMetadata";
+import { type ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
+import { type ThreadTokenUsageSnapshot } from "@glade/contracts/provider/runtimePayloads";
+import {
   type ProviderComposerCapabilities,
-  type ProviderEvent,
   type ProviderListModelsResult,
   type ProviderListPluginsResult,
   type ProviderReadPluginResult,
-  type ProviderSendTurnInput,
   type ProviderListSkillsResult,
-  type ProviderRuntimeEvent,
-  type ServerVoiceTranscriptionResult,
-  type ThreadTokenUsageSnapshot,
-  type ProviderUserInputAnswers,
+} from "@glade/contracts/provider/providerDiscovery";
+import { type ProviderEvent, type ProviderSendTurnInput } from "@glade/contracts/provider/provider";
+import { type ServerVoiceTranscriptionResult } from "@glade/contracts/server/server";
+import {
   EventId,
   RuntimeItemId,
   RuntimeRequestId,
   RuntimeTaskId,
-  ProviderApprovalDecision,
   ProviderItemId,
   ThreadId,
   TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
 import { Cause, Effect, Layer, Option, Queue, Schema, ServiceMap, Stream } from "effect";
 
 import {
@@ -41,7 +42,7 @@ import {
   ProviderAdapterSessionNotFoundError,
   ProviderAdapterValidationError,
   type ProviderAdapterError,
-} from "../Errors.ts";
+} from "../core/Errors.ts";
 import { CodexAdapter, type CodexAdapterShape } from "../Services/CodexAdapter.ts";
 import { PROVIDER_ADAPTER_RUNTIME_EVENT_BUFFER_CAPACITY } from "../Services/ProviderAdapter.ts";
 import {
@@ -49,58 +50,57 @@ import {
   parseCodexUserInputQuestions,
   type CodexAppServerSendTurnInput,
   type CodexAppServerStartSessionInput,
-} from "../../codexAppServerManager.ts";
-import { evaluateTurnIdleTick, resolveTurnIdleTimeoutMs } from "../turnIdleTimeout.ts";
+} from "../codex/codexAppServerManager.ts";
+import { evaluateTurnIdleTick, resolveTurnIdleTimeoutMs } from "../core/turnIdleTimeout.ts";
 import { AgentGatewayCredentials } from "../../agentGateway/Services/AgentGatewayCredentials.ts";
 import {
   acquireAgentGatewaySessionLease,
   AGENT_GATEWAY_NO_CAPABILITIES,
   captureAgentGatewayCapabilityInput,
 } from "../../agentGateway/sessionLease.ts";
-import { filterProviderPromptImageAttachments } from "../promptAttachments.ts";
-import { resolveProviderAttachmentPath } from "../providerAttachmentPaths.ts";
+import { filterProviderPromptImageAttachments } from "../core/promptAttachments.ts";
+import { resolveProviderAttachmentPath } from "../core/providerAttachmentPaths.ts";
 import {
   codexGeneratedImageArtifact,
   extractCodexGeneratedImageReference,
   firstStringValue,
   isCodexGeneratedImageItemType,
   sanitizeNestedCodexGeneratedImagePayloads,
-} from "../../codexGeneratedImages.ts";
+} from "../codex/codexGeneratedImages.ts";
+import { CodexSessionStartError } from "../codex/codexErrorClassification.ts";
+import { decodeCodexErrorParams } from "../codex/protocol/decode.ts";
 import {
-  CodexSessionStartError,
-  isNonFatalCodexErrorMessage,
-} from "../../codexErrorClassification.ts";
-import { ServerConfig } from "../../config.ts";
-import { resolveCodexServiceTier } from "../../codexServiceTier.ts";
-import { makeRuntimeTaskListItem } from "../runtimeTaskList.ts";
-import { extractProposedPlanMarkdown } from "../planMode.ts";
-import { appendFileAttachmentsPromptBlock } from "../attachmentProjection.ts";
-import { gladeSkillsDir } from "../skillsCatalog.ts";
-import { makeBoundedCallbackIngress } from "../boundedCallbackIngress.ts";
-import { assignDerivedProviderRuntimeEventIds } from "../providerRuntimeEventIdentity.ts";
+  codexUpdatedModelSelection,
+  decodeCodexFilePatch,
+  decodeCodexApprovalReview,
+} from "../codex/codexStateNotifications.ts";
+import { normalizeCodexFailure } from "../codex/codexFailures.ts";
+import { ServerConfig } from "../../server/config.ts";
+import { resolveCodexServiceTier } from "../codex/codexServiceTier.ts";
+import { makeRuntimeTaskListItem } from "../core/runtimeTaskList.ts";
+
+import { appendFileAttachmentsPromptBlock } from "../core/attachmentProjection.ts";
+import { gladeSkillsDir } from "../core/skillsCatalog.ts";
+import { makeBoundedCallbackIngress } from "../core/boundedCallbackIngress.ts";
+import { assignDerivedProviderRuntimeEventIds } from "../core/providerRuntimeEventIdentity.ts";
 import {
   compactProviderRuntimeEventForIngress,
   isTerminalProviderRuntimeEvent,
   PROVIDER_RUNTIME_CALLBACK_BUFFER_MAX_BYTES,
   PROVIDER_RUNTIME_CALLBACK_TERMINAL_RESERVE,
   PROVIDER_RUNTIME_INGRESS_EVENT_MAX_BYTES,
-} from "../providerRuntimeEventIngress.ts";
+} from "../core/providerRuntimeEventIngress.ts";
 import {
   makeUnmappedProviderEventGate,
   sanitizeUnmappedProviderData,
   sanitizeUnmappedProviderDetail,
   sanitizeUnmappedProviderEvent,
   sanitizeUnmappedProviderNativeType,
-} from "../unmappedProviderEvents.ts";
+} from "../core/unmappedProviderEvents.ts";
 import { type EventNdjsonLogger, makeEventNdjsonLogger } from "./EventNdjsonLogger.ts";
 
 const PROVIDER = "codex" as const;
 
-// Backstop for an alive-but-silent codex app-server: if a turn produces no
-// activity at all for this long, abort it instead of showing "Working" forever.
-// Every turn-scoped event (reasoning, tool output, deltas) resets the clock and
-// a pending question/approval pauses it, so only a wedged child trips this.
-// Generous by design; override with GLADE_CODEX_TURN_IDLE_TIMEOUT_MS.
 const CODEX_TURN_IDLE_TIMEOUT_MS = resolveTurnIdleTimeoutMs({
   envVar: "GLADE_CODEX_TURN_IDLE_TIMEOUT_MS",
   defaultMs: 900_000,
@@ -216,9 +216,7 @@ function toSessionError(
       cause,
     });
   }
-  // A closed stdin is the transport-level signature of a dead app-server
-  // process; treat it as a closed session so callers recover via resume
-  // instead of surfacing a raw request failure.
+
   if (normalized.includes("session is closed") || normalized.includes("stdin closed")) {
     return new ProviderAdapterSessionClosedError({
       provider: PROVIDER,
@@ -242,69 +240,53 @@ function toRequestError(threadId: ThreadId, method: string, cause: unknown): Pro
   });
 }
 
-function asObject(value: unknown): Record<string, unknown> | undefined {
-  if (!value || typeof value !== "object") {
-    return undefined;
-  }
-  return value as Record<string, unknown>;
-}
-
-function asString(value: unknown): string | undefined {
-  return typeof value === "string" ? value : undefined;
-}
-
-function asTrimmedString(value: unknown): string | undefined {
-  const stringValue = asString(value)?.trim();
-  return stringValue ? stringValue : undefined;
-}
-
-function asArray(value: unknown): unknown[] | undefined {
-  return Array.isArray(value) ? value : undefined;
-}
-
-function asNumber(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
-}
-
-// Keep manager-emitted stderr lines visible without escalating them into a fatal thread error.
 function providerErrorMapsToWarning(event: ProviderEvent): boolean {
   return (
     event.kind === "error" &&
     (event.method === "process/stderr" ||
       event.method === "mcpServer/elicitation/request/unrenderable" ||
       (event.method === "error" &&
-        typeof event.message === "string" &&
-        isNonFatalCodexErrorMessage(event.message)))
+        (asObjectRecord(event.payload) ?? undefined)?.willRetry === true))
   );
 }
 
 function normalizeCodexTokenUsage(value: unknown): ThreadTokenUsageSnapshot | undefined {
-  const usage = asObject(value);
-  const totalUsage = asObject(usage?.total_token_usage ?? usage?.total);
-  const lastUsage = asObject(usage?.last_token_usage ?? usage?.last);
+  const usage = asObjectRecord(value) ?? undefined;
+  const totalUsage = asObjectRecord(usage?.total_token_usage ?? usage?.total) ?? undefined;
+  const lastUsage = asObjectRecord(usage?.last_token_usage ?? usage?.last) ?? undefined;
 
   const totalProcessedTokens =
-    asNumber(totalUsage?.total_tokens) ?? asNumber(totalUsage?.totalTokens);
+    asFiniteNumber(totalUsage?.total_tokens) ?? asFiniteNumber(totalUsage?.totalTokens);
   const usedTokens =
-    asNumber(lastUsage?.total_tokens) ?? asNumber(lastUsage?.totalTokens) ?? totalProcessedTokens;
+    asFiniteNumber(lastUsage?.total_tokens) ??
+    asFiniteNumber(lastUsage?.totalTokens) ??
+    totalProcessedTokens;
   if (usedTokens === undefined || usedTokens <= 0) {
     return undefined;
   }
 
-  const maxTokens = asNumber(usage?.model_context_window) ?? asNumber(usage?.modelContextWindow);
-  const inputTokens = asNumber(lastUsage?.input_tokens) ?? asNumber(lastUsage?.inputTokens);
+  const maxTokens =
+    asFiniteNumber(usage?.model_context_window) ?? asFiniteNumber(usage?.modelContextWindow);
+  const inputTokens =
+    asFiniteNumber(lastUsage?.input_tokens) ?? asFiniteNumber(lastUsage?.inputTokens);
   const cachedInputTokens =
-    asNumber(lastUsage?.cached_input_tokens) ?? asNumber(lastUsage?.cachedInputTokens);
-  const outputTokens = asNumber(lastUsage?.output_tokens) ?? asNumber(lastUsage?.outputTokens);
+    asFiniteNumber(lastUsage?.cached_input_tokens) ?? asFiniteNumber(lastUsage?.cachedInputTokens);
+  const outputTokens =
+    asFiniteNumber(lastUsage?.output_tokens) ?? asFiniteNumber(lastUsage?.outputTokens);
   const reasoningOutputTokens =
-    asNumber(lastUsage?.reasoning_output_tokens) ?? asNumber(lastUsage?.reasoningOutputTokens);
+    asFiniteNumber(lastUsage?.reasoning_output_tokens) ??
+    asFiniteNumber(lastUsage?.reasoningOutputTokens);
 
-  const totalInput = asNumber(totalUsage?.input_tokens) ?? asNumber(totalUsage?.inputTokens);
-  const totalOutput = asNumber(totalUsage?.output_tokens) ?? asNumber(totalUsage?.outputTokens);
+  const totalInput =
+    asFiniteNumber(totalUsage?.input_tokens) ?? asFiniteNumber(totalUsage?.inputTokens);
+  const totalOutput =
+    asFiniteNumber(totalUsage?.output_tokens) ?? asFiniteNumber(totalUsage?.outputTokens);
   const totalCached =
-    asNumber(totalUsage?.cached_input_tokens) ?? asNumber(totalUsage?.cachedInputTokens);
+    asFiniteNumber(totalUsage?.cached_input_tokens) ??
+    asFiniteNumber(totalUsage?.cachedInputTokens);
   const totalWrites =
-    asNumber(totalUsage?.cacheWriteInputTokens) ?? asNumber(totalUsage?.cache_write_input_tokens);
+    asFiniteNumber(totalUsage?.cacheWriteInputTokens) ??
+    asFiniteNumber(totalUsage?.cache_write_input_tokens);
   return {
     usedTokens,
     ...(totalInput !== undefined && totalOutput !== undefined
@@ -391,15 +373,15 @@ function toCanonicalItemType(raw: unknown): CanonicalItemType {
 
 function toolItemTitle(item: Record<string, unknown> | undefined): string | undefined {
   if (!item) return undefined;
-  const appContext = asObject(item.appContext);
+  const appContext = asObjectRecord(item.appContext) ?? undefined;
   const action =
-    asTrimmedString(appContext?.actionName) ??
-    asTrimmedString(item.title) ??
-    asTrimmedString(item.tool) ??
-    asTrimmedString(item.name);
+    nonEmptyTrimmed(appContext?.actionName) ??
+    nonEmptyTrimmed(item.title) ??
+    nonEmptyTrimmed(item.tool) ??
+    nonEmptyTrimmed(item.name);
   if (!action) return undefined;
 
-  const appName = asTrimmedString(appContext?.appName);
+  const appName = nonEmptyTrimmed(appContext?.appName);
   if (!appName || action.toLowerCase().includes(appName.toLowerCase())) {
     return action;
   }
@@ -445,7 +427,7 @@ function joinedTextParts(value: unknown): string | undefined {
   const parts = value
     .map((entry) => {
       if (typeof entry === "string") return entry;
-      const object = asObject(entry);
+      const object = asObjectRecord(entry) ?? undefined;
       return asString(object?.text) ?? asString(object?.summary);
     })
     .filter((entry): entry is string => typeof entry === "string")
@@ -462,7 +444,7 @@ function itemDetail(
   item: Record<string, unknown>,
   payload: Record<string, unknown>,
 ): string | undefined {
-  const nestedResult = asObject(item.result);
+  const nestedResult = asObjectRecord(item.result) ?? undefined;
   const candidates = [
     asString(item.command),
     asString(item.title),
@@ -550,7 +532,7 @@ function toRequestTypeFromKind(kind: unknown): CanonicalRequestType {
 function toRequestTypeFromResolvedPayload(
   payload: Record<string, unknown> | undefined,
 ): CanonicalRequestType {
-  const request = asObject(payload?.request);
+  const request = asObjectRecord(payload?.request) ?? undefined;
   const method = asString(request?.method) ?? asString(payload?.method);
   if (method) {
     return toRequestTypeFromMethod(method);
@@ -582,7 +564,7 @@ function toCanonicalUserInputAnswers(
       continue;
     }
 
-    const nestedAnswers = asArray(asObject(value)?.answers);
+    const nestedAnswers = asArray((asObjectRecord(value) ?? undefined)?.answers);
     if (nestedAnswers) {
       const normalized = nestedAnswers.filter(
         (entry): entry is string => typeof entry === "string",
@@ -654,14 +636,14 @@ function asRuntimeTaskId(taskId: string): RuntimeTaskId {
 function codexEventMessage(
   payload: Record<string, unknown> | undefined,
 ): Record<string, unknown> | undefined {
-  return asObject(payload?.msg);
+  return asObjectRecord(payload?.msg) ?? undefined;
 }
 
 function codexEventBase(
   event: ProviderEvent,
   canonicalThreadId: ThreadId,
 ): Omit<ProviderRuntimeEvent, "type" | "payload"> {
-  const payload = asObject(event.payload);
+  const payload = asObjectRecord(event.payload) ?? undefined;
   const msg = codexEventMessage(payload);
   const turnId = event.turnId ?? toTurnId(asString(msg?.turn_id) ?? asString(msg?.turnId));
   const itemId = event.itemId ?? toProviderItemId(asString(msg?.item_id) ?? asString(msg?.itemId));
@@ -689,49 +671,25 @@ function codexEventBase(
   };
 }
 
-function codexGeneratedImageThreadId(
-  event: ProviderEvent,
-  payload: Record<string, unknown> | undefined,
-): string | undefined {
-  const msg = codexEventMessage(payload);
-  const nestedEvent = asObject(payload?.event);
-  return (
-    firstStringValue(msg, ["thread_id", "threadId", "threadID", "thread"]) ??
-    firstStringValue(nestedEvent, ["thread_id", "threadId", "threadID", "thread"]) ??
-    firstStringValue(payload, ["thread_id", "threadId", "threadID", "thread"]) ??
-    event.providerThreadId ??
-    event.threadId
-  );
-}
-
-function sanitizeGeneratedImagePayload(event: ProviderEvent, canonicalThreadId: ThreadId): unknown {
-  const payload = asObject(event.payload);
-  return sanitizeNestedCodexGeneratedImagePayloads({
-    value: event.payload ?? {},
-    threadId: codexGeneratedImageThreadId(event, payload) ?? canonicalThreadId,
-  });
-}
-
 function withSanitizedGeneratedImageRaw(
   base: Omit<ProviderRuntimeEvent, "type" | "payload">,
   event: ProviderEvent,
-  canonicalThreadId: ThreadId,
 ): Omit<ProviderRuntimeEvent, "type" | "payload"> {
   return {
     ...base,
     raw: {
       source: eventRawSource(event),
       method: event.method,
-      payload: sanitizeGeneratedImagePayload(event, canonicalThreadId),
+      payload: sanitizeNestedCodexGeneratedImagePayloads(event.payload ?? {}),
     },
   };
 }
 
 function generatedImageEventCandidate(event: ProviderEvent): Record<string, unknown> | undefined {
-  const payload = asObject(event.payload);
+  const payload = asObjectRecord(event.payload) ?? undefined;
   const msg = codexEventMessage(payload);
-  const item = asObject(payload?.item);
-  const nestedEvent = asObject(payload?.event);
+  const item = asObjectRecord(payload?.item) ?? undefined;
+  const nestedEvent = asObjectRecord(payload?.event) ?? undefined;
   if (item) {
     return item;
   }
@@ -766,12 +724,9 @@ function mapGeneratedImageEndEvent(
   ) {
     return undefined;
   }
-  const payload = asObject(event.payload);
+  const payload = asObjectRecord(event.payload) ?? undefined;
   const candidate = generatedImageEventCandidate(event);
-  const reference = extractCodexGeneratedImageReference({
-    value: candidate,
-    threadId: codexGeneratedImageThreadId(event, payload) ?? canonicalThreadId,
-  });
+  const reference = extractCodexGeneratedImageReference(candidate);
   if (!reference) {
     return undefined;
   }
@@ -802,7 +757,6 @@ function mapGeneratedImageEndEvent(
       ...(itemId ? { itemId: asRuntimeItemId(itemId) } : {}),
     },
     event,
-    canonicalThreadId,
   );
 
   return {
@@ -896,8 +850,8 @@ function mapItemLifecycle(
   canonicalThreadId: ThreadId,
   lifecycle: "item.started" | "item.updated" | "item.completed",
 ): ProviderRuntimeEvent | undefined {
-  const payload = asObject(event.payload);
-  const item = asObject(payload?.item);
+  const payload = asObjectRecord(event.payload) ?? undefined;
+  const item = asObjectRecord(payload?.item) ?? undefined;
   const source = item ?? payload;
   if (!source) {
     return undefined;
@@ -908,12 +862,7 @@ function mapItemLifecycle(
     return undefined;
   }
   const generatedImageReference =
-    itemType === "image_generation"
-      ? extractCodexGeneratedImageReference({
-          value: source,
-          threadId: codexGeneratedImageThreadId(event, payload) ?? canonicalThreadId,
-        })
-      : undefined;
+    itemType === "image_generation" ? extractCodexGeneratedImageReference(source) : undefined;
   if (
     lifecycle === "item.completed" &&
     itemType === "image_generation" &&
@@ -925,8 +874,8 @@ function mapItemLifecycle(
   const canonicalItemType =
     lifecycle === "item.completed" && itemType === "review_exited" ? "assistant_message" : itemType;
 
-  // Only the provider-authored summary is user-visible reasoning. Raw content
-  // may contain model trace data and must not leak into transcript activities.
+  // Only the provider-authored summary is user-visible reasoning. Raw content may contain model trace
+  // data and must not leak into transcript activities.
   const detail =
     itemType === "reasoning" ? reasoningSummaryDetail(source) : itemDetail(source, payload ?? {});
   const status = itemStatus(lifecycle, source.status);
@@ -935,7 +884,7 @@ function mapItemLifecycle(
     itemType === "assistant_message" && Array.isArray(source.questions)
       ? Schema.decodeUnknownOption(AsyncUserInputQuestions)(
           source.questions.map((value: unknown) => {
-            const question = asObject(value);
+            const question = asObjectRecord(value) ?? undefined;
             return question
               ? question.options == null
                 ? { title: question.title }
@@ -947,11 +896,7 @@ function mapItemLifecycle(
 
   return {
     ...(generatedImageReference
-      ? withSanitizedGeneratedImageRaw(
-          runtimeEventBase(event, canonicalThreadId),
-          event,
-          canonicalThreadId,
-        )
+      ? withSanitizedGeneratedImageRaw(runtimeEventBase(event, canonicalThreadId), event)
       : runtimeEventBase(event, canonicalThreadId)),
     type: lifecycle,
     payload: {
@@ -993,10 +938,10 @@ function hookRunOutput(run: Record<string, unknown>): string | undefined {
   }
   const output = run.entries
     .flatMap((entry) => {
-      const record = asObject(entry);
-      const text = asTrimmedString(record?.text);
+      const record = asObjectRecord(entry) ?? undefined;
+      const text = nonEmptyTrimmed(record?.text);
       if (!text) return [];
-      const kind = asTrimmedString(record?.kind);
+      const kind = nonEmptyTrimmed(record?.kind);
       return [kind ? `${kind}: ${text}` : text];
     })
     .join("\n");
@@ -1024,14 +969,14 @@ function mapCodexHookEvent(
   if (event.method !== "hook/started" && event.method !== "hook/completed") {
     return undefined;
   }
-  const run = asObject(asObject(event.payload)?.run);
-  const hookId = asTrimmedString(run?.id);
-  const hookEvent = asTrimmedString(run?.eventName);
+  const run = asObjectRecord((asObjectRecord(event.payload) ?? undefined)?.run) ?? undefined;
+  const hookId = nonEmptyTrimmed(run?.id);
+  const hookEvent = nonEmptyTrimmed(run?.eventName);
   if (!run || !hookId || !hookEvent) {
     return undefined;
   }
-  const hookName = asTrimmedString(run.sourcePath) ?? asTrimmedString(run.handlerType) ?? hookEvent;
-  const statusMessage = sanitizeUnmappedProviderDetail(asTrimmedString(run.statusMessage));
+  const hookName = nonEmptyTrimmed(run.sourcePath) ?? nonEmptyTrimmed(run.handlerType) ?? hookEvent;
+  const statusMessage = sanitizeUnmappedProviderDetail(nonEmptyTrimmed(run.statusMessage));
   const data = sanitizeUnmappedProviderData(run);
   const base = withSanitizedHookRaw(event, canonicalThreadId);
 
@@ -1050,7 +995,7 @@ function mapCodexHookEvent(
   }
 
   const status = toCodexHookRunStatus(run.status);
-  const durationCandidate = asNumber(run.durationMs);
+  const durationCandidate = asFiniteNumber(run.durationMs);
   const durationMs =
     durationCandidate !== undefined && Number.isInteger(durationCandidate) && durationCandidate >= 0
       ? durationCandidate
@@ -1073,7 +1018,6 @@ function mapCodexHookEvent(
   };
 }
 
-// Configuration/lifecycle bookkeeping belongs in native diagnostics, not the transcript.
 const DIAGNOSTIC_ONLY_CODEX_METHODS = new Set([
   "remoteControl/status/changed",
   "skills/changed",
@@ -1086,17 +1030,17 @@ function mapUnmappedCodexEvent(
   event: ProviderEvent,
   canonicalThreadId: ThreadId,
 ): ProviderRuntimeEvent {
-  const payload = asObject(event.payload);
+  const payload = asObjectRecord(event.payload) ?? undefined;
   const msg = codexEventMessage(payload);
   const nativeType = sanitizeUnmappedProviderNativeType(event.method);
   const detail = sanitizeUnmappedProviderDetail(
-    asTrimmedString(payload?.message) ??
-      asTrimmedString(msg?.summary) ??
-      asTrimmedString(payload?.reason) ??
-      asTrimmedString(payload?.summary) ??
-      asTrimmedString(msg?.status) ??
-      asTrimmedString(payload?.detail) ??
-      asTrimmedString(payload?.status),
+    nonEmptyTrimmed(payload?.message) ??
+      nonEmptyTrimmed(msg?.summary) ??
+      nonEmptyTrimmed(payload?.reason) ??
+      nonEmptyTrimmed(payload?.summary) ??
+      nonEmptyTrimmed(msg?.status) ??
+      nonEmptyTrimmed(payload?.detail) ??
+      nonEmptyTrimmed(payload?.status),
   );
   return {
     ...runtimeEventBase(event, canonicalThreadId),
@@ -1118,8 +1062,8 @@ function mapToRuntimeEvents(
   event: ProviderEvent,
   canonicalThreadId: ThreadId,
 ): ReadonlyArray<ProviderRuntimeEvent> {
-  const payload = asObject(event.payload);
-  const turn = asObject(payload?.turn);
+  const payload = asObjectRecord(event.payload) ?? undefined;
+  const turn = asObjectRecord(payload?.turn) ?? undefined;
   const generatedImageEndEvent = mapGeneratedImageEndEvent(event, canonicalThreadId);
   if (generatedImageEndEvent) {
     return [generatedImageEndEvent];
@@ -1149,8 +1093,6 @@ function mapToRuntimeEvents(
 
   if (event.kind === "request") {
     if (event.method === "item/tool/requestUserInput") {
-      // The manager refuses (and answers) unrenderable requests, so reaching
-      // this branch with no questions means nothing is parked on the reply.
       const questions = parseCodexUserInputQuestions(payload);
       if (!questions) {
         return [];
@@ -1203,17 +1145,67 @@ function mapToRuntimeEvents(
     ];
   }
 
-  if (event.method === "item/autoApprovalReview/completed") {
-    const review = asObject(payload?.review) ?? payload;
-    const status = asString(review?.status);
-    if (status !== "denied" && status !== "aborted") {
-      return [];
-    }
-    const rationale =
-      asString(review?.rationale) ??
-      asString(review?.reason) ??
-      `Automatic approval review ${status} this action.`;
+  if (event.method === "thread/settings/updated") {
     return [
+      {
+        ...runtimeEventBase(event, canonicalThreadId),
+        type: "thread.metadata.updated",
+        payload: { modelSelection: codexUpdatedModelSelection(event.payload) },
+      },
+    ];
+  }
+
+  if (event.method === "item/fileChange/patchUpdated") {
+    const patch = decodeCodexFilePatch(event.payload);
+    return [
+      {
+        ...runtimeEventBase(event, canonicalThreadId),
+        itemId: RuntimeItemId.makeUnsafe(patch.itemId),
+        type: "item.updated",
+        payload: {
+          itemType: "file_change",
+          status: "inProgress",
+          title: "File change",
+          data: { item: { type: "fileChange", id: patch.itemId, changes: patch.changes } },
+        },
+      },
+    ];
+  }
+
+  if (event.method === "item/autoApprovalReview/started") {
+    const review = decodeCodexApprovalReview(event.payload);
+    return [
+      {
+        ...runtimeEventBase(event, canonicalThreadId),
+        itemId: RuntimeItemId.makeUnsafe(review.reviewId),
+        type: "item.started",
+        payload: {
+          itemType: "dynamic_tool_call",
+          status: "inProgress",
+          title: "Automatic approval review",
+        },
+      },
+    ];
+  }
+
+  if (event.method === "item/autoApprovalReview/completed") {
+    const nativeReview = decodeCodexGuardianReview(event.payload);
+    const review = nativeReview.review;
+    const status = review.status;
+    const completedReview: ProviderRuntimeEvent = {
+      ...runtimeEventBase(event, canonicalThreadId),
+      itemId: RuntimeItemId.makeUnsafe(decodeCodexApprovalReview(event.payload).reviewId),
+      type: "item.completed",
+      payload: {
+        itemType: "dynamic_tool_call",
+        status: status === "denied" ? "declined" : status === "aborted" ? "failed" : "completed",
+        title: "Automatic approval review",
+      },
+    };
+    if (status !== "denied" && status !== "aborted") return [completedReview];
+    const rationale = review.rationale ?? `Automatic approval review ${status} this action.`;
+    return [
+      completedReview,
       {
         ...runtimeEventBase(event, canonicalThreadId),
         type: "runtime.warning",
@@ -1278,7 +1270,7 @@ function mapToRuntimeEvents(
   }
 
   if (event.method === "thread/started") {
-    const payloadThreadId = asString(asObject(payload?.thread)?.id);
+    const payloadThreadId = asString((asObjectRecord(payload?.thread) ?? undefined)?.id);
     const providerThreadId = payloadThreadId ?? asString(payload?.threadId);
     if (!providerThreadId) {
       return [];
@@ -1329,7 +1321,9 @@ function mapToRuntimeEvents(
                 ? "closed"
                 : event.method === "thread/compacted"
                   ? "compacted"
-                  : toThreadState(asObject(payload?.thread)?.state ?? payload?.state),
+                  : toThreadState(
+                      (asObjectRecord(payload?.thread) ?? undefined)?.state ?? payload?.state,
+                    ),
           ...(event.payload !== undefined ? { detail: event.payload } : {}),
         },
       },
@@ -1343,14 +1337,16 @@ function mapToRuntimeEvents(
         ...runtimeEventBase(event, canonicalThreadId),
         payload: {
           ...(asString(payload?.threadName) ? { name: asString(payload?.threadName) } : {}),
-          ...(event.payload !== undefined ? { metadata: asObject(event.payload) } : {}),
+          ...(event.payload !== undefined
+            ? { metadata: asObjectRecord(event.payload) ?? undefined }
+            : {}),
         },
       },
     ];
   }
 
   if (event.method === "thread/tokenUsage/updated") {
-    const tokenUsage = asObject(payload?.tokenUsage);
+    const tokenUsage = asObjectRecord(payload?.tokenUsage) ?? undefined;
     const normalizedUsage = normalizeCodexTokenUsage(tokenUsage ?? event.payload);
     if (!normalizedUsage) {
       return [];
@@ -1385,7 +1381,7 @@ function mapToRuntimeEvents(
   }
 
   if (event.method === "turn/completed") {
-    const errorMessage = asString(asObject(turn?.error)?.message);
+    const errorMessage = asString((asObjectRecord(turn?.error) ?? undefined)?.message);
     return [
       {
         ...runtimeEventBase(event, canonicalThreadId),
@@ -1394,9 +1390,11 @@ function mapToRuntimeEvents(
           state: toTurnStatus(turn?.status),
           ...(asString(turn?.stopReason) ? { stopReason: asString(turn?.stopReason) } : {}),
           ...(turn?.usage !== undefined ? { usage: turn.usage } : {}),
-          ...(asObject(turn?.modelUsage) ? { modelUsage: asObject(turn?.modelUsage) } : {}),
-          ...(asNumber(turn?.totalCostUsd) !== undefined
-            ? { totalCostUsd: asNumber(turn?.totalCostUsd) }
+          ...((asObjectRecord(turn?.modelUsage) ?? undefined)
+            ? { modelUsage: asObjectRecord(turn?.modelUsage) ?? undefined }
+            : {}),
+          ...(asFiniteNumber(turn?.totalCostUsd) !== undefined
+            ? { totalCostUsd: asFiniteNumber(turn?.totalCostUsd) }
             : {}),
           ...(errorMessage ? { errorMessage } : {}),
         },
@@ -1427,7 +1425,7 @@ function mapToRuntimeEvents(
             ? { explanation: asString(payload?.explanation) }
             : {}),
           tasks: steps.flatMap((entry) => {
-            const taskEntry = asObject(entry);
+            const taskEntry = asObjectRecord(entry) ?? undefined;
             if (!taskEntry) {
               return [];
             }
@@ -1464,28 +1462,14 @@ function mapToRuntimeEvents(
   }
 
   if (event.method === "item/completed") {
-    const payload = asObject(event.payload);
-    const item = asObject(payload?.item);
+    const payload = asObjectRecord(event.payload) ?? undefined;
+    const item = asObjectRecord(payload?.item) ?? undefined;
     const source = item ?? payload;
     if (!source) {
       return [];
     }
     const itemType = source ? toCanonicalItemType(source.type ?? source.kind) : "unknown";
-    if (itemType === "plan") {
-      const detail = itemDetail(source, payload ?? {});
-      if (!detail) {
-        return [];
-      }
-      return [
-        {
-          ...runtimeEventBase(event, canonicalThreadId),
-          type: "turn.proposed.completed",
-          payload: {
-            planMarkdown: detail,
-          },
-        },
-      ];
-    }
+    if (itemType === "plan") return [];
     const completed = mapItemLifecycle(event, canonicalThreadId, "item.completed");
     return completed ? [completed] : [];
   }
@@ -1498,25 +1482,7 @@ function mapToRuntimeEvents(
     return updated ? [updated] : [];
   }
 
-  if (event.method === "item/plan/delta") {
-    const delta =
-      event.textDelta ??
-      asString(payload?.delta) ??
-      asString(payload?.text) ??
-      asString(asObject(payload?.content)?.text);
-    if (!delta || delta.length === 0) {
-      return [];
-    }
-    return [
-      {
-        ...runtimeDeltaEventBase(event, canonicalThreadId),
-        type: "turn.proposed.delta",
-        payload: {
-          delta,
-        },
-      },
-    ];
-  }
+  if (event.method === "item/plan/delta") return [];
 
   if (
     event.method === "item/agentMessage/delta" ||
@@ -1529,7 +1495,7 @@ function mapToRuntimeEvents(
       event.textDelta ??
       asString(payload?.delta) ??
       asString(payload?.text) ??
-      asString(asObject(payload?.content)?.text);
+      asString((asObjectRecord(payload?.content) ?? undefined)?.text);
     if (!delta || delta.length === 0) {
       return [];
     }
@@ -1562,8 +1528,8 @@ function mapToRuntimeEvents(
           ...(toolUseId ? { toolUseId } : {}),
           ...(asString(payload?.toolName) ? { toolName: asString(payload?.toolName) } : {}),
           ...(summary ? { summary } : {}),
-          ...(asNumber(payload?.elapsedSeconds) !== undefined
-            ? { elapsedSeconds: asNumber(payload?.elapsedSeconds) }
+          ...(asFiniteNumber(payload?.elapsedSeconds) !== undefined
+            ? { elapsedSeconds: asFiniteNumber(payload?.elapsedSeconds) }
             : {}),
         },
       },
@@ -1596,7 +1562,9 @@ function mapToRuntimeEvents(
         type: "user-input.resolved",
         payload: {
           answers: toCanonicalUserInputAnswers(
-            asObject(event.payload)?.answers as ProviderUserInputAnswers | undefined,
+            (asObjectRecord(event.payload) ?? undefined)?.answers as
+              | ProviderUserInputAnswers
+              | undefined,
           ),
         },
       },
@@ -1626,21 +1594,8 @@ function mapToRuntimeEvents(
   if (event.method === "codex/event/task_complete") {
     const msg = codexEventMessage(payload);
     const taskId = asString(payload?.id) ?? asString(msg?.turn_id);
-    const proposedPlanMarkdown = extractProposedPlanMarkdown(asString(msg?.last_agent_message));
-    if (!taskId) {
-      if (!proposedPlanMarkdown) {
-        return [];
-      }
-      return [
-        {
-          ...codexEventBase(event, canonicalThreadId),
-          type: "turn.proposed.completed",
-          payload: {
-            planMarkdown: proposedPlanMarkdown,
-          },
-        },
-      ];
-    }
+
+    if (!taskId) return [];
     const events: ProviderRuntimeEvent[] = [
       {
         ...codexEventBase(event, canonicalThreadId),
@@ -1654,15 +1609,7 @@ function mapToRuntimeEvents(
         },
       },
     ];
-    if (proposedPlanMarkdown) {
-      events.push({
-        ...codexEventBase(event, canonicalThreadId),
-        type: "turn.proposed.completed",
-        payload: {
-          planMarkdown: proposedPlanMarkdown,
-        },
-      });
-    }
+
     return events;
   }
 
@@ -1697,12 +1644,12 @@ function mapToRuntimeEvents(
         type: "content.delta",
         payload: {
           streamKind:
-            asNumber(msg?.summary_index) !== undefined
+            asFiniteNumber(msg?.summary_index) !== undefined
               ? "reasoning_summary_text"
               : "reasoning_text",
           delta,
-          ...(asNumber(msg?.summary_index) !== undefined
-            ? { summaryIndex: asNumber(msg?.summary_index) }
+          ...(asFiniteNumber(msg?.summary_index) !== undefined
+            ? { summaryIndex: asFiniteNumber(msg?.summary_index) }
             : {}),
         },
       },
@@ -1724,13 +1671,13 @@ function mapToRuntimeEvents(
   }
 
   if (event.method === "deprecationNotice") {
-    const details = asTrimmedString(payload?.details);
+    const details = nonEmptyTrimmed(payload?.details);
     return [
       {
         type: "deprecation.notice",
         ...runtimeEventBase(event, canonicalThreadId),
         payload: {
-          summary: asTrimmedString(payload?.summary) ?? "Deprecation notice",
+          summary: nonEmptyTrimmed(payload?.summary) ?? "Deprecation notice",
           ...(details ? { details } : {}),
         },
       },
@@ -1738,14 +1685,14 @@ function mapToRuntimeEvents(
   }
 
   if (event.method === "configWarning") {
-    const details = asTrimmedString(payload?.details);
-    const path = asTrimmedString(payload?.path);
+    const details = nonEmptyTrimmed(payload?.details);
+    const path = nonEmptyTrimmed(payload?.path);
     return [
       {
         type: "config.warning",
         ...runtimeEventBase(event, canonicalThreadId),
         payload: {
-          summary: asTrimmedString(payload?.summary) ?? "Configuration warning",
+          summary: nonEmptyTrimmed(payload?.summary) ?? "Configuration warning",
           ...(details ? { details } : {}),
           ...(path ? { path } : {}),
           ...(payload?.range !== undefined ? { range: payload.range } : {}),
@@ -1855,16 +1802,17 @@ function mapToRuntimeEvents(
   }
 
   if (event.method === "error") {
-    const message =
-      asString(asObject(payload?.error)?.message) ?? event.message ?? "Provider runtime error";
-    const willRetry = payload?.willRetry === true;
-    const treatAsWarning = willRetry || isNonFatalCodexErrorMessage(message);
+    const nativeError = decodeCodexErrorParams(event.payload);
+    const message = event.message ?? nativeError.error.message;
+    const failure = normalizeCodexFailure(nativeError, message);
+    const treatAsWarning = nativeError.willRetry;
     return [
       {
         type: treatAsWarning ? "runtime.warning" : "runtime.error",
         ...runtimeEventBase(event, canonicalThreadId),
         payload: {
           message,
+          failure,
           ...(!treatAsWarning ? { class: "provider_error" as const } : {}),
           ...(event.payload !== undefined ? { detail: event.payload } : {}),
         },
@@ -1886,7 +1834,7 @@ function mapToRuntimeEvents(
   }
 
   if (event.method === "windowsSandbox/setupCompleted") {
-    const payloadRecord = asObject(event.payload);
+    const payloadRecord = asObjectRecord(event.payload) ?? undefined;
     const success = payloadRecord?.success;
     const successMessage = event.message ?? "Windows sandbox setup completed";
     const failureMessage = event.message ?? "Windows sandbox setup failed";
@@ -1916,18 +1864,13 @@ function mapToRuntimeEvents(
     ];
   }
 
-  // No explicit mapping matched: keep the event visible instead of dropping
-  // it. The raw native method becomes the row title and the raw payload the
-  // preview, so a provider protocol addition degrades to a readable row rather
-  // than silence.
   return [mapUnmappedCodexEvent(event, canonicalThreadId)];
 }
 
 const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
   Effect.gen(function* () {
     const serverConfig = yield* Effect.service(ServerConfig);
-    // Optional so adapter tests can run without the gateway layer; when
-    // present, every session gets the glade_* MCP tools.
+
     const agentGatewayCredentials = Option.getOrUndefined(
       yield* Effect.serviceOption(AgentGatewayCredentials),
     );
@@ -1953,9 +1896,7 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
               ? {
                   agentGatewayMcp: {
                     endpointUrl: () => agentGatewayCredentials.mcpEndpointUrl,
-                    // Codex leases inside the app-server manager, which owns
-                    // session restarts. The manager carries the start input's
-                    // capability facts; review runtimes request none.
+
                     acquireSessionLease: (threadId, capabilityInput) =>
                       acquireAgentGatewaySessionLease(
                         agentGatewayCredentials,
@@ -1977,10 +1918,9 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
     );
     const shouldSurfaceUnmappedEvent = makeUnmappedProviderEventGate();
 
-    // Idle-progress backstop for codex turns. Same semantics as
-    // turn idle watchdog (any inbound activity resets it, a pending human
-    // decision pauses it), driven by one shared ticker because codex activity
-    // arrives on a single manager event stream instead of per-session fibers.
+    // Same semantics as turn idle watchdog (any inbound activity resets it, a pending human decision
+    // pauses it), driven by one shared ticker because codex activity arrives on a single manager event
+    // stream instead of per-session fibers.
     const turnWatchdogs = new Map<ThreadId, CodexTurnWatchdogEntry>();
 
     const armTurnWatchdog = (threadId: ThreadId, turnId: TurnId): void => {
@@ -2036,13 +1976,11 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
           continue;
         }
         if (decision === "touch") {
-          // Blocked on a human, not hung: keep the clock fresh so the turn
-          // cannot trip the watchdog the instant it resumes.
           entry.lastActivityAt = now;
           continue;
         }
-        // Both "stop" (the turn already settled) and "timeout" disarm; a timeout
-        // disarms first so a slow interrupt cannot let the next tick re-fire.
+        // Both "stop" (the turn already settled) and "timeout" disarm; a timeout disarms first so a slow
+        // interrupt cannot let the next tick re-fire.
         turnWatchdogs.delete(threadId);
         if (decision === "timeout") {
           abandonStalledTurn(threadId, entry.turnId, idleMs);
@@ -2089,9 +2027,7 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
           ...(input.skills !== undefined ? { skills: input.skills } : {}),
           ...(input.mentions !== undefined ? { mentions: input.mentions } : {}),
           ...codexModelSelectionOverrides(input.modelSelection),
-          ...(input.interactionMode !== undefined
-            ? { interactionMode: input.interactionMode }
-            : {}),
+
           ...(nativeCodexAttachments.length > 0 ? { attachments: nativeCodexAttachments } : {}),
         } satisfies CodexAppServerSendTurnInput;
       });
@@ -2125,7 +2061,7 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
       };
 
       return Effect.tryPromise({
-        try: () => manager.startSession(managerInput),
+        try: (signal) => manager.startSession(managerInput, signal),
         catch: (cause) =>
           new ProviderAdapterProcessError({
             provider: PROVIDER,
@@ -2147,8 +2083,6 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
           try: () => manager.sendTurn(managerInput),
           catch: (cause) => toRequestError(input.threadId, "turn/start", cause),
         }).pipe(
-          // Armed here as well as on `turn.started`, so a child that goes silent
-          // before its first notification is still covered.
           Effect.tap((result) => Effect.sync(() => armTurnWatchdog(input.threadId, result.turnId))),
           Effect.map((result) => ({
             ...result,
@@ -2166,9 +2100,7 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
           catch: (cause) => toRequestError(input.threadId, "turn/steer", cause),
         }).pipe(
           Effect.tap((result) => Effect.sync(() => armTurnWatchdog(input.threadId, result.turnId))),
-          // The `turn/steer` response carries no runtime event and the model
-          // only consumes injected input at its next turn boundary, so without
-          // this a landed steer is indistinguishable from a dropped one.
+
           Effect.tap((result) => {
             const message = input.input?.trim();
             if (!message) {
@@ -2371,7 +2303,10 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
       Effect.tryPromise({
         try: () =>
           manager.readPlugin({
-            marketplacePath: input.marketplacePath,
+            ...(input.marketplacePath ? { marketplacePath: input.marketplacePath } : {}),
+            ...(input.remoteMarketplaceName
+              ? { remoteMarketplaceName: input.remoteMarketplaceName }
+              : {}),
             pluginName: input.pluginName,
           }),
         catch: (cause) =>
@@ -2394,6 +2329,54 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
             cause,
           }),
       }).pipe(Effect.map((result) => result satisfies ProviderListModelsResult));
+
+    const listMcpServers: NonNullable<CodexAdapterShape["listMcpServers"]> = (input) =>
+      Effect.tryPromise({
+        try: () => manager.listMcpServers(input),
+        catch: (cause) =>
+          new ProviderAdapterRequestError({
+            provider: PROVIDER,
+            method: "mcpServerStatus/list",
+            detail: toMessage(cause, "MCP listing failed"),
+            cause,
+          }),
+      });
+
+    const manageMcpServer: NonNullable<CodexAdapterShape["manageMcpServer"]> = (input) =>
+      Effect.tryPromise({
+        try: () => manager.manageMcpServer(input),
+        catch: (cause) =>
+          new ProviderAdapterRequestError({
+            provider: PROVIDER,
+            method: "mcpServer/manage",
+            detail: toMessage(cause, "MCP action failed"),
+            cause,
+          }),
+      });
+
+    const pluginInventory: NonNullable<CodexAdapterShape["pluginInventory"]> = (input) =>
+      Effect.tryPromise({
+        try: () => manager.pluginInventory(input),
+        catch: (cause) =>
+          new ProviderAdapterRequestError({
+            provider: PROVIDER,
+            method: "plugin/installed",
+            detail: toMessage(cause, "Plugin inventory failed"),
+            cause,
+          }),
+      });
+
+    const managePlugin: NonNullable<CodexAdapterShape["managePlugin"]> = (input) =>
+      Effect.tryPromise({
+        try: () => manager.managePlugin(input),
+        catch: (cause) =>
+          new ProviderAdapterRequestError({
+            provider: PROVIDER,
+            method: "plugin/manage",
+            detail: toMessage(cause, "Plugin action failed"),
+            cause,
+          }),
+      });
 
     const transcribeVoice: NonNullable<CodexAdapterShape["transcribeVoice"]> = (input) =>
       Effect.tryPromise({
@@ -2492,8 +2475,6 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
               nativeEvent.bytes + sizedRuntimeEvents.reduce((total, item) => total + item.bytes, 0),
           });
           if (result === "terminal-overflow") {
-            // This means the reserved terminal budget itself was exhausted.
-            // The runtime reconciler remains the final recovery fence.
             void Effect.runPromise(
               Effect.logError("Codex callback ingress exhausted terminal reserve", {
                 threadId: event.threadId,
@@ -2523,7 +2504,6 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
     return {
       provider: PROVIDER,
       capabilities: {
-        sessionModelSwitch: "in-session",
         supportsSkillMentions: true,
         supportsSkillDiscovery: true,
         supportsNativeSlashCommandDiscovery: false,
@@ -2540,6 +2520,28 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
       interruptTurn,
       readThread,
       readExternalThread,
+      updateNativeHistory: (input) =>
+        Effect.tryPromise({
+          try: () => manager.updateNativeHistory(input),
+          catch: (cause) =>
+            new ProviderAdapterRequestError({
+              provider: "codex",
+              method: `thread/${input.action.type}`,
+              detail: "Failed to update native Codex history.",
+              cause,
+            }),
+        }),
+      discoverProjects: (providerOptions) =>
+        Effect.tryPromise({
+          try: () => manager.discoverProjects(providerOptions),
+          catch: (cause) =>
+            new ProviderAdapterRequestError({
+              provider: "codex",
+              method: "thread/list",
+              detail: "Failed to discover Codex sessions.",
+              cause,
+            }),
+        }),
       rollbackThread,
       compactThread,
       forkThread,
@@ -2554,6 +2556,10 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
       listPlugins,
       readPlugin,
       listModels,
+      listMcpServers,
+      manageMcpServer,
+      pluginInventory,
+      managePlugin,
       prewarmVoice,
       transcribeVoice,
       streamEvents: Stream.fromQueue(runtimeEventQueue),

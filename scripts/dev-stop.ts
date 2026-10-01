@@ -43,9 +43,7 @@ function isGladeDirectory(directory: string): boolean {
         for (const path of visited) gladeDirectoryCache.set(path, true);
         return true;
       }
-    } catch {
-      // Keep walking toward the checkout root.
-    }
+    } catch {}
     const parent = dirname(current);
     if (parent === current) break;
     current = parent;
@@ -68,9 +66,7 @@ function posixProcesses(): DevProcess[] {
     for (const entry of processes) {
       try {
         entry.cwd = readlinkSync(`/proc/${entry.pid}/cwd`);
-      } catch {
-        // The process may have exited between ps and cwd inspection.
-      }
+      } catch {}
     }
     return processes;
   }
@@ -168,8 +164,6 @@ function remainingTargets(processes: DevProcess[]): DevProcess[] {
 for (const root of roots) terminate(root.pid, false);
 await Bun.sleep(1_500);
 
-// Some dev watchers can survive their parent. Re-scan rather than trusting stale
-// PIDs; the second pass also catches a child restarted during shutdown.
 const afterGrace = snapshot();
 for (const entry of remainingTargets(afterGrace)) {
   terminate(entry.pid, false);

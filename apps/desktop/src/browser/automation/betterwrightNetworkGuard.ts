@@ -1,0 +1,174 @@
+import type { Session } from "electron";
+
+export interface BetterwrightNetworkGuardLease {
+  readonly closed: boolean;
+
+  replace(proxyUrl: string, signal?: AbortSignal): Promise<void>;
+  release(): Promise<void>;
+}
+
+interface ProxyOwnership {
+  failed: boolean;
+  restoring?: Promise<void> | undefined;
+}
+
+export class BetterwrightNetworkGuard {
+  private owner: ProxyOwnership | undefined;
+  private nextTurn = Promise.resolve();
+
+  constructor(private readonly browserSession: Session) {}
+
+  async attach(proxyUrl: string, signal?: AbortSignal): Promise<BetterwrightNetworkGuardLease> {
+    signal?.throwIfAborted();
+    const previous = this.nextTurn;
+    let finishTurn!: () => void;
+    const turn = new Promise<void>((resolve) => {
+      finishTurn = resolve;
+    });
+
+    this.nextTurn = previous.then(() => turn);
+    try {
+      await waitForTurn(previous, signal);
+      signal?.throwIfAborted();
+      const lease = await this.acquire(proxyUrl, signal);
+      return {
+        get closed() {
+          return lease.closed;
+        },
+        replace: (proxyUrl, signal) => lease.replace(proxyUrl, signal),
+        release: () => {
+          const restoring = lease.release();
+
+          void restoring.then(finishTurn, finishTurn);
+          return restoring;
+        },
+      };
+    } catch (error) {
+      finishTurn();
+      throw error;
+    }
+  }
+
+  private async acquire(
+    proxyUrl: string,
+    signal?: AbortSignal,
+  ): Promise<BetterwrightNetworkGuardLease> {
+    if (this.owner?.failed) {
+      await this.restore(this.owner);
+    }
+    signal?.throwIfAborted();
+    if (this.owner !== undefined) {
+      throw new Error("Browser session is already leased by another automation run.");
+    }
+    const owner: ProxyOwnership = { failed: false };
+    this.owner = owner;
+    await this.install(owner, proxyUrl, signal);
+    // The wrapper needs both its dynamic receiver and the guard that owns it.
+    // oxlint-disable-next-line typescript/no-this-alias
+    const guard = this;
+    let changing = Promise.resolve();
+    let releasing: Promise<void> | undefined;
+    const closed = () =>
+      guard.owner !== owner ||
+      owner.failed ||
+      owner.restoring !== undefined ||
+      releasing !== undefined;
+    return {
+      get closed() {
+        return closed();
+      },
+      replace: (proxyUrl, signal) => {
+        if (closed()) return Promise.reject(new Error("Browser session lease is closed."));
+        const replacing = changing.then(() => {
+          if (guard.owner !== owner || owner.failed)
+            throw new Error("Browser session lease is closed.");
+          signal?.throwIfAborted();
+          return this.install(owner, proxyUrl, signal);
+        });
+        changing = replacing.catch(() => {});
+        return replacing;
+      },
+      release: () => {
+        releasing ??= changing
+          .then(() => this.restore(owner))
+          .finally(() => {
+            releasing = undefined;
+          });
+        return releasing;
+      },
+    };
+  }
+
+  private async install(
+    owner: ProxyOwnership,
+    proxyUrl: string,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    try {
+      await this.browserSession.setProxy({
+        mode: "fixed_servers",
+        proxyRules: proxyUrl,
+        proxyBypassRules: "<-loopback>",
+      });
+      await this.browserSession.closeAllConnections();
+      signal?.throwIfAborted();
+    } catch (error) {
+      try {
+        await this.restore(owner);
+      } catch (rollbackError) {
+        const recoveryError = new AggregateError(
+          [error, rollbackError],
+          "Browser proxy setup and recovery failed.",
+          { cause: rollbackError },
+        );
+        throw recoveryError;
+      }
+      throw error;
+    }
+  }
+
+  private restore(owner: ProxyOwnership): Promise<void> {
+    if (this.owner !== owner) return Promise.resolve();
+    owner.restoring ??= (async () => {
+      try {
+        // Glade's dedicated browser session otherwise uses the system proxy; all temporary proxy
+        // configuration is owned by this guard.
+        await this.browserSession.setProxy({ mode: "system" });
+        await this.browserSession.closeAllConnections();
+        this.owner = undefined;
+      } catch (error) {
+        owner.failed = true;
+        throw error;
+      } finally {
+        owner.restoring = undefined;
+      }
+    })();
+    return owner.restoring;
+  }
+}
+
+async function waitForTurn(turn: Promise<void>, signal?: AbortSignal): Promise<void> {
+  if (!signal) return turn;
+  let onAbort!: () => void;
+  try {
+    await new Promise<void>((resolve, reject) => {
+      onAbort = () => reject(signal.reason ?? new Error("Browser control was interrupted."));
+      signal.addEventListener("abort", onAbort, { once: true });
+      turn.then(resolve, reject);
+      if (signal.aborted) onAbort();
+    });
+  } finally {
+    signal.removeEventListener("abort", onAbort);
+  }
+}
+
+const guardsBySession = new WeakMap<Session, BetterwrightNetworkGuard>();
+
+export function getBetterwrightNetworkGuard(browserSession: Session): BetterwrightNetworkGuard {
+  let guard = guardsBySession.get(browserSession);
+  if (!guard) {
+    guard = new BetterwrightNetworkGuard(browserSession);
+    guardsBySession.set(browserSession, guard);
+  }
+  return guard;
+}

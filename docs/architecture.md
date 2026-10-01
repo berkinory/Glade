@@ -59,7 +59,11 @@ The client does not own provider session truth or durable orchestration state. W
 
 ### Server and RPC surface
 
-`apps/server/src/wsRpc.ts` is the main typed feature-RPC boundary. It merges the shared contract groups, applies request/stream admission, authentication/session context, and exposes orchestration plus server services on one feature socket.
+`apps/server/src/server/ws/wsRpc.ts` is the main typed feature-RPC boundary. It merges the shared contract groups, applies request/stream admission, authentication/session context, and exposes orchestration plus server services on one feature socket.
+
+`apps/server/src/orchestration/decider.ts` routes each command to its owning handler in `commandDecisions`. Shared event construction and thread configuration calculations stay separate from domain decisions; the handlers preserve invariant checks and emitted event order.
+
+`apps/server/src/server/http/http.ts` composes HTTP routes in their established order. Authentication routes, request authorization, bounded body decoding, file/upload routes, static client serving, icons, thread export and lifecycle endpoints have direct domain modules. Shared HTTP response policies remain separate from route orchestration.
 
 The HTTP/WebSocket layer also owns:
 
@@ -71,9 +75,23 @@ The HTTP/WebSocket layer also owns:
 
 `serverLayers.ts` assembles the long-lived service graph used by the server runtime.
 
+`orchestration/projection` owns domain projectors, replay registration, history pruning and attachment side effects. The projection pipeline Layer composes these handlers and owns transaction boundaries, phase cursors and replay batching. Attachment filesystem cleanup remains outside the committed SQLite projection transaction. Snapshot query controllers separate row queries, row decoding, model assembly, project lookup and thread detail. They retain shared SQLite transaction ownership, bounded reads, projection cursor fences and transcript validation after transaction commit.
+
+`orchestration/providerCommands` handles session configuration, human responses, queued turns, task control, conversation edits, naming, turn dispatch, bootstrap and durable delivery. ThreadSessionSettings, QueuedDispatchState and ProviderDeliveryGate own session settings, dispatch reservations and delivery coordination in scoped Layers. ProviderProjectionAccess exposes projected thread operations. The reactor shares one public service graph and isolates its private state owners. Remaining controllers still receive explicit capabilities; context bootstrap state remain in the reactor.
+
+`provider/claude/adapter` handles SDK message conversion, assistant text, task tracking, human interactions, turn completion, discovery and session lifecycle. ClaudeSessionRegistry, ClaudeProcessOwnership, ClaudeSessionAccess and ClaudeRuntimeEvents expose session, process, admission and event operations through scoped Layers. The adapter captures the SDK callback runtime once and stops sessions before its event queue closes. Remaining controllers use explicit capabilities and flow-specific context views; their factory wiring is still being replaced.
+
+Provider-neutral session setup, routing, branching, turn dispatch and human interactions use tags in `provider/Services` and implementations in `provider/Layers`. Lifecycle generations, interruption fences, idle timers and tasks, binding writes and event fanout each have a private state owner. The ProviderService Layer shares its public facade within one scoped graph, isolates private owners between separately constructed instances, and coordinates teardown. Idle timers use the captured callback runtime; binding persistence precedes adapter shutdown and event subscriptions remain alive through terminal publication. `provider/sessionRuntime` contains behavior tests and their harness.
+
+GitCore composes GitCommands, GitStatus, GitDiff, GitWorktrees, GitRefs and GitBranches Layers. Command execution and status caches stay with their owners; repository mutation admission stays in GitCore. GitManager delegates pull-request and workspace handoff operations to GitHandoff.
+
 ### Orchestration
 
 The orchestration layer is provider-independent and durable.
+
+`orchestration/projector.ts` updates the snapshot sequence and routes each event to a focused handler in `eventProjections`. Shared immutable state updates, activity insertion, message retention and turn settlement preserve their existing ordering and bounds.
+
+`orchestration/runtimeActivities` projects provider events into thread activities. Payload bounding and JSON safety, context-window calculations and tool approval presentation have separate modules; the projection preserves ordering, deduplication identities and credential redaction.
 
 A typical state-changing request follows this shape:
 

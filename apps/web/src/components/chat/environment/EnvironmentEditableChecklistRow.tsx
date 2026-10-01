@@ -1,6 +1,4 @@
-// FILE: EnvironmentEditableChecklistRow.tsx
-// Purpose: Shared editable checklist-row interaction for pinned messages.
-// Layer: Environment panel UI primitive
+import { useCallback } from "react";
 
 import {
   useEffect,
@@ -64,12 +62,12 @@ export function EnvironmentEditableChecklistRow({
   const jumpClickTimeoutRef = useRef<number | null>(null);
   const suppressNextBlurCommitRef = useRef(false);
 
-  const clearScheduledJump = () => {
+  const clearScheduledJump = useCallback(() => {
     if (jumpClickTimeoutRef.current !== null) {
       window.clearTimeout(jumpClickTimeoutRef.current);
       jumpClickTimeoutRef.current = null;
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (editing) {

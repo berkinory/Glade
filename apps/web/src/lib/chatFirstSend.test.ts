@@ -1,7 +1,5 @@
-// FILE: chatFirstSend.test.ts
-// Purpose: Verifies first-send project routing for general chats and folder mentions.
-
-import { DEFAULT_MODEL_BY_PROVIDER, type ProjectId } from "@glade/contracts";
+import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
+import { type ProjectId } from "@glade/contracts/core/baseSchemas";
 import { describe, expect, it } from "vitest";
 
 import type { Project } from "../types";
@@ -113,7 +111,7 @@ describe("resolveFirstSendTarget", () => {
       kind: "create-project",
       creation: {
         kind: "chat",
-        defaultModelSelection: { provider: "codex", model: DEFAULT_MODEL_BY_PROVIDER.codex },
+        defaultModelSelection: { provider: "codex", model: PROVIDER_DEFAULT_MODEL },
       },
     });
   });

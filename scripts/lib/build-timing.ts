@@ -1,5 +1,3 @@
-// Timestamped, credential-free release stage records. Durations are wall time,
-// including child processes/external services, never inferred CPU time.
 export function startBuildStage(stage: string, kind: "local" | "download" | "external" = "local") {
   const started = performance.now();
   console.log(

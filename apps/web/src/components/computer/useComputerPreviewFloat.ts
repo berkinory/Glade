@@ -1,30 +1,18 @@
-// FILE: useComputerPreviewFloat.ts
-// Purpose: Detached-window behavior for the in-chat computer preview card.
-// Layer: Chat surface hook
-// Depends on: computerPreviewStore floating map, ComputerPreviewPopover.logic
-//             clamp helpers.
-//
-// Owns everything the floating card needs that is not rendering: the stored
-// viewport position (clamped back on screen every render so a shrinking
-// window can never strand it), the pointer-drag that updates it, and the
-// pop-out handoff that seeds the float from the card's docked rect.
-
-import type { ThreadId } from "@glade/contracts";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type PointerEvent, type RefObject, useMemo, useRef } from "react";
 
 import {
   selectThreadComputerPreviewFloating,
-  useComputerPreviewStore,
+  useComputerStateStore,
   type ComputerPreviewFloatingPosition,
-} from "../../computerPreviewStore";
+} from "../../computerStateStore";
 import { clampComputerPreviewFloat } from "../chat/ComputerPreviewPopover.logic";
 
 export interface ComputerPreviewFloat {
-  /** Stored position once clamped into the current viewport; undefined while docked. */
   readonly position: ComputerPreviewFloatingPosition | undefined;
-  /** Detach the card at its current on-screen rect. */
+
   readonly popOut: () => void;
-  /** Re-dock the card into the rail. */
+
   readonly dock: () => void;
   readonly onFloatPointerDown: (event: PointerEvent<HTMLDivElement>) => void;
   readonly onFloatPointerMove: (event: PointerEvent<HTMLDivElement>) => void;
@@ -34,14 +22,14 @@ export interface ComputerPreviewFloat {
 export function useComputerPreviewFloat(input: {
   readonly threadId: ThreadId;
   readonly cardRef: RefObject<HTMLDivElement | null>;
-  /** Rendered card width/height, used for viewport clamping. */
+
   readonly cardWidthPx: number;
   readonly cardHeightPx: number;
 }): ComputerPreviewFloat {
   const { threadId, cardRef } = input;
-  const floating = useComputerPreviewStore(selectThreadComputerPreviewFloating(threadId));
-  const setPreviewFloating = useComputerPreviewStore((store) => store.setPreviewFloating);
-  const movePreviewFloating = useComputerPreviewStore((store) => store.movePreviewFloating);
+  const floating = useComputerStateStore(selectThreadComputerPreviewFloating(threadId));
+  const setPreviewFloating = useComputerStateStore((store) => store.setPreviewFloating);
+  const movePreviewFloating = useComputerStateStore((store) => store.movePreviewFloating);
   const dragRef = useRef<{ pointerId: number; offsetX: number; offsetY: number } | null>(null);
 
   const position = useMemo(

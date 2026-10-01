@@ -1,13 +1,8 @@
-// FILE: tourContent.ts
-// Purpose: Copy and links for the "what Glade can do" tour. Wording mirrors the public
-//          docs (repository documentation) and changelog so onboarding and docs stay consistent.
-// Layer: Web content (no React)
-
 import type { LucideIcon } from "~/lib/icons";
 import {
   BotIcon,
   ClockIcon,
-  GitForkIcon,
+  GitBranchIcon,
   GitPullRequestIcon,
   GlobeIcon,
   KeyboardIcon,
@@ -17,7 +12,7 @@ const GLADE_DOCS_URL = "https://github.com/berkinory/Glade/blob/main/docs";
 
 export interface TourCard {
   readonly id: string;
-  /** Short tab label. */
+
   readonly label: string;
   readonly title: string;
   readonly description: string;
@@ -49,7 +44,7 @@ export const TOUR_CARDS: ReadonlyArray<TourCard> = [
       "Each task owns one body of work: its conversation, provider session, working environment, tool activity, and Git changes. Run tasks in parallel on managed Git worktrees so two agents never edit the same checkout.",
     highlights: ["Managed worktrees", "Forks from any message", "Subagents and split views"],
     docsHref: `${GLADE_DOCS_URL}/core-concepts.md`,
-    icon: GitForkIcon,
+    icon: GitBranchIcon,
   },
   {
     id: "review",
@@ -67,25 +62,20 @@ export const TOUR_CARDS: ReadonlyArray<TourCard> = [
   },
   {
     id: "browser",
-    label: "Browser & devices",
-    title: "Verify in a real browser or simulator",
-    description:
-      "Agents drive a visible, task-owned browser you can watch and annotate. On macOS, an iOS Simulator pane streams the device so agents can build, launch, and tap through an app while you follow along.",
-    highlights: ["Shared Chromium surface", "Element annotations", "iOS Simulator pane"],
+    label: "Browser",
+    title: "Verify in a real browser",
+    description: "Agents drive a visible, task-owned browser you can watch and annotate.",
+    highlights: ["Shared Chromium surface", "Element annotations"],
     docsHref: `${GLADE_DOCS_URL}/core-concepts.md`,
     icon: GlobeIcon,
   },
   {
     id: "automations",
-    label: "Automations & goals",
+    label: "Automations",
     title: "Hand off work that should keep moving",
     description:
-      "Schedule recurring runs, attach a persistent goal to a thread so it keeps going after each clean turn, and let Glade bring you back when something needs attention. Scheduled does not mean autonomous approval.",
-    highlights: [
-      "Interval, daily, cron schedules",
-      "Natural-language stop conditions",
-      "Thread goals",
-    ],
+      "Schedule recurring runs and let Glade bring you back when something needs attention. Scheduled does not mean autonomous approval.",
+    highlights: ["Interval, daily, cron schedules", "Natural-language stop conditions"],
     docsHref: `${GLADE_DOCS_URL}/core-concepts.md`,
     icon: ClockIcon,
   },
@@ -101,7 +91,6 @@ export const TOUR_CARDS: ReadonlyArray<TourCard> = [
   },
 ];
 
-/** Keybinding commands surfaced on the shortcuts card and the final step. */
 export const TOUR_SHORTCUT_COMMANDS = [
   { command: "chat.new", label: "New task" },
   { command: "sidebar.addProject", label: "Add project" },

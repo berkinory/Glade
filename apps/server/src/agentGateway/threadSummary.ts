@@ -1,19 +1,9 @@
-/**
- * Pure summarization helpers for agent gateway thread tools.
- *
- * Converts full orchestration read-model shapes into compact, token-friendly
- * summaries: a derived one-word thread status, shell summaries for
- * `glade_list_threads`, and truncated/paginated message views for
- * `glade_read_thread`. Kept pure so the shaping rules are unit-testable.
- *
- * @module agentGateway/threadSummary
- */
 import type {
   OrchestrationMessage,
   OrchestrationThread,
   OrchestrationThreadShell,
-} from "@glade/contracts";
-import { splitsSurrogatePair, unicodeSafeEndOffset } from "@glade/shared/text";
+} from "@glade/contracts/orchestration/threadEntities";
+import { splitsSurrogatePair, unicodeSafeEndOffset } from "@glade/shared/text/text";
 
 export type AgentThreadStatus =
   | "working"
@@ -23,11 +13,6 @@ export type AgentThreadStatus =
   | "interrupted"
   | "error";
 
-/**
- * Collapse session/turn/pending projections into one status an agent can act
- * on. Pending gates win over turn state: a thread blocked on approval is not
- * "working" even though its turn is still running.
- */
 export function deriveAgentThreadStatus(thread: {
   readonly session: OrchestrationThreadShell["session"];
   readonly latestTurn: OrchestrationThreadShell["latestTurn"];
@@ -117,7 +102,7 @@ export interface AgentThreadMessagePage {
   readonly totalMessages: number;
   readonly effectiveMessageLimit: number;
   readonly effectiveMaxMessageChars: number;
-  /** Pass back as `cursor` to fetch the next (older) page; absent when done. */
+
   readonly nextCursor?: string;
   readonly messagePage?: AgentThreadSingleMessagePage;
 }
@@ -306,12 +291,6 @@ export function summarizeWaitThreadText(text: string | null | undefined): {
   };
 }
 
-/**
- * Page a thread's messages newest-first. `cursor` is the opaque value returned
- * by the previous page; the first call omits it and gets the tail of the
- * transcript. Message indexes identify positions in the current bounded
- * transcript; single-message reads bind them to message identity and version.
- */
 export function paginateThreadMessages(input: {
   readonly messages: ReadonlyArray<OrchestrationMessage>;
   readonly cursor?: string | undefined;
@@ -350,8 +329,7 @@ export function paginateThreadMessages(input: {
       maxChars,
     });
   }
-  // endExclusive is the transcript index right after the newest message of
-  // this page; the cursor carries the start of the previous (newer) page.
+
   let endExclusive = total;
   if (input.cursor !== undefined) {
     const parsed = Number.parseInt(input.cursor, 10);
@@ -377,7 +355,7 @@ export interface AgentThreadDetail {
   readonly threadId: string;
   readonly projectId: string;
   readonly title: string;
-  readonly goal: string | null;
+
   readonly provider: string;
   readonly model: string;
   readonly status: AgentThreadStatus;
@@ -425,7 +403,7 @@ export function summarizeThreadDetail(input: {
     threadId: thread.id,
     projectId: thread.projectId,
     title: thread.title,
-    goal: thread.goal?.trim() || null,
+
     provider: thread.modelSelection.provider,
     model: thread.modelSelection.model,
     status: deriveAgentThreadStatus(thread),

@@ -1,32 +1,16 @@
 #!/usr/bin/env bun
-/**
- * Standalone Cua driver host — runs the same {@link CuaDriverHost} the macOS
- * desktop embeds, outside Electron, against a provisioned
- * `cua-driver`. This is the Windows/Linux deployment path: the Glade server
- * reaches the socket this host listens on through `GLADE_CUA_HOST_SOCKET`
- * and authenticates every request with the shared capability
- * (`GLADE_BROWSER_HOST_CAPABILITY`).
- *
- *   bun apps/desktop/src/cuaDriverHostStandalone.ts \
- *     --driver /opt/glade/cua-driver [--socket /run/glade-cua/host.sock]
- *
- * This is not a port of the macOS safety layer. `nativeRevision: null` permits
- * upstream artifacts; their transport cancellation cannot acknowledge native
- * input drain. A patched Linux artifact may advertise the separately verified
- * browser-only cancellation capability, but native desktop input stays closed.
- * This host has no global Escape adapter, so Linux browser mutations also stay
- * closed: native cleanup support alone is insufficient for input admission.
- * Browser observation and passive endpoint detection remain available.
- * There is no ComputerPermission helper, masked-activation shield, frame tap, or permission
- * setup path; `check_permissions` uses the driver's own platform report.
- */
+// Standalone hosts authenticate with the shared capability. Native input stays closed without
+// verified drain support; browser mutations also require a global Escape adapter. Passive
+// observations remain available.
 
 import { randomBytes } from "node:crypto";
 import { access, readFile, stat, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 
-import { CuaDriverHost, sweepOrphanedCuaDrivers } from "./cuaDriverHost";
-import { clearStaleCuaHostSocket } from "./cuaHostSocket";
+import { CuaDriverHost } from "./computer/cua/cuaDriverHost";
+import { sweepOrphanedCuaDrivers } from "./computer/cua/cuaHostPolicy";
+
+import { clearStaleCuaHostSocket } from "./computer/cua/cuaHostSocket";
 
 function option(name: string): string | undefined {
   const index = process.argv.indexOf(name);
@@ -52,8 +36,8 @@ async function main(): Promise<void> {
   }
   await access(binaryPath).catch(() => usage(`driver not found or not readable: ${binaryPath}`));
 
-  // The capability is the authority boundary on this socket — it must never
-  // travel through argv, which every process on the machine can read.
+  // The capability is the authority boundary on this socket — it must never travel through argv,
+  // which every process on the machine can read.
   const capabilityFile = option("--capability-file");
   let capability = process.env.GLADE_CUA_HOST_CAPABILITY?.trim() ?? "";
   let capabilitySource = "environment";
@@ -79,8 +63,7 @@ async function main(): Promise<void> {
   sweepOrphanedCuaDrivers();
   const host = new CuaDriverHost({
     binaryPath,
-    // TCC's bundle identity has no meaning off macOS; the string still labels
-    // this host in permission replies that surface it.
+
     bundleId: `glade-cua-standalone-${process.platform}`,
     capability,
     nativeRevision: null,
@@ -115,9 +98,6 @@ async function main(): Promise<void> {
   process.on("SIGINT", () => void shutdown("SIGINT"));
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
 
-  // Everything the operator needs to wire the server, on stdout. The
-  // capability value itself only prints when it was generated with nowhere
-  // to store it — a bootstrap path, not a logging channel.
   console.info(`CUA_HOST_ENDPOINT=${bound}`);
   if (capabilitySource === "generated-below") {
     console.info(`CUA_CAPABILITY=${capability}`);

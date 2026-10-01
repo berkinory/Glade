@@ -1,4 +1,5 @@
-import type { ProviderKind, ThreadId } from "@glade/contracts";
+import { normalizeOperationError } from "../platform/operationError.ts";
+import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { Effect, Exit } from "effect";
 
 import type {
@@ -11,26 +12,15 @@ export interface AgentGatewaySessionLeaseOptions {
   readonly additionalCapabilities?: readonly AgentGatewayCapability[];
 }
 
-/**
- * The session-start facts that decide what a gateway credential may do.
- *
- * Adapters never assemble capability lists. Every lease site hands the start
- * input it already has (or the subset it captured for a later re-lease) to
- * `acquireAgentGatewaySessionLease`, and this module derives the capabilities.
- * A new optional capability is one field here plus one line in
- * `agentGatewayCapabilitiesFor` — no adapter edits, and no site can silently
- * miss it.
- */
+// Adapters never assemble capability lists.
 export interface AgentGatewayCapabilityInput {
   readonly enableComputerControl?: boolean | undefined;
-  /** Enable only after verifying provider-generated MCP call ids. */
+
   readonly nativeToolCallScope?: boolean | undefined;
 }
 
-/** Lease no optional capabilities. Spelled out so an omission reads as a choice. */
 export const AGENT_GATEWAY_NO_CAPABILITIES: AgentGatewayCapabilityInput = {};
 
-/** The single derivation from session-start facts to gateway capabilities. */
 export function agentGatewayCapabilitiesFor(
   input: AgentGatewayCapabilityInput,
 ): readonly AgentGatewayCapability[] {
@@ -46,13 +36,6 @@ function agentGatewaySessionLeaseOptionsFor(
   return additionalCapabilities.length === 0 ? undefined : { additionalCapabilities };
 }
 
-/**
- * Narrow a start input to the fields a later re-lease needs.
- *
- * Adapters that re-lease from a stored session context no
- * longer hold the start input by then. They keep this projection instead of a
- * hand-picked flag, so the set of capability facts stays defined in one place.
- */
 export function captureAgentGatewayCapabilityInput(
   input: AgentGatewayCapabilityInput,
 ): AgentGatewayCapabilityInput {
@@ -76,36 +59,28 @@ type AgentGatewaySessionLeaseCredentials = Pick<
 export const AGENT_GATEWAY_CREDENTIAL_ROTATION_REQUIRED = "agentGatewayCredentialRotationRequired";
 export const AGENT_GATEWAY_TURN_AUTHORITY_RETIRED = "gladeGatewayTurnAuthorityRetired";
 
-/**
- * One provider runtime's ownership of one gateway credential.
- *
- * Release is intentionally idempotent. Provider startup and teardown have
- * overlapping cleanup paths (scope finalizers, process exits, explicit stops,
- * and replacement sessions); whichever path wins revokes the credential once
- * and every later path becomes a no-op.
- */
 export interface AgentGatewaySessionLease {
   readonly connection: AgentGatewayMcpConnection;
   readonly registerNativeToolCall?: (call: import("./nativeToolCalls.ts").NativeToolCall) => void;
   readonly cancelTurn: (turnId: string) => Promise<void>;
-  /**
-   * Retire write authority for a terminal turn. Transports without native
-   * call provenance also retire the bearer for future turns. The admission fence
-   * is synchronous; the promise represents only request drainage.
-   */
+  // Retire write authority for a terminal turn.
   readonly retireTurn: (turnId: string) => Promise<void>;
   readonly release: () => void;
+}
+
+interface GatewayTurnCancellation {
+  readonly completion: Promise<void>;
 }
 
 const AGENT_GATEWAY_TURN_CANCELLATION_TIMEOUT = "2 seconds";
 
 function awaitAgentGatewayTurnCancellation(
   turnId: string,
-  cancellation: Promise<void>,
+  cancellation: GatewayTurnCancellation,
 ): Effect.Effect<void> {
   return Effect.tryPromise({
-    try: () => cancellation,
-    catch: (cause) => cause,
+    try: () => cancellation.completion,
+    catch: (cause) => normalizeOperationError(cause),
   }).pipe(
     Effect.timeoutOrElse({
       duration: AGENT_GATEWAY_TURN_CANCELLATION_TIMEOUT,
@@ -126,24 +101,21 @@ function startAgentGatewayTurnCancellation(
   lease: AgentGatewaySessionLease,
   turnId: string,
   retireCredential = false,
-): Effect.Effect<Promise<void>> {
+): Effect.Effect<GatewayTurnCancellation> {
   return Effect.try({
-    try: () => (retireCredential ? lease.retireTurn(turnId) : lease.cancelTurn(turnId)),
-    catch: (cause) => cause,
+    try: () => ({
+      completion: retireCredential ? lease.retireTurn(turnId) : lease.cancelTurn(turnId),
+    }),
+    catch: (cause) => normalizeOperationError(cause),
   }).pipe(
     Effect.catch((cause) =>
       Effect.logWarning("agent_gateway.turn_cancellation_failed", { turnId, cause }).pipe(
-        Effect.as(Promise.resolve()),
+        Effect.as({ completion: Promise.resolve() }),
       ),
     ),
   );
 }
 
-/**
- * Tombstone one exact gateway turn and wait for every matching MCP request to
- * observe its AbortSignal. Cleanup failures are deliberately logged instead
- * of replacing the provider-native interrupt result.
- */
 export function cancelAgentGatewayTurn(
   lease: AgentGatewaySessionLease | undefined,
   turnId: string | undefined,
@@ -156,11 +128,6 @@ export function cancelAgentGatewayTurn(
   );
 }
 
-/**
- * Run the provider-native stop and gateway stop concurrently, but do not let
- * an early provider failure interrupt the gateway cleanup. The caller gets the
- * original provider result only after the gateway cancellation barrier settles.
- */
 export function withAgentGatewayTurnCancellation<A, E, R>(
   lease: AgentGatewaySessionLease | undefined,
   turnId: string | undefined,
@@ -169,16 +136,10 @@ export function withAgentGatewayTurnCancellation<A, E, R>(
   if (lease === undefined) return providerInterrupt;
 
   return Effect.gen(function* () {
-    // Tombstone synchronously before the provider side can release the lease;
-    // the returned promise then drains concurrently with the native interrupt.
     const cancellation =
       turnId === undefined ? undefined : yield* startAgentGatewayTurnCancellation(lease, turnId);
-    // The bearer is session-scoped and cannot prove whether a late MCP call
-    // originated in this interrupted turn or a later one. Revoke it before
-    // the native interrupt starts; ProviderService retires this runtime and
-    // lazily resumes it with a fresh lease before the next main turn. A
-    // background child may outlive its parent turn; without an exact turn id,
-    // session revocation is still required and drains every in-flight request.
+    // The bearer is session-scoped and cannot prove whether a late MCP call originated in this
+    // interrupted turn or a later one.
     const releaseExit = yield* Effect.exit(Effect.sync(lease.release));
     const [providerExit] = yield* Effect.all(
       [
@@ -199,11 +160,6 @@ export function withAgentGatewayTurnCancellation<A, E, R>(
   });
 }
 
-/**
- * The capability input is required on purpose: a lease that forgets it fails
- * silently (the credential is issued, the tools are just missing), so the type
- * checker refuses the omission at every call site instead.
- */
 export function acquireAgentGatewaySessionLease(
   credentials: AgentGatewaySessionLeaseCredentials | undefined,
   threadId: ThreadId,
@@ -256,12 +212,8 @@ export function acquireAgentGatewaySessionLease(
   };
 }
 
-/**
- * Revoke a lease when a provider process exits even if its adapter receives no
- * final protocol event. The watcher is detached because adapter-owned scopes
- * are themselves closed by normal teardown; the idempotent lease reconciles
- * whichever signal (explicit stop or process exit) arrives first.
- */
+// The watcher is detached because adapter-owned scopes are themselves closed by normal teardown;
+// the idempotent lease reconciles whichever signal (explicit stop or process exit) arrives first.
 export function startAgentGatewaySessionLeaseExitWatcher(
   lease: AgentGatewaySessionLease | undefined,
   awaitProviderExit: Effect.Effect<void>,
@@ -274,7 +226,6 @@ export function startAgentGatewaySessionLeaseExitWatcher(
   );
 }
 
-/** Guard provider startup awaits until the lease has an installed session owner. */
 export function releaseAgentGatewaySessionLeaseOnInterrupt<A, E, R>(
   lease: AgentGatewaySessionLease | undefined,
   startup: Effect.Effect<A, E, R>,

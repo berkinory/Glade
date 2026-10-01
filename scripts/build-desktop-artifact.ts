@@ -1,8 +1,4 @@
 #!/usr/bin/env node
-// FILE: build-desktop-artifact.ts
-// Purpose: Stages and builds packaged desktop artifacts plus updater metadata for GitHub releases.
-// Layer: Release/build script
-// Depends on: apps/desktop package metadata, electron-builder, and GitHub release config.
 
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -23,7 +19,6 @@ import {
 import {
   createDesktopPlatformBuildConfig,
   MAC_COMPUTER_HELPER_STAGE_PATH,
-  MAC_DEVICE_HELPER_RESOURCE_PATH,
   MAC_ICON_ASSET_NAME,
   MAC_ICON_COMPOSER_DEPLOYMENT_TARGET,
   validateDesktopNativeBuildHost,
@@ -32,7 +27,7 @@ import { stageDesktopRuntimeResources } from "./lib/desktop-runtime-resources.ts
 import {
   GLADE_PACKAGED_DESKTOP_FLAVORS,
   type GladePackagedDesktopFlavor,
-} from "@glade/shared/desktopIdentity";
+} from "@glade/shared/platform/desktopIdentity";
 import { createDesktopArtifactIdentity } from "./lib/desktop-artifact-identity.ts";
 import { parseBooleanEnvValue } from "./lib/env-bool.ts";
 import { finalizeSignedMacDmg, rebuildUnsignedMacDmg } from "./lib/mac-dmg-finalize.ts";
@@ -319,8 +314,7 @@ export const resolveBuildOptions = Effect.fn("resolveBuildOptions")(function* (
   }
 
   const target = mergeOptions(input.target, env.target, PLATFORM_CONFIG[platform].defaultTarget);
-  // Flavor is deliberately a build flag, never inherited from a source
-  // launcher's GLADE_DESKTOP_FLAVOR environment variable.
+
   const flavor = Option.getOrElse(input.flavor, () => "production" as const);
   if (flavor !== "production")
     return yield* new BuildScriptError({
@@ -494,16 +488,12 @@ function stageMacIcons(
       })`sips -z 512 512 ${modernIconSource} --out ${iconPngPath}`,
     );
 
-    // The solid ICNS is the bundle icon on every macOS release; Icon Composer glass alters the mark.
     yield* runCommand(
       ChildProcess.make({
         ...commandOutputOptions(verbose),
       })`sips -z 1024 1024 ${legacyIconSource} --out ${dockIconPngPath}`,
     );
 
-    // Flavors with a dedicated dark appearance icon replace the inherited
-    // production dock-icon-dark.png, which the runtime prefers when the OS
-    // appearance is dark.
     const darkIconAssetPath = iconPaths.macLegacyDarkIconPng;
     if (darkIconAssetPath !== undefined) {
       const darkIconSource = yield* iconSourceFor(darkIconAssetPath);
@@ -521,9 +511,6 @@ function stageMacIcons(
 
     yield* generateMacIconSet(legacyIconSource, iconIcnsPath, tmpRoot, path, verbose);
 
-    // macOS 26 renders the Liquid Glass material only from a layered Icon
-    // Composer asset, so compile one into the asset catalog that ships beside
-    // the ICNS. Older releases ignore Assets.car and keep the solid mark.
     const assetCatalogPath = path.join(stageResourcesDir, "Assets.car");
     const precompiledCatalog =
       process.env.GLADE_MAC_ICON_CATALOG?.trim() ||
@@ -531,8 +518,6 @@ function stageMacIcons(
         ? yield* iconSourceFor(BRAND_ASSET_PATHS.productionMacCompiledIconCatalog)
         : undefined);
     if (precompiledCatalog) {
-      // The checked-in production catalog was compiled from this icon source
-      // with Xcode 26; native code can retain the pinned macOS 15 SDK.
       yield* fs.copyFile(precompiledCatalog, assetCatalogPath);
     } else {
       yield* runCommand(
@@ -566,7 +551,6 @@ function stageLinuxIcons(stageResourcesDir: string, flavor: typeof BuildFlavor.T
   });
 }
 
-// A packaged client always receives production favicons, including after a Dev build.
 function stageClientFavicons(stageAppDir: string, flavor: typeof BuildFlavor.Type) {
   return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
@@ -726,9 +710,6 @@ function parsePatchAddedLines(patchContents: string): PatchFileExpectation[] {
   return expectations.filter((expectation) => expectation.addedLines.length > 0);
 }
 
-// Package managers can silently skip tracked patches when the staged install
-// diverges from the repo setup (that shipped broken Windows provider updates
-// in v0.5.2–v0.5.5), so fail the build unless every patched line is present.
 const verifyStagedPatchedDependencies = Effect.fn("verifyStagedPatchedDependencies")(function* (
   repoRoot: string,
   stageAppDir: string,
@@ -767,7 +748,7 @@ const installFrozenStageDependencies = Effect.fn("installFrozenStageDependencies
   repoRoot: string,
   stageAppDir: string,
   platform: typeof BuildPlatform.Type,
-  arch: typeof BuildArch.Type,
+  _arch: typeof BuildArch.Type,
   verbose: boolean,
 ) {
   const path = yield* Path.Path;
@@ -791,16 +772,11 @@ const installFrozenStageDependencies = Effect.fn("installFrozenStageDependencies
     "[desktop-artifact] Installing staged production dependencies from the repository lockfile...",
   );
   if (platform === "win") {
-    // Bun 1.3.12 needs a platform-only lockfile rewrite while resolving this
-    // copied workspace on Windows even though the repository-level frozen
-    // install already passed. Its --production flag also forces frozen mode,
-    // so use the equivalent dependency omission and allow only the temporary
-    // staging copy to update; the verified source lockfile remains untouched.
     yield* runCommand(
       ChildProcess.make({
         cwd: stageAppDir,
         ...commandOutputOptions(verbose),
-        // Windows needs shell mode to resolve .cmd shims (e.g. bun.cmd).
+
         shell: process.platform === "win32",
       })`bun install --omit=dev --ignore-scripts --linker hoisted`,
     );
@@ -814,10 +790,6 @@ const installFrozenStageDependencies = Effect.fn("installFrozenStageDependencies
   }
 
   if (platform === "linux") {
-    // node-pty's npm package does not ship Linux prebuilds. Keep the frozen
-    // install's blanket lifecycle-script block, then rebuild only node-pty so
-    // npm supplies node-gyp to its install script and compiles the native
-    // binding required by the packaged terminal.
     yield* Effect.log("[desktop-artifact] Building staged Linux node-pty binding...");
     yield* runCommand(
       ChildProcess.make({
@@ -856,8 +828,8 @@ const createBuildConfig = Effect.fn("createBuildConfig")(function* (
   };
   const publishConfig = resolveGitHubPublishConfig();
   if (artifactIdentity.identity.usesScriptedUpdates) {
-    // Experimental bundles must never contain a Stable updater feed, even
-    // when built from a shell used by the release workflow.
+    // Experimental bundles must never contain a Stable updater feed, even when built from a shell used
+    // by the release workflow.
     buildConfig.publish = null;
   } else if (publishConfig) {
     buildConfig.publish = [publishConfig];
@@ -957,38 +929,6 @@ const stageMacComputerHelper = Effect.fn("stageMacComputerHelper")(function* (
       message: `Computer helper build completed but output was not found at ${outputPath}`,
     });
   }
-});
-
-const assertPackagedMacDeviceHelper = Effect.fn("assertPackagedMacDeviceHelper")(function* (
-  stageDistDir: string,
-  productName: string,
-) {
-  const path = yield* Path.Path;
-  const fs = yield* FileSystem.FileSystem;
-  const entries = yield* fs.readDirectory(stageDistDir);
-  for (const entry of entries) {
-    const packagedEntryPath = path.join(stageDistDir, entry);
-    const packagedEntryStat = yield* fs
-      .stat(packagedEntryPath)
-      .pipe(Effect.catch(() => Effect.succeed(null)));
-    if (!packagedEntryStat || packagedEntryStat.type !== "Directory") continue;
-
-    const helperRoot = path.join(
-      packagedEntryPath,
-      `${productName}.app`,
-      "Contents",
-      MAC_DEVICE_HELPER_RESOURCE_PATH,
-    );
-    if (
-      (yield* fs.exists(path.join(helperRoot, "build.sh"))) &&
-      (yield* fs.exists(path.join(helperRoot, "Sources/main.swift")))
-    ) {
-      return;
-    }
-  }
-  return yield* new BuildScriptError({
-    message: `Packaged macOS app is missing physical device helper sources under Contents/${MAC_DEVICE_HELPER_RESOURCE_PATH}`,
-  });
 });
 
 const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
@@ -1148,7 +1088,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
         ChildProcess.make({
           cwd: repoRoot,
           ...commandOutputOptions(options.verbose),
-          // Windows needs shell mode to resolve .cmd shims (e.g. bun.cmd).
+
           shell: process.platform === "win32",
         })`bun run build:desktop`,
       ),
@@ -1320,7 +1260,6 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
   }
 
   if (options.platform === "mac") {
-    yield* assertPackagedMacDeviceHelper(stageDistDir, artifactIdentity.identity.displayName);
   }
 
   if (options.platform === "mac" && options.target === "dmg" && !options.signed) {

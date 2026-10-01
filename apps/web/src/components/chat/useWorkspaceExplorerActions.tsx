@@ -1,6 +1,6 @@
-import type { ProjectFileSystemEntry } from "@glade/contracts";
+import type { ProjectFileSystemEntry } from "@glade/contracts/workspace/project";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { Button } from "~/components/ui/button";
 import {
@@ -18,12 +18,25 @@ import { hasUnsavedWorkspaceEditors } from "~/lib/workspaceEditorSession";
 import { ensureNativeApi } from "~/nativeApi";
 
 type EntryKind = ProjectFileSystemEntry["kind"];
-export type ExplorerEdit = {
+type ExplorerEdit = {
   action: "create" | "rename";
   kind: EntryKind;
   parent: string;
   entry?: ProjectFileSystemEntry;
 };
+
+export interface WorkspaceExplorerActions {
+  readonly edit: ExplorerEdit | null;
+  readonly busy: boolean;
+  readonly selectedDirectory: string;
+  readonly setSelectedDirectory: (path: string) => void;
+  readonly create: (parent: string, kind: EntryKind) => void;
+  readonly rename: (entry: ProjectFileSystemEntry) => void;
+  readonly submitEdit: (name: string) => Promise<void>;
+  readonly cancelEdit: () => void;
+  readonly deleteEntry: (entry: ProjectFileSystemEntry) => void;
+  readonly dialogs: ReactNode;
+}
 
 function childPath(parent: string, name: string): string {
   return parent ? `${parent}/${name}` : name;
@@ -36,7 +49,7 @@ export function useWorkspaceExplorerActions(
   expandedDirectories: ReadonlySet<string>,
   onToggleDirectory: (path: string) => void,
   onDeleted?: (path: string) => void,
-) {
+): WorkspaceExplorerActions {
   const queryClient = useQueryClient();
   const [edit, setEdit] = useState<ExplorerEdit | null>(null);
   const [selectedDirectory, setSelectedDirectory] = useState("");
@@ -133,25 +146,27 @@ export function useWorkspaceExplorerActions(
           <Button
             variant="destructive"
             size="sm"
-            onClick={async () => {
-              if (!cwd || !deleting || blockDirtyMutation()) return;
-              try {
-                await ensureNativeApi().projects.manageEntry({
-                  cwd,
-                  action: "delete",
-                  kind: deleting.kind,
-                  relativePath: deleting.path,
-                });
-                onDeleted?.(deleting.path);
-                setDeleting(null);
-                await queryClient.invalidateQueries({ queryKey: projectQueryKeys.all });
-              } catch (error) {
-                toastManager.add({
-                  type: "error",
-                  title: "Could not delete entry",
-                  description: error instanceof Error ? error.message : "Try again.",
-                });
-              }
+            onClick={() => {
+              void (async () => {
+                if (!cwd || !deleting || blockDirtyMutation()) return;
+                try {
+                  await ensureNativeApi().projects.manageEntry({
+                    cwd,
+                    action: "delete",
+                    kind: deleting.kind,
+                    relativePath: deleting.path,
+                  });
+                  onDeleted?.(deleting.path);
+                  setDeleting(null);
+                  await queryClient.invalidateQueries({ queryKey: projectQueryKeys.all });
+                } catch (error) {
+                  toastManager.add({
+                    type: "error",
+                    title: "Could not delete entry",
+                    description: error instanceof Error ? error.message : "Try again.",
+                  });
+                }
+              })();
             }}
           >
             Delete

@@ -1,11 +1,6 @@
-// FILE: ConversationStorageSettingsPanels.tsx
-// Purpose: Own settings panels for managed worktrees and archived conversations.
-// Layer: Settings UI components
-// Exports: WorktreesSettingsPanel, ArchivedSettingsPanel
-
-import type { ThreadId } from "@glade/contracts";
-import { pluralize } from "@glade/shared/text";
-import { collectSubagentDescendants } from "@glade/shared/threadHierarchy";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { pluralize } from "@glade/shared/text/text";
+import { collectSubagentDescendants } from "@glade/shared/threads/threadHierarchy";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 
@@ -53,7 +48,7 @@ export function WorktreesSettingsPanel({ active }: { readonly active: boolean })
   const removeDeletedThreadFromClientState = useStore(
     (store) => store.removeDeletedThreadFromClientState,
   );
-  // Shell metadata is enough for association labels and avoids rerendering on transcript ticks.
+
   const threadShells = useStore(useMemo(() => createThreadShellsSelector(), []));
 
   const worktreesByWorkspaceRoot = useMemo(() => {
@@ -261,9 +256,6 @@ export function ArchivedSettingsPanel({ active }: { readonly active: boolean }) 
   const threadShells = useStore(useMemo(() => createThreadShellsSelector(), []));
   const projects = useStore((store) => store.projects);
   const archivedGroups = useMemo(() => {
-    // Represent each archived subtree once. Normally that is a top-level thread;
-    // a child whose parent is still active/missing is also a root and must remain
-    // visible so legacy retention state can be recovered.
     const archivedThreadIds = new Set(
       threadShells.filter((thread) => thread.archivedAt != null).map((thread) => thread.id),
     );
@@ -310,9 +302,9 @@ export function ArchivedSettingsPanel({ active }: { readonly active: boolean }) 
     }
   }, []);
 
-  // Subagent threads are hidden from this list and unreachable without their
-  // parent, so deleting the parent removes the whole subtree. Children go
-  // first so a mid-flight failure cannot strand them without a parent entry.
+  // Subagent threads are hidden from this list and unreachable without their parent, so deleting the
+  // parent removes the whole subtree. Children go first so a mid-flight failure cannot strand them
+  // without a parent entry.
   const collectSubtreeDeletionOrder = useCallback(
     (threadId: ThreadId): ThreadId[] => [
       ...collectSubagentDescendants(threadShells, threadId)

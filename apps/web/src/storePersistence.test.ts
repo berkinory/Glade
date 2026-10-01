@@ -1,7 +1,4 @@
-// FILE: storePersistence.test.ts
-// Purpose: Unit-test the renderer-state persistence layer for project UI.
-
-import { ProjectId } from "@glade/contracts";
+import { ProjectId } from "@glade/contracts/core/baseSchemas";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { makeFakeWindow, makeProject } from "./storeTestFixtures";

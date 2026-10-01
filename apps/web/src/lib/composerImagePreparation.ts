@@ -1,12 +1,9 @@
-import { MODEL_SCREEN_IMAGE_MAX_DIMENSION } from "@glade/shared/modelImageBudget";
-// FILE: composerImagePreparation.ts
-// Purpose: Normalize oversized composer images without decoding unbounded pixels on the UI thread.
-// Layer: Web composer utility
+import { MODEL_SCREEN_IMAGE_MAX_DIMENSION } from "@glade/shared/computer/modelImageBudget";
 
 import {
   PROVIDER_SEND_TURN_MAX_IMAGE_BYTES,
   PROVIDER_SEND_TURN_MAX_IMAGE_IMPORT_BYTES,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/threadEntities";
 
 const MEBIBYTE = 1024 * 1024;
 const JPEG_HEADER_READ_BYTES = 1024 * 1024;
@@ -403,7 +400,6 @@ async function optimizeOversizedComposerImage(file: File, maxDimension?: number)
   });
 }
 
-/** Leaves provider-safe images untouched; oversized raster images are bounded and normalized. */
 export async function prepareComposerImageFile(file: File): Promise<File> {
   if (!file.type.startsWith("image/")) {
     throw new ComposerImagePreparationError(`'${imageName(file)}' is not an image file.`);
@@ -429,7 +425,6 @@ export async function prepareComposerImageFile(file: File): Promise<File> {
   }
 }
 
-/** Model-facing copy only; the draft keeps its original capture. */
 export async function prepareModelScreenImage(file: File): Promise<File> {
   const dimensions = await readImageDimensions(file);
   if (Math.max(dimensions.width, dimensions.height) <= MODEL_SCREEN_IMAGE_MAX_DIMENSION)

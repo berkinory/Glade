@@ -42,7 +42,7 @@ A user-visible log item attached to a thread. In [the contracts][1], activities 
 
 ### Orchestration
 
-Orchestration is the server-side domain layer that turns runtime activity into stable app state. The main entry point is [OrchestrationEngine.ts][7], with core logic in [decider.ts][8] and [projector.ts][4].
+Orchestration is the server-side domain layer that turns runtime activity into stable app state. The main entry point is [OrchestrationEngine.ts][7], with command routing in [decider.ts][8] and event routing in [projector.ts][4]. Their domain handlers live under `commandDecisions` and `eventProjections`.
 
 #### Aggregate
 
@@ -60,7 +60,7 @@ Examples include `thread.created`, `thread.message-sent`, and `thread.turn-diff-
 
 #### Decider
 
-The pure orchestration logic that turns commands plus current state into events. The core implementation is in [decider.ts][8], with preconditions in [commandInvariants.ts][9].
+The pure orchestration logic that turns commands plus current state into events. [decider.ts][8] dispatches to focused handlers under `orchestration/commandDecisions` for spaces, projects, thread lifecycle, turns, conversation edits and transcript updates. Preconditions remain in [commandInvariants.ts][9].
 
 #### Projection
 
@@ -102,10 +102,6 @@ The live provider-backed runtime attached to a thread. Session shape is in [the 
 #### Runtime mode
 
 The safety/access mode for a thread or session. In [the contracts][1], the values are `approval-required`, `auto`, and `full-access`. Auto uses a native AI approval reviewer for Codex and Claude Code; Full access bypasses approval entirely. See [runtime-modes.md][18].
-
-#### Interaction mode
-
-The agent interaction style for a thread. In [the contracts][1], the main values are `default` and `plan`. See [runtime-modes.md][18].
 
 #### Assistant delivery mode
 
@@ -154,7 +150,7 @@ The file patch and changed-file summary for one turn. It is usually computed in 
 - [runtime-modes.md][18]
 - [workspace-layout.md][2]
 
-[1]: ../packages/contracts/src/orchestration.ts
+[1]: ../packages/contracts/src/orchestration/threadEntities.ts
 [2]: ./workspace-layout.md
 [3]: ../apps/server/src/git/Layers/GitCore.ts
 [4]: ../apps/server/src/orchestration/projector.ts

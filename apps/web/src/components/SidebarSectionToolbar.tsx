@@ -1,8 +1,3 @@
-// FILE: SidebarSectionToolbar.tsx
-// Purpose: Cluster of header actions beside a sidebar section or project title.
-// Layer: Sidebar UI primitive
-// Exports: SidebarSectionToolbar
-
 import type { ReactNode } from "react";
 import { cn } from "~/lib/utils";
 
@@ -12,9 +7,8 @@ export function SidebarSectionToolbar({
   className,
   children,
 }: {
-  /** `inline` = Threads section header; `overlay` = Chats/project collapsible headers. */
   placement?: "inline" | "overlay";
-  /** Fade in on `group/project-header` hover/focus (project rows only). */
+
   revealOnHover?: boolean;
   className?: string;
   children: ReactNode;

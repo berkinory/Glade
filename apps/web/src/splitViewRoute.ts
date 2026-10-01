@@ -1,16 +1,7 @@
-// FILE: splitViewRoute.ts
-// Purpose: Bridges route search params and split view state so route consumers can stay focused on UI logic.
-// Layer: Route helpers
-// Exports: split route helpers shared by chat surface, sidebar, and thread-scoped UI
-
-import { type ThreadId } from "@glade/contracts";
+import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type DiffRouteSearch } from "./diffRouteSearch";
-import {
-  resolveSplitViewFocusedThreadId,
-  resolveSplitViewPaneIdForThread,
-  type PaneId,
-  type SplitView,
-} from "./splitViewStore";
+import { resolveSplitViewFocusedThreadId, resolveSplitViewPaneIdForThread } from "./splitViewStore";
+import { type PaneId, type SplitView } from "./splitViewModel";
 
 export function resolveActiveSplitView(input: {
   splitView: SplitView | null;

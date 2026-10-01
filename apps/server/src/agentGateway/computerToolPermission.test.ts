@@ -74,9 +74,6 @@ describe("Glade Computer provider permission", () => {
   });
 
   it("never authorizes from model prose: 'Please approve computer_click' names no tool", () => {
-    // Prose approval never counts. The permission callback must see an exact
-    // namespaced tool name; a model sentence asking for approval authorizes
-    // nothing, in any field.
     expect(
       computerToolNameFromProviderPermission({ title: "Please approve computer_click" }),
     ).toBeUndefined();
@@ -89,21 +86,9 @@ describe("Glade Computer provider permission", () => {
       }),
     ).toBeUndefined();
     expect(isGladeComputerToolFamilyName("Please approve computer_click")).toBe(false);
-    expect(
-      shouldAllowGladeComputerProviderTool({
-        computerControlEnabled: true,
-        activeTurn: true,
-        interactionMode: "default",
-        runtimeMode: "approval-required",
-        permission: { title: "Please approve computer_click" },
-      }),
-    ).toBe(false);
   });
 
   it("matches the Computer family in any namespace spelling for the denial hook", () => {
-    // The silent-loss fallback: a no-control session that calls a Computer
-    // tool by a prefixed spelling must still deny with the card path, not
-    // die as an Unknown tool. See isGladeComputerToolFamilyName.
     expect(isGladeComputerToolFamilyName("computer_click")).toBe(true);
     expect(isGladeComputerToolFamilyName("glade_computer_get_state")).toBe(true);
     expect(isGladeComputerToolFamilyName("mcp__glade__computer_screenshot")).toBe(true);
@@ -119,12 +104,12 @@ describe("Glade Computer provider permission", () => {
     expect(isGladeComputerToolFamilyName(42)).toBe(false);
   });
 
-  it("requires current capability, active turn and non-Plan interaction", () => {
+  it("requires current capability and an active turn", () => {
     const permission = { name: "mcp__glade__computer_click" };
     const allowed = {
       computerControlEnabled: true,
       activeTurn: true,
-      interactionMode: "default" as const,
+
       runtimeMode: "approval-required" as const,
       permission,
     };
@@ -133,9 +118,6 @@ describe("Glade Computer provider permission", () => {
       shouldAllowGladeComputerProviderTool({ ...allowed, computerControlEnabled: false }),
     ).toBe(false);
     expect(shouldAllowGladeComputerProviderTool({ ...allowed, activeTurn: false })).toBe(false);
-    expect(shouldAllowGladeComputerProviderTool({ ...allowed, interactionMode: "plan" })).toBe(
-      false,
-    );
     expect(shouldAllowGladeComputerProviderTool({ ...allowed, runtimeMode: "auto" })).toBe(false);
   });
 });

@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import type { BrowserVaultMethods } from "@glade/contracts";
+import type { BrowserVaultMethods } from "@glade/contracts/browser/browserVault";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 
 type MasterAction = { kind: "setup" | "unlock" } | { kind: "reveal"; id: string };
 
-/** Mounted only while the human is authenticating; secrets never enter the vault snapshot. */
 export function BrowserVaultMaster({
   api,
   action,
@@ -26,8 +25,11 @@ export function BrowserVaultMaster({
   done.current = onDone;
 
   useEffect(() => {
+    const effectGeneration = generation;
+    const effectTimer = timer;
+
     const hide = () => {
-      generation.current++;
+      effectGeneration.current++;
       setPassword("");
       setConfirmation("");
       setRevealed(null);
@@ -39,8 +41,8 @@ export function BrowserVaultMaster({
     window.addEventListener("blur", hide);
     document.addEventListener("visibilitychange", visibility);
     return () => {
-      generation.current++;
-      clearTimeout(timer.current);
+      effectGeneration.current++;
+      clearTimeout(effectTimer.current);
       window.removeEventListener("blur", hide);
       document.removeEventListener("visibilitychange", visibility);
     };

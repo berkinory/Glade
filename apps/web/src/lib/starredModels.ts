@@ -1,23 +1,19 @@
-// FILE: starredModels.ts
-// Purpose: Storage schema + pure helpers for starred model presets (provider + model + traits).
-// Layer: Web local-storage helpers used by the composer model picker and model cycle shortcuts.
-
-import type { ProviderKind } from "@glade/contracts";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { Schema } from "effect";
 
 import { isProviderKind } from "../providerOrdering";
 
 export const STARRED_MODELS_STORAGE_KEY = "glade:starred-models:v1";
 
-// A starred preset pins the traits the user composed once so one click restores them.
-// `null` traits mean "leave whatever the provider currently uses" (legacy favorites,
-// models without that control).
 const StarredModelSchema = Schema.Struct({
   provider: Schema.String,
   model: Schema.String,
   effort: Schema.NullOr(Schema.String),
   fastMode: Schema.NullOr(Schema.Boolean),
   thinking: Schema.NullOr(Schema.Boolean),
+  options: Schema.optional(
+    Schema.Record(Schema.String, Schema.Union([Schema.String, Schema.Boolean])),
+  ),
 });
 export const StarredModelsSchema = Schema.Array(StarredModelSchema);
 
@@ -27,31 +23,33 @@ export interface StarredModel {
   readonly effort: string | null;
   readonly fastMode: boolean | null;
   readonly thinking: boolean | null;
+  readonly options?: Readonly<Record<string, string | boolean>> | undefined;
 }
 
 export type StoredStarredModel = typeof StarredModelSchema.Type;
 
 export function starredModelKey(
-  entry: Pick<StoredStarredModel, "provider" | "model" | "effort" | "fastMode" | "thinking">,
+  entry: Pick<
+    StoredStarredModel,
+    "provider" | "model" | "effort" | "fastMode" | "thinking" | "options"
+  >,
 ): string {
-  // JSON keeps the key unambiguous: model slugs may contain any separator character.
   return JSON.stringify([
     entry.provider,
     entry.model,
     entry.effort ?? "",
     entry.fastMode === null ? "" : String(entry.fastMode),
     entry.thinking === null ? "" : String(entry.thinking),
+    ...(entry.options
+      ? [Object.entries(entry.options).toSorted(([a], [b]) => a.localeCompare(b))]
+      : []),
   ]);
 }
 
-// Provider + model only. A provider tab row shares its traits with every model of that
-// provider, so it counts as starred when any preset of the model exists.
 export function starredModelSlotKey(entry: Pick<StoredStarredModel, "provider" | "model">): string {
   return JSON.stringify([entry.provider, entry.model]);
 }
 
-// Drops entries for providers this build no longer knows and de-duplicates by key,
-// preserving the user's order.
 export function normalizeStarredModels(
   stored: ReadonlyArray<StoredStarredModel>,
 ): ReadonlyArray<StarredModel> {
@@ -62,7 +60,20 @@ export function normalizeStarredModels(
     const key = starredModelKey(entry);
     if (seen.has(key)) continue;
     seen.add(key);
-    result.push({ ...entry, provider: entry.provider });
+    const legacyEffort =
+      entry.provider === "claudeAgent" && entry.effort === "ultrathink"
+        ? null
+        : entry.provider === "claudeAgent" && entry.effort === "ultracode"
+          ? "xhigh"
+          : entry.effort;
+    result.push({
+      ...entry,
+      provider: entry.provider,
+      effort: legacyEffort,
+      ...(entry.provider === "claudeAgent" && entry.effort === "ultracode"
+        ? { options: { ...entry.options, effort: "xhigh", ultracode: true } }
+        : {}),
+    });
   }
   return result;
 }
@@ -78,7 +89,6 @@ export function toggleStarredModel(
     : [...normalized, entry];
 }
 
-// Removes every preset of a model, whatever traits each one pins.
 export function unstarModel(
   current: ReadonlyArray<StoredStarredModel>,
   entry: Pick<StoredStarredModel, "provider" | "model">,
@@ -101,7 +111,6 @@ function readStoredStarredModels(): ReadonlyArray<StarredModel> {
   }
 }
 
-// Model slugs the cycle shortcut should prefer.
 export function readStarredModelSlugs(provider: ProviderKind): string[] {
   const starred = readStoredStarredModels()
     .filter((entry) => entry.provider === provider)

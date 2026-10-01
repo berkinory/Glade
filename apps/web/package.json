@@ -1,6 +1,6 @@
 {
   "name": "@glade/web",
-  "version": "0.0.5",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -38,6 +38,7 @@
     "@xterm/xterm": "^6.0.0",
     "class-variance-authority": "^0.7.1",
     "effect": "catalog:",
+    "hast-util-to-html": "9.0.5",
     "html-to-image": "^1.11.13",
     "katex": "^0.16.45",
     "lexical": "^0.41.0",
@@ -53,6 +54,7 @@
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
     "tailwind-merge": "^3.6.0",
+    "unified": "11.0.5",
     "zustand": "^5.0.11"
   },
   "devDependencies": {

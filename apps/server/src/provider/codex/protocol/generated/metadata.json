@@ -1,0 +1,8 @@
+{
+  "release": "rust-v0.158.0",
+  "source": "codex app-server generate-json-schema and generate-ts",
+  "schemaDigest": "sha256:b245d4b027cf8d1624c0c6733e6918c042bc278886251e7f2d90a3f29abfac2d",
+  "generatorVersion": "codex-cli 0.158.0",
+  "experimental": true,
+  "schemaFiles": 440
+}

@@ -1,11 +1,3 @@
-// FILE: WhatsNewDialog.tsx
-// Purpose: Render the one-time "What's new" release-notes dialog shown after
-// an update. Two views: release notes for the installed version and a
-// secondary "Complete changelog" accordion spanning
-// every curated release. Open/close state and the underlying data are owned
-// by `useWhatsNew`; this component is pure presentation.
-// Layer: Chat shell overlay (mounted once from the root route).
-
 import { useState } from "react";
 
 import { ArrowLeftIcon, ArrowRightIcon } from "~/lib/icons";
@@ -30,14 +22,9 @@ type View = "current" | "changelog";
 export interface WhatsNewDialogProps {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
-  /**
-   * The entry matching the installed build. `null` means "nothing to show" —
-   * the hook only flips `open=true` when we have an entry, so normally this is
-   * non-null while the dialog is visible. We still guard against the null
-   * case to keep the UI tolerant of mid-transition re-renders.
-   */
+
   readonly currentEntry: WhatsNewEntry | null;
-  /** Full curated history, newest-first, for the changelog accordion. */
+
   readonly allEntries: readonly WhatsNewEntry[];
   readonly currentVersion: string;
 }
@@ -49,9 +36,8 @@ export default function WhatsNewDialog({
   allEntries,
   currentVersion,
 }: WhatsNewDialogProps) {
-  // Guard against a race where the hook has already reset but base-ui is
-  // still transitioning — rendering an empty card would briefly flash a
-  // confusing empty state.
+  // Guard against a race where the hook has already reset but base-ui is still transitioning —
+  // rendering an empty card would briefly flash a confusing empty state.
   if (!currentEntry) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -63,9 +49,8 @@ export default function WhatsNewDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPopup className="max-w-lg gap-0 p-0" showCloseButton={false}>
-        {/* The view state lives below DialogPopup, which unmounts its children
-            on close — every open boots into the primary view without a reset
-            effect, even if the user left the changelog open last time. */}
+        {/* The view state lives below DialogPopup, which unmounts its children on close — every open boots
+   into the primary view without a reset effect, even if the user left the changelog open last time. */}
         <WhatsNewDialogContent
           currentEntry={currentEntry}
           allEntries={allEntries}

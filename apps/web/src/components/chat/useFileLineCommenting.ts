@@ -1,16 +1,5 @@
-// FILE: useFileLineCommenting.ts
-// Purpose: Hover "+" gutter affordance + inline "Local comment" box state and
-//          geometry for the read-only file preview, mirroring Codex's per-line
-//          comment flow. Tracks the hovered line under the pointer and the line
-//          a comment box is currently open against, both in scroll-container
-//          content space so absolute overlays stay anchored while scrolling.
-// Layer: Chat file-preview interaction controller
-
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 
-// A line's geometry in the scroll container's content space (independent of the
-// current scroll offset), used to position the absolute "+" button, the blue
-// highlight band, and the anchored comment box.
 interface FileLineGeometry {
   lineNumber: number;
   top: number;
@@ -21,8 +10,8 @@ interface FileLineGeometry {
 
 interface UseFileLineCommentingOptions {
   enabled: boolean;
-  // Closes any open box / clears hover when the previewed file changes, so a
-  // stale geometry from the previous file never leaks into the new one.
+  // Closes any open box / clears hover when the previewed file changes, so a stale geometry from the
+  // previous file never leaks into the new one.
   resetKey: string | null;
 }
 
@@ -35,9 +24,6 @@ export interface UseFileLineCommentingResult {
   closeComment: () => void;
 }
 
-// 1-based line number of a `.line` span: count preceding `.line` siblings rather
-// than its child index, so the math holds even if the highlighter emits stray
-// non-line element siblings inside <code>.
 function lineNumberOf(lineEl: Element): number {
   let count = 1;
   for (let node = lineEl.previousElementSibling; node; node = node.previousElementSibling) {
@@ -72,8 +58,6 @@ export function useFileLineCommenting(
   }>(() => ({ enabled, resetKey, hoveredLine: null, activeLine: null }));
   const scopeIsCurrent = lineState.enabled === enabled && lineState.resetKey === resetKey;
   if (!scopeIsCurrent) {
-    // Reset before committing the new file/mode. Hiding state behind a key would
-    // let A→B→A or Source→Markdown→Source revive the old overlay later.
     setLineState({ enabled, resetKey, hoveredLine: null, activeLine: null });
   }
   const hoveredLine = scopeIsCurrent && enabled ? lineState.hoveredLine : null;
@@ -82,9 +66,7 @@ export function useFileLineCommenting(
     setLineState((current) => ({ ...current, hoveredLine: line }));
   const setActiveLine = (line: FileLineGeometry | null) =>
     setLineState((current) => ({ ...current, activeLine: line }));
-  // The element behind the current hover (deduped so a mousemove that stays on
-  // the same line never triggers a re-render) and whether a box is open (read
-  // synchronously from the move handler without it depending on render state).
+
   const hoveredElRef = useRef<Element | null>(null);
   const isActiveRef = useRef(false);
 
@@ -94,21 +76,14 @@ export function useFileLineCommenting(
   };
 
   const onContainerMouseMove = (event: ReactMouseEvent<HTMLElement>) => {
-    // Suppress the affordance while disabled, while a box is open, and while a
-    // button is held (a drag-selection): the gutter "+" must not flicker as
-    // the user sweeps a text selection.
+    // Suppress the affordance while disabled, while a box is open, and while a button is held (a
+    // drag-selection): the gutter "+" must not flicker as the user sweeps a text selection.
     if (!enabled || isActiveRef.current || event.buttons !== 0) {
       return;
     }
     const container = event.currentTarget;
     const target = event.target instanceof Element ? event.target : null;
-    // The floating "+" is positioned on top of the gutter of the very line it
-    // belongs to. Without this guard, moving the pointer onto it resolves to
-    // "no line" (the button is not inside a `.line`), tears the button down,
-    // re-exposes the line underneath, re-shows the button, and flickers in a
-    // tight mount/unmount loop — a re-render storm felt as lag. The button is
-    // only ever rendered for the already-hovered line, so a hover on it is a
-    // hover on that line: keep the current state untouched.
+
     if (target?.closest(".editor-file-viewer__comment-add")) {
       return;
     }
@@ -143,7 +118,6 @@ export function useFileLineCommenting(
     setActiveLine(null);
   };
 
-  // Keep the synchronous event-handler mirrors aligned with the state reset above.
   useEffect(() => {
     if (enabled) {
       return;

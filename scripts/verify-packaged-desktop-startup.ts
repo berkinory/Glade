@@ -1,7 +1,4 @@
 #!/usr/bin/env node
-// FILE: verify-packaged-desktop-startup.ts
-// Purpose: Launches a packaged desktop payload from an isolated temporary tree before upload.
-// Layer: Release verification script
 
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import {
@@ -112,7 +109,7 @@ function findFiles(root: string, predicate: (path: string) => boolean): string[]
       }
     }
   }
-  return matches.sort((left, right) => left.localeCompare(right));
+  return matches.toSorted((left, right) => left.localeCompare(right));
 }
 
 function requireSingleAsset(directory: string, suffix: string): string {
@@ -234,7 +231,7 @@ export function verifyPackagedRuntimeDependencies(
     "apps/server/dist/runtimeDependencySmoke.mjs",
   );
   const env: NodeJS.ProcessEnv = { ...isolatedEnvironment, ELECTRON_RUN_AS_NODE: "1" };
-  // A workspace loader or NODE_PATH could conceal a missing packaged dependency.
+
   delete env.NODE_OPTIONS;
   delete env.NODE_PATH;
   const result = spawnSync(runtime.executable, [entry], {
@@ -302,8 +299,7 @@ export function createPackagedDesktopSmokeEnvironment(
   if (options.platform === "mac") {
     const userDataPath = join(env.HOME!, "Library", "Application Support", "glade");
     mkdirSync(userDataPath, { recursive: true });
-    // Prevent the packaged app's update-only icon repair from registering this
-    // temporary bundle in the runner's normal Launch Services database.
+
     const launchVersionPath = join(userDataPath, "last-launch-version.json");
     writeFileSync(launchVersionPath, `${JSON.stringify({ version: options.version }, null, 2)}\n`);
   }
@@ -400,6 +396,8 @@ export async function verifyPackagedDesktopStartup(
   let child: ChildProcess | null = null;
   let logDirectory: string | null = null;
   let outputTail = "";
+  let started = false;
+  const failures: unknown[] = [];
   try {
     const launch = prepareLaunch(options, extractionRoot);
     const env = createPackagedDesktopSmokeEnvironment(join(temporaryRoot, "state"), options);
@@ -437,7 +435,8 @@ export async function verifyPackagedDesktopStartup(
         console.log(
           `Packaged ${options.platform}/${options.arch} startup smoke passed from isolated state.`,
         );
-        return;
+        started = true;
+        break;
       }
       if (childOutcome.launchError) {
         throw new Error(`Packaged app could not start: ${childOutcome.launchError.message}`);
@@ -449,35 +448,43 @@ export async function verifyPackagedDesktopStartup(
       }
       await new Promise((resolveDelay) => setTimeout(resolveDelay, 200));
     }
-    throw new Error(`Packaged startup proof timed out after ${options.timeoutMs}ms.`);
+    if (!started) throw new Error(`Packaged startup proof timed out after ${options.timeoutMs}ms.`);
   } catch (error) {
     if (logDirectory) {
       console.error(readPackagedStartupLogTails(logDirectory));
       console.error(`Packaged process output tail:\n${outputTail || "No output captured."}`);
     }
-    throw error;
-  } finally {
-    if (child) {
-      await terminateProcessTree(child);
-    }
-    try {
-      rmSync(temporaryRoot, {
-        recursive: true,
-        force: true,
-        maxRetries: process.platform === "win32" ? 20 : 0,
-        retryDelay: process.platform === "win32" ? 250 : 100,
-      });
-    } catch (error) {
-      if (
-        process.platform !== "win32" ||
-        !(error instanceof Error && "code" in error && error.code === "EPERM")
-      ) {
-        throw error;
-      }
+    failures.push(error);
+  }
+  try {
+    if (child) await terminateProcessTree(child);
+  } catch (error) {
+    failures.push(error);
+  }
+  try {
+    rmSync(temporaryRoot, {
+      recursive: true,
+      force: true,
+      maxRetries: process.platform === "win32" ? 20 : 0,
+      retryDelay: process.platform === "win32" ? 250 : 100,
+    });
+  } catch (error) {
+    if (
+      process.platform !== "win32" ||
+      !(error instanceof Error && "code" in error && error.code === "EPERM")
+    ) {
+      failures.push(error);
+    } else {
       console.warn(
         `Could not remove Windows smoke temp directory; leaving it for runner cleanup: ${temporaryRoot}`,
       );
     }
+  }
+  if (failures.length === 1) throw failures[0];
+  if (failures.length > 1) {
+    throw new AggregateError(failures, "Packaged startup and cleanup failed", {
+      cause: failures[0],
+    });
   }
 }
 

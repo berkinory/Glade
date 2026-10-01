@@ -1,18 +1,14 @@
-import { PROVIDER_SEND_TURN_MAX_ATTACHMENTS } from "@glade/contracts";
+import { PROVIDER_SEND_TURN_MAX_ATTACHMENTS } from "@glade/contracts/orchestration/threadEntities";
 import { readNativeApi } from "~/nativeApi";
-import {
-  type ComposerAssistantSelectionAttachment,
-  type ComposerFileAttachment,
-  type ComposerImageAttachment,
-} from "../../composerDraftStore";
+import type {
+  ComposerAssistantSelectionAttachment,
+  ComposerFileAttachment,
+  ComposerImageAttachment,
+} from "../../composerDraftDomain";
 import {
   maybeResolveBrowserPromptAttachment,
   type BrowserPromptAttachmentResolution,
 } from "../../lib/browserPromptContext";
-import {
-  maybeResolveDevicePromptAttachment,
-  type DevicePromptAttachmentResolution,
-} from "../../lib/devicePromptContext";
 import { type Thread } from "../../types";
 import { toastManager } from "../ui/toast";
 interface Input {
@@ -75,47 +71,5 @@ export async function resolveChatPromptCaptures({
     });
   }
 
-  const devicePromptAttachment: DevicePromptAttachmentResolution =
-    await maybeResolveDevicePromptAttachment({
-      api,
-      threadId: activeThread.id,
-      prompt: promptForSend,
-    }).catch(
-      (): DevicePromptAttachmentResolution => ({
-        requested: false,
-        image: null,
-      }),
-    );
-  if (devicePromptAttachment.image) {
-    const nextAttachmentCount =
-      composerImagesForSend.length +
-      composerFilesForSend.length +
-      composerAssistantSelectionsForSend.length +
-      1;
-    if (nextAttachmentCount <= PROVIDER_SEND_TURN_MAX_ATTACHMENTS) {
-      composerImagesForSend = [...composerImagesForSend, devicePromptAttachment.image];
-    } else {
-      toastManager.add({
-        type: "warning",
-        title: `You can attach up to ${PROVIDER_SEND_TURN_MAX_ATTACHMENTS} references per message.`,
-        description:
-          "The simulator screenshot was skipped because this message is already at the attachment limit.",
-      });
-    }
-  } else if (devicePromptAttachment.requested) {
-    const description =
-      devicePromptAttachment.reason === "no-attached-device"
-        ? "Open the iOS Simulator panel and choose a device first, then try again."
-        : devicePromptAttachment.reason === "device-not-booted"
-          ? "The selected simulator is still starting up."
-          : devicePromptAttachment.reason === "attachment-processing-failed"
-            ? "The simulator screenshot could not be optimized for attachment."
-            : "The current simulator context could not be attached.";
-    toastManager.add({
-      type: "warning",
-      title: "Couldn’t attach the simulator screen",
-      description,
-    });
-  }
   return { composerImagesForSend };
 }

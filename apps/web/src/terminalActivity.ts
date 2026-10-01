@@ -1,5 +1,5 @@
-import type { TerminalEvent } from "@glade/contracts";
-import type { TerminalActivityState } from "@glade/shared/terminalThreads";
+import type { TerminalEvent } from "@glade/contracts/terminal/terminal";
+import type { TerminalActivityState } from "@glade/shared/threads/terminalThreads";
 
 export interface TerminalActivityUpdate {
   agentState: TerminalActivityState | null;

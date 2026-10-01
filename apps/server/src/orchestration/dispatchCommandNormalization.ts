@@ -1,9 +1,16 @@
-import type { ClientOrchestrationCommand, OrchestrationCommand } from "@glade/contracts";
-import { isWorkspaceRootWithin, workspaceRootsEqual } from "@glade/shared/threadWorkspace";
+import type {
+  ClientOrchestrationCommand,
+  OrchestrationCommand,
+} from "@glade/contracts/orchestration/commands";
+import { isWorkspaceRootWithin, workspaceRootsEqual } from "@glade/shared/threads/threadWorkspace";
 import type { FileSystem, Path } from "effect";
 import { Effect, Schedule } from "effect";
 
-import { createAttachmentId } from "../attachmentStore";
+import { createAttachmentId } from "../attachments/attachmentStore";
+
+class AttachmentNormalizationError extends Error {
+  readonly _tag = "AttachmentNormalizationError";
+}
 
 export interface DispatchCommandNormalizerOptions<E> {
   readonly attachmentsDir: string;
@@ -17,21 +24,14 @@ export interface DispatchCommandNormalizerOptions<E> {
   readonly prepareChatWorkspaceRoot?: (workspaceRoot: string) => Effect.Effect<void, E>;
 }
 
-// Deferred workspace-root scaffolding (mkdir of managed work/outputs subdirectories) can
-// transiently fail on a flaky filesystem even though the underlying
-// operation is safe to retry (it's idempotent recursive directory creation). Since this runs
-// AFTER the orchestration decider has already accepted the dispatch (see wsRpc), a single
-// transient failure here would otherwise permanently strand the project row without its
-// managed subdirectories. Per-thread chat workspace roots have no other re-run site.
-// Retry a bounded number of times with a short
-// backoff before letting the failure surface to the caller.
+// Since this runs AFTER the orchestration decider has already accepted the dispatch (see wsRpc), a
+// single transient failure here would otherwise permanently strand the project row without its
+// managed subdirectories.
 const WORKSPACE_ROOT_PREPARE_RETRY_SCHEDULE = Schedule.exponential("100 millis").pipe(
   Schedule.take(2),
 );
 
 export function makeDispatchCommandNormalizer<E>(options: DispatchCommandNormalizerOptions<E>) {
-  // Per-thread chat workspace roots live strictly within the shared chat root.
-  // Never scaffold work/outputs directly into the shared parent directory.
   const deferredPrepareWorkspaceRoot = (
     command: Extract<
       ClientOrchestrationCommand,
@@ -60,11 +60,6 @@ export function makeDispatchCommandNormalizer<E>(options: DispatchCommandNormali
 
   return Effect.fnUntraced(function* (input: { readonly command: ClientOrchestrationCommand }) {
     if (input.command.type === "project.create") {
-      // Known trade-off: canonicalization may create the (empty) root directory before the
-      // decider validates ownership — realpath-based canonicalization needs the directory to
-      // exist, and comparing lexical paths instead would mis-handle symlinked roots. A rejected
-      // command can therefore leave an empty directory behind, but never scaffolding: the
-      // subdirectory prepare is deferred until the dispatch is accepted (see wsRpc).
       const workspaceRoot = yield* options.canonicalizeProjectWorkspaceRoot(
         input.command.workspaceRoot,
         {
@@ -115,7 +110,9 @@ export function makeDispatchCommandNormalizer<E>(options: DispatchCommandNormali
           if (attachment.type === "assistant-selection") {
             const attachmentId = createAttachmentId(turnStartCommand.threadId);
             if (!attachmentId) {
-              return yield* Effect.fail(new Error("Failed to create a safe attachment id."));
+              return yield* Effect.fail(
+                new AttachmentNormalizationError("Failed to create a safe attachment id."),
+              );
             }
 
             return {
@@ -126,9 +123,6 @@ export function makeDispatchCommandNormalizer<E>(options: DispatchCommandNormali
             };
           }
 
-          // Binary attachment metadata is resolved from the durable managed
-          // attachment ledger by OrchestrationEngine immediately before its
-          // atomic event/receipt claim. Client metadata is never authoritative.
           return attachment;
         }),
       { concurrency: 1 },

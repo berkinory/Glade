@@ -1,9 +1,6 @@
-// FILE: rateLimits.ts
-// Purpose: Centralizes rate-limit parsing, normalization, formatting, and row derivation
-// for provider runtime events so UI components can stay presentation-only.
-
-import type { OrchestrationThread } from "@glade/contracts";
-import { providerUsageLearnMoreHref } from "@glade/shared/providerUsage";
+import { asObjectRecord } from "@glade/shared/transport/payloadValues";
+import type { OrchestrationThread } from "@glade/contracts/orchestration/threadEntities";
+import { providerUsageLearnMoreHref } from "@glade/shared/provider/providerUsage";
 
 export interface RateLimitWindow {
   window: string;
@@ -32,8 +29,6 @@ export interface VisibleRateLimitRow {
   windowDurationMins?: number;
 }
 
-/** Activity kinds that carry account rate-limit payloads. Shared with the store selector
- *  that narrows usage subscribers to these activities, so the two stay in sync. */
 export const ACCOUNT_RATE_LIMIT_ACTIVITY_KINDS: ReadonlySet<string> = new Set([
   "account.rate-limits.updated",
   "account.rate-limited",
@@ -49,10 +44,6 @@ const WINDOW_ORDER = new Map([
   ["Usage credits", 6],
   ["Current", 7],
 ]);
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
-}
 
 function clampPercent(value: number | undefined): number | undefined {
   if (value === undefined || !Number.isFinite(value)) return undefined;
@@ -105,14 +96,11 @@ export function normalizeRateLimitLabel(
     .trim()
     .toLowerCase()
     .replace(/[_\s-]+/g, "_");
-  // Named pools can share the same duration as standard limits. Keep the pool prefix so
-  // `Core 5h` and `5h` render as separate meters instead of collapsing into one row.
+
   if (normalized.startsWith("core_")) {
     return humanizeLabel(label);
   }
-  // Claude Code calls `seven_day_overage_included` the Fable limit. It is a model
-  // sublimit, distinct from both the account's weekly limit and paid usage credits.
-  // Resolve named buckets before duration so all weekly models keep their identity.
+
   if (
     normalized === "seven_day_fable" ||
     normalized === "weekly_fable" ||
@@ -187,14 +175,14 @@ function normalizeLimitWindow(
 }
 
 function extractLimitsFromById(payload: Record<string, unknown>): RateLimitWindow[] | undefined {
-  const rateLimitsByLimitId = asRecord(payload.rateLimitsByLimitId);
+  const rateLimitsByLimitId = asObjectRecord(payload.rateLimitsByLimitId);
   if (!rateLimitsByLimitId) return undefined;
 
   const limits = Object.values(rateLimitsByLimitId)
-    .map((entry) => asRecord(entry))
+    .map((entry) => asObjectRecord(entry))
     .flatMap((entry) => {
       if (!entry) return [];
-      const primary = asRecord(entry.primary);
+      const primary = asObjectRecord(entry.primary);
       if (!primary) return [];
       const label =
         typeof entry.label === "string"
@@ -213,7 +201,7 @@ function extractLimitsFromArray(payload: Record<string, unknown>): RateLimitWind
   if (!Array.isArray(payload.limits)) return undefined;
 
   const limits = payload.limits
-    .map((entry) => asRecord(entry))
+    .map((entry) => asObjectRecord(entry))
     .flatMap((entry) => {
       if (!entry || typeof entry.window !== "string") return [];
       const normalized = normalizeLimitWindow(entry.window, entry);
@@ -226,15 +214,15 @@ function extractLimitsFromArray(payload: Record<string, unknown>): RateLimitWind
 function extractLimitsFromCodexPayload(
   payload: Record<string, unknown>,
 ): RateLimitWindow[] | undefined {
-  const rateLimitsRoot = asRecord(payload.rateLimits);
+  const rateLimitsRoot = asObjectRecord(payload.rateLimits);
   const nestedRateLimits =
-    rateLimitsRoot && asRecord(rateLimitsRoot.rateLimits)
-      ? asRecord(rateLimitsRoot.rateLimits)
+    rateLimitsRoot && asObjectRecord(rateLimitsRoot.rateLimits)
+      ? asObjectRecord(rateLimitsRoot.rateLimits)
       : (rateLimitsRoot ?? payload);
   if (!nestedRateLimits) return undefined;
 
-  const primary = asRecord(nestedRateLimits.primary);
-  const secondary = asRecord(nestedRateLimits.secondary);
+  const primary = asObjectRecord(nestedRateLimits.primary);
+  const secondary = asObjectRecord(nestedRateLimits.secondary);
   const limits: RateLimitWindow[] = [];
 
   if (primary) {
@@ -261,7 +249,7 @@ function extractLimitsFromCodexPayload(
 function extractLimitsFromClaudePayload(
   payload: Record<string, unknown>,
 ): { limits?: RateLimitWindow[]; status?: string } | undefined {
-  const info = asRecord(payload.rate_limit_info);
+  const info = asObjectRecord(payload.rate_limit_info);
   if (!info) return undefined;
 
   const rateLimitType = typeof info.rateLimitType === "string" ? info.rateLimitType : undefined;
@@ -314,7 +302,7 @@ export function deriveAccountRateLimits(
         continue;
       }
 
-      const payload = asRecord(activity.payload);
+      const payload = asObjectRecord(activity.payload);
       if (!payload) continue;
 
       const provider = typeof payload.provider === "string" ? payload.provider : "unknown";
@@ -402,7 +390,6 @@ export function formatRateLimitRemainingPercent(remainingPercent: number | undef
   return `${Math.round(Math.min(100, Math.max(0, remainingPercent)))}%`;
 }
 
-/** Relative reset countdown, e.g. "Resets in 2h 16m" / "Resets in 5d 11h". */
 export function formatRateLimitResetCountdown(resetsAt: string): string {
   const resetMs = Date.parse(resetsAt);
   if (Number.isNaN(resetMs)) {

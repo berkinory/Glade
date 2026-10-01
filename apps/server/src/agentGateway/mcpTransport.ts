@@ -1,5 +1,8 @@
+import { asRecord } from "@glade/shared/transport/payloadValues";
+import type { TaggedFailure } from "../platform/operationError.ts";
 import { nativeMcpCallId } from "./nativeToolCalls.ts";
-import { ThreadId, type OrchestrationThreadShell } from "@glade/contracts";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type OrchestrationThreadShell } from "@glade/contracts/orchestration/threadEntities";
 import { Cause, Deferred, Effect, Exit, Fiber, Option } from "effect";
 
 import type { ProjectionSnapshotQueryShape } from "../orchestration/Services/ProjectionSnapshotQuery.ts";
@@ -41,12 +44,6 @@ type McpResponseSlot =
     }
   | { readonly kind: "none" };
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
-}
-
 function invalidRequestResponse(
   status: number,
   message: string,
@@ -58,18 +55,8 @@ function invalidRequestResponse(
   };
 }
 
-/**
- * Authority 401s: the credential itself is unusable, so there is no tool call
- * to deny and `onCapabilityDenied` must never fire from these paths. Each body
- * carries a machine-readable `data.code` plus the retry rule in prose:
- *
- * - `revoked-token`: missing, revoked, or invalid credential. Do not retry
- *   with the same token; revoke the lease and re-lease a fresh session.
- * - `thread-gone`: the bearer names a thread that no longer exists. Do not
- *   retry; the thread is gone for good.
- * - `provider-mismatch`: a live thread owned by another provider session. Do
- *   not retry with this token; re-lease ownership before calling again.
- */
+// Authority 401s: the credential itself is unusable, so there is no tool call to deny and
+// `onCapabilityDenied` must never fire from these paths.
 type AgentGatewayAuthorityFailureCode = "revoked-token" | "thread-gone" | "provider-mismatch";
 
 function invalidSessionResponse(
@@ -81,8 +68,7 @@ function invalidSessionResponse(
     status: 401,
     body: {
       ...jsonRpcError(null, JSON_RPC_INVALID_REQUEST, message),
-      // jsonRpcError shapes only code/message; the structured detail rides in
-      // `data` beside them rather than in a second error convention.
+
       data: { code, retry },
     },
   };
@@ -99,39 +85,26 @@ export function makeAgentGatewayMcpTransport(input: {
   readonly instructions: string;
   readonly requireThreadShell: (
     threadId: string,
-  ) => Effect.Effect<OrchestrationThreadShell, unknown>;
-  // Lets the gateway surface a capability denial to the user (e.g. as a thread
-  // activity). Must not fail; the denial response is returned regardless.
-  // Fires only for tool-call denials — never for authority 401s, which carry
-  // their own structured retry detail instead.
+  ) => Effect.Effect<OrchestrationThreadShell, TaggedFailure>;
+  // Must not fail; the denial response is returned regardless. Fires only for tool-call denials —
+  // never for authority 401s, which carry their own structured retry detail instead.
   readonly onCapabilityDenied?: (denial: {
     readonly toolName: string;
     readonly requiredCapability: string;
     readonly callerThreadId: string;
     readonly callerTurnId: string | null;
   }) => Effect.Effect<void>;
-  /**
-   * Names the computer tool family from the unfiltered input.tools catalog so
-   * a caller whose session was never granted computer control still gets a
-   * capability_denied (plus the denial hook) when it calls one by name —
-   * instead of an Unknown-tool error — even when that tool is absent from the
-   * served catalog. Entirely-unknown names still stay INVALID_PARAMS.
-   * Mirrors onCapabilityDenied: the call site owns the family (and its
-   * capability value); the transport stays generic.
-   */
+
   readonly isComputerToolName?: (toolName: string) => boolean;
   readonly computerControlCapability?: AgentGatewayCapability;
 }): AgentGatewayShape["handleMcpPost"] {
   const toolsByName = new Map(input.tools.map((tool) => [tool.definition.name, tool]));
-  // The catalog is immutable after construction, so the sanitized `tools/list`
-  // definitions (a recursive schema walk plus JSON clone per tool) are computed
-  // once here instead of on every request.
+
   const servedDefinitionByToolName = new Map<string, ToolEntry["definition"]>();
   for (const tool of input.tools) {
     servedDefinitionByToolName.set(tool.definition.name, {
       ...tool.definition,
-      // SAFETY: ToolEntry.inputSchema is typed Record<string, unknown>; the sanitizer
-      // returns a fresh object for object input, so this restores the static type.
+
       inputSchema: sanitizeToolInputSchema(tool.definition.inputSchema) as Record<string, unknown>,
     });
   }
@@ -152,8 +125,6 @@ export function makeAgentGatewayMcpTransport(input: {
         case "tools/list":
           return jsonRpcResult(request.id, {
             tools: filterToolsByCapability(input.tools, context.callerCapabilities)
-              // Discovery-only tools stay callable by exact name — toolsByName
-              // is built from the unfiltered catalog — but do not advertise.
               .filter((tool) => tool.discoveryOnly !== true)
               .map(
                 (tool) =>
@@ -191,9 +162,6 @@ export function makeAgentGatewayMcpTransport(input: {
             );
           const tool = toolsByName.get(toolName);
           if (!tool) {
-            // Entirely-unknown names stay INVALID_PARAMS — except a computer
-            // tool the caller's session was never granted: that is a
-            // capability truth, not a typo, so it denies like a known one.
             const computerControlCapability = input.computerControlCapability;
             if (
               computerControlCapability === undefined ||
@@ -206,8 +174,8 @@ export function makeAgentGatewayMcpTransport(input: {
                 `Unknown tool "${toolName}".`,
               );
             }
-            // Computer tools need an active turn: an inactive turn reports the
-            // authority error and never fires the denial hook.
+            // Computer tools need an active turn: an inactive turn reports the authority error and never fires
+            // the denial hook.
             const authorityError = yield* readCallerAuthorityError();
             if (authorityError !== null) {
               return jsonRpcResult(request.id, gatewayToolErrorResult(authorityError));
@@ -224,9 +192,8 @@ export function makeAgentGatewayMcpTransport(input: {
           }
           const rawArgs = request.params.arguments;
           const args = asRecord(rawArgs) ?? {};
-          // Turn-active first: an inactive turn reports the authority error
-          // and never fires the denial hook, even for a tool whose capability
-          // the caller also lacks.
+          // Turn-active first: an inactive turn reports the authority error and never fires the denial hook,
+          // even for a tool whose capability the caller also lacks.
           if (tool.requiresActiveTurn) {
             const authorityError = yield* readCallerAuthorityError();
             if (authorityError !== null) {
@@ -361,8 +328,7 @@ export function makeAgentGatewayMcpTransport(input: {
             turnId: callerWriteAuthority?.turnId ?? null,
           },
           callerThreadId,
-          // The nickname first: a subagent that has one is known by it, and its
-          // title describes the work rather than who is doing it.
+
           callerThreadLabel:
             callerThread.value.subagentNickname ?? callerThread.value.title ?? null,
           callerSessionKey: callerSession.sessionKey,
@@ -423,10 +389,6 @@ export function makeAgentGatewayMcpTransport(input: {
       const responseSlots: McpResponseSlot[] = [];
       const cancellationRequestIds: Array<string | number> = [];
 
-      // Start every request before awaiting any of them. Apart from avoiding
-      // head-of-line blocking for ordinary batches, this guarantees that a
-      // cancellation notification in the same batch can see its target even
-      // when the notification appears first.
       for (const parsed of parsedMessages) {
         switch (parsed.kind) {
           case "request": {
@@ -437,8 +399,6 @@ export function makeAgentGatewayMcpTransport(input: {
             const requestEffect = Deferred.await(registered).pipe(
               Effect.andThen(resolveContext(parsed)),
               Effect.flatMap((context) => {
-                // Register cancellation before waiting on the other transport,
-                // then transfer ownership to the proven turn without yielding.
                 unregister();
                 unregister = registerRequest(context.callerTurnId);
                 if (cancellationRequested || !input.credentials.verifySession(token))
@@ -466,9 +426,6 @@ export function makeAgentGatewayMcpTransport(input: {
                   cancellationRequested = true;
                   if (!requestStarted) return Promise.resolve();
                   return new Promise<void>((resolve) => {
-                    // Avoid interrupting re-entrantly while an async Effect is
-                    // still installing its AbortController finalizer. The fiber
-                    // observer is the cleanup barrier returned to Stop.
                     queueMicrotask(() => {
                       if (fiber.pollUnsafe() !== undefined) {
                         resolve();
@@ -482,9 +439,6 @@ export function makeAgentGatewayMcpTransport(input: {
               });
             unregister = registerRequest(null);
             if (cancellationRequested) {
-              // A terminal-turn tombstone cancelled this request during
-              // registration. The handler is still fenced behind `registered`,
-              // so a direct interruption is safe and no browser work can start.
               fiber.interruptUnsafe();
             } else {
               requestStarted = true;

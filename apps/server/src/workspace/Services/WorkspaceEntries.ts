@@ -3,6 +3,8 @@ import { Data, Effect, ServiceMap } from "effect";
 import type {
   FilesystemBrowseInput,
   FilesystemBrowseResult,
+} from "@glade/contracts/workspace/filesystem";
+import type {
   ProjectDiscoverScriptsInput,
   ProjectDiscoverScriptsResult,
   ProjectListDirectoriesInput,
@@ -17,7 +19,7 @@ import type {
   ProjectSearchEntriesResult,
   ProjectSearchLocalEntriesInput,
   ProjectSearchLocalEntriesResult,
-} from "@glade/contracts";
+} from "@glade/contracts/workspace/project";
 
 export interface WorkspaceEntriesShape {
   readonly browse: (
@@ -29,7 +31,7 @@ export interface WorkspaceEntriesShape {
   readonly searchContent: (
     input: ProjectSearchContentInput,
   ) => Effect.Effect<ProjectSearchContentResult, WorkspaceEntriesError>;
-  // Fire-and-forget index warm-up; resolves before the build completes.
+
   readonly prewarmSearchIndex: (
     input: ProjectPrewarmSearchIndexInput,
   ) => Effect.Effect<ProjectPrewarmSearchIndexResult, WorkspaceEntriesError>;
@@ -42,8 +44,7 @@ export interface WorkspaceEntriesShape {
   readonly searchLocal: (
     input: ProjectSearchLocalEntriesInput,
   ) => Effect.Effect<ProjectSearchLocalEntriesResult, WorkspaceEntriesError>;
-  // Resolve a bare/partial workspace-relative reference (basename or tail path)
-  // to a unique tracked file's path, or null when zero/multiple files match.
+
   readonly resolveFileBySuffix: (input: {
     readonly cwd: string;
     readonly relativePath: string;

@@ -10,9 +10,6 @@ export function useTurnDiffSummaries(activeThread: Thread | undefined) {
     ? activeThread.turnDiffSummaries
     : EMPTY_TURN_DIFF_SUMMARIES;
 
-  // Memoized like DiffPanel: the inference copies and sorts every summary and
-  // returns a fresh object, which invalidated ChatView's downstream memos on
-  // every streamed flush even though summaries only change on turn completion.
   const inferredCheckpointTurnCountByTurnId = useMemo(
     () => inferCheckpointTurnCountByTurnId(turnDiffSummaries),
     [turnDiffSummaries],

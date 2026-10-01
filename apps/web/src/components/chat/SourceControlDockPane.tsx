@@ -1,4 +1,4 @@
-import type { ThreadId, TurnId } from "@glade/contracts";
+import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { useEffect, useState } from "react";
 
 import type { DiffFileEditRequest } from "~/lib/diffEditBaseRev";

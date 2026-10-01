@@ -1,21 +1,19 @@
+import { useChatThreadContext } from "./ChatThreadContext";
+import type { ProjectId } from "@glade/contracts/core/baseSchemas";
+import type { ProjectScript } from "@glade/contracts/orchestration/threadEntities";
 import type {
-  ProjectId,
-  ProjectScript,
   ProviderMentionReference,
   ProviderSkillReference,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/providerDiscovery";
+import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
+import { MessageId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
-  DEFAULT_MODEL_BY_PROVIDER,
-  MessageId,
-  ProviderInteractionMode,
   RuntimeMode,
-  ThreadId,
   type ModelSelection,
   type ProviderStartOptions,
-} from "@glade/contracts";
-import { buildTemporaryWorktreeBranchName } from "@glade/shared/git";
-import { getDefaultModel } from "@glade/shared/model";
-import { providerSupportsNativeTurnSteering } from "@glade/shared/providerMetadata";
+} from "@glade/contracts/provider/sessionPolicy";
+import { buildTemporaryWorktreeBranchName } from "@glade/shared/git/git";
+import { providerSupportsNativeTurnSteering } from "@glade/shared/provider/providerMetadata";
 import { useCallback } from "react";
 import { promoteThreadCreate } from "~/lib/threadCreatePromotion";
 import { newCommandId, randomUUID } from "~/lib/utils";
@@ -23,31 +21,31 @@ import { readNativeApi } from "~/nativeApi";
 import { dispatchThreadNotes } from "~/pinnedMessages";
 import {
   mergeProjectInstructionsIntoThreadNotes,
-  useProjectInstructionsStore,
-} from "~/projectInstructionsStore";
-import { dispatchThreadGoal } from "~/threadGoal";
+  useProjectPreferencesStore,
+} from "~/projectPreferencesStore";
+
 import { collapseExpandedComposerCursor, detectComposerTrigger } from "../../composer-logic";
-import { type DraftThreadEnvMode, type QueuedComposerChatTurn } from "../../composerDraftStore";
+import type { DraftThreadEnvMode, QueuedComposerChatTurn } from "../../composerDraftDomain";
 import {
   cloneComposerImageAttachment,
   stageUploadComposerAttachments,
 } from "../../lib/composerSend";
-import { armQueuedComposerSteerGate } from "../../lib/queuedComposerDrain";
+import { queuedComposerDrain } from "../../lib/queuedComposerDrain";
 import { clearPendingTurnDispatch } from "../../pendingTurnDispatch";
-import { useStore } from "../../store";
-import { getThreadFromState } from "../../threadDerivation";
 import { buildModelSelection } from "../../providerModelOptions";
 import { type Thread } from "../../types";
 import {
   WorktreeSetupCancelledError,
   createWorktreeSetupResolution,
-  resolveQueuedTurnDispatchSettings,
-  revokeUserMessagePreviewUrls,
   runWorktreeCreationFlow,
+} from "../ChatView.logic.dispatch";
+import {
+  resolveQueuedTurnDispatchSettings,
   threadSettingsDispatchFields,
   turnStartDispatchFields,
   type TurnDispatchSettings,
-} from "../ChatView.logic";
+} from "../ChatView.logic.subagents";
+import { revokeUserMessagePreviewUrls } from "../ChatView.logic.worktree";
 import type { ChatTurnSubmissionInput } from "./chatSendTypes";
 import { waitForSetupScriptTerminalActivity } from "./projectScriptRuntime";
 interface PreparedChatTurn {
@@ -70,7 +68,7 @@ interface PreparedChatTurn {
   targetProjectIdForSend: ProjectId;
   title: string;
   nextRuntimeModeForSend: RuntimeMode;
-  interactionModeForSend: ProviderInteractionMode;
+
   nextThreadWorkingDirectory: string | null;
   activeThread: Thread;
   targetProjectKindForSend: "project" | "chat";
@@ -83,7 +81,7 @@ interface PreparedChatTurn {
   mentionedSkillsForSend: ProviderSkillReference[];
   mentionedPluginMentionsForSend: ProviderMentionReference[];
   dispatchMode: "queue" | "steer";
-  sourceProposedPlanForSend: QueuedComposerChatTurn["sourceProposedPlan"];
+
   shouldResumeSettledLocalThread: boolean;
   currentActiveGitBranchForSend: string | null;
   queuedChatTurn: QueuedComposerChatTurn | null;
@@ -117,9 +115,6 @@ type ChatTurnExecutionInput = Pick<
   | "armLocalDispatchAckFallback"
   | "setQueuedSteerGate"
   | "threadId"
-  | "planSidebarDismissedForTurnRef"
-  | "setPlanSidebarOpen"
-  | "setRestoredQueuedSourceProposedPlan"
   | "failLocalDispatchWorktreeSetup"
   | "setOptimisticUserMessages"
   | "promptRef"
@@ -151,54 +146,113 @@ type ChatTurnExecutionInput = Pick<
   | "resetLocalDispatch"
 >;
 
+type ChatTurnExecutionControllerInput = {
+  workspace: Pick<
+    ChatTurnExecutionInput,
+    "isServerThread" | "isLocalDraftThread" | "setSettledThreadBranchWarningDismissedThreadId"
+  >;
+  session: Pick<
+    ChatTurnExecutionInput,
+    | "setStoreThreadWorkspace"
+    | "createWorktreeMutation"
+    | "promptRef"
+    | "composerImagesRef"
+    | "composerFilesRef"
+    | "composerAssistantSelectionsRef"
+    | "composerBrowserAnnotationsRef"
+    | "composerFileCommentsRef"
+    | "composerTerminalContextsRef"
+    | "composerPastedTextsRef"
+    | "composerPullRequestContextsRef"
+    | "setPrompt"
+    | "setComposerCursor"
+    | "addComposerImagesToDraft"
+    | "addComposerFilesToDraft"
+    | "addComposerAssistantSelectionToDraft"
+    | "addComposerDraftBrowserAnnotations"
+    | "addComposerFileCommentToDraft"
+    | "addComposerTerminalContextsToDraft"
+    | "addComposerPastedTextsToDraft"
+    | "addComposerPullRequestContextsToDraft"
+    | "setComposerTrigger"
+    | "sendInFlightRef"
+  >;
+  provider: Pick<
+    ChatTurnExecutionInput,
+    | "clearLocalDispatchWorktreeSetup"
+    | "beginLocalDispatch"
+    | "armLocalDispatchAckFallback"
+    | "failLocalDispatchWorktreeSetup"
+    | "updateSelectedComposerSkills"
+    | "updateSelectedComposerMentions"
+    | "worktreeSetupResolutionRef"
+    | "scheduleFailedWorktreeSetupDispatchReset"
+    | "resetLocalDispatch"
+  >;
+  transcript: Pick<ChatTurnExecutionInput, "threadNotes" | "setOptimisticUserMessages">;
+  environment: Pick<
+    ChatTurnExecutionInput,
+    "runProjectScript" | "persistThreadSettingsForNextTurn"
+  >;
+  discovery: Pick<ChatTurnExecutionInput, "rememberCustomBinaryPathForDispatch">;
+  turn: Pick<ChatTurnExecutionInput, "setQueuedSteerGate">;
+  composer: Pick<ChatTurnExecutionInput, "setThreadError">;
+};
 export function useChatTurnExecution({
-  isServerThread,
-  setStoreThreadWorkspace,
-  clearLocalDispatchWorktreeSetup,
-  createWorktreeMutation,
-  beginLocalDispatch,
-  isLocalDraftThread,
-  threadNotes,
-  runProjectScript,
-  persistThreadSettingsForNextTurn,
-  rememberCustomBinaryPathForDispatch,
-  setSettledThreadBranchWarningDismissedThreadId,
-  armLocalDispatchAckFallback,
-  setQueuedSteerGate,
-  threadId,
-  planSidebarDismissedForTurnRef,
-  setPlanSidebarOpen,
-  setRestoredQueuedSourceProposedPlan,
-  failLocalDispatchWorktreeSetup,
-  setOptimisticUserMessages,
-  promptRef,
-  composerImagesRef,
-  composerFilesRef,
-  composerAssistantSelectionsRef,
-  composerBrowserAnnotationsRef,
-  composerFileCommentsRef,
-  composerTerminalContextsRef,
-  composerPastedTextsRef,
-  composerPullRequestContextsRef,
-  setPrompt,
-  setComposerCursor,
-  addComposerImagesToDraft,
-  addComposerFilesToDraft,
-  addComposerAssistantSelectionToDraft,
-  addComposerDraftBrowserAnnotations,
-  addComposerFileCommentToDraft,
-  addComposerTerminalContextsToDraft,
-  addComposerPastedTextsToDraft,
-  addComposerPullRequestContextsToDraft,
-  updateSelectedComposerSkills,
-  updateSelectedComposerMentions,
-  setComposerTrigger,
-  setThreadError,
-  sendInFlightRef,
-  worktreeSetupResolutionRef,
-  scheduleFailedWorktreeSetupDispatchReset,
-  resetLocalDispatch,
-}: ChatTurnExecutionInput) {
+  workspace,
+  session,
+  provider,
+  transcript,
+  environment,
+  discovery,
+  turn,
+  composer,
+}: ChatTurnExecutionControllerInput) {
+  const { isServerThread, isLocalDraftThread, setSettledThreadBranchWarningDismissedThreadId } =
+    workspace;
+  const {
+    setStoreThreadWorkspace,
+    createWorktreeMutation,
+
+    promptRef,
+    composerImagesRef,
+    composerFilesRef,
+    composerAssistantSelectionsRef,
+    composerBrowserAnnotationsRef,
+    composerFileCommentsRef,
+    composerTerminalContextsRef,
+    composerPastedTextsRef,
+    composerPullRequestContextsRef,
+    setPrompt,
+    setComposerCursor,
+    addComposerImagesToDraft,
+    addComposerFilesToDraft,
+    addComposerAssistantSelectionToDraft,
+    addComposerDraftBrowserAnnotations,
+    addComposerFileCommentToDraft,
+    addComposerTerminalContextsToDraft,
+    addComposerPastedTextsToDraft,
+    addComposerPullRequestContextsToDraft,
+    setComposerTrigger,
+    sendInFlightRef,
+  } = session;
+  const {
+    clearLocalDispatchWorktreeSetup,
+    beginLocalDispatch,
+    armLocalDispatchAckFallback,
+    failLocalDispatchWorktreeSetup,
+    updateSelectedComposerSkills,
+    updateSelectedComposerMentions,
+    worktreeSetupResolutionRef,
+    scheduleFailedWorktreeSetupDispatchReset,
+    resetLocalDispatch,
+  } = provider;
+  const { threadNotes, setOptimisticUserMessages } = transcript;
+  const { runProjectScript, persistThreadSettingsForNextTurn } = environment;
+  const { rememberCustomBinaryPathForDispatch } = discovery;
+  const { setQueuedSteerGate } = turn;
+  const { threadId } = useChatThreadContext();
+  const { setThreadError } = composer;
   return useCallback(
     async (preparedTurn: PreparedChatTurn): Promise<boolean> => {
       let {
@@ -221,7 +275,7 @@ export function useChatTurnExecution({
         targetProjectIdForSend,
         title,
         nextRuntimeModeForSend,
-        interactionModeForSend,
+
         nextThreadWorkingDirectory,
         activeThread,
         targetProjectKindForSend,
@@ -233,7 +287,7 @@ export function useChatTurnExecution({
         mentionedSkillsForSend,
         mentionedPluginMentionsForSend,
         dispatchMode,
-        sourceProposedPlanForSend,
+
         shouldResumeSettledLocalThread,
         currentActiveGitBranchForSend,
         queuedChatTurn,
@@ -261,10 +315,6 @@ export function useChatTurnExecution({
       let turnStartSucceeded = false;
       let settledLocalBranchUpdatedForSend = false;
       await (async () => {
-        // "Work locally" from the setup card: drop any prepared worktree and
-        // point the send (and the thread's metadata) back at the project
-        // checkout. Awaited before the turn dispatch so the session resolves the
-        // local cwd instead of the abandoned worktree.
         const applyWorkLocallySwitch = async () => {
           switchedToLocalCheckout = true;
           nextThreadEnvMode = "local";
@@ -276,7 +326,6 @@ export function useChatTurnExecution({
           const worktreePathToRemove = createdWorktreeForSendPath;
           createdWorktreeForSendPath = null;
           if (worktreePathToRemove) {
-            // Best-effort: a leftover worktree is inert and reclaimable later.
             void api.git
               .removeWorktree({
                 cwd: targetProjectCwdForSend,
@@ -310,9 +359,6 @@ export function useChatTurnExecution({
           clearLocalDispatchWorktreeSetup();
         };
 
-        // Honors a Cancel / Work locally choice at a step boundary. Cancel
-        // unwinds through the shared send-failure path below; the cancelled
-        // sentinel keeps that path from painting error state.
         const consumeWorktreeSetupResolution = async () => {
           const action = worktreeSetupResolution?.action ?? null;
           if (action === null || switchedToLocalCheckout) {
@@ -324,11 +370,7 @@ export function useChatTurnExecution({
           await applyWorkLocallySwitch();
         };
 
-        // On first message: lock in branch + create worktree if needed.
         if (baseBranchForWorktree && worktreeSetupResolution) {
-          // The server streams each real setup phase (branch → worktree → copy
-          // changes); advance the card's rows from those events instead of
-          // letting one row spin through the whole creation.
           const worktreeProgressId = randomUUID();
           const creationFlow = await runWorktreeCreationFlow({
             progressId: worktreeProgressId,
@@ -388,8 +430,7 @@ export function useChatTurnExecution({
                 associatedWorktreeBranch: nextAssociatedWorktree.associatedWorktreeBranch,
                 associatedWorktreeRef: nextAssociatedWorktree.associatedWorktreeRef,
               });
-              // Keep local thread state in sync immediately so the terminal opens
-              // with the worktree cwd/env instead of briefly using the project root.
+
               setStoreThreadWorkspace(threadIdForSend, {
                 branch: result.worktree.branch,
                 worktreePath: result.worktree.path,
@@ -404,8 +445,8 @@ export function useChatTurnExecution({
           selectedModelSelectionForSend.model ||
             selectedModelForSend ||
             targetProjectDefaultModelSelectionForSend?.model ||
-            getDefaultModel(selectedModelSelectionForSend.provider) ||
-            DEFAULT_MODEL_BY_PROVIDER.codex,
+            PROVIDER_DEFAULT_MODEL ||
+            PROVIDER_DEFAULT_MODEL,
           selectedModelSelectionForSend.options,
           selectedModelSelectionForSend.provider === "claudeAgent"
             ? selectedModelSelectionForSend.supportsAutoMode
@@ -414,9 +455,8 @@ export function useChatTurnExecution({
 
         if (isLocalDraftThread) {
           const inheritedProjectInstructions =
-            useProjectInstructionsStore.getState().instructionsByProjectId[
-              targetProjectIdForSend
-            ] ?? "";
+            useProjectPreferencesStore.getState().instructionsByProjectId[targetProjectIdForSend] ??
+            "";
           const inheritedThreadNotes = mergeProjectInstructionsIntoThreadNotes({
             threadNotes,
             projectInstructions: inheritedProjectInstructions,
@@ -430,7 +470,7 @@ export function useChatTurnExecution({
               title,
               modelSelection: threadCreateModelSelection,
               runtimeMode: nextRuntimeModeForSend,
-              interactionMode: interactionModeForSend,
+
               envMode: nextThreadEnvMode,
               branch: nextThreadBranch,
               worktreePath: nextThreadWorktreePath,
@@ -443,29 +483,15 @@ export function useChatTurnExecution({
             },
             api,
           );
-          // `thread.create` does not carry notes, so seed the freshly created
-          // server thread's notepad with the inherited project instructions via a
-          // dedicated meta update. Best-effort: a failure here must not abort the turn.
+          // `thread.create` does not carry notes, so seed the freshly created server thread's notepad with
+          // the inherited project instructions via a dedicated meta update. Best-effort: a failure here must
+          // not abort the turn.
           if (inheritedThreadNotes !== threadNotes && inheritedThreadNotes.trim().length > 0) {
             try {
               await dispatchThreadNotes(threadIdForSend, inheritedThreadNotes);
-            } catch {
-              // Seeding is non-critical; project instructions can still be copied
-              // into the notepad manually from the Environment panel.
-            }
+            } catch {}
           }
-          // Same for a goal staged on the draft via /goal: persist it now so the
-          // decider stamps goalStartedAt when the thread actually starts working.
-          const draftGoalForSend = activeThread.goal?.trim() ?? "";
-          if (draftGoalForSend.length > 0) {
-            try {
-              await dispatchThreadGoal(threadIdForSend, draftGoalForSend, {
-                startBehavior: "defer",
-              });
-            } catch {
-              // Non-critical: the goal can be set again with /goal on the live thread.
-            }
-          }
+
           if (targetProjectKindForSend === "chat") {
             await api.orchestration.dispatchCommand({
               type: "project.meta.update",
@@ -509,9 +535,7 @@ export function useChatTurnExecution({
                 terminalId: setupTerminal.terminalId,
                 signal: setupActivityAbortController.signal,
               });
-              // Setup scripts can run for minutes; let Cancel / Work locally win
-              // the wait. The script itself keeps running — a cancelled worktree
-              // is force-removed, a local switch just stops waiting on it.
+
               await (
                 worktreeSetupResolution
                   ? Promise.race([setupActivityWait, worktreeSetupResolution.promise])
@@ -520,8 +544,8 @@ export function useChatTurnExecution({
             }
           }
         }
-        // Covers a resolution set while the thread was linked or the setup
-        // script ran (the creation-step race above only guards the first step).
+        // Covers a resolution set while the thread was linked or the setup script ran (the creation-step
+        // race above only guards the first step).
         await consumeWorktreeSetupResolution();
 
         if (isServerThread) {
@@ -562,12 +586,9 @@ export function useChatTurnExecution({
             associatedWorktreeRef: nextAssociatedWorktreeRef,
           });
         }
-        // Keep setup resolvable while attachment uploads are still preparing the
-        // turn. Once they settle, consume the last possible choice before the
-        // card advances to the non-resolvable "Starting session" step.
+
         await consumeWorktreeSetupResolution();
-        // Carry the expected message id so a snapshot rebuilt after an interim
-        // reset (thread switch, ack effect) keeps the message-echo ack signal.
+
         beginLocalDispatch({
           expectedUserMessageId: messageIdForSend,
           ...(baseBranchForWorktree && !switchedToLocalCheckout
@@ -584,40 +605,24 @@ export function useChatTurnExecution({
           providerOptions: dispatchSettings.providerOptions,
         });
         await stagedTurnAttachments.runWithDispatch(async (turnAttachments) => {
-          if (getThreadFromState(useStore.getState(), threadIdForSend)?.claudeCacheReview != null) {
-            throw new Error(
-              "Choose how to resume the held message before sending another message.",
-            );
-          }
-          await api.orchestration
-            .dispatchCommand({
-              type: "thread.turn.start",
-              commandId: newCommandId(),
-              threadId: threadIdForSend,
-              message: {
-                messageId: messageIdForSend,
-                role: "user",
-                text: outgoingMessageText,
-                attachments: turnAttachments,
-                ...(mentionedSkillsForSend.length > 0 ? { skills: mentionedSkillsForSend } : {}),
-                ...(mentionedPluginMentionsForSend.length > 0
-                  ? { mentions: mentionedPluginMentionsForSend }
-                  : {}),
-              },
-              ...turnStartDispatchFields(dispatchSettings, dispatchMode),
-              ...(sourceProposedPlanForSend
-                ? { sourceProposedPlan: sourceProposedPlanForSend }
+          await api.orchestration.dispatchCommand({
+            type: "thread.turn.start",
+            commandId: newCommandId(),
+            threadId: threadIdForSend,
+            message: {
+              messageId: messageIdForSend,
+              role: "user",
+              text: outgoingMessageText,
+              attachments: turnAttachments,
+              ...(mentionedSkillsForSend.length > 0 ? { skills: mentionedSkillsForSend } : {}),
+              ...(mentionedPluginMentionsForSend.length > 0
+                ? { mentions: mentionedPluginMentionsForSend }
                 : {}),
-              createdAt: messageCreatedAt,
-            })
-            .catch((error: unknown) => {
-              if (
-                getThreadFromState(useStore.getState(), threadIdForSend)?.claudeCacheReview
-                  ?.messageId !== messageIdForSend
-              ) {
-                throw error;
-              }
-            });
+            },
+            ...turnStartDispatchFields(dispatchSettings, dispatchMode),
+
+            createdAt: messageCreatedAt,
+          });
         });
         turnStartSucceeded = true;
         if (
@@ -628,10 +633,9 @@ export function useChatTurnExecution({
           setSettledThreadBranchWarningDismissedThreadId(threadIdForSend);
         }
         armLocalDispatchAckFallback(threadIdForSend);
-        // Steers on providers without native mid-turn steering interrupt the live
-        // turn before re-dispatching; hold queued auto-dispatch through that gap
-        // so it can't race the steer. The live session provider decides the
-        // interrupt path server-side, so the gate keys off it rather than the
+        // Steers on providers without native mid-turn steering interrupt the live turn before
+        // re-dispatching; hold queued auto-dispatch through that gap so it can't race the steer. The live
+        // session provider decides the interrupt path server-side, so the gate keys off it rather than the
         // requested model selection.
         const liveProviderForSteerGate =
           activeThread?.session?.provider ?? selectedModelSelectionForSend.provider;
@@ -645,33 +649,23 @@ export function useChatTurnExecution({
             armedActiveTurnId: activeThread?.session?.activeTurnId ?? null,
           };
           setQueuedSteerGate(nextSteerGate);
-          armQueuedComposerSteerGate(threadId, nextSteerGate);
+          queuedComposerDrain.armQueuedComposerSteerGate(threadId, nextSteerGate);
         }
-        if (sourceProposedPlanForSend) {
-          planSidebarDismissedForTurnRef.current = null;
-          setPlanSidebarOpen(true);
-        }
+
         if (queuedChatTurn === null) {
-          setRestoredQueuedSourceProposedPlan(threadIdForSend, null);
         }
       })().catch(async (err: unknown) => {
-        // A user-cancelled worktree setup unwinds through this same rollback,
-        // but silently: no error styling on the step row, no thread error.
         const setupCancelled = err instanceof WorktreeSetupCancelledError;
-        // Uploads start in parallel with workspace/session preparation. If any
-        // earlier step fails, settle that promise and release every staged blob.
+
         await turnAttachmentsPromise.then(
           (staged) => staged.cleanup(),
           () => undefined,
         );
-        // Surface the failure on whichever setup step was active (no-op for
-        // sends without a worktree setup in flight).
+
         if (!setupCancelled) {
           failLocalDispatchWorktreeSetup();
         }
         if (!turnStartSucceeded) {
-          // The turn RPC never resolved, so no server turn exists for the
-          // watchdog to recover — drop the marker armed when the dispatch began.
           clearPendingTurnDispatch(threadIdForSend);
         }
         if (settledLocalBranchUpdatedForSend && !turnStartSucceeded) {
@@ -701,7 +695,6 @@ export function useChatTurnExecution({
             );
         }
         if (createdServerThreadForLocalDraft && !turnStartSucceeded) {
-          // This rollback cleans up a retryable draft promotion; do not tombstone the draft id.
           await api.orchestration
             .dispatchCommand({
               type: "thread.delete",
@@ -749,9 +742,6 @@ export function useChatTurnExecution({
           }
         }
         if (queuedChatTurn !== null && !turnStartSucceeded) {
-          // The queued snapshot remains available for retry/edit after a rejected
-          // dispatch. Drop only this attempt's optimistic transcript row; its
-          // attachment preview URLs still belong to the queued snapshot.
           setOptimisticUserMessages((existing) => {
             const next = existing.filter((message) => message.id !== messageIdForSend);
             return next.length === existing.length ? existing : next;
@@ -780,13 +770,7 @@ export function useChatTurnExecution({
           });
           promptRef.current = promptForSend;
           setPrompt(promptForSend);
-          if (sourceProposedPlanForSend) {
-            setRestoredQueuedSourceProposedPlan(threadIdForSend, {
-              threadId: threadIdForSend,
-              restoredPrompt: promptForSend,
-              sourceProposedPlan: sourceProposedPlanForSend,
-            });
-          }
+
           setComposerCursor(collapseExpandedComposerCursor(promptForSend, promptForSend.length));
           addComposerImagesToDraft(composerImagesSnapshot.map(cloneComposerImageAttachment));
           addComposerFilesToDraft(composerFilesSnapshot);
@@ -817,8 +801,6 @@ export function useChatTurnExecution({
         if (baseBranchForWorktree && (worktreeSetupResolution?.action ?? null) === null) {
           scheduleFailedWorktreeSetupDispatchReset();
         } else {
-          // A resolved setup (cancelled, or switched to local and then failed)
-          // has no error step to hold on screen — release the marker directly.
           resetLocalDispatch();
         }
       }
@@ -839,9 +821,7 @@ export function useChatTurnExecution({
       armLocalDispatchAckFallback,
       setQueuedSteerGate,
       threadId,
-      planSidebarDismissedForTurnRef,
-      setPlanSidebarOpen,
-      setRestoredQueuedSourceProposedPlan,
+
       failLocalDispatchWorktreeSetup,
       setOptimisticUserMessages,
       promptRef,

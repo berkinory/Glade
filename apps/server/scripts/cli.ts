@@ -19,8 +19,6 @@ class CliError extends Data.TaggedError("CliError")<{
   readonly cause?: unknown;
 }> {}
 
-// Some desktop builds do not expose workspace metadata in the root package.json.
-// Publish prep only needs the catalog map when it exists.
 function resolveRootWorkspaceCatalog(): Record<string, unknown> {
   const rootWorkspaces =
     typeof rootPackageJson === "object" &&
@@ -115,10 +113,6 @@ const applyDevelopmentIconOverrides = Effect.fn("applyDevelopmentIconOverrides")
   yield* Effect.log("[cli] Applied development icon overrides to dist/client");
 });
 
-// ---------------------------------------------------------------------------
-// build subcommand
-// ---------------------------------------------------------------------------
-
 const buildCmd = Command.make(
   "build",
   {
@@ -137,20 +131,10 @@ const buildCmd = Command.make(
           cwd: serverDir,
           stdout: config.verbose ? "inherit" : "ignore",
           stderr: "inherit",
-          // Windows needs shell mode to resolve .cmd shims (e.g. bun.cmd).
+
           shell: process.platform === "win32",
         })`bun tsdown`,
       );
-
-      // The device backend compiles this helper against the user's installed
-      // Xcode on first attach. tsdown bundles JavaScript only, and desktop/CLI
-      // packaging stage only `dist`, so leaving the sources under `native`
-      // makes the feature work in development but fail in every packaged app.
-      const deviceHelperSource = path.join(serverDir, "native/device-helper");
-      const deviceHelperTarget = path.join(serverDir, "dist/device-helper");
-      yield* fs.copy(deviceHelperSource, deviceHelperTarget);
-      yield* fs.chmod(path.join(deviceHelperTarget, "build.sh"), 0o755);
-      yield* Effect.log("[cli] Bundled iOS Simulator helper sources into dist/device-helper");
 
       const webDist = path.join(repoRoot, "apps/web/dist");
       const clientTarget = path.join(serverDir, "dist/client");
@@ -165,10 +149,6 @@ const buildCmd = Command.make(
     }),
 ).pipe(Command.withDescription("Build the server package (tsdown + bundle web client)."));
 
-// ---------------------------------------------------------------------------
-// distribution staging (shared by publish and pack)
-// ---------------------------------------------------------------------------
-
 const stageDistributionPackage = Effect.fn("stageDistributionPackage")(function* (
   appVersion: Option.Option<string>,
 ) {
@@ -177,12 +157,7 @@ const stageDistributionPackage = Effect.fn("stageDistributionPackage")(function*
   const repoRoot = yield* RepoRoot;
   const serverDir = path.join(repoRoot, "apps/server");
 
-  // Assert build assets exist
-  for (const relPath of [
-    "dist/index.mjs",
-    "dist/restoreMigrationBackup.mjs",
-    "dist/client/index.html",
-  ]) {
+  for (const relPath of ["dist/index.mjs", "dist/client/index.html"]) {
     const abs = path.join(serverDir, relPath);
     if (!(yield* fs.exists(abs))) {
       return yield* new CliError({
@@ -235,7 +210,7 @@ const stageDistributionPackage = Effect.fn("stageDistributionPackage")(function*
     path.join(stagedPackageDir, "package.json"),
     `${JSON.stringify(pkg, null, 2)}\n`,
   );
-  const stagedRootEntries = (yield* fs.readDirectory(stagedPackageDir)).sort();
+  const stagedRootEntries = (yield* fs.readDirectory(stagedPackageDir)).toSorted();
   if (
     stagedRootEntries.length !== 2 ||
     stagedRootEntries[0] !== "dist" ||
@@ -248,10 +223,6 @@ const stageDistributionPackage = Effect.fn("stageDistributionPackage")(function*
 
   return { stagedPackageDir, version };
 });
-
-// ---------------------------------------------------------------------------
-// publish subcommand
-// ---------------------------------------------------------------------------
 
 const publishCmd = Command.make(
   "publish",
@@ -277,16 +248,12 @@ const publishCmd = Command.make(
           cwd: stagedPackageDir,
           stdout: config.verbose ? "inherit" : "ignore",
           stderr: "inherit",
-          // Windows needs shell mode to resolve .cmd shims.
+
           shell: process.platform === "win32",
         }),
       );
     }),
 ).pipe(Command.withDescription("Publish the server package to npm."));
-
-// ---------------------------------------------------------------------------
-// pack subcommand
-// ---------------------------------------------------------------------------
 
 const packCmd = Command.make(
   "pack",
@@ -312,7 +279,7 @@ const packCmd = Command.make(
           cwd: stagedPackageDir,
           stdout: "inherit",
           stderr: "inherit",
-          // Windows needs shell mode to resolve .cmd shims.
+
           shell: process.platform === "win32",
         }),
       );
@@ -320,10 +287,6 @@ const packCmd = Command.make(
       yield* Effect.log(`[cli] Wrote server tarball: ${tarballPath}`);
     }),
 ).pipe(Command.withDescription("Produce a glade-server-<version>.tar.gz from the staged package."));
-
-// ---------------------------------------------------------------------------
-// root command
-// ---------------------------------------------------------------------------
 
 const cli = Command.make("cli").pipe(
   Command.withDescription("Glade server build & publish CLI."),

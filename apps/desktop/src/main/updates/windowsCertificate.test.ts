@@ -1,0 +1,29 @@
+import { describe, expect, it } from "vitest";
+
+import { matchesDistinguishedName, parseDistinguishedName } from "./windowsCertificate";
+
+describe("windowsCertificate", () => {
+  it("parses quoted and escaped distinguished-name values", () => {
+    const parsed = parseDistinguishedName('CN=Glade, O="Acme, Inc.", OU=Tools\\2C Desktop');
+
+    expect(parsed.get("CN")).toBe("Glade");
+    expect(parsed.get("O")).toBe("Acme, Inc.");
+    expect(parsed.get("OU")).toBe("Tools, Desktop");
+  });
+
+  it("matches expected fields independent of order and extra certificate fields", () => {
+    expect(
+      matchesDistinguishedName(
+        "CN=Glade, O=Acme Tools",
+        "C=US, O=Acme Tools, CN=Glade, SERIALNUMBER=1234",
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects incomplete pins and mismatched signer fields", () => {
+    expect(matchesDistinguishedName("CN=Glade", "CN=Glade, O=Acme Tools")).toBe(false);
+    expect(matchesDistinguishedName("CN=Glade, O=Acme Tools", "CN=Glade, O=Other Tools")).toBe(
+      false,
+    );
+  });
+});

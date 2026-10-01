@@ -1,13 +1,10 @@
-// FILE: ProviderUsageMenuControl.tsx
-// Purpose: Shared provider-usage chip/menu used in the chat header and Environment panel.
-
+import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import {
-  PROVIDER_DISPLAY_NAMES,
-  type ProviderKind,
   type ServerCodexResetCredits,
   type ServerGetProviderUsageSnapshotResult,
-} from "@glade/contracts";
-import { providerUsageNeedsAuthDetail } from "@glade/shared/providerUsage";
+} from "@glade/contracts/server/server";
+import { providerUsageNeedsAuthDetail } from "@glade/shared/provider/providerUsage";
 import { type ReactNode } from "react";
 
 import { useAppSettings } from "~/appSettings";
@@ -64,8 +61,6 @@ function buildProviderUsageMenuModel(input: {
   };
 }
 
-// Module-level: the selector memoizes on store slices, so recreating it per render would
-// defeat the memo and rebuild every thread on each streaming flush.
 const selectAccountRateLimitThreads = createAccountRateLimitThreadsSelector();
 
 function providerUsageEmptyMessage(

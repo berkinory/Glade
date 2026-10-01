@@ -115,12 +115,12 @@
     },
     {
       "status": "M",
-      "file": "apps/server/src/codexAppServerManager.test.ts",
+      "file": "apps/server/src/provider/codex/codexAppServerManager.test.ts",
       "source": "d9c1bdab0a5f0cdd51ade75adc62a0c44c473a5a"
     },
     {
       "status": "M",
-      "file": "apps/server/src/codexAppServerManager.ts",
+      "file": "apps/server/src/provider/codex/codexAppServerManager.ts",
       "source": "d9c1bdab0a5f0cdd51ade75adc62a0c44c473a5a"
     },
     {
@@ -130,7 +130,7 @@
     },
     {
       "status": "M",
-      "file": "apps/server/src/codexAppServerTransport.ts",
+      "file": "apps/server/src/provider/codex/codexAppServerTransport.ts",
       "source": "d9c1bdab0a5f0cdd51ade75adc62a0c44c473a5a"
     },
     {
@@ -375,7 +375,7 @@
     },
     {
       "status": "M",
-      "file": "apps/server/src/effectServer.ts",
+      "file": "apps/server/src/server/http/effectServer.ts",
       "source": "d9c1bdab0a5f0cdd51ade75adc62a0c44c473a5a"
     },
     {
@@ -391,7 +391,33 @@
     {
       "status": "M",
       "file": "apps/server/src/orchestration/Layers/ProviderCommandReactor.ts",
-      "source": "d9c1bdab0a5f0cdd51ade75adc62a0c44c473a5a"
+      "source": "d9c1bdab0a5f0cdd51ade75adc62a0c44c473a5a",
+      "currentFiles": [
+        "apps/server/src/orchestration/Layers/ProviderCommandReactor.ts",
+        "apps/server/src/orchestration/providerCommands/providerCallPolicy.ts",
+        "apps/server/src/orchestration/providerCommands/deliveryClaims.ts",
+        "apps/server/src/orchestration/providerCommands/contextLifecycle.ts",
+        "apps/server/src/orchestration/providerCommands/inputProjection.ts",
+        "apps/server/src/orchestration/providerCommands/interactionPolicy.ts",
+        "apps/server/src/orchestration/Services/ProviderCommandReactorConfig.ts",
+        "apps/server/src/orchestration/providerCommands/projectionAccess.ts",
+        "apps/server/src/orchestration/providerCommands/threadProjection.ts",
+        "apps/server/src/orchestration/providerCommands/humanResponses.ts",
+        "apps/server/src/orchestration/providerCommands/runtimeState.ts",
+        "apps/server/src/orchestration/providerCommands/contextBootstrap.ts",
+        "apps/server/src/orchestration/providerCommands/sessionConfiguration.ts",
+        "apps/server/src/orchestration/providerCommands/queuedTurns.ts",
+        "apps/server/src/orchestration/providerCommands/conversationEdit.ts",
+        "apps/server/src/orchestration/providerCommands/taskControl.ts",
+        "apps/server/src/orchestration/providerCommands/turnDispatch.ts",
+        "apps/server/src/orchestration/providerCommands/conversationNaming.ts",
+        "apps/server/src/orchestration/providerCommands/turnStart.ts",
+        "apps/server/src/orchestration/providerCommands/deliveryAccess.ts",
+        "apps/server/src/orchestration/providerCommands/compaction.ts",
+        "apps/server/src/orchestration/providerCommands/goalContinuation.ts",
+        "apps/server/src/orchestration/providerCommands/domainEvents.ts",
+        "apps/server/src/orchestration/providerCommands/intentSource.ts"
+      ]
     },
     {
       "status": "M",
@@ -421,7 +447,13 @@
     {
       "status": "M",
       "file": "apps/server/src/orchestration/providerRuntimeActivityProjection.ts",
-      "source": "d9c1bdab0a5f0cdd51ade75adc62a0c44c473a5a"
+      "source": "d9c1bdab0a5f0cdd51ade75adc62a0c44c473a5a",
+      "currentFiles": [
+        "apps/server/src/orchestration/runtimeActivities/activityPayloads.ts",
+        "apps/server/src/orchestration/runtimeActivities/contextWindowPayloads.ts",
+        "apps/server/src/orchestration/runtimeActivities/toolActivityPayloads.ts",
+        "apps/server/src/orchestration/runtimeActivities/runtimeActivityProjection.ts"
+      ]
     },
     {
       "status": "A",
@@ -455,7 +487,7 @@
     },
     {
       "status": "A",
-      "file": "apps/server/src/pngHeader.ts",
+      "file": "apps/server/src/attachments/images/pngHeader.ts",
       "source": "d9c1bdab0a5f0cdd51ade75adc62a0c44c473a5a"
     },
     {
@@ -471,12 +503,59 @@
     {
       "status": "M",
       "file": "apps/server/src/provider/Layers/ClaudeAdapter.test.ts",
-      "source": "d9c1bdab0a5f0cdd51ade75adc62a0c44c473a5a"
+      "source": "d9c1bdab0a5f0cdd51ade75adc62a0c44c473a5a",
+      "currentFiles": [
+        "apps/server/src/provider/claude/adapter/adapterTestFixtures.ts",
+        "apps/server/src/provider/claude/adapter/configuration.test.ts",
+        "apps/server/src/provider/claude/adapter/streaming.test.ts",
+        "apps/server/src/provider/claude/adapter/subagentLifecycle.test.ts",
+        "apps/server/src/provider/claude/adapter/processLifecycle.test.ts",
+        "apps/server/src/provider/claude/adapter/approvals.test.ts",
+        "apps/server/src/provider/claude/adapter/sessionHistory.test.ts",
+        "apps/server/src/provider/claude/adapter/tokenUsage.test.ts",
+        "apps/server/src/provider/claude/adapter/planMode.test.ts",
+        "apps/server/src/provider/claude/adapter/forkThread.test.ts",
+        "apps/server/src/provider/claude/adapter/cachePreflight.test.ts"
+      ]
     },
     {
       "status": "M",
       "file": "apps/server/src/provider/Layers/ClaudeAdapter.ts",
-      "source": "d9c1bdab0a5f0cdd51ade75adc62a0c44c473a5a"
+      "source": "d9c1bdab0a5f0cdd51ade75adc62a0c44c473a5a",
+      "currentFiles": [
+        "apps/server/src/provider/Layers/ClaudeAdapter.ts",
+        "apps/server/src/provider/claude/adapter/adapterConfiguration.ts",
+        "apps/server/src/provider/claude/adapter/assistantText.ts",
+        "apps/server/src/provider/claude/adapter/commandPresentation.ts",
+        "apps/server/src/provider/claude/adapter/contentMessages.ts",
+        "apps/server/src/provider/claude/adapter/contextUsage.ts",
+        "apps/server/src/provider/claude/adapter/discovery.ts",
+        "apps/server/src/provider/claude/adapter/interactionSettlement.ts",
+        "apps/server/src/provider/claude/adapter/messageContent.ts",
+        "apps/server/src/provider/claude/adapter/modelCapabilities.ts",
+        "apps/server/src/provider/claude/adapter/processOwnership.ts",
+        "apps/server/src/provider/claude/adapter/promptPolicy.ts",
+        "apps/server/src/provider/claude/adapter/runtimeEvents.ts",
+        "apps/server/src/provider/claude/adapter/sdkHooks.ts",
+        "apps/server/src/provider/claude/adapter/sdkMetadata.ts",
+        "apps/server/src/provider/claude/adapter/sdkProcessRuntime.ts",
+        "apps/server/src/provider/claude/adapter/sdkStream.ts",
+        "apps/server/src/provider/claude/adapter/sessionAccess.ts",
+        "apps/server/src/provider/claude/adapter/sessionBranching.ts",
+        "apps/server/src/provider/claude/adapter/sessionInteractions.ts",
+        "apps/server/src/provider/claude/adapter/sessionResume.ts",
+        "apps/server/src/provider/claude/adapter/sessionStartup.ts",
+        "apps/server/src/provider/claude/adapter/sessionTeardown.ts",
+        "apps/server/src/provider/claude/adapter/sessionTypes.ts",
+        "apps/server/src/provider/claude/adapter/streamErrors.ts",
+        "apps/server/src/provider/claude/adapter/systemMessages.ts",
+        "apps/server/src/provider/claude/adapter/taskPresentation.ts",
+        "apps/server/src/provider/claude/adapter/toolPresentation.ts",
+        "apps/server/src/provider/claude/adapter/toolTracking.ts",
+        "apps/server/src/provider/claude/adapter/turnCompletion.ts",
+        "apps/server/src/provider/claude/adapter/turnDispatch.ts",
+        "apps/server/src/provider/claude/adapter/workflowRuntime.ts"
+      ]
     },
     {
       "status": "M",
@@ -550,7 +629,7 @@
     },
     {
       "status": "M",
-      "file": "apps/server/src/wsRpc.ts",
+      "file": "apps/server/src/server/ws/wsRpc.ts",
       "source": "d9c1bdab0a5f0cdd51ade75adc62a0c44c473a5a"
     },
     {

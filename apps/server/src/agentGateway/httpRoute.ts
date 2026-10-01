@@ -1,14 +1,3 @@
-/**
- * HTTP route for the Glade agent gateway MCP endpoint.
- *
- * Registers `POST /mcp` (streamable-HTTP MCP, stateless JSON responses) plus
- * spec-mandated method handling for GET/DELETE. Authentication is a
- * per-session bearer token minted by AgentGatewayCredentials and injected into
- * provider sessions; the global server auth stack is deliberately not used
- * here because provider child processes have no session cookies.
- *
- * @module agentGateway/httpRoute
- */
 import { Effect, Layer, Stream } from "effect";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
 
@@ -16,6 +5,10 @@ import { AGENT_GATEWAY_MCP_PATH } from "./Layers/AgentGatewayCredentials";
 import { AgentGateway } from "./Services/AgentGateway";
 import { AgentGatewayCredentials } from "./Services/AgentGatewayCredentials";
 import { extractBearerToken } from "./bearerToken.ts";
+
+class HttpRouteError extends Error {
+  readonly _tag = "HttpRouteError";
+}
 
 export const AGENT_GATEWAY_MCP_MAX_BODY_BYTES = 1024 * 1024;
 
@@ -53,7 +46,7 @@ function readMcpJsonBody(
           kind: "ok" as const,
           body: JSON.parse(Buffer.concat(chunks, totalBytes).toString("utf8")) as unknown,
         }),
-        catch: () => new Error("Invalid JSON body."),
+        catch: () => new HttpRouteError("Invalid JSON body."),
       }),
     ),
     Effect.catch((error) =>
@@ -119,9 +112,6 @@ const postRouteLayer = HttpRouter.add(
   }),
 );
 
-// The streamable-HTTP transport allows servers to reject GET (no
-// server-initiated stream) with 405; DELETE is session teardown, and this
-// server is stateless, so both are explicit non-endpoints.
 const getRouteLayer = HttpRouter.add(
   "GET",
   AGENT_GATEWAY_MCP_PATH,

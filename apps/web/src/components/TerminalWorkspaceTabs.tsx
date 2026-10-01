@@ -1,12 +1,3 @@
-// FILE: TerminalWorkspaceTabs.tsx
-// Purpose: Renders the top-level workspace switcher between terminal and chat surfaces.
-// Layer: Chat workspace chrome
-// Depends on: terminal workspace store layout state and shared className helpers.
-//
-// Note: the two raw <button>s are intentional — they are tabs, not shadcn
-// Buttons. Tab-shape rendering (rounded-top corners, no bottom border on the
-// active tab, z-index stacking) doesn't fit the Button taxonomy.
-
 import { cn } from "~/lib/utils";
 
 import TerminalActivityIndicator from "./terminal/TerminalActivityIndicator";
@@ -29,8 +20,6 @@ export default function TerminalWorkspaceTabs({
   workspaceLayout,
   onSelectTab,
 }: TerminalWorkspaceTabsProps) {
-  // Terminal-only workspaces already expose the per-terminal tab strip below,
-  // so the chat/terminal switcher would only duplicate chrome and reintroduce chat.
   if (terminalCount <= 1 || workspaceLayout === "terminal-only") {
     return null;
   }

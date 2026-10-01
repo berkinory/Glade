@@ -1,14 +1,15 @@
+import { isRecord } from "@glade/shared/transport/payloadValues";
 import { describe, expect, it } from "vitest";
 
-import { isPlainObject, sanitizeStringKeyedRecord } from "./persistedRecord";
+import { sanitizeStringKeyedRecord } from "./persistedRecord";
 
 describe("isPlainObject", () => {
   it("rejects null, arrays, and primitives", () => {
-    expect(isPlainObject(null)).toBe(false);
-    expect(isPlainObject([])).toBe(false);
-    expect(isPlainObject("x")).toBe(false);
-    expect(isPlainObject(7)).toBe(false);
-    expect(isPlainObject(undefined)).toBe(false);
+    expect(isRecord(null)).toBe(false);
+    expect(isRecord([])).toBe(false);
+    expect(isRecord("x")).toBe(false);
+    expect(isRecord(7)).toBe(false);
+    expect(isRecord(undefined)).toBe(false);
   });
 });
 
@@ -43,7 +44,7 @@ describe("sanitizeStringKeyedRecord", () => {
     expect(result).toEqual({ safe: 1 });
     expect(Object.hasOwn(result, "__proto__")).toBe(false);
     expect(Object.hasOwn(result, "constructor")).toBe(false);
-    // The global prototype must remain untouched.
+
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();
   });
 });

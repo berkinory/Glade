@@ -1,31 +1,24 @@
-// FILE: appSettings.ts
-// Purpose: Normalizes persisted UI settings and maps them to server/provider options.
-// Layer: Web settings state
-// Exports: app setting schema, normalization helpers, provider option builders
-
 import { useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Option, Schema, SchemaTransformation } from "effect";
 import {
   type AssistantDeliveryMode,
-  DesktopAppIcon,
-  DEFAULT_GIT_TEXT_GENERATION_MODEL,
+  type ProviderStartOptions,
+} from "@glade/contracts/provider/sessionPolicy";
+import { DesktopAppIcon } from "@glade/contracts/ipc/ipc";
+import {
+  PROVIDER_DEFAULT_MODEL,
+  GIT_TEXT_GENERATION_PROVIDERS,
+  type GitTextGenerationProvider,
+} from "@glade/contracts/provider/model";
+import {
   DEFAULT_SERVER_SETTINGS,
   DEFAULT_SERVER_SETTINGS_VIEW,
-  GIT_TEXT_GENERATION_PROVIDERS,
-  TrimmedNonEmptyString,
-  ProviderKind,
-  type GitTextGenerationProvider,
-  type ProviderStartOptions,
   type ServerSettingsView,
   type ServerSettingsPatch,
-} from "@glade/contracts";
-import {
-  getDefaultModel,
-  getModelOptions,
-  normalizeModelSlug,
-  resolveSelectableModel,
-} from "@glade/shared/model";
+} from "@glade/contracts/settings/settings";
+import { TrimmedNonEmptyString, ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { normalizeModelSlug, resolveSelectableModel } from "@glade/shared/provider/model";
 
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { EnvMode } from "./components/BranchToolbar.logic";
@@ -63,10 +56,6 @@ export const MIN_TERMINAL_FONT_SIZE_PX = 10;
 export const MAX_TERMINAL_FONT_SIZE_PX = 22;
 const DEFAULT_TERMINAL_FONT_SIZE_PX = 12;
 
-// Terminal font is a free-form font-family value: the user can type any font
-// installed on their machine. An empty value keeps the bundled default stack
-// (defined in index.css). The list below is only autocomplete inspiration shown
-// in the settings input — it does NOT restrict what can be entered.
 const DEFAULT_TERMINAL_FONT_FAMILY = "";
 
 export const TERMINAL_FONT_FAMILY_SUGGESTIONS: ReadonlyArray<string> = [
@@ -100,7 +89,6 @@ export const AgentCursorColorMode = Schema.Literals(["stock", "custom"]);
 export type AgentCursorColorMode = typeof AgentCursorColorMode.Type;
 export const DEFAULT_AGENT_CURSOR_COLOR_MODE: AgentCursorColorMode = "stock";
 
-/** Classic: one sidebar column. Rail: fixed icon tabs plus a panel (see useSidebarLayout). */
 export const SidebarLayout = Schema.Literals(["classic", "rail"]);
 export type SidebarLayout = typeof SidebarLayout.Type;
 const DEFAULT_SIDEBAR_LAYOUT: SidebarLayout = "classic";
@@ -143,7 +131,6 @@ const PersistedProviderKind = Schema.String.pipe(
   ),
 );
 
-// Drop providers retired from persisted picker lists while keeping the active order.
 function resolvePersistedProviderListEntry(provider: string): ProviderKind | undefined {
   return Schema.is(ProviderKind)(provider) ? provider : undefined;
 }
@@ -189,7 +176,7 @@ const PersistedHiddenModels = Schema.Array(
 const AppSettingsSchema = Schema.Struct({
   claudeBinaryPath: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
   claudeEnableArtifacts: Schema.Boolean.pipe(withDefaults(() => false)),
-  // Server-backed first-run marker; see ServerSettings.onboardingCompletedAt.
+
   onboardingCompletedAt: Schema.NullOr(Schema.String).pipe(withDefaults((): string | null => null)),
   uiDensity: UiDensity.pipe(withDefaults(() => DEFAULT_UI_DENSITY)),
   chatWidth: ChatWidthMode.pipe(withDefaults(() => DEFAULT_CHAT_WIDTH)),
@@ -203,36 +190,26 @@ const AppSettingsSchema = Schema.Struct({
   codexHomePath: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
   defaultThreadEnvMode: EnvMode.pipe(withDefaults(() => "local" as const satisfies EnvMode)),
   confirmThreadDelete: Schema.Boolean.pipe(withDefaults(() => true)),
-  // Opt-in: archiving a task also releases its worktree when nothing else uses it.
+
   archiveDeletesOrphanedWorktree: Schema.Boolean.pipe(withDefaults(() => false)),
-  // Desktop quit dialog: remember interrupted chats and continue them on the next launch.
+
   resumeChatsAfterQuit: Schema.Boolean.pipe(withDefaults(() => true)),
   confirmThreadArchive: Schema.Boolean.pipe(withDefaults(() => false)),
   confirmTerminalTabClose: Schema.Boolean.pipe(withDefaults(() => true)),
   diffWordWrap: Schema.Boolean.pipe(withDefaults(() => false)),
   editorCaretStyle: EditorCaretStyle.pipe(withDefaults(() => DEFAULT_EDITOR_CARET_STYLE)),
   showPullRequestDiffColors: Schema.Boolean.pipe(withDefaults(() => true)),
-  // Local-only UI preferences for hiding sidebar surfaces a user doesn't want.
-  // `showChatsSection` controls the standalone "Chats" list in the sidebar footer
-  // (rootless chats not tied to a project).
+
   showChatsSection: Schema.Boolean.pipe(withDefaults(() => true)),
-  // Local-only shell layout, available in Prod and Dev. useSidebarLayout keeps
-  // mobile on classic even when the stored preference is "rail".
+
   sidebarLayout: SidebarLayout.pipe(withDefaults(() => DEFAULT_SIDEBAR_LAYOUT)),
-  // Rail layout shortcuts the user added from the rail's "…" menu, in rail order:
-  // "space:<id>" (the Void key for unfiled) or "project:<id>" (see appRail.logic).
+
   railShortcuts: Schema.Array(Schema.String.check(Schema.isMaxLength(512))).pipe(
     withDefaults(() => []),
   ),
-  // Whether the per-run threads standalone automations create appear in the sidebar
-  // (and the surfaces derived from it: Kanban, Activity, project picker). Runs stay
-  // listed on the automation's page and findable via search either way.
+
   showAutomationRunThreads: Schema.Boolean.pipe(withDefaults(() => true)),
-  // Local-only UI preferences: which optional sections of the chat Environment panel are
-  // shown. The git block (Changes/Worktree/branch/Commit and Push) is always visible; these
-  // toggle the sections beneath it via the panel header's gear menu.
-  // When false (default), normal chats start with the Environment panel closed. User toggles
-  // also write back here so the last explicit open/close survives reloads.
+
   environmentPanelDefaultOpen: Schema.Boolean.pipe(withDefaults(() => false)),
   showEnvironmentUsage: Schema.Boolean.pipe(withDefaults(() => true)),
   showEnvironmentRepository: Schema.Boolean.pipe(withDefaults(() => true)),
@@ -243,40 +220,31 @@ const AppSettingsSchema = Schema.Struct({
   showEnvironmentNotepad: Schema.Boolean.pipe(withDefaults(() => false)),
   followUpBehavior: FollowUpBehavior.pipe(withDefaults(() => DEFAULT_FOLLOW_UP_BEHAVIOR)),
   enableAssistantStreaming: Schema.Boolean.pipe(withDefaults(() => true)),
-  // Started threads: show reasoning effort as a stepped slider card in the composer's
-  // model menu instead of radio rows. New chats keep the split model/effort pickers.
+
   composerEffortSlider: Schema.Boolean.pipe(withDefaults(() => true)),
-  autoOpenDevicePane: Schema.Boolean.pipe(withDefaults(() => true)),
   enableProviderUpdateChecks: Schema.Boolean.pipe(withDefaults(() => true)),
   enableNativeFontSmoothing: Schema.Boolean.pipe(withDefaults(getDefaultNativeFontSmoothing)),
   desktopAppIcon: DesktopAppIcon.pipe(withDefaults(() => "default" as const)),
-  // Local desktop preference: frameless custom title bar on Windows/Linux.
-  // Electron `frame` is fixed at window creation, so the desktop main process also
-  // persists this value and a relaunch is required for the live window to match.
+
   useCustomTitleBar: Schema.Boolean.pipe(withDefaults(() => true)),
   enableTaskCompletionToasts: Schema.Boolean.pipe(withDefaults(() => true)),
   enableSystemTaskCompletionNotifications: Schema.Boolean.pipe(withDefaults(() => true)),
-  // Show the in-chat Computer preview when an agent starts driving the desktop.
+
   autoOpenComputerPane: Schema.Boolean.pipe(withDefaults(() => true)),
-  // In-chat computer preview footprint. Compact is the default: a small
-  // glanceable card that reserves a narrow gutter. Large restores the
-  // previous wide card for users who want the detail inline.
+
   computerPreviewSize: ComputerPreviewSize.pipe(withDefaults(() => DEFAULT_COMPUTER_PREVIEW_SIZE)),
-  // Computer control is off by default. When on, the agent may use the desktop
-  // in any chat. Approval gates and Stop still apply.
+
   computerControlEnabled: Schema.Boolean.pipe(withDefaults(() => false)),
-  // The agent cursor's colors. Stock is the default monochrome treatment and
-  // stores no overrides; "custom" opts into a fill and rim, persisted as
-  // lowercase `#rrggbb` strings and pushed to the desktop cursor host.
+
   agentCursorColorMode: AgentCursorColorMode.pipe(
     withDefaults(() => DEFAULT_AGENT_CURSOR_COLOR_MODE),
   ),
   agentCursorFillColor: Schema.String.check(Schema.isMaxLength(7)).pipe(withDefaults(() => "")),
   agentCursorRimColor: Schema.String.check(Schema.isMaxLength(7)).pipe(withDefaults(() => "")),
-  // Deprecated rename bridge. Normalization migrates this value and then omits the key.
+
   allowComputerControlInNewChats: Schema.optionalKey(Schema.Boolean),
-  // One-shot composer hint that suggests Medium effort for faster desktop actions.
-  // Set when the user applies or dismisses it, so the hint never asks twice.
+  // One-shot composer hint that suggests Medium effort for faster desktop actions. Set when the user
+  // applies or dismisses it, so the hint never asks twice.
   dismissedComputerControlEffortHint: Schema.Boolean.pipe(withDefaults(() => false)),
   sidebarProjectSortOrder: SidebarProjectSortOrder.pipe(
     withDefaults(() => DEFAULT_SIDEBAR_PROJECT_SORT_ORDER),
@@ -289,24 +257,22 @@ const AppSettingsSchema = Schema.Struct({
   textGenerationModel: Schema.optional(TrimmedNonEmptyString),
   uiFontFamily: Schema.String.check(Schema.isMaxLength(256)).pipe(withDefaults(() => "")),
   defaultProvider: PersistedProviderKind.pipe(withDefaults(() => "codex" as const)),
-  // Local-only UI preference: providers explicitly hidden from the composer picker.
-  // The active/locked provider for a thread is always shown regardless, so users
-  // never get stuck on a thread whose provider they later chose to hide.
+  // Local-only UI preference: providers explicitly hidden from the composer picker. The active/locked
+  // provider for a thread is always shown regardless, so users never get stuck on a thread whose
+  // provider they later chose to hide.
   hiddenProviders: PersistedProviderKindList.pipe(withDefaults(() => [])),
-  // Server-backed provider shutdown policy. Unlike `hiddenProviders`, entries here
-  // cannot run discovery, health checks, updates, or new turns until re-enabled.
+
   disabledProviders: PersistedProviderKindList.pipe(withDefaults(() => [])),
-  // Local-only UI preference: top-level provider order in Settings and the composer picker.
+
   providerOrder: PersistedProviderKindList.pipe(withDefaults(() => [...DEFAULT_PROVIDER_ORDER])),
-  // Deprecated local-only preference kept for backward-compatible decoding.
-  // Model-level hiding caused too many edge cases, so the app now normalizes it away.
+
   hiddenModels: PersistedHiddenModels.pipe(withDefaults(() => [])),
 });
 export type AppSettings = typeof AppSettingsSchema.Type;
 
-/** The settings values and mutation used by a mounted settings panel.
- * The route owns the subscription so extracted workflow panels do not create
- * duplicate local-storage/server-settings subscriptions. */
+// The settings values and mutation used by a mounted settings panel. The route owns the
+// subscription so extracted workflow panels do not create duplicate local-storage/server-settings
+// subscriptions.
 export type AppSettingsBinding = {
   readonly settings: AppSettings;
   readonly defaults: AppSettings;
@@ -319,8 +285,8 @@ export function isGitTextGenerationSettingsDirty(
 ): boolean {
   return (
     (settings.textGenerationProvider ?? "codex") !== (defaults.textGenerationProvider ?? "codex") ||
-    (settings.textGenerationModel ?? DEFAULT_GIT_TEXT_GENERATION_MODEL) !==
-      (defaults.textGenerationModel ?? DEFAULT_GIT_TEXT_GENERATION_MODEL)
+    (settings.textGenerationModel ?? PROVIDER_DEFAULT_MODEL) !==
+      (defaults.textGenerationModel ?? PROVIDER_DEFAULT_MODEL)
   );
 }
 
@@ -355,19 +321,14 @@ export function normalizeTerminalFontSizePx(value: number | null | undefined): n
   );
 }
 
-/** Normalize a cursor color to lowercase `#rrggbb`, or "" for anything else. */
 export function normalizeCursorHexColor(value: string | null | undefined): string {
   const candidate = (value ?? "").trim().toLowerCase();
   return /^#[0-9a-f]{6}$/.test(candidate) ? candidate : "";
 }
 
-/**
- * The custom agent-cursor colors to push to the desktop cursor host, or null
- * for the stock monochrome cursor. Stock mode resolves to null no matter what
- * colors are stored, so switching back to stock never leaves a stale override
- * in the pushed payload. A channel with no valid color is omitted, not sent
- * empty, because the driver treats an omitted channel as stock.
- */
+// Stock mode resolves to null no matter what colors are stored, so switching back to stock never
+// leaves a stale override in the pushed payload. A channel with no valid color is omitted, not sent
+// empty, because the driver treats an omitted channel as stock.
 export function resolveAgentCursorColors(
   settings: Pick<
     AppSettings,
@@ -382,20 +343,9 @@ export function resolveAgentCursorColors(
 }
 
 export function normalizeTerminalFontFamily(value: string | null | undefined): string {
-  // Free-form font-family text. Only strip characters that can't legitimately
-  // appear in a CSS font-family value so the typed name can't break out of the
-  // custom property (`;`, `{}`, angle brackets, newlines) or smuggle in other
-  // declarations. Whitespace is intentionally preserved here so multi-word names
-  // ("Fira Code") remain typable in a controlled input; the CSS resolver trims.
   return (value ?? "").replace(/[;{}<>\n\r]/g, "").slice(0, 256);
 }
 
-// Build the CSS font-family stack written to `--terminal-font-family`, or null
-// when the bundled default (defined in index.css) should stay in effect.
-//
-// Accepts either a single family name (`Fira Code`) or a full comma-separated
-// stack (`"Fira Code", Menlo, monospace`). Single names are quoted when needed,
-// and a `monospace` fallback is appended so an uninstalled font degrades.
 export function resolveTerminalFontFamilyStack(value: string | null | undefined): string | null {
   const normalized = normalizeTerminalFontFamily(value).replace(/\s+/g, " ").trim();
   if (!normalized) {
@@ -469,7 +419,6 @@ export function didProviderEnablementChange(
   );
 }
 
-/** Server settings that change which native commands a provider reports. */
 export function didProviderCommandDiscoverySettingsChange(
   previous: Pick<ServerSettingsView, "providers"> | undefined,
   next: Pick<ServerSettingsView, "providers">,
@@ -563,7 +512,7 @@ function appSettingsPatchToServerSettingsPatch(
     serverPatch.onboardingCompletedAt = patch.onboardingCompletedAt ?? null;
   }
   if (hasOwn(patch, "textGenerationModel") || hasOwn(patch, "textGenerationProvider")) {
-    const model = patch.textGenerationModel ?? DEFAULT_GIT_TEXT_GENERATION_MODEL;
+    const model = patch.textGenerationModel ?? PROVIDER_DEFAULT_MODEL;
     serverPatch.textGenerationModelSelection = {
       provider: resolveTextGenerationProvider({
         ...(patch.textGenerationProvider !== undefined
@@ -642,8 +591,7 @@ function buildInitialServerSettingsMigrationPatch(settings: AppSettings): Server
 function normalizeStoredAppSettings(settings: AppSettings): AppSettings {
   return {
     ...normalizeAppSettings(settings),
-    // Provider enablement belongs to the connected server. Scrub legacy values
-    // so a browser profile cannot project one server's shutdown state onto another.
+
     disabledProviders: [],
   };
 }
@@ -663,12 +611,14 @@ export function getAppModelOptions(
   provider: ProviderKind,
   selectedModel?: string | null,
 ): AppModelOption[] {
-  const options: AppModelOption[] = getModelOptions(provider).map(({ slug, name }) => ({
-    provider,
-    slug,
-    name,
-    isSelectedHint: false,
-  }));
+  const options: AppModelOption[] = [
+    {
+      provider,
+      slug: PROVIDER_DEFAULT_MODEL,
+      name: "Provider default",
+      isSelectedHint: false,
+    },
+  ];
   const seen = new Set(options.map((option) => option.slug));
   const trimmedSelectedModel = selectedModel?.trim().toLowerCase();
 
@@ -752,9 +702,7 @@ export function resolveAppModelSelection(
   selectedModel: string | null | undefined,
 ): string {
   const options = getAppModelOptions(provider, selectedModel);
-  return (
-    resolveSelectableModel(provider, selectedModel, options) ?? getDefaultModel(provider) ?? ""
-  );
+  return resolveSelectableModel(provider, selectedModel, options) ?? PROVIDER_DEFAULT_MODEL;
 }
 
 export function getProviderStartOptions(
@@ -786,20 +734,12 @@ export function getProviderStartOptions(
   return Object.keys(providerOptions).length > 0 ? providerOptions : undefined;
 }
 
-/**
- * Single source of truth for mapping the streaming preference onto the orchestration
- * delivery mode used when dispatching turns (composer, chat, and kanban share this).
- */
 export function resolveAssistantDeliveryMode(
   settings: Pick<AppSettings, "enableAssistantStreaming">,
 ): AssistantDeliveryMode {
   return settings.enableAssistantStreaming ? "streaming" : "buffered";
 }
 
-/**
- * Resolves the dispatch mode for a composer submit. The preference applies only
- * while a turn is live; Ctrl/Cmd+Enter temporarily selects the opposite mode.
- */
 export function resolveFollowUpDispatchMode(input: {
   behavior: FollowUpBehavior;
   hasLiveTurn: boolean;
@@ -952,8 +892,6 @@ export function useAppSettings() {
   };
 
   const resetSettings = async (): Promise<void> => {
-    // "Restore defaults" resets preferences, not lifecycle markers: clearing the
-    // onboarding completion timestamp would replay the first-run tour on the next launch.
     const { onboardingCompletedAt: _keepOnboardingCompletedAt, ...resettableDefaults } = defaults;
     setSettings((prev) => ({
       ...DEFAULT_APP_SETTINGS,

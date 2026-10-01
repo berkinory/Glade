@@ -1,8 +1,4 @@
-// FILE: terminalSelectionActions.ts
-// Purpose: Keep pure selection-action positioning helpers separate from the browser-heavy drawer.
-// Layer: Chat terminal workspace helpers
-
-import type { ContextMenuItem } from "@glade/contracts";
+import type { ContextMenuItem } from "@glade/contracts/ipc/ipc";
 
 const MULTI_CLICK_SELECTION_ACTION_DELAY_MS = 260;
 

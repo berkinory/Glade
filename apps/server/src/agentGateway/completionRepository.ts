@@ -11,7 +11,6 @@ export interface GatewayCompletionRow {
   readonly createdAt: string;
 }
 
-/** Durable outbox and provider-send assignments, sharing the command ledger's transaction. */
 export const makeCompletionRepository = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
   const isOutputSettled = (childThreadId: string) =>
@@ -36,12 +35,7 @@ export const makeCompletionRepository = Effect.gen(function* () {
                 AND later.sequence < terminal.sequence)
         )))
     `.pipe(Effect.map((rows) => (rows[0]?.count ?? 0) > 0));
-  const hasGoalHistory = (childThreadId: string, completedAt: string) =>
-    sql<{ count: number }>`
-    SELECT count(*) AS count FROM orchestration_events
-    WHERE stream_id = ${childThreadId} AND event_type = 'thread.meta-updated' AND occurred_at <= ${completedAt}
-      AND length(trim(COALESCE(json_extract(payload_json, '$.goal'), ''))) > 0
-  `.pipe(Effect.map((rows) => (rows[0]?.count ?? 0) > 0));
+
   const initialFailure = (childThreadId: string, messageId: string) =>
     sql<{ status: string; error: string | null; completedAt: string }>`
     SELECT json_extract(terminal.payload_json, '$.session.status') AS status,
@@ -102,9 +96,6 @@ export const makeCompletionRepository = Effect.gen(function* () {
       }),
     );
 
-  // Settle consumption and the existing provider-command receipt atomically.
-  // Rejection releases the results; safe retries retain the exact assignment.
-  // Uncertain sends remain held behind the existing reconciliation gate.
   const settleContext = <E, R>(
     eventSequence: number,
     accepted: boolean,
@@ -126,7 +117,7 @@ export const makeCompletionRepository = Effect.gen(function* () {
     hasCompletedRun,
     isOutputSettled,
     initialFailure,
-    hasGoalHistory,
+
     pending,
     saveResult,
     delivered,

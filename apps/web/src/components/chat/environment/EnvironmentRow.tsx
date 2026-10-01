@@ -1,10 +1,3 @@
-// FILE: EnvironmentRow.tsx
-// Purpose: Shared full-width menu-style row for the Environment panel — one leading
-//          glyph, a truncating label, and an optional right-aligned trailing slot
-//          (diff stats, a picker caret, or a value). Every panel entry and every
-//          relocated picker trigger reuses this skin so the rows line up on one grid.
-// Layer: Environment panel UI primitive
-
 import { useState, type ComponentPropsWithoutRef, type ReactNode } from "react";
 
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "~/components/ui/collapsible";
@@ -19,12 +12,6 @@ import {
   ENVIRONMENT_PANEL_TITLE_CLASS_NAME,
 } from "./environmentPanelStyles";
 
-/**
- * Interactive full-width row skin shared by every Environment panel entry and by the
- * relocated env/branch/git pickers when they render their trigger as a panel row.
- * Passed straight to Base UI trigger `className` (Combobox/Popover/Menu) so a picker
- * trigger and a plain button row are visually identical.
- */
 export const ENVIRONMENT_ROW_CLASS_NAME = cn(
   "flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1 text-left",
   "text-ui font-normal text-[var(--color-text-foreground)]",
@@ -34,35 +21,27 @@ export const ENVIRONMENT_ROW_CLASS_NAME = cn(
   "disabled:pointer-events-none disabled:opacity-50",
 );
 
-/** Leading glyph treatment shared by every row (matches label color, fixed 16px). */
 export const ENVIRONMENT_ROW_ICON_CLASS_NAME =
   "size-4 shrink-0 text-[var(--color-text-foreground)]";
 
-/** Right-aligned caret for rows that open a picker or menu. */
 export function EnvironmentRowChevron({ className }: { className?: string }) {
   return <ChevronDownIcon aria-hidden className={cn("size-3 shrink-0 opacity-60", className)} />;
 }
 
-/** Top-of-card title (e.g. "Environment"). */
 export function EnvironmentPanelTitle({ children }: { children: ReactNode }) {
   return <p className={ENVIRONMENT_PANEL_TITLE_CLASS_NAME}>{children}</p>;
 }
 
-/**
- * Hairline separator between Environment panel sections. Each optional section renders this as
- * its own leading divider only when it actually renders, so toggling sections on/off never
- * leaves a doubled or dangling rule.
- */
+// Each optional section renders this as its own leading divider only when it actually renders, so
+// toggling sections on/off never leaves a doubled or dangling rule.
 export function EnvironmentSectionDivider() {
   return <div className="my-1 border-t border-[color:var(--color-border-light)]" />;
 }
 
-/** Small muted label that introduces a group of rows (e.g. "Editor", "Usage"). */
 export function EnvironmentSectionLabel({ children }: { children: ReactNode }) {
   return <p className={ENVIRONMENT_PANEL_SECTION_LABEL_CLASS_NAME}>{children}</p>;
 }
 
-/** Section label plus one or more rows beneath it — shared by Editor, Usage, Repository, etc. */
 export function EnvironmentLabeledSection({
   label,
   children,
@@ -81,13 +60,6 @@ export function EnvironmentLabeledSection({
   );
 }
 
-/**
- * Collapsible section: a folder-style header (rotating chevron + section label) that shows or
- * hides its children, mirroring the sidebar's project/thread-list disclosure. Built on the shared
- * Base UI Collapsible so open/close animates its height with the app's disclosure timing curve
- * (`DISCLOSURE_COLLAPSIBLE_PANEL_CLASS`); the chevron rotation rides the same duration. Open state
- * is local UI preference, so it lives in component state and defaults to expanded.
- */
 export function EnvironmentCollapsibleSection({
   label,
   defaultOpen: defaultOpenProp,
@@ -124,11 +96,6 @@ export function EnvironmentCollapsibleSection({
   );
 }
 
-/**
- * Inner row layout: `[icon] [label …grows] [trailing]`. Rendered directly inside Base UI
- * triggers that own their element + className, and by {@link EnvironmentRow} for the
- * standalone button case. The 16px icon gutter matches the menu-item icon column.
- */
 export function EnvironmentRowBody({
   icon,
   label,
@@ -138,7 +105,7 @@ export function EnvironmentRowBody({
   icon: ReactNode;
   label: ReactNode;
   trailing?: ReactNode;
-  /** Skip the 16px icon gutter — for cramped dock/diff header pickers. */
+
   compact?: boolean;
 }) {
   const compact = compactProp ?? false;
@@ -163,11 +130,6 @@ type EnvironmentRowProps = Omit<ComponentPropsWithoutRef<"button">, "children"> 
   trailing?: ReactNode;
 };
 
-/**
- * Standalone Environment panel row rendered as a `<button>`. Pickers that need their own
- * trigger element compose {@link ENVIRONMENT_ROW_CLASS_NAME} + {@link EnvironmentRowBody}
- * instead of nesting a button inside their trigger.
- */
 export function EnvironmentRow({
   icon,
   label,

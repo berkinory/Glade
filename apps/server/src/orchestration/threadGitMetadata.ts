@@ -1,5 +1,5 @@
-import type { OrchestrationThreadPullRequest } from "@glade/contracts";
-import { resolveThreadBranchRegressionGuard } from "@glade/shared/git";
+import type { OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/threadEntities";
+import { resolveThreadBranchRegressionGuard } from "@glade/shared/git/git";
 
 export type ThreadPullRequestLookup =
   | {
@@ -37,13 +37,6 @@ function pullRequestsEqual(
   );
 }
 
-/**
- * Derives the durable thread metadata observed at a provider-turn boundary.
- *
- * A successful lookup may intentionally clear a prior PR when the current branch has none.
- * A transient lookup failure preserves a PR on an unchanged branch, but clears it when the
- * branch itself changed so the sidebar never labels the new branch with the previous branch's PR.
- */
 export function deriveThreadGitMetadataPatch(input: {
   readonly currentBranch: string | null;
   readonly currentPullRequest: OrchestrationThreadPullRequest | null;
@@ -101,6 +94,6 @@ export function deriveThreadGitMetadataPatch(input: {
   return {
     ...(branchChanged ? { branch: input.observedBranch } : {}),
     ...(pullRequestChanged ? { lastKnownPr: nextPullRequest } : {}),
-    ...(associatedWorktreePatch ?? {}),
+    ...associatedWorktreePatch,
   };
 }

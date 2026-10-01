@@ -1,10 +1,4 @@
-// FILE: FeatureTourStep.tsx
-// Purpose: "What Glade can do" tour built from TOUR_CARDS: a vertical list of topics on the
-//          left, the selected topic's text on the right, with a docs link per topic and live
-//          shortcut chips on the shortcuts topic.
-// Layer: Web UI component
-
-import type { ResolvedKeybindingsConfig } from "@glade/contracts";
+import type { ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 

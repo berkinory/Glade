@@ -1,10 +1,5 @@
-// FILE: EnvironmentPinnedSection.tsx
-// Purpose: "Pinned" section of the Environment panel — a checklist of pinned assistant
-//          messages with jump-to-message navigation, done toggling (strikethrough),
-//          inline rename (double-click), and unpin. Pins are per-thread, server-synced.
-// Layer: Environment panel section
-
-import type { MessageId, PinnedMessage } from "@glade/contracts";
+import type { MessageId } from "@glade/contracts/core/baseSchemas";
+import type { PinnedMessage } from "@glade/contracts/orchestration/threadEntities";
 import { displayLabelFor } from "~/pinnedMessages";
 
 import { EnvironmentEditableChecklistRow } from "./EnvironmentEditableChecklistRow";
@@ -12,7 +7,7 @@ import { EnvironmentCollapsibleSection } from "./EnvironmentRow";
 
 interface EnvironmentPinnedSectionProps {
   pins: readonly PinnedMessage[];
-  /** Live text of pinned messages still present in the transcript (absent → unavailable). */
+
   messageTextById: ReadonlyMap<MessageId, string>;
   onJump: (messageId: MessageId) => void;
   onToggleDone: (messageId: MessageId) => void;

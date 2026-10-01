@@ -1,35 +1,18 @@
-// Purpose: Share the thread-title rename flow between header and sidebar surfaces,
-// including draft-thread promotion when a title is edited before the first send.
-// The promotion path mirrors the first-send flow, but routes through the shared
-// idempotent helper so concurrent draft promotion callers do not surface duplicate
-// `thread.create` invariant failures as user-visible toasts.
-
-import {
-  type ModelSelection,
-  type OrchestrationThreadPullRequest,
-  type OrchestrationRegenerateThreadTitleResult,
-  type ProjectId,
-  type ProviderInteractionMode,
-  type RuntimeMode,
-  type ThreadId,
-} from "@glade/contracts";
-import { type DraftThreadEnvMode } from "../composerDraftStore";
+import { type ModelSelection, type RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
+import { type OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/threadEntities";
+import { type ProjectId, type ThreadId } from "@glade/contracts/core/baseSchemas";
+import type { DraftThreadEnvMode } from "../composerDraftDomain";
 import { readNativeApi } from "../nativeApi";
 import type { Thread } from "../types";
 import { promoteThreadCreate } from "./threadCreatePromotion";
 import { newCommandId } from "./utils";
 
 type ThreadRenameOutcome = "empty" | "unchanged" | "unavailable" | "renamed";
-export type ThreadTitleRegenerationOutcome =
-  | OrchestrationRegenerateThreadTitleResult
-  | { readonly status: "unavailable"; readonly title: null };
-
 type DraftThreadRenameSource = Pick<
   Thread,
   | "projectId"
   | "modelSelection"
   | "runtimeMode"
-  | "interactionMode"
   | "envMode"
   | "branch"
   | "worktreePath"
@@ -43,7 +26,7 @@ export function buildDraftThreadRenameCreateInput(thread: DraftThreadRenameSourc
     projectId: thread.projectId,
     modelSelection: thread.modelSelection,
     runtimeMode: thread.runtimeMode,
-    interactionMode: thread.interactionMode,
+
     envMode: thread.envMode ?? "local",
     branch: thread.branch,
     worktreePath: thread.worktreePath,
@@ -54,7 +37,7 @@ export function buildDraftThreadRenameCreateInput(thread: DraftThreadRenameSourc
     projectId: ProjectId;
     modelSelection: ModelSelection;
     runtimeMode: RuntimeMode;
-    interactionMode: ProviderInteractionMode;
+
     envMode: DraftThreadEnvMode;
     branch: string | null;
     worktreePath: string | null;
@@ -62,16 +45,6 @@ export function buildDraftThreadRenameCreateInput(thread: DraftThreadRenameSourc
     lastKnownPr?: OrchestrationThreadPullRequest | null;
     createdAt: string;
   };
-}
-
-export async function dispatchThreadTitleRegeneration(
-  threadId: ThreadId,
-): Promise<ThreadTitleRegenerationOutcome> {
-  const api = readNativeApi();
-  if (!api) {
-    return { status: "unavailable", title: null };
-  }
-  return api.orchestration.regenerateThreadTitle({ threadId });
 }
 
 export async function dispatchThreadRename(input: {
@@ -83,7 +56,7 @@ export async function dispatchThreadRename(input: {
         projectId: ProjectId;
         modelSelection: ModelSelection;
         runtimeMode: RuntimeMode;
-        interactionMode: ProviderInteractionMode;
+
         envMode: DraftThreadEnvMode;
         branch: string | null;
         worktreePath: string | null;
@@ -107,7 +80,7 @@ export async function dispatchThreadRename(input: {
   }
 
   if (input.createIfMissing) {
-    const promotionResult = await promoteThreadCreate(
+    await promoteThreadCreate(
       {
         type: "thread.create",
         commandId: newCommandId(),
@@ -116,7 +89,7 @@ export async function dispatchThreadRename(input: {
         title: trimmed,
         modelSelection: input.createIfMissing.modelSelection,
         runtimeMode: input.createIfMissing.runtimeMode,
-        interactionMode: input.createIfMissing.interactionMode,
+
         envMode: input.createIfMissing.envMode,
         branch: input.createIfMissing.branch,
         worktreePath: input.createIfMissing.worktreePath,
@@ -128,20 +101,20 @@ export async function dispatchThreadRename(input: {
       },
       api,
     );
-    if (promotionResult === "exists") {
-      await api.orchestration.dispatchCommand({
-        type: "thread.meta.update",
-        commandId: newCommandId(),
-        threadId: input.threadId,
-        title: trimmed,
-      });
-    }
+    await api.orchestration.dispatchCommand({
+      type: "thread.meta.update",
+      commandId: newCommandId(),
+      threadId: input.threadId,
+      title: trimmed,
+      titleSource: "user",
+    });
   } else {
     await api.orchestration.dispatchCommand({
       type: "thread.meta.update",
       commandId: newCommandId(),
       threadId: input.threadId,
       title: trimmed,
+      titleSource: "user",
     });
   }
 

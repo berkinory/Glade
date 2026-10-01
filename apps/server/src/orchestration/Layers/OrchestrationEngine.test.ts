@@ -1,15 +1,15 @@
 import {
   CheckpointRef,
   CommandId,
-  DEFAULT_PROVIDER_INTERACTION_MODE,
   EventId,
   MessageId,
   ProjectId,
   ThreadId,
   TurnId,
-  type OrchestrationCommand,
-  type OrchestrationEvent,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
+
+import { type OrchestrationCommand } from "@glade/contracts/orchestration/commands";
+import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import { Effect, Layer, ManagedRuntime, Option, Stream } from "effect";
 import { describe, expect, it, vi } from "vitest";
 
@@ -30,14 +30,10 @@ import {
   OrchestrationProjectionPipeline,
   type OrchestrationProjectionPipelineShape,
 } from "../Services/ProjectionPipeline.ts";
-import { ServerConfig } from "../../config.ts";
+import { ServerConfig } from "../../server/config.ts";
 import { ORCHESTRATION_EVENT_PUBSUB_CAPACITY } from "../orchestrationAdmission.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 
-/**
- * Command ids whose fingerprinting throws synchronously, standing in for any
- * synchronous defect raised while the worker builds a command's pipeline.
- */
 const fingerprintPoison = vi.hoisted(() => new Set<string>());
 
 vi.mock("../commandFingerprint.ts", async (importOriginal) => {
@@ -67,9 +63,8 @@ const makeThreadEventReadMethods = (
 > => ({
   getThreadHighWaterSequence: (threadId) =>
     Effect.succeed(
-      events
-        .filter((event) => event.aggregateKind === "thread" && event.aggregateId === threadId)
-        .at(-1)?.sequence ?? 0,
+      events.findLast((event) => event.aggregateKind === "thread" && event.aggregateId === threadId)
+        ?.sequence ?? 0,
     ),
   getThreadTitleHighWaterSequence: () => Effect.succeed(0),
   readThreadEvents: (input) =>
@@ -178,7 +173,7 @@ describe("OrchestrationEngine", () => {
             projectId,
             title: "Async input",
             modelSelection: { provider: "codex", model: "gpt-5-codex" },
-            interactionMode: "default",
+
             runtimeMode: "approval-required",
             branch: null,
             worktreePath: null,
@@ -245,7 +240,7 @@ describe("OrchestrationEngine", () => {
             asyncUserInputResponse: { messageId: questionId, answers },
             dispatchMode: "queue",
             runtimeMode: "full-access",
-            interactionMode: "plan",
+
             createdAt: new Date(Date.parse(createdAt) + 60_000).toISOString(),
           });
         await expect(system.run(answer("invalid", ["Only one answer"]))).rejects.toThrow(
@@ -278,7 +273,7 @@ describe("OrchestrationEngine", () => {
           startsNewTurn: !running,
         });
         expect(after.runtimeMode).toBe("approval-required");
-        expect(after.interactionMode).toBe("default");
+
         expect(after.session?.status).toBe(running ? "running" : "starting");
       } finally {
         await system.dispose();
@@ -344,7 +339,7 @@ describe("OrchestrationEngine", () => {
           projectId,
           title: "Checkpoint sequence",
           modelSelection: { provider: "codex", model: "gpt-5-codex" },
-          interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
           runtimeMode: "full-access",
           branch: null,
           worktreePath: null,
@@ -377,7 +372,7 @@ describe("OrchestrationEngine", () => {
               text: "Continue",
               attachments: [],
             },
-            interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
             runtimeMode: "full-access",
             createdAt,
           }),
@@ -415,15 +410,14 @@ describe("OrchestrationEngine", () => {
           projectId: asProjectId("large-project"),
           title: "Large response",
           modelSelection: { provider: "codex", model: "gpt-5-codex" },
-          interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
           runtimeMode: "approval-required",
           branch: null,
           worktreePath: null,
           createdAt,
         }),
       );
-      // Each delta fits the journal budget, but their combined text exceeds
-      // 512 KiB. Later output includes a surrogate pair split across deltas.
+
       const chunks = [
         "é漢😀".repeat(30_000),
         `${"é漢😀".repeat(30_000)}\nSecond segment \ud83d`,
@@ -496,7 +490,7 @@ describe("OrchestrationEngine", () => {
           provider: "codex",
           model: "gpt-5-codex",
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
@@ -537,10 +531,6 @@ describe("OrchestrationEngine", () => {
       reason: "stopped",
     });
 
-    // A turn start takes the priority `user` lane, but priority is not
-    // admissibility: the WebSocket keeps serving while the engine quiesces, and
-    // starting a provider turn here would spawn a session the shutdown fences
-    // moments later, orphaning the turn.
     await expect(
       system.run(
         system.engine.dispatch({
@@ -553,7 +543,7 @@ describe("OrchestrationEngine", () => {
             text: "Rejected after quiesce",
             attachments: [],
           },
-          interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
           runtimeMode: "approval-required",
           createdAt,
         }),
@@ -667,7 +657,7 @@ describe("OrchestrationEngine", () => {
         projectId: asProjectId("project-managed-attachment"),
         title: "Managed attachment thread",
         modelSelection: { provider: "codex", model: "gpt-5-codex" },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
@@ -728,7 +718,7 @@ describe("OrchestrationEngine", () => {
           },
         ],
       },
-      interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
       runtimeMode: "approval-required" as const,
       createdAt,
     };
@@ -777,7 +767,7 @@ describe("OrchestrationEngine", () => {
     const system = await createOrchestrationSystem();
     const { engine } = system;
     const projectId = asProjectId("project-slow-subscriber");
-    // Overflow by more than one durable replay page (500 events).
+
     const count = ORCHESTRATION_EVENT_PUBSUB_CAPACITY + 510;
     try {
       const initial = await system.run(
@@ -793,7 +783,6 @@ describe("OrchestrationEngine", () => {
       );
       const result = await system.run(
         Effect.gen(function* () {
-          // Attach before loading/processing work, as startup and reactors do.
           const live = yield* engine.subscribeDomainEvents;
           for (let i = 0; i < count; i++) {
             yield* engine.dispatch({
@@ -847,7 +836,7 @@ describe("OrchestrationEngine", () => {
           provider: "codex",
           model: "gpt-5-codex",
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
@@ -967,7 +956,7 @@ describe("OrchestrationEngine", () => {
             provider: "codex",
             model: "gpt-5-codex",
           },
-          interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
           runtimeMode: "approval-required",
           branch: null,
           worktreePath: null,
@@ -987,7 +976,7 @@ describe("OrchestrationEngine", () => {
           provider: "codex",
           model: "gpt-5-codex",
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
@@ -1064,7 +1053,7 @@ describe("OrchestrationEngine", () => {
           provider: "codex",
           model: "gpt-5-codex",
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
@@ -1082,7 +1071,7 @@ describe("OrchestrationEngine", () => {
         text: "hello",
         attachments: [],
       },
-      interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
       runtimeMode: "approval-required" as const,
       createdAt,
     };
@@ -1329,7 +1318,7 @@ describe("OrchestrationEngine", () => {
           provider: "codex",
           model: "gpt-5-codex",
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
@@ -1462,7 +1451,7 @@ describe("OrchestrationEngine", () => {
           provider: "codex",
           model: "gpt-5-codex",
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
@@ -1481,7 +1470,7 @@ describe("OrchestrationEngine", () => {
           text: "hello",
           attachments: [],
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         createdAt,
       }),
@@ -1684,7 +1673,7 @@ describe("OrchestrationEngine", () => {
           provider: "codex",
           model: "gpt-5-codex",
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
@@ -1743,7 +1732,7 @@ describe("OrchestrationEngine", () => {
           provider: "codex",
           model: "gpt-5-codex",
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
@@ -1763,7 +1752,7 @@ describe("OrchestrationEngine", () => {
             provider: "codex",
             model: "gpt-5-codex",
           },
-          interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
           runtimeMode: "approval-required",
           branch: null,
           worktreePath: null,
@@ -1796,8 +1785,6 @@ describe("OrchestrationEngine", () => {
         ).pipe(Effect.timeoutOption("5 seconds")),
       );
 
-      // The defect fails this command immediately instead of leaving the caller to
-      // wait out the dispatch timeout.
       expect(Option.isSome(poisonedOutcome)).toBe(true);
       const outcome = Option.getOrThrow(poisonedOutcome);
       expect(outcome._tag).toBe("Failure");
@@ -1805,7 +1792,6 @@ describe("OrchestrationEngine", () => {
         expect(outcome.failure).toMatchObject({ _tag: "OrchestrationCommandInternalError" });
       }
 
-      // The worker survived: the next command still runs.
       await expect(
         system.run(
           system.engine.dispatch({
@@ -1820,7 +1806,6 @@ describe("OrchestrationEngine", () => {
         ),
       ).resolves.toMatchObject({ sequence: expect.any(Number) });
 
-      // The poisoned envelope was still finished, so `outstanding` did not leak.
       const drained = await system.run(
         Effect.timeoutOption(system.engine.drain, "5 seconds").pipe(Effect.map(Option.isSome)),
       );

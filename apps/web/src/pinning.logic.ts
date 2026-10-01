@@ -1,8 +1,3 @@
-// FILE: pinning.logic.ts
-// Purpose: Shared immutable helpers for sidebar pin id order, pruning, and optimistic merges.
-// Layer: UI state logic
-// Exports: pinned id normalization, mutation helpers, and pinned item derivation.
-
 export type PinLimitResult<TId extends string> = {
   pinnedIds: TId[];
   changed: boolean;
@@ -67,7 +62,6 @@ export function prunePinnedIds<TId extends string>(
   return normalizePinnedIds(ids).filter((id) => allowedIdSet.has(id));
 }
 
-// Persisted order wins when present; server-only pins are appended in current sidebar order.
 export function derivePinnedIds<
   TId extends string,
   TItem extends { id: TId; isPinned?: boolean | undefined },
@@ -148,8 +142,6 @@ export function isLatestPinMutation<TId>(input: {
   return input.latestMutationVersionById.get(input.id) === input.requestVersion;
 }
 
-// Drop optimistic entries once the server agrees or the item disappears. Entries whose
-// server value still disagrees remain pending so the optimistic UI does not flicker backward.
 export function reconcileOptimisticPinState<TId>(input: {
   readonly optimisticPinnedStateById: ReadonlyMap<TId, boolean>;
   readonly serverPinnedStateById: ReadonlyMap<TId, boolean>;

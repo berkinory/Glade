@@ -1,14 +1,6 @@
-// FILE: projectCreation.test.ts
-// Purpose: Verifies shared project creation and duplicate-project recovery.
-// Layer: Web helper tests
-// Depends on: projectCreation helper plus mocked NativeApi orchestration calls.
-
-import {
-  type NativeApi,
-  type OrchestrationShellSnapshot,
-  type ProjectId,
-  SpaceId,
-} from "@glade/contracts";
+import { type NativeApi } from "@glade/contracts/ipc/ipc";
+import { type OrchestrationShellSnapshot } from "@glade/contracts/orchestration/snapshots";
+import { type ProjectId, SpaceId } from "@glade/contracts/core/baseSchemas";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { useSpacesUiStore } from "../spacesUiStore";

@@ -1,9 +1,3 @@
-// FILE: SettingsPanelPrimitives.tsx
-// Purpose: Shared settings section card and row primitives (Codex-style bordered groups).
-// Layer: Settings UI components
-// Exports: SettingsCard, SettingsSectionShell, SettingsSection, SettingsEmptyState,
-//          SettingsListRow, SettingsRow, SettingsSelectPopup
-
 import { type ComponentProps, type ReactNode } from "react";
 import { cn } from "~/lib/utils";
 import { settingRowAnchorId } from "~/settingsNavigation";
@@ -20,11 +14,6 @@ import {
 import { SelectPopup } from "~/components/ui/select";
 import { composerPickerMenuShellClassName } from "~/components/chat/composerPickerSize";
 
-/**
- * Grouped settings card. Children stack as rows separated by hairlines; pass
- * `divided={false}` for a card that draws its own internal structure (the theme editor's
- * header/body split) and `className` for one that adds layout to the card itself.
- */
 export function SettingsCard({
   divided: dividedProp,
   className,
@@ -48,15 +37,6 @@ export function SettingsCard({
   );
 }
 
-/**
- * Labelled settings group without the card — the `<section>`, its heading, and an
- * optional trailing header action (Refresh, …). Use it when a group holds something
- * other than a single card (a card plus editors, a loading/empty swap); use
- * {@link SettingsSection} for the common card-only case.
- *
- * `id` exposes the section itself as a search/deep-link target for the case where
- * the header owns the setting (a toggle in the action slot) and no row carries it.
- */
 export function SettingsSectionShell({
   title,
   action,
@@ -91,12 +71,6 @@ export function SettingsSection({ title, children }: { title: string; children: 
   );
 }
 
-/**
- * Dashed placeholder block for "nothing here yet" / "nothing matched" / status copy.
- * `layout` picks the two shapes in use: a one-line left-aligned status strip, or a
- * taller centered empty block. `tone` switches to the destructive treatment for
- * failures (worktree load errors).
- */
 export function SettingsEmptyState({
   layout: layoutProp,
   tone: toneProp,
@@ -127,7 +101,6 @@ export function SettingsEmptyState({
   );
 }
 
-/** Frosted select dropdown panel with settings `rounded-lg` chrome. */
 export function SettingsSelectPopup({
   align: alignProp,
   alignItemWithTrigger: alignItemWithTriggerProp,
@@ -147,16 +120,6 @@ export function SettingsSelectPopup({
   );
 }
 
-/**
- * A list item row inside a settings card — same chrome and typography as
- * {@link SettingsRow}, but for dynamic collections (archived threads, managed
- * worktrees, …) rather than a single setting + control. It deliberately omits
- * the search anchor (titles are data, not stable setting names) and supports a
- * right-click handler plus top-alignment for rows whose body can grow tall.
- *
- * Separators come from the parent card's `divide-y` (see {@link SettingsCard} /
- * {@link SettingsSection}); the row never draws its own border.
- */
 export function SettingsListRow({
   title,
   description,
@@ -216,8 +179,6 @@ export function SettingsRow({
   children?: ReactNode;
   onClick?: () => void;
 }) {
-  // String-titled rows expose a stable anchor so the sidebar search can deep-link to them
-  // via `?target=…`; scroll-margin keeps the row clear of the sticky settings header.
   const anchorId = typeof title === "string" ? settingRowAnchorId(title) : undefined;
   return (
     <div

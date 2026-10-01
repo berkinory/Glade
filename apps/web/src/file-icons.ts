@@ -1,4 +1,3 @@
-// File and folder icon resolution for the bundled Symbols icon theme.
 import iconTheme from "./symbol-icon-theme.json";
 
 const fileNames = new Map(
@@ -56,7 +55,6 @@ function fileIconDefinition(pathValue: string): string | undefined {
   return undefined;
 }
 
-// This also determines whether a path-like chat token renders as a file chip.
 export function pathLooksLikeKnownFile(pathValue: string): boolean {
   return fileIconDefinition(pathValue) !== undefined;
 }

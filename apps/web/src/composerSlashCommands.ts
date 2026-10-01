@@ -1,15 +1,11 @@
-import {
-  THREAD_GOAL_MAX_CHARS,
-  type GitBranch,
-  type ProviderInteractionMode,
-  type ProviderKind,
-} from "@glade/contracts";
+import { type GitBranch } from "@glade/contracts/git/git";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import {
   BUILT_IN_COMPOSER_SLASH_COMMANDS,
   isBuiltInComposerSlashCommandName,
   normalizeComposerSlashCommandName,
   type BuiltInComposerSlashCommand,
-} from "@glade/shared/composerSlashCommands";
+} from "@glade/shared/threads/composerSlashCommands";
 import { rankProviderDiscoveryItems } from "./lib/providerDiscovery";
 
 export type ComposerSlashCommand = BuiltInComposerSlashCommand;
@@ -28,14 +24,6 @@ export interface ComposerSlashInvocation {
 
 export type FastSlashCommandAction = "toggle" | "on" | "off" | "status" | "invalid";
 export type ForkSlashCommandTarget = "local" | "worktree";
-export type GoalSlashCommandAction =
-  | { readonly action: "show" }
-  | { readonly action: "clear" }
-  | { readonly action: "pause" }
-  | { readonly action: "resume" }
-  | { readonly action: "edit" }
-  | { readonly action: "set"; readonly goal: string }
-  | { readonly action: "too-long" };
 
 const CLAUDE_NATIVE_COMMAND_ALIASES: Record<string, readonly string[]> = {
   clear: ["reset", "new"],
@@ -67,7 +55,7 @@ function expandProviderNativeSlashCommandNames(
   const expandedNames = new Set<string>();
   for (const commandName of commandNames) {
     const normalizedCommandName = normalizeComposerSlashCommandName(commandName);
-    if (!normalizedCommandName) {
+    if (!normalizedCommandName || normalizedCommandName === "goal") {
       continue;
     }
     expandedNames.add(normalizedCommandName);
@@ -78,10 +66,6 @@ function expandProviderNativeSlashCommandNames(
   return [...expandedNames];
 }
 
-/**
- * Providers where app-owned /review (target picker + structured prompt) must
- * win over listing a native "review" command.
- */
 function providerUsesAppOwnedReviewSlashCommand(provider: ProviderKind): boolean {
   return provider === "codex";
 }
@@ -91,17 +75,11 @@ function shouldKeepBuiltInSlashCommandDespiteNativeCollision(
   command: ComposerSlashCommand,
 ): boolean {
   return (
-    command === "debug" ||
-    command === "default" ||
     command === "automation" ||
     command === "computer-use" ||
     command === "export" ||
     command === "feedback" ||
-    // /fork is app-owned everywhere: it creates a Glade thread with fork
-    // lineage (native session forking per provider), which a provider-native
-    // "fork" text command cannot do.
     command === "fork" ||
-    command === "goal" ||
     command === "rename" ||
     (providerUsesAppOwnedReviewSlashCommand(provider) && command === "review")
   );
@@ -122,16 +100,11 @@ export function shouldHideProviderNativeCommandFromComposerMenu(
     (normalizedCommand === "export" && appCommandIsAvailable) ||
     (normalizedCommand === "feedback" && appCommandIsAvailable) ||
     (normalizedCommand === "fork" && appCommandIsAvailable) ||
-    (normalizedCommand === "goal" && appCommandIsAvailable) ||
     (normalizedCommand === "rename" && appCommandIsAvailable) ||
     (providerUsesAppOwnedReviewSlashCommand(provider) && normalizedCommand === "review")
   );
 }
 
-/**
- * True when a discovered native "review" command should be sent as plain
- * `/review` text. Codex uses the app review UX instead (#218).
- */
 export function providerSupportsTextNativeReviewCommand(
   provider: ProviderKind,
   nativeCommandNames: ReadonlyArray<{ readonly name: string } | string>,
@@ -175,24 +148,6 @@ const COMPOSER_SLASH_COMMAND_DEFINITIONS: Record<
     description: "Switch response model for this thread",
     source: "shared",
   },
-  plan: {
-    command: "plan",
-    label: "/plan",
-    description: "Switch this thread into plan mode",
-    source: "app",
-  },
-  debug: {
-    command: "debug",
-    label: "/debug",
-    description: "Switch this thread into evidence-first debug mode",
-    source: "app",
-  },
-  default: {
-    command: "default",
-    label: "/default",
-    description: "Switch this thread back to normal chat mode",
-    source: "app",
-  },
   review: {
     command: "review",
     label: "/review",
@@ -235,12 +190,7 @@ const COMPOSER_SLASH_COMMAND_DEFINITIONS: Record<
     description: "Download this thread as a ZIP archive (thread.json + transcript.md)",
     source: "app",
   },
-  goal: {
-    command: "goal",
-    label: "/goal",
-    description: "Set, edit, pause, resume, or clear this thread's persistent goal",
-    source: "app",
-  },
+
   rename: {
     command: "rename",
     label: "/rename",
@@ -313,15 +263,13 @@ export function canOfferForkSlashCommand(input: {
   terminalContextCount: number;
   selectedSkillCount: number;
   selectedMentionCount: number;
-  interactionMode: ProviderInteractionMode;
 }): boolean {
   return (
     !hasMeaningfulComposerText(input.prompt) &&
     input.imageCount === 0 &&
     input.terminalContextCount === 0 &&
     input.selectedSkillCount === 0 &&
-    input.selectedMentionCount === 0 &&
-    input.interactionMode === "default"
+    input.selectedMentionCount === 0
   );
 }
 
@@ -378,33 +326,6 @@ export function parseFastSlashCommandAction(text: string): FastSlashCommandActio
   return "invalid";
 }
 
-/** Prefilled objectives are literal even when they match a `/goal` control word. */
-export function buildGoalSlashCommandPrompt(goal: string): string {
-  return `/goal -- ${goal.trim()}`;
-}
-
-export function parseGoalSlashCommandArgs(args: string): GoalSlashCommandAction {
-  const trimmed = args.trim();
-  const literal = /^--(?:\s|$)/.test(trimmed);
-  const goal = literal ? trimmed.slice(2).trim() : trimmed;
-  if (!goal) {
-    return { action: "show" };
-  }
-  if (!literal) {
-    const control = goal.toLowerCase();
-    if (control === "clear") {
-      return { action: "clear" };
-    }
-    if (control === "pause" || control === "resume" || control === "edit") {
-      return { action: control };
-    }
-  }
-  if (goal.length > THREAD_GOAL_MAX_CHARS) {
-    return { action: "too-long" };
-  }
-  return { action: "set", goal };
-}
-
 export function resolveComposerSlashRootBranch(input: {
   branches: ReadonlyArray<GitBranch> | null | undefined;
   activeProjectCwd: string | null | undefined;
@@ -451,32 +372,21 @@ export function getAvailableComposerSlashCommands(input: {
           ...(input.canOfferCompactCommand ? (["compact"] as const) : []),
           "model",
           ...(input.supportsFastSlashCommand ? (["fast"] as const) : []),
-          "plan",
-          "debug",
-          "default",
           ...(input.canOfferReviewCommand ? (["review"] as const) : []),
           ...(input.canOfferForkCommand ? (["fork"] as const) : []),
           "status",
           "subagents",
           "computer-use",
           ...(input.canOfferExportCommand ? (["export"] as const) : []),
-          "goal",
           "rename",
           "feedback",
           "automation",
         ]
       : [
-          // /fork is app-level for the same reason — it creates a Glade thread with fork
-          // lineage (native session forking under the hood), not a provider text command.
-          // /export is app-level too — Glade owns the thread transcript, so the download
-          // happens in the app rather than being forwarded to Claude's native /export.
           ...(input.canOfferForkCommand ? (["fork"] as const) : []),
           ...(input.canOfferExportCommand ? (["export"] as const) : []),
-          "goal",
           "rename",
-          "debug",
           "computer-use",
-          "default",
           "feedback",
           "automation",
         ];
@@ -510,7 +420,6 @@ export function buildSlashReviewComposerPrompt(args: string): string {
   return `${basePrompt}\nFocus especially on: ${trimmedArgs}`;
 }
 
-// `/fork` optionally accepts only an explicit target shorthand like `/fork local`.
 export function parseForkSlashCommandArgs(args: string): {
   target: ForkSlashCommandTarget | null;
   invalid: boolean;

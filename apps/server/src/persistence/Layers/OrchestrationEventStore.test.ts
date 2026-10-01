@@ -1,4 +1,4 @@
-import { CommandId, EventId, ProjectId, ThreadId } from "@glade/contracts";
+import { CommandId, EventId, ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { assert, it } from "@effect/vitest";
 import { Effect, Layer, Schema, Stream } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
@@ -24,7 +24,7 @@ layer("OrchestrationEventStore", (it) => {
         throughSequenceInclusive: 1_000,
         limit: 500,
       };
-      // One request per replayFilter branch in buildReadEventRowsFromSequenceQuery.
+
       const requests = [
         {
           ...baseRequest,
@@ -47,7 +47,7 @@ layer("OrchestrationEventStore", (it) => {
           eventTypes: ["thread.activity-appended"],
           activityKinds: ["approval.requested"],
         },
-        // Empty eventTypes yields the constant-0 predicate (checkpoints projector).
+
         {
           ...baseRequest,
           filterEnabled: true,
@@ -71,15 +71,11 @@ layer("OrchestrationEventStore", (it) => {
           params,
         );
         const details = plan.map((row) => row.detail).join("\n");
-        // The boundary OR must never demote the sequence cursor to a
-        // MULTI-INDEX OR plan: with a large event log that plan rescans the
-        // whole event_type index per page and turns projection bootstrap
-        // into minutes of startup time.
-        //
-        // EXPLAIN QUERY PLAN text is not a stable format across SQLite
-        // releases, so assert independent fragments of the required plan
-        // (table search, integer PK usage, both rowid range bounds) instead
-        // of one exact phrase.
+        // The boundary OR must never demote the sequence cursor to a MULTI-INDEX OR plan: with a large
+        // event log that plan rescans the whole event_type index per page and turns projection bootstrap
+        // into minutes of startup time. EXPLAIN QUERY PLAN text is not a stable format across SQLite
+        // releases, so assert independent fragments of the required plan (table search, integer PK usage,
+        // both rowid range bounds) instead of one exact phrase.
         for (const fragment of [
           /SEARCH orchestration_events/,
           /USING INTEGER PRIMARY KEY/,
@@ -299,154 +295,71 @@ layer("OrchestrationEventStore", (it) => {
     }),
   );
 
-  it.effect("normalizes imported Glade model-selection shapes during replay", () =>
+  it.effect("replays retired feature events and preserves supported metadata", () =>
     Effect.gen(function* () {
       const eventStore = yield* OrchestrationEventStore;
       const sql = yield* SqlClient.SqlClient;
-      const now = "2026-05-05T14:39:18.000Z";
-
-      yield* sql`
-        INSERT INTO orchestration_events (
-          event_id,
-          aggregate_kind,
-          stream_id,
-          stream_version,
-          event_type,
-          occurred_at,
-          command_id,
-          causation_event_id,
-          correlation_id,
-          actor_kind,
-          payload_json,
-          metadata_json
-        )
-        VALUES
-        (
-          ${EventId.makeUnsafe("evt-import-project-created")},
-          ${"project"},
-          ${ProjectId.makeUnsafe("project-imported")},
-          ${0},
-          ${"project.created"},
-          ${now},
-          ${CommandId.makeUnsafe("cmd-import-project-created")},
-          ${null},
-          ${null},
-          ${"server"},
-          ${JSON.stringify({
-            projectId: "project-imported",
-            title: "Imported Project",
-            workspaceRoot: "/tmp/imported",
-            defaultModelSelection: {
-              instanceId: "codex",
-              model: "imported-project-model",
-            },
-            scripts: [],
-            createdAt: now,
+      const now = "2026-09-30T12:00:00.000Z";
+      const threadId = ThreadId.makeUnsafe("thread-retired-goal");
+      const startSequence = yield* eventStore.getHighWaterSequence();
+      for (const [index, type, payload] of [
+        [
+          0,
+          "thread.meta-updated",
+          {
+            threadId,
+            title: "Kept title",
             updatedAt: now,
-          })},
-          ${"{}"}
-        ),
-        (
-          ${EventId.makeUnsafe("evt-import-thread-created")},
-          ${"thread"},
-          ${ThreadId.makeUnsafe("thread-imported")},
-          ${0},
-          ${"thread.created"},
-          ${now},
-          ${CommandId.makeUnsafe("cmd-import-thread-created")},
-          ${null},
-          ${null},
-          ${"server"},
-          ${JSON.stringify({
-            threadId: "thread-imported",
-            projectId: "project-imported",
-            title: "Imported Thread",
-            modelSelection: {
-              provider: "codex",
-              model: "gpt-5.5",
-              options: [{ id: "reasoningEffort", value: "medium" }],
-            },
-            runtimeMode: "full-access",
-            interactionMode: "default",
-            branch: null,
-            worktreePath: null,
-            createdAt: now,
+            goal: "Old objective",
+            goalStartedAt: now,
+            goalPausedAt: null,
+            goalStartBehavior: "start-if-idle",
+            goalAchievements: [],
+          },
+        ],
+        [
+          1,
+          "thread.goal-continuation-requested",
+          { threadId, goalStartedAt: now, trigger: "turn-completed", createdAt: now },
+        ],
+        [2, "thread.interaction-mode-set", { threadId, interactionMode: "plan", updatedAt: now }],
+        [
+          3,
+          "thread.proposed-plan-upserted",
+          { threadId, proposedPlan: { id: "old-plan", planMarkdown: "Retired plan" } },
+        ],
+        [
+          4,
+          "thread.interaction-mode-set",
+          {
+            threadId,
+            interactionMode: "debug",
+            previousInteractionMode: "default",
             updatedAt: now,
-          })},
-          ${"{}"}
-        ),
-        (
-          ${EventId.makeUnsafe("evt-import-turn-start")},
-          ${"thread"},
-          ${ThreadId.makeUnsafe("thread-imported")},
-          ${1},
-          ${"thread.turn-start-requested"},
-          ${now},
-          ${CommandId.makeUnsafe("cmd-import-turn-start")},
-          ${null},
-          ${null},
-          ${"server"},
-          ${JSON.stringify({
-            threadId: "thread-imported",
-            messageId: "message-imported",
-            modelSelection: {
-              provider: "codex",
-              model: "gpt-5.5",
-              options: [{ id: "reasoningEffort", value: "medium" }],
-            },
-            dispatchMode: "queue",
-            runtimeMode: "full-access",
-            interactionMode: "default",
-            createdAt: now,
-          })},
-          ${"{}"}
-        )
-      `;
-
-      const replayed = yield* Stream.runCollect(eventStore.readFromSequence(0, 10)).pipe(
-        Effect.map((chunk) => Array.from(chunk)),
-      );
-      const projectCreated = replayed.find(
-        (event) => event.eventId === EventId.makeUnsafe("evt-import-project-created"),
-      );
-      const threadCreated = replayed.find(
-        (event) => event.eventId === EventId.makeUnsafe("evt-import-thread-created"),
-      );
-      const turnStartRequested = replayed.find(
-        (event) => event.eventId === EventId.makeUnsafe("evt-import-turn-start"),
-      );
-
-      assert.deepStrictEqual(
-        projectCreated?.type === "project.created"
-          ? projectCreated.payload.defaultModelSelection
-          : null,
-        {
-          provider: "codex",
-          model: "imported-project-model",
-        },
-      );
-      assert.deepStrictEqual(
-        threadCreated?.type === "thread.created" ? threadCreated.payload.modelSelection : null,
-        {
-          provider: "codex",
-          model: "gpt-5.5",
-          options: {
-            reasoningEffort: "medium",
           },
-        },
+        ],
+      ] as const) {
+        yield* sql`INSERT INTO orchestration_events
+          (event_id, aggregate_kind, stream_id, stream_version, event_type, occurred_at,
+           command_id, causation_event_id, correlation_id, actor_kind, payload_json, metadata_json)
+          VALUES (${`evt-retired-goal-${index}`}, ${"thread"}, ${threadId}, ${index}, ${type},
+            ${now}, ${null}, ${null}, ${null}, ${"server"}, ${JSON.stringify(payload)}, ${JSON.stringify({ persistedEventSchemaVersion: 1 })})`;
+      }
+      const replayed = Array.from(
+        yield* Stream.runCollect(eventStore.readFromSequence(startSequence, 10)),
       );
-      assert.deepStrictEqual(
-        turnStartRequested?.type === "thread.turn-start-requested"
-          ? turnStartRequested.payload.modelSelection
-          : null,
-        {
-          provider: "codex",
-          model: "gpt-5.5",
-          options: {
-            reasoningEffort: "medium",
-          },
-        },
-      );
+      assert.equal(replayed.length, 5);
+      assert.equal(replayed[0]?.type, "thread.meta-updated");
+      assert.deepEqual(replayed[0]?.payload, { threadId, title: "Kept title", updatedAt: now });
+      assert.equal(replayed[1]?.type, "thread.goal-continuation-requested");
+      assert.deepEqual(replayed[1]?.payload, { threadId, createdAt: now });
+      assert.deepEqual(replayed[2]?.payload, {
+        threadId,
+
+        updatedAt: now,
+      });
+      assert.deepEqual(replayed[3]?.payload, { threadId });
+      assert.deepEqual(replayed[4]?.payload, { threadId, updatedAt: now });
     }),
   );
 

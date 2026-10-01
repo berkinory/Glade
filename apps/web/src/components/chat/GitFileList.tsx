@@ -1,6 +1,9 @@
-// Source Control file rows, status labels, and section headers.
-import type { GitSourceControlFileStatus, GitSourceControlFilesResult } from "@glade/contracts";
-import type { MouseEvent } from "react";
+import type {
+  GitSourceControlFileStatus,
+  GitSourceControlFilesResult,
+} from "@glade/contracts/git/git";
+import { useLayoutEffect, useRef, useState, type MouseEvent } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 import { useTheme } from "~/hooks/useTheme";
 import { splitRepoRelativePath } from "~/lib/diffRendering";
@@ -141,6 +144,31 @@ export function GitFileSection(props: {
   const { resolvedTheme } = useTheme();
   const theme = resolvedTheme as "light" | "dark";
   const allPaths = props.files.map((file) => file.path);
+  const listRef = useRef<HTMLDivElement>(null);
+  const [viewport, setViewport] = useState<HTMLElement | null>(null);
+  const [scrollMargin, setScrollMargin] = useState(0);
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    const parent = list?.closest<HTMLElement>("[data-git-files-scroll]");
+    if (!list || !parent) return;
+    setViewport(parent);
+    const measureOffset = () =>
+      setScrollMargin(
+        list.getBoundingClientRect().top - parent.getBoundingClientRect().top + parent.scrollTop,
+      );
+    measureOffset();
+    const observer = new ResizeObserver(measureOffset);
+    for (const child of parent.children) observer.observe(child);
+    return () => observer.disconnect();
+  }, [props.files]);
+  const virtualizer = useVirtualizer({
+    count: props.files.length,
+    getScrollElement: () => viewport,
+    getItemKey: (index) => props.files[index]!.path,
+    estimateSize: () => 30,
+    overscan: 8,
+    scrollMargin,
+  });
   return (
     <section className="min-w-0">
       <header className="flex items-center gap-2 px-1.5 py-1">
@@ -193,24 +221,35 @@ export function GitFileSection(props: {
         </div>
       </header>
       {props.files.length > 0 ? (
-        <div className="flex flex-col gap-0.5">
-          {props.files.map((file) => {
+        <div ref={listRef} className="relative" style={{ height: virtualizer.getTotalSize() }}>
+          {virtualizer.getVirtualItems().map((item) => {
+            const file = props.files[item.index]!;
             const fileStats = file.status === "U" ? props.untrackedFileStats?.get(file.path) : null;
             return (
-              <GitFileRow
-                key={file.path}
-                file={fileStats ? { ...file, ...fileStats } : file}
-                theme={theme}
-                isSelected={props.selectedPaths.has(file.path)}
-                actionLabel={props.actionLabel}
-                actionIcon={props.actionIcon}
-                actionDisabled={props.actionDisabled}
-                onSelect={props.onSelect}
-                onContextMenu={props.onContextMenu}
-                onAction={props.onAction}
-                onOpenFile={props.onOpenFile}
-                {...(props.onRevert ? { onRevert: props.onRevert } : {})}
-              />
+              <div
+                key={item.key}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  transform: `translateY(${item.start - scrollMargin}px)`,
+                }}
+              >
+                <GitFileRow
+                  file={fileStats ? { ...file, ...fileStats } : file}
+                  theme={theme}
+                  isSelected={props.selectedPaths.has(file.path)}
+                  actionLabel={props.actionLabel}
+                  actionIcon={props.actionIcon}
+                  actionDisabled={props.actionDisabled}
+                  onSelect={props.onSelect}
+                  onContextMenu={props.onContextMenu}
+                  onAction={props.onAction}
+                  onOpenFile={props.onOpenFile}
+                  {...(props.onRevert ? { onRevert: props.onRevert } : {})}
+                />
+              </div>
             );
           })}
         </div>

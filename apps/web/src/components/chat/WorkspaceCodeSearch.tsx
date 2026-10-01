@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useDebouncedValue } from "@tanstack/react-pacer";
-import type { ProjectContentMatch } from "@glade/contracts";
+import type { ProjectContentMatch } from "@glade/contracts/workspace/project";
 import { projectSearchContentQueryOptions } from "~/lib/projectReactQuery";
 import { ContentSearchMatchText } from "../ContentSearchMatchText";
 import { SearchInput } from "../ui/search-input";
@@ -27,8 +27,7 @@ export function WorkspaceCodeSearch(props: {
     ...projectSearchContentQueryOptions({ cwd: props.cwd, ...request, limit: 100 }),
     retry: false,
   });
-  // Finish the bounded scan before starting the latest query; intermediate
-  // keystrokes never queue additional full-workspace scans.
+
   useEffect(() => {
     if (
       !result.isFetching &&

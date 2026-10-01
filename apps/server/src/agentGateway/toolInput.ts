@@ -1,10 +1,10 @@
+import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import {
-  DEFAULT_MODEL_BY_PROVIDER,
   GladeCreateThreadsInput,
   GladeWaitForThreadsInput,
-  type ModelSelection,
-  type ProviderKind,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/agentGateway";
+import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { Schema } from "effect";
 
 import { AGENT_GATEWAY_TARGET_OPTIONS_DESCRIPTION } from "./targetResolver.ts";
@@ -29,7 +29,9 @@ export const MODEL_SELECTION_INPUT_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-export class ToolInputError extends Error {}
+export class ToolInputError extends Error {
+  readonly _tag = "ToolInputError";
+}
 
 export const errorText = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
@@ -50,18 +52,11 @@ export function readStringArg(
   return value.trim();
 }
 
-/**
- * A string argument taken exactly as written, with no trimming.
- *
- * `readStringArg` trims, which is right for an identifier and wrong for an
- * accessibility label: the desktop targeters match labels verbatim on purpose
- * (`uiTreeTargeting.ts` — "labels keep their surrounding space because nothing
- * trims a label arriving over MCP"), so trimming here silently retargeted a
- * caller that named `"Save "` at a different control called `"Save"`.
- *
- * Still refuses a blank string: a label made only of spaces names nothing, and
- * passing it on would match everything in scope.
- */
+// A string argument taken exactly as written, with no trimming. `readStringArg` trims, which is
+// right for an identifier and wrong for an accessibility label: the desktop targeters match labels
+// verbatim on purpose (`uiTreeTargeting.ts` — "labels keep their surrounding space because nothing
+// trims a label arriving over MCP"), so trimming here silently retargeted a caller that named
+// `"Save "` at a different control called `"Save"`.
 export function readVerbatimStringArg(
   args: Record<string, unknown>,
   name: string,
@@ -141,11 +136,6 @@ export function parseProviderKind(raw: string): ProviderKind {
   );
 }
 
-/**
- * Read an exact `{ provider, model, options? }` target argument. Unknown option
- * keys are preserved so `resolveAgentGatewayTarget` rejects them instead of the
- * decoder silently dropping a typo.
- */
 export function readModelSelectionArg(
   args: Record<string, unknown>,
   name: string,
@@ -162,7 +152,7 @@ export function buildModelSelection(
   provider: ProviderKind,
   model: string | undefined,
 ): ModelSelection {
-  const effectiveModel = model ?? DEFAULT_MODEL_BY_PROVIDER[provider];
+  const effectiveModel = model ?? PROVIDER_DEFAULT_MODEL;
   if (!effectiveModel) {
     throw new ToolInputError(
       `Provider "${provider}" has no default model; pass an explicit "model" argument.`,

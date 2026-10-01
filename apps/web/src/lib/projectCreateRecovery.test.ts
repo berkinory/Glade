@@ -1,7 +1,4 @@
-// FILE: projectCreateRecovery.test.ts
-// Purpose: Verifies duplicate `project.create` recovery helpers used by import flows.
-
-import { ProjectId } from "@glade/contracts";
+import { ProjectId } from "@glade/contracts/core/baseSchemas";
 import { describe, expect, it } from "vitest";
 
 import {

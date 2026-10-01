@@ -1,10 +1,16 @@
-import type { OrchestrationProject, PullRequestDetail } from "@glade/contracts";
-import { githubAvatarUrlForLogin } from "@glade/shared/githubAvatar";
+import type { TaggedFailure } from "../platform/operationError.ts";
+import type { OrchestrationProject } from "@glade/contracts/orchestration/threadEntities";
+import type { PullRequestDetail } from "@glade/contracts/git/pullRequests";
+import { githubAvatarUrlForLogin } from "@glade/shared/git/githubAvatar";
 import { Effect } from "effect";
 
 import type { GitHubCliShape } from "../git/Services/GitHubCli";
-import { isPullRequestMergeMethodAllowed } from "../pullRequests.logic";
+import { isPullRequestMergeMethodAllowed } from "../git/pullRequests.logic";
 import type { PullRequestServiceShape } from "./Services/PullRequestService";
+
+class PullRequestOperationsError extends Error {
+  readonly _tag = "PullRequestOperationsError";
+}
 
 type PullRequestOperations = Pick<
   PullRequestServiceShape,
@@ -15,15 +21,15 @@ export function makePullRequestOperations(dependencies: {
   github: GitHubCliShape;
   findProject: (
     projectId: Parameters<PullRequestServiceShape["detail"]>[0]["projectId"],
-  ) => Effect.Effect<OrchestrationProject, unknown>;
+  ) => Effect.Effect<OrchestrationProject, TaggedFailure>;
   validateProjectRepository: (
     project: OrchestrationProject,
     repository: string,
-  ) => Effect.Effect<string, unknown>;
+  ) => Effect.Effect<string, TaggedFailure>;
   loadMergeCapabilities: (
     cwd: string,
     repository: string,
-  ) => Effect.Effect<PullRequestDetail["mergeCapabilities"], unknown>;
+  ) => Effect.Effect<PullRequestDetail["mergeCapabilities"], TaggedFailure>;
   withGitHubRead: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>;
 }): PullRequestOperations {
   const loadDetail = (project: OrchestrationProject, repositoryInput: string, number: number) =>
@@ -137,7 +143,9 @@ export function makePullRequestOperations(dependencies: {
         );
         if (!isPullRequestMergeMethodAllowed(capabilities, mergeMethod)) {
           return yield* Effect.fail(
-            new Error(`The repository does not allow the ${mergeMethod} merge method.`),
+            new PullRequestOperationsError(
+              `The repository does not allow the ${mergeMethod} merge method.`,
+            ),
           );
         }
         yield* dependencies.withGitHubRead(

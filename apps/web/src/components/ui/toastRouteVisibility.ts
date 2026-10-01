@@ -1,10 +1,6 @@
-// FILE: toastRouteVisibility.ts
-// Purpose: Keeps thread-scoped toasts visible for every thread currently rendered in the route.
-// Layer: UI helpers
-// Exports: visible-thread resolver shared by toast containers and split-aware tests
-
-import type { ThreadId } from "@glade/contracts";
-import { resolveSplitViewThreadIds, type SplitView } from "../../splitViewStore";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { resolveSplitViewThreadIds } from "../../splitViewStore";
+import { type SplitView } from "../../splitViewModel";
 import type { RightDockThreadState } from "../../rightDockStore.logic";
 
 export function resolveVisibleToastThreadIds(input: {

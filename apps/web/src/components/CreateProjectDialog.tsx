@@ -1,12 +1,7 @@
-// FILE: CreateProjectDialog.tsx
-// Purpose: Single entry point for adding a project — typed path, source folder
-//          (drag/drop or native browse), and destination Space.
-// Layer: Web UI dialog
-// Exports: CreateProjectDialog, CreateProjectSubmitValue
-
-import { type GitHubProjectProvisionProgressEvent, type SpaceId } from "@glade/contracts";
-import { parseGitHubRepositoryInput } from "@glade/shared/githubRepository";
-import { normalizeProjectDirectoryName } from "@glade/shared/projectDirectoryName";
+import { type GitHubProjectProvisionProgressEvent } from "@glade/contracts/git/githubProjectProvisioning";
+import { type SpaceId } from "@glade/contracts/core/baseSchemas";
+import { parseGitHubRepositoryInput } from "@glade/shared/git/githubRepository";
+import { normalizeProjectDirectoryName } from "@glade/shared/threads/projectDirectoryName";
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 
 import { isElectron } from "../env";
@@ -17,7 +12,7 @@ import { readNativeApi } from "../nativeApi";
 import { randomUUID } from "../lib/utils";
 import { joinProjectPath } from "../lib/projectPaths";
 import type { Space } from "../types";
-import { useVoidSpace } from "../voidSpaceStore";
+import { useVoidSpace } from "../spacesUiStore";
 import { cn } from "~/lib/utils";
 
 import { FolderClosed } from "./FolderClosed";
@@ -26,7 +21,7 @@ import {
   PROJECT_DIALOG_FIELD_CONTROL_CLASS_NAME,
 } from "./CreateGitHubProjectFields";
 import { ProjectSourceSegmentedPicker } from "./ProjectSourceSegmentedPicker";
-import { describeAddProjectError } from "./Sidebar.logic";
+import { describeAddProjectError } from "./Sidebar.logic.status";
 import { SpaceEditorDialog, type SpaceEditorValue } from "./SpaceEditorDialog";
 import { SpaceIcon } from "./SpaceIcon";
 import { Button } from "./ui/button";
@@ -47,9 +42,9 @@ import { CentralIcon } from "~/lib/central-icons";
 interface CreateLocalProjectSubmitValue {
   readonly source: "local";
   readonly workspaceRoot: string;
-  /** Destination Space; `null` is Void (unassigned). */
+
   readonly spaceId: SpaceId | null;
-  /** True when the path was typed/edited by hand, so a missing folder may be created. */
+
   readonly createIfMissing: boolean;
 }
 
@@ -86,19 +81,13 @@ export function CreateProjectDialog(props: {
   const [directoryName, setDirectoryName] = useState("");
   const [directoryNameEdited, setDirectoryNameEdited] = useState(false);
   const [provisionProgress, setProvisionProgress] = useState<string | null>(null);
-  /**
-   * The last path delivered verbatim by the native picker or an OS drop. Those
-   * folders exist by construction, so only hand-typed (or hand-edited) paths
-   * opt into create-if-missing — the same split the old Browse/Type-path pair had.
-   */
+
   const [pickedPath, setPickedPath] = useState<string | null>(null);
   const [selectedSpaceKey, setSelectedSpaceKey] = useState<string>(VOID_SPACE_KEY);
   const [spaceEditorOpen, setSpaceEditorOpen] = useState(false);
-  /**
-   * A space created from this dialog, kept locally until the refreshed shell
-   * snapshot delivers it through `props.spaces` — otherwise submitting right
-   * after creating would not find the id and silently fall back to Void.
-   */
+  // A space created from this dialog, kept locally until the refreshed shell snapshot delivers it
+  // through `props.spaces` — otherwise submitting right after creating would not find the id and
+  // silently fall back to Void.
   const [createdSpace, setCreatedSpace] = useState<Space | null>(null);
   const [isPickingFolder, setIsPickingFolder] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -117,7 +106,6 @@ export function CreateProjectDialog(props: {
   const errorId = `${fieldId}-error`;
 
   useEffect(() => {
-    // Seed on the closed -> open transition only, mirroring SpaceEditorDialog.
     if (props.open === openedRef.current) return;
     openedRef.current = props.open;
     if (!props.open) return;
@@ -137,8 +125,7 @@ export function CreateProjectDialog(props: {
     setIsPickingFolder(false);
     setSubmitting(false);
     setFormError(null);
-    // Deferred a frame: the dialog moves focus itself on open, so focusing the
-    // path field has to happen after that lands or it is immediately undone.
+
     const frame = requestAnimationFrame(() => document.getElementById(pathInputId)?.focus());
     return () => cancelAnimationFrame(frame);
   }, [pathInputId, props.activeSpaceId, props.defaultCloneParent, props.open]);
@@ -180,7 +167,7 @@ export function CreateProjectDialog(props: {
       setPath(picked);
       setPickedPath(picked);
       setFormError(null);
-      // Land focus on the confirm button so a plain Enter finishes the flow.
+
       requestAnimationFrame(() => document.getElementById(submitButtonId)?.focus());
     },
     [submitButtonId],
@@ -203,7 +190,7 @@ export function CreateProjectDialog(props: {
       return;
     }
     setIsPickingFolder(true);
-    // No try/finally: the React Compiler skips optimizing components that use it.
+
     try {
       const picked = await api.dialogs.pickFolder();
       if (picked) {
@@ -216,8 +203,6 @@ export function CreateProjectDialog(props: {
     setIsPickingFolder(false);
   };
 
-  // While the dialog is open it is the only interactive surface, so a folder dropped
-  // anywhere in the window counts (see useWindowFolderDrop).
   const isDropTarget = useWindowFolderDrop({
     enabled: props.open && isElectron && source === "local",
     onFolder: applyPickedFolder,
@@ -226,8 +211,7 @@ export function CreateProjectDialog(props: {
 
   const submit = async () => {
     if (submitting) return;
-    // The confirm button stays enabled (and white) like the reference dialog;
-    // an empty submit explains what is missing instead of being unclickable.
+
     if (source === "local" && trimmedPath.length === 0) {
       setFormError("Type a folder path, or drop a folder above.");
       return;
@@ -312,8 +296,6 @@ export function CreateProjectDialog(props: {
     props.onOpenChange(open);
   };
 
-  // The space is created right away (same command the sidebar uses) and picked
-  // as the destination, so one Create click ships the project into it.
   const handleCreateSpace = async (value: SpaceEditorValue) => {
     const api = readNativeApi();
     if (!api) throw new Error("The app server is unavailable.");
@@ -332,11 +314,10 @@ export function CreateProjectDialog(props: {
   };
 
   const selectedSpace = spaces.find((space) => space.id === selectedSpaceKey) ?? null;
-  // Only echo the drop/browse result while the path field still matches it;
-  // hand-editing the path afterwards puts the box back in its idle state.
+
   const pickedFolderName =
     pickedPath !== null && trimmedPath === pickedPath
-      ? (pickedPath.split(/[/\\]/).filter(Boolean).at(-1) ?? pickedPath)
+      ? (pickedPath.split(/[/\\]/).findLast(Boolean) ?? pickedPath)
       : null;
   const finalClonePath = joinProjectPath(trimmedDestinationParent, trimmedDirectoryName);
 

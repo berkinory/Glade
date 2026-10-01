@@ -1,15 +1,16 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { CommandId, DEFAULT_SERVER_SETTINGS, MessageId } from "@glade/contracts";
+import { CommandId, MessageId } from "@glade/contracts/core/baseSchemas";
+import { DEFAULT_SERVER_SETTINGS } from "@glade/contracts/settings/settings";
 import { Effect, Layer, ManagedRuntime } from "effect";
 import { expect, it, vi } from "vitest";
-import { ServerConfig } from "../config";
+import { ServerConfig } from "../server/config";
 import { OrchestrationCommandReceiptRepositoryLive } from "../persistence/Layers/OrchestrationCommandReceipts";
 import { OrchestrationEventStoreLive } from "../persistence/Layers/OrchestrationEventStore";
 import { SqlitePersistenceMemory } from "../persistence/Layers/Sqlite";
 import { makeProjectImportRepository } from "../persistence/projectImportRepository";
 import type { ProviderAdapterRegistryShape } from "../provider/Services/ProviderAdapterRegistry";
 import type { ProviderServiceShape } from "../provider/Services/ProviderService";
-import type { ServerSettingsShape } from "../serverSettings";
+import type { ServerSettingsShape } from "../settings/serverSettings";
 import { OrchestrationEngineLive } from "./Layers/OrchestrationEngine";
 import { OrchestrationProjectionPipelineLive } from "./Layers/ProjectionPipeline";
 import { OrchestrationProjectionSnapshotQueryLive } from "./Layers/ProjectionSnapshotQuery";
@@ -83,7 +84,6 @@ it.each(["pending", "completed"] as const)(
       const project = (await preview()).projects[0]!;
       const input = { projectKey: project.key, threadKey: project.threads[0]!.key };
       if (status === "pending") {
-        // Fail after durable message and archive commands have already been accepted.
         const complete = repository.complete;
         repository.complete = vi
           .fn(complete)
@@ -103,7 +103,7 @@ it.each(["pending", "completed"] as const)(
           threadId: original.threadId,
         }),
       );
-      // Reload the command model from SQLite, as happens when the server restarts.
+
       await runtime.runPromise(engine.refreshCommandReadModel());
       expect((await preview()).projects[0]!.threads[0]!.alreadyImported).toBe(false);
 

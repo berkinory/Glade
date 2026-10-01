@@ -1,9 +1,4 @@
-// FILE: threadDetailPrewarm.ts
-// Purpose: Short-lived thread-detail subscription prewarm controller for navigation intent.
-// Layer: Web subscription utility
-// Exports: Pure controller factory plus a React hook backed by thread-detail retention.
-
-import type { ThreadId } from "@glade/contracts";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useEffect, useRef } from "react";
 import { hasThreadDetailResumeCursor } from "./threadDetailResumeCursors";
 import { retainThreadDetailSubscription } from "./threadDetailSubscriptionRetention";
@@ -56,8 +51,8 @@ function uniqueEligibleThreadIds(
       continue;
     }
     seenThreadIds.add(threadId);
-    // Eligibility filters before the limit: ineligible (cold) threads must not
-    // consume prewarm slots that a cached thread later in the list could use.
+    // Eligibility filters before the limit: ineligible (cold) threads must not consume prewarm slots
+    // that a cached thread later in the list could use.
     if (!isEligible(threadId)) {
       continue;
     }
@@ -75,9 +70,7 @@ function createThreadDetailPrewarmController(
 ): ThreadDetailPrewarmController {
   const retainThreadDetail =
     options.retainThreadDetailSubscription ?? retainThreadDetailSubscription;
-  // A speculative prewarm subscription is only cheap when it resumes from a
-  // cursor: without cached detail it would open a full-history snapshot stream
-  // and compete with real navigation for the per-client thread-stream budget.
+
   const canPrewarmThreadDetail = options.canPrewarmThreadDetail ?? hasThreadDetailResumeCursor;
   const releaseMs = options.releaseMs ?? THREAD_DETAIL_PREWARM_RELEASE_MS;
   const maxRetainedThreads = options.maxRetainedThreads ?? THREAD_DETAIL_PREWARM_LIMIT;
@@ -122,8 +115,7 @@ function createThreadDetailPrewarmController(
       const nextThreadIds = uniqueEligibleThreadIds(
         threadIds,
         maxRetainedThreads,
-        // Already-retained threads stay eligible: their prewarm retain is live
-        // even if the cursor moved underneath, matching prewarmThreadDetail.
+
         (threadId) => retainedThreadById.has(threadId) || canPrewarmThreadDetail(threadId),
       );
       const nextThreadIdSet = new Set(nextThreadIds);

@@ -1,9 +1,9 @@
 import type {
   AuthClientMetadata,
   AuthClientSession,
-  AuthSessionId,
   ServerAuthSessionMethod,
-} from "@glade/contracts";
+} from "@glade/contracts/transport/auth/auth";
+import type { AuthSessionId } from "@glade/contracts/core/baseSchemas";
 import { Data, DateTime, Duration, ServiceMap } from "effect";
 import type { Effect, Stream } from "effect";
 

@@ -1,9 +1,10 @@
-import { EnvironmentId, type ExecutionEnvironmentDescriptor } from "@glade/contracts";
+import { EnvironmentId } from "@glade/contracts/core/baseSchemas";
+import { type ExecutionEnvironmentDescriptor } from "@glade/contracts/workspace/environment";
 import { Effect, FileSystem, Layer, Path, Random } from "effect";
 
 import packageJson from "../../../package.json" with { type: "json" };
-import { ServerConfig } from "../../config";
-import { writeFileStringAtomically } from "../../atomicWrite";
+import { ServerConfig } from "../../server/config";
+import { writeFileStringAtomically } from "../../platform/filesystem/atomicWrite";
 import { ServerEnvironment, type ServerEnvironmentShape } from "../Services/ServerEnvironment";
 import { resolveServerEnvironmentLabel } from "./ServerEnvironmentLabel";
 

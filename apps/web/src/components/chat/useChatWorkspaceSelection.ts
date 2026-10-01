@@ -1,23 +1,21 @@
-import {
-  type NativeApi,
-  type OrchestrationShellSnapshot,
-  type ProjectId,
-  type ProviderKind,
-  ThreadId,
-} from "@glade/contracts";
-import { workspaceRootsEqual } from "@glade/shared/threadWorkspace";
+import { useChatThreadContext } from "./ChatThreadContext";
+import { type NativeApi } from "@glade/contracts/ipc/ipc";
+import { type OrchestrationShellSnapshot } from "@glade/contracts/orchestration/snapshots";
+import { type ProjectId, type ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
+import { workspaceRootsEqual } from "@glade/shared/threads/threadWorkspace";
 import type { RefObject } from "react";
 import { useCallback } from "react";
 import { newCommandId } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
-import { type DraftThreadEnvMode, useComposerDraftStore } from "../../composerDraftStore";
+import type { DraftThreadEnvMode } from "../../composerDraftDomain";
+import { useComposerDraftStore } from "../../composerDraftStore";
 import { ensureHomeChatProject } from "../../lib/chatProjects";
 import {
   PROJECT_CREATE_EXISTING_SYNC_ERROR,
   PROJECT_CREATE_SYNC_ERROR,
   createOrRecoverProjectFromPath,
 } from "../../lib/projectCreation";
-import { useProjectEnvironmentStore } from "../../projectEnvironmentStore";
+import { useProjectPreferencesStore } from "../../projectPreferencesStore";
 import { useStore } from "../../store";
 import type { Project, Thread } from "../../types";
 import { useWorkspacePathsStore } from "../../workspacePathsStore";
@@ -36,7 +34,6 @@ function waitForDraftProjectSyncDelay(ms: number): Promise<void> {
   });
 }
 
-// Waits for a project to appear in the shell snapshot before a local draft points at it.
 async function waitForShellProjectById(
   api: NativeApi,
   projectId: ProjectId,
@@ -74,19 +71,32 @@ interface ChatWorkspaceSelectionInput {
   defaultProvider: ProviderKind;
 }
 
+type ChatWorkspaceSelectionControllerInput = {
+  session: Pick<ChatWorkspaceSelectionInput, "activeThread" | "composerEditorRef">;
+  workspace: Pick<
+    ChatWorkspaceSelectionInput,
+    "activeProject" | "isServerThread" | "isLocalDraftThread" | "isHomeChatContainer"
+  >;
+  transcript: Pick<ChatWorkspaceSelectionInput, "activeRootBranch">;
+  discovery: Pick<ChatWorkspaceSelectionInput, "hasNativeUserMessages">;
+  composer: Pick<ChatWorkspaceSelectionInput, "scheduleComposerFocus">;
+  turn: Pick<ChatWorkspaceSelectionInput, "defaultProvider">;
+};
 export function useChatWorkspaceSelection({
-  threadId,
-  activeThread,
-  activeProject,
-  activeRootBranch,
-  isServerThread,
-  isLocalDraftThread,
-  isHomeChatContainer,
-  hasNativeUserMessages,
-  composerEditorRef,
-  scheduleComposerFocus,
-  defaultProvider,
-}: ChatWorkspaceSelectionInput) {
+  session,
+  workspace,
+  transcript,
+  discovery,
+  composer,
+  turn,
+}: ChatWorkspaceSelectionControllerInput) {
+  const { threadId } = useChatThreadContext();
+  const { activeThread, composerEditorRef } = session;
+  const { activeProject, isServerThread, isLocalDraftThread, isHomeChatContainer } = workspace;
+  const { activeRootBranch } = transcript;
+  const { hasNativeUserMessages } = discovery;
+  const { scheduleComposerFocus } = composer;
+  const { defaultProvider } = turn;
   const syncServerShellSnapshot = useStore((store) => store.syncServerShellSnapshot);
   const setStoreThreadWorkspace = useStore((store) => store.setThreadWorkspace);
   const setDraftThreadContext = useComposerDraftStore((store) => store.setDraftThreadContext);
@@ -99,7 +109,7 @@ export function useChatWorkspaceSelection({
   const onEnvModeChange = useCallback(
     (mode: DraftThreadEnvMode) => {
       if (activeProject) {
-        useProjectEnvironmentStore.getState().setProjectEnvMode(activeProject.id, mode);
+        useProjectPreferencesStore.getState().setProjectEnvMode(activeProject.id, mode);
       }
       const nextBranch =
         mode === "worktree"
@@ -148,7 +158,6 @@ export function useChatWorkspaceSelection({
         restoreComposerFocus?: boolean;
       },
     ) => {
-      // Project moves reset branch; the previous project's current branch may not exist here.
       moveDraftThreadToProject(threadId, projectId, LOCAL_PROJECT_DRAFT_CONTEXT);
       if (options?.restoreComposerFocus ?? true) {
         scheduleComposerFocus();
@@ -158,8 +167,8 @@ export function useChatWorkspaceSelection({
   );
 
   const handleResetWorkspaceToHome = useCallback(() => {
-    // The inline reset action prevents pointer-down from stealing editor focus. Avoid refocusing
-    // an already-focused editor: focusAtEnd would move its cursor and schedule a redundant frame.
+    // The inline reset action prevents pointer-down from stealing editor focus. Avoid refocusing an
+    // already-focused editor: focusAtEnd would move its cursor and schedule a redundant frame.
     // Picker-menu resets still restore focus because the editor is no longer active in that path.
     const restoreComposerFocus = !composerEditorRef.current?.isFocused();
     if (isLocalDraftThread) {

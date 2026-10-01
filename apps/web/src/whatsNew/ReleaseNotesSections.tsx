@@ -1,5 +1,3 @@
-// Group the curated notes like CHANGELOG.md: one category heading, then its changes.
-
 import { FeatureSection } from "./FeatureSection";
 import type { WhatsNewFeature } from "./logic";
 
@@ -25,9 +23,9 @@ const CATEGORY_TONES: Record<string, { text: string; dot: string }> = {
 export function ReleaseNotesSections(props: { features: readonly WhatsNewFeature[] }) {
   const groups = new Map<string, WhatsNewFeature[]>();
   for (const feature of props.features) {
-    const group = groups.get(feature.title) ?? [];
+    const group = groups.get(feature.category) ?? [];
     group.push(feature);
-    groups.set(feature.title, group);
+    groups.set(feature.category, group);
   }
 
   return (
@@ -47,7 +45,7 @@ export function ReleaseNotesSections(props: { features: readonly WhatsNewFeature
           </div>
           <ul className="divide-y divide-border/40">
             {features.map((feature) => (
-              <FeatureSection key={feature.id} feature={feature} />
+              <FeatureSection key={feature.description} feature={feature} />
             ))}
           </ul>
         </section>

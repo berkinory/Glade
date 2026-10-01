@@ -1,7 +1,5 @@
-import type { ComputerTarget, ComputerUiNode } from "@glade/contracts";
+import type { ComputerTarget, ComputerUiNode } from "@glade/contracts/computer/computer";
 
-// Native handles stay inside the server. Neither the provider-facing ref nor
-// the public ComputerTarget schema exposes an actuator token.
 const nativeIdentities = new WeakMap<ComputerUiNode, string>();
 const observedRefs = new WeakMap<object, ComputerUiNode>();
 const observedElement = Symbol("computerObservedElement");
@@ -26,8 +24,7 @@ export function computerElementRefIdentity(ref: object): string | undefined {
 
 export function bindComputerTargetRef(target: ComputerTarget, ref: object): ComputerTarget {
   const node = observedRefs.get(ref);
-  // Enumerable symbols survive internal object spreads, but JSON/provider
-  // serialization cannot carry or manufacture this server-owned binding.
+
   if (!node) return target;
   const bound: ObservedComputerTarget = { ...target, [observedElement]: node };
   return bound;

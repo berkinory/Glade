@@ -1,4 +1,5 @@
-import { AutomationId, type AutomationProposalState } from "@glade/contracts";
+import { AutomationId } from "@glade/contracts/core/baseSchemas";
+import { type AutomationProposalState } from "@glade/contracts/automation/automation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "~/components/ui/button";

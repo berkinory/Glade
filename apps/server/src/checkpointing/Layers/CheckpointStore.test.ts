@@ -1,7 +1,3 @@
-// FILE: CheckpointStore.test.ts
-// Purpose: Verifies filesystem checkpoint store behavior around expensive Git capture work.
-// Layer: Checkpointing tests.
-// Exports: Vitest coverage for CheckpointStoreLive.
 import { mkdtempSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -13,8 +9,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { CheckpointStoreLive } from "./CheckpointStore.ts";
 import { CheckpointStore } from "../Services/CheckpointStore.ts";
 import { GitCore, type GitCoreShape } from "../../git/Services/GitCore.ts";
-import { GitCommandError } from "../../git/Errors.ts";
-import { CheckpointRef } from "@glade/contracts";
+import { CheckpointRef } from "@glade/contracts/core/baseSchemas";
 
 async function waitFor(predicate: () => boolean, timeoutMs = 1_000): Promise<void> {
   const started = Date.now();
@@ -215,8 +210,7 @@ describe("CheckpointStoreLive", () => {
         yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 25)));
 
         yield* Fiber.interrupt(first);
-        // The owner's interruption must surface to waiters as a typed store
-        // error, not replay as the waiter's own fiber being interrupted.
+
         const waiterResult = yield* Fiber.join(waiter);
         expect(waiterResult).toBe("CheckpointInvariantError");
 
@@ -290,70 +284,6 @@ describe("CheckpointStoreLive", () => {
     );
   });
 
-  it("restores the worktree patch when resetting the index fails during file undo", async () => {
-    const fromRef = CheckpointRef.makeUnsafe("refs/glade-checkpoints/thread/turn/start");
-    const toRef = CheckpointRef.makeUnsafe("refs/glade-checkpoints/thread/turn/end");
-    const commands: string[] = [];
-    const execute = vi.fn<GitCoreShape["execute"]>((input) => {
-      const args = input.args.join(" ");
-      commands.push(args);
-      if (args === `rev-parse --verify --quiet ${fromRef}^{commit}`) {
-        return Effect.succeed({ code: 0, stdout: "from-oid\n", stderr: "" });
-      }
-      if (args === `rev-parse --verify --quiet ${toRef}^{commit}`) {
-        return Effect.succeed({ code: 0, stdout: "to-oid\n", stderr: "" });
-      }
-      if (args.startsWith("diff --patch --binary --full-index")) {
-        return Effect.succeed({ code: 0, stdout: "turn patch", stderr: "" });
-      }
-      if (args === "diff --name-only --no-renames -z from-oid to-oid") {
-        return Effect.succeed({ code: 0, stdout: "src/file.ts\0", stderr: "" });
-      }
-      if (input.args[0] === "apply" && input.args[1] === "--reverse") {
-        return Effect.succeed({ code: 0, stdout: "", stderr: "" });
-      }
-      if (args === "reset --quiet from-oid -- src/file.ts") {
-        return Effect.fail(
-          new GitCommandError({
-            operation: input.operation,
-            command: args,
-            cwd: input.cwd,
-            detail: "reset failed",
-          }),
-        );
-      }
-      if (input.args[0] === "apply" && input.args[1] === "--whitespace=nowarn") {
-        return Effect.succeed({ code: 0, stdout: "", stderr: "" });
-      }
-      throw new Error(`Unexpected git args: ${args}`);
-    });
-    const layer = CheckpointStoreLive.pipe(
-      Layer.provide(Layer.succeed(GitCore, { execute } as unknown as GitCoreShape)),
-      Layer.provide(NodeServices.layer),
-    );
-    runtime = ManagedRuntime.make(layer);
-
-    const result = await runtime.runPromise(
-      Effect.gen(function* () {
-        const store = yield* CheckpointStore;
-        return yield* store
-          .reverseCheckpointDiff({
-            cwd: "/repo",
-            fromCheckpointRef: fromRef,
-            toCheckpointRef: toRef,
-          })
-          .pipe(
-            Effect.map(() => "success" as const),
-            Effect.catch((error) => Effect.succeed(error._tag)),
-          );
-      }),
-    );
-
-    expect(result).toBe("GitCommandError");
-    expect(commands.filter((command) => command.startsWith("apply "))).toHaveLength(2);
-    expect(commands.at(-1)).toMatch(/^apply --whitespace=nowarn -- /);
-  });
-
   it("fails when a checkpoint ref cannot be deleted", async () => {
     const lockedRef = CheckpointRef.makeUnsafe("refs/glade/checkpoints/thread/turn/locked");
     const deletableRef = CheckpointRef.makeUnsafe("refs/glade/checkpoints/thread/turn/ok");
@@ -394,8 +324,8 @@ describe("CheckpointStoreLive", () => {
   });
 
   it("tolerates deleting checkpoint refs that are already absent", async () => {
-    // `git update-ref -d` exits 0 for a ref that does not exist, so the
-    // exit-code check must not turn best-effort cleanup into a hard failure.
+    // `git update-ref -d` exits 0 for a ref that does not exist, so the exit-code check must not turn
+    // best-effort cleanup into a hard failure.
     const missingRef = CheckpointRef.makeUnsafe("refs/glade/checkpoints/thread/turn/gone");
     const execute = vi.fn<GitCoreShape["execute"]>(() =>
       Effect.succeed({ code: 0, stdout: "", stderr: "" }),

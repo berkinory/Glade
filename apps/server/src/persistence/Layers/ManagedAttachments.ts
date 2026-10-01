@@ -1,3 +1,4 @@
+import type { TaggedFailure } from "../../platform/operationError.ts";
 import { Effect, Layer, Option } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
@@ -175,7 +176,7 @@ const makeRepository = (limits: ManagedAttachmentLimits) =>
 
     const classifyClaimRejection = (
       input: Parameters<ManagedAttachmentRepositoryShape["claimForAcceptedTurn"]>[0],
-    ): Effect.Effect<ClaimManagedAttachmentsResult, unknown> =>
+    ): Effect.Effect<ClaimManagedAttachmentsResult, TaggedFailure> =>
       Effect.gen(function* () {
         const rows = yield* sql<ManagedAttachmentBlob>`
           SELECT ${blobColumns(sql)}

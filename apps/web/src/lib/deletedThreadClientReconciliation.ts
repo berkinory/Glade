@@ -1,9 +1,4 @@
-// FILE: deletedThreadClientReconciliation.ts
-// Purpose: Keeps thread-delete UI state responsive after the server accepts deletion.
-// Layer: Web orchestration helper
-// Exports: reconcileDeletedThreadFromClient, reconcileDeletedThreadsFromClient
-
-import type { ThreadId } from "@glade/contracts";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 interface DeletedThreadClientReconciliationInput {
   threadIds: ReadonlyArray<ThreadId>;
@@ -26,8 +21,6 @@ export function reconcileDeletedThreadFromClient(
   });
 }
 
-// Delete reconciliation is intentionally local-only; shell snapshots/events still own
-// authoritative refresh and can arrive stale while a delete is propagating.
 export async function reconcileDeletedThreadsFromClient(
   input: DeletedThreadClientReconciliationInput,
 ): Promise<void> {

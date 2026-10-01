@@ -1,14 +1,11 @@
-// FILE: subagentPresentation.ts
-// Purpose: Normalizes subagent identity, nickname colors, and status labels for sidebar/chat UI.
-// Exports: Shared presentation helpers consumed by sidebar rows, chat cards, and thread hydration.
-
+import { asRecord } from "@glade/shared/transport/payloadValues";
 import {
   buildSubagentIdentityDirectory,
   extractSubagentIdentityHints as extractParsedSubagentIdentityHints,
   isWorkerTierSubagentRole,
   resolveSubagentIdentityFromDirectory,
-} from "@glade/shared/subagents";
-import { formatModelDisplayName } from "@glade/shared/model";
+} from "@glade/shared/threads/subagents";
+import { formatModelDisplayName } from "@glade/shared/provider/model";
 
 const SUBAGENT_ACCENT_PALETTE = [
   "#b84e44",
@@ -93,8 +90,8 @@ function normalizeRole(role: string | null | undefined): string | null {
   return normalized ? normalized.toLowerCase() : null;
 }
 
-// Worker-tier agent types are internal effort carriers; never surface them as a
-// role even when persisted thread metadata or titles still contain them.
+// Worker-tier agent types are internal effort carriers; never surface them as a role even when
+// persisted thread metadata or titles still contain them.
 function suppressWorkerTierRole(role: string | null): string | null {
   return role !== null && isWorkerTierSubagentRole(role) ? null : role;
 }
@@ -131,12 +128,6 @@ function capitalizeRoleLabel(role: string | null): string | null {
     return null;
   }
   return role.charAt(0).toUpperCase() + role.slice(1);
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
 }
 
 function providerThreadIdForThread(input: {
@@ -227,7 +218,7 @@ export function resolveSubagentPresentation(input: {
   const normalizedTitle = normalizeWhitespace(input.title);
   const parsedTitle = parseBracketedSubagentLabel(normalizedTitle);
   const parsedTitleRole = suppressWorkerTierRole(parsedTitle.role);
-  // Titles persisted as "Nickname [worker-low]" drop the worker-tier suffix.
+
   const titleWithoutWorkerRole =
     parsedTitle.role !== null && parsedTitleRole === null ? parsedTitle.nickname : normalizedTitle;
   const parsedTitleNickname = isGenericSubagentTitle(parsedTitle.nickname)
@@ -363,17 +354,11 @@ export function humanizeSubagentStatus(
   }
 }
 
-// Short form for agent rows: the "Claude " prefix is redundant next to a
-// model name ("Haiku 4.5" reads as well as "Claude Haiku 4.5" and halves the
-// label), and non-Claude names pass through unchanged.
 export function formatSubagentModelLabel(model: string | null | undefined): string | undefined {
   const displayName = formatModelDisplayName(normalizeWhitespace(model));
   return displayName?.startsWith("Claude ") ? displayName.slice("Claude ".length) : displayName;
 }
 
-// Status is the only hue in the agent panels: the dot always carries it, the
-// text echoes it only while live (running) or when something went wrong
-// (failed); terminal/neutral states read as plain muted text.
 export function subagentStatusTextToneClassName(
   statusKind: SubagentStatusKind | null | undefined,
 ): string {

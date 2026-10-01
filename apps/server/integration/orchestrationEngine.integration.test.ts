@@ -1,18 +1,18 @@
+import { scopedTurnCheckpoints } from "../src/checkpointing/scopedTurnCheckpoints";
 import fs from "node:fs";
 import path from "node:path";
 
 import {
   ApprovalRequestId,
   CommandId,
-  DEFAULT_PROVIDER_INTERACTION_MODE,
-  DEFAULT_MODEL_BY_PROVIDER,
   EventId,
   MessageId,
   ProjectId,
   ProviderKind,
   ThreadId,
-  ModelSelection,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
+import { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
+import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import { assert, it } from "@effect/vitest";
 import { Effect, Option, Schema } from "effect";
 
@@ -40,6 +40,19 @@ const PROJECT_ID = asProjectId("project-1");
 const THREAD_ID = ThreadId.makeUnsafe("thread-1");
 const FIXTURE_TURN_ID = "fixture-turn";
 const APPROVAL_REQUEST_ID = asApprovalRequestId("req-approval-1");
+
+const prepareRevert = (harness: OrchestrationIntegrationHarness, turnCount: number) =>
+  Effect.gen(function* () {
+    const thread = Option.getOrThrow(yield* harness.snapshotQuery.getThreadDetailById(THREAD_ID));
+    const preview = yield* harness.checkpointStore.previewScopedRestore({
+      cwd: harness.workspaceDir,
+      turns: scopedTurnCheckpoints(
+        thread,
+        thread.checkpoints.filter((checkpoint) => checkpoint.checkpointTurnCount > turnCount),
+      ),
+    });
+    return { fingerprint: preview.fingerprint, overwritePaths: [] };
+  });
 const itLiveUnlessCi = (process.env.CI ? it.skip : it.live) as typeof it.live;
 type IntegrationProvider = ProviderKind;
 
@@ -76,11 +89,6 @@ function waitForSync<A>(
   });
 }
 
-/**
- * Stale checkpoint refs are pruned only after `thread.revert.complete` commits,
- * so the projection can already show the trimmed thread while the refs are still
- * on disk. Poll instead of asserting straight after `thread.reverted`.
- */
 function waitForGitRefMissing(cwd: string, ref: string) {
   return waitForSync(
     () => gitRefExists(cwd, ref),
@@ -122,7 +130,7 @@ const seedProjectAndThread = (harness: OrchestrationIntegrationHarness) =>
   Effect.gen(function* () {
     const createdAt = nowIso();
     const provider = harness.adapterHarness?.provider ?? "codex";
-    const defaultModel = DEFAULT_MODEL_BY_PROVIDER[provider];
+    const defaultModel = PROVIDER_DEFAULT_MODEL;
 
     yield* harness.engine.dispatch({
       type: "project.create",
@@ -147,7 +155,7 @@ const seedProjectAndThread = (harness: OrchestrationIntegrationHarness) =>
         provider,
         model: defaultModel,
       },
-      interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
       runtimeMode: "approval-required",
       branch: null,
       worktreePath: harness.workspaceDir,
@@ -177,7 +185,7 @@ const startTurn = (input: {
           modelSelection: input.modelSelection,
         }
       : {}),
-    interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
     runtimeMode: "approval-required",
     createdAt: nowIso(),
   });
@@ -296,7 +304,7 @@ it.live.skipIf(!process.env.CODEX_BINARY_PATH)(
             provider: "codex",
             model: "gpt-5.3-codex",
           },
-          interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
           runtimeMode: "full-access",
           branch: null,
           worktreePath: harness.workspaceDir,
@@ -313,7 +321,7 @@ it.live.skipIf(!process.env.CODEX_BINARY_PATH)(
             text: "Reply with exactly ALPHA.",
             attachments: [],
           },
-          interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
           runtimeMode: "full-access",
           createdAt: nowIso(),
         });
@@ -340,7 +348,7 @@ it.live.skipIf(!process.env.CODEX_BINARY_PATH)(
             text: "Reply with exactly BETA.",
             attachments: [],
           },
-          interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
           runtimeMode: "approval-required",
           createdAt: nowIso(),
         });
@@ -836,6 +844,7 @@ it.live("reverts to an earlier checkpoint and trims checkpoint projections + git
       yield* harness.engine.dispatch({
         type: "thread.checkpoint.revert",
         commandId: CommandId.makeUnsafe("cmd-checkpoint-revert"),
+        workspaceRestore: yield* prepareRevert(harness, 1),
         threadId: THREAD_ID,
         turnCount: 1,
         createdAt: nowIso(),
@@ -910,9 +919,7 @@ it.live(
           (activity) => activity.kind === "checkpoint.revert.failed",
         );
         assert.equal(failureActivity !== undefined, true);
-        // A revert dispatched without a live provider session is no longer rejected up
-        // front: it resolves the checkpoint cwd on its own and fails only when the
-        // requested turn has no filesystem checkpoint.
+
         assert.equal(
           String((failureActivity?.payload as { readonly detail?: string } | undefined)?.detail),
           "Filesystem checkpoint is unavailable for turn 0.",
@@ -976,6 +983,153 @@ it.live("starts a claudeAgent session on first turn when provider is requested",
       }),
     "claudeAgent",
   ),
+);
+
+it.live("replays a held Claude message and releases later queued work exactly once", () =>
+  Effect.acquireUseRelease(
+    makeOrchestrationIntegrationHarness({ provider: "claudeAgent" }),
+    (original) =>
+      Effect.gen(function* () {
+        yield* seedProjectAndThread(original);
+        const createdAt = nowIso();
+        const eventBase = (id: string) => ({
+          eventId: asEventId(id),
+          aggregateKind: "thread" as const,
+          aggregateId: THREAD_ID,
+          occurredAt: createdAt,
+          commandId: null,
+          causationEventId: null,
+          correlationId: null,
+          metadata: {},
+        });
+        const held = yield* original.appendHistoricalEvent({
+          ...eventBase("legacy-held-message"),
+          type: "thread.message-sent",
+          payload: {
+            threadId: THREAD_ID,
+            messageId: asMessageId("legacy-held"),
+            role: "user",
+            text: "Keep this unsent message",
+            turnId: null,
+            streaming: false,
+            source: "native",
+            createdAt,
+            updatedAt: createdAt,
+          },
+        });
+        yield* original.appendHistoricalEvent({
+          ...eventBase("legacy-cache-review"),
+          type: "thread.claude-cache-set",
+          payload: {
+            threadId: THREAD_ID,
+            review: {
+              reviewId: "legacy-review-1",
+              messageId: asMessageId("legacy-held"),
+              sourceEventSequence: held.sequence,
+              assessment: { observedAt: createdAt, state: "unknown", source: "session-start" },
+              status: "pending",
+              createdAt,
+            },
+            updatedAt: createdAt,
+          },
+        });
+        yield* original.dispose;
+
+        yield* Effect.acquireUseRelease(
+          makeOrchestrationIntegrationHarness({
+            provider: "claudeAgent",
+            existingRootDir: original.rootDir,
+          }),
+          (recovered) =>
+            Effect.gen(function* () {
+              const restored = yield* recovered.waitForThread(
+                THREAD_ID,
+                (thread) => thread.claudeCacheReview?.reviewId === "legacy-review-1",
+              );
+              assert.equal(
+                restored.messages.find((message) => message.id === "legacy-held")?.text,
+                "Keep this unsent message",
+              );
+              yield* startTurn({
+                harness: recovered,
+                commandId: "queued-behind-legacy",
+                messageId: "queued-after-legacy",
+                text: "Send only after release",
+              });
+              yield* recovered.waitForDomainEvent(
+                (event) =>
+                  event.type === "thread.turn-queued" &&
+                  event.payload.messageId === "queued-after-legacy",
+              );
+              yield* recovered.engine.drain;
+              yield* recovered.drainProvider;
+              assert.equal(recovered.adapterHarness!.getSendCount(), 0);
+
+              yield* recovered.adapterHarness!.queueTurnResponseForNextSession({
+                events: [
+                  {
+                    type: "turn.started",
+                    ...runtimeBase("released-start", createdAt, "claudeAgent"),
+                    threadId: THREAD_ID,
+                    turnId: FIXTURE_TURN_ID,
+                  },
+                  {
+                    type: "turn.completed",
+                    ...runtimeBase("released-complete", createdAt, "claudeAgent"),
+                    threadId: THREAD_ID,
+                    turnId: FIXTURE_TURN_ID,
+                    status: "completed",
+                  },
+                ],
+              });
+              yield* recovered.engine.dispatch({
+                type: "thread.legacy-cache.abandon",
+                commandId: CommandId.makeUnsafe("release-legacy-review"),
+                threadId: THREAD_ID,
+                reviewId: "legacy-review-1",
+                createdAt: nowIso(),
+              });
+              const released = yield* recovered.waitForThread(
+                THREAD_ID,
+                (thread) =>
+                  thread.claudeCacheReview == null &&
+                  thread.messages.some((message) => message.id === "queued-after-legacy"),
+              );
+              assert.equal(
+                released.messages.filter((message) => message.id === "legacy-held").length,
+                1,
+              );
+              yield* waitForSync(
+                () => recovered.adapterHarness!.getSendCount(),
+                (count) => count === 1,
+                "one queued provider send after releasing the old hold",
+              );
+              assert.equal(recovered.adapterHarness!.getSendCount(), 1);
+              yield* recovered.dispose;
+
+              yield* Effect.acquireUseRelease(
+                makeOrchestrationIntegrationHarness({
+                  provider: "claudeAgent",
+                  existingRootDir: original.rootDir,
+                }),
+                (restarted) =>
+                  Effect.gen(function* () {
+                    yield* restarted.waitForThread(
+                      THREAD_ID,
+                      (thread) => thread.claudeCacheReview == null,
+                    );
+                    yield* restarted.engine.drain;
+                    yield* restarted.drainProvider;
+                    assert.equal(restarted.adapterHarness!.getSendCount(), 0);
+                  }),
+                (restarted) => restarted.dispose,
+              );
+            }),
+          (recovered) => recovered.dispose,
+        );
+      }),
+    (original) => original.dispose,
+  ).pipe(Effect.provide(NodeServices.layer)),
 );
 
 itLiveUnlessCi(
@@ -1278,6 +1432,7 @@ itLiveUnlessCi("reverts claudeAgent turns and rolls back provider conversation s
         yield* harness.engine.dispatch({
           type: "thread.checkpoint.revert",
           commandId: CommandId.makeUnsafe("cmd-checkpoint-revert-claude"),
+          workspaceRestore: yield* prepareRevert(harness, 1),
           threadId: THREAD_ID,
           turnCount: 1,
           createdAt: nowIso(),

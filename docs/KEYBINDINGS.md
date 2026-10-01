@@ -13,7 +13,7 @@ The file must be a JSON array of rules:
 ]
 ```
 
-See the full schema for more details: [`packages/contracts/src/keybindings.ts`](../packages/contracts/src/keybindings.ts)
+See the full schema for more details: [`packages/contracts/src/settings/keybindings.ts`](../packages/contracts/src/settings/keybindings.ts)
 
 ## Defaults
 
@@ -34,7 +34,12 @@ See the full schema for more details: [`packages/contracts/src/keybindings.ts`](
 ]
 ```
 
-For most up to date defaults, see [`DEFAULT_KEYBINDINGS` in `apps/server/src/keybindings.ts`](../apps/server/src/keybindings.ts)
+For most up to date defaults, see [`DEFAULT_KEYBINDINGS` in `apps/server/src/settings/defaultKeybindings.ts`](../apps/server/src/settings/defaultKeybindings.ts)
+
+The server's shortcut and condition compiler lives in `settings/keybindingCompiler.ts`;
+configuration normalization lives in `settings/keybindingConfig.ts`. The `Keybindings`
+service tag is under `settings/Services`, and its file-backed implementation is under
+`settings/Layers`.
 
 ## Configuration
 

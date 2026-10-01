@@ -1,9 +1,4 @@
-// FILE: FileAttachmentChip.tsx
-// Purpose: Renders generic file attachments as compact pills or composer cards.
-// Layer: Chat attachment presentation
-// Depends on: shared byte formatting, chat attachment types, and compact chip styles.
-
-import { formatBytes } from "@glade/shared/formatBytes";
+import { formatBytes } from "@glade/shared/text/formatBytes";
 
 import { basenameOfPath } from "~/file-icons";
 import { FileIcon } from "~/lib/icons";
@@ -59,8 +54,8 @@ interface FileAttachmentChipProps {
   variant?: FileAttachmentChipVariant;
 }
 
-// Builds the short sub-label shown on composer cards, preferring precise
-// extensions before MIME fallbacks so long vendor MIME strings never leak into UI.
+// Builds the short sub-label shown on composer cards, preferring precise extensions before MIME
+// fallbacks so long vendor MIME strings never leak into UI.
 function fileAttachmentTypeLabel(file: ChatFileAttachment): string {
   const basename = basenameOfPath(file.name).trim();
   const extensionStart = basename.startsWith(".") ? -1 : basename.indexOf(".");

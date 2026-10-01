@@ -1,9 +1,7 @@
-import {
-  CommandId,
-  DEFAULT_PROVIDER_INTERACTION_MODE,
-  OrchestrationCommand,
-  type OrchestrationReadModel,
-} from "@glade/contracts";
+import { CommandId } from "@glade/contracts/core/baseSchemas";
+
+import { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
+import { type OrchestrationReadModel } from "@glade/contracts/orchestration/snapshots";
 import { Effect, Schema } from "effect";
 import { describe, expect, it } from "vitest";
 
@@ -44,7 +42,7 @@ async function fixture(workingDirectory: string | null = null) {
     title: "Earlier conversation",
     modelSelection: { provider: "claudeAgent", model: "claude-sonnet-4-6" },
     runtimeMode: "approval-required",
-    interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
     envMode: "local",
     branch: null,
     worktreePath: null,

@@ -10,7 +10,6 @@ export interface ComputerAuditFileTail {
   readonly inode: number;
 }
 
-/** Shared bounded file access for audit history and retention, never a full-file read. */
 export async function readComputerAuditFileTail(
   path: string,
   maxBytes: number,
@@ -18,8 +17,6 @@ export async function readComputerAuditFileTail(
   if (!Number.isSafeInteger(maxBytes) || maxBytes < 0) throw new Error("Invalid audit read bound.");
   let file;
   try {
-    // O_NOFOLLOW is unavailable on some platforms. Also verify the opened
-    // identity so a link cannot substitute an arbitrary file there.
     const entry = await lstat(path);
     if (!entry.isFile()) throw new Error("Could not read Computer activity history.");
     file = await open(
@@ -28,7 +25,7 @@ export async function readComputerAuditFileTail(
     );
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
-    throw new Error("Could not read Computer activity history.");
+    throw new Error("Could not read Computer activity history.", { cause: error });
   }
   try {
     const stat = await file.stat();
@@ -60,7 +57,6 @@ export async function readComputerAuditFileTail(
   }
 }
 
-/** Complete newline-terminated records, newest first, preserving their file positions. */
 export function* computerAuditTailLines(tail: ComputerAuditFileTail): Generator<{
   readonly line: Buffer;
   readonly offset: number;

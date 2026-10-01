@@ -1,5 +1,3 @@
-// Mandatory afterSign gate. electron-builder must finish this before creating
-// the DMG/update ZIP. The child uses the same Node runtime as packaging.
 const { spawn } = require("node:child_process");
 const { join } = require("node:path");
 module.exports = async (context) => {

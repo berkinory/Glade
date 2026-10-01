@@ -1,12 +1,10 @@
-import type { GitResolvePullRequestResult } from "@glade/contracts";
+import type { GitResolvePullRequestResult } from "@glade/contracts/git/git";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { useEffect, useRef, useState } from "react";
 
-import {
-  gitPreparePullRequestThreadMutationOptions,
-  gitResolvePullRequestQueryOptions,
-} from "~/lib/gitReactQuery";
+import { gitPreparePullRequestThreadMutationOptions } from "~/lib/gitReactQuery";
+import { gitResolvePullRequestQueryOptions } from "../lib/gitQueryOptions";
 import { cn } from "~/lib/utils";
 import { parsePullRequestReference } from "~/pullRequestReference";
 import { Button } from "./ui/button";
@@ -41,8 +39,6 @@ export function PullRequestThreadDialog({
   onOpenChange,
   onPrepared,
 }: PullRequestThreadDialogProps) {
-  // Mirrors the content's prepare-in-flight state so the close guard can live
-  // up here while all form state resets by unmounting below DialogPopup.
   const [busy, setBusy] = useState(false);
   return (
     <Dialog
@@ -94,7 +90,7 @@ function PullRequestThreadDialogContent({
     return () => {
       window.cancelAnimationFrame(frame);
     };
-  }, [open]);
+  }, []);
 
   const parsedReference = parsePullRequestReference(reference);
   const parsedDebouncedReference = parsePullRequestReference(debouncedReference);
@@ -144,8 +140,6 @@ function PullRequestThreadDialogContent({
       statusTone = "text-muted-foreground";
   }
 
-  // Promise chain instead of async/try-finally: React Compiler does not yet
-  // support try/finally, and it would skip optimizing this whole component.
   const handleConfirm = (mode: "local" | "worktree") => {
     if (!parsedReference) {
       setReferenceDirty(true);

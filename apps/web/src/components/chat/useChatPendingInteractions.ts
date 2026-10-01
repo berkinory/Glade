@@ -1,18 +1,17 @@
 import {
   RuntimeMode,
-  ThreadId,
-  type ApprovalRequestId,
   type ProviderApprovalDecision,
   type ProviderRequestKind,
   type ProviderUserInputAnswers,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/sessionPolicy";
+import { ThreadId, type ApprovalRequestId } from "@glade/contracts/core/baseSchemas";
 import {
   APPROVAL_ALREADY_ANSWERED_INVARIANT_MARKER,
   collectErrorMessages,
   describeErrorMessage,
-} from "@glade/shared/errorMessages";
-import { respondingInteractionReclaimAt } from "@glade/shared/pendingInteractions";
-import { pendingRequestInstanceKey } from "@glade/shared/threadSummary";
+} from "@glade/shared/text/errorMessages";
+import { respondingInteractionReclaimAt } from "@glade/shared/threads/pendingInteractions";
+import { pendingRequestInstanceKey } from "@glade/shared/threads/threadSummary";
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { newCommandId } from "~/lib/utils";
@@ -34,14 +33,17 @@ import {
   type PendingUserInputDraftAnswer,
 } from "../../pendingUserInput";
 import { expiredUserInputDrafts } from "../../pendingUserInputRecovery";
-import { derivePendingApprovals, derivePendingUserInputs } from "../../session-logic";
+import {
+  derivePendingApprovals,
+  derivePendingUserInputs,
+} from "../../pendingInteractionDerivation";
 import { useStore } from "../../store";
 import {
   buildThreadSubscribeInput,
   clearThreadDetailResumeCursor,
 } from "../../threadDetailResumeCursors";
 import { type Thread } from "../../types";
-import { resolveRuntimeModeAfterApprovalDecision } from "../ChatView.logic";
+import { resolveRuntimeModeAfterApprovalDecision } from "../ChatView.logic.session";
 import { usePendingUserInputDrafts } from "./usePendingUserInputDrafts";
 const EMPTY_ACTIVITIES: Thread["activities"] = [];
 const EMPTY_PENDING_USER_INPUT_ANSWERS: Record<string, PendingUserInputDraftAnswer> = {};
@@ -173,9 +175,7 @@ export function useChatPendingInteractions({
         : null,
     [activePendingDraftAnswers, activePendingQuestionIndex, activePendingUserInput],
   );
-  // Read once here for the same reason as `activeLatestTurnId`: an `activePendingProgress?.x`
-  // read inside a memo body makes React Compiler infer `activePendingProgress` as the
-  // dependency, which no longer matches the hand-written property-path dep.
+
   const activePendingQuestion = activePendingProgress?.activeQuestion ?? null;
   const activePendingResolvedAnswers = useMemo(
     () =>
@@ -251,9 +251,7 @@ export function useChatPendingInteractions({
       setRespondingRequestKeys((existing) =>
         existing.includes(requestKey) ? existing : [...existing, requestKey],
       );
-      // Persist supervised "always allow" client-side so the next turn (after an
-      // idle-stop or runtime restart) uses full access. Auto remains the durable
-      // thread policy; its server-side override applies only to the live session.
+
       const durableRuntimeMode = resolveRuntimeModeAfterApprovalDecision(
         runtimeMode,
         decision,
@@ -278,8 +276,8 @@ export function useChatPendingInteractions({
               message.includes(APPROVAL_ALREADY_ANSWERED_INVARIANT_MARKER),
             )
           ) {
-            // The authoritative response won the race. Force a full detail
-            // snapshot so a stale local card cannot immediately submit again.
+            // The authoritative response won the race. Force a full detail snapshot so a stale local card
+            // cannot immediately submit again.
             clearThreadDetailResumeCursor(activeThreadId);
             await api.orchestration
               .subscribeThread(buildThreadSubscribeInput(activeThreadId))
@@ -336,8 +334,7 @@ export function useChatPendingInteractions({
             ...(lifecycleGeneration !== undefined ? { lifecycleGeneration } : {}),
             createdAt: new Date().toISOString(),
           });
-          // Refresh identities and settlement after command acceptance; acceptance
-          // alone does not mean Claude received the answer.
+
           clearThreadDetailResumeCursor(activeThreadId);
           await api.orchestration.subscribeThread(buildThreadSubscribeInput(activeThreadId));
         })
@@ -508,7 +505,17 @@ export function useChatPendingInteractions({
         activePendingUserInput.questions,
         pendingDraftAnswers,
       );
-      if (activePendingProgress.isLastQuestion) {
+      const progress = derivePendingUserInputProgress(
+        activePendingUserInput.questions,
+        pendingDraftAnswers,
+        activePendingProgress.questionIndex,
+      );
+      if (
+        progress.isLastQuestion ||
+        (activePendingUserInput.questions[0]?.elicitation &&
+          (resolvedAnswers?.[activePendingUserInput.questions[0].id] === "Decline" ||
+            resolvedAnswers?.[activePendingUserInput.questions[0].id] === "Cancel"))
+      ) {
         if (resolvedAnswers) {
           void onRespondToUserInput(
             activePendingUserInput.requestId,

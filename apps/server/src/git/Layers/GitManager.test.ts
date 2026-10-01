@@ -5,8 +5,8 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it } from "@effect/vitest";
 import { Effect, FileSystem, Layer, PlatformError, Scope } from "effect";
 import { expect } from "vitest";
-import type { GitActionProgressEvent } from "@glade/contracts";
-import type { ModelSelection, ProviderStartOptions } from "@glade/contracts";
+import type { GitActionProgressEvent } from "@glade/contracts/git/git";
+import type { ModelSelection, ProviderStartOptions } from "@glade/contracts/provider/sessionPolicy";
 
 import { GitCommandError, TextGenerationError } from "../Errors.ts";
 import { type GitManagerShape } from "../Services/GitManager.ts";
@@ -23,7 +23,8 @@ import { GitCoreLive } from "./GitCore.ts";
 import { GitCore } from "../Services/GitCore.ts";
 import { createGitHubCliWithFakeGh, type FakeGhScenario } from "../testing/fakeGitHubCli.ts";
 import { makeGitManager } from "./GitManager.ts";
-import { ServerConfig } from "../../config.ts";
+import { GitHandoffLive } from "./GitHandoff.ts";
+import { ServerConfig } from "../../server/config.ts";
 
 interface FakeGitTextGeneration {
   generateCommitMessage: (input: {
@@ -68,13 +69,6 @@ interface FakeGitTextGeneration {
     model?: string;
     modelSelection?: ModelSelection;
   }) => Effect.Effect<{ branch: string }, TextGenerationError>;
-  generateThreadTitle: (input: {
-    cwd: string;
-    message: string;
-    providerOptions?: ProviderStartOptions;
-    model?: string;
-    modelSelection?: ModelSelection;
-  }) => Effect.Effect<{ title: string }, TextGenerationError>;
   generateAutomationIntent: (
     input: AutomationIntentGenerationInput,
   ) => Effect.Effect<AutomationIntentGenerationResult, TextGenerationError>;
@@ -163,10 +157,6 @@ function createTextGeneration(overrides: Partial<FakeGitTextGeneration> = {}): T
       Effect.succeed({
         branch: "update-workflow",
       }),
-    generateThreadTitle: () =>
-      Effect.succeed({
-        title: "Update workflow",
-      }),
     generateAutomationIntent: () =>
       Effect.succeed({
         isAutomation: true,
@@ -230,17 +220,6 @@ function createTextGeneration(overrides: Partial<FakeGitTextGeneration> = {}): T
           (cause) =>
             new TextGenerationError({
               operation: "generateBranchName",
-              detail: "fake text generation failed",
-              ...(cause !== undefined ? { cause } : {}),
-            }),
-        ),
-      ),
-    generateThreadTitle: (input) =>
-      implementation.generateThreadTitle(input).pipe(
-        Effect.mapError(
-          (cause) =>
-            new TextGenerationError({
-              operation: "generateThreadTitle",
               detail: "fake text generation failed",
               ...(cause !== undefined ? { cause } : {}),
             }),
@@ -313,16 +292,13 @@ function makeManager(input?: {
     prefix: "glade-git-manager-test-",
   });
 
-  const gitCoreLayer = GitCoreLive.pipe(
-    Layer.provideMerge(NodeServices.layer),
-    Layer.provideMerge(ServerConfigLayer),
-  );
+  const gitServicesLayer = GitHandoffLive.pipe(Layer.provideMerge(GitCoreLive));
 
   const managerLayer = Layer.mergeAll(
     Layer.succeed(GitHubCli, gitHubCli),
     Layer.succeed(TextGeneration, textGeneration),
-    gitCoreLayer,
-  ).pipe(Layer.provideMerge(NodeServices.layer));
+    gitServicesLayer,
+  ).pipe(Layer.provideMerge(ServerConfigLayer), Layer.provideMerge(NodeServices.layer));
 
   return makeGitManager.pipe(
     Effect.provide(managerLayer),

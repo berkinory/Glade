@@ -1,11 +1,8 @@
-// FILE: useComposerImageIntake.ts
-// Purpose: Serializes image preparation, exposes pending UI state, and cancels stale draft work.
-// Layer: Web composer hook
-
-import { PROVIDER_SEND_TURN_MAX_ATTACHMENTS, type ThreadId } from "@glade/contracts";
+import { PROVIDER_SEND_TURN_MAX_ATTACHMENTS } from "@glade/contracts/orchestration/threadEntities";
+import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 
-import type { ComposerImageAttachment } from "../composerDraftStore";
+import type { ComposerImageAttachment } from "../composerDraftDomain";
 import {
   prepareComposerImageAttachmentsFromFiles,
   type ComposerImageBuildResult,
@@ -112,7 +109,11 @@ export function useComposerImageIntake(input: {
   readonly commitImages: (images: ComposerImageAttachment[]) => number;
   readonly onError: (error: string | null) => void;
 }) {
-  const queue = useMemo(() => new ComposerImageIntakeQueue(), [input.threadId]);
+  const threadId = input.threadId;
+  const queue = useMemo(() => {
+    void threadId;
+    return new ComposerImageIntakeQueue();
+  }, [threadId]);
   useEffect(() => () => queue.dispose(), [queue]);
   const pendingCount = useSyncExternalStore(
     queue.subscribe,

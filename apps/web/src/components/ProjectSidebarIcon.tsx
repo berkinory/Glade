@@ -1,9 +1,3 @@
-// FILE: ProjectSidebarIcon.tsx
-// Purpose: Render a project's glyph: its chosen emoji or icon, or the standard folder with an
-//          optional favicon badge overlay.
-// Layer: Sidebar UI component
-// Exports: ProjectSidebarIcon, ProjectEmojiGlyph
-
 import { useEffect, useState, type CSSProperties } from "react";
 
 import { CentralIcon } from "~/lib/central-icons";
@@ -28,10 +22,6 @@ function colorStyle(color: ProjectColor | null): CSSProperties | undefined {
   return color ? { color: projectColorValue(color) } : undefined;
 }
 
-/**
- * An emoji drawn as SVG text, so it scales with the same `size-*` box as the line icons
- * instead of following the UI font size.
- */
 export function ProjectEmojiGlyph({ emoji, className }: { emoji: string; className?: string }) {
   return (
     <svg viewBox="0 0 20 20" aria-hidden className={cn("shrink-0 overflow-visible", className)}>
@@ -88,8 +78,7 @@ function ProjectFolderIcon({
   glyphClassName: string;
 }) {
   const faviconSrc = resolveProjectFaviconUrl(cwd);
-  // Keyed by src: a cwd change derives back to the cache-seeded default in the
-  // same render, so the probe effect never needs a synchronous setState.
+
   const [probe, setProbe] = useState<{ src: string; present: boolean } | null>(() => {
     const cached = projectFaviconPresence.get(faviconSrc);
     return cached === undefined ? null : { src: faviconSrc, present: cached };
@@ -97,9 +86,6 @@ function ProjectFolderIcon({
   const hasFavicon = probe !== null && probe.src === faviconSrc && probe.present;
   const FolderGlyph = expanded ? FolderOpen : FolderClosed;
 
-  // Probe with Image() so Electron/file-origin behaves like the actual visible
-  // <img>. Runs even on a module-cache hit (the browser cache makes the reload
-  // instant) so the load/error handlers stay the only state writers.
   useEffect(() => {
     let cancelled = false;
     const image = new Image();

@@ -1,8 +1,6 @@
-import {
-  type ProviderKind,
-  type ProviderStartOptions,
-  type ServerProviderStatus,
-} from "@glade/contracts";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { type ProviderStartOptions } from "@glade/contracts/provider/sessionPolicy";
+import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   normalizeCustomBinaryPath,
@@ -15,7 +13,7 @@ import {
   saveConfirmedCustomBinaryPaths,
 } from "../../confirmedCustomBinaryPathStore";
 import { type Thread } from "../../types";
-import { shouldConsumePendingCustomBinaryConfirmation } from "../ChatView.logic";
+import { shouldConsumePendingCustomBinaryConfirmation } from "../ChatView.logic.worktree";
 const EMPTY_PROVIDER_STATUSES: ServerProviderStatus[] = [];
 function getThreadProviderCustomBinaryPathKey(threadId: Thread["id"], provider: ProviderKind) {
   return `${threadId}:${provider}`;
@@ -126,8 +124,7 @@ export function useChatProviderStatus({
     activeThread?.session?.provider,
     activeThread?.session?.status,
   ]);
-  // Persist confirmations so a custom binary path that already started a session
-  // stays trusted across restarts, instead of re-showing the availability warning.
+
   useEffect(() => {
     saveConfirmedCustomBinaryPaths(confirmedCustomBinaryPathsByProvider);
   }, [confirmedCustomBinaryPathsByProvider]);

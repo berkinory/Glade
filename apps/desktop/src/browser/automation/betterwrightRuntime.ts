@@ -1,0 +1,128 @@
+import { BrowserAutomationErrorMessages } from "@glade/contracts/browser/automation/browserAutomationErrors";
+import { BetterWright, NetworkPolicy, type CredentialVault } from "betterwright";
+import type { WebContents } from "electron";
+import type { BrowserAutomationVisibleRuntime } from "../browserTabState";
+import { gladeHostTarget } from "./betterwrightHostTarget";
+
+import { BrowserAutomationHostError } from "./hostErrors";
+
+const UNAVAILABLE_SCRIPT_API_ERRORS = new Set([
+  ...[
+    "getByRole",
+    "getByLabel",
+    "getByText",
+    "getByPlaceholder",
+    "getByTestId",
+    "locator",
+    "document",
+    "window",
+    "location",
+    "waitForTimeout",
+  ].map((name) => `${name} is not defined`),
+  "page.snapshot is not a function",
+]);
+
+export interface BetterwrightRunOptions {
+  readonly home: string;
+  readonly contents: WebContents;
+  readonly code: string;
+  readonly timeoutMs: number;
+  readonly signal: AbortSignal;
+  readonly vault?: CredentialVault;
+  readonly uploadFiles?: readonly string[];
+  readonly expectAgentInput?: BrowserAutomationVisibleRuntime["expectAgentInput"];
+}
+
+export async function runBetterwright<T>(options: BetterwrightRunOptions): Promise<T> {
+  options.signal.throwIfAborted();
+  const throttled = options.contents.getBackgroundThrottling();
+
+  if (throttled) options.contents.setBackgroundThrottling(false);
+  try {
+    return await runConnectedBetterwright<T>(options);
+  } finally {
+    if (throttled && !options.contents.isDestroyed()) {
+      options.contents.setBackgroundThrottling(true);
+    }
+  }
+}
+
+async function runConnectedBetterwright<T>(options: BetterwrightRunOptions): Promise<T> {
+  const hostTarget = gladeHostTarget(options.contents, {
+    uploadFiles: options.uploadFiles,
+    expectAgentInput: options.expectAgentInput,
+    signal: options.signal,
+  });
+  let onAbortRace: (() => void) | undefined;
+  const aborting = new Promise<never>((_, reject) => {
+    onAbortRace = () => reject(options.signal.reason ?? new Error("Browser run cancelled."));
+    options.signal.addEventListener("abort", onAbortRace, { once: true });
+  });
+  let browser: BetterWright | undefined;
+  let stopping: Promise<void> | undefined;
+  const stop = (cancel: boolean): Promise<void> => {
+    stopping ??= Promise.allSettled([hostTarget.revokeAll(cancel), browser?.close()]).then(
+      (results) => {
+        const failure = results.find((result) => result.status === "rejected");
+        if (failure?.status === "rejected") throw failure.reason;
+      },
+    );
+    return stopping;
+  };
+  const onAbort = () => {
+    void stop(true).catch(() => {});
+  };
+  options.signal.addEventListener("abort", onAbort, { once: true });
+  let succeeded = false;
+  try {
+    options.signal.throwIfAborted();
+    browser = new BetterWright({
+      home: options.home,
+      hostTarget,
+      ...(options.uploadFiles ? { hostUploadFiles: options.uploadFiles } : {}),
+      downloadPolicy: "deny",
+      vault: options.vault ?? false,
+      credentialCapture: false,
+      headless: false,
+      adBlock: false,
+      parkBackgroundPages: false,
+      policy: new NetworkPolicy({ allowLoopback: true }),
+    });
+    const result = await Promise.race([
+      browser.run<T>(options.code, {
+        timeout: options.timeoutMs / 1000,
+        signal: options.signal,
+
+        automaticUI: false,
+      }),
+      aborting,
+    ]);
+    options.signal.throwIfAborted();
+    if (!result.ok) {
+      const credentialTarget =
+        typeof result.error === "string" &&
+        /^credential form (?:not-found:|ambiguous:|detection found no password field\.|submit detection failed:)/u.test(
+          result.error,
+        );
+      throw new BrowserAutomationHostError({
+        code:
+          result.error === BrowserAutomationErrorMessages.BrowserCredentialUseUnavailable
+            ? "BrowserCredentialUseUnavailable"
+            : typeof result.error === "string" && UNAVAILABLE_SCRIPT_API_ERRORS.has(result.error)
+              ? "BrowserScriptApiUnavailable"
+              : credentialTarget
+                ? "BrowserCredentialTargetRequired"
+                : "BrowserEvaluationFailed",
+        retryable: false,
+        phase: "evaluate",
+        effectMayHaveCommitted: true,
+      });
+    }
+    succeeded = true;
+    return result.result as T;
+  } finally {
+    if (onAbortRace) options.signal.removeEventListener("abort", onAbortRace);
+    options.signal.removeEventListener("abort", onAbort);
+    await stop(!succeeded);
+  }
+}

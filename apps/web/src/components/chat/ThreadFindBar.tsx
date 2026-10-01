@@ -1,8 +1,3 @@
-// FILE: ThreadFindBar.tsx
-// Purpose: Compact single-row in-thread find panel floating over the chat header.
-// Layer: Chat transcript presentation
-// Depends on: projected-message matching in threadFind.logic (not the DOM list).
-
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 import { IconButton } from "~/components/ui/icon-button";
@@ -10,7 +5,7 @@ import { DisclosureRegion } from "../ui/DisclosureRegion";
 import { ArrowDownIcon, ArrowUpIcon, SearchIcon, XIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { MUTED_LABEL_TEXT_CLASS_NAME } from "~/surfaceStyles";
-import { type TimelineEntry } from "../../session-logic";
+import type { TimelineEntry } from "../../workLog.types";
 import {
   collectThreadFindDocuments,
   createThreadFindDocumentTextCache,
@@ -90,8 +85,6 @@ function ThreadFindBar({
     });
   }, [deferredQuery, matches, open]);
 
-  // Query changes jump after their deferred match pass. Streaming transcript
-  // rewrites only refresh matches and never yank the viewport mid-read.
   useEffect(() => {
     if (!open) {
       return;
@@ -180,8 +173,6 @@ function ThreadFindBar({
         aria-label="Find in thread"
         autoComplete="off"
         spellCheck={false}
-        // The unlayered utility overrides the global `input { font-family: mono }`
-        // reset — find is a UI field, not a code field.
         className="font-system-ui h-8 min-w-0 flex-1 bg-transparent pl-1 text-ui text-foreground placeholder:text-muted-foreground focus:outline-none"
       />
       <span
@@ -236,13 +227,11 @@ export function ChatThreadFindHost({
   className?: string;
 }) {
   return (
-    // Mounted at the chat pane root, above the header and docked Environment overlay (z-20).
     <div
       data-thread-find-host="true"
       className={cn("pointer-events-none absolute right-0 top-0 z-40", className)}
     >
-      {/* Content padding keeps the panel shadow inside the disclosure clip box
-          and keeps the card off the pane borders. */}
+      {}
       <DisclosureRegion open={open} contentClassName="pointer-events-auto p-2">
         <ThreadFindBar
           key={threadId}

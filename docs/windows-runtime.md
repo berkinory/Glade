@@ -16,13 +16,13 @@ Providers / Git / Desktop / Server
 
 ## Executable resolution
 
-Use `@glade/shared/executable` when code needs to identify the concrete executable that a launch would use. It owns PATH splitting, Windows PATHEXT ordering, manual paths, extensionless command names, and executable validation.
+Use `@glade/shared/platform/executable` when code needs to identify the concrete executable that a launch would use. It owns PATH splitting, Windows PATHEXT ordering, manual paths, extensionless command names, and executable validation.
 
 A configured provider executable must be resolved once against the effective child environment and then reused consistently for health checks, discovery, startup, and updates. Do not add provider-local `where.exe` calls or a second PATH walker.
 
 ## Process launch planning
 
-Use `prepareProcess` from `@glade/shared/platformProcess` when a launch plan must be inspected or logged before execution. It owns:
+Use `prepareProcess` from `@glade/shared/platform/platformProcess` when a launch plan must be inspected or logged before execution. It owns:
 
 - native `.exe` and `.com` execution;
 - `.cmd` and `.bat` routing through a shell-free `cmd.exe` plan;
@@ -31,7 +31,7 @@ Use `prepareProcess` from `@glade/shared/platformProcess` when a launch plan mus
 - fail-fast `ExecutableNotFoundError` when `requireExecutable` is enabled (Node runtime only);
 - qualified relative commands such as `./bin/tool` resolved against the launch `cwd`, exactly as the child would see them.
 
-Node callers should normally use `spawnProcess`, `spawnProcessSync`, or `execProcessFile` from `@glade/shared/processRuntime`. Effect callers use `makeEffectProcessCommand` from `apps/server/src/platform/effectProcessRuntime.ts`; it has no `requireExecutable` because the Effect spawner is injectable and a missing executable surfaces as the spawner's own ENOENT error.
+Node callers should normally use `spawnProcess`, `spawnProcessSync`, or `execProcessFile` from `@glade/shared/platform/processRuntime`. Effect callers use `makeEffectProcessCommand` from `apps/server/src/platform/effectProcessRuntime.ts`; it has no `requireExecutable` because the Effect spawner is injectable and a missing executable surfaces as the spawner's own ENOENT error.
 
 Bounded one-shot helpers (`processRunner`, provider probes) stop their child with `signalOwnedChildProcess`: Node's direct `child.kill` on POSIX, `taskkill /T` through the tree boundary on Windows where a `.cmd` shim hides the real command behind cmd.exe.
 
@@ -74,7 +74,7 @@ Terminal sessions continue to use the PTY service. On Windows, runtime selection
 
 ## Filesystem semantics
 
-Use `@glade/shared/filesystemPlatform` for platform-sensitive durability and identity operations. It centralizes writable-handle fsync on Windows, POSIX directory fsync/no-follow behavior, and the documented Windows file-identity fallback used by guarded recovery code.
+Use `apps/server/src/platform/filesystemPlatform.ts` for platform-sensitive durability and identity operations. It centralizes writable-handle fsync on Windows, POSIX directory fsync/no-follow behavior, and the documented Windows file-identity fallback used by guarded recovery code.
 
 Migration, backup, restore, and lifecycle-lock code may own their recovery protocol, but they must not reproduce platform-specific fsync rules locally.
 
@@ -82,7 +82,7 @@ Migration, backup, restore, and lifecycle-lock code may own their recovery proto
 
 Native Windows remains the default execution backend. A working directory under `\\wsl$` or `\\wsl.localhost` is translated by the shared WSL bridge into an explicit `wsl.exe --distribution ... --cd ... --exec ...` plan.
 
-WSL session discovery, distribution policy, and first-class settings remain follow-up work. New WSL behavior belongs behind `wslBridge`/`platformProcess`, not in providers.
+WSL session discovery, distribution policy, and first-class settings remain follow-up work. WSL launch behavior belongs in `@glade/shared/platform/platformProcess` and UNC parsing in `@glade/shared/platform/windowsProcess`.
 
 ## Adding a provider
 

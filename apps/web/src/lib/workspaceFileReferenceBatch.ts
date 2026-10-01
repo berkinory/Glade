@@ -1,4 +1,4 @@
-import type { ProjectResolveWorkspaceFileReferencesResult } from "@glade/contracts";
+import type { ProjectResolveWorkspaceFileReferencesResult } from "@glade/contracts/workspace/project";
 
 import { ensureNativeApi } from "~/nativeApi";
 

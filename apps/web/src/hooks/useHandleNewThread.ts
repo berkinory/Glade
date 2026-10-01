@@ -1,5 +1,5 @@
-import { type ProjectId, ThreadId } from "@glade/contracts";
-import { getDefaultModel } from "@glade/shared/model";
+import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
+import { type ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { startTransition } from "react";
@@ -10,12 +10,9 @@ import {
   hasReconciledServerProviderStatuses,
   serverConfigQueryOptions,
 } from "../lib/serverReactQuery";
-import {
-  type ComposerThreadDraftState,
-  type DraftThreadState,
-  resolvePreferredComposerModelSelection,
-  useComposerDraftStore,
-} from "../composerDraftStore";
+import type { ComposerThreadDraftState, DraftThreadState } from "../composerDraftDomain";
+import { resolvePreferredComposerModelSelection } from "../composerDraftModels";
+import { useComposerDraftStore } from "../composerDraftStore";
 import {
   findProviderStatus,
   isProviderUsable,
@@ -36,7 +33,7 @@ import { newThreadId } from "../lib/utils";
 import { useFocusedChatContext } from "../focusedChatContext";
 import { useStore } from "../store";
 import { useSpacesUiStore } from "../spacesUiStore";
-import { useProjectEnvironmentStore } from "../projectEnvironmentStore";
+import { useProjectPreferencesStore } from "../projectPreferencesStore";
 import { useTerminalStateStore } from "../terminalStateStore";
 
 export function useHandleNewThread() {
@@ -58,14 +55,14 @@ export function useHandleNewThread() {
     projectId: ProjectId,
     options?: NewThreadOptions,
   ): Promise<ThreadId | null> => {
-    // Project/thread targets are not authoritative until hydration completes. Read the
-    // store at call time so a stale UI callback cannot mint a draft during hydration.
+    // Project/thread targets are not authoritative until hydration completes. Read the store at call
+    // time so a stale UI callback cannot mint a draft during hydration.
     if (!useStore.getState().threadsHydrated) {
       return Promise.resolve(null);
     }
 
     const defaultEnvMode =
-      useProjectEnvironmentStore.getState().envModeByProjectId[projectId] ??
+      useProjectPreferencesStore.getState().envModeByProjectId[projectId] ??
       settings.defaultThreadEnvMode;
     const draftStore = useComposerDraftStore.getState();
     const draftThread = draftStore.getDraftThreadByProjectId(projectId);
@@ -97,7 +94,7 @@ export function useHandleNewThread() {
       if (!options?.provider) {
         return;
       }
-      const defaultModel = getDefaultModel(options.provider);
+      const defaultModel = PROVIDER_DEFAULT_MODEL;
       if (!defaultModel) {
         return;
       }
@@ -151,7 +148,7 @@ export function useHandleNewThread() {
       projectId,
       routeThreadId: focusedThreadId,
     });
-    // Read from the store at call time so post-sync sidebar flows can use the latest project defaults.
+
     const projectDefaultModelSelection =
       useStore.getState().projects.find((project) => project.id === projectId)
         ?.defaultModelSelection ?? null;
@@ -253,19 +250,14 @@ export function useHandleNewThread() {
         defaultEnvMode,
       });
       const committed = await stageDraftNavigation({
-        // Keep the previous routed draft alive while the destination loads. Replacing the
-        // project's primary slot earlier makes the route guard redirect the old URL to Home.
         stage: () => {
           registerDraftThread(threadId, { projectId, ...draftSeed });
           openChatThreadPage(threadId);
-          // Seed the draft from the sticky (last-used) selection so a new chat
-          // reopens with the model and options used most recently.
+
           applyUsableStickyState(threadId);
           applyProviderOverride(threadId);
         },
-        // Mark the draft-landing navigation as a transition so the new route
-        // subtree renders interruptibly and the browser can paint the chat
-        // mount loader immediately instead of freezing on the synchronous commit.
+
         navigate: () =>
           new Promise<void>((resolve, reject) => {
             startTransition(() => {
@@ -275,8 +267,7 @@ export function useHandleNewThread() {
               }).then(resolve, reject);
             });
           }),
-        // TanStack resolves an older navigate() promise when a newer navigation supersedes it.
-        // Verify the committed route before deleting the previous project draft.
+
         isDestinationActive: () => router.state.location.pathname === `/${threadId}`,
         finalize: () => {
           if (!options?.standalone) setProjectDraftThreadId(projectId, threadId, draftSeed);

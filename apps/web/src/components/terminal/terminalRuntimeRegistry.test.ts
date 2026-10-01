@@ -20,7 +20,8 @@ vi.mock("./terminalRuntime", () => ({
 }));
 
 import { removeOrphanedTerminalRuntimes } from "../../lib/terminalStateCleanup";
-import { buildTerminalRuntimeKey, terminalRuntimeRegistry } from "./terminalRuntimeRegistry";
+import { buildTerminalRuntimeKey } from "./terminalRuntimeTypes";
+import { terminalRuntimeRegistry } from "./terminalRuntimeRegistry";
 
 function attach(threadId: string) {
   const runtimeKey = buildTerminalRuntimeKey(threadId, "terminal-1");
@@ -58,7 +59,7 @@ describe("terminal runtime memory ownership", () => {
       removeOrphanedTerminalRuntimes(active);
       expect(runtime.create.mock.calls.length - runtime.dispose.mock.calls.length).toBe(2);
     }
-    // Hidden, still-owned terminals reuse their original xterm instances.
+
     const created = runtime.create.mock.calls.length;
     for (const id of active) attach(id);
     expect(runtime.create).toHaveBeenCalledTimes(created);

@@ -1,33 +1,14 @@
-import {
-  ClaudeCacheObservation,
-  type ProviderKind,
-  type OrchestrationThreadActivity,
-  type ThreadTokenUsageSnapshot,
-} from "@glade/contracts";
-import { normalizeModelSlug, stripClaudeContextWindowSuffix } from "@glade/shared/model";
-import { Schema } from "effect";
-
-const decodeClaudeCacheObservation = Schema.decodeUnknownOption(ClaudeCacheObservation);
-
-function readClaudeCacheObservation(value: unknown): ClaudeCacheObservation | null {
-  const decoded = decodeClaudeCacheObservation(value);
-  return decoded._tag === "Some" ? decoded.value : null;
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
-}
-
-function asFiniteNumber(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
+import { asFiniteNumber } from "@glade/shared/transport/payloadValues";
+import { asObjectRecord } from "@glade/shared/transport/payloadValues";
+import { type OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
+import { type ThreadTokenUsageSnapshot } from "@glade/contracts/provider/runtimePayloads";
 
 function asBoolean(value: unknown): boolean | null {
   return typeof value === "boolean" ? value : null;
 }
 
 function asContextWindowPercent(value: unknown): number | null {
-  const percent = asFiniteNumber(value);
+  const percent = asFiniteNumber(value) ?? null;
   if (percent === null) {
     return null;
   }
@@ -52,12 +33,6 @@ export interface ContextWindowState {
   readonly invalidatedByCompaction: boolean;
 }
 
-export interface ContextWindowSelectionStatus {
-  readonly activeLabel: string | null;
-  readonly selectedLabel: string | null;
-  readonly pendingSelectedLabel: string | null;
-}
-
 export interface ContextWindowMeterDisplay {
   readonly usedPercentageLabel: string | null;
   readonly tokenUsageLabel: string;
@@ -67,20 +42,14 @@ export interface ContextWindowMeterDisplay {
   readonly ariaLabel: string;
 }
 
-const KNOWN_CONTEXT_WINDOW_MAX_TOKENS = {
-  "200k": 200_000,
-  "1m": 1_000_000,
-} as const;
-
 export function isCompletedContextCompaction(activity: OrchestrationThreadActivity): boolean {
   if (activity.kind !== "context-compaction") {
     return false;
   }
-  const payload = asRecord(activity.payload);
+  const payload = asObjectRecord(activity.payload);
   return payload?.state === "compacted" || payload?.status === "completed";
 }
 
-// Read the latest token-usage snapshot emitted by the runtime.
 export function deriveLatestContextWindowState(
   activities: ReadonlyArray<OrchestrationThreadActivity>,
 ): ContextWindowState {
@@ -89,8 +58,7 @@ export function deriveLatestContextWindowState(
     if (!activity) {
       continue;
     }
-    // A new configuration starts a new reporting epoch. Old usage cannot
-    // establish the effective threshold of a resumed or switched session.
+
     if (activity.kind === "context-window.configured") {
       return { snapshot: null, invalidatedByCompaction: false };
     }
@@ -101,11 +69,11 @@ export function deriveLatestContextWindowState(
       continue;
     }
 
-    const payload = asRecord(activity.payload);
-    const rawUsedTokens = asFiniteNumber(payload?.usedTokens);
+    const payload = asObjectRecord(activity.payload);
+    const rawUsedTokens = asFiniteNumber(payload?.usedTokens) ?? null;
     const usedTokens = rawUsedTokens ?? 0;
     const payloadUsedPercent = asContextWindowPercent(payload?.usedPercent);
-    const maxTokens = asFiniteNumber(payload?.maxTokens);
+    const maxTokens = asFiniteNumber(payload?.maxTokens) ?? null;
     if (usedTokens <= 0 && payloadUsedPercent === null && (maxTokens === null || maxTokens <= 0)) {
       continue;
     }
@@ -124,31 +92,29 @@ export function deriveLatestContextWindowState(
 
     return {
       snapshot: {
-        claudeCache: readClaudeCacheObservation(payload?.claudeCache),
         usedTokens,
         usedPercent: payloadUsedPercent,
-        // Older Claude totals counted completed content blocks repeatedly.
-        // Keep the context meter, but withhold an unverifiable lifetime counter.
+
         totalProcessedTokens:
           payload?.provider === "claudeAgent" && payload.tokenAccountingVersion !== 1
             ? null
-            : asFiniteNumber(payload?.totalProcessedTokens),
+            : (asFiniteNumber(payload?.totalProcessedTokens) ?? null),
         tokenAccountingVersion: payload?.tokenAccountingVersion === 1 ? 1 : null,
         maxTokens,
         remainingTokens,
         usedPercentage,
         remainingPercentage,
-        inputTokens: asFiniteNumber(payload?.inputTokens),
-        cachedInputTokens: asFiniteNumber(payload?.cachedInputTokens),
-        outputTokens: asFiniteNumber(payload?.outputTokens),
-        reasoningOutputTokens: asFiniteNumber(payload?.reasoningOutputTokens),
-        lastUsedTokens: asFiniteNumber(payload?.lastUsedTokens),
-        lastInputTokens: asFiniteNumber(payload?.lastInputTokens),
-        lastCachedInputTokens: asFiniteNumber(payload?.lastCachedInputTokens),
-        lastOutputTokens: asFiniteNumber(payload?.lastOutputTokens),
-        lastReasoningOutputTokens: asFiniteNumber(payload?.lastReasoningOutputTokens),
-        toolUses: asFiniteNumber(payload?.toolUses),
-        durationMs: asFiniteNumber(payload?.durationMs),
+        inputTokens: asFiniteNumber(payload?.inputTokens) ?? null,
+        cachedInputTokens: asFiniteNumber(payload?.cachedInputTokens) ?? null,
+        outputTokens: asFiniteNumber(payload?.outputTokens) ?? null,
+        reasoningOutputTokens: asFiniteNumber(payload?.reasoningOutputTokens) ?? null,
+        lastUsedTokens: asFiniteNumber(payload?.lastUsedTokens) ?? null,
+        lastInputTokens: asFiniteNumber(payload?.lastInputTokens) ?? null,
+        lastCachedInputTokens: asFiniteNumber(payload?.lastCachedInputTokens) ?? null,
+        lastOutputTokens: asFiniteNumber(payload?.lastOutputTokens) ?? null,
+        lastReasoningOutputTokens: asFiniteNumber(payload?.lastReasoningOutputTokens) ?? null,
+        toolUses: asFiniteNumber(payload?.toolUses) ?? null,
+        durationMs: asFiniteNumber(payload?.durationMs) ?? null,
         compactsAutomatically: asBoolean(payload?.compactsAutomatically) ?? false,
         updatedAt: activity.createdAt,
       },
@@ -157,21 +123,6 @@ export function deriveLatestContextWindowState(
   }
 
   return { snapshot: null, invalidatedByCompaction: false };
-}
-
-// Configuration identifies the applied target, never the runtime denominator.
-export function deriveAppliedContextWindowSelection(
-  activities: ReadonlyArray<OrchestrationThreadActivity>,
-): string | null {
-  const activity = activities.findLast((item) => item.kind === "context-window.configured");
-  const payload = asRecord(activity?.payload);
-  if (payload?.cleared === true) return "auto";
-  const maxTokens = asFiniteNumber(payload?.maxTokens);
-  return (
-    Object.entries(KNOWN_CONTEXT_WINDOW_MAX_TOKENS).find(
-      ([, tokens]) => tokens === maxTokens,
-    )?.[0] ?? null
-  );
 }
 
 function formatPercentage(value: number | null): string | null {
@@ -214,13 +165,13 @@ export function deriveCumulativeCostUsd(
   let foundTurnDelta = false;
   for (const activity of activities) {
     if (activity.kind !== "turn.completed") continue;
-    const payload = asRecord(activity.payload);
-    const cumulativeCost = asFiniteNumber(payload?.cumulativeCostUsd);
+    const payload = asObjectRecord(activity.payload);
+    const cumulativeCost = asFiniteNumber(payload?.cumulativeCostUsd) ?? null;
     if (cumulativeCost !== null) {
       latestCumulative = cumulativeCost;
       continue;
     }
-    const cost = asFiniteNumber(payload?.totalCostUsd);
+    const cost = asFiniteNumber(payload?.totalCostUsd) ?? null;
     if (cost === null) continue;
     turnDeltaTotal += cost;
     foundTurnDelta = true;
@@ -229,92 +180,6 @@ export function deriveCumulativeCostUsd(
     return latestCumulative + turnDeltaTotal;
   }
   return foundTurnDelta ? turnDeltaTotal : null;
-}
-
-function formatContextWindowSelectionLabel(value: string | null | undefined): string | null {
-  if (typeof value !== "string") {
-    return null;
-  }
-  const normalized = value.trim().toLowerCase();
-  if (!normalized) {
-    return null;
-  }
-  if (normalized === "auto") return "Auto";
-  if (normalized === "1m") {
-    return "1M";
-  }
-  if (normalized === "200k") {
-    return "200k";
-  }
-  return normalized.replace(/m$/u, "M");
-}
-
-function inferContextWindowSelectionValue(maxTokens: number | null | undefined): string | null {
-  if (maxTokens == null || !Number.isFinite(maxTokens) || maxTokens <= 0) {
-    return null;
-  }
-  const bestMatch = Object.entries(KNOWN_CONTEXT_WINDOW_MAX_TOKENS).reduce<{
-    value: string | null;
-    relativeDistance: number;
-  }>(
-    (best, [value, knownMaxTokens]) => {
-      const relativeDistance = Math.abs(maxTokens - knownMaxTokens) / knownMaxTokens;
-      return relativeDistance < best.relativeDistance ? { value, relativeDistance } : best;
-    },
-    { value: null, relativeDistance: Number.POSITIVE_INFINITY },
-  );
-  return bestMatch.relativeDistance <= 0.2 ? bestMatch.value : null;
-}
-
-export function deriveContextWindowSelectionStatus(input: {
-  activeSnapshot: ContextWindowSnapshot | null;
-  appliedValue?: string | null;
-  selectedValue: string | null | undefined;
-}): ContextWindowSelectionStatus {
-  const activeValue =
-    input.appliedValue === undefined
-      ? inferContextWindowSelectionValue(input.activeSnapshot?.maxTokens ?? null)
-      : input.appliedValue;
-  const selectedValue = input.selectedValue?.trim().toLowerCase() ?? null;
-  const activeLabel =
-    formatContextWindowSelectionLabel(activeValue) ??
-    (input.appliedValue === undefined && input.activeSnapshot?.maxTokens != null
-      ? formatContextWindowTokens(input.activeSnapshot.maxTokens)
-      : null);
-  const selectedLabel = formatContextWindowSelectionLabel(selectedValue);
-  const pendingSelectedLabel =
-    selectedLabel !== null && activeValue !== null && selectedValue !== activeValue
-      ? selectedLabel
-      : null;
-
-  return {
-    activeLabel,
-    selectedLabel,
-    pendingSelectedLabel,
-  };
-}
-
-// Budget is runtime evidence; the configured mode remains a separate target.
-export function deriveComposerContextWindowLabel(input: {
-  provider: ProviderKind;
-  model: string;
-  snapshot: ContextWindowSnapshot | null;
-  status: ContextWindowSelectionStatus;
-}): string | null {
-  if (input.provider !== "claudeAgent") return null;
-  const observedModel = input.snapshot?.claudeCache?.model;
-  const sameModel =
-    observedModel !== undefined &&
-    stripClaudeContextWindowSuffix(normalizeModelSlug(observedModel, "claudeAgent") ?? "") ===
-      stripClaudeContextWindowSuffix(normalizeModelSlug(input.model, "claudeAgent") ?? "");
-  const budget = sameModel
-    ? formatContextWindowSelectionLabel(inferContextWindowSelectionValue(input.snapshot?.maxTokens))
-    : null;
-  const { selectedLabel, activeLabel, pendingSelectedLabel } = input.status;
-  const pending = pendingSelectedLabel ?? (!sameModel ? selectedLabel : null);
-  if (budget) return pending ? `(${budget} · ${pending} next)` : `(${budget})`;
-  if (selectedLabel === null || (selectedLabel === "Auto" && !pendingSelectedLabel)) return null;
-  return `(${selectedLabel} ${pending || activeLabel === null ? "next" : "target"})`;
 }
 
 export function formatCostUsd(value: number): string {

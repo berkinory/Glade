@@ -1,4 +1,3 @@
-/** Glade publishes stable versions through GitHub Latest and its dedicated feed. */
 import { constants, copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 

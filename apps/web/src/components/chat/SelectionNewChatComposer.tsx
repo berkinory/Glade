@@ -1,6 +1,4 @@
-// Purpose: Floating composer that retains a transcript quote while the user writes a new prompt.
-
-import type { ThreadEnvironmentMode } from "@glade/contracts";
+import type { ThreadEnvironmentMode } from "@glade/contracts/orchestration/threadEntities";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { ArrowUpRightIcon, ComposerSendArrowIcon, LoaderCircleIcon, XIcon } from "~/lib/icons";
@@ -130,8 +128,6 @@ export function SelectionNewChatComposer({
       role="dialog"
       aria-label="New chat from selection"
       className="fixed z-50 w-[320px] max-w-[calc(100vw-16px)] text-foreground"
-      // No overflow on this wrapper: a scroll box is square and would clip the rounded
-      // surface's shadow into hard corners. The editor caps and scrolls its own height.
       style={{ left: action.left, top: action.top }}
     >
       <div className={COMPOSER_INPUT_SHELL_CLASS_NAME}>

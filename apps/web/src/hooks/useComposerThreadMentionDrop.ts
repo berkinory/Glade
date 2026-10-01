@@ -1,10 +1,5 @@
-// FILE: useComposerThreadMentionDrop.ts
-// Purpose: Turn a thread row dropped on the composer into the same @mention the `@` menu inserts.
-// Layer: Web composer hook
-// Exports: useComposerThreadMentionDrop
-
 import { useEffect, useState, type DragEvent } from "react";
-import { type ThreadId } from "@glade/contracts";
+import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import { isComposerDropzoneInternalDragTransition } from "./useComposerDropzone";
 import {

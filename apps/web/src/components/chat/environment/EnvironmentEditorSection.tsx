@@ -1,10 +1,5 @@
-// FILE: EnvironmentEditorSection.tsx
-// Purpose: "Editor" section of the Environment panel — the "Open in <editor>" external-launcher picker
-//          (same skin as Commit and Push / env pickers). The menu lists every installed
-//          editor (same entries as the header OpenInPicker).
-// Layer: Environment panel section
-
-import type { EditorId, ResolvedKeybindingsConfig } from "@glade/contracts";
+import type { EditorId } from "@glade/contracts/settings/editor";
+import type { ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 
 import { useEditorLaunchers } from "~/hooks/useEditorLaunchers";
 

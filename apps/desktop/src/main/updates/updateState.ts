@@ -1,0 +1,237 @@
+import { asFiniteNumber } from "@glade/shared/transport/payloadValues";
+import type { DesktopUpdateState } from "@glade/contracts/ipc/ipc";
+import type { GladeDesktopFlavor } from "@glade/shared/platform/desktopIdentity";
+
+export type DownloadProgressSample = {
+  readonly percent?: number | null;
+  readonly transferred?: number | null;
+};
+
+export function getDownloadStallTimeoutMessage(timeoutMs: number): string {
+  const timeoutSeconds = Math.max(1, Math.round(timeoutMs / 1000));
+  return `Download stalled after ${timeoutSeconds} seconds without progress. Try again.`;
+}
+
+export function isExpectedStalledDownloadCancellationError(args: {
+  readonly suppressionArmed: boolean;
+  readonly errorContext: DesktopUpdateState["errorContext"];
+  readonly message: string;
+}): boolean {
+  return (
+    args.suppressionArmed &&
+    args.errorContext === "download" &&
+    args.message.trim().toLowerCase() === "cancelled"
+  );
+}
+
+export function hasDownloadProgressAdvanced(
+  previous: DownloadProgressSample | null,
+  next: DownloadProgressSample,
+): boolean {
+  const nextTransferred = asFiniteNumber(next.transferred) ?? null;
+  const nextPercent = asFiniteNumber(next.percent) ?? null;
+  if (nextTransferred === null && nextPercent === null) {
+    return false;
+  }
+
+  if (previous === null) {
+    return true;
+  }
+
+  const previousTransferred = asFiniteNumber(previous.transferred) ?? null;
+  const previousPercent = asFiniteNumber(previous.percent) ?? null;
+  const transferredAdvanced =
+    previousTransferred === null
+      ? nextTransferred !== null
+      : nextTransferred !== null && nextTransferred > previousTransferred;
+  const percentAdvanced =
+    previousPercent === null
+      ? nextPercent !== null
+      : nextPercent !== null && nextPercent > previousPercent;
+
+  return transferredAdvanced || percentAdvanced;
+}
+
+export function shouldBroadcastDownloadProgress(
+  currentState: DesktopUpdateState,
+  nextPercent: number,
+): boolean {
+  if (currentState.status !== "downloading") {
+    return true;
+  }
+
+  const currentPercent = currentState.downloadPercent;
+  if (currentPercent === null) {
+    return true;
+  }
+
+  const previousStep = Math.floor(currentPercent);
+  const nextStep = Math.floor(nextPercent);
+  return nextStep !== previousStep || nextPercent === 100;
+}
+
+type ParsedUpdateVersion = {
+  readonly major: number;
+  readonly minor: number;
+  readonly patch: number;
+  readonly prerelease: string | null;
+};
+
+function parseUpdateVersion(version: string): ParsedUpdateVersion | null {
+  const match = version.trim().match(/^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+.*)?$/);
+  if (!match?.[1] || !match[2] || !match[3]) {
+    return null;
+  }
+  return {
+    major: Number(match[1]),
+    minor: Number(match[2]),
+    patch: Number(match[3]),
+    prerelease: match[4] ?? null,
+  };
+}
+
+export function isUpdateVersionNewer(currentVersion: string, candidateVersion: string): boolean {
+  const current = parseUpdateVersion(currentVersion);
+  const candidate = parseUpdateVersion(candidateVersion);
+  if (!current || !candidate) {
+    return candidateVersion.trim() !== currentVersion.trim();
+  }
+
+  if (candidate.major !== current.major) return candidate.major > current.major;
+  if (candidate.minor !== current.minor) return candidate.minor > current.minor;
+  if (candidate.patch !== current.patch) return candidate.patch > current.patch;
+
+  if (current.prerelease !== null && candidate.prerelease !== null) {
+    const candidateParts = candidate.prerelease.split(".");
+    const currentParts = current.prerelease.split(".");
+    for (let index = 0; index < Math.max(candidateParts.length, currentParts.length); index += 1) {
+      const candidatePart = candidateParts[index];
+      const currentPart = currentParts[index];
+      if (candidatePart === undefined) return false;
+      if (currentPart === undefined) return true;
+      const candidateNumeric = /^\d+$/.test(candidatePart);
+      const currentNumeric = /^\d+$/.test(currentPart);
+      if (candidateNumeric && currentNumeric) {
+        if (Number(candidatePart) !== Number(currentPart)) {
+          return Number(candidatePart) > Number(currentPart);
+        }
+        continue;
+      }
+      if (candidateNumeric !== currentNumeric) return !candidateNumeric;
+      if (candidatePart !== currentPart) return candidatePart > currentPart;
+    }
+    return false;
+  }
+
+  return current.prerelease !== null && candidate.prerelease === null;
+}
+
+export function isUpdateVersionAllowedForFlavor(
+  candidateVersion: string,
+  flavor: GladeDesktopFlavor,
+): boolean {
+  const candidate = parseUpdateVersion(candidateVersion);
+  return flavor === "production" && candidate !== null && candidate.prerelease === null;
+}
+
+export function nextStatusAfterDownloadFailure(
+  currentState: DesktopUpdateState,
+): DesktopUpdateState["status"] {
+  return currentState.availableVersion ? "available" : "error";
+}
+
+export function getCanRetryAfterDownloadFailure(currentState: DesktopUpdateState): boolean {
+  return currentState.availableVersion !== null;
+}
+
+export function shouldCheckForUpdatesOnForeground(args: {
+  checkedAt: string | null;
+  backgroundedAtMs: number | null;
+  foregroundedAtMs: number;
+  minBackgroundDurationMs: number;
+  minIntervalMs: number;
+}): boolean {
+  const { checkedAt, backgroundedAtMs, foregroundedAtMs, minBackgroundDurationMs, minIntervalMs } =
+    args;
+  if (backgroundedAtMs === null || foregroundedAtMs <= backgroundedAtMs) {
+    return false;
+  }
+
+  if (foregroundedAtMs - backgroundedAtMs < minBackgroundDurationMs) {
+    return false;
+  }
+
+  if (checkedAt === null) {
+    return true;
+  }
+
+  const lastCheckedAtMs = Date.parse(checkedAt);
+  if (!Number.isFinite(lastCheckedAtMs)) {
+    return true;
+  }
+
+  return foregroundedAtMs - lastCheckedAtMs >= minIntervalMs;
+}
+
+export function getAutoUpdateDisabledReason(args: {
+  isDevelopment: boolean;
+  isPackaged: boolean;
+  platform: NodeJS.Platform;
+  appImage?: string | undefined;
+  disabledByEnv: boolean;
+  hasUpdateFeedConfig: boolean;
+}): string | null {
+  if (!args.hasUpdateFeedConfig) {
+    return "Automatic updates are not available because no update feed is configured.";
+  }
+  if (args.isDevelopment || !args.isPackaged) {
+    return "Automatic updates are only available in packaged production builds.";
+  }
+  if (args.disabledByEnv) {
+    return "Automatic updates are disabled by the GLADE_DISABLE_AUTO_UPDATE setting.";
+  }
+  if (args.platform === "linux" && !args.appImage) {
+    return "Automatic updates on Linux require running the AppImage build.";
+  }
+  return null;
+}
+
+type GitHubUpdateSource = {
+  readonly owner: string;
+  readonly repo: string;
+  readonly host: string;
+  readonly protocol: "http" | "https";
+};
+
+function normalizeGitHubProtocol(protocol: string | undefined): "http" | "https" {
+  return protocol === "http" ? "http" : "https";
+}
+
+export function resolveGitHubUpdateSource(
+  rawConfig: Record<string, string> | null,
+): GitHubUpdateSource | null {
+  if (rawConfig?.provider !== "github") {
+    return null;
+  }
+
+  const owner = rawConfig.owner?.trim();
+  const repo = rawConfig.repo?.trim();
+  if (!owner || !repo) {
+    return null;
+  }
+
+  return {
+    owner,
+    repo,
+    host: rawConfig.host?.trim() || "github.com",
+    protocol: normalizeGitHubProtocol(rawConfig.protocol?.trim()),
+  };
+}
+
+export function buildGitHubReleasesPageUrl(source: GitHubUpdateSource, tag?: string): string {
+  const path =
+    tag && tag.trim().length > 0
+      ? `/${source.owner}/${source.repo}/releases/tag/${tag.trim()}`
+      : `/${source.owner}/${source.repo}/releases/latest`;
+  return new URL(path, `${source.protocol}://${source.host}`).toString();
+}

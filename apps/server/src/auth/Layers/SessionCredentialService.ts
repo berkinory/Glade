@@ -1,4 +1,8 @@
-import { AuthSessionId, type AuthClientMetadata, type AuthClientSession } from "@glade/contracts";
+import { AuthSessionId } from "@glade/contracts/core/baseSchemas";
+import {
+  type AuthClientMetadata,
+  type AuthClientSession,
+} from "@glade/contracts/transport/auth/auth";
 import * as Crypto from "node:crypto";
 import {
   Clock,
@@ -18,7 +22,7 @@ import {
 
 import { AuthSessionRepositoryLive } from "../../persistence/Layers/AuthSessions";
 import { AuthSessionRepository } from "../../persistence/Services/AuthSessions";
-import { ServerConfig } from "../../config";
+import { ServerConfig } from "../../server/config";
 import { ServerSecretStore } from "../Services/ServerSecretStore";
 import {
   SessionCapacityError,
@@ -123,9 +127,9 @@ const makeSessionCredentialService = Effect.gen(function* () {
   const authSessions = yield* AuthSessionRepository;
   const signingSecret = yield* secretStore.getOrCreateRandom(SIGNING_SECRET_NAME, 32);
   const activeConnectionsRef = yield* Ref.make<ActiveConnections>(new Map());
-  // Tickets are an in-memory allowlist, not merely signed bearer claims. A restart
-  // intentionally invalidates every outstanding ticket, so an old signed value
-  // cannot become replayable when the process-local consumption ledger is lost.
+  // Tickets are an in-memory allowlist, not merely signed bearer claims. A restart intentionally
+  // invalidates every outstanding ticket, so an old signed value cannot become replayable when the
+  // process-local consumption ledger is lost.
   const outstandingWebSocketTicketsRef = yield* Ref.make<OutstandingWebSocketTickets>(new Map());
   const activeConnectionsSemaphore = yield* Semaphore.make(1);
   const changesPubSub = yield* PubSub.unbounded<SessionCredentialChange>();

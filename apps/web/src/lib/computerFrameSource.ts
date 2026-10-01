@@ -1,11 +1,11 @@
-import type { ComputerId } from "@glade/contracts";
+import type { ComputerId } from "@glade/contracts/computer/computer";
 import {
   COMPUTER_FRAME_RESYNC_MESSAGE,
   COMPUTER_FRAME_WS_COMPUTER_ID_PARAM,
   COMPUTER_FRAME_WS_PATH,
   decodeComputerFrame,
   type ComputerFrame,
-} from "@glade/shared/computerFrame";
+} from "@glade/shared/computer/computerFrame";
 
 import {
   createBinaryFrameSource,

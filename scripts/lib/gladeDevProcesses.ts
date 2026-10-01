@@ -45,8 +45,6 @@ export function selectGladeDevProcessIds(
     }
   }
 
-  // A dev launcher owns its child tree, including Electron renderers and server
-  // workers whose command lines do not repeat the source checkout path.
   let changed = true;
   while (changed) {
     changed = false;

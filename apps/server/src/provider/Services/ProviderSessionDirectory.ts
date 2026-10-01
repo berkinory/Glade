@@ -1,16 +1,15 @@
+import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type {
-  ProviderKind,
   ProviderSessionRuntimeStatus,
   RuntimeMode,
-  ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/sessionPolicy";
 import { Option, ServiceMap } from "effect";
 import type { Effect } from "effect";
 
 import type {
   ProviderSessionDirectoryPersistenceError,
   ProviderValidationError,
-} from "../Errors.ts";
+} from "../core/Errors.ts";
 
 export interface ProviderRuntimeBinding {
   readonly threadId: ThreadId;

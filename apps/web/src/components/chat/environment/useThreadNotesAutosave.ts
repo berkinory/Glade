@@ -1,10 +1,5 @@
-// FILE: useThreadNotesAutosave.ts
-// Purpose: Own the notepad debounce/save/reconcile lifecycle for one thread instance.
-// Layer: Environment panel hook
-// Exports: useThreadNotesAutosave
-
 import { useCallback, useEffect, useRef, useState, type ChangeEventHandler } from "react";
-import type { ThreadId } from "@glade/contracts";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 const DEFAULT_NOTES_AUTOSAVE_DEBOUNCE_MS = 500;
 
@@ -27,7 +22,6 @@ interface PendingLocalEcho {
   readonly staleServerValue: string;
 }
 
-// Serializes note writes and reconciles server echoes without clobbering active typing.
 export function useThreadNotesAutosave({
   threadId,
   notes,
@@ -82,10 +76,7 @@ export function useThreadNotesAutosave({
     }
     saveInFlightRef.current = true;
     let saved = false;
-    // Promise chain instead of async/try-finally: React Compiler does not yet
-    // support try/finally, and it would skip optimizing this whole hook. The
-    // .finally keeps the exact same run-always semantics, including rejection
-    // propagation to the caller's .catch.
+
     return Promise.resolve(onChangeRef.current(threadIdRef.current, next))
       .then(() => {
         saved = true;
@@ -151,7 +142,7 @@ export function useThreadNotesAutosave({
   const handleChange = useCallback<ChangeEventHandler<HTMLTextAreaElement>>(
     (event) => {
       const nextValue = event.target.value;
-      // Keep the ref ahead of React state so immediate unmount still flushes the last keystroke.
+
       valueRef.current = nextValue;
       setValue(nextValue);
       scheduleFlush(debounceMs);

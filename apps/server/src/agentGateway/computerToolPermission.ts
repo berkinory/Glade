@@ -1,6 +1,5 @@
-import type { ProviderInteractionMode, RuntimeMode } from "@glade/contracts";
+import type { RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
 
-/** Exact tool names owned by Glade's capability-gated Computer gateway. */
 export const GLADE_COMPUTER_TOOL_NAMES = [
   "computer_activate_window",
   "computer_click",
@@ -35,11 +34,10 @@ export const GLADE_COMPUTER_TOOL_NAMES = [
   "computer_wait",
   "computer_write_clipboard",
   "computer_zoom",
-  // The cua-driver CDP browser family. Deliberately inside the Computer
-  // namespace: these are the same capability (computer:control), the same
-  // approval gate, and the same denial-card path as the desktop tools — they
-  // merely dispatch over CDP rather than OS events. They must never collide
-  // with the integrated `browser_*` surface, which is a different host.
+  // Deliberately inside the Computer namespace: these are the same capability (computer:control), the
+  // same approval gate, and the same denial-card path as the desktop tools — they merely dispatch
+  // over CDP rather than OS events. They must never collide with the integrated `browser_*` surface,
+  // which is a different host.
   "computer_browser_state",
   "computer_browser_prepare",
   "computer_browser_navigate",
@@ -62,11 +60,6 @@ function recordString(value: unknown, key: string): string | undefined {
   return typeof candidate === "string" ? candidate : undefined;
 }
 
-/**
- * Accept only the canonical gateway name or the exact provider qualifications
- * used for Glade's reserved MCP server. A similarly named tool from another
- * MCP server must continue through the provider's ordinary permission policy.
- */
 export function canonicalGladeComputerToolName(value: unknown): GladeComputerToolName | undefined {
   if (typeof value !== "string") return undefined;
   const normalized = value.trim().toLowerCase();
@@ -80,11 +73,6 @@ export function canonicalGladeComputerToolName(value: unknown): GladeComputerToo
     : undefined;
 }
 
-/**
- * Provider callbacks must carry Glade's namespace themselves. Bare canonical
- * names are safe only after a separate protocol field has proved the server
- * identity (for example Codex's `serverName`).
- */
 export function qualifiedGladeComputerToolName(value: unknown): GladeComputerToolName | undefined {
   if (typeof value !== "string") return undefined;
   const normalized = value.trim().toLowerCase();
@@ -94,34 +82,9 @@ export function qualifiedGladeComputerToolName(value: unknown): GladeComputerToo
   return canonicalGladeComputerToolName(normalized);
 }
 
-/**
- * Namespace-insensitive matcher for Computer calls at the gateway boundary.
- *
- * A session that was never granted computer control must still surface the
- * denial card path when the model reaches for a Computer tool, or the attempt
- * dies as a silent tool error and the user never learns control is off.
- *
- * Gateway transport (all MCP providers): `makeAgentGatewayMcpTransport`
- * (`apps/server/src/agentGateway/mcpTransport.ts`) denies an unknown tool
- * name with `capability_denied` plus the denial hook only when
- * `isComputerToolName` matches. Wired in
- * `apps/server/src/agentGateway/Layers/AgentGateway.ts` as the catalog
- * membership test OR this family matcher, so a prefixed spelling from a
- * session that never saw the catalog —
- * `glade_computer_click`, `mcp__glade__computer_click` — still reaches
- * the denial hook and the card.
- *
- * The native projection adds specialist forwarders only when its leased
- * catalog advertises Computer control. Disabled sessions carry no Computer
- * fallback schemas; stale calls reaching this boundary still receive the same
- * capability denial as other MCP clients.
- *
- * Entirely-unknown names (`computer_future_tool`, another server's
- * `mcp__other__computer_click`) must keep their current behavior — unknown
- * tools stay INVALID_PARAMS and foreign tools keep the provider's ordinary
- * permission policy — so this matcher accepts only exact owned names in any
- * of the three spellings, never prose around them.
- */
+// Denied sessions must still surface the computer permission card for exact owned tool names,
+// including native prefixes. Foreign or unknown names retain ordinary permission and INVALID_PARAMS
+// handling.
 export function isGladeComputerToolFamilyName(value: unknown): boolean {
   return canonicalGladeComputerToolName(value) !== undefined;
 }
@@ -156,15 +119,10 @@ export function computerToolNameFromProviderPermission(input: {
   return qualifiedGladeComputerToolName(input.title);
 }
 
-/**
- * Provider permission prompts are redundant for an active Glade Computer
- * capability: the gateway performs the authoritative task-scoped approval.
- * Plan mode and requests outside an active turn remain fail-closed.
- */
 export function shouldAllowGladeComputerProviderTool(input: {
   readonly computerControlEnabled: boolean;
   readonly activeTurn: boolean;
-  readonly interactionMode: ProviderInteractionMode | undefined;
+
   readonly runtimeMode: RuntimeMode;
   readonly permission: Parameters<typeof computerToolNameFromProviderPermission>[0];
 }): boolean {
@@ -172,7 +130,6 @@ export function shouldAllowGladeComputerProviderTool(input: {
     input.computerControlEnabled &&
     input.activeTurn &&
     input.runtimeMode === "approval-required" &&
-    input.interactionMode === "default" &&
     computerToolNameFromProviderPermission(input.permission) !== undefined
   );
 }

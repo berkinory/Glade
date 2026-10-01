@@ -1,8 +1,8 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { CommandId, MessageId, ProjectId, ThreadId } from "@glade/contracts";
+import { CommandId, MessageId, ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { Effect, Layer, ManagedRuntime } from "effect";
 import { expect, it } from "vitest";
-import { ServerConfig } from "../config";
+import { ServerConfig } from "../server/config";
 import { OrchestrationCommandReceiptRepositoryLive } from "../persistence/Layers/OrchestrationCommandReceipts";
 import { OrchestrationEventStoreLive } from "../persistence/Layers/OrchestrationEventStore";
 import { SqlitePersistenceMemory } from "../persistence/Layers/Sqlite";
@@ -82,7 +82,7 @@ it("preserves an empty existing project and refuses turns until the native impor
         title: "Importing",
         modelSelection: { provider: "codex", model: "gpt-5-codex" },
         runtimeMode: "approval-required",
-        interactionMode: "default",
+
         branch: null,
         worktreePath: null,
         createdAt,
@@ -93,7 +93,7 @@ it("preserves an empty existing project and refuses turns until the native impor
         type: "thread.turn.start",
         commandId: commandId(),
         threadId,
-        interactionMode: "default",
+
         runtimeMode: "approval-required",
         message: {
           messageId: MessageId.makeUnsafe(crypto.randomUUID()),

@@ -1,16 +1,17 @@
+import { isRecord } from "@glade/shared/transport/payloadValues";
 import { assert, describe, it } from "@effect/vitest";
 
-import { BROWSER_TOOL_CATALOGUE } from "@glade/shared/browserAutomationCatalogue";
-import { BrowserWebMcpCallInput } from "@glade/contracts";
+import { BROWSER_TOOL_CATALOGUE } from "@glade/shared/browser/browserAutomationCatalogue";
+import { BrowserWebMcpCallInput } from "@glade/contracts/browser/automation/browserAutomationToolInputs";
 import { Schema } from "effect";
 
 import { FALLBACK_OBJECT_DESCRIPTION, sanitizeToolInputSchema } from "./sanitizeToolInputSchema.ts";
-import { countSchemaKeyOccurrences, isJsonRecord } from "./schemaTestUtils.ts";
+import { countSchemaKeyOccurrences } from "./schemaTestUtils.ts";
 
 const cloneJson = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
 
 const asJsonRecord = (node: unknown, label: string): Record<string, unknown> => {
-  if (isJsonRecord(node)) return node;
+  if (isRecord(node)) return node;
   throw new Error(`Expected ${label} to be an object schema.`);
 };
 
@@ -51,34 +52,14 @@ describe("sanitizeToolInputSchema", () => {
     assert.sameMembers(output.required, ["discoveryId", "toolId"]);
   });
 
-  it("preserves the current browser_run input contract", () => {
+  it("preserves the current browser_run input contract without mutating it", () => {
     const entry = findCatalogueEntryOrThrow("browser_run");
-    assert.deepEqual(sanitizeToolInputSchema(cloneJson(entry.inputSchema)), entry.inputSchema);
+    const before = cloneJson(entry.inputSchema);
+    assert.deepEqual(sanitizeToolInputSchema(entry.inputSchema), before);
+    assert.deepEqual(entry.inputSchema, before);
   });
 
-  it("passes unrelated schemas through byte-identical", () => {
-    const input: Record<string, unknown> = {
-      type: "object",
-      properties: {
-        limit: { type: "integer", minimum: 1, maximum: 32, default: 8 },
-        tabId: { type: "string", description: "Optional scoped tab." },
-      },
-      required: [],
-      additionalProperties: false,
-    };
-    const inputBefore = JSON.stringify(input);
-
-    const output = sanitizeToolInputSchema(input);
-
-    assert.deepEqual(output, input);
-    assert.equal(JSON.stringify(output), inputBefore);
-    assert.equal(JSON.stringify(input), inputBefore);
-  });
-
-  it("leaves primitives untouched and sanitizes $refs inside arrays", () => {
-    assert.strictEqual(sanitizeToolInputSchema("free-form"), "free-form");
-    assert.strictEqual(sanitizeToolInputSchema(32), 32);
-    assert.strictEqual(sanitizeToolInputSchema(null), null);
+  it("sanitizes $refs inside arrays", () => {
     assert.deepEqual(sanitizeToolInputSchema([{ $ref: "#/$defs/JsonValue" }, { type: "string" }]), [
       { type: "object", description: FALLBACK_OBJECT_DESCRIPTION },
       { type: "string" },

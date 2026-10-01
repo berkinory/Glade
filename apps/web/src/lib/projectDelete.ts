@@ -1,8 +1,5 @@
-// FILE: projectDelete.ts
-// Purpose: Removes a project locally only after the server accepts its deletion.
-// Exports: deleteProjectFromClient
-
-import type { NativeApi, ProjectId } from "@glade/contracts";
+import type { NativeApi } from "@glade/contracts/ipc/ipc";
+import type { ProjectId } from "@glade/contracts/core/baseSchemas";
 
 import { newCommandId } from "./utils";
 

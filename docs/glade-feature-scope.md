@@ -33,8 +33,8 @@ These are physical removals, not dormant implementations behind feature flags.
 
 `apps/desktop/native/computer` provides the permission guide, permission checks,
 input release, Escape monitoring, activation shield and preview frame tap used by
-Computer Use. `computerPermissions.ts` owns permission state and guide lifecycle;
-`computerHelperProtocol.ts` validates helper messages. These do not expose capture
+Computer Use. `apps/desktop/src/computer/computerPermissions.ts` owns permission state and guide lifecycle;
+`apps/desktop/src/computer/computerHelperProtocol.ts` validates helper messages. These do not expose capture
 attachment APIs or a keyboard capture watcher.
 
 ## Workspace editing
@@ -88,14 +88,9 @@ literal, rooted paths; tracked files remain tracked and existing ignore rules ar
 
 ## Existing data
 
-Migration IDs 74–78 and 80 retain only their original ledger names and no-op entries,
-so existing databases can still validate their lineage. Migration 109 removes the
-retired integration tables and credentials, preserving projects and conversation
-history. Historical conversation creation-source metadata may still decode the
-retired source value; it grants no capability and cannot create a connection.
-
-Migration 111 deletes side chat threads and their descendants, including their runtime and
-event records, then removes side chat columns. Regular conversations are preserved.
+Databases start from the single baseline at migration 1, released in 0.1.0. Databases
+from 0.0.x previews are not opened or modified; Glade asks the user to move them aside.
+Future schema changes use appended migrations starting at 2.
 
 Old OS profiles and manual browser sessions are not deleted. Persisted image bytes
 remain readable even when removed capture-specific display metadata is discarded.

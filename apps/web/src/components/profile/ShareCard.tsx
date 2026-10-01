@@ -1,12 +1,5 @@
-// FILE: ShareCard.tsx
-// Purpose: Fixed-size, theme-independent "virality" card rendered to PNG via html-to-image.
-// Uses explicit colors (not theme tokens) so the exported image looks identical in light
-// and dark mode. Fixed width AND height keep the exported PNG a clean wide card with no
-// trailing whitespace, regardless of how dense the heatmap data is.
-// Layer: web profile feature.
-
 import { forwardRef, type ReactNode } from "react";
-import type { ProfileStats, ProfileTokenStats } from "@glade/contracts";
+import type { ProfileStats, ProfileTokenStats } from "@glade/contracts/server/stats";
 import { ProviderIcon } from "~/components/ProviderIcon";
 import { GladeLogo } from "~/components/GladeLogo";
 import { ActivityHeatmap, CARD_HEATMAP_INTENSITY_CLASSES } from "./ActivityHeatmap";
@@ -18,12 +11,8 @@ import { selectProfileHeatmap, selectProfileTopProvider } from "./profileSelecto
 export const SHARE_CARD_WIDTH = 860;
 export const SHARE_CARD_HEIGHT = 440;
 
-// The in-app panel shows a longer window; the share card trims to the most recent ~6 months
-// so the grid stays large and legible inside the fixed card width.
 const CARD_HEATMAP_DAYS = 183;
 
-// Shared styling for the large stat value, reused so the provider tile's icon + percent
-// line up with the text-only tiles.
 const VALUE_CLASS = "text-2xl font-normal leading-none tracking-tight";
 
 interface ShareCardProps {
@@ -76,8 +65,8 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(function Sha
     },
     {
       key: "provider",
-      // Most-used provider: token telemetry when available, otherwise turn count. An explicit
-      // slate color keeps currentColor glyphs visible on the white card in every theme.
+      // Most-used provider: token telemetry when available, otherwise turn count. An explicit slate color
+      // keeps currentColor glyphs visible on the white card in every theme.
       value: topProvider.provider ? (
         <span className="flex items-center gap-2">
           <ProviderIcon
@@ -95,7 +84,6 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(function Sha
     },
   ];
 
-  // Same tokens-first series as the profile page so the exported card matches the app.
   const heatmapCells = selectProfileHeatmap(stats, tokenStats).cells.slice(-CARD_HEATMAP_DAYS);
 
   return (
@@ -104,7 +92,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(function Sha
       style={{ width: `${SHARE_CARD_WIDTH}px`, height: `${SHARE_CARD_HEIGHT}px` }}
       className="flex flex-col justify-center gap-7 overflow-hidden bg-white px-12 font-sans text-slate-900"
     >
-      {/* Header: user-edited identity truncates before it can collide with the fixed brand. */}
+      {}
       <div className="flex min-w-0 items-center justify-between gap-6">
         <div className="flex min-w-0 flex-1 items-center gap-4">
           <ProfileAvatar
@@ -127,16 +115,14 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(function Sha
         </div>
       </div>
 
-      {/* Heatmap — recent ~6 months; cells sized so the grid fills the card width */}
+      {}
       <ActivityHeatmap
         cells={heatmapCells}
-        cellSize={22}
-        gap={4}
-        radius={5}
+        layout={{ cellSize: 22, gap: 4, radius: 5 }}
         intensityClasses={CARD_HEATMAP_INTENSITY_CLASSES}
       />
 
-      {/* Stat tiles — left-aligned columns, no dividers (reference style) */}
+      {}
       <div className="flex items-stretch">
         {tiles.map((tile) => (
           <div key={tile.key} className="flex flex-1 flex-col items-start gap-1">

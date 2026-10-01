@@ -1,8 +1,4 @@
-// FILE: CrossTaskOriginLabel.tsx
-// Purpose: Identify the source thread for conversations created by another Glade agent.
-// Layer: Chat transcript UI
-
-import { type ProviderKind, type ThreadId } from "@glade/contracts";
+import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { memo, type ReactNode } from "react";
 
 import { GladeLogo } from "../GladeLogo";
@@ -13,9 +9,6 @@ export interface CrossTaskOrigin {
   readonly sourceProvider: ProviderKind | null;
 }
 
-// A single, app-level attribution: the message reached this thread from another
-// Glade thread, so it always reads as "Sent by Glade" with the Glade mark
-// (the origin provider is not surfaced here to keep one consistent label).
 function OriginContent(): ReactNode {
   return (
     <>

@@ -1,4 +1,4 @@
-import { CommandId, EventId, ThreadId } from "@glade/contracts";
+import { CommandId, EventId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { Effect, Option } from "effect";
 import type { OrchestrationEngineShape } from "../orchestration/Services/OrchestrationEngine.ts";
 import type { ProjectionSnapshotQueryShape } from "../orchestration/Services/ProjectionSnapshotQuery.ts";
@@ -13,22 +13,20 @@ interface CompletionDeliveryDependencies {
   readonly orchestrationEngine: OrchestrationEngineShape;
 }
 
-/** Re-read durable state on every pass; no in-memory terminal-event ownership. */
 export const deliverGatewayCompletions = (dependencies: CompletionDeliveryDependencies) =>
   Effect.gen(function* () {
     const { repository, snapshotQuery, projectionTurns, orchestrationEngine } = dependencies;
     for (const row of yield* repository.pending()) {
       yield* Effect.gen(function* () {
         const childThreadId = ThreadId.makeUnsafe(row.childThreadId);
-        // Session settlement precedes buffered assistant finalization. Wait for
-        // ingestion's durable acknowledgement before reading the final response.
+
         if (row.resultJson === null && !(yield* repository.isOutputSettled(row.childThreadId)))
           return;
         const child = Option.getOrUndefined(yield* snapshotQuery.getThreadShellById(childThreadId));
         let resultJson = row.resultJson;
         if (resultJson === null) {
           const turns = yield* projectionTurns.listByThreadId({ threadId: childThreadId });
-          // The initial message owns the run, never whichever turn is latest at poll time.
+
           const turn = turns.find(
             (entry) => entry.pendingMessageId === row.initialMessageId && entry.turnId !== null,
           );
@@ -48,10 +46,7 @@ export const deliverGatewayCompletions = (dependencies: CompletionDeliveryDepend
             !(yield* repository.hasCompletedRun(row.childThreadId, turn.turnId))
           )
             return;
-          const goalUnsupported = yield* repository.hasGoalHistory(
-            row.childThreadId,
-            turn?.completedAt ?? failure?.completedAt ?? new Date().toISOString(),
-          );
+
           const detail = child
             ? Option.getOrUndefined(yield* snapshotQuery.getThreadDetailById(childThreadId))
             : undefined;
@@ -63,27 +58,23 @@ export const deliverGatewayCompletions = (dependencies: CompletionDeliveryDepend
                 message.turnId === turn.turnId,
             )?.text,
           );
-          const error = goalUnsupported
-            ? "Completion delivery does not support goals. This is not a goal-completion notification; read the child for its current progress."
-            : !child
-              ? "Child task was deleted."
-              : turn?.state === "error" || failedBeforeStart
-                ? (failure?.error ??
-                  (child.latestTurn?.turnId === turn?.turnId ? child.session?.lastError : null) ??
-                  (failure && failure.status !== "error"
-                    ? "Initial run interrupted before provider start."
-                    : "Initial run failed."))
-                : null;
+          const error = !child
+            ? "Child task was deleted."
+            : turn?.state === "error" || failedBeforeStart
+              ? (failure?.error ??
+                (child.latestTurn?.turnId === turn?.turnId ? child.session?.lastError : null) ??
+                (failure && failure.status !== "error"
+                  ? "Initial run interrupted before provider start."
+                  : "Initial run failed."))
+              : null;
           resultJson = JSON.stringify({
             childThreadId: row.childThreadId,
             initialMessageId: row.initialMessageId,
             completedAt: turn?.completedAt ?? failure?.completedAt ?? new Date().toISOString(),
             runId: turn?.turnId ?? null,
-            status: goalUnsupported
-              ? "error"
-              : child
-                ? (turn?.state ?? (failure && failure.status !== "error" ? "interrupted" : "error"))
-                : "interrupted",
+            status: child
+              ? (turn?.state ?? (failure && failure.status !== "error" ? "interrupted" : "error"))
+              : "interrupted",
             provider: child?.modelSelection.provider ?? null,
             model: child?.modelSelection.model ?? null,
             summary: summary.summary,
@@ -107,11 +98,9 @@ export const deliverGatewayCompletions = (dependencies: CompletionDeliveryDepend
         const parentId = ThreadId.makeUnsafe(row.creatorThreadId);
         const parent = Option.getOrUndefined(yield* snapshotQuery.getThreadShellById(parentId));
         const available = parent !== undefined && parent.archivedAt == null;
-        // Command receipts fingerprint the entire intent, including timestamps.
-        // Replays must use the frozen result's timestamp, never the current clock.
+
         const createdAt = result.completedAt ?? row.createdAt;
         if (available) {
-          // The decider checks archive state inside the command queue too.
           yield* orchestrationEngine.dispatch({
             type: "thread.activity.append",
             commandId: CommandId.makeUnsafe(`gateway-completion:${row.childThreadId}`),

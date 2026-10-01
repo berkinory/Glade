@@ -1,32 +1,32 @@
+import { Schema, Option } from "effect";
+import { ApprovalRequestId, type TurnId } from "@glade/contracts/core/baseSchemas";
 import {
-  ApprovalRequestId,
   type OrchestrationPendingInteraction,
   type OrchestrationThreadActivity,
-  type TurnId,
-  type UserInputQuestion,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/threadEntities";
+import { UserInputQuestion } from "@glade/contracts/provider/runtimePayloads";
 import {
   createStalePendingInteractionMatcher,
   isPendingInteractionResponseClaimable,
-} from "@glade/shared/pendingInteractions";
+} from "@glade/shared/threads/pendingInteractions";
 import {
   approvalRequestKindFromRequestType,
   pendingRequestInstanceKey,
-} from "@glade/shared/threadSummary";
+} from "@glade/shared/threads/threadSummary";
 
-import { orderedActivities } from "./workLog";
+import { orderedActivities } from "./workLog.entries";
 
 export interface PendingApproval {
   requestId: ApprovalRequestId;
   lifecycleGeneration?: string;
-  /** Changes only when the durable retryable response attempt changes. */
+
   responseAttemptKey?: string;
   requestKind: "command" | "file-read" | "file-change" | "permissions" | "tool";
   createdAt: string;
   detail?: string;
   permissionProfile?: Record<string, unknown>;
   sessionApprovalAvailable?: boolean;
-  approvalScope?: "computer-task" | "computer-foreground" | "device-task";
+  approvalScope?: "computer-task" | "computer-foreground";
   toolName?: string;
   toolParamsDisplay?: ReadonlyArray<PendingToolParamDisplay>;
 }
@@ -47,16 +47,9 @@ export interface PendingUserInput {
 type PendingInteractionKind = OrchestrationPendingInteraction["interactionKind"];
 
 export interface PendingInteractionDerivationOptions {
-  // Aggregate flags cannot identify a pending request. When detailed
-  // settlements are missing, an explicit false clears everything. Undefined
-  // trusts only latest-turn requests; true additionally retains the newest
-  // unresolved older request so a background prompt can outlive later turns.
   readonly authoritativeHasPending: boolean | undefined;
   readonly latestTurnId: TurnId | undefined;
-  // The active composer supplies a wall-clock reference so durable failures
-  // and orphaned response claims become actionable under the same atomic
-  // reclaim policy enforced by persistence. Historical/sidebar derivations
-  // can omit it to remain time-independent.
+
   readonly responseClaimReferenceAt?: string;
 }
 
@@ -172,9 +165,9 @@ function replayPendingInteractions<
     if (activity.kind === replay.requestedActivityKind) {
       const isLatestTurnRequest =
         fallbackLatestTurnId !== undefined && activity.turnId === fallbackLatestTurnId;
-      // While aggregate state is absent, only a request tied to the latest turn
-      // is fresh enough to trust. An explicit true is stronger evidence: replay
-      // all request lifecycles, then bound the ambiguous result below.
+      // While aggregate state is absent, only a request tied to the latest turn is fresh enough to trust.
+      // An explicit true is stronger evidence: replay all request lifecycles, then bound the ambiguous
+      // result below.
       if (isAggregateFallback && options.authoritativeHasPending !== true && !isLatestTurnRequest) {
         continue;
       }
@@ -201,9 +194,9 @@ function replayPendingInteractions<
     }
   }
 
-  // Explicit stale-callback failures are terminal for their request instance.
-  // Apply them after replay: their orchestration sequence may be below an older
-  // request's runtime sequence, which must not resurrect an invalid callback.
+  // Explicit stale-callback failures are terminal for their request instance. Apply them after
+  // replay: their orchestration sequence may be below an older request's runtime sequence, which must
+  // not resurrect an invalid callback.
   if (openByInstance.size > 0) {
     const isStale = createStalePendingInteractionMatcher(replayActivities);
     for (const [key, pending] of openByInstance) {
@@ -230,9 +223,6 @@ function replayPendingInteractions<
         }
       }
     } else if (openByInstance.size > 1) {
-      // A boolean shell cannot express concurrent older interactions. Keep the
-      // newest unresolved lifecycle as the safest actionable fallback; current
-      // servers provide detailed settlements and preserve all concurrency.
       const newest = [...openByInstance.entries()]
         .toSorted(([, left], [, right]) =>
           left.createdAt === right.createdAt
@@ -260,6 +250,12 @@ function parseUserInputQuestions(
   }
   const parsed = questions
     .map<UserInputQuestion | null>((entry) => {
+      const decoded = Schema.decodeUnknownOption(UserInputQuestion)(entry);
+      if (
+        Option.isSome(decoded) &&
+        (decoded.value.elicitation || decoded.value.required !== undefined)
+      )
+        return decoded.value;
       if (!entry || typeof entry !== "object") return null;
       const question = entry as Record<string, unknown>;
       if (
@@ -286,13 +282,10 @@ function parseUserInputQuestions(
           };
         })
         .filter((option): option is UserInputQuestion["options"][number] => option !== null);
-      return {
-        id: question.id,
-        header: question.header,
-        question: question.question,
-        options,
-        ...(question.multiSelect === true ? { multiSelect: true } : {}),
-      };
+      return Object.assign(
+        { id: question.id, header: question.header, question: question.question, options },
+        question.multiSelect === true ? { multiSelect: true } : {},
+      );
     })
     .filter((question): question is UserInputQuestion => question !== null);
   return parsed.length > 0 ? parsed : null;
@@ -343,8 +336,8 @@ export function derivePendingApprovals(
           ...(detail ? { detail } : {}),
           ...(permissionProfile ? { permissionProfile } : {}),
           ...(sessionApprovalAvailable !== undefined ? { sessionApprovalAvailable } : {}),
-          ...(payload?.approvalScope === "computer-task" || payload?.approvalScope === "device-task"
-            ? { approvalScope: payload.approvalScope as "computer-task" | "device-task" }
+          ...(payload?.approvalScope === "computer-task"
+            ? { approvalScope: payload.approvalScope as "computer-task" }
             : payload?.approvalScope === "computer-foreground"
               ? { approvalScope: "computer-foreground" as const }
               : {}),

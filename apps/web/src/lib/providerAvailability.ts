@@ -1,8 +1,6 @@
-import {
-  PROVIDER_DISPLAY_NAMES,
-  type ProviderKind,
-  type ServerProviderStatus,
-} from "@glade/contracts";
+import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { type ServerProviderStatus } from "@glade/contracts/server/server";
 
 export interface ProviderSendAvailability {
   readonly provider: ProviderKind;
@@ -65,7 +63,6 @@ export function normalizeProviderStatusForLocalConfig(input: {
   }
 
   if (normalizeCustomBinaryPath(input.confirmedCustomBinaryPath) === customBinaryPath) {
-    // Only the exact path used by a successful session can suppress the warning.
     return {
       provider: status.provider,
       available: true,
@@ -90,7 +87,6 @@ export function normalizeProviderStatusForLocalConfig(input: {
 
 export function isProviderUsable(status: ServerProviderStatus | null | undefined): boolean {
   if (!status) {
-    // Missing status means the health check has not confirmed an installed provider yet.
     return false;
   }
   return status.available && status.authStatus !== "unauthenticated";
@@ -156,7 +152,6 @@ export function resolveAvailableProviderPreference(input: {
   );
 }
 
-// Shared send gate used by chat, Kanban, shortcuts, and handoff flows.
 function resolveProviderSendAvailability(input: {
   readonly provider: ProviderKind;
   readonly statuses: readonly ServerProviderStatus[];
@@ -174,7 +169,6 @@ function shouldRefreshBeforeBlocking(status: ServerProviderStatus | null): boole
   return !status || !status.available || status.authStatus === "unauthenticated";
 }
 
-// Re-check a blocked provider once before surfacing stale install/auth state to the user.
 export async function resolveProviderSendAvailabilityWithRefresh(input: {
   readonly provider: ProviderKind;
   readonly statuses: readonly ServerProviderStatus[];

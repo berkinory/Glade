@@ -33,11 +33,28 @@ For code changes, run the static checks before opening a pull request:
 bun run check
 ```
 
+`check` rejects lint warnings, unused code reported by knip, source dependency
+violations and import cycles, including type-only cycles. `check:architecture`
+runs the dependency checks separately. `check:typed-lint` adds type-aware checks
+for floating/misused promises, invalid awaits and dynamic evaluation. This is a
+separate focused lane; the primary lint invocation enforces all configured
+syntax categories first. CI runs typed lint after installing every workspace.
+Effect language-service diagnostics use the
+shared base configuration in every package. Editor suggestions stay in the editor;
+compiler checks enforce the configured diagnostics. Only SDK transport boundaries
+that necessarily accept opaque errors may bypass a diagnostic, with a reason.
+
 Use `bun run check:fix` to apply formatting and safe lint fixes, then review the resulting diff.
 Run the affected tests. Use `bun run test` for cross-package and lifecycle
 changes. Describe any relevant checks you did not run. Check UI changes in the
 running app; include before/after screenshots when they help reviewers, and a
 short recording for motion or interaction changes.
+
+`@glade/contracts` and `@glade/shared` export domain modules directly through
+`./*` source patterns; new modules need no per-file export entry. Contracts hold
+schemas and transport definitions; runtime helpers belong in shared only when
+at least two applications use them, including transitive imports. The desktop
+build bundles these workspace imports, so contracts need no separate CJS output.
 
 ## Open a pull request
 

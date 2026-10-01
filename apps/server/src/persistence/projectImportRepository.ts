@@ -1,6 +1,7 @@
 import { Effect } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
-import type { ProjectId, ProjectImportProvider, ThreadId } from "@glade/contracts";
+import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
+import type { ProjectImportProvider } from "@glade/contracts/workspace/projectImport";
 
 export interface ProjectImportOrigin {
   readonly sourceKey: string;

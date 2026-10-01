@@ -1,11 +1,10 @@
-// Purpose: Route selected transcript text through the new-chat flow.
+import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
+import type { ThreadEnvironmentMode } from "@glade/contracts/orchestration/threadEntities";
 
-import type { ProjectId, ThreadEnvironmentMode, ThreadId } from "@glade/contracts";
-
-import { useComposerDraftStore, type QueuedComposerChatTurn } from "../composerDraftStore";
-import { requestComposerFocus } from "../composerFocusRequestStore";
+import { requestComposerFocus, useComposerDraftStore } from "../composerDraftStore";
+import type { QueuedComposerChatTurn } from "../composerDraftDomain";
 import { ensureNativeApi } from "../nativeApi";
-import { useProjectEnvironmentStore } from "../projectEnvironmentStore";
+import { useProjectPreferencesStore } from "../projectPreferencesStore";
 import { createAssistantSelectionAttachment } from "./assistantSelections";
 import type { NewThreadOptions } from "./threadBootstrap";
 import { randomUUID } from "./utils";
@@ -55,16 +54,15 @@ export async function startSelectionChat(
   const drafts = useComposerDraftStore.getState();
   drafts.setModelSelection(threadId, input.modelSelection);
   drafts.setRuntimeMode(threadId, input.runtimeMode);
-  drafts.setInteractionMode(threadId, "default");
-  useProjectEnvironmentStore.getState().setProjectEnvMode(input.projectId, input.envMode);
+
+  useProjectPreferencesStore.getState().setProjectEnvMode(input.projectId, input.envMode);
   if (input.intent === "compose") {
     drafts.setPrompt(threadId, input.prompt);
     drafts.addAssistantSelection(threadId, attachment);
     requestComposerFocus(threadId);
     return;
   }
-  // The destination ChatView drains this queue through its regular first-send path,
-  // including worktree creation, setup scripts, attachment serialization and recovery.
+
   drafts.enqueueQueuedTurn(threadId, {
     id: randomUUID(),
     kind: "chat",
@@ -89,7 +87,7 @@ export async function startSelectionChat(
       ? { providerOptionsForDispatch: input.providerOptionsForDispatch }
       : {}),
     runtimeMode: input.runtimeMode,
-    interactionMode: "default",
+
     envMode: input.envMode,
   });
 }

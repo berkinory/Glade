@@ -1,10 +1,3 @@
-// FILE: ComposerColumnFrame.tsx
-// Purpose: Shared composer column wrapper and the stacked-activity rail that must
-// live inside it (queued follow-ups, active plan/task activity). Keeps stacked panels
-// aligned with the composer input instead of the full gutter viewport.
-// Layer: Chat composer layout
-// Exports: ComposerColumnFrame, ComposerStackedHeaderFrame
-
 import {
   createContext,
   memo,
@@ -37,7 +30,6 @@ interface ComposerColumnFrameProps {
   className?: string;
 }
 
-/** Centers the composer column at the shared chat max width. */
 export const ComposerColumnFrame = function ComposerColumnFrame({
   children,
   className,
@@ -52,11 +44,10 @@ export const ComposerColumnFrame = function ComposerColumnFrame({
 interface ComposerStackedHeaderFrameProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
   ref?: Ref<HTMLDivElement> | undefined;
-  /** Lets clicks pass through the side margins to the transcript underneath. */
+
   passthroughSideMargins?: boolean;
 }
 
-/** Full-width rail for panels stacked flush above the composer input. */
 export const ComposerStackedHeaderFrame = memo(function ComposerStackedHeaderFrame({
   children,
   className,

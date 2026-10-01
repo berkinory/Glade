@@ -1,4 +1,4 @@
-import type { ThreadId } from "@glade/contracts";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { create } from "zustand";
@@ -28,9 +28,8 @@ import {
   IconArrowUp,
   IconArrowDown,
 } from "@tabler/icons-react";
+import { gitBranchesQueryOptions, gitStatusQueryOptions } from "../../lib/gitQueryOptions";
 import {
-  gitBranchesQueryOptions,
-  gitStatusQueryOptions,
   gitRebaseStateQueryOptions,
   gitSourceControlActionMutationOptions,
   type SourceControlAction,
@@ -38,7 +37,6 @@ import {
 import { hasUnsavedWorkspaceEditors } from "~/lib/workspaceEditorSession";
 import { ComposerPickerMenuPopup } from "./ComposerPickerMenuPopup";
 
-// A workspace draft survives tab/thread switches and is shared by panes of the same repo.
 const useCommitDrafts = create<{
   messages: Record<string, string>;
   set: (cwd: string, message: string) => void;
@@ -92,7 +90,6 @@ export function SourceControlToolbar({
     mutation.mutate(request, {
       onSuccess: () => {
         if (request.action === "commit") {
-          // Do not clear a draft edited in another pane while the commit was running.
           if (useCommitDrafts.getState().messages[cwd] === message) setDraft(cwd, "");
           toastManager.add({ type: "success", title: "Staged changes committed" });
         } else

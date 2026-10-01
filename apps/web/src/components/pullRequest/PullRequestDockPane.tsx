@@ -1,10 +1,3 @@
-// FILE: PullRequestDockPane.tsx
-// Purpose: Adapter from a right-dock "pullRequest" pane to the detail panel — the single place
-//          that validates the pane's identity fields, builds the PullRequestDetailInput, and
-//          keys the panel so switching pull requests remounts it in the chat dock.
-// Layer: Pull request presentation
-// Exports: default PullRequestDockPane (for React.lazy)
-
 import type { RightDockPane } from "~/rightDockStore.logic";
 
 import { PanelStateMessage } from "~/components/chat/PanelStateMessage";

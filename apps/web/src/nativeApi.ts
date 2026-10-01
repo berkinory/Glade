@@ -1,8 +1,8 @@
 import {
   WS_GITHUB_PROJECT_PROVISIONING_CAPABILITY,
   WS_PROJECT_FILE_WATCH_CAPABILITY,
-  type NativeApi,
-} from "@glade/contracts";
+} from "@glade/contracts/transport/ws/wsCompatibility";
+import { type NativeApi } from "@glade/contracts/ipc/ipc";
 
 import {
   createWsNativeApi,

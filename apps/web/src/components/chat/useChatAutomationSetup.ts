@@ -1,4 +1,4 @@
-import { type MessageId, type ThreadId } from "@glade/contracts";
+import { type MessageId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   type MutableRefObject,
   useCallback,
@@ -60,8 +60,8 @@ export function useChatAutomationSetup({
 }: UseChatAutomationSetupInput) {
   const automationProjects = useStore((state) => state.projects);
   const [automationDraftOpen, setAutomationDraftOpen] = useState(false);
-  // Only the open dialog needs other transcripts; hidden streams must not render ChatView.
-  // Release the selector's cached transcript maps when the dialog closes.
+  // Only the open dialog needs other transcripts; hidden streams must not render ChatView. Release
+  // the selector's cached transcript maps when the dialog closes.
   const selectAutomationThreads = useMemo(
     () => (automationDraftOpen ? createAllThreadsSelector() : selectNoThreads),
     [automationDraftOpen],

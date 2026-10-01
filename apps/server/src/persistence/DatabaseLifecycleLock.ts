@@ -1,3 +1,4 @@
+import { normalizeOperationError } from "../platform/operationError.ts";
 import { constants as fsConstants } from "node:fs";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
@@ -5,8 +6,11 @@ import { randomUUID } from "node:crypto";
 
 import { Effect } from "effect";
 
-import { supportsPosixPermissions, syncDirectoryEntry } from "@glade/shared/filesystemPlatform";
-import { PRIVATE_DIRECTORY_MODE, PRIVATE_FILE_MODE } from "../privatePathPermissions.ts";
+import { supportsPosixPermissions, syncDirectoryEntry } from "../platform/filesystemPlatform";
+import {
+  PRIVATE_DIRECTORY_MODE,
+  PRIVATE_FILE_MODE,
+} from "../platform/filesystem/privatePathPermissions.ts";
 
 const OWNER_FILE_NAME = "owner.json";
 
@@ -367,7 +371,7 @@ async function release(lock: DatabaseLifecycleLock): Promise<void> {
 }
 
 const attemptPromise = <A>(action: () => Promise<A>) =>
-  Effect.tryPromise({ try: action, catch: (cause) => cause });
+  Effect.tryPromise({ try: action, catch: (cause) => normalizeOperationError(cause) });
 
 export const acquireDatabaseLifecycleLock = (dbPath: string) =>
   attemptPromise(() => acquire(dbPath));

@@ -1,14 +1,8 @@
-// FILE: usePinnedMessageActions.ts
-// Purpose: Centralize sidepanel pin and notes command dispatch with optimistic rollback guards.
-// Layer: Environment panel hook
-// Exports: usePinnedMessageActions
-
 import {
   PINNED_MESSAGES_MAX_COUNT,
-  type MessageId,
   type PinnedMessage,
-  type ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/threadEntities";
+import { type MessageId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useEffect, useRef } from "react";
 
 import { toastManager } from "~/components/ui/toast";
@@ -68,7 +62,6 @@ function handleThreadNotesDispatchError(error: unknown) {
   });
 }
 
-// Keeps rapid pin clicks based on the latest optimistic ref until server events reconcile the store.
 export function usePinnedMessageActions({
   activeThreadId,
   pinnedMessages,

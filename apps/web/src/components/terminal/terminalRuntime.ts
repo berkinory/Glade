@@ -1,41 +1,24 @@
-// FILE: terminalRuntime.ts
-// Purpose: Own the long-lived xterm runtime lifecycle behind the terminal runtime registry.
-// Layer: Terminal runtime infrastructure
-
 import { ClipboardAddon } from "@xterm/addon-clipboard";
 import { FitAddon } from "@xterm/addon-fit";
-import { ImageAddon } from "@xterm/addon-image";
 import { LigaturesAddon } from "@xterm/addon-ligatures";
 import { SearchAddon } from "@xterm/addon-search";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { WebglAddon } from "@xterm/addon-webgl";
-import {
-  defaultTerminalTitleForCliKind,
-  consumeTerminalIdentityInput,
-} from "@glade/shared/terminalThreads";
-import { describeErrorMessage } from "@glade/shared/errorMessages";
+import { describeErrorMessage } from "@glade/shared/text/errorMessages";
 import {
   TERMINAL_MAX_COLS,
   TERMINAL_MAX_ROWS,
   TERMINAL_MIN_COLS,
   TERMINAL_MIN_ROWS,
-} from "@glade/contracts";
-import type { TerminalSessionSnapshot } from "@glade/contracts";
+} from "@glade/contracts/terminal/terminal";
+import type { TerminalSessionSnapshot } from "@glade/contracts/terminal/terminal";
 import { Terminal } from "@xterm/xterm";
 
-import { readNativeApi } from "~/nativeApi";
-import { suppressQueryResponses } from "~/lib/suppressQueryResponses";
+import { awaitTerminalStartup } from "./terminalStartup";
 
-import { openInPreferredEditor } from "../../editorPreferences";
-import { isTerminalClearShortcut, terminalNavigationShortcutData } from "../../keybindings";
-import {
-  collectWrappedTerminalLinkLine,
-  extractTerminalLinks,
-  isTerminalLinkActivation,
-  resolvePathLinkTarget,
-  resolveWrappedTerminalLinkRange,
-  wrappedTerminalLinkRangeIntersectsBufferLine,
-} from "../../terminal-links";
+import { readNativeApi } from "~/nativeApi";
+
+import { extractTerminalLinks } from "../../terminal-links";
 import { addWsTransportStateListener } from "../../wsTransportEvents";
 import {
   getTerminalBoldFontWeight,
@@ -45,24 +28,28 @@ import {
   terminalThemeFromApp,
   writeSystemMessage,
 } from "./terminalRuntimeAppearance";
-import { terminalEventDispatcher } from "./terminalEventDispatcher";
+import { registerTerminalEventHandler } from "./terminalRuntimeEvents";
+import { registerTerminalInputHandlers } from "./terminalRuntimeInput";
 import type {
   TerminalRuntimeConfig,
   TerminalRuntimeEntry,
   TerminalRuntimeViewState,
 } from "./terminalRuntimeTypes";
 import { waitForTerminalFontReady } from "./terminalFontSettle";
-import { observeTerminalWriteParsed } from "./terminalPerformance";
+import {
+  terminalByteLength,
+  clearPendingWrites,
+  flushPendingWrites,
+  scheduleWrite,
+} from "./terminalRuntimeOutput";
+
+import { createTerminalImageWriter } from "./terminalImageWriter";
 
 const ENABLE_TERMINAL_WEBGL = true;
 const VISUAL_RESIZE_MIN_INTERVAL_MS = 64;
 const BACKEND_RESIZE_DEBOUNCE_MS = 120;
-const WRITE_BATCH_SIZE_LIMIT = 262_144;
-const WRITE_BATCH_MAX_LATENCY_MS = 50;
 const LINK_MATCH_CACHE_LIMIT = 512;
-const OPEN_SNAPSHOT_RECONCILE_DELAY_MS = 250;
 const OPEN_RETRY_DELAY_MS = 2_000;
-const TERMINAL_TEXT_ENCODER = new TextEncoder();
 const TERMINAL_PARKING_CONTAINER_ID = "glade-terminal-parking";
 
 type GladeTerminalOptions = NonNullable<ConstructorParameters<typeof Terminal>[0]> & {
@@ -77,28 +64,7 @@ const TERMINAL_INACTIVE_CURSOR_STYLE: NonNullable<GladeTerminalOptions["cursorIn
   "bar";
 const TERMINAL_CURSOR_WIDTH = 1;
 
-// Once WebGL fails, skip it for subsequent terminals in this renderer process.
 let suggestedRendererType: "webgl" | "dom" | undefined;
-
-function terminalByteLength(data: string): number {
-  return TERMINAL_TEXT_ENCODER.encode(data).byteLength;
-}
-
-function acknowledgeParsedOutput(entry: TerminalRuntimeEntry, bytes: number): void {
-  if (bytes <= 0) return;
-  const api = readNativeApi();
-  if (!api) return;
-  const ackOutput = api.terminal.ackOutput;
-  if (typeof ackOutput !== "function") return;
-
-  void ackOutput({
-    threadId: entry.threadId,
-    terminalId: entry.terminalId,
-    bytes,
-  }).catch(() => {
-    // Flow control is best-effort; reconnect/replay will recover from a missed ACK.
-  });
-}
 
 function setRuntimeStatus(
   entry: TerminalRuntimeEntry,
@@ -140,9 +106,7 @@ function scheduleFontSettleRefit(entry: TerminalRuntimeEntry): void {
   const fontSize = Number(entry.terminal.options.fontSize ?? 12);
   void waitForTerminalFontReady({ fontFamily, fontSize }).then(() => {
     if (entry.disposed) return;
-    // Rebuild the WebGL glyph atlas: the immediate refit may have cached glyphs in
-    // the fallback font while the requested font was still loading, and a plain
-    // refresh would keep redrawing those stale glyphs.
+
     runTerminalResize(entry, { clearTextureAtlas: true, refresh: true });
   });
 }
@@ -151,7 +115,7 @@ function resetForSnapshotReplay(entry: TerminalRuntimeEntry): void {
   entry.titleInputBuffer = "";
   entry.linkMatchCache.clear();
   clearPendingWrites(entry);
-  entry.terminal.write("\u001bc");
+  entry.output.write("\u001bc");
 }
 
 function snapshotReplayPayload(snapshot: TerminalSessionSnapshot): string {
@@ -166,12 +130,6 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-// Fit xterm to its container, then clamp the result into the PTY contract bounds.
-// An ultrawide viewport at a small font can legitimately propose more than the
-// old 400-column cap, and a fit before fonts settle can momentarily report a
-// glitched (tiny char width -> huge column count) size. Forcing xterm back into
-// range keeps the open/resize payloads valid — so the terminal always opens —
-// and keeps the rendered grid consistent with what the backend PTY believes.
 function fitTerminal(entry: TerminalRuntimeEntry): void {
   entry.fitAddon.fit();
   const cols = clamp(entry.terminal.cols, TERMINAL_MIN_COLS, TERMINAL_MAX_COLS);
@@ -201,7 +159,7 @@ function replaySnapshot(
   const payload = snapshotReplayPayload(snapshot);
   if (payload.length > 0) {
     setRuntimeStatus(entry, "replaying");
-    entry.terminal.write(payload, onParsed);
+    entry.output.write(payload, onParsed);
     return;
   }
   onParsed?.();
@@ -211,81 +169,6 @@ function clearBackendResizeTimer(entry: TerminalRuntimeEntry): void {
   if (entry.resizeDispatchTimer !== null) {
     window.clearTimeout(entry.resizeDispatchTimer);
     entry.resizeDispatchTimer = null;
-  }
-}
-
-function clearPendingWrites(entry: TerminalRuntimeEntry): void {
-  if (entry.writeRafHandle !== null) {
-    window.cancelAnimationFrame(entry.writeRafHandle);
-    entry.writeRafHandle = null;
-  }
-  if (entry.writeFlushTimeout !== null) {
-    window.clearTimeout(entry.writeFlushTimeout);
-    entry.writeFlushTimeout = null;
-  }
-  if (entry.pendingWriteBytes > 0) {
-    acknowledgeParsedOutput(entry, entry.pendingWriteBytes);
-  }
-  entry.pendingWrites.length = 0;
-  entry.pendingWriteLength = 0;
-  entry.pendingWriteBytes = 0;
-}
-
-function flushPendingWrites(entry: TerminalRuntimeEntry): void {
-  if (entry.writeRafHandle !== null) {
-    window.cancelAnimationFrame(entry.writeRafHandle);
-    entry.writeRafHandle = null;
-  }
-  if (entry.writeFlushTimeout !== null) {
-    window.clearTimeout(entry.writeFlushTimeout);
-    entry.writeFlushTimeout = null;
-  }
-  if (entry.pendingWrites.length === 0) {
-    entry.pendingWriteLength = 0;
-    entry.pendingWriteBytes = 0;
-    return;
-  }
-  const combined = entry.pendingWrites.map((write) => write.data).join("");
-  const byteLength = entry.pendingWriteBytes;
-  const queuedAt = entry.pendingWrites[0]?.queuedAt ?? performance.now();
-  entry.pendingWrites.length = 0;
-  entry.pendingWriteLength = 0;
-  entry.pendingWriteBytes = 0;
-  entry.terminal.write(combined, () => {
-    acknowledgeParsedOutput(entry, byteLength);
-    observeTerminalWriteParsed({
-      runtimeKey: entry.runtimeKey,
-      bytes: byteLength,
-      queuedAt,
-    });
-  });
-}
-
-function scheduleWrite(entry: TerminalRuntimeEntry, data: string, byteLength: number): void {
-  entry.pendingWrites.push({
-    data,
-    byteLength,
-    queuedAt: performance.now(),
-  });
-  entry.pendingWriteLength += data.length;
-  entry.pendingWriteBytes += byteLength;
-
-  if (entry.pendingWriteBytes >= WRITE_BATCH_SIZE_LIMIT) {
-    flushPendingWrites(entry);
-    return;
-  }
-
-  if (entry.writeRafHandle === null) {
-    entry.writeRafHandle = window.requestAnimationFrame(() => {
-      entry.writeRafHandle = null;
-      flushPendingWrites(entry);
-    });
-  }
-  if (entry.writeFlushTimeout === null) {
-    entry.writeFlushTimeout = window.setTimeout(() => {
-      entry.writeFlushTimeout = null;
-      flushPendingWrites(entry);
-    }, WRITE_BATCH_MAX_LATENCY_MS);
   }
 }
 
@@ -679,7 +562,7 @@ async function sendTerminalInput(
   try {
     await api.terminal.write({ threadId: entry.threadId, terminalId: entry.terminalId, data });
   } catch (error) {
-    writeSystemMessage(entry.terminal, describeErrorMessage(error, fallbackError));
+    writeSystemMessage(entry.output, describeErrorMessage(error, fallbackError));
   }
 }
 
@@ -755,7 +638,6 @@ export function createRuntimeEntry(config: TerminalRuntimeConfig): TerminalRunti
 
   const fitAddon = new FitAddon();
   const clipboardAddon = new ClipboardAddon();
-  const imageAddon = new ImageAddon();
   const searchAddon = new SearchAddon();
   const unicode11Addon = new Unicode11Addon();
   const terminalOptions: GladeTerminalOptions = {
@@ -780,15 +662,12 @@ export function createRuntimeEntry(config: TerminalRuntimeConfig): TerminalRunti
   const terminal = new Terminal(terminalOptions);
   terminal.loadAddon(fitAddon);
   terminal.loadAddon(clipboardAddon);
-  terminal.loadAddon(imageAddon);
   terminal.loadAddon(searchAddon);
   terminal.loadAddon(unicode11Addon);
   terminal.unicode.activeVersion = "11";
   try {
     terminal.loadAddon(new LigaturesAddon());
-  } catch {
-    // Keep terminal startup resilient when the active font doesn't support ligatures.
-  }
+  } catch {}
   terminal.open(wrapper);
 
   const entry: TerminalRuntimeEntry = {
@@ -802,6 +681,7 @@ export function createRuntimeEntry(config: TerminalRuntimeConfig): TerminalRunti
     wrapper,
     container: null,
     terminal,
+    output: createTerminalImageWriter(terminal),
     fitAddon,
     searchAddon,
     webglAddon: null,
@@ -825,6 +705,8 @@ export function createRuntimeEntry(config: TerminalRuntimeConfig): TerminalRunti
     pendingWriteBytes: 0,
     linkMatchCache: new Map(),
     outputEventVersion: 0,
+    awaitingOpenSnapshot: false,
+    applyOpenSnapshot: () => undefined,
     snapshotReconcileRequestId: 0,
     webglLoadFrame: null,
     themeRefreshFrame: 0,
@@ -882,118 +764,7 @@ export function createRuntimeEntry(config: TerminalRuntimeConfig): TerminalRunti
   });
   entry.persistentDisposables.push(unsubscribeTransportState);
 
-  terminal.attachCustomKeyEventHandler((event) => {
-    if (
-      event.type === "keydown" &&
-      event.key === "Enter" &&
-      event.shiftKey &&
-      !event.metaKey &&
-      !event.ctrlKey &&
-      !event.altKey
-    ) {
-      event.preventDefault();
-      event.stopPropagation();
-      void sendTerminalInput(entry, "\n", "Failed to insert newline");
-      return false;
-    }
-
-    if (
-      event.type === "keydown" &&
-      event.key.toLowerCase() === "f" &&
-      (event.metaKey || event.ctrlKey) &&
-      !event.altKey &&
-      !event.shiftKey
-    ) {
-      return true;
-    }
-
-    const navigationData = terminalNavigationShortcutData(event);
-    if (navigationData !== null) {
-      event.preventDefault();
-      event.stopPropagation();
-      void sendTerminalInput(entry, navigationData, "Failed to move cursor");
-      return false;
-    }
-
-    if (!isTerminalClearShortcut(event)) return true;
-    event.preventDefault();
-    event.stopPropagation();
-    void sendTerminalInput(entry, "\u000c", "Failed to clear terminal");
-    return false;
-  });
-
-  entry.terminalDisposables.push(
-    terminal.registerLinkProvider({
-      provideLinks: (bufferLineNumber, callback) => {
-        const wrappedLine = collectWrappedTerminalLinkLine(bufferLineNumber, (bufferLineIndex) =>
-          terminal.buffer.active.getLine(bufferLineIndex),
-        );
-        if (!wrappedLine) {
-          callback(undefined);
-          return;
-        }
-
-        const links = readCachedTerminalLinks(entry, wrappedLine.text)
-          .map((match) => ({
-            match,
-            range: resolveWrappedTerminalLinkRange(wrappedLine, match),
-          }))
-          .filter(({ range }) =>
-            wrappedTerminalLinkRangeIntersectsBufferLine(range, bufferLineNumber),
-          );
-        if (links.length === 0) {
-          callback(undefined);
-          return;
-        }
-
-        callback(
-          links.map(({ match, range }) => ({
-            text: match.text,
-            range,
-            activate: (event: MouseEvent) => {
-              if (!isTerminalLinkActivation(event)) return;
-              const api = readNativeApi();
-              if (!api) return;
-
-              if (match.kind === "url") {
-                void api.shell.openExternal(match.text).catch((error) => {
-                  writeSystemMessage(terminal, describeErrorMessage(error, "Unable to open link"));
-                });
-                return;
-              }
-
-              const target = resolvePathLinkTarget(match.text, entry.cwd);
-              void openInPreferredEditor(api, target).catch((error) => {
-                writeSystemMessage(terminal, describeErrorMessage(error, "Unable to open path"));
-              });
-            },
-          })),
-        );
-      },
-    }),
-  );
-
-  entry.terminalDisposables.push(
-    terminal.onData((data) => {
-      const nextIdentityState = consumeTerminalIdentityInput(entry.titleInputBuffer, data);
-      entry.titleInputBuffer = nextIdentityState.buffer;
-      const submittedIdentity = nextIdentityState.identity;
-      if (submittedIdentity && (submittedIdentity.cliKind || entry.terminalCliKind !== null)) {
-        entry.terminalCliKind = submittedIdentity.cliKind;
-        entry.callbacks.onTerminalMetadataChange(entry.terminalId, {
-          cliKind: submittedIdentity.cliKind,
-          label: submittedIdentity.title,
-        });
-      }
-      const api = readNativeApi();
-      if (!api) return;
-      void api.terminal
-        .write({ threadId: entry.threadId, terminalId: entry.terminalId, data })
-        .catch((error) =>
-          writeSystemMessage(terminal, describeErrorMessage(error, "Terminal write failed")),
-        );
-    }),
-  );
+  registerTerminalInputHandlers(entry, sendTerminalInput, readCachedTerminalLinks);
 
   entry.themeObserver = new MutationObserver(() => {
     if (entry.themeRefreshFrame !== 0) return;
@@ -1007,89 +778,15 @@ export function createRuntimeEntry(config: TerminalRuntimeConfig): TerminalRunti
     attributeFilter: ["class", "style"],
   });
 
-  entry.unsubscribeTerminalEvents = terminalEventDispatcher.subscribe(
-    entry.threadId,
-    entry.terminalId,
-    (event) => {
-      if (event.type === "output") {
-        setRuntimeStatus(entry, "ready");
-        entry.outputEventVersion += 1;
-        scheduleWrite(entry, event.data, event.byteLength ?? terminalByteLength(event.data));
-        return;
-      }
-
-      if (event.type === "started" || event.type === "restarted") {
-        entry.hasHandledExit = false;
-        const shouldReplaySnapshot =
-          event.type === "restarted" || snapshotHasReplayPayload(event.snapshot);
-        if (shouldReplaySnapshot) {
-          replaySnapshot(entry, event.snapshot, () => setRuntimeStatus(entry, "ready"));
-        } else {
-          setRuntimeStatus(entry, "ready");
-        }
-        return;
-      }
-
-      if (event.type === "cleared") {
-        entry.titleInputBuffer = "";
-        entry.linkMatchCache.clear();
-        clearPendingWrites(entry);
-        terminal.clear();
-        terminal.write("\u001bc");
-        return;
-      }
-
-      if (event.type === "activity") {
-        if (entry.terminalCliKind !== event.cliKind) {
-          entry.terminalCliKind = event.cliKind;
-          entry.callbacks.onTerminalMetadataChange(entry.terminalId, {
-            cliKind: event.cliKind,
-            label: event.cliKind ? defaultTerminalTitleForCliKind(event.cliKind) : "Terminal",
-          });
-        }
-        entry.callbacks.onTerminalActivityChange(entry.terminalId, {
-          hasRunningSubprocess: event.hasRunningSubprocess,
-          agentState: event.agentState,
-        });
-        return;
-      }
-
-      if (event.type === "error") {
-        setRuntimeStatus(entry, "error");
-        writeSystemMessage(terminal, event.message);
-        return;
-      }
-
-      if (event.type === "exited") {
-        flushPendingWrites(entry);
-        setRuntimeStatus(entry, "exited");
-        entry.callbacks.onTerminalActivityChange(entry.terminalId, {
-          hasRunningSubprocess: false,
-          agentState: null,
-        });
-        const details = [
-          typeof event.exitCode === "number" ? `code ${event.exitCode}` : null,
-          typeof event.exitSignal === "number" ? `signal ${event.exitSignal}` : null,
-        ]
-          .filter((value): value is string => value !== null)
-          .join(", ");
-        writeSystemMessage(
-          terminal,
-          details.length > 0 ? `Process exited (${details})` : "Process exited",
-        );
-        if (entry.hasHandledExit) {
-          return;
-        }
-        entry.hasHandledExit = true;
-        window.setTimeout(() => {
-          if (!entry.hasHandledExit) {
-            return;
-          }
-          entry.callbacks.onSessionExited();
-        }, 0);
-      }
-    },
-  );
+  registerTerminalEventHandler(entry, {
+    setStatus: setRuntimeStatus,
+    scheduleWrite,
+    byteLength: terminalByteLength,
+    hasReplayPayload: snapshotHasReplayPayload,
+    replaySnapshot,
+    clearPendingWrites,
+    flushPendingWrites,
+  });
 
   return entry;
 }
@@ -1107,45 +804,14 @@ function openTerminal(entry: TerminalRuntimeEntry): void {
   entry.lastSentResize = null;
   entry.opened = true;
   setRuntimeStatus(entry, "connecting");
-  const outputEventVersionAtOpen = entry.outputEventVersion;
+  entry.awaitingOpenSnapshot = true;
   const openInput = buildOpenInput(entry);
 
-  void api.terminal
-    .open(openInput)
+  void awaitTerminalStartup(entry.threadId, entry.terminalId)
+    .then(() => (entry.disposed ? undefined : api.terminal.open(openInput)))
     .then((snapshot) => {
-      if (entry.disposed) return;
-      if (
-        snapshotHasReplayPayload(snapshot) &&
-        entry.outputEventVersion === outputEventVersionAtOpen
-      ) {
-        replaySnapshot(entry, snapshot, () => setRuntimeStatus(entry, "ready"));
-      } else if (entry.outputEventVersion === outputEventVersionAtOpen) {
-        setRuntimeStatus(entry, "ready");
-        window.setTimeout(() => {
-          if (
-            entry.disposed ||
-            !entry.opened ||
-            entry.outputEventVersion !== outputEventVersionAtOpen
-          ) {
-            return;
-          }
-          void api.terminal
-            .open(openInput)
-            .then((nextSnapshot) => {
-              if (
-                entry.disposed ||
-                entry.outputEventVersion !== outputEventVersionAtOpen ||
-                !snapshotHasReplayPayload(nextSnapshot)
-              ) {
-                return;
-              }
-              replaySnapshot(entry, nextSnapshot, () => setRuntimeStatus(entry, "ready"));
-            })
-            .catch(() => {
-              // Best-effort recovery only; the original open already succeeded.
-            });
-        }, OPEN_SNAPSHOT_RECONCILE_DELAY_MS);
-      }
+      if (entry.disposed || !snapshot) return;
+      entry.applyOpenSnapshot(snapshot);
       if (entry.viewState.autoFocus) {
         window.requestAnimationFrame(() => {
           entry.terminal.focus();
@@ -1155,10 +821,10 @@ function openTerminal(entry: TerminalRuntimeEntry): void {
     .catch((error) => {
       if (entry.disposed) return;
       entry.opened = false;
+      entry.applyOpenSnapshot(null);
       if (
         /SocketOpenError.*timeout waiting for ["']open["']/i.test(describeErrorMessage(error, ""))
       ) {
-        // The transport may already have reopened by the time this RPC times out.
         setRuntimeStatus(entry, "connecting");
         entry.openRetryTimer = window.setTimeout(() => {
           entry.openRetryTimer = null;
@@ -1167,7 +833,7 @@ function openTerminal(entry: TerminalRuntimeEntry): void {
         return;
       }
       setRuntimeStatus(entry, "error");
-      writeSystemMessage(entry.terminal, describeErrorMessage(error, "Failed to open terminal"));
+      writeSystemMessage(entry.output, describeErrorMessage(error, "Failed to open terminal"));
     });
 }
 
@@ -1237,8 +903,8 @@ export function detachRuntimeFromContainer(entry: TerminalRuntimeEntry): void {
 export function disposeRuntimeEntry(entry: TerminalRuntimeEntry): void {
   detachRuntimeFromContainer(entry);
   entry.disposed = true;
-  // Closing a terminal should not synchronously paint queued output into a buffer
-  // that is about to be destroyed; acknowledge and drop it to keep close latency low.
+  entry.output.dispose();
+
   clearPendingWrites(entry);
   entry.unsubscribeTerminalEvents?.();
   entry.unsubscribeTerminalEvents = null;
@@ -1261,4 +927,20 @@ export function disposeRuntimeEntry(entry: TerminalRuntimeEntry): void {
   disposeWebglAddon(entry);
   entry.terminal.dispose();
   entry.wrapper.remove();
+}
+
+// Suppress only response sequences whose final byte differs from their query so real commands
+// cannot be consumed.
+function suppressQueryResponses(terminal: Terminal): () => void {
+  const disposables: { dispose(): void }[] = [];
+  const p = terminal.parser;
+
+  disposables.push(p.registerCsiHandler({ final: "R" }, () => true));
+  disposables.push(p.registerCsiHandler({ final: "I" }, () => true));
+  disposables.push(p.registerCsiHandler({ final: "O" }, () => true));
+  disposables.push(p.registerCsiHandler({ intermediates: "$", final: "y" }, () => true));
+
+  return () => {
+    for (const d of disposables) d.dispose();
+  };
 }

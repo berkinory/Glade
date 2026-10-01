@@ -1,19 +1,16 @@
-// FILE: decider.computerControl.test.ts
-// Purpose: Covers the computer-control opt-in surviving the decider: the flag rides
-//          turn-start, queued-dispatch, and edit-resend payloads when the command sets
-//          it, and defaults to off when the command omits it.
-
 import {
   CommandId,
-  DEFAULT_PROVIDER_INTERACTION_MODE,
   MessageId,
   ProjectId,
   ThreadId,
   TurnId,
+} from "@glade/contracts/core/baseSchemas";
+
+import {
   type OrchestrationMessage,
-  type OrchestrationReadModel,
   type OrchestrationSession,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/threadEntities";
+import { type OrchestrationReadModel } from "@glade/contracts/orchestration/snapshots";
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 
@@ -58,7 +55,7 @@ function makeReadModel(
           provider: "claudeAgent",
           model: "claude-opus-4-6",
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "full-access",
         branch: null,
         worktreePath: null,
@@ -70,7 +67,7 @@ function makeReadModel(
         messages: input.messages ?? [],
         session: input.session ?? null,
         activities: [],
-        proposedPlans: [],
+
         checkpoints: [],
         deletedAt: null,
       },
@@ -118,7 +115,7 @@ function turnStartCommand(enableComputerControl?: boolean) {
       text: "launch the calculator",
       attachments: [],
     },
-    interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
     runtimeMode: "full-access" as const,
     createdAt: NOW,
     ...(enableComputerControl !== undefined ? { enableComputerControl } : {}),
@@ -131,7 +128,7 @@ function dispatchQueuedCommand(enableComputerControl?: boolean) {
     commandId: CommandId.makeUnsafe("cmd-dispatch-queued-computer-control"),
     threadId: THREAD_ID,
     messageId: MESSAGE_ID,
-    interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
     runtimeMode: "full-access" as const,
     createdAt: NOW,
     ...(enableComputerControl !== undefined ? { enableComputerControl } : {}),
@@ -145,7 +142,7 @@ function editAndResendCommand(enableComputerControl?: boolean) {
     threadId: THREAD_ID,
     messageId: MESSAGE_ID,
     text: "launch the calculator instead",
-    interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
     runtimeMode: "full-access" as const,
     createdAt: NOW,
     ...(enableComputerControl !== undefined ? { enableComputerControl } : {}),

@@ -1,7 +1,3 @@
-// FILE: chatSelectionActions.ts
-// Purpose: Helpers for reading assistant text selections from the transcript without re-render churn.
-// Layer: Chat transcript interaction helpers
-
 export interface TranscriptAssistantSelection {
   assistantMessageId: string;
   text: string;
@@ -13,9 +9,6 @@ export interface TranscriptSelectionActionLayout {
   placement: "top" | "bottom";
 }
 
-// Slot the layout reserves for the toolbar. The toolbar itself sizes to its labels and
-// centers inside this slot, so the width only needs to be a close estimate for viewport
-// clamping. Height must match the toolbar exactly (h-7 + 1px border top and bottom).
 export const TRANSCRIPT_SELECTION_ACTION_WIDTH_PX = 250;
 export const TRANSCRIPT_SELECTION_ACTION_HEIGHT_PX = 30;
 const TRANSCRIPT_SELECTION_ACTION_GAP_PX = 8;
@@ -34,7 +27,6 @@ function getSelectionRect(selection: Selection): DOMRect | null {
   return boundingRect.width > 0 || boundingRect.height > 0 ? boundingRect : null;
 }
 
-// Rect of the active window selection, for positioning floating selection actions.
 export function getActiveSelectionRect(): DOMRect | null {
   const selection = window.getSelection();
   if (!selection) {
@@ -43,8 +35,6 @@ export function getActiveSelectionRect(): DOMRect | null {
   return getSelectionRect(selection);
 }
 
-// `closest()` that escapes open shadow roots (e.g. the @pierre/diffs custom
-// element) by hopping from a shadow root to its host element.
 export function closestThroughShadow(start: Node | null, selector: string): HTMLElement | null {
   let node: Node | null = start;
   while (node) {

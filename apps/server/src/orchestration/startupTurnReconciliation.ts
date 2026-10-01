@@ -1,52 +1,17 @@
-/**
- * startupTurnReconciliation - heal restart-orphaned turns at server boot.
- *
- * Provider runtimes (Codex app-server, Claude SDK, etc.) are purely
- * in-memory: every one of them dies with the server process. A turn only
- * leaves the "running" state when its runtime emits a terminal event, so any
- * turn that was still in flight when the process exited has no surviving runtime
- * to ever complete it. After a restart its persisted projection rows still say
- * `session.status = "running"` / `activeTurnId != null` / `latestTurn = running`,
- * and the UI shows "Working" forever (observed in the wild as multi-hour stuck
- * turns).
- *
- * `projectionPipeline.bootstrap` faithfully replays the event log into the
- * projection tables, so it restores that stale "running" state verbatim — it is
- * not its job to second-guess history. This module runs once, immediately after
- * bootstrap and before the server starts accepting client commands, and emits
- * stale pending-request failure activities plus a terminal
- * `thread.session.set { status: "interrupted", activeTurnId: null }` for each
- * orphaned thread. That reuses the normal event-sourced path: activity handlers
- * resolve dead approval/user-input requests, and the projection's session-set
- * handler closes the newest still-open turn (`finalizeTurnStateFromSessionStatus`
- * → "interrupted", with `completedAt`), so the UI clears blocked composers and
- * spinners instead of hanging.
- *
- * The runtime idle watchdog (AcpTurnIdleWatchdog) only protects turns started in
- * the *current* process; this is its restart-time counterpart for turns
- * orphaned by a process boundary the watchdog never saw. The same argument
- * applies to unresolved approval/user-input interactions, whose answer callback
- * is equally in-memory: their durable rows are settled here too, which is the
- * boot-time counterpart to the turn/session-scoped settlement in
- * `Layers/ProviderRuntimeIngestion.ts` (that one reacts to runtime events, and a
- * hard-killed process emits none).
- *
- * @module startupTurnReconciliation
- */
+import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import type {
-  OrchestrationCommand,
   OrchestrationPendingInteraction,
   OrchestrationThreadActivity,
   OrchestrationSession,
-  RuntimeMode,
-  ThreadId,
-} from "@glade/contracts";
-import { CommandId, EventId } from "@glade/contracts";
-import { createStalePendingInteractionMatcher } from "@glade/shared/pendingInteractions";
+} from "@glade/contracts/orchestration/threadEntities";
+import type { RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { CommandId, EventId } from "@glade/contracts/core/baseSchemas";
+import { createStalePendingInteractionMatcher } from "@glade/shared/threads/pendingInteractions";
 import {
   derivePendingThreadRequestIds,
   type PendingThreadRequestKind,
-} from "@glade/shared/threadSummary";
+} from "@glade/shared/threads/threadSummary";
 import { Array as Arr, Effect, Option } from "effect";
 import type { ProjectionPendingInteraction } from "../persistence/Services/ProjectionPendingInteractions.ts";
 import { ProjectionPendingInteractionRepository } from "../persistence/Services/ProjectionPendingInteractions.ts";
@@ -64,20 +29,17 @@ import {
 import { OrchestrationEngineService } from "./Services/OrchestrationEngine.ts";
 import { ProjectionSnapshotQuery } from "./Services/ProjectionSnapshotQuery.ts";
 
-/** The `thread.session.set` variant of the internal orchestration command union. */
 type ThreadSessionSetCommand = Extract<
   OrchestrationCommand,
   { readonly type: "thread.session.set" }
 >;
 type RestartReconciliationCommand = ThreadSessionSetCommand | ThreadActivityAppendCommand;
 
-/** The durable interaction fields the planner needs; a full row is fine. */
 export type ReconcilablePendingInteraction = Pick<
   ProjectionPendingInteraction,
   "threadId" | "interactionKind" | "requestId" | "status"
 >;
 
-/** Minimal persisted thread shape the planner inspects (a superset is fine). */
 export interface ReconcilableThread {
   readonly id: ThreadId;
   readonly runtimeMode: RuntimeMode;
@@ -96,46 +58,14 @@ export interface ReconcilableThread {
     | undefined;
 }
 
-/**
- * True when a thread's persisted state implies a turn that only a now-dead
- * in-process runtime could ever advance. A clean session (idle/ready/interrupted/
- * stopped/error with no active turn and no open turn) is left untouched.
- */
 function needsRestartReconciliation(thread: ReconcilableThread): boolean {
   return threadHasInFlightTurn(thread) || hasDanglingActiveTurn(thread);
 }
 
-/**
- * A session that already reports a terminal status while still naming an active
- * turn is invisible to `threadHasInFlightTurn` (its turn has been settled), but
- * the dangling `activeTurnId` keeps every "is this thread busy?" check true, so
- * the composer stays blocked and Stop stays armed with nothing to stop.
- */
 function hasDanglingActiveTurn(thread: ReconcilableThread): boolean {
   return thread.session?.activeTurnId != null && !threadHasInFlightTurn(thread);
 }
 
-/**
- * Plans one settlement per unanswerable human request on a thread.
- *
- * Two sources, deliberately unioned:
- *
- *  - The thread's timeline activities, which is what the UI's own pending-request
- *    derivation reads.
- *  - The durable `projection_pending_interactions` rows, which are the
- *    settlement authority behind `pendingApprovalCount` /
- *    `pendingUserInputCount`. A row can outlive its timeline evidence: an
- *    answer attempt against a dead runtime already appended a
- *    `respond.failed` activity (so the timeline derivation considers the
- *    request closed) while leaving the row `retryable`, and the thread-detail
- *    activity window is bounded, so an old request can fall out of it entirely.
- *    Either way the row kept the question card up with nothing able to answer
- *    it.
- *
- * Timeline-derived commands win on collision: they carry no lifecycle
- * generation, so they close every open instance of the request id rather than
- * just the row's generation.
- */
 function planStalePendingRequestCommands(input: {
   readonly thread: ReconcilableThread;
   readonly pendingInteractions: ReadonlyArray<ReconcilablePendingInteraction>;
@@ -145,10 +75,6 @@ function planStalePendingRequestCommands(input: {
   if (input.thread.pendingInteractions !== undefined) {
     const isAlreadyStale = createStalePendingInteractionMatcher(input.thread.activities ?? []);
     for (const interaction of input.thread.pendingInteractions) {
-      // A process restart loses every live provider callback. Pending,
-      // responding, and previously retryable rows are therefore no longer
-      // answerable. Uncertain user-input responses are also retryable unless
-      // their callback has already been explicitly invalidated.
       if (
         interaction.status === "confirmed" ||
         isAlreadyStale(interaction) ||
@@ -260,16 +186,8 @@ function buildStalePendingRequestCommand(input: {
   });
 }
 
-/**
- * Pure planner: maps persisted threads to stale-request resolution commands and
- * terminal `thread.session.set` commands. Extracted from the effectful runner so
- * the reliability-critical selection logic is unit-testable without a database,
- * clock, or engine.
- *
- * `now` is threaded in (rather than read from a clock) so the same inputs always
- * produce the same commands — including a deterministic, per-startup `commandId`
- * that lets the engine's receipt dedup treat a re-run as a no-op.
- */
+// Inject the startup time so repeated reconciliation produces identical command IDs and receipt
+// deduplication remains effective.
 export function planRestartTurnReconciliation(input: {
   readonly threads: ReadonlyArray<ReconcilableThread>;
   readonly pendingInteractions?: ReadonlyArray<ReconcilablePendingInteraction>;
@@ -303,8 +221,7 @@ export function planRestartTurnReconciliation(input: {
       if (!hasDanglingActiveTurn(thread)) {
         continue;
       }
-      // Preserve the terminal status (and its banner) - only the stale active
-      // turn pointer is wrong here.
+
       commands.push({
         type: "thread.session.set",
         commandId: CommandId.makeUnsafe(`restart-reconcile-active-turn:${thread.id}:${input.now}`),
@@ -330,11 +247,10 @@ export function planRestartTurnReconciliation(input: {
         threadId: thread.id,
         status: "interrupted",
         providerName: thread.session?.providerName ?? null,
-        // Prefer the session's own mode; fall back to the thread default when the
-        // thread never had a materialized session row.
+
         runtimeMode: thread.session?.runtimeMode ?? thread.runtimeMode,
         activeTurnId: null,
-        // "interrupted" is a clean stop, not an error: no lastError banner.
+
         lastError: null,
         updatedAt: input.now,
       },
@@ -344,26 +260,9 @@ export function planRestartTurnReconciliation(input: {
   return commands;
 }
 
-/**
- * Reconcile restart-orphaned turns once at boot.
- *
- * Reads the engine's in-memory command read model (post-bootstrap projection
- * state, kept current as commands commit), hydrates only stuck thread details to
- * discover stale human requests, and dispatches the resulting cleanup commands.
- * Every failure mode is contained and logged: a failed thread-detail read or a
- * failed individual dispatch must never block the server from coming up.
- *
- * Deliberately not a second `getCommandReadModel()` load. That query costs ~150ms
- * on a large database and this runs on the blocking startup path, after the
- * orchestration reactor has already started — so re-reading it would be both
- * slower and staler than the model the engine is already maintaining.
- *
- * The durable pending-interaction rows are read once, up front. Rows created
- * after that read belong to a runtime started in *this* process and stay
- * untouched, which is what keeps this safe to run while reactors are already
- * live: nothing in the snapshot can become answerable again, and nothing
- * answerable can enter the snapshot.
- */
+// Use the live engine read model rather than blocking startup on a second, staler database load.
+// Read pending interactions once so requests created by this process cannot enter orphan cleanup.
+// Individual failures are logged without preventing startup.
 export const reconcileRestartStuckTurns: Effect.Effect<
   void,
   never,

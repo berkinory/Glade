@@ -1,14 +1,3 @@
-// FILE: pullRequestContext.ts
-// Purpose: Shared helpers for pull request context cards — the composer attachment that
-//   "Repair" / "Add to chat" in the PR menu create instead of pasting a long prompt into
-//   the editor. A card shows a short title + subtitle; its full prompt rides to the
-//   provider in a trailing <pull_request_context> block and is parsed back out to render
-//   the same card in the transcript.
-// Layer: Web composer utility
-// Depends on: nothing (kept import-free so both composer state and message display can
-//   consume it without cycles).
-
-/** What the card asks the agent to do. Drives the icon and the accessible labels. */
 export const PULL_REQUEST_CONTEXT_SCOPES = [
   "reference",
   "comments",
@@ -24,11 +13,11 @@ export interface PullRequestContextDraft {
   scope: PullRequestContextScope;
   prNumber: number;
   prUrl: string;
-  /** Card headline, e.g. "1 failing check". */
+
   title: string;
-  /** Card detail line, e.g. "Test, lint, build, and smoke". */
+
   subtitle: string;
-  /** Full prompt handed to the provider; never shown inline. */
+
   text: string;
 }
 
@@ -74,8 +63,6 @@ export function isPullRequestContextScope(value: unknown): value is PullRequestC
   );
 }
 
-// Null when the card has nothing to send: an empty prompt would attach a bubble that
-// contributes nothing to the message.
 export function normalizePullRequestContext(
   draft: PullRequestContextDraft,
 ): PullRequestContextDraft | null {
@@ -119,10 +106,8 @@ export function normalizePullRequestContexts(
   return normalized;
 }
 
-/**
- * Cards for the same PR + scope replace each other: clicking "Failing checks" twice must
- * not stack two identical bubbles, but a fresher snapshot should win over a stale one.
- */
+// Cards for the same PR + scope replace each other: clicking "Failing checks" twice must not stack
+// two identical bubbles, but a fresher snapshot should win over a stale one.
 export function pullRequestContextDedupKey(
   context: Pick<PullRequestContextDraft, "scope" | "prNumber" | "prUrl">,
 ): string {
@@ -140,8 +125,6 @@ export function formatPullRequestContextTitleSeed(
     ? `${first.title} on PR #${first.prNumber}`
     : `PR #${first.prNumber}`;
 }
-
-// --- Send-time serialization (cards -> trailing block)
 
 function buildPullRequestContextBlock(contexts: ReadonlyArray<PullRequestContextDraft>): string {
   const usable = normalizePullRequestContexts(contexts);
@@ -170,8 +153,6 @@ export function appendPullRequestContextsToPrompt(
   }
   return trimmed.length > 0 ? `${trimmed}\n\n${block}` : block;
 }
-
-// --- Display-time extraction (trailing block -> cards)
 
 function parseEntries(block: string): ParsedPullRequestContextEntry[] {
   try {

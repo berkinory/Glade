@@ -8,13 +8,6 @@ export interface DesktopProjectRecoveryAttemptGate {
   readonly begin: () => DesktopProjectRecoveryAttempt | null;
 }
 
-/**
- * Owns the one-shot desktop recovery attempt across effect restarts.
- *
- * Releasing an in-flight attempt lets a dependency-driven effect rerun take
- * ownership. A stale response or rejection can then only release its own token,
- * while a completed attempt permanently closes the gate for this mount.
- */
 export function createDesktopProjectRecoveryAttemptGate(): DesktopProjectRecoveryAttemptGate {
   let currentOwner: symbol | "completed" | null = null;
 

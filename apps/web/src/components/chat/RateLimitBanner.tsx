@@ -1,9 +1,5 @@
-// FILE: RateLimitBanner.tsx
-// Purpose: Derives and renders provider rate-limit warnings for the active chat.
-// Layer: Chat status presentation
-// Exports: RateLimitBanner and rate-limit derivation helpers.
-
-import type { OrchestrationThreadActivity } from "@glade/contracts";
+import { asObjectRecord } from "@glade/shared/transport/payloadValues";
+import type { OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
 import { Alert, AlertAction, AlertDescription } from "../ui/alert";
 import { IconButton } from "../ui/icon-button";
 import { CircleAlertIcon, XIcon } from "~/lib/icons";
@@ -15,10 +11,6 @@ export type RateLimitStatus = {
   utilization?: number;
 };
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
-}
-
 export function deriveLatestRateLimitStatus(
   activities: ReadonlyArray<OrchestrationThreadActivity>,
 ): RateLimitStatus | null {
@@ -26,11 +18,11 @@ export function deriveLatestRateLimitStatus(
   for (let i = activities.length - 1; i >= 0; i--) {
     const activity = activities[i];
     if (!activity || activity.kind !== "account.rate-limited") continue;
-    const payload = asRecord(activity.payload);
+    const payload = asObjectRecord(activity.payload);
     if (!payload) continue;
     const status = payload.status;
     if (status !== "rejected" && status !== "allowed_warning") continue;
-    // If resetsAt is in the past, the limit has expired — skip
+
     if (typeof payload.resetsAt === "string") {
       const resetsAtMs = Date.parse(payload.resetsAt);
       if (!Number.isNaN(resetsAtMs) && resetsAtMs < now) continue;

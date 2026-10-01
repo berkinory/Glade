@@ -1,8 +1,5 @@
-import {
-  OrchestrationProposedPlanId,
-  PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
-  ThreadId,
-} from "@glade/contracts";
+import { PROVIDER_SEND_TURN_MAX_ATTACHMENTS } from "@glade/contracts/orchestration/threadEntities";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import * as Schema from "effect/Schema";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { pendingComposerAttachmentSyncGenerationCount } from "./composerDraftAttachments";
@@ -10,10 +7,10 @@ import {
   captureComposerPromptHistorySavedDraft,
   COMPOSER_DRAFT_STORAGE_KEY,
   COMPOSER_DRAFT_STORAGE_VERSION,
-  partializeComposerDraftStoreState,
-  useComposerDraftStore,
   type ComposerImageAttachment,
-} from "./composerDraftStore";
+} from "./composerDraftDomain";
+import { partializeComposerDraftStoreState } from "./composerDraftPersistence.serialization";
+import { useComposerDraftStore } from "./composerDraftStore";
 import {
   makeFile,
   makeImage,
@@ -168,7 +165,7 @@ describe("composerDraftStore prompt history saved draft", () => {
     resetComposerDraftStore();
   });
 
-  it("moves composer attachments into the prompt-history snapshot while browsing", () => {
+  it("moves composer attachments into the prompt-history snapshot while browsing", async () => {
     const store = useComposerDraftStore.getState();
     const image = makeImage({ id: "img-history", previewUrl: "blob:history" });
     const file = makeFile({ id: "file-history" });
@@ -183,7 +180,7 @@ describe("composerDraftStore prompt history saved draft", () => {
     store.setPrompt(threadId, "draft with attachments");
     store.addImage(threadId, image);
     store.addFiles(threadId, [file]);
-    store.syncPersistedAttachments(threadId, [persistedAttachment]);
+    await store.syncPersistedAttachments(threadId, [persistedAttachment]);
     const draftBeforeBrowse = useComposerDraftStore.getState().draftsByThreadId[threadId]!;
 
     useComposerDraftStore.getState().setPromptHistorySavedDraft(
@@ -321,7 +318,7 @@ describe("composerDraftStore prompt history saved draft", () => {
     expect(restoredDraft.mentions).toEqual([selectedMention]);
   });
 
-  it("persists and hydrates prompt-history snapshot images and structured context", () => {
+  it("persists and hydrates prompt-history snapshot images and structured context", async () => {
     const store = useComposerDraftStore.getState();
     const image = makeImage({ id: "img-persist-history", previewUrl: "blob:persist-history" });
     const persistedAttachment = {
@@ -346,7 +343,7 @@ describe("composerDraftStore prompt history saved draft", () => {
 
     store.setPrompt(threadId, "persist me before history");
     store.addImage(threadId, image);
-    store.syncPersistedAttachments(threadId, [persistedAttachment]);
+    await store.syncPersistedAttachments(threadId, [persistedAttachment]);
     store.addTerminalContext(threadId, terminalContext);
     store.addPastedTexts(threadId, [pastedText]);
     store.setSkills(threadId, [selectedSkill]);
@@ -503,7 +500,7 @@ describe("composerDraftStore pull request context cards", () => {
 
     store.removePullRequestContext(threadId, "pr-card-2");
     store.removePullRequestContext(threadId, "pr-card-3");
-    // Removing the last card leaves no empty draft behind.
+
     expect(useComposerDraftStore.getState().draftsByThreadId[threadId]).toBeUndefined();
   });
 
@@ -641,24 +638,6 @@ describe("composerDraftStore copyTransferableComposerState", () => {
       activeProvider: "claudeAgent",
     });
   });
-
-  it("does not transfer thread-bound restored plan source metadata", () => {
-    useComposerDraftStore.getState().setPrompt(sourceThreadId, "Implement the accepted plan");
-    useComposerDraftStore.getState().setRestoredSourceProposedPlan(sourceThreadId, {
-      threadId: sourceThreadId,
-      restoredPrompt: "Implement the accepted plan",
-      sourceProposedPlan: {
-        threadId: sourceThreadId,
-        planId: OrchestrationProposedPlanId.makeUnsafe("plan-source-transfer"),
-      },
-    });
-
-    useComposerDraftStore.getState().copyTransferableComposerState(sourceThreadId, targetThreadId);
-
-    expect(
-      useComposerDraftStore.getState().draftsByThreadId[targetThreadId]?.restoredSourceProposedPlan,
-    ).toBeNull();
-  });
 });
 
 describe("composerDraftStore syncPersistedAttachments", () => {
@@ -706,8 +685,6 @@ describe("composerDraftStore syncPersistedAttachments", () => {
       attachmentFor(secondImage),
     ]);
 
-    // Staging is synchronous even while an earlier sync is still verifying, so
-    // a reload in that window cannot lose the newer attachment metadata.
     expect(
       useComposerDraftStore
         .getState()
@@ -741,12 +718,10 @@ describe("composerDraftStore syncPersistedAttachments", () => {
     const firstSync = store.syncPersistedAttachments(threadId, [attachment]);
     const secondSync = store.syncPersistedAttachments(threadId, [attachment]);
 
-    // Overlapping syncs share one (slot, thread) key, so only one entry is tracked at a time.
     expect(pendingComposerAttachmentSyncGenerationCount()).toBe(before + 1);
 
     await Promise.all([firstSync, secondSync]);
 
-    // Nothing is left to invalidate once the newest sync settled, so the key must be released.
     expect(pendingComposerAttachmentSyncGenerationCount()).toBe(before);
     expect(
       useComposerDraftStore

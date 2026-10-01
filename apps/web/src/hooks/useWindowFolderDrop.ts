@@ -1,13 +1,8 @@
-// FILE: useWindowFolderDrop.ts
-// Purpose: Accept a folder dropped anywhere in the window while a modal surface is open.
-//          A small drop zone is easy to miss and a stray drop outside it would otherwise
-//          vanish silently, so listeners bind on `window` in the capture phase.
-// Layer: Web hook
-// Exports: useWindowFolderDrop
-
 import { useEffect, useRef, useState } from "react";
-
-import { isFileDrag, resolveDroppedFolder } from "../lib/folderDrop";
+import {
+  isDroppedComposerDirectory,
+  resolveDroppedFileAbsolutePath,
+} from "../lib/composerDropPaths";
 
 export function useWindowFolderDrop(options: {
   readonly enabled: boolean;
@@ -15,7 +10,7 @@ export function useWindowFolderDrop(options: {
   readonly onError: (message: string) => void;
 }): boolean {
   const [isDropTarget, setIsDropTarget] = useState(false);
-  // Latest callbacks through refs so the listeners bind once per `enabled` flip.
+
   const onFolderRef = useRef(options.onFolder);
   const onErrorRef = useRef(options.onError);
   onFolderRef.current = options.onFolder;
@@ -67,4 +62,24 @@ export function useWindowFolderDrop(options: {
   }, [options.enabled]);
 
   return isDropTarget;
+}
+
+type DroppedFolderResult = { readonly path: string } | { readonly error: string };
+
+function isFileDrag(event: globalThis.DragEvent): boolean {
+  return Array.from(event.dataTransfer?.types ?? []).includes("Files");
+}
+
+function resolveDroppedFolder(dataTransfer: DataTransfer): DroppedFolderResult | null {
+  const item = Array.from(dataTransfer.items).find((entry) => entry.kind === "file");
+  const file = item?.getAsFile() ?? dataTransfer.files[0] ?? null;
+  if (!item || !file) return null;
+  if (!isDroppedComposerDirectory(item)) {
+    return { error: "Drop a folder, not a file." };
+  }
+  const absolutePath = resolveDroppedFileAbsolutePath(file);
+  if (!absolutePath) {
+    return { error: "Could not read the folder's path. Use browse or type it instead." };
+  }
+  return { path: absolutePath };
 }

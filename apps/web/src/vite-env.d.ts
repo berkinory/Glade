@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import type { NativeApi, DesktopBridge } from "@glade/contracts";
+import type { NativeApi, DesktopBridge } from "@glade/contracts/ipc/ipc";
 
 interface ImportMetaEnv {
   readonly APP_VERSION: string;

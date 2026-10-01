@@ -1,11 +1,5 @@
-// FILE: fileReferenceContextMenu.ts
-// Purpose: Right-click menu shared by file rows, file previews, and chat file
-//          links (editor explorer, changed-file lists, dock file pane).
-// Layer: Web UI helpers
-// Exports: showFileReferenceContextMenu
-
 import { formatSelectionLabel, type ChatFileReference } from "~/lib/chatReferences";
-import { copyTextToClipboard } from "~/hooks/useCopyToClipboard";
+import { copyTextToClipboard } from "./clipboard";
 import { getNavigatorPlatform, isMacPlatform, isWindowsPlatform } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
 import { toastManager } from "~/components/ui/toast";
@@ -28,17 +22,13 @@ function getOpenDirectoryLabel(platform: string): string {
   return "Open in File Manager";
 }
 
-// Right-click menu shared by explorer rows, changed-file rows, and the file
-// preview. Falls back to a DOM menu outside the desktop app.
 export async function showFileReferenceContextMenu(input: {
   path: string;
-  /** Absolute path to reveal in the platform file manager. Omit when the
-   * surface only knows a repository-relative path. */
+
   revealPath?: string;
   revealKind?: "file" | "directory";
   position: { x: number; y: number };
-  /** Line/column range from source views, or a quoted snippet from surfaces
-   * without stable source lines (rendered markdown preview). */
+
   selection?: Omit<ChatFileReference, "path"> | null;
   onReferenceInChat: ((reference: ChatFileReference) => void) | undefined;
   onAskWhyInChat?: ((reference: ChatFileReference) => void) | undefined;
@@ -139,7 +129,7 @@ export async function showFileReferenceContextMenu(input: {
         ]
       : []),
   ];
-  // Explorer's destructive action needs the same red accent as the rest of the app.
+
   const clicked = input.onDelete
     ? await showContextMenuFallback(items, input.position)
     : await api.contextMenu.show(items, input.position);

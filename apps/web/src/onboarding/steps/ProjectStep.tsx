@@ -1,11 +1,4 @@
-// FILE: ProjectStep.tsx
-// Purpose: First-project step of the welcome tour: drop a folder (anywhere in the window),
-//          browse (desktop) or type a path, create the project through the shared
-//          create-or-recover flow, and list what was added. Several folders can be added
-//          before continuing.
-// Layer: Web UI component
-
-import type { ProjectId } from "@glade/contracts";
+import type { ProjectId } from "@glade/contracts/core/baseSchemas";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { ProjectImportPanel } from "~/projectImport/ProjectImportPanel";
@@ -34,7 +27,7 @@ const FIELD_CONTROL_CLASS_NAME = "h-9 rounded-lg border-foreground/12";
 export function ProjectStep(props: {
   results: ReadonlyArray<OnboardingProjectResult>;
   onResult: (result: OnboardingProjectResult) => void;
-  /** Project creation is not abortable; the dialog blocks navigation while it runs. */
+
   onBusyChange: (busy: boolean) => void;
 }) {
   const { settings } = useAppSettings();
@@ -64,7 +57,7 @@ export function ProjectStep(props: {
       const result = await createOrRecoverProjectFromPath({
         api,
         workspaceRoot,
-        // Files the project in Void; the sidebar follows it once the tour closes.
+
         spaceId: null,
         defaultProvider: settings.defaultProvider,
         loadSnapshot: () => api.orchestration.getShellSnapshot().catch(() => null),

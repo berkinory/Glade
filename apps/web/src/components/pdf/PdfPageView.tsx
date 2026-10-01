@@ -1,15 +1,3 @@
-// FILE: PdfPageView.tsx
-// Purpose: Render a single PDF page for the in-app viewer: a HiDPI canvas plus a
-//          selectable text layer and a clickable link layer. Virtualized both
-//          ways — a page paints only while it is near the viewport and releases
-//          its canvas/text layer again once scrolled far away, so memory stays
-//          bounded on long documents. The placeholder box keeps its size either
-//          way so the scroll height (and page indicator) stay correct. The paint
-//          pipeline lives in usePdfPageRender; this component owns activation +
-//          layout markup.
-// Layer: Web PDF rendering component
-// Exports: PdfPageView
-
 import { useEffect, useRef, useState } from "react";
 
 import type { PDFDocumentProxy } from "~/lib/pdf/pdfEngine";
@@ -18,17 +6,15 @@ import { usePdfPageRender } from "~/lib/pdf/usePdfPageRender";
 import type { PdfPageIntrinsicSize } from "~/lib/pdf/pdfZoom";
 import { openExternalLink } from "~/lib/linkChips";
 
-// Prerender pages within roughly one viewport above/below so scrolling reveals
-// already-painted pages instead of blank boxes.
 const PAGE_PRERENDER_ROOT_MARGIN = "150% 0px";
 
 interface PdfPageViewProps {
   document: PDFDocumentProxy;
   pageNumber: number;
   scale: number;
-  /** Page size at scale 1, used to size the placeholder before the page paints. */
+
   intrinsicSize: PdfPageIntrinsicSize;
-  /** Scroll container used as the IntersectionObserver root. */
+
   scrollRoot: HTMLElement | null;
   registerElement: (pageNumber: number, element: HTMLElement | null) => void;
   onJumpToPage: (pageNumber: number) => void;
@@ -48,17 +34,12 @@ export const PdfPageView = function PdfPageView({
   const textLayerRef = useRef<HTMLDivElement>(null);
   const [isActive, setIsActive] = useState(false);
 
-  // Report the element to the orchestrator so it can map scroll offset -> page.
   useEffect(() => {
     const element = wrapperRef.current;
     registerElement(pageNumber, element);
     return () => registerElement(pageNumber, null);
   }, [pageNumber, registerElement]);
 
-  // Track viewport proximity both ways: the page paints while inside the
-  // prerender margin and releases its canvas/text layer (in usePdfPageRender)
-  // once it leaves, keeping memory bounded on long documents. Entries are
-  // batched, so only the most recent one reflects the current state.
   useEffect(() => {
     const element = wrapperRef.current;
     if (!element) {

@@ -1,4 +1,4 @@
-import type { ResolvedKeybindingsConfig } from "@glade/contracts";
+import type { ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import { useEffect, type RefObject } from "react";
 
 import { isEditableEventTarget } from "../lib/editableEventTarget";
@@ -20,11 +20,7 @@ export function useDiffChangeNavigationShortcuts({
 }: {
   keybindings: ResolvedKeybindingsConfig;
   enabled: boolean;
-  /**
-   * The diff surface the shortcuts drive. The panel stays mounted (with warm
-   * queries) while another editor pane is shown, so the shortcuts only act
-   * when this surface is actually displayed.
-   */
+
   surfaceRef: RefObject<HTMLElement | null>;
   onNavigate: (direction: DiffChangeNavigationDirection) => void;
 }): void {

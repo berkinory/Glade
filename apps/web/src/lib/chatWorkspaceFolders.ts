@@ -1,9 +1,4 @@
-// FILE: chatWorkspaceFolders.ts
-// Purpose: Build Codex-style local workspace folders for general chats.
-// Layer: Web domain helper
-// Exports: date/slug helpers plus unique chat workspace path resolution.
-
-import { workspaceRootsEqual } from "@glade/shared/threadWorkspace";
+import { workspaceRootsEqual } from "@glade/shared/threads/threadWorkspace";
 
 const FALLBACK_CHAT_WORKSPACE_SLUG = "new-thread";
 const MAX_CHAT_WORKSPACE_SLUG_LENGTH = 72;
@@ -25,7 +20,6 @@ function joinWorkspacePath(root: string, ...segments: readonly string[]): string
   return [trimTrailingPathSeparators(root), ...segments].filter(Boolean).join(separator);
 }
 
-// Uses the user's local calendar day, matching the date-bucketed folders Codex creates.
 function formatChatWorkspaceDate(date: Date): string {
   return [date.getFullYear(), padDatePart(date.getMonth() + 1), padDatePart(date.getDate())].join(
     "-",

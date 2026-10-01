@@ -1,8 +1,4 @@
-// FILE: threadDetailResumeCursors.test.ts
-// Purpose: Verifies resume-cursor bookkeeping behind delta-capable thread resubscribes.
-// Layer: Web subscription utility test
-
-import { ThreadId } from "@glade/contracts";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   advanceThreadDetailResumeCursor,
@@ -10,7 +6,7 @@ import {
   clearThreadDetailResumeCursor,
   getThreadDetailResumeCursor,
   hasThreadDetailResumeCursor,
-  resetThreadDetailResumeCursorsForTests,
+  resetThreadDetailResumeCursors,
   setThreadDetailResumeCursor,
 } from "./threadDetailResumeCursors";
 
@@ -20,7 +16,7 @@ function threadId(value: string): ThreadId {
 
 describe("threadDetailResumeCursors", () => {
   afterEach(() => {
-    resetThreadDetailResumeCursorsForTests();
+    resetThreadDetailResumeCursors();
   });
 
   it("subscribes without a cursor until cached detail exists, then resumes from it", () => {
@@ -39,8 +35,8 @@ describe("threadDetailResumeCursors", () => {
     advanceThreadDetailResumeCursor(thread, 3);
     expect(getThreadDetailResumeCursor(thread)).toBe(5);
 
-    // A fresh snapshot replaces cached detail wholesale, so a lower fence
-    // (server restored from backup) must win over the stale live cursor.
+    // A fresh snapshot replaces cached detail wholesale, so a lower fence (server restored from backup)
+    // must win over the stale live cursor.
     setThreadDetailResumeCursor(thread, 2);
     expect(getThreadDetailResumeCursor(thread)).toBe(2);
   });

@@ -1,5 +1,5 @@
 import { setTimeout as delay } from "node:timers/promises";
-import type { ComputerState, ComputerTarget } from "@glade/contracts";
+import type { ComputerState, ComputerTarget } from "@glade/contracts/computer/computer";
 import { ComputerTargetError, resolveComputerSemanticTarget } from "./uiTreeTargeting.ts";
 
 export interface ComputerControlReadiness {
@@ -7,7 +7,6 @@ export interface ComputerControlReadiness {
   readonly waitedMs: number;
 }
 
-/** Wait for a live semantic target without sending input or retaining coordinates. */
 export async function waitForControl(
   read: () => Promise<ComputerState>,
   target: ComputerTarget,
@@ -26,8 +25,6 @@ export async function waitForControl(
     const state = await read();
     signal?.throwIfAborted();
     if (target.windowId && !state.windows.some((window) => window.id === target.windowId)) {
-      // The window going away removes its controls with it — "gone" for an
-      // absent wait, "closed" for a presence wait.
       return result(absent ? "ready" : "closed");
     }
     if (
@@ -42,8 +39,6 @@ export async function waitForControl(
     } catch (error) {
       if (!(error instanceof ComputerTargetError)) throw error;
       if (error.code === "computer_target_ambiguous") {
-        // An ambiguous match still proves presence — for a presence wait that
-        // is a verdict to report; for an absent wait it means keep waiting.
         if (!absent) return result("ambiguous");
       } else if (error.code !== "computer_target_not_found") {
         throw error;
@@ -51,8 +46,8 @@ export async function waitForControl(
         return result("ready");
       }
     }
-    // A truncated walk cannot establish absence; repeating it burns time
-    // without establishing readiness. Let the caller use a scoped screenshot.
+    // A truncated walk cannot establish absence; repeating it burns time without establishing
+    // readiness. Let the caller use a scoped screenshot.
     if (state.root.truncated) return result("unavailable");
     const remaining = timeoutMs - (performance.now() - started);
     if (remaining <= 0) return result("timeout");

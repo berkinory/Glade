@@ -16,8 +16,10 @@ This folder contains the Glade documentation and repository guides.
 - [Architecture](./architecture.md) — application boundaries and package responsibilities.
 - [Workspace layout](./workspace-layout.md) — repository structure and ownership.
 - [Provider architecture](./provider-architecture.md) — provider integration boundaries.
+- [Performance verification](./performance-verification.md) — measured development workloads and implementation limits.
 - [Runtime modes](./runtime-modes.md) — development and production runtime behavior.
 - [Transport](./transport.md) — communication between application processes.
 - [Encyclopedia](./encyclopedia.md) — detailed reference for the codebase.
+- [CI and automation](./ci.md) - workflow ownership, cache producers, debugging and audit baseline.
 - [Release process](./release.md) — release and signing setup checklist.
 - [Windows runtime](./windows-runtime.md) — platform-specific process and packaging boundaries.

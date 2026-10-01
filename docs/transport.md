@@ -69,7 +69,14 @@ The `afterSequence` field is optional on the subscribe input, so an older client
 
 Cursor state also gates sidebar prewarming: a speculative prewarm subscription is only cheap when it can resume from a cursor, so threads without cached detail are not prewarmed from scroll position and pay their first full snapshot when actually opened. That trades a slightly colder first open of a never-viewed thread for not spending the per-client thread-stream budget on full-history streams the user may never look at.
 
-[1]: ../apps/server/src/nodeHttpServer.ts
-[2]: ../apps/server/src/wsCompatibility.ts
-[3]: ../apps/server/src/staticAssets.ts
+[1]: ../apps/server/src/server/http/nodeHttpServer.ts
+[2]: ../apps/server/src/server/ws/wsCompatibility.ts
+[3]: ../apps/server/src/server/http/staticAssets.ts
 [4]: ../apps/web/src/threadDetailResumeCursors.ts
+
+Terminal event streams emit `ready` after the server registers the output
+subscriber. The client waits for this barrier before `terminal.open`; reconnects
+reset it. Terminal snapshots and output chunks include a monotonically increasing
+`outputSequence` for the running session. While opening, the client buffers live
+chunks and replays only chunks newer than the snapshot, preserving output when
+a PTY starts before its viewport mounts. This contract requires protocol revision 3.

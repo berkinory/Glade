@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { CommandId, MessageId, ThreadId } from "@glade/contracts";
+import { CommandId, MessageId, ThreadId } from "@glade/contracts/core/baseSchemas";
 
 export function gatewayIsoNow(): string {
   return new Date().toISOString();
@@ -11,7 +11,7 @@ export function canonicalJson(value: unknown): string {
   if (value !== null && typeof value === "object") {
     const entries = Object.entries(value as Record<string, unknown>)
       .filter(([, entry]) => entry !== undefined)
-      .sort(([left], [right]) => left.localeCompare(right));
+      .toSorted(([left], [right]) => left.localeCompare(right));
     return `{${entries.map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`).join(",")}}`;
   }
   return JSON.stringify(value);

@@ -1,6 +1,8 @@
+import { isRecord } from "@glade/shared/transport/payloadValues";
 import { makeNativeToolCallRegistry } from "./nativeToolCalls.ts";
 import { assert, describe, it } from "@effect/vitest";
-import { ProjectId, ThreadId, TurnId, type OrchestrationThreadShell } from "@glade/contracts";
+import { ProjectId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
+import { type OrchestrationThreadShell } from "@glade/contracts/orchestration/threadEntities";
 import { Deferred, Effect, Fiber, Option } from "effect";
 
 import type { ProjectionSnapshotQueryShape } from "../orchestration/Services/ProjectionSnapshotQuery.ts";
@@ -11,7 +13,7 @@ import type { AgentGatewayCredentialsShape } from "./Services/AgentGatewayCreden
 import { makeAgentGatewayInFlightRequestRegistry } from "./inFlightRequestRegistry.ts";
 import { makeAgentGatewayMcpTransport } from "./mcpTransport.ts";
 import { FALLBACK_OBJECT_DESCRIPTION } from "./sanitizeToolInputSchema.ts";
-import { countSchemaKeyOccurrences, isJsonRecord } from "./schemaTestUtils.ts";
+import { countSchemaKeyOccurrences } from "./schemaTestUtils.ts";
 import {
   acquireAgentGatewaySessionLease,
   AGENT_GATEWAY_NO_CAPABILITIES,
@@ -20,6 +22,10 @@ import {
   type AgentGatewaySessionLeaseOptions,
 } from "./sessionLease.ts";
 import type { ToolEntry } from "./toolRuntime.ts";
+
+class InjectedFailure extends Error {
+  readonly _tag = "InjectedFailure";
+}
 
 const NOW = "2026-07-22T03:00:00.000Z";
 
@@ -30,7 +36,7 @@ function makeThread(threadId: string): OrchestrationThreadShell {
     title: threadId,
     modelSelection: { provider: "codex", model: "gpt-5.6-sol" },
     runtimeMode: "full-access",
-    interactionMode: "default",
+
     envMode: "local",
     branch: null,
     worktreePath: null,
@@ -73,9 +79,9 @@ function makeTransport(input: {
   readonly tools: ReadonlyArray<ToolEntry>;
   readonly threads: ReadonlyArray<OrchestrationThreadShell>;
   readonly leaseCapabilities?: AgentGatewayCapabilityInput;
-  /** Thread ids that hold a session lease but no longer exist in the snapshot. */
+
   readonly ghostThreads?: ReadonlyArray<string>;
-  /** Computer family names threaded to the transport (absent from tools). */
+
   readonly computerToolNames?: ReadonlyArray<string>;
   readonly onCapabilityDenied?: (denial: McpTransportTestDenial) => Effect.Effect<void>;
 }) {
@@ -169,7 +175,7 @@ function makeTransport(input: {
     instructions: "test",
     requireThreadShell: (threadId) => {
       const thread = threads.get(threadId);
-      return thread ? Effect.succeed(thread) : Effect.fail(new Error("missing thread"));
+      return thread ? Effect.succeed(thread) : Effect.fail(new InjectedFailure("missing thread"));
     },
     ...(input.onCapabilityDenied ? { onCapabilityDenied: input.onCapabilityDenied } : {}),
     ...(input.computerToolNames
@@ -298,9 +304,7 @@ describe("makeAgentGatewayMcpTransport cancellation", () => {
                     },
                     { once: true },
                   );
-                  // Wake the Stop path before tryPromise returns, reproducing
-                  // the re-entrant window where a direct interrupt would miss
-                  // Effect's not-yet-installed AbortController finalizer.
+
                   Deferred.doneUnsafe(hostStarted, Effect.void);
                 });
               },
@@ -336,8 +340,8 @@ describe("makeAgentGatewayMcpTransport cancellation", () => {
         yield* Deferred.await(hostAbortObserved);
         assert.deepEqual(yield* Fiber.join(request), { status: 202 });
 
-        // A detached cell can race and issue the request after Stop. The turn
-        // tombstone must reject it before the handler starts.
+        // A detached cell can race and issue the request after Stop. The turn tombstone must reject it
+        // before the handler starts.
         assert.deepEqual(yield* post(transport, "token-1", { ...body, id: "late-request" }), {
           status: 202,
         });
@@ -505,8 +509,8 @@ describe("makeAgentGatewayMcpTransport cancellation", () => {
 });
 
 const findToolOrThrow = (tools: ReadonlyArray<unknown>, name: string): Record<string, unknown> => {
-  const found = tools.find((candidate) => isJsonRecord(candidate) && candidate.name === name);
-  if (!isJsonRecord(found)) {
+  const found = tools.find((candidate) => isRecord(candidate) && candidate.name === name);
+  if (!isRecord(found)) {
     throw new Error(`Expected tools/list to serve ${name}.`);
   }
   return found;
@@ -545,7 +549,7 @@ describe("makeAgentGatewayMcpTransport tools/list schema sanitization", () => {
         method: "tools/list",
       });
       assert.equal(response.status, 200);
-      if (!isJsonRecord(response.body) || !isJsonRecord(response.body.result)) {
+      if (!isRecord(response.body) || !isRecord(response.body.result)) {
         throw new Error("Expected tools/list to answer with a result object.");
       }
       if (!Array.isArray(response.body.result.tools)) {
@@ -599,8 +603,6 @@ describe("makeAgentGatewayMcpTransport tools/list", () => {
 
   it.effect("omits tools the caller's session was never granted", () =>
     Effect.gen(function* () {
-      // A session without computer:control can never call these tools; listing
-      // them would cost the model prompt tokens and a guaranteed denial.
       const transport = makeTransport({ threads: [makeThread("thread-plain")], tools: catalog });
       const response = yield* post(transport, "token-1", listBody);
       assert.equal(response.status, 200);
@@ -632,17 +634,14 @@ describe("makeAgentGatewayMcpTransport tools/list", () => {
         annotations: { title: "Click" },
         _meta: { "anthropic/alwaysLoad": true },
       });
-      // A tool that declares no _meta must not gain an empty one: an MCP client
-      // is entitled to treat the key's absence as "no hints".
+      // A tool that declares no _meta must not gain an empty one: an MCP client is entitled to treat the
+      // key's absence as "no hints".
       assert.isFalse("_meta" in tools[0]!);
     }),
   );
 
   it.effect("withholds discovery-only tools from the list but still dispatches them", () =>
     Effect.gen(function* () {
-      // The advertised catalog stays small on purpose: a tool marked
-      // discoveryOnly is absent from tools/list yet reaches its handler on an
-      // exact-name tools/call — capability and approval gates unchanged.
       const discoveryCatalog: ReadonlyArray<ToolEntry> = [
         ...catalog,
         {
@@ -730,7 +729,7 @@ describe("makeAgentGatewayMcpTransport capability truth", () => {
               denials.push(denial);
             }),
         });
-        // Active turn, missing capability: deny and surface exactly once.
+
         const denied = yield* post(transport, "token-1", toolCallBody("computer_click"));
         assert.equal(denied.status, 200);
         assert.equal(
@@ -739,7 +738,7 @@ describe("makeAgentGatewayMcpTransport capability truth", () => {
         );
         assert.equal(denials.length, 1);
         assert.equal(handlerCalls, 0);
-        // Inactive turn, same missing capability: authority wins, hook stays silent.
+
         transport.setThreadTurnState("thread-order", "completed");
         const inactive = yield* post(transport, "token-1", {
           ...toolCallBody("computer_click"),
@@ -760,7 +759,7 @@ describe("makeAgentGatewayMcpTransport capability truth", () => {
       const denials: Array<McpTransportTestDenial> = [];
       const transport = makeTransport({
         threads: [makeThread("thread-denied")],
-        // The computer tool is known to the family but absent from this catalog.
+
         tools: [],
         computerToolNames: ["computer_click"],
         onCapabilityDenied: (denial) =>
@@ -855,7 +854,7 @@ describe("makeAgentGatewayMcpTransport capability truth", () => {
       assert.equal(gone.status, 401);
       assert.deepEqual(authorityDataOf(gone), { code: "thread-gone", retry: "do-not-retry" });
       assert.include(rpcErrorOf(gone).message, "Do not retry");
-      // token-2 leases thread-mismatch as codex, but the live session names claudeAgent.
+
       const mismatch = yield* post(transport, "token-2", listBody);
       assert.equal(mismatch.status, 401);
       assert.deepEqual(authorityDataOf(mismatch), {

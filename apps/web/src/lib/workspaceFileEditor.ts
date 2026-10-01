@@ -1,8 +1,9 @@
-import type { ProjectFileEncoding, ProjectFileLineEnding } from "@glade/contracts";
+import type {
+  ProjectFileEncoding,
+  ProjectFileLineEnding,
+} from "@glade/contracts/workspace/project";
 
-/** On-disk format of a loaded buffer; every save re-encodes with it. */
 export interface WorkspaceFileEditorFormat {
-  /** Server-side version of the loaded bytes (`sha256:<hex>` of the raw file). */
   expectedVersion: string;
   encoding: ProjectFileEncoding;
   lineEnding: Exclude<ProjectFileLineEnding, "mixed">;
@@ -13,7 +14,7 @@ export interface WorkspaceFileEditorSource {
   version: string | null;
   encoding: ProjectFileEncoding | null;
   lineEnding: ProjectFileLineEnding | null;
-  /** The path is a symbolic link; a write would replace its target, not the link. */
+
   symlink?: boolean | undefined;
 }
 
@@ -48,11 +49,6 @@ export const INITIAL_WORKSPACE_FILE_EDITOR_STATE: WorkspaceFileEditorState = {
   saveError: null,
 };
 
-/**
- * Why a read cannot be edited in place, or null when it can. Mixed line
- * endings cannot round-trip through a re-encoding save, so they stay
- * read-only rather than being silently normalized.
- */
 export function resolveWorkspaceFileEditorReadOnlyReason(
   source: WorkspaceFileEditorSource,
 ): string | null {

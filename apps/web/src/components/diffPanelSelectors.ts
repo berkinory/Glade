@@ -1,9 +1,4 @@
-// FILE: diffPanelSelectors.ts
-// Purpose: Lightweight Zustand selectors for the diff panel — avoid subscribing to the
-//          full thread (messages/activities) when only catalog or live-refresh signals change.
-// Layer: Diff panel data
-
-import type { MessageId, ThreadId, TurnId } from "@glade/contracts";
+import type { MessageId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 
 import type { AppState } from "../storeState";
 import { collectByIds } from "../threadDerivation";
@@ -130,7 +125,6 @@ function buildDiffPanelRepoLiveRefreshKey(input: {
   ].join("|");
 }
 
-/** Boolean selector: only re-renders when live repo-diff polling should start or stop. */
 export function createDiffPanelRepoLiveRefreshSelector(
   threadId: ThreadId | null | undefined,
 ): (state: AppState) => boolean {

@@ -1,9 +1,5 @@
-// FILE: useComposerVoiceController.ts
-// Purpose: Own the composer voice-note state machine for recording, cancellation, and transcription.
-// Layer: Chat composer hook
-// Depends on: useVoiceRecorder, ChatView voice helper logic, and the native API voice endpoint.
-
-import { type ProviderKind, type ServerProviderStatus, type ThreadId } from "@glade/contracts";
+import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import type { Project } from "../../types";
@@ -20,7 +16,7 @@ import {
   describeVoiceRecordingStartError,
   isVoiceAuthExpiredMessage,
   sanitizeVoiceErrorMessage,
-} from "../ChatView.logic";
+} from "../ChatView.logic.worktree";
 
 interface ComposerVoiceFailureCopy {
   transcriptionFailedTitle: string;
@@ -35,17 +31,23 @@ interface ComposerVoiceGuardDetails {
 }
 
 export interface UseComposerVoiceControllerOptions {
-  activeProject: Project | undefined;
-  activeThreadId: ThreadId | null;
-  threadId: ThreadId;
-  selectedProvider: ProviderKind;
-  activeProviderStatus: ServerProviderStatus | null;
-  pendingUserInputCount: number;
-  onTranscriptReady: (transcript: string) => void;
-  refreshVoiceStatus: RefreshProviderStatusesNow;
-  actionArmDelayMs?: number;
-  failureCopy?: Partial<ComposerVoiceFailureCopy>;
-  onGuardWarning?: (message: string, details: ComposerVoiceGuardDetails) => void;
+  thread: {
+    activeProject: Project | undefined;
+    activeThreadId: ThreadId | null;
+    threadId: ThreadId;
+    pendingUserInputCount: number;
+  };
+  provider: {
+    selectedProvider: ProviderKind;
+    activeProviderStatus: ServerProviderStatus | null;
+    refreshVoiceStatus: RefreshProviderStatusesNow;
+  };
+  recording: {
+    onTranscriptReady: (transcript: string) => void;
+    actionArmDelayMs?: number;
+    failureCopy?: Partial<ComposerVoiceFailureCopy>;
+    onGuardWarning?: (message: string, details: ComposerVoiceGuardDetails) => void;
+  };
 }
 
 export interface UseComposerVoiceControllerResult {
@@ -68,23 +70,17 @@ const DEFAULT_FAILURE_COPY: ComposerVoiceFailureCopy = {
   refreshActionLabel: "Refresh status",
 };
 
-// Keeps the async transcription lifecycle out of ChatView so the component can stay UI-focused.
 export function useComposerVoiceController(
   options: UseComposerVoiceControllerOptions,
 ): UseComposerVoiceControllerResult {
+  const { activeProject, activeThreadId, threadId, pendingUserInputCount } = options.thread;
+  const { selectedProvider, activeProviderStatus, refreshVoiceStatus } = options.provider;
   const {
-    activeProject,
-    activeThreadId,
-    threadId,
-    selectedProvider,
-    activeProviderStatus,
-    pendingUserInputCount,
     onTranscriptReady,
-    refreshVoiceStatus,
     actionArmDelayMs: actionArmDelayMsProp,
     failureCopy: failureCopyOverrides,
     onGuardWarning,
-  } = options;
+  } = options.recording;
   const actionArmDelayMs = actionArmDelayMsProp ?? 0;
   const {
     isRecording: isVoiceRecording,
@@ -103,8 +99,7 @@ export function useComposerVoiceController(
     ...DEFAULT_FAILURE_COPY,
     ...failureCopyOverrides,
   };
-  // A transcription can resolve immediately after navigation commits, so stamp
-  // its identity before passive effects and browser events can observe it.
+
   useLayoutEffect(() => {
     voiceThreadIdRef.current = threadId;
     voiceProviderRef.current = selectedProvider;
@@ -122,8 +117,7 @@ export function useComposerVoiceController(
     const invalidatedRequestId = voiceTranscriptionRequestIdRef.current + 1;
     voiceTranscriptionRequestIdRef.current = invalidatedRequestId;
     voiceRecordingStartedAtRef.current = null;
-    // The spinner reset rides the cancel promise so no state is written
-    // synchronously inside the effect (keeps the hook compiler-eligible).
+
     void cancelVoiceRecording().finally(() => {
       if (voiceTranscriptionRequestIdRef.current === invalidatedRequestId) {
         setIsVoiceTranscribing(false);
@@ -256,8 +250,6 @@ export function useComposerVoiceController(
       voiceThreadIdRef.current === requestThreadId &&
       voiceProviderRef.current === requestProvider;
 
-    // Promise chain instead of async/try-catch-finally: React Compiler does
-    // not yet support try/finally, and it would skip optimizing this hook.
     return stopVoiceRecording()
       .then((payload) => {
         if (!isCurrentVoiceRequest()) {

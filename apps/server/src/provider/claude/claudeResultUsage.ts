@@ -1,0 +1,36 @@
+import type { SDKResultMessage } from "@anthropic-ai/claude-agent-sdk";
+
+export type ClaudeResultUsageBaseline = Pick<SDKResultMessage, "modelUsage" | "total_cost_usd">;
+
+const delta = (current: number, before: number | undefined) =>
+  before !== undefined && current >= before ? current - before : current;
+
+export function claudeTurnResultUsage(
+  result: ClaudeResultUsageBaseline,
+  previous: ClaudeResultUsageBaseline | undefined,
+) {
+  const modelUsage = Object.fromEntries(
+    Object.entries(result.modelUsage ?? {}).map(([model, current]) => {
+      const before = previous?.modelUsage?.[model];
+      return [
+        model,
+        {
+          ...current,
+          inputTokens: delta(current.inputTokens, before?.inputTokens),
+          outputTokens: delta(current.outputTokens, before?.outputTokens),
+          ...(current.thinkingTokens !== undefined
+            ? { thinkingTokens: delta(current.thinkingTokens, before?.thinkingTokens) }
+            : {}),
+          cacheReadInputTokens: delta(current.cacheReadInputTokens, before?.cacheReadInputTokens),
+          cacheCreationInputTokens: delta(
+            current.cacheCreationInputTokens,
+            before?.cacheCreationInputTokens,
+          ),
+          webSearchRequests: delta(current.webSearchRequests, before?.webSearchRequests),
+          costUSD: delta(current.costUSD, before?.costUSD),
+        },
+      ];
+    }),
+  );
+  return { modelUsage, totalCostUsd: delta(result.total_cost_usd, previous?.total_cost_usd) };
+}

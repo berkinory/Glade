@@ -37,7 +37,6 @@ export type WorktreeAssociation = {
   associatedWorktreePath?: string | null | undefined;
 };
 
-/** Whether a thread records `worktreePath` as its current or associated worktree. */
 export function isThreadAssociatedWithWorktree(
   thread: WorktreeAssociation,
   worktreePath: string,

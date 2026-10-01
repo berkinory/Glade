@@ -1,24 +1,12 @@
-// FILE: EnvironmentPullRequestSection.tsx
-// Purpose: "Pull request" section of the Environment panel — one row (state glyph, title,
-//          live check status) that opens the PR action menu: view / code changes, the
-//          checks and review-comment lists, Repair (hands comments, failing checks, or
-//          conflicts to the composer as context cards), Merge, Status (draft / ready /
-//          close / reopen), and Add to chat. Copy link and Open in GitHub ride on the View PR row.
-// Layer: Environment panel section
-// Depends on: git status/PR-snapshot React Query helpers, the pull request action mutation,
-//             and the shared Environment row skin.
-
+import type { GitPullRequestCheck, GitPullRequestComment } from "@glade/contracts/git/git";
+import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type {
-  GitPullRequestCheck,
-  GitPullRequestComment,
-  ProjectId,
   PullRequestAction,
   PullRequestDetailInput,
   PullRequestMergeMethod,
-  ThreadId,
-} from "@glade/contracts";
-import { githubAvatarUrlForLogin } from "@glade/shared/githubAvatar";
-import { parseGitHubRepositoryNameWithOwnerFromPullRequestUrl } from "@glade/shared/githubRepository";
+} from "@glade/contracts/git/pullRequests";
+import { githubAvatarUrlForLogin } from "@glade/shared/git/githubAvatar";
+import { parseGitHubRepositoryNameWithOwnerFromPullRequestUrl } from "@glade/shared/git/githubRepository";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 
@@ -53,7 +41,10 @@ import {
   pullRequestMergeBlocker,
 } from "../../pullRequest/pullRequestStack.logic";
 import { addChatPullRequestContext } from "~/lib/chatReferences";
-import { gitPullRequestSnapshotQueryOptions, gitStatusQueryOptions } from "~/lib/gitReactQuery";
+import {
+  gitPullRequestSnapshotQueryOptions,
+  gitStatusQueryOptions,
+} from "../../../lib/gitQueryOptions";
 import {
   ChatBubbleIcon,
   ChatBubblePlusIcon,
@@ -72,10 +63,8 @@ import {
   PageTextIcon,
   RefreshCwIcon,
 } from "~/lib/icons";
-import {
-  pullRequestActionMutationOptions,
-  pullRequestDetailQueryOptions,
-} from "~/lib/pullRequestReactQuery";
+import { pullRequestActionMutationOptions } from "../../../lib/pullRequestMutationOptions";
+import { pullRequestDetailQueryOptions } from "../../../lib/pullRequestQueryOptions";
 import { type PullRequestContextScope } from "~/lib/pullRequestContext";
 import { formatRelativeTime } from "~/lib/relativeTime";
 import { cn } from "~/lib/utils";
@@ -102,15 +91,11 @@ import {
 } from "./environmentPullRequest.logic";
 
 const MENU_ICON_CLASS_NAME = "size-3.5 shrink-0";
-/** Icon-only action sharing the "View PR" row (copy link, open in GitHub). */
+
 const MENU_INLINE_ACTION_CLASS_NAME = "shrink-0 px-1.5";
-/** Right-aligned secondary value on a menu row (diff stat, count, current status).
- *  The label grows instead of this span using `ml-auto`: sub-trigger chevrons already carry
- *  `margin-inline-start: auto`, and two auto margins would split the free space and float
- *  the value mid-row instead of flush against the chevron. */
+
 const MENU_TRAILING_CLASS_NAME = "shrink-0 pl-3 text-muted-foreground tabular-nums";
-/** The root menu opens to the left of the docked panel, so submenus keep cascading that way
- *  instead of folding back over the panel. Base UI flips them when there is no room. */
+
 const SUBMENU_SIDE = "inline-start";
 
 const MERGE_METHOD_LABELS: Record<PullRequestMergeMethod, string> = {
@@ -156,7 +141,6 @@ function checksToneIcon(tone: PullRequestChecksTone) {
   }
 }
 
-// Popup row that is clickable only when it has a URL: plain div without one, MenuItem with one.
 function MenuRow({
   url,
   onOpenUrl,
@@ -220,7 +204,6 @@ function CommentsMenuRow({
 }) {
   const display = describePullRequestComment(comment);
   return (
-    // items-stretch overrides the menu-option default items-center for this column layout.
     <MenuRow
       url={comment.url}
       onOpenUrl={onOpenUrl}
@@ -244,8 +227,7 @@ function CommentsMenuRow({
               actor={{
                 login: comment.author,
                 name: null,
-                // Review-thread authors are users or bots, never team slugs, so the
-                // login-derived avatar is safe here (same as pullRequestOperations).
+
                 avatarUrl: githubAvatarUrlForLogin(comment.author),
               }}
             />
@@ -264,7 +246,6 @@ function MenuPlaceholder({ text }: { text: string }) {
   return <div className="px-3 py-3 text-center text-ui text-muted-foreground">{text}</div>;
 }
 
-/** Menu row label + optional trailing value, laid out like the reference PR menu. */
 function MenuRowLabel({
   icon,
   label,
@@ -294,13 +275,13 @@ export function EnvironmentPullRequestSection({
   onClose,
 }: {
   gitCwd: string | null;
-  /** Gate polling on the panel being open (mirrors the Local Servers section). */
+
   enabled: boolean;
   activeThreadId: ThreadId | null;
   projectId: ProjectId | null;
   configuredRepositories: ReadonlyArray<{ readonly nameWithOwner: string }>;
   showDiffColors?: boolean;
-  /** Open non-PR URLs in the in-app browser panel. */
+
   onOpenUrl: (url: string) => void;
   onClose: () => void;
 }) {
@@ -309,8 +290,7 @@ export function EnvironmentPullRequestSection({
   const queryClient = useQueryClient();
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<PullRequestConfirmAction | null>(null);
-  // Share the git block's cache, but revalidate stale status when this always-mounted
-  // panel opens so an earlier missing PR does not linger until the next polling tick.
+
   const { data: gitStatus } = useQuery(gitStatusQueryOptions(gitCwd, enabled));
   const pr = gitStatus?.pr ?? null;
 
@@ -322,8 +302,6 @@ export function EnvironmentPullRequestSection({
     }),
   );
 
-  // The snapshot can report a merge/close before git status catches up. Once git status
-  // also settles, prefer it over a cached open snapshot whose polling is now disabled.
   const livePr = snapshotQuery.data?.pullRequest ?? null;
   const displayPr = pr?.state === "open" ? (livePr ?? pr) : pr;
 
@@ -333,15 +311,12 @@ export function EnvironmentPullRequestSection({
   const repositoryBelongsToProject = configuredRepositories.some(
     (repository) => repository.nameWithOwner.toLowerCase() === pullRequestRepository?.toLowerCase(),
   );
-  // Merge / Status go through the GitHub-backed PR actions, which are keyed by project +
-  // repository. A PR from a repository the project does not own only gets link actions.
+
   const actionInput: PullRequestDetailInput | null =
     displayPr && projectId && pullRequestRepository && repositoryBelongsToProject
       ? { projectId, repository: pullRequestRepository, number: displayPr.number }
       : null;
-  // Merge capabilities (allowed methods, stack state) and the merged/closed timestamps only
-  // live on the detail query. Fetch it lazily while the menu is open so the row itself stays
-  // as cheap as before.
+
   const detailQuery = useQuery({
     ...pullRequestDetailQueryOptions(actionInput, { pollingEnabled: false }),
     enabled: actionInput !== null && menuOpen,
@@ -398,8 +373,6 @@ export function EnvironmentPullRequestSection({
     onClose();
   };
 
-  // Repair / Add to chat attach a context card to the composer; the panel closes so the
-  // new bubble is visible above the editor right away.
   const attachContextCard = (scope: PullRequestContextScope) => {
     if (!activeThreadId) {
       return;
@@ -456,13 +429,11 @@ export function EnvironmentPullRequestSection({
   const actionPending = actionMutation.isPending;
   const detail = detailQuery.data ?? null;
   const stackAssessment = detail?.stack ? assessPullRequestStack(detail.stack) : null;
-  // Merge is gated on the detail query: the git snapshot knows nothing about allowed merge
-  // methods, stack state, or review blockers, so offering Merge before detail resolves could
-  // send an action GitHub rejects. Until then the entry stays disabled with a status hint.
+
   const allowedMergeMethods: PullRequestMergeMethod[] = detail
     ? (["merge", "squash", "rebase"] as const).filter((method) => detail.mergeCapabilities[method])
     : [];
-  // Local snapshot facts first (draft, conflicts) so the reason shows before detail loads.
+
   const mergeBlocker = displayPr.isDraft
     ? "Mark the pull request ready for review before merging"
     : displayPr.mergeability === "conflicting"
@@ -494,9 +465,9 @@ export function EnvironmentPullRequestSection({
     : displayPr.isDraft
       ? "Draft"
       : "Ready for review";
-  // The git snapshot has no merged/closed timestamp; the lazily fetched detail does.
+
   const settledAt = settledState === "merged" ? detail?.mergedAt : detail?.closedAt;
-  // formatRelativeTime is the compact list form ("12h"); a sentence needs "12h ago".
+
   const settledAgo = settledAt ? formatRelativeTime(settledAt) : null;
   const statusTrailing =
     settledState && settledAgo
@@ -546,10 +517,7 @@ export function EnvironmentPullRequestSection({
             }
           />
         </MenuTrigger>
-        {/* Opens beside the row (the panel docks on the right, so screen-left) like a hover
-            card, rather than dropping down over the rest of the panel. Base UI flips it to
-            the other side when there is no room, and falls back below the row when neither
-            side fits (narrow windows). */}
+        {}
         <ComposerPickerMenuPopup
           align="start"
           side="left"
@@ -557,8 +525,7 @@ export function EnvironmentPullRequestSection({
           collisionAvoidance={{ fallbackAxisSide: "end" }}
           className="w-72 min-w-72"
         >
-          {/* One visual row, three menu items: the link actions ride along with "View PR"
-              instead of taking rows of their own. */}
+          {}
           <div className="flex items-center gap-0.5">
             <MenuItem className="min-w-0 flex-1" onClick={() => openPullRequest()}>
               <MenuRowLabel
@@ -668,9 +635,9 @@ export function EnvironmentPullRequestSection({
                       }
                     />
                   ) : (
-                    // shrink-0 children: when the list overflows max-h-64, flex would otherwise
-                    // shrink the rows (their line-clamp overflow-hidden spans have no automatic
-                    // minimum size) and clip the text instead of scrolling.
+                    // shrink-0 children: when the list overflows max-h-64, flex would otherwise shrink the rows (their
+                    // line-clamp overflow-hidden spans have no automatic minimum size) and clip the text instead of
+                    // scrolling.
                     <div className="flex max-h-64 flex-col gap-0.5 overflow-y-auto [&>*]:shrink-0">
                       {comments.map((comment) => (
                         <CommentsMenuRow
@@ -690,7 +657,7 @@ export function EnvironmentPullRequestSection({
                 </ComposerPickerMenuSubPopup>
               </MenuSub>
 
-              {/* Repair hands work to the composer as a context card (never pasted text). */}
+              {}
               <MenuSub keepOpenOnFocusOut>
                 <MenuSubTrigger disabled={repairDisabled} data-testid="pr-repair-trigger">
                   <MenuRowLabel
@@ -807,7 +774,7 @@ export function EnvironmentPullRequestSection({
                     onValueChange={(value) => {
                       if (value === "draft" && !displayPr.isDraft) runAction("draft");
                       if (value === "ready" && displayPr.isDraft) runAction("ready");
-                      // Closing is one more status option, but it still confirms first.
+
                       if (value === "closed") setConfirmAction({ kind: "close" });
                     }}
                   >
@@ -858,7 +825,6 @@ export function EnvironmentPullRequestSection({
         onConfirm={(action) => {
           if (action.kind === "close") {
             runAction("close");
-            // Re-check against the loaded capabilities: the dialog may outlive a refetch.
           } else if (detail && allowedMergeMethods.includes(action.method)) {
             runAction("merge", action.method);
           }

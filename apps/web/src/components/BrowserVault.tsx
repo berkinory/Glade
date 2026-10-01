@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { BrowserVaultSettings, BrowserVaultSnapshot } from "@glade/contracts";
+import type {
+  BrowserVaultSettings,
+  BrowserVaultSnapshot,
+} from "@glade/contracts/browser/browserVault";
 import { CentralIcon } from "~/lib/central-icons";
 import { readNativeApi } from "~/nativeApi";
 import { Button } from "./ui/button";
@@ -58,6 +61,8 @@ export function BrowserVaultDialog() {
   }, [api]);
 
   useEffect(() => {
+    const effectRevision = revision;
+
     mounted.current = true;
     const show = () => {
       setOpen(true);
@@ -70,7 +75,7 @@ export function BrowserVaultDialog() {
     void reload();
     return () => {
       mounted.current = false;
-      revision.current++;
+      effectRevision.current++;
       unsubscribe?.();
       window.removeEventListener(OPEN_EVENT, show);
     };

@@ -1,16 +1,19 @@
-import { ThreadId, type OrchestrationEvent } from "@glade/contracts";
-import { makeDrainableWorker, startDrainableWorkerProducers } from "@glade/shared/DrainableWorker";
-import { terminalScopeIdsForThread } from "@glade/shared/terminalThreads";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
+import {
+  makeDrainableWorker,
+  startDrainableWorkerProducers,
+} from "../../platform/workers/drainableWorker";
+import { terminalScopeIdsForThread } from "@glade/shared/threads/terminalThreads";
 import { Cause, Effect, Layer, Option, Stream } from "effect";
 
-import { ServerConfig } from "../../config";
-import { DeviceService } from "../../device/Services/DeviceService";
+import { ServerConfig } from "../../server/config";
 import { GitCore } from "../../git/Services/GitCore";
-import { pruneProjectedArchivedManagedWorktrees } from "../../managedWorktrees";
-import { ProfileStatsArchive } from "../../profileStatsArchive";
+import { pruneProjectedArchivedManagedWorktrees } from "../../git/managedWorktrees";
+import { ProfileStatsArchive } from "../../diagnostics/profileStatsArchive";
 import { ProviderService } from "../../provider/Services/ProviderService";
 import { TerminalManager, type TerminalManagerShape } from "../../terminal/Services/Manager";
-import { THREAD_RETENTION_COMMAND_ID_PREFIX } from "../../threadRetention";
+import { THREAD_RETENTION_COMMAND_ID_PREFIX } from "../threadRetention";
 import { OrchestrationEngineService } from "../Services/OrchestrationEngine";
 import { ProjectionSnapshotQuery } from "../Services/ProjectionSnapshotQuery";
 import {
@@ -22,8 +25,6 @@ type ThreadDeletedEvent = Extract<OrchestrationEvent, { type: "thread.deleted" }
 type ThreadArchivedEvent = Extract<OrchestrationEvent, { type: "thread.archived" }>;
 type ThreadLifecycleCleanupEvent = ThreadDeletedEvent | ThreadArchivedEvent;
 
-// Crash recovery / backfill: threads soft-deleted before the purge could run
-// (or before purge existed) are archived and purged shortly after startup.
 const PURGE_STARTUP_SWEEP_DELAY_MS = 60 * 1000;
 const THREAD_LIFECYCLE_REACTOR_CAPACITY = 64;
 const PURGE_FENCE_RETRY_ATTEMPTS = 20;
@@ -65,22 +66,6 @@ export const cleanupSucceededUnlessInterrupted = <R, E>({
         cause: Cause.pretty(cause),
       }).pipe(Effect.as(false));
     }),
-  );
-
-const detachThreadDevice = (threadId: ThreadId) =>
-  Effect.service(DeviceService).pipe(
-    Effect.flatMap((service) =>
-      Effect.promise(() => service.manager.handleThreadRemoved(threadId)).pipe(
-        Effect.catchCause((cause) =>
-          Cause.hasInterruptsOnly(cause)
-            ? Effect.failCause(cause)
-            : Effect.logDebug("thread lifecycle cleanup skipped device detach", {
-                threadId,
-                cause: Cause.pretty(cause),
-              }),
-        ),
-      ),
-    ),
   );
 
 export const closeThreadTerminalScopes = (
@@ -194,9 +179,6 @@ const make = Effect.gen(function* () {
     return false;
   });
 
-  // Legacy retention deletes only hid the thread (their rows kept feeding
-  // profile stats directly). Explicit deletes snapshot the stat aggregates and
-  // then hard-delete the thread's rows so disk space is actually reclaimed.
   const purgeThreadData = (event: ThreadDeletedEvent) => {
     if (event.commandId?.startsWith(THREAD_RETENTION_COMMAND_ID_PREFIX)) {
       return Effect.void;
@@ -213,8 +195,6 @@ const make = Effect.gen(function* () {
         purged ? refreshCommandReadModelAfterPurge(event.payload.threadId) : Effect.void,
       ),
       Effect.catch((error) =>
-        // A failed purge leaves the thread soft-deleted; the startup sweep
-        // retries it on the next boot.
         Effect.logWarning("thread deletion cleanup skipped stats archive purge", {
           threadId: event.payload.threadId,
           error: error instanceof Error ? error.message : String(error),
@@ -234,10 +214,7 @@ const make = Effect.gen(function* () {
   const cleanupArchivedThread = Effect.fn(function* (event: ThreadArchivedEvent) {
     const threadId = event.payload.threadId;
     for (let attempt = 1; attempt <= ARCHIVE_CLEANUP_RETRY_ATTEMPTS; attempt += 1) {
-      // The archive cleanup worker is asynchronous. An undo may already have
-      // projected thread.unarchived and opened a replacement terminal while
-      // this older event was waiting in the queue. Re-read authoritative state
-      // before every close attempt so stale archive work cannot kill it.
+      // Re-read authoritative state before every close attempt so stale archive work cannot kill it.
       const currentThread = Option.getOrUndefined(
         yield* projectionSnapshotQuery.getThreadShellById(threadId),
       );
@@ -248,7 +225,6 @@ const make = Effect.gen(function* () {
         });
         return;
       }
-      yield* detachThreadDevice(threadId);
       const terminalCleanupSucceeded = yield* closeThreadTerminals(
         threadId,
         false,
@@ -267,10 +243,8 @@ const make = Effect.gen(function* () {
 
   const processThreadDeleted = Effect.fn(function* (event: ThreadDeletedEvent) {
     const { threadId } = event.payload;
-    yield* detachThreadDevice(threadId);
     const cleanupSucceeded = yield* cleanupThreadBeforePurge(threadId);
-    // Reclaim while the soft-deleted projection row still names the worktree.
-    // Dirty managed worktrees are snapped and left with a warning (no force).
+
     yield* pruneManagedWorktreesAfterLifecycle({
       eventType: event.type,
       threadId,

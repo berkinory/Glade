@@ -1,65 +1,71 @@
-// FILE: wsNativeApi.ts
-// Purpose: NativeApi implementation backed by the browser WebSocket RPC transport.
-// Layer: Web transport adapter
-// Exports: createWsNativeApi and event subscription helpers for server push channels.
-
+import type {
+  AuthBearerBootstrapResult,
+  AuthBootstrapInput,
+  AuthBootstrapResult,
+  AuthClientSession,
+  AuthCreatePairingCredentialInput,
+  AuthLogoutResult,
+  AuthPairingCredentialResult,
+  AuthPairingLink,
+  AuthRevokeClientSessionInput,
+  AuthRevokePairingLinkInput,
+  AuthSessionState,
+  AuthWebSocketTokenResult,
+} from "@glade/contracts/transport/auth/auth";
+import type { ContextMenuItem, NativeApi } from "@glade/contracts/ipc/ipc";
+import type {
+  GitActionProgressEvent,
+  GitWorktreeSetupProgressEvent,
+} from "@glade/contracts/git/git";
+import type { GitHubProjectProvisionProgressEvent } from "@glade/contracts/git/githubProjectProvisioning";
+import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
+import type {
+  OrchestrationShellStreamItem,
+  OrchestrationThreadStreamItem,
+} from "@glade/contracts/orchestration/snapshots";
 import {
-  type AuthBearerBootstrapResult,
-  type AuthBootstrapInput,
-  type AuthBootstrapResult,
-  type AuthClientSession,
-  type AuthCreatePairingCredentialInput,
-  type AuthLogoutResult,
-  type AuthPairingCredentialResult,
-  type AuthPairingLink,
-  type AuthRevokeClientSessionInput,
-  type AuthRevokePairingLinkInput,
-  type AuthSessionState,
-  type AuthWebSocketTokenResult,
-  type ThreadId,
-  type ThreadBrowserState,
-  type GitActionProgressEvent,
-  type GitWorktreeSetupProgressEvent,
-  type GitHubProjectProvisionProgressEvent,
-  type OrchestrationEvent,
-  type OrchestrationShellStreamItem,
-  type OrchestrationThreadStreamItem,
-  type ProjectDevServerEvent,
+  ORCHESTRATION_WS_CHANNELS,
+  ORCHESTRATION_WS_METHODS,
+} from "@glade/contracts/orchestration/rpc";
+import type { ProjectDevServerEvent } from "@glade/contracts/workspace/project";
+import {
   type ServerProviderStatusesUpdatedPayload,
   type ServerLifecycleStreamEvent,
   type ServerSettingsUpdatedPayload,
   type ServerVoiceTranscriptionResult,
-  type TerminalEvent,
-  ORCHESTRATION_WS_CHANNELS,
-  ORCHESTRATION_WS_METHODS,
-  type ContextMenuItem,
-  type NativeApi,
   ServerConfigUpdatedPayload,
-  WS_CHANNELS,
-  WS_METHODS,
-  type WsWelcomePayload,
-  type WsBootstrapNegotiateResult,
-  type AutomationStreamEvent,
-  DEVICE_WS_CHANNELS,
-  DEVICE_WS_METHODS,
-  type DeviceEvent,
+} from "@glade/contracts/server/server";
+import type { TerminalEvent } from "@glade/contracts/terminal/terminal";
+import { WS_CHANNELS, WS_METHODS, type WsWelcomePayload } from "@glade/contracts/transport/ws/ws";
+import type { WsBootstrapNegotiateResult } from "@glade/contracts/transport/ws/wsCompatibility";
+import type { AutomationStreamEvent } from "@glade/contracts/automation/automation";
+import {
   COMPUTER_WS_CHANNELS,
   COMPUTER_WS_METHODS,
   type ComputerEvent,
-} from "@glade/contracts";
-import { VOICE_TRANSCRIPTION_UPLOAD_ROUTE_PATH } from "@glade/shared/binaryTransfer";
-
+} from "@glade/contracts/computer/computer";
+import { VOICE_TRANSCRIPTION_UPLOAD_ROUTE_PATH } from "@glade/shared/transport/binaryTransfer";
 import { showConfirmDialogFallback } from "./confirmDialogFallback";
 import { showContextMenuFallback } from "./contextMenuFallback";
 import { requireHttpExternalUrl } from "./lib/externalUrl";
 import { withNativeMenuIcons } from "./lib/nativeMenuIcons";
 import { isMacNavigatorPlatform } from "./lib/utils";
-import { WsTransport, type WsThreadStreamFailure } from "./wsTransport";
+import { WsTransport } from "./wsTransport.implementation";
+import type { WsThreadStreamFailure } from "./wsTransport.support";
 import { emitWsCompatibilityIssue, emitWsTransportState } from "./wsTransportEvents";
 import { resolveWsHttpUrl } from "./lib/wsHttpUrl";
-
-export type { WsThreadStreamFailure } from "./wsTransport";
-
+import {
+  createListenerRegistry,
+  fallbackBrowserStateListeners,
+  defaultBrowserTitle,
+  createFallbackTab,
+  cloneBrowserState,
+  getFallbackBrowserState,
+  emitFallbackBrowserState,
+  markFallbackBrowserStateChanged,
+  ensureFallbackBrowserWorkspace,
+  resolveFallbackBrowserTab,
+} from "./wsNativeApiBrowser";
 let instance: { api: NativeApi; transport: WsTransport } | null = null;
 
 export function readWsServerCapabilities(): ReadonlyArray<string> | null {
@@ -83,31 +89,6 @@ export function onWsServerCapabilitiesChange(
   );
 }
 
-function createListenerRegistry<T>() {
-  const listeners = new Set<(payload: T) => void>();
-  return {
-    get size() {
-      return listeners.size;
-    },
-    subscribe(listener: (payload: T) => void) {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-    emit(payload: T) {
-      for (const listener of listeners) {
-        try {
-          listener(payload);
-        } catch {
-          // A listener must not prevent delivery to the remaining subscribers.
-        }
-      }
-    },
-    clear() {
-      listeners.clear();
-    },
-  };
-}
-
 function subscribeWithReplay<T>(input: {
   readonly registry: {
     subscribe: (listener: (payload: T) => void) => () => unknown;
@@ -119,9 +100,7 @@ function subscribeWithReplay<T>(input: {
   if (input.latest) {
     try {
       input.listener(input.latest);
-    } catch {
-      // Replay follows the same listener isolation as live delivery.
-    }
+    } catch {}
   }
   return () => void unsubscribe();
 }
@@ -156,14 +135,11 @@ function omitNullUserInputAnswers(
 const terminalEventListeners = createListenerRegistry<TerminalEvent>();
 const projectDevServerEventListeners = createListenerRegistry<ProjectDevServerEvent>();
 const automationEventListeners = createListenerRegistry<AutomationStreamEvent>();
-const deviceEventListeners = createListenerRegistry<DeviceEvent>();
 const computerEventListeners = createListenerRegistry<ComputerEvent>();
 const orchestrationDomainEventListeners = createListenerRegistry<OrchestrationEvent>();
 const orchestrationShellEventListeners = createListenerRegistry<OrchestrationShellStreamItem>();
 const orchestrationThreadEventListeners = createListenerRegistry<OrchestrationThreadStreamItem>();
 const threadStreamFailureListeners = createListenerRegistry<WsThreadStreamFailure>();
-const fallbackBrowserStateListeners = createListenerRegistry<ThreadBrowserState>();
-const fallbackBrowserStates = new Map<ThreadId, ThreadBrowserState>();
 
 function clearWsNativeApiListeners(): void {
   welcomeListeners.clear();
@@ -177,35 +153,12 @@ function clearWsNativeApiListeners(): void {
   terminalEventListeners.clear();
   projectDevServerEventListeners.clear();
   automationEventListeners.clear();
-  deviceEventListeners.clear();
   computerEventListeners.clear();
   orchestrationDomainEventListeners.clear();
   orchestrationShellEventListeners.clear();
   orchestrationThreadEventListeners.clear();
   threadStreamFailureListeners.clear();
   fallbackBrowserStateListeners.clear();
-}
-
-function defaultBrowserState(threadId: ThreadId): ThreadBrowserState {
-  return {
-    threadId,
-    version: 0,
-    open: false,
-    activeTabId: null,
-    tabs: [],
-    lastError: null,
-  };
-}
-
-function defaultBrowserTitle(url: string): string {
-  if (url === "about:blank") {
-    return "New tab";
-  }
-  try {
-    return new URL(url).hostname || url;
-  } catch {
-    return url;
-  }
 }
 
 async function requestAuthJson<T>(
@@ -279,88 +232,13 @@ async function requestVoiceTranscriptionUpload(
 
 class VoiceUploadRouteUnavailableError extends Error {}
 
-function createFallbackTab(url = "about:blank") {
-  return {
-    id: crypto.randomUUID(),
-    url,
-    title: defaultBrowserTitle(url),
-    status: "live" as const,
-    isLoading: false,
-    canGoBack: false,
-    canGoForward: false,
-    faviconUrl: null,
-    lastCommittedUrl: url,
-    lastError: null,
-  };
-}
-
-function cloneBrowserState(state: ThreadBrowserState): ThreadBrowserState {
-  return {
-    ...state,
-    tabs: state.tabs.map((tab) => ({ ...tab })),
-  };
-}
-
-function getFallbackBrowserState(threadId: ThreadId): ThreadBrowserState {
-  const existing = fallbackBrowserStates.get(threadId);
-  if (existing) {
-    return existing;
-  }
-  const initial = defaultBrowserState(threadId);
-  fallbackBrowserStates.set(threadId, initial);
-  return initial;
-}
-
-function emitFallbackBrowserState(threadId: ThreadId): ThreadBrowserState {
-  const state = cloneBrowserState(getFallbackBrowserState(threadId));
-  fallbackBrowserStateListeners.emit(state);
-  return state;
-}
-
-function markFallbackBrowserStateChanged(state: ThreadBrowserState): void {
-  state.version += 1;
-}
-
-function ensureFallbackBrowserWorkspace(threadId: ThreadId): ThreadBrowserState {
-  const state = getFallbackBrowserState(threadId);
-  if (state.tabs.length === 0) {
-    const tab = createFallbackTab();
-    state.tabs = [tab];
-    state.activeTabId = tab.id;
-  }
-  state.open = true;
-  return state;
-}
-
-function resolveFallbackBrowserTab(state: ThreadBrowserState, tabId?: string) {
-  const existing =
-    (tabId ? state.tabs.find((tab) => tab.id === tabId) : undefined) ??
-    (state.activeTabId ? state.tabs.find((tab) => tab.id === state.activeTabId) : undefined) ??
-    state.tabs[0];
-  if (existing) {
-    return existing;
-  }
-  const tab = createFallbackTab();
-  state.tabs = [tab];
-  state.activeTabId = tab.id;
-  state.open = true;
-  return tab;
-}
-
-/**
- * Subscribe to the server welcome message. If a welcome was already received
- * before this call, the listener fires synchronously with the cached payload.
- * This avoids the race between WebSocket connect and React effect registration.
- */
+// If a welcome was already received before this call, the listener fires synchronously with the
+// cached payload. This avoids the race between WebSocket connect and React effect registration.
 export function onServerWelcome(listener: (payload: WsWelcomePayload) => void): () => void {
   const latestWelcome = instance?.transport.getLatestPush(WS_CHANNELS.serverWelcome)?.data ?? null;
   return subscribeWithReplay({ registry: welcomeListeners, listener, latest: latestWelcome });
 }
 
-/**
- * Subscribe to server config update events. Replays the latest update for
- * late subscribers to avoid missing config validation feedback.
- */
 export function onServerConfigUpdated(
   listener: (payload: ServerConfigUpdatedPayload) => void,
 ): () => void {
@@ -373,9 +251,6 @@ export function onServerConfigUpdated(
   });
 }
 
-/**
- * Subscribe to provider status updates without forcing a full config reload.
- */
 export function onServerProviderStatusesUpdated(
   listener: (payload: ServerProviderStatusesUpdatedPayload) => void,
 ): () => void {
@@ -412,11 +287,6 @@ export function onServerSettingsUpdated(
   });
 }
 
-/**
- * Subscribe to unrecoverable per-thread stream failures (retries and reconnect
- * exhausted). Lets thread-detail consumers surface a failed hydration state
- * instead of rendering an empty conversation.
- */
 export function onThreadStreamFailure(
   listener: (failure: WsThreadStreamFailure) => void,
 ): () => void {
@@ -471,9 +341,6 @@ export function createWsNativeApi(): NativeApi {
   });
   transport.subscribe(WS_CHANNELS.automationEvent, (message) => {
     automationEventListeners.emit(message.data);
-  });
-  transport.subscribe(DEVICE_WS_CHANNELS.event, (message) => {
-    deviceEventListeners.emit(message.data);
   });
   transport.subscribe(COMPUTER_WS_CHANNELS.event, (message) => {
     computerEventListeners.emit(message.data);
@@ -572,21 +439,20 @@ export function createWsNativeApi(): NativeApi {
           return;
         }
 
-        // Some mobile browsers can return null here even when the tab opens.
-        // Avoid false negatives and let the browser handle popup policy.
         window.open(externalUrl, "_blank", "noopener,noreferrer");
       },
       showInFolder: async (path) => {
         if (window.desktopBridge) {
           await window.desktopBridge.showInFolder(path);
         }
-        // No-op in browser - this is a desktop-only feature
       },
     },
     git: {
       githubRepository: (input) => transport.request(WS_METHODS.gitGithubRepository, input),
       pull: (input) => transport.request(WS_METHODS.gitPull, input),
       status: (input) => transport.request(WS_METHODS.gitStatus, input),
+      sidebarSummary: (input) => transport.request(WS_METHODS.gitSidebarSummary, input),
+      onStatus: (input, callback) => transport.subscribeGitStatus(input, callback),
       readWorkingTreeDiff: (input) => transport.request(WS_METHODS.gitReadWorkingTreeDiff, input),
       readSourceControlFiles: (input) =>
         transport.request(WS_METHODS.gitReadSourceControlFiles, input),
@@ -607,8 +473,7 @@ export function createWsNativeApi(): NativeApi {
       listRecentCommits: (input) => transport.request(WS_METHODS.gitListRecentCommits, input),
       readCommit: (input) => transport.request(WS_METHODS.gitReadCommit, input),
       createWorktree: (input) => transport.request(WS_METHODS.gitCreateWorktree, input),
-      // Worktree materialization scales with checkout size; progress events
-      // keep the UI honest while the stream runs, so no fixed timeout.
+
       createDetachedWorktree: (input) =>
         transport.request(WS_METHODS.gitCreateDetachedWorktree, input, {
           timeoutMs: null,
@@ -652,7 +517,6 @@ export function createWsNativeApi(): NativeApi {
         position?: { x: number; y: number },
       ): Promise<T | null> => {
         if (window.desktopBridge) {
-          // Native icons are macOS-only; other platforms keep the plain menu.
           const desktopItems = isMacNavigatorPlatform() ? await withNativeMenuIcons(items) : items;
           return window.desktopBridge.showContextMenu(desktopItems, position);
         }
@@ -706,13 +570,10 @@ export function createWsNativeApi(): NativeApi {
         await transport.dispose();
         return result;
       },
-      // Claude runs sequential CLI and auth probes, so a refresh can exceed the
-      // generic 60-second RPC deadline. Keep this bounded while allowing slow
-      // probes to finish; onboarding shows an error if this deadline expires.
+
       refreshProviders: () =>
         transport.request(WS_METHODS.serverRefreshProviders, undefined, { timeoutMs: 180_000 }),
-      // Provider updates run up to 2 minutes server-side; callers wrap this in
-      // withProviderUpdateTimeout, which owns the client-side watchdog.
+
       updateProvider: (input) =>
         transport.request(WS_METHODS.serverUpdateProvider, input, { timeoutMs: null }),
       listWorktrees: () => transport.request(WS_METHODS.serverListWorktrees),
@@ -751,13 +612,16 @@ export function createWsNativeApi(): NativeApi {
     provider: {
       getComposerCapabilities: (input) =>
         transport.request(WS_METHODS.providerGetComposerCapabilities, input),
-      // Compaction is capped server-side per provider, so the server owns this bound.
-      compactThread: (input) =>
-        transport.request(WS_METHODS.providerCompactThread, input, { timeoutMs: null }),
+
       listCommands: (input) => transport.request(WS_METHODS.providerListCommands, input),
       listSkills: (input) => transport.request(WS_METHODS.providerListSkills, input),
       listSkillsCatalog: (input) => transport.request(WS_METHODS.providerListSkillsCatalog, input),
       listPlugins: (input) => transport.request(WS_METHODS.providerListPlugins, input),
+      listMcpServers: (input) => transport.request(WS_METHODS.providerListMcpServers, input),
+      manageMcpServer: (input) => transport.request(WS_METHODS.providerManageMcpServer, input),
+      pluginInventory: (input) => transport.request(WS_METHODS.providerPluginInventory, input),
+      managePlugin: (input) => transport.request(WS_METHODS.providerManagePlugin, input),
+
       readPlugin: (input) => transport.request(WS_METHODS.providerReadPlugin, input),
       listModels: (input) => transport.request(WS_METHODS.providerListModels, input),
       listAgents: (input) => transport.request(WS_METHODS.providerListAgents, input),
@@ -776,11 +640,9 @@ export function createWsNativeApi(): NativeApi {
       listProjectImports: (input) =>
         transport.request(ORCHESTRATION_WS_METHODS.listProjectImports, input),
       importProject: (input) => transport.request(ORCHESTRATION_WS_METHODS.importProject, input),
-      regenerateThreadTitle: (input) =>
-        transport.request(ORCHESTRATION_WS_METHODS.regenerateThreadTitle, input, {
-          timeoutMs: null,
-        }),
       repairState: () => transport.request(ORCHESTRATION_WS_METHODS.repairState),
+      previewWorkspaceRestore: (input) =>
+        transport.request(ORCHESTRATION_WS_METHODS.previewWorkspaceRestore, input),
       getTurnDiff: (input) => transport.request(ORCHESTRATION_WS_METHODS.getTurnDiff, input),
       getFullThreadDiff: (input) =>
         transport.request(ORCHESTRATION_WS_METHODS.getFullThreadDiff, input),
@@ -834,34 +696,6 @@ export function createWsNativeApi(): NativeApi {
       archiveRun: (input) => transport.request(WS_METHODS.automationArchiveRun, input),
       resolveProposal: (input) => transport.request(WS_METHODS.automationResolveProposal, input),
       onEvent: automationEventListeners.subscribe,
-    },
-    device: {
-      list: (input) => transport.request(DEVICE_WS_METHODS.list, input),
-      // Booting a cold simulator routinely outruns the default RPC deadline.
-      boot: (input) => transport.request(DEVICE_WS_METHODS.boot, input, { timeoutMs: null }),
-      shutdown: (input) => transport.request(DEVICE_WS_METHODS.shutdown, input),
-      attach: (input) => transport.request(DEVICE_WS_METHODS.attach, input),
-      detach: (input) => transport.request(DEVICE_WS_METHODS.detach, input),
-      getThreadState: (input) => transport.request(DEVICE_WS_METHODS.getThreadState, input),
-      tap: (input) => transport.request(DEVICE_WS_METHODS.tap, input),
-      swipe: (input) => transport.request(DEVICE_WS_METHODS.swipe, input),
-      typeText: (input) => transport.request(DEVICE_WS_METHODS.typeText, input),
-      keyEvent: (input) => transport.request(DEVICE_WS_METHODS.keyEvent, input),
-      pressButton: (input) => transport.request(DEVICE_WS_METHODS.pressButton, input),
-      installApp: (input) =>
-        transport.request(DEVICE_WS_METHODS.installApp, input, { timeoutMs: null }),
-      launchApp: (input) => transport.request(DEVICE_WS_METHODS.launchApp, input),
-      openUrl: (input) => transport.request(DEVICE_WS_METHODS.openUrl, input),
-      screenshot: (input) => transport.request(DEVICE_WS_METHODS.screenshot, input),
-      startRecording: (input) =>
-        transport.request(DEVICE_WS_METHODS.startRecording, input, { timeoutMs: null }),
-      stopRecording: (input) =>
-        transport.request(DEVICE_WS_METHODS.stopRecording, input, { timeoutMs: null }),
-      describeUi: (input) => transport.request(DEVICE_WS_METHODS.describeUi, input),
-      // A scroll loop runs several swipe/describe round-trips on the device.
-      scrollToElement: (input) =>
-        transport.request(DEVICE_WS_METHODS.scrollToElement, input, { timeoutMs: null }),
-      onEvent: deviceEventListeners.subscribe,
     },
     computer: {
       getStatus: (input) => transport.request(COMPUTER_WS_METHODS.getStatus, input),
@@ -1082,9 +916,6 @@ export function createWsNativeApi(): NativeApi {
   instance = { api, transport };
   return api;
 }
-
-// Browser-mode tests mount full app roots repeatedly in one page; reset the
-// singleton so each test gets a fresh WebSocket stream and cached push state.
 
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {

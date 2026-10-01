@@ -1,9 +1,10 @@
 import type {
   GitStatusInput,
+  GitStatusWatchInput,
   GitStatusLocalResult,
   GitStatusResult,
   GitStatusStreamEvent,
-} from "@glade/contracts";
+} from "@glade/contracts/git/git";
 import { ServiceMap } from "effect";
 import type { Effect, Stream } from "effect";
 import type { GitManagerServiceError } from "../Errors";
@@ -17,7 +18,7 @@ export interface GitStatusBroadcasterShape {
   ) => Effect.Effect<GitStatusLocalResult, GitManagerServiceError>;
   readonly refreshStatus: (cwd: string) => Effect.Effect<GitStatusResult, GitManagerServiceError>;
   readonly streamStatus: (
-    input: GitStatusInput,
+    input: GitStatusWatchInput,
   ) => Stream.Stream<GitStatusStreamEvent, GitManagerServiceError>;
 }
 

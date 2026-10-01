@@ -1,9 +1,8 @@
+import { type ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
-  type ProviderKind,
   type ProviderMentionReference,
   type ProviderSkillReference,
-  ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/providerDiscovery";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   filterPromptProviderMentionReferences,
@@ -38,8 +37,7 @@ export function useComposerReferences({
   >(() => composerMentions);
   const selectedComposerSkillsRef = useRef<ProviderSkillReference[]>(selectedComposerSkills);
   const selectedComposerMentionsRef = useRef<ProviderMentionReference[]>(selectedComposerMentions);
-  // The setters below stamp these refs synchronously; layout effects backstop
-  // external state changes before another browser event can read stale values.
+
   useLayoutEffect(() => {
     selectedComposerSkillsRef.current = selectedComposerSkills;
   }, [selectedComposerSkills]);
@@ -105,7 +103,6 @@ export function useComposerReferences({
     });
   }, [prompt, updateSelectedComposerMentions]);
 
-  // Provider references are provider-specific; keep draft restores from looking like manual switches.
   useEffect(() => {
     const previous = previousSelectedProviderRef.current;
     previousSelectedProviderRef.current = {

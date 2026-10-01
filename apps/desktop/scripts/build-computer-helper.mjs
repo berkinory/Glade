@@ -137,7 +137,7 @@ export function buildComputerHelper({
   const targets = swiftTargetsForArch(arch);
   const sources = readdirSync(sourceDirectory)
     .filter((name) => name.endsWith(".swift"))
-    .sort()
+    .toSorted()
     .map((name) => join(sourceDirectory, name));
   if (sources.length === 0) {
     throw new Error(`No Swift sources found in ${sourceDirectory}.`);
@@ -194,8 +194,8 @@ export function buildComputerHelper({
       run("xcrun", ["lipo", "-create", ...thinBinaries, "-output", unsignedBinary]);
     }
 
-    // Dev helpers are ad-hoc signed. electron-builder replaces this signature
-    // with the release identity because the packaged path is listed in mac.binaries.
+    // Dev helpers are ad-hoc signed. electron-builder replaces this signature with the release identity
+    // because the packaged path is listed in mac.binaries.
     run("codesign", ["--force", "--sign", "-", "--timestamp=none", unsignedBinary]);
 
     mkdirSync(dirname(resolvedOutputPath), { recursive: true });

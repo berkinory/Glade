@@ -1,18 +1,11 @@
-// FILE: useThreadErrorToast.ts
-// Purpose: Surfaces thread-level runtime errors as a floating error toast.
-// Layer: Chat status presentation
-// Exports: useThreadErrorToast, buildThreadErrorToastOptions
-
-import type { ThreadId } from "@glade/contracts";
-import { PROVIDER_DELIVERY_BLOCK_SUMMARY } from "@glade/shared/providerDeliveryBlock";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { PROVIDER_DELIVERY_BLOCK_SUMMARY } from "@glade/shared/provider/providerDeliveryBlock";
 import { useEffect, useRef, type RefObject } from "react";
 
 import { toastManager } from "../ui/toast";
 
 type ThreadErrorToastOptions = Parameters<typeof toastManager.add>[0];
 
-/** One toast per thread: re-adding under the same id updates the card in place
- *  instead of stacking a new toast for every error update. */
 function threadErrorToastId(threadId: ThreadId): string {
   return `thread-error:${threadId}`;
 }
@@ -46,19 +39,14 @@ export function buildThreadErrorToastOptions(input: {
   };
 }
 
-/** Closing the toast on our own behalf (error cleared, thread switched, unmount)
- *  must not report a user dismissal, which would clear thread state we still need. */
+// Closing the toast on our own behalf (error cleared, thread switched, unmount) must not report a
+// user dismissal, which would clear thread state we still need.
 function closeSilently(threadId: ThreadId, silentRef: RefObject<boolean>): void {
   silentRef.current = true;
   toastManager.close(threadErrorToastId(threadId));
   silentRef.current = false;
 }
 
-/**
- * Mirrors the thread-level error of `threadId` into a floating toast. Errors used
- * to render as an inline banner above the transcript, which pushed the whole chat
- * column down every time a provider failed; the toast keeps the layout stable.
- */
 export function useThreadErrorToast(input: {
   error: string | null;
   onDismiss: () => void;
@@ -90,8 +78,6 @@ export function useThreadErrorToast(input: {
     );
   }, [error, threadId]);
 
-  // Kept separate from the content effect so an error update refreshes the card in
-  // place instead of tearing it down and replaying the entrance animation.
   useEffect(() => {
     if (!threadId) return;
     return () => {

@@ -1,19 +1,16 @@
 import assert from "node:assert/strict";
-import {
-  DEFAULT_SERVER_SETTINGS,
-  type OrchestrationCommand,
-  type OrchestrationThread,
-  ProjectId,
-  type ProviderSession,
-  ThreadId,
-} from "@glade/contracts";
+import { DEFAULT_SERVER_SETTINGS } from "@glade/contracts/settings/settings";
+import { type OrchestrationCommand } from "@glade/contracts/orchestration/commands";
+import { type OrchestrationThread } from "@glade/contracts/orchestration/threadEntities";
+import { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type ProviderSession } from "@glade/contracts/provider/provider";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it, vi } from "@effect/vitest";
 import { Effect, FileSystem, Option, Path } from "effect";
 
 import type { ProviderAdapterRegistryShape } from "../provider/Services/ProviderAdapterRegistry";
 import type { ProviderServiceShape } from "../provider/Services/ProviderService";
-import type { ServerSettingsShape } from "../serverSettings";
+import type { ServerSettingsShape } from "../settings/serverSettings";
 import type { OrchestrationEngineShape } from "./Services/OrchestrationEngine";
 import type { ProjectionSnapshotQueryShape } from "./Services/ProjectionSnapshotQuery";
 import { makeImportThreadHandler } from "./importThreadRoute";
@@ -29,7 +26,7 @@ function makeCodexThread(): OrchestrationThread {
     title: "Imported thread",
     modelSelection: { provider: "codex", model: "gpt-5.5" },
     runtimeMode: "full-access",
-    interactionMode: "default",
+
     envMode: "local",
     branch: null,
     worktreePath: null,
@@ -58,7 +55,7 @@ function makeCodexThread(): OrchestrationThread {
     deletedAt: null,
     handoff: null,
     messages: [],
-    proposedPlans: [],
+
     activities: [],
     checkpoints: [],
     session: null,

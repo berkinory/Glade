@@ -14,7 +14,7 @@ The release workflow hashes and checks all platform artifacts against their sour
 
 ## Local builds
 
-Install the versions in `.mise.toml`, Xcode, and the Rust toolchain pinned in `packages/shared/src/cuaDriverRelease.json`. Run `bun install --frozen-lockfile`. Build each platform on its matching host:
+Install the versions in `.mise.toml`, Xcode, and the Rust toolchain pinned in `packages/shared/src/computer/cuaDriverRelease.json`. Run `bun install --frozen-lockfile`. Build each platform on its matching host:
 
 ```sh
 CSC_IDENTITY_AUTO_DISCOVERY=false bun run package:mac:arm64
@@ -47,11 +47,14 @@ Artifacts land in `release/`. Local notarization uses the keychain profile; CI u
 `.github/workflows/release.yml` verifies the release source and requires successful CI for the
 exact commit on `main` before publishing. It reuses that result instead of rerunning the same checks
 on the tag. An unpublished manual build runs the checks itself. A failed gate skips all four builds
-and publication. The four build jobs run in parallel. Pushing a stable `vX.Y.Z` tag publishes only
+and publication. The four build jobs run in parallel through `release-build.yml`; publication credentials are checked
+before those jobs start. Release jobs restore dependency and build caches without uploading duplicate
+archives. See [CI and automation](ci.md) for cache ownership and debugging. Pushing a stable `vX.Y.Z` tag publishes only
 after both macOS packages are signed and notarized; manual publication also requires running on that
 exact tag. Existing releases are never overwritten. The Cua native cache refreshes weekly and when
 its build inputs change for macOS arm64, macOS x64 and Linux x64. Native macOS and Linux Cua checks
-run on relevant pull requests and direct pushes to `main`.
+run on native input changes and manual requests. macOS host and lifecycle checks also run for relevant
+runtime and dependency changes. Linux host tests already run in the full CI unit suite.
 
 Workspace setup retries a failed frozen-lockfile Bun install once. This covers transient
 workspace prepare failures during a cold dependency extraction; a second failure still stops
@@ -75,7 +78,7 @@ The local keychain does not transfer to GitHub runners. Missing Apple secrets st
 ## Cut a version
 
 1. Align package versions with `node scripts/update-release-package-versions.ts X.Y.Z`, then refresh `bun.lock` with `bun install --lockfile-only --ignore-scripts`.
-2. Update `CHANGELOG.md` and `apps/web/src/whatsNew/entries.ts`. Use `New` for newly available capabilities, `Improved` for refinements, `Fixed` for corrected behavior, and `Removed` for retired functionality. Keep category names consistent with the app release-note headings. Mark a version released only when it really ships.
+2. Update `CHANGELOG.md`; the in-app What's new and release history read it at build time. Use `New` for newly available capabilities, `Improved` for refinements, `Fixed` for corrected behavior, and `Removed` for retired functionality. Keep the `## X.Y.Z - date`, `### Category` and `- entry` layout, which the app parses. Mark a version released only when it really ships.
 3. Run `bun run check`, `bun run test`, `bun scripts/check-windows-runtime-boundary.ts`, and `bun scripts/check-migration-lineage.ts`. Check the packaged app with an isolated profile on each supported platform.
 4. Commit the reviewed source on `main` and push it to `origin`. Wait for exact-commit CI and warm the Cua release cache before tagging that commit `vX.Y.Z` and pushing the tag. Do not push inherited upstream tags.
 5. Verify the GitHub Release notes link all four installers and list their SHA-256 checksums. The ten assets are four installers, two macOS update ZIPs, three platform update manifests, and the Windows blockmap. Verify both Homebrew architecture checksums.
@@ -88,4 +91,7 @@ Only Dev and Prod are supported. Dev uses blueprint artwork and an isolated prof
 
 Keep the newest version first, with `Unreleased` until publication and an ISO date once released. Group entries under `New`, `Improved`, `Fixed`, `Removed`, `Deprecated`, or `Security`; omit empty groups. Describe observable behavior in one concise bullet per change. Merge related work into one entry, omit minor cosmetic fixes and implementation details, and link the commits that introduced the behavior.
 
-When a change has an actual commit, append its short hash linked to the full SHA: `- Change description. ([SHORT_SHA](https://github.com/berkinory/Glade/commit/FULL_SHA))`. Do not invent hashes or use an unrelated commit. Uncommitted changes have no link. Mirror these categories in the in-app notes; their optional `commit` field renders the linked hash.
+When a change has an actual commit, append its short hash linked to the full SHA: `- Change description. ([SHORT_SHA](https://github.com/berkinory/Glade/commit/FULL_SHA))`. Do not invent hashes or use an unrelated commit. Uncommitted changes have no link. The app shows the first linked hash next to each entry.
+
+The schema starts with one baseline at migration 1, released in 0.1.0. Databases from 0.0.x previews use an unrelated migration history; Glade refuses to open them and asks the user to move `state.sqlite` aside. Future schema changes append migrations starting at 2; released baseline and migration files must not change. Before a pending migration, Glade saves a SQLite snapshot in `state.sqlite.backups` and retains the latest five new snapshots. To restore one, stop Glade and copy the chosen `.sqlite` snapshot over `state.sqlite` with its WAL and SHM sidecars removed. Existing backup and provenance files remain untouched.
+The composer draft legacy conversion remains for one release: UI state storage version 7 normalizes saved drafts on hydration. Desktop origin migration was removed after checking that neither current home had its old origin snapshot file.

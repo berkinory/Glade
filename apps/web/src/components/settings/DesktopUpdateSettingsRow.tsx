@@ -1,4 +1,4 @@
-import type { DesktopUpdateState } from "@glade/contracts";
+import type { DesktopUpdateState } from "@glade/contracts/ipc/ipc";
 import { useEffect, useState } from "react";
 
 import {

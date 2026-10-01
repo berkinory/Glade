@@ -1,10 +1,8 @@
-// FILE: EnvironmentProjectInstructionsSection.tsx
-// Purpose: Environment-panel section for project-scoped instructions that seed thread notes.
-// Layer: Environment panel section
-// Exports: EnvironmentProjectInstructionsSection
+import { useCallback } from "react";
 
 import { useEffect, useRef, useState, type ChangeEventHandler } from "react";
-import { THREAD_NOTES_MAX_CHARS, type ProjectId } from "@glade/contracts";
+import { THREAD_NOTES_MAX_CHARS } from "@glade/contracts/orchestration/threadEntities";
+import { type ProjectId } from "@glade/contracts/core/baseSchemas";
 
 import { Textarea } from "~/components/ui/textarea";
 import { Button } from "~/components/ui/button";
@@ -46,7 +44,7 @@ function useProjectInstructionsAutosave({
     onChangeRef.current = onChange;
   }, [onChange]);
 
-  const flush = () => {
+  const flush = useCallback(() => {
     if (debounceRef.current !== null) {
       window.clearTimeout(debounceRef.current);
       debounceRef.current = null;
@@ -60,7 +58,7 @@ function useProjectInstructionsAutosave({
     if (projectIdRef.current === pendingSave.projectId) {
       lastCommittedRef.current = pendingSave.value;
     }
-  };
+  }, []);
 
   useEffect(() => {
     const projectChanged = projectIdRef.current !== projectId;
@@ -105,7 +103,7 @@ function useProjectInstructionsAutosave({
       }
       return;
     }
-    // Keep the project id with the pending payload; active projects can switch before debounce fires.
+
     pendingSaveRef.current = {
       projectId: currentProjectId,
       value: nextValue,

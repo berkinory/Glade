@@ -1,8 +1,4 @@
-// FILE: ProfileUsageCoverage.tsx
-// Purpose: Disclose missing provider telemetry beside profile rankings and exports.
-// Layer: web profile feature.
-
-import type { ProviderKind } from "@glade/contracts";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { formatProviderLabel } from "./profileFormatting";
 
 export function ProfileUsageCoverage({

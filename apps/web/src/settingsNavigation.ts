@@ -1,8 +1,3 @@
-// FILE: settingsNavigation.ts
-// Purpose: Share the settings topic taxonomy between the main sidebar and the settings screen.
-// Layer: Route/UI support
-// Exports: section ids, nav items, and search normalization helper
-
 const SETTINGS_SECTION_IDS = [
   "general",
   "profile",
@@ -16,6 +11,8 @@ const SETTINGS_SECTION_IDS = [
   "models",
   "providers",
   "skills",
+  "mcp",
+  "plugins",
   "usage",
   "advanced",
 ] as const;
@@ -23,11 +20,6 @@ const SETTINGS_SECTION_IDS = [
 export type SettingsSectionId = (typeof SETTINGS_SECTION_IDS)[number];
 export type SettingsNavGroupId = "personal" | "computer" | "coding" | "system" | "archived";
 
-/**
- * Deep-link scroll targets inside settings panels. Each id is shared by its DOM owner and callers
- * that navigate with `?target=…`; the settings route resolves every target after the active panel
- * mounts.
- */
 export const SETTINGS_TARGETS = {
   providerUpdates: "provider-updates",
   environmentPanel: "environment-panel",
@@ -38,14 +30,10 @@ export type SettingsNavItem = {
   group: SettingsNavGroupId;
   label: string;
   description: string;
-  /** Basename of a SVG under `/central-icons-reversed`. */
+
   icon: string;
   eyebrow: string;
-  /**
-   * Maturity label shown beside the section name, in the sidebar and on the
-   * panel's own heading. Absent for a settled feature; one source so the two
-   * places can never disagree about what is still experimental.
-   */
+
   badge?: string;
 };
 
@@ -150,6 +138,22 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
     eyebrow: "Reusable workflows",
   },
   {
+    id: "mcp",
+    group: "coding",
+    label: "MCP servers",
+    description: "Manage native tools, connections and authentication.",
+    icon: "puzzle",
+    eyebrow: "External tools",
+  },
+  {
+    id: "plugins",
+    group: "coding",
+    label: "Agent plugins",
+    description: "Manage native installed plugins and session loading.",
+    icon: "building-blocks",
+    eyebrow: "Provider extensions",
+  },
+  {
     id: "worktrees",
     group: "coding",
     label: "Managed worktrees",
@@ -175,12 +179,6 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
   },
 ];
 
-/**
- * Stable DOM id for a settings row, derived from its (string) title. Shared by the row that
- * renders the anchor and by the search index that deep-links to it via `?target=…`, so the
- * two can't drift. Panels stay mounted and render null while inactive, so the slug only needs
- * to be unique within a section.
- */
 export function settingRowAnchorId(title: string): string {
   const slug = title
     .toLowerCase()

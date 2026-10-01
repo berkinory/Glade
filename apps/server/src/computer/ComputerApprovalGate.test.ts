@@ -72,25 +72,24 @@ describe("ComputerApprovalGate", () => {
         if (decision === undefined) clipboardPrompts.push(id);
       },
     });
-    // Turn one declines the task prompt.
+
     const first = gate.requestTask(taskInput("turn-1"));
     gate.respond("a", taskPrompts[0]!, "decline");
     expect(await first).toBe(false);
-    // A clipboard approval is a separate per-call consent: the task decline
-    // neither answers it nor suppresses its prompt.
+
     const clipboardFirst = gate.request(clipboardInput());
     expect(clipboardPrompts).toHaveLength(1);
     gate.respond("a", clipboardPrompts[0]!, "decline");
     expect(await clipboardFirst).toBe(false);
-    // Turn two re-prompts instead of replaying the decline, and can accept.
+
     const second = gate.requestTask(taskInput("turn-2"));
     expect(taskPrompts).toHaveLength(2);
     gate.respond("a", taskPrompts[1]!, "accept");
     expect(await second).toBe(true);
-    // The clipboard decline never touched the task grant: the turn stays approved.
+
     expect(await gate.requestTask(taskInput("turn-2"))).toBe(true);
     expect(taskPrompts).toHaveLength(2);
-    // And the task grant never answers a clipboard prompt either.
+
     const clipboardSecond = gate.request(clipboardInput());
     expect(clipboardPrompts).toHaveLength(2);
     gate.respond("a", clipboardPrompts[1]!, "accept");
@@ -188,7 +187,7 @@ describe("ComputerApprovalGate", () => {
       code: "approval_queue_full",
       retryable: true,
     });
-    // The thread cap is per chat: an uninvolved thread still gets its prompt.
+
     let otherId = "";
     const other = gate.request({
       threadId: "other",
@@ -234,7 +233,7 @@ describe("ComputerApprovalGate", () => {
     });
     abort.abort();
     await expect(request).rejects.toMatchObject({ name: "AbortError" });
-    // The slot was released: the thread can prompt again.
+
     const next = gate.request({
       threadId: "stuck",
       signal: new AbortController().signal,
@@ -274,8 +273,7 @@ describe("ComputerApprovalGate", () => {
         }
       },
     });
-    // One thread holds a standing grant, another holds a standing decline,
-    // and a third's prompt is still open when the interruption lands.
+
     const granted = gate.requestTask(input("granted"));
     gate.respond("granted", prompts.get("granted")![0]!, "accept");
     expect(await granted).toBe(true);
@@ -285,18 +283,16 @@ describe("ComputerApprovalGate", () => {
     const pending = gate.requestTask(input("pending"));
     expect(prompts.get("pending")).toHaveLength(1);
     gate.revokeTaskGrants();
-    // The grant is gone: the next call republishes the prompt instead of
-    // riding the pre-interruption answer.
+
     const reprompted = gate.requestTask(input("granted"));
     expect(prompts.get("granted")).toHaveLength(2);
     gate.respond("granted", prompts.get("granted")![1]!, "accept");
     expect(await reprompted).toBe(true);
-    // The decline stays declined without a new prompt: a refusal is not the
-    // authority a lock needs to break.
+    // The decline stays declined without a new prompt: a refusal is not the authority a lock needs to
+    // break.
     expect(await gate.requestTask(input("declined"))).toBe(false);
     expect(prompts.get("declined")).toHaveLength(1);
-    // The still-open prompt survives: its answer can only postdate the
-    // interruption, so accepting it now is the re-auth itself.
+
     gate.respond("pending", prompts.get("pending")![0]!, "accept");
     expect(await pending).toBe(true);
     expect(await gate.requestTask(input("pending"))).toBe(true);

@@ -15,14 +15,16 @@ import {
   writeFileSync,
 } from "node:fs";
 import { createRequire } from "node:module";
-import { TCC_SERVICE_NAMES } from "@glade/shared/computerGrants";
-import { resolveGladeDesktopFlavor, gladeDesktopIdentity } from "@glade/shared/desktopIdentity";
+import { TCC_SERVICE_NAMES } from "@glade/shared/computer/computerGrants";
+import {
+  resolveGladeDesktopFlavor,
+  gladeDesktopIdentity,
+} from "@glade/shared/platform/desktopIdentity";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createSourceDesktopEnvironment } from "./source-desktop-launch.mjs";
 
 const desktopFlavor = resolveGladeDesktopFlavor({
-  // Packaged apps launch their bundled main directly; this launcher is source-only.
   isDevelopment: true,
   requestedFlavor: process.env.GLADE_DESKTOP_FLAVOR,
 });
@@ -30,9 +32,7 @@ const desktopIdentity = gladeDesktopIdentity(desktopFlavor);
 const APP_DISPLAY_NAME = desktopIdentity.displayName;
 const APP_BUNDLE_ID = desktopIdentity.bundleId;
 const LAUNCHER_VERSION = 7;
-// Keep the internal asset name aligned with the dev Icon Composer source.
-// Dev compiles its blueprint artwork into a renamed Electron bundle; packaged
-// production builds select their artwork separately.
+
 const ICON_COMPOSER_ASSET_NAME = "Glade";
 const ICON_COMPOSER_DEPLOYMENT_TARGET = "26.0";
 const MICROPHONE_USAGE_DESCRIPTION =
@@ -56,8 +56,8 @@ export function configureMacLauncher(electronPath, environment = process.env) {
       sourceEnvironment[name] === undefined ? [] : [[name, sourceEnvironment[name]]],
     ),
   );
-  // Keep mutable launch settings outside the signed bundle: changing a renderer
-  // port or home directory must not invalidate previously granted permissions.
+  // Keep mutable launch settings outside the signed bundle: changing a renderer port or home
+  // directory must not invalidate previously granted permissions.
   const temporaryPath = `${configurationPath}.${process.pid}.tmp`;
   writeFileSync(temporaryPath, JSON.stringify(configuration), { mode: 0o600 });
   renameSync(temporaryPath, configurationPath);
@@ -82,28 +82,19 @@ function setPlistString(plistPath, key, value, runCommand) {
   throw new Error(`Failed to update plist key "${key}" at ${plistPath}: ${details}`.trim());
 }
 
-// Same path as LSREGISTER_PATH in src/macIconCacheRefresh.ts; this launcher is
-// a standalone module and cannot import from the bundled sources.
 const LSREGISTER_PATH =
   "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister";
 
-// macOS caches bundle icons by identifier, so a rebuilt runtime keeps painting
-// the previous icon until Launch Services re-reads the bundle — re-registering
-// alone is not enough once an entry has gone stale. Best effort: a stale icon
-// is a better outcome than refusing to launch.
 function refreshLaunchServicesRegistration(appBundlePath, runCommand) {
   if (!existsSync(LSREGISTER_PATH)) {
     return;
   }
   runCommand(LSREGISTER_PATH, ["-u", appBundlePath], { encoding: "utf8" });
-  // Unregistering is not enough on its own: IconServices keeps serving the
-  // cached artwork until the bundle's own modification date moves forward.
+
   try {
     const now = new Date();
     utimesSync(appBundlePath, now, now);
-  } catch {
-    // A failed timestamp bump only costs a stale icon, so carry on.
-  }
+  } catch {}
   const result = runCommand(LSREGISTER_PATH, ["-f", "-R", appBundlePath], { encoding: "utf8" });
   if (result.status !== 0) {
     const details = [result.error?.message, result.stderr].filter(Boolean).join("\n").trim();
@@ -127,9 +118,9 @@ function latestMtimeMs(entryPath) {
   return latest;
 }
 
-// macOS 26 renders the Liquid Glass material only from a compiled Icon Composer
-// asset, never from an ICNS. actool ships with Xcode, so this stays optional: a
-// machine without it keeps the flat icon instead of failing to launch.
+// macOS 26 renders the Liquid Glass material only from a compiled Icon Composer asset, never from
+// an ICNS. actool ships with Xcode, so this stays optional: a machine without it keeps the flat
+// icon instead of failing to launch.
 function compileGlassAppIcon(appBundlePath, iconComposerPath, scratchDir, runCommand) {
   const resourcesDir = join(appBundlePath, "Contents", "Resources");
   const partialPlistPath = join(scratchDir, "icon-partial.plist");
@@ -281,16 +272,15 @@ function readCdhash(appBundlePath, runCommand) {
     timeout: 60_000,
   });
   if (result.error || result.status !== 0) return null;
-  // codesign prints its description on stderr.
+
   return (
     /^CDHash=([0-9a-f]+)$/m.exec(`${result.stderr ?? ""}\n${result.stdout ?? ""}`)?.[1] ?? null
   );
 }
 
-// macOS pins an ad-hoc bundle's privacy grants to its cdhash. Re-signing a
-// changed bundle leaves rows that System Settings still shows switched on but
-// that never match again, and neither the toggle nor a re-drop replaces them.
-// Clear only this flavor's dead rows so the permission guide adds a valid one.
+// Re-signing a changed bundle leaves rows that System Settings still shows switched on but that
+// never match again, and neither the toggle nor a re-drop replaces them. Clear only this flavor's
+// dead rows so the permission guide adds a valid one.
 function resetStalePrivacyGrants(runCommand) {
   for (const service of Object.values(TCC_SERVICE_NAMES)) {
     const result = runCommand("/usr/bin/tccutil", ["reset", service, APP_BUNDLE_ID], {
@@ -331,7 +321,7 @@ function buildMacLauncher(
     iconMtimeMs: statSync(iconPath).mtimeMs,
     bootstrapHash: createHash("sha256").update(readFileSync(bootstrapPath)).digest("hex"),
     appVersion: desktopPackage.version,
-    // Layered artwork lives in several files, so track the newest of them.
+
     iconComposerMtimeMs: hasIconComposerSource ? latestMtimeMs(iconComposerPath) : null,
   };
 
@@ -363,8 +353,7 @@ function buildMacLauncher(
     JSON.stringify({ name: APP_DISPLAY_NAME, version: desktopPackage.version, main: "main.cjs" }),
   );
   copyFileSync(bootstrapPath, join(applicationDirectory, "main.cjs"));
-  // Plist/icon changes invalidate Electron's signature. Sign only our generated
-  // copy, once per rebuild, so ordinary launches retain a stable TCC identity.
+
   signMacLauncherBundle(targetAppBundlePath, runCommand);
   if (previousCdhash && readCdhash(targetAppBundlePath, runCommand) !== previousCdhash) {
     resetStalePrivacyGrants(runCommand);

@@ -1,5 +1,5 @@
 import { hasUnsavedWorkspaceEditors } from "~/lib/workspaceEditorSession";
-import { resolveComputerInvocationMode } from "@glade/shared/computerInvocation";
+import { resolveComputerInvocationMode } from "@glade/shared/computer/computerInvocation";
 import {
   prepareComputerPermissionGuide,
   readLocalComputerPermissionBridge,
@@ -13,13 +13,13 @@ import { resolveProviderSendAvailabilityWithRefresh } from "~/lib/providerAvaila
 import { newMessageId, randomUUID } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
 import { resolveFollowUpDispatchMode } from "../../appSettings";
-import { useComposerDraftStore, type QueuedComposerChatTurn } from "../../composerDraftStore";
+import { useComposerDraftStore } from "../../composerDraftStore";
+import type { QueuedComposerChatTurn } from "../../composerDraftDomain";
 import { appendAssistantSelectionsToPrompt } from "../../lib/assistantSelections";
 import { appendBrowserAnnotationsToPrompt } from "../../lib/browserAnnotations";
 import { appendPastedTextsToPrompt } from "../../lib/composerPastedText";
 import {
   findPendingBlobComposerAttachments,
-  formatOutgoingComposerPrompt,
   hydratePendingBlobComposerAttachments,
   readFileAsDataUrl,
   stageUploadComposerAttachments,
@@ -32,205 +32,143 @@ import {
   appendTerminalContextsToPrompt,
 } from "../../lib/terminalContext";
 import { setPendingUserInputCustomAnswer } from "../../pendingUserInput";
-import { resolvePlanFollowUpSubmission } from "../../proposedPlan";
-import { buildSourceProposedPlanReference } from "../../session-logic";
+
 import {
   buildExpiredTerminalContextToastCopy,
-  createWorktreeSetupResolution,
-  deriveComposerSendState,
   queuedChatTurnDispatchFields,
-  queuedPlanFollowUpDispatchFields,
-  resolveEnvironmentPanelPreferenceAfterFirstSend,
   resolveQueuedTurnDispatchSettings,
-} from "../ChatView.logic";
+} from "../ChatView.logic.subagents";
+import { createWorktreeSetupResolution, deriveComposerSendState } from "../ChatView.logic.dispatch";
+import { resolveEnvironmentPanelPreferenceAfterFirstSend } from "../ChatView.logic.worktree";
 import { toastManager } from "../ui/toast";
-import type { ChatTurnSubmissionInput } from "./chatSendTypes";
+import type { ChatTurnSubmissionControllerInput } from "./chatSendTypes";
 import { handleChatAutomationSend } from "./handleChatAutomationSend";
 import { prepareChatSendWorkspace } from "./prepareChatSendWorkspace";
-import {
-  buildQueuedComposerPreviewText,
-  composerPromptStillMatchesRestoredQueuedDraft,
-} from "./queuedComposerPreview";
+import { buildQueuedComposerPreviewText } from "./queuedComposerPreview";
 import { resolveChatPromptCaptures } from "./resolveChatPromptCaptures";
 import { useChatTurnExecution } from "./useChatTurnExecution";
-import { useStore } from "../../store";
-import { getThreadFromState } from "../../threadDerivation";
 
 export function useChatTurnSubmission({
-  threadId,
-  hasLiveTurn,
-  lateComposerSendHandlersRef,
-  activeThread,
-  isConnecting,
-  sendPreflightInFlightRef,
-  sendInFlightRef,
-  showPlanFollowUpPrompt,
-  activeProposedPlan,
-  hasQueueableLiveTurn,
-  clearComposerInput,
-  scheduleComposerFocus,
-  activeProject,
-  threadWorkspaceCwd,
-  refreshProviderStatuses,
-  isServerThread,
-  hasNativeUserMessages,
-  chatWorkspaceRoot,
-  isHomeChatContainer,
-  resolvedThreadWorktreePath,
-  currentActiveGitBranch,
-  isContainerLandingProject,
-  syncServerShellSnapshot,
-  activeRootBranch,
-  gitBranchSourceCwd,
-  setStoreThreadError,
-  queryClient,
-  isCenteredEmptyLanding,
-  setEnvironmentPanelPreferenceOpen,
-  environmentPanelPreferenceOpen,
-  setTailAnchor,
-  setThreadError,
-  setComposerHighlightedItemId,
-  setStoreThreadWorkspace,
-  createWorktreeMutation,
-  isLocalDraftThread,
-  threadNotes,
-  setSettledThreadBranchWarningDismissedThreadId,
-  setQueuedSteerGate,
-  planSidebarDismissedForTurnRef,
-  setPlanSidebarOpen,
-  settings,
-  isSendBusy,
-  worktreeSetupResolutionRef,
-  setWorktreeSetupPendingAction,
-  beginLocalDispatch,
-  clearLocalDispatchWorktreeSetup,
-  armLocalDispatchAckFallback,
-  failLocalDispatchWorktreeSetup,
-  scheduleFailedWorktreeSetupDispatchReset,
-  resetLocalDispatch,
-  isVoiceTranscribing,
-  waitForPendingComposerImages,
-  activePendingProgress,
-  activePendingUserInputKey,
-  pendingUserInputAnswersByRequestIdRef,
-  setPendingUserInputAnswersByRequestId,
-  composerEditorRef,
-  promptRef,
-  composerImages,
-  composerFiles,
-  composerAssistantSelections,
-  composerBrowserAnnotations,
-  composerFileComments,
-  composerTerminalContexts,
-  composerPastedTexts,
-  composerPullRequestContexts,
-  restoredQueuedSourceProposedPlanRef,
-  enqueueQueuedComposerTurn,
-  setComposerDraftPrompt,
-  setComposerTrigger,
-  clearProjectDraftThreadId,
-  setDraftThreadContext,
-  promptHistoryNavigationRef,
-  applyingPromptHistoryNavigationRef,
-  expectedPromptHistoryPromptRef,
-  clearComposerDraftContent,
-  setComposerDraftInteractionMode,
-  setComposerCursor,
-  setRestoredQueuedSourceProposedPlan,
-  composerImagesRef,
-  composerFilesRef,
-  composerAssistantSelectionsRef,
-  composerBrowserAnnotationsRef,
-  composerFileCommentsRef,
-  composerTerminalContextsRef,
-  composerPastedTextsRef,
-  composerPullRequestContextsRef,
-  setPrompt,
-  addComposerImagesToDraft,
-  addComposerFilesToDraft,
-  addComposerAssistantSelectionToDraft,
-  addComposerDraftBrowserAnnotations,
-  addComposerFileCommentToDraft,
-  addComposerTerminalContextsToDraft,
-  addComposerPastedTextsToDraft,
-  addComposerPullRequestContextsToDraft,
-  selectedComposerSkillsRef,
-  selectedComposerMentionsRef,
-  updateSelectedComposerSkills,
-  updateSelectedComposerMentions,
-  selectedProvider,
-  selectedModel,
-  selectedPromptEffort,
-  turnDispatchSettings,
-  computerControlChangeSequence,
-  pendingAutomationConversationRef,
-  setPendingAutomationConversation,
-  pendingAutomationConversation,
-  activeThreadIdRef,
-  hasLiveTurnRef,
-  automationProjects,
-  setAutomationDraftWarningContext,
-  setAutomationDraftForm,
-  setAutomationDraftWarnings,
-  setAcknowledgedAutomationWarnings,
-  setAutomationDraftOpen,
-  armTranscriptAutoFollow,
-  tailAnchorScrollInFlightRef,
-  prepareAutomationFormForCreate,
-  createAutomationFromForm,
-  providerStatuses,
-  rememberCustomBinaryPathForDispatch,
-  setOptimisticUserMessages,
-  runProjectScript,
-  persistThreadSettingsForNextTurn,
-}: ChatTurnSubmissionInput) {
-  const executePreparedTurn = useChatTurnExecution({
-    isServerThread,
-    setStoreThreadWorkspace,
-    clearLocalDispatchWorktreeSetup,
-    createWorktreeMutation,
-    beginLocalDispatch,
-    isLocalDraftThread,
-    threadNotes,
-    runProjectScript,
-    persistThreadSettingsForNextTurn,
-    rememberCustomBinaryPathForDispatch,
-    setSettledThreadBranchWarningDismissedThreadId,
-    armLocalDispatchAckFallback,
-    setQueuedSteerGate,
-    threadId,
-    planSidebarDismissedForTurnRef,
-    setPlanSidebarOpen,
-    setRestoredQueuedSourceProposedPlan,
-    failLocalDispatchWorktreeSetup,
-    setOptimisticUserMessages,
-    promptRef,
-    composerImagesRef,
-    composerFilesRef,
-    composerAssistantSelectionsRef,
-    composerBrowserAnnotationsRef,
-    composerFileCommentsRef,
-    composerTerminalContextsRef,
-    composerPastedTextsRef,
-    composerPullRequestContextsRef,
-    setPrompt,
-    setComposerCursor,
-    addComposerImagesToDraft,
-    addComposerFilesToDraft,
-    addComposerAssistantSelectionToDraft,
-    addComposerDraftBrowserAnnotations,
-    addComposerFileCommentToDraft,
-    addComposerTerminalContextsToDraft,
-    addComposerPastedTextsToDraft,
-    addComposerPullRequestContextsToDraft,
-    updateSelectedComposerSkills,
-    updateSelectedComposerMentions,
-    setComposerTrigger,
-    setThreadError,
-    sendInFlightRef,
+  props,
+  provider,
+  turn,
+  session,
+  environment,
+  composer,
+  actions,
+  workspace,
+  transcript,
+  discovery,
+}: ChatTurnSubmissionControllerInput) {
+  const { threadId } = props;
+  const {
+    hasLiveTurn,
+    isConnecting,
+
+    hasQueueableLiveTurn,
+    isSendBusy,
     worktreeSetupResolutionRef,
-    scheduleFailedWorktreeSetupDispatchReset,
-    resetLocalDispatch,
+    setWorktreeSetupPendingAction,
+    beginLocalDispatch,
+    activePendingProgress,
+    activePendingUserInputKey,
+    pendingUserInputAnswersByRequestIdRef,
+    setPendingUserInputAnswersByRequestId,
+    selectedComposerSkillsRef,
+    selectedComposerMentionsRef,
+    selectedProvider,
+    selectedModel,
+    selectedPromptEffort,
+    pendingAutomationConversationRef,
+    setPendingAutomationConversation,
+    pendingAutomationConversation,
+    activeThreadIdRef,
+    hasLiveTurnRef,
+    automationProjects,
+    setAutomationDraftWarningContext,
+    setAutomationDraftForm,
+    setAutomationDraftWarnings,
+    setAcknowledgedAutomationWarnings,
+    setAutomationDraftOpen,
+  } = provider;
+  const { lateComposerSendHandlersRef, setQueuedSteerGate } = turn;
+  const {
+    activeThread,
+    sendPreflightInFlightRef,
+    sendInFlightRef,
+    syncServerShellSnapshot,
+    setStoreThreadError,
+    queryClient,
+    setComposerHighlightedItemId,
+    settings,
+    composerEditorRef,
+    promptRef,
+    composerImages,
+    composerFiles,
+    composerAssistantSelections,
+    composerBrowserAnnotations,
+    composerFileComments,
+    composerTerminalContexts,
+    composerPastedTexts,
+    composerPullRequestContexts,
+
+    enqueueQueuedComposerTurn,
+    setComposerDraftPrompt,
+    setComposerTrigger,
+    clearProjectDraftThreadId,
+    setDraftThreadContext,
+    promptHistoryNavigationRef,
+    applyingPromptHistoryNavigationRef,
+    expectedPromptHistoryPromptRef,
+    clearComposerDraftContent,
+    setComposerCursor,
+  } = session;
+  const {
+    setEnvironmentPanelPreferenceOpen,
+    environmentPanelPreferenceOpen,
+    turnDispatchSettings,
+    armTranscriptAutoFollow,
+    tailAnchorScrollInFlightRef,
+  } = environment;
+  const {
+    scheduleComposerFocus,
+    setThreadError,
+    isVoiceTranscribing,
+    waitForPendingComposerImages,
+    computerControlChangeSequence,
+  } = composer;
+  const { clearComposerInput, prepareAutomationFormForCreate, createAutomationFromForm } = actions;
+  const {
+    activeProject,
+    isServerThread,
+    chatWorkspaceRoot,
+    isHomeChatContainer,
+    resolvedThreadWorktreePath,
+    isContainerLandingProject,
+  } = workspace;
+  const {
+    threadWorkspaceCwd,
+    activeRootBranch,
+    gitBranchSourceCwd,
+    isCenteredEmptyLanding,
+    setTailAnchor,
+    setOptimisticUserMessages,
+  } = transcript;
+  const {
+    refreshProviderStatuses,
+    hasNativeUserMessages,
+    currentActiveGitBranch,
+    providerStatuses,
+  } = discovery;
+  const executePreparedTurn = useChatTurnExecution({
+    workspace,
+    session,
+    provider,
+    transcript,
+    environment,
+    discovery,
+    turn: { setQueuedSteerGate },
+    composer,
   });
 
   const onSend = useCallback(
@@ -252,7 +190,6 @@ export function useChatTurnSubmission({
         !api ||
         !lateSendHandlers ||
         !activeThread ||
-        activeThread.claudeCacheReview != null ||
         isSendBusy ||
         isConnecting ||
         isVoiceTranscribing ||
@@ -261,9 +198,6 @@ export function useChatTurnSubmission({
       ) {
         return false;
       }
-      const hasPendingCacheReview = () =>
-        getThreadFromState(useStore.getState(), activeThread.id)?.claudeCacheReview != null;
-      if (hasPendingCacheReview()) return false;
       sendPreflightInFlightRef.current = true;
       const editorSaved = !hasUnsavedWorkspaceEditors(
         queryClient,
@@ -282,7 +216,6 @@ export function useChatTurnSubmission({
         await waitForPendingComposerImages();
         sendPreflightInFlightRef.current = false;
       }
-      if (hasPendingCacheReview()) return false;
       if (activePendingProgress) {
         const activeQuestion = activePendingProgress.activeQuestion;
         const liveComposerSnapshot = composerEditorRef.current?.readSnapshot() ?? null;
@@ -329,8 +262,8 @@ export function useChatTurnSubmission({
       let promptForSend =
         queuedChatTurn?.prompt ?? liveComposerSnapshot?.value ?? promptRef.current;
       if (queuedChatTurn === null) {
-        // Read the live editor snapshot, not an earlier React render. A queued
-        // command already froze its mode and generation and must not be inferred again.
+        // Read the live editor snapshot, not an earlier React render. A queued command already froze its
+        // mode and generation and must not be inferred again.
         const mode = resolveComputerInvocationMode({
           messageText: promptForSend,
           enableComputerControl: settings.computerControlEnabled,
@@ -345,12 +278,7 @@ export function useChatTurnSubmission({
         queuedChatTurn?.images ??
         useComposerDraftStore.getState().draftsByThreadId[activeThread.id]?.images ??
         composerImages;
-      // Existing image attachments can persist as IndexedDB blobs and hydrate into `images`
-      // asynchronously through the attachment loader. Right after a reload the user can
-      // hit send before that hydration finishes; without this, the not-yet-hydrated
-      // capture would be silently dropped from the message and then have its blob
-      // deleted when the composer clears after send. Live sends only: a queued turn
-      // already captured a fully-resolved image snapshot when it was queued.
+
       if (queuedChatTurn === null) {
         const pendingBlobAttachments = findPendingBlobComposerAttachments({
           persistedAttachments:
@@ -367,7 +295,6 @@ export function useChatTurnSubmission({
         }
       }
       const composerFilesForSend = queuedChatTurn?.files ?? composerFiles;
-      if (hasPendingCacheReview()) return false;
       const composerAssistantSelectionsForSend =
         queuedChatTurn?.assistantSelections ?? composerAssistantSelections;
       const composerBrowserAnnotationsForSend =
@@ -389,7 +316,7 @@ export function useChatTurnSubmission({
       const selectedModelSelectionForSend = dispatchSettings.modelSelection;
       const providerOptionsForDispatchForSend = dispatchSettings.providerOptions;
       const runtimeModeForSend = dispatchSettings.runtimeMode;
-      let interactionModeForSend = dispatchSettings.interactionMode;
+
       const envModeForSend = dispatchSettings.envMode;
       const {
         trimmedPrompt: trimmed,
@@ -410,66 +337,7 @@ export function useChatTurnSubmission({
         pullRequestContexts: composerPullRequestContextsForSend,
       });
       let trimmedPromptForSend = trimmed;
-      const restoredQueuedPlanDraftSource =
-        queuedChatTurn === null &&
-        restoredQueuedSourceProposedPlanRef.current?.threadId === activeThread.id &&
-        composerPromptStillMatchesRestoredQueuedDraft(
-          restoredQueuedSourceProposedPlanRef.current.restoredPrompt,
-          promptForSend,
-        )
-          ? restoredQueuedSourceProposedPlanRef.current
-          : null;
-      const isLivePlanFollowUpSubmission =
-        queuedChatTurn === null &&
-        restoredQueuedPlanDraftSource === null &&
-        showPlanFollowUpPrompt &&
-        activeProposedPlan !== null;
-      const hasStructuredPlanFollowUpContent =
-        composerImagesForSend.length > 0 ||
-        composerFilesForSend.length > 0 ||
-        composerAssistantSelectionsForSend.length > 0 ||
-        composerBrowserAnnotationsForSend.length > 0 ||
-        composerFileCommentsForSend.length > 0 ||
-        sendableComposerTerminalContexts.length > 0 ||
-        sendableComposerPastedTexts.length > 0;
-      // Queued chat turns already captured their intended mode. Live plan follow-ups
-      // with attachments must use the normal send path so references are preserved.
-      if (isLivePlanFollowUpSubmission) {
-        const followUp = resolvePlanFollowUpSubmission({
-          draftText: trimmed,
-          planMarkdown: activeProposedPlan.planMarkdown,
-        });
-        if (hasStructuredPlanFollowUpContent) {
-          promptForSend = followUp.text;
-          interactionModeForSend = followUp.interactionMode;
-          trimmedPromptForSend = followUp.text.trim();
-        } else {
-          if (hasQueueableLiveTurn && dispatchMode === "queue") {
-            clearComposerInput(activeThread.id);
-            scheduleComposerFocus();
-            enqueueQueuedComposerTurn(activeThread.id, {
-              id: randomUUID(),
-              kind: "plan-follow-up",
-              createdAt: new Date().toISOString(),
-              previewText: followUp.text.trim(),
-              text: followUp.text,
-              interactionMode: followUp.interactionMode,
-              selectedProvider,
-              selectedModel,
-              selectedPromptEffort,
-              ...queuedPlanFollowUpDispatchFields(turnDispatchSettings),
-            });
-            return true;
-          }
-          clearComposerInput(activeThread.id);
-          scheduleComposerFocus();
-          return lateSendHandlers.submitPlanFollowUp({
-            text: followUp.text,
-            interactionMode: followUp.interactionMode,
-            dispatchMode,
-          });
-        }
-      }
+
       const hasNoStructuredComposerContext =
         composerImagesForSend.length === 0 &&
         composerFilesForSend.length === 0 &&
@@ -478,30 +346,18 @@ export function useChatTurnSubmission({
         composerFileCommentsForSend.length === 0 &&
         sendableComposerTerminalContexts.length === 0 &&
         sendableComposerPastedTexts.length === 0 &&
-        // Provider mentions are structured turn metadata, and automation definitions persist text only.
         selectedComposerMentionsForSend.length === 0;
       const hasPromptOnlySendableContent = hasNoStructuredComposerContext;
       if (hasPromptOnlySendableContent) {
         const handledSlashCommand =
           await lateSendHandlers.handleStandaloneSlashCommand(trimmedPromptForSend);
         if (handledSlashCommand) {
-          // A slash command (e.g. /clear) consumes the composer, so abandon any in-progress
-          // automation setup rather than leaving a stale banner/request behind.
           pendingAutomationConversationRef.current = null;
           setPendingAutomationConversation(null);
           return true;
         }
       }
-      const sourceProposedPlanForSend =
-        queuedChatTurn?.sourceProposedPlan ??
-        restoredQueuedPlanDraftSource?.sourceProposedPlan ??
-        (isLivePlanFollowUpSubmission && activeProposedPlan && interactionModeForSend === "default"
-          ? buildSourceProposedPlanReference({
-              threadId: activeThread.id,
-              proposedPlan: activeProposedPlan,
-            })
-          : undefined);
-      if (hasPendingCacheReview()) return false;
+
       if (!hasSendableContent) {
         if (expiredTerminalContextCount > 0) {
           const toastCopy = buildExpiredTerminalContextToastCopy(
@@ -517,7 +373,8 @@ export function useChatTurnSubmission({
         return false;
       }
       if (!activeProject) return false;
-      if (queuedChatTurn === null && !isLivePlanFollowUpSubmission) {
+
+      if (queuedChatTurn === null) {
         const handled = await handleChatAutomationSend({
           threadId,
           pendingAutomationConversation,
@@ -549,7 +406,6 @@ export function useChatTurnSubmission({
         });
         if (handled) return true;
       }
-      if (hasPendingCacheReview()) return false;
       if (dispatchSettings.computerControlMode === "request") {
         const computerPermission = readLocalComputerPermissionBridge();
         const activeThreadBeforeCheck = activeThreadIdRef.current;
@@ -595,7 +451,6 @@ export function useChatTurnSubmission({
         });
         return false;
       }
-      if (hasPendingCacheReview()) return false;
 
       const captures = await resolveChatPromptCaptures({
         api,
@@ -606,7 +461,6 @@ export function useChatTurnSubmission({
         composerAssistantSelectionsForSend,
       });
       composerImagesForSend = captures.composerImagesForSend;
-      if (hasPendingCacheReview()) return false;
 
       if (hasQueueableLiveTurn && dispatchMode === "queue" && queuedChatTurn === null) {
         clearComposerInput(activeThread.id);
@@ -652,7 +506,8 @@ export function useChatTurnSubmission({
           selectedProvider: selectedProviderForSend,
           selectedModel: selectedModelForSend,
           selectedPromptEffort: selectedPromptEffortForSend,
-          ...queuedChatTurnDispatchFields(dispatchSettings, sourceProposedPlanForSend),
+
+          ...queuedChatTurnDispatchFields(dispatchSettings),
           envMode: envModeForSend,
         });
         return true;
@@ -674,7 +529,7 @@ export function useChatTurnSubmission({
         } finally {
           sendPreflightInFlightRef.current = false;
         }
-        if (activeThreadIdRef.current !== activeThread.id || hasPendingCacheReview()) return false;
+        if (activeThreadIdRef.current !== activeThread.id) return false;
       }
       const workspace = await prepareChatSendWorkspace({
         activeThread,
@@ -708,7 +563,6 @@ export function useChatTurnSubmission({
         queryClient,
       });
       if (workspace === false) return false;
-      if (hasPendingCacheReview()) return false;
       const {
         threadIdForSend,
         title,
@@ -764,10 +618,7 @@ export function useChatTurnSubmission({
       const composerPullRequestContextsSnapshot = [...sendableComposerPullRequestContexts];
       const composerSkillsSnapshot = [...selectedComposerSkillsForSend];
       const composerMentionsSnapshot = [...selectedComposerMentionsForSend];
-      // Trailing blocks are appended innermost-to-outermost: assistant selections,
-      // terminal contexts, file comments, pasted text, pull request contexts, then
-      // browser annotations (outermost). The display extractors unwrap them in the
-      // reverse order.
+
       const messageTextForSend = appendBrowserAnnotationsToPrompt(
         appendPullRequestContextsToPrompt(
           appendPastedTextsToPrompt(
@@ -792,12 +643,7 @@ export function useChatTurnSubmission({
       const outgoingTextSeed =
         messageTextForSend ||
         (composerImagesSnapshot.length > 0 ? IMAGE_ONLY_BOOTSTRAP_PROMPT : "");
-      const outgoingMessageText = formatOutgoingComposerPrompt({
-        provider: selectedProviderForSend,
-        model: selectedModelForSend,
-        effort: selectedPromptEffortForSend,
-        text: outgoingTextSeed,
-      });
+      const outgoingMessageText = outgoingTextSeed;
       const mentionedSkillsForSend = filterPromptSkillReferences(
         outgoingMessageText,
         selectedComposerSkillsForSend,
@@ -830,9 +676,9 @@ export function useChatTurnSubmission({
           sizeBytes: file.sizeBytes,
         })),
       ];
-      // Sending the first message flips the centered empty landing into a normal
-      // transcript. Clear session-only landing overrides when default-open is enabled;
-      // otherwise keep the transition closed.
+      // Sending the first message flips the centered empty landing into a normal transcript. Clear
+      // session-only landing overrides when default-open is enabled; otherwise keep the transition
+      // closed.
       if (isCenteredEmptyLanding) {
         setEnvironmentPanelPreferenceOpen(
           resolveEnvironmentPanelPreferenceAfterFirstSend({
@@ -859,10 +705,7 @@ export function useChatTurnSubmission({
           source: "native",
         },
       ]);
-      // Mark the transcript as anchored before the optimistic row lands. The tail
-      // anchor sizes the spacer that lets this message sit at the viewport top,
-      // and its hook owns the slide; auto-follow stays armed for bookkeeping but
-      // pauses until the in-flight flag clears.
+
       armTranscriptAutoFollow(threadIdForSend, true);
       tailAnchorScrollInFlightRef.current = true;
       setTailAnchor({ threadId: threadIdForSend, messageId: messageIdForSend });
@@ -879,22 +722,19 @@ export function useChatTurnSubmission({
           description: toastCopy.description,
         });
       }
-      // Queued turns are dispatched from their captured snapshot, so this send path
-      // must not clear a separate live draft the user may already be editing.
+      // Queued turns are dispatched from their captured snapshot, so this send path must not clear a
+      // separate live draft the user may already be editing.
       if (queuedChatTurn === null) {
         promptHistoryNavigationRef.current = null;
         applyingPromptHistoryNavigationRef.current = false;
         expectedPromptHistoryPromptRef.current = null;
         promptRef.current = "";
         clearComposerDraftContent(threadIdForSend, { preservePreviewUrls: true });
-        if (isLivePlanFollowUpSubmission) {
-          setComposerDraftInteractionMode(threadIdForSend, interactionModeForSend);
-        }
+
         setComposerHighlightedItemId(null);
         setComposerCursor(0);
         setComposerTrigger(null);
-        // A clicked submit button steals focus; return it after the controlled
-        // draft reset so rapid follow-up typing lands in the composer.
+
         scheduleComposerFocus();
       }
 
@@ -920,7 +760,7 @@ export function useChatTurnSubmission({
         targetProjectIdForSend,
         title,
         nextRuntimeModeForSend,
-        interactionModeForSend,
+
         nextThreadWorkingDirectory,
         activeThread,
         targetProjectKindForSend,
@@ -933,7 +773,7 @@ export function useChatTurnSubmission({
         mentionedSkillsForSend,
         mentionedPluginMentionsForSend,
         dispatchMode,
-        sourceProposedPlanForSend,
+
         shouldResumeSettledLocalThread,
         currentActiveGitBranchForSend,
         queuedChatTurn,
@@ -960,8 +800,7 @@ export function useChatTurnSubmission({
       sendInFlightRef,
       turnDispatchSettings,
       computerControlChangeSequence,
-      showPlanFollowUpPrompt,
-      activeProposedPlan,
+
       hasQueueableLiveTurn,
       clearComposerInput,
       scheduleComposerFocus,
@@ -1007,7 +846,7 @@ export function useChatTurnSubmission({
       composerTerminalContexts,
       composerPastedTexts,
       composerPullRequestContexts,
-      restoredQueuedSourceProposedPlanRef,
+
       enqueueQueuedComposerTurn,
       setComposerDraftPrompt,
       setComposerTrigger,
@@ -1017,7 +856,6 @@ export function useChatTurnSubmission({
       applyingPromptHistoryNavigationRef,
       expectedPromptHistoryPromptRef,
       clearComposerDraftContent,
-      setComposerDraftInteractionMode,
       setComposerCursor,
       selectedComposerSkillsRef,
       selectedComposerMentionsRef,

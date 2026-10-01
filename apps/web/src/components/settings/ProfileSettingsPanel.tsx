@@ -1,13 +1,7 @@
-// FILE: ProfileSettingsPanel.tsx
-// Purpose: Local-first profile / stats dashboard rendered inside Settings → Profile. Core
-// stats render instantly from a fast SQL RPC; lifetime/peak token figures and the tokens/day
-// heatmap stream in from a second DB-backed RPC. Centered, low-chrome layout
-// with an explicit edit mode for the local name + handle.
-// Layer: web profile feature (settings panel body).
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { type ProfileStats, type ProfileTokenStats, type ProviderKind } from "@glade/contracts";
+import { type ProfileStats, type ProfileTokenStats } from "@glade/contracts/server/stats";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import {
   serverProfileStatsQueryOptions,
   serverProfileTokenStatsQueryOptions,
@@ -95,7 +89,7 @@ function ProfileContent({
 
   return (
     <div className="flex min-w-0 flex-col gap-7">
-      {/* Action row */}
+      {}
       <div className="flex items-center justify-end gap-2">
         <Button variant="outline" size="sm" onClick={() => setShareOpen(true)}>
           <CentralIcon name="share-os" />
@@ -107,7 +101,7 @@ function ProfileContent({
         </Button>
       </div>
 
-      {/* Centered identity header */}
+      {}
       <header className="flex flex-col items-center gap-3 text-center">
         <ProfileAvatar
           initials={stats.identity.initials}
@@ -128,7 +122,7 @@ function ProfileContent({
         </div>
       </header>
 
-      {/* Stat tiles */}
+      {}
       <div className="grid grid-cols-2 divide-x divide-y divide-border/50 overflow-hidden rounded-2xl border border-border/60 sm:grid-cols-3 lg:grid-cols-5 lg:divide-y-0">
         <StatTile
           label="Lifetime tokens"
@@ -143,7 +137,7 @@ function ProfileContent({
         <StatTile label="Longest streak" value={formatDays(stats.activity.longestStreakDays)} />
       </div>
 
-      {/* Heatmap */}
+      {}
       {stats.providerModels.some((entry) => entry.provider === "claudeAgent") ||
       tokenStats?.providers.includes("claudeAgent") ? (
         <p className="text-ui leading-snug text-muted-foreground">
@@ -158,18 +152,14 @@ function ProfileContent({
         ) : (
           <ActivityHeatmap
             cells={heatmap.cells}
-            fill
-            radius={5}
-            gap={3}
-            tooltip
-            tooltipUnit={heatmap.unit}
-            showMonths
-            monthsPosition="bottom"
+            layout={{ fill: true, radius: 5, gap: 3 }}
+            tooltip={{ show: true, unit: heatmap.unit }}
+            months={{ show: true, position: "bottom" }}
           />
         )}
       </section>
 
-      {/* Insights + plugins */}
+      {}
       <div className="grid gap-x-12 gap-y-7 md:grid-cols-2">
         <section className="flex flex-col gap-3">
           <h3 className="text-ui-lg font-medium">Activity insights</h3>
@@ -245,7 +235,7 @@ function ProfileContent({
         </section>
       </div>
 
-      {/* Model usage */}
+      {}
       <section className="flex flex-col gap-3">
         <h3 className="text-ui-lg font-medium">Model usage</h3>
         <p className="text-ui leading-snug text-muted-foreground">
@@ -302,8 +292,6 @@ function ProfileContent({
     </div>
   );
 }
-
-// ── Small pieces ───────────────────────────────────────────────────────
 
 function StatTile({ label, value }: { label: string; value: string | null }) {
   return (

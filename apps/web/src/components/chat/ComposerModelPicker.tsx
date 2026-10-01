@@ -1,18 +1,7 @@
-// FILE: ComposerModelPicker.tsx
-// Purpose: Single composer picker — provider tabs, searchable model rows, starred
-//   model + trait presets, and per-trait rows (effort, speed, …) in one panel.
-// Layer: Chat composer presentation
-// Depends on: the picker's tabs/row/trait-row pieces, composer trait helpers, starred
-//   model storage, and shared menu primitives.
-
-import {
-  type ModelSlug,
-  type ProviderKind,
-  type ProviderModelDescriptor,
-  type ProviderModelOptions,
-  type ServerProviderStatus,
-  type ThreadId,
-} from "@glade/contracts";
+import { type ModelSlug, type ProviderModelOptions } from "@glade/contracts/provider/model";
+import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
+import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import {
   useDeferredValue,
   useEffect,
@@ -80,7 +69,6 @@ import {
 import { resolveRuntimeModelDescriptor } from "./runtimeModelCapabilities";
 
 export type ComposerModelSelectionOptions = {
-  /** Provider options to commit together with the model (starred presets, row effort). */
   modelOptions?: ProviderOptions;
 };
 
@@ -93,14 +81,11 @@ type ComposerModelPickerProps = {
   discoveryErrorsByProvider?: Partial<Record<ProviderKind, string | undefined>>;
   hiddenProviders?: ReadonlyArray<ProviderKind>;
   providerOrder?: ReadonlyArray<ProviderKind>;
-  // Narrow-composer degradation: drop the model name (provider icon stays)
-  // and/or the effort/status label; both remain available to assistive tech.
+
   hideModelLabel?: boolean;
   hideStatusLabel?: boolean;
-  contextWindowLabel?: string | null;
   disabled?: boolean;
-  // "menu" (default) lists effort as a footer row; "slider" renders the ladder as a
-  // stepped slider card in the footer instead.
+
   effortControl?: ComposerEffortControl;
   onProviderModelChange: (
     provider: ProviderKind,
@@ -123,7 +108,6 @@ type ComposerModelPickerProps = {
   shortcutLabel?: string | null;
 };
 
-// Rows arrive ordered by group; wrap each run of equal labels in one labelled menu group.
 function groupRowElements(
   rows: ReadonlyArray<PickerRow>,
   renderRow: (row: PickerRow, index: number) => ReactNode,
@@ -173,7 +157,6 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
   const normalizedQuery = useDeferredValue(query).trim().toLowerCase();
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Reset to the fastest starting point on every open: presets when the user has any.
   const [wasMenuOpen, setWasMenuOpen] = useState(isMenuOpen);
   if (wasMenuOpen !== isMenuOpen) {
     setWasMenuOpen(isMenuOpen);
@@ -183,8 +166,6 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
     }
   }
 
-  // A model picked while the panel stays open (slider mode) still owes the composer its
-  // focus hand-off; it is paid when the panel finally closes.
   const selectionCommittedWhileOpenRef = useRef(false);
   const setMenuOpen = (nextOpen: boolean) => {
     if (open === undefined) {
@@ -203,8 +184,8 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
     return () => cancelAnimationFrame(frame);
   }, [isMenuOpen, tab]);
 
-  // Options a provider's models would run with: the composer's own for the selected
-  // provider, otherwise that provider's draft / sticky selection.
+  // Options a provider's models would run with: the composer's own for the selected provider,
+  // otherwise that provider's draft / sticky selection.
   const draftSelectionByProvider = useComposerDraftStore(
     (store) => store.draftsByThreadId[threadId]?.modelSelectionByProvider,
   );
@@ -264,7 +245,7 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
           current: {
             provider: activeProvider,
             model: props.model,
-            ...resolveStarredTraits(currentTraitSelection),
+            ...resolveStarredTraits(currentTraitSelection, props.modelOptions),
           },
           effortLevelsFor: (provider, model) => traitSelectionFor(provider, model).effortLevels,
         })
@@ -276,8 +257,6 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
         });
   const starredModelSlots = new Set(starredModels.map(starredModelSlotKey));
 
-  // Commit a row: `patch` carries the traits to apply on top of the provider's options.
-  // `keepOpen` leaves the panel up so the footer slider can tune the model just picked.
   const commitRow = (
     row: PickerRow,
     model: ModelSlug,
@@ -310,9 +289,7 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
     if (model === null) return;
 
     const selection = traitSelectionFor(row.provider, model);
-    // Slider mode: switching to a model with an effort ladder keeps the panel open so the
-    // footer slider can set its effort. Presets already carry their effort, and picking
-    // the current model again is the "done" gesture, so both close.
+
     const keepOpen =
       usesEffortSlider &&
       row.provider === props.provider &&
@@ -329,7 +306,6 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
     );
   };
 
-  // Pick a model and its effort in one gesture from the row's side block.
   const selectRowWithEffort = (row: PickerRow, value: string) => {
     const model = row.selectableModel;
     if (props.disabled || model === null) return;
@@ -340,14 +316,7 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
       value,
     });
     if (!plan) return;
-    if (plan.kind === "options") {
-      commitRow(row, model, plan.patch);
-      return;
-    }
-    // Prompt-injected levels (Ultrathink) only make sense for the composer's own prompt.
-    if (row.provider !== props.provider) return;
-    props.onPromptChange(plan.prompt);
-    commitRow(row, model, {});
+    commitRow(row, model, plan.patch);
   };
 
   const openTabs: ComposerModelPickerTab[] = [
@@ -361,8 +330,8 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
     setTab(openTabs[(index + direction + openTabs.length) % openTabs.length] ?? STARRED_TAB);
   };
 
-  // mod+1…9 picks a visible row. Registered on window capture because thread-jump
-  // owns the same chord globally (the sidebar yields while this picker is open).
+  // mod+1…9 picks a visible row. Registered on window capture because thread-jump owns the same chord
+  // globally (the sidebar yields while this picker is open).
   const onShortcutKeyDown = useEffectEvent((event: KeyboardEvent) => {
     const rowIndex = modelPickerShortcutRowIndex(event);
     if (rowIndex === null) return;
@@ -379,8 +348,7 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
   }, [isMenuOpen]);
 
   const shortcutModifierLabel = isMacNavigatorPlatform() ? "⌘" : "Ctrl ";
-  const isTabLoading =
-    tab !== STARRED_TAB && (props.loadingModelProviders?.[tab] ?? false) && rows.length === 0;
+  const isTabLoading = tab !== STARRED_TAB && (props.loadingModelProviders?.[tab] ?? false);
   const discoveryError = tab === STARRED_TAB ? undefined : props.discoveryErrorsByProvider?.[tab];
 
   return (
@@ -403,18 +371,16 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
       <ComposerPickerMenuPopup
         align="start"
         side="top"
-        // Glassier than the stock picker shell: thinner fill over a deeper, more saturated blur.
         className="w-[min(18.5rem,92vw)] bg-popover/55 [--picker-option-min-h:1.75rem] before:backdrop-blur-3xl before:backdrop-saturate-200"
         {...{ [MODEL_PICKER_POPUP_ATTRIBUTE]: "" }}
         onKeyDownCapture={(event) => {
-          // Tab walks the provider tabs instead of leaving (and closing) the menu.
           if (event.key !== "Tab") return;
           event.preventDefault();
           event.stopPropagation();
           cycleTab(event.shiftKey ? -1 : 1);
         }}
       >
-        {/* -m-1 bleeds over the popup body padding so headers/dividers run edge to edge. */}
+        {}
         <div className="-m-1 flex flex-col">
           <ComposerModelPickerTabs
             tab={tab}
@@ -440,7 +406,6 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
               onChange={(event) => setQuery(event.target.value)}
               onKeyDownCapture={(event) => {
                 if (event.key === "Enter") {
-                  // Focus is still in the field, so no row is highlighted: take the top hit.
                   event.preventDefault();
                   event.stopPropagation();
                   const firstRow = rows[0];
@@ -448,7 +413,7 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
                   return;
                 }
                 if (event.key === "Tab" || MENU_NAVIGATION_KEYS.has(event.key)) return;
-                // Keep typing out of the menu's typeahead.
+
                 event.stopPropagation();
               }}
             />
@@ -490,7 +455,6 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
                     prompt={promptFor(row.provider)}
                     starredModelSlots={starredModelSlots}
                     onSelect={selectRow}
-                    // The footer slider owns effort in slider mode; rows stay plain.
                     onSelectEffort={usesEffortSlider ? null : selectRowWithEffort}
                     onToggleStar={toggleStarredModel}
                     onUnstarModel={unstarModel}

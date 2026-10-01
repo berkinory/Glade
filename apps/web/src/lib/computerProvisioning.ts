@@ -1,36 +1,22 @@
-// FILE: computerProvisioning.ts
-// Purpose: One vocabulary for "set up computer control" — the toasts the chat card
-//          raises, the inline note the settings panel renders, and the rule for what
-//          counts as done. Pure so both surfaces can be pinned by tests.
-// Layer: Web UI logic
-// Exports: computerProvisionOutcome, computerProvisionStartToast, computerProvisionResultToast,
-//          computerProvisionNote
-//
-// The card and the panel used to each own a private copy of this flow, and they
-// said different things about the same server call: one raised a toast the other
-// did not, one had no pending state, and the two could fire the underlying
-// provision concurrently. The state machine lives in `useProvisionComputer`; the
-// words live here.
-
 import type {
   ComputerPermission,
   ComputerProvisionResult,
+} from "@glade/contracts/computer/computer";
+import type {
   DesktopComputerPermissionKind,
   DesktopComputerState,
   DesktopBridge,
-} from "@glade/contracts";
+} from "@glade/contracts/ipc/ipc";
 import {
-  COMPUTER_PERMISSION_KINDS,
+  COMPUTER_PERMISSIONS,
   listComputerPermissions,
   missingComputerPermissions,
-} from "@glade/shared/computerGrants";
+} from "@glade/shared/computer/computerGrants";
 
 import { computerStatusNeedsSetup } from "~/components/ComputerPanel.logic";
-import { isLoopbackHostname } from "~/components/Sidebar.logic";
+import { isLoopbackHostname } from "../components/Sidebar.logic.statusTypes";
 
-/** The desktop bridge identifies its live server; remote servers own their own grants. */
 export function readLocalComputerPermissionBridge(): DesktopBridge["computerPermissions"] | null {
-  // An injected NativeApi can target a different host than the desktop bridge.
   if (globalThis.window?.nativeApi) return null;
   const bridge = globalThis.window?.desktopBridge;
   if (!bridge?.computerPermissions) return null;
@@ -50,7 +36,6 @@ export function computerPermissionSetupSupported(state: DesktopComputerState | n
   return state?.supported === true && state.platform === "macos";
 }
 
-/** One fresh, explicit activation check; ordinary sends do not call this. */
 export async function prepareComputerPermissionGuide(input: {
   readonly getPermissionState?: (
     permissions: readonly DesktopComputerPermissionKind[],
@@ -62,15 +47,14 @@ export async function prepareComputerPermissionGuide(input: {
 }): Promise<boolean> {
   if (!input.getPermissionState || !input.startPermissionSetup) return input.isCurrent();
   if (!input.isCurrent()) return false;
-  const state = await input.getPermissionState(COMPUTER_PERMISSION_KINDS);
+  const state = await input.getPermissionState(COMPUTER_PERMISSIONS);
   if (!input.isCurrent()) return false;
   if (!computerPermissionSetupSupported(state)) return true;
   if (missingComputerPermissions(state).length === 0) return true;
-  await input.startPermissionSetup(COMPUTER_PERMISSION_KINDS);
-  return false; // Preserve the draft; granting access never auto-sends the task.
+  await input.startPermissionSetup(COMPUTER_PERMISSIONS);
+  return false;
 }
 
-/** What the server's answer means for the user, once. */
 export type ComputerProvisionOutcome = "ready" | "incomplete";
 
 export function computerProvisionOutcome(
@@ -89,16 +73,12 @@ export interface ComputerProvisionToast {
   readonly description: string;
 }
 
-/**
- * Raised as the call starts, because the call's visible effect is a macOS
- * dialog appearing over Glade and the user needs to know Glade asked for it.
- *
- * The grants are named through `listComputerPermissions` rather than written
- * out, so this cannot drift out of the one fixed ordering every other surface
- * uses — a hand-written "Screen Recording and Accessibility" here against
- * "Accessibility and Screen Recording" in the card is exactly the divergence
- * that module exists to prevent.
- */
+// Raised as the call starts, because the call's visible effect is a macOS dialog appearing over
+// Glade and the user needs to know Glade asked for it. The grants are named through
+// `listComputerPermissions` rather than written out, so this cannot drift out of the one fixed
+// ordering every other surface uses — a hand-written "Screen Recording and Accessibility" here
+// against "Accessibility and Screen Recording" in the card is exactly the divergence that module
+// exists to prevent.
 export function computerProvisionStartToast(
   missing: readonly ComputerPermission[] = [],
 ): ComputerProvisionToast {
@@ -113,7 +93,6 @@ export function computerProvisionStartToast(
   };
 }
 
-/** The one answer, whichever surface asked. */
 export function computerProvisionResultToast(
   result: ComputerProvisionResult,
 ): ComputerProvisionToast {
@@ -140,10 +119,6 @@ function provisionErrorMessage(error: unknown): string {
     : "The server gave no reason.";
 }
 
-/**
- * The settings panel's inline status line — the same three states the toasts
- * describe, for a surface that has room to keep them on screen.
- */
 export function computerProvisionNote(state: {
   readonly isPending: boolean;
   readonly missing?: readonly ComputerPermission[];

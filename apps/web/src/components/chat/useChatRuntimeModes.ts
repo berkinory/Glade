@@ -1,12 +1,8 @@
-import {
-  ProviderInteractionMode,
-  RuntimeMode,
-  ThreadId,
-  type ModelSelection,
-  type ProviderKind,
-  type ServerProviderStatus,
-} from "@glade/contracts";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback } from "react";
+import { RuntimeMode, type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
+import { ThreadId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { type ServerProviderStatus } from "@glade/contracts/server/server";
+import { useEffect, useRef } from "react";
 import { newCommandId } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
 import { useComposerDraftStore } from "../../composerDraftStore";
@@ -15,17 +11,17 @@ import { type Thread } from "../../types";
 import {
   createRuntimeModePersistenceQueue,
   persistModelSelectionBeforeRuntimeMode,
-} from "../ChatView.logic";
+} from "../ChatView.logic.session";
 import { resolveRuntimeModelDescriptor } from "./runtimeModelCapabilities";
 import { toastManager } from "../ui/toast";
+import { useChatThreadContext } from "./ChatThreadContext";
 
 interface ChatRuntimeModesInput {
-  threadId: ThreadId;
   activeThread: Thread | undefined;
   serverThread: Thread | undefined;
   isLocalDraftThread: boolean;
   runtimeMode: RuntimeMode;
-  interactionMode: ProviderInteractionMode;
+
   selectedProvider: ProviderKind;
   selectedRuntimeModel: ReturnType<typeof resolveRuntimeModelDescriptor>;
   selectedModelSelection: ModelSelection;
@@ -33,24 +29,32 @@ interface ChatRuntimeModesInput {
   scheduleComposerFocus: () => void;
 }
 
+type ChatRuntimeModesControllerInput = {
+  session: Pick<ChatRuntimeModesInput, "activeThread" | "serverThread">;
+  workspace: Pick<ChatRuntimeModesInput, "isLocalDraftThread" | "runtimeMode">;
+  provider: Pick<
+    ChatRuntimeModesInput,
+    "selectedProvider" | "selectedRuntimeModel" | "selectedModelSelection"
+  >;
+  discovery: Pick<ChatRuntimeModesInput, "activeProviderStatus">;
+  composer: Pick<ChatRuntimeModesInput, "scheduleComposerFocus">;
+};
 export function useChatRuntimeModes({
-  threadId,
-  activeThread,
-  serverThread,
-  isLocalDraftThread,
-  runtimeMode,
-  interactionMode,
-  selectedProvider,
-  selectedRuntimeModel,
-  selectedModelSelection,
-  activeProviderStatus,
-  scheduleComposerFocus,
-}: ChatRuntimeModesInput) {
+  session,
+  workspace,
+  provider,
+  discovery,
+  composer,
+}: ChatRuntimeModesControllerInput) {
+  const { threadId } = useChatThreadContext();
+  const { activeThread, serverThread } = session;
+  const { isLocalDraftThread, runtimeMode } = workspace;
+  const { selectedProvider, selectedRuntimeModel, selectedModelSelection } = provider;
+  const { activeProviderStatus } = discovery;
+  const { scheduleComposerFocus } = composer;
   const setComposerDraftRuntimeMode = useComposerDraftStore((state) => state.setRuntimeMode);
   const setDraftThreadContext = useComposerDraftStore((state) => state.setDraftThreadContext);
-  const setComposerDraftInteractionMode = useComposerDraftStore(
-    (state) => state.setInteractionMode,
-  );
+
   const runtimeModePersistenceQueuesRef = useRef(
     new Map<ThreadId, ReturnType<typeof createRuntimeModePersistenceQueue>>(),
   );
@@ -163,109 +167,46 @@ export function useChatRuntimeModes({
     selectedRuntimeModel,
   ]);
 
-  const handleInteractionModeChange = useCallback(
-    (mode: ProviderInteractionMode) => {
-      if (mode === interactionMode) return;
-      setComposerDraftInteractionMode(threadId, mode);
-      if (isLocalDraftThread) {
-        setDraftThreadContext(threadId, { interactionMode: mode });
-      }
-      if (serverThread) {
-        const api = readNativeApi();
-        if (api) {
-          void api.orchestration
-            .dispatchCommand({
-              type: "thread.interaction-mode.set",
-              commandId: newCommandId(),
-              threadId,
-              interactionMode: mode,
-              createdAt: new Date().toISOString(),
-            })
-            .catch((error) => {
-              toastManager.add({
-                type: "error",
-                title: "Could not update interaction mode",
-                description:
-                  error instanceof Error ? error.message : "An unexpected error occurred.",
-              });
-            });
-        }
-      }
-      scheduleComposerFocus();
-    },
-    [
-      interactionMode,
-      isLocalDraftThread,
-      scheduleComposerFocus,
-      serverThread,
-      setComposerDraftInteractionMode,
-      setDraftThreadContext,
-      threadId,
-    ],
-  );
-  const toggleInteractionMode = useCallback(() => {
-    handleInteractionModeChange(interactionMode === "plan" ? "default" : "plan");
-  }, [handleInteractionModeChange, interactionMode]);
-  const resetInteractionMode = useCallback(() => {
-    handleInteractionModeChange("default");
-  }, [handleInteractionModeChange]);
+  const persistThreadSettingsForNextTurn = async (input: {
+    threadId: ThreadId;
+    createdAt: string;
+    modelSelection?: ModelSelection;
+    runtimeMode: RuntimeMode;
+  }) => {
+    if (!serverThread) {
+      return;
+    }
+    const api = readNativeApi();
+    if (!api) {
+      return;
+    }
 
-  const persistThreadSettingsForNextTurn = useCallback(
-    async (input: {
-      threadId: ThreadId;
-      createdAt: string;
-      modelSelection?: ModelSelection;
-      runtimeMode: RuntimeMode;
-      interactionMode: ProviderInteractionMode;
-    }) => {
-      if (!serverThread) {
-        return;
-      }
-      const api = readNativeApi();
-      if (!api) {
-        return;
-      }
-
-      await persistModelSelectionBeforeRuntimeMode({
-        currentModelSelection: serverThread.modelSelection,
-        ...(input.modelSelection !== undefined ? { nextModelSelection: input.modelSelection } : {}),
-        currentRuntimeMode: serverThread.runtimeMode,
-        nextRuntimeMode: input.runtimeMode,
-        persistModelSelection: (modelSelection) =>
-          api.orchestration.dispatchCommand({
-            type: "thread.meta.update",
-            commandId: newCommandId(),
-            threadId: input.threadId,
-            modelSelection,
-          }),
-        persistRuntimeMode: (runtimeMode) =>
-          api.orchestration.dispatchCommand({
-            type: "thread.runtime-mode.set",
-            commandId: newCommandId(),
-            threadId: input.threadId,
-            runtimeMode,
-            createdAt: input.createdAt,
-          }),
-      });
-
-      if (input.interactionMode !== serverThread.interactionMode) {
-        await api.orchestration.dispatchCommand({
-          type: "thread.interaction-mode.set",
+    await persistModelSelectionBeforeRuntimeMode({
+      currentModelSelection: serverThread.modelSelection,
+      ...(input.modelSelection !== undefined ? { nextModelSelection: input.modelSelection } : {}),
+      currentRuntimeMode: serverThread.runtimeMode,
+      nextRuntimeMode: input.runtimeMode,
+      persistModelSelection: (modelSelection) =>
+        api.orchestration.dispatchCommand({
+          type: "thread.meta.update",
           commandId: newCommandId(),
           threadId: input.threadId,
-          interactionMode: input.interactionMode,
+          modelSelection,
+        }),
+      persistRuntimeMode: (runtimeMode) =>
+        api.orchestration.dispatchCommand({
+          type: "thread.runtime-mode.set",
+          commandId: newCommandId(),
+          threadId: input.threadId,
+          runtimeMode,
           createdAt: input.createdAt,
-        });
-      }
-    },
-    [serverThread],
-  );
+        }),
+    });
+  };
   return {
     persistRuntimeModeChange,
     handleRuntimeModeChange,
-    handleInteractionModeChange,
-    toggleInteractionMode,
-    resetInteractionMode,
+
     persistThreadSettingsForNextTurn,
   };
 }

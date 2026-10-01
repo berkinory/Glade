@@ -1,12 +1,9 @@
-// FILE: proposalActivity.ts
-// Purpose: Builds the durable transcript activity for an automation proposal lifecycle.
-
+import { EventId } from "@glade/contracts/core/baseSchemas";
 import {
-  EventId,
   type AutomationDefinition,
   type AutomationProposalState,
   type AutomationSchedule,
-} from "@glade/contracts";
+} from "@glade/contracts/automation/automation";
 
 export function automationProposalActivityId(automationId: AutomationDefinition["id"]): EventId {
   return EventId.makeUnsafe(`automation-proposal:${automationId}`);

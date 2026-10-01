@@ -1,18 +1,5 @@
-// FILE: WorkflowRunCard.tsx
-// Purpose: Workflow run panel stacked above the composer (Claude dynamic
-// workflows): workflow name/description header with running counts and
-// pause/stop actions, a clickable phase rail (auto-follows the current phase
-// until the user picks one) whose right pane shows only the selected phase's
-// agents, and one expandable row per agent (status dot, label, model, effort,
-// tokens, elapsed) whose inline detail adds tool calls, the prompt, and recent
-// tool activity. Settled runs keep the card with the persisted script
-// path/runId and a resume action.
-// Layer: Chat composer UI
-// Exports: WorkflowRunCard
-
-import type { ThreadId } from "@glade/contracts";
-import { getModelCapabilities } from "@glade/shared/model";
-import { pluralize } from "@glade/shared/text";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { pluralize } from "@glade/shared/text/text";
 import { useState } from "react";
 
 import { formatContextWindowTokens } from "~/lib/contextWindow";
@@ -33,7 +20,7 @@ import {
   XIcon,
 } from "~/lib/icons";
 import { cn } from "~/lib/utils";
-import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
+import { useCopyToClipboard } from "../../lib/clipboard";
 import { useNowMs } from "~/hooks/useNowMs";
 import { formatClockDuration } from "../../session-logic";
 import { Button } from "../ui/button";
@@ -97,16 +84,6 @@ function agentRowMeta(agent: WorkflowAgentRow, nowMs: number): string | null {
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
-function agentContextWindowTokens(agent: WorkflowAgentRow): number | undefined {
-  if (!agent.model) {
-    return undefined;
-  }
-  const contextWindowTokens = getModelCapabilities("claudeAgent", agent.model).contextWindowTokens;
-  return typeof contextWindowTokens === "number" && contextWindowTokens > 0
-    ? contextWindowTokens
-    : undefined;
-}
-
 function agentDetailStatsLine(agent: WorkflowAgentRow, nowMs: number): string | null {
   const elapsedMs = workflowElapsedMs(agent, nowMs);
   const parts = [
@@ -129,14 +106,10 @@ function WorkflowAgentDetail({
   onOpenThread: (threadId: ThreadId) => void;
 }) {
   const [promptOpen, setPromptOpen] = useState(false);
-  const contextWindowTokens = agentContextWindowTokens(agent);
   const identityLine = [
     agent.statusLabel,
     agent.modelLabel,
     agent.effortLabel ? `${agent.effortLabel} effort` : null,
-    contextWindowTokens !== undefined
-      ? `${formatContextWindowTokens(contextWindowTokens)} window`
-      : null,
   ]
     .filter((part): part is string => part !== null && part !== undefined)
     .join(" · ");
@@ -287,12 +260,10 @@ export function WorkflowRunCard({
   onDismiss,
   attachedToPrevious: attachedToPreviousProp,
 }: WorkflowRunCardProps) {
-  // Keep elapsed-time ticks local to the card instead of rerendering ChatView.
   const nowMs = useNowMs(!workflowRun.settled);
   const attachedToPrevious = attachedToPreviousProp ?? false;
   const { copyToClipboard, isCopied } = useCopyToClipboard();
-  // Default view lists every phase's agents (grouped); a pill click narrows to
-  // one phase, clicking it again returns to the full list.
+
   const [filterPhaseTitle, setFilterPhaseTitle] = useState<string | null>(null);
   const [expandedAgentIds, setExpandedAgentIds] = useState<ReadonlySet<string>>(new Set());
   const toggleAgentExpanded = (taskId: string) => {
@@ -330,9 +301,7 @@ export function WorkflowRunCard({
     phase,
     agents: workflowRun.agents.filter((agent) => agent.phase === phase.title),
   }));
-  // A single phase carries no navigation value: skip the pills and captions
-  // and list every agent flat. With several phases everything stays visible,
-  // grouped under small captions, and the pills act as optional filters.
+
   const showPhasePills = (phaseGroups?.length ?? 0) > 1;
   const selectedPhaseTitle =
     filterPhaseTitle !== null && phaseGroups?.some(({ phase }) => phase.title === filterPhaseTitle)

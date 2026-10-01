@@ -1,4 +1,4 @@
-import type { OrchestrationEvent } from "@glade/contracts";
+import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
 
 const THREAD_SHELL_SUMMARY_ACTIVITY_KINDS = new Set([
   "approval.requested",
@@ -18,7 +18,6 @@ export const THREAD_PROJECTION_EVENT_TYPES = new Set<OrchestrationEvent["type"]>
   "thread.pinned-message-done-set",
   "thread.pinned-message-label-set",
   "thread.runtime-mode-set",
-  "thread.interaction-mode-set",
   "thread.turn-start-requested",
   "thread.session-set",
   "thread.turn-diff-completed",
@@ -28,7 +27,6 @@ export const THREAD_PROJECTION_EVENT_TYPES = new Set<OrchestrationEvent["type"]>
 ]);
 
 const OTHER_THREAD_SHELL_EVENT_TYPES = new Set<OrchestrationEvent["type"]>([
-  "thread.proposed-plan-upserted",
   "thread.approval-response-requested",
   "thread.user-input-response-requested",
   "thread.reverted",
@@ -39,7 +37,6 @@ const OTHER_THREAD_SHELL_EVENT_TYPES = new Set<OrchestrationEvent["type"]>([
 
 export const DEFERRED_THREAD_SHELL_SUMMARY_EVENT_TYPES = new Set<OrchestrationEvent["type"]>([
   "thread.message-sent",
-  "thread.proposed-plan-upserted",
   "thread.reverted",
   "thread.conversation-rolled-back",
   "thread.session-set",
@@ -50,13 +47,6 @@ export function shouldApplyThreadsProjection(event: OrchestrationEvent): boolean
   return THREAD_PROJECTION_EVENT_TYPES.has(event.type);
 }
 
-/**
- * Events handled by the deferred shell-summary projector.
- *
- * Interaction counts are maintained atomically by the pending-interaction
- * projector, which already owns the before/after settlement state. Keeping
- * them out of the deferred projector avoids rescanning activity history.
- */
 export function shouldApplyDeferredThreadShellSummary(event: OrchestrationEvent): boolean {
   if (!DEFERRED_THREAD_SHELL_SUMMARY_EVENT_TYPES.has(event.type)) {
     return false;
@@ -64,7 +54,6 @@ export function shouldApplyDeferredThreadShellSummary(event: OrchestrationEvent)
   return event.type !== "thread.message-sent" || event.payload.role === "user";
 }
 
-/** True only when an event can change the persisted thread shell sent to sidebar clients. */
 export function shouldPublishThreadShellForEvent(event: OrchestrationEvent): boolean {
   if (shouldApplyThreadsProjection(event) || OTHER_THREAD_SHELL_EVENT_TYPES.has(event.type)) {
     return true;

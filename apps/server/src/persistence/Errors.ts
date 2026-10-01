@@ -1,9 +1,5 @@
 import { Schema, SchemaIssue } from "effect";
 
-// ===============================
-// Core Persistence Errors
-// ===============================
-
 export class PersistenceSqlError extends Schema.TaggedErrorClass<PersistenceSqlError>()(
   "PersistenceSqlError",
   {
@@ -79,14 +75,6 @@ export function toPersistenceDecodeCauseError(operation: string) {
     });
 }
 
-/**
- * The projection cursor table is non-empty but a projector the snapshot
- * sequence depends on has no cursor row. The snapshot fence is unknowable in
- * this state: reporting any number would either serve stale data as fresh or
- * demand an unsatisfiable resnapshot forever. Reachable only through an
- * interrupted projection rebuild (repair/restore), so it names the missing
- * cursors and points at the recovery path instead of guessing.
- */
 export class ProjectionStateIncompleteError extends Schema.TaggedErrorClass<ProjectionStateIncompleteError>()(
   "ProjectionStateIncompleteError",
   {
@@ -109,23 +97,6 @@ export const isPersistenceError = (u: unknown) =>
   Schema.is(PersistenceDecodeError)(u) ||
   Schema.is(ProjectionStateIncompleteError)(u);
 
-export class MigrationLineageError extends Schema.TaggedErrorClass<MigrationLineageError>()(
-  "MigrationLineageError",
-  {
-    firstDivergedId: Schema.Number,
-    expectedName: Schema.String,
-    recordedName: Schema.String,
-  },
-) {
-  override get message(): string {
-    return (
-      `Migration tracker does not match any known lineage: migration ${this.firstDivergedId} ` +
-      `is recorded as "${this.recordedName}" but Glade expects "${this.expectedName}". ` +
-      `Refusing to run migrations against an unrecognized database.`
-    );
-  }
-}
-
 export class MigrationSchemaTooNewError extends Schema.TaggedErrorClass<MigrationSchemaTooNewError>()(
   "MigrationSchemaTooNewError",
   {
@@ -142,9 +113,17 @@ export class MigrationSchemaTooNewError extends Schema.TaggedErrorClass<Migratio
   }
 }
 
-// ===============================
-// Provider Session Repository Errors
-// ===============================
+export class MigrationLineageUnsupportedError extends Schema.TaggedErrorClass<MigrationLineageUnsupportedError>()(
+  "MigrationLineageUnsupportedError",
+  { databaseMigrationId: Schema.Number },
+) {
+  override get message(): string {
+    return (
+      `Database migration history ${this.databaseMigrationId} comes from a Glade preview before 0.1.0, ` +
+      "which this build cannot open. Quit Glade and move state.sqlite out of the Glade data directory to start fresh."
+    );
+  }
+}
 
 export type OrchestrationEventStoreError = PersistenceSqlError | PersistenceDecodeError;
 

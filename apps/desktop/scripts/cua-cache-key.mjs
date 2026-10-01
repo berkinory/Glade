@@ -1,5 +1,3 @@
-// The Actions cache is only a transport. The key binds the build environment;
-// provisioning still checks every executable and Linux sidecar on import.
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync, appendFileSync } from "node:fs";
@@ -24,8 +22,6 @@ export function cuaBuildFlags(env) {
 }
 
 export function collectCuaCacheInputs(root, env = process.env) {
-  // Compiler paths/wrappers may change bytes at an unchanged path. The release
-  // cache supports the selected runner toolchain, not arbitrary wrappers.
   for (const key of Object.keys(env)) {
     if (
       /^(RUSTC($|_)|RUSTDOC$|CC($|_)|CXX($|_)|AR($|_)|CARGO_BUILD_(RUSTC|RUSTC_WRAPPER|RUSTC_WORKSPACE_WRAPPER)$|CARGO_TARGET_.*_LINKER$)/.test(
@@ -42,7 +38,7 @@ export function collectCuaCacheInputs(root, env = process.env) {
       .digest("hex");
   const patchRoot = "apps/desktop/patches/cua-driver";
   const paths = [
-    "packages/shared/src/cuaDriverRelease.json",
+    "packages/shared/src/computer/cuaDriverRelease.json",
     "apps/desktop/scripts/provision-cua-driver.mjs",
     "apps/desktop/scripts/cua-artifact-provenance.mjs",
     "apps/desktop/scripts/cua-cache-key.mjs",

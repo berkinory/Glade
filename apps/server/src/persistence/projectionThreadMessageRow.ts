@@ -1,13 +1,14 @@
+import { AsyncUserInput } from "@glade/contracts/orchestration/asyncUserInput";
 import {
-  AsyncUserInput,
   ChatAttachment,
-  MessageDispatchOrigin,
-  NonNegativeInt,
+  type OrchestrationMessage,
+} from "@glade/contracts/orchestration/threadEntities";
+import { MessageDispatchOrigin, TurnDispatchMode } from "@glade/contracts/provider/sessionPolicy";
+import { NonNegativeInt } from "@glade/contracts/core/baseSchemas";
+import {
   ProviderMentionReference,
   ProviderSkillReference,
-  TurnDispatchMode,
-  type OrchestrationMessage,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/providerDiscovery";
 import { Schema, Struct } from "effect";
 import { joinMessageTextChunks } from "./messageTextChunks.ts";
 
@@ -34,7 +35,7 @@ export const ProjectionThreadMessageDbRowSchema = ProjectionThreadMessage.mapFie
 
 export type ProjectionThreadMessageDbRow = Schema.Schema.Type<
   typeof ProjectionThreadMessageDbRowSchema
->;
+> & { readonly providerMessageId?: string };
 
 export function orchestrationMessageFromStoredMessage(
   row: ProjectionThreadMessageRecord,
@@ -83,6 +84,7 @@ export function orchestrationMessageFromProjectionRow(
     ...(row.dispatchMode ? { dispatchMode: row.dispatchMode } : {}),
     ...(row.dispatchOrigin ? { dispatchOrigin: row.dispatchOrigin } : {}),
     ...(row.startsNewTurn !== null ? { startsNewTurn: row.startsNewTurn === 1 } : {}),
+    ...(row.providerMessageId ? { providerMessageId: row.providerMessageId } : {}),
     turnId: row.turnId,
     streaming: row.isStreaming === 1,
     source: row.source,

@@ -1,5 +1,4 @@
-// Purpose: Shared Local/Worktree chip and menu for the full and floating composers.
-import type { ThreadEnvironmentMode } from "@glade/contracts";
+import type { ThreadEnvironmentMode } from "@glade/contracts/orchestration/threadEntities";
 import type { ReactNode } from "react";
 import { CheckIcon, ChevronDownIcon, HandoffIcon, WorktreeIcon } from "~/lib/icons";
 import { CentralIcon } from "~/lib/central-icons";
@@ -14,13 +13,8 @@ import {
 } from "./environment/EnvironmentRow";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuTrigger } from "../ui/menu";
 
-/** Leading glyph treatment shared by every "Work in" menu row (16px, muted). */
 const ENV_MENU_ICON_CLASS_NAME = "size-3.5 text-muted-foreground";
 
-/**
- * One row of the "Work in" menu: `[glyph] [label …grows] [✓ when selected]`.
- * Centralizes the icon/label/check treatment for environment menu rows.
- */
 function WorkInMenuItem({
   icon,
   label,

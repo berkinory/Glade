@@ -1,19 +1,9 @@
-// FILE: mac-dmg-finalize.ts
-// Purpose: Notarizes, staples, and validates the final signed macOS disk image.
-// Layer: Release/build helper
-// Exports: signed DMG finalization plus pure command construction for tests.
-
 import { notarizeMacPayload, recordStapledPayload, runMacCommand } from "./mac-notarization.ts";
 import { existsSync, mkdtempSync, readdirSync, rmSync, statSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-export interface MacDmgNotaryCredentials {
-  readonly keychainProfile?: string | undefined;
-  readonly appleApiKey: string | undefined;
-  readonly appleApiKeyId: string | undefined;
-  readonly appleApiIssuer: string | undefined;
-}
+import type { MacDmgNotaryCredentials } from "./mac-notary-credentials.ts";
 
 interface MacDmgCommand {
   readonly command: string;

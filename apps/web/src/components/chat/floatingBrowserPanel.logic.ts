@@ -1,12 +1,8 @@
-// FILE: floatingBrowserPanel.logic.ts
-// Purpose: Pure placement, resize, and visibility rules for the floating browser host.
-// Layer: Chat surface UI logic
-
 import {
   BROWSER_AUTOMATION_VIEWPORT_HEIGHT,
   BROWSER_AUTOMATION_VIEWPORT_WIDTH,
   BROWSER_FLOATING_PANEL_MARGIN_PX,
-} from "@glade/shared/browserSession";
+} from "@glade/shared/browser/browserSession";
 
 export interface FloatingBrowserPanelRect {
   left: number;
@@ -297,16 +293,14 @@ export function isFloatingBrowserDragGesture(
   return Math.hypot(delta.x, delta.y) >= thresholdPx;
 }
 
-// Keep this decision shared by single and split surfaces so a stale request can never
-// reappear over another thread or duplicate a browser that is already docked and visible.
+// Keep this decision shared by single and split surfaces so a stale request can never reappear over
+// another thread or duplicate a browser that is already docked and visible.
 export function shouldRenderFloatingBrowserPanel(input: {
   hostThreadId: string | null;
   floatingThreadId: string | null;
   dockBrowserVisible: boolean;
   isFocused?: boolean;
 }): boolean {
-  // Hide while a docked live browser is on screen, but do not treat that as
-  // dismissing the request — collapsing the dock should restore the card.
   return (
     input.hostThreadId !== null &&
     input.hostThreadId === input.floatingThreadId &&

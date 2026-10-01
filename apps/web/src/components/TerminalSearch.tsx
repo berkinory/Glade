@@ -1,7 +1,4 @@
-// FILE: TerminalSearch.tsx
-// Purpose: Provides the in-terminal find bar and navigation controls.
-// Layer: Terminal presentation component
-// Exports: TerminalSearch
+import { useMemo, useCallback } from "react";
 
 import type { SearchAddon, ISearchOptions } from "@xterm/addon-search";
 import { useEffect, useRef, useState } from "react";
@@ -32,11 +29,14 @@ export function TerminalSearch({ searchAddon, isOpen, onClose }: TerminalSearchP
   const [hasResults, setHasResults] = useState<boolean | null>(null);
   const [caseSensitive, setCaseSensitive] = useState(false);
 
-  const searchOptions: ISearchOptions = {
-    caseSensitive,
-    regex: false,
-    decorations: SEARCH_DECORATIONS as NonNullable<ISearchOptions["decorations"]>,
-  };
+  const searchOptions: ISearchOptions = useMemo(
+    () => ({
+      caseSensitive,
+      regex: false,
+      decorations: SEARCH_DECORATIONS as NonNullable<ISearchOptions["decorations"]>,
+    }),
+    [caseSensitive],
+  );
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -64,11 +64,11 @@ export function TerminalSearch({ searchAddon, isOpen, onClose }: TerminalSearchP
     setHasResults(found);
   };
 
-  const clearSearchTimer = () => {
+  const clearSearchTimer = useCallback(() => {
     if (searchTimerRef.current === null) return;
     window.clearTimeout(searchTimerRef.current);
     searchTimerRef.current = null;
-  };
+  }, []);
 
   const scheduleSearch = (nextQuery: string) => {
     clearSearchTimer();
@@ -90,8 +90,6 @@ export function TerminalSearch({ searchAddon, isOpen, onClose }: TerminalSearchP
     scheduleSearch(newQuery);
   };
 
-  // Re-run search when case sensitivity or search addon changes
-  // (but not on query change — handleInputChange handles that).
   const prevCaseSensitiveRef = useRef(caseSensitive);
   const prevSearchAddonRef = useRef<SearchAddon | null>(searchAddon);
   useEffect(() => {
@@ -102,8 +100,6 @@ export function TerminalSearch({ searchAddon, isOpen, onClose }: TerminalSearchP
     prevCaseSensitiveRef.current = caseSensitive;
     prevSearchAddonRef.current = searchAddon;
     if (searchAddon && query) {
-      // Inline debounce (rather than scheduleSearch) so every state write in
-      // this effect happens inside the timer, keeping it compiler-eligible.
       clearSearchTimer();
       searchTimerRef.current = window.setTimeout(() => {
         searchTimerRef.current = null;

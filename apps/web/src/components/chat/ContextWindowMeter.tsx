@@ -5,9 +5,7 @@ import {
   formatCostUsd,
 } from "~/lib/contextWindow";
 import { useState } from "react";
-import { useNowMs } from "~/hooks/useNowMs";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
-import { ClaudeCacheDetails } from "./ClaudeCacheDetails";
 import { Button } from "../ui/button";
 
 export function ContextWindowMeter(props: {
@@ -15,7 +13,6 @@ export function ContextWindowMeter(props: {
   cumulativeCostUsd?: number | null | undefined;
   activeWindowLabel?: string | null | undefined;
   pendingWindowLabel?: string | null | undefined;
-  showClaudeCache?: boolean;
   onOpenChange?: (open: boolean) => void;
   compactAction?: {
     disabledReason: string | null;
@@ -25,7 +22,6 @@ export function ContextWindowMeter(props: {
 }) {
   const { usage, cumulativeCostUsd, activeWindowLabel, pendingWindowLabel } = props;
   const [open, setOpen] = useState(false);
-  const nowMs = useNowMs(open && usage.claudeCache != null, 10_000);
   const display = deriveContextWindowMeterDisplay(usage);
   const radius = 6;
   const circumference = 2 * Math.PI * radius;
@@ -108,14 +104,6 @@ export function ContextWindowMeter(props: {
               {display.tokenUsageLabel} tokens used so far
             </div>
           )}
-          {props.showClaudeCache && activeWindowLabel ? (
-            <div className="max-w-72 space-y-1 text-ui leading-snug text-muted-foreground">
-              <div>Auto-compact target: {activeWindowLabel}</div>
-              <p className="leading-relaxed">
-                The session's auto-compact target can be lower than the model's supported window.
-              </p>
-            </div>
-          ) : null}
           {pendingWindowLabel ? (
             <div className="text-ui leading-snug text-muted-foreground">
               Next turn: {pendingWindowLabel}
@@ -132,9 +120,6 @@ export function ContextWindowMeter(props: {
             <div className="text-ui leading-snug text-muted-foreground">
               Session cost: {formatCostUsd(cumulativeCostUsd)}
             </div>
-          ) : null}
-          {usage.claudeCache || props.showClaudeCache ? (
-            <ClaudeCacheDetails observation={usage.claudeCache ?? undefined} nowMs={nowMs} />
           ) : null}
           {props.compactAction ? (
             <div className="max-w-72 space-y-1.5 border-t border-border/50 pt-2">

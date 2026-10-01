@@ -2,7 +2,7 @@ import type {
   ImportProjectInput,
   ProjectImportProject,
   ProjectImportProvider,
-} from "@glade/contracts";
+} from "@glade/contracts/workspace/projectImport";
 
 export const IMPORT_PROVIDERS: readonly ProjectImportProvider[] = ["codex", "claudeAgent"];
 export const IMPORT_PROVIDER_LABELS: Record<ProjectImportProvider, string> = {

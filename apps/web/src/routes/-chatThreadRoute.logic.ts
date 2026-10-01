@@ -1,10 +1,6 @@
-// FILE: chatThreadRoute.logic.ts
-// Purpose: Keep route-level chat panel state transitions and fallbacks deterministic.
-// Layer: Route UI logic helpers.
-// Exports: thread title fallback, deep-link bootstrap replay handling, and panel toggle helpers.
-
-import type { ProjectId, ThreadEnvironmentMode, ThreadId, TurnId } from "@glade/contracts";
-import { resolveThreadWorkspaceCwd } from "@glade/shared/threadEnvironment";
+import type { ProjectId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
+import type { ThreadEnvironmentMode } from "@glade/contracts/orchestration/threadEntities";
+import { resolveThreadWorkspaceCwd } from "@glade/shared/threads/threadEnvironment";
 
 import type { ChatRightPanel, DiffRouteSearch } from "../diffRouteSearch";
 
@@ -35,7 +31,6 @@ export function resolveThreadPickerTitle(title: string | null): string {
   return title || "New chat";
 }
 
-// File previews follow the thread runtime cwd so worktree chats open the files they actually edit.
 export function resolveFilePreviewWorkspaceRoot(input: {
   projectCwd?: string | null | undefined;
   threadEnvMode?: ThreadEnvironmentMode | null | undefined;
@@ -141,7 +136,6 @@ export function resolveToggledChatPanelPatch(
   };
 }
 
-// Expanding a split pane exits split mode entirely; the selected chat becomes the single surface.
 export function resolveSplitPaneMaximizeDecision(input: {
   splitViewId: string;
   focusedThreadId: ThreadId | null | undefined;

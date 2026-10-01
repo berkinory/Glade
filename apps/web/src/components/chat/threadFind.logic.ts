@@ -1,13 +1,7 @@
-// FILE: threadFind.logic.ts
-// Purpose: In-thread find matching and next/prev selection against projected
-//   transcript messages — not the virtualized DOM list.
-// Layer: Chat transcript presentation-adjacent logic (unit-tested)
-// Depends on: timeline entry shape and message ids only.
-
-import { type MessageId } from "@glade/contracts";
+import { type MessageId } from "@glade/contracts/core/baseSchemas";
 import { repairMarkdownTableDelimiters } from "../../lib/markdownTableRepair";
 import { deriveDisplayedUserMessageState } from "../../lib/terminalContext";
-import { type TimelineEntry } from "../../session-logic";
+import type { TimelineEntry } from "../../workLog.types";
 import type { ChatMessage } from "../../types";
 import { resolveUserMessageMarkdownText } from "./userMessageTerminalContexts";
 
@@ -19,7 +13,7 @@ export interface ThreadFindRange {
 export interface ThreadFindDocument {
   messageId: MessageId;
   text: string;
-  /** Set when the document is one interleaved assistant text segment. */
+
   segmentIndex?: number;
 }
 
@@ -53,10 +47,6 @@ export function normalizeFindQuery(query: string): string {
   return query.trim();
 }
 
-/**
- * Non-overlapping case-insensitive substring ranges in transcript order.
- * Fast path uses a lowercased indexOf when case-folding preserves UTF-16 length.
- */
 export function collectCaseInsensitiveSubstringRanges(
   text: string,
   query: string,
@@ -420,10 +410,6 @@ function findMatchSpanOpenTag(
   return `<span class="${classes}" ${CHAT_FIND_MATCH_ATTRIBUTE}="${active ? "active" : "true"}" ${CHAT_FIND_MATCH_START_ATTRIBUTE}="${String(startOffset)}">`;
 }
 
-/**
- * Wrap case-insensitive query hits inside HTML text nodes (Shiki output, fallback
- * code). Offsets on data-chat-find-start are in the surrounding message source.
- */
 export function wrapFindQueryInHtml(
   html: string,
   query: string,
@@ -513,10 +499,6 @@ export function shouldCaptureChatFindShortcut(input: {
   );
 }
 
-/**
- * Highlight snapshots flow from the find bar to the timeline without ChatView
- * state, so typing in find does not re-render the whole chat shell.
- */
 export interface ThreadFindHighlightStore {
   get: () => ThreadFindHighlight | null;
   set: (value: ThreadFindHighlight | null) => void;

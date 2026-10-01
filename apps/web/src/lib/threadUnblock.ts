@@ -1,11 +1,6 @@
-// FILE: threadUnblock.ts
-// Purpose: Abandons the provider delivery blockers that quarantine a thread.
-// Layer: Web orchestration helper
-// Exports: unblockThreadFromClient
+import type { NativeApi } from "@glade/contracts/ipc/ipc";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
-import type { NativeApi, ThreadId } from "@glade/contracts";
-
-/** Code the server returns when a blocker no longer matches the requested state. */
 const PROVIDER_DELIVERY_RECONCILIATION_CONFLICT_CODE = "PROVIDER_DELIVERY_RECONCILIATION_CONFLICT";
 
 const UNBLOCK_NOTE = "Abandoned while resuming the thread; the command was never confirmed.";
@@ -15,10 +10,8 @@ type ThreadUnblockApi = Pick<
   "listProviderDeliveryBlockers" | "reconcileProviderDelivery"
 >;
 
-/**
- * The reconciliation conflict is expected, not exceptional: two clients (or a
- * client and a server restart) can race to settle the same blocker.
- */
+// The reconciliation conflict is expected, not exceptional: two clients (or a client and a server
+// restart) can race to settle the same blocker.
 function isProviderDeliveryReconciliationConflict(error: unknown): boolean {
   return (
     typeof error === "object" &&
@@ -28,15 +21,11 @@ function isProviderDeliveryReconciliationConflict(error: unknown): boolean {
   );
 }
 
-/**
- * Settles every delivery that keeps a thread quarantined by abandoning it: the
- * ambiguous command is never replayed (it may have reached the provider), but
- * the server replays the side effects that were skipped after it, so messages
- * sent while the thread was blocked are dispatched again.
- *
- * Blockers are reconciled oldest-first because abandoning one replays the
- * commands that follow it, which can settle the later blockers on its own.
- */
+// Settles every delivery that keeps a thread quarantined by abandoning it: the ambiguous command is
+// never replayed (it may have reached the provider), but the server replays the side effects that
+// were skipped after it, so messages sent while the thread was blocked are dispatched again.
+// Blockers are reconciled oldest-first because abandoning one replays the commands that follow it,
+// which can settle the later blockers on its own.
 export async function unblockThreadFromClient(
   api: ThreadUnblockApi,
   threadId: ThreadId,

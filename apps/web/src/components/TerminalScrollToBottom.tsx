@@ -1,7 +1,4 @@
-// FILE: TerminalScrollToBottom.tsx
-// Purpose: Shows a floating terminal action when output has scrolled away from the bottom.
-// Layer: Terminal presentation component
-// Exports: TerminalScrollToBottom
+import { useCallback } from "react";
 
 import type { Terminal } from "@xterm/xterm";
 import { useEffect, useRef, useState } from "react";
@@ -14,8 +11,6 @@ interface TerminalScrollToBottomProps {
 }
 
 export function TerminalScrollToBottom({ terminal }: TerminalScrollToBottomProps) {
-  // Keyed by terminal: swapping terminals derives back to hidden in the same
-  // render (no state-resetting effect); the rAF check re-evaluates right after.
   const [visibility, setVisibility] = useState<{
     terminal: Terminal;
     visible: boolean;
@@ -26,7 +21,7 @@ export function TerminalScrollToBottom({ terminal }: TerminalScrollToBottomProps
       : false;
   const visibilityRafRef = useRef<number | null>(null);
 
-  const checkPosition = () => {
+  const checkPosition = useCallback(() => {
     if (!terminal) return;
     const buf = terminal.buffer.active;
     const nextVisible = buf.viewportY < buf.baseY;
@@ -35,9 +30,9 @@ export function TerminalScrollToBottom({ terminal }: TerminalScrollToBottomProps
         ? current
         : { terminal, visible: nextVisible },
     );
-  };
+  }, [terminal]);
 
-  const scheduleVisibilityCheck = () => {
+  const scheduleVisibilityCheck = useCallback(() => {
     if (visibilityRafRef.current !== null) {
       return;
     }
@@ -45,7 +40,7 @@ export function TerminalScrollToBottom({ terminal }: TerminalScrollToBottomProps
       visibilityRafRef.current = null;
       checkPosition();
     });
-  };
+  }, [checkPosition]);
 
   useEffect(() => {
     if (!terminal) {

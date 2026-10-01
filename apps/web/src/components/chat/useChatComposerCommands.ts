@@ -1,9 +1,7 @@
-import {
-  ThreadId,
-  type ModelSlug,
-  type ProviderKind,
-  type ProviderSkillReference,
-} from "@glade/contracts";
+import { useChatThreadContext } from "./ChatThreadContext";
+import { ThreadId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { type ModelSlug } from "@glade/contracts/provider/model";
+import { type ProviderSkillReference } from "@glade/contracts/provider/providerDiscovery";
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import { useCallback } from "react";
 import { formatComposerMentionToken, SKILL_MENTION_PREFIX } from "~/lib/composerMentions";
@@ -13,7 +11,7 @@ import { collapseExpandedComposerCursor, detectComposerTrigger } from "../../com
 import {
   captureComposerPromptHistorySavedDraft,
   type QueuedComposerChatTurn,
-} from "../../composerDraftStore";
+} from "../../composerDraftDomain";
 import { useComposerSlashCommands } from "../../hooks/useComposerSlashCommands";
 import { extractChatAutomationInvocation } from "../../lib/automationIntent";
 import { syncTerminalContextsByIds, terminalContextIdListsEqual } from "../../lib/terminalContext";
@@ -21,14 +19,14 @@ import {
   promptStillMatchesActiveHistoryBrowse,
   resolvePromptHistoryNavigation,
   shouldHandlePromptHistoryNavigationKey,
-} from "../ChatView.logic";
+} from "../ChatView.logic.session";
 import { ComposerCommandItem } from "./ComposerCommandMenu";
 import { type ComposerLocalDirectoryMenuHandle } from "./ComposerLocalDirectoryMenu";
-import { composerPromptStillMatchesRestoredQueuedDraft } from "./queuedComposerPreview";
+
 import { useChatComposerDraft } from "./useChatComposerDraft";
 import { useChatComposerEditing } from "./useChatComposerEditing";
 import { useChatPendingInteractions } from "./useChatPendingInteractions";
-import { useChatRuntimeModes } from "./useChatRuntimeModes";
+
 import { useComposerDiscovery } from "./useComposerDiscovery";
 import { useComposerReferences } from "./useComposerReferences";
 
@@ -89,12 +87,7 @@ interface ChatComposerCommandsInput {
   promptHistoryAppliedPromptRef: ReturnType<
     typeof useChatComposerDraft
   >["promptHistoryAppliedPromptRef"];
-  restoredQueuedSourceProposedPlanRef: ReturnType<
-    typeof useChatComposerDraft
-  >["restoredQueuedSourceProposedPlanRef"];
-  setRestoredQueuedSourceProposedPlan: ReturnType<
-    typeof useChatComposerDraft
-  >["setRestoredQueuedSourceProposedPlan"];
+
   composerCommandPicker: "fork-target" | "review-target" | null;
   composerTerminalContexts: ReturnType<typeof useChatComposerDraft>["composerTerminalContexts"];
   setComposerDraftTerminalContexts: ReturnType<
@@ -103,7 +96,7 @@ interface ChatComposerCommandsInput {
   setComposerCursor: ReturnType<typeof useChatComposerDraft>["setComposerCursor"];
   setComposerTrigger: ReturnType<typeof useChatComposerDraft>["setComposerTrigger"];
   clearComposerSlashDraft: ReturnType<typeof useChatComposerEditing>["clearComposerSlashDraft"];
-  toggleInteractionMode: ReturnType<typeof useChatRuntimeModes>["toggleInteractionMode"];
+
   composerMenuOpenRef: RefObject<boolean>;
   onSend: (
     e?: { preventDefault: () => void },
@@ -122,59 +115,133 @@ interface ChatComposerCommandsInput {
   composerDraft: ReturnType<typeof useChatComposerDraft>["composerDraft"];
 }
 
+type ChatComposerCommandsControllerInput = {
+  session: Pick<
+    ChatComposerCommandsInput,
+    | "composerSelectLockRef"
+    | "setComposerCommandPicker"
+    | "setComposerHighlightedItemId"
+    | "composerHighlightedItemId"
+    | "promptHistoryNavigationRef"
+    | "restoreComposerDraftPromptHistorySavedDraft"
+    | "promptRef"
+    | "setPrompt"
+    | "expectedPromptHistoryPromptRef"
+    | "setComposerDraftPromptHistorySavedDraft"
+    | "applyingPromptHistoryNavigationRef"
+    | "promptHistoryAppliedPromptRef"
+    | "composerCommandPicker"
+    | "composerTerminalContexts"
+    | "setComposerDraftTerminalContexts"
+    | "setComposerCursor"
+    | "setComposerTrigger"
+    | "composerMenuOpenRef"
+    | "settings"
+    | "localDirectoryMenuRef"
+    | "composerMenuItemsRef"
+    | "activeComposerMenuItemRef"
+    | "composerDraft"
+  >;
+  turn: Pick<
+    ChatComposerCommandsInput,
+    | "handleForkTargetSelection"
+    | "handleReviewTargetSelection"
+    | "resolveActiveComposerTrigger"
+    | "applyComposerTriggerReplacement"
+    | "handleNavigateLocalFolder"
+    | "handleSlashCommandSelection"
+    | "clearComposerSlashDraft"
+    | "onSend"
+  >;
+  transcript: Pick<
+    ChatComposerCommandsInput,
+    | "localFolderBrowseRootPath"
+    | "promptHistory"
+    | "isLocalFolderBrowserOpen"
+    | "isComposerApprovalState"
+  >;
+  provider: Pick<
+    ChatComposerCommandsInput,
+    | "selectedProvider"
+    | "updateSelectedComposerSkills"
+    | "updateSelectedComposerMentions"
+    | "activePendingQuestion"
+    | "activePendingUserInput"
+    | "onChangeActivePendingUserInputCustomAnswer"
+    | "hasLiveTurn"
+    | "activePendingProgress"
+    | "pendingUserInputs"
+  >;
+  composer: Pick<ChatComposerCommandsInput, "scheduleComposerFocus">;
+  actions: Pick<ChatComposerCommandsInput, "onProviderModelSelect">;
+  discovery: Pick<ChatComposerCommandsInput, "composerMenuItems">;
+};
 export function useChatComposerCommands({
-  threadId,
-  composerSelectLockRef,
-  setComposerCommandPicker,
-  setComposerHighlightedItemId,
-  handleForkTargetSelection,
-  handleReviewTargetSelection,
-  resolveActiveComposerTrigger,
-  applyComposerTriggerReplacement,
-  handleNavigateLocalFolder,
-  localFolderBrowseRootPath,
-  handleSlashCommandSelection,
-  selectedProvider,
-  scheduleComposerFocus,
-  updateSelectedComposerSkills,
-  updateSelectedComposerMentions,
-  onProviderModelSelect,
-  composerMenuItems,
-  composerHighlightedItemId,
-  activePendingQuestion,
-  activePendingUserInput,
-  promptHistoryNavigationRef,
-  restoreComposerDraftPromptHistorySavedDraft,
-  promptRef,
-  setPrompt,
-  expectedPromptHistoryPromptRef,
-  onChangeActivePendingUserInputCustomAnswer,
-  setComposerDraftPromptHistorySavedDraft,
-  applyingPromptHistoryNavigationRef,
-  promptHistory,
-  promptHistoryAppliedPromptRef,
-  restoredQueuedSourceProposedPlanRef,
-  setRestoredQueuedSourceProposedPlan,
-  composerCommandPicker,
-  composerTerminalContexts,
-  setComposerDraftTerminalContexts,
-  setComposerCursor,
-  setComposerTrigger,
-  clearComposerSlashDraft,
-  toggleInteractionMode,
-  composerMenuOpenRef,
-  onSend,
-  settings,
-  hasLiveTurn,
-  isLocalFolderBrowserOpen,
-  localDirectoryMenuRef,
-  composerMenuItemsRef,
-  activeComposerMenuItemRef,
-  activePendingProgress,
-  isComposerApprovalState,
-  pendingUserInputs,
-  composerDraft,
-}: ChatComposerCommandsInput) {
+  session,
+  turn,
+  transcript,
+  provider,
+  composer,
+  actions,
+  discovery,
+}: ChatComposerCommandsControllerInput) {
+  const { threadId } = useChatThreadContext();
+  const {
+    composerSelectLockRef,
+    setComposerCommandPicker,
+    setComposerHighlightedItemId,
+    composerHighlightedItemId,
+    promptHistoryNavigationRef,
+    restoreComposerDraftPromptHistorySavedDraft,
+    promptRef,
+    setPrompt,
+    expectedPromptHistoryPromptRef,
+    setComposerDraftPromptHistorySavedDraft,
+    applyingPromptHistoryNavigationRef,
+    promptHistoryAppliedPromptRef,
+
+    composerCommandPicker,
+    composerTerminalContexts,
+    setComposerDraftTerminalContexts,
+    setComposerCursor,
+    setComposerTrigger,
+    composerMenuOpenRef,
+    settings,
+    localDirectoryMenuRef,
+    composerMenuItemsRef,
+    activeComposerMenuItemRef,
+    composerDraft,
+  } = session;
+  const {
+    handleForkTargetSelection,
+    handleReviewTargetSelection,
+    resolveActiveComposerTrigger,
+    applyComposerTriggerReplacement,
+    handleNavigateLocalFolder,
+    handleSlashCommandSelection,
+    clearComposerSlashDraft,
+    onSend,
+  } = turn;
+  const {
+    localFolderBrowseRootPath,
+    promptHistory,
+    isLocalFolderBrowserOpen,
+    isComposerApprovalState,
+  } = transcript;
+  const {
+    selectedProvider,
+    updateSelectedComposerSkills,
+    updateSelectedComposerMentions,
+    activePendingQuestion,
+    activePendingUserInput,
+    onChangeActivePendingUserInputCustomAnswer,
+    hasLiveTurn,
+    activePendingProgress,
+    pendingUserInputs,
+  } = provider;
+  const { scheduleComposerFocus } = composer;
+  const { onProviderModelSelect } = actions;
+  const { composerMenuItems } = discovery;
   const onSelectComposerItem = useCallback(
     (item: ComposerCommandItem) => {
       if (composerSelectLockRef.current) return;
@@ -265,12 +332,11 @@ export function useChatComposerCommands({
         return;
       }
       if (item.type === "model") {
-        onProviderModelSelect(item.provider, item.model);
+        void onProviderModelSelect(item.provider, item.model);
         applyComposerTriggerReplacement({ snapshot, trigger, base: "" });
         return;
       }
       if (item.type === "agent") {
-        // Insert @alias() and position cursor inside the parentheses.
         applyComposerTriggerReplacement({
           snapshot,
           trigger,
@@ -333,8 +399,6 @@ export function useChatComposerCommands({
       if (activePendingQuestion && activePendingUserInput) {
         const interruptedNavigation = promptHistoryNavigationRef.current;
         if (interruptedNavigation !== null) {
-          // An active question ended the history browse while the persisted
-          // prompt still held a recalled entry; put the real draft back.
           promptHistoryNavigationRef.current = null;
           restoreComposerDraftPromptHistorySavedDraft(threadId);
           promptRef.current = interruptedNavigation.draft;
@@ -355,8 +419,8 @@ export function useChatComposerCommands({
         if (nextPrompt === expectedPromptHistoryPrompt) {
           expectedPromptHistoryPromptRef.current = null;
         } else {
-          // The user edited past the recalled entry: the edited text is the
-          // draft now, so the saved pre-browse draft must not be restored.
+          // The user edited past the recalled entry: the edited text is the draft now, so the saved
+          // pre-browse draft must not be restored.
           promptHistoryNavigationRef.current = null;
           expectedPromptHistoryPromptRef.current = null;
           setComposerDraftPromptHistorySavedDraft(threadId, null);
@@ -376,16 +440,7 @@ export function useChatComposerCommands({
           setComposerDraftPromptHistorySavedDraft(threadId, null);
         }
       }
-      const restoredQueuedSource = restoredQueuedSourceProposedPlanRef.current;
-      if (
-        restoredQueuedSource?.threadId === threadId &&
-        !composerPromptStillMatchesRestoredQueuedDraft(
-          restoredQueuedSource.restoredPrompt,
-          nextPrompt,
-        )
-      ) {
-        setRestoredQueuedSourceProposedPlan(threadId, null);
-      }
+
       promptRef.current = nextPrompt;
       setPrompt(nextPrompt);
       if (composerCommandPicker !== null && nextPrompt.trim().length > 0) {
@@ -408,7 +463,7 @@ export function useChatComposerCommands({
       expectedPromptHistoryPromptRef,
       applyingPromptHistoryNavigationRef,
       promptHistoryAppliedPromptRef,
-      restoredQueuedSourceProposedPlanRef,
+
       setComposerCursor,
       setComposerTrigger,
       activePendingQuestion,
@@ -422,7 +477,7 @@ export function useChatComposerCommands({
       setComposerDraftPromptHistorySavedDraft,
       setComposerDraftTerminalContexts,
       setComposerCommandPicker,
-      setRestoredQueuedSourceProposedPlan,
+
       threadId,
     ],
   );
@@ -439,9 +494,6 @@ export function useChatComposerCommands({
           : null;
 
       if (slashTriggerText === "/" && snapshot.expandedCursor === trigger?.rangeEnd) {
-        // Pressing `/` again on a lone `/` dismisses the picker. Only wipe the
-        // draft when the slash IS the whole prompt; a mid-line slash (e.g. after
-        // an existing chip) must keep surrounding content, so let it type through.
         if (trigger.rangeStart === 0 && trigger.rangeEnd === snapshot.value.length) {
           clearComposerSlashDraft();
           return true;
@@ -452,7 +504,6 @@ export function useChatComposerCommands({
     }
 
     if (key === "Tab" && event.shiftKey) {
-      toggleInteractionMode();
       return true;
     }
 
@@ -528,8 +579,7 @@ export function useChatComposerCommands({
         direction,
         history: promptHistory,
         currentPrompt: snapshot.value,
-        // Line-boundary math needs raw string offsets; the collapsed cursor
-        // undercounts inline token chips (mentions, links, slash commands).
+
         currentExpandedCursor: snapshot.expandedCursor,
         selectionCollapsed: snapshot.selectionCollapsed,
         state: previousNavigationState,
@@ -554,9 +604,7 @@ export function useChatComposerCommands({
         promptRef.current = result.prompt;
         setPrompt(result.prompt);
         setComposerCursor(collapseExpandedComposerCursor(result.prompt, result.expandedCursor));
-        // Recalled text replaces the whole prompt; suppress trigger detection
-        // so an entry ending in a mention/slash token cannot pop a menu that
-        // would capture the next arrow keypress.
+
         setComposerTrigger(null);
         window.requestAnimationFrame(() => {
           applyingPromptHistoryNavigationRef.current = false;
@@ -567,9 +615,8 @@ export function useChatComposerCommands({
 
     if (key === "Enter" && !event.shiftKey) {
       if (promptHistoryNavigationRef.current !== null) {
-        // Sending commits the recalled text as the prompt; drop the saved
-        // draft here (not just in the send path) so it cannot linger and
-        // resurrect a stale draft if the send is rejected.
+        // Sending commits the recalled text as the prompt; drop the saved draft here (not just in the send
+        // path) so it cannot linger and resurrect a stale draft if the send is rejected.
         promptHistoryNavigationRef.current = null;
         setComposerDraftPromptHistorySavedDraft(threadId, null);
       }

@@ -1,36 +1,14 @@
-/**
- * Agent-facing tools for the cua-driver CDP browser surface, exposed as
- * `computer_browser_*`.
- *
- * These are deliberately separate from the integrated `browser_*` family:
- * the integrated surface drives a Glade-owned browser through its own host,
- * while this surface dispatches through the desktop driver's CDP engine —
- * the only route that reaches a driver-launched isolated Chromium or an
- * approved existing profile, and the only input route that works on a
- * background Chromium renderer (OS-level events do not reach inactive
- * renderers; Input.dispatchMouseEvent does).
- *
- * Boundary rules this file owns:
- * - `session`, `_session_id`, `_transport_session_id`, and every other
- *   lifecycle field are injected by the host, never taken from model input.
- *   The schemas below simply do not name them.
- * - `target_id`/`tab_id`/refs are opaque session-scoped capabilities; they are
- *   forwarded verbatim and never interpreted as desktop window ids. They are
- *   also distinct from each other: results label both, and an omitted `tab_id`
- *   resolves from the target's remembered bind only when unambiguous.
- * - Deliberate driver refusals (`structuredContent.status === "refused"`)
- *   are RESULTS, not errors: the model is expected to branch on the refusal
- *   code (for example `browser_requires_setup` → call computer_browser_prepare).
- * - Upload and download paths are canonicalized and must resolve inside the
- *   caller thread's workspace — the driver checks canonicality; the workspace
- *   boundary is Glade's own filesystem policy on top of that.
- */
+import { isRecord } from "@glade/shared/transport/payloadValues";
+import { normalizeOperationError } from "../platform/operationError.ts";
+// Driver browser tools and integrated browser tools have separate session capabilities. The host
+// injects lifecycle fields; opaque target/tab refs cannot become desktop window IDs. Driver
+// refusals are results, and upload/download paths remain confined to the thread workspace.
 import { realpath } from "node:fs/promises";
 import { isAbsolute, sep } from "node:path";
 import { Effect } from "effect";
 
-import type { ComputerBrowserToolName } from "@glade/contracts";
-import { COMPUTER_BROWSER_DRIVER_NAMES } from "@glade/contracts";
+import type { ComputerBrowserToolName } from "@glade/contracts/computer/computerBrowser";
+import { COMPUTER_BROWSER_DRIVER_NAMES } from "@glade/contracts/computer/computerBrowser";
 
 import {
   ComputerBackendError,
@@ -68,37 +46,25 @@ import { computerBrowserEffect, computerBrowserFieldReadback } from "./computerB
 
 export interface AgentGatewayComputerBrowserToolsOptions {
   readonly manager: ComputerManager;
-  /**
-   * Same gate the desktop tools use: approval-required sessions prompt per
-   * call (task-scoped consent where the gate allows), full-access sessions
-   * run without prompting. Absent means no approval can be collected, so
-   * every mutating call is refused before dispatch.
-   */
+  // Same gate the desktop tools use: approval-required sessions prompt per call (task-scoped consent
+  // where the gate allows), full-access sessions run without prompting. Absent means no approval can
+  // be collected, so every mutating call is refused before dispatch.
   readonly authorizeAction?: (
     name: string,
     args: Record<string, unknown>,
     context: ToolContext,
     signal: AbortSignal,
   ) => Promise<boolean>;
-  /** Visible browser launches need the same user-authored request as native raises. */
+
   readonly resolveForegroundAuthorization?: (
     context: ToolContext,
   ) => Promise<ComputerForegroundAuthorization>;
-  /** Same visible-use approval card the desktop tools show; see computerTools. */
+
   readonly requestForegroundConsent?: AgentGatewayComputerToolsOptions["requestForegroundConsent"];
-  /**
-   * The caller thread's canonical workspace root, for bounding upload and
-   * download paths. Absent or unresolved means the file-transfer tools refuse
-   * rather than guess a boundary.
-   */
+
   readonly resolveWorkspaceRoot?: (context: ToolContext) => Effect.Effect<string | null>;
 }
 
-/**
- * Reads pass without approval; everything else goes through the gate.
- * `computer_browser_dialog` is read-only only for `action: "inspect"` —
- * accept/dismiss are consequential actions the driver itself classifies R3.
- */
 function computerBrowserToolRequiresApproval(name: string, args: Record<string, unknown>): boolean {
   if (name === "computer_browser_state") return false;
   if (name === "computer_browser_dialog" && args.action === "inspect") return false;
@@ -133,12 +99,6 @@ function approvalUnavailableResult(name: string): McpToolCallResult {
   };
 }
 
-/**
- * The driver's MCP-shaped reply, narrowed onto the MCP content union. Unknown
- * part types are dropped rather than coerced; a call that returned no usable
- * part still surfaces its structured payload as text so the refusal/result is
- * never silently empty.
- */
 function browserResultToMcp(result: ComputerBrowserCallResult): McpToolCallResult {
   const content: Array<
     { type: "text"; text: string } | { type: "image"; data: string; mimeType: string }
@@ -167,12 +127,6 @@ function browserResultToMcp(result: ComputerBrowserCallResult): McpToolCallResul
   };
 }
 
-/**
- * Canonicalize one model-supplied filesystem path and prove it resolves inside
- * the workspace. The canonical path is what gets dispatched — a symlink
- * cannot widen the approved set, and the driver's own canonicality check
- * then passes by construction.
- */
 async function boundedWorkspacePath(
   raw: unknown,
   workspaceRoot: string,
@@ -188,13 +142,6 @@ async function boundedWorkspacePath(
   return canonical;
 }
 
-/**
- * Upload and download are the only browser tools that touch the caller's
- * filesystem. Every path the driver will touch is canonicalized and
- * containment-checked against the thread's workspace root before dispatch —
- * matching the boundary browser_upload already enforces on the integrated
- * surface.
- */
 async function boundBrowserPaths(
   name: ComputerBrowserToolName,
   args: Record<string, unknown>,
@@ -232,11 +179,8 @@ async function boundBrowserPaths(
   };
 }
 
-/**
- * What one successful bind/snapshot told this server about a target's tabs.
- * Target ids are opaque and per-session, so entries are scoped to the caller
- * thread and capped — a long-lived server must not grow this without bound.
- */
+// Target ids are opaque and per-session, so entries are scoped to the caller thread and capped — a
+// long-lived server must not grow this without bound.
 interface BrowserTabRecord {
   readonly tab_id: string;
   readonly active?: boolean;
@@ -244,7 +188,6 @@ interface BrowserTabRecord {
   readonly url?: string;
 }
 
-/** The tab an omitted `tab_id` resolves to: the only one, or the only active one. */
 function resolvableTab(tabs: readonly BrowserTabRecord[]): BrowserTabRecord | undefined {
   if (tabs.length === 1) return tabs[0];
   const active = tabs.filter((tab) => tab.active === true);
@@ -255,10 +198,6 @@ const MAX_LISTED_TABS = 10;
 const MAX_REMEMBERED_TABS = 100;
 const KNOWN_TARGETS_PER_THREAD = 4;
 const KNOWN_THREADS_MAX = 32;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function browserTabsFrom(
   structured: Record<string, unknown> | undefined,
@@ -321,12 +260,6 @@ function browserRefusalResult(refusal: {
 const EXISTING_PROFILE_UNAVAILABLE =
   'This Computer route cannot attach to your existing browser profile. If a separate browser without your cookies satisfies the task, call computer_browser_prepare({allow_launch:true,profile:{mode:"isolated_new"}}). Use isolated_named with a task-specific name if the profile must survive browser restarts. Do not substitute it when the task requires your existing profile.';
 
-/**
- * The observed packaged E2E passed the bind's target id in the `tab_id` slot
- * ("tab bt-85991064… is not known for target bt-85991064…"), then burned calls
- * on the confusion. The driver refusal is truthful but terse; when the value
- * is provably the target id itself, say which id is which.
- */
 function augmentBrowserResult(
   name: ComputerBrowserToolName,
   args: Record<string, unknown>,
@@ -406,8 +339,6 @@ function augmentBrowserResult(
   const targetId =
     typeof structuredRecord.target_id === "string" ? structuredRecord.target_id : undefined;
   if (targetId === undefined) {
-    // Prepare results mint no target yet; label the bind key so the next call
-    // cannot mistake the pid for a target or tab id.
     const preparedPid =
       typeof structuredRecord.prepared_pid === "number" ? structuredRecord.prepared_pid : undefined;
     if (name !== "computer_browser_prepare" || preparedPid === undefined) return result;
@@ -471,15 +402,6 @@ export function makeAgentGatewayComputerBrowserTools(
     }
   };
 
-  /**
-   * Target → tabs, per caller thread. A bind mints a fresh target id every
-   * call, so this remembers the newest few per thread and refuses to guess
-   * past them. It exists for one reason: the driver mints `target_id` and
-   * `tab_id` as opaque capabilities with similar-looking values, and a model
-   * forced to carry both by hand conflates them. With the bind result
-   * remembered, an omitted `tab_id` resolves locally — no extra driver call,
-   * no guessing, and the driver stays authoritative for everything else.
-   */
   const knownTargets = new Map<string, Map<string, readonly BrowserTabRecord[]>>();
 
   const rememberTargetTabs = (
@@ -507,11 +429,6 @@ export function makeAgentGatewayComputerBrowserTools(
     }
   };
 
-  /**
-   * Fill an omitted `tab_id` from the target's last bind result. Refuses —
-   * with the tab listing — when the target is unknown to this thread or its
-   * tabs offer no single default. Bind mode (pid/window_id) is left alone.
-   */
   const resolveOmittedTabId = (
     threadId: string,
     args: Record<string, unknown>,
@@ -560,11 +477,8 @@ export function makeAgentGatewayComputerBrowserTools(
 
   const handle =
     (name: ComputerBrowserToolName) => (args: Record<string, unknown>, context: ToolContext) => {
-      // The resolved form is what dispatch, approval, and audit all see: an
-      // omitted tab_id is never a different call, just a less explicit one.
       let effectiveArgs: Record<string, unknown> = args;
-      // Mutating browser calls audit exactly like the desktop family; the
-      // read-only state snapshot and the dialog inspect stay out.
+
       const audited = computerBrowserToolRequiresApproval(name, args);
       const audit = (outcome: {
         readonly effect: ComputerAuditEffect;
@@ -633,12 +547,10 @@ export function makeAgentGatewayComputerBrowserTools(
           }
           const visibleLaunch =
             name === "computer_browser_prepare" && effectiveArgs.windowed === true;
-          // The Linux host refuses every visible launch, so the user is never
-          // asked to approve one there.
+          // The Linux host refuses every visible launch, so the user is never asked to approve one there.
           const asksForVisibleUse =
             options.requestForegroundConsent !== undefined && manager.agentDialect === "macos";
-          // Without a way to ask, refuse before asking the user to approve a
-          // call that cannot run.
+
           if (visibleLaunch && !asksForVisibleUse) await assertVisibleBrowserAllowed(context);
           if (computerBrowserToolRequiresApproval(name, effectiveArgs)) {
             if (!options.authorizeAction) {
@@ -658,7 +570,7 @@ export function makeAgentGatewayComputerBrowserTools(
               );
             }
           }
-          // Visible-use consent follows routine approval, as on the desktop tools.
+
           if (visibleLaunch && asksForVisibleUse)
             await assertVisibleBrowserAllowed(context, {
               args: effectiveArgs,
@@ -680,15 +592,13 @@ export function makeAgentGatewayComputerBrowserTools(
               COMPUTER_BROWSER_DRIVER_NAMES[name],
               boundedArgs,
               abortSignal,
-              // Approval and the browser queue can both outlive visible-use
-              // intent. Check the shared resolver at actual queue admission.
+
               visibleLaunch ? () => assertVisibleBrowserAllowed(context) : undefined,
             );
           const result = await (name === "computer_browser_state"
             ? withModelDesktopObservation(dispatch)
             : dispatch());
-          // A deliberate driver refusal is a successful call with a refused
-          // payload; both halves land in the audit record's effect + code.
+
           const structured =
             result.structuredContent !== null && typeof result.structuredContent === "object"
               ? (result.structuredContent as Record<string, unknown>)
@@ -697,7 +607,7 @@ export function makeAgentGatewayComputerBrowserTools(
           audit(computerBrowserEffect(name, boundedArgs, result));
           return browserResultToMcp(augmentBrowserResult(name, effectiveArgs, result));
         },
-        catch: (error) => error,
+        catch: (error) => normalizeOperationError(error),
       }).pipe(
         Effect.catch((error) => {
           if (!(error instanceof ComputerBackendError && error.controlRevoked)) {

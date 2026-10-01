@@ -1,8 +1,3 @@
-// FILE: fontFamily.ts
-// Purpose: Convert user-entered font family names into valid CSS font-family values.
-// Layer: Web appearance utilities
-// Exports: font family normalization helpers
-
 const CSS_WIDE_KEYWORDS = new Set(["inherit", "initial", "revert", "revert-layer", "unset"]);
 
 const DEFAULT_MONOSPACE_FONT_FAMILY_STACK =
@@ -116,7 +111,6 @@ export function normalizeFontFamilyCssValue(value: string | null | undefined): s
   return splitFontFamilyList(trimmedValue).map(normalizeSingleFontFamily).join(", ");
 }
 
-// Keeps theme-provided code fonts from falling through to the browser's serif default.
 export function normalizeMonospaceFontFamilyCssValue(
   value: string | null | undefined,
 ): string | null {

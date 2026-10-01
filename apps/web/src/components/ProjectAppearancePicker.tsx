@@ -1,9 +1,3 @@
-// FILE: ProjectAppearancePicker.tsx
-// Purpose: Popover body for choosing a project's emoji, or its icon and color.
-// Layer: UI component
-// Exports: ProjectAppearancePicker
-// Depends on: projectAppearance (icon set, palette) and projectEmoji (bundled emoji).
-
 import { useId, useMemo, useState, type KeyboardEvent, type RefObject } from "react";
 
 import { CentralIcon } from "~/lib/central-icons";
@@ -30,12 +24,10 @@ type PickerTab = (typeof PICKER_TABS)[number];
 
 const GRID_COLUMNS = 8;
 
-/** One cell of the icon, emoji, and color grids; selection reads as a soft filled square. */
 const CELL_CLASS_NAME =
   "flex aspect-square cursor-pointer items-center justify-center rounded-xl outline-hidden transition-colors hover:bg-foreground/6 focus-visible:ring-2 focus-visible:ring-ring/50";
 const SELECTED_CELL_CLASS_NAME = "bg-foreground/9 hover:bg-foreground/9";
 
-/** Every query word must start one of the option's words, so "cat" finds the cat, not "education". */
 function matchesQuery(query: string, ...fields: string[]): boolean {
   if (query.length === 0) return true;
   const words = fields.join(" ").toLowerCase().split(/\s+/);
@@ -53,16 +45,15 @@ export function ProjectAppearancePicker({
   onEmojiPicked,
 }: {
   value: ProjectAppearance | null;
-  /** The popover focuses search on open, so typing filters straight away. */
+
   searchInputRef: RefObject<HTMLInputElement | null>;
   onChange: (next: ProjectAppearance | null) => void;
-  /** Called after an emoji is chosen: there is nothing else to pick on that tab. */
+
   onEmojiPicked: () => void;
 }) {
   const [tab, setTab] = useState<PickerTab>(value?.kind === "emoji" ? "emoji" : "icons");
   const [query, setQuery] = useState("");
-  // The palette tints the icon grid as a preview. It only lands on the project once an icon
-  // is the choice, so trying a color while an emoji is set does not replace the emoji.
+
   const [color, setColor] = useState<ProjectColor | null>(
     value?.kind === "icon" ? value.color : null,
   );
@@ -84,8 +75,7 @@ export function ProjectAppearancePicker({
     const matches = PROJECT_EMOJI_OPTIONS.filter(
       (option) => option.emoji === trimmedQuery || matchesQuery(trimmedQuery, option.keywords),
     ).map((option) => option.emoji);
-    // Any emoji typed or pasted into the search is offered too, so the bundled list is a
-    // shortcut rather than a limit.
+
     const typed = firstEmoji(trimmedQuery);
     return typed && !matches.includes(typed) ? [typed, ...matches] : matches;
   }, [trimmedQuery]);
@@ -98,8 +88,6 @@ export function ProjectAppearancePicker({
     setQuery("");
   };
 
-  // Tabs follow the WAI-ARIA pattern: one tab stop, arrows move and select, focus stays on
-  // the tabs. A click instead jumps to search, since that is where a pointer user goes next.
   const handleTabKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const index = PICKER_TABS.indexOf(tab);
     const nextIndex =
@@ -216,8 +204,7 @@ export function ProjectAppearancePicker({
           </div>
         ) : null}
 
-        {/* About four rows, with the next one peeking so the scroll is discoverable. Short
-            enough that the popover fits below the field instead of covering it. */}
+        {}
         <div className="-mx-1 max-h-44 overflow-y-auto px-1 pb-0.5">
           {tab === "icons" ? (
             icons.length > 0 ? (
@@ -240,7 +227,6 @@ export function ProjectAppearancePicker({
                       aria-checked={selected}
                       aria-label={option.label}
                       title={option.label}
-                      // Roving tabindex: the grid is one tab stop, entered at the selection.
                       tabIndex={selected || (!selectedIconListed && index === 0) ? 0 : -1}
                       onClick={() => onChange({ kind: "icon", icon: option.name, color })}
                       className={cn(
@@ -268,8 +254,6 @@ export function ProjectAppearancePicker({
               role="radiogroup"
               aria-label="Emoji"
               onKeyDown={(event) =>
-                // Arrows only move focus here: choosing an emoji closes the picker, so it
-                // waits for Enter, Space, or a click.
                 handleRadioGridKeyDown(event, "[data-project-emoji]", {
                   columns: GRID_COLUMNS,
                   selectOnMove: false,

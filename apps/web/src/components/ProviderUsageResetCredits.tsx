@@ -1,10 +1,9 @@
-// Shared confirm-gated Codex resets in settings and usage popovers.
 import type {
   CodexResetCreditOutcome,
   ServerCodexResetCredit,
   ServerCodexResetCredits,
   ServerConsumeCodexResetCreditInput,
-} from "@glade/contracts";
+} from "@glade/contracts/server/server";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 
@@ -51,12 +50,9 @@ export function ProviderUsageResetCredits({
   const consumeMutation = useMutation({
     mutationFn: consumeCodexResetCredit,
     onSuccess: (result, attempt) => {
-      // Every recognized outcome completes the attempt, even if the subsequent usage read fails.
       try {
         finishCodexResetAttempt(attempt);
-      } catch {
-        /* Retaining the same key remains safe. */
-      }
+      } catch {}
       const messages: Record<CodexResetCreditOutcome, string> = {
         reset: "Codex limits reset.",
         nothingToReset: "Codex limits do not need a reset right now.",

@@ -1,11 +1,3 @@
-/**
- * CliConfig - CLI/runtime bootstrap service definitions.
- *
- * Defines startup-only service contracts used while resolving process config
- * and constructing server runtime layers.
- *
- * @module CliConfig
- */
 import OS from "node:os";
 import {
   Config,
@@ -20,17 +12,13 @@ import {
   Stream,
 } from "effect";
 import { Command, Flag } from "effect/unstable/cli";
-import { NetService } from "@glade/shared/Net";
-import {
-  MIGRATION_DIVERGENCE_CONSENT_ENV,
-  MIGRATION_RUNTIME_SOURCE_DIGEST_ENV,
-} from "@glade/shared/migrationRecovery";
+import { NetService } from "@glade/shared/platform/Net";
 import {
   optionalBooleanEnvironmentConfig,
   optionalBooleanFlag,
   resolveBooleanConfig,
   type BooleanFlagInput,
-} from "@glade/shared/cli";
+} from "./server/cliFlags";
 import {
   DEFAULT_PORT,
   deriveServerPaths,
@@ -42,35 +30,31 @@ import {
   ServerConfig,
   type RuntimeMode,
   type ServerConfigShape,
-} from "./config";
+} from "./server/config";
 
-import { fixPath, resolveBaseDir } from "./os-jank";
-import { Open } from "./open";
+import { fixPath, resolveBaseDir } from "./platform/os-jank";
+import { Open } from "./workspace/editor/open";
 import { ServerAuth } from "./auth/Services/ServerAuth";
 import * as SqlitePersistence from "./persistence/Layers/Sqlite";
 import { ProviderRuntimeEventRepositoryLive } from "./persistence/Layers/ProviderRuntimeEvents";
 import { makeServerApplicationLayers } from "./serverLayers";
-import { startServerMemoryDiagnostics } from "./memoryDiagnostics";
-import { createClaudeCredentialKeepaliveController } from "./provider/claudeCredentialKeepalive";
+import { startServerMemoryDiagnostics } from "./diagnostics/memoryDiagnostics";
+import { createClaudeCredentialKeepaliveController } from "./provider/claude/claudeCredentialKeepalive";
 import { ProjectionSnapshotQuery } from "./orchestration/Services/ProjectionSnapshotQuery";
 import { ProviderSessionReaperLive } from "./provider/Layers/ProviderSessionReaper";
 import { ProviderRuntimeReconcilerLive } from "./provider/Layers/ProviderRuntimeReconciler";
-import { Server } from "./effectServer";
-import { ServerLoggerLive } from "./serverLogger";
-import { ServerSettingsService } from "./serverSettings";
-import { formatHostForUrl, isLoopbackHost, isWildcardHost } from "./startupAccess";
+import { Server } from "./server/http/effectServer";
+import { ServerLoggerLive } from "./diagnostics/serverLogger";
+import { ServerSettingsService } from "./settings/serverSettings";
+import { formatHostForUrl, isLoopbackHost, isWildcardHost } from "./server/http/startupAccess";
 import { OrchestrationEngineService } from "./orchestration/Services/OrchestrationEngine";
-import { startThreadRetentionJob } from "./threadRetention";
+import { startThreadRetentionJob } from "./orchestration/threadRetention";
 import {
   discoverServerRuntime,
   resolveServerHome,
   verifyServerRuntime,
-} from "./serverRuntimeDiscovery";
-import { fetchGladeServerStatus, formatGladeServerStatus } from "./serverStatusCli";
-import {
-  embeddedMigrationRuntimeSourceDigest,
-  verifyMigrationRuntimeIdentity,
-} from "./migrationBundleIdentity";
+} from "./server/runtime/serverRuntimeDiscovery";
+import { fetchGladeServerStatus, formatGladeServerStatus } from "./server/status/serverStatusCli";
 
 export class StartupError extends Data.TaggedError("StartupError")<{
   readonly message: string;
@@ -109,29 +93,14 @@ interface CliInput {
   readonly logWebSocketEvents: BooleanFlagInput;
 }
 
-/**
- * CliConfigShape - Startup helpers required while building server layers.
- */
 export interface CliConfigShape {
-  /**
-   * Current process working directory.
-   */
   readonly cwd: string;
 
-  /**
-   * Apply OS-specific PATH normalization.
-   */
   readonly fixPath: Effect.Effect<void>;
 
-  /**
-   * Resolve static web asset directory for server mode.
-   */
   readonly resolveStaticDir: Effect.Effect<string | undefined>;
 }
 
-/**
- * CliConfig - Service tag for startup CLI/runtime helpers.
- */
 export class CliConfig extends ServiceMap.Service<CliConfig, CliConfigShape>()(
   "glade/main/CliConfig",
 ) {
@@ -177,14 +146,6 @@ const CliEnvConfig = Config.all({
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
-  migrationDivergenceConsent: Config.string(MIGRATION_DIVERGENCE_CONSENT_ENV).pipe(
-    Config.option,
-    Config.map(Option.getOrUndefined),
-  ),
-  migrationRuntimeSourceDigest: Config.string(MIGRATION_RUNTIME_SOURCE_DIGEST_ENV).pipe(
-    Config.option,
-    Config.map(Option.getOrUndefined),
-  ),
   autoBootstrapProjectFromCwd: optionalBooleanEnvironmentConfig(
     "GLADE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD",
   ),
@@ -207,32 +168,6 @@ const ServerConfigLive = (input: CliInput) =>
       const liveProcessDesktopShutdownToken = yield* Effect.sync(() =>
         consumeProcessEnvironmentValue(DESKTOP_SHUTDOWN_TOKEN_ENV_KEY),
       );
-      const liveProcessMigrationConsent = yield* Effect.sync(() =>
-        consumeProcessEnvironmentValue(MIGRATION_DIVERGENCE_CONSENT_ENV),
-      );
-      const liveProcessMigrationSourceDigest = yield* Effect.sync(() =>
-        consumeProcessEnvironmentValue(MIGRATION_RUNTIME_SOURCE_DIGEST_ENV),
-      );
-
-      const launcherMigrationSourceDigest =
-        env.migrationRuntimeSourceDigest ?? liveProcessMigrationSourceDigest;
-      yield* Effect.try({
-        try: () =>
-          verifyMigrationRuntimeIdentity({
-            cwd: cliConfig.cwd,
-            embeddedDigest: embeddedMigrationRuntimeSourceDigest(),
-            launcherDigest: launcherMigrationSourceDigest,
-          }),
-        catch: (cause) =>
-          new StartupError({
-            message:
-              cause instanceof Error
-                ? `${cause.name}: ${cause.message}`
-                : "Migration bundle check failed",
-            cause,
-          }),
-      });
-
       const mode = Option.getOrElse(input.mode, () => env.mode);
 
       const port = yield* Option.match(input.port, {
@@ -276,31 +211,25 @@ const ServerConfigLive = (input: CliInput) =>
       const noBrowser = resolveBooleanConfig(input.noBrowser, env.noBrowser, mode === "desktop");
       const authToken = Option.getOrUndefined(input.authToken) ?? env.authToken;
       const desktopShutdownToken = env.desktopShutdownToken ?? liveProcessDesktopShutdownToken;
-      const migrationDivergenceConsent =
-        env.migrationDivergenceConsent ?? liveProcessMigrationConsent;
       const autoBootstrapProjectFromCwd = resolveBooleanConfig(
         input.autoBootstrapProjectFromCwd,
         env.autoBootstrapProjectFromCwd,
         mode === "web",
       );
-      // Provider event NDJSON logging is helpful for debugging, but it is too
-      // expensive to keep enabled on the streaming hot path by default.
+
       const logProviderEvents = resolveBooleanConfig(
         input.logProviderEvents,
         env.logProviderEvents,
         false,
       );
-      // Keep websocket payload logging opt-in in dev. Terminal/TUI traffic is
-      // high-volume enough that automatic logging adds noticeable CPU and I/O.
+
       const logWebSocketEvents = resolveBooleanConfig(
         input.logWebSocketEvents,
         env.logWebSocketEvents,
         false,
       );
       const staticDir = devUrl ? undefined : yield* cliConfig.resolveStaticDir;
-      // Omitting Node's host listens on an unspecified address, which exposes
-      // the server beyond the local machine on common platforms. Keep every
-      // mode loopback-only unless remote access is explicit and authenticated.
+
       const host = Option.getOrUndefined(input.host) ?? env.host ?? "127.0.0.1";
       const remotePolicyError = remoteAccessPolicyError({
         host,
@@ -335,7 +264,6 @@ const ServerConfigLive = (input: CliInput) =>
         noBrowser,
         authToken,
         desktopShutdownToken,
-        migrationDivergenceConsent,
         autoBootstrapProjectFromCwd,
         logProviderEvents,
         logWebSocketEvents,
@@ -348,8 +276,6 @@ const ServerConfigLive = (input: CliInput) =>
 const LayerLive = (input: CliInput) => {
   const { runtimeServicesLayer, providerLayer } = makeServerApplicationLayers();
   const providerSessionReaperLayer = ProviderSessionReaperLive.pipe(
-    // The reaper coordinates orchestration state with live provider sessions,
-    // so it belongs at the top level where both layers are available.
     Layer.provideMerge(runtimeServicesLayer),
     Layer.provideMerge(providerLayer),
   );
@@ -373,7 +299,6 @@ export function makeServerStartupLogData(config: ServerConfigShape): Record<stri
   const safeConfig: Record<string, unknown> = { ...config };
   delete safeConfig.authToken;
   delete safeConfig.desktopShutdownToken;
-  delete safeConfig.migrationDivergenceConsent;
   delete safeConfig.devUrl;
 
   return {
@@ -427,12 +352,10 @@ const makeServerProgram = (input: CliInput) =>
 
     const orchestrationEngine = yield* OrchestrationEngineService;
     const projectionSnapshotQuery = yield* ProjectionSnapshotQuery;
-    // Start the retention loop after the server is live so startup can serve
-    // existing history first, then hide inactive threads from the app in the background.
+
     yield* startThreadRetentionJob(orchestrationEngine, projectionSnapshotQuery);
-    // Optional Claude OAuth keepalive. Disabled by default because it touches
-    // Claude Code auth data in the background; users can opt in with
-    // GLADE_CLAUDE_KEEPALIVE=1.
+    // Optional Claude OAuth keepalive. Disabled by default because it touches Claude Code auth data in
+    // the background; users can opt in with GLADE_CLAUDE_KEEPALIVE=1.
     const claudeKeepalive = createClaudeCredentialKeepaliveController({
       homeDir: config.homeDir,
       log: (message) => Effect.runFork(Effect.logInfo(message)),
@@ -450,9 +373,7 @@ const makeServerProgram = (input: CliInput) =>
             : {}),
         }),
       );
-    // Attach before reading the initial snapshot. The settings PubSub does not
-    // replay, so reading first could miss a disable/path update in the small
-    // window before the stream consumer subscribes.
+
     const claudeKeepaliveSettingsChanges = yield* serverSettings.streamChanges.pipe(
       Stream.toQueue({ capacity: "unbounded" }),
     );
@@ -501,10 +422,6 @@ const makeServerProgram = (input: CliInput) =>
 
     return yield* stopSignal;
   }).pipe(Effect.scoped, Effect.provide(LayerLive(input)));
-
-/**
- * These flags mirrors the environment variables and the config shape.
- */
 
 const modeFlag = Flag.choice("mode", ["web", "desktop"]).pipe(
   Flag.withDescription("Runtime mode. `desktop` keeps loopback defaults unless overridden."),
@@ -562,11 +479,6 @@ const logWebSocketEventsFlag = optionalBooleanFlag("log-websocket-events", {
   aliases: ["log-ws-events"],
 });
 
-// Base `glade` command defined before the MCP subcommands so they can yield
-// its parsed input (notably `--home-dir` / `gladeHome`) via Effect's command
-// context. This avoids a duplicate `--home-dir` flag between the root command
-// and its MCP subcommands, which the Effect CLI assigns to the parent and
-// leaves the subcommand flag unset.
 const baseServerCommand = Command.make("glade", {
   mode: modeFlag,
   port: portFlag,

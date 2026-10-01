@@ -107,8 +107,8 @@ function readFeatureFlagState(): FeatureFlagState {
     cachedFeatureFlagState = nextState;
     return nextState;
   } catch {
-    // Do not cache a raw value whose parse/read failed. Otherwise a later read of
-    // that same value would match the cache key and resurrect the previous state.
+    // Do not cache a raw value whose parse/read failed. Otherwise a later read of that same value would
+    // match the cache key and resurrect the previous state.
     cachedRawFeatureFlagState = undefined;
     cachedFeatureFlagState = DEFAULT_FEATURE_FLAG_STATE;
     return DEFAULT_FEATURE_FLAG_STATE;
@@ -124,9 +124,7 @@ function writeFeatureFlagState(state: FeatureFlagState): void {
       window.localStorage.setItem(FEATURE_FLAG_STORAGE_KEY, raw);
       cachedRawFeatureFlagState = raw;
       cachedFeatureFlagState = state;
-    } catch {
-      // Local feature flags are best-effort developer tools.
-    }
+    } catch {}
   }
 
   for (const listener of listeners) {

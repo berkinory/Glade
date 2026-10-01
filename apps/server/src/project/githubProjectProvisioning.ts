@@ -4,12 +4,12 @@ import type {
   GitHubProjectProvisionInput,
   GitHubProjectProvisionPhase,
   GitHubProjectProvisionProgressEvent,
-} from "@glade/contracts";
+} from "@glade/contracts/git/githubProjectProvisioning";
 import {
   parseGitHubRepositoryInput,
   parseGitHubRepositoryNameWithOwnerFromRemoteUrl,
-} from "@glade/shared/githubRepository";
-import { normalizeProjectDirectoryName } from "@glade/shared/projectDirectoryName";
+} from "@glade/shared/git/githubRepository";
+import { normalizeProjectDirectoryName } from "@glade/shared/threads/projectDirectoryName";
 import { Effect, FileSystem, Path, PlatformError, Schema, Semaphore } from "effect";
 
 import { GitCommandError, GitHubCliError } from "../git/Errors";
@@ -126,10 +126,10 @@ function createCloneProgressChunkHandler(
 }
 
 function classifyCloneFailure(cause: unknown): GitHubProjectProvisioningError {
-  if (cause instanceof GitHubProjectProvisioningError) return cause;
+  if (Schema.is(GitHubProjectProvisioningError)(cause)) return cause;
 
   const detail =
-    cause instanceof GitHubCliError || cause instanceof GitCommandError
+    Schema.is(GitHubCliError)(cause) || Schema.is(GitCommandError)(cause)
       ? cause.detail
       : cause instanceof Error
         ? cause.message
@@ -137,10 +137,10 @@ function classifyCloneFailure(cause: unknown): GitHubProjectProvisioningError {
   const lower = detail.toLowerCase();
 
   const exceededConfiguredCloneTimeout =
-    (cause instanceof GitCommandError &&
+    (Schema.is(GitCommandError)(cause) &&
       cause.operation === "clone public GitHub project" &&
       lower.endsWith(" timed out.")) ||
-    (cause instanceof GitHubCliError &&
+    (Schema.is(GitHubCliError)(cause) &&
       lower.includes("gh repo clone") &&
       lower.includes(" timed out."));
   if (exceededConfiguredCloneTimeout) {
@@ -389,9 +389,6 @@ export const makeGitHubProjectProvisioner = Effect.fn(function* (
       return;
     }
 
-    // GitCore.execute owns the spawned process in an Effect Scope. Cancelling the
-    // WebSocket request interrupts this Effect, closes that Scope, and terminates
-    // the fallback `git clone` process just like runProcess does for the gh path.
     yield* git.execute({
       operation: "clone public GitHub project",
       cwd: parent,

@@ -1,8 +1,3 @@
-// FILE: AppRailMoreMenu.tsx
-// Purpose: The rail's "…" menu (as in Codex): choose which Spaces and single
-//          projects sit in the rail as their own shortcuts.
-// Layer: App shell component (rendered by ThreadSidebar into the rail)
-
 import { ComposerPickerMenuPopup } from "./chat/ComposerPickerMenuPopup";
 import { APP_RAIL_GLYPH_CLASS_NAME, appRailButtonClassName, RAIL_MORE_GLYPHS } from "./AppRail";
 import { SidebarIconButton } from "./SidebarIconButton";
@@ -16,7 +11,6 @@ import {
 } from "./ui/menu";
 
 export type AppRailMoreMenuEntry = {
-  /** Shortcut key ("space:…" / "project:…"). */
   readonly key: string;
   readonly label: string;
 };

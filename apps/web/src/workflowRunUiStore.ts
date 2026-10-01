@@ -1,16 +1,8 @@
-// FILE: workflowRunUiStore.ts
-// Purpose: Persist per-thread workflow-run UI flags (Claude dynamic workflows):
-// which settled workflow task ids the user paused (vs. a plain stop) and which
-// the user dismissed. Neither is derivable from persisted activities — pause is
-// encoded as an ordinary stop, dismissal has no domain event — so this store is
-// the source of truth across reloads.
-// Layer: UI state store
-// Exports: useWorkflowRunUiStore, useWorkflowRunUiThreadState, default-state helper
-
-import type { ThreadId } from "@glade/contracts";
+import { isRecord } from "@glade/shared/transport/payloadValues";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { isPlainObject, sanitizeStringKeyedRecord } from "./persistedRecord";
+import { sanitizeStringKeyedRecord } from "./persistedRecord";
 
 export interface WorkflowRunUiThreadState {
   pausedByUser: readonly string[];
@@ -22,13 +14,12 @@ interface WorkflowRunUiStoreState {
   markPaused: (threadId: ThreadId, workflowTaskId: string) => void;
   unmarkPaused: (threadId: ThreadId, workflowTaskId: string) => void;
   markDismissed: (threadId: ThreadId, workflowTaskId: string) => void;
-  // Drops all tracked flags for a thread (e.g. once the thread itself is deleted).
+
   clearThread: (threadId: ThreadId) => void;
 }
 
 const WORKFLOW_RUN_UI_STORAGE_KEY = "glade:workflow-run-ui:v1";
-// Workflow task ids accumulate one per run; a thread re-running workflows for
-// months should still not grow this without bound. Keep the newest entries.
+
 const MAX_ENTRIES_PER_LIST = 50;
 
 const EMPTY_LIST: readonly string[] = Object.freeze([]);
@@ -43,9 +34,6 @@ function getDefaultWorkflowRunUiThreadState(): WorkflowRunUiThreadState {
   return DEFAULT_WORKFLOW_RUN_UI_THREAD_STATE;
 }
 
-// Appends `id` if absent, capping the list to the newest MAX_ENTRIES_PER_LIST
-// entries (oldest dropped first). Returns the same array reference when `id`
-// is already present, so callers can skip a state update.
 function withAppendedId(list: readonly string[], id: string): readonly string[] {
   if (list.includes(id)) {
     return list;
@@ -78,7 +66,7 @@ function sanitizeIdList(value: unknown): string[] {
 }
 
 function sanitizeWorkflowRunUiThreadState(rawState: unknown): WorkflowRunUiThreadState | null {
-  if (!isPlainObject(rawState)) {
+  if (!isRecord(rawState)) {
     return null;
   }
   const pausedByUser = sanitizeIdList(rawState.pausedByUser);
@@ -89,8 +77,6 @@ function sanitizeWorkflowRunUiThreadState(rawState: unknown): WorkflowRunUiThrea
   return { pausedByUser, dismissed };
 }
 
-// Validates persisted per-thread workflow-run flags so a malformed entry
-// degrades to defaults instead of flowing into the UI.
 function sanitizeWorkflowRunUiStateByThreadId(
   value: unknown,
 ): Record<string, WorkflowRunUiThreadState> {
@@ -171,8 +157,6 @@ export const useWorkflowRunUiStore = create<WorkflowRunUiStoreState>()(
 
 function selectWorkflowRunUiThreadState(threadId: ThreadId | null) {
   return (store: WorkflowRunUiStoreState): WorkflowRunUiThreadState =>
-    // Keep the fallback snapshot stable so React does not observe a phantom store
-    // change while mounting a thread that has no tracked workflow-run flags yet.
     (threadId ? store.stateByThreadId[threadId] : undefined) ??
     getDefaultWorkflowRunUiThreadState();
 }

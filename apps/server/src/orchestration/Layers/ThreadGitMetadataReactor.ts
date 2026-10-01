@@ -1,5 +1,9 @@
-import { CommandId, type ProviderRuntimeEvent, type ThreadId } from "@glade/contracts";
-import { makeDrainableWorker, startDrainableWorkerProducers } from "@glade/shared/DrainableWorker";
+import { CommandId, type ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
+import {
+  makeDrainableWorker,
+  startDrainableWorkerProducers,
+} from "../../platform/workers/drainableWorker";
 import { Cause, Effect, Layer, Option, Stream } from "effect";
 
 import { resolveThreadWorkspaceCwd } from "../../checkpointing/Utils.ts";
@@ -209,9 +213,9 @@ const make = Effect.gen(function* () {
     });
   });
 
-  // Mid-turn VCS transitions (commit/checkout/rebase) refresh the durable thread
-  // metadata immediately; long-running turns would otherwise leave the projected
-  // branch stale until the turn boundary reconciliation.
+  // Mid-turn VCS transitions (commit/checkout/rebase) refresh the durable thread metadata
+  // immediately; long-running turns would otherwise leave the projected branch stale until the turn
+  // boundary reconciliation.
   const captureVcsMetadata = Effect.fnUntraced(function* (event: VcsStateChangedEvent) {
     const context = yield* resolveWorkspaceContext(event.threadId);
     if (!context) return;
@@ -320,9 +324,6 @@ const make = Effect.gen(function* () {
   });
 
   const processProviderEvent = (event: ProviderRuntimeEvent) => {
-    // Native subagent lifecycle events carry the parent Glade thread id and the child identity
-    // in providerRefs. Treating them as parent turns would make shared-root ownership ambiguous
-    // and suppress reconciliation when the actual parent turn completes.
     if (event.providerRefs?.providerParentThreadId !== undefined) return Effect.void;
     if (event.type === "turn.started") return trackTurnStart(event);
     if (event.type === "vcs.state.changed") return captureVcsMetadata(event);

@@ -1,21 +1,14 @@
 import {
   type AutomationDefinition,
-  type AutomationRun,
   type AutomationUpdateInput,
   type AutomationWorktreeMode,
-  type ModelSelection,
-  type ProviderOptionDescriptor,
-  type ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/automation/automation";
+import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
+import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   automationContinuationThreadId,
   automationRequiresTargetThread,
-} from "@glade/shared/automationMode";
-import {
-  getModelCapabilities,
-  getProviderOptionCurrentValue,
-  getProviderOptionDescriptors,
-} from "@glade/shared/model";
+} from "@glade/shared/threads/automationMode";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
@@ -34,7 +27,6 @@ import {
   InlineCommitTextInput,
   InlineSelect,
   InlineTime,
-  InlineToggle,
   MODE_LABELS,
   StatusValue,
   WORKTREE_OPTIONS,
@@ -61,40 +53,23 @@ import { automationCronExpressionError, automationTimezoneError } from "~/lib/au
 import {
   completionPolicyFromStopWhen,
   stopWhenFromCompletionPolicy,
-} from "@glade/shared/automationCompletionPolicy";
-import { automationLifecycleState, canPauseAutomation } from "~/lib/automationStatus";
+} from "../features/automations/completionPolicy";
+import { canPauseAutomation } from "~/lib/automationStatus";
 import {
   useDesktopTopBarTrafficLightGutterClassName,
   useDesktopTopBarWindowControlsGutterClassName,
 } from "~/hooks/useDesktopTopBarGutter";
 import { CentralIcon } from "~/lib/central-icons";
 import { cn } from "~/lib/utils";
-import {
-  buildModelSelection,
-  buildNextProviderOptions,
-  buildProviderOptionPatch,
-  type ProviderOptions,
-} from "~/providerModelOptions";
 import { ensureNativeApi } from "~/nativeApi";
 import { useStore } from "~/store";
 import { createSidebarThreadSummariesSelector } from "~/storeSelectors";
 import {
-  AutomationApprovalBanner,
-  AutomationModelPicker,
   automationIntervalPresetOptions,
   automationTargetThreads,
-  canCancelAutomationRun,
   datetimeLocalFromIso,
-  formatRelativeTime,
   isoFromDatetimeLocal,
-  isRowInteractiveEventTarget,
-  isTriageRun,
-  maxIterationOptions,
   providerOptionsForAutomationModelSelection,
-  runResultSummary,
-  runResultTitle,
-  runStatusLabel,
-  RunStatusIndicator,
   SCHEDULE_KIND_OPTIONS,
   scheduleFromKind,
   scheduleKindFromSchedule,
@@ -104,89 +79,25 @@ import {
   weekdayLabel,
 } from "./-automations.shared";
 import { resolveThreadPickerTitle } from "./-chatThreadRoute.logic";
+import { ModelOptionRows, RunRow } from "./-automationDetailRows";
+import {
+  AutomationApprovalBanner,
+  AutomationModelPicker,
+  maxIterationOptions,
+} from "./-automationFormDialog";
+import {
+  lastFinishedRun,
+  formatRunTimestamp,
+  automationStatusDisplay,
+  automationStoppedExplanation,
+  trimDraft,
+} from "./-automationDetailPresentation";
 
 export const Route = createFileRoute("/_chat/automations/$automationId")({
   component: AutomationDetailView,
 });
 
-// Sidebar summaries carry every field these surfaces read (id, projectId, title,
-// modelSelection) and do not rebuild on streamed message/activity deltas
-// the way the fully derived thread list does.
 const selectAllThreads = createSidebarThreadSummariesSelector();
-
-// Commit the trimmed text: the validators trim before checking, so committing the raw
-// draft would persist stray whitespace the validation never saw.
-const trimDraft = (value: string) => value.trim();
-
-function lastFinishedRun(runs: readonly AutomationRun[]): AutomationRun | null {
-  return runs.find((run) => run.finishedAt != null || run.startedAt != null) ?? null;
-}
-
-function startOfDay(date: Date): number {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-}
-
-const RUN_TIME_FORMATTER = new Intl.DateTimeFormat(undefined, {
-  hour: "2-digit",
-  minute: "2-digit",
-});
-const RUN_DATE_TIME_FORMATTER = new Intl.DateTimeFormat(undefined, {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
-// Reference-style absolute timestamp: "Today at 09:00", "Tomorrow at 12:30", "5 May 2026, 09:05".
-function formatRunTimestamp(value: string | null): string {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  const time = RUN_TIME_FORMATTER.format(date);
-  const dayDelta = Math.round((startOfDay(date) - startOfDay(new Date())) / 86_400_000);
-  if (dayDelta === 0) return `Today at ${time}`;
-  if (dayDelta === 1) return `Tomorrow at ${time}`;
-  if (dayDelta === -1) return `Yesterday at ${time}`;
-  return RUN_DATE_TIME_FORMATTER.format(date);
-}
-
-// Presentation for the Status pill: maps the shared lifecycle state to a label and dot color.
-// The state decision lives in ~/lib/automationStatus so this pill and the list never drift.
-function automationStatusDisplay(definition: AutomationDefinition): {
-  readonly label: string;
-  readonly dotClassName: string;
-} {
-  switch (automationLifecycleState(definition)) {
-    case "active":
-      return { label: "Active", dotClassName: "bg-emerald-500" };
-    case "paused":
-      return { label: "Paused", dotClassName: "bg-amber-500" };
-    case "scheduled":
-      return { label: "Scheduled", dotClassName: "bg-sky-500" };
-    case "done":
-      return { label: "Done", dotClassName: "bg-muted-foreground" };
-  }
-}
-
-// Explanation for an automation the server stopped on its own. "user" and "schedule"
-// return null — the status pill already reads "Paused" / "Done" for those.
-function automationStoppedExplanation(definition: AutomationDefinition): string | null {
-  if (definition.enabled || definition.disabledReason == null) return null;
-  switch (definition.disabledReason) {
-    case "failures":
-      return definition.consecutiveFailureCount === 1
-        ? "Stopped after a failed run."
-        : `Stopped after ${definition.consecutiveFailureCount} consecutive failed runs.`;
-    case "max-iterations":
-      return "Stopped at its run limit.";
-    case "completion":
-      return "Stopped because its stop condition was met.";
-    case "schedule":
-    case "user":
-      return null;
-  }
-}
 
 function AutomationDetailView() {
   const { automationId } = Route.useParams();
@@ -197,8 +108,7 @@ function AutomationDetailView() {
     useDesktopTopBarWindowControlsGutterClassName();
   const projects = useStore((state) => state.projects);
   const threads = useStore(selectAllThreads);
-  // Risky inline edits (local checkout, mode changes that claim or release a thread) are
-  // held here and only patched once confirmed through the anchored popover.
+
   const [pendingWorktreeChange, setPendingWorktreeChange] = useState<AutomationWorktreeMode | null>(
     null,
   );
@@ -218,8 +128,6 @@ function AutomationDetailView() {
     markRunReadMutation,
     archiveRunMutation,
     runsByAutomationId,
-    // Running an automation keeps the user on this info page; the live run surfaces in
-    // "Previous runs" (click a run there to open its thread), matching the reference UX.
   } = useAutomations();
 
   const definition = data.definitions.find((candidate) => candidate.id === automationId) ?? null;
@@ -281,9 +189,9 @@ function AutomationDetailView() {
   const project = projects.find((candidate) => candidate.id === definition.projectId);
   const continuationThreadId = automationContinuationThreadId(definition);
   const continuedThread = threads.find((candidate) => candidate.id === continuationThreadId);
-  // Heartbeat inherits its thread's environment, so it never picks one. A dedicated
-  // automation still picks freely until its first run claims a thread: after that every
-  // run reuses that thread, so its project and checkout are fixed.
+  // Heartbeat inherits its thread's environment, so it never picks one. A dedicated automation still
+  // picks freely until its first run claims a thread: after that every run reuses that thread, so its
+  // project and checkout are fixed.
   const ownsItsEnvironment = !automationRequiresTargetThread(definition.mode);
   const canChooseEnvironment = ownsItsEnvironment && continuationThreadId === null;
   const sourceThread = definition.sourceThreadId
@@ -296,16 +204,13 @@ function AutomationDetailView() {
   const stopWhen = stopWhenFromCompletionPolicy(definition.completionPolicy ?? { type: "none" });
   const pendingProposal = definition.proposalState === "pending";
   const stoppedAfterFailures = !definition.enabled && definition.disabledReason === "failures";
-  // A pending proposal must be accepted before the server allows any update, so every
-  // inline control is read-only until then instead of erroring on each interaction.
+
   const editable = !pendingProposal;
   const editDisabledTitle = editable ? undefined : "Accept the automation proposal first";
 
   const patch = (input: Omit<AutomationUpdateInput, "id">) =>
     updateMutation.mutate({ id: definition.id, ...input });
 
-  // One-time risk approval surfaced at the top of the panel when an already-created
-  // automation still needs it (e.g. created via the API). Persists on the automation.
   const approvalGaps = automationApprovalGaps({
     schedule: definition.schedule,
     enabled: definition.enabled,
@@ -317,8 +222,8 @@ function AutomationDetailView() {
     acknowledgedRisks: definition.acknowledgedRisks,
   });
   const approveAutomationRisks = () =>
-    // Records consent and any server-required fast-loop cap. Pause/resume stays separate so
-    // approving never silently re-enables an automation the user deliberately paused.
+    // Records consent and any server-required fast-loop cap. Pause/resume stays separate so approving
+    // never silently re-enables an automation the user deliberately paused.
     updateMutation.mutateAsync({
       id: definition.id,
       acknowledgedRisks: approvalGaps.acknowledgedRisks,
@@ -330,14 +235,12 @@ function AutomationDetailView() {
     try {
       await approveAutomationRisks();
     } catch {
-      return; // update failed; the mutation already surfaced the error toast
+      return;
     }
     runNowMutation.mutate(definition);
   };
   const approvalBusy = updateMutation.isPending || runNowMutation.isPending;
 
-  // Applying a new model selection (model swap or a capability tweak) refreshes the saved
-  // provider start options the same way the model picker does, then patches both at once.
   const applyModelSelection = (nextModelSelection: ModelSelection) => {
     const providerOptions = providerOptionsForAutomationModelSelection(
       definition,
@@ -350,9 +253,9 @@ function AutomationDetailView() {
     });
   };
 
-  // Editing "Runs in" to a mode that can touch the project checkout needs one-time
-  // consent; the confirm patches worktreeMode and the acknowledgement atomically because
-  // the server validates risk acknowledgements against the merged definition.
+  // Editing "Runs in" to a mode that can touch the project checkout needs one-time consent; the
+  // confirm patches worktreeMode and the acknowledgement atomically because the server validates risk
+  // acknowledgements against the merged definition.
   const requestWorktreeChange = (value: AutomationWorktreeMode) => {
     if (
       (value === "local" || value === "auto") &&
@@ -371,8 +274,7 @@ function AutomationDetailView() {
     });
     setPendingWorktreeChange(null);
   };
-  // The popover copy comes from the shared draft warnings so the wording can't drift
-  // from the creation dialog.
+
   const pendingWorktreeWarning = pendingWorktreeChange
     ? buildAutomationDraftWarnings({
         schedule: definition.schedule,
@@ -386,9 +288,6 @@ function AutomationDetailView() {
       }).find((warning) => warning.id === "local-checkout")
     : undefined;
 
-  // Mode changes: switching to heartbeat must patch {mode, targetThreadId} atomically
-  // (the server refuses a heartbeat without a target), and leaving a mode that holds a
-  // thread deserves a confirm — the automation stops writing to it, the thread stays.
   const projectThreads = automationTargetThreads(threads, definition.projectId);
   const requestModeChange = (nextMode: AutomationDefinition["mode"]) => {
     if (nextMode === definition.mode) return;
@@ -435,7 +334,7 @@ function AutomationDetailView() {
           CHAT_BACKGROUND_CLASS_NAME,
         )}
       >
-        {/* Left column: breadcrumb header + the prompt. */}
+        {}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <header
             className={cn(
@@ -506,10 +405,7 @@ function AutomationDetailView() {
           </main>
         </div>
 
-        {/* Right column: action header + details panel. The header carries the shared bottom
-            hairline (horizontal), and the body below carries the vertical seam — so the vertical
-            line starts at the header's bottom edge instead of running up through it. Both use the
-            same --app-surface-divider token and meet cleanly at the corner. */}
+        {}
         <div className="flex min-h-0 w-80 shrink-0 flex-col overflow-hidden">
           <header
             className={cn(
@@ -556,9 +452,6 @@ function AutomationDetailView() {
                     runNowMutation.isPending ||
                     pendingProposal ||
                     stoppedAfterFailures ||
-                    // Stay disabled while an approval update is in flight: the cache merges
-                    // acknowledgedRisks optimistically, so warnings clears before the server
-                    // persists and a run dispatched in that window hits the old definition.
                     updateMutation.isPending ||
                     approvalGaps.runBlockingWarnings.length > 0
                   }
@@ -585,8 +478,6 @@ function AutomationDetailView() {
               <AutomationApprovalBanner
                 warnings={approvalGaps.warnings}
                 busy={approvalBusy}
-                // Swallow the rejection here; the mutation's onError already toasts. Without
-                // this, void-ing the rejected promise would surface an unhandled rejection.
                 onApprove={() => void approveAutomationRisks().catch(() => undefined)}
                 onApproveAndRun={() => void handleApproveAndRunNow()}
               />
@@ -632,9 +523,6 @@ function AutomationDetailView() {
                       className="self-start"
                       disabled={!editable || updateMutation.isPending}
                       title={editDisabledTitle}
-                      // Server-side, re-enabling clears the disabled reason and resets the
-                      // failure counter (and the iteration count for run-limit stops), so one
-                      // click fully recovers the automation.
                       onClick={() => patch({ enabled: true })}
                     >
                       Re-enable
@@ -643,10 +531,7 @@ function AutomationDetailView() {
                 ) : null}
               </DetailGroup>
 
-              {/* Every MUTATING control below carries disabled={!editable} explicitly while a
-                  proposal is pending. A wrapping <fieldset disabled> would be terser, but it
-                  also killed the read-only navigation buttons (Created from, Open thread) —
-                  exactly the context needed to judge the proposal. */}
+              {}
               <DetailGroup title="Details">
                 {!ownsItsEnvironment ? (
                   <DetailRow label="Runs in">Thread</DetailRow>
@@ -777,8 +662,6 @@ function AutomationDetailView() {
                       value={schedule.expression}
                       validate={automationCronExpressionError}
                       normalize={trimDraft}
-                      // The commit closes over the current schedule; if an external update
-                      // unmounts this row the closure is stale, so never flush through it.
                       flushOnUnmount={false}
                       disabled={!editable}
                       title={editDisabledTitle}
@@ -849,8 +732,6 @@ function AutomationDetailView() {
                   <EditRow label="Timezone">
                     <InlineCommitTextInput
                       value={schedule.timezone}
-                      // Non-empty + real IANA zone: committing "" would unrender this row
-                      // (its only editor) for good, and unknown zones are doomed requests.
                       validate={automationTimezoneError}
                       normalize={trimDraft}
                       flushOnUnmount={false}
@@ -953,8 +834,6 @@ function AutomationDetailView() {
                   />
                 </EditRow>
                 {definition.mode === "heartbeat" ? (
-                  // Heartbeat targets are the user's choice, so the thread stays editable.
-                  // Dedicated threads are server-owned and keep the read-only row below.
                   <EditRow label="Thread">
                     <div className="flex min-w-0 items-center">
                       {continuedThread ? (
@@ -1108,191 +987,5 @@ function AutomationDetailView() {
         ) : null}
       </AutomationRiskConfirmPopover>
     </RouteInsetSurface>
-  );
-}
-
-/**
- * Inline edit rows for the selected model's capabilities — reasoning effort, fast mode,
- * thinking, context window, etc. The knobs are derived from the provider's capability
- * descriptors, so each provider surfaces exactly the controls it supports (and none when it
- * supports nothing). Changing a value reuses the same model-selection patch path as the
- * model picker, keeping provider start options in sync.
- */
-function ModelOptionRows({
-  modelSelection,
-  disabled,
-  disabledTitle,
-  onChange,
-}: {
-  readonly modelSelection: ModelSelection;
-  readonly disabled?: boolean;
-  readonly disabledTitle?: string | undefined;
-  readonly onChange: (next: ModelSelection) => void;
-}) {
-  const { provider, model } = modelSelection;
-  const caps = getModelCapabilities(provider, model);
-  const descriptors = getProviderOptionDescriptors({
-    provider,
-    caps,
-    selections: modelSelection.options as Record<string, unknown> | undefined,
-  });
-  if (descriptors.length === 0) {
-    return null;
-  }
-
-  const setOption = (descriptor: ProviderOptionDescriptor, value: string | boolean) => {
-    const optionPatch = buildProviderOptionPatch(provider, descriptor.id, value);
-    const nextOptions = buildNextProviderOptions(
-      provider,
-      modelSelection.options as ProviderOptions | undefined,
-      optionPatch,
-    );
-    onChange(
-      buildModelSelection(
-        provider,
-        model,
-        nextOptions,
-        modelSelection.provider === "claudeAgent" ? modelSelection.supportsAutoMode : undefined,
-      ),
-    );
-  };
-
-  return (
-    <>
-      {descriptors.map((descriptor) => {
-        if (descriptor.type === "boolean") {
-          return (
-            <EditRow key={descriptor.id} label={descriptor.label}>
-              <InlineToggle
-                value={getProviderOptionCurrentValue(descriptor) === true}
-                disabled={disabled}
-                title={disabled ? disabledTitle : undefined}
-                onChange={(checked) => setOption(descriptor, checked)}
-              />
-            </EditRow>
-          );
-        }
-        const current = getProviderOptionCurrentValue(descriptor);
-        return (
-          <EditRow key={descriptor.id} label={descriptor.label}>
-            <InlineSelect
-              value={typeof current === "string" ? current : ""}
-              options={descriptor.options.map((option) => ({
-                value: option.id,
-                label: option.label,
-              }))}
-              disabled={disabled}
-              title={disabled ? disabledTitle : undefined}
-              onChange={(value) => setOption(descriptor, value)}
-            />
-          </EditRow>
-        );
-      })}
-    </>
-  );
-}
-
-function RunRow({
-  run,
-  onOpen,
-  onCancel,
-  onMarkRead,
-  onArchive,
-}: {
-  readonly run: AutomationRun;
-  readonly onOpen: (threadId: NonNullable<AutomationRun["threadId"]>) => void;
-  readonly onCancel: () => void;
-  readonly onMarkRead: (unread: boolean) => void;
-  readonly onArchive: (archived: boolean) => void;
-}) {
-  const active = canCancelAutomationRun(run);
-  const archived = run.result?.archivedAt !== null && run.result?.archivedAt !== undefined;
-  const triageActionable = run.result !== null || isTriageRun(run);
-  const unread = run.result ? run.result.unread : triageActionable;
-  const openable = run.threadId != null;
-  const open = () => {
-    if (run.threadId) {
-      onOpen(run.threadId as NonNullable<AutomationRun["threadId"]>);
-    }
-  };
-  const resultTitle = runResultTitle(run);
-  return (
-    // The whole row opens its thread (the run's chat history); inline actions stop
-    // propagation so they don't also navigate.
-    <div
-      role={openable ? "button" : undefined}
-      tabIndex={openable ? 0 : undefined}
-      onClick={openable ? open : undefined}
-      onKeyDown={
-        openable
-          ? (event) => {
-              if (isRowInteractiveEventTarget(event.target, event.currentTarget)) {
-                return;
-              }
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                open();
-              }
-            }
-          : undefined
-      }
-      className={cn(
-        "group flex items-center gap-2 rounded-md px-1.5 py-1.5 text-ui leading-snug transition-colors",
-        openable ? "cursor-pointer hover:bg-foreground/[0.03]" : undefined,
-      )}
-    >
-      <RunStatusIndicator status={run.status} />
-      <div className="min-w-0 flex-1 truncate">
-        <span className="text-foreground/90">{runStatusLabel(run.status)}</span>
-        {resultTitle ? <span className="text-foreground/90"> · {resultTitle}</span> : null}
-        <span className="text-muted-foreground"> · {runResultSummary(run)}</span>
-      </div>
-      {triageActionable ? (
-        <div className="flex shrink-0 items-center gap-1.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onMarkRead(!unread);
-            }}
-            className="text-muted-foreground transition-colors hover:text-foreground"
-          >
-            {unread ? "Read" : "Unread"}
-          </button>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onArchive(!archived);
-            }}
-            title={
-              run.permissionSnapshot.worktreeMode === "local"
-                ? undefined
-                : "Archiving does not remove generated worktrees or branches."
-            }
-            className="text-muted-foreground transition-colors hover:text-foreground"
-          >
-            {archived ? "Unarchive" : "Archive"}
-          </button>
-        </div>
-      ) : null}
-      {active ? (
-        <Button
-          type="button"
-          size="icon-chip"
-          variant="ghost"
-          aria-label="Cancel run"
-          onClick={(event) => {
-            event.stopPropagation();
-            onCancel();
-          }}
-        >
-          <CentralIcon name="stop" className="size-3.5" />
-        </Button>
-      ) : null}
-      <span className="shrink-0 tabular-nums text-muted-foreground">
-        {formatRelativeTime(run.finishedAt ?? run.startedAt ?? run.scheduledFor)}
-      </span>
-    </div>
   );
 }

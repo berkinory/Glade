@@ -1,15 +1,13 @@
 import { createHash } from "node:crypto";
 import { readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
-import { normalizeWorkspaceRootForComparison } from "@glade/shared/threadWorkspace";
+import { normalizeWorkspaceRootForComparison } from "@glade/shared/threads/threadWorkspace";
 import { parseManagedWorktreeWorkspaceRoot } from "../workspace/managedWorktree";
 
 export function projectImportKey(...parts: ReadonlyArray<string>): string {
   return createHash("sha256").update(JSON.stringify(parts)).digest("hex");
 }
 
-// Codex on Windows can store extended-length paths. Resolve their ordinary
-// drive/UNC equivalents so a missing child's parent remains a valid root.
 function normalizeWindowsImportPath(value: string): string {
   if (!value.startsWith("\\\\?\\")) return value;
   const rest = value.slice(4);
@@ -46,7 +44,6 @@ export async function importDirectoryExists(value: string): Promise<boolean> {
   }
 }
 
-// Read Git's local pointer only; discovery never runs hooks, fetches, or changes a checkout.
 export async function findImportGitWorkspace(
   cwd: string,
 ): Promise<{ root: string; worktree: string | null } | null> {

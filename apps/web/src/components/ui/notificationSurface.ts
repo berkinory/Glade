@@ -1,8 +1,3 @@
-// FILE: notificationSurface.ts
-// Purpose: Shared visual tokens for transient and inline notification surfaces.
-// Layer: UI styling helper
-// Exports: notification surface class names/tones used by toast and status banners.
-
 import { cn } from "~/lib/utils";
 
 // Every notification card shares the same neutral popover chrome; only the

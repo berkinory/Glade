@@ -1,6 +1,9 @@
 import * as Crypto from "node:crypto";
 
-import { OrchestrationCommand, type OrchestrationCommand as Command } from "@glade/contracts";
+import {
+  OrchestrationCommand,
+  type OrchestrationCommand as Command,
+} from "@glade/contracts/orchestration/commands";
 import { Schema } from "effect";
 
 const ORCHESTRATION_COMMAND_FINGERPRINT_VERSION = 1;
@@ -18,7 +21,7 @@ function canonicalizeJson(value: unknown): unknown {
     const record = value as Record<string, unknown>;
     return Object.fromEntries(
       Object.keys(record)
-        .sort()
+        .toSorted()
         .filter((key) => record[key] !== undefined)
         .map((key) => [key, canonicalizeJson(record[key])]),
     );
@@ -47,8 +50,6 @@ function commandIntent(command: Command): Record<string, unknown> {
             };
           case "image":
           case "file":
-            // Name, MIME, and size are resolved from the managed server ledger. Only the
-            // attachment identity belongs to the idempotent client command intent.
             return { type: attachment.type, id: attachment.id };
         }
       }),

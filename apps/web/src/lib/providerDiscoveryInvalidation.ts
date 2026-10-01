@@ -1,9 +1,4 @@
-// FILE: providerDiscoveryInvalidation.ts
-// Purpose: Keeps provider-discovery cache invalidation tied to meaningful provider changes.
-// Layer: Web UI provider discovery
-// Exports: providerModelDiscoveryInvalidationFingerprint
-
-import type { ServerProviderStatus } from "@glade/contracts";
+import type { ServerProviderStatus } from "@glade/contracts/server/server";
 
 type ProviderModelDiscoveryFingerprintEntry = readonly [
   provider: ServerProviderStatus["provider"],

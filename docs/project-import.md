@@ -32,7 +32,7 @@ work whose original directory is missing.
 
 Glade creates a provider-native copy during import. Continuing it does not append messages to the
 original conversation. The code files still belong to the original linked folder or its existing
-worktree. Import does not submit a model turn, and a copied Codex goal is not automatically resumed.
+worktree. Import does not submit a model turn.
 
 The importer checks native IDs already owned by Glade and saves durable import provenance. Repeating
 an import skips completed copies that still exist, including archived conversations. Deleting an

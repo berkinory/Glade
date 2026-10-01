@@ -90,9 +90,7 @@ export function parseRecoverableCreationPlan(
       worktreeRef: typeof value.worktreeRef === "string" ? value.worktreeRef : null,
       newBranch: value.newBranch,
       plannedWorktreePath: value.plannedWorktreePath,
-      // Older in-progress rows predate explicit ownership proof. They remain
-      // decodable, but recovery never treats their preflight as proof that a
-      // currently registered resource belongs to the operation.
+
       ownershipPreflightPassed: value.ownershipPreflightPassed === true,
       worktreeOwnership,
       ids: {
@@ -150,15 +148,21 @@ export function redactCreationPlanForPurgedCaller(input: {
   readonly operationId: string;
 }): string {
   return JSON.stringify(
-    parseRecoverableCreationPlan(input.planJson, input.operationId).map((entry) => ({
-      workspaceRoot: entry.environment === "worktree" ? entry.workspaceRoot : "",
-      environment: entry.environment,
-      ...(entry.worktreeRef ? { worktreeRef: entry.worktreeRef } : {}),
-      newBranch: entry.newBranch,
-      plannedWorktreePath: entry.plannedWorktreePath,
-      ownershipPreflightPassed: entry.ownershipPreflightPassed,
-      worktreeOwnership: entry.worktreeOwnership,
-      ids: entry.ids,
-    })),
+    parseRecoverableCreationPlan(input.planJson, input.operationId).map((entry) =>
+      Object.assign(
+        {
+          workspaceRoot: entry.environment === `worktree` ? entry.workspaceRoot : ``,
+          environment: entry.environment,
+        },
+        entry.worktreeRef ? { worktreeRef: entry.worktreeRef } : {},
+        {
+          newBranch: entry.newBranch,
+          plannedWorktreePath: entry.plannedWorktreePath,
+          ownershipPreflightPassed: entry.ownershipPreflightPassed,
+          worktreeOwnership: entry.worktreeOwnership,
+          ids: entry.ids,
+        },
+      ),
+    ),
   );
 }

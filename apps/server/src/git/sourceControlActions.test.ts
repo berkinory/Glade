@@ -4,7 +4,7 @@ import { Effect, Exit, FileSystem, Layer } from "effect";
 import { expect } from "vitest";
 import * as fs from "node:fs/promises";
 import path from "node:path";
-import { ServerConfig } from "../config.ts";
+import { ServerConfig } from "../server/config.ts";
 import { GitCoreLive } from "./Layers/GitCore.ts";
 import { GitCore } from "./Services/GitCore.ts";
 import { sourceControlActions } from "./sourceControlActions.ts";

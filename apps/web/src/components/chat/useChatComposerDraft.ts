@@ -1,4 +1,4 @@
-import { ThreadId } from "@glade/contracts";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   clampCollapsedComposerCursor,
@@ -7,15 +7,13 @@ import {
   expandCollapsedComposerCursor,
   type ComposerTrigger,
 } from "../../composer-logic";
-import {
-  useComposerDraftStore,
-  useComposerThreadDraft,
-  type BrowserAnnotationDraft,
-  type ComposerAssistantSelectionAttachment,
-  type ComposerFileAttachment,
-  type ComposerImageAttachment,
-  type RestoredComposerSourceProposedPlan,
-} from "../../composerDraftStore";
+import { useComposerDraftStore, useComposerThreadDraft } from "../../composerDraftStore";
+import type { BrowserAnnotationDraft } from "../../lib/browserAnnotations";
+import type {
+  ComposerAssistantSelectionAttachment,
+  ComposerFileAttachment,
+  ComposerImageAttachment,
+} from "../../composerDraftDomain";
 import { type PastedTextDraft } from "../../lib/composerPastedText";
 import { type FileCommentDraft } from "../../lib/fileComments";
 import { type PullRequestContextDraft } from "../../lib/pullRequestContext";
@@ -23,7 +21,8 @@ import {
   removeInlineTerminalContextPlaceholder,
   type TerminalContextDraft,
 } from "../../lib/terminalContext";
-import { deriveComposerSendState, type PromptHistoryNavigationState } from "../ChatView.logic";
+import { deriveComposerSendState } from "../ChatView.logic.dispatch";
+import type { PromptHistoryNavigationState } from "../ChatView.logic.session";
 import { type ComposerPromptEditorHandle } from "../ComposerPromptEditor";
 import { useComposerAttachmentPersistence } from "./useComposerAttachmentPersistence";
 
@@ -47,7 +46,7 @@ export function useChatComposerDraft({ threadId }: ChatComposerDraftInput) {
   const composerSkills = composerDraft.skills;
   const composerMentions = composerDraft.mentions;
   const queuedComposerTurns = composerDraft.queuedTurns;
-  const restoredSourceProposedPlan = composerDraft.restoredSourceProposedPlan;
+
   const composerSendState = useMemo(
     () =>
       deriveComposerSendState({
@@ -87,9 +86,7 @@ export function useChatComposerDraft({ threadId }: ChatComposerDraftInput) {
     (store) => store.setProviderModelOptions,
   );
   const setComposerDraftRuntimeMode = useComposerDraftStore((store) => store.setRuntimeMode);
-  const setComposerDraftInteractionMode = useComposerDraftStore(
-    (store) => store.setInteractionMode,
-  );
+
   const setComposerDraftComputerControlMode = useComposerDraftStore(
     (store) => store.setComputerControlMode,
   );
@@ -139,9 +136,7 @@ export function useChatComposerDraft({ threadId }: ChatComposerDraftInput) {
   const setComposerDraftTerminalContexts = useComposerDraftStore(
     (store) => store.setTerminalContexts,
   );
-  const setComposerDraftRestoredSourceProposedPlan = useComposerDraftStore(
-    (store) => store.setRestoredSourceProposedPlan,
-  );
+
   const clearComposerDraftContent = useComposerDraftStore((store) => store.clearComposerContent);
   const setDraftThreadContext = useComposerDraftStore((store) => store.setDraftThreadContext);
   const getDraftThreadByProjectId = useComposerDraftStore(
@@ -185,20 +180,13 @@ export function useChatComposerDraft({ threadId }: ChatComposerDraftInput) {
   const composerImagesRef = useRef<ComposerImageAttachment[]>([]);
   const composerFilesRef = useRef<ComposerFileAttachment[]>([]);
 
-  const restoredQueuedSourceProposedPlanRef = useRef<RestoredComposerSourceProposedPlan | null>(
-    restoredSourceProposedPlan ?? null,
-  );
-
   useEffect(() => {
     promptHistoryNavigationRef.current = null;
     applyingPromptHistoryNavigationRef.current = false;
     expectedPromptHistoryPromptRef.current = null;
     promptHistoryAppliedPromptRef.current = null;
   }, [threadId]);
-  // While a history browse is active the persisted draft prompt holds a
-  // recalled entry and the user's real draft snapshot sits in promptHistorySavedDraft.
-  // A non-null saved draft with no live navigation state means the browse was
-  // interrupted (thread switch, reload, unmount) — put the real draft back.
+
   useEffect(() => {
     if (promptHistoryNavigationRef.current !== null || composerPromptHistorySavedDraft === null) {
       return;
@@ -211,16 +199,6 @@ export function useChatComposerDraft({ threadId }: ChatComposerDraftInput) {
       ),
     );
   }, [composerPromptHistorySavedDraft, restoreComposerDraftPromptHistorySavedDraft, threadId]);
-  const setRestoredQueuedSourceProposedPlan = useCallback(
-    (targetThreadId: ThreadId, source: RestoredComposerSourceProposedPlan | null) => {
-      restoredQueuedSourceProposedPlanRef.current = source;
-      setComposerDraftRestoredSourceProposedPlan(targetThreadId, source);
-    },
-    [setComposerDraftRestoredSourceProposedPlan],
-  );
-  useEffect(() => {
-    restoredQueuedSourceProposedPlanRef.current = restoredSourceProposedPlan ?? null;
-  }, [restoredSourceProposedPlan]);
 
   const setPrompt = useCallback(
     (nextPrompt: string) => {
@@ -232,7 +210,7 @@ export function useChatComposerDraft({ threadId }: ChatComposerDraftInput) {
     if (promptHistoryNavigationRef.current === null) {
       return;
     }
-    // Attachment edits mean the recalled prompt is now the user's draft; do not restore the old one.
+
     promptHistoryNavigationRef.current = null;
     applyingPromptHistoryNavigationRef.current = false;
     expectedPromptHistoryPromptRef.current = null;
@@ -378,8 +356,7 @@ export function useChatComposerDraft({ threadId }: ChatComposerDraftInput) {
       threadId,
     ],
   );
-  // "Show in text field": drop the full pasted text back into the editor (appended
-  // to the current prompt) and discard the card so it can be edited as normal text.
+
   const showComposerPastedTextInField = useCallback(
     (pastedTextId: string) => {
       const pasted = composerPastedTexts.find((entry) => entry.id === pastedTextId);
@@ -446,10 +423,6 @@ export function useChatComposerDraft({ threadId }: ChatComposerDraftInput) {
       promptHistoryNavigationRef.current !== null &&
       prompt !== promptHistoryAppliedPromptRef.current
     ) {
-      // Another writer (queued-turn restore, automation restore, insertion)
-      // replaced the prompt while a history browse was active. The new prompt
-      // is authoritative: end the browse and drop the saved pre-browse draft
-      // so it cannot clobber this prompt later.
       promptHistoryNavigationRef.current = null;
       expectedPromptHistoryPromptRef.current = null;
       setComposerDraftPromptHistorySavedDraft(threadId, null);
@@ -485,7 +458,7 @@ export function useChatComposerDraft({ threadId }: ChatComposerDraftInput) {
     setComposerDraftModelSelection,
     setComposerDraftProviderModelOptions,
     setComposerDraftRuntimeMode,
-    setComposerDraftInteractionMode,
+
     setComposerDraftComputerControlMode,
     setComposerDraftComputerControl,
     enqueueQueuedComposerTurn,
@@ -520,8 +493,7 @@ export function useChatComposerDraft({ threadId }: ChatComposerDraftInput) {
     promptHistoryAppliedPromptRef,
     composerImagesRef,
     composerFilesRef,
-    restoredQueuedSourceProposedPlanRef,
-    setRestoredQueuedSourceProposedPlan,
+
     setPrompt,
     discardPromptHistoryNavigationForComposerMutation,
     addComposerImagesToDraft,

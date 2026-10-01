@@ -1,8 +1,3 @@
-// FILE: RenameDialog.tsx
-// Purpose: Shared single-field rename dialog for threads and projects.
-// Layer: Shared UI component
-// Exports: RenameDialog
-
 import { useEffect, useRef, useState } from "react";
 import { Button } from "./ui/button";
 import {
@@ -21,7 +16,7 @@ export interface RenameDialogProps {
   title: string;
   description?: string | undefined;
   initialValue: string;
-  /** Projects pass empty names to clear the local alias and fall back to folder name. */
+
   allowEmpty?: boolean | undefined;
   placeholder?: string | undefined;
   saveLabel?: string | undefined;
@@ -29,11 +24,6 @@ export interface RenameDialogProps {
   onSave: (next: string) => Promise<void> | void;
 }
 
-/**
- * Minimal centered rename dialog with a single text field and Cancel/Save
- * actions. Shared by chat-thread and project rename so both flows look and
- * behave identically instead of one being an inline input.
- */
 export function RenameDialog({
   open,
   title,
@@ -54,9 +44,7 @@ export function RenameDialog({
           <DialogTitle>{title}</DialogTitle>
           {description ? <DialogDescription>{description}</DialogDescription> : null}
         </DialogHeader>
-        {/* Field state lives below DialogPopup, which unmounts its children
-            after the close transition — each open seeds a fresh value from
-            initialValue without a reset effect. */}
+        {}
         <RenameDialogForm
           inputLabel={title}
           initialValue={initialValue}

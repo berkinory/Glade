@@ -1,9 +1,4 @@
-// FILE: theme.seed.generated.ts
-// Purpose: Stores normalized theme seeds with Glade's zero-contrast default.
-// Layer: Web appearance generated catalog
-// Exports: THEME_SEED_CATALOG for code-theme seed lookup.
-
-import type { ChromeTheme, ThemeVariant } from "./theme.logic";
+import type { ChromeTheme, ThemeVariant } from "./themeModel";
 
 export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, ChromeTheme>>> = {
   absolutely: {

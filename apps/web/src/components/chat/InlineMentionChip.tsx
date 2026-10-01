@@ -1,16 +1,5 @@
-// FILE: InlineMentionChip.tsx
-// Purpose: Shared inline file/folder/plugin mention chip (icon + label) used by
-//          the timeline user-message echo, the assistant markdown view, and
-//          openable file links, so a referenced path reads identically to a
-//          composer mention. Supports a static (span) and an interactive
-//          (anchor) variant so the same UI can stay clickable. File-like chips
-//          without an explicit handler become openable automatically when a
-//          surface provides a workspace file opener (right-dock file pane).
-// Layer: UI shared component
-// Exports: InlineMentionChip
-
 import { type MouseEvent, type ReactNode } from "react";
-import type { ProviderMentionReference } from "@glade/contracts";
+import type { ProviderMentionReference } from "@glade/contracts/provider/providerDiscovery";
 import { basenameOfPath, pathLooksLikeKnownFile } from "~/file-icons";
 import { openWorkspaceFileReference, useWorkspaceFileOpener } from "~/lib/workspaceFileOpener";
 import {
@@ -26,13 +15,13 @@ interface InlineMentionChipProps {
   theme: "light" | "dark";
   kind?: MentionChipKind;
   mentionReferences?: ReadonlyArray<ProviderMentionReference>;
-  /** Defaults to the path basename (composer-style label). */
+
   label?: ReactNode;
-  /** When set, the chip renders as an openable anchor instead of a static span. */
+
   href?: string;
   onActivate?: (event: MouseEvent<HTMLAnchorElement>) => void;
   onContextMenu?: (event: MouseEvent<HTMLAnchorElement>) => void;
-  /** Warm-up hook fired on hover/focus so activating the chip feels instant. */
+
   onHoverPrefetch?: (() => void) | undefined;
 }
 
@@ -58,9 +47,6 @@ export function InlineMentionChip(props: InlineMentionChipProps) {
     />
   );
 
-  // A plain file chip (no explicit href/handler) still opens in the in-app
-  // viewer when the hosting surface provides one, so every file reference in
-  // the chat stays clickable. Plugin chips and non-file paths stay static.
   const contextOpenable =
     props.href === undefined &&
     props.onActivate === undefined &&

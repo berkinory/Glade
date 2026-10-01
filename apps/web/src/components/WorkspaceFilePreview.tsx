@@ -1,47 +1,30 @@
-import { formatWorkspaceFileError } from "~/lib/workspaceFileError";
-// FILE: WorkspaceFilePreview.tsx
-// Purpose: Shared single-file preview (code with syntax highlighting, parsed
-//          markdown, images, PDFs) for workspace files plus absolute local
-//          file references reused by editor and right-dock panes.
-// Layer: Web chat presentation component
-// Exports: WorkspaceFilePreview
-
-import type { ProjectFileChangeEvent, ProjectReadFileResult } from "@glade/contracts";
-import type { FileContents as PierreFileContents } from "@pierre/diffs";
-import {
-  Editor as PierreEditor,
-  type EditorOptions as PierreEditorOptions,
-} from "@pierre/diffs/edit";
-import { EditProvider, File as PierreFile } from "@pierre/diffs/react";
+import type {
+  ProjectFileChangeEvent,
+  ProjectReadFileResult,
+} from "@glade/contracts/workspace/project";
 import {
   isSupportedLocalImagePath,
   isSupportedLocalPdfPath,
   lowerCaseExtensionOf,
-} from "@glade/shared/localPreviewFiles";
+} from "@glade/shared/browser/localPreviewFiles";
 import {
   isLocalAbsolutePath,
   isWorkspaceRelativePathSafe,
   joinWorkspaceRelativePath,
-} from "@glade/shared/path";
-import { isScratchWorkspacePath } from "@glade/shared/threadWorkspace";
+} from "@glade/shared/platform/path";
+import { isScratchWorkspacePath } from "@glade/shared/threads/threadWorkspace";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Component,
-  Suspense,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
-  use,
   useCallback,
   useEffect,
-  useInsertionEffect,
-  useId,
   useMemo,
   useRef,
   useState,
 } from "react";
 
 import { basenameOfPath } from "~/file-icons";
-import { useAppSettings } from "~/appSettings";
 import { useWorkspaceFileEditorBuffer } from "~/hooks/useWorkspaceFileEditor";
 import { useTheme } from "~/hooks/useTheme";
 import { useProjectFileChangeSubscription } from "~/hooks/useProjectFileChangeSubscription";
@@ -50,13 +33,12 @@ import {
   getSelectionWithin,
   type ChatFileReference,
 } from "~/lib/chatReferences";
-import { resolveDiffThemeName, type DiffThemeName } from "~/lib/diffRendering";
-import { extractEditorGutterChanges, type EditorGutterChangeRange } from "~/lib/editorGutterDiff";
+import { resolveDiffThemeName } from "~/lib/diffRendering";
+import { extractEditorGutterChanges } from "~/lib/editorGutterDiff";
 import { formatFileCommentRange, type FileCommentSelection } from "~/lib/fileComments";
 import { showFileReferenceContextMenu } from "~/lib/fileReferenceContextMenu";
-import { gitWorkingTreeDiffQueryOptions } from "~/lib/gitReactQuery";
+import { gitWorkingTreeDiffQueryOptions } from "../lib/gitQueryOptions";
 import { PlusIcon } from "~/lib/icons";
-import { toggleMarkdownTaskMarker } from "~/lib/markdownTaskList";
 import { isRpcCapacityExceededError } from "~/lib/expensiveReadRetry";
 import {
   isLocalPreviewGrantUsable,
@@ -65,21 +47,16 @@ import {
   refetchFreshProjectFileQuery,
   projectResolveOutOfRootFileReferenceQueryOptions,
 } from "~/lib/projectReactQuery";
-import { refreshGitAfterFileWrite } from "~/lib/gitReactQuery";
-import {
-  MAX_SYNTAX_HIGHLIGHT_INPUT_CHARS,
-  cacheSyntaxHighlightedHtml,
-  createSyntaxHighlightCacheKey,
-  getCachedSyntaxHighlightedHtml,
-  getSyntaxHighlighterPromise,
-  getSyntaxLanguageForPath,
-  highlightCodeToHtmlWithFallback,
-} from "~/lib/syntaxHighlighting";
+import { refreshGitAfterFileWrite } from "../lib/gitQueryOptions";
 import { cn } from "~/lib/utils";
-import { buildCodeEditorUnsafeCSS } from "./codeEditor/codeEditorAppearance";
-import { CODE_EDITOR_KEYMAP } from "./codeEditor/pierreEdit";
 import { readNativeApi } from "~/nativeApi";
 import ChatMarkdown from "./ChatMarkdown";
+import {
+  EditableFileContents,
+  FileContentsView,
+  FilePreviewChangeGutter,
+  FilePreviewLoadingState,
+} from "./WorkspaceFileContents";
 import { DiffTruncationWarning } from "./DiffTruncationWarning";
 import { FileLineCommentBox } from "./chat/FileLineCommentBox";
 import { PanelStateMessage } from "./chat/PanelStateMessage";
@@ -89,7 +66,6 @@ import { TranscriptSelectionAction } from "./chat/TranscriptSelectionAction";
 import { useCodeSelectionAction } from "./chat/useCodeSelectionAction";
 import { LocalImagePreview } from "./LocalImagePreview";
 import { PdfFilePreview } from "./PdfFilePreview";
-import { Skeleton } from "./ui/skeleton";
 
 const MARKDOWN_PREVIEW_EXTENSIONS = new Set([".markdown", ".md", ".mdx"]);
 
@@ -121,388 +97,21 @@ function markdownPreviewCwd(workspaceRoot: string | null, filePath: string): str
   return joinWorkspaceRelativePath(workspaceRoot, parentDirectory);
 }
 
-class FilePreviewHighlightErrorBoundary extends Component<
-  { fallback: ReactNode; children: ReactNode },
-  { hasError: boolean }
-> {
-  constructor(props: { fallback: ReactNode; children: ReactNode }) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-
-  override render() {
-    if (this.state.hasError) {
-      return this.props.fallback;
-    }
-    return this.props.children;
-  }
-}
-
-// Above this the plain fallback skips per-line spans (and therefore line
-// numbers) to keep the DOM small for huge files.
-const MAX_PLAIN_NUMBERED_LINES = 20_000;
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
-}
-
-function PlainFileContents(props: { contents: string }) {
-  // Wrap each line in a .line span (mirroring Shiki output) so the CSS
-  // counter gutter applies. Built as an HTML string to avoid per-line React
-  // nodes; the trailing \n stays inside each span so selection math and
-  // clipboard copies keep working.
-  const lines = props.contents.split("\n");
-  const numberedHtml =
-    props.contents.length === 0 || lines.length > MAX_PLAIN_NUMBERED_LINES
-      ? null
-      : `<code>${lines
-          .map((line, index) =>
-            index === lines.length - 1
-              ? `<span class="line">${escapeHtml(line)}</span>`
-              : `<span class="line">${escapeHtml(line)}\n</span>`,
-          )
-          .join("")}</code>`;
-
-  if (numberedHtml !== null) {
-    return (
-      <pre
-        className="editor-file-viewer__plain"
-        aria-readonly="true"
-        dangerouslySetInnerHTML={{ __html: numberedHtml }}
-      />
-    );
-  }
-
-  return (
-    <pre className="editor-file-viewer__plain" aria-readonly="true">
-      {props.contents}
-    </pre>
-  );
-}
-
-function SyntaxHighlightedFileContents(props: {
-  path: string;
-  contents: string;
-  themeName: DiffThemeName;
-}) {
-  const language = getSyntaxLanguageForPath(props.path);
-  const cacheKey = createSyntaxHighlightCacheKey(props.contents, language, props.themeName);
-  const cachedHighlightedHtml = getCachedSyntaxHighlightedHtml(cacheKey);
-
-  if (cachedHighlightedHtml != null) {
-    return (
-      <div
-        className="editor-file-viewer__highlight"
-        data-syntax-highlighted="true"
-        dangerouslySetInnerHTML={{ __html: cachedHighlightedHtml }}
-      />
-    );
-  }
-
-  // The uncached path lives in its own component: an early return above must
-  // not change this component's hook order once the cache fills.
-  return (
-    <UncachedSyntaxHighlightedFileContents
-      cacheKey={cacheKey}
-      contents={props.contents}
-      language={language}
-      themeName={props.themeName}
-    />
-  );
-}
-
-function UncachedSyntaxHighlightedFileContents(props: {
-  cacheKey: string;
-  contents: string;
-  language: string;
-  themeName: DiffThemeName;
-}) {
-  const highlighter = use(getSyntaxHighlighterPromise(props.language));
-  const highlightedHtml = highlightCodeToHtmlWithFallback(
-    highlighter,
-    props.contents,
-    props.language,
-    props.themeName,
-  );
-
-  useEffect(() => {
-    cacheSyntaxHighlightedHtml(props.cacheKey, highlightedHtml, props.contents);
-  }, [props.cacheKey, highlightedHtml, props.contents]);
-
-  return (
-    <div
-      className="editor-file-viewer__highlight"
-      data-syntax-highlighted="true"
-      dangerouslySetInnerHTML={{ __html: highlightedHtml }}
-    />
-  );
-}
-
-// The highlighted body (and its cache lookup) is skipped across selection and
-// diff-warming re-renders because its inputs (path, contents, themeName) are
-// stable unless the file changes — the React Compiler handles the memoization.
-function FileContentsView(props: { path: string; contents: string; themeName: DiffThemeName }) {
-  const plain = <PlainFileContents contents={props.contents} />;
-  if (props.contents.length === 0 || props.contents.length > MAX_SYNTAX_HIGHLIGHT_INPUT_CHARS) {
-    return plain;
-  }
-
-  return (
-    <FilePreviewHighlightErrorBoundary key={props.path} fallback={plain}>
-      <Suspense fallback={plain}>
-        <SyntaxHighlightedFileContents
-          path={props.path}
-          contents={props.contents}
-          themeName={props.themeName}
-        />
-      </Suspense>
-    </FilePreviewHighlightErrorBoundary>
-  );
-}
-
-function createPierreEditor(options: PierreEditorOptions<undefined>) {
-  return new PierreEditor(options);
-}
-
-type EditableFileContentsProps = {
-  revealPosition?: { lineNumber: number; requestId: number } | undefined;
-  path: string;
-  contents: string;
-  cacheKey: string;
-  hidden: boolean;
-  themeName: DiffThemeName;
-  theme: "light" | "dark";
-  saving: boolean;
-  invalid: boolean;
-  onContentsChange: (contents: string) => void;
-  onSave: () => void;
-};
-
-function EditableFileContents(props: EditableFileContentsProps) {
-  const { settings } = useAppSettings();
-  const pierreRef = useRef<PierreEditor<undefined> | null>(null);
-  const revealRef = useRef(props.revealPosition);
-  revealRef.current = props.revealPosition;
-  useEffect(() => {
-    if (props.revealPosition && !props.hidden)
-      pierreRef.current?.focus({ lineNumber: props.revealPosition.lineNumber });
-  }, [props.revealPosition, props.hidden]);
-  const editorContainerRef = useRef<HTMLDivElement>(null);
-  const editorId = useId();
-  const labelEditor = useCallback(() => {
-    editorContainerRef.current
-      ?.querySelector("diffs-container")
-      ?.shadowRoot?.querySelector<HTMLElement>('[contenteditable="true"]')
-      ?.setAttribute("aria-label", `Edit ${props.path}`);
-  }, [props.path]);
-  const editorObserverRef = useRef<MutationObserver | null>(null);
-  const attachEditor = useCallback(() => {
-    const shadowRoot = editorContainerRef.current?.querySelector("diffs-container")?.shadowRoot;
-    if (!shadowRoot) return;
-    labelEditor();
-    if (editorObserverRef.current === null) {
-      editorObserverRef.current = new MutationObserver(labelEditor);
-    }
-    editorObserverRef.current.observe(shadowRoot, { childList: true, subtree: true });
-  }, [labelEditor]);
-  useEffect(() => {
-    attachEditor();
-    return () => {
-      editorObserverRef.current?.disconnect();
-      editorObserverRef.current = null;
-    };
-  }, [attachEditor]);
-  // Local typing updates this snapshot in the same batch as the parent draft.
-  // Only a different incoming document (reload/watcher) resets Pierre's history.
-  const [document, setDocument] = useState({
-    contents: props.contents,
-    seedContents: props.contents,
-    revision: 0,
-  });
-  if (document.contents !== props.contents) {
-    setDocument({
-      contents: props.contents,
-      seedContents: props.contents,
-      revision: document.revision + 1,
-    });
-  }
-  const onContentsChangeRef = useRef(props.onContentsChange);
-  useInsertionEffect(() => {
-    onContentsChangeRef.current = props.onContentsChange;
-  });
-  const file = useMemo<PierreFileContents>(
-    () => ({
-      name: props.path,
-      contents: document.seedContents,
-      lang: getSyntaxLanguageForPath(props.path),
-      cacheKey: `${props.cacheKey}:${editorId}:${document.revision}`,
-    }),
-    [document.seedContents, document.revision, editorId, props.cacheKey, props.path],
-  );
-  const editorOptions = useMemo<PierreEditorOptions<undefined>>(
-    () => ({
-      keymap: CODE_EDITOR_KEYMAP,
-      onAttach: (editor) => {
-        pierreRef.current = editor;
-        attachEditor();
-        if (revealRef.current) editor.focus({ lineNumber: revealRef.current.lineNumber });
-      },
-      onChange: (nextFile) => {
-        const contents = nextFile.contents;
-        setDocument((current) => ({ ...current, contents }));
-        onContentsChangeRef.current(contents);
-      },
-    }),
-    [attachEditor],
-  );
-
-  return (
-    <div
-      ref={editorContainerRef}
-      data-workspace-file-editor
-      data-editor-caret-style={settings.editorCaretStyle}
-      className="code-editor-pane editor-file-editor__pierre"
-      hidden={props.hidden}
-      aria-busy={props.saving}
-      aria-invalid={props.invalid ? "true" : undefined}
-      onKeyDown={(event) => {
-        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
-          event.preventDefault();
-          props.onSave();
-        }
-      }}
-    >
-      <EditProvider createEditor={createPierreEditor}>
-        <PierreFile
-          file={file}
-          edit
-          editorOptions={editorOptions}
-          options={{
-            disableFileHeader: true,
-            overflow: "scroll",
-            preferredHighlighter: "shiki-js",
-            theme: props.themeName,
-            unsafeCSS: buildCodeEditorUnsafeCSS(props.theme),
-          }}
-        />
-      </EditProvider>
-    </div>
-  );
-}
-
-function filePreviewRowOffset(rows: number): string {
-  return `calc(var(--editor-file-padding, 1rem) + ${rows} * var(--editor-file-line-height, 1.65) * 1em)`;
-}
-
-function filePreviewRowSpan(rows: number): string {
-  return `calc(${rows} * var(--editor-file-line-height, 1.65) * 1em)`;
-}
-
-function FilePreviewChangeGutter(props: {
-  ranges: readonly EditorGutterChangeRange[];
-  subtle: boolean;
-}) {
-  return (
-    <div
-      className="editor-file-viewer__change-gutter"
-      data-subtle={props.subtle ? "true" : undefined}
-      aria-hidden="true"
-    >
-      {props.ranges.map((range) =>
-        range.kind === "deleted" ? (
-          <span
-            key={`deleted-${range.startLine}`}
-            className="editor-file-viewer__change-notch"
-            style={{ top: filePreviewRowOffset(range.startLine) }}
-          />
-        ) : (
-          <span
-            key={`${range.kind}-${range.startLine}-${range.endLine}`}
-            className="editor-file-viewer__change-bar"
-            data-change={range.kind}
-            style={{
-              top: filePreviewRowOffset(range.startLine - 1),
-              height: filePreviewRowSpan(range.endLine - range.startLine + 1),
-            }}
-          />
-        ),
-      )}
-    </div>
-  );
-}
-
-// Mimics indented code lines so the placeholder reads as a file body
-// instead of a generic spinner block.
-const FILE_PREVIEW_SKELETON_LINES = [
-  { indent: 0, width: "w-5/12" },
-  { indent: 0, width: "w-8/12" },
-  { indent: 1, width: "w-10/12" },
-  { indent: 1, width: "w-7/12" },
-  { indent: 2, width: "w-9/12" },
-  { indent: 2, width: "w-4/12" },
-  { indent: 1, width: "w-6/12" },
-  { indent: 0, width: "w-3/12" },
-  { indent: 0, width: "w-7/12" },
-  { indent: 1, width: "w-9/12" },
-  { indent: 1, width: "w-5/12" },
-  { indent: 0, width: "w-2/12" },
-];
-
-function FilePreviewLoadingState() {
-  return (
-    <div
-      className="min-h-0 flex-1 space-y-2.5 overflow-hidden px-3 py-3"
-      role="status"
-      aria-label="Loading file..."
-    >
-      {FILE_PREVIEW_SKELETON_LINES.map((line) => (
-        <div key={`${line.indent}-${line.width}`} className="flex h-3 items-center gap-2">
-          <Skeleton className="h-2.5 w-5 shrink-0 rounded-full opacity-60" />
-          <Skeleton
-            className={cn("h-2.5 rounded-full", line.width)}
-            style={{ marginLeft: `${line.indent * 1}rem` }}
-          />
-        </div>
-      ))}
-      <span className="sr-only">Loading file...</span>
-    </div>
-  );
-}
-
 export interface WorkspaceFilePreviewProps {
-  /** Explicit navigation request; repeated clicks may target the same line. */
   revealPosition?: { lineNumber: number; requestId: number } | undefined;
   workspaceRoot: string | null;
-  /**
-   * Workspace-relative path of the previewed file. Binary previews (images,
-   * PDFs) may instead be absolute paths outside the workspace — e.g. a
-   * session's scratch directory — served by the local-image route, which never
-   * touch the workspace-relative file-read RPC.
-   */
+
   filePath: string | null;
-  /**
-   * Initial markdown render mode per file. Editor and dock file panes default
-   * to rendered Preview; omit (or pass false) for source-first surfaces such
-   * as the Explorer pane. The header toggle still lets the user flip either
-   * way. Use the controlled mode to preserve choices across preview remounts.
-   */
+
   markdownPreviewDefault?: boolean;
-  /** Controlled mode for surfaces that preserve choices across preview remounts. */
+
   markdownPreviewEnabled?: boolean;
   onMarkdownPreviewChange?: (rendered: boolean) => void;
-  /** Enables guarded editing for complete, supported files inside the workspace. */
+
   editable?: boolean;
-  /** Keeps the file watcher bounded to a currently visible preview surface. */
+
   liveRevalidationEnabled?: boolean;
-  /** Shown when no file is selected yet. */
+
   emptyState?: ReactNode;
   onReferenceInChat?: ((reference: ChatFileReference) => void) | undefined;
   onAskWhyInChat?: ((reference: ChatFileReference) => void) | undefined;
@@ -525,13 +134,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
     workspaceRoot,
   } = props;
   const queryClient = useQueryClient();
-  // A workspace-relative reference that fails to read may actually live under
-  // an ancestor of the workspace root (agents sometimes emit paths relative to
-  // a parent folder, e.g. `Claude/Outbox/note.md` for a thread rooted at
-  // `.../Claude/Skills`). When the read errors, the server locates the real
-  // file and the preview reopens it as an absolute path through the existing
-  // preview-grant flow. The relocation is held in state keyed by the requested
-  // reference so the swap cannot oscillate with the failed read it replaces.
+
   const [relocation, setRelocation] = useState<{
     requestedKey: string;
     fullPath: string;
@@ -553,10 +156,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
   const fileNeedsLocalPreviewGrant =
     filePath !== null && fileIsLocalAbsolute && !fileIsScratchBinaryPreview;
   const fileIsMarkdown = filePath !== null && isMarkdownPreviewablePath(filePath);
-  // Per-file override of the markdown-preview default. Deriving (instead of
-  // syncing state in an effect) means switching files applies the default in
-  // the same render, with no stale-value flash, and the override dies with its
-  // file automatically.
+
   const [markdownPreviewOverride, setMarkdownPreviewOverride] = useState<{
     filePath: string | null;
     rendered: boolean;
@@ -585,8 +185,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
       cwd: props.workspaceRoot,
       relativePath: filePath,
       previewGrant: localPreviewGrant,
-      // Images and PDFs are binary: they stream through the local-image HTTP
-      // route instead of the text file-read RPC.
+
       enabled:
         liveRevalidationEnabled &&
         filePath !== null &&
@@ -614,11 +213,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
         cwd: workspaceRoot,
         relativePath: requestedFilePath,
       });
-      // The read-only change gutter and any mounted Source control / diff pane
-      // render from the active working-tree diff queries, so refresh them now
-      // (serialized on the shared Git queue); a bare invalidation would leave
-      // them stale until the window regains focus. Only active variants are
-      // re-read, so an idle workspace costs nothing here.
+
       void refreshGitAfterFileWrite(queryClient, workspaceRoot);
       if (fileIsImage || fileIsPdf) {
         setBinaryPreviewReloading(true);
@@ -648,12 +243,6 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
     onChange: handleWatchedFileChange,
   });
 
-  // Out-of-root relocation kicks in only after the workspace-relative text
-  // read or binary preview has actually failed. A reference the read RPC or
-  // local-preview route can still serve must always win over a same-named file
-  // outside the root. Keeping the resolver active after relocation lets normal
-  // workspace file invalidation restore that priority when the local file is
-  // created later.
   const binaryPreviewFailed = binaryPreviewErrorKey === relocationRequestKey;
   const fileReadFailedWithoutContents =
     fileQuery.isError &&
@@ -778,9 +367,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
   }, [fileIsImage, fileIsPdf, filePath, queryClient, workspaceRoot]);
 
   const handleEditBufferReload = editor.reloadFromDisk;
-  // Wait for the file read before asking for the working-tree diff: while the
-  // read is pending the editable document is still unresolved, and an editor
-  // that turns out to be editable never needs the read-only gutter.
+
   const changeGutterEnabled =
     props.workspaceRoot !== null &&
     resolvedWorkspaceRelativePath !== null &&
@@ -801,13 +388,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
     () => extractEditorGutterChanges(workingTreePatch, resolvedWorkspaceRelativePath),
     [workingTreePatch, resolvedWorkspaceRelativePath],
   );
-  // Highlight -> floating "Add to chat" -> reference that points at exactly what
-  // was selected, mirroring the transcript flow. In the source view the DOM
-  // mirrors the file's lines/columns 1:1, so a selection resolves to an exact
-  // `line 12:5-12` span. The rendered-markdown view restructures the source
-  // (paragraphs, lists, headings), so a selection there cannot map back to a
-  // line range; it references the selected text verbatim instead, the same
-  // snippet shape the diff view uses.
+
   const readPreviewSelection = (container: HTMLElement): Omit<ChatFileReference, "path"> | null =>
     showMarkdownPreview ? getSelectionSnippetWithin(container) : getSelectionWithin(container);
   const commitPreviewSelection = (selection: Omit<ChatFileReference, "path">) => {
@@ -820,10 +401,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
     readSelection: readPreviewSelection,
     onCommit: commitPreviewSelection,
   });
-  // Hover "+" gutter affordance + inline "Local comment" box. Offered only in
-  // the source view, where the DOM mirrors the file's lines 1:1 so the hovered
-  // `.line` resolves to an exact line number (the rendered-markdown view
-  // restructures the source and cannot map a row back to a file line).
+
   const lineCommentingEnabled =
     Boolean(onCommentInChat && filePath) && !showMarkdownPreview && !editableDocument;
   const lineCommenting = useFileLineCommenting({
@@ -837,8 +415,8 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
       onCommentInChat?.({ path: filePath, ...selection });
     }
   };
-  // Right-click references the selection (line range in the source view,
-  // quoted snippet in the rendered-markdown view), otherwise the whole file.
+  // Right-click references the selection (line range in the source view, quoted snippet in the
+  // rendered-markdown view), otherwise the whole file.
   const handleContentsContextMenu = (event: ReactMouseEvent<HTMLDivElement>) => {
     if (!filePath) {
       return;
@@ -854,9 +432,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
       onAskWhyInChat,
     });
   };
-  // Clicking a task checkbox in the markdown preview persists the toggle to
-  // disk: optimistic cache update first, ordered write-through after, refetch
-  // on failure so the preview never drifts from the file.
+
   const handleTaskToggle = ({ sourceLine, checked }: { sourceLine: number; checked: boolean }) => {
     if (!workspaceRoot || !filePath) {
       return;
@@ -881,8 +457,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
     if (nextContents === null) {
       return;
     }
-    // No API means no write can happen — bail before the optimistic update
-    // so the preview never shows a toggle that was silently dropped.
+
     const api = readNativeApi();
     if (!api) {
       return;
@@ -893,16 +468,13 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
       return;
     }
     queryClient.setQueryData(options.queryKey, { ...current, contents: nextContents });
-    // The read RPC may have resolved a bare/partial reference (e.g. a clicked
-    // `notes.md`) to its real nested path. Write back to that resolved path,
-    // not the opened reference, so the toggle lands on the file we read from
-    // instead of creating a stray file at the workspace root.
+
     const writeRelativePath = current.relativePath;
     const writeVersionOnDisk = current.version;
     const writeEncoding = current.encoding;
     const writeLineEnding = current.lineEnding;
-    // Writes carry the full file contents, so serialize them: a slower earlier
-    // checkbox write must never land after a newer toggle and erase it.
+    // Writes carry the full file contents, so serialize them: a slower earlier checkbox write must
+    // never land after a newer toggle and erase it.
     const fileKey = `${workspaceRoot}\0${filePath}`;
     if (!taskFileDiskVersionRef.current.has(fileKey)) {
       taskFileDiskVersionRef.current.set(fileKey, writeVersionOnDisk);
@@ -940,8 +512,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
     setMarkdownPreviewOverride({ filePath, rendered });
     props.onMarkdownPreviewChange?.(rendered);
   };
-  // Toggling a task rewrites the file, so only enable it when the preview
-  // holds the complete contents (writing a truncated read would corrupt it).
+
   const canToggleTasks =
     props.workspaceRoot !== null &&
     fileIsWorkspaceRelative &&
@@ -988,8 +559,6 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
     return <FilePreviewLoadingState />;
   }
 
-  // PDFs own their full surface — toolbar (file name, page nav, zoom, Open) plus
-  // the rendered page stack — so they skip the shared breadcrumb header here.
   if (fileIsPdf) {
     const openInTarget =
       props.workspaceRoot && isWorkspaceRelativePathSafe(filePath)
@@ -1021,18 +590,29 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-[var(--color-background-surface)]">
       <WorkspaceFilePreviewHeader
-        workspaceRoot={props.workspaceRoot}
-        filePath={filePath}
-        isMarkdown={fileIsMarkdown}
-        markdownPreviewEnabled={showMarkdownPreview}
-        onMarkdownPreviewChange={handleMarkdownPreviewChange}
+        file={{
+          path: filePath,
+          workspaceRoot: props.workspaceRoot,
+          contentsForCopy:
+            fileIsImage || fileQuery.data === undefined ? null : displayedFileContents,
+          truncated: fileQuery.data?.truncated ?? false,
+          dirty: editBufferDirty,
+          readOnlyReason,
+        }}
+        markdownView={
+          fileIsMarkdown
+            ? { enabled: showMarkdownPreview, onChange: handleMarkdownPreviewChange }
+            : undefined
+        }
         onReferenceInChat={onReferenceInChat}
-        contentsForCopy={fileIsImage || fileQuery.data === undefined ? null : displayedFileContents}
-        truncated={fileQuery.data?.truncated ?? false}
-        dirty={editBufferDirty}
-        readOnlyReason={readOnlyReason}
-        reloading={fileIsImage || fileIsPdf ? binaryPreviewReloading : fileQuery.isFetching}
-        onReload={workspaceRoot && filePath ? handleFileReload : undefined}
+        reload={
+          workspaceRoot && filePath
+            ? {
+                onClick: handleFileReload,
+                pending: fileIsImage || fileIsPdf ? binaryPreviewReloading : fileQuery.isFetching,
+              }
+            : undefined
+        }
       />
       {activeEditBuffer?.error ? (
         <div
@@ -1241,4 +821,41 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
       )}
     </div>
   );
+}
+
+function formatWorkspaceFileError(error: unknown): string {
+  if (!(error instanceof Error)) return "Could not read file.";
+  const detail = error.message.replace(/^workspaceFileSystem\.[\w]+ failed for .*?:\s*/u, "");
+  if (/file appears to be binary/i.test(detail))
+    return "This is a binary file. Open it in another app to view it.";
+  if (/EISDIR|is a directory/i.test(detail))
+    return "This is a folder. Select a file to preview it.";
+  if (/ENOENT|no such file|not found/i.test(detail))
+    return "This file no longer exists. Refresh Explorer to update the list.";
+  if (/EACCES|EPERM|permission denied/i.test(detail))
+    return "Glade doesn't have permission to read this file.";
+  if (/too large|exceeds.*size|size limit/i.test(detail))
+    return "This file is too large to preview.";
+  return detail || "Could not read file.";
+}
+
+const TASK_MARKER_PATTERN = /^((?:\s*>)*\s*(?:[-*+]|\d+[.)])\s+\[)[ xX](\])/;
+
+function toggleMarkdownTaskMarker(
+  contents: string,
+  sourceLine: number,
+  checked: boolean,
+): string | null {
+  const lines = contents.split("\n");
+  const index = sourceLine - 1;
+  const line = lines[index];
+  if (line === undefined) {
+    return null;
+  }
+  const match = TASK_MARKER_PATTERN.exec(line);
+  if (!match) {
+    return null;
+  }
+  lines[index] = `${match[1]}${checked ? "x" : " "}${match[2]}${line.slice(match[0].length)}`;
+  return lines.join("\n");
 }

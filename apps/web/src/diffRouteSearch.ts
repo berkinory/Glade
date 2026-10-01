@@ -1,8 +1,4 @@
-// FILE: diffRouteSearch.ts
-// Purpose: Normalizes URL search state for chat side panels and diff-file deep links.
-// Layer: Route state utility
-
-import { TurnId } from "@glade/contracts";
+import { TurnId } from "@glade/contracts/core/baseSchemas";
 
 export type ChatRightPanel = "browser" | "diff";
 

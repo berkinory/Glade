@@ -48,7 +48,7 @@ describe("cuaMaskedActivationOptIn", () => {
       "GLADE_CUA_MASKED_APPS",
       " com.example.Foo,COM.EXAMPLE.BAR ;org.kde.kcalc\tnet.example.Baz ",
     );
-    expect([...cuaMaskedActivationOptIn()].sort()).toEqual([
+    expect([...cuaMaskedActivationOptIn()].toSorted()).toEqual([
       "com.example.bar",
       "com.example.foo",
       "net.example.baz",

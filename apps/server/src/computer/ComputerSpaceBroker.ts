@@ -3,8 +3,8 @@ import type {
   ComputerSpaceErrorCode,
   ComputerSpaceInventory,
   ComputerSpaceReservation,
-  ComputerWindow,
-} from "@glade/contracts";
+} from "@glade/contracts/computer/computerSpaces";
+import type { ComputerWindow } from "@glade/contracts/computer/computer";
 
 import { ComputerTargetError } from "./uiTreeTargeting.ts";
 
@@ -31,12 +31,6 @@ function sameOwner(reservation: ComputerSpaceReservation, owner: ComputerSpaceOw
   return reservation.threadId === owner.threadId && reservation.turnId === owner.turnId;
 }
 
-/**
- * Reserves an existing user-designated Space for one Glade task. It never
- * creates, moves, activates or destroys a native Space/window. Every guarded
- * action rechecks native identity and current-Space membership; a reservation
- * invalidated by user intervention stays invalid until explicitly replaced.
- */
 export class ComputerSpaceBroker {
   readonly #readSnapshot: () => Promise<ComputerSpaceSnapshot>;
   readonly #assertActive: () => void;
@@ -147,7 +141,6 @@ export class ComputerSpaceBroker {
   }
 
   release(threadId: string, turnId?: string): void {
-    // Fence pending replacements even when an older turn still owns the stored record.
     this.#revision += 1;
     const reservation = this.#reservations.get(threadId);
     if (reservation && turnId !== undefined && reservation.turnId !== turnId) return;
@@ -181,7 +174,6 @@ export class ComputerSpaceBroker {
     }
   }
 
-  /** Application-wide side effects cannot be confined to one selected window. */
   async assertAppMutationAllowed(owner: ComputerSpaceOwner, pid: number): Promise<void> {
     if (this.#reservations.size === 0) return;
     if (this.#reservations.has(owner.threadId)) {
@@ -214,7 +206,6 @@ export class ComputerSpaceBroker {
     }
   }
 
-  /** Called on the resolved exact window before native input admission. Idle cost is zero. */
   async assertWindowAllowed(owner: ComputerSpaceOwner, window: ComputerWindow): Promise<void> {
     if (this.#reservations.size === 0) return;
     const revision = this.#revision;

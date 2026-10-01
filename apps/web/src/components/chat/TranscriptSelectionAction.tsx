@@ -1,7 +1,3 @@
-// FILE: TranscriptSelectionAction.tsx
-// Purpose: Renders the floating toolbar for assistant transcript selections.
-// Layer: Chat transcript interaction UI
-
 import { cn } from "~/lib/utils";
 import { ELEVATED_HOVER_SURFACE_CLASS_NAME } from "~/surfaceStyles";
 import { TRANSCRIPT_SELECTION_ACTION_WIDTH_PX } from "./chatSelectionActions";
@@ -58,8 +54,7 @@ export function TranscriptSelectionAction(props: TranscriptSelectionActionProps)
       role="toolbar"
       aria-label="Selection actions"
     >
-      {/* Sized to its labels and centered in the layout's slot, so labels never clip
-          regardless of font size or which actions are present. */}
+      {}
       <div className="pointer-events-auto inline-flex w-max max-w-[calc(100vw-16px)] shrink-0 items-center divide-x divide-[var(--color-border)] overflow-hidden rounded-lg border border-[color:var(--color-border)] bg-[var(--color-background-elevated-primary-opaque)] shadow-md">
         <TranscriptSelectionToolbarButton
           label="Add to Chat"

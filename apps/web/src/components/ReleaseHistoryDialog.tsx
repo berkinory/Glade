@@ -1,14 +1,6 @@
-// FILE: ReleaseHistoryDialog.tsx
-// Purpose: Standalone dialog that shows the full curated release history. Used
-// by the Settings > About row so users can revisit any past release notes on
-// demand — mirrors the "Complete changelog" view of the post-update dialog
-// without the "current release" anchor.
-// Layer: Settings overlay — mounted lazily from the settings panel when the
-// user asks to view history.
-
 import { ChangelogAccordion } from "../whatsNew/ChangelogAccordion";
-import { WHATS_NEW_ENTRIES } from "../whatsNew/entries";
-import { sortReleasedEntriesByVersionDesc, type WhatsNewEntry } from "../whatsNew/logic";
+import { CHANGELOG_ENTRIES } from "../whatsNew/changelog";
+import { sortReleasedEntriesByVersionDesc } from "../whatsNew/logic";
 import { Button } from "./ui/button";
 import {
   Dialog,
@@ -23,29 +15,18 @@ import {
 export interface ReleaseHistoryDialogProps {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
-  /**
-   * Entries to display. Defaults to the full curated list; callers can
-   * override in tests or storybook scenarios without poking at module state.
-   */
-  readonly entries?: readonly WhatsNewEntry[];
-  /**
-   * Version to expand by default (usually the installed build). `null`
-   * leaves every row collapsed so the user scans dates-first.
-   */
+
   readonly defaultExpandedVersion?: string | null;
 }
 
 export default function ReleaseHistoryDialog({
   open,
   onOpenChange,
-  entries: entriesProp,
   defaultExpandedVersion: defaultExpandedVersionProp,
 }: ReleaseHistoryDialogProps) {
-  const entries = entriesProp ?? WHATS_NEW_ENTRIES;
   const defaultExpandedVersion = defaultExpandedVersionProp ?? null;
-  // Sort at render time so the source of truth (`entries.ts`) stays free of
-  // ordering rules — authors can prepend, append, or reorder entries freely.
-  const sorted = sortReleasedEntriesByVersionDesc(entries);
+
+  const sorted = sortReleasedEntriesByVersionDesc(CHANGELOG_ENTRIES);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

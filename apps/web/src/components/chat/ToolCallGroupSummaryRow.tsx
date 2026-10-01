@@ -1,11 +1,3 @@
-// FILE: ToolCallGroupSummaryRow.tsx
-// Purpose: One-line disclosure for a run of tool calls. Settled runs read as a
-//          summary ("Ran 2 commands, Edited 2 files"); a live run wears its
-//          latest status or call instead. Both expand to the individual rows.
-// Layer: Web chat presentation component
-// Exports: ToolCallGroupSummaryRow
-// Depends on: DisclosureRegion/DisclosureChevron (shared disclosure motion)
-
 import { useEffect, useState, type ReactNode } from "react";
 
 import { DisclosureChevron } from "../ui/DisclosureChevron";
@@ -13,9 +5,9 @@ import { DisclosureRegion } from "../ui/DisclosureRegion";
 import { DISCLOSURE_CLEANUP_BUFFER_MS, DISCLOSURE_TRANSITION_MS } from "~/lib/disclosureMotion";
 import { cn } from "~/lib/utils";
 import { MUTED_LABEL_TEXT_CLASS_NAME } from "~/surfaceStyles";
-import { extractWebFetchUrl } from "../../lib/toolCallLabel";
+import { extractWebFetchUrl } from "../../lib/toolCallLabel.presentations";
 import { LinkChipIcon } from "../LinkChipIcon";
-import type { WorkLogEntry } from "../../session-logic";
+import type { WorkLogEntry } from "../../workLog.types";
 import { multiFileEditLabel, type ToolCallGroupSummary } from "./toolCallGroup.logic";
 import {
   renderWorkEntryIcon,
@@ -25,7 +17,7 @@ import {
 
 export function ToolCallGroupSummaryRow(props: {
   summary: ToolCallGroupSummary;
-  // Selected status or call of a live run, shown instead of the summary.
+
   liveEntry?: WorkLogEntry | null;
   open: boolean;
   onToggle: (open: boolean) => void;
@@ -50,8 +42,6 @@ export function ToolCallGroupSummaryRow(props: {
 
   const shouldRenderChildren = open || keepChildrenMounted;
 
-  // The collapsed row wears its first entry's icon (favicon for web fetches),
-  // so folding a run of tool calls keeps the leading glyph of the row it hides.
   const iconEntry = liveEntry ?? summary.iconEntry;
   const iconWebFetchUrl = extractWebFetchUrl(iconEntry);
 
@@ -79,7 +69,7 @@ export function ToolCallGroupSummaryRow(props: {
             ? (multiFileEditLabel(liveEntry) ?? workEntryDisplayText(liveEntry))
             : summary.label}
         </span>
-        {/* One step quieter than the label, matching the per-row disclosure chevron. */}
+        {}
         <DisclosureChevron open={open} className="text-muted-foreground/70" />
       </button>
       <DisclosureRegion open={open}>

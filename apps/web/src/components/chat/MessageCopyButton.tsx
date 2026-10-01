@@ -1,6 +1,6 @@
 import { useRef, type RefObject } from "react";
 import { CheckIcon, CopyIcon } from "~/lib/icons";
-import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
+import { useCopyToClipboard } from "../../lib/clipboard";
 import { anchoredToastManager } from "../ui/toast";
 import { MessageActionButton, MESSAGE_ACTION_ICON_CLASS_NAME } from "./MessageActionButton";
 

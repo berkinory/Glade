@@ -1,11 +1,7 @@
-import type { OrchestrationSession } from "@glade/contracts";
+import type { OrchestrationSession } from "@glade/contracts/orchestration/threadEntities";
 
 type TurnState = "pending" | "running" | "completed" | "interrupted" | "error";
 
-/**
- * Returns the terminal turn state implied by a session update, or `null` while
- * the provider can still deliver the authoritative terminal event.
- */
 export function settleTurnStateFromSession(
   session: Pick<OrchestrationSession, "status" | "activeTurnId">,
   existingState: TurnState,
@@ -33,11 +29,6 @@ export function settleTurnStateFromSession(
   }
 }
 
-/**
- * Later-arriving events can carry earlier timestamps (retries, imports,
- * reconciliation), so thread timestamp advancement must be monotonic — a
- * regressed `updatedAt` re-marks already-read chats as unread after restart.
- */
 export function maxIso(left: string | null, right: string): string {
   return left === null || right > left ? right : left;
 }

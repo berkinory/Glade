@@ -1,4 +1,5 @@
-import type { BrowserToolName, ProviderKind, ThreadId } from "@glade/contracts";
+import type { BrowserToolName } from "@glade/contracts/browser/automation/browserAutomationToolCatalogue";
+import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { ServiceMap, type Effect } from "effect";
 
 import type { BrowserHostRpcError } from "../browserHostRpcClient.ts";
@@ -9,7 +10,7 @@ interface BrowserAutomationHostCall {
   readonly threadId: ThreadId;
   readonly name: BrowserToolName;
   readonly arguments: Record<string, unknown>;
-  /** Server-resolved authenticated thread workspace. Never accepted from MCP arguments. */
+
   readonly workspaceRoot?: string;
   readonly timeoutMs: number;
 }

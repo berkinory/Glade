@@ -1,22 +1,14 @@
-// FILE: automationDraft.ts
-// Purpose: Builds editable automation drafts and safety warnings for chat-triggered creation.
-// Layer: Web lib
-// Exports: pure automation draft warning/skill helpers.
-// Depends on: automation contracts shared with the native API.
-
-import { DEFAULT_AUTOMATION_FAST_INTERVAL_MAX_ITERATIONS } from "@glade/contracts";
+import { DEFAULT_AUTOMATION_FAST_INTERVAL_MAX_ITERATIONS } from "@glade/contracts/automation/automation";
 import type {
   AutomationMode,
   AutomationSchedule,
   AutomationWorktreeMode,
-  RuntimeMode,
-} from "@glade/contracts";
-import { automationRequiresTargetThread } from "@glade/shared/automationMode";
+} from "@glade/contracts/automation/automation";
+import type { RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
+import { automationRequiresTargetThread } from "@glade/shared/threads/automationMode";
 
 import type { ChatAutomationExecutionScope } from "./automationIntent";
 
-// Heartbeat runs inside a thread the user already owns, so its checkout is the user's
-// concern. Every other mode opens its own thread and may create its own worktree.
 function automationOpensItsOwnCheckout(mode: AutomationMode): boolean {
   return !automationRequiresTargetThread(mode);
 }
@@ -137,9 +129,6 @@ export function buildAutomationDraftWarnings(input: {
   return warnings;
 }
 
-// Computes the approval an existing automation still needs before it can run or update.
-// `warnings` drives the banner; `runBlockingWarnings` is the narrower subset that should
-// disable Run now. `acknowledgedRisks` is the full set to persist on approval.
 export function automationApprovalGaps(input: {
   readonly schedule: AutomationSchedule;
   readonly enabled: boolean;
@@ -158,9 +147,7 @@ export function automationApprovalGaps(input: {
   const acknowledged = new Set(input.acknowledgedRisks);
   const approvalIds = new Set<AutomationDraftWarningId>();
   const maxIterations = maxIterationsForFastIntervalApproval(input);
-  // Definite run blockers: full-access and a local checkout the automation opens itself.
-  // Heartbeats reuse their target thread, so local-checkout consent is needed for updates
-  // but not dispatch.
+
   const runBlockingIds = new Set<AutomationDraftWarningId>();
   if (input.runtimeMode === "full-access" && !acknowledged.has("full-access")) {
     approvalIds.add("full-access");
@@ -188,8 +175,6 @@ export function automationApprovalGaps(input: {
     input.worktreeMode === "auto" &&
     !acknowledged.has("local-checkout")
   ) {
-    // Auto fallback is not enough to show the banner by itself, but if the user is already
-    // approving another risk, include the fallback consent instead of saving a hidden risk.
     approvalIds.add("local-checkout");
   }
   if (approvalIds.size === 0) {
@@ -224,7 +209,6 @@ export function automationApprovalGaps(input: {
   };
 }
 
-// Approval of an enabled legacy fast loop must also satisfy the server's hard iteration cap.
 function maxIterationsForFastIntervalApproval(input: {
   readonly schedule: AutomationSchedule;
   readonly enabled: boolean;
@@ -283,7 +267,6 @@ export function hasBlockingAutomationDraftWarnings(
   );
 }
 
-// Thread-bound chat creation can accept bounded fast loops without reopening the form.
 export function acknowledgedWarningIdsForAutomaticChatAutomation(input: {
   readonly warnings: readonly AutomationDraftWarning[];
   readonly maxIterations: number | null;

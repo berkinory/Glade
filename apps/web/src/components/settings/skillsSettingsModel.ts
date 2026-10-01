@@ -1,10 +1,6 @@
-// FILE: skillsSettingsModel.ts
-// Purpose: Groups duplicate skill copies for Settings -> Skills so shared names render once.
-// Layer: Settings UI logic
-// Exports: origin metadata, canonical skill grouping, and section ordering helpers.
-
-import type { ProviderKind, ProviderSkillDescriptor } from "@glade/contracts";
-import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
+import type { ProviderSkillDescriptor } from "@glade/contracts/provider/providerDiscovery";
+import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { DEFAULT_PROVIDER_ORDER } from "~/providerOrdering";
 
 interface SkillOriginInfo {
@@ -100,8 +96,6 @@ function sectionRank(section: string): number {
   return originRank(section);
 }
 
-// Creates one canonical row per normalized skill name. Duplicate provider copies
-// stay visible as sources instead of letting the first origin hide the rest.
 export function buildSettingsSkillGroups(
   skills: ReadonlyArray<ProviderSkillDescriptor>,
 ): SettingsSkillGroup[] {
@@ -146,10 +140,10 @@ export function buildSettingsSkillGroups(
       } satisfies SettingsSkillGroup;
     })
     .filter((group): group is SettingsSkillGroup => group !== null)
-    .sort((left, right) => left.displayName.localeCompare(right.displayName));
+    .toSorted((left, right) => left.displayName.localeCompare(right.displayName));
 }
 
-/** Sections from already-built groups, so callers that need both do not run the grouping twice. */
+// Sections from already-built groups, so callers that need both do not run the grouping twice.
 export function buildSettingsSkillSectionsFromGroups(
   groups: ReadonlyArray<SettingsSkillGroup>,
 ): SettingsSkillSection[] {
@@ -164,5 +158,5 @@ export function buildSettingsSkillSectionsFromGroups(
       title: sectionTitle(key),
       groups,
     }))
-    .sort((left, right) => sectionRank(left.key) - sectionRank(right.key));
+    .toSorted((left, right) => sectionRank(left.key) - sectionRank(right.key));
 }

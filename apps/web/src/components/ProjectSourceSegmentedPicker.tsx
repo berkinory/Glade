@@ -24,10 +24,6 @@ const PROJECT_SOURCES: ReadonlyArray<{
   },
 ];
 
-/**
- * A compact raised-thumb picker,
- * adapted to choose how a project is added.
- */
 export function ProjectSourceSegmentedPicker(props: {
   readonly value: ProjectSource;
   readonly disabled: boolean;

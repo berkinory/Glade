@@ -1,4 +1,4 @@
-import { EventId, RuntimeRequestId } from "@glade/contracts";
+import { EventId, RuntimeRequestId } from "@glade/contracts/core/baseSchemas";
 import type { LegacyProviderRuntimeEvent } from "../TestProviderAdapter.integration.ts";
 
 const PROVIDER = "codex" as const;

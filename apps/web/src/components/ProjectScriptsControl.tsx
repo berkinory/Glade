@@ -1,4 +1,8 @@
-import type { ProjectScript, ProjectScriptIcon, ResolvedKeybindingsConfig } from "@glade/contracts";
+import type {
+  ProjectScript,
+  ProjectScriptIcon,
+} from "@glade/contracts/orchestration/threadEntities";
+import type { ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import {
   BugIcon,
   ChevronDownIcon,
@@ -129,7 +133,6 @@ export default function ProjectScriptsControl({
   const [validationError, setValidationError] = useState<string | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
-  // Manual memoization kept: this file does not compile under React Compiler (see compile-report).
   const primaryScript = useMemo(() => {
     if (preferredScriptId) {
       const preferred = scripts.find((script) => script.id === preferredScriptId);
@@ -357,7 +360,13 @@ export default function ProjectScriptsControl({
             </DialogDescription>
           </DialogHeader>
           <DialogPanel>
-            <form id={addScriptFormId} className="space-y-4" onSubmit={submitAddScript}>
+            <form
+              id={addScriptFormId}
+              className="space-y-4"
+              onSubmit={(...args: Parameters<typeof submitAddScript>) => {
+                void submitAddScript(...args);
+              }}
+            >
               <div className="space-y-1.5">
                 <Label htmlFor="script-name">Name</Label>
                 <div className="flex items-center gap-2">

@@ -1,13 +1,10 @@
-import {
-  DEFAULT_GIT_TEXT_GENERATION_MODEL,
-  PROVIDER_DISPLAY_NAMES,
-  type ModelSelection,
-  type ProviderKind,
-} from "@glade/contracts";
+import { PROVIDER_DEFAULT_MODEL, PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
+import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { Effect, Layer } from "effect";
 
-import { providerDisabledSettingsMessage } from "../../provider/enabledProviderAdapter.ts";
-import { ServerSettingsService } from "../../serverSettings.ts";
+import { providerDisabledSettingsMessage } from "../../provider/core/enabledProviderAdapter.ts";
+import { ServerSettingsService } from "../../settings/serverSettings.ts";
 import { TextGenerationError } from "../Errors.ts";
 import * as TextGen from "../Services/TextGeneration.ts";
 import * as Selection from "../textGenerationSelection.ts";
@@ -21,7 +18,7 @@ const makeProviderTextGeneration = Effect.gen(function* () {
   const prepareCommitInput = (input: TextGen.CommitMessageGenerationInput) =>
     Effect.gen(function* () {
       const provider = input.modelSelection?.provider ?? "codex";
-      const model = input.modelSelection?.model ?? input.model ?? DEFAULT_GIT_TEXT_GENERATION_MODEL;
+      const model = input.modelSelection?.model ?? input.model ?? PROVIDER_DEFAULT_MODEL;
       const startup = input.providerOptions?.[provider];
       const catalog = yield* discovery
         .listModels({
@@ -165,8 +162,6 @@ const makeProviderTextGeneration = Effect.gen(function* () {
       call("generateDiffSummary", input, (impl, value) => impl.generateDiffSummary(value)),
     generateBranchName: (input: TextGen.BranchNameGenerationInput) =>
       call("generateBranchName", input, (impl, value) => impl.generateBranchName(value)),
-    generateThreadTitle: (input: TextGen.ThreadTitleGenerationInput) =>
-      call("generateThreadTitle", input, (impl, value) => impl.generateThreadTitle(value)),
     generateAutomationIntent: (input: TextGen.AutomationIntentGenerationInput) =>
       call("generateAutomationIntent", input, (impl, value) =>
         impl.generateAutomationIntent(value),

@@ -3,11 +3,11 @@ import {
   CheckpointRef,
   MessageId,
   ProjectId,
-  type ProjectKind,
   type ThreadId,
   TurnId,
-} from "@glade/contracts";
-import { resolveThreadWorkspaceCwd as resolveSharedThreadWorkspaceCwd } from "@glade/shared/threadEnvironment";
+} from "@glade/contracts/core/baseSchemas";
+import { type ProjectKind } from "@glade/contracts/workspace/project";
+import { resolveThreadWorkspaceCwd as resolveSharedThreadWorkspaceCwd } from "@glade/shared/threads/threadEnvironment";
 
 const CHECKPOINT_REFS_PREFIX = "refs/glade/checkpoints";
 
@@ -85,20 +85,16 @@ export function checkpointRefForThreadTurnStartInManagedFamily(
   );
 }
 
-// Throwaway ref used to snapshot the working tree mid-turn so a live diff can be
-// computed against the turn-start baseline. It is captured, diffed, and deleted
-// on every live recompute; it never becomes a durable checkpoint.
 export function checkpointRefForThreadTurnLive(threadId: ThreadId, turnId: TurnId): CheckpointRef {
   return CheckpointRef.makeUnsafe(
     `${CHECKPOINT_REFS_PREFIX}/${Encoding.encodeBase64Url(threadId)}/turn-live/${Encoding.encodeBase64Url(turnId)}`,
   );
 }
 
-// Throwaway snapshot of the pre-revert working tree. A revert mutates two
-// systems that cannot commit together — the worktree and the provider
-// conversation — so the files are captured here first and restored from here if
-// the conversation rollback fails. Deleted once the revert commits; the token is
-// random so concurrent reverts on the same thread never share one.
+// Throwaway snapshot of the pre-revert working tree. A revert mutates two systems that cannot
+// commit together — the worktree and the provider conversation — so the files are captured here
+// first and retained for explicit recovery if workspace restoration fails. Deleted once the revert commits;
+// the token is random so concurrent reverts on the same thread never share one.
 export function checkpointRefForThreadRevertRescue(
   threadId: ThreadId,
   token: string,
@@ -108,17 +104,7 @@ export function checkpointRefForThreadRevertRescue(
   );
 }
 
-/**
- * Decide whether a project's `workspaceRoot` should be treated as a thread's
- * real, usable working directory.
- *
- * - `chat` projects are throwaway sandboxes with no durable working
- *   directory of their own: their `workspaceRoot` is not a real cwd until a
- *   worktree has actually been materialized for the thread, so it must be
- *   suppressed (treated as absent) until then.
- * - Every other kind (including the default `project` kind, and an
- *   unresolved/undefined project) treats `workspaceRoot` as the real cwd.
- */
+// A chat project's sandbox root is not a usable cwd until its thread worktree exists.
 export function resolveProjectCwdForKind(input: {
   readonly kind: ProjectKind | string | null | undefined;
   readonly workspaceRoot: string | null;

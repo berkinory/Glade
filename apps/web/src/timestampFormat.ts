@@ -86,18 +86,12 @@ function isSameCalendarDay(a: Date, b: Date): boolean {
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
-/** Local-midnight day difference, so "yesterday 23:59 → today 00:01" counts as one day apart. */
 function calendarDaysBetween(from: Date, to: Date): number {
   const fromMidnight = new Date(from.getFullYear(), from.getMonth(), from.getDate());
   const toMidnight = new Date(to.getFullYear(), to.getMonth(), to.getDate());
   return Math.round((toMidnight.getTime() - fromMidnight.getTime()) / DAY_IN_MS);
 }
 
-/**
- * Day-aware message timestamp: same-day messages show just the clock time;
- * messages from another day within the past week are prefixed with the weekday
- * name, and anything older with a short date (plus year once it differs).
- */
 export function formatDayAwareTimestamp(
   isoDate: string,
   timestampFormat: TimestampFormat,

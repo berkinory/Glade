@@ -1,48 +1,39 @@
-/**
- * AgentGatewayLive - Glade app-control MCP tool surface.
- *
- * Implements the `glade_*` tools served over `POST /mcp` (streamable HTTP,
- * stateless JSON responses). Every provider session gets this endpoint plus a
- * thread-bound bearer token injected at session start, so any agent running in
- * a Glade thread can list/read/create/steer threads and manage heartbeat
- * automations - the same host-tool pattern the Codex desktop app uses.
- *
- * All tools delegate to existing services (OrchestrationEngine dispatch,
- * ProjectionSnapshotQuery reads, AutomationService, GitCore); no orchestration
- * state lives here.
- *
- * @module agentGateway/Layers/AgentGateway
- */
+import type { TaggedFailure } from "../../platform/operationError.ts";
+
 import { computerSpaceDesignationForMessages } from "../../computer/computerSpaceDesignation.ts";
 import { randomUUID } from "node:crypto";
 
 import {
   COMPUTER_SETUP_REQUIRED_ACTIVITY_KIND,
   COMPUTER_CONTROL_DENIED_ACTIVITY_KIND,
-  CommandId,
-  EventId,
-  GLADE_GATEWAY_MAX_THREADS_PER_OPERATION,
-  MessageId,
-  THREAD_GOAL_MAX_CHARS,
-  ThreadId,
-  TurnId,
   type ComputerBuildSignature,
   type ComputerPermission,
   type ComputerSetupRequiredPayload,
-  type ModelSelection,
+} from "@glade/contracts/computer/computer";
+import {
+  CommandId,
+  EventId,
+  MessageId,
+  ThreadId,
+  TurnId,
   type ProjectId,
-  type ProviderApprovalDecision,
   type ProviderKind,
+} from "@glade/contracts/core/baseSchemas";
+import { GLADE_GATEWAY_MAX_THREADS_PER_OPERATION } from "@glade/contracts/provider/agentGateway";
+
+import {
+  type ModelSelection,
+  type ProviderApprovalDecision,
   type RuntimeMode,
-  type ServerProviderStatus,
   type TurnDispatchMode,
-} from "@glade/contracts";
-import { runtimeModeEscalatesPrivilege } from "@glade/shared/runtimeMode";
+} from "@glade/contracts/provider/sessionPolicy";
+import { type ServerProviderStatus } from "@glade/contracts/server/server";
+import { runtimeModeEscalatesPrivilege } from "@glade/shared/threads/runtimeMode";
 import { Effect, Layer, Option } from "effect";
 
 import { GitCore } from "../../git/Services/GitCore.ts";
 import { GitManager } from "../../git/Services/GitManager.ts";
-import { ServerConfig } from "../../config.ts";
+import { ServerConfig } from "../../server/config.ts";
 import { OrchestrationEngineService } from "../../orchestration/Services/OrchestrationEngine.ts";
 import { ProjectionSnapshotQuery } from "../../orchestration/Services/ProjectionSnapshotQuery.ts";
 import { AutomationService } from "../../automation/Services/AutomationService.ts";
@@ -57,7 +48,7 @@ import { AgentGatewayCredentials } from "../Services/AgentGatewayCredentials.ts"
 import { AgentGatewayOperationRepository } from "../Services/AgentGatewayOperationRepository.ts";
 import { ProviderDiscoveryService } from "../../provider/Services/ProviderDiscoveryService.ts";
 import { ProviderHealth } from "../../provider/Services/ProviderHealth.ts";
-import { ServerSettingsService } from "../../serverSettings.ts";
+import { ServerSettingsService } from "../../settings/serverSettings.ts";
 import {
   AGENT_GATEWAY_TARGET_OPTIONS_DESCRIPTION,
   resolveAgentGatewayTarget,
@@ -86,8 +77,6 @@ import { makeAgentGatewayAutomationTools } from "../automationTools.ts";
 import { makeAgentGatewayBrowserTools } from "../browserTools.ts";
 import { makeAgentGatewayComputerBrowserTools } from "../computerBrowserTools.ts";
 import { computerApprovalDisplayArgs } from "../computerApprovalDisplay.ts";
-import { makeAgentGatewayDeviceTools } from "../deviceTools.ts";
-import { DeviceService } from "../../device/Services/DeviceService.ts";
 import {
   COMPUTER_CONTROL_CAPABILITY,
   makeAgentGatewayComputerTools,
@@ -101,35 +90,15 @@ import { BrowserAutomationHost } from "../../browserAutomation/Services/BrowserA
 import { makeBrowserAutomationHost } from "../../browserAutomation/Layers/BrowserAutomationHost.ts";
 import { makeThreadReadTools } from "../threadReadTools.ts";
 import { makeThreadDiagnosticTools } from "../threadDiagnosticTools.ts";
-import { pruneProjectedArchivedManagedWorktrees } from "../../managedWorktrees.ts";
+import { pruneProjectedArchivedManagedWorktrees } from "../../git/managedWorktrees.ts";
 import { resolveThreadWorkspaceCwd } from "../../checkpointing/Utils.ts";
 
-// Providers already receive the versioned host policy exactly once in their
-// private prompt. MCP clients prepend initialize.instructions to every exposed
-// tool definition, so repeating the full policy here adds tens of thousands of
-// context characters per round without adding authority or safety.
+// Providers already receive the versioned host policy exactly once in their private prompt. MCP
+// clients prepend initialize.instructions to every exposed tool definition, so repeating the full
+// policy here adds tens of thousands of context characters per round without adding authority or
+// safety.
 const AGENT_GATEWAY_INSTRUCTIONS =
   "Glade tools are thread-scoped. Use browser_* only for Glade's shared in-app browser runtime; follow the provider-delivered <glade_host_context> for full policy.";
-
-function readThreadGoalArg(args: Record<string, unknown>): string {
-  if (!("goal" in args)) {
-    throw new ToolInputError(`Missing required argument "goal".`);
-  }
-  const value = args.goal;
-  if (value === null) {
-    return "";
-  }
-  if (typeof value !== "string") {
-    throw new ToolInputError(`Argument "goal" must be a string or null.`);
-  }
-  const goal = value.trim();
-  if (goal.length > THREAD_GOAL_MAX_CHARS) {
-    throw new ToolInputError(
-      `Argument "goal" must be at most ${THREAD_GOAL_MAX_CHARS} characters.`,
-    );
-  }
-  return goal;
-}
 
 const makeAgentGateway = Effect.gen(function* () {
   const credentials = yield* AgentGatewayCredentials;
@@ -152,10 +121,6 @@ const makeAgentGateway = Effect.gen(function* () {
     yield* Effect.serviceOption(BrowserAutomationHost),
     () => makeBrowserAutomationHost({}),
   );
-  // Optional and platform-gated: off macOS (and in tests that do not provide
-  // it) the agent never sees the device_* tools at all, rather than being
-  // offered eleven tools that can only report an unsupported platform.
-  const deviceService = Option.getOrUndefined(yield* Effect.serviceOption(DeviceService));
   const computerService = Option.getOrUndefined(yield* Effect.serviceOption(ComputerService));
   const loadProviderAvailabilities = Effect.gen(function* () {
     const [settings, statuses] = yield* Effect.all([
@@ -217,12 +182,10 @@ const makeAgentGateway = Effect.gen(function* () {
       ),
     );
 
-  // Automation targets resolve like thread-creation targets: live provider availability
-  // and model discovery, against the workspace of the project the automation belongs to.
   const resolveAutomationTarget = (input: {
     readonly target: ModelSelection;
     readonly projectId: ProjectId;
-  }): Effect.Effect<ModelSelection, unknown> =>
+  }): Effect.Effect<ModelSelection, TaggedFailure> =>
     Effect.gen(function* () {
       const project = yield* snapshotQuery.getProjectShellById(input.projectId).pipe(
         Effect.mapError((error) => new ToolInputError(errorText(error))),
@@ -244,10 +207,10 @@ const makeAgentGateway = Effect.gen(function* () {
       });
     });
 
-  // Privilege boundary shared by every tool that makes another thread execute
-  // work or mutates another thread's state: a caller must not drive a thread
-  // that runs with more privileges than the user granted the caller itself —
-  // otherwise an approval-required or worktree-isolated agent escalates by proxy.
+  // Privilege boundary shared by every tool that makes another thread execute work or mutates another
+  // thread's state: a caller must not drive a thread that runs with more privileges than the user
+  // granted the caller itself — otherwise an approval-required or worktree-isolated agent escalates
+  // by proxy.
   const assertCallerMayDriveThread = (
     caller: { readonly runtimeMode: RuntimeMode; readonly envMode?: string | null | undefined },
     target: {
@@ -293,8 +256,6 @@ const makeAgentGateway = Effect.gen(function* () {
     requireThreadShell,
   });
 
-  // --- write tools ----------------------------------------------------------
-
   const runCreateThreads = yield* makeCreateThreadsHandler({
     snapshotQuery,
     orchestrationEngine,
@@ -331,7 +292,7 @@ const makeAgentGateway = Effect.gen(function* () {
                 notifyCreatorOnComplete: {
                   type: "boolean",
                   description:
-                    "Passively return the initial run result to this creating thread. Does not wake the creator; goal runs are unsupported.",
+                    "Passively return the initial run result to this creating thread. Does not wake the creator.",
                 },
                 prompt: { type: "string" },
                 title: { type: "string" },
@@ -389,7 +350,7 @@ const makeAgentGateway = Effect.gen(function* () {
           notifyCreatorOnComplete: {
             type: "boolean",
             description:
-              "Passively return the initial run result to this creating thread. Does not wake the creator; goal runs are unsupported.",
+              "Passively return the initial run result to this creating thread. Does not wake the creator.",
           },
           prompt: { type: "string" },
           title: { type: "string" },
@@ -477,7 +438,7 @@ const makeAgentGateway = Effect.gen(function* () {
             return mcpToolResultJson({
               operationId: batch.operationId,
               requestId: batch.requestId,
-              ...(batch.threads?.[0] ?? {}),
+              ...batch.threads?.[0],
             });
           }),
         );
@@ -514,9 +475,7 @@ const makeAgentGateway = Effect.gen(function* () {
         const caller = yield* requireThreadShell(context.callerThreadId);
         const target = yield* requireThreadShell(threadId);
         yield* assertCallerMayDriveThread(caller, target);
-        // Pass the requested mode through unchanged: the reactor checks live
-        // provider state (authoritative, unlike this projection snapshot) and
-        // already downgrades steers whose turn is not actually live.
+
         const dispatchMode: TurnDispatchMode = modeArg;
         const suffix = randomUUID();
         yield* orchestrationEngine
@@ -533,7 +492,7 @@ const makeAgentGateway = Effect.gen(function* () {
             dispatchMode,
             dispatchOrigin: "agent",
             runtimeMode: target.runtimeMode,
-            interactionMode: target.interactionMode,
+
             createdAt: isoNow(),
           })
           .pipe(Effect.mapError((error) => new ToolInputError(errorText(error))));
@@ -562,7 +521,7 @@ const makeAgentGateway = Effect.gen(function* () {
         const threadId = readStringArg(args, "threadId", { required: true })!;
         const caller = yield* requireThreadShell(context.callerThreadId);
         const target = yield* requireThreadShell(threadId);
-        // Stopping a higher-privileged thread's work is still driving it.
+
         yield* assertCallerMayDriveThread(caller, target);
         const activeTurnId = target.session?.activeTurnId ?? null;
         const hadActiveTurn = activeTurnId !== null || target.latestTurn?.state === "running";
@@ -574,9 +533,7 @@ const makeAgentGateway = Effect.gen(function* () {
             createdAt: isoNow(),
           })
           .pipe(Effect.mapError((error) => new ToolInputError(errorText(error))));
-        // The interrupt is only *requested* here: the provider settles the turn
-        // asynchronously. Reporting a constant `interrupted: true` told callers
-        // the turn had stopped even when there was no turn to stop.
+
         return mcpToolResultJson({
           threadId: target.id,
           interruptRequested: true,
@@ -742,87 +699,6 @@ const makeAgentGateway = Effect.gen(function* () {
       }).pipe(Effect.catch((error) => Effect.succeed(mcpToolResultError(errorText(error))))),
   };
 
-  const setThreadGoal: ToolEntry = {
-    requiredCapability: "thread:write",
-    requiresActiveTurn: true,
-    definition: {
-      name: "glade_set_thread_goal",
-      description:
-        "Set a persistent goal for a thread. Only set a goal when the user has explicitly asked for one (for example, 'keep working until X' or 'the goal of this thread is Y') or when dispatching a thread explicitly created to pursue a stated objective. Do NOT infer or invent goals from ordinary tasks or set one as a side effect of normal work. Clearing requires the same explicit user intent. When the active goal's objective has been accomplished, pass achieved: true instead of clearing: Glade records the achievement (with the time it took) and clears the goal. If the same external blocker prevents meaningful progress for three consecutive goal turns, pass blocked: true to pause the goal. Do not mark a goal blocked merely because the work is difficult, incomplete, or would benefit from clarification.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          threadId: {
-            type: "string",
-            description: "Thread to update. Defaults to your own thread when omitted.",
-          },
-          goal: {
-            type: ["string", "null"],
-            maxLength: THREAD_GOAL_MAX_CHARS,
-            description:
-              "Persistent objective. Pass null or an empty string to clear it. Ignored when achieved or blocked is true.",
-          },
-          achieved: {
-            type: "boolean",
-            description:
-              "Pass true when the active goal's objective has been accomplished. Records a goal achievement and clears the goal.",
-          },
-          blocked: {
-            type: "boolean",
-            description:
-              "Pass true only after the same external blocker prevents meaningful progress for three consecutive goal turns. Pauses the active goal.",
-          },
-        },
-        required: [],
-        additionalProperties: false,
-      },
-      annotations: { title: "Set a Glade thread goal", ...WRITE_TOOL_ANNOTATIONS },
-    },
-    handler: (args, context) =>
-      Effect.gen(function* () {
-        const threadId = readStringArg(args, "threadId") ?? context.callerThreadId;
-        if ("achieved" in args && typeof args.achieved !== "boolean") {
-          return yield* Effect.fail(new ToolInputError(`Argument "achieved" must be a boolean.`));
-        }
-        if ("blocked" in args && typeof args.blocked !== "boolean") {
-          return yield* Effect.fail(new ToolInputError(`Argument "blocked" must be a boolean.`));
-        }
-        const achieved = args.achieved === true;
-        const blocked = args.blocked === true;
-        if (achieved && blocked) {
-          return yield* Effect.fail(
-            new ToolInputError(`Arguments "achieved" and "blocked" are mutually exclusive.`),
-          );
-        }
-        const goal = achieved || blocked ? "" : readThreadGoalArg(args);
-        const caller = yield* requireThreadShell(context.callerThreadId);
-        const target = yield* requireThreadShell(threadId);
-        yield* assertCallerMayDriveThread(caller, target);
-        if ((achieved || blocked) && (target.goal ?? "").trim().length === 0) {
-          return yield* Effect.fail(
-            new ToolInputError(
-              `Thread has no active goal to mark ${achieved ? "achieved" : "blocked"}.`,
-            ),
-          );
-        }
-        yield* orchestrationEngine
-          .dispatch({
-            type: "thread.meta.update",
-            commandId: CommandId.makeUnsafe(`agent:${randomUUID()}:goal`),
-            threadId: target.id,
-            ...(achieved ? { goalAchieved: true } : blocked ? { goalPaused: true } : { goal }),
-          })
-          .pipe(Effect.mapError((error) => new ToolInputError(errorText(error))));
-        return mcpToolResultJson(
-          achieved
-            ? { threadId: target.id, goal: null, achieved: true }
-            : blocked
-              ? { threadId: target.id, goal: target.goal, blocked: true, paused: true }
-              : { threadId: target.id, goal: goal || null },
-        );
-      }).pipe(Effect.catch((error) => Effect.succeed(mcpToolResultError(errorText(error))))),
-  };
-
   const automationTools = makeAgentGatewayAutomationTools({
     automationService,
     requireThreadShell,
@@ -844,11 +720,7 @@ const makeAgentGateway = Effect.gen(function* () {
         .pipe(Effect.asVoid);
     },
   });
-  /**
-   * The caller thread's canonical workspace root. Shared by the integrated
-   * browser surface and the driver-backed `computer_browser_*` file-transfer
-   * tools — both bound model-supplied paths to it.
-   */
+
   const resolveWorkspaceRoot = (context: ToolContext) =>
     Effect.gen(function* () {
       const thread = yield* requireThreadShell(context.callerThreadId);
@@ -867,22 +739,15 @@ const makeAgentGateway = Effect.gen(function* () {
     resolveWorkspaceRoot,
   });
 
-  // One denial activity per (thread, turn, tool): agents typically retry the denied
-  // tool several times in a row, and repeated cards would bury the chat — but a
-  // second, different tool denied in the same turn is a different fact and earns
-  // its own card. The decider appends activities verbatim, so the dedupe lives here.
   const surfacedComputerControlDenials = new Set<string>();
   const SURFACED_DENIALS_MAX = 512;
   const surfaceCapabilityDenial: NonNullable<
     Parameters<typeof makeAgentGatewayMcpTransport>[0]["onCapabilityDenied"]
   > = (denial) => {
-    // Only computer control has a user-facing switch to point at; other
-    // capability denials stay plain tool errors.
     if (denial.requiredCapability !== COMPUTER_CONTROL_CAPABILITY) return Effect.void;
     const dedupeKey = `${denial.callerThreadId}:${denial.callerTurnId ?? "no-turn"}:${denial.toolName}`;
     if (surfacedComputerControlDenials.has(dedupeKey)) return Effect.void;
-    // FIFO eviction, not a wholesale clear: clearing forgets every live turn's
-    // dedupe key at once and would let each of them surface a duplicate card.
+
     while (surfacedComputerControlDenials.size >= SURFACED_DENIALS_MAX) {
       surfacedComputerControlDenials.delete(surfacedComputerControlDenials.keys().next().value!);
     }
@@ -891,9 +756,7 @@ const makeAgentGateway = Effect.gen(function* () {
       kind: "computer-control-denied",
       threadId: denial.callerThreadId,
       turnId: denial.callerTurnId,
-      // Part of the identity for the same reason it is part of the dedupe key:
-      // two cards naming different tools are two different cards, and sharing
-      // one command id would make the second a replay of the first.
+
       toolName: denial.toolName,
     });
     const createdAt = isoNow();
@@ -925,9 +788,6 @@ const makeAgentGateway = Effect.gen(function* () {
       );
   };
 
-  // First mutation of a turn prepends a transcript line naming the switch.
-  // The disclosure rides as its own activity so the chat says Computer
-  // control is ON from the first input, once per turn.
   const COMPUTER_CONTROL_ON_DISCLOSURE =
     "Computer control ON for this turn: the agent is driving the desktop and the user can switch it off in Settings.";
   const surfacedComputerControlDisclosures = new Set<string>();
@@ -977,32 +837,23 @@ const makeAgentGateway = Effect.gen(function* () {
       );
   };
 
-  // One setup card per (thread, turn): an agent that hits a missing grant
-  // typically retries the same tool several times in a row, and repeated cards
-  // would bury the chat. The decider appends activities verbatim, so the dedupe
-  // lives here.
   const surfacedComputerSetupPrompts = new Set<string>();
   const SURFACED_SETUP_PROMPTS_MAX = 512;
   const surfaceComputerSetupRequired = (input: {
     readonly toolName: string;
     readonly missing: readonly ComputerPermission[];
     readonly buildSignature?: ComputerBuildSignature;
-    /** The app macOS holds responsible for the grants, when the desktop shell reported one. */
+
     readonly bundleId?: string;
     readonly context: ToolContext;
   }): Effect.Effect<void> => {
     const callerThreadId = input.context.callerThreadId;
     const callerTurnId = input.context.callerTurnId;
-    // Keyed by which grants are missing as well as by the turn. One card per
-    // turn is right for the same gap reported by ten calls; it was wrong for a
-    // second, different gap discovered in the same turn — a run that lost
-    // Accessibility after already reporting Screen Recording showed the user
-    // one card naming the wrong permission and nothing about the other.
-    const missingKey = [...input.missing].sort().join(",");
+
+    const missingKey = [...input.missing].toSorted().join(",");
     const dedupeKey = `${callerThreadId}:${callerTurnId ?? "no-turn"}:${missingKey}`;
     if (surfacedComputerSetupPrompts.has(dedupeKey)) return Effect.void;
-    // FIFO eviction, not a wholesale clear: clearing forgets every live turn's
-    // dedupe key at once and would let each of them surface a duplicate card.
+
     while (surfacedComputerSetupPrompts.size >= SURFACED_SETUP_PROMPTS_MAX) {
       surfacedComputerSetupPrompts.delete(surfacedComputerSetupPrompts.keys().next().value!);
     }
@@ -1011,9 +862,7 @@ const makeAgentGateway = Effect.gen(function* () {
       kind: "computer-setup-required",
       threadId: callerThreadId,
       turnId: callerTurnId,
-      // Part of the identity for the same reason it is part of the dedupe key:
-      // two cards naming different grants are two different cards, and sharing
-      // one command id would make the second a replay of the first.
+
       missing: missingKey,
     });
     const createdAt = isoNow();
@@ -1027,12 +876,11 @@ const makeAgentGateway = Effect.gen(function* () {
           tone: "error",
           kind: COMPUTER_SETUP_REQUIRED_ACTIVITY_KIND,
           summary: "Computer control needs setup",
-          // The grant names ride along so the card can say which permission is
-          // missing rather than "a permission Glade needs"; an empty list is a
-          // backend that refused without naming one, and the card falls back.
-          // The build signature rides with them because on a locally built copy
-          // the switch in System Settings can already be on — its grant pinned
-          // to a binary a rebuild replaced — and the card has to say so.
+          // The grant names ride along so the card can say which permission is missing rather than "a
+          // permission Glade needs"; an empty list is a backend that refused without naming one, and the card
+          // falls back. The build signature rides with them because on a locally built copy the switch in
+          // System Settings can already be on — its grant pinned to a binary a rebuild replaced — and the
+          // card has to say so.
           payload: {
             toolName: input.toolName,
             missing: [...input.missing],
@@ -1056,22 +904,14 @@ const makeAgentGateway = Effect.gen(function* () {
       );
   };
 
-  /**
-   * The approval card for one Computer or Device consent prompt: routine task
-   * consent, visible-use consent, or a single-call approval (clipboard reads).
-   * Device names share this path because provider-native permission bridges
-   * cannot see MCP calls and would otherwise let a mutating device action run
-   * unasked.
-   */
   const publishComputerApproval =
     (
       name: string,
       args: Record<string, unknown>,
       context: Parameters<NonNullable<AgentGatewayComputerToolsOptions["authorizeAction"]>>[2],
-      approvalScope: "computer-task" | "computer-foreground" | "device-task" | undefined,
+      approvalScope: "computer-task" | "computer-foreground" | undefined,
     ) =>
     async (requestId: string, decision?: ProviderApprovalDecision): Promise<void> => {
-      const deviceTool = name.startsWith("device_");
       const createdAt = isoNow();
       const eventKey = `${requestId}:${decision === undefined ? "open" : "resolved"}`;
       await Effect.runPromise(
@@ -1085,14 +925,12 @@ const makeAgentGateway = Effect.gen(function* () {
             kind: decision === undefined ? "approval.requested" : "approval.resolved",
             summary:
               decision !== undefined
-                ? `${deviceTool ? "Device" : "Computer"} approval resolved`
+                ? "Computer approval resolved"
                 : approvalScope === "computer-foreground"
                   ? "Show Computer on screen for this task"
-                  : approvalScope === "device-task"
-                    ? "Allow Device for this task"
-                    : approvalScope === "computer-task"
-                      ? "Allow Computer for this task"
-                      : `${deviceTool ? "Device" : "Computer"} action needs approval`,
+                  : approvalScope === "computer-task"
+                    ? "Allow Computer for this task"
+                    : "Computer action needs approval",
             payload: {
               requestId,
               requestKind: "tool",
@@ -1111,12 +949,6 @@ const makeAgentGateway = Effect.gen(function* () {
       );
     };
 
-  /**
-   * The Computer approval path, shared by the desktop tools, the
-   * driver-backed `computer_browser_*` family, and the device family — same
-   * capability, same task-scoped consent, same disclosure. Browser and device
-   * names take task consent like every other mutating computer tool.
-   */
   const authorizeComputerAction: NonNullable<
     AgentGatewayComputerToolsOptions["authorizeAction"]
   > = async (name, args, context, signal) => {
@@ -1126,17 +958,12 @@ const makeAgentGateway = Effect.gen(function* () {
       { signal },
     );
     if (Option.isNone(caller)) return false;
-    const deviceTool = name.startsWith("device_");
-    // Computer capability is issued only after task activation. Full
-    // access already consents to routine desktop actions, including
-    // foreground delivery; focus is not a second approval boundary.
+
     if (caller.value.runtimeMode === "full-access") {
-      if (!deviceTool) {
-        await Effect.runPromise(
-          surfaceComputerControlDisclosure(context.callerThreadId, context.callerTurnId),
-          { signal },
-        ).catch(() => undefined);
-      }
+      await Effect.runPromise(
+        surfaceComputerControlDisclosure(context.callerThreadId, context.callerTurnId),
+        { signal },
+      ).catch(() => undefined);
       return true;
     }
     const taskConsent = name !== "computer_read_clipboard" && context.callerTurnId !== null;
@@ -1151,10 +978,10 @@ const makeAgentGateway = Effect.gen(function* () {
         name,
         args,
         context,
-        taskConsent ? (deviceTool ? "device-task" : "computer-task") : undefined,
+        taskConsent ? "computer-task" : undefined,
       ),
     });
-    if (approved && !deviceTool) {
+    if (approved) {
       await Effect.runPromise(
         surfaceComputerControlDisclosure(context.callerThreadId, context.callerTurnId),
         { signal },
@@ -1188,8 +1015,6 @@ const makeAgentGateway = Effect.gen(function* () {
     return Option.isNone(detail) ? [] : computerSpaceDesignationForMessages(detail.value.messages);
   };
 
-  // Construct the browser family once so help reads the same conditional
-  // catalog the gateway exposes; a desktop-only backend has no browser entries.
   const computerBrowserTools =
     computerService?.supported === true && computerService.manager.supportsBrowser
       ? makeAgentGatewayComputerBrowserTools({
@@ -1211,15 +1036,9 @@ const makeAgentGateway = Effect.gen(function* () {
     setThreadTitle,
     setThreadPullRequest,
     setThreadArchived,
-    setThreadGoal,
+
     ...automationTools,
     ...browserTools,
-    ...(deviceService?.supported === true
-      ? makeAgentGatewayDeviceTools({
-          manager: deviceService.manager,
-          authorizeAction: authorizeComputerAction,
-        })
-      : []),
     ...(computerService?.supported === true
       ? makeAgentGatewayComputerTools({
           manager: computerService.manager,
@@ -1234,10 +1053,6 @@ const makeAgentGateway = Effect.gen(function* () {
     ...computerBrowserTools,
   ];
 
-  // The computer family by name, read off the unfiltered catalog above: a
-  // caller whose session was never granted computer control still gets a
-  // capability_denied (and the denial card) when it calls one of these by
-  // name, even though tools/list never advertised them to it.
   const computerToolNames = new Set(
     tools
       .filter((tool) => tool.requiredCapability === COMPUTER_CONTROL_CAPABILITY)
@@ -1250,11 +1065,7 @@ const makeAgentGateway = Effect.gen(function* () {
       snapshotQuery,
       tools,
       onCapabilityDenied: surfaceCapabilityDenial,
-      // Namespace-insensitive: a session that never saw the catalog reaches
-      // for prefixed spellings (glade_computer_click,
-      // mcp__glade__computer_click). Those must deny with the card, never die
-      // as Unknown-tool. The exact set stays as a backstop for any catalog
-      // computer name outside the static family list.
+
       isComputerToolName: (toolName) =>
         computerToolNames.has(toolName) || isGladeComputerToolFamilyName(toolName),
       computerControlCapability: COMPUTER_CONTROL_CAPABILITY,

@@ -1,14 +1,4 @@
-// FILE: PullRequestCommentCard.tsx
-// Purpose: One review/issue comment as a plain collapsible row (hairline-separated, no card
-//          chrome): avatar + author leading, timestamp + per-row collapse chevron trailing,
-//          finding-style comments elevated into a title + severity subheading, and a "Reply"
-//          affordance that always opens the comment's own GitHub URL externally (falling back
-//          to the PR URL when the comment has none) — never the in-app browser, since replying
-//          has to happen on GitHub itself.
-// Layer: Pull request presentation
-// Exports: PullRequestCommentCard
-
-import type { PullRequestComment } from "@glade/contracts";
+import type { PullRequestComment } from "@glade/contracts/git/pullRequests";
 import { useState } from "react";
 
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "~/components/ui/collapsible";
@@ -40,8 +30,7 @@ export function PullRequestCommentCard({
   comment: PullRequestComment;
   prUrl: string;
   workspaceRoot: string;
-  /** Long threads start older comments collapsed so the tab doesn't eagerly render
-   *  dozens of markdown trees. */
+
   defaultOpen?: boolean;
 }) {
   const defaultOpen = defaultOpenProp ?? true;

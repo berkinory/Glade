@@ -1,19 +1,9 @@
-/**
- * A backend that exists only to carry the reason there is no backend.
- *
- * Backend selection can fail in ways that happen before any display server is
- * contacted: an operator override naming a backend Glade does not have. The
- * service still needs a `ComputerBackend`
- * to hand the manager, and the alternative — leaving it undefined and
- * special-casing every reader — loses the one thing worth keeping, which is the
- * sentence explaining what went wrong.
- *
- * So the failure is the backend. `availability()` reports it, `health()`
- * reports it as the last failure, `capabilities()` is empty because nothing is
- * possible, and every action rejects with the same words. An operator reading
- * the availability card and an agent reading a tool error see one message, not
- * two descriptions of the same fault.
- */
+// So the failure is the backend. `availability()` reports it, `health()` reports it as the last
+// failure, `capabilities()` is empty because nothing is possible, and every action rejects with the
+// same words.
+// So the failure is the backend. `availability()` reports it, `health()` reports it as the last
+// failure, `capabilities()` is empty because nothing is possible, and every action rejects with the
+// same words.
 import type {
   ComputerAccessibilityTreeApp,
   ComputerAccessibilityTreeWindow,
@@ -30,7 +20,7 @@ import type {
   ComputerVerifyStateResult,
   ComputerWindow,
   ComputerZoomResult,
-} from "@glade/contracts";
+} from "@glade/contracts/computer/computer";
 
 import {
   clampComputerMessage,
@@ -46,12 +36,9 @@ const FALLBACK_MESSAGE = "The Glade computer backend is unavailable for an unsta
 export interface UnavailableComputerBackendOptions {
   readonly computerId?: string;
   readonly now?: () => number;
-  /**
-   * Replaces the default `backend-unavailable` verdict, for platforms where
-   * there is no backend because none could exist: the pane keys its blocked
-   * copy off the verdict kind, and "unsupported platform" is a different
-   * sentence from "the backend failed".
-   */
+  // Replaces the default `backend-unavailable` verdict, for platforms where there is no backend
+  // because none could exist: the pane keys its blocked copy off the verdict kind, and "unsupported
+  // platform" is a different sentence from "the backend failed".
   readonly availability?: ComputerAvailability;
 }
 
@@ -75,7 +62,6 @@ export class UnavailableComputerBackend implements ComputerBackend {
     );
   }
 
-  /** The failure is already known and already free to read, so both agree. */
   probeAvailability(): Promise<ComputerAvailability> {
     return this.availability();
   }
@@ -114,11 +100,6 @@ export class UnavailableComputerBackend implements ComputerBackend {
     return this.refuse();
   }
 
-  /**
-   * Declared even though the interface marks these optional: an absent method
-   * makes the manager produce a generic "cannot" error, while refusing here
-   * keeps the one message this backend exists to carry.
-   */
   listApps(): Promise<readonly ComputerApp[]> {
     return this.refuse();
   }
@@ -216,8 +197,6 @@ export class UnavailableComputerBackend implements ComputerBackend {
   }
 
   onEvent(_listener: ComputerBackendEventListener): () => void {
-    // Nothing will ever change, so the subscription is a no-op rather than a
-    // set that grows for the life of the process.
     return () => undefined;
   }
 
@@ -229,12 +208,6 @@ export class UnavailableComputerBackend implements ComputerBackend {
     return Promise.resolve();
   }
 
-  /**
-   * Same rule as the optional methods above: present so the refusal carries
-   * this backend's one message, and so `browser` being set does not itself
-   * advertise a working surface — the manager gates tools on capability, and
-   * every call here still rejects with the recorded reason.
-   */
   readonly browser = {
     call: (): Promise<never> => this.refuse(),
   };

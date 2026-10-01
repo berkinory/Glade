@@ -1,8 +1,3 @@
-// FILE: mac-update-zip.ts
-// Purpose: Validates and patches macOS update zip metadata before release publish.
-// Layer: Release/build helper
-// Exports: macOS zip symlink checks and latest-mac.yml update helpers.
-
 const MAC_UPDATE_ZIP_FRAMEWORK_SYMLINK_SUFFIXES = [
   "Contents/Frameworks/Electron Framework.framework/Electron Framework",
   "Contents/Frameworks/Electron Framework.framework/Helpers",
@@ -22,8 +17,6 @@ export interface MacUpdateManifestZipValidation {
   readonly manifestHasZipSize: boolean;
 }
 
-// The Electron framework must keep these symlinks inside the update zip; if a
-// zip tool dereferences them, Squirrel.Mac rejects the extracted app signature.
 export function buildMacUpdateZipSymlinkEntries(appBundleName: string): ReadonlyArray<string> {
   return MAC_UPDATE_ZIP_FRAMEWORK_SYMLINK_SUFFIXES.map((suffix) => `${appBundleName}/${suffix}`);
 }
@@ -128,8 +121,8 @@ export function updateMacUpdateManifestZipEntry(
       return [`    size: ${metadata.size}`];
     }
 
-    // Drop the repacked zip's stale blockMapSize: finalize removes the matching
-    // .zip.blockmap after repack, so the manifest must not keep advertising it.
+    // Drop the repacked zip's stale blockMapSize: finalize removes the matching .zip.blockmap after
+    // repack, so the manifest must not keep advertising it.
     if (inTargetFile && line.match(/^    blockMapSize:\s*\d+$/)) {
       return [];
     }

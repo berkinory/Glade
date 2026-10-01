@@ -1,9 +1,4 @@
-// FILE: ShortcutsDialog.tsx
-// Purpose: Render a context-aware keyboard shortcuts reference as a slim, app-style dialog with search.
-// Layer: Chat shell overlay
-// Depends on: shared dialog UI, shortcut label builder, and current project script metadata.
-
-import type { ResolvedKeybindingsConfig } from "@glade/contracts";
+import type { ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import { useEffect, useRef, useState } from "react";
 import {
   Dialog,
@@ -35,9 +30,7 @@ export default function ShortcutsDialog(props: {
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
       <DialogPopup className="max-w-xl">
-        {/* Query state lives below DialogPopup, which unmounts its children on
-            close — every open starts with an empty search and fresh focus,
-            with no reset effect. */}
+        {}
         <ShortcutsDialogContent
           keybindings={props.keybindings}
           projectScripts={props.projectScripts}
@@ -58,7 +51,6 @@ function ShortcutsDialogContent(props: {
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Autofocus the search input so the user can type immediately after Mod+/.
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
       inputRef.current?.focus();

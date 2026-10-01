@@ -2,7 +2,7 @@ import {
   COMPUTER_AUDIT_HISTORY_MAX_LIMIT,
   type ComputerAuditHistoryEntry,
   type ComputerGetAuditHistoryResult,
-} from "@glade/contracts";
+} from "@glade/contracts/computer/computerAudit";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
@@ -45,7 +45,6 @@ function computerAuditHistoryEntries(
   ].slice(0, COMPUTER_AUDIT_HISTORY_MAX_LIMIT);
 }
 
-/** No polling: history is read only after the user opens it, and refreshed on request. */
 export function ComputerAuditHistorySection() {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();

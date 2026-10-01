@@ -24,7 +24,7 @@ runs:
           echo 'DEVELOPER_DIR=/Applications/Xcode_16.4.app/Contents/Developer' >> "$GITHUB_ENV"
           echo 'CARGO_PROFILE_RELEASE_STRIP=none' >> "$GITHUB_ENV"
         fi
-        rust_version=$(node -p 'require("./packages/shared/src/cuaDriverRelease.json").rustVersion')
+        rust_version=$(node -p 'require("./packages/shared/src/computer/cuaDriverRelease.json").rustVersion')
         rustup toolchain install "$rust_version" --profile minimal
         echo "RUSTUP_TOOLCHAIN=$rust_version" >> "$GITHUB_ENV"
 
@@ -44,7 +44,7 @@ runs:
 
     - name: Restore exact Cua artifact
       id: cache
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
       with:
         path: ${{ runner.temp }}/cua-artifact
         key: ${{ steps.key.outputs.key }}
@@ -57,7 +57,7 @@ runs:
     - name: Find trusted persistent Cua artifact
       id: persistent
       if: steps.cache.outputs.cache-hit != 'true'
-      uses: actions/github-script@v8
+      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
       env:
         CACHE_KEY: ${{ steps.key.outputs.key }}
       with:
@@ -71,7 +71,7 @@ runs:
 
     - name: Download trusted persistent Cua artifact
       if: steps.persistent.outputs.artifact-id != ''
-      uses: actions/download-artifact@v8
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
       with:
         artifact-ids: ${{ steps.persistent.outputs.artifact-id }}
         run-id: ${{ steps.persistent.outputs.run-id }}
@@ -114,7 +114,7 @@ runs:
 
     - name: Save trusted default-branch Cua artifact
       if: inputs.save-cache == 'true' && steps.cache.outputs.cache-hit != 'true' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && (github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
       with:
         path: ${{ runner.temp }}/cua-artifact
         key: ${{ steps.key.outputs.key }}

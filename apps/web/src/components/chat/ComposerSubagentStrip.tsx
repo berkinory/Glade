@@ -1,12 +1,5 @@
-// FILE: ComposerSubagentStrip.tsx
-// Purpose: Compact subagent rows stacked above the composer input (status dot,
-// nickname, role/model, live status); clicking a row switches to that subagent's
-// thread. Wraps the shared stacked-header frame like the active task list.
-// Layer: Chat composer UI
-// Exports: ComposerSubagentStrip
-
-import type { ThreadId } from "@glade/contracts";
-import { pluralize } from "@glade/shared/text";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { pluralize } from "@glade/shared/text/text";
 
 import {
   BackgroundTrayIcon,

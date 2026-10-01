@@ -1,14 +1,5 @@
-import type { ThreadId } from "@glade/contracts";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { SourceControlToolbar } from "./SourceControlToolbar";
-// FILE: GitPanel.tsx
-// Purpose: Source-control staging pane for the right dock (staged/unstaged lists + per-file diff).
-// Layer: Chat right-dock UI
-// Depends on: gitReactQuery (diff queries + stage/unstage mutations), diffRendering (patch parsing),
-//             @pierre/diffs FileDiff for the per-file viewer.
-//
-// The pane receives the thread's resolved workspace root and lists files from Git status.
-// It loads a patch only for the selected file. Stage/unstage are index mutations routed through
-// GitCore; on settle we invalidate the per-cwd git caches so both lists stay in sync.
 
 import { type FileDiffMetadata } from "@pierre/diffs/react";
 import { useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,13 +10,15 @@ import { useTheme } from "~/hooks/useTheme";
 import { buildFileDiffRenderKey, getRenderablePatch } from "~/lib/diffRendering";
 import {
   gitQueryKeys,
+  gitWorkingTreeDiffQueryOptions,
+  gitWorkingTreeDiffStatsQueryOptions,
+  gitSourceControlFilesQueryOptions,
+} from "../../lib/gitQueryOptions";
+import {
   gitSourceControlActionMutationOptions,
   gitRevertUnstagedFileMutationOptions,
   gitStageFilesMutationOptions,
   gitUnstageFilesMutationOptions,
-  gitWorkingTreeDiffQueryOptions,
-  gitWorkingTreeDiffStatsQueryOptions,
-  gitSourceControlFilesQueryOptions,
 } from "~/lib/gitReactQuery";
 import { CircleCheckIcon, RefreshCwIcon } from "~/lib/icons";
 import { projectQueryKeys } from "~/lib/projectReactQuery";
@@ -52,7 +45,6 @@ import { selectGitFiles, type GitFileSelection, type GitFileSectionId } from "./
 
 type GitPanelSection = GitFileSectionId;
 
-// Diff preview is keyed by section + path so it survives stage/unstage moves.
 interface SelectedFile {
   section: GitPanelSection;
   path: string;
@@ -82,9 +74,6 @@ export function GitPanel(props: {
   const [fileSelection, setFileSelection] = useState<GitFileSelection | null>(null);
   const [reverting, setReverting] = useState<readonly SourceFile[] | null>(null);
 
-  // No fixed polling: turn-driven file changes already push-invalidate the
-  // working-tree-diff cache (see __root.tsx), and focus + the Refresh button +
-  // post-mutation invalidation cover the rest. This keeps the pane cheap.
   const filesQuery = useQuery(gitSourceControlFilesQueryOptions(cwd));
   const stagedFiles = filesQuery.data?.staged ?? [];
   const unstagedFiles = filesQuery.data?.unstaged ?? [];
@@ -232,9 +221,6 @@ export function GitPanel(props: {
     void queryClient.invalidateQueries({ queryKey: gitQueryKeys.workingTreeDiffs(cwd) });
   };
 
-  // Resolve the selected file by path, preferring its stored section but falling
-  // back to the other list so the diff (and row highlight) follow a file across a
-  // stage/unstage move instead of silently clearing.
   let selectedResolved: { section: GitPanelSection; file: SourceFile } | null = null;
   if (selected) {
     const findInSection = (section: GitPanelSection) =>
@@ -278,6 +264,7 @@ export function GitPanel(props: {
         busy={mutating}
       />
       <div
+        data-git-files-scroll=""
         className={cn(
           "flex min-h-0 flex-col gap-2 overflow-auto px-1.5 py-2",
           selectedResolved ? "max-h-[40%] shrink-0" : "flex-1",
@@ -409,46 +396,48 @@ export function GitPanel(props: {
               variant="destructive"
               size="sm"
               disabled={mutating}
-              onClick={async () => {
-                if (!cwd || !reverting) return;
-                if (hasUnsavedWorkspaceEditors(queryClient, cwd)) {
-                  toastManager.add({
-                    type: "warning",
-                    title: "Save open files before reverting changes.",
-                  });
-                  return;
-                }
-                let completed = 0;
-                try {
-                  for (const file of reverting) {
-                    await revertMutation.mutateAsync(file.path);
-                    completed += 1;
+              onClick={() => {
+                void (async () => {
+                  if (!cwd || !reverting) return;
+                  if (hasUnsavedWorkspaceEditors(queryClient, cwd)) {
+                    toastManager.add({
+                      type: "warning",
+                      title: "Save open files before reverting changes.",
+                    });
+                    return;
                   }
-                  if (reverting.some((file) => file.status === "U")) {
-                    await queryClient.invalidateQueries({ queryKey: projectQueryKeys.all });
-                  }
-                  setFileSelection(null);
-                  setReverting(null);
-                } catch (error) {
-                  if (completed > 0) {
-                    await queryClient.invalidateQueries({ queryKey: projectQueryKeys.all });
+                  let completed = 0;
+                  try {
+                    for (const file of reverting) {
+                      await revertMutation.mutateAsync(file.path);
+                      completed += 1;
+                    }
+                    if (reverting.some((file) => file.status === "U")) {
+                      await queryClient.invalidateQueries({ queryKey: projectQueryKeys.all });
+                    }
                     setFileSelection(null);
                     setReverting(null);
+                  } catch (error) {
+                    if (completed > 0) {
+                      await queryClient.invalidateQueries({ queryKey: projectQueryKeys.all });
+                      setFileSelection(null);
+                      setReverting(null);
+                    }
+                    toastManager.add({
+                      type: "error",
+                      title:
+                        error &&
+                        typeof error === "object" &&
+                        "message" in error &&
+                        typeof error.message === "string"
+                          ? error.message
+                          : "Could not revert file.",
+                      ...(completed > 0
+                        ? { description: `${completed} of ${reverting.length} files reverted.` }
+                        : {}),
+                    });
                   }
-                  toastManager.add({
-                    type: "error",
-                    title:
-                      error &&
-                      typeof error === "object" &&
-                      "message" in error &&
-                      typeof error.message === "string"
-                        ? error.message
-                        : "Could not revert file.",
-                    ...(completed > 0
-                      ? { description: `${completed} of ${reverting.length} files reverted.` }
-                      : {}),
-                  });
-                }
+                })();
               }}
             >
               Revert

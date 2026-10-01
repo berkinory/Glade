@@ -1,4 +1,5 @@
-import type { ComputerBrowserToolName } from "@glade/contracts";
+import { asRecord } from "@glade/shared/transport/payloadValues";
+import type { ComputerBrowserToolName } from "@glade/contracts/computer/computerBrowser";
 
 import type { ComputerBrowserCallResult } from "../computer/ComputerBackend.ts";
 import type { ComputerAuditEffect } from "../computer/computerAuditLog.ts";
@@ -8,26 +9,14 @@ interface BrowserEffectProof {
   readonly code?: string;
 }
 
-function record(value: unknown): Record<string, unknown> | undefined {
-  return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : undefined;
-}
-
-/**
- * Classify only evidence produced by the pinned driver's implementation.
- * A dispatch acknowledgement, character count or changed page is not proof.
- * The closed ActionResult used by click/type/pointer has no legacy status or
- * refusal code; its refusal still needs to survive in the audit history.
- */
 export function computerBrowserEffect(
   name: ComputerBrowserToolName,
   args: Record<string, unknown>,
   result: ComputerBrowserCallResult,
 ): BrowserEffectProof {
-  const structured = record(result.structuredContent);
-  const refusal = record(structured?.refusal);
-  const detail = record(refusal?.detail);
+  const structured = asRecord(result.structuredContent) ?? undefined;
+  const refusal = asRecord(structured?.refusal) ?? undefined;
+  const detail = asRecord(refusal?.detail) ?? undefined;
   if (
     structured?.effect === "partial" ||
     (structured?.status === "refused" &&
@@ -35,8 +24,6 @@ export function computerBrowserEffect(
       typeof detail?.delivered_chars === "number" &&
       detail.delivered_chars > 0)
   ) {
-    // Older driver replies put a delivered prefix inside a refusal. Some
-    // input already ran, so this is not a pre-dispatch rejection.
     return { effect: "dispatched-unknown" };
   }
   if (structured?.status === "refused" || structured?.effect === "refused") {
@@ -65,11 +52,9 @@ export function computerBrowserEffect(
     Number.isSafeInteger(structured.bytes) &&
     structured.bytes >= 0
   ) {
-    // The driver waits for the matching download-completed event, then proves
-    // a canonical regular file exists directly inside the approved directory.
     return { effect: "verified" };
   }
-  const verification = record(structured?.verification);
+  const verification = asRecord(structured?.verification) ?? undefined;
   if (
     name === "computer_browser_navigate" &&
     structured?.status === "ok" &&
@@ -83,23 +68,18 @@ export function computerBrowserEffect(
     verification.method === "page_frame_tree" &&
     verification.status === "confirmed"
   ) {
-    // One bounded native read compares the committed frame, document loader
-    // and destination. Redirects, old documents and unavailable reads stay
-    // unknown; this proves the destination, never the page's business result.
     return { effect: "verified" };
   }
-  // Even value_readback on DOM typing proves only the field content. It does
-  // not prove a search, form submission or application-level acceptance.
+
   return { effect: "dispatched-unknown" };
 }
 
-/** Keep field evidence useful without presenting it as application success. */
 export function computerBrowserFieldReadback(
   name: ComputerBrowserToolName,
   args: Record<string, unknown>,
   result: ComputerBrowserCallResult,
 ): boolean {
-  const structured = record(result.structuredContent);
+  const structured = asRecord(result.structuredContent) ?? undefined;
   return (
     name === "computer_browser_type" &&
     typeof args.text === "string" &&
@@ -110,6 +90,6 @@ export function computerBrowserFieldReadback(
     structured?.effect === "unverifiable" &&
     structured.route === "dom" &&
     Array.isArray(structured.evidence) &&
-    structured.evidence.some((item) => record(item)?.kind === "value_readback")
+    structured.evidence.some((item) => (asRecord(item) ?? undefined)?.kind === "value_readback")
   );
 }

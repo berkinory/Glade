@@ -1,0 +1,859 @@
+import { asNonBlankString } from "@glade/shared/text/text";
+import type { TaggedFailure } from "../platform/operationError.ts";
+
+import { CheckpointRef, MessageId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
+import { type ThreadEnvironmentMode } from "@glade/contracts/orchestration/threadEntities";
+import { resolveThreadWorkspaceCwd } from "@glade/shared/threads/threadEnvironment";
+import { Cause, Effect, Layer, ServiceMap } from "effect";
+import * as SqlClient from "effect/unstable/sql/SqlClient";
+import { redactCreationPlanForPurgedCaller } from "../agentGateway/operationPlan.ts";
+
+import { CheckpointStore } from "../checkpointing/Services/CheckpointStore";
+import {
+  checkpointRefForThreadMessageStart,
+  checkpointRefForThreadTurnStart,
+  isManagedCheckpointRefForThread,
+  resolveProjectCwdForKind,
+} from "../checkpointing/Utils";
+import { aggregateProfileSkillUsageRows } from "./profileSkillUsage";
+import { turnModelSelectionCte } from "./profileQueryValues";
+import { PROVIDER_COMMAND_REACTOR_CONSUMER } from "../persistence/Services/OrchestrationEventDeliveries";
+import { isProviderIntentEventType } from "../orchestration/providerIntentClassification";
+import { THREAD_RETENTION_COMMAND_ID_PREFIX } from "../orchestration/threadRetention";
+import { claudeTokenActivityCtes } from "../provider/usage/claudeTokenStats";
+
+interface PurgeThreadRow {
+  readonly projectId: string | null;
+  readonly modelSelectionJson: string | null;
+  readonly deletedAt: string | null;
+  readonly envMode: string | null;
+  readonly worktreePath: string | null;
+  readonly workingDirectory: string | null;
+  readonly projectKind: string | null;
+  readonly workspaceRoot: string | null;
+}
+
+interface TurnEventRow {
+  readonly payloadJson: string | null;
+}
+
+interface TokenActivityRow {
+  readonly totalProcessedTokens: number | bigint | null;
+  readonly usedTokens: number | bigint | null;
+
+  readonly provider: string | null;
+  readonly model: string | null;
+  readonly dispatchOrigin?: string | null;
+  readonly createdAt: string | null;
+}
+
+interface SkillMessageRow {
+  readonly messageId: string | null;
+  readonly text: string | null;
+  readonly skillsJson: string | null;
+  readonly mentionsJson: string | null;
+}
+
+interface CheckpointTurnRow {
+  readonly turnId: string | null;
+  readonly checkpointRef: string | null;
+}
+
+interface CheckpointMessageRow {
+  readonly messageId: string | null;
+}
+
+interface ThreadCheckpointCleanup {
+  readonly cwd: string | null;
+  readonly checkpointRefs: ReadonlyArray<CheckpointRef>;
+}
+
+interface ThreadTurnSnapshotRow {
+  readonly provider: string | null;
+  readonly model: string | null;
+  readonly reasoning: string | null;
+  readonly turnCount: number;
+}
+
+interface ThreadTokenSnapshotRow {
+  readonly createdAt: string;
+  readonly provider: string | null;
+  readonly model: string | null;
+  readonly tokens: number;
+}
+
+interface ModelSelectionLike {
+  readonly provider: string | null;
+  readonly model: string | null;
+  readonly reasoning: string | null;
+}
+
+function parseModelSelection(value: unknown): ModelSelectionLike | null {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  const record = value as { provider?: unknown; model?: unknown; options?: unknown };
+  const options =
+    record.options !== null && typeof record.options === "object"
+      ? (record.options as { reasoningEffort?: unknown; effort?: unknown })
+      : null;
+  return {
+    provider: asNonBlankString(record.provider) ?? null,
+    model: asNonBlankString(record.model) ?? null,
+    reasoning:
+      asNonBlankString(options?.reasoningEffort) ?? asNonBlankString(options?.effort) ?? null,
+  };
+}
+
+function parseModelSelectionJson(json: string | null): ModelSelectionLike | null {
+  if (json === null || json.trim().length === 0) {
+    return null;
+  }
+  try {
+    return parseModelSelection(JSON.parse(json));
+  } catch {
+    return null;
+  }
+}
+
+function normalizeThreadEnvironmentMode(value: string | null): ThreadEnvironmentMode | undefined {
+  return value === "local" || value === "worktree" ? value : undefined;
+}
+
+function threadWorkspaceCwdForCheckpointCleanup(thread: PurgeThreadRow): string | null {
+  const projectCwd = resolveProjectCwdForKind({
+    kind: thread.projectKind,
+    workspaceRoot: thread.workspaceRoot,
+    worktreePath: thread.worktreePath,
+  });
+  return resolveThreadWorkspaceCwd({
+    projectCwd,
+    envMode: normalizeThreadEnvironmentMode(thread.envMode),
+    worktreePath: thread.worktreePath,
+    workingDirectory: thread.workingDirectory,
+  });
+}
+
+function checkpointRefsForThreadPurge(
+  threadId: string,
+  turnRows: ReadonlyArray<CheckpointTurnRow>,
+  messageRows: ReadonlyArray<CheckpointMessageRow>,
+): ReadonlyArray<CheckpointRef> {
+  const refs = new Set<string>();
+  const typedThreadId = ThreadId.makeUnsafe(threadId);
+
+  const addRef = (checkpointRef: CheckpointRef | string | null | undefined) => {
+    const raw = asNonBlankString(checkpointRef) ?? null;
+    if (raw && isManagedCheckpointRefForThread(raw, typedThreadId)) {
+      refs.add(raw);
+    }
+  };
+
+  for (const row of turnRows) {
+    const checkpointRef = asNonBlankString(row.checkpointRef) ?? null;
+    addRef(checkpointRef);
+
+    const turnId = asNonBlankString(row.turnId) ?? null;
+    if (turnId) {
+      addRef(checkpointRefForThreadTurnStart(typedThreadId, TurnId.makeUnsafe(turnId)));
+    }
+  }
+  for (const row of messageRows) {
+    const messageId = asNonBlankString(row.messageId) ?? null;
+    if (messageId) {
+      addRef(checkpointRefForThreadMessageStart(typedThreadId, MessageId.makeUnsafe(messageId)));
+    }
+  }
+
+  return [...refs].map((checkpointRef) => CheckpointRef.makeUnsafe(checkpointRef));
+}
+
+function hasProfileStatsContribution(input: {
+  readonly promptRows: ReadonlyArray<SkillMessageRow>;
+  readonly turnRows: ReadonlyArray<ThreadTurnSnapshotRow>;
+  readonly tokenRows: ReadonlyArray<ThreadTokenSnapshotRow>;
+  readonly skillRows: ReturnType<typeof aggregateProfileSkillUsageRows>;
+}): boolean {
+  return (
+    input.promptRows.length > 0 ||
+    input.turnRows.some((row) => row.turnCount > 0) ||
+    input.tokenRows.length > 0 ||
+    input.skillRows.some((row) => row.runCount > 0)
+  );
+}
+
+// Mirrors the per-turn extraction in profileStats.queryTurnInsights: the turn event's own
+// modelSelection wins, otherwise the thread's selection applies.
+function aggregateThreadTurnSnapshotRows(
+  events: ReadonlyArray<TurnEventRow>,
+  threadModelSelectionJson: string | null,
+): ThreadTurnSnapshotRow[] {
+  const threadSelection = parseModelSelectionJson(threadModelSelectionJson);
+  const counts = new Map<
+    string,
+    { provider: string | null; model: string | null; reasoning: string | null; turnCount: number }
+  >();
+
+  for (const event of events) {
+    let eventSelection: ModelSelectionLike | null = null;
+    if (event.payloadJson !== null) {
+      try {
+        const payload: unknown = JSON.parse(event.payloadJson);
+        if (payload !== null && typeof payload === "object") {
+          eventSelection = parseModelSelection(
+            (payload as { modelSelection?: unknown }).modelSelection,
+          );
+        }
+      } catch {}
+    }
+    const selection = eventSelection ?? threadSelection;
+    const provider = selection?.provider ?? null;
+    const model = selection?.model ?? null;
+    const reasoning = selection?.reasoning ?? null;
+    const key = `${provider ?? ""}\u0000${model ?? ""}\u0000${reasoning ?? ""}`;
+    const existing = counts.get(key);
+    if (existing) {
+      existing.turnCount += 1;
+    } else {
+      counts.set(key, { provider, model, reasoning, turnCount: 1 });
+    }
+  }
+
+  return [...counts.values()];
+}
+
+function tokenCounterValue(value: number | bigint | null): number | null {
+  const total = typeof value === "bigint" ? Number(value) : value;
+  return total !== null && Number.isFinite(total) ? total : null;
+}
+
+function tokenProviderModelKey(provider: string | null, model: string | null): string {
+  return `${provider ?? ""}\u0000${model ?? ""}`;
+}
+
+function resolveTokenProviderModel(
+  row: TokenActivityRow,
+  fallbackSelection?: { readonly provider: string | null; readonly model: string | null },
+): { readonly provider: string | null; readonly model: string | null } {
+  const stampedProvider = asNonBlankString(row.provider) ?? null;
+  const provider = stampedProvider ?? fallbackSelection?.provider ?? null;
+  const model =
+    asNonBlankString(row.model) ??
+    (stampedProvider === null || stampedProvider === fallbackSelection?.provider
+      ? (fallbackSelection?.model ?? null)
+      : null);
+  return { provider, model };
+}
+
+function addTokenSnapshotRow(
+  rows: Map<string, ThreadTokenSnapshotRow>,
+  row: ThreadTokenSnapshotRow,
+): void {
+  const key = `${row.createdAt}\u0000${tokenProviderModelKey(row.provider, row.model)}`;
+  const existing = rows.get(key);
+  if (existing) {
+    rows.set(key, { ...existing, tokens: existing.tokens + row.tokens });
+  } else {
+    rows.set(key, row);
+  }
+}
+
+// Cumulative rows stay thread-wide; usedTokens rows are counted only for provider/model groups that
+// never emit cumulative totals. Deltas keep the original activity timestamp (raw, unparsed) so
+// read-time DATETIME(created_at, tz) bucketing stays identical to the live query for any client UTC
+// offset, and are keyed by the row's per-turn provider/model (the thread's own selection fills in
+// rows without turn attribution).
+function aggregateThreadTokenRows(
+  rows: ReadonlyArray<TokenActivityRow>,
+  fallbackSelection?: { readonly provider: string | null; readonly model: string | null },
+): ThreadTokenSnapshotRow[] {
+  // Claude's verified turn results are snapshotted separately. Remove its old context rows before
+  // maintaining any delta state, otherwise a large Claude counter can reset or inflate the next
+  // provider's archived delta.
+  const nonClaudeRows = rows.filter(
+    (row) => resolveTokenProviderModel(row, fallbackSelection).provider !== "claudeAgent",
+  );
+  const tokensByKey = new Map<string, ThreadTokenSnapshotRow>();
+  const cumulativeProviderModels = new Set<string>();
+  for (const row of nonClaudeRows) {
+    if (tokenCounterValue(row.totalProcessedTokens) === null) {
+      continue;
+    }
+    const { provider, model } = resolveTokenProviderModel(row, fallbackSelection);
+    cumulativeProviderModels.add(tokenProviderModelKey(provider, model));
+  }
+
+  let previousCumulativeTotal: number | null = null;
+  for (const row of nonClaudeRows) {
+    const total = tokenCounterValue(row.totalProcessedTokens);
+    if (total === null) {
+      continue;
+    }
+    const delta =
+      previousCumulativeTotal === null || total < previousCumulativeTotal
+        ? total
+        : Math.max(0, total - previousCumulativeTotal);
+    previousCumulativeTotal = total;
+    if (
+      delta <= 0 ||
+      row.createdAt === null ||
+      (row.dispatchOrigin != null && row.dispatchOrigin !== "user")
+    ) {
+      continue;
+    }
+    const { provider, model } = resolveTokenProviderModel(row, fallbackSelection);
+    addTokenSnapshotRow(tokensByKey, {
+      createdAt: row.createdAt,
+      provider,
+      model,
+      tokens: delta,
+    });
+  }
+
+  let previousUsedTotal: number | null = null;
+  let previousUsedProviderModelKey: string | null = null;
+  for (const row of nonClaudeRows) {
+    const { provider, model } = resolveTokenProviderModel(row, fallbackSelection);
+    const providerModelKey = tokenProviderModelKey(provider, model);
+    if (cumulativeProviderModels.has(providerModelKey)) {
+      continue;
+    }
+    const total = tokenCounterValue(row.usedTokens);
+    if (total === null) {
+      continue;
+    }
+    const delta =
+      previousUsedTotal === null ||
+      (total < previousUsedTotal && providerModelKey !== previousUsedProviderModelKey)
+        ? total
+        : Math.max(0, total - previousUsedTotal);
+    previousUsedTotal = total;
+    previousUsedProviderModelKey = providerModelKey;
+    if (
+      delta <= 0 ||
+      row.createdAt === null ||
+      (row.dispatchOrigin != null && row.dispatchOrigin !== "user")
+    ) {
+      continue;
+    }
+    addTokenSnapshotRow(tokensByKey, {
+      createdAt: row.createdAt,
+      provider,
+      model,
+      tokens: delta,
+    });
+  }
+  return [...tokensByKey.values()];
+}
+
+export interface ProfileStatsArchiveShape {
+  readonly hasThreadPurgeFence: (input: {
+    readonly threadId: string;
+  }) => Effect.Effect<boolean, TaggedFailure>;
+
+  readonly purgeThreadWithStatsSnapshot: (input: {
+    readonly threadId: string;
+  }) => Effect.Effect<boolean, TaggedFailure>;
+  // Catches per-thread failures so one bad thread cannot stall the sweep; returns how many threads
+  // were purged.
+  readonly purgeSoftDeletedManualThreads: (input?: {
+    readonly beforePurge?: (threadId: string) => Effect.Effect<boolean, TaggedFailure>;
+  }) => Effect.Effect<number, TaggedFailure>;
+}
+
+export class ProfileStatsArchive extends ServiceMap.Service<
+  ProfileStatsArchive,
+  ProfileStatsArchiveShape
+>()("glade/profileStats/ProfileStatsArchive") {}
+
+const makeProfileStatsArchive = Effect.gen(function* () {
+  const sql = yield* SqlClient.SqlClient;
+  const checkpointStore = yield* CheckpointStore;
+  const threadDeletedAutomationRunResultJson = JSON.stringify({
+    outcome: "needs-attention",
+    summary: "Automation run was interrupted because its thread was deleted.",
+    severity: "warning",
+    unread: true,
+    archivedAt: null,
+  });
+
+  const hasThreadPurgeFence: ProfileStatsArchiveShape["hasThreadPurgeFence"] = ({ threadId }) =>
+    Effect.gen(function* () {
+      const durableRows = yield* sql<{ readonly fenced: number }>`
+        SELECT CASE WHEN
+          EXISTS (
+            SELECT 1
+            FROM orchestration_event_deliveries
+            WHERE consumer_name = ${PROVIDER_COMMAND_REACTOR_CONSUMER}
+              AND thread_id = ${threadId}
+              AND state IN ('inflight', 'retry', 'dead', 'uncertain')
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM queued_turn_promotions
+            WHERE thread_id = ${threadId}
+              AND state IN ('queued', 'promoting')
+          )
+        THEN 1 ELSE 0 END AS fenced
+      `;
+      if ((durableRows[0]?.fenced ?? 0) === 1) return true;
+
+      const unconsumedRows = yield* sql<{ readonly eventType: string }>`
+        SELECT e.event_type AS "eventType"
+        FROM orchestration_events e
+        WHERE e.sequence > COALESCE(
+          (
+            SELECT last_acked_sequence
+            FROM orchestration_consumer_state
+            WHERE consumer_name = ${PROVIDER_COMMAND_REACTOR_CONSUMER}
+          ),
+          0
+        )
+          AND e.aggregate_kind = 'thread'
+          AND (
+            e.stream_id = ${threadId}
+            OR json_extract(e.payload_json, '$.threadId') = ${threadId}
+          )
+      `;
+      return unconsumedRows.some((row) => isProviderIntentEventType(row.eventType));
+    });
+
+  const loadThreadCheckpointCleanup = (threadId: string) =>
+    Effect.gen(function* () {
+      const threadRows = yield* sql<PurgeThreadRow>`
+        SELECT
+          t.project_id AS projectId,
+          t.model_selection_json AS modelSelectionJson,
+          t.deleted_at AS deletedAt,
+          t.env_mode AS envMode,
+          t.worktree_path AS worktreePath,
+          t.working_directory AS workingDirectory,
+          p.kind AS projectKind,
+          p.workspace_root AS workspaceRoot
+        FROM projection_threads t
+        LEFT JOIN projection_projects p ON p.project_id = t.project_id
+        WHERE t.thread_id = ${threadId}
+      `;
+      const thread = threadRows[0];
+      if (!thread) {
+        return null;
+      }
+
+      const checkpointTurnRows = yield* sql<CheckpointTurnRow>`
+        SELECT
+          turn_id AS turnId,
+          checkpoint_ref AS checkpointRef
+        FROM projection_turns
+        WHERE thread_id = ${threadId}
+          AND (
+            turn_id IS NOT NULL
+            OR checkpoint_ref IS NOT NULL
+          )
+        ORDER BY row_id ASC
+      `;
+      const checkpointMessageRows = yield* sql<CheckpointMessageRow>`
+        SELECT message_id AS messageId
+        FROM projection_thread_messages
+        WHERE thread_id = ${threadId}
+          AND message_id IS NOT NULL
+        ORDER BY message_id ASC
+      `;
+
+      const cwd = threadWorkspaceCwdForCheckpointCleanup(thread);
+      const typedThreadId = ThreadId.makeUnsafe(threadId);
+      const hasPersistedCheckpointRef = checkpointTurnRows.some((row) => {
+        const checkpointRef = asNonBlankString(row.checkpointRef) ?? null;
+        return checkpointRef
+          ? isManagedCheckpointRefForThread(checkpointRef, typedThreadId)
+          : false;
+      });
+      const checkpointRefs =
+        cwd !== null || hasPersistedCheckpointRef
+          ? checkpointRefsForThreadPurge(threadId, checkpointTurnRows, checkpointMessageRows)
+          : [];
+
+      return {
+        cwd,
+        checkpointRefs,
+      } satisfies ThreadCheckpointCleanup;
+    });
+
+  const deleteCheckpointRefsForPurge = (input: {
+    readonly threadId: string;
+    readonly cwd: string | null;
+    readonly checkpointRefs: ReadonlyArray<CheckpointRef>;
+  }) => {
+    if (input.checkpointRefs.length === 0) {
+      return Effect.void;
+    }
+    const cwd = input.cwd;
+    if (cwd === null) {
+      return Effect.logWarning(
+        "profile stats archive skipped checkpoint ref cleanup because workspace is unavailable",
+        { threadId: input.threadId, checkpointRefCount: input.checkpointRefs.length },
+      );
+    }
+
+    return Effect.gen(function* () {
+      const isGitRepository = yield* checkpointStore.isGitRepository(cwd).pipe(
+        Effect.catchCause((cause) => {
+          if (Cause.hasInterruptsOnly(cause)) {
+            return Effect.failCause(cause);
+          }
+          return Effect.logWarning(
+            "profile stats archive could not verify checkpoint cleanup workspace",
+            {
+              threadId: input.threadId,
+              cwd,
+              cause: Cause.pretty(cause),
+            },
+          ).pipe(Effect.as(false));
+        }),
+      );
+      if (!isGitRepository) {
+        yield* Effect.logWarning(
+          "profile stats archive skipped checkpoint ref cleanup because workspace is not a git repository",
+          { threadId: input.threadId, cwd },
+        );
+        return;
+      }
+
+      yield* checkpointStore.deleteCheckpointRefs({
+        cwd,
+        checkpointRefs: input.checkpointRefs,
+      });
+    });
+  };
+
+  const deleteCheckpointRefsAfterCommittedPurge = (input: {
+    readonly threadId: string;
+    readonly cwd: string | null;
+    readonly checkpointRefs: ReadonlyArray<CheckpointRef>;
+  }) =>
+    deleteCheckpointRefsForPurge(input).pipe(
+      Effect.catchCause((cause) => {
+        if (Cause.hasInterruptsOnly(cause)) {
+          return Effect.failCause(cause);
+        }
+        return Effect.logWarning(
+          "profile stats archive could not delete checkpoint refs after purge",
+          {
+            threadId: input.threadId,
+            checkpointRefCount: input.checkpointRefs.length,
+            cause: Cause.pretty(cause),
+          },
+        );
+      }),
+    );
+
+  const snapshotAndPurgeThread = (threadId: string) =>
+    Effect.gen(function* () {
+      const threadRows = yield* sql<PurgeThreadRow>`
+        SELECT
+          t.project_id AS projectId,
+          t.model_selection_json AS modelSelectionJson,
+          t.deleted_at AS deletedAt,
+          t.env_mode AS envMode,
+          t.worktree_path AS worktreePath,
+          t.working_directory AS workingDirectory,
+          p.kind AS projectKind,
+          p.workspace_root AS workspaceRoot
+        FROM projection_threads t
+        LEFT JOIN projection_projects p ON p.project_id = t.project_id
+        WHERE t.thread_id = ${threadId}
+      `;
+      const thread = threadRows[0];
+      if (!thread) {
+        return false;
+      }
+      if (yield* hasThreadPurgeFence({ threadId })) {
+        return false;
+      }
+      const deletedAt = thread.deletedAt ?? new Date().toISOString();
+      const projectId = thread.projectId ?? null;
+
+      const turnEventRows = yield* sql<TurnEventRow>`
+        SELECT e.payload_json AS payloadJson
+        FROM orchestration_events e
+        LEFT JOIN projection_thread_messages m
+          ON m.message_id = json_extract(e.payload_json, '$.messageId')
+        WHERE e.event_type = 'thread.turn-start-requested'
+          AND COALESCE(json_extract(e.payload_json, '$.threadId'), e.stream_id) = ${threadId}
+          AND (m.dispatch_origin IS NULL OR m.dispatch_origin = 'user')
+      `;
+
+      const tokenActivityRows = yield* sql<TokenActivityRow>`
+        WITH turn_model AS (
+          ${turnModelSelectionCte(sql, { threadId })}
+        )
+        SELECT
+          CAST(json_extract(a.payload_json, '$.totalProcessedTokens') AS INTEGER)
+            AS totalProcessedTokens,
+          CAST(json_extract(a.payload_json, '$.usedTokens') AS INTEGER) AS usedTokens,
+          COALESCE(tm.provider, json_extract(a.payload_json, '$.provider')) AS provider,
+          tm.model AS model,
+          pm.dispatch_origin AS dispatchOrigin,
+          a.created_at AS createdAt
+        FROM projection_thread_activities a
+        LEFT JOIN turn_model tm
+          ON tm.thread_id = a.thread_id
+         AND tm.turn_id = a.turn_id
+        LEFT JOIN projection_turns pt
+          ON pt.thread_id = a.thread_id
+         AND pt.turn_id = a.turn_id
+        LEFT JOIN projection_thread_messages pm
+          ON pm.thread_id = pt.thread_id
+         AND pm.message_id = pt.pending_message_id
+        WHERE a.thread_id = ${threadId}
+          AND a.kind = 'context-window.updated'
+          AND COALESCE(
+            json_extract(a.payload_json, '$.totalProcessedTokens'),
+            json_extract(a.payload_json, '$.usedTokens')
+          ) IS NOT NULL
+        ORDER BY
+          CASE WHEN a.sequence IS NULL THEN 0 ELSE 1 END ASC,
+          a.sequence ASC,
+          a.created_at ASC,
+          a.activity_id ASC
+      `;
+      const skillMessageRows = yield* sql<SkillMessageRow>`
+        SELECT
+          message_id AS messageId,
+          text,
+          skills_json AS skillsJson,
+          mentions_json AS mentionsJson
+        FROM projection_thread_messages
+        WHERE thread_id = ${threadId}
+          AND role = 'user'
+          AND source = 'native'
+          AND (dispatch_origin IS NULL OR dispatch_origin = 'user')
+        ORDER BY created_at ASC, message_id ASC
+      `;
+
+      const turnRows = aggregateThreadTurnSnapshotRows(turnEventRows, thread.modelSelectionJson);
+      const threadSelection = parseModelSelectionJson(thread.modelSelectionJson);
+      const tokenRows = aggregateThreadTokenRows(tokenActivityRows, {
+        provider: threadSelection?.provider ?? null,
+        model: threadSelection?.model ?? null,
+      });
+
+      const claudeTokenRows = yield* sql<ThreadTokenSnapshotRow>`
+        WITH turn_model AS (${turnModelSelectionCte(sql, { threadId })}),
+          ${claudeTokenActivityCtes(sql, { threadId })}
+        SELECT created_at AS createdAt, 'claudeAgent' AS provider, model, tokens
+        FROM claude_token_rows
+      `;
+      tokenRows.push(...claudeTokenRows);
+      const skillRows = aggregateProfileSkillUsageRows(skillMessageRows);
+      const hasStatsContribution = hasProfileStatsContribution({
+        promptRows: skillMessageRows,
+        turnRows,
+        tokenRows,
+        skillRows,
+      });
+
+      yield* sql`DELETE FROM profile_stats_deleted_threads WHERE thread_id = ${threadId}`;
+      yield* sql`DELETE FROM profile_stats_deleted_prompts WHERE thread_id = ${threadId}`;
+      yield* sql`DELETE FROM profile_stats_deleted_turns WHERE thread_id = ${threadId}`;
+      yield* sql`DELETE FROM profile_stats_deleted_skills WHERE thread_id = ${threadId}`;
+      yield* sql`DELETE FROM profile_stats_deleted_tokens WHERE thread_id = ${threadId}`;
+
+      if (hasStatsContribution) {
+        yield* sql`
+          INSERT INTO profile_stats_deleted_threads (thread_id, project_id, deleted_at)
+          VALUES (${threadId}, ${projectId}, ${deletedAt})
+        `;
+        yield* sql`
+          INSERT INTO profile_stats_deleted_prompts (thread_id, project_id, created_at)
+          SELECT thread_id, ${projectId}, created_at
+          FROM projection_thread_messages
+          WHERE thread_id = ${threadId}
+            AND role = 'user'
+            AND source = 'native'
+            AND (dispatch_origin IS NULL OR dispatch_origin = 'user')
+        `;
+        yield* Effect.forEach(
+          turnRows,
+          (row) => sql`
+            INSERT INTO profile_stats_deleted_turns (thread_id, provider, model, reasoning, turn_count)
+            VALUES (${threadId}, ${row.provider}, ${row.model}, ${row.reasoning}, ${row.turnCount})
+          `,
+          { concurrency: 1, discard: true },
+        );
+        yield* Effect.forEach(
+          skillRows,
+          (row) => sql`
+            INSERT INTO profile_stats_deleted_skills (thread_id, name, kind, run_count)
+            VALUES (${threadId}, ${row.name}, ${row.kind}, ${row.runCount})
+          `,
+          { concurrency: 1, discard: true },
+        );
+        yield* Effect.forEach(
+          tokenRows,
+          (row) => sql`
+            INSERT INTO profile_stats_deleted_tokens
+              (thread_id, created_at, provider, model, tokens, token_accounting_version)
+            VALUES (${threadId}, ${row.createdAt}, ${row.provider}, ${row.model}, ${row.tokens},
+              ${row.provider === "claudeAgent" ? 1 : null})
+          `,
+          { concurrency: 1, discard: true },
+        );
+      }
+
+      yield* sql`
+        DELETE FROM orchestration_event_deliveries
+        WHERE consumer_name = ${PROVIDER_COMMAND_REACTOR_CONSUMER}
+          AND thread_id = ${threadId}
+          AND state = 'succeeded'
+      `;
+      yield* sql`
+        DELETE FROM queued_turn_promotions
+        WHERE thread_id = ${threadId}
+          AND state IN ('promoted', 'cancelled')
+      `;
+
+      yield* sql`
+        DELETE FROM agent_gateway_operations
+        WHERE caller_thread_id = ${threadId}
+          AND status IN ('reserved', 'completed', 'failed')
+      `;
+      const liveGatewayOperations = yield* sql<{
+        readonly operationId: string;
+        readonly planJson: string;
+      }>`
+        SELECT operation_id AS "operationId", plan_json AS "planJson"
+        FROM agent_gateway_operations
+        WHERE caller_thread_id = ${threadId}
+          AND status IN ('dispatching', 'compensating')
+      `;
+      yield* Effect.forEach(
+        liveGatewayOperations,
+        (operation) => {
+          const recoveryPlanJson = redactCreationPlanForPurgedCaller({
+            planJson: operation.planJson,
+            operationId: operation.operationId,
+          });
+          return sql`
+            UPDATE agent_gateway_operations
+            SET plan_json = ${recoveryPlanJson},
+                caller_thread_id = 'purged-thread:' || operation_id,
+                caller_turn_id = 'purged-turn:' || operation_id,
+                request_id = operation_id,
+                fingerprint = operation_id,
+                result_json = NULL,
+                error_json = NULL,
+                caller_purged_at = ${deletedAt},
+                updated_at = ${deletedAt}
+            WHERE operation_id = ${operation.operationId}
+              AND status IN ('dispatching', 'compensating')
+          `;
+        },
+        { concurrency: 1, discard: true },
+      );
+      yield* sql`
+        DELETE FROM orchestration_events
+        WHERE aggregate_kind = 'thread'
+          AND (
+            stream_id = ${threadId}
+            OR json_extract(payload_json, '$.threadId') = ${threadId}
+          )
+      `;
+      yield* sql`DELETE FROM provider_session_runtime WHERE thread_id = ${threadId}`;
+      yield* sql`DELETE FROM projection_pending_interactions WHERE thread_id = ${threadId}`;
+      yield* sql`DELETE FROM projection_thread_activities WHERE thread_id = ${threadId}`;
+      yield* sql`DELETE FROM projection_thread_messages WHERE thread_id = ${threadId}`;
+      yield* sql`DELETE FROM message_text_segments WHERE thread_id = ${threadId}`;
+      yield* sql`DELETE FROM projection_thread_sessions WHERE thread_id = ${threadId}`;
+      yield* sql`DELETE FROM projection_turns WHERE thread_id = ${threadId}`;
+      yield* sql`
+        UPDATE automation_runs
+        SET status = 'interrupted',
+            error = 'Automation run was interrupted because its thread was deleted.',
+            result_json = ${threadDeletedAutomationRunResultJson},
+            finished_at = COALESCE(finished_at, ${deletedAt}),
+            updated_at = ${deletedAt},
+            lease_expires_at = NULL,
+            claimed_by = NULL
+        WHERE thread_id = ${threadId}
+          AND status NOT IN ('succeeded', 'failed', 'cancelled', 'interrupted', 'skipped')
+      `;
+      yield* sql`DELETE FROM projection_threads WHERE thread_id = ${threadId}`;
+
+      return true;
+    });
+
+  const purgeThreadWithStatsSnapshot: ProfileStatsArchiveShape["purgeThreadWithStatsSnapshot"] = (
+    input,
+  ) =>
+    Effect.gen(function* () {
+      const checkpointCleanup = yield* loadThreadCheckpointCleanup(input.threadId);
+      if (checkpointCleanup === null) {
+        return false;
+      }
+      const purged = yield* sql.withTransaction(snapshotAndPurgeThread(input.threadId));
+      if (purged) {
+        yield* deleteCheckpointRefsAfterCommittedPurge({
+          threadId: input.threadId,
+          cwd: checkpointCleanup.cwd,
+          checkpointRefs: checkpointCleanup.checkpointRefs,
+        });
+      }
+      return purged;
+    });
+
+  const purgeSoftDeletedManualThreads: ProfileStatsArchiveShape["purgeSoftDeletedManualThreads"] = (
+    input,
+  ) =>
+    Effect.gen(function* () {
+      const candidates = yield* sql<{ readonly threadId: string }>`
+          SELECT t.thread_id AS threadId
+          FROM projection_threads t
+          WHERE t.deleted_at IS NOT NULL
+            AND (
+              SELECT td.command_id
+              FROM orchestration_events td
+              WHERE td.event_type = 'thread.deleted'
+                AND td.stream_id = t.thread_id
+              ORDER BY td.sequence DESC
+              LIMIT 1
+            ) NOT LIKE ${`${THREAD_RETENTION_COMMAND_ID_PREFIX}%`}
+        `;
+
+      let purgedCount = 0;
+      yield* Effect.forEach(
+        candidates,
+        (candidate) =>
+          Effect.gen(function* () {
+            const shouldPurge = input?.beforePurge
+              ? yield* input.beforePurge(candidate.threadId)
+              : true;
+            if (!shouldPurge) {
+              return;
+            }
+            const purged = yield* purgeThreadWithStatsSnapshot({
+              threadId: candidate.threadId,
+            });
+            if (purged) {
+              purgedCount += 1;
+            }
+          }).pipe(
+            Effect.catch((error) =>
+              Effect.logWarning("profile stats archive failed to purge soft-deleted thread", {
+                threadId: candidate.threadId,
+                error: error instanceof Error ? error.message : String(error),
+              }),
+            ),
+          ),
+        { concurrency: 1, discard: true },
+      );
+      return purgedCount;
+    });
+
+  return {
+    hasThreadPurgeFence,
+    purgeThreadWithStatsSnapshot,
+    purgeSoftDeletedManualThreads,
+  } satisfies ProfileStatsArchiveShape;
+});
+
+export const ProfileStatsArchiveLive = Layer.effect(ProfileStatsArchive, makeProfileStatsArchive);

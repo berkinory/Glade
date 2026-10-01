@@ -3,7 +3,8 @@ import * as SqlSchema from "effect/unstable/sql/SqlSchema";
 import { Effect, Layer, Schema, Struct } from "effect";
 import * as SchemaGetter from "effect/SchemaGetter";
 
-import { ModelSelection, ProjectScript } from "@glade/contracts";
+import { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
+import { ProjectScript } from "@glade/contracts/orchestration/threadEntities";
 import { toPersistenceSqlError } from "../Errors.ts";
 import {
   ClearProjectionProjectSpaceAssignmentsInput,

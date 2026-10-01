@@ -1,4 +1,4 @@
-import type { PullRequestDetailInput } from "@glade/contracts";
+import type { PullRequestDetailInput } from "@glade/contracts/git/pullRequests";
 import { queryOptions } from "@tanstack/react-query";
 
 import { ensureNativeApi } from "~/nativeApi";
@@ -23,7 +23,6 @@ export const pullRequestQueryKeys = {
     ] as const,
 };
 
-/** Distinguish a cold-load failure from a background failure with usable cached data. */
 export function pullRequestQueryErrorState<TData, TError>(
   query: { data: TData | undefined; error: TError | null; isError: boolean },
   enabled = true,

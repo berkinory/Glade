@@ -1,13 +1,8 @@
-// FILE: recentViews.logic.ts
-// Purpose: Pure helpers for the Ctrl+Tab recent primary-view switcher.
-// Layer: UI state logic
-// Exports: recent view types plus MRU update, pruning, and display derivation helpers
-
-import type { ProjectId, ProviderKind, ThreadId } from "@glade/contracts";
+import type { ProjectId, ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type {
   ResolvedTerminalVisualIdentity,
   TerminalIconKey,
-} from "@glade/shared/terminalThreads";
+} from "@glade/shared/threads/terminalThreads";
 import type { Project, SidebarThreadSummary } from "./types";
 
 export const MAX_RECENT_VIEWS = 5;

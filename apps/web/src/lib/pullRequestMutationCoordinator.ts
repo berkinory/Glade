@@ -1,4 +1,4 @@
-import type { PullRequestDetailInput, PullRequestState } from "@glade/contracts";
+import type { PullRequestDetailInput, PullRequestState } from "@glade/contracts/git/pullRequests";
 import type { QueryClient } from "@tanstack/react-query";
 
 export type PullRequestActionPatch = { state?: PullRequestState; isDraft?: boolean };
@@ -62,7 +62,6 @@ export function finishPullRequestActionProtection(
   if (active.size === 0) state?.byIdentity.delete(protection.identityKey);
 }
 
-/** A read that started before an action settled must still respect its successful intent. */
 export function capturePullRequestActionReadFence(
   queryClient: QueryClient,
 ): PullRequestActionReadFence {

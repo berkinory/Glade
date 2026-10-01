@@ -1,8 +1,5 @@
-// FILE: composerDraftStore.ts
-// Purpose: Public Zustand facade for composer drafts, model choices, attachments, and persistence.
-// Exports: Stable composer draft API, hooks, and promotion helpers.
-
-import { type ModelSelection, type ProviderKind, type ThreadId } from "@glade/contracts";
+import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
+import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -22,38 +19,14 @@ import {
   migratePersistedComposerDraftStoreState,
   normalizeCurrentPersistedComposerDraftStoreState,
   partializeComposerDraftStoreState,
-  toHydratedThreadDraft,
-  type PersistedComposerDraftStoreState,
-} from "./composerDraftPersistence";
+} from "./composerDraftPersistence.serialization";
+import { toHydratedThreadDraft } from "./composerDraftPersistence.hydration";
+import type { PersistedComposerDraftStoreState } from "./composerDraftPersistence.types";
 import {
   appStorage,
   createDeferredPersistStorage,
   flushStorageBeforePageHide,
 } from "./lib/storage";
-
-export {
-  captureComposerPromptHistorySavedDraft,
-  COMPOSER_DRAFT_STORAGE_KEY,
-  COMPOSER_DRAFT_STORAGE_VERSION,
-  PersistedComposerImageAttachment,
-} from "./composerDraftDomain";
-export type {
-  ComposerAssistantSelectionAttachment,
-  ComposerDraftStoreState,
-  ComposerFileAttachment,
-  ComposerImageAttachment,
-  ComposerThreadDraftState,
-  DraftThreadEnvMode,
-  DraftThreadState,
-  QueuedComposerChatTurn,
-  QueuedComposerPlanFollowUp,
-  QueuedComposerTurn,
-  RestoredComposerSourceProposedPlan,
-} from "./composerDraftDomain";
-export type { BrowserAnnotationDraft } from "./lib/browserAnnotations";
-export { resolvePreferredComposerModelSelection } from "./composerDraftModels";
-export type { EffectiveComposerModelState } from "./composerDraftModels";
-export { partializeComposerDraftStoreState } from "./composerDraftPersistence";
 
 const COMPOSER_PERSIST_DEBOUNCE_MS = 300;
 const composerPersistStorage = createDeferredPersistStorage<
@@ -65,8 +38,6 @@ const composerPersistStorage = createDeferredPersistStorage<
   debounceMs: COMPOSER_PERSIST_DEBOUNCE_MS,
 });
 
-// Flush pending composer draft writes before the page goes away so at most one
-// debounce window of changes can be lost.
 flushStorageBeforePageHide(() => composerPersistStorage.flush());
 
 export const useComposerDraftStore = create<ComposerDraftStoreState>()(
@@ -75,8 +46,7 @@ export const useComposerDraftStore = create<ComposerDraftStoreState>()(
     {
       name: COMPOSER_DRAFT_STORAGE_KEY,
       version: COMPOSER_DRAFT_STORAGE_VERSION,
-      // Partialization is owned by deferred storage so serialization does not run
-      // on each keystroke and instead happens once per 300ms flush window.
+
       storage: composerPersistStorage,
       migrate: migratePersistedComposerDraftStoreState,
       merge: (persistedState, currentState) => {
@@ -105,6 +75,10 @@ export function useComposerThreadDraft(threadId: ThreadId): ComposerThreadDraftS
   return useComposerDraftStore((state) => selectComposerThreadDraft(state, threadId));
 }
 
+export function requestComposerFocus(threadId: ThreadId): void {
+  useComposerDraftStore.getState().requestFocus(threadId);
+}
+
 export function useEffectiveComposerModelState(input: {
   threadId: ThreadId;
   selectedProvider: ProviderKind;
@@ -126,7 +100,6 @@ export function useEffectiveComposerModelState(input: {
   });
 }
 
-// Mark drafts as promoted first; route/composer cleanup happens after the server thread starts.
 export function markPromotedDraftThreads(serverThreadIds: ReadonlySet<ThreadId>): void {
   const store = useComposerDraftStore.getState();
   const draftThreadIds = Object.keys(store.draftThreadsByThreadId) as ThreadId[];

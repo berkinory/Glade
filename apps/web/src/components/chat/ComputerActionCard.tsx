@@ -1,8 +1,3 @@
-// FILE: ComputerActionCard.tsx
-// Purpose: Shared transcript card shell for Computer control notices (setup required,
-//          control denied): status tile, title, description, and one action button.
-// Layer: Chat transcript UI
-
 import type { ReactNode } from "react";
 
 import { Button } from "~/components/ui/button";
@@ -24,7 +19,7 @@ export function ComputerActionCard({
   readonly action?:
     | { readonly label: string; readonly disabled?: boolean; readonly onClick: () => void }
     | undefined;
-  /** Description paragraphs; each inherits the card's secondary text style. */
+
   readonly children?: ReactNode;
 }) {
   const metaStyle = metaFontSizePx ? { fontSize: `${metaFontSizePx}px` } : undefined;
@@ -62,8 +57,6 @@ export function ComputerActionCard({
           variant="outline"
           size="sm"
           className="shrink-0 self-center"
-          // Match the card's transcript-scaled copy instead of the UI scale, so
-          // the label does not read as a different typeface beside it.
           style={metaStyle}
           disabled={action.disabled}
           onClick={action.onClick}

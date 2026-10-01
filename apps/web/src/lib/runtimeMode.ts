@@ -1,13 +1,11 @@
-import type {
-  ProviderKind,
-  ProviderModelDescriptor,
-  RuntimeMode,
-  ServerProviderStatus,
-} from "@glade/contracts";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
+import type { ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
+import type { RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
+import type { ServerProviderStatus } from "@glade/contracts/server/server";
 import {
   normalizeRuntimeModeForProvider,
   providerSupportsAutoRuntimeMode,
-} from "@glade/shared/runtimeMode";
+} from "@glade/shared/threads/runtimeMode";
 
 export { normalizeRuntimeModeForProvider, providerSupportsAutoRuntimeMode };
 

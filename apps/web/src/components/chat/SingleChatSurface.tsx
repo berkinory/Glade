@@ -1,4 +1,4 @@
-import type { ProjectId, ThreadId, TurnId } from "@glade/contracts";
+import type { ProjectId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
@@ -13,14 +13,11 @@ import {
   useState,
 } from "react";
 
-import { useAppSettings } from "../../appSettings";
 import { useComposerDraftStore } from "../../composerDraftStore";
 import type { DiffRouteSearch } from "../../diffRouteSearch";
 import { stripDiffSearchParams } from "../../diffRouteSearch";
 import { useBrowserPanelDesktopBridge } from "../../hooks/useBrowserPanelDesktopBridge";
 import { useDockPaneRuntimeActivation } from "../../hooks/useDockPaneRuntimeActivation";
-import { useDevicePaneOpenRequests } from "../../hooks/useDeviceEventBridge";
-import { useDeviceSupport } from "../../hooks/useDeviceSupport";
 import {
   addChatFileComment,
   appendChatFileReference,
@@ -48,16 +45,16 @@ import {
   type RightDockPane,
   type RightDockPaneKind,
 } from "../../rightDockStore.logic";
+import { useSplitViewStore } from "../../splitViewStore";
 import {
   type SplitDirection,
   type SplitDropSide,
   type SplitViewPanePanelState,
-  useSplitViewStore,
-} from "../../splitViewStore";
+} from "../../splitViewModel";
 import { useStore } from "../../store";
 import { createProjectSelector, createThreadWorkspaceMetadataSelector } from "../../storeSelectors";
 import { ChatPaneDropOverlay } from "../chat-drop-overlay/ChatPaneDropOverlay";
-import { DeferredChatView, LazyBrowserPanel, LazyDevicePanel } from "./ChatThreadSurfacePrimitives";
+import { DeferredChatView, LazyBrowserPanel } from "./ChatThreadSurfacePrimitives";
 import { FloatingBrowserPanel } from "./FloatingBrowserPanel";
 import { shouldRenderFloatingBrowserPanel } from "./floatingBrowserPanel.logic";
 import { PanelStateMessage } from "./PanelStateMessage";
@@ -69,10 +66,7 @@ import {
   CHAT_MAIN_VIEWPORT_SHELL_CLASS_NAME,
 } from "./composerPickerStyles";
 import { routeSingleDockPaneOpenRequest } from "./dockPaneOpenRequest";
-import {
-  selectFloatingBrowserRequested,
-  useFloatingBrowserRequestStore,
-} from "./floatingBrowserRequestStore";
+import { selectFloatingBrowserRequested, useBrowserStateStore } from "../../browserStateStore";
 import { pullRequestDetailInputFromPane } from "../pullRequest/pullRequestDetail.logic";
 import { usePullRequestPaneStateIcon } from "../pullRequest/usePullRequestPaneStateIcon";
 import { RouteInsetSurface } from "../RouteInsetSurface";
@@ -85,7 +79,7 @@ import { cn } from "~/lib/utils";
 
 const PullRequestDockPane = lazy(() => import("../pullRequest/PullRequestDockPane"));
 const DockTerminalPane = lazy(() => import("./DockTerminalPane"));
-const PRIMARY_DOCK_PANE_KINDS = ["explorer", "terminal", "git", "browser", "device"] as const;
+const PRIMARY_DOCK_PANE_KINDS = ["explorer", "terminal", "git", "browser"] as const;
 const SourceControlDockPane = lazy(() =>
   import("./SourceControlDockPane").then((module) => ({
     default: module.SourceControlDockPane,
@@ -115,12 +109,11 @@ function shouldAcceptDockWidth({
   nextWidth: number;
   wrapper: HTMLElement;
 }) {
-  // Closing the dock gives the composer more room, so only expansion needs a layout probe.
   if (nextWidth <= currentWidth) return true;
   const previousSidebarWidth = wrapper.style.getPropertyValue("--sidebar-width");
   return canComposerHandlePanelWidth({
     nextWidth,
-    // Scope the width probe to the main composer.
+
     paneScopeId: SINGLE_CHAT_PANE_SCOPE_ID,
     applyWidth: (width) => {
       wrapper.style.setProperty("--sidebar-width", `${width}px`);
@@ -177,13 +170,9 @@ export function SingleChatSurface(props: {
   const draftThread = useComposerDraftStore(
     (store) => store.draftThreadsByThreadId[props.threadId] ?? null,
   );
-  // A registered-but-unpromoted draft is the freeze case: landing a brand-new
-  // chat commits the whole ChatView subtree synchronously. Defer that mount
-  // behind the chat mount loader so the paint is never blocked. Opening an
-  // existing thread keeps today's immediate mount (no draft -> no loader).
+  // Defer that mount behind the chat mount loader so the paint is never blocked.
   const isBrandNewDraftThread = draftThread !== null;
-  // File preview must follow the same runtime cwd as chat markdown, diffs, and git:
-  // worktree-backed threads resolve links against their materialized worktree.
+
   const workspaceRoot = resolveFilePreviewWorkspaceRoot({
     projectCwd: activeProject?.cwd ?? null,
     threadEnvMode: threadWorkspaceMetadata.envMode ?? draftThread?.envMode ?? null,
@@ -191,17 +180,15 @@ export function SingleChatSurface(props: {
     threadWorkingDirectory:
       threadWorkspaceMetadata.workingDirectory ?? draftThread?.workingDirectory ?? null,
   });
-  const hasDeviceSupport = useDeviceSupport();
-  const { settings: appSettings } = useAppSettings();
   const queryClient = useQueryClient();
   const lastAppliedRoutePanelSearchKeyRef = useRef<string | null>(null);
   const [searchPaletteOpen, setSearchPaletteOpen] = useState(false);
   const [searchPaletteMode, setSearchPaletteMode] = useState<WorkspaceSearchPaletteMode>("files");
-  const floatingBrowserRequested = useFloatingBrowserRequestStore(
+  const floatingBrowserRequested = useBrowserStateStore(
     useMemo(() => selectFloatingBrowserRequested(props.threadId), [props.threadId]),
   );
-  const requestFloatingBrowser = useFloatingBrowserRequestStore((store) => store.request);
-  const dismissFloatingBrowserForThread = useFloatingBrowserRequestStore((store) => store.dismiss);
+  const requestFloatingBrowser = useBrowserStateStore((store) => store.requestFloating);
+  const dismissFloatingBrowserForThread = useBrowserStateStore((store) => store.dismissFloating);
   const dismissFloatingBrowser = useCallback(() => {
     dismissFloatingBrowserForThread(props.threadId);
   }, [dismissFloatingBrowserForThread, props.threadId]);
@@ -221,8 +208,6 @@ export function SingleChatSurface(props: {
     activePane,
   });
 
-  // Bridge the dock's active browser/review pane back into the panelState shape the
-  // chat shell still consumes (diff badge, toggle pressed state, transcript gating).
   const chatPanelState: SplitViewPanePanelState = {
     panel:
       activePane?.kind === "browser"
@@ -248,10 +233,6 @@ export function SingleChatSurface(props: {
     requestImmediateDockHydration("browser");
     toggleSingletonPane(props.threadId, { kind: "browser" });
   };
-  const handleToggleDevice = () => {
-    requestImmediateDockHydration("device");
-    toggleSingletonPane(props.threadId, { kind: "device" });
-  };
   const handleToggleRightDock = () => {
     if (!dockState.open && dockState.activePaneId === null) {
       requestImmediateDockHydration("explorer");
@@ -273,8 +254,7 @@ export function SingleChatSurface(props: {
       diffFilePath: filePath ?? null,
     });
   };
-  // Stable identities: these feed memoized result rows in the search palette,
-  // so recreating them per render would defeat the rows' React.memo bailout.
+
   const handleOpenWorkspaceSearchFile = useCallback(
     (relativePath: string) => {
       requestImmediateDockHydration("file");
@@ -292,9 +272,6 @@ export function SingleChatSurface(props: {
     [requestImmediateDockHydration, openPane, props.threadId],
   );
 
-  // Ctrl/Cmd+P opens the file-name search palette; Ctrl/Cmd+Shift+F opens the
-  // snippet (content) search. Registered with capture so it wins over page-level
-  // defaults (print, browser find) while the chat surface is mounted.
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.repeat || event.altKey) return;
@@ -323,44 +300,42 @@ export function SingleChatSurface(props: {
     addChatFileComment(props.threadId, comment);
   };
 
-  // Hover warm-up shared by both surfaces' file openers: file contents land in
-  // the React Query cache and the matching Shiki highlighter loads, so the
-  // preview paints instantly on click.
-  const prefetchOpenerFile = (path: string) => {
-    if (!workspaceRoot || resolveWorkspaceDirectoryOpenTarget(path, workspaceRoot) !== null) {
-      return;
-    }
-    const relativePath = resolveWorkspaceFileOpenTarget(path, workspaceRoot);
-    if (relativePath) {
-      prefetchWorkspaceFile(queryClient, workspaceRoot, relativePath);
-    }
-  };
-  // Chat surface: file references open in the right-dock file pane, while the
-  // workspace root and explicit directory references open in Explorer.
-  // Other references retain the existing dock file preview and external-editor
-  // fallback behavior.
-  const dockFileOpener: WorkspaceFileOpener = {
-    openFile: (path) => {
-      const directoryPath = resolveWorkspaceDirectoryOpenTarget(path, workspaceRoot);
-      if (directoryPath !== null) {
-        requestImmediateDockHydration("explorer");
-        openPane(props.threadId, { kind: "explorer" });
-        requestExplorerReveal(props.threadId, directoryPath);
-        return true;
+  const prefetchOpenerFile = useCallback(
+    (path: string) => {
+      if (!workspaceRoot || resolveWorkspaceDirectoryOpenTarget(path, workspaceRoot) !== null) {
+        return;
       }
-      // In-workspace references map to relative paths for the file-read RPC;
-      // binary previews in a session's scratch workspace (outside the chat
-      // workspace) open by absolute path through the local-image route.
-      const targetPath = resolveDockFileOpenTarget(path, workspaceRoot);
-      if (!targetPath) {
-        return false;
+      const relativePath = resolveWorkspaceFileOpenTarget(path, workspaceRoot);
+      if (relativePath) {
+        prefetchWorkspaceFile(queryClient, workspaceRoot, relativePath);
       }
-      requestImmediateDockHydration("file");
-      openPane(props.threadId, { kind: "file", filePath: targetPath });
-      return true;
     },
-    prefetchFile: prefetchOpenerFile,
-  };
+    [workspaceRoot, queryClient],
+  );
+
+  const dockFileOpener = useMemo<WorkspaceFileOpener>(
+    () => ({
+      openFile: (path) => {
+        const directoryPath = resolveWorkspaceDirectoryOpenTarget(path, workspaceRoot);
+        if (directoryPath !== null) {
+          requestImmediateDockHydration("explorer");
+          openPane(props.threadId, { kind: "explorer" });
+          requestExplorerReveal(props.threadId, directoryPath);
+          return true;
+        }
+
+        const targetPath = resolveDockFileOpenTarget(path, workspaceRoot);
+        if (!targetPath) {
+          return false;
+        }
+        requestImmediateDockHydration("file");
+        openPane(props.threadId, { kind: "file", filePath: targetPath });
+        return true;
+      },
+      prefetchFile: prefetchOpenerFile,
+    }),
+    [workspaceRoot, requestImmediateDockHydration, openPane, props.threadId, prefetchOpenerFile],
+  );
   const handleSplitSurface = () => {
     if (!props.projectId) return;
     const splitViewId = createSplitView({
@@ -457,19 +432,6 @@ export function SingleChatSurface(props: {
     },
   });
 
-  useDevicePaneOpenRequests({
-    onOpenPaneRequested:
-      hasDeviceSupport && appSettings.autoOpenDevicePane
-        ? (event) => {
-            routeSingleDockPaneOpenRequest({
-              currentThreadId: props.threadId,
-              requestedThreadId: event.threadId,
-              requestImmediateHydration: () => requestImmediateDockHydration("device"),
-              openPane: (threadId) => openPane(threadId, { kind: "device" }),
-            });
-          }
-        : null,
-  });
   const excludedThreadIds = new Set<ThreadId>([props.threadId]);
 
   const paneLabelOverrides = useMemo(
@@ -477,7 +439,6 @@ export function SingleChatSurface(props: {
     [dockState.panes],
   );
 
-  // The pull request pane is a singleton, so at most one tab needs the live state glyph.
   const pullRequestPane = dockState.panes.find(
     (pane) => pane.kind === "pullRequest" && pullRequestDetailInputFromPane(pane) !== null,
   );
@@ -510,7 +471,13 @@ export function SingleChatSurface(props: {
       requestImmediateDockHydration("explorer");
       openPane(props.threadId, { kind: "explorer" });
     }
-  }, [dockState.activePaneId, dockState.open, openPane, props.threadId]);
+  }, [
+    dockState.activePaneId,
+    dockState.open,
+    openPane,
+    props.threadId,
+    requestImmediateDockHydration,
+  ]);
 
   useEffect(() => {
     if (!terminalPresentation) return;
@@ -550,19 +517,6 @@ export function SingleChatSurface(props: {
             />
           </Suspense>
         );
-      case "device":
-        return (
-          <Suspense fallback={<PanelStateMessage loadingLabel="Loading simulator" />}>
-            <LazyDevicePanel
-              mode="sidebar"
-              threadId={props.threadId}
-              onClosePanel={() => closePane(props.threadId, pane.id)}
-              runtimeMode={context.runtimeMode}
-              isVisible={context.isVisible}
-              onRequestLive={requestActiveDockPaneLive}
-            />
-          </Suspense>
-        );
       case "pullRequest":
         return (
           <Suspense fallback={<PanelStateMessage loadingLabel="Loading pull request" />}>
@@ -583,11 +537,7 @@ export function SingleChatSurface(props: {
         if (context.runtimeMode === "preview") {
           return <PanelStateMessage>Terminal is sleeping. Restoring shortly.</PanelStateMessage>;
         }
-        // Kept mounted across tab switches; visibility toggles the xterm runtime
-        // instead of detaching/reattaching it (avoids the open-lag + fit flicker).
-        // Also sleep it while the dock is collapsed: a closed dock keeps the pane
-        // mounted (offcanvas is CSS-only), so without this the off-screen terminal
-        // would keep WebGL + resize observers alive for nothing.
+
         return (
           <Suspense fallback={<PanelStateMessage loadingLabel="Loading terminal" />}>
             <DockTerminalPane
@@ -693,7 +643,6 @@ export function SingleChatSurface(props: {
               onToggleBrowser={handleToggleBrowser}
               onOpenBrowserUrl={handleOpenBrowserUrl}
               onOpenTurnDiff={handleOpenTurnDiff}
-              {...(hasDeviceSupport ? { onToggleDevice: handleToggleDevice } : {})}
               onSplitSurface={handleSplitSurface}
             />
             {floatingBrowserVisible ? (

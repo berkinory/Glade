@@ -1,4 +1,4 @@
-import type { ThreadId } from "@glade/contracts";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useMutation } from "@tanstack/react-query";
 
 import { interruptThreadTurn } from "~/lib/threadTurnInterrupt";
@@ -15,8 +15,7 @@ export interface ComputerDesktopControl {
 export function useComputerDesktopControl(threadId: ThreadId): ComputerDesktopControl {
   const threadState = useComputerStateStore(selectThreadComputerState(threadId));
   const owner = threadState?.controlOwnerThreadId;
-  // Ownership lasts for the turn, including model thinking between tool calls.
-  // It gives the Stop control a stable lifetime without a debounce timer.
+
   const agentActive = owner !== undefined || (threadState?.agentActive ?? false);
   const ownerThreadId = owner ?? threadId;
   const interrupt = useMutation({ mutationFn: interruptThreadTurn });

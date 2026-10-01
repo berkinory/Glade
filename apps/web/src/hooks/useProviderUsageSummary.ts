@@ -1,13 +1,9 @@
-// FILE: useProviderUsageSummary.ts
-// Purpose: Merge usage signals from thread activities, server-side local archives,
-// and provider-specific snapshots into one UI-friendly summary.
-
+import type { OrchestrationThread } from "@glade/contracts/orchestration/threadEntities";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type {
-  OrchestrationThread,
-  ProviderKind,
   ServerCodexResetCredits,
   ServerGetProviderUsageSnapshotResult,
-} from "@glade/contracts";
+} from "@glade/contracts/server/server";
 import { useQuery } from "@tanstack/react-query";
 
 import {

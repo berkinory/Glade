@@ -1,3 +1,4 @@
+import type { TaggedFailure } from "../platform/operationError.ts";
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -8,25 +9,26 @@ import {
   ProjectId,
   ThreadId,
   TurnId,
-  type ModelSelection,
-  type OrchestrationThreadShell,
-  type ProviderInteractionMode,
   type ProviderKind,
+} from "@glade/contracts/core/baseSchemas";
+
+import { type OrchestrationThreadShell } from "@glade/contracts/orchestration/threadEntities";
+import {
   type GladeCreateThreadsInput,
   type GladeCreateThreadsResult,
-} from "@glade/contracts";
-import { buildPromptThreadTitleFallback } from "@glade/shared/chatThreads";
-import { WORKTREE_BRANCH_PREFIX } from "@glade/shared/git";
-import { parseGitHubRepositoryNameWithOwnerFromPullRequestUrl } from "@glade/shared/githubRepository";
-import { runtimeModeEscalatesPrivilege } from "@glade/shared/runtimeMode";
+} from "@glade/contracts/provider/agentGateway";
+import { buildPromptThreadTitleFallback } from "@glade/shared/threads/chatThreads";
+import { WORKTREE_BRANCH_PREFIX } from "@glade/shared/git/git";
+import { parseGitHubRepositoryNameWithOwnerFromPullRequestUrl } from "@glade/shared/git/githubRepository";
+import { runtimeModeEscalatesPrivilege } from "@glade/shared/threads/runtimeMode";
 import { Cause, Effect, Option, Semaphore } from "effect";
 
-import type { ServerConfigShape } from "../config.ts";
+import type { ServerConfigShape } from "../server/config.ts";
 import type { GitCoreShape } from "../git/Services/GitCore.ts";
 import type { OrchestrationEngineShape } from "../orchestration/Services/OrchestrationEngine.ts";
 import type { ProjectionSnapshotQueryShape } from "../orchestration/Services/ProjectionSnapshotQuery.ts";
 import type { ProviderDiscoveryServiceShape } from "../provider/Services/ProviderDiscoveryService.ts";
-import { runWorktreeSetupScript } from "../worktreeSetup.ts";
+import { runWorktreeSetupScript } from "../git/worktreeSetup.ts";
 import type {
   AgentGatewayOperationRecord,
   AgentGatewayOperationRepositoryShape,
@@ -46,11 +48,11 @@ import {
 import { ToolInputError, errorText } from "./toolInput.ts";
 import { GatewayToolError, gatewayToolErrorResult } from "./toolRuntime.ts";
 
-const CREATION_REPLAY_WAIT_MS = 60_000;
-
-function interactionModeForGatewayTarget(_target: ModelSelection): ProviderInteractionMode {
-  return "default";
+class CreationCoordinatorError extends Error {
+  readonly _tag = "CreationCoordinatorError";
 }
+
+const CREATION_REPLAY_WAIT_MS = 60_000;
 
 interface PullRequestSelector {
   readonly number: number;
@@ -86,7 +88,7 @@ interface CreationCoordinatorDependencies {
   readonly serverConfig: ServerConfigShape;
   readonly loadProviderAvailabilities: Effect.Effect<
     ReadonlyMap<ProviderKind, AgentGatewayProviderAvailability>,
-    unknown
+    TaggedFailure
   >;
   readonly requireThreadShell: (
     threadId: string,
@@ -127,13 +129,6 @@ interface CreationOperationStore {
   readonly fail: AgentGatewayOperationRepositoryShape["fail"];
 }
 
-/**
- * Build the durable, exactly-once thread-creation coordinator.
- *
- * The coordinator owns its per-caller-turn locks and all git/orchestration
- * compensation state. Keeping that state beside the saga prevents the MCP
- * transport and unrelated tools from becoming accidental recovery owners.
- */
 export const makeCreateThreadsHandler = Effect.fn(function* (
   dependencies: CreationCoordinatorDependencies,
 ) {
@@ -439,9 +434,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
               );
             }
             const requestedRef = spec.baseRef ?? spec.baseBranch ?? "HEAD";
-            // Named refs are shared across linked worktrees, while HEAD is checkout-local.
-            // Always resolve same-project requests from the caller's selected checkout so
-            // an explicit baseRef:"HEAD" cannot silently jump back to the primary checkout.
+
             const sourceCwd =
               caller?.projectId === projectId
                 ? (caller.worktreePath ?? project.workspaceRoot)
@@ -524,9 +517,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
             projectScripts: project.scripts,
             worktreeRef,
             copyChangesFrom,
-            // Deterministic like the planned path: an exact-plan retry must
-            // resolve to the same branch, and recovery reclaims it by name.
-            // The 8-hex-digit token keeps it a temporary glade/* branch.
+
             newBranch:
               environment === "worktree"
                 ? `${WORKTREE_BRANCH_PREFIX}/${stableGatewayDigest({ operationId, index, resource: "worktree-branch" }, 8)}`
@@ -583,7 +574,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
           let compensatedThreadCount = 0;
           let compensatedWorktreeCount = 0;
           yield* Effect.forEach(
-            [...createdThreads].reverse(),
+            [...createdThreads].toReversed(),
             (entry) =>
               orchestrationEngine
                 .dispatch({
@@ -606,7 +597,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
             { discard: true },
           );
           yield* Effect.forEach(
-            [...createdWorktrees].reverse(),
+            [...createdWorktrees].toReversed(),
             (worktree) =>
               git
                 .withMutation(
@@ -616,23 +607,14 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
                         .removeWorktree({
                           cwd: worktree.cwd,
                           path: worktree.path,
-                          // Ownership was never recorded for this path: creation failed
-                          // right after the worktree appeared, or the interruptible setup
-                          // script failed or was interrupted. Copied baseline changes and
-                          // partial setup output make a non-forced removal fail by
-                          // construction.
+
                           force: true,
                         })
                         .pipe(
                           Effect.flatMap(() =>
                             worktree.branch === null
                               ? Effect.void
-                              : // The branch is this operation's own deterministic
-                                // glade/* name and its worktree was just force-removed.
-                                // A non-forced delete would fail whenever the pinned
-                                // ref is not merged into the root HEAD (e.g. PR heads),
-                                // stranding the name and blocking exact-plan retries.
-                                git.deleteBranch({
+                              : git.deleteBranch({
                                   cwd: worktree.cwd,
                                   branch: worktree.branch,
                                   force: true,
@@ -649,7 +631,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
                             verification.verified
                               ? Effect.void
                               : Effect.fail(
-                                  new Error(
+                                  new CreationCoordinatorError(
                                     `Refusing live compensation: ${verification.reason ?? "ownership verification failed"}.`,
                                   ),
                                 ),
@@ -765,9 +747,6 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
       let claimedByThisFiber = false;
       const outcome = yield* Effect.uninterruptibleMask((restore) =>
         Effect.gen(function* () {
-          // Reservation and claim form one uninterruptible handshake. Once the
-          // durable reservation exists, this fiber either claims it while the
-          // compensation boundary is already installed or returns a replay.
           const reservation = yield* operationStore
             .reserve({
               operationId,
@@ -889,14 +868,15 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
                         return { created, trackedWorktree };
                       }),
                     );
-                    // The setup script can run for minutes, so it must stay
-                    // interruptible: the abort signal kills the child process and
-                    // the tracked, still-ownerless worktree is compensated away.
+                    // The setup script can run for minutes, so it must stay interruptible: the abort signal kills the
+                    // child process and the tracked, still-ownerless worktree is compensated away.
                     yield* Effect.tryPromise({
                       try: (signal) =>
                         runWorktreeSetupScript(entry.projectScripts, trackedWorktree.path, signal),
                       catch: (cause) =>
-                        new Error(`Worktree setup script failed: ${errorText(cause)}`),
+                        new CreationCoordinatorError(
+                          `Worktree setup script failed: ${errorText(cause)}`,
+                        ),
                     });
                     yield* Effect.uninterruptible(
                       Effect.gen(function* () {
@@ -920,7 +900,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
                         });
                         if (!ownershipRecorded) {
                           return yield* Effect.fail(
-                            new Error(
+                            new CreationCoordinatorError(
                               `Could not persist ownership for created worktree ${trackedWorktree.path}; compensating it before dispatch.`,
                             ),
                           );
@@ -932,7 +912,6 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
                     associatedWorktreeRef = created.worktree.ref;
                   }
 
-                  const interactionMode = interactionModeForGatewayTarget(entry.target);
                   yield* context.assertAuthority();
                   yield* orchestrationEngine
                     .dispatch({
@@ -943,15 +922,13 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
                       title: entry.title,
                       modelSelection: entry.target,
                       runtimeMode: entry.runtimeMode,
-                      interactionMode,
+
                       envMode: entry.environment,
                       branch,
                       worktreePath,
                       creationSource: "glade_mcp",
-                      ...{
-                        sourceThreadId: ThreadId.makeUnsafe(context.callerThreadId),
-                        sourceTurnId: TurnId.makeUnsafe(callerTurnId!),
-                      },
+                      sourceThreadId: ThreadId.makeUnsafe(context.callerThreadId),
+                      sourceTurnId: TurnId.makeUnsafe(callerTurnId!),
                       gatewayOperationId: operationId,
                       gatewayOperationIndex: entry.index,
                       ...(worktreePath !== null
@@ -983,7 +960,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
                     dispatchMode: "queue",
                     dispatchOrigin: "agent",
                     runtimeMode: entry.runtimeMode,
-                    interactionMode,
+
                     ...(entry.spec.enableComputerControl === true
                       ? {
                           enableComputerControl: true,
@@ -992,9 +969,9 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
                       : {}),
                     createdAt: gatewayIsoNow(),
                   });
-                  // The dispatch can outlive the caller turn. Recheck after it returns so
-                  // a child started in that final race window is compensated as part of
-                  // the same durable operation instead of being left detached.
+                  // The dispatch can outlive the caller turn. Recheck after it returns so a child started in that
+                  // final race window is compensated as part of the same durable operation instead of being left
+                  // detached.
                   yield* context.assertAuthority();
 
                   return {
@@ -1023,9 +1000,9 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
             threadIds: results.map((entry) => entry.threadId),
             threads: results,
           } satisfies GladeCreateThreadsResult;
-          // Once every deterministic dispatch succeeded, durable completion is
-          // the commit point. A late client cancellation must not roll back a
-          // fully-created operation or strand it between dispatching/completed.
+          // Once every deterministic dispatch succeeded, durable completion is the commit point. A late
+          // client cancellation must not roll back a fully-created operation or strand it between
+          // dispatching/completed.
           yield* operationStore.complete({
             operationId,
             resultJson: JSON.stringify(result),

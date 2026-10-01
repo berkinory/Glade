@@ -1,5 +1,5 @@
-// Installed inside the generated macOS launcher, before signing. System Settings
-// and Finder reopen the bundle without the dev runner's argv or environment.
+// Installed inside the generated macOS launcher, before signing. System Settings and Finder reopen
+// the bundle without the dev runner's argv or environment.
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -13,8 +13,8 @@ const configurationPath = path.join(
 const { app, dialog } = require("electron");
 
 try {
-  // An explicit source/smoke launch owns its environment. Only an OS reopen
-  // needs the saved routing; otherwise it could replace a smoke test's home.
+  // An explicit source/smoke launch owns its environment. Only an OS reopen needs the saved routing;
+  // otherwise it could replace a smoke test's home.
   if (!process.env.GLADE_SOURCE_DESKTOP_BUILD_MARKER) {
     const configuration = JSON.parse(fs.readFileSync(configurationPath, "utf8"));
     for (const name of [
@@ -33,7 +33,7 @@ try {
   if (!entryStat.isFile() || entryStat.size === 0) {
     throw new Error("The desktop build is not ready.");
   }
-  // Match a source launch even when LaunchServices supplies no working directory.
+
   process.chdir(desktopDirectory);
   app.setAppPath(desktopDirectory);
   require(entry);

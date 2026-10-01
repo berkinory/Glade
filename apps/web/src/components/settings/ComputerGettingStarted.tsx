@@ -9,7 +9,6 @@ import { SettingsCard, SettingsRow, SettingsSectionShell } from "./SettingsPanel
 
 const STORAGE_KEY = "glade:computer-getting-started:v1";
 
-/** Introduce Computer where it is enabled, without opening another startup dialog. */
 export function ComputerGettingStarted() {
   const [acknowledged, setAcknowledged] = useLocalStorage(STORAGE_KEY, false, Schema.Boolean);
   const [requestedOpen, setRequestedOpen] = useState(false);

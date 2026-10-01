@@ -1,10 +1,4 @@
-// FILE: EnvironmentAutomationsSection.tsx
-// Purpose: Shows heartbeat automations attached to the active thread inside the Environment panel.
-// Layer: Environment panel section
-// Exports: EnvironmentAutomationsSection, EnvironmentAutomationPanelItem
-// Depends on: automation shared formatters and Environment panel row primitives.
-
-import type { AutomationDefinition } from "@glade/contracts";
+import type { AutomationDefinition } from "@glade/contracts/automation/automation";
 
 import { formatCadence } from "~/routes/-automations.shared";
 import { ClockIcon } from "~/lib/icons";

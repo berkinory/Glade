@@ -1,17 +1,10 @@
-// FILE: WorkflowRunCard.logic.ts
-// Purpose: Derives the workflow run panel (Claude dynamic workflows) from task
-// activities: the workflow header plus one row per member agent with status and
-// elapsed-time snapshots. Workflow agents surface through the workflow task's own
-// progress descriptions ("<phase>: <label>"); phases parsed from the script meta
-// build the phase rail, and the persisted runId/scriptPath from the launch result
-// drive pause/resume on settled runs.
-// Layer: Chat composer logic
-// Exports: deriveWorkflowRunState, WorkflowRunState, WorkflowAgentRow,
-// workflowElapsedMs, and buildWorkflowResumePrompt
+import { asNonEmptyString } from "@glade/shared/text/text";
+import { asFiniteNumber } from "@glade/shared/transport/payloadValues";
+import { asObjectRecord } from "@glade/shared/transport/payloadValues";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
 
-import { ThreadId, type OrchestrationThreadActivity } from "@glade/contracts";
-
-import { orderedActivities } from "../../session-logic";
+import { orderedActivities } from "../../workLog.entries";
 import { formatSubagentModelLabel, type SubagentStatusKind } from "../../lib/subagentPresentation";
 
 export interface WorkflowAgentRow {
@@ -23,15 +16,14 @@ export interface WorkflowAgentRow {
   statusLabel: string;
   totalTokens: number | null;
   toolCalls: number | null;
-  // Last usage-reported duration; live rows fall back to wall clock since startedAt.
+
   durationMs: number | null;
   startedAt: string;
   threadId: ThreadId | null;
-  // Raw model id (live transcript > final snapshot > planned script opts).
+
   model: string | null;
   modelLabel: string | undefined;
-  // Reasoning effort, same precedence as model (live transcript > final
-  // snapshot > planned script opts).
+
   effortLabel: string | null;
   promptPreview: string | null;
   recentToolNames: string[];
@@ -53,29 +45,25 @@ export interface WorkflowRunState {
   startedAt: string;
   status: "running" | "paused" | "completed" | "failed" | "stopped";
   settled: boolean;
-  // User hit Pause (vs. a plain stop): the settled card presents as paused.
+
   pausedByUser: boolean;
-  // Persisted launch identifiers; both present means the run can be resumed.
+
   runId: string | null;
   scriptPath: string | null;
-  // Null when no phase information was parsed: render the flat agent list.
+
   phases: WorkflowPhaseSummary[] | null;
   runningCount: number;
   agents: WorkflowAgentRow[];
-  // Workflow task id plus member ids, so callers can dedupe the generic
-  // background-agent count against rows this panel already shows.
+
   taskIds: string[];
 }
 
-// Minimal identity a row needs to link into an existing subagent child thread.
 export interface WorkflowSubagentThreadRef {
   threadId: string;
   model?: string | undefined;
   effort?: string | undefined;
 }
 
-// One composer turn re-invokes the Workflow tool against the persisted script;
-// completed agent() calls replay from cache, so stop-then-resume behaves as pause.
 export function buildWorkflowResumePrompt(scriptPath: string, runId: string): string {
   return `Resume the workflow by invoking the Workflow tool with {"scriptPath": ${JSON.stringify(scriptPath)}, "resumeFromRunId": ${JSON.stringify(runId)}}. Do not modify the script.`;
 }
@@ -100,7 +88,6 @@ interface WorkflowFinalAgent {
   promptPreview: string | null;
 }
 
-// Live per-agent snapshot from the server's transcript-directory poller.
 interface WorkflowLiveAgent {
   agentId: string;
   label: string | null;
@@ -143,19 +130,11 @@ interface TaskSnapshot {
   finalAgents: WorkflowFinalAgent[] | null;
 }
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
-}
-
-function asString(value: unknown): string | null {
-  return typeof value === "string" && value.length > 0 ? value : null;
-}
-
 function readUsage(payload: Record<string, unknown>): {
   totalTokens: number | null;
   durationMs: number | null;
 } {
-  const usage = asRecord(payload.usage);
+  const usage = asObjectRecord(payload.usage);
   return {
     totalTokens: usage && typeof usage.total_tokens === "number" ? usage.total_tokens : null,
     durationMs: usage && typeof usage.duration_ms === "number" ? usage.duration_ms : null,
@@ -167,15 +146,15 @@ function readPhases(value: unknown): TaskSnapshot["phases"] {
     return null;
   }
   const phases = value.flatMap((entry) => {
-    const record = asRecord(entry);
-    const title = record ? asString(record.title) : null;
-    return record && title ? [{ title, detail: asString(record.detail) }] : [];
+    const record = asObjectRecord(entry);
+    const title = record ? (asNonEmptyString(record.title) ?? null) : null;
+    return record && title ? [{ title, detail: asNonEmptyString(record.detail) ?? null }] : [];
   });
   return phases.length > 0 ? phases : null;
 }
 
 function readAgentPhases(value: unknown): Record<string, string> | null {
-  const record = asRecord(value);
+  const record = asObjectRecord(value);
   if (!record) {
     return null;
   }
@@ -185,25 +164,21 @@ function readAgentPhases(value: unknown): Record<string, string> | null {
   return pairs.length > 0 ? Object.fromEntries(pairs) : null;
 }
 
-function asFiniteNumber(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
 function readAgentPlans(value: unknown): Record<string, WorkflowAgentPlanEntry> | null {
-  const record = asRecord(value);
+  const record = asObjectRecord(value);
   if (!record) {
     return null;
   }
   const entries = Object.entries(record).flatMap(
     ([label, plan]): Array<[string, WorkflowAgentPlanEntry]> => {
-      const planRecord = asRecord(plan);
+      const planRecord = asObjectRecord(plan);
       if (!planRecord) {
         return [];
       }
       const parsed: WorkflowAgentPlanEntry = {
-        phase: asString(planRecord.phase),
-        model: asString(planRecord.model),
-        effort: asString(planRecord.effort),
+        phase: asNonEmptyString(planRecord.phase) ?? null,
+        model: asNonEmptyString(planRecord.model) ?? null,
+        effort: asNonEmptyString(planRecord.effort) ?? null,
       };
       return parsed.phase || parsed.model || parsed.effort ? [[label, parsed]] : [];
     },
@@ -216,8 +191,8 @@ function readFinalAgents(value: unknown): WorkflowFinalAgent[] | null {
     return null;
   }
   const agents = value.flatMap((entry) => {
-    const record = asRecord(entry);
-    const label = record ? asString(record.label) : null;
+    const record = asObjectRecord(entry);
+    const label = record ? (asNonEmptyString(record.label) ?? null) : null;
     if (!record || !label) {
       return [];
     }
@@ -225,15 +200,15 @@ function readFinalAgents(value: unknown): WorkflowFinalAgent[] | null {
       {
         label,
         phaseIndex: typeof record.phaseIndex === "number" ? record.phaseIndex : null,
-        phaseTitle: asString(record.phaseTitle),
-        model: asString(record.model),
-        effort: asString(record.effort),
-        state: asString(record.state),
-        tokens: asFiniteNumber(record.tokens),
-        toolCalls: asFiniteNumber(record.toolCalls),
-        durationMs: asFiniteNumber(record.durationMs),
-        lastToolName: asString(record.lastToolName),
-        promptPreview: asString(record.promptPreview),
+        phaseTitle: asNonEmptyString(record.phaseTitle) ?? null,
+        model: asNonEmptyString(record.model) ?? null,
+        effort: asNonEmptyString(record.effort) ?? null,
+        state: asNonEmptyString(record.state) ?? null,
+        tokens: asFiniteNumber(record.tokens) ?? null,
+        toolCalls: asFiniteNumber(record.toolCalls) ?? null,
+        durationMs: asFiniteNumber(record.durationMs) ?? null,
+        lastToolName: asNonEmptyString(record.lastToolName) ?? null,
+        promptPreview: asNonEmptyString(record.promptPreview) ?? null,
       },
     ];
   });
@@ -245,37 +220,35 @@ function readLiveAgents(value: unknown): WorkflowLiveAgent[] | null {
     return null;
   }
   const agents = value.flatMap((entry): Array<WorkflowLiveAgent> => {
-    const record = asRecord(entry);
-    const agentId = record ? asString(record.agentId) : null;
+    const record = asObjectRecord(entry);
+    const agentId = record ? (asNonEmptyString(record.agentId) ?? null) : null;
     if (!record || !agentId) {
       return [];
     }
-    const state = asString(record.state);
+    const state = asNonEmptyString(record.state) ?? null;
     return [
       {
         agentId,
-        label: asString(record.label),
-        model: asString(record.model),
-        effort: asString(record.effort),
+        label: asNonEmptyString(record.label) ?? null,
+        model: asNonEmptyString(record.model) ?? null,
+        effort: asNonEmptyString(record.effort) ?? null,
         state: state === "running" || state === "completed" ? state : null,
-        tokens: asFiniteNumber(record.tokens),
-        toolCalls: asFiniteNumber(record.toolCalls),
+        tokens: asFiniteNumber(record.tokens) ?? null,
+        toolCalls: asFiniteNumber(record.toolCalls) ?? null,
         recentToolNames: Array.isArray(record.recentToolNames)
           ? record.recentToolNames.filter(
               (name): name is string => typeof name === "string" && name.length > 0,
             )
           : [],
-        promptPreview: asString(record.promptPreview),
-        startedAt: asString(record.startedAt),
-        lastActivityAt: asString(record.lastActivityAt),
+        promptPreview: asNonEmptyString(record.promptPreview) ?? null,
+        startedAt: asNonEmptyString(record.startedAt) ?? null,
+        lastActivityAt: asNonEmptyString(record.lastActivityAt) ?? null,
       },
     ];
   });
   return agents.length > 0 ? agents : null;
 }
 
-// Workflow progress descriptions arrive as "<phase title>: <agent label>"; a
-// description without the separator is treated as a bare label.
 function parseProgressDescription(description: string): Omit<WorkflowProgressEntry, "at"> | null {
   const separator = description.indexOf(": ");
   const phase = separator > 0 ? description.slice(0, separator).trim() : null;
@@ -287,8 +260,6 @@ function completionStatus(status: string | null): TaskSnapshot["status"] {
   return status === "failed" ? "failed" : status === "stopped" ? "stopped" : "completed";
 }
 
-// Folds the task lifecycle activities into one snapshot per task id. Later
-// activities win on status/usage; identity fields stick from task.started.
 function collectTaskSnapshots(
   activities: ReadonlyArray<OrchestrationThreadActivity>,
 ): Map<string, TaskSnapshot> {
@@ -302,8 +273,8 @@ function collectTaskSnapshots(
     ) {
       continue;
     }
-    const payload = asRecord(activity.payload);
-    const taskId = payload ? asString(payload.taskId) : null;
+    const payload = asObjectRecord(activity.payload);
+    const taskId = payload ? (asNonEmptyString(payload.taskId) ?? null) : null;
     if (!payload || !taskId) {
       continue;
     }
@@ -312,12 +283,12 @@ function collectTaskSnapshots(
       snapshots.set(taskId, {
         taskId,
         startedAt: activity.createdAt,
-        description: asString(payload.detail) ?? "Task",
-        taskType: asString(payload.taskType),
-        subagentType: asString(payload.subagentType),
-        workflowName: asString(payload.workflowName),
-        workflowTaskId: asString(payload.workflowTaskId),
-        toolUseId: asString(payload.toolUseId),
+        description: asNonEmptyString(payload.detail) ?? "Task",
+        taskType: asNonEmptyString(payload.taskType) ?? null,
+        subagentType: asNonEmptyString(payload.subagentType) ?? null,
+        workflowName: asNonEmptyString(payload.workflowName) ?? null,
+        workflowTaskId: asNonEmptyString(payload.workflowTaskId) ?? null,
+        toolUseId: asNonEmptyString(payload.toolUseId) ?? null,
         status: "running",
         totalTokens: null,
         durationMs: null,
@@ -342,15 +313,15 @@ function collectTaskSnapshots(
       const usage = readUsage(payload);
       snapshot.totalTokens = usage.totalTokens ?? snapshot.totalTokens;
       snapshot.durationMs = usage.durationMs ?? snapshot.durationMs;
-      // Poller-emitted snapshot events: their description is synthetic, not a
-      // "<phase>: <label>" progress entry.
+
       const liveAgents = readLiveAgents(payload.workflowAgents);
       if (liveAgents) {
         snapshot.liveAgents = liveAgents;
         continue;
       }
       if (snapshot.taskType === "local_workflow") {
-        const description = asString(payload.description) ?? asString(payload.detail);
+        const description =
+          asNonEmptyString(payload.description) ?? asNonEmptyString(payload.detail) ?? null;
         const entry = description ? parseProgressDescription(description) : null;
         if (entry) {
           snapshot.progress.push({ ...entry, at: activity.createdAt });
@@ -360,9 +331,9 @@ function collectTaskSnapshots(
     }
 
     if (activity.kind === "task.updated") {
-      snapshot.runId = asString(payload.workflowRunId) ?? snapshot.runId;
-      snapshot.scriptPath = asString(payload.workflowScriptPath) ?? snapshot.scriptPath;
-      const status = asString(payload.status);
+      snapshot.runId = asNonEmptyString(payload.workflowRunId) ?? snapshot.runId;
+      snapshot.scriptPath = asNonEmptyString(payload.workflowScriptPath) ?? snapshot.scriptPath;
+      const status = asNonEmptyString(payload.status) ?? null;
       if (status === "paused") {
         snapshot.status = "paused";
       } else if (status === "running" || status === "pending") {
@@ -375,7 +346,7 @@ function collectTaskSnapshots(
       continue;
     }
 
-    snapshot.status = completionStatus(asString(payload.status));
+    snapshot.status = completionStatus(asNonEmptyString(payload.status) ?? null);
     snapshot.finalAgents = readFinalAgents(payload.workflowAgents) ?? snapshot.finalAgents;
     const usage = readUsage(payload);
     snapshot.totalTokens = usage.totalTokens ?? snapshot.totalTokens;
@@ -426,8 +397,6 @@ function finalAgentStatus(
   }
 }
 
-// Duration for settled live snapshots; running rows return null so the card's
-// ticking wall clock takes over.
 function liveDurationMs(agent: WorkflowLiveAgent | null | undefined): number | null {
   if (!agent || agent.state !== "completed" || !agent.startedAt || !agent.lastActivityAt) {
     return null;
@@ -437,8 +406,6 @@ function liveDurationMs(agent: WorkflowLiveAgent | null | undefined): number | n
   return Number.isNaN(startedMs) || Number.isNaN(lastMs) ? null : Math.max(0, lastMs - startedMs);
 }
 
-// Wall-clock fallback used by the card's ticking labels when usage has not
-// reported a duration yet (or the row is still live).
 export function workflowElapsedMs(
   row: Pick<WorkflowAgentRow, "durationMs" | "statusKind" | "startedAt">,
   nowMs: number,
@@ -455,14 +422,12 @@ const OTHER_PHASE_TITLE = "Other";
 export function deriveWorkflowRunState(input: {
   activities: ReadonlyArray<OrchestrationThreadActivity>;
   subagentThreadsByToolUseId?: ReadonlyMap<string, WorkflowSubagentThreadRef>;
-  // Transient client flags keyed by workflow task id (not persisted server-side).
+
   pausedByUserTaskIds?: ReadonlySet<string>;
   dismissedTaskIds?: ReadonlySet<string>;
 }): WorkflowRunState | null {
   const snapshots = collectTaskSnapshots(input.activities);
 
-  // The panel tracks the latest workflow run. Settled runs stay visible while
-  // they can still be resumed (or were paused by the user) until dismissed.
   const workflow = [...snapshots.values()].findLast(
     (snapshot) => snapshot.taskType === "local_workflow",
   );
@@ -477,8 +442,6 @@ export function deriveWorkflowRunState(input: {
     return null;
   }
 
-  // Script-parsed label -> planned opts; a fallback for phase placement and the
-  // only source for planned model/effort before live data arrives.
   const planForLabel = (label: string): WorkflowAgentPlanEntry | null => {
     const plans = workflow.agentPlans;
     if (!plans) {
@@ -493,8 +456,6 @@ export function deriveWorkflowRunState(input: {
     return match ? match[1] : null;
   };
 
-  // Script-parsed label -> phase pairs; only a fallback for placing rows when
-  // live progress carries no phase.
   const phaseForLabel = (label: string): string | null => {
     const planned = planForLabel(label)?.phase;
     if (planned) {
@@ -514,8 +475,6 @@ export function deriveWorkflowRunState(input: {
     return match ? match[1] : null;
   };
 
-  // Progress phase titles are normalized onto the meta phase list so casing
-  // differences cannot split a phase into two rail entries.
   const canonicalPhase = (phase: string | null): string | null => {
     if (phase === null) {
       return null;
@@ -524,11 +483,6 @@ export function deriveWorkflowRunState(input: {
     return workflow.phases?.find((entry) => entry.title.toLowerCase() === lower)?.title ?? phase;
   };
 
-  // Member-task rows: plain background tasks tagged onto the run. Workflow
-  // agents themselves emit no task events, so these are usually empty.
-  // Ambient shell tasks (every Bash call surfaces as a local_bash task) are
-  // not agents, and Task-tool subagents already render in the subagent strip;
-  // drop both here too so already-persisted runs render clean.
   const memberSnapshots = [...snapshots.values()].filter(
     (snapshot) =>
       snapshot.workflowTaskId === workflow.taskId &&
@@ -568,8 +522,6 @@ export function deriveWorkflowRunState(input: {
     };
   });
 
-  // Progress rows: one per distinct label from the workflow's own progress
-  // events; the latest entry decides the run's current phase.
   const progressByLabel = new Map<string, { phase: string | null; firstAt: string }>();
   for (const entry of workflow.progress) {
     const existing = progressByLabel.get(entry.label);
@@ -586,9 +538,7 @@ export function deriveWorkflowRunState(input: {
   const finalAgentPhase = (agent: WorkflowFinalAgent): string | null =>
     canonicalPhase(agent.phaseTitle) ??
     (agent.phaseIndex !== null ? (workflow.phases?.[agent.phaseIndex - 1]?.title ?? null) : null);
-  // Live snapshots join by label when the server zipped one on; unlabeled
-  // snapshots fall back to first-seen order (progress labels arrive in agent
-  // start order, the same order journal starts are recorded in).
+
   const liveAgents = workflow.liveAgents ?? [];
   const liveByLabel = new Map(
     liveAgents.flatMap(
@@ -656,8 +606,6 @@ export function deriveWorkflowRunState(input: {
       };
     });
 
-  // Settled runs backfill agents the live stream never mentioned (e.g. a phase
-  // that finished between progress ticks) from the final progress file.
   const seenLabels = new Set(
     [...progressRows, ...memberRows].map((row) => row.description.toLowerCase()),
   );
@@ -692,9 +640,6 @@ export function deriveWorkflowRunState(input: {
         })
     : [];
 
-  // Live rows: transcript-poller snapshots for agents the progress stream never
-  // named (or before their first progress event lands). Hidden once settled --
-  // the final progress file is authoritative then.
   const liveOnlyRows = settled
     ? []
     : liveAgents
@@ -733,17 +678,12 @@ export function deriveWorkflowRunState(input: {
 
   const agents = [...memberRows, ...progressRows, ...backfilledRows, ...liveOnlyRows];
 
-  // Once any phase information exists, unplaced rows land in a trailing "Other"
-  // bucket; with none at all every phase stays null and the flat phase-less
-  // rendering is preserved.
   if (workflow.phases !== null || agents.some((row) => row.phase !== null)) {
     for (const row of agents) {
       row.phase ??= OTHER_PHASE_TITLE;
     }
   }
 
-  // Phase rail: meta phases in declared order, then phases only seen live, with
-  // the "Other" bucket trailing.
   const orderedPhases: Array<{ title: string; detail: string | null }> = [
     ...(workflow.phases ?? []),
   ];

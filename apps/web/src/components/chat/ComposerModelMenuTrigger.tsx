@@ -1,10 +1,4 @@
-// FILE: ComposerModelMenuTrigger.tsx
-// Purpose: The composer footer's "provider icon · model · effort" menu trigger, shared by
-//   every picker that opens from it so label degradation and the shortcut tooltip stay identical.
-// Layer: Chat composer presentation
-// Depends on: menu/tooltip primitives, provider icons, and composer picker text tokens.
-
-import type { ProviderKind } from "@glade/contracts";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { useState } from "react";
 
 import { ChevronDownIcon, FastModeIcon, SettingsIcon } from "~/lib/icons";
@@ -20,8 +14,6 @@ import {
 } from "./composerPickerStyles";
 import { getProviderIconClassName } from "./ProviderModelPicker";
 
-// Must render inside a `Menu`. `hideModelLabel` / `hideStatusLabel` are the narrow-composer
-// degradation steps: the text moves to title/sr-only so assistive tech keeps it.
 export function ComposerModelMenuTrigger(props: {
   provider: ProviderKind;
   modelLabel: string;
@@ -31,18 +23,16 @@ export function ComposerModelMenuTrigger(props: {
   hideStatusLabel?: boolean | undefined;
   disabled?: boolean | undefined;
   isMenuOpen: boolean;
-  /** Laid over the model/effort text while the menu is open. The text underneath stays in
-   *  place, invisible and frozen at its open-time value, so it keeps sizing the pill:
-   *  tuning effort in the open panel cannot resize the trigger and drag the popup sideways. */
+
   openPlaceholderLabel?: string | null | undefined;
   shortcutLabel?: string | null | undefined;
 }) {
   const freezesLabel = props.isMenuOpen && Boolean(props.openPlaceholderLabel);
-  // A compact (icon-only) trigger has no room for the placeholder; it only freezes.
+
   const showsPlaceholder = freezesLabel && !props.hideModelLabel;
-  // Opening must not move the trigger at all: Base UI opens on mousedown and cancels the
-  // open when the matching mouseup lands outside the trigger, so a resize under the cursor
-  // eats the first click.
+  // Opening must not move the trigger at all: Base UI opens on mousedown and cancels the open when
+  // the matching mouseup lands outside the trigger, so a resize under the cursor eats the first
+  // click.
   const liveLabel = {
     modelLabel: props.modelLabel,
     statusLabel: props.statusLabel,
@@ -52,7 +42,7 @@ export function ComposerModelMenuTrigger(props: {
   if (freezesLabel && frozenLabel === null) setFrozenLabel(liveLabel);
   if (!freezesLabel && frozenLabel !== null) setFrozenLabel(null);
   const label = freezesLabel && frozenLabel !== null ? frozenLabel : liveLabel;
-  // The label only plays its entry once it has actually been covered, never on mount.
+
   const [hasShownPlaceholder, setHasShownPlaceholder] = useState(false);
   if (showsPlaceholder && !hasShownPlaceholder) setHasShownPlaceholder(true);
   const ProviderIcon = PROVIDER_ICON_COMPONENT_BY_PROVIDER[props.provider];
@@ -93,7 +83,6 @@ export function ComposerModelMenuTrigger(props: {
           <ProviderIcon
             aria-hidden="true"
             className={cn(
-              // opacity-100 opts out of the Button base's [&_svg]:opacity-80 dimming.
               "size-3.5 shrink-0 opacity-100",
               getProviderIconClassName(props.provider, "text-[var(--color-text-foreground)]"),
             )}

@@ -1,10 +1,4 @@
-// FILE: ProviderConnectTerminal.tsx
-// Purpose: Inline terminal that runs a provider's sign-in command inside the welcome tour.
-//          Uses a synthetic thread scope so nothing leaks into real thread terminal state,
-//          and disposes every session on unmount.
-// Layer: Web UI component
-
-import type { ProviderKind } from "@glade/contracts";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { useEffect, useRef } from "react";
 
 import ThreadTerminalDrawer from "~/components/ThreadTerminalDrawer";
@@ -96,7 +90,11 @@ export function ProviderConnectTerminal(props: {
         onNewTerminalTab={terminal.createTerminalTab}
         onMoveTerminalToGroup={terminal.moveTerminalToNewGroup}
         onActiveTerminalChange={terminal.activateTerminal}
-        onCloseTerminal={terminal.closeTerminal}
+        onCloseTerminal={(...args: Parameters<typeof terminal.closeTerminal>) => {
+          void terminal
+            .closeTerminal(...args)
+            .catch((error: unknown) => console.error("[terminal] Could not close terminal", error));
+        }}
         onTerminalSessionExited={terminal.handleTerminalSessionExited}
         onCloseTerminalGroup={terminal.closeTerminalGroup}
         onHeightChange={terminal.setTerminalHeight}

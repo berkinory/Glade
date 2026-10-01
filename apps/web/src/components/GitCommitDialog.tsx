@@ -1,10 +1,3 @@
-// FILE: GitCommitDialog.tsx
-// Purpose: Render the Commit dialog: branch summary, commit message, a compact
-//          file selection with diff stats, and the shared git action rows
-//          (commit on new branch / commit / commit & push / create PR).
-// Layer: Header action control
-// Depends on: GitActionsControl.logic resolvers and the shared git dialog chrome.
-
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
@@ -31,7 +24,7 @@ export interface GitCommitDialogSubmission {
   action: GitCommitDialogAction["action"];
   featureBranch: boolean;
   message: string | null;
-  /** null commits every changed file; otherwise only the listed paths. */
+  // null commits every changed file; otherwise only the listed paths.
   filePaths: string[] | null;
 }
 
@@ -75,7 +68,7 @@ export function GitCommitDialog({
   );
   const allSelected = excludedFiles.size === 0;
   const noneSelected = selectedFiles.length === 0;
-  // With nothing to select the file gate is vacuous — a pure push must stay runnable.
+
   const hasFileSelection = allFiles.length === 0 || !noneSelected;
 
   const actions = useMemo(
@@ -220,7 +213,7 @@ function ChangedFileRow({
   return (
     <div className="flex w-full items-center gap-2 rounded-md px-2 py-1 font-mono text-ui leading-snug transition-colors hover:bg-[var(--color-background-button-secondary-hover)]">
       {selectable ? <Checkbox checked={!excluded} onCheckedChange={onToggle} /> : null}
-      {/* Raw <button> intentionally — list-row click target, not a shadcn Button. */}
+      {}
       <button
         type="button"
         className="group flex flex-1 items-center justify-between gap-3 truncate text-left"

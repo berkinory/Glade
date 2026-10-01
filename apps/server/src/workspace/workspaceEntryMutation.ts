@@ -1,7 +1,10 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 
-import type { ProjectManageEntryInput, ProjectManageEntryResult } from "@glade/contracts";
+import type {
+  ProjectManageEntryInput,
+  ProjectManageEntryResult,
+} from "@glade/contracts/workspace/project";
 
 import { resolveRealPathWithinRoot } from "./realPathContainment";
 

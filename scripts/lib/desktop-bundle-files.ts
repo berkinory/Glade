@@ -1,13 +1,7 @@
-// FILE: desktop-bundle-files.ts
-// Purpose: Exclude non-runtime files from desktop artifacts without changing the staged install.
-// Layer: Release/build helper
-
 const DIAGNOSTIC_FILES = [
   "!node_modules/**/*.{js,mjs,cjs,ts,mts,cts}.map",
   "!node_modules/**/*.{d.mts,d.cts,tsbuildinfo}",
-  // These packages execute their compiled JS exports. Keep arbitrary dependency
-  // sources: extension loaders and native helpers can legitimately need them.
-  // Remove only TypeScript, retaining vendored licenses and other source assets.
+
   "!node_modules/effect/src/**/*.ts",
   "!node_modules/@effect/{platform-node,platform-node-shared,sql-sqlite-bun}/src/**/*.ts",
   "!node_modules/openai/src/**/*.ts",
@@ -27,28 +21,23 @@ export function createDesktopBundleFilePatterns(
   const files = ["**/*"];
   if (!options.diagnostics) files.push(...DIAGNOSTIC_FILES);
 
-  // Glade passes a system Claude executable to the SDK, so its optional native
-  // CLI packages are never invoked from the packaged app.
   files.push(
     "!node_modules/@anthropic-ai/claude-agent-sdk-darwin-*/**",
     "!node_modules/@anthropic-ai/claude-agent-sdk-linux-*/**",
     "!node_modules/@anthropic-ai/claude-agent-sdk-win32-*/**",
   );
 
-  // node-pty is rebuilt before packaging. Its platform prebuilds are not
-  // interchangeable.
   if (platform !== "mac") files.push("!node_modules/node-pty/prebuilds/darwin-*/**");
   if (platform !== "win") files.push("!node_modules/node-pty/prebuilds/win32-*/**");
   files.push("!node_modules/node-pty/lib/*.test.js");
-  // MSVC leaves incremental-link inputs and build logs next to the rebuilt
-  // addon. These are build products, not DLLs, executables, or native addons.
+
   files.push(
     "!node_modules/node-pty/build/**/*.{iobj,ipdb,tlog,vcxproj,filters,recipe,lastbuildstate,exp,lib}",
   );
 
-  // All icon preferences for the target OS and the menu fallback remain intact.
-  // Build resources (signing entitlements / installer icons) are left untouched;
-  // only their otherwise redundant runtime copies are filtered here.
+  // All icon preferences for the target OS and the menu fallback remain intact. Build resources
+  // (signing entitlements / installer icons) are left untouched; only their otherwise redundant
+  // runtime copies are filtered here.
   const resources = "!apps/desktop/prod-resources/";
   files.push(`${resources}entitlements.mac*.plist`);
   if (platform !== "mac") {

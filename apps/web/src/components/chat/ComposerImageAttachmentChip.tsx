@@ -1,9 +1,4 @@
-// FILE: ComposerImageAttachmentChip.tsx
-// Purpose: Renders removable image attachment previews.
-// Layer: Chat composer presentation
-// Depends on: composer draft image metadata, shared chip styles, and expanded image preview helpers.
-
-import { type ComposerImageAttachment } from "../../composerDraftStore";
+import type { ComposerImageAttachment } from "../../composerDraftDomain";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { AttachmentRemoveButton } from "./AttachmentRemoveButton";
 import {

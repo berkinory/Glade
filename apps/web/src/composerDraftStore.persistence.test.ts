@@ -1,10 +1,9 @@
-import { OrchestrationProposedPlanId, ProjectId, ThreadId } from "@glade/contracts";
+import { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { partializeComposerDraftStoreState, useComposerDraftStore } from "./composerDraftStore";
-import {
-  normalizeCurrentPersistedComposerDraftStoreState,
-  toHydratedThreadDraft,
-} from "./composerDraftPersistence";
+import { partializeComposerDraftStoreState } from "./composerDraftPersistence.serialization";
+import { useComposerDraftStore } from "./composerDraftStore";
+import { normalizeCurrentPersistedComposerDraftStoreState } from "./composerDraftPersistence.serialization";
+import { toHydratedThreadDraft } from "./composerDraftPersistence.hydration";
 import {
   makeImage,
   makeQueuedChatTurn,
@@ -168,7 +167,6 @@ describe("composerDraftStore persisted-state hydration", () => {
     expect(hydrated.draftThreadsByThreadId[threadId]).toMatchObject({
       projectId,
       runtimeMode: "full-access",
-      interactionMode: "default",
     });
     expect(hydrated.draftsByThreadId[threadId]?.assistantSelections).toEqual([
       {
@@ -226,7 +224,7 @@ describe("composerDraftStore persisted-state hydration", () => {
           projectId,
           createdAt: "2026-07-25T00:00:00.000Z",
           runtimeMode: "auto",
-          interactionMode: "default",
+
           branch: null,
           worktreePath: null,
           workingDirectory: null,
@@ -238,46 +236,6 @@ describe("composerDraftStore persisted-state hydration", () => {
 
     expect(hydrated.draftsByThreadId[threadId]?.runtimeMode).toBe("auto");
     expect(hydrated.draftThreadsByThreadId[threadId]?.runtimeMode).toBe("auto");
-  });
-
-  it("preserves a staged goal in draft-thread state during hydration and drops blank ones", () => {
-    const projectId = ProjectId.makeUnsafe("project-goal");
-    const threadId = ThreadId.makeUnsafe("thread-goal");
-    const blankGoalThreadId = ThreadId.makeUnsafe("thread-goal-blank");
-
-    const hydrated = normalizeCurrentPersistedComposerDraftStoreState({
-      draftsByThreadId: {},
-      draftThreadsByThreadId: {
-        [threadId]: {
-          projectId,
-          createdAt: "2026-08-13T00:00:00.000Z",
-          runtimeMode: "full-access",
-          interactionMode: "default",
-          branch: null,
-          worktreePath: null,
-          workingDirectory: null,
-          envMode: "local",
-          goal: "clean the directory and build a snake game",
-        },
-        [blankGoalThreadId]: {
-          projectId,
-          createdAt: "2026-08-13T00:00:00.000Z",
-          runtimeMode: "full-access",
-          interactionMode: "default",
-          branch: null,
-          worktreePath: null,
-          workingDirectory: null,
-          envMode: "local",
-          goal: "   ",
-        },
-      },
-      projectDraftThreadIdByProjectId: {},
-    });
-
-    expect(hydrated.draftThreadsByThreadId[threadId]?.goal).toBe(
-      "clean the directory and build a snake game",
-    );
-    expect(hydrated.draftThreadsByThreadId[blankGoalThreadId]?.goal).toBeUndefined();
   });
 
   it("keeps legacy temporary chat drafts as ordinary drafts", () => {
@@ -292,7 +250,7 @@ describe("composerDraftStore persisted-state hydration", () => {
           projectId,
           createdAt: "2026-08-13T00:00:00.000Z",
           runtimeMode: "full-access",
-          interactionMode: "default",
+
           branch: null,
           worktreePath: null,
           workingDirectory: null,
@@ -306,62 +264,6 @@ describe("composerDraftStore persisted-state hydration", () => {
     expect(hydrated.projectDraftThreadIdByProjectId[projectId]).toBe(threadId);
     expect(hydrated.draftThreadsByThreadId[threadId]?.projectId).toBe(projectId);
     expect(hydrated.draftsByThreadId[threadId]?.prompt).toBe("Keep this unsent message");
-    expect(hydrated.draftThreadsByThreadId[threadId]).not.toHaveProperty("isTemporary");
-  });
-});
-
-describe("composerDraftStore restored source proposed plan", () => {
-  const threadId = ThreadId.makeUnsafe("thread-restored-source");
-
-  beforeEach(() => {
-    resetComposerDraftStore();
-  });
-
-  it("persists restored plan source metadata with composer drafts", () => {
-    const restoredSource = {
-      threadId,
-      restoredPrompt: "Implement the accepted plan",
-      sourceProposedPlan: {
-        threadId,
-        planId: OrchestrationProposedPlanId.makeUnsafe("plan-restored-source"),
-      },
-    };
-    const store = useComposerDraftStore.getState();
-
-    store.setPrompt(threadId, restoredSource.restoredPrompt);
-    store.setRestoredSourceProposedPlan(threadId, restoredSource);
-
-    const persistApi = useComposerDraftStore.persist as unknown as {
-      getOptions: () => {
-        partialize: (state: ReturnType<typeof useComposerDraftStore.getState>) => unknown;
-        merge: (
-          persistedState: unknown,
-          currentState: ReturnType<typeof useComposerDraftStore.getState>,
-        ) => ReturnType<typeof useComposerDraftStore.getState>;
-      };
-    };
-    const persistedState = partializeComposerDraftStoreState(
-      useComposerDraftStore.getState(),
-    ) as unknown as {
-      draftsByThreadId?: Record<
-        string,
-        {
-          restoredSourceProposedPlan?: unknown;
-        }
-      >;
-    };
-
-    expect(persistedState.draftsByThreadId?.[threadId]?.restoredSourceProposedPlan).toEqual(
-      restoredSource,
-    );
-
-    const mergedState = persistApi
-      .getOptions()
-      .merge(persistedState, useComposerDraftStore.getInitialState());
-
-    expect(mergedState.draftsByThreadId[threadId]?.restoredSourceProposedPlan).toEqual(
-      restoredSource,
-    );
   });
 });
 
@@ -708,7 +610,6 @@ describe("composerDraftStore queued follow-ups", () => {
     }
     store.enqueueQueuedTurn(threadId, {
       ...queuedChatTurn,
-      interactionMode: "debug",
     });
 
     const persistApi = useComposerDraftStore.persist as unknown as {
@@ -738,12 +639,8 @@ describe("composerDraftStore queued follow-ups", () => {
         kind: "chat",
         prompt: "queued chat prompt",
         images: [{ name: "queued.png" }],
-        sourceProposedPlan: {
-          threadId: "thread-source-plan",
-          planId: "plan-1",
-        },
+
         terminalContexts: [{ text: "git status\nOn branch main" }],
-        interactionMode: "debug",
       },
     ]);
   });
@@ -815,7 +712,6 @@ describe("createDeferredPersistStorage", () => {
 
     storage.flush();
 
-    // Serialization happens exactly once, over the latest captured state.
     expect(partialize).toHaveBeenCalledTimes(1);
     expect(partialize).toHaveBeenCalledWith({ value: 3 });
     expect(base.setItem).toHaveBeenCalledTimes(1);
@@ -833,12 +729,10 @@ describe("createDeferredPersistStorage", () => {
       partialize: (state) => ({ a: state.a }),
     });
 
-    // zustand passes the full state as value.state at runtime (no config partialize).
     const fullState: FullState = { a: 7, secret: "drop" };
     storage.setItem("key", { state: fullState, version: 5 });
     storage.flush();
 
-    // Identical to createJSONStorage(setItem)(name, JSON.stringify({ state: partialize(s), version })).
     expect(base.setItem).toHaveBeenCalledWith(
       "key",
       JSON.stringify({ state: { a: 7 }, version: 5 }),
@@ -935,9 +829,9 @@ describe("flushStorageBeforePageHide", () => {
   });
 
   it("no-ops on partial DOM stubs without listener APIs", () => {
-    // SSR-style test environments stub `window`/`document` with only the
-    // fields under test (e.g. `{ documentElement }`); wiring must not crash
-    // module evaluation of stores that call this at import time.
+    // SSR-style test environments stub `window`/`document` with only the fields under test (e.g. `{
+    // documentElement }`); wiring must not crash module evaluation of stores that call this at import
+    // time.
     expect(() =>
       flushStorageBeforePageHide(vi.fn(), {
         window: {} as unknown as NonNullable<FlushBeforePageHideEnv["window"]>,

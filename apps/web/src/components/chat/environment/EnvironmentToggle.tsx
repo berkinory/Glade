@@ -1,11 +1,3 @@
-// FILE: EnvironmentToggle.tsx
-// Purpose: The single chat-header "Environment" button that replaces the former
-//          Open-in-editor + git-actions + diff-toggle cluster. It toggles the Environment
-//          panel overlay, which is always pinned to the top-right of the chat column
-//          (with matching p-3 gutters). When the right dock is closed the overlay also
-//          reserves transcript/composer inset; when the dock is open it overlays only.
-// Layer: Chat header control
-
 import { WindowIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 
@@ -18,7 +10,6 @@ export interface EnvironmentToggleState {
   onOpenChange: (open: boolean) => void;
 }
 
-// Icon-only footprint matching the header diff toggle's collapsed (no-badge) size.
 const TOGGLE_CLASS_NAME = cn(
   CHAT_HEADER_TOGGLE_CLASS_NAME,
   "!size-7 [&_svg,&_[data-slot=central-icon]]:mx-0",

@@ -1,9 +1,5 @@
-// FILE: SidebarStatusTrailingGlyph.tsx
-// Purpose: Keep thread status glyphs identical across classic and Activity sidebar rows.
-// Layer: Sidebar UI primitive
-
 import { cn } from "~/lib/utils";
-import type { ThreadStatusPill } from "./Sidebar.logic";
+import type { ThreadStatusPill } from "./Sidebar.logic.statusTypes";
 import { ThreadRunningSpinner } from "./ThreadRunningSpinner";
 
 function SidebarUnreadCompletionGlyph({ className }: { className?: string }) {

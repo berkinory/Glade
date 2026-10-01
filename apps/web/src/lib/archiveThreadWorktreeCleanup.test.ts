@@ -1,8 +1,4 @@
-// FILE: archiveThreadWorktreeCleanup.test.ts
-// Purpose: Characterizes the opt-in worktree release that follows an accepted archive.
-// Layer: Web orchestration helper tests
-
-import { ThreadId } from "@glade/contracts";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AppState } from "../storeState";
@@ -29,7 +25,6 @@ const SIBLING_ID = ThreadId.makeUnsafe("thread-sibling");
 const WORKTREE_PATH = "/home/user/.glade/worktrees/repo/feature-a";
 const ARCHIVE_SEQUENCE = 42;
 
-// Folds single-thread fixture states together: ids concatenate, per-thread maps merge.
 function makeStateWithThreads(threads: readonly Thread[]): AppState {
   const [first, ...rest] = threads.map(makeState);
   const state = { ...first } as unknown as Record<string, unknown>;

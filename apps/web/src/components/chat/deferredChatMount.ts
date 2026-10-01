@@ -1,8 +1,3 @@
-// FILE: deferredChatMount.ts
-// Purpose: Schedules deferred chat mounting with a bounded fallback when Chromium
-//          suppresses animation frames during Electron startup/background throttling.
-// Layer: Chat surface lifecycle helper
-
 const DEFERRED_CHAT_MOUNT_FALLBACK_MS = 500;
 
 export interface DeferredChatMountScheduler {
@@ -12,11 +7,8 @@ export interface DeferredChatMountScheduler {
   clearTimeout(handle: number): void;
 }
 
-/**
- * Wait for two paints before mounting a heavy chat surface, but never leave the
- * loader visible forever when Chromium pauses animation frames. Returns a cleanup
- * function that prevents either path from committing after the caller unmounts.
- */
+// Wait for two paints before mounting a heavy chat surface, but never leave the loader visible
+// forever when Chromium pauses animation frames.
 export function scheduleDeferredChatMount(
   scheduler: DeferredChatMountScheduler,
   onReady: () => void,

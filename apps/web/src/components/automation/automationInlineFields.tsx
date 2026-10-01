@@ -1,10 +1,7 @@
-// FILE: automationInlineFields.tsx
-// Purpose: Row and inline-control primitives for the automation detail page.
-// Layer: Web components (automation)
-// Exports: DetailGroup/DetailRow/StatusValue/EditRow layout rows plus the inline
-// commit-on-change controls (select, toggle, time, commit-on-blur text input).
-
-import type { AutomationMode, AutomationWorktreeMode } from "@glade/contracts";
+import type {
+  AutomationMode,
+  AutomationWorktreeMode,
+} from "@glade/contracts/automation/automation";
 
 import { CentralIcon } from "~/lib/central-icons";
 import { useCommitDraft, useCommitDraftBlurHandlers } from "~/lib/automationInlineDraft";
@@ -65,9 +62,6 @@ export function DetailRow({
   );
 }
 
-// Read-only Status group values (Active/Next run/Last ran). The reference renders these as
-// plain right-aligned text — the status as foreground, timestamps muted — with no chip behind
-// them, so the value column stays quiet and flush to the right.
 export function StatusValue({
   tone: toneProp,
   children,
@@ -194,9 +188,6 @@ export function InlineTime({
   );
 }
 
-// Keeps free-text schedule fields editable while intermediate cron/timezone text is invalid.
-// Enter commits, Escape reverts, and an invalid draft silently reverts on blur instead of
-// sending a doomed request.
 export function InlineCommitTextInput({
   value,
   onCommit,

@@ -8,8 +8,8 @@ import {
   type SpaceJumpKeybindingCommand,
   THREAD_JUMP_KEYBINDING_COMMANDS,
   type ThreadJumpKeybindingCommand,
-} from "@glade/contracts";
-import { isKeyboardShortcutsHelpChord } from "@glade/shared/browserShortcuts";
+} from "@glade/contracts/settings/keybindings";
+import { isKeyboardShortcutsHelpChord } from "@glade/shared/browser/browserShortcuts";
 import { isMacPlatform, isWindowsPlatform } from "./lib/utils";
 
 export interface ShortcutEventLike {
@@ -70,19 +70,17 @@ function whenOr(left: KeybindingWhenNode, right: KeybindingWhenNode): Keybinding
 }
 
 const whenNotTerminalFocus = whenNot(whenIdentifier("terminalFocus"));
-// Cmd+1…9 is app navigation on macOS, including from a focused/full-width terminal.
-// On Linux/Windows `mod` is Ctrl, so keep yielding the chord to the shell and to the
-// terminal workspace's Ctrl+1/Ctrl+2 tabs while that surface is open.
+
 const whenThreadJumpAvailable = whenOr(
   whenAnd(whenNotTerminalFocus, whenNot(whenIdentifier("terminalWorkspaceOpen"))),
   whenIdentifier("isMac"),
 );
-// App-level `mod` chords (new chat/terminal/provider chat/split, copy thread id) bind to
-// `mod`, which is Cmd on macOS. xterm never forwards a Cmd-chord to the PTY, so a bare
-// `!terminalFocus` guard silently dropped these chords whenever the terminal had focus
-// — the chord did nothing instead of running the command. `|| isMac` lets them fire from
-// the terminal on macOS while still yielding the chord to the shell on Linux/Windows,
-// where `mod` is Ctrl and keys like Ctrl+N are real shell input that must pass through.
+// App-level `mod` chords (new chat/terminal/provider chat/split, copy thread id) bind to `mod`,
+// which is Cmd on macOS. xterm never forwards a Cmd-chord to the PTY, so a bare `!terminalFocus`
+// guard silently dropped these chords whenever the terminal had focus — the chord did nothing
+// instead of running the command. `|| isMac` lets them fire from the terminal on macOS while still
+// yielding the chord to the shell on Linux/Windows, where `mod` is Ctrl and keys like Ctrl+N are
+// real shell input that must pass through.
 const whenModChordAllowed = whenOr(whenNotTerminalFocus, whenIdentifier("isMac"));
 
 const DEFAULT_SHORTCUT_FALLBACKS: ResolvedKeybindingsConfig = [
@@ -131,12 +129,7 @@ const DEFAULT_SHORTCUT_FALLBACKS: ResolvedKeybindingsConfig = [
     shortcut: commandShortcut("\\"),
     whenAst: whenModChordAllowed,
   },
-  // Installed-app only (Electron / standalone PWA). Browsers reserve Ctrl+Tab and
-  // Ctrl+Shift+Tab for tab switching and won't deliver them to the page, so the
-  // recent-view switcher does not open in a normal browser tab. Uses literal Ctrl
-  // (not mod) on purpose so it stays Ctrl+Tab on macOS too, matching Arc/Helium.
-  // This intentionally ignores terminal focus; the chat route captures the chord
-  // before xterm can pass it through to the shell.
+
   {
     command: "view.recent.next",
     shortcut: commandShortcut("tab", { ctrlKey: true, modKey: false }),
@@ -175,7 +168,7 @@ const DEFAULT_SHORTCUT_FALLBACKS: ResolvedKeybindingsConfig = [
     shortcut: commandShortcut("arrowup", { altKey: true, modKey: false }),
     whenAst: whenNotTerminalFocus,
   },
-  // Cmd-only instead of mod so Ctrl+L remains available to shells on non-macOS.
+
   {
     command: "composer.focus.toggle",
     shortcut: commandShortcut("l", { metaKey: true, modKey: false }),
@@ -191,9 +184,7 @@ const DEFAULT_SHORTCUT_FALLBACKS: ResolvedKeybindingsConfig = [
     shortcut: commandShortcut("u", { shiftKey: true }),
     whenAst: whenNotTerminalFocus,
   },
-  // Cmd+Ctrl+P on macOS. On Windows/Linux the literal chord would require the
-  // Super/Windows key, which window managers routinely swallow before it reaches
-  // the app, so those platforms get Ctrl+Alt+P instead (see the sibling entry below).
+
   {
     command: "git.commitAndPush",
     shortcut: commandShortcut("p", { metaKey: true, ctrlKey: true, modKey: false }),
@@ -204,9 +195,9 @@ const DEFAULT_SHORTCUT_FALLBACKS: ResolvedKeybindingsConfig = [
     shortcut: commandShortcut("p", { ctrlKey: true, altKey: true, modKey: false }),
     whenAst: whenAnd(whenNotTerminalFocus, whenNot(whenIdentifier("isMac"))),
   },
-  // Numbered space jumps target the switcher's visual tab order (mod+alt+1 = Void).
-  // Same guard as the creation chords: Cmd+Alt never reaches the PTY on macOS, while
-  // Ctrl+Alt+digit doubles as AltGr input on Linux/Windows and must yield to terminals.
+  // Numbered space jumps target the switcher's visual tab order (mod+alt+1 = Void). Same guard as the
+  // creation chords: Cmd+Alt never reaches the PTY on macOS, while Ctrl+Alt+digit doubles as AltGr
+  // input on Linux/Windows and must yield to terminals.
   ...SPACE_JUMP_KEYBINDING_COMMANDS.map((command, index) => ({
     command,
     shortcut: commandShortcut(String(index + 1), { altKey: true }),
@@ -382,9 +373,6 @@ function resolvePlatform(options: ShortcutMatchOptions | undefined): string {
 }
 
 function resolveContext(options: ShortcutMatchOptions | undefined): ShortcutMatchContext {
-  // `isMac` is derived from the resolved platform so `when` clauses can gate on it
-  // (e.g. `whenModChordAllowed`) without every dispatch site having to thread the flag
-  // through `context`. An explicit `context.isMac` still wins via the spread below.
   return {
     terminalFocus: false,
     terminalOpen: false,
@@ -592,14 +580,11 @@ export function shortcutLabelForCommand(
   const contextProvided = resolvedOptions?.context !== undefined;
 
   if (!contextProvided) {
-    // Honor platform-gated `when` clauses (e.g. `isMac` / `!isMac`) using default
-    // focus flags so labels stay correct without a full UI context.
     const platformAware = findEffectiveShortcutForCommand(keybindings, command, { platform });
     if (platformAware) {
       return formatShortcutLabel(platformAware, platform);
     }
-    // Fall back to the last binding ignoring `when` so focus-gated chords
-    // (e.g. terminal-only) still surface a label in chrome affordances.
+
     for (let index = keybindings.length - 1; index >= 0; index -= 1) {
       const binding = keybindings[index];
       if (!binding || binding.command !== command) continue;

@@ -5,7 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { configureMacLauncher, resolveElectronPath } from "./electron-launcher.mjs";
 
-import { GLADE_DESKTOP_SMOKE_USER_DATA_ENV } from "@glade/shared/desktopIdentity";
+import { GLADE_DESKTOP_SMOKE_USER_DATA_ENV } from "@glade/shared/platform/desktopIdentity";
 import { spawnSourceDesktop } from "./source-desktop-launch.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -17,7 +17,7 @@ const environment = {
   GLADE_HOME: smokeHome,
   [GLADE_DESKTOP_SMOKE_USER_DATA_ENV]: join(smokeHome, "electron-user-data"),
 };
-// Config.url rejects an empty string; the built UI needs this variable absent.
+
 delete environment.VITE_DEV_SERVER_URL;
 delete environment.GLADE_AUTH_TOKEN;
 
@@ -45,8 +45,8 @@ child.stderr.on("data", (chunk) => {
 
 const timeout = setTimeout(() => {
   child.kill();
-  // This fresh, empty profile never starts a provider turn or desktop input.
-  // A modal startup error must not leave the unattended smoke run hanging.
+  // This fresh, empty profile never starts a provider turn or desktop input. A modal startup error
+  // must not leave the unattended smoke run hanging.
   forceExit = setTimeout(() => child.kill("SIGKILL"), 5_000);
 }, 20_000);
 

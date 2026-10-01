@@ -1,19 +1,11 @@
-// FILE: Diffs.ts
-// Purpose: Parses unified diffs into checkpoint file summaries.
-// Layer: Server checkpointing helper
-// Exports: checkpoint file parser used by capture and provider live-diff ingestion
-
-import type { OrchestrationCheckpointFile } from "@glade/contracts";
+import type { OrchestrationCheckpointFile } from "@glade/contracts/orchestration/threadEntities";
 import { Effect } from "effect";
 
-import { lazyModule } from "../lazyModule.ts";
+import { lazyModule } from "../platform/lazyModule.ts";
 
 type PierreDiffsModule = typeof import("@pierre/diffs");
 type ParsedPatches = ReturnType<PierreDiffsModule["parsePatchFiles"]>;
 
-// `@pierre/diffs` pulls in Shiki's grammar and theme tables, which costs ~38ms
-// on every server boot — including the many boots that never parse a diff. Load
-// it on first parse instead; later parses reuse the same module namespace.
 const loadPierreDiffs: () => Promise<PierreDiffsModule> = lazyModule(() => import("@pierre/diffs"));
 
 function checkpointKindFromParsedFile(
@@ -53,10 +45,8 @@ function summarizeParsedPatches(parsedPatches: ParsedPatches): OrchestrationChec
   );
 }
 
-/**
- * Effectful because the diff parser is imported lazily. A malformed patch still
- * surfaces as a defect, exactly as it did when the parser was a static import.
- */
+// Effectful because the diff parser is imported lazily. A malformed patch still surfaces as a
+// defect, exactly as it did when the parser was a static import.
 export function parseCheckpointFilesFromUnifiedDiff(
   diff: string,
 ): Effect.Effect<OrchestrationCheckpointFile[]> {

@@ -1,9 +1,8 @@
 import { Schema } from "effect";
-import { ComputerSpaceInventory } from "@glade/contracts";
+import { ComputerSpaceInventory } from "@glade/contracts/computer/computerSpaces";
 
 import { ComputerSpaceError } from "./ComputerSpaceBroker.ts";
 
-/** Decode only the native managed-display inventory; window membership is not a substitute. */
 export function cuaSpaceInventory(value: Record<string, unknown>): ComputerSpaceInventory {
   try {
     if (value.source !== "macos-managed-spaces" || !Array.isArray(value.spaces))

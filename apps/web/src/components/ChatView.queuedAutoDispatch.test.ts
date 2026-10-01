@@ -8,7 +8,7 @@ import {
   type LocalDispatchSnapshot,
   resolveQueuedComposerAutoDispatchHold,
   shouldHoldQueuedComposerAutoDispatch,
-} from "./ChatView.logic";
+} from "./ChatView.logic.dispatch";
 
 const localDispatch: LocalDispatchSnapshot = {
   startedAt: "2026-04-13T00:00:00.000Z",
@@ -30,7 +30,6 @@ const echoedUserMessage: ChatMessage = {
   streaming: false,
 };
 
-/** Idle-looking gap after `thread.message-sent` + `thread.turn-start-requested`. */
 const gapLatestTurn: Thread["latestTurn"] = {
   turnId: "turn-1" as never,
   state: "running",
@@ -38,7 +37,6 @@ const gapLatestTurn: Thread["latestTurn"] = {
   startedAt: null,
   completedAt: null,
   assistantMessageId: null,
-  sourceProposedPlan: undefined,
 };
 
 const gapSession: Thread["session"] = {

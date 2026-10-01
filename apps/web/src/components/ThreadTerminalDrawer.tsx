@@ -1,8 +1,3 @@
-// FILE: ThreadTerminalDrawer.tsx
-// Purpose: Hosts terminal workspace chrome and each xterm viewport for a thread.
-// Layer: Chat terminal workspace UI
-// Depends on: xterm addons, native terminal APIs, and terminal workspace state from ChatView.
-
 import "@xterm/xterm/css/xterm.css";
 import { SearchAddon } from "@xterm/addon-search";
 import {
@@ -12,8 +7,11 @@ import {
   Trash2,
   TriangleAlertIcon,
 } from "~/lib/icons";
-import { type ThreadId } from "@glade/contracts";
-import { type TerminalActivityState, type TerminalCliKind } from "@glade/shared/terminalThreads";
+import { type ThreadId } from "@glade/contracts/core/baseSchemas";
+import {
+  type TerminalActivityState,
+  type TerminalCliKind,
+} from "@glade/shared/threads/terminalThreads";
 import { Terminal } from "@xterm/xterm";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { type TerminalContextSelection } from "~/lib/terminalContext";
@@ -36,10 +34,8 @@ import {
   shouldHandleTerminalSelectionMouseUp,
   terminalSelectionActionDelayForClickCount,
 } from "./terminal/terminalSelectionActions";
-import {
-  buildTerminalRuntimeKey,
-  terminalRuntimeRegistry,
-} from "./terminal/terminalRuntimeRegistry";
+import { buildTerminalRuntimeKey } from "./terminal/terminalRuntimeTypes";
+import { terminalRuntimeRegistry } from "./terminal/terminalRuntimeRegistry";
 import type {
   TerminalRuntimeConfig,
   TerminalRuntimeStatus,
@@ -372,8 +368,7 @@ function TerminalViewport({
     if (!api) return;
     const requestId = ++selectionActionRequestIdRef.current;
     selectionActionOpenRef.current = true;
-    // Promise chain instead of async/try-finally: React Compiler does not yet
-    // support try/finally, and it would skip optimizing this whole component.
+
     void api.contextMenu
       .show(contextMenuItems, nextAction.position)
       .then((clicked) => {
@@ -715,37 +710,31 @@ export default function ThreadTerminalDrawer({
               layout={activeGroupLayout}
               resolvedActiveTerminalId={resolvedActiveTerminalId}
               terminalVisualIdentityById={terminalVisualIdentityById}
-              onActiveTerminalChange={onActiveTerminalChange}
-              onResizeSplit={onResizeTerminalSplit}
-              onSplitTerminalRight={
-                hasReachedSplitLimit
+              terminalActions={{
+                onActiveTerminalChange,
+                onResizeSplit: onResizeTerminalSplit,
+                onSplitTerminalRight: hasReachedSplitLimit
                   ? undefined
                   : (terminalId) => {
                       onActiveTerminalChange(terminalId);
                       onSplitTerminal();
-                    }
-              }
-              onSplitTerminalDown={
-                hasReachedSplitLimit
+                    },
+                onSplitTerminalDown: hasReachedSplitLimit
                   ? undefined
                   : (terminalId) => {
                       onActiveTerminalChange(terminalId);
                       onSplitTerminalDown();
-                    }
-              }
-              onNewTerminalTab={
-                hasReachedSplitLimit
-                  ? undefined
-                  : (terminalId) => {
-                      onNewTerminalTab(terminalId);
-                    }
-              }
-              onMoveTerminalToGroup={isWorkspaceMode ? onMoveTerminalToGroup : undefined}
-              onCloseTerminal={onCloseTerminal}
-              presentationMode={presentationMode}
-              onTogglePresentationMode={onTogglePresentationMode}
-              onTogglePanel={onTogglePanel}
-              isPanelOpen={isPanelOpen}
+                    },
+                onNewTerminalTab: hasReachedSplitLimit ? undefined : onNewTerminalTab,
+                onMoveTerminalToGroup: isWorkspaceMode ? onMoveTerminalToGroup : undefined,
+                onCloseTerminal,
+              }}
+              panelActions={{
+                presentationMode,
+                onTogglePresentationMode,
+                onTogglePanel,
+                isPanelOpen,
+              }}
               renderViewport={(terminalId, options) => (
                 <TerminalViewport
                   key={terminalId}

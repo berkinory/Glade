@@ -11,7 +11,7 @@ consistent workspace.
 | Claude Code | Your installed Claude Code runtime and authenticated account |
 | Codex       | Your installed and authenticated Codex CLI                   |
 
-Use provider settings to check installation and authentication status.
+Use provider settings to check installation and authentication status. Glade requires Codex 0.158.0 or newer and Claude Code 2.1.267 or newer. An older runtime shows Update required and cannot start a session.
 
 ## What Glade manages
 
@@ -43,6 +43,17 @@ The provider still controls:
 A provider working in its own terminal is an important prerequisite, but not a guarantee that every
 provider feature is supported through Glade.
 
+## Conversation titles and history
+
+Chat titles come from the native provider session. Before a native title exists, Glade shows a short
+version of the first user message. Renaming a chat also renames its native session; a rename made
+before the session exists is applied when the provider first supplies a title. Glade does not make
+an extra model call to generate or regenerate titles. Use `/rename <title>` to choose your own.
+
+Deleting a chat also deletes its Codex or Claude session history. Codex chats archive and unarchive
+in Codex too; Claude has no native archive operation, so archiving stays local. If native deletion
+fails, Glade still deletes the chat and records the failure in the server log without retrying it.
+
 ## Connect a provider
 
 1. **Install the official runtime.** Use the provider's official installation instructions.
@@ -58,26 +69,11 @@ provider feature is supported through Glade.
 
 ## Models and effort options
 
-Providers expose different selection models:
+The installed provider supplies model IDs, names, defaults and available options. Glade does not ship a selectable model catalog. **Provider default** leaves model selection to the runtime. Each option can inherit the provider default or keep an explicit selection, including an explicit off setting.
 
-- A fixed catalog
-- A catalog discovered from the installed runtime
-- Reasoning, effort, mode, or variant options
-- Account-dependent availability
+Claude aliases and context variants retain their native IDs. Codex reasoning effort and service tiers follow its model discovery response. Claude effort, fast mode and adaptive thinking appear only when native model metadata advertises them. Live Claude effort and speed changes no longer require a separate model-profile restart. User-written Ultrathink text is sent unchanged; Glade does not insert a prefix.
 
-Glade normalizes these choices into the composer where possible without pretending that every
-provider has identical capabilities.
-
-Claude Code may discover a model under an alias while reporting its concrete model ID separately.
-For a release newer than Glade's catalog, the picker shows the concrete ID. Agent Gateway accepts
-that ID when it resolves to one discovered non-default model; ambiguous IDs require an exact
-advertised alias.
-
-For Codex, successful model discovery determines the built-in choices, including when the returned
-catalog is empty. Models absent from that catalog are not added back from Glade's static list.
-Until discovery succeeds, Glade uses a static fallback; a failed
-refresh keeps the last successful catalog. The shared discovery cache refreshes catalogs in the
-background after its ten-minute fresh window.
+Discovery is scoped to the executable, provider home, workspace and configuration revisions. A failed refresh can retain a catalog from the same context; a saved model that has disappeared remains saved and is shown by its ID. With no usable catalog, the picker shows loading or the discovery error rather than a static fallback.
 
 The composer model picker has one tab per connected provider and a Starred tab. Starring a model
 saves it together with its current effort and speed, so one click (or `mod+1`…`mod+9` while the
@@ -110,86 +106,23 @@ The session may preserve provider-specific behavior such as:
 
 Capabilities vary. Do not assume a control available for one provider exists for all of them.
 
-### Claude Auto / 200k / 1M selection
+### Claude context and compaction
 
-The auto-compact selector chooses an override, not a measured context limit. Auto leaves the
-window to Claude Code's settings and runtime. Explicit 200k or 1M targets are applied when the
-Claude process starts. Changing this override resumes the same native conversation in a new
-process once it is idle. Model-only changes, non-max effort, thinking and fast mode retain their
-existing live controls; max effort also requires a restart.
-
-On Claude CLI 2.1.259 and 2.1.274, the SDK's live `applyFlagSettings` accepts an auto-compact
-window without updating the window used by the runtime. Glade therefore never announces that
-live setting as applied. A replacement is refused while a turn, background task, workflow,
-subagent, approval, question or send preparation is active. The existing session and event
-ownership remain intact. Finish that work and retry; the desired selection remains saved.
-Persistent TODO entries survive resume and do not by themselves block replacement.
-
-The meter uses fresh runtime reporting for its denominator and percentage. The applied target
-comes from the configuration event, including an explicit Auto state; when that history is
-unavailable, Glade does not infer a target from a threshold. Output reserves, environment
-settings and model caps can make the effective threshold differ from the target (for example,
-967k for 1M or 167k for 200k). Old usage is invalidated after a new configuration or compaction.
-The composer model button shows the observed budget after the model and effort, for example
-`Fable 5.1 High (1M)`. Auto can show `(1M)` when matching-model runtime reporting supports it;
-the tooltip still identifies Auto as the target. A pending change shows `(200k · 1M next)`.
-A new thread or missing/mismatched runtime provenance shows the explicit choice as `(1M next)`;
-an applied target with an unrecognized runtime budget is labeled `(1M target)`, not confirmed.
-No budget is inferred from the model catalog. Compact layouts retain the suffix in the button's
-title and accessible text alongside the hidden effort. Other providers are unchanged.
-See [Claude context configuration](https://code.claude.com/docs/en/model-config#context-window-and-auto-compaction).
-
-Restart/resume preserves the conversation and Glade's cache observations and counters, but
-cannot guarantee a cache hit. The existing large cold-context preflight still applies after
-resume. This behavior does not change SDK `snapshot` configuration: enabling prompt recording
-with appended system instructions can change instruction freshness on resume and needs separate
-validation.
-
-### Claude prompt caching and resumed sessions
-
-Glade uses the installed Claude Code runtime through the Agent SDK. Claude owns prompt caching,
-session restoration, and automatic compaction. Resuming a saved conversation restores its history;
-it does not restore an expired server-side cache. An unchanged prefix can still be reused after a
-process restart while its cache remains valid. Leaving a process open does not refresh that cache.
-
-The main-conversation cache policy applies to both CLI and SDK turns. The effective lifetime depends
-on the account and Claude settings; Glade does not force a lifetime or change the selected model,
-effort, or compaction threshold to reduce usage. See Anthropic's
-[prompt caching documentation](https://code.claude.com/docs/en/prompt-caching).
-
-Cache observations distinguish input outside the cache, cache reads, and cache writes. These are
-token counts, not percentages of an Anthropic subscription allowance. A likely-warm observation is
-an estimate, since changes to the model, tools, or conversation can invalidate a previously cached
-prefix. Missing information remains unknown. The adapter preserves the last observation alongside
-the native resume cursor and incorporates native resume metadata when the runtime provides it.
-
-Compare equivalent CLI, SDK, and Glade runs before attributing a cache miss to the wrapper;
-transcript file size and base64 image size are not model token counts.
-
-When Claude has more than 100,000 context tokens and available evidence indicates an expired cache,
-Glade holds the next message before delivering it to the runtime. The composer lets you continue
-with the full history, compact first when supported, or cancel that send. The held message and attachments survive reconnects and
-server restarts; cancelling keeps the message in the conversation. An unresolved request blocks
-automatic queue promotion for that task, while other tasks can continue.
-Creating a hold and marking its session ready is one atomic operation: a stop, archive, deletion,
-or rollback recorded after the original request prevents a delayed cache check from restoring it.
-
-This check also covers long pauses in an existing process and model changes on the next send.
-A warm observation for the previous model cannot bypass the review for a different requested model;
-checking does not switch the native model or overwrite its cache evidence. It uses saved observations because some
-Claude runtimes provide their resume hook only after the first prompt has been delivered. Older or
-imported sessions without timing evidence remain unknown, so a warning cannot be guaranteed for
-them. The check makes no model request to keep a cache warm or measure its state.
+Glade displays context usage reported by the active Claude runtime. If the runtime has not reported a
+usable window or token count, the meter leaves that value unknown. Claude Code owns its context
+window and automatic compaction settings, including any model variants it advertises. Glade does
+not override those settings when starting or resuming a session.
 
 The context popover offers **Compact now** when the installed runtime supports `/compact` and the
-task is idle. This uses Claude's native summarization with the current model and settings. It can
-reduce the history sent after a long pause; it also processes the existing history once, so running
-it after the cache expires can itself consume substantial usage. Automatic compaction and the
-selected context threshold remain under the existing Claude settings.
+task is idle. This sends Claude's native command with the current model and settings. It processes
+the existing conversation once, and later turns use its summary. Glade does not compact in the
+background or pause a send to ask for cache approval.
 
-**Compact, then send** keeps the held message separate from `/compact`. Glade releases it only
-after a matching native compaction boundary and successful completion. Failure or interruption
-keeps the message on hold. If delivery is uncertain, Glade does not automatically repeat the send.
+Claude Code also owns prompt caching. Resuming a conversation restores its history but does not
+restore an expired server-side cache. An unchanged prefix may still be reused while the provider's
+cache remains valid. See Anthropic's
+[prompt caching documentation](https://code.claude.com/docs/en/prompt-caching) and
+[context configuration](https://code.claude.com/docs/en/model-config#context-window-and-auto-compaction).
 
 ### Claude Artifacts, `/design` and `/slides`
 
@@ -201,6 +134,14 @@ Pro, Max, Team, or Enterprise plan, Claude Code 2.1.234 or later, and an organiz
 allows Artifacts. While Artifacts are off or unavailable, the composer marks both commands with a
 warning that explains what is missing. Published pages are hosted on claude.ai; Claude returns the
 link in its reply.
+
+## Native tools and extensions
+
+**Settings > MCP servers** shows native server status for the selected provider, workspace or active session. Supported actions include authentication, reconnect, enable/disable and scoped configuration changes. Claude enable/disable applies only to the selected session; persisted changes apply to a later session. Codex reconnect reloads its provider MCP runtime. Concurrent Codex configuration edits require a refresh rather than overwriting a newer native configuration. The managed Glade gateway cannot be removed or disabled here.
+
+**Settings > Agent plugins** separates installed plugins from plugins loaded in the selected session. Claude changes use the native CLI and reload API. The Codex plugin library retains marketplace and detail views. Native reload failures remain visible even when installation succeeded.
+
+Shared skills load through each provider's native loader. Claude uses a local skills-only plugin bridge that links the original folders, preserving bundled resources; Codex receives additional native skill roots. Skill contents are not pasted into outgoing prompts. Claude enablement controls apply to Glade sessions, with changes taking effect in a new session. The allowlist governs Skill tool invocation; it does not restrict filesystem access through other tools.
 
 ## Switching providers
 
@@ -307,12 +248,12 @@ subsequent human turns. Native control commands, reviews, and steering do not
 consume completion context.
 
 This option covers only the initial delegated run. Approval/question waits and
-provider idle alone are not completion. Goals are unsupported: if a goal was
-set during the initial run, Glade reports that limitation rather than claiming
-the goal finished at an intermediate turn. Later conversational turns do not
+provider idle alone are not completion. Later conversational turns do not
 produce further notifications. External integrations cannot opt in because
 they have no authenticated creating task.
 
 Delivery survives restart and duplicate events. An archived or deleted creator
 is not reopened; the result remains in the child and delivery is recorded as
 unavailable. Delivery is checked approximately once per second.
+
+Context compaction uses the server-side `thread.compact` command for both providers. The server rejects archived conversations, active turns, pending approvals or input, and active background tasks. Claude forwards optional instructions to native `/compact`; the pinned Codex protocol accepts only the thread identifier, so optional instructions are ignored for Codex. Completion comes from native compaction events. Current Codex runtimes emit a context-compaction item and finish its native turn; terminal turn events release the compaction guard even when the legacy `thread/compacted` notification is absent.

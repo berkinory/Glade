@@ -1,9 +1,3 @@
-// FILE: projectAppearance.ts
-// Purpose: The local look of a project in the sidebar and rail: a curated Central icon in
-//          one of a few palette colors, or an emoji. Also owns parsing of the persisted form.
-// Layer: Web lib (pure)
-// Exports: ProjectAppearance, PROJECT_ICON_OPTIONS, PROJECT_COLORS, and helpers.
-
 export const PROJECT_COLORS = [
   "red",
   "orange",
@@ -25,23 +19,19 @@ export const PROJECT_COLOR_LABELS: Record<ProjectColor, string> = {
   pink: "Pink",
 };
 
-/** CSS color for a palette entry; the tokens are theme-aware (see `--project-*` in index.css). */
 export function projectColorValue(color: ProjectColor): string {
   return `var(--project-${color})`;
 }
 
 export interface ProjectIconOption {
-  /** Central icon asset name; also the persisted value. */
   readonly name: string;
   readonly label: string;
-  /** Extra search words beyond the label. */
+
   readonly keywords: string;
 }
 
-/** The folder every project shows by default; it opens and closes with the project row. */
 export const DEFAULT_PROJECT_ICON = "folder-2";
 
-/** Icons in the order the picker offers them. */
 export const PROJECT_ICON_OPTIONS: ReadonlyArray<ProjectIconOption> = [
   { name: DEFAULT_PROJECT_ICON, label: "Folder", keywords: "default directory project" },
   { name: "dollar", label: "Money", keywords: "finance dollar budget cash" },
@@ -99,11 +89,9 @@ export type ProjectAppearance =
   | { readonly kind: "icon"; readonly icon: string; readonly color: ProjectColor | null }
   | { readonly kind: "emoji"; readonly emoji: string };
 
-// Keycaps (1️⃣, #️⃣) carry no pictographic code point, only the combining keycap U+20E3.
 const EMOJI_PATTERN = /\p{Extended_Pictographic}|\p{Regional_Indicator}|\u{20E3}/u;
 const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 
-/** The first emoji in `value`, as one grapheme (keeps skin tones, flags, and ZWJ sequences). */
 export function firstEmoji(value: string): string | null {
   for (const { segment } of graphemeSegmenter.segment(value)) {
     if (EMOJI_PATTERN.test(segment)) return segment;
@@ -111,10 +99,6 @@ export function firstEmoji(value: string): string | null {
   return null;
 }
 
-/**
- * The stored form of an appearance: `null` for the default folder in the default tone, so a
- * project that was reset leaves nothing behind in storage.
- */
 export function normalizeProjectAppearance(
   appearance: ProjectAppearance | null,
 ): ProjectAppearance | null {
@@ -134,7 +118,6 @@ export function projectAppearanceEquals(
   return projectAppearanceKey(left) === projectAppearanceKey(right);
 }
 
-/** Stable string identity, for caches keyed by what a glyph looks like. */
 export function projectAppearanceKey(appearance: ProjectAppearance | null): string {
   if (!appearance) return "default";
   return appearance.kind === "icon"
@@ -142,7 +125,6 @@ export function projectAppearanceKey(appearance: ProjectAppearance | null): stri
     : `emoji:${appearance.emoji}`;
 }
 
-/** Validates a persisted appearance; anything unknown or malformed falls back to the default. */
 export function parseProjectAppearance(value: unknown): ProjectAppearance | null {
   if (typeof value !== "object" || value === null) return null;
   const record = value as Record<string, unknown>;

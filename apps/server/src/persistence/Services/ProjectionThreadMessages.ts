@@ -1,26 +1,21 @@
-/**
- * ProjectionThreadMessageRepository - Projection repository interface for messages.
- *
- * Owns persistence operations for projected thread messages rendered in the
- * orchestration read model.
- *
- * @module ProjectionThreadMessageRepository
- */
+import { AsyncUserInput } from "@glade/contracts/orchestration/asyncUserInput";
 import {
-  AsyncUserInput,
   ChatAttachment,
-  MessageDispatchOrigin,
   OrchestrationMessageRole,
   OrchestrationMessageSource,
-  TurnDispatchMode,
+} from "@glade/contracts/orchestration/threadEntities";
+import { MessageDispatchOrigin, TurnDispatchMode } from "@glade/contracts/provider/sessionPolicy";
+import {
   MessageId,
-  ProviderMentionReference,
-  ProviderSkillReference,
   ThreadId,
   TurnId,
   IsoDateTime,
   NonNegativeInt,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
+import {
+  ProviderMentionReference,
+  ProviderSkillReference,
+} from "@glade/contracts/provider/providerDiscovery";
 import { Schema, ServiceMap } from "effect";
 import type { Effect, Option } from "effect";
 
@@ -50,7 +45,7 @@ export const ProjectionThreadMessage = Schema.Struct({
   startsNewTurn: Schema.optional(Schema.Boolean),
   isStreaming: Schema.Boolean,
   source: OrchestrationMessageSource,
-  /** Server-owned orchestration event sequence for causal ordering. */
+
   sequence: Schema.optional(NonNegativeInt),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
@@ -85,57 +80,32 @@ export const DeleteProjectionThreadMessagesInput = Schema.Struct({
 });
 export type DeleteProjectionThreadMessagesInput = typeof DeleteProjectionThreadMessagesInput.Type;
 
-/**
- * ProjectionThreadMessageRepositoryShape - Service API for projected thread messages.
- */
 export interface ProjectionThreadMessageRepositoryShape {
-  /**
-   * Insert or replace a projected thread message row.
-   *
-   * Upserts by the thread-scoped `(threadId, messageId)` identity.
-   */
   readonly upsert: (
     message: ProjectionThreadMessage,
   ) => Effect.Effect<void, ProjectionRepositoryError>;
 
-  /**
-   * Read a projected thread message by its thread-scoped identity.
-   */
   readonly getByThreadAndMessageId: (
     input: GetProjectionThreadMessageInput,
   ) => Effect.Effect<Option.Option<ProjectionThreadMessage>, ProjectionRepositoryError>;
 
-  /**
-   * List projected thread messages for a thread.
-   *
-   * Returned in ascending server-owned causal order. Legacy rows without a
-   * sequence retain their timestamp order ahead of sequenced rows.
-   */
   readonly listByThreadId: (
     input: ListProjectionThreadMessagesInput,
   ) => Effect.Effect<ReadonlyArray<ProjectionThreadMessage>, ProjectionRepositoryError>;
 
-  /** Last human send, excluding agent and automation dispatches. */
   readonly getLatestHumanMessageAt: (
     input: ListProjectionThreadMessagesInput,
   ) => Effect.Effect<string | null, ProjectionRepositoryError>;
 
-  /** Read the newest user-message timestamp used by sidebar summary state. */
   readonly getLatestUserMessageAt: (
     input: ListProjectionThreadMessagesInput,
   ) => Effect.Effect<string | null, ProjectionRepositoryError>;
 
-  /**
-   * Delete projected thread messages by thread.
-   */
   readonly deleteByThreadId: (
     input: DeleteProjectionThreadMessagesInput,
   ) => Effect.Effect<void, ProjectionRepositoryError>;
 }
 
-/**
- * ProjectionThreadMessageRepository - Service tag for message projection persistence.
- */
 export class ProjectionThreadMessageRepository extends ServiceMap.Service<
   ProjectionThreadMessageRepository,
   ProjectionThreadMessageRepositoryShape

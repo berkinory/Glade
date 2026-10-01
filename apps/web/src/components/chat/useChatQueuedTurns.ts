@@ -1,32 +1,19 @@
-import { ThreadId } from "@glade/contracts";
+import { useChatThreadContext } from "./ChatThreadContext";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { RefObject } from "react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { collapseExpandedComposerCursor, detectComposerTrigger } from "../../composer-logic";
 import { resolveComputerControlMode } from "../../computerControlMode";
-import { type QueuedComposerTurn } from "../../composerDraftStore";
+import type { QueuedComposerTurn } from "../../composerDraftDomain";
 import { cloneComposerImageAttachment } from "../../lib/composerSend";
-import {
-  armQueuedComposerSteerGate,
-  claimQueuedComposerAutoDispatch,
-  clearQueuedComposerAutoDispatchRetry,
-  clearQueuedComposerSteerGate,
-  getQueuedComposerAutoDispatchRetryDelay,
-  getQueuedComposerSteerGate,
-  isQueuedComposerAwaitingTurnStart,
-  recordQueuedComposerAutoDispatchFailure,
-  releaseQueuedComposerAutoDispatch,
-  runLockedQueuedComposerAutoDispatch,
-  tryBeginQueuedComposerAutoDispatch,
-} from "../../lib/queuedComposerDrain";
+import { queuedComposerDrain } from "../../lib/queuedComposerDrain";
 import { derivePhase } from "../../session-logic";
-import { useStore } from "../../store";
-import { getThreadFromState } from "../../threadDerivation";
 import { type ChatMessage, type Thread } from "../../types";
 import {
   resolveQueuedComposerAutoDispatchHold,
   resolveQueuedSteerGateTransition,
   type QueuedSteerGate,
-} from "../ChatView.logic";
+} from "../ChatView.logic.dispatch";
 import { useChatComposerDraft } from "./useChatComposerDraft";
 import { useChatLocalDispatch } from "./useChatLocalDispatch";
 import { useChatPendingInteractions } from "./useChatPendingInteractions";
@@ -67,18 +54,14 @@ interface ChatQueuedTurnsInput {
   updateSelectedComposerMentions: ReturnType<
     typeof useComposerReferences
   >["updateSelectedComposerMentions"];
-  setRestoredQueuedSourceProposedPlan: ReturnType<
-    typeof useChatComposerDraft
-  >["setRestoredQueuedSourceProposedPlan"];
+
   setComposerDraftModelSelection: ReturnType<
     typeof useChatComposerDraft
   >["setComposerDraftModelSelection"];
   setComposerDraftRuntimeMode: ReturnType<
     typeof useChatComposerDraft
   >["setComposerDraftRuntimeMode"];
-  setComposerDraftInteractionMode: ReturnType<
-    typeof useChatComposerDraft
-  >["setComposerDraftInteractionMode"];
+
   setComposerDraftComputerControlMode: ReturnType<
     typeof useChatComposerDraft
   >["setComposerDraftComputerControlMode"];
@@ -96,70 +79,110 @@ interface ChatQueuedTurnsInput {
   activeLatestTurn: Thread["latestTurn"];
   isConnecting: boolean;
   activePendingApproval: ReturnType<typeof useChatPendingInteractions>["activePendingApproval"];
-  hasPendingCacheReview?: boolean;
   activePendingProgress: ReturnType<typeof useChatPendingInteractions>["activePendingProgress"];
   pendingUserInputs: ReturnType<typeof useChatPendingInteractions>["pendingUserInputs"];
   sendInFlightRef: RefObject<boolean>;
   sendPreflightInFlightRef: RefObject<boolean>;
 }
 
+type ChatQueuedTurnsControllerInput = {
+  session: Pick<
+    ChatQueuedTurnsInput,
+    | "queuedComposerTurns"
+    | "activeThread"
+    | "promptRef"
+    | "clearComposerDraftContent"
+    | "setComposerDraftPrompt"
+    | "setDraftThreadContext"
+    | "addComposerImagesToDraft"
+    | "addComposerFilesToDraft"
+    | "addComposerAssistantSelectionToDraft"
+    | "addComposerDraftBrowserAnnotations"
+    | "addComposerFileCommentToDraft"
+    | "addComposerTerminalContextsToDraft"
+    | "addComposerPastedTextsToDraft"
+    | "addComposerPullRequestContextsToDraft"
+    | "setComposerDraftModelSelection"
+    | "setComposerDraftRuntimeMode"
+    | "setComposerDraftComputerControlMode"
+    | "setComposerCursor"
+    | "setComposerTrigger"
+    | "removeQueuedComposerTurnFromDraft"
+    | "insertQueuedComposerTurn"
+    | "sendInFlightRef"
+    | "sendPreflightInFlightRef"
+  >;
+  provider: Pick<
+    ChatQueuedTurnsInput,
+    | "updateSelectedComposerSkills"
+    | "updateSelectedComposerMentions"
+    | "phase"
+    | "localDispatch"
+    | "isConnecting"
+    | "activePendingApproval"
+    | "activePendingProgress"
+    | "pendingUserInputs"
+  >;
+  composer: Pick<ChatQueuedTurnsInput, "scheduleComposerFocus">;
+  turn: Pick<ChatQueuedTurnsInput, "lateComposerSendHandlersRef">;
+  workspace: Pick<ChatQueuedTurnsInput, "isLocalDraftThread" | "activeLatestTurn">;
+};
 export function useChatQueuedTurns({
-  threadId,
-  queuedComposerTurns,
-  activeThread,
-  promptRef,
-  clearComposerDraftContent,
-  setComposerDraftPrompt,
-  setDraftThreadContext,
-  addComposerImagesToDraft,
-  addComposerFilesToDraft,
-  addComposerAssistantSelectionToDraft,
-  addComposerDraftBrowserAnnotations,
-  addComposerFileCommentToDraft,
-  addComposerTerminalContextsToDraft,
-  addComposerPastedTextsToDraft,
-  addComposerPullRequestContextsToDraft,
-  updateSelectedComposerSkills,
-  updateSelectedComposerMentions,
-  setRestoredQueuedSourceProposedPlan,
-  setComposerDraftModelSelection,
-  setComposerDraftRuntimeMode,
-  setComposerDraftInteractionMode,
-  setComposerDraftComputerControlMode,
-  setComposerCursor,
-  setComposerTrigger,
-  scheduleComposerFocus,
-  removeQueuedComposerTurnFromDraft,
-  lateComposerSendHandlersRef,
-  insertQueuedComposerTurn,
-  phase,
-  localDispatch,
-  isLocalDraftThread,
-  activeLatestTurn,
-  isConnecting,
-  activePendingApproval,
-  hasPendingCacheReview: hasPendingCacheReviewInput,
-  activePendingProgress,
-  pendingUserInputs,
-  sendInFlightRef,
-  sendPreflightInFlightRef,
-}: ChatQueuedTurnsInput) {
-  const hasPendingCacheReview =
-    hasPendingCacheReviewInput === true || activeThread?.claudeCacheReview != null;
+  session,
+  provider,
+  composer,
+  turn,
+  workspace,
+}: ChatQueuedTurnsControllerInput) {
+  const { threadId } = useChatThreadContext();
+  const {
+    queuedComposerTurns,
+    activeThread,
+    promptRef,
+    clearComposerDraftContent,
+    setComposerDraftPrompt,
+    setDraftThreadContext,
+    addComposerImagesToDraft,
+    addComposerFilesToDraft,
+    addComposerAssistantSelectionToDraft,
+    addComposerDraftBrowserAnnotations,
+    addComposerFileCommentToDraft,
+    addComposerTerminalContextsToDraft,
+    addComposerPastedTextsToDraft,
+    addComposerPullRequestContextsToDraft,
+
+    setComposerDraftModelSelection,
+    setComposerDraftRuntimeMode,
+
+    setComposerDraftComputerControlMode,
+    setComposerCursor,
+    setComposerTrigger,
+    removeQueuedComposerTurnFromDraft,
+    insertQueuedComposerTurn,
+    sendInFlightRef,
+    sendPreflightInFlightRef,
+  } = session;
+  const {
+    updateSelectedComposerSkills,
+    updateSelectedComposerMentions,
+    phase,
+    localDispatch,
+    isConnecting,
+    activePendingApproval,
+    activePendingProgress,
+    pendingUserInputs,
+  } = provider;
+  const { scheduleComposerFocus } = composer;
+  const { lateComposerSendHandlersRef } = turn;
+  const { isLocalDraftThread, activeLatestTurn } = workspace;
   const queuedComposerTurnsRef = useRef<QueuedComposerTurn[]>([]);
 
   const autoDispatchingQueuedTurnRef = useRef(false);
 
-  // Holds queued-composer auto-dispatch through a non-natively-steerable
-  // provider steer's interrupt→re-dispatch gap; see
-  // resolveQueuedSteerGateTransition. Seed from the shared map so a remount
-  // during the interrupt gap still sees the gate the watcher has been holding.
-
   const [queuedSteerGate, setQueuedSteerGate] = useState<QueuedSteerGate | null>(() =>
-    getQueuedComposerSteerGate(threadId),
+    queuedComposerDrain.getQueuedComposerSteerGate(threadId),
   );
-  // Bumped to re-evaluate auto-dispatch when only non-reactive guards (refs)
-  // blocked it; nothing else re-triggers the effect once they reset.
+
   const [queuedAutoDispatchTick, setQueuedAutoDispatchTick] = useState(0);
 
   useEffect(() => {
@@ -171,10 +194,10 @@ export function useChatQueuedTurns({
   }, [autoDispatchingQueuedTurnRef, threadId]);
 
   useLayoutEffect(() => {
-    claimQueuedComposerAutoDispatch(threadId);
-    setQueuedSteerGate(getQueuedComposerSteerGate(threadId));
+    queuedComposerDrain.claimQueuedComposerAutoDispatch(threadId);
+    setQueuedSteerGate(queuedComposerDrain.getQueuedComposerSteerGate(threadId));
     return () => {
-      releaseQueuedComposerAutoDispatch(threadId);
+      queuedComposerDrain.releaseQueuedComposerAutoDispatch(threadId);
     };
   }, [setQueuedSteerGate, threadId]);
 
@@ -183,7 +206,7 @@ export function useChatQueuedTurns({
       if (!activeThread) {
         return;
       }
-      const nextPrompt = queuedTurn.kind === "chat" ? queuedTurn.prompt : queuedTurn.text;
+      const nextPrompt = queuedTurn.prompt;
       const restoredImages =
         queuedTurn.kind === "chat" ? queuedTurn.images.map(cloneComposerImageAttachment) : [];
       const restoredFiles = queuedTurn.kind === "chat" ? queuedTurn.files : [];
@@ -195,10 +218,10 @@ export function useChatQueuedTurns({
       promptRef.current = nextPrompt;
       clearComposerDraftContent(activeThread.id);
       setComposerDraftPrompt(activeThread.id, nextPrompt);
-      // Editing a queued turn should recreate the same draft state the user queued.
+
       setDraftThreadContext(activeThread.id, {
         runtimeMode: queuedTurn.runtimeMode,
-        interactionMode: queuedTurn.interactionMode,
+
         ...(queuedTurn.kind === "chat" ? { envMode: queuedTurn.envMode } : {}),
       });
       if (queuedTurn.kind === "chat") {
@@ -230,20 +253,10 @@ export function useChatQueuedTurns({
         updateSelectedComposerSkills([]);
         updateSelectedComposerMentions([]);
       }
-      setRestoredQueuedSourceProposedPlan(
-        activeThread.id,
-        queuedTurn.kind === "chat" && queuedTurn.sourceProposedPlan
-          ? {
-              threadId: activeThread.id,
-              restoredPrompt: nextPrompt,
-              sourceProposedPlan: queuedTurn.sourceProposedPlan,
-            }
-          : null,
-      );
+
       setComposerDraftModelSelection(activeThread.id, queuedTurn.modelSelection);
       setComposerDraftRuntimeMode(activeThread.id, queuedTurn.runtimeMode);
-      setComposerDraftInteractionMode(activeThread.id, queuedTurn.interactionMode);
-      // Restore the frozen switch plus its revocation generation.
+
       const restoredComputerMode = resolveComputerControlMode(
         queuedTurn.computerControlMode,
         queuedTurn.enableComputerControl,
@@ -271,8 +284,7 @@ export function useChatQueuedTurns({
       clearComposerDraftContent,
       scheduleComposerFocus,
       setDraftThreadContext,
-      setRestoredQueuedSourceProposedPlan,
-      setComposerDraftInteractionMode,
+
       setComposerDraftComputerControlMode,
       setComposerDraftModelSelection,
       setComposerDraftPrompt,
@@ -291,12 +303,6 @@ export function useChatQueuedTurns({
 
   const dispatchQueuedComposerTurn = useCallback(
     async (queuedTurn: QueuedComposerTurn, dispatchMode: "queue" | "steer"): Promise<boolean> => {
-      if (
-        hasPendingCacheReview ||
-        getThreadFromState(useStore.getState(), threadId)?.claudeCacheReview != null
-      ) {
-        return false;
-      }
       const lateSendHandlers = lateComposerSendHandlersRef.current;
       if (!lateSendHandlers) {
         return false;
@@ -304,24 +310,13 @@ export function useChatQueuedTurns({
       if (queuedTurn.kind === "chat") {
         return lateSendHandlers.send(undefined, dispatchMode, queuedTurn);
       }
-      return lateSendHandlers.submitPlanFollowUp({
-        text: queuedTurn.text,
-        interactionMode: queuedTurn.interactionMode,
-        dispatchMode,
-        queuedTurn,
-      });
+      return false;
     },
-    [hasPendingCacheReview, lateComposerSendHandlersRef, threadId],
+    [lateComposerSendHandlersRef],
   );
 
   const onSteerQueuedComposerTurn = useCallback(
     async (queuedTurn: QueuedComposerTurn) => {
-      if (
-        hasPendingCacheReview ||
-        getThreadFromState(useStore.getState(), threadId)?.claudeCacheReview != null
-      ) {
-        return;
-      }
       const previousQueue = queuedComposerTurnsRef.current;
       const queuedIndex = previousQueue.findIndex((entry) => entry.id === queuedTurn.id);
       if (queuedIndex < 0) {
@@ -330,20 +325,17 @@ export function useChatQueuedTurns({
       removeQueuedComposerTurnFromDraft(threadId, queuedTurn.id);
       const succeeded = await dispatchQueuedComposerTurn(queuedTurn, "steer");
       if (succeeded) {
-        clearQueuedComposerAutoDispatchRetry(threadId);
+        queuedComposerDrain.clearQueuedComposerAutoDispatchRetry(threadId);
         return;
       }
       insertQueuedComposerTurn(threadId, queuedTurn, queuedIndex);
-      if (getThreadFromState(useStore.getState(), threadId)?.claudeCacheReview == null) {
-        recordQueuedComposerAutoDispatchFailure(threadId, queuedTurn.id);
-      }
+      queuedComposerDrain.recordQueuedComposerAutoDispatchFailure(threadId, queuedTurn.id);
       setQueuedAutoDispatchTick((tick) => tick + 1);
     },
     [
       queuedComposerTurnsRef,
       setQueuedAutoDispatchTick,
       dispatchQueuedComposerTurn,
-      hasPendingCacheReview,
       insertQueuedComposerTurn,
       removeQueuedComposerTurnFromDraft,
       threadId,
@@ -358,8 +350,6 @@ export function useChatQueuedTurns({
     [removeQueuedComposerTurn, restoreQueuedTurnToComposer],
   );
 
-  // Advance/expire the steer gate as the session moves through the
-  // interrupt→steered-turn handoff (or fails out of it).
   const sessionErroredForSteerGate = activeThread?.session?.status === "error";
   const activeTurnIdForSteerGate = activeThread?.session?.activeTurnId ?? null;
 
@@ -376,7 +366,7 @@ export function useChatQueuedTurns({
     });
     if (transition.kind === "clear") {
       setQueuedSteerGate(null);
-      clearQueuedComposerSteerGate(threadId);
+      queuedComposerDrain.clearQueuedComposerSteerGate(threadId);
       return;
     }
     if (
@@ -385,7 +375,7 @@ export function useChatQueuedTurns({
       transition.gate.armedActiveTurnId !== queuedSteerGate.armedActiveTurnId
     ) {
       setQueuedSteerGate(transition.gate);
-      armQueuedComposerSteerGate(threadId, transition.gate);
+      queuedComposerDrain.armQueuedComposerSteerGate(threadId, transition.gate);
       return;
     }
     if (transition.expiresInMs === null) {
@@ -393,7 +383,7 @@ export function useChatQueuedTurns({
     }
     const timer = window.setTimeout(() => {
       setQueuedSteerGate(null);
-      clearQueuedComposerSteerGate(threadId);
+      queuedComposerDrain.clearQueuedComposerSteerGate(threadId);
     }, transition.expiresInMs);
     return () => window.clearTimeout(timer);
   }, [
@@ -406,21 +396,18 @@ export function useChatQueuedTurns({
   ]);
 
   useEffect(() => {
-    if (hasPendingCacheReview) {
-      clearQueuedComposerAutoDispatchRetry(threadId);
-      return;
-    }
     if (
-      isQueuedComposerAwaitingTurnStart(threadId) ||
+      queuedComposerDrain.isQueuedComposerAwaitingTurnStart(threadId) ||
       resolveQueuedComposerAutoDispatchHold({
         localDispatch,
-        // A mini-composer submission queues the first turn before the draft has a session.
+
         phase: isLocalDraftThread ? "ready" : phase,
         latestTurn: activeLatestTurn,
         session: activeThread?.session ?? null,
         messages: activeThread?.messages ?? EMPTY_MESSAGES,
         isConnecting,
-        queuedSteerGate: getQueuedComposerSteerGate(threadId) ?? queuedSteerGate,
+        queuedSteerGate:
+          queuedComposerDrain.getQueuedComposerSteerGate(threadId) ?? queuedSteerGate,
         hasPendingApproval: activePendingApproval !== null,
         hasPendingProgress: activePendingProgress !== null,
         hasPendingUserInput: pendingUserInputs.length > 0,
@@ -436,9 +423,6 @@ export function useChatQueuedTurns({
       sendInFlightRef.current ||
       sendPreflightInFlightRef.current
     ) {
-      // These guards are refs, so nothing re-triggers this effect once they
-      // reset; poll until the in-flight send settles instead of leaving the
-      // queue stuck at the end of a turn.
       const timer = window.setTimeout(() => setQueuedAutoDispatchTick((tick) => tick + 1), 250);
       return () => window.clearTimeout(timer);
     }
@@ -446,7 +430,10 @@ export function useChatQueuedTurns({
     if (!nextQueuedTurn) {
       return;
     }
-    const retryDelay = getQueuedComposerAutoDispatchRetryDelay(threadId, nextQueuedTurn.id);
+    const retryDelay = queuedComposerDrain.getQueuedComposerAutoDispatchRetryDelay(
+      threadId,
+      nextQueuedTurn.id,
+    );
     if (retryDelay === null) {
       return;
     }
@@ -457,25 +444,21 @@ export function useChatQueuedTurns({
       );
       return () => window.clearTimeout(timer);
     }
-    if (!tryBeginQueuedComposerAutoDispatch(threadId)) {
-      // The watcher already owns this thread's queue head (background drain
-      // started before this ChatView claimed). Poll until that send settles.
+    if (!queuedComposerDrain.tryBeginQueuedComposerAutoDispatch(threadId)) {
       const timer = window.setTimeout(() => setQueuedAutoDispatchTick((tick) => tick + 1), 250);
       return () => window.clearTimeout(timer);
     }
     autoDispatchingQueuedTurnRef.current = true;
-    void runLockedQueuedComposerAutoDispatch({
+    void queuedComposerDrain.runLockedQueuedComposerAutoDispatch({
       threadId,
       run: async () => {
         const succeeded = await dispatchQueuedComposerTurn(nextQueuedTurn, "queue");
         if (succeeded) {
-          clearQueuedComposerAutoDispatchRetry(threadId);
+          queuedComposerDrain.clearQueuedComposerAutoDispatchRetry(threadId);
           removeQueuedComposerTurnFromDraft(threadId, nextQueuedTurn.id);
           return;
         }
-        if (getThreadFromState(useStore.getState(), threadId)?.claudeCacheReview == null) {
-          recordQueuedComposerAutoDispatchFailure(threadId, nextQueuedTurn.id);
-        }
+        queuedComposerDrain.recordQueuedComposerAutoDispatchFailure(threadId, nextQueuedTurn.id);
         setQueuedAutoDispatchTick((tick) => tick + 1);
       },
       onSettled: () => {
@@ -494,7 +477,6 @@ export function useChatQueuedTurns({
     activeThread?.messages,
     activeThread?.session,
     dispatchQueuedComposerTurn,
-    hasPendingCacheReview,
     isConnecting,
     isLocalDraftThread,
     localDispatch,
