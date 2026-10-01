@@ -56,6 +56,8 @@ import {
   resolveDesktopWsUrlFromEnv,
 } from "./ipcValidation";
 import { registerDesktopVoiceTranscriptionHandler } from "./voiceTranscription";
+import { registerNotificationPermissionIpc } from "./notificationPermissions";
+
 interface IpcWindow {
   getMainWindow(): BrowserWindow | null;
   getDesktopWindowState: (window: BrowserWindow) => { isMaximized: boolean; isFullscreen: boolean };
@@ -471,6 +473,8 @@ export function createRegisterDesktopIpc({
         state: updates.getState(),
       } satisfies DesktopUpdateActionResult;
     });
+
+    registerNotificationPermissionIpc();
 
     ipcMain.removeHandler(DESKTOP_IPC_CHANNELS.notificationsIsSupported);
     ipcMain.handle(DESKTOP_IPC_CHANNELS.notificationsIsSupported, async () =>

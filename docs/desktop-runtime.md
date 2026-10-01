@@ -69,3 +69,17 @@ after process/platform boundary changes.
 Local startup and tests do not verify signed update installation or Windows shell
 behavior on a different operating system. Those still require the release and
 platform checks described in [the release guide](release.md).
+
+## Notification permissions
+
+The Notifications settings page reads OS authorization separately from the user's
+alert preference and refreshes it when the window regains focus. macOS uses a
+small Node-API module in the Electron process to query and request UserNotifications
+authorization for Glade's own bundle. Source launchers and desktop builds compile
+it with Xcode command-line tools and the `node-api-headers` development dependency;
+packaging rebuilds it for the target architecture and unpacks the module from ASAR.
+
+Windows reads the app's WinRT toast notification setting and links to notification
+settings when changes are needed. Linux has no portable authorization query;
+Glade reports that limitation separately from unsupported notifications. Browser
+clients use the browser permission API and direct blocked users to site settings.

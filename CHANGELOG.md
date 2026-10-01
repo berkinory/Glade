@@ -4,6 +4,8 @@
 
 ### Improved
 
+- Settings show desktop notification permissions and bring provider configuration into one place.
+
 - New chats show models instantly instead of reloading them each time.
 - Speed choices show icons for default and fast.
 - Explorer hides version control and system files and dims ignored files, with an option to hide them.

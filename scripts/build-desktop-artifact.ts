@@ -1150,6 +1150,12 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
       "computer-helper",
       stageMacComputerHelper(stageAppDir, options.arch, options.verbose),
     );
+    yield* runCommand(
+      ChildProcess.make({
+        cwd: repoRoot,
+        ...commandOutputOptions(options.verbose),
+      })`node ${path.join(repoRoot, "apps/desktop/scripts/build-notification-permissions.mjs")} ${options.arch} ${path.join(stageAppDir, "apps/desktop/native-dist/notification-permissions.node")}`,
+    );
   }
 
   yield* stageDesktopRuntimeResources(

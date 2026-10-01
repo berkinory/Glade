@@ -216,6 +216,9 @@ contextBridge.exposeInMainWorld("desktopBridge", {
     };
   },
   notifications: {
+    getPermission: () => ipcRenderer.invoke(IPC.notificationsGetPermission),
+    requestPermission: () => ipcRenderer.invoke(IPC.notificationsRequestPermission),
+    openSettings: () => ipcRenderer.invoke(IPC.notificationsOpenSettings),
     isSupported: () => ipcRenderer.invoke(IPC.notificationsIsSupported),
     show: (input) => ipcRenderer.invoke(IPC.notificationsShow, input),
   },

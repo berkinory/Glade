@@ -745,9 +745,9 @@ function SettingsRouteView() {
 
         {renderBooleanSettingRow({
           settingKey: "enableAssistantStreaming",
-          title: "Assistant output",
+          title: "Streaming",
           description: "Show token-by-token output while a response is in progress.",
-          resetLabel: "assistant output",
+          resetLabel: "streaming",
           ariaLabel: "Stream assistant messages",
         })}
 

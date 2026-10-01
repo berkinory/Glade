@@ -115,7 +115,7 @@ export function shouldShowProviderUpdateStatus(input: ProviderUpdateVisibilityIn
     : true;
 }
 
-export function getVisibleProviderUpdateStatuses(
+function getVisibleProviderUpdateStatuses(
   input: ProviderUpdateFilterInput,
 ): ServerProviderStatus[] {
   const hiddenProviderSet = new Set(input.hiddenProviders ?? []);

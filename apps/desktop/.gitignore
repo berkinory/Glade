@@ -3,3 +3,5 @@ dist-electron/
 native/computer/build/
 
 /resources/cua-driver/
+
+native-dist/

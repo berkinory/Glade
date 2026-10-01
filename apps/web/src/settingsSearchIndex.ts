@@ -220,7 +220,7 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     section: "notifications",
     title: "Desktop notifications",
     keywords:
-      "Show an OS notification when a chat or managed terminal agent finishes or needs input while the app is in the background. alerts toast",
+      "Show an OS notification when a chat or managed terminal agent finishes or needs input while the app is in the background. alerts toast permission allow denied blocked system settings",
   },
 
   {
@@ -271,9 +271,9 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
       "Choose whether messages sent during an active turn wait in the queue or steer the current run. Ctrl Cmd Enter opposite send",
   },
   {
-    id: "behavior:assistant-output",
+    id: "behavior:streaming",
     section: "behavior",
-    title: "Assistant output",
+    title: "Streaming",
     keywords: "Show token-by-token output while a response is in progress. streaming",
   },
   {
@@ -348,23 +348,11 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
       "Check Codex Claude and other provider CLIs for newer versions in the background. updates upgrade disable nags",
   },
   {
-    id: "providers:visible-providers",
+    id: "providers:configuration",
     section: "providers",
-    title: "Visible providers",
+    title: "Advanced provider configuration",
     keywords:
-      "Drag providers into your preferred picker order and hide the ones you don't use. visibility order",
-  },
-  {
-    id: "providers:provider-updates",
-    section: "providers",
-    title: "Provider updates",
-    keywords: "Update installed provider tools that Glade can safely update. upgrade cli",
-  },
-  {
-    id: "providers:installed-clis",
-    section: "providers",
-    title: "Installed CLIs",
-    keywords: "Review provider versions and update tools. binary overrides path install",
+      "Enable disable providers CLI availability setup sign-in visibility picker order versions updates tools binary overrides path install CODEX_HOME artifacts",
   },
 
   {

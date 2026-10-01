@@ -3,6 +3,7 @@ import { statSync, watch } from "node:fs";
 import { join } from "node:path";
 import waitOn from "wait-on";
 
+import { buildNotificationPermissions } from "./build-notification-permissions.mjs";
 import { buildComputerHelper } from "./build-computer-helper.mjs";
 import { configureMacLauncher, desktopDir, resolveElectronPath } from "./electron-launcher.mjs";
 import { createSourceDesktopEnvironment } from "./source-desktop-launch.mjs";
@@ -28,6 +29,7 @@ const staleComputerUseGracePeriodMs = 300;
 
 if (process.platform === "darwin") {
   buildComputerHelper({ arch: process.arch });
+  buildNotificationPermissions();
 }
 
 await waitOn({

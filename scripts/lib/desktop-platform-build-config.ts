@@ -82,7 +82,10 @@ export function createDesktopPlatformBuildConfig(
   const files = createDesktopBundleFilePatterns(input.platform, {
     diagnostics: preserveDependencyDiagnostics(process.env),
   });
-  const nativePackaging = { asarUnpack: [...NODE_PTY_ASAR_UNPACK_GLOBS], files };
+  const nativePackaging = {
+    asarUnpack: [...NODE_PTY_ASAR_UNPACK_GLOBS, "apps/desktop/native-dist/*.node"],
+    files,
+  };
 
   if (input.platform === "mac") {
     const mac = {
@@ -136,6 +139,7 @@ export function createDesktopPlatformBuildConfig(
       },
       files: [
         ...files,
+        "apps/desktop/native-dist/*.node",
         MAC_COMPUTER_HELPER_ASAR_EXCLUSION,
         "!apps/desktop/resources/cua-driver/**",
         "!apps/desktop/prod-resources/cua-driver/**",

@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react";
-
+import { useQuery } from "@tanstack/react-query";
 import type { AppSettingsBinding } from "~/appSettings";
-
-import { isElectron } from "~/env";
 import {
-  buildNotificationSettingsSupportText,
-  readBrowserNotificationPermissionState,
+  notificationPermissionText,
+  readNotificationPermission,
   requestBrowserNotificationPermission,
-} from "~/notifications/taskCompletion";
+} from "~/notifications/notificationPermission";
 
 import { SettingResetButton } from "./SettingControls";
 import { SettingsRow, SettingsSection } from "./SettingsPanelPrimitives";
@@ -23,79 +21,74 @@ export function NotificationsSettingsPanel({
   updateSettings,
   active,
 }: AppSettingsBinding & { readonly active: boolean }) {
-  const [browserNotificationPermission, setBrowserNotificationPermission] = useState(
-    readBrowserNotificationPermissionState(),
-  );
-
+  const [busy, setBusy] = useState(false);
+  const permission = useQuery({
+    queryKey: ["notification-permission"],
+    queryFn: readNotificationPermission,
+    enabled: active,
+    staleTime: 0,
+    retry: false,
+    refetchOnWindowFocus: "always",
+  });
+  const { refetch } = permission;
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      setBrowserNotificationPermission(readBrowserNotificationPermissionState());
-    }, 0);
-    return () => window.clearTimeout(timeoutId);
-  }, []);
+    if (!active) return;
+    const refresh = () => {
+      void refetch();
+    };
+    window.addEventListener("focus", refresh);
+    return () => window.removeEventListener("focus", refresh);
+  }, [active, refetch]);
+
+  async function runAction(action: () => Promise<void>) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await action();
+    } catch (error) {
+      toastManager.add({
+        type: "error",
+        title: "Notification action failed",
+        description:
+          error instanceof Error ? error.message : "Could not change notification permissions.",
+      });
+    } finally {
+      await refetch();
+      setBusy(false);
+    }
+  }
+
+  async function requestPermission() {
+    if (window.desktopBridge) {
+      await window.desktopBridge.notifications.requestPermission();
+    } else {
+      await requestBrowserNotificationPermission();
+    }
+  }
 
   async function setSystemNotificationsEnabled(nextEnabled: boolean) {
-    if (!nextEnabled) {
-      updateSettings({ enableSystemTaskCompletionNotifications: false });
-      return;
-    }
-
-    if (isElectron) {
-      updateSettings({ enableSystemTaskCompletionNotifications: true });
-      return;
-    }
-
-    const permission = await requestBrowserNotificationPermission();
-    setBrowserNotificationPermission(permission);
-
-    if (permission === "granted") {
-      updateSettings({ enableSystemTaskCompletionNotifications: true });
-      return;
-    }
-
-    updateSettings({ enableSystemTaskCompletionNotifications: false });
-    toastManager.add({
-      type: permission === "denied" ? "warning" : "error",
-      title: "Desktop notifications unavailable",
-      description: buildNotificationSettingsSupportText(permission),
-    });
+    updateSettings({ enableSystemTaskCompletionNotifications: nextEnabled });
+    if (nextEnabled && permission.data?.canRequest) await requestPermission();
   }
 
   async function sendTestNotification() {
     const title = "Activity notification";
     const body = "Notification test for chats and terminal agents.";
-
+    const current = await readNotificationPermission();
+    if (!["granted", "provisional", "unknown"].includes(current.status)) {
+      throw new Error(notificationPermissionText(current.status));
+    }
     if (window.desktopBridge) {
       const shown = await window.desktopBridge.notifications.show({ title, body, silent: false });
-      toastManager.add({
-        type: shown ? "success" : "warning",
-        title: shown ? "Test notification sent" : "Notifications unavailable",
-        description: shown
-          ? "Your operating system should show the notification."
-          : "Desktop notifications are not supported on this device.",
-      });
-      return;
+      if (!shown) throw new Error("The operating system could not display the notification.");
+    } else {
+      const notification = new Notification(title, { body, tag: "glade:test-notification" });
+      notification.addEventListener("click", () => window.focus());
     }
-
-    const permission = await requestBrowserNotificationPermission();
-    setBrowserNotificationPermission(permission);
-    if (permission !== "granted") {
-      toastManager.add({
-        type: permission === "denied" ? "warning" : "error",
-        title: "Desktop notifications unavailable",
-        description: buildNotificationSettingsSupportText(permission),
-      });
-      return;
-    }
-
-    const notification = new Notification(title, { body, tag: "glade:test-notification" });
-    notification.addEventListener("click", () => {
-      window.focus();
-    });
     toastManager.add({
       type: "success",
       title: "Test notification sent",
-      description: "Your browser should show the notification.",
+      description: "Focus or Do Not Disturb may silence alerts.",
     });
   }
 
@@ -133,7 +126,13 @@ export function NotificationsSettingsPanel({
         <SettingsRow
           title="Desktop notifications"
           description="Show an OS notification when a chat or managed terminal agent finishes or needs input while the app is in the background."
-          status={buildNotificationSettingsSupportText(browserNotificationPermission)}
+          status={
+            permission.isError
+              ? "Could not read notification permission. Retry to check again."
+              : permission.data
+                ? notificationPermissionText(permission.data.status)
+                : "Checking notification permission"
+          }
           resetAction={
             settings.enableSystemTaskCompletionNotifications !==
             defaults.enableSystemTaskCompletionNotifications ? (
@@ -150,13 +149,53 @@ export function NotificationsSettingsPanel({
           }
           control={
             <div className="flex w-full items-center gap-2 sm:w-auto sm:justify-end">
-              <Button size="xs" variant="outline" onClick={() => void sendTestNotification()}>
+              {permission.isError ? (
+                <Button size="xs" variant="outline" onClick={() => void refetch()}>
+                  Retry
+                </Button>
+              ) : null}
+              {permission.data?.canRequest ? (
+                <Button
+                  size="xs"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => void runAction(requestPermission)}
+                >
+                  Allow notifications
+                </Button>
+              ) : null}
+              {permission.data?.canOpenSettings && !permission.data.canRequest ? (
+                <Button
+                  size="xs"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() =>
+                    void runAction(async () => {
+                      await window.desktopBridge?.notifications.openSettings();
+                    })
+                  }
+                >
+                  Open system settings
+                </Button>
+              ) : null}
+              <Button
+                size="xs"
+                variant="outline"
+                disabled={
+                  busy ||
+                  permission.isError ||
+                  !permission.data ||
+                  !["granted", "provisional", "unknown"].includes(permission.data.status)
+                }
+                onClick={() => void runAction(sendTestNotification)}
+              >
                 Test
               </Button>
               <Switch
                 checked={settings.enableSystemTaskCompletionNotifications}
+                disabled={busy}
                 onCheckedChange={(checked) => {
-                  void setSystemNotificationsEnabled(Boolean(checked));
+                  void runAction(() => setSystemNotificationsEnabled(Boolean(checked)));
                 }}
                 aria-label="Desktop activity notifications"
               />

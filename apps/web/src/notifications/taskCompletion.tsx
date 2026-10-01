@@ -1,10 +1,10 @@
+import { readBrowserNotificationPermissionState } from "./notificationPermission";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useMemo, useEffect, useRef, useState } from "react";
 import { toastManager } from "../components/ui/toast";
 import { resolveVisibleToastThreadIds } from "../components/ui/toastRouteVisibility";
 import { useAppSettings } from "../appSettings";
-import { isElectron } from "../env";
 import { useDiffRouteSearch } from "../hooks/useDiffRouteSearch";
 import { selectSplitView, useSplitViewStore } from "../splitViewStore";
 import { selectRightDockState, useRightDockStore } from "../rightDockStore";
@@ -26,39 +26,6 @@ import {
   shouldAttemptSystemTaskNotification,
   shouldShowThreadNotificationToast,
 } from "./taskCompletion.logic";
-
-export type BrowserNotificationPermissionState =
-  | NotificationPermission
-  | "unsupported"
-  | "insecure";
-
-function isBrowserNotificationSupported(): boolean {
-  return typeof window !== "undefined" && "Notification" in window;
-}
-
-export function readBrowserNotificationPermissionState(): BrowserNotificationPermissionState {
-  if (typeof window === "undefined") {
-    return "unsupported";
-  }
-  if (!isBrowserNotificationSupported()) {
-    return "unsupported";
-  }
-  if (!window.isSecureContext) {
-    return "insecure";
-  }
-  return Notification.permission;
-}
-
-export async function requestBrowserNotificationPermission(): Promise<BrowserNotificationPermissionState> {
-  const current = readBrowserNotificationPermissionState();
-  if (current === "unsupported" || current === "insecure" || current === "denied") {
-    return current;
-  }
-  if (current === "granted") {
-    return current;
-  }
-  return Notification.requestPermission();
-}
 
 function isWindowForeground(): boolean {
   if (typeof document === "undefined") {
@@ -327,24 +294,4 @@ export function TaskCompletionNotifications() {
   ]);
 
   return null;
-}
-
-export function buildNotificationSettingsSupportText(
-  permissionState: BrowserNotificationPermissionState,
-): string {
-  if (isElectron) {
-    return "Desktop app notifications use your operating system notification center.";
-  }
-  switch (permissionState) {
-    case "granted":
-      return "Browser notifications are enabled for this app.";
-    case "denied":
-      return "Browser notifications are blocked. Re-enable them in your browser site settings.";
-    case "insecure":
-      return "Browser notifications need a secure context. Localhost works; plain HTTP does not.";
-    case "unsupported":
-      return "This browser does not support desktop notifications.";
-    case "default":
-      return "Allow browser notifications to get alerts when chats or terminal agents finish or need input in the background.";
-  }
 }

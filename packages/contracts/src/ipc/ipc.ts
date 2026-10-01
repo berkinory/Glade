@@ -480,6 +480,19 @@ interface BrowserControlMethods {
   onState: (listener: (state: ThreadBrowserState) => void) => () => void;
 }
 
+export interface DesktopNotificationPermission {
+  readonly status:
+    | "granted"
+    | "denied"
+    | "not-determined"
+    | "provisional"
+    | "restricted"
+    | "unsupported"
+    | "unknown";
+  readonly canRequest: boolean;
+  readonly canOpenSettings: boolean;
+}
+
 export interface DesktopNotificationInput {
   title: string;
   body?: string;
@@ -602,6 +615,9 @@ export interface DesktopBridge {
   installUpdate: () => Promise<DesktopUpdateActionResult>;
   onUpdateState: (listener: (state: DesktopUpdateState) => void) => () => void;
   notifications: {
+    getPermission: () => Promise<DesktopNotificationPermission>;
+    requestPermission: () => Promise<DesktopNotificationPermission>;
+    openSettings: () => Promise<void>;
     isSupported: () => Promise<boolean>;
     show: (input: DesktopNotificationInput) => Promise<boolean>;
   };
