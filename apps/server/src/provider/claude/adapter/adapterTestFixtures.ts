@@ -1,3 +1,8 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { delimiter, join } from "node:path";
+
+import { afterAll, beforeAll } from "vitest";
 import { type ClaudeAdapterLiveOptions } from "./adapterConfiguration.ts";
 import { makeClaudeAdapterLive as makeClaudeAdapterLiveBase } from "../../Layers/ClaudeAdapter.ts";
 import { PROVIDER_COMPATIBILITY } from "../../core/compatibility.ts";
@@ -22,6 +27,21 @@ import {
 } from "../../../agentGateway/Services/AgentGatewayCredentials.ts";
 import { makeNativeToolCallRegistry } from "../../../agentGateway/nativeToolCalls.ts";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
+
+// Session start resolves the Claude CLI on PATH before using the injected SDK query, so a stub
+// executable keeps these tests independent of a host Claude install.
+const fakeClaudeBinDir = mkdtempSync(join(tmpdir(), "glade-claude-bin-"));
+writeFileSync(join(fakeClaudeBinDir, "claude"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+// Assigned directly rather than with vi.stubEnv, which suites reset per test with unstubAllEnvs.
+const hostPath = process.env.PATH;
+beforeAll(() => {
+  process.env.PATH = `${fakeClaudeBinDir}${delimiter}${hostPath ?? ""}`;
+});
+afterAll(() => {
+  if (hostPath === undefined) delete process.env.PATH;
+  else process.env.PATH = hostPath;
+  rmSync(fakeClaudeBinDir, { recursive: true, force: true });
+});
 
 export function makeClaudeAdapterLive(options?: ClaudeAdapterLiveOptions) {
   return makeClaudeAdapterLiveBase({
