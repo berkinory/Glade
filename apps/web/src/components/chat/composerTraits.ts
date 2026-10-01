@@ -1,3 +1,4 @@
+import { formatEffortLabel } from "@glade/shared/provider/effortLabel";
 import type { ProviderOptionDescriptor } from "@glade/contracts/provider/model";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
@@ -55,7 +56,7 @@ export function resolveComposerTraitStatusLabel(
   if (selection.effort)
     return (
       selection.effortLevels.find((option) => option.value === selection.effort)?.label ??
-      selection.effort
+      formatEffortLabel(selection.effort)
     );
   return selection.thinkingEnabled === null
     ? null

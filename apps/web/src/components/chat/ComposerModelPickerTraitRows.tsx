@@ -84,11 +84,11 @@ export function ComposerModelPickerTraitRows(props: {
     const options =
       descriptor.type === "select"
         ? [
-            { value: "__inherit__", label: "Provider default" },
+            { value: "__inherit__", label: "Default" },
             ...descriptor.options.map((option) => ({ value: option.id, label: option.label })),
           ]
         : [
-            { value: "__inherit__", label: "Provider default" },
+            { value: "__inherit__", label: "Default" },
             { value: "on", label: "On" },
             { value: "off", label: "Off" },
           ];

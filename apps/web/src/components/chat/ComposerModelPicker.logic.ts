@@ -1,3 +1,4 @@
+import { formatEffortLabel } from "@glade/shared/provider/effortLabel";
 import type { ProviderOptions } from "../../providerModelOptions";
 import type { ModelSlug } from "@glade/contracts/provider/model";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
@@ -89,7 +90,8 @@ function formatStarredTraitsLabel(
 ): string {
   const effortLabel =
     starred.effort !== null
-      ? (effortLevels.find((level) => level.value === starred.effort)?.label ?? starred.effort)
+      ? (effortLevels.find((level) => level.value === starred.effort)?.label ??
+        formatEffortLabel(starred.effort))
       : null;
   return [
     effortLabel,

@@ -1,3 +1,4 @@
+import { formatEffortLabel } from "@glade/shared/provider/effortLabel";
 import type {
   ProviderListModelsResult,
   ProviderListPluginsResult,
@@ -153,10 +154,17 @@ export function parseCodexModelListResponse(
   response: ModelListResponse,
 ): ProviderListModelsResult["models"] {
   return response.data.map((model) => {
-    const supportedReasoningEfforts = model.supportedReasoningEfforts.map((effort) => ({
-      value: effort.reasoningEffort,
-      description: effort.description,
-    }));
+    const supportedReasoningEfforts = model.supportedReasoningEfforts.map((effort) => {
+      const label =
+        "displayName" in effort && typeof effort.displayName === "string"
+          ? present(effort.displayName)
+          : undefined;
+      return {
+        value: effort.reasoningEffort,
+        ...(label ? { label } : {}),
+        description: effort.description,
+      };
+    });
     const serviceTiers = (model.serviceTiers ?? []).map((tier) => ({
       id: tier.id,
       label: tier.name,
@@ -183,7 +191,7 @@ export function parseCodexModelListResponse(
           type: "select" as const,
           options: supportedReasoningEfforts.map((effort) => ({
             id: effort.value,
-            label: effort.value,
+            label: effort.label ?? formatEffortLabel(effort.value),
             ...(present(effort.description) ? { description: effort.description } : {}),
             ...(effort.value === model.defaultReasoningEffort ? { isDefault: true as const } : {}),
           })),
@@ -192,7 +200,7 @@ export function parseCodexModelListResponse(
           ? [
               {
                 id: "serviceTier",
-                label: "Service tier",
+                label: "Speed",
                 type: "select" as const,
                 options: serviceTiers,
               },

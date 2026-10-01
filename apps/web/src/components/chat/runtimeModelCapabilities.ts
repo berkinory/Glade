@@ -1,3 +1,4 @@
+import { formatEffortLabel } from "@glade/shared/provider/effortLabel";
 import { PROVIDER_DEFAULT_MODEL, type ModelCapabilities } from "@glade/contracts/provider/model";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
@@ -27,7 +28,7 @@ export function getRuntimeAwareModelCapabilities(input: {
     supportsThinkingToggle: model.supportsThinkingToggle === true,
     reasoningEffortLevels: (model.supportedReasoningEfforts ?? []).map((effort) => ({
       value: effort.value,
-      label: effort.label ?? effort.value,
+      label: effort.label ?? formatEffortLabel(effort.value),
       ...(effort.description ? { description: effort.description } : {}),
       ...(effort.value === model.defaultReasoningEffort ? { isDefault: true as const } : {}),
     })),

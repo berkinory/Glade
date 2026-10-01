@@ -1,3 +1,4 @@
+import { formatEffortLabel } from "@glade/shared/provider/effortLabel";
 import { asNonEmptyString } from "@glade/shared/text/text";
 import { asFiniteNumber } from "@glade/shared/transport/payloadValues";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
@@ -515,7 +516,7 @@ export function deriveWorkflowRunState(input: {
       threadId: threadRef ? ThreadId.makeUnsafe(threadRef.threadId) : null,
       model,
       modelLabel: formatSubagentModelLabel(model),
-      effortLabel: threadRef?.effort ?? plan?.effort ?? null,
+      effortLabel: formatEffortLabel(threadRef?.effort ?? plan?.effort ?? "") || null,
       promptPreview: null,
       recentToolNames: [],
       lastToolName: null,
@@ -599,7 +600,7 @@ export function deriveWorkflowRunState(input: {
         threadId: null,
         model,
         modelLabel: formatSubagentModelLabel(model),
-        effortLabel: effort,
+        effortLabel: effort ? formatEffortLabel(effort) : null,
         promptPreview: live?.promptPreview ?? finalAgent?.promptPreview ?? null,
         recentToolNames: live?.recentToolNames ?? [],
         lastToolName: finalAgent?.lastToolName ?? live?.recentToolNames.at(-1) ?? null,
@@ -632,7 +633,7 @@ export function deriveWorkflowRunState(input: {
             threadId: null,
             model,
             modelLabel: formatSubagentModelLabel(model),
-            effortLabel: agent.effort ?? plan?.effort ?? null,
+            effortLabel: formatEffortLabel(agent.effort ?? plan?.effort ?? "") || null,
             promptPreview: agent.promptPreview,
             recentToolNames: [],
             lastToolName: agent.lastToolName,
@@ -669,7 +670,7 @@ export function deriveWorkflowRunState(input: {
             threadId: null,
             model,
             modelLabel: formatSubagentModelLabel(model),
-            effortLabel: agent.effort ?? plan?.effort ?? null,
+            effortLabel: formatEffortLabel(agent.effort ?? plan?.effort ?? "") || null,
             promptPreview: agent.promptPreview,
             recentToolNames: agent.recentToolNames,
             lastToolName: agent.recentToolNames.at(-1) ?? null,

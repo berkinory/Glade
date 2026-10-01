@@ -143,7 +143,15 @@ const PACKAGE_MANAGED_PROVIDER_UPDATES: Partial<
     binaryName: "codex",
     npmPackageName: "@openai/codex",
     homebrew: { name: "codex", kind: "cask" },
-    nativeUpdate: null,
+    nativeUpdate: {
+      executable: "codex",
+      args: () => ["update"],
+      lockKey: "codex-native",
+      strategy: "matching-path",
+      latestVersionSource: { kind: "npm", name: "@openai/codex" },
+      isCommandPath: (commandPath) =>
+        normalizeCommandPath(commandPath).includes("/.codex/packages/standalone/"),
+    },
   },
   claudeAgent: {
     provider: CLAUDE_AGENT_PROVIDER,

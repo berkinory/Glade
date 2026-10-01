@@ -1,5 +1,16 @@
 # Glade Changelog
 
+## 0.1.1 - Unreleased
+
+### Improved
+
+- Thinking levels show readable names.
+- Model options use clearer names such as Speed and Default.
+
+### Fixed
+
+- Codex installed with its standalone installer now gets update notices and one-click updates.
+
 ## 0.1.0 - 2026-10-01
 
 ### New

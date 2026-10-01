@@ -1,3 +1,4 @@
+import { formatEffortLabel } from "@glade/shared/provider/effortLabel";
 import type { ModelInfo, PermissionMode } from "@anthropic-ai/claude-agent-sdk";
 import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import { type ProviderListModelsResult } from "@glade/contracts/provider/providerDiscovery";
@@ -51,12 +52,7 @@ export function mapClaudeModelInfo(model: ModelInfo): ProviderListModelsResult["
   const effortOptions = model.supportsEffort
     ? (model.supportedEffortLevels ?? []).map((level) => ({
         id: level,
-        label:
-          level === "xhigh"
-            ? "Extra High"
-            : level === "max"
-              ? "Max"
-              : level[0]!.toUpperCase() + level.slice(1),
+        label: formatEffortLabel(level),
       }))
     : [];
   const optionDescriptors: NonNullable<
