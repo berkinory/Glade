@@ -263,7 +263,7 @@ export function GitPanel(props: {
     );
 
   const isLoading = filesQuery.isLoading;
-  const error = filesQuery.error instanceof Error ? filesQuery.error.message : null;
+  const error = filesQuery.isError ? "Could not load changes. Refresh to try again." : null;
   const hasChanges = stagedFiles.length > 0 || unstagedFiles.length > 0;
 
   if (!cwd) {
@@ -306,6 +306,9 @@ export function GitPanel(props: {
         {error ? (
           <Alert variant="error" size="sm" className="text-destructive">
             {error}
+            <IconButton label="Retry loading changes" tooltip="Retry" onClick={refresh}>
+              <RefreshCwIcon className="size-3.5" />
+            </IconButton>
           </Alert>
         ) : null}
         {!error && isLoading && !hasChanges ? (
@@ -363,9 +366,12 @@ export function GitPanel(props: {
             <Alert variant="error" size="sm">
               This file's diff exceeds the preview limit.
             </Alert>
-          ) : selectedPatchQuery.error instanceof Error ? (
+          ) : selectedPatchQuery.isError ? (
             <Alert variant="error" size="sm">
-              {selectedPatchQuery.error.message}
+              Could not load this file’s diff. Refresh to try again.
+              <IconButton label="Retry loading diff" tooltip="Retry" onClick={refresh}>
+                <RefreshCwIcon className="size-3.5" />
+              </IconButton>
             </Alert>
           ) : selectedFileDiff ? (
             <SelectedFileDiff

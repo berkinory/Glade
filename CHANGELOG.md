@@ -15,6 +15,7 @@
 
 ### Fixed
 
+- Source Control recognizes folders without Git promptly and shows clear messages instead of raw command errors.
 - Activity keeps usage with missing historical model information without assigning it to a newer model.
 - The message input no longer briefly changes size when switching chats.
 

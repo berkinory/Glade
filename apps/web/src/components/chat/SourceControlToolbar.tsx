@@ -97,7 +97,7 @@ export function SourceControlToolbar({
   return (
     <div className="flex shrink-0 flex-col gap-1.5 border-b border-border/70 px-2 py-1.5">
       <div className="flex min-w-0 items-center gap-1">
-        <div className="min-w-0 flex-1" inert={disabled || rebasing}>
+        <div className="min-w-0" inert={disabled || rebasing}>
           <BranchToolbar
             threadId={threadId}
             onEnvModeChange={() => {}}
@@ -105,7 +105,7 @@ export function SourceControlToolbar({
             threadDetailReady
             variant="compact"
             showEnvironment={false}
-            className="!m-0 !p-0"
+            className="!m-0 !w-auto !p-0"
           />
         </div>
         {status.data?.hasUpstream ? (
@@ -135,6 +135,7 @@ export function SourceControlToolbar({
             </TooltipPopup>
           </Tooltip>
         ) : null}
+        <div className="flex-1" />
         <IconButton
           label="Fetch all remotes"
           tooltip="Fetch"
@@ -188,7 +189,6 @@ export function SourceControlToolbar({
         <button
           type="button"
           className="flex items-center gap-1 text-ui-xs text-destructive"
-          title={rebase.error.message}
           onClick={() => void rebase.refetch()}
         >
           <IconRefreshAlert className="size-3.5" /> Git operation status unavailable · Retry

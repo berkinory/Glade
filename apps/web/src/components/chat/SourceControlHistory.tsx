@@ -10,6 +10,7 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState, type MouseEvent
 
 import { AuthorAvatar } from "../AuthorAvatar";
 import { IconButton } from "../ui/icon-button";
+import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Spinner } from "../ui/spinner";
 import { toastManager } from "../ui/toast";
@@ -131,7 +132,14 @@ function CommitDetail(props: {
           <ExplorerLoadingRows depth={0} label="Loading commit files" />
         </div>
       ) : detail.isError ? (
-        <PanelStateMessage>{detail.error.message}</PanelStateMessage>
+        <PanelStateMessage>
+          <div className="flex flex-col items-center gap-2">
+            <span>Could not load commit details.</span>
+            <Button size="sm" variant="outline" onClick={() => void detail.refetch()}>
+              Retry
+            </Button>
+          </div>
+        </PanelStateMessage>
       ) : (
         <FileDiffSurface className="min-h-0 flex-1 overflow-auto px-2 pb-2">
           {detail.data.truncated ? (
@@ -406,7 +414,14 @@ export function SourceControlHistory(props: {
             <Spinner className="size-4" aria-label="Loading history" />
           </PanelStateMessage>
         ) : history.isError && commits.length === 0 ? (
-          <PanelStateMessage>{history.error.message}</PanelStateMessage>
+          <PanelStateMessage>
+            <div className="flex flex-col items-center gap-2">
+              <span>Could not load commit history.</span>
+              <Button size="sm" variant="outline" onClick={() => void history.refetch()}>
+                Retry
+              </Button>
+            </div>
+          </PanelStateMessage>
         ) : commits.length === 0 ? (
           <PanelStateMessage>
             {search ? "No matching commits." : "No commits on this branch yet."}
