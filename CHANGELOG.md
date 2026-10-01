@@ -4,6 +4,8 @@
 
 ### Improved
 
+- Speed choices show icons for default and fast.
+
 - Explorer hides version control and system files and dims ignored files, with an option to hide them.
 
 - New chats start on each provider's latest model instead of a generic default entry.
@@ -12,6 +14,9 @@
 - Animations use three consistent speeds and feel snappier.
 
 ### Fixed
+
+- The model picker no longer shifts when models finish loading.
+- The default thinking level shown for each model matches what Codex and Claude actually use.
 
 - Every thinking level a provider offers is available, including newer ones.
 - Codex installed with its standalone installer now gets update notices and one-click updates.

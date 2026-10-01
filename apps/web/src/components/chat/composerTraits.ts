@@ -70,9 +70,19 @@ export function supportsComposerFastModeControl(
 }
 
 export function showsComposerFastModeBadge(
-  selection: Pick<ComposerTraitSelection, "caps" | "fastModeDescriptor" | "fastModeEnabled">,
+  selection: Pick<
+    ComposerTraitSelection,
+    "caps" | "descriptors" | "fastModeDescriptor" | "fastModeEnabled"
+  >,
 ): boolean {
-  return supportsComposerFastModeControl(selection) && selection.fastModeEnabled;
+  return (
+    (supportsComposerFastModeControl(selection) && selection.fastModeEnabled) ||
+    selection.descriptors.some(
+      (descriptor) =>
+        descriptor.id === "serviceTier" &&
+        (descriptor.currentValue === "priority" || descriptor.currentValue === "fast"),
+    )
+  );
 }
 
 export type ComposerEffortChangePlan = {
@@ -102,4 +112,23 @@ export function resolveComposerEffortLadderIndex(
     0,
     selection.effortLevels.findIndex((option) => option.value === selection.effort),
   );
+}
+
+export function resolveComposerModelOptions(
+  options: ProviderOptions | null | undefined,
+  descriptors: ReadonlyArray<ProviderOptionDescriptor>,
+): ProviderOptions | undefined {
+  if (!options) return undefined;
+  const next = { ...options };
+  for (const id of ["effort", "reasoningEffort", "thinking", "fastMode", "serviceTier"] as const) {
+    const value = next[id as keyof ProviderOptions];
+    if (value === undefined) continue;
+    const descriptor = descriptors.find((candidate) => candidate.id === id);
+    const supported =
+      descriptor?.type === "boolean"
+        ? typeof value === "boolean"
+        : descriptor?.type === "select" && descriptor.options.some((option) => option.id === value);
+    if (!supported) delete next[id as keyof ProviderOptions];
+  }
+  return Object.keys(next).length > 0 ? next : undefined;
 }

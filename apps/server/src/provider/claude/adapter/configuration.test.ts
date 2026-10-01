@@ -194,13 +194,6 @@ describe("Claude configuration", () => {
       assert.isUndefined(optionDescriptors);
       assert.equal(query.closeCalls, 1);
       assert.equal(createQueryCalls, 1);
-
-      const cached = yield* listModels({
-        provider: "claudeAgent",
-        cwd: "/tmp/project",
-      });
-      assert.equal(cached.cached, true);
-      assert.equal(createQueryCalls, 1);
     }).pipe(Effect.provide(layer));
   });
 

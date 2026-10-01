@@ -2688,12 +2688,19 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     return result;
   }
 
-  async listModels(threadId?: string): Promise<ProviderListModelsResult> {
-    const context = await this.resolveContextForDiscovery(threadId);
-    return this.readModelCatalog(context);
+  async listModels(threadId?: string, cwd?: string): Promise<ProviderListModelsResult> {
+    const context = await this.resolveContextForDiscovery(threadId, cwd);
+    const config = await this.sendRequest<ConfigReadResponse>(context, "config/read", {
+      cwd: cwd ?? context.session.cwd ?? null,
+      includeLayers: false,
+    });
+    return this.readModelCatalog(context, config.config.model_reasoning_effort);
   }
 
-  private async readModelCatalog(context: CodexSessionContext): Promise<ProviderListModelsResult> {
+  private async readModelCatalog(
+    context: CodexSessionContext,
+    configuredEffort?: string | null,
+  ): Promise<ProviderListModelsResult> {
     const deadline = Date.now() + 20_000;
     const seenCursors = new Set<string>();
     const modelsById = new Map<string, ProviderListModelsResult["models"][number]>();
@@ -2705,7 +2712,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         { cursor, limit: 100, includeHidden: true },
         Math.max(1, deadline - Date.now()),
       );
-      for (const model of parseCodexModelListResponse(response)) {
+      for (const model of parseCodexModelListResponse(response, configuredEffort)) {
         if (!modelsById.has(model.slug)) modelsById.set(model.slug, model);
       }
       cursor = response.nextCursor;

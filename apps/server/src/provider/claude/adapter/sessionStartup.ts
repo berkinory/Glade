@@ -86,7 +86,6 @@ export function makeClaudeSessionStartup(input: {
   readonly verifyClaudeAutoModelSupport: ReturnType<
     typeof makeClaudeDiscovery
   >["verifyClaudeAutoModelSupport"];
-  readonly observeSessionModels: ReturnType<typeof makeClaudeDiscovery>["observeSessionModels"];
   readonly runSdkStream: ReturnType<typeof makeClaudeSdkStream>["runSdkStream"];
   readonly handleStreamExit: ReturnType<typeof makeClaudeSdkStream>["handleStreamExit"];
   readonly withSessionLifecycleLock: ReturnType<typeof makeKeyedLock<ThreadId>>["withLock"];
@@ -112,7 +111,6 @@ export function makeClaudeSessionStartup(input: {
     bindClaudeProcessOwner,
     createQuery,
     verifyClaudeAutoModelSupport,
-    observeSessionModels,
     runSdkStream,
     handleStreamExit,
     withSessionLifecycleLock,
@@ -361,7 +359,6 @@ export function makeClaudeSessionStartup(input: {
             operation: "startSession",
           });
         }
-        observeSessionModels(queryRuntime, initialization.models);
         const selectedModelInfo = selectedClaudeModelInfo(
           initialization.models,
           effectiveClaudeModel,

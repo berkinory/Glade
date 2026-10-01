@@ -52,6 +52,7 @@ import { COMPOSER_PICKER_MODEL_LIST_SCROLL_CLASS_NAME } from "./composerPickerSt
 import {
   getComposerTraitSelection,
   planComposerEffortChange,
+  resolveComposerModelOptions,
   resolveComposerTraitStatusLabel,
   showsComposerFastModeBadge,
 } from "./composerTraits";
@@ -255,6 +256,24 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
           query: normalizedQuery,
           selectedModel: tab === activeProvider ? props.model : null,
         });
+  const traitsProvider = tab === STARRED_TAB ? props.provider : tab;
+  const traitsModels = props.runtimeModelsByProvider?.[traitsProvider];
+  const rememberedModel =
+    traitsProvider === props.provider
+      ? props.model
+      : (draftSelectionByProvider?.[traitsProvider]?.model ??
+        stickySelectionByProvider[traitsProvider]?.model);
+  const traitsRuntimeModel =
+    resolveRuntimeModelDescriptor({
+      provider: traitsProvider,
+      model: rememberedModel,
+      runtimeModels: traitsModels,
+    }) ??
+    (traitsProvider === props.provider ? props.runtimeModel : undefined) ??
+    traitsModels?.find((model) => model.isDefault) ??
+    traitsModels?.find((model) => !model.hidden);
+  const traitsModel = traitsRuntimeModel?.slug ?? rememberedModel ?? "";
+
   const starredModelSlots = new Set(starredModels.map(starredModelSlotKey));
 
   const commitRow = (
@@ -263,17 +282,13 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
     patch: Record<string, unknown>,
     keepOpen = false,
   ) => {
-    if (Object.keys(patch).length > 0) {
-      props.onProviderModelChange(row.provider, model, {
-        modelOptions: buildNextProviderOptions(
-          row.provider,
-          providerOptionsFor(row.provider),
-          patch,
-        ),
-      });
-    } else {
-      props.onProviderModelChange(row.provider, model);
-    }
+    const selection = traitSelectionFor(row.provider, model);
+    props.onProviderModelChange(row.provider, model, {
+      modelOptions: resolveComposerModelOptions(
+        buildNextProviderOptions(row.provider, providerOptionsFor(row.provider), patch),
+        selection.descriptors,
+      ),
+    });
     if (keepOpen) {
       selectionCommittedWhileOpenRef.current = true;
       return;
@@ -472,12 +487,15 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
             )}
           </div>
           <ComposerModelPickerTraitRows
-            provider={props.provider}
+            provider={traitsProvider}
             threadId={threadId}
-            model={props.model}
-            runtimeModel={props.runtimeModel}
-            modelOptions={props.modelOptions}
-            prompt={props.prompt}
+            model={traitsModel}
+            runtimeModel={traitsRuntimeModel}
+            modelOptions={resolveComposerModelOptions(
+              providerOptionsFor(traitsProvider),
+              traitsRuntimeModel?.optionDescriptors ?? [],
+            )}
+            prompt={promptFor(traitsProvider)}
             onPromptChange={props.onPromptChange}
             effortControl={effortControl}
           />

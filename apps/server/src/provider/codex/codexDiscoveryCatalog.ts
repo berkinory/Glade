@@ -152,8 +152,10 @@ export function parseCodexPluginReadResponse(response: PluginReadResponse): Prov
 
 export function parseCodexModelListResponse(
   response: ModelListResponse,
+  configuredEffort?: string | null,
 ): ProviderListModelsResult["models"] {
   return response.data.map((model) => {
+    const defaultReasoningEffort = configuredEffort ?? model.defaultReasoningEffort;
     const supportedReasoningEfforts = model.supportedReasoningEfforts.map((effort) => {
       const label =
         "displayName" in effort && typeof effort.displayName === "string"
@@ -178,7 +180,7 @@ export function parseCodexModelListResponse(
       isDefault: model.isDefault,
       hidden: model.hidden,
       supportedReasoningEfforts,
-      defaultReasoningEffort: model.defaultReasoningEffort,
+      defaultReasoningEffort,
       ...(serviceTiers.length ? { serviceTiers } : {}),
       ...(present(model.defaultServiceTier)
         ? { defaultServiceTier: model.defaultServiceTier! }
@@ -193,7 +195,7 @@ export function parseCodexModelListResponse(
             id: effort.value,
             label: effort.label ?? formatEffortLabel(effort.value),
             ...(present(effort.description) ? { description: effort.description } : {}),
-            ...(effort.value === model.defaultReasoningEffort ? { isDefault: true as const } : {}),
+            ...(effort.value === defaultReasoningEffort ? { isDefault: true as const } : {}),
           })),
         },
         ...(serviceTiers.length

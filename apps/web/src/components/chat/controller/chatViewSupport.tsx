@@ -8,9 +8,6 @@ import { type EditorId } from "@glade/contracts/settings/editor";
 import { type ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import { lazy } from "react";
 import { type RateLimitStatus } from "~/components/chat/RateLimitBanner";
-import { Skeleton } from "~/components/ui/skeleton";
-import { RefreshCwIcon } from "~/lib/icons";
-import { cn } from "~/lib/utils";
 import { type SplitViewPanePanelState } from "~/splitViewModel";
 import { type ChatMessage, type Thread } from "~/types";
 export const ThreadTerminalDrawer = lazy(() => import("~/components/ThreadTerminalDrawer"));
@@ -63,33 +60,6 @@ export function warnVoiceGuard(event: string, details?: Record<string, unknown>)
     return;
   }
   console.warn(`[voice] ${event}`);
-}
-export function ComposerControlSkeleton(props: { widthClassName: string }) {
-  return (
-    <div
-      aria-hidden="true"
-      className={cn(
-        "flex h-8 shrink-0 items-center rounded-md border border-border/50 px-2",
-        props.widthClassName,
-      )}
-    >
-      <Skeleton className="h-3.5 w-full rounded-full" />
-    </div>
-  );
-}
-export function ComposerModelLoadingControl(props: { widthClassName: string }) {
-  return (
-    <div
-      aria-label="Loading models"
-      className={cn(
-        "flex h-8 shrink-0 items-center gap-2 rounded-md border border-border/50 px-2 text-muted-foreground",
-        props.widthClassName,
-      )}
-    >
-      <RefreshCwIcon aria-hidden="true" className="size-3.5 animate-spin" />
-      <span className="truncate text-ui-xs">Loading models</span>
-    </div>
-  );
 }
 export interface ChatViewProps {
   threadId: ThreadId;

@@ -1,5 +1,6 @@
 import { parseComputerInvocation } from "@glade/shared/computer/computerInvocation";
 import { useLayoutEffect, useRef } from "react";
+import { ComposerModelMenuTrigger } from "~/components/chat/ComposerModelMenuTrigger";
 import { ComposerModelPicker } from "~/components/chat/ComposerModelPicker";
 import { resolveProviderModelLabel } from "~/components/chat/ProviderModelPicker";
 import { resolveTraitsTriggerSummary } from "~/components/chat/TraitsPicker";
@@ -18,11 +19,7 @@ import { collapseExpandedComposerCursor, detectComposerTrigger } from "~/compose
 import { useComposerSlashCommands } from "~/hooks/useComposerSlashCommands";
 import { formatContextWindowTokens } from "~/lib/contextWindow";
 import { buildNextProviderOptions } from "~/providerModelOptions";
-import {
-  ChatViewProps,
-  ComposerControlSkeleton,
-  ComposerModelLoadingControl,
-} from "./chatViewSupport";
+import { type ChatViewProps } from "./chatViewSupport";
 import type { useChatActionsController } from "./useChatActionsController";
 import type { useChatComposerController } from "./useChatComposerController";
 import type { useChatDiscoveryController } from "./useChatDiscoveryController";
@@ -71,7 +68,6 @@ export function useChatSubmissionController({
     composerFooterTierRef,
     setComposerFooterTier,
     composerFooterLayoutSyncRef,
-    isComposerFooterCompact,
     setIsModelPickerOpen,
     setIsTraitsPickerOpen,
     isComposerModelEffortPickerOpen,
@@ -88,7 +84,6 @@ export function useChatSubmissionController({
     selectedModelForPickerWithCustomFallback,
     modelOptionsByProvider,
     showComposerModelBootstrapSkeleton,
-    selectedProviderRuntimeModelDiscoveryPending,
     loadingModelProviders,
     discoveryErrorsByProvider,
     runtimeModelsByProvider,
@@ -238,8 +233,6 @@ export function useChatSubmissionController({
     composerFooterLayoutSyncRef.current?.();
   }, [composerFooterLayoutSyncRef, composerFooterTier]);
 
-  const composerModelEffortPickerWidthClassName = isComposerFooterCompact ? "w-40" : "w-44 sm:w-52";
-
   const handleComposerModelEffortPickerOpenChange = (open: boolean) => {
     if (open) {
       handleModelPickerOpenChange(true);
@@ -250,11 +243,16 @@ export function useChatSubmissionController({
   };
 
   const composerPickerControls = showComposerModelBootstrapSkeleton ? (
-    selectedProviderRuntimeModelDiscoveryPending ? (
-      <ComposerModelLoadingControl widthClassName={composerModelEffortPickerWidthClassName} />
-    ) : (
-      <ComposerControlSkeleton widthClassName={composerModelEffortPickerWidthClassName} />
-    )
+    <ComposerModelMenuTrigger
+      provider={selectedProvider}
+      modelLabel={composerFooterModelLabel}
+      statusLabel={composerFooterTraitsSummary.primaryLabel}
+      showsFastBadge={composerFooterTraitsSummary.showsFastBadge}
+      hideModelLabel={!composerFooterControlsPlan.showModelLabel}
+      hideStatusLabel={!composerFooterControlsPlan.showTraitsLabel}
+      isMenuOpen={false}
+      loading
+    />
   ) : (
     <ComposerModelPicker
       hideModelLabel={!composerFooterControlsPlan.showModelLabel}

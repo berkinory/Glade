@@ -1,7 +1,7 @@
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { useState } from "react";
 
-import { ChevronDownIcon, FastModeIcon, SettingsIcon } from "~/lib/icons";
+import { ChevronDownIcon, FastModeIcon, RefreshCwIcon, SettingsIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { PROVIDER_ICON_COMPONENT_BY_PROVIDER } from "../ProviderIcon";
 import { Button } from "../ui/button";
@@ -23,6 +23,7 @@ export function ComposerModelMenuTrigger(props: {
   hideStatusLabel?: boolean | undefined;
   disabled?: boolean | undefined;
   isMenuOpen: boolean;
+  loading?: boolean;
 
   openPlaceholderLabel?: string | null | undefined;
   shortcutLabel?: string | null | undefined;
@@ -57,15 +58,17 @@ export function ComposerModelMenuTrigger(props: {
     <Button
       size="sm"
       variant="chrome"
-      disabled={props.disabled ?? false}
+      disabled={props.loading || (props.disabled ?? false)}
       className={cn(
         "min-w-0 shrink-0 justify-start gap-1.5 whitespace-nowrap px-2 sm:px-2.5 [&_svg]:mx-0",
         COMPOSER_PICKER_TRIGGER_TEXT_CLASS_NAME,
       )}
       aria-label={
-        props.statusLabel
-          ? `Change model and reasoning, currently ${props.statusLabel}`
-          : "Change model and reasoning"
+        props.loading
+          ? "Loading models"
+          : props.statusLabel
+            ? `Change model and reasoning, currently ${props.statusLabel}`
+            : "Change model and reasoning"
       }
       {...(hiddenTriggerTitle.length > 0 ? { title: hiddenTriggerTitle } : {})}
     />
@@ -80,18 +83,25 @@ export function ComposerModelMenuTrigger(props: {
             showsPlaceholder ? "invisible" : hasShownPlaceholder && "composer-trigger-label-enter",
           )}
         >
-          <ProviderIcon
-            aria-hidden="true"
-            className={cn(
-              "size-3.5 shrink-0 opacity-100",
-              getProviderIconClassName(props.provider, "text-[var(--color-text-foreground)]"),
-            )}
-          />
+          {props.loading ? (
+            <RefreshCwIcon aria-hidden="true" className="size-3.5 shrink-0 animate-spin" />
+          ) : (
+            <ProviderIcon
+              aria-hidden="true"
+              className={cn(
+                "size-3.5 shrink-0 opacity-100",
+                getProviderIconClassName(props.provider, "text-[var(--color-text-foreground)]"),
+              )}
+            />
+          )}
           {props.hideModelLabel ? (
             <span className="sr-only">{label.modelLabel}</span>
           ) : (
-            <span className="min-w-0 truncate text-[var(--color-text-foreground)]">
-              {label.modelLabel}
+            <span className="relative min-w-0 truncate text-[var(--color-text-foreground)]">
+              <span className={props.loading ? "invisible" : undefined}>{label.modelLabel}</span>
+              {props.loading ? (
+                <span className="absolute inset-0 truncate">Loading models</span>
+              ) : null}
             </span>
           )}
           {label.showsFastBadge ? (
@@ -130,6 +140,8 @@ export function ComposerModelMenuTrigger(props: {
       <ChevronDownIcon aria-hidden="true" className="ms-0.5 size-3 shrink-0 opacity-60" />
     </span>
   );
+
+  if (props.loading) return <Button {...triggerButton.props}>{triggerContent}</Button>;
 
   if (!props.shortcutLabel) {
     return <MenuTrigger render={triggerButton}>{triggerContent}</MenuTrigger>;

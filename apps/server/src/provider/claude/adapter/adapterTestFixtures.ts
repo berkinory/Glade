@@ -138,6 +138,10 @@ export class FakeClaudeQuery implements AsyncIterable<SDKMessage> {
     this.setMaxThinkingTokensCalls.push(maxThinkingTokens);
   };
 
+  readonly getSettings = async (): Promise<unknown> => ({
+    applied: { model: "default", effort: null },
+  });
+
   readonly applyFlagSettings = async (settings: Record<string, unknown>): Promise<void> => {
     this.applyFlagSettingsCalls.push(settings);
   };

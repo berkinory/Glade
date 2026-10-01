@@ -58,7 +58,6 @@ export function makeClaudeDiscovery(input: {
     resolveClaudeSdkEnv,
     serverConfig,
   } = input;
-  let cachedModels: ProviderListModelsResult | null = null;
 
   const verifyClaudeAutoModelSupport = (input: {
     readonly queryRuntime: ClaudeQueryRuntime;
@@ -94,11 +93,6 @@ export function makeClaudeDiscovery(input: {
                 }),
           ),
         ));
-      cachedModels = {
-        models: mapClaudeModelCatalog(discoveredModels),
-        source: "sdk",
-        cached: false,
-      };
       const requestedModels = new Set(
         [input.selectedModel, input.apiModelId].filter(
           (model): model is string => model !== undefined,
@@ -128,32 +122,6 @@ export function makeClaudeDiscovery(input: {
       }
     });
 
-  const observeSessionModels = (
-    queryRuntime: ClaudeQueryRuntime,
-    initializedModels?: ReadonlyArray<ModelInfo>,
-  ): void => {
-    if (!cachedModels) {
-      if (initializedModels) {
-        cachedModels = {
-          models: mapClaudeModelCatalog(initializedModels),
-          source: "sdk",
-          cached: false,
-        };
-        return;
-      }
-      queryRuntime
-        .supportedModels()
-        .then((models) => {
-          cachedModels = {
-            models: mapClaudeModelCatalog(models),
-            source: "sdk",
-            cached: false,
-          };
-        })
-        .catch(() => {});
-    }
-  };
-
   let commandsCache: {
     result: ProviderListCommandsResult;
     cwd: string;
@@ -164,14 +132,12 @@ export function makeClaudeDiscovery(input: {
 
   let commandDiscoveryTail: Promise<unknown> = Promise.resolve();
 
-  let pendingModelDiscovery: Promise<ProviderListModelsResult> | null = null;
-
   async function discoverViaTemporaryProcess<T>(
     cwd: string,
     env: NodeJS.ProcessEnv,
     binaryPath: string,
     discover: (queryRuntime: ClaudeQueryRuntime) => Promise<T>,
-    extraOptions?: Pick<ClaudeQueryOptions, "plugins" | "skills">,
+    extraOptions?: Pick<ClaudeQueryOptions, "plugins" | "skills" | "model">,
   ): Promise<T> {
     // Never spawn another discovery process until every previously unproven process tree has been
     // reaped successfully.
@@ -229,16 +195,50 @@ export function makeClaudeDiscovery(input: {
         ),
     );
 
-  const discoverModelsViaTemporaryProcess = (
+  const readAppliedEffort = async (queryRuntime: ClaudeQueryRuntime) =>
+    Schema.decodeUnknownSync(
+      Schema.Struct({
+        applied: Schema.Struct({ model: Schema.String, effort: Schema.NullOr(Schema.String) }),
+      }),
+    )(await queryRuntime.getSettings()).applied;
+
+  const discoverModelsViaTemporaryProcess = async (
     cwd: string,
     env: NodeJS.ProcessEnv,
     binaryPath: string,
-  ): Promise<ProviderListModelsResult> =>
-    discoverViaTemporaryProcess(cwd, env, binaryPath, async (queryRuntime) => ({
-      models: mapClaudeModelCatalog((await queryRuntime.initializationResult()).models),
+  ): Promise<ProviderListModelsResult> => {
+    const { models, applied } = await discoverViaTemporaryProcess(
+      cwd,
+      env,
+      binaryPath,
+      async (queryRuntime) => ({
+        models: (await queryRuntime.initializationResult()).models,
+        applied: await readAppliedEffort(queryRuntime),
+      }),
+    );
+    const defaultEffortByModel: Record<string, string | null> = { [applied.model]: applied.effort };
+    for (const model of models) {
+      if (!model.supportsEffort) continue;
+      const resolvedModel = model.resolvedModel ?? model.value;
+      if (!(resolvedModel in defaultEffortByModel)) {
+        // setModel validates account access; startup discovery can inspect effort without a paid request.
+        const modelSettings = await discoverViaTemporaryProcess(
+          cwd,
+          env,
+          binaryPath,
+          readAppliedEffort,
+          { model: resolvedModel },
+        );
+        defaultEffortByModel[resolvedModel] = modelSettings.effort;
+      }
+      defaultEffortByModel[model.value] = defaultEffortByModel[resolvedModel]!;
+    }
+    return {
+      models: mapClaudeModelCatalog(models, defaultEffortByModel),
       source: "sdk",
       cached: false,
-    }));
+    };
+  };
 
   const listCommands: NonNullable<ClaudeAdapterShape["listCommands"]> = (
     input: ProviderListCommandsInput,
@@ -331,34 +331,12 @@ export function makeClaudeDiscovery(input: {
 
   const listModels: NonNullable<ClaudeAdapterShape["listModels"]> = (input) =>
     Effect.gen(function* () {
-      if (cachedModels) {
-        return { ...cachedModels, cached: true };
-      }
-
-      for (const context of sessions.list()) {
-        if (!context.stopped && context.query) {
-          const result = yield* Effect.tryPromise({
-            try: async () => ({
-              models: mapClaudeModelCatalog(context.availableModels),
-              source: "sdk",
-              cached: false,
-            }),
-            catch: (cause) => toRequestError(context.session.threadId, "listModels", cause),
-          });
-          cachedModels = result;
-          return result;
-        }
-      }
-
       const claudeSdkEnv = yield* resolveClaudeSdkEnv;
-      const discoveryPromise =
-        pendingModelDiscovery ??
-        discoverModelsViaTemporaryProcess(
-          input.cwd ?? serverConfig.cwd,
-          claudeSdkEnv,
-          input.binaryPath ?? "claude",
-        );
-      pendingModelDiscovery = discoveryPromise;
+      const discoveryPromise = discoverModelsViaTemporaryProcess(
+        input.cwd ?? serverConfig.cwd,
+        claudeSdkEnv,
+        input.binaryPath ?? "claude",
+      );
 
       const result = yield* Effect.tryPromise({
         try: () => discoveryPromise,
@@ -369,20 +347,8 @@ export function makeClaudeDiscovery(input: {
             detail: toMessage(cause, "Failed to discover Claude models."),
             cause,
           }),
-      }).pipe(
-        Effect.tap(() =>
-          Effect.sync(() => {
-            pendingModelDiscovery = null;
-          }),
-        ),
-        Effect.tapError(() =>
-          Effect.sync(() => {
-            pendingModelDiscovery = null;
-          }),
-        ),
-      );
+      });
 
-      cachedModels = result;
       return result;
     });
 
@@ -504,7 +470,6 @@ export function makeClaudeDiscovery(input: {
     Effect.succeed(composerCapabilities);
   return {
     verifyClaudeAutoModelSupport,
-    observeSessionModels,
     getComposerCapabilities,
     listCommands,
     listSkills,

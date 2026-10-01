@@ -47,11 +47,15 @@ export function toPermissionMode(value: unknown): PermissionMode | undefined {
   }
 }
 
-function mapClaudeModelInfo(model: ModelInfo): ProviderListModelsResult["models"][number] {
+function mapClaudeModelInfo(
+  model: ModelInfo,
+  defaultEffort?: string | null,
+): ProviderListModelsResult["models"][number] {
   const effortOptions = model.supportsEffort
     ? (model.supportedEffortLevels ?? []).map((level) => ({
         id: level,
         label: formatEffortLabel(level),
+        ...(level === defaultEffort ? { isDefault: true as const } : {}),
       }))
     : [];
   const optionDescriptors: NonNullable<
@@ -92,20 +96,21 @@ export function selectedClaudeModelInfo(
 
 export function mapClaudeModelCatalog(
   models: ReadonlyArray<ModelInfo>,
+  defaultEffortByModel: Readonly<Record<string, string | null>> = {},
 ): ProviderListModelsResult["models"] {
   const defaultEntry = models.find((model) => model.value === "default");
   const defaultModel = defaultEntry?.resolvedModel;
   const catalog = models
     .filter((model) => model.value !== "default")
     .map((model) => ({
-      ...mapClaudeModelInfo(model),
+      ...mapClaudeModelInfo(model, defaultEffortByModel[model.value]),
       ...(defaultModel && claudeModelIdentifiers(model).includes(defaultModel)
         ? { slug: defaultModel, isDefault: true }
         : {}),
     }));
   if (defaultModel && defaultEntry && !catalog.some((model) => model.isDefault)) {
     catalog.unshift({
-      ...mapClaudeModelInfo(defaultEntry),
+      ...mapClaudeModelInfo(defaultEntry, defaultEffortByModel[defaultEntry.value]),
       slug: defaultModel,
       name: defaultModel,
       isDefault: true,

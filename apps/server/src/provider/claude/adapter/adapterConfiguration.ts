@@ -37,6 +37,8 @@ export interface ClaudeQueryRuntime extends AsyncIterable<SDKMessage> {
     readonly detail?: "summary" | "full";
   }) => Promise<SDKControlGetContextUsageResponse>;
   readonly supportedCommands: () => Promise<SlashCommand[]>;
+  // The pinned SDK implements getSettings, but omits it from its public Query type.
+  readonly getSettings: () => Promise<unknown>;
   readonly supportedModels: () => Promise<ModelInfo[]>;
   readonly initializationResult: () => Promise<SDKControlInitializeResponse>;
   readonly mcpServerStatus: () => Promise<McpServerStatus[]>;
