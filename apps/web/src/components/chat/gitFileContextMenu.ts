@@ -33,9 +33,7 @@ export function showGitFileContextMenu(
       },
       {
         id: "ignore" as const,
-        label: targets.every((target) => target.status === "U")
-          ? "Add to .gitignore"
-          : "Add to .gitignore (untracked files only)",
+        label: "Add to .gitignore",
         icon: GIT_FILE_CONTEXT_MENU_ICONS.ignore,
       },
       ...(section === "unstaged" && targets.every(canRevertFile)
