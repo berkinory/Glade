@@ -210,6 +210,8 @@ complete current list.
 File and explorer panels can expand across the chat area. Restore returns to the
 split layout; closing the last maximized panel returns to the chat. Closing the
 last panel in the ordinary split layout keeps the panel launcher open.
+The toggle beside the file breadcrumb hides Explorer navigation completely. Reopen it from the same control; the selected file, editor draft and navigation state remain in place.
+
 Explorer hides `.git`, `.svn`, `.hg`, `.jj`, `.DS_Store`, and `Thumbs.db`.
 Gitignored files and folders appear dimmed. Enable **Hide ignored files** in Settings
 to leave them out of the tree; this setting is off by default.

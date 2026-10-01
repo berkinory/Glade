@@ -6,7 +6,7 @@ const FILE_ROW_FOCUS_BLOCK_CLASS_NAME =
   "focus-visible:bg-[var(--color-background-button-secondary)] focus-visible:text-foreground";
 
 const FILE_ROW_BASE_CLASS_NAME = cn(
-  "flex w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-md text-left text-ui transition-colors",
+  "my-px flex w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-md text-left text-ui transition-colors",
   "focus-visible:outline-none",
   FILE_ROW_FOCUS_BLOCK_CLASS_NAME,
 );

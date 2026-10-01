@@ -98,6 +98,7 @@ function markdownPreviewCwd(workspaceRoot: string | null, filePath: string): str
 }
 
 export interface WorkspaceFilePreviewProps {
+  headerLeading?: ReactNode;
   revealPosition?: { lineNumber: number; column?: number; requestId: number } | undefined;
   workspaceRoot: string | null;
 
@@ -523,40 +524,59 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
     fileQuery.data.lineEnding !== null &&
     fileQuery.data.lineEnding !== "mixed" &&
     (!editBufferDirty || (editor.canEdit && !editor.state.saveError && !editor.state.conflict));
+  const withNavigationHeader = (content: ReactNode) =>
+    props.headerLeading ? (
+      <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
+        {filePath ? (
+          <WorkspaceFilePreviewHeader
+            leading={props.headerLeading}
+            file={{ path: filePath, workspaceRoot: props.workspaceRoot }}
+          />
+        ) : (
+          <div className="flex h-10 shrink-0 items-center border-b border-border/65 px-3">
+            {props.headerLeading}
+          </div>
+        )}
+        {content}
+      </div>
+    ) : (
+      content
+    );
+
   if (!props.workspaceRoot && !fileIsLocalAbsolute && !fileIsScratchBinaryPreview) {
-    return (
+    return withNavigationHeader(
       <PanelStateMessage density="compact" fill="flex">
         <p>No workspace is attached to this chat.</p>
-      </PanelStateMessage>
+      </PanelStateMessage>,
     );
   }
 
   if (!filePath) {
-    return (
+    return withNavigationHeader(
       props.emptyState ?? (
         <PanelStateMessage density="compact" fill="flex">
           <p>Select a file from the explorer.</p>
         </PanelStateMessage>
-      )
+      ),
     );
   }
   if (fileNeedsLocalPreviewGrant && !localPreviewGrant) {
     if (localPreviewGrantQuery.error) {
-      return (
+      return withNavigationHeader(
         <PanelStateMessage density="compact" fill="flex" className="items-start justify-start p-3">
           <p className="text-left text-ui-sm text-destructive/85">
             {localPreviewGrantQuery.error instanceof Error
               ? localPreviewGrantQuery.error.message
               : "Could not create local file preview grant."}
           </p>
-        </PanelStateMessage>
+        </PanelStateMessage>,
       );
     }
-    return <FilePreviewLoadingState />;
+    return withNavigationHeader(<FilePreviewLoadingState />);
   }
 
   if (fileIsPdf && locatingOutOfRootFile) {
-    return <FilePreviewLoadingState />;
+    return withNavigationHeader(<FilePreviewLoadingState />);
   }
 
   if (fileIsPdf) {
@@ -564,7 +584,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
       props.workspaceRoot && isWorkspaceRelativePathSafe(filePath)
         ? joinWorkspaceRelativePath(props.workspaceRoot, filePath)
         : filePath;
-    return (
+    return withNavigationHeader(
       <PdfFilePreview
         key={binaryPreviewKey}
         filePath={filePath}
@@ -575,7 +595,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
         openInTarget={openInTarget}
         onPreviewReady={handleBinaryPreviewReady}
         onPreviewError={handleBinaryPreviewError}
-      />
+      />,
     );
   }
 
@@ -590,6 +610,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-[var(--color-background-surface)]">
       <WorkspaceFilePreviewHeader
+        leading={props.headerLeading}
         file={{
           path: filePath,
           workspaceRoot: props.workspaceRoot,

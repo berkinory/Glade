@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { isNormalizedWindowsAbsolutePath } from "@glade/shared/platform/path";
@@ -12,11 +12,12 @@ import { WorkspaceFilePreview } from "../WorkspaceFilePreview";
 import { PanelStateMessage } from "./PanelStateMessage";
 import { WorkspaceCodeSearch } from "./WorkspaceCodeSearch";
 import { IconButton } from "../ui/icon-button";
-import { FolderIcon, SearchIcon } from "~/lib/icons";
+import { disclosureWidthClassName } from "~/lib/disclosureMotion";
+import { cn } from "~/lib/utils";
+import { FolderIcon, PanelLeftIcon, SearchIcon } from "~/lib/icons";
 import { WorkspaceExplorerSidebar } from "./workspaceExplorer";
 
-const DOCK_EXPLORER_SIDEBAR_CLASS =
-  "flex h-full min-h-0 w-60 shrink-0 flex-col border-r border-border/65 bg-[var(--color-background-surface)]";
+const DOCK_EXPLORER_SIDEBAR_CLASS = "h-full min-h-0 shrink-0 bg-[var(--color-background-surface)]";
 
 export const DockExplorerPane = function DockExplorerPane(props: {
   threadId: ThreadId;
@@ -27,6 +28,8 @@ export const DockExplorerPane = function DockExplorerPane(props: {
   onCommentInChat?: ((comment: FileCommentSelection) => void) | undefined;
 }) {
   const queryClient = useQueryClient();
+  const sidebarId = useId();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
   const [expandedDirectories, setExpandedDirectories] = useState<ReadonlySet<string>>(
     () => new Set<string>(),
@@ -111,67 +114,86 @@ export const DockExplorerPane = function DockExplorerPane(props: {
 
   return (
     <div className="flex h-full min-h-0 w-full">
-      <div className={DOCK_EXPLORER_SIDEBAR_CLASS}>
-        <div className="flex shrink-0 items-center gap-1 border-b border-border/65 px-2 py-1">
-          <span className="flex-1 text-ui-xs text-muted-foreground">
-            {searchMode ? "Search" : "Explorer"}
-          </span>
-          <IconButton
-            label="Show files"
-            tooltip="Show files"
-            variant={!searchMode ? "secondary" : "ghost"}
-            aria-pressed={!searchMode}
-            onClick={() => setSearchMode(false)}
-          >
-            <FolderIcon className="size-3.5" />
-          </IconButton>
-          <IconButton
-            label="Search file contents"
-            tooltip="Search file contents"
-            variant={searchMode ? "secondary" : "ghost"}
-            aria-pressed={searchMode}
-            onClick={() => setSearchMode(true)}
-          >
-            <SearchIcon className="size-3.5" />
-          </IconButton>
+      <div
+        id={sidebarId}
+        className={cn(disclosureWidthClassName(sidebarOpen, "w-60"), DOCK_EXPLORER_SIDEBAR_CLASS)}
+        inert={!sidebarOpen}
+        aria-hidden={!sidebarOpen}
+      >
+        <div className="flex h-full min-h-0 w-60 flex-col border-r border-border/65">
+          <div className="flex shrink-0 items-center gap-1 border-b border-border/65 px-2 py-1">
+            <span className="flex-1 text-ui-xs text-muted-foreground">
+              {searchMode ? "Search" : "Explorer"}
+            </span>
+            <IconButton
+              label="Show files"
+              tooltip="Show files"
+              variant={!searchMode ? "secondary" : "ghost"}
+              aria-pressed={!searchMode}
+              onClick={() => setSearchMode(false)}
+            >
+              <FolderIcon className="size-3.5" />
+            </IconButton>
+            <IconButton
+              label="Search file contents"
+              tooltip="Search file contents"
+              variant={searchMode ? "secondary" : "ghost"}
+              aria-pressed={searchMode}
+              onClick={() => setSearchMode(true)}
+            >
+              <SearchIcon className="size-3.5" />
+            </IconButton>
+          </div>
+          {searchMode ? (
+            <WorkspaceCodeSearch
+              key={props.workspaceRoot}
+              cwd={props.workspaceRoot}
+              selectedFilePath={selectedFilePath}
+              query={codeQuery}
+              onQueryChange={setCodeQuery}
+              onSelect={(match) => {
+                handleSelectFile(match.path);
+                setSearchQuery("");
+                setRevealPosition((previous) => ({
+                  lineNumber: match.lineNumber,
+                  requestId: (previous?.requestId ?? 0) + 1,
+                }));
+              }}
+            />
+          ) : (
+            <WorkspaceExplorerSidebar
+              workspaceRoot={props.workspaceRoot}
+              selectedFilePath={selectedFilePath}
+              expandedDirectories={expandedDirectories}
+              query={searchQuery}
+              onQueryChange={setSearchQuery}
+              containerClassName="flex min-h-0 flex-1 flex-col"
+              onSelectFile={handleSelectFile}
+              onDeleted={(path) => {
+                setSelectedFilePath((current) =>
+                  current === path || current?.startsWith(`${path}/`) ? null : current,
+                );
+              }}
+              onToggleDirectory={handleToggleDirectory}
+              onReferenceInChat={props.onReferenceInChat}
+            />
+          )}
         </div>
-        {searchMode ? (
-          <WorkspaceCodeSearch
-            key={props.workspaceRoot}
-            cwd={props.workspaceRoot}
-            selectedFilePath={selectedFilePath}
-            query={codeQuery}
-            onQueryChange={setCodeQuery}
-            onSelect={(match) => {
-              handleSelectFile(match.path);
-              setSearchQuery("");
-              setRevealPosition((previous) => ({
-                lineNumber: match.lineNumber,
-                requestId: (previous?.requestId ?? 0) + 1,
-              }));
-            }}
-          />
-        ) : (
-          <WorkspaceExplorerSidebar
-            workspaceRoot={props.workspaceRoot}
-            selectedFilePath={selectedFilePath}
-            expandedDirectories={expandedDirectories}
-            query={searchQuery}
-            onQueryChange={setSearchQuery}
-            containerClassName="flex min-h-0 flex-1 flex-col"
-            onSelectFile={handleSelectFile}
-            onDeleted={(path) => {
-              setSelectedFilePath((current) =>
-                current === path || current?.startsWith(`${path}/`) ? null : current,
-              );
-            }}
-            onToggleDirectory={handleToggleDirectory}
-            onReferenceInChat={props.onReferenceInChat}
-          />
-        )}
       </div>
       <div className="flex min-h-0 min-w-0 flex-1">
         <WorkspaceFilePreview
+          headerLeading={
+            <IconButton
+              label={sidebarOpen ? "Hide Explorer sidebar" : "Show Explorer sidebar"}
+              tooltip={sidebarOpen ? "Hide Explorer sidebar" : "Show Explorer sidebar"}
+              aria-expanded={sidebarOpen}
+              aria-controls={sidebarId}
+              onClick={() => setSidebarOpen((open) => !open)}
+              className="shrink-0"
+            >
+              <PanelLeftIcon className="size-3.5" />
+            </IconButton>
+          }
           workspaceRoot={props.workspaceRoot}
           filePath={selectedFilePath}
           revealPosition={revealPosition}

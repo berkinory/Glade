@@ -4,6 +4,7 @@
 
 ### Improved
 
+- Explorer navigation can be hidden to give files more room, and highlighted file rows are easier to distinguish.
 - History loads faster with fewer repeated Git reads.
 - Empty space across the top bar supports window dragging and native title-bar actions more consistently.
 - File links open in Explorer, while turn changes and file diffs are available together in Source Control.

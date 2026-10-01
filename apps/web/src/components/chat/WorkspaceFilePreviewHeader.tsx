@@ -2,7 +2,7 @@ import {
   isWorkspaceRelativePathSafe,
   joinWorkspaceRelativePath,
 } from "@glade/shared/platform/path";
-import { Fragment, useLayoutEffect, useRef, useState } from "react";
+import { type ReactNode, Fragment, useLayoutEffect, useRef, useState } from "react";
 
 import { useCopyFileContentsToClipboard, useCopyPathToClipboard } from "~/hooks/useCopyToClipboard";
 import type { ChatFileReference } from "~/lib/chatReferences";
@@ -27,6 +27,7 @@ import {
 } from "./workspaceFilePreviewBreadcrumb";
 
 interface WorkspaceFilePreviewHeaderProps {
+  leading?: ReactNode;
   file: {
     path: string;
     workspaceRoot: string | null;
@@ -231,6 +232,7 @@ export const WorkspaceFilePreviewHeader = function WorkspaceFilePreviewHeader(
         CHAT_SURFACE_HEADER_DIVIDER_CLASS_NAME,
       )}
     >
+      {props.leading}
       <CollapsingPathBreadcrumb
         prefixSegments={prefixSegments}
         fileSegment={fileSegment}

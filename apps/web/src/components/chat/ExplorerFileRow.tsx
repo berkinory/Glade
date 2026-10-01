@@ -99,7 +99,7 @@ export const ExplorerRow = forwardRef<
       type="button"
       className={fileRowClassName(
         selected,
-        cn("h-7 pr-2 transition-none", entry.isGitIgnored && "opacity-50", className),
+        cn("h-6.5 pr-2 transition-none", entry.isGitIgnored && "opacity-50", className),
       )}
       data-selected-file={selected && !isDirectory ? "" : undefined}
       style={fileRowIndentStyle(depth)}
