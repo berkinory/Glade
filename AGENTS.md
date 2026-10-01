@@ -75,7 +75,7 @@ A coherent codebase and complete product behavior matter more than easy upstream
 ## Persistence and user data
 
 - **Migrations:**
-  - The first public release starts with a single schema baseline at migration 112. The ID preserves existing internal databases without rewriting their migration history. Future schema changes use migrations starting at 113, appended in order; never edit, rename or renumber a released baseline or migration.
+  - The schema starts with a single baseline at migration 1, released in 0.1.0. Future schema changes use migrations starting at 2, appended in order; never edit, rename or renumber a released baseline or migration. Databases from 0.0.x previews are not supported.
   - A new migration must be idempotent and must not delete user data silently.
 - **Legacy data:** compatibility readers exist only while real stored data still needs them. Measure before removing one, and never keep a retired feature alive through a migration path.
 - **The user's database:** never reset, rewrite or "repair" it to make something pass. Test against copies in an isolated home directory.
@@ -145,4 +145,3 @@ Tests exist to catch regressions that would really hurt. Fewer, stronger tests a
   - One short line per user-visible change, in general terms. No internal identifiers, file names, line counts or code-level numbers.
   - Merge related entries; do not repeat a change across lines.
   - Skip small fixes, internal refactors, tests and tooling unless they change how people use or build Glade.
-  

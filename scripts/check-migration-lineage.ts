@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const migrationsDir = "apps/server/src/persistence/Migrations";
-const baselineId = 112;
+const baselineId = 1;
 
 function git(args: string[]): string {
   const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
@@ -51,9 +51,9 @@ for (const tag of tags) {
   const released = git(["ls-tree", "-r", "--name-only", tag, "--", migrationsDir])
     .trim()
     .split("\n")
-    .filter(Boolean)
-    .filter((file) => Number(file.split("/").at(-1)?.split("_")[0]) >= baselineId);
-  if (!released.includes(`${migrationsDir}/112_Baseline.ts`)) continue;
+    .filter(Boolean);
+  // Preview tags (0.0.x) shipped an unrelated lineage; checks start at the release with this baseline.
+  if (!released.includes(`${migrationsDir}/001_Baseline.ts`)) continue;
   for (const file of released) {
     const current = readFileSync(resolve(root, file), "utf8");
     const previous = git(["show", `${tag}:${file}`]);

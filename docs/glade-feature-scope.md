@@ -88,11 +88,9 @@ literal, rooted paths; tracked files remain tracked and existing ignore rules ar
 
 ## Existing data
 
-Existing databases at migration 112 keep their recorded migration history and data.
-New databases start from the single baseline at migration 112. Retired provider archive
-tables are absent from new databases; existing internal databases are left unchanged.
-Future schema changes use appended migrations starting at 113. Regular projects and
-conversations remain available.
+Databases start from the single baseline at migration 1, released in 0.1.0. Databases
+from 0.0.x previews are not opened or modified; Glade asks the user to move them aside.
+Future schema changes use appended migrations starting at 2.
 
 Old OS profiles and manual browser sessions are not deleted. Persisted image bytes
 remain readable even when removed capture-specific display metadata is discarded.

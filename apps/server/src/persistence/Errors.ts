@@ -113,6 +113,18 @@ export class MigrationSchemaTooNewError extends Schema.TaggedErrorClass<Migratio
   }
 }
 
+export class MigrationLineageUnsupportedError extends Schema.TaggedErrorClass<MigrationLineageUnsupportedError>()(
+  "MigrationLineageUnsupportedError",
+  { databaseMigrationId: Schema.Number },
+) {
+  override get message(): string {
+    return (
+      `Database migration history ${this.databaseMigrationId} comes from a Glade preview before 0.1.0, ` +
+      "which this build cannot open. Quit Glade and move state.sqlite out of the Glade data directory to start fresh."
+    );
+  }
+}
+
 export type OrchestrationEventStoreError = PersistenceSqlError | PersistenceDecodeError;
 
 export type OrchestrationCommandReceiptRepositoryError =

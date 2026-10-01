@@ -18,8 +18,6 @@ it("backs up pending migrations with committed WAL data and retains five snapsho
       Effect.gen(function* () {
         const sql = yield* SqlClient.SqlClient;
         yield* sql`PRAGMA journal_mode = WAL`;
-        yield* sql`CREATE TABLE effect_sql_migrations (migration_id INTEGER NOT NULL, name TEXT NOT NULL)`;
-        yield* sql`INSERT INTO effect_sql_migrations VALUES (111, 'PreviousInternalSchema')`;
         yield* sql`CREATE TABLE probe (value TEXT NOT NULL)`;
         yield* sql`INSERT INTO probe VALUES ('committed')`;
         for (let index = 0; index < 6; index++) {

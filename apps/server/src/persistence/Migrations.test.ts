@@ -5,8 +5,7 @@ import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as Migrator from "effect/unstable/sql/Migrator";
 
 import { migrationEntries, runMigrations } from "./Migrations.ts";
-import { MigrationSchemaTooNewError } from "./Errors.ts";
-import Baseline from "./Migrations/112_Baseline.ts";
+import { MigrationLineageUnsupportedError, MigrationSchemaTooNewError } from "./Errors.ts";
 import * as NodeSqliteClient from "./NodeSqliteClient.ts";
 
 describe("baseline migrations", () => {
@@ -14,7 +13,7 @@ describe("baseline migrations", () => {
     Effect.gen(function* () {
       const sql = yield* SqlClient.SqlClient;
       const executed = yield* runMigrations();
-      assert.deepStrictEqual(executed, [[112, "Baseline"]]);
+      assert.deepStrictEqual(executed, [[1, "Baseline"]]);
       yield* sql`
         INSERT INTO projection_projects (project_id, title, workspace_root, scripts_json, created_at, updated_at)
         VALUES ('new-project', 'Fresh project', '/workspace', '[]', '2026-09-30', '2026-09-30')
@@ -28,11 +27,11 @@ describe("baseline migrations", () => {
       const loader = Migrator.fromRecord(
         Object.fromEntries([
           ...migrationEntries.map(([id, name, migration]) => [`${id}_${name}`, migration]),
-          ["113_ProjectDescriptions", futureMigration],
+          ["002_ProjectDescriptions", futureMigration],
         ]),
       );
       const migrate = Migrator.make({});
-      assert.deepStrictEqual(yield* migrate({ loader }), [[113, "ProjectDescriptions"]]);
+      assert.deepStrictEqual(yield* migrate({ loader }), [[2, "ProjectDescriptions"]]);
       yield* sql`UPDATE projection_projects SET description = 'After baseline' WHERE project_id = 'new-project'`;
       assert.deepStrictEqual(yield* migrate({ loader }), []);
       const updated = yield* sql<{ readonly title: string; readonly description: string }>`
@@ -42,36 +41,25 @@ describe("baseline migrations", () => {
     }).pipe(Effect.provide(NodeSqliteClient.layerMemory())),
   );
 
-  it.effect("skips the baseline for an existing tracker and preserves data and tracker names", () =>
+  it.effect("refuses a preview database without altering it", () =>
     Effect.gen(function* () {
       const sql = yield* SqlClient.SqlClient;
-      yield* Baseline;
       yield* sql`
         CREATE TABLE effect_sql_migrations (
           migration_id INTEGER PRIMARY KEY, name TEXT NOT NULL,
           created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
       `;
-      yield* sql`INSERT INTO effect_sql_migrations (migration_id, name) VALUES (112, 'ConvertStudioProjects')`;
       yield* sql`
-        INSERT INTO projection_projects (project_id, title, workspace_root, scripts_json, created_at, updated_at)
-        VALUES ('existing-project', 'Keep me', '/workspace', '[]', '2026-09-30', '2026-09-30')
+        INSERT INTO effect_sql_migrations (migration_id, name)
+        VALUES (1, 'OrchestrationEvents'), (112, 'ConvertStudioProjects')
       `;
-      yield* sql`CREATE TABLE retired_provider_runtime_events (payload TEXT)`;
-      yield* sql`INSERT INTO retired_provider_runtime_events VALUES ('archived user data')`;
-      assert.deepStrictEqual(yield* runMigrations(), []);
-      const projects = yield* sql<{
-        readonly title: string;
-      }>`SELECT title FROM projection_projects`;
-      assert.strictEqual(projects[0]?.title, "Keep me");
-      const tracker = yield* sql<{
-        readonly name: string;
-      }>`SELECT name FROM effect_sql_migrations WHERE migration_id = 112`;
-      assert.strictEqual(tracker[0]?.name, "ConvertStudioProjects");
-      const archived = yield* sql<{
-        readonly payload: string;
-      }>`SELECT payload FROM retired_provider_runtime_events`;
-      assert.strictEqual(archived[0]?.payload, "archived user data");
+      const error = yield* Effect.flip(runMigrations());
+      assert.instanceOf(error, MigrationLineageUnsupportedError);
+      const tables = yield* sql<{ readonly name: string }>`
+        SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'projection_projects'
+      `;
+      assert.deepStrictEqual(tables, []);
     }).pipe(Effect.provide(NodeSqliteClient.layerMemory())),
   );
 

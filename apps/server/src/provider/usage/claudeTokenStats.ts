@@ -52,11 +52,8 @@ export function claudeTokenActivityCtes(
           AND json_type(payload_json, '$.mainLoopTokens') IN ('integer', 'real')
           AND json_extract(payload_json, '$.mainLoopTokens') >= 0
           THEN CAST(json_extract(payload_json, '$.mainLoopTokens') AS INTEGER)
-          ELSE legacy.tokens
         END AS main_tokens
       FROM claude_completed_ranked c
-      LEFT JOIN profile_stats_claude_legacy_usage legacy
-        ON legacy.thread_id = c.thread_id AND legacy.turn_id = c.turn_id
       WHERE rank = 1 AND (dispatch_origin IS NULL OR dispatch_origin = 'user')
     ),
     claude_model_usage_entries AS (
