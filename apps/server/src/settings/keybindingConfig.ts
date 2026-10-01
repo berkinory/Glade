@@ -104,7 +104,12 @@ const LEGACY_KEYBINDING_COMMAND_ALIASES = {
   "thread.next": "chat.visible.next",
 } as const satisfies Record<string, KeybindingRule["command"]>;
 
-const RETIRED_LEGACY_KEYBINDING_COMMANDS = new Set(["chat.newGemini", "chat.newTerminal"]);
+const RETIRED_LEGACY_KEYBINDING_COMMANDS = new Set([
+  "chat.newGemini",
+  "chat.newTerminal",
+  "diff.change.next",
+  "diff.change.previous",
+]);
 
 const RETIRED_LEGACY_KEYBINDING_COMMAND_PATTERN = /^(?:composer\.)?modelPicker\.jump\.[1-9]$/;
 

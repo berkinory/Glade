@@ -30,7 +30,15 @@ describe("keybindings persistence", () => {
       };
       const replacement: KeybindingRule = { ...initial, key: "mod+shift+j" };
       await fs.mkdir(path.dirname(paths.keybindingsConfigPath), { recursive: true });
-      await fs.writeFile(paths.keybindingsConfigPath, JSON.stringify([initial, sibling]));
+      await fs.writeFile(
+        paths.keybindingsConfigPath,
+        JSON.stringify([
+          initial,
+          sibling,
+          { key: "alt+j", command: "diff.change.next", when: "diffPanelOpen" },
+          { key: "alt+k", command: "diff.change.previous", when: "diffPanelOpen" },
+        ]),
+      );
 
       const runtimeLayer = KeybindingsLive.pipe(
         Layer.provide(ServerConfig.layerTest(os.tmpdir(), directory)),
@@ -40,6 +48,7 @@ describe("keybindings persistence", () => {
         Effect.gen(function* () {
           const keybindings = yield* Keybindings;
           yield* keybindings.start;
+          expect((yield* keybindings.getSnapshot).issues).toEqual([]);
           yield* keybindings.upsertKeybindingRule(replacement, initial);
         }).pipe(Effect.provide(runtimeLayer)),
       );

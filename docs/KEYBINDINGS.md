@@ -15,6 +15,11 @@ The file must be a JSON array of rules:
 
 See the full schema for more details: [`packages/contracts/src/settings/keybindings.ts`](../packages/contracts/src/settings/keybindings.ts)
 
+On startup, Glade removes the retired `diff.change.next` and `diff.change.previous`
+rules through its existing keybinding migration, preserving other custom shortcuts.
+`diff.toggle` still opens Source Control. Unrelated invalid rules continue to report
+configuration errors and prevent automatic rewriting of the file.
+
 ## Defaults
 
 ```json
