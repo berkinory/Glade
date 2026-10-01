@@ -20,6 +20,9 @@ bun install --frozen-lockfile
 bun run dev
 ```
 
+The web UI hot-reloads. Desktop bundles restart Electron when they change. The
+desktop backend builds once at startup; restart `bun run dev` to apply backend changes.
+
 Run `bun run dev:stop` to stop all local Glade development processes. Add `--dry-run` to preview
 which process trees it would stop.
 

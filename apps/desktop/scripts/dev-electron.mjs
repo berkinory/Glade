@@ -20,7 +20,6 @@ const watchedDirectories = [
     directory: "dist-electron",
     files: new Set(["main.js", "preload.js", "guestPreload.js"]),
   },
-  { directory: "../server/dist", files: new Set(["index.mjs"]) },
 ];
 const forcedShutdownTimeoutMs = 1_500;
 const restartDebounceMs = 120;

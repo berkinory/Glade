@@ -23,9 +23,8 @@ if (initialServerBuildExit.code !== 0) {
   process.exit(1);
 }
 
-function startScript(scriptName, cwd) {
+function startScript(scriptName) {
   const child = spawn(bunExecutable, ["run", scriptName], {
-    ...(cwd ? { cwd } : {}),
     stdio: "inherit",
     env: process.env,
   });
@@ -75,11 +74,9 @@ function wireExit(child, scriptName) {
 }
 
 const bundleWatcher = startScript("dev:bundle");
-const serverWatcher = startScript("dev:bundle", serverDirectory);
 const electronWatcher = startScript("dev:electron");
 
 wireExit(bundleWatcher, "dev:bundle");
-wireExit(serverWatcher, "server dev:bundle");
 wireExit(electronWatcher, "dev:electron");
 
 for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
