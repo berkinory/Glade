@@ -85,7 +85,7 @@ export function spaceDisplayIcon(
   return spaces.find((space) => space.id === spaceId)?.icon ?? voidSpace.icon;
 }
 
-export function orderedSpaceIdsForPicker(
+function orderedSpaceIdsForPicker(
   spaces: ReadonlyArray<Space>,
   activeSpaceId: SpaceId | null,
 ): ReadonlyArray<SpaceId | null> {

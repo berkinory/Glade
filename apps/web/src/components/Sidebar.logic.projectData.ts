@@ -1,5 +1,5 @@
 import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
-import type { SidebarProjectSortOrder, SidebarThreadSortOrder } from "../appSettings";
+import type { SidebarProjectSortOrder } from "../appSettings";
 import type { Project, SidebarThreadSummary, Thread } from "../types";
 import type {
   SidebarProject,
@@ -15,7 +15,7 @@ import {
 } from "./Sidebar.logic.status";
 import type { SidebarDerivedProjectData } from "./Sidebar.logic.status";
 import {
-  getThreadSortTimestamp,
+  getLatestUserMessageTimestamp,
   getUnpinnedThreadsForSidebar,
   getVisibleSidebarEntriesForPreview,
   isUnseenFinishedThread,
@@ -34,15 +34,12 @@ function threadSortAttentionRank(thread: SidebarThreadSortInput): number {
 
 export function sortThreadsForSidebar<T extends { id: Thread["id"] } & SidebarThreadSortInput>(
   threads: readonly T[],
-  sortOrder: SidebarThreadSortOrder,
 ): T[] {
   return threads.toSorted((left, right) => {
-    if (sortOrder !== "created_at") {
-      const byAttentionRank = threadSortAttentionRank(right) - threadSortAttentionRank(left);
-      if (byAttentionRank !== 0) return byAttentionRank;
-    }
-    const rightTimestamp = getThreadSortTimestamp(right, sortOrder);
-    const leftTimestamp = getThreadSortTimestamp(left, sortOrder);
+    const byAttentionRank = threadSortAttentionRank(right) - threadSortAttentionRank(left);
+    if (byAttentionRank !== 0) return byAttentionRank;
+    const rightTimestamp = getLatestUserMessageTimestamp(right);
+    const leftTimestamp = getLatestUserMessageTimestamp(left);
     const byTimestamp =
       rightTimestamp === leftTimestamp ? 0 : rightTimestamp > leftTimestamp ? 1 : -1;
     if (byTimestamp !== 0) return byTimestamp;
@@ -55,10 +52,9 @@ export function getFallbackThreadIdAfterDelete<
 >(input: {
   threads: readonly T[];
   deletedThreadId: T["id"];
-  sortOrder: SidebarThreadSortOrder;
   deletedThreadIds?: ReadonlySet<T["id"]>;
 }): T["id"] | null {
-  const { deletedThreadId, deletedThreadIds, sortOrder, threads } = input;
+  const { deletedThreadId, deletedThreadIds, threads } = input;
   const deletedThread = threads.find((thread) => thread.id === deletedThreadId);
   if (!deletedThread) {
     return null;
@@ -72,7 +68,6 @@ export function getFallbackThreadIdAfterDelete<
           thread.id !== deletedThreadId &&
           !deletedThreadIds?.has(thread.id),
       ),
-      sortOrder,
     )[0]?.id ?? null
   );
 }
@@ -80,18 +75,14 @@ export function getFallbackThreadIdAfterDelete<
 function getProjectSortTimestamp(
   project: SidebarProject,
   projectThreads: readonly SidebarThreadSortInput[],
-  sortOrder: Exclude<SidebarProjectSortOrder, "manual">,
 ): number {
   if (projectThreads.length > 0) {
     return projectThreads.reduce(
-      (latest, thread) => Math.max(latest, getThreadSortTimestamp(thread, sortOrder)),
+      (latest, thread) => Math.max(latest, getLatestUserMessageTimestamp(thread)),
       Number.NEGATIVE_INFINITY,
     );
   }
 
-  if (sortOrder === "created_at") {
-    return toSortableTimestamp(project.createdAt) ?? Number.NEGATIVE_INFINITY;
-  }
   return toSortableTimestamp(project.updatedAt ?? project.createdAt) ?? Number.NEGATIVE_INFINITY;
 }
 
@@ -121,7 +112,7 @@ export function sortProjectsForSidebar<
       (project) =>
         [
           project.id,
-          getProjectSortTimestamp(project, threadsByProjectId.get(project.id) ?? [], sortOrder),
+          getProjectSortTimestamp(project, threadsByProjectId.get(project.id) ?? []),
         ] as const,
     ),
   );

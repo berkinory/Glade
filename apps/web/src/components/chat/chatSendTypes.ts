@@ -89,7 +89,6 @@ export interface ChatTurnSubmissionInput {
     >[0]
   >;
   isLocalDraftThread: boolean;
-  threadNotes: string;
   setSettledThreadBranchWarningDismissedThreadId: Dispatch<SetStateAction<ThreadId | null>>;
   setQueuedSteerGate: Dispatch<SetStateAction<QueuedSteerGate | null>>;
 
@@ -343,7 +342,6 @@ export type ChatTurnSubmissionControllerInput = {
     | "gitBranchSourceCwd"
     | "isCenteredEmptyLanding"
     | "setTailAnchor"
-    | "threadNotes"
     | "setOptimisticUserMessages"
   >;
   discovery: Pick<

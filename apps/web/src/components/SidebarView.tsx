@@ -1,22 +1,9 @@
 import { useStore } from "../store";
-import { useRailShellStore } from "../railShellStore";
 import { useSidebarStateStore } from "../sidebarStateStore";
-import { spaceDisplayIcon, spaceDisplayName } from "../lib/spaceGrouping";
-import { resolveSidebarProjectRowLabel } from "./Sidebar.logic.statusTypes";
 import { SidebarTrigger } from "./ui/sidebar";
 import { normalizeSidebarProjectThreadListCwd } from "./Sidebar.uiState";
-import { AppRailMoreMenu } from "./AppRailMoreMenu";
-import { railCentralGlyphs, railItemGlyphs, railProjectGlyphs, type AppRailItem } from "./AppRail";
 import { SidebarLeadingControls } from "./SidebarHeaderNavigationControls";
 import { isMacNavigatorPlatform } from "../lib/utils";
-import {
-  RAIL_PANEL_ITEM_IDS,
-  RAIL_PANEL_ITEM_LABELS,
-  railProjectShortcutKey,
-  railSpaceShortcutKey,
-  resolveActiveRailShortcutKey,
-  toggleRailShortcutKey,
-} from "../appRail.logic";
 import { SIDEBAR_NAV_ITEM_IDS } from "../sidebarNavOrdering";
 import { SidebarDialogs } from "./SidebarDialogs";
 import {
@@ -33,12 +20,10 @@ import { restrictToFirstScrollableAncestor, restrictToVerticalAxis } from "@dnd-
 import { isElectron } from "../env";
 import { CHAT_SURFACE_HEADER_HEIGHT_CLASS } from "./chat/chatHeaderControls";
 import { GladeLogo } from "./GladeLogo";
-import { AppRailPortal } from "./AppRail";
 import { SidebarActivityView } from "./SidebarActivityView";
 import { SidebarIconButton } from "./SidebarIconButton";
 import { SidebarLeadingIcon } from "./SidebarLeadingIcon";
 import { SidebarPrimaryAction } from "./SidebarPrimaryAction";
-import { SIDEBAR_PANEL_TITLE_CLASS_NAME, SidebarPanelTitle } from "./SidebarPanelTitle";
 import { SidebarSectionToolbar } from "./SidebarSectionToolbar";
 import { SidebarGlyph } from "./sidebarGlyphs";
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "./ui/alert";
@@ -79,7 +64,6 @@ import {
   DebugFeatureFlagsMenu,
   ProjectSortMenu,
   SidebarHelpMenu,
-  ChatSortMenu,
   SortableProjectItem,
   SidebarActivityBellButton,
 } from "./sidebarSupport";
@@ -91,12 +75,10 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     activeSpaceId,
     threadsHydrated,
     desktopUpdate,
-    isRailLayout,
     navigate,
     isOnSettings,
     appSettings,
     updateSettings,
-    chatsSectionVisible,
     activeSettingsSection,
     newChatShortcutLabel,
     searchShortcutLabel,
@@ -155,9 +137,6 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     prByThreadId,
     isManualProjectSorting,
     openFeedbackDialog,
-    handleBackToThreads,
-    railShortcuts,
-    railSpacesProject,
   } = context;
   const {
     showDesktopUpdateButton,
@@ -177,19 +156,11 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     renderThreadHoverCardPopup,
     renderThreadRow,
     renderProjectItem,
-    renderRailSpacesPanel,
   } = useSidebarRows(context);
   const markThreadVisited = useStore((state) => state.markThreadVisited);
 
   const setAllProjectsExpanded = useStore((state) => state.setAllProjectsExpanded);
   const collapseProjectsExcept = useStore((state) => state.collapseProjectsExcept);
-
-  const railActiveItem = useRailShellStore((state) => state.activeItem);
-  const railPanelView = useRailShellStore((state) => state.panelView);
-  const railSpacesProjectId = useRailShellStore((state) => state.spacesProjectId);
-  const selectRailPanelItem = useRailShellStore((state) => state.selectPanelItem);
-  const selectRailRouteItem = useRailShellStore((state) => state.selectRouteItem);
-  const openRailSpacesProject = useRailShellStore((state) => state.openSpacesProject);
 
   const chatSectionExpanded = useSidebarStateStore((state) => state.chatSectionExpanded);
   const setChatSectionExpanded = useSidebarStateStore((state) => state.setChatSectionExpanded);
@@ -235,133 +206,20 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     </div>
   );
 
-  const isOnThreadsSection = !isOnSettings;
-
   const sidebarHelpMenuProps = {
     onOpenShortcuts: () => void navigate({ to: "/settings", search: { section: "shortcuts" } }),
     onOpenFeedback: openFeedbackDialog,
   };
 
-  const activeRailShortcutKey = resolveActiveRailShortcutKey({
-    activeItem: railActiveItem,
-    activeSpaceId,
-    spacesProjectId: railSpacesProjectId,
-    shortcuts: railShortcuts,
-  });
-
-  const railItems: AppRailItem[] = [
-    ...RAIL_PANEL_ITEM_IDS.map(
-      (id): AppRailItem => ({
-        id,
-        glyphs: railItemGlyphs(id),
-        label: RAIL_PANEL_ITEM_LABELS[id],
-        badge: null,
-        active: railActiveItem === id && activeRailShortcutKey === null,
-        onSelect: () => {
-          setActivityViewEnabledSmoothly(false);
-          selectRailPanelItem(id);
-
-          if (!isOnThreadsSection) handleBackToThreads();
-        },
-      }),
-    ),
-  ];
-
-  const railShortcutItems: AppRailItem[] = railShortcuts.flatMap((shortcut): AppRailItem[] => {
-    if (shortcut.kind === "space") {
-      return [
-        {
-          id: shortcut.key,
-          glyphs: railCentralGlyphs(spaceDisplayIcon(shortcut.spaceId, spaces, voidSpace)),
-          label: spaceDisplayName(shortcut.spaceId, spaces, voidSpace),
-          badge: null,
-          active: activeRailShortcutKey === shortcut.key,
-          onSelect: () => {
-            setActivityViewEnabledSmoothly(false);
-            selectRailPanelItem("home");
-
-            if (shortcut.spaceId !== activeSpaceId) handleSelectSpace(shortcut.spaceId);
-            else if (!isOnThreadsSection) handleBackToThreads();
-          },
-        },
-      ];
-    }
-    const project = projectById.get(shortcut.projectId);
-    if (!project) return [];
-    return [
-      {
-        id: shortcut.key,
-        glyphs: railProjectGlyphs(project.cwd, project.appearance ?? null),
-        label: resolveSidebarProjectRowLabel(project),
-        badge: null,
-        active: activeRailShortcutKey === shortcut.key,
-        onSelect: () => {
-          setActivityViewEnabledSmoothly(false);
-          selectRailPanelItem("spaces");
-          openRailSpacesProject(project.id);
-          if (!isOnThreadsSection) handleBackToThreads();
-        },
-      },
-    ];
-  });
-
-  const railMoreMenu = (
-    <AppRailMoreMenu
-      spaces={[null, ...spaces.map((space) => space.id)].map((spaceId) => ({
-        key: railSpaceShortcutKey(spaceId),
-        label: spaceDisplayName(spaceId, spaces, voidSpace),
-      }))}
-      projects={allStandardProjectsBase.map((project) => ({
-        key: railProjectShortcutKey(project.id),
-        label: resolveSidebarProjectRowLabel(project),
-      }))}
-      pinnedKeys={new Set(railShortcuts.map((shortcut) => shortcut.key))}
-      onToggleShortcut={(key) =>
-        updateSettings({
-          railShortcuts: toggleRailShortcutKey(appSettings.railShortcuts, key),
-        })
-      }
-      active={false}
-    />
-  );
-
-  const railBottomItems: AppRailItem[] = [
-    {
-      id: "settings",
-      glyphs: railItemGlyphs("settings"),
-      label: "Settings",
-      badge: null,
-      active: railActiveItem === "settings",
-      onSelect: () => {
-        selectRailRouteItem("settings");
-        void navigate({ to: "/settings" });
-      },
-    },
-  ];
-
-  const panelSidebarNavIds = isRailLayout ? SIDEBAR_NAV_ITEM_IDS.slice(0, 1) : SIDEBAR_NAV_ITEM_IDS;
-
-  const showRailSpacesPanel =
-    isRailLayout && railPanelView === "spaces" && !isOnSettings && !activityViewEnabled;
-
-  const sidebarSurfaceKey = showRailSpacesPanel
-    ? `spaces:${railSpacesProject?.id ?? ""}`
+  const sidebarSurfaceKey = isOnSettings
+    ? "settings"
     : activityViewEnabled
       ? "activity"
       : "threads";
 
   return (
     <>
-      {isRailLayout ? (
-        <AppRailPortal
-          items={railItems}
-          shortcuts={railShortcutItems}
-          moreSlot={railMoreMenu}
-          bottomItems={railBottomItems}
-          bottomSlot={<SidebarHelpMenu inRail {...sidebarHelpMenuProps} />}
-        />
-      ) : null}
-      {isRailLayout ? null : isElectron ? (
+      {isElectron ? (
         <>
           <SidebarHeader
             className={cn(
@@ -407,10 +265,9 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
         ) : null}
         {isOnSettings ? (
           <SidebarGroup className="p-0">
-            {isRailLayout ? <SidebarPanelTitle title="Settings"></SidebarPanelTitle> : null}
             <SettingsSidebarNav
               activeSection={activeSettingsSection}
-              onBack={isRailLayout ? null : handleBackToAppFromSettings}
+              onBack={handleBackToAppFromSettings}
               onSelectSection={(section, options) => {
                 void navigate({
                   to: "/settings",
@@ -425,15 +282,11 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
           </SidebarGroup>
         ) : (
           <>
-            <div
-              className={cn(
-                "flex items-center gap-1 pt-0 pb-1 pr-2.5 pl-1.5",
-
-                isRailLayout && "pt-1.5",
-              )}
-            >
+            <div className={cn("flex items-center gap-1 pt-0 pb-1 pr-2.5 pl-1.5")}>
               <h2 className="flex h-8 min-w-0 items-center gap-1.5 px-2.5">
-                <span className={SIDEBAR_PANEL_TITLE_CLASS_NAME}>Glade</span>
+                <span className="font-display min-w-0 truncate text-[17px] text-foreground">
+                  Glade
+                </span>
                 <GladeLogo aria-hidden className="size-4 text-foreground" />
               </h2>
               <div className="ml-auto flex items-center gap-1.5">
@@ -461,7 +314,7 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
               {}
               <SidebarGroup className="px-1.5 pt-1 pb-1.5">
                 <SidebarMenu className="gap-0.5">
-                  {panelSidebarNavIds.map((id) => {
+                  {SIDEBAR_NAV_ITEM_IDS.map((id) => {
                     const item = sidebarNavDescriptors[id];
                     return (
                       <SidebarPrimaryAction
@@ -515,8 +368,6 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
                     onAddProject={handleStartAddProject}
                   />
                 </SidebarGroup>
-              ) : showRailSpacesPanel ? (
-                renderRailSpacesPanel()
               ) : (
                 <SidebarGroup className="px-1.5 py-1.5">
                   <SpaceSwitcher
@@ -566,12 +417,8 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
                       ) : null}
                       <ProjectSortMenu
                         projectSortOrder={appSettings.sidebarProjectSortOrder}
-                        threadSortOrder={appSettings.sidebarThreadSortOrder}
                         onProjectSortOrderChange={(sortOrder) => {
                           updateSettings({ sidebarProjectSortOrder: sortOrder });
-                        }}
-                        onThreadSortOrderChange={(sortOrder) => {
-                          updateSettings({ sidebarThreadSortOrder: sortOrder });
                         }}
                       />
                       <SidebarIconButton
@@ -648,7 +495,7 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
             </div>
           </>
         )}
-        {!isOnSettings && !activityViewEnabled && !showRailSpacesPanel && chatsSectionVisible ? (
+        {!isOnSettings && !activityViewEnabled ? (
           <SidebarGroup className="sidebar-surface-enter px-1.5 pt-1 pb-2">
             <div className="group/collapsible">
               <div className="group/project-header relative">
@@ -679,12 +526,6 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
                   </div>
                 </SidebarMenuButton>
                 <SidebarSectionToolbar placement="overlay" revealOnHover>
-                  <ChatSortMenu
-                    threadSortOrder={appSettings.sidebarThreadSortOrder}
-                    onThreadSortOrderChange={(sortOrder) => {
-                      updateSettings({ sidebarThreadSortOrder: sortOrder });
-                    }}
-                  />
                   <SidebarIconButton
                     icon={NewThreadIcon}
                     label="Open new chat home"
@@ -722,13 +563,7 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
         ) : null}
       </SidebarContent>
 
-      <SidebarFooter
-        className={cn(
-          "gap-2 border-sidebar-border border-t p-2 font-system-ui",
-
-          isRailLayout && "border-t-0 pt-0",
-        )}
-      >
+      <SidebarFooter className={cn("gap-2 border-sidebar-border border-t p-2 font-system-ui")}>
         <SidebarMenu>
           <SidebarMenuItem>
             <div className="flex flex-col gap-1">
@@ -738,7 +573,7 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
                 </Suspense>
               ) : null}
               <div className="flex items-center gap-2">
-                {!isOnSettings && !isRailLayout && (
+                {!isOnSettings && (
                   <SidebarMenuButton
                     size="sm"
                     className={cn(
@@ -787,7 +622,7 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
                     />
                     <TooltipPopup side="top">{desktopUpdateTooltip}</TooltipPopup>
                   </Tooltip>
-                ) : isRailLayout ? null : (
+                ) : (
                   <SidebarHelpMenu {...sidebarHelpMenuProps} />
                 )}
               </div>

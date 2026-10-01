@@ -118,7 +118,7 @@ export function projectAppearanceEquals(
   return projectAppearanceKey(left) === projectAppearanceKey(right);
 }
 
-export function projectAppearanceKey(appearance: ProjectAppearance | null): string {
+function projectAppearanceKey(appearance: ProjectAppearance | null): string {
   if (!appearance) return "default";
   return appearance.kind === "icon"
     ? `icon:${appearance.icon}:${appearance.color ?? ""}`

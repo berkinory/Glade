@@ -7,23 +7,10 @@ import { useLayoutEffect } from "react";
 import { isElectron } from "~/env";
 import { useSidebar } from "~/components/ui/sidebar";
 import { useDesktopCustomTitleBarActive } from "~/hooks/useDesktopCustomTitleBar";
-import { useSidebarLayout } from "~/hooks/useSidebarLayout";
 import { readDesktopZoomFactor, subscribeDesktopZoomFactor } from "~/lib/desktopZoom";
 import { isMacNavigatorPlatform } from "~/lib/utils";
 
 export const DESKTOP_TOP_BAR_TRAFFIC_LIGHT_GUTTER_CLASS = "desktop-top-bar-traffic-light-gutter";
-
-const RAIL_LAYOUT_TOP_BAR_CLASS = "app-top-bar";
-
-function withRailLayoutTopBarClass(
-  gutterClassName: string | null,
-  isRailLayout: boolean,
-): string | null {
-  if (!isRailLayout) return gutterClassName;
-  return gutterClassName
-    ? `${RAIL_LAYOUT_TOP_BAR_CLASS} ${gutterClassName}`
-    : RAIL_LAYOUT_TOP_BAR_CLASS;
-}
 
 function shouldReserveDesktopTopBarTrafficLightGutter(input: {
   isElectron: boolean;
@@ -71,7 +58,6 @@ export function useSyncDesktopTopBarTrafficLightGutterZoom(): void {
 
 export function useDesktopTopBarTrafficLightGutterClassName(): string | null {
   const { isMobile, open } = useSidebar();
-  const isRailLayout = useSidebarLayout() === "rail";
   const isMacDesktop = isMacNavigatorPlatform();
   const gutterClassName = shouldReserveDesktopTopBarTrafficLightGutter({
     isElectron,
@@ -81,7 +67,7 @@ export function useDesktopTopBarTrafficLightGutterClassName(): string | null {
   })
     ? DESKTOP_TOP_BAR_TRAFFIC_LIGHT_GUTTER_CLASS
     : null;
-  return withRailLayoutTopBarClass(gutterClassName, isRailLayout);
+  return gutterClassName;
 }
 
 // Each caption button is 46px wide (matching {@link CHAT_SURFACE_HEADER_HEIGHT_PX}), so the
@@ -102,12 +88,11 @@ function shouldReserveDesktopTopBarWindowControlsGutter(input: {
 
 export function useDesktopTopBarWindowControlsGutterClassName(): string | null {
   const customTitleBarActive = useDesktopCustomTitleBarActive();
-  const isRailLayout = useSidebarLayout() === "rail";
   const gutterClassName = shouldReserveDesktopTopBarWindowControlsGutter({
     isElectron,
     customTitleBarActive,
   })
     ? DESKTOP_TOP_BAR_WINDOW_CONTROLS_GUTTER_CLASS
     : null;
-  return withRailLayoutTopBarClass(gutterClassName, isRailLayout);
+  return gutterClassName;
 }

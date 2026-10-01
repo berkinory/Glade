@@ -300,14 +300,6 @@ const ThreadPinnedMessageRemoveCommand = Schema.Struct({
   messageId: MessageId,
 });
 
-const ThreadPinnedMessageDoneSetCommand = Schema.Struct({
-  type: Schema.Literal("thread.pinned-message.done.set"),
-  commandId: CommandId,
-  threadId: ThreadId,
-  messageId: MessageId,
-  done: Schema.Boolean,
-});
-
 const ThreadPinnedMessageLabelSetCommand = Schema.Struct({
   type: Schema.Literal("thread.pinned-message.label.set"),
   commandId: CommandId,
@@ -543,7 +535,6 @@ const DispatchableClientOrchestrationCommand = Schema.Union([
   ThreadMetaUpdateCommand,
   ThreadPinnedMessageAddCommand,
   ThreadPinnedMessageRemoveCommand,
-  ThreadPinnedMessageDoneSetCommand,
   ThreadPinnedMessageLabelSetCommand,
   ThreadRuntimeModeSetCommand,
 
@@ -582,7 +573,6 @@ export const ClientOrchestrationCommand = Schema.Union([
   ThreadMetaUpdateCommand,
   ThreadPinnedMessageAddCommand,
   ThreadPinnedMessageRemoveCommand,
-  ThreadPinnedMessageDoneSetCommand,
   ThreadPinnedMessageLabelSetCommand,
   ThreadRuntimeModeSetCommand,
 

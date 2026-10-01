@@ -61,22 +61,6 @@ export function setPinnedMessageDone(
   return changed ? nextPins : keepExistingPins(existingPins);
 }
 
-export function togglePinnedMessageDone(
-  pins: readonly PinnedMessage[] | null | undefined,
-  messageId: MessageId,
-): PinnedMessage[] {
-  const existingPins = pins ?? [];
-  let changed = false;
-  const nextPins = existingPins.map((pin) => {
-    if (pin.messageId !== messageId) {
-      return pin;
-    }
-    changed = true;
-    return { ...pin, done: !pin.done };
-  });
-  return changed ? nextPins : keepExistingPins(existingPins);
-}
-
 export function normalizePinLabel(label: string | null): string | null {
   const trimmed = label?.trim() ?? "";
   if (trimmed.length === 0) {

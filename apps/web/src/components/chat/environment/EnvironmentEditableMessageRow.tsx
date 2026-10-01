@@ -9,7 +9,6 @@ import {
   type ReactNode,
 } from "react";
 
-import { Checkbox } from "~/components/ui/checkbox";
 import { IconButton } from "~/components/ui/icon-button";
 import { XIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
@@ -17,13 +16,11 @@ import { ELEVATED_HOVER_SURFACE_CLASS_NAME } from "~/surfaceStyles";
 
 const JUMP_CLICK_DELAY_MS = 180;
 
-interface EnvironmentEditableChecklistRowProps {
-  checked: boolean | undefined;
+interface EnvironmentEditableMessageRowProps {
   available: boolean;
   displayLabel: string;
   initialEditLabel: string;
   editPlaceholder?: string;
-  checkboxAriaLabel: string;
   labelAriaLabel: string;
   labelTitle: string;
   removeLabel: string;
@@ -32,18 +29,15 @@ interface EnvironmentEditableChecklistRowProps {
   className?: string;
   removeButtonClassName?: string;
   onJump: () => void;
-  onToggleDone: () => void;
   onRemove: () => void;
   onRename: (label: string | null) => void;
 }
 
-export function EnvironmentEditableChecklistRow({
-  checked,
+export function EnvironmentEditableMessageRow({
   available,
   displayLabel,
   initialEditLabel,
   editPlaceholder,
-  checkboxAriaLabel,
   labelAriaLabel,
   labelTitle,
   removeLabel,
@@ -52,10 +46,9 @@ export function EnvironmentEditableChecklistRow({
   className,
   removeButtonClassName,
   onJump,
-  onToggleDone,
   onRemove,
   onRename,
-}: EnvironmentEditableChecklistRowProps) {
+}: EnvironmentEditableMessageRowProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -143,12 +136,6 @@ export function EnvironmentEditableChecklistRow({
         className,
       )}
     >
-      <Checkbox
-        className="size-3.5 sm:size-3.5"
-        checked={checked}
-        onCheckedChange={onToggleDone}
-        aria-label={checkboxAriaLabel}
-      />
       {leading}
       {editing ? (
         <input
@@ -170,9 +157,7 @@ export function EnvironmentEditableChecklistRow({
           title={labelTitle}
           className={cn(
             "min-w-0 flex-1 truncate text-left text-ui outline-none transition-colors",
-            checked
-              ? "text-muted-foreground/55 line-through"
-              : "text-[var(--color-text-foreground)] hover:text-foreground",
+            "text-[var(--color-text-foreground)] hover:text-foreground",
             available
               ? "cursor-pointer hover:underline"
               : "cursor-default text-muted-foreground/55",

@@ -219,7 +219,6 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
   const focusMostRecentThreadForProject = (projectId: ProjectId) => {
     const latestThread = sortThreadsForSidebar(
       sidebarThreads.filter((thread) => thread.projectId === projectId),
-      appSettings.sidebarThreadSortOrder,
     )[0];
     if (!latestThread) return;
 
@@ -242,7 +241,6 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
           updatedAt: thread.updatedAt,
           latestUserMessageAt: thread.latestUserMessageAt,
         })),
-      appSettings.sidebarThreadSortOrder,
     )[0];
     if (latestThread) {
       await navigate({
@@ -274,7 +272,6 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
           updatedAt: thread.updatedAt,
           latestUserMessageAt: thread.latestUserMessageAt,
         })),
-      appSettings.sidebarThreadSortOrder,
     )[0];
     if (latestThread) {
       await navigate({
@@ -380,8 +377,7 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
     threads: readonly SidebarThreadSummary[],
     extraAvailableThreadIds?: ReadonlySet<string>,
   ) => {
-    const latestThread =
-      sortThreadsForSidebar(threads, appSettings.sidebarThreadSortOrder)[0] ?? null;
+    const latestThread = sortThreadsForSidebar(threads)[0] ?? null;
     const availableThreadIds = new Set<string>(threads.map((thread) => thread.id));
     if (extraAvailableThreadIds) {
       for (const threadId of extraAvailableThreadIds) {

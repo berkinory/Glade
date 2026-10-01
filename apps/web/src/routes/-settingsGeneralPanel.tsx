@@ -3,13 +3,12 @@ import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { PROVIDER_DESCRIPTORS as VISIBLE_PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
 import type { ReactNode } from "react";
 
-import { useAppSettings, type AppSettings, type SidebarLayout } from "../appSettings";
+import { useAppSettings, type AppSettings } from "../appSettings";
 import { ProviderOptionLabel } from "../components/ProviderIcon";
 import {
   SettingResetButton,
-  SettingsSegmentedControl,
   SettingsSelectControl,
-  type SettingsSegmentedOption,
+  SettingsSegmentedControl,
 } from "../components/settings/SettingControls";
 import { SettingsRow, SettingsSection } from "../components/settings/SettingsPanelPrimitives";
 import { SelectItem } from "../components/ui/select";
@@ -17,22 +16,11 @@ import { CentralIcon } from "../lib/central-icons";
 import { WorktreeIcon } from "../lib/icons";
 import { SETTINGS_TARGETS } from "../settingsNavigation";
 
-const SIDEBAR_LAYOUT_OPTIONS = [
-  { value: "classic", label: "Classic" },
-  { value: "rail", label: "Rail" },
-] as const satisfies readonly SettingsSegmentedOption<SidebarLayout>[];
-
 const PROVIDER_SELECT_OPTIONS = VISIBLE_PROVIDER_DESCRIPTORS.map((descriptor) => descriptor.kind);
 
 const SIDEBAR_PROJECT_SORT_ORDER_LABELS = {
   updated_at: "Recently active",
-  created_at: "Recently added",
   manual: "Manual order",
-} as const;
-
-const SIDEBAR_THREAD_SORT_ORDER_LABELS = {
-  updated_at: "Recently active",
-  created_at: "Newest first",
 } as const;
 
 function isProviderSelectOption(value: string): value is ProviderKind {
@@ -143,29 +131,6 @@ export function SettingsGeneralPanel(props: {
       </SettingsSection>
 
       <SettingsSection title="Sidebar organization">
-        {
-          <SettingsRow
-            title="Sidebar layout"
-            description="Classic keeps the single sidebar. Rail adds fixed icon tabs on the left, with projects and threads in a panel beside them."
-            resetAction={
-              settings.sidebarLayout !== defaults.sidebarLayout ? (
-                <SettingResetButton
-                  label="sidebar layout"
-                  onClick={() => updateSettings({ sidebarLayout: defaults.sidebarLayout })}
-                />
-              ) : null
-            }
-            control={
-              <SettingsSegmentedControl
-                value={settings.sidebarLayout}
-                onValueChange={(value) => updateSettings({ sidebarLayout: value })}
-                ariaLabel="Sidebar layout"
-                options={SIDEBAR_LAYOUT_OPTIONS}
-              />
-            }
-          />
-        }
-
         <SettingsRow
           id="setting-project-order"
           title="Project order"
@@ -186,7 +151,7 @@ export function SettingsGeneralPanel(props: {
             <SettingsSelectControl
               value={settings.sidebarProjectSortOrder}
               onValueChange={(value) => {
-                if (value !== "updated_at" && value !== "created_at" && value !== "manual") {
+                if (value !== "updated_at" && value !== "manual") {
                   return;
                 }
                 updateSettings({ sidebarProjectSortOrder: value });
@@ -197,63 +162,12 @@ export function SettingsGeneralPanel(props: {
               <SelectItem hideIndicator value="updated_at">
                 {SIDEBAR_PROJECT_SORT_ORDER_LABELS.updated_at}
               </SelectItem>
-              <SelectItem hideIndicator value="created_at">
-                {SIDEBAR_PROJECT_SORT_ORDER_LABELS.created_at}
-              </SelectItem>
               <SelectItem hideIndicator value="manual">
                 {SIDEBAR_PROJECT_SORT_ORDER_LABELS.manual}
               </SelectItem>
             </SettingsSelectControl>
           }
         />
-
-        <SettingsRow
-          title="Thread order"
-          description="Controls how threads are arranged inside each project in the main sidebar."
-          resetAction={
-            settings.sidebarThreadSortOrder !== defaults.sidebarThreadSortOrder ? (
-              <SettingResetButton
-                label="thread order"
-                onClick={() =>
-                  updateSettings({
-                    sidebarThreadSortOrder: defaults.sidebarThreadSortOrder,
-                  })
-                }
-              />
-            ) : null
-          }
-          control={
-            <SettingsSelectControl
-              value={settings.sidebarThreadSortOrder}
-              onValueChange={(value) => {
-                if (value !== "updated_at" && value !== "created_at") {
-                  return;
-                }
-                updateSettings({ sidebarThreadSortOrder: value });
-              }}
-              ariaLabel="Thread sort order"
-              valueContent={SIDEBAR_THREAD_SORT_ORDER_LABELS[settings.sidebarThreadSortOrder]}
-            >
-              <SelectItem hideIndicator value="updated_at">
-                {SIDEBAR_THREAD_SORT_ORDER_LABELS.updated_at}
-              </SelectItem>
-              <SelectItem hideIndicator value="created_at">
-                {SIDEBAR_THREAD_SORT_ORDER_LABELS.created_at}
-              </SelectItem>
-            </SettingsSelectControl>
-          }
-        />
-      </SettingsSection>
-
-      <SettingsSection title="Sidebar sections">
-        {renderBooleanSettingRow({
-          settingKey: "showChatsSection",
-          title: "Chats",
-          description:
-            "Show the standalone Chats list in the sidebar footer (chats not tied to a project).",
-          resetLabel: "chats section",
-          ariaLabel: "Show the Chats section in the sidebar",
-        })}
       </SettingsSection>
 
       <div
@@ -308,14 +222,6 @@ export function SettingsGeneralPanel(props: {
             title: "Pinned messages",
             resetLabel: "pinned messages section",
             ariaLabel: "Show the Pinned messages section in the Environment panel",
-          })}
-
-          {renderBooleanSettingRow({
-            settingKey: "showEnvironmentInstructions",
-            title: "Project instructions",
-            description: "Show project-level instructions in the Environment panel.",
-            resetLabel: "project instructions section",
-            ariaLabel: "Show the Project instructions section in the Environment panel",
           })}
 
           {renderBooleanSettingRow({

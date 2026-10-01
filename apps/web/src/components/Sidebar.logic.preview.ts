@@ -1,4 +1,3 @@
-import type { SidebarProjectSortOrder, SidebarThreadSortOrder } from "../appSettings";
 import type { SidebarThreadSummary, Thread } from "../types";
 import { SIDEBAR_THREAD_PREWARM_LIMIT, hasUnseenCompletion } from "./Sidebar.logic.statusTypes";
 import type { SidebarThreadSortInput } from "./Sidebar.logic.statusTypes";
@@ -179,7 +178,7 @@ export function toSortableTimestamp(iso: string | undefined): number | null {
   return Number.isFinite(ms) ? ms : null;
 }
 
-function getLatestUserMessageTimestamp(thread: SidebarThreadSortInput): number {
+export function getLatestUserMessageTimestamp(thread: SidebarThreadSortInput): number {
   const latestUserMessageAt = toSortableTimestamp(thread.latestUserMessageAt ?? undefined);
   if (latestUserMessageAt !== null) {
     return latestUserMessageAt;
@@ -202,16 +201,6 @@ function getLatestUserMessageTimestamp(thread: SidebarThreadSortInput): number {
   }
 
   return toSortableTimestamp(thread.updatedAt ?? thread.createdAt) ?? Number.NEGATIVE_INFINITY;
-}
-
-export function getThreadSortTimestamp(
-  thread: SidebarThreadSortInput,
-  sortOrder: SidebarThreadSortOrder | Exclude<SidebarProjectSortOrder, "manual">,
-): number {
-  if (sortOrder === "created_at") {
-    return toSortableTimestamp(thread.createdAt) ?? Number.NEGATIVE_INFINITY;
-  }
-  return getLatestUserMessageTimestamp(thread);
 }
 
 export function isUnseenFinishedThread(thread: SidebarThreadSortInput): boolean {

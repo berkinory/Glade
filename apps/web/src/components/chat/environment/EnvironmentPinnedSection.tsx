@@ -2,7 +2,7 @@ import type { MessageId } from "@glade/contracts/core/baseSchemas";
 import type { PinnedMessage } from "@glade/contracts/orchestration/threadEntities";
 import { displayLabelFor } from "~/pinnedMessages";
 
-import { EnvironmentEditableChecklistRow } from "./EnvironmentEditableChecklistRow";
+import { EnvironmentEditableMessageRow } from "./EnvironmentEditableMessageRow";
 import { EnvironmentCollapsibleSection } from "./EnvironmentRow";
 
 interface EnvironmentPinnedSectionProps {
@@ -10,7 +10,6 @@ interface EnvironmentPinnedSectionProps {
 
   messageTextById: ReadonlyMap<MessageId, string>;
   onJump: (messageId: MessageId) => void;
-  onToggleDone: (messageId: MessageId) => void;
   onUnpin: (messageId: MessageId) => void;
   onRename: (messageId: MessageId, label: string | null) => void;
 }
@@ -19,7 +18,6 @@ export function EnvironmentPinnedSection({
   pins,
   messageTextById,
   onJump,
-  onToggleDone,
   onUnpin,
   onRename,
 }: EnvironmentPinnedSectionProps) {
@@ -35,7 +33,6 @@ export function EnvironmentPinnedSection({
             pin={pin}
             text={messageTextById.get(pin.messageId)}
             onJump={onJump}
-            onToggleDone={onToggleDone}
             onUnpin={onUnpin}
             onRename={onRename}
           />
@@ -49,14 +46,12 @@ const PinnedMessageRow = function PinnedMessageRow({
   pin,
   text,
   onJump,
-  onToggleDone,
   onUnpin,
   onRename,
 }: {
   pin: PinnedMessage;
   text: string | undefined;
   onJump: (messageId: MessageId) => void;
-  onToggleDone: (messageId: MessageId) => void;
   onUnpin: (messageId: MessageId) => void;
   onRename: (messageId: MessageId, label: string | null) => void;
 }) {
@@ -65,13 +60,11 @@ const PinnedMessageRow = function PinnedMessageRow({
   const displayLabel = resolvedLabel.length > 0 ? resolvedLabel : "(message unavailable)";
 
   return (
-    <EnvironmentEditableChecklistRow
-      checked={pin.done}
+    <EnvironmentEditableMessageRow
       available={available}
       displayLabel={displayLabel}
       initialEditLabel={resolvedLabel}
       editPlaceholder={available ? "" : "Label"}
-      checkboxAriaLabel={pin.done ? "Mark not done" : "Mark done"}
       labelAriaLabel={
         available
           ? "Jump to pinned message. Press F2 to rename."
@@ -87,7 +80,6 @@ const PinnedMessageRow = function PinnedMessageRow({
       className="group/pin"
       removeButtonClassName="group-hover/pin:opacity-100"
       onJump={() => onJump(pin.messageId)}
-      onToggleDone={() => onToggleDone(pin.messageId)}
       onRemove={() => onUnpin(pin.messageId)}
       onRename={(label) => onRename(pin.messageId, label)}
     />

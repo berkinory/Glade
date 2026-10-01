@@ -16,13 +16,6 @@ it("hydrates and updates project preferences under their existing storage keys",
       "glade:project-environment:v1",
       JSON.stringify({ state: { envModeByProjectId: { "project-a": "worktree" } }, version: 0 }),
     ],
-    [
-      "glade:project-instructions:v1",
-      JSON.stringify({
-        state: { instructionsByProjectId: { "project-a": "Keep this" } },
-        version: 0,
-      }),
-    ],
   ]);
   vi.stubGlobal("localStorage", {
     getItem: (key: string) => values.get(key) ?? null,
@@ -35,23 +28,15 @@ it("hydrates and updates project preferences under their existing storage keys",
   const state = useProjectPreferencesStore.getState();
   expect(state.latestProjectId).toBe("project-a");
   expect(state.envModeByProjectId[ProjectId.makeUnsafe("project-a")]).toBe("worktree");
-  expect(state.instructionsByProjectId["project-a"]).toBe("Keep this");
 
   state.setLatestProjectId(ProjectId.makeUnsafe("project-b"));
   state.setProjectEnvMode(ProjectId.makeUnsafe("project-b"), "local");
-  state.setInstructions(ProjectId.makeUnsafe("project-b"), "New instructions");
   expect(JSON.parse(values.get("glade:latest-project:v1") ?? "null")).toEqual({
     state: { latestProjectId: "project-b" },
     version: 0,
   });
   expect(JSON.parse(values.get("glade:project-environment:v1") ?? "null")).toEqual({
     state: { envModeByProjectId: { "project-a": "worktree", "project-b": "local" } },
-    version: 0,
-  });
-  expect(JSON.parse(values.get("glade:project-instructions:v1") ?? "null")).toEqual({
-    state: {
-      instructionsByProjectId: { "project-a": "Keep this", "project-b": "New instructions" },
-    },
     version: 0,
   });
 });

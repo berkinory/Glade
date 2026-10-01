@@ -15,12 +15,11 @@ import { CSS } from "@dnd-kit/utilities";
 import { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import { WS_GITHUB_PROJECT_PROVISIONING_CAPABILITY } from "@glade/contracts/transport/ws/wsCompatibility";
-import { type SidebarProjectSortOrder, type SidebarThreadSortOrder } from "../appSettings";
+import { type SidebarProjectSortOrder } from "../appSettings";
 import { shortcutLabelForCommand, threadJumpCommandForIndex } from "../keybindings";
 import { onNativeApiServerCapabilitiesChange, readNativeApiServerCapability } from "../nativeApi";
 import { resolveThreadEnvironmentPresentation } from "../lib/threadEnvironment";
 import { type Thread } from "../types";
-import { APP_RAIL_GLYPH_CLASS_NAME, appRailButtonClassName } from "./AppRail";
 import { SidebarIconButton, sidebarIconButtonSlotClass } from "./SidebarIconButton";
 import { SidebarGlyph, sidebarGlyphClass } from "./sidebarGlyphs";
 import { type SidebarThreadTerminalStatus } from "./SidebarThreadRowContent";
@@ -58,8 +57,6 @@ export const CollapseAllIcon = createCentralIconComponent("minimize-45");
 
 const SortFilterIcon = createCentralIconComponent("filter-2");
 
-export const BackArrowIcon = createCentralIconComponent("arrow-left");
-
 export const EMPTY_KEYBINDINGS: ResolvedKeybindingsConfig = [];
 
 export const subscribeGitHubProvisioningCapability = (listener: () => void) =>
@@ -80,13 +77,7 @@ export const preventFocusOnMouseDown = (event: React.MouseEvent) => {
 
 const SIDEBAR_SORT_LABELS: Record<SidebarProjectSortOrder, string> = {
   updated_at: "Last user message",
-  created_at: "Created at",
   manual: "Manual",
-};
-
-const SIDEBAR_THREAD_SORT_LABELS: Record<SidebarThreadSortOrder, string> = {
-  updated_at: "Last user message",
-  created_at: "Created at",
 };
 
 export const EMPTY_THREAD_JUMP_LABELS = new Map<ThreadId, string>();
@@ -320,14 +311,10 @@ export type SortableProjectHandleProps = Pick<
 
 export function ProjectSortMenu({
   projectSortOrder,
-  threadSortOrder,
   onProjectSortOrderChange,
-  onThreadSortOrderChange,
 }: {
   projectSortOrder: SidebarProjectSortOrder;
-  threadSortOrder: SidebarThreadSortOrder;
   onProjectSortOrderChange: (sortOrder: SidebarProjectSortOrder) => void;
-  onThreadSortOrderChange: (sortOrder: SidebarThreadSortOrder) => void;
 }) {
   return (
     <Menu>
@@ -358,15 +345,6 @@ export function ProjectSortMenu({
             )}
           </MenuRadioGroup>
         </MenuGroup>
-        <MenuGroup>
-          <div className="px-2 pt-2 pb-1 sm:text-ui leading-snug font-medium text-muted-foreground">
-            Sort threads
-          </div>
-          <ThreadSortMenuItems
-            threadSortOrder={threadSortOrder}
-            onThreadSortOrderChange={onThreadSortOrderChange}
-          />
-        </MenuGroup>
       </ComposerPickerMenuPopup>
     </Menu>
   );
@@ -377,15 +355,10 @@ const HELP_MENU_RELEASE_ENTRIES = sortEntriesByVersionDesc(CHANGELOG_ENTRIES).sl
 export function SidebarHelpMenu({
   onOpenShortcuts,
   onOpenFeedback,
-  inRail: inRailProp,
 }: {
   onOpenShortcuts: () => void;
   onOpenFeedback: () => void;
-
-  inRail?: boolean;
 }) {
-  const inRail = inRailProp ?? false;
-
   const [releaseHistory, setReleaseHistory] = useState<{
     readonly open: boolean;
     readonly version: string | null;
@@ -404,19 +377,8 @@ export function SidebarHelpMenu({
           icon={CircleQuestionIcon}
           label="Help"
           tooltip="Help"
-          {...(inRail
-            ? {
-                tooltipSide: "right" as const,
-                iconClassName: APP_RAIL_GLYPH_CLASS_NAME,
-                className: appRailButtonClassName(false),
-              }
-            : {})}
         />
-        <ComposerPickerMenuPopup
-          align="end"
-          side={inRail ? "right" : "top"}
-          className="w-64 min-w-64"
-        >
+        <ComposerPickerMenuPopup align="end" side="top" className="w-64 min-w-64">
           <MenuGroup>
             <div className="px-2 py-1 sm:text-ui leading-snug font-medium text-muted-foreground">
               What’s new
@@ -463,62 +425,6 @@ export function SidebarHelpMenu({
         defaultExpandedVersion={releaseHistory.version}
       />
     </>
-  );
-}
-
-function ThreadSortMenuItems({
-  threadSortOrder,
-  onThreadSortOrderChange,
-}: {
-  threadSortOrder: SidebarThreadSortOrder;
-  onThreadSortOrderChange: (sortOrder: SidebarThreadSortOrder) => void;
-}) {
-  return (
-    <MenuRadioGroup
-      value={threadSortOrder}
-      onValueChange={(value) => {
-        onThreadSortOrderChange(value as SidebarThreadSortOrder);
-      }}
-    >
-      {(Object.entries(SIDEBAR_THREAD_SORT_LABELS) as Array<[SidebarThreadSortOrder, string]>).map(
-        ([value, label]) => (
-          <MenuRadioItem key={value} value={value}>
-            {label}
-          </MenuRadioItem>
-        ),
-      )}
-    </MenuRadioGroup>
-  );
-}
-
-export function ChatSortMenu({
-  threadSortOrder,
-  onThreadSortOrderChange,
-}: {
-  threadSortOrder: SidebarThreadSortOrder;
-  onThreadSortOrderChange: (sortOrder: SidebarThreadSortOrder) => void;
-}) {
-  return (
-    <Menu>
-      <SidebarIconButton
-        render={<MenuTrigger />}
-        icon={SortFilterIcon}
-        label="Sort chats"
-        tooltip="Sort chats"
-        tooltipSide="top"
-      />
-      <ComposerPickerMenuPopup align="end" side="bottom" className="min-w-44">
-        <MenuGroup>
-          <div className="px-2 py-1 sm:text-ui leading-snug font-medium text-muted-foreground">
-            Sort chats
-          </div>
-          <ThreadSortMenuItems
-            threadSortOrder={threadSortOrder}
-            onThreadSortOrderChange={onThreadSortOrderChange}
-          />
-        </MenuGroup>
-      </ComposerPickerMenuPopup>
-    </Menu>
   );
 }
 

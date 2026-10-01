@@ -95,7 +95,6 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
     handleSpaceEditorSubmit,
     handleBulkMoveProjects,
   } = useSpacesController({
-    sidebarThreadSortOrder: appSettings.sidebarThreadSortOrder,
     routeThreadId,
     activeRouteProjectId,
     activateThreadFromSidebarIntent,

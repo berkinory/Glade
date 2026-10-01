@@ -1,12 +1,10 @@
 import { useStore } from "../store";
-import { useRailShellStore } from "../railShellStore";
 import { useSidebarStateStore } from "../sidebarStateStore";
 import { NewThreadIcon } from "~/lib/icons";
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 import { ProjectId, SpaceId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { MAX_PINNED_PROJECTS } from "@glade/contracts/orchestration/threadEntities";
 import { type SidebarNavItemId } from "../sidebarNavOrdering";
-import { buildRailSpacesSections, resolveRailShortcuts } from "../appRail.logic";
 import { isMacNavigatorPlatform } from "../lib/utils";
 import { isOrdinarySpaceProject } from "../lib/spaces";
 import { threadJumpCommandForIndex } from "../keybindings";
@@ -44,11 +42,9 @@ import {
 export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProjectCommands>) {
   const {
     projects,
-    spaces,
     chatSpaceByThreadId,
     activeSpaceId,
     threadsHydrated,
-    isRailLayout,
     homeDir,
     chatWorkspaceRoot,
     isOnSettings,
@@ -61,7 +57,6 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     activeSidebarThreadId,
     sidebarThreads,
     sidebarTreeThreads,
-    projectById,
     resolveThreadStatusForSidebar,
     terminalOpen,
     terminalWorkspaceOpen,
@@ -71,12 +66,9 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     prefetchModelsForPrimaryNewThread,
     handlePrimaryNewThread,
     activateThreadFromSidebarIntent,
-    voidSpace,
   } = context;
   const renameProjectLocally = useStore((state) => state.renameProjectLocally);
   const setProjectAppearanceLocally = useStore((state) => state.setProjectAppearanceLocally);
-
-  const railSpacesProjectId = useRailShellStore((state) => state.spacesProjectId);
 
   const persistedPinnedProjectIds = useSidebarStateStore((state) => state.pinnedProjectIds);
   const prunePinnedProjects = useSidebarStateStore((state) => state.prunePinnedProjects);
@@ -114,10 +106,7 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
   const sortedSidebarThreadsByProjectId = (() => {
     const byProjectId = new Map<ProjectId, SidebarThreadSummary[]>();
     for (const [projectId, projectThreads] of sidebarThreadsByProjectId) {
-      byProjectId.set(
-        projectId,
-        sortThreadsForSidebar(projectThreads, appSettings.sidebarThreadSortOrder),
-      );
+      byProjectId.set(projectId, sortThreadsForSidebar(projectThreads));
     }
     return byProjectId;
   })();
@@ -161,7 +150,6 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
             (thread) => (chatSpaceByThreadId[thread.id] ?? null) === activeSpaceId,
           ),
         ),
-        appSettings.sidebarThreadSortOrder,
       ),
       forceVisibleThreadId: activeSidebarThreadId ?? undefined,
     });
@@ -240,65 +228,18 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
   const allProjectsExpanded =
     standardProjects.length > 0 && standardProjects.every((project) => project.expanded);
 
-  const railSpacesSections = isRailLayout
-    ? buildRailSpacesSections({
-        items: allStandardProjectsBase,
-        spaces,
-        activeSpaceId,
-        spaceIdOf: (project) => project.spaceId ?? null,
-        voidSpace,
-      })
-    : [];
-
-  const railShortcuts = isRailLayout
-    ? resolveRailShortcuts({
-        keys: appSettings.railShortcuts,
-        spaceIds: new Set(spaces.map((space) => space.id)),
-        projectIds: new Set(allStandardProjectsBase.map((project) => project.id)),
-      })
-    : [];
-
-  const railSpacesProject =
-    isRailLayout && railSpacesProjectId !== null
-      ? (projectById.get(railSpacesProjectId) ?? null)
-      : null;
-
-  const railSpacesProjectSidebarData = (() => {
-    if (!railSpacesProject) {
-      return null;
-    }
-    return (
-      deriveSidebarProjectData({
-        projects: [{ id: railSpacesProject.id, cwd: railSpacesProject.cwd, expanded: true }],
-        sortedSidebarThreadsByProjectId,
-        pinnedThreadIds,
-        threadListExtraPagesByProjectCwd,
-        normalizeProjectCwd: normalizeSidebarProjectThreadListCwd,
-        activeSidebarThreadId: activeSidebarThreadId ?? undefined,
-        previewLimit: THREAD_PREVIEW_LIMIT,
-        previewPageSize: THREAD_PREVIEW_PAGE_SIZE,
-        resolveThreadStatus: resolveThreadStatusForSidebar,
-      }).get(railSpacesProject.id) ?? null
-    );
-  })();
-
-  const railSpacesPagedProjectId = railSpacesProject?.id ?? null;
-
   useEffect(() => {
     const settle = window.setTimeout(() => {
       setThreadListExtraPagesByProjectCwd((current) =>
         pruneProjectThreadListPagingForCollapsedProjects({
           threadListExtraPagesByProjectCwd: current,
-          projects:
-            railSpacesPagedProjectId === null
-              ? standardProjects
-              : standardProjects.filter((project) => project.id !== railSpacesPagedProjectId),
+          projects: standardProjects,
           normalizeProjectCwd: normalizeSidebarProjectThreadListCwd,
         }),
       );
     }, 0);
     return () => window.clearTimeout(settle);
-  }, [railSpacesPagedProjectId, standardProjects, setThreadListExtraPagesByProjectCwd]);
+  }, [standardProjects, setThreadListExtraPagesByProjectCwd]);
 
   useEffect(() => {
     if (!threadsHydrated) {
@@ -499,10 +440,6 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     projectEmptyState,
     surfaceProjectSidebarDataById,
     allProjectsExpanded,
-    railSpacesSections,
-    railShortcuts,
-    railSpacesProject,
-    railSpacesProjectSidebarData,
     handleThreadClick,
     visibleSidebarThreadIds,
     prByThreadId,

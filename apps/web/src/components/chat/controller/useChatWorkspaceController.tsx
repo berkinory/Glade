@@ -36,7 +36,6 @@ import { deriveCumulativeCostUsd, deriveLatestContextWindowState } from "~/lib/c
 import { GIT_WORKING_TREE_DIFF_LIVE_REFETCH_INTERVAL_MS } from "../../../lib/gitQueryOptions";
 import { resolveDiffEnvironmentState } from "~/lib/threadEnvironment";
 import { newThreadId } from "~/lib/utils";
-import { useProjectPreferencesStore } from "~/projectPreferencesStore";
 import { hasLiveTurnTailWork, isLatestTurnSettled } from "~/session-logic";
 import { useStore } from "~/store";
 import { useTerminalStateStore } from "~/terminalStateStore";
@@ -273,12 +272,6 @@ export function useChatWorkspaceController({
   const closeActiveWorkspaceView = () =>
     closeActiveChatTerminalWorkspaceView(terminalActionContext, terminalState);
 
-  const projectInstructions = useProjectPreferencesStore((state) =>
-    activeProjectId ? (state.instructionsByProjectId[activeProjectId] ?? "") : "",
-  );
-
-  const setProjectInstructions = useProjectPreferencesStore((state) => state.setInstructions);
-
   const homeDir = useWorkspacePathsStore((state) => state.homeDir);
 
   const chatWorkspaceRoot = useWorkspacePathsStore((state) => state.chatWorkspaceRoot);
@@ -500,8 +493,6 @@ export function useChatWorkspaceController({
     closeTerminal,
     handleTerminalSessionExited,
     closeActiveWorkspaceView,
-    projectInstructions,
-    setProjectInstructions,
     homeDir,
     chatWorkspaceRoot,
     renameDialogOpen,

@@ -8,6 +8,8 @@
 
 - Settings show desktop notification permissions and bring provider configuration into one place.
 
+- Settings and sidebar navigation are simpler, and pinned messages in the Environment panel jump directly to their conversation.
+
 - New chats show models instantly instead of reloading them each time.
 - Speed choices show icons for default and fast.
 - Explorer hides version control and system files and dims ignored files, with an option to hide them.

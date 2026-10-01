@@ -18,11 +18,6 @@ import { useCallback } from "react";
 import { promoteThreadCreate } from "~/lib/threadCreatePromotion";
 import { newCommandId, randomUUID } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
-import { dispatchThreadNotes } from "~/pinnedMessages";
-import {
-  mergeProjectInstructionsIntoThreadNotes,
-  useProjectPreferencesStore,
-} from "~/projectPreferencesStore";
 
 import { collapseExpandedComposerCursor, detectComposerTrigger } from "../../composer-logic";
 import type { DraftThreadEnvMode, QueuedComposerChatTurn } from "../../composerDraftDomain";
@@ -106,7 +101,6 @@ type ChatTurnExecutionInput = Pick<
   | "createWorktreeMutation"
   | "beginLocalDispatch"
   | "isLocalDraftThread"
-  | "threadNotes"
   | "runProjectScript"
   | "persistThreadSettingsForNextTurn"
   | "rememberCustomBinaryPathForDispatch"
@@ -188,7 +182,7 @@ type ChatTurnExecutionControllerInput = {
     | "scheduleFailedWorktreeSetupDispatchReset"
     | "resetLocalDispatch"
   >;
-  transcript: Pick<ChatTurnExecutionInput, "threadNotes" | "setOptimisticUserMessages">;
+  transcript: Pick<ChatTurnExecutionInput, "setOptimisticUserMessages">;
   environment: Pick<
     ChatTurnExecutionInput,
     "runProjectScript" | "persistThreadSettingsForNextTurn"
@@ -246,7 +240,7 @@ export function useChatTurnExecution({
     scheduleFailedWorktreeSetupDispatchReset,
     resetLocalDispatch,
   } = provider;
-  const { threadNotes, setOptimisticUserMessages } = transcript;
+  const { setOptimisticUserMessages } = transcript;
   const { runProjectScript, persistThreadSettingsForNextTurn } = environment;
   const { rememberCustomBinaryPathForDispatch } = discovery;
   const { setQueuedSteerGate } = turn;
@@ -444,13 +438,6 @@ export function useChatTurnExecution({
         });
 
         if (isLocalDraftThread) {
-          const inheritedProjectInstructions =
-            useProjectPreferencesStore.getState().instructionsByProjectId[targetProjectIdForSend] ??
-            "";
-          const inheritedThreadNotes = mergeProjectInstructionsIntoThreadNotes({
-            threadNotes,
-            projectInstructions: inheritedProjectInstructions,
-          });
           await promoteThreadCreate(
             {
               type: "thread.create",
@@ -473,15 +460,6 @@ export function useChatTurnExecution({
             },
             api,
           );
-          // `thread.create` does not carry notes, so seed the freshly created server thread's notepad with
-          // the inherited project instructions via a dedicated meta update. Best-effort: a failure here must
-          // not abort the turn.
-          if (inheritedThreadNotes !== threadNotes && inheritedThreadNotes.trim().length > 0) {
-            try {
-              await dispatchThreadNotes(threadIdForSend, inheritedThreadNotes);
-            } catch {}
-          }
-
           if (targetProjectKindForSend === "chat") {
             await api.orchestration.dispatchCommand({
               type: "project.meta.update",
@@ -803,7 +781,6 @@ export function useChatTurnExecution({
       createWorktreeMutation,
       beginLocalDispatch,
       isLocalDraftThread,
-      threadNotes,
       runProjectScript,
       persistThreadSettingsForNextTurn,
       rememberCustomBinaryPathForDispatch,

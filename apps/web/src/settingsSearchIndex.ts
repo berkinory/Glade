@@ -66,21 +66,7 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     section: "general",
     title: "Project order",
     target: "setting-project-order",
-    keywords: "Controls how projects are arranged in the main sidebar. sort updated created manual",
-  },
-  {
-    id: "general:thread-order",
-    section: "general",
-    title: "Thread order",
-    keywords:
-      "Controls how threads are arranged inside each project in the main sidebar. sort updated created",
-  },
-  {
-    id: "general:chats-section",
-    section: "general",
-    title: "Chats",
-    keywords:
-      "Show the standalone Chats list in the sidebar footer chats not tied to a project. sidebar section",
+    keywords: "Controls how projects are arranged in the main sidebar. sort updated manual",
   },
   {
     id: "general:environment-default-open",
@@ -124,13 +110,7 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     section: "general",
     title: "Pinned messages",
     target: "setting-showEnvironmentPinned",
-    keywords: "Show the pinned-messages checklist in the Environment panel.",
-  },
-  {
-    id: "general:environment-instructions",
-    section: "general",
-    title: "Project instructions",
-    keywords: "Show project-level instructions in the Environment panel.",
+    keywords: "Show the pinned messages in the Environment panel.",
   },
   {
     id: "general:environment-notepad",

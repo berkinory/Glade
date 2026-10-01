@@ -77,10 +77,9 @@ const DEFAULT_TIMESTAMP_FORMAT: TimestampFormat = "locale";
 export const EditorCaretStyle = Schema.Literals(["line", "block"]);
 export type EditorCaretStyle = typeof EditorCaretStyle.Type;
 export const DEFAULT_EDITOR_CARET_STYLE: EditorCaretStyle = "line";
-export const SidebarProjectSortOrder = Schema.Literals(["updated_at", "created_at", "manual"]);
+export const SidebarProjectSortOrder = Schema.Literals(["updated_at", "manual"]);
 export type SidebarProjectSortOrder = typeof SidebarProjectSortOrder.Type;
 const DEFAULT_SIDEBAR_PROJECT_SORT_ORDER: SidebarProjectSortOrder = "manual";
-export const SidebarThreadSortOrder = Schema.Literals(["updated_at", "created_at"]);
 export const ComputerPreviewSize = Schema.Literals(["compact", "large"]);
 export type ComputerPreviewSize = typeof ComputerPreviewSize.Type;
 const DEFAULT_COMPUTER_PREVIEW_SIZE: ComputerPreviewSize = "compact";
@@ -88,11 +87,6 @@ export const AgentCursorColorMode = Schema.Literals(["stock", "custom"]);
 export type AgentCursorColorMode = typeof AgentCursorColorMode.Type;
 export const DEFAULT_AGENT_CURSOR_COLOR_MODE: AgentCursorColorMode = "stock";
 
-export const SidebarLayout = Schema.Literals(["classic", "rail"]);
-export type SidebarLayout = typeof SidebarLayout.Type;
-const DEFAULT_SIDEBAR_LAYOUT: SidebarLayout = "classic";
-export type SidebarThreadSortOrder = typeof SidebarThreadSortOrder.Type;
-const DEFAULT_SIDEBAR_THREAD_SORT_ORDER: SidebarThreadSortOrder = "updated_at";
 export const FollowUpBehavior = Schema.Literals(["queue", "steer"]);
 export type FollowUpBehavior = typeof FollowUpBehavior.Type;
 const DEFAULT_FOLLOW_UP_BEHAVIOR: FollowUpBehavior = "queue";
@@ -200,21 +194,12 @@ const AppSettingsSchema = Schema.Struct({
   editorCaretStyle: EditorCaretStyle.pipe(withDefaults(() => DEFAULT_EDITOR_CARET_STYLE)),
   showPullRequestDiffColors: Schema.Boolean.pipe(withDefaults(() => true)),
 
-  showChatsSection: Schema.Boolean.pipe(withDefaults(() => true)),
-
-  sidebarLayout: SidebarLayout.pipe(withDefaults(() => DEFAULT_SIDEBAR_LAYOUT)),
-
-  railShortcuts: Schema.Array(Schema.String.check(Schema.isMaxLength(512))).pipe(
-    withDefaults(() => []),
-  ),
-
-  environmentPanelDefaultOpen: Schema.Boolean.pipe(withDefaults(() => false)),
+  environmentPanelDefaultOpen: Schema.Boolean.pipe(withDefaults(() => true)),
   showEnvironmentUsage: Schema.Boolean.pipe(withDefaults(() => true)),
   showEnvironmentRepository: Schema.Boolean.pipe(withDefaults(() => true)),
   showEnvironmentPullRequest: Schema.Boolean.pipe(withDefaults(() => true)),
   showEnvironmentEditor: Schema.Boolean.pipe(withDefaults(() => true)),
   showEnvironmentPinned: Schema.Boolean.pipe(withDefaults(() => true)),
-  showEnvironmentInstructions: Schema.Boolean.pipe(withDefaults(() => false)),
   showEnvironmentNotepad: Schema.Boolean.pipe(withDefaults(() => false)),
   followUpBehavior: FollowUpBehavior.pipe(withDefaults(() => DEFAULT_FOLLOW_UP_BEHAVIOR)),
   enableAssistantStreaming: Schema.Boolean.pipe(withDefaults(() => true)),
@@ -244,11 +229,17 @@ const AppSettingsSchema = Schema.Struct({
   // One-shot composer hint that suggests Medium effort for faster desktop actions. Set when the user
   // applies or dismisses it, so the hint never asks twice.
   dismissedComputerControlEffortHint: Schema.Boolean.pipe(withDefaults(() => false)),
-  sidebarProjectSortOrder: SidebarProjectSortOrder.pipe(
+  sidebarProjectSortOrder: Schema.String.pipe(
+    // Retired persisted sort values must not invalidate unrelated preferences.
+    Schema.decodeTo(
+      SidebarProjectSortOrder,
+      SchemaTransformation.transform({
+        decode: (value) =>
+          Schema.is(SidebarProjectSortOrder)(value) ? value : DEFAULT_SIDEBAR_PROJECT_SORT_ORDER,
+        encode: (value) => value,
+      }),
+    ),
     withDefaults(() => DEFAULT_SIDEBAR_PROJECT_SORT_ORDER),
-  ),
-  sidebarThreadSortOrder: SidebarThreadSortOrder.pipe(
-    withDefaults(() => DEFAULT_SIDEBAR_THREAD_SORT_ORDER),
   ),
   timestampFormat: TimestampFormat.pipe(withDefaults(() => DEFAULT_TIMESTAMP_FORMAT)),
   textGenerationProvider: PersistedProviderKind.pipe(withDefaults(() => "codex" as const)),

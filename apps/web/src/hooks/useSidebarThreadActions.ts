@@ -72,10 +72,7 @@ export function useSidebarThreadActions(input: {
   readonly activeSplitView: SplitView | null | undefined;
   readonly appSettings: Pick<
     AppSettings,
-    | "archiveDeletesOrphanedWorktree"
-    | "confirmThreadArchive"
-    | "confirmThreadDelete"
-    | "sidebarThreadSortOrder"
+    "archiveDeletesOrphanedWorktree" | "confirmThreadArchive" | "confirmThreadDelete"
   >;
   readonly clearTerminalState: (threadId: ThreadId) => void;
   readonly handleNewChat: (options?: { fresh?: boolean }) => Promise<unknown>;
@@ -427,7 +424,6 @@ export function useSidebarThreadActions(input: {
           threads: sidebarThreads,
           deletedThreadId: threadId,
           deletedThreadIds: opts.deletedThreadIds ?? new Set<ThreadId>(),
-          sortOrder: appSettings.sidebarThreadSortOrder,
         }),
         deletedPaneInActiveSplit: activeSplitView
           ? resolveSplitViewPaneIdForThread(activeSplitView, threadId)
@@ -538,7 +534,6 @@ export function useSidebarThreadActions(input: {
           threads: sidebarThreads,
           deletedThreadId: threadId,
           deletedThreadIds: new Set<ThreadId>(),
-          sortOrder: appSettings.sidebarThreadSortOrder,
         });
         if (fallbackThreadId) {
           await navigate({

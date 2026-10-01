@@ -30,7 +30,6 @@ import { EnvironmentLocalServersSection } from "./EnvironmentLocalServersSection
 import { EnvironmentPullRequestSection } from "./EnvironmentPullRequestSection";
 import { EnvironmentNotesSection } from "./EnvironmentNotesSection";
 import { EnvironmentPinnedSection } from "./EnvironmentPinnedSection";
-import { EnvironmentProjectInstructionsSection } from "./EnvironmentProjectInstructionsSection";
 import {
   ENVIRONMENT_ROW_ICON_CLASS_NAME,
   EnvironmentLabeledSection,
@@ -82,21 +81,11 @@ export interface EnvironmentPanelProps {
 
   activeProjectId: ProjectId | null;
 
-  projectInstructions: string;
-
-  canCopyProjectInstructionsToNotes: boolean;
-
-  onProjectInstructionsChange: (projectId: ProjectId, instructions: string) => void;
-
-  onCopyProjectInstructionsToNotes: () => void;
-
   onToggleDiff: () => void;
 
   onOpenGithubRepository?: (url: string) => void;
 
   onJumpToPinnedMessage: (messageId: MessageId) => void;
-
-  onTogglePinnedMessageDone: (messageId: MessageId) => void;
 
   onUnpinMessage: (messageId: MessageId) => void;
 
@@ -130,14 +119,9 @@ export function EnvironmentPanel({
   pinnedMessageTextById,
   notes,
   activeProjectId,
-  projectInstructions,
-  canCopyProjectInstructionsToNotes,
-  onProjectInstructionsChange,
-  onCopyProjectInstructionsToNotes,
   onToggleDiff,
   onOpenGithubRepository,
   onJumpToPinnedMessage,
-  onTogglePinnedMessageDone,
   onUnpinMessage,
   onRenamePinnedMessage,
   onNotesChange,
@@ -248,24 +232,8 @@ export function EnvironmentPanel({
             pins={pinnedMessages}
             messageTextById={pinnedMessageTextById}
             onJump={onJumpToPinnedMessage}
-            onToggleDone={onTogglePinnedMessageDone}
             onUnpin={onUnpinMessage}
             onRename={onRenamePinnedMessage}
-          />
-        </>
-      ) : null}
-
-      {settings.showEnvironmentInstructions && activeProjectId ? (
-        <>
-          <EnvironmentSectionDivider />
-          <EnvironmentProjectInstructionsSection
-            key={activeProjectId}
-            projectId={activeProjectId}
-            instructions={projectInstructions}
-            threadNotes={notes}
-            canCopyToThreadNotes={canCopyProjectInstructionsToNotes}
-            onInstructionsChange={onProjectInstructionsChange}
-            onCopyToThreadNotes={onCopyProjectInstructionsToNotes}
           />
         </>
       ) : null}

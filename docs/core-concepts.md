@@ -19,10 +19,8 @@ using separate worktrees also have separate working directories and branches.
 
 ## The main surfaces
 
-- **Sidebar** — projects, spaces, tasks, and activity requiring attention. Prod and Dev builds offer a
-  rail layout (Settings → General → Sidebar layout): a fixed column of icon tabs for Home, Spaces,
-  and Settings, with the thread panel beside it and the
-  route shown as a card inset from the window.
+- **Sidebar** — projects, spaces, chats, and activity requiring attention. Threads are ordered by
+  recent activity; projects support manual order or recent activity.
 - **Conversation** — user messages, agent responses, plans, tools, approvals, and subagent activity
 - **Composer** — objectives, attachments, provider selection, model selection, and task controls
 - **Terminal** — a real shell opened in the task's working directory

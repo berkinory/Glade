@@ -9,9 +9,7 @@ import {
   isMessagePinned,
   normalizePinLabel,
   removePinnedMessage,
-  setPinnedMessageDone,
   setPinnedMessageLabel,
-  togglePinnedMessageDone,
 } from "@glade/shared/threads/pinnedMessages";
 
 import { newCommandId } from "./lib/utils";
@@ -83,21 +81,6 @@ export function restorePinAtIndex(
   return nextPins;
 }
 
-export function togglePinDone(
-  pins: readonly PinnedMessage[] | undefined,
-  messageId: MessageId,
-): PinnedMessage[] {
-  return togglePinnedMessageDone(pins, messageId);
-}
-
-export function setPinDone(
-  pins: readonly PinnedMessage[] | undefined,
-  messageId: MessageId,
-  done: boolean,
-): PinnedMessage[] {
-  return setPinnedMessageDone(pins, messageId, done);
-}
-
 export function setPinLabel(
   pins: readonly PinnedMessage[] | undefined,
   messageId: MessageId,
@@ -112,12 +95,6 @@ async function dispatchSidepanelCommand(
         readonly type: "thread.pinned-message.add" | "thread.pinned-message.remove";
         readonly threadId: ThreadId;
         readonly messageId: MessageId;
-      }
-    | {
-        readonly type: "thread.pinned-message.done.set";
-        readonly threadId: ThreadId;
-        readonly messageId: MessageId;
-        readonly done: boolean;
       }
     | {
         readonly type: "thread.pinned-message.label.set";
@@ -150,19 +127,6 @@ export function dispatchPinnedMessageRemove(
   messageId: MessageId,
 ): Promise<void> {
   return dispatchSidepanelCommand({ type: "thread.pinned-message.remove", threadId, messageId });
-}
-
-export function dispatchPinnedMessageDoneSet(
-  threadId: ThreadId,
-  messageId: MessageId,
-  done: boolean,
-): Promise<void> {
-  return dispatchSidepanelCommand({
-    type: "thread.pinned-message.done.set",
-    threadId,
-    messageId,
-    done,
-  });
 }
 
 export function dispatchPinnedMessageLabelSet(

@@ -11,8 +11,6 @@ import { ProjectId, SpaceId, ThreadId } from "@glade/contracts/core/baseSchemas"
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useAppSettings } from "../appSettings";
-import { useRailShellStore } from "../railShellStore";
-import { useSidebarLayout } from "../hooks/useSidebarLayout";
 import { isMacNavigatorPlatform } from "../lib/utils";
 import { isOrdinarySpaceProject } from "../lib/spaces";
 import { useStore } from "../store";
@@ -90,10 +88,6 @@ export function useSidebarShellState() {
 
   const threadsHydrated = useStore((store) => store.threadsHydrated);
 
-  const isRailLayout = useSidebarLayout() === "rail";
-
-  const reconcileRailShell = useRailShellStore((store) => store.reconcile);
-
   const sidebarThreadSummaryById = useStore((store) => store.sidebarThreadSummaryById);
 
   const syncServerShellSnapshot = useStore((store) => store.syncServerShellSnapshot);
@@ -116,15 +110,11 @@ export function useSidebarShellState() {
 
   const queryClient = useQueryClient();
 
-  const pathname = useLocation({ select: (loc) => loc.pathname });
-
   const isOnSettings = useLocation({
     select: (loc) => loc.pathname === "/settings",
   });
 
   const { settings: appSettings, serverSettings, updateSettings } = useAppSettings();
-
-  const chatsSectionVisible = appSettings.showChatsSection;
 
   const { handleNewThread } = useHandleNewThread();
 
@@ -499,14 +489,6 @@ export function useSidebarShellState() {
     chatWorkspaceRoot,
   });
 
-  useEffect(() => {
-    if (!isRailLayout) return;
-    reconcileRailShell({
-      pathname,
-      projectIds: threadsHydrated ? new Set(projects.map((project) => project.id)) : null,
-    });
-  }, [isRailLayout, pathname, projects, reconcileRailShell, threadsHydrated]);
-
   const ordinarySpaceProjects = projects.filter((project) =>
     isOrdinarySpaceProject(project, { homeDir, chatWorkspaceRoot }),
   );
@@ -568,7 +550,6 @@ export function useSidebarShellState() {
     chatSpaceByThreadId,
     activeSpaceId,
     threadsHydrated,
-    isRailLayout,
     syncServerShellSnapshot,
     removeDeletedProjectFromClientState,
     homeDir,
@@ -579,7 +560,6 @@ export function useSidebarShellState() {
     appSettings,
     serverSettings,
     updateSettings,
-    chatsSectionVisible,
     handleNewThread,
     handleNewChat,
     routeThreadId,

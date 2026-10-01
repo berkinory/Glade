@@ -46,7 +46,6 @@ export function decideThreadLifecycleCommand({
         | "thread.meta.update"
         | "thread.pinned-message.add"
         | "thread.pinned-message.remove"
-        | "thread.pinned-message.done.set"
         | "thread.pinned-message.label.set"
         | "thread.runtime-mode.set"
         | "thread.session.stop"
@@ -531,29 +530,6 @@ export function decideThreadLifecycleCommand({
           payload: {
             threadId: command.threadId,
             messageId: command.messageId,
-            updatedAt: occurredAt,
-          },
-        };
-      }
-      case "thread.pinned-message.done.set": {
-        yield* requireThread({
-          readModel,
-          command,
-          threadId: command.threadId,
-        });
-        const occurredAt = nowIso();
-        return {
-          ...withEventBase({
-            aggregateKind: "thread",
-            aggregateId: command.threadId,
-            occurredAt,
-            commandId: command.commandId,
-          }),
-          type: "thread.pinned-message-done-set",
-          payload: {
-            threadId: command.threadId,
-            messageId: command.messageId,
-            done: command.done,
             updatedAt: occurredAt,
           },
         };

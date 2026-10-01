@@ -9,7 +9,6 @@ import { toastManager } from "~/components/ui/toast";
 import {
   addPin,
   dispatchPinnedMessageAdd,
-  dispatchPinnedMessageDoneSet,
   dispatchPinnedMessageLabelSet,
   dispatchPinnedMessageRemove,
   dispatchThreadNotes,
@@ -17,9 +16,7 @@ import {
   normalizePinLabel,
   removePin,
   restorePinAtIndex,
-  setPinDone,
   setPinLabel,
-  togglePinDone,
 } from "~/pinnedMessages";
 
 interface UsePinnedMessageActionsInput {
@@ -29,7 +26,6 @@ interface UsePinnedMessageActionsInput {
 
 interface UsePinnedMessageActionsResult {
   readonly handleTogglePinMessage: (messageId: MessageId) => void;
-  readonly handleTogglePinnedMessageDone: (messageId: MessageId) => void;
   readonly handleUnpinMessage: (messageId: MessageId) => void;
   readonly handleRenamePinnedMessage: (messageId: MessageId, label: string | null) => void;
   readonly handleNotesChange: (threadId: ThreadId, notes: string) => Promise<void>;
@@ -118,29 +114,6 @@ export function usePinnedMessageActions({
     });
   };
 
-  const handleTogglePinnedMessageDone = (messageId: MessageId) => {
-    const threadId = activePinnedThreadIdRef.current;
-    if (!threadId) {
-      return;
-    }
-    const pin = pinnedMessagesRef.current.find((candidate) => candidate.messageId === messageId);
-    if (!pin) {
-      return;
-    }
-    const previousDone = pin.done === true;
-    const done = !previousDone;
-    pinnedMessagesRef.current = togglePinDone(pinnedMessagesRef.current, messageId);
-    void dispatchPinnedMessageDoneSet(threadId, messageId, done).catch((error) => {
-      const currentPin = pinnedMessagesRef.current.find(
-        (candidate) => candidate.messageId === messageId,
-      );
-      if (currentPin?.done === done) {
-        pinnedMessagesRef.current = setPinDone(pinnedMessagesRef.current, messageId, previousDone);
-      }
-      handlePinnedMessageDispatchError(error);
-    });
-  };
-
   const handleUnpinMessage = (messageId: MessageId) => {
     const threadId = activePinnedThreadIdRef.current;
     if (!threadId) {
@@ -202,7 +175,6 @@ export function usePinnedMessageActions({
 
   return {
     handleTogglePinMessage,
-    handleTogglePinnedMessageDone,
     handleUnpinMessage,
     handleRenamePinnedMessage,
     handleNotesChange,

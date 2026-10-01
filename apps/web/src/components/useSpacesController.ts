@@ -2,7 +2,6 @@ import type { ProjectId, SpaceId, ThreadId } from "@glade/contracts/core/baseSch
 import { useNavigate } from "@tanstack/react-router";
 import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
 
-import type { SidebarThreadSortOrder } from "../appSettings";
 import { useComposerDraftStore } from "../composerDraftStore";
 import { isHomeChatContainerProject } from "../lib/chatProjects";
 import { spaceKey, toSpaceIconName } from "../lib/spaceGrouping";
@@ -44,7 +43,6 @@ function spaceOrderMatches(
 }
 
 export function useSpacesController(input: {
-  sidebarThreadSortOrder: SidebarThreadSortOrder;
   routeThreadId: ThreadId | null;
   activeRouteProjectId: ProjectId | null;
   activateThreadFromSidebarIntent: (threadId: ThreadId) => void;
@@ -56,7 +54,6 @@ export function useSpacesController(input: {
     activeRouteProjectId,
     onCloseProjectContextMenu,
     routeThreadId,
-    sidebarThreadSortOrder,
   } = input;
 
   const navigate = useNavigate();
@@ -221,7 +218,7 @@ export function useSpacesController(input: {
         threads: sidebarThreads,
         rememberedThreadId: getLastSpaceThreadId(spaceId),
         paths: workspacePaths,
-        sortThreads: (threads) => sortThreadsForSidebar(threads, sidebarThreadSortOrder),
+        sortThreads: (threads) => sortThreadsForSidebar(threads),
       });
 
       if (target.kind === "thread") {
@@ -261,7 +258,6 @@ export function useSpacesController(input: {
       projectById,
       rememberDepartingSpaceContext,
       selectSpaceForNavigation,
-      sidebarThreadSortOrder,
       sidebarThreads,
       workspacePaths,
     ],

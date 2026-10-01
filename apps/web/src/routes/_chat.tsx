@@ -1,16 +1,13 @@
 import type { ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
-import { CHAT_SURFACE_HEADER_HEIGHT_PX } from "@glade/shared/platform/desktopChrome";
 import { useQuery } from "@tanstack/react-query";
 import { Outlet, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   goBackInAppHistory,
   goForwardInAppHistory,
   resolveAppNavigationState,
 } from "../appNavigation";
-import { AppRailSlotProvider } from "../components/AppRail";
-import { AppShellTopStrip } from "../components/AppShellTopStrip";
 import ShortcutsDialog from "../components/ShortcutsDialog";
 import { RecentViewSwitcher } from "../components/RecentViewSwitcher";
 import { shouldRenderTerminalWorkspace } from "../components/ChatView.logic.subagents";
@@ -19,7 +16,6 @@ import { isElectron } from "../env";
 import { useHandleNewChat } from "../hooks/useHandleNewChat";
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
 import { useRecentViewSwitcher } from "../hooks/useRecentViewSwitcher";
-import { useSidebarLayout } from "../hooks/useSidebarLayout";
 import { useProjectPreferencesStore } from "../projectPreferencesStore";
 import {
   resolveCurrentProjectTargetId,
@@ -491,21 +487,14 @@ const SIDEBAR_INNER_CLASS = "app-sidebar-surface";
 
 function ChatRouteLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const isRailLayout = useSidebarLayout() === "rail";
-
-  const [railSlot, setRailSlot] = useState<HTMLDivElement | null>(null);
 
   const sidebarElement = (
     <Sidebar
       side="left"
       collapsible="offcanvas"
-      className={cn(isRailLayout && "h-full", "text-foreground", SIDEBAR_OFFCANVAS_MOTION_CLASS)}
-      gapClassName={
-        isRailLayout
-          ? SIDEBAR_OFFCANVAS_MOTION_CLASS
-          : cn(SIDEBAR_GAP_CLASS, SIDEBAR_OFFCANVAS_MOTION_CLASS)
-      }
-      {...(isRailLayout ? {} : { innerClassName: SIDEBAR_INNER_CLASS })}
+      className={cn("text-foreground", SIDEBAR_OFFCANVAS_MOTION_CLASS)}
+      gapClassName={cn(SIDEBAR_GAP_CLASS, SIDEBAR_OFFCANVAS_MOTION_CLASS)}
+      innerClassName={SIDEBAR_INNER_CLASS}
       transparentSurface
       resizable={THREAD_SIDEBAR_RESIZABLE}
     >
@@ -520,47 +509,12 @@ function ChatRouteLayout() {
   // `data-sidebar-side` on the provider selects the seam geometry.
   const mainContentShell = (
     <div className="relative flex h-svh min-h-0 min-w-0 flex-1">
-      {isRailLayout ? (
-        <>
-          <div aria-hidden className="app-rail-content-shadow" />
-          <div aria-hidden className="app-rail-header-divider" />
-        </>
-      ) : null}
       <SidebarInstanceProvider side="left" resizable={THREAD_SIDEBAR_RESIZABLE}>
         <SidebarRail placement="content-seam" />
       </SidebarInstanceProvider>
       <Outlet />
     </div>
   );
-
-  if (isRailLayout) {
-    return (
-      <SidebarProvider
-        defaultOpen
-        open={sidebarOpen}
-        onOpenChange={setSidebarOpen}
-        className="h-svh overflow-hidden bg-[var(--app-rail-shell-background)]"
-        style={{ "--app-top-strip-height": `${CHAT_SURFACE_HEADER_HEIGHT_PX}px` } as CSSProperties}
-        data-sidebar-side="left"
-        data-sidebar-layout="rail"
-      >
-        <ThreadRetentionMaintenanceToast />
-        <ChatRouteGlobalShortcuts />
-        <AppRailSlotProvider value={railSlot}>
-          <div className="flex min-h-0 shrink-0 flex-col">
-            <AppShellTopStrip />
-            <div className="flex min-h-0 flex-1">
-              <div ref={setRailSlot} className="flex shrink-0" />
-              <div className="app-rail-panel relative flex shrink-0 overflow-hidden [contain:paint]">
-                {sidebarElement}
-              </div>
-            </div>
-          </div>
-          {mainContentShell}
-        </AppRailSlotProvider>
-      </SidebarProvider>
-    );
-  }
 
   return (
     <SidebarProvider

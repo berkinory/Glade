@@ -44,7 +44,6 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
     case "thread.meta.update":
     case "thread.pinned-message.add":
     case "thread.pinned-message.remove":
-    case "thread.pinned-message.done.set":
     case "thread.pinned-message.label.set":
     case "thread.runtime-mode.set":
     case "thread.session.stop":

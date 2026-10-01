@@ -61,7 +61,6 @@ export function buildThemeCssVariables(
         ? "transparent"
         : readCodexVariable("--color-background-surface-under"),
 
-    "--app-rail-shell-opacity": material === "translucent" ? "64%" : "100%",
     "--app-composer-focus-border": composerFocusBorder,
 
     "--app-composer-picker-backdrop-filter": material === "translucent" ? "blur(32px)" : "none",

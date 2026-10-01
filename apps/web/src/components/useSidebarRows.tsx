@@ -1,7 +1,6 @@
+import { NewThreadIcon } from "~/lib/icons";
 import { useTerminalStateStore } from "../terminalStateStore";
-import { useRailShellStore } from "../railShellStore";
 import { useSidebarStateStore } from "../sidebarStateStore";
-import { AddPlusIcon, NewThreadIcon } from "~/lib/icons";
 import { ThreadPrStatusBadge } from "~/components/pullRequest/ThreadPrStatusBadge";
 import { PinStatusIcon, pinActionLabel } from "~/lib/pin";
 import { type DragEvent as ReactDragEvent, type ReactNode } from "react";
@@ -36,10 +35,7 @@ import { DisclosureRegion } from "./ui/DisclosureRegion";
 import { ShortcutKbd } from "./ui/shortcut-kbd";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 import {
-  SidebarGroup,
-  SidebarMenu,
   SidebarMenuButton,
-  SidebarMenuItem,
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
@@ -71,11 +67,9 @@ import {
   SIDEBAR_ROW_LABEL_TEXT_CLASS_NAME,
   SIDEBAR_SECTION_LABEL_CLASS_NAME,
 } from "../sidebarRowStyles";
-import { SpaceEmptyState } from "./SpaceEmptyState";
 import { PROJECT_SPACE_DRAG_MIME } from "./SpaceSwitcher";
 import type { useSidebarPanelEffects } from "./useSidebarPanelEffects";
 import {
-  BackArrowIcon,
   preventFocusOnMouseDown,
   ProjectRunIndicatorDot,
   THREAD_ROW_META_CHIP_HOVER_FADE_CLASS_NAME,
@@ -89,12 +83,9 @@ import {
 export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects>) {
   const {
     spaces,
-    threadsHydrated,
     homeDir,
     handleNewThread,
     newThreadShortcutLabel,
-    setCreateProjectDialogOpen,
-    setCreateProjectSpaceId,
     visualActiveSidebarThreadId,
     projectById,
     resolveThreadStatusForSidebar,
@@ -113,18 +104,12 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
     handleThreadContextMenu,
     handleMultiSelectContextMenu,
     activateThreadFromSidebarIntent,
-    voidSpace,
-    openSpaceProjectPicker,
     handleProjectContextMenuAction,
     handleProjectContextMenu,
     handleProjectTitlePointerDownCapture,
     sortedProjects,
-    allStandardProjectsBase,
     pinnedProjectIdSet,
     surfaceProjectSidebarDataById,
-    railSpacesSections,
-    railSpacesProject,
-    railSpacesProjectSidebarData,
     handleThreadClick,
     prByThreadId,
     isManualProjectSorting,
@@ -134,9 +119,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
     showMoreThreadsForProject,
   } = context;
   const terminalStateByThreadId = useTerminalStateStore((state) => state.terminalStateByThreadId);
-
-  const openRailSpacesProject = useRailShellStore((state) => state.openSpacesProject);
-  const closeRailSpacesProject = useRailShellStore((state) => state.closeSpacesProject);
 
   const selectedThreadIds = useSidebarStateStore((state) => state.selectedThreadIds);
   const clearSelection = useSidebarStateStore((state) => state.clearSelection);
@@ -839,125 +821,11 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
     );
   }
 
-  function renderRailSpacesProjectRow(project: (typeof sortedProjects)[number]) {
-    const isProjectRunning = isSidebarProjectRunning(project.id);
-    return (
-      <SidebarMenuItem key={project.id}>
-        <SidebarMenuButton
-          size="sm"
-          className={cn(
-            SIDEBAR_HEADER_ROW_CLASS_NAME,
-            SIDEBAR_ROW_IDLE_TEXT_CLASS_NAME,
-            SIDEBAR_ROW_HOVER_CLASS_NAME,
-          )}
-          onClick={() => openRailSpacesProject(project.id)}
-          onContextMenu={(event) => {
-            event.preventDefault();
-            void handleProjectContextMenu(project.id, {
-              x: event.clientX,
-              y: event.clientY,
-            });
-          }}
-        >
-          <SidebarLeadingIcon size="sm" tone={SIDEBAR_ROW_LABEL_TEXT_CLASS_NAME}>
-            <ProjectSidebarIcon
-              cwd={project.cwd}
-              expanded={false}
-              appearance={project.appearance}
-            />
-          </SidebarLeadingIcon>
-          <span className={SIDEBAR_PROJECT_NAME_CLASS_NAME}>
-            {resolveSidebarProjectRowLabel(project)}
-          </span>
-          {isProjectRunning ? <ProjectRunIndicatorDot /> : null}
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-    );
-  }
-
-  function renderRailSpacesPanel() {
-    if (railSpacesProject && railSpacesProjectSidebarData) {
-      return (
-        <SidebarGroup className="px-1.5 py-1.5">
-          <div className="my-1 flex h-7 min-w-0 items-center gap-1.5 ps-1 pe-1.5">
-            <SidebarIconButton
-              icon={BackArrowIcon}
-              label="Back to spaces"
-              tooltip="Back to spaces"
-              tooltipSide="bottom"
-              onClick={closeRailSpacesProject}
-            />
-            <span className={SIDEBAR_PROJECT_NAME_CLASS_NAME}>
-              {resolveSidebarProjectRowLabel(railSpacesProject)}
-            </span>
-            <SidebarSectionToolbar>
-              {renderProjectThreadActions(railSpacesProject)}
-            </SidebarSectionToolbar>
-          </div>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuSub
-                className={cn(
-                  "mx-0 my-0 w-full translate-x-0 border-l-0 px-0 py-0",
-                  SIDEBAR_NESTED_LIST_GAP_CLASS_NAME,
-                )}
-              >
-                {renderProjectThreadList(railSpacesProject, railSpacesProjectSidebarData)}
-              </SidebarMenuSub>
-            </SidebarMenuItem>
-          </SidebarMenu>
-          {railSpacesProjectSidebarData.visibleEntries.length === 0 ? (
-            <div className="px-2 pt-4 text-center text-ui text-muted-foreground/58">
-              No threads yet
-            </div>
-          ) : null}
-        </SidebarGroup>
-      );
-    }
-    return (
-      <SidebarGroup className="px-1.5 py-1.5">
-        {threadsHydrated
-          ? railSpacesSections.map((section) => (
-              <div key={section.key}>
-                {renderListSectionHeader(
-                  section.name,
-                  <SidebarIconButton
-                    icon={AddPlusIcon}
-                    label="Add project"
-                    onClick={() => {
-                      setCreateProjectSpaceId(section.spaceId);
-                      setCreateProjectDialogOpen(true);
-                    }}
-                    tooltip="Add project"
-                    tooltipSide="right"
-                  />,
-                )}
-                {section.items.length > 0 ? (
-                  <SidebarMenu className="gap-0.5">
-                    {section.items.map((project) => renderRailSpacesProjectRow(project))}
-                  </SidebarMenu>
-                ) : (
-                  <SpaceEmptyState
-                    space={spaces.find((space) => space.id === section.spaceId) ?? null}
-                    unfiledSpaceName={voidSpace.name}
-                    hasProjectsElsewhere={allStandardProjectsBase.length > 0}
-                    onMoveProjects={() => {
-                      if (section.spaceId !== null) openSpaceProjectPicker(section.spaceId);
-                    }}
-                  />
-                )}
-              </div>
-            ))
-          : null}
-      </SidebarGroup>
-    );
-  }
   return {
     renderListSectionHeader,
     renderPinnedThreadsSection,
     renderThreadHoverCardPopup,
     renderThreadRow,
     renderProjectItem,
-    renderRailSpacesPanel,
   };
 }

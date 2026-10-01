@@ -29,7 +29,6 @@ import { getLocalFolderBrowseRootPath } from "~/lib/localFolderMentions";
 import { canCreateThreadHandoff } from "~/lib/threadHandoff";
 import { isMacNavigatorPlatform, newCommandId } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
-import { mergeProjectInstructionsIntoThreadNotes } from "~/projectPreferencesStore";
 import { deriveTimelineEntries } from "../../../workLog.timeline";
 import { useStore } from "~/store";
 import { buildThreadSubscribeInput } from "~/threadDetailResumeCursors";
@@ -66,7 +65,6 @@ export function useChatTranscriptController({
     activeLatestTurn,
     activeProject,
     isServerThread,
-    projectInstructions,
     activeLatestTurnState,
     latestTurnSettled,
     homeDir,
@@ -208,32 +206,10 @@ export function useChatTranscriptController({
 
   const {
     handleTogglePinMessage,
-    handleTogglePinnedMessageDone,
     handleUnpinMessage,
     handleRenamePinnedMessage,
     handleNotesChange,
   } = usePinnedMessageActions({ activeThreadId, pinnedMessages });
-
-  const handleCopyProjectInstructionsToNotes = () => {
-    if (!activeThreadId) {
-      return;
-    }
-    const nextNotes = mergeProjectInstructionsIntoThreadNotes({
-      threadNotes,
-      projectInstructions,
-    });
-    if (nextNotes === threadNotes) {
-      return;
-    }
-    void handleNotesChange(activeThreadId, nextNotes)
-      .then(() => {
-        toastManager.add({
-          type: "success",
-          title: "Project instructions added to notepad.",
-        });
-      })
-      .catch(() => {});
-  };
 
   const handleJumpToPinnedMessage = (messageId: MessageId) => {
     timelineControllerRef.current?.scrollToMessage(messageId);
@@ -414,12 +390,10 @@ export function useChatTranscriptController({
     threadNotes,
     pinnedMessageIds,
     pinnedMessageTextById,
-    handleTogglePinnedMessageDone,
     handleUnpinMessage,
     handleRenamePinnedMessage,
     handleNotesChange,
     handleTogglePinMessage,
-    handleCopyProjectInstructionsToNotes,
     handleJumpToPinnedMessage,
     threadDetailHydration,
     transcriptEmptyStateContent,
