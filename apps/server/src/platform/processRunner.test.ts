@@ -14,7 +14,7 @@ describe("provider executable callback bridge", () => {
         executable = path.join(directory, "provider shim.cmd");
         await fs.writeFile(executable, `@echo off\r\n"${process.execPath}" %*\r\n`);
       }
-      const argumentsToPreserve = ["alpha space", "日本語", "literal&value"];
+      const argumentsToPreserve = ["alpha space", "日本語", "semi;colon"];
       const result = await execProcessFileAsync(
         executable,
         [
