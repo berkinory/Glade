@@ -477,14 +477,17 @@ const makeGitStatus = Effect.gen(function* () {
       const end = statusResult.stdoutTruncated
         ? statusResult.stdout.lastIndexOf("\0") + 1
         : statusResult.stdout.length;
-      return statusResult.stdout.slice(0, end);
+      return {
+        stdout: statusResult.stdout.slice(0, end),
+        incomplete: statusResult.stdoutTruncated === true,
+      };
     });
 
   const summary: GitCoreShape["summary"] = (cwd) =>
     readPorcelainStatus(cwd).pipe(
       Effect.flatMap((stdout) =>
         Effect.gen(function* () {
-          const parsed = stdout === null ? null : parseGitStatusPorcelain(stdout);
+          const parsed = stdout === null ? null : parseGitStatusPorcelain(stdout.stdout);
           const config = parsed ? yield* metadata.read(cwd) : null;
           const remote = parsed?.branch
             ? (config?.configValue(`branch.${parsed.branch}.remote`) ?? config?.primaryRemote)
@@ -507,17 +510,17 @@ const makeGitStatus = Effect.gen(function* () {
 
   const readStatusDetails = (cwd: string, refreshUpstream: boolean, metadataOnly: boolean) =>
     Effect.gen(function* () {
-      let statusStdout = yield* readPorcelainStatus(cwd);
-      if (statusStdout === null) return NON_REPOSITORY_STATUS_DETAILS;
-      const initialUpstream = parseGitStatusPorcelain(statusStdout).upstreamRef;
+      let status = yield* readPorcelainStatus(cwd);
+      if (status === null) return NON_REPOSITORY_STATUS_DETAILS;
+      const initialUpstream = parseGitStatusPorcelain(status.stdout).upstreamRef;
       if (refreshUpstream && initialUpstream) {
         const refreshed = yield* refreshStatusUpstreamIfStale(cwd, initialUpstream).pipe(
           Effect.catch(() => Effect.succeed(false)),
         );
-        if (refreshed) statusStdout = (yield* readPorcelainStatus(cwd)) ?? statusStdout;
+        if (refreshed) status = (yield* readPorcelainStatus(cwd)) ?? status;
       }
 
-      const parsedStatus = parseGitStatusPorcelain(statusStdout);
+      const parsedStatus = parseGitStatusPorcelain(status.stdout);
       const branch = parsedStatus.branch;
       const upstreamRef = parsedStatus.upstreamRef;
       let upstreamBranch: string | null = null;
@@ -557,11 +560,7 @@ const makeGitStatus = Effect.gen(function* () {
           branch !== null && defaultBranchName !== null && branch === defaultBranchName,
       } as const;
 
-      if (
-        metadataOnly ||
-        changedFilesWithoutNumstat.size >= 5_000 ||
-        Buffer.byteLength(statusStdout) > 500_000
-      ) {
+      if (metadataOnly || changedFilesWithoutNumstat.size >= 5_000 || status.incomplete) {
         const paths = [...changedFilesWithoutNumstat];
         return {
           ...repoMetadata,
@@ -572,13 +571,10 @@ const makeGitStatus = Effect.gen(function* () {
           hasWorkingTreeChanges,
           workingTree: {
             totalCount: paths.length,
-            incomplete: paths.length >= 5_000 || Buffer.byteLength(statusStdout) > 500_000,
+            incomplete: paths.length >= 5_000 || status.incomplete,
             statsAvailable: false,
             files: paths
-              .slice(
-                0,
-                paths.length >= 5_000 || Buffer.byteLength(statusStdout) > 500_000 ? 200 : 5_000,
-              )
+              .slice(0, paths.length >= 5_000 || status.incomplete ? 200 : 5_000)
               .map((path) => ({ path, insertions: 0, deletions: 0 })),
             insertions: 0,
             deletions: 0,
@@ -617,7 +613,7 @@ const makeGitStatus = Effect.gen(function* () {
         { allowNonZeroExit: true },
       ).pipe(Effect.catchIf(isMissingGitCwdError, () => Effect.succeed(null)));
       if (numstatResult === null) return NON_REPOSITORY_STATUS_DETAILS;
-      if (numstatResult.code !== 0 && !statusStdout.startsWith("# branch.oid (initial)")) {
+      if (numstatResult.code !== 0 && !status.stdout.startsWith("# branch.oid (initial)")) {
         return yield* createGitCommandError(
           "GitCore.statusDetails.numstat",
           cwd,

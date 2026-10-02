@@ -1,5 +1,6 @@
 import {
   Effect,
+  Exit,
   FileSystem,
   Layer,
   Option,
@@ -443,7 +444,7 @@ const makeGitCommands = Effect.gen(function* () {
 
       yield* Effect.addFinalizer(() => child.kill().pipe(Effect.ignore));
 
-      const [stdoutResult, stderrResult, exitCode] = yield* Effect.all(
+      const [stdoutResult, stderrResult, exit] = yield* Effect.all(
         [
           collectGitOutput(
             commandInput,
@@ -462,12 +463,16 @@ const makeGitCommands = Effect.gen(function* () {
             outputMode,
           ),
           child.exitCode.pipe(
-            Effect.map((value) => Number(value)),
             Effect.mapError(toGitCommandError(commandInput, "failed to report exit code.")),
+            Effect.exit,
           ),
         ],
         { concurrency: "unbounded" },
       );
+      // A deliberately killed prefix read may report a signal instead of an exit code.
+      if (Exit.isFailure(exit) && !(outputMode === "prefix" && stdoutResult.truncated))
+        return yield* Effect.failCause(exit.cause);
+      const exitCode = Exit.isSuccess(exit) ? Number(exit.value) : -1;
       yield* trace2Monitor.flush;
 
       if (

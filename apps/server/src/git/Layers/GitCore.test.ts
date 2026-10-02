@@ -88,6 +88,27 @@ function initRepoWithCommit(
 }
 
 it.layer(TestLayer)("git integration", (it) => {
+  it.effect("returns a bounded prefix when a signalled Git read has no exit code", () =>
+    Effect.gen(function* () {
+      const core = yield* GitCore;
+      const cwd = yield* makeTmpDir();
+      yield* initRepoWithCommit(cwd);
+      yield* writeTextFile(path.join(cwd, "large.txt"), "content\n".repeat(1_000_000));
+      yield* git(cwd, ["add", "large.txt"]);
+      yield* git(cwd, ["commit", "-m", "large blob"]);
+      const result = yield* core.execute({
+        operation: "GitCore.test.prefix",
+        cwd,
+        args: ["show", "HEAD:large.txt"],
+        outputMode: "prefix",
+        maxOutputBytes: 4096,
+      });
+      expect(result.stdoutTruncated).toBe(true);
+      expect(Buffer.byteLength(result.stdout)).toBe(4096);
+      expect(result.stdout.startsWith("content\n")).toBe(true);
+    }),
+  );
+
   it.effect("shares identical in-flight ref reads through one Git process", () =>
     Effect.gen(function* () {
       const core = yield* GitCore;
