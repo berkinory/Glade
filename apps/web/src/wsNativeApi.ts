@@ -455,9 +455,10 @@ export function createWsNativeApi(): NativeApi {
       sidebarSummary: (input) => transport.request(WS_METHODS.gitSidebarSummary, input),
       onStatus: (input, callback) => transport.subscribeGitStatus(input, callback),
       readWorkingTreeDiff: (input) => transport.request(WS_METHODS.gitReadWorkingTreeDiff, input),
-      readSourceControlFiles: (input) =>
-        transport.request(WS_METHODS.gitReadSourceControlFiles, input),
-      readFileAtRev: (input) => transport.request(WS_METHODS.gitReadFileAtRev, input),
+      readSourceControlFiles: (input, options) =>
+        transport.request(WS_METHODS.gitReadSourceControlFiles, input, options),
+      readFileAtRev: (input, options) =>
+        transport.request(WS_METHODS.gitReadFileAtRev, input, options),
       workingTreeDiffStats: (input) => transport.request(WS_METHODS.gitWorkingTreeDiffStats, input),
       blameLine: (input) => transport.request(WS_METHODS.gitBlameLine, input),
       generateCommitMessage: commitGeneration.generateCommitMessage,

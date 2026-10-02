@@ -1412,7 +1412,7 @@ const makeWsRpcHandlersLayer = () =>
           rpcEffect(gitManager.readWorkingTreeDiff(input), "Failed to read working tree diff"),
         [WS_METHODS.gitReadSourceControlFiles]: (input) =>
           rpcEffect(
-            gitManager.readSourceControlFiles(input.cwd),
+            gitManager.readSourceControlFiles(input.cwd, input.query),
             "Failed to read source control files",
           ),
         [WS_METHODS.gitBlameLine]: (input) =>
@@ -1649,10 +1649,12 @@ const makeWsRpcHandlersLayer = () =>
           ),
         [WS_METHODS.gitStageFiles]: (input) =>
           rpcEffect(
-            git.withMutation(input.cwd, git.stageFiles(input.cwd, input.paths)).pipe(
-              Effect.tap(() => refreshGitStatusInBackground(input.cwd)),
-              Effect.as({ ok: true }),
-            ),
+            git
+              .withMutation(input.cwd, git.stageFiles(input.cwd, input.paths, input.allChanges))
+              .pipe(
+                Effect.tap(() => refreshGitStatusInBackground(input.cwd)),
+                Effect.as({ ok: true }),
+              ),
             "Failed to stage files",
           ),
         [WS_METHODS.gitRevertUnstagedFile]: (input) =>
@@ -1665,10 +1667,12 @@ const makeWsRpcHandlersLayer = () =>
           ),
         [WS_METHODS.gitUnstageFiles]: (input) =>
           rpcEffect(
-            git.withMutation(input.cwd, git.unstageFiles(input.cwd, input.paths)).pipe(
-              Effect.tap(() => refreshGitStatusInBackground(input.cwd)),
-              Effect.as({ ok: true }),
-            ),
+            git
+              .withMutation(input.cwd, git.unstageFiles(input.cwd, input.paths, input.allChanges))
+              .pipe(
+                Effect.tap(() => refreshGitStatusInBackground(input.cwd)),
+                Effect.as({ ok: true }),
+              ),
             "Failed to unstage files",
           ),
         [WS_METHODS.gitHandoffThread]: (input) =>

@@ -12,6 +12,7 @@ import {
   GitReadWorkingTreeDiffInput,
   GitReadWorkingTreeDiffResult,
   GitSourceControlFilesResult,
+  GitReadSourceControlFilesInput,
   GitBlameLineInput,
   GitBlameLineResult,
   GitReadFileAtRevInput,
@@ -99,7 +100,7 @@ export const WsGitReadWorkingTreeDiffRpc = Rpc.make(WS_METHODS.gitReadWorkingTre
 });
 
 export const WsGitReadSourceControlFilesRpc = Rpc.make(WS_METHODS.gitReadSourceControlFiles, {
-  payload: GitStatusInput,
+  payload: GitReadSourceControlFilesInput,
   success: GitSourceControlFilesResult,
   error: WsRpcError,
 });
