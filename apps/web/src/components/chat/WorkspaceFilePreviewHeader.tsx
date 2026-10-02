@@ -50,7 +50,7 @@ const MARKDOWN_VIEW_SEGMENTS = [
   {
     rendered: false,
     label: "Source",
-    title: "Source view — select text to reference exact lines in chat",
+    title: "Source view",
     Icon: CodeIcon,
   },
   {

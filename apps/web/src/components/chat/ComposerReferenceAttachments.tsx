@@ -9,7 +9,6 @@ import { AssistantSelectionsSummaryChip } from "./AssistantSelectionsSummaryChip
 import { ComposerImageAttachmentChip } from "./ComposerImageAttachmentChip";
 import { FileAttachmentChip } from "./FileAttachmentChip";
 import { ComposerPastedTextCard } from "./PastedTextChip";
-import { ComposerPullRequestContextCard } from "./PullRequestContextCard";
 import { FileCommentsSummaryChip } from "./FileCommentsSummaryChip";
 import { BrowserAnnotationStrip } from "./BrowserAnnotationStrip";
 
@@ -90,13 +89,19 @@ export function ComposerReferenceAttachments({
         />
       ))}
       {pullRequestContexts.map((context) => (
-        <ComposerPullRequestContextCard
+        <div
           key={context.id}
-          scope={context.scope}
-          title={context.title}
-          subtitle={context.subtitle}
-          onRemove={() => onRemovePullRequestContext?.(context.id)}
-        />
+          className="flex max-w-full items-center gap-2 rounded border border-border/70 px-2 py-1 text-ui-sm"
+        >
+          <span className="truncate">{context.title}</span>
+          <button
+            type="button"
+            aria-label="Remove attached context"
+            onClick={() => onRemovePullRequestContext?.(context.id)}
+          >
+            Remove
+          </button>
+        </div>
       ))}
       {files.map((file) => (
         <FileAttachmentChip key={file.id} file={file} variant="card" onRemove={onRemoveFile} />

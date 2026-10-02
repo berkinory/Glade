@@ -7,6 +7,7 @@ import { Button } from "../ui/button";
 import { IconButton } from "../ui/icon-button";
 import { Textarea } from "../ui/textarea";
 import { Spinner } from "../ui/spinner";
+import { assertCommitScope, readCommitScope, type CommitScope } from "./sourceControlCommitScope";
 import { toastManager } from "../ui/toast";
 
 export function SourceControlCommitInput(props: {
@@ -16,13 +17,14 @@ export function SourceControlCommitInput(props: {
   canGenerate: boolean;
   committing: boolean;
   onChange: (message: string) => void;
-  onGenerated: (message: string) => void;
+  onGenerated: (message: string, scope: CommitScope) => void;
   onCommit: () => void;
 }) {
   const { settings } = useAppSettings();
   const generation = useMutation({
-    mutationFn: () =>
-      ensureNativeApi().git.generateCommitMessage({
+    mutationFn: async () => {
+      const scope = await readCommitScope(props.cwd);
+      const result = await ensureNativeApi().git.generateCommitMessage({
         cwd: props.cwd,
         ...(settings.textGenerationModel
           ? { textGenerationModel: settings.textGenerationModel }
@@ -37,7 +39,10 @@ export function SourceControlCommitInput(props: {
           : {}),
         ...(settings.codexHomePath ? { codexHomePath: settings.codexHomePath } : {}),
         providerOptions: getProviderStartOptions(settings),
-      }),
+      });
+      assertCommitScope(scope, await readCommitScope(props.cwd));
+      return { message: result.message, scope };
+    },
     onError: (error) =>
       toastManager.add({
         type: "error",
@@ -61,7 +66,7 @@ export function SourceControlCommitInput(props: {
               disabled={!props.canGenerate || generation.isPending}
               onClick={() =>
                 generation.mutate(undefined, {
-                  onSuccess: (result) => props.onGenerated(result.message),
+                  onSuccess: (result) => props.onGenerated(result.message, result.scope),
                 })
               }
             >

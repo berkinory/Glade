@@ -24,6 +24,7 @@ export function EnvironmentToggle({ environment }: { environment: EnvironmentTog
             className={TOGGLE_CLASS_NAME}
             pressed={environment.open}
             onPressedChange={environment.onOpenChange}
+            data-environment-toggle
             aria-label="Toggle environment panel"
             variant="default"
             size="xs"

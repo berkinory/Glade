@@ -8,7 +8,8 @@ import { XIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { selectRepresentativeTerminalVisualIdentity } from "~/terminalVisualIdentity";
 
-import { CHAT_HEADER_ICON_CONTROL_CLASS_NAME, SurfaceTabChip } from "../chat/chatHeaderControls";
+import { CHAT_HEADER_ICON_CONTROL_CLASS_NAME } from "../chat/chatHeaderControls";
+import { PanelTabBar } from "../chat/PanelTabBar";
 import type { ResolvedTerminalGroupLayout } from "./TerminalLayout";
 import TerminalActivityIndicator from "./TerminalActivityIndicator";
 import TerminalIdentityIcon from "./TerminalIdentityIcon";
@@ -63,56 +64,37 @@ export function TerminalWorkspaceTabBar(props: {
 }) {
   const canCloseGroups = props.terminalGroups.length > 1;
   return (
-    <div className="flex min-h-9 min-w-0 items-center gap-1 bg-[var(--color-background-surface)] px-1.5 py-1">
-      <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {props.terminalGroups.map((terminalGroup) => {
-          const isActive = terminalGroup.id === props.activeGroupId;
-          const visualIdentity = selectRepresentativeTerminalVisualIdentity({
-            activeTerminalId: terminalGroup.activeTerminalId,
-            terminalIds: terminalGroup.terminalIds,
-            terminalVisualIdentityById: props.terminalVisualIdentityById,
-          })?.identity;
-          const groupTitle = visualIdentity?.title ?? "Terminal";
-          const closeTabLabel = `Close ${visualIdentity?.title ?? "Terminal tab"}`;
-          return (
-            <SurfaceTabChip
-              key={terminalGroup.id}
-              active={isActive}
-              title={groupTitle}
-              label={groupTitle}
-              labelClassName="max-w-40"
-              icon={
-                <TerminalIdentityIcon
-                  className="size-3.5"
-                  iconKey={visualIdentity?.iconKey ?? "terminal"}
-                />
-              }
-              leading={
-                visualIdentity && visualIdentity.state !== "idle" ? (
-                  <TerminalActivityIndicator
-                    className="text-foreground/70"
-                    state={visualIdentity.state}
-                  />
-                ) : null
-              }
-              trailing={
-                terminalGroup.terminalIds.length > 1 ? (
-                  <span className="shrink-0 text-ui-xs text-current/55">
-                    {terminalGroup.terminalIds.length}
-                  </span>
-                ) : null
-              }
-              closeLabel={closeTabLabel}
-              onSelect={() => props.onActiveGroupChange(terminalGroup.id)}
-              onClose={canCloseGroups ? () => props.onCloseGroup(terminalGroup.id) : undefined}
-            />
-          );
-        })}
-      </div>
-      <div className="flex shrink-0 items-center">
-        <TerminalChromeActions actions={props.actions} variant="workspace" />
-      </div>
-    </div>
+    <PanelTabBar
+      label="Terminal sessions"
+      activeId={props.activeGroupId}
+      onSelect={props.onActiveGroupChange}
+      actions={<TerminalChromeActions actions={props.actions} variant="workspace" />}
+      tabs={props.terminalGroups.map((group) => {
+        const identity = selectRepresentativeTerminalVisualIdentity({
+          activeTerminalId: group.activeTerminalId,
+          terminalIds: group.terminalIds,
+          terminalVisualIdentityById: props.terminalVisualIdentityById,
+        })?.identity;
+        return {
+          id: group.id,
+          label: identity?.title ?? "Terminal",
+          icon: (
+            <TerminalIdentityIcon className="size-3.5" iconKey={identity?.iconKey ?? "terminal"} />
+          ),
+          leading:
+            identity && identity.state !== "idle" ? (
+              <TerminalActivityIndicator className="text-foreground/70" state={identity.state} />
+            ) : null,
+          trailing:
+            group.terminalIds.length > 1 ? (
+              <span className="shrink-0 text-ui-xs text-current/55">
+                {group.terminalIds.length}
+              </span>
+            ) : null,
+          onClose: canCloseGroups ? () => props.onCloseGroup(group.id) : undefined,
+        };
+      })}
+    />
   );
 }
 

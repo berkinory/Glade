@@ -107,6 +107,7 @@ export function createChatPresentation(
     environmentPanelVisible,
     environmentUsesFloatingOverlay,
     environmentEnabled,
+    rightDockOpen,
     setEnvironmentPanelOpenPreference,
   } = controller.environment;
   const {
@@ -367,12 +368,13 @@ export function createChatPresentation(
   const contentInsetRightPx =
     environmentInsetPx + previewInsetPx > 0 ? environmentInsetPx + previewInsetPx : undefined;
 
-  const environmentHeaderState = environmentEnabled
-    ? {
-        open: environmentPanelVisible,
-        onOpenChange: setEnvironmentPanelOpenPreference,
-      }
-    : null;
+  const environmentHeaderState =
+    environmentEnabled && !rightDockOpen
+      ? {
+          open: environmentPanelVisible,
+          onOpenChange: setEnvironmentPanelOpenPreference,
+        }
+      : null;
 
   const showComposerLiveChangesHeader = latestTurnLive && activeTurnLiveDiffState.hasChanges;
 

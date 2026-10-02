@@ -32,7 +32,6 @@ type DiffRenderMode = "stacked" | "split";
 
 export interface DiffFileChatActions {
   onReferenceInChat: (filePath: string) => void;
-  onAskWhyChanged: (filePath: string) => void;
   onEditFile?: ((filePath: string, options?: { basePath?: string | null }) => void) | undefined;
 }
 
@@ -79,14 +78,6 @@ function DiffFileHeaderActionsMenu(props: {
         >
           <MessageCircleIcon className={DIFF_FILE_ACTIONS_MENU_ICON_CLASS_NAME} />
           <span>Reference in chat</span>
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            props.chatActions.onAskWhyChanged(props.filePath);
-          }}
-        >
-          <MessageCircleIcon className={DIFF_FILE_ACTIONS_MENU_ICON_CLASS_NAME} />
-          <span>Ask why this changed</span>
         </MenuItem>
         <MenuItem onClick={() => copyPathToClipboard(props.filePath)}>
           <CopyIcon className={DIFF_FILE_ACTIONS_MENU_ICON_CLASS_NAME} />

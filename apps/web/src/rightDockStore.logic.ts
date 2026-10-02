@@ -1,18 +1,10 @@
 import { isRecord } from "@glade/shared/transport/payloadValues";
-import type { ProjectId, TurnId } from "@glade/contracts/core/baseSchemas";
+import type { TurnId } from "@glade/contracts/core/baseSchemas";
 import { sanitizeStringKeyedRecord } from "./persistedRecord";
 
-const RIGHT_DOCK_PANE_KINDS = [
-  "browser",
-  "explorer",
-  "file",
-  "terminal",
-  "git",
-  "pullRequest",
-] as const;
+const RIGHT_DOCK_PANE_KINDS = ["browser", "explorer", "terminal", "git"] as const;
 
 export type RightDockPaneKind = (typeof RIGHT_DOCK_PANE_KINDS)[number];
-type PullRequestInitialTab = "summary" | "timeline" | "code";
 export type SourceControlView = "changes" | "history";
 
 const RIGHT_DOCK_PANE_KIND_SET: ReadonlySet<string> = new Set(RIGHT_DOCK_PANE_KINDS);
@@ -24,28 +16,14 @@ export interface RightDockPane {
 
   diffTurnId: TurnId | null;
   diffFilePath: string | null;
-
-  filePath: string | null;
-  pullRequestProjectId: ProjectId | null;
-  pullRequestRepository: string | null;
-  pullRequestNumber: number | null;
-  pullRequestInitialTab: PullRequestInitialTab | null;
 }
 
 export interface RightDockThreadState {
   open: boolean;
   panes: RightDockPane[];
   activePaneId: string | null;
-}
-
-const MULTI_INSTANCE_PANE_KINDS: ReadonlySet<RightDockPaneKind> = new Set(["file"]);
-
-const SINGLETON_PANE_KINDS: ReadonlySet<RightDockPaneKind> = new Set(
-  RIGHT_DOCK_PANE_KINDS.filter((kind) => !MULTI_INSTANCE_PANE_KINDS.has(kind)),
-);
-
-function isSingletonPaneKind(kind: RightDockPaneKind): boolean {
-  return SINGLETON_PANE_KINDS.has(kind);
+  filePaths: string[];
+  activeFilePath: string | null;
 }
 
 export function createDefaultRightDockState(): RightDockThreadState {
@@ -53,6 +31,8 @@ export function createDefaultRightDockState(): RightDockThreadState {
     open: false,
     panes: [],
     activePaneId: null,
+    filePaths: [],
+    activeFilePath: null,
   };
 }
 
@@ -67,35 +47,17 @@ function sanitizePersistedPane(value: unknown): RightDockPane | null {
   const candidate = value;
   if (
     typeof candidate.id !== "string" ||
-    (candidate.kind !== "diff" && !isRightDockPaneKind(candidate.kind))
+    (candidate.kind !== "diff" && candidate.kind !== "file" && !isRightDockPaneKind(candidate.kind))
   ) {
     return null;
   }
   return {
     id: candidate.id,
-    kind: candidate.kind === "diff" ? "git" : candidate.kind,
+    kind:
+      candidate.kind === "diff" ? "git" : candidate.kind === "file" ? "explorer" : candidate.kind,
     sourceControlView: candidate.sourceControlView === "history" ? "history" : "changes",
     diffTurnId: typeof candidate.diffTurnId === "string" ? (candidate.diffTurnId as TurnId) : null,
     diffFilePath: typeof candidate.diffFilePath === "string" ? candidate.diffFilePath : null,
-    filePath: typeof candidate.filePath === "string" ? candidate.filePath : null,
-    pullRequestProjectId:
-      typeof candidate.pullRequestProjectId === "string"
-        ? (candidate.pullRequestProjectId as ProjectId)
-        : null,
-    pullRequestRepository:
-      typeof candidate.pullRequestRepository === "string" ? candidate.pullRequestRepository : null,
-    pullRequestNumber:
-      typeof candidate.pullRequestNumber === "number" &&
-      Number.isInteger(candidate.pullRequestNumber) &&
-      candidate.pullRequestNumber > 0
-        ? candidate.pullRequestNumber
-        : null,
-    pullRequestInitialTab:
-      candidate.pullRequestInitialTab === "summary" ||
-      candidate.pullRequestInitialTab === "timeline" ||
-      candidate.pullRequestInitialTab === "code"
-        ? candidate.pullRequestInitialTab
-        : null,
   };
 }
 
@@ -113,25 +75,45 @@ function sanitizeRightDockThreadState(value: unknown): RightDockThreadState {
     typeof candidate.activePaneId === "string" ? candidate.activePaneId : null;
   const keptSingletonPaneIdByKind = new Map<RightDockPaneKind, string>();
   for (const pane of sanitizedPanes) {
-    if (
-      isSingletonPaneKind(pane.kind) &&
-      (pane.id === persistedActivePaneId || !keptSingletonPaneIdByKind.has(pane.kind))
-    ) {
+    if (pane.id === persistedActivePaneId || !keptSingletonPaneIdByKind.has(pane.kind)) {
       keptSingletonPaneIdByKind.set(pane.kind, pane.id);
     }
   }
   const panes = sanitizedPanes.filter(
-    (pane) =>
-      !isSingletonPaneKind(pane.kind) || keptSingletonPaneIdByKind.get(pane.kind) === pane.id,
+    (pane) => keptSingletonPaneIdByKind.get(pane.kind) === pane.id,
   );
-  const activePaneId =
-    persistedActivePaneId && panes.some((pane) => pane.id === persistedActivePaneId)
+  const rawPanes = Array.isArray(candidate.panes) ? candidate.panes : [];
+  const legacyFiles = rawPanes.filter(isRecord).filter((pane) => pane.kind === "file");
+  const filePaths = [
+    ...new Set([
+      ...(Array.isArray(candidate.filePaths)
+        ? candidate.filePaths.filter(
+            (path): path is string => typeof path === "string" && path.length > 0,
+          )
+        : []),
+      ...legacyFiles
+        .map((pane) => pane.filePath)
+        .filter((path): path is string => typeof path === "string" && path.length > 0),
+    ]),
+  ];
+  const legacyActiveFile = legacyFiles.find((pane) => pane.id === persistedActivePaneId)?.filePath;
+  const requestedActiveFile =
+    typeof legacyActiveFile === "string" ? legacyActiveFile : candidate.activeFilePath;
+  const activeFilePath =
+    typeof requestedActiveFile === "string" && filePaths.includes(requestedActiveFile)
+      ? requestedActiveFile
+      : (filePaths[0] ?? null);
+  const activePaneId = legacyActiveFile
+    ? (panes.find((pane) => pane.kind === "explorer")?.id ?? null)
+    : persistedActivePaneId && panes.some((pane) => pane.id === persistedActivePaneId)
       ? persistedActivePaneId
       : (panes[0]?.id ?? null);
   return {
-    open: candidate.open === true,
+    open: candidate.open === true && panes.length > 0,
     panes,
     activePaneId,
+    filePaths,
+    activeFilePath,
   };
 }
 
@@ -149,11 +131,6 @@ export interface OpenPaneInput {
   sourceControlView?: SourceControlView;
   diffTurnId?: TurnId | null;
   diffFilePath?: string | null;
-  filePath?: string | null;
-  pullRequestProjectId?: ProjectId | null;
-  pullRequestRepository?: string | null;
-  pullRequestNumber?: number | null;
-  pullRequestInitialTab?: PullRequestInitialTab | null;
 }
 
 function createPane(input: OpenPaneInput): RightDockPane {
@@ -163,11 +140,6 @@ function createPane(input: OpenPaneInput): RightDockPane {
     sourceControlView: input.sourceControlView ?? "changes",
     diffTurnId: input.diffTurnId ?? null,
     diffFilePath: input.diffFilePath ?? null,
-    filePath: input.filePath ?? null,
-    pullRequestProjectId: input.pullRequestProjectId ?? null,
-    pullRequestRepository: input.pullRequestRepository ?? null,
-    pullRequestNumber: input.pullRequestNumber ?? null,
-    pullRequestInitialTab: input.pullRequestInitialTab ?? null,
   };
 }
 
@@ -179,32 +151,7 @@ function singletonPaneReopenPatch(input: OpenPaneInput): Partial<RightDockPane> 
       ...(input.diffFilePath !== undefined ? { diffFilePath: input.diffFilePath } : {}),
     };
   }
-  if (
-    input.kind === "pullRequest" &&
-    (input.pullRequestProjectId !== undefined ||
-      input.pullRequestRepository !== undefined ||
-      input.pullRequestNumber !== undefined ||
-      input.pullRequestInitialTab !== undefined)
-  ) {
-    return {
-      pullRequestProjectId: input.pullRequestProjectId ?? null,
-      pullRequestRepository: input.pullRequestRepository ?? null,
-      pullRequestNumber: input.pullRequestNumber ?? null,
-      pullRequestInitialTab: input.pullRequestInitialTab ?? null,
-    };
-  }
   return null;
-}
-
-function findMatchingMultiInstancePane(
-  state: RightDockThreadState,
-  input: OpenPaneInput,
-): RightDockPane | undefined {
-  if (input.kind === "file") {
-    const filePath = input.filePath ?? null;
-    return state.panes.find((pane) => pane.kind === "file" && pane.filePath === filePath);
-  }
-  return undefined;
 }
 
 function findSingletonPane(
@@ -218,24 +165,18 @@ export function openPaneInState(
   state: RightDockThreadState,
   input: OpenPaneInput,
 ): RightDockThreadState {
-  if (isSingletonPaneKind(input.kind)) {
-    const existing = findSingletonPane(state, input.kind);
-    if (existing) {
-      const patch = singletonPaneReopenPatch(input);
-      const nextPanes = patch
-        ? state.panes.map((pane) => (pane.id === existing.id ? { ...pane, ...patch } : pane))
-        : state.panes;
-      return { open: true, panes: nextPanes, activePaneId: existing.id };
-    }
-  } else {
-    const existing = findMatchingMultiInstancePane(state, input);
-    if (existing) {
-      return { open: true, panes: state.panes, activePaneId: existing.id };
-    }
+  const existing = findSingletonPane(state, input.kind);
+  if (existing) {
+    const patch = singletonPaneReopenPatch(input);
+    const panes = patch
+      ? state.panes.map((pane) => (pane.id === existing.id ? { ...pane, ...patch } : pane))
+      : state.panes;
+    return { ...state, open: true, panes, activePaneId: existing.id };
   }
 
   const pane = createPane(input);
   return {
+    ...state,
     open: true,
     panes: [...state.panes, pane],
     activePaneId: pane.id,
@@ -274,6 +215,7 @@ export function closePaneInState(
     paneId,
   );
   return {
+    ...state,
     open: nextPanes.length > 0 && state.open,
     panes: nextPanes,
     activePaneId: nextActiveId,
@@ -303,19 +245,7 @@ export function setDockOpenInState(
 export function updatePaneInState(
   state: RightDockThreadState,
   paneId: string,
-  patch: Partial<
-    Pick<
-      RightDockPane,
-      | "sourceControlView"
-      | "diffTurnId"
-      | "diffFilePath"
-      | "filePath"
-      | "pullRequestProjectId"
-      | "pullRequestRepository"
-      | "pullRequestNumber"
-      | "pullRequestInitialTab"
-    >
-  >,
+  patch: Partial<Pick<RightDockPane, "sourceControlView" | "diffTurnId" | "diffFilePath">>,
 ): RightDockThreadState {
   let changed = false;
   const nextPanes = state.panes.map((pane) => {
@@ -326,12 +256,7 @@ export function updatePaneInState(
     if (
       nextPane.sourceControlView !== pane.sourceControlView ||
       nextPane.diffTurnId !== pane.diffTurnId ||
-      nextPane.diffFilePath !== pane.diffFilePath ||
-      nextPane.filePath !== pane.filePath ||
-      nextPane.pullRequestProjectId !== pane.pullRequestProjectId ||
-      nextPane.pullRequestRepository !== pane.pullRequestRepository ||
-      nextPane.pullRequestNumber !== pane.pullRequestNumber ||
-      nextPane.pullRequestInitialTab !== pane.pullRequestInitialTab
+      nextPane.diffFilePath !== pane.diffFilePath
     ) {
       changed = true;
       return nextPane;

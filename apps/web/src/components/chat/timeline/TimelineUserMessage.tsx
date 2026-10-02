@@ -15,7 +15,6 @@ import {
 import { MessageCopyButton } from "~/components/chat/MessageCopyButton";
 import { type MessagesTimelineRow } from "~/components/chat/MessagesTimeline.logic.rowTypes";
 import { UserMessagePastedTextCard } from "~/components/chat/PastedTextChip";
-import { UserMessagePullRequestContextCard } from "~/components/chat/PullRequestContextCard";
 import { threadFindMarkdownProps } from "~/components/chat/threadFind.logic";
 import { hasLeadingUserMedia } from "~/components/chat/userTurnMarker";
 import { NewThreadIcon } from "~/lib/icons";
@@ -187,13 +186,9 @@ export function renderTimelineUserMessage(
             {renderedPullRequestContexts.length > 0 && (
               <div className="mb-1 flex max-w-full flex-col items-end gap-1.5 self-end">
                 {renderedPullRequestContexts.map((context) => (
-                  <UserMessagePullRequestContextCard
-                    key={context.index}
-                    scope={context.scope}
-                    title={context.title}
-                    subtitle={context.subtitle}
-                    text={context.text}
-                  />
+                  <p key={context.index} className="whitespace-pre-wrap text-chat">
+                    {context.text}
+                  </p>
                 ))}
               </div>
             )}

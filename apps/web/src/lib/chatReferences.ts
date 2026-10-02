@@ -3,7 +3,6 @@ import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import { requestComposerFocus, useComposerDraftStore } from "../composerDraftStore";
 import { formatComposerMentionToken } from "./composerMentions";
-import { createFileCommentDraft, type FileCommentSelection } from "./fileComments";
 import { type PullRequestContextDraft } from "./pullRequestContext";
 
 export interface ChatFileReference {
@@ -64,15 +63,6 @@ export function formatChatFileReference(reference: ChatFileReference): string {
   return token;
 }
 
-export function buildWhyLinesPrompt(reference: ChatFileReference): string {
-  const token = formatComposerMentionToken(reference.path);
-  if (typeof reference.startLine !== "number") {
-    return `Why did we implement ${token} this way? Check the git history if needed and explain the reasoning.`;
-  }
-  const endLine = reference.endLine ?? reference.startLine;
-  return `Why were ${formatLineRangeLabel(reference.startLine, endLine)} in ${token} implemented this way? Check git blame/history for the relevant commits and explain the reasoning.`;
-}
-
 export function appendComposerPromptText(threadId: ThreadId, text: string): void {
   const store = useComposerDraftStore.getState();
   const existingPrompt = store.draftsByThreadId[threadId]?.prompt ?? "";
@@ -84,16 +74,6 @@ export function appendComposerPromptText(threadId: ThreadId, text: string): void
 
 export function appendChatFileReference(threadId: ThreadId, reference: ChatFileReference): void {
   appendComposerPromptText(threadId, formatChatFileReference(reference));
-}
-
-export function addChatFileComment(threadId: ThreadId, comment: FileCommentSelection): boolean {
-  const draft = createFileCommentDraft(comment);
-  if (!draft) {
-    return false;
-  }
-  useComposerDraftStore.getState().addFileComment(threadId, draft);
-  requestComposerFocus(threadId);
-  return true;
 }
 
 export function addChatPullRequestContext(

@@ -255,7 +255,9 @@ export function EnvironmentPanel({
   return (
     <div
       className={ENVIRONMENT_PANEL_OVERLAY_WRAPPER_CLASS_NAME}
+      data-environment-panel
       data-environment-panel-variant={variant}
+      inert={!open}
       aria-hidden={!open}
     >
       <div

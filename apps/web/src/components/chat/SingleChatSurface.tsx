@@ -18,16 +18,9 @@ import type { DiffRouteSearch } from "../../diffRouteSearch";
 import { stripDiffSearchParams } from "../../diffRouteSearch";
 import { useBrowserPanelDesktopBridge } from "../../hooks/useBrowserPanelDesktopBridge";
 import { useDockPaneRuntimeActivation } from "../../hooks/useDockPaneRuntimeActivation";
-import {
-  addChatFileComment,
-  appendChatFileReference,
-  appendComposerPromptText,
-  buildWhyLinesPrompt,
-  type ChatFileReference,
-} from "../../lib/chatReferences";
+import { appendChatFileReference, type ChatFileReference } from "../../lib/chatReferences";
 import { SINGLE_CHAT_PANE_SCOPE_ID } from "../../lib/chatPaneScope";
 import type { DockPaneRuntimeMode } from "../../lib/dockPaneActivation";
-import type { FileCommentSelection } from "../../lib/fileComments";
 import { canComposerHandlePanelWidth } from "../../lib/panelResize";
 import {
   prefetchWorkspaceFile,
@@ -59,7 +52,7 @@ import { FloatingBrowserPanel } from "./FloatingBrowserPanel";
 import { shouldRenderFloatingBrowserPanel } from "./floatingBrowserPanel.logic";
 import { PanelStateMessage } from "./PanelStateMessage";
 import { RIGHT_DOCK_MIN_WIDTH, RightDock } from "./RightDock";
-import { buildRightDockPaneLabelOverrides, getRightDockPaneMeta } from "./rightDockPaneMeta";
+import { getRightDockPaneMeta } from "./rightDockPaneMeta";
 import {
   CHAT_BACKGROUND_CLASS_NAME,
   CHAT_MAIN_CONTENT_SURFACE_CLASS_NAME,
@@ -67,8 +60,6 @@ import {
 } from "./composerPickerStyles";
 import { routeSingleDockPaneOpenRequest } from "./dockPaneOpenRequest";
 import { selectFloatingBrowserRequested, useBrowserStateStore } from "../../browserStateStore";
-import { pullRequestDetailInputFromPane } from "../pullRequest/pullRequestDetail.logic";
-import { usePullRequestPaneStateIcon } from "../pullRequest/usePullRequestPaneStateIcon";
 import { RouteInsetSurface } from "../RouteInsetSurface";
 import { WorkspaceSearchPalette, type WorkspaceSearchPaletteMode } from "../WorkspaceSearchPalette";
 import {
@@ -77,7 +68,6 @@ import {
 } from "../../routes/-chatThreadRoute.logic";
 import { cn } from "~/lib/utils";
 
-const PullRequestDockPane = lazy(() => import("../pullRequest/PullRequestDockPane"));
 const DockTerminalPane = lazy(() => import("./DockTerminalPane"));
 const PRIMARY_DOCK_PANE_KINDS = ["explorer", "git", "terminal", "browser"] as const;
 const SourceControlDockPane = lazy(() =>
@@ -90,12 +80,6 @@ const DockExplorerPane = lazy(() =>
     default: module.DockExplorerPane,
   })),
 );
-const DockFilePane = lazy(() =>
-  import("./DockFilePane").then((module) => ({
-    default: module.DockFilePane,
-  })),
-);
-
 const DIFF_INLINE_DEFAULT_WIDTH = "max(28rem, calc(50vw - 8rem))";
 
 const allowAnySplitDirection = (_direction: SplitDirection) => true;
@@ -294,13 +278,6 @@ export function SingleChatSurface(props: {
   const handleReferenceInChat = (reference: ChatFileReference) => {
     appendChatFileReference(props.threadId, reference);
   };
-  const handleAskWhyInChat = (reference: ChatFileReference) => {
-    appendComposerPromptText(props.threadId, buildWhyLinesPrompt(reference));
-  };
-  const handleCommentInChat = (comment: FileCommentSelection) => {
-    addChatFileComment(props.threadId, comment);
-  };
-
   const prefetchOpenerFile = useCallback(
     (path: string) => {
       if (!workspaceRoot || resolveWorkspaceDirectoryOpenTarget(path, workspaceRoot) !== null) {
@@ -443,22 +420,6 @@ export function SingleChatSurface(props: {
 
   const excludedThreadIds = new Set<ThreadId>([props.threadId]);
 
-  const paneLabelOverrides = useMemo(
-    () => buildRightDockPaneLabelOverrides(dockState.panes),
-    [dockState.panes],
-  );
-
-  const pullRequestPane = dockState.panes.find(
-    (pane) => pane.kind === "pullRequest" && pullRequestDetailInputFromPane(pane) !== null,
-  );
-  const pullRequestPaneStateIcon = usePullRequestPaneStateIcon(
-    pullRequestPane ? pullRequestDetailInputFromPane(pullRequestPane) : null,
-  );
-  const paneIconOverrides =
-    pullRequestPane && pullRequestPaneStateIcon
-      ? { [pullRequestPane.id]: pullRequestPaneStateIcon }
-      : undefined;
-
   const handleAddDockPane = (kind: RightDockPaneKind) => {
     requestImmediateDockHydration(kind);
     if (kind === "terminal") {
@@ -526,22 +487,6 @@ export function SingleChatSurface(props: {
             />
           </Suspense>
         );
-      case "pullRequest":
-        return (
-          <Suspense fallback={<PanelStateMessage loadingLabel="Loading pull request" />}>
-            <PullRequestDockPane
-              pane={pane}
-              pollingEnabled={context.isVisible}
-              onClose={() => closePane(props.threadId, pane.id)}
-              onSelectPullRequest={(number) =>
-                updatePane(props.threadId, pane.id, {
-                  pullRequestNumber: number,
-                  pullRequestInitialTab: "summary",
-                })
-              }
-            />
-          </Suspense>
-        );
       case "terminal":
         if (context.runtimeMode === "preview") {
           return <PanelStateMessage>Terminal is sleeping. Restoring shortly.</PanelStateMessage>;
@@ -588,21 +533,6 @@ export function SingleChatSurface(props: {
               workspaceRoot={workspaceRoot}
               isVisible={context.isVisible}
               onReferenceInChat={handleReferenceInChat}
-              onAskWhyInChat={handleAskWhyInChat}
-              onCommentInChat={handleCommentInChat}
-            />
-          </Suspense>
-        );
-      case "file":
-        return (
-          <Suspense fallback={<PanelStateMessage loadingLabel="Loading file" />}>
-            <DockFilePane
-              workspaceRoot={workspaceRoot}
-              filePath={pane.filePath}
-              isVisible={context.isVisible}
-              onReferenceInChat={handleReferenceInChat}
-              onAskWhyInChat={handleAskWhyInChat}
-              onCommentInChat={handleCommentInChat}
             />
           </Suspense>
         );
@@ -672,8 +602,6 @@ export function SingleChatSurface(props: {
               : activePaneRuntimeMode
           }
           browserRuntimeMode={floatingBrowserVisible ? "preview" : "live"}
-          {...(paneLabelOverrides ? { paneLabelOverrides } : {})}
-          {...(paneIconOverrides ? { paneIconOverrides } : {})}
           onSelectPane={handleSelectDockPane}
           onClosePane={(paneId) => {
             if (dockState.panes.find((pane) => pane.id === paneId)?.kind !== "explorer") {

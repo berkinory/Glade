@@ -11,6 +11,7 @@ interface ExplorerRevealRequest {
 }
 
 interface ExplorerRevealRequestState {
+  acknowledgeRequest: (threadId: ThreadId, nonce: number) => void;
   requestsByThreadId: Record<string, ExplorerRevealRequest>;
   requestReveal: (
     threadId: ThreadId,
@@ -20,8 +21,17 @@ interface ExplorerRevealRequestState {
   ) => void;
 }
 
+let nextRevealNonce = 0;
+
 export const useExplorerRevealRequestStore = create<ExplorerRevealRequestState>((set) => ({
   requestsByThreadId: {},
+  acknowledgeRequest: (threadId, nonce) =>
+    set((state) => {
+      if (state.requestsByThreadId[threadId]?.nonce !== nonce) return state;
+      const requestsByThreadId = { ...state.requestsByThreadId };
+      delete requestsByThreadId[threadId];
+      return { requestsByThreadId };
+    }),
   requestReveal: (threadId, path, filePath, position) => {
     set((state) => ({
       requestsByThreadId: {
@@ -30,7 +40,7 @@ export const useExplorerRevealRequestStore = create<ExplorerRevealRequestState>(
           path,
           ...(position ? { position } : {}),
           ...(filePath ? { filePath } : {}),
-          nonce: (state.requestsByThreadId[threadId]?.nonce ?? 0) + 1,
+          nonce: ++nextRevealNonce,
         },
       },
     }));

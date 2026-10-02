@@ -26,6 +26,7 @@ import { IconButton } from "../ui/icon-button";
 import { Menu, MenuItem, MenuTrigger } from "../ui/menu";
 import {
   Sidebar,
+  SIDEBAR_DEFAULT_WIDTH_REDUCTION_PX,
   SIDEBAR_OFFCANVAS_MOTION_CLASS,
   SIDEBAR_OFFCANVAS_MOTION_SUPPRESSED_CLASS,
   SidebarProvider,
@@ -207,7 +208,9 @@ export function RightDock(props: RightDockProps) {
     if (!wrapper || !shell) {
       return;
     }
-    const openWidth = Math.round(shell.getBoundingClientRect().width / 2);
+    const openWidth = Math.round(
+      (shell.getBoundingClientRect().width + SIDEBAR_DEFAULT_WIDTH_REDUCTION_PX) / 2,
+    );
     if (openWidth > 0) {
       const defaultWidth = Math.max(minWidth, openWidth);
       setResizeMaxWidth(Math.round(defaultWidth * 1.5));

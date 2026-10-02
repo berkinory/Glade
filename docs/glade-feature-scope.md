@@ -6,7 +6,7 @@ production artwork. Production updates come only from the Glade release reposito
 
 ## Removed features
 
-- Editor view: no separate chat rail, file tabs, or editor-specific route state.
+- Editor view: no separate chat rail or editor-specific route state.
   Workspace editing remains in the regular Explorer pane.
 - Browser login import: no cookie extraction, browser profile enumeration or import IPC.
   Manual sign-in, existing browser sessions and the ordinary password vault remain.
@@ -38,6 +38,17 @@ Computer Use. `apps/desktop/src/computer/computerPermissions.ts` owns permission
 attachment APIs or a keyboard capture watcher.
 
 ## Workspace editing
+
+Explorer owns file tabs for tree selections, chat links and file references. Opening
+an existing file selects its tab; line and column links reveal source without changing
+the saved Markdown viewing preference. Markdown opens rendered by default, and the
+source/rendered setting applies across files and chats. Unsaved editor sessions remain
+available when switching or closing tabs. Absolute local paths and generated files
+use the same Explorer preview, including images and PDFs.
+
+Explorer, Terminal and Source Control share their panel tab bar. Environment and its
+trigger hide while the right sidebar is open, retaining the previous preference
+and panel state until it closes.
 
 All editable workspace text files use the shared Pierre editor, including large
 files. Cmd/Ctrl+F opens its in-file

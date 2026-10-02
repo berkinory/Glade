@@ -276,7 +276,6 @@ export function GitPanel(props: {
         key={cwd}
         cwd={cwd}
         threadId={props.threadId}
-        stagedCount={stagedFiles.length}
         busy={mutating}
         onOpenFile={props.onOpenFile}
       />

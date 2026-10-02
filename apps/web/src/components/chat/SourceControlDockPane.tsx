@@ -4,7 +4,7 @@ import { gitBranchesQueryOptions } from "~/lib/gitQueryOptions";
 import { Button } from "../ui/button";
 import { PanelStateMessage } from "./PanelStateMessage";
 import type { SourceControlView } from "~/rightDockStore.logic";
-import { cn } from "~/lib/utils";
+import { PanelTabBar } from "./PanelTabBar";
 import { ChangesIcon, HistoryIcon } from "~/lib/icons";
 import { GitPanel } from "./GitPanel";
 import { SourceControlHistory } from "./SourceControlHistory";
@@ -45,34 +45,15 @@ export function SourceControlDockPane(props: {
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col">
-      <div
-        role="tablist"
-        aria-label="Source control views"
-        className="flex shrink-0 gap-1 border-b border-border/70 px-3 py-1.5"
-      >
-        {(["changes", "history"] as const).map((view) => (
-          <button
-            key={view}
-            type="button"
-            role="tab"
-            aria-selected={props.view === view}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-ui-sm font-medium",
-              props.view === view
-                ? "bg-sidebar-accent text-foreground"
-                : "text-muted-foreground hover:bg-sidebar-accent/60",
-            )}
-            onClick={() => props.onViewChange(view)}
-          >
-            {view === "changes" ? (
-              <ChangesIcon className="size-3.5" />
-            ) : (
-              <HistoryIcon className="size-3.5" />
-            )}
-            {view === "changes" ? "Changes" : "History"}
-          </button>
-        ))}
-      </div>
+      <PanelTabBar
+        label="Source control views"
+        activeId={props.view}
+        tabs={[
+          { id: "changes", label: "Changes", icon: <ChangesIcon className="size-3.5" /> },
+          { id: "history", label: "History", icon: <HistoryIcon className="size-3.5" /> },
+        ]}
+        onSelect={(view) => props.onViewChange(view === "history" ? "history" : "changes")}
+      />
       <div className="min-h-0 flex-1">
         {needsRepository && repositoryState ? (
           repositoryState

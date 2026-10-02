@@ -24,6 +24,7 @@ import {
   useState,
 } from "react";
 
+import { useAppSettings } from "~/appSettings";
 import { basenameOfPath } from "~/file-icons";
 import { useWorkspaceFileEditorBuffer } from "~/hooks/useWorkspaceFileEditor";
 import { useTheme } from "~/hooks/useTheme";
@@ -35,10 +36,8 @@ import {
 } from "~/lib/chatReferences";
 import { resolveDiffThemeName } from "~/lib/diffRendering";
 import { extractEditorGutterChanges } from "~/lib/editorGutterDiff";
-import { formatFileCommentRange, type FileCommentSelection } from "~/lib/fileComments";
 import { showFileReferenceContextMenu } from "~/lib/fileReferenceContextMenu";
 import { gitWorkingTreeDiffQueryOptions } from "../lib/gitQueryOptions";
-import { PlusIcon } from "~/lib/icons";
 import { isRpcCapacityExceededError } from "~/lib/expensiveReadRetry";
 import {
   isLocalPreviewGrantUsable,
@@ -58,12 +57,8 @@ import {
   FilePreviewLoadingState,
 } from "./WorkspaceFileContents";
 import { DiffTruncationWarning } from "./DiffTruncationWarning";
-import { FileLineCommentBox } from "./chat/FileLineCommentBox";
 import { PanelStateMessage } from "./chat/PanelStateMessage";
-import { useFileLineCommenting } from "./chat/useFileLineCommenting";
 import { WorkspaceFilePreviewHeader } from "./chat/WorkspaceFilePreviewHeader";
-import { TranscriptSelectionAction } from "./chat/TranscriptSelectionAction";
-import { useCodeSelectionAction } from "./chat/useCodeSelectionAction";
 import { LocalImagePreview } from "./LocalImagePreview";
 import { PdfFilePreview } from "./PdfFilePreview";
 
@@ -115,8 +110,6 @@ export interface WorkspaceFilePreviewProps {
 
   emptyState?: ReactNode;
   onReferenceInChat?: ((reference: ChatFileReference) => void) | undefined;
-  onAskWhyInChat?: ((reference: ChatFileReference) => void) | undefined;
-  onCommentInChat?: ((comment: FileCommentSelection) => void) | undefined;
 }
 
 export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
@@ -127,13 +120,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
   const taskWriteQueueRef = useRef<Promise<void>>(Promise.resolve());
   const latestTaskWriteVersionRef = useRef({ next: 0, byFile: new Map<string, number>() });
   const taskFileDiskVersionRef = useRef(new Map<string, string>());
-  const {
-    filePath: requestedFilePath,
-    onAskWhyInChat,
-    onCommentInChat,
-    onReferenceInChat,
-    workspaceRoot,
-  } = props;
+  const { filePath: requestedFilePath, onReferenceInChat, workspaceRoot } = props;
   const queryClient = useQueryClient();
 
   const [relocation, setRelocation] = useState<{
@@ -147,7 +134,8 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
   const [binaryPreviewRevision, setBinaryPreviewRevision] = useState(0);
   const [binaryPreviewReloading, setBinaryPreviewReloading] = useState(false);
   const filePath = relocatedFullPath ?? requestedFilePath;
-  const markdownPreviewDefault = props.markdownPreviewDefault ?? false;
+  const { settings, updateSettings } = useAppSettings();
+  const markdownPreviewDefault = props.markdownPreviewDefault ?? settings.markdownPreviewEnabled;
   const fileIsImage = filePath !== null && isSupportedLocalImagePath(filePath);
   const fileIsPdf = filePath !== null && isSupportedLocalPdfPath(filePath);
   const fileIsLocalAbsolute = filePath !== null && isLocalAbsolutePath(filePath);
@@ -392,30 +380,6 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
 
   const readPreviewSelection = (container: HTMLElement): Omit<ChatFileReference, "path"> | null =>
     showMarkdownPreview ? getSelectionSnippetWithin(container) : getSelectionWithin(container);
-  const commitPreviewSelection = (selection: Omit<ChatFileReference, "path">) => {
-    if (filePath) {
-      onReferenceInChat?.({ path: filePath, ...selection });
-    }
-  };
-  const previewSelectionAction = useCodeSelectionAction({
-    enabled: Boolean(onReferenceInChat && filePath) && (showMarkdownPreview || !editableDocument),
-    readSelection: readPreviewSelection,
-    onCommit: commitPreviewSelection,
-  });
-
-  const lineCommentingEnabled =
-    Boolean(onCommentInChat && filePath) && !showMarkdownPreview && !editableDocument;
-  const lineCommenting = useFileLineCommenting({
-    enabled: lineCommentingEnabled,
-    resetKey: filePath,
-  });
-  const commitLineComment = (
-    selection: Pick<FileCommentSelection, "startLine" | "endLine" | "text">,
-  ) => {
-    if (filePath) {
-      onCommentInChat?.({ path: filePath, ...selection });
-    }
-  };
   // Right-click references the selection (line range in the source view, quoted snippet in the
   // rendered-markdown view), otherwise the whole file.
   const handleContentsContextMenu = (event: ReactMouseEvent<HTMLDivElement>) => {
@@ -428,9 +392,8 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
     void showFileReferenceContextMenu({
       path: filePath,
       position: { x: event.clientX, y: event.clientY },
-      selection,
+      selection: props.editable ? null : selection,
       onReferenceInChat,
-      onAskWhyInChat,
     });
   };
 
@@ -510,7 +473,8 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
     void taskWriteQueueRef.current;
   };
   const handleMarkdownPreviewChange = (rendered: boolean) => {
-    setMarkdownPreviewOverride({ filePath, rendered });
+    setMarkdownPreviewOverride(null);
+    updateSettings({ markdownPreviewEnabled: rendered });
     props.onMarkdownPreviewChange?.(rendered);
   };
 
@@ -599,8 +563,6 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
     );
   }
 
-  const hoveredCommentLine = lineCommenting.hoveredLine;
-  const activeCommentLine = lineCommenting.activeLine;
   const hasFileContents = fileQuery.data !== undefined;
   const fileReadError = fileQuery.error;
   const fileReadCapacityError = isRpcCapacityExceededError(fileReadError);
@@ -747,9 +709,6 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
                 showMarkdownPreview && "editor-file-viewer--markdown-preview",
               )}
               onContextMenu={handleContentsContextMenu}
-              onMouseUp={previewSelectionAction.onContainerMouseUp}
-              onMouseMove={lineCommenting.onContainerMouseMove}
-              onMouseLeave={lineCommenting.onContainerMouseLeave}
             >
               {showMarkdownPreview ? (
                 <div className="editor-markdown-preview">
@@ -758,7 +717,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
                     cwd={markdownPreviewCwd(props.workspaceRoot, filePath)}
                     wikiLinkRoot={props.workspaceRoot ?? undefined}
                     isStreaming={false}
-                    className="editor-markdown-preview__body text-sm leading-relaxed"
+                    className="editor-markdown-preview__body text-ui leading-relaxed"
                     {...(canToggleTasks ? { onTaskToggle: handleTaskToggle } : {})}
                   />
                 </div>
@@ -774,67 +733,6 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
               ) : null}
               {!showMarkdownPreview && lineCount > 0 ? (
                 <span className="sr-only">{lineCount} lines</span>
-              ) : null}
-              {previewSelectionAction.pendingAction ? (
-                <TranscriptSelectionAction
-                  left={previewSelectionAction.pendingAction.left}
-                  top={previewSelectionAction.pendingAction.top}
-                  placement={previewSelectionAction.pendingAction.placement}
-                  onAddToChat={previewSelectionAction.commit}
-                />
-              ) : null}
-              {lineCommentingEnabled && hoveredCommentLine && !activeCommentLine ? (
-                <button
-                  type="button"
-                  className="editor-file-viewer__comment-add"
-                  style={{
-                    top: hoveredCommentLine.top,
-                    left: hoveredCommentLine.left,
-                    height: hoveredCommentLine.height,
-                  }}
-                  aria-label={`Comment on line ${hoveredCommentLine.lineNumber}`}
-                  title="Comment"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    lineCommenting.openComment(hoveredCommentLine);
-                  }}
-                >
-                  <span className="editor-file-viewer__comment-add-glyph">
-                    <PlusIcon className="size-3.5" />
-                  </span>
-                </button>
-              ) : null}
-              {lineCommentingEnabled && activeCommentLine ? (
-                <>
-                  <div
-                    className="editor-file-viewer__comment-line-highlight"
-                    style={{ top: activeCommentLine.top, height: activeCommentLine.height }}
-                    aria-hidden="true"
-                  />
-                  <FileLineCommentBox
-                    lineLabel={formatFileCommentRange({
-                      startLine: activeCommentLine.lineNumber,
-                      endLine: activeCommentLine.lineNumber,
-                    })}
-                    top={activeCommentLine.top + activeCommentLine.height}
-                    left={activeCommentLine.left}
-                    width={Math.max(
-                      240,
-                      Math.min(440, activeCommentLine.containerWidth - activeCommentLine.left - 16),
-                    )}
-                    onCancel={lineCommenting.closeComment}
-                    onSubmit={(text) => {
-                      commitLineComment({
-                        startLine: activeCommentLine.lineNumber,
-                        endLine: activeCommentLine.lineNumber,
-                        text,
-                      });
-                      lineCommenting.closeComment();
-                    }}
-                  />
-                </>
               ) : null}
             </div>
           ) : null}

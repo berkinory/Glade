@@ -31,7 +31,6 @@ export async function showFileReferenceContextMenu(input: {
 
   selection?: Omit<ChatFileReference, "path"> | null;
   onReferenceInChat: ((reference: ChatFileReference) => void) | undefined;
-  onAskWhyInChat?: ((reference: ChatFileReference) => void) | undefined;
   onCreateFile?: (() => void) | undefined;
   onCreateFolder?: (() => void) | undefined;
   onRename?: (() => void) | undefined;
@@ -62,15 +61,6 @@ export async function showFileReferenceContextMenu(input: {
               : hasSnippet
                 ? "Reference selection in chat"
                 : "Reference in chat",
-          },
-        ]
-      : []),
-    ...(input.onAskWhyInChat
-      ? [
-          {
-            id: "ask-why-in-chat" as const,
-            icon: FILE_CONTEXT_MENU_ICONS.reference,
-            label: rangeLabel ? `Ask why ${rangeLabel} changed` : "Ask why this changed",
           },
         ]
       : []),
@@ -135,10 +125,6 @@ export async function showFileReferenceContextMenu(input: {
     : await api.contextMenu.show(items, input.position);
   if (clicked === "reference-in-chat") {
     input.onReferenceInChat?.(reference);
-    return;
-  }
-  if (clicked === "ask-why-in-chat") {
-    input.onAskWhyInChat?.(reference);
     return;
   }
   if (clicked === "reveal-in-folder" && revealPath) {

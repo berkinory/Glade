@@ -164,7 +164,7 @@ export function useChatEnvironmentController({
   const environmentEnabled = !hideHeader;
 
   const environmentUsesFloatingOverlay =
-    isTerminalEnvironmentContext || isMobileViewport || rightDockOpen || surfaceMode === "split";
+    isTerminalEnvironmentContext || isMobileViewport || surfaceMode === "split";
 
   const environmentDefaultOpen = resolveDefaultEnvironmentPanelOpen({
     environmentEnabled,
@@ -196,10 +196,22 @@ export function useChatEnvironmentController({
     userPreferenceOpen: environmentPanelPreferenceOpen,
   });
 
-  const environmentPanelVisible = resolveEnvironmentPanelVisible({
-    environmentEnabled,
-    environmentPanelOpen,
-  });
+  const environmentPanelVisible =
+    !rightDockOpen &&
+    resolveEnvironmentPanelVisible({
+      environmentEnabled,
+      environmentPanelOpen,
+    });
+
+  useLayoutEffect(() => {
+    if (!rightDockOpen) return;
+    const active = document.activeElement;
+    if (
+      active instanceof HTMLElement &&
+      (active.closest("[data-environment-panel]") || active.closest("[data-environment-toggle]"))
+    )
+      focusComposer();
+  }, [rightDockOpen, focusComposer]);
 
   const githubRepositoryQuery = useQuery(
     gitGithubRepositoryQueryOptions(gitBranchSourceCwd, environmentPanelVisible),

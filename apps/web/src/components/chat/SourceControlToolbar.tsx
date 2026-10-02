@@ -16,7 +16,18 @@ import {
   IconArrowUp,
   IconArrowDown,
 } from "@tabler/icons-react";
-import { gitStatusQueryOptions } from "../../lib/gitQueryOptions";
+import { useState } from "react";
+import { ensureNativeApi } from "~/nativeApi";
+import {
+  assertCommitScope,
+  assertStagedChanges,
+  commitScopeInventory,
+  readCommitScope,
+} from "./sourceControlCommitScope";
+import {
+  gitSourceControlFilesQueryOptions,
+  gitStatusQueryOptions,
+} from "../../lib/gitQueryOptions";
 import {
   gitRebaseStateQueryOptions,
   gitSourceControlActionMutationOptions,
@@ -27,23 +38,28 @@ import { hasUnsavedWorkspaceEditors } from "~/lib/workspaceEditorSession";
 export function SourceControlToolbar({
   cwd,
   threadId,
-  stagedCount,
   busy,
   onOpenFile,
 }: {
   cwd: string;
   threadId: ThreadId;
-  stagedCount: number;
   busy: boolean;
   onOpenFile: (path: string) => void;
 }) {
   const queryClient = useQueryClient();
   const message = useCommitDrafts((state) => state.messages[cwd] ?? "");
   const setDraft = useCommitDrafts((state) => state.set);
+  const files = useQuery(gitSourceControlFilesQueryOptions(cwd));
+  const suggestedScope = useCommitDrafts((state) => state.scopes[cwd]);
+  const setSuggestion = useCommitDrafts((state) => state.setSuggestion);
+  const [checkingCommit, setCheckingCommit] = useState(false);
+  const hasChanges = Boolean(
+    files.data && (files.data.staged.length > 0 || files.data.unstaged.length > 0),
+  );
   const status = useQuery(gitStatusQueryOptions(cwd));
   const rebase = useQuery(gitRebaseStateQueryOptions(cwd));
   const mutation = useMutation(gitSourceControlActionMutationOptions({ cwd, queryClient }));
-  const disabled = busy || mutation.isPending;
+  const disabled = busy || mutation.isPending || checkingCommit;
   const rebasing = rebase.data?.inProgress ?? false;
   const canCommit =
     !disabled &&
@@ -52,7 +68,8 @@ export function SourceControlToolbar({
     !rebase.data?.pendingPush &&
     !rebase.isPending &&
     !rebase.isError &&
-    stagedCount > 0 &&
+    hasChanges &&
+    !files.isError &&
     message.trim().length > 0;
 
   const run = (request: SourceControlAction) => {
@@ -71,7 +88,7 @@ export function SourceControlToolbar({
       onSuccess: () => {
         if (request.action === "commit") {
           if (useCommitDrafts.getState().messages[cwd] === message) setDraft(cwd, "");
-          toastManager.add({ type: "success", title: "Staged changes committed" });
+          toastManager.add({ type: "success", title: "Changes committed" });
         } else
           toastManager.add({
             type: "success",
@@ -92,6 +109,45 @@ export function SourceControlToolbar({
           description: error.message,
         }),
     });
+  };
+
+  const commit = async () => {
+    if (!canCommit || !files.data) return;
+    setCheckingCommit(true);
+    try {
+      if (hasUnsavedWorkspaceEditors(queryClient, cwd))
+        throw new Error("Save your open files before committing.");
+      const scope = await readCommitScope(cwd);
+      if (commitScopeInventory(files.data) !== scope.inventory)
+        throw new Error("The commit scope changed. Review the changes and try again.");
+      if (suggestedScope) assertCommitScope(suggestedScope, scope);
+      const api = ensureNativeApi();
+      if (!scope.staged) {
+        assertCommitScope(scope, await readCommitScope(cwd));
+        const staged = await api.git.stageFiles({ cwd, paths: scope.paths });
+        if (!staged.ok)
+          throw new Error("Could not stage all changes. Your message has been preserved.");
+        const after = await readCommitScope(cwd);
+        assertStagedChanges(scope, after);
+        assertCommitScope(after, await readCommitScope(cwd));
+      } else {
+        assertCommitScope(scope, await readCommitScope(cwd));
+      }
+      await mutation.mutateAsync({ action: "commit", message: message.trim() });
+      if ((useCommitDrafts.getState().messages[cwd] ?? "") === message) setDraft(cwd, "");
+      toastManager.add({ type: "success", title: "Changes committed" });
+    } catch (error) {
+      toastManager.add({
+        type: "error",
+        title: "Could not commit",
+        description: error instanceof Error ? error.message : "Git operation failed.",
+      });
+    } finally {
+      setCheckingCommit(false);
+      void queryClient.invalidateQueries({
+        queryKey: gitSourceControlFilesQueryOptions(cwd).queryKey,
+      });
+    }
   };
 
   return (
@@ -244,14 +300,21 @@ export function SourceControlToolbar({
           cwd={cwd}
           message={message}
           canCommit={canCommit}
-          canGenerate={!disabled && !rebasing && stagedCount > 0}
-          committing={mutation.isPending && mutation.variables?.action === "commit"}
-          onChange={(next) => setDraft(cwd, next)}
-          onGenerated={(generated) => {
-            if ((useCommitDrafts.getState().messages[cwd] ?? "") === message)
-              setDraft(cwd, generated);
+          canGenerate={!disabled && !rebasing && hasChanges && !files.isError}
+          committing={
+            checkingCommit || (mutation.isPending && mutation.variables?.action === "commit")
+          }
+          onChange={(next) => {
+            setDraft(cwd, next);
           }}
-          onCommit={() => run({ action: "commit", message: message.trim() })}
+          onGenerated={(generated, scope) => {
+            if ((useCommitDrafts.getState().messages[cwd] ?? "") === message) {
+              setSuggestion(cwd, generated, scope);
+            }
+          }}
+          onCommit={() => {
+            void commit();
+          }}
         />
       )}
     </div>

@@ -194,6 +194,7 @@ const AppSettingsSchema = Schema.Struct({
   editorCaretStyle: EditorCaretStyle.pipe(withDefaults(() => DEFAULT_EDITOR_CARET_STYLE)),
   showPullRequestDiffColors: Schema.Boolean.pipe(withDefaults(() => true)),
 
+  markdownPreviewEnabled: Schema.Boolean.pipe(withDefaults(() => true)),
   environmentPanelDefaultOpen: Schema.Boolean.pipe(withDefaults(() => true)),
   showEnvironmentUsage: Schema.Boolean.pipe(withDefaults(() => true)),
   showEnvironmentRepository: Schema.Boolean.pipe(withDefaults(() => true)),

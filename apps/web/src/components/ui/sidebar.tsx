@@ -24,7 +24,9 @@ import { Schema } from "effect";
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
-export const SIDEBAR_DEFAULT_WIDTH_PX = 16 * 16;
+export const SIDEBAR_DEFAULT_WIDTH_REDUCTION_PX = Math.round(16 * 16 * 0.05);
+export const SIDEBAR_DEFAULT_WIDTH_PX = 16 * 16 - SIDEBAR_DEFAULT_WIDTH_REDUCTION_PX;
+export const SIDEBAR_MAX_WIDTH_PX = 24 * 16;
 const SIDEBAR_WIDTH = `${SIDEBAR_DEFAULT_WIDTH_PX / 16}rem`;
 const SIDEBAR_WIDTH_MOBILE = "calc(100vw - var(--spacing(3)))";
 const SIDEBAR_WIDTH_ICON = "3rem";

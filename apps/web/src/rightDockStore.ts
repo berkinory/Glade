@@ -35,26 +35,17 @@ interface RightDockStore {
   updatePane: (
     threadId: ThreadId,
     paneId: string,
-    patch: Partial<
-      Pick<
-        RightDockPane,
-        | "sourceControlView"
-        | "diffTurnId"
-        | "diffFilePath"
-        | "filePath"
-        | "pullRequestProjectId"
-        | "pullRequestRepository"
-        | "pullRequestNumber"
-        | "pullRequestInitialTab"
-      >
-    >,
+    patch: Partial<Pick<RightDockPane, "sourceControlView" | "diffTurnId" | "diffFilePath">>,
   ) => void;
+  openFile: (threadId: ThreadId, path: string) => void;
+  closeFile: (threadId: ThreadId, path: string) => void;
   clearThreadDockState: (threadId: ThreadId) => void;
 }
 
 const DEFAULT_RIGHT_DOCK_STATE = createDefaultRightDockState();
 Object.freeze(DEFAULT_RIGHT_DOCK_STATE);
 Object.freeze(DEFAULT_RIGHT_DOCK_STATE.panes);
+Object.freeze(DEFAULT_RIGHT_DOCK_STATE.filePaths);
 
 function commit(
   set: (fn: (store: RightDockStore) => Partial<RightDockStore>) => void,
@@ -96,6 +87,31 @@ export const useRightDockStore = create<RightDockStore>()(
         commit(set, threadId, (state) => setDockOpenInState(state, open)),
       updatePane: (threadId, paneId, patch) =>
         commit(set, threadId, (state) => updatePaneInState(state, paneId, patch)),
+      openFile: (threadId, path) =>
+        commit(set, threadId, (state) => {
+          const next = openPaneInState(state, { kind: "explorer", paneId: randomUUID() });
+          return {
+            ...next,
+            filePaths: state.filePaths.includes(path)
+              ? state.filePaths
+              : [...state.filePaths, path],
+            activeFilePath: path,
+          };
+        }),
+      closeFile: (threadId, path) =>
+        commit(set, threadId, (state) => {
+          const index = state.filePaths.indexOf(path);
+          if (index === -1) return state;
+          const filePaths = state.filePaths.filter((file) => file !== path);
+          return {
+            ...state,
+            filePaths,
+            activeFilePath:
+              state.activeFilePath === path
+                ? (filePaths[Math.min(index, filePaths.length - 1)] ?? null)
+                : state.activeFilePath,
+          };
+        }),
       clearThreadDockState: (threadId) =>
         set((store) => {
           if (!Object.hasOwn(store.dockStateByThreadId, threadId)) {
