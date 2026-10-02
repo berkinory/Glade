@@ -105,10 +105,15 @@ export function LocalVideoThumbnail(props: {
       canvas.width = 0;
       canvas.height = 0;
     };
-    video.onloadeddata = capture;
+    let seekRequested = false;
+    video.onloadeddata = () => {
+      if (!seekRequested) capture();
+    };
     video.onseeked = capture;
     video.onloadedmetadata = () => {
-      video.currentTime = Math.min(0.1, Number.isFinite(video.duration) ? video.duration / 2 : 0);
+      const target = Math.min(0.1, Number.isFinite(video.duration) ? video.duration / 2 : 0);
+      seekRequested = target > 0;
+      if (seekRequested) video.currentTime = target;
     };
     video.onerror = fail;
     void reserveDecoder(controller.signal).then((release) => {

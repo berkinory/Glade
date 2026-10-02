@@ -168,7 +168,7 @@ async function refetchFreshGitQueries(
 }
 
 async function refreshGitAvailability(queryClient: QueryClient, cwd: string): Promise<void> {
-  await queryClient.resetQueries({ queryKey: gitQueryKeys.history(cwd) });
+  await queryClient.invalidateQueries({ queryKey: gitQueryKeys.history(cwd) });
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: ["git", "rebase-state", cwd] }),
     queryClient.invalidateQueries({

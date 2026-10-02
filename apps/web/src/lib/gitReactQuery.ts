@@ -117,7 +117,7 @@ export function gitRevertUnstagedFileMutationOptions(input: {
     queryClient: input.queryClient,
     mutationKey: gitMutationKeys.revertUnstagedFile(input.cwd),
     unavailableMessage: "Reverting is unavailable.",
-    invalidate: "cwd",
+    invalidate: "source-control",
     run: (api, cwd, path) => api.git.revertUnstagedFile({ cwd, path }),
   });
 }
