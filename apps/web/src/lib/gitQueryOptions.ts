@@ -1,4 +1,9 @@
-import type { GitReadWorkingTreeDiffInput } from "@glade/contracts/git/git";
+import type {
+  GitReadWorkingTreeDiffInput,
+  GitReadSourceControlFilesInput,
+  GitSourceControlFilesResult,
+  GitReadRequestOptions,
+} from "@glade/contracts/git/git";
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { ensureNativeApi } from "../nativeApi";
 import { EXPENSIVE_READ_RETRY_OPTIONS, isRpcCapacityExceededError } from "./expensiveReadRetry";
@@ -562,14 +567,20 @@ export function gitWorkingTreeDiffQueryOptions(input: {
   });
 }
 
-export function gitSourceControlFilesQueryOptions(cwd: string | null) {
+export function gitSourceControlFilesQueryOptions(cwd: string | null, query = "") {
   return queryOptions({
-    queryKey: gitQueryKeys.sourceControlFiles(cwd),
-    queryFn: async () => {
+    queryKey: [...gitQueryKeys.sourceControlFiles(cwd), query],
+    queryFn: async ({ signal }) => {
       if (!cwd) throw new Error("Source control is unavailable.");
-      return ensureNativeApi().git.readSourceControlFiles({ cwd });
+      const input = { cwd, query };
+      const read: (
+        input: GitReadSourceControlFilesInput,
+        options?: GitReadRequestOptions,
+      ) => Promise<GitSourceControlFilesResult> = ensureNativeApi().git.readSourceControlFiles;
+      return read(input, { signal });
     },
     enabled: cwd !== null,
+    gcTime: 0,
     staleTime: GIT_WORKING_TREE_DIFF_STALE_TIME_MS,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,

@@ -1,3 +1,5 @@
+import { GitRevertDialog } from "./GitRevertDialog";
+import { GitMediaPreview, isGitMediaPath } from "./GitMediaPreview";
 import { ShowSourceFile } from "./ShowSourceFile";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { SourceControlToolbar } from "./SourceControlToolbar";
@@ -12,30 +14,19 @@ import { buildFileDiffRenderKey, getRenderablePatch } from "~/lib/diffRendering"
 import {
   gitQueryKeys,
   gitWorkingTreeDiffQueryOptions,
-  gitWorkingTreeDiffStatsQueryOptions,
   gitSourceControlFilesQueryOptions,
 } from "../../lib/gitQueryOptions";
 import {
   gitSourceControlActionMutationOptions,
-  gitRevertUnstagedFileMutationOptions,
   gitStageFilesMutationOptions,
   gitUnstageFilesMutationOptions,
 } from "~/lib/gitReactQuery";
 import { CircleCheckIcon, RefreshCwIcon } from "~/lib/icons";
-import { projectQueryKeys } from "~/lib/projectReactQuery";
 import { hasUnsavedWorkspaceEditors } from "~/lib/workspaceEditorSession";
 import { cn } from "~/lib/utils";
 import { Alert } from "../ui/alert";
-import {
-  AlertDialog,
-  AlertDialogClose,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogPopup,
-  AlertDialogTitle,
-} from "../ui/alert-dialog";
-import { Button } from "../ui/button";
+
+import { Input } from "../ui/input";
 import { IconButton } from "../ui/icon-button";
 import { Spinner } from "../ui/spinner";
 import { toastManager } from "../ui/toast";
@@ -90,38 +81,42 @@ export function GitPanel(props: {
   const [fileSelection, setFileSelection] = useState<GitFileSelection | null>(null);
   const [reverting, setReverting] = useState<readonly SourceFile[] | null>(null);
 
-  const filesQuery = useQuery(gitSourceControlFilesQueryOptions(cwd));
+  const [filter, setFilter] = useState("");
+  const [search, setSearch] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(filter.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [filter]);
+  const filesQuery = useQuery(gitSourceControlFilesQueryOptions(cwd, search));
+  const coverage = filesQuery.data?.coverage;
+  const large = coverage?.mode === "large";
+
   const stagedFiles = filesQuery.data?.staged ?? [];
   const unstagedFiles = filesQuery.data?.unstaged ?? [];
-  const hasUntrackedFiles = unstagedFiles.some((file) => file.status === "U");
-  const unstagedStatsQuery = useQuery(
-    gitWorkingTreeDiffStatsQueryOptions({
-      cwd,
-      scope: "unstaged",
-      enabled: hasUntrackedFiles,
-      includeUntrackedFiles: true,
-    }),
-  );
-  const unstagedTotalStats = hasUntrackedFiles ? (unstagedStatsQuery.data ?? null) : undefined;
-  const untrackedFileStats = useMemo(
-    () => new Map(unstagedStatsQuery.data?.untrackedFiles?.map((file) => [file.path, file]) ?? []),
-    [unstagedStatsQuery.data?.untrackedFiles],
-  );
-  const selectedSection =
-    selected &&
-    !(selected.section === "staged" ? stagedFiles : unstagedFiles).some(
-      (file) => file.path === selected.path,
-    )
-      ? selected.section === "staged"
-        ? "unstaged"
-        : "staged"
-      : (selected?.section ?? "unstaged");
+  useEffect(() => {
+    if (!filesQuery.data) return;
+    setFileSelection((current) => {
+      if (!current) return current;
+      const available = new Set(filesQuery.data[current.section].map((file) => file.path));
+      const paths = current.paths.filter((path) => available.has(path));
+      if (paths.length === current.paths.length) return current;
+      return paths.length
+        ? { ...current, paths, anchor: available.has(current.anchor) ? current.anchor : paths[0]! }
+        : null;
+    });
+    setSelected((current) =>
+      current && !filesQuery.data[current.section].some((file) => file.path === current.path)
+        ? null
+        : current,
+    );
+  }, [filesQuery.data]);
+  const selectedSection = selected?.section ?? "unstaged";
   const selectedPatchQuery = useQuery(
     gitWorkingTreeDiffQueryOptions({
       cwd,
       scope: selectedSection,
       filePath: selected?.path ?? null,
-      enabled: selected !== null,
+      enabled: selected !== null && !isGitMediaPath(selected.path),
     }),
   );
   const selectedPatch = selectedPatchQuery.data?.patch;
@@ -132,7 +127,6 @@ export function GitPanel(props: {
 
   const stageMutation = useMutation(gitStageFilesMutationOptions({ cwd, queryClient }));
   const unstageMutation = useMutation(gitUnstageFilesMutationOptions({ cwd, queryClient }));
-  const revertMutation = useMutation(gitRevertUnstagedFileMutationOptions({ cwd, queryClient }));
   const ignoreMutation = useMutation(gitSourceControlActionMutationOptions({ cwd, queryClient }));
   const mutating =
     useIsMutating({
@@ -140,15 +134,53 @@ export function GitPanel(props: {
         mutation.options.mutationKey?.[0] === "git" && mutation.options.mutationKey.includes(cwd),
     }) > 0;
 
+  const rowTargets = (section: GitPanelSection, paths: string[]) => {
+    const files = section === "staged" ? stagedFiles : unstagedFiles;
+    const requested =
+      fileSelection?.section === section &&
+      paths.length === 1 &&
+      fileSelection.paths.includes(paths[0]!)
+        ? fileSelection.paths
+        : paths;
+    const currentPaths = new Set(files.map((file) => file.path));
+    return requested.filter((path) => currentPaths.has(path));
+  };
+
+  const stageAll = (section: GitPanelSection) => {
+    const options = {
+      onError: (error: Error) =>
+        toastManager.add({
+          type: "error",
+          title: "Could not update all changes",
+          description: error.message,
+        }),
+    };
+    if (section === "staged") unstageMutation.mutate({ allChanges: true }, options);
+    else stageMutation.mutate({ allChanges: true }, options);
+  };
   const stage = (paths: string[]) => {
+    paths = rowTargets("unstaged", paths);
     if (!cwd || paths.length === 0) return;
-    setFileSelection(null);
-    stageMutation.mutate(paths);
+    stageMutation.mutate(paths, {
+      onError: (error) =>
+        toastManager.add({
+          type: "error",
+          title: "Could not stage files",
+          description: error.message,
+        }),
+    });
   };
   const unstage = (paths: string[]) => {
+    paths = rowTargets("staged", paths);
     if (!cwd || paths.length === 0) return;
-    setFileSelection(null);
-    unstageMutation.mutate(paths);
+    unstageMutation.mutate(paths, {
+      onError: (error) =>
+        toastManager.add({
+          type: "error",
+          title: "Could not unstage files",
+          description: error.message,
+        }),
+    });
   };
 
   const selectFile = (
@@ -246,10 +278,6 @@ export function GitPanel(props: {
     const preferred = findInSection(selected.section);
     if (preferred) {
       selectedResolved = { section: selected.section, file: preferred };
-    } else {
-      const otherSection: GitPanelSection = selected.section === "staged" ? "unstaged" : "staged";
-      const fallback = findInSection(otherSection);
-      selectedResolved = fallback ? { section: otherSection, file: fallback } : null;
     }
   }
   const selectedFileDiff = selectedResolved ? selectedDiff : null;
@@ -264,7 +292,7 @@ export function GitPanel(props: {
 
   const isLoading = filesQuery.isLoading;
   const error = filesQuery.isError ? "Could not load changes. Refresh to try again." : null;
-  const hasChanges = stagedFiles.length > 0 || unstagedFiles.length > 0;
+  const hasChanges = (coverage?.count ?? stagedFiles.length + unstagedFiles.length) > 0;
 
   if (!cwd) {
     return <PanelStateMessage>Source control is unavailable for this thread.</PanelStateMessage>;
@@ -286,10 +314,52 @@ export function GitPanel(props: {
           selectedResolved ? "max-h-[40%] shrink-0" : "flex-1",
         )}
       >
-        {stagedFiles.length > 0 ? (
+        {large ? (
+          <div className="space-y-2 border-b border-border/70 px-1.5 pb-2">
+            <p className="text-ui-sm font-medium">
+              Large changes: {coverage.count.toLocaleString()}
+              {coverage.incomplete ? "+" : ""} unique files
+            </p>
+            <p className="text-ui-xs text-muted-foreground">
+              {coverage.incomplete
+                ? "Collection budget reached. Counts and search coverage are incomplete. "
+                : ""}
+              {coverage.resultsLimited
+                ? "Showing bounded results. Search to narrow the list. "
+                : ""}
+              Stage all and Unstage all apply to the entire checkout.
+            </p>
+            <div className="flex flex-wrap gap-x-3 gap-y-1 text-ui-xs text-muted-foreground">
+              {coverage.folders.map((folder) => (
+                <span key={folder.path}>
+                  {folder.path}: {folder.count.toLocaleString()}
+                </span>
+              ))}
+              {coverage.otherFolders ? (
+                <span>Other folders: {coverage.otherFolders.toLocaleString()}</span>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+        {large || filter ? (
+          <Input
+            nativeInput
+            type="search"
+            size="sm"
+            aria-label="Search changed files"
+            placeholder="Search changed files"
+            maxLength={200}
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+          />
+        ) : null}
+        {(coverage?.stagedCount ?? stagedFiles.length) > 0 ? (
           <GitFileSection
             title="Staged"
             files={stagedFiles}
+            statsAvailable={filesQuery.data?.statsAvailable}
+            count={coverage?.stagedCount}
+            onAllAction={() => stageAll("staged")}
             selectedPaths={highlightedPaths("staged")}
             actionLabel="Unstage file"
             actionAllLabel="Unstage all"
@@ -342,8 +412,9 @@ export function GitPanel(props: {
           <GitFileSection
             title="Changes"
             files={unstagedFiles}
-            untrackedFileStats={untrackedFileStats}
-            {...(unstagedTotalStats === undefined ? {} : { totalStats: unstagedTotalStats })}
+            statsAvailable={filesQuery.data?.statsAvailable}
+            count={coverage?.unstagedCount}
+            onAllAction={() => stageAll("unstaged")}
             selectedPaths={highlightedPaths("unstaged")}
             actionLabel="Stage file"
             actionAllLabel="Stage all"
@@ -353,15 +424,30 @@ export function GitPanel(props: {
             onContextMenu={(file, event) => void showFileMenu("unstaged", file, event)}
             onAction={stage}
             onOpenFile={props.onOpenFile}
-            onRevert={(file) => setReverting([file])}
+            onRevert={(file) => {
+              const targets = new Set(rowTargets("unstaged", [file.path]));
+              setReverting(unstagedFiles.filter((entry) => targets.has(entry.path)));
+            }}
             {...(stagedFiles.length === 0 ? { onRefresh: refresh } : {})}
           />
+        ) : null}
+        {large && stagedFiles.length + unstagedFiles.length === 0 && !isLoading ? (
+          <PanelStateMessage density="compact">
+            No matching files in the collected results.
+          </PanelStateMessage>
         ) : null}
       </div>
 
       {selectedResolved ? (
         <div className="diff-panel-viewport min-h-0 min-w-0 flex-1 overflow-hidden border-t border-border/70">
-          {selectedPatchQuery.data?.truncated ? (
+          {isGitMediaPath(selectedResolved.file.path) ? (
+            <GitMediaPreview
+              key={`${cwd}:${selectedResolved.section}:${selectedResolved.file.path}`}
+              cwd={cwd}
+              path={selectedResolved.file.path}
+              revision={selectedResolved.section === "staged" ? "index" : "workingTree"}
+            />
+          ) : selectedPatchQuery.data?.truncated ? (
             <Alert variant="error" size="sm">
               This file's diff exceeds the preview limit.
             </Alert>
@@ -391,84 +477,12 @@ export function GitPanel(props: {
           )}
         </div>
       ) : null}
-      <AlertDialog
-        open={reverting !== null}
-        onOpenChange={(open) => {
-          if (!open) setReverting(null);
-        }}
-      >
-        <AlertDialogPopup className="max-w-sm">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="truncate" title={reverting?.[0]?.path}>
-              {reverting?.length === 1
-                ? "Revert changes?"
-                : `Revert ${reverting?.length ?? 0} files?`}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {reverting?.length === 1
-                ? reverting[0]?.status === "U"
-                  ? `Delete untracked file ${reverting[0].path}? This cannot be undone.`
-                  : `Discard unstaged changes in ${reverting?.[0]?.path}? Staged changes will remain.`
-                : "Discard unstaged changes in the selected files? Untracked files will be deleted. Staged changes will remain."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogClose render={<Button variant="outline" size="sm" />}>
-              Cancel
-            </AlertDialogClose>
-            <Button
-              variant="destructive"
-              size="sm"
-              disabled={mutating}
-              onClick={() => {
-                void (async () => {
-                  if (!cwd || !reverting) return;
-                  if (hasUnsavedWorkspaceEditors(queryClient, cwd)) {
-                    toastManager.add({
-                      type: "warning",
-                      title: "Save open files before reverting changes.",
-                    });
-                    return;
-                  }
-                  let completed = 0;
-                  try {
-                    for (const file of reverting) {
-                      await revertMutation.mutateAsync(file.path);
-                      completed += 1;
-                    }
-                    if (reverting.some((file) => file.status === "U")) {
-                      await queryClient.invalidateQueries({ queryKey: projectQueryKeys.all });
-                    }
-                    setFileSelection(null);
-                    setReverting(null);
-                  } catch (error) {
-                    if (completed > 0) {
-                      await queryClient.invalidateQueries({ queryKey: projectQueryKeys.all });
-                      setFileSelection(null);
-                      setReverting(null);
-                    }
-                    toastManager.add({
-                      type: "error",
-                      title:
-                        error &&
-                        typeof error === "object" &&
-                        "message" in error &&
-                        typeof error.message === "string"
-                          ? error.message
-                          : "Could not revert file.",
-                      ...(completed > 0
-                        ? { description: `${completed} of ${reverting.length} files reverted.` }
-                        : {}),
-                    });
-                  }
-                })();
-              }}
-            >
-              Revert
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogPopup>
-      </AlertDialog>
+      <GitRevertDialog
+        cwd={cwd}
+        files={reverting}
+        onClose={() => setReverting(null)}
+        onCompleted={() => setFileSelection(null)}
+      />
     </div>
   );
 }

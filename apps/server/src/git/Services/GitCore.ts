@@ -215,7 +215,7 @@ export interface GitCoreShape {
 
   readonly statusDetails: (
     cwd: string,
-    options?: { readonly refreshUpstream?: boolean },
+    options?: { readonly refreshUpstream?: boolean; readonly metadataOnly?: boolean },
   ) => Effect.Effect<GitStatusDetails, GitCommandError>;
 
   readonly readBranchContext: (cwd: string) => Effect.Effect<GitBranchContext, GitCommandError>;
@@ -237,6 +237,7 @@ export interface GitCoreShape {
 
   readonly readSourceControlFiles: (
     cwd: string,
+    query?: string,
   ) => Effect.Effect<GitSourceControlFilesResult, GitCommandError>;
 
   readonly readBranchPatch: (cwd: string) => Effect.Effect<GitWorkingTreePatch, GitCommandError>;
@@ -390,12 +391,14 @@ export interface GitCoreShape {
   readonly stageFiles: (
     cwd: string,
     paths: readonly string[],
+    allChanges?: boolean,
   ) => Effect.Effect<void, GitCommandError>;
   readonly revertUnstagedFile: (cwd: string, path: string) => Effect.Effect<void, GitCommandError>;
 
   readonly unstageFiles: (
     cwd: string,
     paths: readonly string[],
+    allChanges?: boolean,
   ) => Effect.Effect<void, GitCommandError>;
 }
 

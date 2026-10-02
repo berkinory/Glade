@@ -1,3 +1,4 @@
+import { isSupportedLocalVideoPath } from "@glade/shared/attachments/localVideoFiles";
 import type {
   ProjectFileChangeEvent,
   ProjectReadFileResult,
@@ -59,6 +60,8 @@ import {
 import { DiffTruncationWarning } from "./DiffTruncationWarning";
 import { PanelStateMessage } from "./chat/PanelStateMessage";
 import { WorkspaceFilePreviewHeader } from "./chat/WorkspaceFilePreviewHeader";
+import { LocalVideoThumbnail } from "./LocalVideoThumbnail";
+import { buildLocalImageUrl } from "~/lib/localImageUrls";
 import { LocalImagePreview } from "./LocalImagePreview";
 import { PdfFilePreview } from "./PdfFilePreview";
 
@@ -137,11 +140,14 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
   const { settings, updateSettings } = useAppSettings();
   const markdownPreviewDefault = props.markdownPreviewDefault ?? settings.markdownPreviewEnabled;
   const fileIsImage = filePath !== null && isSupportedLocalImagePath(filePath);
+  const fileIsVideo = filePath !== null && isSupportedLocalVideoPath(filePath);
   const fileIsPdf = filePath !== null && isSupportedLocalPdfPath(filePath);
   const fileIsLocalAbsolute = filePath !== null && isLocalAbsolutePath(filePath);
   const fileIsWorkspaceRelative = filePath !== null && isWorkspaceRelativePathSafe(filePath);
   const fileIsScratchBinaryPreview =
-    filePath !== null && (fileIsImage || fileIsPdf) && isScratchWorkspacePath(filePath);
+    filePath !== null &&
+    (fileIsImage || fileIsPdf || fileIsVideo) &&
+    isScratchWorkspacePath(filePath);
   const fileNeedsLocalPreviewGrant =
     filePath !== null && fileIsLocalAbsolute && !fileIsScratchBinaryPreview;
   const fileIsMarkdown = filePath !== null && isMarkdownPreviewablePath(filePath);
@@ -168,7 +174,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
     fileNeedsLocalPreviewGrant && isLocalPreviewGrantUsable(localPreviewGrantQuery.data)
       ? (localPreviewGrantQuery.data?.grant ?? null)
       : null;
-  const binaryPreviewKey = `${props.workspaceRoot ?? ""}\0${filePath ?? ""}\0${localPreviewGrant ?? ""}\0${binaryPreviewRevision}`;
+  const binaryPreviewKey = `${props.workspaceRoot ?? ""}\0${filePath ?? ""}\0${binaryPreviewRevision}`;
   const fileQuery = useQuery(
     projectReadFileQueryOptions({
       cwd: props.workspaceRoot,
@@ -179,6 +185,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
         liveRevalidationEnabled &&
         filePath !== null &&
         !fileIsImage &&
+        !fileIsVideo &&
         !fileIsPdf &&
         (fileNeedsLocalPreviewGrant ? localPreviewGrant !== null : props.workspaceRoot !== null),
     }),
@@ -189,7 +196,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
       : null;
   const watchedWorkspaceRelativePath =
     resolvedWorkspaceRelativePath ??
-    ((fileIsImage || fileIsPdf) &&
+    ((fileIsImage || fileIsPdf || fileIsVideo) &&
     workspaceRoot &&
     requestedFilePath &&
     isWorkspaceRelativePathSafe(requestedFilePath)
@@ -204,7 +211,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
       });
 
       void refreshGitAfterFileWrite(queryClient, workspaceRoot);
-      if (fileIsImage || fileIsPdf) {
+      if (fileIsImage || fileIsPdf || fileIsVideo) {
         setBinaryPreviewReloading(true);
         setBinaryPreviewRevision((current) => current + 1);
       }
@@ -217,6 +224,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
     },
     [
       fileIsImage,
+      fileIsVideo,
       fileIsPdf,
       queryClient,
       relocationRequestKey,
@@ -344,7 +352,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
 
   const handleFileReload = useCallback(() => {
     if (!filePath) return;
-    if (fileIsImage || fileIsPdf) {
+    if (fileIsImage || fileIsPdf || fileIsVideo) {
       setBinaryPreviewReloading(true);
       setBinaryPreviewRevision((current) => current + 1);
       return;
@@ -353,7 +361,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
       cwd: workspaceRoot,
       relativePath: filePath,
     });
-  }, [fileIsImage, fileIsPdf, filePath, queryClient, workspaceRoot]);
+  }, [fileIsImage, fileIsVideo, fileIsPdf, filePath, queryClient, workspaceRoot]);
 
   const handleEditBufferReload = editor.reloadFromDisk;
 
@@ -362,6 +370,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
     resolvedWorkspaceRelativePath !== null &&
     fileQuery.data !== undefined &&
     !fileIsImage &&
+    !fileIsVideo &&
     !fileIsPdf &&
     !showMarkdownPreview &&
     editableDocument === null;
@@ -592,7 +601,10 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
           workspaceRoot && filePath
             ? {
                 onClick: handleFileReload,
-                pending: fileIsImage || fileIsPdf ? binaryPreviewReloading : fileQuery.isFetching,
+                pending:
+                  fileIsImage || fileIsPdf || fileIsVideo
+                    ? binaryPreviewReloading
+                    : fileQuery.isFetching,
               }
             : undefined
         }
@@ -653,6 +665,24 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
       ) : null}
       {locatingOutOfRootFile ? (
         <FilePreviewLoadingState />
+      ) : (fileIsImage || fileIsVideo) &&
+        fileNeedsLocalPreviewGrant &&
+        localPreviewGrantQuery.isPending ? (
+        <FilePreviewLoadingState />
+      ) : fileIsVideo ? (
+        <LocalVideoThumbnail
+          key={binaryPreviewKey}
+          url={buildLocalImageUrl({
+            src: filePath!,
+            cwd: props.workspaceRoot ?? undefined,
+            grant: localPreviewGrant,
+            cacheKey: binaryPreviewRevision,
+          })}
+          alt={basenameOfPath(filePath!)}
+          className="min-h-0 flex-1"
+          onReady={handleBinaryPreviewReady}
+          onError={handleBinaryPreviewError}
+        />
       ) : fileIsImage ? (
         <div
           className="editor-file-viewer min-h-0 flex-1 overflow-auto"

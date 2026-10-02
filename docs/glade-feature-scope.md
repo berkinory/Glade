@@ -81,6 +81,27 @@ are not exposed in this first version.
 
 Source Control combines current changes, immutable turn checkpoint diffs and commit history. Turn diffs offer a return to current changes; Show file opens the working-tree file in Explorer. Ordinary chat file links reveal files in Explorer, including supplied line and column targets.
 
+Changes sorts paths by folder within each staged/unstaged group. Selection stays in
+one group, and selected rows keep their applicable actions visible. Stage, Unstage
+and Revert apply to that selection; deleted rows have no View action.
+
+Below 5,000 unique changed paths, Changes uses its normal virtualized list. Larger
+checkouts show a folder/count summary and bounded, searchable results. A partially
+staged file counts once. When metadata exceeds the collection budget, counts are
+lower bounds and search coverage is marked incomplete. Stage all, Unstage all and
+empty-index commits still address all Changes, rather than the visible results.
+
+Selected media is loaded on demand. Changes images use the working tree, Staged
+images use the index, and History images use the selected commit. Missing content
+is shown explicitly. Git media previews are bounded to 16 MB; local workspace video
+previews are bounded to 32 MB. Videos show a static thumbnail with no player or
+autoplay, and decoder/blob resources are released when no longer needed.
+
+Changes and History revalidate automatically on repository events and reconnect or
+focus. Ordinary file edits refresh working-copy data without resetting History.
+Ref/HEAD movements refresh active history and branch queries; remote fetch remains
+separate from filesystem notifications. Retry controls remain for actual failures.
+
 Source Control shows outgoing and incoming commit counts to the left of Fetch when
 the branch has an upstream. Incoming counts reflect the last fetched remote state.
 
@@ -98,8 +119,11 @@ Merge commits carry a Merge marker. Local and remote branch names appear only
 on the commit each branch currently points to; this is not a branch graph.
 Repositories without a remote upstream show neither icon.
 
-The right dock supports staged-only commits with a workspace-scoped message draft
-and Cmd/Ctrl+Enter, AI message generation from staged changes without index or commit mutations, fetch across configured remotes, fast-forward-only pull, push of existing commits, and the
+The right dock commits staged changes, or explicitly stages all Changes when the index
+is empty, with a workspace-scoped message draft and Cmd/Ctrl+Enter. AI generation
+reads staged changes when present, otherwise all Changes, without index or commit
+mutations. The dock also supports fetch across configured remotes, fast-forward-only
+pull, push of existing commits, and the
 shared branch picker. Commit message generation uses the configured model, enables advertised fast mode, and disables thinking or selects the lowest advertised effort. Its 90-second deadline includes model discovery. The commit button stays aligned with the first input line.
 Push fetches its destination, fast-forwards incoming history or rebases unpublished
 local commits before pushing normally. Integration requires saved editors and a clean

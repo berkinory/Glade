@@ -214,8 +214,28 @@ const makeGitCore = () =>
         fallbackErrorMessage: "git init failed",
       }).pipe(Effect.asVoid);
 
-    const stageFiles: GitCoreShape["stageFiles"] = (cwd, paths) =>
-      runGit("GitCore.stageFiles", cwd, ["add", "--", ...paths]);
+    const stageFiles: GitCoreShape["stageFiles"] = (cwd, paths, allChanges) => {
+      if (
+        !allChanges &&
+        (paths.length === 0 ||
+          paths.some((path) => !isWorkspaceRelativePathSafe(path) || path.includes("\0")))
+      )
+        return Effect.fail(
+          createGitCommandError(
+            "GitCore.stageFiles",
+            cwd,
+            ["add"],
+            "Choose valid workspace-relative files to stage.",
+          ),
+        );
+      return runGit(
+        "GitCore.stageFiles",
+        cwd,
+        allChanges
+          ? ["add", "-A", "--", ":/"]
+          : ["add", "--", ...paths.map((path) => `:(literal)${path}`)],
+      );
+    };
 
     const revertUnstagedFile: GitCoreShape["revertUnstagedFile"] = (cwd, filePath) =>
       Effect.gen(function* () {
@@ -261,8 +281,20 @@ const makeGitCore = () =>
         }
       });
 
-    const unstageFiles: GitCoreShape["unstageFiles"] = (cwd, paths) =>
+    const unstageFiles: GitCoreShape["unstageFiles"] = (cwd, paths, allChanges) =>
       Effect.gen(function* () {
+        if (
+          !allChanges &&
+          (paths.length === 0 ||
+            paths.some((path) => !isWorkspaceRelativePathSafe(path) || path.includes("\0")))
+        )
+          return yield* createGitCommandError(
+            "GitCore.unstageFiles",
+            cwd,
+            ["reset"],
+            "Choose valid workspace-relative files to unstage.",
+          );
+        const targets = allChanges ? [":/"] : paths.map((path) => `:(literal)${path}`);
         const headExists = yield* executeGit(
           "GitCore.unstageFiles.headExists",
           cwd,
@@ -274,8 +306,8 @@ const makeGitCore = () =>
           "GitCore.unstageFiles",
           cwd,
           headExists
-            ? ["reset", "-q", "HEAD", "--", ...paths]
-            : ["rm", "--cached", "-q", "--", ...paths],
+            ? ["reset", "-q", "HEAD", "--", ...targets]
+            : ["rm", "--cached", "-q", "-r", "--", ...targets],
         );
       });
 

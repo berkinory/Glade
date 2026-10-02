@@ -156,10 +156,9 @@ export const GitReadFileAtRevInput = Schema.Struct({
   ),
   rev: Schema.optional(GitRevisionArgumentSchema),
 
-  base: Schema.optional(Schema.Literals(["branch", "index"])),
-  maxBytes: Schema.optional(
-    PositiveInt.check(Schema.isLessThanOrEqualTo(GIT_READ_FILE_AT_REV_MAX_BYTES)),
-  ),
+  base: Schema.optional(Schema.Literals(["branch", "index", "workingTree"])),
+  encoding: Schema.optional(Schema.Literals(["utf8", "base64"])),
+  maxBytes: Schema.optional(PositiveInt.check(Schema.isLessThanOrEqualTo(16_000_000))),
 });
 export type GitReadFileAtRevInput = typeof GitReadFileAtRevInput.Type;
 
@@ -347,13 +346,15 @@ export type GitInitInput = typeof GitInitInput.Type;
 
 export const GitStageFilesInput = Schema.Struct({
   cwd: TrimmedNonEmptyStringSchema,
-  paths: Schema.Array(TrimmedNonEmptyStringSchema).check(Schema.isMinLength(1)),
+  paths: Schema.Array(TrimmedNonEmptyStringSchema),
+  allChanges: Schema.optional(Schema.Boolean),
 });
 export type GitStageFilesInput = typeof GitStageFilesInput.Type;
 
 export const GitUnstageFilesInput = Schema.Struct({
   cwd: TrimmedNonEmptyStringSchema,
-  paths: Schema.Array(TrimmedNonEmptyStringSchema).check(Schema.isMinLength(1)),
+  paths: Schema.Array(TrimmedNonEmptyStringSchema),
+  allChanges: Schema.optional(Schema.Boolean),
 });
 export type GitUnstageFilesInput = typeof GitUnstageFilesInput.Type;
 
@@ -381,6 +382,9 @@ export const GitStatusResult = Schema.Struct({
   branch: TrimmedNonEmptyStringSchema.pipe(Schema.NullOr),
   hasWorkingTreeChanges: Schema.Boolean,
   workingTree: Schema.Struct({
+    totalCount: Schema.optional(NonNegativeInt),
+    incomplete: Schema.optional(Schema.Boolean),
+    statsAvailable: Schema.optional(Schema.Boolean),
     files: Schema.Array(
       Schema.Struct({
         path: TrimmedNonEmptyStringSchema,
@@ -479,6 +483,7 @@ export const GitStatusStreamEvent = Schema.Union([
   }),
   Schema.TaggedStruct("localUpdated", {
     local: GitStatusLocalResult,
+    repositoryChanged: Schema.optional(Schema.Boolean),
   }),
   Schema.TaggedStruct("remoteUpdated", {
     remote: Schema.NullOr(GitStatusRemoteResult),
@@ -495,7 +500,31 @@ export type GitReadWorkingTreeDiffResult = typeof GitReadWorkingTreeDiffResult.T
 export const GitSourceControlFileStatus = Schema.Literals(["M", "U", "A", "D", "R", "C", "T", "!"]);
 export type GitSourceControlFileStatus = typeof GitSourceControlFileStatus.Type;
 
+export interface GitReadRequestOptions {
+  readonly signal?: AbortSignal;
+}
+
+export const GitReadSourceControlFilesInput = Schema.Struct({
+  cwd: TrimmedNonEmptyStringSchema,
+  query: Schema.optional(Schema.String.check(Schema.isMaxLength(200))),
+});
+export type GitReadSourceControlFilesInput = typeof GitReadSourceControlFilesInput.Type;
+
 export const GitSourceControlFilesResult = Schema.Struct({
+  statsAvailable: Schema.optional(Schema.Boolean),
+  coverage: Schema.optional(
+    Schema.Struct({
+      mode: Schema.Literals(["normal", "large"]),
+      count: NonNegativeInt,
+      stagedCount: NonNegativeInt,
+      unstagedCount: NonNegativeInt,
+      incomplete: Schema.Boolean,
+      matches: NonNegativeInt,
+      resultsLimited: Schema.Boolean,
+      folders: Schema.Array(Schema.Struct({ path: Schema.String, count: NonNegativeInt })),
+      otherFolders: NonNegativeInt,
+    }),
+  ),
   staged: Schema.Array(
     Schema.Struct({
       path: TrimmedNonEmptyStringSchema,

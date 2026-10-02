@@ -35,6 +35,9 @@ function GitFileRow(props: {
   file: SourceFile;
   theme: "light" | "dark";
   isSelected: boolean;
+  selectedCount: number;
+  statsAvailable: boolean;
+  revertAllowed: boolean;
   actionLabel: string;
   actionIcon: "stage" | "unstage";
   actionDisabled: boolean;
@@ -69,23 +72,34 @@ function GitFileRow(props: {
         </span>
       </button>
       <div className="relative flex h-7 w-[7.5rem] shrink-0 items-center justify-end">
-        <DiffStat
-          additions={props.file.insertions}
-          deletions={props.file.deletions}
-          className="absolute right-7 shrink-0 text-ui-sm group-hover/git-file-row:invisible group-has-[:focus-visible]/git-file-row:invisible"
-        />
-        <div className="invisible absolute right-7 flex items-center gap-0.5 group-hover/git-file-row:visible group-has-[:focus-visible]/git-file-row:visible">
-          <IconButton
-            size="icon-xs"
-            variant="ghost"
-            label="Open file in Explorer"
-            tooltip="Open file in Explorer"
-            disabled={props.file.status === "D"}
-            onClick={() => props.onOpenFile(filePath)}
-          >
-            <EyeOpenIcon className="size-3.5" />
-          </IconButton>
-          {props.onRevert && canRevertFile(props.file) ? (
+        {props.statsAvailable ? (
+          <DiffStat
+            additions={props.file.insertions}
+            deletions={props.file.deletions}
+            className={cn(
+              "absolute right-7 shrink-0 text-ui-sm group-hover/git-file-row:invisible group-has-[:focus-visible]/git-file-row:invisible",
+              props.isSelected && "invisible",
+            )}
+          />
+        ) : null}
+        <div
+          className={cn(
+            "absolute right-7 flex items-center gap-0.5 group-hover/git-file-row:visible group-has-[:focus-visible]/git-file-row:visible",
+            props.isSelected ? "visible" : "invisible",
+          )}
+        >
+          {props.file.status !== "D" && !(props.isSelected && props.selectedCount > 1) ? (
+            <IconButton
+              size="icon-xs"
+              variant="ghost"
+              label="Open file in Explorer"
+              tooltip="Open file in Explorer"
+              onClick={() => props.onOpenFile(filePath)}
+            >
+              <EyeOpenIcon className="size-3.5" />
+            </IconButton>
+          ) : null}
+          {props.onRevert && props.revertAllowed && canRevertFile(props.file) ? (
             <IconButton
               size="icon-xs"
               variant="ghost"
@@ -129,6 +143,9 @@ export function GitFileSection(props: {
   files: readonly SourceFile[];
   untrackedFileStats?: ReadonlyMap<string, { insertions: number; deletions: number }>;
   totalStats?: { additions: number; deletions: number } | null;
+  statsAvailable?: boolean | undefined;
+  count?: number | undefined;
+  onAllAction?: () => void;
   selectedPaths: ReadonlySet<string>;
   actionLabel: string;
   actionAllLabel: string;
@@ -144,6 +161,9 @@ export function GitFileSection(props: {
   const { resolvedTheme } = useTheme();
   const theme = resolvedTheme as "light" | "dark";
   const allPaths = props.files.map((file) => file.path);
+  const selectionCanRevert = props.files
+    .filter((file) => props.selectedPaths.has(file.path))
+    .every(canRevertFile);
   const listRef = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState<HTMLElement | null>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
@@ -174,9 +194,9 @@ export function GitFileSection(props: {
       <header className="flex items-center gap-2 px-1.5 py-1">
         <span className="text-ui-sm font-semibold text-muted-foreground">{props.title}</span>
         <span className="rounded-full bg-muted px-1.5 text-ui-xs font-medium text-muted-foreground">
-          {props.files.length}
+          {props.count ?? props.files.length}
         </span>
-        {props.totalStats !== null ? (
+        {props.statsAvailable !== false && props.totalStats !== null ? (
           <DiffStat
             additions={
               props.totalStats?.additions ??
@@ -190,14 +210,14 @@ export function GitFileSection(props: {
           />
         ) : null}
         <div className="ml-auto flex items-center gap-1">
-          {props.files.length > 0 ? (
+          {(props.count ?? props.files.length) > 0 ? (
             <IconButton
               variant="ghost"
               size="icon-xs"
               label={props.actionAllLabel}
               tooltip={props.actionAllLabel}
               disabled={props.actionDisabled}
-              onClick={() => props.onAction(allPaths)}
+              onClick={() => (props.onAllAction ? props.onAllAction() : props.onAction(allPaths))}
             >
               {props.actionIcon === "stage" ? (
                 <PlusIcon className="size-3.5" />
@@ -240,6 +260,9 @@ export function GitFileSection(props: {
                   file={fileStats ? { ...file, ...fileStats } : file}
                   theme={theme}
                   isSelected={props.selectedPaths.has(file.path)}
+                  selectedCount={props.selectedPaths.size}
+                  statsAvailable={props.statsAvailable !== false}
+                  revertAllowed={!props.selectedPaths.has(file.path) || selectionCanRevert}
                   actionLabel={props.actionLabel}
                   actionIcon={props.actionIcon}
                   actionDisabled={props.actionDisabled}

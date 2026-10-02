@@ -9,6 +9,57 @@ import { gitQueryKeys } from "../lib/gitQueryOptions";
 export function useGitStatusPush() {
   const queryClient = useQueryClient();
   useEffect(() => {
+    const refreshes = new Map<
+      string,
+      { running: boolean; pending: Set<string>; timer: ReturnType<typeof setTimeout> | null }
+    >();
+    let disposed = false;
+    const schedule = (cwd: string, kinds: readonly string[]) => {
+      let state = refreshes.get(cwd);
+      if (!state) {
+        state = { running: false, pending: new Set(), timer: null };
+        refreshes.set(cwd, state);
+      }
+      kinds.forEach((kind) => state.pending.add(kind));
+      if (state.running || state.timer) return;
+      state.timer = setTimeout(() => {
+        state.timer = null;
+        const pending = new Set(state.pending);
+        state.pending.clear();
+        state.running = true;
+        const keys: (readonly unknown[])[] = pending.has("repository")
+          ? [
+              gitQueryKeys.history(cwd),
+              gitQueryKeys.branches(cwd),
+              ["git", "rebase-state", cwd],
+              ["git", "recent-commits", cwd],
+              ["git", "stash-info", cwd],
+            ]
+          : [];
+        if (pending.has("files"))
+          keys.push(gitQueryKeys.workingTreeDiffs(cwd), gitQueryKeys.sourceControlFiles(cwd));
+        void Promise.all([
+          ...keys.map((queryKey) =>
+            queryClient.invalidateQueries({ queryKey }, { cancelRefetch: false }),
+          ),
+          ...(pending.has("files")
+            ? [
+                queryClient.invalidateQueries(
+                  {
+                    queryKey: ["git", "media", cwd],
+                    predicate: (query) =>
+                      ["index", "workingTree"].includes(String(query.queryKey.at(-1))),
+                  },
+                  { cancelRefetch: false },
+                ),
+              ]
+            : []),
+        ]).finally(() => {
+          state.running = false;
+          if (!disposed && state.pending.size) schedule(cwd, []);
+        });
+      }, 150);
+    };
     const subscriptions = new Map<string, () => void>();
     const reconcile = () => {
       const active = new Set(
@@ -23,6 +74,10 @@ export function useGitStatusPush() {
         if (!active.has(cwd)) {
           unsubscribe();
           subscriptions.delete(cwd);
+          const refresh = refreshes.get(cwd);
+          refresh?.pending.clear();
+          if (refresh?.timer) clearTimeout(refresh.timer);
+          refreshes.delete(cwd);
         }
       }
       for (const cwd of active) {
@@ -37,16 +92,10 @@ export function useGitStatusPush() {
               if (event._tag === "localUpdated") return { ...current, ...event.local };
               return mergeGitStatusParts(current, event.remote);
             });
-            void queryClient.resetQueries({ queryKey: gitQueryKeys.history(cwd) });
-            for (const queryKey of [
-              gitQueryKeys.branches(cwd),
-              ["git", "rebase-state", cwd],
-              ["git", "recent-commits", cwd],
-              ["git", "stash-info", cwd],
-              gitQueryKeys.workingTreeDiffs(cwd),
-              gitQueryKeys.sourceControlFiles(cwd),
-            ])
-              void queryClient.invalidateQueries({ queryKey });
+            if (event._tag === "snapshot") schedule(cwd, ["repository", "files"]);
+            else if (event._tag === "localUpdated")
+              schedule(cwd, event.repositoryChanged ? ["repository", "files"] : ["files"]);
+            else schedule(cwd, ["repository"]);
           }),
         );
       }
@@ -63,12 +112,14 @@ export function useGitStatusPush() {
     const stopFocus = focusManager.subscribe((focused) => {
       if (!focused) return;
       for (const cwd of subscriptions.keys()) {
-        void queryClient.resetQueries({ queryKey: gitQueryKeys.history(cwd) });
-        void queryClient.invalidateQueries({ queryKey: ["git", "rebase-state", cwd] });
-        void queryClient.invalidateQueries({ queryKey: gitQueryKeys.sourceControlFiles(cwd) });
+        schedule(cwd, ["repository", "files"]);
       }
     });
     return () => {
+      disposed = true;
+      refreshes.forEach((state) => {
+        if (state.timer) clearTimeout(state.timer);
+      });
       stopFocus();
       unsubscribe();
       subscriptions.forEach((stop) => stop());

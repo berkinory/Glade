@@ -1,6 +1,7 @@
 import { useCommitDrafts } from "./commitDraftStore";
 import { gitRebaseStateQueryOptions } from "~/lib/gitReactQuery";
 import { invalidateGitQueriesForCwds } from "~/lib/gitQueryOptions";
+import { GitMediaPreview, isGitMediaPath } from "./GitMediaPreview";
 import { ShowSourceFile } from "./ShowSourceFile";
 import type { GitRecentCommit } from "@glade/contracts/git/git";
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -27,7 +28,6 @@ import {
   GitBranchIcon,
   GitCommitIcon,
   GitMergeIcon,
-  RefreshCwIcon,
   XIcon,
 } from "~/lib/icons";
 import { formatRelativeTime } from "~/lib/relativeTime";
@@ -183,6 +183,9 @@ function CommitDetail(props: {
                       </>
                     )}
                   />
+                  {expanded && isGitMediaPath(path) ? (
+                    <GitMediaPreview cwd={props.cwd} path={path} revision={props.commit.sha} />
+                  ) : null}
                 </div>
               );
             })
@@ -386,13 +389,6 @@ export function SourceControlHistory(props: {
           <span className="min-w-0 flex-1 truncate text-ui-sm font-medium">
             {status.data?.branch ?? "Current branch"}
           </span>
-          <IconButton
-            label="Refresh history"
-            tooltip="Refresh history"
-            onClick={() => void history.refetch()}
-          >
-            <RefreshCwIcon className="size-3.5" />
-          </IconButton>
         </div>
         <Input
           nativeInput

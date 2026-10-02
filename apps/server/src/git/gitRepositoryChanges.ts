@@ -11,79 +11,77 @@ function watchGitDirectory(
   directory: string,
   worktree = false,
 ): Stream.Stream<void, GitCommandError> {
-  return Stream.callback<void, GitCommandError>((queue) =>
-    Effect.acquireRelease(
-      Effect.try({
-        try: () => {
-          const watcher = watch(directory, { recursive: true }, (_event, filename) => {
-            // Bun can report only the source lock name for an atomic rename.
-            const name = filename
-              ?.toString()
-              .split(path.sep)
-              .join("/")
-              .replace(/\.lock$/, "");
-            if (
-              worktree &&
-              name
-                ?.split("/")
-                .some((part) => [".git", "node_modules", "dist", ".turbo"].includes(part))
-            )
-              return;
-            if (
-              !worktree &&
-              name &&
-              !["HEAD", "index", "config", "config.worktree", "packed-refs"].includes(name) &&
-              !name.startsWith("refs/") &&
-              !name.startsWith("rebase-") &&
-              !name.startsWith("sequencer/") &&
-              ![
-                "MERGE_HEAD",
-                "CHERRY_PICK_HEAD",
-                "REVERT_HEAD",
-                "sequencer",
-                "glade-push.json",
-              ].includes(name)
-            )
-              return;
+  return Stream.callback<void, GitCommandError>(
+    (queue) =>
+      Effect.acquireRelease(
+        Effect.try({
+          try: () => {
+            const watcher = watch(directory, { recursive: true }, (_event, filename) => {
+              // Bun can report only the source lock name for an atomic rename.
+              const name = filename
+                ?.toString()
+                .split(path.sep)
+                .join("/")
+                .replace(/\.lock$/, "");
+              if (worktree && name?.split("/").some((part) => part === ".git")) return;
+              if (
+                !worktree &&
+                name &&
+                !["HEAD", "index", "config", "config.worktree", "packed-refs"].includes(name) &&
+                !name.startsWith("refs/") &&
+                !name.startsWith("rebase-") &&
+                !name.startsWith("sequencer/") &&
+                ![
+                  "MERGE_HEAD",
+                  "CHERRY_PICK_HEAD",
+                  "REVERT_HEAD",
+                  "sequencer",
+                  "glade-push.json",
+                ].includes(name)
+              )
+                return;
+              Queue.offerUnsafe(queue, undefined);
+            });
+            const onError = (cause: Error) =>
+              Queue.failCauseUnsafe(
+                queue,
+                Cause.fail(
+                  new GitCommandError({
+                    operation: "watch repository",
+                    cwd,
+                    command: "fs.watch",
+                    detail: `Could not watch ${directory}.`,
+                    cause,
+                  }),
+                ),
+              );
+            watcher.on("error", onError);
+            // Revalidate after establishing the watcher to close the snapshot-before-watch race.
             Queue.offerUnsafe(queue, undefined);
-          });
-          const onError = (cause: Error) =>
-            Queue.failCauseUnsafe(
-              queue,
-              Cause.fail(
-                new GitCommandError({
-                  operation: "watch repository",
-                  cwd,
-                  command: "fs.watch",
-                  detail: `Could not watch ${directory}.`,
-                  cause,
-                }),
-              ),
-            );
-          watcher.on("error", onError);
-          // Revalidate after establishing the watcher to close the snapshot-before-watch race.
-          Queue.offerUnsafe(queue, undefined);
-          return { watcher, onError };
-        },
-        catch: (cause) =>
-          new GitCommandError({
-            operation: "watch repository",
-            cwd,
-            command: "fs.watch",
-            detail: `Could not watch ${directory}.`,
-            cause,
-          }),
-      }),
-      ({ watcher, onError }) =>
-        Effect.sync(() => {
-          watcher.off("error", onError);
-          watcher.close();
+            return { watcher, onError };
+          },
+          catch: (cause) =>
+            new GitCommandError({
+              operation: "watch repository",
+              cwd,
+              command: "fs.watch",
+              detail: `Could not watch ${directory}.`,
+              cause,
+            }),
         }),
-    ).pipe(Effect.asVoid),
+        ({ watcher, onError }) =>
+          Effect.sync(() => {
+            watcher.off("error", onError);
+            watcher.close();
+          }),
+      ).pipe(Effect.asVoid),
+    { bufferSize: 1, strategy: "sliding" },
   );
 }
 
-async function metadataFingerprint(directories: readonly string[]): Promise<string> {
+async function metadataFingerprint(
+  directories: readonly string[],
+): Promise<{ local: string; repository: string }> {
   const paths = directories.flatMap((directory) =>
     [
       "HEAD",
@@ -120,25 +118,32 @@ async function metadataFingerprint(directories: readonly string[]): Promise<stri
       paths.push(path.join(entry.parentPath, entry.name));
     }
   }
-  return (
-    await Promise.all(
-      paths.map(async (file) => {
-        const stat = await fs.stat(file, { bigint: true }).catch((cause: unknown) => {
-          if (
-            typeof cause === "object" &&
-            cause !== null &&
-            "code" in cause &&
-            cause.code === "ENOENT"
-          )
-            return null;
-          throw cause;
-        });
-        return stat
-          ? `${file}:${stat.ino}:${stat.size}:${stat.mtimeNs}:${stat.ctimeNs}`
-          : `${file}:missing`;
-      }),
-    )
-  ).join("\0");
+  const records = await Promise.all(
+    paths.map(async (file) => {
+      const stat = await fs.stat(file, { bigint: true }).catch((cause: unknown) => {
+        if (
+          typeof cause === "object" &&
+          cause !== null &&
+          "code" in cause &&
+          cause.code === "ENOENT"
+        )
+          return null;
+        throw cause;
+      });
+      return stat
+        ? `${file}:${stat.ino}:${stat.size}:${stat.mtimeNs}:${stat.ctimeNs}`
+        : `${file}:missing`;
+    }),
+  );
+  return {
+    local: records.join("\0"),
+    repository: records
+      .filter(
+        (record) =>
+          !directories.some((directory) => record.startsWith(`${path.join(directory, "index")}:`)),
+      )
+      .join("\0"),
+  };
 }
 
 export function watchGitRepository(cwd: string, execute: GitCoreShape["execute"]) {
@@ -151,11 +156,12 @@ export function watchGitRepository(cwd: string, execute: GitCoreShape["execute"]
     }).pipe(
       Effect.map((result) => {
         const directories = [...new Set(result.stdout.trim().split("\n"))];
+        let previousRepository: string | null = null;
         const metadata = Stream.mergeAll(
           directories.map((directory) => watchGitDirectory(cwd, directory)),
           { concurrency: "unbounded" },
         ).pipe(
-          Stream.debounce(Duration.millis(150)),
+          Stream.throttle({ units: 1, duration: Duration.millis(150), cost: () => 1 }),
           Stream.mapEffect(() =>
             Effect.tryPromise({
               try: () => metadataFingerprint(directories),
@@ -169,12 +175,19 @@ export function watchGitRepository(cwd: string, execute: GitCoreShape["execute"]
                 }),
             }),
           ),
-          Stream.changes,
-          Stream.map(() => undefined),
+          Stream.changesWith((a, b) => a.local === b.local),
+          Stream.map((fingerprint) => {
+            const repositoryChanged = fingerprint.repository !== previousRepository;
+            previousRepository = fingerprint.repository;
+            return { repositoryChanged };
+          }),
         );
         return Stream.merge(
           metadata,
-          watchGitDirectory(cwd, cwd, true).pipe(Stream.debounce(Duration.millis(300))),
+          watchGitDirectory(cwd, cwd, true).pipe(
+            Stream.throttle({ units: 1, duration: Duration.millis(300), cost: () => 1 }),
+            Stream.map(() => ({ repositoryChanged: false })),
+          ),
         );
       }),
     ),

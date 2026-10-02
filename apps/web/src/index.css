@@ -1426,10 +1426,6 @@ label:has(> select#reasoning-effort) select {
   -webkit-user-drag: none;
 }
 
-.local-image-preview[data-status="loading"] .local-image-preview__img {
-  opacity: 0;
-}
-
 .local-image-preview__skeleton {
   position: absolute;
   inset: 0;

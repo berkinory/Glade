@@ -36,9 +36,17 @@ function makeGitMutationOptions<TArgs, TResult>(config: {
       if (config.cwd) {
         const cwd = config.cwd;
         await config.queryClient
-          .invalidateQueries({ queryKey: gitQueryKeys.sourceControlFiles(cwd), exact: true })
+          .invalidateQueries({ queryKey: gitQueryKeys.sourceControlFiles(cwd) })
           .catch(() => undefined);
-        void invalidateGitQueriesForCwds(config.queryClient, [cwd]).catch(() => undefined);
+        void config.queryClient
+          .invalidateQueries({ queryKey: gitQueryKeys.workingTreeDiffs(cwd) })
+          .catch(() => undefined);
+        void config.queryClient
+          .invalidateQueries({
+            queryKey: ["git", "media", cwd],
+            predicate: (query) => ["index", "workingTree"].includes(String(query.queryKey.at(-1))),
+          })
+          .catch(() => undefined);
       }
       return;
     }
@@ -85,7 +93,7 @@ export function gitStageFilesMutationOptions(input: {
   cwd: string | null;
   queryClient: QueryClient;
 }) {
-  return makeGitMutationOptions<readonly string[], { ok: boolean }>({
+  return makeGitMutationOptions<readonly string[] | { allChanges: true }, { ok: boolean }>({
     cwd: input.cwd,
     queryClient: input.queryClient,
     mutationKey: gitMutationKeys.stageFiles(input.cwd),
@@ -93,8 +101,9 @@ export function gitStageFilesMutationOptions(input: {
     invalidate: "source-control",
     invalidateOn: "success",
     run: (api, cwd, paths) => {
-      if (paths.length === 0) throw new Error("No files selected to stage.");
-      return api.git.stageFiles({ cwd, paths: [...paths] });
+      const allChanges = "allChanges" in paths;
+      if (!allChanges && paths.length === 0) throw new Error("No files selected to stage.");
+      return api.git.stageFiles({ cwd, paths: allChanges ? [] : [...paths], allChanges });
     },
   });
 }
@@ -117,7 +126,7 @@ export function gitUnstageFilesMutationOptions(input: {
   cwd: string | null;
   queryClient: QueryClient;
 }) {
-  return makeGitMutationOptions<readonly string[], { ok: boolean }>({
+  return makeGitMutationOptions<readonly string[] | { allChanges: true }, { ok: boolean }>({
     cwd: input.cwd,
     queryClient: input.queryClient,
     mutationKey: gitMutationKeys.unstageFiles(input.cwd),
@@ -125,8 +134,9 @@ export function gitUnstageFilesMutationOptions(input: {
     invalidate: "source-control",
     invalidateOn: "success",
     run: (api, cwd, paths) => {
-      if (paths.length === 0) throw new Error("No files selected to unstage.");
-      return api.git.unstageFiles({ cwd, paths: [...paths] });
+      const allChanges = "allChanges" in paths;
+      if (!allChanges && paths.length === 0) throw new Error("No files selected to unstage.");
+      return api.git.unstageFiles({ cwd, paths: allChanges ? [] : [...paths], allChanges });
     },
   });
 }

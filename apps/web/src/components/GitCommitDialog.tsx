@@ -66,7 +66,8 @@ export function GitCommitDialog({
     () => allFiles.filter((file) => !excludedFiles.has(file.path)),
     [allFiles, excludedFiles],
   );
-  const allSelected = excludedFiles.size === 0;
+  const incomplete = gitStatus?.workingTree.incomplete === true;
+  const allSelected = incomplete || excludedFiles.size === 0;
   const noneSelected = selectedFiles.length === 0;
 
   const hasFileSelection = allFiles.length === 0 || !noneSelected;
@@ -137,14 +138,16 @@ export function GitCommitDialog({
               />
             ) : null}
             <span className="min-w-0 flex-1 truncate text-muted-foreground">
-              {summarizeSelection(allFiles.length, selectedFiles.length, allSelected)}
+              {incomplete
+                ? "All changes (partial file list)"
+                : summarizeSelection(allFiles.length, selectedFiles.length, allSelected)}
             </span>
             <DiffStat
               className="shrink-0 font-mono text-ui leading-snug"
               insertions={selectedFiles.reduce((sum, file) => sum + file.insertions, 0)}
               deletions={selectedFiles.reduce((sum, file) => sum + file.deletions, 0)}
             />
-            {allFiles.length > 0 ? (
+            {allFiles.length > 0 && !incomplete ? (
               <Button
                 variant="ghost"
                 size="xs"
@@ -163,7 +166,7 @@ export function GitCommitDialog({
                     key={file.path}
                     file={file}
                     excluded={excludedFiles.has(file.path)}
-                    selectable={isEditingFiles}
+                    selectable={isEditingFiles && !incomplete}
                     onToggle={() => toggleFile(file.path)}
                     onOpen={() => onOpenFile(file.path)}
                   />

@@ -1286,7 +1286,7 @@ export const makeGitManager = Effect.gen(function* () {
   );
 
   const status: GitManagerShape["status"] = Effect.fnUntraced(function* (input) {
-    const details = yield* gitCore.statusDetails(input.cwd);
+    const details = yield* gitCore.statusDetails(input.cwd, { metadataOnly: true });
 
     const pr =
       details.branch !== null
@@ -1348,8 +1348,8 @@ export const makeGitManager = Effect.gen(function* () {
     },
   );
 
-  const readSourceControlFiles: GitManagerShape["readSourceControlFiles"] = (cwd) =>
-    gitCore.readSourceControlFiles(cwd);
+  const readSourceControlFiles: GitManagerShape["readSourceControlFiles"] = (cwd, query) =>
+    gitCore.readSourceControlFiles(cwd, query);
 
   const blameLine: GitManagerShape["blameLine"] = Effect.fnUntraced(function* (input) {
     return yield* gitCore.blameLine(input);
@@ -1461,7 +1461,7 @@ export const makeGitManager = Effect.gen(function* () {
           reference: normalizedReference,
           force: true,
         });
-        const details = yield* gitCore.statusDetails(input.cwd);
+        const details = yield* gitCore.statusDetails(input.cwd, { metadataOnly: true });
         yield* configurePullRequestHeadUpstream(
           input.cwd,
           {

@@ -234,6 +234,59 @@ it.layer(TestLayer)("git integration", (it) => {
   });
 
   describe("readFileAtRev", () => {
+    it.effect("reads binary media from the selected version without changing the index", () =>
+      Effect.gen(function* () {
+        const core = yield* GitCore;
+        const cwd = yield* makeTmpDir();
+        yield* initRepoWithCommit(cwd);
+        const file = path.join(cwd, "image.png");
+        const committed = Buffer.from([0, 255, 128, 1]);
+        const staged = Buffer.from([0, 255, 128, 2]);
+        const working = Buffer.from([0, 255, 128, 3]);
+        yield* Effect.promise(() => fs.writeFile(file, committed));
+        yield* git(cwd, ["add", "image.png"]);
+        yield* git(cwd, ["commit", "-m", "media"]);
+        yield* Effect.promise(() => fs.writeFile(file, staged));
+        yield* git(cwd, ["add", "image.png"]);
+        yield* Effect.promise(() => fs.writeFile(file, working));
+        const index = yield* git(cwd, ["write-tree"]);
+        for (const [base, bytes] of [
+          [undefined, committed],
+          ["index", staged],
+          ["workingTree", working],
+        ] as const) {
+          const result = yield* core.readFileAtRev({
+            cwd,
+            filePath: "image.png",
+            encoding: "base64",
+            ...(base ? { base } : { rev: "HEAD" }),
+          });
+          expect(result.missing).toBe(false);
+          expect(result.truncated).toBe(false);
+          expect(Buffer.from(result.contents, "base64")).toEqual(bytes);
+        }
+        const oversized = yield* core.readFileAtRev({
+          cwd,
+          filePath: "image.png",
+          base: "index",
+          encoding: "base64",
+          maxBytes: 2,
+        });
+        expect(oversized.truncated).toBe(true);
+        expect(oversized.contents).toBe("");
+        expect(yield* git(cwd, ["write-tree"])).toBe(index);
+        const outside = yield* makeTmpDir();
+        yield* Effect.promise(() => fs.writeFile(path.join(outside, "private.png"), committed));
+        yield* Effect.promise(() =>
+          fs.symlink(path.join(outside, "private.png"), path.join(cwd, "escape.png")),
+        );
+        const escaped = yield* core
+          .readFileAtRev({ cwd, filePath: "escape.png", base: "workingTree", encoding: "base64" })
+          .pipe(Effect.exit);
+        expect(Exit.isFailure(escaped)).toBe(true);
+      }),
+    );
+
     it.effect("rejects paths that escape the workspace", () =>
       Effect.gen(function* () {
         const core = yield* GitCore;

@@ -54,6 +54,7 @@ export interface GitManagerShape {
 
   readonly readSourceControlFiles: (
     cwd: string,
+    query?: string,
   ) => Effect.Effect<GitSourceControlFilesResult, GitManagerServiceError>;
 
   readonly blameLine: (

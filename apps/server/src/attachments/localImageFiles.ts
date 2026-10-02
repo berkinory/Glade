@@ -1,3 +1,4 @@
+import { isSupportedLocalVideoPath } from "@glade/shared/attachments/localVideoFiles";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -128,7 +129,7 @@ export async function resolveAllowedLocalPreviewFile(input: {
   if (
     !requestedPath ||
     requestedPath.includes("\0") ||
-    !isSupportedLocalPreviewFilePath(requestedPath)
+    (!isSupportedLocalPreviewFilePath(requestedPath) && !isSupportedLocalVideoPath(requestedPath))
   ) {
     return null;
   }
@@ -137,12 +138,15 @@ export async function resolveAllowedLocalPreviewFile(input: {
     ? path.resolve(requestedPath)
     : path.resolve(input.cwd ?? process.cwd(), requestedPath);
   const realFilePath = await realpathOrNull(resolvedRequestedPath);
-  if (!realFilePath || !isSupportedLocalPreviewFilePath(realFilePath)) {
+  if (
+    !realFilePath ||
+    (!isSupportedLocalPreviewFilePath(realFilePath) && !isSupportedLocalVideoPath(realFilePath))
+  ) {
     return null;
   }
 
   const stat = await fs.stat(realFilePath).catch(() => null);
-  if (!stat?.isFile()) {
+  if (!stat?.isFile() || (isSupportedLocalVideoPath(realFilePath) && stat.size > 32_000_000)) {
     return null;
   }
   const resolved: ResolvedLocalPreviewFile = {

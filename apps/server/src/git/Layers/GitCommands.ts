@@ -395,7 +395,8 @@ const collectGitOutput = Effect.fn(function* <E>(
   const remainder = decoder.decode();
   appendRetainedPrefix(remainder);
   lineBuffer += remainder;
-  yield* emitCompleteLines(true);
+  if (!(outputMode === "prefix" && truncated && lineDelimiter === "\0"))
+    yield* emitCompleteLines(true);
   return { text, truncated };
 });
 
@@ -558,7 +559,11 @@ const makeGitCommands = Effect.gen(function* () {
       ...(options.outputMode !== undefined ? { outputMode: options.outputMode } : {}),
     }).pipe(
       Effect.flatMap((result) => {
-        if (options.allowNonZeroExit || result.code === 0) {
+        if (
+          options.allowNonZeroExit ||
+          result.code === 0 ||
+          (options.outputMode === "prefix" && result.stdoutTruncated)
+        ) {
           return Effect.succeed(result);
         }
         const stderr = result.stderr.trim();

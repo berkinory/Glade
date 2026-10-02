@@ -1,13 +1,14 @@
 import { Effect, FileSystem, Layer } from "effect";
+import { ChildProcessSpawner } from "effect/unstable/process";
 import * as nodeFs from "node:fs/promises";
 import * as nodePath from "node:path";
-import {
-  GIT_READ_FILE_AT_REV_MAX_BYTES,
-  type GitBlameLineResult,
-  type GitSourceControlFileStatus,
-} from "@glade/contracts/git/git";
+import { GIT_READ_FILE_AT_REV_MAX_BYTES, type GitBlameLineResult } from "@glade/contracts/git/git";
 import { isWorkspaceRelativePathSafe } from "@glade/shared/platform/path";
 import { GitCommandError } from "../Errors.ts";
+import { makeKeyedSingleFlightCache } from "../../pullRequests/KeyedSingleFlightCache";
+import type { GitSourceControlFilesResult } from "@glade/contracts/git/git";
+import { GIT_MEDIA_MAX_BYTES, readGitMedia, readWorkingTreeMedia } from "../gitMedia";
+import { sourceControlInventory } from "../sourceControlInventory";
 import { parseGitBlamePorcelain } from "../gitBlameParsing.ts";
 import { summarizeGitNumstatOutputs } from "../gitStatusParsing.ts";
 import type { GitCoreShape, ExecuteGitResult, GitWorkingTreePatch } from "../Services/GitCore.ts";
@@ -101,7 +102,9 @@ function isSuccessfulNoIndexDiff(result: ExecuteGitResult): boolean {
 
 const makeGitDiff = Effect.gen(function* () {
   const fileSystem = yield* FileSystem.FileSystem;
-  const { executeGit } = yield* GitCommands;
+  const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+  const commands = yield* GitCommands;
+  const { executeGit } = commands;
   const { statusDetails, resolveBaseBranchForNoUpstream } = yield* GitStatus;
   const listUntrackedFiles = (
     cwd: string,
@@ -353,74 +356,32 @@ const makeGitDiff = Effect.gen(function* () {
       );
     });
 
-  const readSourceControlFiles: GitCoreShape["readSourceControlFiles"] = (cwd) =>
-    Effect.gen(function* () {
-      const output = { maxOutputBytes: 20_000_000, timeoutMs: WORKING_TREE_DIFF_TIMEOUT_MS };
-      const [status, stagedStats, unstagedStats] = yield* Effect.all(
-        [
-          executeGit(
-            "GitCore.readSourceControlFiles.status",
-            cwd,
-            ["status", "--porcelain=v1", "-z", "--untracked-files=all"],
-            output,
-          ),
-          executeGit(
-            "GitCore.readSourceControlFiles.stagedStats",
-            cwd,
-            ["diff", "--cached", "--numstat", "-z"],
-            output,
-          ),
-          executeGit(
-            "GitCore.readSourceControlFiles.unstagedStats",
-            cwd,
-            ["diff", "--numstat", "-z"],
-            output,
-          ),
-        ],
-        { concurrency: "unbounded" },
-      );
-      const staged = new Map<string, GitSourceControlFileStatus>();
-      const unstaged = new Map<string, GitSourceControlFileStatus>();
-      const statusLetter = (code: string): GitSourceControlFileStatus => {
-        if (code === "?" || code === "U") return "U";
-        if (code === "A" || code === "D" || code === "R" || code === "C" || code === "T") {
-          return code;
-        }
-        return "M";
-      };
-      const records = status.stdout.split("\0");
-      for (let index = 0; index < records.length; index += 1) {
-        const record = records[index] ?? "";
-        if (record.length < 4) continue;
-        const code = record.slice(0, 2);
-        const path = record.slice(3);
-        const conflicted = /^(AA|DD|AU|UA|DU|UD|UU)$/.test(code);
-        if (code[0] !== " " && code[0] !== "?") {
-          staged.set(path, conflicted ? "!" : statusLetter(code[0] ?? "M"));
-        }
-        if (code[1] !== " " || code === "??") {
-          unstaged.set(path, conflicted ? "!" : statusLetter(code[1] ?? "M"));
-        }
-        if (code.includes("R") || code.includes("C")) index += 1;
-      }
-      const toFiles = (paths: Map<string, GitSourceControlFileStatus>, stdout: string) => {
-        const stats = new Map(
-          summarizeGitNumstatOutputs([stdout]).files.map((file) => [file.path, file]),
+  const inventories = yield* makeKeyedSingleFlightCache<
+    GitSourceControlFilesResult,
+    GitCommandError
+  >({ maxEntries: 64, ttlMs: 0 });
+  const readSourceControlFiles: GitCoreShape["readSourceControlFiles"] = (cwd, query) =>
+    inventories.get(
+      JSON.stringify([cwd, query ?? ""]),
+      Effect.gen(function* () {
+        const inventory = sourceControlInventory(query);
+        const status = yield* executeGit(
+          "GitCore.readSourceControlFiles.status",
+          cwd,
+          ["--no-optional-locks", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
+          {
+            maxOutputBytes: 8_000_000,
+            outputMode: "prefix",
+            timeoutMs: 30_000,
+            progress: {
+              stdoutLineDelimiter: "\0",
+              onStdoutLine: (record) => Effect.sync(() => inventory.accept(record)),
+            },
+          },
         );
-        return [...paths]
-          .toSorted(([a], [b]) => a.localeCompare(b))
-          .map(([path, status]) => ({
-            path,
-            status,
-            insertions: stats.get(path)?.insertions ?? 0,
-            deletions: stats.get(path)?.deletions ?? 0,
-          }));
-      };
-      return {
-        staged: toFiles(staged, stagedStats.stdout),
-        unstaged: toFiles(unstaged, unstagedStats.stdout),
-      };
-    });
+        return inventory.result(status.stdoutTruncated === true);
+      }),
+    );
 
   const readWorkingTreePatch: GitCoreShape["readWorkingTreePatch"] = (cwd, filePath) =>
     Effect.gen(function* () {
@@ -555,7 +516,24 @@ const makeGitDiff = Effect.gen(function* () {
         );
       }
 
-      const maxBytes = input.maxBytes ?? GIT_READ_FILE_AT_REV_MAX_BYTES;
+      const maxBytes =
+        input.encoding === "base64"
+          ? Math.min(input.maxBytes ?? GIT_MEDIA_MAX_BYTES, GIT_MEDIA_MAX_BYTES)
+          : Math.min(
+              input.maxBytes ?? GIT_READ_FILE_AT_REV_MAX_BYTES,
+              GIT_READ_FILE_AT_REV_MAX_BYTES,
+            );
+
+      if (input.base === "workingTree") {
+        if (input.encoding !== "base64")
+          return yield* createGitCommandError(
+            "GitCore.readFileAtRev",
+            input.cwd,
+            ["read media"],
+            "Working-tree media requires base64 encoding.",
+          );
+        return yield* commands.withPermit(readWorkingTreeMedia(input.cwd, filePath, maxBytes));
+      }
 
       const baseRev =
         input.base === "index"
@@ -581,6 +559,17 @@ const makeGitDiff = Effect.gen(function* () {
       }
       const blobSize = Number.parseInt(sizeResult.stdout.trim(), 10);
       const truncated = Number.isFinite(blobSize) && blobSize > maxBytes;
+
+      if (input.encoding === "base64") {
+        if (!Number.isSafeInteger(blobSize) || blobSize < 0 || truncated)
+          return { contents: "", resolvedRev, missing: false, truncated: true };
+        const contents = yield* commands.withPermit(
+          readGitMedia(input.cwd, blobRef, blobSize).pipe(
+            Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner),
+          ),
+        );
+        return { contents, resolvedRev, missing: false, truncated: false };
+      }
 
       const contents = yield* executeGit(
         "GitCore.readFileAtRev.blob",

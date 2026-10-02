@@ -59,7 +59,11 @@ export const GitStatusBroadcasterLive = Layer.effect(
     const updateCachedLocalStatus = (
       cwd: string,
       local: GitStatusLocalResult,
-      options?: { readonly publish?: boolean; readonly force?: boolean },
+      options?: {
+        readonly publish?: boolean;
+        readonly force?: boolean;
+        readonly repositoryChanged?: boolean;
+      },
     ) =>
       Effect.gen(function* () {
         const nextLocal = makeCachedStatusValue(local);
@@ -72,7 +76,11 @@ export const GitStatusBroadcasterLive = Layer.effect(
         if (options?.publish && (shouldPublish || options.force)) {
           yield* PubSub.publish(changesPubSub, {
             cwd,
-            event: { _tag: "localUpdated", local },
+            event: {
+              _tag: "localUpdated",
+              local,
+              repositoryChanged: options?.repositoryChanged ?? false,
+            },
           });
         }
 
@@ -122,7 +130,7 @@ export const GitStatusBroadcasterLive = Layer.effect(
         // cache state would double the git work on every poll (the sidebar polls at 60 s against a 30 s
         // TTL, so the reuse check could never pass on that path).
         if (cached?.remote && isCachedRemoteStatusFresh({ cached })) {
-          const details = yield* gitCore.statusDetails(normalizedCwd);
+          const details = yield* gitCore.statusDetails(normalizedCwd, { metadataOnly: true });
           if (canReuseCachedRemoteStatus({ cached, details })) {
             const local = yield* updateCachedLocalStatus(
               normalizedCwd,
@@ -138,21 +146,24 @@ export const GitStatusBroadcasterLive = Layer.effect(
     const refreshStatus: GitStatusBroadcasterShape["refreshStatus"] = (cwd) =>
       loadStatus(normalizeCwd(cwd), { publish: true });
 
-    const refreshLocalStatus: GitStatusBroadcasterShape["refreshLocalStatus"] = (cwd) => {
+    const refreshWatchedStatus = (cwd: string, repositoryChanged = false) => {
       const normalizedCwd = normalizeCwd(cwd);
       return Effect.gen(function* () {
-        const details = yield* gitCore.statusDetails(normalizedCwd, { refreshUpstream: false });
+        const details = yield* gitCore.statusDetails(normalizedCwd, {
+          refreshUpstream: false,
+          metadataOnly: true,
+        });
         const local = yield* updateCachedLocalStatus(
           normalizedCwd,
           splitLocalStatusDetails(details),
-          { publish: true, force: true },
+          { publish: true, force: true, repositoryChanged },
         );
         const cached = yield* getCachedStatus(normalizedCwd);
         if (cached?.remote)
           yield* updateCachedRemoteStatus(
             normalizedCwd,
             splitRemoteStatusDetails(details, cached.remote.value),
-            { publish: true, force: true },
+            { publish: true },
           );
         return local;
       });
@@ -166,9 +177,9 @@ export const GitStatusBroadcasterLive = Layer.effect(
             Effect.logWarning("Repository watcher failed; retrying", error),
           ),
           Stream.retry(Schedule.spaced("5 seconds")),
-          Stream.runForEach(() =>
+          Stream.runForEach(({ repositoryChanged }) =>
             Effect.gen(function* () {
-              if (fullSubscribers.has(cwd)) yield* refreshLocalStatus(cwd);
+              if (fullSubscribers.has(cwd)) yield* refreshWatchedStatus(cwd, repositoryChanged);
               const summary = yield* gitCore.summary(cwd);
               yield* PubSub.publish(changesPubSub, {
                 cwd,
@@ -227,7 +238,7 @@ export const GitStatusBroadcasterLive = Layer.effect(
 
     return {
       getStatus,
-      refreshLocalStatus,
+      refreshLocalStatus: (cwd) => refreshWatchedStatus(cwd, false),
       refreshStatus,
       streamStatus,
     } satisfies GitStatusBroadcasterShape;
