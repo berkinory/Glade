@@ -2,6 +2,10 @@
 
 ## 0.1.2 - Unreleased
 
+### New
+
+- Add files and folders to Explorer with drag and drop, or paste files from the clipboard.
+
 ### Improved
 
 - Source Control uses clearer folder ordering and stays usable with very large change lists.
@@ -23,6 +27,8 @@
 - Models load faster on first use, with a balanced initial reasoning effort when you have not chosen one.
 
 ### Fixed
+
+- Explorer stays in sync when files are added or changed outside Glade.
 
 - Failed commit message generation reports an error instead of silently substituting a generic message.
 - Source Control recognizes folders without Git promptly and shows clear messages instead of raw command errors.
