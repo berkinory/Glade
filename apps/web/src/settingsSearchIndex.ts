@@ -96,7 +96,7 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     title: "Pull request",
     target: "setting-showEnvironmentPullRequest",
     keywords:
-      "Show the open pull request CI checks and review comments in the chat Environment panel. pr fix github",
+      "Show the pull request link in the chat Environment panel. pr github",
   },
   {
     id: "general:environment-editor",

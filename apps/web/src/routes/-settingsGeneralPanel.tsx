@@ -205,7 +205,7 @@ export function SettingsGeneralPanel(props: {
             settingKey: "showEnvironmentPullRequest",
             title: "Pull request",
             description:
-              "Show the open pull request (CI checks and review comments) for the current branch in the chat Environment panel.",
+              "Show the pull request link for the current branch in the chat Environment panel.",
             resetLabel: "pull request section",
             ariaLabel: "Show the Pull request section in the Environment panel",
           })}

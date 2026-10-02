@@ -4,6 +4,7 @@
 
 ### Improved
 
+- AI commit messages and pull request descriptions handle large changes with less unnecessary context.
 - Provider handoffs preserve key decisions and unfinished work, with access to earlier conversation details when needed.
 - Explorer navigation can be hidden to give files more room, and highlighted file rows are easier to distinguish.
 - History loads faster with fewer repeated Git reads.
@@ -15,9 +16,14 @@
 
 ### Fixed
 
+- Failed commit message generation reports an error instead of silently substituting a generic message.
 - Source Control recognizes folders without Git promptly and shows clear messages instead of raw command errors.
 - Activity keeps usage with missing historical model information without assigning it to a newer model.
 - The message input no longer briefly changes size when switching chats.
+
+### Removed
+
+- Pull request panels and management actions were removed; PR links open externally from Environment and the sidebar.
 
 ## 0.1.1 - 2026-10-01
 
