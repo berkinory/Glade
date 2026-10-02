@@ -75,20 +75,13 @@ export function readGenerationContext(
       : yield* commands.execute({
           operation: "Git.generationContext.index",
           cwd,
-          args: ["diff", "--cached", "--quiet"],
-          allowNonZeroExit: true,
+          args: ["diff", "--cached", "--name-only", "--no-renames", "-z"],
           maxOutputBytes: 1024,
+          outputMode: "prefix",
         });
-    if (staged && staged.code > 1)
-      return yield* new GitCommandError({
-        operation: "Git.generationContext.index",
-        cwd,
-        command: "git diff --cached --quiet",
-        detail: staged.stderr,
-      });
     const scope = range
       ? "range"
-      : !forceWorkingTree && staged?.code === 1
+      : !forceWorkingTree && staged && staged.stdout.length > 0
         ? "staged"
         : "workingTree";
     const diffArgs = range ? [range] : scope === "staged" ? ["--cached"] : ["HEAD"];
