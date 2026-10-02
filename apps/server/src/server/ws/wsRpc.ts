@@ -131,6 +131,7 @@ import { ServerSettingsService } from "../../settings/serverSettings";
 import { isLoopbackHost } from "../http/startupAccess";
 import { TerminalManager } from "../../terminal/Services/Manager";
 import { resolveOutOfRootFileReference } from "../../workspace/outOfRootFileReference";
+import { watchWorkspaceDirectories } from "../../workspace/workspaceDirectoryChanges";
 import { watchWorkspaceFile } from "../../workspace/workspaceFileChanges";
 import { WorkspaceEntries } from "../../workspace/Services/WorkspaceEntries";
 import {
@@ -1194,8 +1195,16 @@ const makeWsRpcHandlersLayer = () =>
         [WS_METHODS.projectsSubscribeFileChange]: (input, { clientId }) =>
           streamAdmission.guard(
             clientId,
-            { key: `projects.file-change:${input.cwd}\0${input.relativePath}` },
-            watchWorkspaceFile(input).pipe(
+            {
+              key: `projects.file-change:${input.cwd}\0${input.relativePath}:${JSON.stringify(input.directoryPaths ?? [])}`,
+            },
+            (input.directoryPaths
+              ? watchWorkspaceDirectories(input)
+              : watchWorkspaceFile(input)
+            ).pipe(
+              Stream.tap(() =>
+                input.directoryPaths ? workspaceEntries.invalidate(input.cwd) : Effect.void,
+              ),
               Stream.mapError(
                 (cause) =>
                   new WsRpcError({

@@ -545,6 +545,12 @@ export interface DesktopAgentCursorStyle {
   readonly shadow?: string;
 }
 
+export interface DesktopClipboardFile {
+  path: string;
+  name: string;
+  kind: "file" | "directory";
+}
+
 export interface DesktopBridge {
   getWsUrl: () => string | null;
 
@@ -569,6 +575,7 @@ export interface DesktopBridge {
     showInFolder: (path: string) => Promise<void>;
   };
   clipboard?: {
+    readFiles?: () => Promise<DesktopClipboardFile[]>;
     writeImagePngDataUrl: (dataUrl: string) => Promise<boolean>;
   };
   windowControls?: {

@@ -205,6 +205,8 @@ export const DockExplorerPane = function DockExplorerPane(props: {
               />
             ) : (
               <WorkspaceExplorerSidebar
+                key={props.workspaceRoot}
+                isVisible={props.isVisible && sidebarOpen}
                 workspaceRoot={props.workspaceRoot}
                 selectedFilePath={selectedFilePath}
                 expandedDirectories={expandedDirectories}

@@ -10,6 +10,7 @@ import {
 const PROJECT_SEARCH_ENTRIES_MAX_LIMIT = 200;
 const PROJECT_SEARCH_LOCAL_ENTRIES_MAX_LIMIT = 100;
 const PROJECT_FILE_PATH_MAX_LENGTH = 512;
+export const PROJECT_IMPORT_CONTENT_MAX_BYTES = 1024 * 1024;
 const PROJECT_READ_FILE_PATH_MAX_LENGTH = 2048;
 const PROJECT_READ_FILE_MAX_BYTES = 1_000_000;
 const PROJECT_DIRECTORY_LIST_MAX_DEPTH = 32;
@@ -188,13 +189,33 @@ export const ProjectWriteFileResult = Schema.Struct({
 });
 export type ProjectWriteFileResult = typeof ProjectWriteFileResult.Type;
 
-export const ProjectManageEntryInput = Schema.Struct({
+const ProjectEditEntryInput = Schema.Struct({
   cwd: TrimmedNonEmptyString,
   action: Schema.Literals(["create", "rename", "delete"]),
   kind: ProjectEntryKind,
   relativePath: TrimmedNonEmptyString.check(Schema.isMaxLength(PROJECT_FILE_PATH_MAX_LENGTH)),
   nextName: Schema.optional(TrimmedNonEmptyString.check(Schema.isMaxLength(255))),
 });
+export const ProjectImportSource = Schema.Union([
+  Schema.Struct({ type: Schema.Literal("path"), path: TrimmedNonEmptyString }),
+  Schema.Struct({
+    type: Schema.Literal("contents"),
+    base64: Schema.String.check(
+      Schema.isMaxLength(Math.ceil(PROJECT_IMPORT_CONTENT_MAX_BYTES / 3) * 4),
+    ),
+  }),
+]);
+export type ProjectImportSource = typeof ProjectImportSource.Type;
+export const ProjectManageEntryInput = Schema.Union([
+  ProjectEditEntryInput,
+  Schema.Struct({
+    cwd: TrimmedNonEmptyString,
+    action: Schema.Literal("import"),
+    kind: ProjectEntryKind,
+    relativePath: TrimmedNonEmptyString.check(Schema.isMaxLength(PROJECT_FILE_PATH_MAX_LENGTH)),
+    source: ProjectImportSource,
+  }),
+]);
 export type ProjectManageEntryInput = typeof ProjectManageEntryInput.Type;
 
 export const ProjectManageEntryResult = Schema.Struct({
@@ -228,6 +249,9 @@ export type ProjectReadFileResult = typeof ProjectReadFileResult.Type;
 
 export const ProjectWatchFileInput = Schema.Struct({
   cwd: TrimmedNonEmptyString,
+  directoryPaths: Schema.optional(
+    Schema.Array(TrimmedNonEmptyString).check(Schema.isMinLength(1), Schema.isMaxLength(512)),
+  ),
   relativePath: TrimmedNonEmptyString.check(Schema.isMaxLength(PROJECT_READ_FILE_PATH_MAX_LENGTH)),
 });
 export type ProjectWatchFileInput = typeof ProjectWatchFileInput.Type;

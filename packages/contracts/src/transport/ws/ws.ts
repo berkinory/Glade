@@ -315,7 +315,10 @@ const WebSocketRequestBody = Schema.Union([
     ProjectCreateLocalFilePreviewGrantInput,
   ),
   tagRequestBody(WS_METHODS.projectsWriteFile, ProjectWriteFileInput),
-  tagRequestBody(WS_METHODS.projectsManageEntry, ProjectManageEntryInput),
+  Schema.Union([
+    tagRequestBody(WS_METHODS.projectsManageEntry, ProjectManageEntryInput.members[0]),
+    tagRequestBody(WS_METHODS.projectsManageEntry, ProjectManageEntryInput.members[1]),
+  ]),
   tagRequestBody(WS_METHODS.projectsRunDevServer, ProjectRunDevServerInput),
   tagRequestBody(WS_METHODS.projectsStopDevServer, ProjectStopDevServerInput),
   tagRequestBody(WS_METHODS.projectsListDevServers, Schema.Struct({})),

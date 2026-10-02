@@ -55,3 +55,64 @@ test("rejects an outside parent and existing rename target", async () => {
   ).rejects.toThrow("already exists");
   expect(await fs.readFile(path.join(cwd, "b.txt"), "utf8")).toBe("b");
 });
+
+test("imports files and folders without replacing destinations or changing sources", async () => {
+  const cwd = await fs.mkdtemp(path.join(os.tmpdir(), "glade-import-"));
+  const source = await fs.mkdtemp(path.join(os.tmpdir(), "glade-import-source-"));
+  roots.push(cwd, source);
+  await fs.mkdir(path.join(source, "nested"));
+  await fs.writeFile(path.join(source, "nested", "data.bin"), Buffer.from([0, 255, 13, 10]));
+  const input = {
+    cwd,
+    action: "import" as const,
+    kind: "directory" as const,
+    relativePath: "copy",
+    source: { type: "path" as const, path: source },
+  };
+  await manageWorkspaceEntry(input, path.join(cwd, "copy"));
+  expect(await fs.readFile(path.join(cwd, "copy/nested/data.bin"))).toEqual(
+    Buffer.from([0, 255, 13, 10]),
+  );
+  await expect(manageWorkspaceEntry(input, path.join(cwd, "copy"))).rejects.toThrow(
+    "already exists",
+  );
+  expect(await fs.readFile(path.join(source, "nested/data.bin"))).toEqual(
+    Buffer.from([0, 255, 13, 10]),
+  );
+  await manageWorkspaceEntry(
+    {
+      cwd,
+      action: "import",
+      kind: "file",
+      relativePath: "pasted.bin",
+      source: { type: "contents", base64: "AP8=" },
+    },
+    path.join(cwd, "pasted.bin"),
+  );
+  expect(await fs.readFile(path.join(cwd, "pasted.bin"))).toEqual(Buffer.from([0, 255]));
+  await expect(
+    manageWorkspaceEntry(
+      {
+        cwd,
+        action: "import",
+        kind: "file",
+        relativePath: "../outside",
+        source: { type: "contents", base64: "AP8=" },
+      },
+      path.join(source, "outside"),
+    ),
+  ).rejects.toThrow("outside the workspace");
+  await fs.symlink(source, path.join(cwd, "escape"), "junction");
+  await expect(
+    manageWorkspaceEntry(
+      {
+        cwd,
+        action: "import",
+        kind: "file",
+        relativePath: "escape/outside",
+        source: { type: "contents", base64: "AP8=" },
+      },
+      path.join(cwd, "escape/outside"),
+    ),
+  ).rejects.toThrow("outside the workspace");
+});

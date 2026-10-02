@@ -18,6 +18,7 @@ export function useProjectFileChangeSubscription(input: {
   cwd: string | null;
   relativePath: string | null;
   enabled: boolean;
+  directoryPaths?: string;
   onChange: (event: ProjectFileChangeEvent) => void;
 }): void {
   const capabilityAvailable = useSyncExternalStore(
@@ -32,8 +33,21 @@ export function useProjectFileChangeSubscription(input: {
     }
     const api = readNativeApi();
     return api?.projects.onFileChange?.(
-      { cwd: input.cwd, relativePath: input.relativePath },
+      {
+        cwd: input.cwd,
+        relativePath: input.relativePath,
+        ...(input.directoryPaths
+          ? { directoryPaths: JSON.parse(input.directoryPaths) as string[] }
+          : {}),
+      },
       input.onChange,
     );
-  }, [capabilityAvailable, input.cwd, input.enabled, input.onChange, input.relativePath]);
+  }, [
+    capabilityAvailable,
+    input.cwd,
+    input.enabled,
+    input.directoryPaths,
+    input.onChange,
+    input.relativePath,
+  ]);
 }

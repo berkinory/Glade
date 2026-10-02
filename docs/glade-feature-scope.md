@@ -46,6 +46,13 @@ source/rendered setting applies across files and chats. Unsaved editor sessions 
 available when switching or closing tabs. Absolute local paths and generated files
 use the same Explorer preview, including images and PDFs.
 
+Explorer follows external filesystem changes in its open folders without manual
+refresh. Files and folders can be copied into the tree with drag and drop or pasted
+while the tree has focus. Folder rows target that folder, file rows target their
+parent, and empty tree space targets the workspace root. Imports preserve sources
+and refuse existing names; partial folder failures report what needs review.
+Editor and composer paste retain their existing behavior.
+
 Explorer, Terminal and Source Control share their panel tab bar. Environment and its
 trigger hide while the right sidebar is open, retaining the previous preference
 and panel state until it closes.

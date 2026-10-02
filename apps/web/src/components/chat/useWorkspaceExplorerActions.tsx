@@ -13,7 +13,7 @@ import {
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
 import { toastManager } from "~/components/ui/toast";
-import { projectQueryKeys } from "~/lib/projectReactQuery";
+import { refreshProjectDirectories } from "~/lib/projectDirectoryRefresh";
 import { hasUnsavedWorkspaceEditors } from "~/lib/workspaceEditorSession";
 import { ensureNativeApi } from "~/nativeApi";
 
@@ -52,7 +52,16 @@ export function useWorkspaceExplorerActions(
 ): WorkspaceExplorerActions {
   const queryClient = useQueryClient();
   const [edit, setEdit] = useState<ExplorerEdit | null>(null);
-  const [selectedDirectory, setSelectedDirectory] = useState("");
+  const [selection, setSelection] = useState({
+    filePath: selectedFilePath,
+    directory: selectedFilePath?.split("/").slice(0, -1).join("/") ?? "",
+  });
+  const selectedDirectory =
+    selection.filePath === selectedFilePath
+      ? selection.directory
+      : (selectedFilePath?.split("/").slice(0, -1).join("/") ?? "");
+  const setSelectedDirectory = (directory: string) =>
+    setSelection({ filePath: selectedFilePath, directory });
   const [deleting, setDeleting] = useState<ProjectFileSystemEntry | null>(null);
   const [busy, setBusy] = useState(false);
   const blockDirtyMutation = () => {
@@ -95,7 +104,7 @@ export function useWorkspaceExplorerActions(
         ...(edit.action === "rename" ? { nextName: trimmed } : {}),
       });
       setEdit(null);
-      await queryClient.invalidateQueries({ queryKey: projectQueryKeys.all });
+      await refreshProjectDirectories(queryClient, cwd, [edit.parent || "."]);
       if (edit.action === "create" && edit.kind === "file") {
         onSelectFile(result.relativePath);
       }
@@ -158,7 +167,7 @@ export function useWorkspaceExplorerActions(
                   });
                   onDeleted?.(deleting.path);
                   setDeleting(null);
-                  await queryClient.invalidateQueries({ queryKey: projectQueryKeys.all });
+                  await refreshProjectDirectories(queryClient, cwd, [deleting.parentPath || "."]);
                 } catch (error) {
                   toastManager.add({
                     type: "error",

@@ -1,3 +1,4 @@
+import { readDesktopClipboardFiles } from "./clipboardFiles";
 import type {
   DesktopAppIcon,
   DesktopContextMenuItem,
@@ -308,6 +309,9 @@ export function createRegisterDesktopIpc({
         return false;
       }
     });
+
+    ipcMain.removeHandler(DESKTOP_IPC_CHANNELS.clipboardReadFiles);
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.clipboardReadFiles, () => readDesktopClipboardFiles());
 
     ipcMain.removeHandler(DESKTOP_IPC_CHANNELS.clipboardWriteImage);
     ipcMain.handle(

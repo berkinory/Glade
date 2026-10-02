@@ -4,6 +4,9 @@ import {
   joinWorkspaceRelativePath,
 } from "@glade/shared/platform/path";
 import { IconFilePlus, IconFolderPlus } from "@tabler/icons-react";
+import { useProjectFileChangeSubscription } from "~/hooks/useProjectFileChangeSubscription";
+import { refreshProjectDirectories } from "~/lib/projectDirectoryRefresh";
+import { useExplorerIntake } from "./useExplorerIntake";
 import { WorkspaceExplorerTree } from "./WorkspaceExplorerTree";
 import { setFileReferenceDragData, usePrefetchIntent } from "./ExplorerFileRow";
 import { ExplorerLoadingRows } from "./ExplorerLoadingRows";
@@ -236,11 +239,15 @@ function WorkspaceSearchResultRow(props: {
       type="button"
       className={fileRowClassName(props.selected, "h-8 px-2 transition-none")}
       title={entry.path}
+      data-import-directory={dir.replace(/\/$/, "")}
       draggable
       onDragStart={(event) => {
         setFileReferenceDragData(event.dataTransfer, entry.path);
       }}
-      onClick={() => onSelectFile(entry.path)}
+      onClick={() => {
+        props.actions?.setSelectedDirectory(dir.replace(/\/$/, ""));
+        onSelectFile(entry.path);
+      }}
       {...prefetchIntent}
       onContextMenu={(event) => {
         event.preventDefault();
@@ -369,6 +376,8 @@ function WorkspaceSearchResultsBody(props: {
   return (
     <>
       <div
+        data-explorer-tree
+        tabIndex={0}
         className={cn(
           "min-h-0 flex-1 overflow-auto px-1 py-1",
           fileMatches.length === 0 && "flex flex-col",
@@ -418,6 +427,7 @@ function WorkspaceSearchResultsBody(props: {
 }
 
 export function WorkspaceExplorerSidebar(props: {
+  isVisible?: boolean;
   workspaceRoot: string | null;
   selectedFilePath: string | null;
   expandedDirectories: ReadonlySet<string>;
@@ -429,6 +439,33 @@ export function WorkspaceExplorerSidebar(props: {
   onReferenceInChat: ((reference: ChatFileReference) => void) | undefined;
   onDeleted?: ((path: string) => void) | undefined;
 }) {
+  const queryClient = useQueryClient();
+  const onDirectoryChange = useCallback(
+    (event: { relativePath: string }) => {
+      if (props.workspaceRoot)
+        void refreshProjectDirectories(queryClient, props.workspaceRoot, [
+          event.relativePath,
+        ]).catch(() => undefined);
+    },
+    [queryClient, props.workspaceRoot],
+  );
+  const watchedDirectories = [
+    ".",
+    ...[...props.expandedDirectories].filter((directory) => {
+      const segments = directory.split("/");
+      return segments.every(
+        (_segment, index) =>
+          index === 0 || props.expandedDirectories.has(segments.slice(0, index).join("/")),
+      );
+    }),
+  ].toSorted();
+  useProjectFileChangeSubscription({
+    cwd: props.workspaceRoot,
+    relativePath: ".",
+    directoryPaths: JSON.stringify(watchedDirectories),
+    enabled: props.isVisible ?? true,
+    onChange: onDirectoryChange,
+  });
   const prefetchEntry = useExplorerEntryPrefetch(props.workspaceRoot);
   const actions = useWorkspaceExplorerActions(
     props.workspaceRoot,
@@ -448,14 +485,27 @@ export function WorkspaceExplorerSidebar(props: {
     props.onReferenceInChat,
     actions,
   );
+  const intake = useExplorerIntake(props.workspaceRoot, actions.selectedDirectory);
   const handleListKeyDown = useExplorerListNavigation();
   const search = useWorkspaceFileSearch(props.workspaceRoot, props.query);
 
   return (
     <aside
       className={props.containerClassName ?? EXPLORER_SIDEBAR_CONTAINER_CLASS}
-      onKeyDown={handleListKeyDown}
+      onKeyDown={(event) => {
+        intake.onKeyDown(event);
+        handleListKeyDown(event);
+      }}
+      onPaste={intake.onPaste}
+      onDragOver={intake.onDragOver}
+      onDragLeave={intake.onDragLeave}
+      onDrop={intake.onDrop}
     >
+      {intake.targetDirectory !== null && (
+        <p role="status" className="shrink-0 bg-accent/20 px-2 py-1 text-ui-xs">
+          Copy into {intake.targetDirectory || "workspace root"}
+        </p>
+      )}
       <WorkspaceSearchInputHeader
         query={props.query}
         search={search}

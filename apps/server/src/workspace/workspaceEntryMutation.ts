@@ -6,6 +6,7 @@ import type {
   ProjectManageEntryResult,
 } from "@glade/contracts/workspace/project";
 
+import { importWorkspaceEntry } from "./workspaceEntryImport";
 import { resolveRealPathWithinRoot } from "./realPathContainment";
 
 function validateName(name: string): void {
@@ -43,6 +44,15 @@ export async function manageWorkspaceEntry(
   const parent = path.dirname(absolutePath);
   const realParent = await resolveRealPathWithinRoot(input.cwd, parent);
   if (realParent === null) throw new Error("Entry is outside the workspace.");
+
+  if (input.action === "import") {
+    await importWorkspaceEntry(
+      input.source,
+      path.join(realParent, path.basename(absolutePath)),
+      input.kind,
+    );
+    return { relativePath: input.relativePath };
+  }
 
   if (input.action === "create") {
     if (input.nextName !== undefined) throw new Error("Unexpected destination name.");

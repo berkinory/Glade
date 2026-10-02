@@ -116,6 +116,7 @@ contextBridge.exposeInMainWorld("desktopBridge", {
     showInFolder: (path: string) => ipcRenderer.invoke(IPC.showInFolder, path),
   },
   clipboard: {
+    readFiles: () => ipcRenderer.invoke(IPC.clipboardReadFiles),
     writeImagePngDataUrl: (dataUrl: string) => ipcRenderer.invoke(IPC.clipboardWriteImage, dataUrl),
   },
   windowControls: {

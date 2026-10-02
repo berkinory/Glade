@@ -103,6 +103,8 @@ export function WorkspaceExplorerTree(props: {
   return (
     <div
       ref={scrollRef}
+      data-explorer-tree
+      tabIndex={0}
       className="min-h-0 flex-1 overflow-auto px-1 py-1"
       onClick={(event) => {
         if (event.target === event.currentTarget) props.actions.setSelectedDirectory("");

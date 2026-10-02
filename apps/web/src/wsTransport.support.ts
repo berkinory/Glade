@@ -40,7 +40,7 @@ export type ProjectFileChangeSubscription = {
 };
 
 export function projectFileChangeStreamKey(input: ProjectWatchFileInput): string {
-  return `projects.file-change:${input.cwd.length}:${input.cwd}${input.relativePath}`;
+  return `projects.file-change:${input.cwd.length}:${input.cwd}${input.relativePath}:${JSON.stringify(input.directoryPaths ?? [])}`;
 }
 
 export class WsTransportRpcError extends Data.TaggedError("WsTransportRpcError")<{

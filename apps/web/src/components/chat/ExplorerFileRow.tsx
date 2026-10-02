@@ -101,6 +101,7 @@ export const ExplorerRow = forwardRef<
         selected,
         cn("h-6.5 pr-2 transition-none", entry.isGitIgnored && "opacity-50", className),
       )}
+      data-import-directory={isDirectory ? entry.path : (entry.parentPath ?? "")}
       data-selected-file={selected && !isDirectory ? "" : undefined}
       style={fileRowIndentStyle(depth)}
       title={dirty ? `${entry.path} (unsaved changes)` : entry.path}
