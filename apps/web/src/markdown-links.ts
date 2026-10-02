@@ -182,7 +182,10 @@ export function extractAbsoluteFilesystemPaths(text: string): string[] {
   const consider = (raw: string) => {
     const trimmed = raw.trim().replace(/[,.;]+$/, "");
     if (trimmed.length === 0) return;
-    const candidate = pathWithoutPositionSuffix(trimmed).replace(/\/+$/, "");
+    const candidate = pathWithoutPositionSuffix(trimmed.replace(/#L\d+(?:C\d+)?$/i, "")).replace(
+      /\/+$/,
+      "",
+    );
     if (candidate.length === 0 || hasExternalScheme(candidate)) return;
     if (!isLocalAbsolutePath(candidate) && !looksLikePosixFilesystemPath(candidate)) return;
     found.add(candidate);
@@ -247,9 +250,14 @@ export function resolveChatFileChipTarget(
   knownAbsolutePaths?: ReadonlyArray<string>,
 ): string | null {
   if (!reference) return null;
+  const source = stripSearchAndHash(reference);
+  const positionedReference = appendLineColumnFromHash(
+    safeDecode(source.path),
+    safeDecode(source.hash),
+  );
   const knownTarget =
     knownAbsolutePaths && knownAbsolutePaths.length > 0
-      ? resolveUniqueAbsoluteSuffixTarget(reference, knownAbsolutePaths)
+      ? resolveUniqueAbsoluteSuffixTarget(positionedReference, knownAbsolutePaths)
       : null;
   return knownTarget ?? resolveMarkdownFileLinkTarget(reference, cwd);
 }
