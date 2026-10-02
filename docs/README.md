@@ -25,3 +25,5 @@ This folder contains the Glade documentation and repository guides.
 - [CI and automation](./ci.md) - workflow ownership, cache producers, debugging and audit baseline.
 - [Release process](./release.md) — release and signing setup checklist.
 - [Windows runtime](./windows-runtime.md) — platform-specific process and packaging boundaries.
+
+- [Git generation](git-generation.md): evidence selection, budgets and commit safety.

@@ -558,7 +558,7 @@ it.layer(TestLayer)("git integration", (it) => {
       }),
     );
 
-    it.effect("prepareCommitContext stages only selected files when filePaths provided", () =>
+    it.effect("explicit staging selects files before read-only context preparation", () =>
       Effect.gen(function* () {
         const tmp = yield* makeTmpDir();
         yield* initRepoWithCommit(tmp);
@@ -567,7 +567,8 @@ it.layer(TestLayer)("git integration", (it) => {
         yield* writeTextFile(path.join(tmp, "a.txt"), "file a\n");
         yield* writeTextFile(path.join(tmp, "b.txt"), "file b\n");
 
-        const context = yield* core.prepareCommitContext(tmp, ["a.txt"]);
+        yield* core.stageFiles(tmp, ["a.txt"]);
+        const context = yield* core.prepareCommitContext(tmp);
         expect(context).not.toBeNull();
         expect(context!.stagedSummary).toContain("a.txt");
         expect(context!.stagedSummary).not.toContain("b.txt");

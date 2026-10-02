@@ -13,6 +13,7 @@ import { buildCodexProcessEnv } from "../../provider/codex/codexProcessEnv.ts";
 import { formatMissingCodexWorkingDirectoryError } from "../../provider/codex/codexWorkingDirectory.ts";
 import { ServerConfig } from "../../server/config.ts";
 import { TextGenerationError } from "../Errors.ts";
+import { fitGenerationBudget } from "../generationBudget";
 import {
   CodexTextGeneration,
   type BranchNameGenerationInput,
@@ -114,6 +115,33 @@ function sanitizeCodexConfigForTextGeneration(
   }
 
   return sanitized.join("\n").trimEnd();
+}
+
+function codexFailureDetail(stderr: string, exitCode: number): string {
+  const lastError = stderr
+    .split("\n")
+    .findLast((line) => line.startsWith("ERROR:"))
+    ?.slice(6)
+    .trim();
+  if (!lastError)
+    return `Codex CLI failed with code ${exitCode}. Check provider authentication and retry.`;
+  let message = lastError;
+  try {
+    const parsed: unknown = JSON.parse(lastError);
+    if (typeof parsed === "object" && parsed !== null && "error" in parsed) {
+      const error = parsed.error;
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "message" in error &&
+        typeof error.message === "string"
+      )
+        message = error.message;
+    }
+  } catch {
+    /* CLI errors can also be plain text. */
+  }
+  return message.slice(0, 1000).replace(/(?:sk-|Bearer )[A-Za-z0-9_-]+/g, "[redacted]");
 }
 
 const makeCodexTextGeneration = Effect.gen(function* () {
@@ -295,6 +323,29 @@ const makeCodexTextGeneration = Effect.gen(function* () {
       const codexBinaryPath = resolveCodexBinaryPath(providerOptions);
       const apiModel = resolveCodexModel(model, modelSelection);
       const resolvedCodexHomePath = resolveCodexHomePath(codexHomePath, providerOptions);
+      if (operation === "generateCommitMessage" || operation === "generatePrContent") {
+        const budget = yield* fitGenerationBudget({
+          home: resolvedCodexHomePath ?? resolveCodexHome(process.env),
+          model: apiModel,
+          prompt,
+          operation,
+        });
+        prompt = budget.prompt;
+        yield* Effect.logDebug("Git generation model budget", {
+          operation,
+          model: apiModel ?? "configured default",
+          contextWindow: budget.contextWindow,
+          promptBudget: budget.promptBudget,
+        });
+      }
+      yield* Effect.logDebug("Git text generation request", {
+        operation,
+        provider: "codex",
+        model: apiModel ?? "configured default",
+        promptBytes: Buffer.byteLength(prompt),
+        conservativePromptTokenCeiling: Buffer.byteLength(prompt),
+        outputReserveTokens: 4096,
+      });
       const schemaPath = yield* writeTempFile(
         operation,
         "codex-schema",
@@ -383,7 +434,7 @@ const makeCodexTextGeneration = Effect.gen(function* () {
             ),
           );
 
-        const [stdout, stderr, exitCode] = yield* Effect.all(
+        const [, stderr, exitCode] = yield* Effect.all(
           [
             readStreamAsString(operation, child.stdout),
             readStreamAsString(operation, child.stderr),
@@ -403,16 +454,13 @@ const makeCodexTextGeneration = Effect.gen(function* () {
         );
 
         if (exitCode !== 0) {
-          const stderrDetail = stderr.trim();
-          const stdoutDetail = stdout.trim();
-          const detail = stderrDetail.length > 0 ? stderrDetail : stdoutDetail;
-          return yield* new TextGenerationError({
-            operation,
-            detail:
-              detail.length > 0
-                ? `Codex CLI command failed: ${detail}`
-                : `Codex CLI command failed with code ${exitCode}.`,
-          });
+          const detail = codexFailureDetail(stderr, exitCode);
+          const stage = /auth|log.?in|credential|401/i.test(detail)
+            ? "authentication"
+            : /model.*(?:not supported|not found|unknown)/i.test(detail)
+              ? "model-discovery"
+              : "transport";
+          return yield* new TextGenerationError({ operation: `${operation}.${stage}`, detail });
         }
       });
 
@@ -436,7 +484,10 @@ const makeCodexTextGeneration = Effect.gen(function* () {
             Option.match({
               onNone: () =>
                 Effect.fail(
-                  new TextGenerationError({ operation, detail: "Codex CLI request timed out." }),
+                  new TextGenerationError({
+                    operation: `${operation}.timeout`,
+                    detail: "Codex CLI request timed out.",
+                  }),
                 ),
               onSome: () => Effect.void,
             }),
@@ -456,7 +507,7 @@ const makeCodexTextGeneration = Effect.gen(function* () {
           Effect.catchTag("SchemaError", (cause) =>
             Effect.fail(
               new TextGenerationError({
-                operation,
+                operation: `${operation}.structured-output`,
                 detail: "Codex returned invalid structured output.",
                 cause,
               }),
@@ -485,6 +536,16 @@ const makeCodexTextGeneration = Effect.gen(function* () {
       ...(input.modelSelection ? { modelSelection: input.modelSelection } : {}),
       ...(input.providerOptions ? { providerOptions: input.providerOptions } : {}),
     }).pipe(
+      Effect.flatMap((generated) =>
+        generated.subject.trim()
+          ? Effect.succeed(generated)
+          : Effect.fail(
+              new TextGenerationError({
+                operation: "generateCommitMessage",
+                detail: "Invalid structured output: empty commit subject.",
+              }),
+            ),
+      ),
       Effect.map(
         (generated) =>
           ({

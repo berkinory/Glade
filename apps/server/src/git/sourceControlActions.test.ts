@@ -31,6 +31,30 @@ const setup = Effect.gen(function* () {
 });
 
 it.layer(layer)("source-control actions", (it) => {
+  it.effect(
+    "rejects a same-line-count edit after generation without committing or clearing the index",
+    () =>
+      Effect.gen(function* () {
+        const { core, cwd, run, write, actions } = yield* setup;
+        const head = (yield* run(["rev-parse", "HEAD"])).stdout;
+        yield* write("file.txt", "original suggestion\n");
+        const context = yield* core.prepareCommitContext(cwd, false);
+        expect(context?.scope).toBe("workingTree");
+        yield* write("file.txt", "changed after suggestion\n");
+        yield* run(["add", "."]);
+        const index = (yield* run(["write-tree"])).stdout;
+        const result = yield* Effect.exit(
+          actions.commitStaged(cwd, "Generated message", {
+            snapshot: context!.snapshot,
+            scope: "workingTree",
+          }),
+        );
+        expect(Exit.isFailure(result)).toBe(true);
+        expect((yield* run(["rev-parse", "HEAD"])).stdout).toBe(head);
+        expect((yield* run(["write-tree"])).stdout).toBe(index);
+      }),
+  );
+
   it.effect("commits the index without staging working-tree edits", () =>
     Effect.gen(function* () {
       const { cwd, run, write, actions } = yield* setup;

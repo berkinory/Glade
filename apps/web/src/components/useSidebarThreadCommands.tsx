@@ -1,5 +1,4 @@
 import { resolveProviderModelSelection } from "~/lib/providerModelSelection";
-import { useRightDockStore } from "../rightDockStore";
 import { useSplitViewStore } from "../splitViewStore";
 import { useSidebarStateStore } from "../sidebarStateStore";
 import { pinActionLabel } from "~/lib/pin";
@@ -7,7 +6,6 @@ import { THREAD_CONTEXT_MENU_ICONS } from "~/lib/contextMenuIcons";
 import { type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { type OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/threadEntities";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { parseGitHubRepositoryNameWithOwnerFromPullRequestUrl } from "@glade/shared/git/githubRepository";
 import { pluralize } from "@glade/shared/text/text";
 import { resolveThreadWorkspaceCwd } from "@glade/shared/threads/threadEnvironment";
 import { newCommandId, newThreadId, randomUUID } from "../lib/utils";
@@ -61,7 +59,6 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
   const openChatThreadPage = useTerminalStateStore((state) => state.openChatThreadPage);
   const openTerminalThreadPage = useTerminalStateStore((state) => state.openTerminalThreadPage);
   const setSplitFocusedPane = useSplitViewStore((state) => state.setFocusedPane);
-  const openRightDockPane = useRightDockStore((state) => state.openPane);
 
   const selectedThreadIds = useSidebarStateStore((state) => state.selectedThreadIds);
   const clearSelection = useSidebarStateStore((state) => state.clearSelection);
@@ -532,25 +529,10 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
 
   const openThreadPullRequest = (
     event: MouseEvent<HTMLElement>,
-    thread: SidebarThreadSummary,
+    _thread: SidebarThreadSummary,
     pr: OrchestrationThreadPullRequest,
   ) => {
-    const repository = parseGitHubRepositoryNameWithOwnerFromPullRequestUrl(pr.url);
-    if (event.metaKey || event.ctrlKey || event.button === 1 || !repository) {
-      openPrLink(event, pr.url);
-      return;
-    }
-    if (event.button !== 0) return;
-    event.preventDefault();
-    event.stopPropagation();
-    activateThreadFromSidebarIntent(thread.id);
-    openRightDockPane(thread.id, {
-      kind: "pullRequest",
-      pullRequestProjectId: thread.projectId,
-      pullRequestRepository: repository,
-      pullRequestNumber: pr.number,
-      pullRequestInitialTab: "summary",
-    });
+    openPrLink(event, pr.url);
   };
 
   const handleCloseProjectContextMenu = () => setProjectContextMenuState(null);

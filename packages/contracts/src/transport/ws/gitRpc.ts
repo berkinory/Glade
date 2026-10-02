@@ -27,8 +27,6 @@ import {
   GitActionProgressEvent,
   GitPullRequestRefInput,
   GitResolvePullRequestResult,
-  GitPullRequestSnapshotInput,
-  GitPullRequestSnapshotResult,
   GitPreparePullRequestThreadInput,
   GitPreparePullRequestThreadResult,
   GitListBranchesInput,
@@ -68,15 +66,6 @@ import {
   GitHandoffThreadResult,
 } from "../../git/git";
 import { Schema } from "effect";
-import {
-  PullRequestsUnavailableError,
-  PullRequestDetailInput,
-  PullRequestDetail,
-  PullRequestDiffResult,
-  PullRequestActionInput,
-  PullRequestActionResult,
-  PullRequestCommentInput,
-} from "../../git/pullRequests";
 import { WsRpcError } from "./rpcErrors";
 
 export const WsGitStatusRpc = Rpc.make(WS_METHODS.gitStatus, {
@@ -164,42 +153,10 @@ export const WsGitResolvePullRequestRpc = Rpc.make(WS_METHODS.gitResolvePullRequ
   error: WsRpcError,
 });
 
-export const WsGitPullRequestSnapshotRpc = Rpc.make(WS_METHODS.gitPullRequestSnapshot, {
-  payload: GitPullRequestSnapshotInput,
-  success: GitPullRequestSnapshotResult,
-  error: WsRpcError,
-});
-
 export const WsGitPreparePullRequestThreadRpc = Rpc.make(WS_METHODS.gitPreparePullRequestThread, {
   payload: GitPreparePullRequestThreadInput,
   success: GitPreparePullRequestThreadResult,
   error: WsRpcError,
-});
-
-const PullRequestsRpcError = Schema.Union([PullRequestsUnavailableError, WsRpcError]);
-
-export const WsPullRequestsDetailRpc = Rpc.make(WS_METHODS.pullRequestsDetail, {
-  payload: PullRequestDetailInput,
-  success: PullRequestDetail,
-  error: PullRequestsRpcError,
-});
-
-export const WsPullRequestsDiffRpc = Rpc.make(WS_METHODS.pullRequestsDiff, {
-  payload: PullRequestDetailInput,
-  success: PullRequestDiffResult,
-  error: PullRequestsRpcError,
-});
-
-export const WsPullRequestsActionRpc = Rpc.make(WS_METHODS.pullRequestsAction, {
-  payload: PullRequestActionInput,
-  success: PullRequestActionResult,
-  error: PullRequestsRpcError,
-});
-
-export const WsPullRequestsCommentRpc = Rpc.make(WS_METHODS.pullRequestsComment, {
-  payload: PullRequestCommentInput,
-  success: PullRequestActionResult,
-  error: PullRequestsRpcError,
 });
 
 export const WsGitListBranchesRpc = Rpc.make(WS_METHODS.gitListBranches, {

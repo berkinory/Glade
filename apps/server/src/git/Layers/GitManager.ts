@@ -1,3 +1,5 @@
+import { makeKeyedSingleFlightCache } from "../../pullRequests/KeyedSingleFlightCache";
+import type { CommitMessageGenerationResult } from "../Services/TextGeneration";
 import { readGitOperation } from "../gitOperationState";
 import { toResolvedPullRequest } from "../gitPullRequestSummary";
 import { randomUUID } from "node:crypto";
@@ -17,7 +19,7 @@ import {
 } from "@glade/shared/git/git";
 import { parseGitHubRepositoryNameWithOwnerFromRemoteUrl } from "@glade/shared/git/githubRepository";
 
-import { gitManagerError } from "../Errors.ts";
+import { GitCommandError, TextGenerationError, gitManagerError } from "../Errors.ts";
 import {
   GitManager,
   type GitActionProgressReporter,
@@ -261,11 +263,6 @@ function extractPullRequestUrlFromError(error: unknown): string | null {
   return match?.[0] ?? null;
 }
 
-function limitContext(value: string, maxChars: number): string {
-  if (value.length <= maxChars) return value;
-  return `${value.slice(0, maxChars)}\n\n[truncated]`;
-}
-
 function sanitizeCommitMessage(generated: {
   subject: string;
   body: string;
@@ -285,75 +282,6 @@ function sanitizeCommitMessage(generated: {
   };
 }
 
-function summarizePathForCommitSubject(filePath: string): string {
-  const trimmed = filePath.trim();
-  if (trimmed.length === 0) {
-    return "project files";
-  }
-
-  const segments = trimmed.split("/").filter((segment) => segment.length > 0);
-  return segments.at(-1) ?? trimmed;
-}
-
-function deriveFallbackCommitSubject(stagedSummary: string): string {
-  const lines = stagedSummary
-    .split(/\r?\n/g)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-  if (lines.length === 0) {
-    return "Update project files";
-  }
-
-  const firstEntry = lines[0]?.split("\t") ?? [];
-  const rawStatus = firstEntry[0]?.trim().toUpperCase() ?? "";
-  const firstPath = firstEntry.at(-1)?.trim() ?? "";
-  const fileLabel = summarizePathForCommitSubject(firstPath);
-
-  if (lines.length === 1) {
-    if (rawStatus.startsWith("A")) {
-      return `Add ${fileLabel}`;
-    }
-    if (rawStatus.startsWith("D")) {
-      return `Remove ${fileLabel}`;
-    }
-    if (rawStatus.startsWith("R")) {
-      return `Rename ${fileLabel}`;
-    }
-    return `Update ${fileLabel}`;
-  }
-
-  const uniqueTopLevelDirs = Array.from(
-    new Set(
-      lines
-        .map((line) => {
-          const entry = line.split("\t");
-          const filePath = entry.at(-1)?.trim() ?? "";
-          return filePath.split("/")[0]?.trim() ?? "";
-        })
-        .filter((segment) => segment.length > 0),
-    ),
-  );
-
-  if (uniqueTopLevelDirs.length === 1) {
-    return `Update ${uniqueTopLevelDirs[0]} files`;
-  }
-
-  return "Update project files";
-}
-
-function createFallbackCommitSuggestion(input: {
-  stagedSummary: string;
-  includeBranch?: boolean;
-}): CommitAndBranchSuggestion {
-  const subject = deriveFallbackCommitSubject(input.stagedSummary);
-  return {
-    subject,
-    body: "",
-    ...(input.includeBranch ? { branch: sanitizeFeatureBranchName(subject) } : {}),
-    commitMessage: formatCommitMessage(subject, ""),
-  };
-}
-
 function sanitizeProgressText(value: string): string | null {
   const trimmed = value.trim();
   if (trimmed.length === 0) {
@@ -370,6 +298,7 @@ interface CommitAndBranchSuggestion {
   body: string;
   branch?: string | undefined;
   commitMessage: string;
+  snapshot?: string;
 }
 
 interface FeatureBranchStepOptions {
@@ -545,6 +474,10 @@ export const makeGitManager = Effect.gen(function* () {
   const gitCore = yield* GitCore;
   const gitHubCli = yield* GitHubCli;
   const textGeneration = yield* TextGeneration;
+  const messageFlights = yield* makeKeyedSingleFlightCache<
+    CommitMessageGenerationResult,
+    TextGenerationError
+  >({ maxEntries: 16, ttlMs: 10_000 });
 
   const createProgressEmitter = (
     input: { cwd: string; action: GitStackedAction },
@@ -910,6 +843,103 @@ export const makeGitManager = Effect.gen(function* () {
       return "main";
     });
 
+  const readCommitContext = (cwd: string, includeContent = true) => {
+    const correlationId = randomUUID();
+    const started = Date.now();
+    return gitCore.prepareCommitContext(cwd, includeContent).pipe(
+      Effect.tapError((error) =>
+        Effect.logError("Git generation context failed", {
+          correlationId,
+          stage: error.operation,
+          durationMs: Date.now() - started,
+        }),
+      ),
+      Effect.mapError(
+        (error) =>
+          new GitCommandError({
+            ...error,
+            detail: `${error.detail} Retry generation. Reference: ${correlationId}`,
+          }),
+      ),
+    );
+  };
+
+  const generateSuggestion = (
+    input: {
+      cwd: string;
+      branch: string | null;
+      includeBranch?: boolean;
+    } & GitTextGenerationParams,
+    context: import("../Services/GitCore").GitGenerationContext,
+  ) =>
+    Effect.gen(function* () {
+      const correlationId = randomUUID();
+      const started = Date.now();
+      const style = yield* gitCore.execute({
+        operation: "GitManager.commitStyle",
+        cwd: input.cwd,
+        args: ["log", "-5", "--format=%s"],
+        maxOutputBytes: 600,
+        outputMode: "prefix",
+        allowNonZeroExit: true,
+      });
+      const generated = yield* messageFlights
+        .get(
+          JSON.stringify([
+            input.cwd,
+            context.snapshot,
+            input.includeBranch ?? false,
+            buildGitTextGenerationCallInput(input),
+          ]),
+          textGeneration.generateCommitMessage({
+            cwd: input.cwd,
+            branch: input.branch,
+            stagedSummary:
+              context.stagedSummary +
+              (style.stdout ? `\nRecent subjects (style only):\n${style.stdout}` : ""),
+            stagedPatch: context.stagedPatch,
+            ...(input.includeBranch ? { includeBranch: true } : {}),
+            ...buildGitTextGenerationCallInput(input),
+          }),
+        )
+        .pipe(
+          Effect.tapError((error) =>
+            Effect.logError("Git message generation failed", {
+              correlationId,
+              stage: error.operation,
+              provider: input.textGenerationModelSelection?.provider ?? "codex",
+              model:
+                input.textGenerationModelSelection?.model ?? input.textGenerationModel ?? "default",
+              durationMs: Date.now() - started,
+              fileCount: context.fileCount,
+              contextBytes: Buffer.byteLength(context.stagedSummary + context.stagedPatch),
+              incomplete: context.incomplete,
+              scope: context.scope,
+            }),
+          ),
+          Effect.mapError(
+            (error) =>
+              new TextGenerationError({
+                operation: error.operation,
+                detail: `${error.detail} Retry generation. Reference: ${correlationId}`,
+                cause: error,
+              }),
+          ),
+        );
+      if (!generated.subject.trim())
+        return yield* new TextGenerationError({
+          operation: "structured-output",
+          detail: `Provider returned an empty subject. Retry generation. Reference: ${correlationId}`,
+        });
+      const current = yield* readCommitContext(input.cwd, false);
+      if (current?.snapshot !== context.snapshot)
+        return yield* gitManagerError(
+          "generateCommitMessage",
+          "Changes or index changed during generation. Retry with the current selection.",
+        );
+      return sanitizeCommitMessage(generated);
+    });
+
   const resolveCommitAndBranchSuggestion = (
     input: {
       cwd: string;
@@ -921,7 +951,36 @@ export const makeGitManager = Effect.gen(function* () {
     } & GitTextGenerationParams,
   ) =>
     Effect.gen(function* () {
-      const context = yield* gitCore.prepareCommitContext(input.cwd, input.filePaths);
+      if (input.filePaths?.length) {
+        const reset = yield* gitCore.execute({
+          operation: "GitManager.stageSelection",
+          cwd: input.cwd,
+          args: ["reset"],
+          allowNonZeroExit: true,
+        });
+        if (reset.code !== 0) {
+          const head = yield* gitCore.execute({
+            operation: "GitManager.stageSelection.head",
+            cwd: input.cwd,
+            args: ["rev-parse", "--verify", "HEAD"],
+            allowNonZeroExit: true,
+          });
+          if (head.code === 0) return yield* gitManagerError("stageSelection", reset.stderr);
+          yield* gitCore.execute({
+            operation: "GitManager.stageSelection.unborn",
+            cwd: input.cwd,
+            args: ["rm", "--cached", "-r", "--ignore-unmatch", "."],
+          });
+        }
+        yield* gitCore.stageFiles(input.cwd, input.filePaths);
+      } else {
+        yield* gitCore.execute({
+          operation: "GitManager.stageAll",
+          cwd: input.cwd,
+          args: ["add", "-A"],
+        });
+      }
+      const context = yield* readCommitContext(input.cwd);
       if (!context) {
         return null;
       }
@@ -938,36 +997,14 @@ export const makeGitManager = Effect.gen(function* () {
         };
       }
 
-      const generated = yield* textGeneration
-        .generateCommitMessage({
-          cwd: input.cwd,
-          branch: input.branch,
-          stagedSummary: limitContext(context.stagedSummary, 8_000),
-          stagedPatch: limitContext(context.stagedPatch, 50_000),
-          ...(input.includeBranch ? { includeBranch: true } : {}),
-          ...buildGitTextGenerationCallInput(input),
-        })
-        .pipe(
-          Effect.map((result) => sanitizeCommitMessage(result)),
-          Effect.catchTag("TextGenerationError", (error) =>
-            Effect.logWarning(
-              `GitManager.resolveCommitAndBranchSuggestion: falling back to heuristic commit message in ${input.cwd}: ${error.message}`,
-            ).pipe(
-              Effect.as(
-                createFallbackCommitSuggestion({
-                  stagedSummary: context.stagedSummary,
-                  ...(input.includeBranch ? { includeBranch: true } : {}),
-                }),
-              ),
-            ),
-          ),
-        );
+      const generated = yield* generateSuggestion(input, context);
 
       return {
         subject: generated.subject,
         body: generated.body,
         ...(generated.branch !== undefined ? { branch: generated.branch } : {}),
         commitMessage: formatCommitMessage(generated.subject, generated.body),
+        snapshot: context.snapshot,
       };
     });
 
@@ -1013,6 +1050,15 @@ export const makeGitManager = Effect.gen(function* () {
       }
       if (!suggestion) {
         return { status: "skipped_no_changes" as const };
+      }
+
+      if (suggestion.snapshot) {
+        const current = yield* readCommitContext(cwd, false);
+        if (current?.snapshot !== suggestion.snapshot)
+          return yield* gitManagerError(
+            "runCommitStep",
+            "Index changed before commit. Review the current selection and retry.",
+          );
       }
 
       yield* emit({
@@ -1161,9 +1207,9 @@ export const makeGitManager = Effect.gen(function* () {
           cwd,
           baseBranch,
           headBranch: headContext.headBranch,
-          commitSummary: limitContext(rangeContext.commitSummary, 20_000),
-          diffSummary: limitContext(rangeContext.diffSummary, 20_000),
-          diffPatch: limitContext(rangeContext.diffPatch, 60_000),
+          commitSummary: rangeContext.commitSummary,
+          diffSummary: rangeContext.diffSummary,
+          diffPatch: rangeContext.diffPatch,
           ...(prTemplate !== undefined ? { prTemplate } : {}),
           ...buildGitTextGenerationCallInput(textGenerationParams ?? {}),
         });
@@ -1342,32 +1388,16 @@ export const makeGitManager = Effect.gen(function* () {
 
   const generateCommitMessage: GitManagerShape["generateCommitMessage"] = Effect.fnUntraced(
     function* (input) {
-      const { patch, truncated } = yield* gitCore.readStagedPatch(input.cwd);
-      if (!patch.trim())
-        return yield* gitManagerError(
-          "generateCommitMessage",
-          "Stage changes before generating a commit message.",
-        );
-      if (truncated)
-        return yield* gitManagerError(
-          "generateCommitMessage",
-          "The staged diff is too large to generate a complete commit message.",
-        );
+      const context = yield* readCommitContext(input.cwd);
+      if (!context)
+        return yield* gitManagerError("generateCommitMessage", "There are no changes to describe.");
       const branch = yield* gitCore.readBranchContext(input.cwd);
-      const summary = yield* gitCore.execute({
-        cwd: input.cwd,
-        operation: "generateCommitMessage",
-        args: ["diff", "--cached", "--stat"],
-      });
-      const generated = yield* textGeneration.generateCommitMessage({
-        cwd: input.cwd,
-        branch: branch.branch,
-        stagedPatch: limitContext(patch, 50_000),
-        stagedSummary: limitContext(summary.stdout, 8_000),
-        ...buildGitTextGenerationCallInput(input),
-      });
-      const message = sanitizeCommitMessage(generated);
-      return { message: formatCommitMessage(message.subject, message.body) };
+      const message = yield* generateSuggestion({ ...input, branch: branch.branch }, context);
+      return {
+        message: formatCommitMessage(message.subject, message.body),
+        snapshot: context.snapshot,
+        scope: context.scope === "staged" ? ("staged" as const) : ("workingTree" as const),
+      };
     },
   );
 
@@ -1412,58 +1442,6 @@ export const makeGitManager = Effect.gen(function* () {
         .pipe(Effect.map((resolved) => toResolvedPullRequest(resolved)));
 
       return { pullRequest };
-    },
-  );
-
-  const pullRequestSnapshot: GitManagerShape["pullRequestSnapshot"] = Effect.fnUntraced(
-    function* (input) {
-      const reference = normalizePullRequestReference(input.reference);
-      // Summary + checks ride one `gh pr view` call: one process/API round trip per poll, and no separate
-      // checks failure mode that could discard an otherwise-usable snapshot.
-      const { summary, checks } = yield* gitHubCli.getPullRequestWithChecks({
-        cwd: input.cwd,
-        reference,
-      });
-      const pullRequest = toResolvedPullRequest(summary);
-
-      const repository = parsePullRequestRepositoryFromUrl(pullRequest.url);
-      if (!repository) {
-        return yield* gitManagerError(
-          "pullRequestSnapshot",
-          `Could not determine the repository from the pull request URL: ${pullRequest.url}`,
-        );
-      }
-
-      const commentsResult = yield* gitHubCli
-        .getPullRequestReviewComments({
-          cwd: input.cwd,
-          host: repository.host,
-          owner: repository.owner,
-          repo: repository.repo,
-          number: pullRequest.number,
-        })
-        .pipe(
-          Effect.map((result) => ({
-            comments: result.comments,
-            commentsTruncated: result.truncated,
-            commentsError: null,
-          })),
-          Effect.catch((error) =>
-            Effect.succeed({
-              comments: [],
-              commentsTruncated: false,
-              commentsError: error.message,
-            }),
-          ),
-        );
-
-      return {
-        pullRequest,
-        checks,
-        comments: commentsResult.comments,
-        commentsTruncated: commentsResult.commentsTruncated,
-        commentsError: commentsResult.commentsError,
-      };
     },
   );
 
@@ -1940,7 +1918,6 @@ export const makeGitManager = Effect.gen(function* () {
     summarizeDiff,
     generateCommitMessage,
     resolvePullRequest,
-    pullRequestSnapshot,
     preparePullRequestThread: (input) =>
       gitCore.withMutation(input.cwd, preparePullRequestThread(input)),
     handoffThread: (input) => gitCore.withMutation(input.cwd, handoffThread(input)),

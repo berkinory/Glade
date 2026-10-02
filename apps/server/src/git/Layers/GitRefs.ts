@@ -1,3 +1,4 @@
+import { readGenerationContext } from "../generationContext";
 import { Effect, FileSystem, Layer } from "effect";
 import { DEFAULT_GIT_RECENT_COMMIT_LIMIT, type GitRecentCommit } from "@glade/contracts/git/git";
 import { GitCommandError } from "../Errors.ts";
@@ -114,25 +115,18 @@ const makeGitRefs = Effect.gen(function* () {
   const readRangeContext: GitCoreShape["readRangeContext"] = (cwd, baseBranch) =>
     Effect.gen(function* () {
       const range = `${baseBranch}..HEAD`;
-      const [commitSummary, diffSummary, diffPatchResult] = yield* Effect.all(
-        [
-          runGitStdout("GitCore.readRangeContext.log", cwd, ["log", "--oneline", range]),
-          runGitStdout("GitCore.readRangeContext.diffStat", cwd, ["diff", "--stat", range]),
-          execute({
-            operation: "GitCore.readRangeContext.diffPatch",
-            cwd,
-            args: ["diff", "--patch", "--minimal", range],
-            maxOutputBytes: 10_000_000,
-          }),
-        ],
-        { concurrency: "unbounded" },
-      );
-      const diffPatch = diffPatchResult.stdout;
-
+      const context = yield* readGenerationContext({ execute }, cwd, range);
+      const log = yield* execute({
+        operation: "GitCore.readRangeContext.log",
+        cwd,
+        args: ["log", "-20", "--format=%s", range],
+        maxOutputBytes: 4000,
+        outputMode: "prefix",
+      });
       return {
-        commitSummary,
-        diffSummary,
-        diffPatch,
+        commitSummary: log.stdout,
+        diffSummary: context?.stagedSummary ?? "No changes",
+        diffPatch: context?.stagedPatch ?? "",
       };
     });
 

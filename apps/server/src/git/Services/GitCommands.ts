@@ -10,7 +10,7 @@ export interface ExecuteGitOptions {
   env?: NodeJS.ProcessEnv | undefined;
   progress?: ExecuteGitInput["progress"] | undefined;
   maxOutputBytes?: number | undefined;
-  outputMode?: "error" | "truncate" | undefined;
+  outputMode?: "error" | "truncate" | "prefix" | undefined;
 }
 
 export interface GitCommandsShape {

@@ -6,7 +6,6 @@ import {
   PR_STATE_PRESENTATION_ICONS,
   resolvePrStatePresentation,
 } from "./pullRequestStatePresentation";
-import { PR_FINE_TEXT_CLASS_NAME } from "./pullRequestText";
 
 export function PrStateChip({
   pr,
@@ -27,7 +26,7 @@ export function PrStateChip({
       onClick={onOpen}
       onAuxClick={onOpen}
       className={cn(
-        PR_FINE_TEXT_CLASS_NAME,
+        "text-ui-xs",
         "flex shrink-0 items-center gap-0.5",
         presentation.colorClass,
         onOpen && "cursor-pointer hover:underline",

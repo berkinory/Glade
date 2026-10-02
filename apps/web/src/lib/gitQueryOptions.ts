@@ -2,8 +2,6 @@ import type { GitReadWorkingTreeDiffInput } from "@glade/contracts/git/git";
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { ensureNativeApi } from "../nativeApi";
 import { EXPENSIVE_READ_RETRY_OPTIONS, isRpcCapacityExceededError } from "./expensiveReadRetry";
-import { preserveActivePullRequestActionGitFields } from "./pullRequestGitCache";
-import { capturePullRequestActionReadFence } from "./pullRequestMutationCoordinator";
 
 const GIT_STATUS_STALE_TIME_MS = 30_000;
 
@@ -410,15 +408,9 @@ export function refreshGitQueriesScoped(
 export function gitStatusQueryOptions(cwd: string | null, enabled = true) {
   return queryOptions({
     queryKey: gitQueryKeys.status(cwd),
-    queryFn: async ({ client }) => {
-      const readFence = capturePullRequestActionReadFence(client);
-      const api = ensureNativeApi();
+    queryFn: () => {
       if (!cwd) throw new Error("Git status is unavailable.");
-      return preserveActivePullRequestActionGitFields(
-        client,
-        await api.git.status({ cwd }),
-        readFence,
-      );
+      return ensureNativeApi().git.status({ cwd });
     },
     enabled: enabled && cwd !== null,
     staleTime: GIT_STATUS_STALE_TIME_MS,
@@ -494,43 +486,6 @@ export function gitResolvePullRequestQueryOptions(input: {
         : input.pollIntervalMs,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
-  });
-}
-
-const GIT_PR_SNAPSHOT_STALE_TIME_MS = 30_000;
-const GIT_PR_SNAPSHOT_REFETCH_INTERVAL_MS = 60_000;
-
-export function gitPullRequestSnapshotQueryOptions(input: {
-  cwd: string | null;
-  reference: string | null;
-  enabled?: boolean;
-}) {
-  return queryOptions({
-    queryKey: [...gitQueryKeys.pullRequest(input.cwd), "snapshot", input.reference] as const,
-    queryFn: async ({ client }) => {
-      const readFence = capturePullRequestActionReadFence(client);
-      const api = ensureNativeApi();
-      if (!input.cwd || !input.reference) {
-        throw new Error("Pull request snapshot is unavailable.");
-      }
-      return preserveActivePullRequestActionGitFields(
-        client,
-        await api.git.pullRequestSnapshot({ cwd: input.cwd, reference: input.reference }),
-        readFence,
-      );
-    },
-    enabled: (input.enabled ?? true) && input.cwd !== null && input.reference !== null,
-    staleTime: GIT_PR_SNAPSHOT_STALE_TIME_MS,
-    // Once the snapshot itself reports the PR merged/closed, stop polling it — the cached git status
-    // can lag behind and would otherwise keep the interval alive.
-    refetchInterval: (query) =>
-      query.state.data && query.state.data.pullRequest.state !== "open"
-        ? false
-        : GIT_PR_SNAPSHOT_REFETCH_INTERVAL_MS,
-    refetchOnWindowFocus: (query) =>
-      !query.state.data || query.state.data.pullRequest.state === "open",
-    refetchOnReconnect: true,
-    ...GIT_EXPENSIVE_READ_RETRY_OPTIONS,
   });
 }
 

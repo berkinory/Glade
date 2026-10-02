@@ -6,6 +6,7 @@ import { constants } from "node:fs";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { Effect } from "effect";
+import { readGenerationContext } from "./generationContext";
 import type { GitRebaseInput } from "@glade/contracts/git/git";
 import { isWorkspaceRelativePathSafe } from "@glade/shared/platform/path";
 import { GitCommandError } from "./Errors.ts";
@@ -48,10 +49,45 @@ export function sourceControlActions(git: GitCoreShape) {
           return yield* fail(cwd, "Finish or abort the current operation before undoing a commit.");
         return yield* undoCommitActions(git).undo(cwd, expectedHead);
       }),
-    commitStaged: (cwd: string, message: string) =>
+    commitStaged: (
+      cwd: string,
+      message: string,
+      expected?: { snapshot: string; scope: "staged" | "workingTree" },
+    ) =>
       Effect.gen(function* () {
         if ((yield* rebaseState(cwd)).inProgress)
           return yield* fail(cwd, "Finish or abort the current Git operation before committing.");
+        if (expected) {
+          const context =
+            expected.scope === "workingTree"
+              ? yield* readGenerationContext(git, cwd, undefined, false, true)
+              : yield* git.prepareCommitContext(cwd, false);
+          if (context?.snapshot !== expected.snapshot)
+            return yield* fail(
+              cwd,
+              "Changes or index changed after generation. Regenerate the message before committing.",
+            );
+          if (expected.scope === "workingTree") {
+            const unstaged = yield* git.execute({
+              operation: "SourceControl.commit",
+              cwd,
+              args: ["diff", "--quiet"],
+              allowNonZeroExit: true,
+            });
+            const untracked = yield* git.execute({
+              operation: "SourceControl.commit",
+              cwd,
+              args: ["ls-files", "--others", "--exclude-standard", "-z"],
+              maxOutputBytes: 1,
+              outputMode: "prefix",
+            });
+            if (unstaged.code !== 0 || untracked.stdout || untracked.stdoutTruncated)
+              return yield* fail(
+                cwd,
+                "The staged selection no longer matches the generated message. Regenerate before committing.",
+              );
+          }
+        }
         yield* git.commit(cwd, message, "", { timeoutMs: 120_000 });
       }),
     fetch: (cwd: string) => run(cwd, ["fetch", "--all", "--prune"]).pipe(Effect.asVoid),

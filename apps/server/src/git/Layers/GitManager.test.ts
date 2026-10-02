@@ -281,7 +281,7 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
           },
         },
       });
-      expect(yield* manager.generateCommitMessage({ cwd })).toEqual({
+      expect(yield* manager.generateCommitMessage({ cwd })).toMatchObject({
         message: "Update readme\n\nDescribe the staged change.",
       });
       expect((yield* runGit(cwd, ["rev-parse", "HEAD"])).stdout).toBe(head);
@@ -290,6 +290,70 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
       expect(fs.readFileSync(path.join(cwd, "README.md"), "utf8")).toBe("unstaged content\n");
     }),
   );
+  it.effect("does not commit after a provider failure", () =>
+    Effect.gen(function* () {
+      const cwd = yield* makeTempDir("glade-generation-failure-");
+      yield* initRepo(cwd);
+      fs.writeFileSync(path.join(cwd, "README.md"), "selected content\n");
+      yield* runGit(cwd, ["add", "README.md"]);
+      const head = (yield* runGit(cwd, ["rev-parse", "HEAD"])).stdout;
+      const index = (yield* runGit(cwd, ["write-tree"])).stdout;
+      const { manager } = yield* makeManager({
+        textGeneration: {
+          generateCommitMessage: () =>
+            Effect.fail(
+              new TextGenerationError({
+                operation: "generateCommitMessage",
+                detail: "Provider unavailable",
+              }),
+            ),
+        },
+      });
+      const result = yield* runStackedAction(manager, { cwd, action: "commit" }).pipe(
+        Effect.result,
+      );
+      expect(result._tag).toBe("Failure");
+      expect((yield* runGit(cwd, ["rev-parse", "HEAD"])).stdout).toBe(head);
+      expect((yield* runGit(cwd, ["write-tree"])).stdout).toBe(index);
+    }),
+  );
+
+  it.effect("rejects generated text when the index changes during generation", () =>
+    Effect.gen(function* () {
+      const cwd = yield* makeTempDir("glade-generation-stale-");
+      yield* initRepo(cwd);
+      fs.writeFileSync(path.join(cwd, "README.md"), "selected content\n");
+      yield* runGit(cwd, ["add", "README.md"]);
+      const head = (yield* runGit(cwd, ["rev-parse", "HEAD"])).stdout;
+      const core = yield* GitCore;
+      const { manager } = yield* makeManager({
+        textGeneration: {
+          generateCommitMessage: () =>
+            Effect.gen(function* () {
+              fs.writeFileSync(path.join(cwd, "README.md"), "new selection\n");
+              yield* core
+                .execute({ operation: "test.stageNewSelection", cwd, args: ["add", "README.md"] })
+                .pipe(
+                  Effect.mapError(
+                    (cause) =>
+                      new TextGenerationError({
+                        operation: "test.stageNewSelection",
+                        detail: "Could not stage fixture",
+                        cause,
+                      }),
+                  ),
+                );
+              return { subject: "Describe old selection", body: "" };
+            }),
+        },
+      });
+      const result = yield* manager.generateCommitMessage({ cwd }).pipe(Effect.result);
+      expect(result._tag).toBe("Failure");
+      expect((yield* runGit(cwd, ["rev-parse", "HEAD"])).stdout).toBe(head);
+      expect((yield* runGit(cwd, ["show", ":README.md"])).stdout).toBe("new selection\n");
+    }),
+  );
+
   it.effect("refuses to summarize a working-tree patch whose capture was truncated", () =>
     Effect.gen(function* () {
       const repoDir = yield* makeTempDir("glade-truncated-summary-");

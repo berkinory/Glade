@@ -371,7 +371,11 @@ export function useGitActionRunner(deps: GitActionRunnerDeps) {
           type: "error",
           title: "Action failed",
           description: err instanceof Error ? err.message : "An error occurred.",
-          data: threadToastData,
+          timeout: 0,
+          data: {
+            ...threadToastData,
+            copyText: err instanceof Error ? err.message : "An error occurred.",
+          },
         });
       }
     },

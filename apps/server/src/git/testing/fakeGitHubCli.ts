@@ -1,17 +1,10 @@
 import { spawnSync } from "node:child_process";
-
 import { Effect } from "effect";
-import type { GitPullRequestCheck, GitPullRequestComment } from "@glade/contracts/git/git";
-import type {
-  PullRequestMergeCapabilities,
-  PullRequestStack,
-} from "@glade/contracts/git/pullRequests";
 
 import { GitHubCliError } from "../Errors.ts";
 import { decodePullRequestListJson } from "../Layers/GitHubCli.ts";
 import {
   type GitHubCliShape,
-  type GitHubPullRequestDetailData,
   type GitHubPullRequestSummary,
   PULL_REQUEST_SUMMARY_JSON_FIELDS,
 } from "../Services/GitHubCli.ts";
@@ -33,18 +26,9 @@ export interface FakeGhScenario {
     headRepositoryOwnerLogin?: string | null;
   };
   repositoryCloneUrls?: Record<string, { url: string; sshUrl: string }>;
-  pullRequestChecks?: GitPullRequestCheck[];
-  pullRequestReviewComments?: GitPullRequestComment[];
-  pullRequestReviewCommentsTruncated?: boolean;
   failWith?: GitHubCliError;
-  reviewCommentsError?: GitHubCliError;
   createPullRequestError?: GitHubCliError;
   viewerLogin?: string;
-  pullRequestDetail?: GitHubPullRequestDetailData;
-  pullRequestStack?: PullRequestStack | null;
-  mergeCapabilities?: PullRequestMergeCapabilities;
-  pullRequestDiff?: { patch: string; truncated: boolean };
-  mergeOutcome?: "merged" | "enqueued";
 }
 
 type FakePullRequest = NonNullable<FakeGhScenario["pullRequest"]>;
@@ -266,51 +250,6 @@ export function createGitHubCliWithFakeGh(scenario: FakeGhScenario = {}): {
           ? Effect.fail(scenario.failWith)
           : Effect.succeed(scenario.viewerLogin ?? "viewer");
       },
-      getPullRequestDetail: (input) => {
-        ghCalls.push(`pr view ${input.number} --repo ${input.repository}`);
-        const detail = scenario.pullRequestDetail;
-        return detail
-          ? Effect.succeed(detail)
-          : Effect.fail(
-              new GitHubCliError({
-                operation: "getPullRequestDetail",
-                detail: "Fake pull request detail was not configured.",
-              }),
-            );
-      },
-      getPullRequestStack: (input) => {
-        ghCalls.push(`graphql stack ${input.number} --repo ${input.repository}`);
-        return scenario.failWith
-          ? Effect.fail(scenario.failWith)
-          : Effect.succeed(scenario.pullRequestStack ?? null);
-      },
-      getRepositoryMergeCapabilities: (input) => {
-        ghCalls.push(`repo view ${input.repository} --json merge-capabilities`);
-        return Effect.succeed(
-          scenario.mergeCapabilities ?? {
-            merge: true,
-            squash: true,
-            rebase: true,
-            deleteBranchOnMerge: false,
-          },
-        );
-      },
-      getPullRequestDiff: (input) => {
-        ghCalls.push(`pr diff ${input.number} --repo ${input.repository}`);
-        return Effect.succeed(scenario.pullRequestDiff ?? { patch: "", truncated: false });
-      },
-      runPullRequestAction: (input) => {
-        ghCalls.push(
-          `pr action ${input.action} ${input.number} --repo ${input.repository}${input.mergeMethod ? ` --${input.mergeMethod}` : ""}`,
-        );
-        return scenario.failWith
-          ? Effect.fail(scenario.failWith)
-          : Effect.succeed({ mergeOutcome: scenario.mergeOutcome ?? null });
-      },
-      commentOnPullRequest: (input) => {
-        ghCalls.push(`pr comment ${input.number} --repo ${input.repository}`);
-        return scenario.failWith ? Effect.fail(scenario.failWith) : Effect.void;
-      },
       listOpenPullRequests: (input) =>
         listPullRequestsWithState(input, { state: "open", defaultLimit: 1 }),
       listPullRequests: (input) =>
@@ -357,33 +296,6 @@ export function createGitHubCliWithFakeGh(scenario: FakeGhScenario = {}): {
           cwd: input.cwd,
           args: ["pr", "checkout", input.reference, ...(input.force ? ["--force"] : [])],
         }).pipe(Effect.asVoid),
-      getPullRequestWithChecks: (input) =>
-        execute({
-          cwd: input.cwd,
-          args: [
-            "pr",
-            "view",
-            input.reference,
-            "--json",
-            `${PULL_REQUEST_SUMMARY_JSON_FIELDS},statusCheckRollup`,
-          ],
-        }).pipe(
-          Effect.map((result) => ({
-            summary: JSON.parse(result.stdout) as GitHubPullRequestSummary,
-            checks: scenario.pullRequestChecks ?? [],
-          })),
-        ),
-      getPullRequestReviewComments: (input) => {
-        ghCalls.push(
-          `api graphql reviewThreads ${input.host}/${input.owner}/${input.repo}#${input.number}`,
-        );
-        return scenario.reviewCommentsError
-          ? Effect.fail(scenario.reviewCommentsError)
-          : Effect.succeed({
-              comments: scenario.pullRequestReviewComments ?? [],
-              truncated: scenario.pullRequestReviewCommentsTruncated ?? false,
-            });
-      },
     },
     ghCalls,
   };

@@ -101,33 +101,6 @@ const GitResolvedPullRequest = Schema.Struct({
 });
 export type GitResolvedPullRequest = typeof GitResolvedPullRequest.Type;
 
-export const GitPullRequestCheckStatus = Schema.Literals([
-  "pending",
-  "success",
-  "failure",
-  "skipped",
-  "neutral",
-  "cancelled",
-]);
-export type GitPullRequestCheckStatus = typeof GitPullRequestCheckStatus.Type;
-
-export const GitPullRequestCheck = Schema.Struct({
-  name: TrimmedNonEmptyStringSchema,
-  status: GitPullRequestCheckStatus,
-  url: Schema.NullOr(Schema.String),
-});
-export type GitPullRequestCheck = typeof GitPullRequestCheck.Type;
-
-export const GitPullRequestComment = Schema.Struct({
-  id: TrimmedNonEmptyStringSchema,
-  author: Schema.NullOr(TrimmedNonEmptyStringSchema),
-  body: Schema.String,
-  path: Schema.NullOr(TrimmedNonEmptyStringSchema),
-  url: Schema.NullOr(Schema.String),
-  createdAt: Schema.NullOr(TrimmedNonEmptyStringSchema),
-});
-export type GitPullRequestComment = typeof GitPullRequestComment.Type;
-
 export const GitStatusInput = Schema.Struct({
   cwd: TrimmedNonEmptyStringSchema,
 });
@@ -290,12 +263,6 @@ export const GitPullRequestRefInput = Schema.Struct({
   reference: GitPullRequestReference,
 });
 export type GitPullRequestRefInput = typeof GitPullRequestRefInput.Type;
-
-export const GitPullRequestSnapshotInput = Schema.Struct({
-  cwd: TrimmedNonEmptyStringSchema,
-  reference: GitPullRequestReference,
-});
-export type GitPullRequestSnapshotInput = typeof GitPullRequestSnapshotInput.Type;
 
 export const GitPreparePullRequestThreadInput = Schema.Struct({
   cwd: TrimmedNonEmptyStringSchema,
@@ -647,15 +614,6 @@ export const GitResolvePullRequestResult = Schema.Struct({
 });
 export type GitResolvePullRequestResult = typeof GitResolvePullRequestResult.Type;
 
-export const GitPullRequestSnapshotResult = Schema.Struct({
-  pullRequest: GitResolvedPullRequest,
-  checks: Schema.Array(GitPullRequestCheck),
-  comments: Schema.Array(GitPullRequestComment),
-  commentsTruncated: Schema.Boolean,
-  commentsError: Schema.NullOr(Schema.String),
-});
-export type GitPullRequestSnapshotResult = typeof GitPullRequestSnapshotResult.Type;
-
 export const GitPreparePullRequestThreadResult = Schema.Struct({
   pullRequest: GitResolvedPullRequest,
   branch: TrimmedNonEmptyStringSchema,
@@ -776,6 +734,8 @@ export const GitActionProgressEvent = Schema.Union([
 export type GitActionProgressEvent = typeof GitActionProgressEvent.Type;
 
 export const GitCommitStagedInput = Schema.Struct({
+  expectedSnapshot: Schema.optional(TrimmedNonEmptyStringSchema),
+  generationScope: Schema.optional(Schema.Literals(["staged", "workingTree"])),
   cwd: TrimmedNonEmptyStringSchema,
   message: TrimmedNonEmptyStringSchema,
 });
@@ -819,6 +779,8 @@ export const GitGenerateCommitMessageInput = Schema.Struct({
 });
 export type GitGenerateCommitMessageInput = typeof GitGenerateCommitMessageInput.Type;
 export const GitGenerateCommitMessageResult = Schema.Struct({
+  snapshot: Schema.optional(Schema.String),
+  scope: Schema.optional(Schema.Literals(["staged", "workingTree"])),
   message: TrimmedNonEmptyStringSchema,
 });
 export type GitGenerateCommitMessageResult = typeof GitGenerateCommitMessageResult.Type;

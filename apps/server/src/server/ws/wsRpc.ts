@@ -28,7 +28,6 @@ import { WsBootstrapRpcGroup } from "@glade/contracts/transport/ws/bootstrapRpc"
 import { WsComputerRpcGroup } from "@glade/contracts/transport/ws/computerRpc";
 import { WsFeatureRpcGroup } from "@glade/contracts/transport/ws/rpc";
 import { WsRpcError } from "@glade/contracts/transport/ws/rpcErrors";
-import { PullRequestsUnavailableError } from "@glade/contracts/git/pullRequests";
 import {
   type GitActionProgressEvent,
   type GitRemoveWorktreeInput,
@@ -74,7 +73,6 @@ import { ComputerEventInterests } from "../../computer/computerEventInterests";
 import { GitCore } from "../../git/Services/GitCore";
 import { GitHubCli } from "../../git/Services/GitHubCli";
 import { GitManager } from "../../git/Services/GitManager";
-import { GitHubCliError } from "../../git/Errors";
 import { GitStatusBroadcaster } from "../../git/Services/GitStatusBroadcaster";
 import {
   beginGitHandoff,
@@ -175,7 +173,6 @@ import {
   makeCursorSafeSnapshotLiveStream,
   makeResnapshotEscalationTracker,
 } from "./wsSnapshotLiveStream";
-import { PullRequestService } from "../../pullRequests/Services/PullRequestService";
 import { resolveGitHubRepository } from "../../pullRequests/repositoryResolution";
 import {
   GitHubProjectProvisioningError,
@@ -366,7 +363,6 @@ const makeWsRpcHandlersLayer = () =>
       const providerCommandReactor = yield* ProviderCommandReactor;
       const handoffPreparation = yield* HandoffPreparation;
       const path = yield* Path.Path;
-      const pullRequests = yield* PullRequestService;
       const profileStatsQuery = yield* ProfileStatsQuery;
       const projectionReadModelQuery = yield* ProjectionSnapshotQuery;
       const providerAdapterRegistry = yield* ProviderAdapterRegistry;
@@ -509,24 +505,6 @@ const makeWsRpcHandlersLayer = () =>
           }
         });
 
-      const isGlobalGitHubCliError = (error: unknown): error is GitHubCliError =>
-        Schema.is(GitHubCliError)(error) &&
-        (error.reason === "not-installed" || error.reason === "not-authenticated");
-
-      const toPullRequestsRpcError = (cause: unknown, fallbackMessage: string) => {
-        if (isGlobalGitHubCliError(cause)) {
-          return new PullRequestsUnavailableError({
-            reason: cause.reason === "not-installed" ? "gh-not-installed" : "gh-not-authenticated",
-            message: cause.detail,
-          });
-        }
-        return toWsRpcError(cause, fallbackMessage);
-      };
-
-      const pullRequestsEffect = <A, E, R>(
-        effect: Effect.Effect<A, E, R>,
-        fallbackMessage: string,
-      ) => effect.pipe(Effect.mapError((cause) => toPullRequestsRpcError(cause, fallbackMessage)));
       const canonicalizeProjectWorkspaceRoot = Effect.fnUntraced(function* (
         workspaceRoot: string,
         options: { readonly createIfMissing?: boolean } = {},
@@ -1472,24 +1450,11 @@ const makeWsRpcHandlersLayer = () =>
           ),
         [WS_METHODS.gitResolvePullRequest]: (input) =>
           rpcEffect(gitManager.resolvePullRequest(input), "Failed to resolve pull request"),
-        [WS_METHODS.gitPullRequestSnapshot]: (input) =>
-          rpcEffect(
-            gitManager.pullRequestSnapshot(input),
-            "Failed to load pull request checks and comments",
-          ),
         [WS_METHODS.gitPreparePullRequestThread]: (input) =>
           rpcEffect(
             refreshGitStatusAfter(input.cwd, gitManager.preparePullRequestThread(input)),
             "Failed to prepare pull request thread",
           ),
-        [WS_METHODS.pullRequestsDetail]: (input) =>
-          pullRequestsEffect(pullRequests.detail(input), "Failed to load pull request"),
-        [WS_METHODS.pullRequestsDiff]: (input) =>
-          pullRequestsEffect(pullRequests.diff(input), "Failed to load pull request diff"),
-        [WS_METHODS.pullRequestsAction]: (input) =>
-          pullRequestsEffect(pullRequests.action(input), "Pull request action failed"),
-        [WS_METHODS.pullRequestsComment]: (input) =>
-          pullRequestsEffect(pullRequests.comment(input), "Could not post the comment"),
         [WS_METHODS.gitListBranches]: (input) =>
           rpcEffect(git.listBranches(input), "Failed to list branches"),
         [WS_METHODS.gitListRecentCommits]: (input) =>
@@ -1618,7 +1583,13 @@ const makeWsRpcHandlersLayer = () =>
             git
               .withMutation(
                 input.cwd,
-                sourceControlActions(git).commitStaged(input.cwd, input.message),
+                sourceControlActions(git).commitStaged(
+                  input.cwd,
+                  input.message,
+                  input.expectedSnapshot
+                    ? { snapshot: input.expectedSnapshot, scope: input.generationScope ?? "staged" }
+                    : undefined,
+                ),
               )
               .pipe(Effect.onExit(() => refreshGitStatusInBackground(input.cwd))),
             "Failed to commit staged changes",

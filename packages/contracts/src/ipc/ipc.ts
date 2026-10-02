@@ -46,8 +46,6 @@ import type {
   GitPreparePullRequestThreadInput,
   GitPreparePullRequestThreadResult,
   GitPullRequestRefInput,
-  GitPullRequestSnapshotInput,
-  GitPullRequestSnapshotResult,
   GitCreateWorktreeInput,
   GitCreateWorktreeResult,
   GitInitInput,
@@ -106,14 +104,6 @@ import type {
   GitHubProjectProvisionProgressEvent,
   GitHubProjectProvisionResult,
 } from "../git/githubProjectProvisioning";
-import type {
-  PullRequestActionInput,
-  PullRequestActionResult,
-  PullRequestCommentInput,
-  PullRequestDetail,
-  PullRequestDetailInput,
-  PullRequestDiffResult,
-} from "../git/pullRequests";
 import type {
   ProjectCreateLocalFilePreviewGrantInput,
   ProjectCreateLocalFilePreviewGrantResult,
@@ -758,9 +748,6 @@ export interface NativeApi {
     unstageFiles: (input: GitUnstageFilesInput) => Promise<GitUnstageFilesResult>;
     handoffThread: (input: GitHandoffThreadInput) => Promise<GitHandoffThreadResult>;
     resolvePullRequest: (input: GitPullRequestRefInput) => Promise<GitResolvePullRequestResult>;
-    pullRequestSnapshot: (
-      input: GitPullRequestSnapshotInput,
-    ) => Promise<GitPullRequestSnapshotResult>;
     preparePullRequestThread: (
       input: GitPreparePullRequestThreadInput,
     ) => Promise<GitPreparePullRequestThreadResult>;
@@ -791,12 +778,7 @@ export interface NativeApi {
       callback: (event: GitWorktreeSetupProgressEvent) => void,
     ) => () => void;
   };
-  pullRequests: {
-    detail: (input: PullRequestDetailInput) => Promise<PullRequestDetail>;
-    diff: (input: PullRequestDetailInput) => Promise<PullRequestDiffResult>;
-    action: (input: PullRequestActionInput) => Promise<PullRequestActionResult>;
-    comment: (input: PullRequestCommentInput) => Promise<PullRequestActionResult>;
-  };
+
   contextMenu: {
     show: <T extends string>(
       items: readonly ContextMenuItem<T>[],

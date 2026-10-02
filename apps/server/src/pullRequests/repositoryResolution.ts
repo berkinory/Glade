@@ -12,7 +12,7 @@ interface GitHubRepositoryLink {
   readonly url: string;
 }
 
-export interface GitHubRepositoryInventory {
+interface GitHubRepositoryInventory {
   readonly repositories: ReadonlyArray<GitHubRepositoryLink>;
   // False means discovery was incomplete and must never drive destructive cleanup.
   readonly authoritative: boolean;
@@ -33,7 +33,7 @@ function uniqueRemoteCandidates(candidates: ReadonlyArray<string | null>): strin
 }
 
 function readCurrentBranch(git: GitCoreShape, cwd: string) {
-  const operation = "PullRequestService.githubRepository.currentBranch";
+  const operation = "GitRepository.githubRepository.currentBranch";
   return git
     .execute({
       operation,
@@ -110,7 +110,7 @@ function readRepositoryConfig(git: GitCoreShape, cwd: string, branch: string | n
   const branchPattern = branch ? `branch\\.${escapeGitConfigKeyForRegex(branch)}\\.remote|` : "";
   return git
     .execute({
-      operation: "PullRequestService.githubRepository.config",
+      operation: "GitRepository.githubRepository.config",
       cwd,
       args: [
         "config",
@@ -131,7 +131,7 @@ function readRepositoryConfig(git: GitCoreShape, cwd: string, branch: string | n
         return Effect.fail(
           new RepositoryResolutionError(
             result.stderr.trim() ||
-              `PullRequestService.githubRepository.config failed with exit code ${result.code}.`,
+              `GitRepository.githubRepository.config failed with exit code ${result.code}.`,
           ),
         );
       }),
@@ -139,7 +139,7 @@ function readRepositoryConfig(git: GitCoreShape, cwd: string, branch: string | n
 }
 
 function readExpandedRemoteUrl(git: GitCoreShape, cwd: string, remoteName: string) {
-  const operation = "PullRequestService.githubRepository.expandedRemoteUrl";
+  const operation = "GitRepository.githubRepository.expandedRemoteUrl";
   return git
     .execute({
       operation,
@@ -177,7 +177,7 @@ function resolveGitHubRemote(
   );
 }
 
-export function resolveGitHubRepositories(git: GitCoreShape, cwd: string) {
+function resolveGitHubRepositories(git: GitCoreShape, cwd: string) {
   return Effect.gen(function* () {
     const branch = yield* readCurrentBranch(git, cwd);
     if (branch === undefined) {

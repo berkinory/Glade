@@ -1,3 +1,4 @@
+import { readGenerationContext } from "../generationContext";
 import { Effect, FileSystem, Layer, Semaphore } from "effect";
 import * as nodeFs from "node:fs/promises";
 import * as nodePath from "node:path";
@@ -130,43 +131,8 @@ const makeGitCore = () =>
         );
       });
 
-    const prepareCommitContext: GitCoreShape["prepareCommitContext"] = (cwd, filePaths) =>
-      Effect.gen(function* () {
-        if (filePaths && filePaths.length > 0) {
-          yield* runGit("GitCore.prepareCommitContext.reset", cwd, ["reset"]).pipe(
-            Effect.catch(() => Effect.void),
-          );
-          yield* runGit("GitCore.prepareCommitContext.addSelected", cwd, [
-            "add",
-            "-A",
-            "--",
-            ...filePaths,
-          ]);
-        } else {
-          yield* runGit("GitCore.prepareCommitContext.addAll", cwd, ["add", "-A"]);
-        }
-
-        const stagedSummary = yield* runGitStdout(
-          "GitCore.prepareCommitContext.stagedSummary",
-          cwd,
-          ["diff", "--cached", "--name-status"],
-        ).pipe(Effect.map((stdout) => stdout.trim()));
-        if (stagedSummary.length === 0) {
-          return null;
-        }
-
-        const stagedPatch = yield* runGitStdout("GitCore.prepareCommitContext.stagedPatch", cwd, [
-          "diff",
-          "--cached",
-          "--patch",
-          "--minimal",
-        ]);
-
-        return {
-          stagedSummary,
-          stagedPatch,
-        };
-      });
+    const prepareCommitContext: GitCoreShape["prepareCommitContext"] = (cwd, includeContent) =>
+      readGenerationContext({ execute }, cwd, undefined, includeContent);
 
     const commit: GitCoreShape["commit"] = (cwd, subject, body, options?: GitCommitOptions) =>
       Effect.gen(function* () {

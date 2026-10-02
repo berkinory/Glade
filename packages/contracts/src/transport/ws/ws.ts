@@ -46,7 +46,6 @@ import {
   GitReadCommitInput,
   GitPullInput,
   GitPullRequestRefInput,
-  GitPullRequestSnapshotInput,
   GitReadWorkingTreeDiffInput,
   GitRemoveWorktreeInput,
   GitRemoveIndexLockInput,
@@ -129,11 +128,6 @@ import {
   ProviderSkillsCatalogInput,
 } from "../../provider/providerDiscovery";
 import {
-  PullRequestActionInput,
-  PullRequestCommentInput,
-  PullRequestDetailInput,
-} from "../../git/pullRequests";
-import {
   GitHubProjectProvisionInput,
   GitHubProjectProvisionProgressEvent,
 } from "../../git/githubProjectProvisioning";
@@ -200,13 +194,7 @@ export const WS_METHODS = {
   gitUnstageFiles: "git.unstageFiles",
   gitHandoffThread: "git.handoffThread",
   gitResolvePullRequest: "git.resolvePullRequest",
-  gitPullRequestSnapshot: "git.pullRequestSnapshot",
   gitPreparePullRequestThread: "git.preparePullRequestThread",
-
-  pullRequestsDetail: "pullRequests.detail",
-  pullRequestsDiff: "pullRequests.diff",
-  pullRequestsAction: "pullRequests.action",
-  pullRequestsComment: "pullRequests.comment",
 
   terminalOpen: "terminal.open",
   terminalWrite: "terminal.write",
@@ -377,13 +365,7 @@ const WebSocketRequestBody = Schema.Union([
   tagRequestBody(WS_METHODS.gitUnstageFiles, GitUnstageFilesInput),
   tagRequestBody(WS_METHODS.gitHandoffThread, GitHandoffThreadInput),
   tagRequestBody(WS_METHODS.gitResolvePullRequest, GitPullRequestRefInput),
-  tagRequestBody(WS_METHODS.gitPullRequestSnapshot, GitPullRequestSnapshotInput),
   tagRequestBody(WS_METHODS.gitPreparePullRequestThread, GitPreparePullRequestThreadInput),
-
-  tagRequestBody(WS_METHODS.pullRequestsDetail, PullRequestDetailInput),
-  tagRequestBody(WS_METHODS.pullRequestsDiff, PullRequestDetailInput),
-  tagRequestBody(WS_METHODS.pullRequestsAction, PullRequestActionInput),
-  tagRequestBody(WS_METHODS.pullRequestsComment, PullRequestCommentInput),
 
   tagRequestBody(WS_METHODS.terminalOpen, TerminalOpenInput),
   tagRequestBody(WS_METHODS.terminalWrite, TerminalWriteInput),

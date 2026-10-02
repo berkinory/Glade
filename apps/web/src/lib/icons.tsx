@@ -140,12 +140,7 @@ export const ChangesIcon = centralIconWrapper("changes");
 export const COPY_ICON_NAME = "square-behind-square-6";
 export const CopyIcon = centralIconWrapper(COPY_ICON_NAME);
 export const LightbulbIcon = adaptIcon(IconBulb);
-export const LinkIcon = centralIconWrapper("chain-link-3");
 
-export const PageTextIcon: LucideIcon = centralIconWrapper("page-text");
-export const GitHubMarkIcon: LucideIcon = centralIconWrapper("github");
-export const ChatBubblePlusIcon: LucideIcon = centralIconWrapper("bubble-plus");
-export const DiffIcon = centralIconWrapper("difference-modified");
 export const DownloadIcon = adaptIcon(IconDownload);
 
 export const BELL_ICON_NAME = "notes";
@@ -182,8 +177,6 @@ export const GitPullRequestIcon = centralIconWrapper("pull-request");
 export const GitPullRequestDraftIcon: LucideIcon = centralIconWrapper("draft");
 export const GitPullRequestClosedIcon: LucideIcon = centralIconWrapper("request-closed");
 export const GitMergeConflictIcon: LucideIcon = centralIconWrapper("merge-conflict");
-
-export const UsersIcon: LucideIcon = centralIconWrapper("user-group");
 
 export const GlobeIcon: LucideIcon = centralIconWrapper("globe");
 

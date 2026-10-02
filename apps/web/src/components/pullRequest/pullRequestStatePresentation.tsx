@@ -7,8 +7,6 @@ import {
   type LucideIcon,
 } from "~/lib/icons";
 
-import { cn } from "~/lib/utils";
-
 export interface PrStatePresentation {
   label: "PR open" | "PR closed" | "PR merged" | "PR draft" | "PR has conflicts";
   colorClass: string;
@@ -66,10 +64,4 @@ export function resolvePrStatePresentation(pr: {
     colorClass: "text-status-merged",
     iconKind: "merged-simple",
   };
-}
-
-export function PullRequestConflictIcon({ className }: { className?: string }) {
-  const presentation = resolvePrStatePresentation({ state: "open", mergeability: "conflicting" });
-  const Icon = PR_STATE_PRESENTATION_ICONS[presentation.iconKind];
-  return <Icon aria-hidden className={cn("shrink-0", presentation.colorClass, className)} />;
 }

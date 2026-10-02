@@ -9,8 +9,6 @@ import {
   GitPreparePullRequestThreadInput,
   GitPreparePullRequestThreadResult,
   GitPullRequestRefInput,
-  GitPullRequestSnapshotInput,
-  GitPullRequestSnapshotResult,
   GitResolvedPullRequest,
   GitReadWorkingTreeDiffInput,
   GitReadWorkingTreeDiffResult,
@@ -81,10 +79,6 @@ export interface GitManagerShape {
   readonly resolvePullRequest: (
     input: GitPullRequestRefInput,
   ) => Effect.Effect<GitResolvePullRequestResult, GitManagerServiceError>;
-
-  readonly pullRequestSnapshot: (
-    input: GitPullRequestSnapshotInput,
-  ) => Effect.Effect<GitPullRequestSnapshotResult, GitManagerServiceError>;
 
   readonly preparePullRequestThread: (
     input: GitPreparePullRequestThreadInput,

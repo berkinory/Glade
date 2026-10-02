@@ -44,7 +44,7 @@ export interface ExecuteGitInput {
   readonly allowNonZeroExit?: boolean;
   readonly timeoutMs?: number;
   readonly maxOutputBytes?: number;
-  readonly outputMode?: "error" | "truncate";
+  readonly outputMode?: "error" | "truncate" | "prefix";
   readonly progress?: ExecuteGitProgress;
 }
 
@@ -71,9 +71,13 @@ interface GitBranchContext {
 
 type GitDiffScope = "branch" | "staged" | "unstaged" | "workingTree" | "ref";
 
-interface GitPreparedCommitContext {
-  stagedSummary: string;
-  stagedPatch: string;
+export interface GitGenerationContext {
+  readonly stagedSummary: string;
+  readonly stagedPatch: string;
+  readonly snapshot: string;
+  readonly scope: "staged" | "workingTree" | "range";
+  readonly fileCount: number;
+  readonly incomplete: boolean;
 }
 
 export interface ExecuteGitProgress {
@@ -259,8 +263,8 @@ export interface GitCoreShape {
 
   readonly prepareCommitContext: (
     cwd: string,
-    filePaths?: readonly string[],
-  ) => Effect.Effect<GitPreparedCommitContext | null, GitCommandError>;
+    includeContent?: boolean,
+  ) => Effect.Effect<GitGenerationContext | null, GitCommandError>;
 
   readonly commit: (
     cwd: string,

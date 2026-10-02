@@ -1,3 +1,4 @@
+import { bindCommitGeneration } from "./lib/commitGenerationBinding";
 import type {
   AuthBearerBootstrapResult,
   AuthBootstrapInput,
@@ -300,6 +301,12 @@ export function createWsNativeApi(): NativeApi {
   }
 
   const transport = new WsTransport();
+  const commitGeneration = bindCommitGeneration({
+    generateCommitMessage: (input) =>
+      transport.request(WS_METHODS.gitGenerateCommitMessage, input, { timeoutMs: null }),
+    commitStaged: (input) =>
+      transport.request(WS_METHODS.gitCommitStaged, input, { timeoutMs: null }),
+  });
   let unsubscribeDomainEventTransport: (() => void) | null = null;
   transport.onStateChange((state) => emitWsTransportState(state));
   transport.onCompatibilityIssue((issue) => emitWsCompatibilityIssue(issue), {
@@ -453,8 +460,7 @@ export function createWsNativeApi(): NativeApi {
       readFileAtRev: (input) => transport.request(WS_METHODS.gitReadFileAtRev, input),
       workingTreeDiffStats: (input) => transport.request(WS_METHODS.gitWorkingTreeDiffStats, input),
       blameLine: (input) => transport.request(WS_METHODS.gitBlameLine, input),
-      generateCommitMessage: (input) =>
-        transport.request(WS_METHODS.gitGenerateCommitMessage, input, { timeoutMs: null }),
+      generateCommitMessage: commitGeneration.generateCommitMessage,
       summarizeDiff: (input) =>
         transport.request(WS_METHODS.gitSummarizeDiff, input, {
           timeoutMs: null,
@@ -481,8 +487,7 @@ export function createWsNativeApi(): NativeApi {
       removeIndexLock: (input) => transport.request(WS_METHODS.gitRemoveIndexLock, input),
       init: (input) => transport.request(WS_METHODS.gitInit, input),
       stageFiles: (input) => transport.request(WS_METHODS.gitStageFiles, input),
-      commitStaged: (input) =>
-        transport.request(WS_METHODS.gitCommitStaged, input, { timeoutMs: null }),
+      commitStaged: commitGeneration.commitStaged,
       fetch: (input) => transport.request(WS_METHODS.gitFetch, input, { timeoutMs: null }),
       ignorePaths: (input) =>
         transport.request(WS_METHODS.gitIgnorePaths, input, { timeoutMs: null }),
@@ -496,18 +501,10 @@ export function createWsNativeApi(): NativeApi {
       unstageFiles: (input) => transport.request(WS_METHODS.gitUnstageFiles, input),
       handoffThread: (input) => transport.request(WS_METHODS.gitHandoffThread, input),
       resolvePullRequest: (input) => transport.request(WS_METHODS.gitResolvePullRequest, input),
-      pullRequestSnapshot: (input) => transport.request(WS_METHODS.gitPullRequestSnapshot, input),
       preparePullRequestThread: (input) =>
         transport.request(WS_METHODS.gitPreparePullRequestThread, input),
       onActionProgress: gitActionProgressListeners.subscribe,
       onWorktreeSetupProgress: gitWorktreeSetupProgressListeners.subscribe,
-    },
-    pullRequests: {
-      detail: (input) => transport.request(WS_METHODS.pullRequestsDetail, input),
-      diff: (input) => transport.request(WS_METHODS.pullRequestsDiff, input),
-      action: (input) =>
-        transport.request(WS_METHODS.pullRequestsAction, input, { timeoutMs: null }),
-      comment: (input) => transport.request(WS_METHODS.pullRequestsComment, input),
     },
     contextMenu: {
       show: async <T extends string>(

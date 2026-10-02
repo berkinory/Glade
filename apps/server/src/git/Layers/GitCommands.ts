@@ -300,8 +300,9 @@ const collectGitOutput = Effect.fn(function* <E>(
   stream: Stream.Stream<Uint8Array, E>,
   maxOutputBytes: number,
   onLine: ((line: string) => Effect.Effect<void, never>) | undefined,
-  outputMode: "error" | "truncate",
+  outputMode: "error" | "truncate" | "prefix",
   lineDelimiter: "\n" | "\0" = "\n",
+  stop?: () => Effect.Effect<void>,
 ): Effect.fn.Return<CollectedGitOutput, GitCommandError> {
   const decoder = new TextDecoder();
   let receivedBytes = 0;
@@ -355,7 +356,11 @@ const collectGitOutput = Effect.fn(function* <E>(
       }
     });
 
-  yield* Stream.runForEach(stream, (chunk) =>
+  const boundedStream =
+    outputMode === "prefix"
+      ? stream.pipe(Stream.takeUntil(() => receivedBytes >= maxOutputBytes))
+      : stream;
+  yield* Stream.runForEach(boundedStream, (chunk) =>
     Effect.gen(function* () {
       receivedBytes += chunk.byteLength;
       if (receivedBytes > maxOutputBytes) {
@@ -370,19 +375,23 @@ const collectGitOutput = Effect.fn(function* <E>(
         }
       }
 
-      if (outputMode === "truncate" && retainedPrefixComplete && !onLine) {
+      if (outputMode !== "error" && retainedPrefixComplete && !onLine) {
         return;
       }
       const decoded = decoder.decode(chunk, { stream: true });
       appendRetainedPrefix(decoded);
       lineBuffer += decoded;
       yield* emitCompleteLines(false);
-      if (outputMode === "truncate" && lineBuffer.length > maxOutputBytes) {
+      if (outputMode !== "error" && lineBuffer.length > maxOutputBytes) {
         lineBuffer = lineBuffer.slice(-maxOutputBytes);
       }
     }),
   ).pipe(Effect.mapError(toGitCommandError(input, "output stream failed.")));
 
+  if (outputMode === "prefix" && receivedBytes >= maxOutputBytes) {
+    truncated = true;
+    if (stop) yield* stop();
+  }
   const remainder = decoder.decode();
   appendRetainedPrefix(remainder);
   lineBuffer += remainder;
@@ -442,6 +451,7 @@ const makeGitCommands = Effect.gen(function* () {
             input.progress?.onStdoutLine,
             outputMode,
             input.progress?.stdoutLineDelimiter,
+            () => child.kill().pipe(Effect.ignore),
           ),
           collectGitOutput(
             commandInput,
@@ -459,7 +469,11 @@ const makeGitCommands = Effect.gen(function* () {
       );
       yield* trace2Monitor.flush;
 
-      if (!input.allowNonZeroExit && exitCode !== 0) {
+      if (
+        !input.allowNonZeroExit &&
+        exitCode !== 0 &&
+        !(outputMode === "prefix" && stdoutResult.truncated)
+      ) {
         const trimmedStderr = stderrResult.text.trim();
         return yield* new GitCommandError({
           operation: commandInput.operation,
