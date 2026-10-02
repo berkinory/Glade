@@ -1,6 +1,4 @@
-import { randomUUID } from "./utils";
-
-export const FILE_COMMENT_TEXT_MAX_CHARS = 4_000;
+const FILE_COMMENT_TEXT_MAX_CHARS = 4_000;
 
 const TRAILING_FILE_COMMENTS_PATTERN = /\n*<file_comments>\n([\s\S]*?)\n<\/file_comments>\s*$/;
 const FILE_COMMENT_HEADER_PATTERN = /^- (.+?) (?:line (\d+)|lines (\d+)-(\d+)):$/;
@@ -30,7 +28,7 @@ export interface ExtractedFileComments {
 
 type FileCommentValidationError = "empty" | "too-long";
 
-export function normalizeFileCommentText(text: string): string {
+function normalizeFileCommentText(text: string): string {
   return text
     .replace(/\r\n/g, "\n")
     .replace(/^\n+|\n+$/g, "")
@@ -75,18 +73,7 @@ export function normalizeFileCommentSelection(
   };
 }
 
-export function createFileCommentDraft(selection: FileCommentSelection): FileCommentDraft | null {
-  const normalized = normalizeFileCommentSelection(selection);
-  if (!normalized) {
-    return null;
-  }
-  return {
-    id: randomUUID(),
-    ...normalized,
-  };
-}
-
-export function formatFileCommentRange(selection: { startLine: number; endLine: number }): string {
+function formatFileCommentRange(selection: { startLine: number; endLine: number }): string {
   return selection.startLine === selection.endLine
     ? `line ${selection.startLine}`
     : `lines ${selection.startLine}-${selection.endLine}`;

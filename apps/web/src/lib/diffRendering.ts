@@ -274,26 +274,6 @@ export function resolveFileDiffPath(fileDiff: FileDiffMetadata): string {
   return raw;
 }
 
-export function resolveFileDiffPrevPath(fileDiff: FileDiffMetadata): string | null {
-  if (
-    fileDiff.prevName === undefined ||
-    (fileDiff.type !== "rename-pure" && fileDiff.type !== "rename-changed")
-  ) {
-    return null;
-  }
-  const raw = fileDiff.prevName;
-  if (raw.startsWith("a/") || raw.startsWith("b/")) {
-    return raw.slice(2);
-  }
-  return raw;
-}
-
-const UNEDITABLE_GIT_MODES = new Set(["120000", "160000"]);
-
-export function hasUneditableGitMode(fileDiff: FileDiffMetadata): boolean {
-  return UNEDITABLE_GIT_MODES.has(fileDiff.mode ?? fileDiff.prevMode ?? "");
-}
-
 export function buildFileDiffRenderKey(fileDiff: FileDiffMetadata): string {
   return fileDiff.cacheKey ?? `${fileDiff.prevName ?? "none"}:${fileDiff.name}`;
 }
@@ -304,21 +284,6 @@ export function splitRepoRelativePath(path: string): { dir: string; name: string
     return { dir: "", name: path };
   }
   return { dir: path.slice(0, index + 1), name: path.slice(index + 1) };
-}
-
-let diffPathCollator: Intl.Collator | undefined;
-
-function compareDiffPaths(left: string, right: string): number {
-  diffPathCollator ??= new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
-  return diffPathCollator.compare(left, right);
-}
-
-function compareFileDiffByPath(left: FileDiffMetadata, right: FileDiffMetadata): number {
-  return compareDiffPaths(resolveFileDiffPath(left), resolveFileDiffPath(right));
-}
-
-export function sortFileDiffsByPath(files: ReadonlyArray<FileDiffMetadata>): FileDiffMetadata[] {
-  return files.toSorted(compareFileDiffByPath);
 }
 
 export function summarizeFileDiffStats(files: ReadonlyArray<FileDiffMetadata>): {
@@ -335,15 +300,6 @@ export function summarizeFileDiffStats(files: ReadonlyArray<FileDiffMetadata>): 
     },
     { additions: 0, deletions: 0 },
   );
-}
-
-export function summarizeRenderablePatchStats(
-  renderable: RenderablePatch | null | undefined,
-): { additions: number; deletions: number; fileCount: number } | null {
-  if (!renderable || renderable.kind !== "files" || renderable.files.length === 0) {
-    return null;
-  }
-  return { ...summarizeFileDiffStats(renderable.files), fileCount: renderable.files.length };
 }
 
 export function fileDiffStatsByPath(patch: string | undefined): Map<string, FileDiffStat> {

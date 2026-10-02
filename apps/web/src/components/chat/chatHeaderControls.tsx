@@ -45,19 +45,16 @@ const CHAT_SURFACE_CONTROL_HOVER_CLASS_NAME =
 // hover, with a smooth color transition. The active (pressed/selected) background is layered on per
 // call site because the mechanism differs (Toggle `data-pressed` vs the dock tab's `active` flag),
 // but both resolve to `--color-background-button-secondary`.
-export const CHAT_SURFACE_CHIP_CLASS_NAME = cn(
+const CHAT_SURFACE_CHIP_CLASS_NAME = cn(
   CHAT_HEADER_CONTROL_CLASS_NAME,
   "gap-1.5 border-0 px-1.5 text-ui-sm font-normal transition-colors",
   CHAT_SURFACE_CONTROL_IDLE_TEXT_CLASS_NAME,
   CHAT_SURFACE_CONTROL_HOVER_CLASS_NAME,
 );
 
-export const CHAT_SURFACE_CHIP_GLYPH_CLASS_NAME = "size-3.5 shrink-0";
+const CHAT_SURFACE_CHIP_GLYPH_CLASS_NAME = "size-3.5 shrink-0";
 
-export const CHAT_SURFACE_CHIP_ICON_CLASS_NAME = cn(
-  CHAT_SURFACE_CHIP_GLYPH_CLASS_NAME,
-  "opacity-70",
-);
+const CHAT_SURFACE_CHIP_ICON_CLASS_NAME = cn(CHAT_SURFACE_CHIP_GLYPH_CLASS_NAME, "opacity-70");
 
 export function SurfaceChipIcon({
   icon: Icon,

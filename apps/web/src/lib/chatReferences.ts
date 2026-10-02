@@ -3,7 +3,6 @@ import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import { requestComposerFocus, useComposerDraftStore } from "../composerDraftStore";
 import { formatComposerMentionToken } from "./composerMentions";
-import { type PullRequestContextDraft } from "./pullRequestContext";
 
 export interface ChatFileReference {
   path: string;
@@ -74,17 +73,6 @@ export function appendComposerPromptText(threadId: ThreadId, text: string): void
 
 export function appendChatFileReference(threadId: ThreadId, reference: ChatFileReference): void {
   appendComposerPromptText(threadId, formatChatFileReference(reference));
-}
-
-export function addChatPullRequestContext(
-  threadId: ThreadId,
-  context: PullRequestContextDraft,
-): boolean {
-  const added = useComposerDraftStore.getState().addPullRequestContext(threadId, context);
-  if (added) {
-    requestComposerFocus(threadId);
-  }
-  return added;
 }
 
 function countNewlines(text: string): number {

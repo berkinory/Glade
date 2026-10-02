@@ -27,14 +27,6 @@ function getSelectionRect(selection: Selection): DOMRect | null {
   return boundingRect.width > 0 || boundingRect.height > 0 ? boundingRect : null;
 }
 
-export function getActiveSelectionRect(): DOMRect | null {
-  const selection = window.getSelection();
-  if (!selection) {
-    return null;
-  }
-  return getSelectionRect(selection);
-}
-
 function selectionContainerForNode(node: Node | null): HTMLElement | null {
   if (!node) {
     return null;
