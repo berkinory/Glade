@@ -6,7 +6,11 @@ import type {
 } from "@glade/contracts/git/git";
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { ensureNativeApi } from "../nativeApi";
-import { EXPENSIVE_READ_RETRY_OPTIONS, isRpcCapacityExceededError } from "./expensiveReadRetry";
+import {
+  EXPENSIVE_READ_RETRY_OPTIONS,
+  expensiveReadErrorRefetchInterval,
+  isRpcCapacityExceededError,
+} from "./expensiveReadRetry";
 
 const GIT_STATUS_STALE_TIME_MS = 30_000;
 
@@ -582,6 +586,7 @@ export function gitSourceControlFilesQueryOptions(cwd: string | null, query = ""
     enabled: cwd !== null,
     gcTime: 0,
     staleTime: GIT_WORKING_TREE_DIFF_STALE_TIME_MS,
+    refetchInterval: expensiveReadErrorRefetchInterval,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     ...GIT_EXPENSIVE_READ_RETRY_OPTIONS,
