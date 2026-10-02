@@ -4,12 +4,16 @@
 
 ### Improved
 
+- Markdown opens in preview by default, with your viewing preference remembered across files.
+- Explorer, Terminal and Source Control use consistent tab bars.
+- Environment hides while the right sidebar is open and returns to its previous state when it closes.
+- Source Control can generate a message and commit all changes when nothing is staged.
 - AI commit messages and pull request descriptions handle large changes with less unnecessary context.
 - Provider handoffs preserve key decisions and unfinished work, with access to earlier conversation details when needed.
 - Explorer navigation can be hidden to give files more room, and highlighted file rows are easier to distinguish.
 - History loads faster with fewer repeated Git reads.
 - Empty space across the top bar supports window dragging and native title-bar actions more consistently.
-- File links open in Explorer, while turn changes and file diffs are available together in Source Control.
+- File links open together in editable Explorer tabs without losing unsaved edits; turn changes and file diffs remain available in Source Control.
 - Source Control and History stay up to date automatically, and the latest unpushed commit can be undone without losing its changes.
 - Push synchronizes incoming commits automatically, and Source Control shows conflicts with actions to resolve or cancel the operation.
 - Models load faster on first use, with a balanced initial reasoning effort when you have not chosen one.
@@ -23,6 +27,7 @@
 
 ### Removed
 
+- Ask why actions for files and selected lines were removed.
 - Pull request panels and management actions were removed; PR links open externally from Environment and the sidebar.
 
 ## 0.1.1 - 2026-10-01
