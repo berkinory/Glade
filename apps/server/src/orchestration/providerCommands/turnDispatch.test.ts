@@ -14,6 +14,55 @@ import { makeReactorTestHarness, asMessageId, waitFor, asTurnId } from "./reacto
 describe("Provider reactor turnDispatch", () => {
   const { createHarness, readHarnessThread } = makeReactorTestHarness();
 
+  it("names a generic thread from a meaningful message after punctuation-only history", async () => {
+    const harness = await createHarness();
+    const threadId = ThreadId.makeUnsafe("thread-1");
+    const createdAt = new Date().toISOString();
+    await Effect.runPromise(
+      harness.engine.dispatch({
+        type: "thread.meta.update",
+        commandId: CommandId.makeUnsafe("generic-title"),
+        threadId,
+        title: "New thread",
+      }),
+    );
+    await Effect.runPromise(
+      harness.engine.dispatch({
+        type: "thread.messages.import",
+        commandId: CommandId.makeUnsafe("punctuation-history"),
+        threadId,
+        messages: [
+          {
+            messageId: asMessageId("punctuation-message"),
+            role: "user",
+            text: ".",
+            createdAt,
+            updatedAt: createdAt,
+          },
+        ],
+        createdAt,
+      }),
+    );
+    await Effect.runPromise(
+      harness.engine.dispatch({
+        type: "thread.turn.start",
+        commandId: CommandId.makeUnsafe("meaningful-message"),
+        threadId,
+        message: {
+          messageId: asMessageId("meaningful-message"),
+          role: "user",
+          text: "Fix the sidebar",
+          attachments: [],
+        },
+        runtimeMode: "approval-required",
+        createdAt,
+      }),
+    );
+    await waitFor(() => harness.sendTurn.mock.calls.length === 1);
+    await harness.drain();
+    expect((await readHarnessThread(harness))?.title).toBe("Fix the sidebar");
+  });
+
   it("dispatches managed attachments from their repository object paths", async () => {
     const harness = await createHarness();
     const now = new Date().toISOString();

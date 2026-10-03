@@ -1,3 +1,4 @@
+import { isGenericChatThreadTitle } from "@glade/shared/threads/chatThreads";
 import type { ServiceMap } from "effect";
 import { ThreadSessionSettings } from "../Services/ThreadSessionSettings.ts";
 import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
@@ -59,9 +60,9 @@ export function makeProviderTurnStart(input: {
   readonly maybeGenerateAndRenameWorktreeBranchForFirstTurn: ReturnType<
     typeof makeProviderConversationNaming
   >["maybeGenerateAndRenameWorktreeBranchForFirstTurn"];
-  readonly maybeSetThreadTitleFromFirstMessage: ReturnType<
+  readonly maybeSetThreadTitleFromMessages: ReturnType<
     typeof makeProviderConversationNaming
-  >["maybeSetThreadTitleFromFirstMessage"];
+  >["maybeSetThreadTitleFromMessages"];
   readonly dispatchTurnForThread: ReturnType<
     typeof makeProviderTurnDispatch
   >["dispatchTurnForThread"];
@@ -86,7 +87,7 @@ export function makeProviderTurnStart(input: {
     serverConfig,
     managedAttachments,
     maybeGenerateAndRenameWorktreeBranchForFirstTurn,
-    maybeSetThreadTitleFromFirstMessage,
+    maybeSetThreadTitleFromMessages,
     dispatchTurnForThread,
     providerService,
     setThreadSessionError,
@@ -307,12 +308,9 @@ export function makeProviderTurnStart(input: {
         messageText: message.text,
         ...(message.attachments !== undefined ? { attachments: resolvedAttachments } : {}),
       }).pipe(Effect.forkScoped);
-      yield* maybeSetThreadTitleFromFirstMessage({
-        threadId: event.payload.threadId,
-        messageId: message.id,
-        messageText: message.text,
-        ...(message.attachments !== undefined ? { attachments: resolvedAttachments } : {}),
-      }).pipe(Effect.forkScoped);
+      if (isGenericChatThreadTitle(thread.title)) {
+        yield* maybeSetThreadTitleFromMessages(event.payload.threadId);
+      }
 
       const immediateDispatchMode =
         event.payload.dispatchMode === "steer" && !isNativeSteer

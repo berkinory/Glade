@@ -245,33 +245,37 @@ export function makeProviderConversationNaming(input: {
     );
   });
 
-  const maybeSetThreadTitleFromFirstMessage = Effect.fnUntraced(function* (input: {
-    readonly threadId: ThreadId;
-    readonly messageId: string;
-    readonly messageText: string;
-    readonly attachments?: ReadonlyArray<ChatAttachment>;
-  }) {
+  const maybeSetThreadTitleFromMessages = Effect.fnUntraced(function* (threadId: ThreadId) {
     const { sequence: expectedTitleSequence, userTitle } = yield* readThreadTitleIntent(
       orchestrationEngine,
-      input.threadId,
+      threadId,
     );
     if (userTitle !== undefined) return;
-    const thread = yield* resolveFirstTurnThread(input.threadId, input.messageId);
-    if (!thread || !isGenericChatThreadTitle(thread.title.trim())) return;
-    const title = buildPromptThreadTitleFallback(
-      input.messageText.trim() || attachmentTitleSeed(input.attachments?.[0]) || "",
-    );
-    if (title === thread.title) return;
+    const thread = yield* resolveThread(threadId);
+    if (!thread || !isGenericChatThreadTitle(thread.title)) return;
+    const title = thread.messages
+      .filter(
+        (message) =>
+          message.role === "user" &&
+          (message.source === "native" || message.source === "async-user-input"),
+      )
+      .map((message) =>
+        buildPromptThreadTitleFallback(
+          message.text.trim() || attachmentTitleSeed(message.attachments?.[0]) || "",
+        ),
+      )
+      .find((candidate) => !isGenericChatThreadTitle(candidate));
+    if (title === undefined) return;
     yield* orchestrationEngine
       .dispatch({
         type: "thread.meta.update",
         commandId: serverCommandId("thread-title-fallback-rename"),
-        threadId: input.threadId,
+        threadId,
         title,
         expectedTitleSequence,
       })
       .pipe(Effect.catchTag("OrchestrationCommandInvariantError", () => Effect.void));
   });
 
-  return { maybeGenerateAndRenameWorktreeBranchForFirstTurn, maybeSetThreadTitleFromFirstMessage };
+  return { maybeGenerateAndRenameWorktreeBranchForFirstTurn, maybeSetThreadTitleFromMessages };
 }

@@ -70,6 +70,8 @@
 
 ### Fixed
 
+- Chats started with punctuation now receive a title when a meaningful message arrives.
+
 - Interrupted conversation imports resume safely without duplicating messages.
 
 - Temporary model discovery failures keep your last available model list.

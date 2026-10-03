@@ -255,7 +255,7 @@ const make = Effect.gen(function* () {
     orchestrationEngine,
     persistPriorTranscriptBootstrapCompletion,
   });
-  const { maybeGenerateAndRenameWorktreeBranchForFirstTurn, maybeSetThreadTitleFromFirstMessage } =
+  const { maybeGenerateAndRenameWorktreeBranchForFirstTurn, maybeSetThreadTitleFromMessages } =
     makeProviderConversationNaming({
       projectionAccess,
       gatewayOperations,
@@ -281,7 +281,7 @@ const make = Effect.gen(function* () {
     serverConfig,
     managedAttachments,
     maybeGenerateAndRenameWorktreeBranchForFirstTurn,
-    maybeSetThreadTitleFromFirstMessage,
+    maybeSetThreadTitleFromMessages,
     dispatchTurnForThread,
     providerService,
     setThreadSessionError,

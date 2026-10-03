@@ -1,4 +1,5 @@
 import { Effect, Option, Stream } from "effect";
+import { isGenericChatThreadTitle } from "@glade/shared/threads/chatThreads";
 import type { CommandId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { OrchestrationEngineShape } from "../Services/OrchestrationEngine.ts";
 import type { ProviderServiceShape } from "../../provider/Services/ProviderService.ts";
@@ -37,6 +38,7 @@ export const applyNativeThreadTitle = (input: {
   readonly provider: Pick<ProviderServiceShape, "updateNativeHistory">;
 }) =>
   Effect.gen(function* () {
+    if (isGenericChatThreadTitle(input.title)) return;
     const { sequence, userTitle } = yield* readThreadTitleIntent(input.engine, input.threadId);
     if (userTitle !== undefined && userTitle !== input.title) {
       // A rename can precede native history creation. Preserve the durable user intent until the
