@@ -38,10 +38,10 @@ jobs:
           version="${REQUESTED_VERSION#v}"
           [[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
           release="$(gh api "repos/berkinory/Glade/releases/tags/v${version}")"
-          arm_digest="$(jq -r --arg name "Glade-${version}-arm64.dmg" \
-            '.assets[] | select(.name == $name) | .digest' <<< "$release")"
-          intel_digest="$(jq -r --arg name "Glade-${version}-x64.dmg" \
-            '.assets[] | select(.name == $name) | .digest' <<< "$release")"
+          arm_digest="$(jq -r --arg name "Glade-${version}-macOS-arm64.dmg" --arg legacy "Glade-${version}-arm64.dmg" \
+            '.assets[] | select(.name == $name or .name == $legacy) | .digest' <<< "$release")"
+          intel_digest="$(jq -r --arg name "Glade-${version}-macOS-x64.dmg" --arg legacy "Glade-${version}-x64.dmg" \
+            '.assets[] | select(.name == $name or .name == $legacy) | .digest' <<< "$release")"
           [[ "$arm_digest" =~ ^sha256:[0-9a-f]{64}$ ]]
           [[ "$intel_digest" =~ ^sha256:[0-9a-f]{64}$ ]]
           gh workflow run update-glade-cask.yml \

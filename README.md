@@ -6,10 +6,12 @@ Glade is a local-first coding workspace forked from [Synara](https://github.com/
 
 Download the latest version from [GitHub Releases](https://github.com/berkinory/Glade/releases/latest):
 
-- **macOS (Apple Silicon):** download the `arm64.dmg`, open it, and drag `Glade.app` to Applications.
-- **macOS (Intel):** download the `x64.dmg`, open it, and drag `Glade.app` to Applications.
-- **Linux (x64):** download the `.AppImage`, make it executable with `chmod +x Glade-*.AppImage`, then run it.
-- **Windows (x64):** download and run the `.exe` installer. The installer is unsigned, so Windows SmartScreen may show a warning.
+- **macOS (Apple Silicon):** download `Glade-<version>-macOS-arm64.dmg`, open it, and drag `Glade.app` to Applications.
+- **macOS (Intel):** download `Glade-<version>-macOS-x64.dmg`, open it, and drag `Glade.app` to Applications.
+- **Linux (x64):** download `Glade-<version>-Linux-x86_64.AppImage`, make it executable with `chmod +x Glade-*.AppImage`, then run it.
+- **Windows (x64):** download and run `Glade-<version>-Windows-x64.exe`. The installer is unsigned, so Windows SmartScreen may show a warning.
+
+Older releases display the same platform-aware names, while their download URLs and downloaded filenames retain the original names.
 
 On macOS, you can also install Glade from the [Homebrew tap](https://github.com/berkinory/homebrew-brew):
 

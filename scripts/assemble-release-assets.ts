@@ -68,36 +68,44 @@ const platforms = [
     id: "mac-arm64",
     platform: "mac",
     arch: "arm64",
-    files: [`Glade-${version}-arm64.dmg`, `Glade-${version}-arm64.zip`, "latest-mac-arm64.yml"],
+    files: [
+      `Glade-${version}-macOS-arm64.dmg`,
+      `Glade-${version}-macOS-arm64.zip`,
+      "latest-mac-arm64.yml",
+    ],
     manifest: "latest-mac-arm64.yml",
-    download: `Glade-${version}-arm64.zip`,
+    download: `Glade-${version}-macOS-arm64.zip`,
     signing: publish ? "verified" : "unsigned-build-only",
   },
   {
     id: "mac-x64",
     platform: "mac",
     arch: "x64",
-    files: [`Glade-${version}-x64.dmg`, `Glade-${version}-x64.zip`, "latest-mac-x64.yml"],
+    files: [
+      `Glade-${version}-macOS-x64.dmg`,
+      `Glade-${version}-macOS-x64.zip`,
+      "latest-mac-x64.yml",
+    ],
     manifest: "latest-mac-x64.yml",
-    download: `Glade-${version}-x64.zip`,
+    download: `Glade-${version}-macOS-x64.zip`,
     signing: publish ? "verified" : "unsigned-build-only",
   },
   {
     id: "linux-x64",
     platform: "linux",
     arch: "x64",
-    files: [`Glade-${version}-x86_64.AppImage`, "latest-linux.yml"],
+    files: [`Glade-${version}-Linux-x86_64.AppImage`, "latest-linux.yml"],
     manifest: "latest-linux.yml",
-    download: `Glade-${version}-x86_64.AppImage`,
+    download: `Glade-${version}-Linux-x86_64.AppImage`,
     signing: "not-applicable",
   },
   {
     id: "win-x64",
     platform: "win",
     arch: "x64",
-    files: [`Glade-${version}-x64.exe`, "latest.yml"],
+    files: [`Glade-${version}-Windows-x64.exe`, "latest.yml"],
     manifest: "latest.yml",
-    download: `Glade-${version}-x64.exe`,
+    download: `Glade-${version}-Windows-x64.exe`,
     signing: publish ? "unsigned-explicit-release" : "unsigned-build-only",
   },
 ] as const;
@@ -119,14 +127,14 @@ function releaseNotes(checksums: readonly string[]): string {
   const notes = lines.slice(start, end).join("\n").trim();
   if (!notes) throw new Error("Release notes are empty.");
   const downloads = [
-    ["macOS (Apple Silicon)", `Glade-${version}-arm64.dmg`],
-    ["macOS (Intel)", `Glade-${version}-x64.dmg`],
-    ["Linux (x64)", `Glade-${version}-x86_64.AppImage`],
-    ["Windows (x64)", `Glade-${version}-x64.exe`],
+    ["macOS (Apple Silicon, arm64)", `Glade-${version}-macOS-arm64.dmg`],
+    ["macOS (Intel)", `Glade-${version}-macOS-x64.dmg`],
+    ["Linux (x64)", `Glade-${version}-Linux-x86_64.AppImage`],
+    ["Windows (x64)", `Glade-${version}-Windows-x64.exe`],
   ] as const;
   const links = downloads.map(
     ([label, file]) =>
-      `- [${label}](https://github.com/berkinory/Glade/releases/download/v${version}/${file})`,
+      `- **${label}:** [${file}](https://github.com/berkinory/Glade/releases/download/v${version}/${file})`,
   );
   return `## Downloads\n\n${links.join("\n")}\n\n${notes}\n\n## SHA-256\n\n\`\`\`text\n${checksums.join("\n")}\n\`\`\`\n`;
 }

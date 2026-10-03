@@ -7,6 +7,8 @@ Glade's version history starts at **0.0.1**. One stable GitHub Release contains 
 - Application: `Glade.app`; bundle ID: `com.agent.glade`; protocol: `glade://`.
 - Data: `~/.glade`; Electron profile: `glade`.
 - Dedicated updater manifests: `glade-mac.yml`, `glade-linux.yml`, and `glade.yml`. The macOS manifest combines the verified arm64 and x64 ZIP entries so existing installations update to the matching architecture.
+- Artifact filenames include the platform and architecture: `Glade-X.Y.Z-macOS-arm64.dmg`, `Glade-X.Y.Z-macOS-x64.dmg`, `Glade-X.Y.Z-Linux-x86_64.AppImage`, and `Glade-X.Y.Z-Windows-x64.exe`. macOS update ZIPs use the same `macOS` prefix.
+- Published assets from older releases keep their filenames and URLs; their display labels use the platform-aware filename format without breaking updater or Homebrew references. Update manifests keep their original display names.
 - The macOS ZIP is for automatic updates; the DMG is for manual installation. The Linux AppImage and Windows NSIS installer serve both purposes.
 - Windows is intentionally unsigned. The installer runs, but Windows SmartScreen may display an unrecognized-app warning until signing and reputation are established.
 

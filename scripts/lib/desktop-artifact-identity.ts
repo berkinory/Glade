@@ -11,6 +11,7 @@ export function createDesktopArtifactIdentity(input: {
     throw new Error("Glade packages only production. Use bun run dev for development.");
   }
   const identity = gladeDesktopIdentity(input.flavor);
+  const platformName = { mac: "macOS", linux: "Linux", win: "Windows" }[input.platform];
   const suffix = input.flavor === "production" ? "" : `-${input.flavor}`;
   return {
     identity,
@@ -22,7 +23,7 @@ export function createDesktopArtifactIdentity(input: {
     buildConfig: {
       appId: identity.bundleId,
       productName: identity.displayName,
-      artifactName: `${identity.displayName.replaceAll(" ", "-")}-\${version}-\${arch}.\${ext}`,
+      artifactName: `${identity.displayName.replaceAll(" ", "-")}-\${version}-${platformName}-\${arch}.\${ext}`,
       ...(input.flavor !== "production"
         ? { protocols: [{ name: identity.displayName, schemes: [identity.scheme] }] }
         : {}),
