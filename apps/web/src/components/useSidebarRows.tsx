@@ -814,19 +814,21 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
           {renderProjectHoverCardPopup(project, allProjectThreadCount)}
         </PreviewCard>
 
-        <DisclosureRegion
-          open={project.expanded}
-          contentClassName={SIDEBAR_NESTED_LIST_OFFSET_CLASS_NAME}
-        >
-          <SidebarMenuSub
-            className={cn(
-              "mx-0 my-0 w-full translate-x-0 border-l-0 px-0 py-0",
-              SIDEBAR_NESTED_LIST_GAP_CLASS_NAME,
-            )}
+        {projectSidebarData.visibleEntries.length > 0 || projectSidebarData.canShowMoreThreads ? (
+          <DisclosureRegion
+            open={project.expanded}
+            contentClassName={SIDEBAR_NESTED_LIST_OFFSET_CLASS_NAME}
           >
-            {renderProjectThreadList(project, projectSidebarData)}
-          </SidebarMenuSub>
-        </DisclosureRegion>
+            <SidebarMenuSub
+              className={cn(
+                "mx-0 my-0 w-full translate-x-0 border-l-0 px-0 py-0",
+                SIDEBAR_NESTED_LIST_GAP_CLASS_NAME,
+              )}
+            >
+              {renderProjectThreadList(project, projectSidebarData)}
+            </SidebarMenuSub>
+          </DisclosureRegion>
+        ) : null}
       </div>
     );
   }
