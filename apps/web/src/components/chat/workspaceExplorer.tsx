@@ -18,6 +18,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 
+import { basenameOfPath } from "~/file-icons";
 import { type ChatFileReference } from "~/lib/chatReferences";
 import { showFileReferenceContextMenu } from "~/lib/fileReferenceContextMenu";
 import {
@@ -227,6 +228,9 @@ export function WorkspaceExplorerSidebar(props: {
   );
   const intake = useExplorerIntake(props.workspaceRoot, actions.selectedDirectory);
   const handleListKeyDown = useExplorerListNavigation();
+  const rootName = props.workspaceRoot
+    ? basenameOfPath(props.workspaceRoot.replace(/[\\/]+$/, "")) || props.workspaceRoot
+    : null;
 
   return (
     <aside
@@ -245,6 +249,11 @@ export function WorkspaceExplorerSidebar(props: {
           Copy into {intake.targetDirectory || "workspace root"}
         </p>
       )}
+      {rootName ? (
+        <div className="shrink-0 truncate px-3 pt-2 text-ui-xs font-medium" title={rootName}>
+          {rootName}
+        </div>
+      ) : null}
       <WorkspaceCodeSearch
         cwd={props.workspaceRoot}
         selectedFilePath={props.selectedFilePath}

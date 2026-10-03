@@ -74,6 +74,7 @@ and groups up to 100 matching lines by file without a per-file five-line cap. Se
 opens its source line in the shared editor without discarding existing drafts,
 selects the same file in Explorer, expands its parent folders, and scrolls it into
 view once those folders finish loading.
+Explorer shows the current workspace root folder name above content search.
 Queries are debounced, and superseded scans are cancelled. Unchanged file contents are reused from a bounded cache; metadata is checked before reuse. The four-second scan budget includes waiting for the file index. Search loading reuses Explorer
 skeleton rows. Results are virtualized, and visible source lines up to 1,000 characters use syntax coloring while retaining search-match emphasis. File headers open the first match, and the active view is highlighted. The existing scan excludes
 binary files and files larger than 512 KiB and
