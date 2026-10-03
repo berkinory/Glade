@@ -1,5 +1,5 @@
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { markPendingTurnDispatch, usePendingTurnDispatchStore } from "../../pendingTurnDispatch";
 import { derivePhase } from "../../session-logic";
 import { type ChatMessage, type Thread, type WorktreeSetupResolutionAction } from "../../types";
@@ -12,7 +12,6 @@ import {
   resolveNextLocalDispatchSnapshot,
   worktreeSetupHasError,
   type LocalDispatchSnapshot,
-  type WorktreeSetupResolution,
 } from "../ChatView.logic.dispatch";
 import { useChatThreadContext } from "./ChatThreadContext";
 import type { WorktreeSetupDispatchOptions } from "../ChatView.logic.worktree";
@@ -50,10 +49,12 @@ export function useChatLocalDispatch({
   );
   const failedWorktreeSetupDispatchStartedAtRef = useRef<string | null>(null);
 
-  const worktreeSetupResolutionRef = useRef<WorktreeSetupResolution | null>(null);
-  const [worktreeSetupPendingAction, setWorktreeSetupPendingAction] =
-    useState<WorktreeSetupResolutionAction | null>(null);
-
+  const worktreeSetupPendingAction = usePendingTurnDispatchStore(
+    (state) => state.preparationActions[threadId] ?? null,
+  );
+  const setWorktreeSetupResolution = usePendingTurnDispatchStore(
+    (state) => state.setWorktreeSetupResolution,
+  );
   const serverAcknowledgedLocalDispatch = useMemo(
     () =>
       hasServerAcknowledgedLocalDispatch({
@@ -99,7 +100,10 @@ export function useChatLocalDispatch({
       phase,
     ],
   );
-  const isSendBusy = localDispatch !== null && !serverAcknowledgedLocalDispatch;
+  const isSubmitting = usePendingTurnDispatchStore((state) =>
+    state.submittingThreadIds.has(threadId),
+  );
+  const isSendBusy = (isSubmitting || localDispatch !== null) && !serverAcknowledgedLocalDispatch;
   const isAwaitingTurnStart = localDispatch !== null && !turnTakenOver;
   const activeWorktreeSetup = localDispatch?.worktreeSetup ?? null;
   const isPreparingWorktree = activeWorktreeSetup !== null;
@@ -141,14 +145,12 @@ export function useChatLocalDispatch({
     );
   }, [setLocalDispatch]);
 
-  const onResolveWorktreeSetup = useCallback((action: WorktreeSetupResolutionAction) => {
-    const resolution = worktreeSetupResolutionRef.current;
-    if (!resolution || resolution.action !== null) {
-      return;
-    }
-    resolution.resolve(action);
-    setWorktreeSetupPendingAction(action);
-  }, []);
+  const onResolveWorktreeSetup = useCallback(
+    (action: WorktreeSetupResolutionAction) => {
+      usePendingTurnDispatchStore.getState().resolveWorktreeSetup(threadId, action);
+    },
+    [threadId],
+  );
 
   // Once the turn RPC has resolved the server owns the turn, so a stream that never echoes (dead
   // subscription, lost event) must not lock the composer forever: this fallback force-clears the
@@ -253,9 +255,8 @@ export function useChatLocalDispatch({
 
   return {
     localDispatch,
-    worktreeSetupResolutionRef,
+    setWorktreeSetupResolution,
     worktreeSetupPendingAction,
-    setWorktreeSetupPendingAction,
     turnTakenOver,
     isSendBusy,
     isAwaitingTurnStart,

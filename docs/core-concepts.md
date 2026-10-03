@@ -301,3 +301,16 @@ or different fork reports a conflict without retargeting it. The prepared result
 the actual branch and environment. Preparing a new Local checkout does not force away
 dirty changes. Nonessential Git query refreshes continue after the prepared chat opens;
 a persistent progress/error notification survives the initiating dialog.
+
+New draft chats expose a Worktree checkbox using the existing project/environment
+default. It is unavailable without a Git repository. The project picker lists projects
+and local folders, keeping an explicitly selected unregistered path visible without
+adding other chats' worktrees as projects.
+
+Send and worktree preparation belong to the sending thread. Switching chats preserves
+its Cancel/Work locally controls, and another draft can be opened while preparation
+runs. The thread is created before worktree setup so it remains reachable. A failed
+send restores content to its captured thread, preserving newer edits and attachments.
+An unconfirmed delivery keeps the workspace and uploads intact and asks you to check
+the chat before retrying; it is not automatically resent. Entering prompt history with
+Up requires an empty composer; normal Up/Down history navigation still works afterward.

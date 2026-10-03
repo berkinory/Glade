@@ -94,10 +94,7 @@ export interface ChatTurnSubmissionInput {
 
   settings: AppSettings;
   isSendBusy: ReturnType<typeof useChatLocalDispatch>["isSendBusy"];
-  worktreeSetupResolutionRef: ReturnType<typeof useChatLocalDispatch>["worktreeSetupResolutionRef"];
-  setWorktreeSetupPendingAction: ReturnType<
-    typeof useChatLocalDispatch
-  >["setWorktreeSetupPendingAction"];
+  setWorktreeSetupResolution: ReturnType<typeof useChatLocalDispatch>["setWorktreeSetupResolution"];
   beginLocalDispatch: ReturnType<typeof useChatLocalDispatch>["beginLocalDispatch"];
   clearLocalDispatchWorktreeSetup: ReturnType<
     typeof useChatLocalDispatch
@@ -233,8 +230,7 @@ export type ChatTurnSubmissionControllerInput = {
     | "isConnecting"
     | "hasQueueableLiveTurn"
     | "isSendBusy"
-    | "worktreeSetupResolutionRef"
-    | "setWorktreeSetupPendingAction"
+    | "setWorktreeSetupResolution"
     | "beginLocalDispatch"
     | "clearLocalDispatchWorktreeSetup"
     | "armLocalDispatchAckFallback"

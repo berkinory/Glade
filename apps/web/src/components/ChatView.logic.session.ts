@@ -370,6 +370,7 @@ export function resolvePromptHistoryNavigation(input: {
     input.state !== null && (activeEntry === undefined || input.currentPrompt !== activeEntry);
 
   if (input.direction === "older") {
+    if (input.state === null && input.currentPrompt.length > 0) return notHandled(null);
     if (!isComposerCursorOnFirstLine(input.currentPrompt, input.currentExpandedCursor)) {
       return notHandled(input.state);
     }

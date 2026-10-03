@@ -1,3 +1,4 @@
+import { usePendingTurnDispatchStore } from "../pendingTurnDispatch";
 import { type ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -128,15 +129,27 @@ export function useHandleNewThread() {
       setModelSelection,
     } = useComposerDraftStore.getState();
     const shouldForceFreshThread = options?.fresh === true;
+    const pending = usePendingTurnDispatchStore.getState();
+    const isPreparing = (id: ThreadId) =>
+      pending.submittingThreadIds.has(id) || pending.localDispatchByThreadId[id] != null;
 
     const storedDraftThreadCandidate = getDraftThreadByProjectId(projectId);
     const latestActiveDraftThreadCandidate: DraftThreadState | null = focusedThreadId
       ? getDraftThread(focusedThreadId)
       : null;
-    const storedDraftThread = !shouldForceFreshThread ? storedDraftThreadCandidate : null;
-    const latestActiveDraftThread: DraftThreadState | null = !shouldForceFreshThread
-      ? latestActiveDraftThreadCandidate
-      : null;
+    const storedDraftThread =
+      !shouldForceFreshThread &&
+      storedDraftThreadCandidate &&
+      !isPreparing(storedDraftThreadCandidate.threadId)
+        ? storedDraftThreadCandidate
+        : null;
+    const latestActiveDraftThread: DraftThreadState | null =
+      !shouldForceFreshThread &&
+      latestActiveDraftThreadCandidate &&
+      focusedThreadId !== null &&
+      !isPreparing(focusedThreadId)
+        ? latestActiveDraftThreadCandidate
+        : null;
     const bootstrapPlan = resolveThreadBootstrapPlan({
       storedDraftThread,
       latestActiveDraftThread,
@@ -265,7 +278,11 @@ export function useHandleNewThread() {
 
         isDestinationActive: () => router.state.location.pathname === `/${threadId}`,
         finalize: () => {
-          if (!options?.standalone) setProjectDraftThreadId(projectId, threadId, draftSeed);
+          if (
+            !options?.standalone &&
+            !(storedDraftThreadCandidate && isPreparing(storedDraftThreadCandidate.threadId))
+          )
+            setProjectDraftThreadId(projectId, threadId, draftSeed);
         },
         rollback: () => {
           clearDraftThread(threadId);

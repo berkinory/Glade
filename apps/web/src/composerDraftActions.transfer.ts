@@ -53,9 +53,9 @@ export function createTransferActions(
         return;
       }
       const clearedDraft = get().draftsByThreadId[threadId];
-      deleteDraftComposerImageBlobs(clearedDraft, () => get().draftsByThreadId);
+      const consumed = options?.consumedDraft;
       if (options?.preservePreviewUrls !== true) {
-        revokeDraftComposerImagePreviewUrls(clearedDraft);
+        revokeDraftComposerImagePreviewUrls(consumed ?? clearedDraft);
       }
       set((state) => {
         const current = state.draftsByThreadId[threadId];
@@ -64,23 +64,52 @@ export function createTransferActions(
         }
         const nextDraft: ComposerThreadDraftState = {
           ...current,
-          prompt: "",
+          prompt: !consumed || current.prompt === consumed.prompt ? "" : current.prompt,
           promptHistorySavedDraft: null,
-          images: [],
-          files: [],
-          nonPersistedImageIds: [],
-          persistedAttachments: [],
-          assistantSelections: [],
-          browserAnnotations: [],
-          terminalContexts: [],
-          fileComments: [],
-          pastedTexts: [],
-          pullRequestContexts: [],
-          skills: [],
-          mentions: [],
+          images: consumed ? current.images.filter((item) => !consumed.images.includes(item)) : [],
+          files: consumed ? current.files.filter((item) => !consumed.files.includes(item)) : [],
+          nonPersistedImageIds: consumed
+            ? current.nonPersistedImageIds.filter(
+                (id) => !consumed.nonPersistedImageIds.includes(id),
+              )
+            : [],
+          persistedAttachments: consumed
+            ? current.persistedAttachments.filter(
+                (item) => !consumed.persistedAttachments.some((sent) => sent.id === item.id),
+              )
+            : [],
+          assistantSelections: consumed
+            ? current.assistantSelections.filter(
+                (item) => !consumed.assistantSelections.includes(item),
+              )
+            : [],
+          browserAnnotations: consumed
+            ? current.browserAnnotations.filter(
+                (item) => !consumed.browserAnnotations.includes(item),
+              )
+            : [],
+          terminalContexts: consumed
+            ? current.terminalContexts.filter((item) => !consumed.terminalContexts.includes(item))
+            : [],
+          fileComments: consumed
+            ? current.fileComments.filter((item) => !consumed.fileComments.includes(item))
+            : [],
+          pastedTexts: consumed
+            ? current.pastedTexts.filter((item) => !consumed.pastedTexts.includes(item))
+            : [],
+          pullRequestContexts: consumed
+            ? current.pullRequestContexts.filter(
+                (item) => !consumed.pullRequestContexts.includes(item),
+              )
+            : [],
+          skills: consumed ? current.skills.filter((item) => !consumed.skills.includes(item)) : [],
+          mentions: consumed
+            ? current.mentions.filter((item) => !consumed.mentions.includes(item))
+            : [],
         };
         return putComposerDraft(state, threadId, nextDraft);
       });
+      deleteDraftComposerImageBlobs(consumed ?? clearedDraft, () => get().draftsByThreadId);
     },
   };
 }

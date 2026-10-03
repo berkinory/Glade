@@ -3,7 +3,6 @@ import {
   memo,
   useDeferredValue,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type ComponentProps,
@@ -13,7 +12,6 @@ import { type ProjectDirectoryEntry } from "@glade/contracts/workspace/project";
 import { type ProjectId, type SpaceId } from "@glade/contracts/core/baseSchemas";
 import { readNativeApi } from "../../nativeApi";
 import { useStore } from "../../store";
-import { createSidebarDisplayThreadsSelector } from "../../storeSelectors";
 import { PlusIcon, XIcon } from "~/lib/icons";
 import { getLocalFoldersGroupLabel } from "~/lib/localFoldersGroupLabel";
 import type { ProjectAppearance } from "~/lib/projectAppearance";
@@ -159,7 +157,6 @@ export const ProjectPicker = memo(function ProjectPicker({
   const searchPlaceholder = searchPlaceholderProp ?? "Search projects";
   const projects = useStore((state) => state.projects);
   const spaces = useStore((state) => state.spaces);
-  const sidebarThreads = useStore(useMemo(() => createSidebarDisplayThreadsSelector(), []));
   const activeSpaceId = useSpacesUiStore((state) => state.activeSpaceId);
   const voidSpace = useVoidSpace();
   const homeDir = useWorkspacePathsStore((state) => state.homeDir);
@@ -177,7 +174,6 @@ export const ProjectPicker = memo(function ProjectPicker({
   const activeFolderOptions = (() => {
     const seen = new Set<string>();
     const nextOptions: ActiveFolderOption[] = [];
-    const projectById = new Map(projects.map((project) => [project.id, project] as const));
     const getSpaceName = (spaceId: SpaceId | null) => spaceDisplayName(spaceId, spaces, voidSpace);
 
     for (const project of projects.filter((project) => project.kind === "project")) {
@@ -201,32 +197,6 @@ export const ProjectPicker = memo(function ProjectPicker({
       });
     }
 
-    if (!isProjectSelectionMode) {
-      for (const thread of sidebarThreads) {
-        const workspaceRoot = thread.worktreePath ?? null;
-        const folderName = basenameOfPath(workspaceRoot);
-        if (
-          !workspaceRoot ||
-          !folderName ||
-          folderName.startsWith(".") ||
-          seen.has(workspaceRoot)
-        ) {
-          continue;
-        }
-        seen.add(workspaceRoot);
-        const spaceId = projectById.get(thread.projectId)?.spaceId ?? null;
-        nextOptions.push({
-          projectId: null,
-          appearance: null,
-          spaceId,
-          spaceName: getSpaceName(spaceId),
-          cwd: workspaceRoot,
-          primaryLabel: folderName,
-          secondaryLabel: null,
-        });
-      }
-    }
-
     const selectedFolderName = basenameOfPath(selectedWorkspaceRoot);
     if (
       !isProjectSelectionMode &&
@@ -242,7 +212,7 @@ export const ProjectPicker = memo(function ProjectPicker({
         spaceName: getSpaceName(activeSpaceId),
         cwd: selectedWorkspaceRoot,
         primaryLabel: selectedFolderName,
-        secondaryLabel: null,
+        secondaryLabel: selectedWorkspaceRoot,
       });
     }
 

@@ -231,9 +231,8 @@ export function useChatProviderController({
 
   const {
     localDispatch,
-    worktreeSetupResolutionRef,
+    setWorktreeSetupResolution,
     worktreeSetupPendingAction,
-    setWorktreeSetupPendingAction,
     turnTakenOver,
     isSendBusy,
     isAwaitingTurnStart,
@@ -358,9 +357,8 @@ export function useChatProviderController({
     activeBackgroundTasks,
 
     localDispatch,
-    worktreeSetupResolutionRef,
+    setWorktreeSetupResolution,
     worktreeSetupPendingAction,
-    setWorktreeSetupPendingAction,
     turnTakenOver,
     isSendBusy,
     activeWorktreeSetup,

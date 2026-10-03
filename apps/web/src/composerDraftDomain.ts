@@ -326,7 +326,10 @@ export interface ComposerDraftStoreState {
 
   clearComposerContent: (
     threadId: ThreadId,
-    options?: { readonly preservePreviewUrls?: boolean },
+    options?: {
+      readonly preservePreviewUrls?: boolean;
+      readonly consumedDraft?: ComposerThreadDraftState;
+    },
   ) => void;
 }
 

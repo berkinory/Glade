@@ -1,3 +1,4 @@
+import { usePendingTurnDispatchStore } from "./pendingTurnDispatch";
 import type { StateCreator } from "zustand";
 import type { ComposerDraftStoreState } from "./composerDraftDomain";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
@@ -27,6 +28,7 @@ function removeDraftThreadIfUnmapped(input: {
 } {
   if (
     !input.threadId ||
+    usePendingTurnDispatchStore.getState().submittingThreadIds.has(input.threadId) ||
     Object.values(input.projectDraftThreadIdByProjectId).includes(input.threadId)
   ) {
     return {
@@ -413,9 +415,20 @@ export function createDraftThreadsActions(
         return;
       }
 
-      get().clearDraftThread(threadId, {
-        preserveComputerControl: draftThread.promotedTo === threadId,
-      });
+      if (draftThread.promotedTo === threadId) {
+        // Promotion changes thread identity ownership, not the independently edited composer.
+        set((state) => {
+          const { [threadId]: _promoted, ...draftThreadsByThreadId } = state.draftThreadsByThreadId;
+          return {
+            draftThreadsByThreadId,
+            projectDraftThreadIdByProjectId: Object.fromEntries(
+              Object.entries(state.projectDraftThreadIdByProjectId).filter(
+                ([, id]) => id !== threadId,
+              ),
+            ),
+          };
+        });
+      } else get().clearDraftThread(threadId);
     },
     clearDraftThread: (threadId, options) => {
       if (threadId.length === 0) {

@@ -56,6 +56,26 @@ describe("composerDraftStore clearComposerContent", () => {
     expect(revokeSpy).toHaveBeenCalledWith("blob:clear");
   });
 
+  it("keeps newer edits and attachments when a captured send is consumed and promoted", () => {
+    const store = useComposerDraftStore.getState();
+    store.registerDraftThread(threadId, { projectId: ProjectId.makeUnsafe("project-send") });
+    store.setPrompt(threadId, "sent text");
+    store.addImage(threadId, makeImage({ id: "sent-image", previewUrl: "blob:sent" }));
+    const consumedDraft = useComposerDraftStore.getState().draftsByThreadId[threadId]!;
+    store.setPrompt(threadId, "new text during preparation");
+    store.addImage(
+      threadId,
+      makeImage({ id: "new-image", previewUrl: "blob:new", name: "new.png" }),
+    );
+    store.clearComposerContent(threadId, { consumedDraft, preservePreviewUrls: true });
+    store.markDraftThreadPromoting(threadId);
+    store.finalizePromotedDraftThread(threadId);
+    const draft = useComposerDraftStore.getState().draftsByThreadId[threadId];
+    expect(draft?.prompt).toBe("new text during preparation");
+    expect(draft?.images.map((image) => image.id)).toEqual(["new-image"]);
+    expect(revokeSpy).not.toHaveBeenCalled();
+  });
+
   it("can preserve blob preview URLs for optimistic message handoff", () => {
     const first = makeImage({
       id: "img-optimistic",
@@ -257,7 +277,7 @@ describe("composerDraftStore project draft thread mapping", () => {
     expect(useComposerDraftStore.getState().draftsByThreadId[threadId]).toBeUndefined();
   });
 
-  it("marks promoted drafts without deleting composer state until finalization", () => {
+  it("preserves composer state after promotion finalizes", () => {
     const store = useComposerDraftStore.getState();
     store.setProjectDraftThreadId(projectId, threadId);
     store.setPrompt(threadId, "keep me while server thread hydrates");
@@ -273,7 +293,9 @@ describe("composerDraftStore project draft thread mapping", () => {
     useComposerDraftStore.getState().finalizePromotedDraftThread(threadId);
 
     expect(useComposerDraftStore.getState().getDraftThread(threadId)).toBeNull();
-    expect(useComposerDraftStore.getState().draftsByThreadId[threadId]).toBeUndefined();
+    expect(useComposerDraftStore.getState().draftsByThreadId[threadId]?.prompt).toBe(
+      "keep me while server thread hydrates",
+    );
   });
 
   it.each([true, false])(
@@ -282,6 +304,7 @@ describe("composerDraftStore project draft thread mapping", () => {
       const store = useComposerDraftStore.getState();
       store.setProjectDraftThreadId(projectId, threadId);
       store.setPrompt(threadId, "already sent");
+      store.clearComposerContent(threadId);
       store.setEnableComputerControl(threadId, enabled);
 
       markPromotedDraftThreads(new Set([threadId]));

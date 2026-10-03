@@ -1,3 +1,6 @@
+import { revokeUserMessagePreviewUrls } from "../ChatView.logic.worktree";
+import { useComposerDraftStore } from "../../composerDraftStore";
+import { WsTransportRpcError } from "../../wsTransport.support";
 import { resolveProviderModelSelection } from "~/lib/providerModelSelection";
 import { useChatThreadContext } from "./ChatThreadContext";
 import type { ProjectId } from "@glade/contracts/core/baseSchemas";
@@ -19,7 +22,6 @@ import { promoteThreadCreate } from "~/lib/threadCreatePromotion";
 import { newCommandId, randomUUID } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
 
-import { collapseExpandedComposerCursor, detectComposerTrigger } from "../../composer-logic";
 import type { DraftThreadEnvMode, QueuedComposerChatTurn } from "../../composerDraftDomain";
 import {
   cloneComposerImageAttachment,
@@ -39,7 +41,6 @@ import {
   turnStartDispatchFields,
   type TurnDispatchSettings,
 } from "../ChatView.logic.subagents";
-import { revokeUserMessagePreviewUrls } from "../ChatView.logic.worktree";
 import type { ChatTurnSubmissionInput } from "./chatSendTypes";
 import { waitForSetupScriptTerminalActivity } from "./projectScriptRuntime";
 interface PreparedChatTurn {
@@ -110,31 +111,9 @@ type ChatTurnExecutionInput = Pick<
   | "threadId"
   | "failLocalDispatchWorktreeSetup"
   | "setOptimisticUserMessages"
-  | "promptRef"
-  | "composerImagesRef"
-  | "composerFilesRef"
-  | "composerAssistantSelectionsRef"
-  | "composerBrowserAnnotationsRef"
-  | "composerFileCommentsRef"
-  | "composerTerminalContextsRef"
-  | "composerPastedTextsRef"
-  | "composerPullRequestContextsRef"
-  | "setPrompt"
-  | "setComposerCursor"
-  | "addComposerImagesToDraft"
-  | "addComposerFilesToDraft"
-  | "addComposerAssistantSelectionToDraft"
-  | "addComposerDraftBrowserAnnotations"
-  | "addComposerFileCommentToDraft"
-  | "addComposerTerminalContextsToDraft"
-  | "addComposerPastedTextsToDraft"
-  | "addComposerPullRequestContextsToDraft"
-  | "updateSelectedComposerSkills"
-  | "updateSelectedComposerMentions"
-  | "setComposerTrigger"
   | "setThreadError"
   | "sendInFlightRef"
-  | "worktreeSetupResolutionRef"
+  | "setWorktreeSetupResolution"
   | "scheduleFailedWorktreeSetupDispatchReset"
   | "resetLocalDispatch"
 >;
@@ -146,29 +125,7 @@ type ChatTurnExecutionControllerInput = {
   >;
   session: Pick<
     ChatTurnExecutionInput,
-    | "setStoreThreadWorkspace"
-    | "createWorktreeMutation"
-    | "promptRef"
-    | "composerImagesRef"
-    | "composerFilesRef"
-    | "composerAssistantSelectionsRef"
-    | "composerBrowserAnnotationsRef"
-    | "composerFileCommentsRef"
-    | "composerTerminalContextsRef"
-    | "composerPastedTextsRef"
-    | "composerPullRequestContextsRef"
-    | "setPrompt"
-    | "setComposerCursor"
-    | "addComposerImagesToDraft"
-    | "addComposerFilesToDraft"
-    | "addComposerAssistantSelectionToDraft"
-    | "addComposerDraftBrowserAnnotations"
-    | "addComposerFileCommentToDraft"
-    | "addComposerTerminalContextsToDraft"
-    | "addComposerPastedTextsToDraft"
-    | "addComposerPullRequestContextsToDraft"
-    | "setComposerTrigger"
-    | "sendInFlightRef"
+    "setStoreThreadWorkspace" | "createWorktreeMutation" | "sendInFlightRef"
   >;
   provider: Pick<
     ChatTurnExecutionInput,
@@ -176,9 +133,7 @@ type ChatTurnExecutionControllerInput = {
     | "beginLocalDispatch"
     | "armLocalDispatchAckFallback"
     | "failLocalDispatchWorktreeSetup"
-    | "updateSelectedComposerSkills"
-    | "updateSelectedComposerMentions"
-    | "worktreeSetupResolutionRef"
+    | "setWorktreeSetupResolution"
     | "scheduleFailedWorktreeSetupDispatchReset"
     | "resetLocalDispatch"
   >;
@@ -203,40 +158,13 @@ export function useChatTurnExecution({
 }: ChatTurnExecutionControllerInput) {
   const { isServerThread, isLocalDraftThread, setSettledThreadBranchWarningDismissedThreadId } =
     workspace;
-  const {
-    setStoreThreadWorkspace,
-    createWorktreeMutation,
-
-    promptRef,
-    composerImagesRef,
-    composerFilesRef,
-    composerAssistantSelectionsRef,
-    composerBrowserAnnotationsRef,
-    composerFileCommentsRef,
-    composerTerminalContextsRef,
-    composerPastedTextsRef,
-    composerPullRequestContextsRef,
-    setPrompt,
-    setComposerCursor,
-    addComposerImagesToDraft,
-    addComposerFilesToDraft,
-    addComposerAssistantSelectionToDraft,
-    addComposerDraftBrowserAnnotations,
-    addComposerFileCommentToDraft,
-    addComposerTerminalContextsToDraft,
-    addComposerPastedTextsToDraft,
-    addComposerPullRequestContextsToDraft,
-    setComposerTrigger,
-    sendInFlightRef,
-  } = session;
+  const { setStoreThreadWorkspace, createWorktreeMutation, sendInFlightRef } = session;
   const {
     clearLocalDispatchWorktreeSetup,
     beginLocalDispatch,
     armLocalDispatchAckFallback,
     failLocalDispatchWorktreeSetup,
-    updateSelectedComposerSkills,
-    updateSelectedComposerMentions,
-    worktreeSetupResolutionRef,
+    setWorktreeSetupResolution,
     scheduleFailedWorktreeSetupDispatchReset,
     resetLocalDispatch,
   } = provider;
@@ -304,6 +232,7 @@ export function useChatTurnExecution({
       let createdWorktreeForSendPath: string | null = null;
       let switchedToLocalCheckout = false;
       let turnStartSucceeded = false;
+      let turnDispatchAttempted = false;
       let settledLocalBranchUpdatedForSend = false;
       await (async () => {
         const applyWorkLocallySwitch = async () => {
@@ -361,6 +290,46 @@ export function useChatTurnExecution({
           await applyWorkLocallySwitch();
         };
 
+        const threadCreateModelSelection = await resolveProviderModelSelection({
+          api,
+          selection: selectedModelSelectionForSend,
+          cwd: targetProjectCwdForSend,
+        });
+
+        if (isLocalDraftThread) {
+          await promoteThreadCreate(
+            {
+              type: "thread.create",
+              commandId: newCommandId(),
+              threadId: threadIdForSend,
+              projectId: targetProjectIdForSend,
+              title,
+              modelSelection: threadCreateModelSelection,
+              runtimeMode: nextRuntimeModeForSend,
+
+              envMode: nextThreadEnvMode,
+              branch: nextThreadBranch,
+              worktreePath: nextThreadWorktreePath,
+              workingDirectory: nextThreadWorkingDirectory,
+              associatedWorktreePath: nextAssociatedWorktreePath,
+              associatedWorktreeBranch: nextAssociatedWorktreeBranch,
+              associatedWorktreeRef: nextAssociatedWorktreeRef,
+              lastKnownPr: activeThread.lastKnownPr ?? null,
+              createdAt: activeThread.createdAt,
+            },
+            api,
+          );
+          if (targetProjectKindForSend === "chat") {
+            await api.orchestration.dispatchCommand({
+              type: "project.meta.update",
+              commandId: newCommandId(),
+              projectId: targetProjectIdForSend,
+              title,
+            });
+          }
+          createdServerThreadForLocalDraft = true;
+        }
+
         if (baseBranchForWorktree && worktreeSetupResolution) {
           const worktreeProgressId = randomUUID();
           const creationFlow = await runWorktreeCreationFlow({
@@ -409,7 +378,7 @@ export function useChatTurnExecution({
             nextAssociatedWorktreePath = nextAssociatedWorktree.associatedWorktreePath;
             nextAssociatedWorktreeBranch = nextAssociatedWorktree.associatedWorktreeBranch;
             nextAssociatedWorktreeRef = nextAssociatedWorktree.associatedWorktreeRef;
-            if (isServerThread) {
+            if (isServerThread || createdServerThreadForLocalDraft) {
               await api.orchestration.dispatchCommand({
                 type: "thread.meta.update",
                 commandId: newCommandId(),
@@ -429,46 +398,6 @@ export function useChatTurnExecution({
               });
             }
           }
-        }
-
-        const threadCreateModelSelection = await resolveProviderModelSelection({
-          api,
-          selection: selectedModelSelectionForSend,
-          cwd: targetProjectCwdForSend,
-        });
-
-        if (isLocalDraftThread) {
-          await promoteThreadCreate(
-            {
-              type: "thread.create",
-              commandId: newCommandId(),
-              threadId: threadIdForSend,
-              projectId: targetProjectIdForSend,
-              title,
-              modelSelection: threadCreateModelSelection,
-              runtimeMode: nextRuntimeModeForSend,
-
-              envMode: nextThreadEnvMode,
-              branch: nextThreadBranch,
-              worktreePath: nextThreadWorktreePath,
-              workingDirectory: nextThreadWorkingDirectory,
-              associatedWorktreePath: nextAssociatedWorktreePath,
-              associatedWorktreeBranch: nextAssociatedWorktreeBranch,
-              associatedWorktreeRef: nextAssociatedWorktreeRef,
-              lastKnownPr: activeThread.lastKnownPr ?? null,
-              createdAt: activeThread.createdAt,
-            },
-            api,
-          );
-          if (targetProjectKindForSend === "chat") {
-            await api.orchestration.dispatchCommand({
-              type: "project.meta.update",
-              commandId: newCommandId(),
-              projectId: targetProjectIdForSend,
-              title,
-            });
-          }
-          createdServerThreadForLocalDraft = true;
         }
 
         const setupScript = switchedToLocalCheckout ? null : setupScriptForWorktree;
@@ -572,26 +501,26 @@ export function useChatTurnExecution({
           provider: dispatchSettings.modelSelection.provider,
           providerOptions: dispatchSettings.providerOptions,
         });
-        await stagedTurnAttachments.runWithDispatch(async (turnAttachments) => {
-          await api.orchestration.dispatchCommand({
-            type: "thread.turn.start",
-            commandId: newCommandId(),
-            threadId: threadIdForSend,
-            message: {
-              messageId: messageIdForSend,
-              role: "user",
-              text: outgoingMessageText,
-              attachments: turnAttachments,
-              ...(mentionedSkillsForSend.length > 0 ? { skills: mentionedSkillsForSend } : {}),
-              ...(mentionedPluginMentionsForSend.length > 0
-                ? { mentions: mentionedPluginMentionsForSend }
-                : {}),
-            },
-            ...turnStartDispatchFields(dispatchSettings, dispatchMode),
+        turnDispatchAttempted = true;
+        await api.orchestration.dispatchCommand({
+          type: "thread.turn.start",
+          commandId: newCommandId(),
+          threadId: threadIdForSend,
+          message: {
+            messageId: messageIdForSend,
+            role: "user",
+            text: outgoingMessageText,
+            attachments: stagedTurnAttachments.attachments,
+            ...(mentionedSkillsForSend.length > 0 ? { skills: mentionedSkillsForSend } : {}),
+            ...(mentionedPluginMentionsForSend.length > 0
+              ? { mentions: mentionedPluginMentionsForSend }
+              : {}),
+          },
+          ...turnStartDispatchFields(dispatchSettings, dispatchMode),
 
-            createdAt: messageCreatedAt,
-          });
+          createdAt: messageCreatedAt,
         });
+        stagedTurnAttachments.commit();
         turnStartSucceeded = true;
         if (
           shouldResumeSettledLocalThread &&
@@ -619,11 +548,17 @@ export function useChatTurnExecution({
           setQueuedSteerGate(nextSteerGate);
           queuedComposerDrain.armQueuedComposerSteerGate(threadId, nextSteerGate);
         }
-
-        if (queuedChatTurn === null) {
-        }
       })().catch(async (err: unknown) => {
         const setupCancelled = err instanceof WorktreeSetupCancelledError;
+        if (turnDispatchAttempted && !(err instanceof WsTransportRpcError)) {
+          setThreadError(
+            threadIdForSend,
+            "Message delivery could not be confirmed. Reconnect and check this chat before sending again.",
+          );
+          clearLocalDispatchWorktreeSetup();
+          armLocalDispatchAckFallback(threadIdForSend);
+          return;
+        }
 
         await turnAttachmentsPromise.then(
           (staged) => staged.cleanup(),
@@ -662,15 +597,6 @@ export function useChatTurnExecution({
               () => undefined,
             );
         }
-        if (createdServerThreadForLocalDraft && !turnStartSucceeded) {
-          await api.orchestration
-            .dispatchCommand({
-              type: "thread.delete",
-              commandId: newCommandId(),
-              threadId: threadIdForSend,
-            })
-            .catch(() => undefined);
-        }
         if (createdWorktreeForSendPath && !turnStartSucceeded) {
           const removed = await api.git
             .removeWorktree({
@@ -683,7 +609,7 @@ export function useChatTurnExecution({
               () => true,
               () => false,
             );
-          if (removed && isServerThread) {
+          if (removed && (isServerThread || createdServerThreadForLocalDraft)) {
             await api.orchestration
               .dispatchCommand({
                 type: "thread.meta.update",
@@ -715,46 +641,43 @@ export function useChatTurnExecution({
             return next.length === existing.length ? existing : next;
           });
         }
-        if (
-          queuedChatTurn === null &&
-          !turnStartSucceeded &&
-          promptRef.current.length === 0 &&
-          composerImagesRef.current.length === 0 &&
-          composerFilesRef.current.length === 0 &&
-          composerAssistantSelectionsRef.current.length === 0 &&
-          composerBrowserAnnotationsRef.current.length === 0 &&
-          composerFileCommentsRef.current.length === 0 &&
-          composerTerminalContextsRef.current.length === 0 &&
-          composerPastedTextsRef.current.length === 0 &&
-          composerPullRequestContextsRef.current.length === 0
-        ) {
+        if (queuedChatTurn === null && !turnStartSucceeded) {
+          const draftStore = useComposerDraftStore.getState();
+          const current = draftStore.draftsByThreadId[threadIdForSend];
+          if (!current?.prompt) draftStore.setPrompt(threadIdForSend, promptForSend);
+          else if (current.prompt !== promptForSend)
+            draftStore.setPrompt(threadIdForSend, `${promptForSend}\n\n${current.prompt}`);
+          draftStore.addImages(
+            threadIdForSend,
+            composerImagesSnapshot.map(cloneComposerImageAttachment),
+          );
+          draftStore.addFiles(threadIdForSend, composerFilesSnapshot);
+          for (const selection of composerAssistantSelectionsSnapshot)
+            draftStore.addAssistantSelection(threadIdForSend, selection);
+          draftStore.addBrowserAnnotations(threadIdForSend, composerBrowserAnnotationsSnapshot);
+          for (const comment of composerFileCommentsSnapshot)
+            draftStore.addFileComment(threadIdForSend, comment);
+          draftStore.setTerminalContexts(threadIdForSend, [
+            ...composerTerminalContextsSnapshot,
+            ...(current?.terminalContexts ?? []),
+          ]);
+          draftStore.addPastedTexts(threadIdForSend, composerPastedTextsSnapshot);
+          for (const pr of composerPullRequestContextsSnapshot)
+            draftStore.addPullRequestContext(threadIdForSend, pr);
+          draftStore.setSkills(
+            threadIdForSend,
+            current?.skills.length ? current.skills : composerSkillsSnapshot,
+          );
+          draftStore.setMentions(
+            threadIdForSend,
+            current?.mentions.length ? current.mentions : composerMentionsSnapshot,
+          );
           setOptimisticUserMessages((existing) => {
-            const removed = existing.filter((message) => message.id === messageIdForSend);
-            for (const message of removed) {
-              revokeUserMessagePreviewUrls(message);
+            for (const message of existing) {
+              if (message.id === messageIdForSend) revokeUserMessagePreviewUrls(message);
             }
-            const next = existing.filter((message) => message.id !== messageIdForSend);
-            return next.length === existing.length ? existing : next;
+            return existing.filter((message) => message.id !== messageIdForSend);
           });
-          promptRef.current = promptForSend;
-          setPrompt(promptForSend);
-
-          setComposerCursor(collapseExpandedComposerCursor(promptForSend, promptForSend.length));
-          addComposerImagesToDraft(composerImagesSnapshot.map(cloneComposerImageAttachment));
-          addComposerFilesToDraft(composerFilesSnapshot);
-          for (const selection of composerAssistantSelectionsSnapshot) {
-            addComposerAssistantSelectionToDraft(selection);
-          }
-          addComposerDraftBrowserAnnotations(threadIdForSend, composerBrowserAnnotationsSnapshot);
-          for (const comment of composerFileCommentsSnapshot) {
-            addComposerFileCommentToDraft(comment);
-          }
-          addComposerTerminalContextsToDraft(composerTerminalContextsSnapshot);
-          addComposerPastedTextsToDraft(composerPastedTextsSnapshot);
-          addComposerPullRequestContextsToDraft(composerPullRequestContextsSnapshot);
-          updateSelectedComposerSkills(composerSkillsSnapshot);
-          updateSelectedComposerMentions(composerMentionsSnapshot);
-          setComposerTrigger(detectComposerTrigger(promptForSend, promptForSend.length));
         }
         if (!setupCancelled) {
           setThreadError(
@@ -764,7 +687,7 @@ export function useChatTurnExecution({
         }
       });
       sendInFlightRef.current = false;
-      worktreeSetupResolutionRef.current = null;
+      setWorktreeSetupResolution(threadIdForSend, null);
       if (!turnStartSucceeded) {
         if (baseBranchForWorktree && (worktreeSetupResolution?.action ?? null) === null) {
           scheduleFailedWorktreeSetupDispatchReset();
@@ -791,31 +714,9 @@ export function useChatTurnExecution({
 
       failLocalDispatchWorktreeSetup,
       setOptimisticUserMessages,
-      promptRef,
-      composerImagesRef,
-      composerFilesRef,
-      composerAssistantSelectionsRef,
-      composerBrowserAnnotationsRef,
-      composerFileCommentsRef,
-      composerTerminalContextsRef,
-      composerPastedTextsRef,
-      composerPullRequestContextsRef,
-      setPrompt,
-      setComposerCursor,
-      addComposerImagesToDraft,
-      addComposerFilesToDraft,
-      addComposerAssistantSelectionToDraft,
-      addComposerDraftBrowserAnnotations,
-      addComposerFileCommentToDraft,
-      addComposerTerminalContextsToDraft,
-      addComposerPastedTextsToDraft,
-      addComposerPullRequestContextsToDraft,
-      updateSelectedComposerSkills,
-      updateSelectedComposerMentions,
-      setComposerTrigger,
       setThreadError,
       sendInFlightRef,
-      worktreeSetupResolutionRef,
+      setWorktreeSetupResolution,
       scheduleFailedWorktreeSetupDispatchReset,
       resetLocalDispatch,
     ],

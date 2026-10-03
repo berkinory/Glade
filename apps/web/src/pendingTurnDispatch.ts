@@ -3,9 +3,21 @@ import { create } from "zustand";
 import {
   LOCAL_DISPATCH_TURN_TAKEOVER_TIMEOUT_MS,
   type LocalDispatchSnapshot,
+  type WorktreeSetupResolution,
 } from "./components/ChatView.logic.dispatch";
 
+import type { WorktreeSetupResolutionAction } from "./types";
+
 interface PendingTurnDispatchState {
+  submittingThreadIds: ReadonlySet<ThreadId>;
+  preparationActions: Partial<Record<ThreadId, WorktreeSetupResolutionAction>>;
+  beginSubmission: (threadId: ThreadId) => boolean;
+  endSubmission: (threadId: ThreadId) => void;
+  setWorktreeSetupResolution: (
+    threadId: ThreadId,
+    resolution: WorktreeSetupResolution | null,
+  ) => void;
+  resolveWorktreeSetup: (threadId: ThreadId, action: WorktreeSetupResolutionAction) => void;
   localDispatchByThreadId: Partial<Record<ThreadId, LocalDispatchSnapshot>>;
   setLocalDispatch: (
     threadId: ThreadId,
@@ -16,12 +28,38 @@ interface PendingTurnDispatchState {
   ) => void;
 }
 
+const preparationResolutions = new Map<ThreadId, WorktreeSetupResolution>();
 const expiryByThreadId = new Map<ThreadId, ReturnType<typeof setTimeout>>();
 
 // Dispatch belongs to the thread, including while its composer is unmounted. Only local intent
 // lives here; the server projection remains the owner once a turn starts or fails.
 export const usePendingTurnDispatchStore = create<PendingTurnDispatchState>((set, get) => ({
   localDispatchByThreadId: {},
+  submittingThreadIds: new Set(),
+  preparationActions: {},
+  beginSubmission: (threadId) => {
+    if (get().submittingThreadIds.has(threadId)) return false;
+    set({ submittingThreadIds: new Set([...get().submittingThreadIds, threadId]) });
+    return true;
+  },
+  endSubmission: (threadId) => {
+    const next = new Set(get().submittingThreadIds);
+    next.delete(threadId);
+    set({ submittingThreadIds: next });
+  },
+  setWorktreeSetupResolution: (threadId, resolution) => {
+    if (resolution) preparationResolutions.set(threadId, resolution);
+    else preparationResolutions.delete(threadId);
+    const actions = { ...get().preparationActions };
+    delete actions[threadId];
+    set({ preparationActions: actions });
+  },
+  resolveWorktreeSetup: (threadId, action) => {
+    const resolution = preparationResolutions.get(threadId);
+    if (!resolution || resolution.action !== null) return;
+    resolution.resolve(action);
+    set({ preparationActions: { ...get().preparationActions, [threadId]: action } });
+  },
   setLocalDispatch: (threadId, update) => {
     const current = get().localDispatchByThreadId[threadId] ?? null;
     const next = typeof update === "function" ? update(current) : update;

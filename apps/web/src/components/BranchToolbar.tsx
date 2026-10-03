@@ -1,3 +1,6 @@
+import { useQuery } from "@tanstack/react-query";
+import { gitBranchesQueryOptions } from "../lib/gitQueryOptions";
+import { Checkbox } from "./ui/checkbox";
 import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
 import type { ServerProviderStatus } from "@glade/contracts/server/server";
@@ -257,6 +260,10 @@ export default function BranchToolbar({
     : (draftThread?.workingDirectory ?? null);
   const branchCwd = activeWorktreePath ?? activeWorkingDirectory ?? activeProject?.cwd ?? null;
   const branchProjectCwd = activeProject?.cwd ?? null;
+  const draftGit = useQuery({
+    ...gitBranchesQueryOptions(branchCwd),
+    enabled: !hasServerThread && Boolean(branchCwd),
+  });
   const effectiveEnvMode = resolveEffectiveEnvMode({
     activeWorktreePath,
     hasServerThread,
@@ -373,7 +380,20 @@ export default function BranchToolbar({
     >
       <div className={isPanel ? "flex flex-col gap-0.5" : "flex min-w-0 items-center gap-2"}>
         {showEnvironment ? (
-          showEnvPicker ? (
+          !hasServerThread ? (
+            <label className="inline-flex items-center gap-2 text-ui-sm text-muted-foreground">
+              <Checkbox
+                checked={effectiveEnvMode === "worktree"}
+                disabled={
+                  envLocked ||
+                  (effectiveEnvMode !== "worktree" &&
+                    (!canSwitchToWorktree || draftGit.data?.isRepo !== true))
+                }
+                onCheckedChange={(checked) => onEnvModeChange(checked ? "worktree" : "local")}
+              />
+              Worktree
+            </label>
+          ) : showEnvPicker ? (
             <ComposerEnvironmentPicker
               environmentPresentation={environmentPresentation}
               onEnvModeChange={onEnvModeChange}
