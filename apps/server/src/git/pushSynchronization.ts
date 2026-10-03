@@ -148,6 +148,7 @@ export function synchronizePush(
                 "--format=%(refname)",
                 "refs/remotes",
                 "refs/tags",
+                "refs/glade/publication",
               ])).stdout.trim()
             )
               return yield* fail(

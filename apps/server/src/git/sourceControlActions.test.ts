@@ -171,6 +171,32 @@ it.layer(layer)("source-control actions", (it) => {
   );
 
   it.effect(
+    "undo keeps conflicting local tags and rejects commits published only under remote tags",
+    () =>
+      Effect.gen(function* () {
+        const { cwd, files, run, write, actions } = yield* setup;
+        const root = (yield* run(["rev-parse", "HEAD"])).stdout.trim();
+        yield* run(["tag", "v1", root]);
+        const remote = yield* files.makeTempDirectoryScoped({ prefix: "glade-remote-tags-" });
+        yield* run(["init", "--bare", remote]);
+        yield* run(["remote", "add", "upstream", remote]);
+        yield* run(["push", "upstream", "HEAD:refs/heads/main"]);
+        yield* write("file.txt", "published tag\n");
+        yield* run(["commit", "-am", "Remote tag"]);
+        const published = (yield* run(["rev-parse", "HEAD"])).stdout.trim();
+        yield* run(["push", "upstream", "HEAD:refs/tags/v1"]);
+        yield* write("file.txt", "unpublished\n");
+        yield* run(["commit", "-am", "Undo me"]);
+        const head = (yield* run(["rev-parse", "HEAD"])).stdout.trim();
+        expect((yield* actions.undoCommit(cwd, head)).message).toBe("Undo me");
+        expect((yield* run(["rev-parse", "HEAD"])).stdout.trim()).toBe(published);
+        expect((yield* run(["rev-parse", "refs/tags/v1"])).stdout.trim()).toBe(root);
+        expect(Exit.isFailure(yield* Effect.exit(actions.undoCommit(cwd, published)))).toBe(true);
+        expect((yield* run(["rev-parse", "HEAD"])).stdout.trim()).toBe(published);
+      }),
+  );
+
+  it.effect(
     "synchronized push publishes, fast-forwards and rebases divergence without losing work",
     () =>
       Effect.gen(function* () {

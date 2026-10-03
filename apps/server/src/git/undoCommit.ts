@@ -33,6 +33,7 @@ export function undoCommitActions(git: GitCoreShape) {
         "--format=%(refname)",
         "refs/remotes",
         "refs/tags",
+        "refs/glade/publication",
       ]);
       if (published.stdout.trim()) return null;
       return { sha, parent, branch: branch.stdout.trim() };

@@ -73,6 +73,8 @@
 
 ### Fixed
 
+- Unpublished commits can be undone when remotes use conflicting tag names, while published commits remain protected.
+
 - Closing workspace tabs returns to the most recently used tab, while the provider chat tab stays protected.
 
 - Sidebar provider and terminal indicators stay visible for unnamed chats, and draft markers appear only on inactive chats.

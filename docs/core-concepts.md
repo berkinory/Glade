@@ -252,7 +252,7 @@ History follows local Git changes, including commits, resets and branch switches
 **Undo commit** applies only to the latest eligible unpublished commit. It preserves the index,
 working-tree edits and untracked files, and restores the message into an empty commit draft.
 Root commits, merge commits, detached HEAD, published commits and active operations cannot be undone.
-Glade refreshes every configured remote before revalidating publication and HEAD; a failed fetch
+Glade refreshes every configured remote before revalidating publication and HEAD. Remote tags are checked separately from local tags, so matching tag names across forks do not conflict. A failed fetch
 blocks undo. Branches without an upstream are checked against all remote-tracking refs and tags.
 
 Push fetches its destination, fast-forwards an exclusively behind branch, or rebases unpublished

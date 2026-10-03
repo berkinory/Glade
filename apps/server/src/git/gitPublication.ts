@@ -10,7 +10,15 @@ export function refreshPublicationRefs(cwd: string, execute: GitCoreShape["execu
         cwd,
         operation: "check publication",
         timeoutMs: 120_000,
-        args: ["fetch", "--prune", "--tags", remote, `+refs/heads/*:refs/remotes/${remote}/*`],
+        // Remote tags may share names with unrelated local tags, especially across forks.
+        args: [
+          "fetch",
+          "--prune",
+          "--no-tags",
+          remote,
+          `+refs/heads/*:refs/remotes/${remote}/*`,
+          `+refs/tags/*:refs/glade/publication/${remote}/tags/*`,
+        ],
       });
     }
   });
