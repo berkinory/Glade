@@ -6,8 +6,8 @@ export type DevProcess = {
 };
 
 const DEV_COMMAND =
-  /(?:^|[\\/])(?:bun|node|turbo|vite|tsdown)(?:\.exe)?\s+(?:(?:run\s+)?dev(?::(?:desktop|server|web|bundle|electron))?(?=\s|$)|(?:run\s+)?(?:scripts[\\/]dev-runner\.ts|scripts[\\/]dev(?:-electron)?\.mjs)(?=\s|$)|run\s+src[\\/]index\.ts(?=\s|$)|.*[\\/](?:vite|tsdown)(?:\.js)?(?=\s|$))/i;
-const TURBO_DEV_COMMAND = /(?:^|[\\/])turbo(?:\.exe)?\s+run\s+dev(?=\s|$)/i;
+  /(?:^|[\\/])(?:bun|node|turbo|vite|tsdown)(?:\.exe)?\s+(?:(?:run\s+)?dev(?::(?:desktop|server|web|bundle|electron|build))?(?=\s|$)|(?:run\s+)?(?:scripts[\\/]dev-runner\.ts|scripts[\\/]dev(?:-electron)?\.mjs)(?=\s|$)|run\s+src[\\/]index\.ts(?=\s|$)|.*[\\/](?:vite|tsdown)(?:\.js)?(?=\s|$))/i;
+const TURBO_DEV_COMMAND = /(?:^|[\\/])turbo(?:\.exe)?\s+run\s+dev(?::build)?(?=\s|$)/i;
 const WATCH_COMMAND = /(?:^|[\\/])tsdown(?:\.exe)?(?:\s|$).*--watch(?:\s|$)/i;
 const DESKTOP_MARKER = /--glade-dev-root=(?:"[^"]+"|'[^']+'|\S+)/;
 const ELECTRON_EXECUTABLE = /(?:^|[\\/])electron(?:\.exe)?(?:\s|$)/i;

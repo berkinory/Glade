@@ -116,7 +116,7 @@ function precompressPlugin(): Plugin {
   };
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [
     tanstackRouter({
       target: "react",
@@ -132,8 +132,7 @@ export default defineConfig({
       presets: [reactCompilerPreset()],
     }),
     tailwindcss(),
-    centralIconPrunePlugin(),
-    precompressPlugin(),
+    ...(mode === "desktop-dev" ? [] : [centralIconPrunePlugin(), precompressPlugin()]),
   ],
   optimizeDeps: {
     include: [
@@ -158,8 +157,12 @@ export default defineConfig({
       host: "localhost",
     },
   },
+  preview: {
+    port,
+    strictPort: true,
+  },
   build: {
-    outDir: "dist",
+    outDir: mode === "desktop-dev" ? "dist-dev" : "dist",
     emptyOutDir: true,
     sourcemap: buildSourcemap,
 
@@ -170,4 +173,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

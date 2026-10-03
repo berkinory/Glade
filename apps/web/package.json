@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:build": "vite preview --mode desktop-dev",
+    "build:dev": "vite build --mode desktop-dev",
     "build": "vite build",
     "prepare": "effect-language-service patch",
     "preview": "vite preview",

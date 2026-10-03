@@ -24,6 +24,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun scripts/dev-runner.ts dev:desktop",
+    "dev:build": "bun scripts/dev-runner.ts dev:build",
     "dev:stop": "bun scripts/dev-stop.ts",
     "start": "turbo run start --filter=@glade/cli",
     "build": "turbo run build",

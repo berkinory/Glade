@@ -45,6 +45,7 @@ const MODE_ARGS = {
   "dev:server": ["run", "dev", "--filter=@glade/cli"],
   "dev:web": ["run", "dev", "--filter=@glade/web"],
   "dev:desktop": ["run", "dev", "--filter=@glade/desktop", "--filter=@glade/web", "--parallel"],
+  "dev:build": ["run", "dev:build", "--filter=@glade/desktop", "--filter=@glade/web"],
 } as const satisfies Record<string, ReadonlyArray<string>>;
 
 type DevMode = keyof typeof MODE_ARGS;
@@ -148,7 +149,7 @@ function resolveBaseDir(
       return path.resolve(configured);
     }
 
-    if (mode === "dev:desktop") {
+    if (mode === "dev:desktop" || mode === "dev:build") {
       const flavor = resolveGladeDesktopFlavor({
         isDevelopment: true,
         requestedFlavor: requestedDesktopFlavor,

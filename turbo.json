@@ -34,6 +34,45 @@
       "cache": false,
       "persistent": true
     },
+    "dev:build": {
+      "cache": false,
+      "persistent": true
+    },
+    "@glade/web#dev:build": {
+      "dependsOn": ["build:dev"],
+      "cache": false,
+      "persistent": true
+    },
+    "@glade/desktop#dev:build": {
+      "dependsOn": ["build:dev"],
+      "cache": false,
+      "persistent": true
+    },
+    "@glade/desktop#build:dev": {
+      "dependsOn": ["@glade/cli#build:dev", "@glade/web#build:dev"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "../../packages/contracts/src/**",
+        "../../packages/shared/src/**"
+      ],
+      "outputs": ["dist-electron/**", "native-dist/**"]
+    },
+    "@glade/cli#build:dev": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "../../packages/contracts/src/**",
+        "../../packages/shared/src/**"
+      ],
+      "outputs": ["dist/**"]
+    },
+    "@glade/web#build:dev": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "../../packages/contracts/src/**",
+        "../../packages/shared/src/**"
+      ],
+      "outputs": ["dist-dev/**"]
+    },
     "typecheck": {
       "dependsOn": ["^typecheck"],
       "outputs": [],
