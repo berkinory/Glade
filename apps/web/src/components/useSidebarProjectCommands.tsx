@@ -5,7 +5,6 @@ import { useCallback } from "react";
 import {
   type DragCancelEvent,
   type CollisionDetection,
-  PointerSensor,
   type DragStartEvent,
   closestCorners,
   pointerWithin,
@@ -33,6 +32,7 @@ import {
 import { useSpacesController } from "./useSpacesController";
 import type { useSidebarThreadCommands } from "./useSidebarThreadCommands";
 import { ProjectContextMenuId } from "./sidebarSupport";
+import { SidebarPointerSensor } from "./sidebarPointerSensor";
 
 export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarThreadCommands>) {
   const {
@@ -333,7 +333,7 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
   };
 
   const projectDnDSensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(SidebarPointerSensor, {
       activationConstraint: { distance: 6 },
     }),
   );

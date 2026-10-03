@@ -70,6 +70,9 @@
 
 ### Fixed
 
+- Sidebar provider and terminal indicators stay visible for unnamed chats, and draft markers appear only on inactive chats.
+- Project dragging cancels after a lost mouse release or window focus change instead of starting on hover.
+
 - Chats started with punctuation now receive a title when a meaningful message arrives.
 
 - Interrupted conversation imports resume safely without duplicating messages.

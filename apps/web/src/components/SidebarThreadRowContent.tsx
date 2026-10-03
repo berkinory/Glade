@@ -3,7 +3,6 @@ import { hasUnsentComposerDraft } from "~/composerDraftDomain";
 import { CentralIcon } from "~/lib/central-icons";
 import { useMemo, type ReactNode } from "react";
 
-import { isGenericChatThreadTitle } from "@glade/shared/threads/chatThreads";
 import { pluralize } from "@glade/shared/text/text";
 
 import { createThreadSelector } from "../storeSelectors";
@@ -167,7 +166,6 @@ export function SidebarThreadRowContent({
           },
         })
       : null;
-  const showThreadProviderAvatar = !isGenericChatThreadTitle(thread.title);
 
   return (
     <>
@@ -184,13 +182,13 @@ export function SidebarThreadRowContent({
             style={{ backgroundColor: subagentPresentation?.accentColor }}
           />
         </span>
-      ) : showThreadProviderAvatar ? (
+      ) : (
         <ProviderAvatarWithTerminal
           thread={thread}
           terminalStatus={terminalStatus}
           terminalCount={terminalCount}
         />
-      ) : null}
+      )}
       <div
         className={cn(
           "flex min-w-0 flex-1 items-center text-left",
@@ -216,11 +214,11 @@ export function SidebarThreadRowContent({
             thread.title
           )}
         </span>
-        {hasDraft ? (
+        {hasDraft && !isActive ? (
           <span
             aria-label="Unsent draft"
             title="Unsent draft"
-            className="shrink-0 text-muted-foreground"
+            className="inline-flex shrink-0 items-center justify-center text-muted-foreground group-hover/thread-row:translate-x-2.5 group-focus-within/thread-row:translate-x-2.5"
           >
             <CentralIcon name="pencil" className="size-3" />
           </span>

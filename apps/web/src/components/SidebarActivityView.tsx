@@ -212,11 +212,11 @@ function ActivityThreadRow({
             >
               {thread.title}
             </span>
-            {hasDraft ? (
+            {hasDraft && !isActive ? (
               <span
                 aria-label="Unsent draft"
                 title="Unsent draft"
-                className="shrink-0 text-muted-foreground"
+                className="inline-flex shrink-0 items-center justify-center text-muted-foreground"
               >
                 <CentralIcon name="pencil" className="size-3" />
               </span>
