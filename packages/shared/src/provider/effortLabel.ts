@@ -9,7 +9,7 @@ export function formatEffortLabel(value: string): string {
     .map((word) => {
       const lower = word.toLowerCase();
       return lower.startsWith("x") && lower.length > 1
-        ? `x${lower[1]!.toUpperCase()}${lower.slice(2)}`
+        ? `Extra ${lower[1]!.toUpperCase()}${lower.slice(2)}`
         : lower[0]!.toUpperCase() + lower.slice(1);
     })
     .join(" ");
