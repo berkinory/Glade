@@ -18,7 +18,11 @@ import {
   resolveProjectStatusIndicator,
   type SidebarDerivedProjectData,
 } from "./Sidebar.logic.status";
-import { getSidebarThreadIdsToPrewarm, resolveProjectEmptyState } from "./Sidebar.logic.preview";
+import {
+  getSidebarThreadIdsToPrewarm,
+  getUnpinnedThreadsForSidebar,
+  resolveProjectEmptyState,
+} from "./Sidebar.logic.preview";
 import { derivePinnedIds, orderPinnedItemsFirst } from "../pinning.logic";
 import {
   deriveSidebarProjectData,
@@ -145,10 +149,13 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     }
     return buildProjectThreadTree({
       threads: sortThreadsForSidebar(
-        chatProjects.flatMap((project) =>
-          (sortedSidebarThreadsByProjectId.get(project.id) ?? []).filter(
-            (thread) => (chatSpaceByThreadId[thread.id] ?? null) === activeSpaceId,
+        getUnpinnedThreadsForSidebar(
+          chatProjects.flatMap((project) =>
+            (sortedSidebarThreadsByProjectId.get(project.id) ?? []).filter(
+              (thread) => (chatSpaceByThreadId[thread.id] ?? null) === activeSpaceId,
+            ),
           ),
+          pinnedThreadIds,
         ),
       ),
       forceVisibleThreadId: activeSidebarThreadId ?? undefined,
