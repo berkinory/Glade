@@ -10,6 +10,8 @@ import {
 } from "../core/baseSchemas";
 import {
   ListProjectImportsInput,
+  ReadImportedHistoryInput,
+  ReadImportedHistoryResult,
   ListProjectImportsResult,
   ImportProjectInput,
   ImportProjectResult,
@@ -32,6 +34,7 @@ export const ORCHESTRATION_WS_METHODS = {
   importThread: "orchestration.importThread",
   listProjectImports: "orchestration.listProjectImports",
   importProject: "orchestration.importProject",
+  readImportedHistory: "orchestration.readImportedHistory",
   repairState: "orchestration.repairState",
   getTurnDiff: "orchestration.getTurnDiff",
   previewWorkspaceRestore: "orchestration.previewWorkspaceRestore",
@@ -287,6 +290,7 @@ export const OrchestrationRpcSchemas = {
     output: OrchestrationImportThreadResult,
   },
   listProjectImports: { input: ListProjectImportsInput, output: ListProjectImportsResult },
+  readImportedHistory: { input: ReadImportedHistoryInput, output: ReadImportedHistoryResult },
   importProject: { input: ImportProjectInput, output: ImportProjectResult },
   getTurnDiff: {
     input: OrchestrationGetTurnDiffInput,

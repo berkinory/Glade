@@ -49,3 +49,26 @@ must finish or be stopped before importing. Claude conversations need a settled 
 without unfinished tool interactions; unsupported boundaries are reported individually.
 
 The single-conversation **Import thread** action remains available separately.
+
+## Large histories and recovery
+
+Imported chats initially display up to 10 recent imported messages, then automatically expand
+to the most recent 25 in the background. Scrolling near the top loads earlier pages automatically
+while preserving the current reading position. Find in chat completes older history in bounded
+pages before reporting a final result count; the selected match remains stable as history arrives.
+Closing search stops requesting further pages. History reads never submit a provider turn. Continuing the conversation
+uses the complete independent native copy; display paging never removes native context. Exports
+retain all captured display messages.
+
+Capture completes before the import is marked ready. Glade reads bounded native pages, saves
+each page before applying it, and reuses the same copy and command receipts after an interruption.
+Retry the failed import from the import dialog. Already captured pages do not require another
+native read. The configured source home must still match when resuming capture; completed history
+browsing works from Glade's own database even when the source archive is unavailable.
+
+Display capture permits 1,000 native pages, 64 KiB per message, 2 MiB per page and 64 MiB in total.
+Native page responses are limited to 8 MiB. Claude's SDK reads its archive internally, so archives
+larger than 128 MiB are rejected before invoking it. Limits and unsupported Codex paging versions
+produce an explicit failure; no history is silently truncated. Update the configured provider or
+choose a smaller source conversation when indicated. Original source timestamps are preserved,
+including identical or out-of-order timestamps; archive order determines display order.

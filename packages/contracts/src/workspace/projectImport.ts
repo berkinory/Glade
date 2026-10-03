@@ -1,6 +1,9 @@
+import { OrchestrationMessage } from "../orchestration/threadEntities";
 import { Schema } from "effect";
 import {
   IsoDateTime,
+  MessageId,
+  PositiveInt,
   ProjectId,
   SpaceId,
   ThreadId,
@@ -63,3 +66,17 @@ export const ImportProjectResult = Schema.Struct({
   status: Schema.Literals(["imported", "already-present", "project-linked"]),
 });
 export type ImportProjectResult = typeof ImportProjectResult.Type;
+
+export const ReadImportedHistoryInput = Schema.Struct({
+  threadId: ThreadId,
+  beforeMessageId: MessageId,
+  probe: Schema.optional(Schema.Boolean),
+  limit: Schema.optional(PositiveInt.check(Schema.isLessThanOrEqualTo(100))),
+  cursor: Schema.NullOr(Schema.String.check(Schema.isMaxLength(4096))),
+});
+export type ReadImportedHistoryInput = typeof ReadImportedHistoryInput.Type;
+export const ReadImportedHistoryResult = Schema.Struct({
+  messages: Schema.Array(OrchestrationMessage),
+  nextCursor: Schema.NullOr(Schema.String),
+});
+export type ReadImportedHistoryResult = typeof ReadImportedHistoryResult.Type;

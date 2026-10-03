@@ -15,6 +15,8 @@ import type {
   ImportProjectInput,
   ImportProjectResult,
   ListProjectImportsInput,
+  ReadImportedHistoryInput,
+  ReadImportedHistoryResult,
   ListProjectImportsResult,
 } from "../workspace/projectImport";
 
@@ -877,6 +879,7 @@ export interface NativeApi {
       input: OrchestrationImportThreadInput,
     ) => Promise<OrchestrationImportThreadResult>;
     listProjectImports: (input: ListProjectImportsInput) => Promise<ListProjectImportsResult>;
+    readImportedHistory: (input: ReadImportedHistoryInput) => Promise<ReadImportedHistoryResult>;
     importProject: (input: ImportProjectInput) => Promise<ImportProjectResult>;
 
     repairState: () => Promise<OrchestrationReadModel>;

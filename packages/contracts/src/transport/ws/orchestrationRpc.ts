@@ -179,3 +179,9 @@ export const WsOrchestrationPrepareHandoffRpc = Rpc.make(ORCHESTRATION_WS_METHOD
   success: OrchestrationRpcSchemas.prepareHandoff.output,
   error: WsRpcError,
 });
+
+export const WsReadImportedHistoryRpc = Rpc.make(ORCHESTRATION_WS_METHODS.readImportedHistory, {
+  payload: OrchestrationRpcSchemas.readImportedHistory.input,
+  success: OrchestrationRpcSchemas.readImportedHistory.output,
+  error: WsRpcError,
+});

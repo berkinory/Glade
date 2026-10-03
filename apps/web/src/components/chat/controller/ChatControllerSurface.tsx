@@ -1,3 +1,4 @@
+import { useImportedHistory } from "../useImportedHistory";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
@@ -205,6 +206,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     threadId,
   } = controller.props;
   const { setThreadError } = controller.composer;
+  const importedHistory = useImportedHistory(threadId, threadFindHighlightStore);
   const navigate = useNavigate();
   const previewSession = useComputerStateStore(selectThreadComputerPreviewSession(threadId));
   const previewLayout = useComputerStateStore(selectThreadComputerPreviewLayout(threadId));
@@ -512,6 +514,8 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
           onJump={handleThreadFindJump}
           onHighlightChange={threadFindHighlightStore.set}
           onActiveMatchChange={handleThreadFindActiveMatchChange}
+          historySearching={importedHistory.searching}
+          historyError={importedHistory.error}
         />
       ) : null}
 
@@ -633,6 +637,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                 <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
                   <ChatTranscriptPane
                     activeThreadId={activeThread.id}
+                    importedHistory={importedHistory}
                     activeTurnId={activeTurnIdForTranscript}
                     agentActivityDetail={openAgentActivityDetail}
                     hasMessages={timelineEntries.length > 0}

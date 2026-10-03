@@ -5,7 +5,11 @@ import {
   ProviderManagePluginInput,
 } from "../../provider/providerManagement";
 import { Schema, Struct } from "effect";
-import { ImportProjectInput, ListProjectImportsInput } from "../../workspace/projectImport";
+import {
+  ReadImportedHistoryInput,
+  ImportProjectInput,
+  ListProjectImportsInput,
+} from "../../workspace/projectImport";
 import { NonNegativeInt, ProjectId, ThreadId, TrimmedNonEmptyString } from "../../core/baseSchemas";
 import { ClientOrchestrationCommand } from "../../orchestration/commands";
 import { OrchestrationEvent } from "../../orchestration/events";
@@ -279,6 +283,7 @@ const WebSocketRequestBody = Schema.Union([
   tagRequestBody(ORCHESTRATION_WS_METHODS.importThread, OrchestrationImportThreadInput),
   tagRequestBody(ORCHESTRATION_WS_METHODS.listProjectImports, ListProjectImportsInput),
   tagRequestBody(ORCHESTRATION_WS_METHODS.importProject, ImportProjectInput),
+  tagRequestBody(ORCHESTRATION_WS_METHODS.readImportedHistory, ReadImportedHistoryInput),
   tagRequestBody(ORCHESTRATION_WS_METHODS.getSnapshot, OrchestrationGetSnapshotInput),
   tagRequestBody(ORCHESTRATION_WS_METHODS.getShellSnapshot, OrchestrationGetShellSnapshotInput),
   tagRequestBody(

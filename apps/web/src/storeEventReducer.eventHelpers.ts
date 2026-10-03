@@ -6,12 +6,8 @@ import { mergeAsyncUserInput } from "@glade/shared/threads/asyncUserInput";
 import { resolveHumanMessageAt } from "@glade/shared/threads/threadSummary";
 import { isPendingInteractionResponseClaimable } from "@glade/shared/threads/pendingInteractions";
 import { isSessionRunningTurn } from "./session-logic";
-import {
-  MAX_THREAD_MESSAGES,
-  arraysShallowEqual,
-  providerReferenceArraysEqual,
-} from "./storeNormalization.shared";
-import { normalizeChatMessage } from "./storeNormalization.messages";
+import { arraysShallowEqual, providerReferenceArraysEqual } from "./storeNormalization.shared";
+import { normalizeChatMessage, retainChatMessageWindow } from "./storeNormalization.messages";
 import { normalizeTurnDiffFiles } from "./storeNormalization.activity";
 import type { ChatMessage, Thread } from "./types";
 
@@ -679,7 +675,7 @@ export function applyThreadMessageSentEvent(thread: Thread, event: ThreadMessage
       messages = thread.messages.with(existingIndex, mergedMessage);
     }
   } else {
-    messages = [...thread.messages, incomingMessage].slice(-MAX_THREAD_MESSAGES);
+    messages = retainChatMessageWindow([...thread.messages, incomingMessage]);
   }
 
   const turnDiffSummaries =

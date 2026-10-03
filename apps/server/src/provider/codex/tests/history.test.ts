@@ -143,25 +143,26 @@ describe("thread checkpoint control", () => {
         manager as unknown as { assertSupportedCodexCliVersion: () => Promise<void> },
         "assertSupportedCodexCliVersion",
       ).mockResolvedValue(undefined);
-      sendRequest.mockResolvedValue({
-        thread: {
-          id: "thread_forked",
-          turns:
-            sourceStatus === "empty"
-              ? []
-              : [
-                  {
-                    id: "completed-source-turn",
-                    ...(sourceStatus.startsWith("legacy-")
-                      ? {}
-                      : { status: sourceStatus === "ordinary" ? "completed" : sourceStatus }),
-                    ...(sourceStatus === "legacy-completed" ? { completedAt: 1700000005 } : {}),
-                    ...(sourceStatus === "legacy-invalid-date" ? { completedAt: "invalid" } : {}),
-                    items: [],
-                  },
-                ],
-        },
-      });
+      const turns =
+        sourceStatus === "empty"
+          ? []
+          : [
+              {
+                id: "completed-source-turn",
+                ...(sourceStatus.startsWith("legacy-")
+                  ? {}
+                  : { status: sourceStatus === "ordinary" ? "completed" : sourceStatus }),
+                ...(sourceStatus === "legacy-completed" ? { completedAt: 1700000005 } : {}),
+                ...(sourceStatus === "legacy-invalid-date" ? { completedAt: "invalid" } : {}),
+                itemsView: "notLoaded",
+                items: [],
+              },
+            ];
+      sendRequest.mockImplementation(async (_context, method) =>
+        method === "thread/turns/list"
+          ? { data: turns, nextCursor: null }
+          : { thread: { id: "thread_forked", turns: [] } },
+      );
 
       try {
         const fork = manager.forkThread({
@@ -188,6 +189,15 @@ describe("thread checkpoint control", () => {
           return;
         }
         const result = await fork;
+        if (requireCompletedSource) {
+          expect(sendRequest).toHaveBeenCalledWith(expect.anything(), "thread/turns/list", {
+            threadId: "thread_1",
+            itemsView: "notLoaded",
+            sortDirection: "desc",
+            limit: 1,
+          });
+          expect(sendRequest.mock.calls.some(([, method]) => method === "thread/read")).toBe(false);
+        }
 
         const forkRequest = sendRequest.mock.calls.find(([, method]) => method === "thread/fork");
         expect(forkRequest?.[2]).toMatchObject({

@@ -1,3 +1,5 @@
+import { makeProjectImportDisplayHistory } from "./projectImportDisplayHistory";
+import { makeProjectImportHistoryRepository } from "./projectImportHistoryRepository";
 import { Effect } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
@@ -57,7 +59,9 @@ export const makeProjectImportRepository = Effect.gen(function* () {
       r.provider_name AS provider, r.resume_cursor_json AS cursor
     FROM provider_session_runtime r JOIN projection_threads t ON t.thread_id = r.thread_id
   `;
-  return { list, find, reserve, complete, listNativeBindings };
+  const readImportedHistory = yield* makeProjectImportDisplayHistory;
+  const history = yield* makeProjectImportHistoryRepository;
+  return { list, find, reserve, complete, listNativeBindings, history, readImportedHistory };
 });
 
 export type ProjectImportRepository = Effect.Success<typeof makeProjectImportRepository>;

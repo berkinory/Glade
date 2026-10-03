@@ -50,6 +50,7 @@ export function useTimelineNavigationController({
     onIsAtEndChange,
     onTrailHighlightsChange,
     onMessagesScroll,
+    importedHistory,
     onMessagesPointerCancel,
     onMessagesPointerDown,
     onMessagesTouchMove,
@@ -350,6 +351,7 @@ export function useTimelineNavigationController({
       if (!state) {
         return;
       }
+      if (!state.isAtEnd && state.start <= 3) importedHistory?.loadOlder();
       tailExpansionScrollSuppressedRef.current = !state.isAtEnd;
       if (!state.isAtEnd) {
         clearTailExpansionScrollTimers();
@@ -371,6 +373,7 @@ export function useTimelineNavigationController({
       emitTrailHighlightsForViewport,
       onIsAtEndChange,
       onMessagesScroll,
+      importedHistory,
       resolvedListRef,
       tailExpansionScrollSuppressedRef,
       listScrollFrameRef,
@@ -426,8 +429,10 @@ export function useTimelineNavigationController({
     (event) => {
       suppressTailExpansionScroll();
       onMessagesWheel?.(event);
+      if (event.deltaY < 0 && (readLegendListState(resolvedListRef)?.start ?? Infinity) <= 3)
+        importedHistory?.loadOlder();
     },
-    [onMessagesWheel, suppressTailExpansionScroll],
+    [onMessagesWheel, suppressTailExpansionScroll, importedHistory, resolvedListRef],
   );
 
   const handleViewableItemsChanged = useCallback<

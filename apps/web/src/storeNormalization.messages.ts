@@ -230,6 +230,7 @@ export function normalizeChatMessage(
 
   return {
     id: incoming.id,
+    ...(previous?.loadedImportHistory ? { loadedImportHistory: true } : {}),
     role: incoming.role,
     text: incoming.text,
     ...(asyncUserInput ? { asyncUserInput } : {}),
@@ -252,6 +253,15 @@ export function normalizeChatMessage(
   };
 }
 
+export function retainChatMessageWindow(messages: ChatMessage[]): ChatMessage[] {
+  const recent = messages.slice(-MAX_THREAD_MESSAGES);
+  const recentIds = new Set(recent.map((message) => message.id));
+  return [
+    ...messages.filter((message) => message.loadedImportHistory && !recentIds.has(message.id)),
+    ...recent,
+  ];
+}
+
 export function normalizeChatMessages(
   incoming: ReadModelThread["messages"],
   previous: ChatMessage[] | undefined,
@@ -260,7 +270,12 @@ export function normalizeChatMessages(
   const nextMessages = incoming
     .slice(-MAX_THREAD_MESSAGES)
     .map((message) => normalizeChatMessage(message, previousById.get(message.id)));
-  return arraysShallowEqual(previous, nextMessages) ? previous : nextMessages;
+  const incomingIds = new Set(nextMessages.map((message) => message.id));
+  const history =
+    previous?.filter((message) => message.loadedImportHistory && !incomingIds.has(message.id)) ??
+    [];
+  const combined = [...history, ...nextMessages];
+  return arraysShallowEqual(previous, combined) ? previous : combined;
 }
 
 function readModelAttachmentsFromChatMessage(
@@ -472,9 +487,20 @@ function mergeReadModelMessagesWithLiveHotPath(
     return incomingMessages;
   }
 
-  return [...mergedById.values()].toSorted((left, right) =>
-    left.createdAt.localeCompare(right.createdAt),
+  const native = [...mergedById.values()].filter(
+    (message) => message.id.startsWith("import:") && message.source === "native",
   );
+  const nativeOrder = new Map(previousThread.messages.map((message, index) => [message.id, index]));
+  native.sort(
+    (left, right) =>
+      (nativeOrder.get(left.id) ?? Infinity) - (nativeOrder.get(right.id) ?? Infinity),
+  );
+  return [
+    ...native,
+    ...[...mergedById.values()]
+      .filter((message) => !message.id.startsWith("import:") || message.source !== "native")
+      .toSorted((left, right) => left.createdAt.localeCompare(right.createdAt)),
+  ];
 }
 
 function hasLiveAssistantIntro(previousThread: Thread | undefined): boolean {

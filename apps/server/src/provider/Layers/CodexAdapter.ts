@@ -2156,6 +2156,20 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
         })),
       );
 
+    const readExternalThreadPage: NonNullable<CodexAdapterShape["readExternalThreadPage"]> = (
+      input,
+    ) =>
+      Effect.tryPromise({
+        try: () => manager.readExternalThreadPage(input),
+        catch: (cause) =>
+          new ProviderAdapterRequestError({
+            provider: PROVIDER,
+            method: "thread/turns/list",
+            detail: toMessage(cause, "Failed to page external Codex history."),
+            cause,
+          }),
+      });
+
     const readExternalThread: NonNullable<CodexAdapterShape["readExternalThread"]> = (input) =>
       Effect.tryPromise({
         try: () => manager.readExternalThread(input),
@@ -2519,6 +2533,7 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
       interruptTurn,
       readThread,
       readExternalThread,
+      readExternalThreadPage,
       updateNativeHistory: (input) =>
         Effect.tryPromise({
           try: () => manager.updateNativeHistory(input),

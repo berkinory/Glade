@@ -73,7 +73,7 @@ function finalizeImportedMessages(
       : Date.parse(importedAt) - 1;
 
   return messages.map((message) => {
-    const createdAt = Math.max(message.createdAt ?? previousTimestamp + 1, previousTimestamp + 1);
+    const createdAt = message.createdAt ?? previousTimestamp + 1;
     previousTimestamp = createdAt;
     return {
       messageId: message.messageId,

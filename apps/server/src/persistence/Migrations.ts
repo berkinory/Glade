@@ -7,9 +7,12 @@ import Baseline from "./Migrations/001_Baseline.ts";
 
 import ProfileTurnLookup from "./Migrations/002_ProfileTurnLookup.ts";
 
+import ProjectImportHistory from "./Migrations/003_ProjectImportHistory.ts";
+
 export const migrationEntries = [
   [1, "Baseline", Baseline],
   [2, "ProfileTurnLookup", ProfileTurnLookup],
+  [3, "ProjectImportHistory", ProjectImportHistory],
 ] as const;
 
 const LATEST_MIGRATION_ID = Math.max(...migrationEntries.map(([id]) => id));

@@ -922,6 +922,8 @@ const makeWsRpcHandlersLayer = () =>
           rpcEffect(importThread(input), "Failed to import thread"),
         [ORCHESTRATION_WS_METHODS.listProjectImports]: (input) =>
           rpcEffect(projectImports.listProjectImports(input), "Failed to find local projects"),
+        [ORCHESTRATION_WS_METHODS.readImportedHistory]: (input) =>
+          rpcEffect(projectImports.readImportedHistory(input), "Failed to load imported history"),
         [ORCHESTRATION_WS_METHODS.importProject]: (input) =>
           rpcEffect(projectImports.importProject(input), "Failed to import project"),
         [ORCHESTRATION_WS_METHODS.getSnapshot]: () =>

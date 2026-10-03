@@ -16,6 +16,8 @@
 
 ### Improved
 
+- Imported conversations open with recent messages and automatically reveal older history when scrolling or searching.
+
 - Activity keeps the open chat visible and shows recognizable project icons, including monorepo favicons.
 
 - Desktop downloads and installations are smaller by omitting unused language and dependency resources.
@@ -63,6 +65,8 @@
 - Models load faster on first use, with a balanced initial reasoning effort when you have not chosen one.
 
 ### Fixed
+
+- Interrupted conversation imports resume safely without duplicating messages.
 
 - Temporary model discovery failures keep your last available model list.
 

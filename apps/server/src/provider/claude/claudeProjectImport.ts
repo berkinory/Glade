@@ -139,6 +139,7 @@ export async function readClaudeSessionParentUuid(input: {
 export async function readClaudeImportMessageDates(input: {
   readonly sessionId: string;
   readonly configDir?: string;
+  readonly messageIds?: ReadonlySet<string>;
 }): Promise<ReadonlyMap<string, string>> {
   const dates = new Map<string, string>();
   const files = await sessionFiles(claudeConfigDir(input.configDir));
@@ -146,6 +147,7 @@ export async function readClaudeImportMessageDates(input: {
   if (!file) return dates;
   for await (const entry of readTranscriptEntries(file)) {
     if (entry.isSidechain === true || typeof entry.uuid !== "string") continue;
+    if (input.messageIds && !input.messageIds.has(entry.uuid)) continue;
     const timestamp = typeof entry.timestamp === "string" ? isoDate(entry.timestamp) : undefined;
     if (timestamp) dates.set(entry.uuid, timestamp);
   }

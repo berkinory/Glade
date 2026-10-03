@@ -18,6 +18,8 @@ import {
 } from "./threadFind.logic";
 
 interface ThreadFindBarProps {
+  historySearching?: boolean;
+  historyError?: string | null;
   open: boolean;
   focusNonce: number;
   timelineEntries: readonly TimelineEntry[];
@@ -40,10 +42,15 @@ function ThreadFindBar({
   onJump,
   onHighlightChange,
   onActiveMatchChange,
+  historySearching = false,
+  historyError = null,
 }: ThreadFindBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const matchesRef = useRef<ThreadFindMatch[]>([]);
   const activeIndexRef = useRef(0);
+  const activeMatchRef = useRef<ThreadFindMatch | null>(null);
+  const activeQueryRef = useRef("");
+  const jumpFrameRef = useRef<number | null>(null);
   const onJumpRef = useRef(onJump);
   const onHighlightChangeRef = useRef(onHighlightChange);
   const onActiveMatchChangeRef = useRef(onActiveMatchChange);
@@ -74,32 +81,35 @@ function ThreadFindBar({
   }, [open]);
 
   useEffect(() => {
-    if (!open) {
-      return;
+    if (!open) return;
+    const queryChanged = activeQueryRef.current !== deferredQuery;
+    const previous = queryChanged ? null : activeMatchRef.current;
+    const previousIndex = previous
+      ? matches.findIndex(
+          (match) =>
+            match.messageId === previous.messageId &&
+            match.segmentIndex === previous.segmentIndex &&
+            match.startOffset === previous.startOffset &&
+            match.endOffset === previous.endOffset,
+        )
+      : -1;
+    const nextIndex = previousIndex >= 0 ? previousIndex : matches.length ? 0 : -1;
+    const match = resolveThreadFindJump(matches, nextIndex);
+    activeIndexRef.current = nextIndex;
+    activeQueryRef.current = deferredQuery;
+    activeMatchRef.current = match;
+    setActiveIndex(nextIndex);
+    onHighlightChangeRef.current({ query: deferredQuery, activeMatch: match });
+    onActiveMatchChangeRef.current(match);
+    if (match && (queryChanged || previous === null)) {
+      if (jumpFrameRef.current !== null) window.cancelAnimationFrame(jumpFrameRef.current);
+      // Newly fetched matches commit before the timeline refreshes its imperative row lookup.
+      jumpFrameRef.current = window.requestAnimationFrame(() => {
+        jumpFrameRef.current = null;
+        onJumpRef.current(match);
+      });
     }
-    const currentIndex =
-      matches.length === 0 ? -1 : Math.min(Math.max(activeIndexRef.current, 0), matches.length - 1);
-    onHighlightChangeRef.current({
-      query: deferredQuery,
-      activeMatch: resolveThreadFindJump(matches, currentIndex),
-    });
   }, [deferredQuery, matches, open]);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const currentMatches = matchesRef.current;
-    const currentIndex =
-      currentMatches.length === 0
-        ? -1
-        : Math.min(Math.max(activeIndexRef.current, 0), currentMatches.length - 1);
-    const match = currentMatches[currentIndex];
-    onActiveMatchChangeRef.current(match ?? null);
-    if (match) {
-      onJumpRef.current(match);
-    }
-  }, [deferredQuery, open]);
 
   useEffect(() => {
     if (!open) {
@@ -121,9 +131,17 @@ function ThreadFindBar({
     input.select();
   }, [focusNonce, open]);
 
+  useEffect(
+    () => () => {
+      if (jumpFrameRef.current !== null) window.cancelAnimationFrame(jumpFrameRef.current);
+    },
+    [],
+  );
+
   const handleQueryChange = (nextQuery: string) => {
     setQuery(nextQuery);
     activeIndexRef.current = 0;
+    activeMatchRef.current = null;
     setActiveIndex(0);
   };
 
@@ -134,6 +152,7 @@ function ThreadFindBar({
     const nextIndex = stepThreadFindIndex(matchCount, safeIndex, direction);
     const match = resolveThreadFindJump(matches, nextIndex);
     activeIndexRef.current = nextIndex;
+    activeMatchRef.current = match;
     setActiveIndex(nextIndex);
     onActiveMatchChangeRef.current(match);
     if (match) {
@@ -181,8 +200,17 @@ function ThreadFindBar({
           MUTED_LABEL_TEXT_CLASS_NAME,
         )}
         aria-live="polite"
+        title={historyError ?? (historySearching ? "Searching earlier messages" : undefined)}
       >
-        {hasQuery ? (matchCount === 0 ? "No results" : `${safeIndex + 1} / ${matchCount}`) : ""}
+        {hasQuery
+          ? historyError
+            ? "Incomplete"
+            : matchCount === 0
+              ? historySearching
+                ? "Searching..."
+                : "No results"
+              : `${safeIndex + 1} / ${matchCount}${historySearching ? "+" : ""}`
+          : ""}
       </span>
       <IconButton
         onClick={() => handleStep("previous")}
@@ -222,6 +250,8 @@ export function ChatThreadFindHost({
   onJump,
   onHighlightChange,
   onActiveMatchChange,
+  historySearching,
+  historyError,
 }: ThreadFindBarProps & {
   threadId: string;
   className?: string;
@@ -242,6 +272,8 @@ export function ChatThreadFindHost({
           onJump={onJump}
           onHighlightChange={onHighlightChange}
           onActiveMatchChange={onActiveMatchChange}
+          {...(historySearching !== undefined ? { historySearching } : {})}
+          {...(historyError !== undefined ? { historyError } : {})}
         />
       </DisclosureRegion>
     </div>

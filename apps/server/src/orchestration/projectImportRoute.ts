@@ -1,3 +1,4 @@
+import { captureProjectImport } from "./projectImportCapture";
 import { normalizeModelSlug } from "@glade/shared/provider/model";
 import { homedir } from "node:os";
 import nodePath from "node:path";
@@ -438,25 +439,25 @@ export function makeProjectImportHandlers(options: ProjectImportRouteOptions) {
             return yield* new ProjectImportError({
               message: "The provider did not create an independent conversation copy.",
             });
-          const messages = yield* readHistory({
-            provider: source.provider,
+          yield* captureProjectImport({
             threadId,
             nativeId,
-            sourceHome: source.sourceHome,
-            sourceCwd: source.cwd,
-            sourceCreatedAt: source.createdAt,
-            providerOptions,
-            ...(runtimeCwd ? { cwd: runtimeCwd } : {}),
+            createdAt: origin!.createdAt,
+            repository: options.repository.history,
+            engine: options.orchestrationEngine,
+            readPage: (cursor) =>
+              readHistory({
+                cursor,
+                provider: source.provider,
+                threadId,
+                nativeId,
+                sourceHome: source.sourceHome,
+                sourceCwd: source.cwd,
+                sourceCreatedAt: source.createdAt,
+                providerOptions,
+                ...(runtimeCwd ? { cwd: runtimeCwd } : {}),
+              }),
           });
-          for (let offset = 0; offset < messages.length; offset += 100) {
-            yield* options.orchestrationEngine.dispatch({
-              type: "thread.messages.import",
-              commandId: CommandId.makeUnsafe(`project-import:${threadId}:messages:${offset}`),
-              threadId,
-              messages: messages.slice(offset, offset + 100),
-              createdAt: origin!.createdAt,
-            });
-          }
         });
         // Cleanup failure must be surfaced. It cannot be silently reported as a successful import with an
         // unproven provider process still attached.
@@ -496,5 +497,9 @@ export function makeProjectImportHandlers(options: ProjectImportRouteOptions) {
         } satisfies ImportProjectResult;
       }),
     );
-  return { listProjectImports, importProject };
+  return {
+    listProjectImports,
+    importProject,
+    readImportedHistory: options.repository.readImportedHistory,
+  };
 }

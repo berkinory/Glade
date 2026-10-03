@@ -172,6 +172,16 @@ export interface ProviderAdapterShape<TError> {
     providerOptions?: ProviderStartOptions,
   ) => Effect.Effect<NativeProjectImportCatalog, TError>;
 
+  readonly readExternalThreadPage?: (input: {
+    readonly externalThreadId: string;
+    readonly cursor: string | null;
+    readonly cwd?: string;
+    readonly providerOptions?: ProviderStartOptions;
+  }) => Effect.Effect<
+    { readonly turns: ProviderThreadSnapshot["turns"]; readonly nextCursor: string | null },
+    TError
+  >;
+
   readonly readExternalThread?: (input: {
     readonly externalThreadId: string;
     readonly cwd?: string;

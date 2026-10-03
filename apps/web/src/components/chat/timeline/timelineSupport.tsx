@@ -1,3 +1,4 @@
+import type { ImportedHistoryState } from "../useImportedHistory";
 import { ThreadId, type MessageId, type TurnId } from "@glade/contracts/core/baseSchemas";
 
 import { type EditorId } from "@glade/contracts/settings/editor";
@@ -210,6 +211,7 @@ export function WorktreeSetupCard({
   );
 }
 export interface MessagesTimelineProps {
+  importedHistory?: ImportedHistoryState;
   hasMessages: boolean;
   isWorking: boolean;
   workingLabel?: WorkingLabel | undefined;
