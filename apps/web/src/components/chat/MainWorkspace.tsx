@@ -235,7 +235,7 @@ export function MainWorkspace(props: {
     <PanelTabBar
       label="Workspace tabs"
       pinnedTabId="chat"
-      className="h-full flex-1 border-0 bg-transparent p-0"
+      className="h-auto flex-1 border-0 bg-transparent p-0"
       tabs={tabs}
       activeId={resolvedId}
       onSelect={select}

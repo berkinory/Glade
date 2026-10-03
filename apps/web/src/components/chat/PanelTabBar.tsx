@@ -57,10 +57,6 @@ export function PanelTabBar(props: {
     <div key={tab.id} data-tab-id={tab.id} className="[-webkit-app-region:no-drag] shrink-0">
       <SurfaceTabChip
         active={tab.id === props.activeId}
-        className={cn(
-          "relative -mb-px rounded-t-[10px] rounded-b-none border border-b-0 px-2",
-          tab.id === props.activeId ? "z-[1] border-border/80" : "border-border/50",
-        )}
         title={tab.label}
         label={tab.label}
         labelClassName={cn("max-w-40", tab.preview && "italic")}
@@ -77,11 +73,11 @@ export function PanelTabBar(props: {
   return (
     <div
       className={cn(
-        "flex h-[calc(var(--spacing)*9+1px)] min-w-0 shrink-0 items-end gap-1 border-b border-border/70 bg-[var(--color-background-surface)] px-1.5 pt-1",
+        "flex h-[calc(var(--spacing)*9+1px)] min-w-0 shrink-0 items-center gap-1 border-b border-border/70 bg-[var(--color-background-surface)] px-1.5 py-1",
         props.className,
       )}
     >
-      <div className="flex h-full min-w-0 flex-1 items-end">
+      <div className="min-w-0 flex-1">
         <nav
           ref={wheelRegionRef}
           aria-label={props.label}
