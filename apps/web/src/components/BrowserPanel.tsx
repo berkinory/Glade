@@ -1,3 +1,4 @@
+import { PanelStateMessage } from "./chat/PanelStateMessage";
 import { isBlankBrowserTabUrl } from "@glade/shared/browser/browserSession";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useRef, useState } from "react";
@@ -22,7 +23,7 @@ import { useBrowserRuntime } from "~/components/browser/controller/useBrowserRun
 import { useBrowserAnnotations } from "~/components/browser/useBrowserAnnotations";
 import { resolveBrowserChromeStatus } from "~/components/BrowserPanel.logic";
 import { BrowserTabStrip } from "~/components/BrowserTabStrip";
-import { DiffPanelLoadingState, DiffPanelShell } from "~/components/DiffPanelShell";
+import { BrowserPanelShell } from "~/components/browser/BrowserPanelShell";
 import { useComposerDraftStore } from "~/composerDraftStore";
 import { isElectron } from "~/env";
 import { serverLocalServersQueryOptions } from "~/lib/serverReactQuery";
@@ -125,16 +126,16 @@ function BrowserPanelBody() {
     return (
       <div className="contents" data-browser-panel="true">
         {isFloatingMode ? header : null}
-        <DiffPanelShell mode={mode} header={isFloatingMode ? null : header}>
-          <DiffPanelLoadingState label="Browser is unavailable." />
-        </DiffPanelShell>
+        <BrowserPanelShell mode={mode} header={isFloatingMode ? null : header}>
+          <PanelStateMessage>Browser is unavailable.</PanelStateMessage>
+        </BrowserPanelShell>
       </div>
     );
   }
   return (
     <div className="contents" data-browser-panel="true">
       {isFloatingMode ? header : null}
-      <DiffPanelShell mode={mode} header={isFloatingMode ? null : header}>
+      <BrowserPanelShell mode={mode} header={isFloatingMode ? null : header}>
         <div className="flex min-h-0 flex-1 flex-col">
           {!isFloatingMode ? (
             <BrowserTabStrip
@@ -155,7 +156,7 @@ function BrowserPanelBody() {
               />
             ) : !workspaceReady ? (
               <div className="absolute inset-0 z-10">
-                <DiffPanelLoadingState label="Starting browser..." />
+                <PanelStateMessage loadingLabel="Starting browser" />
               </div>
             ) : null}
             {isLiveRuntime ? (
@@ -192,7 +193,7 @@ function BrowserPanelBody() {
             ) : null}
           </div>
         </div>
-      </DiffPanelShell>
+      </BrowserPanelShell>
     </div>
   );
 }

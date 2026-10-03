@@ -53,6 +53,8 @@
 
 ### Fixed
 
+- Browser panels load correctly again after workspace panel changes.
+
 - Open menus take priority over keyboard shortcuts, and dismissing them preserves your chat selection.
 - Returning from agent details preserves your place in the conversation.
 

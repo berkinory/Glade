@@ -1,3 +1,4 @@
+import { CentralIcon } from "~/lib/central-icons";
 import { isBlankBrowserTabUrl } from "@glade/shared/browser/browserSession";
 import {
   BROWSER_COPY_LINK_TOAST_TITLE,
@@ -40,7 +41,6 @@ import {
   EllipsisIcon,
   ExternalLinkIcon,
   GlobeIcon,
-  LinkIcon,
   LoaderCircleIcon,
   PlusIcon,
   RefreshCwIcon,
@@ -463,7 +463,7 @@ export function BrowserHeader({
           title="Copy link"
           onClick={copyActiveTabLink}
         >
-          <LinkIcon className="size-3.5" />
+          <CentralIcon name="link" className="size-3.5" />
           <span className="sr-only">Copy link</span>
         </Button>
         <Menu modal={false} open={browserActionsMenuOpen} onOpenChange={setBrowserActionsMenuOpen}>

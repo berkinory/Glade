@@ -11,7 +11,7 @@ import {
   resolveBrowserRuntimePresentation,
   shouldOccludeBrowserWebview,
 } from "~/components/BrowserPanel.logic";
-import type { DiffPanelMode } from "~/components/DiffPanelShell";
+import type { BrowserPanelMode } from "~/components/browser/BrowserPanelShell";
 import { BROWSER_PANEL_BOUNDS_SYNC_EVENT } from "~/lib/browserPanelBoundsSync";
 import { readDesktopZoomFactor, subscribeDesktopZoomFactor } from "~/lib/desktopZoom";
 import type { DockPaneRuntimeMode } from "~/lib/dockPaneActivation";
@@ -44,7 +44,7 @@ export function useBrowserRuntime({
   setLocalError,
 }: {
   threadId: ThreadId;
-  mode: DiffPanelMode;
+  mode: BrowserPanelMode;
   runtimeMode: DockPaneRuntimeMode | undefined;
   browserActionsMenuOpen: boolean;
   setLocalError: (error: string | null) => void;

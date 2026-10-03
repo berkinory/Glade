@@ -7,7 +7,7 @@ import {
   createBrowserPanelRendererHandoff,
   hasObscuringHitStackElementAboveSurface,
 } from "~/components/BrowserPanel.logic";
-import { type DiffPanelMode } from "~/components/DiffPanelShell";
+import { type BrowserPanelMode } from "~/components/browser/BrowserPanelShell";
 import { LocalServerIdentity } from "~/components/LocalServerIdentity";
 import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
@@ -19,7 +19,7 @@ import { CircleAlertIcon, GlobeIcon, RefreshCwIcon, type LucideIcon } from "~/li
 import { NATIVE_SURFACE_MENU_OVERLAY_SELECTOR } from "~/lib/nativeSurfaceOcclusion";
 import { cn } from "~/lib/utils";
 export interface BrowserPanelProps {
-  mode: DiffPanelMode;
+  mode: BrowserPanelMode;
   threadId: ThreadId;
   onClosePanel: () => void;
   runtimeMode?: DockPaneRuntimeMode;
