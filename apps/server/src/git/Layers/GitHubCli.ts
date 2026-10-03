@@ -1,3 +1,4 @@
+import { GitHubReadBudget, gitHubBudgetIdentity, isGitHubRateLimit } from "../gitHubReadBudget";
 import { Effect, Layer, Schema } from "effect";
 import { PositiveInt, TrimmedNonEmptyString } from "@glade/contracts/core/baseSchemas";
 import { isValidGitHubRepositoryNameWithOwner } from "@glade/shared/git/githubRepository";
@@ -14,6 +15,14 @@ import {
   type GitHubCliShape,
   type GitHubPullRequestSummary,
 } from "../Services/GitHubCli.ts";
+
+function isReadOnly(args: ReadonlyArray<string>): boolean {
+  return (
+    (args[0] === "pr" && ["list", "view", "diff", "checks"].includes(args[1] ?? "")) ||
+    (args[0] === "repo" && args[1] === "view") ||
+    (args[0] === "api" && args[1] === "user" && !args.includes("--method") && !args.includes("-X"))
+  );
+}
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const GITHUB_HOST = "github.com";
@@ -43,6 +52,15 @@ function normalizeGitHubCliError(operation: "execute" | "stdout", error: unknown
         operation,
         detail: "GitHub CLI is not authenticated. Run `gh auth login` and retry.",
         reason: "not-authenticated",
+        cause: error,
+      });
+    }
+
+    if (isGitHubRateLimit(error.message)) {
+      return new GitHubCliError({
+        operation,
+        detail: error.message,
+        reason: "rate-limited",
         cause: error,
       });
     }
@@ -244,6 +262,7 @@ const PULL_REQUEST_LOOKUP_CACHE_MAX_ENTRIES = 256;
 
 const makeGitHubCli = Effect.gen(function* () {
   const { withPermit } = yield* GitCommands;
+  const readBudget = new GitHubReadBudget();
   const pullRequestLookupCache = yield* makeKeyedSingleFlightCache<
     GitHubPullRequestSummary,
     GitHubCliError
@@ -264,15 +283,18 @@ const makeGitHubCli = Effect.gen(function* () {
     { discard: true },
   );
 
-  const executeProcess: GitHubCliShape["execute"] = (input) =>
-    Effect.tryPromise({
+  const executeProcess: GitHubCliShape["execute"] = (input) => {
+    const env = { ...process.env, ...input.env, GH_HOST: GITHUB_HOST };
+    const identity = gitHubBudgetIdentity(env);
+    const readOnly = isReadOnly(input.args);
+    const operation = Effect.tryPromise({
       try: (signal) =>
         runProcess("gh", input.args, {
           cwd: input.cwd,
           timeoutMs: input.timeoutMs ?? DEFAULT_TIMEOUT_MS,
           signal,
 
-          env: { ...process.env, ...input.env, GH_HOST: GITHUB_HOST },
+          env,
           ...(input.maxBufferBytes !== undefined ? { maxBufferBytes: input.maxBufferBytes } : {}),
           ...(input.outputMode !== undefined ? { outputMode: input.outputMode } : {}),
           ...(input.allowNonZeroExit !== undefined
@@ -283,7 +305,27 @@ const makeGitHubCli = Effect.gen(function* () {
           ...(input.onStderrChunk !== undefined ? { onStderrChunk: input.onStderrChunk } : {}),
         }),
       catch: (error) => normalizeGitHubCliError("execute", error),
-    }).pipe((effect) => withPermit(effect, input.priority));
+    }).pipe(
+      Effect.tap((result) =>
+        Effect.sync(() => {
+          if (result.code !== 0) readBudget.record(identity, result.stderr);
+        }),
+      ),
+      Effect.tapError((error) => Effect.sync(() => readBudget.record(identity, error.detail))),
+      Effect.mapError((error) =>
+        error.reason === "rate-limited" ? (readBudget.check(identity) ?? error) : error,
+      ),
+    );
+    // Check after admission as well: another process may exhaust the budget while this waits.
+    const admitted = Effect.suspend(() => {
+      const paused = readOnly ? readBudget.check(identity) : null;
+      return paused ? Effect.fail(paused) : operation;
+    });
+    return Effect.suspend(() => {
+      const paused = readOnly ? readBudget.check(identity) : null;
+      return paused ? Effect.fail(paused) : withPermit(admitted, input.priority);
+    });
+  };
 
   const readFlights = yield* makeKeyedSingleFlightCache<ProcessRunResult, GitHubCliError>({
     maxEntries: 256,
@@ -291,10 +333,7 @@ const makeGitHubCli = Effect.gen(function* () {
   });
   const execute: GitHubCliShape["execute"] = (input) => {
     const execution = executeProcess(input);
-    const readOnly =
-      (input.args[0] === "pr" &&
-        ["list", "view", "diff", "checks"].includes(input.args[1] ?? "")) ||
-      (input.args[0] === "repo" && input.args[1] === "view");
+    const readOnly = isReadOnly(input.args);
     if (
       !readOnly ||
       input.env ||
@@ -306,6 +345,8 @@ const makeGitHubCli = Effect.gen(function* () {
       return execution;
     return readFlights.get(
       JSON.stringify([
+        gitHubBudgetIdentity(process.env),
+        input.priority,
         input.cwd,
         input.args,
         input.timeoutMs,
@@ -476,12 +517,14 @@ const makeGitHubCli = Effect.gen(function* () {
     ...service,
     listPullRequests: (input) =>
       pullRequestHeadListCache.get(
-        [input.cwd, input.headSelector, input.limit ?? ""].join("\u0000"),
+        [gitHubBudgetIdentity(process.env), input.cwd, input.headSelector, input.limit ?? ""].join(
+          "\u0000",
+        ),
         service.listPullRequests(input),
       ),
     getPullRequest: (input) =>
       pullRequestLookupCache.get(
-        [input.cwd, input.reference].join("\u0000"),
+        [gitHubBudgetIdentity(process.env), input.cwd, input.reference].join("\u0000"),
         service.getPullRequest(input),
       ),
     createPullRequest: (input) =>

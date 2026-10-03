@@ -8,6 +8,8 @@
 
 ### Improved
 
+- GitHub lookups pause during rate limits and resume after the cooldown instead of repeatedly failing.
+
 - Chat switching avoids unnecessary control delays, and long activity histories need less repeated processing.
 
 - Deleted files are easier to recognize in Source Control.
@@ -37,6 +39,8 @@
 - Models load faster on first use, with a balanced initial reasoning effort when you have not chosen one.
 
 ### Fixed
+
+- Chats keep their pull request association when another chat changes a shared checkout's branch.
 
 - Chat navigation keeps the displayed route and selected conversation in sync.
 

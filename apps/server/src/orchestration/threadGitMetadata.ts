@@ -59,7 +59,12 @@ export function deriveThreadGitMetadataPatch(input: {
   const branchChanged = input.currentBranch !== input.observedBranch;
   let nextPullRequest = input.currentPullRequest;
 
-  if (input.observedBranch === null) {
+  if (!input.dedicatedWorktree) {
+    // A shared checkout can move for another chat. Only a positive lookup replaces its PR.
+    if (input.pullRequestLookup.status === "resolved" && input.pullRequestLookup.pullRequest) {
+      nextPullRequest = input.pullRequestLookup.pullRequest;
+    }
+  } else if (input.observedBranch === null) {
     nextPullRequest = null;
   } else if (input.pullRequestLookup.status === "resolved") {
     nextPullRequest = input.pullRequestLookup.pullRequest;

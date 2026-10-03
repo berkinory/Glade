@@ -765,6 +765,7 @@ export const makeGitManager = Effect.gen(function* () {
           cwd,
           headSelector,
           limit: PR_LOOKUP_ALL_STATES_LIMIT,
+          priority: "background",
         });
 
         for (const pullRequest of pullRequests) {
@@ -1294,7 +1295,13 @@ export const makeGitManager = Effect.gen(function* () {
             cwd: input.cwd,
             branch: details.branch,
             upstreamRef: details.upstreamRef,
-          }).pipe(Effect.catch(() => Effect.succeed(null)))
+          }).pipe(
+            Effect.catch((error) =>
+              error._tag === "GitHubCliError" && error.reason === "rate-limited"
+                ? Effect.fail(error)
+                : Effect.succeed(null),
+            ),
+          )
         : null;
 
     return {

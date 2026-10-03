@@ -282,3 +282,15 @@ A staged modification remains styled as a modification if only its working copy 
 
 File downloads and chat exports preserve Unicode filenames using the UTF-8 download header,
 with an ASCII fallback for older clients. The web download path prefers the UTF-8 name.
+
+GitHub lookups share the configured GitHub host and credential budget across projects.
+A confirmed rate limit pauses uncached reads, including manual refreshes and reads
+already waiting for a Git process slot. Supplied reset/retry times are honored;
+otherwise the pause backs off from one minute to at most fifteen minutes. Fresh cached
+lookups remain available. An expired lookup reports the rate-limit error instead of
+pretending stale data is current. User-requested mutations are never retried automatically.
+Background PR association lookups use the existing lower-priority Git process queue.
+
+Chats in a shared checkout retain their PR association when another chat changes the
+branch or a lookup finds nothing. A positive replacement updates it; dedicated
+worktrees retain their branch-specific association rules.
