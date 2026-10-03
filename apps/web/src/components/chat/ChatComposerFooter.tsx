@@ -1,3 +1,4 @@
+import { Spinner } from "~/components/ui/spinner";
 import { type ReactNode } from "react";
 
 import { ComposerSendArrowIcon, LayoutSidebarIcon } from "~/lib/icons";
@@ -189,24 +190,7 @@ export function ChatComposerFooter({
               }
             >
               {submission.connecting || submission.busy || submission.preparingImages ? (
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 14 14"
-                  fill="none"
-                  className="animate-spin"
-                  aria-hidden="true"
-                >
-                  <circle
-                    cx="7"
-                    cy="7"
-                    r="5.5"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeDasharray="20 12"
-                  />
-                </svg>
+                <Spinner variant="action" className="size-3.5" aria-hidden="true" />
               ) : (
                 <ComposerSendArrowIcon
                   aria-hidden="true"

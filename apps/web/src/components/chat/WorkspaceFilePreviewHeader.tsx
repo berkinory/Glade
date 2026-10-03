@@ -1,3 +1,4 @@
+import { Spinner } from "~/components/ui/spinner";
 import {
   isWorkspaceRelativePathSafe,
   joinWorkspaceRelativePath,
@@ -292,10 +293,11 @@ export const WorkspaceFilePreviewHeader = function WorkspaceFilePreviewHeader(
             tone="plain"
             onClick={props.reload.onClick}
           >
-            <RefreshCwIcon
-              aria-hidden="true"
-              className={cn("size-3.5", props.reload.pending && "animate-spin")}
-            />
+            {props.reload.pending ? (
+              <Spinner variant="action" aria-hidden="true" className="size-3.5" />
+            ) : (
+              <RefreshCwIcon aria-hidden="true" className="size-3.5" />
+            )}
           </ChatHeaderIconButton>
         ) : null}
 

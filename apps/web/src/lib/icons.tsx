@@ -39,7 +39,6 @@ import {
   IconInfoCircle,
   IconListCheck,
   IconListDetails,
-  IconLoader2,
   IconMaximize,
   IconMinimize,
   IconMinus,
@@ -191,9 +190,6 @@ export const InfoIcon = adaptIcon(IconInfoCircle);
 export const KeyboardIcon: LucideIcon = centralIconWrapper("keyboard");
 export const ListChecksIcon = adaptIcon(IconListCheck);
 export const ListTodoIcon = adaptIcon(IconListDetails);
-export const Loader2Icon = adaptIcon(IconLoader2);
-export const LoaderCircleIcon = adaptIcon(IconLoader2);
-export const LoaderIcon = adaptIcon(IconLoader2);
 export const Maximize2 = adaptIcon(IconMaximize);
 export const Minimize2 = adaptIcon(IconMinimize);
 export const MessageCircleIcon = adaptIcon(IconMessageCircle);

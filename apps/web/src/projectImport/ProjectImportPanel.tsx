@@ -1,3 +1,4 @@
+import { Spinner } from "~/components/ui/spinner";
 import type {
   ImportProjectResult,
   ListProjectImportsResult,
@@ -9,7 +10,7 @@ import { ProviderIcon } from "~/components/ProviderIcon";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
-import { CheckIcon, LoaderCircleIcon } from "~/lib/icons";
+import { CheckIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { ensureNativeApi } from "~/nativeApi";
 import { useStore } from "~/store";
@@ -213,7 +214,7 @@ export function ProjectImportPanel(props: {
           disabled={busy || scanning || providers.length === 0}
           onClick={() => void scan()}
         >
-          {scanning ? <LoaderCircleIcon className="size-3.5 animate-spin" aria-hidden /> : null}
+          {scanning ? <Spinner className="size-3.5" aria-hidden /> : null}
           {scanning ? "Finding projects…" : catalog ? "Scan again" : "Find projects"}
         </Button>
       </div>
@@ -305,7 +306,7 @@ export function ProjectImportPanel(props: {
           {running ? (
             <>
               <div className="flex items-center gap-2">
-                <LoaderCircleIcon className="size-3.5 animate-spin" aria-hidden />
+                <Spinner className="size-3.5" aria-hidden />
                 <span>
                   {stopRequested
                     ? "Stopping after this conversation…"

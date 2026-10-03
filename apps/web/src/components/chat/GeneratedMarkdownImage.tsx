@@ -1,7 +1,8 @@
+import { Spinner } from "~/components/ui/spinner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type MouseEvent, useEffect, useRef, useState } from "react";
 
-import { DownloadIcon, Loader2Icon, Maximize2 } from "~/lib/icons";
+import { DownloadIcon, Maximize2 } from "~/lib/icons";
 import { buildLocalImageUrl, localImageAbsolutePath } from "~/lib/localImageUrls";
 import {
   isLocalPreviewGrantUsable,
@@ -161,7 +162,7 @@ function GeneratedMarkdownImageContent(props: GeneratedMarkdownImageProps) {
       >
         {status === "loading" || resolvingGrant ? (
           <span className="chat-generated-image__skeleton" aria-hidden="true">
-            <Loader2Icon className="size-4 animate-spin opacity-60" />
+            <Spinner className="size-4 opacity-60" />
           </span>
         ) : null}
         <img {...imgProps} alt={accessibleName} className="chat-generated-image__img" />

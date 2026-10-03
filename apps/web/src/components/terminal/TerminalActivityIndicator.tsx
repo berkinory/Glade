@@ -1,3 +1,4 @@
+import { Spinner } from "~/components/ui/spinner";
 import type { TerminalVisualState } from "@glade/shared/threads/terminalThreads";
 
 import { cn } from "~/lib/utils";
@@ -6,8 +7,6 @@ interface TerminalActivityIndicatorProps {
   className?: string;
   state?: Exclude<TerminalVisualState, "idle">;
 }
-
-const RUNNING_INDICATOR_OFFSETS_MS = [0, 160, 320, 480] as const;
 
 export default function TerminalActivityIndicator({
   className,
@@ -29,21 +28,5 @@ export default function TerminalActivityIndicator({
     );
   }
 
-  return (
-    <span
-      aria-hidden="true"
-      className={cn(
-        "inline-grid h-2.5 w-2.5 shrink-0 grid-cols-2 grid-rows-2 gap-px text-current",
-        className,
-      )}
-    >
-      {RUNNING_INDICATOR_OFFSETS_MS.map((delayMs) => (
-        <span
-          key={delayMs}
-          className="terminal-running-indicator__dot block size-1 rounded-full bg-current"
-          style={{ animationDelay: `${delayMs}ms` }}
-        />
-      ))}
-    </span>
-  );
+  return <Spinner variant="terminal" aria-hidden="true" className={cn("size-3", className)} />;
 }

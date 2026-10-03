@@ -1,3 +1,4 @@
+import { Spinner } from "~/components/ui/spinner";
 import { Switch } from "../ui/switch";
 import type { ServerProviderUsageSnapshot } from "@glade/contracts/server/server";
 import {
@@ -183,7 +184,11 @@ export function ProviderUsageSettingsPanel() {
           disabled={isRefreshing}
           onClick={() => refreshMutation.mutate()}
         >
-          <RotateCcwIcon className={cn("size-3.5", isRefreshing && "animate-spin")} />
+          {isRefreshing ? (
+            <Spinner variant="action" aria-hidden="true" className="size-3.5" />
+          ) : (
+            <RotateCcwIcon className="size-3.5" />
+          )}
           Refresh
         </Button>
       }

@@ -1,7 +1,8 @@
+import { Spinner } from "~/components/ui/spinner";
 import { type TimestampFormat } from "../appSettings";
 import { Button } from "./ui/button";
 import { ScrollArea } from "./ui/scroll-area";
-import { CheckIcon, LoaderIcon, PanelRightCloseIcon } from "~/lib/icons";
+import { CheckIcon, PanelRightCloseIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import type { ActiveTaskListState } from "../session-logic";
 import { formatTimestamp } from "../timestampFormat";
@@ -17,7 +18,7 @@ function stepStatusIcon(status: string): React.ReactNode {
   if (status === "inProgress") {
     return (
       <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-accent-blue)_15%,transparent)] text-[var(--color-accent-blue)]">
-        <LoaderIcon className="size-3 animate-spin" />
+        <Spinner variant="working" className="size-3" />
       </span>
     );
   }

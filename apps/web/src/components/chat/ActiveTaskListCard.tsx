@@ -1,3 +1,4 @@
+import { Spinner } from "~/components/ui/spinner";
 import { pluralize } from "@glade/shared/text/text";
 import {
   PiArrowsInSimple,
@@ -7,7 +8,7 @@ import {
 } from "react-icons/pi";
 
 import type { ActiveTaskListState } from "../../session-logic";
-import { BotIcon, CheckIcon, LoaderIcon } from "~/lib/icons";
+import { BotIcon, CheckIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { Button } from "../ui/button";
 import {
@@ -37,7 +38,7 @@ function taskStatusIcon(status: ActiveTaskListState["tasks"][number]["status"]) 
     return <CheckIcon className="size-3" />;
   }
   if (status === "inProgress") {
-    return <LoaderIcon className="size-3 animate-spin" />;
+    return <Spinner variant="working" className="size-3" />;
   }
   return <span className="block size-[7px] rounded-full border border-current" />;
 }
@@ -61,7 +62,7 @@ export function ActiveTaskListCard({
       <ComposerStackedPanelHeaderRow>
         <ComposerStackedPanelRowMain>
           {compact && hasInProgressTask ? (
-            <LoaderIcon className={cn(COMPOSER_STACKED_PANEL_ICON_CLASS_NAME, "animate-spin")} />
+            <Spinner variant="working" className={COMPOSER_STACKED_PANEL_ICON_CLASS_NAME} />
           ) : (
             <PiSlidersHorizontal className={COMPOSER_STACKED_PANEL_ICON_CLASS_NAME} />
           )}

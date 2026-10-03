@@ -16,6 +16,8 @@
 
 ### Improved
 
+- Loading and activity indicators share a consistent dot-matrix style, with distinct animations for agents, terminals and voice.
+
 - The Environment panel shows the working directory and worktree location, including the source directory before a new worktree is created.
 
 - Imported conversations open with recent messages and automatically reveal older history when scrolling or searching.

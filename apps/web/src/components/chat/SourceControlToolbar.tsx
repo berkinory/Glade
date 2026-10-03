@@ -199,7 +199,7 @@ export function SourceControlToolbar({
           onClick={() => run({ action: "fetch" })}
         >
           {mutation.isPending && mutation.variables?.action === "fetch" ? (
-            <Spinner />
+            <Spinner variant="action" />
           ) : (
             <IconCloudDownload className="size-4" />
           )}
@@ -217,7 +217,7 @@ export function SourceControlToolbar({
           onClick={() => run({ action: "pull" })}
         >
           {mutation.isPending && mutation.variables?.action === "pull" ? (
-            <Spinner />
+            <Spinner variant="action" />
           ) : (
             <IconArrowBarToDown className="size-4" />
           )}
@@ -235,7 +235,7 @@ export function SourceControlToolbar({
           onClick={() => run({ action: "push" })}
         >
           {mutation.isPending && mutation.variables?.action === "push" ? (
-            <Spinner className="size-4" />
+            <Spinner variant="action" className="size-4" />
           ) : (
             <IconArrowBarToUp className="size-4" />
           )}

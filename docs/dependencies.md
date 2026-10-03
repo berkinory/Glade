@@ -82,3 +82,14 @@ is ready. Lazy activation can therefore silently discard the first image. The
 patch exposes `ImageAddon.ready` after activation; Glade holds the first image
 chunk until that promise resolves. Source, both executable bundles and typings
 are patched. Remove this patch when upstream exposes equivalent readiness.
+
+## Dot Matrix indicators
+
+The web client adapts Mobius Run, Prism Sweep, Core Spiral, Flux Columns and Sound
+Bars from [Dot Matrix](https://dotmatrix.zzzzshawn.cloud/). The shared SVG renderer
+uses precomputed opacity frames instead of the gallery runtime, with no glow and
+subtle background dots. Skeleton placeholders retain their existing behavior.
+
+The source is covered by a custom license permitting use within products, rather
+than MIT. Its license is retained in
+[LICENSE.dotmatrix.txt](../apps/web/src/components/ui/spinner/LICENSE.dotmatrix.txt).

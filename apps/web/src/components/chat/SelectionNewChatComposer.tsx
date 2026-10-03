@@ -1,7 +1,8 @@
+import { Spinner } from "~/components/ui/spinner";
 import type { ThreadEnvironmentMode } from "@glade/contracts/orchestration/threadEntities";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import { ArrowUpRightIcon, ComposerSendArrowIcon, LoaderCircleIcon, XIcon } from "~/lib/icons";
+import { ArrowUpRightIcon, ComposerSendArrowIcon, XIcon } from "~/lib/icons";
 import { resolveThreadEnvironmentPresentation } from "~/lib/threadEnvironment";
 import { ComposerPromptEditor, type ComposerPromptEditorHandle } from "../ComposerPromptEditor";
 import { Button } from "../ui/button";
@@ -214,7 +215,7 @@ export function SelectionNewChatComposer({
                   disabled={busy || !prompt.trim()}
                 >
                   {busy ? (
-                    <LoaderCircleIcon className="size-3 animate-spin" />
+                    <Spinner className="size-3" />
                   ) : (
                     <ComposerSendArrowIcon
                       aria-hidden="true"

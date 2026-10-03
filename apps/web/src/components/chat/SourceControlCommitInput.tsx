@@ -80,7 +80,7 @@ export function SourceControlCommitInput(props: {
                 }
               >
                 {generation.isPending ? (
-                  <Spinner className="size-3.5" />
+                  <Spinner variant="action" className="size-3.5" />
                 ) : (
                   <IconSparkles className="size-3.5" />
                 )}
@@ -105,7 +105,11 @@ export function SourceControlCommitInput(props: {
           disabled={!props.canCommit || generation.isPending}
           onClick={props.onCommit}
         >
-          {props.committing ? <Spinner className="size-4" /> : <GitCommitIcon className="size-4" />}{" "}
+          {props.committing ? (
+            <Spinner variant="action" className="size-4" />
+          ) : (
+            <GitCommitIcon className="size-4" />
+          )}{" "}
           Commit
         </Button>
       </div>

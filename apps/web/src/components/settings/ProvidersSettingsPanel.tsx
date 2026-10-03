@@ -1,3 +1,4 @@
+import { Spinner } from "~/components/ui/spinner";
 import { ProviderSignIn } from "./ProviderSignIn";
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
@@ -26,7 +27,7 @@ import type { AppSettings, AppSettingsBinding } from "~/appSettings";
 import { useProviderStatusesForLocalConfig } from "~/hooks/useProviderStatusesForLocalConfig";
 import { useRefreshProviderStatusesNow } from "~/hooks/useProviderStatusRefresh";
 import { CentralIcon } from "~/lib/central-icons";
-import { DownloadIcon, ExternalLinkIcon, Loader2Icon } from "~/lib/icons";
+import { DownloadIcon, ExternalLinkIcon } from "~/lib/icons";
 import {
   hasReconciledServerProviderStatuses,
   serverQueryKeys,
@@ -161,11 +162,7 @@ function ProviderUpdateAction(props: {
         props.onUpdate(props.providerStatus.provider);
       }}
     >
-      {props.active ? (
-        <Loader2Icon className="size-3.5 animate-spin" />
-      ) : (
-        <DownloadIcon className="size-3.5" />
-      )}
+      {props.active ? <Spinner className="size-3.5" /> : <DownloadIcon className="size-3.5" />}
       {props.active ? "Updating" : "Update"}
     </Button>
   );
@@ -640,7 +637,7 @@ export function ProvidersSettingsPanel({
               disabled={refreshingProviders}
               onClick={() => void refreshProviders()}
             >
-              {refreshingProviders ? <Loader2Icon className="size-3.5 animate-spin" /> : null}
+              {refreshingProviders ? <Spinner className="size-3.5" /> : null}
               {refreshingProviders ? "Checking setup" : "Refresh status"}
             </Button>
           }

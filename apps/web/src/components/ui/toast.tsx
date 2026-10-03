@@ -1,5 +1,7 @@
 "use client";
 
+import { Spinner } from "~/components/ui/spinner";
+
 import { Toast, type ToastObject } from "@base-ui/react/toast";
 import { useMemo, useEffect, useState, type CSSProperties } from "react";
 import { useParams } from "@tanstack/react-router";
@@ -10,7 +12,6 @@ import {
   CheckIcon,
   CopyIcon,
   InfoIcon,
-  LoaderCircleIcon,
   TriangleAlertIcon,
   XIcon,
 } from "~/lib/icons";
@@ -62,7 +63,7 @@ const threadToastVisibleTimeoutRemainingMs = new Map<ToastId, number>();
 const TOAST_ICONS = {
   error: CircleAlertIcon,
   info: InfoIcon,
-  loading: LoaderCircleIcon,
+  loading: Spinner,
   success: CircleCheckIcon,
   warning: TriangleAlertIcon,
 } as const;
@@ -111,7 +112,7 @@ function toastRootClassName(
 }
 
 function toastIconClassName(type: ToastObject<ThreadToastData>["type"]): string {
-  return cn(NOTIFICATION_ICON_CLASS_NAME, type === "loading" && "animate-spin opacity-90");
+  return cn(NOTIFICATION_ICON_CLASS_NAME, type === "loading" && "opacity-90");
 }
 
 type ToastPosition =

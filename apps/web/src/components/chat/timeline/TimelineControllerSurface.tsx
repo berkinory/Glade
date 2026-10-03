@@ -1,3 +1,4 @@
+import { Spinner } from "~/components/ui/spinner";
 import { LegendList } from "@legendapp/list/react";
 import {
   CHAT_COLUMN_FRAME_CLASS_NAME,
@@ -21,7 +22,6 @@ import {
 import { ToolCallGroupSummaryRow } from "~/components/chat/ToolCallGroupSummaryRow";
 import ChatMarkdown from "~/components/ChatMarkdown";
 import { DisclosureRegion } from "~/components/ui/DisclosureRegion";
-import { syncAnimationsToTimelineOrigin } from "~/lib/animationTimelineSync";
 import { cn } from "~/lib/utils";
 import { MUTED_LABEL_TEXT_CLASS_NAME } from "~/surfaceStyles";
 import { type WorkLogEntry } from "~/workLog.types";
@@ -272,10 +272,13 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
 
       {row.kind === "working" && (
         <div
-          ref={syncAnimationsToTimelineOrigin}
-          className={cn("shimmer pt-0.5 font-system-ui", MUTED_LABEL_TEXT_CLASS_NAME)}
+          className={cn(
+            "flex items-center gap-2 pt-0.5 font-system-ui",
+            MUTED_LABEL_TEXT_CLASS_NAME,
+          )}
           style={{ fontSize: `${appTypographyScale.chatPx}px` }}
         >
+          <Spinner variant="working" aria-hidden="true" className="size-3.5" />
           {workingLabel}
         </div>
       )}

@@ -1,3 +1,4 @@
+import { Spinner } from "~/components/ui/spinner";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ServerProviderStatus } from "@glade/contracts/server/server";
 import { PROVIDER_DESCRIPTORS as VISIBLE_PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
@@ -252,10 +253,11 @@ export function ProvidersStep(props: { readonly detection: ProviderDetection }) 
           className="inline-flex cursor-pointer items-center gap-1.5 text-foreground/70 transition-colors hover:text-foreground disabled:opacity-60 motion-reduce:transition-none"
           onClick={() => void detection.detect()}
         >
-          <RefreshCwIcon
-            className={cn("size-3.5", detection.detecting && "animate-spin")}
-            aria-hidden
-          />
+          {detection.detecting ? (
+            <Spinner variant="action" className="size-3.5" aria-hidden />
+          ) : (
+            <RefreshCwIcon className="size-3.5" aria-hidden />
+          )}
           Re-detect
         </button>
       </div>

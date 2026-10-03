@@ -1,7 +1,8 @@
+import { Spinner } from "~/components/ui/spinner";
 import { useEffect, useState } from "react";
 
 import { basenameOfPath } from "~/file-icons";
-import { Loader2Icon, TriangleAlertIcon } from "~/lib/icons";
+import { TriangleAlertIcon } from "~/lib/icons";
 import { buildLocalImageUrl } from "~/lib/localImageUrls";
 import { useContainerSize } from "~/lib/pdf/useContainerSize";
 import { usePdfDocument } from "~/lib/pdf/usePdfDocument";
@@ -131,7 +132,7 @@ export function PdfFilePreview(props: {
         role="status"
         aria-label="Loading PDF..."
       >
-        <Loader2Icon className="size-4 animate-spin opacity-60" aria-hidden="true" />
+        <Spinner className="size-4 opacity-60" aria-hidden="true" />
       </div>
     </div>
   );

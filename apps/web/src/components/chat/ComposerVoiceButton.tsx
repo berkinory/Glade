@@ -1,4 +1,5 @@
-import { Loader2Icon, MicIcon } from "~/lib/icons";
+import { Spinner } from "~/components/ui/spinner";
+import { MicIcon } from "~/lib/icons";
 import { Button } from "../ui/button";
 
 export const ComposerVoiceButton = function ComposerVoiceButton(props: {
@@ -25,7 +26,7 @@ export const ComposerVoiceButton = function ComposerVoiceButton(props: {
       onClick={props.onClick}
     >
       {props.isTranscribing ? (
-        <Loader2Icon aria-hidden="true" className="size-4 animate-spin text-primary" />
+        <Spinner variant="voice" aria-hidden="true" className="size-4 text-primary" />
       ) : (
         <MicIcon aria-hidden="true" className="size-4 text-primary" />
       )}

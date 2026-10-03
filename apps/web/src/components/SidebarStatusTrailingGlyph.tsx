@@ -1,6 +1,6 @@
 import { cn } from "~/lib/utils";
 import type { ThreadStatusPill } from "./Sidebar.logic.statusTypes";
-import { ThreadRunningSpinner } from "./ThreadRunningSpinner";
+import { Spinner } from "~/components/ui/spinner";
 
 function SidebarUnreadCompletionGlyph({ className }: { className?: string }) {
   return (
@@ -19,7 +19,7 @@ export function SidebarStatusTrailingGlyph({ status }: { status: ThreadStatusPil
   if (status.pulse) {
     return (
       <span role="img" aria-label={status.label} className="inline-flex shrink-0">
-        <ThreadRunningSpinner />
+        <Spinner variant="working" className="size-3 text-muted-foreground/70" aria-hidden="true" />
       </span>
     );
   }

@@ -1,3 +1,4 @@
+import { Spinner } from "~/components/ui/spinner";
 import { CentralIcon } from "~/lib/central-icons";
 import { isBlankBrowserTabUrl } from "@glade/shared/browser/browserSession";
 import {
@@ -41,7 +42,6 @@ import {
   EllipsisIcon,
   ExternalLinkIcon,
   GlobeIcon,
-  LoaderCircleIcon,
   PlusIcon,
   RefreshCwIcon,
   XIcon,
@@ -334,11 +334,7 @@ export function BrowserHeader({
                 );
             }}
           >
-            {loading ? (
-              <LoaderCircleIcon className="size-3.5 animate-spin" />
-            ) : (
-              <RefreshCwIcon className="size-3.5" />
-            )}
+            {loading ? <Spinner className="size-3.5" /> : <RefreshCwIcon className="size-3.5" />}
             <span className="sr-only">Reload</span>
           </Button>
         </div>

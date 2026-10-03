@@ -1,3 +1,4 @@
+import { Spinner } from "~/components/ui/spinner";
 import type { ReactNode } from "react";
 
 import type { ServerLocalServerProcess } from "@glade/contracts/server/server";
@@ -12,7 +13,6 @@ import {
   serverLocalServersQueryOptions,
   serverStopLocalServerMutationOptions,
 } from "~/lib/serverReactQuery";
-import { cn } from "~/lib/utils";
 import {
   ENVIRONMENT_ROW_CLASS_NAME,
   ENVIRONMENT_ROW_ICON_CLASS_NAME,
@@ -41,7 +41,11 @@ function LocalServersRefreshButton({
       title="Refresh"
       className="inline-flex size-5 items-center justify-center rounded-md p-0 text-muted-foreground/60 transition-colors hover:bg-[var(--color-background-button-secondary-hover)] hover:text-[var(--color-text-foreground)] data-highlighted:bg-[var(--color-background-button-secondary-hover)] data-highlighted:text-[var(--color-text-foreground)]"
     >
-      <RefreshCwIcon className={cn("size-3", refreshing && "animate-spin")} />
+      {refreshing ? (
+        <Spinner variant="action" aria-hidden="true" className="size-3" />
+      ) : (
+        <RefreshCwIcon className="size-3" />
+      )}
     </MenuItem>
   );
 }
@@ -80,7 +84,7 @@ function LocalServerRow({
         className="inline-flex size-6 shrink-0 items-center justify-center rounded-md p-0 text-muted-foreground/70 transition-colors hover:bg-[color-mix(in_srgb,var(--destructive)_12%,transparent)] hover:text-destructive data-highlighted:bg-[color-mix(in_srgb,var(--destructive)_12%,transparent)] data-highlighted:text-destructive data-disabled:text-muted-foreground/30 data-disabled:hover:bg-transparent data-disabled:hover:text-muted-foreground/30"
       >
         {stopping ? (
-          <RefreshCwIcon className="size-3.5 animate-spin" />
+          <Spinner variant="action" className="size-3.5" />
         ) : (
           <StopFilledIcon className="size-3.5" />
         )}
@@ -122,7 +126,10 @@ export function EnvironmentLocalServersSection({ enabled }: { enabled: boolean }
   const trailing = (
     <>
       {isBusy ? (
-        <RefreshCwIcon className="size-3 animate-spin text-[var(--color-text-foreground-secondary)]" />
+        <Spinner
+          variant="action"
+          className="size-3  text-[var(--color-text-foreground-secondary)]"
+        />
       ) : (
         <span className="flex items-center gap-1.5">
           {serverCount > 0 ? (
@@ -159,7 +166,7 @@ export function EnvironmentLocalServersSection({ enabled }: { enabled: boolean }
 
         {localServersQuery.isLoading ? (
           <LocalServersPlaceholder
-            icon={<RefreshCwIcon className="size-4 animate-spin" />}
+            icon={<Spinner variant="action" className="size-4" />}
             title="Scanning local ports"
           />
         ) : localServersQuery.isError ? (

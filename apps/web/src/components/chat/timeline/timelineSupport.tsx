@@ -1,3 +1,4 @@
+import { Spinner } from "~/components/ui/spinner";
 import type { ImportedHistoryState } from "../useImportedHistory";
 import { ThreadId, type MessageId, type TurnId } from "@glade/contracts/core/baseSchemas";
 
@@ -18,12 +19,10 @@ import { type ThreadFindHighlight, type ThreadFindMatch } from "~/components/cha
 import { resolveUserTurnMarker, type UserTurnMarkerKind } from "~/components/chat/userTurnMarker";
 import type { WorkingLabel } from "~/components/ChatView.logic.dispatch";
 import { Button } from "~/components/ui/button";
-import { syncAnimationsToTimelineOrigin } from "~/lib/animationTimelineSync";
 import {
   BotIcon,
   CircleAlertIcon,
   CircleCheckIcon,
-  LoaderIcon,
   SteerIcon,
   WorktreeIcon,
   type LucideIcon,
@@ -119,7 +118,7 @@ function WorktreeSetupStepGlyph({ status }: { status: WorktreeSetupStep["status"
     return <CircleCheckIcon className="size-2.5 text-[var(--color-text-foreground)]" />;
   }
   if (status === "active") {
-    return <LoaderIcon className="size-2.5 animate-spin text-[var(--color-text-foreground)]" />;
+    return <Spinner variant="working" className="size-2.5 text-[var(--color-text-foreground)]" />;
   }
   if (status === "error") {
     return <CircleAlertIcon className="size-2.5 text-destructive" />;
@@ -144,10 +143,8 @@ export function WorktreeSetupCard({
     <div className="w-fit max-w-full rounded-xl border border-[color:var(--color-border-light)] bg-[var(--color-background-elevated-primary)] px-3.5 py-3 font-system-ui shadow-xs">
       <div className="flex items-center gap-2">
         <WorktreeIcon className="size-3.5 shrink-0 text-[var(--color-text-foreground-tertiary)]" />
-        <span
-          ref={syncAnimationsToTimelineOrigin}
-          className="shimmer text-ui-lg font-medium text-[var(--color-text-foreground-secondary)]"
-        >
+        <span className="inline-flex items-center gap-2 text-ui-lg font-medium text-[var(--color-text-foreground-secondary)]">
+          <Spinner variant="working" aria-hidden="true" className="size-3.5" />
           Preparing worktree...
         </span>
       </div>

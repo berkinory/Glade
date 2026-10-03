@@ -1,3 +1,4 @@
+import { Spinner } from "~/components/ui/spinner";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { pluralize } from "@glade/shared/text/text";
 
@@ -5,7 +6,6 @@ import {
   BackgroundTrayIcon,
   BackToParentIcon,
   BotIcon,
-  LoaderIcon,
   PanelCollapseIcon,
   PanelExpandIcon,
   StopIcon,
@@ -70,7 +70,7 @@ export const ComposerSubagentStrip = function ComposerSubagentStrip({
       <ComposerStackedPanelHeaderRow>
         <ComposerStackedPanelRowMain>
           {compact && runningCount > 0 ? (
-            <LoaderIcon className={cn(COMPOSER_STACKED_PANEL_ICON_CLASS_NAME, "animate-spin")} />
+            <Spinner variant="working" className={COMPOSER_STACKED_PANEL_ICON_CLASS_NAME} />
           ) : (
             <BotIcon className={COMPOSER_STACKED_PANEL_ICON_CLASS_NAME} />
           )}

@@ -1,3 +1,4 @@
+import { Spinner } from "~/components/ui/spinner";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { pluralize } from "@glade/shared/text/text";
 import { useState } from "react";
@@ -10,7 +11,6 @@ import {
 import {
   CheckIcon,
   CopyIcon,
-  LoaderIcon,
   PanelCollapseIcon,
   PanelExpandIcon,
   PauseIcon,
@@ -328,7 +328,7 @@ export function WorkflowRunCard({
       <ComposerStackedPanelHeaderRow>
         <ComposerStackedPanelRowMain title={workflowRun.description ?? undefined}>
           {compact && workflowRun.runningCount > 0 ? (
-            <LoaderIcon className={cn(COMPOSER_STACKED_PANEL_ICON_CLASS_NAME, "animate-spin")} />
+            <Spinner variant="working" className={COMPOSER_STACKED_PANEL_ICON_CLASS_NAME} />
           ) : (
             <WorkflowIcon className={COMPOSER_STACKED_PANEL_ICON_CLASS_NAME} />
           )}

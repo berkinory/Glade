@@ -1,3 +1,4 @@
+import { Spinner } from "~/components/ui/spinner";
 import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ServerLocalServerProcess } from "@glade/contracts/server/server";
 import { localServerPrimaryLabel } from "@glade/shared/browser/localServers";
@@ -17,7 +18,6 @@ import { CentralIcon } from "~/lib/central-icons";
 import type { DockPaneRuntimeMode } from "~/lib/dockPaneActivation";
 import { CircleAlertIcon, GlobeIcon, RefreshCwIcon, type LucideIcon } from "~/lib/icons";
 import { NATIVE_SURFACE_MENU_OVERLAY_SELECTOR } from "~/lib/nativeSurfaceOcclusion";
-import { cn } from "~/lib/utils";
 export interface BrowserPanelProps {
   mode: BrowserPanelMode;
   threadId: ThreadId;
@@ -404,7 +404,11 @@ export function BrowserLocalServersHome({
             aria-label="Refresh local servers"
             title="Refresh local servers"
           >
-            <RefreshCwIcon className={cn("size-4", loading && "animate-spin")} />
+            {loading ? (
+              <Spinner variant="action" aria-hidden="true" className="size-4" />
+            ) : (
+              <RefreshCwIcon className="size-4" />
+            )}
           </Button>
         </div>
 
@@ -412,7 +416,7 @@ export function BrowserLocalServersHome({
           <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
             {loading ? (
               <>
-                <RefreshCwIcon className="mb-4 size-12 animate-spin text-white/20" />
+                <Spinner variant="action" className="mb-4 size-12  text-white/20" />
                 <p className="text-base font-semibold text-white">Scanning local servers</p>
                 <p className="mt-2 text-ui leading-snug text-white/35">Checking localhost ports</p>
               </>

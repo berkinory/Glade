@@ -1,6 +1,7 @@
+import { Spinner } from "~/components/ui/spinner";
 import { useEffect, useRef, useState } from "react";
 
-import { Loader2Icon, XIcon } from "~/lib/icons";
+import { XIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { Button } from "../ui/button";
 
@@ -90,7 +91,7 @@ export function ComposerVoiceRecorderBar(props: ComposerVoiceRecorderBarProps) {
         onClick={props.onDiscard}
       >
         {props.isTranscribing ? (
-          <Loader2Icon aria-hidden="true" className="size-3 animate-spin" />
+          <Spinner variant="voice" aria-hidden="true" className="size-3" />
         ) : (
           <XIcon aria-hidden="true" className="size-3.5" />
         )}
@@ -106,7 +107,7 @@ export function ComposerVoiceRecorderBar(props: ComposerVoiceRecorderBarProps) {
         onClick={props.onStop}
       >
         {props.isTranscribing ? (
-          <Loader2Icon aria-hidden="true" className="size-3 animate-spin" />
+          <Spinner variant="voice" aria-hidden="true" className="size-3" />
         ) : (
           <span aria-hidden="true" className="block size-2 rounded-[1px] bg-current" />
         )}

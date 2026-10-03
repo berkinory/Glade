@@ -1,7 +1,8 @@
+import { Spinner } from "~/components/ui/spinner";
 import { type ImgHTMLAttributes, type MouseEvent, useState } from "react";
 
 import { downloadUrlAsBlob } from "~/lib/browserDownload";
-import { DownloadIcon, Loader2Icon, TriangleAlertIcon } from "~/lib/icons";
+import { DownloadIcon, TriangleAlertIcon } from "~/lib/icons";
 import { buildLocalImageUrl, localImageFileName } from "~/lib/localImageUrls";
 import { cn } from "~/lib/utils";
 import { toastManager } from "./ui/toast";
@@ -186,7 +187,7 @@ export function LocalImagePreview(props: {
     <div className={cn("local-image-preview", props.className)} data-status={status}>
       {status === "loading" ? (
         <span className="local-image-preview__skeleton" aria-hidden="true">
-          <Loader2Icon className="size-4 animate-spin opacity-60" />
+          <Spinner className="size-4 opacity-60" />
         </span>
       ) : null}
       <img

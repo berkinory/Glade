@@ -1,7 +1,8 @@
+import { Spinner } from "~/components/ui/spinner";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { useState } from "react";
 
-import { ChevronDownIcon, FastModeIcon, RefreshCwIcon, SettingsIcon } from "~/lib/icons";
+import { ChevronDownIcon, FastModeIcon, SettingsIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { PROVIDER_ICON_COMPONENT_BY_PROVIDER } from "../ProviderIcon";
 import { Button } from "../ui/button";
@@ -84,7 +85,7 @@ export function ComposerModelMenuTrigger(props: {
           )}
         >
           {props.loading ? (
-            <RefreshCwIcon aria-hidden="true" className="size-3.5 shrink-0 animate-spin" />
+            <Spinner variant="action" aria-hidden="true" className="size-3.5 shrink-0" />
           ) : (
             <ProviderIcon
               aria-hidden="true"

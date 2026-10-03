@@ -1,3 +1,4 @@
+import { Spinner } from "~/components/ui/spinner";
 import { pendingRequestInstanceKey } from "@glade/shared/threads/threadSummary";
 import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { useCallback } from "react";
@@ -29,7 +30,6 @@ import {
   COMPOSER_INPUT_SURFACE_CLASS_NAME,
 } from "~/components/chat/composerPickerStyles";
 import { collapseExpandedComposerCursor } from "~/composer-logic";
-import { LoaderCircleIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 
 import { buildNextProviderOptions } from "~/providerModelOptions";
@@ -528,7 +528,7 @@ export function ChatComposerSurface({
                       className="flex items-center gap-1.5 px-1 text-ui leading-snug text-muted-foreground"
                       role="status"
                     >
-                      <LoaderCircleIcon className="size-3.5 animate-spin" />
+                      <Spinner className="size-3.5" />
                       Optimizing {pendingComposerImageCount === 1 ? "image" : "images"}…
                     </div>
                   )}

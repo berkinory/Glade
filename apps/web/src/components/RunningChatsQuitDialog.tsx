@@ -3,7 +3,7 @@ import { useId } from "react";
 
 import { useAppSettings } from "~/appSettings";
 import { APP_DISPLAY_NAME } from "~/branding";
-import { ThreadRunningSpinner } from "~/components/ThreadRunningSpinner";
+import { Spinner } from "~/components/ui/spinner";
 import {
   AlertDialog,
   AlertDialogBackdrop,
@@ -114,7 +114,11 @@ function RunningChatsQuitDialogContent({
         <ul className="m-0 mt-3 flex max-h-[40vh] list-none flex-col gap-2 overflow-y-auto p-0">
           {chats.map((chat) => (
             <li key={chat.id} className="flex min-w-0 items-center gap-2.5">
-              <ThreadRunningSpinner />
+              <Spinner
+                variant="working"
+                className="size-3 text-muted-foreground/70"
+                aria-hidden="true"
+              />
               <span className={cn(uiFont, "truncate text-ui-lg font-normal leading-[18px]")}>
                 {chat.title}
               </span>

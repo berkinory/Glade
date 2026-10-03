@@ -1,15 +1,43 @@
-import { Loader2Icon } from "~/lib/icons";
-import { cn } from "~/lib/utils";
+import type { ComponentProps } from "react";
 
-function Spinner({ className, ...props }: React.ComponentProps<typeof Loader2Icon>) {
+import { useMediaQuery } from "~/hooks/useMediaQuery";
+import { cn } from "~/lib/utils";
+import { DOT_MATRIX_PROFILES, type SpinnerVariant } from "./spinner/dotMatrixFrames";
+
+type SpinnerProps = ComponentProps<"svg"> & { variant?: SpinnerVariant };
+
+export function Spinner({ className, variant = "loading", ...props }: SpinnerProps) {
+  const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+  const profile = DOT_MATRIX_PROFILES[variant];
   return (
-    <Loader2Icon
+    <svg
       aria-label="Loading"
-      className={cn("animate-spin", className)}
       role="status"
       {...props}
-    />
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      className={cn("inline-block size-4 shrink-0", className)}
+    >
+      {profile.dots.map(({ index, still, values }) => (
+        <circle
+          key={index}
+          cx={2 + (index % 5) * 4}
+          cy={2 + Math.floor(index / 5) * 4}
+          r="1.35"
+          opacity={still}
+        >
+          {reducedMotion ? null : (
+            <animate
+              attributeName="opacity"
+              values={values}
+              keyTimes={profile.keyTimes}
+              dur={`${profile.duration}s`}
+              repeatCount="indefinite"
+              calcMode="discrete"
+            />
+          )}
+        </circle>
+      ))}
+    </svg>
   );
 }
-
-export { Spinner };

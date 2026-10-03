@@ -7,11 +7,6 @@
   --default-transition-duration: 100ms;
   --default-transition-timing-function: ease-out;
   --animate-skeleton: skeleton 2s -1s infinite linear;
-  /* Status spinners and shimmer labels share 50ms steps (20 fps), aligned by
-     animationTimelineSync. Matching both cadence and phase lets their redraws
-     share frames instead of repeatedly recompositing the sidebar
-     and composer. Keep 1300ms / 26 steps equal to shimmer's 2000ms / 40 steps. */
-  --animate-spin-stepped: spin-stepped 1.3s steps(26, end) infinite;
   --font-sans: var(--font-ui-family);
   /* Font sizes that follow the size chosen in Settings (useAppTypography). */
   --text-ui: var(--app-font-size-ui);
@@ -81,11 +76,6 @@
   @keyframes skeleton {
     to {
       background-position: -200% 0;
-    }
-  }
-  @keyframes spin-stepped {
-    to {
-      transform: rotate(360deg);
     }
   }
 }
@@ -214,27 +204,6 @@
     background: var(--app-settings-surface, var(--color-background-surface));
     -webkit-backdrop-filter: var(--app-settings-backdrop-filter, none);
     backdrop-filter: var(--app-settings-backdrop-filter, none);
-  }
-
-  /* Animate terminal run state in CSS so many open terminals don't schedule JS timers. */
-  .terminal-running-indicator__dot {
-    animation: terminal-running-indicator-pulse 640ms ease-in-out infinite;
-    opacity: 0.24;
-    transform: scale(0.7);
-    will-change: opacity, transform;
-  }
-}
-
-@keyframes terminal-running-indicator-pulse {
-  0%,
-  100% {
-    opacity: 0.24;
-    transform: scale(0.7);
-  }
-
-  35% {
-    opacity: 0.92;
-    transform: scale(1);
   }
 }
 
@@ -2141,124 +2110,6 @@ label:has(> select#reasoning-effort) select {
 @utility truncate-fade-* {
   --truncate-fade-size: calc(var(--spacing) * --value(integer));
   --truncate-fade-size: --value([length], [percentage]);
-}
-
-/* Text shimmer utility — vendored verbatim from shadcn 4.12.0
-   (dist/tailwind.css `@utility shimmer`). The full `shadcn` stylesheet is not
-   imported because it would clash with this project's custom theme, so the
-   self-contained shimmer block lives here instead. Applied on the
-   "Working for …" status line via the `shimmer` class. Provides `shimmer`,
-   `shimmer-duration-*`, `shimmer-spread-*`, `shimmer-angle-*`,
-   `shimmer-color-*`, `shimmer-once`, `shimmer-reverse`, and `shimmer-none`.
-   One deliberate deviation: the animation is duty-cycled via `--shimmer-timing`
-   (see the note inside `@utility shimmer`).
-   Docs: https://ui.shadcn.com/docs/utils/shimmer */
-@property --shimmer-angle {
-  syntax: "<angle>";
-  inherits: true;
-  initial-value: 20deg;
-}
-@property --shimmer-image {
-  syntax: "*";
-  inherits: false;
-}
-@property --shimmer-text-fill {
-  syntax: "*";
-  inherits: false;
-}
-
-@theme inline {
-  @keyframes tw-shimmer {
-    from {
-      background-position: 100% 0;
-    }
-    to {
-      background-position: 0 0;
-    }
-  }
-}
-
-@utility shimmer {
-  --_spread: var(--shimmer-spread, calc(3ch + 40px));
-  --_base: currentColor;
-  --_highlight: var(--shimmer-color, oklch(from currentColor l c h / calc(alpha* 0.2)));
-
-  background-image: var(
-    --shimmer-image,
-    linear-gradient(
-      calc(90deg + var(--shimmer-angle)),
-      var(--_base) calc(50% - var(--_spread)),
-      color-mix(in oklch, var(--_highlight), var(--_base) 50%) calc(50% - var(--_spread) * 0.5),
-      var(--_highlight) 50%,
-      color-mix(in oklch, var(--_highlight), var(--_base) 50%) calc(50% + var(--_spread) * 0.5),
-      var(--_base) calc(50% + var(--_spread))
-    )
-  );
-  background-repeat: no-repeat;
-  background-size: calc(200% + var(--_spread) * 2) 100%;
-  background-position: 0 0;
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: var(--shimmer-text-fill, transparent);
-  /* Animating a clipped text background repaints the label and its overlapping
-     composer blur. The default 2000ms / 40 steps shares the spinner's 50ms cadence;
-     status labels also use animationTimelineSync so those steps land together.
-     Custom durations/timings can opt out of that shared cadence. */
-  animation: tw-shimmer var(--shimmer-duration, 2s) var(--shimmer-timing, steps(40, end)) infinite;
-
-  @variant dark {
-    --_highlight: var(
-      --shimmer-color,
-      oklch(from currentColor max(0.8, calc(l + 0.4)) c h / calc(alpha + 0.4))
-    );
-  }
-
-  &:where([dir="rtl"], [dir="rtl"] *) {
-    animation-direction: reverse;
-  }
-}
-
-@utility shimmer-once {
-  animation-iteration-count: 1;
-}
-
-@utility shimmer-reverse {
-  animation-direction: reverse;
-}
-
-@utility shimmer-none {
-  --shimmer-image: none;
-  --shimmer-text-fill: currentColor;
-}
-
-@utility shimmer-color-* {
-  --shimmer-color: --value(--color, [color]);
-  --shimmer-color: color-mix(
-    in oklch,
-    --value(--color, [color]) calc(--modifier(integer) * 1%),
-    transparent
-  );
-}
-
-@utility shimmer-duration-* {
-  --shimmer-duration: calc(--value(integer) * 1ms);
-}
-
-@utility shimmer-spread-* {
-  --shimmer-spread: calc(var(--spacing) * --value(integer));
-  --shimmer-spread: --value([length], [percentage]);
-}
-
-@utility shimmer-angle-* {
-  --shimmer-angle: calc(--value(integer) * 1deg);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .shimmer {
-    animation: none;
-    background-image: none;
-    -webkit-text-fill-color: currentColor;
-  }
 }
 
 .chat-generated-image__overlay {

@@ -135,7 +135,7 @@ function FeedbackDialogForm({
       <Button type="submit" className="w-full" disabled={!canSubmit}>
         {isSending ? (
           <>
-            <Spinner />
+            <Spinner variant="action" />
             Opening…
           </>
         ) : (
