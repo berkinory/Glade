@@ -28,6 +28,7 @@ import {
 } from "./workspaceFilePreviewBreadcrumb";
 
 interface WorkspaceFilePreviewHeaderProps {
+  actions?: ReactNode;
   leading?: ReactNode;
   file: {
     path: string;
@@ -255,6 +256,7 @@ export const WorkspaceFilePreviewHeader = function WorkspaceFilePreviewHeader(
       ) : null}
 
       <div className="flex shrink-0 items-center gap-1.5">
+        {props.actions}
         {markdownView ? (
           <div
             role="radiogroup"

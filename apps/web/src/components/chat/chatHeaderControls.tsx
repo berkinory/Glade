@@ -98,6 +98,7 @@ export function SurfaceTabChip({
   labelClassName,
   closeLabel,
   onSelect,
+  onDoubleClick,
   onClose,
 }: {
   icon: ReactNode;
@@ -110,6 +111,7 @@ export function SurfaceTabChip({
   labelClassName?: string | undefined;
   closeLabel?: string | undefined;
   onSelect?: (() => void) | undefined;
+  onDoubleClick?: (() => void) | undefined;
   onClose?: (() => void) | undefined;
 }) {
   return (
@@ -148,6 +150,7 @@ export function SurfaceTabChip({
           className={cn("flex min-w-0 items-center gap-1.5 text-left", labelClassName)}
           title={title}
           aria-pressed={active}
+          onDoubleClick={onDoubleClick}
           onClick={(event) => {
             event.stopPropagation();
             onSelect();

@@ -5,6 +5,7 @@ interface ExplorerRevealRequest {
   path: string;
 
   filePath?: string;
+  preview?: boolean;
 
   position?: { lineNumber: number; column: number };
   nonce: number;
@@ -18,6 +19,7 @@ interface ExplorerRevealRequestState {
     path: string,
     filePath?: string,
     position?: { lineNumber: number; column: number },
+    preview?: boolean,
   ) => void;
 }
 
@@ -32,7 +34,7 @@ export const useExplorerRevealRequestStore = create<ExplorerRevealRequestState>(
       delete requestsByThreadId[threadId];
       return { requestsByThreadId };
     }),
-  requestReveal: (threadId, path, filePath, position) => {
+  requestReveal: (threadId, path, filePath, position, preview) => {
     set((state) => ({
       requestsByThreadId: {
         ...state.requestsByThreadId,
@@ -40,6 +42,7 @@ export const useExplorerRevealRequestStore = create<ExplorerRevealRequestState>(
           path,
           ...(position ? { position } : {}),
           ...(filePath ? { filePath } : {}),
+          ...(preview ? { preview } : {}),
           nonce: ++nextRevealNonce,
         },
       },
@@ -55,9 +58,12 @@ export function requestExplorerFileReveal(
   threadId: ThreadId,
   filePath: string,
   position?: { lineNumber: number; column: number },
+  options?: { preview?: boolean },
 ): void {
   const parent = filePath.includes("/") ? filePath.slice(0, filePath.lastIndexOf("/")) : "";
-  useExplorerRevealRequestStore.getState().requestReveal(threadId, parent, filePath, position);
+  useExplorerRevealRequestStore
+    .getState()
+    .requestReveal(threadId, parent, filePath, position, options?.preview);
 }
 
 export function directoryChain(path: string): string[] {

@@ -109,6 +109,7 @@ export interface WorkspaceFilePreviewProps {
   onMarkdownPreviewChange?: (rendered: boolean) => void;
 
   editable?: boolean;
+  onEdit?: () => void;
 
   liveRevalidationEnabled?: boolean;
 
@@ -348,7 +349,10 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
       : !fileIsWorkspaceRelative
         ? "Only files inside the project can be edited."
         : editor.readOnlyReason;
-  const handleEditBufferChange = editor.handleChange;
+  const handleEditBufferChange = (contents: string) => {
+    props.onEdit?.();
+    editor.handleChange(contents);
+  };
   const handleEditBufferSave = editor.save;
 
   const handleFileReload = useCallback(() => {

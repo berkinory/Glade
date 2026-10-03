@@ -11,7 +11,6 @@ import { EyeOpenIcon, MinusIcon, PlusIcon, RefreshCwIcon, RotateCcwIcon } from "
 import { cn } from "~/lib/utils";
 import { IconButton } from "../ui/icon-button";
 import { CHAT_HEADER_ICON_CONTROL_CLASS_NAME } from "./chatHeaderControls";
-import { DiffStat } from "./DiffStatLabel";
 import { FileEntryIcon } from "./FileEntryIcon";
 
 export type SourceFile = GitSourceControlFilesResult["staged"][number];
@@ -36,7 +35,6 @@ function GitFileRow(props: {
   theme: "light" | "dark";
   isSelected: boolean;
   selectedCount: number;
-  statsAvailable: boolean;
   revertAllowed: boolean;
   actionLabel: string;
   actionIcon: "stage" | "unstage";
@@ -66,31 +64,22 @@ function GitFileRow(props: {
         title={filePath}
       >
         <FileEntryIcon pathValue={filePath} kind="file" theme={props.theme} className="size-4" />
-        <span
-          className={cn(
-            "min-w-0 truncate text-ui text-foreground",
-            props.file.status === "D" && "line-through",
-          )}
-        >
-          {dir ? <span className="text-muted-foreground/70">{dir}</span> : null}
-          <span>{name}</span>
+        <span className="flex min-w-0 items-baseline truncate text-ui text-foreground">
+          <span className={cn("shrink-0", props.file.status === "D" && "line-through")}>
+            {name}
+          </span>
+          {dir ? (
+            <span className="ml-1.5 truncate text-ui-sm text-muted-foreground/55">
+              {dir.replace(/\/$/, "")}
+            </span>
+          ) : null}
         </span>
       </button>
-      <div className="relative flex h-7 w-[7.5rem] shrink-0 items-center justify-end">
-        {props.statsAvailable ? (
-          <DiffStat
-            additions={props.file.insertions}
-            deletions={props.file.deletions}
-            className={cn(
-              "absolute right-7 shrink-0 text-ui-sm group-hover/git-file-row:invisible group-has-[:focus-visible]/git-file-row:invisible",
-              props.isSelected && "invisible",
-            )}
-          />
-        ) : null}
+      <div className="flex h-7 shrink-0 items-center justify-end gap-1">
         <div
           className={cn(
-            "absolute right-7 flex items-center gap-0.5 group-hover/git-file-row:visible group-has-[:focus-visible]/git-file-row:visible",
-            props.isSelected ? "visible" : "invisible",
+            "items-center gap-0.5 group-hover/git-file-row:flex group-has-[:focus-visible]/git-file-row:flex",
+            props.isSelected ? "flex" : "hidden",
           )}
         >
           {props.file.status !== "D" && !(props.isSelected && props.selectedCount > 1) ? (
@@ -146,9 +135,6 @@ function GitFileRow(props: {
 export function GitFileSection(props: {
   title: string;
   files: readonly SourceFile[];
-  untrackedFileStats?: ReadonlyMap<string, { insertions: number; deletions: number }>;
-  totalStats?: { additions: number; deletions: number } | null;
-  statsAvailable?: boolean | undefined;
   count?: number | undefined;
   onAllAction?: () => void;
   selectedPaths: ReadonlySet<string>;
@@ -201,19 +187,6 @@ export function GitFileSection(props: {
         <span className="rounded-full bg-muted px-1.5 text-ui-xs font-medium text-muted-foreground">
           {props.count ?? props.files.length}
         </span>
-        {props.statsAvailable !== false && props.totalStats !== null ? (
-          <DiffStat
-            additions={
-              props.totalStats?.additions ??
-              props.files.reduce((sum, file) => sum + file.insertions, 0)
-            }
-            deletions={
-              props.totalStats?.deletions ??
-              props.files.reduce((sum, file) => sum + file.deletions, 0)
-            }
-            className="text-ui-xs"
-          />
-        ) : null}
         <div className="ml-auto flex items-center gap-1">
           {(props.count ?? props.files.length) > 0 ? (
             <IconButton
@@ -249,7 +222,6 @@ export function GitFileSection(props: {
         <div ref={listRef} className="relative" style={{ height: virtualizer.getTotalSize() }}>
           {virtualizer.getVirtualItems().map((item) => {
             const file = props.files[item.index]!;
-            const fileStats = file.status === "U" ? props.untrackedFileStats?.get(file.path) : null;
             return (
               <div
                 key={item.key}
@@ -262,11 +234,10 @@ export function GitFileSection(props: {
                 }}
               >
                 <GitFileRow
-                  file={fileStats ? { ...file, ...fileStats } : file}
+                  file={file}
                   theme={theme}
                   isSelected={props.selectedPaths.has(file.path)}
                   selectedCount={props.selectedPaths.size}
-                  statsAvailable={props.statsAvailable !== false}
                   revertAllowed={!props.selectedPaths.has(file.path) || selectionCanRevert}
                   actionLabel={props.actionLabel}
                   actionIcon={props.actionIcon}

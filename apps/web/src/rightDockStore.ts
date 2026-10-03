@@ -2,6 +2,7 @@ import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
+import { useMainWorkspaceStore } from "./mainWorkspaceStore";
 import { randomUUID } from "./lib/utils";
 import {
   type OpenPaneInput,
@@ -23,7 +24,7 @@ interface RightDockStore {
   dockStateByThreadId: Record<string, RightDockThreadState | undefined>;
   openPane: (
     threadId: ThreadId,
-    input: Omit<OpenPaneInput, "paneId"> & { paneId?: string },
+    input: Omit<OpenPaneInput, "paneId"> & { paneId?: string; activate?: boolean },
   ) => void;
   toggleSingletonPane: (
     threadId: ThreadId,
@@ -37,7 +38,8 @@ interface RightDockStore {
     paneId: string,
     patch: Partial<Pick<RightDockPane, "sourceControlView" | "diffTurnId" | "diffFilePath">>,
   ) => void;
-  openFile: (threadId: ThreadId, path: string) => void;
+  openFile: (threadId: ThreadId, path: string, options?: { preview?: boolean }) => void;
+  pinFile: (threadId: ThreadId, path: string) => void;
   closeFile: (threadId: ThreadId, path: string) => void;
   clearThreadDockState: (threadId: ThreadId) => void;
 }
@@ -72,9 +74,12 @@ export const useRightDockStore = create<RightDockStore>()(
     (set) => ({
       dockStateByThreadId: {},
       openPane: (threadId, input) =>
-        commit(set, threadId, (state) =>
-          openPaneInState(state, { ...input, paneId: input.paneId ?? randomUUID() }),
-        ),
+        commit(set, threadId, (state) => {
+          const next = openPaneInState(state, { ...input, paneId: input.paneId ?? randomUUID() });
+          return input.activate === false
+            ? { ...next, open: state.open, activePaneId: state.activePaneId }
+            : next;
+        }),
       toggleSingletonPane: (threadId, input) =>
         commit(set, threadId, (state) =>
           toggleSingletonPaneInState(state, { ...input, paneId: input.paneId ?? randomUUID() }),
@@ -87,17 +92,38 @@ export const useRightDockStore = create<RightDockStore>()(
         commit(set, threadId, (state) => setDockOpenInState(state, open)),
       updatePane: (threadId, paneId, patch) =>
         commit(set, threadId, (state) => updatePaneInState(state, paneId, patch)),
-      openFile: (threadId, path) =>
+      openFile: (threadId, path, options) => {
+        const workspace = useMainWorkspaceStore.getState();
+        const previewReviewId = workspace.states[threadId]?.previewReviewId;
+        const dock = useRightDockStore.getState().dockStateByThreadId[threadId];
+        const replacesPreview = !dock?.filePaths.includes(path) || dock.previewFilePath === path;
+        if (options?.preview && replacesPreview && previewReviewId)
+          workspace.closeReview(threadId, previewReviewId);
         commit(set, threadId, (state) => {
-          const next = openPaneInState(state, { kind: "explorer", paneId: randomUUID() });
+          const existing = state.filePaths.includes(path);
+          if (options?.preview && (!existing || state.previewFilePath === path)) {
+            const previousIndex = state.previewFilePath
+              ? state.filePaths.indexOf(state.previewFilePath)
+              : -1;
+            const filePaths = state.filePaths.filter(
+              (file) => file !== state.previewFilePath && file !== path,
+            );
+            filePaths.splice(previousIndex < 0 ? filePaths.length : previousIndex, 0, path);
+            return { ...state, filePaths, activeFilePath: path, previewFilePath: path };
+          }
           return {
-            ...next,
-            filePaths: state.filePaths.includes(path)
-              ? state.filePaths
-              : [...state.filePaths, path],
+            ...state,
+            filePaths: existing ? state.filePaths : [...state.filePaths, path],
             activeFilePath: path,
+            ...(state.previewFilePath === path ? { previewFilePath: null } : {}),
           };
-        }),
+        });
+        useMainWorkspaceStore.getState().selectTab(threadId, `file:${path}`);
+      },
+      pinFile: (threadId, path) =>
+        commit(set, threadId, (state) =>
+          state.previewFilePath === path ? { ...state, previewFilePath: null } : state,
+        ),
       closeFile: (threadId, path) =>
         commit(set, threadId, (state) => {
           const index = state.filePaths.indexOf(path);
@@ -106,13 +132,15 @@ export const useRightDockStore = create<RightDockStore>()(
           return {
             ...state,
             filePaths,
+            ...(state.previewFilePath === path ? { previewFilePath: null } : {}),
             activeFilePath:
               state.activeFilePath === path
                 ? (filePaths[Math.min(index, filePaths.length - 1)] ?? null)
                 : state.activeFilePath,
           };
         }),
-      clearThreadDockState: (threadId) =>
+      clearThreadDockState: (threadId) => {
+        useMainWorkspaceStore.getState().clearThread(threadId);
         set((store) => {
           if (!Object.hasOwn(store.dockStateByThreadId, threadId)) {
             return {};
@@ -120,7 +148,8 @@ export const useRightDockStore = create<RightDockStore>()(
           const next = { ...store.dockStateByThreadId };
           delete next[threadId];
           return { dockStateByThreadId: next };
-        }),
+        });
+      },
     }),
     {
       name: RIGHT_DOCK_STORAGE_KEY,

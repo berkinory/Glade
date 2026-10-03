@@ -42,6 +42,7 @@ export function FileDiffCard(props: {
   diffStyle?: "unified" | "split";
   overflow?: "scroll" | "wrap";
   collapsed?: boolean;
+  hideHeader?: boolean;
 
   renderHeaderTrailing?: () => ReactNode;
   onLineClick?: ((line: DiffLineClickProps) => void) | undefined;
@@ -51,6 +52,7 @@ export function FileDiffCard(props: {
     <FileDiff
       fileDiff={props.fileDiff}
       options={{
+        disableFileHeader: props.hideHeader ?? false,
         diffStyle: props.diffStyle ?? "unified",
         lineDiffType: "word",
         overflow: props.overflow ?? (settings.diffWordWrap ? "wrap" : "scroll"),

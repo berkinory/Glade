@@ -1,8 +1,7 @@
+import { CommitDetail } from "./CommitDetail";
 import { useCommitDrafts } from "./commitDraftStore";
 import { gitRebaseStateQueryOptions } from "~/lib/gitReactQuery";
 import { invalidateGitQueriesForCwds } from "~/lib/gitQueryOptions";
-import { GitMediaPreview, isGitMediaPath } from "./GitMediaPreview";
-import { ShowSourceFile } from "./ShowSourceFile";
 import type { GitRecentCommit } from "@glade/contracts/git/git";
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -10,31 +9,18 @@ import { IconTag } from "@tabler/icons-react";
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 
 import { AuthorAvatar } from "../AuthorAvatar";
-import { IconButton } from "../ui/icon-button";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Spinner } from "../ui/spinner";
 import { toastManager } from "../ui/toast";
-import { useTheme } from "~/hooks/useTheme";
 import { copyTextToClipboard } from "../../lib/clipboard";
 import { showContextMenuFallback } from "~/contextMenuFallback";
 import { GIT_COMMIT_CONTEXT_MENU_ICONS } from "~/lib/contextMenuIcons";
-import { getRenderablePatch, resolveFileDiffPath } from "~/lib/diffRendering";
 import { gitQueryKeys, gitStatusQueryOptions } from "../../lib/gitQueryOptions";
-import {
-  ArrowUpIcon,
-  ChevronDownIcon,
-  CopyIcon,
-  GitBranchIcon,
-  GitCommitIcon,
-  GitMergeIcon,
-  XIcon,
-} from "~/lib/icons";
+import { ArrowUpIcon, GitBranchIcon, GitCommitIcon, GitMergeIcon } from "~/lib/icons";
 import { formatRelativeTime } from "~/lib/relativeTime";
 import { cn } from "~/lib/utils";
 import { ensureNativeApi } from "~/nativeApi";
-import { FileDiffCard, FileDiffSurface } from "./FileDiffView";
-import { ExplorerLoadingRows } from "./ExplorerLoadingRows";
 import { PanelStateMessage } from "./PanelStateMessage";
 
 const PAGE_SIZE = 20;
@@ -44,25 +30,13 @@ async function showCommitContextMenu(
   commit: GitRecentCommit,
   event: MouseEvent<HTMLButtonElement>,
   undo: (() => void) | undefined,
-  cwd: string,
 ) {
   event.preventDefault();
-  let eligible = false;
-  if (undo) {
-    try {
-      eligible = (await ensureNativeApi().git.checkUndoCommit({ cwd })) === commit.sha;
-    } catch (error) {
-      toastManager.add({
-        type: "error",
-        title: "Could not establish undo eligibility",
-        description:
-          error instanceof Error ? error.message : "Remote publication state is unavailable.",
-      });
-    }
-  }
   const action = await showContextMenuFallback(
     [
-      ...(eligible ? [{ id: "undo", label: "Undo commit" }] : []),
+      ...(undo
+        ? [{ id: "undo", label: "Undo commit", icon: GIT_COMMIT_CONTEXT_MENU_ICONS.undo }]
+        : []),
       { id: "hash", label: "Copy commit hash", icon: GIT_COMMIT_CONTEXT_MENU_ICONS.hash },
       { id: "short-hash", label: "Copy short hash", icon: GIT_COMMIT_CONTEXT_MENU_ICONS.shortHash },
       { id: "subject", label: "Copy commit subject", icon: GIT_COMMIT_CONTEXT_MENU_ICONS.subject },
@@ -83,127 +57,7 @@ async function showCommitContextMenu(
   }
 }
 
-function CommitDetail(props: {
-  cwd: string;
-  commit: GitRecentCommit;
-  onClose: () => void;
-  onOpenFile: (path: string) => void;
-}) {
-  const { resolvedTheme } = useTheme();
-  const [expandedPaths, setExpandedPaths] = useState<ReadonlySet<string>>(() => new Set());
-  const detail = useQuery({
-    queryKey: ["git", "history-commit", props.cwd, props.commit.sha],
-    queryFn: () => ensureNativeApi().git.readCommit({ cwd: props.cwd, sha: props.commit.sha }),
-    staleTime: Infinity,
-  });
-  const renderable = useMemo(
-    () => getRenderablePatch(detail.data?.patch, `history:${props.commit.sha}`),
-    [detail.data?.patch, props.commit.sha],
-  );
-
-  return (
-    <section className="flex min-h-0 flex-1 flex-col border-t border-border/70">
-      <div className="flex shrink-0 items-center gap-2 px-3 py-2">
-        <GitCommitIcon className="size-4 shrink-0 text-muted-foreground" />
-        <span className="min-w-0 flex-1 truncate text-ui-sm font-medium">
-          {props.commit.subject}
-        </span>
-        <IconButton
-          label="Copy commit hash"
-          tooltip="Copy commit hash"
-          onClick={() => {
-            void copyTextToClipboard(props.commit.sha).catch(() =>
-              toastManager.add({ type: "error", title: "Could not copy commit hash" }),
-            );
-          }}
-        >
-          <CopyIcon className="size-3.5" />
-        </IconButton>
-        <IconButton
-          label="Close commit details"
-          tooltip="Close commit details"
-          onClick={props.onClose}
-        >
-          <XIcon className="size-3.5" />
-        </IconButton>
-      </div>
-      {detail.isPending ? (
-        <div className="px-2">
-          <ExplorerLoadingRows depth={0} label="Loading commit files" />
-        </div>
-      ) : detail.isError ? (
-        <PanelStateMessage>
-          <div className="flex flex-col items-center gap-2">
-            <span>Could not load commit details.</span>
-            <Button size="sm" variant="outline" onClick={() => void detail.refetch()}>
-              Retry
-            </Button>
-          </div>
-        </PanelStateMessage>
-      ) : (
-        <FileDiffSurface className="min-h-0 flex-1 overflow-auto px-2 pb-2">
-          {detail.data.truncated ? (
-            <p className="px-1 pb-2 text-ui-xs text-muted-foreground">
-              Large commit. Diff is partial.
-            </p>
-          ) : null}
-          {renderable?.kind === "files" ? (
-            renderable.files.map((file) => {
-              const path = resolveFileDiffPath(file);
-              const expanded = expandedPaths.has(path);
-              return (
-                <div
-                  key={`${props.commit.sha}:${path}`}
-                  className="diff-render-file mb-2 rounded-md"
-                  onClickCapture={(event) => {
-                    const target = event.target as HTMLElement;
-                    if (target.closest("button") || !target.closest("[data-diff-file-header]"))
-                      return;
-                    setExpandedPaths((current) => {
-                      const next = new Set(current);
-                      if (next.has(path)) next.delete(path);
-                      else next.add(path);
-                      return next;
-                    });
-                  }}
-                >
-                  <FileDiffCard
-                    fileDiff={file}
-                    theme={resolvedTheme as "light" | "dark"}
-                    collapsed={!expanded}
-                    renderHeaderTrailing={() => (
-                      <>
-                        <ShowSourceFile cwd={props.cwd} file={file} onOpenFile={props.onOpenFile} />
-                        <ChevronDownIcon
-                          className={cn(
-                            "size-3.5 text-muted-foreground transition-transform",
-                            expanded && "rotate-180",
-                          )}
-                        />
-                      </>
-                    )}
-                  />
-                  {expanded && isGitMediaPath(path) ? (
-                    <GitMediaPreview cwd={props.cwd} path={path} revision={props.commit.sha} />
-                  ) : null}
-                </div>
-              );
-            })
-          ) : renderable?.kind === "raw" ? (
-            <pre className="overflow-auto whitespace-pre-wrap break-all font-mono text-ui-xs">
-              {renderable.text}
-            </pre>
-          ) : (
-            <PanelStateMessage>No file changes in this commit.</PanelStateMessage>
-          )}
-        </FileDiffSurface>
-      )}
-    </section>
-  );
-}
-
 function CommitRow(props: {
-  cwd: string;
   commit: GitRecentCommit;
   selected: boolean;
   onSelect: () => void;
@@ -216,7 +70,7 @@ function CommitRow(props: {
       type="button"
       aria-pressed={props.selected}
       onClick={props.onSelect}
-      onContextMenu={(event) => void showCommitContextMenu(commit, event, props.undo, props.cwd)}
+      onContextMenu={(event) => void showCommitContextMenu(commit, event, props.undo)}
       className={cn(
         "flex h-full w-full items-center gap-2 px-3 text-left hover:bg-sidebar-accent/60",
         props.selected && "bg-sidebar-accent",
@@ -293,6 +147,9 @@ function CommitRow(props: {
 }
 
 export function SourceControlHistory(props: {
+  onSelectCommitFile?:
+    | ((commit: GitRecentCommit, path: string, preview: boolean) => void)
+    | undefined;
   cwd: string | null;
   onOpenFile: (path: string) => void;
 }) {
@@ -432,7 +289,6 @@ export function SourceControlHistory(props: {
               >
                 {row.index < commits.length ? (
                   <CommitRow
-                    cwd={props.cwd!}
                     undo={
                       !undo.isPending && eligibility.data?.undoableHead === commits[row.index]!.sha
                         ? () => undo.mutate(commits[row.index]!.sha)
@@ -440,11 +296,10 @@ export function SourceControlHistory(props: {
                     }
                     commit={commits[row.index]!}
                     selected={selectedSha === commits[row.index]!.sha}
-                    onSelect={() =>
-                      setSelectedSha((current) =>
-                        current === commits[row.index]!.sha ? null : commits[row.index]!.sha,
-                      )
-                    }
+                    onSelect={() => {
+                      const commit = commits[row.index]!;
+                      setSelectedSha((current) => (current === commit.sha ? null : commit.sha));
+                    }}
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center">
@@ -471,6 +326,11 @@ export function SourceControlHistory(props: {
           key={selected.sha}
           cwd={props.cwd}
           onOpenFile={props.onOpenFile}
+          onSelectFile={
+            props.onSelectCommitFile
+              ? (path, preview) => props.onSelectCommitFile?.(selected, path, preview)
+              : undefined
+          }
           commit={selected}
           onClose={() => setSelectedSha(null)}
         />

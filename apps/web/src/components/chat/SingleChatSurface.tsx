@@ -37,6 +37,7 @@ import { selectRightDockState, useRightDockStore } from "../../rightDockStore";
 import { useTerminalStateStore } from "../../terminalStateStore";
 import {
   resolveActivePane,
+  type OpenPaneInput,
   type RightDockPane,
   type RightDockPaneKind,
 } from "../../rightDockStore.logic";
@@ -49,11 +50,15 @@ import {
 import { useStore } from "../../store";
 import { createProjectSelector, createThreadWorkspaceMetadataSelector } from "../../storeSelectors";
 import { ChatPaneDropOverlay } from "../chat-drop-overlay/ChatPaneDropOverlay";
-import { DeferredChatView, LazyBrowserPanel } from "./ChatThreadSurfacePrimitives";
-import { FloatingBrowserPanel } from "./FloatingBrowserPanel";
-import { shouldRenderFloatingBrowserPanel } from "./floatingBrowserPanel.logic";
+import { DeferredChatView } from "./ChatThreadSurfacePrimitives";
+import { MainWorkspace } from "./MainWorkspace";
+import {
+  selectMainWorkspace,
+  useMainWorkspaceStore,
+  type WorkspaceReviewTab,
+} from "../../mainWorkspaceStore";
 import { PanelStateMessage } from "./PanelStateMessage";
-import { RIGHT_DOCK_MIN_WIDTH, RightDock } from "./RightDock";
+import { RightDock } from "./RightDock";
 import { getRightDockPaneMeta } from "./rightDockPaneMeta";
 import {
   CHAT_BACKGROUND_CLASS_NAME,
@@ -61,7 +66,6 @@ import {
   CHAT_MAIN_VIEWPORT_SHELL_CLASS_NAME,
 } from "./composerPickerStyles";
 import { routeSingleDockPaneOpenRequest } from "./dockPaneOpenRequest";
-import { selectFloatingBrowserRequested, useBrowserStateStore } from "../../browserStateStore";
 import { RouteInsetSurface } from "../RouteInsetSurface";
 import { WorkspaceSearchPalette, type WorkspaceSearchPaletteMode } from "../WorkspaceSearchPalette";
 import {
@@ -70,8 +74,7 @@ import {
 } from "../../routes/-chatThreadRoute.logic";
 import { cn } from "~/lib/utils";
 
-const DockTerminalPane = lazy(() => import("./DockTerminalPane"));
-const PRIMARY_DOCK_PANE_KINDS = ["explorer", "git", "terminal", "browser"] as const;
+const PRIMARY_DOCK_PANE_KINDS = ["explorer", "git"] as const;
 const SourceControlDockPane = lazy(() =>
   import("./SourceControlDockPane").then((module) => ({
     default: module.SourceControlDockPane,
@@ -82,7 +85,7 @@ const DockExplorerPane = lazy(() =>
     default: module.DockExplorerPane,
   })),
 );
-const DIFF_INLINE_DEFAULT_WIDTH = "max(28rem, calc(50vw - 8rem))";
+const RIGHT_SIDEBAR_DEFAULT_WIDTH = "20rem";
 
 const allowAnySplitDirection = (_direction: SplitDirection) => true;
 
@@ -130,8 +133,26 @@ export function SingleChatSurface(props: {
   const dockState = useRightDockStore(
     useMemo(() => selectRightDockState(props.threadId), [props.threadId]),
   );
-  const openPane = useRightDockStore((store) => store.openPane);
-  const toggleSingletonPane = useRightDockStore((store) => store.toggleSingletonPane);
+  const openDockPane = useRightDockStore((store) => store.openPane);
+  const selectMainTab = useMainWorkspaceStore((store) => store.selectTab);
+  const openReview = useMainWorkspaceStore((store) => store.openReview);
+  const mainWorkspace = useMainWorkspaceStore(selectMainWorkspace(props.threadId));
+  const openPane = useCallback(
+    (threadId: ThreadId, input: Omit<OpenPaneInput, "paneId">) => {
+      if (input.kind === "terminal" || input.kind === "browser") {
+        openDockPane(threadId, { ...input, activate: false });
+        selectMainTab(threadId, input.kind);
+      } else if (input.kind === "git" && input.diffTurnId) {
+        openReview(threadId, {
+          id: `diff:${input.diffTurnId}`,
+          kind: "diff",
+          turnId: input.diffTurnId,
+          filePath: input.diffFilePath ?? null,
+        });
+      } else openDockPane(threadId, input);
+    },
+    [openDockPane, selectMainTab, openReview],
+  );
   const closePane = useRightDockStore((store) => store.closePane);
   const setActivePane = useRightDockStore((store) => store.setActivePane);
   const setDockOpen = useRightDockStore((store) => store.setDockOpen);
@@ -170,33 +191,32 @@ export function SingleChatSurface(props: {
   const lastAppliedRoutePanelSearchKeyRef = useRef<string | null>(null);
   const [searchPaletteOpen, setSearchPaletteOpen] = useState(false);
   const [searchPaletteMode, setSearchPaletteMode] = useState<WorkspaceSearchPaletteMode>("files");
-  const floatingBrowserRequested = useBrowserStateStore(
-    useMemo(() => selectFloatingBrowserRequested(props.threadId), [props.threadId]),
+  const [revealPosition, setRevealPosition] = useState<{
+    filePath: string;
+    lineNumber: number;
+    column?: number;
+    requestId: number;
+  }>();
+  const sidebarPanes = dockState.panes.filter(
+    (pane) => pane.kind === "explorer" || pane.kind === "git",
   );
-  const requestFloatingBrowser = useBrowserStateStore((store) => store.requestFloating);
-  const dismissFloatingBrowserForThread = useBrowserStateStore((store) => store.dismissFloating);
-  const dismissFloatingBrowser = useCallback(() => {
-    dismissFloatingBrowserForThread(props.threadId);
-  }, [dismissFloatingBrowserForThread, props.threadId]);
-
-  const activePane = resolveActivePane(dockState);
-  const floatingBrowserVisible = shouldRenderFloatingBrowserPanel({
-    hostThreadId: props.threadId,
-    floatingThreadId: floatingBrowserRequested ? props.threadId : null,
-    dockBrowserVisible: dockState.open && activePane?.kind === "browser",
-  });
-  const {
-    activePaneRuntimeMode,
-    requestActivePaneLive: requestActiveDockPaneLive,
-    requestImmediateHydration: requestImmediateDockHydration,
-  } = useDockPaneRuntimeActivation({
-    threadId: props.threadId,
-    activePane,
-  });
+  const sidebarState = {
+    ...dockState,
+    panes: sidebarPanes,
+    activePaneId: sidebarPanes.some((pane) => pane.id === dockState.activePaneId)
+      ? dockState.activePaneId
+      : (sidebarPanes[0]?.id ?? null),
+  };
+  const activePane = resolveActivePane(sidebarState);
+  const { activePaneRuntimeMode, requestImmediateHydration: requestImmediateDockHydration } =
+    useDockPaneRuntimeActivation({
+      threadId: props.threadId,
+      activePane,
+    });
 
   const chatPanelState: SplitViewPanePanelState = {
     panel:
-      activePane?.kind === "browser"
+      mainWorkspace.activeTabId === "browser"
         ? "browser"
         : activePane?.kind === "git" && activePane.sourceControlView === "changes"
           ? "diff"
@@ -217,10 +237,11 @@ export function SingleChatSurface(props: {
   };
   const handleToggleBrowser = () => {
     requestImmediateDockHydration("browser");
-    toggleSingletonPane(props.threadId, { kind: "browser" });
+    if (mainWorkspace.activeTabId === "browser") selectMainTab(props.threadId, "chat");
+    else openPane(props.threadId, { kind: "browser" });
   };
   const handleToggleRightDock = () => {
-    if (!dockState.open && dockState.activePaneId === null) {
+    if (!dockState.open && sidebarState.activePaneId === null) {
       requestImmediateDockHydration("explorer");
       openPane(props.threadId, { kind: "explorer" });
       return;
@@ -245,7 +266,7 @@ export function SingleChatSurface(props: {
     (relativePath: string) => {
       requestImmediateDockHydration("explorer");
       openPane(props.threadId, { kind: "explorer" });
-      requestExplorerFileReveal(props.threadId, relativePath);
+      requestExplorerFileReveal(props.threadId, relativePath, undefined, { preview: true });
     },
     [requestImmediateDockHydration, openPane, props.threadId],
   );
@@ -287,6 +308,7 @@ export function SingleChatSurface(props: {
 
   const handleReferenceInChat = (reference: ChatFileReference) => {
     appendChatFileReference(props.threadId, reference);
+    selectMainTab(props.threadId, "chat");
   };
   const prefetchOpenerFile = useCallback(
     (path: string) => {
@@ -416,19 +438,30 @@ export function SingleChatSurface(props: {
   useBrowserPanelDesktopBridge({
     onToggle: () => {
       requestImmediateDockHydration("browser");
-      toggleSingletonPane(props.threadId, { kind: "browser" });
+      if (mainWorkspace.activeTabId === "browser") selectMainTab(props.threadId, "chat");
+      else openPane(props.threadId, { kind: "browser" });
     },
     onOpen: (requestedThreadId) => {
       routeSingleDockPaneOpenRequest({
         currentThreadId: props.threadId,
         requestedThreadId,
         requestImmediateHydration: () => requestImmediateDockHydration("browser"),
-        openPane: requestFloatingBrowser,
+        openPane: (threadId) => openPane(threadId, { kind: "browser" }),
       });
     },
   });
 
   const excludedThreadIds = new Set<ThreadId>([props.threadId]);
+
+  const openGitPreview = (tab: WorkspaceReviewTab, preview: boolean) => {
+    const replacesPreview =
+      !mainWorkspace.reviews.some((review) => review.id === tab.id) ||
+      mainWorkspace.previewReviewId === tab.id;
+    if (preview && replacesPreview && dockState.previewFilePath) {
+      useRightDockStore.getState().closeFile(props.threadId, dockState.previewFilePath);
+    }
+    openReview(props.threadId, tab, preview);
+  };
 
   const handleAddDockPane = (kind: RightDockPaneKind) => {
     requestImmediateDockHydration(kind);
@@ -439,20 +472,20 @@ export function SingleChatSurface(props: {
   };
 
   const handleToggleTerminalPane = () => {
-    if (dockState.open && activePane?.kind === "terminal") {
-      setDockOpen(props.threadId, false);
+    if (mainWorkspace.activeTabId === "terminal") {
+      selectMainTab(props.threadId, "chat");
     } else {
       handleAddDockPane("terminal");
     }
   };
 
   useEffect(() => {
-    if (dockState.open && dockState.activePaneId === null) {
+    if (dockState.open && sidebarState.activePaneId === null) {
       requestImmediateDockHydration("explorer");
       openPane(props.threadId, { kind: "explorer" });
     }
   }, [
-    dockState.activePaneId,
+    sidebarState.activePaneId,
     dockState.open,
     openPane,
     props.threadId,
@@ -467,13 +500,12 @@ export function SingleChatSurface(props: {
 
   useEffect(() => {
     if (terminalPresentation) return;
-    const terminalVisible = dockState.open && activePane?.kind === "terminal";
+    const terminalVisible = mainWorkspace.activeTabId === "terminal";
     if (terminalOpen !== terminalVisible) {
       setTerminalOpen(props.threadId, terminalVisible);
     }
   }, [
-    activePane?.kind,
-    dockState.open,
+    mainWorkspace.activeTabId,
     props.threadId,
     setTerminalOpen,
     terminalOpen,
@@ -485,47 +517,43 @@ export function SingleChatSurface(props: {
     context: { runtimeMode: DockPaneRuntimeMode; isActive: boolean; isVisible: boolean },
   ): ReactNode => {
     switch (pane.kind) {
-      case "browser":
-        return (
-          <Suspense fallback={<PanelStateMessage loadingLabel="Loading browser" />}>
-            <LazyBrowserPanel
-              mode="sidebar"
-              threadId={props.threadId}
-              onClosePanel={() => closePane(props.threadId, pane.id)}
-              runtimeMode={context.runtimeMode}
-              onRequestLive={requestActiveDockPaneLive}
-            />
-          </Suspense>
-        );
-      case "terminal":
-        if (context.runtimeMode === "preview") {
-          return <PanelStateMessage>Terminal is sleeping. Restoring shortly.</PanelStateMessage>;
-        }
-
-        return (
-          <Suspense fallback={<PanelStateMessage loadingLabel="Loading terminal" />}>
-            <DockTerminalPane
-              hostThreadId={props.threadId}
-              projectId={props.projectId}
-              isActive={context.isActive && dockState.open}
-              onClosePanel={() => closePane(props.threadId, pane.id)}
-            />
-          </Suspense>
-        );
       case "git":
         return (
           <Suspense fallback={<PanelStateMessage loadingLabel="Loading source control" />}>
             <SourceControlDockPane
               threadId={props.threadId}
               workspaceRoot={workspaceRoot}
+              onSelectCommitFile={(commit, filePath, preview) =>
+                openGitPreview(
+                  {
+                    id: `commit:${commit.sha}:${filePath}`,
+                    kind: "commit",
+                    sha: commit.sha,
+                    subject: commit.subject,
+                    filePath,
+                  },
+                  preview,
+                )
+              }
+              onSelectDiff={(scope, filePath, preview) =>
+                openGitPreview(
+                  {
+                    id: `git:${scope}:${filePath}`,
+                    kind: "gitFile",
+                    filePath,
+                    scope,
+                  },
+                  preview,
+                )
+              }
               onOpenFile={(filePath) => {
                 requestImmediateDockHydration("explorer");
                 openPane(props.threadId, { kind: "explorer" });
                 requestExplorerFileReveal(props.threadId, filePath);
               }}
               view={pane.sourceControlView}
-              diffTurnId={pane.diffTurnId}
-              diffFilePath={pane.diffFilePath}
+              diffTurnId={null}
+              diffFilePath={null}
               onViewChange={(sourceControlView) =>
                 updatePane(props.threadId, pane.id, { sourceControlView })
               }
@@ -539,6 +567,8 @@ export function SingleChatSurface(props: {
         return (
           <Suspense fallback={<PanelStateMessage loadingLabel="Loading explorer" />}>
             <DockExplorerPane
+              navigationOnly
+              onRevealPosition={setRevealPosition}
               threadId={props.threadId}
               workspaceRoot={workspaceRoot}
               isVisible={context.isVisible}
@@ -568,50 +598,44 @@ export function SingleChatSurface(props: {
           className="flex h-full min-h-0 min-w-0 flex-1"
         >
           <RouteInsetSurface surfaceClassName={CHAT_BACKGROUND_CLASS_NAME}>
-            <DeferredChatView
+            <MainWorkspace
+              key={props.threadId}
               threadId={props.threadId}
-              paneScopeId={SINGLE_CHAT_PANE_SCOPE_ID}
-              deferMount={isBrandNewDraftThread}
-              surfaceMode="single"
-              isFocusedPane
-              panelState={chatPanelState}
-              onToggleDiff={handleToggleDiff}
-              onToggleRightDock={handleToggleRightDock}
-              onToggleTerminal={handleToggleTerminalPane}
-              onOpenTerminal={() => handleAddDockPane("terminal")}
-              onToggleBrowser={handleToggleBrowser}
-              onOpenBrowserUrl={handleOpenBrowserUrl}
-              onOpenTurnDiff={handleOpenTurnDiff}
-              onSplitSurface={handleSplitSurface}
-            />
-            {floatingBrowserVisible ? (
-              <FloatingBrowserPanel
-                key={props.threadId}
+              projectId={props.projectId}
+              workspaceRoot={workspaceRoot}
+              revealPosition={revealPosition}
+              onReferenceInChat={handleReferenceInChat}
+              onAddPane={handleAddDockPane}
+            >
+              <DeferredChatView
                 threadId={props.threadId}
-                onClose={dismissFloatingBrowser}
-                onPopToSidebar={() => {
-                  dismissFloatingBrowser();
-                  requestImmediateDockHydration("browser");
-                  openPane(props.threadId, { kind: "browser" });
-                }}
+                paneScopeId={SINGLE_CHAT_PANE_SCOPE_ID}
+                deferMount={isBrandNewDraftThread}
+                surfaceMode="single"
+                isFocusedPane
+                panelState={chatPanelState}
+                onToggleDiff={handleToggleDiff}
+                onToggleRightDock={handleToggleRightDock}
+                onToggleTerminal={handleToggleTerminalPane}
+                onOpenTerminal={() => handleAddDockPane("terminal")}
+                onToggleBrowser={handleToggleBrowser}
+                onOpenBrowserUrl={handleOpenBrowserUrl}
+                onOpenTurnDiff={handleOpenTurnDiff}
+                onSplitSurface={handleSplitSurface}
               />
-            ) : null}
+            </MainWorkspace>
           </RouteInsetSurface>
         </ChatPaneDropOverlay>
         <RightDock
-          state={dockState}
-          minWidth={RIGHT_DOCK_MIN_WIDTH}
-          defaultWidth={DIFF_INLINE_DEFAULT_WIDTH}
+          state={sidebarState}
+          initialWidth="fixed"
+          minWidth={256}
+          defaultWidth={RIGHT_SIDEBAR_DEFAULT_WIDTH}
           shouldAcceptWidth={shouldAcceptDockWidth}
           addMenuKinds={[]}
           primaryKinds={PRIMARY_DOCK_PANE_KINDS}
           motionKey={props.threadId}
-          activePaneRuntimeMode={
-            floatingBrowserVisible && activePane?.kind === "browser"
-              ? "preview"
-              : activePaneRuntimeMode
-          }
-          browserRuntimeMode={floatingBrowserVisible ? "preview" : "live"}
+          activePaneRuntimeMode={activePaneRuntimeMode}
           onSelectPane={handleSelectDockPane}
           onClosePane={(paneId) => {
             if (dockState.panes.find((pane) => pane.id === paneId)?.kind !== "explorer") {

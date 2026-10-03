@@ -863,7 +863,14 @@ export function createMainWindow({
                 },
                 { type: "separator" as const },
               ]),
-          { role: process.platform === "darwin" ? "close" : "quit" },
+          {
+            label: "Close Tab",
+            accelerator: "CmdOrCtrl+W",
+            click: () => dispatchMenuAction("close-workspace-tab"),
+          },
+          ...(process.platform === "darwin"
+            ? []
+            : [{ type: "separator" as const }, { role: "quit" as const }]),
         ],
       },
       { role: "editMenu" },

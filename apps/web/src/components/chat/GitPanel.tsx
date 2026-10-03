@@ -1,6 +1,6 @@
 import { GitRevertDialog } from "./GitRevertDialog";
 import { GitMediaPreview, isGitMediaPath } from "./GitMediaPreview";
-import { ShowSourceFile } from "./ShowSourceFile";
+import { EditSourceFile } from "./EditSourceFile";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { SourceControlToolbar } from "./SourceControlToolbar";
 
@@ -55,7 +55,7 @@ function SelectedFileDiff(props: {
           fileDiff={props.fileDiff}
           theme={props.theme}
           renderHeaderTrailing={() => (
-            <ShowSourceFile cwd={props.cwd} file={props.fileDiff} onOpenFile={props.onOpenFile} />
+            <EditSourceFile cwd={props.cwd} file={props.fileDiff} onOpenFile={props.onOpenFile} />
           )}
         />
       </div>
@@ -68,6 +68,7 @@ export function GitPanel(props: {
   workspaceRoot: string | null;
   onOpenFile: (path: string) => void;
   selectedFilePath?: string | null;
+  onSelectDiff?: ((section: GitFileSectionId, path: string, preview: boolean) => void) | undefined;
 }) {
   const queryClient = useQueryClient();
   const { resolvedTheme } = useTheme();
@@ -116,7 +117,7 @@ export function GitPanel(props: {
       cwd,
       scope: selectedSection,
       filePath: selected?.path ?? null,
-      enabled: selected !== null && !isGitMediaPath(selected.path),
+      enabled: !props.onSelectDiff && selected !== null && !isGitMediaPath(selected.path),
     }),
   );
   const selectedPatch = selectedPatchQuery.data?.patch;
@@ -195,8 +196,9 @@ export function GitPanel(props: {
       selectGitFiles({ current, section, files, path: file.path, additive, range }),
     );
     if (!additive && !range) {
+      props.onSelectDiff?.(section, file.path, event.detail !== 2);
       setSelected((current) =>
-        current?.section === section && current.path === file.path
+        !props.onSelectDiff && current?.section === section && current.path === file.path
           ? null
           : { section, path: file.path },
       );
@@ -311,7 +313,7 @@ export function GitPanel(props: {
         data-git-files-scroll=""
         className={cn(
           "flex min-h-0 flex-col gap-2 overflow-auto px-1.5 py-2",
-          selectedResolved ? "max-h-[40%] shrink-0" : "flex-1",
+          selectedResolved && !props.onSelectDiff ? "max-h-[40%] shrink-0" : "flex-1",
         )}
       >
         {large ? (
@@ -357,7 +359,6 @@ export function GitPanel(props: {
           <GitFileSection
             title="Staged"
             files={stagedFiles}
-            statsAvailable={filesQuery.data?.statsAvailable}
             count={coverage?.stagedCount}
             onAllAction={() => stageAll("staged")}
             selectedPaths={highlightedPaths("staged")}
@@ -412,7 +413,6 @@ export function GitPanel(props: {
           <GitFileSection
             title="Changes"
             files={unstagedFiles}
-            statsAvailable={filesQuery.data?.statsAvailable}
             count={coverage?.unstagedCount}
             onAllAction={() => stageAll("unstaged")}
             selectedPaths={highlightedPaths("unstaged")}
@@ -438,7 +438,7 @@ export function GitPanel(props: {
         ) : null}
       </div>
 
-      {selectedResolved ? (
+      {selectedResolved && !props.onSelectDiff ? (
         <div className="diff-panel-viewport min-h-0 min-w-0 flex-1 overflow-hidden border-t border-border/70">
           {isGitMediaPath(selectedResolved.file.path) ? (
             <GitMediaPreview

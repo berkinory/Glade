@@ -17,6 +17,8 @@
 
 ### Improved
 
+- Chat, files, commit diffs, terminals and browser pages share conversation workspace tabs, with Explorer and Git in the right sidebar and reusable file and diff previews.
+
 - Agents can page through conversation lists with smaller responses and create tasks with explicit provider and model selection.
 - Loading and activity indicators share a consistent dot-matrix style, with distinct animations for agents, terminals and voice.
 
@@ -57,7 +59,6 @@
 - Changes and History preview images from the selected version, and videos show static thumbnails in Explorer and Git previews.
 
 - Markdown opens in preview by default, with your viewing preference remembered across files.
-- Explorer, Terminal and Source Control use consistent tab bars.
 - Environment hides while the right sidebar is open and returns to its previous state when it closes.
 - Source Control can generate a message and commit all changes when nothing is staged.
 - AI commit messages and pull request descriptions handle large changes with less unnecessary context.
@@ -65,12 +66,14 @@
 - Explorer navigation can be hidden to give files more room, and highlighted file rows are easier to distinguish.
 - History loads faster with fewer repeated Git reads and keeps open previews during file updates.
 - Empty space across the top bar supports window dragging and native title-bar actions more consistently.
-- File links open together in editable Explorer tabs without losing unsaved edits; turn changes and file diffs remain available in Source Control.
+- File links open together in editable workspace tabs without losing unsaved edits; turn changes and file diffs remain available in Source Control.
 - Source Control and History stay up to date after file and repository changes, and the latest unpushed commit can be undone without losing its changes.
 - Push synchronizes incoming commits automatically, and Source Control shows conflicts with actions to resolve or cancel the operation.
 - Models load faster on first use, with a balanced initial reasoning effort when you have not chosen one.
 
 ### Fixed
+
+- Closing workspace tabs returns to the most recently used tab, while the provider chat tab stays protected.
 
 - Sidebar provider and terminal indicators stay visible for unnamed chats, and draft markers appear only on inactive chats.
 - Project dragging cancels after a lost mouse release or window focus change instead of starting on hover.

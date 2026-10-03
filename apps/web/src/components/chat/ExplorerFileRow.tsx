@@ -49,7 +49,7 @@ export const ExplorerRow = forwardRef<
     selected: boolean;
     expanded: boolean;
     dirty: boolean;
-    onSelectFile: (path: string) => void;
+    onSelectFile: (path: string, options?: { preview?: boolean }) => void;
     onPrefetchEntry: (entry: ProjectFileSystemEntry) => void;
     onSelectDirectory: (path: string) => void;
     onEntryContextMenu: (entry: ProjectFileSystemEntry, position: { x: number; y: number }) => void;
@@ -80,7 +80,7 @@ export const ExplorerRow = forwardRef<
       return;
     }
     onSelectDirectory(entry.parentPath ?? "");
-    onSelectFile(entry.path);
+    onSelectFile(entry.path, { preview: event.detail !== 2 });
   };
   const prefetchIntent = usePrefetchIntent(() => onPrefetchEntry(entry));
   const handleContextMenu = (event: ReactMouseEvent<HTMLButtonElement>) => {

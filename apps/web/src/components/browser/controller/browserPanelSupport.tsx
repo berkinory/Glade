@@ -1,7 +1,7 @@
 import { Spinner } from "~/components/ui/spinner";
 import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ServerLocalServerProcess } from "@glade/contracts/server/server";
-import { localServerPrimaryLabel } from "@glade/shared/browser/localServers";
+import { localServerPrimaryLabel } from "~/lib/localServers";
 import { type BrowserAnnotationsController } from "~/components/browser/useBrowserAnnotations";
 import {
   createBrowserPanelHideScheduler,
@@ -19,6 +19,8 @@ import type { DockPaneRuntimeMode } from "~/lib/dockPaneActivation";
 import { CircleAlertIcon, GlobeIcon, RefreshCwIcon, type LucideIcon } from "~/lib/icons";
 import { NATIVE_SURFACE_MENU_OVERLAY_SELECTOR } from "~/lib/nativeSurfaceOcclusion";
 export interface BrowserPanelProps {
+  hideTabs?: boolean;
+  isVisible?: boolean;
   mode: BrowserPanelMode;
   threadId: ThreadId;
   onClosePanel: () => void;

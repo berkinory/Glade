@@ -29,7 +29,7 @@ export function WorkspaceExplorerTree(props: {
   selectedFilePath: string | null;
   expandedDirectories: ReadonlySet<string>;
   dirtyPaths: ReadonlySet<string>;
-  onSelectFile: (path: string) => void;
+  onSelectFile: (path: string, options?: { preview?: boolean }) => void;
   onToggleDirectory: (path: string) => void;
   onPrefetchEntry: (entry: ProjectFileSystemEntry) => void;
   actions: WorkspaceExplorerActions;

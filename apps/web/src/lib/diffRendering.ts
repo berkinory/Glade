@@ -286,7 +286,7 @@ export function splitRepoRelativePath(path: string): { dir: string; name: string
   return { dir: path.slice(0, index + 1), name: path.slice(index + 1) };
 }
 
-export function summarizeFileDiffStats(files: ReadonlyArray<FileDiffMetadata>): {
+function summarizeFileDiffStats(files: ReadonlyArray<FileDiffMetadata>): {
   additions: number;
   deletions: number;
 } {

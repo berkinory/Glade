@@ -7,7 +7,7 @@ production artwork. Production updates come only from the Glade release reposito
 ## Removed features
 
 - Editor view: no separate chat rail or editor-specific route state.
-  Workspace editing remains in the regular Explorer pane.
+  Workspace editing opens in the conversation’s main workspace tabs.
 - Browser login import: no cookie extraction, browser profile enumeration or import IPC.
   Manual sign-in, existing browser sessions and the ordinary password vault remain.
 - AppSnap: no capture picker, global capture shortcut, composer capture cards,
@@ -24,7 +24,7 @@ production artwork. Production updates come only from the Glade release reposito
 - Temporary chats: no composer toggle, sidebar badge, or delete-on-leave lifecycle.
   Existing conversations and unsent drafts remain available as regular chats.
 - Terminal threads: no project action, creation shortcut, terminal-specific draft slot,
-  or automatic thread naming and deletion. The right sidebar hosts chat terminals;
+  or automatic thread naming and deletion. The main workspace hosts chat terminals;
   the bottom terminal drawer has been removed.
 
 These are physical removals, not dormant implementations behind feature flags.
@@ -39,12 +39,14 @@ attachment APIs or a keyboard capture watcher.
 
 ## Workspace editing
 
-Explorer owns file tabs for tree selections, chat links and file references. Opening
+Each conversation owns main workspace tabs for chat, files, commit and turn diffs, terminals, and browser pages. The chat tab uses the provider icon and name and stays at the left of the tab strip. Workspace tabs replace the chat title in the existing top bar; no extra tab row is added. Provider usage stays in the left sidebar, and chat headers do not show Open in or Commit and push actions. Explorer and Git remain navigation panels in the right sidebar. Selecting Explorer files or Git files opens or focuses their main workspace tab. Single-clicks reuse one italic preview tab across files and Git diffs; double-clicking a file or its tab, editing, or opening a chat file reference keeps it as a permanent tab. File search opens previews too. The provider chat tab cannot be closed. Cmd+W or Ctrl+W closes the active resource tab and returns to the most recently used open tab; when only the chat tab remains, the shortcut leaves the conversation without closing the app. The tab strip supports horizontal trackpad scrolling and reveals newly selected tabs. The plus menu contains only Terminal and Browser. Terminals use the main tab strip without an inner toolbar or split panes. File diffs share the file viewer header, offer unified and side-by-side layouts, and expose Edit to open the working file. Saved project actions, automatic setup scripts, and project Run controls are not supported. Tab selection is remembered per conversation.
+
+File tabs accept tree selections, chat links and file references. Opening
 an existing file selects its tab; line and column links reveal source without changing
 the saved Markdown viewing preference. Markdown opens rendered by default, and the
 source/rendered setting applies across files and chats. Unsaved editor sessions remain
 available when switching or closing tabs. Absolute local paths and generated files
-use the same Explorer preview, including images and PDFs.
+use the same workspace preview, including images and PDFs.
 
 Explorer follows external filesystem changes in its open folders without manual
 refresh. Files and folders can be copied into the tree with drag and drop or pasted
@@ -53,7 +55,7 @@ parent, and empty tree space targets the workspace root. Imports preserve source
 and refuse existing names; partial folder failures report what needs review.
 Editor and composer paste retain their existing behavior.
 
-Explorer, Terminal and Source Control share their panel tab bar. Environment and its
+Workspace tabs share one tab bar; terminal and browser tab rows are folded into it. Existing split conversations retain their panel layout; splitting individual workspace tabs is not supported yet. Environment and its
 trigger hide while the right sidebar is open, retaining the previous preference
 and panel state until it closes.
 
@@ -79,7 +81,7 @@ are not exposed in this first version.
 
 ## Source Control
 
-Source Control combines current changes, immutable turn checkpoint diffs and commit history. Turn diffs offer a return to current changes; Show file opens the working-tree file in Explorer. Ordinary chat file links reveal files in Explorer, including supplied line and column targets.
+Source Control combines current changes, immutable turn checkpoint diffs and commit history. Turn diffs offer a return to current changes; Edit opens the working-tree file in a main workspace tab. Ordinary chat file links reveal files in Explorer, including supplied line and column targets.
 
 Changes sorts paths by folder within each staged/unstaged group. Selection stays in
 one group, and selected rows keep their applicable actions visible. Stage, Unstage
@@ -107,9 +109,9 @@ the branch has an upstream. Incoming counts reflect the last fetched remote stat
 
 History pages through commits on the current branch as the virtualized list scrolls.
 Filtering searches commit messages across the branch, including unloaded pages.
-Selecting a commit shows its read-only patch below the list with file diffs
-initially collapsed; large patches are capped and marked partial. The detail pane
-uses 60% of the available height, as does the Changes diff pane.
+Selecting a commit shows its details below the history list. In single conversations,
+selecting a commit file opens its read-only diff in the main workspace preview tab;
+large patches are capped and marked partial. Split conversations retain inline file previews.
 Commit rows offer an icon menu to copy the full hash, short hash, or subject, and undo
 the latest eligible unpublished commit while preserving staged and unstaged changes.
 History rows show author initials, relative time, and tags. Commits reachable

@@ -239,9 +239,3 @@ export function selectThreadBrowserHistory(
 ): (store: BrowserStateStore) => BrowserHistoryEntry[] {
   return (store) => store.recentHistoryByThreadId[threadId] ?? EMPTY_BROWSER_HISTORY;
 }
-
-export function selectFloatingBrowserRequested(
-  threadId: ThreadId,
-): (store: BrowserStateStore) => boolean {
-  return (store) => store.floatingRequestedByThreadId[threadId] === true;
-}

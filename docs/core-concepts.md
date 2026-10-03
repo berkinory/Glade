@@ -196,7 +196,7 @@ Keep task ownership clear before scaling beyond one task.
 `mod` means Command on macOS and Ctrl on Windows or Linux.
 
 - `mod+n` — create a task
-- `mod+j` — toggle the terminal in the right sidebar
+- `mod+j` — toggle the terminal in the main workspace
 - `mod+d` — toggle the diff view
 - `mod+shift+b` — toggle the browser
 - `mod+\` — split the current view
@@ -245,8 +245,8 @@ navigation rather than full Obsidian support.
 ### Source Control history and synchronized push
 
 Source Control contains Changes and History. Turn-summary links select the exact turn checkpoint
-inside Changes; **Current changes** returns to the working tree. **Show file** reveals the current
-file in Explorer and preserves editor drafts. Deleted or unavailable files are identified explicitly.
+inside Changes; **Current changes** returns to the working tree. **Edit** reveals the current
+file in a main workspace tab and preserves editor drafts. Deleted or unavailable files are identified explicitly.
 
 History follows local Git changes, including commits, resets and branch switches made outside Glade.
 **Undo commit** applies only to the latest eligible unpublished commit. It preserves the index,
@@ -277,7 +277,7 @@ Activity uses the model recorded for a historical turn or its reliable provider 
 Workspace filename search and composer file suggestions exclude tracked files deleted from
 disk, even before staging. If Git cannot provide a complete deleted-path list, discovery
 falls back to the filesystem. Source Control still lists deletions, with struck-through
-paths in Changes, Staged, History and turn diffs; deleted versions have no Show file action.
+filenames in Changes, Staged, History and turn diffs; directory paths stay readable and deleted versions have no Edit action.
 A staged modification remains styled as a modification if only its working copy was deleted.
 
 File downloads and chat exports preserve Unicode filenames using the UTF-8 download header,

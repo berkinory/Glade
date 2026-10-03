@@ -48,10 +48,9 @@ import {
 } from "./rightDockPaneMeta";
 import { useDesktopTopBarWindowControlsGutterClassName } from "~/hooks/useDesktopTopBarGutter";
 
-export const RIGHT_DOCK_MIN_WIDTH = 28 * 16;
-
 interface RightDockProps {
   state: RightDockThreadState;
+  initialWidth?: "half" | "fixed";
   minWidth: number;
   defaultWidth: string;
   shouldAcceptWidth: (context: {
@@ -200,7 +199,7 @@ export function RightDock(props: RightDockProps) {
   const [resizeMaxWidth, setResizeMaxWidth] = useState(minWidth * 1.5);
   const widthInitializedRef = useRef(false);
   useEffect(() => {
-    if (!props.state.open || widthInitializedRef.current) {
+    if (props.initialWidth === "fixed" || !props.state.open || widthInitializedRef.current) {
       return;
     }
     const wrapper = contentRef.current?.closest<HTMLElement>("[data-slot='sidebar-wrapper']");
@@ -217,7 +216,7 @@ export function RightDock(props: RightDockProps) {
       wrapper.style.setProperty("--sidebar-width", `${defaultWidth}px`);
       widthInitializedRef.current = true;
     }
-  }, [props.state.open, minWidth]);
+  }, [props.state.open, props.initialWidth, minWidth]);
   const renderedPanes = props.state.panes.filter(
     (pane) => pane.id === activePane?.id || keepMountedPaneIds.has(pane.id),
   );

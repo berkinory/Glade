@@ -1,13 +1,8 @@
 import type { FileDiffMetadata } from "@pierre/diffs/react";
 import { type ReactNode } from "react";
 
-import {
-  resolveFileDiffPath,
-  splitRepoRelativePath,
-  summarizeFileDiffStats,
-} from "~/lib/diffRendering";
+import { resolveFileDiffPath, splitRepoRelativePath } from "~/lib/diffRendering";
 import { cn } from "~/lib/utils";
-import { DiffStat } from "./DiffStatLabel";
 import { FileEntryIcon } from "./FileEntryIcon";
 
 function stripPatchPathPrefix(path: string): string {
@@ -30,7 +25,6 @@ export const FileDiffHeader = function FileDiffHeader(props: {
       : null;
   const prevPath =
     isRename && props.fileDiff.prevName ? stripPatchPathPrefix(props.fileDiff.prevName) : null;
-  const stat = summarizeFileDiffStats([props.fileDiff]);
 
   return (
     <div
@@ -49,12 +43,7 @@ export const FileDiffHeader = function FileDiffHeader(props: {
           className="size-3.5 text-[var(--color-text-foreground)] opacity-70 dark:opacity-80"
         />
       </span>
-      <div
-        className={cn(
-          "flex min-w-0 flex-1 items-baseline gap-1.5 overflow-hidden",
-          changeType === "deleted" && "line-through",
-        )}
-      >
+      <div className={cn("flex min-w-0 flex-1 items-baseline gap-1.5 overflow-hidden")}>
         {prevLeaf ? (
           <>
             <span className="shrink-0 truncate text-ui-sm text-muted-foreground/65 line-through">
@@ -65,16 +54,18 @@ export const FileDiffHeader = function FileDiffHeader(props: {
             </span>
           </>
         ) : null}
-        <span className="shrink-0 truncate text-ui-sm font-medium text-foreground/85">{name}</span>
+        <span
+          className={cn(
+            "shrink-0 truncate text-ui-sm font-medium text-foreground/85",
+            changeType === "deleted" && "line-through",
+          )}
+        >
+          {name}
+        </span>
         {dir ? (
           <span className="min-w-0 truncate text-ui-sm text-muted-foreground/55">{dir}</span>
         ) : null}
       </div>
-      <DiffStat
-        additions={stat.additions}
-        deletions={stat.deletions}
-        className="shrink-0 text-ui-xs tabular-nums"
-      />
       {props.trailing ? (
         <span className="inline-flex shrink-0 items-center gap-0.5">{props.trailing}</span>
       ) : null}

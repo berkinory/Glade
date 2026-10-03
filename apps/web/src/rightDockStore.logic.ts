@@ -24,6 +24,7 @@ export interface RightDockThreadState {
   activePaneId: string | null;
   filePaths: string[];
   activeFilePath: string | null;
+  previewFilePath?: string | null;
 }
 
 export function createDefaultRightDockState(): RightDockThreadState {
@@ -114,6 +115,10 @@ function sanitizeRightDockThreadState(value: unknown): RightDockThreadState {
     activePaneId,
     filePaths,
     activeFilePath,
+    ...(typeof candidate.previewFilePath === "string" &&
+    filePaths.includes(candidate.previewFilePath)
+      ? { previewFilePath: candidate.previewFilePath }
+      : {}),
   };
 }
 

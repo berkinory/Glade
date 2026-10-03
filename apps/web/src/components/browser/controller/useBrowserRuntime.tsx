@@ -39,12 +39,14 @@ import {
 export function useBrowserRuntime({
   threadId,
   mode,
+  isVisible,
   runtimeMode: runtimeModeProp,
   browserActionsMenuOpen,
   setLocalError,
 }: {
   threadId: ThreadId;
   mode: BrowserPanelMode;
+  isVisible: boolean;
   runtimeMode: DockPaneRuntimeMode | undefined;
   browserActionsMenuOpen: boolean;
   setLocalError: (error: string | null) => void;
@@ -483,13 +485,14 @@ export function useBrowserRuntime({
       // obscuring-overlay heuristic. The native/inline webview otherwise paints about:blank white over
       // our dark DOM home — the "always white" empty state.
       const obscuredByOverlay =
-        (!isFloatingMode || usesNativeRuntime) &&
-        (browserPageError !== null ||
-          shouldOccludeBrowserWebview({
-            showLocalServersHome,
-            browserActionsMenuOpen,
-            hasObscuringOverlay: hasNativeBrowserObscuringOverlay(element),
-          }));
+        !isVisible ||
+        ((!isFloatingMode || usesNativeRuntime) &&
+          (browserPageError !== null ||
+            shouldOccludeBrowserWebview({
+              showLocalServersHome,
+              browserActionsMenuOpen,
+              hasObscuringOverlay: hasNativeBrowserObscuringOverlay(element),
+            })));
       lastOverlayObscuredRef.current = obscuredByOverlay;
       setBrowserWebviewOverlayOcclusion(browserWebviewRef.current, obscuredByOverlay);
       const webview = browserWebviewRef.current;
@@ -652,6 +655,7 @@ export function useBrowserRuntime({
       burstStableFramesRef.current = 0;
     };
   }, [
+    isVisible,
     api,
     browserActionsMenuOpen,
     browserPageError,

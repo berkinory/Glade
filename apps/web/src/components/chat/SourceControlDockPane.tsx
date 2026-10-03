@@ -1,3 +1,4 @@
+import type { GitRecentCommit } from "@glade/contracts/git/git";
 import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { useQuery } from "@tanstack/react-query";
 import { gitBranchesQueryOptions } from "~/lib/gitQueryOptions";
@@ -13,6 +14,12 @@ import { SourceControlHistory } from "./SourceControlHistory";
 import { SourceControlTurnChanges } from "./SourceControlTurnChanges";
 
 export function SourceControlDockPane(props: {
+  onSelectCommitFile?:
+    | ((commit: GitRecentCommit, path: string, preview: boolean) => void)
+    | undefined;
+  onSelectDiff?:
+    | ((section: "staged" | "unstaged", path: string, preview: boolean) => void)
+    | undefined;
   threadId: ThreadId;
   workspaceRoot: string | null;
   onOpenFile: (filePath: string) => void;
@@ -69,6 +76,7 @@ export function SourceControlDockPane(props: {
           <SourceControlHistory
             key={props.workspaceRoot}
             cwd={props.workspaceRoot}
+            onSelectCommitFile={props.onSelectCommitFile}
             onOpenFile={props.onOpenFile}
           />
         ) : props.diffTurnId ? (
@@ -83,6 +91,7 @@ export function SourceControlDockPane(props: {
           />
         ) : (
           <GitPanel
+            onSelectDiff={props.onSelectDiff}
             selectedFilePath={props.diffFilePath}
             threadId={props.threadId}
             workspaceRoot={props.workspaceRoot}

@@ -1,6 +1,6 @@
 import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useEffect, useRef } from "react";
+import { useMemo, useState } from "react";
 import { useStore } from "~/store";
 import { createThreadSelector } from "~/storeSelectors";
 import { inferCheckpointTurnCountByTurnId } from "~/session-logic";
@@ -8,7 +8,9 @@ import { checkpointDiffQueryOptions } from "~/lib/providerReactQuery";
 import { getRenderablePatch, resolveFileDiffPath } from "~/lib/diffRendering";
 import { useTheme } from "~/hooks/useTheme";
 import { FileDiffCard, FileDiffSurface } from "./FileDiffView";
-import { ShowSourceFile } from "./ShowSourceFile";
+import { WorkspaceDiffFile } from "./WorkspaceDiffFile";
+import { DiffLayoutToggle } from "./DiffLayoutToggle";
+import { EditSourceFile } from "./EditSourceFile";
 import { PanelStateMessage } from "./PanelStateMessage";
 import { Button } from "../ui/button";
 
@@ -38,17 +40,33 @@ export function SourceControlTurnChanges(props: {
   );
   const patch = getRenderablePatch(query.data?.diff, `turn:${props.turnId}`);
   const { resolvedTheme } = useTheme();
-  const selected = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    selected.current?.scrollIntoView({ block: "start" });
-  }, [props.filePath, query.data]);
+  const [diffStyle, setDiffStyle] = useState<"unified" | "split">("unified");
+  const currentChanges = (
+    <Button size="sm" variant="outline" onClick={props.onCurrentChanges}>
+      Current changes
+    </Button>
+  );
+  const selectedFile =
+    patch?.kind === "files"
+      ? patch.files.find((file) => resolveFileDiffPath(file) === props.filePath)
+      : null;
+  if (!query.error && turn && count !== undefined && selectedFile) {
+    return (
+      <WorkspaceDiffFile
+        cwd={props.cwd}
+        file={selectedFile}
+        theme={resolvedTheme as "light" | "dark"}
+        onOpenFile={props.onOpenFile}
+        actions={currentChanges}
+      />
+    );
+  }
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex flex-wrap items-center gap-2 border-b border-border/70 p-2">
         <span className="min-w-0 flex-1 text-ui-sm">Turn changes · {count ?? "unavailable"}</span>
-        <Button size="sm" variant="outline" onClick={props.onCurrentChanges}>
-          Current changes
-        </Button>
+        <DiffLayoutToggle value={diffStyle} onChange={setDiffStyle} />
+        {currentChanges}
       </div>
       {query.error || !turn || count === undefined ? (
         <PanelStateMessage>
@@ -59,16 +77,13 @@ export function SourceControlTurnChanges(props: {
       ) : patch?.kind === "files" ? (
         <FileDiffSurface className="min-h-0 flex-1 overflow-auto p-2">
           {patch.files.map((file) => (
-            <div
-              key={resolveFileDiffPath(file)}
-              ref={resolveFileDiffPath(file) === props.filePath ? selected : undefined}
-              className="diff-render-file mb-2 rounded-md"
-            >
+            <div key={resolveFileDiffPath(file)} className="diff-render-file mb-2 rounded-md">
               <FileDiffCard
                 fileDiff={file}
+                diffStyle={diffStyle}
                 theme={resolvedTheme as "light" | "dark"}
                 renderHeaderTrailing={() => (
-                  <ShowSourceFile cwd={props.cwd} file={file} onOpenFile={props.onOpenFile} />
+                  <EditSourceFile cwd={props.cwd} file={file} onOpenFile={props.onOpenFile} />
                 )}
               />
             </div>

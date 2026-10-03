@@ -50,6 +50,7 @@ export const GIT_FILE_CONTEXT_MENU_ICONS = {
 } as const;
 
 export const GIT_COMMIT_CONTEXT_MENU_ICONS = {
+  undo: renderToStaticMarkup(<RotateCcwIcon className="size-4" />),
   hash: COPY_ICON_NAME,
   shortHash: renderToStaticMarkup(<IconHash size={24} />),
   subject: "text-block",

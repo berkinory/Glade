@@ -39,6 +39,8 @@ export default function BrowserPanel(props: BrowserPanelProps) {
 function BrowserPanelBody() {
   const {
     mode,
+    hideTabs,
+    isVisible = true,
     threadId,
     runtimeMode = "live",
     onRequestLive,
@@ -59,6 +61,7 @@ function BrowserPanelBody() {
   const { browserViewportRef, workspaceReady, previewFrame } = useBrowserRuntime({
     threadId,
     mode,
+    isVisible,
     runtimeMode,
     browserActionsMenuOpen,
     setLocalError,
@@ -137,7 +140,7 @@ function BrowserPanelBody() {
       {isFloatingMode ? header : null}
       <BrowserPanelShell mode={mode} header={isFloatingMode ? null : header}>
         <div className="flex min-h-0 flex-1 flex-col">
-          {!isFloatingMode ? (
+          {!isFloatingMode && !hideTabs ? (
             <BrowserTabStrip
               tabs={threadBrowserState?.tabs ?? []}
               activeTabId={activeTabId}

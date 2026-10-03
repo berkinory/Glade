@@ -2,9 +2,10 @@ import type { FileDiffMetadata } from "@pierre/diffs";
 import { useState } from "react";
 import { ensureNativeApi } from "~/nativeApi";
 import { resolveFileDiffPath } from "~/lib/diffRendering";
+import { PencilIcon } from "~/lib/icons";
 import { Button } from "../ui/button";
 
-export function ShowSourceFile(props: {
+export function EditSourceFile(props: {
   cwd: string | null;
   file: FileDiffMetadata;
   onOpenFile: (path: string) => void;
@@ -18,7 +19,7 @@ export function ShowSourceFile(props: {
       size="sm"
       variant="ghost"
       disabled={!props.cwd || opening}
-      title={error ?? "Open current file in Explorer"}
+      title={error ?? "Edit current file"}
       onClick={(event) => {
         event.stopPropagation();
         if (!props.cwd) return;
@@ -35,7 +36,8 @@ export function ShowSourceFile(props: {
           .finally(() => setOpening(false));
       }}
     >
-      {error ? "File unavailable" : "Show file"}
+      <PencilIcon className="size-3.5" />
+      {error ? "File unavailable" : "Edit"}
     </Button>
   );
 }
