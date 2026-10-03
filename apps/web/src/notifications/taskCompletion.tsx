@@ -1,3 +1,4 @@
+import { useThreadErrorNotifications } from "../components/chat/useThreadErrorToast";
 import { readBrowserNotificationPermissionState } from "./notificationPermission";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useNavigate, useParams } from "@tanstack/react-router";
@@ -132,6 +133,12 @@ export function TaskCompletionNotifications() {
     splitView,
     rightDockRendered: true,
     rightDockState,
+  });
+  useThreadErrorNotifications({
+    threads,
+    visibleThreadIds: new Set(visibleThreadIds),
+    hydrated: threadsHydrated,
+    onOpen: (threadId) => focusThread(threadId, navigate),
   });
   const previousThreadsRef = useRef<readonly Thread[]>([]);
   const previousTerminalStateRef = useRef(terminalStateByThreadId);

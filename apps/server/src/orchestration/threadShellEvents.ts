@@ -1,6 +1,10 @@
 import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
 
 const THREAD_SHELL_SUMMARY_ACTIVITY_KINDS = new Set([
+  "background-work.reset",
+  "task.started",
+  "task.updated",
+  "task.completed",
   "approval.requested",
   "approval.resolved",
   "provider.approval.respond.failed",

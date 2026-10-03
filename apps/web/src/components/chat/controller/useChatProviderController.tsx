@@ -225,9 +225,15 @@ export function useChatProviderController({
       : deriveActiveTaskListState(threadActivities, activeLatestTurn?.turnId);
   })();
 
-  const activeBackgroundTasks = latestTurnSettled
-    ? null
-    : deriveActiveBackgroundTasksState(threadActivities, activeLatestTurn?.turnId ?? undefined);
+  const backgroundIds = activeThread?.backgroundWork?.taskIds;
+  const activeBackgroundTasks =
+    activeThread?.session?.status === "closed" || activeThread?.session?.status === "error"
+      ? null
+      : backgroundIds
+        ? backgroundIds.length
+          ? { activeCount: backgroundIds.length, taskIds: [...backgroundIds] }
+          : null
+        : deriveActiveBackgroundTasksState(threadActivities, activeLatestTurn?.turnId ?? undefined);
 
   const {
     localDispatch,

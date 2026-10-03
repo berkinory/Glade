@@ -1,3 +1,4 @@
+import { readBackgroundActivities } from "./backgroundWorkQuery";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import {
   type ProjectionSnapshotQueryShape,
@@ -262,8 +263,10 @@ export function makeSnapshotThreadLookup(input: {
         ),
       ]);
 
+      const taskActivities = yield* readBackgroundActivities(sql, [threadId]);
       return Option.some(
         toProjectedThreadShellFromStoredSummary({
+          taskActivities: taskActivities(threadId),
           threadRow: threadRow.value,
           latestTurn: Option.match(latestTurnRow, {
             onNone: () => null,
@@ -326,9 +329,11 @@ export function makeSnapshotThreadLookup(input: {
           const sessionByThread = new Map(
             sessionRows.map((row) => [row.threadId, toProjectedSession(row)] as const),
           );
+          const taskActivities = yield* readBackgroundActivities(sql, uniqueThreadIds);
           return threadRows.map((threadRow) =>
             toProjectedThreadShellFromStoredSummary({
               threadRow,
+              taskActivities: taskActivities(threadRow.threadId),
               latestTurn: latestTurnByThread.get(threadRow.threadId) ?? null,
               session: sessionByThread.get(threadRow.threadId) ?? null,
             }),

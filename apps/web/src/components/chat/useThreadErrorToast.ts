@@ -1,7 +1,8 @@
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { PROVIDER_DELIVERY_BLOCK_SUMMARY } from "@glade/shared/provider/providerDeliveryBlock";
-import { useEffect, useRef, type RefObject } from "react";
+import { useEffect, useRef } from "react";
 
+import type { Thread } from "~/types";
 import { toastManager } from "../ui/toast";
 
 type ThreadErrorToastOptions = Parameters<typeof toastManager.add>[0];
@@ -39,49 +40,46 @@ export function buildThreadErrorToastOptions(input: {
   };
 }
 
-// Closing the toast on our own behalf (error cleared, thread switched, unmount) must not report a
-// user dismissal, which would clear thread state we still need.
-function closeSilently(threadId: ThreadId, silentRef: RefObject<boolean>): void {
-  silentRef.current = true;
-  toastManager.close(threadErrorToastId(threadId));
-  silentRef.current = false;
-}
-
-export function useThreadErrorToast(input: {
-  error: string | null;
-  onDismiss: () => void;
-  threadId: ThreadId | null;
+export function useThreadErrorNotifications(input: {
+  threads: readonly Thread[];
+  visibleThreadIds: ReadonlySet<ThreadId>;
+  hydrated: boolean;
+  onOpen: (threadId: ThreadId) => void;
 }): void {
-  const { error, onDismiss, threadId } = input;
-  const callbacksRef = useRef({ onDismiss });
-  const closingSilentlyRef = useRef(false);
-
+  const previous = useRef<Map<ThreadId, string | null> | null>(null);
   useEffect(() => {
-    callbacksRef.current = { onDismiss };
-  }, [onDismiss]);
-
-  useEffect(() => {
-    if (!threadId) return;
-    if (!error) {
-      closeSilently(threadId, closingSilentlyRef);
-      return;
+    if (!input.hydrated) return;
+    const errors = new Map(input.threads.map((thread) => [thread.id, thread.error]));
+    if (previous.current) {
+      for (const [threadId] of previous.current) {
+        if (!errors.get(threadId) || input.visibleThreadIds.has(threadId))
+          toastManager.close(threadErrorToastId(threadId));
+      }
+      for (const thread of input.threads) {
+        if (
+          !thread.error ||
+          input.visibleThreadIds.has(thread.id) ||
+          previous.current.get(thread.id) === thread.error
+        )
+          continue;
+        toastManager.add({
+          ...buildThreadErrorToastOptions({
+            error: thread.error,
+            threadId: thread.id,
+            onClose: () => {},
+          }),
+          data: { copyText: thread.error, threadId: thread.id, allowCrossThreadVisibility: true },
+          actionProps: { children: "Open chat", onClick: () => input.onOpen(thread.id) },
+        });
+      }
     }
-    toastManager.add(
-      buildThreadErrorToastOptions({
-        error,
-        threadId,
-        onClose: () => {
-          if (closingSilentlyRef.current) return;
-          callbacksRef.current.onDismiss();
-        },
-      }),
-    );
-  }, [error, threadId]);
-
-  useEffect(() => {
-    if (!threadId) return;
-    return () => {
-      closeSilently(threadId, closingSilentlyRef);
-    };
-  }, [threadId]);
+    previous.current = errors;
+  }, [input]);
+  useEffect(
+    () => () => {
+      for (const [threadId] of previous.current ?? [])
+        toastManager.close(threadErrorToastId(threadId));
+    },
+    [],
+  );
 }

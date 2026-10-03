@@ -1,3 +1,4 @@
+import { deriveBackgroundWork } from "@glade/shared/threads/backgroundWork";
 import {
   defaultTerminalTitleForCliKind,
   type TerminalCliKind,
@@ -492,9 +493,15 @@ function isCompletionNotificationSettled(thread: Thread | undefined): boolean {
   if (!thread?.latestTurn?.startedAt || !thread.latestTurn.completedAt) {
     return false;
   }
-  if (!thread.session) {
-    return true;
-  }
+  const background =
+    thread.backgroundWork ??
+    deriveBackgroundWork({
+      activities: thread.activities,
+      turnId: thread.latestTurn.turnId,
+      sessionStatus: thread.session?.status,
+    });
+  if (background.taskIds.length > 0 || background.failed) return false;
+  if (!thread.session) return true;
   return thread.session.orchestrationStatus !== "running";
 }
 
@@ -541,7 +548,7 @@ export function collectCompletedThreadCandidates(
       projectId: thread.projectId,
       title: thread.title,
       turnId: latestTurn.turnId,
-      completedAt,
+      completedAt: thread.backgroundWork?.settledAt ?? completedAt,
       assistantSummary: summarizeLatestAssistantMessage(thread),
     });
   }

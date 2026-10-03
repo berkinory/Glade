@@ -557,6 +557,18 @@ export function makeClaudeSystemMessages(input: {
           for (const task of tasks) {
             context.knownBackgroundTaskIds.add(task.task_id);
           }
+          for (const task of added) {
+            const stamp = yield* makeEventStamp();
+            yield* offerRuntimeEvent(context, {
+              ...stamp,
+              type: "task.updated",
+              provider: PROVIDER,
+              threadId: context.session.threadId,
+              ...(context.turnState ? { turnId: asCanonicalTurnId(context.turnState.turnId) } : {}),
+              payload: { taskId: RuntimeTaskId.makeUnsafe(task.task_id), isBackgrounded: true },
+              providerRefs: nativeProviderRefs(context),
+            });
+          }
           if (added.length === 0) {
             return;
           }

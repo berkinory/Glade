@@ -11,6 +11,8 @@
 
 ### Improved
 
+- Unavailable notification controls are easier to distinguish while an action is in progress.
+
 - Chat messages fade smoothly at the header and message input while scrolling, keeping the latest reply clear.
 - Markdown images open in a larger preview, while linked images keep their normal link behavior.
 
@@ -52,6 +54,10 @@
 - Models load faster on first use, with a balanced initial reasoning effort when you have not chosen one.
 
 ### Fixed
+
+- Chats keep native background work visible and wait for successful completion before notifying you.
+- Desktop notifications retain their chat actions, including Windows Notification Center notifications.
+- Background chat errors open the affected chat; visible errors remain beside the message input.
 
 - Browser panels load correctly again after workspace panel changes.
 

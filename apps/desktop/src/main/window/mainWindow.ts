@@ -116,6 +116,14 @@ export function createMainWindow({
   let mainWindow: BrowserWindow | null = null;
   let customTitleBarActive = false;
   let unreadBackgroundNotificationCount = 0;
+  const retainedNotifications = new Set<Notification>();
+  app.once("will-quit", () => {
+    for (const notification of retainedNotifications) {
+      notification.removeAllListeners();
+      notification.close();
+    }
+    retainedNotifications.clear();
+  });
   const rendererCrashPolicy = new RendererCrashPolicy();
   let rendererCrashDialogInFlight: Promise<void> | null = null;
   function getDesktopWindowState(window: BrowserWindow): {
@@ -455,7 +463,24 @@ export function createMainWindow({
       incrementUnreadNotificationBadge();
     }
 
+    const release = () => {
+      retainedNotifications.delete(notification);
+      notification.removeAllListeners();
+    };
+    retainedNotifications.add(notification);
+    while (retainedNotifications.size > 128) {
+      const oldest = retainedNotifications.values().next().value;
+      if (!oldest) break;
+      retainedNotifications.delete(oldest);
+      oldest.removeAllListeners();
+      oldest.close();
+    }
+    notification.once("failed", release);
+    notification.on("close", () => {
+      if (process.platform !== "win32") release();
+    });
     notification.on("click", () => {
+      release();
       clearUnreadNotificationBadge();
       focusMainWindow();
       if (!mainWindow) {

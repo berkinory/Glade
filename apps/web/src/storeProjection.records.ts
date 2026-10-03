@@ -71,6 +71,7 @@ export function toThreadShell(thread: Thread): ThreadShell {
     ...(thread.hasPendingApprovals !== undefined
       ? { hasPendingApprovals: thread.hasPendingApprovals }
       : {}),
+    ...(thread.backgroundWork !== undefined ? { backgroundWork: thread.backgroundWork } : {}),
     ...(thread.hasPendingUserInput !== undefined
       ? { hasPendingUserInput: thread.hasPendingUserInput }
       : {}),
@@ -285,6 +286,7 @@ function sidebarThreadSummariesEqual(
     left.hasPendingApprovals === right.hasPendingApprovals &&
     left.hasPendingUserInput === right.hasPendingUserInput &&
     left.hasLiveTailWork === right.hasLiveTailWork &&
+    deepEqualJson(left.backgroundWork ?? null, right.backgroundWork ?? null) &&
     (left.forkSourceThreadId ?? null) === (right.forkSourceThreadId ?? null) &&
     deepEqualJson(left.lastKnownPr ?? null, right.lastKnownPr ?? null) &&
     (left.handoff ?? null) === (right.handoff ?? null)
@@ -326,6 +328,7 @@ export function buildSidebarThreadSummary(
     latestHumanMessageAt: metadata.latestHumanMessageAt ?? null,
     hasPendingApprovals: metadata.hasPendingApprovals,
     hasPendingUserInput: metadata.hasPendingUserInput,
+    ...(thread.backgroundWork !== undefined ? { backgroundWork: thread.backgroundWork } : {}),
 
     hasLiveTailWork: metadata.hasLiveTailWork,
     forkSourceThreadId: thread.forkSourceThreadId ?? null,

@@ -257,3 +257,20 @@ is not reopened; the result remains in the child and delivery is recorded as
 unavailable. Delivery is checked approximately once per second.
 
 Context compaction uses the server-side `thread.compact` command for both providers. The server rejects archived conversations, active turns, pending approvals or input, and active background tasks. Claude forwards optional instructions to native `/compact`; the pinned Codex protocol accepts only the thread identifier, so optional instructions are ignored for Codex. Completion comes from native compaction events. Current Codex runtimes emit a context-compaction item and finish its native turn; terminal turn events release the compaction guard even when the legacy `thread/compacted` notification is absent.
+
+### Background work and errors
+
+When native task events identify background agents, the sidebar and composer keep
+their remaining work visible after the foreground reply. Completion notifications
+wait for the last relevant task to finish successfully. Failed, interrupted and
+retired-session work never produces a success notification; starting another turn
+does not inherit an older turn's unfinished task count.
+
+New errors in other chats appear as persistent, copyable notifications that open
+the affected chat. Errors in the visible chat remain beside its message input.
+Reconnecting does not announce historical errors again, and dismissing a background
+notification does not erase the chat's error.
+
+Desktop notifications retain their chat action after delivery. Windows notification
+objects stay retained after a toast timeout because Notification Center can still
+activate them; retention is bounded and cleared when Glade exits.

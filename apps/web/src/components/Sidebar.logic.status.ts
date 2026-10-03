@@ -121,6 +121,19 @@ export function resolveThreadStatusPill(input: {
     };
   }
 
+  if (
+    (thread.backgroundWork?.taskIds.length ?? 0) > 0 &&
+    thread.latestTurn?.completedAt &&
+    canAnswerPendingRequests
+  ) {
+    return {
+      label: "Background",
+      colorClass: "text-sky-600 dark:text-sky-300/80",
+      dotClass: "bg-sky-500 dark:bg-sky-300/80",
+      pulse: true,
+      dismissible: false,
+    };
+  }
   if (isThreadActivelyWorking(thread)) {
     return {
       label: "Working",
@@ -141,6 +154,15 @@ export function resolveThreadStatusPill(input: {
     };
   }
 
+  if (thread.backgroundWork?.failed && thread.latestTurn?.completedAt) {
+    return {
+      label: "Background failed",
+      colorClass: "text-destructive",
+      dotClass: "bg-destructive",
+      pulse: false,
+      dismissible: false,
+    };
+  }
   if (!thread.hasLiveTailWork && hasUnseenCompletion(thread)) {
     const dismissalKey = createCompletedDismissalKey(thread);
     if (dismissalKey && thread.dismissedStatusKey === dismissalKey) {

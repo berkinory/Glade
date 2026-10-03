@@ -694,6 +694,13 @@ export const OrchestrationThreadShell = Schema.Struct({
   latestTurn: Schema.NullOr(OrchestrationLatestTurn),
   latestUserMessageAt: Schema.optional(Schema.NullOr(IsoDateTime)),
   latestHumanMessageAt: Schema.optional(Schema.NullOr(IsoDateTime)),
+  backgroundWork: Schema.optional(
+    Schema.Struct({
+      taskIds: Schema.Array(Schema.String),
+      failed: Schema.Boolean,
+      settledAt: Schema.NullOr(IsoDateTime),
+    }),
+  ),
   hasPendingApprovals: Schema.optional(Schema.Boolean),
   hasPendingUserInput: Schema.optional(Schema.Boolean),
 

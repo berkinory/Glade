@@ -198,6 +198,7 @@ projectionSnapshotLayer("Projection snapshot threadShell", (it) => {
           },
           latestUserMessageAt: "2026-03-03T00:00:02.500Z",
           latestHumanMessageAt: null,
+          backgroundWork: { taskIds: [], failed: false, settledAt: null },
           hasPendingApprovals: true,
           hasPendingUserInput: true,
 

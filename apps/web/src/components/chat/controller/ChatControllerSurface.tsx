@@ -21,7 +21,6 @@ import { ProviderHandoffDialog } from "~/components/chat/ProviderHandoffDialog";
 import { ProviderHealthBanner } from "~/components/chat/ProviderHealthBanner";
 import { RateLimitBanner } from "~/components/chat/RateLimitBanner";
 import { ChatThreadFindHost } from "~/components/chat/ThreadFindBar";
-import { useThreadErrorToast } from "~/components/chat/useThreadErrorToast";
 import { TranscriptSelectionActionLayer } from "~/components/chat/TranscriptSelectionActionLayer";
 import {
   CHAT_SURFACE_HEADER_DIVIDER_CLASS_NAME,
@@ -257,14 +256,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     [navigate],
   );
 
-  useThreadErrorToast({
-    threadId: activeThread?.id ?? null,
-    error: activeThread?.error ?? null,
-    onDismiss: () => {
-      if (activeThread) setThreadError(activeThread.id, null);
-    },
-  });
-
   const dismissActiveProviderHealthBanner = () => {
     if (!activeProviderHealthBannerDismissalKey) return;
     setDismissedProviderHealthBannerKeys((current) =>
@@ -374,12 +365,41 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     previewBudgetPx,
   } = presentation;
   const composerSection = (
-    <ChatComposerSurface
-      controller={controller}
-      presentation={presentation}
-      onNavigateToThread={onNavigateToThread}
-      onOpenTurnDiff={onOpenTurnDiff}
-    />
+    <>
+      {activeThread?.error ? (
+        <div
+          role="alert"
+          className="mx-3 mb-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-ui-sm"
+        >
+          <details>
+            <summary className="cursor-pointer text-destructive">
+              This chat encountered an error
+            </summary>
+            <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words">
+              {activeThread.error}
+            </pre>
+          </details>
+          <button
+            type="button"
+            className="mt-1 underline"
+            onClick={() => setThreadError(activeThread.id, null)}
+          >
+            Dismiss
+          </button>
+        </div>
+      ) : null}
+      {(activeThread?.backgroundWork?.taskIds.length ?? 0) > 0 ? (
+        <div role="status" className="px-4 pb-2 text-ui-sm text-muted-foreground">
+          {activeThread?.backgroundWork?.taskIds.length} background agents running
+        </div>
+      ) : null}
+      <ChatComposerSurface
+        controller={controller}
+        presentation={presentation}
+        onNavigateToThread={onNavigateToThread}
+        onOpenTurnDiff={onOpenTurnDiff}
+      />
+    </>
   );
   return (
     <div

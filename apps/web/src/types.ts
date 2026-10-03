@@ -1,3 +1,4 @@
+import type { BackgroundWork } from "@glade/shared/threads/backgroundWork";
 import type {
   ModelSelection,
   RuntimeMode,
@@ -210,6 +211,7 @@ export interface Thread
   latestHumanMessageAt?: string | null;
   hasPendingApprovals?: boolean;
   hasPendingUserInput?: boolean;
+  backgroundWork?: BackgroundWork;
 
   pendingInteractions?: OrchestrationPendingInteraction[];
   turnDiffSummaries: TurnDiffSummary[];
@@ -255,6 +257,7 @@ export interface SidebarThreadSummary {
   latestHumanMessageAt?: string | null;
   hasPendingApprovals: boolean;
   hasPendingUserInput: boolean;
+  backgroundWork?: BackgroundWork;
 
   hasLiveTailWork: boolean;
   forkSourceThreadId?: ThreadId | null;

@@ -208,6 +208,8 @@ export function createSidebarThreadHoverAnchorId(input: {
 
 export interface ThreadStatusPill {
   label:
+    | "Background failed"
+    | "Background"
     | "Working"
     | "Connecting"
     | "Completed"
@@ -247,6 +249,8 @@ export const THREAD_STATUS_PRIORITY: Record<ThreadStatusPill["label"], number> =
   "Pending Approval": 5,
   "Awaiting Input": 4,
   Working: 3,
+  Background: 3,
+  "Background failed": 2,
   Connecting: 3,
   "Plan Ready": 2,
   Completed: 1,
@@ -254,7 +258,7 @@ export const THREAD_STATUS_PRIORITY: Record<ThreadStatusPill["label"], number> =
 
 export type ThreadStatusInput = Pick<
   Thread,
-  "latestTurn" | "lastVisitedAt" | "session" | "updatedAt"
+  "latestTurn" | "lastVisitedAt" | "session" | "updatedAt" | "backgroundWork"
 > & {
   hasLiveTailWork?: boolean | undefined;
   dismissedStatusKey?: string | undefined;

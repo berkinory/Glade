@@ -1,3 +1,4 @@
+import { deriveBackgroundWork } from "@glade/shared/threads/backgroundWork";
 import {
   type OrchestrationThreadActivity,
   type OrchestrationCheckpointSummary,
@@ -307,6 +308,7 @@ export function toProjectedProjectShell(row: ProjectionProjectDbRow): Orchestrat
 }
 
 export function toProjectedThreadShellFromStoredSummary(input: {
+  readonly taskActivities?: readonly OrchestrationThreadActivity[];
   readonly threadRow: ProjectionThreadShellDbRow;
   readonly latestTurn: OrchestrationLatestTurn | null;
   readonly session: OrchestrationSession | null;
@@ -342,6 +344,11 @@ export function toProjectedThreadShellFromStoredSummary(input: {
     latestTurn: input.latestTurn,
     latestUserMessageAt: threadRow.latestUserMessageAt,
     latestHumanMessageAt: threadRow.latestHumanMessageAt ?? null,
+    backgroundWork: deriveBackgroundWork({
+      activities: input.taskActivities ?? [],
+      turnId: input.latestTurn?.turnId,
+      sessionStatus: input.session?.status,
+    }),
     hasPendingApprovals: threadRow.pendingApprovalCount > 0,
     hasPendingUserInput: threadRow.pendingUserInputCount > 0,
 

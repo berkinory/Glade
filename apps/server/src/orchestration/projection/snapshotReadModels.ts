@@ -1,3 +1,4 @@
+import { readBackgroundActivities } from "./backgroundWorkQuery";
 import { readNativeMessageReferences } from "./nativeMessageReferences";
 import { Schema, Effect } from "effect";
 import {
@@ -491,6 +492,7 @@ export function makeSnapshotReadModels(input: {
           updatedAt = maxOptionalIso(updatedAt, latestTurns.updatedAt);
           updatedAt = maxOptionalIso(updatedAt, sessions.updatedAt);
 
+          const taskActivities = yield* readBackgroundActivities(sql);
           const shellIsEmpty =
             !projectRows.some((row) => row.deletedAt === null) &&
             !threadRows.some((row) => row.deletedAt === null);
@@ -518,6 +520,7 @@ export function makeSnapshotReadModels(input: {
               .map((row) =>
                 toProjectedThreadShellFromStoredSummary({
                   threadRow: row,
+                  taskActivities: taskActivities(row.threadId),
                   latestTurn: latestTurns.byThread.get(row.threadId) ?? null,
                   session: sessions.byThread.get(row.threadId) ?? null,
                 }),

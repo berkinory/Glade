@@ -85,6 +85,20 @@ export function projectProviderRuntimeActivities(
     ];
   }
   switch (event.type) {
+    case "session.started":
+    case "session.exited":
+      return [
+        {
+          id: event.eventId,
+          createdAt: event.createdAt,
+          tone: "info",
+          kind: "background-work.reset",
+          summary: "Provider session changed",
+          payload: {},
+          turnId: null,
+          ...maybeSequence,
+        },
+      ];
     case "session.configured": {
       const payload = buildConfiguredContextWindowPayload(event);
       if (!payload) {

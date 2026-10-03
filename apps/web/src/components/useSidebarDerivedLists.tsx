@@ -174,7 +174,7 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
       );
       if (!status) continue;
       const tone: SpaceActivityTone =
-        status.label === "Working" || status.label === "Connecting"
+        status.label === "Working" || status.label === "Background" || status.label === "Connecting"
           ? "running"
           : status.label === "Completed"
             ? "completed"

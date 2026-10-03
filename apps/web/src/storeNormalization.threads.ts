@@ -1,3 +1,4 @@
+import { deriveBackgroundWork } from "@glade/shared/threads/backgroundWork";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { OrchestrationSessionStatus } from "@glade/contracts/orchestration/threadEntities";
 import { resolveThreadBranchRegressionGuard } from "@glade/shared/git/git";
@@ -251,6 +252,11 @@ export function normalizeThreadFromReadModel(
 
     turnDiffSummaries,
     activities,
+    backgroundWork: deriveBackgroundWork({
+      activities,
+      turnId: incoming.latestTurn?.turnId,
+      sessionStatus: session?.status,
+    }),
     ...(pendingInteractions !== undefined ? { pendingInteractions } : {}),
   };
 }
@@ -341,6 +347,7 @@ export function normalizeThreadShellSnapshot(
     ...(incoming.hasPendingApprovals !== undefined
       ? { hasPendingApprovals: incoming.hasPendingApprovals }
       : {}),
+    ...(incoming.backgroundWork !== undefined ? { backgroundWork: incoming.backgroundWork } : {}),
     ...(incoming.hasPendingUserInput !== undefined
       ? { hasPendingUserInput: incoming.hasPendingUserInput }
       : {}),
@@ -462,6 +469,7 @@ export function resolveThreadSidebarMetadata(
       thread.hasPendingUserInput ?? derivedMetadata?.hasPendingUserInput ?? false,
 
     hasLiveTailWork: Boolean(
+      (thread.backgroundWork?.taskIds.length ?? 0) > 0 ||
       hasLiveTurnTailWork({
         latestTurn: thread.latestTurn,
         messages: thread.messages,

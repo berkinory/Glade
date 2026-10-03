@@ -1,3 +1,4 @@
+import { deriveBackgroundWork } from "@glade/shared/threads/backgroundWork";
 import {
   type OrchestrationLatestTurn,
   type OrchestrationThreadActivity,
@@ -181,68 +182,9 @@ export function deriveActiveBackgroundTasksState(
   activities: ReadonlyArray<OrchestrationThreadActivity>,
   latestTurnId: TurnId | undefined,
 ): ActiveBackgroundTasksState | null {
-  const ordered = orderedActivities(activities);
-  const activeTasks = new Map<string, { taskType?: string | undefined }>();
-
-  for (const activity of ordered) {
-    if (
-      latestTurnId &&
-      activity.turnId &&
-      activity.turnId !== latestTurnId &&
-      activity.kind !== "task.completed" &&
-      activity.kind !== "task.updated"
-    ) {
-      continue;
-    }
-
-    if (
-      activity.kind !== "task.started" &&
-      activity.kind !== "task.progress" &&
-      activity.kind !== "task.updated" &&
-      activity.kind !== "task.completed"
-    ) {
-      continue;
-    }
-
-    const payload =
-      activity.payload && typeof activity.payload === "object"
-        ? (activity.payload as Record<string, unknown>)
-        : null;
-    const taskId = payload && typeof payload.taskId === "string" ? payload.taskId : null;
-    if (!taskId) {
-      continue;
-    }
-
-    if (activity.kind === "task.completed") {
-      activeTasks.delete(taskId);
-      continue;
-    }
-
-    if (activity.kind === "task.updated") {
-      const status = payload && typeof payload.status === "string" ? payload.status : undefined;
-      if (
-        status === "completed" ||
-        status === "failed" ||
-        status === "killed" ||
-        status === "paused"
-      ) {
-        activeTasks.delete(taskId);
-      }
-      continue;
-    }
-
-    const previous = activeTasks.get(taskId);
-    const taskType = payload && typeof payload.taskType === "string" ? payload.taskType : undefined;
-    activeTasks.set(taskId, {
-      taskType: taskType ?? previous?.taskType,
-    });
-  }
-
-  const activeTaskIds = [...activeTasks.entries()]
-    .filter(([, task]) => task.taskType !== "plan")
-    .map(([taskId]) => taskId);
-  return activeTaskIds.length > 0
-    ? { activeCount: activeTaskIds.length, taskIds: activeTaskIds }
+  const work = deriveBackgroundWork({ activities, turnId: latestTurnId });
+  return work.taskIds.length
+    ? { activeCount: work.taskIds.length, taskIds: [...work.taskIds] }
     : null;
 }
 
