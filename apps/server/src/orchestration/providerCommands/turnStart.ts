@@ -198,6 +198,21 @@ export function makeProviderTurnStart(input: {
       // dispatched right as another turn begins (e.g. the gap between a steer interrupt and the steered
       // turn's start) would race a live provider turn.
       const providerName = thread.session?.providerName ?? thread.modelSelection.provider;
+      if (providerName === "claudeAgent" && /^\/compact(?:\s|$)/u.test(message.text.trim())) {
+        if ((message.attachments?.length ?? 0) > 0) {
+          return yield* new ProviderAdapterValidationError({
+            provider: "claudeAgent",
+            operation: "startClaudeCompaction",
+            issue: "Remove attachments before compacting Claude context.",
+          });
+        }
+        const instructions = message.text.trim().replace(/^\/compact\s*/u, "");
+        yield* providerService.compactThread({
+          threadId: event.payload.threadId,
+          ...(instructions ? { instructions } : {}),
+        });
+        return;
+      }
       const liveTurnId = yield* resolveLiveProviderTurnId(event.payload.threadId);
       const hasLiveTurn = liveTurnId !== undefined;
 

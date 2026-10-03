@@ -172,10 +172,10 @@ export const ProviderSessionTeardownLive = Layer.effect(
           payload: rawInput,
         });
         yield* idle.waitForRuntimeIdleStop(input.threadId);
-        idle.clearRuntimeIdleTimer(input.threadId);
+
         // Share the runtime-event binding lock so a delayed session.exited update cannot restore the stale
         // cursor after this explicit clear.
-        yield* lifecycle.run(input.threadId, (lease) =>
+        const cleared = yield* lifecycle.run(input.threadId, (lease) =>
           bindings.withBindingWriteLock(
             input.threadId,
             Effect.gen(function* () {
@@ -183,6 +183,17 @@ export const ProviderSessionTeardownLive = Layer.effect(
               if (!binding) {
                 return undefined;
               }
+              if (
+                input.expectedGeneration !== undefined &&
+                binding.lifecycleGeneration !== input.expectedGeneration
+              )
+                return;
+              if (
+                input.expectedTurnId !== undefined &&
+                asRecord(binding.runtimePayload)?.lastNativeTurnId !== input.expectedTurnId
+              )
+                return;
+              idle.clearRuntimeIdleTimer(input.threadId);
               const adapter = yield* registry.getByProvider(binding.provider);
               const hasActiveSession = yield* adapter.hasSession(input.threadId);
               const preserveActive = hasActiveSession && input.preserveActiveRuntime === true;
@@ -216,6 +227,7 @@ export const ProviderSessionTeardownLive = Layer.effect(
             }),
           ),
         );
+        if (cleared === undefined) return;
         yield* idle.waitForRuntimeIdleStop(input.threadId);
         idle.retireRuntimeIdleGeneration(input.threadId);
       });

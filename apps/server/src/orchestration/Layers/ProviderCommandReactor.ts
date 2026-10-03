@@ -298,6 +298,7 @@ const make = Effect.gen(function* () {
     recoverQueuedTurnAfterDeliverySafely,
     processQueueDrainEventSafely,
   } = makeProviderDomainEvents({
+    orchestrationEngine,
     providerService,
     projectionAccess,
     observePendingContextBootstrapTerminalEvent,
@@ -306,6 +307,7 @@ const make = Effect.gen(function* () {
     threadSessionSettings,
     computerService,
     queuedTurnPromotions,
+    clearStaleProviderResumeState,
     clearThreadRuntimeCaches,
     processThreadSessionStop,
 

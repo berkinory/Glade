@@ -59,6 +59,8 @@ export const ProviderRollbackConversationInput = Schema.Struct({
 export const ClearSessionResumeCursorInput = Schema.Struct({
   threadId: ThreadId,
   preserveActiveRuntime: Schema.optional(Schema.Boolean),
+  expectedGeneration: Schema.optional(TrimmedNonEmptyString),
+  expectedTurnId: Schema.optional(TrimmedNonEmptyString),
 });
 
 export const CompletePriorTranscriptBootstrapInput = Schema.Struct({

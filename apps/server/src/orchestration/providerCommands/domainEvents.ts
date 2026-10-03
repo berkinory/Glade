@@ -1,3 +1,8 @@
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
+import type { ProviderServiceError } from "../../provider/core/Errors";
+import { isStaleClaudeResumeError } from "./interactionPolicy";
+import { withCompactionAdmission } from "./compactionAdmission";
+import type { OrchestrationEngineShape } from "../Services/OrchestrationEngine";
 import { compactionBlockedReason } from "../compactionPolicy.ts";
 import { OrchestrationCommandInvariantError } from "../Errors.ts";
 import type { ProviderServiceShape } from "../../provider/Services/ProviderService.ts";
@@ -29,6 +34,7 @@ import { makeProviderTurnStart } from "./turnStart";
 import { makeProviderConversationEdit } from "./conversationEdit";
 
 export function makeProviderDomainEvents(input: {
+  readonly orchestrationEngine: OrchestrationEngineShape;
   readonly providerService: Pick<ProviderServiceShape, "updateNativeHistory" | "compactThread">;
   readonly projectionAccess: ProviderProjectionAccessShape;
   readonly observePendingContextBootstrapTerminalEvent: ReturnType<
@@ -41,6 +47,12 @@ export function makeProviderDomainEvents(input: {
   readonly threadSessionSettings: ServiceMap.Service.Shape<typeof ThreadSessionSettings>;
   readonly computerService: Option.Option<ServiceMap.Service.Shape<typeof ComputerService>>;
   readonly queuedTurnPromotions: ServiceMap.Service.Shape<typeof QueuedTurnPromotionRepository>;
+  readonly clearStaleProviderResumeState: (input: {
+    threadId: ThreadId;
+    cause: { message: string };
+    expectedGeneration: string;
+    expectedTurnId: string;
+  }) => Effect.Effect<void, ProviderServiceError>;
   readonly clearThreadRuntimeCaches: ReturnType<
     typeof makeProviderSessionConfiguration
   >["clearThreadRuntimeCaches"];
@@ -92,6 +104,7 @@ export function makeProviderDomainEvents(input: {
   >["recoverQueuedTurnPromotionsForThread"];
 }) {
   const {
+    orchestrationEngine,
     providerService,
     observePendingContextBootstrapTerminalEvent,
     queuedDispatchState,
@@ -99,6 +112,7 @@ export function makeProviderDomainEvents(input: {
     threadSessionSettings,
     computerService,
     queuedTurnPromotions,
+    clearStaleProviderResumeState,
     clearThreadRuntimeCaches,
     processThreadSessionStop,
 
@@ -122,6 +136,21 @@ export function makeProviderDomainEvents(input: {
   } = input;
   const { resolveProviderSessionThread, hasLiveProviderTurn, resolveThread } = projectionAccess;
   const processQueueDrainEvent = Effect.fnUntraced(function* (event: ProviderQueueDrainEvent) {
+    if (
+      event.provider === "claudeAgent" &&
+      event.type === "turn.completed" &&
+      event.payload.state === "failed" &&
+      event.lifecycleGeneration &&
+      event.turnId &&
+      isStaleClaudeResumeError(event.payload.errorMessage)
+    ) {
+      yield* clearStaleProviderResumeState({
+        threadId: event.threadId,
+        cause: { message: event.payload.errorMessage! },
+        expectedGeneration: event.lifecycleGeneration,
+        expectedTurnId: event.turnId,
+      });
+    }
     yield* observePendingContextBootstrapTerminalEvent(event);
     const sessionThreadId =
       (yield* resolveProviderSessionThread(event.threadId))?.id ?? event.threadId;
@@ -140,6 +169,20 @@ export function makeProviderDomainEvents(input: {
 
     yield* drainQueuedTurnsForSession(event.threadId);
   });
+
+  const runCompaction = <A, E extends { readonly message: string }, R>(
+    event: ProviderIntentEvent,
+    work: Effect.Effect<A, E, R>,
+  ) =>
+    withCompactionAdmission(orchestrationEngine, event, work).pipe(
+      Effect.tapError((error) =>
+        setThreadSessionError({
+          threadId: event.payload.threadId,
+          detail: error.message,
+          createdAt: new Date().toISOString(),
+        }),
+      ),
+    );
 
   const processDomainEvent = (event: ProviderIntentEvent) =>
     Effect.gen(function* () {
@@ -297,9 +340,19 @@ export function makeProviderDomainEvents(input: {
         case "thread.turn-queued":
           yield* processTurnQueued(event);
           return;
-        case "thread.turn-start-requested":
-          yield* processTurnStartRequested(event);
+        case "thread.turn-start-requested": {
+          const thread = yield* resolveThread(event.payload.threadId);
+          const message = thread?.messages.find(
+            (message) => message.id === event.payload.messageId,
+          );
+          const isCompaction =
+            (thread?.session?.providerName ?? thread?.modelSelection.provider) === "claudeAgent" &&
+            /^\/compact(?:\s|$)/u.test(message?.text.trim() ?? "");
+          yield* isCompaction
+            ? runCompaction(event, processTurnStartRequested(event))
+            : processTurnStartRequested(event);
           return;
+        }
 
         case "thread.turn-interrupt-requested":
           yield* processTurnInterruptRequested(event);
@@ -315,7 +368,10 @@ export function makeProviderDomainEvents(input: {
               commandType: "thread.compact",
               detail,
             });
-          yield* providerService.compactThread(event.payload);
+          yield* (thread?.session?.providerName ?? thread?.modelSelection.provider) ===
+          "claudeAgent"
+            ? runCompaction(event, providerService.compactThread(event.payload))
+            : providerService.compactThread(event.payload);
           return;
         }
         case "thread.task-background-requested":

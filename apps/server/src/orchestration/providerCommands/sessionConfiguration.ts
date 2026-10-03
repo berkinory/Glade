@@ -15,10 +15,7 @@ import { Option, Effect, Schema } from "effect";
 import { AgentGatewaySessionRegistry } from "../../agentGateway/Services/AgentGatewaySessionRegistry";
 import { ComputerService } from "../../computer/Services/ComputerService";
 import { ThreadId, ProviderKind } from "@glade/contracts/core/baseSchemas";
-import {
-  ProviderServiceError,
-  ProviderAdapterValidationError,
-} from "../../provider/core/Errors.ts";
+import { ProviderAdapterValidationError } from "../../provider/core/Errors.ts";
 import { providerDisabledSettingsMessage } from "../../provider/core/enabledProviderAdapter.ts";
 import { providerStartOptionsFromServerSettings } from "../../settings/settingsPatches";
 import { resolveThreadWorkspaceState } from "@glade/shared/threads/threadEnvironment";
@@ -91,12 +88,16 @@ export function makeProviderSessionConfiguration(input: {
 
   const clearStaleProviderResumeState = Effect.fnUntraced(function* (input: {
     readonly threadId: ThreadId;
-    readonly cause: ProviderServiceError;
+    readonly cause: { readonly message: string };
     readonly preserveActiveRuntime?: boolean;
+    readonly expectedGeneration?: string;
+    readonly expectedTurnId?: string;
   }) {
     if (providerService.clearSessionResumeCursor) {
       yield* providerService.clearSessionResumeCursor({
         threadId: input.threadId,
+        ...(input.expectedGeneration ? { expectedGeneration: input.expectedGeneration } : {}),
+        ...(input.expectedTurnId ? { expectedTurnId: input.expectedTurnId } : {}),
         ...(input.preserveActiveRuntime === true ? { preserveActiveRuntime: true } : {}),
       });
     } else if (input.preserveActiveRuntime !== true) {

@@ -140,6 +140,8 @@ export interface ProviderServiceShape {
     readonly threadId: ThreadId;
 
     readonly preserveActiveRuntime?: boolean;
+    readonly expectedGeneration?: string;
+    readonly expectedTurnId?: string;
   }) => Effect.Effect<void, ProviderServiceError>;
 
   readonly listSessions: () => Effect.Effect<ReadonlyArray<ProviderSession>>;

@@ -10,7 +10,7 @@ import { normalizeOperationError } from "../../../platform/operationError.ts";
 import { toError } from "./streamErrors";
 import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 
-export const CLAUDE_CONTEXT_USAGE_TIMEOUT_MS = 1_000;
+const CLAUDE_CONTEXT_USAGE_TIMEOUT_MS = 1_000;
 
 export function makeClaudeContextUsage(input: {
   readonly emitRuntimeWarning: ClaudeRuntimeEventsShape["emitRuntimeWarning"];

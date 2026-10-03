@@ -274,3 +274,17 @@ notification does not erase the chat's error.
 Desktop notifications retain their chat action after delivery. Windows notification
 objects stay retained after a toast timeout because Notification Center can still
 activate them; retention is bounded and cleared when Glade exits.
+
+Claude compaction waits up to 15 seconds for native command discovery; a discovery
+timeout is retryable and is distinguished from a runtime without compaction. Both
+typed `/compact` and the menu command use the established session configuration.
+Pending composer model and access choices apply to the next ordinary message.
+Compaction preparation observes durable stop, archive, delete and history-change
+requests before native delivery, including after restart. Uncertain native delivery
+is never automatically resent.
+
+A terminal Claude missing-conversation error clears the broken resume binding before
+queued work drains. Generation and native-turn checks prevent old failures from
+clearing a newer session. The transcript remains available for fresh-session context.
+When the Codex watchdog actually retires gateway authority, its terminal event asks
+the existing lifecycle owner to renew the connection on the next send.

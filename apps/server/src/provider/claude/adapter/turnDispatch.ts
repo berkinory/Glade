@@ -13,7 +13,9 @@ import { type ProviderSendTurnInput } from "@glade/contracts/provider/provider";
 import { toRequestError, toMessage } from "./streamErrors";
 import { type ClaudeAdapterShape } from "../../Services/ClaudeAdapter.ts";
 import { isClaudeCompactionCommand } from "./commandPresentation";
-import { CLAUDE_CONTEXT_USAGE_TIMEOUT_MS } from "./contextUsage";
+import { CompactionAdmission } from "../../Services/CompactionAdmission";
+
+const COMPACTION_DISCOVERY_TIMEOUT_MS = 15_000;
 import { hasActiveClaudeCompactionWork } from "./sessionResume";
 import {
   normalizeClaudeModelOptions,
@@ -141,11 +143,16 @@ export function makeClaudeTurnDispatch(input: {
               operation: "startClaudeCompaction",
               issue: `Could not discover native compaction support: ${toMessage(cause, "Command discovery failed.")}`,
             }),
-        }).pipe(Effect.timeoutOption(CLAUDE_CONTEXT_USAGE_TIMEOUT_MS));
-        if (
-          Option.isNone(commands) ||
-          !commands.value.some((command) => command.name === "compact")
-        ) {
+        }).pipe(Effect.timeoutOption(COMPACTION_DISCOVERY_TIMEOUT_MS));
+        if (Option.isNone(commands)) {
+          return yield* new ProviderAdapterValidationError({
+            provider: PROVIDER,
+            operation: "startClaudeCompaction",
+            issue:
+              "Claude command discovery timed out during startup. Retry compaction when initialization finishes.",
+          });
+        }
+        if (!commands.value.some((command) => command.name === "compact")) {
           return yield* new ProviderAdapterValidationError({
             provider: PROVIDER,
             operation: "startClaudeCompaction",
@@ -175,7 +182,9 @@ export function makeClaudeTurnDispatch(input: {
         });
       }
       const modelSelection =
-        input.modelSelection?.provider === "claudeAgent" ? input.modelSelection : undefined;
+        !isCompaction && input.modelSelection?.provider === "claudeAgent"
+          ? input.modelSelection
+          : undefined;
       const selectedOptions = normalizeClaudeModelOptions(
         modelSelection?.model,
         modelSelection?.options,
@@ -310,6 +319,17 @@ export function makeClaudeTurnDispatch(input: {
       }
 
       if (!isCompaction) yield* applyRuntimePermission(context, input.threadId);
+      const message = yield* buildUserMessageEffect(input, {
+        fileSystem,
+        attachmentsDir: serverConfig.attachmentsDir,
+        nativeCommandNames: isCompaction
+          ? new Set(["compact"])
+          : yield* resolveNativeCommandNames(context, input.input),
+      });
+      const admission = isCompaction
+        ? yield* Effect.serviceOption(CompactionAdmission)
+        : Option.none();
+      if (Option.isSome(admission)) yield* admission.value.check;
       const turnId = TurnId.makeUnsafe(yield* Random.nextUUIDv4);
       context.processedTokenTurnBaseline = context.processedTokenTotal;
       const turnState: ClaudeTurnState = {
@@ -348,52 +368,57 @@ export function makeClaudeTurnDispatch(input: {
           issue: "Claude's session became active while preparing compaction. Try again when idle.",
         });
       }
-      context.turnState = turnState;
-      context.lastTurnId = turnId;
-      context.session = {
-        ...context.session,
-        status: "running",
-        activeTurnId: turnId,
-        updatedAt,
-      };
+      // Once progress is reserved, settle admission or delivery before yielding to cancellation.
+      yield* Effect.uninterruptible(
+        Effect.gen(function* () {
+          context.turnState = turnState;
+          context.lastTurnId = turnId;
+          context.session = {
+            ...context.session,
+            status: "running",
+            activeTurnId: turnId,
+            updatedAt,
+          };
 
-      const turnStartedStamp = yield* makeEventStamp();
-      yield* offerRuntimeEvent(context, {
-        type: "turn.started",
-        eventId: turnStartedStamp.eventId,
-        provider: PROVIDER,
-        createdAt: turnStartedStamp.createdAt,
-        threadId: context.session.threadId,
-        turnId,
-        payload: context.currentApiModelId
-          ? { model: context.currentApiModelId }
-          : modelSelection?.model
-            ? { model: modelSelection.model }
-            : {},
-        providerRefs: {},
-      });
+          const turnStartedStamp = yield* makeEventStamp();
+          yield* offerRuntimeEvent(context, {
+            type: "turn.started",
+            eventId: turnStartedStamp.eventId,
+            provider: PROVIDER,
+            createdAt: turnStartedStamp.createdAt,
+            threadId: context.session.threadId,
+            turnId,
+            payload: context.currentApiModelId
+              ? { model: context.currentApiModelId }
+              : modelSelection?.model
+                ? { model: modelSelection.model }
+                : {},
+            providerRefs: {},
+          });
 
-      if (isCompaction) yield* emitCompactionProgress(context);
+          if (isCompaction) yield* emitCompactionProgress(context);
 
-      if (hasUnfinishedClaudeTasks(context.trackedTasks)) {
-        yield* emitTrackedTasksUpdated(context, {
-          rawPayload: {
-            source: "claude.resume-cursor",
-            trackedTaskCount: context.trackedTasks.size,
-          },
-        });
-      }
+          if (hasUnfinishedClaudeTasks(context.trackedTasks)) {
+            yield* emitTrackedTasksUpdated(context, {
+              rawPayload: {
+                source: "claude.resume-cursor",
+                trackedTaskCount: context.trackedTasks.size,
+              },
+            });
+          }
 
-      const message = yield* buildUserMessageEffect(input, {
-        fileSystem,
-        attachmentsDir: serverConfig.attachmentsDir,
-        nativeCommandNames: yield* resolveNativeCommandNames(context, input.input),
-      });
-
-      yield* Queue.offer(context.promptQueue, {
-        type: "message",
-        message,
-      }).pipe(Effect.mapError((cause) => toRequestError(input.threadId, "turn/start", cause)));
+          if (Option.isSome(admission)) {
+            yield* admission.value.check.pipe(
+              Effect.onError(() => completeTurn(context, "interrupted")),
+            );
+            admission.value.admitted();
+          }
+          yield* Queue.offer(context.promptQueue, {
+            type: "message",
+            message,
+          }).pipe(Effect.mapError((cause) => toRequestError(input.threadId, "turn/start", cause)));
+        }),
+      );
 
       context.firstTurnSpawnModeAuthoritative = false;
 

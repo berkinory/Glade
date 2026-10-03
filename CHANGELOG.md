@@ -55,6 +55,10 @@
 
 ### Fixed
 
+- Claude compaction handles startup delays, respects cancellation and keeps the current session settings.
+- Claude chats recover from missing native conversations without repeatedly reopening a broken session.
+- Codex chats renew their agent connection after a stalled turn retires it.
+
 - Chats keep native background work visible and wait for successful completion before notifying you.
 - Desktop notifications retain their chat actions, including Windows Notification Center notifications.
 - Background chat errors open the affected chat; visible errors remain beside the message input.

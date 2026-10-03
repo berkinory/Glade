@@ -144,6 +144,15 @@ export const ProviderSessionRoutingLive = Layer.effect(
             const persistedCwd = readPersistedCwd(binding.runtimePayload);
             const persistedModelSelection = readPersistedModelSelection(binding.runtimePayload);
             const persistedProviderOptions = readPersistedProviderOptions(binding.runtimePayload);
+            if (
+              input.operation === "ProviderService.compactThread" &&
+              (!persistedModelSelection || !persistedCwd || binding.runtimeMode === undefined)
+            ) {
+              return yield* toValidationError(
+                input.operation,
+                "The saved native session profile is incomplete. Send an ordinary message before compacting.",
+              );
+            }
             const persistedComputerControl = readPersistedComputerControl(binding.runtimePayload);
             yield* validateAutoRuntimeMode(
               input.operation,

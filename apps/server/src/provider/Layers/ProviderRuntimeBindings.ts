@@ -518,6 +518,9 @@ export const ProviderRuntimeBindingsLive = Layer.effect(
                   ? { enableComputerControl: true }
                   : {}),
                 activeTurnId: preserveShutdownStop ? null : activeTurnId,
+                ...(event.type === "turn.started" && event.turnId !== undefined
+                  ? { lastNativeTurnId: String(event.turnId) }
+                  : {}),
                 lastRuntimeEvent: preserveShutdownStop ? "provider.stopAll" : event.type,
                 lastRuntimeEventAt: preserveShutdownStop
                   ? Ref.getUnsafe(runtimeWriteState).shutdownStartedAt

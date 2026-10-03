@@ -1714,6 +1714,9 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
           status: "aborted",
         },
         abandonedBy: "turnIdleWatchdog",
+        ...(context.gatewayCredentialRetired === true
+          ? { [AGENT_GATEWAY_TURN_AUTHORITY_RETIRED]: true }
+          : {}),
       },
     });
   }
