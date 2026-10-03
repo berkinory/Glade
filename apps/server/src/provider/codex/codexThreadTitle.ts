@@ -120,10 +120,11 @@ export async function generateCodexThreadTitle(
           selectedCapabilityRoots: [],
           environments: [],
           config: {
-            mcp_servers: Object.fromEntries(
+            // Override only enabled: replacing server entries loses transports, and config/read contains nulls.
+            ...Object.fromEntries(
               (input.disabledCapabilities?.mcpServerNames ?? []).map((name) => [
-                name,
-                { enabled: false },
+                `mcp_servers.${name}.enabled`,
+                false,
               ]),
             ),
             skills: {
