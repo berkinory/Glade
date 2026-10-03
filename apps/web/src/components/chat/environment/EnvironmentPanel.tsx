@@ -23,8 +23,10 @@ import { IconButton } from "~/components/ui/icon-button";
 import type { RepoDiffTotals } from "~/hooks/useRepoDiffTotals";
 import { ArrowUpRightIcon, ChangesIcon, GitHubIcon, SettingsIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
+import { useWorkspacePathsStore } from "~/workspacePathsStore";
 
 import { EnvironmentEditorSection } from "./EnvironmentEditorSection";
+import { formatEnvironmentDirectory } from "./EnvironmentPanel.logic";
 import { EnvironmentUsageSection } from "./EnvironmentUsageSection";
 import { EnvironmentLocalServersSection } from "./EnvironmentLocalServersSection";
 import { EnvironmentPullRequestSection } from "./EnvironmentPullRequestSection";
@@ -140,6 +142,8 @@ export function EnvironmentPanel({
   const diffDisabledReason = diffDisabledReasonProp ?? null;
   const navigate = useNavigate();
   const { settings } = useAppSettings();
+  const homeDir = useWorkspacePathsStore((state) => state.homeDir);
+  const workingDirectory = worktree.pending ? worktree.baseDirectory : (openInTarget ?? gitCwd);
   const { additions, deletions, hasChanges } = diffTotals;
 
   // Disable the Changes row only when the diff cannot be opened *and* is not already open (so an open
@@ -201,12 +205,11 @@ export function EnvironmentPanel({
           ) : null}
           <code
             className="block select-text break-all text-ui-sm"
-            title={
-              (worktree.pending ? worktree.baseDirectory : (openInTarget ?? gitCwd)) ?? undefined
-            }
+            title={workingDirectory ?? undefined}
           >
-            {(worktree.pending ? worktree.baseDirectory : (openInTarget ?? gitCwd)) ??
-              "No working directory available"}
+            {workingDirectory
+              ? formatEnvironmentDirectory(workingDirectory, homeDir)
+              : "No working directory available"}
           </code>
           {worktree.path && worktree.path !== openInTarget ? (
             <p className="mt-1">
