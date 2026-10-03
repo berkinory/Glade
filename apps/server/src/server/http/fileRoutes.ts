@@ -1,3 +1,4 @@
+import { downloadDisposition } from "./downloadDisposition";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
 import {
   LOCAL_IMAGE_ROUTE_PATH,
@@ -53,7 +54,6 @@ export const localImageEffectRouteLayer = HttpRouter.add(
 
     const fileSystem = yield* FileSystem.FileSystem;
     const isDownload = url.searchParams.get("download") === "1";
-    const safeFileName = previewFile.fileName.replaceAll('"', "");
     const isSvg = nodePath.extname(previewFile.path).toLowerCase() === ".svg";
     return streamedFileResponse({
       fileSystem,
@@ -67,7 +67,7 @@ export const localImageEffectRouteLayer = HttpRouter.add(
 
         "X-Content-Type-Options": "nosniff",
         ...(isSvg ? SVG_DOCUMENT_SECURITY_HEADERS : {}),
-        ...(isDownload ? { "Content-Disposition": `attachment; filename="${safeFileName}"` } : {}),
+        ...(isDownload ? { "Content-Disposition": downloadDisposition(previewFile.fileName) } : {}),
       },
     });
   }).pipe(Effect.catchTag("AuthError", (error) => Effect.succeed(authErrorResponse(error)))),

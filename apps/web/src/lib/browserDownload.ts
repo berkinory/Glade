@@ -29,6 +29,15 @@ async function downloadResponseError(response: Response): Promise<Error> {
 function filenameFromContentDisposition(headerValue: string | null): string | null {
   if (!headerValue) return null;
 
+  const extended = /(?:^|;)\s*filename\*\s*=\s*UTF-8'[^']*'([^;]*)/i.exec(headerValue);
+  if (extended?.[1]) {
+    try {
+      const decoded = decodeURIComponent(extended[1].trim());
+      if (decoded.length > 0) return decoded;
+    } catch {
+      // A malformed extended parameter can still have a usable ASCII fallback.
+    }
+  }
   const match = /(?:^|;)\s*filename\s*=\s*(?:"([^"]*)"|([^;]*))/i.exec(headerValue);
   const filename = (match?.[1] ?? match?.[2] ?? "").trim();
   return filename.length > 0 ? filename : null;

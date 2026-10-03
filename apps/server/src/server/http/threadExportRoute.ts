@@ -1,3 +1,4 @@
+import { downloadDisposition } from "./downloadDisposition";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
 import { Effect, Option, Stream } from "effect";
 import { ServerConfig } from "../config";
@@ -54,7 +55,7 @@ export const threadExportEffectRouteLayer = HttpRouter.add(
         status: 200,
         contentType: "application/zip",
         headers: {
-          "Content-Disposition": `attachment; filename="${fileName.replaceAll('"', "")}"`,
+          "Content-Disposition": downloadDisposition(fileName),
           "Cache-Control": "no-store",
           ...corsHeaders,
           "Access-Control-Expose-Headers": "Content-Disposition",

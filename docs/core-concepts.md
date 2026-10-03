@@ -271,3 +271,14 @@ stash conflict, offer file resolution without a misleading rebase abort action.
 ## Activity model attribution
 
 Activity uses the model recorded for a historical turn or its reliable provider usage evidence. Older default selections without a recoverable model appear as Unknown model with the provider name. They retain their tokens and turns, including after chat deletion. Changing a chat's model does not relabel its earlier unknown usage. Token statistics and the turn-count fallback use the same grouping; their metrics remain distinct.
+
+## Workspace search and downloads
+
+Workspace filename search and composer file suggestions exclude tracked files deleted from
+disk, even before staging. If Git cannot provide a complete deleted-path list, discovery
+falls back to the filesystem. Source Control still lists deletions, with struck-through
+paths in Changes, Staged, History and turn diffs; deleted versions have no Show file action.
+A staged modification remains styled as a modification if only its working copy was deleted.
+
+File downloads and chat exports preserve Unicode filenames using the UTF-8 download header,
+with an ASCII fallback for older clients. The web download path prefers the UTF-8 name.

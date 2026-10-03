@@ -3,7 +3,7 @@ import type {
   GitReadFileAtRevResult,
   GitReadRequestOptions,
 } from "@glade/contracts/git/git";
-import { isSupportedLocalImagePath } from "@glade/shared/attachments/localPreviewFiles";
+import { isSupportedLocalImagePath } from "@glade/shared/browser/localPreviewFiles";
 import { isSupportedLocalVideoPath } from "@glade/shared/attachments/localVideoFiles";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";

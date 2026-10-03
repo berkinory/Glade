@@ -607,12 +607,36 @@ async function buildWorkspaceIndexFromGit(
     return null;
   }
 
+  const deletedFiles = await runGit(
+    [...WORKSPACE_GIT_HARDENED_CONFIG_ARGS, "ls-files", "--deleted", "-z"],
+    {
+      cwd,
+      allowNonZeroExit: true,
+      timeoutMs: 20_000,
+      maxBufferBytes: 16 * 1024 * 1024,
+      outputMode: "truncate",
+    },
+  ).catch(() => null);
+  // An incomplete exclusion set could resurrect missing paths; use the filesystem instead.
+  if (
+    !deletedFiles ||
+    deletedFiles.code !== 0 ||
+    deletedFiles.stdoutTruncated ||
+    (deletedFiles.stdout.length > 0 && !deletedFiles.stdout.endsWith("\0"))
+  )
+    return null;
+  const deletedPaths = new Set(
+    splitNullSeparatedPaths(deletedFiles.stdout, false).map(toPosixPath),
+  );
+
   const listedPaths = splitNullSeparatedPaths(
     listedFiles.stdout,
     Boolean(listedFiles.stdoutTruncated),
   )
     .map((entry) => toPosixPath(entry))
-    .filter((entry) => entry.length > 0 && !isPathInIgnoredDirectory(entry));
+    .filter(
+      (entry) => entry.length > 0 && !deletedPaths.has(entry) && !isPathInIgnoredDirectory(entry),
+    );
   const filePaths = await filterGitIgnoredPaths(cwd, listedPaths, runGit);
 
   const directorySet = new Set<string>();

@@ -49,7 +49,12 @@ export const FileDiffHeader = function FileDiffHeader(props: {
           className="size-3.5 text-[var(--color-text-foreground)] opacity-70 dark:opacity-80"
         />
       </span>
-      <div className="flex min-w-0 flex-1 items-baseline gap-1.5 overflow-hidden">
+      <div
+        className={cn(
+          "flex min-w-0 flex-1 items-baseline gap-1.5 overflow-hidden",
+          changeType === "deleted" && "line-through",
+        )}
+      >
         {prevLeaf ? (
           <>
             <span className="shrink-0 truncate text-ui-sm text-muted-foreground/65 line-through">

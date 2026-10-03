@@ -66,7 +66,12 @@ function GitFileRow(props: {
         title={filePath}
       >
         <FileEntryIcon pathValue={filePath} kind="file" theme={props.theme} className="size-4" />
-        <span className="min-w-0 truncate text-ui text-foreground">
+        <span
+          className={cn(
+            "min-w-0 truncate text-ui text-foreground",
+            props.file.status === "D" && "line-through",
+          )}
+        >
           {dir ? <span className="text-muted-foreground/70">{dir}</span> : null}
           <span>{name}</span>
         </span>

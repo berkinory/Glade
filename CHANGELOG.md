@@ -8,6 +8,8 @@
 
 ### Improved
 
+- Deleted files are easier to recognize in Source Control.
+
 - Voice dictation shows microphone preparation, works while agents are running, and can be finished or sent with Enter.
 
 - Windows release installers are checked with Microsoft Defender before publication.
@@ -33,6 +35,9 @@
 - Models load faster on first use, with a balanced initial reasoning effort when you have not chosen one.
 
 ### Fixed
+
+- Deleted files no longer appear in workspace search or file suggestions.
+- File downloads and chat exports support accented characters and emoji in filenames.
 
 - Profile activity dates stay correct across time zones.
 
