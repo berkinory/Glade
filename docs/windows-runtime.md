@@ -97,3 +97,8 @@ A new CLI provider should:
 It should contain no code for `.cmd`, `.bat`, `cmd.exe`, PATHEXT, `where.exe`, Windows quoting, `taskkill`, WSL UNC conversion, or ConPTY.
 
 `bun scripts/check-windows-runtime-boundary.ts` enforces the application-facing boundary in CI.
+
+Provider maintenance closes standard input and preserves Windows executable search paths,
+consolidating case variants when prepending an updater directory. POSIX teardown signals
+the owned root directly after captured descendants; it does not launch PATH-dependent
+tree discovery to deliver that signal. Descendant exit still requires identity verification.

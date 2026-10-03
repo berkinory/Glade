@@ -315,11 +315,14 @@ export function invokePinnedDnsLookup(
     family?: number,
   ) => void,
 ): void {
-  if (options?.all) {
-    callback(null, [{ address: pinned.address, family: pinned.family }]);
-    return;
-  }
-  callback(null, pinned.address, pinned.family);
+  // Socket setup must attach its error listeners before lookup completion can fail TLS.
+  queueMicrotask(() => {
+    if (options?.all) {
+      callback(null, [{ address: pinned.address, family: pinned.family }]);
+      return;
+    }
+    callback(null, pinned.address, pinned.family);
+  });
 }
 
 async function requestHop(input: {

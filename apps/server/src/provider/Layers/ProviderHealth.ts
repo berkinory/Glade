@@ -1,3 +1,5 @@
+import { envPathKeyFor } from "@glade/shared/platform/executable";
+import { isPathName } from "@glade/shared/platform/shell";
 import { asNonEmptyString } from "@glade/shared/text/text";
 import { asRecord } from "@glade/shared/transport/payloadValues";
 import * as OS from "node:os";
@@ -1528,17 +1530,28 @@ function makeProviderHealthLive(options?: { readonly providerUpdateTimeoutMs?: n
         readonly pathPrepend?: string;
       }) {
         const baseEnv = providerCommandEnv(input.provider);
-        const updateEnv = input.pathPrepend
-          ? {
-              ...baseEnv,
-              PATH: [input.pathPrepend, baseEnv.PATH]
-                .filter((entry): entry is string => Boolean(entry))
-                .join(OS.platform() === "win32" ? ";" : ":"),
+        const updateEnv = { ...baseEnv };
+        if (input.pathPrepend) {
+          const windows = OS.platform() === "win32";
+          const pathKey = windows ? envPathKeyFor(baseEnv, "win32") : "PATH";
+          const existingPaths = windows
+            ? Object.entries(baseEnv)
+                .filter(([key]) => isPathName(key))
+                .map(([, value]) => value)
+            : [baseEnv.PATH];
+          if (windows) {
+            for (const key of Object.keys(updateEnv)) {
+              if (isPathName(key)) delete updateEnv[key];
             }
-          : baseEnv;
+          }
+          updateEnv[pathKey] = [input.pathPrepend, ...existingPaths]
+            .filter((entry): entry is string => Boolean(entry))
+            .join(windows ? ";" : ":");
+        }
         const child = yield* spawner.spawn(
           makeEffectProcessCommand(input.command, input.args, {
             env: updateEnv,
+            stdin: "ignore",
           }),
         );
         yield* Effect.addFinalizer(() => child.kill().pipe(Effect.ignore));

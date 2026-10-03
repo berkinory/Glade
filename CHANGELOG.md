@@ -28,6 +28,9 @@
 
 ### Fixed
 
+- Provider updates preserve executable search paths on Windows and no longer wait for interactive input.
+- HTTPS connection failures are handled reliably, and stopping processes does not depend on executable search paths.
+
 - Explorer stays in sync when files are added or changed outside Glade.
 
 - Failed commit message generation reports an error instead of silently substituting a generic message.

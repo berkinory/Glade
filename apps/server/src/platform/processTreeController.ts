@@ -147,7 +147,14 @@ export function createProcessTreeKiller(
     captureChildrenMap: captureProcessChildrenMapSync,
     readCurrentProcesses,
     signalPid,
-    signalTree: treeKill,
+    signalTree: (pid, signal, callback) => {
+      if (process.platform === "win32") {
+        treeKill(pid, signal, callback);
+      } else {
+        // Descendants were captured above; signaling the owned root must not spawn PATH tools.
+        callback(signalPid(pid, signal));
+      }
+    },
     ...dependencies,
   };
 

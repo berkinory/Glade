@@ -1,5 +1,7 @@
 # TODO
 
+- **S4 implemented:** Windows update environment/stdin, asynchronous pinned DNS and direct POSIX root signaling are implemented. Focused HTTP/process/RPC tests pass (58); Windows boundary and lint pass. Full-suite browser timing failure passed on focused retry. Repository-wide checks have existing formatting/browser import blockers; live Windows/provider execution remains unverified.
+
 **Target version:** 0.1.1
 
 ## Instructions for agents
