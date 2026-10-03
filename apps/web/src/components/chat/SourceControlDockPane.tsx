@@ -3,9 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { gitBranchesQueryOptions } from "~/lib/gitQueryOptions";
 import { Button } from "../ui/button";
 import { PanelStateMessage } from "./PanelStateMessage";
+import { PanelEmptyState } from "./PanelEmptyState";
+import { OpenInPicker } from "./OpenInPicker";
 import type { SourceControlView } from "~/rightDockStore.logic";
 import { PanelTabBar } from "./PanelTabBar";
-import { ChangesIcon, HistoryIcon } from "~/lib/icons";
+import { ChangesIcon, GitBranchIcon, HistoryIcon } from "~/lib/icons";
 import { GitPanel } from "./GitPanel";
 import { SourceControlHistory } from "./SourceControlHistory";
 import { SourceControlTurnChanges } from "./SourceControlTurnChanges";
@@ -40,7 +42,13 @@ export function SourceControlDockPane(props: {
       </div>
     </PanelStateMessage>
   ) : repository.data?.isRepo === false ? (
-    <PanelStateMessage>This folder is not a Git repository.</PanelStateMessage>
+    <PanelEmptyState
+      icon={<GitBranchIcon className="size-12" aria-hidden="true" />}
+      title="Not a Git repository"
+      description="Open a folder with a Git repository to view changes and history."
+    >
+      <OpenInPicker openInTarget={props.workspaceRoot} labelMode="always" />
+    </PanelEmptyState>
   ) : null;
 
   return (
