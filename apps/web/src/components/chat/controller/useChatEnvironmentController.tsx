@@ -10,7 +10,6 @@ import {
   resolveEnvironmentPanelVisible,
 } from "../../ChatView.logic.worktree";
 import type { TurnDispatchSettings } from "../../ChatView.logic.subagents";
-import { useChatProjectScripts } from "~/components/chat/useChatProjectScripts";
 import { useChatRuntimeModes } from "~/components/chat/useChatRuntimeModes";
 import { useChatTranscriptScroll } from "~/components/chat/useChatTranscriptScroll";
 import { useTranscriptAssistantSelectionAction } from "~/components/chat/useTranscriptAssistantSelectionAction";
@@ -92,11 +91,6 @@ export function useChatEnvironmentController({
     isTerminalEnvironmentContext,
     isTerminalPrimarySurface,
     threadTerminalRuntimeEnv,
-    splitTerminalShortcutLabel,
-    splitTerminalDownShortcutLabel,
-    newTerminalShortcutLabel,
-    closeTerminalShortcutLabel,
-    closeWorkspaceShortcutLabel,
     composerMenuOpen,
     composerMenuItems,
   } = discovery;
@@ -113,22 +107,12 @@ export function useChatEnvironmentController({
     activeProject,
     terminalState,
     terminalFocusRequestId,
-    splitTerminalRight,
-    splitTerminalDown,
-    createNewTerminal,
-    createNewTerminalTab,
-    moveTerminalToNewGroup,
-    activateTerminal,
-    closeTerminal,
     handleTerminalSessionExited,
     activeThreadId,
-    storeCloseTerminalGroup,
     setTerminalHeight,
-    storeResizeTerminalSplit,
     storeSetTerminalMetadata,
     storeSetTerminalActivity,
     requestTerminalFocus,
-    setTerminalOpen,
     isServerThread,
     activeThreadAssociatedWorktree,
     runtimeMode,
@@ -143,7 +127,6 @@ export function useChatEnvironmentController({
   const {
     canAddTerminalContextToChat,
     addTerminalContextToDraft,
-    setThreadError,
     scheduleComposerFocus,
     focusComposer,
   } = composer;
@@ -217,16 +200,6 @@ export function useChatEnvironmentController({
     gitGithubRepositoryQueryOptions(gitBranchSourceCwd, environmentPanelVisible),
   );
 
-  const hasRightDockPanes = useRightDockStore(
-    (store) => selectRightDockState(threadId)(store).panes.length > 0,
-  );
-
-  const setRightDockOpen = useRightDockStore((store) => store.setDockOpen);
-
-  const toggleRightDock = () => {
-    setRightDockOpen(threadId, !rightDockOpen);
-  };
-
   const startedTerminalIds = useRef(new Set<string>());
   const terminalCwd = gitCwd ?? activeProject?.cwd ?? "";
   useEffect(() => {
@@ -256,8 +229,6 @@ export function useChatEnvironmentController({
 
   const terminalDrawerProps = {
     threadId,
-    onTogglePanel: hasRightDockPanes ? toggleRightDock : undefined,
-    isPanelOpen: hasRightDockPanes ? rightDockOpen : undefined,
     cwd: terminalCwd,
     runtimeEnv: threadTerminalRuntimeEnv,
     height: terminalState.terminalHeight,
@@ -268,31 +239,9 @@ export function useChatEnvironmentController({
     terminalAttentionStatesById: terminalState.terminalAttentionStatesById ?? {},
     runningTerminalIds: terminalState.runningTerminalIds,
     activeTerminalId: terminalState.activeTerminalId,
-    terminalGroups: terminalState.terminalGroups,
-    activeTerminalGroupId: terminalState.activeTerminalGroupId,
     focusRequestId: terminalFocusRequestId,
-    onSplitTerminal: splitTerminalRight,
-    onSplitTerminalDown: splitTerminalDown,
-    onNewTerminal: createNewTerminal,
-    onNewTerminalTab: createNewTerminalTab,
-    onMoveTerminalToGroup: moveTerminalToNewGroup,
-    splitShortcutLabel: splitTerminalShortcutLabel ?? undefined,
-    splitDownShortcutLabel: splitTerminalDownShortcutLabel ?? undefined,
-    newShortcutLabel: newTerminalShortcutLabel ?? undefined,
-    closeShortcutLabel: closeTerminalShortcutLabel ?? undefined,
-    workspaceCloseShortcutLabel: closeWorkspaceShortcutLabel ?? undefined,
-    onActiveTerminalChange: activateTerminal,
-    onCloseTerminal: closeTerminal,
     onTerminalSessionExited: handleTerminalSessionExited,
-    onCloseTerminalGroup: (groupId: string) => {
-      if (!activeThreadId) return;
-      storeCloseTerminalGroup(activeThreadId, groupId);
-    },
     onHeightChange: setTerminalHeight,
-    onResizeTerminalSplit: (groupId: string, splitId: string, weights: number[]) => {
-      if (!activeThreadId) return;
-      storeResizeTerminalSplit(activeThreadId, groupId, splitId, weights);
-    },
     onTerminalMetadataChange: (
       terminalId: string,
       metadata: {
@@ -315,23 +264,6 @@ export function useChatEnvironmentController({
     },
     ...(canAddTerminalContextToChat ? { onAddTerminalContext: addTerminalContextToDraft } : {}),
   };
-
-  const {
-    runProjectScript,
-    saveProjectScript,
-    updateProjectScript,
-    deleteProjectScript,
-    lastInvokedScriptByProjectId,
-  } = useChatProjectScripts({
-    activeThreadId,
-    activeThread,
-    activeProject,
-    gitCwd,
-    terminalState,
-    requestTerminalFocus,
-    setTerminalOpen,
-    setThreadError,
-  });
 
   const stopActiveThreadSession = async () => {
     const api = readNativeApi();
@@ -755,11 +687,6 @@ export function useChatEnvironmentController({
     environmentPanelVisible,
     githubRepositoryQuery,
     terminalDrawerProps,
-    runProjectScript,
-    saveProjectScript,
-    updateProjectScript,
-    deleteProjectScript,
-    lastInvokedScriptByProjectId,
     handoffBusy,
     onHandoffToLocal,
     persistRuntimeModeChange,

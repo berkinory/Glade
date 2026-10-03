@@ -53,7 +53,6 @@ import { resolveThreadStatusPill } from "./Sidebar.logic.status";
 import { parseDiffRouteSearch } from "../diffRouteSearch";
 import { normalizeSettingsSection } from "../settingsNavigation";
 import { selectSplitView, useSplitViewStore } from "../splitViewStore";
-import { useSidebarProjectRunController } from "../hooks/useSidebarProjectRunController";
 import { useSidebarThreadActions } from "../hooks/useSidebarThreadActions";
 import { useWorkspacePathsStore } from "../workspacePathsStore";
 import { useFocusedChatContext } from "../focusedChatContext";
@@ -503,27 +502,6 @@ export function useSidebarShellState() {
     threadsHydrated,
   });
 
-  const {
-    projectRunsByProjectId,
-    projectRunServerByProjectId,
-    projectRunDialogProjectId,
-    projectRunDialogProject,
-    projectRunDialogExistingRun,
-    projectRunDialogCommandDraft,
-    setProjectRunDialogCommandDraft,
-    projectRunDialogCommandIsValid,
-    openProjectRunDialog,
-    closeProjectRunDialog,
-    handleConfirmProjectRun,
-    handleStopProjectRun,
-    handleOpenProjectRunServer,
-  } = useSidebarProjectRunController({
-    projects,
-    projectById,
-    homeDir,
-    chatWorkspaceRoot,
-  });
-
   const ordinarySpaceProjects = projects.filter((project) =>
     isOrdinarySpaceProject(project, { homeDir, chatWorkspaceRoot }),
   );
@@ -667,19 +645,6 @@ export function useSidebarShellState() {
     confirmAndArchiveThread,
     archiveAllThreadsInProject,
     deleteProjectThreads,
-    projectRunsByProjectId,
-    projectRunServerByProjectId,
-    projectRunDialogProjectId,
-    projectRunDialogProject,
-    projectRunDialogExistingRun,
-    projectRunDialogCommandDraft,
-    setProjectRunDialogCommandDraft,
-    projectRunDialogCommandIsValid,
-    openProjectRunDialog,
-    closeProjectRunDialog,
-    handleConfirmProjectRun,
-    handleStopProjectRun,
-    handleOpenProjectRunServer,
     ordinarySpaceProjects,
     activeRouteProjectId,
     activeRouteProject,

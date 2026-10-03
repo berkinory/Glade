@@ -25,7 +25,6 @@ configuration errors and prevent automatic rewriting of the file.
 ```json
 [
   { "key": "mod+j", "command": "terminal.toggle" },
-  { "key": "mod+d", "command": "terminal.split", "when": "terminalFocus" },
   { "key": "mod+n", "command": "terminal.new", "when": "terminalFocus" },
   { "key": "mod+w", "command": "terminal.close", "when": "terminalFocus" },
   { "key": "mod+n", "command": "chat.new", "when": "!terminalFocus" },
@@ -59,8 +58,7 @@ Invalid rules are ignored. Invalid config files are ignored. Warnings are logged
 
 ### Available Commands
 
-- `terminal.toggle`: open/close the terminal in the right sidebar or full-width terminal workspace
-- `terminal.split`: split terminal (in focused terminal context by default)
+- `terminal.toggle`: open/close the terminal in the main workspace
 - `terminal.new`: create new terminal (in focused terminal context by default)
 - `terminal.close`: close/kill the focused terminal (in focused terminal context by default)
 - `chat.new`: create a new chat thread preserving the active thread's branch/worktree state
@@ -70,7 +68,6 @@ Invalid rules are ignored. Invalid config files are ignored. Warnings are logged
 - `thread.copyId`: copy the active thread's ID to the clipboard
 - `editor.openFavorite`: open current project/worktree in the last-used editor
 - `editor.file.save`: write the focused file editor's unsaved changes back to disk
-- `script.{id}.run`: run a project script by id (for example `script.test.run`)
 
 ### Key Syntax
 

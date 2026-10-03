@@ -88,19 +88,15 @@ import {
 import { KeybindingRule } from "../../settings/keybindings";
 import {
   ProjectCreateLocalFilePreviewGrantInput,
-  ProjectDevServerEvent,
-  ProjectDiscoverScriptsInput,
   ProjectListDirectoriesInput,
   ProjectReadFileInput,
   ProjectWatchFileInput,
   ProjectPrewarmSearchIndexInput,
   ProjectResolveWorkspaceFileReferencesInput,
   ProjectResolveOutOfRootFileReferenceInput,
-  ProjectRunDevServerInput,
   ProjectSearchEntriesInput,
   ProjectSearchContentInput,
   ProjectSearchLocalEntriesInput,
-  ProjectStopDevServerInput,
   ProjectWriteFileInput,
   ProjectManageEntryInput,
 } from "../../workspace/project";
@@ -141,7 +137,6 @@ import {
 export const WS_METHODS = {
   subscribeAppPresentation: "app.subscribePresentation",
   acknowledgeAppPresentation: "app.acknowledgePresentation",
-  projectsDiscoverScripts: "projects.discoverScripts",
   projectsListDirectories: "projects.listDirectories",
   projectsSearchEntries: "projects.searchEntries",
   projectsSearchLocalEntries: "projects.searchLocalEntries",
@@ -154,10 +149,6 @@ export const WS_METHODS = {
   projectsCreateLocalFilePreviewGrant: "projects.createLocalFilePreviewGrant",
   projectsWriteFile: "projects.writeFile",
   projectsManageEntry: "projects.manageEntry",
-  projectsRunDevServer: "projects.runDevServer",
-  projectsStopDevServer: "projects.stopDevServer",
-  projectsListDevServers: "projects.listDevServers",
-  subscribeProjectDevServerEvents: "projects.subscribeDevServerEvents",
   projectsProvisionFromGitHub: "projects.provisionFromGitHub",
 
   filesystemBrowse: "filesystem.browse",
@@ -260,7 +251,6 @@ export const WS_CHANNELS = {
   gitWorktreeSetupProgress: "git.worktreeSetupProgress",
   projectProvisionProgress: "project.provisionProgress",
   terminalEvent: "terminal.event",
-  projectDevServerEvent: "project.devServerEvent",
   serverWelcome: "server.welcome",
   serverMaintenanceUpdated: "server.maintenanceUpdated",
   serverConfigUpdated: "server.configUpdated",
@@ -303,8 +293,6 @@ const WebSocketRequestBody = Schema.Union([
   tagRequestBody(ORCHESTRATION_WS_METHODS.unsubscribeShell, OrchestrationUnsubscribeShellInput),
   tagRequestBody(ORCHESTRATION_WS_METHODS.subscribeThread, OrchestrationSubscribeThreadInput),
   tagRequestBody(ORCHESTRATION_WS_METHODS.unsubscribeThread, OrchestrationUnsubscribeThreadInput),
-
-  tagRequestBody(WS_METHODS.projectsDiscoverScripts, ProjectDiscoverScriptsInput),
   tagRequestBody(WS_METHODS.projectsListDirectories, ProjectListDirectoriesInput),
   tagRequestBody(WS_METHODS.projectsSearchEntries, ProjectSearchEntriesInput),
   tagRequestBody(WS_METHODS.projectsSearchLocalEntries, ProjectSearchLocalEntriesInput),
@@ -329,10 +317,6 @@ const WebSocketRequestBody = Schema.Union([
     tagRequestBody(WS_METHODS.projectsManageEntry, ProjectManageEntryInput.members[0]),
     tagRequestBody(WS_METHODS.projectsManageEntry, ProjectManageEntryInput.members[1]),
   ]),
-  tagRequestBody(WS_METHODS.projectsRunDevServer, ProjectRunDevServerInput),
-  tagRequestBody(WS_METHODS.projectsStopDevServer, ProjectStopDevServerInput),
-  tagRequestBody(WS_METHODS.projectsListDevServers, Schema.Struct({})),
-  tagRequestBody(WS_METHODS.subscribeProjectDevServerEvents, Schema.Struct({})),
   tagRequestBody(WS_METHODS.projectsProvisionFromGitHub, GitHubProjectProvisionInput),
 
   tagRequestBody(WS_METHODS.filesystemBrowse, FilesystemBrowseInput),
@@ -464,7 +448,6 @@ export interface WsPushPayloadByChannel {
   readonly [WS_CHANNELS.gitWorktreeSetupProgress]: typeof GitWorktreeSetupProgressEvent.Type;
   readonly [WS_CHANNELS.projectProvisionProgress]: typeof GitHubProjectProvisionProgressEvent.Type;
   readonly [WS_CHANNELS.terminalEvent]: typeof TerminalEvent.Type;
-  readonly [WS_CHANNELS.projectDevServerEvent]: typeof ProjectDevServerEvent.Type;
   readonly [COMPUTER_WS_CHANNELS.event]: typeof ComputerEvent.Type;
   readonly [ORCHESTRATION_WS_CHANNELS.domainEvent]: OrchestrationEvent;
   readonly [ORCHESTRATION_WS_CHANNELS.shellEvent]: OrchestrationShellStreamItem;
@@ -519,10 +502,6 @@ export const WsPushProjectProvisionProgress = makeWsPushSchema(
   GitHubProjectProvisionProgressEvent,
 );
 export const WsPushTerminalEvent = makeWsPushSchema(WS_CHANNELS.terminalEvent, TerminalEvent);
-export const WsPushProjectDevServerEvent = makeWsPushSchema(
-  WS_CHANNELS.projectDevServerEvent,
-  ProjectDevServerEvent,
-);
 export const WsPushComputerEvent = makeWsPushSchema(COMPUTER_WS_CHANNELS.event, ComputerEvent);
 export const WsPushOrchestrationDomainEvent = makeWsPushSchema(
   ORCHESTRATION_WS_CHANNELS.domainEvent,
@@ -548,7 +527,6 @@ export const WsPushChannelSchema = Schema.Literals([
   WS_CHANNELS.serverProviderStatusesUpdated,
   WS_CHANNELS.serverSettingsUpdated,
   WS_CHANNELS.terminalEvent,
-  WS_CHANNELS.projectDevServerEvent,
   COMPUTER_WS_CHANNELS.event,
   ORCHESTRATION_WS_CHANNELS.domainEvent,
   ORCHESTRATION_WS_CHANNELS.shellEvent,
@@ -567,7 +545,6 @@ export const WsPush = Schema.Union([
   WsPushGitWorktreeSetupProgress,
   WsPushProjectProvisionProgress,
   WsPushTerminalEvent,
-  WsPushProjectDevServerEvent,
   WsPushComputerEvent,
   WsPushOrchestrationDomainEvent,
   WsPushOrchestrationShellEvent,

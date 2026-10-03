@@ -74,7 +74,6 @@ import { PROJECT_SPACE_DRAG_MIME } from "./SpaceSwitcher";
 import type { useSidebarPanelEffects } from "./useSidebarPanelEffects";
 import {
   preventFocusOnMouseDown,
-  ProjectRunIndicatorDot,
   THREAD_ROW_META_CHIP_HOVER_FADE_CLASS_NAME,
   threadRowStatusSlotClassName,
   ThreadMetaChip,
@@ -95,8 +94,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
     pinnedThreadIdSet,
     toggleThreadPinned,
     archiveThreadWithUndo,
-    projectRunsByProjectId,
-    projectRunServerByProjectId,
     pinnedThreads,
     openPrLink,
     toggleProjectPinned,
@@ -664,13 +661,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
     );
   }
 
-  function isSidebarProjectRunning(projectId: ProjectId): boolean {
-    return (
-      (projectRunsByProjectId[projectId] ?? null) !== null ||
-      (projectRunServerByProjectId.get(projectId) ?? null) !== null
-    );
-  }
-
   function renderProjectItem(
     project: (typeof sortedProjects)[number],
     dragHandleProps: SortableProjectHandleProps | null,
@@ -681,14 +671,8 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
       return null;
     }
     const { allProjectThreadCount, projectStatus } = projectSidebarData;
-    const projectFolderIconClassName = sidebarHoverRevealHideClassName("project-header");
-    const isProjectRunning = isSidebarProjectRunning(project.id);
     const collapsedProjectStatus = project.expanded ? null : projectStatus;
-    // The "open dev server" affordance now lives in the project context menu, so the hover toolbar
-    // always reserves space for the three thread actions. The reserve lives on the *name* container
-    // (not the button) so only the truncating name yields to the overlay toolbar; the trailing run dot
-    // stays put and fades in place instead of sliding left. Focus is read from the group because the
-    // name container itself is not focusable — the row's button is.
+    const projectFolderIconClassName = sidebarHoverRevealHideClassName("project-header");
     const projectToolbarReserveClassName =
       "group-hover/project-header:pr-[4.75rem] group-has-[:focus-visible]/project-header:pr-[4.75rem]";
 
@@ -765,23 +749,16 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
               >
                 <span className={SIDEBAR_PROJECT_NAME_CLASS_NAME}>{projectRowLabel}</span>
               </div>
-              {isProjectRunning || collapsedProjectStatus ? (
+              {collapsedProjectStatus ? (
                 <span
-                  aria-label={
-                    collapsedProjectStatus
-                      ? `Project status: ${collapsedProjectStatus.label}`
-                      : undefined
-                  }
-                  title={collapsedProjectStatus?.label}
+                  aria-label={`Project status: ${collapsedProjectStatus.label}`}
+                  title={collapsedProjectStatus.label}
                   className={cn(
-                    "ml-auto flex min-w-[1.625rem] shrink-0 items-center justify-end gap-2 self-center",
+                    "ml-auto flex min-w-[1.625rem] shrink-0 items-center justify-end self-center",
                     sidebarHoverRevealHideClassName("project-header"),
                   )}
                 >
-                  {isProjectRunning ? <ProjectRunIndicatorDot /> : null}
-                  {collapsedProjectStatus ? (
-                    <SidebarStatusTrailingGlyph status={collapsedProjectStatus} />
-                  ) : null}
+                  <SidebarStatusTrailingGlyph status={collapsedProjectStatus} />
                 </span>
               ) : null}
             </SidebarMenuButton>

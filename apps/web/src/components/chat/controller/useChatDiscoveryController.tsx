@@ -1,3 +1,4 @@
+import { terminalRuntimeEnv } from "~/lib/terminalRuntimeEnv";
 import { getRuntimeAwareModelCapabilities } from "../runtimeModelCapabilities";
 import { threadExportBlockedReason } from "@glade/shared/threads/threadExport";
 import { useLayoutEffect } from "react";
@@ -19,7 +20,6 @@ import { formatShortcutLabel, shortcutLabelForCommand } from "~/keybindings";
 import { findProviderStatus } from "~/lib/providerAvailability";
 import { resolveAvailableHandoffTargetProviders } from "~/lib/threadHandoff";
 import { readNativeApi } from "~/nativeApi";
-import { projectScriptRuntimeEnv } from "~/projectScripts";
 import {
   ChatViewProps,
   EMPTY_AVAILABLE_EDITORS,
@@ -337,10 +337,8 @@ export function useChatDiscoveryController({
   const terminalRuntimeProjectCwd = activeProjectCwd;
 
   const threadTerminalRuntimeEnv = terminalRuntimeProjectCwd
-    ? projectScriptRuntimeEnv({
-        project: {
-          cwd: terminalRuntimeProjectCwd,
-        },
+    ? terminalRuntimeEnv({
+        cwd: terminalRuntimeProjectCwd,
         worktreePath: activeThreadWorktreePath,
       })
     : EMPTY_TERMINAL_RUNTIME_ENV;
@@ -360,12 +358,6 @@ export function useChatDiscoveryController({
     turnDiffSummaries,
     workLogEntries,
   });
-
-  const splitTerminalShortcutLabel =
-    shortcutLabelForCommand(keybindings, "terminal.splitRight") ??
-    shortcutLabelForCommand(keybindings, "terminal.split");
-
-  const splitTerminalDownShortcutLabel = shortcutLabelForCommand(keybindings, "terminal.splitDown");
 
   const newTerminalShortcutLabel = shortcutLabelForCommand(keybindings, "terminal.new");
 
@@ -505,8 +497,6 @@ export function useChatDiscoveryController({
     showGitActions,
     repoDiffTotals,
     activeTurnLiveDiffState,
-    splitTerminalShortcutLabel,
-    splitTerminalDownShortcutLabel,
     newTerminalShortcutLabel,
     closeTerminalShortcutLabel,
     closeWorkspaceShortcutLabel,

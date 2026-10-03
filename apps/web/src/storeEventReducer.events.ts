@@ -96,7 +96,6 @@ export function applyOrchestrationEvent(
           title: event.payload.title,
           workspaceRoot: event.payload.workspaceRoot,
           defaultModelSelection: event.payload.defaultModelSelection,
-          scripts: event.payload.scripts,
           isPinned: event.payload.isPinned ?? false,
           spaceId: event.payload.spaceId ?? null,
           createdAt: event.payload.createdAt,
@@ -123,7 +122,6 @@ export function applyOrchestrationEvent(
             event.payload.defaultModelSelection !== undefined
               ? event.payload.defaultModelSelection
               : existingProject.defaultModelSelection,
-          scripts: event.payload.scripts ?? existingProject.scripts,
           isPinned: event.payload.isPinned ?? existingProject.isPinned ?? false,
           spaceId:
             event.payload.spaceId !== undefined

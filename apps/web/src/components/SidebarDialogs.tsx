@@ -1,17 +1,13 @@
 import { useStore } from "../store";
-import { firstLocalServerUrl } from "../hooks/useSidebarProjectRunController";
 import { createClientPointMenuAnchor } from "~/lib/clientPointMenuAnchor";
 import { useMemo } from "react";
 import {
   AddPlusIcon,
   ArchiveIcon,
   CopyIcon,
-  ExternalLinkIcon,
   FolderOpenIcon,
   PencilIcon,
   PinIcon,
-  PlayIcon,
-  StopFilledIcon,
   Trash2,
   XIcon,
 } from "~/lib/icons";
@@ -20,17 +16,6 @@ import { SpaceId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { EditProjectDialog } from "./EditProjectDialog";
 import { RelocateProjectDialog } from "./RelocateProjectDialog";
 import { RenameThreadDialog } from "./RenameThreadDialog";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import {
-  Dialog,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogPanel,
-  DialogPopup,
-  DialogTitle,
-} from "./ui/dialog";
 import {
   Menu,
   MenuGroup,
@@ -87,14 +72,6 @@ export function SidebarDialogs({
     relocateProjectDialogId,
     projectContextMenuState,
     setProjectContextMenuState,
-    projectRunDialogProjectId,
-    projectRunDialogProject,
-    projectRunDialogExistingRun,
-    projectRunDialogCommandDraft,
-    setProjectRunDialogCommandDraft,
-    projectRunDialogCommandIsValid,
-    closeProjectRunDialog,
-    handleConfirmProjectRun,
     handleOpenProjectFromSearch,
     handleCreateHomeChat,
     addProjectFromPath,
@@ -123,8 +100,6 @@ export function SidebarDialogs({
     projectById,
     sidebarThreads,
     pinnedProjectIdSet,
-    projectRunsByProjectId,
-    projectRunServerByProjectId,
   } = context;
   const sidebarThreadSummaryById = useStore((state) => state.sidebarThreadSummaryById);
 
@@ -165,17 +140,6 @@ export function SidebarDialogs({
   const projectContextMenuIsPinned = projectContextMenuProject
     ? pinnedProjectIdSet.has(projectContextMenuProject.id)
     : false;
-
-  const projectContextMenuIsRunning = projectContextMenuProject
-    ? Boolean(projectRunsByProjectId[projectContextMenuProject.id])
-    : false;
-
-  const projectContextMenuServer = projectContextMenuProject
-    ? (projectRunServerByProjectId.get(projectContextMenuProject.id) ?? null)
-    : null;
-
-  const projectContextMenuHasOpenServer =
-    projectContextMenuServer !== null && firstLocalServerUrl(projectContextMenuServer) !== null;
   return (
     <>
       <CreateProjectDialog
@@ -261,47 +225,7 @@ export function SidebarDialogs({
                 <span>Copy Path</span>
               </MenuItem>
               <MenuSeparator />
-              {projectContextMenuIsRunning ? (
-                <MenuItem
-                  className={PROJECT_CONTEXT_MENU_ITEM_CLASS_NAME}
-                  onClick={() =>
-                    void handleProjectContextMenuAction(
-                      projectContextMenuState.projectId,
-                      "stop-dev",
-                    )
-                  }
-                >
-                  <ProjectContextMenuIcon icon={StopFilledIcon} />
-                  <span>Stop dev</span>
-                </MenuItem>
-              ) : (
-                <MenuItem
-                  className={PROJECT_CONTEXT_MENU_ITEM_CLASS_NAME}
-                  onClick={() =>
-                    void handleProjectContextMenuAction(
-                      projectContextMenuState.projectId,
-                      "start-dev",
-                    )
-                  }
-                >
-                  <ProjectContextMenuIcon icon={PlayIcon} />
-                  <span>Start dev</span>
-                </MenuItem>
-              )}
-              {projectContextMenuHasOpenServer ? (
-                <MenuItem
-                  className={PROJECT_CONTEXT_MENU_ITEM_CLASS_NAME}
-                  onClick={() =>
-                    void handleProjectContextMenuAction(
-                      projectContextMenuState.projectId,
-                      "open-dev-server",
-                    )
-                  }
-                >
-                  <ProjectContextMenuIcon icon={ExternalLinkIcon} />
-                  <span>Open dev server</span>
-                </MenuItem>
-              ) : null}
+
               <MenuSub keepOpenOnFocusOut>
                 <MenuSubTrigger className={PROJECT_CONTEXT_MENU_ITEM_CLASS_NAME}>
                   {}
@@ -425,68 +349,6 @@ export function SidebarDialogs({
           </ComposerPickerMenuPopup>
         </Menu>
       ) : null}
-
-      <Dialog
-        open={projectRunDialogProjectId !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            closeProjectRunDialog();
-          }
-        }}
-      >
-        <DialogPopup className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base">
-              <PlayIcon className="size-4 text-emerald-500" />
-              Start dev
-            </DialogTitle>
-            <DialogDescription>
-              {projectRunDialogProject ? projectRunDialogProject.name : "Project"}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogPanel className="space-y-2">
-            <label
-              htmlFor="project-run-command-input"
-              className="block text-ui-xs font-medium text-[var(--color-text-foreground-secondary)]"
-            >
-              Command
-            </label>
-            <Input
-              id="project-run-command-input"
-              autoFocus
-              spellCheck={false}
-              autoComplete="off"
-              autoCapitalize="off"
-              autoCorrect="off"
-              placeholder="e.g. npm run dev"
-              value={projectRunDialogCommandDraft}
-              aria-invalid={projectRunDialogCommandIsValid ? undefined : true}
-              onChange={(event) => setProjectRunDialogCommandDraft(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  handleConfirmProjectRun();
-                }
-              }}
-            />
-            {projectRunDialogCommandIsValid ? null : (
-              <p className="text-ui-sm text-destructive">Enter a command to run.</p>
-            )}
-          </DialogPanel>
-          <DialogFooter>
-            <Button variant="outline" onClick={closeProjectRunDialog}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleConfirmProjectRun}
-              disabled={!projectRunDialogCommandIsValid || Boolean(projectRunDialogExistingRun)}
-            >
-              <PlayIcon className="size-4" />
-              Run
-            </Button>
-          </DialogFooter>
-        </DialogPopup>
-      </Dialog>
 
       <RenameThreadDialog
         open={renameDialogThreadId !== null}

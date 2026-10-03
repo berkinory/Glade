@@ -1,9 +1,7 @@
 import { FileSystem, Path } from "effect";
 import { AppPresentation } from "../Services/AppPresentation";
 import { CheckpointDiffQuery } from "../../checkpointing/Services/CheckpointDiffQuery";
-import { DevServerManager } from "../../workspace/devServers/devServerManager";
 import { makeThreadDiffTools } from "../threadDiffTools";
-import { makeDevServerTools } from "../devServerTools";
 import { makeForkThreadTool } from "../forkThreadTool";
 import { makeAppPresentationTool } from "../appPresentationTool";
 import { AgentGatewayDiscovery } from "../Services/AgentGatewayDiscovery";
@@ -99,7 +97,6 @@ const AGENT_GATEWAY_INSTRUCTIONS =
 
 const makeAgentGateway = Effect.gen(function* () {
   const diffs = yield* CheckpointDiffQuery;
-  const devServers = yield* DevServerManager;
   const presentation = yield* AppPresentation;
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
@@ -885,7 +882,6 @@ const makeAgentGateway = Effect.gen(function* () {
   const tools: ReadonlyArray<ToolEntry> = [
     ...readTools,
     ...makeThreadDiffTools(diffs, snapshotQuery),
-    ...makeDevServerTools(devServers, snapshotQuery),
     makeForkThreadTool(orchestrationEngine, snapshotQuery, eventStore),
     makeAppPresentationTool(presentation, snapshotQuery, fs, path),
     ...diagnosticTools,

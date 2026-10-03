@@ -32,7 +32,6 @@ import {
   ORCHESTRATION_WS_CHANNELS,
   ORCHESTRATION_WS_METHODS,
 } from "@glade/contracts/orchestration/rpc";
-import type { ProjectDevServerEvent } from "@glade/contracts/workspace/project";
 import {
   type ServerProviderStatusesUpdatedPayload,
   type ServerLifecycleStreamEvent,
@@ -137,7 +136,6 @@ function omitNullUserInputAnswers(
   };
 }
 const terminalEventListeners = createListenerRegistry<TerminalEvent>();
-const projectDevServerEventListeners = createListenerRegistry<ProjectDevServerEvent>();
 const computerEventListeners = createListenerRegistry<ComputerEvent>();
 const orchestrationDomainEventListeners = createListenerRegistry<OrchestrationEvent>();
 const orchestrationShellEventListeners = createListenerRegistry<OrchestrationShellStreamItem>();
@@ -154,7 +152,6 @@ function clearWsNativeApiListeners(): void {
   gitWorktreeSetupProgressListeners.clear();
   projectProvisionProgressListeners.clear();
   terminalEventListeners.clear();
-  projectDevServerEventListeners.clear();
   computerEventListeners.clear();
   orchestrationDomainEventListeners.clear();
   orchestrationShellEventListeners.clear();
@@ -344,9 +341,6 @@ export function createWsNativeApi(): NativeApi {
   transport.subscribe(WS_CHANNELS.terminalEvent, (message) => {
     terminalEventListeners.emit(message.data);
   });
-  transport.subscribe(WS_CHANNELS.projectDevServerEvent, (message) => {
-    projectDevServerEventListeners.emit(message.data);
-  });
   transport.subscribe(COMPUTER_WS_CHANNELS.event, (message) => {
     computerEventListeners.emit(message.data);
   });
@@ -396,7 +390,6 @@ export function createWsNativeApi(): NativeApi {
       onEvent: terminalEventListeners.subscribe,
     },
     projects: {
-      discoverScripts: (input) => transport.request(WS_METHODS.projectsDiscoverScripts, input),
       listDirectories: (input) => transport.request(WS_METHODS.projectsListDirectories, input),
       searchEntries: (input) => transport.request(WS_METHODS.projectsSearchEntries, input),
       searchLocalEntries: (input) =>
@@ -417,10 +410,6 @@ export function createWsNativeApi(): NativeApi {
         transport.request(WS_METHODS.projectsCreateLocalFilePreviewGrant, input),
       writeFile: (input) => transport.request(WS_METHODS.projectsWriteFile, input),
       manageEntry: (input) => transport.request(WS_METHODS.projectsManageEntry, input),
-      runDevServer: (input) => transport.request(WS_METHODS.projectsRunDevServer, input),
-      stopDevServer: (input) => transport.request(WS_METHODS.projectsStopDevServer, input),
-      listDevServers: () => transport.request(WS_METHODS.projectsListDevServers),
-      onDevServerEvent: projectDevServerEventListeners.subscribe,
       provisionFromGitHub: (input, options) =>
         transport.request(WS_METHODS.projectsProvisionFromGitHub, input, {
           timeoutMs: null,

@@ -102,9 +102,6 @@ export type ProjectContextMenuId =
   | "open-in-finder"
   | "copy-path"
   | "relocate"
-  | "start-dev"
-  | "stop-dev"
-  | "open-dev-server"
   | "rename"
   | "toggle-pin"
   | "archive-threads"
@@ -197,19 +194,6 @@ export function buildThreadJumpLabelMap(input: {
 
 function WorktreeBadgeGlyph({ className }: { className?: string }) {
   return <WorktreeIcon aria-hidden="true" className={sidebarGlyphClass("meta", className)} />;
-}
-
-export function ProjectRunIndicatorDot({ className }: { className?: string }) {
-  return (
-    <span
-      aria-hidden="true"
-      title="Dev server running"
-      className={cn(
-        "size-1.5 shrink-0 rounded-full bg-emerald-400 motion-safe:animate-pulse",
-        className,
-      )}
-    />
-  );
 }
 
 export const THREAD_ROW_META_CHIP_HOVER_FADE_CLASS_NAME = cn(

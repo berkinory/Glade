@@ -6,44 +6,35 @@ import {
   type TerminalCliKind,
 } from "@glade/shared/threads/terminalThreads";
 
-import { projectScriptRuntimeEnv } from "./projectScripts";
+import { terminalRuntimeEnv } from "~/lib/terminalRuntimeEnv";
 
-const PROJECT_COMMAND_TERMINAL_COLS = 120;
-const PROJECT_COMMAND_TERMINAL_ROWS = 30;
+const COMMAND_TERMINAL_COLS = 120;
+const COMMAND_TERMINAL_ROWS = 30;
 
-export interface ProjectCommandTerminalMetadata {
+export interface TerminalCommandMetadata {
   cliKind: TerminalCliKind | null;
   label: string;
 }
 
-export async function runProjectCommandInTerminal(input: {
+export async function runTerminalCommand(input: {
   api: NativeApi;
   threadId: ThreadId;
   terminalId: string;
-  project: { cwd: string };
   cwd: string;
   command: string;
-  worktreePath?: string | null;
-  env?: Record<string, string>;
 }): Promise<{
   snapshot: TerminalSessionSnapshot;
-  metadata: ProjectCommandTerminalMetadata | null;
+  metadata: TerminalCommandMetadata | null;
 }> {
-  const runtimeEnv = projectScriptRuntimeEnv({
-    project: {
-      cwd: input.project.cwd,
-    },
-    worktreePath: input.worktreePath ?? null,
-    ...(input.env ? { extraEnv: input.env } : {}),
-  });
+  const runtimeEnv = terminalRuntimeEnv({ cwd: input.cwd });
   const terminalCommandIdentity = deriveTerminalCommandIdentity(input.command);
   const snapshot = await input.api.terminal.open({
     threadId: input.threadId,
     terminalId: input.terminalId,
     cwd: input.cwd,
     env: runtimeEnv,
-    cols: PROJECT_COMMAND_TERMINAL_COLS,
-    rows: PROJECT_COMMAND_TERMINAL_ROWS,
+    cols: COMMAND_TERMINAL_COLS,
+    rows: COMMAND_TERMINAL_ROWS,
   });
   await input.api.terminal.write({
     threadId: input.threadId,

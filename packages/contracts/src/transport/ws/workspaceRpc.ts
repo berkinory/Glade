@@ -3,8 +3,6 @@ import { WS_METHODS } from "./ws";
 import {
   ProjectListDirectoriesInput,
   ProjectListDirectoriesResult,
-  ProjectDiscoverScriptsInput,
-  ProjectDiscoverScriptsResult,
   ProjectSearchEntriesInput,
   ProjectSearchEntriesResult,
   ProjectSearchLocalEntriesInput,
@@ -27,12 +25,6 @@ import {
   ProjectWriteFileResult,
   ProjectManageEntryInput,
   ProjectManageEntryResult,
-  ProjectRunDevServerInput,
-  ProjectRunDevServerResult,
-  ProjectStopDevServerInput,
-  ProjectStopDevServerResult,
-  ProjectListDevServersResult,
-  ProjectDevServerEvent,
 } from "../../workspace/project";
 import { Schema } from "effect";
 import {
@@ -46,12 +38,6 @@ import { WsRpcError } from "./rpcErrors";
 export const WsProjectsListDirectoriesRpc = Rpc.make(WS_METHODS.projectsListDirectories, {
   payload: ProjectListDirectoriesInput,
   success: ProjectListDirectoriesResult,
-  error: WsRpcError,
-});
-
-export const WsProjectsDiscoverScriptsRpc = Rpc.make(WS_METHODS.projectsDiscoverScripts, {
-  payload: ProjectDiscoverScriptsInput,
-  success: ProjectDiscoverScriptsResult,
   error: WsRpcError,
 });
 
@@ -130,34 +116,6 @@ export const WsProjectsManageEntryRpc = Rpc.make(WS_METHODS.projectsManageEntry,
   success: ProjectManageEntryResult,
   error: WsRpcError,
 });
-
-export const WsProjectsRunDevServerRpc = Rpc.make(WS_METHODS.projectsRunDevServer, {
-  payload: ProjectRunDevServerInput,
-  success: ProjectRunDevServerResult,
-  error: WsRpcError,
-});
-
-export const WsProjectsStopDevServerRpc = Rpc.make(WS_METHODS.projectsStopDevServer, {
-  payload: ProjectStopDevServerInput,
-  success: ProjectStopDevServerResult,
-  error: WsRpcError,
-});
-
-export const WsProjectsListDevServersRpc = Rpc.make(WS_METHODS.projectsListDevServers, {
-  payload: Schema.Struct({}),
-  success: ProjectListDevServersResult,
-  error: WsRpcError,
-});
-
-export const WsSubscribeProjectDevServerEventsRpc = Rpc.make(
-  WS_METHODS.subscribeProjectDevServerEvents,
-  {
-    payload: Schema.Struct({}),
-    success: ProjectDevServerEvent,
-    error: WsRpcError,
-    stream: true,
-  },
-);
 
 export const WsProjectsProvisionFromGitHubRpc = Rpc.make(WS_METHODS.projectsProvisionFromGitHub, {
   payload: GitHubProjectProvisionInput,

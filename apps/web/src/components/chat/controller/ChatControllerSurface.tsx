@@ -62,7 +62,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     hideHeader,
     surfaceMode,
     isFocusedPane,
-    onRegisterCommitAndPushTrigger,
     threadFindOpen,
     threadFindFocusNonce,
     setThreadFindOpen,
@@ -107,7 +106,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     activeProjectDisplayName,
     threadBreadcrumbs,
     terminalWorkspaceTerminalTabActive,
-    activeProjectScripts,
     activeProject,
     resolvedDiffOpen,
     diffDisabledReason,
@@ -120,7 +118,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     onRespondToAsyncUserInput,
     closePullRequestDialog,
     handlePreparedPullRequestThread,
-    collapseTerminalWorkspace,
 
     activeContextWindow,
     activeCumulativeCostUsd,
@@ -163,11 +160,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     activeProviderHealthBannerDismissalKey,
   } = controller.discovery;
   const {
-    lastInvokedScriptByProjectId,
     rightDockOpen,
-    saveProjectScript,
-    updateProjectScript,
-    deleteProjectScript,
     tailAnchorScrollInFlightRef,
     isUserScrollDetached,
     onIsAtEndChange,
@@ -195,7 +188,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     commitTranscriptAssistantSelection,
     closeExpandedImage,
     navigateExpandedImage,
-    runProjectScript,
   } = controller.environment;
   const {
     onToggleRightDock,
@@ -414,7 +406,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
       onDragLeave={onComposerDragLeave}
       onDrop={onComposerDrop}
     >
-      {}
       <div
         aria-hidden
         className={cn(
@@ -441,14 +432,9 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
           activeProvider={activeThread.session?.provider ?? activeThread.modelSelection.provider}
           activeProjectName={activeProjectDisplayName}
           threadBreadcrumbs={threadBreadcrumbs}
-          hideHandoffControls={terminalWorkspaceTerminalTabActive}
           minimalChrome={isCenteredEmptyLanding}
           isGitRepo={isGitRepo}
           openInTarget={threadWorkspaceCwd}
-          activeProjectScripts={activeProjectScripts}
-          preferredScriptId={
-            activeProject ? (lastInvokedScriptByProjectId[activeProject.id] ?? null) : null
-          }
           keybindings={keybindings}
           availableEditors={availableEditors}
           diffToggleShortcutLabel={diffPanelShortcutLabel}
@@ -486,20 +472,12 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                 }
               : null
           }
-          onRunProjectScript={(script) => {
-            void runProjectScript(script);
-          }}
-          onAddProjectScript={saveProjectScript}
-          onUpdateProjectScript={updateProjectScript}
-          onDeleteProjectScript={deleteProjectScript}
           onToggleDiff={onToggleDiff}
-          onRegisterCommitAndPushTrigger={onRegisterCommitAndPushTrigger}
           onNavigateToThread={onNavigateToThread}
           onRenameThread={() => setRenameDialogOpen(true)}
         />
       </ChatSurfaceHeader>
 
-      {}
       {shouldRenderChatPaneContent ? (
         <ChatThreadFindHost
           open={threadFindOpen}
@@ -526,7 +504,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
         onSave={handleRenameActiveThread}
       />
 
-      {}
       <ProviderHealthBanner
         status={shouldShowProviderHealthBanner ? visibleActiveProviderStatus : null}
         onDismiss={dismissActiveProviderHealthBanner}
@@ -545,9 +522,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
           onSelectTab={setTerminalWorkspaceTab}
         />
       ) : null}
-      {}
       <div ref={mainContentRef} className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
-        {}
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           <div
             aria-hidden={terminalWorkspaceTerminalTabActive}
@@ -563,9 +538,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                   CHAT_COLUMN_GUTTER_CLASS_NAME,
                 )}
               >
-                {}
                 <div className="relative flex min-h-0 flex-1 items-center justify-center">
-                  {}
                   <div className="absolute inset-x-0 top-4 flex justify-center px-6 [@media(max-height:620px)]:hidden">
                     <ProjectImportLandingBanner className="w-full max-w-[520px]" />
                   </div>
@@ -725,7 +698,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                   />
                 </div>
 
-                {}
                 <div className="relative z-10 w-full shrink-0">
                   <div
                     ref={composerOverlayRef}
@@ -795,15 +767,11 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                   {...terminalDrawerProps}
                   presentationMode="workspace"
                   isVisible={terminalWorkspaceTerminalTabActive}
-                  onTogglePresentationMode={
-                    terminalState.workspaceLayout === "both" ? collapseTerminalWorkspace : undefined
-                  }
                 />
               </Suspense>
             </div>
           ) : null}
 
-          {}
           {environmentEnabled ? (
             <EnvironmentPanel
               {...environmentPanelProps}
@@ -824,9 +792,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
             />
           ) : null}
         </div>
-        {}
 
-        {}
         {taskListSidebarOpen ? (
           <TaskListSidebar
             activeTaskList={activeTaskList}
@@ -835,7 +801,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
           />
         ) : null}
       </div>
-      {}
 
       <ComposerSlashStatusDialog
         open={isSlashStatusDialogOpen}

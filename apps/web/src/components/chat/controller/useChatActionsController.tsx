@@ -213,7 +213,6 @@ export function useChatActionsController({
     composer,
     transcript,
     discovery,
-    environment,
   });
 
   const addComposerImages = useCallback(

@@ -38,7 +38,6 @@ async function createThreadReadModel(now: string): Promise<OrchestrationReadMode
         title: "Project",
         workspaceRoot: "/tmp/project",
         defaultModelSelection: null,
-        scripts: [],
         createdAt: now,
         updatedAt: now,
       },

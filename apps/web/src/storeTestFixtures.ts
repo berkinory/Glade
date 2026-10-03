@@ -150,7 +150,6 @@ export function makeProject(
     },
     expanded: true,
     spaceId: null,
-    scripts: [],
     ...overrides,
   };
 }

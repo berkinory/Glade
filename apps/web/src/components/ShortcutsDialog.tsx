@@ -17,13 +17,11 @@ import {
   type ShortcutSheetContext,
   type ShortcutSheetSection,
 } from "../shortcutsSheet";
-import type { ProjectScript } from "../types";
 
 export default function ShortcutsDialog(props: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   keybindings: ResolvedKeybindingsConfig;
-  projectScripts: ReadonlyArray<ProjectScript>;
   platform: string;
   context: ShortcutSheetContext;
 }) {
@@ -33,7 +31,6 @@ export default function ShortcutsDialog(props: {
         {}
         <ShortcutsDialogContent
           keybindings={props.keybindings}
-          projectScripts={props.projectScripts}
           platform={props.platform}
           context={props.context}
         />
@@ -44,7 +41,6 @@ export default function ShortcutsDialog(props: {
 
 function ShortcutsDialogContent(props: {
   keybindings: ResolvedKeybindingsConfig;
-  projectScripts: ReadonlyArray<ProjectScript>;
   platform: string;
   context: ShortcutSheetContext;
 }) {
@@ -63,7 +59,6 @@ function ShortcutsDialogContent(props: {
 
   const sections = buildShortcutSheetSections({
     keybindings: props.keybindings,
-    projectScripts: props.projectScripts,
     platform: props.platform,
     context: props.context,
   });

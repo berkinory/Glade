@@ -8,7 +8,9 @@ export function useChatTerminalState(input: {
   threadId: ThreadId;
   activeThreadId: ThreadId | null;
   isFocusedPane: boolean;
+  onOpenTerminal?: (() => void) | undefined;
 }) {
+  const { onOpenTerminal } = input;
   const terminalState = useTerminalStateStore((state) =>
     selectThreadTerminalState(state.terminalStateByThreadId, input.threadId),
   );
@@ -32,13 +34,20 @@ export function useChatTerminalState(input: {
     if (typeof onMenuAction !== "function" || !input.isFocusedPane) return;
     return onMenuAction((action) => {
       if (action === "new-terminal-tab") {
-        createChatTerminalFromShortcut(
-          { activeThreadId: input.activeThreadId, requestTerminalFocus },
-          terminalState,
-        );
+        createChatTerminalFromShortcut({
+          activeThreadId: input.activeThreadId,
+          requestTerminalFocus,
+        });
+        onOpenTerminal?.();
       }
     });
-  }, [input.activeThreadId, input.isFocusedPane, requestTerminalFocus, terminalState]);
+  }, [
+    input.activeThreadId,
+    input.isFocusedPane,
+    onOpenTerminal,
+    requestTerminalFocus,
+    terminalState,
+  ]);
 
   return {
     terminalState,

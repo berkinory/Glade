@@ -19,7 +19,6 @@ function makeProject(id: string, workspaceRoot = WORKSPACE_ROOT) {
       provider: "codex" as const,
       model: "gpt-5",
     },
-    scripts: [],
     createdAt: NOW_ISO,
     updatedAt: NOW_ISO,
   };

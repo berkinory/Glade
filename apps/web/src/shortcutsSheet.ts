@@ -6,8 +6,6 @@ import {
 } from "@glade/contracts/settings/keybindings";
 import { isMacPlatform } from "./lib/utils";
 import { formatShortcutLabel, resolveKeybindingForCommand } from "./keybindings";
-import { commandForProjectScript } from "./projectScripts";
-import type { ProjectScript } from "./types";
 
 export interface ShortcutSheetContext {
   terminalFocus: boolean;
@@ -35,7 +33,6 @@ export interface ShortcutSheetSection {
 
 interface BuildShortcutSheetSectionsOptions {
   keybindings: ResolvedKeybindingsConfig;
-  projectScripts: ReadonlyArray<ProjectScript>;
   platform: string;
   context: ShortcutSheetContext;
 }
@@ -176,31 +173,6 @@ const AVAILABLE_NOW_DEFINITIONS: readonly ShortcutDefinition[] = [
     command: "terminal.toggle",
     label: "Toggle terminal",
     description: "Show or hide the terminal surface for the active chat.",
-  },
-  {
-    command: "terminal.split",
-    label: "Split terminal",
-    description: "Split the focused terminal, adding a new pane beside it.",
-  },
-  {
-    command: "terminal.splitRight",
-    label: "Split terminal right",
-    description: "Split the focused terminal, placing the new pane to the right.",
-  },
-  {
-    command: "terminal.splitLeft",
-    label: "Split terminal left",
-    description: "Split the focused terminal, placing the new pane to the left.",
-  },
-  {
-    command: "terminal.splitDown",
-    label: "Split terminal down",
-    description: "Split the focused terminal, placing the new pane below.",
-  },
-  {
-    command: "terminal.splitUp",
-    label: "Split terminal up",
-    description: "Split the focused terminal, placing the new pane above.",
   },
   {
     command: "terminal.new",
@@ -444,35 +416,6 @@ export function buildShortcutSheetSections(
         : "These bindings take over when the terminal switches into workspace mode.",
       tone: "muted",
       entries: alternateEntries,
-    });
-  }
-
-  const projectScriptEntries = options.projectScripts
-    .map<ShortcutSheetEntry | null>((script) => {
-      const command = commandForProjectScript(script.id);
-      const binding = resolveKeybindingForCommand(options.keybindings, command, {
-        platform: options.platform,
-      });
-      if (!binding) return null;
-      return {
-        id: script.id,
-        command,
-        binding,
-        label: script.runOnWorktreeCreate ? `${script.name} setup script` : script.name,
-        description: script.runOnWorktreeCreate
-          ? "Run the project setup script directly from the keyboard."
-          : "Run this project script without opening the scripts menu.",
-        shortcutLabel: formatShortcutLabel(binding.shortcut, options.platform),
-      };
-    })
-    .filter((entry): entry is ShortcutSheetEntry => entry !== null);
-
-  if (projectScriptEntries.length > 0) {
-    sections.push({
-      id: "project-scripts",
-      title: "Project scripts",
-      description: "Custom shortcuts defined for the active project's scripts.",
-      entries: projectScriptEntries,
     });
   }
 

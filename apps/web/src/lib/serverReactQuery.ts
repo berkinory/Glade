@@ -236,17 +236,6 @@ export function serverLocalServersQueryOptions(
   });
 }
 
-export function sidebarLocalServersQueryOptions(input: {
-  hasActiveProjectRun: boolean;
-  hasProjects: boolean;
-}) {
-  const enabled = input.hasProjects || input.hasActiveProjectRun;
-  return serverLocalServersQueryOptions({
-    enabled,
-    refetchInterval: input.hasActiveProjectRun ? LOCAL_SERVERS_VISIBLE_REFETCH_INTERVAL_MS : false,
-  });
-}
-
 export function serverStopLocalServerMutationOptions(input: { queryClient: QueryClient }) {
   return mutationOptions({
     mutationKey: serverMutationKeys.stopLocalServer(),

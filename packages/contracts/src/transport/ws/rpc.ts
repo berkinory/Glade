@@ -30,7 +30,6 @@ import {
   WsOrchestrationSubscribeDomainEventsRpc,
 } from "./orchestrationRpc";
 import {
-  WsProjectsDiscoverScriptsRpc,
   WsProjectsListDirectoriesRpc,
   WsProjectsSearchEntriesRpc,
   WsProjectsSearchLocalEntriesRpc,
@@ -43,10 +42,6 @@ import {
   WsProjectsCreateLocalFilePreviewGrantRpc,
   WsProjectsWriteFileRpc,
   WsProjectsManageEntryRpc,
-  WsProjectsRunDevServerRpc,
-  WsProjectsStopDevServerRpc,
-  WsProjectsListDevServersRpc,
-  WsSubscribeProjectDevServerEventsRpc,
   WsProjectsProvisionFromGitHubRpc,
   WsFilesystemBrowseRpc,
   WsShellOpenInEditorRpc,
@@ -163,7 +158,7 @@ export const WsFeatureRpcGroup = RpcGroup.make(
   WsOrchestrationSubscribeThreadRpc,
   WsOrchestrationUnsubscribeThreadRpc,
   WsOrchestrationSubscribeDomainEventsRpc,
-  WsProjectsDiscoverScriptsRpc,
+
   WsProjectsListDirectoriesRpc,
   WsProjectsSearchEntriesRpc,
   WsProjectsSearchLocalEntriesRpc,
@@ -176,10 +171,7 @@ export const WsFeatureRpcGroup = RpcGroup.make(
   WsProjectsCreateLocalFilePreviewGrantRpc,
   WsProjectsWriteFileRpc,
   WsProjectsManageEntryRpc,
-  WsProjectsRunDevServerRpc,
-  WsProjectsStopDevServerRpc,
-  WsProjectsListDevServersRpc,
-  WsSubscribeProjectDevServerEventsRpc,
+
   WsProjectsProvisionFromGitHubRpc,
   WsFilesystemBrowseRpc,
   WsShellOpenInEditorRpc,

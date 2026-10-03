@@ -26,46 +26,21 @@ export function useTerminalSurfaceController(threadId: ThreadId) {
   );
   const openTerminalThreadPage = useTerminalStateStore((s) => s.openTerminalThreadPage);
   const newTerminal = useTerminalStateStore((s) => s.newTerminal);
-  const newTerminalTab = useTerminalStateStore((s) => s.newTerminalTab);
-  const splitTerminalRightStore = useTerminalStateStore((s) => s.splitTerminalRight);
-  const splitTerminalDownStore = useTerminalStateStore((s) => s.splitTerminalDown);
   const setActiveTerminalStore = useTerminalStateStore((s) => s.setActiveTerminal);
   const closeTerminalAndEnsureReplacementStore = useTerminalStateStore(
     (s) => s.closeTerminalAndEnsureReplacement,
   );
   const closeTerminalStore = useTerminalStateStore((s) => s.closeTerminal);
   const closeExitedTerminalStore = useTerminalStateStore((s) => s.closeExitedTerminal);
-  const closeTerminalGroupStore = useTerminalStateStore((s) => s.closeTerminalGroup);
   const setTerminalHeightStore = useTerminalStateStore((s) => s.setTerminalHeight);
-  const resizeTerminalSplitStore = useTerminalStateStore((s) => s.resizeTerminalSplit);
   const setTerminalMetadataStore = useTerminalStateStore((s) => s.setTerminalMetadata);
   const setTerminalActivityStore = useTerminalStateStore((s) => s.setTerminalActivity);
 
   const [focusRequestId, setFocusRequestId] = useState(0);
   const bumpFocusRequest = () => setFocusRequestId((value) => value + 1);
 
-  const newTerminalGroup = () => {
+  const createTerminal = () => {
     newTerminal(threadId, randomTerminalId());
-    bumpFocusRequest();
-  };
-
-  const splitRight = () => {
-    splitTerminalRightStore(threadId, randomTerminalId());
-    bumpFocusRequest();
-  };
-
-  const splitDown = () => {
-    splitTerminalDownStore(threadId, randomTerminalId());
-    bumpFocusRequest();
-  };
-
-  const createTerminalTab = (targetTerminalId: string) => {
-    newTerminalTab(threadId, targetTerminalId, randomTerminalId());
-    bumpFocusRequest();
-  };
-
-  const moveTerminalToNewGroup = (terminalId: string) => {
-    newTerminal(threadId, terminalId);
     bumpFocusRequest();
   };
 
@@ -94,9 +69,14 @@ export function useTerminalSurfaceController(threadId: ThreadId) {
       return;
     }
     disposeAndCloseTerminalSession({ api, threadId, terminalId });
-    if (onLastClosed && terminalState.terminalIds.length === 1) {
+    if (onLastClosed) {
+      const finalTerminal =
+        selectThreadTerminalState(
+          useTerminalStateStore.getState().terminalStateByThreadId,
+          threadId,
+        ).terminalIds.length === 1;
       closeTerminalStore(threadId, terminalId);
-      onLastClosed();
+      if (finalTerminal) onLastClosed();
     } else {
       closeTerminalAndEnsureReplacementStore(threadId, terminalId, randomTerminalId());
     }
@@ -125,12 +105,7 @@ export function useTerminalSurfaceController(threadId: ThreadId) {
     return disposition;
   };
 
-  const closeTerminalGroup = (groupId: string) => closeTerminalGroupStore(threadId, groupId);
-
   const setTerminalHeight = (height: number) => setTerminalHeightStore(threadId, height);
-
-  const resizeTerminalSplit = (groupId: string, splitId: string, weights: number[]) =>
-    resizeTerminalSplitStore(threadId, groupId, splitId, weights);
 
   const setTerminalMetadata = (terminalId: string, metadata: TerminalMetadata) =>
     setTerminalMetadataStore(threadId, terminalId, metadata);
@@ -143,18 +118,12 @@ export function useTerminalSurfaceController(threadId: ThreadId) {
     focusRequestId,
     bumpFocusRequest,
     openTerminalThreadPage,
-    newTerminalGroup,
-    splitRight,
-    splitDown,
-    createTerminalTab,
-    moveTerminalToNewGroup,
+    createTerminal,
     activateTerminal,
     closeTerminal,
     handleTerminalSessionExited,
     handleDockTerminalSessionExited,
-    closeTerminalGroup,
     setTerminalHeight,
-    resizeTerminalSplit,
     setTerminalMetadata,
     setTerminalActivity,
   };

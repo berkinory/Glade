@@ -1,7 +1,6 @@
 import { AgentGatewayDiscovery } from "../Services/AgentGatewayDiscovery";
 import { AppPresentationLive } from "./AppPresentation";
 import { CheckpointDiffQuery } from "../../checkpointing/Services/CheckpointDiffQuery";
-import { DevServerManager } from "../../workspace/devServers/devServerManager";
 import { assert, describe, it } from "@effect/vitest";
 import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
@@ -61,16 +60,13 @@ class InjectedFailure extends Error {
 const NOW = "2026-03-01T10:00:00.000Z";
 const PROJECT_ID = ProjectId.makeUnsafe("project-1");
 
-function makeProjectShell(
-  scripts: OrchestrationProjectShell["scripts"] = [],
-): OrchestrationProjectShell {
+function makeProjectShell(): OrchestrationProjectShell {
   return {
     id: PROJECT_ID,
     kind: "project",
     title: "Demo project",
     workspaceRoot: "/tmp/demo",
     defaultModelSelection: null,
-    scripts,
     isPinned: false,
     createdAt: NOW,
     updatedAt: NOW,
@@ -273,7 +269,6 @@ function makeHarnessLayer(
       readonly turnId: string;
       readonly state?: "running" | "completed" | "interrupted";
     };
-    readonly projectScripts?: OrchestrationProjectShell["scripts"];
     readonly extraProjects?: ReadonlyArray<OrchestrationProjectShell>;
     readonly diagnosticActivities?: ReadonlyArray<DiagnosticThreadActivity>;
     readonly diagnosticEvents?: ReadonlyArray<OrchestrationEvent>;
@@ -385,7 +380,7 @@ function makeHarnessLayer(
     getShellSnapshot: () =>
       Effect.succeed({
         snapshotSequence: 1,
-        projects: [makeProjectShell(options.projectScripts), ...(options.extraProjects ?? [])],
+        projects: [makeProjectShell(), ...(options.extraProjects ?? [])],
         threads: [...threadsById.values()],
         updatedAt: NOW,
       }),
@@ -394,7 +389,7 @@ function makeHarnessLayer(
     getProjectShellById: (projectId: string) =>
       Effect.succeed(
         projectId === (PROJECT_ID as string)
-          ? Option.some(makeProjectShell(options.projectScripts))
+          ? Option.some(makeProjectShell())
           : Option.none<OrchestrationProjectShell>(),
       ),
     getThreadDetailById: (threadId: ThreadIdType) =>
@@ -1039,10 +1034,7 @@ function makeHarnessLayer(
       Layer.mergeAll(
         AppPresentationLive,
         Layer.succeed(AgentGatewayDiscovery, {
-          listProjects: Effect.succeed([
-            makeProjectShell(options.projectScripts),
-            ...(options.extraProjects ?? []),
-          ]),
+          listProjects: Effect.succeed([makeProjectShell(), ...(options.extraProjects ?? [])]),
           listThreads: () =>
             Effect.succeed({ threads: [...threadsById.values()], nextCursor: null }),
         }),
@@ -1050,12 +1042,6 @@ function makeHarnessLayer(
           getTurnDiff: unavailable,
           getFullThreadDiff: unavailable,
           previewWorkspaceRestore: unavailable,
-        }),
-        Layer.succeed(DevServerManager, {
-          run: unavailable,
-          stop: unavailable,
-          list: Effect.succeed({ servers: [] }),
-          stream: Stream.empty,
         }),
       ),
     ),

@@ -135,7 +135,6 @@ it.layer(Layer.fresh(makeProjectionPipelinePrefixedTestLayer("glade-human-recenc
               title: "Recency",
               workspaceRoot: "/tmp/human-recency",
               defaultModelSelection: null,
-              scripts: [],
               createdAt: at(0),
               updatedAt: at(0),
             },

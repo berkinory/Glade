@@ -28,7 +28,6 @@ import type { GitCoreShape } from "../git/Services/GitCore.ts";
 import type { OrchestrationEngineShape } from "../orchestration/Services/OrchestrationEngine.ts";
 import type { ProjectionSnapshotQueryShape } from "../orchestration/Services/ProjectionSnapshotQuery.ts";
 import type { ProviderDiscoveryServiceShape } from "../provider/Services/ProviderDiscoveryService.ts";
-import { runWorktreeSetupScript } from "../git/worktreeSetup.ts";
 import type {
   AgentGatewayOperationRecord,
   AgentGatewayOperationRepositoryShape,
@@ -492,7 +491,6 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
             environment,
             runtimeMode,
             title,
-            projectScripts: project.scripts,
             worktreeRef,
             copyChangesFrom,
 
@@ -846,16 +844,6 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
                         return { created, trackedWorktree };
                       }),
                     );
-                    // The setup script can run for minutes, so it must stay interruptible: the abort signal kills the
-                    // child process and the tracked, still-ownerless worktree is compensated away.
-                    yield* Effect.tryPromise({
-                      try: (signal) =>
-                        runWorktreeSetupScript(entry.projectScripts, trackedWorktree.path, signal),
-                      catch: (cause) =>
-                        new CreationCoordinatorError(
-                          `Worktree setup script failed: ${errorText(cause)}`,
-                        ),
-                    });
                     yield* Effect.uninterruptible(
                       Effect.gen(function* () {
                         const proof = yield* git.recordWorktreeOwnership({

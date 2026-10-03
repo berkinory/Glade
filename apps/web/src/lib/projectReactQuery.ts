@@ -1,13 +1,9 @@
-import type { ProjectId } from "@glade/contracts/core/baseSchemas";
 import type {
   ProjectCreateLocalFilePreviewGrantResult,
-  ProjectDevServer,
-  ProjectListDevServersResult,
   ProjectEntry,
   ProjectListDirectoriesResult,
   ProjectReadFileResult,
   ProjectResolveOutOfRootFileReferenceResult,
-  ProjectDiscoverScriptsResult,
   ProjectSearchContentResult,
   ProjectSearchEntriesResult,
   ProjectSearchLocalEntriesResult,
@@ -24,7 +20,6 @@ import { resolveWorkspaceFileReferenceBatched } from "./workspaceFileReferenceBa
 
 export const projectQueryKeys = {
   all: ["projects"] as const,
-  devServers: () => ["projects", "dev-servers"] as const,
   listDirectories: (cwd: string | null, relativePath: string | null, includeFiles: boolean) =>
     ["projects", "list-directories", cwd, relativePath, includeFiles] as const,
   readFile: (cwd: string | null, relativePath: string | null) =>
@@ -36,8 +31,6 @@ export const projectQueryKeys = {
     ["projects", "resolve-out-of-root-file-reference", cwd, relativePath] as const,
   resolveWorkspaceFileReference: (cwd: string | null, relativePath: string | null) =>
     ["projects", "resolve-workspace-file-reference", cwd, relativePath] as const,
-  discoverScripts: (cwd: string | null, depth: number) =>
-    ["projects", "discover-scripts", cwd, depth] as const,
   searchEntries: (
     cwd: string | null,
     query: string,
@@ -140,8 +133,6 @@ export function invalidateProjectFileQueriesForCwds(
 const DEFAULT_SEARCH_ENTRIES_LIMIT = 80;
 const DEFAULT_LIST_DIRECTORIES_STALE_TIME = 15_000;
 const DEFAULT_SEARCH_ENTRIES_STALE_TIME = 15_000;
-const DEFAULT_DISCOVER_SCRIPTS_DEPTH = 2;
-const DEFAULT_DISCOVER_SCRIPTS_STALE_TIME = 30_000;
 const DEFAULT_SEARCH_LOCAL_ENTRIES_LIMIT = 50;
 const DEFAULT_SEARCH_LOCAL_ENTRIES_STALE_TIME = 10_000;
 const DEFAULT_SEARCH_CONTENT_LIMIT = 50;
@@ -156,9 +147,6 @@ const LOCAL_PREVIEW_GRANT_MAX_REFETCH_INTERVAL_MS = 30_000;
 const EMPTY_SEARCH_ENTRIES_RESULT: ProjectSearchEntriesResult = {
   entries: [],
   truncated: false,
-};
-const EMPTY_DISCOVER_SCRIPTS_RESULT: ProjectDiscoverScriptsResult = {
-  targets: [],
 };
 const EMPTY_SEARCH_LOCAL_ENTRIES_RESULT: ProjectSearchLocalEntriesResult = {
   entries: [],
@@ -366,31 +354,6 @@ export function projectLocalPreviewGrantQueryOptions(input: {
   });
 }
 
-export function projectDiscoverScriptsQueryOptions(input: {
-  cwd: string | null;
-  enabled?: boolean;
-  depth?: number;
-  staleTime?: number;
-}) {
-  const depth = input.depth ?? DEFAULT_DISCOVER_SCRIPTS_DEPTH;
-  return queryOptions({
-    queryKey: projectQueryKeys.discoverScripts(input.cwd, depth),
-    queryFn: async () => {
-      const api = ensureNativeApi();
-      if (!input.cwd) {
-        throw new Error("Project script discovery is unavailable.");
-      }
-      return api.projects.discoverScripts({
-        cwd: input.cwd,
-        depth,
-      });
-    },
-    enabled: (input.enabled ?? true) && input.cwd !== null,
-    staleTime: input.staleTime ?? DEFAULT_DISCOVER_SCRIPTS_STALE_TIME,
-    placeholderData: (previous) => previous ?? EMPTY_DISCOVER_SCRIPTS_RESULT,
-  });
-}
-
 export function projectSearchEntriesQueryOptions(input: {
   cwd: string | null;
   query: string;
@@ -492,41 +455,4 @@ export function projectSearchContentQueryOptions(input: {
     placeholderData: (previous) => previous ?? EMPTY_SEARCH_CONTENT_RESULT,
     ...EXPENSIVE_READ_RETRY_OPTIONS,
   });
-}
-
-export function projectDevServersQueryOptions() {
-  return queryOptions({
-    queryKey: projectQueryKeys.devServers(),
-    queryFn: () => ensureNativeApi().projects.listDevServers(),
-    staleTime: Infinity,
-    gcTime: Infinity,
-    enabled: false,
-  });
-}
-
-export function upsertProjectDevServer(queryClient: QueryClient, server: ProjectDevServer): void {
-  queryClient.setQueryData<ProjectListDevServersResult>(
-    projectQueryKeys.devServers(),
-    (current) => {
-      const servers = current?.servers ?? [];
-      const exists = servers.some((candidate) => candidate.projectId === server.projectId);
-      return {
-        servers: exists
-          ? servers.map((candidate) =>
-              candidate.projectId === server.projectId ? server : candidate,
-            )
-          : [...servers, server],
-      };
-    },
-  );
-}
-
-export function removeProjectDevServer(queryClient: QueryClient, projectId: ProjectId): void {
-  queryClient.setQueryData<ProjectListDevServersResult>(
-    projectQueryKeys.devServers(),
-    (current) => {
-      if (!current?.servers.some((server) => server.projectId === projectId)) return current;
-      return { servers: current.servers.filter((server) => server.projectId !== projectId) };
-    },
-  );
 }

@@ -4,14 +4,7 @@ import type {
   OrchestrationShellSnapshot,
 } from "@glade/contracts/orchestration/snapshots";
 import { normalizeModelSlug } from "@glade/shared/provider/model";
-import type {
-  ChatMessage,
-  Project,
-  Thread,
-  ThreadSession,
-  ThreadShell,
-  ThreadTurnState,
-} from "./types";
+import type { ChatMessage, Thread, ThreadSession, ThreadShell, ThreadTurnState } from "./types";
 
 type ReadModelProject = OrchestrationReadModel["projects"][number];
 
@@ -30,7 +23,6 @@ export type ProjectNormalizationInput = Pick<
   | "title"
   | "workspaceRoot"
   | "defaultModelSelection"
-  | "scripts"
   | "isPinned"
   | "spaceId"
   | "createdAt"
@@ -311,17 +303,6 @@ export function normalizeModelSelection<T extends { provider: ProviderKind; mode
   const normalizedModel = normalizeModelSlug(value.model, value.provider) ?? value.model;
   const next = normalizedModel === value.model ? value : { ...value, model: normalizedModel };
   return previous && deepEqualJson(previous, next) ? previous : next;
-}
-
-export function normalizeProjectScripts(
-  incoming: ReadModelProject["scripts"],
-  previous: Project["scripts"] | undefined,
-): Project["scripts"] {
-  const nextScripts = incoming.map((script, index) => {
-    const existing = previous?.[index];
-    return existing && deepEqualJson(existing, script) ? existing : script;
-  });
-  return arraysShallowEqual(previous, nextScripts) ? previous : nextScripts;
 }
 
 export function attachmentPreviewRoutePath(attachmentId: string): string {

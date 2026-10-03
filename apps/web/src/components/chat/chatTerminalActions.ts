@@ -1,16 +1,13 @@
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
-import { resolveTerminalNewAction } from "~/lib/terminalNewAction";
 import {
   confirmTerminalTabClose,
   resolveTerminalCloseTitle,
   shouldPromptForTerminalClose,
 } from "~/lib/terminalCloseConfirmation";
 import { readNativeApi } from "~/nativeApi";
-import { collectTerminalIdsFromLayout } from "~/terminalPaneLayout";
 import type { ThreadTerminalState } from "~/terminalStateNormalization";
 import { useTerminalStateStore } from "~/terminalStateStore";
-import { MAX_TERMINALS_PER_GROUP } from "~/types";
 import { randomTerminalId } from "../terminal/terminalIds";
 import { disposeAndCloseTerminalSession } from "../terminal/terminalSession";
 
@@ -65,68 +62,13 @@ export function collapseChatTerminalWorkspace(ctx: ChatTerminalActionContext): v
   if (ctx.activeThreadId) terminalStore().setTerminalPresentationMode(ctx.activeThreadId, "drawer");
 }
 
-export function splitChatTerminal(
-  ctx: ChatTerminalActionContext,
-  state: ThreadTerminalState,
-  direction: "left" | "right" | "down" | "up",
-): void {
-  if (!ctx.activeThreadId) return;
-  const activeGroup =
-    state.terminalGroups.find((group) => group.id === state.activeTerminalGroupId) ??
-    state.terminalGroups.find((group) =>
-      collectTerminalIdsFromLayout(group.layout).includes(state.activeTerminalId),
-    );
-  if (
-    (activeGroup ? collectTerminalIdsFromLayout(activeGroup.layout).length : 0) >=
-    MAX_TERMINALS_PER_GROUP
-  )
-    return;
-  const store = terminalStore();
-  const split = {
-    left: store.splitTerminalLeft,
-    right: store.splitTerminalRight,
-    down: store.splitTerminalDown,
-    up: store.splitTerminalUp,
-  }[direction];
-  split(ctx.activeThreadId, randomTerminalId());
-  ctx.requestTerminalFocus();
-}
-
 export function createChatTerminal(ctx: ChatTerminalActionContext): void {
   if (!ctx.activeThreadId) return;
   terminalStore().newTerminal(ctx.activeThreadId, randomTerminalId());
   ctx.requestTerminalFocus();
 }
-
-export function createChatTerminalTab(
-  ctx: ChatTerminalActionContext,
-  targetTerminalId: string,
-): void {
-  if (!ctx.activeThreadId) return;
-  terminalStore().newTerminalTab(ctx.activeThreadId, targetTerminalId, randomTerminalId());
-  ctx.requestTerminalFocus();
-}
-
-export function createChatTerminalFromShortcut(
-  ctx: ChatTerminalActionContext,
-  state: ThreadTerminalState,
-): void {
-  const action = resolveTerminalNewAction(state);
-  if (action.kind === "new-group") {
-    if (!state.terminalOpen) setChatTerminalOpen(ctx, true);
-    createChatTerminal(ctx);
-    return;
-  }
-  createChatTerminalTab(ctx, action.targetTerminalId);
-}
-
-export function moveChatTerminalToNewGroup(
-  ctx: ChatTerminalActionContext,
-  terminalId: string,
-): void {
-  if (!ctx.activeThreadId) return;
-  terminalStore().newTerminal(ctx.activeThreadId, terminalId);
-  ctx.requestTerminalFocus();
+export function createChatTerminalFromShortcut(ctx: ChatTerminalActionContext): void {
+  createChatTerminal(ctx);
 }
 
 export function openNewFullWidthChatTerminal(ctx: ChatTerminalProjectActionContext): void {

@@ -18,7 +18,7 @@ import { WhatsNewPopoutCard } from "../whatsNew/WhatsNewPopoutCard";
 
 export function GlobalShortcutsDialog() {
   const [open, setOpen] = useState(false);
-  const { focusedThreadId, activeProject } = useFocusedChatContext();
+  const { focusedThreadId } = useFocusedChatContext();
   const serverConfigQuery = useQuery(serverConfigQueryOptions());
   const keybindings = serverConfigQuery.data?.keybindings ?? [];
   const platform = getNavigatorPlatform();
@@ -55,7 +55,6 @@ export function GlobalShortcutsDialog() {
       open={open}
       onOpenChange={setOpen}
       keybindings={keybindings}
-      projectScripts={activeProject?.kind === "project" ? activeProject.scripts : []}
       platform={platform}
       context={{
         terminalFocus: isTerminalFocused(),

@@ -9,7 +9,6 @@ import type { QueryClient } from "@tanstack/react-query";
 import { gitStatusQueryOptions } from "../../lib/gitQueryOptions";
 import { newCommandId, newProjectId } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
-import { setupProjectScript } from "~/projectScripts";
 import { useComposerDraftStore } from "../../composerDraftStore";
 import type { BrowserAnnotationDraft } from "../../lib/browserAnnotations";
 import type {
@@ -155,14 +154,12 @@ export async function prepareChatSendWorkspace({
     targetProjectId: targetProjectIdForSend,
     targetProjectKind: targetProjectKindForSend,
     targetProjectCwd: targetProjectCwdForSend,
-    targetProjectScripts: targetProjectScriptsForSend,
     targetProjectDefaultModelSelection: targetProjectDefaultModelSelectionForSend,
   } = firstSendTarget.kind === "create-project"
     ? {
         targetProjectId: activeProject.id,
         targetProjectKind: activeProject.kind,
         targetProjectCwd: activeProject.cwd,
-        targetProjectScripts: activeProject.kind === "project" ? activeProject.scripts : [],
         targetProjectDefaultModelSelection: activeProject.defaultModelSelection ?? null,
       }
     : firstSendTarget.target;
@@ -204,7 +201,6 @@ export async function prepareChatSendWorkspace({
         targetProjectIdForSend = projectId;
         targetProjectKindForSend = firstSendTarget.creation.kind;
         targetProjectCwdForSend = firstSendTarget.creation.workspaceRoot;
-        targetProjectScriptsForSend = [];
         targetProjectDefaultModelSelectionForSend = firstSendTarget.creation.defaultModelSelection;
       } catch (error) {
         const description =
@@ -227,10 +223,6 @@ export async function prepareChatSendWorkspace({
         targetProjectIdForSend = recoveredProject.id;
         targetProjectKindForSend = recoveredProject.kind ?? firstSendTarget.creation.kind;
         targetProjectCwdForSend = recoveredProject.workspaceRoot;
-        targetProjectScriptsForSend =
-          (recoveredProject.kind ?? firstSendTarget.creation.kind) === "project"
-            ? [...recoveredProject.scripts]
-            : [];
         targetProjectDefaultModelSelectionForSend =
           recoveredProject.defaultModelSelection ?? firstSendTarget.creation.defaultModelSelection;
       }
@@ -307,11 +299,6 @@ export async function prepareChatSendWorkspace({
     return false;
   }
 
-  const setupScriptForWorktree = baseBranchForWorktree
-    ? setupProjectScript(targetProjectScriptsForSend)
-    : null;
-  const worktreeSetupScriptName = setupScriptForWorktree?.name ?? null;
-
   const worktreeCopiesLocalChanges =
     Boolean(baseBranchForWorktree) && baseBranchForWorktree === activeRootBranch;
   return {
@@ -332,8 +319,6 @@ export async function prepareChatSendWorkspace({
     shouldResumeSettledLocalThread,
     currentActiveGitBranchForSend,
     baseBranchForWorktree,
-    setupScriptForWorktree,
-    worktreeSetupScriptName,
     worktreeCopiesLocalChanges,
   };
 }

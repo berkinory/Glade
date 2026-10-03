@@ -4,7 +4,7 @@
 
 ### New
 
-- Agents can inspect task diffs, fork conversations, manage development servers, and open files, diffs and terminals in Glade.
+- Agents can inspect task diffs, fork conversations, inspect local servers, and open files, diffs and terminals in Glade.
 - Sign in to Claude and Codex from provider settings.
 - Show Claude and Codex usage limits in the sidebar, with five-hour and weekly views.
 
@@ -124,6 +124,10 @@
 - The message input no longer briefly changes size when switching chats.
 
 ### Removed
+
+- Terminal split panes and their secondary toolbar.
+
+- Saved project actions, automatic worktree setup scripts and project Run controls.
 
 - Ask why actions for files and selected lines were removed.
 - Pull request panels and management actions were removed; PR links open externally from Environment and the sidebar.

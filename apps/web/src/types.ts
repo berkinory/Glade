@@ -19,7 +19,6 @@ import type {
   OrchestrationThreadActivity,
   OrchestrationSpaceShell,
   ThreadHandoff,
-  ProjectScript as ContractProjectScript,
   ThreadEnvironmentMode,
 } from "@glade/contracts/orchestration/threadEntities";
 import type {
@@ -45,38 +44,10 @@ export const DEFAULT_RUNTIME_MODE: RuntimeMode = "full-access";
 
 export const DEFAULT_THREAD_TERMINAL_HEIGHT = 280;
 export const DEFAULT_THREAD_TERMINAL_ID = "default";
-export const MAX_TERMINALS_PER_GROUP = 6;
 export type ThreadTerminalPresentationMode = "drawer" | "workspace";
 export type ThreadTerminalWorkspaceTab = "terminal" | "chat";
 export type ThreadTerminalWorkspaceLayout = "both" | "terminal-only";
 export type ThreadPrimarySurface = "chat" | "terminal";
-export type ProjectScript = ContractProjectScript;
-
-export type ThreadTerminalSplitDirection = "horizontal" | "vertical";
-export type ThreadTerminalSplitPosition = "top" | "right" | "bottom" | "left";
-
-interface ThreadTerminalLeafNode {
-  type: "terminal";
-  paneId: string;
-  terminalIds: string[];
-  activeTerminalId: string;
-}
-
-export interface ThreadTerminalSplitNode {
-  type: "split";
-  id: string;
-  direction: ThreadTerminalSplitDirection;
-  children: ThreadTerminalLayoutNode[];
-  weights: number[];
-}
-
-export type ThreadTerminalLayoutNode = ThreadTerminalLeafNode | ThreadTerminalSplitNode;
-
-export interface ThreadTerminalGroup {
-  id: string;
-  activeTerminalId: string;
-  layout: ThreadTerminalLayoutNode;
-}
 
 export type ChatImageAttachment = MutableContractFields<ContractChatImageAttachment> & {
   previewUrl?: string;
@@ -123,7 +94,6 @@ export type WorktreeSetupStepId =
   | "create-worktree"
   | "copy-changes"
   | "prepare-thread"
-  | "run-setup-action"
   | "start-session";
 type WorktreeSetupStepStatus = "pending" | "active" | "done" | "error";
 
@@ -156,7 +126,6 @@ export interface Project {
   spaceId?: SpaceId | null;
   createdAt?: string | undefined;
   updatedAt?: string | undefined;
-  scripts: ProjectScript[];
 }
 
 export type Space = OrchestrationSpaceShell;

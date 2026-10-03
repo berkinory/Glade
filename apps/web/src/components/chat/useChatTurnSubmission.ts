@@ -543,8 +543,6 @@ export function useChatTurnSubmission({
           shouldResumeSettledLocalThread,
           currentActiveGitBranchForSend,
           baseBranchForWorktree,
-          setupScriptForWorktree,
-          worktreeSetupScriptName,
           worktreeCopiesLocalChanges,
         } = workspace;
         const messageIdForSend = newMessageId();
@@ -559,7 +557,6 @@ export function useChatTurnSubmission({
           ...(baseBranchForWorktree
             ? {
                 worktreeSetupStepId: "create-branch" as const,
-                setupScriptName: worktreeSetupScriptName,
                 copyLocalChanges: worktreeCopiesLocalChanges,
               }
             : {}),
@@ -717,7 +714,6 @@ export function useChatTurnSubmission({
           worktreeSetupResolution,
           baseBranchForWorktree,
           worktreeCopiesLocalChanges,
-          worktreeSetupScriptName,
           selectedModelSelectionForSend,
           selectedModelForSend,
           targetProjectDefaultModelSelectionForSend,
@@ -728,7 +724,6 @@ export function useChatTurnSubmission({
           nextThreadWorkingDirectory,
           activeThread,
           targetProjectKindForSend,
-          setupScriptForWorktree,
           messageCreatedAt,
           turnAttachmentsPromise,
           messageIdForSend,

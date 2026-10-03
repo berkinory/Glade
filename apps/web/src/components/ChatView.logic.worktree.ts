@@ -455,7 +455,6 @@ const WORKTREE_SETUP_STEP_LABELS: Record<WorktreeSetupStepId, string> = {
   "create-worktree": "Creating worktree",
   "copy-changes": "Copying local changes",
   "prepare-thread": "Linking thread workspace",
-  "run-setup-action": "Running setup action",
   "start-session": "Starting session",
 };
 
@@ -466,7 +465,6 @@ export const WORKTREE_SETUP_STEP_ID_BY_PHASE: Record<GitWorktreeSetupPhase, Work
 };
 
 export interface WorktreeSetupSnapshotOptions {
-  setupScriptName?: string | null;
   copyLocalChanges?: boolean;
 }
 
@@ -479,23 +477,15 @@ export function worktreeSetupStepDefinitions(
   activeStepId: WorktreeSetupStepId,
   options?: WorktreeSetupSnapshotOptions,
 ): ReadonlyArray<{ id: WorktreeSetupStepId; label: string }> {
-  const setupScriptName = options?.setupScriptName?.trim();
-  const includeSetupStep = activeStepId === "run-setup-action" || Boolean(setupScriptName);
   const includeCopyStep = activeStepId === "copy-changes" || Boolean(options?.copyLocalChanges);
   const stepIds: WorktreeSetupStepId[] = ["create-branch", "create-worktree"];
   if (includeCopyStep) {
     stepIds.push("copy-changes");
   }
   stepIds.push("prepare-thread");
-  if (includeSetupStep) {
-    stepIds.push("run-setup-action");
-  }
   stepIds.push("start-session");
   return stepIds.map((id) => ({
     id,
-    label:
-      id === "run-setup-action" && setupScriptName
-        ? `${WORKTREE_SETUP_STEP_LABELS[id]}: ${setupScriptName}`
-        : WORKTREE_SETUP_STEP_LABELS[id],
+    label: WORKTREE_SETUP_STEP_LABELS[id],
   }));
 }

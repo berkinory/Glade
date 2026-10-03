@@ -3,7 +3,6 @@ import { Effect, Layer } from "effect";
 import {
   browseWorkspaceEntries,
   clearWorkspaceIndexCache,
-  discoverProjectScripts,
   listWorkspaceDirectories,
   prewarmWorkspaceSearchIndex,
   resolveWorkspaceFileBySuffix,
@@ -50,11 +49,6 @@ export const WorkspaceEntriesLive = Layer.effect(
           catch: (cause) => toWorkspaceEntriesError("search workspace content", cause),
         }),
       prewarmSearchIndex: (input) => Effect.sync(() => prewarmWorkspaceSearchIndex(input, runGit)),
-      discoverScripts: (input) =>
-        Effect.tryPromise({
-          try: () => discoverProjectScripts(input),
-          catch: (cause) => toWorkspaceEntriesError("discover project scripts", cause),
-        }),
       listDirectories: (input) =>
         Effect.tryPromise({
           try: () => listWorkspaceDirectories(input, runGit),

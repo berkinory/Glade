@@ -14,15 +14,12 @@ import {
   collapseChatTerminalWorkspace,
   createChatTerminal,
   createChatTerminalFromShortcut,
-  createChatTerminalTab,
   expandChatTerminalWorkspace,
   handleChatTerminalSessionExited,
-  moveChatTerminalToNewGroup,
   openNewFullWidthChatTerminal,
   setChatTerminalHeight,
   setChatTerminalOpen,
   setChatTerminalWorkspaceTab,
-  splitChatTerminal,
   toggleChatTerminalVisibility,
 } from "~/components/chat/chatTerminalActions";
 import type { DraftThreadEnvMode } from "../../../composerDraftDomain";
@@ -215,8 +212,6 @@ export function useChatWorkspaceController({
   const storeOpenTerminalThreadPage = useTerminalStateStore(
     (state) => state.openTerminalThreadPage,
   );
-  const storeCloseTerminalGroup = useTerminalStateStore((state) => state.closeTerminalGroup);
-  const storeResizeTerminalSplit = useTerminalStateStore((state) => state.resizeTerminalSplit);
 
   const {
     terminalState,
@@ -226,6 +221,7 @@ export function useChatWorkspaceController({
     terminalWorkspaceTerminalTabActive,
     terminalWorkspaceChatTabActive,
   } = useChatTerminalState({
+    onOpenTerminal: props.onOpenTerminal,
     threadId,
     activeThreadId,
     isFocusedPane,
@@ -248,17 +244,8 @@ export function useChatWorkspaceController({
     toggleChatTerminalVisibility(terminalActionContext, terminalState);
   const expandTerminalWorkspace = () => expandChatTerminalWorkspace(terminalActionContext);
   const collapseTerminalWorkspace = () => collapseChatTerminalWorkspace(terminalActionContext);
-  const splitTerminalLeft = () => splitChatTerminal(terminalActionContext, terminalState, "left");
-  const splitTerminalRight = () => splitChatTerminal(terminalActionContext, terminalState, "right");
-  const splitTerminalDown = () => splitChatTerminal(terminalActionContext, terminalState, "down");
-  const splitTerminalUp = () => splitChatTerminal(terminalActionContext, terminalState, "up");
   const createNewTerminal = () => createChatTerminal(terminalActionContext);
-  const createNewTerminalTab = (targetId: string) =>
-    createChatTerminalTab(terminalActionContext, targetId);
-  const createTerminalFromShortcut = () =>
-    createChatTerminalFromShortcut(terminalActionContext, terminalState);
-  const moveTerminalToNewGroup = (terminalId: string) =>
-    moveChatTerminalToNewGroup(terminalActionContext, terminalId);
+  const createTerminalFromShortcut = () => createChatTerminalFromShortcut(terminalActionContext);
   const openNewFullWidthTerminal = () => openNewFullWidthChatTerminal(terminalActionContext);
   const activateTerminal = (terminalId: string) =>
     activateChatTerminal(terminalActionContext, terminalId);
@@ -290,9 +277,6 @@ export function useChatWorkspaceController({
     : activeProject?.name;
 
   const isChatProject = isContainerLandingProject;
-
-  const activeProjectScripts =
-    activeProject?.kind === "project" ? activeProject.scripts : undefined;
 
   const threadLineageThreads = useStore(
     useMemo(() => createThreadLineageSelector(activeThread?.id ?? null), [activeThread?.id]),
@@ -475,19 +459,11 @@ export function useChatWorkspaceController({
     storeSetTerminalMetadata,
     storeSetTerminalActivity,
     storeOpenTerminalThreadPage,
-    storeCloseTerminalGroup,
-    storeResizeTerminalSplit,
     toggleTerminalVisibility,
     expandTerminalWorkspace,
     collapseTerminalWorkspace,
-    splitTerminalLeft,
-    splitTerminalRight,
-    splitTerminalDown,
-    splitTerminalUp,
     createNewTerminal,
-    createNewTerminalTab,
     createTerminalFromShortcut,
-    moveTerminalToNewGroup,
     openNewFullWidthTerminal,
     activateTerminal,
     closeTerminal,
@@ -501,7 +477,6 @@ export function useChatWorkspaceController({
     isContainerLandingProject,
     activeProjectDisplayName,
     isChatProject,
-    activeProjectScripts,
     threadLineageThreads,
     threadBreadcrumbs,
     resolvedThreadEnvMode,

@@ -65,7 +65,7 @@ export class WorktreeSetupCancelledError extends Error {
 }
 
 // The setup card's "Cancel" / "Work locally" buttons resolve it; the send pipeline races `promise`
-// against slow steps (worktree creation, setup scripts) and checks `action` at step boundaries,
+// against worktree creation and checks `action` at step boundaries,
 // honoring the choice at the next checkpoint before the turn is dispatched.
 export interface WorktreeSetupResolution {
   readonly promise: Promise<WorktreeSetupResolutionAction>;

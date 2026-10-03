@@ -94,68 +94,6 @@ engineLayer("OrchestrationProjectionPipeline via engine dispatch", (it) => {
     }),
   );
 
-  it.effect("projects persist updated scripts from project.meta.update", () =>
-    Effect.gen(function* () {
-      const engine = yield* OrchestrationEngineService;
-      const sql = yield* SqlClient.SqlClient;
-      const createdAt = new Date().toISOString();
-
-      yield* engine.dispatch({
-        type: "project.create",
-        commandId: CommandId.makeUnsafe("cmd-scripts-project-create"),
-        projectId: ProjectId.makeUnsafe("project-scripts"),
-        title: "Scripts Project",
-        workspaceRoot: "/tmp/project-scripts",
-        defaultModelSelection: {
-          provider: "codex",
-          model: "gpt-5-codex",
-        },
-        createdAt,
-      });
-
-      yield* engine.dispatch({
-        type: "project.meta.update",
-        commandId: CommandId.makeUnsafe("cmd-scripts-project-update"),
-        projectId: ProjectId.makeUnsafe("project-scripts"),
-        scripts: [
-          {
-            id: "script-1",
-            name: "Build",
-            command: "bun run build",
-            icon: "build",
-            runOnWorktreeCreate: false,
-          },
-        ],
-        isPinned: true,
-        defaultModelSelection: {
-          provider: "codex",
-          model: "gpt-5",
-        },
-      });
-
-      const projectRows = yield* sql<{
-        readonly scriptsJson: string;
-        readonly defaultModelSelection: string;
-        readonly isPinned: number;
-      }>`
-        SELECT
-          scripts_json AS "scriptsJson",
-          default_model_selection_json AS "defaultModelSelection",
-          is_pinned AS "isPinned"
-        FROM projection_projects
-        WHERE project_id = 'project-scripts'
-      `;
-      assert.deepEqual(projectRows, [
-        {
-          scriptsJson:
-            '[{"id":"script-1","name":"Build","command":"bun run build","icon":"build","runOnWorktreeCreate":false}]',
-          defaultModelSelection: '{"provider":"codex","model":"gpt-5"}',
-          isPinned: 1,
-        },
-      ]);
-    }),
-  );
-
   it.effect("routes telemetry activities only through their owning hot projector", () =>
     Effect.gen(function* () {
       const engine = yield* OrchestrationEngineService;

@@ -87,8 +87,6 @@ export function KeyboardShortcutsSettingsPanel() {
 
   const sections = buildShortcutSheetSections({
     keybindings,
-
-    projectScripts: [],
     platform,
     context: SETTINGS_SHORTCUT_CONTEXT,
   });

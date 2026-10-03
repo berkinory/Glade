@@ -222,7 +222,6 @@ it.layer(Layer.fresh(makeProjectionPipelinePrefixedTestLayer("glade-text-segment
               title: "Text Segments",
               workspaceRoot: "/tmp/text-segments",
               defaultModelSelection: null,
-              scripts: [],
               createdAt: "2026-07-14T10:00:00.000Z",
               updatedAt: "2026-07-14T10:00:00.000Z",
             },

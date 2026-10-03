@@ -1,5 +1,5 @@
 import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
-import { isWorkspaceRootWithin, workspaceRootsEqual } from "@glade/shared/threads/threadWorkspace";
+import { workspaceRootsEqual } from "@glade/shared/threads/threadWorkspace";
 import type { SidebarThreadSummary, Thread } from "../types";
 import { cn } from "../lib/utils";
 import {
@@ -205,26 +205,6 @@ export function findWorkspaceRootMatch<T>(
   getWorkspaceRoot: (item: T) => string,
 ): T | undefined {
   return items.find((item) => workspaceRootsEqual(getWorkspaceRoot(item), targetWorkspaceRoot));
-}
-
-export function findDeepestWorkspaceRootMatch<T>(
-  items: readonly T[],
-  targetPath: string,
-  getWorkspaceRoot: (item: T) => string,
-): T | undefined {
-  let best: T | undefined;
-  let bestRootLength = -1;
-  for (const item of items) {
-    const root = getWorkspaceRoot(item);
-    if (!isWorkspaceRootWithin(targetPath, root)) {
-      continue;
-    }
-    if (root.length > bestRootLength) {
-      best = item;
-      bestRootLength = root.length;
-    }
-  }
-  return best;
 }
 
 export async function runExclusiveProjectAddition<T>(

@@ -1,3 +1,4 @@
+import { terminalRuntimeEnv } from "~/lib/terminalRuntimeEnv";
 import { type ProjectId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { resolveThreadWorkspaceCwd } from "@glade/shared/threads/threadEnvironment";
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
@@ -8,13 +9,14 @@ import {
   getTerminalContextComposerTarget,
   subscribeTerminalContextComposerTarget,
 } from "~/lib/terminalContextComposerRegistry";
-import { projectScriptRuntimeEnv } from "~/projectScripts";
 import { useStore } from "~/store";
 import { createProjectSelector, createThreadWorkspaceMetadataSelector } from "~/storeSelectors";
 import { useTerminalStateStore } from "~/terminalStateStore";
 import ThreadTerminalDrawer from "../ThreadTerminalDrawer";
 
 function DockTerminalPane(props: {
+  workspaceRoot?: string | null;
+  focusRequestId?: number;
   hostThreadId: ThreadId;
   projectId: ProjectId | null;
 
@@ -32,19 +34,21 @@ function DockTerminalPane(props: {
   const workingDirectory = threadWorkspace.workingDirectory;
   const projectCwd = project?.cwd ?? null;
   const cwd =
+    props.workspaceRoot ??
     resolveThreadWorkspaceCwd({
       projectCwd,
       envMode: threadWorkspace.envMode,
       worktreePath,
       workingDirectory,
-    }) ?? "";
+    }) ??
+    "";
   const runtimeProjectCwd = workingDirectory ?? projectCwd;
   const runtimeEnv = runtimeProjectCwd
-    ? projectScriptRuntimeEnv({ project: { cwd: runtimeProjectCwd }, worktreePath })
+    ? terminalRuntimeEnv({ cwd: runtimeProjectCwd, worktreePath })
     : {};
 
   const terminal = useTerminalSurfaceController(scopeId);
-  const { terminalState, bumpFocusRequest, newTerminalGroup } = terminal;
+  const { terminalState } = terminal;
   const setTerminalOpen = useTerminalStateStore((store) => store.setTerminalOpen);
   const closingFinalTerminalRef = useRef(false);
   const subscribeToComposerTarget = useCallback(
@@ -69,16 +73,6 @@ function DockTerminalPane(props: {
     setTerminalOpen(scopeId, true);
   }, [props.isActive, scopeId, setTerminalOpen, terminalState.terminalOpen]);
 
-  const createTerminal = () => {
-    closingFinalTerminalRef.current = false;
-    if (!terminalState.terminalOpen) {
-      setTerminalOpen(scopeId, true);
-      bumpFocusRequest();
-      return;
-    }
-    newTerminalGroup();
-  };
-
   const onSessionExited = (terminalId: string) => {
     const disposition = terminal.handleDockTerminalSessionExited(terminalId);
     if (disposition === "final") {
@@ -86,12 +80,6 @@ function DockTerminalPane(props: {
       props.onClosePanel();
     }
   };
-
-  const onCloseTerminal = (terminalId: string) =>
-    terminal.closeTerminal(terminalId, () => {
-      closingFinalTerminalRef.current = true;
-      props.onClosePanel();
-    });
 
   return (
     <ThreadTerminalDrawer
@@ -109,24 +97,9 @@ function DockTerminalPane(props: {
       terminalAttentionStatesById={terminalState.terminalAttentionStatesById ?? {}}
       runningTerminalIds={terminalState.runningTerminalIds}
       activeTerminalId={terminalState.activeTerminalId}
-      terminalGroups={terminalState.terminalGroups}
-      activeTerminalGroupId={terminalState.activeTerminalGroupId}
-      focusRequestId={terminal.focusRequestId}
-      onSplitTerminal={terminal.splitRight}
-      onSplitTerminalDown={terminal.splitDown}
-      onNewTerminal={createTerminal}
-      onNewTerminalTab={terminal.createTerminalTab}
-      onMoveTerminalToGroup={terminal.moveTerminalToNewGroup}
-      onActiveTerminalChange={terminal.activateTerminal}
-      onCloseTerminal={(...args: Parameters<typeof onCloseTerminal>) => {
-        void onCloseTerminal(...args).catch((error: unknown) =>
-          console.error("[terminal] Could not close terminal", error),
-        );
-      }}
+      focusRequestId={terminal.focusRequestId + (props.focusRequestId ?? 0)}
       onTerminalSessionExited={onSessionExited}
-      onCloseTerminalGroup={terminal.closeTerminalGroup}
       onHeightChange={terminal.setTerminalHeight}
-      onResizeTerminalSplit={terminal.resizeTerminalSplit}
       onTerminalMetadataChange={terminal.setTerminalMetadata}
       onTerminalActivityChange={terminal.setTerminalActivity}
       onAddTerminalContext={composerTarget}

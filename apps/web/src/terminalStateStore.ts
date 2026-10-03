@@ -29,19 +29,12 @@ import {
   setThreadTerminalMetadata,
   setThreadTerminalCliKind,
   setThreadTerminalTitleOverride,
-  splitThreadTerminal,
-  splitThreadTerminalLeft,
-  splitThreadTerminalDown,
-  splitThreadTerminalUp,
   newThreadTerminal,
-  newThreadTerminalTab,
   setThreadActiveTerminal,
   closeThreadTerminal,
   closeThreadTerminalAndEnsureReplacement,
   type TerminalExitDisposition,
   closeExitedThreadTerminal,
-  closeThreadTerminalGroup,
-  resizeThreadTerminalSplit,
   openThreadTerminalFullWidth,
   closeThreadWorkspaceChat,
   setThreadTerminalActivity,
@@ -110,13 +103,7 @@ interface TerminalStateStoreState {
     terminalId: string,
     titleOverride: string | null | undefined,
   ) => void;
-  splitTerminal: (threadId: ThreadId, terminalId: string) => void;
-  splitTerminalLeft: (threadId: ThreadId, terminalId: string) => void;
-  splitTerminalRight: (threadId: ThreadId, terminalId: string) => void;
-  splitTerminalDown: (threadId: ThreadId, terminalId: string) => void;
-  splitTerminalUp: (threadId: ThreadId, terminalId: string) => void;
   newTerminal: (threadId: ThreadId, terminalId: string) => void;
-  newTerminalTab: (threadId: ThreadId, targetTerminalId: string, terminalId: string) => void;
   openNewFullWidthTerminal: (threadId: ThreadId, terminalId: string) => void;
   closeWorkspaceChat: (threadId: ThreadId) => void;
   setActiveTerminal: (threadId: ThreadId, terminalId: string) => void;
@@ -127,13 +114,6 @@ interface TerminalStateStoreState {
     replacementTerminalId: string,
   ) => void;
   closeExitedTerminal: (threadId: ThreadId, terminalId: string) => TerminalExitDisposition;
-  closeTerminalGroup: (threadId: ThreadId, groupId: string) => void;
-  resizeTerminalSplit: (
-    threadId: ThreadId,
-    groupId: string,
-    splitId: string,
-    weights: number[],
-  ) => void;
   setTerminalActivity: (
     threadId: ThreadId,
     terminalId: string,
@@ -205,22 +185,8 @@ export const useTerminalStateStore = create<TerminalStateStoreState>()(
           updateTerminal(threadId, (state) =>
             setThreadTerminalTitleOverride(state, terminalId, titleOverride),
           ),
-        splitTerminal: (threadId, terminalId) =>
-          updateTerminal(threadId, (state) => splitThreadTerminal(state, terminalId)),
-        splitTerminalLeft: (threadId, terminalId) =>
-          updateTerminal(threadId, (state) => splitThreadTerminalLeft(state, terminalId)),
-        splitTerminalRight: (threadId, terminalId) =>
-          updateTerminal(threadId, (state) => splitThreadTerminal(state, terminalId)),
-        splitTerminalDown: (threadId, terminalId) =>
-          updateTerminal(threadId, (state) => splitThreadTerminalDown(state, terminalId)),
-        splitTerminalUp: (threadId, terminalId) =>
-          updateTerminal(threadId, (state) => splitThreadTerminalUp(state, terminalId)),
         newTerminal: (threadId, terminalId) =>
           updateTerminal(threadId, (state) => newThreadTerminal(state, terminalId)),
-        newTerminalTab: (threadId, targetTerminalId, terminalId) =>
-          updateTerminal(threadId, (state) =>
-            newThreadTerminalTab(state, targetTerminalId, terminalId),
-          ),
         openNewFullWidthTerminal: (threadId, terminalId) =>
           updateTerminal(threadId, (state) => openThreadTerminalFullWidth(state, terminalId)),
         closeWorkspaceChat: (threadId) =>
@@ -242,12 +208,6 @@ export const useTerminalStateStore = create<TerminalStateStoreState>()(
           });
           return disposition;
         },
-        closeTerminalGroup: (threadId, groupId) =>
-          updateTerminal(threadId, (state) => closeThreadTerminalGroup(state, groupId)),
-        resizeTerminalSplit: (threadId, groupId, splitId, weights) =>
-          updateTerminal(threadId, (state) =>
-            resizeThreadTerminalSplit(state, groupId, splitId, weights),
-          ),
         setTerminalActivity: (threadId, terminalId, activity) =>
           updateTerminal(threadId, (state) =>
             setThreadTerminalActivity(state, terminalId, activity),

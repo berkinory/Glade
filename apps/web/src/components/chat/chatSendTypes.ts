@@ -15,7 +15,6 @@ import type { TurnDispatchSettings } from "../ChatView.logic.subagents";
 import type { useChatComposerDraft } from "./useChatComposerDraft";
 import type { useChatLocalDispatch } from "./useChatLocalDispatch";
 import type { useChatPendingInteractions } from "./useChatPendingInteractions";
-import type { useChatProjectScripts } from "./useChatProjectScripts";
 import type { useChatProviderModels } from "./useChatProviderModels";
 import type { useChatProviderStatus } from "./useChatProviderStatus";
 import type { useChatRuntimeModes } from "./useChatRuntimeModes";
@@ -216,7 +215,6 @@ export interface ChatTurnSubmissionInput {
   setOptimisticUserMessages: ReturnType<
     typeof useChatTimelineMessages
   >["setOptimisticUserMessages"];
-  runProjectScript: ReturnType<typeof useChatProjectScripts>["runProjectScript"];
   persistThreadSettingsForNextTurn: ReturnType<
     typeof useChatRuntimeModes
   >["persistThreadSettingsForNextTurn"];
@@ -308,7 +306,6 @@ export type ChatTurnSubmissionControllerInput = {
     | "environmentPanelPreferenceOpen"
     | "armTranscriptAutoFollow"
     | "tailAnchorScrollInFlightRef"
-    | "runProjectScript"
     | "persistThreadSettingsForNextTurn"
   >;
   composer: Pick<

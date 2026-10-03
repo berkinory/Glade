@@ -35,7 +35,6 @@ import {
   type GitWorktreeSetupProgressEvent,
 } from "@glade/contracts/git/git";
 import { type GitHubProjectProvisionProgressEvent } from "@glade/contracts/git/githubProjectProvisioning";
-import { type ProjectDevServerEvent } from "@glade/contracts/workspace/project";
 import {
   type ServerConfigStreamEvent,
   type ServerDiagnosticsResult,
@@ -63,10 +62,6 @@ import {
   isThreadDetailEventFor,
   THREAD_DETAIL_EVENT_TYPES,
 } from "@glade/shared/threads/threadDetailEvents";
-import {
-  DevServerManager,
-  findProjectDevServerForLocalServer,
-} from "../../workspace/devServers/devServerManager";
 import { ComputerService } from "../../computer/Services/ComputerService";
 import { makeWsComputerHandlers } from "../../computer/wsComputerHandlers";
 import { makeComputerFrameRouteLayer } from "../../computer/computerFrameRoute";
@@ -354,7 +349,6 @@ const makeWsRpcHandlersLayer = () =>
       const appPresentation = yield* AppPresentation;
       const checkpointDiffQuery = yield* CheckpointDiffQuery;
       const config = yield* ServerConfig;
-      const devServerManager = yield* DevServerManager;
       const fileSystem = yield* FileSystem.FileSystem;
       const git = yield* GitCore;
       const github = yield* GitHubCli;
@@ -623,18 +617,6 @@ const makeWsRpcHandlersLayer = () =>
             (server) => server.pid === input.pid && server.ports.includes(input.port),
           ) ?? null;
         const result = yield* Effect.promise(() => stopLocalServer(input, localServer));
-        if (localServer?.isStoppable) {
-          const devServers = yield* devServerManager.list;
-          const trackedServer = findProjectDevServerForLocalServer({
-            localServer,
-            devServers: devServers.servers,
-          });
-          if (trackedServer) {
-            yield* devServerManager
-              .stop({ projectId: trackedServer.projectId })
-              .pipe(Effect.catch(() => Effect.void));
-          }
-        }
         return result;
       });
 
@@ -1190,8 +1172,6 @@ const makeWsRpcHandlersLayer = () =>
             workspaceEntries.prewarmSearchIndex(input),
             "Failed to prewarm workspace search index",
           ),
-        [WS_METHODS.projectsDiscoverScripts]: (input) =>
-          rpcEffect(workspaceEntries.discoverScripts(input), "Failed to discover project scripts"),
         [WS_METHODS.projectsSearchLocalEntries]: (input) =>
           rpcEffect(workspaceEntries.searchLocal(input), "Failed to search local entries"),
         [WS_METHODS.projectsReadFile]: (input) =>
@@ -1264,33 +1244,6 @@ const makeWsRpcHandlersLayer = () =>
           ),
         [WS_METHODS.projectsManageEntry]: (input) =>
           rpcEffect(workspaceFileSystem.manageEntry(input), "Failed to update workspace entry"),
-        [WS_METHODS.projectsRunDevServer]: (input) =>
-          rpcEffect(devServerManager.run(input), "Failed to start dev server"),
-        [WS_METHODS.projectsStopDevServer]: (input) =>
-          rpcEffect(devServerManager.stop(input), "Failed to stop dev server"),
-        [WS_METHODS.projectsListDevServers]: () =>
-          rpcEffect(devServerManager.list, "Failed to list dev servers"),
-        [WS_METHODS.subscribeProjectDevServerEvents]: (_, { clientId }) =>
-          streamAdmission.guard(
-            clientId,
-            { key: "projects.dev-servers" },
-            Stream.concat(
-              Stream.fromEffect(
-                devServerManager.list.pipe(
-                  Effect.map(
-                    (result): ProjectDevServerEvent => ({
-                      type: "snapshot",
-                      servers: result.servers,
-                    }),
-                  ),
-                ),
-              ),
-              bufferLiveUiStream(devServerManager.stream, {
-                label: "projects.dev-servers",
-                onDroppedEvents: failLiveUiStreamForSnapshotResync,
-              }),
-            ),
-          ),
         [WS_METHODS.projectsProvisionFromGitHub]: (input) =>
           bufferLiveUiStream(
             Stream.callback<GitHubProjectProvisionProgressEvent, WsRpcError>((queue) =>

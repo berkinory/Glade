@@ -46,7 +46,6 @@ export function makeSnapshotProjectLookup(input: {
               title: row.title,
               workspaceRoot: row.workspaceRoot,
               defaultModelSelection: row.defaultModelSelection,
-              scripts: row.scripts,
               isPinned: row.isPinned > 0,
               spaceId: row.spaceId,
               createdAt: row.createdAt,

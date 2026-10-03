@@ -115,7 +115,6 @@ export function projectWorkspaceEvent(
             title: payload.title,
             workspaceRoot: payload.workspaceRoot,
             defaultModelSelection: payload.defaultModelSelection,
-            scripts: payload.scripts,
             isPinned: payload.isPinned ?? false,
             spaceId: payload.spaceId ?? null,
             createdAt: payload.createdAt,
@@ -149,7 +148,6 @@ export function projectWorkspaceEvent(
                   ...(payload.defaultModelSelection !== undefined
                     ? { defaultModelSelection: payload.defaultModelSelection }
                     : {}),
-                  ...(payload.scripts !== undefined ? { scripts: payload.scripts } : {}),
                   ...(payload.isPinned !== undefined ? { isPinned: payload.isPinned } : {}),
                   ...(payload.spaceId !== undefined ? { spaceId: payload.spaceId } : {}),
                   updatedAt: payload.updatedAt,

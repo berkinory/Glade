@@ -1,7 +1,6 @@
 import { Schema, Struct } from "effect";
 import { ProjectionProject } from "../../persistence/Services/ProjectionProjects.ts";
 import {
-  ProjectScript,
   ThreadHandoff,
   PendingClaudeCacheReview,
   OrchestrationThreadPullRequest,
@@ -43,7 +42,6 @@ export const MAX_TURN_GENERATED_IMAGE_ACTIVITY_RECORDS = 64;
 export const ProjectionProjectDbRowSchema = ProjectionProject.mapFields(
   Struct.assign({
     defaultModelSelection: Schema.NullOr(ModelSelectionJsonUnknown),
-    scripts: Schema.fromJsonString(Schema.Array(ProjectScript)),
     isPinned: Schema.Number,
   }),
 );

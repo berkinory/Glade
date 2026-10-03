@@ -1,12 +1,6 @@
 import "@xterm/xterm/css/xterm.css";
 import { SearchAddon } from "@xterm/addon-search";
-import {
-  Plus,
-  SquareSplitHorizontal,
-  SquareSplitVertical,
-  Trash2,
-  TriangleAlertIcon,
-} from "~/lib/icons";
+import { TriangleAlertIcon } from "~/lib/icons";
 import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   type TerminalActivityState,
@@ -16,18 +10,9 @@ import { Terminal } from "@xterm/xterm";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { type TerminalContextSelection } from "~/lib/terminalContext";
 import { readNativeApi } from "~/nativeApi";
-import {
-  MAX_TERMINALS_PER_GROUP,
-  type ThreadTerminalGroup,
-  type ThreadTerminalPresentationMode,
-} from "../types";
+import type { ThreadTerminalPresentationMode } from "../types";
 import { cn } from "~/lib/utils";
-import {
-  type TerminalChromeActionItem,
-  TerminalSidebar,
-  TerminalWorkspaceTabBar,
-} from "./terminal/TerminalChrome";
-import { resolveThreadTerminalLayout } from "./terminal/TerminalLayout";
+import { resolveTerminalVisualIdentityMap } from "../terminalVisualIdentity";
 import {
   resolveTerminalSelectionActionPosition,
   resolveTerminalSelectionContextMenuItems,
@@ -41,7 +26,6 @@ import type {
   TerminalRuntimeStatus,
   TerminalRuntimeViewState,
 } from "./terminal/terminalRuntimeTypes";
-import TerminalViewportPane from "./terminal/TerminalViewportPane";
 import { useTerminalDrawerHeight } from "./terminal/useTerminalDrawerHeight";
 import { TerminalSearch } from "./TerminalSearch";
 import { TerminalScrollToBottom } from "./TerminalScrollToBottom";
@@ -468,25 +452,9 @@ interface ThreadTerminalDrawerProps {
   terminalAttentionStatesById: Record<string, "attention" | "review">;
   runningTerminalIds: string[];
   activeTerminalId: string;
-  terminalGroups: ThreadTerminalGroup[];
-  activeTerminalGroupId: string;
   focusRequestId: number;
-  onSplitTerminal: () => void;
-  onSplitTerminalDown: () => void;
-  onNewTerminal: () => void;
-  onNewTerminalTab: (terminalId: string) => void;
-  onMoveTerminalToGroup: (terminalId: string) => void;
-  splitShortcutLabel?: string | undefined;
-  splitDownShortcutLabel?: string | undefined;
-  newShortcutLabel?: string | undefined;
-  closeShortcutLabel?: string | undefined;
-  workspaceCloseShortcutLabel?: string | undefined;
-  onActiveTerminalChange: (terminalId: string) => void;
-  onCloseTerminal: (terminalId: string) => void;
   onTerminalSessionExited: (terminalId: string) => void;
-  onCloseTerminalGroup: (groupId: string) => void;
   onHeightChange: (height: number) => void;
-  onResizeTerminalSplit: (groupId: string, splitId: string, weights: number[]) => void;
   onTerminalMetadataChange: (
     terminalId: string,
     metadata: { cliKind: TerminalCliKind | null; label: string },
@@ -496,54 +464,9 @@ interface ThreadTerminalDrawerProps {
     activity: { hasRunningSubprocess: boolean; agentState: TerminalActivityState | null },
   ) => void;
   onAddTerminalContext?: ((selection: TerminalContextSelection) => void) | undefined;
-  onTogglePresentationMode?: (() => void) | undefined;
-  onTogglePanel?: (() => void) | undefined;
-  isPanelOpen?: boolean | undefined;
 }
-
-export default function ThreadTerminalDrawer({
-  threadId,
-  cwd,
-  runtimeEnv,
-  height,
-  presentationMode,
-  isVisible: isVisibleProp,
-  terminalIds,
-  terminalLabelsById,
-  terminalTitleOverridesById,
-  terminalCliKindsById,
-  terminalAttentionStatesById,
-  runningTerminalIds,
-  activeTerminalId,
-  terminalGroups,
-  activeTerminalGroupId,
-  focusRequestId,
-  onSplitTerminal,
-  onSplitTerminalDown,
-  onNewTerminal,
-  onNewTerminalTab,
-  onMoveTerminalToGroup,
-  splitShortcutLabel,
-  splitDownShortcutLabel,
-  newShortcutLabel,
-  closeShortcutLabel,
-  workspaceCloseShortcutLabel,
-  onActiveTerminalChange,
-  onCloseTerminal,
-  onTerminalSessionExited,
-  onCloseTerminalGroup,
-  onHeightChange,
-  onResizeTerminalSplit,
-  onTerminalMetadataChange,
-  onTerminalActivityChange,
-  onAddTerminalContext,
-  onTogglePresentationMode,
-  onTogglePanel,
-  isPanelOpen,
-}: ThreadTerminalDrawerProps) {
-  const isVisible = isVisibleProp ?? true;
-  const isWorkspaceMode = presentationMode === "workspace";
-  const previousRuntimeKeysRef = useRef<Set<string>>(new Set());
+export default function ThreadTerminalDrawer(props: ThreadTerminalDrawerProps) {
+  const isWorkspaceMode = props.presentationMode === "workspace";
   const {
     drawerRef,
     drawerHeight,
@@ -551,118 +474,20 @@ export default function ThreadTerminalDrawer({
     handleResizePointerMove,
     handleResizePointerEnd,
   } = useTerminalDrawerHeight({
-    height,
-    onHeightChange,
-    resetKey: threadId,
+    height: props.height,
+    onHeightChange: props.onHeightChange,
+    resetKey: props.threadId,
   });
-
-  const {
-    normalizedTerminalIds,
-    resolvedActiveTerminalId,
-    resolvedActiveGroupId,
-    resolvedTerminalGroups,
-    activeGroupLayout,
-    hasTerminalSidebar,
-    showGroupHeaders,
-    hasReachedSplitLimit,
-    terminalVisualIdentityById,
-  } = useMemo(
-    () =>
-      resolveThreadTerminalLayout({
-        activeTerminalGroupId,
-        activeTerminalId,
-        runningTerminalIds,
-        terminalAttentionStatesById,
-        terminalCliKindsById,
-        terminalGroups,
-        terminalIds,
-        terminalLabelsById,
-        terminalTitleOverridesById,
-      }),
-    [
-      activeTerminalGroupId,
-      activeTerminalId,
-      runningTerminalIds,
-      terminalAttentionStatesById,
-      terminalCliKindsById,
-      terminalGroups,
-      terminalIds,
-      terminalLabelsById,
-      terminalTitleOverridesById,
-    ],
-  );
-
+  const terminalVisualIdentityById = resolveTerminalVisualIdentityMap(props);
+  const previousRuntimeKeysRef = useRef<Set<string>>(new Set());
   useEffect(() => {
-    const nextRuntimeKeySet = new Set(
-      normalizedTerminalIds.map((terminalId) => buildTerminalRuntimeKey(threadId, terminalId)),
+    const next = new Set(
+      props.terminalIds.map((id) => buildTerminalRuntimeKey(props.threadId, id)),
     );
-    for (const previousRuntimeKey of previousRuntimeKeysRef.current) {
-      if (nextRuntimeKeySet.has(previousRuntimeKey)) {
-        continue;
-      }
-      terminalRuntimeRegistry.dispose(previousRuntimeKey);
-    }
-    previousRuntimeKeysRef.current = nextRuntimeKeySet;
-  }, [normalizedTerminalIds, threadId]);
-
-  const splitTerminalActionLabel = hasReachedSplitLimit
-    ? `Split Terminal (max ${MAX_TERMINALS_PER_GROUP} per group)`
-    : splitShortcutLabel
-      ? `Split Right (${splitShortcutLabel})`
-      : "Split Right";
-  const splitTerminalDownActionLabel = hasReachedSplitLimit
-    ? `Split Down (max ${MAX_TERMINALS_PER_GROUP} per group)`
-    : splitDownShortcutLabel
-      ? `Split Down (${splitDownShortcutLabel})`
-      : "Split Down";
-  const newTerminalActionLabel = newShortcutLabel
-    ? `New Terminal (${newShortcutLabel})`
-    : "New Terminal";
-  const resolvedCloseShortcutLabel = isWorkspaceMode
-    ? (workspaceCloseShortcutLabel ?? closeShortcutLabel)
-    : closeShortcutLabel;
-  const closeTerminalActionLabel = resolvedCloseShortcutLabel
-    ? `Close Terminal (${resolvedCloseShortcutLabel})`
-    : "Close Terminal";
-  const onSplitTerminalAction = useCallback(() => {
-    if (hasReachedSplitLimit) return;
-    onSplitTerminal();
-  }, [hasReachedSplitLimit, onSplitTerminal]);
-  const onSplitTerminalDownAction = useCallback(() => {
-    if (hasReachedSplitLimit) return;
-    onSplitTerminalDown();
-  }, [hasReachedSplitLimit, onSplitTerminalDown]);
-  const onNewTerminalAction = useCallback(() => {
-    onNewTerminal();
-  }, [onNewTerminal]);
-
-  const terminalChromeActions: TerminalChromeActionItem[] = [
-    {
-      label: splitTerminalActionLabel,
-      onClick: onSplitTerminalAction,
-      disabled: hasReachedSplitLimit,
-      children: <SquareSplitHorizontal className="size-3.25" />,
-    },
-    {
-      label: splitTerminalDownActionLabel,
-      onClick: onSplitTerminalDownAction,
-      disabled: hasReachedSplitLimit,
-      children: <SquareSplitVertical className="size-3.25" />,
-    },
-    {
-      label: newTerminalActionLabel,
-      onClick: onNewTerminalAction,
-      children: <Plus className="size-3.25" />,
-    },
-    {
-      label: closeTerminalActionLabel,
-      onClick: () => onCloseTerminal(resolvedActiveTerminalId),
-      children: <Trash2 className="size-3.25" />,
-    },
-  ];
-  const showTerminalGroupTabs = resolvedTerminalGroups.length > 1;
-  const topTabBarActions = terminalChromeActions;
-
+    for (const key of previousRuntimeKeysRef.current)
+      if (!next.has(key)) terminalRuntimeRegistry.dispose(key);
+    previousRuntimeKeysRef.current = next;
+  }, [props.terminalIds, props.threadId]);
   return (
     <aside
       ref={drawerRef}
@@ -670,7 +495,7 @@ export default function ThreadTerminalDrawer({
         "thread-terminal-drawer relative flex w-full min-w-0 flex-col overflow-hidden bg-[var(--color-background-surface)]",
         isWorkspaceMode ? "h-full min-h-0" : "shrink-0 border-t border-border/70",
       )}
-      style={isWorkspaceMode ? undefined : { height: `${drawerHeight}px` }}
+      style={isWorkspaceMode ? undefined : { height: drawerHeight }}
     >
       {!isWorkspaceMode ? (
         <div
@@ -681,96 +506,35 @@ export default function ThreadTerminalDrawer({
           onPointerCancel={handleResizePointerEnd}
         />
       ) : null}
-
-      {showTerminalGroupTabs ? (
-        <TerminalWorkspaceTabBar
-          terminalGroups={resolvedTerminalGroups}
-          activeGroupId={resolvedActiveGroupId}
-          terminalVisualIdentityById={terminalVisualIdentityById}
-          actions={topTabBarActions}
-          onActiveGroupChange={(groupId) => {
-            const nextGroup = resolvedTerminalGroups.find((group) => group.id === groupId);
-            if (!nextGroup) return;
-            onActiveTerminalChange(nextGroup.activeTerminalId);
-          }}
-          onCloseGroup={onCloseTerminalGroup}
-        />
-      ) : null}
-
-      <div className="min-h-0 w-full flex-1">
-        <div
-          className={cn(
-            "flex h-full min-h-0",
-            hasTerminalSidebar && !isWorkspaceMode ? "gap-1.5" : "",
-          )}
-        >
-          <div className="min-w-0 flex-1 h-full">
-            <TerminalViewportPane
-              groupId={resolvedActiveGroupId}
-              layout={activeGroupLayout}
-              resolvedActiveTerminalId={resolvedActiveTerminalId}
-              terminalVisualIdentityById={terminalVisualIdentityById}
-              terminalActions={{
-                onActiveTerminalChange,
-                onResizeSplit: onResizeTerminalSplit,
-                onSplitTerminalRight: hasReachedSplitLimit
-                  ? undefined
-                  : (terminalId) => {
-                      onActiveTerminalChange(terminalId);
-                      onSplitTerminal();
-                    },
-                onSplitTerminalDown: hasReachedSplitLimit
-                  ? undefined
-                  : (terminalId) => {
-                      onActiveTerminalChange(terminalId);
-                      onSplitTerminalDown();
-                    },
-                onNewTerminalTab: hasReachedSplitLimit ? undefined : onNewTerminalTab,
-                onMoveTerminalToGroup: isWorkspaceMode ? onMoveTerminalToGroup : undefined,
-                onCloseTerminal,
-              }}
-              panelActions={{
-                presentationMode,
-                onTogglePresentationMode,
-                onTogglePanel,
-                isPanelOpen,
-              }}
-              renderViewport={(terminalId, options) => (
-                <TerminalViewport
-                  key={terminalId}
-                  threadId={threadId}
-                  terminalId={terminalId}
-                  terminalLabel={terminalVisualIdentityById.get(terminalId)?.title ?? "Terminal"}
-                  terminalCliKind={terminalVisualIdentityById.get(terminalId)?.cliKind ?? null}
-                  cwd={cwd}
-                  {...(runtimeEnv ? { runtimeEnv } : {})}
-                  onSessionExited={() => onTerminalSessionExited(terminalId)}
-                  onTerminalMetadataChange={onTerminalMetadataChange}
-                  onTerminalActivityChange={onTerminalActivityChange}
-                  onAddTerminalContext={onAddTerminalContext}
-                  focusRequestId={focusRequestId}
-                  autoFocus={options.autoFocus}
-                  isVisible={isVisible && options.isVisible}
-                />
-              )}
-            />
-          </div>
-
-          {hasTerminalSidebar && !isWorkspaceMode ? (
-            <TerminalSidebar
-              terminalIds={normalizedTerminalIds}
-              terminalGroups={resolvedTerminalGroups}
-              activeTerminalId={resolvedActiveTerminalId}
-              activeGroupId={resolvedActiveGroupId}
-              showGroupHeaders={showGroupHeaders}
-              closeShortcutLabel={resolvedCloseShortcutLabel}
-              terminalVisualIdentityById={terminalVisualIdentityById}
-              actions={terminalChromeActions}
-              onActiveTerminalChange={onActiveTerminalChange}
-              onCloseTerminal={onCloseTerminal}
-            />
-          ) : null}
-        </div>
+      <div className="relative min-h-0 flex-1">
+        {props.terminalIds.map((terminalId) => {
+          const active = terminalId === props.activeTerminalId;
+          const identity = terminalVisualIdentityById.get(terminalId);
+          return (
+            <div
+              key={terminalId}
+              className={cn("absolute inset-0", !active && "invisible pointer-events-none")}
+              inert={!active}
+              aria-hidden={!active}
+            >
+              <TerminalViewport
+                threadId={props.threadId}
+                terminalId={terminalId}
+                terminalLabel={identity?.title ?? "Terminal"}
+                terminalCliKind={identity?.cliKind ?? null}
+                cwd={props.cwd}
+                {...(props.runtimeEnv ? { runtimeEnv: props.runtimeEnv } : {})}
+                onSessionExited={() => props.onTerminalSessionExited(terminalId)}
+                onTerminalMetadataChange={props.onTerminalMetadataChange}
+                onTerminalActivityChange={props.onTerminalActivityChange}
+                onAddTerminalContext={props.onAddTerminalContext}
+                focusRequestId={props.focusRequestId}
+                autoFocus={active}
+                isVisible={(props.isVisible ?? true) && active}
+              />
+            </div>
+          );
+        })}
       </div>
     </aside>
   );

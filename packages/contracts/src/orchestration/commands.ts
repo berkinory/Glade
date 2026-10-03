@@ -21,7 +21,6 @@ import {
   SpaceIconName,
   SPACES_MAX_COUNT,
   SPACE_PROJECTS_ASSIGN_MAX_COUNT,
-  ProjectScript,
   ThreadEnvironmentMode,
   OrchestrationThreadPullRequest,
   ChatAttachment,
@@ -125,7 +124,6 @@ const ProjectMetaUpdateCommand = Schema.Struct({
     Schema.withDecodingDefault(() => false),
   ),
   defaultModelSelection: Schema.optional(Schema.NullOr(ModelSelection)),
-  scripts: Schema.optional(Schema.Array(ProjectScript)),
   isPinned: Schema.optional(Schema.Boolean),
   spaceId: Schema.optional(Schema.NullOr(SpaceId)),
 });

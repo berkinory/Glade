@@ -3,22 +3,11 @@ import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   DEFAULT_THREAD_TERMINAL_HEIGHT,
   DEFAULT_THREAD_TERMINAL_ID,
-  MAX_TERMINALS_PER_GROUP,
   type ThreadPrimarySurface,
-  type ThreadTerminalGroup,
-  type ThreadTerminalSplitPosition,
   type ThreadTerminalPresentationMode,
   type ThreadTerminalWorkspaceLayout,
   type ThreadTerminalWorkspaceTab,
 } from "./types";
-import {
-  collectTerminalIdsFromLayout,
-  createTerminalGroup,
-  normalizeTerminalPaneGroup,
-  removeTerminalFromGroupLayout,
-  setActiveTerminalInGroupLayout,
-  splitTerminalGroupLayout,
-} from "./terminalPaneLayout";
 export interface ThreadTerminalState {
   entryPoint: ThreadPrimarySurface;
   terminalOpen: boolean;
@@ -33,8 +22,6 @@ export interface ThreadTerminalState {
   terminalAttentionStatesById: Record<string, "attention" | "review">;
   runningTerminalIds: string[];
   activeTerminalId: string;
-  terminalGroups: ThreadTerminalGroup[];
-  activeTerminalGroupId: string;
 }
 
 function normalizeTerminalIds(terminalIds: string[]): string[] {
@@ -194,108 +181,10 @@ function ensureTerminalLabels(options: {
   return nextLabelsById;
 }
 
-export function fallbackGroupId(terminalId: string): string {
-  return `group-${terminalId}`;
-}
-
-function assignUniqueGroupId(baseId: string, usedGroupIds: Set<string>): string {
-  let candidate = baseId;
-  let index = 2;
-  while (usedGroupIds.has(candidate)) {
-    candidate = `${baseId}-${index}`;
-    index += 1;
-  }
-  usedGroupIds.add(candidate);
-  return candidate;
-}
-
-export function findGroupIndexByTerminalId(
-  terminalGroups: ThreadTerminalGroup[],
-  terminalId: string,
-): number {
-  return terminalGroups.findIndex((group) =>
-    collectTerminalIdsFromLayout(group.layout).includes(terminalId),
-  );
-}
-
-function normalizeTerminalGroups(
-  terminalGroups: ThreadTerminalGroup[],
-  terminalIds: string[],
-): ThreadTerminalGroup[] {
-  const nextGroups: ThreadTerminalGroup[] = [];
-  const assignedTerminalIds = new Set<string>();
-  const usedGroupIds = new Set<string>();
-
-  for (const group of terminalGroups) {
-    const normalizedGroup = normalizeTerminalPaneGroup(group, terminalIds);
-    if (!normalizedGroup) continue;
-    const unassignedTerminalIds = collectTerminalIdsFromLayout(normalizedGroup.layout).filter(
-      (terminalId) => {
-        if (assignedTerminalIds.has(terminalId)) return false;
-        return true;
-      },
-    );
-    if (unassignedTerminalIds.length === 0) continue;
-    const normalizedUnassignedGroup = normalizeTerminalPaneGroup(
-      {
-        ...normalizedGroup,
-        layout: normalizedGroup.layout,
-      },
-      unassignedTerminalIds,
-    );
-    if (!normalizedUnassignedGroup) continue;
-    collectTerminalIdsFromLayout(normalizedUnassignedGroup.layout).forEach((terminalId) => {
-      assignedTerminalIds.add(terminalId);
-    });
-    nextGroups.push({
-      ...normalizedUnassignedGroup,
-      id: assignUniqueGroupId(
-        normalizedUnassignedGroup.id.trim() ||
-          fallbackGroupId(unassignedTerminalIds[0] ?? DEFAULT_THREAD_TERMINAL_ID),
-        usedGroupIds,
-      ),
-    });
-  }
-
-  for (const terminalId of terminalIds) {
-    if (assignedTerminalIds.has(terminalId)) continue;
-    nextGroups.push(
-      createTerminalGroup(
-        assignUniqueGroupId(fallbackGroupId(terminalId), usedGroupIds),
-        terminalId,
-      ),
-    );
-  }
-
-  if (nextGroups.length === 0) {
-    return [
-      createTerminalGroup(fallbackGroupId(DEFAULT_THREAD_TERMINAL_ID), DEFAULT_THREAD_TERMINAL_ID),
-    ];
-  }
-
-  return nextGroups;
-}
-
 function arraysEqual(a: string[], b: string[]): boolean {
   if (a.length !== b.length) return false;
   for (let index = 0; index < a.length; index += 1) {
     if (a[index] !== b[index]) return false;
-  }
-  return true;
-}
-
-export function terminalGroupsEqual(
-  left: ThreadTerminalGroup[],
-  right: ThreadTerminalGroup[],
-): boolean {
-  if (left.length !== right.length) return false;
-  for (let index = 0; index < left.length; index += 1) {
-    const leftGroup = left[index];
-    const rightGroup = right[index];
-    if (!leftGroup || !rightGroup) return false;
-    if (leftGroup.id !== rightGroup.id) return false;
-    if (leftGroup.activeTerminalId !== rightGroup.activeTerminalId) return false;
-    if (JSON.stringify(leftGroup.layout) !== JSON.stringify(rightGroup.layout)) return false;
   }
   return true;
 }
@@ -309,7 +198,6 @@ function threadTerminalStateEqual(left: ThreadTerminalState, right: ThreadTermin
     left.workspaceActiveTab === right.workspaceActiveTab &&
     left.terminalHeight === right.terminalHeight &&
     left.activeTerminalId === right.activeTerminalId &&
-    left.activeTerminalGroupId === right.activeTerminalGroupId &&
     arraysEqual(left.terminalIds, right.terminalIds) &&
     JSON.stringify(left.terminalLabelsById) === JSON.stringify(right.terminalLabelsById) &&
     JSON.stringify(left.terminalTitleOverridesById) ===
@@ -317,8 +205,7 @@ function threadTerminalStateEqual(left: ThreadTerminalState, right: ThreadTermin
     JSON.stringify(left.terminalCliKindsById) === JSON.stringify(right.terminalCliKindsById) &&
     JSON.stringify(left.terminalAttentionStatesById) ===
       JSON.stringify(right.terminalAttentionStatesById) &&
-    arraysEqual(left.runningTerminalIds, right.runningTerminalIds) &&
-    terminalGroupsEqual(left.terminalGroups, right.terminalGroups)
+    arraysEqual(left.runningTerminalIds, right.runningTerminalIds)
   );
 }
 
@@ -336,10 +223,6 @@ const DEFAULT_THREAD_TERMINAL_STATE: ThreadTerminalState = Object.freeze({
   terminalAttentionStatesById: {},
   runningTerminalIds: [],
   activeTerminalId: DEFAULT_THREAD_TERMINAL_ID,
-  terminalGroups: [
-    createTerminalGroup(fallbackGroupId(DEFAULT_THREAD_TERMINAL_ID), DEFAULT_THREAD_TERMINAL_ID),
-  ],
-  activeTerminalGroupId: fallbackGroupId(DEFAULT_THREAD_TERMINAL_ID),
 });
 
 export function createDefaultThreadTerminalState(): ThreadTerminalState {
@@ -351,7 +234,6 @@ export function createDefaultThreadTerminalState(): ThreadTerminalState {
     terminalCliKindsById: { ...DEFAULT_THREAD_TERMINAL_STATE.terminalCliKindsById },
     terminalAttentionStatesById: { ...DEFAULT_THREAD_TERMINAL_STATE.terminalAttentionStatesById },
     runningTerminalIds: [...DEFAULT_THREAD_TERMINAL_STATE.runningTerminalIds],
-    terminalGroups: copyTerminalGroups(DEFAULT_THREAD_TERMINAL_STATE.terminalGroups),
   };
 }
 
@@ -388,29 +270,6 @@ export function normalizeThreadTerminalState(state: ThreadTerminalState): Thread
   const activeTerminalId = nextTerminalIds.includes(state.activeTerminalId)
     ? state.activeTerminalId
     : (nextTerminalIds[0] ?? DEFAULT_THREAD_TERMINAL_ID);
-  const terminalGroups = normalizeTerminalGroups(state.terminalGroups, nextTerminalIds);
-  const activeGroupIdFromState = terminalGroups.some(
-    (group) => group.id === state.activeTerminalGroupId,
-  )
-    ? state.activeTerminalGroupId
-    : null;
-  const activeGroupIdFromTerminal =
-    terminalGroups.find((group) =>
-      collectTerminalIdsFromLayout(group.layout).includes(activeTerminalId),
-    )?.id ?? null;
-  const resolvedActiveTerminalGroupId =
-    activeGroupIdFromState ??
-    activeGroupIdFromTerminal ??
-    terminalGroups[0]?.id ??
-    fallbackGroupId(DEFAULT_THREAD_TERMINAL_ID);
-  const syncedTerminalGroups = terminalGroups.map((group) =>
-    group.id === resolvedActiveTerminalGroupId &&
-    collectTerminalIdsFromLayout(group.layout).includes(activeTerminalId) &&
-    group.activeTerminalId !== activeTerminalId
-      ? setActiveTerminalInGroupLayout(group, activeTerminalId)
-      : group,
-  );
-
   const normalized: ThreadTerminalState = {
     entryPoint: state.entryPoint === "terminal" ? "terminal" : "chat",
     terminalOpen: state.terminalOpen,
@@ -428,10 +287,11 @@ export function normalizeThreadTerminalState(state: ThreadTerminalState): Thread
     terminalAttentionStatesById,
     runningTerminalIds,
     activeTerminalId,
-    terminalGroups: syncedTerminalGroups,
-    activeTerminalGroupId: resolvedActiveTerminalGroupId,
   };
-  return threadTerminalStateEqual(state, normalized) ? state : normalized;
+  return Object.keys(state).length === Object.keys(normalized).length &&
+    threadTerminalStateEqual(state, normalized)
+    ? state
+    : normalized;
 }
 
 export function isDefaultThreadTerminalState(state: ThreadTerminalState): boolean {
@@ -473,105 +333,4 @@ export function sanitizePersistedTerminalStateByThreadId(
 
 export function isValidTerminalId(terminalId: string): boolean {
   return terminalId.trim().length > 0;
-}
-
-export function copyTerminalGroups(groups: ThreadTerminalGroup[]): ThreadTerminalGroup[] {
-  return groups.map((group) => ({
-    ...group,
-    layout: JSON.parse(JSON.stringify(group.layout)),
-  }));
-}
-
-export function upsertTerminalIntoGroups(
-  state: ThreadTerminalState,
-  terminalId: string,
-  mode: "split" | "new",
-  position: ThreadTerminalSplitPosition = "right",
-): ThreadTerminalState {
-  const normalized = normalizeThreadTerminalState(state);
-  if (!isValidTerminalId(terminalId)) {
-    return normalized;
-  }
-
-  const isNewTerminal = !normalized.terminalIds.includes(terminalId);
-  const terminalIds = isNewTerminal
-    ? [...normalized.terminalIds, terminalId]
-    : normalized.terminalIds;
-  const terminalGroups = copyTerminalGroups(normalized.terminalGroups);
-
-  const existingGroupIndex = findGroupIndexByTerminalId(terminalGroups, terminalId);
-  if (existingGroupIndex >= 0) {
-    const existingGroup = terminalGroups[existingGroupIndex];
-    if (existingGroup) {
-      const nextExistingGroup = removeTerminalFromGroupLayout(existingGroup, terminalId);
-      if (nextExistingGroup) {
-        terminalGroups[existingGroupIndex] = nextExistingGroup;
-      } else {
-        terminalGroups.splice(existingGroupIndex, 1);
-      }
-    }
-  }
-
-  if (mode === "new") {
-    const usedGroupIds = new Set(terminalGroups.map((group) => group.id));
-    const nextGroupId = assignUniqueGroupId(fallbackGroupId(terminalId), usedGroupIds);
-    terminalGroups.push(createTerminalGroup(nextGroupId, terminalId));
-    return normalizeThreadTerminalState({
-      ...normalized,
-      terminalOpen: true,
-      terminalIds,
-      activeTerminalId: terminalId,
-      terminalGroups,
-      activeTerminalGroupId: nextGroupId,
-    });
-  }
-
-  let activeGroupIndex = terminalGroups.findIndex(
-    (group) => group.id === normalized.activeTerminalGroupId,
-  );
-  if (activeGroupIndex < 0) {
-    activeGroupIndex = findGroupIndexByTerminalId(terminalGroups, normalized.activeTerminalId);
-  }
-  if (activeGroupIndex < 0) {
-    const usedGroupIds = new Set(terminalGroups.map((group) => group.id));
-    const nextGroupId = assignUniqueGroupId(
-      fallbackGroupId(normalized.activeTerminalId),
-      usedGroupIds,
-    );
-    terminalGroups.push(createTerminalGroup(nextGroupId, normalized.activeTerminalId));
-    activeGroupIndex = terminalGroups.length - 1;
-  }
-
-  const destinationGroup = terminalGroups[activeGroupIndex];
-  if (!destinationGroup) {
-    return normalized;
-  }
-  const destinationTerminalIds = collectTerminalIdsFromLayout(destinationGroup.layout);
-
-  if (
-    isNewTerminal &&
-    !destinationTerminalIds.includes(terminalId) &&
-    destinationTerminalIds.length >= MAX_TERMINALS_PER_GROUP
-  ) {
-    return normalized;
-  }
-
-  if (!destinationTerminalIds.includes(terminalId)) {
-    terminalGroups[activeGroupIndex] = splitTerminalGroupLayout({
-      group: destinationGroup,
-      targetTerminalId: normalized.activeTerminalId,
-      newTerminalId: terminalId,
-      position,
-      splitId: `split-${terminalId}`,
-    });
-  }
-
-  return normalizeThreadTerminalState({
-    ...normalized,
-    terminalOpen: true,
-    terminalIds,
-    activeTerminalId: terminalId,
-    terminalGroups,
-    activeTerminalGroupId: terminalGroups[activeGroupIndex]?.id ?? destinationGroup.id,
-  });
 }

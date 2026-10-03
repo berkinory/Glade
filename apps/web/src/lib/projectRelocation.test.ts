@@ -11,7 +11,6 @@ const project: OrchestrationProjectShell = {
   title: "Project",
   workspaceRoot: "/missing/repo",
   defaultModelSelection: null,
-  scripts: [],
   isPinned: false,
   spaceId: null,
   createdAt: now,

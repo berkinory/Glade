@@ -1,4 +1,4 @@
-import { ProjectId, type ThreadId as ThreadIdType } from "@glade/contracts/core/baseSchemas";
+import { type ThreadId as ThreadIdType } from "@glade/contracts/core/baseSchemas";
 import type {
   ModelSelection,
   ProviderApprovalDecision,
@@ -10,13 +10,9 @@ import type { ChatMessage, Thread, ThreadPrimarySurface } from "../types";
 import { Schema } from "effect";
 import { deriveDisplayedUserMessageState } from "../lib/terminalContext";
 
-export const LAST_INVOKED_SCRIPT_BY_PROJECT_KEY = "glade:last-invoked-script-by-project";
-
 export const DISMISSED_PROVIDER_HEALTH_BANNERS_KEY = "glade:dismissed-provider-health-banners";
 
 const PROMPT_HISTORY_MAX_ENTRIES = 100;
-
-export const LastInvokedScriptByProjectSchema = Schema.Record(ProjectId, Schema.String);
 
 export const DismissedProviderHealthBannersSchema = Schema.Array(Schema.String);
 

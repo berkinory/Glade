@@ -6,7 +6,6 @@ import type { Dispatch, RefObject, SetStateAction } from "react";
 import { useEffect } from "react";
 import { readStarredModelSlugs } from "~/lib/starredModels";
 import { isMacNavigatorPlatform } from "~/lib/utils";
-import { projectScriptIdFromCommand } from "~/projectScripts";
 import { isElectron } from "../../env";
 import { resolveShortcutCommand } from "../../keybindings";
 import { isEditableEventTarget } from "../../lib/editableEventTarget";
@@ -16,7 +15,6 @@ import { type Thread } from "../../types";
 import { resolveCycledModelSlug } from "../ChatView.logic.worktree";
 import { collectForegroundRunningSubagentStripItems } from "./ComposerSubagentStrip.logic";
 import { eventTargetsInAppBrowser, shouldCaptureChatFindShortcut } from "./threadFind.logic";
-import { useChatProjectScripts } from "./useChatProjectScripts";
 import { useChatProviderModels } from "./useChatProviderModels";
 import type { ThreadTerminalState } from "~/terminalStateNormalization";
 import { useChatWorkLog } from "./useChatWorkLog";
@@ -81,10 +79,6 @@ interface ChatKeyboardShortcutsInput {
   handleTraitsPickerOpenChange: (open: boolean) => void;
   toggleTerminalVisibility: () => void;
   setTerminalOpen: (open: boolean) => void;
-  splitTerminalRight: () => void;
-  splitTerminalLeft: () => void;
-  splitTerminalDown: () => void;
-  splitTerminalUp: () => void;
   closeTerminal: (terminalId: string) => Promise<void>;
   createTerminalFromShortcut: () => void;
   openNewFullWidthTerminal: () => void;
@@ -97,7 +91,6 @@ interface ChatKeyboardShortcutsInput {
   onToggleBrowser: () => void;
   copyThreadIdToClipboard: (threadId: string) => void;
   activeProject: Project | undefined;
-  runProjectScript: ReturnType<typeof useChatProjectScripts>["runProjectScript"];
   activeThread: Thread | undefined;
 }
 
@@ -113,10 +106,6 @@ type ChatKeyboardShortcutsControllerInput = {
     | "terminalWorkspaceChatTabActive"
     | "toggleTerminalVisibility"
     | "setTerminalOpen"
-    | "splitTerminalRight"
-    | "splitTerminalLeft"
-    | "splitTerminalDown"
-    | "splitTerminalUp"
     | "closeTerminal"
     | "createTerminalFromShortcut"
     | "openNewFullWidthTerminal"
@@ -170,7 +159,6 @@ type ChatKeyboardShortcutsControllerInput = {
     | "isGitRepo"
     | "onToggleBrowser"
   >;
-  environment: Pick<ChatKeyboardShortcutsInput, "runProjectScript">;
 };
 export function useChatKeyboardShortcuts({
   props,
@@ -181,7 +169,6 @@ export function useChatKeyboardShortcuts({
   composer,
   transcript,
   discovery,
-  environment,
 }: ChatKeyboardShortcutsControllerInput) {
   const { onToggleTerminal, onOpenTerminal, onSplitSurface } = props;
   const {
@@ -193,10 +180,6 @@ export function useChatKeyboardShortcuts({
     terminalWorkspaceChatTabActive,
     toggleTerminalVisibility,
     setTerminalOpen,
-    splitTerminalRight,
-    splitTerminalLeft,
-    splitTerminalDown,
-    splitTerminalUp,
     closeTerminal,
     createTerminalFromShortcut,
     openNewFullWidthTerminal,
@@ -245,7 +228,6 @@ export function useChatKeyboardShortcuts({
     isGitRepo,
     onToggleBrowser,
   } = discovery;
-  const { runProjectScript } = environment;
   useEffect(() => {
     const revealTerminal = () => {
       if (onOpenTerminal) {
@@ -257,14 +239,6 @@ export function useChatKeyboardShortcuts({
     if (surfaceMode === "split" && !isFocusedPane) {
       return;
     }
-
-    const terminalSplitActions = new Map([
-      ["terminal.split", splitTerminalRight],
-      ["terminal.splitRight", splitTerminalRight],
-      ["terminal.splitLeft", splitTerminalLeft],
-      ["terminal.splitDown", splitTerminalDown],
-      ["terminal.splitUp", splitTerminalUp],
-    ]);
     const handler = (event: globalThis.KeyboardEvent) => {
       if (!activeThreadId || event.defaultPrevented || event.isComposing) return;
       const picker = document.querySelector<HTMLElement>("[data-model-picker-popup]");
@@ -434,18 +408,6 @@ export function useChatKeyboardShortcuts({
         return;
       }
 
-      const splitTerminal = terminalSplitActions.get(command);
-      if (splitTerminal) {
-        event.preventDefault();
-        event.stopPropagation();
-        if (!terminalState.terminalOpen) {
-          setTerminalOpen(true);
-        }
-        splitTerminal();
-        revealTerminal();
-        return;
-      }
-
       if (command === "terminal.close") {
         event.preventDefault();
         event.stopPropagation();
@@ -546,14 +508,6 @@ export function useChatKeyboardShortcuts({
         copyThreadIdToClipboard(activeThreadId);
         return;
       }
-
-      const scriptId = projectScriptIdFromCommand(command);
-      if (!scriptId || !activeProject) return;
-      const script = activeProject.scripts.find((entry) => entry.id === scriptId);
-      if (!script) return;
-      event.preventDefault();
-      event.stopPropagation();
-      void runProjectScript(script);
     };
     window.addEventListener("keydown", handler, { capture: true });
     return () => window.removeEventListener("keydown", handler, { capture: true });
@@ -572,12 +526,7 @@ export function useChatKeyboardShortcuts({
     createTerminalFromShortcut,
     setTerminalOpen,
     openNewFullWidthTerminal,
-    runProjectScript,
     keybindings,
-    splitTerminalDown,
-    splitTerminalLeft,
-    splitTerminalRight,
-    splitTerminalUp,
     terminalWorkspaceChatTabActive,
     terminalWorkspaceOpen,
     terminalWorkspaceTerminalTabActive,

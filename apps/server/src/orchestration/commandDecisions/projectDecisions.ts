@@ -191,7 +191,6 @@ export function decideProjectCommand({
             title: command.title,
             workspaceRoot: command.workspaceRoot,
             defaultModelSelection: command.defaultModelSelection ?? null,
-            scripts: [],
             isPinned: command.isPinned,
             spaceId: creationSpaceId,
             createdAt: command.createdAt,
@@ -224,7 +223,6 @@ export function decideProjectCommand({
           command.title !== undefined ||
           command.workspaceRoot !== undefined ||
           command.defaultModelSelection !== undefined ||
-          command.scripts !== undefined ||
           command.isPinned !== undefined;
         const isLegacyHomeChatContainer = isLegacyHomeChatContainerRow({
           projectTitle: existingProject.title,
@@ -329,7 +327,6 @@ export function decideProjectCommand({
             ...(command.defaultModelSelection !== undefined
               ? { defaultModelSelection: command.defaultModelSelection }
               : {}),
-            ...(command.scripts !== undefined ? { scripts: command.scripts } : {}),
             ...(command.isPinned !== undefined ? { isPinned: command.isPinned } : {}),
             ...(changedSpaceId !== undefined ? { spaceId: changedSpaceId } : {}),
             updatedAt: occurredAt,

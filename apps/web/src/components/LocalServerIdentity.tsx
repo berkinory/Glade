@@ -3,7 +3,7 @@ import {
   localServerAddressLabel,
   localServerFolderLabel,
   localServerPrimaryLabel,
-} from "@glade/shared/browser/localServers";
+} from "~/lib/localServers";
 
 import { cn } from "~/lib/utils";
 

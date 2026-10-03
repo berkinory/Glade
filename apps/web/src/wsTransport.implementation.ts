@@ -26,10 +26,7 @@ import type {
   GitHubProjectProvisionProgressEvent,
   GitHubProjectProvisionResult,
 } from "@glade/contracts/git/githubProjectProvisioning";
-import type {
-  ProjectDevServerEvent,
-  ProjectFileChangeEvent,
-} from "@glade/contracts/workspace/project";
+import type { ProjectFileChangeEvent } from "@glade/contracts/workspace/project";
 import type {
   ServerConfigStreamEvent,
   ServerLifecycleStreamEvent,
@@ -136,14 +133,6 @@ export class WsTransport extends WsTransportBase {
             },
             restartChannel,
           );
-        } else if (channel === WS_CHANNELS.projectDevServerEvent) {
-          this.startStream(
-            client,
-            "project.devServers",
-            client[WS_METHODS.subscribeProjectDevServerEvents]({}),
-            (event: ProjectDevServerEvent) => this.emit(WS_CHANNELS.projectDevServerEvent, event),
-            restartChannel,
-          );
         } else if (channel === COMPUTER_WS_CHANNELS.event) {
           this.startStream(
             client,
@@ -182,8 +171,6 @@ export class WsTransport extends WsTransportBase {
       void this.stopStream("server.providers");
     else if (channel === WS_CHANNELS.serverSettingsUpdated) void this.stopStream("server.settings");
     else if (channel === WS_CHANNELS.terminalEvent) void this.stopStream("terminal.events");
-    else if (channel === WS_CHANNELS.projectDevServerEvent)
-      void this.stopStream("project.devServers");
     else if (channel === COMPUTER_WS_CHANNELS.event) void this.stopStream("computer.events");
     else if (channel === ORCHESTRATION_WS_CHANNELS.domainEvent)
       void this.stopStream("orchestration.domain");

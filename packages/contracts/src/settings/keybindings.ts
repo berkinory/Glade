@@ -4,7 +4,6 @@ import { TrimmedString } from "../core/baseSchemas";
 export const MAX_KEYBINDING_VALUE_LENGTH = 64;
 const MAX_KEYBINDING_WHEN_LENGTH = 256;
 export const MAX_WHEN_EXPRESSION_DEPTH = 64;
-export const MAX_SCRIPT_ID_LENGTH = 24;
 export const MAX_KEYBINDINGS_COUNT = 256;
 
 export const STATIC_KEYBINDING_COMMANDS = [
@@ -25,11 +24,6 @@ export const STATIC_KEYBINDING_COMMANDS = [
   "space.jump.8",
   "space.jump.9",
   "terminal.toggle",
-  "terminal.split",
-  "terminal.splitRight",
-  "terminal.splitLeft",
-  "terminal.splitDown",
-  "terminal.splitUp",
   "terminal.new",
   "terminal.close",
   "terminal.workspace.newFullWidth",
@@ -98,19 +92,7 @@ export const SPACE_JUMP_KEYBINDING_COMMANDS = [
 ] as const;
 export type SpaceJumpKeybindingCommand = (typeof SPACE_JUMP_KEYBINDING_COMMANDS)[number];
 
-export const SCRIPT_RUN_COMMAND_PATTERN = Schema.TemplateLiteral([
-  Schema.Literal("script."),
-  Schema.NonEmptyString.check(
-    Schema.isMaxLength(MAX_SCRIPT_ID_LENGTH),
-    Schema.isPattern(/^[a-z0-9][a-z0-9-]*$/),
-  ),
-  Schema.Literal(".run"),
-]);
-
-export const KeybindingCommand = Schema.Union([
-  Schema.Literals(STATIC_KEYBINDING_COMMANDS),
-  SCRIPT_RUN_COMMAND_PATTERN,
-]);
+export const KeybindingCommand = Schema.Literals(STATIC_KEYBINDING_COMMANDS);
 export type KeybindingCommand = typeof KeybindingCommand.Type;
 
 const KeybindingValue = TrimmedString.check(

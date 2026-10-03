@@ -151,27 +151,6 @@ export const TurnMessageContentCheck = Schema.makeFilter(
   { identifier: "TurnMessageContent" },
 );
 
-export const ProjectScriptIcon = Schema.Literals([
-  "play",
-  "test",
-  "lint",
-  "configure",
-  "build",
-  "debug",
-]);
-
-export type ProjectScriptIcon = typeof ProjectScriptIcon.Type;
-
-export const ProjectScript = Schema.Struct({
-  id: TrimmedNonEmptyString,
-  name: TrimmedNonEmptyString,
-  command: TrimmedNonEmptyString,
-  icon: ProjectScriptIcon,
-  runOnWorktreeCreate: Schema.Boolean,
-});
-
-export type ProjectScript = typeof ProjectScript.Type;
-
 export const SPACE_NAME_MAX_LENGTH = 32;
 
 export const SPACES_MAX_COUNT = 50;
@@ -240,7 +219,6 @@ export const OrchestrationProject = Schema.Struct({
   title: TrimmedNonEmptyString,
   workspaceRoot: TrimmedNonEmptyString,
   defaultModelSelection: Schema.NullOr(ModelSelection),
-  scripts: Schema.Array(ProjectScript),
   isPinned: Schema.optional(Schema.Boolean).pipe(Schema.withDecodingDefault(() => false)),
   spaceId: Schema.optional(Schema.NullOr(SpaceId)).pipe(Schema.withDecodingDefault(() => null)),
   createdAt: IsoDateTime,
@@ -256,7 +234,6 @@ export const OrchestrationProjectShell = Schema.Struct({
   title: TrimmedNonEmptyString,
   workspaceRoot: TrimmedNonEmptyString,
   defaultModelSelection: Schema.NullOr(ModelSelection),
-  scripts: Schema.Array(ProjectScript),
   isPinned: Schema.optional(Schema.Boolean).pipe(Schema.withDecodingDefault(() => false)),
   spaceId: Schema.optional(Schema.NullOr(SpaceId)).pipe(Schema.withDecodingDefault(() => null)),
   createdAt: IsoDateTime,

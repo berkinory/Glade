@@ -111,10 +111,6 @@ import type {
 import type {
   ProjectCreateLocalFilePreviewGrantInput,
   ProjectCreateLocalFilePreviewGrantResult,
-  ProjectDevServerEvent,
-  ProjectDiscoverScriptsInput,
-  ProjectDiscoverScriptsResult,
-  ProjectListDevServersResult,
   ProjectListDirectoriesInput,
   ProjectListDirectoriesResult,
   ProjectReadFileInput,
@@ -127,16 +123,12 @@ import type {
   ProjectResolveWorkspaceFileReferencesResult,
   ProjectResolveOutOfRootFileReferenceInput,
   ProjectResolveOutOfRootFileReferenceResult,
-  ProjectRunDevServerInput,
-  ProjectRunDevServerResult,
   ProjectSearchEntriesInput,
   ProjectSearchEntriesResult,
   ProjectSearchContentInput,
   ProjectSearchContentResult,
   ProjectSearchLocalEntriesInput,
   ProjectSearchLocalEntriesResult,
-  ProjectStopDevServerInput,
-  ProjectStopDevServerResult,
   ProjectWriteFileInput,
   ProjectWriteFileResult,
   ProjectManageEntryInput,
@@ -681,7 +673,6 @@ export interface NativeApi {
     onEvent: (callback: (event: TerminalEvent) => void) => () => void;
   };
   projects: {
-    discoverScripts: (input: ProjectDiscoverScriptsInput) => Promise<ProjectDiscoverScriptsResult>;
     listDirectories: (input: ProjectListDirectoriesInput) => Promise<ProjectListDirectoriesResult>;
     searchEntries: (input: ProjectSearchEntriesInput) => Promise<ProjectSearchEntriesResult>;
     searchLocalEntries: (
@@ -710,10 +701,6 @@ export interface NativeApi {
     ) => Promise<ProjectCreateLocalFilePreviewGrantResult>;
     writeFile: (input: ProjectWriteFileInput) => Promise<ProjectWriteFileResult>;
     manageEntry: (input: ProjectManageEntryInput) => Promise<ProjectManageEntryResult>;
-    runDevServer: (input: ProjectRunDevServerInput) => Promise<ProjectRunDevServerResult>;
-    stopDevServer: (input: ProjectStopDevServerInput) => Promise<ProjectStopDevServerResult>;
-    listDevServers: () => Promise<ProjectListDevServersResult>;
-    onDevServerEvent: (callback: (event: ProjectDevServerEvent) => void) => () => void;
     provisionFromGitHub: (
       input: GitHubProjectProvisionInput,
       options?: { readonly signal?: AbortSignal },

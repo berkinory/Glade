@@ -42,7 +42,7 @@ export function makeSnapshotBaseQueries(input: { readonly sql: SqlClient.SqlClie
           title,
           workspace_root AS "workspaceRoot",
           default_model_selection_json AS "defaultModelSelection",
-          scripts_json AS "scripts",
+
           is_pinned AS "isPinned",
           space_id AS "spaceId",
           created_at AS "createdAt",

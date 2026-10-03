@@ -21,11 +21,6 @@ import {
   serverSettingsQueryOptions,
 } from "../lib/serverReactQuery";
 import { hasPendingTurnDispatch } from "../pendingTurnDispatch";
-import {
-  projectQueryKeys,
-  upsertProjectDevServer,
-  removeProjectDevServer,
-} from "../lib/projectReactQuery";
 import { useStore } from "../store";
 import { terminalActivityFromEvent } from "../terminalActivity";
 import { selectThreadTerminalState, useTerminalStateStore } from "../terminalStateStore";
@@ -289,33 +284,6 @@ export function subscribeStreamEvents(
     });
   });
 
-  const invalidateLocalServers = () => {
-    void context.queryClient.invalidateQueries({ queryKey: serverQueryKeys.localServers() });
-  };
-
-  context.queryClient.setQueryDefaults(projectQueryKeys.devServers(), { gcTime: Infinity });
-  const unsubDevServerEvent = context.api.projects.onDevServerEvent((event) => {
-    if (event.type === "snapshot") {
-      context.queryClient.setQueryData(projectQueryKeys.devServers(), { servers: event.servers });
-    } else if (event.type === "upserted") {
-      upsertProjectDevServer(context.queryClient, event.server);
-    } else {
-      removeProjectDevServer(context.queryClient, event.projectId);
-    }
-    invalidateLocalServers();
-  });
-
-  void context.api.projects
-    .listDevServers()
-    .then(({ servers }) => {
-      if (state.disposed) {
-        return;
-      }
-      context.queryClient.setQueryData(projectQueryKeys.devServers(), { servers });
-      invalidateLocalServers();
-    })
-    .catch(() => undefined);
-
   const unsubWelcome = onServerWelcome((payload) => {
     void (async () => {
       context.setServerWorkspacePaths({
@@ -560,7 +528,6 @@ export function subscribeStreamEvents(
     unsubThreadDetailEviction();
     unsubAppPresentation();
     unsubTerminalEvent();
-    unsubDevServerEvent();
     unsubWelcome();
     unsubServerConfigUpdated();
     unsubProviderStatusesUpdated();

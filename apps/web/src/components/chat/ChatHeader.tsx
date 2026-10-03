@@ -1,10 +1,10 @@
 import { type EditorId } from "@glade/contracts/settings/editor";
-import { type ProjectScript } from "@glade/contracts/orchestration/threadEntities";
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import { isGenericChatThreadTitle } from "@glade/shared/threads/chatThreads";
-import React from "react";
+import React, { useContext } from "react";
+import { WorkspaceHeaderContext } from "./WorkspaceHeaderContext";
 import { FiGitBranch } from "react-icons/fi";
 import { HiMiniArrowsPointingOut } from "react-icons/hi2";
 import { TbExchange } from "react-icons/tb";
@@ -16,17 +16,14 @@ import {
   SurfaceChipIcon,
 } from "./chatHeaderControls";
 import { DiffStat } from "../ui/diff-stat";
-import { OpenInPicker } from "./OpenInPicker";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { SidebarHeaderNavigationControls } from "../SidebarHeaderNavigationControls";
-import ProjectScriptsControl, { type NewProjectScriptInput } from "../ProjectScriptsControl";
 import { Toggle } from "../ui/toggle";
 import { useSidebar } from "../ui/sidebar";
 import { cn } from "~/lib/utils";
 import { useOpenFavoriteEditorShortcut } from "~/hooks/useOpenFavoriteEditorShortcut";
 import type { RepoDiffTotals } from "~/hooks/useRepoDiffTotals";
 import { ProviderIcon } from "../ProviderIcon";
-import { ProviderUsageMenuControl } from "../ProviderUsageMenuControl";
 import { EnvironmentToggle, type EnvironmentToggleState } from "./environment/EnvironmentToggle";
 
 interface ChatHeaderProps {
@@ -40,13 +37,10 @@ interface ChatHeaderProps {
   }>;
   className?: string;
   hideSidebarControls?: boolean;
-  hideHandoffControls?: boolean;
 
   minimalChrome?: boolean;
   isGitRepo: boolean;
   openInTarget: string | null;
-  activeProjectScripts: ProjectScript[] | undefined;
-  preferredScriptId: string | null;
   keybindings: ResolvedKeybindingsConfig;
   availableEditors: ReadonlyArray<EditorId>;
   diffToggleShortcutLabel: string | null;
@@ -73,12 +67,7 @@ interface ChatHeaderProps {
     label: string;
     onClick: () => void;
   } | null;
-  onRunProjectScript: (script: ProjectScript) => void;
-  onAddProjectScript: (input: NewProjectScriptInput) => Promise<void>;
-  onUpdateProjectScript: (scriptId: string, input: NewProjectScriptInput) => Promise<void>;
-  onDeleteProjectScript: (scriptId: string) => Promise<void>;
   onToggleDiff: () => void;
-  onRegisterCommitAndPushTrigger?: (trigger: (() => void) | null) => void;
   onNavigateToThread: (threadId: ThreadId) => void;
   onRenameThread: () => void;
 }
@@ -91,12 +80,9 @@ export function ChatHeader({
   threadBreadcrumbs,
   className,
   hideSidebarControls: hideSidebarControlsProp,
-  hideHandoffControls: hideHandoffControlsProp,
   minimalChrome: minimalChromeProp,
   isGitRepo,
   openInTarget,
-  activeProjectScripts,
-  preferredScriptId,
   keybindings,
   availableEditors,
   diffToggleShortcutLabel,
@@ -112,17 +98,12 @@ export function ChatHeader({
   environment: environmentProp,
   chatLayoutAction: chatLayoutActionProp,
   changeThreadAction: changeThreadActionProp,
-  onRunProjectScript,
-  onAddProjectScript,
-  onUpdateProjectScript,
-  onDeleteProjectScript,
   onToggleDiff,
-  onRegisterCommitAndPushTrigger,
   onNavigateToThread,
   onRenameThread,
 }: ChatHeaderProps) {
   const hideSidebarControls = hideSidebarControlsProp ?? false;
-  const hideHandoffControls = hideHandoffControlsProp ?? false;
+  const workspaceHeader = useContext(WorkspaceHeaderContext);
   const minimalChrome = minimalChromeProp ?? false;
   const showGitActions = showGitActionsProp ?? true;
   const showDiffToggle = showDiffToggleProp ?? true;
@@ -221,75 +202,63 @@ export function ChatHeader({
         )}
       >
         {hideSidebarControls ? null : <SidebarHeaderNavigationControls />}
-        <div className={cn("flex min-w-0 flex-1 items-center gap-2", minimalChrome && "hidden")}>
-          <div className="flex min-w-0 flex-1 flex-col">
-            {threadBreadcrumbs.length > 0 ? (
-              <div className="flex min-w-0 items-center gap-1 overflow-hidden text-ui-sm text-muted-foreground/55">
-                {threadBreadcrumbs.map((breadcrumb, index) => (
-                  <React.Fragment key={breadcrumb.threadId}>
-                    {index > 0 ? (
-                      <span className="shrink-0 text-muted-foreground/35">/</span>
-                    ) : null}
-                    <button
-                      type="button"
-                      className="min-w-0 truncate transition-colors hover:text-foreground/80"
-                      title={breadcrumb.title}
-                      onClick={() => onNavigateToThread(breadcrumb.threadId)}
-                    >
-                      {breadcrumb.title}
-                    </button>
-                  </React.Fragment>
-                ))}
-              </div>
-            ) : null}
-            <div className="flex min-w-0 items-center gap-2">
+        {workspaceHeader ? (
+          workspaceHeader.tabs
+        ) : (
+          <div className={cn("flex min-w-0 flex-1 items-center gap-2", minimalChrome && "hidden")}>
+            <div className="flex min-w-0 flex-1 flex-col">
+              {threadBreadcrumbs.length > 0 ? (
+                <div className="flex min-w-0 items-center gap-1 overflow-hidden text-ui-sm text-muted-foreground/55">
+                  {threadBreadcrumbs.map((breadcrumb, index) => (
+                    <React.Fragment key={breadcrumb.threadId}>
+                      {index > 0 ? (
+                        <span className="shrink-0 text-muted-foreground/35">/</span>
+                      ) : null}
+                      <button
+                        type="button"
+                        className="min-w-0 truncate transition-colors hover:text-foreground/80"
+                        title={breadcrumb.title}
+                        onClick={() => onNavigateToThread(breadcrumb.threadId)}
+                      >
+                        {breadcrumb.title}
+                      </button>
+                    </React.Fragment>
+                  ))}
+                </div>
+              ) : null}
               <div className="flex min-w-0 items-center gap-2">
-                {showThreadProviderIcon ? (
-                  <span
-                    className="inline-flex size-3.5 shrink-0 items-center justify-center"
-                    title={PROVIDER_DISPLAY_NAMES[activeProvider]}
+                <div className="flex min-w-0 items-center gap-2">
+                  {showThreadProviderIcon ? (
+                    <span
+                      className="inline-flex size-3.5 shrink-0 items-center justify-center"
+                      title={PROVIDER_DISPLAY_NAMES[activeProvider]}
+                    >
+                      {renderProviderIcon(activeProvider, "size-3.5")}
+                    </span>
+                  ) : null}
+                  <h2
+                    className="max-w-[clamp(12rem,42vw,36rem)] truncate font-system-ui text-ui font-normal text-foreground"
+                    title={activeThreadTitle}
                   >
-                    {renderProviderIcon(activeProvider, "size-3.5")}
-                  </span>
-                ) : null}
-                <h2
-                  className="max-w-[clamp(12rem,42vw,36rem)] truncate font-system-ui text-ui font-normal text-foreground"
-                  title={activeThreadTitle}
-                >
-                  {activeThreadTitle}
-                </h2>
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <ChatHeaderIconButton label="Rename chat" onClick={onRenameThread}>
-                        <PencilIcon className="size-3.5" />
-                      </ChatHeaderIconButton>
-                    }
-                  />
-                  <TooltipPopup side="bottom">Rename chat</TooltipPopup>
-                </Tooltip>
+                    {activeThreadTitle}
+                  </h2>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <ChatHeaderIconButton label="Rename chat" onClick={onRenameThread}>
+                          <PencilIcon className="size-3.5" />
+                        </ChatHeaderIconButton>
+                      }
+                    />
+                    <TooltipPopup side="bottom">Rename chat</TooltipPopup>
+                  </Tooltip>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        {!minimalChrome && !hideHandoffControls && !environment ? (
-          <ProviderUsageMenuControl provider={activeProvider} />
-        ) : null}
-        {!minimalChrome && activeProjectScripts ? (
-          <ProjectScriptsControl
-            scripts={activeProjectScripts}
-            keybindings={keybindings}
-            preferredScriptId={preferredScriptId}
-            hideInlineLabel={compact}
-            onRunScript={onRunProjectScript}
-            onAddScript={onAddProjectScript}
-            onUpdateScript={onUpdateProjectScript}
-            onDeleteScript={onDeleteProjectScript}
-          />
-        ) : null}
-
         {!minimalChrome && environment && activeProjectName && showGitActions ? (
           <GitActionsControl
             gitCwd={gitCwd}
@@ -343,23 +312,6 @@ export function ChatHeader({
         ) : (
           <>
             {}
-            {!minimalChrome && activeProjectName ? (
-              <OpenInPicker
-                keybindings={keybindings}
-                availableEditors={availableEditors}
-                openInTarget={openInTarget}
-                labelMode={isSplitPane ? "responsive" : "always"}
-              />
-            ) : null}
-
-            {!minimalChrome && activeProjectName && showGitActions ? (
-              <GitActionsControl
-                gitCwd={gitCwd}
-                activeThreadId={activeThreadId}
-                hideQuickActionLabel={compact}
-                onRegisterCommitAndPushTrigger={onRegisterCommitAndPushTrigger}
-              />
-            ) : null}
             {rightPanelToggleControl}
           </>
         )}

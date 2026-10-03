@@ -54,9 +54,6 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
     projectById,
     archiveAllThreadsInProject,
     deleteProjectThreads,
-    openProjectRunDialog,
-    handleStopProjectRun,
-    handleOpenProjectRunServer,
     activeRouteProjectId,
     toggleProjectPinned,
     openExistingProjectFromSnapshot,
@@ -230,18 +227,6 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
     }
     if (clicked === "copy-path") {
       copyPathToClipboard(project.cwd);
-      return;
-    }
-    if (clicked === "start-dev") {
-      openProjectRunDialog(projectId);
-      return;
-    }
-    if (clicked === "stop-dev") {
-      await handleStopProjectRun(projectId);
-      return;
-    }
-    if (clicked === "open-dev-server") {
-      await handleOpenProjectRunServer(projectId);
       return;
     }
     if (clicked === "relocate") {

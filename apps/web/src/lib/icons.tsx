@@ -32,7 +32,6 @@ import {
   IconEye,
   IconFile,
   IconFlag,
-  IconFlask2,
   IconFolder,
   IconFolderOpen,
   IconHistory,
@@ -156,7 +155,6 @@ export const ArchiveIcon = adaptIcon(IconArchive);
 export const BrainIcon = adaptIcon(IconBrain);
 export const FileIcon = adaptIcon(IconFile);
 export const FlagIcon = adaptIcon(IconFlag);
-export const FlaskConicalIcon = adaptIcon(IconFlask2);
 export const FolderIcon = adaptIcon(IconFolder);
 export const FolderOpenIcon = adaptIcon(IconFolderOpen);
 
@@ -210,7 +208,6 @@ export const PinFilledIcon: LucideIcon = centralIconWrapper("pin", "fill");
 export const PauseIcon: LucideIcon = centralIconWrapper("pause", "fill");
 export const PlayIcon: LucideIcon = centralIconWrapper("play", "fill");
 
-export const Plus = adaptIcon(IconPlus);
 export const PlusIcon = adaptIcon(IconPlus);
 export const RefreshCwIcon = adaptIcon(IconRefresh);
 export const RotateCcwIcon = adaptIcon(IconRotate2);
@@ -234,7 +231,6 @@ export const SquareSplitVertical: LucideIcon = (props) => (
 export const TERMINAL_ICON_NAME = "console";
 export const TerminalIcon = centralIconWrapper(TERMINAL_ICON_NAME);
 export const TerminalSquare = centralIconWrapper("console");
-export const TerminalSquareIcon = centralIconWrapper("console");
 export const TextWrapIcon = adaptIcon(IconTextWrap);
 export const Trash2 = adaptIcon(IconTrash);
 export const TriangleAlertIcon = adaptIcon(IconAlertTriangle);

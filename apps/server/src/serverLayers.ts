@@ -20,8 +20,6 @@ import { RuntimeReceiptBusLive } from "./orchestration/Layers/RuntimeReceiptBus"
 import { ThreadDeletionReactorLive } from "./orchestration/Layers/ThreadDeletionReactor";
 import { TurnCheckpointCoordinatorLive } from "./orchestration/Layers/TurnCheckpointCoordinator";
 import { OrchestrationLayerLive } from "./orchestration/runtimeLayer";
-
-import { DevServerManagerLive } from "./workspace/devServers/devServerManager";
 import { ComputerServiceLive } from "./computer/Layers/ComputerService";
 import { KeybindingsLive } from "./settings/Layers/Keybindings";
 import { GitCoreLive } from "./git/Layers/GitCore";
@@ -114,7 +112,6 @@ function makeServerRuntimeServicesLayer(
     Layer.provideMerge(GitCoreLive),
   );
 
-  const devServerManagerLayer = DevServerManagerLive.pipe(Layer.provide(TerminalLayerLive));
   const sessionCredentialLayer = SessionCredentialServiceLive.pipe(
     Layer.provide(ServerSecretStoreLive),
   );
@@ -138,7 +135,6 @@ function makeServerRuntimeServicesLayer(
   );
   const agentGatewayLayer = AgentGatewayLive.pipe(
     Layer.provideMerge(AppPresentationLive),
-    Layer.provideMerge(devServerManagerLayer),
     Layer.provideMerge(agentGatewayCredentialsLayer),
     Layer.provideMerge(runtimeServicesLayer),
     Layer.provideMerge(AgentGatewayDiscoveryLive.pipe(Layer.provide(runtimeServicesLayer))),
@@ -167,7 +163,6 @@ function makeServerRuntimeServicesLayer(
     providerCommandReactorLayer,
     threadGitMetadataReactorLayer,
     threadDeletionReactorLayer,
-    devServerManagerLayer,
     ComputerServiceLive,
     GitLayerLive,
     TextGenerationLayerLive,

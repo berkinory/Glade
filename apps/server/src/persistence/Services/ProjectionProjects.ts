@@ -1,6 +1,5 @@
 import { IsoDateTime, ProjectId, SpaceId } from "@glade/contracts/core/baseSchemas";
 import { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
-import { ProjectScript } from "@glade/contracts/orchestration/threadEntities";
 import { ProjectKind } from "@glade/contracts/workspace/project";
 import { Option, Schema, ServiceMap } from "effect";
 import type { Effect } from "effect";
@@ -13,7 +12,6 @@ export const ProjectionProject = Schema.Struct({
   title: Schema.String,
   workspaceRoot: Schema.String,
   defaultModelSelection: Schema.NullOr(ModelSelection),
-  scripts: Schema.Array(ProjectScript),
   isPinned: Schema.Boolean.pipe(Schema.withDecodingDefault(() => false)),
   spaceId: Schema.NullOr(SpaceId).pipe(Schema.withDecodingDefault(() => null)),
   createdAt: IsoDateTime,

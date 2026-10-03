@@ -4,31 +4,17 @@ import {
 } from "@glade/shared/threads/terminalThreads";
 import {
   DEFAULT_THREAD_TERMINAL_ID,
-  MAX_TERMINALS_PER_GROUP,
-  type ThreadTerminalGroup,
   type ThreadTerminalPresentationMode,
   type ThreadTerminalWorkspaceLayout,
   type ThreadTerminalWorkspaceTab,
 } from "./types";
 import {
-  addTerminalTabToGroupLayout,
-  collectTerminalIdsFromLayout,
-  removeTerminalFromGroupLayout,
-  resizeTerminalGroupLayout,
-  setActiveTerminalInGroupLayout,
-} from "./terminalPaneLayout";
-import {
   ThreadTerminalState,
   clearTerminalReviewState,
   createUniqueTerminalTitle,
-  fallbackGroupId,
-  findGroupIndexByTerminalId,
-  terminalGroupsEqual,
   createDefaultThreadTerminalState,
   normalizeThreadTerminalState,
   isValidTerminalId,
-  copyTerminalGroups,
-  upsertTerminalIntoGroups,
 } from "./terminalStateNormalization";
 export function setThreadTerminalOpen(
   state: ThreadTerminalState,
@@ -285,85 +271,19 @@ export function setThreadTerminalTitleOverride(
     terminalTitleOverridesById: nextTitleOverridesById,
   };
 }
-
-export function splitThreadTerminal(
-  state: ThreadTerminalState,
-  terminalId: string,
-): ThreadTerminalState {
-  return upsertTerminalIntoGroups(state, terminalId, "split", "right");
-}
-
-export function splitThreadTerminalLeft(
-  state: ThreadTerminalState,
-  terminalId: string,
-): ThreadTerminalState {
-  return upsertTerminalIntoGroups(state, terminalId, "split", "left");
-}
-
-export function splitThreadTerminalDown(
-  state: ThreadTerminalState,
-  terminalId: string,
-): ThreadTerminalState {
-  return upsertTerminalIntoGroups(state, terminalId, "split", "bottom");
-}
-
-export function splitThreadTerminalUp(
-  state: ThreadTerminalState,
-  terminalId: string,
-): ThreadTerminalState {
-  return upsertTerminalIntoGroups(state, terminalId, "split", "top");
-}
-
 export function newThreadTerminal(
   state: ThreadTerminalState,
   terminalId: string,
 ): ThreadTerminalState {
-  return upsertTerminalIntoGroups(state, terminalId, "new");
-}
-
-export function newThreadTerminalTab(
-  state: ThreadTerminalState,
-  targetTerminalId: string,
-  terminalId: string,
-): ThreadTerminalState {
   const normalized = normalizeThreadTerminalState(state);
-  if (!isValidTerminalId(terminalId) || normalized.terminalIds.includes(terminalId)) {
-    return normalized;
-  }
-
-  const terminalGroups = copyTerminalGroups(normalized.terminalGroups);
-  let activeGroupIndex = terminalGroups.findIndex((group) =>
-    collectTerminalIdsFromLayout(group.layout).includes(targetTerminalId),
-  );
-  if (activeGroupIndex < 0) {
-    activeGroupIndex = findGroupIndexByTerminalId(terminalGroups, normalized.activeTerminalId);
-  }
-  if (activeGroupIndex < 0) {
-    return newThreadTerminal(normalized, terminalId);
-  }
-
-  const destinationGroup = terminalGroups[activeGroupIndex];
-  if (!destinationGroup) {
-    return normalized;
-  }
-  const destinationTerminalIds = collectTerminalIdsFromLayout(destinationGroup.layout);
-  if (destinationTerminalIds.length >= MAX_TERMINALS_PER_GROUP) {
-    return normalized;
-  }
-
-  terminalGroups[activeGroupIndex] = addTerminalTabToGroupLayout(
-    destinationGroup,
-    targetTerminalId,
-    terminalId,
-  );
-
+  if (!isValidTerminalId(terminalId)) return normalized;
   return normalizeThreadTerminalState({
     ...normalized,
     terminalOpen: true,
-    terminalIds: [...normalized.terminalIds, terminalId],
+    terminalIds: normalized.terminalIds.includes(terminalId)
+      ? normalized.terminalIds
+      : [...normalized.terminalIds, terminalId],
     activeTerminalId: terminalId,
-    terminalGroups,
-    activeTerminalGroupId: terminalGroups[activeGroupIndex]?.id ?? destinationGroup.id,
   });
 }
 
@@ -372,29 +292,15 @@ export function setThreadActiveTerminal(
   terminalId: string,
 ): ThreadTerminalState {
   const normalized = normalizeThreadTerminalState(state);
-  if (!normalized.terminalIds.includes(terminalId)) {
-    return normalized;
-  }
-  const activeTerminalGroupId =
-    normalized.terminalGroups.find((group) =>
-      collectTerminalIdsFromLayout(group.layout).includes(terminalId),
-    )?.id ?? normalized.activeTerminalGroupId;
-  const terminalGroups = normalized.terminalGroups.map((group) =>
-    group.id === activeTerminalGroupId ? setActiveTerminalInGroupLayout(group, terminalId) : group,
-  );
+  if (!normalized.terminalIds.includes(terminalId)) return normalized;
   if (
     normalized.activeTerminalId === terminalId &&
-    normalized.activeTerminalGroupId === activeTerminalGroupId &&
-    terminalGroupsEqual(terminalGroups, normalized.terminalGroups) &&
     normalized.terminalAttentionStatesById[terminalId] !== "review"
-  ) {
+  )
     return normalized;
-  }
   return {
     ...normalized,
     activeTerminalId: terminalId,
-    terminalGroups,
-    activeTerminalGroupId,
     terminalAttentionStatesById: clearTerminalReviewState(
       normalized.terminalAttentionStatesById,
       terminalId,
@@ -427,31 +333,12 @@ export function closeThreadTerminal(
     return createDefaultThreadTerminalState();
   }
 
-  const sourceGroupId =
-    normalized.terminalGroups.find((group) =>
-      collectTerminalIdsFromLayout(group.layout).includes(terminalId),
-    )?.id ?? normalized.activeTerminalGroupId;
-
-  const terminalGroups = normalized.terminalGroups
-    .map((group) => removeTerminalFromGroupLayout(group, terminalId))
-    .filter((group): group is ThreadTerminalGroup => group !== null);
-
   const closedTerminalIndex = normalized.terminalIds.indexOf(terminalId);
   const nextActiveTerminalId =
     normalized.activeTerminalId === terminalId
-      ? (terminalGroups.find((group) => group.id === sourceGroupId)?.activeTerminalId ??
-        remainingTerminalIds[Math.min(closedTerminalIndex, remainingTerminalIds.length - 1)] ??
-        remainingTerminalIds[0] ??
+      ? (remainingTerminalIds[Math.min(closedTerminalIndex, remainingTerminalIds.length - 1)] ??
         DEFAULT_THREAD_TERMINAL_ID)
       : normalized.activeTerminalId;
-
-  const nextActiveTerminalGroupId =
-    terminalGroups.find((group) =>
-      collectTerminalIdsFromLayout(group.layout).includes(nextActiveTerminalId),
-    )?.id ??
-    terminalGroups[0]?.id ??
-    fallbackGroupId(nextActiveTerminalId);
-
   return normalizeThreadTerminalState({
     entryPoint: normalized.entryPoint,
     terminalOpen: normalized.terminalOpen,
@@ -474,8 +361,6 @@ export function closeThreadTerminal(
     ),
     runningTerminalIds: normalized.runningTerminalIds.filter((id) => id !== terminalId),
     activeTerminalId: nextActiveTerminalId,
-    terminalGroups,
-    activeTerminalGroupId: nextActiveTerminalGroupId,
   });
 }
 
@@ -513,49 +398,6 @@ export function closeExitedThreadTerminal(
     state: closeThreadTerminal(normalized, terminalId),
     disposition: normalized.terminalIds.length === 1 ? "final" : "remaining",
   };
-}
-
-export function closeThreadTerminalGroup(
-  state: ThreadTerminalState,
-  groupId: string,
-): ThreadTerminalState {
-  const normalized = normalizeThreadTerminalState(state);
-  const group = normalized.terminalGroups.find((entry) => entry.id === groupId);
-  if (!group) {
-    return normalized;
-  }
-  const terminalIds = collectTerminalIdsFromLayout(group.layout);
-  return terminalIds.reduce(
-    (nextState, terminalId) => closeThreadTerminal(nextState, terminalId),
-    normalized,
-  );
-}
-
-export function resizeThreadTerminalSplit(
-  state: ThreadTerminalState,
-  groupId: string,
-  splitId: string,
-  weights: number[],
-): ThreadTerminalState {
-  const normalized = normalizeThreadTerminalState(state);
-  const groupIndex = normalized.terminalGroups.findIndex((group) => group.id === groupId);
-  if (groupIndex < 0) {
-    return normalized;
-  }
-  const group = normalized.terminalGroups[groupIndex];
-  if (!group) {
-    return normalized;
-  }
-  const nextGroup = resizeTerminalGroupLayout(group, splitId, weights);
-  if (nextGroup === group) {
-    return normalized;
-  }
-  const terminalGroups = copyTerminalGroups(normalized.terminalGroups);
-  terminalGroups[groupIndex] = nextGroup;
-  return normalizeThreadTerminalState({
-    ...normalized,
-    terminalGroups,
-  });
 }
 
 export function openThreadTerminalFullWidth(

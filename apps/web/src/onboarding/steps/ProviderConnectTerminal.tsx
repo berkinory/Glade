@@ -5,7 +5,7 @@ import ThreadTerminalDrawer from "~/components/ThreadTerminalDrawer";
 import { disposeAndCloseTerminalSession } from "~/components/terminal/terminalSession";
 import { useTerminalSurfaceController } from "~/hooks/useTerminalSurfaceController";
 import { readNativeApi } from "~/nativeApi";
-import { runProjectCommandInTerminal } from "~/projectTerminalRunner";
+import { runTerminalCommand } from "~/components/terminal/runTerminalCommand";
 import { useTerminalStateStore } from "~/terminalStateStore";
 import { onboardingTerminalThreadId } from "../onboardingTerminalScope";
 
@@ -52,11 +52,10 @@ export function ProviderConnectTerminal(props: {
       return;
     }
     commandStartedRef.current = true;
-    void runProjectCommandInTerminal({
+    void runTerminalCommand({
       api,
       threadId: scopeId,
       terminalId: activeTerminalId,
-      project: { cwd: props.cwd },
       cwd: props.cwd,
       command: props.signInCommand,
     }).catch(() => {
@@ -81,24 +80,9 @@ export function ProviderConnectTerminal(props: {
         terminalAttentionStatesById={terminalState.terminalAttentionStatesById ?? {}}
         runningTerminalIds={terminalState.runningTerminalIds}
         activeTerminalId={terminalState.activeTerminalId}
-        terminalGroups={terminalState.terminalGroups}
-        activeTerminalGroupId={terminalState.activeTerminalGroupId}
         focusRequestId={terminal.focusRequestId}
-        onSplitTerminal={terminal.splitRight}
-        onSplitTerminalDown={terminal.splitDown}
-        onNewTerminal={terminal.newTerminalGroup}
-        onNewTerminalTab={terminal.createTerminalTab}
-        onMoveTerminalToGroup={terminal.moveTerminalToNewGroup}
-        onActiveTerminalChange={terminal.activateTerminal}
-        onCloseTerminal={(...args: Parameters<typeof terminal.closeTerminal>) => {
-          void terminal
-            .closeTerminal(...args)
-            .catch((error: unknown) => console.error("[terminal] Could not close terminal", error));
-        }}
         onTerminalSessionExited={terminal.handleTerminalSessionExited}
-        onCloseTerminalGroup={terminal.closeTerminalGroup}
         onHeightChange={terminal.setTerminalHeight}
-        onResizeTerminalSplit={terminal.resizeTerminalSplit}
         onTerminalMetadataChange={terminal.setTerminalMetadata}
         onTerminalActivityChange={terminal.setTerminalActivity}
       />

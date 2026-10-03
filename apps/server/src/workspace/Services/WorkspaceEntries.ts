@@ -5,8 +5,6 @@ import type {
   FilesystemBrowseResult,
 } from "@glade/contracts/workspace/filesystem";
 import type {
-  ProjectDiscoverScriptsInput,
-  ProjectDiscoverScriptsResult,
   ProjectListDirectoriesInput,
   ProjectListDirectoriesResult,
   ProjectPrewarmSearchIndexInput,
@@ -35,9 +33,6 @@ export interface WorkspaceEntriesShape {
   readonly prewarmSearchIndex: (
     input: ProjectPrewarmSearchIndexInput,
   ) => Effect.Effect<ProjectPrewarmSearchIndexResult, WorkspaceEntriesError>;
-  readonly discoverScripts: (
-    input: ProjectDiscoverScriptsInput,
-  ) => Effect.Effect<ProjectDiscoverScriptsResult, WorkspaceEntriesError>;
   readonly listDirectories: (
     input: ProjectListDirectoriesInput,
   ) => Effect.Effect<ProjectListDirectoriesResult, WorkspaceEntriesError>;

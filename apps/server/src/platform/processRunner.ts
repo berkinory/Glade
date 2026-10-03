@@ -48,18 +48,6 @@ export function execProcessFileAsync(
   });
 }
 
-export function runShellCommand(
-  command: string,
-  options: ProcessRunOptions,
-): Promise<ProcessRunResult> {
-  const shell =
-    process.platform === "win32"
-      ? (process.env.ComSpec ?? "cmd.exe")
-      : (process.env.SHELL ?? "/bin/sh");
-  const args = process.platform === "win32" ? ["/d", "/s", "/c", command] : ["-lc", command];
-  return runProcess(shell, args, options);
-}
-
 function commandLabel(command: string, args: readonly string[]): string {
   return [command, ...args].join(" ");
 }

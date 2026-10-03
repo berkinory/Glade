@@ -155,22 +155,6 @@ export function shouldRenderTerminalWorkspace(options: {
   return options.terminalOpen && options.presentationMode === "workspace";
 }
 
-export function resolveProjectScriptTerminalTarget(options: {
-  baseTerminalId: string;
-  createTerminalId: () => string;
-  hasRunningTerminal: boolean;
-  preferNewTerminal?: boolean | undefined;
-  terminalOpen: boolean;
-}): { shouldCreateNewTerminal: boolean; terminalId: string } {
-  const shouldCreateNewTerminal =
-    Boolean(options.preferNewTerminal) || options.terminalOpen || options.hasRunningTerminal;
-
-  return {
-    shouldCreateNewTerminal,
-    terminalId: shouldCreateNewTerminal ? options.createTerminalId() : options.baseTerminalId,
-  };
-}
-
 export interface ThreadBreadcrumb {
   threadId: ThreadIdType;
   title: string;

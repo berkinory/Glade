@@ -168,7 +168,6 @@ describe("projectCreateRecovery", () => {
               title: "One",
               workspaceRoot: "/Users/tester/Code/one",
               defaultModelSelection: null,
-              scripts: [],
               createdAt: "2026-04-21T00:00:00.000Z",
               updatedAt: "2026-04-21T00:00:01.000Z",
               deletedAt: null,

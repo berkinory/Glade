@@ -11,7 +11,6 @@ import {
   attachmentPreviewRoutePath,
   basenameOfPath,
   normalizeModelSelection,
-  normalizeProjectScripts,
   providerReferenceArraysEqual,
   textSegmentArraysEqual,
 } from "./storeNormalization.shared";
@@ -37,7 +36,6 @@ export function normalizeProject(
     incoming.defaultModelSelection === null
       ? null
       : normalizeModelSelection(incoming.defaultModelSelection, previous?.defaultModelSelection);
-  const scripts = normalizeProjectScripts(incoming.scripts, previous?.scripts);
   const persistedProjectOrderIndex = rememberedUiState.projectOrderIndexForCwd(workspaceRootKey);
   const hasKnownLegacyExpansion =
     rememberedUiState.projectOrderCount === 0 &&
@@ -67,8 +65,7 @@ export function normalizeProject(
     (previous.isPinned ?? false) === (incoming.isPinned ?? false) &&
     (previous.spaceId ?? null) === (incoming.spaceId ?? null) &&
     previous.createdAt === incoming.createdAt &&
-    previous.updatedAt === incoming.updatedAt &&
-    previous.scripts === scripts
+    previous.updatedAt === incoming.updatedAt
   ) {
     return previous;
   }
@@ -88,7 +85,6 @@ export function normalizeProject(
     spaceId: incoming.spaceId ?? null,
     createdAt: incoming.createdAt,
     updatedAt: incoming.updatedAt,
-    scripts,
   };
 }
 

@@ -4,7 +4,6 @@ import { WsTransportRpcError } from "../../wsTransport.support";
 import { resolveProviderModelSelection } from "~/lib/providerModelSelection";
 import { useChatThreadContext } from "./ChatThreadContext";
 import type { ProjectId } from "@glade/contracts/core/baseSchemas";
-import type { ProjectScript } from "@glade/contracts/orchestration/threadEntities";
 import type {
   ProviderMentionReference,
   ProviderSkillReference,
@@ -42,7 +41,6 @@ import {
   type TurnDispatchSettings,
 } from "../ChatView.logic.subagents";
 import type { ChatTurnSubmissionInput } from "./chatSendTypes";
-import { waitForSetupScriptTerminalActivity } from "./projectScriptRuntime";
 interface PreparedChatTurn {
   nextThreadEnvMode: DraftThreadEnvMode;
   nextThreadBranch: string | null;
@@ -56,7 +54,6 @@ interface PreparedChatTurn {
   worktreeSetupResolution: ReturnType<typeof createWorktreeSetupResolution> | null;
   baseBranchForWorktree: string | null;
   worktreeCopiesLocalChanges: boolean;
-  worktreeSetupScriptName: string | null;
   selectedModelSelectionForSend: ModelSelection;
   selectedModelForSend: string;
   targetProjectDefaultModelSelectionForSend: ModelSelection | null;
@@ -67,7 +64,6 @@ interface PreparedChatTurn {
   nextThreadWorkingDirectory: string | null;
   activeThread: Thread;
   targetProjectKindForSend: "project" | "chat";
-  setupScriptForWorktree: ProjectScript | null;
   messageCreatedAt: string;
   turnAttachmentsPromise: ReturnType<typeof stageUploadComposerAttachments>;
   messageIdForSend: MessageId;
@@ -102,7 +98,6 @@ type ChatTurnExecutionInput = Pick<
   | "createWorktreeMutation"
   | "beginLocalDispatch"
   | "isLocalDraftThread"
-  | "runProjectScript"
   | "persistThreadSettingsForNextTurn"
   | "rememberCustomBinaryPathForDispatch"
   | "setSettledThreadBranchWarningDismissedThreadId"
@@ -138,10 +133,7 @@ type ChatTurnExecutionControllerInput = {
     | "resetLocalDispatch"
   >;
   transcript: Pick<ChatTurnExecutionInput, "setOptimisticUserMessages">;
-  environment: Pick<
-    ChatTurnExecutionInput,
-    "runProjectScript" | "persistThreadSettingsForNextTurn"
-  >;
+  environment: Pick<ChatTurnExecutionInput, "persistThreadSettingsForNextTurn">;
   discovery: Pick<ChatTurnExecutionInput, "rememberCustomBinaryPathForDispatch">;
   turn: Pick<ChatTurnExecutionInput, "setQueuedSteerGate">;
   composer: Pick<ChatTurnExecutionInput, "setThreadError">;
@@ -169,7 +161,7 @@ export function useChatTurnExecution({
     resetLocalDispatch,
   } = provider;
   const { setOptimisticUserMessages } = transcript;
-  const { runProjectScript, persistThreadSettingsForNextTurn } = environment;
+  const { persistThreadSettingsForNextTurn } = environment;
   const { rememberCustomBinaryPathForDispatch } = discovery;
   const { setQueuedSteerGate } = turn;
   const { threadId } = useChatThreadContext();
@@ -189,7 +181,6 @@ export function useChatTurnExecution({
         worktreeSetupResolution,
         baseBranchForWorktree,
         worktreeCopiesLocalChanges,
-        worktreeSetupScriptName,
         selectedModelSelectionForSend,
         targetProjectIdForSend,
         title,
@@ -198,7 +189,6 @@ export function useChatTurnExecution({
         nextThreadWorkingDirectory,
         activeThread,
         targetProjectKindForSend,
-        setupScriptForWorktree,
         messageCreatedAt,
         turnAttachmentsPromise,
         messageIdForSend,
@@ -347,7 +337,6 @@ export function useChatTurnExecution({
             onCreationStep: (stepId) =>
               beginLocalDispatch({
                 worktreeSetupStepId: stepId,
-                setupScriptName: worktreeSetupScriptName,
                 copyLocalChanges: worktreeCopiesLocalChanges,
               }),
             removeWorktree: (worktreePath) =>
@@ -364,7 +353,6 @@ export function useChatTurnExecution({
             const result = creationFlow.result;
             beginLocalDispatch({
               worktreeSetupStepId: "prepare-thread",
-              setupScriptName: worktreeSetupScriptName,
               copyLocalChanges: worktreeCopiesLocalChanges,
             });
             nextThreadBranch = result.worktree.branch;
@@ -399,49 +387,7 @@ export function useChatTurnExecution({
             }
           }
         }
-
-        const setupScript = switchedToLocalCheckout ? null : setupScriptForWorktree;
-        if (setupScript) {
-          let shouldRunSetupScript = false;
-          if (isServerThread) {
-            shouldRunSetupScript = true;
-          } else {
-            if (createdServerThreadForLocalDraft) {
-              shouldRunSetupScript = true;
-            }
-          }
-          if (shouldRunSetupScript) {
-            beginLocalDispatch({
-              worktreeSetupStepId: "run-setup-action",
-              setupScriptName: setupScript.name,
-              copyLocalChanges: worktreeCopiesLocalChanges,
-            });
-            const setupScriptOptions: Parameters<typeof runProjectScript>[1] = {
-              worktreePath: nextThreadWorktreePath,
-              rememberAsLastInvoked: false,
-              throwOnError: true,
-            };
-            if (nextThreadWorktreePath) {
-              setupScriptOptions.cwd = nextThreadWorktreePath;
-            }
-            const setupTerminal = await runProjectScript(setupScript, setupScriptOptions);
-            if (setupTerminal) {
-              const setupActivityAbortController = new AbortController();
-              const setupActivityWait = waitForSetupScriptTerminalActivity({
-                threadId: threadIdForSend,
-                terminalId: setupTerminal.terminalId,
-                signal: setupActivityAbortController.signal,
-              });
-
-              await (
-                worktreeSetupResolution
-                  ? Promise.race([setupActivityWait, worktreeSetupResolution.promise])
-                  : setupActivityWait
-              ).finally(() => setupActivityAbortController.abort());
-            }
-          }
-        }
-        // Covers a resolution set while the thread was linked or the setup script ran (the creation-step
+        // Covers a resolution set while the thread was linked (the creation-step
         // race above only guards the first step).
         await consumeWorktreeSetupResolution();
 
@@ -491,7 +437,6 @@ export function useChatTurnExecution({
           ...(baseBranchForWorktree && !switchedToLocalCheckout
             ? {
                 worktreeSetupStepId: "start-session" as const,
-                setupScriptName: worktreeSetupScriptName,
                 copyLocalChanges: worktreeCopiesLocalChanges,
               }
             : {}),
@@ -704,14 +649,12 @@ export function useChatTurnExecution({
       createWorktreeMutation,
       beginLocalDispatch,
       isLocalDraftThread,
-      runProjectScript,
       persistThreadSettingsForNextTurn,
       rememberCustomBinaryPathForDispatch,
       setSettledThreadBranchWarningDismissedThreadId,
       armLocalDispatchAckFallback,
       setQueuedSteerGate,
       threadId,
-
       failLocalDispatchWorktreeSetup,
       setOptimisticUserMessages,
       setThreadError,

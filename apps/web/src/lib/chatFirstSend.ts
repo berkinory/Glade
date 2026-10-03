@@ -8,7 +8,6 @@ interface FirstSendProjectTarget {
   targetProjectId: Project["id"];
   targetProjectKind: Project["kind"];
   targetProjectCwd: string;
-  targetProjectScripts: Project["scripts"];
   targetProjectDefaultModelSelection: ModelSelection | null;
 }
 
@@ -30,7 +29,6 @@ function buildProjectTarget(project: Project): FirstSendProjectTarget {
     targetProjectId: project.id,
     targetProjectKind: project.kind,
     targetProjectCwd: project.cwd,
-    targetProjectScripts: project.kind === "project" ? project.scripts : [],
     targetProjectDefaultModelSelection: project.defaultModelSelection ?? null,
   };
 }

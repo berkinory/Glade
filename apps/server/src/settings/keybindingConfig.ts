@@ -162,6 +162,8 @@ export function readKeybindingEntryCommand(entry: unknown): string | null {
 
 export function isRetiredLegacyKeybindingCommand(command: string): boolean {
   return (
+    /^terminal\.split(?:Right|Left|Down|Up)?$/.test(command) ||
+    /^script\.[a-z0-9][a-z0-9-]*\.run$/.test(command) ||
     RETIRED_LEGACY_KEYBINDING_COMMANDS.has(command) ||
     RETIRED_LEGACY_KEYBINDING_COMMAND_PATTERN.test(command)
   );

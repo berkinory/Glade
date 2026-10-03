@@ -16,7 +16,6 @@ function makeProject(overrides: Partial<Project> = {}): Project {
     defaultModelSelection: null,
     expanded: false,
     spaceId: null,
-    scripts: [],
     ...overrides,
   };
 }

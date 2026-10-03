@@ -246,7 +246,6 @@ function ChatRouteGlobalShortcuts() {
     activeProjectId !== null
       ? (projects.find((project) => project.id === activeProjectId) ?? null)
       : null;
-  const activeProjectScripts = activeProject?.kind === "project" ? activeProject.scripts : [];
   const terminalWorkspaceOpen = shouldRenderTerminalWorkspace({
     presentationMode: activeThreadTerminalState?.presentationMode ?? "drawer",
     terminalOpen,
@@ -335,6 +334,18 @@ function ChatRouteGlobalShortcuts() {
         if (appNavigationShortcut === "forward" && navigationState.canGoForward) {
           goForwardInAppHistory();
         }
+        return;
+      }
+
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        !event.altKey &&
+        !event.shiftKey &&
+        event.key.toLowerCase() === "w"
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!event.repeat) window.dispatchEvent(new Event("glade:close-workspace-tab"));
         return;
       }
 
@@ -463,7 +474,6 @@ function ChatRouteGlobalShortcuts() {
         open={shortcutsDialogOpen}
         onOpenChange={setShortcutsDialogOpen}
         keybindings={keybindings}
-        projectScripts={activeProjectScripts}
         platform={platform}
         context={{
           terminalFocus: isTerminalFocused(),
