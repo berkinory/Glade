@@ -1,12 +1,12 @@
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
-import { Effect } from "effect";
+import { Effect, FileSystem } from "effect";
 import { ProjectFaviconResolver } from "../../project/Services/ProjectFaviconResolver";
 import nodePath from "node:path";
 import { authErrorResponse } from "../../auth/effectHttp";
 import { ServerConfig } from "../config";
 import { tryParseHost, resolveFavicon } from "../../browser/siteFaviconCache";
 import { requireAuthenticatedRequest, isLegacyTokenAuthorized } from "./requestAuthorization";
-import { SVG_DOCUMENT_SECURITY_HEADERS } from "./httpResponse";
+import { streamedFileResponse, SVG_DOCUMENT_SECURITY_HEADERS } from "./httpResponse";
 
 const PROJECT_FAVICON_CACHE_CONTROL = "public, max-age=3600";
 
@@ -18,12 +18,13 @@ export const projectFaviconEffectRouteLayer = HttpRouter.add(
   "GET",
   "/api/project-favicon",
   Effect.gen(function* () {
-    yield* requireAuthenticatedRequest.pipe(
-      Effect.catchTag("AuthError", (error) => Effect.fail(error)),
-    );
+    const config = yield* ServerConfig;
     const request = yield* HttpServerRequest.HttpServerRequest;
     const url = HttpServerRequest.toURL(request);
     if (!url) return HttpServerResponse.text("Bad Request", { status: 400 });
+    if (!isLegacyTokenAuthorized({ config, url })) {
+      yield* requireAuthenticatedRequest;
+    }
     const projectCwd = url.searchParams.get("cwd");
     if (!projectCwd) return HttpServerResponse.text("Missing cwd parameter", { status: 400 });
     const resolver = yield* ProjectFaviconResolver;
@@ -40,19 +41,19 @@ export const projectFaviconEffectRouteLayer = HttpRouter.add(
         },
       });
     }
-    return yield* HttpServerResponse.file(faviconPath, {
-      status: 200,
+    const fileSystem = yield* FileSystem.FileSystem;
+    const stats = yield* fileSystem.stat(faviconPath);
+    return streamedFileResponse({
+      fileSystem,
+      path: faviconPath,
+      sizeBytes: Number(stats.size),
       headers: {
         "Cache-Control": PROJECT_FAVICON_CACHE_CONTROL,
         ...(nodePath.extname(faviconPath).toLowerCase() === ".svg"
           ? SVG_DOCUMENT_SECURITY_HEADERS
           : {}),
       },
-    }).pipe(
-      Effect.catch(() =>
-        Effect.succeed(HttpServerResponse.text("Internal Server Error", { status: 500 })),
-      ),
-    );
+    });
   }).pipe(Effect.catchTag("AuthError", (error) => Effect.succeed(authErrorResponse(error)))),
 );
 
