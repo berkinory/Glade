@@ -164,7 +164,7 @@ export const DockExplorerPane = function DockExplorerPane(props: {
           aria-hidden={!sidebarOpen}
         >
           <div className="flex h-full min-h-0 w-44 flex-col border-r border-border/65">
-            <div className="flex shrink-0 items-center gap-1 border-b border-border/65 px-2 py-1">
+            <div className="flex h-10 shrink-0 items-center gap-1 border-b border-border/65 px-2">
               <span className="flex-1 text-ui-xs text-muted-foreground">
                 {searchMode ? "Search" : "Explorer"}
               </span>

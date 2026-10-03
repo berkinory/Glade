@@ -46,6 +46,7 @@ export function LocalVideoThumbnail(props: {
   url: string;
   alt: string;
   className?: string;
+  retainFrameOnReload?: boolean;
   onReady?: (() => void) | undefined;
   onError?: (() => void) | undefined;
 }) {
@@ -137,11 +138,12 @@ export function LocalVideoThumbnail(props: {
     };
   }, [url]);
   const current = frame?.url === props.url ? frame : null;
+  const image = current?.image ?? (props.retainFrameOnReload && !current ? frame?.image : null);
   return (
     <div className={cn("local-image-preview", props.className)}>
-      {current?.image ? (
+      {image ? (
         <img
-          src={current.image}
+          src={image}
           alt={props.alt}
           className="local-image-preview__img max-h-[calc(100vh-13rem)]"
         />

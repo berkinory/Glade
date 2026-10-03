@@ -174,7 +174,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
     fileNeedsLocalPreviewGrant && isLocalPreviewGrantUsable(localPreviewGrantQuery.data)
       ? (localPreviewGrantQuery.data?.grant ?? null)
       : null;
-  const binaryPreviewKey = `${props.workspaceRoot ?? ""}\0${filePath ?? ""}\0${binaryPreviewRevision}`;
+  const binaryPreviewKey = `${props.workspaceRoot ?? ""}\0${filePath ?? ""}`;
   const fileQuery = useQuery(
     projectReadFileQueryOptions({
       cwd: props.workspaceRoot,
@@ -559,7 +559,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
         : filePath;
     return withNavigationHeader(
       <PdfFilePreview
-        key={binaryPreviewKey}
+        key={`${binaryPreviewKey}\0${binaryPreviewRevision}`}
         filePath={filePath}
         cwd={props.workspaceRoot}
         previewGrant={localPreviewGrant}
@@ -679,6 +679,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
             cacheKey: binaryPreviewRevision,
           })}
           alt={basenameOfPath(filePath!)}
+          retainFrameOnReload
           className="min-h-0 flex-1"
           onReady={handleBinaryPreviewReady}
           onError={handleBinaryPreviewError}
