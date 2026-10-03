@@ -15,6 +15,8 @@
 
 - Activity keeps the open chat visible and shows recognizable project icons, including monorepo favicons.
 
+- Desktop downloads and installations are smaller by omitting unused language and dependency resources.
+
 - Unavailable notification controls are easier to distinguish while an action is in progress.
 
 - Chat messages fade smoothly at the header and message input while scrolling, keeping the latest reply clear.

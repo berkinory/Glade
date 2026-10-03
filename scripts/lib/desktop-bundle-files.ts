@@ -22,10 +22,17 @@ export function createDesktopBundleFilePatterns(
   if (!options.diagnostics) files.push(...DIAGNOSTIC_FILES);
 
   files.push(
+    "!node_modules/patchright-core/**",
     "!node_modules/@anthropic-ai/claude-agent-sdk-darwin-*/**",
     "!node_modules/@anthropic-ai/claude-agent-sdk-linux-*/**",
     "!node_modules/@anthropic-ai/claude-agent-sdk-win32-*/**",
   );
+
+  // Desktop serves original files; HTTP clients keep Brotli and identity responses.
+  files.push("!apps/server/dist/client/**/*.gz");
+
+  // These browser UI payloads are loaded only by the unused HttpApiSwagger/Scalar services.
+  files.push("!node_modules/effect/dist/unstable/httpapi/internal/httpApi{Swagger,Scalar}.js");
 
   if (platform !== "mac") files.push("!node_modules/node-pty/prebuilds/darwin-*/**");
   if (platform !== "win") files.push("!node_modules/node-pty/prebuilds/win32-*/**");

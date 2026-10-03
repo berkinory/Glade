@@ -44,6 +44,12 @@ bun run package:mac:arm64 -- --signed
 
 Artifacts land in `release/`. Local notarization uses the keychain profile; CI uses App Store Connect API credentials. Never commit private keys or passwords.
 
+Desktop packages retain only English Chromium locales. The backend bundles its diff parser so
+server-side syntax-highlighting resources are not shipped. The Electron browser uses the regular
+Playwright driver, without the optional Patchright stealth driver. Unused Effect API-documentation
+UI payloads and gzip web sidecars are excluded; original web assets and Brotli sidecars remain for
+desktop and HTTP access. Cua is staged from the pinned provisioner, without local SDKs or cached builds.
+
 ## GitHub Actions
 
 `.github/workflows/release.yml` verifies the release source and requires successful CI for the

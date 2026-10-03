@@ -6,7 +6,9 @@ import { lazyModule } from "../platform/lazyModule.ts";
 type PierreDiffsModule = typeof import("@pierre/diffs");
 type ParsedPatches = ReturnType<PierreDiffsModule["parsePatchFiles"]>;
 
-const loadPierreDiffs: () => Promise<PierreDiffsModule> = lazyModule(() => import("@pierre/diffs"));
+const loadPatchParser = lazyModule(() =>
+  import("@pierre/diffs").then(({ parsePatchFiles }) => parsePatchFiles),
+);
 
 function checkpointKindFromParsedFile(
   type: ParsedPatches[number]["files"][number]["type"],
@@ -56,8 +58,8 @@ export function parseCheckpointFilesFromUnifiedDiff(
       return Effect.succeed<OrchestrationCheckpointFile[]>([]);
     }
     return Effect.map(
-      Effect.promise(() => loadPierreDiffs()),
-      ({ parsePatchFiles }) => summarizeParsedPatches(parsePatchFiles(normalized)),
+      Effect.promise(() => loadPatchParser()),
+      (parsePatchFiles) => summarizeParsedPatches(parsePatchFiles(normalized)),
     );
   });
 }

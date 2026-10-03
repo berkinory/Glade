@@ -821,6 +821,7 @@ const createBuildConfig = Effect.fn("createBuildConfig")(function* (
 ) {
   const buildConfig: Record<string, unknown> = {
     ...artifactIdentity.buildConfig,
+    electronLanguages: ["en", "en-US", "en-GB", "en_US", "en_GB"],
     directories: {
       buildResources: "apps/desktop/resources",
     },
@@ -1116,7 +1117,15 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
 
   yield* Effect.log("[desktop-artifact] Staging release app...");
   yield* fs.copy(distDirs.desktopDist, path.join(stageAppDir, "apps/desktop/dist-electron"));
-  yield* fs.copy(distDirs.desktopResources, stageResourcesDir);
+  yield* fs.makeDirectory(stageResourcesDir, { recursive: true });
+  for (const entry of yield* fs.readDirectory(distDirs.desktopResources)) {
+    // Cua is provisioned below; local SDKs and cached builds are not release resources.
+    if (entry === "cua-driver") continue;
+    yield* fs.copy(
+      path.join(distDirs.desktopResources, entry),
+      path.join(stageResourcesDir, entry),
+    );
+  }
   yield* fs.copy(distDirs.serverDist, path.join(stageAppDir, "apps/server/dist"));
   yield* stageClientFavicons(stageAppDir, options.flavor);
 
@@ -1187,7 +1196,9 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
     main: "apps/desktop/dist-electron/main.js",
     build: resolvedBuildConfig.buildConfig,
     dependencies: {
-      ...resolvedServerDependencies,
+      ...Object.fromEntries(
+        Object.entries(resolvedServerDependencies).filter(([name]) => name !== "@pierre/diffs"),
+      ),
       ...resolvedDesktopRuntimeDependencies,
     },
     devDependencies: {

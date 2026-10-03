@@ -13,7 +13,7 @@ export default defineConfig({
   external: [/^bun:/u],
   sourcemap: buildSourcemap,
   clean: true,
-  noExternal: (id) => id.startsWith("@glade/"),
+  noExternal: (id) => id.startsWith("@glade/") || id === "@pierre/diffs",
   inlineOnly: false,
   banner: {
     js: "#!/usr/bin/env node\n",

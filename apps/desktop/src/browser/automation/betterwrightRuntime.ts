@@ -83,6 +83,8 @@ async function runConnectedBetterwright<T>(options: BetterwrightRunOptions): Pro
       downloadPolicy: "deny",
       vault: options.vault ?? false,
       credentialCapture: false,
+      // Stealth replaces the driver for a managed browser; this target is an Electron tab.
+      stealthRuntimeFix: false,
       headless: false,
       adBlock: false,
       parkBackgroundPages: false,
