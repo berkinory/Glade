@@ -759,14 +759,6 @@ function SettingsRouteView() {
           resetLabel: "send dictation with Enter",
           ariaLabel: "Send dictation with Enter",
         })}
-
-        {renderBooleanSettingRow({
-          settingKey: "composerEffortSlider",
-          title: "Show effort control",
-          description: "Adjust reasoning effort when choosing a model for a chat.",
-          resetLabel: "effort control",
-          ariaLabel: "Show effort control",
-        })}
       </SettingsSection>
 
       <SettingsSection title="Confirmations">

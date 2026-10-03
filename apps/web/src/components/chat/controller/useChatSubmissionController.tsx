@@ -278,7 +278,6 @@ export function useChatSubmissionController({
     <ComposerModelPicker
       hideModelLabel={!composerFooterControlsPlan.showModelLabel}
       hideStatusLabel={!composerFooterControlsPlan.showTraitsLabel}
-      effortControl={settings.composerEffortSlider ? "slider" : "menu"}
       provider={selectedProvider}
       model={selectedModelForPickerWithCustomFallback}
       providers={providerStatuses}

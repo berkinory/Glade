@@ -56,7 +56,7 @@ function commandMenuTitle(
     case "model":
       return "Model";
     case "fast":
-      return "Fast Mode";
+      return "Speed";
     case "review":
       return "Code Review";
     case "fork":

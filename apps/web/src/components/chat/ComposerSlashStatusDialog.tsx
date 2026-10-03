@@ -92,8 +92,8 @@ export function ComposerSlashStatusDialog(props: {
               <p className="font-medium text-foreground">{selectedModel}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-ui leading-snug text-muted-foreground">Fast Mode</p>
-              <p className="font-medium text-foreground">{fastModeEnabled ? "On" : "Off"}</p>
+              <p className="text-ui leading-snug text-muted-foreground">Speed</p>
+              <p className="font-medium text-foreground">{fastModeEnabled ? "Fast" : "Default"}</p>
             </div>
             <div className="space-y-1">
               <p className="text-ui leading-snug text-muted-foreground">Reasoning</p>

@@ -5,20 +5,11 @@ import { cn } from "~/lib/utils";
 import { type ProviderOptions } from "../../providerModelOptions";
 import { PROVIDER_ICON_COMPONENT_BY_PROVIDER } from "../ProviderIcon";
 import { ShortcutKbd } from "../ui/shortcut-kbd";
-import {
-  MenuGroup,
-  MenuGroupLabel,
-  MenuItem,
-  MenuRadioGroup,
-  MenuRadioItem,
-  MenuSub,
-  MenuSubTrigger,
-} from "../ui/menu";
+import { MenuItem } from "../ui/menu";
 import {
   type ComposerModelPickerRow as PickerRow,
   resolveStarredTraits,
 } from "./ComposerModelPicker.logic";
-import { ComposerPickerMenuSubPopup } from "./ComposerPickerMenuPopup";
 import { COMPOSER_MUTED_ACCENT_TEXT_CLASS_NAME } from "./composerPickerStyles";
 import { getComposerTraitSelection } from "./composerTraits";
 import { ModelStarButton } from "./ModelStarButton";
@@ -38,7 +29,6 @@ export function ComposerModelPickerRow(props: {
   starredModelSlots: ReadonlySet<string>;
   onSelect: (row: PickerRow) => void;
 
-  onSelectEffort: ((row: PickerRow, effort: string) => void) | null;
   onToggleStar: (entry: StarredModel) => void;
   onUnstarModel: (entry: Pick<StarredModel, "provider" | "model">) => void;
 }) {
@@ -62,8 +52,6 @@ export function ComposerModelPickerRow(props: {
 
   const starred = row.preset !== null || props.starredModelSlots.has(starredModelSlotKey(row));
 
-  const onSelectEffort = props.onSelectEffort;
-  const effortLevels = onSelectEffort !== null && row.preset === null ? selection.effortLevels : [];
   const RowProviderIcon = PROVIDER_ICON_COMPONENT_BY_PROVIDER[row.provider];
   const rowClassName = cn("pe-1", row.selected && PICKER_PANEL_ROW_SELECTED_CLASS_NAME);
   const starButton = (
@@ -116,50 +104,14 @@ export function ComposerModelPickerRow(props: {
     );
   }
 
-  if (onSelectEffort === null || effortLevels.length === 0) {
-    return (
-      <MenuItem
-        aria-current={row.selected ? "true" : undefined}
-        className={rowClassName}
-        closeOnClick={false}
-        onClick={() => props.onSelect(row)}
-      >
-        {rowContent}
-      </MenuItem>
-    );
-  }
   return (
-    <MenuSub>
-      <MenuSubTrigger
-        aria-current={row.selected ? "true" : undefined}
-        className={rowClassName}
-        onClick={() => props.onSelect(row)}
-        onKeyDown={(event) => {
-          if (event.key !== "Enter") return;
-          event.preventDefault();
-          event.preventBaseUIHandler();
-          props.onSelect(row);
-        }}
-      >
-        {rowContent}
-      </MenuSubTrigger>
-      <ComposerPickerMenuSubPopup>
-        <MenuGroup>
-          <MenuGroupLabel>Effort</MenuGroupLabel>
-          <MenuRadioGroup value={selection.effort ?? ""}>
-            {effortLevels.map((level) => (
-              <MenuRadioItem
-                key={level.value}
-                value={level.value}
-                onClick={() => onSelectEffort(row, level.value)}
-              >
-                {level.label}
-                {level.value === selection.defaultEffort ? " (default)" : ""}
-              </MenuRadioItem>
-            ))}
-          </MenuRadioGroup>
-        </MenuGroup>
-      </ComposerPickerMenuSubPopup>
-    </MenuSub>
+    <MenuItem
+      aria-current={row.selected ? "true" : undefined}
+      className={rowClassName}
+      closeOnClick={false}
+      onClick={() => props.onSelect(row)}
+    >
+      {rowContent}
+    </MenuItem>
   );
 }

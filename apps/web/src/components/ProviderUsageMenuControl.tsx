@@ -153,18 +153,21 @@ export function ProviderUsageMenuControl({
       settings.sidebarUsageWindow === "both"
         ? [300, 10080]
         : [settings.sidebarUsageWindow === "five-hour" ? 300 : 10080];
-    const rows = windows.map((duration) => ({
-      duration,
-      row: model.rows.find((row) => row.windowDurationMins === duration),
-    }));
-    const description = model.isLoading
-      ? "Loading usage"
-      : rows
-          .map(
-            ({ duration, row }) =>
-              `${duration === 300 ? "Five-hour (outer)" : windows.length === 2 ? "Weekly (inner)" : "Weekly"}: ${row ? `${row.remainingLabel} remaining${row.resetText ? `, ${row.resetText}` : ""}` : "unavailable"}`,
-          )
-          .join("; ");
+    const rows = windows.flatMap((duration) => {
+      const row = model.rows.find((candidate) => candidate.windowDurationMins === duration);
+      return row ? [{ duration, row }] : [];
+    });
+    const description =
+      rows.length > 0
+        ? rows
+            .map(
+              ({ row }) =>
+                `${row.label}: ${row.remainingLabel} remaining${row.resetText ? `, ${row.resetText}` : ""}`,
+            )
+            .join("; ")
+        : model.isLoading
+          ? "Loading usage"
+          : (model.emptyMessage ?? model.notice ?? "Usage unavailable");
     return (
       <Tooltip>
         <TooltipTrigger
@@ -189,32 +192,42 @@ export function ProviderUsageMenuControl({
                   strokeWidth="2"
                   opacity="0.15"
                 />
-                {row ? (
-                  <circle
-                    cx="18"
-                    cy="18"
-                    r={index === 0 ? 16 : 12}
-                    fill="none"
-                    pathLength="100"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeDasharray={`${row.remainingPercent} 100`}
-                    className={
-                      row.remainingPercent <= 10
-                        ? "text-red-500"
-                        : index === 0
-                          ? "text-emerald-500"
-                          : "text-blue-500"
-                    }
-                  />
-                ) : null}
+                <circle
+                  cx="18"
+                  cy="18"
+                  r={index === 0 ? 16 : 12}
+                  fill="none"
+                  pathLength="100"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeDasharray={`${row.remainingPercent} 100`}
+                  className={
+                    row.remainingPercent <= 10
+                      ? "text-red-500"
+                      : duration === 300
+                        ? "text-emerald-500"
+                        : "text-blue-500"
+                  }
+                />
               </g>
             ))}
           </svg>
           <ProviderIcon provider={provider} className="size-3.5" />
         </TooltipTrigger>
-        <TooltipPopup side="top" className="max-w-72 text-ui-sm">
-          {model.menuTitle}: {model.emptyMessage ?? model.notice ?? description}
+        <TooltipPopup
+          side="top"
+          align="start"
+          className="w-72 max-w-[calc(100vw-1rem)]"
+          viewportClassName="p-3"
+        >
+          <ProviderUsagePanelContent
+            provider={provider}
+            rateLimits={model.rateLimits}
+            notice={model.notice}
+            emptyMessage={model.emptyMessage}
+            isLoading={model.isLoading}
+            showUsageLines={false}
+          />
         </TooltipPopup>
       </Tooltip>
     );

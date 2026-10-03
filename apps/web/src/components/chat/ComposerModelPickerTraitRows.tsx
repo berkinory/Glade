@@ -14,8 +14,6 @@ import { useComposerTraitCommit } from "./useComposerTraitCommit";
 
 type TraitOption = { value: string; label: string; isDefault?: boolean; icon?: string };
 
-export type ComposerEffortControl = "menu" | "slider";
-
 function TraitRow(props: {
   label: string;
   value: string;
@@ -82,8 +80,6 @@ export function ComposerModelPickerTraitRows(props: {
   modelOptions: ProviderOptions | undefined;
   prompt: string;
   onPromptChange: (prompt: string) => void;
-
-  effortControl: ComposerEffortControl;
 }) {
   const { provider, threadId, model, modelOptions, prompt } = props;
   const selection = getComposerTraitSelection(
@@ -94,46 +90,56 @@ export function ComposerModelPickerTraitRows(props: {
     props.runtimeModel,
   );
   const commitTrait = useComposerTraitCommit({ threadId, provider, model, modelOptions });
-  const usesEffortSlider = props.effortControl === "slider" && selection.effortLevels.length > 0;
+  const usesEffortSlider = selection.effortLevels.length > 0;
 
   const rows: ReactNode[] = [];
   for (const descriptor of selection.descriptors) {
-    if (
-      usesEffortSlider &&
-      (descriptor === selection.primarySelectDescriptor || descriptor.id === "fastMode")
-    )
-      continue;
+    if (descriptor === selection.primarySelectDescriptor) continue;
+    const isAdaptiveThinking = descriptor.id === "thinking";
     const isSpeed = descriptor.id === "serviceTier" || descriptor.id === "fastMode";
     const defaultOption: TraitOption = {
       value: "__inherit__",
-      label: "Default",
-      ...(isSpeed ? { icon: "gauge" } : {}),
+      label: isAdaptiveThinking ? "Auto" : "Default",
+      ...(isSpeed ? { icon: "gauge" } : isAdaptiveThinking ? { icon: "brain" } : {}),
     };
+    if (isSpeed) {
+      const fastOption =
+        descriptor.type === "select"
+          ? descriptor.options.find((option) => option.id === "priority" || option.id === "fast")
+          : undefined;
+      const fastValue = descriptor.type === "boolean" ? "on" : fastOption?.id;
+      if (!fastValue) continue;
+      const current = modelOptions?.[descriptor.id as keyof ProviderOptions];
+      rows.push(
+        <TraitRow
+          key={descriptor.id}
+          label="Speed"
+          value={current === true || current === fastValue ? fastValue : "__inherit__"}
+          options={[defaultOption, { value: fastValue, label: "Fast", icon: "zap" }]}
+          onValueChange={(value) =>
+            commitTrait({
+              [descriptor.id]:
+                descriptor.type === "boolean"
+                  ? value === "on"
+                  : value === "__inherit__"
+                    ? undefined
+                    : value,
+            })
+          }
+        />,
+      );
+      continue;
+    }
     const options: TraitOption[] =
       descriptor.type === "select"
         ? [
             defaultOption,
-            ...descriptor.options.map((option) => ({
-              value: option.id,
-              label: option.label,
-              ...((descriptor.id === "effort" || descriptor.id === "reasoningEffort") &&
-              option.isDefault
-                ? { isDefault: true }
-                : {}),
-              ...(descriptor.id === "serviceTier" &&
-              (option.id === "priority" || option.id === "fast")
-                ? { icon: "zap" }
-                : {}),
-            })),
+            ...descriptor.options.map((option) => ({ value: option.id, label: option.label })),
           ]
         : [
             defaultOption,
-            {
-              value: "on",
-              label: "On",
-              ...(descriptor.id === "fastMode" ? { icon: "zap" } : {}),
-            },
-            { value: "off", label: "Off" },
+            { value: "on", label: "On", ...(isAdaptiveThinking ? { icon: "brain" } : {}) },
+            { value: "off", label: "Off", ...(isAdaptiveThinking ? { icon: "brain" } : {}) },
           ];
     const current = modelOptions?.[descriptor.id as keyof ProviderOptions];
     const value =
@@ -166,6 +172,7 @@ export function ComposerModelPickerTraitRows(props: {
   if (rows.length === 0 && !usesEffortSlider) return null;
   return (
     <div className="flex flex-col gap-px border-t border-border p-1">
+      {rows}
       {usesEffortSlider ? (
         <ComposerEffortSliderCard
           provider={provider}
@@ -177,7 +184,6 @@ export function ComposerModelPickerTraitRows(props: {
           onPromptChange={props.onPromptChange}
         />
       ) : null}
-      {rows}
     </div>
   );
 }

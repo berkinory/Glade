@@ -1,6 +1,3 @@
-import { useComposerDraftStore } from "~/composerDraftStore";
-import { hasUnsentComposerDraft } from "~/composerDraftDomain";
-import { CentralIcon } from "~/lib/central-icons";
 import { useMemo, type ReactNode } from "react";
 
 import { pluralize } from "@glade/shared/text/text";
@@ -8,10 +5,7 @@ import { pluralize } from "@glade/shared/text/text";
 import { createThreadSelector } from "../storeSelectors";
 import { useStore } from "../store";
 import { resolveSubagentPresentationForThread } from "../lib/subagentPresentation";
-import {
-  SIDEBAR_ROW_LABEL_TEXT_CLASS_NAME,
-  sidebarHoverRevealHideClassName,
-} from "../sidebarRowStyles";
+import { SIDEBAR_ROW_LABEL_TEXT_CLASS_NAME } from "../sidebarRowStyles";
 import type { SidebarThreadSummary } from "../types";
 import { TerminalIcon } from "../lib/icons";
 import { cn } from "../lib/utils";
@@ -151,9 +145,6 @@ export function SidebarThreadRowContent({
   pendingStatusColorClass?: string | null | undefined;
   suffix?: ReactNode;
 }) {
-  const hasDraft = useComposerDraftStore((state) =>
-    hasUnsentComposerDraft(state.draftsByThreadId[thread.id]),
-  );
   const subagentIndentPx = subagentIndentPxProp ?? 0;
   const isSubagentThread = Boolean(thread.parentThreadId);
   const subagentPresentation =
@@ -217,19 +208,6 @@ export function SidebarThreadRowContent({
             thread.title
           )}
         </span>
-        {hasDraft && !isActive ? (
-          <span
-            aria-label="Unsent draft"
-            data-sidebar-draft-indicator
-            title="Unsent draft"
-            className={cn(
-              "inline-flex shrink-0 items-center justify-center text-muted-foreground",
-              sidebarHoverRevealHideClassName("thread-row"),
-            )}
-          >
-            <CentralIcon name="pencil" className="size-3" />
-          </span>
-        ) : null}
         {!isSubagentThread && pendingStatusColorClass ? (
           <span
             aria-label="Pending approval"

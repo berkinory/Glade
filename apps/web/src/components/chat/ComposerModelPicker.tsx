@@ -43,15 +43,12 @@ import {
   ComposerModelPickerTabs,
   resolveComposerModelPickerProviderTabs,
 } from "./ComposerModelPickerTabs";
-import {
-  type ComposerEffortControl,
-  ComposerModelPickerTraitRows,
-} from "./ComposerModelPickerTraitRows";
+import { ComposerModelPickerTraitRows } from "./ComposerModelPickerTraitRows";
 import { ComposerPickerMenuPopup } from "./ComposerPickerMenuPopup";
 import { COMPOSER_PICKER_MODEL_LIST_SCROLL_CLASS_NAME } from "./composerPickerStyles";
 import {
   getComposerTraitSelection,
-  planComposerEffortChange,
+  matchComposerEffort,
   resolveComposerModelOptions,
   resolveComposerTraitStatusLabel,
   showsComposerFastModeBadge,
@@ -87,7 +84,6 @@ type ComposerModelPickerProps = {
   hideStatusLabel?: boolean;
   disabled?: boolean;
 
-  effortControl?: ComposerEffortControl;
   onProviderModelChange: (
     provider: ProviderKind,
     model: ModelSlug,
@@ -140,8 +136,6 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const isMenuOpen = open ?? uncontrolledOpen;
   const activeProvider = props.provider;
-  const effortControl = props.effortControl ?? "menu";
-  const usesEffortSlider = effortControl === "slider";
 
   const { starredModels, toggleStarredModel, unstarModel } = useStarredModels();
   const connectedProviders = new Set(
@@ -283,9 +277,20 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
     keepOpen = false,
   ) => {
     const selection = traitSelectionFor(row.provider, model);
+    const matchedEffort =
+      row.provider !== props.provider && row.preset === null
+        ? matchComposerEffort(currentTraitSelection.effort, selection)
+        : null;
+    const effortPatch =
+      matchedEffort !== null && selection.primarySelectDescriptor
+        ? { [selection.primarySelectDescriptor.id]: matchedEffort }
+        : {};
     props.onProviderModelChange(row.provider, model, {
       modelOptions: resolveComposerModelOptions(
-        buildNextProviderOptions(row.provider, providerOptionsFor(row.provider), patch),
+        buildNextProviderOptions(row.provider, providerOptionsFor(row.provider), {
+          ...effortPatch,
+          ...patch,
+        }),
         selection.descriptors,
       ),
     });
@@ -306,7 +311,6 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
     const selection = traitSelectionFor(row.provider, model);
 
     const keepOpen =
-      usesEffortSlider &&
       row.provider === props.provider &&
       row.preset === null &&
       !row.selected &&
@@ -319,19 +323,6 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
         : {},
       keepOpen,
     );
-  };
-
-  const selectRowWithEffort = (row: PickerRow, value: string) => {
-    const model = row.selectableModel;
-    if (props.disabled || model === null) return;
-    const plan = planComposerEffortChange({
-      provider: row.provider,
-      selection: traitSelectionFor(row.provider, model),
-      prompt: promptFor(row.provider),
-      value,
-    });
-    if (!plan) return;
-    commitRow(row, model, plan.patch);
   };
 
   const openTabs: ComposerModelPickerTab[] = [
@@ -380,7 +371,7 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
         hideStatusLabel={props.hideStatusLabel}
         disabled={props.disabled}
         isMenuOpen={isMenuOpen}
-        openPlaceholderLabel={usesEffortSlider ? "Select effort" : null}
+        openPlaceholderLabel="Select effort"
         shortcutLabel={props.shortcutLabel}
       />
       <ComposerPickerMenuPopup
@@ -470,7 +461,6 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
                     prompt={promptFor(row.provider)}
                     starredModelSlots={starredModelSlots}
                     onSelect={selectRow}
-                    onSelectEffort={usesEffortSlider ? null : selectRowWithEffort}
                     onToggleStar={toggleStarredModel}
                     onUnstarModel={unstarModel}
                   />
@@ -497,7 +487,6 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
             )}
             prompt={promptFor(traitsProvider)}
             onPromptChange={props.onPromptChange}
-            effortControl={effortControl}
           />
         </div>
       </ComposerPickerMenuPopup>

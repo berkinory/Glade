@@ -1,3 +1,4 @@
+import { SidebarDraftIndicator } from "./SidebarDraftIndicator";
 import { SIDEBAR_TRAILING_ICON_FORCE_CLASS } from "./sidebarGlyphs";
 import { NewThreadIcon } from "~/lib/icons";
 import { useTerminalStateStore } from "../terminalStateStore";
@@ -190,6 +191,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
     threadStatus: ReturnType<typeof resolveThreadStatusForSidebar>;
     timestampToneClassName?: string;
     hoverActions: ReactNode;
+    draftIndicator: ReactNode;
   }) {
     // The jump shortcut owns the slot while it is visible; otherwise the shared rule decides which
     // status glyph shows here.
@@ -221,6 +223,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
             <SidebarStatusTrailingGlyph status={trailingStatus} />
           </span>
         ) : null}
+        {input.draftIndicator}
         {input.hoverActions}
       </div>
     );
@@ -431,6 +434,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
             />
             <div className="absolute top-1/2 right-1.5 flex -translate-y-1/2 items-center">
               {renderThreadRowTrailingCluster({
+                draftIndicator: <SidebarDraftIndicator threadId={thread.id} isActive={isActive} />,
                 isSubagentThread,
                 threadJumpLabel,
                 rightMetaChips,
@@ -580,6 +584,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
             />
             <div className="absolute top-1/2 right-1.5 flex -translate-y-1/2 items-center">
               {renderThreadRowTrailingCluster({
+                draftIndicator: <SidebarDraftIndicator threadId={thread.id} isActive={isActive} />,
                 isSubagentThread,
                 threadJumpLabel,
                 rightMetaChips: showCompactMeta ? rightMetaChips : [],

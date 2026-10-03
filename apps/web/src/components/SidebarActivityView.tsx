@@ -1,4 +1,4 @@
-import { CentralIcon } from "~/lib/central-icons";
+import { SidebarDraftIndicator } from "./SidebarDraftIndicator";
 import { useShallow } from "zustand/react/shallow";
 import { useComposerDraftStore } from "~/composerDraftStore";
 import { hasUnsentComposerDraft } from "~/composerDraftDomain";
@@ -145,9 +145,6 @@ function ActivityThreadRow({
       envMode: thread.envMode,
       worktreePath: thread.worktreePath,
     }) === "worktree";
-  const hasDraft = useComposerDraftStore((state) =>
-    hasUnsentComposerDraft(state.draftsByThreadId[thread.id]),
-  );
   const hoverAnchorId = createSidebarThreadHoverAnchorId({
     scope: "activity",
     threadId: thread.id,
@@ -193,7 +190,7 @@ function ActivityThreadRow({
         >
           <span
             className={cn(
-              "flex min-w-0 items-center gap-1.5 overflow-hidden pr-5 has-[[data-sidebar-draft-indicator]]:pr-[4.25rem] transition-[padding] duration-100 ease-out",
+              "flex min-w-0 items-center gap-1.5 overflow-hidden pr-5 transition-[padding] duration-100 ease-out",
 
               "group-hover/activity-row:pr-[4.25rem] group-focus-within/activity-row:pr-[4.25rem]",
             )}
@@ -213,20 +210,8 @@ function ActivityThreadRow({
             >
               {thread.title}
             </span>
-            {hasDraft && !isActive ? (
-              <span
-                aria-label="Unsent draft"
-                data-sidebar-draft-indicator
-                title="Unsent draft"
-                className={cn(
-                  "inline-flex shrink-0 items-center justify-center text-muted-foreground",
-                  sidebarHoverRevealHideClassName("activity-row"),
-                )}
-              >
-                <CentralIcon name="pencil" className="size-3" />
-              </span>
-            ) : null}
           </span>
+          <SidebarDraftIndicator threadId={thread.id} isActive={isActive} activity />
           <span className="flex min-w-0 items-center gap-1.5">
             {isWorktree ? (
               <WorktreeIcon

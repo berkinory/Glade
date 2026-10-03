@@ -246,5 +246,3 @@ export const XIcon = adaptIcon(IconX);
 export const ZapIcon = adaptIcon(IconBolt);
 
 export const FastModeIcon: LucideIcon = centralIconWrapper("zap", "fill");
-
-export const FastModeOutlineIcon: LucideIcon = centralIconWrapper("zap");

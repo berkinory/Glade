@@ -19,10 +19,6 @@ const ROW_FAST = "extras:fast";
 
 const CHECK = <CheckIcon className="size-3.5 text-foreground/70" />;
 
-function toggleSecondary(label: string, enabled: boolean): string {
-  return `Turn ${label} ${enabled ? "off" : "on"}`;
-}
-
 export function ComposerExtrasPanel(props: {
   supportsFastMode: boolean;
   fastModeEnabled: boolean;
@@ -54,8 +50,8 @@ export function ComposerExtrasPanel(props: {
               {
                 id: ROW_FAST,
                 icon: <FastModeIcon className={GLYPH} />,
-                title: "Fast mode",
-                secondary: toggleSecondary("fast mode", props.fastModeEnabled),
+                title: "Speed",
+                secondary: props.fastModeEnabled ? "Fast" : "Default",
                 trailing: props.fastModeEnabled ? CHECK : null,
               },
             ]

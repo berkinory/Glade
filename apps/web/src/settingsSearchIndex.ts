@@ -296,14 +296,6 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     keywords: "Show token-by-token output while a response is in progress. streaming",
   },
   {
-    id: "behavior:effort-slider",
-    section: "behavior",
-    title: "Show effort control",
-    target: "setting-composerEffortSlider",
-    keywords:
-      "Effort slider Show reasoning effort as a slider in the composer model menu once a chat has started. fast mode reasoning thinking level picker Shift Tab cycle model effort next",
-  },
-  {
     id: "behavior:diff-line-wrapping",
     section: "files",
     title: "Diff line wrapping",

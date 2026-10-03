@@ -105,6 +105,43 @@ export function planComposerEffortChange(input: {
   };
 }
 
+const effortRanks: Readonly<Record<string, number>> = {
+  none: 0,
+  minimal: 1,
+  low: 2,
+  medium: 3,
+  high: 4,
+  xhigh: 5,
+  max: 5,
+};
+
+export function matchComposerEffort(
+  effort: string | null,
+  target: Pick<ComposerTraitSelection, "effortLevels" | "defaultEffort">,
+): string | null {
+  if (target.effortLevels.some((level) => level.value === effort)) return effort;
+  const rank = effort === null ? undefined : effortRanks[effort];
+  if (rank === undefined) return target.defaultEffort;
+  let closest: string | null = null;
+  let distance = Infinity;
+  let closestRank = Infinity;
+  for (const level of target.effortLevels) {
+    const candidateRank = effortRanks[level.value];
+    if (candidateRank === undefined) continue;
+    const candidateDistance = Math.abs(candidateRank - rank);
+    // Prefer the lower effort on a tie instead of silently increasing cost.
+    if (
+      candidateDistance < distance ||
+      (candidateDistance === distance && candidateRank < closestRank)
+    ) {
+      closest = level.value;
+      distance = candidateDistance;
+      closestRank = candidateRank;
+    }
+  }
+  return closest ?? target.defaultEffort;
+}
+
 export function resolveComposerEffortLadderIndex(
   selection: Pick<ComposerTraitSelection, "effort" | "effortLevels">,
 ): number {
