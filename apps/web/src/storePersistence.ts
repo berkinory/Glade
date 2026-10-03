@@ -1,3 +1,4 @@
+import { persistThreadVisits } from "./threadVisitPersistence";
 import { normalizeWorkspaceRootForComparison } from "@glade/shared/threads/threadWorkspace";
 
 import { parseProjectAppearance, type ProjectAppearance } from "./lib/projectAppearance";
@@ -185,6 +186,7 @@ export function readPersistedState(initialState: AppState): AppState {
 
 export function persistState(state: AppState): void {
   if (typeof window === "undefined" || !state.threadsHydrated) return;
+  persistThreadVisits(state);
   try {
     const projectNamesByCwd: Record<string, string> = {};
     const projectAppearanceByCwd: Record<string, ProjectAppearance> = {};

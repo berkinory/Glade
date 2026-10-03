@@ -1,5 +1,7 @@
 # TODO
 
+- **S11 implemented:** Added draft membership and local draft rows, open-chat reveal, profile-scoped Activity filters and bounded read watermarks, safe nested favicon discovery and unclipped resize rails. Full check and full suite passed (2,545 passing, 9 skipped); final web changes passed all 439 web tests. Isolated Dev verified local draft visibility, Settings/reload filter retention and unclipped handles. File-boundary and persistence fixtures passed; exhaustive platform/theme and closed-app live-provider scenarios remain unverified.
+
 - **S3 implemented:** Separated native command discovery from context-meter timeout, fenced preparation/replay with durable cancellation, preserved established compaction settings and cleared missing-conversation bindings under generation/turn checks. Codex watchdog publishes actual authority retirement. Full check and full suite passed (2,543 passing, 9 skipped), including native configuration and durable cancellation coverage. Real-provider startup, Windows and signed release scenarios remain unverified.
 
 - **S2 implemented:** Implemented canonical background-task summaries, session retirement, delayed successful completion, retained desktop notifications and app-owned background errors with inline visible errors. Full check and full suite passed (2,541 passing, 9 skipped); Windows boundary and desktop build passed, and final ordering adjustment passed 4 focused tests. Live provider and Windows Notification Center scenarios remain unverified; isolated UI verification follows the remaining groups.

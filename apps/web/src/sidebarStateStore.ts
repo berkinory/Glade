@@ -31,6 +31,8 @@ interface SidebarState {
   dismissedThreadStatusKeyByThreadId: Record<string, string>;
   lastThreadRoute: LastThreadRoute | null;
   activityViewEnabled: boolean;
+  activityScope: ProjectId | "chats" | null;
+  setActivityScope: (value: ProjectId | "chats" | null) => void;
   setChatSectionExpanded: (update: boolean | ((current: boolean) => boolean)) => void;
   setThreadListExtraPagesByProjectCwd: (
     update: (current: ReadonlyMap<string, number>) => ReadonlyMap<string, number>,
@@ -160,6 +162,7 @@ export const useSidebarStateStore = create<SidebarState>((set, get) => ({
     commitSidebarUi({
       lastThreadRoute: typeof update === "function" ? update(get().lastThreadRoute) : update,
     }),
+  setActivityScope: (activityScope) => commitSidebarUi({ activityScope }),
   setActivityViewEnabled: (activityViewEnabled) => commitSidebarUi({ activityViewEnabled }),
   pinnedProjectIds: readPinnedIds<ProjectId>(
     PINNED_PROJECTS_KEY,
@@ -320,6 +323,7 @@ function sidebarUiFields(
   | "dismissedThreadStatusKeyByThreadId"
   | "lastThreadRoute"
   | "activityViewEnabled"
+  | "activityScope"
 > {
   return {
     chatSectionExpanded: state.chatSectionExpanded,
@@ -329,6 +333,7 @@ function sidebarUiFields(
     dismissedThreadStatusKeyByThreadId: state.dismissedThreadStatusKeyByThreadId,
     lastThreadRoute: state.lastThreadRoute,
     activityViewEnabled: state.activityViewEnabled,
+    activityScope: state.activityScope,
   };
 }
 
@@ -341,6 +346,7 @@ function commitSidebarUi(patch: Partial<ReturnType<typeof sidebarUiFields>>): vo
     dismissedThreadStatusKeyByThreadId: state.dismissedThreadStatusKeyByThreadId,
     lastThreadRoute: state.lastThreadRoute,
     activityViewEnabled: state.activityViewEnabled,
+    activityScope: state.activityScope,
   });
 }
 

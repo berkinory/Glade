@@ -37,11 +37,13 @@ export function ProjectSidebarIcon({
   expanded,
   appearance,
   glyphClassName: glyphClassNameProp,
+  variant = "folder",
 }: {
   cwd: string;
   expanded: boolean;
   appearance?: ProjectAppearance | null | undefined;
   glyphClassName?: string;
+  variant?: "folder" | "favicon";
 }) {
   const glyphClassName = glyphClassNameProp ?? "size-4";
   if (appearance?.kind === "emoji") {
@@ -62,6 +64,7 @@ export function ProjectSidebarIcon({
       expanded={expanded}
       color={appearance?.color ?? null}
       glyphClassName={glyphClassName}
+      variant={variant}
     />
   );
 }
@@ -71,11 +74,13 @@ function ProjectFolderIcon({
   expanded,
   color,
   glyphClassName,
+  variant,
 }: {
   cwd: string;
   expanded: boolean;
   color: ProjectColor | null;
   glyphClassName: string;
+  variant: "folder" | "favicon";
 }) {
   const faviconSrc = resolveProjectFaviconUrl(cwd);
 
@@ -114,10 +119,23 @@ function ProjectFolderIcon({
     };
   }, [faviconSrc]);
 
+  if (variant === "favicon" && hasFavicon && !color)
+    return (
+      <img
+        src={faviconSrc}
+        alt=""
+        aria-hidden
+        className={cn(glyphClassName, "object-contain rounded-sm")}
+        onError={() => {
+          projectFaviconPresence.set(faviconSrc, false);
+          setProbe({ src: faviconSrc, present: false });
+        }}
+      />
+    );
   return (
     <>
       <FolderGlyph className={glyphClassName} style={colorStyle(color)} />
-      {hasFavicon ? (
+      {hasFavicon && variant === "folder" ? (
         <img
           src={faviconSrc}
           alt=""

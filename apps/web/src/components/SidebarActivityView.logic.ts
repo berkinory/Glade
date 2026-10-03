@@ -54,6 +54,7 @@ function compareThreadIds(
 
 export interface ActivityViewModel {
   pinned: SidebarThreadSummary[];
+  drafts: SidebarThreadSummary[];
   active: SidebarThreadSummary[];
   settled: SidebarThreadSummary[];
 }
@@ -61,20 +62,30 @@ export interface ActivityViewModel {
 export function buildActivityViewModel(input: {
   threads: readonly SidebarThreadSummary[];
   pinnedThreadIdSet: ReadonlySet<ThreadId>;
+  draftThreadIds?: ReadonlySet<ThreadId>;
   settledOverrideByThreadId?: ReadonlyMap<ThreadId, boolean>;
 
   projectFilterIds?: ReadonlySet<ProjectId> | null;
 }): ActivityViewModel {
   const projectFilterIds = input.projectFilterIds ?? null;
   const pinned: SidebarThreadSummary[] = [];
+  const drafts: SidebarThreadSummary[] = [];
   const active: SidebarThreadSummary[] = [];
   const settled: SidebarThreadSummary[] = [];
 
   for (const thread of input.threads) {
-    if (!isActivityThread(thread)) continue;
+    if (
+      !isActivityThread(thread) &&
+      !(input.draftThreadIds?.has(thread.id) && !thread.archivedAt && !thread.parentThreadId)
+    )
+      continue;
     if (projectFilterIds !== null && !projectFilterIds.has(thread.projectId)) continue;
     if (input.pinnedThreadIdSet.has(thread.id)) {
       pinned.push(thread);
+      continue;
+    }
+    if (input.draftThreadIds?.has(thread.id)) {
+      drafts.push(thread);
       continue;
     }
     if (isThreadSettledForActivity(thread, input.settledOverrideByThreadId)) {
@@ -88,6 +99,7 @@ export function buildActivityViewModel(input: {
     resolveActivityRecencyMs(right) - resolveActivityRecencyMs(left) ||
     compareThreadIds(left, right);
   pinned.sort(compareRecency);
+  drafts.sort(compareRecency);
   active.sort(compareRecency);
   settled.sort((left, right) => {
     const leftSettledMs = parseTimestampMs(left.settledAt) || resolveActivityRecencyMs(left);
@@ -95,7 +107,7 @@ export function buildActivityViewModel(input: {
     return rightSettledMs - leftSettledMs || compareThreadIds(left, right);
   });
 
-  return { pinned, active, settled };
+  return { pinned, drafts, active, settled };
 }
 
 export type ActivityDateBucket = "today" | "yesterday" | "earlier";
@@ -202,10 +214,15 @@ export type ActivityScopeOption =
 export function collectActivityScopeOptions(
   threads: readonly SidebarThreadSummary[],
   isRealProject: (projectId: ProjectId) => boolean,
+  draftThreadIds?: ReadonlySet<ThreadId>,
 ): ActivityScopeOption[] {
   const countByProjectId = new Map<ProjectId, number>();
   for (const thread of threads) {
-    if (!isActivityThread(thread)) continue;
+    if (
+      !isActivityThread(thread) &&
+      !(draftThreadIds?.has(thread.id) && !thread.archivedAt && !thread.parentThreadId)
+    )
+      continue;
     countByProjectId.set(thread.projectId, (countByProjectId.get(thread.projectId) ?? 0) + 1);
   }
 

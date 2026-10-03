@@ -823,3 +823,22 @@ export function selectComposerThreadDraft(
 ): ComposerThreadDraftState {
   return state.draftsByThreadId[threadId] ?? EMPTY_THREAD_DRAFT;
 }
+
+export function hasUnsentComposerDraft(state: ComposerThreadDraftState | undefined): boolean {
+  if (!state) return false;
+  const draft = state.promptHistorySavedDraft ?? state;
+  return Boolean(
+    draft.prompt.trim() ||
+    draft.images.length ||
+    draft.files.length ||
+    draft.persistedAttachments.length ||
+    draft.assistantSelections.length ||
+    draft.browserAnnotations.length ||
+    draft.terminalContexts.length ||
+    draft.fileComments.length ||
+    draft.pastedTexts.length ||
+    draft.pullRequestContexts.length ||
+    draft.skills.length ||
+    draft.mentions.length,
+  );
+}

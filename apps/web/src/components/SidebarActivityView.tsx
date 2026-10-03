@@ -1,3 +1,9 @@
+import { CentralIcon } from "~/lib/central-icons";
+import { useShallow } from "zustand/react/shallow";
+import { useComposerDraftStore } from "~/composerDraftStore";
+import { hasUnsentComposerDraft } from "~/composerDraftDomain";
+import { useSidebarStateStore } from "~/sidebarStateStore";
+import { ProjectSidebarIcon } from "./ProjectSidebarIcon";
 import {
   useEffect,
   useRef,
@@ -127,6 +133,10 @@ function ActivityThreadRow({
   onContextMenu: (threadId: ThreadId, position: SidebarRowContextMenuPosition) => void;
   renderHoverCard: (anchorId: string) => ReactNode;
 }) {
+  const isLocalDraft = useComposerDraftStore((state) => {
+    const draft = state.draftThreadsByThreadId[thread.id];
+    return Boolean(draft && !draft.promotedTo);
+  });
   const provider = thread.session?.provider ?? thread.modelSelection.provider;
   const branch = resolveThreadDisplayBranch(thread);
   const isWorktree =
@@ -134,7 +144,9 @@ function ActivityThreadRow({
       envMode: thread.envMode,
       worktreePath: thread.worktreePath,
     }) === "worktree";
-  const ProjectGlyph = isWorktree ? WorktreeIcon : FolderClosed;
+  const hasDraft = useComposerDraftStore((state) =>
+    hasUnsentComposerDraft(state.draftsByThreadId[thread.id]),
+  );
   const hoverAnchorId = createSidebarThreadHoverAnchorId({
     scope: "activity",
     threadId: thread.id,
@@ -145,9 +157,9 @@ function ActivityThreadRow({
 
   const rowGestures = createSidebarThreadRowGestures({
     threadId: thread.id,
-    onRename,
-    onRenamePointerUp,
-    onContextMenu,
+    onRename: isLocalDraft ? () => {} : onRename,
+    onRenamePointerUp: isLocalDraft ? () => {} : onRenamePointerUp,
+    onContextMenu: isLocalDraft ? () => {} : onContextMenu,
   });
 
   return (
@@ -200,12 +212,34 @@ function ActivityThreadRow({
             >
               {thread.title}
             </span>
+            {hasDraft ? (
+              <span
+                aria-label="Unsent draft"
+                title="Unsent draft"
+                className="shrink-0 text-muted-foreground"
+              >
+                <CentralIcon name="pencil" className="size-3" />
+              </span>
+            ) : null}
           </span>
           <span className="flex min-w-0 items-center gap-1.5">
-            <ProjectGlyph
-              className={sidebarGlyphClass("meta", "translate-y-px text-muted-foreground/70")}
-              aria-hidden
-            />
+            {isWorktree ? (
+              <WorktreeIcon
+                className={sidebarGlyphClass("meta", "translate-y-px text-muted-foreground/70")}
+                aria-hidden
+              />
+            ) : project ? (
+              <ProjectSidebarIcon
+                cwd={project.cwd}
+                appearance={project.appearance}
+                expanded={false}
+                variant="favicon"
+                glyphClassName={sidebarGlyphClass("meta")}
+              />
+            ) : (
+              <FolderClosed className={sidebarGlyphClass("meta")} aria-hidden />
+            )}
+
             <span className="min-w-0 truncate text-ui-sm text-muted-foreground/80">
               {resolveThreadProjectLabel(project)}
             </span>
@@ -240,40 +274,42 @@ function ActivityThreadRow({
             <SidebarStatusTrailingGlyph status={trailingStatus} />
           </span>
         ) : null}
-        <span
-          className="absolute top-1 right-1 inline-flex items-center gap-1 opacity-0 transition-opacity group-hover/activity-row:opacity-100 group-focus-within/activity-row:opacity-100"
-          // Double-clicking an action button toggles it twice; it must not also open the row's rename dialog.
-          // Pointer-up is the touch/pen double-tap signal, so keep action taps out of that detector too.
-          onDoubleClick={stopRowActivation}
-          onPointerUp={(event) => event.stopPropagation()}
-        >
-          <ThreadPinToggleButton
-            pinned={isPinned}
-            presentation="inline"
-            toneClassName={actionToneClassName}
-            onToggle={(event) => {
-              stopRowActivation(event);
-              onTogglePinned();
-            }}
-          />
-          <ThreadArchiveActionButton
-            threadId={thread.id}
-            toneClassName={actionToneClassName}
-            onArchive={onArchive}
-          />
-          <SidebarIconButton
-            icon={isSettled ? Undo2Icon : CircleCheckIcon}
-            label={isSettled ? "Undo" : "Done"}
-            title={isSettled ? "Undo" : "Done"}
-            iconClassName={SIDEBAR_TRAILING_ICON_CLASS}
-            className={cn("hover:text-foreground/89", actionToneClassName)}
-            onMouseDown={stopRowActivation}
-            onClick={(event) => {
-              stopRowActivation(event);
-              onSetSettled(!isSettled);
-            }}
-          />
-        </span>
+        {!isLocalDraft ? (
+          <span
+            className="absolute top-1 right-1 inline-flex items-center gap-1 opacity-0 transition-opacity group-hover/activity-row:opacity-100 group-focus-within/activity-row:opacity-100"
+            // Double-clicking an action button toggles it twice; it must not also open the row's rename dialog.
+            // Pointer-up is the touch/pen double-tap signal, so keep action taps out of that detector too.
+            onDoubleClick={stopRowActivation}
+            onPointerUp={(event) => event.stopPropagation()}
+          >
+            <ThreadPinToggleButton
+              pinned={isPinned}
+              presentation="inline"
+              toneClassName={actionToneClassName}
+              onToggle={(event) => {
+                stopRowActivation(event);
+                onTogglePinned();
+              }}
+            />
+            <ThreadArchiveActionButton
+              threadId={thread.id}
+              toneClassName={actionToneClassName}
+              onArchive={onArchive}
+            />
+            <SidebarIconButton
+              icon={isSettled ? Undo2Icon : CircleCheckIcon}
+              label={isSettled ? "Undo" : "Done"}
+              title={isSettled ? "Undo" : "Done"}
+              iconClassName={SIDEBAR_TRAILING_ICON_CLASS}
+              className={cn("hover:text-foreground/89", actionToneClassName)}
+              onMouseDown={stopRowActivation}
+              onClick={(event) => {
+                stopRowActivation(event);
+                onSetSettled(!isSettled);
+              }}
+            />
+          </span>
+        ) : null}
       </TooltipTrigger>
       {renderHoverCard(hoverAnchorId)}
     </Tooltip>
@@ -557,7 +593,16 @@ export function SidebarActivityView({
 
   onAddProject: () => void;
 }) {
-  const [scopeSelection, setScopeSelection] = useState<ActivityScopeSelection>(null);
+  const scopeSelection = useSidebarStateStore((state) => state.activityScope);
+  const setScopeSelection = useSidebarStateStore((state) => state.setActivityScope);
+  const draftIds = useComposerDraftStore(
+    useShallow((state) =>
+      Object.entries(state.draftsByThreadId)
+        .filter(([, draft]) => hasUnsentComposerDraft(draft))
+        .map(([id]) => id as ThreadId),
+    ),
+  );
+  const draftThreadIds = new Set(draftIds);
   const [groupMode, setGroupMode] = useState<ActivityGroupMode>("time");
   const [pinnedOpen, setPinnedOpen] = useState(true);
   const [earlierOpen, setEarlierOpen] = useState(false);
@@ -570,7 +615,15 @@ export function SidebarActivityView({
 
   const isRealProject = (projectId: ProjectId) => projectById.get(projectId)?.kind === "project";
 
-  const scopeOptions = collectActivityScopeOptions(threads, isRealProject);
+  const scopeOptions = collectActivityScopeOptions(threads, isRealProject, draftThreadIds);
+  if (
+    scopeSelection &&
+    scopeSelection !== "chats" &&
+    projectById.has(scopeSelection) &&
+    !scopeOptions.some((option) => option.kind === "project" && option.projectId === scopeSelection)
+  ) {
+    scopeOptions.push({ kind: "project", projectId: scopeSelection, threadCount: 0 });
+  }
   const unreadThreads = collectUnreadActivityThreads(threads);
 
   const { scope: activeScope, projectFilterIds } = resolveActivityScope(
@@ -578,12 +631,13 @@ export function SidebarActivityView({
     scopeOptions,
   );
   useEffect(() => {
-    if (scopeSelection !== activeScope) setScopeSelection(activeScope);
-  }, [activeScope, scopeSelection]);
+    if (threadsHydrated && scopeSelection !== activeScope) setScopeSelection(activeScope);
+  }, [activeScope, scopeSelection, setScopeSelection, threadsHydrated]);
 
   const model = buildActivityViewModel({
     threads,
     pinnedThreadIdSet,
+    draftThreadIds,
     settledOverrideByThreadId,
     projectFilterIds,
   });
@@ -626,7 +680,7 @@ export function SidebarActivityView({
     };
   });
 
-  const visibleThreadIds = collectVisibleActivityThreadIds({
+  const ordinaryVisibleThreadIds = collectVisibleActivityThreadIds({
     groupMode,
     pinnedOpen,
     pinned: scopedPinnedThreads,
@@ -639,11 +693,30 @@ export function SidebarActivityView({
     settledOpen,
     settled: model.settled.slice(0, settledPaging.previewLimit),
   });
+  const revealedThread =
+    activeThreadId &&
+    !ordinaryVisibleThreadIds.includes(activeThreadId) &&
+    !model.drafts.some((thread) => thread.id === activeThreadId)
+      ? threads.find(
+          (thread) =>
+            thread.id === activeThreadId &&
+            !thread.archivedAt &&
+            (projectFilterIds === null || projectFilterIds.has(thread.projectId)),
+        )
+      : undefined;
+  const visibleThreadIds = [
+    ...new Set([
+      ...(pinnedOpen ? scopedPinnedThreads.map((thread) => thread.id) : []),
+      ...model.drafts.map((thread) => thread.id),
+      ...(revealedThread ? [revealedThread.id] : []),
+      ...ordinaryVisibleThreadIds,
+    ]),
+  ];
   const visibleThreadIdsFingerprint = visibleThreadIds.join("\0");
   const visibleThreadIdsRef = useRef(visibleThreadIds);
   useEffect(() => {
     visibleThreadIdsRef.current = visibleThreadIds;
-  }, [visibleThreadIds]);
+  });
   useEffect(() => {
     onVisibleThreadIdsChange(visibleThreadIdsRef.current);
   }, [onVisibleThreadIdsChange, visibleThreadIdsFingerprint]);
@@ -696,7 +769,11 @@ export function SidebarActivityView({
     renderRow(thread, isThreadSettledForActivity(thread, settledOverrideByThreadId));
 
   const isEmpty =
-    model.active.length === 0 && model.settled.length === 0 && scopedPinnedThreads.length === 0;
+    model.active.length === 0 &&
+    model.settled.length === 0 &&
+    model.drafts.length === 0 &&
+    !revealedThread &&
+    scopedPinnedThreads.length === 0;
   const emptyLabel =
     activeScope === null
       ? "No activity yet"
@@ -718,7 +795,18 @@ export function SidebarActivityView({
         </ActivityCollapsibleSection>
       ) : null}
 
-      {}
+      {model.drafts.length > 0 ? (
+        <div>
+          <ActivitySectionLabel label="Drafts" />
+          <div className="flex flex-col gap-0.5">{model.drafts.map(renderActiveRow)}</div>
+        </div>
+      ) : null}
+      {revealedThread ? (
+        <div>
+          <ActivitySectionLabel label="Open chat" />
+          {renderActiveRow(revealedThread)}
+        </div>
+      ) : null}
       <div className="group/project-header relative flex h-7 items-center gap-1 px-2 py-0.5">
         <ActivityScopeMenu
           options={scopeOptions}

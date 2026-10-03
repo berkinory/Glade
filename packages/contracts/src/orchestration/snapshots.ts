@@ -12,6 +12,7 @@ import { OrchestrationEvent } from "./events";
 
 export const OrchestrationReadModel = Schema.Struct({
   snapshotSequence: NonNegativeInt,
+  persistenceScope: Schema.optional(Schema.String),
   spaces: Schema.Array(OrchestrationSpace),
   projects: Schema.Array(OrchestrationProject),
   threads: Schema.Array(OrchestrationThread),
@@ -22,6 +23,7 @@ export type OrchestrationReadModel = typeof OrchestrationReadModel.Type;
 
 export const OrchestrationShellSnapshot = Schema.Struct({
   snapshotSequence: NonNegativeInt,
+  persistenceScope: Schema.optional(Schema.String),
   requiresEmptyProjectShellRepair: Schema.optional(Schema.Boolean),
   spaces: Schema.Array(OrchestrationSpaceShell),
   projects: Schema.Array(OrchestrationProjectShell),

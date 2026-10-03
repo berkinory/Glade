@@ -4,12 +4,16 @@
 
 ### New
 
+- Chats with unsent messages are marked in the sidebar and easier to find in Activity.
+
 - Cycle supported model effort levels with Shift+Tab in the composer.
 - Links to other chats in agent replies open the referenced conversation directly.
 
 - Add files and folders to Explorer with drag and drop, or paste files from the clipboard.
 
 ### Improved
+
+- Activity keeps the open chat visible and shows recognizable project icons, including monorepo favicons.
 
 - Unavailable notification controls are easier to distinguish while an action is in progress.
 
@@ -54,6 +58,9 @@
 - Models load faster on first use, with a balanced initial reasoning effort when you have not chosen one.
 
 ### Fixed
+
+- Activity remembers its project filter, and unread chats retain their status after reopening Glade.
+- Workspace panels resize reliably and slide smoothly when opening or closing.
 
 - Claude compaction handles startup delays, respects cancellation and keeps the current session settings.
 - Claude chats recover from missing native conversations without repeatedly reopening a broken session.

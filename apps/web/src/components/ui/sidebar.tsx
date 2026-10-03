@@ -22,8 +22,6 @@ import { useIsMobile } from "~/hooks/useMediaQuery";
 import { getLocalStorageItem, setLocalStorageItem } from "~/hooks/useLocalStorage";
 import { Schema } from "effect";
 
-const SIDEBAR_COOKIE_NAME = "sidebar_state";
-const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 export const SIDEBAR_DEFAULT_WIDTH_REDUCTION_PX = Math.round(16 * 16 * 0.05);
 export const SIDEBAR_DEFAULT_WIDTH_PX = 16 * 16 - SIDEBAR_DEFAULT_WIDTH_REDUCTION_PX;
 export const SIDEBAR_MAX_WIDTH_PX = 24 * 16;
@@ -39,7 +37,7 @@ const SIDEBAR_RESIZE_DEFAULT_MIN_WIDTH = 16 * 16;
  * (Sidebar `className`) and the layout `gapClassName` so they animate in lockstep.
  * Shared by the thread sidebar (left) and the right dock so the two slides match.
  */
-const SIDEBAR_OFFCANVAS_MOTION_CLASS = `will-change-[transform] ${UI_MOTION_LONG_CLASS}`;
+const SIDEBAR_OFFCANVAS_MOTION_CLASS = `will-change-[translate] ${UI_MOTION_LONG_CLASS}`;
 
 /**
  * Suppresses the slide entirely — for first mount or a reposition/remount where
@@ -133,18 +131,6 @@ function SidebarProvider({
       } else {
         _setOpen(openState);
       }
-
-      // This sets the cookie to keep the sidebar state.
-      void cookieStore
-        .set({
-          expires: Date.now() + SIDEBAR_COOKIE_MAX_AGE * 1000,
-          name: SIDEBAR_COOKIE_NAME,
-          path: "/",
-          value: String(openState),
-        })
-        .catch((error: unknown) => {
-          console.warn("[sidebar] Could not persist sidebar visibility", error);
-        });
     },
     [setOpenProp, open],
   );
@@ -253,6 +239,7 @@ function Sidebar({
   className,
   gapClassName,
   innerClassName,
+  rail,
   transparentSurface: transparentSurfaceProp,
   children,
   ...props
@@ -263,6 +250,7 @@ function Sidebar({
   resizable?: boolean | SidebarResizableOptions;
   gapClassName?: string;
   innerClassName?: string;
+  rail?: React.ReactNode;
   transparentSurface?: boolean;
 }) {
   const side = sideProp ?? "left";
@@ -354,11 +342,11 @@ function Sidebar({
         />
         <div
           className={cn(
-            // The offcanvas slide animates transform (compositor) instead of left/right
+            // The offcanvas slide animates translate (compositor) instead of left/right
             // (layout): a fixed panel relayouts its whole subtree per frame otherwise,
             // which read as a janky close on heavy sidebar content. The gap still
             // animates width — reserving layout is its job — but its subtree is empty.
-            "fixed inset-y-0 z-0 hidden h-svh w-(--sidebar-width) transition-[left,right,width,transform] duration-120 ease-out motion-reduce:transition-none md:flex",
+            "fixed inset-y-0 z-0 hidden h-svh w-(--sidebar-width) transition-[left,right,width,translate] duration-120 ease-out motion-reduce:transition-none md:flex",
             side === "left"
               ? "left-0 group-data-[collapsible=offcanvas]:-translate-x-full"
               : "right-0 group-data-[collapsible=offcanvas]:translate-x-full",
@@ -389,6 +377,7 @@ function Sidebar({
           >
             {children}
           </div>
+          {rail}
         </div>
       </div>
     </SidebarInstanceContext.Provider>

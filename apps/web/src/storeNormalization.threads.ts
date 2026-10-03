@@ -1,3 +1,4 @@
+import { rememberedThreadVisit } from "./threadVisitPersistence";
 import { deriveBackgroundWork } from "@glade/shared/threads/backgroundWork";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { OrchestrationSessionStatus } from "@glade/contracts/orchestration/threadEntities";
@@ -160,7 +161,8 @@ export function normalizeThreadFromReadModel(
         ? undefined
         : [...incomingPendingInteractions];
   const error = normalizeThreadErrorMessage(session?.lastError);
-  const lastVisitedAt = previous?.lastVisitedAt ?? incoming.updatedAt;
+  const lastVisitedAt =
+    previous?.lastVisitedAt ?? rememberedThreadVisit(incoming.id) ?? incoming.updatedAt;
   const resolvedLatestHumanMessageAt = incoming.latestHumanMessageAt;
   const resolvedLatestUserMessageAt =
     Object.hasOwn(incoming, "latestUserMessageAt") && incoming.latestUserMessageAt !== undefined
@@ -276,7 +278,8 @@ export function normalizeThreadShellSnapshot(
   const { handoff, claudeCacheReviewSequence, claudeCacheReview, lastKnownPr } =
     normalizeThreadSharedMetadata(incoming, previous, snapshotSequence);
   const error = normalizeThreadErrorMessage(session?.lastError);
-  const lastVisitedAt = previous?.lastVisitedAt ?? incoming.updatedAt;
+  const lastVisitedAt =
+    previous?.lastVisitedAt ?? rememberedThreadVisit(incoming.id) ?? incoming.updatedAt;
   const nextWorktreePath = incoming.worktreePath;
   const nextWorkingDirectory = incoming.workingDirectory ?? null;
   const nextAssociatedWorktreePath = incoming.associatedWorktreePath ?? null;

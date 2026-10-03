@@ -322,3 +322,22 @@ Agent details retain the mounted conversation, including scroll position and exp
 Ordinary Markdown images open the existing image preview with click, Enter or Space. Images inside links follow that link exclusively, including unavailable local images. Local previews still require workspace authorization. Closing a preview returns focus to its trigger.
 
 Use `[chat title](#chat=THREAD_ID)` in Markdown to link a conversation in this Glade workspace. The fragment is an internal Markdown convention mapped to the existing `/$threadId` route, not an operating-system URL handler. IDs may be percent-encoded and must decode to 1–128 ASCII letters, digits, underscores or hyphens. The target must exist in the accessible server chat list; missing or malformed targets show an error without navigating or discarding drafts. Titles are labels, never lookup keys. Ordinary web and file links retain their existing handling.
+
+## Sidebar continuity
+
+Unsent text and attachments mark existing chats in both sidebar views. Activity puts
+unpinned drafts together; pinned chats keep their priority. Unsent local chats also
+appear in Activity without creating a provider session. Browsing prompt history
+uses the saved draft for this indicator. The open chat remains reachable outside
+collapsed or paginated sections without changing their expansion or page count.
+
+Activity remembers its project filter per server/profile and validates it after
+hydration. Read markers use server timestamps and bounded browser metadata, restored
+before chat normalization, so replies completed while Glade is closed stay unread.
+Other windows share changes through browser storage; unavailable storage leaves
+in-memory behavior usable.
+
+Recent rows reuse project appearance, preferring explicit emoji, icon or color over
+a favicon. Favicon discovery checks root and declared icons first, then a bounded
+set of shallow frontend directories. Symlinks outside the project and oversized
+files are rejected. Workspace resize handles live outside the clipped panel surface.

@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { ServerConfig } from "../../server/config";
 import { Effect, Layer } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import {
@@ -15,6 +17,11 @@ import { makeSnapshotThreadDetails } from "../projection/snapshotThreadDetails";
 
 const makeProjectionSnapshotQuery = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
+  const config = yield* Effect.serviceOption(ServerConfig);
+  const persistenceScope =
+    config._tag === "Some"
+      ? createHash("sha256").update(config.value.stateDir).digest("hex")
+      : undefined;
 
   const liveThreadScope = sql`
     thread_id IN (SELECT thread_id FROM projection_threads WHERE deleted_at IS NULL)
@@ -69,6 +76,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
   const { getCommandReadModel, getSnapshot, getShellSnapshot, getCounts, getSnapshotSequence } =
     makeSnapshotReadModels({
       sql,
+      persistenceScope,
       listSpaceRows,
       listProjectRows,
       listThreadRows,

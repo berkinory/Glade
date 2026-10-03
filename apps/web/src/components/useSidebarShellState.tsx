@@ -1,3 +1,10 @@
+import { useShallow } from "zustand/react/shallow";
+import { hasUnsentComposerDraft } from "../composerDraftDomain";
+import { buildSidebarThreadSummary } from "../storeProjection.records";
+import {
+  buildLocalDraftThread,
+  resolveDraftFallbackModelSelection,
+} from "./ChatView.logic.worktree";
 import { useCommittedChatRoute } from "../hooks/useCommittedChatRoute";
 import {
   useEffect,
@@ -89,7 +96,7 @@ export function useSidebarShellState() {
 
   const threadsHydrated = useStore((store) => store.threadsHydrated);
 
-  const sidebarThreadSummaryById = useStore((store) => store.sidebarThreadSummaryById);
+  const persistedSidebarThreadSummaryById = useStore((store) => store.sidebarThreadSummaryById);
 
   const syncServerShellSnapshot = useStore((store) => store.syncServerShellSnapshot);
 
@@ -328,9 +335,40 @@ export function useSidebarShellState() {
 
   const selectSidebarTreeThreads = useMemo(() => createSidebarTreeThreadsSelector(), []);
 
-  const sidebarThreads = useStore(selectSidebarThreads);
-
-  const sidebarTreeThreads = useStore(selectSidebarTreeThreads);
+  const persistedSidebarThreads = useStore(selectSidebarThreads);
+  const persistedSidebarTreeThreads = useStore(selectSidebarTreeThreads);
+  const pendingDraftIds = useComposerDraftStore(
+    useShallow((store) =>
+      Object.entries(store.draftsByThreadId)
+        .filter(([, draft]) => hasUnsentComposerDraft(draft))
+        .map(([id]) => id as ThreadId),
+    ),
+  );
+  const localDraftThreads = pendingDraftIds.flatMap((id) => {
+    const draft = draftThreadsByThreadId[id];
+    if (!draft || draft.promotedTo || persistedSidebarThreadSummaryById[id]) return [];
+    const project = projects.find((project) => project.id === draft.projectId);
+    if (!project) return [];
+    return [
+      buildSidebarThreadSummary(
+        buildLocalDraftThread(
+          id,
+          draft,
+          resolveDraftFallbackModelSelection({
+            projectDefault: project.defaultModelSelection,
+            settingsDefaultProvider: appSettings.defaultProvider,
+          }),
+          null,
+        ),
+      ),
+    ];
+  });
+  const sidebarThreads = [...persistedSidebarThreads, ...localDraftThreads];
+  const sidebarTreeThreads = persistedSidebarTreeThreads;
+  const sidebarThreadSummaryById = {
+    ...persistedSidebarThreadSummaryById,
+    ...Object.fromEntries(localDraftThreads.map((thread) => [thread.id, thread])),
+  };
 
   const selectProjectLastActivityAt = useMemo(() => createProjectLastActivityAtSelector(), []);
 

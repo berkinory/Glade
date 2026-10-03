@@ -71,47 +71,64 @@ const makeProjectFaviconResolver = Effect.gen(function* () {
   const findExistingFile = Effect.fn(function* (
     projectCwd: string,
     candidates: ReadonlyArray<string>,
+    maxBytes = 512 * 1024,
   ) {
     for (const candidate of candidates) {
       if (!isPathWithinProject(projectCwd, candidate)) {
         continue;
       }
-      const stats = yield* fileSystem
-        .stat(candidate)
+      const realPath = yield* fileSystem
+        .realPath(candidate)
         .pipe(Effect.catch(() => Effect.succeed(null)));
-      if (stats?.type === "File") {
-        return candidate;
+      if (!realPath || !isPathWithinProject(projectCwd, realPath)) continue;
+      const stats = yield* fileSystem.stat(realPath).pipe(Effect.catch(() => Effect.succeed(null)));
+      if (stats?.type === "File" && Number(stats.size) <= maxBytes) {
+        return realPath;
       }
     }
     return null;
   });
 
-  const resolvePath: ProjectFaviconResolverShape["resolvePath"] = Effect.fn(function* (cwd) {
-    for (const candidate of FAVICON_CANDIDATES) {
-      const existing = yield* findExistingFile(cwd, [path.join(cwd, candidate)]);
-      if (existing) {
-        return existing;
-      }
-    }
-
-    for (const sourceFile of ICON_SOURCE_FILES) {
-      const sourcePath = path.join(cwd, sourceFile);
+  const resolveInDirectory = Effect.fn(function* (root: string, directory: string) {
+    const conventional = yield* findExistingFile(
+      root,
+      FAVICON_CANDIDATES.map((name) => path.join(directory, name)),
+    );
+    if (conventional) return conventional;
+    for (const name of ICON_SOURCE_FILES) {
+      const sourcePath = yield* findExistingFile(root, [path.join(directory, name)], 256 * 1024);
+      if (!sourcePath) continue;
       const source = yield* fileSystem
         .readFileString(sourcePath)
         .pipe(Effect.catch(() => Effect.succeed(null)));
-      if (!source) {
-        continue;
-      }
-      const href = extractIconHref(source);
-      if (!href) {
-        continue;
-      }
-      const existing = yield* findExistingFile(cwd, resolveIconHref(cwd, href));
-      if (existing) {
-        return existing;
-      }
+      const href = source ? extractIconHref(source) : null;
+      if (!href || /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(href)) continue;
+      const existing = yield* findExistingFile(root, resolveIconHref(directory, href));
+      if (existing) return existing;
     }
+    return null;
+  });
 
+  const resolvePath: ProjectFaviconResolverShape["resolvePath"] = Effect.fn(function* (cwd) {
+    const root = yield* fileSystem.realPath(cwd).pipe(Effect.catch(() => Effect.succeed(null)));
+    if (!root) return null;
+    const rootIcon = yield* resolveInDirectory(root, root);
+    if (rootIcon) return rootIcon;
+    const directories = new Set(["apps/web", "web", "frontend", "client", "site"]);
+    for (const parent of ["apps", "packages"]) {
+      const directory = yield* fileSystem
+        .realPath(path.join(root, parent))
+        .pipe(Effect.catch(() => Effect.succeed(null)));
+      if (!directory || !isPathWithinProject(root, directory)) continue;
+      const names = yield* fileSystem
+        .readDirectory(directory)
+        .pipe(Effect.catch(() => Effect.succeed([] as string[])));
+      for (const name of names.toSorted().slice(0, 12)) directories.add(path.join(parent, name));
+    }
+    for (const directory of directories) {
+      const icon = yield* resolveInDirectory(root, path.join(root, directory));
+      if (icon) return icon;
+    }
     return null;
   });
 

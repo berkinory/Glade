@@ -1,3 +1,9 @@
+import type { ProjectId } from "@glade/contracts/core/baseSchemas";
+import {
+  readActivityScope,
+  writeActivityScope,
+  subscribeVisitScope,
+} from "../threadVisitPersistence";
 import { normalizeWorkspaceRootForComparison } from "@glade/shared/threads/threadWorkspace";
 import type { LastThreadRoute } from "../chatRouteRestore";
 
@@ -10,6 +16,7 @@ export type SidebarUiState = {
   lastThreadRoute: LastThreadRoute | null;
 
   activityViewEnabled: boolean;
+  activityScope: ProjectId | "chats" | null;
 };
 
 const DEFAULT_SIDEBAR_UI_STATE: SidebarUiState = {
@@ -18,6 +25,7 @@ const DEFAULT_SIDEBAR_UI_STATE: SidebarUiState = {
   dismissedThreadStatusKeyByThreadId: {},
   lastThreadRoute: null,
   activityViewEnabled: false,
+  activityScope: null,
 };
 
 const MAX_PERSISTED_THREAD_LIST_EXTRA_PAGES = 1000;
@@ -54,13 +62,13 @@ function sanitizeProjectThreadListExtraPagesByCwd(
 
 export function readSidebarUiState(): SidebarUiState {
   if (typeof window === "undefined") {
-    return DEFAULT_SIDEBAR_UI_STATE;
+    return { ...DEFAULT_SIDEBAR_UI_STATE, activityScope: readActivityScope() };
   }
 
   try {
     const raw = window.localStorage.getItem(SIDEBAR_UI_STATE_STORAGE_KEY);
     if (!raw) {
-      return DEFAULT_SIDEBAR_UI_STATE;
+      return { ...DEFAULT_SIDEBAR_UI_STATE, activityScope: readActivityScope() };
     }
 
     const parsed = JSON.parse(raw) as {
@@ -118,9 +126,10 @@ export function readSidebarUiState(): SidebarUiState {
       ),
       lastThreadRoute,
       activityViewEnabled: parsed.activityViewEnabled === true,
+      activityScope: readActivityScope(),
     };
   } catch {
-    return DEFAULT_SIDEBAR_UI_STATE;
+    return { ...DEFAULT_SIDEBAR_UI_STATE, activityScope: readActivityScope() };
   }
 }
 
@@ -129,11 +138,16 @@ export function subscribeSidebarUiState(listener: (state: SidebarUiState) => voi
     return () => {};
   }
   const handleStorage = (event: StorageEvent) => {
-    if (event.key !== SIDEBAR_UI_STATE_STORAGE_KEY) return;
+    if (event.key !== SIDEBAR_UI_STATE_STORAGE_KEY && !event.key?.startsWith("glade:visits:"))
+      return;
     listener(readSidebarUiState());
   };
   window.addEventListener("storage", handleStorage);
-  return () => window.removeEventListener("storage", handleStorage);
+  const unsubscribe = subscribeVisitScope(() => listener(readSidebarUiState()));
+  return () => {
+    unsubscribe();
+    window.removeEventListener("storage", handleStorage);
+  };
 }
 
 export function persistSidebarUiState(input: SidebarUiState): void {
@@ -141,6 +155,7 @@ export function persistSidebarUiState(input: SidebarUiState): void {
     return;
   }
 
+  writeActivityScope(input.activityScope);
   try {
     window.localStorage.setItem(
       SIDEBAR_UI_STATE_STORAGE_KEY,

@@ -1,3 +1,4 @@
+import { subscribeThreadVisits } from "./threadVisitPersistence";
 import { Fragment, type ReactNode, createElement, useEffect } from "react";
 import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import {
@@ -51,9 +52,10 @@ export function persistAppStateNow(state: AppState = useStore.getState()): void 
 }
 
 function markThreadVisited(state: AppState, threadId: ThreadId, visitedAt?: string): AppState {
-  const at = visitedAt ?? new Date().toISOString();
-  const visitedAtMs = Date.parse(at);
   return applyThreadUpdate(state, threadId, (thread) => {
+    const at = visitedAt ?? thread.updatedAt;
+    if (!at) return thread;
+    const visitedAtMs = Date.parse(at);
     const previousVisitedAtMs = thread.lastVisitedAt ? Date.parse(thread.lastVisitedAt) : NaN;
     if (
       Number.isFinite(previousVisitedAtMs) &&
@@ -344,6 +346,18 @@ export const useStore = create<AppStore>((set) => ({
     set((state) => setThreadWorkspace(state, threadId, patch)),
 }));
 
+subscribeThreadVisits((visits) => {
+  useStore.setState((state) => {
+    let next: AppState = state;
+    for (const [id, at] of visits) {
+      next = applyThreadUpdate(next, id as ThreadId, (thread) =>
+        thread.lastVisitedAt === at ? thread : { ...thread, lastVisitedAt: at },
+      );
+    }
+    return next;
+  });
+});
+
 let lastRememberedProjects: readonly Project[] | undefined;
 useStore.subscribe((state) => {
   if (state.projects !== lastRememberedProjects) {
@@ -354,6 +368,7 @@ useStore.subscribe((state) => {
 });
 
 if (typeof window !== "undefined") {
+  window.addEventListener("pagehide", () => persistAppStateNow());
   window.addEventListener("beforeunload", () => {
     persistAppStateNow();
   });

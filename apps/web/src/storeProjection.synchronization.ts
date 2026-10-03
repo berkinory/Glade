@@ -23,7 +23,8 @@ import {
   rememberProjectState,
   resetStaleRememberedProjectState,
 } from "./storePersistence";
-import type { AppState } from "./storeState";
+import { initialState, type AppState } from "./storeState";
+import { initializeVisitScope } from "./threadVisitPersistence";
 import type { SidebarThreadSummary } from "./types";
 import {
   commitThreadProjection,
@@ -53,6 +54,10 @@ export function syncServerShellSnapshot(
   state: AppState,
   snapshot: OrchestrationShellSnapshot,
 ): AppState {
+  if (initializeVisitScope(snapshot.persistenceScope)) {
+    resetThreadDetailResumeCursors();
+    state = initialState;
+  }
   if (isStaleSnapshot(state, snapshot.snapshotSequence)) {
     return state;
   }
@@ -205,6 +210,10 @@ export function applyShellEvent(state: AppState, event: OrchestrationShellStream
 }
 
 export function syncServerReadModel(state: AppState, readModel: OrchestrationReadModel): AppState {
+  if (initializeVisitScope(readModel.persistenceScope)) {
+    resetThreadDetailResumeCursors();
+    state = initialState;
+  }
   if (isStaleSnapshot(state, readModel.snapshotSequence)) {
     return state;
   }

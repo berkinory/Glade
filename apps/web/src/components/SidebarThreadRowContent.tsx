@@ -1,3 +1,6 @@
+import { useComposerDraftStore } from "~/composerDraftStore";
+import { hasUnsentComposerDraft } from "~/composerDraftDomain";
+import { CentralIcon } from "~/lib/central-icons";
 import { useMemo, type ReactNode } from "react";
 
 import { isGenericChatThreadTitle } from "@glade/shared/threads/chatThreads";
@@ -146,6 +149,9 @@ export function SidebarThreadRowContent({
   pendingStatusColorClass?: string | null | undefined;
   suffix?: ReactNode;
 }) {
+  const hasDraft = useComposerDraftStore((state) =>
+    hasUnsentComposerDraft(state.draftsByThreadId[thread.id]),
+  );
   const subagentIndentPx = subagentIndentPxProp ?? 0;
   const isSubagentThread = Boolean(thread.parentThreadId);
   const subagentPresentation =
@@ -210,6 +216,15 @@ export function SidebarThreadRowContent({
             thread.title
           )}
         </span>
+        {hasDraft ? (
+          <span
+            aria-label="Unsent draft"
+            title="Unsent draft"
+            className="shrink-0 text-muted-foreground"
+          >
+            <CentralIcon name="pencil" className="size-3" />
+          </span>
+        ) : null}
         {!isSubagentThread && pendingStatusColorClass ? (
           <span
             aria-label="Pending approval"

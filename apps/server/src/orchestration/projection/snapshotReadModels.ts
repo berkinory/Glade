@@ -53,6 +53,7 @@ const decodeReadModel = Schema.decodeUnknownEffect(OrchestrationReadModel);
 const decodeShellSnapshot = Schema.decodeUnknownEffect(OrchestrationShellSnapshot);
 
 export function makeSnapshotReadModels(input: {
+  readonly persistenceScope: string | undefined;
   readonly sql: SqlClient.SqlClient;
   readonly listSpaceRows: ReturnType<typeof makeSnapshotBaseQueries>["listSpaceRows"];
   readonly listProjectRows: ReturnType<typeof makeSnapshotBaseQueries>["listProjectRows"];
@@ -258,6 +259,7 @@ export function makeSnapshotReadModels(input: {
           );
 
           const snapshot = {
+            persistenceScope: input.persistenceScope,
             snapshotSequence: yield* computeSnapshotSequence(stateRows),
             spaces: spaceRows.map(toProjectedSpace),
             projects,
@@ -394,6 +396,7 @@ export function makeSnapshotReadModels(input: {
           );
 
           return yield* decodeReadModel({
+            persistenceScope: input.persistenceScope,
             snapshotSequence: yield* computeSnapshotSequence(stateRows),
             spaces: spaceRows.map(toProjectedSpace),
             projects,
@@ -509,6 +512,7 @@ export function makeSnapshotReadModels(input: {
             : false;
 
           const snapshot = {
+            persistenceScope: input.persistenceScope,
             snapshotSequence: yield* computeSnapshotSequence(stateRows),
             requiresEmptyProjectShellRepair,
             spaces: spaceRows.filter((row) => row.deletedAt === null).map(toProjectedSpaceShell),
