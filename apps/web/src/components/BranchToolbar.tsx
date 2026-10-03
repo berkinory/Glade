@@ -378,7 +378,7 @@ export default function BranchToolbar({
         className,
       )}
     >
-      <div className={isPanel ? "flex flex-col gap-0.5" : "flex min-w-0 items-center gap-2"}>
+      <div className={isPanel ? "flex flex-col gap-0.5" : "flex w-full min-w-0 items-center gap-2"}>
         {showBranchSelector ? (
           // ChatView stays mounted while the route switches threads. Reset the selector's optimistic checkout
           // state at that boundary so a previous thread cannot paint its branch while the new thread's
@@ -408,7 +408,12 @@ export default function BranchToolbar({
 
         {showEnvironment ? (
           !hasServerThread ? (
-            <label className="inline-flex items-center gap-2 text-ui-sm text-muted-foreground">
+            <label
+              className={cn(
+                "inline-flex shrink-0 items-center gap-2 text-ui-sm text-muted-foreground",
+                !isPanel && "ml-auto px-2 sm:px-2.5",
+              )}
+            >
               <Checkbox
                 checked={effectiveEnvMode === "worktree"}
                 disabled={
