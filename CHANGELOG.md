@@ -4,6 +4,9 @@
 
 ### New
 
+- Sign in to Claude and Codex from provider settings.
+- Show Claude and Codex usage limits in the sidebar, with five-hour and weekly views.
+
 - Chats with unsent messages are marked in the sidebar and easier to find in Activity.
 
 - Cycle supported model effort levels with Shift+Tab in the composer.
@@ -60,6 +63,8 @@
 - Models load faster on first use, with a balanced initial reasoning effort when you have not chosen one.
 
 ### Fixed
+
+- Temporary model discovery failures keep your last available model list.
 
 - Activity remembers its project filter, and unread chats retain their status after reopening Glade.
 - Workspace panels resize reliably and slide smoothly when opening or closing.

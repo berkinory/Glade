@@ -1,3 +1,4 @@
+import { Switch } from "../ui/switch";
 import type { ServerProviderUsageSnapshot } from "@glade/contracts/server/server";
 import {
   PROVIDER_USAGE_PROVIDERS,
@@ -149,7 +150,7 @@ function mergeProviderUsageRefresh(
 
 export function ProviderUsageSettingsPanel() {
   const queryClient = useQueryClient();
-  const { settings } = useAppSettings();
+  const { settings, updateSettings } = useAppSettings();
   const codexHomePath = settings.codexHomePath || null;
   const threads = useStore(useMemo(() => createAllThreadsSelector(), []));
 
@@ -187,6 +188,44 @@ export function ProviderUsageSettingsPanel() {
         </Button>
       }
     >
+      <SettingsCard>
+        <div className="space-y-3 p-4">
+          <h3 className="text-ui-lg font-medium">Sidebar usage indicators</h3>
+          {(["claudeAgent", "codex"] as const).map((provider) => (
+            <label key={provider} className="flex items-center justify-between gap-2 text-ui">
+              {providerUsageDisplayName(provider)}
+              <Switch
+                aria-label={`Show ${providerUsageDisplayName(provider)} usage in sidebar`}
+                checked={settings.sidebarUsageProviders.includes(provider)}
+                onCheckedChange={(checked) =>
+                  updateSettings({
+                    sidebarUsageProviders: checked
+                      ? [...settings.sidebarUsageProviders, provider]
+                      : settings.sidebarUsageProviders.filter((entry) => entry !== provider),
+                  })
+                }
+              />
+            </label>
+          ))}
+          <label className="flex items-center justify-between gap-2 text-ui">
+            Quota windows
+            <select
+              aria-label="Sidebar quota windows"
+              className="rounded-md border bg-background px-2 py-1 text-ui"
+              value={settings.sidebarUsageWindow}
+              onChange={(event) => {
+                const value = event.currentTarget.value;
+                if (value === "five-hour" || value === "weekly" || value === "both")
+                  updateSettings({ sidebarUsageWindow: value });
+              }}
+            >
+              <option value="five-hour">Five-hour</option>
+              <option value="weekly">Weekly</option>
+              <option value="both">Both</option>
+            </select>
+          </label>
+        </div>
+      </SettingsCard>
       {showInitialLoading ? (
         <SettingsCard>
           <div className="px-4 py-3.5 text-ui leading-snug text-muted-foreground">

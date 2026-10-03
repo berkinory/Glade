@@ -1,5 +1,7 @@
 # TODO
 
+- **S17 implemented:** Added scoped, transient CLI sign-in sessions, retained successful contextual model catalogs on refresh failure and optional sidebar quota windows. Full check and test suite passed; both configured provider commands exercised with isolated real PTYs. Official account sign-in and Windows execution remain unverified.
+
 - **S11 implemented:** Added draft membership and local draft rows, open-chat reveal, profile-scoped Activity filters and bounded read watermarks, safe nested favicon discovery and unclipped resize rails. Full check and full suite passed (2,545 passing, 9 skipped); final web changes passed all 439 web tests. Isolated Dev verified local draft visibility, Settings/reload filter retention and unclipped handles. File-boundary and persistence fixtures passed; exhaustive platform/theme and closed-app live-provider scenarios remain unverified.
 
 - **S3 implemented:** Separated native command discovery from context-meter timeout, fenced preparation/replay with durable cancellation, preserved established compaction settings and cleared missing-conversation bindings under generation/turn checks. Codex watchdog publishes actual authority retirement. Full check and full suite passed (2,543 passing, 9 skipped), including native configuration and durable cancellation coverage. Real-provider startup, Windows and signed release scenarios remain unverified.

@@ -110,3 +110,17 @@ Glade renders harness policy once per provider. Codex receives it as `developerI
 Edit, revert and file undo preview scoped checkpoint restores before confirmation. Each removed turn contributes its git diff paths, with the first affected turn start as the restore target and the last affected turn end as the expected workspace state. Later file changes require explicit consent per path, and a fingerprint is revalidated before provider rollback and again before restoring. The real git index and unrelated files are preserved. Claude rollback starts its replacement native session before deleting the superseded history.
 
 Claude agent discovery uses only the SDK’s `supportedAgents()` results. The SDK exposes name, description and model, without the originating configuration file path, so Glade does not fabricate an “open agent file” action. Claude child-message delivery uses its existing `PreToolUse` hook and the composer states that delivery occurs at the next tool call. Native task messages own lifecycle and progress. The isolated `claudeWorkflowRuntime.ts` reader remains because workflow child model and effort metadata are absent from those task messages.
+
+## Guided authentication
+
+Provider settings start the configured official Claude or Codex CLI through an
+explicit authentication service. It reuses provider environment builders, platform
+executable planning and the runtime PTY adapter. Each provider owns at most one
+attempt, with a random attachment identity, bounded transient output and retained
+exit status. Authentication output never enters chat events or terminal log storage.
+
+Opening an existing attempt attaches to its actual executable/home and status;
+only an explicit start creates a process. Close requires the current attachment
+identity and verifies owned process teardown. Renderer remounts do not start another
+login. CLI exit triggers provider status and catalog refresh; exit code zero alone
+is not proof of authentication. Server shutdown disposes retained attempts.

@@ -403,6 +403,14 @@ export function providerModelsQueryOptions(
             ...(input.apiEndpoint ? { apiEndpoint: input.apiEndpoint } : {}),
             ...(cwd ? { cwd } : {}),
           });
+          const previous = queryClient.getQueryData<ProviderListModelsResult>(queryKey);
+          if (
+            result.error &&
+            (previous?.source === "sdk" || previous?.source === "codex-app-server") &&
+            !previous.error
+          ) {
+            throw new Error(result.error);
+          }
           return result;
         },
       ),

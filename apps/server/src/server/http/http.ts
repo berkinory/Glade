@@ -1,3 +1,4 @@
+import { providerAuthenticationRouteLayer } from "./providerAuthenticationRoute";
 import type { ServerReadiness } from "../readiness";
 import { type ServerShutdownController } from "../lifecycle/serverShutdown";
 import { Layer } from "effect";
@@ -23,6 +24,7 @@ export function makeEffectHttpRouteLayer(
     makeDesktopShutdownEffectRouteLayer(shutdownController),
     makeDesktopComputerEmergencyStopRouteLayer(),
     authEffectRouteLayer,
+    providerAuthenticationRouteLayer,
     projectFaviconEffectRouteLayer,
     threadExportEffectRouteLayer,
     siteFaviconEffectRouteLayer,

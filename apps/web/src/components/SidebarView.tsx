@@ -1,3 +1,4 @@
+import { SidebarUsageIndicators } from "./SidebarUsageIndicators";
 import { useStore } from "../store";
 import { useSidebarStateStore } from "../sidebarStateStore";
 import { SidebarTrigger } from "./ui/sidebar";
@@ -564,6 +565,7 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
       </SidebarContent>
 
       <SidebarFooter className={cn("gap-2 border-sidebar-border border-t p-2 font-system-ui")}>
+        <SidebarUsageIndicators />
         <SidebarMenu>
           <SidebarMenuItem>
             <div className="flex flex-col gap-1">

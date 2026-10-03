@@ -1,3 +1,4 @@
+import { ProviderSignIn } from "./ProviderSignIn";
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { type ServerProviderStatus } from "@glade/contracts/server/server";
@@ -388,6 +389,11 @@ function ProviderToolRow(props: {
           ) : null}
         </div>
 
+        {enabled &&
+        props.providerStatus?.available &&
+        (props.config.provider === "codex" || props.config.provider === "claudeAgent") ? (
+          <ProviderSignIn provider={props.config.provider} />
+        ) : null}
         <CollapsiblePanel>
           <div className="border-t border-border/70 bg-muted/20 px-3 py-3">
             <div className="space-y-3">

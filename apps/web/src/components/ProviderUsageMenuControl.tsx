@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import {
@@ -138,8 +139,86 @@ export function ProviderUsageMenuPopup({
   );
 }
 
-export function ProviderUsageMenuControl({ provider }: { provider: ProviderKind }) {
+export function ProviderUsageMenuControl({
+  provider,
+  surface = "header",
+}: {
+  provider: ProviderKind;
+  surface?: "header" | "sidebar";
+}) {
   const model = useProviderUsageMenuModel(provider);
+  const { settings } = useAppSettings();
+  if (surface === "sidebar") {
+    const windows =
+      settings.sidebarUsageWindow === "both"
+        ? [300, 10080]
+        : [settings.sidebarUsageWindow === "five-hour" ? 300 : 10080];
+    const rows = windows.map((duration) => ({
+      duration,
+      row: model.rows.find((row) => row.windowDurationMins === duration),
+    }));
+    const description = model.isLoading
+      ? "Loading usage"
+      : rows
+          .map(
+            ({ duration, row }) =>
+              `${duration === 300 ? "Five-hour (outer)" : windows.length === 2 ? "Weekly (inner)" : "Weekly"}: ${row ? `${row.remainingLabel} remaining${row.resetText ? `, ${row.resetText}` : ""}` : "unavailable"}`,
+          )
+          .join("; ");
+    return (
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Link
+              to="/settings"
+              search={{ section: "usage" }}
+              aria-label={`${model.menuTitle}. ${description}`}
+              className="relative flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          }
+        >
+          <svg viewBox="0 0 36 36" className="absolute inset-0 size-9 -rotate-90" aria-hidden>
+            {rows.map(({ duration, row }, index) => (
+              <g key={duration}>
+                <circle
+                  cx="18"
+                  cy="18"
+                  r={index === 0 ? 16 : 12}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  opacity="0.15"
+                />
+                {row ? (
+                  <circle
+                    cx="18"
+                    cy="18"
+                    r={index === 0 ? 16 : 12}
+                    fill="none"
+                    pathLength="100"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeDasharray={`${row.remainingPercent} 100`}
+                    className={
+                      row.remainingPercent <= 10
+                        ? "text-red-500"
+                        : index === 0
+                          ? "text-emerald-500"
+                          : "text-blue-500"
+                    }
+                  />
+                ) : null}
+              </g>
+            ))}
+          </svg>
+          <ProviderIcon provider={provider} className="size-3.5" />
+        </TooltipTrigger>
+        <TooltipPopup side="top" className="max-w-72 text-ui-sm">
+          {model.menuTitle}: {model.emptyMessage ?? model.notice ?? description}
+        </TooltipPopup>
+      </Tooltip>
+    );
+  }
 
   if (!model.primaryRow) {
     return null;

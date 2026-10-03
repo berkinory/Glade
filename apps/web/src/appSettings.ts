@@ -180,6 +180,10 @@ const AppSettingsSchema = Schema.Struct({
     withDefaults(() => DEFAULT_TERMINAL_FONT_FAMILY),
   ),
   codexBinaryPath: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
+  sidebarUsageProviders: PersistedProviderKindList.pipe(withDefaults(() => [])),
+  sidebarUsageWindow: Schema.Literals(["five-hour", "weekly", "both"]).pipe(
+    withDefaults(() => "both" as const),
+  ),
   codexHomePath: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
   defaultThreadEnvMode: EnvMode.pipe(withDefaults(() => "local" as const satisfies EnvMode)),
   confirmThreadDelete: Schema.Boolean.pipe(withDefaults(() => true)),
@@ -386,6 +390,9 @@ function normalizeAppSettings(settings: AppSettings): AppSettings {
     terminalFontFamily: normalizeTerminalFontFamily(settings.terminalFontFamily),
     hiddenProviders: normalizeHiddenProviders(settings.hiddenProviders),
     disabledProviders: normalizeHiddenProviders(settings.disabledProviders),
+    sidebarUsageProviders: [...new Set(settings.sidebarUsageProviders)].filter(
+      (provider) => provider === "codex" || provider === "claudeAgent",
+    ),
     providerOrder: normalizeProviderOrder(settings.providerOrder),
     hiddenModels: [],
   };

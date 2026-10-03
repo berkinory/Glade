@@ -13,7 +13,7 @@ const runtimePtyAdapterLoaders = {
   node: () => import("./Layers/NodePTY"),
 } satisfies Record<PtyAdapterRuntime, () => Promise<RuntimePtyAdapterLoader>>;
 
-const makeRuntimePtyAdapterLayer = () =>
+export const makeRuntimePtyAdapterLayer = () =>
   Effect.gen(function* () {
     const runtime = selectPtyAdapterRuntime({
       platform: process.platform,

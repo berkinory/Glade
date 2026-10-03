@@ -288,3 +288,21 @@ queued work drains. Generation and native-turn checks prevent old failures from
 clearing a newer session. The transcript remains available for fresh-session context.
 When the Codex watchdog actually retires gateway authority, its terminal event asks
 the existing lifecycle owner to renew the connection on the next send.
+
+### Sign-in and usage indicators
+
+Installed Claude and Codex offer **Sign in** in provider settings. The embedded
+terminal runs the configured CLI in its provider environment. Close sign-in to stop
+and discard the attempt; reopening a retained running or exited attempt shows its
+current state. Credentials remain managed by the official CLI. Authentication has
+to be verified by provider status even when the command exits successfully.
+
+Usage settings can show either provider in the sidebar, with five-hour, weekly or
+both windows. With both selected, the outer track is five-hour and the inner track
+is weekly. Hover or keyboard focus describes each window; click opens Usage.
+Missing or failed windows remain unavailable rather than appearing as full quota.
+Disabled providers are hidden. These controls reuse the shared usage query.
+
+A failed model refresh keeps the last successful native catalog for the exact
+provider, executable, endpoint, workspace and credential context. A successful empty
+catalog remains authoritative; a new context does not inherit another context's list.
