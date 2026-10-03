@@ -8,6 +8,10 @@
 
 ### Improved
 
+- Creating a pull request with your own title and description avoids unnecessary message generation.
+- Git failures identify the failed step and preserve action details when switching workspaces.
+- Prepared pull request chats open without waiting for unrelated Git refreshes.
+
 - GitHub lookups pause during rate limits and resume after the cooldown instead of repeatedly failing.
 
 - Chat switching avoids unnecessary control delays, and long activity histories need less repeated processing.
@@ -39,6 +43,9 @@
 - Models load faster on first use, with a balanced initial reasoning effort when you have not chosen one.
 
 ### Fixed
+
+- Git message generation reports terminal Codex authentication failures promptly.
+- Opening a pull request reuses its verified worktree without retargeting another fork's branch.
 
 - Chats keep their pull request association when another chat changes a shared checkout's branch.
 

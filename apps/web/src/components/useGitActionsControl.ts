@@ -1,7 +1,7 @@
-import type { GitActionProgressEvent, GitStatusResult } from "@glade/contracts/git/git";
+import type { GitStatusResult } from "@glade/contracts/git/git";
 import type { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { getProviderStartOptions, useAppSettings } from "~/appSettings";
 import { toastManager } from "~/components/ui/toast";
 import { openInPreferredEditor } from "~/editorPreferences";
@@ -23,12 +23,7 @@ import {
   isGitExpensiveReadCapacityError,
   refreshGitActionAvailability,
 } from "../lib/gitQueryOptions";
-import {
-  resolveProgressDescription,
-  useGitActionRunner,
-  type ActiveGitActionProgress,
-  type PendingDefaultBranchAction,
-} from "./gitActionRunner";
+import { useGitActionRunner, type PendingDefaultBranchAction } from "./gitActionRunner";
 import {
   buildMenuItems,
   requiresFeatureBranchForDefaultBranchAction,
@@ -101,22 +96,6 @@ export function useGitActionsControl({
   const [isCreateBranchDialogOpen, setIsCreateBranchDialogOpen] = useState(false);
   const [createBranchName, setCreateBranchName] = useState("");
   const [createPrDialog, setCreatePrDialog] = useState<CreatePrDialogState | null>(null);
-  const activeGitActionProgressRef = useRef<ActiveGitActionProgress | null>(null);
-
-  const updateActiveProgressToast = useCallback(() => {
-    const progress = activeGitActionProgressRef.current;
-    if (!progress) {
-      return;
-    }
-    toastManager.update(progress.toastId, {
-      type: "loading",
-      title: progress.title,
-      description: resolveProgressDescription(progress),
-      timeout: 0,
-      data: threadToastData,
-    });
-  }, [threadToastData]);
-
   const { data: branchListData, isSuccess: branchListReady } = useQuery(
     gitBranchesQueryOptions(gitCwd),
   );
@@ -285,80 +264,6 @@ export function useGitActionsControl({
         includesCommit: pendingDefaultBranchAction.includesCommit,
       })
     : null;
-  useEffect(() => {
-    const api = readNativeApi();
-    if (!api) {
-      return;
-    }
-
-    const applyProgressEvent = (event: GitActionProgressEvent) => {
-      const progress = activeGitActionProgressRef.current;
-      if (!progress) {
-        return;
-      }
-      if (gitCwd && event.cwd !== gitCwd) {
-        return;
-      }
-      if (progress.actionId !== event.actionId) {
-        return;
-      }
-
-      const now = Date.now();
-      switch (event.kind) {
-        case "action_started":
-          progress.phaseStartedAtMs = now;
-          progress.hookStartedAtMs = null;
-          progress.hookName = null;
-          progress.lastOutputLine = null;
-          break;
-        case "phase_started":
-          progress.title = event.label;
-          progress.currentPhaseLabel = event.label;
-          progress.phaseStartedAtMs = now;
-          progress.hookStartedAtMs = null;
-          progress.hookName = null;
-          progress.lastOutputLine = null;
-          break;
-        case "hook_started":
-          progress.title = `Running ${event.hookName}...`;
-          progress.hookName = event.hookName;
-          progress.hookStartedAtMs = now;
-          progress.lastOutputLine = null;
-          break;
-        case "hook_output":
-          progress.lastOutputLine = event.text;
-          break;
-        case "hook_finished":
-          progress.title = progress.currentPhaseLabel ?? "Committing...";
-          progress.hookName = null;
-          progress.hookStartedAtMs = null;
-          progress.lastOutputLine = null;
-          break;
-        case "action_finished":
-          return;
-        case "action_failed":
-          return;
-      }
-
-      updateActiveProgressToast();
-    };
-
-    return api.git.onActionProgress(applyProgressEvent);
-  }, [gitCwd, updateActiveProgressToast]);
-
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      if (!activeGitActionProgressRef.current) {
-        return;
-      }
-      updateActiveProgressToast();
-    }, 1000);
-
-    return () => {
-      window.clearInterval(interval);
-    };
-  }, [updateActiveProgressToast]);
-
   const openExistingPr = useCallback(async () => {
     const api = readNativeApi();
     if (!api) {
@@ -501,7 +406,6 @@ export function useGitActionsControl({
     persistThreadPr,
     runAction: runImmediateGitActionMutation.mutateAsync,
     threadToastData,
-    activeGitActionProgressRef,
     setPendingDefaultBranchAction,
   });
 

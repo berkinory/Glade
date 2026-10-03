@@ -11,3 +11,14 @@ The server checks every path's fingerprint again after generation. Source Contro
 Concurrent requests for the same snapshot share a bounded, short-lived successful generation. Compression is local; there is one provider request per generation, not one per file.
 
 PR discovery, association, creation and checkout remain available. Environment and the conditional sidebar thread icon open PR URLs externally. Dedicated detail/review/code panels and management actions are retired. Existing saved links remain readable.
+
+When a commit/push/PR action includes a title but no separate commit message, that title
+also supplies the commit subject. An explicit commit message always takes precedence.
+Supplying both PR title and body avoids PR text generation; missing text still uses the
+selected provider. Codex generation distinguishes terminal authentication rejection
+from recoverable transport fallback warnings. Output collection is bounded and UTF-8
+chunk boundaries are preserved; scoped teardown still completes before returning.
+
+Git action progress and failures belong to the captured action, including after
+workspace navigation. Failure messages identify the failed phase and preserve the
+server's detail. Earlier successful steps are not retried automatically.

@@ -1462,31 +1462,38 @@ export const makeGitManager = Effect.gen(function* () {
       });
       const pullRequest = toResolvedPullRequest(pullRequestSummary);
 
-      if (input.mode === "local") {
-        yield* gitHubCli.checkoutPullRequest({
-          cwd: input.cwd,
-          reference: normalizedReference,
-          force: true,
-        });
-        const details = yield* gitCore.statusDetails(input.cwd, { metadataOnly: true });
-        yield* configurePullRequestHeadUpstream(
-          input.cwd,
-          {
-            ...pullRequest,
-            ...toPullRequestHeadRemoteInfo(pullRequestSummary),
-          },
-          details.branch ?? pullRequest.headBranch,
-        );
-        return {
-          pullRequest,
-          branch: details.branch ?? pullRequest.headBranch,
-          worktreePath: null,
-        };
-      }
-
-      const ensureExistingWorktreeUpstream = (worktreePath: string) =>
+      const ensureExistingWorktreeUpstream = (worktreePath: string, expectedBranch?: string) =>
         Effect.gen(function* () {
           const details = yield* gitCore.statusDetails(worktreePath);
+          if (expectedBranch) {
+            const remote = yield* readConfigValueNullable(
+              worktreePath,
+              `branch.${expectedBranch}.remote`,
+            );
+            const merge = yield* readConfigValueNullable(
+              worktreePath,
+              `branch.${expectedBranch}.merge`,
+            );
+            const actual = yield* resolveRemoteRepositoryContext(worktreePath, remote);
+            const expected =
+              resolveHeadRepositoryNameWithOwner(pullRequestWithRemoteInfo) ??
+              (pullRequestSummary.isCrossRepository === false
+                ? parseGitHubRepositoryNameWithOwnerFromRemoteUrl(
+                    pullRequest.url.replace(/\/pull\/.*$/, ""),
+                  )
+                : null);
+            if (
+              details.branch !== expectedBranch ||
+              !expected ||
+              actual.repositoryNameWithOwner?.toLowerCase() !== expected.toLowerCase() ||
+              merge !== `refs/heads/${pullRequest.headBranch}`
+            ) {
+              return yield* gitManagerError(
+                "preparePullRequestThread",
+                "The existing worktree does not have a verified remote for this pull request. Check its branch and upstream before retrying.",
+              );
+            }
+          }
           yield* configurePullRequestHeadUpstream(
             worktreePath,
             {
@@ -1536,13 +1543,38 @@ export const makeGitManager = Effect.gen(function* () {
         existingBranchBeforeFetch?.worktreePath &&
         existingBranchBeforeFetchPath !== rootWorktreePath
       ) {
-        yield* ensureExistingWorktreeUpstream(existingBranchBeforeFetch.worktreePath);
+        yield* ensureExistingWorktreeUpstream(
+          existingBranchBeforeFetch.worktreePath,
+          existingBranchBeforeFetch.name,
+        );
         return {
           pullRequest,
-          branch: localPullRequestBranch,
+          branch: existingBranchBeforeFetch.name,
           worktreePath: existingBranchBeforeFetch.worktreePath,
         };
       }
+      if (input.mode === "local") {
+        yield* gitHubCli.checkoutPullRequest({
+          cwd: input.cwd,
+          reference: normalizedReference,
+          force: false,
+        });
+        const details = yield* gitCore.statusDetails(input.cwd, { metadataOnly: true });
+        yield* configurePullRequestHeadUpstream(
+          input.cwd,
+          {
+            ...pullRequest,
+            ...toPullRequestHeadRemoteInfo(pullRequestSummary),
+          },
+          details.branch ?? pullRequest.headBranch,
+        );
+        return {
+          pullRequest,
+          branch: details.branch ?? pullRequest.headBranch,
+          worktreePath: null,
+        };
+      }
+
       if (existingBranchBeforeFetchPath === rootWorktreePath) {
         return yield* gitManagerError(
           "preparePullRequestThread",
@@ -1564,10 +1596,13 @@ export const makeGitManager = Effect.gen(function* () {
         existingBranchAfterFetch?.worktreePath &&
         existingBranchAfterFetchPath !== rootWorktreePath
       ) {
-        yield* ensureExistingWorktreeUpstream(existingBranchAfterFetch.worktreePath);
+        yield* ensureExistingWorktreeUpstream(
+          existingBranchAfterFetch.worktreePath,
+          existingBranchAfterFetch.name,
+        );
         return {
           pullRequest,
-          branch: localPullRequestBranch,
+          branch: existingBranchAfterFetch.name,
           worktreePath: existingBranchAfterFetch.worktreePath,
         };
       }
@@ -1797,7 +1832,9 @@ export const makeGitManager = Effect.gen(function* () {
             : null;
 
         let branchStep: { status: "created" | "skipped_not_requested"; name?: string };
-        let commitMessageForStep = input.commitMessage;
+        let commitMessageForStep =
+          input.commitMessage?.trim() ||
+          (input.action === "commit_push_pr" ? input.prTitle?.trim() : undefined);
         let preResolvedCommitSuggestion: CommitAndBranchSuggestion | undefined = undefined;
 
         if (input.featureBranch) {
@@ -1810,7 +1847,7 @@ export const makeGitManager = Effect.gen(function* () {
           const result = yield* runFeatureBranchStep(
             input.cwd,
             initialStatus.branch,
-            input.commitMessage,
+            commitMessageForStep,
             input.filePaths,
             textGenerationParams,
             {

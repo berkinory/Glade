@@ -1,3 +1,4 @@
+import { StringDecoder } from "node:string_decoder";
 import { normalizeModelSlug } from "@glade/shared/provider/model";
 import { randomUUID } from "node:crypto";
 
@@ -157,18 +158,31 @@ const makeCodexTextGeneration = Effect.gen(function* () {
   const readStreamAsString = <E>(
     operation: string,
     stream: Stream.Stream<Uint8Array, E>,
+    inspectAuth = false,
   ): Effect.Effect<string, TextGenerationError> =>
     Effect.gen(function* () {
       let text = "";
+      const decoder = new StringDecoder("utf8");
       yield* Stream.runForEach(stream, (chunk) =>
-        Effect.sync(() => {
-          text += Buffer.from(chunk).toString("utf8");
+        Effect.suspend(() => {
+          text = (text + decoder.write(Buffer.from(chunk))).slice(-64 * 1024);
+          if (inspectAuth && /(?:^|\n)\s*ERROR:[^\r\n]*\b401 Unauthorized\b/i.test(text)) {
+            return Effect.fail(
+              new TextGenerationError({
+                operation: `${operation}.authentication`,
+                detail:
+                  "Codex authentication was rejected (401 Unauthorized). Sign in to Codex again and retry.",
+              }),
+            );
+          }
+          return Effect.void;
         }),
       ).pipe(
         Effect.mapError((cause) =>
           normalizeCodexError("codex", operation, cause, "Failed to collect process output"),
         ),
       );
+      text = (text + decoder.end()).slice(-64 * 1024);
       return text;
     });
 
@@ -437,7 +451,7 @@ const makeCodexTextGeneration = Effect.gen(function* () {
         const [, stderr, exitCode] = yield* Effect.all(
           [
             readStreamAsString(operation, child.stdout),
-            readStreamAsString(operation, child.stderr),
+            readStreamAsString(operation, child.stderr, true),
             child.exitCode.pipe(
               Effect.map((value) => Number(value)),
               Effect.mapError((cause) =>
@@ -478,7 +492,6 @@ const makeCodexTextGeneration = Effect.gen(function* () {
 
       return yield* Effect.gen(function* () {
         yield* runCodexCommand.pipe(
-          Effect.scoped,
           Effect.timeoutOption(CODEX_TIMEOUT_MS),
           Effect.flatMap(
             Option.match({
@@ -492,6 +505,7 @@ const makeCodexTextGeneration = Effect.gen(function* () {
               onSome: () => Effect.void,
             }),
           ),
+          Effect.scoped,
         );
 
         return yield* fileSystem.readFileString(outputPath).pipe(

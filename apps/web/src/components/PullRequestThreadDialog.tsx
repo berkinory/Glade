@@ -1,3 +1,4 @@
+import { toastManager } from "./ui/toast";
 import type { GitResolvePullRequestResult } from "@glade/contracts/git/git";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDebouncedValue } from "@tanstack/react-pacer";
@@ -73,6 +74,7 @@ function PullRequestThreadDialogContent({
 }) {
   const queryClient = useQueryClient();
   const referenceInputRef = useRef<HTMLInputElement>(null);
+  const preparationInFlight = useRef(false);
   const [reference, setReference] = useState(initialReference ?? "");
   const [referenceDirty, setReferenceDirty] = useState(false);
   const [preparingMode, setPreparingMode] = useState<"local" | "worktree" | null>(null);
@@ -141,6 +143,7 @@ function PullRequestThreadDialogContent({
   }
 
   const handleConfirm = (mode: "local" | "worktree") => {
+    if (preparationInFlight.current) return;
     if (!parsedReference) {
       setReferenceDirty(true);
       return;
@@ -148,6 +151,13 @@ function PullRequestThreadDialogContent({
     if (!parsedReference || !resolvedPullRequest || !cwd) {
       return;
     }
+    preparationInFlight.current = true;
+    const progressId = toastManager.add({
+      type: "loading",
+      title: "Preparing pull request workspace...",
+      description: cwd,
+      timeout: 0,
+    });
     setPreparingMode(mode);
     onBusyChange(true);
     void preparePullRequestThreadMutation
@@ -160,14 +170,27 @@ function PullRequestThreadDialogContent({
           onPrepared({
             branch: result.branch,
             worktreePath: result.worktreePath,
-            pullRequest: resolvedPullRequest,
+            pullRequest: result.pullRequest,
           }),
         ).then(() => {
           onOpenChange(false);
+          toastManager.update(progressId, {
+            type: "success",
+            title: "Pull request chat prepared",
+            timeout: 5000,
+          });
         }),
       )
-      .catch(() => undefined)
+      .catch((error) => {
+        toastManager.update(progressId, {
+          type: "error",
+          title: "Could not prepare pull request chat",
+          description: error instanceof Error ? error.message : "Preparation failed.",
+          timeout: 0,
+        });
+      })
       .finally(() => {
+        preparationInFlight.current = false;
         setPreparingMode(null);
         onBusyChange(false);
       });

@@ -1,10 +1,11 @@
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type {
+  GitActionProgressEvent,
   GitRunStackedActionResult,
   GitStackedAction,
   GitStatusResult,
 } from "@glade/contracts/git/git";
-import { useCallback, type Dispatch, type RefObject, type SetStateAction } from "react";
+import { useCallback, type Dispatch, type SetStateAction } from "react";
 import { randomUUID } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
 import { formatClockDuration } from "~/session-logic";
@@ -30,7 +31,7 @@ export interface PendingDefaultBranchAction {
 
 type GitActionToastId = ReturnType<typeof toastManager.add>;
 
-export interface ActiveGitActionProgress {
+interface ActiveGitActionProgress {
   toastId: GitActionToastId;
   actionId: string;
   title: string;
@@ -66,7 +67,7 @@ function formatElapsedDescription(startedAtMs: number | null): string | undefine
   return `Running for ${formatClockDuration(Date.now() - startedAtMs)}`;
 }
 
-export function resolveProgressDescription(progress: ActiveGitActionProgress): string | undefined {
+function resolveProgressDescription(progress: ActiveGitActionProgress): string | undefined {
   if (progress.lastOutputLine) {
     return progress.lastOutputLine;
   }
@@ -110,7 +111,6 @@ type GitActionRunnerDeps = {
   }) => Promise<void>;
   runAction: (input: RunStackedActionVariables) => Promise<GitRunStackedActionResult>;
   threadToastData: { threadId: ThreadId } | undefined;
-  activeGitActionProgressRef: RefObject<ActiveGitActionProgress | null>;
   setPendingDefaultBranchAction: Dispatch<SetStateAction<PendingDefaultBranchAction | null>>;
 };
 
@@ -124,7 +124,6 @@ export function useGitActionRunner(deps: GitActionRunnerDeps) {
     persistThreadPr,
     runAction,
     threadToastData,
-    activeGitActionProgressRef,
     setPendingDefaultBranchAction,
   } = deps;
   return useCallback(
@@ -214,7 +213,7 @@ export function useGitActionRunner(deps: GitActionRunnerDeps) {
           data: threadToastData,
         });
 
-      activeGitActionProgressRef.current = {
+      const progress: ActiveGitActionProgress = {
         toastId: resolvedProgressToastId,
         actionId,
         title: progressStages[0] ?? "Running git action...",
@@ -235,21 +234,69 @@ export function useGitActionRunner(deps: GitActionRunnerDeps) {
         });
       }
 
-      const promise = runAction({
-        actionId,
-        action,
-        ...(commitMessage ? { commitMessage } : {}),
-        ...(featureBranch ? { featureBranch } : {}),
-        ...(filePaths ? { filePaths } : {}),
-        ...(prTitle ? { prTitle } : {}),
-        ...(prBody ? { prBody } : {}),
-        ...(prDraft ? { prDraft } : {}),
-        ...(allowDirtyWorkingTree ? { allowDirtyWorkingTree } : {}),
+      let failedMessage: string | null = null;
+      let failedPhase: string | null = null;
+      const updateProgress = () =>
+        toastManager.update(resolvedProgressToastId, {
+          type: "loading",
+          title: progress.title,
+          description: resolveProgressDescription(progress),
+          timeout: 0,
+          data: threadToastData,
+        });
+      const unsubscribe = readNativeApi()?.git.onActionProgress((event: GitActionProgressEvent) => {
+        if (event.actionId !== actionId) return;
+        const now = Date.now();
+        switch (event.kind) {
+          case "action_started":
+            progress.phaseStartedAtMs = now;
+            break;
+          case "phase_started":
+            progress.title = event.label;
+            progress.currentPhaseLabel = event.label;
+            progress.phaseStartedAtMs = now;
+            progress.hookStartedAtMs = null;
+            progress.hookName = null;
+            progress.lastOutputLine = null;
+            break;
+          case "hook_started":
+            progress.title = `Running ${event.hookName}...`;
+            progress.hookName = event.hookName;
+            progress.hookStartedAtMs = now;
+            break;
+          case "hook_output":
+            progress.lastOutputLine = event.text;
+            break;
+          case "hook_finished":
+            progress.title = progress.currentPhaseLabel ?? "Committing...";
+            progress.hookName = null;
+            progress.hookStartedAtMs = null;
+            progress.lastOutputLine = null;
+            break;
+          case "action_failed":
+            failedMessage = event.message;
+            failedPhase = event.phase;
+            return;
+          case "action_finished":
+            return;
+        }
+        updateProgress();
       });
+      const interval = window.setInterval(updateProgress, 1000);
 
       try {
-        const result = await promise;
-        activeGitActionProgressRef.current = null;
+        const result = await runAction({
+          actionId,
+          action,
+          ...(commitMessage ? { commitMessage } : {}),
+          ...(featureBranch ? { featureBranch } : {}),
+          ...(filePaths ? { filePaths } : {}),
+          ...(prTitle ? { prTitle } : {}),
+          ...(prBody ? { prBody } : {}),
+          ...(prDraft ? { prDraft } : {}),
+          ...(allowDirtyWorkingTree ? { allowDirtyWorkingTree } : {}),
+        });
+
         const resultToast = summarizeGitResult(result);
         const persistedPr =
           result.pr.status === "created" || result.pr.status === "opened_existing"
@@ -366,17 +413,21 @@ export function useGitActionRunner(deps: GitActionRunnerDeps) {
         });
         afterSuccess?.(result);
       } catch (err) {
-        activeGitActionProgressRef.current = null;
         toastManager.update(resolvedProgressToastId, {
           type: "error",
-          title: "Action failed",
-          description: err instanceof Error ? err.message : "An error occurred.",
+          title: failedPhase
+            ? `${failedPhase === "pr" ? "Pull request" : failedPhase} failed`
+            : `${progress.currentPhaseLabel?.replace(/\.{3}$/, "") ?? "Action"} failed`,
+          description: failedMessage ?? (err instanceof Error ? err.message : "An error occurred."),
           timeout: 0,
           data: {
             ...threadToastData,
-            copyText: err instanceof Error ? err.message : "An error occurred.",
+            copyText: failedMessage ?? (err instanceof Error ? err.message : "An error occurred."),
           },
         });
+      } finally {
+        unsubscribe?.();
+        window.clearInterval(interval);
       }
     },
     [
@@ -387,7 +438,6 @@ export function useGitActionRunner(deps: GitActionRunnerDeps) {
       openCreatePrDialog,
       persistThreadPr,
       runAction,
-      activeGitActionProgressRef,
       setPendingDefaultBranchAction,
       threadToastData,
     ],

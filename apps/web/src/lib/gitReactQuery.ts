@@ -61,7 +61,7 @@ function makeGitMutationOptions<TArgs, TResult>(config: {
   const handleInvalidation =
     config.awaitInvalidation === false
       ? () => {
-          void runInvalidation().catch(() => undefined);
+          void runInvalidation().catch((error) => console.error("Git refresh failed", error));
         }
       : runInvalidation;
 
@@ -283,6 +283,7 @@ export function gitPreparePullRequestThreadMutationOptions(input: {
     cwd: input.cwd,
     queryClient: input.queryClient,
     mutationKey: gitMutationKeys.preparePullRequestThread(input.cwd),
+    awaitInvalidation: false,
     unavailableMessage: "Pull request thread preparation is unavailable.",
     run: (api, cwd, { reference, mode }) =>
       api.git.preparePullRequestThread({ cwd, reference, mode }),

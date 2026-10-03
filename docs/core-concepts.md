@@ -294,3 +294,10 @@ Background PR association lookups use the existing lower-priority Git process qu
 Chats in a shared checkout retain their PR association when another chat changes the
 branch or a lookup finds nothing. A positive replacement updates it; dedicated
 worktrees retain their branch-specific association rules.
+
+Opening a PR checks for an existing worktree before performing a Local checkout. Reuse
+requires its current branch and upstream repository to match the PR head; an unknown
+or different fork reports a conflict without retargeting it. The prepared result supplies
+the actual branch and environment. Preparing a new Local checkout does not force away
+dirty changes. Nonessential Git query refreshes continue after the prepared chat opens;
+a persistent progress/error notification survives the initiating dialog.

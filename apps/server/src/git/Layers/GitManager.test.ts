@@ -665,6 +665,36 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
           "remote.fork-seed.url",
         ])).stdout.trim(),
       ).toBe(forkDir);
+
+      // A matching name is insufficient: reuse must verify the actual fork before retargeting.
+      yield* runGit(repoDir, [
+        "remote",
+        "set-url",
+        "fork-seed",
+        "https://github.com/octocat/sample-repo.git",
+      ]);
+      const reused = yield* preparePullRequestThread(manager, {
+        cwd: repoDir,
+        reference: "81",
+        mode: "local",
+      });
+      expect(fs.realpathSync(reused.worktreePath!)).toBe(fs.realpathSync(result.worktreePath!));
+      expect(reused.branch).toBe(result.branch);
+      yield* runGit(repoDir, [
+        "remote",
+        "set-url",
+        "fork-seed",
+        "https://github.com/another-owner/sample-repo.git",
+      ]);
+      const rejected = yield* preparePullRequestThread(manager, {
+        cwd: repoDir,
+        reference: "81",
+        mode: "worktree",
+      }).pipe(Effect.flip);
+      expect(rejected.message).toContain("verified remote");
+      expect(
+        (yield* runGit(repoDir, ["config", "--get", "remote.fork-seed.url"])).stdout.trim(),
+      ).toBe("https://github.com/another-owner/sample-repo.git");
     }),
   );
 
