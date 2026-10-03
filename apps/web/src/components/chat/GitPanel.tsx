@@ -22,6 +22,7 @@ import {
   gitUnstageFilesMutationOptions,
 } from "~/lib/gitReactQuery";
 import { CircleCheckIcon, RefreshCwIcon } from "~/lib/icons";
+import { expensiveReadErrorRefetchInterval } from "~/lib/expensiveReadRetry";
 import { hasUnsavedWorkspaceEditors } from "~/lib/workspaceEditorSession";
 import { cn } from "~/lib/utils";
 import { Alert } from "../ui/alert";
@@ -292,8 +293,11 @@ export function GitPanel(props: {
           : [],
     );
 
-  const isLoading = filesQuery.isLoading;
-  const error = filesQuery.isError ? "Could not load changes. Refresh to try again." : null;
+  const recovering =
+    filesQuery.isError &&
+    expensiveReadErrorRefetchInterval({ state: { error: filesQuery.error } }) !== false;
+  const isLoading = filesQuery.isLoading || recovering;
+  const error = filesQuery.isError && !recovering ? filesQuery.error : null;
   const hasChanges = (coverage?.count ?? stagedFiles.length + unstagedFiles.length) > 0;
 
   if (!cwd) {
@@ -375,13 +379,27 @@ export function GitPanel(props: {
         ) : null}
         {error ? (
           <Alert variant="error" size="sm" className="text-destructive">
-            {error}
+            <div className="min-w-0">
+              <p>Could not load changes. Refresh to try again.</p>
+              <details className="mt-1 text-ui-xs">
+                <summary className="cursor-pointer">Error details</summary>
+                <p className="mt-1 break-words">{error.message}</p>
+              </details>
+            </div>
             <IconButton label="Retry loading changes" tooltip="Retry" onClick={refresh}>
               <RefreshCwIcon className="size-3.5" />
             </IconButton>
           </Alert>
         ) : null}
-        {!error && isLoading && !hasChanges ? (
+        {recovering ? (
+          <div
+            className="flex items-center justify-center gap-2 py-3 text-ui-xs text-muted-foreground"
+            role="status"
+          >
+            <Spinner className="size-4" />
+            Retrying changes…
+          </div>
+        ) : !error && isLoading && !hasChanges ? (
           <div className="flex flex-1 items-center justify-center" aria-label="Loading changes">
             <Spinner className="size-5 text-muted-foreground" />
           </div>

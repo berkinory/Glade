@@ -85,7 +85,7 @@ are not exposed in this first version.
 
 Source Control combines current changes, immutable turn checkpoint diffs and commit history. Turn diffs offer a return to current changes; Edit opens the working-tree file in a main workspace tab. Ordinary chat file links reveal files in Explorer, including supplied line and column targets.
 
-Changes sorts paths by folder within each staged/unstaged group. New filter queries can reuse the same bounded Git inventory for up to two seconds; refreshes, repository updates and mutations read a fresh inventory. Selection stays in
+Changes sorts paths by folder within each staged/unstaged group. New filter queries can reuse the same bounded Git inventory for up to two seconds; refreshes, repository updates and mutations read a fresh inventory. Capacity and transport interruptions recover automatically without a manual refresh; persistent failures expose their error details. Selection stays in
 one group, and selected rows keep their applicable actions visible. Stage, Unstage
 and Revert apply to that selection; deleted rows have no View action.
 

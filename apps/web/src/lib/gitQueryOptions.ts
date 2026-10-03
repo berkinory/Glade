@@ -588,7 +588,7 @@ export function gitSourceControlFilesQueryOptions(cwd: string | null, query = ""
       return read(input, { signal });
     },
     enabled: cwd !== null,
-    gcTime: 0,
+    gcTime: 60_000,
     staleTime: GIT_WORKING_TREE_DIFF_STALE_TIME_MS,
     refetchInterval: expensiveReadErrorRefetchInterval,
     refetchOnWindowFocus: true,

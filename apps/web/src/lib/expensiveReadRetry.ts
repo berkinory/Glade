@@ -67,13 +67,25 @@ export const EXPENSIVE_READ_RETRY_OPTIONS: ExpensiveReadRetryFns = {
 
 const MAX_EXPENSIVE_READ_ERROR_REFETCH_INTERVAL_MS = 10_000;
 
-// Error-only refetch so a saturated read recovers without waiting for another file-change, window
-// focus, or reconnect. Back off from retryAfterMs so each tick does not immediately re-arm a full
-// unary capacity-retry loop.
+// Capacity and transport interruptions need recovery even without a file change or window focus.
+// Back off so each tick does not immediately re-arm a full unary capacity-retry loop.
 export function expensiveReadErrorRefetchInterval(query: {
   readonly state: { readonly error: unknown; readonly errorUpdateCount?: number };
 }): number | false {
-  if (!isRetryableRpcCapacityExceededError(query.state.error)) return false;
+  const error = query.state.error;
+  const interrupted =
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error.code === "WS_REQUEST_RECONNECTED" || error.code === "WS_REQUEST_TIMEOUT");
+  if (!isRetryableRpcCapacityExceededError(error) && !interrupted) return false;
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "retryable" in error &&
+    error.retryable === false
+  )
+    return false;
   const base = getRpcCapacityRetryAfterMs(query.state.error);
   const failures = Math.max(1, query.state.errorUpdateCount ?? 1);
   const exponent = Math.min(failures - 1, 16);
