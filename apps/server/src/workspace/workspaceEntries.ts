@@ -1,4 +1,4 @@
-import { createContentSearchPattern } from "@glade/shared/text/searchQuery";
+import { WorkspaceContentSearch } from "./WorkspaceContentSearch";
 import fs from "node:fs/promises";
 import type { Dirent } from "node:fs";
 import os from "node:os";
@@ -30,9 +30,6 @@ import {
   ProjectSearchEntriesResult,
   ProjectSearchLocalEntriesInput,
   ProjectSearchLocalEntriesResult,
-  PROJECT_SEARCH_CONTENT_MAX_LIMIT,
-  PROJECT_SEARCH_CONTENT_MAX_LINE_LENGTH,
-  PROJECT_SEARCH_CONTENT_MIN_QUERY_LENGTH,
 } from "@glade/contracts/workspace/project";
 import {
   isExplicitRelativePath,
@@ -744,165 +741,14 @@ export async function searchWorkspaceEntries(
   };
 }
 
-const CONTENT_SEARCH_DEFAULT_LIMIT = 50;
+const contentSearch = new WorkspaceContentSearch();
 
-const CONTENT_SEARCH_MAX_LIMIT = PROJECT_SEARCH_CONTENT_MAX_LIMIT;
-const CONTENT_SEARCH_MIN_QUERY_LENGTH = PROJECT_SEARCH_CONTENT_MIN_QUERY_LENGTH;
-const CONTENT_SEARCH_MAX_FILE_BYTES = 512 * 1024;
-const CONTENT_SEARCH_TIME_BUDGET_MS = 4_000;
-const CONTENT_SEARCH_LINE_READ_CONCURRENCY = 8;
-const CONTENT_SEARCH_MAX_LINE_LENGTH = PROJECT_SEARCH_CONTENT_MAX_LINE_LENGTH;
-
-const CONTENT_SEARCH_BINARY_SNIFF_BYTES = 8 * 1024;
-
-interface ContentSearchMatch {
-  path: string;
-  lineNumber: number;
-  lineText: string;
-}
-
-function buildContentLineText(line: string): string {
-  const trimmed = line.trimEnd();
-  if (trimmed.length <= CONTENT_SEARCH_MAX_LINE_LENGTH) {
-    return trimmed;
-  }
-  return `${trimmed.slice(0, CONTENT_SEARCH_MAX_LINE_LENGTH - 1)}…`;
-}
-
-async function searchFileContent(
-  cwd: string,
-  relativePath: string,
-  pattern: RegExp,
-  limit: number,
-): Promise<ContentSearchMatch[] | null> {
-  const absolutePath = await resolveRealPathWithinRoot(cwd, path.join(cwd, relativePath)).catch(
-    () => null,
-  );
-  if (!absolutePath) {
-    return null;
-  }
-  let fileHandle: Awaited<ReturnType<typeof fs.open>>;
-  try {
-    fileHandle = await fs.open(absolutePath, "r");
-  } catch {
-    return null;
-  }
-
-  try {
-    const stats = await fileHandle.stat();
-    if (!stats.isFile() || stats.size === 0 || stats.size > CONTENT_SEARCH_MAX_FILE_BYTES) {
-      return null;
-    }
-
-    const sniffLength = Math.min(stats.size, CONTENT_SEARCH_BINARY_SNIFF_BYTES);
-    const sniffBuffer = Buffer.alloc(sniffLength);
-    await fileHandle.read(sniffBuffer, 0, sniffLength, 0);
-    if (sniffBuffer.includes(0)) {
-      return null;
-    }
-
-    const contents = await fileHandle.readFile("utf8");
-
-    pattern.lastIndex = 0;
-    if (!pattern.test(contents)) {
-      return [];
-    }
-    const lines = contents.split("\n");
-    const matches: ContentSearchMatch[] = [];
-    for (let index = 0; index < lines.length; index += 1) {
-      const line = lines[index];
-      if (!line) continue;
-      pattern.lastIndex = 0;
-      if (!pattern.test(line)) continue;
-      matches.push({
-        path: relativePath,
-        lineNumber: index + 1,
-        lineText: buildContentLineText(line),
-      });
-      if (matches.length >= limit) {
-        break;
-      }
-    }
-    return matches;
-  } catch {
-    return null;
-  } finally {
-    await fileHandle.close().catch(() => undefined);
-  }
-}
-
-export async function searchWorkspaceContent(
+export function searchWorkspaceContent(
   input: ProjectSearchContentInput,
   runGit: WorkspaceGitRunner,
+  signal?: AbortSignal,
 ): Promise<ProjectSearchContentResult> {
-  const query = input.query.trim();
-  if (query.length < CONTENT_SEARCH_MIN_QUERY_LENGTH) {
-    return { matches: [], truncated: false };
-  }
-
-  const limit = Math.max(
-    1,
-    Math.min(input.limit ?? CONTENT_SEARCH_DEFAULT_LIMIT, CONTENT_SEARCH_MAX_LIMIT),
-  );
-
-  const index = await getWorkspaceIndex(input.cwd, runGit);
-
-  const filePaths = index.entries
-    .filter((entry) => entry.kind === "file")
-    .map((entry) => entry.path);
-
-  const deadline = Date.now() + CONTENT_SEARCH_TIME_BUDGET_MS;
-  const collected: ContentSearchMatch[] = [];
-  let scannedFiles = 0;
-  let truncated = index.truncated;
-
-  let nextIndex = 0;
-  const workers = Array.from(
-    { length: Math.max(1, Math.min(CONTENT_SEARCH_LINE_READ_CONCURRENCY, filePaths.length)) },
-    async () => {
-      const pattern = createContentSearchPattern(query, input);
-      while (nextIndex < filePaths.length) {
-        if (collected.length > limit) {
-          truncated = true;
-          break;
-        }
-        if (Date.now() > deadline) {
-          truncated = true;
-          break;
-        }
-        const currentIndex = nextIndex;
-        nextIndex += 1;
-        const fileMatches = await searchFileContent(
-          input.cwd,
-          filePaths[currentIndex] as string,
-          pattern,
-          limit + 1,
-        );
-        scannedFiles += 1;
-        if (fileMatches && fileMatches.length > 0) {
-          collected.push(...fileMatches.slice(0, Math.max(0, limit + 1 - collected.length)));
-        }
-      }
-    },
-  );
-  await Promise.all(workers);
-
-  if (Date.now() > deadline) {
-    truncated = true;
-  }
-
-  const orderedMatches = collected
-    .toSorted((left, right) => {
-      const pathDelta = left.path.localeCompare(right.path);
-      if (pathDelta !== 0) return pathDelta;
-      return left.lineNumber - right.lineNumber;
-    })
-    .slice(0, limit);
-
-  return {
-    matches: orderedMatches,
-    truncated: truncated || collected.length > limit || scannedFiles < filePaths.length,
-  };
+  return contentSearch.search(input, () => getWorkspaceIndex(input.cwd, runGit), signal);
 }
 
 function normalizedWorkspaceFileReference(reference: string): string | null {

@@ -678,7 +678,10 @@ export interface NativeApi {
     searchLocalEntries: (
       input: ProjectSearchLocalEntriesInput,
     ) => Promise<ProjectSearchLocalEntriesResult>;
-    searchContent: (input: ProjectSearchContentInput) => Promise<ProjectSearchContentResult>;
+    searchContent: (
+      input: ProjectSearchContentInput,
+      options?: { readonly signal?: AbortSignal },
+    ) => Promise<ProjectSearchContentResult>;
     prewarmSearchIndex: (
       input: ProjectPrewarmSearchIndexInput,
     ) => Promise<ProjectPrewarmSearchIndexResult>;

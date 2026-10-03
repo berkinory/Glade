@@ -1,16 +1,13 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { WorkspaceCodeSearchResults } from "./WorkspaceCodeSearchResults";
+import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import type { ProjectContentMatch } from "@glade/contracts/workspace/project";
 import { projectSearchContentQueryOptions } from "~/lib/projectReactQuery";
-import { ContentSearchMatchText } from "../ContentSearchMatchText";
 import { SearchInput } from "../ui/search-input";
-import { ExplorerLoadingRows } from "./ExplorerLoadingRows";
 import { IconButton } from "../ui/icon-button";
 import { IconLetterCase } from "@tabler/icons-react";
-import { fileRowClassName } from "./fileRowStyles";
-import { FileEntryIcon } from "./FileEntryIcon";
-import { EXPLORER_ROW_PROPS, useExplorerListNavigation } from "./explorerListNavigation";
+import { useExplorerListNavigation } from "./explorerListNavigation";
 
 export function WorkspaceCodeSearch(props: {
   cwd: string | null;
@@ -24,35 +21,20 @@ export function WorkspaceCodeSearch(props: {
   const [debounced] = useDebouncedValue(props.query.trim(), { wait: 250 });
   const [matchCase, setMatchCase] = useState(false);
   const [wholeWord, setWholeWord] = useState(false);
-  const [request, setRequest] = useState({ query: debounced, matchCase, wholeWord });
   const result = useQuery({
-    ...projectSearchContentQueryOptions({ cwd: props.cwd, ...request, limit: 100 }),
+    ...projectSearchContentQueryOptions({
+      cwd: props.cwd,
+      query: debounced,
+      matchCase,
+      wholeWord,
+      limit: 100,
+    }),
     retry: false,
   });
 
-  useEffect(() => {
-    if (
-      !result.isFetching &&
-      (request.query !== debounced ||
-        request.matchCase !== matchCase ||
-        request.wholeWord !== wholeWord)
-    )
-      setRequest({ query: debounced, matchCase, wholeWord });
-  }, [debounced, matchCase, wholeWord, request, result.isFetching]);
   const query = props.query.trim();
-  const pending =
-    query !== request.query ||
-    matchCase !== request.matchCase ||
-    wholeWord !== request.wholeWord ||
-    result.isFetching ||
-    result.isPlaceholderData;
+  const pending = query !== debounced || result.isFetching || result.isPlaceholderData;
   const matches = !pending && query.length >= 2 ? (result.data?.matches ?? []) : [];
-  const groups = new Map<string, ProjectContentMatch[]>();
-  for (const match of matches) {
-    const group = groups.get(match.path) ?? [];
-    group.push(match);
-    groups.set(match.path, group);
-  }
   const navigate = useExplorerListNavigation();
   return (
     <div className="flex min-h-0 flex-1 flex-col" onKeyDown={navigate}>
@@ -102,73 +84,15 @@ export function WorkspaceCodeSearch(props: {
       {query.length < 2 ? (
         props.emptyContent
       ) : (
-        <div className="min-h-0 flex-1 overflow-auto" aria-busy={query.length >= 2 && pending}>
-          {props.cwd && query.length >= 2 ? (
-            pending ? (
-              <div className="px-1 py-1">
-                <ExplorerLoadingRows depth={0} label="Searching file contents…" />
-              </div>
-            ) : (
-              <div className="px-3 py-2 text-ui-xs text-muted-foreground" role="status">
-                {result.error ? (
-                  <span className="text-destructive">{result.error.message}</span>
-                ) : (
-                  `${matches.length} matching lines in ${groups.size} files`
-                )}
-              </div>
-            )
-          ) : null}
-          {[...groups].map(([path, fileMatches]) => (
-            <section key={path} className="px-1">
-              <button
-                {...EXPLORER_ROW_PROPS}
-                type="button"
-                onClick={() => {
-                  if (fileMatches[0]) props.onSelect(fileMatches[0]);
-                }}
-                className={fileRowClassName(
-                  props.selectedFilePath === path,
-                  "px-2 py-1 text-ui-xs transition-none",
-                )}
-                aria-current={props.selectedFilePath === path ? "true" : undefined}
-                data-selected={props.selectedFilePath === path}
-                title={path}
-              >
-                <FileEntryIcon pathValue={path} kind="file" className="size-3.5 shrink-0" />
-                <span className="min-w-0 flex-1 truncate">{path}</span>
-                <span className="text-muted-foreground tabular-nums">{fileMatches.length}</span>
-              </button>
-              {fileMatches.map((match) => (
-                <button
-                  {...EXPLORER_ROW_PROPS}
-                  key={match.lineNumber}
-                  type="button"
-                  className={fileRowClassName(
-                    false,
-                    "items-baseline gap-2 px-3 py-1 text-ui-xs transition-none",
-                  )}
-                  aria-label={`${path}, line ${match.lineNumber}: ${match.lineText}`}
-                  title={match.lineText}
-                  onClick={() => props.onSelect(match)}
-                >
-                  <span className="min-w-0 truncate font-mono">
-                    <ContentSearchMatchText
-                      text={match.lineText}
-                      query={query}
-                      matchCase={matchCase}
-                      wholeWord={wholeWord}
-                    />
-                  </span>
-                </button>
-              ))}
-            </section>
-          ))}
-          {!pending && query.length >= 2 && result.data?.truncated ? (
-            <p className="px-3 py-2 text-ui-xs text-muted-foreground">
-              Search limit reached. Narrow your query to see more specific results.
-            </p>
-          ) : null}
-        </div>
+        <WorkspaceCodeSearchResults
+          matches={matches}
+          selectedFilePath={props.selectedFilePath}
+          onSelect={props.onSelect}
+          search={{ query, matchCase, wholeWord }}
+          pending={pending}
+          error={result.error}
+          truncated={result.data?.truncated ?? false}
+        />
       )}
     </div>
   );

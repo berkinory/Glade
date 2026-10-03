@@ -434,18 +434,21 @@ export function projectSearchContentQueryOptions(input: {
       input.matchCase,
       input.wholeWord,
     ),
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const api = ensureNativeApi();
       if (!input.cwd) {
         throw new Error("Workspace content search is unavailable.");
       }
-      return api.projects.searchContent({
-        cwd: input.cwd,
-        query: trimmedQuery,
-        limit,
-        matchCase: input.matchCase ?? false,
-        wholeWord: input.wholeWord ?? false,
-      });
+      return api.projects.searchContent(
+        {
+          cwd: input.cwd,
+          query: trimmedQuery,
+          limit,
+          matchCase: input.matchCase ?? false,
+          wholeWord: input.wholeWord ?? false,
+        },
+        { signal },
+      );
     },
     enabled:
       (input.enabled ?? true) &&

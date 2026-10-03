@@ -17,6 +17,8 @@
 
 ### Improved
 
+- Explorer content search cancels outdated scans, reuses unchanged files and colors visible result lines.
+
 - Explorer searches file contents directly; filename search stays in the quick-open menu.
 
 - Diff layouts switch with one button and a tooltip; the right sidebar starts wider with tighter resizing limits.
