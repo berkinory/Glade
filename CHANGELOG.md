@@ -8,6 +8,8 @@
 
 ### Improved
 
+- Windows release installers are checked with Microsoft Defender before publication.
+
 - Profile statistics stay responsive with larger conversation histories.
 
 - Source Control uses clearer folder ordering and stays usable with very large change lists.

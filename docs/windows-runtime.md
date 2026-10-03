@@ -102,3 +102,7 @@ Provider maintenance closes standard input and preserves Windows executable sear
 consolidating case variants when prepending an updater directory. POSIX teardown signals
 the owned root directly after captured descendants; it does not launch PATH-dependent
 tree discovery to deliver that signal. Descendant exit still requires identity verification.
+
+Windows releases also require the hosted Defender qualification described in
+[release documentation](release.md#windows-malware-qualification). This checks the final
+installer bytes before publication, not SmartScreen reputation or installation behavior.

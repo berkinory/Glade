@@ -95,3 +95,20 @@ When a change has an actual commit, append its short hash linked to the full SHA
 
 The schema starts with one baseline at migration 1, released in 0.1.0. Databases from 0.0.x previews use an unrelated migration history; Glade refuses to open them and asks the user to move `state.sqlite` aside. Future schema changes append migrations starting at 2; released baseline and migration files must not change. Before a pending migration, Glade saves a SQLite snapshot in `state.sqlite.backups` and retains the latest five new snapshots. To restore one, stop Glade and copy the chosen `.sqlite` snapshot over `state.sqlite` with its WAL and SHM sidecars removed. Existing backup and provenance files remain untouched.
 The composer draft legacy conversion remains for one release: UI state storage version 7 normalizes saved drafts on hydration. Desktop origin migration was removed after checking that neither current home had its old origin snapshot file.
+
+## Windows malware qualification
+
+The hosted Windows build scans the final `release-publish` installer with Microsoft
+Defender before uploading distributable assets. Qualification requires active protection,
+signatures updated within 24 hours, explicit clean scan output, unchanged SHA-256 hashes,
+and no relevant detection or remediation. Missing or ambiguous evidence fails the build;
+publication already depends on every platform build succeeding. Diagnostic artifacts named
+`Defender-win-x64` are uploaded even when qualification fails and are separate from release
+assets. Review their status, scanner versions, output, detections and qualification report.
+
+The scan uses Microsoft's [custom scan with remediation disabled](https://learn.microsoft.com/en-us/defender-endpoint/command-line-arguments-microsoft-defender-antivirus),
+which scans archives and ignores file exclusions. Required protection modes are enabled only on the disposable hosted runner; cloud/sample
+consent is unchanged. This gate requires an actual hosted Windows run to qualify clean, detected and inconclusive
+outcomes; local macOS workflow validation does not establish those results. A clean scan
+does not establish SmartScreen reputation, signing, or successful installation. Retain
+manual Windows install, launch, update and uninstall qualification.

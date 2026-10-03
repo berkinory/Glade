@@ -1,5 +1,7 @@
 # TODO
 
+- **S10 implemented:** Added fail-closed hosted Windows installer scanning before artifact upload, with protection/signature checks, clean output, detection history and stable hashes. Evidence uploads run on failure; publication depends on the build. Actionlint and release integrity tests passed. Windows clean/detected/inconclusive runs remain unverified; desktop build is blocked by the existing BrowserHeader LinkIcon export.
+
 - **S9 implemented:** Added idempotent migration 2 after measuring identical 2,000-turn profile results at 411 ms before and 4 ms after; archive query unchanged, so no deletion-speed claim. UTC date formatting checked in three time zones. Migration lineage and full suite passed (2,536 tests); server types passed. Global check remains blocked by existing browser imports.
 
 - **S4 implemented:** Windows update environment/stdin, asynchronous pinned DNS and direct POSIX root signaling are implemented. Focused HTTP/process/RPC tests pass (58); Windows boundary and lint pass. Full-suite browser timing failure passed on focused retry. Repository-wide checks have existing formatting/browser import blockers; live Windows/provider execution remains unverified.

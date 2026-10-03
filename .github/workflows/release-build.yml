@@ -149,6 +149,18 @@ jobs:
             --lockfile-sha256 "$LOCKFILE_SHA256" --publication "$PUBLISH_RELEASE" \
             --signed "$signed" --allow-unsigned-windows-publication true \
             --expected-mac-team-id "$APPLE_TEAM_ID"
+      - name: Qualify final Windows installer with Microsoft Defender
+        if: inputs.platform == 'win'
+        shell: pwsh
+        timeout-minutes: 15
+        run: ./scripts/verify-windows-defender.ps1 -AssetsDirectory release-publish -EvidenceDirectory defender-evidence
+      - name: Upload Defender qualification evidence
+        if: always() && inputs.platform == 'win'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: Defender-${{ inputs.id }}
+          path: defender-evidence/
+          if-no-files-found: error
       - name: Upload verified platform artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
