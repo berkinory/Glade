@@ -138,6 +138,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
   const [binaryPreviewErrorKey, setBinaryPreviewErrorKey] = useState<string | null>(null);
   const [binaryPreviewRevision, setBinaryPreviewRevision] = useState(0);
   const [binaryPreviewReloading, setBinaryPreviewReloading] = useState(false);
+  const [manualFileReload, setManualFileReload] = useState<{ key: string } | null>(null);
   const filePath = relocatedFullPath ?? requestedFilePath;
   const { settings, updateSettings } = useAppSettings();
   const markdownPreviewDefault = props.markdownPreviewDefault ?? settings.markdownPreviewEnabled;
@@ -214,7 +215,6 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
 
       void refreshGitAfterFileWrite(queryClient, workspaceRoot);
       if (fileIsImage || fileIsPdf || fileIsVideo) {
-        setBinaryPreviewReloading(true);
         setBinaryPreviewRevision((current) => current + 1);
       }
       if (event.type === "changed") {
@@ -362,11 +362,15 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
       setBinaryPreviewRevision((current) => current + 1);
       return;
     }
+    const request = { key: binaryPreviewKey };
+    setManualFileReload(request);
     void refetchFreshProjectFileQuery(queryClient, {
       cwd: workspaceRoot,
       relativePath: filePath,
+    }).finally(() => {
+      setManualFileReload((current) => (current === request ? null : current));
     });
-  }, [fileIsImage, fileIsVideo, fileIsPdf, filePath, queryClient, workspaceRoot]);
+  }, [binaryPreviewKey, fileIsImage, fileIsVideo, fileIsPdf, filePath, queryClient, workspaceRoot]);
 
   const handleEditBufferReload = editor.reloadFromDisk;
 
@@ -614,7 +618,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
                 pending:
                   fileIsImage || fileIsPdf || fileIsVideo
                     ? binaryPreviewReloading
-                    : fileQuery.isFetching,
+                    : manualFileReload?.key === binaryPreviewKey,
               }
             : undefined
         }

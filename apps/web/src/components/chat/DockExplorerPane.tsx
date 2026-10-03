@@ -21,8 +21,7 @@ import { PanelStateMessage } from "./PanelStateMessage";
 import { IconButton } from "../ui/icon-button";
 import { disclosureWidthClassName } from "~/lib/disclosureMotion";
 import { cn } from "~/lib/utils";
-import { FolderIcon, PanelLeftIcon, SearchIcon } from "~/lib/icons";
-import { WorkspaceCodeSearch } from "./WorkspaceCodeSearch";
+import { PanelLeftIcon } from "~/lib/icons";
 import { WorkspaceExplorerSidebar } from "./workspaceExplorer";
 
 const DOCK_EXPLORER_SIDEBAR_CLASS = "h-full min-h-0 shrink-0 bg-[var(--color-background-surface)]";
@@ -59,8 +58,6 @@ export const DockExplorerPane = function DockExplorerPane(props: {
   const [expandedDirectories, setExpandedDirectories] = useState<ReadonlySet<string>>(
     () => new Set<string>(),
   );
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchMode, setSearchMode] = useState(false);
   const [codeQuery, setCodeQuery] = useState("");
   const [revealPosition, setRevealPosition] = useState<{
     lineNumber: number;
@@ -74,8 +71,7 @@ export const DockExplorerPane = function DockExplorerPane(props: {
   const acknowledgeRequest = useExplorerRevealRequestStore((state) => state.acknowledgeRequest);
   useEffect(() => {
     if (!revealRequest) return;
-    setSearchQuery("");
-    setSearchMode(false);
+    setCodeQuery("");
     const nextPosition = revealRequest.position
       ? { ...revealRequest.position, requestId: revealRequest.nonce }
       : undefined;
@@ -193,65 +189,31 @@ export const DockExplorerPane = function DockExplorerPane(props: {
               props.navigationOnly ? "w-full" : "w-44 border-r border-border/65",
             )}
           >
-            <div className="flex h-10 shrink-0 items-center gap-1 border-b border-border/65 px-2">
-              <span className="flex-1 text-ui-xs text-muted-foreground">
-                {searchMode ? "Search" : "Explorer"}
-              </span>
-              <IconButton
-                label="Show files"
-                tooltip="Show files"
-                variant={!searchMode ? "secondary" : "ghost"}
-                aria-pressed={!searchMode}
-                onClick={() => setSearchMode(false)}
-              >
-                <FolderIcon className="size-3.5" />
-              </IconButton>
-              <IconButton
-                label="Search file contents"
-                tooltip="Search file contents"
-                variant={searchMode ? "secondary" : "ghost"}
-                aria-pressed={searchMode}
-                onClick={() => setSearchMode(true)}
-              >
-                <SearchIcon className="size-3.5" />
-              </IconButton>
-            </div>
-            {searchMode ? (
-              <WorkspaceCodeSearch
-                key={props.workspaceRoot}
-                cwd={props.workspaceRoot}
-                selectedFilePath={selectedFilePath}
-                query={codeQuery}
-                onQueryChange={setCodeQuery}
-                onSelect={(match) => {
-                  handleSelectFile(match.path, { preview: true });
-                  setSearchQuery("");
-                  const position = { lineNumber: match.lineNumber, requestId: Date.now() };
-                  setRevealPosition(position);
-                  onRevealPosition?.({ ...position, filePath: match.path });
-                }}
-              />
-            ) : (
-              <WorkspaceExplorerSidebar
-                key={props.workspaceRoot}
-                isVisible={props.isVisible && sidebarOpen}
-                workspaceRoot={props.workspaceRoot}
-                selectedFilePath={selectedFilePath}
-                expandedDirectories={expandedDirectories}
-                query={searchQuery}
-                onQueryChange={setSearchQuery}
-                containerClassName="flex min-h-0 flex-1 flex-col"
-                onSelectFile={handleSelectFile}
-                onDeleted={(path) => {
-                  for (const file of dockState.filePaths) {
-                    if ((file === path || file.startsWith(`${path}/`)) && !dirtyPaths.has(file))
-                      closeFile(props.threadId, file);
-                  }
-                }}
-                onToggleDirectory={handleToggleDirectory}
-                onReferenceInChat={props.onReferenceInChat}
-              />
-            )}
+            <WorkspaceExplorerSidebar
+              key={props.workspaceRoot}
+              isVisible={props.isVisible && sidebarOpen}
+              workspaceRoot={props.workspaceRoot}
+              selectedFilePath={selectedFilePath}
+              expandedDirectories={expandedDirectories}
+              query={codeQuery}
+              onQueryChange={setCodeQuery}
+              onSelectMatch={(match) => {
+                handleSelectFile(match.path, { preview: true });
+                const position = { lineNumber: match.lineNumber, requestId: Date.now() };
+                setRevealPosition(position);
+                onRevealPosition?.({ ...position, filePath: match.path });
+              }}
+              containerClassName="flex min-h-0 flex-1 flex-col"
+              onSelectFile={handleSelectFile}
+              onDeleted={(path) => {
+                for (const file of dockState.filePaths) {
+                  if ((file === path || file.startsWith(`${path}/`)) && !dirtyPaths.has(file))
+                    closeFile(props.threadId, file);
+                }
+              }}
+              onToggleDirectory={handleToggleDirectory}
+              onReferenceInChat={props.onReferenceInChat}
+            />
           </div>
         </div>
         {!props.navigationOnly ? (

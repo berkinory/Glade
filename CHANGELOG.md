@@ -17,6 +17,8 @@
 
 ### Improved
 
+- Explorer searches file contents directly; filename search stays in the quick-open menu.
+
 - Diff layouts switch with one button and a tooltip; the right sidebar starts wider with tighter resizing limits.
 
 - Chat, files, commit diffs, terminals and browser pages share conversation workspace tabs, with Explorer and Git in the right sidebar and reusable file and diff previews.
@@ -74,6 +76,8 @@
 - Models load faster on first use, with a balanced initial reasoning effort when you have not chosen one.
 
 ### Fixed
+
+- File refresh controls stay steady during background updates.
 
 - Unpublished commits can be undone when remotes use conflicting tag names, while published commits remain protected.
 

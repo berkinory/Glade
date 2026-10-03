@@ -293,6 +293,7 @@ export const WorkspaceFilePreviewHeader = function WorkspaceFilePreviewHeader(
             label="Reload file from disk"
             title="Reload file from disk"
             tone="plain"
+            disabled={props.reload.pending}
             onClick={props.reload.onClick}
           >
             {props.reload.pending ? (

@@ -67,7 +67,8 @@ handling retain their existing limits.
 
 ## Explorer search
 
-Explorer switches between the file tree/name search and content search. Content
+Explorer has one content search field with file and folder creation buttons beside it.
+The file tree appears while the query is shorter than two characters; filename search stays in Cmd+P. Content
 search uses the existing workspace index, matches plain text from two characters with match-case and whole-word toggles,
 and groups up to 100 matching lines by file without a per-file five-line cap. Selecting a result
 opens its source line in the shared editor without discarding existing drafts,

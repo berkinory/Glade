@@ -14,13 +14,13 @@ import { EXPLORER_ROW_PROPS } from "./explorerListNavigation";
 import { FileEntryIcon } from "./FileEntryIcon";
 import { fileRowClassName, fileRowIndentStyle } from "./fileRowStyles";
 
-export function setFileReferenceDragData(dataTransfer: DataTransfer, path: string): void {
+function setFileReferenceDragData(dataTransfer: DataTransfer, path: string): void {
   dataTransfer.effectAllowed = "copy";
   dataTransfer.setData(CHAT_FILE_REFERENCE_DRAG_TYPE, formatChatFileReference({ path }));
   dataTransfer.setData("text/plain", path);
 }
 
-export function usePrefetchIntent(prefetch: () => void) {
+function usePrefetchIntent(prefetch: () => void) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancel = () => {
     if (timer.current !== null) clearTimeout(timer.current);
