@@ -114,3 +114,15 @@ Unknown condition keys evaluate to `false`.
 - Rules are evaluated in array order.
 - For a key event, the last rule where both `key` matches and `when` evaluates to `true` wins.
 - That means precedence is across commands, not only within the same command.
+
+### Voice dictation
+
+During recording, Enter finishes dictation. By default the transcription is added to the
+current draft. Enable **Send dictation with Enter** under Chat settings to send it once after
+successful transcription, using the usual follow-up queue/steer preference. Ctrl/Cmd+Enter
+uses the opposite follow-up action. Shift+Enter, IME composition and open composer menus
+keep their existing keyboard ownership. Clicking Stop only transcribes into the draft.
+
+The microphone shows preparation until actual audio arrives; initial digital-zero frames
+are skipped without removing later pauses. Dictation is also available during an agent
+turn, alongside Stop generation. Cancelled, empty, failed or stale requests do not send.

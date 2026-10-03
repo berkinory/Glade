@@ -252,6 +252,7 @@ export function useChatComposerController({
     },
     recording: {
       onTranscriptReady: appendVoiceTranscriptToComposer,
+      onRecordingStarted: scheduleComposerFocus,
       actionArmDelayMs: VOICE_RECORDER_ACTION_ARM_DELAY_MS,
       failureCopy: {
         transcriptionFailedTitle: "Couldn't transcribe voice note",

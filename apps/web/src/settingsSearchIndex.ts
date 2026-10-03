@@ -95,8 +95,7 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     section: "general",
     title: "Pull request",
     target: "setting-showEnvironmentPullRequest",
-    keywords:
-      "Show the pull request link in the chat Environment panel. pr github",
+    keywords: "Show the pull request link in the chat Environment panel. pr github",
   },
   {
     id: "general:environment-editor",
@@ -281,6 +280,13 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     target: "setting-follow-up-behavior",
     keywords:
       "Choose whether messages sent during an active turn wait in the queue or steer the current run. Ctrl Cmd Enter opposite send",
+  },
+  {
+    id: "behavior:voice-enter",
+    section: "behavior",
+    title: "Send dictation with Enter",
+    target: "setting-voiceSendOnEnter",
+    keywords: "voice microphone dictation recording transcription Enter send draft",
   },
   {
     id: "behavior:streaming",

@@ -19,7 +19,7 @@ interface RecorderRuntime {
   readonly silentGainNode: GainNode;
   readonly stream: MediaStream;
   readonly chunks: Float32Array[];
-  readonly startedAt: number;
+  startedAt: number | null;
   sampleRateHz: number;
 }
 
@@ -47,6 +47,7 @@ export function useVoiceRecorder() {
   const timerRef = useRef<number | null>(null);
   const waveformLevelsRef = useRef<number[]>([]);
   const waveformLastEmitAtRef = useRef(0);
+  const [isPreparing, setIsPreparing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [durationMs, setDurationMs] = useState(0);
   const [waveformLevels, setWaveformLevels] = useState<number[]>([]);
@@ -65,6 +66,7 @@ export function useVoiceRecorder() {
     runtimeRef.current = null;
     clearTimer();
     setIsRecording(false);
+    setIsPreparing(false);
 
     if (!runtime) {
       setDurationMs(0);
@@ -79,7 +81,8 @@ export function useVoiceRecorder() {
     await runtime.audioContext.close().catch(() => undefined);
 
     const sampleRateHz = runtime.sampleRateHz;
-    const duration = Math.max(0, performance.now() - runtime.startedAt);
+    const duration =
+      runtime.startedAt === null ? 0 : Math.max(0, performance.now() - runtime.startedAt);
     setDurationMs(0);
 
     return {
@@ -100,6 +103,7 @@ export function useVoiceRecorder() {
     const startGeneration = startGenerationRef.current + 1;
     startGenerationRef.current = startGeneration;
     isStartingRef.current = true;
+    setIsPreparing(true);
     const assertStartIsCurrent = () => {
       if (startGenerationRef.current !== startGeneration) {
         throw new VoiceRecordingCancelledError("Voice recording was cancelled.");
@@ -142,7 +146,7 @@ export function useVoiceRecorder() {
         silentGainNode,
         stream,
         chunks: [],
-        startedAt: performance.now(),
+        startedAt: null,
         sampleRateHz: audioContext.sampleRate,
       };
 
@@ -176,6 +180,12 @@ export function useVoiceRecorder() {
           }
         }
 
+        if (runtime.startedAt === null) {
+          if (sumOfSquares === 0) return;
+          runtime.startedAt = performance.now();
+          setIsPreparing(false);
+          setIsRecording(true);
+        }
         runtime.chunks.push(monoSamples);
 
         const rmsLevel = Math.min(
@@ -202,10 +212,9 @@ export function useVoiceRecorder() {
       waveformLastEmitAtRef.current = 0;
       setWaveformLevels([]);
       setDurationMs(0);
-      setIsRecording(true);
       timerRef.current = window.setInterval(() => {
         const activeRuntime = runtimeRef.current;
-        if (!activeRuntime) {
+        if (!activeRuntime || activeRuntime.startedAt === null) {
           return;
         }
         setDurationMs(Math.max(0, performance.now() - activeRuntime.startedAt));
@@ -218,6 +227,7 @@ export function useVoiceRecorder() {
       await audioContext?.close().catch(() => undefined);
       if (startGenerationRef.current === startGeneration) {
         isStartingRef.current = false;
+        setIsPreparing(false);
       }
       throw error;
     }
@@ -264,6 +274,7 @@ export function useVoiceRecorder() {
   );
 
   return {
+    isPreparing,
     isRecording,
     durationMs,
     waveformLevels,

@@ -171,7 +171,11 @@ type ChatComposerCommandsControllerInput = {
     | "activePendingProgress"
     | "pendingUserInputs"
   >;
-  composer: Pick<ChatComposerCommandsInput, "scheduleComposerFocus">;
+  composer: Pick<ChatComposerCommandsInput, "scheduleComposerFocus"> & {
+    isVoiceRecording: boolean;
+    isVoiceTranscribing: boolean;
+    finishVoiceRecording: (send: boolean, useOppositeBehavior: boolean) => void;
+  };
   actions: Pick<ChatComposerCommandsInput, "onProviderModelSelect">;
   discovery: Pick<ChatComposerCommandsInput, "composerMenuItems">;
 };
@@ -485,6 +489,7 @@ export function useChatComposerCommands({
     key: "ArrowDown" | "ArrowUp" | "Enter" | "Tab" | "Slash",
     event: KeyboardEvent,
   ) => {
+    if (event.isComposing || event.keyCode === 229 || event.defaultPrevented) return false;
     if (key === "Slash" && !event.metaKey && !event.ctrlKey && !event.altKey) {
       const { snapshot, trigger } = resolveActiveComposerTrigger();
       const slashTriggerText =
@@ -541,6 +546,15 @@ export function useChatComposerCommands({
           return true;
         }
       }
+    }
+
+    if (key === "Enter" && !event.shiftKey) {
+      if (composer.isVoiceRecording) {
+        if (!menuIsActive)
+          composer.finishVoiceRecording(settings.voiceSendOnEnter, event.metaKey || event.ctrlKey);
+        return true;
+      }
+      if (composer.isVoiceTranscribing) return true;
     }
 
     if (

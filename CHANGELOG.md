@@ -8,6 +8,8 @@
 
 ### Improved
 
+- Voice dictation shows microphone preparation, works while agents are running, and can be finished or sent with Enter.
+
 - Windows release installers are checked with Microsoft Defender before publication.
 
 - Profile statistics stay responsive with larger conversation histories.

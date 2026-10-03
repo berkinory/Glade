@@ -775,6 +775,15 @@ function SettingsRouteView() {
         })}
 
         {renderBooleanSettingRow({
+          settingKey: "voiceSendOnEnter",
+          title: "Send dictation with Enter",
+          description:
+            "Enter finishes recording and sends after transcription. When off, Enter only adds the transcript to your draft.",
+          resetLabel: "send dictation with Enter",
+          ariaLabel: "Send dictation with Enter",
+        })}
+
+        {renderBooleanSettingRow({
           settingKey: "composerEffortSlider",
           title: "Show effort control",
           description: "Adjust reasoning effort when choosing a model for a chat.",

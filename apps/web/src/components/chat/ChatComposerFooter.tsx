@@ -108,7 +108,6 @@ export function ChatComposerFooter({
         {!voice.recording && !voice.transcribing ? composerPickerControls : null}
         {voice.enabled && (voice.recording || voice.transcribing) ? (
           <ComposerVoiceRecorderBar
-            disabled={submission.connecting || submission.busy}
             isRecording={voice.recording}
             isTranscribing={voice.transcribing}
             durationLabel={voice.durationLabel}
@@ -117,6 +116,18 @@ export function ChatComposerFooter({
             onStop={() => {
               void voice.onSubmit();
             }}
+          />
+        ) : null}
+        {voice.enabled &&
+        !submission.hasPendingUserInputs &&
+        !voice.recording &&
+        !voice.transcribing ? (
+          <ComposerVoiceButton
+            disabled={submission.connecting || submission.busy}
+            isRecording={false}
+            isTranscribing={false}
+            durationLabel={voice.durationLabel}
+            onClick={voice.onToggle}
           />
         ) : null}
         {pendingInput?.progress ? (
@@ -151,15 +162,6 @@ export function ChatComposerFooter({
           </Button>
         ) : !submission.hasPendingUserInputs && !voice.recording && !voice.transcribing ? (
           <>
-            {voice.enabled ? (
-              <ComposerVoiceButton
-                disabled={submission.connecting || submission.busy}
-                isRecording={voice.recording}
-                isTranscribing={voice.transcribing}
-                durationLabel={voice.durationLabel}
-                onClick={voice.onToggle}
-              />
-            ) : null}
             <Button
               type="submit"
               variant="prominent"

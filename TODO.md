@@ -1,5 +1,7 @@
 # TODO
 
+- **S6 implemented:** Added microphone preparation, digital-zero warmup handling, in-turn recording beside Stop, and opt-in Enter transcription/send through the existing queue/steer owner. Current-request/thread guards and synchronous duplicate fences protect delivery. Full suite and final web rerun (433 tests) passed; isolated UI setting persistence verified. Live microphone/provider transcription remains unverified. Global checks retain existing browser import blockers.
+
 - **S10 implemented:** Added fail-closed hosted Windows installer scanning before artifact upload, with protection/signature checks, clean output, detection history and stable hashes. Evidence uploads run on failure; publication depends on the build. Actionlint and release integrity tests passed. Windows clean/detected/inconclusive runs remain unverified; desktop build is blocked by the existing BrowserHeader LinkIcon export.
 
 - **S9 implemented:** Added idempotent migration 2 after measuring identical 2,000-turn profile results at 411 ms before and 4 ms after; archive query unchanged, so no deletion-speed claim. UTC date formatting checked in three time zones. Migration lineage and full suite passed (2,536 tests); server types passed. Global check remains blocked by existing browser imports.

@@ -1,3 +1,4 @@
+import { flushSync } from "react-dom";
 import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -44,6 +45,7 @@ export interface UseComposerVoiceControllerOptions {
   };
   recording: {
     onTranscriptReady: (transcript: string) => void;
+    onRecordingStarted: () => void;
     actionArmDelayMs?: number;
     failureCopy?: Partial<ComposerVoiceFailureCopy>;
     onGuardWarning?: (message: string, details: ComposerVoiceGuardDetails) => void;
@@ -57,7 +59,7 @@ export interface UseComposerVoiceControllerResult {
   voiceRecordingDurationLabel: string;
   showVoiceNotesControl: boolean;
   startComposerVoiceRecording: () => Promise<void>;
-  submitComposerVoiceRecording: () => Promise<void>;
+  submitComposerVoiceRecording: (afterTranscript?: () => void) => Promise<void>;
   cancelComposerVoiceRecording: () => void;
 }
 
@@ -77,22 +79,28 @@ export function useComposerVoiceController(
   const { selectedProvider, activeProviderStatus, refreshVoiceStatus } = options.provider;
   const {
     onTranscriptReady,
+    onRecordingStarted,
     actionArmDelayMs: actionArmDelayMsProp,
     failureCopy: failureCopyOverrides,
     onGuardWarning,
   } = options.recording;
   const actionArmDelayMs = actionArmDelayMsProp ?? 0;
   const {
-    isRecording: isVoiceRecording,
+    isPreparing,
+    isRecording,
     durationMs: voiceRecordingDurationMs,
     waveformLevels: voiceWaveformLevels,
     startRecording: startVoiceRecording,
     stopRecording: stopVoiceRecording,
     cancelRecording: cancelVoiceRecording,
   } = useVoiceRecorder();
+  const isVoiceRecording = isPreparing || isRecording;
+  const voiceStartingRef = useRef(false);
+  const voiceSubmittingRef = useRef(false);
   const [isVoiceTranscribing, setIsVoiceTranscribing] = useState(false);
   const voiceTranscriptionRequestIdRef = useRef(0);
   const voiceThreadIdRef = useRef(threadId);
+  const voiceMayApplyRef = useRef(true);
   const voiceProviderRef = useRef<ProviderKind>(selectedProvider);
   const voiceRecordingStartedAtRef = useRef<number | null>(null);
   const failureCopy = {
@@ -103,9 +111,15 @@ export function useComposerVoiceController(
   useLayoutEffect(() => {
     voiceThreadIdRef.current = threadId;
     voiceProviderRef.current = selectedProvider;
-  }, [threadId, selectedProvider]);
+    voiceMayApplyRef.current =
+      pendingUserInputCount === 0 &&
+      activeProviderStatus?.authStatus !== "unauthenticated" &&
+      activeProviderStatus?.voiceTranscriptionAvailable !== false;
+  }, [threadId, selectedProvider, pendingUserInputCount, activeProviderStatus]);
 
-  const voiceRecordingDurationLabel = formatVoiceRecordingDuration(voiceRecordingDurationMs);
+  const voiceRecordingDurationLabel = isPreparing
+    ? "Preparing microphone…"
+    : formatVoiceRecordingDuration(voiceRecordingDurationMs);
   const { canStartVoiceNotes, showVoiceNotesControl } = deriveComposerVoiceState({
     authStatus: activeProviderStatus?.authStatus,
     voiceTranscriptionAvailable: activeProviderStatus?.voiceTranscriptionAvailable,
@@ -174,6 +188,13 @@ export function useComposerVoiceController(
   };
 
   const startComposerVoiceRecording = async () => {
+    if (
+      voiceStartingRef.current ||
+      voiceSubmittingRef.current ||
+      isVoiceRecording ||
+      isVoiceTranscribing
+    )
+      return;
     if (!activeProject) {
       return;
     }
@@ -199,9 +220,13 @@ export function useComposerVoiceController(
       return;
     }
 
+    voiceStartingRef.current = true;
+    const startRequestId = voiceTranscriptionRequestIdRef.current;
     try {
       await startVoiceRecording();
+      if (voiceTranscriptionRequestIdRef.current !== startRequestId) return;
       voiceRecordingStartedAtRef.current = performance.now();
+      onRecordingStarted();
       const api = readNativeApi();
       void api?.server
         .prewarmVoice?.({
@@ -211,7 +236,10 @@ export function useComposerVoiceController(
         })
         .catch(() => undefined);
     } catch (error) {
-      if (isVoiceRecordingCancelledError(error)) {
+      if (
+        voiceTranscriptionRequestIdRef.current !== startRequestId ||
+        isVoiceRecordingCancelledError(error)
+      ) {
         return;
       }
       toastManager.add({
@@ -219,11 +247,13 @@ export function useComposerVoiceController(
         title: "Could not start recording",
         description: describeVoiceRecordingStartError(error),
       });
+    } finally {
+      voiceStartingRef.current = false;
     }
   };
 
-  const submitComposerVoiceRecording = (): Promise<void> => {
-    if (!activeProject || !isVoiceRecording) {
+  const submitComposerVoiceRecording = (afterTranscript?: () => void): Promise<void> => {
+    if (!activeProject || !isVoiceRecording || voiceSubmittingRef.current) {
       return Promise.resolve();
     }
     if (!isVoiceActionArmed()) {
@@ -240,6 +270,7 @@ export function useComposerVoiceController(
       return Promise.resolve();
     }
 
+    voiceSubmittingRef.current = true;
     setIsVoiceTranscribing(true);
     const requestId = voiceTranscriptionRequestIdRef.current + 1;
     voiceTranscriptionRequestIdRef.current = requestId;
@@ -248,7 +279,8 @@ export function useComposerVoiceController(
     const isCurrentVoiceRequest = () =>
       voiceTranscriptionRequestIdRef.current === requestId &&
       voiceThreadIdRef.current === requestThreadId &&
-      voiceProviderRef.current === requestProvider;
+      voiceProviderRef.current === requestProvider &&
+      voiceMayApplyRef.current;
 
     return stopVoiceRecording()
       .then((payload) => {
@@ -273,7 +305,13 @@ export function useComposerVoiceController(
             if (!isCurrentVoiceRequest()) {
               return;
             }
-            onTranscriptReady(result.text);
+            if (!result.text.trim()) return;
+            // Apply the draft and release the send guard before the existing submission owner runs.
+            flushSync(() => {
+              onTranscriptReady(result.text);
+              setIsVoiceTranscribing(false);
+            });
+            if (isCurrentVoiceRequest()) afterTranscript?.();
           });
       })
       .catch((error: unknown) => {
@@ -306,7 +344,8 @@ export function useComposerVoiceController(
         });
       })
       .finally(() => {
-        if (isCurrentVoiceRequest()) {
+        voiceSubmittingRef.current = false;
+        if (voiceTranscriptionRequestIdRef.current === requestId) {
           voiceRecordingStartedAtRef.current = null;
           setIsVoiceTranscribing(false);
         }

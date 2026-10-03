@@ -1,3 +1,4 @@
+import { resolveFollowUpDispatchMode } from "~/appSettings";
 import { parseComputerInvocation } from "@glade/shared/computer/computerInvocation";
 import { useLayoutEffect, useRef } from "react";
 import { ComposerModelMenuTrigger } from "~/components/chat/ComposerModelMenuTrigger";
@@ -145,6 +146,27 @@ export function useChatSubmissionController({
     transcript,
     discovery,
   });
+
+  const voiceSendRef = useRef(onSend);
+  useLayoutEffect(() => {
+    voiceSendRef.current = onSend;
+  }, [onSend]);
+  const finishVoiceRecording = (send: boolean, useOppositeBehavior: boolean) => {
+    const dispatchMode = resolveFollowUpDispatchMode({
+      behavior: settings.followUpBehavior,
+      hasLiveTurn: provider.hasLiveTurn,
+      useOppositeBehavior,
+    });
+    void composer
+      .submitComposerVoiceRecording(
+        send
+          ? () => {
+              void voiceSendRef.current(undefined, dispatchMode).catch(reportChatActionFailure);
+            }
+          : undefined,
+      )
+      .catch(reportChatActionFailure);
+  };
 
   const { onEditUserMessage, onResumeWorkflowRun } = useChatTurnFollowUps({
     session,
@@ -436,7 +458,7 @@ export function useChatSubmissionController({
     },
     transcript,
     provider,
-    composer,
+    composer: { ...composer, finishVoiceRecording },
     actions,
     discovery,
   });
