@@ -340,25 +340,25 @@ function WorkspaceSearchInputHeader(props: {
 
   return (
     <div className="shrink-0 border-b border-border/65 p-2">
-      <div className="flex items-center gap-1">
-        <SearchInput
-          value={query}
-          autoFocus={props.autoFocus}
-          spellCheck={false}
-          autoCorrect="off"
-          autoCapitalize="off"
-          placeholder="Search files..."
-          aria-label="Search files"
-          onChange={(event) => onQueryChange(event.target.value)}
-          onKeyDown={handleInputKeyDown}
-        />
-        {props.onCreateFile && props.onCreateFolder ? (
-          <ExplorerCreateButtons
-            onCreateFile={props.onCreateFile}
-            onCreateFolder={props.onCreateFolder}
-          />
-        ) : null}
-      </div>
+      <SearchInput
+        trailingAction={
+          props.onCreateFile && props.onCreateFolder ? (
+            <ExplorerCreateButtons
+              onCreateFile={props.onCreateFile}
+              onCreateFolder={props.onCreateFolder}
+            />
+          ) : null
+        }
+        value={query}
+        autoFocus={props.autoFocus}
+        spellCheck={false}
+        autoCorrect="off"
+        autoCapitalize="off"
+        placeholder="Search files..."
+        aria-label="Search files"
+        onChange={(event) => onQueryChange(event.target.value)}
+        onKeyDown={handleInputKeyDown}
+      />
     </div>
   );
 }
