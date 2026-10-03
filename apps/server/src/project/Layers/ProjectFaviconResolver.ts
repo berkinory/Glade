@@ -5,7 +5,38 @@ import {
   type ProjectFaviconResolverShape,
 } from "../Services/ProjectFaviconResolver";
 
-const FAVICON_CANDIDATES = [
+const ICON_CANDIDATES = [
+  "icon.svg",
+  "icon.png",
+  "icon.ico",
+  "icon.webp",
+  "app-icon.svg",
+  "app-icon.png",
+  "logo.svg",
+  "logo.png",
+  "logo.webp",
+  "resources/icon.svg",
+  "resources/icon.png",
+  "resources/icon.ico",
+  "resources/app-icon.png",
+  "resources/app-icon-macos.png",
+  "resources/app-icon-linux.png",
+  "resources/app-icon-windows.ico",
+  "resources/dock-icon.png",
+  "build/icon.svg",
+  "build/icon.png",
+  "build/icon.ico",
+  "icons/icon.svg",
+  "icons/icon.png",
+  "icons/icon.ico",
+  "icons/128x128.png",
+  "icons/32x32.png",
+  "src-tauri/icons/icon.png",
+  "src-tauri/icons/128x128.png",
+  "public/icon.svg",
+  "public/icon.png",
+  "public/logo.svg",
+  "public/logo.png",
   "favicon.svg",
   "favicon.ico",
   "favicon.png",
@@ -92,7 +123,7 @@ const makeProjectFaviconResolver = Effect.gen(function* () {
   const resolveInDirectory = Effect.fn(function* (root: string, directory: string) {
     const conventional = yield* findExistingFile(
       root,
-      FAVICON_CANDIDATES.map((name) => path.join(directory, name)),
+      ICON_CANDIDATES.map((name) => path.join(directory, name)),
     );
     if (conventional) return conventional;
     for (const name of ICON_SOURCE_FILES) {
@@ -114,7 +145,15 @@ const makeProjectFaviconResolver = Effect.gen(function* () {
     if (!root) return null;
     const rootIcon = yield* resolveInDirectory(root, root);
     if (rootIcon) return rootIcon;
-    const directories = new Set(["apps/web", "web", "frontend", "client", "site"]);
+    const directories = new Set([
+      "apps/desktop",
+      "desktop",
+      "apps/web",
+      "web",
+      "frontend",
+      "client",
+      "site",
+    ]);
     for (const parent of ["apps", "packages"]) {
       const directory = yield* fileSystem
         .realPath(path.join(root, parent))

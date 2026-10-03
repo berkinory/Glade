@@ -223,7 +223,6 @@ function ActivityThreadRow({
                 cwd={project.cwd}
                 appearance={project.appearance}
                 expanded={false}
-                variant="favicon"
                 glyphClassName={sidebarGlyphClass("meta")}
               />
             ) : (
