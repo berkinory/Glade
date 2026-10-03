@@ -8,7 +8,10 @@ import { pluralize } from "@glade/shared/text/text";
 import { createThreadSelector } from "../storeSelectors";
 import { useStore } from "../store";
 import { resolveSubagentPresentationForThread } from "../lib/subagentPresentation";
-import { SIDEBAR_ROW_LABEL_TEXT_CLASS_NAME } from "../sidebarRowStyles";
+import {
+  SIDEBAR_ROW_LABEL_TEXT_CLASS_NAME,
+  sidebarHoverRevealHideClassName,
+} from "../sidebarRowStyles";
 import type { SidebarThreadSummary } from "../types";
 import { TerminalIcon } from "../lib/icons";
 import { cn } from "../lib/utils";
@@ -218,7 +221,10 @@ export function SidebarThreadRowContent({
           <span
             aria-label="Unsent draft"
             title="Unsent draft"
-            className="inline-flex shrink-0 items-center justify-center text-muted-foreground group-hover/thread-row:translate-x-2.5 group-focus-within/thread-row:translate-x-2.5"
+            className={cn(
+              "inline-flex shrink-0 items-center justify-center text-muted-foreground",
+              sidebarHoverRevealHideClassName("thread-row"),
+            )}
           >
             <CentralIcon name="pencil" className="size-3" />
           </span>

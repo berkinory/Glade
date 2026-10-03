@@ -33,6 +33,7 @@ import {
   SIDEBAR_ROW_FOCUS_CLASS_NAME,
   SIDEBAR_ROW_HOVER_CLASS_NAME,
   SIDEBAR_ROW_LABEL_TEXT_CLASS_NAME,
+  SIDEBAR_THREAD_HOVER_ACTION_TONE_CLASS_NAME,
   SIDEBAR_SECTION_LABEL_CLASS_NAME,
   sidebarHoverRevealHideClassName,
 } from "../sidebarRowStyles";
@@ -151,7 +152,7 @@ function ActivityThreadRow({
     scope: "activity",
     threadId: thread.id,
   });
-  const actionToneClassName = "text-muted-foreground/42";
+  const actionToneClassName = SIDEBAR_THREAD_HOVER_ACTION_TONE_CLASS_NAME;
 
   const trailingStatus = resolveThreadStatusTrailingIndicator({ status, isActive });
 
@@ -216,7 +217,10 @@ function ActivityThreadRow({
               <span
                 aria-label="Unsent draft"
                 title="Unsent draft"
-                className="inline-flex shrink-0 items-center justify-center text-muted-foreground"
+                className={cn(
+                  "inline-flex shrink-0 items-center justify-center text-muted-foreground",
+                  sidebarHoverRevealHideClassName("activity-row"),
+                )}
               >
                 <CentralIcon name="pencil" className="size-3" />
               </span>

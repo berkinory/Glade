@@ -1,3 +1,4 @@
+import { SIDEBAR_TRAILING_ICON_FORCE_CLASS } from "./sidebarGlyphs";
 import { NewThreadIcon } from "~/lib/icons";
 import { useTerminalStateStore } from "../terminalStateStore";
 import { useSidebarStateStore } from "../sidebarStateStore";
@@ -65,6 +66,7 @@ import {
   SIDEBAR_PROJECT_NAME_CLASS_NAME,
   SIDEBAR_ROW_IDLE_TEXT_CLASS_NAME,
   SIDEBAR_ROW_LABEL_TEXT_CLASS_NAME,
+  SIDEBAR_THREAD_HOVER_ACTION_TONE_CLASS_NAME,
   SIDEBAR_SECTION_LABEL_CLASS_NAME,
 } from "../sidebarRowStyles";
 import { PROJECT_SPACE_DRAG_MIME } from "./SpaceSwitcher";
@@ -146,7 +148,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
 
   function renderThreadHoverActions(input: {
     threadId: ThreadId;
-    toneClassName: string;
     isPinned: boolean;
     includePinToggle?: boolean;
     compact?: boolean;
@@ -156,12 +157,17 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
 
     return (
       <SidebarRowHoverActions threadId={input.threadId}>
-        <div className="pointer-events-auto inline-flex items-center gap-2">
+        <div
+          className={cn(
+            "pointer-events-auto inline-flex items-center gap-2",
+            !compact && SIDEBAR_TRAILING_ICON_FORCE_CLASS,
+          )}
+        >
           {includePinToggle ? (
             <ThreadPinToggleButton
               pinned={input.isPinned}
               presentation="inline"
-              toneClassName={input.toneClassName}
+              toneClassName={SIDEBAR_THREAD_HOVER_ACTION_TONE_CLASS_NAME}
               onToggle={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
@@ -169,7 +175,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
               }}
             />
           ) : null}
-          {renderThreadArchiveAction(input.threadId, input.toneClassName, {
+          {renderThreadArchiveAction(input.threadId, SIDEBAR_THREAD_HOVER_ACTION_TONE_CLASS_NAME, {
             compact,
           })}
         </div>
@@ -432,7 +438,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
                 timestampToneClassName: "text-muted-foreground/38",
                 hoverActions: renderThreadHoverActions({
                   threadId: thread.id,
-                  toneClassName: "text-muted-foreground/42",
                   isPinned: true,
                   compact: isSubagentThread,
                 }),
@@ -586,7 +591,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
                   : secondaryMetaClass,
                 hoverActions: renderThreadHoverActions({
                   threadId: thread.id,
-                  toneClassName: secondaryMetaClass,
                   isPinned,
                   compact: isSubagentThread,
                 }),
