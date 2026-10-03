@@ -505,6 +505,7 @@ export interface GitReadRequestOptions {
 }
 
 export const GitReadSourceControlFilesInput = Schema.Struct({
+  reuseInventory: Schema.optional(Schema.Boolean),
   cwd: TrimmedNonEmptyStringSchema,
   query: Schema.optional(Schema.String.check(Schema.isMaxLength(200))),
 });

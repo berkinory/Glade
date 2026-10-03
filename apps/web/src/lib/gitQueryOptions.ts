@@ -574,9 +574,13 @@ export function gitWorkingTreeDiffQueryOptions(input: {
 export function gitSourceControlFilesQueryOptions(cwd: string | null, query = "") {
   return queryOptions({
     queryKey: [...gitQueryKeys.sourceControlFiles(cwd), query],
-    queryFn: async ({ signal }) => {
+    queryFn: async ({ signal, client, queryKey }) => {
       if (!cwd) throw new Error("Source control is unavailable.");
-      const input = { cwd, query };
+      const input = {
+        cwd,
+        query,
+        reuseInventory: query.length > 0 && client.getQueryState(queryKey)?.dataUpdatedAt === 0,
+      };
       const read: (
         input: GitReadSourceControlFilesInput,
         options?: GitReadRequestOptions,

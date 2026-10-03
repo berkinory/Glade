@@ -18,6 +18,7 @@
 ### Improved
 
 - Explorer content search cancels outdated scans, reuses unchanged files and colors visible result lines.
+- Source Control filtering reuses recent repository reads while refreshes keep changes current.
 
 - Explorer searches file contents directly; filename search stays in the quick-open menu.
 

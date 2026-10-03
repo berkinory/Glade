@@ -238,6 +238,7 @@ export interface GitCoreShape {
   readonly readSourceControlFiles: (
     cwd: string,
     query?: string,
+    reuseInventory?: boolean,
   ) => Effect.Effect<GitSourceControlFilesResult, GitCommandError>;
 
   readonly readBranchPatch: (cwd: string) => Effect.Effect<GitWorkingTreePatch, GitCommandError>;

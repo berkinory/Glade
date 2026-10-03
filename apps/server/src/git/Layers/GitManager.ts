@@ -1355,8 +1355,11 @@ export const makeGitManager = Effect.gen(function* () {
     },
   );
 
-  const readSourceControlFiles: GitManagerShape["readSourceControlFiles"] = (cwd, query) =>
-    gitCore.readSourceControlFiles(cwd, query);
+  const readSourceControlFiles: GitManagerShape["readSourceControlFiles"] = (
+    cwd,
+    query,
+    reuseInventory,
+  ) => gitCore.readSourceControlFiles(cwd, query, reuseInventory);
 
   const blameLine: GitManagerShape["blameLine"] = Effect.fnUntraced(function* (input) {
     return yield* gitCore.blameLine(input);

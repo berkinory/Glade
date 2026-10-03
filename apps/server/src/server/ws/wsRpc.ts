@@ -1369,7 +1369,7 @@ const makeWsRpcHandlersLayer = () =>
           rpcEffect(gitManager.readWorkingTreeDiff(input), "Failed to read working tree diff"),
         [WS_METHODS.gitReadSourceControlFiles]: (input) =>
           rpcEffect(
-            gitManager.readSourceControlFiles(input.cwd, input.query),
+            gitManager.readSourceControlFiles(input.cwd, input.query, input.reuseInventory),
             "Failed to read source control files",
           ),
         [WS_METHODS.gitBlameLine]: (input) =>

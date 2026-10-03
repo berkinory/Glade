@@ -6,7 +6,6 @@ import { GIT_READ_FILE_AT_REV_MAX_BYTES, type GitBlameLineResult } from "@glade/
 import { isWorkspaceRelativePathSafe } from "@glade/shared/platform/path";
 import { GitCommandError } from "../Errors.ts";
 import { makeKeyedSingleFlightCache } from "../../pullRequests/KeyedSingleFlightCache";
-import type { GitSourceControlFilesResult } from "@glade/contracts/git/git";
 import { GIT_MEDIA_MAX_BYTES, readGitMedia, readWorkingTreeMedia } from "../gitMedia";
 import { sourceControlInventory } from "../sourceControlInventory";
 import { parseGitBlamePorcelain } from "../gitBlameParsing.ts";
@@ -356,32 +355,32 @@ const makeGitDiff = Effect.gen(function* () {
       );
     });
 
-  const inventories = yield* makeKeyedSingleFlightCache<
-    GitSourceControlFilesResult,
-    GitCommandError
-  >({ maxEntries: 64, ttlMs: 0 });
-  const readSourceControlFiles: GitCoreShape["readSourceControlFiles"] = (cwd, query) =>
-    inventories.get(
-      JSON.stringify([cwd, query ?? ""]),
-      Effect.gen(function* () {
-        const inventory = sourceControlInventory(query);
-        const status = yield* executeGit(
+  const inventories = yield* makeKeyedSingleFlightCache<ExecuteGitResult, GitCommandError>({
+    maxEntries: 4,
+    ttlMs: 2_000,
+  });
+  const readSourceControlFiles: GitCoreShape["readSourceControlFiles"] = (
+    cwd,
+    query,
+    reuseInventory = false,
+  ) =>
+    Effect.gen(function* () {
+      if (!reuseInventory) yield* inventories.invalidate(cwd);
+      const status = yield* inventories.get(
+        cwd,
+        executeGit(
           "GitCore.readSourceControlFiles.status",
           cwd,
           ["--no-optional-locks", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
-          {
-            maxOutputBytes: 8_000_000,
-            outputMode: "prefix",
-            timeoutMs: 30_000,
-            progress: {
-              stdoutLineDelimiter: "\0",
-              onStdoutLine: (record) => Effect.sync(() => inventory.accept(record)),
-            },
-          },
-        );
-        return inventory.result(status.stdoutTruncated === true);
-      }),
-    );
+          { maxOutputBytes: 8_000_000, outputMode: "prefix", timeoutMs: 30_000 },
+        ),
+      );
+      const inventory = sourceControlInventory(query);
+      const records = status.stdout.split("\0");
+      if (status.stdoutTruncated) records.pop();
+      for (const record of records) inventory.accept(record);
+      return inventory.result(status.stdoutTruncated === true);
+    });
 
   const readWorkingTreePatch: GitCoreShape["readWorkingTreePatch"] = (cwd, filePath) =>
     Effect.gen(function* () {
