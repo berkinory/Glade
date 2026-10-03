@@ -100,7 +100,7 @@ export function SourceControlCommitInput(props: {
         </div>
         <Button
           size="xs"
-          variant="secondary"
+          variant="default"
           className="h-7.5 sm:h-7.5"
           disabled={!props.canCommit || generation.isPending}
           onClick={props.onCommit}
