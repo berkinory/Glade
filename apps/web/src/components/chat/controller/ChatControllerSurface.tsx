@@ -419,7 +419,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
         className={cn(
           CHAT_SURFACE_HEADER_DIVIDER_CLASS_NAME,
           CHAT_SURFACE_HEADER_PADDING_X_CLASS,
-          "flex items-center",
+          "flex items-center pl-2 sm:pl-3",
           CHAT_SURFACE_HEADER_HEIGHT_CLASS,
           isElectron && "drag-region",
           desktopTopBarTrafficLightGutterClassName,

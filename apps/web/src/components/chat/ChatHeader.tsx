@@ -193,10 +193,10 @@ export function ChatHeader({
   ) : null;
 
   return (
-    <div className={cn("flex min-w-0 flex-1 items-center gap-2", className)}>
+    <div className={cn("flex h-full min-w-0 flex-1 items-center gap-2", className)}>
       <div
         className={cn(
-          "flex min-w-0 flex-1 items-center",
+          "flex h-full min-w-0 flex-1 items-center",
           "overflow-hidden",
           !isMobile && state === "collapsed" ? "gap-4" : "gap-2 sm:gap-3",
         )}
