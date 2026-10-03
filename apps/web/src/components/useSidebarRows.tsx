@@ -1,6 +1,6 @@
 import { SidebarDraftIndicator } from "./SidebarDraftIndicator";
 import { SIDEBAR_TRAILING_ICON_FORCE_CLASS } from "./sidebarGlyphs";
-import { NewChatIcon, NewThreadIcon } from "~/lib/icons";
+import { NewThreadIcon } from "~/lib/icons";
 import { useTerminalStateStore } from "../terminalStateStore";
 import { useSidebarStateStore } from "../sidebarStateStore";
 import { ThreadPrStatusBadge } from "~/components/pullRequest/ThreadPrStatusBadge";
@@ -411,6 +411,16 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
               terminalCount={terminalCount}
               isActive={isActive}
               variant="pinned"
+              projectBadge={
+                project?.kind === "project" ? (
+                  <ProjectSidebarIcon
+                    cwd={project.cwd}
+                    expanded={false}
+                    appearance={project.appearance}
+                    glyphClassName="size-2.5"
+                  />
+                ) : null
+              }
               pendingStatusColorClass={
                 threadStatus?.label === "Pending Approval" ? threadStatus.colorClass : null
               }
@@ -419,25 +429,13 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
                   aria-label={projectLabel}
                   className={cn(
                     "relative flex max-w-[40%] shrink-0 items-center justify-end text-right text-ui-meta text-muted-foreground/38",
+                    project?.kind !== "project" &&
+                      "hidden group-hover/thread-row:flex group-has-[:focus-visible]/thread-row:flex",
                     hasTrailingStatusGlyph &&
                       "mr-2 group-hover/thread-row:mr-0 group-focus-within/thread-row:mr-0",
                   )}
                 >
-                  <span className="inline-flex size-3.5 items-center justify-center group-hover/thread-row:hidden group-has-[:focus-visible]/thread-row:hidden">
-                    {project?.kind === "project" ? (
-                      <ProjectSidebarIcon
-                        cwd={project.cwd}
-                        expanded={false}
-                        appearance={project.appearance}
-                        glyphClassName="size-3.5"
-                      />
-                    ) : (
-                      <NewChatIcon className="size-3.5" aria-hidden />
-                    )}
-                  </span>
-                  <span className="hidden truncate group-hover/thread-row:block group-has-[:focus-visible]/thread-row:block">
-                    {projectLabel}
-                  </span>
+                  <span className="truncate">{projectLabel}</span>
                 </span>
               }
             />

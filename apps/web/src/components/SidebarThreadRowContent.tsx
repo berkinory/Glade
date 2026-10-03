@@ -22,10 +22,12 @@ function ProviderAvatarWithTerminal({
   thread,
   terminalStatus,
   terminalCount,
+  projectBadge,
 }: {
   thread: SidebarThreadSummary;
   terminalStatus: SidebarThreadTerminalStatus | null;
   terminalCount: number;
+  projectBadge?: ReactNode;
 }) {
   const provider = thread.session?.provider ?? thread.modelSelection.provider;
   const showBadge = terminalCount > 1 || terminalStatus !== null;
@@ -40,6 +42,11 @@ function ProviderAvatarWithTerminal({
   return (
     <span className="relative inline-flex shrink-0 translate-y-px items-center">
       {avatarNode}
+      {projectBadge ? (
+        <span className="sidebar-icon-chip absolute -bottom-1 -right-1 inline-flex size-2.5 items-center justify-center rounded-sm">
+          {projectBadge}
+        </span>
+      ) : null}
       {showBadge ? (
         <Tooltip>
           <TooltipTrigger
@@ -135,6 +142,7 @@ export function SidebarThreadRowContent({
   subagentIndentPx: subagentIndentPxProp,
   pendingStatusColorClass,
   suffix,
+  projectBadge,
 }: {
   thread: SidebarThreadSummary;
   terminalStatus: SidebarThreadTerminalStatus | null;
@@ -144,6 +152,7 @@ export function SidebarThreadRowContent({
   subagentIndentPx?: number;
   pendingStatusColorClass?: string | null | undefined;
   suffix?: ReactNode;
+  projectBadge?: ReactNode;
 }) {
   const subagentIndentPx = subagentIndentPxProp ?? 0;
   const isSubagentThread = Boolean(thread.parentThreadId);
@@ -181,6 +190,7 @@ export function SidebarThreadRowContent({
           thread={thread}
           terminalStatus={terminalStatus}
           terminalCount={terminalCount}
+          projectBadge={projectBadge}
         />
       )}
       <div
