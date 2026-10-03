@@ -23,10 +23,14 @@ export function PanelTabBar(props: {
   actions?: ReactNode;
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const wheelRegionRef = useRef<HTMLElement>(null);
+  const pinnedTabs = props.tabs.filter((tab) => tab.id === props.pinnedTabId);
+  const scrollableTabs = props.tabs.filter((tab) => tab.id !== props.pinnedTabId);
   const tabIds = JSON.stringify(props.tabs.map((tab) => tab.id));
   useEffect(() => {
     const scroller = scrollerRef.current;
-    if (!scroller) return;
+    const wheelRegion = wheelRegionRef.current;
+    if (!scroller || !wheelRegion) return;
     const wheel = (event: WheelEvent) => {
       const delta = event.deltaX || (event.shiftKey ? event.deltaY : 0);
       if (!delta || scroller.scrollWidth <= scroller.clientWidth) return;
@@ -34,8 +38,8 @@ export function PanelTabBar(props: {
       scroller.scrollLeft +=
         delta * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? scroller.clientWidth : 1);
     };
-    scroller.addEventListener("wheel", wheel, { passive: false });
-    return () => scroller.removeEventListener("wheel", wheel);
+    wheelRegion.addEventListener("wheel", wheel, { passive: false });
+    return () => wheelRegion.removeEventListener("wheel", wheel);
   }, []);
   useLayoutEffect(() => {
     const scroller = scrollerRef.current;
@@ -73,15 +77,21 @@ export function PanelTabBar(props: {
         props.className,
       )}
     >
-      <nav aria-label={props.label} className="flex min-w-0 flex-1 items-center gap-1">
-        {props.tabs.filter((tab) => tab.id === props.pinnedTabId).map(renderTab)}
-        <div
-          ref={scrollerRef}
-          className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      <div className="min-w-0 flex-1">
+        <nav
+          ref={wheelRegionRef}
+          aria-label={props.label}
+          className="[-webkit-app-region:no-drag] flex w-fit min-w-0 max-w-full items-center gap-1"
         >
-          {props.tabs.filter((tab) => tab.id !== props.pinnedTabId).map(renderTab)}
-        </div>
-      </nav>
+          {pinnedTabs.map(renderTab)}
+          <div
+            ref={scrollerRef}
+            className="flex min-w-0 items-center gap-1 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {scrollableTabs.map(renderTab)}
+          </div>
+        </nav>
+      </div>
       {props.actions ? (
         <div className="[-webkit-app-region:no-drag] flex shrink-0 items-center">
           {props.actions}
