@@ -18,7 +18,7 @@ export function PanelTabBar(props: {
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex min-h-9 min-w-0 shrink-0 items-center gap-1 border-b border-border/70 bg-[var(--color-background-surface)] px-1.5 py-1">
+    <div className="flex h-[calc(var(--spacing)*9+1px)] min-w-0 shrink-0 items-center gap-1 border-b border-border/70 bg-[var(--color-background-surface)] px-1.5 py-1">
       <nav
         aria-label={props.label}
         className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
