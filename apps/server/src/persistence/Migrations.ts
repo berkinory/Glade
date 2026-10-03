@@ -5,7 +5,12 @@ import * as SqlClient from "effect/unstable/sql/SqlClient";
 import { MigrationLineageUnsupportedError, MigrationSchemaTooNewError } from "./Errors.ts";
 import Baseline from "./Migrations/001_Baseline.ts";
 
-export const migrationEntries = [[1, "Baseline", Baseline]] as const;
+import ProfileTurnLookup from "./Migrations/002_ProfileTurnLookup.ts";
+
+export const migrationEntries = [
+  [1, "Baseline", Baseline],
+  [2, "ProfileTurnLookup", ProfileTurnLookup],
+] as const;
 
 const LATEST_MIGRATION_ID = Math.max(...migrationEntries.map(([id]) => id));
 

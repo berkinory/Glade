@@ -46,3 +46,17 @@ Server subprocess execution belongs to `platform/processRunner`: its callback br
 the shared executable planner while preserving Node output and error properties;
 its shell-command entry owns platform shell selection. Provider usage and worktree
 setup call those boundaries rather than selecting Windows launch policy themselves.
+
+### Profile query measurement
+
+Migration 2 adds the pending-message lookup used by profile turn attribution. On an
+isolated baseline SQLite database with 2,000 turns and matching request events in one
+chat, the unchanged profile attribution query returned identical rows in 411 ms before
+and 4 ms after the index. EXPLAIN changed from scanning that thread's turns to searching
+both thread and pending-message keys. The scoped archive query retained its original
+plan and took about 1.78 seconds in both cases; this index does not claim to accelerate
+chat deletion. These synthetic single-run measurements are not a production benchmark.
+Repeated index creation is idempotent and existing rows are preserved.
+
+Activity heatmap tooltips format date-only keys in UTC. User-local day grouping still
+happens in the statistics query; formatting cannot shift a square into the previous day.

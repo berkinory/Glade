@@ -8,6 +8,8 @@
 
 ### Improved
 
+- Profile statistics stay responsive with larger conversation histories.
+
 - Source Control uses clearer folder ordering and stays usable with very large change lists.
 - Source Control keeps selected actions visible and applies stage, unstage and revert to the whole selection within each group.
 - Changes and History preview images from the selected version, and videos show static thumbnails in Explorer and Git previews.
@@ -27,6 +29,8 @@
 - Models load faster on first use, with a balanced initial reasoning effort when you have not chosen one.
 
 ### Fixed
+
+- Profile activity dates stay correct across time zones.
 
 - Provider updates preserve executable search paths on Windows and no longer wait for interactive input.
 - HTTPS connection failures are handled reliably, and stopping processes does not depend on executable search paths.
