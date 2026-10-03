@@ -418,7 +418,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
                 <span
                   aria-label={projectLabel}
                   className={cn(
-                    "relative max-w-[40%] shrink-0 text-right text-ui-meta text-muted-foreground/38",
+                    "relative flex max-w-[40%] shrink-0 items-center justify-end text-right text-ui-meta text-muted-foreground/38",
                     hasTrailingStatusGlyph &&
                       "mr-2 group-hover/thread-row:mr-0 group-focus-within/thread-row:mr-0",
                   )}
