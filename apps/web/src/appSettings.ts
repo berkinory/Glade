@@ -753,6 +753,32 @@ export function getCustomBinaryPathForProvider(
   }
 }
 
+const RESOLVED_DEFAULT_APP_SETTINGS = normalizeAppSettings({
+  ...DEFAULT_APP_SETTINGS,
+  ...serverSettingsToAppSettings(DEFAULT_SERVER_SETTINGS_VIEW),
+});
+const resolvedSettings = new WeakMap<
+  AppSettings,
+  {
+    server: ServerSettingsView | undefined;
+    settings: AppSettings;
+  }
+>();
+
+function resolveAppSettings(
+  local: AppSettings,
+  server: ServerSettingsView | undefined,
+): AppSettings {
+  const cached = resolvedSettings.get(local);
+  if (cached && cached.server === server) return cached.settings;
+  const settings = normalizeAppSettings({
+    ...normalizeStoredAppSettings(local),
+    ...(server ? serverSettingsToAppSettings(server) : {}),
+  });
+  resolvedSettings.set(local, { server, settings });
+  return settings;
+}
+
 export function useAppSettings() {
   const queryClient = useQueryClient();
   const serverSettingsQuery = useQuery(serverSettingsQueryOptions());
@@ -764,16 +790,8 @@ export function useAppSettings() {
   const normalizedStoredSettingsRef = useRef(false);
   const serverSettingsMutationQueueRef = useRef<Promise<void>>(Promise.resolve());
 
-  const defaults = normalizeAppSettings({
-    ...DEFAULT_APP_SETTINGS,
-    ...serverSettingsToAppSettings(DEFAULT_SERVER_SETTINGS_VIEW),
-  });
-
-  const normalizedLocalSettings = normalizeStoredAppSettings(localSettings);
-  const settings = normalizeAppSettings({
-    ...normalizedLocalSettings,
-    ...(serverSettingsQuery.data ? serverSettingsToAppSettings(serverSettingsQuery.data) : {}),
-  });
+  const defaults = RESOLVED_DEFAULT_APP_SETTINGS;
+  const settings = resolveAppSettings(localSettings, serverSettingsQuery.data);
 
   useEffect(() => {
     if (normalizedStoredSettingsRef.current) {

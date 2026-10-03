@@ -1,5 +1,7 @@
 # TODO
 
+- **S13 implemented:** Removed artificial readiness waits, narrowed focused metadata, reused immutable settings/activity decoding and read committed route matches. Web tests: 433 passed; check blocked by existing Browser imports. Measured work-log fixture 521.81 ms to 12.34 ms; live navigation and multiwindow checks remain unverified.
+
 - **S15 implemented:** Excluded deleted Git paths with filesystem fallback for incomplete discovery; added safe UTF-8 download headers and client filename decoding; struck through canonical deleted rows and removed deleted-version Show file actions. Fixed the existing media import blocking Source Control. Full suite, server types, real Git fixtures, HTTP headers/bytes and Dev UI staged/unstaged/rename/partial-staging checks passed. Browser download event capture timed out, so the final saved filename and live chat export remain unverified; global checks retain browser import blockers.
 
 - **S6 implemented:** Added microphone preparation, digital-zero warmup handling, in-turn recording beside Stop, and opt-in Enter transcription/send through the existing queue/steer owner. Current-request/thread guards and synchronous duplicate fences protect delivery. Full suite and final web rerun (433 tests) passed; isolated UI setting persistence verified. Live microphone/provider transcription remains unverified. Global checks retain existing browser import blockers.

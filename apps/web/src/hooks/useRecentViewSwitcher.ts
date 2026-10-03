@@ -1,8 +1,9 @@
+import { useCommittedChatRoute } from "./useCommittedChatRoute";
 import { useCallback } from "react";
 
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { ResolvedTerminalVisualIdentity } from "@glade/shared/threads/terminalThreads";
-import { useLocation, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 
 import { useComposerDraftStore } from "../composerDraftStore";
@@ -47,12 +48,8 @@ interface UseRecentViewSwitcherInput {
 
 export function useRecentViewSwitcher(input: UseRecentViewSwitcherInput) {
   const navigate = useNavigate();
-  const pathname = useLocation({ select: (location) => location.pathname });
-  const routeThreadId = useParams({
-    strict: false,
-    select: (params) => (params.threadId ? ThreadId.makeUnsafe(params.threadId) : null),
-  });
-  const routeSearch = useSearch({ strict: false }) as Record<string, unknown>;
+  const { pathname, threadId: routeThreadId, search: routeSearch } = useCommittedChatRoute();
+
   const [recentSwitcherState, setRecentSwitcherState] = useState<RecentViewSwitcherState | null>(
     null,
   );

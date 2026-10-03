@@ -333,7 +333,17 @@ function extractProviderContextLifecycleInfo(
   };
 }
 
+const activityEntryCache = new WeakMap<OrchestrationThreadActivity, DerivedWorkLogEntry>();
+
 function toDerivedWorkLogEntry(activity: OrchestrationThreadActivity): DerivedWorkLogEntry {
+  const cached = activityEntryCache.get(activity);
+  if (cached) return cached;
+  const entry = normalizeWorkLogActivity(activity);
+  activityEntryCache.set(activity, entry);
+  return entry;
+}
+
+function normalizeWorkLogActivity(activity: OrchestrationThreadActivity): DerivedWorkLogEntry {
   const payload =
     activity.payload && typeof activity.payload === "object"
       ? (activity.payload as Record<string, unknown>)

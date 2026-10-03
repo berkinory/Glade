@@ -8,6 +8,8 @@
 
 ### Improved
 
+- Chat switching avoids unnecessary control delays, and long activity histories need less repeated processing.
+
 - Deleted files are easier to recognize in Source Control.
 
 - Voice dictation shows microphone preparation, works while agents are running, and can be finished or sent with Enter.
@@ -35,6 +37,8 @@
 - Models load faster on first use, with a balanced initial reasoning effort when you have not chosen one.
 
 ### Fixed
+
+- Chat navigation keeps the displayed route and selected conversation in sync.
 
 - Deleted files no longer appear in workspace search or file suggestions.
 - File downloads and chat exports support accented characters and emoji in filenames.

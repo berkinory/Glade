@@ -43,3 +43,23 @@ The terminal timing is one cold Dev sample, not a signed production build measur
 ## Repository checks
 
 The required checks are `bun run check`, `bun run test`, `bun scripts/check-windows-runtime-boundary.ts`, and `bun run build:desktop`. Focused Codex, journal, Git, transport, workspace and markdown checks were also run during implementation. The final run passed all checks and all 2,570 tests (nine tests skipped by their existing platform or live-provider conditions). The Windows boundary check covered 596 application source files, and the desktop build completed successfully. Exact outcomes are also recorded in the implementation commits. Existing large-chunk build warnings are not performance measurements.
+
+## Chat shell and settings (October 2026)
+
+An isolated Bun fixture compared the previous and current work-log derivation on 1,500
+immutable completed tool activities, with five warmups and 50 derivations. Total time
+was 521.81 ms before and 12.34 ms after. Serialized results matched; replacing an
+activity immediately changed its displayed label. This measures normalization and
+reconciliation, not browser frame rate or provider latency.
+
+One hundred reads of the same storage key/raw value/schema reused the same decoded
+object (including frozen nested values). Replacing the stored value was immediately
+visible. App settings reuse normalization for the same immutable local/server pair.
+The shell selects metadata and counts rather than transcript payloads, and the
+artificial route-switch animation-frame readiness gate has been removed. Focus still
+requires an available, enabled editor and a focused document. Committed route matches
+supply pathname, parameters and search together during navigation.
+
+Browser frame timings, cross-window events and cancelled navigation still need live
+verification. Existing missing Browser shell/icon imports prevent a clean full web
+typecheck; they are unrelated to these measurements.

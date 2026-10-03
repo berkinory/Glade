@@ -1,6 +1,6 @@
 import { getRuntimeAwareModelCapabilities } from "../runtimeModelCapabilities";
 import { threadExportBlockedReason } from "@glade/shared/threads/threadExport";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useLayoutEffect } from "react";
 import {
   resolveActiveTurnLiveDiffState,
   resolveGitRepoUiState,
@@ -56,7 +56,6 @@ export function useChatDiscoveryController({
     providerArtifacts,
     threadWorkspaceCwd,
     turnDiffSummaries,
-    isCenteredEmptyLanding,
   } = transcript;
   const {
     activeProject,
@@ -477,42 +476,6 @@ export function useChatDiscoveryController({
 
   const secondaryChromeThreadId = activeThread?.id ?? threadId;
 
-  const shouldDeferSecondaryChrome =
-    activeThread !== undefined && !isCenteredEmptyLanding && !terminalWorkspaceTerminalTabActive;
-
-  const [secondaryChromeState, setSecondaryChromeState] = useState(() => ({
-    threadId: secondaryChromeThreadId,
-    ready: true,
-  }));
-
-  const secondaryChromeReady =
-    !shouldDeferSecondaryChrome ||
-    (secondaryChromeState.threadId === secondaryChromeThreadId && secondaryChromeState.ready);
-
-  useEffect(() => {
-    if (!shouldDeferSecondaryChrome) {
-      setSecondaryChromeState((current) =>
-        current.threadId === secondaryChromeThreadId && current.ready
-          ? current
-          : { threadId: secondaryChromeThreadId, ready: true },
-      );
-      return;
-    }
-
-    setSecondaryChromeState({
-      threadId: secondaryChromeThreadId,
-      ready: false,
-    });
-    const frame = window.requestAnimationFrame(() => {
-      setSecondaryChromeState({
-        threadId: secondaryChromeThreadId,
-        ready: true,
-      });
-    });
-    return () => {
-      window.cancelAnimationFrame(frame);
-    };
-  }, [setSecondaryChromeState, secondaryChromeThreadId, shouldDeferSecondaryChrome]);
   return {
     currentActiveGitBranch,
     settledThreadBranchMismatch,
@@ -559,6 +522,5 @@ export function useChatDiscoveryController({
     shouldShowProviderHealthBanner,
     shouldRenderChatPaneContent,
     secondaryChromeThreadId,
-    secondaryChromeReady,
   } as const;
 }

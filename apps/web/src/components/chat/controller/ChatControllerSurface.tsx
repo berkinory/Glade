@@ -159,7 +159,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     shouldRenderChatPaneContent,
     shouldShowProviderHealthBanner,
     visibleActiveProviderStatus,
-    secondaryChromeReady,
     fastModeEnabled,
     activeProviderHealthBannerDismissalKey,
   } = controller.discovery;
@@ -719,8 +718,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                   <div
                     className={cn(isGitRepo && !environmentEnabled ? "pt-0.5" : "pt-3 sm:pt-4")}
                   />
-                  {secondaryChromeReady &&
-                  ((isGitRepo && !environmentEnabled) || relocateComposerLeadingControls) ? (
+                  {(isGitRepo && !environmentEnabled) || relocateComposerLeadingControls ? (
                     <div className={CHAT_COLUMN_GUTTER_CLASS_NAME}>
                       <div className={CHAT_COLUMN_FRAME_CLASS_NAME}>
                         <div className="flex w-full items-center gap-1">
@@ -740,7 +738,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
               </div>
             ) : null}
 
-            {shouldRenderChatPaneContent && secondaryChromeReady && pullRequestDialogState ? (
+            {shouldRenderChatPaneContent && pullRequestDialogState ? (
               <PullRequestThreadDialog
                 key={pullRequestDialogState.key}
                 open

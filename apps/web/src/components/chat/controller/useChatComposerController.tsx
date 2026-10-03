@@ -65,7 +65,6 @@ export function useChatComposerController({
   } = session;
   const { threadId } = useChatThreadContext();
   const {
-    secondaryChromeReady,
     secondaryChromeThreadId,
     voiceProviderStatus,
     refreshProviderStatuses,
@@ -133,7 +132,6 @@ export function useChatComposerController({
       !editor ||
       !canApplyComposerFocus({
         windowHasFocus: document.hasFocus(),
-        secondaryChromeReady,
         editorAvailable: true,
         editorDisabled: isComposerEditorDisabled,
       })
@@ -143,11 +141,11 @@ export function useChatComposerController({
     }
     pendingComposerFocusRef.current = false;
     editor.focusAtEnd();
-  }, [composerEditorRef, pendingComposerFocusRef, secondaryChromeReady, isComposerEditorDisabled]);
+  }, [composerEditorRef, pendingComposerFocusRef, isComposerEditorDisabled]);
 
   const toggleComposerFocus = () => {
     const editor = composerEditorRef.current;
-    if (secondaryChromeReady && editor?.isFocused()) {
+    if (editor?.isFocused()) {
       pendingComposerFocusRef.current = false;
       editor.blur();
       return;
@@ -180,14 +178,14 @@ export function useChatComposerController({
   }, [composerFocusRequestNonce, scheduleComposerFocus]);
 
   useEffect(() => {
-    if (!secondaryChromeReady || !pendingComposerFocusRef.current) return;
+    if (!pendingComposerFocusRef.current) return;
     const frame = window.requestAnimationFrame(() => {
       focusComposer();
     });
     return () => {
       window.cancelAnimationFrame(frame);
     };
-  }, [pendingComposerFocusRef, focusComposer, secondaryChromeReady, secondaryChromeThreadId]);
+  }, [pendingComposerFocusRef, focusComposer, secondaryChromeThreadId]);
 
   useEffect(() => {
     const handleWindowFocus = () => {

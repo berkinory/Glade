@@ -1,9 +1,10 @@
+import { useCommittedChatRoute } from "../hooks/useCommittedChatRoute";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useParams, useRouterState } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useComputerEventBridge } from "../hooks/useComputerEventBridge";
-import { useDiffRouteSearch } from "../hooks/useDiffRouteSearch";
+import { parseDiffRouteSearch } from "../diffRouteSearch";
 import { readNativeApi } from "../nativeApi";
 import { resolveSplitViewThreadIds, selectSplitView, useSplitViewStore } from "../splitViewStore";
 import { useStore } from "../store";
@@ -33,12 +34,9 @@ export function EventRouter() {
   const serverThreadIds = useStore((store) => store.threadIds ?? EMPTY_THREAD_IDS);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const routeThreadId = useParams({
-    strict: false,
-    select: (params) => (params.threadId ? ThreadId.makeUnsafe(params.threadId) : null),
-  });
-  const routeSearch = useDiffRouteSearch();
+  const { pathname, threadId: routeThreadId, search } = useCommittedChatRoute();
+
+  const routeSearch = parseDiffRouteSearch(search);
   const activeSplitView = useSplitViewStore(
     useMemo(() => selectSplitView(routeSearch.splitViewId ?? null), [routeSearch.splitViewId]),
   );

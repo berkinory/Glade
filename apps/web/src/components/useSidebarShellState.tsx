@@ -1,3 +1,4 @@
+import { useCommittedChatRoute } from "../hooks/useCommittedChatRoute";
 import {
   useEffect,
   startTransition,
@@ -9,7 +10,7 @@ import {
 } from "react";
 import { ProjectId, SpaceId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useLocation, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { useAppSettings } from "../appSettings";
 import { isMacNavigatorPlatform } from "../lib/utils";
 import { isOrdinarySpaceProject } from "../lib/spaces";
@@ -42,7 +43,7 @@ import {
   shouldShowDebugFeatureFlagsMenu,
 } from "./Sidebar.logic.statusTypes";
 import { resolveThreadStatusPill } from "./Sidebar.logic.status";
-import { useDiffRouteSearch } from "../hooks/useDiffRouteSearch";
+import { parseDiffRouteSearch } from "../diffRouteSearch";
 import { normalizeSettingsSection } from "../settingsNavigation";
 import { selectSplitView, useSplitViewStore } from "../splitViewStore";
 import { useSidebarProjectRunController } from "../hooks/useSidebarProjectRunController";
@@ -110,9 +111,12 @@ export function useSidebarShellState() {
 
   const queryClient = useQueryClient();
 
-  const isOnSettings = useLocation({
-    select: (loc) => loc.pathname === "/settings",
-  });
+  const {
+    pathname,
+    threadId: routeThreadId,
+    search: settingsSectionSearch,
+  } = useCommittedChatRoute();
+  const isOnSettings = pathname === "/settings";
 
   const { settings: appSettings, serverSettings, updateSettings } = useAppSettings();
 
@@ -120,14 +124,7 @@ export function useSidebarShellState() {
 
   const { handleNewChat } = useHandleNewChat();
 
-  const routeThreadId = useParams({
-    strict: false,
-    select: (params) => (params.threadId ? ThreadId.makeUnsafe(params.threadId) : null),
-  });
-
-  const routeSearch = useDiffRouteSearch();
-
-  const settingsSectionSearch = useSearch({ strict: false }) as Record<string, unknown>;
+  const routeSearch = parseDiffRouteSearch(settingsSectionSearch);
 
   const activeSettingsSection = normalizeSettingsSection(settingsSectionSearch.section);
 
