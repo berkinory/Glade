@@ -1,3 +1,7 @@
+import { AgentGatewayDiscovery } from "../Services/AgentGatewayDiscovery";
+import { AppPresentationLive } from "./AppPresentation";
+import { CheckpointDiffQuery } from "../../checkpointing/Services/CheckpointDiffQuery";
+import { DevServerManager } from "../../workspace/devServers/devServerManager";
 import { assert, describe, it } from "@effect/vitest";
 import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
@@ -709,7 +713,7 @@ function makeHarnessLayer(
             reference.startsWith("http://") || reference.startsWith("https://")
               ? reference
               : "https://github.com/berkinory/Glade/pull/841",
-          baseBranch: "main",
+          baseRef: "main",
           headBranch: "fix/created-at-thread-order",
           state: "open",
           isDraft: false,
@@ -1028,7 +1032,33 @@ function makeHarnessLayer(
       }),
   } as unknown as (typeof ProjectionTurnRepository)["Service"]);
 
+  const unavailable = () =>
+    Effect.die(new Error("This fixture does not exercise the new tool boundary."));
   const gatewayLayer = AgentGatewayLive.pipe(
+    Layer.provide(
+      Layer.mergeAll(
+        AppPresentationLive,
+        Layer.succeed(AgentGatewayDiscovery, {
+          listProjects: Effect.succeed([
+            makeProjectShell(options.projectScripts),
+            ...(options.extraProjects ?? []),
+          ]),
+          listThreads: () =>
+            Effect.succeed({ threads: [...threadsById.values()], nextCursor: null }),
+        }),
+        Layer.succeed(CheckpointDiffQuery, {
+          getTurnDiff: unavailable,
+          getFullThreadDiff: unavailable,
+          previewWorkspaceRestore: unavailable,
+        }),
+        Layer.succeed(DevServerManager, {
+          run: unavailable,
+          stop: unavailable,
+          list: Effect.succeed({ servers: [] }),
+          stream: Stream.empty,
+        }),
+      ),
+    ),
     Layer.provide(credentialsLayer),
     Layer.provide(snapshotLayer),
     Layer.provide(engineLayer),
@@ -1310,7 +1340,7 @@ describe("AgentGateway", () => {
         args: {
           requestId: "create-claude",
           prompt: "analyze the feature",
-          provider: "claudeAgent",
+          target: { provider: "claudeAgent", model: "claude-sonnet-5" },
         },
       });
       assert.isFalse(isToolError(response.result), toolErrorText(response.result));
@@ -1351,7 +1381,7 @@ describe("AgentGateway", () => {
         args: {
           requestId: "create-worktree",
           prompt: "refactor module X",
-          provider: "claudeAgent",
+          target: { provider: "claudeAgent", model: "claude-sonnet-5" },
           environment: "worktree",
         },
       });
@@ -1664,7 +1694,11 @@ describe("AgentGateway", () => {
         },
         {
           name: "glade_create_thread",
-          args: { requestId: "late-single", prompt: "late", provider: "codex" },
+          args: {
+            requestId: "late-single",
+            prompt: "late",
+            target: { provider: "codex", model: "gpt-5.5" },
+          },
         },
         {
           name: "glade_send_message",
@@ -2397,7 +2431,7 @@ describe("AgentGateway", () => {
         args: {
           requestId: "create-local-rejected",
           prompt: "touch the main checkout",
-          provider: "codex",
+          target: { provider: "codex", model: "gpt-5.5" },
           environment: "local",
         },
       });
@@ -2408,7 +2442,11 @@ describe("AgentGateway", () => {
       const defaulted = yield* harness.callTool({
         token: "token-parent",
         name: "glade_create_thread",
-        args: { requestId: "create-isolated", prompt: "do isolated work", provider: "codex" },
+        args: {
+          requestId: "create-isolated",
+          prompt: "do isolated work",
+          target: { provider: "codex", model: "gpt-5.5" },
+        },
       });
       assert.isFalse(isToolError(defaulted.result), toolErrorText(defaulted.result));
       assert.equal(toolResultJson(defaulted.result).environment, "worktree");
@@ -2430,7 +2468,7 @@ describe("AgentGateway", () => {
         args: {
           requestId: "create-escalated",
           prompt: "escalate please",
-          provider: "codex",
+          target: { provider: "codex", model: "gpt-5.5" },
           runtimeMode: "full-access",
         },
       });

@@ -920,3 +920,63 @@ describe("native MCP turn provenance", () => {
       }),
   );
 });
+
+describe("MCP input trust boundary", () => {
+  it.effect("rejects invalid and undeclared arguments before executing a handler", () =>
+    Effect.gen(function* () {
+      let calls = 0;
+      const transport = makeTransport({
+        threads: [makeThread("schema-validation")],
+        tools: [
+          {
+            requiredCapability: "thread:write",
+            requiresActiveTurn: true,
+            definition: {
+              name: "validated",
+              description: "Validated mutation",
+              inputSchema: {
+                type: "object",
+                properties: { count: { type: "integer", minimum: 1, maximum: 100 } },
+                required: ["count"],
+                additionalProperties: false,
+              },
+            },
+            handler: () =>
+              Effect.sync(() => {
+                calls++;
+                return { content: [{ type: "text", text: "ok" }] };
+              }),
+          },
+        ],
+      });
+      for (const args of [
+        null,
+        [],
+        { count: 1.5 },
+        { count: 101 },
+        { count: 1, permissions: "full-access" },
+      ]) {
+        const response = yield* post(transport, "token-1", {
+          jsonrpc: "2.0",
+          id: "invalid",
+          method: "tools/call",
+          params: { name: "validated", arguments: args },
+        });
+        assert.isTrue(
+          isRecord(response.body) &&
+            isRecord(response.body.error) &&
+            response.body.error.code === -32602,
+        );
+      }
+      assert.equal(calls, 0);
+      const response = yield* post(transport, "token-1", {
+        jsonrpc: "2.0",
+        id: "valid",
+        method: "tools/call",
+        params: { name: "validated", arguments: { count: 1 } },
+      });
+      assert.equal(response.status, 200);
+      assert.equal(calls, 1);
+    }),
+  );
+});

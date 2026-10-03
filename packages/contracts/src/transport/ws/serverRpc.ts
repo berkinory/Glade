@@ -1,3 +1,4 @@
+import { GladeAppOpenRequest, GladeAppOpenAck } from "../../provider/agentGatewayTools";
 import * as Rpc from "effect/unstable/rpc/Rpc";
 import { WS_METHODS } from "./ws";
 import { Schema } from "effect";
@@ -190,4 +191,16 @@ export const WsSubscribeServerSettingsRpc = Rpc.make(WS_METHODS.subscribeServerS
   success: Schema.Struct({ settings: ServerGetSettingsResult }),
   error: WsRpcError,
   stream: true,
+});
+
+export const WsSubscribeAppPresentationRpc = Rpc.make(WS_METHODS.subscribeAppPresentation, {
+  payload: Schema.Struct({}),
+  success: GladeAppOpenRequest,
+  error: WsRpcError,
+  stream: true,
+});
+export const WsAcknowledgeAppPresentationRpc = Rpc.make(WS_METHODS.acknowledgeAppPresentation, {
+  payload: GladeAppOpenAck,
+  success: Schema.Boolean,
+  error: WsRpcError,
 });

@@ -6,7 +6,6 @@ export type AgentGatewayCapability =
   | "thread:write"
   | "diagnostics:read"
   | "browser:control"
-  | "device:control"
   | "computer:control";
 
 export interface AgentGatewaySessionIdentity {

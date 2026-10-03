@@ -47,9 +47,6 @@ export interface AgentGatewayProviderAvailability {
   readonly message?: string;
 }
 
-export const AGENT_GATEWAY_TARGET_OPTIONS_DESCRIPTION =
-  "For the selected provider/model, use targetConstruction[provider].optionsByModel[model] when supplied, otherwise providerOptions. Preserve exact option keys and valueType; use allowedValues unless allowsCustomValue explicitly permits another value. Omit options the user did not request to inherit provider settings. Do not drop or substitute an explicitly requested unsupported option; report the mismatch.";
-
 type AgentGatewayTargetOptionValue = string | number | boolean;
 
 interface AgentGatewayTargetOptionRule {

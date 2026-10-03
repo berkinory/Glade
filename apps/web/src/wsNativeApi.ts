@@ -1,3 +1,7 @@
+import type {
+  GladeAppOpenRequest,
+  GladeAppOpenAck,
+} from "@glade/contracts/provider/agentGatewayTools";
 import { bindCommitGeneration } from "./lib/commitGenerationBinding";
 import type {
   AuthBearerBootstrapResult,
@@ -909,4 +913,15 @@ if (import.meta.hot) {
     instance = null;
     clearWsNativeApiListeners();
   });
+}
+
+export function onAppPresentation(listener: (request: GladeAppOpenRequest) => void): () => void {
+  if (!instance) createWsNativeApi();
+  return instance!.transport.subscribe(WS_CHANNELS.appPresentation, (message) =>
+    listener(message.data),
+  );
+}
+export async function acknowledgeAppPresentation(input: GladeAppOpenAck): Promise<boolean> {
+  if (!instance) createWsNativeApi();
+  return instance!.transport.request(WS_METHODS.acknowledgeAppPresentation, input);
 }

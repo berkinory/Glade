@@ -5,7 +5,7 @@ import type {
 } from "@glade/contracts/orchestration/threadEntities";
 import { splitsSurrogatePair, unicodeSafeEndOffset } from "@glade/shared/text/text";
 
-export type AgentThreadStatus =
+type AgentThreadStatus =
   | "working"
   | "idle"
   | "waiting-for-approval"
@@ -13,7 +13,7 @@ export type AgentThreadStatus =
   | "interrupted"
   | "error";
 
-export function deriveAgentThreadStatus(thread: {
+function deriveAgentThreadStatus(thread: {
   readonly session: OrchestrationThreadShell["session"];
   readonly latestTurn: OrchestrationThreadShell["latestTurn"];
   readonly hasPendingApprovals?: boolean | undefined;
@@ -83,6 +83,7 @@ interface AgentThreadMessageSummary {
   readonly role: string;
   readonly text: string;
   readonly truncated: boolean;
+  readonly nativeForkAvailable: boolean;
   readonly dispatchOrigin?: string;
   readonly originalSource?: {
     readonly threadId: string;
@@ -145,6 +146,10 @@ function summarizeMessage(
     role: message.role,
     text,
     truncated,
+    nativeForkAvailable:
+      message.role === "assistant" &&
+      !message.streaming &&
+      Boolean(message.turnId || message.providerMessageId),
     ...(message.dispatchOrigin !== undefined ? { dispatchOrigin: message.dispatchOrigin } : {}),
     createdAt: message.createdAt,
   };
@@ -372,6 +377,7 @@ export interface AgentThreadDetail {
   readonly branch: string | null;
   readonly worktreePath: string | null;
   readonly archived: boolean;
+  readonly checkpoints: OrchestrationThread["checkpoints"];
   readonly lastError: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -420,6 +426,7 @@ export function summarizeThreadDetail(input: {
     branch: thread.branch,
     worktreePath: thread.worktreePath,
     archived: (thread.archivedAt ?? null) !== null,
+    checkpoints: thread.checkpoints,
     lastError: thread.session?.lastError ?? null,
     createdAt: thread.createdAt,
     updatedAt: thread.updatedAt,

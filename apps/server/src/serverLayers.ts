@@ -1,3 +1,5 @@
+import { AppPresentationLive } from "./agentGateway/Layers/AppPresentation";
+import { AgentGatewayDiscoveryLive } from "./agentGateway/Layers/AgentGatewayDiscovery";
 import { HandoffPreparationLive } from "./orchestration/Layers/HandoffPreparation";
 import { HandoffGenerationLive } from "./provider/Layers/HandoffGeneration";
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -135,8 +137,11 @@ function makeServerRuntimeServicesLayer(
     serverAuthLayer,
   );
   const agentGatewayLayer = AgentGatewayLive.pipe(
+    Layer.provideMerge(AppPresentationLive),
+    Layer.provideMerge(devServerManagerLayer),
     Layer.provideMerge(agentGatewayCredentialsLayer),
     Layer.provideMerge(runtimeServicesLayer),
+    Layer.provideMerge(AgentGatewayDiscoveryLive.pipe(Layer.provide(runtimeServicesLayer))),
     Layer.provideMerge(GitLayerLive),
     Layer.provideMerge(ProjectionTurnRepositoryLive),
     Layer.provideMerge(AgentGatewayOperationRepositoryLive),

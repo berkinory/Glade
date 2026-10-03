@@ -1,3 +1,4 @@
+import { AppPresentation } from "../../agentGateway/Services/AppPresentation";
 import { HandoffPreparation } from "../../orchestration/Services/HandoffPreparation";
 import { readGitSidebarSummary } from "../../git/gitSidebarSummary";
 import { ProviderManagement } from "../../provider/Services/ProviderManagement.ts";
@@ -350,6 +351,7 @@ function isShellRelevantEvent(event: OrchestrationEvent): boolean {
 const makeWsRpcHandlersLayer = () =>
   AdmittedWsFeatureRpcGroup.toLayer(
     Effect.gen(function* () {
+      const appPresentation = yield* AppPresentation;
       const checkpointDiffQuery = yield* CheckpointDiffQuery;
       const config = yield* ServerConfig;
       const devServerManager = yield* DevServerManager;
@@ -1877,6 +1879,17 @@ const makeWsRpcHandlersLayer = () =>
                 Effect.map((keybindingsConfig) => ({ keybindings: keybindingsConfig, issues: [] })),
               ),
             "Failed to update keybinding",
+          ),
+        [WS_METHODS.subscribeAppPresentation]: (_, { clientId }) =>
+          streamAdmission.guard(
+            clientId,
+            { key: "app.presentation" },
+            appPresentation.stream(clientId),
+          ),
+        [WS_METHODS.acknowledgeAppPresentation]: (input, { clientId }) =>
+          rpcEffect(
+            appPresentation.acknowledge(clientId, input),
+            "Failed to acknowledge app presentation",
           ),
         [WS_METHODS.subscribeServerLifecycle]: (_, { clientId }) =>
           streamAdmission.guard(

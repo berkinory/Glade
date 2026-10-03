@@ -364,14 +364,6 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
           context.assertAuthority,
         );
       }
-      const deprecatedBranchName = input.threads.find((spec) => spec.branchName !== undefined);
-      if (deprecatedBranchName) {
-        return yield* Effect.fail(
-          new ToolInputError(
-            '"branchName" is no longer supported for managed worktrees. Glade creates a managed temporary branch and renames it after the first prompt; create additional branches inside the new thread if needed.',
-          ),
-        );
-      }
       const callerIsolatedInWorktree = caller?.envMode === "worktree";
       const providerAvailabilities = yield* loadProviderAvailabilities;
 
@@ -414,26 +406,12 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
               ),
             );
           }
-          if (spec.enableComputerControl === true) {
-            {
-              return yield* Effect.fail(
-                new ToolInputError(
-                  "Threads cannot delegate computer control to tasks they create.",
-                ),
-              );
-            }
-          }
           const title = spec.title ?? buildPromptThreadTitleFallback(spec.prompt);
           let worktreeRef: string | null = null;
           let copyChangesFrom: string | null = null;
           let plannedWorktreePath: string | null = null;
           if (environment === "worktree") {
-            if (spec.baseRef && spec.baseBranch && spec.baseRef !== spec.baseBranch) {
-              return yield* Effect.fail(
-                new ToolInputError("baseRef and its deprecated baseBranch alias must match."),
-              );
-            }
-            const requestedRef = spec.baseRef ?? spec.baseBranch ?? "HEAD";
+            const requestedRef = spec.baseRef ?? "HEAD";
 
             const sourceCwd =
               caller?.projectId === projectId
@@ -961,12 +939,6 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
                     dispatchOrigin: "agent",
                     runtimeMode: entry.runtimeMode,
 
-                    ...(entry.spec.enableComputerControl === true
-                      ? {
-                          enableComputerControl: true,
-                          computerControlMode: "request" as const,
-                        }
-                      : {}),
                     createdAt: gatewayIsoNow(),
                   });
                   // The dispatch can outlive the caller turn. Recheck after it returns so a child started in that

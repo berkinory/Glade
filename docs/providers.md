@@ -306,3 +306,35 @@ Disabled providers are hidden. These controls reuse the shared usage query.
 A failed model refresh keeps the last successful native catalog for the exact
 provider, executable, endpoint, workspace and credential context. A successful empty
 catalog remains authoritative; a new context does not inherit another context's list.
+
+## Glade agent tools
+
+Glade injects its authenticated MCP gateway into provider sessions. Inputs are validated
+against the published tool schemas before handlers run. Tools operate under the caller's
+thread identity; mutations require authority for that exact active turn.
+
+- `glade_list_threads` returns 20 conversations by default, at most 100. Follow its
+  `nextCursor` with the original filters. Ordering uses update time and thread identity;
+  conversations updated between pages can move to an earlier page. Project listing does
+  not hydrate conversation history.
+- `glade_create_thread` and `glade_create_threads` require an explicit `target` containing
+  provider and model, discovered through `glade_capabilities`. Options inherit settings
+  when omitted. Worktrees use `baseRef`; legacy creation arguments are rejected.
+- `glade_read_turn_diff` reads a checkpoint range; `glade_read_thread_diff` reads cumulative
+  changes against the thread baseline. `glade_read_thread` exposes checkpoint counts and
+  message fork eligibility. Diff pages include whitespace changes by default and use
+  character offsets plus a content version; follow `nextOffsetChars` until null.
+- `glade_list_dev_servers` reads managed runs. `glade_run_dev_server` and
+  `glade_stop_dev_server` operate on the caller's project and workspace and require
+  full-access mode. Identical runs are reused; a different run must be stopped explicitly.
+  Process status is not HTTP readiness. These tools do not control unmanaged servers.
+- `glade_fork_thread` preserves native history at a completed assistant message. It
+  inherits the source model, permissions and workspace and creates an idle conversation;
+  messaging and waiting remain separate operations. Reuse the same `requestId` and fork
+  point after an ambiguous response. Forks cannot exceed caller authority.
+- `glade_open_in_app` opens a workspace file, current/turn diff or terminal in the caller's
+  conversation. Files accept a one-based line. A connected UI acknowledges navigation and
+  presentation state; success does not guarantee content loading. Paths cannot escape the
+  workspace, including through symlinks. Opening a terminal does not execute a command.
+
+The desktop control module and provider handoff workflow are separate from these tools.

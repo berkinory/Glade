@@ -1,3 +1,5 @@
+import { onAppPresentation } from "../wsNativeApi";
+import { presentAppRequest } from "../lib/appPresentation";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ServerConfig } from "@glade/contracts/server/server";
 import { type ServerSettingsView } from "@glade/contracts/settings/settings";
@@ -255,6 +257,12 @@ export function subscribeStreamEvents(
     state.threadSnapshotSequenceById.delete(threadId);
     state.pendingThreadEventsById.set(threadId, []);
     void subscriptions.refreshThreadSnapshot(threadId);
+  });
+
+  const unsubAppPresentation = onAppPresentation((request) => {
+    void presentAppRequest(request, async (threadId) => {
+      await context.navigate({ to: "/$threadId", params: { threadId } });
+    }).catch((error) => console.warn("Glade view acknowledgement failed", error));
   });
 
   const unsubTerminalEvent = context.api.terminal.onEvent((event) => {
@@ -550,6 +558,7 @@ export function subscribeStreamEvents(
     unsubThreadEvent();
     unsubThreadStreamFailure();
     unsubThreadDetailEviction();
+    unsubAppPresentation();
     unsubTerminalEvent();
     unsubDevServerEvent();
     unsubWelcome();

@@ -1,3 +1,5 @@
+import { version as serverVersion } from "../../package.json" with { type: "json" };
+import { z } from "zod";
 import { asRecord } from "@glade/shared/transport/payloadValues";
 import type { TaggedFailure } from "../platform/operationError.ts";
 import { nativeMcpCallId } from "./nativeToolCalls.ts";
@@ -100,6 +102,12 @@ export function makeAgentGatewayMcpTransport(input: {
 }): AgentGatewayShape["handleMcpPost"] {
   const toolsByName = new Map(input.tools.map((tool) => [tool.definition.name, tool]));
 
+  const validators = new Map(
+    input.tools.map((tool) => [
+      tool.definition.name,
+      z.fromJSONSchema(tool.definition.inputSchema as Parameters<typeof z.fromJSONSchema>[0]),
+    ]),
+  );
   const servedDefinitionByToolName = new Map<string, ToolEntry["definition"]>();
   for (const tool of input.tools) {
     servedDefinitionByToolName.set(tool.definition.name, {
@@ -116,7 +124,7 @@ export function makeAgentGatewayMcpTransport(input: {
             request.id,
             buildMcpInitializeResult({
               requestedProtocolVersion: request.params.protocolVersion,
-              serverVersion: "1.0.0",
+              serverVersion,
               instructions: input.instructions,
             }),
           );
@@ -191,7 +199,7 @@ export function makeAgentGatewayMcpTransport(input: {
             return capabilityDeniedResult(computerControlCapability);
           }
           const rawArgs = request.params.arguments;
-          const args = asRecord(rawArgs) ?? {};
+          const args = rawArgs === undefined ? {} : asRecord(rawArgs);
           // Turn-active first: an inactive turn reports the authority error and never fires the denial hook,
           // even for a tool whose capability the caller also lacks.
           if (tool.requiresActiveTurn) {
@@ -212,11 +220,15 @@ export function makeAgentGatewayMcpTransport(input: {
             }
             return capabilityDeniedResult(requiredCapability);
           }
+          const validation = validators.get(toolName)!.safeParse(args);
+          if (!validation.success) {
+            return jsonRpcError(request.id, JSON_RPC_INVALID_PARAMS, validation.error.message);
+          }
           const invocationContext: ToolContext = {
             ...context,
             jsonRpcRequestId: request.id,
           };
-          const result = yield* Effect.suspend(() => tool.handler(args, invocationContext)).pipe(
+          const result = yield* Effect.suspend(() => tool.handler(args!, invocationContext)).pipe(
             Effect.catchDefect((defect) => Effect.succeed(mcpToolResultError(errorText(defect)))),
           );
           return jsonRpcResult(request.id, result);

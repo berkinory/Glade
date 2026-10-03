@@ -2,31 +2,10 @@ import {
   GladeCreateThreadsInput,
   GladeWaitForThreadsInput,
 } from "@glade/contracts/provider/agentGateway";
-import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { Schema } from "effect";
 
-import { AGENT_GATEWAY_TARGET_OPTIONS_DESCRIPTION } from "./targetResolver.ts";
-
 export const PROVIDER_KINDS: ReadonlyArray<ProviderKind> = ["codex", "claudeAgent"];
-
-export const MODEL_SELECTION_INPUT_SCHEMA = {
-  type: "object",
-  description: AGENT_GATEWAY_TARGET_OPTIONS_DESCRIPTION,
-  properties: {
-    provider: { type: "string", enum: [...PROVIDER_KINDS] },
-    model: {
-      type: "string",
-      description: "Exact model slug from glade_capabilities providers[].models[].slug.",
-    },
-    options: {
-      type: "object",
-      description: AGENT_GATEWAY_TARGET_OPTIONS_DESCRIPTION,
-    },
-  },
-  required: ["provider", "model"],
-  additionalProperties: false,
-} as const;
 
 export class ToolInputError extends Error {
   readonly _tag = "ToolInputError";
@@ -86,19 +65,6 @@ export function readBooleanArg(args: Record<string, unknown>, name: string): boo
   return value;
 }
 
-export function readIsoTimestampArg(
-  args: Record<string, unknown>,
-  name: string,
-): string | undefined {
-  const value = readStringArg(args, name);
-  if (value === undefined) return undefined;
-  const timestamp = Date.parse(value);
-  if (!Number.isFinite(timestamp)) {
-    throw new ToolInputError(`Argument "${name}" must be a valid ISO timestamp.`);
-  }
-  return new Date(timestamp).toISOString();
-}
-
 export function readRecordArg(
   args: Record<string, unknown>,
   name: string,
@@ -124,28 +90,6 @@ export function readStringArrayArg(
     throw new ToolInputError(`Argument "${name}" must be an array of non-empty strings.`);
   }
   return value.map((entry) => (entry as string).trim());
-}
-
-export function parseProviderKind(raw: string): ProviderKind {
-  if ((PROVIDER_KINDS as ReadonlyArray<string>).includes(raw)) {
-    return raw as ProviderKind;
-  }
-  throw new ToolInputError(
-    `Unknown provider "${raw}". Supported providers: ${PROVIDER_KINDS.join(", ")}.`,
-  );
-}
-
-export function buildModelSelection(
-  provider: ProviderKind,
-  model: string | undefined,
-): ModelSelection {
-  const effectiveModel = model;
-  if (!effectiveModel) {
-    throw new ToolInputError(
-      `Provider "${provider}" has no default model; pass an explicit "model" argument.`,
-    );
-  }
-  return { provider, model: effectiveModel } as ModelSelection;
 }
 
 export function decodeCreateThreadsInput(value: unknown) {

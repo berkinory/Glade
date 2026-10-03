@@ -1,3 +1,4 @@
+import type { GladeAppOpenRequest } from "@glade/contracts/provider/agentGatewayTools";
 import type { GitStatusWatchInput, GitStatusStreamEvent } from "@glade/contracts/git/git";
 import {
   ORCHESTRATION_WS_CHANNELS,
@@ -79,7 +80,15 @@ export class WsTransport extends WsTransportBase {
           }
         };
 
-        if (isServerLifecyclePushChannel(channel)) {
+        if (channel === WS_CHANNELS.appPresentation) {
+          this.startStream(
+            client,
+            "app.presentation",
+            client[WS_METHODS.subscribeAppPresentation]({}),
+            (event: GladeAppOpenRequest) => this.emit(WS_CHANNELS.appPresentation, event),
+            restartChannel,
+          );
+        } else if (isServerLifecyclePushChannel(channel)) {
           this.startLifecycleStream(client);
         } else if (channel === WS_CHANNELS.serverConfigUpdated) {
           this.startStream(

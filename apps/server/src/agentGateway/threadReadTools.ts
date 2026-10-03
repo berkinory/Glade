@@ -1,10 +1,12 @@
+import { GladeListThreadsInput } from "@glade/contracts/provider/agentGatewayDiscovery";
+import type { AgentGatewayDiscoveryShape } from "./Services/AgentGatewayDiscovery";
 import type { OrchestrationEventStoreShape } from "../persistence/Services/OrchestrationEventStore";
 import { readHandoffSourceSnapshot } from "../orchestration/handoff/sourceSnapshot";
 import type { TaggedFailure } from "../platform/operationError.ts";
 import { GLADE_GATEWAY_MAX_THREADS_PER_OPERATION } from "@glade/contracts/provider/agentGateway";
 import { ThreadId, TurnId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { type OrchestrationThreadShell } from "@glade/contracts/orchestration/threadEntities";
-import { Effect, Option } from "effect";
+import { Effect, Option, Schema } from "effect";
 
 import {
   isOrdinaryProjectRow,
@@ -14,14 +16,13 @@ import type { ProjectionSnapshotQueryShape } from "../orchestration/Services/Pro
 import type { ProjectionTurnRepositoryShape } from "../persistence/Services/ProjectionTurns.ts";
 import type { ProviderDiscoveryServiceShape } from "../provider/Services/ProviderDiscoveryService.ts";
 import { GLADE_HARNESS_POLICY_VERSION } from "./harnessPolicy.ts";
-import { mcpToolResultError, mcpToolResultJson } from "./protocol.ts";
+import { mcpToolResultError, mcpToolResultJson, toolInputSchema } from "./protocol.ts";
 import {
   agentGatewayTargetOptionGuidance,
   loadAgentGatewayProviderCatalog,
   type AgentGatewayProviderAvailability,
 } from "./targetResolver.ts";
 import {
-  deriveAgentThreadStatus,
   READ_THREAD_MAX_MESSAGE_CHARS,
   READ_THREAD_MAX_MESSAGE_LIMIT,
   summarizeThreadDetail,
@@ -33,8 +34,6 @@ import {
   decodeWaitForThreadsInput,
   errorText,
   PROVIDER_KINDS,
-  readBooleanArg,
-  readIsoTimestampArg,
   readNumberArg,
   readStringArg,
   ToolInputError,
@@ -46,11 +45,9 @@ import {
   type ToolEntry,
 } from "./toolRuntime.ts";
 
-const LIST_THREADS_DEFAULT_LIMIT = 50;
-const LIST_THREADS_MAX_LIMIT = 200;
-
 export interface ThreadReadToolsInput {
   readonly eventStore: OrchestrationEventStoreShape;
+  readonly discovery: AgentGatewayDiscoveryShape;
   readonly snapshotQuery: ProjectionSnapshotQueryShape;
   readonly projectionTurns: ProjectionTurnRepositoryShape;
   readonly providerDiscovery: ProviderDiscoveryServiceShape;
@@ -67,6 +64,7 @@ export interface ThreadReadToolsInput {
 
 export function makeThreadReadTools(input: ThreadReadToolsInput): ReadonlyArray<ToolEntry> {
   const {
+    discovery,
     snapshotQuery,
     projectionTurns,
     providerDiscovery,
@@ -182,10 +180,10 @@ export function makeThreadReadTools(input: ThreadReadToolsInput): ReadonlyArray<
       annotations: { title: "List Glade projects", ...READ_ONLY_TOOL_ANNOTATIONS },
     },
     handler: () =>
-      snapshotQuery.getShellSnapshot().pipe(
-        Effect.map((snapshot) =>
+      discovery.listProjects.pipe(
+        Effect.map((projects) =>
           mcpToolResultJson({
-            projects: snapshot.projects
+            projects: projects
               .filter((project) =>
                 isOrdinaryProjectRow({
                   projectKind: project.kind,
@@ -211,75 +209,21 @@ export function makeThreadReadTools(input: ThreadReadToolsInput): ReadonlyArray<
     definition: {
       name: "glade_list_threads",
       description:
-        "Discover Glade threads by project, hierarchy, provider, model, status, title, creation source, or update window. Archived threads are hidden unless includeArchived is true.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          projectId: { type: "string", description: "Only threads of this project." },
-          parentThreadId: {
-            type: "string",
-            description: "Only child threads of this thread (e.g. your own thread id).",
-          },
-          provider: { type: "string", enum: [...PROVIDER_KINDS] },
-          model: { type: "string", description: "Exact model slug." },
-          status: {
-            type: "string",
-            description:
-              "Derived thread status such as working, idle, error, or waiting-for-approval.",
-          },
-          titleContains: { type: "string", description: "Case-insensitive title substring." },
-          creationSource: { type: "string", description: "Exact thread creation source." },
-          updatedAfter: { type: "string", description: "ISO timestamp lower bound (inclusive)." },
-          updatedBefore: { type: "string", description: "ISO timestamp upper bound (inclusive)." },
-          includeArchived: { type: "boolean", description: "Include archived threads." },
-          limit: { type: "number", description: "Max results (default 50, max 200)." },
-        },
-        additionalProperties: false,
-      },
+        "Discover Glade threads by project, hierarchy, provider, model, status, title, creation source, or update window. Archived threads are hidden unless includeArchived is true. Returns 20 threads by default (maximum 100). Follow nextCursor with unchanged filters to retrieve older results; active threads can move forward between pages.",
+      inputSchema: toolInputSchema(GladeListThreadsInput),
       annotations: { title: "List Glade threads", ...READ_ONLY_TOOL_ANNOTATIONS },
     },
     handler: (args, context) =>
       Effect.gen(function* () {
-        const projectId = readStringArg(args, "projectId");
-        const parentThreadId = readStringArg(args, "parentThreadId");
-        const provider = readStringArg(args, "provider");
-        const model = readStringArg(args, "model");
-        const status = readStringArg(args, "status");
-        const titleContains = readStringArg(args, "titleContains")?.toLocaleLowerCase();
-        const creationSource = readStringArg(args, "creationSource");
-        const updatedAfter = readIsoTimestampArg(args, "updatedAfter");
-        const updatedBefore = readIsoTimestampArg(args, "updatedBefore");
-        const includeArchived = readBooleanArg(args, "includeArchived") ?? false;
-        const limit = Math.max(
-          1,
-          Math.min(
-            readNumberArg(args, "limit") ?? LIST_THREADS_DEFAULT_LIMIT,
-            LIST_THREADS_MAX_LIMIT,
-          ),
+        const page = yield* discovery.listThreads(
+          Schema.decodeUnknownSync(GladeListThreadsInput)(args),
         );
-        const snapshot = yield* snapshotQuery
-          .getShellSnapshot()
-          .pipe(Effect.mapError((error) => new ToolInputError(errorText(error))));
-        const matching = snapshot.threads
-          .filter((thread) => (projectId ? thread.projectId === projectId : true))
-          .filter((thread) => (parentThreadId ? thread.parentThreadId === parentThreadId : true))
-          .filter((thread) => (provider ? thread.modelSelection.provider === provider : true))
-          .filter((thread) => (model ? thread.modelSelection.model === model : true))
-          .filter((thread) => (status ? deriveAgentThreadStatus(thread) === status : true))
-          .filter((thread) =>
-            titleContains ? thread.title.toLocaleLowerCase().includes(titleContains) : true,
-          )
-          .filter((thread) =>
-            creationSource ? (thread.creationSource ?? null) === creationSource : true,
-          )
-          .filter((thread) => (updatedAfter ? thread.updatedAt >= updatedAfter : true))
-          .filter((thread) => (updatedBefore ? thread.updatedAt <= updatedBefore : true))
-          .filter((thread) => (includeArchived ? true : (thread.archivedAt ?? null) === null))
-          .toSorted((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
-        const threads = matching
-          .slice(0, limit)
-          .map((thread) => summarizeThreadShell(thread, context.callerThreadId));
-        return mcpToolResultJson({ threads, totalMatching: matching.length });
+        return mcpToolResultJson({
+          threads: page.threads.map((thread) =>
+            summarizeThreadShell(thread, context.callerThreadId),
+          ),
+          nextCursor: page.nextCursor,
+        });
       }).pipe(Effect.catch((error) => Effect.succeed(mcpToolResultError(errorText(error))))),
   };
 

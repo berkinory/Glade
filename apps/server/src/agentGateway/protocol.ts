@@ -1,3 +1,5 @@
+import { Schema } from "effect";
+
 const MCP_DEFAULT_PROTOCOL_VERSION = "2025-06-18";
 const MCP_SUPPORTED_PROTOCOL_VERSIONS = new Set(["2025-06-18", "2025-03-26", "2024-11-05"]);
 
@@ -144,4 +146,9 @@ export function buildMcpInitializeResult(input: {
     },
     instructions: input.instructions,
   };
+}
+
+export function toolInputSchema(schema: Schema.Top): Record<string, unknown> {
+  const document = Schema.toJsonSchemaDocument(schema);
+  return { ...document.schema, $defs: document.definitions };
 }

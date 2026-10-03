@@ -1,3 +1,12 @@
+import { FileSystem, Path } from "effect";
+import { AppPresentation } from "../Services/AppPresentation";
+import { CheckpointDiffQuery } from "../../checkpointing/Services/CheckpointDiffQuery";
+import { DevServerManager } from "../../workspace/devServers/devServerManager";
+import { makeThreadDiffTools } from "../threadDiffTools";
+import { makeDevServerTools } from "../devServerTools";
+import { makeForkThreadTool } from "../forkThreadTool";
+import { makeAppPresentationTool } from "../appPresentationTool";
+import { AgentGatewayDiscovery } from "../Services/AgentGatewayDiscovery";
 import { computerSpaceDesignationForMessages } from "../../computer/computerSpaceDesignation.ts";
 import { randomUUID } from "node:crypto";
 
@@ -16,7 +25,10 @@ import {
   TurnId,
   type ProviderKind,
 } from "@glade/contracts/core/baseSchemas";
-import { GLADE_GATEWAY_MAX_THREADS_PER_OPERATION } from "@glade/contracts/provider/agentGateway";
+import {
+  GladeCreateThreadInput,
+  GladeCreateThreadsInput,
+} from "@glade/contracts/provider/agentGateway";
 
 import {
   type ProviderApprovalDecision,
@@ -25,7 +37,7 @@ import {
 } from "@glade/contracts/provider/sessionPolicy";
 import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import { runtimeModeEscalatesPrivilege } from "@glade/shared/threads/runtimeMode";
-import { Effect, Layer, Option } from "effect";
+import { Effect, Layer, Option, Schema } from "effect";
 
 import { GitCore } from "../../git/Services/GitCore.ts";
 import { GitManager } from "../../git/Services/GitManager.ts";
@@ -43,22 +55,15 @@ import { AgentGatewayOperationRepository } from "../Services/AgentGatewayOperati
 import { ProviderDiscoveryService } from "../../provider/Services/ProviderDiscoveryService.ts";
 import { ProviderHealth } from "../../provider/Services/ProviderHealth.ts";
 import { ServerSettingsService } from "../../settings/serverSettings.ts";
-import {
-  AGENT_GATEWAY_TARGET_OPTIONS_DESCRIPTION,
-  type AgentGatewayProviderAvailability,
-} from "../targetResolver.ts";
-import { mcpToolResultError, mcpToolResultJson } from "../protocol.ts";
+import { type AgentGatewayProviderAvailability } from "../targetResolver.ts";
+import { mcpToolResultError, mcpToolResultJson, toolInputSchema } from "../protocol.ts";
 import { gatewayIsoNow as isoNow, stableGatewayDigest } from "../creationUtils.ts";
 import {
-  MODEL_SELECTION_INPUT_SCHEMA,
   PROVIDER_KINDS,
   ToolInputError,
-  buildModelSelection,
   decodeCreateThreadsInput,
   errorText,
-  parseProviderKind,
   readBooleanArg,
-  readRecordArg,
   readStringArg,
 } from "../toolInput.ts";
 import { WRITE_TOOL_ANNOTATIONS, type ToolContext, type ToolEntry } from "../toolRuntime.ts";
@@ -93,7 +98,13 @@ const AGENT_GATEWAY_INSTRUCTIONS =
   "Glade tools operate under this session's thread identity and capabilities. Use the provider-delivered <glade_host_context> for host policy and each tool's description for its inputs, effects and recovery rules. Use browser_* only for Glade's shared in-app browser runtime.";
 
 const makeAgentGateway = Effect.gen(function* () {
+  const diffs = yield* CheckpointDiffQuery;
+  const devServers = yield* DevServerManager;
+  const presentation = yield* AppPresentation;
+  const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
   const credentials = yield* AgentGatewayCredentials;
+  const discovery = yield* AgentGatewayDiscovery;
   const snapshotQuery = yield* ProjectionSnapshotQuery;
   const orchestrationEngine = yield* OrchestrationEngineService;
   const git = yield* GitCore;
@@ -203,6 +214,7 @@ const makeAgentGateway = Effect.gen(function* () {
     });
 
   const readTools = makeThreadReadTools({
+    discovery,
     eventStore,
     snapshotQuery,
     projectionTurns,
@@ -241,52 +253,7 @@ const makeAgentGateway = Effect.gen(function* () {
       name: "glade_create_threads",
       description:
         "Create one exact plan of 1-20 standalone Glade threads. For a plural request, the array length must equal the requested count; do not add candidates, retries or verification workers.\nSelect targets from glade_capabilities and respect its operation limits. Worktree threads start on a managed temporary branch pinned at baseRef or the selected checkout's HEAD. When pinned at that HEAD, they copy local checkout changes and .worktreeinclude files. The first turn may rename and publish the branch.\nA confirmed validation/preflight rejection before an operationId creates no durable work: correct that rejected plan using the same requestId. Once an operationId exists, retries must use the same requestId and unchanged plan. After an ambiguous response, retry the unchanged request to recover its outcome; never assume nothing was created. A terminal failure does not authorize replacement threads.\nReport per-thread failures. Acceptance is not completion; use glade_wait_for_threads when the user requested outcomes.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          requestId: {
-            type: "string",
-            maxLength: 256,
-            description:
-              "Stable identity of this exact creation plan. Keep it on rejection correction and unchanged durable retries.",
-          },
-          threads: {
-            type: "array",
-            minItems: 1,
-            maxItems: GLADE_GATEWAY_MAX_THREADS_PER_OPERATION,
-            items: {
-              type: "object",
-              properties: {
-                notifyCreatorOnComplete: {
-                  type: "boolean",
-                  description:
-                    "Passively deliver the initial run result to the creator; does not wake it or replace waiting.",
-                },
-                prompt: { type: "string" },
-                title: { type: "string" },
-                target: {
-                  ...MODEL_SELECTION_INPUT_SCHEMA,
-                },
-                projectId: { type: "string" },
-                environment: { type: "string", enum: ["local", "worktree"] },
-                baseRef: {
-                  type: "string",
-                  description:
-                    "Local Git revision, #PR or GitHub PR URL to pin the worktree. Defaults to the selected checkout's HEAD.",
-                },
-                runtimeMode: {
-                  type: "string",
-                  enum: ["approval-required", "full-access"],
-                },
-              },
-              required: ["prompt", "target"],
-              additionalProperties: false,
-            },
-          },
-        },
-        required: ["requestId", "threads"],
-        additionalProperties: false,
-      },
+      inputSchema: toolInputSchema(GladeCreateThreadsInput),
       annotations: {
         title: "Create Glade threads",
         readOnlyHint: false,
@@ -311,46 +278,7 @@ const makeAgentGateway = Effect.gen(function* () {
       name: "glade_create_thread",
       description:
         "Create one standalone Glade thread for user-requested work. Use glade_create_threads for two or more threads; do not satisfy a plural request with repeated single-thread calls.\nSelect a provider/model and options from glade_capabilities. Worktree threads start on a Glade-managed temporary branch pinned at baseRef; the first turn may rename and publish that branch.\nA confirmed validation/preflight rejection before an operationId creates no durable work: correct that rejected plan using the same requestId. Once an operationId exists, retries must use the same requestId and unchanged plan. After an ambiguous response, retry the unchanged request to recover its outcome; never assume nothing was created. A terminal failure does not authorize replacement threads.\nCreation acceptance is not task completion. When results are requested, wait for the returned thread with glade_wait_for_threads.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          requestId: {
-            type: "string",
-            maxLength: 256,
-            description:
-              "Stable identity of this user-requested creation plan; reuse it according to the retry rules.",
-          },
-          notifyCreatorOnComplete: {
-            type: "boolean",
-            description:
-              "Passively deliver the initial run result to the creating thread. Does not wake the creator or replace explicit waiting.",
-          },
-          prompt: { type: "string" },
-          title: { type: "string" },
-          target: {
-            ...MODEL_SELECTION_INPUT_SCHEMA,
-          },
-          provider: { type: "string", enum: [...PROVIDER_KINDS] },
-          model: { type: "string" },
-          options: {
-            type: "object",
-            description: AGENT_GATEWAY_TARGET_OPTIONS_DESCRIPTION,
-          },
-          projectId: { type: "string" },
-          environment: { type: "string", enum: ["local", "worktree"] },
-          baseRef: {
-            type: "string",
-            description:
-              "Local Git revision, #PR or GitHub PR URL for the worktree. Defaults to the selected checkout's HEAD.",
-          },
-          runtimeMode: {
-            type: "string",
-            enum: ["approval-required", "full-access"],
-          },
-        },
-        required: ["requestId", "prompt"],
-        additionalProperties: false,
-      },
+      inputSchema: toolInputSchema(GladeCreateThreadInput),
       annotations: {
         title: "Create a Glade thread",
         readOnlyHint: false,
@@ -361,41 +289,10 @@ const makeAgentGateway = Effect.gen(function* () {
     },
     handler: (args, context) =>
       Effect.gen(function* () {
-        const explicitTarget = readRecordArg(args, "target");
-        let target: Record<string, unknown>;
-        if (explicitTarget) {
-          target = explicitTarget;
-        } else {
-          const provider = parseProviderKind(readStringArg(args, "provider", { required: true })!);
-          let model = readStringArg(args, "model");
-          if (!model) {
-            const catalog = yield* providerDiscovery.listModels({ provider });
-            model = catalog.models.find((entry) => entry.isDefault)?.slug;
-          }
-          const modelSelection = buildModelSelection(provider, model);
-          const options = readRecordArg(args, "options");
-          target = { ...modelSelection, ...(options ? { options } : {}) };
-        }
-        const spec: Record<string, unknown> = {
-          prompt: readStringArg(args, "prompt", { required: true })!,
-          target,
-        };
-        for (const key of [
-          "title",
-          "projectId",
-          "environment",
-          "baseRef",
-          "baseBranch",
-          "branchName",
-          "runtimeMode",
-          "notifyCreatorOnComplete",
-        ]) {
-          const value = args[key];
-          if (value !== undefined) spec[key] = value;
-        }
+        const { requestId, ...spec } = Schema.decodeUnknownSync(GladeCreateThreadInput)(args);
         return yield* runCreateThreads(
           decodeCreateThreadsInput({
-            requestId: readStringArg(args, "requestId", { required: true }),
+            requestId,
             threads: [spec],
           }),
           {
@@ -987,6 +884,10 @@ const makeAgentGateway = Effect.gen(function* () {
 
   const tools: ReadonlyArray<ToolEntry> = [
     ...readTools,
+    ...makeThreadDiffTools(diffs, snapshotQuery),
+    ...makeDevServerTools(devServers, snapshotQuery),
+    makeForkThreadTool(orchestrationEngine, snapshotQuery, eventStore),
+    makeAppPresentationTool(presentation, snapshotQuery, fs, path),
     ...diagnosticTools,
     createThreads,
     createThread,

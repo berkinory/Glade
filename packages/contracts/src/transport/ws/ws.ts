@@ -1,3 +1,4 @@
+import { GladeAppOpenRequest } from "../../provider/agentGatewayTools";
 import { PreviewWorkspaceRestoreInput } from "../../orchestration/workspaceRestore";
 import {
   ProviderManagementContext,
@@ -138,6 +139,8 @@ import {
 } from "../../git/githubProjectProvisioning";
 
 export const WS_METHODS = {
+  subscribeAppPresentation: "app.subscribePresentation",
+  acknowledgeAppPresentation: "app.acknowledgePresentation",
   projectsDiscoverScripts: "projects.discoverScripts",
   projectsListDirectories: "projects.listDirectories",
   projectsSearchEntries: "projects.searchEntries",
@@ -252,6 +255,7 @@ export const WS_METHODS = {
 } as const;
 
 export const WS_CHANNELS = {
+  appPresentation: "app.presentation",
   gitActionProgress: "git.actionProgress",
   gitWorktreeSetupProgress: "git.worktreeSetupProgress",
   projectProvisionProgress: "project.provisionProgress",
@@ -450,6 +454,7 @@ export const WsWelcomePayload = Schema.Struct({
 export type WsWelcomePayload = typeof WsWelcomePayload.Type;
 
 export interface WsPushPayloadByChannel {
+  readonly [WS_CHANNELS.appPresentation]: typeof GladeAppOpenRequest.Type;
   readonly [WS_CHANNELS.serverWelcome]: WsWelcomePayload;
   readonly [WS_CHANNELS.serverMaintenanceUpdated]: ServerLifecycleStreamEvent;
   readonly [WS_CHANNELS.serverConfigUpdated]: typeof ServerConfigUpdatedPayload.Type;
@@ -480,6 +485,10 @@ const makeWsPushSchema = <const Channel extends string, Payload extends Schema.S
     data: payload,
   });
 
+export const WsPushAppPresentation = makeWsPushSchema(
+  WS_CHANNELS.appPresentation,
+  GladeAppOpenRequest,
+);
 export const WsPushServerWelcome = makeWsPushSchema(WS_CHANNELS.serverWelcome, WsWelcomePayload);
 export const WsPushServerMaintenanceUpdated = makeWsPushSchema(
   WS_CHANNELS.serverMaintenanceUpdated,
@@ -529,6 +538,7 @@ export const WsPushOrchestrationThreadEvent = makeWsPushSchema(
 );
 
 export const WsPushChannelSchema = Schema.Literals([
+  WS_CHANNELS.appPresentation,
   WS_CHANNELS.gitActionProgress,
   WS_CHANNELS.gitWorktreeSetupProgress,
   WS_CHANNELS.projectProvisionProgress,
@@ -547,6 +557,7 @@ export const WsPushChannelSchema = Schema.Literals([
 export type WsPushChannelSchema = typeof WsPushChannelSchema.Type;
 
 export const WsPush = Schema.Union([
+  WsPushAppPresentation,
   WsPushServerWelcome,
   WsPushServerMaintenanceUpdated,
   WsPushServerConfigUpdated,

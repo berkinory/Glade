@@ -4,6 +4,7 @@
 
 ### New
 
+- Agents can inspect task diffs, fork conversations, manage development servers, and open files, diffs and terminals in Glade.
 - Sign in to Claude and Codex from provider settings.
 - Show Claude and Codex usage limits in the sidebar, with five-hour and weekly views.
 
@@ -16,6 +17,7 @@
 
 ### Improved
 
+- Agents can page through conversation lists with smaller responses and create tasks with explicit provider and model selection.
 - Loading and activity indicators share a consistent dot-matrix style, with distinct animations for agents, terminals and voice.
 
 - The Environment panel shows the working directory and worktree location, including the source directory before a new worktree is created.

@@ -53,6 +53,7 @@ export const GladeContextResult = Schema.Struct({
     threadRead: Schema.Boolean,
     threadCreate: Schema.Boolean,
     threadWait: Schema.Boolean,
+    diagnostics: Schema.Boolean,
   }),
 });
 export type GladeContextResult = typeof GladeContextResult.Type;
@@ -66,12 +67,7 @@ export const GladeCreateThreadSpec = Schema.Struct({
   environment: Schema.optional(Schema.Literals(["local", "worktree"])),
   baseRef: Schema.optional(Schema.String.check(Schema.isNonEmpty())),
 
-  baseBranch: Schema.optional(Schema.String.check(Schema.isNonEmpty())),
-  branchName: Schema.optional(Schema.String.check(Schema.isNonEmpty())),
   runtimeMode: Schema.optional(Schema.Literals(["approval-required", "full-access"])),
-  // External integrations need the "computer:control" scope; provider sessions cannot delegate
-  // computer control to created threads.
-  enableComputerControl: Schema.optional(Schema.Boolean),
 });
 export type GladeCreateThreadSpec = typeof GladeCreateThreadSpec.Type;
 
@@ -86,6 +82,12 @@ export const GladeCreateThreadsInput = Schema.Struct({
     .check(Schema.isMaxLength(GLADE_GATEWAY_MAX_THREADS_PER_OPERATION)),
 }).annotate({ parseOptions: { onExcessProperty: "error" } });
 export type GladeCreateThreadsInput = typeof GladeCreateThreadsInput.Type;
+
+export const GladeCreateThreadInput = Schema.Struct({
+  requestId: GladeGatewayRequestId,
+  ...GladeCreateThreadSpec.fields,
+}).annotate({ parseOptions: { onExcessProperty: "error" } });
+export type GladeCreateThreadInput = typeof GladeCreateThreadInput.Type;
 
 export const GladeProviderCatalog = Schema.Struct({
   provider: ProviderKind,
