@@ -52,6 +52,7 @@ interface RightDockProps {
   state: RightDockThreadState;
   initialWidth?: "half" | "fixed";
   minWidth: number;
+  maxWidth: number;
   defaultWidth: string;
   shouldAcceptWidth: (context: {
     currentWidth: number;
@@ -264,7 +265,7 @@ export function RightDock(props: RightDockProps) {
         transparentSurface
         resizable={{
           minWidth: props.minWidth,
-          maxWidth: resizeMaxWidth,
+          maxWidth: Math.min(props.maxWidth, resizeMaxWidth),
           shouldAcceptWidth: props.shouldAcceptWidth,
         }}
       >

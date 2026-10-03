@@ -85,7 +85,7 @@ const DockExplorerPane = lazy(() =>
     default: module.DockExplorerPane,
   })),
 );
-const RIGHT_SIDEBAR_DEFAULT_WIDTH = "20rem";
+const RIGHT_SIDEBAR_DEFAULT_WIDTH = "22rem";
 
 const allowAnySplitDirection = (_direction: SplitDirection) => true;
 
@@ -629,7 +629,8 @@ export function SingleChatSurface(props: {
         <RightDock
           state={sidebarState}
           initialWidth="fixed"
-          minWidth={256}
+          minWidth={288}
+          maxWidth={368}
           defaultWidth={RIGHT_SIDEBAR_DEFAULT_WIDTH}
           shouldAcceptWidth={shouldAcceptDockWidth}
           addMenuKinds={[]}

@@ -17,6 +17,8 @@
 
 ### Improved
 
+- Diff layouts switch with one button and a tooltip; the right sidebar starts wider with tighter resizing limits.
+
 - Chat, files, commit diffs, terminals and browser pages share conversation workspace tabs, with Explorer and Git in the right sidebar and reusable file and diff previews.
 
 - Agents can page through conversation lists with smaller responses and create tasks with explicit provider and model selection.
