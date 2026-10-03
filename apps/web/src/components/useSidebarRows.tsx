@@ -425,18 +425,18 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
                 threadStatus?.label === "Pending Approval" ? threadStatus.colorClass : null
               }
               suffix={
-                <span
-                  aria-label={projectLabel}
-                  className={cn(
-                    "relative flex max-w-[40%] shrink-0 items-center justify-end text-right text-ui-meta text-muted-foreground/38",
-                    project?.kind !== "project" &&
-                      "hidden group-hover/thread-row:flex group-has-[:focus-visible]/thread-row:flex",
-                    hasTrailingStatusGlyph &&
-                      "mr-2 group-hover/thread-row:mr-0 group-focus-within/thread-row:mr-0",
-                  )}
-                >
-                  <span className="truncate">{projectLabel}</span>
-                </span>
+                project?.kind === "project" ? (
+                  <span
+                    aria-label={projectLabel}
+                    className={cn(
+                      "relative flex max-w-[40%] shrink-0 items-center justify-end text-right text-ui-meta text-muted-foreground/38",
+                      hasTrailingStatusGlyph &&
+                        "mr-2 group-hover/thread-row:mr-0 group-focus-within/thread-row:mr-0",
+                    )}
+                  >
+                    <span className="truncate">{projectLabel}</span>
+                  </span>
+                ) : null
               }
             />
             <div className="absolute top-1/2 right-1.5 flex -translate-y-1/2 items-center">
