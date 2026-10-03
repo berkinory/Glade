@@ -379,6 +379,33 @@ export default function BranchToolbar({
       )}
     >
       <div className={isPanel ? "flex flex-col gap-0.5" : "flex min-w-0 items-center gap-2"}>
+        {showBranchSelector ? (
+          // ChatView stays mounted while the route switches threads. Reset the selector's optimistic checkout
+          // state at that boundary so a previous thread cannot paint its branch while the new thread's
+          // workspace query is resolving.
+          <BranchToolbarBranchSelector
+            key={threadId}
+            workspace={{
+              activeProjectCwd: branchProjectCwd ?? activeProject.cwd,
+              activeThreadBranch,
+              activeWorktreePath,
+              branchCwd,
+              effectiveEnvMode,
+            }}
+            thread={{
+              envLocked,
+              hasServerThread,
+              isThreadSettled: serverThread?.settledAt != null || !threadDetailReady,
+            }}
+            actions={{
+              onSetThreadWorkspace: setThreadWorkspace,
+              ...(onCheckoutPullRequestRequest ? { onCheckoutPullRequestRequest } : {}),
+              ...(onComposerFocusRequest ? { onComposerFocusRequest } : {}),
+            }}
+            variant={variant}
+          />
+        ) : null}
+
         {showEnvironment ? (
           !hasServerThread ? (
             <label className="inline-flex items-center gap-2 text-ui-sm text-muted-foreground">
@@ -416,33 +443,6 @@ export default function BranchToolbar({
               {environmentPresentation.shortLabel}
             </span>
           )
-        ) : null}
-
-        {showBranchSelector ? (
-          // ChatView stays mounted while the route switches threads. Reset the selector's optimistic checkout
-          // state at that boundary so a previous thread cannot paint its branch while the new thread's
-          // workspace query is resolving.
-          <BranchToolbarBranchSelector
-            key={threadId}
-            workspace={{
-              activeProjectCwd: branchProjectCwd ?? activeProject.cwd,
-              activeThreadBranch,
-              activeWorktreePath,
-              branchCwd,
-              effectiveEnvMode,
-            }}
-            thread={{
-              envLocked,
-              hasServerThread,
-              isThreadSettled: serverThread?.settledAt != null || !threadDetailReady,
-            }}
-            actions={{
-              onSetThreadWorkspace: setThreadWorkspace,
-              ...(onCheckoutPullRequestRequest ? { onCheckoutPullRequestRequest } : {}),
-              ...(onComposerFocusRequest ? { onComposerFocusRequest } : {}),
-            }}
-            variant={variant}
-          />
         ) : null}
       </div>
     </div>

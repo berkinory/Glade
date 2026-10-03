@@ -310,6 +310,11 @@ export function createChatPresentation(
   const environmentPanelProps: Omit<EnvironmentPanelProps, "open" | "variant"> = {
     gitCwd: threadWorkspaceCwd,
     openInTarget: threadWorkspaceCwd,
+    worktree: {
+      path: activeThread.worktreePath ?? null,
+      baseDirectory: activeThread.workingDirectory ?? activeProject?.cwd ?? null,
+      pending: activeThread.envMode === "worktree" && !activeThread.worktreePath,
+    },
     githubRepository: githubRepositoryQuery.data?.repository ?? null,
     githubRepositories: githubRepositoryQuery.data?.repositories ?? [],
     isGitRepo,

@@ -49,6 +49,11 @@ export interface EnvironmentPanelProps {
   variant: "docked" | "floating";
   gitCwd: string | null;
   openInTarget: string | null;
+  worktree: {
+    readonly path: string | null;
+    readonly pending: boolean;
+    readonly baseDirectory: string | null;
+  };
   githubRepository?: {
     readonly nameWithOwner: string;
     readonly url: string;
@@ -103,6 +108,7 @@ export function EnvironmentPanel({
   variant,
   gitCwd,
   openInTarget,
+  worktree,
   githubRepository: githubRepositoryProp,
   githubRepositories: githubRepositoriesProp,
   isGitRepo,
@@ -183,6 +189,33 @@ export function EnvironmentPanel({
           onRegisterCommitAndPushTrigger={onRegisterCommitAndPushTrigger}
         />
       ) : null}
+
+      <EnvironmentLabeledSection
+        label={
+          worktree.pending ? "Worktree pending" : worktree.path ? "Worktree" : "Working directory"
+        }
+      >
+        <div className="px-2 pb-1 text-ui-sm text-muted-foreground">
+          {worktree.pending ? (
+            <p className="mb-1">Created when you send the first message. Base directory:</p>
+          ) : null}
+          <code
+            className="block select-text break-all text-ui-sm"
+            title={
+              (worktree.pending ? worktree.baseDirectory : (openInTarget ?? gitCwd)) ?? undefined
+            }
+          >
+            {(worktree.pending ? worktree.baseDirectory : (openInTarget ?? gitCwd)) ??
+              "No working directory available"}
+          </code>
+          {worktree.path && worktree.path !== openInTarget ? (
+            <p className="mt-1">
+              Worktree root:{" "}
+              <code className="select-text break-all text-ui-sm">{worktree.path}</code>
+            </p>
+          ) : null}
+        </div>
+      </EnvironmentLabeledSection>
 
       <EnvironmentLocalServersSection enabled={open} />
 

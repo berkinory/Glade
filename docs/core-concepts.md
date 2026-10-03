@@ -302,8 +302,10 @@ the actual branch and environment. Preparing a new Local checkout does not force
 dirty changes. Nonessential Git query refreshes continue after the prepared chat opens;
 a persistent progress/error notification survives the initiating dialog.
 
-New draft chats expose a Worktree checkbox using the existing project/environment
-default. It is unavailable without a Git repository. The project picker lists projects
+New draft chats expose a Worktree checkbox after the branch selector, using the existing
+project/environment default. It is unavailable without a Git repository. The Environment
+panel shows the actual working directory, the worktree root when different, and whether
+a draft worktree will be created on the first send. The project picker lists projects
 and local folders, keeping an explicitly selected unregistered path visible without
 adding other chats' worktrees as projects.
 

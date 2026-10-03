@@ -16,6 +16,8 @@
 
 ### Improved
 
+- The Environment panel shows the working directory and worktree location, including the source directory before a new worktree is created.
+
 - Imported conversations open with recent messages and automatically reveal older history when scrolling or searching.
 
 - Activity keeps the open chat visible and shows recognizable project icons, including monorepo favicons.
