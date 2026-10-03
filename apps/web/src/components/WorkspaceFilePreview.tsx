@@ -64,6 +64,7 @@ import { LocalVideoThumbnail } from "./LocalVideoThumbnail";
 import { buildLocalImageUrl } from "~/lib/localImageUrls";
 import { LocalImagePreview } from "./LocalImagePreview";
 import { PdfFilePreview } from "./PdfFilePreview";
+import { UnsupportedFilePreview } from "./UnsupportedFilePreview";
 
 const MARKDOWN_PREVIEW_EXTENSIONS = new Set([".markdown", ".md", ".mdx"]);
 
@@ -575,6 +576,11 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
   const hasFileContents = fileQuery.data !== undefined;
   const fileReadError = fileQuery.error;
   const fileReadCapacityError = isRpcCapacityExceededError(fileReadError);
+  const unsupportedFilePreview =
+    fileReadError instanceof Error &&
+    /file appears to be binary|file encoding is not supported for text editing/i.test(
+      fileReadError.message,
+    );
   const showFileReadErrorIndicator =
     hasFileContents && fileReadError !== null && !activeEditBuffer?.error;
 
@@ -704,6 +710,8 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
         </div>
       ) : fileQuery.isLoading ? (
         <FilePreviewLoadingState />
+      ) : !hasFileContents && unsupportedFilePreview ? (
+        <UnsupportedFilePreview filePath={filePath} workspaceRoot={props.workspaceRoot} />
       ) : !hasFileContents && fileReadError ? (
         <PanelStateMessage density="compact" fill="flex" className="items-start justify-start p-3">
           <p className="text-left text-ui-sm text-destructive/85">
