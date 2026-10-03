@@ -1,12 +1,12 @@
 import { SidebarDraftIndicator } from "./SidebarDraftIndicator";
 import { SIDEBAR_TRAILING_ICON_FORCE_CLASS } from "./sidebarGlyphs";
-import { NewThreadIcon } from "~/lib/icons";
+import { NewChatIcon, NewThreadIcon } from "~/lib/icons";
 import { useTerminalStateStore } from "../terminalStateStore";
 import { useSidebarStateStore } from "../sidebarStateStore";
 import { ThreadPrStatusBadge } from "~/components/pullRequest/ThreadPrStatusBadge";
 import { PinStatusIcon, pinActionLabel } from "~/lib/pin";
 import { type DragEvent as ReactDragEvent, type ReactNode } from "react";
-import { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { formatRelativeTime } from "../lib/relativeTime";
 import { type SidebarThreadSummary } from "../types";
 import { ProjectSidebarIcon } from "./ProjectSidebarIcon";
@@ -122,10 +122,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
 
   const selectedThreadIds = useSidebarStateStore((state) => state.selectedThreadIds);
   const clearSelection = useSidebarStateStore((state) => state.clearSelection);
-
-  function resolvePinnedThreadProjectLabel(projectId: ProjectId): string {
-    return resolveThreadProjectLabel(projectById.get(projectId));
-  }
 
   function renderThreadArchiveAction(
     threadId: ThreadId,
@@ -335,7 +331,8 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
     });
     const terminalCount = threadTerminalState.terminalIds.length;
     const isActive = visualActiveSidebarThreadId === thread.id;
-    const projectLabel = resolvePinnedThreadProjectLabel(thread.projectId);
+    const project = projectById.get(thread.projectId);
+    const projectLabel = resolveThreadProjectLabel(project);
     const rightMetaChips = resolveThreadRowMetaChips({
       thread,
     });
@@ -381,6 +378,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
                 metaChipCount: threadJumpLabel ? 0 : rightMetaChips.length,
                 hasTrailingGlyph: hasTrailingStatusGlyph,
               }),
+              "group-hover/thread-row:pr-16 group-focus-within/thread-row:pr-16",
               isActive
                 ? SIDEBAR_ROW_ACTIVE_CLASS_NAME
                 : cn(SIDEBAR_ROW_IDLE_TEXT_CLASS_NAME, SIDEBAR_ROW_HOVER_CLASS_NAME),
@@ -417,16 +415,30 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
                 threadStatus?.label === "Pending Approval" ? threadStatus.colorClass : null
               }
               suffix={
-                projectLabel ? (
-                  <span
-                    className={cn(
-                      "max-w-[40%] shrink-0 truncate text-right text-ui-meta text-muted-foreground/38 transition-[margin] duration-100 ease-out",
-                      hasTrailingStatusGlyph && "mr-2",
+                <span
+                  aria-label={projectLabel}
+                  className={cn(
+                    "relative max-w-[40%] shrink-0 text-right text-ui-meta text-muted-foreground/38",
+                    hasTrailingStatusGlyph &&
+                      "mr-2 group-hover/thread-row:mr-0 group-focus-within/thread-row:mr-0",
+                  )}
+                >
+                  <span className="inline-flex size-3.5 items-center justify-center group-hover/thread-row:hidden group-has-[:focus-visible]/thread-row:hidden">
+                    {project?.kind === "project" ? (
+                      <ProjectSidebarIcon
+                        cwd={project.cwd}
+                        expanded={false}
+                        appearance={project.appearance}
+                        glyphClassName="size-3.5"
+                      />
+                    ) : (
+                      <NewChatIcon className="size-3.5" aria-hidden />
                     )}
-                  >
+                  </span>
+                  <span className="hidden truncate group-hover/thread-row:block group-has-[:focus-visible]/thread-row:block">
                     {projectLabel}
                   </span>
-                ) : null
+                </span>
               }
             />
             <div className="absolute top-1/2 right-1.5 flex -translate-y-1/2 items-center">
