@@ -1,6 +1,5 @@
 export type ThemeMode = "light" | "dark" | "system";
 export type ThemeVariant = "light" | "dark";
-export type WindowMaterial = "opaque" | "translucent";
 
 export interface ThemeFonts {
   ui: string | null;
@@ -18,7 +17,6 @@ export interface ChromeTheme {
   contrast: number;
   fonts: ThemeFonts;
   ink: string;
-  opaqueWindows: boolean;
   semanticColors: ThemeSemanticColors;
   surface: string;
 }

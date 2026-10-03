@@ -10,7 +10,6 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
         ui: null,
       },
       ink: "#f9f9f7",
-      opaqueWindows: false,
       semanticColors: {
         diffAdded: "#00c853",
         diffRemoved: "#ff5f38",
@@ -26,7 +25,6 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
         ui: null,
       },
       ink: "#2d2d2b",
-      opaqueWindows: false,
       semanticColors: {
         diffAdded: "#00c853",
         diffRemoved: "#ff5f38",
@@ -44,7 +42,6 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
         ui: null,
       },
       ink: "#bfbdb6",
-      opaqueWindows: false,
       semanticColors: {
         diffAdded: "#7fd962",
         diffRemoved: "#ea6c73",
@@ -62,7 +59,6 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
         ui: null,
       },
       ink: "#cdd6f4",
-      opaqueWindows: false,
       semanticColors: {
         diffAdded: "#a6e3a1",
         diffRemoved: "#f38ba8",
@@ -78,7 +74,6 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
         ui: null,
       },
       ink: "#4c4f69",
-      opaqueWindows: false,
       semanticColors: {
         diffAdded: "#40a02b",
         diffRemoved: "#d20f39",
@@ -96,7 +91,6 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
         ui: null,
       },
       ink: "#fcfcfc",
-      opaqueWindows: false,
       semanticColors: {
         diffAdded: "#00a240",
         diffRemoved: "#e02e2a",
@@ -112,47 +106,12 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
         ui: null,
       },
       ink: "#0d0d0d",
-      opaqueWindows: false,
       semanticColors: {
         diffAdded: "#00a240",
         diffRemoved: "#e02e2a",
         skill: "#751ed9",
       },
       surface: "#ffffff",
-    },
-  },
-  glade: {
-    dark: {
-      accent: "#6073cc",
-      contrast: 0,
-      fonts: {
-        code: null,
-        ui: null,
-      },
-      ink: "#f5f5f5",
-      opaqueWindows: false,
-      semanticColors: {
-        diffAdded: "#40c977",
-        diffRemoved: "#fa423e",
-        skill: "#ad7bf9",
-      },
-      surface: "#0e0e0e",
-    },
-    light: {
-      accent: "#526fff",
-      contrast: 0,
-      fonts: {
-        code: null,
-        ui: null,
-      },
-      ink: "#262626",
-      opaqueWindows: false,
-      semanticColors: {
-        diffAdded: "#00a240",
-        diffRemoved: "#ba2623",
-        skill: "#924ff7",
-      },
-      surface: "#fcfcfc",
     },
   },
   dracula: {
@@ -164,7 +123,6 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
         ui: null,
       },
       ink: "#f8f8f2",
-      opaqueWindows: false,
       semanticColors: {
         diffAdded: "#50fa7b",
         diffRemoved: "#ff5555",
@@ -182,7 +140,6 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
         ui: null,
       },
       ink: "#d3c6aa",
-      opaqueWindows: false,
       semanticColors: {
         diffAdded: "#a7c080",
         diffRemoved: "#e67e80",
@@ -198,7 +155,6 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
         ui: null,
       },
       ink: "#5c6a72",
-      opaqueWindows: false,
       semanticColors: {
         diffAdded: "#8da101",
         diffRemoved: "#f85552",
@@ -216,7 +172,6 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
         ui: null,
       },
       ink: "#e6edf3",
-      opaqueWindows: false,
       semanticColors: {
         diffAdded: "#3fb950",
         diffRemoved: "#f85149",
@@ -232,7 +187,6 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
         ui: null,
       },
       ink: "#1f2328",
-      opaqueWindows: false,
       semanticColors: {
         diffAdded: "#1a7f37",
         diffRemoved: "#cf222e",
@@ -250,7 +204,6 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
         ui: null,
       },
       ink: "#ebdbb2",
-      opaqueWindows: false,
       semanticColors: {
         diffAdded: "#ebdbb2",
         diffRemoved: "#cc241d",
@@ -266,7 +219,6 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
         ui: null,
       },
       ink: "#3c3836",
-      opaqueWindows: false,
       semanticColors: {
         diffAdded: "#3c3836",
         diffRemoved: "#cc241d",
@@ -284,7 +236,6 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
         ui: "Inter",
       },
       ink: "#e3e4e6",
-      opaqueWindows: true,
       semanticColors: {
         diffAdded: "#69c967",
         diffRemoved: "#ff7e78",
@@ -300,31 +251,12 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
         ui: "Inter",
       },
       ink: "#1b1b1b",
-      opaqueWindows: true,
       semanticColors: {
         diffAdded: "#52a450",
         diffRemoved: "#c94446",
         skill: "#8160d8",
       },
       surface: "#fcfcfd",
-    },
-  },
-  lobster: {
-    dark: {
-      accent: "#ff5c5c",
-      contrast: 0,
-      fonts: {
-        code: null,
-        ui: "Satoshi",
-      },
-      ink: "#e4e4e7",
-      opaqueWindows: false,
-      semanticColors: {
-        diffAdded: "#22c55e",
-        diffRemoved: "#ff5c5c",
-        skill: "#3b82f6",
-      },
-      surface: "#111827",
     },
   },
   material: {
@@ -336,31 +268,12 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
         ui: null,
       },
       ink: "#eeffff",
-      opaqueWindows: false,
       semanticColors: {
         diffAdded: "#c3e88d",
         diffRemoved: "#f07178",
         skill: "#c792ea",
       },
       surface: "#212121",
-    },
-  },
-  matrix: {
-    dark: {
-      accent: "#1eff5a",
-      contrast: 0,
-      fonts: {
-        code: null,
-        ui: 'ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
-      },
-      ink: "#b8ffca",
-      opaqueWindows: true,
-      semanticColors: {
-        diffAdded: "#1eff5a",
-        diffRemoved: "#fa423e",
-        skill: "#1eff5a",
-      },
-      surface: "#040805",
     },
   },
   monokai: {
@@ -372,7 +285,6 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
         ui: null,
       },
       ink: "#f8f8f2",
-      opaqueWindows: false,
       semanticColors: {
         diffAdded: "#86b42b",
         diffRemoved: "#c4265e",
@@ -390,7 +302,6 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
         ui: null,
       },
       ink: "#d6deeb",
-      opaqueWindows: false,
       semanticColors: {
         diffAdded: "#c5e478",
         diffRemoved: "#ef5350",
@@ -408,47 +319,12 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
         ui: null,
       },
       ink: "#d8dee9",
-      opaqueWindows: false,
       semanticColors: {
         diffAdded: "#a3be8c",
         diffRemoved: "#bf616a",
         skill: "#b48ead",
       },
       surface: "#2e3440",
-    },
-  },
-  notion: {
-    dark: {
-      accent: "#3183d8",
-      contrast: 0,
-      fonts: {
-        code: null,
-        ui: null,
-      },
-      ink: "#d9d9d8",
-      opaqueWindows: true,
-      semanticColors: {
-        diffAdded: "#4ec9b0",
-        diffRemoved: "#fa423e",
-        skill: "#3183d8",
-      },
-      surface: "#191919",
-    },
-    light: {
-      accent: "#3183d8",
-      contrast: 0,
-      fonts: {
-        code: null,
-        ui: null,
-      },
-      ink: "#37352f",
-      opaqueWindows: true,
-      semanticColors: {
-        diffAdded: "#008000",
-        diffRemoved: "#a31515",
-        skill: "#0000ff",
-      },
-      surface: "#ffffff",
     },
   },
   one: {
@@ -460,7 +336,6 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
         ui: null,
       },
       ink: "#abb2bf",
-      opaqueWindows: false,
       semanticColors: {
         diffAdded: "#8cc265",
         diffRemoved: "#e05561",
@@ -476,83 +351,12 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
         ui: null,
       },
       ink: "#383a42",
-      opaqueWindows: false,
       semanticColors: {
         diffAdded: "#3bba54",
         diffRemoved: "#e45649",
         skill: "#526fff",
       },
       surface: "#fafafa",
-    },
-  },
-  oscurange: {
-    dark: {
-      accent: "#f9b98c",
-      contrast: 0,
-      fonts: {
-        code: null,
-        ui: null,
-      },
-      ink: "#e6e6e6",
-      opaqueWindows: false,
-      semanticColors: {
-        diffAdded: "#40c977",
-        diffRemoved: "#fa423e",
-        skill: "#479ffa",
-      },
-      surface: "#0b0b0f",
-    },
-  },
-  proof: {
-    light: {
-      accent: "#3d755d",
-      contrast: 0,
-      fonts: {
-        code: null,
-        ui: null,
-      },
-      ink: "#2f312d",
-      opaqueWindows: false,
-      semanticColors: {
-        diffAdded: "#3d755d",
-        diffRemoved: "#ba2623",
-        skill: "#5f6ac2",
-      },
-      surface: "#f5f3ed",
-    },
-  },
-  raycast: {
-    dark: {
-      accent: "#ff6363",
-      contrast: 0,
-      fonts: {
-        code: '"Jetbrains Mono"',
-        ui: "Inter",
-      },
-      ink: "#fefefe",
-      opaqueWindows: false,
-      semanticColors: {
-        diffAdded: "#59d499",
-        diffRemoved: "#ff6363",
-        skill: "#cf2f98",
-      },
-      surface: "#101010",
-    },
-    light: {
-      accent: "#ff6363",
-      contrast: 0,
-      fonts: {
-        code: '"Jetbrains Mono"',
-        ui: "Inter",
-      },
-      ink: "#030303",
-      opaqueWindows: false,
-      semanticColors: {
-        diffAdded: "#006b4f",
-        diffRemoved: "#b12424",
-        skill: "#9a1b6e",
-      },
-      surface: "#ffffff",
     },
   },
   "rose-pine": {
@@ -564,7 +368,6 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
         ui: null,
       },
       ink: "#e0def4",
-      opaqueWindows: false,
       semanticColors: {
         diffAdded: "#9ccfd8",
         diffRemoved: "#908caa",
@@ -580,83 +383,12 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
         ui: null,
       },
       ink: "#575279",
-      opaqueWindows: false,
       semanticColors: {
         diffAdded: "#56949f",
         diffRemoved: "#797593",
         skill: "#907aa9",
       },
       surface: "#faf4ed",
-    },
-  },
-  sentry: {
-    dark: {
-      accent: "#7055f6",
-      contrast: 0,
-      fonts: {
-        code: null,
-        ui: null,
-      },
-      ink: "#e6dff9",
-      opaqueWindows: false,
-      semanticColors: {
-        diffAdded: "#8ee6d7",
-        diffRemoved: "#fa423e",
-        skill: "#7055f6",
-      },
-      surface: "#2d2935",
-    },
-  },
-  solarized: {
-    dark: {
-      accent: "#d30102",
-      contrast: 0,
-      fonts: {
-        code: null,
-        ui: null,
-      },
-      ink: "#839496",
-      opaqueWindows: false,
-      semanticColors: {
-        diffAdded: "#859900",
-        diffRemoved: "#dc322f",
-        skill: "#d33682",
-      },
-      surface: "#002b36",
-    },
-    light: {
-      accent: "#b58900",
-      contrast: 0,
-      fonts: {
-        code: null,
-        ui: null,
-      },
-      ink: "#657b83",
-      opaqueWindows: false,
-      semanticColors: {
-        diffAdded: "#859900",
-        diffRemoved: "#dc322f",
-        skill: "#d33682",
-      },
-      surface: "#fdf6e3",
-    },
-  },
-  temple: {
-    dark: {
-      accent: "#e4f222",
-      contrast: 0,
-      fonts: {
-        code: null,
-        ui: null,
-      },
-      ink: "#c7e6da",
-      opaqueWindows: false,
-      semanticColors: {
-        diffAdded: "#40c977",
-        diffRemoved: "#fa423e",
-        skill: "#e4f222",
-      },
-      surface: "#02120c",
     },
   },
   "tokyo-night": {
@@ -668,13 +400,22 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
         ui: null,
       },
       ink: "#a9b1d6",
-      opaqueWindows: false,
       semanticColors: {
         diffAdded: "#449dab",
         diffRemoved: "#914c54",
         skill: "#9d7cd8",
       },
       surface: "#1a1b26",
+    },
+  },
+  vesper: {
+    dark: {
+      accent: "#ffc799",
+      contrast: 0,
+      fonts: { code: null, ui: null },
+      ink: "#ffffff",
+      semanticColors: { diffAdded: "#99ffe4", diffRemoved: "#ff8080", skill: "#ffc799" },
+      surface: "#101010",
     },
   },
   vercel: {
@@ -686,7 +427,6 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
         ui: "Geist, Inter",
       },
       ink: "#ededed",
-      opaqueWindows: true,
       semanticColors: {
         diffAdded: "#00ad3a",
         diffRemoved: "#f13342",
@@ -702,45 +442,10 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
         ui: "Geist, Inter",
       },
       ink: "#171717",
-      opaqueWindows: true,
       semanticColors: {
         diffAdded: "#28a948",
         diffRemoved: "#eb001d",
         skill: "#a100f8",
-      },
-      surface: "#ffffff",
-    },
-  },
-  "vscode-plus": {
-    dark: {
-      accent: "#007acc",
-      contrast: 0,
-      fonts: {
-        code: null,
-        ui: null,
-      },
-      ink: "#d4d4d4",
-      opaqueWindows: false,
-      semanticColors: {
-        diffAdded: "#369432",
-        diffRemoved: "#f44747",
-        skill: "#000080",
-      },
-      surface: "#1e1e1e",
-    },
-    light: {
-      accent: "#007acc",
-      contrast: 0,
-      fonts: {
-        code: null,
-        ui: null,
-      },
-      ink: "#000000",
-      opaqueWindows: false,
-      semanticColors: {
-        diffAdded: "#008000",
-        diffRemoved: "#ee0000",
-        skill: "#0000ff",
       },
       surface: "#ffffff",
     },

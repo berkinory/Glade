@@ -9,7 +9,7 @@
   --animate-skeleton: skeleton 2s -1s infinite linear;
   /* Status spinners and shimmer labels share 50ms steps (20 fps), aligned by
      animationTimelineSync. Matching both cadence and phase lets their redraws
-     share frames instead of repeatedly recompositing the translucent sidebar
+     share frames instead of repeatedly recompositing the sidebar
      and composer. Keep 1300ms / 26 steps equal to shimmer's 2000ms / 40 steps. */
   --animate-spin-stepped: spin-stepped 1.3s steps(26, end) infinite;
   --font-sans: var(--font-ui-family);
@@ -124,19 +124,13 @@
     background: var(--color-background-button-secondary-hover);
   }
 
-  /* Let the renderer switch between Codex-style translucent and opaque shells
-     without duplicating sidebar markup or class strings. */
   .app-sidebar-surface {
     background: var(--app-sidebar-surface, var(--card));
-    -webkit-backdrop-filter: var(--app-sidebar-backdrop-filter, none);
-    backdrop-filter: var(--app-sidebar-backdrop-filter, none);
   }
 
   /* Small circular icon badges that sit directly on the sidebar surface inside
      thread rows — the meta-chip stack, the handoff provider avatar, the terminal
-     count badge. They take the SAME material as the sidebar (translucent or
-     opaque, whatever the shell currently is) so they read as part of it instead
-     of an opaque blob, plus a 1px ring so stacked/overlapping icons stay
+     count badge. They use the sidebar surface with a 1px ring so stacked/overlapping icons stay
      visually separated. Ring + shadow are one box-shadow so they don't affect
      layout. */
   .sidebar-icon-chip {
@@ -363,71 +357,6 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-}
-
-/* Theme settings contrast slider thumb (range input) */
-.theme-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 14px;
-  height: 14px;
-  border-radius: 999px;
-  background: var(--card);
-  border: 1px solid color-mix(in srgb, var(--foreground) 18%, transparent);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-  cursor: pointer;
-  transition:
-    transform 100ms ease,
-    box-shadow 100ms ease;
-}
-
-.theme-slider::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
-  border-radius: 999px;
-  background: var(--card);
-  border: 1px solid color-mix(in srgb, var(--foreground) 18%, transparent);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-  cursor: pointer;
-}
-
-.theme-slider:focus-visible::-webkit-slider-thumb {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 32%, transparent);
-}
-.theme-slider:focus-visible::-moz-range-thumb {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 32%, transparent);
-}
-
-.theme-slider:hover::-webkit-slider-thumb {
-  transform: scale(1.08);
-}
-.theme-slider:hover::-moz-range-thumb {
-  transform: scale(1.08);
-}
-
-/* Theme settings color picker: keep react-colorful aligned with the compact popover. */
-.theme-color-picker .react-colorful {
-  width: 100%;
-  height: 180px;
-}
-
-.theme-color-picker .react-colorful__saturation {
-  border-radius: 7px 7px 4px 4px;
-}
-
-.theme-color-picker .react-colorful__hue {
-  height: 18px;
-  margin-top: 10px;
-  border-radius: 999px;
-}
-
-.theme-color-picker .react-colorful__pointer {
-  width: 18px;
-  height: 18px;
-  border-width: 2px;
-  box-shadow:
-    0 1px 4px rgba(0, 0, 0, 0.32),
-    0 0 0 1px rgba(255, 255, 255, 0.42);
 }
 
 :root {

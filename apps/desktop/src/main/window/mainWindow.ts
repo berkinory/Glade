@@ -171,15 +171,7 @@ export function createMainWindow({
   }
 
   function getWindowMaterialOptions(): BrowserWindowConstructorOptions {
-    if (process.platform !== "darwin") {
-      return { backgroundColor: nativeTheme.shouldUseDarkColors ? "#181818" : "#ffffff" };
-    }
-    return {
-      vibrancy: "under-window",
-
-      visualEffectState: "followWindow",
-      backgroundColor: "#00000000",
-    };
+    return { backgroundColor: nativeTheme.shouldUseDarkColors ? "#181818" : "#ffffff" };
   }
 
   function getTitleBarOptions(): BrowserWindowConstructorOptions {

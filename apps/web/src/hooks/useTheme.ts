@@ -1,24 +1,15 @@
 import { useEffect, useSyncExternalStore } from "react";
-import { isElectron } from "../env";
-import { isMacNavigatorPlatform } from "../lib/utils";
 import { DEFAULT_THEME_STATE } from "../theme/theme.logic.shared";
 import {
-  areThemePacksEqual,
-  canParseThemeShareString,
-  createThemeShareString,
   parseStoredThemeState,
-  resetThemeVariant as resetThemeVariantState,
   resolveThemePack,
   resolveThemeVariant,
   serializeThemeState,
   setThemeCodeThemeId,
   setThemeFonts,
-  updateChromeTheme,
-  updateThemePackFromShareString,
 } from "../theme/theme.logic.state";
 import { buildThemeCssVariables } from "../theme/theme.logic.css";
 import {
-  type ChromeTheme,
   type ThemeFonts,
   type ThemeMode,
   type ThemeState,
@@ -159,8 +150,6 @@ function applyThemeState(state: ThemeState, suppressTransitions = false) {
   const variant = resolveThemeVariant(state.mode, getSystemDark());
   const activeTheme = resolveThemePack(state, variant);
   const cssVariableBuild = buildThemeCssVariables(activeTheme, variant, {
-    electron: isElectron,
-    isMac: isMacNavigatorPlatform(),
     systemUiFont: state.systemUiFont,
   });
 
@@ -168,7 +157,6 @@ function applyThemeState(state: ThemeState, suppressTransitions = false) {
   root.setAttribute("data-code-theme-id", activeTheme.codeThemeId);
   root.setAttribute("data-theme-mode", state.mode);
   root.setAttribute("data-theme-variant", variant);
-  root.setAttribute("data-window-material", cssVariableBuild.material);
 
   for (const [name, value] of Object.entries(cssVariableBuild.variables)) {
     if (value.trim().length === 0) {
@@ -226,16 +214,8 @@ function setSystemUiFont(enabled: boolean) {
   }));
 }
 
-function resetThemeVariant(variant: ThemeVariant) {
-  updateStoredThemeState((state) => resetThemeVariantState(state, variant));
-}
-
 function resetAllThemes() {
   updateStoredThemeState(() => DEFAULT_THEME_STATE);
-}
-
-function updateThemePack(variant: ThemeVariant, patch: Partial<ChromeTheme>) {
-  updateStoredThemeState((state) => updateChromeTheme(state, variant, patch));
 }
 
 function updateThemeFonts(variant: ThemeVariant, patch: Partial<ThemeFonts>) {
@@ -256,56 +236,24 @@ export function useTheme() {
   const activeTheme = resolveThemePack(snapshot.state, resolvedTheme);
   const darkTheme = resolveThemePack(snapshot.state, "dark");
   const lightTheme = resolveThemePack(snapshot.state, "light");
-  const defaultActiveTheme = resolveThemePack(DEFAULT_THEME_STATE, resolvedTheme);
-  const isDefaultActiveTheme = areThemePacksEqual(activeTheme, defaultActiveTheme);
-
-  const canImportThemeString = (value: string, variant: ThemeVariant = resolvedTheme) =>
-    canParseThemeShareString(value, variant);
-
-  const importThemeString = (value: string, variant: ThemeVariant = resolvedTheme) => {
-    updateStoredThemeState((state) => updateThemePackFromShareString(state, value, variant));
-  };
-
-  const exportThemeString = (variant: ThemeVariant = resolvedTheme) =>
-    createThemeShareString(variant, resolveThemePack(snapshot.state, variant));
-
-  const resetActiveTheme = () => {
-    updateStoredThemeState((state) => resetThemeVariantState(state, resolvedTheme));
-  };
-
-  const isDefaultThemePack = (variant: ThemeVariant) =>
-    areThemePacksEqual(
-      resolveThemePack(snapshot.state, variant),
-      resolveThemePack(DEFAULT_THEME_STATE, variant),
-    );
-
   useEffect(() => {
     applyThemeState(snapshot.state);
   }, [snapshot.state]);
 
   return {
     activeTheme,
-    canImportThemeString,
     systemUiFont: snapshot.state.systemUiFont,
     setSystemUiFont,
     darkTheme,
-    defaultActiveTheme,
-    exportThemeString,
-    importThemeString,
-    isDefaultActiveTheme,
-    isDefaultThemePack,
     lightTheme,
-    resetActiveTheme,
     resetAllThemes,
-    resetThemeVariant,
     resolvedTheme,
     setCodeThemeId,
     setTheme,
     theme,
     themeState: snapshot.state,
     updateThemeFonts,
-    updateThemePack,
   } as const;
 }
 
-export type { ChromeTheme, ThemeMode, ThemeState, ThemeVariant };
+export type { ThemeMode, ThemeState, ThemeVariant };

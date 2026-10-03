@@ -55,11 +55,13 @@ import {
   SettingsRow,
   SettingsSection,
   SettingsSectionShell,
+  SettingsCard,
 } from "../components/settings/SettingsPanelPrimitives";
 import { SkillsSettingsPanel } from "../components/settings/SkillsSettingsPanel";
 import { ThemeModePicker } from "../components/settings/ThemeModePicker";
 import { SidebarHeaderNavigationControls } from "../components/SidebarHeaderNavigationControls";
-import { ThemePackEditor } from "../components/ThemePackEditor";
+import { ThemePicker } from "../components/settings/ThemePicker";
+import { ThemeFontSettings } from "../components/settings/ThemeFontSettings";
 import {
   Autocomplete,
   AutocompleteEmpty,
@@ -166,8 +168,7 @@ function SettingsRouteView() {
   const settingsTarget = typeof routeSearch.target === "string" ? routeSearch.target : null;
   const activeSectionItem = SETTINGS_NAV_ITEMS.find((item) => item.id === activeSection)!;
 
-  const { resetAllThemes, resolvedTheme, theme, setTheme, systemUiFont, setSystemUiFont } =
-    useTheme();
+  const { resetAllThemes, theme, setTheme } = useTheme();
   const { settings, defaults, updateSettings, updateSettingsAndWait, resetSettings } =
     useAppSettings();
   const desktopTopBarTrafficLightGutterClassName = useDesktopTopBarTrafficLightGutterClassName();
@@ -277,9 +278,7 @@ function SettingsRouteView() {
       if (state.restartRequired) showCustomTitleBarRestartToast();
     }
 
-    setTheme("system");
     resetAllThemes();
-    setSystemUiFont(true);
     await resetSettings();
     setResetEpoch((current) => current + 1);
   }
@@ -335,19 +334,13 @@ function SettingsRouteView() {
           <ThemeModePicker value={theme} onValueChange={setTheme} ariaLabel="Theme preference" />
         </div>
 
-        <div className="space-y-3">
-          {(resolvedTheme === "dark"
-            ? (["dark", "light"] as const)
-            : (["light", "dark"] as const)
-          ).map((variant) => (
-            <ThemePackEditor
-              key={variant}
-              variant={variant}
-              isActive={resolvedTheme === variant}
-              mode={theme}
-            />
-          ))}
-        </div>
+        <SettingsCard>
+          <SettingsRow
+            title="Theme"
+            description="Choose a theme for the current light or dark appearance."
+            control={<ThemePicker />}
+          />
+        </SettingsCard>
       </SettingsSectionShell>
 
       {isElectron ? (
@@ -423,25 +416,7 @@ function SettingsRouteView() {
         </SettingsSection>
       ) : null}
 
-      <SettingsSection title="Interface typography and layout">
-        <SettingsRow
-          id="setting-use-system-ui-font"
-          title="Use system font"
-          description="Ignore the theme's custom UI font and render the interface with the native system font (SF Pro on macOS)."
-          resetAction={
-            !systemUiFont ? (
-              <SettingResetButton label="system UI font" onClick={() => setSystemUiFont(true)} />
-            ) : null
-          }
-          control={
-            <Switch
-              checked={systemUiFont}
-              onCheckedChange={(checked) => setSystemUiFont(Boolean(checked))}
-              aria-label="Use system font"
-            />
-          }
-        />
-
+      <SettingsSection title="Layout">
         <SettingsRow
           id="setting-ui-density"
           title="UI density"
@@ -503,7 +478,9 @@ function SettingsRouteView() {
             />
           }
         />
-
+      </SettingsSection>
+      <SettingsSection title="Fonts">
+        <ThemeFontSettings />
         <SettingsRow
           id="setting-base-font-size"
           title="App font size"

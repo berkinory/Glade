@@ -2,7 +2,7 @@ import {
   normalizeFontFamilyCssValue,
   normalizeMonospaceFontFamilyCssValue,
 } from "../lib/fontFamily";
-import type { ThemeVariant, ChromeTheme, ThemePack, WindowMaterial } from "./themeModel";
+import type { ThemeVariant, ChromeTheme, ThemePack } from "./themeModel";
 import {
   BLACK,
   PANEL_BASE_ALPHA,
@@ -26,16 +26,12 @@ import {
 export function buildThemeCssVariables(
   pack: ThemePack,
   variant: ThemeVariant,
-  options?: { electron?: boolean; isMac?: boolean; systemUiFont?: boolean },
+  options?: { systemUiFont?: boolean },
 ): ThemeCssVariableBuild {
   const resolvedTokens = buildResolvedThemeTokens(pack, variant);
   const codexVariables = resolvedTokens.codexVariables;
   const readCodexVariable = (name: string) => getRequiredVariable(codexVariables, name);
 
-  const material: WindowMaterial =
-    options?.electron === true && options?.isMac === true && !pack.theme.opaqueWindows
-      ? "translucent"
-      : "opaque";
   const warningColor = WARNING_COLOR_BY_VARIANT[variant];
 
   const sidebarSurface = readCodexVariable("--color-background-surface");
@@ -56,28 +52,18 @@ export function buildThemeCssVariables(
   const appVariables: Record<string, string> = {
     "--accent": readCodexVariable("--color-background-accent"),
     "--accent-foreground": readCodexVariable("--color-text-foreground"),
-    "--app-shell-background":
-      material === "translucent"
-        ? "transparent"
-        : readCodexVariable("--color-background-surface-under"),
+    "--app-shell-background": readCodexVariable("--color-background-surface-under"),
 
     "--app-composer-focus-border": composerFocusBorder,
 
-    "--app-composer-picker-backdrop-filter": material === "translucent" ? "blur(32px)" : "none",
+    "--app-composer-picker-backdrop-filter": "blur(32px)",
     "--app-composer-picker-surface": composerPickerMenuSurface,
     "--app-chat-code-surface": chatCodeSurface,
     "--app-user-message-background": chatCodeSurface,
-    "--app-sidebar-backdrop-filter":
-      material === "translucent" ? "blur(4px) saturate(130%)" : "none",
 
     "--app-settings-backdrop-filter": "none",
 
-    "--app-sidebar-surface":
-      material === "translucent"
-        ? variant === "dark"
-          ? `color-mix(in srgb, color-mix(in srgb, ${sidebarSurface} 80%, black) 72%, transparent)`
-          : `color-mix(in srgb, ${sidebarSurface} 38%, transparent)`
-        : sidebarSurface,
+    "--app-sidebar-surface": sidebarSurface,
 
     "--app-settings-surface": settingsSurface,
     "--background": readCodexVariable("--color-background-surface-under"),
@@ -121,7 +107,6 @@ export function buildThemeCssVariables(
   };
 
   return {
-    material,
     variables: {
       ...codexVariables,
       ...resolvedTokens.aliases,
