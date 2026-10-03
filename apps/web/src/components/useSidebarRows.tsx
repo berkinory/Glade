@@ -681,9 +681,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
       return null;
     }
     const { allProjectThreadCount, projectStatus } = projectSidebarData;
-    const projectFolderIconClassName = isProjectPinned
-      ? "opacity-0"
-      : sidebarHoverRevealHideClassName("project-header");
+    const projectFolderIconClassName = sidebarHoverRevealHideClassName("project-header");
     const isProjectRunning = isSidebarProjectRunning(project.id);
     const collapsedProjectStatus = project.expanded ? null : projectStatus;
     // The "open dev server" affordance now lives in the project context menu, so the hover toolbar
@@ -753,6 +751,11 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
                   expanded={project.expanded}
                   appearance={project.appearance}
                 />
+                {isProjectPinned ? (
+                  <span className="absolute -right-1 -bottom-1 flex size-2.5 items-center justify-center rounded-sm bg-sidebar">
+                    <PinStatusIcon pinned className="size-2.5" />
+                  </span>
+                ) : null}
               </SidebarLeadingIcon>
               <div
                 className={cn(
@@ -790,9 +793,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
               className={cn(
                 "sidebar-icon-button absolute left-2 top-1/2 z-20 inline-flex size-4 -translate-y-1/2 cursor-pointer items-center justify-center rounded-sm transition-opacity hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
                 SIDEBAR_ROW_LABEL_TEXT_CLASS_NAME,
-                isProjectPinned
-                  ? "pointer-events-auto opacity-100"
-                  : "pointer-events-none opacity-0 md:group-hover/project-header:pointer-events-auto md:group-hover/project-header:opacity-100 md:group-has-[:focus-visible]/project-header:pointer-events-auto md:group-has-[:focus-visible]/project-header:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100",
+                "pointer-events-none opacity-0 md:group-hover/project-header:pointer-events-auto md:group-hover/project-header:opacity-100 md:group-has-[:focus-visible]/project-header:pointer-events-auto md:group-has-[:focus-visible]/project-header:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100",
               )}
               onMouseDown={(event) => {
                 event.preventDefault();
