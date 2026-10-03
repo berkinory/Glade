@@ -682,7 +682,7 @@ export default function ThreadTerminalDrawer({
         />
       ) : null}
 
-      {isWorkspaceMode || showTerminalGroupTabs ? (
+      {showTerminalGroupTabs ? (
         <TerminalWorkspaceTabBar
           terminalGroups={resolvedTerminalGroups}
           activeGroupId={resolvedActiveGroupId}
