@@ -220,6 +220,7 @@ export function SidebarThreadRowContent({
         {hasDraft && !isActive ? (
           <span
             aria-label="Unsent draft"
+            data-sidebar-draft-indicator
             title="Unsent draft"
             className={cn(
               "inline-flex shrink-0 items-center justify-center text-muted-foreground",

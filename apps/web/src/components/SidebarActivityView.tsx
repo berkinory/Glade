@@ -193,7 +193,7 @@ function ActivityThreadRow({
         >
           <span
             className={cn(
-              "flex min-w-0 items-center gap-1.5 overflow-hidden pr-5 transition-[padding] duration-100 ease-out",
+              "flex min-w-0 items-center gap-1.5 overflow-hidden pr-5 has-[[data-sidebar-draft-indicator]]:pr-[4.25rem] transition-[padding] duration-100 ease-out",
 
               "group-hover/activity-row:pr-[4.25rem] group-focus-within/activity-row:pr-[4.25rem]",
             )}
@@ -216,6 +216,7 @@ function ActivityThreadRow({
             {hasDraft && !isActive ? (
               <span
                 aria-label="Unsent draft"
+                data-sidebar-draft-indicator
                 title="Unsent draft"
                 className={cn(
                   "inline-flex shrink-0 items-center justify-center text-muted-foreground",
