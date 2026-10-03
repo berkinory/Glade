@@ -136,6 +136,11 @@ const AVAILABLE_NOW_DEFINITIONS: readonly ShortcutDefinition[] = [
     description: "Open the composer provider and model picker.",
   },
   {
+    command: "model.effort.next",
+    label: "Next model effort",
+    description: "Cycle supported reasoning effort levels in the composer or model picker.",
+  },
+  {
     command: "model.next",
     label: "Next model",
     description:

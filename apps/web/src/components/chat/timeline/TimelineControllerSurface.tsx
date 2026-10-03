@@ -78,7 +78,6 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
     onMessagesPointerUp,
     onTrailHighlightsChange,
     onMessagesTouchEnd,
-    contentInsetBottomPx,
   } = controller.props;
   const {
     handleMessagesPointerCancel,
@@ -349,7 +348,7 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
         ListFooterComponent={listFooter}
         className={cn(
           "h-full overflow-x-hidden overscroll-y-contain py-3 [scrollbar-gutter:stable] sm:py-4",
-          contentInsetBottomPx ? null : "scroll-fade-b",
+          "scroll-fade-y transcript-scroll-fade",
           ENVIRONMENT_CONTENT_INSET_MOTION_CLASS,
           CHAT_COLUMN_GUTTER_CLASS_NAME,
         )}

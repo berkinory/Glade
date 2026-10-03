@@ -41,6 +41,7 @@ export const STATIC_KEYBINDING_COMMANDS = [
   "composer.focus.toggle",
   "chat.find",
   "modelPicker.toggle",
+  "model.effort.next",
   "model.next",
   "model.previous",
   "traitsPicker.toggle",

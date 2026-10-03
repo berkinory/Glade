@@ -29,7 +29,7 @@ export function composerOverlayScrollMaskImage(
     Math.max(COMPOSER_OVERLAY_BOTTOM_CLEARANCE_PX, Math.round(bottomClearancePx)),
   );
   const fadeStartPx = Math.min(overlayHeightPx, fadeEndPx + COMPOSER_OVERLAY_MASK_FADE_PX);
-  return `linear-gradient(to bottom, #000 calc(100% - ${fadeStartPx}px), transparent calc(100% - ${fadeEndPx}px))`;
+  return `linear-gradient(to bottom, transparent, #000 var(--scroll-fade-t, 0px), #000 calc(100% - ${overlayHeightPx}px - var(--scroll-fade-b, 0px)), rgb(0 0 0 / calc(1 - var(--transcript-bottom-fade, 0))) calc(100% - ${overlayHeightPx}px), rgb(0 0 0 / calc(1 - var(--transcript-bottom-fade, 0))) calc(100% - ${fadeStartPx}px), transparent calc(100% - ${fadeEndPx}px))`;
 }
 
 const COMPOSER_OVERLAY_AFFORDANCE_GAP_PX = 8;

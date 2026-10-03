@@ -62,6 +62,7 @@ import {
   rewriteMarkdownFileUriHref,
 } from "../markdown-links";
 import type { ExpandedImagePreview } from "./chat/ExpandedImagePreview";
+import { MarkdownChatLink, markdownChatLinkId } from "./chat/MarkdownChatLink";
 import { GeneratedMarkdownImage } from "./chat/GeneratedMarkdownImage";
 import { TerminalContextInlineChip } from "./chat/TerminalContextInlineChip";
 import type { ParsedTerminalContextEntry } from "../lib/terminalContext";
@@ -629,6 +630,8 @@ const GITHUB_ALERTS: Record<GithubAlertKind, { title: string; icon: LucideIcon }
   caution: { title: "Caution", icon: OctagonAlertIcon },
 };
 
+const MarkdownLinkContext = createContext(false);
+
 const MARKDOWN_COMPONENTS: Components = {
   blockquote: function MarkdownBlockquote({ node: _node, children, ...props }) {
     const kind = (props as { "data-github-alert"?: GithubAlertKind })["data-github-alert"];
@@ -649,6 +652,14 @@ const MARKDOWN_COMPONENTS: Components = {
     const { isUserVariant, cwd, knownAbsoluteFilePaths, resolvedTheme } =
       useContext(MarkdownRenderContext)!;
     const restoredHref = href ? restoreLiteralDollarPlaceholders(href) : href;
+    if (restoredHref?.startsWith("#chat=")) {
+      return (
+        <MarkdownChatLink href={restoredHref} threadId={markdownChatLinkId(restoredHref)}>
+          <MarkdownLinkContext value={true}>{children}</MarkdownLinkContext>
+        </MarkdownChatLink>
+      );
+    }
+    const linkedChildren = <MarkdownLinkContext value={true}>{children}</MarkdownLinkContext>;
     const isExternalHttp = isExternalHttpHref(restoredHref);
     if (isUserVariant && isExternalHttp) {
       const plainText = nodeToPlainText(children);
@@ -675,7 +686,7 @@ const MARKDOWN_COMPONENTS: Components = {
           {isExternalHttp ? (
             <LinkChipIcon url={restoredHref} className={MARKDOWN_EXTERNAL_LINK_ICON_CLASS_NAME} />
           ) : null}
-          {children}
+          {linkedChildren}
         </a>
       );
     }
@@ -684,7 +695,7 @@ const MARKDOWN_COMPONENTS: Components = {
       <OpenableFileChip
         targetPath={targetPath}
         theme={resolvedTheme}
-        label={children}
+        label={linkedChildren}
         {...(restoredHref ? { href: restoredHref } : {})}
       />
     );
@@ -764,11 +775,13 @@ const MARKDOWN_COMPONENTS: Components = {
   },
   img: function MarkdownImage({ node: _node, src, alt: altProp, ...props }) {
     const { cwd, onImageExpand } = useContext(MarkdownRenderContext)!;
+    const linked = useContext(MarkdownLinkContext);
     const alt = altProp ?? "";
     const restoredSrc = src ? restoreLiteralDollarPlaceholders(src) : "";
     if (isLocalImageMarkdownSrc(restoredSrc)) {
       return (
         <GeneratedMarkdownImage
+          linked={linked}
           src={restoredSrc}
           alt={alt}
           cwd={cwd}
@@ -776,7 +789,20 @@ const MARKDOWN_COMPONENTS: Components = {
         />
       );
     }
-    return <img {...props} src={restoredSrc} alt={alt} loading="lazy" />;
+    const image = <img {...props} src={restoredSrc || undefined} alt={alt} loading="lazy" />;
+    if (linked || !onImageExpand || !restoredSrc) return image;
+    return (
+      <button
+        type="button"
+        className="inline-block cursor-zoom-in rounded-sm focus-visible:outline-2"
+        aria-label={`Expand ${alt || "image"}`}
+        onClick={() =>
+          onImageExpand({ images: [{ src: restoredSrc, name: alt || "Image" }], index: 0 })
+        }
+      >
+        {image}
+      </button>
+    );
   },
   li: function MarkdownListItem({ node, children, ...props }) {
     const isTaskItem =

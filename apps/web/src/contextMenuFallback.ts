@@ -25,7 +25,10 @@ export function showContextMenuFallback<T extends string>(
     const overlay = document.createElement("div");
     overlay.style.cssText = "position:fixed;inset:0;z-index:9999";
 
+    const previousFocus = document.activeElement;
     const menu = document.createElement("div");
+    menu.setAttribute("role", "menu");
+    menu.setAttribute("aria-label", "Actions");
     menu.className =
       "fixed z-[10000] min-w-[180px] rounded-xl border border-white/[0.08] shadow-xl animate-in fade-in zoom-in-95";
 
@@ -48,6 +51,8 @@ export function showContextMenuFallback<T extends string>(
       document.removeEventListener("keydown", onKeyDown);
       overlay.remove();
       menu.remove();
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected)
+        previousFocus.focus({ preventScroll: true });
       resolve(result);
     }
 
@@ -60,6 +65,7 @@ export function showContextMenuFallback<T extends string>(
     }
 
     function onKeyDown(e: KeyboardEvent) {
+      if (e.isComposing) return;
       if (e.key === "Escape") {
         e.preventDefault();
         cleanup(null);
@@ -92,6 +98,7 @@ export function showContextMenuFallback<T extends string>(
 
       const btn = document.createElement("button");
       btn.type = "button";
+      btn.setAttribute("role", "menuitem");
       btn.className = isDestructive
         ? "flex w-full min-h-7 cursor-default select-none items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-ui text-destructive transition-colors hover:bg-destructive/10"
         : "flex w-full min-h-7 cursor-default select-none items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-ui text-foreground/86 transition-colors";
@@ -119,6 +126,7 @@ export function showContextMenuFallback<T extends string>(
 
     document.body.appendChild(overlay);
     document.body.appendChild(menu);
+    focusItem(0);
 
     requestAnimationFrame(() => {
       const rect = menu.getBoundingClientRect();

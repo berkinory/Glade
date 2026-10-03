@@ -314,3 +314,11 @@ send restores content to its captured thread, preserving newer edits and attachm
 An unconfirmed delivery keeps the workspace and uploads intact and asks you to check
 the chat before retrying; it is not automatically resent. Entering prompt history with
 Up requires an empty composer; normal Up/Down history navigation still works afterward.
+
+### Reading and linking conversations
+
+Agent details retain the mounted conversation, including scroll position and expanded rows. Returning restores keyboard focus. Transcript edge fades follow scroll progress; unsupported scroll-timeline browsers keep the content clear and retain the composer footer dissolve.
+
+Ordinary Markdown images open the existing image preview with click, Enter or Space. Images inside links follow that link exclusively, including unavailable local images. Local previews still require workspace authorization. Closing a preview returns focus to its trigger.
+
+Use `[chat title](#chat=THREAD_ID)` in Markdown to link a conversation in this Glade workspace. The fragment is an internal Markdown convention mapped to the existing `/$threadId` route, not an operating-system URL handler. IDs may be percent-encoded and must decode to 1–128 ASCII letters, digits, underscores or hyphens. The target must exist in the accessible server chat list; missing or malformed targets show an error without navigating or discarding drafts. Titles are labels, never lookup keys. Ordinary web and file links retain their existing handling.

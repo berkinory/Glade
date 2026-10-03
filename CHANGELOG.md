@@ -4,9 +4,15 @@
 
 ### New
 
+- Cycle supported model effort levels with Shift+Tab in the composer.
+- Links to other chats in agent replies open the referenced conversation directly.
+
 - Add files and folders to Explorer with drag and drop, or paste files from the clipboard.
 
 ### Improved
+
+- Chat messages fade smoothly at the header and message input while scrolling, keeping the latest reply clear.
+- Markdown images open in a larger preview, while linked images keep their normal link behavior.
 
 - New chats offer a direct Worktree toggle, and project selection stays clear of other chats' worktrees.
 - You can start another chat while a worktree is being prepared.
@@ -46,6 +52,9 @@
 - Models load faster on first use, with a balanced initial reasoning effort when you have not chosen one.
 
 ### Fixed
+
+- Open menus take priority over keyboard shortcuts, and dismissing them preserves your chat selection.
+- Returning from agent details preserves your place in the conversation.
 
 - Worktree preparation stays reachable when switching chats, and failed sends restore the correct draft.
 - Sending a message no longer clears text or attachments added while the send was being prepared.

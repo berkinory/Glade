@@ -1,3 +1,4 @@
+import { useComposerEffortCycle } from "../useComposerEffortCycle";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { appendVoiceTranscriptToPrompt } from "../../ChatView.logic.worktree";
@@ -200,7 +201,17 @@ export function useChatComposerController({
     };
   }, [pendingComposerFocusRef, focusComposer]);
 
+  const { cycleEffort, cancelEffortPreview } = useComposerEffortCycle({
+    threadId,
+    provider: selectedProvider,
+    model: provider.selectedModel,
+    modelOptions: provider.composerModelOptions?.[selectedProvider],
+    runtimeModel: provider.selectedRuntimeModel,
+    pickerOpen: session.isComposerModelEffortPickerOpen,
+    setPickerOpen: setIsModelPickerOpen,
+  });
   const handleModelPickerOpenChange = (open: boolean) => {
+    cancelEffortPreview();
     setIsModelPickerOpen(open);
     if (open) {
       setIsTraitsPickerOpen(false);
@@ -361,6 +372,8 @@ export function useChatComposerController({
     scheduleComposerFocus,
     handleComputerControlModeChange,
     computerControlChangeSequence,
+    cycleEffort,
+    cancelEffortPreview,
     handleModelPickerOpenChange,
     handleTraitsPickerOpenChange,
     isVoiceRecording,

@@ -144,6 +144,11 @@ const DEFAULT_SHORTCUT_FALLBACKS: ResolvedKeybindingsConfig = [
     whenAst: whenNotTerminalFocus,
   },
   {
+    command: "model.effort.next",
+    shortcut: commandShortcut("tab", { shiftKey: true, modKey: false }),
+    whenAst: whenNotTerminalFocus,
+  },
+  {
     command: "model.next",
     shortcut: commandShortcut("]", { altKey: true, modKey: false }),
     whenAst: whenNotTerminalFocus,

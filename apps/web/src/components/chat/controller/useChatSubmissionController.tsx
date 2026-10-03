@@ -69,7 +69,6 @@ export function useChatSubmissionController({
     composerFooterTierRef,
     setComposerFooterTier,
     composerFooterLayoutSyncRef,
-    setIsModelPickerOpen,
     setIsTraitsPickerOpen,
     isComposerModelEffortPickerOpen,
     setComposerDraftProviderModelOptions,
@@ -259,7 +258,7 @@ export function useChatSubmissionController({
     if (open) {
       handleModelPickerOpenChange(true);
     } else {
-      setIsModelPickerOpen(false);
+      handleModelPickerOpenChange(false);
       setIsTraitsPickerOpen(false);
     }
   };

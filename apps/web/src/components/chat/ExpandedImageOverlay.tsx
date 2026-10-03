@@ -1,4 +1,4 @@
-import { useLayoutEffect } from "react";
+import { useLayoutEffect, useRef } from "react";
 
 import { Button } from "~/components/ui/button";
 import { ChevronLeftIcon, ChevronRightIcon, XIcon } from "~/lib/icons";
@@ -18,14 +18,21 @@ export function ExpandedImageOverlay({
 }: ExpandedImageOverlayProps) {
   const expandedImageItem = expandedImage ? expandedImage.images[expandedImage.index] : null;
   const open = expandedImageItem !== null;
+  const overlayRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
     if (!open) {
       return;
     }
 
+    const previousFocus = document.activeElement;
+    overlayRef.current?.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
     notifyNativeSurfaceOcclusionChange();
-    return notifyNativeSurfaceOcclusionChange;
+    return () => {
+      notifyNativeSurfaceOcclusionChange();
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected)
+        previousFocus.focus({ preventScroll: true });
+    };
   }, [open]);
 
   if (!expandedImage || !expandedImageItem) {
@@ -35,6 +42,26 @@ export function ExpandedImageOverlay({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-6 [-webkit-app-region:no-drag]"
+      ref={overlayRef}
+      onKeyDown={(event) => {
+        if (event.nativeEvent.isComposing) return;
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          onClose();
+        }
+        if (event.key === "Tab") {
+          const controls = Array.from(
+            event.currentTarget.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"),
+          );
+          const next = event.shiftKey ? controls.at(-1) : controls[0];
+          const boundary = event.shiftKey ? controls[0] : controls.at(-1);
+          if (document.activeElement === boundary) {
+            event.preventDefault();
+            next?.focus();
+          }
+        }
+      }}
       role="dialog"
       aria-modal="true"
       aria-label="Expanded image preview"

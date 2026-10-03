@@ -1,3 +1,4 @@
+import { hasOpenKeyboardOverlay } from "~/lib/keyboardOverlay";
 import { ThreadId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { type ModelSlug } from "@glade/contracts/provider/model";
 import { type ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
@@ -69,6 +70,8 @@ interface ChatKeyboardShortcutsInput {
   shouldRenderChatPaneContent: boolean;
   setThreadFindOpen: Dispatch<SetStateAction<boolean>>;
   setThreadFindFocusNonce: Dispatch<SetStateAction<number>>;
+  cycleEffort: () => boolean;
+  cancelEffortPreview: () => void;
   handleModelPickerOpenChange: (open: boolean) => void;
   scheduleComposerFocus: () => void;
   modelOptionsByProvider: ReturnType<typeof useChatProviderModels>["modelOptionsByProvider"];
@@ -151,6 +154,8 @@ type ChatKeyboardShortcutsControllerInput = {
     | "isVoiceRecording"
     | "isVoiceTranscribing"
     | "toggleComposerFocus"
+    | "cycleEffort"
+    | "cancelEffortPreview"
     | "handleModelPickerOpenChange"
     | "scheduleComposerFocus"
     | "handleTraitsPickerOpenChange"
@@ -225,6 +230,8 @@ export function useChatKeyboardShortcuts({
     isVoiceRecording,
     isVoiceTranscribing,
     toggleComposerFocus,
+    cycleEffort,
+    cancelEffortPreview,
     handleModelPickerOpenChange,
     scheduleComposerFocus,
     handleTraitsPickerOpenChange,
@@ -259,7 +266,35 @@ export function useChatKeyboardShortcuts({
       ["terminal.splitUp", splitTerminalUp],
     ]);
     const handler = (event: globalThis.KeyboardEvent) => {
-      if (!activeThreadId || event.defaultPrevented) return;
+      if (!activeThreadId || event.defaultPrevented || event.isComposing) return;
+      const picker = document.querySelector<HTMLElement>("[data-model-picker-popup]");
+      const effortCommand =
+        resolveShortcutCommand(event, keybindings, {
+          context: { terminalFocus: isTerminalFocused() },
+        }) === "model.effort.next";
+      if (effortCommand) {
+        if (
+          isTerminalFocused() ||
+          isVoiceRecording ||
+          isVoiceTranscribing ||
+          isComposerApprovalState ||
+          hasOpenKeyboardOverlay(picker)
+        )
+          return;
+        if (
+          !eventTargetsComposer(event, composerFormRef.current) &&
+          !(event.target instanceof Node && picker?.contains(event.target))
+        )
+          return;
+        if (cycleEffort()) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        return;
+      }
+      if (picker && event.target instanceof Node && picker.contains(event.target))
+        cancelEffortPreview();
+      if (hasOpenKeyboardOverlay()) return;
 
       if (
         hasLiveTurn &&
@@ -556,6 +591,8 @@ export function useChatKeyboardShortcuts({
     onBackgroundAllForegroundSubagentStripItems,
     isFocusedPane,
     hasLiveTurn,
+    cycleEffort,
+    cancelEffortPreview,
     handleModelPickerOpenChange,
     handleTraitsPickerOpenChange,
     shouldRenderChatPaneContent,

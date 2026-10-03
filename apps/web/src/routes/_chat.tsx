@@ -1,3 +1,4 @@
+import { hasOpenKeyboardOverlay } from "~/lib/keyboardOverlay";
 import type { ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import { useQuery } from "@tanstack/react-query";
 import { Outlet, createFileRoute, useNavigate } from "@tanstack/react-router";
@@ -293,7 +294,7 @@ function ChatRouteGlobalShortcuts() {
 
   useEffect(() => {
     const onWindowKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented) return;
+      if (event.defaultPrevented || event.isComposing || hasOpenKeyboardOverlay()) return;
       const shortcutContext = {
         terminalFocus: isTerminalFocused(),
         terminalOpen,

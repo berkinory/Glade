@@ -31,6 +31,7 @@ configuration errors and prevent automatic rewriting of the file.
   { "key": "mod+n", "command": "chat.new", "when": "!terminalFocus" },
   { "key": "mod+shift+o", "command": "chat.new", "when": "!terminalFocus" },
   { "key": "mod+shift+n", "command": "chat.newLocal", "when": "!terminalFocus" },
+  { "key": "shift+tab", "command": "model.effort.next", "when": "!terminalFocus" },
   { "key": "cmd+l", "command": "composer.focus.toggle", "when": "!terminalFocus" },
   { "key": "mod+o", "command": "editor.openFavorite" },
   { "key": "mod+s", "command": "editor.file.save", "when": "!terminalFocus" }
@@ -65,6 +66,7 @@ Invalid rules are ignored. Invalid config files are ignored. Warnings are logged
 - `chat.new`: create a new chat thread preserving the active thread's branch/worktree state
 - `chat.newLocal`: create a new chat thread for the active project in a new environment (local/worktree determined by app settings (default `local`))
 - `composer.focus.toggle`: focus or blur the chat prompt composer
+- `model.effort.next`: cycle the current model's supported effort levels while the composer or model picker owns focus (Shift+Tab by default). Unsupported models keep normal reverse-tab navigation. The existing picker briefly shows the selection; interacting with it keeps it open. Menus, dialogs, terminal input, IME composition, approvals and voice capture take priority.
 - `thread.copyId`: copy the active thread's ID to the clipboard
 - `editor.openFavorite`: open current project/worktree in the last-used editor
 - `editor.file.save`: write the focused file editor's unsaved changes back to disk

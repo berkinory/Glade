@@ -301,7 +301,7 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     title: "Show effort control",
     target: "setting-composerEffortSlider",
     keywords:
-      "Effort slider Show reasoning effort as a slider in the composer model menu once a chat has started. fast mode reasoning thinking level picker",
+      "Effort slider Show reasoning effort as a slider in the composer model menu once a chat has started. fast mode reasoning thinking level picker Shift Tab cycle model effort next",
   },
   {
     id: "behavior:diff-line-wrapping",

@@ -17,6 +17,7 @@ import type { ExpandedImagePreview } from "./ExpandedImagePreview";
 import { toastManager } from "../ui/toast";
 
 export interface GeneratedMarkdownImageProps {
+  linked?: boolean;
   src: string;
   alt: string;
   cwd: string | undefined;
@@ -131,6 +132,13 @@ function GeneratedMarkdownImageContent(props: GeneratedMarkdownImageProps) {
       });
   };
 
+  if (props.linked) {
+    return (
+      <span className="chat-generated-image">
+        <img {...imgProps} alt={accessibleName} className="chat-generated-image__img" />
+      </span>
+    );
+  }
   if (status === "error" && !resolvingGrant) {
     return (
       <LocalImageErrorCard

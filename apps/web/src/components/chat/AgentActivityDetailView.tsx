@@ -1,5 +1,5 @@
 import { pluralize } from "@glade/shared/text/text";
-import { type CSSProperties, type ReactNode } from "react";
+import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { BotIcon, ChevronLeftIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import type { WorkLogEntry } from "../../workLog.types";
@@ -41,6 +41,17 @@ export function AgentActivityDetailView({
   onImageExpand,
   timestampFormat,
 }: AgentActivityDetailViewProps) {
+  const backRef = useRef<HTMLButtonElement>(null);
+  useLayoutEffect(() => {
+    const previousFocus = document.activeElement;
+    backRef.current?.focus({ preventScroll: true });
+    return () => {
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected)
+        queueMicrotask(() => {
+          if (previousFocus.isConnected) previousFocus.focus({ preventScroll: true });
+        });
+    };
+  }, []);
   const chatTypographyStyle = getChatTranscriptTextStyle(chatFontSizePx);
   const footerTextStyle = getChatMessageFooterTextStyle(chatFontSizePx);
   const scrollStyle: CSSProperties = {
@@ -63,6 +74,7 @@ export function AgentActivityDetailView({
     >
       <div className={cn(CHAT_COLUMN_FRAME_CLASS_NAME, "px-1")}>
         <button
+          ref={backRef}
           type="button"
           data-scroll-anchor-ignore
           className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-muted-foreground/70 transition-colors hover:bg-[var(--color-background-button-secondary-hover)] hover:text-foreground"

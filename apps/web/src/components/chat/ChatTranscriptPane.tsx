@@ -221,16 +221,24 @@ export function ChatTranscriptPane({
       <HandoffPreparationNotice key={activeThreadId} threadId={activeThreadId} />
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
         {agentActivityDetail && onCloseAgentActivityDetail ? (
-          <AgentActivityDetailView
-            detail={agentActivityDetail}
-            chatFontSizePx={chatFontSizePx}
-            contentInsetRightPx={contentInsetRightPx}
-            markdownCwd={markdownCwd}
-            onBack={onCloseAgentActivityDetail}
-            onImageExpand={onExpandTimelineImage}
-            timestampFormat={timestampFormat}
-          />
-        ) : (
+          <div className="absolute inset-0 z-20 bg-background">
+            <AgentActivityDetailView
+              detail={agentActivityDetail}
+              chatFontSizePx={chatFontSizePx}
+              contentInsetRightPx={contentInsetRightPx}
+              markdownCwd={markdownCwd}
+              onBack={onCloseAgentActivityDetail}
+              onImageExpand={onExpandTimelineImage}
+              timestampFormat={timestampFormat}
+            />
+          </div>
+        ) : null}
+        <div
+          className="flex min-h-0 flex-1 flex-col"
+          inert={Boolean(agentActivityDetail)}
+          aria-hidden={Boolean(agentActivityDetail)}
+          style={agentActivityDetail ? { visibility: "hidden" } : undefined}
+        >
           <MessagesTimeline
             key={activeThreadId}
             hasMessages={hasMessages}
@@ -266,7 +274,7 @@ export function ChatTranscriptPane({
             editableUserMessageId={editableUserMessageId ?? null}
             isRevertingCheckpoint={isRevertingCheckpoint}
             onImageExpand={onExpandTimelineImage}
-            followLiveOutput={followLiveOutput}
+            followLiveOutput={followLiveOutput && !agentActivityDetail}
             onIsAtEndChange={onIsAtEndChange}
             {...(onNavigate ? { onNavigate } : {})}
             onTrailHighlightsChange={activeTrailStore.set}
@@ -302,7 +310,7 @@ export function ChatTranscriptPane({
             {...(expandedWorkGroups ? { expandedWorkGroups } : {})}
             {...(onToggleWorkGroup ? { onToggleWorkGroup } : {})}
           />
-        )}
+        </div>
 
         {!agentActivityDetail ? (
           <div

@@ -1,3 +1,5 @@
+import { isTerminalFocused } from "~/lib/terminalFocus";
+import { hasOpenKeyboardOverlay } from "~/lib/keyboardOverlay";
 import type { ProjectId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -259,7 +261,15 @@ export function SingleChatSurface(props: {
 
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.repeat || event.altKey) return;
+      if (
+        event.defaultPrevented ||
+        event.isComposing ||
+        hasOpenKeyboardOverlay() ||
+        isTerminalFocused() ||
+        event.repeat ||
+        event.altKey
+      )
+        return;
       const isPrimaryModifier = event.ctrlKey || event.metaKey;
       if (!isPrimaryModifier) return;
       const key = event.key.toLowerCase();
