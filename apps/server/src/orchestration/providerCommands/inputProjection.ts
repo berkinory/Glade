@@ -1,9 +1,6 @@
 import { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { type ProviderSkillReference } from "@glade/contracts/provider/providerDiscovery";
-import {
-  type ChatAttachment,
-  PROVIDER_SEND_TURN_MAX_INPUT_CHARS,
-} from "@glade/contracts/orchestration/threadEntities";
+import { PROVIDER_SEND_TURN_MAX_INPUT_CHARS } from "@glade/contracts/orchestration/threadEntities";
 
 export function toNonEmptyProviderInput(value: string | undefined): string | undefined {
   const normalized = value?.trim();
@@ -28,16 +25,6 @@ export function normalizeSkillMentionTextForProvider(input: {
     );
   }
   return nextText;
-}
-
-export function attachmentTitleSeed(attachment: ChatAttachment | undefined): string {
-  if (!attachment) {
-    return "";
-  }
-  if (attachment.type === "image" || attachment.type === "file") {
-    return attachment.name;
-  }
-  return attachment.text.trim();
 }
 
 export const PROVIDER_INPUT_SAFETY_MARGIN_CHARS = 1_000;

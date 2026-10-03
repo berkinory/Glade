@@ -22,6 +22,7 @@ interface ExitProof {
 }
 export interface CodexProcessLease {
   readonly child: ChildProcessWithoutNullStreams;
+  readonly acquireAuxiliary: () => CodexProcessLease;
   readonly writer: { write: (message: unknown) => Promise<void>; close: (error?: Error) => void };
   readonly initialize: (run: () => Promise<void>) => Promise<void>;
   readonly openThread: <T>(run: () => Promise<T>) => Promise<T>;
@@ -208,6 +209,10 @@ export class CodexPooledProcess {
     };
     return {
       child: this.child,
+      acquireAuxiliary: () => {
+        if (released) throw new Error("Codex session is closed");
+        return this.acquire(true);
+      },
       writer: {
         write: (message) => {
           if (state.writesClosed || released)

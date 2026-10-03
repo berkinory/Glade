@@ -1,3 +1,7 @@
+import {
+  ThreadTitleGeneration,
+  type ThreadTitleGenerationShape,
+} from "../Services/ThreadTitleGeneration";
 import type { ReactorTestHarness } from "./reactorTestTypes";
 import {
   ProjectId,
@@ -141,6 +145,7 @@ export function makeReactorTestHarness() {
     readonly forkThreadResult?: ProviderForkThreadResult;
     readonly startReactor?: boolean;
     readonly interruptTurn?: ProviderServiceShape["interruptTurn"];
+    readonly updateNativeHistory?: ProviderServiceShape["updateNativeHistory"];
     readonly commandEventTimeout?: Duration.Duration;
     readonly gatewayOperationId?: string;
     readonly gitWritingModelSelection?: ModelSelection;
@@ -422,6 +427,9 @@ export function makeReactorTestHarness() {
     );
     const publishBranch = vi.fn(() => Effect.void);
     const withMutation: GitCoreShape["withMutation"] = (_cwd, effect) => effect;
+    const generateTitle = vi.fn<ThreadTitleGenerationShape["generate"]>(() =>
+      Effect.succeed("Generated conversation title"),
+    );
     const generateBranchName = vi.fn<TextGenerationShape["generateBranchName"]>(() =>
       Effect.fail(
         new TextGenerationError({
@@ -459,7 +467,7 @@ export function makeReactorTestHarness() {
       getCapabilities: (_provider) => Effect.succeed({}),
       rollbackConversation,
       compactThread: () => unsupported(),
-      updateNativeHistory: () => unsupported(),
+      updateNativeHistory: input?.updateNativeHistory ?? (() => unsupported()),
       closeRuntimeEvents: Effect.void,
       streamEvents: Stream.fromPubSub(runtimeEventPubSub),
     };
@@ -496,6 +504,11 @@ export function makeReactorTestHarness() {
           updateProvider: () => Effect.die("updateProvider unsupported in test"),
           streamChanges: Stream.empty,
         } as unknown as ProviderHealthShape),
+      ),
+      Layer.provideMerge(
+        Layer.succeed(ThreadTitleGeneration, {
+          generate: generateTitle,
+        }),
       ),
       Layer.provideMerge(Layer.succeed(CheckpointStore, checkpointStore)),
       Layer.provideMerge(
@@ -653,6 +666,7 @@ export function makeReactorTestHarness() {
       renameBranch,
       publishBranch,
       generateBranchName,
+      generateTitle,
       stateDir,
       stageAttachment: async (
         attachment: {

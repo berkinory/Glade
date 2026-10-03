@@ -20,6 +20,7 @@ export const readThreadTitleIntent = (
     const event = Option.getOrUndefined(latest);
     return {
       sequence,
+      titleSource: event?.type === "thread.meta-updated" ? event.payload.titleSource : undefined,
       userTitle:
         event?.type === "thread.meta-updated" && event.payload.titleSource === "user"
           ? event.payload.title
@@ -39,14 +40,18 @@ export const applyNativeThreadTitle = (input: {
 }) =>
   Effect.gen(function* () {
     if (isGenericChatThreadTitle(input.title)) return;
-    const { sequence, userTitle } = yield* readThreadTitleIntent(input.engine, input.threadId);
-    if (userTitle !== undefined && userTitle !== input.title) {
-      // A rename can precede native history creation. Preserve the durable user intent until the
-      // provider has a session to rename instead of replacing it with its first generated title.
-      yield* input.provider.updateNativeHistory({
-        threadId: input.threadId,
-        action: { type: "rename", title: userTitle },
-      });
+    const { sequence, userTitle, titleSource } = yield* readThreadTitleIntent(
+      input.engine,
+      input.threadId,
+    );
+    if (titleSource === "auto") return;
+    if (userTitle !== undefined) {
+      // Native rename echoes must not relinquish durable user ownership.
+      if (userTitle !== input.title)
+        yield* input.provider.updateNativeHistory({
+          threadId: input.threadId,
+          action: { type: "rename", title: userTitle },
+        });
       return;
     }
     yield* input.engine

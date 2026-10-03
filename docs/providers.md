@@ -45,10 +45,18 @@ provider feature is supported through Glade.
 
 ## Conversation titles and history
 
-Chat titles come from the native provider session. Before a native title exists, Glade shows a short
-version of the first user message. Renaming a chat also renames its native session; a rename made
-before the session exists is applied when the provider first supplies a title. Glade does not make
-an extra model call to generate or regenerate titles. Use `/rename <title>` to choose your own.
+Glade generates a title once, in the background, from the first user message containing at least
+three letters or numbers. Short or punctuation-only messages defer generation until a meaningful
+message arrives. Only one title request runs at a time, without delaying the chat response.
+The separate request contains no conversation history, repository instructions,
+skills, or MCP servers. Codex uses a temporary thread in the chat's existing app-server process;
+Claude uses a short-lived CLI request. Codex prefers `gpt-6-luna`; Claude prefers `claude-sonnet-5-5`. If that model
+is unavailable, Glade uses the triggering message's model with the lowest supported effort other
+than `none`. A short message-based title remains visible if generation fails.
+
+Manual renames always win over generated titles. Native title notifications do not replace a title
+owned by Glade. Renaming a chat also renames its native session; a rename made before the session
+exists is applied when the provider first supplies a title. Use `/rename <title>` to choose your own.
 
 Deleting a chat also deletes its Codex or Claude session history. Codex chats archive and unarchive
 in Codex too; Claude has no native archive operation, so archiving stays local. If native deletion

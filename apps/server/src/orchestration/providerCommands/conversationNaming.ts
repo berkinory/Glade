@@ -1,4 +1,3 @@
-import { readThreadTitleIntent } from "../runtimeActivities/nativeThreadTitles.ts";
 import type { ServiceMap } from "effect";
 import { Duration, Effect, Option, Cause } from "effect";
 import { WORKTREE_BRANCH_PREFIX, isTemporaryWorktreeBranch } from "@glade/shared/git/git";
@@ -16,11 +15,6 @@ import { resolveTextGenerationInputForSelection } from "../../git/textGeneration
 import { providerStartOptionsFromServerSettings } from "../../settings/settingsPatches";
 import { serverCommandId } from "./deliveryClaims";
 import { type ChatAttachment } from "@glade/contracts/orchestration/threadEntities";
-import {
-  buildPromptThreadTitleFallback,
-  isGenericChatThreadTitle,
-} from "@glade/shared/threads/chatThreads";
-import { attachmentTitleSeed } from "./inputProjection";
 
 const GATEWAY_OPERATION_COMPLETION_WAIT_TIMEOUT = Duration.seconds(120);
 
@@ -245,37 +239,5 @@ export function makeProviderConversationNaming(input: {
     );
   });
 
-  const maybeSetThreadTitleFromMessages = Effect.fnUntraced(function* (threadId: ThreadId) {
-    const { sequence: expectedTitleSequence, userTitle } = yield* readThreadTitleIntent(
-      orchestrationEngine,
-      threadId,
-    );
-    if (userTitle !== undefined) return;
-    const thread = yield* resolveThread(threadId);
-    if (!thread || !isGenericChatThreadTitle(thread.title)) return;
-    const title = thread.messages
-      .filter(
-        (message) =>
-          message.role === "user" &&
-          (message.source === "native" || message.source === "async-user-input"),
-      )
-      .map((message) =>
-        buildPromptThreadTitleFallback(
-          message.text.trim() || attachmentTitleSeed(message.attachments?.[0]) || "",
-        ),
-      )
-      .find((candidate) => !isGenericChatThreadTitle(candidate));
-    if (title === undefined) return;
-    yield* orchestrationEngine
-      .dispatch({
-        type: "thread.meta.update",
-        commandId: serverCommandId("thread-title-fallback-rename"),
-        threadId,
-        title,
-        expectedTitleSequence,
-      })
-      .pipe(Effect.catchTag("OrchestrationCommandInvariantError", () => Effect.void));
-  });
-
-  return { maybeGenerateAndRenameWorktreeBranchForFirstTurn, maybeSetThreadTitleFromMessages };
+  return { maybeGenerateAndRenameWorktreeBranchForFirstTurn };
 }

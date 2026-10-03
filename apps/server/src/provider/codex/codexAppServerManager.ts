@@ -1,3 +1,4 @@
+import { generateCodexThreadTitle, type CodexThreadTitleInput } from "./codexThreadTitle";
 import {
   prepareMcpElicitation,
   decodeMcpElicitationRequest,
@@ -260,6 +261,7 @@ interface CodexSessionContext {
   terminalFailure?: SessionTerminalCause;
   transportError?: Error;
   stopPromise?: Promise<void>;
+  titleGeneration?: { readonly controller: AbortController; readonly settled: Promise<void> };
   teardownError?: Error;
   teardownAllowsRestart?: boolean;
   compacting?: boolean;
@@ -2510,6 +2512,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     let settleBeforeTeardown: Promise<void> | undefined;
     if (!context.stopping) {
       context.stopping = true;
+      context.titleGeneration?.controller.abort();
       this.clearTaskCompleteFallback(context);
       context.gatewaySessionLease?.release();
 
@@ -2523,7 +2526,11 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         );
       }
       const settleHumans = settleBeforeTeardown ?? Promise.resolve();
-      settleBeforeTeardown = Promise.all([settleHumans, this.stopNativeThread(context)])
+      settleBeforeTeardown = Promise.all([
+        settleHumans,
+        this.stopNativeThread(context),
+        context.titleGeneration?.settled,
+      ])
         .then(() => undefined)
         .finally(() => context.stdinWriter.close(stopError));
 
@@ -2709,6 +2716,48 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     };
     setRecentCacheEntry(this.pluginDetailCache, cacheKey, result);
     return result;
+  }
+
+  async generateThreadTitle(input: CodexThreadTitleInput, signal: AbortSignal): Promise<string> {
+    const context = this.requireSession(input.threadId);
+    if (context.titleGeneration)
+      throw new Error("Title generation is already running for this chat.");
+    const controller = new AbortController();
+    const titleSignal = AbortSignal.any([signal, controller.signal]);
+    const generation = (async () => {
+      const skills = await this.listSkills({ cwd: input.cwd, threadId: input.threadId });
+      const configResponse = await this.sendRequest(context, "config/read", {
+        includeLayers: false,
+        cwd: input.cwd,
+      });
+      const config = this.readObject(this.readObject(configResponse), "config");
+      const mcpServers = this.readObject(config, "mcp_servers");
+      titleSignal.throwIfAborted();
+      return generateCodexThreadTitle(
+        context.processLease.acquireAuxiliary(),
+        {
+          ...input,
+          disabledCapabilities: {
+            skillPaths: skills.skills.map((skill) => skill.path),
+            mcpServerNames: Object.keys(mcpServers ?? {}),
+          },
+        },
+        titleSignal,
+      );
+    })();
+    const titleGeneration = {
+      controller,
+      settled: generation.then(
+        () => undefined,
+        () => undefined,
+      ),
+    };
+    context.titleGeneration = titleGeneration;
+    try {
+      return await generation;
+    } finally {
+      if (context.titleGeneration === titleGeneration) delete context.titleGeneration;
+    }
   }
 
   async listModels(threadId?: string, cwd?: string): Promise<ProviderListModelsResult> {

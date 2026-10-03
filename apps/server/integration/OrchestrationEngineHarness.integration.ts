@@ -1,3 +1,4 @@
+import { ThreadTitleGeneration } from "../src/orchestration/Services/ThreadTitleGeneration";
 import { execFileSync } from "node:child_process";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -333,6 +334,11 @@ export const makeOrchestrationIntegrationHarness = (
       Layer.provideMerge(providerHealthLayer),
       Layer.provideMerge(gitCoreLayer),
       Layer.provideMerge(textGenerationLayer),
+      Layer.provideMerge(
+        Layer.succeed(ThreadTitleGeneration, {
+          generate: () => Effect.succeed("Integration conversation"),
+        }),
+      ),
       Layer.provideMerge(ServerSettingsService.layerTest()),
       Layer.provideMerge(AgentGatewayOperationRepositoryLive),
     );

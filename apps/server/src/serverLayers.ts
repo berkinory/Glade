@@ -1,3 +1,4 @@
+import { ThreadTitleGenerationLive } from "./orchestration/Layers/ThreadTitleGeneration";
 import { AppPresentationLive } from "./agentGateway/Layers/AppPresentation";
 import { AgentGatewayDiscoveryLive } from "./agentGateway/Layers/AgentGatewayDiscovery";
 import { HandoffPreparationLive } from "./orchestration/Layers/HandoffPreparation";
@@ -88,6 +89,7 @@ function makeServerRuntimeServicesLayer(
     Layer.provideMerge(providerHealthLayer),
     Layer.provideMerge(OrchestrationEventDeliveryRepositoryLive),
     Layer.provideMerge(GitCoreLive),
+    Layer.provideMerge(ThreadTitleGenerationLive),
     Layer.provideMerge(TextGenerationLayerLive),
     Layer.provideMerge(handoffPreparationLayer),
     Layer.provideMerge(ServerSettingsLive),

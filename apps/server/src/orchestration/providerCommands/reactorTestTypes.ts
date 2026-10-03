@@ -1,3 +1,4 @@
+import type { ThreadTitleGenerationShape } from "../Services/ThreadTitleGeneration";
 import type { ProviderCommandReactorShape } from "../Services/ProviderCommandReactor";
 import type { ServerSettingsShape } from "../../settings/serverSettings";
 import type { OrchestrationEventDeliveryRepositoryShape } from "../../persistence/Services/OrchestrationEventDeliveries";
@@ -61,6 +62,7 @@ export interface ReactorTestHarness {
   >;
   readonly renameBranch: Mock<(input: unknown) => Effect.Effect<{ branch: string }, never, never>>;
   readonly publishBranch: Mock<() => Effect.Effect<void, never, never>>;
+  readonly generateTitle: Mock<ThreadTitleGenerationShape["generate"]>;
   readonly generateBranchName: Mock<TextGenerationShape["generateBranchName"]>;
   readonly stateDir: string;
   readonly stageAttachment: (

@@ -1,3 +1,5 @@
+import { ThreadTitleGeneration } from "../Services/ThreadTitleGeneration";
+import { makeThreadTitleGeneration } from "../providerCommands/threadTitleGeneration";
 import { Effect, Cache, Queue, Stream, Layer } from "effect";
 import {
   ProviderCommandReactorConfig,
@@ -86,6 +88,7 @@ const make = Effect.gen(function* () {
   const deliveryGate = yield* ProviderDeliveryGate;
 
   const textGeneration = yield* TextGeneration;
+  const titleGeneration = yield* ThreadTitleGeneration;
 
   const serverSettings = yield* ServerSettingsService;
 
@@ -255,15 +258,14 @@ const make = Effect.gen(function* () {
     orchestrationEngine,
     persistPriorTranscriptBootstrapCompletion,
   });
-  const { maybeGenerateAndRenameWorktreeBranchForFirstTurn, maybeSetThreadTitleFromMessages } =
-    makeProviderConversationNaming({
-      projectionAccess,
-      gatewayOperations,
-      serverSettings,
-      git,
-      orchestrationEngine,
-      textGeneration,
-    });
+  const { maybeGenerateAndRenameWorktreeBranchForFirstTurn } = makeProviderConversationNaming({
+    projectionAccess,
+    gatewayOperations,
+    serverSettings,
+    git,
+    orchestrationEngine,
+    textGeneration,
+  });
   const { processTurnQueued, processTurnStartRequested } = makeProviderTurnStart({
     projectionAccess,
     queuedDispatchState,
@@ -281,7 +283,11 @@ const make = Effect.gen(function* () {
     serverConfig,
     managedAttachments,
     maybeGenerateAndRenameWorktreeBranchForFirstTurn,
-    maybeSetThreadTitleFromMessages,
+    maybeGenerateThreadTitle: makeThreadTitleGeneration({
+      engine: orchestrationEngine,
+      projection: projectionAccess,
+      generator: titleGeneration,
+    }),
     dispatchTurnForThread,
     providerService,
     setThreadSessionError,

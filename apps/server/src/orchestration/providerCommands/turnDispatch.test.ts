@@ -60,7 +60,10 @@ describe("Provider reactor turnDispatch", () => {
     );
     await waitFor(() => harness.sendTurn.mock.calls.length === 1);
     await harness.drain();
-    expect((await readHarnessThread(harness))?.title).toBe("Fix the sidebar");
+    await waitFor(
+      async () => (await readHarnessThread(harness))?.title === "Generated conversation title",
+    );
+    expect(harness.generateTitle).toHaveBeenCalledOnce();
   });
 
   it("dispatches managed attachments from their repository object paths", async () => {

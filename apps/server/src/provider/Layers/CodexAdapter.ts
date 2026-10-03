@@ -2526,6 +2526,11 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
         supportsTurnSteering: true,
         supportsLiveTurnDiffPatch: true,
       },
+      generateThreadTitle: (input) =>
+        Effect.tryPromise({
+          try: (signal) => manager.generateThreadTitle(input, signal),
+          catch: (cause) => toRequestError(input.threadId, "turn/start", cause),
+        }),
       startSession,
       sendTurn,
       steerTurn,

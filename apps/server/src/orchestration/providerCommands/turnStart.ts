@@ -1,4 +1,4 @@
-import { isGenericChatThreadTitle } from "@glade/shared/threads/chatThreads";
+import type { MaybeGenerateThreadTitle } from "./threadTitleGeneration";
 import type { ServiceMap } from "effect";
 import { ThreadSessionSettings } from "../Services/ThreadSessionSettings.ts";
 import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
@@ -60,9 +60,7 @@ export function makeProviderTurnStart(input: {
   readonly maybeGenerateAndRenameWorktreeBranchForFirstTurn: ReturnType<
     typeof makeProviderConversationNaming
   >["maybeGenerateAndRenameWorktreeBranchForFirstTurn"];
-  readonly maybeSetThreadTitleFromMessages: ReturnType<
-    typeof makeProviderConversationNaming
-  >["maybeSetThreadTitleFromMessages"];
+  readonly maybeGenerateThreadTitle: MaybeGenerateThreadTitle;
   readonly dispatchTurnForThread: ReturnType<
     typeof makeProviderTurnDispatch
   >["dispatchTurnForThread"];
@@ -87,7 +85,7 @@ export function makeProviderTurnStart(input: {
     serverConfig,
     managedAttachments,
     maybeGenerateAndRenameWorktreeBranchForFirstTurn,
-    maybeSetThreadTitleFromMessages,
+    maybeGenerateThreadTitle,
     dispatchTurnForThread,
     providerService,
     setThreadSessionError,
@@ -308,9 +306,6 @@ export function makeProviderTurnStart(input: {
         messageText: message.text,
         ...(message.attachments !== undefined ? { attachments: resolvedAttachments } : {}),
       }).pipe(Effect.forkScoped);
-      if (isGenericChatThreadTitle(thread.title)) {
-        yield* maybeSetThreadTitleFromMessages(event.payload.threadId);
-      }
 
       const immediateDispatchMode =
         event.payload.dispatchMode === "steer" && !isNativeSteer
@@ -425,6 +420,17 @@ export function makeProviderTurnStart(input: {
           ),
         ),
       );
+      yield* maybeGenerateThreadTitle({
+        threadId: thread.id,
+        messageId: message.id,
+        message: message.text,
+        modelSelection:
+          event.payload.modelSelection ??
+          threadSessionSettings.getModelSelection(thread.id) ??
+          thread.modelSelection,
+        providerOptions:
+          event.payload.providerOptions ?? threadSessionSettings.getProviderOptions(thread.id),
+      }).pipe(Effect.forkScoped);
       // Persist the user/turn boundary as soon as the provider accepts a new turn. A turn that stops
       // before assistant text arrives otherwise leaves the user message without turn metadata, making
       // edit-and-resend vanish.

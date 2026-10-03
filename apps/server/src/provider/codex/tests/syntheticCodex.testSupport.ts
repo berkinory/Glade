@@ -115,6 +115,12 @@ export function createSyntheticCodexAppServer(options?: {
           respond({});
         } else if (request.method === "skills/extraRoots/set") {
           respond({});
+        } else if (request.method === "config/read") {
+          respond({ config: { mcp_servers: {} }, origins: {} });
+        } else if (request.method === "skills/list") {
+          respond({
+            data: [{ cwd: (request.params?.cwds as string[])?.[0] ?? "", skills: [], errors: [] }],
+          });
         } else if (request.method === "account/read") {
           respond({ account: { type: "apiKey" }, requiresOpenaiAuth: false });
         } else if (request.method === "thread/resume" || request.method === "thread/fork") {

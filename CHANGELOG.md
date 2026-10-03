@@ -4,6 +4,8 @@
 
 ### New
 
+- Chats get automatic titles from the first meaningful message while preserving manual renames.
+
 - Agents can inspect task diffs, fork conversations, inspect local servers, and open files, diffs and terminals in Glade.
 - Sign in to Claude and Codex from provider settings.
 - Show Claude and Codex usage limits in the sidebar, with five-hour and weekly views.

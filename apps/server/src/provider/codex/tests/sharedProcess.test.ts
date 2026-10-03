@@ -218,4 +218,98 @@ describe("shared Codex process", () => {
     }
     expect(teardownProcessTree).toHaveBeenCalledTimes(2);
   });
+  it.each(["complete", "abort", "stop"] as const)(
+    "keeps foreground sessions alive and title events isolated when auxiliary generation %ss",
+    async (outcome) => {
+      const cwd = mkdtempSync(join(tmpdir(), "glade-codex-title-"));
+      const fake = createSyntheticCodexAppServer();
+      const { manager, teardownProcessTree } = createSyntheticCodexManager(fake);
+      const threadId = ThreadId.makeUnsafe("foreground");
+      const events: ProviderEvent[] = [];
+      manager.on("event", (event) => events.push(event));
+      try {
+        await manager.startSession({
+          threadId,
+          provider: "codex",
+          cwd,
+          runtimeMode: "full-access",
+          agentGatewayCapabilityInput: AGENT_GATEWAY_NO_CAPABILITIES,
+        });
+        const controller = new AbortController();
+        const generation = manager.generateThreadTitle(
+          {
+            threadId,
+            cwd,
+            model: "gpt-6-luna",
+            instructions: "Name the chat",
+            prompt: "Fix sidebar",
+            outputSchema: {},
+          },
+          controller.signal,
+        );
+        const settled = generation.then(
+          (value) => ({ value }),
+          (error: Error) => ({ error }),
+        );
+        await vi.waitFor(() =>
+          expect(fake.requests.some((request) => request.method === "turn/start")).toBe(true),
+        );
+        const titleThread = String(
+          fake.requests.find((request) => request.method === "turn/start")?.params?.threadId,
+        );
+        if (outcome === "abort") controller.abort();
+        else if (outcome === "stop") await manager.stopSession(threadId);
+        else {
+          for (const notification of [
+            {
+              method: "item/completed",
+              params: {
+                threadId: titleThread,
+                item: { type: "agentMessage", text: '{"title":"Fix sidebar"}' },
+              },
+            },
+            {
+              method: "turn/completed",
+              params: {
+                threadId: titleThread,
+                turn: { id: "synthetic-turn-1", status: "completed" },
+              },
+            },
+          ])
+            fake.children[0]!.stdout.emit("data", Buffer.from(JSON.stringify(notification) + "\n"));
+        }
+        const result = await settled;
+        if (outcome === "complete") expect(result).toEqual({ value: '{"title":"Fix sidebar"}' });
+        else expect(result).toMatchObject({ error: expect.any(Error) });
+        expect(fake.children).toHaveLength(1);
+        if (outcome === "stop") expect(teardownProcessTree).toHaveBeenCalledOnce();
+        else expect(teardownProcessTree).not.toHaveBeenCalled();
+        expect(
+          events.some(
+            (event) => event.method === "item/completed" || event.method === "turn/completed",
+          ),
+        ).toBe(false);
+        expect(
+          fake.requests.some(
+            (request) =>
+              request.method === "thread/unsubscribe" && request.params?.threadId === titleThread,
+          ),
+        ).toBe(true);
+        if (outcome !== "complete")
+          expect(
+            fake.requests.some(
+              (request) =>
+                request.method === "turn/interrupt" && request.params?.threadId === titleThread,
+            ),
+          ).toBe(true);
+        if (outcome !== "stop") await manager.sendTurn({ threadId, input: "Continue foreground" });
+        expect(manager.hasSession(threadId)).toBe(outcome !== "stop");
+        expect(fake.children).toHaveLength(1);
+      } finally {
+        await manager.stopAll();
+        rmSync(cwd, { recursive: true, force: true });
+      }
+      expect(teardownProcessTree).toHaveBeenCalledOnce();
+    },
+  );
 });

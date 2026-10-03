@@ -73,6 +73,7 @@ export function makeServerProviderLayer(
       Layer.provide(adapterRegistryLayer),
     );
     return Layer.mergeAll(
+      codexAdapterLayer,
       providerServiceLayer,
       providerDiscoveryLayer,
       ProviderManagementLive.pipe(Layer.provide(adapterRegistryLayer)),
