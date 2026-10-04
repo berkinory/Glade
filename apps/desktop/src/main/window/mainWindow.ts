@@ -61,6 +61,7 @@ import {
   resolveVisibleWindowBounds,
   writeDesktopWindowState,
 } from "./windowState";
+import { createDesktopMenuShortcuts } from "./desktopMenuShortcuts";
 import { windowMaterialOptions, readWindowMaterialState } from "./desktopWindowMaterial";
 
 interface WindowIdentity {
@@ -114,6 +115,7 @@ export function createMainWindow({
   log,
   openDesktopLogDirectory,
 }: WindowDependencies) {
+  const menuShortcuts = createDesktopMenuShortcuts(process.platform, configureApplicationMenu);
   let mainWindow: BrowserWindow | null = null;
   let customTitleBarActive = false;
   let unreadBackgroundNotificationCount = 0;
@@ -375,6 +377,7 @@ export function createMainWindow({
 
     window.on("closed", () => {
       lifecycle.cancelPending();
+      menuShortcuts.reset();
       if (mainWindow === window) {
         mainWindow = null;
       }
@@ -614,8 +617,6 @@ export function createMainWindow({
     const existingWindow =
       BrowserWindow.getFocusedWindow() ?? mainWindow ?? BrowserWindow.getAllWindows()[0];
     const targetWindow = existingWindow ?? createWindow();
-    if (!existingWindow) {
-    }
 
     const send = () => {
       if (targetWindow.isDestroyed()) return;
@@ -675,7 +676,14 @@ export function createMainWindow({
   }
 
   function attachDesktopPhysicalZoomShortcuts(window: BrowserWindow): void {
+    window.webContents.on("did-start-navigation", (_event, _url, isInPlace, isMainFrame) => {
+      if (isMainFrame && !isInPlace) menuShortcuts.reset();
+    });
     window.webContents.on("before-input-event", (event, input) => {
+      // The renderer owns configurable commands, focus guards and recording. Native menu clicks
+      // remain available, but their accelerator must not execute the same keydown a second time.
+      window.webContents.setIgnoreMenuShortcuts(menuShortcuts.shouldIgnoreNativeShortcut(input));
+      if (menuShortcuts.isCapturing()) return;
       if (handleDesktopPhysicalZoomShortcut(event, input, window.webContents)) return;
       handleDesktopZoomShortcut(event, input, window.webContents);
     });
@@ -879,18 +887,18 @@ export function createMainWindow({
         submenu: [
           {
             label: "New Terminal Tab",
-            ...acceleratorProps("CmdOrCtrl+T"),
+            ...acceleratorProps(menuShortcuts.getAccelerator("terminal.new")),
             click: () => dispatchMenuAction("new-terminal-tab"),
           },
           { type: "separator" },
           {
             label: "Toggle Sidebar",
-            ...acceleratorProps("CmdOrCtrl+B"),
+            ...acceleratorProps(menuShortcuts.getAccelerator("sidebar.toggle")),
             click: () => dispatchMenuAction("toggle-sidebar"),
           },
           {
             label: "Toggle Browser",
-            ...acceleratorProps("CmdOrCtrl+Shift+B"),
+            ...acceleratorProps(menuShortcuts.getAccelerator("browser.toggle")),
             click: () => dispatchMenuAction("toggle-browser"),
           },
           { type: "separator" },
@@ -986,6 +994,7 @@ export function createMainWindow({
     handleDesktopZoomShortcut,
     resolveAutoUpdateDisabledReason,
     configureApplicationMenu,
+    setMenuShortcuts: menuShortcuts.apply,
     getDestructiveMenuIcon,
     createContextMenuIcon,
   };

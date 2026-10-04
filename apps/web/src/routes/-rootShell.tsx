@@ -1,3 +1,4 @@
+import { useDesktopMenuShortcuts } from "../hooks/useDesktopMenuShortcuts";
 import { type WsCompatibilityError } from "@glade/contracts/transport/ws/wsCompatibility";
 import { Outlet } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -40,6 +41,7 @@ export function RootRouteView() {
   useAppDensity();
   useChatWidth();
   useDesktopAppIcon();
+  useDesktopMenuShortcuts();
   usePreloadRouteChunks();
   useGitStatusPush();
   useNativeFontSmoothing();

@@ -1,3 +1,4 @@
+import { isShortcutComposition } from "@glade/shared/settings/shortcutEvent";
 import { hasOpenKeyboardOverlay } from "~/lib/keyboardOverlay";
 import type { ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import { useQuery } from "@tanstack/react-query";
@@ -293,7 +294,8 @@ function ChatRouteGlobalShortcuts() {
 
   useEffect(() => {
     const onWindowKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.isComposing || hasOpenKeyboardOverlay()) return;
+      if (event.defaultPrevented || isShortcutComposition(event) || hasOpenKeyboardOverlay())
+        return;
       const shortcutContext = {
         terminalFocus: isTerminalFocused(),
         terminalOpen,

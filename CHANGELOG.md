@@ -92,6 +92,9 @@
 
 ### Fixed
 
+- Keyboard shortcuts follow your keyboard layout consistently.
+- Desktop menu shortcuts follow custom bindings and respect focused controls.
+
 - Collapsed notification stacks no longer show wider cards behind the front notification.
 
 - Cmd/Ctrl+W closes the focused terminal shell, preserving the other splits until the last shell closes.

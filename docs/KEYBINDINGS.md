@@ -86,6 +86,29 @@ Examples:
 - `ctrl+l`
 - `cmd+k`
 
+### Keyboard layouts and desktop menus
+
+Letter and digit shortcuts use the key produced by your keyboard layout, rather
+than also matching the letter printed on the same physical key on a US keyboard.
+Modified symbols retain physical-key fallback (for example Option-generated
+brackets). The recorder and dispatcher use the same key identity and modifier
+syntax. IME composition, dead keys and AltGraph do not execute or record shortcuts.
+
+The desktop View menu follows effective bindings for New Terminal Tab, Toggle
+Sidebar and Toggle Browser after loading, editing, resetting or reconnecting.
+Only unconditional bindings without conditional chord conflicts receive native
+accelerators. Bindings that Electron cannot represent safely, including modified
+punctuation and layout-specific characters, remain available through the renderer;
+menu clicks remain available. Linux keeps its existing restriction on native
+accelerators. Fixed settings, close-tab, help, editing and zoom shortcuts retain
+their existing behavior.
+
+Recording a shortcut suspends native menu shortcuts and zoom handling while the
+recording field owns focus. Configurable shortcuts in the app renderer execute
+through the existing web dispatcher so focus rules remain authoritative and one
+keypress invokes an action once. Reloading or replacing the window clears native
+shortcut state until the renderer reports its current bindings again.
+
 ### `when` Conditions
 
 Currently available context keys:

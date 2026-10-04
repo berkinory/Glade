@@ -1,4 +1,5 @@
 export function hasOpenKeyboardOverlay(except?: Element | null): boolean {
+  if (document.activeElement?.hasAttribute("data-keybinding-capture")) return true;
   return Array.from(
     document.querySelectorAll<HTMLElement>(
       '[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"]',

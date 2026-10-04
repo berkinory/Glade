@@ -1,3 +1,4 @@
+import { isShortcutComposition } from "@glade/shared/settings/shortcutEvent";
 import { useSidebarDesktopUpdate } from "./useSidebarDesktopUpdate";
 import { useStore } from "../store";
 import { useSidebarStateStore } from "../sidebarStateStore";
@@ -155,7 +156,12 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
       threadJumpLabelsRef.current === EMPTY_THREAD_JUMP_LABELS;
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented) return;
+      if (
+        event.defaultPrevented ||
+        isShortcutComposition(event) ||
+        document.activeElement?.hasAttribute("data-keybinding-capture")
+      )
+        return;
 
       const shortcutContext = getCurrentSidebarShortcutContext();
       if (!shouldIgnoreThreadJumpHintUpdate(event)) {

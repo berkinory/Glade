@@ -1,3 +1,4 @@
+import { shortcutEventKey, type ShortcutKeyboardEvent } from "@glade/shared/settings/shortcutEvent";
 import type { KeybindingShortcut } from "@glade/contracts/settings/keybindings";
 
 import { getNavigatorPlatform, isMacPlatform } from "~/lib/utils";
@@ -22,7 +23,7 @@ function normalizeShortcutKeyToken(key: string): string | null {
   if (normalized === "arrowdown") return "arrowdown";
   if (normalized === "arrowleft") return "arrowleft";
   if (normalized === "arrowright") return "arrowright";
-  if (normalized.length === 1) return normalized;
+  if (Array.from(normalized).length === 1 || normalized === "i\u0307") return normalized;
   if (/^f(?:[1-9]|1\d|2[0-4])$/.test(normalized)) return normalized;
   if (
     normalized === "enter" ||
@@ -40,10 +41,11 @@ function normalizeShortcutKeyToken(key: string): string | null {
 }
 
 export function keybindingFromKeyboardEvent(
-  event: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "shiftKey" | "altKey">,
+  event: ShortcutKeyboardEvent,
   platform = getNavigatorPlatform(),
 ): string | null {
-  const keyToken = normalizeShortcutKeyToken(event.key);
+  const key = shortcutEventKey(event);
+  const keyToken = key === null ? null : normalizeShortcutKeyToken(key);
   if (!keyToken) return null;
 
   const parts: string[] = [];

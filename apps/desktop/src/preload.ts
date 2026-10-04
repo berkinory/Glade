@@ -163,6 +163,7 @@ contextBridge.exposeInMainWorld("desktopBridge", {
     setCursorStyle: (style: DesktopAgentCursorStyle | null) =>
       ipcRenderer.invoke(IPC.computerSetCursorStyle, style),
   },
+  setMenuShortcuts: (state) => ipcRenderer.invoke(IPC.setMenuShortcuts, state),
   onMenuAction: (listener) => {
     const wrappedListener = (_event: Electron.IpcRendererEvent, action: unknown) => {
       if (typeof action !== "string") return;

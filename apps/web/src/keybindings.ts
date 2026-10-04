@@ -9,6 +9,7 @@ import {
   THREAD_JUMP_KEYBINDING_COMMANDS,
   type ThreadJumpKeybindingCommand,
 } from "@glade/contracts/settings/keybindings";
+import { shortcutEventKey, isShortcutComposition } from "@glade/shared/settings/shortcutEvent";
 import { isKeyboardShortcutsHelpChord } from "@glade/shared/browser/browserShortcuts";
 import { isMacPlatform, isWindowsPlatform } from "./lib/utils";
 
@@ -21,6 +22,9 @@ export interface ShortcutEventLike {
   shiftKey: boolean;
   altKey: boolean;
   repeat?: boolean;
+  isComposing?: boolean;
+  keyCode?: number;
+  getModifierState?: (key: string) => boolean;
 }
 
 interface ShortcutMatchContext {
@@ -273,64 +277,8 @@ const TERMINAL_WORD_BACKWARD = "\u001bb";
 const TERMINAL_WORD_FORWARD = "\u001bf";
 const TERMINAL_LINE_START = "\u0001";
 const TERMINAL_LINE_END = "\u0005";
-const EVENT_CODE_KEY_ALIASES: Readonly<Record<string, readonly string[]>> = {
-  BracketLeft: ["["],
-  BracketRight: ["]"],
-  Digit0: ["0"],
-  Digit1: ["1"],
-  Digit2: ["2"],
-  Digit3: ["3"],
-  Digit4: ["4"],
-  Digit5: ["5"],
-  Digit6: ["6"],
-  Digit7: ["7"],
-  Digit8: ["8"],
-  Digit9: ["9"],
-  KeyA: ["a"],
-  KeyB: ["b"],
-  KeyC: ["c"],
-  KeyD: ["d"],
-  KeyE: ["e"],
-  KeyF: ["f"],
-  KeyG: ["g"],
-  KeyH: ["h"],
-  KeyI: ["i"],
-  KeyJ: ["j"],
-  KeyK: ["k"],
-  KeyL: ["l"],
-  KeyM: ["m"],
-  KeyN: ["n"],
-  KeyO: ["o"],
-  KeyP: ["p"],
-  KeyQ: ["q"],
-  KeyR: ["r"],
-  KeyS: ["s"],
-  KeyT: ["t"],
-  KeyU: ["u"],
-  KeyV: ["v"],
-  KeyW: ["w"],
-  KeyX: ["x"],
-  KeyY: ["y"],
-  KeyZ: ["z"],
-};
-
 function normalizeEventKey(key: string): string {
-  const normalized = key.toLowerCase();
-  if (normalized === "esc") return "escape";
-  if (normalized === "{") return "[";
-  if (normalized === "}") return "]";
-  return normalized;
-}
-
-function resolveEventKeys(event: ShortcutEventLike): Set<string> {
-  const keys = new Set([normalizeEventKey(event.key)]);
-  const aliases = event.code ? EVENT_CODE_KEY_ALIASES[event.code] : undefined;
-  if (!aliases) return keys;
-
-  for (const alias of aliases) {
-    keys.add(alias);
-  }
-  return keys;
+  return key.toLowerCase() === "esc" ? "escape" : key.toLowerCase();
 }
 
 function matchesShortcutModifiers(
@@ -355,7 +303,7 @@ function matchesShortcut(
   platform = navigator.platform,
 ): boolean {
   if (!matchesShortcutModifiers(event, shortcut, platform)) return false;
-  return resolveEventKeys(event).has(shortcut.key);
+  return shortcutEventKey(event) === shortcut.key;
 }
 
 function resolvePlatform(options: ShortcutMatchOptions | undefined): string {
@@ -394,7 +342,10 @@ function matchesWhenClause(
   return evaluateWhenNode(whenAst, context);
 }
 
-function shortcutConflictKey(shortcut: KeybindingShortcut, platform = navigator.platform): string {
+export function shortcutConflictKey(
+  shortcut: KeybindingShortcut,
+  platform = navigator.platform,
+): string {
   const useMetaForMod = isMacPlatform(platform);
   const metaKey = shortcut.metaKey || (shortcut.modKey && useMetaForMod);
   const ctrlKey = shortcut.ctrlKey || (shortcut.modKey && !useMetaForMod);
@@ -509,6 +460,7 @@ export function resolveShortcutCommand(
   keybindings: ResolvedKeybindingsConfig,
   options?: ShortcutMatchOptions,
 ): string | null {
+  if (isShortcutComposition(event)) return null;
   const explicitCommand = resolveShortcutCommandFromBindings(event, keybindings, options);
   if (explicitCommand !== null) {
     return explicitCommand;
@@ -661,6 +613,7 @@ export function isKeyboardShortcutsHelpShortcut(
   event: ShortcutEventLike,
   platform = navigator.platform,
 ): boolean {
+  if (isShortcutComposition(event)) return false;
   return isKeyboardShortcutsHelpChord(
     {
       key: event.key,

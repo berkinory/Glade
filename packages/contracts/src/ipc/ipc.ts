@@ -1,3 +1,4 @@
+import type { DesktopMenuShortcutState } from "./menuShortcuts";
 import type {
   PreviewWorkspaceRestoreInput,
   WorkspaceRestorePreview,
@@ -595,6 +596,7 @@ export interface DesktopBridge {
   computer?: {
     setCursorStyle: (style: DesktopAgentCursorStyle | null) => Promise<void>;
   };
+  setMenuShortcuts: (state: DesktopMenuShortcutState) => Promise<void>;
   onMenuAction: (listener: (action: string) => void) => () => void;
   onQuitConfirmationRequest: (
     listener: (request: DesktopQuitConfirmationRequest) => void,

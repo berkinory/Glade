@@ -1,3 +1,5 @@
+import { registerMenuShortcutsIpc } from "./menuShortcutsIpc";
+import type { DesktopMenuShortcutState } from "@glade/contracts/ipc/menuShortcuts";
 import { readDesktopClipboardFiles } from "./clipboardFiles";
 import type {
   DesktopAppIcon,
@@ -65,6 +67,7 @@ import { registerDesktopVoiceTranscriptionHandler } from "./voiceTranscription";
 import { registerNotificationPermissionIpc } from "./notificationPermissions";
 
 interface IpcWindow {
+  setMenuShortcuts: (state: DesktopMenuShortcutState) => void;
   getMainWindow(): BrowserWindow | null;
   getDesktopWindowState: (window: BrowserWindow) => { isMaximized: boolean; isFullscreen: boolean };
   getDesktopCustomTitleBarState: () => {
@@ -134,6 +137,11 @@ export function createRegisterDesktopIpc({
   control,
 }: DesktopIpcDependencies) {
   function registerIpcHandlers(): void {
+    registerMenuShortcutsIpc(
+      ipcMain,
+      () => windows.getMainWindow()?.webContents ?? null,
+      windows.setMenuShortcuts,
+    );
     ipcMain.removeAllListeners(DESKTOP_IPC_CHANNELS.browser.webMcpCompatibilityPolicy);
     ipcMain.on(DESKTOP_IPC_CHANNELS.browser.webMcpCompatibilityPolicy, (event: IpcMainEvent) => {
       event.returnValue = browser.getManager().isWebMcpCompatibilityAllowed(event.sender.id);
