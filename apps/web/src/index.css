@@ -2754,11 +2754,11 @@ diffs-container {
 }
 
 :root[data-window-material] body {
-  background: color-mix(in srgb, var(--codex-base-surface) 20%, transparent);
+  background: color-mix(in srgb, var(--codex-base-surface) 30%, transparent);
 }
 
 :root[data-window-material].dark body {
-  background: color-mix(in srgb, var(--codex-base-surface) 30%, transparent);
+  background: color-mix(in srgb, var(--codex-base-surface) 60%, transparent);
 }
 
 /* Shared popup chrome also covers caller-specific fills, such as the model picker.
