@@ -72,6 +72,13 @@ platform checks described in [the release guide](release.md).
 
 ## Notification permissions
 
+Activity sounds are enabled by default and controlled by one toggle in Notifications
+settings, independently of in-app toasts and desktop banners. The renderer plays
+distinct original cues for settled successful work and new approval or reply requests,
+including in the foreground. Hydration does not replay old chat alerts. Input requests
+take priority over completion cues, and overlapping cues are coalesced. Desktop and
+browser banners are silent so the sound toggle also prevents a duplicate system sound.
+
 The Notifications settings page reads OS authorization separately from the user's
 alert preference and refreshes it when the window regains focus. macOS uses a
 small Node-API module in the Electron process to query and request UserNotifications

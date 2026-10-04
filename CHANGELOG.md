@@ -4,6 +4,8 @@
 
 ### New
 
+- Hear distinct sounds when agents finish or need your approval or reply, with a single toggle to mute them.
+
 - Split terminals side by side or above and below within one tab, with keyboard shortcuts, balanced tiling and shared activity indicators.
 
 - Enable optional whole-window transparency with native macOS vibrancy or Windows 11 Mica.

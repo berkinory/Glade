@@ -1,5 +1,6 @@
 import { useThreadErrorNotifications } from "../components/chat/useThreadErrorToast";
 import { readBrowserNotificationPermissionState } from "./notificationPermission";
+import { useActivitySound } from "./useActivitySound";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useMemo, useEffect, useRef, useState } from "react";
@@ -63,7 +64,7 @@ async function showSystemThreadNotification(
     return window.desktopBridge.notifications.show({
       title,
       body,
-      silent: false,
+      silent: true,
       suppressWhenForeground: true,
       threadId,
     });
@@ -76,6 +77,7 @@ async function showSystemThreadNotification(
   const notification = new Notification(title, {
     body,
     tag: `thread-notification:${threadId}`,
+    silent: true,
   });
   notification.addEventListener("click", () => {
     window.focus();
@@ -111,6 +113,7 @@ function showThreadToast(
 
 export function TaskCompletionNotifications() {
   const { settings } = useAppSettings();
+  const playSound = useActivitySound(settings.enableActivitySounds);
   const navigate = useNavigate();
   const activeThreadId = useParams({
     strict: false,
@@ -221,6 +224,12 @@ export function TaskCompletionNotifications() {
       isWindowForeground: isWindowForeground(),
     });
 
+    if (inputNeededCandidates.length > 0 || terminalAttentionCandidates.length > 0) {
+      playSound("waiting");
+    } else {
+      playSound("complete");
+    }
+
     for (const completion of completions) {
       notifiedCompletionKeysRef.current.add(completedThreadNotificationKey(completion));
       const copy = buildTaskCompletionCopy(completion);
@@ -291,6 +300,7 @@ export function TaskCompletionNotifications() {
     }
   }, [
     navigate,
+    playSound,
     settings.enableSystemTaskCompletionNotifications,
     settings.enableTaskCompletionToasts,
     terminalStateByThreadId,

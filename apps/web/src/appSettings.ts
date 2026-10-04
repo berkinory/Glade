@@ -217,6 +217,7 @@ const AppSettingsSchema = Schema.Struct({
   useCustomTitleBar: Schema.Boolean.pipe(withDefaults(() => true)),
   enableTaskCompletionToasts: Schema.Boolean.pipe(withDefaults(() => true)),
   enableSystemTaskCompletionNotifications: Schema.Boolean.pipe(withDefaults(() => true)),
+  enableActivitySounds: Schema.Boolean.pipe(withDefaults(() => true)),
 
   autoOpenComputerPane: Schema.Boolean.pipe(withDefaults(() => true)),
 

@@ -222,6 +222,14 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
       "Activity toasts Show an in-app toast when a chat or managed terminal agent finishes or needs input. alerts",
   },
   {
+    id: "notifications:activity-sounds",
+    section: "notifications",
+    title: "Activity sounds",
+    target: "setting-activity-sounds",
+    keywords:
+      "Sound audio mute turn complete finished agent approval reply waiting input notification alerts",
+  },
+  {
     id: "notifications:desktop-notifications",
     section: "notifications",
     title: "Desktop notifications",

@@ -14,6 +14,7 @@ import { Button } from "~/components/ui/button";
 
 import { Switch } from "~/components/ui/switch";
 import { toastManager } from "~/components/ui/toast";
+import { useActivitySound } from "~/notifications/useActivitySound";
 
 export function NotificationsSettingsPanel({
   settings,
@@ -21,6 +22,7 @@ export function NotificationsSettingsPanel({
   updateSettings,
   active,
 }: AppSettingsBinding & { readonly active: boolean }) {
+  const playSound = useActivitySound(settings.enableActivitySounds);
   const [busy, setBusy] = useState(false);
   const permission = useQuery({
     queryKey: ["notification-permission"],
@@ -79,12 +81,17 @@ export function NotificationsSettingsPanel({
       throw new Error(notificationPermissionText(current.status));
     }
     if (window.desktopBridge) {
-      const shown = await window.desktopBridge.notifications.show({ title, body, silent: false });
+      const shown = await window.desktopBridge.notifications.show({ title, body, silent: true });
       if (!shown) throw new Error("The operating system could not display the notification.");
     } else {
-      const notification = new Notification(title, { body, tag: "glade:test-notification" });
+      const notification = new Notification(title, {
+        body,
+        tag: "glade:test-notification",
+        silent: true,
+      });
       notification.addEventListener("click", () => window.focus());
     }
+    playSound("complete");
     toastManager.add({
       type: "success",
       title: "Test notification sent",
@@ -97,6 +104,31 @@ export function NotificationsSettingsPanel({
   return (
     <div className="space-y-6">
       <SettingsSection title="Activity alerts">
+        <SettingsRow
+          id="setting-activity-sounds"
+          title="Activity sounds"
+          description="Play distinct sounds when a chat or managed terminal agent finishes or needs your approval or reply, even while you are viewing it."
+          resetAction={
+            settings.enableActivitySounds !== defaults.enableActivitySounds ? (
+              <SettingResetButton
+                label="activity sounds"
+                onClick={() =>
+                  updateSettings({ enableActivitySounds: defaults.enableActivitySounds })
+                }
+              />
+            ) : null
+          }
+          control={
+            <Switch
+              checked={settings.enableActivitySounds}
+              onCheckedChange={(checked) =>
+                updateSettings({ enableActivitySounds: Boolean(checked) })
+              }
+              aria-label="Activity sounds"
+            />
+          }
+        />
+
         <SettingsRow
           id="setting-activity-toasts"
           title="In-app notifications"
