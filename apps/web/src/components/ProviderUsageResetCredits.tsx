@@ -5,9 +5,11 @@ import type {
   ServerConsumeCodexResetCreditInput,
 } from "@glade/contracts/server/server";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 
 import { Button } from "~/components/ui/button";
+import { DisclosureChevron } from "~/components/ui/DisclosureChevron";
+import { DisclosureRegion } from "~/components/ui/DisclosureRegion";
 import { toastManager } from "~/components/ui/toast";
 import { showConfirmDialogFallback } from "~/confirmDialogFallback";
 import {
@@ -38,6 +40,8 @@ export function ProviderUsageResetCredits({
 }) {
   const { accountId, availableCount, canUse, credits } = resetCredits;
   const queryClient = useQueryClient();
+  const detailsId = useId();
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const locked = useRef(false);
   const [confirming, setConfirming] = useState(false);
   let pendingAttempt: ServerConsumeCodexResetCreditInput | null = null;
@@ -92,7 +96,7 @@ export function ProviderUsageResetCredits({
       setConfirming(false);
     }
   };
-  if (availableCount <= 0 && !pendingAttempt) return null;
+  if (availableCount <= 0 && !pendingAttempt && !storageUnavailable) return null;
   const now = Date.now();
   const availableCredits = (credits ?? []).filter(
     (credit) =>
@@ -112,52 +116,73 @@ export function ProviderUsageResetCredits({
     <div
       className={`space-y-0.5 border-t border-[color:var(--color-border)] ${compact ? "pt-2" : "pt-3"}`}
     >
-      <div className={rowClass}>
-        <span className="font-medium text-foreground">Banked resets</span>
+      <button
+        type="button"
+        className={`${rowClass} w-full rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+        aria-expanded={detailsOpen}
+        aria-controls={detailsId}
+        onClick={() => setDetailsOpen((open) => !open)}
+      >
+        <span className="flex items-center gap-1.5 font-medium text-foreground">
+          <DisclosureChevron open={detailsOpen} />
+          Banked resets
+        </span>
         <span className="text-right tabular-nums text-muted-foreground">
           {availableCount} available
         </span>
-      </div>
-      {pendingAttempt ? (
+      </button>
+      {busy ? (
+        <p className={subtitleClass}>
+          {consumeMutation.isPending ? "Applying reset…" : "Waiting for reset confirmation…"}
+        </p>
+      ) : storageUnavailable ? (
+        <p className={subtitleClass}>
+          Reset recovery is unavailable. No new reset can be requested.
+        </p>
+      ) : pendingAttempt ? (
         <p className={subtitleClass}>
           A previous reset is unconfirmed. Retry checks the same attempt.
         </p>
       ) : null}
-      {rows.length > 0 ? (
-        <div className="mt-1.5 space-y-1.5">
-          {rows.map((credit, index) => {
-            const isRetry = pendingAttempt !== null && pendingAttempt.creditId === credit?.id;
-            return (
-              <div key={credit?.id ?? "next-available"}>
-                <div className={rowClass}>
-                  <span className="font-medium text-foreground">
-                    {credit ? `Reset ${index + 1}` : "Next available reset"}
-                  </span>
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    className="shrink-0"
-                    disabled={
-                      busy ||
-                      storageUnavailable ||
-                      !accountId ||
-                      (!isRetry && (canUse !== true || pendingAttempt !== null))
-                    }
-                    onClick={() => void confirmAndConsume(credit?.id)}
-                  >
-                    {busy ? "Applying…" : isRetry ? "Retry reset" : "Use reset"}
-                  </Button>
-                </div>
-                {credit ? (
-                  <div className={`${subtitleClass} tabular-nums`} title={credit.expiresAt}>
-                    {formatExpiry(credit.expiresAt, now)}
+      <div id={detailsId}>
+        <DisclosureRegion open={detailsOpen}>
+          {rows.length > 0 ? (
+            <div className="mt-1.5 space-y-1.5">
+              {rows.map((credit, index) => {
+                const isRetry = pendingAttempt !== null && pendingAttempt.creditId === credit?.id;
+                return (
+                  <div key={credit?.id ?? "next-available"}>
+                    <div className={rowClass}>
+                      <span className="font-medium text-foreground">
+                        {credit ? `Reset ${index + 1}` : "Next available reset"}
+                      </span>
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        className="shrink-0"
+                        disabled={
+                          busy ||
+                          storageUnavailable ||
+                          !accountId ||
+                          (!isRetry && (canUse !== true || pendingAttempt !== null))
+                        }
+                        onClick={() => void confirmAndConsume(credit?.id)}
+                      >
+                        {busy ? "Applying…" : isRetry ? "Retry reset" : "Use reset"}
+                      </Button>
+                    </div>
+                    {credit ? (
+                      <div className={`${subtitleClass} tabular-nums`} title={credit.expiresAt}>
+                        {formatExpiry(credit.expiresAt, now)}
+                      </div>
+                    ) : null}
                   </div>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
-      ) : null}
+                );
+              })}
+            </div>
+          ) : null}
+        </DisclosureRegion>
+      </div>
     </div>
   );
 }

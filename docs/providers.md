@@ -307,6 +307,13 @@ is weekly. Hover or keyboard focus describes each window; click opens Usage.
 Missing or failed windows remain unavailable rather than appearing as full quota.
 Disabled providers are hidden. These controls reuse the shared usage query.
 
+When Codex reports banked resets, usage panels keep the available count visible in a
+compact **Banked resets** section. Expand it to inspect expiry information and use a
+reset. Spending a reset requires confirmation and checks the current account and
+usage first. Confirmation, pending requests and unconfirmed results remain visible
+when the details are collapsed. Reopening the panel retains an unconfirmed attempt;
+**Retry reset** checks that same attempt rather than spending another reset.
+
 A failed model refresh keeps the last successful native catalog for the exact
 provider, executable, endpoint, workspace and credential context. A successful empty
 catalog remains authoritative; a new context does not inherit another context's list.

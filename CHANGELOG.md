@@ -25,6 +25,8 @@
 
 ### Improved
 
+- Extra usage credits stay accessible in a compact expandable section.
+
 - File mentions handle misspelled and multilingual names, with more complete and responsive searches in large projects.
 
 - Explorer content search cancels outdated scans, reuses unchanged files and colors visible result lines.
@@ -89,6 +91,8 @@
 - Models load faster on first use, with a balanced initial reasoning effort when you have not chosen one.
 
 ### Fixed
+
+- Collapsed notification stacks no longer show wider cards behind the front notification.
 
 - Cmd/Ctrl+W closes the focused terminal shell, preserving the other splits until the last shell closes.
 

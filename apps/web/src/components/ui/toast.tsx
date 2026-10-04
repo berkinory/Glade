@@ -648,6 +648,9 @@ function Toasts({ position: positionProp }: { position: ToastPosition }) {
                 "data-[position=top-center]:[--toast-peek:0px] data-[position=top-center]:[--toast-scale:1] data-[position=top-center]:[--toast-shrink:0]",
                 "data-[position=top-center]:transform-[translateX(var(--toast-swipe-movement-x))_translateY(var(--toast-swipe-movement-y))]",
                 "data-[position=top-center]:data-expanded:transform-[translateX(var(--toast-swipe-movement-x))_translateY(calc(var(--toast-offset-y)+var(--toast-swipe-movement-y)))]",
+                // Flat stacks have no peek; wider inactive surfaces must disappear too.
+                hideCollapsedContent &&
+                  "data-[position=top-center]:not-data-expanded:invisible data-[position=top-center]:not-data-expanded:pointer-events-none data-[position=top-center]:not-data-expanded:opacity-0",
                 // Define offset-y variable
                 "data-[position*=top]:[--toast-calc-offset-y:calc(var(--toast-offset-y)+var(--toast-index)*var(--toast-gap)+var(--toast-swipe-movement-y))]",
                 "data-[position*=bottom]:[--toast-calc-offset-y:calc(var(--toast-offset-y)*-1+var(--toast-index)*var(--toast-gap)*-1+var(--toast-swipe-movement-y))]",
