@@ -95,6 +95,15 @@ are not exposed in this first version.
 
 Source Control combines current changes, immutable turn checkpoint diffs and commit history. Turn diffs offer a return to current changes; Edit opens the working-tree file in a main workspace tab. Ordinary chat file links reveal files in Explorer, including supplied line and column targets.
 
+Folders without Git offer Initialize Repository. For local repositories without a
+remote, Push opens Publish to GitHub with a picker for the signed-in GitHub CLI
+account and its organizations, an editable repository name with the full owner/name below,
+and private/public visibility buttons.
+Private is the default. Publishing requires GitHub CLI authentication and at least
+one commit; it creates the repository, adds origin and pushes committed history.
+Existing remotes use ordinary Push. If creation succeeds but push fails, the
+repository and origin remain available for another Push after resolving the error.
+
 Changes sorts paths by folder within each staged/unstaged group. New filter queries can reuse the same bounded Git inventory for up to two seconds; refreshes, repository updates and mutations read a fresh inventory. Capacity and transport interruptions recover automatically without a manual refresh; persistent failures expose their error details. Selection stays in
 one group, and selected rows keep their applicable actions visible. Stage, Unstage
 and Revert apply to that selection; deleted rows have no View action.

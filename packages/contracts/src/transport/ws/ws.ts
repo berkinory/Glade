@@ -1,3 +1,7 @@
+import {
+  GitPublishContextInput,
+  GitPublishRepositoryInput,
+} from "../../git/githubRepositoryPublishing";
 import { GladeAppOpenRequest } from "../../provider/agentGatewayTools";
 import { PreviewWorkspaceRestoreInput } from "../../orchestration/workspaceRestore";
 import {
@@ -175,6 +179,8 @@ export const WS_METHODS = {
   gitStashInfo: "git.stashInfo",
   gitRemoveIndexLock: "git.removeIndexLock",
   gitInit: "git.init",
+  gitPublishContext: "git.publishContext",
+  gitPublishRepository: "git.publishRepository",
   gitStageFiles: "git.stageFiles",
   gitCommitStaged: "git.commitStaged",
   gitFetch: "git.fetch",
@@ -339,6 +345,8 @@ const WebSocketRequestBody = Schema.Union([
   tagRequestBody(WS_METHODS.gitStashInfo, GitStashInfoInput),
   tagRequestBody(WS_METHODS.gitRemoveIndexLock, GitRemoveIndexLockInput),
   tagRequestBody(WS_METHODS.gitInit, GitInitInput),
+  tagRequestBody(WS_METHODS.gitPublishContext, GitPublishContextInput),
+  tagRequestBody(WS_METHODS.gitPublishRepository, GitPublishRepositoryInput),
   tagRequestBody(WS_METHODS.gitStageFiles, GitStageFilesInput),
   tagRequestBody(WS_METHODS.gitCommitStaged, GitCommitStagedInput),
   tagRequestBody(WS_METHODS.gitFetch, GitFetchInput),

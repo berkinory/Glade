@@ -1,3 +1,9 @@
+import {
+  GitPublishContextInput,
+  GitPublishContextResult,
+  GitPublishRepositoryInput,
+  GitPublishRepositoryResult,
+} from "../../git/githubRepositoryPublishing";
 import * as Rpc from "effect/unstable/rpc/Rpc";
 import { WS_METHODS } from "./ws";
 import {
@@ -230,6 +236,18 @@ export const WsGitStashInfoRpc = Rpc.make(WS_METHODS.gitStashInfo, {
 export const WsGitRemoveIndexLockRpc = Rpc.make(WS_METHODS.gitRemoveIndexLock, {
   payload: GitRemoveIndexLockInput,
   success: Schema.Void,
+  error: WsRpcError,
+});
+
+export const WsGitPublishContextRpc = Rpc.make(WS_METHODS.gitPublishContext, {
+  payload: GitPublishContextInput,
+  success: GitPublishContextResult,
+  error: WsRpcError,
+});
+
+export const WsGitPublishRepositoryRpc = Rpc.make(WS_METHODS.gitPublishRepository, {
+  payload: GitPublishRepositoryInput,
+  success: GitPublishRepositoryResult,
   error: WsRpcError,
 });
 

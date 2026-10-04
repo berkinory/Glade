@@ -68,6 +68,10 @@ import { makeWsComputerHandlers } from "../../computer/wsComputerHandlers";
 import { makeComputerFrameRouteLayer } from "../../computer/computerFrameRoute";
 import { ComputerEventInterests } from "../../computer/computerEventInterests";
 import { GitCore } from "../../git/Services/GitCore";
+import {
+  publishGitHubRepository,
+  readGitPublishContext,
+} from "../../git/githubRepositoryPublishing";
 import { GitHubCli } from "../../git/Services/GitHubCli";
 import { GitManager } from "../../git/Services/GitManager";
 import { GitStatusBroadcaster } from "../../git/Services/GitStatusBroadcaster";
@@ -1541,6 +1545,16 @@ const makeWsRpcHandlersLayer = () =>
           rpcEffect(
             git.withMutation(input.cwd, git.removeIndexLock(input)),
             "Failed to remove Git index lock",
+          ),
+        [WS_METHODS.gitPublishContext]: (input) =>
+          rpcEffect(readGitPublishContext(input), "Failed to prepare GitHub publication"),
+        [WS_METHODS.gitPublishRepository]: (input) =>
+          rpcEffect(
+            refreshGitStatusAfter(
+              input.cwd,
+              git.withMutation(input.cwd, publishGitHubRepository(input)),
+            ),
+            "Failed to publish repository to GitHub",
           ),
         [WS_METHODS.gitInit]: (input) =>
           rpcEffect(

@@ -481,6 +481,9 @@ export function createWsNativeApi(): NativeApi {
       stashInfo: (input) => transport.request(WS_METHODS.gitStashInfo, input),
       removeIndexLock: (input) => transport.request(WS_METHODS.gitRemoveIndexLock, input),
       init: (input) => transport.request(WS_METHODS.gitInit, input),
+      publishContext: (input) => transport.request(WS_METHODS.gitPublishContext, input),
+      publishRepository: (input) =>
+        transport.request(WS_METHODS.gitPublishRepository, input, { timeoutMs: null }),
       stageFiles: (input) => transport.request(WS_METHODS.gitStageFiles, input),
       commitStaged: commitGeneration.commitStaged,
       fetch: (input) => transport.request(WS_METHODS.gitFetch, input, { timeoutMs: null }),

@@ -1,4 +1,6 @@
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
+import type { GitPublishContextResult } from "@glade/contracts/git/githubRepositoryPublishing";
+import { GitPublishDialog } from "./GitPublishDialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCommitDrafts } from "./commitDraftStore";
 import BranchToolbar from "../BranchToolbar";
@@ -59,7 +61,11 @@ export function SourceControlToolbar({
   const status = useQuery(gitStatusQueryOptions(cwd));
   const rebase = useQuery(gitRebaseStateQueryOptions(cwd));
   const mutation = useMutation(gitSourceControlActionMutationOptions({ cwd, queryClient }));
-  const disabled = busy || mutation.isPending || checkingCommit;
+  const [publishContext, setPublishContext] = useState<GitPublishContextResult | null>(null);
+  const publishContextMutation = useMutation({
+    mutationFn: () => ensureNativeApi().git.publishContext({ cwd }),
+  });
+  const disabled = busy || mutation.isPending || checkingCommit || publishContextMutation.isPending;
   const rebasing = rebase.data?.inProgress ?? false;
   const canCommit =
     !disabled &&
@@ -150,6 +156,22 @@ export function SourceControlToolbar({
     }
   };
 
+  const push = () => {
+    if (disabled) return;
+    publishContextMutation.mutate(undefined, {
+      onSuccess: (context) => {
+        if (context.hasRemote) run({ action: "push" });
+        else setPublishContext(context);
+      },
+      onError: (error) =>
+        toastManager.add({
+          type: "error",
+          title: "Could not prepare push",
+          description: error.message,
+        }),
+    });
+  };
+
   return (
     <div className="flex shrink-0 flex-col gap-1.5 border-b border-border/70 px-2 py-1.5">
       <div className="flex min-w-0 items-center gap-1">
@@ -232,9 +254,10 @@ export function SourceControlToolbar({
             rebase.isError ||
             Boolean(rebase.data?.conflicts.length)
           }
-          onClick={() => run({ action: "push" })}
+          onClick={push}
         >
-          {mutation.isPending && mutation.variables?.action === "push" ? (
+          {publishContextMutation.isPending ||
+          (mutation.isPending && mutation.variables?.action === "push") ? (
             <Spinner variant="action" className="size-4" />
           ) : (
             <IconArrowBarToUp className="size-4" />
@@ -317,6 +340,13 @@ export function SourceControlToolbar({
           }}
         />
       )}
+      {publishContext ? (
+        <GitPublishDialog
+          cwd={cwd}
+          context={publishContext}
+          onClose={() => setPublishContext(null)}
+        />
+      ) : null}
     </div>
   );
 }

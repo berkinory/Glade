@@ -20,7 +20,10 @@ function isReadOnly(args: ReadonlyArray<string>): boolean {
   return (
     (args[0] === "pr" && ["list", "view", "diff", "checks"].includes(args[1] ?? "")) ||
     (args[0] === "repo" && args[1] === "view") ||
-    (args[0] === "api" && args[1] === "user" && !args.includes("--method") && !args.includes("-X"))
+    (args[0] === "api" &&
+      ["user", "user/orgs?per_page=100"].includes(args[1] ?? "") &&
+      !args.includes("--method") &&
+      !args.includes("-X"))
   );
 }
 

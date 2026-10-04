@@ -1,11 +1,13 @@
 import type { GitRecentCommit } from "@glade/contracts/git/git";
 import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { gitBranchesQueryOptions } from "~/lib/gitQueryOptions";
+import { gitInitMutationOptions } from "~/lib/gitReactQuery";
 import { Button } from "../ui/button";
+import { Spinner } from "../ui/spinner";
+import { toastManager } from "../ui/toast";
 import { PanelStateMessage } from "./PanelStateMessage";
 import { PanelEmptyState } from "./PanelEmptyState";
-import { OpenInPicker } from "./OpenInPicker";
 import type { SourceControlView } from "~/rightDockStore.logic";
 import { PanelTabBar } from "./PanelTabBar";
 import { ChangesIcon, GitBranchIcon, HistoryIcon } from "~/lib/icons";
@@ -29,6 +31,10 @@ export function SourceControlDockPane(props: {
   onViewChange: (view: SourceControlView) => void;
   onCurrentChanges: () => void;
 }) {
+  const queryClient = useQueryClient();
+  const initMutation = useMutation(
+    gitInitMutationOptions({ cwd: props.workspaceRoot, queryClient }),
+  );
   const needsRepository = props.view === "history" || props.diffTurnId === null;
   const repository = useQuery({
     ...gitBranchesQueryOptions(props.workspaceRoot),
@@ -52,9 +58,25 @@ export function SourceControlDockPane(props: {
     <PanelEmptyState
       icon={<GitBranchIcon className="size-12" aria-hidden="true" />}
       title="Not a Git repository"
-      description="Open a folder with a Git repository to view changes and history."
+      description="Initialize a Git repository in this folder to track changes and history."
     >
-      <OpenInPicker openInTarget={props.workspaceRoot} labelMode="always" />
+      <Button
+        size="sm"
+        disabled={initMutation.isPending}
+        onClick={() =>
+          initMutation.mutate(undefined, {
+            onError: (error) =>
+              toastManager.add({
+                type: "error",
+                title: "Could not initialize repository",
+                description: error.message,
+              }),
+          })
+        }
+      >
+        {initMutation.isPending ? <Spinner variant="action" /> : null}
+        {initMutation.isPending ? "Initializing…" : "Initialize Repository"}
+      </Button>
     </PanelEmptyState>
   ) : null;
 

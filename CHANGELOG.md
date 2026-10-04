@@ -4,6 +4,8 @@
 
 ### New
 
+- Initialize local Git repositories and publish them to GitHub from Source Control, choosing the account or organization, repository name and visibility.
+
 - Continue with another provider in the same chat, with a persistent record of each transition.
 
 - Hear distinct sounds when agents finish or need your approval or reply, with a single toggle to mute them.

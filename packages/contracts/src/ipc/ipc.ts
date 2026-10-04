@@ -1,3 +1,9 @@
+import type {
+  GitPublishContextInput,
+  GitPublishContextResult,
+  GitPublishRepositoryInput,
+  GitPublishRepositoryResult,
+} from "../git/githubRepositoryPublishing";
 import type { DesktopMenuShortcutState } from "./menuShortcuts";
 import type {
   PreviewWorkspaceRestoreInput,
@@ -738,6 +744,8 @@ export interface NativeApi {
     stashInfo: (input: GitStashInfoInput) => Promise<GitStashInfoResult>;
     removeIndexLock: (input: GitRemoveIndexLockInput) => Promise<void>;
     init: (input: GitInitInput) => Promise<void>;
+    publishContext: (input: GitPublishContextInput) => Promise<GitPublishContextResult>;
+    publishRepository: (input: GitPublishRepositoryInput) => Promise<GitPublishRepositoryResult>;
     stageFiles: (input: GitStageFilesInput) => Promise<GitStageFilesResult>;
     commitStaged: (input: GitCommitStagedInput) => Promise<void>;
     fetch: (input: GitFetchInput) => Promise<void>;
