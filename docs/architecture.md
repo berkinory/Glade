@@ -150,14 +150,6 @@ Glade's server owns the local durable state and resource lifecycles:
 - attachments and workspace files through server-owned filesystem services;
 - provider processes/sessions through adapter scopes and provider runtime services.
 
-Project imports persist the independent native-copy identity and immutable page payloads before
-dispatch, with revisioned command receipts for crash replay. Migration 3 appends this recovery
-state to the released lineage. Page state is removed on actual thread deletion, including soft
-deletion; browsing older messages is a read-only, authenticated orchestration operation under a
-SQLite transaction. Existing partial imports keep their native bindings and message identities.
-The client merges requested pages into its existing message store and uses the timeline's visible
-content anchor when prepending.
-
 This ownership is why the web client can reload or reconnect without becoming the source of truth for an active turn.
 
 ## Desktop shell

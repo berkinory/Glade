@@ -26,23 +26,12 @@ describe("Provider reactor turnDispatch", () => {
         title: "New thread",
       }),
     );
-    await Effect.runPromise(
-      harness.engine.dispatch({
-        type: "thread.messages.import",
-        commandId: CommandId.makeUnsafe("punctuation-history"),
-        threadId,
-        messages: [
-          {
-            messageId: asMessageId("punctuation-message"),
-            role: "user",
-            text: ".",
-            createdAt,
-            updatedAt: createdAt,
-          },
-        ],
-        createdAt,
-      }),
-    );
+    await harness.seedUserMessage({
+      threadId,
+      messageId: asMessageId("punctuation-message"),
+      text: ".",
+      createdAt: createdAt,
+    });
     await Effect.runPromise(
       harness.engine.dispatch({
         type: "thread.turn.start",

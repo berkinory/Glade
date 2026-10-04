@@ -27,30 +27,6 @@ validation.layer("ProviderServiceLive validation", (it) => {
   );
 });
 
-const disabledProviderStart = makeProviderServiceLayer({
-  providerIsEnabled: (provider) => Effect.succeed(provider !== "codex"),
-});
-
-disabledProviderStart.layer("ProviderServiceLive enablement", (it) => {
-  it.effect("rejects native imports for disabled providers before touching the source", () =>
-    Effect.gen(function* () {
-      const provider = yield* ProviderService;
-      const result = yield* Effect.result(
-        provider.importExternalThread!({
-          threadId: asThreadId("disabled-import"),
-          provider: "codex",
-          externalThreadId: "source",
-          sourceCwd: "/repo/source",
-          modelSelection: { provider: "codex", model: "gpt-5.4" },
-          runtimeMode: "full-access",
-        }),
-      );
-      assert.equal(result._tag, "Failure");
-      assert.equal(disabledProviderStart.codex.forkThread.mock.calls.length, 0);
-    }),
-  );
-});
-
 let providerEnabledDuringStart = true;
 
 const providerDisabledAfterInitialCheck = makeProviderServiceLayer({

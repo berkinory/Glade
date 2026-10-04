@@ -1,12 +1,10 @@
 import { useCallback } from "react";
 
-import { CheckIcon, ChevronRightIcon, FolderOpenFrontIcon, NewChatIcon } from "~/lib/icons";
+import { CheckIcon, FolderOpenFrontIcon, NewChatIcon } from "~/lib/icons";
 import { type FilesystemBrowseResult } from "@glade/contracts/workspace/filesystem";
-import { type ProjectImportProvider } from "@glade/contracts/workspace/projectImport";
-import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { isGenericChatThreadTitle } from "@glade/shared/threads/chatThreads";
 import { Autocomplete as AutocompletePrimitive } from "@base-ui/react/autocomplete";
-import { LuArrowLeft, LuCornerLeftUp } from "react-icons/lu";
+import { LuCornerLeftUp } from "react-icons/lu";
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { FolderClosed } from "./FolderClosed";
@@ -57,7 +55,6 @@ import {
   CommandStatus,
 } from "./ui/command";
 import { Button } from "./ui/button";
-import { Input } from "./ui/input";
 
 const PALETTE_INPUT_CLASS =
   "font-system-ui h-11 w-full min-w-0 bg-transparent px-3.5 text-ui-lg text-foreground outline-none placeholder:text-muted-foreground/70";
@@ -76,12 +73,8 @@ const SETTINGS_ACTION_IDS: ReadonlySet<string> = new Set([
   "feedback",
 ]);
 
-export type SidebarSearchPaletteMode = "search" | "import" | "import-projects";
-
 interface SidebarSearchPaletteProps {
   open: boolean;
-  mode: SidebarSearchPaletteMode;
-  onModeChange: (mode: SidebarSearchPaletteMode) => void;
   onOpenChange: (open: boolean) => void;
   actions: readonly SidebarSearchAction[];
   projects: readonly SidebarSearchProject[];
@@ -95,22 +88,7 @@ interface SidebarSearchPaletteProps {
   onOpenUsageSettings: () => void;
   onOpenProject: (projectId: string) => void;
   onOpenThread: (threadId: string) => void;
-  importProviders: readonly ImportProviderKind[];
-  onImportThread: (provider: ImportProviderKind, externalId: string) => Promise<void>;
-  onImportProjects: (providers: readonly ProjectImportProvider[]) => void;
 }
-
-const IMPORT_PROJECTS_SOURCES: readonly {
-  id: string;
-  label: string;
-  providers: readonly ProjectImportProvider[];
-}[] = [
-  { id: "claude-code", label: "From Claude Code", providers: ["claudeAgent"] },
-  { id: "codex", label: "From Codex", providers: ["codex"] },
-  { id: "all", label: "From Claude Code and Codex", providers: ["claudeAgent", "codex"] },
-];
-
-export type ImportProviderKind = Extract<ProviderKind, "codex" | "claudeAgent">;
 
 function actionHandler(
   actionId: string,
@@ -152,17 +130,6 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
   const { activeTheme, resolvedTheme, setCodeThemeId, setTheme, theme } = useTheme();
   const [query, setQuery] = useState("");
   const [highlightedItemValue, setHighlightedItemValue] = useState<string | null>(null);
-  const [importProviderState, setImportProvider] = useState<ImportProviderKind>(
-    props.importProviders[0] ?? "codex",
-  );
-  const [importId, setImportId] = useState("");
-  const [importError, setImportError] = useState<string | null>(null);
-  const [isImporting, setIsImporting] = useState(false);
-
-  const importProvider = props.importProviders.includes(importProviderState)
-    ? importProviderState
-    : (props.importProviders[0] ?? "codex");
-
   const [addProjectErrorState, setAddProjectErrorState] = useState<{
     query: string;
     message: string;
@@ -186,15 +153,11 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
     const timeoutId = window.setTimeout(() => {
       setQuery("");
       setHighlightedItemValue(null);
-      setImportProvider(props.importProviders[0] ?? "codex");
-      setImportId("");
-      setImportError(null);
-      setIsImporting(false);
       setAddProjectError(null);
       setIsAddingProject(false);
     }, 0);
     return () => window.clearTimeout(timeoutId);
-  }, [props.importProviders, props.open, setAddProjectError]);
+  }, [props.open, setAddProjectError]);
 
   const platform = getNavigatorPlatform();
   const trimmedQuery = query.trim();
@@ -280,10 +243,6 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
     matchedCurrentThemes.length > 0 ||
     matchedProjects.length > 0 ||
     matchedThreads.length > 0;
-  const importFieldLabel = importProvider === "codex" ? "Thread ID" : "Session ID";
-  const importPlaceholder =
-    importProvider === "claudeAgent" ? "Paste a Claude session id" : "Paste a Codex thread id";
-
   const hasHighlightedFolderItem =
     highlightedItemValue !== null && highlightedItemValue.startsWith("folder:");
   const hasHighlightedBrowseItem =
@@ -374,25 +333,6 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
     }
   };
 
-  const submitImport = () => {
-    const normalizedImportId = importId.trim();
-    if (!normalizedImportId || isImporting) {
-      return;
-    }
-    setImportError(null);
-    setIsImporting(true);
-    void Promise.resolve(props.onImportThread(importProvider, normalizedImportId))
-      .then(() => {
-        props.onOpenChange(false);
-      })
-      .catch((error: unknown) => {
-        setImportError(error instanceof Error ? error.message : "Failed to import thread.");
-      })
-      .finally(() => {
-        setIsImporting(false);
-      });
-  };
-
   const renderActionItem = (action: SidebarSearchAction) => {
     const onSelect = action.run ?? actionHandler(action.id, props);
     const Icon = action.icon ?? ACTION_ICONS[action.id];
@@ -405,18 +345,6 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
           event.preventDefault();
         }}
         onClick={() => {
-          if (action.id === "import-thread") {
-            setImportError(null);
-            setImportId("");
-            setImportProvider(props.importProviders[0] ?? "codex");
-            props.onModeChange("import");
-            return;
-          }
-          if (action.id === "import-projects") {
-            setQuery("");
-            props.onModeChange("import-projects");
-            return;
-          }
           if (!onSelect) return;
           props.onOpenChange(false);
           onSelect();
@@ -429,556 +357,365 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
         )}
         <span className={PALETTE_TEXT_CLASS}>{action.label}</span>
         {action.shortcutLabel ? <ShortcutKbd shortcutLabel={action.shortcutLabel} /> : null}
-        {action.id === "import-projects" ? (
-          <ChevronRightIcon className={PALETTE_ICON_CLASS} />
-        ) : null}
       </CommandItem>
     );
   };
 
-  const normalizedSourceQuery = query.trim().toLowerCase();
-  const importProjectsSources = IMPORT_PROJECTS_SOURCES.filter((source) =>
-    source.label.toLowerCase().includes(normalizedSourceQuery),
-  );
-
   return (
     <CommandDialog open={props.open} onOpenChange={props.onOpenChange}>
       <CommandDialogPopup className="max-w-lg rounded-3xl border-transparent before:rounded-[calc(var(--radius-3xl)-1px)] before:shadow-none dark:before:shadow-none">
-        {props.mode === "import" ? (
-          <div className="flex flex-col overflow-hidden">
-            <div className="border-b border-border/70 px-4 py-3">
-              <div className="flex items-start gap-3">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="-ml-1 mt-[-2px] size-8 shrink-0"
-                  onClick={() => {
-                    setImportError(null);
-                    props.onModeChange("search");
-                  }}
-                >
-                  <LuArrowLeft className="size-4" />
-                </Button>
-                <div>
-                  <p className="text-ui-lg leading-snug font-medium text-foreground">
-                    Import thread from provider
-                  </p>
-                  <p className="mt-1 text-ui leading-snug text-muted-foreground">
-                    Create a local app thread and resume it from an existing provider id.
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="space-y-4 px-4 py-4">
-              <div className="space-y-2">
-                <p className="text-ui leading-snug font-medium text-muted-foreground">Provider</p>
-                <div className="flex gap-2">
-                  {props.importProviders.map((provider) => (
-                    <Button
-                      key={provider}
-                      className={
-                        importProvider === provider
-                          ? "flex-1 justify-start border-border bg-muted text-foreground hover:bg-muted/80"
-                          : "flex-1 justify-start"
-                      }
-                      variant="outline"
-                      onClick={() => setImportProvider(provider)}
-                    >
-                      <SharedProviderIcon provider={provider} className="size-[15px]" />
-                      {provider === "claudeAgent" ? "Claude" : "Codex"}
-                    </Button>
-                  ))}
-                </div>
-                {props.importProviders.length === 0 ? (
-                  <p className="text-ui leading-snug text-muted-foreground">
-                    No connected providers expose chat import in this build.
-                  </p>
-                ) : null}
-              </div>
-              <div className="space-y-2">
-                <p className="text-ui leading-snug font-medium text-muted-foreground">
-                  {importFieldLabel}
-                </p>
-                <Input
-                  autoFocus
-                  nativeInput
-                  placeholder={importPlaceholder}
-                  value={importId}
-                  disabled={props.importProviders.length === 0}
-                  onChange={(event) => setImportId(event.currentTarget.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      void submitImport();
-                    }
-                  }}
-                />
-                <p className="text-ui leading-snug text-muted-foreground">
-                  {importProvider === "claudeAgent"
-                    ? "Claude resumes a persisted session by session id."
-                    : "Codex resumes a persisted thread by thread id."}
-                </p>
-              </div>
-              {importError ? (
-                <p className="rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-ui leading-snug text-destructive">
-                  {importError}
-                </p>
-              ) : null}
-              <div className="flex justify-end gap-2">
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    setImportError(null);
-                    props.onOpenChange(false);
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  disabled={
-                    props.importProviders.length === 0 ||
-                    importId.trim().length === 0 ||
-                    isImporting
-                  }
-                  onClick={submitImport}
-                >
-                  {isImporting ? "Importing..." : "Import"}
-                </Button>
-              </div>
-            </div>
-          </div>
-        ) : props.mode === "import-projects" ? (
-          <Command autoHighlight="always" mode="none">
-            <div className="flex items-center ps-2">
+        <Command
+          autoHighlight={isBrowsing ? false : "always"}
+          mode="none"
+          onItemHighlighted={(value) => {
+            setHighlightedItemValue(typeof value === "string" ? value : null);
+          }}
+        >
+          {}
+          <div className="relative">
+            <AutocompletePrimitive.Input
+              autoFocus
+              className={cn(
+                PALETTE_INPUT_CLASS,
+                isBrowsing ? (willCreateMissingFolder ? "pe-36" : "pe-24") : undefined,
+              )}
+              placeholder={
+                isBrowsing
+                  ? "Enter project path (e.g. ~/projects/my-app)"
+                  : "Search chats or run a command"
+              }
+              value={query}
+              onChange={(event) => setQuery(event.currentTarget.value)}
+              onKeyDown={handleBrowseInputKeyDown}
+            />
+            {isBrowsing ? (
               <Button
-                size="icon"
-                variant="ghost"
-                aria-label="Back to commands"
-                className="size-7 shrink-0"
-                onClick={() => {
-                  setQuery("");
-                  props.onModeChange("search");
+                variant="outline"
+                size="xs"
+                tabIndex={-1}
+                className="-translate-y-1/2 absolute end-3 top-1/2 gap-1.5 pe-1 ps-2"
+                disabled={
+                  isAddingProject ||
+                  unsupportedWindowsPath ||
+                  (trimmedQuery.length === 0 && !highlightedFolderPath) ||
+                  (!highlightedFolderPath && isExplicitRelativeProjectPath(trimmedQuery))
+                }
+                onMouseDown={(event) => {
+                  event.preventDefault();
                 }}
+                onClick={() => void submitBrowsePath()}
+                title={
+                  hasHighlightedFolderItem
+                    ? `${browseSubmitLabel} highlighted folder (${submitModifierLabel} Enter)`
+                    : `${browseSubmitLabel} (Enter)`
+                }
               >
-                <LuArrowLeft className="size-3.5" />
-              </Button>
-              <AutocompletePrimitive.Input
-                autoFocus
-                className={cn(PALETTE_INPUT_CLASS, "ps-2")}
-                placeholder="Import projects from…"
-                value={query}
-                onChange={(event) => setQuery(event.currentTarget.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Backspace" && query.length === 0) {
-                    event.preventDefault();
-                    props.onModeChange("search");
+                <span>{browseSubmitLabel}</span>
+                <ShortcutKbd
+                  shortcutLabel={
+                    hasHighlightedFolderItem ? `${submitModifierLabel} Enter` : "Enter"
                   }
-                }}
-              />
-            </div>
-            <CommandList className="max-h-[min(30rem,60vh)] not-empty:px-1.5 not-empty:pt-0 not-empty:pb-2">
-              {importProjectsSources.length > 0 ? (
-                <CommandGroup>
-                  <CommandGroupLabel className={PALETTE_GROUP_LABEL_CLASS}>
-                    <span>Import projects</span>
-                  </CommandGroupLabel>
-                  {importProjectsSources.map((source) => (
+                  className="-me-0.5"
+                />
+              </Button>
+            ) : null}
+          </div>
+          <CommandList className="max-h-[min(30rem,60vh)] not-empty:px-1.5 not-empty:pt-0 not-empty:pb-2">
+            {canBrowse && (canBrowseUp || filteredBrowseEntries.length > 0) ? (
+              <CommandGroup>
+                {canBrowseUp ? (
+                  <CommandItem
+                    key="browse-up"
+                    value="__browse_up__"
+                    className={PALETTE_ITEM_CLASS}
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                    }}
+                    onClick={() => {
+                      if (browseParentPath) setQuery(browseParentPath);
+                    }}
+                  >
+                    <LuCornerLeftUp className={PALETTE_ICON_CLASS} />
+                    <span className={PALETTE_TEXT_CLASS}>..</span>
+                  </CommandItem>
+                ) : null}
+                {filteredBrowseEntries.map((entry) => (
+                  <CommandItem
+                    key={entry.fullPath}
+                    value={`folder:${entry.fullPath}`}
+                    className={PALETTE_ITEM_CLASS}
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                    }}
+                    onClick={() => setQuery(appendBrowsePathSegment(query, entry.name))}
+                  >
+                    <FolderClosed className={PALETTE_ICON_CLASS} />
+                    <span className={PALETTE_TEXT_CLASS}>{entry.name}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            ) : null}
+
+            {}
+            {!isBrowsing && matchedThreads.length > 0 ? (
+              <CommandGroup>
+                <CommandGroupLabel className={PALETTE_GROUP_LABEL_CLASS}>
+                  <span>{query ? "Threads" : "Recent chats"}</span>
+                </CommandGroupLabel>
+                {matchedThreads.map(({ id, matchKind, snippet, thread }) => {
+                  const normalizedQuery = trimmedQuery.replaceAll(/\s+/g, " ").toLowerCase();
+                  const matchContext =
+                    snippet ??
+                    (matchKind === "project"
+                      ? [
+                          ...new Set([
+                            thread.projectName,
+                            thread.projectRemoteName,
+                            thread.spaceName,
+                          ]),
+                        ]
+                          .filter((name) =>
+                            name
+                              .trim()
+                              .replaceAll(/\s+/g, " ")
+                              .toLowerCase()
+                              .includes(normalizedQuery),
+                          )
+                          .join(" · ")
+                      : null);
+                  return (
                     <CommandItem
-                      key={source.id}
-                      value={`import-projects:${source.id}`}
-                      className={PALETTE_ITEM_CLASS}
+                      key={id}
+                      value={id}
+                      className={cn(PALETTE_ITEM_CLASS, matchContext ? "py-1" : undefined)}
                       onMouseDown={(event) => {
                         event.preventDefault();
                       }}
                       onClick={() => {
                         props.onOpenChange(false);
-                        props.onImportProjects(source.providers);
+                        props.onOpenThread(thread.id);
                       }}
                     >
-                      <span className="flex shrink-0 items-center gap-1">
-                        {source.providers.map((provider) => (
+                      <span className="flex size-3.5 shrink-0 items-center justify-center">
+                        {isGenericChatThreadTitle(thread.title) ? null : (
                           <SharedProviderIcon
-                            key={provider}
-                            provider={provider}
+                            provider={thread.provider}
                             className={PALETTE_ICON_CLASS}
                           />
-                        ))}
+                        )}
                       </span>
-                      <span className={PALETTE_TEXT_CLASS}>{source.label}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-3">
+                          <div className={PALETTE_TEXT_CLASS}>
+                            {thread.title || "Untitled thread"}
+                          </div>
+                          <span
+                            className={cn(PALETTE_META_CLASS, "inline-flex items-center gap-1")}
+                          >
+                            {thread.projectName ? (
+                              <FolderClosed className="size-3 shrink-0" />
+                            ) : (
+                              <NewChatIcon className="size-3 shrink-0" />
+                            )}
+                            <span className="truncate">{thread.projectName || "Chat"}</span>
+                          </span>
+                        </div>
+                        {matchContext ? (
+                          <div className="flex items-start gap-3">
+                            <div className="min-w-0 flex-1 line-clamp-1 text-ui-meta leading-4 text-muted-foreground/78">
+                              {matchContext}
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
                     </CommandItem>
-                  ))}
-                </CommandGroup>
-              ) : null}
-            </CommandList>
-            <CommandStatus className="p-0">
-              {importProjectsSources.length === 0 ? (
-                <div className={PALETTE_STATUS_CLASS}>No matching import source.</div>
-              ) : null}
-            </CommandStatus>
-          </Command>
-        ) : (
-          <>
-            <Command
-              autoHighlight={isBrowsing ? false : "always"}
-              mode="none"
-              onItemHighlighted={(value) => {
-                setHighlightedItemValue(typeof value === "string" ? value : null);
-              }}
-            >
-              {}
-              <div className="relative">
-                <AutocompletePrimitive.Input
-                  autoFocus
-                  className={cn(
-                    PALETTE_INPUT_CLASS,
-                    isBrowsing ? (willCreateMissingFolder ? "pe-36" : "pe-24") : undefined,
-                  )}
-                  placeholder={
-                    isBrowsing
-                      ? "Enter project path (e.g. ~/projects/my-app)"
-                      : "Search chats or run a command"
-                  }
-                  value={query}
-                  onChange={(event) => setQuery(event.currentTarget.value)}
-                  onKeyDown={handleBrowseInputKeyDown}
-                />
-                {isBrowsing ? (
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    tabIndex={-1}
-                    className="-translate-y-1/2 absolute end-3 top-1/2 gap-1.5 pe-1 ps-2"
-                    disabled={
-                      isAddingProject ||
-                      unsupportedWindowsPath ||
-                      (trimmedQuery.length === 0 && !highlightedFolderPath) ||
-                      (!highlightedFolderPath && isExplicitRelativeProjectPath(trimmedQuery))
-                    }
+                  );
+                })}
+              </CommandGroup>
+            ) : null}
+
+            {!isBrowsing && matchedActions.length > 0 ? (
+              <CommandGroup>
+                <CommandGroupLabel className={PALETTE_GROUP_LABEL_CLASS}>
+                  <span>Actions</span>
+                </CommandGroupLabel>
+                {matchedActions.map(renderActionItem)}
+              </CommandGroup>
+            ) : null}
+
+            {!isBrowsing && matchedProjects.length > 0 ? (
+              <CommandGroup>
+                <CommandGroupLabel className={PALETTE_GROUP_LABEL_CLASS}>
+                  <span>Projects</span>
+                </CommandGroupLabel>
+                {matchedProjects.map(({ id, project }) => (
+                  <CommandItem
+                    key={id}
+                    value={id}
+                    className={PALETTE_ITEM_CLASS}
                     onMouseDown={(event) => {
                       event.preventDefault();
                     }}
-                    onClick={() => void submitBrowsePath()}
-                    title={
-                      hasHighlightedFolderItem
-                        ? `${browseSubmitLabel} highlighted folder (${submitModifierLabel} Enter)`
-                        : `${browseSubmitLabel} (Enter)`
-                    }
+                    onClick={() => {
+                      props.onOpenChange(false);
+                      props.onOpenProject(project.id);
+                    }}
                   >
-                    <span>{browseSubmitLabel}</span>
-                    <ShortcutKbd
-                      shortcutLabel={
-                        hasHighlightedFolderItem ? `${submitModifierLabel} Enter` : "Enter"
-                      }
-                      className="-me-0.5"
-                    />
-                  </Button>
-                ) : null}
-              </div>
-              <CommandList className="max-h-[min(30rem,60vh)] not-empty:px-1.5 not-empty:pt-0 not-empty:pb-2">
-                {canBrowse && (canBrowseUp || filteredBrowseEntries.length > 0) ? (
-                  <CommandGroup>
-                    {canBrowseUp ? (
-                      <CommandItem
-                        key="browse-up"
-                        value="__browse_up__"
-                        className={PALETTE_ITEM_CLASS}
-                        onMouseDown={(event) => {
-                          event.preventDefault();
-                        }}
-                        onClick={() => {
-                          if (browseParentPath) setQuery(browseParentPath);
-                        }}
-                      >
-                        <LuCornerLeftUp className={PALETTE_ICON_CLASS} />
-                        <span className={PALETTE_TEXT_CLASS}>..</span>
-                      </CommandItem>
-                    ) : null}
-                    {filteredBrowseEntries.map((entry) => (
-                      <CommandItem
-                        key={entry.fullPath}
-                        value={`folder:${entry.fullPath}`}
-                        className={PALETTE_ITEM_CLASS}
-                        onMouseDown={(event) => {
-                          event.preventDefault();
-                        }}
-                        onClick={() => setQuery(appendBrowsePathSegment(query, entry.name))}
-                      >
-                        <FolderClosed className={PALETTE_ICON_CLASS} />
-                        <span className={PALETTE_TEXT_CLASS}>{entry.name}</span>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                ) : null}
+                    {project.appearance ? (
+                      <span className="relative inline-flex size-3.5 shrink-0 items-center justify-center text-muted-foreground">
+                        <ProjectSidebarIcon
+                          cwd={project.cwd}
+                          expanded
+                          appearance={project.appearance}
+                          glyphClassName="size-3.5"
+                        />
+                      </span>
+                    ) : (
+                      <FolderOpenFrontIcon className={PALETTE_ICON_CLASS} />
+                    )}
+                    <span className={PALETTE_TEXT_CLASS}>{project.name || "Untitled project"}</span>
+                    {}
+                    <span className={PALETTE_META_CLASS}>
+                      {project.spaceName ? `${project.spaceName} · ${project.cwd}` : project.cwd}
+                    </span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            ) : null}
 
-                {}
-                {!isBrowsing && matchedThreads.length > 0 ? (
+            {showThemeSection ? (
+              <>
+                {themeCommandItems.length > 0 ? (
                   <CommandGroup>
                     <CommandGroupLabel className={PALETTE_GROUP_LABEL_CLASS}>
-                      <span>{query ? "Threads" : "Recent chats"}</span>
+                      <span>Configure</span>
                     </CommandGroupLabel>
-                    {matchedThreads.map(({ id, matchKind, snippet, thread }) => {
-                      const normalizedQuery = trimmedQuery.replaceAll(/\s+/g, " ").toLowerCase();
-                      const matchContext =
-                        snippet ??
-                        (matchKind === "project"
-                          ? [
-                              ...new Set([
-                                thread.projectName,
-                                thread.projectRemoteName,
-                                thread.spaceName,
-                              ]),
-                            ]
-                              .filter((name) =>
-                                name
-                                  .trim()
-                                  .replaceAll(/\s+/g, " ")
-                                  .toLowerCase()
-                                  .includes(normalizedQuery),
-                              )
-                              .join(" · ")
-                          : null);
+                    {themeCommandItems.map((themeCommandItem) => {
+                      const ThemeIcon = THEME_MODE_ICONS[themeCommandItem.mode];
                       return (
                         <CommandItem
-                          key={id}
-                          value={id}
-                          className={cn(PALETTE_ITEM_CLASS, matchContext ? "py-1" : undefined)}
+                          key={themeCommandItem.id}
+                          value={themeCommandItem.id}
+                          className={PALETTE_ITEM_CLASS}
                           onMouseDown={(event) => {
                             event.preventDefault();
                           }}
                           onClick={() => {
+                            if (themeCommandItem.isActive) return;
                             props.onOpenChange(false);
-                            props.onOpenThread(thread.id);
+                            setTheme(themeCommandItem.mode);
                           }}
                         >
-                          <span className="flex size-3.5 shrink-0 items-center justify-center">
-                            {isGenericChatThreadTitle(thread.title) ? null : (
-                              <SharedProviderIcon
-                                provider={thread.provider}
-                                className={PALETTE_ICON_CLASS}
-                              />
-                            )}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-3">
-                              <div className={PALETTE_TEXT_CLASS}>
-                                {thread.title || "Untitled thread"}
-                              </div>
-                              <span
-                                className={cn(PALETTE_META_CLASS, "inline-flex items-center gap-1")}
-                              >
-                                {thread.projectName ? (
-                                  <FolderClosed className="size-3 shrink-0" />
-                                ) : (
-                                  <NewChatIcon className="size-3 shrink-0" />
-                                )}
-                                <span className="truncate">{thread.projectName || "Chat"}</span>
-                              </span>
-                            </div>
-                            {matchContext ? (
-                              <div className="flex items-start gap-3">
-                                <div className="min-w-0 flex-1 line-clamp-1 text-ui-meta leading-4 text-muted-foreground/78">
-                                  {matchContext}
-                                </div>
-                              </div>
+                          <ThemeIcon className={PALETTE_ICON_CLASS} />
+                          <span className={PALETTE_TEXT_CLASS}>{themeCommandItem.label}</span>
+                          <span
+                            className="flex size-3.5 shrink-0 items-center justify-center"
+                            aria-hidden={!themeCommandItem.isActive}
+                          >
+                            {themeCommandItem.isActive ? (
+                              <CheckIcon className={PALETTE_ICON_CLASS} />
                             ) : null}
-                          </div>
+                          </span>
                         </CommandItem>
                       );
                     })}
                   </CommandGroup>
                 ) : null}
-
-                {!isBrowsing && matchedActions.length > 0 ? (
+                {matchedCurrentThemes.length > 0 ? (
                   <CommandGroup>
                     <CommandGroupLabel className={PALETTE_GROUP_LABEL_CLASS}>
-                      <span>Actions</span>
+                      <span>{resolvedTheme === "dark" ? "Dark themes" : "Light themes"}</span>
                     </CommandGroupLabel>
-                    {matchedActions.map(renderActionItem)}
-                  </CommandGroup>
-                ) : null}
-
-                {!isBrowsing && matchedProjects.length > 0 ? (
-                  <CommandGroup>
-                    <CommandGroupLabel className={PALETTE_GROUP_LABEL_CLASS}>
-                      <span>Projects</span>
-                    </CommandGroupLabel>
-                    {matchedProjects.map(({ id, project }) => (
-                      <CommandItem
-                        key={id}
-                        value={id}
-                        className={PALETTE_ITEM_CLASS}
-                        onMouseDown={(event) => {
-                          event.preventDefault();
-                        }}
-                        onClick={() => {
-                          props.onOpenChange(false);
-                          props.onOpenProject(project.id);
-                        }}
-                      >
-                        {project.appearance ? (
-                          <span className="relative inline-flex size-3.5 shrink-0 items-center justify-center text-muted-foreground">
-                            <ProjectSidebarIcon
-                              cwd={project.cwd}
-                              expanded
-                              appearance={project.appearance}
-                              glyphClassName="size-3.5"
+                    {matchedCurrentThemes.map((themeItem) => {
+                      const seed =
+                        themeItem.codeThemeId && themeItem.variant
+                          ? getCodeThemeSeed(themeItem.codeThemeId, themeItem.variant)
+                          : null;
+                      return (
+                        <CommandItem
+                          key={themeItem.id}
+                          value={themeItem.id}
+                          className={PALETTE_ITEM_CLASS}
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                          }}
+                          onClick={() => {
+                            if (!themeItem.codeThemeId || !themeItem.variant) return;
+                            props.onOpenChange(false);
+                            setCodeThemeId(themeItem.variant, themeItem.codeThemeId);
+                          }}
+                        >
+                          {seed ? (
+                            <CodeThemeBadge
+                              accent={seed.accent}
+                              background={seed.surface}
+                              foreground={seed.ink}
                             />
+                          ) : null}
+                          <span className={PALETTE_TEXT_CLASS}>{themeItem.label}</span>
+                          <span className={PALETTE_META_CLASS}>
+                            {resolvedTheme === "dark" ? "Dark color theme" : "Light color theme"}
                           </span>
-                        ) : (
-                          <FolderOpenFrontIcon className={PALETTE_ICON_CLASS} />
-                        )}
-                        <span className={PALETTE_TEXT_CLASS}>
-                          {project.name || "Untitled project"}
-                        </span>
-                        {}
-                        <span className={PALETTE_META_CLASS}>
-                          {project.spaceName
-                            ? `${project.spaceName} · ${project.cwd}`
-                            : project.cwd}
-                        </span>
-                      </CommandItem>
-                    ))}
+                          <span
+                            className="flex size-3.5 shrink-0 items-center justify-center"
+                            aria-hidden={!themeItem.isActive}
+                          >
+                            {themeItem.isActive ? (
+                              <CheckIcon className={PALETTE_ICON_CLASS} />
+                            ) : null}
+                          </span>
+                        </CommandItem>
+                      );
+                    })}
                   </CommandGroup>
                 ) : null}
-
-                {showThemeSection ? (
-                  <>
-                    {themeCommandItems.length > 0 ? (
-                      <CommandGroup>
-                        <CommandGroupLabel className={PALETTE_GROUP_LABEL_CLASS}>
-                          <span>Configure</span>
-                        </CommandGroupLabel>
-                        {themeCommandItems.map((themeCommandItem) => {
-                          const ThemeIcon = THEME_MODE_ICONS[themeCommandItem.mode];
-                          return (
-                            <CommandItem
-                              key={themeCommandItem.id}
-                              value={themeCommandItem.id}
-                              className={PALETTE_ITEM_CLASS}
-                              onMouseDown={(event) => {
-                                event.preventDefault();
-                              }}
-                              onClick={() => {
-                                if (themeCommandItem.isActive) return;
-                                props.onOpenChange(false);
-                                setTheme(themeCommandItem.mode);
-                              }}
-                            >
-                              <ThemeIcon className={PALETTE_ICON_CLASS} />
-                              <span className={PALETTE_TEXT_CLASS}>{themeCommandItem.label}</span>
-                              <span
-                                className="flex size-3.5 shrink-0 items-center justify-center"
-                                aria-hidden={!themeCommandItem.isActive}
-                              >
-                                {themeCommandItem.isActive ? (
-                                  <CheckIcon className={PALETTE_ICON_CLASS} />
-                                ) : null}
-                              </span>
-                            </CommandItem>
-                          );
-                        })}
-                      </CommandGroup>
-                    ) : null}
-                    {matchedCurrentThemes.length > 0 ? (
-                      <CommandGroup>
-                        <CommandGroupLabel className={PALETTE_GROUP_LABEL_CLASS}>
-                          <span>{resolvedTheme === "dark" ? "Dark themes" : "Light themes"}</span>
-                        </CommandGroupLabel>
-                        {matchedCurrentThemes.map((themeItem) => {
-                          const seed =
-                            themeItem.codeThemeId && themeItem.variant
-                              ? getCodeThemeSeed(themeItem.codeThemeId, themeItem.variant)
-                              : null;
-                          return (
-                            <CommandItem
-                              key={themeItem.id}
-                              value={themeItem.id}
-                              className={PALETTE_ITEM_CLASS}
-                              onMouseDown={(event) => {
-                                event.preventDefault();
-                              }}
-                              onClick={() => {
-                                if (!themeItem.codeThemeId || !themeItem.variant) return;
-                                props.onOpenChange(false);
-                                setCodeThemeId(themeItem.variant, themeItem.codeThemeId);
-                              }}
-                            >
-                              {seed ? (
-                                <CodeThemeBadge
-                                  accent={seed.accent}
-                                  background={seed.surface}
-                                  foreground={seed.ink}
-                                />
-                              ) : null}
-                              <span className={PALETTE_TEXT_CLASS}>{themeItem.label}</span>
-                              <span className={PALETTE_META_CLASS}>
-                                {resolvedTheme === "dark"
-                                  ? "Dark color theme"
-                                  : "Light color theme"}
-                              </span>
-                              <span
-                                className="flex size-3.5 shrink-0 items-center justify-center"
-                                aria-hidden={!themeItem.isActive}
-                              >
-                                {themeItem.isActive ? (
-                                  <CheckIcon className={PALETTE_ICON_CLASS} />
-                                ) : null}
-                              </span>
-                            </CommandItem>
-                          );
-                        })}
-                      </CommandGroup>
-                    ) : null}
-                  </>
-                ) : null}
-              </CommandList>
-              {}
-              <CommandStatus className="p-0">
-                {isBrowsing ? (
-                  unsupportedWindowsPath ? (
-                    <div className={PALETTE_STATUS_CLASS}>
-                      Windows paths are not supported on this platform.
+              </>
+            ) : null}
+          </CommandList>
+          {}
+          <CommandStatus className="p-0">
+            {isBrowsing ? (
+              unsupportedWindowsPath ? (
+                <div className={PALETTE_STATUS_CLASS}>
+                  Windows paths are not supported on this platform.
+                </div>
+              ) : (
+                <>
+                  {!canBrowseUp && filteredBrowseEntries.length === 0 && !isBrowseFetching ? (
+                    <div className={PALETTE_STATUS_CLASS}>No matching folders.</div>
+                  ) : null}
+                  {willCreateMissingFolder ? (
+                    <div className="palette-row mx-3 mb-2 rounded-lg border border-dashed border-[color:var(--color-border)] px-3 py-2 text-ui text-muted-foreground">
+                      Press Enter to create <span className="text-foreground">{trimmedQuery}</span>{" "}
+                      and add it as a project.
                     </div>
-                  ) : (
-                    <>
-                      {!canBrowseUp && filteredBrowseEntries.length === 0 && !isBrowseFetching ? (
-                        <div className={PALETTE_STATUS_CLASS}>No matching folders.</div>
-                      ) : null}
-                      {willCreateMissingFolder ? (
-                        <div className="palette-row mx-3 mb-2 rounded-lg border border-dashed border-[color:var(--color-border)] px-3 py-2 text-ui text-muted-foreground">
-                          Press Enter to create{" "}
-                          <span className="text-foreground">{trimmedQuery}</span> and add it as a
-                          project.
-                        </div>
-                      ) : null}
-                      {addProjectError ? (
-                        <div className="palette-row mx-3 mb-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-ui text-destructive">
-                          {addProjectError}
-                        </div>
-                      ) : null}
-                      <div className={cn(PALETTE_STATUS_CLASS, "flex justify-between gap-3")}>
-                        <span>
-                          {isAddingProject
-                            ? "Adding project..."
-                            : "Type a path, ↑↓ to navigate folders."}
-                        </span>
-                        <span>
-                          {hasHighlightedFolderItem
-                            ? `Enter to open · ${submitModifierLabel}+Enter to add`
-                            : hasHighlightedBrowseItem
-                              ? "Enter to go up"
-                              : "Enter to add project"}
-                        </span>
-                      </div>
-                    </>
-                  )
-                ) : !hasSearchResults ? (
-                  <div className={PALETTE_STATUS_CLASS}>No matches.</div>
-                ) : null}
-              </CommandStatus>
-            </Command>
-          </>
-        )}
+                  ) : null}
+                  {addProjectError ? (
+                    <div className="palette-row mx-3 mb-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-ui text-destructive">
+                      {addProjectError}
+                    </div>
+                  ) : null}
+                  <div className={cn(PALETTE_STATUS_CLASS, "flex justify-between gap-3")}>
+                    <span>
+                      {isAddingProject
+                        ? "Adding project..."
+                        : "Type a path, ↑↓ to navigate folders."}
+                    </span>
+                    <span>
+                      {hasHighlightedFolderItem
+                        ? `Enter to open · ${submitModifierLabel}+Enter to add`
+                        : hasHighlightedBrowseItem
+                          ? "Enter to go up"
+                          : "Enter to add project"}
+                    </span>
+                  </div>
+                </>
+              )
+            ) : !hasSearchResults ? (
+              <div className={PALETTE_STATUS_CLASS}>No matches.</div>
+            ) : null}
+          </CommandStatus>
+        </Command>
       </CommandDialogPopup>
     </CommandDialog>
   );

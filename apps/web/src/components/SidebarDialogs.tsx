@@ -62,8 +62,6 @@ export function SidebarDialogs({
     searchPaletteOpen,
     setSearchPaletteOpen,
     openFeedbackDialog,
-    searchPaletteMode,
-    setSearchPaletteMode,
     renameDialogThreadId,
     setRenameDialogThreadId,
     editProjectDialog,
@@ -76,7 +74,6 @@ export function SidebarDialogs({
     handleCreateHomeChat,
     addProjectFromPath,
     handlePrimaryNewThread,
-    handleImportThread,
     commitRename,
     activateThreadFromSidebarIntent,
     voidSpace,
@@ -402,14 +399,7 @@ export function SidebarDialogs({
       {searchPaletteOpen ? (
         <SidebarSearchPaletteController
           open={searchPaletteOpen}
-          mode={searchPaletteMode}
-          onModeChange={setSearchPaletteMode}
-          onOpenChange={(open) => {
-            setSearchPaletteOpen(open);
-            if (!open) {
-              setSearchPaletteMode("search");
-            }
-          }}
+          onOpenChange={setSearchPaletteOpen}
           actions={searchPaletteActions}
           projects={searchPaletteProjects}
           onCreateChat={() => void handleCreateHomeChat()}
@@ -427,7 +417,6 @@ export function SidebarDialogs({
             });
           }}
           onOpenProject={handleOpenProjectFromSearch}
-          onImportThread={handleImportThread}
           onOpenThread={(threadId) => {
             activateThreadFromSidebarIntent(ThreadId.makeUnsafe(threadId));
           }}

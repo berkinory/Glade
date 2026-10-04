@@ -2,9 +2,7 @@ import type { ComponentType } from "react";
 import {
   BugReportIcon,
   DeviceLaptopIcon,
-  DownloadIcon,
   FolderAddIcon,
-  ImportThreadIcon,
   MoonIcon,
   NewChatIcon,
   NewThreadIcon,
@@ -19,8 +17,6 @@ export const ACTION_ICONS: Record<string, IconComponent> = {
   "new-chat": NewChatIcon,
   "new-thread": NewThreadIcon,
   "add-project": FolderAddIcon,
-  "import-thread": ImportThreadIcon,
-  "import-projects": DownloadIcon,
   feedback: BugReportIcon,
   settings: SettingsIcon,
   "usage-settings": UsageGaugeIcon,

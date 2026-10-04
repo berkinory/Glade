@@ -1,7 +1,5 @@
 # TODO
 
-- **S20 implemented:** Capture independent native history in durable bounded pages with receipt-based crash recovery; open imported chats with 10 recent messages, fill 25 in the background, and automatically retrieve older history on scroll or search. Preserve full native context, message order, reading position and complete exports. Verified with authenticated SQLite paging, interrupted capture/retry, deletion and active-turn checks, live scrolling/search, full checks and tests.
-
 - **S17 implemented:** Added scoped, transient CLI sign-in sessions, retained successful contextual model catalogs on refresh failure and optional sidebar quota windows. Full check and test suite passed; both configured provider commands exercised with isolated real PTYs. Official account sign-in and Windows execution remain unverified.
 
 - **S11 implemented:** Added draft membership and local draft rows, open-chat reveal, profile-scoped Activity filters and bounded read watermarks, safe nested favicon discovery and unclipped resize rails. Full check and full suite passed (2,545 passing, 9 skipped); final web changes passed all 439 web tests. Isolated Dev verified local draft visibility, Settings/reload filter retention and unclipped handles. File-boundary and persistence fixtures passed; exhaustive platform/theme and closed-app live-provider scenarios remain unverified.

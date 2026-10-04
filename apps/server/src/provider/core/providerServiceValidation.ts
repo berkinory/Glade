@@ -7,11 +7,6 @@ import { Effect, Schema, SchemaIssue } from "effect";
 import { ProviderValidationError } from "./Errors.ts";
 import { createHash } from "node:crypto";
 import { ThreadId, NonNegativeInt, TrimmedNonEmptyString } from "@glade/contracts/core/baseSchemas";
-import {
-  ModelSelection,
-  ProviderStartOptions,
-  RuntimeMode,
-} from "@glade/contracts/provider/sessionPolicy";
 import { PROVIDER_RUNTIME_QUARANTINE_CAUSE_MAX_BYTES } from "./providerServiceConfiguration";
 
 export function validateAutoRuntimeMode(
@@ -65,17 +60,6 @@ export const ClearSessionResumeCursorInput = Schema.Struct({
 
 export const CompletePriorTranscriptBootstrapInput = Schema.Struct({
   threadId: ThreadId,
-});
-
-export const ImportExternalThreadInput = Schema.Struct({
-  threadId: ThreadId,
-  provider: Schema.Literals(["codex", "claudeAgent"]),
-  externalThreadId: TrimmedNonEmptyString,
-  sourceCwd: TrimmedNonEmptyString,
-  cwd: Schema.optional(TrimmedNonEmptyString),
-  modelSelection: ModelSelection,
-  providerOptions: Schema.optional(ProviderStartOptions),
-  runtimeMode: RuntimeMode,
 });
 
 export function toValidationError(

@@ -20,7 +20,7 @@ import {
   type ProcessExitHandle,
   teardownProviderProcessTree,
 } from "../../../platform/supervisedProcessTeardown";
-import { readClaudeSessionParentUuid } from "../claudeProjectImport.ts";
+import { readClaudeSessionParentUuid } from "../claudeSessionTranscript.ts";
 import { type EventNdjsonLogger } from "../../Layers/EventNdjsonLogger.ts";
 
 export interface ClaudeQueryRuntime extends AsyncIterable<SDKMessage> {

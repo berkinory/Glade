@@ -1,3 +1,4 @@
+import { seedUserMessage } from "../persistedMessage.testSupport";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { CommandId, MessageId, ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { HandoffRecord } from "@glade/contracts/orchestration/threadEntities";
@@ -94,19 +95,10 @@ const createHandoff = Effect.gen(function* () {
     worktreePath: null,
     createdAt,
   });
-  yield* engine.dispatch({
-    type: "thread.messages.import",
-    commandId: CommandId.makeUnsafe("messages"),
+  yield* seedUserMessage({
     threadId: source,
-    messages: [
-      {
-        messageId: MessageId.makeUnsafe("original"),
-        role: "user",
-        text: "Never reset the database.",
-        createdAt,
-        updatedAt: createdAt,
-      },
-    ],
+    messageId: MessageId.makeUnsafe("original"),
+    text: "Never reset the database.",
     createdAt,
   });
   yield* engine.dispatch({

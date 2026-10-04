@@ -17,11 +17,6 @@ import type {
   ProviderTurnStartResult,
 } from "@glade/contracts/provider/provider";
 import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
-import type {
-  ModelSelection,
-  RuntimeMode,
-  ProviderStartOptions,
-} from "@glade/contracts/provider/sessionPolicy";
 import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import { ServiceMap } from "effect";
 import type { Effect, Stream } from "effect";
@@ -87,17 +82,6 @@ export interface ProviderServiceShape {
   readonly forkThread?: (
     input: ProviderForkThreadInput,
   ) => Effect.Effect<ProviderForkThreadResult, ProviderServiceError>;
-
-  readonly importExternalThread?: (input: {
-    readonly threadId: ThreadId;
-    readonly provider: "codex" | "claudeAgent";
-    readonly externalThreadId: string;
-    readonly sourceCwd: string;
-    readonly cwd?: string;
-    readonly modelSelection: ModelSelection;
-    readonly providerOptions?: ProviderStartOptions;
-    readonly runtimeMode: RuntimeMode;
-  }) => Effect.Effect<ProviderForkThreadResult, ProviderServiceError>;
 
   readonly interruptTurn: (
     input: ProviderInterruptTurnInput,

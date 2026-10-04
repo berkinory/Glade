@@ -1,19 +1,9 @@
-import { useProjectImportDialogStore } from "~/projectImport/projectImportDialogStore";
 import { useMemo } from "react";
-import { useQueries } from "@tanstack/react-query";
 import { useStore } from "../store";
 import { createAllThreadsSelector, createSidebarDisplayThreadsSelector } from "../storeSelectors";
-import {
-  providerComposerCapabilitiesQueryOptions,
-  supportsThreadImport,
-} from "../lib/providerDiscoveryReactQuery";
 import { useStableValue } from "~/hooks/useStableValue";
 import { type Thread } from "../types";
-import {
-  SidebarSearchPalette,
-  type ImportProviderKind,
-  type SidebarSearchPaletteMode,
-} from "./SidebarSearchPalette";
+import { SidebarSearchPalette } from "./SidebarSearchPalette";
 import {
   areSidebarSearchThreadListsEqual,
   type SidebarSearchAction,
@@ -38,8 +28,6 @@ function searchPaletteMessagesFor(thread: Thread): SidebarSearchThread["messages
 
 export function SidebarSearchPaletteController(props: {
   open: boolean;
-  mode: SidebarSearchPaletteMode;
-  onModeChange: (mode: SidebarSearchPaletteMode) => void;
   onOpenChange: (open: boolean) => void;
   actions: readonly SidebarSearchAction[];
   projects: readonly SidebarSearchProject[];
@@ -51,25 +39,13 @@ export function SidebarSearchPaletteController(props: {
   onOpenFeedback: () => void;
   onOpenUsageSettings: () => void;
   onOpenProject: (projectId: string) => void;
-  onImportThread: (provider: ImportProviderKind, externalId: string) => Promise<void>;
   onOpenThread: (threadId: string) => void;
 }) {
   const selectAllThreads = useMemo(() => createAllThreadsSelector(), []);
 
   const selectSidebarDisplayThreads = useMemo(() => createSidebarDisplayThreadsSelector(), []);
-  const importProviderCapabilityQueries = useQueries({
-    queries: (["codex", "claudeAgent"] as const).map((provider) =>
-      providerComposerCapabilitiesQueryOptions(provider),
-    ),
-  });
   const threads = useStore(selectAllThreads);
   const sidebarDisplayThreads = useStore(selectSidebarDisplayThreads);
-  const importProviders: ReadonlyArray<ImportProviderKind> = (
-    ["codex", "claudeAgent"] as const
-  ).filter((_provider, index) =>
-    supportsThreadImport(importProviderCapabilityQueries[index]?.data),
-  );
-
   const rebuiltSearchPaletteThreads = useMemo<SidebarSearchThread[]>(() => {
     const threadById = new Map(threads.map((thread) => [thread.id, thread] as const));
     const searchProjectById = new Map(
@@ -106,8 +82,6 @@ export function SidebarSearchPaletteController(props: {
   return (
     <SidebarSearchPalette
       open={props.open}
-      mode={props.mode}
-      onModeChange={props.onModeChange}
       onOpenChange={props.onOpenChange}
       actions={props.actions}
       projects={props.projects}
@@ -120,9 +94,6 @@ export function SidebarSearchPaletteController(props: {
       onOpenFeedback={props.onOpenFeedback}
       onOpenUsageSettings={props.onOpenUsageSettings}
       onOpenProject={props.onOpenProject}
-      importProviders={importProviders}
-      onImportThread={props.onImportThread}
-      onImportProjects={(providers) => useProjectImportDialogStore.getState().openDialog(providers)}
       onOpenThread={props.onOpenThread}
     />
   );

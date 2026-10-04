@@ -36,7 +36,6 @@ import { useProjectPreferencesStore } from "../projectPreferencesStore";
 import { type SidebarThreadSummary } from "../types";
 import { shouldRenderTerminalWorkspace } from "./ChatView.logic.subagents";
 import { hasUnreadActivity as hasUnreadActivityOutsideActiveThread } from "./SidebarActivityView.logic";
-import { type SidebarSearchPaletteMode } from "./SidebarSearchPalette";
 import { useHandleNewChat } from "../hooks/useHandleNewChat";
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
 import { useProviderStatusesForLocalConfig } from "../hooks/useProviderStatusesForLocalConfig";
@@ -239,10 +238,6 @@ export function useSidebarShellState() {
 
   const activityShortcutLabel = shortcutLabelForCommand(keybindings, "sidebar.activity");
 
-  const importThreadShortcutLabel =
-    shortcutLabelForCommand(keybindings, "sidebar.importThread") ??
-    (isMacNavigatorPlatform() ? "⌘I" : "Ctrl+I");
-
   const addProjectShortcutLabel =
     shortcutLabelForCommand(keybindings, "sidebar.addProject") ??
     (isMacNavigatorPlatform() ? "⇧⌘O" : "Ctrl+Shift+O");
@@ -260,8 +255,6 @@ export function useSidebarShellState() {
   const [searchPaletteOpen, setSearchPaletteOpen] = useState(false);
 
   const openFeedbackDialog = useFeedbackDialogStore((state) => state.openDialog);
-
-  const [searchPaletteMode, setSearchPaletteMode] = useState<SidebarSearchPaletteMode>("search");
 
   const projectAdditionLockRef = useRef(false);
 
@@ -586,7 +579,6 @@ export function useSidebarShellState() {
     newChatShortcutLabel,
     searchShortcutLabel,
     activityShortcutLabel,
-    importThreadShortcutLabel,
     addProjectShortcutLabel,
     usageSettingsShortcutLabel,
     focusedProjectId,
@@ -598,8 +590,6 @@ export function useSidebarShellState() {
     searchPaletteOpen,
     setSearchPaletteOpen,
     openFeedbackDialog,
-    searchPaletteMode,
-    setSearchPaletteMode,
     projectAdditionLockRef,
     renameDialogThreadId,
     setRenameDialogThreadId,

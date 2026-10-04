@@ -13,7 +13,7 @@ export function providerDisabledSettingsMessage(provider: ProviderKind): string 
   return `${PROVIDER_DISPLAY_NAMES[provider]} is disabled in Settings > Providers.`;
 }
 
-export function ensureProviderEnabled(provider: ProviderKind, serverSettings: ServerSettingsShape) {
+function ensureProviderEnabled(provider: ProviderKind, serverSettings: ServerSettingsShape) {
   return serverSettings.getSettings.pipe(
     Effect.flatMap((settings) =>
       settings.providers[provider].enabled

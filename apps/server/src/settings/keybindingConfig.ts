@@ -105,6 +105,7 @@ const LEGACY_KEYBINDING_COMMAND_ALIASES = {
 } as const satisfies Record<string, KeybindingRule["command"]>;
 
 const RETIRED_LEGACY_KEYBINDING_COMMANDS = new Set([
+  "sidebar.importThread",
   "chat.newGemini",
   "chat.newTerminal",
   "diff.change.next",

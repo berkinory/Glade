@@ -68,7 +68,6 @@ export type ChatMessage = MutableContractFields<
   Partial<MutableContractFields<Pick<OrchestrationMessage, "turnId" | "source" | "updatedAt">>> & {
     attachments?: ChatAttachment[];
     completedAt?: string | undefined;
-    loadedImportHistory?: boolean;
   };
 
 interface TurnDiffFileChange {

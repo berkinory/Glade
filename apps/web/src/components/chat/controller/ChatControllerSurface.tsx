@@ -1,4 +1,3 @@
-import { useImportedHistory } from "../useImportedHistory";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
@@ -46,7 +45,6 @@ import {
 import { stripDiffSearchParams } from "~/diffRouteSearch";
 import { startSelectionChat } from "~/lib/selectionChat";
 import { cn } from "~/lib/utils";
-import { ProjectImportLandingBanner } from "~/projectImport/ProjectImportLandingBanner";
 import { ChatComposerSurface } from "./ChatComposerSurface";
 import { undoTurnFiles } from "../chatTaskActions";
 import { createChatPresentation } from "./chatPresentation";
@@ -198,7 +196,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     threadId,
   } = controller.props;
   const { setThreadError } = controller.composer;
-  const importedHistory = useImportedHistory(threadId, threadFindHighlightStore);
   const navigate = useNavigate();
   const previewSession = useComputerStateStore(selectThreadComputerPreviewSession(threadId));
   const previewLayout = useComputerStateStore(selectThreadComputerPreviewLayout(threadId));
@@ -492,8 +489,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
           onJump={handleThreadFindJump}
           onHighlightChange={threadFindHighlightStore.set}
           onActiveMatchChange={handleThreadFindActiveMatchChange}
-          historySearching={importedHistory.searching}
-          historyError={importedHistory.error}
         />
       ) : null}
 
@@ -539,9 +534,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                 )}
               >
                 <div className="relative flex min-h-0 flex-1 items-center justify-center">
-                  <div className="absolute inset-x-0 top-4 flex justify-center px-6 [@media(max-height:620px)]:hidden">
-                    <ProjectImportLandingBanner className="w-full max-w-[520px]" />
-                  </div>
                   <div
                     className={cn(
                       "flex flex-col items-center gap-4 px-6 text-center select-none",
@@ -610,7 +602,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                 <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
                   <ChatTranscriptPane
                     activeThreadId={activeThread.id}
-                    importedHistory={importedHistory}
                     activeTurnId={activeTurnIdForTranscript}
                     agentActivityDetail={openAgentActivityDetail}
                     hasMessages={timelineEntries.length > 0}

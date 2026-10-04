@@ -11,7 +11,6 @@ export const STATIC_KEYBINDING_COMMANDS = [
   "sidebar.search",
   "sidebar.activity",
   "sidebar.addProject",
-  "sidebar.importThread",
   "space.previous",
   "space.next",
   "space.jump.1",

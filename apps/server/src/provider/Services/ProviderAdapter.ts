@@ -1,5 +1,4 @@
 import type { NativeThreadHistoryInput } from "../core/nativeThreadHistory.ts";
-import type { NativeProjectImportCatalog } from "../core/projectImportTypes";
 import type {
   ProviderManagementContext,
   ProviderListMcpServersResult,
@@ -32,7 +31,6 @@ import type {
 import type {
   ProviderApprovalDecision,
   ProviderUserInputAnswers,
-  ProviderStartOptions,
 } from "@glade/contracts/provider/sessionPolicy";
 import type {
   ProviderForkThreadInput,
@@ -167,26 +165,6 @@ export interface ProviderAdapterShape<TError> {
   readonly hasSession: (threadId: ThreadId) => Effect.Effect<boolean>;
 
   readonly readThread: (threadId: ThreadId) => Effect.Effect<ProviderThreadSnapshot, TError>;
-
-  readonly discoverProjects?: (
-    providerOptions?: ProviderStartOptions,
-  ) => Effect.Effect<NativeProjectImportCatalog, TError>;
-
-  readonly readExternalThreadPage?: (input: {
-    readonly externalThreadId: string;
-    readonly cursor: string | null;
-    readonly cwd?: string;
-    readonly providerOptions?: ProviderStartOptions;
-  }) => Effect.Effect<
-    { readonly turns: ProviderThreadSnapshot["turns"]; readonly nextCursor: string | null },
-    TError
-  >;
-
-  readonly readExternalThread?: (input: {
-    readonly externalThreadId: string;
-    readonly cwd?: string;
-    readonly providerOptions?: ProviderStartOptions;
-  }) => Effect.Effect<ProviderThreadSnapshot, TError>;
 
   readonly rollbackThread: (
     threadId: ThreadId,

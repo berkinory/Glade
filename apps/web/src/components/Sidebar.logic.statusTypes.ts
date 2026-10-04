@@ -10,8 +10,6 @@ export const SIDEBAR_THREAD_PREWARM_LIMIT = 10;
 
 export const DEBUG_FEATURE_FLAGS_MENU_STORAGE_KEY = "glade:show-debug-feature-flags-menu";
 
-export type SidebarNewThreadEnvMode = "local" | "worktree";
-
 export type SidebarActionBadge = {
   readonly text: string;
   readonly accessibleLabel: string;
@@ -299,13 +297,6 @@ export function hasUnseenCompletion(thread: Pick<Thread, "latestTurn" | "lastVis
 export function shouldClearThreadSelectionOnMouseDown(target: HTMLElement | null): boolean {
   if (target === null) return true;
   return !target.closest(THREAD_SELECTION_SAFE_SELECTOR);
-}
-
-export function resolveSidebarNewThreadEnvMode(input: {
-  requestedEnvMode?: SidebarNewThreadEnvMode;
-  defaultEnvMode: SidebarNewThreadEnvMode;
-}): SidebarNewThreadEnvMode {
-  return input.requestedEnvMode ?? input.defaultEnvMode;
 }
 
 export type SettingsBackTarget =

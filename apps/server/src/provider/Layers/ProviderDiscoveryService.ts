@@ -62,7 +62,6 @@ const disabledCapabilitiesForProvider = (
   supportsPluginDiscovery: false,
   supportsRuntimeModelList: false,
   supportsThreadCompaction: false,
-  supportsThreadImport: false,
 });
 
 const decodeProviderModelDescriptorOption = Schema.decodeUnknownOption(ProviderModelDescriptor);

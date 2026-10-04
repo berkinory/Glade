@@ -19,7 +19,7 @@ export async function relocateProjectFromClient(
   const snapshot = await api.getShellSnapshot();
   const project = snapshot.projects.find((candidate) => candidate.id === input.projectId);
   if (!project || project.kind !== "project")
-    throw new Error("This imported project is no longer available.");
+    throw new Error("This project is no longer available.");
   if (project.workspaceRoot !== input.previousWorkspaceRoot) {
     throw new Error("The project path changed elsewhere. Close this dialog and try again.");
   }

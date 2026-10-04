@@ -1,4 +1,3 @@
-import type { ImportedHistoryState } from "./useImportedHistory";
 import { HandoffPreparationNotice } from "./HandoffPreparationNotice";
 import { type MessageId, type ThreadId, type TurnId } from "@glade/contracts/core/baseSchemas";
 import { type LegendListRef } from "@legendapp/list/react";
@@ -34,7 +33,6 @@ import type { AgentActivityDetail } from "./agentActivity.logic";
 
 interface ChatTranscriptPaneProps {
   activeThreadId: string;
-  importedHistory?: ImportedHistoryState;
   activeTurnId?: TurnId | null;
   activeTurnInProgress: boolean;
   agentActivityDetail?: AgentActivityDetail | null;
@@ -181,7 +179,6 @@ export function ChatTranscriptPane({
   worktreeSetupPendingAction,
   onResolveWorktreeSetup,
   findHighlightStore: findHighlightStoreProp,
-  importedHistory,
 }: ChatTranscriptPaneProps) {
   const scrollButtonFrameStyle: CSSProperties | undefined =
     contentInsetRightPx || contentInsetBottomPx
@@ -244,7 +241,6 @@ export function ChatTranscriptPane({
         >
           <MessagesTimeline
             key={activeThreadId}
-            {...(importedHistory ? { importedHistory } : {})}
             hasMessages={hasMessages}
             isWorking={isWorking}
             {...(workingLabel ? { workingLabel } : {})}

@@ -72,11 +72,6 @@ const AVAILABLE_NOW_DEFINITIONS: readonly ShortcutDefinition[] = [
     description: "Show or hide running tasks, completed work, and items that need attention.",
   },
   {
-    command: "sidebar.importThread",
-    label: "Import chat",
-    description: "Bring an existing conversation into the current workspace.",
-  },
-  {
     command: "space.previous",
     label: "Previous space",
     description: "Switch to the previous project space and restore its last working context.",

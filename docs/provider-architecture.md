@@ -69,7 +69,7 @@ Provider configuration is split across typed server settings, discovery/health s
 - runtime model, agent, skill, command, or plugin discovery;
 - provider-specific model options and runtime modes;
 - session resume cursors and native thread identifiers;
-- handoff/import support;
+- handoff support;
 - provider update metadata.
 
 Capability and discovery data should be authoritative. UI surfaces should consume the shared provider metadata instead of hard-coding behavior from `ProviderKind` where a capability exists.
@@ -124,11 +124,3 @@ only an explicit start creates a process. Close requires the current attachment
 identity and verifies owned process teardown. Renderer remounts do not start another
 login. CLI exit triggers provider status and catalog refresh; exit code zero alone
 is not proof of authentication. Server shutdown disposes retained attempts.
-
-Imported display history uses Claude SDK offset/limit pages and Codex `thread/turns/list` cursors.
-Codex import admission reads only the newest turn with `itemsView: "notLoaded"`; it does not fetch
-tool output merely to determine completion. Full import pages require `itemsView: "full"` and
-reject nonadvancing cursors, repeated source identities and oversized output. The native fork
-retains full conversation context independently of the bounded display transcript; older display
-requests never invoke a provider or append a model turn. See [project-import.md](./project-import.md)
-for capture limits and durable retry behavior.

@@ -20,23 +20,12 @@ describe("conversation title ownership", () => {
         title: "hi",
       }),
     );
-    await Effect.runPromise(
-      harness.engine.dispatch({
-        type: "thread.messages.import",
-        commandId: CommandId.makeUnsafe("short-history"),
-        threadId,
-        messages: [
-          {
-            messageId: asMessageId("short"),
-            role: "user",
-            text: "hi",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-        ],
-        createdAt: new Date().toISOString(),
-      }),
-    );
+    await harness.seedUserMessage({
+      threadId,
+      messageId: asMessageId("short"),
+      text: "hi",
+      createdAt: new Date().toISOString(),
+    });
     const generate = makeThreadTitleGeneration({
       engine: harness.engine,
       projection: {

@@ -9,14 +9,6 @@ import {
   TrimmedNonEmptyString,
 } from "../core/baseSchemas";
 import {
-  ListProjectImportsInput,
-  ReadImportedHistoryInput,
-  ReadImportedHistoryResult,
-  ListProjectImportsResult,
-  ImportProjectInput,
-  ImportProjectResult,
-} from "../workspace/projectImport";
-import {
   OrchestrationReadModel,
   OrchestrationShellSnapshot,
   OrchestrationThreadDetailSnapshot,
@@ -31,10 +23,6 @@ export const ORCHESTRATION_WS_METHODS = {
   getThreadDetailSnapshot: "orchestration.getThreadDetailSnapshot",
   dispatchCommand: "orchestration.dispatchCommand",
   prepareHandoff: "orchestration.prepareHandoff",
-  importThread: "orchestration.importThread",
-  listProjectImports: "orchestration.listProjectImports",
-  importProject: "orchestration.importProject",
-  readImportedHistory: "orchestration.readImportedHistory",
   repairState: "orchestration.repairState",
   getTurnDiff: "orchestration.getTurnDiff",
   previewWorkspaceRestore: "orchestration.previewWorkspaceRestore",
@@ -243,19 +231,6 @@ export const OrchestrationGetThreadDetailSnapshotResult = Schema.NullOr(
 export type OrchestrationGetThreadDetailSnapshotResult =
   typeof OrchestrationGetThreadDetailSnapshotResult.Type;
 
-export const OrchestrationImportThreadInput = Schema.Struct({
-  threadId: ThreadId,
-  externalId: TrimmedNonEmptyString,
-});
-
-export type OrchestrationImportThreadInput = typeof OrchestrationImportThreadInput.Type;
-
-export const OrchestrationImportThreadResult = Schema.Struct({
-  threadId: ThreadId,
-});
-
-export type OrchestrationImportThreadResult = typeof OrchestrationImportThreadResult.Type;
-
 export const OrchestrationUnsubscribeThreadInput = Schema.Struct({
   threadId: ThreadId,
 });
@@ -285,13 +260,6 @@ export const OrchestrationRpcSchemas = {
     input: ClientOrchestrationCommand,
     output: DispatchResult,
   },
-  importThread: {
-    input: OrchestrationImportThreadInput,
-    output: OrchestrationImportThreadResult,
-  },
-  listProjectImports: { input: ListProjectImportsInput, output: ListProjectImportsResult },
-  readImportedHistory: { input: ReadImportedHistoryInput, output: ReadImportedHistoryResult },
-  importProject: { input: ImportProjectInput, output: ImportProjectResult },
   getTurnDiff: {
     input: OrchestrationGetTurnDiffInput,
     output: OrchestrationGetTurnDiffResult,

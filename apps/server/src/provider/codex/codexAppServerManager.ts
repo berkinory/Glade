@@ -7,7 +7,6 @@ import {
 import { decodeCodexGuardianReview } from "./protocol/decode.ts";
 import { guardianDeniedEvent, type GuardianDeniedEvent } from "./codexGuardianReview.ts";
 import type { NativeThreadHistoryInput } from "../core/nativeThreadHistory.ts";
-import { discoverCodexProjects } from "./codexProjectImport.ts";
 import { codexUpdatedModelSelection } from "./codexStateNotifications.ts";
 import { asString } from "@glade/shared/text/text";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
@@ -797,7 +796,7 @@ function formatCodexThreadResumeError(error: unknown, providerThreadId: string):
   }
 
   return new Error(
-    `Codex thread ${providerThreadId} is open in another Codex client. Close that client before continuing the original thread, or import it as a copy instead.`,
+    `Codex thread ${providerThreadId} is open in another Codex client. Close that client before continuing the thread.`,
     { cause: originalError },
   );
 }
@@ -1752,102 +1751,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     });
   }
 
-  async discoverProjects(providerOptions?: ProviderSessionStartInput["providerOptions"]) {
-    const context = await this.resolveContextForDiscovery(undefined, undefined, providerOptions);
-    return discoverCodexProjects({
-      ...(providerOptions?.codex?.homePath ? { homePath: providerOptions.codex.homePath } : {}),
-      listThreads: async (params) =>
-        decodeCodexResponse("thread/list", await this.sendRequest(context, "thread/list", params)),
-      listProjects: async (params) =>
-        decodeCodexResponse(
-          "project/list",
-          await this.sendRequest(context, "project/list", params),
-        ),
-    });
-  }
-
-  async readExternalThread(input: {
-    externalThreadId: string;
-    cwd?: string;
-    providerOptions?: ProviderSessionStartInput["providerOptions"];
-  }): Promise<CodexThreadSnapshot> {
-    const context = await this.resolveContextForDiscovery(
-      undefined,
-      input.cwd,
-      input.providerOptions,
-    );
-    return this.readThreadSnapshot(context, input.externalThreadId);
-  }
-
-  async readExternalThreadPage(input: {
-    externalThreadId: string;
-    cursor: string | null;
-    cwd?: string;
-    providerOptions?: ProviderSessionStartInput["providerOptions"];
-  }): Promise<{ turns: CodexThreadTurnSnapshot[]; nextCursor: string | null }> {
-    const context = await this.resolveContextForDiscovery(
-      undefined,
-      input.cwd,
-      input.providerOptions,
-    );
-    return this.readTurnPage(context, input.externalThreadId, input.cursor, false);
-  }
-
-  private async readTurnPage(
-    context: CodexSessionContext,
-    threadId: string,
-    cursor: string | null,
-    metadataOnly: boolean,
-  ): Promise<{ turns: CodexThreadTurnSnapshot[]; nextCursor: string | null }> {
-    const response = await this.sendRequest(context, "thread/turns/list", {
-      threadId,
-      itemsView: metadataOnly ? "notLoaded" : "full",
-      sortDirection: metadataOnly ? "desc" : "asc",
-      limit: metadataOnly ? 1 : 25,
-      ...(cursor !== null ? { cursor } : {}),
-    }).catch((cause: unknown) => {
-      throw new Error(
-        "Codex history paging failed. Update the configured Codex CLI and retry the import.",
-        { cause },
-      );
-    });
-    const record = this.readObject(response);
-    const data = this.readArray(record, "data");
-    if (!data || data.length > (metadataOnly ? 1 : 25))
-      throw new Error("Codex returned an invalid conversation page. Update the CLI and retry.");
-    const rawCursor = record?.nextCursor;
-    if (
-      rawCursor !== null &&
-      rawCursor !== undefined &&
-      (typeof rawCursor !== "string" || !rawCursor || rawCursor.length > 4096)
-    )
-      throw new Error("Codex returned an invalid history cursor.");
-    const nextCursor = typeof rawCursor === "string" ? rawCursor : null;
-    if (nextCursor !== null && (data.length === 0 || nextCursor === cursor))
-      throw new Error("Codex returned a nonadvancing history page.");
-    if (Buffer.byteLength(JSON.stringify(response), "utf8") > 8 * 1024 * 1024)
-      throw new Error(
-        "A Codex history page exceeds 8 MiB. Reduce oversized source output before importing.",
-      );
-    if (
-      data.some((turn) => {
-        const entry = this.readObject(turn);
-        return (
-          !this.readString(entry, "id") ||
-          this.readString(entry, "itemsView") !== (metadataOnly ? "notLoaded" : "full")
-        );
-      })
-    )
-      throw new Error(
-        "Codex did not return the requested history view. Update the configured CLI.",
-      );
-    const turns = this.parseThreadSnapshot("thread/turns/list", {
-      threadId,
-      turns: metadataOnly ? data.map((turn) => ({ ...this.readObject(turn), items: [] })) : data,
-    }).turns;
-    return { turns, nextCursor };
-  }
-
   private async readThreadSnapshot(
     context: CodexSessionContext,
     providerThreadId: string,
@@ -1901,7 +1804,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       if (seenCursors.has(cursor)) throw new Error("Codex repeated a conversation page cursor.");
       seenCursors.add(cursor);
     }
-    throw new Error("Codex conversation exceeds the supported import page limit.");
+    throw new Error("Codex conversation exceeds the supported history page limit.");
   }
 
   async forkThread(
@@ -2019,29 +1922,9 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
           : undefined;
       const serviceTier = resolveCodexServiceTier(input.modelSelection);
       signal?.throwIfAborted();
-      let lastTurnId = input.forkPoint?.provider === "codex" ? input.forkPoint.turnId : undefined;
+      const lastTurnId = input.forkPoint?.provider === "codex" ? input.forkPoint.turnId : undefined;
       if (input.forkPoint && input.forkPoint.provider !== "codex")
         throw new Error("Invalid Codex fork point provider.");
-      if (input.requireCompletedSource) {
-        const source = await this.readTurnPage(context, sourceProviderThreadId, null, true);
-        const lastTurn = source.turns[0];
-
-        const completedAt = lastTurn?.completedAt;
-        const hasCompletionDate =
-          typeof completedAt === "number"
-            ? Number.isFinite(completedAt) && completedAt > 0
-            : typeof completedAt === "string" && Number.isFinite(Date.parse(completedAt));
-        const completed =
-          lastTurn?.status === undefined
-            ? hasCompletionDate
-            : ["completed", "interrupted", "failed"].includes(lastTurn.status);
-        if (lastTurn && !completed) {
-          throw new Error(
-            "Wait for the source Codex conversation to finish its turn before importing it.",
-          );
-        }
-        lastTurnId ??= lastTurn?.id;
-      }
       const forkParams = {
         ...(gatewaySessionLease
           ? { config: buildCodexThreadGatewayConfig(gatewaySessionLease.connection) }
@@ -3057,7 +2940,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       supportsPluginDiscovery: true,
       supportsRuntimeModelList: true,
       supportsThreadCompaction: true,
-      supportsThreadImport: true,
     };
   }
 

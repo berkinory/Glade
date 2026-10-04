@@ -101,9 +101,6 @@ import {
 } from "../../orchestration/Errors";
 import { makeDispatchCommandNormalizer } from "../../orchestration/dispatchCommandNormalization";
 import { prepareQuitResume } from "../../orchestration/quitResume";
-import { makeImportThreadHandler } from "../../orchestration/importThreadRoute";
-import { makeProjectImportHandlers } from "../../orchestration/projectImportRoute";
-import { makeProjectImportRepository } from "../../persistence/projectImportRepository";
 import { OrchestrationEngineService } from "../../orchestration/Services/OrchestrationEngine";
 import { ProviderCommandReactor } from "../../orchestration/Services/ProviderCommandReactor";
 import { ProjectionStateIncompleteError } from "../../persistence/Errors";
@@ -115,7 +112,6 @@ import { recoverUnregisteredGitHubCheckout } from "../../project/githubProjectRe
 import { ProviderAdapterRegistry } from "../../provider/Services/ProviderAdapterRegistry";
 import { getEnabledProviderAdapter } from "../../provider/core/enabledProviderAdapter";
 import { ProviderHealth } from "../../provider/Services/ProviderHealth";
-import { ProviderService } from "../../provider/Services/ProviderService";
 import { consumeCodexResetCreditEffect, listProviderUsage } from "../../provider/usage/index";
 import { getProviderUsageSnapshot } from "../../provider/usage/providerUsageSnapshot";
 import { ProfileStatsQuery } from "../../diagnostics/Services/ProfileStatsQuery";
@@ -366,7 +362,6 @@ const makeWsRpcHandlersLayer = () =>
       const providerDiscoveryService = yield* ProviderDiscoveryService;
       const providerManagement = yield* ProviderManagement;
       const providerHealth = yield* ProviderHealth;
-      const providerService = yield* ProviderService;
       const lifecycleEvents = yield* ServerLifecycleEvents;
       const runtimeStartup = yield* ServerRuntimeStartup;
       const serverEnvironment = yield* ServerEnvironment;
@@ -580,24 +575,6 @@ const makeWsRpcHandlersLayer = () =>
         path,
         canonicalizeProjectWorkspaceRoot,
         prepareChatWorkspaceRoot,
-      });
-
-      const importThread = makeImportThreadHandler({
-        fileSystem,
-        orchestrationEngine,
-        path,
-        platform: process.platform,
-        projectionSnapshotQuery: projectionReadModelQuery,
-        providerAdapterRegistry,
-        providerService,
-        serverSettings,
-      });
-      const projectImports = makeProjectImportHandlers({
-        repository: yield* makeProjectImportRepository,
-        orchestrationEngine,
-        providerService,
-        providerAdapterRegistry,
-        serverSettings,
       });
 
       const dispatchOrchestrationCommand = (command: OrchestrationCommand) =>
@@ -902,14 +879,6 @@ const makeWsRpcHandlersLayer = () =>
             }),
             "Failed to dispatch orchestration command",
           ),
-        [ORCHESTRATION_WS_METHODS.importThread]: (input) =>
-          rpcEffect(importThread(input), "Failed to import thread"),
-        [ORCHESTRATION_WS_METHODS.listProjectImports]: (input) =>
-          rpcEffect(projectImports.listProjectImports(input), "Failed to find local projects"),
-        [ORCHESTRATION_WS_METHODS.readImportedHistory]: (input) =>
-          rpcEffect(projectImports.readImportedHistory(input), "Failed to load imported history"),
-        [ORCHESTRATION_WS_METHODS.importProject]: (input) =>
-          rpcEffect(projectImports.importProject(input), "Failed to import project"),
         [ORCHESTRATION_WS_METHODS.getSnapshot]: () =>
           rpcEffect(
             projectionReadModelQuery.getSnapshot(),

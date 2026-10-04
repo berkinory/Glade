@@ -6,26 +6,7 @@ import { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { createRequestHarness } from "./requestHarness.testSupport";
 
 describe("thread checkpoint control", () => {
-  it("uses the requested binary and archive for stopped external history reads", async () => {
-    const { manager, context, sendRequest } = createRequestHarness();
-    const discovery = vi
-      .spyOn(
-        manager as unknown as {
-          getOrCreateDiscoverySession: (...args: unknown[]) => Promise<unknown>;
-        },
-        "getOrCreateDiscoverySession",
-      )
-      .mockResolvedValue(context);
-    const providerOptions = { codex: { binaryPath: "/custom/codex", homePath: "/custom/archive" } };
-    sendRequest.mockResolvedValue({ thread: { id: "external", turns: [] } });
-    await manager.readExternalThread({
-      externalThreadId: "external",
-      cwd: "/repo",
-      providerOptions,
-    });
-    expect(discovery).toHaveBeenCalledWith("/repo", providerOptions);
-  });
-  it("does not spawn a fork runtime after import cancellation during version discovery", async () => {
+  it("does not spawn a fork runtime after cancellation during version discovery", async () => {
     const { manager, sendRequest } = createRequestHarness();
     let releaseVersionCheck!: () => void;
     let versionCheckStarted!: () => void;
@@ -122,123 +103,68 @@ describe("thread checkpoint control", () => {
     expect(sendRequest).toHaveBeenCalledTimes(4);
   });
 
-  it.each([
-    "ordinary",
-    "completed",
-    "empty",
-    "inProgress",
-    "legacy-completed",
-    "legacy-unknown",
-    "legacy-invalid-date",
-  ])(
-    "forks a provider thread with an explicitly selected Standard tier (%s)",
-    async (sourceStatus) => {
-      const requireCompletedSource = sourceStatus !== "ordinary";
-      const homePath = mkdtempSync(path.join(os.tmpdir(), "glade-codex-fork-tier-"));
-      writeFileSync(path.join(homePath, "app-server"), "process.stdin.resume();\n");
-      const previousGladeHome = process.env.GLADE_HOME;
-      process.env.GLADE_HOME = path.join(homePath, "glade-home");
-      const { manager, sendRequest } = createRequestHarness();
-      vi.spyOn(
-        manager as unknown as { assertSupportedCodexCliVersion: () => Promise<void> },
-        "assertSupportedCodexCliVersion",
-      ).mockResolvedValue(undefined);
-      const turns =
-        sourceStatus === "empty"
-          ? []
-          : [
-              {
-                id: "completed-source-turn",
-                ...(sourceStatus.startsWith("legacy-")
-                  ? {}
-                  : { status: sourceStatus === "ordinary" ? "completed" : sourceStatus }),
-                ...(sourceStatus === "legacy-completed" ? { completedAt: 1700000005 } : {}),
-                ...(sourceStatus === "legacy-invalid-date" ? { completedAt: "invalid" } : {}),
-                itemsView: "notLoaded",
-                items: [],
-              },
-            ];
-      sendRequest.mockImplementation(async (_context, method) =>
-        method === "thread/turns/list"
-          ? { data: turns, nextCursor: null }
-          : { thread: { id: "thread_forked", turns: [] } },
-      );
+  it("forks a provider thread with an explicitly selected Standard tier", async () => {
+    const homePath = mkdtempSync(path.join(os.tmpdir(), "glade-codex-fork-tier-"));
+    writeFileSync(path.join(homePath, "app-server"), "process.stdin.resume();\n");
+    const previousGladeHome = process.env.GLADE_HOME;
+    process.env.GLADE_HOME = path.join(homePath, "glade-home");
+    const { manager, sendRequest } = createRequestHarness();
+    vi.spyOn(
+      manager as unknown as { assertSupportedCodexCliVersion: () => Promise<void> },
+      "assertSupportedCodexCliVersion",
+    ).mockResolvedValue(undefined);
+    sendRequest.mockResolvedValue({ thread: { id: "thread_forked", turns: [] } });
 
-      try {
-        const fork = manager.forkThread({
-          sourceThreadId: ThreadId.makeUnsafe("thread_1"),
-          sourceResumeCursor: {
-            threadId: "thread_1",
-          },
-          threadId: ThreadId.makeUnsafe("thread_2"),
-          lifecycleGeneration: "import-generation",
-          requireCompletedSource,
-          forkPoint: { provider: "codex", turnId: TurnId.makeUnsafe("chosen-earlier-turn") },
-          cwd: homePath,
-          providerOptions: { codex: { binaryPath: process.execPath, homePath } },
-          modelSelection: {
-            provider: "codex",
-            model: "gpt-5.4",
-            options: { fastMode: false },
-          },
-          runtimeMode: "full-access",
-        });
-        if (["inProgress", "legacy-unknown", "legacy-invalid-date"].includes(sourceStatus)) {
-          await expect(fork).rejects.toThrow("finish its turn");
-          expect(sendRequest.mock.calls.some(([, method]) => method === "thread/fork")).toBe(false);
-          return;
-        }
-        const result = await fork;
-        if (requireCompletedSource) {
-          expect(sendRequest).toHaveBeenCalledWith(expect.anything(), "thread/turns/list", {
-            threadId: "thread_1",
-            itemsView: "notLoaded",
-            sortDirection: "desc",
-            limit: 1,
-          });
-          expect(sendRequest.mock.calls.some(([, method]) => method === "thread/read")).toBe(false);
-        }
-
-        const forkRequest = sendRequest.mock.calls.find(([, method]) => method === "thread/fork");
-        expect(forkRequest?.[2]).toMatchObject({
+    try {
+      const fork = manager.forkThread({
+        sourceThreadId: ThreadId.makeUnsafe("thread_1"),
+        sourceResumeCursor: {
           threadId: "thread_1",
-          deferGoalContinuation: true,
-          serviceTier: "default",
-          approvalPolicy: "never",
-          sandbox: "danger-full-access",
-        });
-        expect(forkRequest?.[2]).toMatchObject({ lastTurnId: "chosen-earlier-turn" });
-        expect(forkRequest?.[2]).toMatchObject(
-          requireCompletedSource
-            ? {
-                lastTurnId: "chosen-earlier-turn",
-                excludeTurns: true,
-              }
-            : {},
-        );
-        expect(forkRequest?.[0]).toMatchObject({ lifecycleGeneration: "import-generation" });
-        expect(
-          sendRequest.mock.calls.some(
-            ([, method]) => method === "thread/resume" || method === "turn/start",
-          ),
-        ).toBe(false);
-        expect(result).toEqual({
-          threadId: "thread_2",
-          resumeCursor: {
-            threadId: "thread_forked",
-          },
-        });
-      } finally {
-        await manager.stopAll();
-        if (previousGladeHome === undefined) {
-          delete process.env.GLADE_HOME;
-        } else {
-          process.env.GLADE_HOME = previousGladeHome;
-        }
-        rmSync(homePath, { recursive: true, force: true });
+        },
+        threadId: ThreadId.makeUnsafe("thread_2"),
+        lifecycleGeneration: "fork-generation",
+        forkPoint: { provider: "codex", turnId: TurnId.makeUnsafe("chosen-earlier-turn") },
+        cwd: homePath,
+        providerOptions: { codex: { binaryPath: process.execPath, homePath } },
+        modelSelection: {
+          provider: "codex",
+          model: "gpt-5.4",
+          options: { fastMode: false },
+        },
+        runtimeMode: "full-access",
+      });
+      const result = await fork;
+      const forkRequest = sendRequest.mock.calls.find(([, method]) => method === "thread/fork");
+      expect(forkRequest?.[2]).toMatchObject({
+        threadId: "thread_1",
+        deferGoalContinuation: true,
+        serviceTier: "default",
+        approvalPolicy: "never",
+        sandbox: "danger-full-access",
+      });
+      expect(forkRequest?.[2]).toMatchObject({ lastTurnId: "chosen-earlier-turn" });
+      expect(forkRequest?.[0]).toMatchObject({ lifecycleGeneration: "fork-generation" });
+      expect(
+        sendRequest.mock.calls.some(
+          ([, method]) => method === "thread/resume" || method === "turn/start",
+        ),
+      ).toBe(false);
+      expect(result).toEqual({
+        threadId: "thread_2",
+        resumeCursor: {
+          threadId: "thread_forked",
+        },
+      });
+    } finally {
+      await manager.stopAll();
+      if (previousGladeHome === undefined) {
+        delete process.env.GLADE_HOME;
+      } else {
+        process.env.GLADE_HOME = previousGladeHome;
       }
-    },
-  );
+      rmSync(homePath, { recursive: true, force: true });
+    }
+  });
 
   it("reverts turns at the native boundary and resets session running state", async () => {
     const { manager, context, sendRequest, updateSession } = createRequestHarness();

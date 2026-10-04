@@ -54,11 +54,6 @@ export function makeSnapshotMessageQueries(input: {
           SELECT
             thread_id,
             message_id,
-            SUM(CASE WHEN source = 'native' AND substr(message_id, 1, 7) = 'import:' THEN 1 ELSE 0 END) OVER (
-              PARTITION BY thread_id
-              ORDER BY CASE WHEN sequence IS NULL THEN 0 ELSE 1 END DESC, sequence DESC, created_at DESC, message_id DESC
-              ROWS UNBOUNDED PRECEDING
-            ) AS import_rank,
             ROW_NUMBER() OVER (
               PARTITION BY thread_id
               ORDER BY
@@ -72,7 +67,6 @@ export function makeSnapshotMessageQueries(input: {
         ) AS ranks
         JOIN projection_thread_messages USING (thread_id, message_id)
         WHERE message_rank <= ${MAX_THREAD_MESSAGES}
-          AND (source != 'native' OR substr(message_id, 1, 7) != 'import:' OR import_rank <= 10)
         ORDER BY
           thread_id ASC,
           CASE WHEN sequence IS NULL THEN 0 ELSE 1 END ASC,
@@ -148,11 +142,6 @@ export function makeSnapshotMessageQueries(input: {
           SELECT
             thread_id,
             message_id,
-            SUM(CASE WHEN source = 'native' AND substr(message_id, 1, 7) = 'import:' THEN 1 ELSE 0 END) OVER (
-              PARTITION BY thread_id
-              ORDER BY CASE WHEN sequence IS NULL THEN 0 ELSE 1 END DESC, sequence DESC, created_at DESC, message_id DESC
-              ROWS UNBOUNDED PRECEDING
-            ) AS import_rank,
             ROW_NUMBER() OVER (
               PARTITION BY thread_id
               ORDER BY
@@ -166,8 +155,7 @@ export function makeSnapshotMessageQueries(input: {
         ) AS ranks
         JOIN projection_thread_messages USING (thread_id, message_id)
         WHERE thread_id = ${threadId}
-          AND (${maxMessages} IS NULL OR (message_rank <= ${maxMessages}
-            AND (source != 'native' OR substr(message_id, 1, 7) != 'import:' OR import_rank <= 10)))
+          AND (${maxMessages} IS NULL OR message_rank <= ${maxMessages})
         ORDER BY
           CASE WHEN sequence IS NULL THEN 0 ELSE 1 END ASC,
           sequence ASC,

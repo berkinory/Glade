@@ -1,5 +1,3 @@
-import { normalizeChatMessage } from "./storeNormalization.messages";
-import type { OrchestrationMessage } from "@glade/contracts/orchestration/threadEntities";
 import { subscribeThreadVisits } from "./threadVisitPersistence";
 import { Fragment, type ReactNode, createElement, useEffect } from "react";
 import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
@@ -271,10 +269,6 @@ interface AppStore extends AppState {
   clearThreadDetailSyncFailure: (threadId: ThreadId) => void;
   removeDeletedProjectFromClientState: (projectId: Project["id"]) => void;
   removeDeletedThreadFromClientState: (threadId: ThreadId) => void;
-  prependImportedHistory: (
-    threadId: ThreadId,
-    messages: ReadonlyArray<OrchestrationMessage>,
-  ) => void;
   markThreadVisited: (threadId: ThreadId, visitedAt?: string) => void;
   markThreadUnread: (threadId: ThreadId) => void;
   toggleProject: (projectId: Project["id"]) => void;
@@ -326,36 +320,6 @@ export const useStore = create<AppStore>((set) => ({
     set((state) => removeDeletedProjectFromClientState(state, projectId)),
   removeDeletedThreadFromClientState: (threadId) =>
     set((state) => removeDeletedThreadFromClientState(state, threadId)),
-  prependImportedHistory: (threadId, messages) =>
-    set((state) =>
-      applyThreadUpdate(
-        state,
-        threadId,
-        (thread) => {
-          const existing = new Set(thread.messages.map((message) => message.id));
-          const older = messages
-            .filter((message) => !existing.has(message.id))
-            .map((message) => ({
-              ...normalizeChatMessage(message, undefined),
-              loadedImportHistory: true,
-            }));
-          return older.length
-            ? {
-                ...thread,
-                messages: [
-                  ...older,
-                  ...thread.messages.map((message) =>
-                    message.id.startsWith("import:")
-                      ? { ...message, loadedImportHistory: true }
-                      : message,
-                  ),
-                ],
-              }
-            : thread;
-        },
-        { recomputeSummarySignals: false, updateSidebarSummary: false },
-      ),
-    ),
   markThreadVisited: (threadId, visitedAt) =>
     set((state) => markThreadVisited(state, threadId, visitedAt)),
   markThreadUnread: (threadId) => set((state) => markThreadUnread(state, threadId)),

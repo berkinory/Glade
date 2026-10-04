@@ -1,3 +1,4 @@
+import { seedUserMessage } from "../persistedMessage.testSupport";
 import {
   ThreadTitleGeneration,
   type ThreadTitleGenerationShape,
@@ -11,7 +12,17 @@ import {
   ThreadId,
   CommandId,
 } from "@glade/contracts/core/baseSchemas";
-import { Effect, ManagedRuntime, Scope, Exit, Duration, PubSub, Stream, Layer } from "effect";
+import {
+  Effect,
+  ManagedRuntime,
+  Scope,
+  Exit,
+  Duration,
+  PubSub,
+  Stream,
+  Layer,
+  Option,
+} from "effect";
 import { deriveServerPaths, ServerConfig } from "../../server/config.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import {
@@ -49,6 +60,7 @@ import { type GitCoreShape, GitCore } from "../../git/Services/GitCore.ts";
 import { TextGenerationError } from "../../git/Errors.ts";
 import { OrchestrationEngineLive } from "../Layers/OrchestrationEngine.ts";
 import { OrchestrationProjectionPipelineLive } from "../Layers/ProjectionPipeline.ts";
+import { ProjectionSnapshotQuery } from "../Services/ProjectionSnapshotQuery";
 import { OrchestrationProjectionSnapshotQueryLive } from "../Layers/ProjectionSnapshotQuery.ts";
 import { OrchestrationEventStoreLive } from "../../persistence/Layers/OrchestrationEventStore.ts";
 import { OrchestrationCommandReceiptRepositoryLive } from "../../persistence/Layers/OrchestrationCommandReceipts.ts";
@@ -473,9 +485,9 @@ export function makeReactorTestHarness() {
     };
 
     const orchestrationLayer = OrchestrationEngineLive.pipe(
-      Layer.provide(OrchestrationProjectionPipelineLive),
+      Layer.provideMerge(OrchestrationProjectionPipelineLive),
       Layer.provide(OrchestrationProjectionSnapshotQueryLive),
-      Layer.provide(OrchestrationEventStoreLive),
+      Layer.provideMerge(OrchestrationEventStoreLive),
       Layer.provide(OrchestrationCommandReceiptRepositoryLive),
     );
     const layer = makeProviderCommandReactorLive(
@@ -719,6 +731,14 @@ export function makeReactorTestHarness() {
         );
         return attachmentPath;
       },
+      readThread: (threadId: ThreadId) =>
+        runtime.runPromise(
+          Effect.flatMap(Effect.service(ProjectionSnapshotQuery), (snapshot) =>
+            snapshot.getThreadDetailById(threadId).pipe(Effect.map(Option.getOrUndefined)),
+          ),
+        ),
+      seedUserMessage: (message: Parameters<typeof seedUserMessage>[0]) =>
+        runtime.runPromise(seedUserMessage(message)),
       drain,
       emitRuntimeEvent,
       setRuntimeSessionTurnState,
@@ -829,23 +849,12 @@ export function makeReactorTestHarness() {
       readonly createdAt: string;
     },
   ) {
-    await Effect.runPromise(
-      harness.engine.dispatch({
-        type: "thread.messages.import",
-        commandId: CommandId.makeUnsafe(`cmd-import-${input.messageId}`),
-        threadId: ThreadId.makeUnsafe("thread-1"),
-        messages: [
-          {
-            messageId: input.messageId,
-            role: "user",
-            text: "rollback target",
-            createdAt: input.createdAt,
-            updatedAt: input.createdAt,
-          },
-        ],
-        createdAt: input.createdAt,
-      }),
-    );
+    await harness.seedUserMessage({
+      threadId: ThreadId.makeUnsafe("thread-1"),
+      messageId: input.messageId,
+      text: "rollback target",
+      createdAt: input.createdAt,
+    });
     await Effect.runPromise(
       harness.engine.dispatch({
         type: "thread.message.assistant.complete",
@@ -862,8 +871,7 @@ export function makeReactorTestHarness() {
     harness: Awaited<ReturnType<typeof createHarness>>,
     threadId: ThreadId = ThreadId.makeUnsafe("thread-1"),
   ) {
-    const readModel = await Effect.runPromise(harness.engine.getReadModel());
-    return readModel.threads.find((thread) => thread.id === threadId);
+    return harness.readThread(threadId);
   }
 
   async function dispatchHarnessUserTurn(

@@ -22,7 +22,6 @@ import { usePreloadRouteChunks } from "../hooks/usePreloadRouteChunks";
 import { useTheme } from "../hooks/useTheme";
 import { readNativeApi } from "../nativeApi";
 import { TaskCompletionNotifications } from "../notifications/taskCompletion";
-import { ProjectImportAnnouncementDialog } from "../projectImport/ProjectImportAnnouncementDialog";
 import {
   addWsCompatibilityIssueListener,
   readLatestWsCompatibilityIssue,
@@ -31,7 +30,6 @@ import { DesktopProjectBootstrap } from "./-rootDesktopBootstrap";
 import {
   GlobalFeedbackDialog,
   GlobalOnboardingDialog,
-  GlobalProjectImportDialog,
   GlobalShortcutsDialog,
   GlobalWhatsNewSurface,
 } from "./-rootDialogs";
@@ -114,8 +112,6 @@ export function RootRouteView() {
             <QueuedComposerDrainCoordinator />
 
             <GlobalOnboardingDialog />
-            <ProjectImportAnnouncementDialog />
-            <GlobalProjectImportDialog />
 
             <DesktopProjectBootstrap />
             <Outlet />

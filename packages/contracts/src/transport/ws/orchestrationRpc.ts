@@ -1,10 +1,5 @@
 import * as Rpc from "effect/unstable/rpc/Rpc";
-import {
-  ORCHESTRATION_WS_METHODS,
-  OrchestrationRpcSchemas,
-  OrchestrationImportThreadInput,
-  OrchestrationImportThreadResult,
-} from "../../orchestration/rpc";
+import { ORCHESTRATION_WS_METHODS, OrchestrationRpcSchemas } from "../../orchestration/rpc";
 import { ClientOrchestrationCommand } from "../../orchestration/commands";
 import {
   OrchestrationShellStreamItem,
@@ -23,24 +18,6 @@ export const WsOrchestrationDispatchCommandRpc = Rpc.make(
     error: WsRpcError,
   },
 );
-
-export const WsOrchestrationImportThreadRpc = Rpc.make(ORCHESTRATION_WS_METHODS.importThread, {
-  payload: OrchestrationImportThreadInput,
-  success: OrchestrationImportThreadResult,
-  error: WsRpcError,
-});
-
-export const WsListProjectImportsRpc = Rpc.make(ORCHESTRATION_WS_METHODS.listProjectImports, {
-  payload: OrchestrationRpcSchemas.listProjectImports.input,
-  success: OrchestrationRpcSchemas.listProjectImports.output,
-  error: WsRpcError,
-});
-
-export const WsImportProjectRpc = Rpc.make(ORCHESTRATION_WS_METHODS.importProject, {
-  payload: OrchestrationRpcSchemas.importProject.input,
-  success: OrchestrationRpcSchemas.importProject.output,
-  error: WsRpcError,
-});
 
 export const WsOrchestrationGetSnapshotRpc = Rpc.make(ORCHESTRATION_WS_METHODS.getSnapshot, {
   payload: OrchestrationRpcSchemas.getSnapshot.input,
@@ -177,11 +154,5 @@ export const WsPreviewWorkspaceRestoreRpc = Rpc.make(
 export const WsOrchestrationPrepareHandoffRpc = Rpc.make(ORCHESTRATION_WS_METHODS.prepareHandoff, {
   payload: OrchestrationRpcSchemas.prepareHandoff.input,
   success: OrchestrationRpcSchemas.prepareHandoff.output,
-  error: WsRpcError,
-});
-
-export const WsReadImportedHistoryRpc = Rpc.make(ORCHESTRATION_WS_METHODS.readImportedHistory, {
-  payload: OrchestrationRpcSchemas.readImportedHistory.input,
-  success: OrchestrationRpcSchemas.readImportedHistory.output,
   error: WsRpcError,
 });

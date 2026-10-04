@@ -627,12 +627,6 @@ export function createWsNativeApi(): NativeApi {
             })
           : transport.request(ORCHESTRATION_WS_METHODS.dispatchCommand, payload);
       },
-      importThread: (input) => transport.request(ORCHESTRATION_WS_METHODS.importThread, input),
-      listProjectImports: (input) =>
-        transport.request(ORCHESTRATION_WS_METHODS.listProjectImports, input),
-      readImportedHistory: (input) =>
-        transport.request(ORCHESTRATION_WS_METHODS.readImportedHistory, input),
-      importProject: (input) => transport.request(ORCHESTRATION_WS_METHODS.importProject, input),
       repairState: () => transport.request(ORCHESTRATION_WS_METHODS.repairState),
       previewWorkspaceRestore: (input) =>
         transport.request(ORCHESTRATION_WS_METHODS.previewWorkspaceRestore, input),

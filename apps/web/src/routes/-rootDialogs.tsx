@@ -11,7 +11,6 @@ import { serverConfigQueryOptions } from "../lib/serverReactQuery";
 import { isTerminalFocused } from "../lib/terminalFocus";
 import { getNavigatorPlatform } from "../lib/utils";
 import { useOnboarding } from "../onboarding/useOnboarding";
-import { useProjectImportDialogStore } from "../projectImport/projectImportDialogStore";
 import { selectThreadTerminalState, useTerminalStateStore } from "../terminalStateStore";
 import { useWhatsNew } from "../whatsNew/useWhatsNew";
 import { WhatsNewPopoutCard } from "../whatsNew/WhatsNewPopoutCard";
@@ -107,24 +106,6 @@ export function GlobalOnboardingDialog() {
         onOpenChange={onboarding.onOpenChange}
         onComplete={onboarding.complete}
       />
-    </Suspense>
-  );
-}
-const ProjectImportDialog = lazy(() =>
-  import("../projectImport/ProjectImportDialog").then((module) => ({
-    default: module.ProjectImportDialog,
-  })),
-);
-export function GlobalProjectImportDialog() {
-  const isOpen = useProjectImportDialogStore((store) => store.isOpen);
-  const [hasOpened, setHasOpened] = useState(false);
-  useEffect(() => {
-    if (isOpen) setHasOpened(true);
-  }, [isOpen]);
-  if (!isOpen && !hasOpened) return null;
-  return (
-    <Suspense fallback={null}>
-      <ProjectImportDialog />
     </Suspense>
   );
 }

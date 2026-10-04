@@ -40,13 +40,10 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
     keybindings,
     newThreadShortcutLabel,
     newChatShortcutLabel,
-    importThreadShortcutLabel,
     addProjectShortcutLabel,
     usageSettingsShortcutLabel,
     setCreateProjectDialogOpen,
     setSearchPaletteOpen,
-    searchPaletteMode,
-    setSearchPaletteMode,
     setActivityViewEnabledSmoothly,
     dragInProgressRef,
     suppressProjectClickAfterDragRef,
@@ -193,8 +190,7 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
       if (command === "sidebar.search") {
         event.preventDefault();
         event.stopPropagation();
-        setSearchPaletteMode("search");
-        setSearchPaletteOpen((prev) => !prev || searchPaletteMode !== "search");
+        setSearchPaletteOpen((prev) => !prev);
         return;
       }
       if (command === "sidebar.activity") {
@@ -211,13 +207,6 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
         event.preventDefault();
         event.stopPropagation();
         setCreateProjectDialogOpen(true);
-        return;
-      }
-      if (command === "sidebar.importThread") {
-        event.preventDefault();
-        event.stopPropagation();
-        setSearchPaletteMode("import");
-        setSearchPaletteOpen((prev) => !prev || searchPaletteMode !== "import");
         return;
       }
       if (command === "settings.usage") {
@@ -334,7 +323,6 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
     homeDir,
     isOnSettings,
     navigate,
-    searchPaletteMode,
     setActivityViewEnabledSmoothly,
     spaces,
     threadJumpCommandByThreadId,
@@ -346,7 +334,6 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
     threadJumpLabelsRef,
     setShowThreadJumpHints,
     setCreateProjectDialogOpen,
-    setSearchPaletteMode,
   ]);
 
   const desktopUpdate = useSidebarDesktopUpdate();
@@ -388,19 +375,6 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
       keywords: ["folder", "repo", "repository", "open"],
       shortcutLabel: addProjectShortcutLabel,
       run: handleStartAddProject,
-    },
-    {
-      id: "import-projects",
-      label: "Import projects from…",
-      description: "Bring Codex and Claude Code projects and conversations into Glade.",
-      keywords: ["import", "projects", "codex", "claude", "conversations", "folders"],
-    },
-    {
-      id: "import-thread",
-      label: "Import thread from...",
-      description: "Attach a local thread to an existing provider session.",
-      keywords: ["import", "resume", "thread", "session", "codex", "claude"],
-      shortcutLabel: importThreadShortcutLabel,
     },
     {
       id: "feedback",

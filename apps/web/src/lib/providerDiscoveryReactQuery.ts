@@ -503,9 +503,3 @@ export function supportsThreadCompaction(
 ): boolean {
   return capabilities?.supportsThreadCompaction === true;
 }
-
-export function supportsThreadImport(
-  capabilities: ProviderComposerCapabilities | undefined,
-): boolean {
-  return capabilities?.supportsThreadImport === true;
-}

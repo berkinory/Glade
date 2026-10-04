@@ -1,4 +1,4 @@
-import { CommandId } from "@glade/contracts/core/baseSchemas";
+import { CommandId, EventId, MessageId, ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import { type OrchestrationReadModel } from "@glade/contracts/orchestration/snapshots";
@@ -49,21 +49,31 @@ async function fixture(workingDirectory: string | null = null) {
     workingDirectory,
     createdAt: now,
   });
-  return apply(model, {
-    type: "thread.messages.import",
-    commandId: "import-context",
-    threadId: "thread-1",
-    createdAt: now,
-    messages: [
-      {
-        messageId: "message-1",
+  return Effect.runPromise(
+    projectEvent(model, {
+      sequence: model.snapshotSequence + 1,
+      metadata: {},
+      eventId: EventId.makeUnsafe("earlier-context"),
+      aggregateKind: "thread",
+      aggregateId: ThreadId.makeUnsafe("thread-1"),
+      occurredAt: now,
+      commandId: null,
+      causationEventId: null,
+      correlationId: null,
+      type: "thread.message-sent",
+      payload: {
+        threadId: ThreadId.makeUnsafe("thread-1"),
+        messageId: MessageId.makeUnsafe("message-1"),
         role: "user",
         text: "Earlier context mentions /old/repo.",
+        turnId: null,
+        streaming: false,
+        source: "native",
         createdAt: now,
         updatedAt: now,
       },
-    ],
-  });
+    }),
+  );
 }
 
 const relocation = {

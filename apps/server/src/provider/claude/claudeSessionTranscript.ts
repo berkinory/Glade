@@ -1,30 +1,10 @@
-import type { SDKSessionInfo } from "@anthropic-ai/claude-agent-sdk";
 import { createReadStream } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 
-import { loadClaudeAgentSdk } from "./claudeAgentSdk.ts";
-import type { NativeProjectImportCatalog } from "../core/projectImportTypes.ts";
-
 const SESSION_FILE_NAME = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\.jsonl$/i;
 const MAX_METADATA_LINE_BYTES = 8 * 1024 * 1024;
-
-interface ClaudeProjectImportInput {
-  readonly configDir?: string;
-
-  readonly listSessions?: () => Promise<ReadonlyArray<SDKSessionInfo>>;
-}
-
-function isoDate(value: number | string | undefined): string | undefined {
-  if (value === undefined) return undefined;
-  const date = new Date(value);
-  return Number.isFinite(date.getTime()) ? date.toISOString() : undefined;
-}
-
-function absoluteCwd(value: unknown): string | undefined {
-  return typeof value === "string" && path.isAbsolute(value) ? path.normalize(value) : undefined;
-}
 
 async function directoryEntries(directory: string) {
   try {
@@ -112,7 +92,7 @@ function claudeConfigDir(configDir?: string): string {
   );
 }
 
-export async function findClaudeSessionTranscriptPath(input: {
+async function findClaudeSessionTranscriptPath(input: {
   readonly sessionId: string;
   readonly configDir?: string;
 }): Promise<string | undefined> {
@@ -134,59 +114,4 @@ export async function readClaudeSessionParentUuid(input: {
     throw new Error("The Claude edit boundary has no valid chain parent.");
   }
   throw new Error("The edited message is missing from the native Claude transcript.");
-}
-
-export async function readClaudeImportMessageDates(input: {
-  readonly sessionId: string;
-  readonly configDir?: string;
-  readonly messageIds?: ReadonlySet<string>;
-}): Promise<ReadonlyMap<string, string>> {
-  const dates = new Map<string, string>();
-  const files = await sessionFiles(claudeConfigDir(input.configDir));
-  const file = files.get(input.sessionId);
-  if (!file) return dates;
-  for await (const entry of readTranscriptEntries(file)) {
-    if (entry.isSidechain === true || typeof entry.uuid !== "string") continue;
-    if (input.messageIds && !input.messageIds.has(entry.uuid)) continue;
-    const timestamp = typeof entry.timestamp === "string" ? isoDate(entry.timestamp) : undefined;
-    if (timestamp) dates.set(entry.uuid, timestamp);
-  }
-  return dates;
-}
-
-export async function discoverClaudeProjects(
-  input: ClaudeProjectImportInput = {},
-): Promise<NativeProjectImportCatalog> {
-  const configuredHome = claudeConfigDir();
-  const sourceHome = claudeConfigDir(input.configDir);
-  if (sourceHome !== configuredHome && !input.listSessions) {
-    throw new Error("Claude project discovery must use the configured CLAUDE_CONFIG_DIR.");
-  }
-  const listSessions =
-    input.listSessions ?? (async () => (await loadClaudeAgentSdk()).listSessions());
-  const metadata = await listSessions();
-  const sessions: NativeProjectImportCatalog["sessions"][number][] = [];
-  const projects = new Map<string, NativeProjectImportCatalog["projects"][number]>();
-  for (const info of metadata) {
-    const cwd = absoluteCwd(info.cwd);
-    const updatedAt = isoDate(info.lastModified);
-    if (!cwd || !updatedAt) continue;
-    const createdAt = isoDate(info.createdAt) ?? updatedAt;
-    projects.set(cwd, { id: cwd, title: path.basename(cwd) || cwd, roots: [cwd] });
-    sessions.push({
-      id: info.sessionId,
-      title: info.customTitle?.trim() || info.summary.trim() || path.basename(cwd),
-      cwd,
-      projectId: cwd,
-      createdAt,
-      updatedAt,
-      archived: false,
-    });
-  }
-  sessions.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.id.localeCompare(b.id));
-  return {
-    sourceHome,
-    projects: [...projects.values()].toSorted((a, b) => a.id.localeCompare(b.id)),
-    sessions,
-  };
 }

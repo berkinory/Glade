@@ -95,10 +95,6 @@ catalog.
 
 ## Provider sessions
 
-Use [Import projects](project-import.md) to bring local Codex and Claude Code projects and
-conversations into Glade. The flow links existing folders, merges matching project destinations,
-and creates independent conversation copies without replacing your existing Glade work.
-
 Each task owns a provider session.
 
 The session may preserve provider-specific behavior such as:

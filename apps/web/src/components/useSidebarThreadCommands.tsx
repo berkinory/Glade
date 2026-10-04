@@ -1,4 +1,3 @@
-import { resolveProviderModelSelection } from "~/lib/providerModelSelection";
 import { useSplitViewStore } from "../splitViewStore";
 import { useSidebarStateStore } from "../sidebarStateStore";
 import { pinActionLabel } from "~/lib/pin";
@@ -8,7 +7,7 @@ import { type OrchestrationThreadPullRequest } from "@glade/contracts/orchestrat
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { pluralize } from "@glade/shared/text/text";
 import { resolveThreadWorkspaceCwd } from "@glade/shared/threads/threadEnvironment";
-import { newCommandId, newThreadId, randomUUID } from "../lib/utils";
+import { randomUUID } from "../lib/utils";
 import { reconcileDeletedThreadsFromClient } from "../lib/deletedThreadClientReconciliation";
 import { useStore } from "../store";
 import { getThreadFromState } from "../threadDerivation";
@@ -16,10 +15,8 @@ import { readNativeApi } from "../nativeApi";
 import { dispatchThreadRename } from "../lib/threadRename";
 import { quotePosixShellArgument } from "../lib/shellQuote";
 import { DEFAULT_THREAD_TERMINAL_ID, type SidebarThreadSummary } from "../types";
-import { type ImportProviderKind } from "./SidebarSearchPalette";
 import { selectThreadTerminalState, useTerminalStateStore } from "../terminalStateStore";
 import { toastManager } from "./ui/toast";
-import { resolveSidebarNewThreadEnvMode } from "./Sidebar.logic.statusTypes";
 import type { LastThreadRoute } from "../chatRouteRestore";
 import { useCopyPathToClipboard, useCopyThreadIdToClipboard } from "~/hooks/useCopyToClipboard";
 import { useThreadActivationController } from "../hooks/useThreadActivationController";
@@ -28,7 +25,6 @@ import type { useSidebarProjectNavigation } from "./useSidebarProjectNavigation"
 
 export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarProjectNavigation>) {
   const {
-    projects,
     navigate,
     appSettings,
     routeThreadId,
@@ -49,7 +45,6 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
     confirmAndArchiveThread,
     openPrLink,
     projectCwdById,
-    currentProjectShortcutTargetId,
   } = context;
   const terminalStateByThreadId = useTerminalStateStore((state) => state.terminalStateByThreadId);
   const splitViewsById = useSplitViewStore((state) => state.splitViewsById);
@@ -66,81 +61,6 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
   const setSelectionAnchor = useSidebarStateStore((state) => state.setAnchor);
 
   const setLastThreadRoute = useSidebarStateStore((state) => state.setLastThreadRoute);
-
-  const handleImportThread = async (provider: ImportProviderKind, externalId: string) => {
-    const api = readNativeApi();
-    if (!api) {
-      throw new Error("The app server is unavailable.");
-    }
-
-    if (!currentProjectShortcutTargetId) {
-      throw new Error("Add a project before importing a thread.");
-    }
-
-    const activeProject = projects.find((project) => project.id === currentProjectShortcutTargetId);
-    if (!activeProject) {
-      throw new Error("The target project could not be resolved.");
-    }
-
-    const modelSelection = await resolveProviderModelSelection({
-      api,
-      selection:
-        activeProject.defaultModelSelection?.provider === provider
-          ? activeProject.defaultModelSelection
-          : { provider, model: "" },
-      cwd: activeProject.cwd,
-    });
-    const threadId = newThreadId();
-    const createdAt = new Date().toISOString();
-    const trimmedExternalId = externalId.trim();
-    const suffix = trimmedExternalId.slice(-8);
-    const title =
-      provider === "claudeAgent"
-        ? `Imported Claude session${suffix ? ` ${suffix}` : ""}`
-        : `Imported Codex thread${suffix ? ` ${suffix}` : ""}`;
-    let createdThread = false;
-
-    try {
-      await api.orchestration.dispatchCommand({
-        type: "thread.create",
-        commandId: newCommandId(),
-        threadId,
-        projectId: activeProject.id,
-        title,
-        modelSelection,
-        runtimeMode: "full-access",
-
-        envMode: resolveSidebarNewThreadEnvMode({
-          defaultEnvMode: appSettings.defaultThreadEnvMode,
-        }),
-        branch: null,
-        worktreePath: null,
-        createdAt,
-      });
-      createdThread = true;
-
-      await api.orchestration.importThread({
-        threadId,
-        externalId: trimmedExternalId,
-      });
-
-      await navigate({
-        to: "/$threadId",
-        params: { threadId },
-      });
-    } catch (error) {
-      if (createdThread) {
-        await api.orchestration
-          .dispatchCommand({
-            type: "thread.delete",
-            commandId: newCommandId(),
-            threadId,
-          })
-          .catch(() => undefined);
-      }
-      throw error;
-    }
-  };
 
   const commitRename = async (threadId: ThreadId, newTitle: string, originalTitle: string) => {
     const outcome = await dispatchThreadRename({
@@ -538,7 +458,6 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
   const handleCloseProjectContextMenu = () => setProjectContextMenuState(null);
   return {
     ...context,
-    handleImportThread,
     commitRename,
     openRenameThreadDialog,
     handleThreadRenamePointerUp,

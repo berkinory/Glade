@@ -2156,38 +2156,6 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
         })),
       );
 
-    const readExternalThreadPage: NonNullable<CodexAdapterShape["readExternalThreadPage"]> = (
-      input,
-    ) =>
-      Effect.tryPromise({
-        try: () => manager.readExternalThreadPage(input),
-        catch: (cause) =>
-          new ProviderAdapterRequestError({
-            provider: PROVIDER,
-            method: "thread/turns/list",
-            detail: toMessage(cause, "Failed to page external Codex history."),
-            cause,
-          }),
-      });
-
-    const readExternalThread: NonNullable<CodexAdapterShape["readExternalThread"]> = (input) =>
-      Effect.tryPromise({
-        try: () => manager.readExternalThread(input),
-        catch: (cause) =>
-          new ProviderAdapterRequestError({
-            provider: PROVIDER,
-            method: "thread/read",
-            detail: toMessage(cause, "Failed to read external Codex thread."),
-            cause,
-          }),
-      }).pipe(
-        Effect.map((snapshot) => ({
-          threadId: ThreadId.makeUnsafe(snapshot.threadId),
-          turns: snapshot.turns,
-          cwd: snapshot.cwd ?? null,
-        })),
-      );
-
     const rollbackThread: CodexAdapterShape["rollbackThread"] = (threadId, numTurns) => {
       if (!Number.isInteger(numTurns) || numTurns < 1) {
         return Effect.fail(
@@ -2537,8 +2505,6 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
       startReview,
       interruptTurn,
       readThread,
-      readExternalThread,
-      readExternalThreadPage,
       updateNativeHistory: (input) =>
         Effect.tryPromise({
           try: () => manager.updateNativeHistory(input),
@@ -2547,17 +2513,6 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
               provider: "codex",
               method: `thread/${input.action.type}`,
               detail: "Failed to update native Codex history.",
-              cause,
-            }),
-        }),
-      discoverProjects: (providerOptions) =>
-        Effect.tryPromise({
-          try: () => manager.discoverProjects(providerOptions),
-          catch: (cause) =>
-            new ProviderAdapterRequestError({
-              provider: "codex",
-              method: "thread/list",
-              detail: "Failed to discover Codex sessions.",
               cause,
             }),
         }),

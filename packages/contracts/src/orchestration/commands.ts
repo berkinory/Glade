@@ -601,14 +601,6 @@ const ThreadSessionSetCommand = Schema.Struct({
   createdAt: IsoDateTime,
 });
 
-const ThreadMessagesImportCommand = Schema.Struct({
-  type: Schema.Literal("thread.messages.import"),
-  commandId: CommandId,
-  threadId: ThreadId,
-  messages: Schema.Array(ThreadHandoffImportedMessage),
-  createdAt: IsoDateTime,
-});
-
 const ThreadMessageAssistantDeltaCommand = Schema.Struct({
   type: Schema.Literal("thread.message.assistant.delta"),
   commandId: CommandId,
@@ -690,7 +682,6 @@ const ThreadConversationRollbackCompleteCommand = Schema.Struct({
 const InternalOrchestrationCommand = Schema.Union([
   ThreadSessionSetCommand,
 
-  ThreadMessagesImportCommand,
   ThreadMessageAssistantDeltaCommand,
   ThreadMessageAssistantCompleteCommand,
   ThreadMessageUserBindTurnCommand,

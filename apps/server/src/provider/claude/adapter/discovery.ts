@@ -436,7 +436,6 @@ export function makeClaudeDiscovery(input: {
     supportsPluginDiscovery: false,
     supportsRuntimeModelList: true,
     supportsThreadCompaction: false,
-    supportsThreadImport: true,
   };
 
   const getComposerCapabilities: NonNullable<ClaudeAdapterShape["getComposerCapabilities"]> = () =>

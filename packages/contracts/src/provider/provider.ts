@@ -95,7 +95,6 @@ export const ProviderForkThreadInput = Schema.Struct({
   threadId: ThreadId,
   lifecycleGeneration: Schema.optional(TrimmedNonEmptyString),
 
-  requireCompletedSource: Schema.optional(Schema.Boolean),
   sourceResumeCursor: Schema.optional(Schema.Unknown),
   sourceCwd: Schema.optional(TrimmedNonEmptyString),
   cwd: Schema.optional(TrimmedNonEmptyString),

@@ -18,8 +18,6 @@ import {
 } from "./threadFind.logic";
 
 interface ThreadFindBarProps {
-  historySearching?: boolean;
-  historyError?: string | null;
   open: boolean;
   focusNonce: number;
   timelineEntries: readonly TimelineEntry[];
@@ -42,8 +40,6 @@ function ThreadFindBar({
   onJump,
   onHighlightChange,
   onActiveMatchChange,
-  historySearching = false,
-  historyError = null,
 }: ThreadFindBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const matchesRef = useRef<ThreadFindMatch[]>([]);
@@ -200,17 +196,8 @@ function ThreadFindBar({
           MUTED_LABEL_TEXT_CLASS_NAME,
         )}
         aria-live="polite"
-        title={historyError ?? (historySearching ? "Searching earlier messages" : undefined)}
       >
-        {hasQuery
-          ? historyError
-            ? "Incomplete"
-            : matchCount === 0
-              ? historySearching
-                ? "Searching..."
-                : "No results"
-              : `${safeIndex + 1} / ${matchCount}${historySearching ? "+" : ""}`
-          : ""}
+        {hasQuery ? (matchCount === 0 ? "No results" : `${safeIndex + 1} / ${matchCount}`) : ""}
       </span>
       <IconButton
         onClick={() => handleStep("previous")}
@@ -250,8 +237,6 @@ export function ChatThreadFindHost({
   onJump,
   onHighlightChange,
   onActiveMatchChange,
-  historySearching,
-  historyError,
 }: ThreadFindBarProps & {
   threadId: string;
   className?: string;
@@ -272,8 +257,6 @@ export function ChatThreadFindHost({
           onJump={onJump}
           onHighlightChange={onHighlightChange}
           onActiveMatchChange={onActiveMatchChange}
-          {...(historySearching !== undefined ? { historySearching } : {})}
-          {...(historyError !== undefined ? { historyError } : {})}
         />
       </DisclosureRegion>
     </div>

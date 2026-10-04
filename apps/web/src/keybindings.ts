@@ -95,11 +95,6 @@ const DEFAULT_SHORTCUT_FALLBACKS: ResolvedKeybindingsConfig = [
     whenAst: whenNotTerminalFocus,
   },
   {
-    command: "sidebar.importThread",
-    shortcut: commandShortcut("i"),
-    whenAst: whenNotTerminalFocus,
-  },
-  {
     command: "chat.new",
     shortcut: commandShortcut("n"),
     whenAst: whenModChordAllowed,

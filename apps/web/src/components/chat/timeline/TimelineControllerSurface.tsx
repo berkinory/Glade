@@ -348,27 +348,6 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
         onTouchStart={handleMessagesTouchStart}
         onWheel={handleMessagesWheel}
         data-chat-scroll-container="true"
-        ListHeaderComponent={
-          controller.props.importedHistory?.loading || controller.props.importedHistory?.error ? (
-            <div className="flex flex-col items-center gap-1 pb-3 text-ui-sm text-muted-foreground">
-              {controller.props.importedHistory.loading ? (
-                <span role="status">Loading earlier messages...</span>
-              ) : null}
-              {controller.props.importedHistory.error ? (
-                <>
-                  <p role="alert">{controller.props.importedHistory.error}</p>
-                  <button
-                    type="button"
-                    className="text-ui-sm underline"
-                    onClick={controller.props.importedHistory.retry}
-                  >
-                    Retry
-                  </button>
-                </>
-              ) : null}
-            </div>
-          ) : null
-        }
         ListFooterComponent={listFooter}
         className={cn(
           "h-full overflow-x-hidden overscroll-y-contain py-3 [scrollbar-gutter:stable] sm:py-4",

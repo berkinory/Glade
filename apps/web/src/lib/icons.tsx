@@ -103,7 +103,6 @@ export const NewThreadIcon: LucideIcon = centralIconWrapper("compose-pencil");
 
 export const FolderAddIcon: LucideIcon = centralIconWrapper("folder-add-left");
 export const FolderOpenFrontIcon: LucideIcon = centralIconWrapper("folder-open-front");
-export const ImportThreadIcon: LucideIcon = centralIconWrapper("import");
 export const UsageGaugeIcon: LucideIcon = centralIconWrapper("gauge");
 export const BugReportIcon: LucideIcon = centralIconWrapper("bug");
 

@@ -41,8 +41,6 @@
 
 - The Environment panel shows the working directory and worktree location, including the source directory before a new worktree is created.
 
-- Imported conversations open with recent messages and automatically reveal older history when scrolling or searching.
-
 - Activity keeps the open chat visible and shows recognizable project icons, including monorepo favicons.
 
 - Desktop downloads and installations are smaller by omitting unused language and dependency resources.
@@ -105,8 +103,6 @@
 
 - Chats started with punctuation now receive a title when a meaningful message arrives.
 
-- Interrupted conversation imports resume safely without duplicating messages.
-
 - Temporary model discovery failures keep your last available model list.
 
 - Activity remembers its project filter, and unread chats retain their status after reopening Glade.
@@ -152,6 +148,8 @@
 - The message input no longer briefly changes size when switching chats.
 
 ### Removed
+
+- Importing projects and conversations from Codex and Claude Code.
 
 - Terminal split panes and their secondary toolbar.
 

@@ -1,3 +1,4 @@
+import type { OrchestrationThread } from "@glade/contracts/orchestration/threadEntities";
 import type { ThreadTitleGenerationShape } from "../Services/ThreadTitleGeneration";
 import type { ProviderCommandReactorShape } from "../Services/ProviderCommandReactor";
 import type { ServerSettingsShape } from "../../settings/serverSettings";
@@ -7,7 +8,7 @@ import type { ProviderRuntimeEventRepositoryShape } from "../../persistence/Serv
 import type { QueuedTurnPromotionRepositoryShape } from "../../persistence/Services/QueuedTurnPromotions";
 import type { AgentGatewayOperationRepositoryShape } from "../../agentGateway/Services/AgentGatewayOperationRepository";
 
-import type { TurnId, ThreadId } from "@glade/contracts/core/baseSchemas";
+import type { TurnId, ThreadId, MessageId } from "@glade/contracts/core/baseSchemas";
 import type { Effect } from "effect";
 import type { OrchestrationEngineShape } from "../Services/OrchestrationEngine.ts";
 import type { Mock } from "vitest";
@@ -75,6 +76,13 @@ export interface ReactorTestHarness {
     },
     ownerThreadId?: string,
   ) => Promise<string>;
+  readonly readThread: (threadId: ThreadId) => Promise<OrchestrationThread | undefined>;
+  readonly seedUserMessage: (input: {
+    readonly threadId: ThreadId;
+    readonly messageId: MessageId;
+    readonly text: string;
+    readonly createdAt: string;
+  }) => Promise<void>;
   readonly drain: () => Promise<void>;
   readonly emitRuntimeEvent: (event: ProviderRuntimeEvent) => Promise<void>;
   readonly setRuntimeSessionTurnState: (input: {

@@ -1,6 +1,6 @@
 # Reconnect a moved or restored project
 
-When a drive is disconnected or a project folder has moved, do not import a second project to recover the existing conversation.
+When a drive is disconnected or a project folder has moved, do not add a second project to recover the existing conversation.
 
 Right-click the existing project in the sidebar, select **Change project path…**, and enter the restored folder's path **on the machine running Glade's server**. The destination must already exist. The old directory does not need to be available. Confirm that this is a restored copy of the same project, not an unrelated folder.
 

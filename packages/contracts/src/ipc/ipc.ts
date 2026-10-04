@@ -11,14 +11,6 @@ import {
   ProviderManagePluginInput,
 } from "../provider/providerManagement";
 import { Schema } from "effect";
-import type {
-  ImportProjectInput,
-  ImportProjectResult,
-  ListProjectImportsInput,
-  ReadImportedHistoryInput,
-  ReadImportedHistoryResult,
-  ListProjectImportsResult,
-} from "../workspace/projectImport";
 
 import type {
   AuthBearerBootstrapResult,
@@ -202,8 +194,6 @@ import type {
   OrchestrationGetFullThreadDiffResult,
   OrchestrationGetThreadDetailSnapshotInput,
   OrchestrationGetThreadDetailSnapshotResult,
-  OrchestrationImportThreadInput,
-  OrchestrationImportThreadResult,
   OrchestrationListProviderDeliveryBlockersInput,
   OrchestrationListProviderDeliveryBlockersResult,
   OrchestrationReconcileProviderDeliveryInput,
@@ -874,13 +864,6 @@ export interface NativeApi {
     ) => Promise<OrchestrationGetThreadDetailSnapshotResult>;
     dispatchCommand: (command: ClientOrchestrationCommand) => Promise<{ sequence: number }>;
     prepareHandoff: (input: { threadId: ThreadId }) => Promise<void>;
-    importThread: (
-      input: OrchestrationImportThreadInput,
-    ) => Promise<OrchestrationImportThreadResult>;
-    listProjectImports: (input: ListProjectImportsInput) => Promise<ListProjectImportsResult>;
-    readImportedHistory: (input: ReadImportedHistoryInput) => Promise<ReadImportedHistoryResult>;
-    importProject: (input: ImportProjectInput) => Promise<ImportProjectResult>;
-
     repairState: () => Promise<OrchestrationReadModel>;
     previewWorkspaceRestore: (
       input: PreviewWorkspaceRestoreInput,

@@ -66,7 +66,6 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
     case "thread.revert.complete":
     case "thread.conversation.rollback.complete":
       return yield* decideConversationCommand({ command, readModel, workspacePaths });
-    case "thread.messages.import":
     case "thread.message.assistant.delta":
     case "thread.message.assistant.complete":
     case "thread.message.user.bind-turn":

@@ -146,13 +146,6 @@ export function deriveTimelineEntries(
   messages: ChatMessage[],
   workEntries: WorkLogEntry[],
 ): TimelineEntry[] {
-  // Native import order comes from the archive, including sources with equal or regressing clocks.
-  const importedRows: TimelineEntry[] = messages
-    .filter((message) => message.id.startsWith("import:") && message.source === "native")
-    .map((message) => ({ id: message.id, kind: "message", createdAt: message.createdAt, message }));
-  messages = messages.filter(
-    (message) => !message.id.startsWith("import:") || message.source !== "native",
-  );
   const messageRows: TimelineEntry[] = messages.flatMap((message): TimelineEntry[] => {
     const displayMessage = message;
 
@@ -246,14 +239,11 @@ export function deriveTimelineEntries(
   const compare: TimelineComparator = (left, right) =>
     orderByEntry.get(left)! - orderByEntry.get(right)! || compareTimelineEntries(left, right);
 
-  return [
-    ...importedRows,
-    ...coalesceAdjacentMessageSegments(
-      mergeTimelineEntries(
-        sortedTimelineEntries(messageRows, compare),
-        sortedTimelineEntries(workRows, compare),
-        compare,
-      ),
+  return coalesceAdjacentMessageSegments(
+    mergeTimelineEntries(
+      sortedTimelineEntries(messageRows, compare),
+      sortedTimelineEntries(workRows, compare),
+      compare,
     ),
-  ];
+  );
 }

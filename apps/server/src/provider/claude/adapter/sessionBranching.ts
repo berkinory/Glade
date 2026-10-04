@@ -8,11 +8,9 @@ import { ClaudeAdapterLiveOptions } from "./adapterConfiguration";
 import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 import { ProviderAdapterValidationError, ProviderAdapterRequestError } from "../../core/Errors.ts";
 import { loadClaudeAgentSdk } from "../claudeAgentSdk.ts";
-import { readClaudeSessionParentUuid } from "../claudeProjectImport.ts";
+import { readClaudeSessionParentUuid } from "../claudeSessionTranscript.ts";
 import { toRequestError, toMessage } from "./streamErrors";
 import { readClaudeResumeState } from "./sessionResume";
-import type { SessionMessage } from "@anthropic-ai/claude-agent-sdk";
-import { restoreClaudeImportedCopyDates } from "../claudeImportedCopyDates.ts";
 import type {
   ClaudeSessionAccessShape,
   ClaudeStartPreflight,
@@ -188,66 +186,11 @@ export function makeClaudeSessionBranching(input: {
           issue: "Invalid Claude fork point provider.",
         });
       }
-      let upToMessageId =
+      const upToMessageId =
         input.forkPoint?.provider === "claudeAgent"
           ? input.forkPoint.messageId
           : (liveSource?.lastAssistantUuid ?? sourceState?.resumeSessionAt);
       const sourceCwd = liveSource?.session.cwd ?? input.sourceCwd;
-      let importedSourceMessages: ReadonlyArray<SessionMessage> | undefined;
-      if (input.requireCompletedSource) {
-        const messages = yield* Effect.tryPromise({
-          try: async () => {
-            const readMessages =
-              options?.readNativeSessionMessages ?? (await loadClaudeAgentSdk()).getSessionMessages;
-            return readMessages(sourceSessionId, sourceCwd ? { dir: sourceCwd } : {});
-          },
-          catch: (cause) =>
-            new ProviderAdapterRequestError({
-              provider: PROVIDER,
-              method: "session/read",
-              detail: toMessage(cause, "Failed to read the source Claude transcript."),
-              cause,
-            }),
-        });
-        const lastMessage = messages.at(-1);
-        const message = lastMessage?.message;
-        const stopReason =
-          message && typeof message === "object" && "stop_reason" in message
-            ? message.stop_reason
-            : undefined;
-        const content =
-          message && typeof message === "object" && "content" in message
-            ? message.content
-            : undefined;
-        const legacyTextOnly =
-          stopReason === undefined &&
-          ((typeof content === "string" && content.trim().length > 0) ||
-            (Array.isArray(content) &&
-              content.length > 0 &&
-              content.every((block) => block?.type === "text")));
-        const hasPendingToolUse =
-          Array.isArray(content) && content.some((block) => block?.type === "tool_use");
-
-        if (
-          lastMessage?.type !== "assistant" ||
-          hasPendingToolUse ||
-          (!legacyTextOnly &&
-            stopReason !== "end_turn" &&
-            stopReason !== "stop_sequence" &&
-            stopReason !== "max_tokens")
-        ) {
-          return yield* new ProviderAdapterValidationError({
-            provider: PROVIDER,
-            operation: "forkThread",
-            issue:
-              "Wait for the source Claude conversation to finish its turn before importing it.",
-          });
-        }
-        // Freeze the boundary before the SDK copies the file: new messages appended concurrently by Claude
-        // must not enter the imported copy.
-        upToMessageId ??= lastMessage.uuid;
-        importedSourceMessages = messages;
-      }
       const forked = yield* Effect.tryPromise({
         try: () =>
           forkNativeSession(sourceSessionId, {
@@ -262,23 +205,6 @@ export function makeClaudeSessionBranching(input: {
             cause,
           }),
       });
-      if (importedSourceMessages !== undefined) {
-        yield* Effect.tryPromise({
-          try: () =>
-            restoreClaudeImportedCopyDates({
-              sourceSessionId,
-              copiedSessionId: forked.sessionId,
-              sourceMessages: importedSourceMessages!,
-            }),
-          catch: (cause) =>
-            new ProviderAdapterRequestError({
-              provider: PROVIDER,
-              method: "session/fork",
-              detail: toMessage(cause, "Failed to preserve the imported conversation dates."),
-              cause,
-            }),
-        });
-      }
       // The SDK fork remaps every message uuid, so the source's resume pin (`resumeSessionAt`) and
       // tracked tasks must not carry into the fork. A live context restarts `turns` at [] on resume, so
       // its length can undercount the cumulative persisted total — keep the larger of the two.
