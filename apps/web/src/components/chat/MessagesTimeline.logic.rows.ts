@@ -23,7 +23,8 @@ export function deriveMessagesTimelineRows(input: {
   const timelineMessages = input.timelineEntries.flatMap<TimelineDurationMessage>((entry) =>
     entry.kind === "message"
       ? [entry.message]
-      : entry.kind === "work" && entry.entry.activityKind === "response.started"
+      : entry.kind === "work" &&
+          ["response.started", "provider.transition"].includes(entry.entry.activityKind ?? "")
         ? [{ id: entry.id, role: "user" as const, createdAt: entry.createdAt }]
         : [],
   );
@@ -81,7 +82,9 @@ export function deriveMessagesTimelineRows(input: {
     }
 
     if (timelineEntry.kind === "work") {
-      if (timelineEntry.entry.activityKind === "response.started") {
+      if (
+        ["response.started", "provider.transition"].includes(timelineEntry.entry.activityKind ?? "")
+      ) {
         flushPendingWorkGroup();
         nextRows.push({
           kind: "work",
@@ -98,7 +101,7 @@ export function deriveMessagesTimelineRows(input: {
         if (
           !nextEntry ||
           nextEntry.kind !== "work" ||
-          nextEntry.entry.activityKind === "response.started"
+          ["response.started", "provider.transition"].includes(nextEntry.entry.activityKind ?? "")
         )
           break;
         groupedEntries.push(nextEntry.entry);
@@ -211,7 +214,9 @@ function findTailTerminalAssistantMessageId(
     const row = rows[index]!;
     if (
       row.kind === "work" &&
-      row.groupedEntries.some((entry) => entry.activityKind === "response.started")
+      row.groupedEntries.some((entry) =>
+        ["response.started", "provider.transition"].includes(entry.activityKind ?? ""),
+      )
     )
       return null;
     if (row.kind !== "message") {
@@ -273,7 +278,12 @@ function collapseSettledTurns(
     for (let scan = pass - 1; scan >= 0; scan -= 1) {
       const prev = rows[scan]!;
       if (prev.kind === "work") {
-        if (prev.groupedEntries.some((entry) => entry.activityKind === "response.started")) break;
+        if (
+          prev.groupedEntries.some((entry) =>
+            ["response.started", "provider.transition"].includes(entry.activityKind ?? ""),
+          )
+        )
+          break;
         foldIndices.push(scan);
         continue;
       }

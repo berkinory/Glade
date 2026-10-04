@@ -78,10 +78,9 @@ class FakeCodexManager extends CodexAppServerManager {
     turns: [],
   }));
 
-  public rollbackThreadImpl = vi.fn(async (_threadId: ThreadId, _numTurns: number) => ({
-    threadId: asThreadId("thread-1"),
-    turns: [],
-  }));
+  public rollbackThreadImpl = vi.fn(
+    async (_threadId: ThreadId, _numTurns: number): Promise<void> => undefined,
+  );
 
   public respondToRequestImpl = vi.fn(
     async (

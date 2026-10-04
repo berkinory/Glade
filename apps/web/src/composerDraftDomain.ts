@@ -322,7 +322,6 @@ export interface ComposerDraftStoreState {
     threadId: ThreadId,
     attachments: PersistedComposerImageAttachment[],
   ) => Promise<ComposerAttachmentPersistenceResult>;
-  copyTransferableComposerState: (sourceThreadId: ThreadId, targetThreadId: ThreadId) => void;
 
   clearComposerContent: (
     threadId: ThreadId,
@@ -653,42 +652,6 @@ export function captureComposerPromptHistorySavedDraft(input: {
   };
 }
 
-export function buildTransferredComposerDraft(input: {
-  sourceDraft: ComposerThreadDraftState;
-  targetDraft: ComposerThreadDraftState | undefined;
-  targetThreadId: ThreadId;
-}): ComposerThreadDraftState {
-  const { sourceDraft, targetDraft, targetThreadId } = input;
-  const base = targetDraft ?? createEmptyThreadDraft();
-  return {
-    ...base,
-    prompt: sourceDraft.prompt,
-    promptHistorySavedDraft: clonePromptHistorySavedDraft(
-      sourceDraft.promptHistorySavedDraft,
-      targetThreadId,
-    ),
-    images: sourceDraft.images.map(cloneComposerImageAttachment),
-    files: [...sourceDraft.files],
-    nonPersistedImageIds: [...sourceDraft.nonPersistedImageIds],
-    persistedAttachments: [...sourceDraft.persistedAttachments],
-    assistantSelections: normalizeAssistantSelections(sourceDraft.assistantSelections),
-    browserAnnotations: normalizeBrowserAnnotations(sourceDraft.browserAnnotations),
-    terminalContexts: normalizeTerminalContextsForThread(
-      targetThreadId,
-      sourceDraft.terminalContexts,
-    ),
-    fileComments: normalizeFileComments(sourceDraft.fileComments),
-    pastedTexts: normalizePastedTexts(sourceDraft.pastedTexts),
-    pullRequestContexts: normalizePullRequestContexts(sourceDraft.pullRequestContexts),
-    skills: [...sourceDraft.skills],
-    mentions: [...sourceDraft.mentions],
-    enableComputerControl: sourceDraft.enableComputerControl,
-    computerControlMode: sourceDraft.computerControlMode,
-
-    computerControlGeneration: base.computerControlGeneration ?? 0,
-  };
-}
-
 export function cloneComposerImageAttachment(
   image: ComposerImageAttachment,
 ): ComposerImageAttachment {
@@ -703,33 +666,6 @@ export function cloneComposerImageAttachment(
   } catch {
     return image;
   }
-}
-
-function clonePromptHistorySavedDraft(
-  savedDraft: ComposerPromptHistorySavedDraft | null,
-  targetThreadId: ThreadId,
-): ComposerPromptHistorySavedDraft | null {
-  if (!savedDraft) {
-    return null;
-  }
-  return {
-    prompt: savedDraft.prompt,
-    images: savedDraft.images.map(cloneComposerImageAttachment),
-    files: [...savedDraft.files],
-    nonPersistedImageIds: [...savedDraft.nonPersistedImageIds],
-    persistedAttachments: [...savedDraft.persistedAttachments],
-    assistantSelections: normalizeAssistantSelections(savedDraft.assistantSelections),
-    browserAnnotations: normalizeBrowserAnnotations(savedDraft.browserAnnotations),
-    terminalContexts: normalizeTerminalContextsForThread(
-      targetThreadId,
-      savedDraft.terminalContexts,
-    ),
-    fileComments: normalizeFileComments(savedDraft.fileComments),
-    pastedTexts: normalizePastedTexts(savedDraft.pastedTexts),
-    pullRequestContexts: normalizePullRequestContexts(savedDraft.pullRequestContexts),
-    skills: [...savedDraft.skills],
-    mentions: [...savedDraft.mentions],
-  };
 }
 
 export function shouldRemoveDraft(draft: ComposerThreadDraftState): boolean {

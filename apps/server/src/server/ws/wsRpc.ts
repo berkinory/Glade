@@ -1,3 +1,4 @@
+import { ProviderSessionDirectory } from "../../provider/Services/ProviderSessionDirectory";
 import { AppPresentation } from "../../agentGateway/Services/AppPresentation";
 import { HandoffPreparation } from "../../orchestration/Services/HandoffPreparation";
 import { readGitSidebarSummary } from "../../git/gitSidebarSummary";
@@ -355,6 +356,7 @@ const makeWsRpcHandlersLayer = () =>
       const orchestrationEngine = yield* OrchestrationEngineService;
       const providerCommandReactor = yield* ProviderCommandReactor;
       const handoffPreparation = yield* HandoffPreparation;
+      const providerDirectory = yield* ProviderSessionDirectory;
       const path = yield* Path.Path;
       const profileStatsQuery = yield* ProfileStatsQuery;
       const projectionReadModelQuery = yield* ProjectionSnapshotQuery;
@@ -865,7 +867,28 @@ const makeWsRpcHandlersLayer = () =>
                     .snapshotSequence,
                 };
               }
-              const result = yield* dispatchOrchestrationCommand(normalizedCommand);
+              if (
+                [
+                  "thread.archive",
+                  "thread.delete",
+                  "thread.session.stop",
+                  "thread.conversation.rollback",
+                  "thread.checkpoint.revert",
+                ].includes(normalizedCommand.type) &&
+                "threadId" in normalizedCommand
+              )
+                yield* handoffPreparation.cancel(normalizedCommand.threadId);
+              const dispatchCommand =
+                normalizedCommand.type === "thread.handoff.start"
+                  ? {
+                      ...normalizedCommand,
+                      sourceGeneration:
+                        Option.getOrUndefined(
+                          yield* providerDirectory.getBinding(normalizedCommand.threadId),
+                        )?.lifecycleGeneration ?? null,
+                    }
+                  : normalizedCommand;
+              const result = yield* dispatchOrchestrationCommand(dispatchCommand);
               // Only scaffold managed workspace-root subdirectories (Inbox/Outbox/work/outputs) AFTER the decider
               // has accepted the command. A rejected dispatch (e.g. a cross-kind workspace-root ownership
               // conflict) must never mutate the filesystem.

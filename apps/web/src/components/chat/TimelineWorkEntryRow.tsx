@@ -1,3 +1,4 @@
+import { ProviderTransitionDivider } from "./ProviderTransitionDivider";
 import type { TurnId } from "@glade/contracts/core/baseSchemas";
 import { createElement, memo, useMemo, type ReactElement, type ReactNode } from "react";
 
@@ -555,6 +556,9 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
     readFilePath && opener?.prefetchFile ? () => opener.prefetchFile?.(readFilePath) : undefined;
 
   const rowFontSizePx = textFontSizePx;
+
+  if (workEntry.activityKind === "provider.transition")
+    return <ProviderTransitionDivider entry={workEntry} onInspect={onOpenAgentActivity} />;
 
   return (
     <div className={cn(compact ? "py-0.5" : "rounded-lg py-1")}>

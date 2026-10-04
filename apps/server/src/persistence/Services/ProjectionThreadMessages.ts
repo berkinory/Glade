@@ -1,3 +1,4 @@
+import { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { AsyncUserInput } from "@glade/contracts/orchestration/asyncUserInput";
 import {
   ChatAttachment,
@@ -30,6 +31,7 @@ export const ProjectionThreadMessageTextSegment = Schema.Struct({
 export type ProjectionThreadMessageTextSegment = typeof ProjectionThreadMessageTextSegment.Type;
 
 export const ProjectionThreadMessage = Schema.Struct({
+  modelSelection: Schema.optional(ModelSelection),
   asyncUserInput: Schema.optional(AsyncUserInput),
   messageId: MessageId,
   threadId: ThreadId,

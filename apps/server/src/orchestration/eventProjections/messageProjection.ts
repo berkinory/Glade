@@ -135,6 +135,11 @@ export function projectMessageEvent(
           {
             id: payload.messageId,
             role: payload.role,
+            ...(payload.modelSelection
+              ? { modelSelection: payload.modelSelection }
+              : ["handoff-import", "fork-import"].includes(payload.source)
+                ? {}
+                : { modelSelection: thread.modelSelection }),
             text: payload.text,
             ...(payload.asyncUserInput ? { asyncUserInput: payload.asyncUserInput } : {}),
             ...(payload.attachments !== undefined ? { attachments: payload.attachments } : {}),

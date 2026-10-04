@@ -2170,12 +2170,7 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
       return Effect.tryPromise({
         try: () => manager.rollbackThread(threadId, numTurns),
         catch: (cause) => toRequestError(threadId, "thread/rollback", cause),
-      }).pipe(
-        Effect.map((snapshot) => ({
-          threadId,
-          turns: snapshot.turns,
-        })),
-      );
+      });
     };
 
     const compactThread: NonNullable<CodexAdapterShape["compactThread"]> = (threadId) =>

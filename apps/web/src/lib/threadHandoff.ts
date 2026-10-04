@@ -43,11 +43,6 @@ export function resolveAvailableHandoffTargetProviders(input: {
   );
 }
 
-export function resolveThreadHandoffTitle(thread: Pick<Thread, "title">): string {
-  const title = thread.title.trim().replace(/\s+/g, " ");
-  return title.length > 0 ? title : "Handoff";
-}
-
 function hasNativeThreadHandoffMessages(thread: Pick<Thread, "messages">): boolean {
   return thread.messages.some(
     (message) =>
@@ -72,6 +67,12 @@ export function canCreateThreadHandoff(input: {
   if (!input.thread.messages.some(isImportableThreadMessage)) {
     return false;
   }
+  if (
+    ["preparing", "activating", "activated", "uncertain"].includes(
+      input.thread.handoff?.stage ?? "",
+    )
+  )
+    return false;
   if (input.thread.handoff !== null) {
     return hasNativeThreadHandoffMessages(input.thread);
   }

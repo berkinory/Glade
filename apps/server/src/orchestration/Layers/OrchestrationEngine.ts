@@ -525,8 +525,13 @@ const makeOrchestrationEngine = Effect.gen(function* () {
     command: OrchestrationCommand,
   ): Effect.Effect<OrchestrationReadModel, OrchestrationDispatchError> => {
     switch (command.type) {
-      case "thread.handoff.create":
-        return loadThreadDetailForDecider(command, commandReadModel, command.sourceThreadId, true);
+      case "thread.meta.update":
+        return command.modelSelection !== undefined &&
+          command.expectedHandoffOperationId === undefined
+          ? loadThreadDetailForDecider(command, commandReadModel, command.threadId)
+          : Effect.succeed(commandReadModel);
+      case "thread.handoff.start":
+        return loadThreadDetailForDecider(command, commandReadModel, command.threadId, true);
       case "thread.fork.create":
         return loadThreadDetailForDecider(command, commandReadModel, command.sourceThreadId);
       case "thread.turn.start":

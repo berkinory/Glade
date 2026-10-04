@@ -166,60 +166,87 @@ describe("thread checkpoint control", () => {
     }
   });
 
-  it("reverts turns at the native boundary and resets session running state", async () => {
-    const { manager, context, sendRequest, updateSession } = createRequestHarness();
-    sendRequest.mockResolvedValue({
-      thread: {
-        id: "thread_1",
-        turns: [
-          { id: "kept", items: [] },
-          { id: "edited", items: [] },
-          { id: "removed", items: [] },
-        ],
-      },
-    });
+  it.each([1, 100, 101])(
+    "resolves only the newest %i turn ids and accepts unloaded retained history",
+    async (count) => {
+      const { manager, context, sendRequest, updateSession } = createRequestHarness();
+      let transferredTurns = 0;
+      sendRequest.mockImplementation(async (_context, method, params) => {
+        if (method === "thread/turns/list") {
+          const size = Number(params?.limit);
+          const start = transferredTurns;
+          transferredTurns += size;
+          return {
+            data: Array.from({ length: size }, (_, index) => ({ id: `turn-${start + index}` })),
+            nextCursor: `page-${transferredTurns}`,
+          };
+        }
+        if (method === "thread/revert")
+          return { thread: { id: "thread_1", turns: [], nextCursor: "retained-history" } };
+        throw new Error(`Unexpected request: ${method}`);
+      });
+      await expect(
+        manager.rollbackThread(ThreadId.makeUnsafe("thread_1"), count),
+      ).resolves.toBeUndefined();
+      expect(sendRequest).toHaveBeenCalledTimes(Math.ceil(count / 100) + 1);
+      expect(transferredTurns).toBe(count);
+      expect(sendRequest).toHaveBeenLastCalledWith(context, "thread/revert", {
+        threadId: "thread_1",
+        beforeTurnId: `turn-${count - 1}`,
+      });
+      expect(
+        sendRequest.mock.calls
+          .filter(([, method]) => method === "thread/turns/list")
+          .every(
+            ([, , params]) => params?.itemsView === "notLoaded" && params?.sortDirection === "desc",
+          ),
+      ).toBe(true);
+      expect(updateSession).toHaveBeenCalledWith(context, {
+        status: "ready",
+        activeTurnId: undefined,
+      });
+    },
+  );
 
-    const result = await manager.rollbackThread(ThreadId.makeUnsafe("thread_1"), 2);
-
-    expect(sendRequest).toHaveBeenCalledWith(context, "thread/revert", {
-      threadId: "thread_1",
-      beforeTurnId: "edited",
-    });
-    expect(updateSession).toHaveBeenCalledWith(context, {
-      status: "ready",
-      activeTurnId: undefined,
-    });
-    expect(result).toEqual({
-      threadId: "thread_1",
-      cwd: null,
-      turns: [{ id: "kept", items: [] }],
-    });
+  it.each([
+    {
+      name: "excessive rewind",
+      pages: [{ data: [{ id: "last" }], nextCursor: null }],
+      issue: "missing",
+    },
+    { name: "empty page", pages: [{ data: [], nextCursor: "next" }], issue: "missing" },
+    { name: "missing id", pages: [{ data: [{}], nextCursor: null }], issue: "missing" },
+    {
+      name: "duplicate turn",
+      pages: [{ data: [{ id: "last" }, { id: "last" }], nextCursor: null }],
+      issue: "repeated",
+    },
+    {
+      name: "duplicate cursor",
+      pages: [
+        { data: [{ id: "last" }], nextCursor: "same" },
+        { data: [{ id: "previous" }], nextCursor: "same" },
+      ],
+      issue: "cursor",
+    },
+  ])("rejects $name without mutating native history", async ({ pages, issue }) => {
+    const { manager, sendRequest, updateSession } = createRequestHarness();
+    for (const page of pages) sendRequest.mockResolvedValueOnce(page);
+    await expect(manager.rollbackThread(ThreadId.makeUnsafe("thread_1"), 3)).rejects.toThrow(issue);
+    expect(sendRequest.mock.calls.every(([, method]) => method === "thread/turns/list")).toBe(true);
+    expect(updateSession).not.toHaveBeenCalled();
   });
 
-  it("uses the exclusive native turn boundary when paginated Codex replaces rollback", async () => {
-    const { manager, context, sendRequest } = createRequestHarness();
-    sendRequest.mockImplementation(async (_context, method) => {
-      if (method === "thread/rollback") throw new Error("unknown variant `thread/rollback`");
-      if (method === "thread/read")
-        return {
-          thread: {
-            id: "thread_1",
-            turns: [
-              { id: "kept", items: [] },
-              { id: "edited", items: [] },
-              { id: "removed", items: [] },
-            ],
-          },
-        };
-      if (method === "thread/revert") return { thread: { id: "thread_1", turns: [] } };
-      throw new Error(`Unexpected request: ${method}`);
+  it("does not revert a replacement session after reading a boundary", async () => {
+    const { manager, context, requireSession, sendRequest } = createRequestHarness();
+    sendRequest.mockImplementation(async () => {
+      requireSession.mockReturnValue({ ...context, lifecycleGeneration: "replacement" });
+      return { data: [{ id: "last" }], nextCursor: null };
     });
-    const result = await manager.rollbackThread(ThreadId.makeUnsafe("thread_1"), 2);
-    expect(sendRequest).toHaveBeenCalledWith(context, "thread/revert", {
-      threadId: "thread_1",
-      beforeTurnId: "edited",
-    });
-    expect(result.turns.map((turn) => turn.id)).toEqual(["kept"]);
+    await expect(manager.rollbackThread(ThreadId.makeUnsafe("thread_1"), 1)).rejects.toThrow(
+      "session changed",
+    );
+    expect(sendRequest).toHaveBeenCalledTimes(1);
   });
 
   it("does not treat a failed native rollback as permission to discard history", async () => {

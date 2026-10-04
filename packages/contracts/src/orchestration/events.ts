@@ -300,6 +300,7 @@ export const ThreadRuntimeModeSetPayload = Schema.Struct({
 });
 
 export const ThreadMessageSentPayload = Schema.Struct({
+  modelSelection: Schema.optional(ModelSelection),
   providerMessageId: Schema.optional(TrimmedNonEmptyString),
   asyncUserInput: Schema.optional(AsyncUserInput),
   threadId: ThreadId,
@@ -350,6 +351,7 @@ export const ThreadLegacyCacheAbandonedPayload = Schema.Struct({
 export const ThreadTurnStartRequestedPayload = Schema.Struct({
   threadId: ThreadId,
   messageId: MessageId,
+  handoffOperationId: Schema.optional(CommandId),
   modelSelection: Schema.optional(ModelSelection),
   providerOptions: Schema.optional(ProviderStartOptions),
   enableComputerControl: Schema.optional(Schema.Boolean),

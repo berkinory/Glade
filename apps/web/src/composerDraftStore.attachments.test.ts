@@ -15,11 +15,9 @@ import {
   makeFile,
   makeImage,
   makeTerminalContext,
-  modelSelection,
   resetComposerDraftStore,
 } from "./composerDraftStoreTestFixtures";
 import { removeLocalStorageItem, setLocalStorageItem } from "./hooks/useLocalStorage";
-import { insertInlineTerminalContextPlaceholder } from "./lib/terminalContext";
 
 describe("composerDraftStore addImages", () => {
   const threadId = ThreadId.makeUnsafe("thread-dedupe");
@@ -525,118 +523,6 @@ describe("composerDraftStore pull request context cards", () => {
       .getOptions()
       .merge(persistedState, useComposerDraftStore.getInitialState());
     expect(mergedState.draftsByThreadId[threadId]?.pullRequestContexts).toEqual([card]);
-  });
-});
-
-describe("composerDraftStore copyTransferableComposerState", () => {
-  const sourceThreadId = ThreadId.makeUnsafe("thread-source");
-  const targetThreadId = ThreadId.makeUnsafe("thread-target");
-
-  beforeEach(() => {
-    resetComposerDraftStore();
-  });
-
-  it("copies the prompt and terminal contexts to the target thread", () => {
-    const sourceContext = makeTerminalContext({
-      id: "ctx-source",
-      text: "pnpm lint",
-    });
-    const copiedPrompt = insertInlineTerminalContextPlaceholder(
-      "Please reuse this context",
-      24,
-    ).prompt;
-
-    useComposerDraftStore.getState().setPrompt(sourceThreadId, copiedPrompt);
-    useComposerDraftStore.getState().setTerminalContexts(sourceThreadId, [sourceContext]);
-    useComposerDraftStore
-      .getState()
-      .setSkills(sourceThreadId, [{ name: "check-code", path: "/skills/check-code" }]);
-    useComposerDraftStore
-      .getState()
-      .setMentions(sourceThreadId, [{ name: "linear", path: "plugin://linear" }]);
-
-    useComposerDraftStore.getState().copyTransferableComposerState(sourceThreadId, targetThreadId);
-
-    const sourceDraft = useComposerDraftStore.getState().draftsByThreadId[sourceThreadId];
-    const targetDraft = useComposerDraftStore.getState().draftsByThreadId[targetThreadId];
-
-    expect(targetDraft).toMatchObject({
-      prompt: sourceDraft?.prompt,
-      terminalContexts: [
-        expect.objectContaining({
-          id: sourceContext.id,
-          threadId: targetThreadId,
-          terminalId: sourceContext.terminalId,
-          terminalLabel: sourceContext.terminalLabel,
-          text: sourceContext.text,
-        }),
-      ],
-      skills: [{ name: "check-code", path: "/skills/check-code" }],
-      mentions: [{ name: "linear", path: "plugin://linear" }],
-    });
-  });
-
-  it("copies image attachments with fresh preview URLs", () => {
-    const originalCreateObjectUrl = URL.createObjectURL;
-    URL.createObjectURL = vi.fn(() => "blob:target-copy");
-    try {
-      const sourceImage = makeImage({
-        id: "img-source",
-        previewUrl: "blob:source-preview",
-      });
-
-      useComposerDraftStore.getState().addImages(sourceThreadId, [sourceImage]);
-      useComposerDraftStore.setState((state) => ({
-        draftsByThreadId: {
-          ...state.draftsByThreadId,
-          [sourceThreadId]: {
-            ...state.draftsByThreadId[sourceThreadId]!,
-            nonPersistedImageIds: ["img-source"],
-          },
-        },
-      }));
-      useComposerDraftStore
-        .getState()
-        .copyTransferableComposerState(sourceThreadId, targetThreadId);
-
-      const targetDraft = useComposerDraftStore.getState().draftsByThreadId[targetThreadId];
-      expect(targetDraft?.images).toEqual([
-        expect.objectContaining({
-          id: "img-source",
-          file: sourceImage.file,
-          previewUrl: "blob:target-copy",
-        }),
-      ]);
-      expect(targetDraft?.nonPersistedImageIds).toEqual(["img-source"]);
-    } finally {
-      URL.createObjectURL = originalCreateObjectUrl;
-    }
-  });
-
-  it("preserves unrelated target draft state while replacing transferred composer content", () => {
-    useComposerDraftStore.getState().setPrompt(sourceThreadId, "follow-up for the other provider");
-    useComposerDraftStore.getState().setModelSelection(
-      targetThreadId,
-      modelSelection("claudeAgent", "claude-sonnet-4-6", {
-        effort: "high",
-      }),
-    );
-
-    useComposerDraftStore.getState().copyTransferableComposerState(sourceThreadId, targetThreadId);
-
-    expect(useComposerDraftStore.getState().draftsByThreadId[targetThreadId]).toMatchObject({
-      prompt: "follow-up for the other provider",
-      modelSelectionByProvider: {
-        claudeAgent: {
-          provider: "claudeAgent",
-          model: "claude-sonnet-4-6",
-          options: {
-            effort: "high",
-          },
-        },
-      },
-      activeProvider: "claudeAgent",
-    });
   });
 });
 

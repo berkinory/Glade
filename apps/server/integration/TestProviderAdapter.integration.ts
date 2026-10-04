@@ -495,7 +495,6 @@ export const makeTestProviderAdapterHarness = (options?: MakeTestProviderAdapter
           turns: state.snapshot.turns.slice(0, state.snapshot.turns.length - numTurns),
         };
         state.turnCount = state.snapshot.turns.length;
-        return state.snapshot;
       });
     };
 

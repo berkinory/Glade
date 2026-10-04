@@ -1,3 +1,4 @@
+import { HandoffTransitions } from "../Services/HandoffTransitions";
 import type { MaybeGenerateThreadTitle } from "./threadTitleGeneration";
 import type { ServiceMap } from "effect";
 import { ThreadSessionSettings } from "../Services/ThreadSessionSettings.ts";
@@ -18,7 +19,10 @@ import { providerSupportsNativeTurnSteering } from "@glade/shared/provider/provi
 import { deriveTurnStartSession } from "../turnStartSession.ts";
 import { DEFAULT_RUNTIME_MODE } from "./contextLifecycle";
 import { resolveProviderDispatchAttachments } from "../../provider/core/providerAttachmentPaths.ts";
-import { ProviderAdapterValidationError } from "../../provider/core/Errors.ts";
+import {
+  ProviderAdapterValidationError,
+  ProviderValidationError,
+} from "../../provider/core/Errors.ts";
 import { providerFailureMessage } from "./providerCallPolicy";
 import {
   QueuedDispatchState,
@@ -30,6 +34,7 @@ import { makeProviderConversationNaming } from "./conversationNaming";
 import { makeProviderTurnDispatch } from "./turnDispatch";
 
 export function makeProviderTurnStart(input: {
+  readonly handoffTransitions: Option.Option<ServiceMap.Service.Shape<typeof HandoffTransitions>>;
   readonly projectionAccess: ProviderProjectionAccessShape;
   readonly queuedDispatchState: ServiceMap.Service.Shape<typeof QueuedDispatchState>;
   readonly drainQueuedTurnsForSession: ReturnType<
@@ -70,6 +75,7 @@ export function makeProviderTurnStart(input: {
   >["setThreadSessionError"];
 }) {
   const {
+    handoffTransitions,
     queuedDispatchState,
     drainQueuedTurnsForSession,
     hasQueuedTurnStart,
@@ -345,6 +351,63 @@ export function makeProviderTurnStart(input: {
             ? Effect.failCause(cause)
             : Effect.gen(function* () {
                 const detail = Cause.pretty(cause);
+                if (event.payload.handoffOperationId) {
+                  const transitions = handoffTransitions;
+                  const current = yield* resolveThread(event.payload.threadId);
+                  if (
+                    current?.handoff?.operationId !== event.payload.handoffOperationId ||
+                    current.handoff.stage === "cancelled"
+                  ) {
+                    if (
+                      current?.handoff?.operationId === event.payload.handoffOperationId &&
+                      current.handoff.stage === "cancelled" &&
+                      current.session !== null &&
+                      current.session.providerName ===
+                        current.handoff.destinationModelSelection?.provider &&
+                      current.handoff.sourceRetired
+                    ) {
+                      yield* orchestrationEngine
+                        .dispatch({
+                          type: "thread.session.set",
+                          commandId: CommandId.makeUnsafe(
+                            `server:handoff:late-start-cleared:${crypto.randomUUID()}`,
+                          ),
+                          threadId: event.payload.threadId,
+                          expectedSessionStatus: current.session.status,
+                          expectedSessionUpdatedAt: current.session.updatedAt,
+                          session: {
+                            threadId: event.payload.threadId,
+                            providerName: null,
+                            status: "stopped",
+                            activeTurnId: null,
+                            lastError: null,
+                            runtimeMode: current.runtimeMode,
+                            updatedAt: new Date().toISOString(),
+                          },
+                          createdAt: new Date().toISOString(),
+                        })
+                        .pipe(Effect.ignore);
+                    }
+                    return yield* Effect.failCause(cause);
+                  }
+                  if (
+                    Option.isSome(transitions) &&
+                    current?.handoff?.operationId === event.payload.handoffOperationId
+                  ) {
+                    const failure = Option.getOrUndefined(Cause.findErrorOption(cause));
+                    const uncertain =
+                      current.handoff.stage === "activated" &&
+                      !Schema.is(ProviderAdapterValidationError)(failure) &&
+                      !Schema.is(ProviderValidationError)(failure);
+                    yield* transitions.value
+                      .update(event.payload.threadId, event.payload.handoffOperationId, {
+                        stage: uncertain ? "uncertain" : "failed",
+                        detail,
+                      })
+                      .pipe(Effect.ignore);
+                  }
+                }
+
                 yield* appendProviderFailureActivity({
                   threadId: event.payload.threadId,
                   kind: "provider.turn.start.failed",

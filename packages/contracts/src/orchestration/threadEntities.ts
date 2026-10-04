@@ -256,6 +256,7 @@ export const OrchestrationMessageTextSegment = Schema.Struct({
 export type OrchestrationMessageTextSegment = typeof OrchestrationMessageTextSegment.Type;
 
 export const OrchestrationMessage = Schema.Struct({
+  modelSelection: Schema.optional(ModelSelection),
   providerMessageId: Schema.optional(TrimmedNonEmptyString),
   id: MessageId,
   role: OrchestrationMessageRole,
@@ -315,7 +316,29 @@ export const HandoffPreparation = Schema.Struct({
 });
 export type HandoffPreparation = typeof HandoffPreparation.Type;
 
+export const HandoffTransitionStage = Schema.Literals([
+  "preparing",
+  "ready",
+  "activating",
+  "activated",
+  "delivered",
+  "failed",
+  "cancelled",
+  "uncertain",
+]);
+export type HandoffTransitionStage = typeof HandoffTransitionStage.Type;
+
 export const ThreadHandoff = Schema.Struct({
+  operationId: Schema.optional(CommandId),
+  stage: Schema.optional(HandoffTransitionStage),
+  sourceModelSelection: Schema.optional(ModelSelection),
+  destinationModelSelection: Schema.optional(ModelSelection),
+  destinationRuntimeMode: Schema.optional(RuntimeMode),
+  sourceRetired: Schema.optional(Schema.Boolean),
+  sourceGeneration: Schema.optional(Schema.NullOr(Schema.String)),
+  deliveryMessageId: Schema.optional(MessageId),
+  transferredContext: Schema.optional(Schema.String),
+  detail: Schema.optional(Schema.String),
   sourceThreadId: ThreadId,
   sourceProvider: ProviderKind,
   importedAt: IsoDateTime,

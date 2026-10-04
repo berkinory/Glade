@@ -64,6 +64,14 @@ export const ProviderTurnDispatchLive = Layer.effect(
               operation: "ProviderService.sendTurn",
               allowRecovery: true,
             });
+            if (
+              input.expectedLifecycleGeneration !== undefined &&
+              routed.lifecycleGeneration !== input.expectedLifecycleGeneration
+            )
+              return yield* toValidationError(
+                "ProviderService.sendTurn",
+                "The destination session changed before delivery.",
+              );
             const turn = yield* routed.adapter.sendTurn(input);
             return yield* persistTurn(
               input,

@@ -9,7 +9,8 @@ import type { QueuedTurnPromotionRepositoryShape } from "../../persistence/Servi
 import type { AgentGatewayOperationRepositoryShape } from "../../agentGateway/Services/AgentGatewayOperationRepository";
 
 import type { TurnId, ThreadId, MessageId } from "@glade/contracts/core/baseSchemas";
-import type { Effect } from "effect";
+import type { Effect, ServiceMap } from "effect";
+import type { HandoffTransitions } from "../Services/HandoffTransitions";
 import type { OrchestrationEngineShape } from "../Services/OrchestrationEngine.ts";
 import type { Mock } from "vitest";
 import type { CheckpointStoreShape } from "../../checkpointing/Services/CheckpointStore.ts";
@@ -24,6 +25,7 @@ import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
 
 export interface ReactorTestHarness {
   readonly engine: OrchestrationEngineShape;
+  readonly handoffTransitions: ServiceMap.Service.Shape<typeof HandoffTransitions> | undefined;
   readonly seedCompletion: () => Promise<readonly Record<string, unknown>[]>;
   readonly completionState: () => Promise<
     readonly { context_consumed: number; context_event_sequence: number | null }[]

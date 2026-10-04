@@ -47,6 +47,7 @@ export function makeSnapshotMessageQueries(input: {
           async_user_input_json AS "asyncUserInput",
           is_streaming AS "isStreaming",
           source,
+          model_selection_json AS "modelSelection",
           sequence,
           created_at AS "createdAt",
           updated_at AS "updatedAt"
@@ -135,6 +136,7 @@ export function makeSnapshotMessageQueries(input: {
           async_user_input_json AS "asyncUserInput",
           is_streaming AS "isStreaming",
           source,
+          model_selection_json AS "modelSelection",
           sequence,
           created_at AS "createdAt",
           updated_at AS "updatedAt"

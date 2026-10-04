@@ -1,3 +1,6 @@
+import { Schema, Option } from "effect";
+import { CommandId, ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { HandoffTransitionStage } from "@glade/contracts/orchestration/threadEntities";
 import { nonEmptyTrimmed } from "@glade/shared/text/text";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import {
@@ -166,6 +169,7 @@ function shouldKeepActivityForWorkLog(
 
   if (
     activity.kind === "auth.status" ||
+    activity.kind === "provider.transition" ||
     (activity.kind === "context-compaction" && activity.turnId === null)
   ) {
     return true;
@@ -336,6 +340,17 @@ function extractProviderContextLifecycleInfo(
   };
 }
 
+const transitionSummary = Schema.Struct({
+  operationId: CommandId,
+  stage: HandoffTransitionStage,
+  source: Schema.Struct({ provider: ProviderKind }),
+  destination: Schema.Struct({ provider: ProviderKind }),
+});
+const decodeTransitionSummary = Schema.decodeUnknownOption(transitionSummary);
+const decodeStoredTransitionSummary = Schema.decodeUnknownOption(
+  Schema.fromJsonString(transitionSummary),
+);
+
 const activityEntryCache = new WeakMap<OrchestrationThreadActivity, DerivedWorkLogEntry>();
 
 function toDerivedWorkLogEntry(activity: OrchestrationThreadActivity): DerivedWorkLogEntry {
@@ -370,6 +385,14 @@ function normalizeWorkLogActivity(activity: OrchestrationThreadActivity): Derive
     ...(toolCallId ? { toolCallId } : {}),
     ...(toolStatus ? { toolStatus } : {}),
   };
+  if (activity.kind === "provider.transition") {
+    const transition = Option.getOrUndefined(
+      Option.orElse(decodeTransitionSummary(payload), () =>
+        decodeStoredTransitionSummary(payload?.detail),
+      ),
+    );
+    if (transition) entry.providerTransition = transition;
+  }
   const itemType = extractWorkLogItemType(payload);
   const requestKind = extractWorkLogRequestKind(payload);
   if (payload && typeof payload.detail === "string" && payload.detail.length > 0) {

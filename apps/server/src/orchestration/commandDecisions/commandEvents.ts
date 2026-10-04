@@ -65,6 +65,7 @@ export function userMessageUpsertEvent(input: {
       threadId: input.threadId,
       messageId: input.message.id,
       role: "user",
+      ...(input.message.modelSelection ? { modelSelection: input.message.modelSelection } : {}),
       text: input.message.text,
       ...(input.message.attachments !== undefined
         ? { attachments: input.message.attachments }

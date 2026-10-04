@@ -1,3 +1,4 @@
+import { ProviderValidationError } from "../core/Errors";
 import { ProviderSessionTeardown } from "../Services/ProviderSessionTeardown";
 import { ProviderSessionRouting } from "../Services/ProviderSessionRouting";
 import { Layer } from "effect";
@@ -43,6 +44,14 @@ export const ProviderSessionTeardownLive = Layer.effect(
         idle.clearRuntimeIdleTimer(input.threadId);
         return yield* lifecycle.run(input.threadId, (lease) =>
           Effect.gen(function* () {
+            if (input.expectedLifecycleGeneration !== undefined) {
+              const binding = Option.getOrUndefined(yield* directory.getBinding(input.threadId));
+              if ((binding?.lifecycleGeneration ?? null) !== input.expectedLifecycleGeneration)
+                return yield* new ProviderValidationError({
+                  operation: "ProviderService.stopSession",
+                  issue: "The source session changed before retirement.",
+                });
+            }
             const routed = yield* resolveRoutableSession({
               threadId: input.threadId,
               operation: "ProviderService.stopSession",

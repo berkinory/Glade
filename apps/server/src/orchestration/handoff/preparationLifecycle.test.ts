@@ -1,3 +1,10 @@
+import { ProviderSessionDirectory } from "../../provider/Services/ProviderSessionDirectory";
+import { ProviderSessionDirectoryLive } from "../../provider/Layers/ProviderSessionDirectory";
+import { ProviderSessionRuntimeRepositoryLive } from "../../persistence/Layers/ProviderSessionRuntime";
+import { HandoffTransitions } from "../Services/HandoffTransitions";
+import { readHandoffEvidenceSnapshot } from "./sourceSnapshot";
+import { OrchestrationEventStore } from "../../persistence/Services/OrchestrationEventStore";
+import { HandoffTransitionsLive } from "../Layers/HandoffTransitions";
 import { seedUserMessage } from "../persistedMessage.testSupport";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { CommandId, MessageId, ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
@@ -16,7 +23,7 @@ import { ProviderDiscoveryService } from "../../provider/Services/ProviderDiscov
 import { ProviderValidationError } from "../../provider/core/Errors";
 import { ServerSettingsService } from "../../settings/serverSettings";
 
-const target = ThreadId.makeUnsafe("target");
+const target = ThreadId.makeUnsafe("source");
 const source = ThreadId.makeUnsafe("source");
 const record: HandoffRecord = {
   objective: { text: "Preserve the database.", state: "fact", sourceRefs: ["message:original"] },
@@ -34,8 +41,11 @@ const record: HandoffRecord = {
   sourcePassages: [{ sourceRef: "message:original", text: "Never reset the database." }],
 };
 
-function runtimeFor(generate: typeof HandoffGeneration.Service.generate) {
+function runtimeFor(generate: typeof HandoffGeneration.Service.generate, sourceEnabled = false) {
   const base = OrchestrationLayerLive.pipe(
+    Layer.provideMerge(
+      ProviderSessionDirectoryLive.pipe(Layer.provide(ProviderSessionRuntimeRepositoryLive)),
+    ),
     Layer.provideMerge(SqlitePersistenceMemory),
     Layer.provideMerge(
       ServerConfig.layerTest(process.cwd(), { prefix: "glade-handoff-lifecycle-" }),
@@ -46,10 +56,11 @@ function runtimeFor(generate: typeof HandoffGeneration.Service.generate) {
   return ManagedRuntime.make(
     HandoffPreparationLive.pipe(
       Layer.provideMerge(base),
+      Layer.provideMerge(HandoffTransitionsLive.pipe(Layer.provideMerge(base))),
       Layer.provide(Layer.succeed(HandoffGeneration, { generate })),
       Layer.provide(
         ServerSettingsService.layerTest({
-          providers: { codex: { enabled: true }, claudeAgent: { enabled: false } },
+          providers: { codex: { enabled: true }, claudeAgent: { enabled: sourceEnabled } },
         }),
       ),
       Layer.provide(
@@ -61,7 +72,7 @@ function runtimeFor(generate: typeof HandoffGeneration.Service.generate) {
           readPlugin: unavailable,
           listAgents: unavailable,
           listModels: (input) => {
-            expect(input.provider).toBe("codex");
+            expect(input.provider === "codex" || sourceEnabled).toBe(true);
             return Effect.succeed({ models: [] });
           },
         }),
@@ -102,17 +113,11 @@ const createHandoff = Effect.gen(function* () {
     createdAt,
   });
   yield* engine.dispatch({
-    type: "thread.handoff.create",
+    type: "thread.handoff.start",
     commandId: CommandId.makeUnsafe("handoff"),
     threadId: target,
-    sourceThreadId: source,
-    projectId,
-    title: "Target",
     modelSelection: { provider: "codex", model: "selected-destination" },
     runtimeMode: "approval-required",
-    branch: null,
-    worktreePath: null,
-    importedMessages: [],
     createdAt,
   });
 });
@@ -184,6 +189,127 @@ describe("handoff preparation lifecycle", () => {
           expect(saved.handoff?.preparation).toBeUndefined();
           expect(saved.activities.at(-1)?.kind).toBe("handoff.preparation.cancelled");
           expect(Option.isSome(yield* query.getThreadShellById(source))).toBe(true);
+        }),
+      );
+    } finally {
+      await runtime.dispose();
+    }
+  });
+  it.each(["conversation", "generation"] as const)(
+    "rejects changed source %s while a destination pass is in flight",
+    async (change) => {
+      const entered = Deferred.makeUnsafe<void>();
+      const finish = Deferred.makeUnsafe<void>();
+      const runtime = runtimeFor(() =>
+        Deferred.succeed(entered, undefined).pipe(
+          Effect.andThen(Deferred.await(finish)),
+          Effect.as({ record, inputTokens: 10, outputTokens: 10 }),
+        ),
+      );
+      try {
+        await runtime.runPromise(
+          Effect.gen(function* () {
+            const directory = yield* ProviderSessionDirectory;
+            if (change === "generation")
+              yield* directory.upsert({
+                threadId: source,
+                provider: "claudeAgent",
+                lifecycleGeneration: "source-generation",
+              });
+            yield* createHandoff;
+            const preparation = yield* HandoffPreparation;
+            const fiber = yield* Effect.forkChild(
+              preparation.prepare({ threadId: target }).pipe(Effect.result),
+            );
+            yield* Deferred.await(entered);
+            if (change === "generation")
+              yield* directory.upsert({
+                threadId: source,
+                provider: "claudeAgent",
+                lifecycleGeneration: "replacement-generation",
+              });
+            else
+              yield* seedUserMessage({
+                threadId: source,
+                messageId: MessageId.makeUnsafe("changed-source"),
+                text: "A newer instruction",
+                createdAt: new Date().toISOString(),
+              });
+            yield* Deferred.succeed(finish, undefined);
+            expect((yield* Fiber.join(fiber))._tag).toBe("Failure");
+            const query = yield* ProjectionSnapshotQuery;
+            const saved = Option.getOrThrow(yield* query.getThreadDetailById(target));
+            expect(saved.handoff?.preparation).toBeUndefined();
+            expect(saved.handoff?.stage).toBe("failed");
+            expect(saved.modelSelection.provider).toBe("claudeAgent");
+          }),
+        );
+      } finally {
+        await runtime.dispose();
+      }
+    },
+  );
+
+  it("returns to the original provider with earlier snapshot ancestry and retains both transition records after hydration", async () => {
+    const runtime = runtimeFor(
+      () => Effect.succeed({ record, inputTokens: 10, outputTokens: 10 }),
+      true,
+    );
+    try {
+      await runtime.runPromise(
+        Effect.gen(function* () {
+          yield* createHandoff;
+          const preparation = yield* HandoffPreparation;
+          const transitions = yield* HandoffTransitions;
+          const query = yield* ProjectionSnapshotQuery;
+          const engine = yield* OrchestrationEngineService;
+          yield* preparation.prepare({ threadId: target });
+          const first = Option.getOrThrow(yield* query.getThreadDetailById(target));
+          yield* engine.dispatch({
+            type: "thread.meta.update",
+            commandId: CommandId.makeUnsafe("activated-first"),
+            threadId: target,
+            expectedHandoffOperationId: CommandId.makeUnsafe("handoff"),
+            modelSelection: first.handoff!.destinationModelSelection!,
+          });
+          yield* transitions.update(target, CommandId.makeUnsafe("handoff"), {
+            stage: "delivered",
+            bootstrapStatus: "completed",
+          });
+          yield* engine.dispatch({
+            type: "thread.handoff.start",
+            commandId: CommandId.makeUnsafe("return-provider"),
+            threadId: target,
+            modelSelection: { provider: "claudeAgent", model: "return-model" },
+            runtimeMode: "approval-required",
+            createdAt: new Date().toISOString(),
+          });
+          yield* engine.refreshCommandReadModel();
+          const second = Option.getOrThrow(yield* query.getThreadDetailForExportById(target));
+          expect(second.id).toBe(source);
+          expect(second.handoff!.sourceBoundarySequence!).toBeGreaterThan(
+            first.handoff!.sourceBoundarySequence!,
+          );
+          const events = yield* OrchestrationEventStore;
+          const frozen = yield* readHandoffEvidenceSnapshot(
+            events,
+            source,
+            second.handoff!.sourceBoundarySequence!,
+          );
+          expect(frozen.messages.map((message) => message.id)).toEqual(["original"]);
+          expect(frozen.handoff?.operationId).toBe("handoff");
+          expect(
+            second.activities.filter((activity) => activity.kind === "provider.transition"),
+          ).toHaveLength(2);
+          expect(
+            second.activities.find((activity) => activity.id === "handoff-transition:handoff")
+              ?.summary,
+          ).toContain("delivered");
+          yield* preparation.prepare({ threadId: target });
+          expect(
+            Option.getOrThrow(yield* query.getThreadShellById(target)).handoff?.preparation
+              ?.modelSelection.model,
+          ).toBe("return-model");
         }),
       );
     } finally {

@@ -54,7 +54,8 @@ export function isAgentActivityWorkEntry(entry: WorkLogEntry): boolean {
     entry.itemType === "collab_agent_tool_call" ||
     isReasoningUpdateWorkEntry(entry) ||
     entry.activityKind === "runtime.warning" ||
-    entry.activityKind === "tool.summary"
+    entry.activityKind === "tool.summary" ||
+    entry.activityKind === "provider.transition"
   );
 }
 

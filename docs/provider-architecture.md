@@ -124,3 +124,5 @@ only an explicit start creates a process. Close requires the current attachment
 identity and verifies owned process teardown. Renderer remounts do not start another
 login. CLI exit triggers provider status and catalog refresh; exit code zero alone
 is not proof of authentication. Server shutdown disposes retained attempts.
+
+Provider transitions continue in the same chat through `thread.handoff.start`. `HandoffPreparation` owns isolated destination-model evidence generation; `HandoffTransitions` validates immutable source boundaries and generations and persists stage changes. Source runtime retirement precedes destination admission, and only native first-turn acceptance marks delivery. See [handoff-context.md](handoff-context.md) for accounting, retrieval and failure recovery. Codex rewind reads only the required descending turn-ID tail and returns no fabricated retained-history snapshot.

@@ -1,3 +1,4 @@
+import { ConversationDivider } from "./ConversationDivider";
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { memo, type MouseEvent } from "react";
@@ -28,12 +29,7 @@ export const ForkSourceDivider = memo(function ForkSourceDivider({
   const sourceHref = `/${encodeURIComponent(source.sourceThreadId)}`;
 
   return (
-    <div
-      data-fork-source-divider={source.handoff ? undefined : "true"}
-      data-handoff-source-divider={source.handoff ? "true" : undefined}
-      className="flex w-full items-center gap-4 py-4 font-system-ui"
-    >
-      <span aria-hidden className="h-px min-w-0 flex-1 bg-[color:var(--color-border-light)]" />
+    <ConversationDivider kind={source.handoff ? "handoff" : "fork"}>
       <a
         href={sourceHref}
         aria-label={`Open source chat ${source.sourceTitle}`}
@@ -64,7 +60,6 @@ export const ForkSourceDivider = memo(function ForkSourceDivider({
           </>
         )}
       </a>
-      <span aria-hidden className="h-px min-w-0 flex-1 bg-[color:var(--color-border-light)]" />
-    </div>
+    </ConversationDivider>
   );
 });

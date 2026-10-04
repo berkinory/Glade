@@ -69,6 +69,7 @@ export type ProviderSessionStartInput = typeof ProviderSessionStartInput.Type;
 
 export const ProviderSendTurnInput = Schema.Struct({
   threadId: ThreadId,
+  expectedLifecycleGeneration: Schema.optional(TrimmedNonEmptyString),
   input: Schema.optional(
     TrimmedNonEmptyString.check(Schema.isMaxLength(PROVIDER_SEND_TURN_MAX_INPUT_CHARS)),
   ),
@@ -160,6 +161,7 @@ export type ProviderSteerSubagentInput = typeof ProviderSteerSubagentInput.Type;
 
 export const ProviderStopSessionInput = Schema.Struct({
   threadId: ThreadId,
+  expectedLifecycleGeneration: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
 });
 export type ProviderStopSessionInput = typeof ProviderStopSessionInput.Type;
 

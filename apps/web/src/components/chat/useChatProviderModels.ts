@@ -52,6 +52,12 @@ export function useChatProviderModels({
 }: ChatProviderModelsInput) {
   const queryClient = useQueryClient();
   const prompt = composerDraft.prompt;
+  const handoffSelection =
+    activeThread?.handoff?.operationId &&
+    activeThread.handoff.bootstrapStatus === "pending" &&
+    activeThread.handoff.stage !== "cancelled"
+      ? activeThread.handoff.destinationModelSelection
+      : undefined;
   const sessionProvider = activeThread?.session?.provider ?? null;
   const selectedProviderByThreadId = composerDraft.activeProvider ?? null;
   const threadProvider =
@@ -77,6 +83,7 @@ export function useChatProviderModels({
   const providerStatusesReconciled = hasReconciledServerProviderStatuses(queryClient);
   const selectedProvider = useMemo<ProviderKind>(
     () =>
+      handoffSelection?.provider ??
       lockedProvider ??
       selectedProviderByThreadId ??
       resolveAvailableProviderPreference({
@@ -86,6 +93,7 @@ export function useChatProviderModels({
         hiddenProviders: settings.hiddenProviders,
       }),
     [
+      handoffSelection?.provider,
       localProviderStatuses,
       lockedProvider,
       preferredDraftProvider,
@@ -185,13 +193,20 @@ export function useChatProviderModels({
   const selectedPromptEffort = composerProviderState.promptEffort;
   const selectedModelOptionsForDispatch = composerProviderState.modelOptionsForDispatch;
   const selectedModelSelection = useMemo<ModelSelection>(() => {
+    if (handoffSelection) return handoffSelection;
     return buildModelSelection(
       selectedProvider,
       selectedModel,
       selectedModelOptionsForDispatch,
       selectedProvider === "claudeAgent" ? selectedRuntimeModel?.supportsAutoMode : undefined,
     );
-  }, [selectedModel, selectedModelOptionsForDispatch, selectedProvider, selectedRuntimeModel]);
+  }, [
+    handoffSelection,
+    selectedModel,
+    selectedModelOptionsForDispatch,
+    selectedProvider,
+    selectedRuntimeModel,
+  ]);
   useEffect(() => {
     const selection = composerDraft.modelSelectionByProvider[selectedProvider];
     if (selectedModel && (!selection || !normalizeModelSlug(selection.model, selectedProvider))) {

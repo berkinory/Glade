@@ -61,6 +61,8 @@ function upsertThreadActivity(
   historyLimit: number,
 ): ReadonlyArray<OrchestrationThread["activities"][number]> {
   const existingIndex = activities.findIndex((entry) => entry.id === activity.id);
+  if (activity.kind === "provider.transition" && existingIndex >= 0)
+    activity = { ...activity, sequence: activities[existingIndex]!.sequence };
   if (existingIndex >= 0 && compareThreadActivities(activities[existingIndex]!, activity) === 0) {
     const next = [...activities];
     next[existingIndex] = activity;

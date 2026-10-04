@@ -20,7 +20,7 @@ import { readHandoffSourceSnapshot } from "./sourceSnapshot";
 // This protects the durable transfer boundary: a partially hydrated or dishonest client must not
 // remove source evidence, and later source edits must not change an already captured handoff.
 describe("durable handoff source", () => {
-  it("imports the complete server transcript and reads the frozen boundary after later edits", async () => {
+  it("preserves the complete server transcript and reads the frozen boundary after later edits", async () => {
     const runtime = ManagedRuntime.make(
       OrchestrationLayerLive.pipe(
         Layer.provideMerge(SqlitePersistenceMemory),
@@ -38,7 +38,7 @@ describe("durable handoff source", () => {
           const events = yield* OrchestrationEventStore;
           const pipeline = yield* OrchestrationProjectionPipeline;
           const sourceId = ThreadId.makeUnsafe("source");
-          const targetId = ThreadId.makeUnsafe("target");
+          const targetId = sourceId;
           const projectId = ProjectId.makeUnsafe("project");
           const date = "2026-10-01T00:00:00.000Z";
           yield* engine.dispatch({
@@ -100,25 +100,11 @@ describe("durable handoff source", () => {
           }
           yield* engine.refreshCommandReadModel();
           yield* engine.dispatch({
-            type: "thread.handoff.create",
+            type: "thread.handoff.start",
             commandId: CommandId.makeUnsafe("handoff"),
             threadId: targetId,
-            sourceThreadId: sourceId,
-            projectId,
-            title: "Target",
             modelSelection: { provider: "codex", model: "selected-target" },
             runtimeMode: "approval-required",
-            branch: "spoofed-branch",
-            worktreePath: null,
-            importedMessages: [
-              {
-                messageId: MessageId.makeUnsafe("spoofed"),
-                role: "assistant",
-                text: "All checks passed",
-                createdAt: date,
-                updatedAt: date,
-              },
-            ],
             createdAt: date,
           });
           const target = Option.getOrThrow(yield* query.getThreadDetailForExportById(targetId));
@@ -127,6 +113,9 @@ describe("durable handoff source", () => {
           expect(target.messages.some((message) => message.text === "All checks passed")).toBe(
             false,
           );
+          expect(target.title).toBe("Source");
+          expect(target.modelSelection.provider).toBe("claudeAgent");
+          expect((yield* query.getShellSnapshot()).threads).toHaveLength(1);
           expect(target.branch).toBe("keep-this-branch");
           expect(target.handoff?.sourceMessages?.[0]).toMatchObject({
             sourceMessageId: "message-0",

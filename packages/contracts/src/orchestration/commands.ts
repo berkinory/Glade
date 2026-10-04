@@ -1,5 +1,5 @@
 import { WorkspaceRestoreConfirmation } from "./workspaceRestore";
-import { Schema } from "effect";
+import { Schema, Struct } from "effect";
 import {
   CommandId,
   SpaceId,
@@ -23,7 +23,6 @@ import {
   SPACE_PROJECTS_ASSIGN_MAX_COUNT,
   ThreadEnvironmentMode,
   OrchestrationThreadPullRequest,
-  ChatAttachment,
   ThreadHandoff,
   ThreadPinnedMessages,
   ThreadNotes,
@@ -177,39 +176,14 @@ const ThreadCreateCommand = Schema.Struct({
   createdAt: IsoDateTime,
 });
 
-export const ThreadHandoffImportedMessage = Schema.Struct({
-  messageId: MessageId,
-  role: Schema.Literals(["user", "assistant"]),
-  text: Schema.String,
-  attachments: Schema.optional(Schema.Array(ChatAttachment)),
-  createdAt: IsoDateTime,
-  updatedAt: IsoDateTime,
-});
-
-export type ThreadHandoffImportedMessage = typeof ThreadHandoffImportedMessage.Type;
-
-const ThreadHandoffCreateCommand = Schema.Struct({
-  type: Schema.Literal("thread.handoff.create"),
+const ThreadHandoffStartCommand = Schema.Struct({
+  type: Schema.Literal("thread.handoff.start"),
   commandId: CommandId,
   threadId: ThreadId,
-  sourceThreadId: ThreadId,
-  projectId: ProjectId,
-  title: TrimmedNonEmptyString,
   modelSelection: ModelSelection,
   runtimeMode: RuntimeMode,
-
-  envMode: Schema.optional(ThreadEnvironmentMode).pipe(Schema.withDecodingDefault(() => "local")),
-  branch: Schema.NullOr(TrimmedNonEmptyString),
-  worktreePath: Schema.NullOr(TrimmedNonEmptyString),
-  workingDirectory: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
-  associatedWorktreePath: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
-  associatedWorktreeBranch: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
-  associatedWorktreeRef: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
-  createBranchFlowCompleted: Schema.optional(Schema.Boolean).pipe(
-    Schema.withDecodingDefault(() => false),
-  ),
-  importedMessages: Schema.Array(ThreadHandoffImportedMessage),
   continuationGoal: Schema.optional(Schema.String),
+  sourceGeneration: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   createdAt: IsoDateTime,
 });
 
@@ -283,6 +257,7 @@ const ThreadMetaUpdateCommand = Schema.Struct({
   lastKnownPr: Schema.optional(Schema.NullOr(OrchestrationThreadPullRequest)),
   pinnedMessages: Schema.optional(ThreadPinnedMessages),
   notes: Schema.optional(ThreadNotes),
+  expectedHandoffOperationId: Schema.optional(CommandId),
 });
 
 const ThreadPinnedMessageAddCommand = Schema.Struct({
@@ -328,6 +303,7 @@ export const ThreadTurnStartCommand = Schema.Struct({
     skills: Schema.optional(Schema.Array(ProviderSkillReference)),
     mentions: Schema.optional(Schema.Array(ProviderMentionReference)),
   }).check(TurnMessageContentCheck),
+  handoffOperationId: Schema.optional(CommandId),
   modelSelection: Schema.optional(ModelSelection),
   providerOptions: Schema.optional(ProviderStartOptions),
   enableComputerControl: Schema.optional(Schema.Boolean),
@@ -367,6 +343,7 @@ const ClientThreadTurnStartCommand = Schema.Struct({
     skills: Schema.optional(Schema.Array(ProviderSkillReference)),
     mentions: Schema.optional(Schema.Array(ProviderMentionReference)),
   }).check(TurnMessageContentCheck),
+  handoffOperationId: Schema.optional(CommandId),
   modelSelection: Schema.optional(ModelSelection),
   providerOptions: Schema.optional(ProviderStartOptions),
   enableComputerControl: Schema.optional(Schema.Boolean),
@@ -526,7 +503,7 @@ const DispatchableClientOrchestrationCommand = Schema.Union([
   ProjectMetaUpdateCommand,
   ProjectDeleteCommand,
   ThreadCreateCommand,
-  ThreadHandoffCreateCommand,
+  ThreadHandoffStartCommand,
   ThreadForkCreateCommand,
   ThreadDeleteCommand,
   ThreadArchiveCommand,
@@ -564,12 +541,12 @@ export const ClientOrchestrationCommand = Schema.Union([
   ProjectMetaUpdateCommand,
   ProjectDeleteCommand,
   ThreadCreateCommand,
-  ThreadHandoffCreateCommand,
+  ThreadHandoffStartCommand.mapFields(Struct.omit(["sourceGeneration"])),
   ThreadForkCreateCommand,
   ThreadDeleteCommand,
   ThreadArchiveCommand,
   ThreadUnarchiveCommand,
-  ThreadMetaUpdateCommand,
+  ThreadMetaUpdateCommand.mapFields(Struct.omit(["handoff", "expectedHandoffOperationId"])),
   ThreadPinnedMessageAddCommand,
   ThreadPinnedMessageRemoveCommand,
   ThreadPinnedMessageLabelSetCommand,

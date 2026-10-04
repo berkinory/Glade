@@ -83,12 +83,12 @@ export function makeMessageTextChunks(sql: SqlClient.SqlClient) {
         yield* sql`
         INSERT INTO projection_thread_messages
           (thread_id, message_id, turn_id, role, text, attachments_json, skills_json, mentions_json,
-           dispatch_mode, dispatch_origin, is_streaming, source, sequence, created_at, updated_at, text_event_sequence)
+           dispatch_mode, dispatch_origin, is_streaming, source, model_selection_json, sequence, created_at, updated_at, text_event_sequence)
         VALUES (${p.threadId}, ${p.messageId}, ${p.turnId ?? null}, ${p.role}, '',
           ${p.attachments !== undefined ? JSON.stringify(p.attachments) : null},
           ${p.skills !== undefined ? JSON.stringify(p.skills) : null},
           ${p.mentions !== undefined ? JSON.stringify(p.mentions) : null},
-          ${p.dispatchMode ?? null}, ${p.dispatchOrigin ?? null}, 1, ${p.source}, ${event.sequence}, ${p.createdAt}, ${p.updatedAt}, ${event.sequence})
+          ${p.dispatchMode ?? null}, ${p.dispatchOrigin ?? null}, 1, ${p.source}, ${p.modelSelection ? JSON.stringify(p.modelSelection) : null}, ${event.sequence}, ${p.createdAt}, ${p.updatedAt}, ${event.sequence})
       `;
       } else {
         if (state.hasBody === 1) {

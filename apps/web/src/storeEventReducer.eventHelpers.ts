@@ -610,6 +610,8 @@ function mergeStreamingMessage(
     existingMessage.dispatchMode === nextDispatchMode &&
     existingMessage.dispatchOrigin === nextDispatchOrigin &&
     existingMessage.startsNewTurn === nextStartsNewTurn &&
+    existingMessage.modelSelection ===
+      (existingMessage.modelSelection ?? incomingMessage.modelSelection) &&
     existingMessage.source === nextSource
   ) {
     return null;
@@ -617,6 +619,9 @@ function mergeStreamingMessage(
 
   return {
     ...existingMessage,
+    ...((existingMessage.modelSelection ?? incomingMessage.modelSelection)
+      ? { modelSelection: existingMessage.modelSelection ?? incomingMessage.modelSelection }
+      : {}),
     text: nextText,
     updatedAt: nextUpdatedAt,
     ...(nextAsyncUserInput ? { asyncUserInput: nextAsyncUserInput } : {}),
@@ -650,6 +655,7 @@ export function applyThreadMessageSentEvent(thread: Thread, event: ThreadMessage
     {
       id: payload.messageId,
       role: payload.role,
+      ...(payload.modelSelection ? { modelSelection: payload.modelSelection } : {}),
       text: payload.text,
       ...(payload.asyncUserInput ? { asyncUserInput: payload.asyncUserInput } : {}),
       dispatchMode: payload.dispatchMode,

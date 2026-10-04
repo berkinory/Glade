@@ -56,6 +56,40 @@ routing.layer("Provider service sessionLifecycle", (it) => {
       assert.equal(typeof secondGeneration, "string");
       assert.notEqual(secondGeneration, firstGeneration);
 
+      const sendCallCount = routing.codex.sendTurn.mock.calls.length;
+      const staleSend = yield* Effect.result(
+        provider.sendTurn({
+          threadId,
+          input: "Do not deliver to the replacement",
+          expectedLifecycleGeneration: String(firstGeneration),
+        }),
+      );
+      assertFailure(
+        staleSend,
+        new ProviderValidationError({
+          operation: "ProviderService.sendTurn",
+          issue: "The destination session changed before delivery.",
+        }),
+      );
+      assert.equal(routing.codex.sendTurn.mock.calls.length, sendCallCount);
+      const staleStop = yield* Effect.result(
+        provider.stopSession({
+          threadId,
+          expectedLifecycleGeneration: String(firstGeneration),
+        }),
+      );
+      assertFailure(
+        staleStop,
+        new ProviderValidationError({
+          operation: "ProviderService.stopSession",
+          issue: "The source session changed before retirement.",
+        }),
+      );
+      assert.equal(
+        Option.getOrUndefined(yield* directory.getBinding(threadId))?.lifecycleGeneration,
+        secondGeneration,
+      );
+
       const responseCallCount = routing.codex.respondToRequest.mock.calls.length;
       const staleResponse = yield* Effect.result(
         provider.respondToRequest({

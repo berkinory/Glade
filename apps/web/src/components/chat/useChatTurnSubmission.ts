@@ -1,3 +1,4 @@
+import { useStore } from "../../store";
 import { createEmptyThreadDraft } from "../../composerDraftDomain";
 import { usePendingTurnDispatchStore } from "../../pendingTurnDispatch";
 import { hasUnsavedWorkspaceEditors } from "~/lib/workspaceEditorSession";
@@ -247,6 +248,18 @@ export function useChatTurnSubmission({
           turnDispatchSettings,
           queuedChatTurn,
         );
+        if (
+          activeThread.handoff?.operationId &&
+          activeThread.handoff.bootstrapStatus === "pending" &&
+          activeThread.handoff.stage !== "cancelled" &&
+          activeThread.handoff.destinationModelSelection
+        )
+          dispatchSettings = {
+            ...dispatchSettings,
+            modelSelection: activeThread.handoff.destinationModelSelection,
+            runtimeMode:
+              activeThread.handoff.destinationRuntimeMode ?? dispatchSettings.runtimeMode,
+          };
         const computerControlSequenceForSend = computerControlChangeSequence.current;
         const liveComposerSnapshot =
           queuedChatTurn === null ? (composerEditorRef.current?.readSnapshot() ?? null) : null;
@@ -682,7 +695,11 @@ export function useChatTurnSubmission({
         }
         // Queued turns are dispatched from their captured snapshot, so this send path must not clear a
         // separate live draft the user may already be editing.
-        if (queuedChatTurn === null) {
+        const preservesHandoffDraft =
+          activeThread.handoff?.operationId &&
+          activeThread.handoff.bootstrapStatus === "pending" &&
+          activeThread.handoff.stage !== "cancelled";
+        if (queuedChatTurn === null && !preservesHandoffDraft) {
           clearComposerDraftContent(threadIdForSend, { preservePreviewUrls: true, consumedDraft });
           if (
             activeThreadIdRef.current === threadIdForSend &&
@@ -699,7 +716,7 @@ export function useChatTurnSubmission({
           }
         }
 
-        return await executePreparedTurn({
+        const accepted = await executePreparedTurn({
           nextThreadEnvMode,
           nextThreadBranch,
           nextThreadWorktreePath,
@@ -748,6 +765,15 @@ export function useChatTurnSubmission({
           composerSkillsSnapshot,
           composerMentionsSnapshot,
         });
+        if (
+          accepted &&
+          preservesHandoffDraft &&
+          queuedChatTurn === null &&
+          useStore.getState().threadShellById?.[threadIdForSend]?.handoff?.operationId ===
+            activeThread.handoff?.operationId
+        )
+          clearComposerDraftContent(threadIdForSend, { preservePreviewUrls: true, consumedDraft });
+        return accepted;
       } finally {
         pendingDispatch.endSubmission(activeThread.id);
         sendPreflightInFlightRef.current = false;

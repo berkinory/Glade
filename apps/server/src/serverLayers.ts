@@ -1,3 +1,4 @@
+import { HandoffTransitionsLive } from "./orchestration/Layers/HandoffTransitions";
 import { ThreadTitleGenerationLive } from "./orchestration/Layers/ThreadTitleGeneration";
 import { AppPresentationLive } from "./agentGateway/Layers/AppPresentation";
 import { AgentGatewayDiscoveryLive } from "./agentGateway/Layers/AgentGatewayDiscovery";
@@ -82,6 +83,7 @@ function makeServerRuntimeServicesLayer(
   const handoffPreparationLayer = HandoffPreparationLive.pipe(
     Layer.provideMerge(runtimeServicesLayer),
     Layer.provideMerge(HandoffGenerationLive),
+    Layer.provideMerge(HandoffTransitionsLive.pipe(Layer.provideMerge(runtimeServicesLayer))),
     Layer.provideMerge(ServerSettingsLive),
   );
   const providerCommandReactorLayer = ProviderCommandReactorLive.pipe(

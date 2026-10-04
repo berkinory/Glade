@@ -57,7 +57,7 @@ const makeProjectionThreadActivityRepository = Effect.gen(function* () {
               kind = excluded.kind,
               summary = excluded.summary,
               payload_json = excluded.payload_json,
-              sequence = excluded.sequence,
+              sequence = CASE WHEN excluded.kind = 'provider.transition' THEN projection_thread_activities.sequence ELSE excluded.sequence END,
               created_at = excluded.created_at
           `,
   });

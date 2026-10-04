@@ -1,3 +1,4 @@
+import { ProviderValidationError } from "../core/Errors";
 import { ProviderSessionRouting } from "../Services/ProviderSessionRouting";
 import { ProviderSessionReads } from "../Services/ProviderSessionReads";
 import { Layer } from "effect";
@@ -90,6 +91,11 @@ export const ProviderSessionReadsLive = Layer.effect(
               (entry) => entry.threadId === input.threadId,
             );
             const binding = Option.getOrUndefined(yield* directory.getBinding(input.threadId));
+            if (binding?.lifecycleGeneration !== active.lifecycleGeneration)
+              return yield* new ProviderValidationError({
+                operation: "ProviderService.rollbackConversation",
+                issue: "The provider session changed during rewind.",
+              });
             if (session && binding) {
               yield* directory.upsert({
                 ...binding,

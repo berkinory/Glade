@@ -49,6 +49,7 @@ export function decideTranscriptCommand({
           payload: {
             threadId: command.threadId,
             messageId: command.messageId,
+            modelSelection: existingMessage?.modelSelection ?? thread.modelSelection,
             role: "assistant",
             text: command.delta,
             ...(command.segmentStartedAt ? { segmentStartedAt: command.segmentStartedAt } : {}),
@@ -83,6 +84,7 @@ export function decideTranscriptCommand({
           payload: {
             threadId: command.threadId,
             messageId: command.messageId,
+            modelSelection: existingMessage?.modelSelection ?? thread.modelSelection,
             ...((command.providerMessageId ?? existingMessage?.providerMessageId)
               ? {
                   providerMessageId:

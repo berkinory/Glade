@@ -69,10 +69,7 @@ function deriveCommandAssociatedWorktreeMetadataPatch(input: {
 }
 
 type CreatedThreadWorkspaceCommand = Pick<
-  Extract<
-    OrchestrationCommand,
-    { type: "thread.create" | "thread.handoff.create" | "thread.fork.create" }
-  >,
+  Extract<OrchestrationCommand, { type: "thread.create" | "thread.fork.create" }>,
   | "envMode"
   | "branch"
   | "worktreePath"

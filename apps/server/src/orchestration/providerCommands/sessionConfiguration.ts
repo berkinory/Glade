@@ -484,6 +484,8 @@ export function makeProviderSessionConfiguration(input: {
     return {
       activeSessionBeforeEnsure,
       activeSession: startedSession,
+      lifecycleGeneration:
+        "lifecycleGeneration" in startOutcome ? startOutcome.lifecycleGeneration : undefined,
       nativeResumeSucceeded: startOutcome.nativeResumeSucceeded,
       nativeResumeFailed: startOutcome.nativeResumeFailed,
       nativeSessionRestarted: true,

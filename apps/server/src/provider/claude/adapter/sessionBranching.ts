@@ -47,7 +47,7 @@ export function makeClaudeSessionBranching(input: {
     forkNativeSession,
     runtimeEvents,
   } = input;
-  const { snapshotThread, emitRuntimeWarning } = runtimeEvents;
+  const { emitRuntimeWarning } = runtimeEvents;
   const rollbackThread: ClaudeAdapterShape["rollbackThread"] = (threadId, numTurns) =>
     withSessionLifecycleLock(
       threadId,
@@ -154,7 +154,6 @@ export function makeClaudeSessionBranching(input: {
             ),
           ),
         );
-        return yield* snapshotThread(yield* requireSession(threadId));
       }),
     );
 

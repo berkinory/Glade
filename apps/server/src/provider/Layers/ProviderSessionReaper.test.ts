@@ -145,11 +145,7 @@ function makeFakeAdapter(provider: ProviderKind) {
         threadId,
         turns: [],
       }),
-    rollbackThread: (threadId) =>
-      Effect.succeed({
-        threadId,
-        turns: [],
-      }),
+    rollbackThread: () => Effect.void,
     streamEvents: Stream.never,
   };
 

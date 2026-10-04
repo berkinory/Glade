@@ -23,11 +23,11 @@ export function ProviderHandoffDialog(props: {
         <DialogHeader>
           <DialogTitle>Switch provider?</DialogTitle>
           <DialogDescription>
-            This creates a new task with{" "}
+            Continue this chat with{" "}
             {props.provider ? PROVIDER_DISPLAY_NAMES[props.provider] : "the selected provider"}
-            {props.model ? ` using ${props.model}` : ""}. Glade carries over the conversation and
-            working environment. The original task stays available, and the new provider receives
-            the conversation context with your first message.
+            {props.model ? ` using ${props.model}` : ""}. Glade prepares context with the selected
+            model. Your conversation, draft and working environment stay here. The provider changes
+            when you send your next message.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -40,7 +40,7 @@ export function ProviderHandoffDialog(props: {
             Cancel
           </Button>
           <Button size="sm" disabled={props.busy} onClick={props.onConfirm}>
-            {props.busy ? "Switching…" : "Create new task"}
+            {props.busy ? "Switching…" : "Prepare transition"}
           </Button>
         </DialogFooter>
       </DialogPopup>

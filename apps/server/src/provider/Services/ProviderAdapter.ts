@@ -166,10 +166,7 @@ export interface ProviderAdapterShape<TError> {
 
   readonly readThread: (threadId: ThreadId) => Effect.Effect<ProviderThreadSnapshot, TError>;
 
-  readonly rollbackThread: (
-    threadId: ThreadId,
-    numTurns: number,
-  ) => Effect.Effect<ProviderThreadSnapshot, TError>;
+  readonly rollbackThread: (threadId: ThreadId, numTurns: number) => Effect.Effect<void, TError>;
 
   readonly compactThread?: (
     threadId: ThreadId,

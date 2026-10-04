@@ -1,3 +1,4 @@
+import MessageAttribution from "./Migrations/004_MessageAttribution.ts";
 import * as Migrator from "effect/unstable/sql/Migrator";
 import * as Effect from "effect/Effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
@@ -13,6 +14,7 @@ export const migrationEntries = [
   [1, "Baseline", Baseline],
   [2, "ProfileTurnLookup", ProfileTurnLookup],
   [3, "ProjectImportHistory", ProjectImportHistory],
+  [4, "MessageAttribution", MessageAttribution],
 ] as const;
 
 const LATEST_MIGRATION_ID = Math.max(...migrationEntries.map(([id]) => id));

@@ -1,3 +1,4 @@
+import { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { AsyncUserInput } from "@glade/contracts/orchestration/asyncUserInput";
 import {
   ChatAttachment,
@@ -20,6 +21,7 @@ import {
 export const ProjectionThreadMessageDbRowSchema = ProjectionThreadMessage.mapFields(
   Struct.assign({
     isStreaming: Schema.Number,
+    modelSelection: Schema.optional(Schema.NullOr(Schema.fromJsonString(ModelSelection))),
     asyncUserInput: Schema.optional(Schema.NullOr(Schema.fromJsonString(AsyncUserInput))),
     textChunks: Schema.optional(Schema.fromJsonString(Schema.Array(Schema.String))),
     encodedText: Schema.optional(Schema.NullOr(Schema.fromJsonString(Schema.String))),
@@ -57,6 +59,7 @@ export function projectionThreadMessageFromRow(
     ...(row.asyncUserInput != null ? { asyncUserInput: row.asyncUserInput } : {}),
     isStreaming: row.isStreaming === 1,
     source: row.source,
+    ...(row.modelSelection != null ? { modelSelection: row.modelSelection } : {}),
     ...(row.sequence !== null ? { sequence: row.sequence } : {}),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -88,6 +91,7 @@ export function orchestrationMessageFromProjectionRow(
     turnId: row.turnId,
     streaming: row.isStreaming === 1,
     source: row.source,
+    ...(row.modelSelection != null ? { modelSelection: row.modelSelection } : {}),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

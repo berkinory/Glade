@@ -1,7 +1,6 @@
 import { toastManager } from "../components/ui/toast";
 import { resolveProviderModelSelection } from "~/lib/providerModelSelection";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
 import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { useComposerDraftStore } from "../composerDraftStore";
@@ -11,17 +10,15 @@ import {
   canCreateThreadHandoff,
   isEligibleHandoffTargetProvider,
   resolveThreadHandoffModelSelection,
-  resolveThreadHandoffTitle,
 } from "../lib/threadHandoff";
 import { resolveProviderSendAvailabilityWithRefresh } from "../lib/providerAvailability";
 import { serverSettingsQueryOptions } from "../lib/serverReactQuery";
-import { newCommandId, newThreadId } from "../lib/utils";
+import { newCommandId } from "../lib/utils";
 import { readNativeApi } from "../nativeApi";
 import { useStore } from "../store";
 import { type Thread } from "../types";
 
 export function useThreadHandoff() {
-  const navigate = useNavigate();
   const projects = useStore((store) => store.projects);
   const syncServerShellSnapshot = useStore((store) => store.syncServerShellSnapshot);
   const providerStatuses = useProviderStatusesForLocalConfig();
@@ -68,18 +65,12 @@ export function useThreadHandoff() {
       );
     }
 
-    const nextThreadId = newThreadId();
     const createdAt = new Date().toISOString();
-    const { copyTransferableComposerState, stickyModelSelectionByProvider } =
-      useComposerDraftStore.getState();
-
+    const { stickyModelSelectionByProvider } = useComposerDraftStore.getState();
     await api.orchestration.dispatchCommand({
-      type: "thread.handoff.create",
+      type: "thread.handoff.start",
       commandId: newCommandId(),
-      threadId: nextThreadId,
-      sourceThreadId: thread.id,
-      projectId: thread.projectId,
-      title: resolveThreadHandoffTitle(thread),
+      threadId: thread.id,
       modelSelection: await resolveProviderModelSelection({
         api,
         cwd: project.cwd,
@@ -94,31 +85,13 @@ export function useThreadHandoff() {
       }),
       runtimeMode: selectedRuntimeMode ?? thread.runtimeMode,
 
-      envMode: thread.envMode ?? (thread.worktreePath ? "worktree" : "local"),
-      branch: thread.branch,
-      worktreePath: thread.worktreePath,
-      workingDirectory: thread.workingDirectory ?? null,
-      associatedWorktreePath: thread.associatedWorktreePath ?? thread.worktreePath ?? null,
-      associatedWorktreeBranch: thread.associatedWorktreeBranch ?? thread.branch ?? null,
-      associatedWorktreeRef:
-        thread.associatedWorktreeRef ?? thread.associatedWorktreeBranch ?? thread.branch ?? null,
-      createBranchFlowCompleted: thread.createBranchFlowCompleted ?? false,
-      importedMessages: [],
       ...(continuationGoal ? { continuationGoal } : {}),
       createdAt,
     });
 
-    copyTransferableComposerState(thread.id, nextThreadId);
-
-    const snapshot = await api.orchestration.getShellSnapshot();
-    syncServerShellSnapshot(snapshot);
-    await navigate({
-      to: "/$threadId",
-      params: { threadId: nextThreadId },
-    });
-
+    syncServerShellSnapshot(await api.orchestration.getShellSnapshot());
     try {
-      await api.orchestration.prepareHandoff({ threadId: nextThreadId });
+      await api.orchestration.prepareHandoff({ threadId: thread.id });
     } catch (cause) {
       toastManager.add({
         type: "error",
@@ -126,10 +99,10 @@ export function useThreadHandoff() {
         description:
           cause instanceof Error
             ? cause.message
-            : "Retry preparation in the new chat. The source and draft are intact.",
+            : "Retry preparation in this chat. The source and draft are intact.",
       });
     }
-    return nextThreadId;
+    return thread.id;
   };
 
   return {

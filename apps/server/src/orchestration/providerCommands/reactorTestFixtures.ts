@@ -1,3 +1,8 @@
+import { ProviderSessionDirectoryLive } from "../../provider/Layers/ProviderSessionDirectory";
+import { ProviderSessionRuntimeRepositoryLive } from "../../persistence/Layers/ProviderSessionRuntime";
+import { HandoffPreparation } from "../Services/HandoffPreparation";
+import { HandoffTransitions } from "../Services/HandoffTransitions";
+import { HandoffTransitionsLive } from "../Layers/HandoffTransitions";
 import { seedUserMessage } from "../persistedMessage.testSupport";
 import {
   ThreadTitleGeneration,
@@ -151,6 +156,7 @@ export function makeReactorTestHarness() {
   });
 
   async function createHarness(input?: {
+    readonly handoffContext?: string;
     readonly baseDir?: string;
     readonly threadModelSelection?: ModelSelection;
     readonly checkpointStore?: Partial<CheckpointStoreShape>;
@@ -253,6 +259,7 @@ export function makeReactorTestHarness() {
           persistedResumeCursors.set(threadId, resolvedSession.resumeCursor);
           return {
             session: resolvedSession,
+            lifecycleGeneration: `fixture-generation-${crypto.randomUUID()}`,
             nativeResumeAttempted,
             nativeResumeSucceeded,
             priorTranscriptBootstrapPending: pendingPriorTranscriptBootstraps.has(threadId),
@@ -495,6 +502,17 @@ export function makeReactorTestHarness() {
         ? undefined
         : { commandEventTimeout: input.commandEventTimeout },
     ).pipe(
+      Layer.provideMerge(
+        Layer.mergeAll(
+          input?.handoffContext ? HandoffTransitionsLive : Layer.empty,
+          input?.handoffContext
+            ? Layer.succeed(HandoffPreparation, {
+                prepare: () => Effect.succeed(input.handoffContext!),
+                cancel: () => Effect.succeed(false),
+              })
+            : Layer.empty,
+        ),
+      ),
       Layer.provideMerge(orchestrationLayer),
       Layer.provideMerge(OrchestrationProjectionSnapshotQueryLive),
       Layer.provideMerge(TurnCheckpointCoordinatorLive),
@@ -548,6 +566,9 @@ export function makeReactorTestHarness() {
       Layer.provideMerge(OrchestrationEventDeliveryRepositoryLive),
       Layer.provideMerge(ProviderRuntimeEventRepositoryLive),
       Layer.provideMerge(AgentGatewayOperationRepositoryLive),
+      Layer.provideMerge(
+        ProviderSessionDirectoryLive.pipe(Layer.provide(ProviderSessionRuntimeRepositoryLive)),
+      ),
       Layer.provideMerge(SqlitePersistenceMemory),
     );
     const runtime = ManagedRuntime.make(layer);
@@ -637,6 +658,9 @@ export function makeReactorTestHarness() {
 
     return {
       engine,
+      handoffTransitions: Option.getOrUndefined(
+        await runtime.runPromise(Effect.serviceOption(HandoffTransitions)),
+      ),
       seedCompletion: () =>
         runtime!.runPromise(sql`
         INSERT INTO agent_gateway_completions

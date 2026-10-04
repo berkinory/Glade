@@ -1,3 +1,5 @@
+import { HandoffPreparation } from "../Services/HandoffPreparation";
+import { HandoffTransitions } from "../Services/HandoffTransitions";
 import { ThreadTitleGeneration } from "../Services/ThreadTitleGeneration";
 import { makeThreadTitleGeneration } from "../providerCommands/threadTitleGeneration";
 import { Effect, Cache, Queue, Stream, Layer } from "effect";
@@ -72,6 +74,8 @@ const make = Effect.gen(function* () {
   const projectionSnapshotQuery = yield* ProjectionSnapshotQuery;
 
   const providerService = yield* ProviderService;
+  const handoffPreparation = yield* Effect.serviceOption(HandoffPreparation);
+  const handoffTransitions = yield* Effect.serviceOption(HandoffTransitions);
 
   const computerService = yield* Effect.serviceOption(ComputerService);
 
@@ -236,6 +240,8 @@ const make = Effect.gen(function* () {
     setThreadSession,
   });
   const { dispatchTurnForThread } = makeProviderTurnDispatch({
+    handoffPreparation,
+    handoffTransitions,
     projectionAccess,
     projectionSnapshotQuery,
     serverConfig,
@@ -267,6 +273,7 @@ const make = Effect.gen(function* () {
     textGeneration,
   });
   const { processTurnQueued, processTurnStartRequested } = makeProviderTurnStart({
+    handoffTransitions,
     projectionAccess,
     queuedDispatchState,
     drainQueuedTurnsForSession,

@@ -60,6 +60,7 @@ const makeProjectionThreadMessageRepository = Effect.gen(function* () {
           starts_new_turn,
           is_streaming,
           source,
+          model_selection_json,
           sequence,
           created_at,
           updated_at
@@ -80,6 +81,7 @@ const makeProjectionThreadMessageRepository = Effect.gen(function* () {
           ${row.startsNewTurn === undefined ? null : row.startsNewTurn ? 1 : 0},
           ${row.isStreaming ? 1 : 0},
           ${row.source},
+          ${row.modelSelection ? JSON.stringify(row.modelSelection) : null},
           ${row.sequence ?? null},
           ${row.createdAt},
           ${row.updatedAt}
@@ -117,6 +119,7 @@ const makeProjectionThreadMessageRepository = Effect.gen(function* () {
           ),
           is_streaming = excluded.is_streaming,
           source = excluded.source,
+          model_selection_json = COALESCE(projection_thread_messages.model_selection_json, excluded.model_selection_json),
           sequence = COALESCE(projection_thread_messages.sequence, excluded.sequence),
           created_at = excluded.created_at,
           updated_at = excluded.updated_at
@@ -146,6 +149,7 @@ const makeProjectionThreadMessageRepository = Effect.gen(function* () {
           starts_new_turn AS "startsNewTurn",
           is_streaming AS "isStreaming",
           source,
+          model_selection_json AS "modelSelection",
           sequence,
           created_at AS "createdAt",
           updated_at AS "updatedAt"
@@ -214,6 +218,7 @@ const makeProjectionThreadMessageRepository = Effect.gen(function* () {
           starts_new_turn AS "startsNewTurn",
           is_streaming AS "isStreaming",
           source,
+          model_selection_json AS "modelSelection",
           sequence,
           created_at AS "createdAt",
           updated_at AS "updatedAt"

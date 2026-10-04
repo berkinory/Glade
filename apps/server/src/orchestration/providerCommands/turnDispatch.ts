@@ -1,3 +1,5 @@
+import { redactDiagnosticText } from "../../agentGateway/diagnosticSanitizer";
+import { HandoffTransitions } from "../Services/HandoffTransitions";
 import type { ServiceMap } from "effect";
 import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
 import { ProjectionSnapshotQuery } from "../Services/ProjectionSnapshotQuery.ts";
@@ -65,6 +67,8 @@ import { HandoffPreparation } from "../Services/HandoffPreparation";
 import { ProviderDeliveryGate } from "../Services/ProviderDeliveryGate.ts";
 
 export function makeProviderTurnDispatch(input: {
+  readonly handoffPreparation: Option.Option<ServiceMap.Service.Shape<typeof HandoffPreparation>>;
+  readonly handoffTransitions: Option.Option<ServiceMap.Service.Shape<typeof HandoffTransitions>>;
   readonly projectionAccess: ProviderProjectionAccessShape;
   readonly projectionSnapshotQuery: ServiceMap.Service.Shape<typeof ProjectionSnapshotQuery>;
   readonly serverConfig: ServiceMap.Service.Shape<typeof ServerConfig>;
@@ -102,6 +106,8 @@ export function makeProviderTurnDispatch(input: {
   >["persistPriorTranscriptBootstrapCompletion"];
 }) {
   const {
+    handoffPreparation,
+    handoffTransitions,
     projectionSnapshotQuery,
     serverConfig,
     managedAttachments,
@@ -249,33 +255,6 @@ export function makeProviderTurnDispatch(input: {
       threadSessionSettings.getModelSelection(input.threadId)?.provider ??
       thread.session?.providerName ??
       thread.modelSelection.provider;
-    const {
-      nativeResumeSucceeded,
-      nativeResumeFailed,
-      nativeSessionRestarted,
-      computerControlRestartDeferred,
-      forkComputerControl,
-    } = yield* ensureSessionForThread(input.threadId, input.createdAt, {
-      ...(input.modelSelection !== undefined ? { modelSelection: input.modelSelection } : {}),
-      ...(input.providerOptions !== undefined ? { providerOptions: input.providerOptions } : {}),
-      ...(input.dispatchMode === "steer" ? {} : { enableComputerControl }),
-      ...(input.runtimeMode !== undefined ? { runtimeMode: input.runtimeMode } : {}),
-    });
-    if (input.providerOptions !== undefined) {
-      threadSessionSettings.setProviderOptions(input.threadId, input.providerOptions);
-    }
-    if (input.modelSelection !== undefined) {
-      threadSessionSettings.setModelSelection(input.threadId, input.modelSelection);
-    }
-    if (input.dispatchMode !== "steer" && computerControlRestartDeferred !== true) {
-      // A fork provisions the parent-derived flag, not this turn's resolved value; a deferred
-      // control-only restart provisions nothing yet. In both cases the resolved value must not overwrite
-      // the authoritative cache.
-      threadSessionSettings.setComputerControl(
-        input.threadId,
-        forkComputerControl ?? enableComputerControl,
-      );
-    }
     const completionContext =
       input.sourceEvent &&
       (input.sourceEvent.payload.dispatchOrigin ?? "user") === "user" &&
@@ -303,7 +282,8 @@ export function makeProviderTurnDispatch(input: {
     // own words.
     const boundaryMessageText = authoredMessageText;
     const bootstrapBudgetMessageText = `${boundaryMessageText}${mentionContextSuffix}`;
-    const shouldBootstrapHandoff = thread.handoff?.bootstrapStatus === "pending";
+    const shouldBootstrapHandoff =
+      thread.handoff?.bootstrapStatus === "pending" && thread.handoff.stage !== "cancelled";
     const handoffBootstrapAvailableChars = availableProviderContextChars({
       tag: "handoff_context",
       messageText: bootstrapBudgetMessageText,
@@ -312,7 +292,7 @@ export function makeProviderTurnDispatch(input: {
     const handoffBootstrapText =
       shouldBootstrapHandoff && input.reviewTarget === undefined
         ? yield* Effect.gen(function* () {
-            const preparation = yield* Effect.serviceOption(HandoffPreparation);
+            const preparation = handoffPreparation;
             if (Option.isNone(preparation) || handoffBootstrapAvailableChars === 0) {
               return yield* new ProviderAdapterValidationError({
                 provider: selectedProvider as ProviderKind,
@@ -330,6 +310,114 @@ export function makeProviderTurnDispatch(input: {
             });
           })
         : null;
+
+    const transitions = handoffTransitions;
+    const operationId = thread.handoff?.operationId;
+    if (handoffBootstrapText && operationId) {
+      if (
+        Option.isNone(transitions) ||
+        input.sourceEvent?.payload.handoffOperationId !== operationId
+      )
+        return yield* new ProviderAdapterValidationError({
+          provider: selectedProvider as ProviderKind,
+          operation: "handoff.activate",
+          issue: "The provider transition is stale.",
+        });
+      yield* transitions.value.validate(input.threadId, operationId);
+      yield* transitions.value.update(input.threadId, operationId, { stage: "activating" });
+      // Retirement removes the source binding and gateway authority before destination admission.
+      yield* providerService.stopSession({
+        threadId: input.threadId,
+        expectedLifecycleGeneration: thread.handoff?.sourceGeneration,
+      });
+      yield* transitions.value.update(input.threadId, operationId, {
+        stage: "activating",
+        sourceRetired: true,
+      });
+      yield* orchestrationEngine.dispatch({
+        type: "thread.session.set",
+        createdAt: input.createdAt,
+        commandId: serverCommandId("handoff-source-retired"),
+        threadId: input.threadId,
+        session: {
+          threadId: input.threadId,
+          providerName: null,
+          status: "stopped",
+          activeTurnId: null,
+          lastError: null,
+          runtimeMode: thread.runtimeMode,
+          updatedAt: input.createdAt,
+        },
+      });
+      yield* orchestrationEngine.dispatch({
+        type: "thread.meta.update",
+        commandId: serverCommandId("handoff-target-selected"),
+        threadId: input.threadId,
+        expectedHandoffOperationId: operationId,
+        modelSelection: thread.handoff!.destinationModelSelection!,
+      });
+      threadSessionSettings.setModelSelection(
+        input.threadId,
+        thread.handoff!.destinationModelSelection!,
+      );
+    }
+    const {
+      nativeResumeSucceeded,
+      nativeResumeFailed,
+      nativeSessionRestarted,
+      computerControlRestartDeferred,
+      forkComputerControl,
+      lifecycleGeneration: destinationGeneration,
+    } = yield* ensureSessionForThread(input.threadId, input.createdAt, {
+      ...(input.modelSelection !== undefined ? { modelSelection: input.modelSelection } : {}),
+      ...(input.providerOptions !== undefined ? { providerOptions: input.providerOptions } : {}),
+      ...(input.dispatchMode === "steer" ? {} : { enableComputerControl }),
+      ...(input.runtimeMode !== undefined ? { runtimeMode: input.runtimeMode } : {}),
+    });
+    const validateHandoffAdmission =
+      operationId && handoffBootstrapText && Option.isSome(transitions)
+        ? transitions.value.validate(input.threadId, operationId).pipe(
+            Effect.tapError(() =>
+              providerService
+                .stopSession({
+                  threadId: input.threadId,
+                  ...(destinationGeneration !== undefined
+                    ? { expectedLifecycleGeneration: destinationGeneration }
+                    : {}),
+                })
+                .pipe(Effect.ignore),
+            ),
+            Effect.asVoid,
+          )
+        : Effect.void;
+    if (operationId && handoffBootstrapText && destinationGeneration === undefined)
+      return yield* new ProviderAdapterValidationError({
+        provider: selectedProvider as ProviderKind,
+        operation: "handoff.activate",
+        issue: "Destination startup did not return its session generation.",
+      });
+    yield* validateHandoffAdmission;
+    if (input.providerOptions !== undefined) {
+      threadSessionSettings.setProviderOptions(input.threadId, input.providerOptions);
+    }
+    if (input.modelSelection !== undefined) {
+      threadSessionSettings.setModelSelection(input.threadId, input.modelSelection);
+    }
+    if (input.dispatchMode !== "steer" && computerControlRestartDeferred !== true) {
+      // A fork provisions the parent-derived flag, not this turn's resolved value; a deferred
+      // control-only restart provisions nothing yet. In both cases the resolved value must not overwrite
+      // the authoritative cache.
+      threadSessionSettings.setComputerControl(
+        input.threadId,
+        forkComputerControl ?? enableComputerControl,
+      );
+    }
+
+    if (handoffBootstrapText && operationId && Option.isSome(transitions))
+      yield* transitions.value.update(input.threadId, operationId, {
+        stage: "activated",
+        transferredContext: redactDiagnosticText(handoffBootstrapText),
+      });
 
     const interruptEscalation = pendingInterruptEscalations.get(input.threadId);
     const priorEscalationEvidence = interruptEscalation?.evidence;
@@ -452,10 +540,17 @@ export function makeProviderTurnDispatch(input: {
       ...(requestedModelSelection !== undefined ? { modelSelection: requestedModelSelection } : {}),
     };
     const sendQueuedProviderTurn = (messageText: string | undefined) =>
-      providerService.sendTurn({
-        ...providerTurnInput,
-        ...(messageText ? { input: messageText } : {}),
-      });
+      validateHandoffAdmission.pipe(
+        Effect.andThen(() =>
+          providerService.sendTurn({
+            ...providerTurnInput,
+            ...(operationId && destinationGeneration !== undefined
+              ? { expectedLifecycleGeneration: destinationGeneration }
+              : {}),
+            ...(messageText ? { input: messageText } : {}),
+          }),
+        ),
+      );
 
     const captureMessageStartCheckpoint = Effect.gen(function* () {
       if ((input.dispatchMode ?? "queue") === "steer") {
@@ -591,7 +686,11 @@ export function makeProviderTurnDispatch(input: {
       const sentTurn = yield* sendQueuedProviderTurn(normalizedInput).pipe(
         Effect.catch((error) =>
           Effect.gen(function* () {
-            if (selectedProvider !== "claudeAgent" || !isStaleClaudeResumeError(error)) {
+            if (
+              handoffBootstrapText ||
+              selectedProvider !== "claudeAgent" ||
+              !isStaleClaudeResumeError(error)
+            ) {
               return yield* Effect.fail(error);
             }
 
@@ -695,18 +794,19 @@ export function makeProviderTurnDispatch(input: {
       completeInterruptEscalation(input.threadId, interruptEscalation);
     }
     if (handoffBootstrapText && thread.handoff !== null && input.reviewTarget === undefined) {
-      const preparedThread = Option.getOrUndefined(
-        yield* projectionSnapshotQuery.getThreadShellById(input.threadId),
-      );
-      yield* orchestrationEngine.dispatch({
-        type: "thread.meta.update",
-        commandId: serverCommandId("handoff-bootstrap-complete"),
-        threadId: input.threadId,
-        handoff: {
-          ...(preparedThread?.handoff ?? thread.handoff),
+      if (operationId && Option.isSome(transitions)) {
+        yield* transitions.value.update(input.threadId, operationId, {
+          stage: "delivered",
           bootstrapStatus: "completed",
-        },
-      });
+        });
+      } else {
+        yield* orchestrationEngine.dispatch({
+          type: "thread.meta.update",
+          commandId: serverCommandId("handoff-bootstrap-complete"),
+          threadId: input.threadId,
+          handoff: { ...thread.handoff, bootstrapStatus: "completed" },
+        });
+      }
     }
     const retiresPriorTranscriptBootstrap =
       priorTranscriptBootstrapRetiresOnAcceptedTurn &&

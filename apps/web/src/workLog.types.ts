@@ -4,7 +4,8 @@ import type {
 } from "@glade/contracts/computer/computer";
 import type { ToolLifecycleItemType } from "@glade/contracts/provider/runtimeMetadata";
 import type { OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
-import type { ProviderKind, TurnId } from "@glade/contracts/core/baseSchemas";
+import type { HandoffTransitionStage } from "@glade/contracts/orchestration/threadEntities";
+import type { CommandId, ProviderKind, TurnId } from "@glade/contracts/core/baseSchemas";
 import type { ApprovalRequestKind } from "@glade/shared/threads/threadSummary";
 import type { GladeMcpToolStatus } from "./lib/toolCallLabel.descriptors";
 import type { WorkLogToolDetails } from "./lib/toolCallDetails";
@@ -75,6 +76,12 @@ export interface WorkLogEntry {
   computerControlDenied?: WorkLogComputerControlDenied;
   computerSetupRequired?: WorkLogComputerSetupRequired;
   providerContextLifecycle?: ProviderContextLifecycleInfo;
+  providerTransition?: {
+    operationId: CommandId;
+    source: { provider: ProviderKind };
+    destination: { provider: ProviderKind };
+    stage: HandoffTransitionStage;
+  };
 
   activityKind?: OrchestrationThreadActivity["kind"];
 

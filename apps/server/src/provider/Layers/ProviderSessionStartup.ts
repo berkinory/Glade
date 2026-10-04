@@ -244,6 +244,7 @@ export const ProviderSessionStartupLive = Layer.effect(
 
                 return {
                   session,
+                  lifecycleGeneration: lease.generation,
                   nativeResumeAttempted,
                   nativeResumeSucceeded,
                   priorTranscriptBootstrapPending,

@@ -4,6 +4,8 @@
 
 ### New
 
+- Continue with another provider in the same chat, with a persistent record of each transition.
+
 - Hear distinct sounds when agents finish or need your approval or reply, with a single toggle to mute them.
 
 - Split terminals side by side or above and below within one tab, with keyboard shortcuts, balanced tiling and shared activity indicators.
@@ -24,6 +26,9 @@
 - Add files and folders to Explorer with drag and drop, or paste files from the clipboard.
 
 ### Improved
+
+- Provider transitions show transferred context and preserve drafts until the destination accepts the message.
+- Editing or reverting long Codex conversations avoids downloading unrelated history.
 
 - Claude shows available thinking, tool summaries, retry delays and sign-in status.
 

@@ -62,6 +62,33 @@ export function decideTurnCommand({
           command,
           threadId: command.threadId,
         });
+        const handoff = targetThread.handoff;
+        const transitionPending =
+          handoff?.operationId &&
+          handoff.bootstrapStatus === "pending" &&
+          handoff.stage !== "cancelled";
+        if (
+          transitionPending &&
+          (command.handoffOperationId !== handoff.operationId ||
+            !["ready", "failed"].includes(handoff.stage ?? "") ||
+            handoff.deliveryMessageId !== undefined ||
+            JSON.stringify(command.modelSelection) !==
+              JSON.stringify(handoff.destinationModelSelection) ||
+            command.dispatchMode === "steer" ||
+            command.reviewTarget !== undefined)
+        ) {
+          return yield* new OrchestrationCommandInvariantError({
+            commandType: command.type,
+            detail:
+              "Prepare the selected provider transition before sending. Resolve any uncertain delivery first.",
+          });
+        }
+        if (!transitionPending && command.handoffOperationId !== undefined) {
+          return yield* new OrchestrationCommandInvariantError({
+            commandType: command.type,
+            detail: "The provider transition is stale.",
+          });
+        }
         if (command.resumePrecondition !== undefined) {
           const violation = threadResumePreconditionViolation(
             targetThread,
@@ -167,6 +194,7 @@ export function decideTurnCommand({
             threadId: command.threadId,
             messageId: command.message.messageId,
             role: "user",
+            modelSelection: command.modelSelection ?? targetThread.modelSelection,
             text: messageText,
             attachments: command.message.attachments,
             ...(command.message.skills !== undefined ? { skills: command.message.skills } : {}),
@@ -190,6 +218,7 @@ export function decideTurnCommand({
         const turnRequestPayload = {
           threadId: command.threadId,
           messageId: command.message.messageId,
+          ...(command.handoffOperationId ? { handoffOperationId: command.handoffOperationId } : {}),
           ...(command.modelSelection !== undefined
             ? { modelSelection: command.modelSelection }
             : {}),
@@ -260,7 +289,28 @@ export function decideTurnCommand({
             queuedEvent,
           ];
         }
-        return [userMessageEvent, queuedEvent];
+        return [
+          ...(transitionPending
+            ? [
+                {
+                  ...withEventBase({
+                    aggregateKind: "thread",
+                    aggregateId: command.threadId,
+                    occurredAt: command.createdAt,
+                    commandId: command.commandId,
+                  }),
+                  type: "thread.meta-updated" as const,
+                  payload: {
+                    threadId: command.threadId,
+                    handoff: { ...handoff, deliveryMessageId: command.message.messageId },
+                    updatedAt: command.createdAt,
+                  },
+                },
+              ]
+            : []),
+          userMessageEvent,
+          queuedEvent,
+        ];
       }
       case "thread.legacy-cache.abandon": {
         const thread = yield* requireThread({ readModel, command, threadId: command.threadId });

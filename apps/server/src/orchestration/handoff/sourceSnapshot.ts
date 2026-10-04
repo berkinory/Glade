@@ -50,13 +50,15 @@ export const readHandoffEvidenceSnapshot = Effect.fnUntraced(function* (
 ) {
   const source = yield* readHandoffSourceSnapshot(eventStore, threadId, throughSequence);
   const activities = source.activities.filter(
-    (activity) => !activity.kind.startsWith("handoff.preparation."),
+    (activity) =>
+      !activity.kind.startsWith("handoff.preparation.") && activity.kind !== "provider.transition",
   );
   const visited = new Set<string>([`${threadId}:${throughSequence}`]);
   let parent = source.handoff;
+  let boundary = throughSequence;
   while (parent?.sourceBoundarySequence !== undefined) {
     const key = `${parent.sourceThreadId}:${parent.sourceBoundarySequence}`;
-    if (visited.has(key))
+    if (parent.sourceBoundarySequence >= boundary || visited.has(key))
       return yield* new ProviderValidationError({
         operation: "handoff.prepare",
         issue:
@@ -71,6 +73,7 @@ export const readHandoffEvidenceSnapshot = Effect.fnUntraced(function* (
     for (const activity of ancestor.activities) {
       if (
         activity.kind.startsWith("handoff.preparation.") ||
+        activity.kind === "provider.transition" ||
         activities.some((entry) => entry.id === activity.id)
       )
         continue;
@@ -83,6 +86,7 @@ export const readHandoffEvidenceSnapshot = Effect.fnUntraced(function* (
         },
       });
     }
+    boundary = parent.sourceBoundarySequence;
     parent = ancestor.handoff;
   }
   return { ...source, activities };

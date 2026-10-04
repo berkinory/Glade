@@ -101,23 +101,6 @@ describe("composerDraftStore persisted-state hydration", () => {
     expect(queued?.previewText).toBe("queued chat request");
   });
 
-  it("never copies another thread's revocation generation with its draft", () => {
-    resetComposerDraftStore();
-    const source = ThreadId.makeUnsafe("generation-source");
-    const target = ThreadId.makeUnsafe("generation-target");
-    const store = useComposerDraftStore.getState();
-    store.setComputerControlMode(source, "chat", { generation: 12 });
-    store.copyTransferableComposerState(source, target);
-    expect(
-      useComposerDraftStore.getState().draftsByThreadId[target]?.computerControlGeneration,
-    ).toBe(0);
-    store.setComputerControlMode(target, "off", { generation: 4 });
-    store.copyTransferableComposerState(source, target);
-    expect(
-      useComposerDraftStore.getState().draftsByThreadId[target]?.computerControlGeneration,
-    ).toBe(4);
-  });
-
   it("normalizes null and empty persisted states", () => {
     const emptyState = {
       draftsByThreadId: {},

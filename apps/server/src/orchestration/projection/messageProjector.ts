@@ -126,6 +126,9 @@ export function makeMessageProjector(input: {
               : {}),
             isStreaming: event.payload.streaming,
             source: event.payload.source,
+            ...(event.payload.modelSelection
+              ? { modelSelection: event.payload.modelSelection }
+              : {}),
             sequence: Option.isSome(existingMessage)
               ? (existingMessage.value.sequence ?? event.sequence)
               : event.sequence,

@@ -1,4 +1,4 @@
-import { handoffMessageReference } from "../handoff/sourceReferences";
+import { decideHandoffStart } from "./handoffDecisions";
 import { MessageId } from "@glade/contracts/core/baseSchemas";
 import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import { Effect } from "effect";
@@ -13,7 +13,6 @@ import {
   requireThreadArchived,
 } from "../commandInvariants.ts";
 import { OrchestrationCommandInvariantError } from "../Errors.ts";
-import { hasNativeHandoffMessages } from "../handoff.ts";
 import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import { buildForkThreadTitle } from "../forkThreadTitle.ts";
 import { collectSubagentDescendants } from "@glade/shared/threads/threadHierarchy";
@@ -39,7 +38,7 @@ export function decideThreadLifecycleCommand({
     {
       type:
         | "thread.create"
-        | "thread.handoff.create"
+        | "thread.handoff.start"
         | "thread.fork.create"
         | "thread.delete"
         | "thread.archive"
@@ -112,143 +111,8 @@ export function decideThreadLifecycleCommand({
           },
         };
       }
-      case "thread.handoff.create": {
-        yield* requireProject({
-          readModel,
-          command,
-          projectId: command.projectId,
-        });
-        yield* requireThread({
-          readModel,
-          command,
-          threadId: command.sourceThreadId,
-        });
-        yield* requireThreadAbsent({
-          readModel,
-          command,
-          threadId: command.threadId,
-        });
-        yield* validateAutoRuntimeMode(command, command.modelSelection, command.runtimeMode);
-
-        const sourceThread = yield* requireThread({
-          readModel,
-          command,
-          threadId: command.sourceThreadId,
-        });
-        if (sourceThread.projectId !== command.projectId) {
-          return yield* new OrchestrationCommandInvariantError({
-            commandType: command.type,
-            detail: `Source thread '${command.sourceThreadId}' belongs to a different project.`,
-          });
-        }
-        if (sourceThread.handoff !== null && !hasNativeHandoffMessages(sourceThread)) {
-          return yield* new OrchestrationCommandInvariantError({
-            commandType: command.type,
-            detail: `Source thread '${command.sourceThreadId}' must contain at least one native chat message after handoff before it can be handed off again.`,
-          });
-        }
-
-        if (
-          sourceThread.deletedAt !== null ||
-          sourceThread.session?.status === "running" ||
-          sourceThread.session?.status === "starting" ||
-          sourceThread.latestTurn?.state === "running" ||
-          sourceThread.pendingInteractions?.some(
-            (interaction) => interaction.status !== "confirmed",
-          )
-        ) {
-          return yield* new OrchestrationCommandInvariantError({
-            commandType: command.type,
-            detail:
-              "Stop the source turn and resolve pending approvals or questions before preparing a handoff.",
-          });
-        }
-        const sourceMessages = sourceThread.messages.filter(
-          (message) =>
-            (message.role === "user" || message.role === "assistant") && !message.streaming,
-        );
-        if (sourceMessages.length === 0) {
-          return yield* new OrchestrationCommandInvariantError({
-            commandType: command.type,
-            detail: "The source conversation has no completed messages to transfer.",
-          });
-        }
-        const importedMessages = sourceMessages.map((message) => ({
-          ...message,
-          messageId: MessageId.makeUnsafe(`handoff:${command.threadId}:${message.id}`),
-        }));
-
-        const createdEvent: Omit<OrchestrationEvent, "sequence"> = {
-          ...withEventBase({
-            aggregateKind: "thread",
-            aggregateId: command.threadId,
-            occurredAt: command.createdAt,
-            commandId: command.commandId,
-          }),
-          type: "thread.created",
-          payload: {
-            threadId: command.threadId,
-            projectId: command.projectId,
-            title: command.title,
-            modelSelection: command.modelSelection,
-            runtimeMode: command.runtimeMode,
-
-            ...resolveCreatedThreadWorkspaceMetadata(sourceThread),
-            createBranchFlowCompleted: sourceThread.createBranchFlowCompleted,
-            isPinned: false,
-            parentThreadId: null,
-            subagentAgentId: null,
-            subagentNickname: null,
-            subagentRole: null,
-            forkSourceThreadId: null,
-            handoff: {
-              sourceThreadId: command.sourceThreadId,
-              sourceProvider: sourceThread.modelSelection.provider,
-              importedAt: command.createdAt,
-              bootstrapStatus: "pending",
-              sourceBoundarySequence: readModel.snapshotSequence,
-              continuationGoal:
-                command.continuationGoal ??
-                "Continue the unfinished work under the latest scope, constraints and existing authorization. Recheck uncertain state before repeating consequential actions.",
-              sourceMessages: importedMessages.map((message, index) =>
-                handoffMessageReference(
-                  sourceThread,
-                  sourceMessages[index]!,
-                  message.messageId,
-                  readModel.snapshotSequence,
-                ),
-              ),
-            },
-            createdAt: command.createdAt,
-            updatedAt: command.createdAt,
-          },
-        };
-
-        const importedMessageEvents: ReadonlyArray<Omit<OrchestrationEvent, "sequence">> =
-          importedMessages.map((message) => ({
-            ...withEventBase({
-              aggregateKind: "thread",
-              aggregateId: command.threadId,
-              occurredAt: command.createdAt,
-              commandId: command.commandId,
-            }),
-            type: "thread.message-sent",
-            payload: {
-              threadId: command.threadId,
-              messageId: message.messageId,
-              role: message.role,
-              text: message.text,
-              ...(message.attachments !== undefined ? { attachments: message.attachments } : {}),
-              turnId: null,
-              streaming: false,
-              source: "handoff-import",
-              createdAt: message.createdAt,
-              updatedAt: message.updatedAt,
-            },
-          }));
-
-        return [createdEvent, ...importedMessageEvents];
-      }
+      case "thread.handoff.start":
+        return yield* decideHandoffStart({ command, readModel });
       case "thread.fork.create": {
         yield* requireProject({
           readModel,
@@ -368,6 +232,7 @@ export function decideThreadLifecycleCommand({
                 ? { providerMessageId: message.providerMessageId }
                 : {}),
               role: message.role,
+              ...(message.modelSelection ? { modelSelection: message.modelSelection } : {}),
               text: message.text,
               ...(message.attachments !== undefined ? { attachments: message.attachments } : {}),
               turnId: message.turnId,
@@ -474,6 +339,28 @@ export function decideThreadLifecycleCommand({
           threadId: command.threadId,
         });
 
+        if (
+          command.expectedHandoffOperationId !== undefined &&
+          command.expectedHandoffOperationId !== thread.handoff?.operationId
+        ) {
+          return yield* new OrchestrationCommandInvariantError({
+            commandType: command.type,
+            detail: "The provider transition was replaced or cancelled.",
+          });
+        }
+        if (
+          command.modelSelection !== undefined &&
+          command.modelSelection.provider !== thread.modelSelection.provider &&
+          thread.messages.some(
+            (message) => message.source === "native" || message.source === "async-user-input",
+          ) &&
+          command.expectedHandoffOperationId === undefined
+        ) {
+          return yield* new OrchestrationCommandInvariantError({
+            commandType: command.type,
+            detail: "Change providers through an explicit chat handoff.",
+          });
+        }
         if (command.modelSelection !== undefined && thread.creationSource !== "provider_native") {
           yield* validateAutoRuntimeMode(command, command.modelSelection, thread.runtimeMode);
         }

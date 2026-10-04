@@ -315,6 +315,7 @@ function preferRicherActivity<TActivity extends Thread["activities"][number]>(
   previous: TActivity,
   incoming: TActivity,
 ): TActivity {
+  if (incoming.kind === "provider.transition") return { ...incoming, sequence: previous.sequence };
   if (activitiesEqual(previous, incoming)) {
     return previous;
   }

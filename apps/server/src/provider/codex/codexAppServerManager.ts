@@ -1990,34 +1990,59 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     }
   }
 
-  async rollbackThread(threadId: ThreadId, numTurns: number): Promise<CodexThreadSnapshot> {
+  async rollbackThread(threadId: ThreadId, numTurns: number): Promise<void> {
     const context = this.requireSession(threadId);
-    const providerThreadId = readResumeThreadId({
-      resumeCursor: context.session.resumeCursor,
-    });
-    if (!providerThreadId) {
-      throw new Error("Session is missing a provider resume thread id.");
-    }
-    if (!Number.isInteger(numTurns) || numTurns < 1) {
+    const providerThreadId = readResumeThreadId({ resumeCursor: context.session.resumeCursor });
+    if (!providerThreadId) throw new Error("Session is missing a provider resume thread id.");
+    if (!Number.isSafeInteger(numTurns) || numTurns < 1)
       throw new Error("numTurns must be an integer >= 1.");
+    const assertCurrent = () => {
+      if (
+        this.requireSession(threadId) !== context ||
+        context.stopPromise ||
+        context.terminalFailure
+      )
+        throw new Error("The Codex session changed while resolving the edit boundary.");
+    };
+    const seenTurns = new Set<string>();
+    const seenCursors = new Set<string>();
+    let remaining = numTurns;
+    let cursor: string | undefined;
+    let beforeTurnId: string | undefined;
+    while (remaining > 0) {
+      assertCurrent();
+      const response = await this.sendRequest(context, "thread/turns/list", {
+        threadId: providerThreadId,
+        itemsView: "notLoaded",
+        sortDirection: "desc",
+        limit: Math.min(remaining, 100),
+        ...(cursor ? { cursor } : {}),
+      });
+      assertCurrent();
+      const record = this.readObject(response);
+      const turns = this.readArray(record, "data");
+      if (!turns || turns.length === 0)
+        throw new Error("The requested edit boundary is missing from the Codex conversation.");
+      for (const turn of turns) {
+        const id = this.readString(this.readObject(turn), "id");
+        if (!id?.trim() || seenTurns.has(id))
+          throw new Error("Codex returned a missing or repeated history turn id.");
+        seenTurns.add(id);
+        beforeTurnId = id;
+        if (--remaining === 0) break;
+      }
+      if (remaining === 0) break;
+      cursor = this.readString(record, "nextCursor");
+      if (!cursor?.trim())
+        throw new Error("The requested edit boundary is missing from the Codex conversation.");
+      if (seenCursors.has(cursor)) throw new Error("Codex repeated a conversation page cursor.");
+      seenCursors.add(cursor);
     }
-
-    const current = await this.readThreadSnapshot(context, providerThreadId);
-    const targetIndex = current.turns.length - numTurns;
-    const target = current.turns[targetIndex];
-    if (targetIndex < 0 || !target) {
-      throw new Error("The requested edit boundary is missing from the Codex conversation.");
-    }
-    await this.sendRequest(context, "thread/revert", {
-      threadId: providerThreadId,
-      beforeTurnId: target.id,
-    });
-    const snapshot = { ...current, turns: current.turns.slice(0, targetIndex) };
-    this.updateSession(context, {
-      status: "ready",
-      activeTurnId: undefined,
-    });
-    return snapshot;
+    assertCurrent();
+    await this.sendRequest(context, "thread/revert", { threadId: providerThreadId, beforeTurnId });
+    assertCurrent();
+    // The revert response may contain unloaded turns; it is not a retained-history snapshot.
+    this.updateSession(context, { status: "ready", activeTurnId: undefined });
   }
 
   async compactThread(threadId: ThreadId): Promise<void> {

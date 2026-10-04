@@ -211,6 +211,7 @@ export function normalizeChatMessage(
     previous.startsNewTurn === incoming.startsNewTurn &&
     previous.turnId === incoming.turnId &&
     previous.providerMessageId === incoming.providerMessageId &&
+    previous.modelSelection === incoming.modelSelection &&
     previous.createdAt === incoming.createdAt &&
     previous.updatedAt === incoming.updatedAt &&
     previous.streaming === incoming.streaming &&
@@ -227,6 +228,7 @@ export function normalizeChatMessage(
   return {
     id: incoming.id,
     role: incoming.role,
+    ...(incoming.modelSelection ? { modelSelection: incoming.modelSelection } : {}),
     text: incoming.text,
     ...(asyncUserInput ? { asyncUserInput } : {}),
     ...(incoming.textSegments !== undefined && incoming.textSegments.length > 0
@@ -300,6 +302,7 @@ function readModelMessageFromChatMessage(
   return {
     id: message.id,
     role: message.role,
+    ...(message.modelSelection ? { modelSelection: message.modelSelection } : {}),
     text: message.text,
     ...(message.asyncUserInput ? { asyncUserInput: message.asyncUserInput } : {}),
     ...(message.dispatchMode ? { dispatchMode: message.dispatchMode } : {}),

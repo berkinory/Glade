@@ -250,7 +250,9 @@ export function useChatSessionController(props: ChatViewProps) {
     [forkSourceThread?.title, forkSourceThreadId],
   );
 
-  const handoffSourceThreadId = serverThread?.handoff?.sourceThreadId ?? null;
+  const handoffSourceThreadId = serverThread?.handoff?.operationId
+    ? null
+    : (serverThread?.handoff?.sourceThreadId ?? null);
 
   const handoffSourceThread = useStore(
     useMemo(() => createThreadSelector(handoffSourceThreadId), [handoffSourceThreadId]),

@@ -38,15 +38,6 @@ function earlierSummaryHeader(omittedCount: number): string {
     : "Earlier conversation summary:";
 }
 
-export function hasNativeHandoffMessages(thread: Pick<OrchestrationThread, "messages">): boolean {
-  return thread.messages.some(
-    (message) =>
-      (message.role === "user" || message.role === "assistant") &&
-      (message.source === "native" || message.source === "async-user-input") &&
-      message.streaming === false,
-  );
-}
-
 export function listPriorTranscriptMessages(
   thread: Pick<OrchestrationThread, "messages">,
   currentMessageId?: string,

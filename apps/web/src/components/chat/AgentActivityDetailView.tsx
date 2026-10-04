@@ -1,4 +1,5 @@
 import { pluralize } from "@glade/shared/text/text";
+import { ProviderTransitionActions } from "./ProviderTransitionActions";
 import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { BotIcon, ChevronLeftIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
@@ -106,6 +107,12 @@ export function AgentActivityDetailView({
             </div>
           </div>
         </div>
+
+        {detail.primaryEntry.providerTransition ? (
+          <ProviderTransitionActions
+            operationId={detail.primaryEntry.providerTransition.operationId}
+          />
+        ) : null}
 
         {prompt ? (
           <AgentActivitySection title="Prompt">
