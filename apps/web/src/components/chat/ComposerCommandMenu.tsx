@@ -364,7 +364,7 @@ export function ComposerCommandMenu(props: {
         if (item) props.onSelect(item);
       }}
       status={
-        props.items.length === 0 ? (
+        props.items.length === 0 && !(props.isLoading && props.triggerKind === "mention") ? (
           <p
             className={cn(
               "text-muted-foreground/50 text-ui-sm",
@@ -374,11 +374,9 @@ export function ComposerCommandMenu(props: {
             )}
           >
             {props.isLoading
-              ? props.triggerKind === "mention"
-                ? "Searching mentions..."
-                : props.triggerKind === "skill"
-                  ? "Loading skills..."
-                  : "Loading commands..."
+              ? props.triggerKind === "skill"
+                ? "Loading skills..."
+                : "Loading commands..."
               : (props.emptyStateText ??
                 (props.triggerKind === "mention"
                   ? "No matching plugin, chat, or file."
