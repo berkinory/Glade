@@ -303,7 +303,8 @@ to be verified by provider status even when the command exits successfully.
 
 Usage settings can show either provider in the sidebar, with five-hour, weekly or
 both windows. With both selected, the outer track is five-hour and the inner track
-is weekly. Hover or keyboard focus describes each window; click opens Usage.
+is weekly. Hover or click opens the shared usage panel, including banked reset
+details and actions when available. Keyboard users can open it with Enter.
 Missing or failed windows remain unavailable rather than appearing as full quota.
 Disabled providers are hidden. These controls reuse the shared usage query.
 

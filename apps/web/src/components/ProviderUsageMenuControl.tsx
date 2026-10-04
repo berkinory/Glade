@@ -1,4 +1,3 @@
-import { Link } from "@tanstack/react-router";
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import {
@@ -28,7 +27,7 @@ import { ChatHeaderButton } from "./chat/chatHeaderControls";
 import { ProviderIcon } from "./ProviderIcon";
 import { ProviderUsagePanelContent } from "./ProviderUsagePanelContent";
 import { Menu, MenuTrigger } from "./ui/menu";
-import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
+import { TOOLTIP_OPEN_DELAY_MS, Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 
 export interface ProviderUsageMenuModel {
   menuTitle: string;
@@ -107,12 +106,14 @@ export function ProviderUsageMenuPopup({
   provider,
   model,
   align: alignProp,
+  side = "bottom",
   showUsageLines = false,
   children,
 }: {
   provider: ProviderKind;
   model: ProviderUsageMenuModel;
   align?: "start" | "end";
+  side?: "top" | "bottom";
   showUsageLines?: boolean;
   children: ReactNode;
 }) {
@@ -120,7 +121,7 @@ export function ProviderUsageMenuPopup({
   return (
     <Menu modal={false}>
       {children}
-      <ComposerPickerMenuPopup align={align} side="bottom" className="w-64 min-w-64">
+      <ComposerPickerMenuPopup align={align} side={side} className="w-64 min-w-64">
         <ProviderUsagePanelContent
           provider={provider}
           rateLimits={model.rateLimits}
@@ -169,12 +170,13 @@ export function ProviderUsageMenuControl({
           ? "Loading usage"
           : (model.emptyMessage ?? model.notice ?? "Usage unavailable");
     return (
-      <Tooltip>
-        <TooltipTrigger
+      <ProviderUsageMenuPopup provider={provider} model={model} side="top" align="start">
+        <MenuTrigger
+          openOnHover
+          delay={TOOLTIP_OPEN_DELAY_MS}
           render={
-            <Link
-              to="/settings"
-              search={{ section: "usage" }}
+            <button
+              type="button"
               aria-label={`${model.menuTitle}. ${description}`}
               className="relative flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
@@ -213,23 +215,8 @@ export function ProviderUsageMenuControl({
             ))}
           </svg>
           <ProviderIcon provider={provider} className="size-3.5" />
-        </TooltipTrigger>
-        <TooltipPopup
-          side="top"
-          align="start"
-          className="w-72 max-w-[calc(100vw-1rem)]"
-          viewportClassName="p-3"
-        >
-          <ProviderUsagePanelContent
-            provider={provider}
-            rateLimits={model.rateLimits}
-            notice={model.notice}
-            emptyMessage={model.emptyMessage}
-            isLoading={model.isLoading}
-            showUsageLines={false}
-          />
-        </TooltipPopup>
-      </Tooltip>
+        </MenuTrigger>
+      </ProviderUsageMenuPopup>
     );
   }
 
