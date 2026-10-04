@@ -38,7 +38,7 @@ import { PanelStateMessage } from "./PanelStateMessage";
 import { WorkspaceCodeSearch } from "./WorkspaceCodeSearch";
 
 const EXPLORER_SIDEBAR_CONTAINER_CLASS =
-  "flex min-h-[11rem] w-full shrink-0 flex-col border-b border-border/65 bg-[var(--color-background-surface)] lg:h-full lg:w-56 lg:border-b-0 lg:border-r";
+  "flex min-h-[11rem] w-full shrink-0 flex-col border-b border-border/65 bg-[var(--app-content-surface)] lg:h-full lg:w-56 lg:border-b-0 lg:border-r";
 
 function useExplorerEntryPrefetch(cwd: string | null) {
   const queryClient = useQueryClient();

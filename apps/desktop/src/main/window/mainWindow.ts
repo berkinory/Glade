@@ -7,7 +7,6 @@ import {
   dialog,
   Menu,
   nativeImage,
-  nativeTheme,
   Notification,
   screen,
   shell,
@@ -62,6 +61,8 @@ import {
   resolveVisibleWindowBounds,
   writeDesktopWindowState,
 } from "./windowState";
+import { windowMaterialOptions, readWindowMaterialState } from "./desktopWindowMaterial";
+
 interface WindowIdentity {
   readDesktopAppIcon(): DesktopAppIcon;
   materializeWindowsShellIcon(icon: DesktopAppIcon, sourcePath: string): string;
@@ -171,7 +172,7 @@ export function createMainWindow({
   }
 
   function getWindowMaterialOptions(): BrowserWindowConstructorOptions {
-    return { backgroundColor: nativeTheme.shouldUseDarkColors ? "#181818" : "#ffffff" };
+    return windowMaterialOptions(readWindowMaterialState().enabled);
   }
 
   function getTitleBarOptions(): BrowserWindowConstructorOptions {

@@ -145,7 +145,7 @@ export function SplitPaneEmbeddedPanel(props: {
     <div
       ref={wrapperRef}
       data-native-browser-surface={props.panel === "browser" ? "true" : undefined}
-      className="relative flex h-full min-h-0 min-w-0 flex-none border-l border-[var(--app-surface-divider)] bg-card text-foreground"
+      className="relative flex h-full min-h-0 min-w-0 flex-none border-l border-[var(--app-surface-divider)] bg-[var(--app-content-surface,var(--card))] text-foreground"
       style={
         {
           width: `${panelWidth}px`,

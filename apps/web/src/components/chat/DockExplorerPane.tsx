@@ -24,7 +24,7 @@ import { cn } from "~/lib/utils";
 import { PanelLeftIcon } from "~/lib/icons";
 import { WorkspaceExplorerSidebar } from "./workspaceExplorer";
 
-const DOCK_EXPLORER_SIDEBAR_CLASS = "h-full min-h-0 shrink-0 bg-[var(--color-background-surface)]";
+const DOCK_EXPLORER_SIDEBAR_CLASS = "h-full min-h-0 shrink-0 bg-[var(--app-content-surface)]";
 
 export const DockExplorerPane = function DockExplorerPane(props: {
   navigationOnly?: boolean;

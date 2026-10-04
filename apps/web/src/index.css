@@ -2716,3 +2716,43 @@ diffs-container {
     --transcript-bottom-fade: 0;
   }
 }
+
+:root {
+  --app-terminal-background: var(
+    --color-token-terminal-background,
+    var(--color-background-surface)
+  );
+  --app-inset-surface: var(--background);
+  --app-content-surface: var(--color-background-surface);
+}
+
+/* The OS composites one native backdrop. Only the window tint paints across it;
+   nested route surfaces must not accumulate alpha or introduce backdrop layers. */
+:root[data-window-material] {
+  --app-shell-background: transparent !important;
+  --app-terminal-background: var(--color-background-elevated-secondary-opaque);
+  --app-inset-surface: transparent;
+  --app-content-surface: transparent;
+  --app-sidebar-surface: transparent !important;
+  --app-settings-surface: transparent !important;
+  --app-composer-picker-surface: var(--popover) !important;
+  --app-composer-picker-backdrop-filter: none !important;
+  --composer-glass-filter: none;
+  --composer-glass-opacity: 100%;
+}
+
+:root[data-window-material] body {
+  background: color-mix(in srgb, var(--codex-base-surface) 20%, transparent);
+}
+
+:root[data-window-material].dark body {
+  background: color-mix(in srgb, var(--codex-base-surface) 30%, transparent);
+}
+
+/* Shared popup chrome also covers caller-specific fills, such as the model picker.
+   A solid surface keeps underlying text out without another backdrop layer. */
+:root[data-window-material] .app-popup-surface {
+  background: var(--popover) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}

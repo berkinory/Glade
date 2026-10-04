@@ -73,7 +73,7 @@ export function PanelTabBar(props: {
   return (
     <div
       className={cn(
-        "flex h-[calc(var(--spacing)*9+1px)] min-w-0 shrink-0 items-center gap-1 border-b border-border/70 bg-[var(--color-background-surface)] px-1.5 py-1",
+        "flex h-[calc(var(--spacing)*9+1px)] min-w-0 shrink-0 items-center gap-1 border-b border-border/70 bg-[var(--app-content-surface)] px-1.5 py-1",
         props.className,
       )}
     >

@@ -51,6 +51,8 @@ export const BASE_DIR =
 export const STATE_DIR = Path.join(BASE_DIR, "userdata");
 export const DESKTOP_WINDOW_STATE_PATH = Path.join(STATE_DIR, "desktop-window-state.json");
 export const DESKTOP_APP_ICON_PATH = Path.join(STATE_DIR, "desktop-app-icon");
+export const DESKTOP_WINDOW_MATERIAL_PATH = Path.join(STATE_DIR, "desktop-window-material.json");
+
 export const DESKTOP_CUSTOM_TITLE_BAR_PATH = Path.join(STATE_DIR, "desktop-custom-title-bar.json");
 export const AGENT_CURSOR_PREFERENCE_PATH = Path.join(STATE_DIR, "agent-cursor-colors.json");
 export const DESKTOP_SCHEME = desktopIdentity.scheme;

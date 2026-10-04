@@ -47,6 +47,11 @@ import {
   isDesktopAppIcon,
   shouldUpdateDesktopAppIcon,
 } from "../window/desktopAppIcon";
+import {
+  applyWindowMaterial,
+  persistWindowMaterial,
+  readWindowMaterialState,
+} from "../window/desktopWindowMaterial";
 import { writeCustomTitleBarPreference } from "../window/desktopCustomTitleBar";
 import { DESKTOP_IPC_CHANNELS } from "./ipcChannels";
 import {
@@ -205,6 +210,28 @@ export function createRegisterDesktopIpc({
       }
 
       nativeTheme.themeSource = theme;
+      const window = windows.getMainWindow();
+      if (window) applyWindowMaterial(window, readWindowMaterialState().enabled);
+    });
+
+    ipcMain.removeHandler(DESKTOP_IPC_CHANNELS.windowMaterialGetState);
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.windowMaterialGetState, () => readWindowMaterialState());
+    ipcMain.removeHandler(DESKTOP_IPC_CHANNELS.windowMaterialSetEnabled);
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.windowMaterialSetEnabled, (event, enabled: unknown) => {
+      const window = windows.getMainWindow();
+      if (!window || event.sender !== window.webContents) throw new Error("Invalid window owner.");
+      if (typeof enabled !== "boolean")
+        throw new Error("Expected a boolean window material preference.");
+      const previous = readWindowMaterialState();
+      if (!previous.supported)
+        throw new Error("Native window material is unavailable on this system.");
+      applyWindowMaterial(window, enabled);
+      try {
+        return persistWindowMaterial(enabled);
+      } catch (error) {
+        applyWindowMaterial(window, previous.enabled);
+        throw error;
+      }
     });
 
     ipcMain.removeHandler(DESKTOP_IPC_CHANNELS.getAppIcon);

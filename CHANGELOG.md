@@ -4,6 +4,8 @@
 
 ### New
 
+- Enable optional whole-window transparency with native macOS vibrancy or Windows 11 Mica.
+
 - Chats get automatic titles from the first meaningful message while preserving manual renames.
 
 - Agents can inspect task diffs, fork conversations, inspect local servers, and open files, diffs and terminals in Glade.

@@ -32,7 +32,7 @@ export function BrowserPanelShell(props: {
     <div
       className={cn(
         "flex h-full min-w-0 flex-col",
-        props.mode === "floating" ? "bg-transparent" : "bg-[var(--color-background-surface)]",
+        props.mode === "floating" ? "bg-transparent" : "bg-[var(--app-content-surface)]",
         props.mode === "inline"
           ? "w-[42vw] min-w-[360px] max-w-[560px] shrink-0 border-l border-border"
           : "w-full",

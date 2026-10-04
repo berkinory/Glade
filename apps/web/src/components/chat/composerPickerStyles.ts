@@ -32,7 +32,7 @@ export const COMPOSER_MUTED_ACCENT_TEXT_CLASS_NAME = MUTED_LABEL_TEXT_CLASS_NAME
 
 const COMPOSER_MAX_WIDTH_CLASS_NAME = "max-w-[var(--app-chat-max-width,46rem)]";
 
-export const CHAT_BACKGROUND_CLASS_NAME = "bg-[var(--color-background-surface)]";
+export const CHAT_BACKGROUND_CLASS_NAME = "bg-[var(--app-content-surface)]";
 
 // Apply this surface to opaque content only; a raised transparent SidebarInset would intercept
 // sidebar input. The content-seam rail owns the sole divider and resize hit area.
@@ -69,7 +69,7 @@ export const COMPOSER_STACKED_SURFACE_BORDER_CLASS_NAME =
 export const COMPOSER_INPUT_SURFACE_CLASS_NAME = `chat-composer-surface border ${RAISED_SURFACE_BORDER_CLASS_NAME} ${COMPOSER_SURFACE_SHADOW_CLASS_NAME} transition-colors duration-100`;
 
 export const APP_TRANSLUCENT_POPUP_SURFACE_BASE_CLASS_NAME =
-  "relative overflow-hidden border border-border bg-popover/70 text-popover-foreground backdrop-blur-2xl backdrop-saturate-150";
+  "app-popup-surface relative overflow-hidden border border-border bg-popover/70 text-popover-foreground backdrop-blur-2xl backdrop-saturate-150";
 
 export const APP_TRANSLUCENT_POPUP_SURFACE_CLASS_NAME = `${APP_TRANSLUCENT_POPUP_SURFACE_BASE_CLASS_NAME} rounded-2xl shadow-xl`;
 

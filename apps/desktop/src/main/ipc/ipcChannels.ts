@@ -3,6 +3,8 @@ export const DESKTOP_IPC_CHANNELS = {
   saveFile: "desktop:save-file",
   confirm: "desktop:confirm",
   setTheme: "desktop:set-theme",
+  windowMaterialGetState: "desktop:window-material-get-state",
+  windowMaterialSetEnabled: "desktop:window-material-set-enabled",
   getAppIcon: "desktop:get-app-icon",
   setAppIcon: "desktop:set-app-icon",
   contextMenu: "desktop:context-menu",

@@ -547,6 +547,11 @@ export interface DesktopClipboardFile {
   kind: "file" | "directory";
 }
 
+export interface DesktopWindowMaterialState {
+  readonly supported: boolean;
+  readonly enabled: boolean;
+}
+
 export interface DesktopBridge {
   getWsUrl: () => string | null;
 
@@ -559,6 +564,10 @@ export interface DesktopBridge {
   }) => Promise<string | null>;
   confirm: (message: string) => Promise<boolean>;
   setTheme: (theme: DesktopTheme) => Promise<void>;
+  windowMaterial?: {
+    getState: () => Promise<DesktopWindowMaterialState>;
+    setEnabled: (enabled: boolean) => Promise<DesktopWindowMaterialState>;
+  };
   getAppIcon?: () => Promise<DesktopAppIcon>;
   setAppIcon: (icon: DesktopAppIcon) => Promise<void>;
   showContextMenu: <T extends string>(

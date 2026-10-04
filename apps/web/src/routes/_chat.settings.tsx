@@ -61,6 +61,7 @@ import { SkillsSettingsPanel } from "../components/settings/SkillsSettingsPanel"
 import { ThemeModePicker } from "../components/settings/ThemeModePicker";
 import { SidebarHeaderNavigationControls } from "../components/SidebarHeaderNavigationControls";
 import { ThemePicker } from "../components/settings/ThemePicker";
+import { WindowMaterialSettingsRow } from "../components/settings/WindowMaterialSettingsRow";
 import { ThemeFontSettings } from "../components/settings/ThemeFontSettings";
 import {
   Autocomplete,
@@ -369,6 +370,7 @@ function SettingsRouteView() {
               />
             }
           />
+          <WindowMaterialSettingsRow />
           {supportsCustomTitleBarSetting ? (
             <SettingsRow
               title="Use custom title bar"

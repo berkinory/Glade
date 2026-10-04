@@ -61,7 +61,7 @@ export function PdfFilePreview(props: {
   const pageNumbers = Array.from({ length: doc.numPages }, (_, index) => index + 1);
 
   const outerClassName = cn(
-    "flex h-full min-h-0 min-w-0 flex-1 flex-col bg-[var(--color-background-surface)]",
+    "flex h-full min-h-0 min-w-0 flex-1 flex-col bg-[var(--app-content-surface)]",
     props.className,
   );
 
