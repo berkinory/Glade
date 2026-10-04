@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ClipboardEvent, type DragEvent } from "react";
+import { useEffect, useEffectEvent, useRef, type ClipboardEvent, type DragEvent } from "react";
 
 import { CHAT_FILE_REFERENCE_DRAG_TYPE } from "~/lib/chatReferences";
 import { isDroppedComposerDirectory, splitDroppedComposerFiles } from "~/lib/composerDropPaths";
@@ -185,6 +185,16 @@ export function useComposerDropzone(input: {
     writeDragDepth(dragDepthRef, 0);
     setIsDragOverComposer(false);
   };
+
+  const finishDrag = useEffectEvent(resetComposerDragState);
+  useEffect(() => {
+    document.addEventListener("dragend", finishDrag);
+    document.addEventListener("drop", finishDrag, true);
+    return () => {
+      document.removeEventListener("dragend", finishDrag);
+      document.removeEventListener("drop", finishDrag, true);
+    };
+  }, []);
 
   const onComposerPaste = (event: ClipboardEvent<HTMLElement>) => {
     const files = collectComposerClipboardFiles(event.clipboardData);

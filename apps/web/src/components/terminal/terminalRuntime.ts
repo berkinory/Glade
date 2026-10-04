@@ -814,7 +814,13 @@ function openTerminal(entry: TerminalRuntimeEntry): void {
       entry.applyOpenSnapshot(snapshot);
       if (entry.viewState.autoFocus) {
         window.requestAnimationFrame(() => {
-          entry.terminal.focus();
+          if (
+            !entry.disposed &&
+            entry.container &&
+            entry.viewState.isVisible &&
+            entry.viewState.autoFocus
+          )
+            entry.terminal.focus();
         });
       }
     })
@@ -878,7 +884,13 @@ export function updateRuntimeViewState(
 
   if (nextViewState.autoFocus) {
     window.requestAnimationFrame(() => {
-      entry.terminal.focus();
+      if (
+        !entry.disposed &&
+        entry.container &&
+        entry.viewState.isVisible &&
+        entry.viewState.autoFocus
+      )
+        entry.terminal.focus();
     });
   }
 }

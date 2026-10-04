@@ -1,3 +1,4 @@
+import type { TerminalSplitDirection } from "~/terminalLayout";
 import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type TerminalCliKind } from "@glade/shared/threads/terminalThreads";
 import { useState } from "react";
@@ -40,7 +41,50 @@ export function useTerminalSurfaceController(threadId: ThreadId) {
   const bumpFocusRequest = () => setFocusRequestId((value) => value + 1);
 
   const createTerminal = () => {
-    newTerminal(threadId, randomTerminalId());
+    const terminalId = randomTerminalId();
+    newTerminal(threadId, terminalId);
+    bumpFocusRequest();
+    return terminalId;
+  };
+
+  const splitTerminal = (direction: TerminalSplitDirection) => {
+    useTerminalStateStore.getState().splitTerminal(threadId, randomTerminalId(), direction);
+    bumpFocusRequest();
+  };
+
+  const closeTerminalGroup = async (terminalIds: readonly string[], onLastClosed: () => void) => {
+    const api = readNativeApi();
+    const current = selectThreadTerminalState(
+      useTerminalStateStore.getState().terminalStateByThreadId,
+      threadId,
+    );
+    const confirmed = await confirmTerminalTabClose({
+      api,
+      enabled: terminalIds.some((terminalId) =>
+        shouldPromptForTerminalClose({
+          confirmationEnabled: settings.confirmTerminalTabClose,
+          runningTerminalIds: current.runningTerminalIds,
+          terminalAttentionStatesById: current.terminalAttentionStatesById,
+          terminalId,
+        }),
+      ),
+      terminalTitle: resolveTerminalCloseTitle({
+        terminalId: terminalIds[0] ?? current.activeTerminalId,
+        ...current,
+      }),
+    });
+    if (!confirmed) return;
+    const latest = selectThreadTerminalState(
+      useTerminalStateStore.getState().terminalStateByThreadId,
+      threadId,
+    );
+    const closingFinal = latest.terminalIds.every((id) => terminalIds.includes(id));
+    for (const terminalId of terminalIds) {
+      if (!latest.terminalIds.includes(terminalId)) continue;
+      disposeAndCloseTerminalSession({ api, threadId, terminalId });
+      closeTerminalStore(threadId, terminalId);
+    }
+    if (closingFinal) onLastClosed();
     bumpFocusRequest();
   };
 
@@ -119,6 +163,8 @@ export function useTerminalSurfaceController(threadId: ThreadId) {
     bumpFocusRequest,
     openTerminalThreadPage,
     createTerminal,
+    splitTerminal,
+    closeTerminalGroup,
     activateTerminal,
     closeTerminal,
     handleTerminalSessionExited,

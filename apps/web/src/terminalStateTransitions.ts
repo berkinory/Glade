@@ -1,4 +1,9 @@
 import {
+  splitTerminalLayout,
+  terminalTabGroups,
+  type TerminalSplitDirection,
+} from "./terminalLayout";
+import {
   type TerminalActivityState,
   type TerminalCliKind,
 } from "@glade/shared/threads/terminalThreads";
@@ -334,9 +339,13 @@ export function closeThreadTerminal(
   }
 
   const closedTerminalIndex = normalized.terminalIds.indexOf(terminalId);
+  const siblings = terminalTabGroups(normalized)
+    .find((group) => group.terminalIds.includes(terminalId))
+    ?.terminalIds.filter((id) => id !== terminalId);
   const nextActiveTerminalId =
     normalized.activeTerminalId === terminalId
-      ? (remainingTerminalIds[Math.min(closedTerminalIndex, remainingTerminalIds.length - 1)] ??
+      ? (siblings?.at(-1) ??
+        remainingTerminalIds[Math.min(closedTerminalIndex, remainingTerminalIds.length - 1)] ??
         DEFAULT_THREAD_TERMINAL_ID)
       : normalized.activeTerminalId;
   return normalizeThreadTerminalState({
@@ -347,6 +356,7 @@ export function closeThreadTerminal(
     workspaceActiveTab: normalized.workspaceActiveTab,
     terminalHeight: normalized.terminalHeight,
     terminalIds: remainingTerminalIds,
+    ...(normalized.terminalLayouts ? { terminalLayouts: normalized.terminalLayouts } : {}),
     terminalLabelsById: Object.fromEntries(
       Object.entries(normalized.terminalLabelsById).filter(([id]) => id !== terminalId),
     ),
@@ -464,5 +474,32 @@ export function setThreadTerminalActivity(
     ...normalized,
     terminalAttentionStatesById,
     runningTerminalIds: [...runningTerminalIds],
+  };
+}
+
+export function splitThreadTerminal(
+  state: ThreadTerminalState,
+  terminalId: string,
+  direction: TerminalSplitDirection,
+): ThreadTerminalState {
+  const normalized = normalizeThreadTerminalState(state);
+  if (!isValidTerminalId(terminalId) || normalized.terminalIds.includes(terminalId))
+    return normalized;
+  const group = terminalTabGroups(normalized).find((tab) =>
+    tab.terminalIds.includes(normalized.activeTerminalId),
+  );
+  if (!group) return normalized;
+  const next = newThreadTerminal(normalized, terminalId);
+  return {
+    ...next,
+    terminalLayouts: {
+      ...normalized.terminalLayouts,
+      [group.id]: splitTerminalLayout(
+        group.layout,
+        normalized.activeTerminalId,
+        terminalId,
+        direction,
+      ),
+    },
   };
 }

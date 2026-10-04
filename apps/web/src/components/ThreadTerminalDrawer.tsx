@@ -1,3 +1,4 @@
+import { terminalTabGroups, terminalLayoutPositions, type TerminalLayout } from "~/terminalLayout";
 import "@xterm/xterm/css/xterm.css";
 import { SearchAddon } from "@xterm/addon-search";
 import { TriangleAlertIcon } from "~/lib/icons";
@@ -439,6 +440,9 @@ function TerminalViewport({
 }
 
 interface ThreadTerminalDrawerProps {
+  focusEnabled?: boolean;
+  terminalLayouts?: Record<string, TerminalLayout> | undefined;
+  onFocusTerminal?: ((terminalId: string) => void) | undefined;
   threadId: ThreadId;
   cwd: string;
   runtimeEnv?: Record<string, string>;
@@ -479,6 +483,12 @@ export default function ThreadTerminalDrawer(props: ThreadTerminalDrawerProps) {
     resetKey: props.threadId,
   });
   const terminalVisualIdentityById = resolveTerminalVisualIdentityMap(props);
+  const activeGroup = terminalTabGroups({
+    terminalIds: props.terminalIds,
+    ...(props.terminalLayouts ? { terminalLayouts: props.terminalLayouts } : {}),
+  }).find((group) => group.terminalIds.includes(props.activeTerminalId));
+  const positions = terminalLayoutPositions(activeGroup?.layout ?? props.activeTerminalId);
+  const tiled = (activeGroup?.terminalIds.length ?? 0) > 1;
   const previousRuntimeKeysRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     const next = new Set(
@@ -509,13 +519,26 @@ export default function ThreadTerminalDrawer(props: ThreadTerminalDrawerProps) {
       <div className="relative min-h-0 flex-1">
         {props.terminalIds.map((terminalId) => {
           const active = terminalId === props.activeTerminalId;
+          const visible = terminalId in positions;
           const identity = terminalVisualIdentityById.get(terminalId);
           return (
             <div
               key={terminalId}
-              className={cn("absolute inset-0", !active && "invisible pointer-events-none")}
-              inert={!active}
-              aria-hidden={!active}
+              className={cn(
+                "absolute min-h-0 min-w-0 overflow-hidden",
+                !visible && "invisible pointer-events-none",
+                tiled && "p-px",
+                tiled && active && "outline outline-1 -outline-offset-1 outline-foreground/20",
+              )}
+              style={positions[terminalId] ?? { inset: 0 }}
+              onPointerDownCapture={() => {
+                if (!active) props.onFocusTerminal?.(terminalId);
+              }}
+              onFocusCapture={() => {
+                if (!active) props.onFocusTerminal?.(terminalId);
+              }}
+              inert={!visible}
+              aria-hidden={!visible}
             >
               <TerminalViewport
                 threadId={props.threadId}
@@ -529,8 +552,8 @@ export default function ThreadTerminalDrawer(props: ThreadTerminalDrawerProps) {
                 onTerminalActivityChange={props.onTerminalActivityChange}
                 onAddTerminalContext={props.onAddTerminalContext}
                 focusRequestId={props.focusRequestId}
-                autoFocus={active}
-                isVisible={(props.isVisible ?? true) && active}
+                autoFocus={active && (props.isVisible ?? true) && (props.focusEnabled ?? true)}
+                isVisible={(props.isVisible ?? true) && visible}
               />
             </div>
           );

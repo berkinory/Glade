@@ -6,7 +6,6 @@ import {
   Suspense,
   useCallback,
   useEffect,
-  useEffectEvent,
   useState,
   useSyncExternalStore,
   type ReactNode,
@@ -27,22 +26,23 @@ import {
 import { selectMainWorkspace, useMainWorkspaceStore } from "~/mainWorkspaceStore";
 import { selectRightDockState, useRightDockStore } from "~/rightDockStore";
 import { useStore } from "~/store";
-import { GlobeIcon, GitCommitIcon, ChangesIcon, PlusIcon, TerminalIcon } from "~/lib/icons";
+import { GlobeIcon, GitCommitIcon, ChangesIcon, TerminalIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { runBrowserCommand } from "../browser/controller/browserActions";
 import { toastManager } from "../ui/toast";
-import { Button } from "../ui/button";
-import { Menu, MenuItem, MenuTrigger } from "../ui/menu";
 import { WorkspaceFilePreview } from "../WorkspaceFilePreview";
 import type { ChatFileReference } from "~/lib/chatReferences";
 import { LazyBrowserPanel } from "./ChatThreadSurfacePrimitives";
-import { ComposerPickerMenuPopup } from "./ComposerPickerMenuPopup";
 import { WorkspaceGitDiff } from "./WorkspaceGitDiff";
 import { CommitDetail } from "./CommitDetail";
 import { SourceControlTurnChanges } from "./SourceControlTurnChanges";
 import { FileEntryIcon } from "./FileEntryIcon";
-import { PanelTabBar, type PanelTab } from "./PanelTabBar";
+import { type PanelTab } from "./PanelTabBar";
 import { PanelStateMessage } from "./PanelStateMessage";
+import { WorkspaceTabBar } from "./WorkspaceTabBar";
+import { useWorkspaceShortcuts } from "./useWorkspaceShortcuts";
+import { terminalTabGroups } from "~/terminalLayout";
+import { Spinner } from "../ui/spinner";
 import { useWorkspaceTabSelection } from "./useWorkspaceTabSelection";
 
 const DockTerminalPane = lazy(() => import("./DockTerminalPane"));
@@ -106,6 +106,10 @@ export function MainWorkspace(props: {
   const closeBrowserPane = () => {
     if (browserPane) closePane(props.threadId, browserPane.id);
   };
+  const terminalGroups = terminalTabGroups(terminal.terminalState);
+  const activeTerminalGroup = terminalGroups.find((group) =>
+    group.terminalIds.includes(terminal.terminalState.activeTerminalId),
+  );
   const tabs: PanelTab[] = [
     {
       id: "chat",
@@ -139,21 +143,28 @@ export function MainWorkspace(props: {
       onClose: () => closeReview(props.threadId, tab.id),
     })),
     ...(terminalPane
-      ? terminal.terminalState.terminalIds.map((terminalId) => ({
-          id: `terminal:${terminalId}`,
+      ? terminalGroups.map((group) => ({
+          id: `terminal:${group.id}`,
           label: resolveTerminalCloseTitle({
-            terminalId,
+            terminalId: group.terminalIds[0]!,
             ...terminal.terminalState,
           }),
           icon: <TerminalIcon className="size-3.5" />,
+          trailing: group.terminalIds.some((id) =>
+            terminal.terminalState.runningTerminalIds.includes(id),
+          ) ? (
+            <Spinner className="size-3" aria-label="Terminal running" />
+          ) : null,
           onClose: () => {
-            void terminal.closeTerminal(terminalId, closeTerminalPane).catch((error: unknown) => {
-              toastManager.add({
-                type: "error",
-                title: "Could not close terminal",
-                description: String(error),
+            void terminal
+              .closeTerminalGroup(group.terminalIds, closeTerminalPane)
+              .catch((error: unknown) => {
+                toastManager.add({
+                  type: "error",
+                  title: "Could not close terminal",
+                  description: String(error),
+                });
               });
-            });
           },
         }))
       : []),
@@ -185,7 +196,7 @@ export function MainWorkspace(props: {
   ];
   const activeId =
     state.activeTabId === "terminal"
-      ? `terminal:${terminal.terminalState.activeTerminalId}`
+      ? `terminal:${activeTerminalGroup?.id ?? terminal.terminalState.activeTerminalId}`
       : state.activeTabId === "browser"
         ? browser?.activeTabId
           ? `browser:${browser.activeTabId}`
@@ -196,7 +207,13 @@ export function MainWorkspace(props: {
       const path = id.slice(5);
       openFile(props.threadId, path, { preview: dock.previewFilePath === path });
     } else if (id.startsWith("terminal:")) {
-      terminal.activateTerminal(id.slice(9));
+      const group = terminalGroups.find((tab) => tab.id === id.slice(9));
+      if (group)
+        terminal.activateTerminal(
+          group.terminalIds.includes(terminal.terminalState.activeTerminalId)
+            ? terminal.terminalState.activeTerminalId
+            : group.terminalIds[0]!,
+        );
       selectTab(props.threadId, "terminal");
     } else if (id.startsWith("browser:")) {
       selectTab(props.threadId, "browser");
@@ -216,59 +233,40 @@ export function MainWorkspace(props: {
   const browserVisible = resolvedId === "browser" || resolvedId.startsWith("browser:");
   const filePath = resolvedId.startsWith("file:") ? resolvedId.slice(5) : null;
   const review = state.reviews.find((tab) => tab.id === resolvedId);
-  const closeActive = useEffectEvent(() => {
-    if (resolvedId === "chat") {
-      if (tabs.length === 1) void navigate({ to: "/" });
-    } else tabs.find((tab) => tab.id === resolvedId)?.onClose?.();
+  useWorkspaceShortcuts({
+    terminalActive: terminalVisible,
+    onSplitTerminal: terminal.splitTerminal,
+    onClose: () => {
+      if (resolvedId === "chat") {
+        if (tabs.length === 1) void navigate({ to: "/" });
+      } else if (terminalVisible) {
+        void terminal
+          .closeTerminal(terminal.terminalState.activeTerminalId, closeTerminalPane)
+          .catch((error: unknown) => {
+            toastManager.add({
+              type: "error",
+              title: "Could not close terminal",
+              description: String(error),
+            });
+          });
+      } else tabs.find((tab) => tab.id === resolvedId)?.onClose?.();
+    },
   });
-  useEffect(() => {
-    window.addEventListener("glade:close-workspace-tab", closeActive);
-    const unsubscribe = window.desktopBridge?.onMenuAction?.((action) => {
-      if (action === "close-workspace-tab") closeActive();
-    });
-    return () => {
-      window.removeEventListener("glade:close-workspace-tab", closeActive);
-      unsubscribe?.();
-    };
-  }, []);
   const tabBar = (
-    <PanelTabBar
-      label="Workspace tabs"
-      pinnedTabId="chat"
-      className="h-auto flex-1 border-0 bg-transparent p-0"
+    <WorkspaceTabBar
       tabs={tabs}
       activeId={resolvedId}
       onSelect={select}
-      actions={
-        <Menu modal={false}>
-          <MenuTrigger
-            render={<Button variant="chrome" size="icon-xs" aria-label="Open workspace tab" />}
-          >
-            <PlusIcon className="size-3.5" />
-          </MenuTrigger>
-          <ComposerPickerMenuPopup align="end" side="bottom" className="w-44 min-w-44">
-            <MenuItem
-              onClick={() => {
-                if (terminalPane) terminal.createTerminal();
-                props.onAddPane("terminal");
-              }}
-            >
-              <TerminalIcon className="size-3.5" />
-              Terminal
-            </MenuItem>
-            <MenuItem
-              onClick={() => {
-                props.onAddPane("browser");
-                if (browser?.tabs.length)
-                  void runBrowserCommand(props.threadId, { kind: "new" }, reportBrowserError);
-              }}
-            >
-              <GlobeIcon className="size-3.5" />
-              Browser
-            </MenuItem>
-          </ComposerPickerMenuPopup>
-        </Menu>
-      }
+      onSplitTerminal={terminalVisible ? terminal.splitTerminal : undefined}
+      onAddTerminal={() => {
+        if (terminalPane) terminal.createTerminal();
+        props.onAddPane("terminal");
+      }}
+      onAddBrowser={() => {
+        props.onAddPane("browser");
+        if (browser?.tabs.length)
+          void runBrowserCommand(props.threadId, { kind: "new" }, reportBrowserError);
+      }}
     />
   );
   return (

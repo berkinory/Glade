@@ -1,3 +1,4 @@
+import type { TerminalSplitDirection } from "./terminalLayout";
 import {
   type TerminalActivityState,
   type TerminalCliKind,
@@ -30,6 +31,7 @@ import {
   setThreadTerminalCliKind,
   setThreadTerminalTitleOverride,
   newThreadTerminal,
+  splitThreadTerminal,
   setThreadActiveTerminal,
   closeThreadTerminal,
   closeThreadTerminalAndEnsureReplacement,
@@ -104,6 +106,11 @@ interface TerminalStateStoreState {
     titleOverride: string | null | undefined,
   ) => void;
   newTerminal: (threadId: ThreadId, terminalId: string) => void;
+  splitTerminal: (
+    threadId: ThreadId,
+    terminalId: string,
+    direction: TerminalSplitDirection,
+  ) => void;
   openNewFullWidthTerminal: (threadId: ThreadId, terminalId: string) => void;
   closeWorkspaceChat: (threadId: ThreadId) => void;
   setActiveTerminal: (threadId: ThreadId, terminalId: string) => void;
@@ -187,6 +194,8 @@ export const useTerminalStateStore = create<TerminalStateStoreState>()(
           ),
         newTerminal: (threadId, terminalId) =>
           updateTerminal(threadId, (state) => newThreadTerminal(state, terminalId)),
+        splitTerminal: (threadId, terminalId, direction) =>
+          updateTerminal(threadId, (state) => splitThreadTerminal(state, terminalId, direction)),
         openNewFullWidthTerminal: (threadId, terminalId) =>
           updateTerminal(threadId, (state) => openThreadTerminalFullWidth(state, terminalId)),
         closeWorkspaceChat: (threadId) =>

@@ -4,6 +4,8 @@
 
 ### New
 
+- Split terminals side by side or above and below within one tab, with keyboard shortcuts, balanced tiling and shared activity indicators.
+
 - Enable optional whole-window transparency with native macOS vibrancy or Windows 11 Mica.
 
 - Chats get automatic titles from the first meaningful message while preserving manual renames.
@@ -87,6 +89,8 @@
 - Models load faster on first use, with a balanced initial reasoning effort when you have not chosen one.
 
 ### Fixed
+
+- Cmd/Ctrl+W closes the focused terminal shell, preserving the other splits until the last shell closes.
 
 - Explorer and Source Control show the project checkout while a new chat is waiting for its worktree.
 

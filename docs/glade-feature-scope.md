@@ -39,7 +39,7 @@ attachment APIs or a keyboard capture watcher.
 
 ## Workspace editing
 
-Each conversation owns main workspace tabs for chat, files, commit and turn diffs, terminals, and browser pages. The chat tab uses the provider icon and name and stays at the left of the tab strip. Workspace tabs replace the chat title in the existing top bar; no extra tab row is added. Provider usage stays in the left sidebar, and chat headers do not show Open in or Commit and push actions. Explorer and Git remain navigation panels in the right sidebar. Selecting Explorer files or Git files opens or focuses their main workspace tab. Single-clicks reuse one italic preview tab across files and Git diffs; double-clicking a file or its tab, editing, or opening a chat file reference keeps it as a permanent tab. File search opens previews too. The provider chat tab cannot be closed. Cmd+W or Ctrl+W closes the active resource tab and returns to the most recently used open tab; when only the chat tab remains, the shortcut leaves the conversation without closing the app. The tab strip supports horizontal trackpad scrolling and reveals newly selected tabs. The plus menu contains only Terminal and Browser. Terminals use the main tab strip without an inner toolbar or split panes. File diffs share the file viewer header, offer unified and side-by-side layouts, and expose Edit to open the working file. Saved project actions, automatic setup scripts, and project Run controls are not supported. Tab selection is remembered per conversation.
+Each conversation owns main workspace tabs for chat, files, commit and turn diffs, terminals, and browser pages. The chat tab uses the provider icon and name and stays at the left of the tab strip. Workspace tabs replace the chat title in the existing top bar; no extra tab row is added. Provider usage stays in the left sidebar, and chat headers do not show Open in or Commit and push actions. Explorer and Git remain navigation panels in the right sidebar. Selecting Explorer files or Git files opens or focuses their main workspace tab. Single-clicks reuse one italic preview tab across files and Git diffs; double-clicking a file or its tab, editing, or opening a chat file reference keeps it as a permanent tab. File search opens previews too. The provider chat tab cannot be closed. Cmd+W or Ctrl+W closes the active resource tab and returns to the most recently used open tab; when only the chat tab remains, the shortcut leaves the conversation without closing the app. The tab strip supports horizontal trackpad scrolling and reveals newly selected tabs. The plus menu contains only Terminal and Browser. Terminals use the main tab strip without an inner toolbar. File diffs share the file viewer header, offer unified and side-by-side layouts, and expose Edit to open the working file. Saved project actions, automatic setup scripts, and project Run controls are not supported. Tab selection is remembered per conversation.
 
 File tabs accept tree selections, chat links and file references. Opening
 an existing file selects its tab; line and column links reveal source without changing
@@ -55,7 +55,17 @@ parent, and empty tree space targets the workspace root. Imports preserve source
 and refuse existing names; partial folder failures report what needs review.
 Editor and composer paste retain their existing behavior.
 
-Workspace tabs share one tab bar; terminal and browser tab rows are folded into it. Existing split conversations retain their panel layout; splitting individual workspace tabs is not supported yet. Environment and its
+Workspace resources share one tab bar and do not split; Explorer dragging retains file-reference
+behavior. Terminal split controls appear in the top bar when a terminal is selected. Cmd/Ctrl+D
+splits the focused terminal side by side, and Cmd/Ctrl+Shift+D splits it above/below. Splits remain
+inside the same terminal tab, support mixed nested directions, and divide the available viewport
+without scrolling the layout. Repeated splits redistribute space to avoid increasingly tiny tiles.
+Selecting a tile focuses that terminal; further splits target it. Cmd/Ctrl+W closes only the focused
+shell; its tab disappears when the last shell closes.
+Terminal tab activity includes every tile. Closing a terminal tab confirms running activity once
+and closes its sessions; when an individual shell exits, its tile collapses and siblings expand.
+Layouts survive reloads, and existing xterm views and PTY sessions remain attached while tiling.
+Existing split conversations retain their panel layout. Environment and its
 trigger hide while the right sidebar is open, retaining the previous preference
 and panel state until it closes.
 

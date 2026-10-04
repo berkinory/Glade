@@ -1,3 +1,4 @@
+import { sanitizeTerminalLayouts, type TerminalLayout } from "./terminalLayout";
 import { type TerminalCliKind } from "@glade/shared/threads/terminalThreads";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
@@ -16,6 +17,7 @@ export interface ThreadTerminalState {
   workspaceActiveTab: ThreadTerminalWorkspaceTab;
   terminalHeight: number;
   terminalIds: string[];
+  terminalLayouts?: Record<string, TerminalLayout>;
   terminalLabelsById: Record<string, string>;
   terminalTitleOverridesById: Record<string, string>;
   terminalCliKindsById: Record<string, TerminalCliKind>;
@@ -199,6 +201,7 @@ function threadTerminalStateEqual(left: ThreadTerminalState, right: ThreadTermin
     left.terminalHeight === right.terminalHeight &&
     left.activeTerminalId === right.activeTerminalId &&
     arraysEqual(left.terminalIds, right.terminalIds) &&
+    JSON.stringify(left.terminalLayouts ?? {}) === JSON.stringify(right.terminalLayouts ?? {}) &&
     JSON.stringify(left.terminalLabelsById) === JSON.stringify(right.terminalLabelsById) &&
     JSON.stringify(left.terminalTitleOverridesById) ===
       JSON.stringify(right.terminalTitleOverridesById) &&
@@ -270,6 +273,7 @@ export function normalizeThreadTerminalState(state: ThreadTerminalState): Thread
   const activeTerminalId = nextTerminalIds.includes(state.activeTerminalId)
     ? state.activeTerminalId
     : (nextTerminalIds[0] ?? DEFAULT_THREAD_TERMINAL_ID);
+  const terminalLayouts = sanitizeTerminalLayouts(state.terminalLayouts, nextTerminalIds);
   const normalized: ThreadTerminalState = {
     entryPoint: state.entryPoint === "terminal" ? "terminal" : "chat",
     terminalOpen: state.terminalOpen,
@@ -281,6 +285,7 @@ export function normalizeThreadTerminalState(state: ThreadTerminalState): Thread
         ? state.terminalHeight
         : DEFAULT_THREAD_TERMINAL_HEIGHT,
     terminalIds: nextTerminalIds,
+    ...(Object.keys(terminalLayouts).length ? { terminalLayouts } : {}),
     terminalLabelsById: ensuredTerminalLabelsById,
     terminalTitleOverridesById,
     terminalCliKindsById,
