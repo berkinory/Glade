@@ -7,11 +7,15 @@ import type {
   ProviderSkillDescriptor,
 } from "@glade/contracts/provider/providerDiscovery";
 import { useDebouncedValue } from "@tanstack/react-pacer";
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import type { ComposerTrigger } from "~/composer-logic";
 import { isLocalFolderMentionQuery } from "~/lib/localFolderMentions";
-import { projectSearchEntriesQueryOptions } from "~/lib/projectReactQuery";
+import {
+  prewarmProjectSearchIndex,
+  projectSearchEntriesQueryOptions,
+} from "~/lib/projectReactQuery";
 import {
   providerCommandsQueryOptions,
   providerComposerCapabilitiesQueryOptions,
@@ -42,6 +46,9 @@ export function useComposerDiscoveryData(input: {
   browseLocalFolders: boolean;
   discoverNativeCompaction?: boolean;
 }) {
+  useEffect(() => {
+    prewarmProjectSearchIndex(input.workspaceCwd);
+  }, [input.workspaceCwd]);
   const triggerKind = input.trigger?.kind ?? null;
   const mentionTriggerQuery = input.trigger?.kind === "mention" ? input.trigger.query : "";
   const isMentionTrigger = triggerKind === "mention";

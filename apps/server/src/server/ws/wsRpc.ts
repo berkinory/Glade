@@ -1186,8 +1186,12 @@ const makeWsRpcHandlersLayer = () =>
               ? watchWorkspaceDirectories(input)
               : watchWorkspaceFile(input)
             ).pipe(
-              Stream.tap(() =>
-                input.directoryPaths ? workspaceEntries.invalidate(input.cwd) : Effect.void,
+              Stream.tap((event) =>
+                input.directoryPaths ||
+                event.type === "deleted" ||
+                path.basename(input.relativePath) === ".gitignore"
+                  ? workspaceEntries.invalidate(input.cwd)
+                  : Effect.void,
               ),
               Stream.mapError(
                 (cause) =>

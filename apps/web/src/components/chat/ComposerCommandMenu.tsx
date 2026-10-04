@@ -32,7 +32,6 @@ import { ProviderIcon } from "../ProviderIcon";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import {
   COMPOSER_MENU_PANEL_GLYPH_CLASS_NAME,
-  COMPOSER_MENU_PANEL_GROUP_LABEL_CLASS_NAME,
   ComposerMenuPanel,
   type ComposerMenuPanelGroup,
 } from "./ComposerMenuPanel";
@@ -364,23 +363,6 @@ export function ComposerCommandMenu(props: {
         const item = itemsById.get(rowId);
         if (item) props.onSelect(item);
       }}
-      footer={
-        props.triggerKind === "mention" ? (
-          <div className="pt-0.5 pb-2">
-            <p
-              className={cn(
-                COMPOSER_MENU_PANEL_GROUP_LABEL_CLASS_NAME,
-                "px-2 py-0 font-medium text-muted-foreground text-ui leading-snug",
-              )}
-            >
-              Files
-            </p>
-            <p className="px-2 pt-0.5 text-ui-sm text-muted-foreground/55">
-              Type to search for files
-            </p>
-          </div>
-        ) : null
-      }
       status={
         props.items.length === 0 ? (
           <p

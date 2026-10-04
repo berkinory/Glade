@@ -15,7 +15,7 @@ import {
   COMPOSER_COMMAND_MENU_SURFACE_CLASS_NAME,
 } from "./composerPickerStyles";
 
-export const COMPOSER_MENU_PANEL_GROUP_LABEL_CLASS_NAME =
+const COMPOSER_MENU_PANEL_GROUP_LABEL_CLASS_NAME =
   "px-2 pt-1 pb-0.5 text-ui-sm font-normal text-muted-foreground/60";
 
 export const COMPOSER_MENU_PANEL_GLYPH_CLASS_NAME = "size-3.5";

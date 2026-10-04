@@ -21,6 +21,8 @@
 
 ### Improved
 
+- File mentions handle misspelled and multilingual names, with more complete and responsive searches in large projects.
+
 - Explorer content search cancels outdated scans, reuses unchanged files and colors visible result lines.
 - Source Control filtering reuses recent repository reads while refreshes keep changes current.
 
