@@ -2741,6 +2741,18 @@ diffs-container {
   --composer-glass-opacity: 100%;
 }
 
+/* Pierre's shadow-root styles read --background for both files and diff chrome. */
+:root[data-window-material] diffs-container {
+  --background: transparent;
+}
+
+:root[data-window-material] .code-editor-pane,
+:root[data-window-material] .editor-file-viewer--markdown-preview,
+:root[data-window-material] .diff-panel-viewport,
+:root[data-window-material] .diff-render-file {
+  background: transparent;
+}
+
 :root[data-window-material] body {
   background: color-mix(in srgb, var(--codex-base-surface) 20%, transparent);
 }
