@@ -125,13 +125,16 @@ export function ProviderUsageMenuPopup({
         <ProviderUsagePanelContent
           provider={provider}
           rateLimits={model.rateLimits}
-          usageLines={model.usageLines}
+          usageLines={
+            showUsageLines
+              ? model.usageLines
+              : model.usageLines.filter((line) => line.label === "Credits")
+          }
           notice={model.notice}
           emptyMessage={model.emptyMessage}
           isLoading={model.isLoading}
           resetCredits={model.resetCredits}
           resetCreditsSurface="popover"
-          showUsageLines={showUsageLines}
           showTitle={false}
           className="px-2 pb-1 pt-1"
         />

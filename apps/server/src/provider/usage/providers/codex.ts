@@ -9,7 +9,6 @@ import type { RateLimitSnapshot } from "../../codex/protocol/generated/types/v2/
 import {
   buildSnapshot,
   errorSnapshot,
-  formatUsd,
   isoFromUnixSeconds,
   needsAuthSnapshot,
   titleCase,
@@ -58,7 +57,12 @@ function usageLines(response: GetAccountRateLimitsResponse): ServerProviderUsage
   const credits = response.rateLimits.credits;
   const balance = credits?.balance === null ? null : Number(credits?.balance);
   return credits?.hasCredits && balance !== null && Number.isFinite(balance)
-    ? [{ label: "Credits", value: `${formatUsd(balance)} remaining` }]
+    ? [
+        {
+          label: "Credits",
+          value: `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(balance)} remaining`,
+        },
+      ]
     : [];
 }
 
