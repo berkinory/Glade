@@ -1,9 +1,7 @@
 import { MessageId, ThreadId, type TurnId } from "@glade/contracts/core/baseSchemas";
-import {
-  resolveThreadWorkspaceCwd as resolveSharedThreadWorkspaceCwd,
-  resolveThreadBranchSourceCwd,
-} from "@glade/shared/threads/threadEnvironment";
+import { resolveThreadBranchSourceCwd } from "@glade/shared/threads/threadEnvironment";
 import { useQuery } from "@tanstack/react-query";
+import { resolveThreadBrowseCwd } from "~/lib/threadEnvironment";
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import {
   ACTIVE_TURN_LAYOUT_SETTLE_DELAY_MS,
@@ -283,7 +281,7 @@ export function useChatTranscriptController({
   })();
 
   const threadWorkspaceCwd = activeProject
-    ? resolveSharedThreadWorkspaceCwd({
+    ? resolveThreadBrowseCwd({
         projectCwd: activeProject.cwd,
         envMode: resolvedThreadEnvMode,
         worktreePath: resolvedThreadWorktreePath,

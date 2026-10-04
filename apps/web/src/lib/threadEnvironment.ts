@@ -58,21 +58,28 @@ export interface DiffEnvironmentState {
   disabledReason: string | null;
 }
 
+export function resolveThreadBrowseCwd(input: {
+  projectCwd?: string | null | undefined;
+  envMode?: ThreadEnvironmentMode | null | undefined;
+  worktreePath?: string | null | undefined;
+  workingDirectory?: string | null | undefined;
+}): string | null {
+  return (
+    resolveThreadWorkspaceCwd(input) ??
+    (isPendingThreadWorktree(input) ? (input.projectCwd ?? null) : null)
+  );
+}
+
 export function resolveDiffEnvironmentState(input: {
   projectCwd?: string | null | undefined;
   envMode?: ThreadEnvironmentMode | null | undefined;
   worktreePath?: string | null | undefined;
 }): DiffEnvironmentState {
-  const pending = isPendingThreadWorktree(input);
+  const cwd = resolveThreadBrowseCwd(input);
+  const pending = isPendingThreadWorktree(input) && cwd === null;
   return {
     pending,
-    cwd: pending
-      ? null
-      : resolveThreadWorkspaceCwd({
-          projectCwd: input.projectCwd,
-          envMode: input.envMode,
-          worktreePath: input.worktreePath,
-        }),
+    cwd,
     disabledReason: pending
       ? "Diff and summary will be available once the worktree is ready for this chat."
       : null,

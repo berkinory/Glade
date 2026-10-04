@@ -1,6 +1,6 @@
 import type { ProjectId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import type { ThreadEnvironmentMode } from "@glade/contracts/orchestration/threadEntities";
-import { resolveThreadWorkspaceCwd } from "@glade/shared/threads/threadEnvironment";
+import { resolveThreadBrowseCwd } from "~/lib/threadEnvironment";
 
 import type { ChatRightPanel, DiffRouteSearch } from "../diffRouteSearch";
 
@@ -37,7 +37,7 @@ export function resolveFilePreviewWorkspaceRoot(input: {
   threadWorktreePath?: string | null | undefined;
   threadWorkingDirectory?: string | null | undefined;
 }): string | null {
-  return resolveThreadWorkspaceCwd({
+  return resolveThreadBrowseCwd({
     projectCwd: input.projectCwd,
     envMode: input.threadEnvMode,
     worktreePath: input.threadWorktreePath,

@@ -88,6 +88,8 @@
 
 ### Fixed
 
+- Explorer and Source Control show the project checkout while a new chat is waiting for its worktree.
+
 - File refresh controls stay steady during background updates.
 
 - Unpublished commits can be undone when remotes use conflicting tag names, while published commits remain protected.
