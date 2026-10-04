@@ -295,7 +295,7 @@ export function useChatProviderController({
     activeThread?.messages.some((message) => message.role === "assistant" && message.streaming) ??
     false;
 
-  const activeTurnLayoutLive = isWorking || !latestTurnSettled;
+  const activeTurnLayoutLive = isWorking || !latestTurnSettled || activeBackgroundTasks !== null;
   return {
     lockedProvider,
     serverConfigQuery,

@@ -164,7 +164,10 @@ function shouldKeepActivityForWorkLog(
     return true;
   }
 
-  if (activity.kind === "context-compaction" && activity.turnId === null) {
+  if (
+    activity.kind === "auth.status" ||
+    (activity.kind === "context-compaction" && activity.turnId === null)
+  ) {
     return true;
   }
 
@@ -398,8 +401,9 @@ function normalizeWorkLogActivity(activity: OrchestrationThreadActivity): Derive
       ? stripTerminalControlSequences(payload.message).trim()
       : undefined;
   if (runtimeWarningMessage) {
-    entry.detail = runtimeWarningMessage;
-    entry.runtimeWarningMessage = runtimeWarningMessage;
+    entry.detail ??= runtimeWarningMessage;
+    entry.preview = runtimeWarningMessage;
+    entry.runtimeWarningMessage = entry.detail ?? runtimeWarningMessage;
   }
   if (activity.kind === "turn.tasks.updated") {
     const tasks = parseTaskListTasks(payload);

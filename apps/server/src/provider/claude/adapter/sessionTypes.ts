@@ -36,11 +36,6 @@ import { ClaudeQueryRuntime, ClaudeProcessOwner } from "./adapterConfiguration";
 
 export const PROVIDER = "claudeAgent" as const;
 
-export type ClaudeTextStreamKind = Extract<
-  RuntimeContentStreamKind,
-  "assistant_text" | "reasoning_text"
->;
-
 export type ClaudeToolResultStreamKind = Extract<
   RuntimeContentStreamKind,
   "command_output" | "file_change_output"
@@ -86,6 +81,17 @@ export interface ClaudeTurnState {
   nextSyntheticAssistantBlockIndex: number;
 
   assistantMessageBlockBase: number;
+  reasoningMessageId?: string;
+  reasoningBlocks?: Map<string, ClaudeReasoningBlock>;
+}
+
+export interface ClaudeReasoningBlock {
+  readonly itemId: string;
+  readonly messageId: string;
+  readonly index: number;
+  text: string;
+  completed: boolean;
+  snapshotReceived: boolean;
 }
 
 export interface AssistantTextBlockState {
@@ -179,6 +185,11 @@ export interface ClaudeSessionQuery {
 }
 
 export interface ClaudeSessionTurn {
+  settledReasoningMessageIds?: Set<string>;
+  authenticationInProgress?: boolean;
+  backgroundReplySourceTurnId?: TurnId;
+  taskTurnIds?: Map<string, TurnId>;
+  toolTurnIds?: Map<string, TurnId>;
   nativeSessionState?: "ready" | "running" | "waiting";
   workerShutdownReason?: string;
   pendingDispatches?: number;

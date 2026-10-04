@@ -43,3 +43,23 @@ it("redacts nested credentials from structured and preformatted approval paramet
     expect(encoded).toContain(configuration.nested.mode);
   }
 });
+
+it("retains bounded warning evidence beyond the row preview without credentials", () => {
+  const explanation =
+    "diagnostic context ".repeat(20) +
+    "decisive explanation; apiKey=fixture-secret " +
+    "tail ".repeat(4_000);
+  const [activity] = projectProviderRuntimeActivities({
+    type: "runtime.warning",
+    eventId: EventId.makeUnsafe("long-warning"),
+    provider: "claudeAgent",
+    createdAt: "2026-10-04T00:00:00.000Z",
+    threadId: ThreadId.makeUnsafe("warning-thread"),
+    payload: { message: explanation, detail: { apiKey: "fixture-secret" } },
+  });
+  const payload = activity!.payload as { message: string; detail: string };
+  expect(payload.message.length).toBeLessThanOrEqual(180);
+  expect(payload.detail).toContain("decisive explanation");
+  expect(payload.detail.length).toBeLessThanOrEqual(2_000);
+  expect(JSON.stringify(activity)).not.toContain("fixture-secret");
+});

@@ -1215,6 +1215,61 @@ describe("ProviderRuntimeIngestion", () => {
     });
   });
 
+  it("keeps persisted Claude reasoning terminal despite late deltas and snapshots", async () => {
+    const harness = await createHarness();
+    const base = {
+      provider: "claudeAgent" as const,
+      threadId: asThreadId("thread-1"),
+      turnId: asTurnId("claude-reasoning-turn"),
+      itemId: asItemId("claude-message:block-0"),
+      createdAt: "2026-10-04T10:00:00.000Z",
+    };
+    harness.emit({
+      ...base,
+      type: "content.delta",
+      eventId: asEventId("thinking-preview"),
+      payload: { streamKind: "reasoning_text", delta: "Available thought" },
+    });
+    harness.emit({
+      ...base,
+      type: "item.completed",
+      eventId: asEventId("thinking-failed"),
+      createdAt: "2026-10-04T10:00:01.000Z",
+      payload: { itemType: "reasoning", status: "failed", detail: "Available thought" },
+    });
+    harness.emit({
+      ...base,
+      type: "content.delta",
+      eventId: asEventId("thinking-late-delta"),
+      createdAt: "2026-10-04T10:00:02.000Z",
+      payload: { streamKind: "reasoning_text", delta: "Must not reopen" },
+    });
+    harness.emit({
+      ...base,
+      type: "item.completed",
+      eventId: asEventId("thinking-late-snapshot"),
+      createdAt: "2026-10-04T10:00:03.000Z",
+      payload: { itemType: "reasoning", status: "completed", detail: "Must not replace failure" },
+    });
+    harness.emit({
+      ...base,
+      type: "runtime.warning",
+      eventId: asEventId("thinking-drained"),
+      payload: { message: "drained" },
+    });
+    const thread = await waitForThread(harness.engine, (entry) =>
+      entry.activities.some((activity) => activity.id === "thinking-drained"),
+    );
+    const activities = thread.activities.filter(
+      (activity) => activity.id === "provider-reasoning:thread-1:claude-message:block-0",
+    );
+    expect(activities).toHaveLength(1);
+    expect(activities[0]).toMatchObject({
+      createdAt: base.createdAt,
+      payload: { status: "failed", detail: "Available thought" },
+    });
+  });
+
   it("binds overlapping same-thread delivery modes in provider turn order", async () => {
     const harness = await createHarness();
     const now = new Date().toISOString();

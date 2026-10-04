@@ -86,3 +86,30 @@ describe("background completion delivery", () => {
     ).toHaveLength(1);
   });
 });
+
+it("carries owned tasks across background replies until all complete", () => {
+  const wakeTurn = TurnId.makeUnsafe("wake");
+  const boundary = makeActivity({
+    kind: "response.started",
+    turnId: wakeTurn,
+    payload: { backgroundParentTurnId: turnId },
+    sequence: 6,
+  });
+  const firstDone = {
+    ...settled,
+    latestTurn: { ...settled.latestTurn!, turnId: wakeTurn },
+    activities: [...started, completed("a"), boundary],
+  };
+  expect(
+    deriveBackgroundWork({ activities: firstDone.activities, turnId: wakeTurn }).taskIds,
+  ).toEqual(["b"]);
+  expect(
+    collectCompletedThreadCandidates([{ ...settled, activities: started }], [firstDone]),
+  ).toEqual([]);
+  const done = {
+    ...firstDone,
+    activities: [...firstDone.activities, { ...completed("b"), sequence: 7 }],
+  };
+  expect(collectCompletedThreadCandidates([firstDone], [done])).toHaveLength(1);
+  expect(collectCompletedThreadCandidates([done], [done])).toEqual([]);
+});

@@ -59,8 +59,9 @@ export function projectProviderRuntimeActivities(
       : {};
 
   if (
-    event.provider === "codex" &&
-    event.type === "item.completed" &&
+    ((event.provider === "codex" && event.type === "item.completed") ||
+      (event.provider === "claudeAgent" &&
+        (event.type === "item.updated" || event.type === "item.completed"))) &&
     event.payload.itemType === "reasoning" &&
     event.itemId !== undefined &&
     readableReasoningDetail(event.payload.detail) !== undefined
@@ -85,6 +86,21 @@ export function projectProviderRuntimeActivities(
     ];
   }
   switch (event.type) {
+    case "turn.started":
+      return event.payload.backgroundParentTurnId && event.turnId
+        ? [
+            {
+              id: event.eventId,
+              createdAt: event.createdAt,
+              tone: "info",
+              kind: "response.started",
+              summary: "Background reply",
+              payload: { backgroundParentTurnId: event.payload.backgroundParentTurnId },
+              turnId: toTurnId(event.turnId) ?? null,
+              ...maybeSequence,
+            },
+          ]
+        : [];
     case "session.started":
     case "session.exited":
       return [
@@ -207,28 +223,35 @@ export function projectProviderRuntimeActivities(
 
       const detailSubtype = asString((asRecord(event.payload.detail) ?? undefined)?.subtype);
       const isBackgroundMove = detailSubtype === "background_tasks_changed";
-      const message = truncateDetail(event.payload.message);
+      const detail = truncateDetail(
+        sanitizeUnmappedProviderDetail(event.payload.message, MAX_ACTIVITY_DATA_STRING_CHARS)!,
+        MAX_ACTIVITY_DATA_STRING_CHARS,
+      );
+      const message = truncateDetail(detail);
       return [
         {
           id: event.eventId,
           createdAt: event.createdAt,
           tone: "info",
           kind: "runtime.warning",
-          summary: isBackgroundMove
-            ? "Moved to background"
-            : detailSubtype === "informational" || detailSubtype === "notification"
-              ? "Claude notice"
-              : "Runtime warning",
+          summary:
+            detailSubtype === "api_retry"
+              ? "Claude retrying"
+              : isBackgroundMove
+                ? "Moved to background"
+                : detailSubtype === "informational" || detailSubtype === "notification"
+                  ? "Claude notice"
+                  : "Runtime warning",
 
           payload: toActivityPayload({
             message,
-            detail: message,
+            detail,
             ...(isBackgroundMove
               ? { nativeEventType: detailSubtype }
               : nativeType
                 ? { nativeEventType: nativeType }
                 : {}),
-            ...activityDataField(event.payload.detail),
+            ...activityDataField(sanitizeUnmappedProviderData(event.payload.detail)),
           }),
           turnId: toTurnId(event.turnId) ?? null,
           ...maybeSequence,
@@ -566,6 +589,56 @@ export function projectProviderRuntimeActivities(
       ];
     }
 
+    case "tool.summary": {
+      const summary = nonEmptyTrimmed(event.payload.summary);
+      const toolIds = event.payload.precedingToolUseIds;
+      if (!summary || !toolIds?.length || !event.turnId) return [];
+      return [
+        {
+          id: EventId.makeUnsafe(
+            `provider-tool-summary:${event.threadId}:${event.lifecycleGeneration ?? "legacy"}:${event.turnId}:${toolIds.at(-1)}`,
+          ),
+          createdAt: event.createdAt,
+          tone: "info",
+          kind: "tool.summary",
+          summary: "Tool summary",
+          payload: toActivityPayload({
+            detail: truncateDetail(
+              sanitizeUnmappedProviderDetail(summary, MAX_ACTIVITY_DATA_STRING_CHARS)!,
+              MAX_ACTIVITY_DATA_STRING_CHARS,
+            ),
+            ...activityDataField({ precedingToolUseIds: toolIds }),
+          }),
+          turnId: toTurnId(event.turnId) ?? null,
+          ...maybeSequence,
+        },
+      ];
+    }
+    case "auth.status": {
+      const failed = Boolean(nonEmptyTrimmed(event.payload.error));
+      if (!failed && event.payload.isAuthenticating === undefined) return [];
+      return [
+        {
+          id: EventId.makeUnsafe(
+            `provider-auth:${event.threadId}:${event.lifecycleGeneration ?? "legacy"}`,
+          ),
+          createdAt: event.createdAt,
+          tone: failed ? "error" : "info",
+          kind: "auth.status",
+          summary: failed
+            ? "Claude sign-in needs attention"
+            : event.payload.isAuthenticating
+              ? "Claude signing in"
+              : "Claude sign-in finished",
+          payload: {
+            status: failed ? "failed" : event.payload.isAuthenticating ? "inProgress" : "completed",
+            ...(failed ? { detail: "Check your Claude account in Settings." } : {}),
+          },
+          turnId: null,
+          ...maybeSequence,
+        },
+      ];
+    }
     case "tool.progress": {
       return [
         {
@@ -811,7 +884,15 @@ export function providerActivityUpdateDedupeKey(
   }
 
   const payload = asRecord(activity.payload) ?? undefined;
+  if (activity.kind === "auth.status" || activity.kind === "tool.summary")
+    return `${prefix}:${activity.id}`;
   if (activity.kind === "task.progress") {
+    if (
+      event.itemId &&
+      (event.type === "item.updated" || event.type === "item.completed") &&
+      event.payload.itemType === "reasoning"
+    )
+      return `${prefix}:reasoning:${event.itemId}`;
     const taskId = asString(payload?.taskId);
     return taskId ? `${prefix}:${taskId}` : undefined;
   }

@@ -66,6 +66,18 @@ export function makeClaudeSessionTeardown(input: {
         yield* completeTurn(context, "interrupted", "Session stopped.");
       }
 
+      if (context.authenticationInProgress) {
+        context.authenticationInProgress = false;
+        const stamp = yield* makeEventStamp();
+        yield* offerRuntimeEvent(context, {
+          ...stamp,
+          type: "auth.status",
+          provider: PROVIDER,
+          threadId: context.session.threadId,
+          payload: { isAuthenticating: false, error: "Sign-in interrupted" },
+          providerRefs: {},
+        });
+      }
       yield* Queue.shutdown(context.promptQueue);
 
       const streamFiber = context.streamFiber;

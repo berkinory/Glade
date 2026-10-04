@@ -43,6 +43,14 @@ The provider still controls:
 A provider working in its own terminal is an important prerequisite, but not a guarantee that every
 provider feature is supported through Glade.
 
+## Runtime activity and background replies
+
+Runtime warnings keep up to 2,000 characters of their sanitized explanation in the activity details; only the row preview is shortened. Claude's available readable thinking uses stable message/block identities and bounded updates, with streaming and snapshot text reconciled into one activity per block. Empty or encrypted thinking remains hidden. Glade does not request additional reasoning from the model.
+
+Claude tool summaries follow their associated tools. Native retry notices report the supplied attempt, delay and HTTP or connection status. Sign-in activity replaces its earlier session status and can appear before a turn starts; raw sign-in output, tokens and credential-bearing links are excluded. A finished sign-in operation is not a claim that account authentication succeeded.
+
+A parent reply started after background work gets its own response boundary and work clock, even without another user message. Earlier final replies, copy actions and checkpoints remain available. Owned background tasks keep the foreground work section open and show a waiting status until they settle. Successful completion notifications still wait for all owned background work; stopped or replaced sessions cannot revive it. Activity updates and waiting indicators do not drive transcript auto-follow.
+
 ## Conversation titles and history
 
 Glade generates a title once, in the background, from the first user message containing at least

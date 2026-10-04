@@ -335,7 +335,7 @@ describe("Claude streaming", () => {
     return Effect.gen(function* () {
       const adapter = yield* ClaudeAdapter;
 
-      const runtimeEventsFiber = yield* Stream.take(adapter.streamEvents, 11).pipe(
+      const runtimeEventsFiber = yield* Stream.take(adapter.streamEvents, 12).pipe(
         Stream.runCollect,
         Effect.forkChild,
       );
@@ -352,6 +352,14 @@ describe("Claude streaming", () => {
         attachments: [],
       });
 
+      // Partial SDK frame isolates the native message identity at the transport boundary.
+      harness.query.emit({
+        type: "stream_event",
+        session_id: "sdk-session-tool-streams",
+        uuid: "thinking-message-start",
+        parent_tool_use_id: null,
+        event: { type: "message_start", message: { id: "thinking-message" } },
+      } as unknown as SDKMessage);
       harness.query.emit({
         type: "stream_event",
         session_id: "sdk-session-tool-streams",
@@ -449,6 +457,7 @@ describe("Claude streaming", () => {
           "item.started",
           "item.updated",
           "item.updated",
+          "item.completed",
           "item.completed",
           "turn.completed",
         ],

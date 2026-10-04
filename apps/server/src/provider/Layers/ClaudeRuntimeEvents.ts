@@ -79,7 +79,14 @@ export function makeClaudeRuntimeEventsLive(options?: ClaudeAdapterLiveOptions) 
                   ? { turnId: asCanonicalTurnId(context.turnState.turnId) }
                   : {}),
                 ...(itemId ? { itemId: ProviderItemId.makeUnsafe(itemId) } : {}),
-                payload: message,
+                payload:
+                  message.type === "auth_status"
+                    ? {
+                        type: message.type,
+                        isAuthenticating: message.isAuthenticating,
+                        hasError: Boolean(message.error),
+                      }
+                    : message,
               },
             },
             context.session.threadId,

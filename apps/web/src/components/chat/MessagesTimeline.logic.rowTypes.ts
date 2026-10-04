@@ -207,7 +207,7 @@ export function findLastLiveWorkGroupId(rows: ReadonlyArray<MessagesTimelineRow>
   return null;
 }
 
-interface TimelineDurationMessage {
+export interface TimelineDurationMessage {
   id: string;
   role: "user" | "assistant" | "system";
   createdAt: string;
@@ -430,7 +430,11 @@ export function buildTurnDiffSummaryByAssistantMessageId(input: {
     let terminalAssistantMessageId: MessageId | null = null;
     for (let index = anchorIndex; index < input.messages.length; index += 1) {
       const message = input.messages[index]!;
-      if (index > anchorIndex && message.role === "user") break;
+      if (
+        index > anchorIndex &&
+        (message.role === "user" || (message.turnId && message.turnId !== turnId))
+      )
+        break;
       if (message.role === "assistant") {
         terminalAssistantMessageId = message.id;
       }
@@ -504,6 +508,7 @@ export function deriveTerminalAssistantMessageIds(
 ): Set<string> {
   const terminalAssistantMessageIds = new Set<string>();
   let latestAssistantMessageId: string | null = null;
+  let latestAssistantTurnId: string | null = null;
 
   for (const message of messages) {
     if (message.role !== "assistant") {
@@ -513,7 +518,15 @@ export function deriveTerminalAssistantMessageIds(
       }
       continue;
     }
+    if (
+      latestAssistantMessageId &&
+      latestAssistantTurnId &&
+      message.turnId &&
+      latestAssistantTurnId !== message.turnId
+    )
+      terminalAssistantMessageIds.add(latestAssistantMessageId);
     latestAssistantMessageId = message.id;
+    latestAssistantTurnId = message.turnId ?? null;
   }
 
   if (latestAssistantMessageId) {

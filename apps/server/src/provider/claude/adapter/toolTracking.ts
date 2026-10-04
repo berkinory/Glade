@@ -144,6 +144,12 @@ export function makeClaudeToolTracking(input: {
         ...(inputFingerprint ? { lastEmittedInputFingerprint: inputFingerprint } : {}),
       };
       context.inFlightTools.set(input.blockIndex, tool);
+      if (context.turnState) {
+        context.toolTurnIds ??= new Map();
+        context.toolTurnIds.set(input.itemId, context.turnState.turnId);
+        if (context.toolTurnIds.size > 256)
+          context.toolTurnIds.delete(context.toolTurnIds.keys().next().value!);
+      }
 
       const stamp = yield* makeEventStamp();
       yield* offerRuntimeEvent(context, {
@@ -214,7 +220,10 @@ export function makeClaudeToolTracking(input: {
         createdAt: turnStartedStamp.createdAt,
         threadId: context.session.threadId,
         turnId,
-        payload: {},
+        payload:
+          context.backgroundReplySourceTurnId && !context.subagentRefs
+            ? { backgroundParentTurnId: context.backgroundReplySourceTurnId }
+            : {},
         providerRefs: {
           ...nativeProviderRefs(context),
           providerTurnId: turnId,
@@ -222,7 +231,10 @@ export function makeClaudeToolTracking(input: {
         raw: {
           source: "claude.sdk.message",
           method: "claude/synthetic-turn-start",
-          payload: {},
+          payload:
+            context.backgroundReplySourceTurnId && !context.subagentRefs
+              ? { backgroundParentTurnId: context.backgroundReplySourceTurnId }
+              : {},
         },
       });
     });

@@ -22,6 +22,7 @@ import { toolLifecycleEventData } from "./toolPresentation";
 import { makeClaudeInteractionSettlement } from "./interactionSettlement";
 import { makeClaudeContextUsage } from "./contextUsage";
 import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
+import { makeClaudeReasoningBlocks } from "./reasoningBlocks";
 import { makeClaudeAssistantText } from "./assistantText";
 
 export function makeClaudeTurnCompletion(input: {
@@ -275,6 +276,10 @@ export function makeClaudeTurnCompletion(input: {
 
       context.inFlightTools.clear();
 
+      yield* makeClaudeReasoningBlocks({ makeEventStamp, offerRuntimeEvent }).settleReasoning(
+        context,
+        status === "completed" ? "completed" : status === "failed" ? "failed" : "interrupted",
+      );
       for (const block of turnState.assistantTextBlockOrder) {
         yield* completeAssistantTextBlock(context, block, {
           force: true,

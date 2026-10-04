@@ -7,7 +7,7 @@ import {
 } from "@glade/contracts/core/baseSchemas";
 import { OrchestrationThreadActivityTone } from "@glade/contracts/orchestration/threadEntities";
 import { Schema, ServiceMap } from "effect";
-import type { Effect } from "effect";
+import type { Effect, Option } from "effect";
 
 import type { ProjectionRepositoryError } from "../Errors.ts";
 
@@ -36,6 +36,10 @@ export type DeleteProjectionThreadActivitiesInput =
   typeof DeleteProjectionThreadActivitiesInput.Type;
 
 export interface ProjectionThreadActivityRepositoryShape {
+  readonly getById: (input: {
+    readonly threadId: ThreadId;
+    readonly activityId: EventId;
+  }) => Effect.Effect<Option.Option<ProjectionThreadActivity>, ProjectionRepositoryError>;
   readonly upsert: (
     row: ProjectionThreadActivity,
   ) => Effect.Effect<void, ProjectionRepositoryError>;

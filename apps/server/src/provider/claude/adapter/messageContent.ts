@@ -17,7 +17,7 @@ import { buildFileAttachmentsPromptBlock } from "../../core/attachmentProjection
 import { type RuntimeTurnState } from "@glade/contracts/provider/runtimeMetadata";
 import { type ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import { isClaudeNativeSlashCommand } from "./commandPresentation";
-import { PROVIDER, ClaudeTextStreamKind, ClaudeSessionContext } from "./sessionTypes";
+import { PROVIDER, ClaudeSessionContext } from "./sessionTypes";
 import {
   toMessage,
   resultErrorsText,
@@ -197,10 +197,6 @@ export function turnStatusFromResult(result: SDKResultMessage): RuntimeTurnState
     return "cancelled";
   }
   return "failed";
-}
-
-export function streamKindFromDeltaType(deltaType: string): ClaudeTextStreamKind {
-  return deltaType.includes("thinking") ? "reasoning_text" : "assistant_text";
 }
 
 export function nativeProviderRefs(

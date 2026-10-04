@@ -3,6 +3,7 @@ import type { TimelineEntry, WorkLogEntry } from "../../workLog.types";
 import { formatElapsed } from "../../session-logic";
 import type { TurnDiffSummary, WorktreeSetupSnapshot } from "../../types";
 import {
+  type TimelineDurationMessage,
   computeMessageDurationStart,
   deriveTerminalAssistantMessageIds,
   mergeTurnDiffSummaries,
@@ -19,8 +20,12 @@ export function deriveMessagesTimelineRows(input: {
   turnDiffSummaryByAssistantMessageId: ReadonlyMap<MessageId, TurnDiffSummary>;
 }): MessagesTimelineRow[] {
   const nextRows: MessagesTimelineRow[] = [];
-  const timelineMessages = input.timelineEntries.flatMap((entry) =>
-    entry.kind === "message" ? [entry.message] : [],
+  const timelineMessages = input.timelineEntries.flatMap<TimelineDurationMessage>((entry) =>
+    entry.kind === "message"
+      ? [entry.message]
+      : entry.kind === "work" && entry.entry.activityKind === "response.started"
+        ? [{ id: entry.id, role: "user" as const, createdAt: entry.createdAt }]
+        : [],
   );
   const durationStartByMessageId = computeMessageDurationStart(timelineMessages);
   const terminalAssistantMessageIds = deriveTerminalAssistantMessageIds(timelineMessages);
@@ -76,11 +81,26 @@ export function deriveMessagesTimelineRows(input: {
     }
 
     if (timelineEntry.kind === "work") {
+      if (timelineEntry.entry.activityKind === "response.started") {
+        flushPendingWorkGroup();
+        nextRows.push({
+          kind: "work",
+          id: timelineEntry.id,
+          createdAt: timelineEntry.createdAt,
+          groupedEntries: [timelineEntry.entry],
+        });
+        continue;
+      }
       const groupedEntries = [timelineEntry.entry];
       let cursor = index + 1;
       while (cursor < input.timelineEntries.length) {
         const nextEntry = input.timelineEntries[cursor];
-        if (!nextEntry || nextEntry.kind !== "work") break;
+        if (
+          !nextEntry ||
+          nextEntry.kind !== "work" ||
+          nextEntry.entry.activityKind === "response.started"
+        )
+          break;
         groupedEntries.push(nextEntry.entry);
         cursor += 1;
       }
@@ -133,7 +153,8 @@ export function deriveMessagesTimelineRows(input: {
       durationStart: durationStartByMessageId.get(message.id) ?? message.createdAt,
       showAssistantCopyButton:
         message.role === "assistant" && terminalAssistantMessageIds.has(message.id),
-      assistantCopyStreaming: message.streaming || assistantTurnStillInProgress,
+      assistantCopyStreaming:
+        message.streaming || (assistantTurnStillInProgress && !message.completedAt),
       assistantTurnInProgress: assistantTurnStillInProgress,
       assistantTurnDiffSummary:
         message.role === "assistant"
@@ -188,6 +209,11 @@ function findTailTerminalAssistantMessageId(
 ): string | null {
   for (let index = rows.length - 1; index >= 0; index -= 1) {
     const row = rows[index]!;
+    if (
+      row.kind === "work" &&
+      row.groupedEntries.some((entry) => entry.activityKind === "response.started")
+    )
+      return null;
     if (row.kind !== "message") {
       continue;
     }
@@ -247,16 +273,23 @@ function collapseSettledTurns(
     for (let scan = pass - 1; scan >= 0; scan -= 1) {
       const prev = rows[scan]!;
       if (prev.kind === "work") {
+        if (prev.groupedEntries.some((entry) => entry.activityKind === "response.started")) break;
         foldIndices.push(scan);
         continue;
       }
       if (prev.kind === "message" && prev.message.role === "assistant") {
-        if (prev.message.asyncUserInput) break;
+        if (
+          prev.message.asyncUserInput ||
+          terminalAssistantMessageIds.has(prev.message.id) ||
+          (prev.message.turnId && turnId && prev.message.turnId !== turnId)
+        )
+          break;
         foldIndices.push(scan);
         continue;
       }
 
       if (prev.kind === "message-segment" && !prev.message.streaming) {
+        if (prev.message.turnId && turnId && prev.message.turnId !== turnId) break;
         foldIndices.push(scan);
         continue;
       }

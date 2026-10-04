@@ -91,6 +91,7 @@ export function makeClaudeSystemMessages(input: {
         }
         const isSettledRuntimeStatus = isTerminalStatus || status === "paused";
         if (isSettledRuntimeStatus && context.liveWorkflowTaskIds.has(message.task_id)) {
+          context.taskTurnIds?.delete(message.task_id);
           context.liveWorkflowTaskIds.delete(message.task_id);
           yield* stopWorkflowRuntimePoller(context, message.task_id);
         }
@@ -295,6 +296,22 @@ export function makeClaudeSystemMessages(input: {
             },
           });
           return;
+        case "api_retry": {
+          const reason =
+            message.error_status === null ? "connection error" : `HTTP ${message.error_status}`;
+          yield* emitRuntimeWarning(
+            context,
+            `Request retry ${message.attempt}/${message.max_retries} in ${Math.ceil(message.retry_delay_ms / 1000)}s (${reason}).`,
+            {
+              subtype: message.subtype,
+              attempt: message.attempt,
+              maxRetries: message.max_retries,
+              retryDelayMs: message.retry_delay_ms,
+              httpStatus: message.error_status,
+            },
+          );
+          return;
+        }
         case "permission_denied": {
           const reason =
             message.decision_reason?.trim() ||
@@ -370,7 +387,13 @@ export function makeClaudeSystemMessages(input: {
           });
           return;
         case "task_started": {
-          context.terminalTaskIds.delete(message.task_id);
+          if (context.terminalTaskIds.has(message.task_id)) return;
+          const ownerTurnId = context.turnState?.turnId ?? context.lastTurnId;
+          if (ownerTurnId) {
+            context.taskTurnIds ??= new Map();
+            if (!context.taskTurnIds.has(message.task_id))
+              context.taskTurnIds.set(message.task_id, ownerTurnId);
+          }
 
           if (
             message.tool_use_id &&
@@ -439,6 +462,7 @@ export function makeClaudeSystemMessages(input: {
           return;
         }
         case "task_progress": {
+          if (context.terminalTaskIds.has(message.task_id)) return;
           if (context.liveWorkflowTaskIds.has(message.task_id)) {
             const separator = message.description.indexOf(": ");
             const label = (
@@ -470,7 +494,10 @@ export function makeClaudeSystemMessages(input: {
           return;
         }
         case "task_notification": {
+          if (context.terminalTaskIds.has(message.task_id)) return;
           context.terminalTaskIds.add(message.task_id);
+          const ownerTurnId = context.taskTurnIds?.get(message.task_id) ?? context.lastTurnId;
+          if (ownerTurnId) context.backgroundReplySourceTurnId = ownerTurnId;
           yield* settlePendingHumanInteractionsForAgent(context, message.task_id);
           context.knownBackgroundTaskIds.delete(message.task_id);
           const workflowTaskId = context.workflowTaskIdByMemberTaskId.get(message.task_id);
@@ -500,6 +527,7 @@ export function makeClaudeSystemMessages(input: {
           yield* offerRuntimeEvent(context, {
             ...base,
             type: "task.completed",
+            ...(ownerTurnId ? { turnId: ownerTurnId } : {}),
             payload: {
               taskId: RuntimeTaskId.makeUnsafe(message.task_id),
               status: message.status,
@@ -511,6 +539,7 @@ export function makeClaudeSystemMessages(input: {
               ...(workflowAgents ? { workflowAgents } : {}),
             },
           });
+          context.taskTurnIds?.delete(message.task_id);
           context.liveWorkflowTaskIds.delete(message.task_id);
           context.knownWorkflowTaskIds.delete(message.task_id);
           context.workflowTaskIdByMemberTaskId.delete(message.task_id);
@@ -552,19 +581,40 @@ export function makeClaudeSystemMessages(input: {
           return;
         case "background_tasks_changed": {
           const tasks = Array.isArray(message.tasks) ? message.tasks : [];
-          const added = tasks.filter((task) => !context.knownBackgroundTaskIds.has(task.task_id));
+          const added = tasks.filter(
+            (task) =>
+              !context.terminalTaskIds.has(task.task_id) &&
+              !context.knownBackgroundTaskIds.has(task.task_id),
+          );
           context.knownBackgroundTaskIds.clear();
           for (const task of tasks) {
             context.knownBackgroundTaskIds.add(task.task_id);
           }
           for (const task of added) {
+            const ownerTurnId =
+              context.taskTurnIds?.get(task.task_id) ??
+              context.turnState?.turnId ??
+              context.lastTurnId;
+            if (ownerTurnId) {
+              context.taskTurnIds ??= new Map();
+              context.taskTurnIds.set(task.task_id, ownerTurnId);
+            }
             const stamp = yield* makeEventStamp();
             yield* offerRuntimeEvent(context, {
               ...stamp,
               type: "task.updated",
               provider: PROVIDER,
               threadId: context.session.threadId,
-              ...(context.turnState ? { turnId: asCanonicalTurnId(context.turnState.turnId) } : {}),
+              ...((context.taskTurnIds?.get(task.task_id) ??
+              context.turnState?.turnId ??
+              context.lastTurnId)
+                ? {
+                    turnId:
+                      context.taskTurnIds?.get(task.task_id) ??
+                      context.turnState?.turnId ??
+                      context.lastTurnId,
+                  }
+                : {}),
               payload: { taskId: RuntimeTaskId.makeUnsafe(task.task_id), isBackgrounded: true },
               providerRefs: nativeProviderRefs(context),
             });
@@ -629,11 +679,15 @@ export function makeClaudeSystemMessages(input: {
       }
 
       if (message.type === "tool_use_summary") {
+        const summary = message.summary.trim();
+        const ownerTurnId = context.toolTurnIds?.get(message.preceding_tool_use_ids.at(-1) ?? "");
+        if (!summary || !ownerTurnId) return;
         yield* offerRuntimeEvent(context, {
           ...base,
           type: "tool.summary",
+          turnId: ownerTurnId,
           payload: {
-            summary: message.summary,
+            summary,
             ...(message.preceding_tool_use_ids.length > 0
               ? { precedingToolUseIds: message.preceding_tool_use_ids }
               : {}),
@@ -643,13 +697,14 @@ export function makeClaudeSystemMessages(input: {
       }
 
       if (message.type === "auth_status") {
+        context.authenticationInProgress = message.isAuthenticating;
         yield* offerRuntimeEvent(context, {
           ...base,
           type: "auth.status",
+          raw: { source: "claude.sdk.message", method: "claude/auth_status", payload: {} },
           payload: {
             isAuthenticating: message.isAuthenticating,
-            output: message.output,
-            ...(message.error ? { error: message.error } : {}),
+            ...(message.error ? { error: "Authentication needs attention" } : {}),
           },
         });
         return;

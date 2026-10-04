@@ -25,6 +25,8 @@
 
 ### Improved
 
+- Claude shows available thinking, tool summaries, retry delays and sign-in status.
+
 - Extra usage credits stay accessible in a compact expandable section.
 
 - File mentions handle misspelled and multilingual names, with more complete and responsive searches in large projects.
@@ -94,6 +96,9 @@
 
 - Keyboard shortcuts follow your keyboard layout consistently.
 - Desktop menu shortcuts follow custom bindings and respect focused controls.
+
+- Runtime warnings retain their available explanation in details.
+- Replies triggered by background agents stay visible with accurate work durations.
 
 - Collapsed notification stacks no longer show wider cards behind the front notification.
 

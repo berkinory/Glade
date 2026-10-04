@@ -117,7 +117,7 @@ function mergeRuntimeWarningEntries(
     previous.detail ??
     previous.preview;
   const repeatPreview = runtimeWarningMessage
-    ? `${repeatCount} notices - ${runtimeWarningMessage}`
+    ? `${repeatCount} notices - ${next.preview ?? previous.preview ?? runtimeWarningMessage}`
     : `${repeatCount} notices`;
   return {
     ...previous,
@@ -127,7 +127,7 @@ function mergeRuntimeWarningEntries(
     ...(previous.sequence !== undefined ? { sequence: previous.sequence } : {}),
     runtimeWarningRepeatCount: repeatCount,
     ...(runtimeWarningMessage ? { runtimeWarningMessage } : {}),
-    detail: repeatPreview,
+    ...((next.detail ?? previous.detail) ? { detail: next.detail ?? previous.detail! } : {}),
     preview: repeatPreview,
   };
 }

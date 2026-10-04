@@ -381,7 +381,9 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
       ) : null}
       {(activeThread?.backgroundWork?.taskIds.length ?? 0) > 0 ? (
         <div role="status" className="px-4 pb-2 text-ui-sm text-muted-foreground">
-          {activeThread?.backgroundWork?.taskIds.length} background agents running
+          {isWorking
+            ? `${activeThread?.backgroundWork?.taskIds.length} background agents running`
+            : `Waiting for ${activeThread?.backgroundWork?.taskIds.length} background agents`}
         </div>
       ) : null}
       <ChatComposerSurface

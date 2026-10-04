@@ -1,7 +1,7 @@
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as SqlSchema from "effect/unstable/sql/SqlSchema";
-import { NonNegativeInt } from "@glade/contracts/core/baseSchemas";
-import { Effect, Layer, Schema, Struct } from "effect";
+import { NonNegativeInt, ThreadId, EventId } from "@glade/contracts/core/baseSchemas";
+import { Effect, Layer, Option, Schema, Struct } from "effect";
 
 import { toPersistenceSqlError, toPersistenceSqlOrDecodeError } from "../Errors.ts";
 
@@ -61,6 +61,31 @@ const makeProjectionThreadActivityRepository = Effect.gen(function* () {
               created_at = excluded.created_at
           `,
   });
+
+  const getProjectionThreadActivityRow = SqlSchema.findOneOption({
+    Request: Schema.Struct({ threadId: ThreadId, activityId: EventId }),
+    Result: ProjectionThreadActivityDbRowSchema,
+    execute: ({ threadId, activityId }) => sql`
+      SELECT activity_id AS "activityId", thread_id AS "threadId", turn_id AS "turnId",
+        tone, kind, summary, payload_json AS "payload", sequence, created_at AS "createdAt"
+      FROM projection_thread_activities WHERE thread_id = ${threadId} AND activity_id = ${activityId}
+    `,
+  });
+  const getById: ProjectionThreadActivityRepositoryShape["getById"] = (input) =>
+    getProjectionThreadActivityRow(input).pipe(
+      Effect.map(
+        Option.map(({ sequence, ...row }) => ({
+          ...row,
+          ...(sequence !== null ? { sequence } : {}),
+        })),
+      ),
+      Effect.mapError(
+        toPersistenceSqlOrDecodeError(
+          "ProjectionThreadActivityRepository.getById:query",
+          "ProjectionThreadActivityRepository.getById:decode",
+        ),
+      ),
+    );
 
   const listProjectionThreadActivityRows = SqlSchema.findAll({
     Request: ListProjectionThreadActivitiesInput,
@@ -137,6 +162,7 @@ const makeProjectionThreadActivityRepository = Effect.gen(function* () {
     );
 
   return {
+    getById,
     upsert,
     listByThreadId,
     deleteByThreadId,

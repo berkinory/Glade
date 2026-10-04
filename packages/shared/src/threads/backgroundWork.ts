@@ -16,6 +16,17 @@ export function deriveBackgroundWork(input: {
   turnId: TurnId | undefined;
   sessionStatus?: string | undefined;
 }): BackgroundWork {
+  const ownedTurns = new Set<string>(input.turnId ? [input.turnId] : []);
+  for (const activity of input.activities.toReversed()) {
+    const payload = asRecord(activity.payload);
+    if (
+      activity.kind === "response.started" &&
+      activity.turnId &&
+      ownedTurns.has(activity.turnId) &&
+      typeof payload?.backgroundParentTurnId === "string"
+    )
+      ownedTurns.add(payload.backgroundParentTurnId);
+  }
   const tasks = new Map<string, { background: boolean; terminal: boolean }>();
   let failed = false;
   let settledAt: string | null = null;
@@ -40,7 +51,7 @@ export function deriveBackgroundWork(input: {
     )
       continue;
     const previous = tasks.get(payload.taskId);
-    if (activity.turnId && activity.turnId !== input.turnId) continue;
+    if (activity.turnId && !ownedTurns.has(activity.turnId) && !previous) continue;
     if (!activity.turnId && !previous) continue;
     const terminal =
       activity.kind === "task.completed" ||

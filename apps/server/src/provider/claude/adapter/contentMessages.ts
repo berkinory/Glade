@@ -1,4 +1,5 @@
 import { Effect } from "effect";
+import { makeClaudeReasoningBlocks } from "./reasoningBlocks";
 import { makeClaudeAssistantText } from "./assistantText";
 import { EventId, RuntimeTaskId } from "@glade/contracts/core/baseSchemas";
 import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
@@ -6,15 +7,9 @@ import { makeClaudeTaskPresentation } from "./taskPresentation";
 import { makeClaudeToolTracking } from "./toolTracking";
 import { makeClaudeWorkflowRuntime } from "./workflowRuntime";
 import { makeClaudeContextUsage } from "./contextUsage";
-import {
-  ClaudeSessionContext,
-  AssistantTextBlockState,
-  PROVIDER,
-  ToolInFlight,
-} from "./sessionTypes";
+import { ClaudeSessionContext, PROVIDER, ToolInFlight } from "./sessionTypes";
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import {
-  streamKindFromDeltaType,
   asRuntimeItemId,
   nativeProviderRefs,
   asCanonicalTurnId,
@@ -82,6 +77,10 @@ export function makeClaudeContentMessages(input: {
     backfillAssistantTextBlocksFromSnapshot,
     maybeEmitContextUsageWarning,
   } = input;
+  const { handleReasoningStream, backfillReasoning } = makeClaudeReasoningBlocks({
+    makeEventStamp,
+    offerRuntimeEvent,
+  });
   const handleStreamEvent = (
     context: ClaudeSessionContext,
     message: SDKMessage,
@@ -92,36 +91,17 @@ export function makeClaudeContentMessages(input: {
       }
 
       const { event } = message;
+      if (event.type === "message_start") yield* ensureSyntheticTurn(context);
+      yield* handleReasoningStream(context, message);
+      if (event.type === "content_block_delta" && event.delta.type === "thinking_delta") return;
 
       if (event.type === "content_block_delta") {
-        if (
-          (event.delta.type === "text_delta" || event.delta.type === "thinking_delta") &&
-          context.turnState
-        ) {
-          const deltaText =
-            event.delta.type === "text_delta"
-              ? event.delta.text
-              : typeof event.delta.thinking === "string"
-                ? event.delta.thinking
-                : "";
-          if (deltaText.length === 0) {
-            return;
-          }
-          const streamKind = streamKindFromDeltaType(event.delta.type);
-          const assistantBlockEntry =
-            event.delta.type === "text_delta"
-              ? yield* ensureAssistantTextBlock(context, event.index)
-              : context.turnState.assistantTextBlocks.get(event.index)
-                ? {
-                    blockIndex: event.index,
-                    block: context.turnState.assistantTextBlocks.get(
-                      event.index,
-                    ) as AssistantTextBlockState,
-                  }
-                : undefined;
-          if (assistantBlockEntry?.block && event.delta.type === "text_delta") {
-            assistantBlockEntry.block.emittedTextDelta = true;
-          }
+        if (event.delta.type === "text_delta" && context.turnState) {
+          const deltaText = event.delta.text;
+          if (deltaText.length === 0) return;
+          const streamKind = "assistant_text" as const;
+          const assistantBlockEntry = yield* ensureAssistantTextBlock(context, event.index);
+          if (assistantBlockEntry?.block) assistantBlockEntry.block.emittedTextDelta = true;
           const stamp = yield* makeEventStamp();
           yield* offerRuntimeEvent(context, {
             type: "content.delta",
@@ -516,6 +496,7 @@ export function makeClaudeContentMessages(input: {
 
       if (context.turnState) {
         context.turnState.items.push(stripDiagnosticImages(message.message));
+        yield* backfillReasoning(context, message);
         yield* backfillAssistantTextBlocksFromSnapshot(context, message);
       }
 

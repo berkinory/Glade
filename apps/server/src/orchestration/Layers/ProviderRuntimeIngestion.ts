@@ -110,6 +110,8 @@ import {
   readableReasoningDetail,
   runtimeTurnState,
 } from "../runtimeActivities/runtimeActivityProjection.ts";
+import { ProjectionThreadActivityRepositoryLive } from "../../persistence/Layers/ProjectionThreadActivities";
+import { ProjectionThreadActivityRepository } from "../../persistence/Services/ProjectionThreadActivities";
 import { runtimePayloadRecord } from "../runtimeActivities/activityPayloads.ts";
 
 const providerTurnKey = (threadId: ThreadId, turnId: TurnId) => `${threadId}:${turnId}`;
@@ -181,6 +183,7 @@ type BufferedToolOutput = {
   readonly truncated: boolean;
 };
 type BufferedReasoningSummary = {
+  readonly publishedAt?: number | undefined;
   readonly parts: ReadonlyMap<number, string>;
   readonly sourceEvent: Extract<ProviderRuntimeEvent, { readonly type: "content.delta" }>;
 };
@@ -301,6 +304,7 @@ function isRowMakingProviderRuntimeEvent(event: ProviderRuntimeEvent): boolean {
       const itemType = event.payload.itemType;
       return isToolLifecycleItemType(itemType) || itemType === "context_compaction";
     }
+    case "tool.summary":
     case "runtime.warning":
     case "user-input.requested":
     case "user-input.resolved":
@@ -323,10 +327,14 @@ function reasoningSummaryBufferKey(
   event: ProviderRuntimeEvent,
   threadId = event.threadId,
 ): string | null {
-  if (event.provider !== "codex" || !event.itemId) {
+  if (!event.itemId) {
     return null;
   }
-  if (event.type === "content.delta" && event.payload.streamKind === "reasoning_summary_text") {
+  if (
+    event.type === "content.delta" &&
+    (event.payload.streamKind === "reasoning_summary_text" ||
+      (event.provider === "claudeAgent" && event.payload.streamKind === "reasoning_text"))
+  ) {
     return [threadId, event.turnId ?? "no-turn", event.itemId].join(":");
   }
   if (
@@ -359,7 +367,6 @@ function withBufferedReasoningSummary(
 ): ProviderRuntimeEvent {
   if (
     event.type !== "item.completed" ||
-    event.provider !== "codex" ||
     event.payload.itemType !== "reasoning" ||
     readableReasoningDetail(event.payload.detail)
   ) {
@@ -548,6 +555,7 @@ export function selectProviderRuntimeJournalStream(input: {
 const make = Effect.gen(function* () {
   const orchestrationEngine = yield* OrchestrationEngineService;
   const projectionSnapshotQuery = yield* ProjectionSnapshotQuery;
+  const activityRepository = yield* ProjectionThreadActivityRepository;
   const providerService = yield* ProviderService;
   const computerService = yield* Effect.serviceOption(ComputerService);
   const pendingInteractions = yield* ProjectionPendingInteractionRepository;
@@ -802,6 +810,28 @@ const make = Effect.gen(function* () {
     threadId: ThreadId,
     activity: OrchestrationThreadActivity,
   ) {
+    const reasoning = activity.kind === "task.progress" && activity.summary === "Reasoning trace";
+    if (reasoning || activity.kind === "tool.summary") {
+      const existing = Option.getOrUndefined(
+        yield* activityRepository.getById({ threadId, activityId: activity.id }),
+      );
+      if (existing) {
+        const status = asRecord(existing.payload)?.status;
+        if (
+          reasoning &&
+          (status === "failed" ||
+            status === "interrupted" ||
+            status === "declined" ||
+            (status === "completed" && event.type !== "item.completed"))
+        )
+          return;
+        activity = {
+          ...activity,
+          createdAt: existing.createdAt,
+          ...(existing.sequence !== undefined ? { sequence: existing.sequence } : {}),
+        };
+      }
+    }
     const key = providerActivityUpdateDedupeKey(event, threadId, activity);
     const fingerprint = key ? providerActivityUpdateFingerprint(activity) : undefined;
     if (key && fingerprint) {
@@ -1027,6 +1057,7 @@ const make = Effect.gen(function* () {
         return Cache.set(bufferedReasoningSummaryByKey, key, {
           parts,
           sourceEvent: event,
+          publishedAt: existingSummary?.publishedAt,
         });
       }),
     );
@@ -1998,10 +2029,33 @@ const make = Effect.gen(function* () {
       if (
         reasoningSummaryKey &&
         event.type === "content.delta" &&
-        event.payload.streamKind === "reasoning_summary_text" &&
+        (event.payload.streamKind === "reasoning_summary_text" ||
+          (event.provider === "claudeAgent" && event.payload.streamKind === "reasoning_text")) &&
         event.payload.delta.length > 0
       ) {
         yield* appendBufferedReasoningSummary(reasoningSummaryKey, event);
+        if (event.provider === "claudeAgent") {
+          const buffered = Option.getOrUndefined(
+            yield* Cache.getOption(bufferedReasoningSummaryByKey, reasoningSummaryKey),
+          );
+          const detail = joinedBufferedReasoningSummary(buffered);
+          const publishedAt = buffered?.publishedAt ?? 0;
+          if (buffered && detail && Date.parse(event.createdAt) - publishedAt >= 250) {
+            const preview: ProviderRuntimeEvent = {
+              ...event,
+              type: "item.updated",
+              payload: { itemType: "reasoning", status: "inProgress", title: "Thinking", detail },
+            };
+            yield* Effect.forEach(
+              projectProviderRuntimeActivities(preview, runtimeSequence),
+              (activity) => dispatchActivityUpdate(preview, thread.id, activity),
+            );
+            yield* Cache.set(bufferedReasoningSummaryByKey, reasoningSummaryKey, {
+              ...buffered,
+              publishedAt: Date.parse(event.createdAt),
+            });
+          }
+        }
       }
 
       const assistantDelta =
@@ -2936,6 +2990,7 @@ export const ProviderRuntimeIngestionLive = Layer.effect(
 ).pipe(
   Layer.provide(
     Layer.mergeAll(
+      ProjectionThreadActivityRepositoryLive,
       ProjectionTurnRepositoryLive,
       ProjectionPendingInteractionRepositoryLive,
       ProviderRuntimeEventRepositoryLive,

@@ -1,5 +1,5 @@
 import { Schema, Option } from "effect";
-import { NonNegativeInt, PositiveInt, RuntimeTaskId } from "../core/baseSchemas";
+import { NonNegativeInt, PositiveInt, RuntimeTaskId, TurnId } from "../core/baseSchemas";
 import { AsyncUserInputQuestions } from "../orchestration/asyncUserInput";
 import { ModelSelection } from "./sessionPolicy";
 import { ProviderFailure } from "./providerFailure";
@@ -138,6 +138,7 @@ export const ThreadRealtimeClosedPayload = Schema.Struct({
 export type ThreadRealtimeClosedPayload = typeof ThreadRealtimeClosedPayload.Type;
 
 export const TurnStartedPayload = Schema.Struct({
+  backgroundParentTurnId: Schema.optional(TurnId),
   model: Schema.optional(TrimmedNonEmptyStringSchema),
   effort: Schema.optional(TrimmedNonEmptyStringSchema),
 });

@@ -123,6 +123,14 @@ export function makeClaudeSdkStream(input: {
     message: SDKMessage,
   ): Effect.Effect<void, ProviderAdapterProcessError> =>
     Effect.gen(function* () {
+      if (context.stopped) return;
+      const reasoningMessageId =
+        message.type === "assistant"
+          ? message.message.id
+          : message.type === "stream_event" && message.event.type === "message_start"
+            ? message.event.message.id
+            : undefined;
+      if (reasoningMessageId && context.settledReasoningMessageIds?.has(reasoningMessageId)) return;
       delete context.workerShutdownReason;
       yield* logNativeSdkMessage(context, message);
 

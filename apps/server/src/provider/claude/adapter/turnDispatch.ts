@@ -371,6 +371,7 @@ export function makeClaudeTurnDispatch(input: {
       // Once progress is reserved, settle admission or delivery before yielding to cancellation.
       yield* Effect.uninterruptible(
         Effect.gen(function* () {
+          delete context.backgroundReplySourceTurnId;
           context.turnState = turnState;
           context.lastTurnId = turnId;
           context.session = {
