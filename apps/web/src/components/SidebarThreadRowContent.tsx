@@ -135,7 +135,6 @@ export function SidebarThreadRowContent({
   variant,
   subagentIndentPx: subagentIndentPxProp,
   pendingStatusColorClass,
-  suffix,
   projectBadge,
 }: {
   thread: SidebarThreadSummary;
@@ -145,7 +144,6 @@ export function SidebarThreadRowContent({
   variant: "pinned" | "standard";
   subagentIndentPx?: number;
   pendingStatusColorClass?: string | null | undefined;
-  suffix?: ReactNode;
   projectBadge?: ReactNode;
 }) {
   const subagentIndentPx = subagentIndentPxProp ?? 0;
@@ -224,7 +222,6 @@ export function SidebarThreadRowContent({
           </span>
         ) : null}
       </div>
-      {suffix}
     </>
   );
 }

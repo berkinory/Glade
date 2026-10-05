@@ -170,7 +170,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
   function renderThreadRowTrailingCluster(input: {
     isSubagentThread: boolean;
     threadJumpLabel: string | null;
-    rightMetaChips: ThreadMetaChip[];
+    metadata: { chips: ThreadMetaChip[]; projectLabel?: string };
     threadStatus: ReturnType<typeof resolveThreadStatusForSidebar>;
     timestampToneClassName?: string;
     hoverActions: ReactNode;
@@ -187,9 +187,9 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
       <div className="flex min-w-0 shrink-0 items-center gap-2">
         <div className="grid min-w-0 items-center">
           <div className="col-start-1 row-start-1 flex min-w-0 items-center justify-end gap-2">
-            {!input.threadJumpLabel && input.rightMetaChips.length > 0 ? (
+            {!input.threadJumpLabel && input.metadata.chips.length > 0 ? (
               <div className={THREAD_ROW_META_CHIP_HOVER_FADE_CLASS_NAME}>
-                <SidebarMetaChipStack chips={input.rightMetaChips} />
+                <SidebarMetaChipStack chips={input.metadata.chips} />
               </div>
             ) : null}
             {input.threadJumpLabel ? (
@@ -210,6 +210,17 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
               </span>
             ) : null}
             {input.draftIndicator}
+            {input.metadata.projectLabel ? (
+              <span
+                aria-label={input.metadata.projectLabel}
+                className={cn(
+                  "max-w-[8em] shrink-0 truncate text-right text-ui-xs text-muted-foreground/38",
+                  sidebarHoverRevealHideClassName("thread-row"),
+                )}
+              >
+                {input.metadata.projectLabel}
+              </span>
+            ) : null}
           </div>
           {input.hoverActions}
         </div>
@@ -331,7 +342,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
     const isSubagentThread = Boolean(thread.parentThreadId);
     const pr = prByThreadId.get(thread.id) ?? null;
     const threadJumpLabel = visibleThreadJumpLabelByThreadId.get(thread.id) ?? null;
-    const hasTrailingStatusGlyph = Boolean(threadStatus || threadJumpLabel);
     const hoverAnchorId = createSidebarThreadHoverAnchorId({
       scope: "pinned",
       threadId: thread.id,
@@ -401,20 +411,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
               pendingStatusColorClass={
                 threadStatus?.label === "Pending Approval" ? threadStatus.colorClass : null
               }
-              suffix={
-                project?.kind === "project" ? (
-                  <span
-                    aria-label={projectLabel}
-                    className={cn(
-                      "relative flex max-w-[40%] shrink-0 items-center justify-end text-right text-ui-meta text-muted-foreground/38",
-                      hasTrailingStatusGlyph &&
-                        "mr-2 group-hover/thread-row:mr-0 group-focus-within/thread-row:mr-0",
-                    )}
-                  >
-                    <span className="truncate">{projectLabel}</span>
-                  </span>
-                ) : null
-              }
             />
             <div className="flex min-w-0 shrink-0 items-center">
               {renderThreadRowTrailingCluster({
@@ -422,7 +418,10 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
                 draftIndicator: <SidebarDraftIndicator threadId={thread.id} isActive={isActive} />,
                 isSubagentThread,
                 threadJumpLabel,
-                rightMetaChips,
+                metadata: {
+                  chips: rightMetaChips,
+                  ...(project?.kind === "project" ? { projectLabel } : {}),
+                },
                 threadStatus,
                 timestampToneClassName: "text-muted-foreground/38",
                 hoverActions: renderThreadHoverActions({
@@ -560,7 +559,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
                 draftIndicator: <SidebarDraftIndicator threadId={thread.id} isActive={isActive} />,
                 isSubagentThread,
                 threadJumpLabel,
-                rightMetaChips: showCompactMeta ? rightMetaChips : [],
+                metadata: { chips: showCompactMeta ? rightMetaChips : [] },
                 threadStatus,
                 timestampToneClassName: isSubagentThread
                   ? isHighlighted
