@@ -645,7 +645,6 @@ export function SingleChatSurface(props: {
             }
             closePane(props.threadId, paneId);
           }}
-          onCollapse={() => setDockOpen(props.threadId, false)}
           onOpenChange={(open) => setDockOpen(props.threadId, open)}
           onAddPane={handleAddDockPane}
           renderPane={renderDockPane}

@@ -209,9 +209,8 @@ complete current list.
 
 ## File previews
 
-File and explorer panels can expand across the chat area. Restore returns to the
-split layout; closing the last maximized panel returns to the chat. Closing the
-last panel in the ordinary split layout keeps the panel launcher open.
+File and explorer panels open beside the chat with adjustable widths. Closing the
+last panel keeps the panel launcher open.
 The toggle beside the file breadcrumb hides Explorer navigation completely. Reopen it from the same control; the selected file, editor draft and navigation state remain in place.
 
 Explorer hides `.git`, `.svn`, `.hg`, `.jj`, `.DS_Store`, and `Thumbs.db`.

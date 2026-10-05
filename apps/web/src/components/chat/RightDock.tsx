@@ -1,4 +1,4 @@
-import { CollapseIcon, ExpandIcon, LayoutAlignRightIcon, PlusIcon } from "~/lib/icons";
+import { PlusIcon } from "~/lib/icons";
 import {
   type CSSProperties,
   type ReactNode,
@@ -8,7 +8,6 @@ import {
   useState,
 } from "react";
 import { cn } from "~/lib/utils";
-import { useIsMobile } from "~/hooks/useMediaQuery";
 import {
   type DockPaneRuntimeMode,
   EMPTY_PANE_ID_SET,
@@ -64,7 +63,6 @@ interface RightDockProps {
   primaryKinds?: readonly RightDockPaneKind[];
   onSelectPane?: ((paneId: string) => void) | undefined;
   onClosePane: (paneId: string) => void;
-  onCollapse: () => void;
   onOpenChange: (open: boolean) => void;
   onAddPane: (kind: RightDockPaneKind) => void;
   motionKey?: string;
@@ -136,8 +134,6 @@ function useKeepMountedPaneIds(
   return renderedPaneIds;
 }
 export function RightDock(props: RightDockProps) {
-  const { onCollapse } = props;
-  const paneCount = props.state.panes.length;
   const activePane = resolveActivePane(props.state);
   const onSelectPane = props.onSelectPane;
   const activePaneRuntimeMode = props.activePaneRuntimeMode ?? "live";
@@ -146,48 +142,6 @@ export function RightDock(props: RightDockProps) {
     useDesktopTopBarWindowControlsGutterClassName();
   const keepMountedPaneIds = useKeepMountedPaneIds(props.state.panes, activePane);
   const contentRef = useRef<HTMLDivElement | null>(null);
-  const [expandedKey, setExpandedKey] = useState<string | null>(null);
-  const expansionKey = props.motionKey ?? "dock";
-  const isMobile = useIsMobile();
-  const maximized = !isMobile && props.state.open && expandedKey === expansionKey;
-  const [expandedWidth, setExpandedWidth] = useState(0);
-  useLayoutEffect(() => {
-    if (maximized && paneCount === 0) {
-      setExpandedKey(null);
-      onCollapse();
-    }
-  }, [maximized, paneCount, onCollapse]);
-  useLayoutEffect(() => {
-    if (!maximized) return;
-    const wrapper = contentRef.current?.closest<HTMLElement>("[data-slot='sidebar-wrapper']");
-    const shell = wrapper?.parentElement;
-    if (!shell || !wrapper) return;
-    const update = () => setExpandedWidth(shell.getBoundingClientRect().width);
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(shell);
-    const siblings = Array.from(shell.children).filter(
-      (element): element is HTMLElement => element instanceof HTMLElement && element !== wrapper,
-    );
-    const previous = siblings.map((element) => ({
-      inert: element.inert,
-      visibility: element.style.visibility,
-    }));
-    siblings.forEach((element) => {
-      element.inert = true;
-      element.style.visibility = "hidden";
-    });
-    return () => {
-      observer.disconnect();
-      siblings.forEach((element, index) => {
-        element.inert = previous[index]?.inert ?? false;
-        element.style.visibility = previous[index]?.visibility ?? "";
-      });
-    };
-  }, [maximized]);
-  useEffect(() => {
-    if (!props.state.open) setExpandedKey(null);
-  }, [props.state.open]);
   const minWidth = props.minWidth;
   const [resizeMaxWidth, setResizeMaxWidth] = useState(minWidth * 1.5);
   const widthInitializedRef = useRef(false);
@@ -255,17 +209,8 @@ export function RightDock(props: RightDockProps) {
           "border-l border-[var(--app-surface-divider)] text-foreground",
           chromeMotionClass,
         )}
-        style={
-          maximized
-            ? {
-                width: expandedWidth || undefined,
-                zIndex: 30,
-              }
-            : undefined
-        }
-        data-dock-maximized={maximized ? "true" : undefined}
         innerClassName={CHAT_BACKGROUND_CLASS_NAME}
-        rail={!maximized ? <SidebarRail /> : null}
+        rail={<SidebarRail />}
         gapClassName={chromeMotionClass}
         transparentSurface
         resizable={{
@@ -362,30 +307,6 @@ export function RightDock(props: RightDockProps) {
                 </ComposerPickerMenuPopup>
               </Menu>
             ) : null}
-            {!isMobile && (maximized || activePane !== null) ? (
-              <IconButton
-                variant="chrome"
-                size="icon-xs"
-                label={maximized ? "Restore panel" : "Maximize panel"}
-                tooltip={maximized ? "Restore panel" : "Maximize panel"}
-                aria-pressed={maximized}
-                className={CHAT_HEADER_ICON_CONTROL_CLASS_NAME}
-                onClick={() => setExpandedKey(maximized ? null : expansionKey)}
-              >
-                {maximized ? <CollapseIcon /> : <ExpandIcon />}
-              </IconButton>
-            ) : null}
-            <IconButton
-              variant="chrome"
-              size="icon-xs"
-              label="Collapse panel"
-              tooltip="Collapse panel"
-              tooltipSide="bottom"
-              className={CHAT_HEADER_ICON_CONTROL_CLASS_NAME}
-              onClick={props.onCollapse}
-            >
-              <LayoutAlignRightIcon />
-            </IconButton>
           </div>
           <div className="relative min-h-0 flex-1">
             {renderedPanes.map((pane) => {

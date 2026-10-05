@@ -2697,11 +2697,6 @@ diffs-container {
   background-color: color-mix(in srgb, var(--foreground) 22%, transparent);
 }
 
-/* Expanded document panes retain a readable line length while using more space. */
-[data-dock-maximized="true"] .editor-markdown-preview__body {
-  max-width: 1120px;
-}
-
 @property --transcript-bottom-fade {
   syntax: "<number>";
   inherits: false;
