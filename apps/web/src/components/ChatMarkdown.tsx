@@ -135,6 +135,7 @@ interface ChatMarkdownProps {
   wikiLinkRoot?: string | undefined;
   isStreaming?: boolean;
   className?: string | undefined;
+  codeBlockMeta?: string | undefined;
   style?: CSSProperties | undefined;
   onImageExpand?: ((preview: ExpandedImagePreview) => void) | undefined;
   findQuery?: string | undefined;
@@ -419,6 +420,7 @@ function MarkdownCodeBlock({
   fence: CodeFenceInfo;
   children: ReactNode;
 }) {
+  const { codeBlockMeta } = useContext(MarkdownRenderContext)!;
   const [copied, setCopied] = useState(false);
   const [wrap, setWrap] = useState(false);
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -451,6 +453,11 @@ function MarkdownCodeBlock({
       <div className="chat-markdown-codeblock__header">
         <CodeBlockHeaderTitle fence={fence} />
         <div className="chat-markdown-codeblock__actions">
+          {codeBlockMeta ? (
+            <span className="mr-1 text-ui-xs tabular-nums text-muted-foreground">
+              {codeBlockMeta}
+            </span>
+          ) : null}
           <IconButton
             className="chat-markdown-codeblock__action"
             onClick={toggleWrap}
@@ -606,6 +613,7 @@ function UncachedShikiCodeBlock({
   return <FindAwareShikiHtml html={highlightedHtml} sourceOffset={sourceOffset} />;
 }
 interface MarkdownRenderContextValue {
+  codeBlockMeta: ChatMarkdownProps["codeBlockMeta"];
   cwd: ChatMarkdownProps["cwd"];
   knownAbsoluteFilePaths: string[] | undefined;
   diffThemeName: DiffThemeName;
@@ -912,6 +920,7 @@ function ChatMarkdown({
   variant: variantProp,
   mentionReferences,
   terminalContexts,
+  codeBlockMeta,
 }: ChatMarkdownProps) {
   const isStreaming = isStreamingProp ?? false;
   const className = classNameProp ?? "text-sm leading-relaxed";
@@ -984,6 +993,7 @@ function ChatMarkdown({
   }, [findActiveRange, findQuery, renderedText]);
   const renderContext = useMemo<MarkdownRenderContextValue>(
     () => ({
+      codeBlockMeta,
       cwd,
       knownAbsoluteFilePaths,
       diffThemeName,
@@ -997,6 +1007,7 @@ function ChatMarkdown({
       sourceText,
     }),
     [
+      codeBlockMeta,
       cwd,
       knownAbsoluteFilePaths,
       diffThemeName,

@@ -6,7 +6,9 @@ import {
   type TimelineDurationMessage,
   computeMessageDurationStart,
   deriveTerminalAssistantMessageIds,
+  findLastLiveWorkGroupId,
   mergeTurnDiffSummaries,
+  planWorkEntryRenderChunks,
 } from "./MessagesTimeline.logic.rowTypes";
 import type { CollapsedTurnItem, MessagesTimelineRow } from "./MessagesTimeline.logic.rowTypes";
 
@@ -156,8 +158,7 @@ export function deriveMessagesTimelineRows(input: {
       durationStart: durationStartByMessageId.get(message.id) ?? message.createdAt,
       showAssistantCopyButton:
         message.role === "assistant" && terminalAssistantMessageIds.has(message.id),
-      assistantCopyStreaming:
-        message.streaming || (assistantTurnStillInProgress && !message.completedAt),
+      assistantCopyStreaming: message.streaming || assistantTurnStillInProgress,
       assistantTurnInProgress: assistantTurnStillInProgress,
       assistantTurnDiffSummary:
         message.role === "assistant"
@@ -186,9 +187,27 @@ export function deriveMessagesTimelineRows(input: {
       ? (tailEntry.message.textSegments?.[tailEntry.segmentIndex]?.text ?? tailEntry.message.text)
       : tailEntry.message.text
     ).trim().length > 0;
+  const lastLiveWorkGroupId = findLastLiveWorkGroupId(nextRows);
+  const hasLiveToolGroup = nextRows.some((row) => {
+    const groups =
+      row.kind === "work"
+        ? [{ entries: row.groupedEntries, id: row.id }]
+        : row.kind === "message"
+          ? [
+              { entries: row.leadingWorkEntries ?? [], id: null },
+              { entries: row.inlineWorkEntries ?? [], id: row.inlineWorkGroupId },
+            ]
+          : [];
+    return groups.some(({ entries, id }) =>
+      planWorkEntryRenderChunks(entries, {
+        tailIsLive: input.isWorking && id != null && id === lastLiveWorkGroupId,
+      }).some((chunk) => chunk.liveEntry !== null),
+    );
+  });
   if (
     input.isWorking &&
     !tailHasAssistantText &&
+    !hasLiveToolGroup &&
     !(input.worktreeSetup && input.worktreeSetupOpen)
   ) {
     nextRows.push({

@@ -130,9 +130,8 @@ it("preserves separate background replies, clocks and checkpoints without user m
   });
   const replies = rows.filter((row) => row.kind === "message");
   expect(replies.map((row) => row.message.id)).toEqual(["first", "second", "third"]);
-  expect(replies.every((row) => row.showAssistantCopyButton && !row.assistantCopyStreaming)).toBe(
-    true,
-  );
+  expect(replies.every((row) => row.showAssistantCopyButton)).toBe(true);
+  expect(replies.map((row) => row.assistantCopyStreaming)).toEqual([false, false, true]);
   expect(replies.map((row) => row.assistantTurnDiffSummary?.checkpointTurnCount)).toEqual([
     1, 2, 3,
   ]);

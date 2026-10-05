@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import { DisclosureChevron } from "../ui/DisclosureChevron";
 import { DisclosureRegion } from "../ui/DisclosureRegion";
+import { Spinner } from "../ui/spinner";
 import { DISCLOSURE_CLEANUP_BUFFER_MS, DISCLOSURE_TRANSITION_MS } from "~/lib/disclosureMotion";
 import { cn } from "~/lib/utils";
 import { MUTED_LABEL_TEXT_CLASS_NAME } from "~/surfaceStyles";
@@ -58,7 +59,9 @@ export function ToolCallGroupSummaryRow(props: {
         onClick={() => onToggle(!open)}
       >
         <span className="flex size-4 shrink-0 items-center justify-center" aria-hidden>
-          {iconWebFetchUrl ? (
+          {liveEntry || summary.hasRunningEntry ? (
+            <Spinner variant="working" aria-hidden="true" className="size-3.5" />
+          ) : iconWebFetchUrl ? (
             <LinkChipIcon url={iconWebFetchUrl} className="size-3.5" />
           ) : (
             renderWorkEntryIcon(workEntryLeftIcon(iconEntry), "size-3.5")

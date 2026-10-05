@@ -1,6 +1,7 @@
 import { pluralize } from "@glade/shared/text/text";
 import { isFileChangeWorkLogEntry, type WorkLogEntry } from "../../workLog.types";
 import { deriveReadableCommandDisplay } from "../../lib/toolCallLabel.commands";
+import { isReasoningUpdateWorkEntry } from "./agentActivity.logic";
 
 export const MIN_COLLAPSIBLE_TOOL_GROUP_SIZE = 2;
 
@@ -34,6 +35,7 @@ export interface ToolCallGroupSummary {
 export function isSummarizableToolCallEntry(entry: WorkLogEntry): boolean {
   return (
     entry.tone === "tool" &&
+    !isReasoningUpdateWorkEntry(entry) &&
     !entry.gladeThreadCreation &&
     !entry.subagentAction &&
     (entry.subagents?.length ?? 0) === 0
@@ -141,10 +143,11 @@ function summaryPartLabel(
 
 export function summarizeToolCallGroup(
   entries: ReadonlyArray<WorkLogEntry>,
+  options?: { includeSingleEntry?: boolean },
 ): ToolCallGroupSummary | null {
   const summarizable = entries.filter(isSummarizableToolCallEntry);
   const rowCount = summarizable.reduce((total, entry) => total + workEntryRowCount(entry), 0);
-  if (rowCount < MIN_COLLAPSIBLE_TOOL_GROUP_SIZE) {
+  if (rowCount < (options?.includeSingleEntry ? 1 : MIN_COLLAPSIBLE_TOOL_GROUP_SIZE)) {
     return null;
   }
 

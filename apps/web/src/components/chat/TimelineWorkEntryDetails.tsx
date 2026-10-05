@@ -1,7 +1,6 @@
 import { PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
 import { useCallback, useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 
-import type { TimestampFormat } from "../../appSettings";
 import type { WorkLogEntry } from "../../workLog.types";
 import { DISCLOSURE_CLEANUP_BUFFER_MS, DISCLOSURE_TRANSITION_MS } from "~/lib/disclosureMotion";
 import { cn } from "~/lib/utils";
@@ -136,7 +135,6 @@ export function ToolDetailsDisclosure(props: {
   activity?: TimelineWorkEntry["liveActivity"] | undefined;
   detailContent?: ReactNode;
   summaryClassName?: string | undefined;
-  timestampFormat: TimestampFormat;
   tooltip?: ReactNode;
 }) {
   const summaryClassName =
@@ -218,11 +216,7 @@ export function ToolDetailsDisclosure(props: {
         >
           <div data-tool-details-inline="true">
             {props.detailContent ?? (
-              <ToolCallDetailsContent
-                details={props.details}
-                activity={props.activity}
-                timestampFormat={props.timestampFormat}
-              />
+              <ToolCallDetailsContent details={props.details} activity={props.activity} />
             )}
           </div>
         </DisclosureRegion>

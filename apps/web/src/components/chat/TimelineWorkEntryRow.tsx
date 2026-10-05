@@ -30,7 +30,6 @@ import {
   ProviderContextLifecycleDetails,
   ToolDetailsDisclosure,
 } from "./TimelineWorkEntryDetails";
-import type { TimestampFormat } from "../../appSettings";
 import { describeLinkChip } from "~/lib/linkChips";
 import { computerToolName, describeComputerToolCall } from "~/lib/computerToolPresentation";
 import { cn } from "~/lib/utils";
@@ -398,7 +397,6 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
   onOpenAgentActivity?: (activityId: string) => void;
   computerControlEnabled?: boolean;
   onEnableComputerControl?: () => void;
-  timestampFormat: TimestampFormat;
 }) {
   const {
     workEntry,
@@ -413,7 +411,6 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
     onOpenAgentActivity,
     computerControlEnabled,
     onEnableComputerControl,
-    timestampFormat,
   } = props;
   const textFontSizePx = textFontSizePxProp ?? chatMetaFontSizePx;
   const density = densityProp ?? "default";
@@ -573,7 +570,6 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
                   tooltip={<span className="whitespace-pre-wrap">{changedFilePath}</span>}
                   summaryClassName={editedRowClassName}
                   dataFileChangeRow
-                  timestampFormat={timestampFormat}
                 >
                   {editedRowChildren}
                 </ToolDetailsDisclosure>
@@ -682,7 +678,6 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
                   ) : undefined
                 }
                 compact={compact}
-                timestampFormat={timestampFormat}
                 tooltip={toolRowTooltipContent(rawCommand, displayText, displayText)}
               >
                 {rowContentChildren}

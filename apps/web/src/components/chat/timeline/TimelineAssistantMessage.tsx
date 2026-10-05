@@ -237,7 +237,6 @@ export function renderTimelineAssistantMessage(
           markdownCwd={markdownCwd}
           onImageExpand={onImageExpand}
           onOpenTurnDiff={onOpenTurnDiff}
-          timestampFormat={timestampFormat}
           {...(onOpenAgentActivity
             ? {
                 onOpenAgentActivity,
@@ -376,7 +375,6 @@ export function renderTimelineAssistantMessage(
                   density={prefersCompactWorkEntryRow(workEntry) ? "compact" : "default"}
                   markdownCwd={markdownCwd}
                   onImageExpand={onImageExpand}
-                  timestampFormat={timestampFormat}
                   {...(onOpenAgentActivity
                     ? {
                         onOpenAgentActivity,
@@ -409,7 +407,6 @@ export function renderTimelineAssistantMessage(
           density={prefersCompactWorkEntryRow(item.entry) ? "compact" : "default"}
           markdownCwd={markdownCwd}
           onImageExpand={onImageExpand}
-          timestampFormat={timestampFormat}
           {...(onOpenAgentActivity
             ? {
                 onOpenAgentActivity,
@@ -603,7 +600,6 @@ export function renderTimelineAssistantMessage(
                 density="compact"
                 markdownCwd={markdownCwd}
                 onImageExpand={onImageExpand}
-                timestampFormat={timestampFormat}
                 {...(computerControlEnabled !== undefined
                   ? {
                       computerControlEnabled,

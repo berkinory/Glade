@@ -1,7 +1,6 @@
 import type { MessageId, TurnId } from "@glade/contracts/core/baseSchemas";
 import type { WorkLogEntry } from "../../workLog.types";
 import { normalizeCompactToolLabel as normalizeCompactToolLabelValue } from "../../lib/toolCallLabel.presentations";
-import { isCodexActivityStatusWorkEntry } from "./agentActivity.logic";
 import {
   isSummarizableToolCallEntry,
   MIN_COLLAPSIBLE_TOOL_GROUP_SIZE,
@@ -91,7 +90,7 @@ export interface WorkEntryRenderPlanChunk {
 }
 
 function pickLiveToolEntry(entries: ReadonlyArray<WorkLogEntry>): WorkLogEntry {
-  return entries.findLast(isCodexActivityStatusWorkEntry) ?? entries.at(-1)!;
+  return entries.findLast((entry) => entry.toolStatus === "running") ?? entries.at(-1)!;
 }
 
 export function planWorkEntryRenderChunks(
@@ -100,17 +99,17 @@ export function planWorkEntryRenderChunks(
 ): WorkEntryRenderPlanChunk[] {
   const chunks = chunkWorkEntries(entries);
   return chunks.map((chunk, index) => {
-    if (chunk.kind === "item") {
-      return { id: chunk.id, entries: [chunk.entry], summary: null, liveEntry: null };
-    }
-    const summary = summarizeToolCallGroup(chunk.entries);
+    const entries = chunk.kind === "item" ? [chunk.entry] : chunk.entries;
     const isLiveTail = options.tailIsLive && index === chunks.length - 1;
+    const summary = summarizeToolCallGroup(entries, {
+      includeSingleEntry: isLiveTail || entries.some((entry) => entry.toolStatus === "running"),
+    });
     const collapsed = summary !== null && !summary.hasRunningEntry && !isLiveTail;
     return {
       id: chunk.id,
-      entries: chunk.entries,
+      entries,
       summary: collapsed ? summary : null,
-      liveEntry: summary !== null && !collapsed ? pickLiveToolEntry(chunk.entries) : null,
+      liveEntry: summary !== null && !collapsed ? pickLiveToolEntry(entries) : null,
     };
   });
 }
@@ -125,13 +124,16 @@ export function resolveWorkEntryChunkFold(
   if (chunk.summary !== null) {
     return { summary: chunk.summary, entries: chunk.entries, keySuffix: "" };
   }
-  const liveSummary = chunk.liveEntry ? summarizeToolCallGroup(chunk.entries) : null;
+  const liveSummary = chunk.liveEntry
+    ? summarizeToolCallGroup(chunk.entries, { includeSingleEntry: true })
+    : null;
   if (!liveSummary) return null;
   return {
     summary: liveSummary,
 
     entries: chunk.entries.filter(
-      (entry) => entry !== chunk.liveEntry || workEntryRowCount(entry) > 1,
+      (entry) =>
+        liveSummary.entryCount === 1 || entry !== chunk.liveEntry || workEntryRowCount(entry) > 1,
     ),
     keySuffix: ":live",
   };

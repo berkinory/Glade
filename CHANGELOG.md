@@ -31,6 +31,8 @@
 
 ### Improved
 
+- Active tools show their progress beside the current action, and tool details use compact, scrollable output with precise elapsed times.
+
 - Use a consistent icon family across the interface and refreshed brand artwork, while preserving file and folder symbols.
 
 - Keyboard shortcut hints are more consistent and readable, and sidebar pull request and workspace indicators leave conversation titles easier to read.
@@ -108,6 +110,8 @@
 - Models load faster on first use, with a balanced initial reasoning effort when you have not chosen one.
 
 ### Fixed
+
+- Copy, pin and fork actions stay hidden until the assistant finishes its turn.
 
 - Menu labels and selected items stay visible, with consistent mouse and keyboard navigation.
 

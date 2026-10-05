@@ -91,12 +91,12 @@ function liveActivityElapsedMs(activity: WorkLogLiveActivity, nowMs: number): nu
   return lastActivityAtMs - startedAtMs;
 }
 
-export function formatLiveActivityProgress(progress: number): string {
+function formatLiveActivityProgress(progress: number): string {
   const percent = progress >= 0 && progress <= 1 ? progress * 100 : progress;
   return `${Math.round(Math.min(100, Math.max(0, percent)))}%`;
 }
 
-export function formatLiveActivityStateLabel(state: WorkLogLiveActivity["state"]): string {
+function formatLiveActivityStateLabel(state: WorkLogLiveActivity["state"]): string {
   switch (state) {
     case "starting":
       return "Starting";
@@ -122,7 +122,8 @@ export function formatLiveActivityElapsed(
   nowMs: number,
 ): string | null {
   const elapsedMs = liveActivityElapsedMs(activity, nowMs);
-  return elapsedMs === null ? null : formatClockDuration(elapsedMs);
+  if (elapsedMs === null) return null;
+  return elapsedMs < 1_000 ? `${Math.round(elapsedMs)}ms` : formatClockDuration(elapsedMs);
 }
 
 export interface LiveActivityMetaOptions {

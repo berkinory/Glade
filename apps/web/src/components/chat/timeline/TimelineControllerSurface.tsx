@@ -63,7 +63,6 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
   const {
     markdownCwd,
     onImageExpand,
-    timestampFormat,
     onOpenAgentActivity,
     computerControlEnabled,
     onEnableComputerControl,
@@ -140,7 +139,6 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
               density={prefersCompactWorkEntryRow(workEntry) ? "compact" : "default"}
               markdownCwd={markdownCwd}
               onImageExpand={onImageExpand}
-              timestampFormat={timestampFormat}
               {...(onOpenAgentActivity ? { onOpenAgentActivity } : {})}
               {...(computerControlEnabled !== undefined ? { computerControlEnabled } : {})}
               {...(onEnableComputerControl ? { onEnableComputerControl } : {})}
