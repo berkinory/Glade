@@ -109,6 +109,8 @@
 
 ### Fixed
 
+- Menu labels and selected items stay visible, with consistent mouse and keyboard navigation.
+
 - Large custom keymaps preserve saved rules and unrelated default shortcuts.
 
 - Background helpers no longer flash command windows on Windows.

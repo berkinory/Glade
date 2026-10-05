@@ -2,6 +2,8 @@
 
 import { CheckIcon, ChevronsDownUpIcon, XIcon } from "~/lib/icons";
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
+import { useRender } from "@base-ui/react/use-render";
+import { useGroupLabelScrollMargin } from "~/hooks/useGroupLabelScrollMargin";
 import * as React from "react";
 import { cn } from "~/lib/utils";
 import { UI_MOTION_POPUP_CLASS } from "~/lib/uiMotion";
@@ -221,7 +223,7 @@ function ComboboxItem({
   return (
     <ComboboxPrimitive.Item
       className={cn(
-        `grid min-h-[1.625rem] in-data-[side=none]:min-w-[calc(var(--anchor-width)+1.25rem)] cursor-default grid-cols-[1fr_auto] items-center gap-3 ${COMPOSER_PICKER_OPTION_RADIUS_CLASS_NAME} px-2.5 py-px text-ui text-[var(--color-text-foreground)] outline-none data-disabled:pointer-events-none data-highlighted:bg-[var(--color-background-button-secondary-hover)] data-highlighted:text-[var(--color-text-foreground)] data-disabled:opacity-64 sm:min-h-6 sm:text-ui [&_svg:not([class*='size-'])]:size-3 [&_svg]:pointer-events-none [&_svg]:shrink-0`,
+        `grid min-h-[1.625rem] scroll-my-[var(--fade-size,0.25rem)] in-data-[side=none]:min-w-[calc(var(--anchor-width)+1.25rem)] cursor-default grid-cols-[1fr_auto] items-center gap-3 ${COMPOSER_PICKER_OPTION_RADIUS_CLASS_NAME} px-2.5 py-px text-ui text-[var(--color-text-foreground)] outline-none data-disabled:pointer-events-none data-highlighted:bg-[var(--color-background-button-secondary-hover)] data-highlighted:text-[var(--color-text-foreground)] data-disabled:opacity-64 sm:min-h-6 sm:text-ui [&_svg:not([class*='size-'])]:size-3 [&_svg]:pointer-events-none [&_svg]:shrink-0`,
         className,
       )}
       data-slot="combobox-item"
@@ -250,15 +252,21 @@ function ComboboxSeparator({ className, ...props }: ComboboxPrimitive.Separator.
 function ComboboxGroup({ className, ...props }: ComboboxPrimitive.Group.Props) {
   return (
     <ComboboxPrimitive.Group
-      className={cn("[[role=group]+&]:mt-1.5", className)}
+      className={cn(
+        "[[role=group]+&]:mt-1.5 [&>[role=option]:nth-child(1_of_[role=option]:not([aria-disabled=true]))]:scroll-mt-[calc(var(--group-label-height,0px)+var(--fade-size,0.25rem))]",
+        className,
+      )}
       data-slot="combobox-group"
       {...props}
     />
   );
 }
-function ComboboxGroupLabel({ className, ...props }: ComboboxPrimitive.GroupLabel.Props) {
+function ComboboxGroupLabel({ className, render, ...props }: ComboboxPrimitive.GroupLabel.Props) {
+  const labelRef = useGroupLabelScrollMargin();
+  const label = useRender({ render, ref: labelRef });
   return (
     <ComboboxPrimitive.GroupLabel
+      render={label}
       className={cn("px-2 py-1.5 font-medium text-muted-foreground text-ui-xs", className)}
       data-slot="combobox-group-label"
       {...props}
@@ -285,7 +293,10 @@ function ComboboxValue({ ...props }: ComboboxPrimitive.Value.Props) {
 }
 function ComboboxList({ className, ...props }: ComboboxPrimitive.List.Props) {
   return (
-    <ScrollArea className="min-h-0 flex-1" scrollFade>
+    <ScrollArea
+      className="min-h-0 flex-1 **:data-[slot=scroll-area-viewport]:[--fade-size:0.25rem]"
+      scrollFade
+    >
       <ComboboxPrimitive.List
         className={cn("not-empty:scroll-py-1 not-empty:px-1 not-empty:py-1", className)}
         data-slot="combobox-list"

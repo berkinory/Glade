@@ -2,6 +2,8 @@
 
 import { ChevronsDownUpIcon, XIcon } from "~/lib/icons";
 import { Autocomplete as AutocompletePrimitive } from "@base-ui/react/autocomplete";
+import { useRender } from "@base-ui/react/use-render";
+import { useGroupLabelScrollMargin } from "~/hooks/useGroupLabelScrollMargin";
 import { cn } from "~/lib/utils";
 import { UI_MOTION_POPUP_CLASS } from "~/lib/uiMotion";
 import { Input } from "~/components/ui/input";
@@ -133,7 +135,7 @@ function AutocompleteItem({ className, children, ...props }: AutocompletePrimiti
   return (
     <AutocompletePrimitive.Item
       className={cn(
-        "flex min-h-8 cursor-default select-none items-center rounded-sm px-2 py-1 text-ui outline-none data-disabled:pointer-events-none data-highlighted:bg-[var(--color-background-button-secondary-hover)] data-highlighted:text-[var(--color-text-foreground)] data-disabled:opacity-64 sm:min-h-7 sm:text-ui",
+        "flex min-h-8 scroll-my-[var(--fade-size,0.25rem)] cursor-default select-none items-center rounded-sm px-2 py-1 text-ui outline-none data-disabled:pointer-events-none data-highlighted:bg-[var(--color-background-button-secondary-hover)] data-highlighted:text-[var(--color-text-foreground)] data-disabled:opacity-64 sm:min-h-7 sm:text-ui",
         className,
       )}
       data-slot="autocomplete-item"
@@ -155,15 +157,25 @@ function AutocompleteSeparator({ className, ...props }: AutocompletePrimitive.Se
 function AutocompleteGroup({ className, ...props }: AutocompletePrimitive.Group.Props) {
   return (
     <AutocompletePrimitive.Group
-      className={cn("[[role=group]+&]:mt-1.5", className)}
+      className={cn(
+        "[[role=group]+&]:mt-1.5 [&>[role=option]:nth-child(1_of_[role=option]:not([aria-disabled=true]))]:scroll-mt-[calc(var(--group-label-height,0px)+var(--fade-size,0.25rem))]",
+        className,
+      )}
       data-slot="autocomplete-group"
       {...props}
     />
   );
 }
-function AutocompleteGroupLabel({ className, ...props }: AutocompletePrimitive.GroupLabel.Props) {
+function AutocompleteGroupLabel({
+  className,
+  render,
+  ...props
+}: AutocompletePrimitive.GroupLabel.Props) {
+  const labelRef = useGroupLabelScrollMargin();
+  const label = useRender({ render, ref: labelRef });
   return (
     <AutocompletePrimitive.GroupLabel
+      render={label}
       className={cn("px-2 py-1.5 font-medium text-muted-foreground text-ui-xs", className)}
       data-slot="autocomplete-group-label"
       {...props}
@@ -192,7 +204,11 @@ function AutocompleteValue({ ...props }: AutocompletePrimitive.Value.Props) {
 }
 function AutocompleteList({ className, ...props }: AutocompletePrimitive.List.Props) {
   return (
-    <ScrollArea scrollbarGutter scrollFade>
+    <ScrollArea
+      className="**:data-[slot=scroll-area-viewport]:[--fade-size:0.25rem]"
+      scrollbarGutter
+      scrollFade
+    >
       <AutocompletePrimitive.List
         className={cn("not-empty:scroll-py-1 not-empty:p-1 in-data-has-overflow-y:pe-3", className)}
         data-slot="autocomplete-list"

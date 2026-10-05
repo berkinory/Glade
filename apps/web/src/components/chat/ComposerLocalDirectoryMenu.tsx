@@ -4,7 +4,7 @@ import type {
   ProjectFileSystemEntry,
   ProjectLocalSearchEntry,
 } from "@glade/contracts/workspace/project";
-import type { Ref } from "react";
+import type { MouseEvent, Ref } from "react";
 import { useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useDebouncedValue } from "@tanstack/react-pacer";
@@ -12,10 +12,8 @@ import { expandLocalFolderPath } from "~/lib/localFolderMentions";
 import { projectSearchLocalEntriesQueryOptions } from "~/lib/projectReactQuery";
 import { readNativeApi } from "~/nativeApi";
 import { cn } from "~/lib/utils";
-import {
-  ELEVATED_HOVER_SURFACE_CLASS_NAME,
-  ELEVATED_HOVER_SURFACE_RAISED_TEXT_CLASS_NAME,
-} from "~/surfaceStyles";
+import { useMenuHighlight } from "~/hooks/useMenuHighlight";
+import { ELEVATED_HOVER_SURFACE_RAISED_TEXT_CLASS_NAME } from "~/surfaceStyles";
 import {
   Command,
   CommandGroup,
@@ -37,7 +35,6 @@ const LOCAL_SEARCH_MIN_QUERY_LENGTH = 2;
 function directoryMenuRowClassName(isHighlighted: boolean): string {
   return cn(
     "cursor-pointer select-none gap-2 rounded-lg px-2 py-1",
-    ELEVATED_HOVER_SURFACE_CLASS_NAME,
     isHighlighted &&
       "bg-[var(--color-background-elevated-secondary)] text-[var(--color-text-foreground)]",
   );
@@ -374,21 +371,16 @@ export function ComposerLocalDirectoryMenu(props: {
       return true;
     },
   }));
-  useEffect(() => {
-    const node = listRef.current?.querySelector<HTMLElement>(
-      `[data-highlight-index="${highlightedIndex}"]`,
-    );
-    node?.scrollIntoView({
-      block: "nearest",
-    });
-  }, [highlightedIndex]);
+  const highlightFromPointer = useMenuHighlight(highlightedIndex, setHighlightedIndex, () =>
+    listRef.current?.querySelector<HTMLElement>(`[data-highlight-index="${highlightedIndex}"]`),
+  );
   const headerLabel = directory || rootLabel;
   const visibleCount = visibleRows.length;
   const entryRowStartIndex = currentFolderRow ? 1 : 0;
   const searchRowStartIndex = entryRowStartIndex + folders.length + files.length;
   const isSearchPending = shouldRunFuzzySearch && searchQuery.isFetching && searchRows.length === 0;
   return (
-    <Command autoHighlight={false} mode="none">
+    <Command autoHighlight={false} highlightItemOnHover={false} mode="none">
       <div className={COMPOSER_COMMAND_MENU_SURFACE_CLASS_NAME}>
         <div className="flex items-center gap-2 border-b border-border px-2 py-1.5">
           {parent ? (
@@ -433,7 +425,7 @@ export function ComposerLocalDirectoryMenu(props: {
                   directoryLabel={headerLabel}
                   index={0}
                   isHighlighted={highlightedIndex === 0}
-                  onHighlight={setHighlightedIndex}
+                  onHighlight={highlightFromPointer}
                   onActivate={handleSelectCurrentDirectory}
                 />
               </CommandGroup>
@@ -452,7 +444,7 @@ export function ComposerLocalDirectoryMenu(props: {
                       index={absoluteIndex}
                       isHighlighted={highlightedIndex === absoluteIndex}
                       onActivate={handleActivateEntry}
-                      onHighlight={setHighlightedIndex}
+                      onHighlight={highlightFromPointer}
                     />
                   );
                 })}
@@ -472,7 +464,7 @@ export function ComposerLocalDirectoryMenu(props: {
                       index={absoluteIndex}
                       isHighlighted={highlightedIndex === absoluteIndex}
                       onActivate={handleActivateEntry}
-                      onHighlight={setHighlightedIndex}
+                      onHighlight={highlightFromPointer}
                     />
                   );
                 })}
@@ -497,7 +489,7 @@ export function ComposerLocalDirectoryMenu(props: {
                         index={absoluteIndex}
                         isHighlighted={highlightedIndex === absoluteIndex}
                         onActivate={handleActivateSearchEntry}
-                        onHighlight={setHighlightedIndex}
+                        onHighlight={highlightFromPointer}
                       />
                     );
                   })}
@@ -533,21 +525,20 @@ function UseCurrentFolderRow(props: {
   directoryLabel: string;
   index: number;
   isHighlighted: boolean;
-  onHighlight: (index: number) => void;
+  onHighlight: (index: number, event: MouseEvent<HTMLElement>) => void;
   onActivate: () => void;
 }) {
   const { directoryLabel, index, isHighlighted, onHighlight, onActivate } = props;
   return (
     <CommandItem
       data-highlight-index={index}
+      data-highlighted={isHighlighted ? "" : undefined}
       value="use-current-folder"
       className={directoryMenuRowClassName(isHighlighted)}
       onMouseDown={(event) => {
         event.preventDefault();
       }}
-      onMouseMove={() => {
-        if (!isHighlighted) onHighlight(index);
-      }}
+      onMouseMove={(event) => onHighlight(index, event)}
       onClick={onActivate}
     >
       <FolderIcon className="size-3.5 text-muted-foreground/60" />
@@ -575,7 +566,7 @@ function LocalSearchRow(props: {
   index: number;
   isHighlighted: boolean;
   onActivate: (entry: ProjectLocalSearchEntry) => void;
-  onHighlight: (index: number) => void;
+  onHighlight: (index: number, event: MouseEvent<HTMLElement>) => void;
 }) {
   const { entry, rootPath, index, isHighlighted, onActivate, onHighlight } = props;
   const isDirectory = entry.kind === "directory";
@@ -583,14 +574,13 @@ function LocalSearchRow(props: {
   return (
     <CommandItem
       data-highlight-index={index}
+      data-highlighted={isHighlighted ? "" : undefined}
       value={`search:${entry.kind}:${entry.path}`}
       className={directoryMenuRowClassName(isHighlighted)}
       onMouseDown={(event) => {
         event.preventDefault();
       }}
-      onMouseMove={() => {
-        if (!isHighlighted) onHighlight(index);
-      }}
+      onMouseMove={(event) => onHighlight(index, event)}
       onClick={() => onActivate(entry)}
     >
       {isDirectory ? (
@@ -616,21 +606,20 @@ function LocalEntryRow(props: {
   index: number;
   isHighlighted: boolean;
   onActivate: (entry: ProjectFileSystemEntry) => void;
-  onHighlight: (index: number) => void;
+  onHighlight: (index: number, event: MouseEvent<HTMLElement>) => void;
 }) {
   const { entry, index, isHighlighted, onActivate, onHighlight } = props;
   const isDirectory = entry.kind === "directory";
   return (
     <CommandItem
       data-highlight-index={index}
+      data-highlighted={isHighlighted ? "" : undefined}
       value={`${entry.kind}:${entry.path}`}
       className={directoryMenuRowClassName(isHighlighted)}
       onMouseDown={(event) => {
         event.preventDefault();
       }}
-      onMouseMove={() => {
-        if (!isHighlighted) onHighlight(index);
-      }}
+      onMouseMove={(event) => onHighlight(index, event)}
       onClick={() => onActivate(entry)}
     >
       {isDirectory ? (

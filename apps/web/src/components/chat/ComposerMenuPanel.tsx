@@ -1,6 +1,7 @@
-import { memo, useEffect, useRef, type ReactNode } from "react";
+import { memo, useRef, type MouseEvent, type ReactNode } from "react";
 
 import { cn } from "~/lib/utils";
+import { useMenuHighlight } from "~/hooks/useMenuHighlight";
 import {
   Command,
   CommandGroup,
@@ -56,22 +57,12 @@ export function ComposerMenuPanel(props: {
   const hasRows = props.groups.some((group) => group.rows.length > 0);
   const activeRowId = props.activeRowId;
 
-  useEffect(() => {
-    if (!activeRowId) {
-      return;
-    }
-
-    rowRefs.current[activeRowId]?.scrollIntoView({ block: "nearest" });
-  }, [activeRowId]);
+  const highlightFromPointer = useMenuHighlight(activeRowId, props.onHighlightRow, () =>
+    activeRowId ? rowRefs.current[activeRowId] : null,
+  );
 
   return (
-    <Command
-      autoHighlight={false}
-      mode="none"
-      onItemHighlighted={(highlightedValue) => {
-        props.onHighlightRow(typeof highlightedValue === "string" ? highlightedValue : null);
-      }}
-    >
+    <Command autoHighlight={false} highlightItemOnHover={false} mode="none">
       <div className={cn(COMPOSER_COMMAND_MENU_SURFACE_CLASS_NAME, props.surfaceClassName)}>
         {hasRows || props.footer ? (
           <CommandList className={cn("max-h-72 scroll-py-1 p-1", props.listClassName)}>
@@ -92,7 +83,7 @@ export function ComposerMenuPanel(props: {
                       rowRef={(node) => {
                         rowRefs.current[row.id] = node;
                       }}
-                      onHighlight={props.onHighlightRow}
+                      onHighlight={highlightFromPointer}
                       onSelect={props.onSelectRow}
                     />
                   ))}
@@ -118,7 +109,7 @@ const ComposerMenuPanelItem = memo(function ComposerMenuPanelItem({
   row: ComposerMenuPanelRow;
   isActive: boolean;
   rowRef: (node: HTMLElement | null) => void;
-  onHighlight: (rowId: string | null) => void;
+  onHighlight: (rowId: string, event: MouseEvent<HTMLElement>) => void;
   onSelect: (rowId: string) => void;
 }) {
   return (
@@ -126,13 +117,14 @@ const ComposerMenuPanelItem = memo(function ComposerMenuPanelItem({
       ref={rowRef}
       value={row.id}
       disabled={row.disabled ?? false}
+      data-highlighted={isActive ? "" : undefined}
       className={cn(
         COMPOSER_COMMAND_MENU_ITEM_CLASS_NAME,
         isActive && COMPOSER_COMMAND_MENU_ITEM_ACTIVE_CLASS_NAME,
         row.disabled && "cursor-default opacity-70 hover:bg-transparent",
       )}
-      onMouseMove={() => {
-        if (!isActive && !row.disabled) onHighlight(row.id);
+      onMouseMove={(event) => {
+        if (!row.disabled) onHighlight(row.id, event);
       }}
       onMouseDown={(event) => {
         event.preventDefault();
