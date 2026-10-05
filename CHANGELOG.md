@@ -6,15 +6,17 @@
 
 - Move between tabs in the current conversation workspace with configurable keyboard shortcuts.
 
-- Initialize local Git repositories and publish them to GitHub from Source Control, choosing the account or organization, repository name and visibility.
-
 - Continue with another provider in the same chat, with a persistent record of each transition.
+
+- Initialize local Git repositories and publish them to GitHub from Source Control, choosing the account or organization, repository name and visibility.
 
 - Hear distinct sounds when agents finish or need your approval or reply, with a single toggle to mute them.
 
 - Split terminals side by side or above and below within one tab, with keyboard shortcuts, balanced tiling and shared activity indicators.
 
 - Enable optional whole-window transparency with native macOS vibrancy or Windows 11 Mica.
+
+- Update worktree chats from the local project checkout and commit and merge back without a push or pull request.
 
 - Chats get automatic titles from the first meaningful message while preserving manual renames.
 
@@ -27,7 +29,12 @@
 - Cycle supported model effort levels with Shift+Tab in the composer.
 - Links to other chats in agent replies open the referenced conversation directly.
 
+- Choose native windows on macOS in the Computer panel for you or Codex to inspect; stopping or disconnecting preserves your windows.
+
 - Add files and folders to Explorer with drag and drop, or paste files from the clipboard.
+
+- Codex can open task browser tabs, request screenshots, read structured page records, fill forms, upload files from the task workspace, prepare page downloads in private storage, use embedded page controls and keyboard shortcuts, answer supported browser dialogs, adopt sign-in popups and hand control back. Task tabs also support manual address navigation, back/forward controls, isolated task sessions and an explicitly shared personal profile.
+- Agents can inspect browser layouts at different viewport sizes and in light or dark themes.
 
 ### Improved
 
@@ -35,9 +42,9 @@
 
 - Active tools show their progress beside the current action, and tool details use compact, scrollable output with precise elapsed times.
 
-- Use a consistent icon family across the interface and refreshed brand artwork, while preserving file and folder symbols.
-
 - Keyboard shortcut hints are more consistent and readable, and sidebar pull request and workspace indicators leave conversation titles easier to read.
+
+- Use a consistent icon family across the interface and refreshed brand artwork, while preserving file and folder symbols.
 
 - Approval, tool progress and background-task details retain more useful explanations and error context.
 
@@ -94,6 +101,12 @@
 
 - Profile statistics stay responsive with larger conversation histories.
 
+- Agents can request screenshots of selected native windows; browser and native screenshots remain available in task history after their targets close or the app restarts.
+
+- Coding agents can group known browser steps into one call, with clear stopping points when an action fails or needs human input.
+
+- Task downloads survive browser reconnects, history remains visible after tabs close or the app restarts, and previously saved files can recover their confirmed status.
+
 - Source Control uses clearer folder ordering and stays usable with very large change lists.
 - Source Control keeps selected actions visible and applies stage, unstage and revert to the whole selection within each group.
 - Changes and History preview images from the selected version, and videos show static thumbnails in Explorer and Git previews.
@@ -102,14 +115,15 @@
 - Environment hides while the right sidebar is open and returns to its previous state when it closes.
 - Source Control can generate a message and commit all changes when nothing is staged.
 - AI commit messages and pull request descriptions handle large changes with less unnecessary context.
-- Provider handoffs preserve key decisions and unfinished work, with access to earlier conversation details when needed.
 - Explorer navigation can be hidden to give files more room, and highlighted file rows are easier to distinguish.
+- Provider handoffs preserve key decisions and unfinished work, with access to earlier conversation details when needed.
+
+- Models load faster on first use, with a balanced initial reasoning effort when you have not chosen one.
 - History loads faster with fewer repeated Git reads and keeps open previews during file updates.
 - Empty space across the top bar supports window dragging and native title-bar actions more consistently.
 - File links open together in editable workspace tabs without losing unsaved edits; turn changes and file diffs remain available in Source Control.
 - Source Control and History stay up to date after file and repository changes, and the latest unpushed commit can be undone without losing its changes.
 - Push synchronizes incoming commits automatically, and Source Control shows conflicts with actions to resolve or cancel the operation.
-- Models load faster on first use, with a balanced initial reasoning effort when you have not chosen one.
 
 ### Fixed
 
@@ -117,15 +131,15 @@
 
 - Menu labels and selected items stay visible, with consistent mouse and keyboard navigation.
 
+- Chats and terminal output recover more reliably after connection loss.
+- Interrupted sends resolve their delivery status without duplicating messages or losing drafts and attachments.
+- Connection setup and voice dictation reach supported fallback paths without waiting for stalled error responses.
+
 - Large custom keymaps preserve saved rules and unrelated default shortcuts.
 
 - Background helpers no longer flash command windows on Windows.
 - Failed desktop window actions show an understandable error.
 - Losing a launcher output pipe no longer closes the desktop app.
-
-- Chats and terminal output recover more reliably after connection loss.
-- Interrupted sends resolve their delivery status without duplicating messages or losing drafts and attachments.
-- Connection setup and voice dictation reach supported fallback paths without waiting for stalled error responses.
 
 - Wide code blocks and closing side panels no longer introduce unwanted horizontal scrolling in conversations.
 
@@ -189,6 +203,7 @@
 - Provider updates preserve executable search paths on Windows and no longer wait for interactive input.
 - HTTPS connection failures are handled reliably, and stopping processes does not depend on executable search paths.
 
+- Personal browser tabs save pending cookies when closing.
 - Explorer stays in sync when files are added or changed outside Glade.
 
 - Failed commit message generation reports an error instead of silently substituting a generic message.
