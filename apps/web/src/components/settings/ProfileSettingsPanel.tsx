@@ -3,7 +3,7 @@ import {
   PencilEdit02Icon,
   ChartColumnIcon,
   Robot01Icon,
-  BlocksIcon,
+  Book02Icon,
 } from "~/lib/icons";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -219,7 +219,7 @@ function ProfileContent({
                       {skill.kind === "agent" ? (
                         <Robot01Icon className="size-3" />
                       ) : (
-                        <BlocksIcon className="size-3" />
+                        <Book02Icon className="size-3" />
                       )}
                     </span>
                     <span className="truncate text-ui leading-snug">{skill.displayName}</span>

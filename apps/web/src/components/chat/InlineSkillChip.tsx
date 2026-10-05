@@ -1,4 +1,4 @@
-import { BlocksIcon } from "~/lib/icons";
+import { Book02Icon } from "~/lib/icons";
 import {
   COMPOSER_INLINE_CHIP_INLINE_ICON_CLASS_NAME,
   COMPOSER_EDITOR_INLINE_CHIP_CLASS_NAME,
@@ -9,7 +9,7 @@ export const InlineSkillChip = function InlineSkillChip(props: { skillName: stri
   return (
     <span className={COMPOSER_EDITOR_INLINE_CHIP_CLASS_NAME}>
       <InlineChipContent
-        icon={<BlocksIcon className={COMPOSER_INLINE_CHIP_INLINE_ICON_CLASS_NAME} />}
+        icon={<Book02Icon className={COMPOSER_INLINE_CHIP_INLINE_ICON_CLASS_NAME} />}
         label={formatComposerSkillChipLabel(props.skillName)}
       />
     </span>

@@ -7,6 +7,7 @@ import {
   WorkflowCircle04Icon,
   PuzzleIcon,
   BlocksIcon,
+  Book02Icon,
   ComputerTerminal01Icon,
   GitForkIcon,
 } from "~/lib/icons";
@@ -457,7 +458,7 @@ function commandMenuItemGlyph(item: ComposerCommandItem, theme: "light" | "dark"
     case "thread":
       return <ProviderIcon provider={item.provider} className={cls} />;
     case "skill":
-      return <BlocksIcon className={cls} />;
+      return <Book02Icon className={cls} />;
     default:
       return null;
   }

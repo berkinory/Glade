@@ -10,6 +10,7 @@ import {
   Archive04Icon,
   PuzzleIcon,
   BlocksIcon,
+  Book02Icon,
   CursorInWindowIcon,
   LimitationIcon,
 } from "~/lib/icons";
@@ -144,7 +145,7 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
     group: "agents",
     label: "Skills",
     description: "Review reusable workflows discovered across all configured providers.",
-    icon: BlocksIcon,
+    icon: Book02Icon,
   },
   {
     id: "mcp",

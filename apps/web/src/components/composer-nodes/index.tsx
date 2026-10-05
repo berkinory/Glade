@@ -29,7 +29,7 @@ import {
   formatComposerSkillChipLabel,
   resolveAgentChipColor,
 } from "../composerInlineChip";
-import { Robot01Icon, BlocksIcon, MessageCircleIcon } from "~/lib/icons";
+import { Robot01Icon, Book02Icon, MessageCircleIcon } from "~/lib/icons";
 import { slashCommandIcon } from "~/lib/slashCommandIcons";
 import type { ComposerSlashCommand } from "~/composerSlashCommands";
 import { InlineLinkChip } from "../InlineLinkChip";
@@ -122,7 +122,7 @@ function renderMentionChipDom(
 }
 function renderSkillChipDom(container: HTMLElement, name: string): void {
   resetInlineChipContainer(container);
-  const icon = createIconElement(BlocksIcon, COMPOSER_INLINE_CHIP_INLINE_ICON_CLASS_NAME);
+  const icon = createIconElement(Book02Icon, COMPOSER_INLINE_CHIP_INLINE_ICON_CLASS_NAME);
   const label = document.createElement("span");
   label.className = COMPOSER_INLINE_CHIP_LABEL_CLASS_NAME;
   label.textContent = formatComposerSkillChipLabel(name);

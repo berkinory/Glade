@@ -1,4 +1,4 @@
-import { BlocksIcon } from "~/lib/icons";
+import { Book02Icon } from "~/lib/icons";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ServerSettings } from "@glade/contracts/settings/settings";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -143,7 +143,7 @@ export function SkillsSettingsPanel() {
                   key={group.key}
                   title={
                     <span className="inline-flex min-w-0 items-center gap-1.5">
-                      <BlocksIcon
+                      <Book02Icon
                         aria-hidden="true"
                         className="size-3.5 shrink-0 text-muted-foreground"
                       />
