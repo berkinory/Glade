@@ -128,7 +128,9 @@ export function SurfaceTabChip({
     <>
       {trailingClose ? glyph : null}
       {leading}
-      <span className={trailingClose ? "min-w-0 flex-1 truncate-fade truncate-fade-2" : "truncate"}>
+      <span
+        className={trailingClose ? "min-w-0 flex-1 truncate-fade truncate-fade-2 pr-2" : "truncate"}
+      >
         {label}
       </span>
       {trailing}

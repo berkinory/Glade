@@ -25,7 +25,7 @@ export function PanelTabBar(props: {
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const wheelRegionRef = useRef<HTMLElement>(null);
-  const [frozenWidth, setFrozenWidth] = useState<number | null>(null);
+  const [frozenWidths, setFrozenWidths] = useState<Record<string, number> | null>(null);
   const pinnedTabs = props.tabs.filter((tab) => tab.id === props.pinnedTabId);
   const scrollableTabs = props.tabs.filter((tab) => tab.id !== props.pinnedTabId);
   const tabIds = JSON.stringify(props.tabs.map((tab) => tab.id));
@@ -63,7 +63,8 @@ export function PanelTabBar(props: {
   }, [props.activeId, tabIds]);
   const renderTab = (tab: PanelTab, index: number, pinned = false) => {
     const content = props.contentTabs && !pinned;
-    const previous = scrollableTabs[index - 1] ?? pinnedTabs.at(-1);
+    const previous = scrollableTabs[index - 1];
+    const frozenWidth = content ? frozenWidths?.[tab.id] : undefined;
     return (
       <div
         key={tab.id}
@@ -79,11 +80,11 @@ export function PanelTabBar(props: {
         className={cn(
           "[-webkit-app-region:no-drag]",
           content
-            ? "workspace-content-tab min-w-[min(9em,100%)] basis-[18em] shrink text-ui-sm"
+            ? "workspace-content-tab min-w-[min(9em,100%)] max-w-[24em] basis-[max-content] shrink text-ui-sm"
             : "shrink-0",
-          content && frozenWidth !== null && "!min-w-0 !shrink-0",
+          frozenWidth !== undefined && "!min-w-0 !shrink-0",
         )}
-        style={content && frozenWidth !== null ? { flexBasis: frozenWidth } : undefined}
+        style={frozenWidth !== undefined ? { flexBasis: frozenWidth } : undefined}
       >
         <SurfaceTabChip
           active={tab.id === props.activeId}
@@ -105,9 +106,16 @@ export function PanelTabBar(props: {
           onClose={
             tab.onClose
               ? () => {
-                  const first = scrollerRef.current?.firstElementChild;
-                  if (content && wheelRegionRef.current?.matches(":hover") && first)
-                    setFrozenWidth(first.getBoundingClientRect().width);
+                  const scroller = scrollerRef.current;
+                  if (content && wheelRegionRef.current?.matches(":hover") && scroller)
+                    setFrozenWidths(
+                      Object.fromEntries(
+                        Array.from(scroller.children).map((element) => [
+                          element.getAttribute("data-tab-id")!,
+                          element.getBoundingClientRect().width,
+                        ]),
+                      ),
+                    );
                   tab.onClose?.();
                 }
               : undefined
@@ -129,9 +137,12 @@ export function PanelTabBar(props: {
           ref={wheelRegionRef}
           aria-label={props.label}
           className="[-webkit-app-region:no-drag] flex w-fit min-w-0 max-w-full items-center gap-1"
-          onPointerLeave={() => setFrozenWidth(null)}
+          onPointerLeave={() => setFrozenWidths(null)}
         >
           {pinnedTabs.map((tab, index) => renderTab(tab, index, true))}
+          {props.contentTabs && pinnedTabs.length > 0 && scrollableTabs.length > 0 ? (
+            <span aria-hidden="true" className="mx-1 h-3 w-px shrink-0 bg-foreground/12" />
+          ) : null}
           <div
             ref={scrollerRef}
             className={cn(
