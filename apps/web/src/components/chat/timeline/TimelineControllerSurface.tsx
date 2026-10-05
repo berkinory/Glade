@@ -348,9 +348,11 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
         onTouchStart={handleMessagesTouchStart}
         onWheel={handleMessagesWheel}
         data-chat-scroll-container="true"
+        // LegendList sets overflow inline, overriding the transcript CSS.
+        showsHorizontalScrollIndicator={false}
         ListFooterComponent={listFooter}
         className={cn(
-          "h-full overflow-x-hidden overscroll-y-contain py-3 [scrollbar-gutter:stable] sm:py-4",
+          "h-full overscroll-y-contain py-3 [scrollbar-gutter:stable] sm:py-4",
           "scroll-fade-y transcript-scroll-fade",
           ENVIRONMENT_CONTENT_INSET_MOTION_CLASS,
           CHAT_COLUMN_GUTTER_CLASS_NAME,

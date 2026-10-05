@@ -47,6 +47,8 @@ provider feature is supported through Glade.
 
 Runtime warnings keep up to 2,000 characters of their sanitized explanation in the activity details; only the row preview is shortened. Claude's available readable thinking uses stable message/block identities and bounded updates, with streaming and snapshot text reconciled into one activity per block. Empty or encrypted thinking remains hidden. Glade does not request additional reasoning from the model.
 
+Approval explanations, tool-progress summaries and background-task completion or failure details retain up to 2,000 characters for the existing detail view, while activity rows keep concise previews. Tool-progress data uses the existing 16,000-character JSON budget. Approval parameter credential redaction remains in place. These details stay attached to their original task and session.
+
 Claude tool summaries follow their associated tools. Native retry notices report the supplied attempt, delay and HTTP or connection status. Sign-in activity replaces its earlier session status and can appear before a turn starts; raw sign-in output, tokens and credential-bearing links are excluded. A finished sign-in operation is not a claim that account authentication succeeded.
 
 A parent reply started after background work gets its own response boundary and work clock, even without another user message. Earlier final replies, copy actions and checkpoints remain available. Owned background tasks keep the foreground work section open and show a waiting status until they settle. Successful completion notifications still wait for all owned background work; stopped or replaced sessions cannot revive it. Activity updates and waiting indicators do not drive transcript auto-follow.

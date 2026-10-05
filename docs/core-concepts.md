@@ -319,6 +319,8 @@ Up requires an empty composer; normal Up/Down history navigation still works aft
 
 ### Reading and linking conversations
 
+The conversation scrolls vertically; wide code blocks scroll horizontally within their own boundaries. Environment clips its sliding panel at the overlay boundary in floating and docked modes, while its content and bottom rail remain vertically scrollable.
+
 Agent details retain the mounted conversation, including scroll position and expanded rows. Returning restores keyboard focus. Transcript edge fades follow scroll progress; unsupported scroll-timeline browsers keep the content clear and retain the composer footer dissolve.
 
 Ordinary Markdown images open the existing image preview with click, Enter or Space. Images inside links follow that link exclusively, including unavailable local images. Local previews still require workspace authorization. Closing a preview returns focus to its trigger.

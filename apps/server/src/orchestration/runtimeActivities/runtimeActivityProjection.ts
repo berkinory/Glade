@@ -176,7 +176,7 @@ export function projectProviderRuntimeActivities(
             ...(requestKind ? { requestKind } : {}),
             requestType: event.payload.requestType,
             ...(event.type === "request.opened" && event.payload.detail
-              ? { detail: truncateDetail(event.payload.detail) }
+              ? { detail: truncateDetail(event.payload.detail, MAX_ACTIVITY_DATA_STRING_CHARS) }
               : {}),
             ...(permissionProfile ? { permissionProfile } : {}),
             ...toolCallPresentation,
@@ -409,7 +409,9 @@ export function projectProviderRuntimeActivities(
           payload: toActivityPayload({
             taskId: event.payload.taskId,
             status: event.payload.status,
-            ...(event.payload.summary ? { detail: truncateDetail(event.payload.summary) } : {}),
+            ...(event.payload.summary
+              ? { detail: truncateDetail(event.payload.summary, MAX_ACTIVITY_DATA_STRING_CHARS) }
+              : {}),
             ...(event.payload.usage !== undefined ? { usage: event.payload.usage } : {}),
             ...(event.payload.workflowTaskId
               ? { workflowTaskId: event.payload.workflowTaskId }
@@ -446,7 +448,9 @@ export function projectProviderRuntimeActivities(
               ? { isBackgrounded: event.payload.isBackgrounded }
               : {}),
             ...(event.payload.toolUseId ? { toolUseId: event.payload.toolUseId } : {}),
-            ...(event.payload.error ? { detail: truncateDetail(event.payload.error) } : {}),
+            ...(event.payload.error
+              ? { detail: truncateDetail(event.payload.error, MAX_ACTIVITY_DATA_STRING_CHARS) }
+              : {}),
             ...(event.payload.workflowTaskId
               ? { workflowTaskId: event.payload.workflowTaskId }
               : {}),

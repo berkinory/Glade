@@ -1,5 +1,7 @@
 # TODO
 
+- **G3 implemented:** Retained bounded approval, tool-progress and background-task completion/failure details; constrained transcript and Environment horizontal overflow. Activity security coverage and long-payload verification passed; server/web typechecks passed. Full suite: 2,528 passed, 9 skipped, five server suites blocked by concurrent settlement contract edits. Full check was blocked by unrelated dependency/formatting changes. Live scrolling, floating/docked panels and reduced motion remain unverified because concurrent Dev launches replaced the isolated window.
+
 - **S17 implemented:** Added scoped, transient CLI sign-in sessions, retained successful contextual model catalogs on refresh failure and optional sidebar quota windows. Full check and test suite passed; both configured provider commands exercised with isolated real PTYs. Official account sign-in and Windows execution remain unverified.
 
 - **S11 implemented:** Added draft membership and local draft rows, open-chat reveal, profile-scoped Activity filters and bounded read watermarks, safe nested favicon discovery and unclipped resize rails. Full check and full suite passed (2,545 passing, 9 skipped); final web changes passed all 439 web tests. Isolated Dev verified local draft visibility, Settings/reload filter retention and unclipped handles. File-boundary and persistence fixtures passed; exhaustive platform/theme and closed-app live-provider scenarios remain unverified.

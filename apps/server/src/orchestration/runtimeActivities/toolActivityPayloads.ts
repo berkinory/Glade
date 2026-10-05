@@ -8,6 +8,7 @@ import {
 import { asString } from "@glade/shared/text/text";
 import {
   ActivityPayload,
+  MAX_ACTIVITY_DATA_STRING_CHARS,
   toActivityPayload,
   truncateDetail,
   boundActivityData,
@@ -17,18 +18,21 @@ import {
 export function buildToolProgressActivityPayload(
   event: Extract<ProviderRuntimeEvent, { type: "tool.progress" }>,
 ): ActivityPayload {
+  const summary = event.payload.summary
+    ? truncateDetail(event.payload.summary, MAX_ACTIVITY_DATA_STRING_CHARS)
+    : undefined;
   return toActivityPayload({
     itemType: "mcp_tool_call" as const,
     title: "MCP tool call",
-    ...(event.payload.summary ? { detail: truncateDetail(event.payload.summary) } : {}),
-    data: {
+    ...(summary ? { detail: summary } : {}),
+    data: boundActivityData({
       ...(event.payload.toolUseId ? { toolUseId: event.payload.toolUseId } : {}),
       ...(event.payload.toolName ? { toolName: event.payload.toolName } : {}),
-      ...(event.payload.summary ? { summary: event.payload.summary } : {}),
+      ...(summary ? { summary } : {}),
       ...(event.payload.elapsedSeconds !== undefined
         ? { elapsedSeconds: event.payload.elapsedSeconds }
         : {}),
-    },
+    }),
   });
 }
 

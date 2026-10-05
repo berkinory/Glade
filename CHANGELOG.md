@@ -29,6 +29,8 @@
 
 ### Improved
 
+- Approval, tool progress and background-task details retain more useful explanations and error context.
+
 - Provider transitions show transferred context and preserve drafts until the destination accepts the message.
 - Editing or reverting long Codex conversations avoids downloading unrelated history.
 
@@ -100,6 +102,8 @@
 - Models load faster on first use, with a balanced initial reasoning effort when you have not chosen one.
 
 ### Fixed
+
+- Wide code blocks and closing side panels no longer introduce unwanted horizontal scrolling in conversations.
 
 - Keyboard shortcuts follow your keyboard layout consistently.
 - Desktop menu shortcuts follow custom bindings and respect focused controls.
