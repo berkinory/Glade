@@ -101,6 +101,8 @@ import {
 } from "../../attachments/managedAttachmentPrincipal";
 import { Open, resolveAvailableEditors } from "../../workspace/editor/open";
 import {
+  OrchestrationCommandIdentityCollisionError,
+  OrchestrationCommandAdmissionError,
   OrchestrationCommandInvariantError,
   OrchestrationCommandPreviouslyRejectedError,
 } from "../../orchestration/Errors";
@@ -307,6 +309,19 @@ function toWsRpcError(cause: unknown, fallbackMessage: string) {
     });
   }
 
+  if (
+    Schema.is(OrchestrationCommandIdentityCollisionError)(cause) ||
+    Schema.is(OrchestrationCommandAdmissionError)(cause)
+  ) {
+    return new WsRpcError({
+      message: cause.message,
+      code: Schema.is(OrchestrationCommandIdentityCollisionError)(cause)
+        ? "ORCHESTRATION_COMMAND_IDENTITY_COLLISION"
+        : "ORCHESTRATION_COMMAND_ADMISSION_REJECTED",
+      retryable: false,
+      cause,
+    });
+  }
   if (Schema.is(ProjectionStateIncompleteError)(cause)) {
     return new WsRpcError({
       message: cause.message,
@@ -844,6 +859,27 @@ const makeWsRpcHandlersLayer = () =>
           rpcEffect(
             handoffPreparation.prepare(input).pipe(Effect.asVoid),
             "Failed to prepare handoff context",
+          ),
+        [ORCHESTRATION_WS_METHODS.settleTurnDispatch]: ({ command }) =>
+          rpcEffect(
+            Effect.gen(function* () {
+              const { command: normalizedCommand } = yield* normalizeDispatchCommand({ command });
+              const attachmentPrincipal = yield* CurrentManagedAttachmentPrincipal;
+              return yield* runtimeStartup
+                .enqueueCommand(
+                  orchestrationEngine.dispatch(normalizedCommand, {
+                    attachmentPrincipal,
+                    settleOnly: true,
+                  }),
+                )
+                .pipe(
+                  Effect.map(({ sequence }) => ({ status: "accepted" as const, sequence })),
+                  Effect.catchTag("OrchestrationCommandPreviouslyRejectedError", (error) =>
+                    Effect.succeed({ status: "rejected" as const, message: error.detail }),
+                  ),
+                );
+            }),
+            "Failed to resolve message delivery",
           ),
         [ORCHESTRATION_WS_METHODS.dispatchCommand]: (command) =>
           rpcEffect(

@@ -1,6 +1,6 @@
 import { revokeUserMessagePreviewUrls } from "../ChatView.logic.worktree";
 import { useComposerDraftStore } from "../../composerDraftStore";
-import { WsTransportRpcError } from "../../wsTransport.support";
+import { isTurnDispatchOutcomeUnknown } from "../../wsTurnDispatch";
 import { resolveProviderModelSelection } from "~/lib/providerModelSelection";
 import { useChatThreadContext } from "./ChatThreadContext";
 import type { ProjectId } from "@glade/contracts/core/baseSchemas";
@@ -27,7 +27,7 @@ import {
   stageUploadComposerAttachments,
 } from "../../lib/composerSend";
 import { queuedComposerDrain } from "../../lib/queuedComposerDrain";
-import { clearPendingTurnDispatch } from "../../pendingTurnDispatch";
+import { clearPendingTurnDispatch, usePendingTurnDispatchStore } from "../../pendingTurnDispatch";
 import { type Thread } from "../../types";
 import {
   WorktreeSetupCancelledError,
@@ -227,6 +227,7 @@ export function useChatTurnExecution({
         activeThread.handoff.stage !== "cancelled",
       );
       let turnStartSucceeded = false;
+      let appCommandAccepted = false;
       let turnDispatchAttempted = false;
       let settledLocalBranchUpdatedForSend = false;
       await (async () => {
@@ -482,6 +483,7 @@ export function useChatTurnExecution({
 
           createdAt: messageCreatedAt,
         });
+        appCommandAccepted = true;
         stagedTurnAttachments.commit();
         const operationId = activeThread.handoff?.operationId;
         if (
@@ -543,13 +545,14 @@ export function useChatTurnExecution({
         }
       })().catch(async (err: unknown) => {
         const setupCancelled = err instanceof WorktreeSetupCancelledError;
-        if (turnDispatchAttempted && !(err instanceof WsTransportRpcError)) {
+        if (turnDispatchAttempted && (appCommandAccepted || isTurnDispatchOutcomeUnknown(err))) {
           setThreadError(
             threadIdForSend,
-            "Message delivery could not be confirmed. Reconnect and check this chat before sending again.",
+            err instanceof Error
+              ? err.message
+              : "Message delivery could not be confirmed. Check this chat before sending again.",
           );
           clearLocalDispatchWorktreeSetup();
-          armLocalDispatchAckFallback(threadIdForSend);
           return;
         }
 
@@ -638,11 +641,12 @@ export function useChatTurnExecution({
           const draftStore = useComposerDraftStore.getState();
           const current = draftStore.draftsByThreadId[threadIdForSend];
           if (!current?.prompt) draftStore.setPrompt(threadIdForSend, promptForSend);
-          else if (current.prompt !== promptForSend)
-            draftStore.setPrompt(threadIdForSend, `${promptForSend}\n\n${current.prompt}`);
+
           draftStore.addImages(
             threadIdForSend,
-            composerImagesSnapshot.map(cloneComposerImageAttachment),
+            composerImagesSnapshot
+              .filter((image) => !current?.images.some((item) => item.id === image.id))
+              .map(cloneComposerImageAttachment),
           );
           draftStore.addFiles(threadIdForSend, composerFilesSnapshot);
           for (const selection of composerAssistantSelectionsSnapshot)
@@ -651,7 +655,9 @@ export function useChatTurnExecution({
           for (const comment of composerFileCommentsSnapshot)
             draftStore.addFileComment(threadIdForSend, comment);
           draftStore.setTerminalContexts(threadIdForSend, [
-            ...composerTerminalContextsSnapshot,
+            ...composerTerminalContextsSnapshot.filter(
+              (context) => !current?.terminalContexts.some((item) => item.id === context.id),
+            ),
             ...(current?.terminalContexts ?? []),
           ]);
           draftStore.addPastedTexts(threadIdForSend, composerPastedTextsSnapshot);
@@ -667,7 +673,17 @@ export function useChatTurnExecution({
           );
           setOptimisticUserMessages((existing) => {
             for (const message of existing) {
-              if (message.id === messageIdForSend) revokeUserMessagePreviewUrls(message);
+              if (message.id === messageIdForSend && message.attachments)
+                revokeUserMessagePreviewUrls({
+                  ...message,
+                  attachments: message.attachments.filter(
+                    (attachment) =>
+                      attachment.type !== "image" ||
+                      !draftStore.draftsByThreadId[threadIdForSend]?.images.some(
+                        (image) => image.previewUrl === attachment.previewUrl,
+                      ),
+                  ),
+                });
             }
             return existing.filter((message) => message.id !== messageIdForSend);
           });
@@ -681,7 +697,10 @@ export function useChatTurnExecution({
       });
       sendInFlightRef.current = false;
       setWorktreeSetupResolution(threadIdForSend, null);
-      if (!turnStartSucceeded) {
+      if (
+        !turnStartSucceeded &&
+        !usePendingTurnDispatchStore.getState().deliveryByThreadId[threadIdForSend]
+      ) {
         if (baseBranchForWorktree && (worktreeSetupResolution?.action ?? null) === null) {
           scheduleFailedWorktreeSetupDispatchReset();
         } else {

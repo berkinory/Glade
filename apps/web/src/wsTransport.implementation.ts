@@ -348,6 +348,7 @@ export class WsTransport extends WsTransportBase {
     const cancel = this.getClientRuntime(client).runCallback(
       Stream.runForEach(runnableStream, (event) =>
         Effect.sync(() => {
+          if (this.disposed || this.sessionVersion !== streamSessionVersion) return;
           if (this.streamCapacityRetries.has(key)) {
             this.streamCapacityRetries.delete(key);
           }
@@ -375,7 +376,11 @@ export class WsTransport extends WsTransportBase {
             this.activeThreadStreamInputs.delete(key);
           }
           if (!wasReplacedOrStopped && key === "terminal.events") this.terminalOutputReady = false;
-          if (wasReplacedOrStopped || this.disposed) {
+          if (
+            wasReplacedOrStopped ||
+            this.disposed ||
+            this.sessionVersion !== streamSessionVersion
+          ) {
             return;
           }
           if (Exit.isSuccess(exit) && restart) {
@@ -423,7 +428,11 @@ export class WsTransport extends WsTransportBase {
                 () => {
                   if (this.streamCapacityRetryTimers.get(key) !== timeoutId) return;
                   this.streamCapacityRetryTimers.delete(key);
-                  if (!this.disposed && !this.streamCleanups.has(key)) {
+                  if (
+                    !this.disposed &&
+                    this.sessionVersion === streamSessionVersion &&
+                    !this.streamCleanups.has(key)
+                  ) {
                     restart();
                   }
                 },
@@ -450,7 +459,11 @@ export class WsTransport extends WsTransportBase {
               const timeoutId = window.setTimeout(() => {
                 if (this.streamCapacityRetryTimers.get(key) !== timeoutId) return;
                 this.streamCapacityRetryTimers.delete(key);
-                if (!this.disposed && !this.streamCleanups.has(key)) {
+                if (
+                  !this.disposed &&
+                  this.sessionVersion === streamSessionVersion &&
+                  !this.streamCleanups.has(key)
+                ) {
                   restart();
                 }
               }, fileWatchRetryDelayMs);
@@ -461,7 +474,11 @@ export class WsTransport extends WsTransportBase {
           if (restart && Exit.isFailure(exit) && shouldReconnectAfterStreamFailure(exit.cause)) {
             window.setTimeout(
               () => {
-                if (!this.disposed && !this.streamCleanups.has(key)) {
+                if (
+                  !this.disposed &&
+                  this.sessionVersion === streamSessionVersion &&
+                  !this.streamCleanups.has(key)
+                ) {
                   void this.reconnect()
                     .then(() => restart())
                     .catch((error) => {
@@ -492,7 +509,11 @@ export class WsTransport extends WsTransportBase {
               const timeoutId = window.setTimeout(() => {
                 if (this.streamCapacityRetryTimers.get(key) !== timeoutId) return;
                 this.streamCapacityRetryTimers.delete(key);
-                if (!this.disposed && !this.streamCleanups.has(key)) {
+                if (
+                  !this.disposed &&
+                  this.sessionVersion === streamSessionVersion &&
+                  !this.streamCleanups.has(key)
+                ) {
                   restart();
                 }
               }, SNAPSHOT_FAULT_RETRY_MS);

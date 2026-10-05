@@ -26,6 +26,8 @@ layer("OrchestrationCommandReceiptRepository", (it) => {
         resultSequence: 41,
         status: "accepted" as const,
         error: null,
+        ownerKind: "session" as const,
+        ownerId: "receipt-owner",
         fingerprintVersion: 1,
         commandFingerprint: "a".repeat(64),
       };
@@ -42,6 +44,8 @@ layer("OrchestrationCommandReceiptRepository", (it) => {
       const stored = yield* repository.getByCommandId({ commandId: receipt.commandId });
       assert.isTrue(Option.isSome(stored));
       assert.strictEqual(Option.getOrThrow(stored).resultSequence, 41);
+      assert.strictEqual(Option.getOrThrow(stored).ownerKind, "session");
+      assert.strictEqual(Option.getOrThrow(stored).ownerId, "receipt-owner");
       assert.strictEqual(Option.getOrThrow(stored).commandFingerprint, "a".repeat(64));
     }),
   );

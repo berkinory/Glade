@@ -1,10 +1,15 @@
+import { isTurnDispatchOutcomeUnknown } from "../wsTurnDispatch";
 import type { AssistantDeliveryMode } from "@glade/contracts/provider/sessionPolicy";
 import type { MessageId, ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import { persistModelSelectionBeforeRuntimeMode } from "../components/ChatView.logic.session";
 import type { QueuedComposerTurn } from "../composerDraftDomain";
 import { readNativeApi } from "../nativeApi";
-import { clearPendingTurnDispatch, markPendingTurnDispatch } from "../pendingTurnDispatch";
+import {
+  clearPendingTurnDispatch,
+  markPendingTurnDispatch,
+  usePendingTurnDispatchStore,
+} from "../pendingTurnDispatch";
 
 import { useStore } from "../store";
 import { getThreadFromState } from "../threadDerivation";
@@ -76,6 +81,8 @@ export async function dispatchQueuedComposerTurnHeadless(input: {
     outgoingMessageText,
     queuedTurn.mentions,
   );
+  const pendingDispatch = usePendingTurnDispatchStore.getState();
+  if (!pendingDispatch.beginSubmission(input.threadId)) return false;
   const turnAttachmentsPromise = stageUploadComposerAttachments({
     threadId: input.threadId,
     images: queuedTurn.images,
@@ -117,13 +124,24 @@ export async function dispatchQueuedComposerTurnHeadless(input: {
       }),
     );
     return true;
-  } catch {
+  } catch (error) {
+    if (isTurnDispatchOutcomeUnknown(error)) {
+      useStore
+        .getState()
+        .setError(
+          input.threadId,
+          error instanceof Error ? error.message : "Queued message delivery is uncertain.",
+        );
+      return false;
+    }
     await turnAttachmentsPromise.then(
       (staged) => staged.cleanup(),
       () => undefined,
     );
     clearPendingTurnDispatch(input.threadId);
     return false;
+  } finally {
+    pendingDispatch.endSubmission(input.threadId);
   }
 }
 

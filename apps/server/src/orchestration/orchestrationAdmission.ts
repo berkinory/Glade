@@ -74,6 +74,7 @@ export function tryAdmitOrchestrationCommand<A>(input: {
   readonly queues: OrchestrationCommandQueues<A>;
   readonly envelope: A;
   readonly commandType: OrchestrationCommand["type"];
+  readonly settleOnly?: boolean;
   readonly policy?: OrchestrationCommandAdmissionPolicy;
 }): OrchestrationCommandAdmissionDecision {
   const policy = input.policy ?? {
@@ -100,7 +101,7 @@ export function tryAdmitOrchestrationCommand<A>(input: {
     return { accepted: false, reason: "stopped" };
   }
 
-  const lane = orchestrationCommandLane(input.commandType);
+  const lane = input.settleOnly ? "control" : orchestrationCommandLane(input.commandType);
 
   const admissionLimit =
     lane === "control" ? policy.capacity : policy.capacity - policy.reservedCapacity;

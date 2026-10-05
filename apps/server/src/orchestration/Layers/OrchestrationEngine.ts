@@ -91,6 +91,7 @@ type OrchestrationEnginePhase = "running" | "quiescing" | "draining" | "stopped"
 
 interface CommandEnvelope {
   command: OrchestrationCommand;
+  settleOnly: boolean;
   attachmentPrincipal: ManagedAttachmentPrincipal;
   result: Deferred.Deferred<{ sequence: number }, OrchestrationDispatchError>;
   executionState: Ref.Ref<CommandExecutionState>;
@@ -255,6 +256,26 @@ const makeOrchestrationEngine = Effect.gen(function* () {
     );
   };
 
+  const validateReceiptOwner = (
+    receipt: OrchestrationCommandReceipt,
+    principal: ManagedAttachmentPrincipal,
+    settleOnly: boolean,
+  ) => {
+    // Legacy receipts have no caller evidence. They retain normal retry semantics,
+    // but cannot authorize settlement from a new authenticated connection.
+    if (
+      (!receipt.ownerKind && !settleOnly) ||
+      (receipt.ownerKind === principal.ownerKind && receipt.ownerId === principal.ownerId)
+    )
+      return Effect.void;
+    return Effect.fail(
+      new OrchestrationCommandIdentityCollisionError({
+        commandId: receipt.commandId,
+        detail: "The command receipt is not owned by this authenticated session.",
+      }),
+    );
+  };
+
   const validateAcceptedAttachmentRetry = (
     command: OrchestrationCommand,
     principal: ManagedAttachmentPrincipal,
@@ -294,6 +315,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
   const resolveStoredCommandOutcome = (
     command: OrchestrationCommand,
     principal: ManagedAttachmentPrincipal,
+    settleOnly: boolean,
   ): Effect.Effect<{ sequence: number }, OrchestrationDispatchError, never> =>
     Effect.gen(function* () {
       const receiptExit = yield* Effect.exit(
@@ -306,9 +328,10 @@ const makeOrchestrationEngine = Effect.gen(function* () {
         return yield* makeCommandTimeoutError(command);
       }
       const fingerprint = fingerprintOrchestrationCommand(command);
+      yield* validateReceiptOwner(existingReceipt.value, principal, settleOnly);
       yield* validateCommandReceiptIdentity(existingReceipt.value, fingerprint);
       if (existingReceipt.value.status === "accepted") {
-        yield* validateAcceptedAttachmentRetry(command, principal);
+        if (!settleOnly) yield* validateAcceptedAttachmentRetry(command, principal);
         return {
           sequence: existingReceipt.value.resultSequence,
         };
@@ -732,14 +755,23 @@ const makeOrchestrationEngine = Effect.gen(function* () {
       });
       if (Option.isSome(existingReceipt)) {
         const identityResult = yield* Effect.result(
-          validateCommandReceiptIdentity(existingReceipt.value, commandFingerprint),
+          validateReceiptOwner(
+            existingReceipt.value,
+            envelope.attachmentPrincipal,
+            envelope.settleOnly,
+          ).pipe(
+            Effect.andThen(
+              validateCommandReceiptIdentity(existingReceipt.value, commandFingerprint),
+            ),
+          ),
         );
         if (identityResult._tag === "Failure") {
           yield* Deferred.fail(envelope.result, identityResult.failure);
           return;
         }
         if (existingReceipt.value.status === "accepted") {
-          yield* validateAcceptedAttachmentRetry(envelope.command, envelope.attachmentPrincipal);
+          if (!envelope.settleOnly)
+            yield* validateAcceptedAttachmentRetry(envelope.command, envelope.attachmentPrincipal);
           yield* Deferred.succeed(envelope.result, {
             sequence: existingReceipt.value.resultSequence,
           });
@@ -750,6 +782,56 @@ const makeOrchestrationEngine = Effect.gen(function* () {
           new OrchestrationCommandPreviouslyRejectedError({
             commandId: envelope.command.commandId,
             detail: existingReceipt.value.error ?? "Previously rejected.",
+          }),
+        );
+        return;
+      }
+
+      if (envelope.settleOnly) {
+        if (envelope.command.type !== "thread.turn.start")
+          return yield* makeCommandInternalError(
+            envelope.command,
+            "Only turn starts can be settled.",
+          );
+        const command = envelope.command;
+        // A rejection must not let a different principal fence someone else's staged uploads.
+        for (const attachment of command.message.attachments) {
+          if (attachment.type === "assistant-selection") continue;
+          const owned = yield* managedAttachments.findServerOwned({
+            attachmentId: attachment.id,
+            ownerThreadId: command.threadId,
+            ownerKind: envelope.attachmentPrincipal.ownerKind,
+            ownerId: envelope.attachmentPrincipal.ownerId,
+            now: new Date().toISOString(),
+          });
+          if (Option.isNone(owned))
+            return yield* new OrchestrationCommandIdentityCollisionError({
+              commandId: command.commandId,
+              detail: "Cannot settle a command with unavailable or unowned uploads.",
+            });
+        }
+        const detail = "The interrupted message was not accepted. You can send it again.";
+        // The same worker serializes dispatch and settlement. This tombstone also
+        // fences original requests still preparing outside the engine.
+        const inserted = yield* commandReceiptRepository.insert({
+          commandId: command.commandId,
+          ...commandToAggregateRef(command),
+          acceptedAt: new Date().toISOString(),
+          resultSequence: commandReadModel.snapshotSequence,
+          status: "rejected",
+          error: detail,
+          fingerprintVersion: commandFingerprint.version,
+          commandFingerprint: commandFingerprint.value,
+          ownerKind: envelope.attachmentPrincipal.ownerKind,
+          ownerId: envelope.attachmentPrincipal.ownerId,
+        });
+        if (!inserted)
+          return yield* makeCommandInternalError(command, "Failed to settle message delivery.");
+        yield* Deferred.fail(
+          envelope.result,
+          new OrchestrationCommandPreviouslyRejectedError({
+            commandId: command.commandId,
+            detail,
           }),
         );
         return;
@@ -898,6 +980,8 @@ const makeOrchestrationEngine = Effect.gen(function* () {
           error: null,
           fingerprintVersion: commandFingerprint.version,
           commandFingerprint: commandFingerprint.value,
+          ownerKind: envelope.attachmentPrincipal.ownerKind,
+          ownerId: envelope.attachmentPrincipal.ownerId,
         });
         if (!receiptInserted) {
           return yield* new OrchestrationCommandIdentityCollisionError({
@@ -1027,6 +1111,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
             const resolvedTimeoutOutcome = yield* resolveStoredCommandOutcome(
               envelope.command,
               envelope.attachmentPrincipal,
+              envelope.settleOnly,
             ).pipe(
               Effect.match({
                 onFailure: (resolvedError) => ({ _tag: "Left" as const, left: resolvedError }),
@@ -1053,6 +1138,8 @@ const makeOrchestrationEngine = Effect.gen(function* () {
                 error: error.message,
                 fingerprintVersion: commandFingerprint.version,
                 commandFingerprint: commandFingerprint.value,
+                ownerKind: envelope.attachmentPrincipal.ownerKind,
+                ownerId: envelope.attachmentPrincipal.ownerId,
               })
               .pipe(Effect.catch(() => Effect.void));
           }
@@ -1088,6 +1175,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
           const resolvedCrashOutcome = yield* resolveStoredCommandOutcome(
             envelope.command,
             envelope.attachmentPrincipal,
+            envelope.settleOnly,
           ).pipe(
             Effect.match({
               onFailure: (resolvedError) => ({ _tag: "Left" as const, left: resolvedError }),
@@ -1314,6 +1402,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
       const executionState = yield* Ref.make<CommandExecutionState>("queued");
       const envelope: CommandEnvelope = {
         command,
+        settleOnly: context?.settleOnly === true,
         attachmentPrincipal: context?.attachmentPrincipal ?? LOCAL_LOOPBACK_ATTACHMENT_PRINCIPAL,
         result,
         executionState,
@@ -1326,7 +1415,9 @@ const makeOrchestrationEngine = Effect.gen(function* () {
           if (
             current.phase === "draining" ||
             current.phase === "stopped" ||
-            (current.phase === "quiescing" && !isQuiescingCommandAdmissible(command.type))
+            (current.phase === "quiescing" &&
+              !envelope.settleOnly &&
+              !isQuiescingCommandAdmissible(command.type))
           ) {
             return [{ accepted: false, reason: "stopped" as const }, current] as const;
           }
@@ -1334,6 +1425,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
             queues: commandQueues,
             envelope,
             commandType: command.type,
+            settleOnly: envelope.settleOnly,
           });
           if (!decision.accepted) {
             return [decision, current] as const;

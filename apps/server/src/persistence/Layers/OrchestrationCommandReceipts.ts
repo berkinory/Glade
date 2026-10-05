@@ -29,7 +29,9 @@ const makeOrchestrationCommandReceiptRepository = Effect.gen(function* () {
           status,
           error,
           fingerprint_version,
-          command_fingerprint
+          command_fingerprint,
+          owner_kind,
+          owner_id
         )
         VALUES (
           ${receipt.commandId},
@@ -40,7 +42,9 @@ const makeOrchestrationCommandReceiptRepository = Effect.gen(function* () {
           ${receipt.status},
           ${receipt.error},
           ${receipt.fingerprintVersion},
-          ${receipt.commandFingerprint}
+          ${receipt.commandFingerprint},
+          ${receipt.ownerKind},
+          ${receipt.ownerId}
         )
         ON CONFLICT (command_id)
         DO NOTHING
@@ -62,7 +66,9 @@ const makeOrchestrationCommandReceiptRepository = Effect.gen(function* () {
           status,
           error,
           fingerprint_version AS "fingerprintVersion",
-          command_fingerprint AS "commandFingerprint"
+          command_fingerprint AS "commandFingerprint",
+          owner_kind AS "ownerKind",
+          owner_id AS "ownerId"
         FROM orchestration_command_receipts
         WHERE command_id = ${commandId}
       `,

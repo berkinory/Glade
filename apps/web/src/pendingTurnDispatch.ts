@@ -1,3 +1,4 @@
+import type { ClientOrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { create } from "zustand";
 import {
@@ -9,6 +10,20 @@ import {
 import type { WorktreeSetupResolutionAction } from "./types";
 
 interface PendingTurnDispatchState {
+  deliveryByThreadId: Partial<
+    Record<
+      ThreadId,
+      {
+        status: "recovering" | "uncertain";
+        command: Extract<ClientOrchestrationCommand, { type: "thread.turn.start" }>;
+      }
+    >
+  >;
+  setDelivery: (
+    threadId: ThreadId,
+    delivery: "recovering" | "uncertain" | null,
+    command?: Extract<ClientOrchestrationCommand, { type: "thread.turn.start" }>,
+  ) => void;
   submittingThreadIds: ReadonlySet<ThreadId>;
   preparationActions: Partial<Record<ThreadId, WorktreeSetupResolutionAction>>;
   beginSubmission: (threadId: ThreadId) => boolean;
@@ -35,10 +50,18 @@ const expiryByThreadId = new Map<ThreadId, ReturnType<typeof setTimeout>>();
 // lives here; the server projection remains the owner once a turn starts or fails.
 export const usePendingTurnDispatchStore = create<PendingTurnDispatchState>((set, get) => ({
   localDispatchByThreadId: {},
+  deliveryByThreadId: {},
+  setDelivery: (threadId, delivery, command) =>
+    set((state) => {
+      const deliveryByThreadId = { ...state.deliveryByThreadId };
+      if (delivery === null) delete deliveryByThreadId[threadId];
+      else if (command) deliveryByThreadId[threadId] = { status: delivery, command };
+      return { deliveryByThreadId };
+    }),
   submittingThreadIds: new Set(),
   preparationActions: {},
   beginSubmission: (threadId) => {
-    if (get().submittingThreadIds.has(threadId)) return false;
+    if (get().submittingThreadIds.has(threadId) || get().deliveryByThreadId[threadId]) return false;
     set({ submittingThreadIds: new Set([...get().submittingThreadIds, threadId]) });
     return true;
   },
@@ -81,7 +104,9 @@ export const usePendingTurnDispatchStore = create<PendingTurnDispatchState>((set
       expiryByThreadId.set(
         threadId,
         setTimeout(() => {
-          get().setLocalDispatch(threadId, (value) => (value === next ? null : value));
+          get().setLocalDispatch(threadId, (value) =>
+            value === next && !get().deliveryByThreadId[threadId] ? null : value,
+          );
         }, remainingMs),
       );
     }

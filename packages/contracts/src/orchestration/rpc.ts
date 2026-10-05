@@ -15,13 +15,14 @@ import {
 } from "./snapshots";
 import { TurnCountRange, ThreadTurnDiff } from "./threadEntities";
 import { OrchestrationEvent } from "./events";
-import { ClientOrchestrationCommand } from "./commands";
+import { ClientOrchestrationCommand, ClientThreadTurnStartCommand } from "./commands";
 
 export const ORCHESTRATION_WS_METHODS = {
   getSnapshot: "orchestration.getSnapshot",
   getShellSnapshot: "orchestration.getShellSnapshot",
   getThreadDetailSnapshot: "orchestration.getThreadDetailSnapshot",
   dispatchCommand: "orchestration.dispatchCommand",
+  settleTurnDispatch: "orchestration.settleTurnDispatch",
   prepareHandoff: "orchestration.prepareHandoff",
   repairState: "orchestration.repairState",
   getTurnDiff: "orchestration.getTurnDiff",
@@ -52,6 +53,16 @@ export const DispatchResult = Schema.Struct({
 });
 
 export type DispatchResult = typeof DispatchResult.Type;
+
+export const OrchestrationSettleTurnDispatchInput = Schema.Struct({
+  command: ClientThreadTurnStartCommand,
+});
+export const OrchestrationSettleTurnDispatchResult = Schema.Union([
+  Schema.Struct({ status: Schema.Literal("accepted"), sequence: NonNegativeInt }),
+  Schema.Struct({ status: Schema.Literal("rejected"), message: Schema.String }),
+]);
+export type OrchestrationSettleTurnDispatchResult =
+  typeof OrchestrationSettleTurnDispatchResult.Type;
 
 export const OrchestrationGetSnapshotInput = Schema.Struct({});
 
@@ -255,6 +266,10 @@ export const OrchestrationRpcSchemas = {
   repairState: {
     input: OrchestrationRepairStateInput,
     output: OrchestrationRepairStateResult,
+  },
+  settleTurnDispatch: {
+    input: OrchestrationSettleTurnDispatchInput,
+    output: OrchestrationSettleTurnDispatchResult,
   },
   dispatchCommand: {
     input: ClientOrchestrationCommand,

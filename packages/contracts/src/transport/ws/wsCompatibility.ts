@@ -32,10 +32,12 @@ export const WS_NEGOTIATE_QUERY = {
 } as const;
 
 export const WS_GITHUB_PROJECT_PROVISIONING_CAPABILITY = "projects.github-provisioning";
+export const WS_TURN_DISPATCH_SETTLEMENT_CAPABILITY = "orchestration.turn-dispatch-settlement";
 export const WS_PROJECT_FILE_WATCH_CAPABILITY = "projects.file-watch";
 
 export const WS_CLIENT_REQUIRED_CAPABILITIES = [
   "orchestration.cursor-safe-streams",
+  WS_TURN_DISPATCH_SETTLEMENT_CAPABILITY,
   "orchestration.thread-detail-snapshot",
   "rpc.typed-errors",
 

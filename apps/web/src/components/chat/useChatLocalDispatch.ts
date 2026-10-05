@@ -103,7 +103,10 @@ export function useChatLocalDispatch({
   const isSubmitting = usePendingTurnDispatchStore((state) =>
     state.submittingThreadIds.has(threadId),
   );
-  const isSendBusy = (isSubmitting || localDispatch !== null) && !serverAcknowledgedLocalDispatch;
+  const delivery = usePendingTurnDispatchStore((state) => state.deliveryByThreadId[threadId]);
+  const isSendBusy =
+    delivery !== undefined ||
+    ((isSubmitting || localDispatch !== null) && !serverAcknowledgedLocalDispatch);
   const isAwaitingTurnStart = localDispatch !== null && !turnTakenOver;
   const activeWorktreeSetup = localDispatch?.worktreeSetup ?? null;
   const isPreparingWorktree = activeWorktreeSetup !== null;
@@ -219,7 +222,7 @@ export function useChatLocalDispatch({
 
   const localDispatchWorktreeSetupFailed = worktreeSetupHasError(activeWorktreeSetup);
   useEffect(() => {
-    if (!turnTakenOver) {
+    if (!turnTakenOver || delivery) {
       return;
     }
     // A failed worktree setup would otherwise reset in the same commit that painted the error (thread
@@ -246,6 +249,7 @@ export function useChatLocalDispatch({
     }
     resetLocalDispatch();
   }, [
+    delivery,
     localDispatch?.startedAt,
     localDispatchWorktreeSetupFailed,
     resetLocalDispatch,
@@ -255,6 +259,7 @@ export function useChatLocalDispatch({
 
   return {
     localDispatch,
+    dispatchDeliveryState: delivery?.status,
     setWorktreeSetupResolution,
     worktreeSetupPendingAction,
     turnTakenOver,

@@ -12,6 +12,7 @@ import type {
 import type { ManagedAttachmentPrincipal } from "../../attachments/managedAttachmentPrincipal.ts";
 
 interface OrchestrationDispatchContext {
+  readonly settleOnly?: boolean;
   readonly attachmentPrincipal?: ManagedAttachmentPrincipal;
 }
 

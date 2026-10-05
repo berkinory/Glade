@@ -1,5 +1,7 @@
 # TODO
 
+- **G1 complete:** Rebuilt scoped connections after protocol failures, added authenticated serialized turn settlement with durable caller-bound receipts, and retained drafts/uploads while delivery is unknown. Full check and suite passed (2,579 passed, 9 skipped); migration lineage verified through migration 5. Isolated Dev startup/hydration verified. Live provider transition, interactive recovery across navigation and real network interruption remain unverified.
+
 - **G3 implemented:** Retained bounded approval, tool-progress and background-task completion/failure details; constrained transcript and Environment horizontal overflow. Activity security coverage and long-payload verification passed; server/web typechecks passed. Full suite: 2,528 passed, 9 skipped, five server suites blocked by concurrent settlement contract edits. Full check was blocked by unrelated dependency/formatting changes. Live scrolling, floating/docked panels and reduced motion remain unverified because concurrent Dev launches replaced the isolated window.
 
 - **S17 implemented:** Added scoped, transient CLI sign-in sessions, retained successful contextual model catalogs on refresh failure and optional sidebar quota windows. Full check and test suite passed; both configured provider commands exercised with isolated real PTYs. Official account sign-in and Windows execution remain unverified.
@@ -41,6 +43,71 @@
 - Add a changelog entry only when the task gives one, using that text under the target version above in CHANGELOG.md (create `## <version> - Unreleased` if it is missing). If the task has no changelog line, do not add one.
 
 ## Tasks
+
+## G1: Connection recovery and definite message dispatch outcomes
+
+- [x] Implement approved candidates **11, 13 and 14** together.
+  - **References:**
+    - HTTP fallback: `f8183e1eb711ff6d4206469ad8224d0df46bcb40`.
+    - Protocol recovery and dispatch settlement:
+      `1787a8e241acd4a27e85f45e233d523b4502f3e1`.
+  - **Glade ownership:** Start with `apps/web/src/wsTransport.support.ts`,
+    `wsTransport.base.ts`, `wsTransport.implementation.ts`, `wsNativeApi.ts`,
+    `pendingTurnDispatch.ts` and the existing composer dispatch path. Durable
+    receipts and command serialization remain in the server orchestration engine;
+    cross-process shapes and negotiated capabilities belong in contracts.
+  - **HTTP fallback:** Decide from status before parsing bodies that cannot be
+    useful. Cancel/discard those bodies and enter the existing fallback promptly.
+    Keep the current negotiation lifetime/deadline and typed 426 incompatibility
+    handling. Voice upload should enter its existing RPC fallback on 404/405
+    without waiting for the response body. Preserve authentication and meaningful
+    errors; do not retry an ambiguously accepted voice request through another path.
+  - **Protocol recovery first:** Route recoverable RPC protocol failures through
+    the existing reconnect owner. Invalidate old-session callbacks and retry timers
+    immediately, close the old scoped resources before installing their replacement,
+    and restore subscriptions consistently. Preserve the existing initial liveness
+    probe, terminal-output readiness barrier, snapshot/resume semantics and server
+    generation checks. Disposal must cancel reconnect work; permanent incompatibility
+    or authentication failures must remain visible instead of looping forever.
+  - **Dispatch settlement:** Keep the original command identity and fingerprint
+    through connection loss or timeout. Use the existing durable receipt mechanism
+    to settle its outcome without starting another turn. Serialize settlement with
+    normal dispatch: return an accepted receipt when present; otherwise establish
+    a durable rejection that prevents a delayed original request from starting later.
+    Do not implement a racy receipt lookup followed by an unrelated cancellation.
+  - **Trust and admission:** Authenticate and authorize settlement against the
+    original caller, thread and command fingerprint. Reconnecting must not permit
+    another principal to read receipts or claim uploads. Negotiate this capability
+    and preserve existing protocol incompatibility behavior. Give settlement a
+    bounded control path so ordinary turn saturation cannot starve it; respect the
+    server's real quiescing/draining contract and scoped cancellation.
+  - **Composer integration:** Reuse the existing thread submission owner and
+    preparation gates. Preserve the pending operation, captured draft and staged
+    uploads across navigation while delivery is unknown. Bound and cancel recovery
+    attempts; exhausted recovery remains visibly uncertain, never a success or a
+    license to automatically resend. Confirmed acceptance consumes only the captured
+    draft; confirmed rejection restores it without overwriting newer input and
+    performs owned attachment compensation. A late response or settlement replay
+    must not duplicate either the turn or cleanup.
+  - **Provider transition invariant:** An orchestration receipt proves app-command
+    acceptance, not provider acceptance. Keep the existing same-chat transition
+    bootstrap checks and uncertain-delivery protection. Settlement must not mark
+    a provider transition delivered early or clear its preserved draft.
+  - **Verification:** Exercise rejected/stalled HTTP bodies, voice 404/405 fallback,
+    socket loss, stale-session callbacks, restored subscriptions and disposal.
+    Verify accepted-command/lost-response and settlement-before-late-dispatch races,
+    repeated settlement, changed fingerprints, unauthorized callers, attachments,
+    navigation and provider-transition acceptance. Use existing transport and
+    orchestration boundary coverage; fill only critical uncovered races. Run the
+    full check and test suite. Update transport/provider docs for actual behavior;
+    if durable storage changes, append an idempotent migration and run
+    `bun scripts/check-migration-lineage.ts` without changing released migrations.
+  - **Changelog:**
+    - Fixed: Chats and terminal output recover more reliably after connection loss.
+    - Fixed: Interrupted sends resolve their delivery status without duplicating
+      messages or losing drafts and attachments.
+    - Fixed: Connection setup and voice dictation reach supported fallback paths
+      without waiting for stalled error responses.
 
 - [x] **T1:** Simplify General settings and the chat Environment panel
   - **General:**

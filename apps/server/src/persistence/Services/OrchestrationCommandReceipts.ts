@@ -24,6 +24,8 @@ const ReceiptFields = {
   resultSequence: NonNegativeInt,
   status: OrchestrationCommandReceiptStatus,
   error: Schema.NullOr(Schema.String),
+  ownerKind: Schema.NullOr(Schema.Literals(["session", "local-loopback"])),
+  ownerId: Schema.NullOr(Schema.String),
 } as const;
 
 export const OrchestrationCommandReceipt = Schema.Struct({
@@ -35,6 +37,8 @@ export type OrchestrationCommandReceipt = typeof OrchestrationCommandReceipt.Typ
 
 export const NewOrchestrationCommandReceipt = Schema.Struct({
   ...ReceiptFields,
+  ownerKind: Schema.Literals(["session", "local-loopback"]),
+  ownerId: Schema.String,
   fingerprintVersion: PositiveInt,
   commandFingerprint: CommandFingerprint,
 });

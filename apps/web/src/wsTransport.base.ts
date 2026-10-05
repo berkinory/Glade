@@ -1,7 +1,10 @@
+import { dispatchRecoverableTurn } from "./wsTurnDispatch";
+import type { ClientOrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import { WsScopedSubscriptions } from "./wsScopedSubscriptions";
 import type { GitStatusWatchInput, GitStatusStreamEvent } from "@glade/contracts/git/git";
 import { ORCHESTRATION_WS_METHODS } from "@glade/contracts/orchestration/rpc";
 import {
+  WS_TURN_DISPATCH_SETTLEMENT_CAPABILITY,
   WS_BOOTSTRAP_METHOD,
   WS_BOOTSTRAP_PATH,
   WS_CLIENT_REQUIRED_CAPABILITIES,
@@ -26,8 +29,8 @@ import type {
   ProjectFileChangeEvent,
   ProjectWatchFileInput,
 } from "@glade/contracts/workspace/project";
-import { Effect, Exit, ManagedRuntime, Scope } from "effect";
-import { RpcClient } from "effect/unstable/rpc";
+import { Effect, Exit, ManagedRuntime, Schema, Scope } from "effect";
+import { RpcClient, RpcClientError } from "effect/unstable/rpc";
 import { APP_VERSION } from "./branding";
 import { useComputerStateStore } from "./computerStateStore";
 import { getUnaryRpcCapacityRetryDelayMs } from "./lib/expensiveReadRetry";
@@ -185,14 +188,23 @@ export abstract class WsTransportBase {
   constructor(url?: string) {
     this.explicitUrl = url ?? null;
     this.clientPromise = this.createSession().clientPromise;
+    const initialVersion = this.sessionVersion;
     void this.clientPromise.catch((error) => {
-      if (this.disposed || isTerminalCompatibilityFailure(error)) return;
+      if (
+        this.disposed ||
+        this.sessionVersion !== initialVersion ||
+        isTerminalCompatibilityFailure(error)
+      )
+        return;
       void this.reconnect().catch((reconnectError) => {
         if (!this.disposed && !isTerminalCompatibilityFailure(reconnectError)) {
           console.warn("WebSocket reconnect loop stopped unexpectedly", reconnectError);
         }
       });
     });
+  }
+  dispatchTurn(command: Extract<ClientOrchestrationCommand, { type: "thread.turn.start" }>) {
+    return dispatchRecoverableTurn(this, command, this.lifetime.signal);
   }
   async request<T = unknown>(
     method: string,
@@ -244,6 +256,16 @@ export abstract class WsTransportBase {
       }
 
       const client = await awaitWithAbort(this.getClient(), abortScope.signal);
+      if (
+        method === ORCHESTRATION_WS_METHODS.settleTurnDispatch &&
+        !this.compatibility?.capabilities.includes(WS_TURN_DISPATCH_SETTLEMENT_CAPABILITY)
+      )
+        throw new WsTransportRequestInterruptedError({
+          message: "This server cannot settle message delivery.",
+          code: "WS_TURN_SETTLEMENT_UNAVAILABLE",
+          method,
+          retryable: false,
+        });
 
       if (method === WS_METHODS.gitRunStackedAction) {
         return (await this.runGitActionStream(client, params, abortScope.signal)) as T;
@@ -304,7 +326,7 @@ export abstract class WsTransportBase {
           cause: requestOptions.signal.reason ?? error,
         });
       }
-      if (isRuntimeInterruptFailure(error)) {
+      if (isRuntimeInterruptFailure(error) || Schema.is(RpcClientError.RpcClientError)(error)) {
         throw new WsTransportRequestInterruptedError({
           message: `WebSocket RPC ${method} was interrupted by a transport reconnect.`,
           code: "WS_REQUEST_RECONNECTED",
@@ -550,7 +572,15 @@ export abstract class WsTransportBase {
       }
 
       const featureRuntime = ManagedRuntime.make(
-        makeProtocolLayer(makeFeatureSocketUrl(this.explicitUrl, compatibility)),
+        makeProtocolLayer(makeFeatureSocketUrl(this.explicitUrl, compatibility), () => {
+          // Teardown must leave the failing protocol fiber before closing its scope.
+          queueMicrotask(() => {
+            if (this.disposed || this.sessionVersion !== sessionVersion || this.reconnectPromise)
+              return;
+            if (this.state !== "open") this.setCompatibility(null);
+            void this.reconnect().catch(() => undefined);
+          });
+        }),
       );
       const featureScope = featureRuntime.runSync(Scope.make());
       this.runtime = featureRuntime;
@@ -558,6 +588,8 @@ export abstract class WsTransportBase {
       const client = await featureRuntime.runPromise(Scope.provide(featureScope)(makeRpcClient));
       this.runtimeByClient.set(client, featureRuntime);
       await this.probeFeatureConnection(client, featureRuntime);
+      if (this.disposed || this.sessionVersion !== sessionVersion)
+        throw new Error("WebSocket session superseded during connection probe.");
       if (!this.disposed && this.sessionVersion === sessionVersion) {
         this.adoptNegotiation(compatibility);
         this.setState("open");
@@ -622,6 +654,8 @@ export abstract class WsTransportBase {
   protected reconnect(): Promise<RpcClientInstance> {
     if (this.reconnectPromise) return this.reconnectPromise;
 
+    if (this.disposed) return Promise.reject(new Error("Transport disposed"));
+    this.sessionVersion += 1;
     this.terminalOutputReady = false;
     const oldResources = this.takeCurrentRuntime();
     this.resetAllStreamCapacityRetries();
@@ -632,9 +666,10 @@ export abstract class WsTransportBase {
 
     this.setState("connecting");
 
-    if (oldResources) void this.closeRuntime(oldResources);
-
-    this.reconnectPromise = this.openReconnectSession().finally(() => {
+    this.reconnectPromise = (async () => {
+      if (oldResources) await this.closeRuntime(oldResources);
+      return this.openReconnectSession();
+    })().finally(() => {
       this.reconnectPromise = null;
     });
     return this.reconnectPromise;

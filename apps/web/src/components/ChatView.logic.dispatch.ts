@@ -278,14 +278,22 @@ export function hasServerAcknowledgedLocalDispatch(input: {
 
 export const LOCAL_DISPATCH_TURN_TAKEOVER_TIMEOUT_MS = 60_000;
 
-export type WorkingLabel = "Loading" | "Thinking" | `Starting ${string}…`;
+export type WorkingLabel =
+  | "Checking delivery"
+  | "Delivery uncertain"
+  | "Loading"
+  | "Thinking"
+  | `Starting ${string}…`;
 
 export function resolveWorkingLabel(input: {
   isSendBusy: boolean;
+  dispatchDeliveryState?: "recovering" | "uncertain" | undefined;
   turnTakenOver: boolean;
   isConnecting?: boolean;
   providerName?: string;
 }): WorkingLabel {
+  if (input.dispatchDeliveryState === "recovering") return "Checking delivery";
+  if (input.dispatchDeliveryState === "uncertain") return "Delivery uncertain";
   if (input.isSendBusy && !input.turnTakenOver) {
     return "Loading";
   }

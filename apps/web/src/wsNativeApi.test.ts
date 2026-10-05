@@ -809,34 +809,37 @@ describe("wsNativeApi", () => {
     );
   });
 
-  it("falls back to WebSocket voice RPC when an older server has no upload route", async () => {
-    Object.defineProperty(getWindowForTest(), "desktopBridge", {
-      configurable: true,
-      writable: true,
-      value: { getWsUrl: () => "ws://127.0.0.1:3773/ws?token=desktop-secret" },
-    });
-    const fetchMock = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(new Response("Not Found", { status: 404 }));
-    vi.stubGlobal("fetch", fetchMock);
-    requestMock.mockResolvedValueOnce({ text: "legacy transport" });
+  it.each([404, 405])(
+    "falls back immediately from a stalled voice HTTP %i body",
+    async (status) => {
+      Object.defineProperty(getWindowForTest(), "desktopBridge", {
+        configurable: true,
+        writable: true,
+        value: { getWsUrl: () => "ws://127.0.0.1:3773/ws?token=desktop-secret" },
+      });
+      const fetchMock = vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(new Response(new ReadableStream({ start() {} }), { status }));
+      vi.stubGlobal("fetch", fetchMock);
+      requestMock.mockResolvedValueOnce({ text: "legacy transport" });
 
-    const { createWsNativeApi } = await import("./wsNativeApi");
-    const api = createWsNativeApi();
-    const input = {
-      provider: "codex" as const,
-      cwd: "/repo",
-      audioBase64: "AQID",
-      mimeType: "audio/wav",
-      sampleRateHz: 24_000,
-      durationMs: 1000,
-    };
+      const { createWsNativeApi } = await import("./wsNativeApi");
+      const api = createWsNativeApi();
+      const input = {
+        provider: "codex" as const,
+        cwd: "/repo",
+        audioBase64: "AQID",
+        mimeType: "audio/wav",
+        sampleRateHz: 24_000,
+        durationMs: 1000,
+      };
 
-    await expect(api.server.transcribeVoice(input)).resolves.toEqual({
-      text: "legacy transport",
-    });
-    expect(requestMock).toHaveBeenCalledWith(WS_METHODS.serverTranscribeVoice, input, {
-      timeoutMs: null,
-    });
-  });
+      await expect(api.server.transcribeVoice(input)).resolves.toEqual({
+        text: "legacy transport",
+      });
+      expect(requestMock).toHaveBeenCalledWith(WS_METHODS.serverTranscribeVoice, input, {
+        timeoutMs: null,
+      });
+    },
+  );
 });

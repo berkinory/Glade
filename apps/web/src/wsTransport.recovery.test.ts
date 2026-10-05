@@ -1,3 +1,6 @@
+import { CommandId, MessageId, ThreadId } from "@glade/contracts/core/baseSchemas";
+import { usePendingTurnDispatchStore } from "./pendingTurnDispatch";
+import { WS_TURN_DISPATCH_SETTLEMENT_CAPABILITY } from "@glade/contracts/transport/ws/wsCompatibility";
 import { Cause } from "effect";
 import { describe, expect, it, vi } from "vitest";
 import { ORCHESTRATION_WS_METHODS } from "@glade/contracts/orchestration/rpc";
@@ -580,6 +583,158 @@ describe("WsTransport", () => {
     await expect(negotiateOverHttp("ws://localhost:3020")).resolves.toBeNull();
   });
 
+  it("discards an unusable HTTP response without waiting for its stalled body", async () => {
+    const cancel = vi.fn(async () => undefined);
+    const json = vi.fn(() => new Promise(() => undefined));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: false, status: 503, body: { cancel }, json })),
+    );
+    await expect(negotiateOverHttp("ws://localhost:3020")).resolves.toBeNull();
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(json).not.toHaveBeenCalled();
+  });
+
+  it("rebuilds the feature client after protocol failure and stops recovery on disposal", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse(200, NEGOTIATION_RESULT)),
+    );
+    const transport = new WsTransport("ws://localhost:3020");
+    const internals = transport as unknown as { clientPromise: Promise<unknown> };
+    await waitForSockets(1);
+    sockets[0]!.serveVoidRpc();
+    await internals.clientPromise;
+    sockets[0]!.close(1006);
+    await vi.waitFor(() => expect(sockets.length).toBeGreaterThanOrEqual(2), { timeout: 3_000 });
+    sockets[1]!.serveVoidRpc();
+    await expect(
+      transport.request(ORCHESTRATION_WS_METHODS.unsubscribeShell),
+    ).resolves.toBeUndefined();
+    await transport.dispose();
+    const count = sockets.length;
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    expect(sockets).toHaveLength(count);
+  });
+
+  it.each(["accepted", "rejected", "cancelled"] as const)(
+    "settles a lost dispatch response as %s without another turn request",
+    async (status) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () =>
+          jsonResponse(200, {
+            ...NEGOTIATION_RESULT,
+            capabilities: [WS_TURN_DISPATCH_SETTLEMENT_CAPABILITY],
+          }),
+        ),
+      );
+      const transport = new WsTransport("ws://localhost:3020");
+      const internals = transport as unknown as { clientPromise: Promise<unknown> };
+      const command = {
+        type: "thread.turn.start" as const,
+        commandId: CommandId.makeUnsafe(`lost-${status}`),
+        threadId: ThreadId.makeUnsafe(`lost-${status}`),
+        message: {
+          messageId: MessageId.makeUnsafe(`lost-${status}`),
+          role: "user" as const,
+          text: "hello",
+          attachments: [],
+        },
+        runtimeMode: "approval-required" as const,
+        createdAt: new Date().toISOString(),
+      };
+      try {
+        await waitForSockets(1);
+        sockets[0]!.serveVoidRpc();
+        await internals.clientPromise;
+        sockets[0]!.onSend = (raw) => {
+          const frame = JSON.parse(raw);
+          if (frame.tag === ORCHESTRATION_WS_METHODS.dispatchCommand) sockets[0]!.close(1006);
+        };
+        const send = transport.dispatchTurn(command);
+        const checked =
+          status === "accepted"
+            ? expect(send).resolves.toEqual({ sequence: 17 })
+            : status === "rejected"
+              ? expect(send).rejects.toMatchObject({
+                  _tag: "WsTransportRpcError",
+                  message: "not accepted",
+                })
+              : expect(send).rejects.toMatchObject({
+                  _tag: "WsTransportRequestInterruptedError",
+                  code: "WS_TURN_SETTLEMENT_UNAVAILABLE",
+                });
+        await vi.waitFor(() => expect(sockets.length).toBeGreaterThanOrEqual(2), {
+          timeout: 3_000,
+        });
+        const socket = sockets[1]!;
+        socket.onSend = (raw) => {
+          const frame = JSON.parse(raw);
+          if (frame._tag === "Ping") socket.receive(JSON.stringify({ _tag: "Pong" }));
+          if (frame._tag !== "Request") return;
+          if (status === "cancelled" && frame.tag === ORCHESTRATION_WS_METHODS.settleTurnDispatch)
+            return;
+          const value =
+            frame.tag === ORCHESTRATION_WS_METHODS.settleTurnDispatch
+              ? status === "accepted"
+                ? { status, sequence: 17 }
+                : { status, message: "not accepted" }
+              : null;
+          socket.receive(
+            JSON.stringify({ _tag: "Exit", requestId: frame.id, exit: { _tag: "Success", value } }),
+          );
+        };
+        socket.open();
+        if (status === "cancelled") {
+          await vi.waitFor(() =>
+            expect(
+              usePendingTurnDispatchStore.getState().deliveryByThreadId[command.threadId]?.status,
+            ).toBe("recovering"),
+          );
+          expect(usePendingTurnDispatchStore.getState().beginSubmission(command.threadId)).toBe(
+            false,
+          );
+          await vi.waitFor(() =>
+            expect(
+              socket.sent.some(
+                (raw) =>
+                  JSON.parse(String(raw)).tag === ORCHESTRATION_WS_METHODS.settleTurnDispatch,
+              ),
+            ).toBe(true),
+          );
+          await transport.dispose();
+        }
+        await checked;
+        const requests = sockets.flatMap((socket) =>
+          socket.sent.map((raw) => JSON.parse(String(raw))),
+        );
+        expect(
+          requests.filter((frame) => frame.tag === ORCHESTRATION_WS_METHODS.dispatchCommand),
+        ).toHaveLength(1);
+        expect(
+          requests.find((frame) => frame.tag === ORCHESTRATION_WS_METHODS.settleTurnDispatch)
+            ?.payload,
+        ).toEqual({ command });
+        if (status === "cancelled") {
+          expect(
+            usePendingTurnDispatchStore.getState().deliveryByThreadId[command.threadId],
+          ).toMatchObject({ status: "uncertain", command });
+          expect(usePendingTurnDispatchStore.getState().beginSubmission(command.threadId)).toBe(
+            false,
+          );
+        } else {
+          expect(
+            usePendingTurnDispatchStore.getState().deliveryByThreadId[command.threadId],
+          ).toBeUndefined();
+        }
+      } finally {
+        await transport.dispose();
+        usePendingTurnDispatchStore.getState().setDelivery(command.threadId, null);
+      }
+    },
+  );
+
   it("falls back to bootstrap when the negotiate request never settles", async () => {
     // A connection that accepts and then stalls (WAN/tunnel black hole) must not wedge the transport:
     // browsers apply no default fetch timeout, so without an abort signal the bootstrap fallback would
@@ -733,7 +888,7 @@ describe("WsTransport", () => {
     const restarted = { ...NEGOTIATION_RESULT, serverInstanceId: "server-instance-2" };
     fetchMock.mockImplementation(() => Promise.resolve(jsonResponse(200, restarted)));
     const reconnected = internals.createSession().clientPromise;
-    await waitForSockets(2);
+    await vi.waitFor(() => expect(sockets.length).toBeGreaterThanOrEqual(2), { timeout: 3_000 });
     sockets[1]!.serveVoidRpc();
     await reconnected;
 

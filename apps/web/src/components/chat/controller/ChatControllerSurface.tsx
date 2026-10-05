@@ -267,6 +267,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     activeTurnIdForTranscript,
     openAgentActivityDetail,
     isSendBusy,
+    dispatchDeliveryState,
     hasLiveTurn,
     turnTakenOver,
     isConnecting,
@@ -610,6 +611,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                     isWorking={isWorking}
                     workingLabel={resolveWorkingLabel({
                       isSendBusy,
+                      dispatchDeliveryState,
                       turnTakenOver,
                       isConnecting,
                       providerName: providerDisplayName,

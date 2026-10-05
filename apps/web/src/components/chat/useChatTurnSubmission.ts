@@ -1,4 +1,3 @@
-import { useStore } from "../../store";
 import { createEmptyThreadDraft } from "../../composerDraftDomain";
 import { usePendingTurnDispatchStore } from "../../pendingTurnDispatch";
 import { hasUnsavedWorkspaceEditors } from "~/lib/workspaceEditorSession";
@@ -695,26 +694,6 @@ export function useChatTurnSubmission({
         }
         // Queued turns are dispatched from their captured snapshot, so this send path must not clear a
         // separate live draft the user may already be editing.
-        const preservesHandoffDraft =
-          activeThread.handoff?.operationId &&
-          activeThread.handoff.bootstrapStatus === "pending" &&
-          activeThread.handoff.stage !== "cancelled";
-        if (queuedChatTurn === null && !preservesHandoffDraft) {
-          clearComposerDraftContent(threadIdForSend, { preservePreviewUrls: true, consumedDraft });
-          if (
-            activeThreadIdRef.current === threadIdForSend &&
-            !useComposerDraftStore.getState().draftsByThreadId[threadIdForSend]?.prompt
-          ) {
-            promptHistoryNavigationRef.current = null;
-            applyingPromptHistoryNavigationRef.current = false;
-            expectedPromptHistoryPromptRef.current = null;
-            promptRef.current = "";
-            setComposerHighlightedItemId(null);
-            setComposerCursor(0);
-            setComposerTrigger(null);
-            scheduleComposerFocus();
-          }
-        }
 
         const accepted = await executePreparedTurn({
           nextThreadEnvMode,
@@ -765,14 +744,22 @@ export function useChatTurnSubmission({
           composerSkillsSnapshot,
           composerMentionsSnapshot,
         });
-        if (
-          accepted &&
-          preservesHandoffDraft &&
-          queuedChatTurn === null &&
-          useStore.getState().threadShellById?.[threadIdForSend]?.handoff?.operationId ===
-            activeThread.handoff?.operationId
-        )
+        if (accepted && queuedChatTurn === null) {
           clearComposerDraftContent(threadIdForSend, { preservePreviewUrls: true, consumedDraft });
+          if (
+            activeThreadIdRef.current === threadIdForSend &&
+            !useComposerDraftStore.getState().draftsByThreadId[threadIdForSend]?.prompt
+          ) {
+            promptHistoryNavigationRef.current = null;
+            applyingPromptHistoryNavigationRef.current = false;
+            expectedPromptHistoryPromptRef.current = null;
+            promptRef.current = "";
+            setComposerHighlightedItemId(null);
+            setComposerCursor(0);
+            setComposerTrigger(null);
+            scheduleComposerFocus();
+          }
+        }
         return accepted;
       } finally {
         pendingDispatch.endSubmission(activeThread.id);

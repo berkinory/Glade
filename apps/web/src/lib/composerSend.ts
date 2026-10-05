@@ -1,3 +1,4 @@
+import { isTurnDispatchOutcomeUnknown } from "../wsTurnDispatch";
 import {
   type ChatFileAttachment,
   type ChatImageAttachment,
@@ -288,7 +289,7 @@ export async function stageUploadComposerAttachments(input: {
       commit();
       return result;
     } catch (error) {
-      await cleanup();
+      if (!isTurnDispatchOutcomeUnknown(error)) await cleanup();
       throw error;
     }
   };

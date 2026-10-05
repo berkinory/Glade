@@ -1,3 +1,4 @@
+import { usePendingTurnDispatchStore } from "../pendingTurnDispatch";
 import type { AssistantDeliveryMode } from "@glade/contracts/provider/sessionPolicy";
 import type { MessageId, ThreadId } from "@glade/contracts/core/baseSchemas";
 
@@ -347,7 +348,10 @@ export function createQueuedComposerDrain() {
     return {
       hasQueueableLiveTurn: hasLiveTurn && thread?.session?.activeTurnId != null,
       phase,
-      isSendBusy: autoDispatchLocks.has(threadId),
+      isSendBusy:
+        autoDispatchLocks.has(threadId) ||
+        usePendingTurnDispatchStore.getState().submittingThreadIds.has(threadId) ||
+        usePendingTurnDispatchStore.getState().deliveryByThreadId[threadId] !== undefined,
       isConnecting: phase === "connecting",
       isAwaitingTurnStart: awaitingTurnStartsByThreadId.has(threadId),
       steerGate: getQueuedComposerSteerGate(threadId),

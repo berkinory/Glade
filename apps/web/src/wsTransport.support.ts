@@ -48,11 +48,20 @@ export class WsTransportRpcError extends Data.TaggedError("WsTransportRpcError")
   readonly cause?: unknown;
 }> {}
 
+class WsTransportAuthenticationError extends Data.TaggedError("WsTransportAuthenticationError")<{
+  readonly message: string;
+  readonly code: "WS_AUTH_REQUIRED";
+}> {}
+
 export class WsTransportRequestInterruptedError extends Data.TaggedError(
   "WsTransportRequestInterruptedError",
 )<{
   readonly message: string;
-  readonly code: "WS_REQUEST_TIMEOUT" | "WS_REQUEST_ABORTED" | "WS_REQUEST_RECONNECTED";
+  readonly code:
+    | "WS_REQUEST_TIMEOUT"
+    | "WS_REQUEST_ABORTED"
+    | "WS_REQUEST_RECONNECTED"
+    | "WS_TURN_SETTLEMENT_UNAVAILABLE";
   readonly method: string;
   readonly timeoutMs?: number;
   readonly cause?: unknown;
@@ -262,6 +271,17 @@ export async function negotiateOverHttp(
   } catch {
     return null;
   }
+  if (response.status === 401 || response.status === 403) {
+    void response.body?.cancel().catch(() => undefined);
+    throw new WsTransportAuthenticationError({
+      message: "Authentication required to reconnect.",
+      code: "WS_AUTH_REQUIRED",
+    });
+  }
+  if (!response.ok && response.status !== 426) {
+    void response.body?.cancel().catch(() => undefined);
+    return null;
+  }
   const body: unknown = await response.json().catch(() => null);
   if (response.status === 426) {
     const issue = Schema.decodeUnknownOption(WsCompatibilityError)(body);
@@ -273,14 +293,21 @@ export async function negotiateOverHttp(
   return Option.isSome(result) ? result.value : null;
 }
 
-export function makeProtocolLayer(url: string) {
+export function makeProtocolLayer(url: string, onFailure?: () => void) {
   const socketLayer = Socket.layerWebSocket(url).pipe(
     Layer.provide(Socket.layerWebSocketConstructorGlobal),
   );
 
-  return RpcClient.layerProtocolSocket().pipe(
-    Layer.provide(Layer.mergeAll(socketLayer, RpcSerialization.layerJson)),
-  );
+  return Layer.effect(RpcClient.Protocol)(
+    Effect.map(RpcClient.makeProtocolSocket(), (protocol) => ({
+      ...protocol,
+      run: (writeResponse) =>
+        protocol.run((response) => {
+          if (response._tag === "ClientProtocolError") onFailure?.();
+          return writeResponse(response);
+        }),
+    })),
+  ).pipe(Layer.provide(Layer.mergeAll(socketLayer, RpcSerialization.layerJson)));
 }
 
 export function causeToError(cause: Cause.Cause<unknown>): Error {
@@ -336,6 +363,7 @@ export function getSnapshotFaultRetryDelayMs(cause: Cause.Cause<unknown>): numbe
 }
 
 const TERMINAL_COMPATIBILITY_ERROR_CODES = new Set([
+  "WS_AUTH_REQUIRED",
   "WS_NEGOTIATION_REQUIRED",
   "WS_PROTOCOL_INCOMPATIBLE",
   "WS_CAPABILITIES_INCOMPATIBLE",

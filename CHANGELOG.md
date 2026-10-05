@@ -103,6 +103,10 @@
 
 ### Fixed
 
+- Chats and terminal output recover more reliably after connection loss.
+- Interrupted sends resolve their delivery status without duplicating messages or losing drafts and attachments.
+- Connection setup and voice dictation reach supported fallback paths without waiting for stalled error responses.
+
 - Wide code blocks and closing side panels no longer introduce unwanted horizontal scrolling in conversations.
 
 - Keyboard shortcuts follow your keyboard layout consistently.

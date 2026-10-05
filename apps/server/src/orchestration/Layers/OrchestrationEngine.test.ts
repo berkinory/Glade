@@ -727,6 +727,19 @@ describe("OrchestrationEngine", () => {
       system.run(engine.dispatch(command, { attachmentPrincipal: principal })),
     ).resolves.toEqual(accepted);
 
+    for (let attempt = 0; attempt < 2; attempt += 1)
+      await expect(
+        system.run(engine.dispatch(command, { attachmentPrincipal: principal, settleOnly: true })),
+      ).resolves.toEqual(accepted);
+    await expect(
+      system.run(
+        engine.dispatch(command, {
+          attachmentPrincipal: { ownerKind: "session", ownerId: "different-session" },
+          settleOnly: true,
+        }),
+      ),
+    ).rejects.toMatchObject({ _tag: "OrchestrationCommandIdentityCollisionError" });
+
     const editResendClaim = await system.run(
       repository.claimForAcceptedTurn({
         attachmentIds: [firstAttachmentId],
@@ -761,6 +774,63 @@ describe("OrchestrationEngine", () => {
     const claimed = await system.run(repository.findClaimedForCommand({ commandId }));
     expect(claimed.map((attachment) => attachment.attachmentId)).toEqual([firstAttachmentId]);
     await system.dispose();
+  });
+
+  it("serializes settlement before late dispatch and binds its durable verdict to caller and content", async () => {
+    const system = await createOrchestrationSystem();
+    const command = {
+      type: "thread.turn.start" as const,
+      commandId: CommandId.makeUnsafe("settlement-before-dispatch"),
+      threadId: ThreadId.makeUnsafe("settlement-thread"),
+      message: {
+        messageId: asMessageId("settlement-message"),
+        role: "user" as const,
+        text: "hello",
+        attachments: [],
+      },
+      runtimeMode: "approval-required" as const,
+      createdAt: now(),
+    };
+    const attachmentPrincipal = { ownerKind: "session" as const, ownerId: "original-caller" };
+    try {
+      for (const settleOnly of [true, true, false]) {
+        await expect(
+          system.run(system.engine.dispatch(command, { attachmentPrincipal, settleOnly })),
+        ).rejects.toMatchObject({ _tag: "OrchestrationCommandPreviouslyRejectedError" });
+      }
+      await expect(
+        system.run(
+          system.engine.dispatch(command, {
+            attachmentPrincipal: { ownerKind: "session", ownerId: "different-caller" },
+            settleOnly: true,
+          }),
+        ),
+      ).rejects.toMatchObject({ _tag: "OrchestrationCommandIdentityCollisionError" });
+      await expect(
+        system.run(
+          system.engine.dispatch(
+            { ...command, message: { ...command.message, text: "changed" } },
+            {
+              attachmentPrincipal,
+              settleOnly: true,
+            },
+          ),
+        ),
+      ).rejects.toMatchObject({ _tag: "OrchestrationCommandIdentityCollisionError" });
+      expect(
+        Array.from(await system.run(Stream.runCollect(system.engine.readEvents(0)))),
+      ).toHaveLength(0);
+      await system.run(system.engine.quiesce);
+      await expect(
+        system.run(system.engine.dispatch(command, { attachmentPrincipal, settleOnly: true })),
+      ).rejects.toMatchObject({ _tag: "OrchestrationCommandPreviouslyRejectedError" });
+      await system.run(system.engine.stop);
+      await expect(
+        system.run(system.engine.dispatch(command, { attachmentPrincipal, settleOnly: true })),
+      ).rejects.toMatchObject({ _tag: "OrchestrationCommandAdmissionError", reason: "stopped" });
+    } finally {
+      await system.dispose();
+    }
   });
 
   it("keeps dispatch responsive and replays every event when a subscriber falls behind", async () => {

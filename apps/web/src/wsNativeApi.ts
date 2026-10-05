@@ -212,13 +212,14 @@ async function requestVoiceTranscriptionUpload(
     resolveWsHttpUrl(`${VOICE_TRANSCRIPTION_UPLOAD_ROUTE_PATH}?${params.toString()}`),
     { method: "POST", credentials: "include", body: bytes },
   );
+  if (response.status === 404 || response.status === 405) {
+    void response.body?.cancel().catch(() => undefined);
+    throw new VoiceUploadRouteUnavailableError();
+  }
   const payload = (await response.json().catch(() => null)) as
     | ServerVoiceTranscriptionResult
     | { readonly error?: unknown }
     | null;
-  if (response.status === 404 || response.status === 405) {
-    throw new VoiceUploadRouteUnavailableError();
-  }
   if (!response.ok || !payload || !("text" in payload)) {
     const message =
       payload && "error" in payload && typeof payload.error === "string"
@@ -625,9 +626,7 @@ export function createWsNativeApi(): NativeApi {
       dispatchCommand: (command) => {
         const payload = { command: omitNullUserInputAnswers(command) };
         return command.type === "thread.turn.start"
-          ? transport.request(ORCHESTRATION_WS_METHODS.dispatchCommand, payload, {
-              timeoutMs: null,
-            })
+          ? transport.dispatchTurn(command)
           : transport.request(ORCHESTRATION_WS_METHODS.dispatchCommand, payload);
       },
       repairState: () => transport.request(ORCHESTRATION_WS_METHODS.repairState),

@@ -34,6 +34,18 @@ sequenceDiagram
 
 The instance id is a fresh UUID per server boot. That is what makes a restart mid-negotiation detectable: a client holding credentials from a previous server generation is told to reload rather than silently talking a stale protocol against a new process. A 426 on `/ws` is therefore **expected behaviour** for any client that has not negotiated — not a fault.
 
+## Recovery and interrupted sends
+
+HTTP negotiation discards unusable error bodies before entering the bootstrap socket fallback. HTTP 426 still decodes the typed incompatibility response within the negotiation deadline; authentication failures stop recovery. Voice upload uses its RPC fallback on 404/405 without reading the response body. Other upload failures never trigger another transcription request.
+
+Recoverable feature RPC protocol errors rebuild the complete client through the reconnect owner. Recovery immediately fences old callbacks and retry timers, closes the old scope/runtime before replacing it, probes the feature connection, and restores subscriptions. Terminal creation continues to wait for terminal-output readiness. Thread resume cursors remain scoped to the server generation. Disposal cancels connection and settlement work; permanent incompatibility or authentication failures remain visible.
+
+Clients require `orchestration.turn-dispatch-settlement`. After a lost or timed-out turn-start acknowledgement, they send `orchestration.settleTurnDispatch` with the original command identity and content, never another turn start. The engine serializes settlement with normal dispatch. An existing accepted receipt returns its original sequence; otherwise settlement writes a durable rejection that fences delayed arrivals. Receipts bind the command fingerprint, thread and authenticated session. Settlement cannot claim attachments, and receipts without stored caller evidence cannot authorize it. Migration 5 adds caller evidence without rewriting existing receipts.
+
+Settlement has four RPC slots independent of ordinary command saturation and uses the engine's bounded control reserve. It remains admissible while quiescing and is refused while draining or stopped. The client permits at most three settlement attempts, each bounded to 25 seconds, within a 90-second recovery deadline. Exhaustion stays visibly uncertain and blocks both composer submission and automatic queued sends. The thread submission owner retains the original command, draft and staged uploads across navigation. Confirmed acceptance consumes only captured draft content; confirmed rejection preserves newer input and compensates owned uploads once. Unknown delivery never triggers compensation or automatic resend. Staged uploads retain their server expiry.
+
+An accepted orchestration receipt proves app-command acceptance. Provider transitions still wait for their native first-turn acceptance before consuming the preserved draft; see [provider-architecture.md](provider-architecture.md).
+
 ## WebSocket compression
 
 `permessage-deflate` is negotiated on the feature socket with **context takeover**, so each frame is compressed against the window left by previous frames. Orchestration traffic is highly repetitive JSON — the same envelope keys with a few fields changed — so the repeated structure costs almost nothing after the first message. Measured against representative orchestration frames, this is roughly a 79% reduction.
