@@ -20,7 +20,7 @@ export type SidebarUiState = {
 };
 
 const DEFAULT_SIDEBAR_UI_STATE: SidebarUiState = {
-  chatSectionExpanded: false,
+  chatSectionExpanded: true,
   projectThreadListExtraPagesByCwd: {},
   dismissedThreadStatusKeyByThreadId: {},
   lastThreadRoute: null,
@@ -113,7 +113,10 @@ export function readSidebarUiState(): SidebarUiState {
     }
 
     return {
-      chatSectionExpanded: parsed.chatSectionExpanded === true,
+      chatSectionExpanded:
+        typeof parsed.chatSectionExpanded === "boolean"
+          ? parsed.chatSectionExpanded
+          : DEFAULT_SIDEBAR_UI_STATE.chatSectionExpanded,
       projectThreadListExtraPagesByCwd,
       dismissedThreadStatusKeyByThreadId: Object.fromEntries(
         Object.entries(parsed.dismissedThreadStatusKeyByThreadId ?? {}).filter(
