@@ -42,6 +42,12 @@ export const ProviderComposerCapabilities = Schema.Struct({
   supportsPluginDiscovery: Schema.Boolean,
   supportsRuntimeModelList: Schema.Boolean,
   supportsThreadCompaction: Schema.optional(Schema.Boolean),
+  nativeSubagentControls: Schema.optional(
+    Schema.Struct({
+      interrupt: Schema.Boolean,
+      background: Schema.Boolean,
+    }),
+  ),
 });
 export type ProviderComposerCapabilities = typeof ProviderComposerCapabilities.Type;
 

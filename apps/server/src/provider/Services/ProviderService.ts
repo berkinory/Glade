@@ -11,7 +11,6 @@ import type {
   ProviderSteerTurnInput,
   ProviderSession,
   ProviderSessionStartInput,
-  ProviderSteerSubagentInput,
   ProviderStopSessionInput,
   ProviderStopTaskInput,
   ProviderTurnStartResult,
@@ -92,10 +91,6 @@ export interface ProviderServiceShape {
 
   readonly backgroundTask: (
     input: ProviderBackgroundTaskInput,
-  ) => Effect.Effect<void, ProviderServiceError>;
-
-  readonly steerSubagent: (
-    input: ProviderSteerSubagentInput,
   ) => Effect.Effect<void, ProviderServiceError>;
 
   readonly respondToRequest: (

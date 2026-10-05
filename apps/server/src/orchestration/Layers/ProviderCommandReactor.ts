@@ -227,6 +227,7 @@ const make = Effect.gen(function* () {
     processSessionStopRequested,
   } = makeProviderTaskControl({
     projectionAccess,
+    projectionSnapshotQuery,
     computerService,
     appendProviderFailureActivity,
     settleInterruptedProviderTurn,

@@ -54,13 +54,6 @@ import type { Stream } from "effect";
 
 export const PROVIDER_ADAPTER_RUNTIME_EVENT_BUFFER_CAPACITY = 2_048;
 
-interface ProviderSteerSubagentPayload {
-  readonly input: string;
-  readonly attachments?: ProviderSendTurnInput["attachments"];
-  readonly skills?: ProviderSendTurnInput["skills"];
-  readonly mentions?: ProviderSendTurnInput["mentions"];
-}
-
 export interface ProviderAdapterCapabilities {
   readonly supportsSkillMentions?: boolean;
   readonly supportsSkillDiscovery?: boolean;
@@ -128,12 +121,6 @@ export interface ProviderAdapterShape<TError> {
   readonly stopTask?: (threadId: ThreadId, taskId: string) => Effect.Effect<void, TError>;
 
   readonly backgroundTask?: (threadId: ThreadId, toolUseId: string) => Effect.Effect<void, TError>;
-
-  readonly steerSubagent?: (
-    threadId: ThreadId,
-    providerThreadId: string,
-    input: ProviderSteerSubagentPayload,
-  ) => Effect.Effect<void, TError>;
 
   readonly respondToRequest: (
     threadId: ThreadId,

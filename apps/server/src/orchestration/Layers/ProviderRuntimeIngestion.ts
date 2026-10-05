@@ -1755,6 +1755,9 @@ const make = Effect.gen(function* () {
           extractSubagentIdentityHints(collabItem),
         );
         for (const receiverThreadId of receiverThreadIds) {
+          const ownerProviderThreadId =
+            event.providerRefs?.providerParentThreadId ?? event.providerRefs?.providerThreadId;
+          if (receiverThreadId === ownerProviderThreadId) continue;
           yield* ensureSubagentThread(
             receiverThreadId,
             resolveSubagentIdentityFromDirectory(identityDirectory, {

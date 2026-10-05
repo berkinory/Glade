@@ -147,7 +147,6 @@ export function makeClaudeSystemMessages(input: {
         });
         if (isTerminalStatus) {
           context.subagentRuns.delete(run.toolUseId);
-          context.pendingSubagentSteers.delete(run.toolUseId);
           context.pendingSubagentStops.delete(run.toolUseId);
           context.settledSubagentToolUseIds.set(
             run.toolUseId,
@@ -548,7 +547,6 @@ export function makeClaudeSystemMessages(input: {
           const run = subagentRunForTask(context, message.tool_use_id, message.task_id);
           if (run) {
             context.subagentRuns.delete(run.toolUseId);
-            context.pendingSubagentSteers.delete(run.toolUseId);
             context.pendingSubagentStops.delete(run.toolUseId);
             context.settledSubagentToolUseIds.set(run.toolUseId, message.status);
             if (run.context.turnState) {

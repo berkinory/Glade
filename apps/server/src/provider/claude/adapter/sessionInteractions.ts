@@ -1,13 +1,11 @@
 import { Duration, Effect, Option } from "effect";
 import { PROVIDER, PendingUserInputResult } from "./sessionTypes";
 import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
-import { type ServerConfigShape } from "../../../server/config.ts";
 import { makeClaudeInteractionSettlement } from "./interactionSettlement";
 import { type ClaudeAdapterShape } from "../../Services/ClaudeAdapter.ts";
 import { toRequestError } from "./streamErrors";
 import { withAgentGatewayTurnCancellation } from "../../../agentGateway/sessionLease.ts";
 import { ProviderAdapterRequestError } from "../../core/Errors.ts";
-import { buildFileAttachmentsPromptBlock } from "../../core/attachmentProjection.ts";
 import type { ClaudeSessionAccessShape } from "../../Services/ClaudeSessionAccess.ts";
 
 // The SDK's interrupt resolves only once the CLI acknowledges it; a wedged CLI would otherwise
@@ -16,7 +14,6 @@ const CLAUDE_INTERRUPT_TIMEOUT = Duration.seconds(10);
 
 export function makeClaudeSessionInteractions(input: {
   readonly requireSession: ClaudeSessionAccessShape["requireSession"];
-  readonly serverConfig: ServerConfigShape;
   readonly snapshotThread: ClaudeRuntimeEventsShape["snapshotThread"];
   readonly settlePendingApproval: ReturnType<
     typeof makeClaudeInteractionSettlement
@@ -28,18 +25,11 @@ export function makeClaudeSessionInteractions(input: {
   readonly interruptTurn: NonNullable<ClaudeAdapterShape["interruptTurn"]>;
   readonly stopTask: NonNullable<ClaudeAdapterShape["stopTask"]>;
   readonly backgroundTask: NonNullable<ClaudeAdapterShape["backgroundTask"]>;
-  readonly steerSubagent: NonNullable<ClaudeAdapterShape["steerSubagent"]>;
   readonly readThread: NonNullable<ClaudeAdapterShape["readThread"]>;
   readonly respondToRequest: NonNullable<ClaudeAdapterShape["respondToRequest"]>;
   readonly respondToUserInput: NonNullable<ClaudeAdapterShape["respondToUserInput"]>;
 } {
-  const {
-    requireSession,
-    serverConfig,
-    snapshotThread,
-    settlePendingApproval,
-    settlePendingUserInput,
-  } = input;
+  const { requireSession, snapshotThread, settlePendingApproval, settlePendingUserInput } = input;
   const interruptTurn: ClaudeAdapterShape["interruptTurn"] = (threadId, turnId, providerThreadId) =>
     Effect.gen(function* () {
       const context = yield* requireSession(threadId);
@@ -115,31 +105,6 @@ export function makeClaudeSessionInteractions(input: {
         try: () => context.query.backgroundTasks(toolUseId).then(() => undefined),
         catch: (cause) => toRequestError(threadId, "task/background", cause),
       });
-    });
-
-  const steerSubagent: ClaudeAdapterShape["steerSubagent"] = (threadId, providerThreadId, input) =>
-    Effect.gen(function* () {
-      const context = yield* requireSession(threadId);
-      if (!context.subagentRuns.has(providerThreadId)) {
-        return yield* new ProviderAdapterRequestError({
-          provider: PROVIDER,
-          method: "turn/steerSubagent",
-          detail: `Subagent '${providerThreadId}' already finished; the message was not delivered.`,
-        });
-      }
-
-      const attachmentsBlock = buildFileAttachmentsPromptBlock({
-        attachments: input.attachments,
-        attachmentsDir: serverConfig.attachmentsDir,
-        include: "all-files",
-        includeImage: () => true,
-      });
-      const message = [input.input, attachmentsBlock]
-        .filter((part): part is string => typeof part === "string" && part.length > 0)
-        .join("\n\n");
-      const pending = context.pendingSubagentSteers.get(providerThreadId) ?? [];
-      pending.push(message);
-      context.pendingSubagentSteers.set(providerThreadId, pending);
     });
 
   const readThread: ClaudeAdapterShape["readThread"] = (threadId) =>
@@ -225,7 +190,6 @@ export function makeClaudeSessionInteractions(input: {
     interruptTurn,
     stopTask,
     backgroundTask,
-    steerSubagent,
     readThread,
     respondToRequest,
     respondToUserInput,

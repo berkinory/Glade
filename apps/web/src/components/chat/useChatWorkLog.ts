@@ -1,7 +1,7 @@
 import { OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
 import { ThreadId, type TurnId } from "@glade/contracts/core/baseSchemas";
 import { useEffect, useMemo } from "react";
-import { deriveWorkLogEntries, omitRoutedSubagentWorkEntries } from "../../workLog.entries";
+import { deriveWorkLogEntries } from "../../workLog.entries";
 import { isLatestTurnSettled } from "../../session-logic";
 import { useStore } from "../../store";
 import { createThreadSelector } from "../../storeSelectors";
@@ -93,9 +93,9 @@ export function useChatWorkLog({
     [activeThread?.id, hasWorkLogSubagents, rawWorkLogEntries, relevantWorkLogThreads],
   );
 
-  const workLogEntries = useMemo(
-    () => omitRoutedSubagentWorkEntries(enrichedWorkLogEntries),
-    [enrichedWorkLogEntries],
+  // Native activity and snapshot metadata update the child surfaces, not the tool transcript.
+  const workLogEntries = enrichedWorkLogEntries.filter(
+    (entry) => entry.subagentAction?.tool !== "agentActivity",
   );
 
   const liveSubagentThreadIdsKey = useMemo(() => {
@@ -138,6 +138,9 @@ export function useChatWorkLog({
     return retainThreadDetailSubscription(stripParentThreadId);
   }, [stripParentThreadId]);
   const stripSourceThreadId = stripParentThread?.id ?? activeThread?.id ?? null;
+  const sourceSessionStatus = (stripParentThread ?? activeThread)?.session?.status;
+  const stripSourceRuntimeActive =
+    sourceSessionStatus === "ready" || sourceSessionStatus === "running";
   const stripSourceActivities = stripParentThread?.activities ?? threadActivities;
   const stripSourceLatestTurnId = stripParentThread
     ? (stripParentThread.latestTurn?.turnId ?? null)
@@ -258,7 +261,7 @@ export function useChatWorkLog({
     () =>
       deriveComposerSubagentStripItems({
         workEntries: stripWorkLogEntries,
-        liveTurnId: stripLiveTurnId,
+        parentActivities: stripSourceActivities,
         backgroundedProviderThreadIds: backgroundedSubagentToolUseIds,
         viewedThreadId: stripParentThread ? (activeThread?.id ?? null) : null,
         parentRow: stripParentThread
@@ -268,7 +271,7 @@ export function useChatWorkLog({
     [
       activeThread?.id,
       backgroundedSubagentToolUseIds,
-      stripLiveTurnId,
+      stripSourceActivities,
       stripParentThread,
       stripWorkLogEntries,
     ],
@@ -320,6 +323,7 @@ export function useChatWorkLog({
     workLogEntries,
     composerSubagentStripItems,
     stripSourceThreadId,
+    stripSourceRuntimeActive,
     workflowRunState,
   };
 }

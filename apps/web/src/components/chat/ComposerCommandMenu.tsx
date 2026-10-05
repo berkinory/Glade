@@ -66,8 +66,6 @@ function commandMenuTitle(
       return "Fork";
     case "status":
       return "Status";
-    case "subagents":
-      return "Subagents";
     case "feedback":
       return "Feedback Glade";
     default:

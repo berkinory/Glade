@@ -18,7 +18,6 @@ import { makeClaudeSessionTeardown } from "./sessionTeardown";
 import { type AgentGatewayCredentialsShape } from "../../../agentGateway/Services/AgentGatewayCredentials.ts";
 import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 import { makeClaudeInteractionSettlement } from "./interactionSettlement";
-import { makeClaudeToolTracking } from "./toolTracking";
 
 import type { SDKUserMessage, Options as ClaudeQueryOptions } from "@anthropic-ai/claude-agent-sdk";
 import { makeClaudeSdkStream } from "./sdkStream";
@@ -71,9 +70,6 @@ export function makeClaudeSessionStartup(input: {
     effect: Effect.Effect<A, E>,
     options?: Effect.RunOptions,
   ) => Promise<A>;
-  readonly emitSubagentSteerDelivered: ReturnType<
-    typeof makeClaudeToolTracking
-  >["emitSubagentSteerDelivered"];
 
   readonly settlePendingApproval: ReturnType<
     typeof makeClaudeInteractionSettlement
@@ -105,7 +101,6 @@ export function makeClaudeSessionStartup(input: {
     offerRuntimeEvent,
     settlePendingUserInput,
     runSdkPromise,
-    emitSubagentSteerDelivered,
 
     settlePendingApproval,
     bindClaudeProcessOwner,
@@ -148,7 +143,6 @@ export function makeClaudeSessionStartup(input: {
 
       const pendingApprovals = new Map<ApprovalRequestId, PendingApproval>();
       const pendingUserInputs = new Map<ApprovalRequestId, PendingUserInput>();
-      const pendingSubagentSteers = new Map<string, Array<string>>();
       const pendingSubagentStops = new Set<string>();
       const inFlightTools = new Map<number, ToolInFlight>();
       const trackedTasks = new Map<string, ClaudeTrackedTask>(
@@ -212,7 +206,7 @@ export function makeClaudeSessionStartup(input: {
         PROVIDER,
         { ...input, nativeToolCallScope: true },
       );
-      const { subagentSteerHook, canUseTool, onElicitation, gatewayToolHook } = makeClaudeSdkHooks({
+      const { canUseTool, onElicitation, gatewayToolHook } = makeClaudeSdkHooks({
         input,
         contextRef,
         runSdkFork,
@@ -220,9 +214,7 @@ export function makeClaudeSessionStartup(input: {
         pendingUserInputs,
         offerRuntimeEvent,
         settlePendingUserInput,
-        pendingSubagentSteers,
         runSdkPromise,
-        emitSubagentSteerDelivered,
 
         pendingApprovals,
         settlePendingApproval,
@@ -287,7 +279,7 @@ export function makeClaudeSessionStartup(input: {
 
         forwardSubagentText: true,
         hooks: {
-          PreToolUse: [{ hooks: [subagentSteerHook, gatewayToolHook] }],
+          PreToolUse: [{ hooks: [gatewayToolHook] }],
         },
         canUseTool,
         onElicitation,
@@ -477,7 +469,6 @@ export function makeClaudeSessionStartup(input: {
           stopped: false,
           warnedUnhandledSdkKinds: new Set(),
           subagentRuns: new Map(),
-          pendingSubagentSteers,
           pendingSubagentStops,
           knownBackgroundTaskIds: new Set(),
           terminalTaskIds: new Set(),

@@ -4,7 +4,6 @@ import type { ComposerCommandItem } from "../components/chat/ComposerCommandMenu
 import { toastManager } from "../components/ui/toast";
 import {
   buildSlashReviewComposerPrompt,
-  buildSubagentsPrompt,
   getAvailableComposerSlashCommands,
   hasProviderNativeSlashCommand,
   parseComposerSlashInvocationForCommands,
@@ -288,10 +287,6 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
         });
         return true;
       }
-      if (slashInvocation.command === "subagents") {
-        editorActions.setComposerPromptValue(buildSubagentsPrompt(slashInvocation.args));
-        return true;
-      }
       if (slashInvocation.command === "export") {
         editorActions.clearComposerSlashDraft();
         runExportSlashCommand();
@@ -446,20 +441,6 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
         editorActions.setComposerHighlightedItemId(null);
         void compactProviderThread();
         editorActions.scheduleComposerFocus();
-        return;
-      }
-
-      if (item.command === "subagents") {
-        const replacement = buildSubagentsPrompt("");
-        const applied = editorActions.applyPromptReplacement(
-          trigger.rangeStart,
-          trigger.rangeEnd,
-          replacement,
-          { expectedText: snapshot.value.slice(trigger.rangeStart, trigger.rangeEnd) },
-        );
-        if (wasPromptReplacementApplied(applied)) {
-          editorActions.setComposerHighlightedItemId(null);
-        }
         return;
       }
 

@@ -236,7 +236,6 @@ export interface ClaudeSessionUsageCache {
 
 export interface ClaudeSessionSubagents {
   readonly subagentRuns: Map<string, ClaudeSubagentRun>;
-  readonly pendingSubagentSteers: Map<string, Array<string>>;
   readonly pendingSubagentStops: Set<string>;
   // Background task announcements use replacement snapshots; a partial background patch can race them.
   readonly knownBackgroundTaskIds: Set<string>;

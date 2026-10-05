@@ -5,12 +5,7 @@ export class ProviderTaskControl extends ServiceMap.Service<
   Required<
     Pick<
       ProviderServiceShape,
-      | "interruptTurn"
-      | "stopTask"
-      | "backgroundTask"
-      | "steerSubagent"
-      | "respondToRequest"
-      | "respondToUserInput"
+      "interruptTurn" | "stopTask" | "backgroundTask" | "respondToRequest" | "respondToUserInput"
     >
   >
 >()("glade/provider/ProviderTaskControl") {}

@@ -379,7 +379,7 @@ export const ProviderRuntimeBindingsLive = Layer.effect(
       // a stopped subagent would otherwise clear the parent's active turn and break main-thread
       // interrupts for the rest of the turn.
       if (event.providerRefs?.providerParentThreadId !== undefined) {
-        return Effect.void;
+        return Effect.sync(() => idle.reconcileRuntimeIdleTimer(event));
       }
       switch (event.type) {
         case "session.started":

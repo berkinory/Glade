@@ -76,6 +76,7 @@ import {
 } from "../codex/codexStateNotifications.ts";
 import { normalizeCodexFailure } from "../codex/codexFailures.ts";
 import { ServerConfig } from "../../server/config.ts";
+import { normalizeCodexSubagentActivity } from "../codex/subagentActivity.ts";
 import { resolveCodexServiceTier } from "../codex/codexServiceTier.ts";
 import { makeRuntimeTaskListItem } from "../core/runtimeTaskList.ts";
 
@@ -850,7 +851,8 @@ function mapItemLifecycle(
   lifecycle: "item.started" | "item.updated" | "item.completed",
 ): ProviderRuntimeEvent | undefined {
   const payload = asObjectRecord(event.payload) ?? undefined;
-  const item = asObjectRecord(payload?.item) ?? undefined;
+  const rawItem = asObjectRecord(payload?.item) ?? undefined;
+  const item = rawItem ? normalizeCodexSubagentActivity(rawItem) : undefined;
   const source = item ?? payload;
   if (!source) {
     return undefined;
@@ -911,7 +913,7 @@ function mapItemLifecycle(
       ...(generatedImageReference
         ? { data: codexGeneratedImageArtifact(generatedImageReference) }
         : event.payload !== undefined
-          ? { data: event.payload }
+          ? { data: item && payload ? { ...payload, item } : event.payload }
           : {}),
     },
   };

@@ -10,7 +10,6 @@ export interface ClaudeAdapterShape extends ProviderAdapterShape<ProviderAdapter
   readonly backgroundTask: NonNullable<
     ProviderAdapterShape<ProviderAdapterError>["backgroundTask"]
   >;
-  readonly steerSubagent: NonNullable<ProviderAdapterShape<ProviderAdapterError>["steerSubagent"]>;
 }
 
 export class ClaudeAdapter extends ServiceMap.Service<ClaudeAdapter, ClaudeAdapterShape>()(

@@ -31,7 +31,6 @@ import {
   availableThreadMentionContextChars,
   PROVIDER_INPUT_SAFETY_MARGIN_CHARS,
   normalizeSkillMentionTextForProvider,
-  providerPromptOverflowIssue,
   toNonEmptyProviderInput,
   availableProviderContextChars,
   BootstrapContextSelection,
@@ -41,7 +40,6 @@ import {
 import { parseComputerInvocation } from "@glade/shared/computer/computerInvocation";
 import {
   resolveThreadMentionPromptProjection,
-  appendThreadMentionContextBlocks,
   threadMentionContextSuffix,
 } from "../../provider/core/threadMentionContext.ts";
 import {
@@ -163,6 +161,18 @@ export function makeProviderTurnDispatch(input: {
     if (!thread || thread.claudeCacheReview) {
       return;
     }
+    const providerThread = yield* resolveProviderSessionThread(input.threadId);
+    const subagentProviderThreadId = providerThread
+      ? resolveSubagentProviderThreadId(thread.id, providerThread.id)
+      : undefined;
+    if (thread.creationSource === "provider_native" || subagentProviderThreadId) {
+      return yield* new ProviderAdapterValidationError({
+        provider: providerThread?.modelSelection.provider ?? thread.modelSelection.provider,
+        operation: "thread.turn.start",
+        issue:
+          "Native subagent conversations are read-only. Send follow-up instructions to the main conversation.",
+      });
+    }
     const computerInvocation =
       input.dispatchOrigin === undefined || input.dispatchOrigin === "user"
         ? parseComputerInvocation(input.messageText)
@@ -176,57 +186,8 @@ export function makeProviderTurnDispatch(input: {
       snapshotQuery: projectionSnapshotQuery,
       maxTotalContextChars: availableThreadMentionContextChars(authoredMessageText),
     });
-    const messageText = appendThreadMentionContextBlocks({
-      text: authoredMessageText,
-      contextBlocks: threadMentionProjection.contextBlocks,
-    });
     let mentionContextSuffix = threadMentionContextSuffix(threadMentionProjection.contextBlocks);
     const providerMentions = threadMentionProjection.providerMentions;
-    // Subagent threads have no provider session of their own: their messages steer the running child
-    // task through the parent session (mirrors the interrupt seam), never the session-bootstrap path
-    // below. Parent metadata may be absent on older/local-only rows, so synthetic ids use the same
-    // projection-backed parent inference as interrupt routing.
-    const providerThread = yield* resolveProviderSessionThread(input.threadId);
-    const subagentProviderThreadId = providerThread
-      ? resolveSubagentProviderThreadId(thread.id, providerThread.id)
-      : undefined;
-    if (providerThread && subagentProviderThreadId) {
-      const steerProvider = (providerThread.session?.providerName ??
-        providerThread.modelSelection.provider) as ProviderKind;
-      const composedSteerInput = normalizeSkillMentionTextForProvider({
-        provider: steerProvider,
-        messageText,
-        ...(input.skills !== undefined ? { skills: input.skills } : {}),
-      });
-      if (composedSteerInput.length > PROVIDER_SEND_TURN_MAX_INPUT_CHARS) {
-        return yield* new ProviderAdapterValidationError({
-          provider: steerProvider,
-          operation: "thread.turn.start",
-          issue: providerPromptOverflowIssue(),
-        });
-      }
-      const normalizedSteerInput = toNonEmptyProviderInput(composedSteerInput);
-      const normalizedSteerAttachments = yield* resolveProviderDispatchAttachments({
-        attachments: input.attachments,
-        attachmentsDir: serverConfig.attachmentsDir,
-        repository: managedAttachments,
-        threadId: input.threadId,
-        messageId: input.messageId,
-        provider: steerProvider,
-        operation: "thread.turn.start",
-      });
-      yield* providerService.steerSubagent({
-        threadId: providerThread.id,
-        providerThreadId: subagentProviderThreadId,
-        ...(normalizedSteerInput ? { input: normalizedSteerInput } : {}),
-        ...(normalizedSteerAttachments.length > 0
-          ? { attachments: normalizedSteerAttachments }
-          : {}),
-        ...(input.skills !== undefined ? { skills: input.skills } : {}),
-        ...(providerMentions !== undefined ? { mentions: providerMentions } : {}),
-      });
-      return;
-    }
     const activation = computerActivationMetadata(input);
 
     const requestedMode = activation.computerControlMode;

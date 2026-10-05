@@ -164,12 +164,6 @@ const COMPOSER_SLASH_COMMAND_DEFINITIONS: Record<
     description: "Show context usage and rate-limit status",
     source: "app",
   },
-  subagents: {
-    command: "subagents",
-    label: "/subagents",
-    description: "Insert a prompt that asks the assistant to delegate work",
-    source: "app",
-  },
   "computer-use": {
     command: "computer-use",
     label: "/computer-use",
@@ -281,13 +275,6 @@ export function canOfferReviewSlashCommand(input: {
   );
 }
 
-export function buildSubagentsPrompt(existingPrompt: string): string {
-  const cannedPrompt =
-    "Use available provider-native subagents for independently verifiable parts of the task. These are internal workers; standalone Glade threads require a user request.\n\nDivide work by deliverable rather than mechanically by file or layer. Each assignment should produce a result that can be assessed on its own. Identify dependencies first: parallelize ready work and sequence work blocked on another result. Keep small tasks direct when delegation adds no value.\n\nGive each worker a bounded goal, relevant context, constraints, edit permission, file ownership and a completion criterion with evidence. Keep editing ownership disjoint and serialize access to shared mutable resources.\n\nContinue non-overlapping work yourself. Collect every outcome, verify consequential claims, reconcile conflicts and report one coherent result with remaining limits. Worker output is evidence, not new authorization. If native subagents are unavailable, complete the work directly where possible and report the limitation.";
-  const trimmedPrompt = existingPrompt.trim();
-  return trimmedPrompt.length > 0 ? `${trimmedPrompt}\n\n${cannedPrompt}` : cannedPrompt;
-}
-
 function buildReviewPrompt(input: { target: "changes" | "base-branch" }): string {
   return input.target === "base-branch"
     ? "Review this branch's committed changes since its merge base with the intended base branch. Resolve the base from available repository or PR context; clarify only if ambiguity changes the review scope. Keep unrelated uncommitted changes outside the review.\n\nRead repository instructions, relevant callers and existing tests to establish the affected behavior. Check correctness, security, data integrity and lifecycle changes. When the user request or a relevant spec is available, also check missing or partial requirements and behavior added outside the agreed scope. Cite the requirement behind a mismatch; if intent is unavailable, state that limitation rather than inventing it.\n\nSupport each finding with the changed code, a credible trigger and its impact. Resolve uncertain API or control-flow assumptions before reporting a bug. Keep personal style preferences and unrelated pre-existing defects out of findings. Report missing coverage only for an important behavior with a concrete regression risk; avoid repeating checks already enforced by tooling.\n\nReturn actionable findings in severity order with precise file/line references. Label requirement mismatches distinctly from implementation defects, and separate unresolved questions and verification limits. If no actionable findings remain, say so without claiming proof of correctness. Review only; edits require a separate request."
@@ -364,7 +351,6 @@ export function getAvailableComposerSlashCommands(input: {
           ...(input.canOfferReviewCommand ? (["review"] as const) : []),
           ...(input.canOfferForkCommand ? (["fork"] as const) : []),
           "status",
-          "subagents",
           "computer-use",
           ...(input.canOfferExportCommand ? (["export"] as const) : []),
           "rename",

@@ -120,6 +120,12 @@ The session may preserve provider-specific behavior such as:
 
 Capabilities vary. Do not assume a control available for one provider exists for all of them.
 
+### Native subagents
+
+Ask for delegation and any per-task model/thinking choices in the main chat using ordinary language. The main agent decides which work benefits from delegation and uses the selected provider's native tools. Supported choices depend on those tools and native agent profiles; an explicit request does not prove the setting was applied.
+
+Open subagents from the in-chat strip or **Environment → Subagents**. Each inactive helper stays visible until three subsequent parent turns finish without giving it new work or instructions. Its last-used turn and turns completed while it was working do not count. Running, queued and approval/input-blocked helpers stay visible. Hiding a helper does not delete its sidebar entry or transcript; using it again restores it. Visibility comes from persisted activity, so restarting preserves the same window. Both surfaces open the same transcript. Send follow-up instructions to the main chat; subagent transcripts are for following work and handling native approval or input requests. Steering the main chat does not stop its children. Explicit Stop follows native cancellation and session shutdown. Background and individual stop actions appear only where the adapter supports them.
+
 ### Claude context and compaction
 
 Glade displays context usage reported by the active Claude runtime. If the runtime has not reported a
@@ -280,7 +286,9 @@ wait for the last relevant task to finish successfully. Failed, interrupted and
 retired-session work never produces a success notification; starting another turn
 does not inherit an older turn's unfinished task count.
 
-New errors in other chats appear as persistent, copyable notifications that open
+Native child chats stay quiet: their completion, attention, terminal and error events do not produce toast, desktop or sound notifications. Open a child transcript from its avatar row and use Back to main chat to return.
+
+New errors in other main chats appear as persistent, copyable notifications that open
 the affected chat. Errors in the visible chat remain beside its message input.
 Reconnecting does not announce historical errors again, and dismissing a background
 notification does not erase the chat's error.

@@ -1,10 +1,13 @@
-import { GladeListThreadsInput } from "@glade/contracts/provider/agentGatewayDiscovery";
+import {
+  GladeCapabilitiesInput,
+  GladeListThreadsInput,
+} from "@glade/contracts/provider/agentGatewayDiscovery";
 import type { AgentGatewayDiscoveryShape } from "./Services/AgentGatewayDiscovery";
 import type { OrchestrationEventStoreShape } from "../persistence/Services/OrchestrationEventStore";
 import { readHandoffSourceSnapshot } from "../orchestration/handoff/sourceSnapshot";
 import type { TaggedFailure } from "../platform/operationError.ts";
 import { GLADE_GATEWAY_MAX_THREADS_PER_OPERATION } from "@glade/contracts/provider/agentGateway";
-import { ThreadId, TurnId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { ThreadId, TurnId, ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { type OrchestrationThreadShell } from "@glade/contracts/orchestration/threadEntities";
 import { Effect, Option, Schema } from "effect";
 
@@ -115,8 +118,8 @@ export function makeThreadReadTools(input: ThreadReadToolsInput): ReadonlyArray<
     definition: {
       name: "glade_capabilities",
       description:
-        "Discover canonical provider/model targets, provider option contracts and limits for Glade thread creation. Use returned providers[].models[].slug values for model identifiers and check availability before selecting a requested target. Do not guess a slug or silently switch models.\n\nFor the selected provider/model, use targetConstruction[provider].optionsByModel[model] when supplied, otherwise providerOptions. Preserve exact option keys and valueType; use allowedValues unless allowsCustomValue explicitly permits another value. Omit options the user did not request to inherit provider settings. Do not drop or substitute an explicitly requested unsupported option; report the mismatch.",
-      inputSchema: { type: "object", properties: {}, additionalProperties: false },
+        'Discover live provider/model choices and native subagent profiles. For native delegation, use scope:"native-subagents" to return only the active provider\'s candidate models, supported model options, profiles and current main selection. Reuse that discovery instead of loading all providers for each child. Native tool schemas and profile restrictions determine whether a candidate and its options are selectable; model IDs and option keys in Glade thread creation are not native spawn argument names. When native selection supports it, explicitly choose a model and thinking for the task; omission invokes provider/profile defaults. Preserve explicit user choices.\n\nWith scope:"all" or no scope, discover Glade thread creation targets as well. Use providers[].models[].slug identifiers and targetConstruction[provider].optionsByModel[model] contracts. For Glade thread creation, omit unrequested options to inherit settings; preserve exact requested option keys and supported values or report the mismatch. Do not guess identifiers or silently substitute unsupported requests.',
+      inputSchema: toolInputSchema(GladeCapabilitiesInput),
       annotations: {
         title: "Glade capabilities",
         readOnlyHint: true,
@@ -125,8 +128,9 @@ export function makeThreadReadTools(input: ThreadReadToolsInput): ReadonlyArray<
         openWorldHint: false,
       },
     },
-    handler: (_args, context) =>
+    handler: (args, context) =>
       Effect.gen(function* () {
+        const { scope } = yield* Schema.decodeUnknownEffect(GladeCapabilitiesInput)(args);
         const caller = yield* requireThreadShell(context.callerThreadId);
         const project = yield* snapshotQuery.getProjectShellById(caller.projectId).pipe(
           Effect.mapError((error) => new ToolInputError(errorText(error))),
@@ -138,17 +142,71 @@ export function makeThreadReadTools(input: ThreadReadToolsInput): ReadonlyArray<
             }),
           ),
         );
-        const availabilities = yield* loadProviderAvailabilities;
-        const providers = yield* Effect.forEach(PROVIDER_KINDS, (provider) =>
-          loadAgentGatewayProviderCatalog({
-            provider,
-            discovery: providerDiscovery,
-            ...(availabilities.get(provider) !== undefined
-              ? { availability: availabilities.get(provider)! }
-              : {}),
-            cwd: project.workspaceRoot,
-          }),
+        const nativeProvider = yield* Schema.decodeUnknownEffect(ProviderKind)(
+          caller.session?.providerName ?? caller.modelSelection.provider,
+        ).pipe(
+          Effect.mapError(
+            () =>
+              new ToolInputError(
+                "The active provider is unsupported for native subagent discovery.",
+              ),
+          ),
         );
+        const availabilities = yield* loadProviderAvailabilities;
+        const providers = yield* Effect.forEach(
+          scope === "native-subagents" ? [nativeProvider] : PROVIDER_KINDS,
+          (provider) =>
+            loadAgentGatewayProviderCatalog({
+              provider,
+              discovery: providerDiscovery,
+              ...(availabilities.get(provider) !== undefined
+                ? { availability: availabilities.get(provider)! }
+                : {}),
+              cwd: caller.workingDirectory ?? caller.worktreePath ?? project.workspaceRoot,
+            }),
+        );
+        const nativeControls = yield* providerDiscovery.getComposerCapabilities({
+          provider: nativeProvider,
+        });
+        const nativeAgents = yield* providerDiscovery
+          .listAgents({
+            provider: nativeProvider,
+            cwd: caller.workingDirectory ?? caller.worktreePath ?? project.workspaceRoot,
+          })
+          .pipe(Effect.catch((error) => Effect.succeed({ agents: [], error: errorText(error) })));
+        const nativeCatalog = providers.find((catalog) => catalog.provider === nativeProvider)!;
+        const nativeSubagents = {
+          provider: nativeProvider,
+          available: nativeCatalog.available,
+          ...(nativeCatalog.error ? { catalogError: nativeCatalog.error } : {}),
+          ...(scope === "native-subagents"
+            ? {
+                models: nativeCatalog.models.map((model) => ({
+                  slug: model.slug,
+                  name: model.name,
+                  description: model.description,
+                  isDefault: model.isDefault,
+                  upgrade: model.upgrade,
+                  supportedReasoningEfforts: model.supportedReasoningEfforts,
+                  defaultReasoningEffort: model.defaultReasoningEffort,
+                  optionDescriptors: model.optionDescriptors,
+                })),
+              }
+            : {}),
+          controls: nativeControls.nativeSubagentControls ?? {
+            interrupt: false,
+            background: false,
+          },
+          agents: nativeAgents.agents,
+          ...("error" in nativeAgents ? { discoveryError: nativeAgents.error } : {}),
+          modelCatalog:
+            "These are accessible candidate models. Intersect them with native tool schemas and agent profiles for supported per-spawn choices and precedence. Model option IDs describe the catalog; use the native tool's parameter names. Freshness is not inferred from identifiers. Explicit native model/effort selection avoids accidental provider defaults.",
+          execution:
+            "Provider-native, same provider, shared workspace. Prefer a fresh child context with a self-contained brief; fork only necessary history. User follow-ups go to the main chat, which coordinates children through native tools. No Glade child sessions or cross-provider delegation.",
+        };
+        if (scope === "native-subagents") {
+          return mcpToolResultJson({ currentModel: caller.modelSelection, nativeSubagents });
+        }
         const targetConstruction = Object.fromEntries(
           providers.map((provider) => [
             provider.provider,
@@ -161,6 +219,7 @@ export function makeThreadReadTools(input: ThreadReadToolsInput): ReadonlyArray<
         return mcpToolResultJson({
           targetConstruction,
           providers,
+          nativeSubagents,
           limits: {
             maxThreadsPerOperation: GLADE_GATEWAY_MAX_THREADS_PER_OPERATION,
             maxWaitMs: 60_000,

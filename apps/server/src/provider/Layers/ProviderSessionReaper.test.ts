@@ -83,7 +83,6 @@ function makeProviderServiceStub(input: {
     interruptTurn: () => unsupported(),
     stopTask: () => unsupported(),
     backgroundTask: () => unsupported(),
-    steerSubagent: () => unsupported(),
     respondToRequest: () => unsupported(),
     respondToUserInput: () => unsupported(),
     stopSession: input.stopSession,

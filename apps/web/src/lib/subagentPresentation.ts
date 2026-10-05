@@ -61,25 +61,6 @@ const subagentIdentityDirectoryByActivities = new WeakMap<
   ReturnType<typeof buildSubagentIdentityDirectory>
 >();
 
-function basename(value: string): string {
-  const slashIndex = Math.max(value.lastIndexOf("/"), value.lastIndexOf("\\"));
-  return slashIndex >= 0 ? value.slice(slashIndex + 1) : value;
-}
-
-function fallbackSubagentLabel(value: string | null): string | null {
-  const normalized = normalizeWhitespace(value);
-  if (!normalized) {
-    return null;
-  }
-
-  if (normalized.startsWith("subagent:")) {
-    const segments = normalized.split(":").filter((segment) => segment.length > 0);
-    return segments.at(-1) ?? normalized;
-  }
-
-  return basename(normalized);
-}
-
 function normalizeWhitespace(value: string | null | undefined): string | null {
   const normalized = value?.trim().replace(/\s+/g, " ") ?? "";
   return normalized.length > 0 ? normalized : null;
@@ -101,7 +82,11 @@ function isGenericSubagentTitle(title: string | null): boolean {
     return true;
   }
   const normalized = title.trim().toLowerCase();
-  return GENERIC_SUBAGENT_TITLES.has(normalized) || normalized.startsWith("subagent ");
+  return (
+    GENERIC_SUBAGENT_TITLES.has(normalized) ||
+    normalized.startsWith("subagent ") ||
+    /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(normalized)
+  );
 }
 
 function parseBracketedSubagentLabel(label: string | null): {
@@ -121,13 +106,6 @@ function parseBracketedSubagentLabel(label: string | null): {
     nickname: normalizeWhitespace(match[1]),
     role: normalizeRole(match[2]),
   };
-}
-
-function capitalizeRoleLabel(role: string | null): string | null {
-  if (!role) {
-    return null;
-  }
-  return role.charAt(0).toUpperCase() + role.slice(1);
 }
 
 function providerThreadIdForThread(input: {
@@ -229,8 +207,7 @@ export function resolveSubagentPresentation(input: {
   const role = explicitRole ?? parsedTitleRole;
   const resolvedTitle = parsedTitleNickname ? null : titleLabel;
   const normalizedFallbackId = normalizeWhitespace(input.fallbackId);
-  const fallbackLabel = fallbackSubagentLabel(normalizedFallbackId) ?? "Subagent";
-  const primaryLabel = nickname ?? resolvedTitle ?? capitalizeRoleLabel(role) ?? fallbackLabel;
+  const primaryLabel = nickname ?? resolvedTitle ?? "Subagent";
   const fullLabel = role && nickname ? `${nickname} [${role}]` : primaryLabel;
 
   return {
@@ -239,7 +216,7 @@ export function resolveSubagentPresentation(input: {
     role,
     title: resolvedTitle,
     fullLabel,
-    accentColor: subagentAccentColor(nickname ?? primaryLabel),
+    accentColor: subagentAccentColor(nickname ?? normalizedFallbackId ?? primaryLabel),
   };
 }
 

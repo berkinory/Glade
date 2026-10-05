@@ -145,20 +145,6 @@ export const ProviderBackgroundTaskInput = Schema.Struct({
 });
 export type ProviderBackgroundTaskInput = typeof ProviderBackgroundTaskInput.Type;
 
-export const ProviderSteerSubagentInput = Schema.Struct({
-  threadId: ThreadId,
-  providerThreadId: TrimmedNonEmptyString,
-  input: Schema.optional(
-    TrimmedNonEmptyString.check(Schema.isMaxLength(PROVIDER_SEND_TURN_MAX_INPUT_CHARS)),
-  ),
-  attachments: Schema.optional(
-    Schema.Array(ChatAttachment).check(Schema.isMaxLength(PROVIDER_SEND_TURN_MAX_ATTACHMENTS)),
-  ),
-  skills: Schema.optional(Schema.Array(ProviderSkillReference)),
-  mentions: Schema.optional(Schema.Array(ProviderMentionReference)),
-});
-export type ProviderSteerSubagentInput = typeof ProviderSteerSubagentInput.Type;
-
 export const ProviderStopSessionInput = Schema.Struct({
   threadId: ThreadId,
   expectedLifecycleGeneration: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),

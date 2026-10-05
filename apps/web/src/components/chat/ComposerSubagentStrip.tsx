@@ -1,18 +1,8 @@
-import {
-  BackgroundIcon,
-  CornerUpLeftIcon,
-  BotIcon,
-  CollapseIcon,
-  ExpandIcon,
-  SquareFilledIcon,
-} from "~/lib/icons";
-import { Spinner } from "~/components/ui/spinner";
+import { BackgroundIcon, BotIcon, CollapseIcon, ExpandIcon, SquareFilledIcon } from "~/lib/icons";
+import { SubagentAvatar } from "./SubagentAvatar";
+import { SubagentStatusIndicator } from "./SubagentStatusIndicator";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { pluralize } from "@glade/shared/text/text";
-import {
-  subagentStatusDotClassName,
-  subagentStatusTextToneClassName,
-} from "~/lib/subagentPresentation";
+import { subagentStatusTextToneClassName } from "~/lib/subagentPresentation";
 import { cn } from "~/lib/utils";
 import { Button } from "../ui/button";
 import { DisclosureRegion } from "../ui/DisclosureRegion";
@@ -37,9 +27,9 @@ interface ComposerSubagentStripProps {
   compact: boolean;
   onCompactChange: (compact: boolean) => void;
   onOpenThread: (threadId: ThreadId) => void;
-  onBackgroundItem?: (item: ComposerSubagentStripItem) => void;
-  onStopItem?: (item: ComposerSubagentStripItem) => void;
-  onStopAll?: () => void;
+  onBackgroundItem?: ((item: ComposerSubagentStripItem) => void) | undefined;
+  onStopItem?: ((item: ComposerSubagentStripItem) => void) | undefined;
+  onStopAll?: (() => void) | undefined;
   attachedToPrevious?: boolean;
 }
 export const ComposerSubagentStrip = function ComposerSubagentStrip({
@@ -65,16 +55,8 @@ export const ComposerSubagentStrip = function ComposerSubagentStrip({
     >
       <ComposerStackedPanelHeaderRow>
         <ComposerStackedPanelRowMain>
-          {compact && runningCount > 0 ? (
-            <Spinner variant="working" className={COMPOSER_STACKED_PANEL_ICON_CLASS_NAME} />
-          ) : (
-            <BotIcon className={COMPOSER_STACKED_PANEL_ICON_CLASS_NAME} />
-          )}
-          <ComposerStackedPanelRowLabel tone="meta">
-            {runningCount > 0
-              ? `${runningCount} of ${subagentItems.length} ${pluralize(subagentItems.length, "subagent")} running`
-              : `${subagentItems.length} ${pluralize(subagentItems.length, "subagent")}`}
-          </ComposerStackedPanelRowLabel>
+          <BotIcon className={COMPOSER_STACKED_PANEL_ICON_CLASS_NAME} />
+          <ComposerStackedPanelRowLabel tone="meta">Subagents</ComposerStackedPanelRowLabel>
         </ComposerStackedPanelRowMain>
         {onStopAll && runningCount > 1 ? (
           <Button
@@ -110,111 +92,75 @@ export const ComposerSubagentStrip = function ComposerSubagentStrip({
             COMPOSER_STACKED_PANEL_SCROLL_REGION_CLASS_NAME,
           )}
         >
-          {items.map((item) =>
-            item.kind === "parent" ? (
-              <div
-                key={item.key}
-                data-testid="composer-subagent-parent-row"
-                className="-mx-1 flex w-[calc(100%+0.5rem)] min-w-0 items-center gap-1 rounded-md px-1 py-1 transition-colors hover:bg-[var(--color-background-button-secondary-hover)]"
+          {subagentItems.map((item) => (
+            <div
+              key={item.key}
+              data-testid="composer-subagent-row"
+              data-viewed={item.isViewed || undefined}
+              className={cn(
+                "group/subagent-row -mx-1 flex w-[calc(100%+0.5rem)] min-w-0 items-center gap-1 rounded-md px-1 py-1 transition-colors hover:bg-[var(--color-background-button-secondary-hover)]",
+                item.isViewed && "bg-[var(--color-background-button-secondary)]",
+              )}
+            >
+              <button
+                type="button"
+                className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                title={item.fullLabel}
+                onClick={() => onOpenThread(item.threadId)}
               >
-                <button
-                  type="button"
-                  className="flex min-w-0 flex-1 items-center gap-2 text-left"
-                  title={item.label}
-                  onClick={() => onOpenThread(item.threadId)}
-                >
-                  <CornerUpLeftIcon className="size-[0.923em] shrink-0 text-muted-foreground/55" />
-                  <span className="min-w-0 flex-1 truncate text-ui font-medium text-foreground/85">
-                    {item.label}
-                  </span>
-                </button>
-              </div>
-            ) : (
-              <div
-                key={item.key}
-                data-testid="composer-subagent-row"
-                data-viewed={item.isViewed || undefined}
-                className={cn(
-                  "group -mx-1 flex w-[calc(100%+0.5rem)] min-w-0 items-center gap-1 rounded-md px-1 py-1 transition-colors hover:bg-[var(--color-background-button-secondary-hover)]",
-                  item.isViewed && "bg-[var(--color-background-button-secondary)]",
-                )}
-              >
-                <button
-                  type="button"
-                  className="flex min-w-0 flex-1 items-center gap-2 text-left"
-                  title={item.fullLabel}
-                  onClick={() => onOpenThread(item.threadId)}
-                >
-                  <span
-                    className={cn(
-                      "size-1.5 shrink-0 rounded-full",
-                      subagentStatusDotClassName(item.statusKind),
-                    )}
-                  />
-                  <span className="min-w-0 flex-1 truncate text-ui font-medium text-foreground/85">
-                    <span>{item.primaryLabel}</span>
-                    {item.role ? (
-                      <span className="ml-1 text-ui-sm font-normal text-muted-foreground/55">
-                        ({item.role})
-                      </span>
-                    ) : null}
-                    {item.modelLabel ? (
-                      <span className="ml-1.5 text-ui-sm font-normal text-muted-foreground/45">
-                        {item.modelLabel}
-                      </span>
-                    ) : null}
-                    {item.isBackground ? (
-                      <span className="ml-1.5 text-ui-sm font-normal text-muted-foreground/45">
-                        background
-                      </span>
-                    ) : null}
-                  </span>
-                  {item.statusLabel ? (
-                    <span
-                      className={cn(
-                        "shrink-0 text-ui-sm",
-                        subagentStatusTextToneClassName(item.statusKind),
-                      )}
-                    >
-                      {item.statusLabel}
+                <SubagentAvatar threadId={item.threadId} />
+                <span className="min-w-0 flex-1 truncate text-ui font-medium text-foreground/85">
+                  <span>{item.primaryLabel}</span>
+                  {item.role ? (
+                    <span className="ml-1 text-ui-sm font-normal text-muted-foreground/55">
+                      ({item.role})
                     </span>
                   ) : null}
-                </button>
-                {item.isActive && !item.isBackground && onBackgroundItem ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
+                  {item.modelLabel ? (
+                    <span className="ml-1.5 text-ui-sm font-normal text-muted-foreground/45">
+                      {item.modelLabel}
+                    </span>
+                  ) : null}
+                  {item.isBackground ? (
+                    <span className="ml-1.5 text-ui-sm font-normal text-muted-foreground/45">
+                      background
+                    </span>
+                  ) : null}
+                </span>
+                {item.statusLabel ? (
+                  <span
                     className={cn(
-                      "shrink-0 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100",
-                      COMPOSER_STACKED_PANEL_ICON_BUTTON_CLASS_NAME,
+                      "shrink-0 text-ui-sm",
+                      subagentStatusTextToneClassName(item.statusKind),
                     )}
-                    onClick={() => onBackgroundItem(item)}
-                    aria-label="Run in background (ctrl+b)"
-                    title="Run in background (ctrl+b)"
                   >
-                    <BackgroundIcon className="size-3" />
-                  </Button>
+                    {item.statusLabel}
+                  </span>
                 ) : null}
-                {item.isActive && onStopItem ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    className={cn(
-                      "shrink-0 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100",
-                      COMPOSER_STACKED_PANEL_ICON_BUTTON_CLASS_NAME,
-                    )}
-                    onClick={() => onStopItem(item)}
-                    aria-label="Stop subagent"
-                    title="Stop subagent"
-                  >
-                    <SquareFilledIcon className="size-3" />
-                  </Button>
-                ) : null}
-              </div>
-            ),
-          )}
+              </button>
+              {item.isActive && !item.isBackground && onBackgroundItem ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  className={cn(
+                    "shrink-0 opacity-0 transition-opacity group-focus-within/subagent-row:opacity-100 group-hover/subagent-row:opacity-100",
+                    COMPOSER_STACKED_PANEL_ICON_BUTTON_CLASS_NAME,
+                  )}
+                  onClick={() => onBackgroundItem(item)}
+                  aria-label="Run in background (ctrl+b)"
+                  title="Run in background (ctrl+b)"
+                >
+                  <BackgroundIcon className="size-3" />
+                </Button>
+              ) : null}
+              <SubagentStatusIndicator
+                statusKind={item.statusKind}
+                statusLabel={item.statusLabel}
+                onStop={item.isActive && onStopItem ? () => onStopItem(item) : undefined}
+              />
+            </div>
+          ))}
         </div>
       </DisclosureRegion>
     </ComposerStackedPanel>

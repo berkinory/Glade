@@ -14,12 +14,10 @@ import {
   ProviderInterruptTurnInput,
   ProviderStopTaskInput,
   ProviderBackgroundTaskInput,
-  ProviderSteerSubagentInput,
   ProviderRespondToRequestInput,
   ProviderRespondToUserInputInput,
 } from "@glade/contracts/provider/provider";
 import { AGENT_GATEWAY_CREDENTIAL_ROTATION_REQUIRED } from "../../agentGateway/sessionLease.ts";
-import { carryProviderAttachmentPaths } from "../core/providerAttachmentPaths.ts";
 import { computerApprovalGate } from "../../computer/ComputerApprovalGate.ts";
 import { ProviderValidationError } from "../core/Errors.ts";
 import { ProviderRuntimeBindings } from "../Services/ProviderRuntimeBindings";
@@ -248,44 +246,6 @@ export const ProviderTaskControlLive = Layer.effect(
         ),
       );
 
-    const steerSubagent: ProviderServiceShape["steerSubagent"] = (rawInput) =>
-      decodeInputOrValidationError({
-        operation: "ProviderService.steerSubagent",
-        schema: ProviderSteerSubagentInput,
-        payload: rawInput,
-      }).pipe(
-        Effect.flatMap((input) =>
-          lifecycle.runCurrent(input.threadId, () =>
-            Effect.gen(function* () {
-              const routed = yield* resolveRoutableSession({
-                threadId: input.threadId,
-                operation: "ProviderService.steerSubagent",
-                allowRecovery: false,
-              });
-              if (!routed.isActive) {
-                return yield* toValidationError(
-                  "ProviderService.steerSubagent",
-                  `Cannot message subagent '${input.providerThreadId}' because the provider runtime is not active.`,
-                );
-              }
-              if (!routed.adapter.steerSubagent) {
-                return yield* toValidationError(
-                  "ProviderService.steerSubagent",
-                  `Provider '${routed.adapter.provider}' does not support messaging a running subagent.`,
-                );
-              }
-              const attachments = carryProviderAttachmentPaths(rawInput, input.attachments ?? []);
-              yield* routed.adapter.steerSubagent(input.threadId, input.providerThreadId, {
-                input: input.input ?? "",
-                ...(attachments.length > 0 ? { attachments } : {}),
-                ...(input.skills !== undefined ? { skills: input.skills } : {}),
-                ...(input.mentions !== undefined ? { mentions: input.mentions } : {}),
-              });
-            }),
-          ),
-        ),
-      );
-
     const respondToInteraction = (response: InteractionResponse) => {
       const { input } = response;
       if (response.kind === "approval" && input.requestId.startsWith("computer:")) {
@@ -373,7 +333,6 @@ export const ProviderTaskControlLive = Layer.effect(
       interruptTurn,
       stopTask,
       backgroundTask,
-      steerSubagent,
       respondToRequest,
       respondToUserInput,
     };

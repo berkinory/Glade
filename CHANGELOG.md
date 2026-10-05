@@ -38,6 +38,9 @@
 
 ### Improved
 
+- Follow native subagents from the chat and Environment with character avatars, clearer model information and a return to the main chat; inactive helpers leave these panels after three unused turns.
+- Subagents choose supported models and thinking from current provider options, with focused context and follow-up instructions coordinated through the main chat.
+
 - Inspect reasoning, subagent results, runtime notices and provider transitions directly in the conversation, with compact expandable details.
 
 - Active tools show their progress beside the current action, and tool details use compact, scrollable output with precise elapsed times.
@@ -127,6 +130,9 @@
 
 ### Fixed
 
+- Subagent transcripts and status stay synchronized across parent turns, with reliable stopping and fewer duplicate activity rows.
+- Subagent completions and requests no longer trigger chat, desktop or sound notifications.
+
 - Copy, pin and fork actions stay hidden until the assistant finishes its turn.
 
 - Menu labels and selected items stay visible, with consistent mouse and keyboard navigation.
@@ -212,6 +218,8 @@
 - The message input no longer briefly changes size when switching chats.
 
 ### Removed
+
+- Remove the subagent prompt command; request delegation naturally in the main conversation.
 
 - Importing projects and conversations from Codex and Claude Code.
 

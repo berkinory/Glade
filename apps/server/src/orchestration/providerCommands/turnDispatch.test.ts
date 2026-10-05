@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { Effect, Option, Duration } from "effect";
-import { CommandId, ThreadId } from "@glade/contracts/core/baseSchemas";
+import { CommandId, ThreadId, ProjectId } from "@glade/contracts/core/baseSchemas";
 
 import { resolveProviderAttachmentPath } from "../../provider/core/providerAttachmentPaths.ts";
 import path from "node:path";
@@ -102,6 +102,61 @@ describe("Provider reactor turnDispatch", () => {
           attachment: sentAttachment,
         }),
     ).toBe(storagePath);
+  });
+
+  it("rejects a direct native child turn without starting a separate provider session", async () => {
+    const harness = await createHarness();
+    const now = new Date().toISOString();
+    const parentId = ThreadId.makeUnsafe("thread-1");
+    const childId = ThreadId.makeUnsafe("subagent:thread-1:native-worker");
+    const parent = await readHarnessThread(harness);
+    if (!parent) throw new Error("Expected parent thread");
+    await Effect.runPromise(
+      harness.engine.dispatch({
+        type: "thread.create",
+        commandId: CommandId.makeUnsafe("create-native-child"),
+        threadId: childId,
+        projectId: ProjectId.makeUnsafe("project-1"),
+        title: "Native worker",
+        modelSelection: parent.modelSelection,
+        runtimeMode: "approval-required",
+        branch: null,
+        worktreePath: null,
+        parentThreadId: parentId,
+        creationSource: "provider_native",
+        createdAt: now,
+      }),
+    );
+    await Effect.runPromise(
+      harness.engine.dispatch({
+        type: "thread.turn.start",
+        commandId: CommandId.makeUnsafe("direct-native-child-turn"),
+        threadId: childId,
+        message: {
+          messageId: asMessageId("direct-child-message"),
+          role: "user",
+          text: "Change the task",
+          attachments: [],
+        },
+        runtimeMode: "approval-required",
+        createdAt: now,
+      }),
+    );
+    await waitFor(async () =>
+      Boolean(
+        (await readHarnessThread(harness, childId))?.activities.some(
+          (activity) =>
+            activity.kind === "provider.turn.start.failed" &&
+            JSON.stringify(activity.payload).includes(
+              "Send follow-up instructions to the main conversation",
+            ),
+        ),
+      ),
+    );
+    expect(harness.startSession).not.toHaveBeenCalled();
+    expect(harness.sendTurn).not.toHaveBeenCalled();
+    expect(harness.steerTurn).not.toHaveBeenCalled();
+    expect((await readHarnessThread(harness))?.session).toBeNull();
   });
 
   it("reacts to thread.turn.start by ensuring session and sending provider turn", async () => {

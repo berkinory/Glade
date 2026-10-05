@@ -22,7 +22,7 @@ The registry is intentionally small. It maps `ProviderKind` to an adapter and li
 - stop all resources owned by the adapter;
 - emit one canonical `ProviderRuntimeEvent` stream.
 
-Optional methods advertise richer native behavior without forcing every provider to emulate it. These include native review, task stop/backgrounding, subagent steering, compaction, thread forking, runtime model/agent discovery, skills, slash commands, plugins, and voice prewarm/transcription.
+Optional methods advertise richer native behavior without forcing every provider to emulate it. These include native review, task stop/backgrounding, main-turn steering, compaction, thread forking, runtime model/agent discovery, skills, slash commands, plugins, and voice prewarm/transcription.
 
 Adapters also expose explicit capabilities rather than making the UI infer support from provider names. Current capability flags cover session model switching, conversation rollback strategy, skill/plugin discovery and mentions, native slash-command discovery, runtime model lists, turn steering, and live diff patches.
 
@@ -126,3 +126,25 @@ login. CLI exit triggers provider status and catalog refresh; exit code zero alo
 is not proof of authentication. Server shutdown disposes retained attempts.
 
 Provider transitions continue in the same chat through `thread.handoff.start`. `HandoffPreparation` owns isolated destination-model evidence generation; `HandoffTransitions` validates immutable source boundaries and generations and persists stage changes. Source runtime retirement precedes destination admission, and only native first-turn acceptance marks delivery. Recovery of an interrupted turn-start RPC settles its original orchestration receipt without sending another turn. That receipt proves app-command acceptance only: the composer still waits for the matching transition operation and delivery message before clearing its captured draft. Uncertain or failed provider acceptance preserves the draft and never compensates attachments already accepted by orchestration. See [handoff-context.md](handoff-context.md) for accounting, retrieval and failure recovery. Codex rewind reads only the required descending turn-ID tail and returns no fabricated retained-history snapshot.
+
+## Native subagent coordination
+
+Codex `subAgentActivity` items carry the child thread ID independently of collaboration
+tool calls. Normalize these into the existing child activity contract and retain their
+ownership across parent turns. This native path does not automatically subscribe the
+client to child text: read the child's latest turn when its activity changes, through
+the owning session without resuming it. Serialize reads per child and project the
+provider-authored messages, names, model and terminal state through normal ingestion.
+These snapshots update at activity boundaries; they do not promise token streaming.
+
+Native children share their owning provider session and workspace; their separate transcripts do not create independently managed Glade sessions. The main agent delegates and receives results through native tools. User follow-up instructions go to the main conversation. Child transcripts are read-only apart from native approval and user-input requests. Direct user-to-child steering and its SDK message queues are intentionally absent.
+
+The in-chat strip and Environment panel retain completed children for the latest parent turn and carry running children across turns. Both read orchestration state and open the same transcripts; historical children remain accessible from the transcript. Requested model hints are labeled as requested; missing observed settings are not replaced by parent model labels. Projection caps remain visible notices, not execution limits. Historical metadata depends on retained provider evidence. A lost owning runtime is shown as unavailable, without inventing child completion.
+
+Delegation guidance defaults to a fresh context with a bounded brief and permits forks only for necessary history. The main agent chooses supported model and thinking parameters explicitly, honoring either user-requested axis independently. `glade_capabilities` with `scope: "native-subagents"` returns only the active provider's candidates and profiles; native tool schemas remain authoritative. This avoids loading all provider catalogs for each helper. Provider descriptions and upgrade metadata inform current-model choices without a hardcoded ranking. Prompt guidance is not an execution guarantee; validate requested choices against actual child configuration.
+
+Adapters report native interrupt/background capabilities through composer discovery. Main-turn steering remains distinct from interruption: it appends input to the native active turn. Explicit Stop uses the existing interruption fence and runtime retirement; native terminal events and teardown settle children. Recovery reuses existing provider continuation and reconciliation, without claiming that restored child records prove live or resumable native tasks.
+
+Codex child snapshots are projected as data, without replaying inherited collaboration history through the live event handler. Reads are coalesced, unchanged items are omitted, and responses from retired parent runtimes are discarded. Active children refresh missing native transcript updates every two seconds; terminal children stop refreshing. Child activity and actual child turns keep the parent runtime alive after its main turn finishes. Reading a finished result does not reactivate a child. Newly announced children retry the observed empty-rollout initialization race at most three times.
+
+The shared harness policy guides bounded delegation and task-appropriate model/effort selection. `glade_capabilities` exposes current provider catalogs, same-provider native profiles and native controls on demand. Main-chat models are candidates, not a guarantee of native per-spawn selectability. Native tools and profile configuration determine supported choices and precedence; Glade does not rewrite user profiles, hardcode model rankings or enforce a frontier filter without authoritative generation metadata.

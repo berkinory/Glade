@@ -235,6 +235,9 @@ function deriveSubagentStatus(thread: Thread | undefined): {
       label: "Running",
     };
   }
+  if (thread.latestTurn?.state === "completed") return { isActive: false, label: "Completed" };
+  if (thread.latestTurn?.state === "interrupted") return { isActive: false, label: "Stopped" };
+  if (thread.latestTurn?.state === "error") return { isActive: false, label: "Error" };
   if (thread.session?.status === "closed") {
     return {
       isActive: false,
@@ -255,11 +258,8 @@ function humanizeSubagentRawStatus(rawStatus: string | undefined): string | unde
 // Terminal work-log statuses are authoritative over child-thread session state: a finished
 // subagent's thread merely parks in an "Idle"/"Closed" session status, which must not mask
 // Completed/Failed/Stopped.
-function terminalSubagentStatusLabel(
-  rawStatus: string | undefined,
-  entryStatus: string | undefined,
-): string | undefined {
-  for (const candidate of rawStatus !== undefined ? [rawStatus] : [entryStatus]) {
+function terminalSubagentStatusLabel(rawStatus: string | undefined): string | undefined {
+  for (const candidate of [rawStatus]) {
     const statusKind = normalizeSubagentStatusKind(candidate);
     if (statusKind === "completed" || statusKind === "failed" || statusKind === "stopped") {
       return humanizeSubagentStatus(candidate);
@@ -329,6 +329,11 @@ export function enrichSubagentWorkEntries(
   }
 
   const threadById = new Map(threads.map((thread) => [thread.id, thread] as const));
+  const owner = parentThreadId ? threadById.get(parentThreadId) : undefined;
+  const ownerUnavailable =
+    owner?.session?.status === "closed" ||
+    owner?.session?.status === "error" ||
+    owner?.session?.status === "disconnected";
 
   return workEntries.map((entry) => {
     if ((entry.subagents?.length ?? 0) === 0) {
@@ -344,9 +349,28 @@ export function enrichSubagentWorkEntries(
       });
       const status = deriveSubagentStatus(matchedThread);
       const fallbackStatusLabel = humanizeSubagentRawStatus(subagent.rawStatus);
+      const newerRunningActivity =
+        fallbackStatusLabel === "Running" &&
+        matchedThread?.latestTurn?.completedAt !== undefined &&
+        matchedThread.latestTurn.completedAt !== null &&
+        Date.parse(entry.createdAt) > Date.parse(matchedThread.latestTurn.completedAt);
       const terminalStatusLabel = status.isActive
         ? undefined
-        : terminalSubagentStatusLabel(subagent.rawStatus, entry.subagentAction?.status);
+        : terminalSubagentStatusLabel(subagent.rawStatus);
+      const observedTerminalLabel =
+        !status.isActive &&
+        !newerRunningActivity &&
+        matchedThread?.latestTurn &&
+        matchedThread.latestTurn.state !== "running"
+          ? status.label
+          : undefined;
+      const statusLabel =
+        (newerRunningActivity ? "Running" : undefined) ??
+        observedTerminalLabel ??
+        terminalStatusLabel ??
+        (status.isActive ? status.label : undefined) ??
+        fallbackStatusLabel ??
+        status.label;
       const matchedPresentation =
         matchedThread !== undefined
           ? resolveSubagentPresentationForThread({ thread: matchedThread, threads })
@@ -354,15 +378,24 @@ export function enrichSubagentWorkEntries(
       const nextSubagent = Object.assign({}, subagent);
       if (matchedThread) {
         nextSubagent.resolvedThreadId = matchedThread.id;
+        nextSubagent.lastCompletedAt = matchedThread.latestTurn?.completedAt ?? undefined;
+        nextSubagent.hasPendingInteraction =
+          matchedThread.hasPendingApprovals === true || matchedThread.hasPendingUserInput === true;
       }
       if (matchedPresentation) {
         nextSubagent.title = matchedPresentation.fullLabel;
+        nextSubagent.nickname = matchedPresentation.nickname ?? matchedPresentation.primaryLabel;
       }
-      if (terminalStatusLabel ?? status.label ?? fallbackStatusLabel) {
-        nextSubagent.statusLabel = terminalStatusLabel ?? status.label ?? fallbackStatusLabel;
-      }
-      if (status.isActive || fallbackStatusLabel === "Running") {
+      if (statusLabel) nextSubagent.statusLabel = statusLabel;
+      if (newerRunningActivity) {
         nextSubagent.isActive = true;
+      } else if (observedTerminalLabel || terminalStatusLabel) {
+        nextSubagent.isActive = false;
+      } else if (matchedThread?.creationSource === "provider_native" && ownerUnavailable) {
+        nextSubagent.statusLabel = "Runtime unavailable";
+        nextSubagent.isActive = false;
+      } else {
+        nextSubagent.isActive = status.isActive || fallbackStatusLabel === "Running";
       }
       return nextSubagent;
     });

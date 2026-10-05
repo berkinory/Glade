@@ -3,6 +3,7 @@ import { ProviderIdleRuntime, type StopIdleRuntime } from "../Services/ProviderI
 import { ProviderSessionDirectory } from "../Services/ProviderSessionDirectory";
 import { ProviderAdapterRegistry } from "../Services/ProviderAdapterRegistry";
 import { asRecord } from "@glade/shared/transport/payloadValues";
+import { decodeSubagentAgentStates } from "@glade/shared/threads/subagents";
 import { hasResumeCursor } from "../core/providerRuntimeBinding";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { Ref } from "effect";
@@ -183,6 +184,40 @@ export function ProviderIdleRuntimeLive(runtimeIdleStopMs: number) {
         });
 
       const reconcileRuntimeIdleTimer = (event: ProviderRuntimeEvent) => {
+        if (event.providerRefs?.providerParentThreadId !== undefined) {
+          const childId = event.providerRefs.providerThreadId;
+          if (childId) {
+            const taskId = `native-child:${childId}`;
+            if (event.type === "turn.started") markRuntimeTaskLive(event.threadId, taskId);
+            if (event.type === "turn.completed" || event.type === "turn.aborted")
+              markRuntimeTaskSettled(event.threadId, taskId);
+          }
+          return;
+        }
+        if (
+          (event.type === "item.started" ||
+            event.type === "item.updated" ||
+            event.type === "item.completed") &&
+          event.payload.itemType === "collab_agent_tool_call"
+        ) {
+          const data = asRecord(event.payload.data);
+          const item = asRecord(data?.item) ?? data;
+          for (const agent of Object.values(decodeSubagentAgentStates(item))) {
+            const status = agent.status?.toLowerCase();
+            const taskId = `native-child:${agent.threadId}`;
+            if (status === "running" || status === "inprogress" || status === "pendinginit") {
+              markRuntimeTaskLive(event.threadId, taskId);
+            } else if (
+              status === "completed" ||
+              status === "interrupted" ||
+              status === "errored" ||
+              status === "failed" ||
+              status === "shutdown"
+            ) {
+              markRuntimeTaskSettled(event.threadId, taskId);
+            }
+          }
+        }
         switch (event.type) {
           case "turn.started":
             clearRuntimeIdleTimer(event.threadId);

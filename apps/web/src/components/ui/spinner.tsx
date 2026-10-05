@@ -20,7 +20,7 @@ export function Spinner({ className, variant = "loading", ...props }: SpinnerPro
       fill="currentColor"
       className={cn("inline-block shrink-0", className)}
     >
-      {profile.dots.map(({ index, still, values }) => (
+      {profile.dots.map(({ index, still, values, begin }) => (
         <circle
           key={index}
           cx={2 + (index % 5) * 4}
@@ -34,8 +34,14 @@ export function Spinner({ className, variant = "loading", ...props }: SpinnerPro
               values={values}
               keyTimes={profile.keyTimes}
               dur={`${profile.duration}s`}
+              begin={begin}
               repeatCount="indefinite"
-              calcMode="discrete"
+              calcMode={variant === "subagent" ? "spline" : "discrete"}
+              keySplines={
+                variant === "subagent"
+                  ? "0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1"
+                  : undefined
+              }
             />
           )}
         </circle>

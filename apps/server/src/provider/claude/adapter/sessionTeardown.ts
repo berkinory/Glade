@@ -53,7 +53,6 @@ export function makeClaudeSessionTeardown(input: {
         }
       }
       context.subagentRuns.clear();
-      context.pendingSubagentSteers.clear();
       context.pendingSubagentStops.clear();
 
       for (const taskId of Array.from(context.workflowRuntimePollers.keys())) {

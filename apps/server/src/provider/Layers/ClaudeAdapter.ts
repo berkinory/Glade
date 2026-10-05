@@ -185,8 +185,12 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         offerRuntimeEvent,
         runSdkFork,
       });
-    const { openInFlightTool, ensureSyntheticTurn, ensureSubagentRun, emitSubagentSteerDelivered } =
-      makeClaudeToolTracking({ makeEventStamp, offerRuntimeEvent, emitTodoTasksUpdated, nowIso });
+    const { openInFlightTool, ensureSyntheticTurn, ensureSubagentRun } = makeClaudeToolTracking({
+      makeEventStamp,
+      offerRuntimeEvent,
+      emitTodoTasksUpdated,
+      nowIso,
+    });
     const {
       resolveClaudeStartPreflight,
       assertSessionReplaceable,
@@ -289,13 +293,11 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       interruptTurn,
       stopTask,
       backgroundTask,
-      steerSubagent,
       readThread,
       respondToRequest,
       respondToUserInput,
     } = makeClaudeSessionInteractions({
       requireSession,
-      serverConfig,
       snapshotThread,
       settlePendingApproval,
       settlePendingUserInput,
@@ -315,7 +317,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       offerRuntimeEvent,
       settlePendingUserInput,
       runSdkPromise,
-      emitSubagentSteerDelivered,
 
       settlePendingApproval,
       bindClaudeProcessOwner,
@@ -377,7 +378,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       interruptTurn,
       stopTask,
       backgroundTask,
-      steerSubagent,
       readThread,
       rollbackThread,
       forkThread,

@@ -7,7 +7,6 @@ export const BUILT_IN_COMPOSER_SLASH_COMMANDS = [
   "review",
   "fork",
   "status",
-  "subagents",
   COMPUTER_USE_SLASH_COMMAND,
   "fast",
   "export",

@@ -2,6 +2,10 @@ import { Schema } from "effect";
 import { IsoDateTime, ProjectId, ThreadId, TrimmedNonEmptyString } from "../core/baseSchemas";
 import { ProviderKind } from "../core/baseSchemas";
 
+export const GladeCapabilitiesInput = Schema.Struct({
+  scope: Schema.optional(Schema.Literals(["all", "native-subagents"])),
+}).annotate({ parseOptions: { onExcessProperty: "error" } });
+
 export const GladeListThreadsInput = Schema.Struct({
   projectId: Schema.optional(ProjectId),
   parentThreadId: Schema.optional(ThreadId),

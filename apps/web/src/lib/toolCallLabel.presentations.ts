@@ -161,9 +161,9 @@ export const GLADE_MCP_TOOL_PRESENTATIONS = {
     failed: "Glade couldn't check its context",
   },
   glade_capabilities: {
-    running: "Glade is checking available agents",
-    completed: "Glade checked available agents",
-    failed: "Glade couldn't check available agents",
+    running: "Checking available models and subagents",
+    completed: "Checked available models and subagents",
+    failed: "Couldn't check available models and subagents",
   },
   glade_overview: {
     running: "Glade is gathering an overview",

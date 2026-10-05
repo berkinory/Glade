@@ -1,7 +1,7 @@
-export type SpinnerVariant = "action" | "loading" | "working" | "terminal" | "voice";
+export type SpinnerVariant = "action" | "loading" | "working" | "terminal" | "voice" | "subagent";
 
 // Adapted from zzzzshawn/matrix's Mobius Run, Prism Sweep, Core Spiral,
-// Flux Columns and Sound Bars. See LICENSE.dotmatrix.txt in this directory.
+// Flux Columns, Sound Bars and Echo Ring. See LICENSE.dotmatrix.txt in this directory.
 const PERIMETER_PATH = [0, 1, 2, 3, 4, 9, 14, 19, 24, 23, 22, 21, 20, 15, 10, 5];
 const TWIST_INNER = [6, 8, 18, 16];
 const SPIRAL_ORDER = [
@@ -56,6 +56,8 @@ function opacity(variant: SpinnerVariant, index: number, step: number, steps: nu
       const level = Math.max(1, Math.min(5, Math.round(1 + ((Math.sin(phase) + 1) / 2) * 4)));
       return row === 5 - level ? 1 : row > 5 - level ? 0.94 : 0.08;
     }
+    case "subagent":
+      return 0.2 + (1 - (Math.abs(row - 2) + Math.abs(col - 2)) / 4) * 0.72;
   }
 }
 
@@ -77,10 +79,29 @@ function profile(variant: SpinnerVariant, duration: number, steps: number) {
   };
 }
 
-export const DOT_MATRIX_PROFILES = {
+interface DotMatrixProfile {
+  duration: number;
+  keyTimes: string;
+  dots: { index: number; still: number; values: string; begin?: string }[];
+}
+
+export const DOT_MATRIX_PROFILES: Record<SpinnerVariant, DotMatrixProfile> = {
   action: profile("action", 1.6 / 1.45, 16),
   loading: profile("loading", 1.5 / 1.35, 25),
   working: profile("working", 1.5 / 1.35, 25),
   terminal: profile("terminal", 1.5 / 2.2, 5),
   voice: profile("voice", 1.75 / 1.35, 48),
+  subagent: {
+    duration: 1.5 * 1.25,
+    keyTimes: "0;0.28;0.56;0.78;1",
+    dots: Array.from({ length: 25 }, (_, index) => {
+      const ring = Math.abs(Math.floor(index / 5) - 2) + Math.abs((index % 5) - 2);
+      return {
+        index,
+        still: opacity("subagent", index, 0, 1),
+        values: "0.1;0.98;0.32;0.7824;0.1",
+        begin: `${(ring * 0.14 + (ring % 2) * 0.03) * 1.5 * 1.25}s`,
+      };
+    }),
+  },
 };

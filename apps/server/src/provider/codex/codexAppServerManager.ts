@@ -1,3 +1,4 @@
+import { CodexChildSnapshots } from "./childSnapshots";
 import { generateCodexThreadTitle, type CodexThreadTitleInput } from "./codexThreadTitle";
 import {
   prepareMcpElicitation,
@@ -246,6 +247,7 @@ interface CodexSessionContext {
   pendingApprovals: Map<ApprovalRequestId, PendingApprovalRequest>;
   pendingUserInputs: Map<ApprovalRequestId, PendingUserInputRequest>;
   sessionApprovalOverride?: CodexSessionApprovalOverride;
+  // Children can outlive a foreground turn; retain their ownership until this session closes.
   collabReceiverTurns: Map<string, TurnId>;
   collabReceiverParents: Map<string, string>;
   reviewTurnIds: Set<TurnId>;
@@ -382,6 +384,9 @@ export interface CodexThreadSnapshot {
   threadId: string;
   turns: CodexThreadTurnSnapshot[];
   cwd?: string | null;
+  agentNickname?: string;
+  agentRole?: string;
+  model?: string;
 }
 
 const ANSI_ESCAPE_CHAR = String.fromCharCode(27);
@@ -837,6 +842,7 @@ function setRecentCacheEntry<K, V>(
 
 export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEvents> {
   private readonly sessions = new Map<ThreadId, CodexSessionContext>();
+  private readonly childSnapshots = new WeakMap<CodexSessionContext, CodexChildSnapshots>();
   private readonly previouslyBoundThreadIds = new Set<ThreadId>();
   private readonly discoverySessions = new Map<string, CodexSessionContext>();
   private readonly discoverySessionStartups = new Map<string, Promise<CodexSessionContext>>();
@@ -1257,8 +1263,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         "Codex session gateway authority is retired; resume the provider runtime before starting another turn.",
       );
     }
-    context.collabReceiverTurns.clear();
-    context.collabReceiverParents.clear();
 
     const turnInput = buildCodexTurnInput(input);
     if (turnInput.length === 0) {
@@ -1689,8 +1693,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     }
 
     this.clearTaskCompleteFallback(context);
-    context.collabReceiverTurns.clear();
-    context.collabReceiverParents.clear();
     context.reviewTurnIds.delete(turnId);
     this.updateSession(context, {
       status: "ready",
@@ -2965,6 +2967,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       supportsPluginDiscovery: true,
       supportsRuntimeModelList: true,
       supportsThreadCompaction: true,
+      nativeSubagentControls: { interrupt: true, background: false },
     };
   }
 
@@ -3465,6 +3468,14 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     context: CodexSessionContext,
     notification: JsonRpcNotification,
   ): void {
+    const item = this.readObject(notification.params, "item");
+    const ownerThreadId = readResumeThreadId({ resumeCursor: context.session.resumeCursor });
+    if (
+      ownerThreadId &&
+      item?.type === "subAgentActivity" &&
+      this.readString(item, "agentThreadId") === ownerThreadId
+    )
+      return;
     const rawRoute = this.readRouteFields(notification.params);
     this.rememberCollabReceiverTurns(context, notification.params, rawRoute.turnId);
     const resolvedCollaborationRoute = this.resolveCollaborationRoute(context, notification.params);
@@ -3554,6 +3565,18 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       textDelta,
       payload: eventPayload,
     });
+
+    if (notification.method === "turn/started" && isChildConversation && providerThreadId) {
+      this.queueChildSnapshot(context, providerThreadId, "started");
+    }
+
+    if (notification.method === "item/completed") {
+      const item = this.readObject(notification.params, "item");
+      const childId = this.readString(item, "agentThreadId");
+      if (item?.type === "subAgentActivity" && childId) {
+        this.queueChildSnapshot(context, childId, this.readString(item, "kind"));
+      }
+    }
 
     if (notification.method === "item/autoApprovalReview/completed") {
       const review = decodeCodexGuardianReview(notification.params);
@@ -3650,8 +3673,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         return;
       }
       this.clearTaskCompleteFallback(context, rawRoute.turnId);
-      context.collabReceiverTurns.clear();
-      context.collabReceiverParents.clear();
       if (rawRoute.turnId) {
         context.reviewTurnIds.delete(rawRoute.turnId);
       }
@@ -3675,8 +3696,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         return;
       }
       this.clearTaskCompleteFallback(context, rawRoute.turnId);
-      context.collabReceiverTurns.clear();
-      context.collabReceiverParents.clear();
       if (rawRoute.turnId) {
         context.reviewTurnIds.delete(rawRoute.turnId);
       }
@@ -4165,8 +4184,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         return;
       }
 
-      context.collabReceiverTurns.clear();
-      context.collabReceiverParents.clear();
       context.reviewTurnIds.delete(turnId);
       const gatewayTurnAuthorityRetired =
         context.gatewaySessionLease !== undefined &&
@@ -4326,10 +4343,16 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       );
     });
 
+    const agentNickname = this.readString(threadRecord, "agentNickname");
+    const agentRole = this.readString(threadRecord, "agentRole");
+    const model = this.readString(threadRecord, "model");
     return {
       threadId: threadIdRaw,
       turns,
       cwd: this.readString(threadRecord, "cwd") ?? this.readString(responseRecord, "cwd") ?? null,
+      ...(agentNickname ? { agentNickname } : {}),
+      ...(agentRole ? { agentRole } : {}),
+      ...(model ? { model } : {}),
     };
   }
 
@@ -4446,8 +4469,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     // for child routing.
     const isUnmappedChildConversation =
       mappedProviderParentThreadId === undefined &&
-      context.session.status === "running" &&
-      context.session.activeTurnId !== undefined &&
       providerThreadId !== undefined &&
       activeProviderThreadId !== undefined &&
       providerThreadId !== activeProviderThreadId;
@@ -4464,6 +4485,56 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         providerParentThreadId !== undefined ||
         isUnmappedChildConversation,
     };
+  }
+
+  private queueChildSnapshot(
+    context: CodexSessionContext,
+    childId: string,
+    kind: string | undefined,
+  ): void {
+    if (childId === readResumeThreadId({ resumeCursor: context.session.resumeCursor })) return;
+    const isCurrent = () =>
+      this.sessions.get(context.session.threadId) === context && !context.stopping;
+    if (!isCurrent()) return;
+    let reader = this.childSnapshots.get(context);
+    if (!reader) {
+      reader = new CodexChildSnapshots({
+        read: (id) => this.readThreadSnapshot(context, id),
+        isCurrent,
+        parentTurnId: (id) => context.collabReceiverTurns.get(id),
+        publish: (id, notification) => {
+          const parentTurnId = context.collabReceiverTurns.get(id);
+          const parentId = context.collabReceiverParents.get(id);
+          if (!parentId || !parentTurnId || !isCurrent()) return;
+          const metadata = notification.params.childMetadata === true;
+          const payload = metadata
+            ? { threadId: parentId, turnId: parentTurnId, item: notification.params.item }
+            : notification.params;
+          const route = this.readRouteFields(payload);
+          // Snapshot projection cannot re-enter the live notification handler or trigger another read.
+          this.emitEvent({
+            id: EventId.makeUnsafe(randomUUID()),
+            kind: "notification",
+            provider: "codex",
+            threadId: context.session.threadId,
+            createdAt: new Date().toISOString(),
+            ...(context.lifecycleGeneration
+              ? { lifecycleGeneration: context.lifecycleGeneration }
+              : {}),
+            method: notification.method,
+            ...(route.turnId ? { turnId: route.turnId } : {}),
+            ...(route.itemId ? { itemId: route.itemId } : {}),
+            providerThreadId: metadata ? parentId : id,
+            ...(metadata ? {} : { providerParentThreadId: parentId, parentTurnId }),
+            payload,
+          });
+        },
+        onError: (id, cause) =>
+          log.warn("failed to read native subagent activity", { childId: id, error: cause }),
+      });
+      this.childSnapshots.set(context, reader);
+    }
+    reader.observe(childId, kind);
   }
 
   private readChildParentTurnId(context: CodexSessionContext, params: unknown): TurnId | undefined {
@@ -4496,7 +4567,11 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     const payload = this.readObject(params);
     const item = this.readObject(payload, "item") ?? payload;
     const itemType = this.readString(item, "type") ?? this.readString(item, "kind");
-    if (itemType !== "collabAgentToolCall" && itemType !== "collabToolCall") {
+    if (
+      itemType !== "collabAgentToolCall" &&
+      itemType !== "collabToolCall" &&
+      itemType !== "subAgentActivity"
+    ) {
       return;
     }
     const parentProviderThreadId = normalizeProviderThreadId(
@@ -4505,6 +4580,9 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
 
     const receiverThreadIds = decodeSubagentReceiverThreadIds(item);
     for (const receiverThreadId of receiverThreadIds) {
+      // Child-to-parent messages must never reclassify the owning provider thread as a child.
+      if (receiverThreadId === readResumeThreadId({ resumeCursor: context.session.resumeCursor }))
+        continue;
       context.collabReceiverTurns.set(receiverThreadId, parentTurnId);
       if (parentProviderThreadId) {
         context.collabReceiverParents.set(receiverThreadId, parentProviderThreadId);
@@ -4522,10 +4600,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       method === "thread/compacted" ||
       method === "thread/name/updated" ||
       method === "thread/settings/updated" ||
-      method === "thread/tokenUsage/updated" ||
-      method === "turn/started" ||
-      method === "turn/completed" ||
-      method === "turn/aborted"
+      method === "thread/tokenUsage/updated"
     );
   }
 

@@ -93,7 +93,11 @@ export function useChatTranscriptController({
 
   const isComposerApprovalState = activePendingApproval !== null;
 
-  const isComposerEditorDisabled = isConnecting || isComposerApprovalState;
+  const isNativeSubagent =
+    activeThread?.creationSource === "provider_native" ||
+    activeThread?.id.startsWith("subagent:") === true;
+  const isComposerEditorDisabled =
+    isConnecting || isComposerApprovalState || (isNativeSubagent && pendingUserInputs.length === 0);
 
   const canCollapsePastedTextToDraft = shouldEnableComposerPastedTextCollapse({
     isComposerApprovalState,
@@ -373,6 +377,7 @@ export function useChatTranscriptController({
     activeTurnInProgress,
     isComposerApprovalState,
     isComposerEditorDisabled,
+    isNativeSubagent,
     canCollapsePastedTextToDraft,
     composerFooterHasWideActions,
     handoffDisabled,

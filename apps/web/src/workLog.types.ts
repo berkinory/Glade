@@ -137,6 +137,7 @@ export interface WorkLogSubagent {
   nickname?: string | undefined;
   role?: string | undefined;
   model?: string | undefined;
+  modelIsRequestedHint?: boolean | undefined;
   effort?: string | undefined;
   background?: boolean | undefined;
   prompt?: string | undefined;
@@ -145,6 +146,8 @@ export interface WorkLogSubagent {
   title?: string | undefined;
   statusLabel?: string | undefined;
   isActive?: boolean | undefined;
+  lastCompletedAt?: string | undefined;
+  hasPendingInteraction?: boolean | undefined;
 }
 
 export interface WorkLogSubagentAction {

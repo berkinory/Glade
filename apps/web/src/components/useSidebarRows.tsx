@@ -1,3 +1,4 @@
+import { Spinner } from "~/components/ui/spinner";
 import { SquarePenIcon } from "~/lib/icons";
 import { SidebarDraftIndicator } from "./SidebarDraftIndicator";
 import { SIDEBAR_TRAILING_ICON_FORCE_CLASS } from "./sidebarGlyphs";
@@ -178,6 +179,13 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
     draftIndicator: ReactNode;
     pr: ReactNode;
   }) {
+    if (input.isSubagentThread) {
+      return input.threadStatus?.pulse ? (
+        <span role="img" aria-label="Subagent working" className="inline-flex shrink-0">
+          <Spinner variant="subagent" className="size-3" aria-hidden="true" />
+        </span>
+      ) : null;
+    }
     // The jump shortcut owns the slot while it is visible; otherwise the shared rule decides which
     // status glyph shows here.
     const trailingStatus = resolveThreadStatusTrailingIndicator({
@@ -376,9 +384,11 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
             onDoubleClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
-              openRenameThreadDialog(thread.id);
+              if (!isSubagentThread) openRenameThreadDialog(thread.id);
             }}
-            onPointerUp={(event) => handleThreadRenamePointerUp(event, thread.id)}
+            onPointerUp={(event) =>
+              !isSubagentThread && handleThreadRenamePointerUp(event, thread.id)
+            }
             onKeyDown={(event) => {
               if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
@@ -387,6 +397,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
             }}
             onContextMenu={(event) => {
               event.preventDefault();
+              if (isSubagentThread) return;
               void handleThreadContextMenu(thread.id, {
                 x: event.clientX,
                 y: event.clientY,
@@ -425,11 +436,13 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
                 },
                 threadStatus,
                 timestampToneClassName: "text-muted-foreground/38",
-                hoverActions: renderThreadHoverActions({
-                  threadId: thread.id,
-                  isPinned: true,
-                  compact: isSubagentThread,
-                }),
+                hoverActions: isSubagentThread
+                  ? null
+                  : renderThreadHoverActions({
+                      threadId: thread.id,
+                      isPinned: true,
+                      compact: isSubagentThread,
+                    }),
               })}
             </div>
           </div>
@@ -515,9 +528,11 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
                 onDoubleClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
-                  openRenameThreadDialog(thread.id);
+                  if (!isSubagentThread) openRenameThreadDialog(thread.id);
                 }}
-                onPointerUp={(event) => handleThreadRenamePointerUp(event, thread.id)}
+                onPointerUp={(event) =>
+                  !isSubagentThread && handleThreadRenamePointerUp(event, thread.id)
+                }
                 onKeyDown={(event) => {
                   if (event.key !== "Enter" && event.key !== " ") return;
                   event.preventDefault();
@@ -535,6 +550,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
                   if (selectedThreadIds.size > 0) {
                     clearSelection();
                   }
+                  if (isSubagentThread) return;
                   void handleThreadContextMenu(thread.id, {
                     x: event.clientX,
                     y: event.clientY,
@@ -567,11 +583,13 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
                     ? "text-foreground/38 dark:text-foreground/46"
                     : "text-muted-foreground/24"
                   : secondaryMetaClass,
-                hoverActions: renderThreadHoverActions({
-                  threadId: thread.id,
-                  isPinned,
-                  compact: isSubagentThread,
-                }),
+                hoverActions: isSubagentThread
+                  ? null
+                  : renderThreadHoverActions({
+                      threadId: thread.id,
+                      isPinned,
+                      compact: isSubagentThread,
+                    }),
               })}
             </div>
           </TooltipTrigger>

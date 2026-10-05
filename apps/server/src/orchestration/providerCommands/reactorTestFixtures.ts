@@ -351,7 +351,6 @@ export function makeReactorTestHarness() {
     const hasLiveRuntimeTasks = vi.fn<NonNullable<ProviderServiceShape["hasLiveRuntimeTasks"]>>(
       () => Effect.succeed(false),
     );
-    const steerSubagent = vi.fn<ProviderServiceShape["steerSubagent"]>(() => Effect.void);
     const respondToRequest = vi.fn<ProviderServiceShape["respondToRequest"]>(() => Effect.void);
     const respondToUserInput = vi.fn<ProviderServiceShape["respondToUserInput"]>(() => Effect.void);
     const rollbackConversation = vi.fn<ProviderServiceShape["rollbackConversation"]>(
@@ -470,7 +469,6 @@ export function makeReactorTestHarness() {
       stopTask,
       backgroundTask,
       hasLiveRuntimeTasks,
-      steerSubagent,
       respondToRequest: respondToRequest as ProviderServiceShape["respondToRequest"],
       respondToUserInput: respondToUserInput as ProviderServiceShape["respondToUserInput"],
       stopSession: stopSession as ProviderServiceShape["stopSession"],
@@ -689,7 +687,6 @@ export function makeReactorTestHarness() {
       stopTask,
       backgroundTask,
       hasLiveRuntimeTasks,
-      steerSubagent,
       respondToRequest,
       respondToUserInput,
       rollbackConversation,

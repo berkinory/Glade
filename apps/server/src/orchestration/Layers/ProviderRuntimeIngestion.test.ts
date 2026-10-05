@@ -90,7 +90,6 @@ function createProviderServiceHarness(options?: { readonly persistedStream?: boo
     interruptTurn: () => unsupported(),
     stopTask: () => unsupported(),
     backgroundTask: () => unsupported(),
-    steerSubagent: () => unsupported(),
     respondToRequest: () => unsupported(),
     respondToUserInput: () => unsupported(),
     stopSession: () => unsupported(),
@@ -1924,13 +1923,14 @@ describe("ProviderRuntimeIngestion", () => {
       threadId: asThreadId("thread-1"),
       turnId: asTurnId("turn-parent"),
       itemId: asItemId("item-collab"),
+      providerRefs: { providerThreadId: "parent-provider-1" },
       payload: {
         itemType: "collab_agent_tool_call",
         title: "Task",
         data: {
           item: {
             type: "collabAgentToolCall",
-            receiverThreadIds: ["child-provider-1"],
+            receiverThreadIds: ["child-provider-1", "parent-provider-1"],
             receiverAgents: [
               {
                 threadId: "child-provider-1",
@@ -1987,6 +1987,10 @@ describe("ProviderRuntimeIngestion", () => {
     expect(
       parentThread.activities.some((activity) => activity.id === "evt-child-turn-started"),
     ).toBe(false);
+    const readModel = await Effect.runPromise(harness.engine.getReadModel());
+    expect(readModel.threads.filter((thread) => thread.parentThreadId === "thread-1")).toHaveLength(
+      1,
+    );
   });
 
   it("keeps ingesting after a subagent child thread is deleted instead of re-creating it", async () => {

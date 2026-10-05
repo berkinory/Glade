@@ -56,6 +56,10 @@ export function collabPayloadItem(
 function inferSubagentActionTool(item: Record<string, unknown> | null): string | null {
   const directTool = nonEmptyTrimmed(item?.tool ?? item?.name) ?? null;
   if (directTool) {
+    if (directTool === "agentActivity") {
+      if (item?.kind === "started") return "spawnAgent";
+      if (item?.kind === "interacted") return "sendInput";
+    }
     return directTool;
   }
 
@@ -71,24 +75,25 @@ function inferSubagentActionTool(item: Record<string, unknown> | null): string |
   return "spawnAgent";
 }
 
-function summarizeSubagentAction(tool: string, count: number): string {
+function summarizeSubagentAction(tool: string, count: number, status: string): string {
   const normalizedTool = normalizeCollabIdentifier(tool) ?? "";
   const effectiveCount = Math.max(1, count);
-  const noun = pluralize(effectiveCount, "agent");
+  const noun = pluralize(effectiveCount, "subagent");
+  const finished = status === "completed";
   switch (normalizedTool) {
     case "spawnagent":
-      return `Spawning ${effectiveCount} ${noun}`;
+      return `${finished ? "Started" : "Starting"} ${effectiveCount} ${noun}`;
     case "wait":
     case "waitagent":
-      return `Waiting on ${effectiveCount} ${noun}`;
+      return `${finished ? "Waited for" : "Waiting for"} ${effectiveCount} ${noun}`;
     case "closeagent":
-      return `Closing ${effectiveCount} ${noun}`;
+      return `${finished ? "Stopped" : "Stopping"} ${effectiveCount} ${noun}`;
     case "resumeagent":
-      return `Resuming ${effectiveCount} ${noun}`;
+      return `${finished ? "Resumed" : "Resuming"} ${effectiveCount} ${noun}`;
     case "sendinput":
-      return `Updating ${pluralize(effectiveCount, "agent")}`;
+      return `${finished ? "Sent instructions to" : "Sending instructions to"} ${effectiveCount} ${noun}`;
     default:
-      return effectiveCount === 1 ? "Agent activity" : `Agent activity (${effectiveCount})`;
+      return effectiveCount === 1 ? "Subagent activity" : `Subagent activity (${effectiveCount})`;
   }
 }
 
@@ -132,7 +137,7 @@ export function extractCollabAction(
   return {
     tool: tool ?? "spawnAgent",
     status,
-    summaryText: summarizeSubagentAction(tool ?? "spawnAgent", count),
+    summaryText: summarizeSubagentAction(tool ?? "spawnAgent", count, status),
     ...(model ? { model } : {}),
     ...(prompt ? { prompt } : {}),
   };
@@ -160,7 +165,10 @@ export function extractCollabSubagents(
     if (agent.agentId) receiverAgent.agentId = agent.agentId;
     if (agent.nickname) receiverAgent.nickname = agent.nickname;
     if (agent.role) receiverAgent.role = agent.role;
-    if (agent.model) receiverAgent.model = agent.model;
+    if (agent.model) {
+      receiverAgent.model = agent.model;
+      receiverAgent.modelIsRequestedHint = agent.modelIsRequestedHint;
+    }
     if (agent.effort) receiverAgent.effort = agent.effort;
     if (agent.background) receiverAgent.background = agent.background;
     if (agent.prompt) receiverAgent.prompt = agent.prompt;
@@ -175,6 +183,9 @@ export function extractCollabSubagents(
     }
     for (const [threadId, state] of Object.entries(agentStates)) {
       const previous = mergedByThreadId.get(threadId);
+      const useStateModel =
+        state.model &&
+        !(state.modelIsRequestedHint && previous?.model && !previous.modelIsRequestedHint);
       mergedByThreadId.set(threadId, {
         threadId,
         providerThreadId: previous?.providerThreadId ?? threadId,
@@ -182,7 +193,9 @@ export function extractCollabSubagents(
         ...(state.agentId ? { agentId: state.agentId } : {}),
         ...(state.nickname ? { nickname: state.nickname } : {}),
         ...(state.role ? { role: state.role } : {}),
-        ...(state.model ? { model: state.model } : {}),
+        ...(useStateModel
+          ? { model: state.model, modelIsRequestedHint: state.modelIsRequestedHint }
+          : {}),
         ...(state.prompt ? { prompt: state.prompt } : {}),
         ...(state.status ? { rawStatus: state.status } : {}),
         ...(state.message ? { latestUpdate: state.message } : {}),
@@ -211,7 +224,12 @@ export function extractCollabSubagents(
         ...(fallbackIdentity.agentId ? { agentId: fallbackIdentity.agentId } : {}),
         ...(fallbackIdentity.nickname ? { nickname: fallbackIdentity.nickname } : {}),
         ...(fallbackIdentity.role ? { role: fallbackIdentity.role } : {}),
-        ...(fallbackIdentity.model ? { model: fallbackIdentity.model } : {}),
+        ...(fallbackIdentity.model
+          ? {
+              model: fallbackIdentity.model,
+              modelIsRequestedHint: fallbackIdentity.modelIsRequestedHint,
+            }
+          : {}),
         ...(fallbackIdentity.effort ? { effort: fallbackIdentity.effort } : {}),
         ...(fallbackIdentity.background ? { background: fallbackIdentity.background } : {}),
         ...(fallbackIdentity.prompt ? { prompt: fallbackIdentity.prompt } : {}),
@@ -255,6 +273,7 @@ export function extractCollabSubagents(
             item.requestedModel ??
             item.requested_model,
         ) ?? undefined,
+      modelIsRequestedHint: true,
       effort: nonEmptyTrimmed(item.effort) ?? undefined,
       background: item.background === true ? true : undefined,
       prompt: nonEmptyTrimmed(item.prompt ?? item.task ?? item.message) ?? undefined,

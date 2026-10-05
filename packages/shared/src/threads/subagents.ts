@@ -19,6 +19,7 @@ export interface ParsedSubagentAgentState {
   nickname?: string | undefined;
   role?: string | undefined;
   model?: string | undefined;
+  modelIsRequestedHint?: boolean | undefined;
   prompt?: string | undefined;
   status?: string | undefined;
   message?: string | undefined;
@@ -150,6 +151,7 @@ export function decodeSubagentReceiverThreadIds(
   }
 
   const singular = firstStringValue(item, [
+    "agentThreadId",
     "receiverThreadId",
     "receiver_thread_id",
     "threadId",
@@ -318,13 +320,8 @@ function buildSubagentAgentState(
       "agent_type",
     ]),
   );
-  const model = firstStringValue(object, [
-    "model",
-    "modelName",
-    "model_name",
-    "requestedModel",
-    "requested_model",
-  ]);
+  const directModel = firstStringValue(object, ["model", "modelName", "model_name"]);
+  const model = directModel ?? firstStringValue(object, ["requestedModel", "requested_model"]);
   const prompt = firstStringValue(object, ["prompt", "task", "message"]);
   const status = firstStringValue(object, ["status", "state"]);
   const message = firstStringValue(object, ["summary", "message", "latestUpdate", "latest_update"]);
@@ -335,6 +332,7 @@ function buildSubagentAgentState(
     ...(nickname ? { nickname } : {}),
     ...(role ? { role } : {}),
     ...(model ? { model } : {}),
+    ...(model && !directModel ? { modelIsRequestedHint: true } : {}),
     ...(prompt ? { prompt } : {}),
     ...(status ? { status } : {}),
     ...(message ? { message } : {}),
@@ -501,6 +499,7 @@ export function extractSubagentIdentityHints(
       nickname: state.nickname,
       role: state.role,
       model: state.model,
+      modelIsRequestedHint: state.modelIsRequestedHint,
       prompt: state.prompt,
       status: state.status,
       message: state.message,

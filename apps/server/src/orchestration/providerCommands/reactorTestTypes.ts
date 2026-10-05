@@ -51,7 +51,6 @@ export interface ReactorTestHarness {
   readonly stopTask: Mock<NonNullable<ProviderServiceShape["stopTask"]>>;
   readonly backgroundTask: Mock<NonNullable<ProviderServiceShape["backgroundTask"]>>;
   readonly hasLiveRuntimeTasks: Mock<NonNullable<ProviderServiceShape["hasLiveRuntimeTasks"]>>;
-  readonly steerSubagent: Mock<NonNullable<ProviderServiceShape["steerSubagent"]>>;
   readonly respondToRequest: Mock<NonNullable<ProviderServiceShape["respondToRequest"]>>;
   readonly respondToUserInput: Mock<NonNullable<ProviderServiceShape["respondToUserInput"]>>;
   readonly rollbackConversation: Mock<NonNullable<ProviderServiceShape["rollbackConversation"]>>;

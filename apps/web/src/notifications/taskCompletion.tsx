@@ -128,7 +128,7 @@ export function TaskCompletionNotifications() {
     useMemo(() => selectRightDockState(activeThreadId), [activeThreadId]),
   );
   const [allThreadsSelector] = useState(() => createAllThreadsSelector());
-  const threads = useStore(allThreadsSelector);
+  const threads = useStore(allThreadsSelector).filter((thread) => !thread.parentThreadId);
   const threadsHydrated = useStore((store) => store.threadsHydrated);
   const terminalStateByThreadId = useTerminalStateStore((store) => store.terminalStateByThreadId);
   const visibleThreadIds = resolveVisibleToastThreadIds({
@@ -185,6 +185,7 @@ export function TaskCompletionNotifications() {
       return;
     }
 
+    const notificationThreadIds = new Set(threads.map((thread) => thread.id));
     const completions = collectCompletedThreadCandidates(
       previousThreadsRef.current,
       threads,
@@ -196,7 +197,7 @@ export function TaskCompletionNotifications() {
     const terminalCompletions = collectCompletedTerminalCandidates(
       previousTerminalStateRef.current,
       terminalStateByThreadId,
-    );
+    ).filter((candidate) => notificationThreadIds.has(candidate.threadId));
     const inputNeededCandidates = collectInputNeededThreadCandidates(
       previousThreadsRef.current,
       threads,
@@ -206,7 +207,7 @@ export function TaskCompletionNotifications() {
     const terminalAttentionCandidates = collectTerminalAttentionCandidates(
       previousTerminalStateRef.current,
       terminalStateByThreadId,
-    );
+    ).filter((candidate) => notificationThreadIds.has(candidate.threadId));
     previousThreadsRef.current = threads;
     previousTerminalStateRef.current = terminalStateByThreadId;
 

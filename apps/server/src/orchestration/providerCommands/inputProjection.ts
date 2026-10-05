@@ -75,7 +75,3 @@ export function availableThreadMentionContextChars(messageText: string, reserved
       reservedChars,
   );
 }
-
-export function providerPromptOverflowIssue(): string {
-  return "The latest message is too long. Shorten the message and retry.";
-}

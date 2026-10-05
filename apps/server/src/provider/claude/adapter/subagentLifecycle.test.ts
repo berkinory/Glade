@@ -1,7 +1,7 @@
 import { describe, it, assert } from "@effect/vitest";
 import { Effect, Stream, Fiber, Random } from "effect";
 import { ClaudeAdapter } from "../../Services/ClaudeAdapter.ts";
-import type { SDKMessage, HookInput } from "@anthropic-ai/claude-agent-sdk";
+import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { TurnId } from "@glade/contracts/core/baseSchemas";
 import {
   makeHarness,
@@ -314,87 +314,4 @@ describe("Claude subagentLifecycle", () => {
       );
     },
   );
-
-  it.effect("delivers queued subagent steers through the PreToolUse hook", () => {
-    const harness = makeHarness();
-    return Effect.gen(function* () {
-      const adapter = yield* ClaudeAdapter;
-
-      const runtimeEventsFiber = yield* adapter.streamEvents.pipe(
-        Stream.takeUntil((event) => event.type === "turn.steered"),
-        Stream.runCollect,
-        Effect.forkChild,
-      );
-
-      const session = yield* adapter.startSession({
-        threadId: THREAD_ID,
-        provider: "claudeAgent",
-        runtimeMode: "full-access",
-      });
-
-      const hook = harness.getLastCreateQueryInput()?.options.hooks?.PreToolUse?.[0]?.hooks[0];
-      assert.isDefined(hook);
-      const invokeHook = (agentId: string | undefined) =>
-        Effect.promise(() =>
-          hook!(
-            {
-              hook_event_name: "PreToolUse",
-              tool_name: "Read",
-              tool_input: {},
-              tool_use_id: "tool-read-1",
-              session_id: "sdk-session-steer",
-              transcript_path: "/tmp/transcript",
-              cwd: "/tmp",
-              ...(agentId ? { agent_id: agentId } : {}),
-            } as HookInput,
-            "tool-read-1",
-            { signal: new AbortController().signal },
-          ),
-        );
-
-      harness.query.emit({
-        type: "system",
-        subtype: "task_started",
-        task_id: "task-steer-1",
-        tool_use_id: "tool-task-steer-1",
-        subagent_type: "worker-high",
-        description: "Long-running task",
-        session_id: "sdk-session-steer",
-        uuid: "task-started-steer-1",
-      } as unknown as SDKMessage);
-
-      assert.deepEqual(yield* invokeHook("task-steer-1"), {});
-
-      yield* adapter.steerSubagent(session.threadId, "tool-task-steer-1", {
-        input: "Focus on the tests",
-      });
-
-      // Main-thread hook calls carry no agent_id and must never drain the queue.
-      assert.deepEqual(yield* invokeHook(undefined), {});
-
-      const delivered = yield* invokeHook("task-steer-1");
-      if (!("hookSpecificOutput" in delivered)) return assert.fail("Expected steer context.");
-      const output = delivered.hookSpecificOutput;
-      if (!output || !("additionalContext" in output)) return assert.fail("Expected steer text.");
-      assert.equal(output.hookEventName, "PreToolUse");
-      assert.include(
-        output.additionalContext ?? "",
-        "<user_steer>\nFocus on the tests\n</user_steer>",
-      );
-
-      assert.deepEqual(yield* invokeHook("task-steer-1"), {});
-
-      const runtimeEvents = Array.from(yield* Fiber.join(runtimeEventsFiber));
-      const steered = runtimeEvents.find((event) => event.type === "turn.steered");
-      assert.equal(steered?.type, "turn.steered");
-      if (steered?.type === "turn.steered") {
-        assert.equal(steered.payload.message, "Focus on the tests");
-        assert.equal(steered.providerRefs?.providerThreadId, "tool-task-steer-1");
-        assert.equal(steered.providerRefs?.providerParentThreadId, THREAD_ID);
-      }
-    }).pipe(
-      Effect.provideService(Random.Random, makeDeterministicRandomService()),
-      Effect.provide(harness.layer),
-    );
-  });
 });

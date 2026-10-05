@@ -127,56 +127,102 @@ idleCleanup.layer("ProviderServiceLive idle cleanup", (it) => {
     }),
   );
 
-  it.effect("keeps the runtime alive until background tasks settle", () =>
-    Effect.gen(function* () {
-      const provider = yield* ProviderService;
-      const threadId = asThreadId("thread-idle-background-task");
+  for (const source of ["claudeAgent", "codex", "codexChildTurn"] as const) {
+    const providerKind = source === "claudeAgent" ? "claudeAgent" : "codex";
+    it.effect(`keeps ${source} alive until native background tasks settle`, () =>
+      Effect.gen(function* () {
+        const provider = yield* ProviderService;
+        const threadId = asThreadId("thread-idle-background-task");
 
-      idleCleanup.claude.stopSession.mockClear();
-      const session = yield* provider.startSession(threadId, {
-        provider: "claudeAgent",
-        threadId,
-        runtimeMode: "full-access",
-      });
-      yield* idleCleanup.claude.waitForRuntimeSubscribers();
-      idleCleanup.claude.emit({
-        type: "task.started",
-        eventId: asEventId("runtime-background-task-started"),
-        provider: "claudeAgent",
-        createdAt: "2026-07-16T20:00:00.000Z",
-        threadId,
-        payload: { taskId: "background-task-1" },
-      });
-      idleCleanup.claude.emit({
-        type: "turn.completed",
-        eventId: asEventId("runtime-background-parent-completed"),
-        provider: "claudeAgent",
-        createdAt: "2026-07-16T20:00:01.000Z",
-        threadId,
-        payload: { state: "completed" },
-      });
+        const adapter = providerKind === "codex" ? idleCleanup.codex : idleCleanup.claude;
+        adapter.stopSession.mockClear();
+        const session = yield* provider.startSession(threadId, {
+          provider: providerKind,
+          threadId,
+          runtimeMode: "full-access",
+        });
+        yield* adapter.waitForRuntimeSubscribers();
+        adapter.emit({
+          type:
+            source === "codexChildTurn"
+              ? "turn.started"
+              : providerKind === "codex"
+                ? "item.completed"
+                : "task.started",
+          eventId: asEventId("runtime-background-task-started"),
+          provider: providerKind,
+          createdAt: "2026-07-16T20:00:00.000Z",
+          threadId,
+          ...(source === "codexChildTurn"
+            ? {
+                providerRefs: {
+                  providerThreadId: "native-child-1",
+                  providerParentThreadId: "native-parent",
+                },
+              }
+            : {}),
+          payload:
+            source === "codexChildTurn"
+              ? {}
+              : providerKind === "codex"
+                ? {
+                    itemType: "collab_agent_tool_call",
+                    data: { agentsStates: { "native-child-1": { status: "running" } } },
+                  }
+                : { taskId: "background-task-1" },
+        });
+        adapter.emit({
+          type: "turn.completed",
+          eventId: asEventId("runtime-background-parent-completed"),
+          provider: providerKind,
+          createdAt: "2026-07-16T20:00:01.000Z",
+          threadId,
+          payload: { state: "completed" },
+        });
 
-      yield* sleep(150);
-      assert.equal(idleCleanup.claude.stopSession.mock.calls.length, 0);
+        yield* sleep(150);
+        assert.equal(adapter.stopSession.mock.calls.length, 0);
 
-      idleCleanup.claude.emit({
-        type: "task.updated",
-        eventId: asEventId("runtime-background-task-completed"),
-        provider: "claudeAgent",
-        createdAt: "2026-07-16T20:00:02.000Z",
-        threadId,
-        payload: { taskId: "background-task-1", status: "completed" },
-      });
+        adapter.emit({
+          type:
+            source === "codexChildTurn"
+              ? "turn.completed"
+              : providerKind === "codex"
+                ? "item.completed"
+                : "task.updated",
+          eventId: asEventId("runtime-background-task-completed"),
+          provider: providerKind,
+          createdAt: "2026-07-16T20:00:02.000Z",
+          threadId,
+          ...(source === "codexChildTurn"
+            ? {
+                providerRefs: {
+                  providerThreadId: "native-child-1",
+                  providerParentThreadId: "native-parent",
+                },
+              }
+            : {}),
+          payload:
+            source === "codexChildTurn"
+              ? { state: "completed" }
+              : providerKind === "codex"
+                ? {
+                    itemType: "collab_agent_tool_call",
+                    data: { agentsStates: { "native-child-1": { status: "completed" } } },
+                  }
+                : { taskId: "background-task-1", status: "completed" },
+        });
 
-      yield* waitUntil(
-        () => idleCleanup.claude.stopSession.mock.calls.length > 0,
-        500,
-        20,
-        "idle runtime stop after background task settlement",
-      );
-      assert.deepEqual(idleCleanup.claude.stopSession.mock.calls[0]?.[0], session.threadId);
-    }),
-  );
+        yield* waitUntil(
+          () => adapter.stopSession.mock.calls.length > 0,
+          500,
+          20,
+          "idle runtime stop after background task settlement",
+        );
+        assert.deepEqual(adapter.stopSession.mock.calls[0]?.[0], session.threadId);
+      }),
+    );
+  }
 
   it.effect("keeps lifecycle ownership on the first of two conflicting turn starts", () =>
     Effect.gen(function* () {

@@ -1,3 +1,4 @@
+import { EnvironmentSubagentsSection } from "./EnvironmentSubagentsSection";
 import { GitHubIcon } from "~/lib/brandIcons";
 import { ArrowUpRightIcon, PlusMinusSquare01Icon, SettingsIcon } from "~/lib/icons";
 import type { EditorId } from "@glade/contracts/settings/editor";
@@ -264,6 +265,7 @@ export function EnvironmentPanel({
           />
         </>
       ) : null}
+      <EnvironmentSubagentsSection threadId={activeThreadId} onClose={onClose} />
     </div>
   );
   return (

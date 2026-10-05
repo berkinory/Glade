@@ -8,12 +8,10 @@ import {
   PendingApproval,
   PendingUserInputResult,
   PROVIDER,
-  ClaudeSubagentRun,
 } from "./sessionTypes";
 import { EventId, ApprovalRequestId } from "@glade/contracts/core/baseSchemas";
 import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 import { makeClaudeInteractionSettlement } from "./interactionSettlement";
-import { makeClaudeToolTracking } from "./toolTracking";
 
 import { acquireAgentGatewaySessionLease } from "../../../agentGateway/sessionLease.ts";
 import type {
@@ -29,7 +27,6 @@ import {
   nativeProviderRefs,
   remapAnswersToClaudeQuestionText,
 } from "./messageContent";
-import { claudeSubagentSteerContext } from "./promptPolicy";
 
 import { shouldAllowGladeComputerProviderTool } from "../../../agentGateway/computerToolPermission.ts";
 import { classifyRequestType, summarizeToolRequest } from "./toolPresentation";
@@ -53,14 +50,10 @@ export function makeClaudeSdkHooks(dependencies: {
   readonly settlePendingUserInput: ReturnType<
     typeof makeClaudeInteractionSettlement
   >["settlePendingUserInput"];
-  readonly pendingSubagentSteers: Map<string, Array<string>>;
   readonly runSdkPromise: <A, E>(
     effect: Effect.Effect<A, E>,
     options?: Effect.RunOptions,
   ) => Promise<A>;
-  readonly emitSubagentSteerDelivered: ReturnType<
-    typeof makeClaudeToolTracking
-  >["emitSubagentSteerDelivered"];
 
   readonly pendingApprovals: Map<ApprovalRequestId, PendingApproval>;
   readonly settlePendingApproval: ReturnType<
@@ -77,9 +70,7 @@ export function makeClaudeSdkHooks(dependencies: {
     pendingUserInputs,
     offerRuntimeEvent,
     settlePendingUserInput,
-    pendingSubagentSteers,
     runSdkPromise,
-    emitSubagentSteerDelivered,
 
     pendingApprovals,
     settlePendingApproval,
@@ -205,41 +196,6 @@ export function makeClaudeSdkHooks(dependencies: {
         },
       } satisfies PermissionResult;
     });
-
-  const subagentSteerHook = async (hookInput: HookInput): Promise<HookJSONOutput> => {
-    const agentId = "agent_id" in hookInput ? hookInput.agent_id : undefined;
-    if (pendingSubagentSteers.size === 0 || typeof agentId !== "string") {
-      return {};
-    }
-    return runSdkPromise(
-      Effect.gen(function* () {
-        const context = yield* Ref.get(contextRef);
-        if (!context) {
-          return {};
-        }
-        let run: ClaudeSubagentRun | undefined;
-        for (const candidate of context.subagentRuns.values()) {
-          if (candidate.taskId === agentId) {
-            run = candidate;
-            break;
-          }
-        }
-        const pending = run ? pendingSubagentSteers.get(run.toolUseId) : undefined;
-        if (!run || !pending || pending.length === 0) {
-          return {};
-        }
-        pendingSubagentSteers.delete(run.toolUseId);
-        const message = pending.join("\n\n");
-        yield* emitSubagentSteerDelivered(run, message);
-        return {
-          hookSpecificOutput: {
-            hookEventName: "PreToolUse",
-            additionalContext: claudeSubagentSteerContext(message),
-          },
-        } satisfies HookJSONOutput;
-      }),
-    ).catch(() => ({}));
-  };
 
   const canUseTool: CanUseTool = (toolName, toolInput, callbackOptions) =>
     runSdkPromise(
@@ -441,7 +397,6 @@ export function makeClaudeSdkHooks(dependencies: {
     settlePendingUserInput,
   });
   return {
-    subagentSteerHook,
     canUseTool,
     onElicitation,
     gatewayToolHook,

@@ -182,10 +182,3 @@ export function resolveThreadMentionPromptProjection(input: {
 export function threadMentionContextSuffix(contextBlocks: readonly string[]): string {
   return contextBlocks.length > 0 ? `\n\n${contextBlocks.join("\n\n")}` : "";
 }
-
-export function appendThreadMentionContextBlocks(input: {
-  readonly text: string;
-  readonly contextBlocks: readonly string[];
-}): string {
-  return `${input.text}${threadMentionContextSuffix(input.contextBlocks)}`;
-}

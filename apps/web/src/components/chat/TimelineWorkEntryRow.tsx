@@ -1,3 +1,4 @@
+import { SubagentToolAvatars, subagentToolHeading } from "./SubagentToolPresentation";
 import { resolveMcpToolIcon } from "~/lib/mcpToolIcon";
 import { GitHubIcon } from "~/lib/brandIcons";
 import {
@@ -294,6 +295,13 @@ function toolWorkEntryHeading(
   workEntry: TimelineWorkEntry,
   classification: ReturnType<typeof classifyWorkEntryTool>,
 ): string {
+  if (workEntry.itemType === "collab_agent_tool_call" && workEntry.subagentAction) {
+    return subagentToolHeading(
+      workEntry.subagentAction,
+      workEntry.subagents ?? [],
+      classification.status,
+    );
+  }
   if (classification.computerTool) {
     const title = normalizeCompactToolLabel(workEntry.toolTitle ?? "");
     if (title && !isGenericToolTitle(title) && !computerToolName(title))
@@ -621,12 +629,15 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
                   className={cn(
                     "flex shrink-0 items-center justify-center",
                     WORK_ROW_MUTED_HOVER_TONE["tool-row"],
-                    compact ? "size-4" : "size-5",
+                    workEntry.subagents?.length ? "min-w-4" : compact ? "size-4" : "size-5",
                   )}
                   data-tool-icon={leftIconKind}
                   data-work-entry-icon="true"
                 >
-                  {webFetchUrl ? (
+                  {workEntry.itemType === "collab_agent_tool_call" &&
+                  workEntry.subagents?.length ? (
+                    <SubagentToolAvatars subagents={workEntry.subagents} />
+                  ) : webFetchUrl ? (
                     <LinkChipIcon url={webFetchUrl} className={compact ? "size-3.5" : "size-4"} />
                   ) : (
                     renderWorkEntryIcon(LeftIcon, compact ? "size-3.5" : "size-4")

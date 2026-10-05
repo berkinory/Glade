@@ -96,21 +96,6 @@ export function orderedActivities(
   return ordered;
 }
 
-// Routed subagent work (Claude's agent fan-out) belongs to the composer subagent strip and to the
-// child threads themselves — the transcript never renders a subagent roster. The check runs on
-// derived entries rather than raw activities because providers stream the tool call first and
-// attach receiver metadata on a later lifecycle update that merges into the same entry.
-function isRoutedSubagentWorkEntry(entry: Pick<WorkLogEntry, "itemType" | "subagents">) {
-  return entry.itemType === "collab_agent_tool_call" && (entry.subagents?.length ?? 0) > 0;
-}
-
-export function omitRoutedSubagentWorkEntries<Entry extends WorkLogEntry>(
-  entries: ReadonlyArray<Entry>,
-): ReadonlyArray<Entry> {
-  const kept = entries.filter((entry) => !isRoutedSubagentWorkEntry(entry));
-  return kept.length === entries.length ? entries : kept;
-}
-
 export function deriveWorkLogEntries(
   activities: ReadonlyArray<OrchestrationThreadActivity>,
   latestTurnId: TurnId | undefined,

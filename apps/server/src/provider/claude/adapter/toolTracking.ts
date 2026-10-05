@@ -90,7 +90,6 @@ export function makeClaudeToolTracking(input: {
         stopped: false,
         warnedUnhandledSdkKinds: context.warnedUnhandledSdkKinds,
         subagentRuns: new Map(),
-        pendingSubagentSteers: new Map(),
         pendingSubagentStops: new Set(),
         knownBackgroundTaskIds: new Set(),
         terminalTaskIds: new Set(),
@@ -239,36 +238,5 @@ export function makeClaudeToolTracking(input: {
       });
     });
 
-  const emitSubagentSteerDelivered = (
-    run: ClaudeSubagentRun,
-    message: string,
-  ): Effect.Effect<void> =>
-    Effect.gen(function* () {
-      yield* ensureSyntheticTurn(run.context);
-      const stamp = yield* makeEventStamp();
-      yield* offerRuntimeEvent(run.context, {
-        type: "turn.steered",
-        eventId: stamp.eventId,
-        provider: PROVIDER,
-        createdAt: stamp.createdAt,
-        threadId: run.context.session.threadId,
-        ...(run.context.turnState
-          ? { turnId: asCanonicalTurnId(run.context.turnState.turnId) }
-          : {}),
-        payload: {
-          message,
-          target: "subagent",
-        },
-        providerRefs: nativeProviderRefs(run.context),
-        raw: {
-          source: "claude.sdk.hook",
-          method: "hooks/PreToolUse",
-          payload: {
-            taskId: run.taskId,
-            toolUseId: run.toolUseId,
-          },
-        },
-      });
-    });
-  return { openInFlightTool, ensureSyntheticTurn, ensureSubagentRun, emitSubagentSteerDelivered };
+  return { openInFlightTool, ensureSyntheticTurn, ensureSubagentRun };
 }

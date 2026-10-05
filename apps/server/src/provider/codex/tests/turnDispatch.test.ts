@@ -39,18 +39,32 @@ describe("sendTurn", () => {
     });
   });
 
-  it("clears stale collaboration receiver routing before a new turn", async () => {
-    const { manager, context } = createRequestHarness();
-    context.collabReceiverTurns.set("reused-child", "old-turn");
-    context.collabReceiverParents.set("reused-child", "old-parent");
-
+  it("keeps a previous turn's background child output on its owning conversation", async () => {
+    const { manager, context, emitEvent } = createRequestHarness();
+    context.collabReceiverTurns.set("child_background", "old-turn");
+    context.collabReceiverParents.set("child_background", "thread_1");
     await manager.sendTurn({
       threadId: ThreadId.makeUnsafe("thread_1"),
       input: "Start the next turn",
     });
-
-    expect(context.collabReceiverTurns.size).toBe(0);
-    expect(context.collabReceiverParents.size).toBe(0);
+    handleServerNotificationForTest(manager, context, {
+      method: "item/agentMessage/delta",
+      params: {
+        threadId: "child_background",
+        turnId: "child-turn",
+        itemId: "child-message",
+        delta: "Result from previous task",
+      },
+    });
+    expect(emitEvent).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        method: "item/agentMessage/delta",
+        providerThreadId: "child_background",
+        providerParentThreadId: "thread_1",
+        parentTurnId: "old-turn",
+        turnId: "child-turn",
+      }),
+    );
   });
 
   it("sends text and image user input items to turn/start", async () => {

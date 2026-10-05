@@ -1,6 +1,5 @@
 import type { IconComponent } from "~/lib/iconComponent";
 import {
-  BotIcon,
   Brain03Icon,
   BugIcon,
   MousePointer01Icon,
@@ -23,7 +22,6 @@ const SLASH_COMMAND_ICONS: Record<string, IconComponent> = {
   review: BugIcon,
   fork: WorkflowCircle04Icon,
   status: InfoIcon,
-  subagents: BotIcon,
   feedback: BugIcon,
   "computer-use": MousePointer01Icon,
 };

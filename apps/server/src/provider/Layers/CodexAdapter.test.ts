@@ -451,6 +451,54 @@ const lifecycleLayer = it.layer(
 );
 
 lifecycleLayer("CodexAdapterLive lifecycle", (it) => {
+  it.effect(
+    "retains native subagent activity identities and terminal state for materialization",
+    () =>
+      Effect.gen(function* () {
+        const adapter = yield* CodexAdapter;
+        const eventsFiber = yield* Stream.runCollect(Stream.take(adapter.streamEvents, 4)).pipe(
+          Effect.forkChild,
+        );
+        for (const kind of ["started", "interacted", "interrupted", "completed"]) {
+          lifecycleManager.emit("event", {
+            id: asEventId(`evt-subagent-${kind}`),
+            kind: "notification",
+            provider: "codex",
+            createdAt: new Date().toISOString(),
+            method: "item/completed",
+            threadId: asThreadId("thread-1"),
+            turnId: asTurnId("turn-parent"),
+            payload: {
+              item: {
+                type: "subAgentActivity",
+                id: `activity-${kind}`,
+                kind,
+                agentThreadId: "native-child",
+                agentPath: "/root/sol_deneme",
+              },
+            },
+          } satisfies ProviderEvent);
+        }
+        const events = Array.from(yield* Fiber.join(eventsFiber));
+        assert.deepEqual(
+          events.map((event) => {
+            assert.equal(event.type, "item.completed");
+            if (event.type !== "item.completed") throw new Error("Expected child activity");
+            assert.equal(event.payload.itemType, "collab_agent_tool_call");
+            const data = event.payload.data as {
+              item: {
+                receiverThreadIds: string[];
+                agentsStates: Record<string, { status: string }>;
+              };
+            };
+            assert.deepEqual(data.item.receiverThreadIds, ["native-child"]);
+            return data.item.agentsStates["native-child"]?.status;
+          }),
+          ["running", undefined, "interrupted", "completed"],
+        );
+      }),
+  );
+
   it.effect("maps session/started to a canonical session.started runtime event", () =>
     Effect.gen(function* () {
       const adapter = yield* CodexAdapter;

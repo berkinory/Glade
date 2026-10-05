@@ -1,12 +1,11 @@
 import { ComputerTerminal01Icon } from "~/lib/icons";
-import { useMemo, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { pluralize } from "@glade/shared/text/text";
-import { createThreadSelector } from "../storeSelectors";
-import { useStore } from "../store";
-import { resolveSubagentPresentationForThread } from "../lib/subagentPresentation";
+import { resolveSubagentPresentation } from "../lib/subagentPresentation";
 import { SIDEBAR_ROW_LABEL_TEXT_CLASS_NAME } from "../sidebarRowStyles";
 import type { SidebarThreadSummary } from "../types";
 import { cn } from "../lib/utils";
+import { SubagentAvatar } from "./chat/SubagentAvatar";
 import { ProviderIcon } from "./ProviderIcon";
 import { SidebarLeadingIcon } from "./SidebarLeadingIcon";
 import { sidebarGlyphClass } from "./sidebarGlyphs";
@@ -72,63 +71,6 @@ function ProviderAvatarWithTerminal({
     </SidebarLeadingIcon>
   );
 }
-function renderSubagentLabel(input: {
-  thread: SidebarThreadSummary;
-  threads?: Parameters<typeof resolveSubagentPresentationForThread>[0]["threads"];
-  roleClassName?: string | undefined;
-}) {
-  const presentation = resolveSubagentPresentationForThread({
-    thread: {
-      id: input.thread.id,
-      parentThreadId: input.thread.parentThreadId,
-      subagentAgentId: input.thread.subagentAgentId,
-      subagentNickname: input.thread.subagentNickname,
-      subagentRole: input.thread.subagentRole,
-      title: input.thread.title,
-    },
-    threads: input.threads,
-  });
-  const supportingLabel =
-    presentation.role ??
-    (presentation.nickname && presentation.title && presentation.title !== presentation.nickname
-      ? presentation.title
-      : null);
-  return (
-    <span className="min-w-0 truncate">
-      <span
-        className="font-medium"
-        style={{
-          color: presentation.accentColor,
-        }}
-      >
-        {presentation.nickname ?? presentation.primaryLabel}
-      </span>
-      {supportingLabel ? (
-        <span className={cn("ml-1 text-muted-foreground/48", input.roleClassName)}>
-          {presentation.role ? `(${presentation.role})` : supportingLabel}
-        </span>
-      ) : null}
-    </span>
-  );
-}
-function SidebarSubagentLabel({
-  thread,
-  roleClassName,
-}: {
-  thread: SidebarThreadSummary;
-  roleClassName?: string | undefined;
-}) {
-  const selectParentThread = useMemo(
-    () => createThreadSelector(thread.parentThreadId ?? null),
-    [thread.parentThreadId],
-  );
-  const parentThread = useStore(selectParentThread);
-  return renderSubagentLabel({
-    thread,
-    threads: parentThread ? [parentThread] : undefined,
-    roleClassName,
-  });
-}
 export function SidebarThreadRowContent({
   thread,
   terminalStatus,
@@ -150,37 +92,22 @@ export function SidebarThreadRowContent({
 }) {
   const subagentIndentPx = subagentIndentPxProp ?? 0;
   const isSubagentThread = Boolean(thread.parentThreadId);
-  const subagentPresentation =
-    variant === "standard" && isSubagentThread
-      ? resolveSubagentPresentationForThread({
-          thread: {
-            id: thread.id,
-            parentThreadId: thread.parentThreadId,
-            subagentAgentId: thread.subagentAgentId,
-            subagentNickname: thread.subagentNickname,
-            subagentRole: thread.subagentRole,
-            title: thread.title,
-          },
-        })
-      : null;
+  const subagentPresentation = isSubagentThread
+    ? resolveSubagentPresentation({
+        nickname: thread.subagentNickname,
+        role: thread.subagentRole,
+        title: thread.title,
+        fallbackId: thread.id,
+      })
+    : null;
   return (
     <>
-      {variant === "standard" && isSubagentThread ? (
+      {isSubagentThread ? (
         <span
-          aria-hidden="true"
-          className="relative inline-flex h-3.5 w-[18px] shrink-0 items-center"
-          style={{
-            marginLeft: `${subagentIndentPx}px`,
-          }}
+          className="inline-flex shrink-0 items-center"
+          style={{ marginLeft: `${subagentIndentPx}px` }}
         >
-          <span className="absolute left-1.5 top-0 bottom-0 w-px rounded-full bg-border/35" />
-          <span className="absolute left-1.5 top-1/2 h-px w-2.5 -translate-y-1/2 bg-border/35" />
-          <span
-            className="absolute left-1.5 top-1/2 size-[5px] -translate-x-1/2 -translate-y-1/2 rounded-full"
-            style={{
-              backgroundColor: subagentPresentation?.accentColor,
-            }}
-          />
+          <SubagentAvatar threadId={thread.id} />
         </span>
       ) : (
         <ProviderAvatarWithTerminal
@@ -201,20 +128,11 @@ export function SidebarThreadRowContent({
             "min-w-0 flex-1 truncate text-ui",
             !isSubagentThread && "group-hover/thread-row:pr-10 group-focus-within/thread-row:pr-10",
             isActive ? "text-foreground" : SIDEBAR_ROW_LABEL_TEXT_CLASS_NAME,
-            variant === "standard" && isSubagentThread
-              ? "leading-[18px] text-foreground/80"
-              : "leading-5",
+            "leading-5",
           )}
           data-testid={variant === "pinned" ? `thread-title-${thread.id}` : undefined}
         >
-          {isSubagentThread ? (
-            <SidebarSubagentLabel
-              thread={thread}
-              roleClassName={variant === "standard" ? "text-muted-foreground/42" : undefined}
-            />
-          ) : (
-            thread.title
-          )}
+          {subagentPresentation?.primaryLabel ?? thread.title}
         </span>
         {!isSubagentThread && pendingStatusColorClass ? (
           <span

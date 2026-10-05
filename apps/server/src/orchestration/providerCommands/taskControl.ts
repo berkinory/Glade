@@ -1,4 +1,6 @@
 import type { ServiceMap } from "effect";
+import type { ProjectionSnapshotQueryShape } from "../Services/ProjectionSnapshotQuery.ts";
+import type { OrchestrationThreadShell } from "@glade/contracts/orchestration/threadEntities";
 import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
 import { Option, Effect, Cause } from "effect";
 import { ComputerService } from "../../computer/Services/ComputerService";
@@ -20,6 +22,7 @@ import { makeProviderContextBootstrap } from "./contextBootstrap";
 
 export function makeProviderTaskControl(input: {
   readonly projectionAccess: ProviderProjectionAccessShape;
+  readonly projectionSnapshotQuery: ProjectionSnapshotQueryShape;
   readonly computerService: Option.Option<ServiceMap.Service.Shape<typeof ComputerService>>;
   readonly appendProviderFailureActivity: ReturnType<
     typeof makeProviderThreadProjection
@@ -52,6 +55,7 @@ export function makeProviderTaskControl(input: {
     setThreadSession,
 
     projectionAccess,
+    projectionSnapshotQuery,
   } = input;
 
   const {
@@ -61,6 +65,36 @@ export function makeProviderTaskControl(input: {
     resolveSubagentProviderThreadId,
     resolveLiveProviderTurnId,
   } = projectionAccess;
+  const readActiveNativeChildren = Effect.fnUntraced(function* (ownerId: ThreadId) {
+    const snapshot = yield* projectionSnapshotQuery.getShellSnapshot();
+    return snapshot.threads.filter(
+      (child) =>
+        child.parentThreadId === ownerId &&
+        resolveSubagentProviderThreadId(child.id, ownerId) !== undefined &&
+        child.session?.activeTurnId !== null &&
+        child.session?.status === "running",
+    );
+  });
+  const settleStoppedNativeChildren = Effect.fnUntraced(function* (
+    children: ReadonlyArray<OrchestrationThreadShell>,
+    createdAt: string,
+  ) {
+    for (const child of children) {
+      if (!child.session) continue;
+      // Teardown proves these native turns ended; a later child update must survive this settlement.
+      yield* setThreadSession({
+        threadId: child.id,
+        expectedSession: child.session,
+        session: {
+          ...child.session,
+          status: "interrupted",
+          activeTurnId: null,
+          updatedAt: createdAt,
+        },
+        createdAt,
+      });
+    }
+  });
   const interruptProviderTurn = Effect.fnUntraced(function* (input: {
     readonly threadId: ThreadId;
     readonly turnId?: TurnId | undefined;
@@ -140,6 +174,7 @@ export function makeProviderTaskControl(input: {
     const providerThreadId = resolveSubagentProviderThreadId(thread.id, providerThread.id);
     const liveTurnId = yield* resolveLiveProviderTurnId(input.threadId);
     const turnId = liveTurnId ?? input.turnId ?? thread.session?.activeTurnId ?? undefined;
+    const children = providerThreadId ? [] : yield* readActiveNativeChildren(providerThread.id);
     const result = yield* runBoundedProviderCall({
       label: "The provider interrupt",
       timeout: PROVIDER_COMMAND_INTERRUPT_TIMEOUT,
@@ -150,6 +185,7 @@ export function makeProviderTaskControl(input: {
       }),
     });
     if (result._tag === "ok") {
+      yield* settleStoppedNativeChildren(children, input.createdAt);
       return;
     }
 
@@ -396,12 +432,15 @@ export function makeProviderTaskControl(input: {
           settlementStatus: "uncertain",
         });
       } else {
+        const children = yield* readActiveNativeChildren(providerThread.id);
         const stopped = yield* runBoundedProviderCall({
           label: "The provider session stop",
           timeout: PROVIDER_COMMAND_STOP_TIMEOUT,
           call: providerService.stopRuntimeSession({ threadId: providerThread.id }),
         });
-        if (stopped._tag !== "ok") {
+        if (stopped._tag === "ok") {
+          yield* settleStoppedNativeChildren(children, input.createdAt);
+        } else {
           yield* appendProviderFailureActivity({
             threadId: thread.id,
             kind: "provider.session.stop.failed",

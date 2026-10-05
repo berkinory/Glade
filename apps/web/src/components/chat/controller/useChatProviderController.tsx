@@ -127,12 +127,17 @@ export function useChatProviderController({
   const providerDisplayName =
     PROVIDER_DISPLAY_NAMES[activeThread?.session?.provider ?? selectedProvider];
 
-  const { workLogEntries, composerSubagentStripItems, stripSourceThreadId, workflowRunState } =
-    useChatWorkLog({
-      activeThread,
-      latestTurnSettled,
-      latestTurnLive,
-    });
+  const {
+    workLogEntries,
+    composerSubagentStripItems,
+    stripSourceThreadId,
+    stripSourceRuntimeActive,
+    workflowRunState,
+  } = useChatWorkLog({
+    activeThread,
+    latestTurnSettled,
+    latestTurnLive,
+  });
 
   const agentActivityTimelineState = deriveAgentActivityTimelineState(workLogEntries);
   const getAgentActivityDetail = (activityId: string) =>
@@ -311,6 +316,7 @@ export function useChatProviderController({
     workLogEntries,
     composerSubagentStripItems,
     stripSourceThreadId,
+    stripSourceRuntimeActive,
     workflowRunState,
     getAgentActivityDetail,
     agentActivityTimelineState,
