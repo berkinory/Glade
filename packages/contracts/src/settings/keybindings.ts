@@ -60,6 +60,8 @@ export const STATIC_KEYBINDING_COMMANDS = [
   "thread.copyId",
   "chat.visible.next",
   "chat.visible.previous",
+  "workspaceTab.previous",
+  "workspaceTab.next",
   "editor.openFavorite",
   "editor.file.save",
   "git.commitAndPush",
@@ -158,7 +160,11 @@ export const ResolvedKeybindingRule = Schema.Struct({
 }).annotate({ parseOptions: { onExcessProperty: "ignore" } });
 export type ResolvedKeybindingRule = typeof ResolvedKeybindingRule.Type;
 
+// Runtime snapshots retain up to two platform defaults per command alongside user rules.
+export const MAX_RESOLVED_KEYBINDINGS_COUNT =
+  MAX_KEYBINDINGS_COUNT + 2 * STATIC_KEYBINDING_COMMANDS.length;
+
 export const ResolvedKeybindingsConfig = Schema.Array(ResolvedKeybindingRule).check(
-  Schema.isMaxLength(MAX_KEYBINDINGS_COUNT),
+  Schema.isMaxLength(MAX_RESOLVED_KEYBINDINGS_COUNT),
 );
 export type ResolvedKeybindingsConfig = typeof ResolvedKeybindingsConfig.Type;

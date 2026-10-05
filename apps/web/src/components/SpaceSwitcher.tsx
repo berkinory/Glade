@@ -41,7 +41,7 @@ import {
   SidebarContextMenuIcon,
 } from "./sidebarContextMenuStyles";
 import { Menu, MenuGroup, MenuItem } from "./ui/menu";
-import { ShortcutKbd } from "./ui/shortcut-kbd";
+import { ShortcutKbd } from "./ui/kbd";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 
 export type SpaceActivityTone = "attention" | "running" | "completed";

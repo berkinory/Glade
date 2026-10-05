@@ -3,7 +3,6 @@ import {
   KeybindingsConfig,
   KeybindingRule,
   ResolvedKeybindingsConfig,
-  MAX_KEYBINDINGS_COUNT,
 } from "@glade/contracts/settings/keybindings";
 import { type ServerConfigIssue } from "@glade/contracts/server/server";
 import {
@@ -297,11 +296,5 @@ export function mergeWithDefaultKeybindings(
   const retainedDefaults = DEFAULT_RESOLVED_KEYBINDINGS.filter(
     (binding) => !overriddenCommands.has(binding.command),
   );
-  const merged = [...retainedDefaults, ...custom];
-
-  if (merged.length <= MAX_KEYBINDINGS_COUNT) {
-    return merged;
-  }
-
-  return merged.slice(-MAX_KEYBINDINGS_COUNT);
+  return [...retainedDefaults, ...custom];
 }

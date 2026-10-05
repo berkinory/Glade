@@ -9,7 +9,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { resolveAndPersistPreferredEditor } from "~/editorPreferences";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { ShortcutKbd } from "~/components/ui/shortcut-kbd";
+import { ShortcutKbd } from "~/components/ui/kbd";
 import { toastManager } from "~/components/ui/toast";
 import { formatKeybindingWhenExpression } from "~/keybindings";
 import { CentralIcon } from "~/lib/central-icons";

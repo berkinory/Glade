@@ -46,6 +46,11 @@ service tag is under `settings/Services`, and its file-backed implementation is 
 
 ## Configuration
 
+The user file accepts up to 256 rules. Runtime bindings reserve another two rules
+per supported command for platform defaults. Custom commands replace their defaults,
+and custom chords take precedence without evicting unrelated saved rules. Startup
+backfill leaves a full user file intact and supplies missing defaults at runtime.
+
 ### Rule Shape
 
 Each entry supports:
@@ -65,6 +70,7 @@ Invalid rules are ignored. Invalid config files are ignored. Warnings are logged
 - `chat.newLocal`: create a new chat thread for the active project in a new environment (local/worktree determined by app settings (default `local`))
 - `composer.focus.toggle`: focus or blur the chat prompt composer
 - `model.effort.next`: cycle the current model's supported effort levels while the composer or model picker owns focus (Shift+Tab by default). Unsupported models keep normal reverse-tab navigation. The existing picker briefly shows the selection; interacting with it keeps it open. Menus, dialogs, terminal input, IME composition, approvals and voice capture take priority.
+- `workspaceTab.previous` / `workspaceTab.next`: select the previous or next tab in the current conversation workspace, in visual order, wrapping at either end. Defaults are Command+Control+Left/Right on macOS and Ctrl+PageUp/PageDown on Windows/Linux. macOS chords work from terminal input; Windows/Linux defaults yield to a focused terminal. File editor input, preview tabs and the pinned chat tab use the existing workspace selection behavior. Change these bindings in Settings → Keyboard shortcuts.
 - `thread.copyId`: copy the active thread's ID to the clipboard
 - `editor.openFavorite`: open current project/worktree in the last-used editor
 - `editor.file.save`: write the focused file editor's unsaved changes back to disk

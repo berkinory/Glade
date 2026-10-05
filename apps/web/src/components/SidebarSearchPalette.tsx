@@ -18,7 +18,7 @@ import { ProjectSidebarIcon } from "./ProjectSidebarIcon";
 import { ProviderIcon as SharedProviderIcon } from "./ProviderIcon";
 import { readNativeApi } from "~/nativeApi";
 import { cn, getNavigatorPlatform, isMacPlatform } from "~/lib/utils";
-import { ShortcutKbd } from "./ui/shortcut-kbd";
+import { ShortcutKbd } from "./ui/kbd";
 import {
   appendBrowsePathSegment,
   canNavigateUp,

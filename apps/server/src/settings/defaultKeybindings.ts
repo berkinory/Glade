@@ -112,6 +112,10 @@ export const DEFAULT_KEYBINDINGS: ReadonlyArray<KeybindingRule> = [
   { key: "mod+shift+[", command: "chat.visible.previous", when: "!terminalFocus" },
   { key: "meta+ctrl+p", command: "git.commitAndPush", when: "!terminalFocus && isMac" },
   { key: "ctrl+alt+p", command: "git.commitAndPush", when: "!terminalFocus && !isMac" },
+  { key: "cmd+ctrl+arrowleft", command: "workspaceTab.previous", when: "isMac" },
+  { key: "cmd+ctrl+arrowright", command: "workspaceTab.next", when: "isMac" },
+  { key: "ctrl+pageup", command: "workspaceTab.previous", when: "!terminalFocus && !isMac" },
+  { key: "ctrl+pagedown", command: "workspaceTab.next", when: "!terminalFocus && !isMac" },
   { key: "mod+o", command: "editor.openFavorite" },
   { key: "mod+s", command: "editor.file.save", when: "!terminalFocus" },
 ];

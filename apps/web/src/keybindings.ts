@@ -88,6 +88,25 @@ const whenThreadJumpAvailable = whenOr(
 const whenModChordAllowed = whenOr(whenNotTerminalFocus, whenIdentifier("isMac"));
 
 const DEFAULT_SHORTCUT_FALLBACKS: ResolvedKeybindingsConfig = [
+  ...(["workspaceTab.previous", "workspaceTab.next"] as const).flatMap((command) => [
+    {
+      command,
+      shortcut: commandShortcut(command === "workspaceTab.next" ? "arrowright" : "arrowleft", {
+        metaKey: true,
+        ctrlKey: true,
+        modKey: false,
+      }),
+      whenAst: whenIdentifier("isMac"),
+    },
+    {
+      command,
+      shortcut: commandShortcut(command === "workspaceTab.next" ? "pagedown" : "pageup", {
+        ctrlKey: true,
+        modKey: false,
+      }),
+      whenAst: whenAnd(whenNotTerminalFocus, whenNot(whenIdentifier("isMac"))),
+    },
+  ]),
   {
     command: "sidebar.activity",
     shortcut: commandShortcut("u", { altKey: true }),

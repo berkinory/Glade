@@ -17,7 +17,7 @@ import {
   AutocompleteSeparator,
   AutocompleteStatus,
 } from "~/components/ui/autocomplete";
-import { Kbd, SHORTCUT_KBD_CLASS_NAME } from "./kbd";
+import { ShortcutKbd } from "./kbd";
 
 const CommandDialog = CommandDialogPrimitive.Root;
 
@@ -195,14 +195,10 @@ function CommandSeparator({
   );
 }
 
-function CommandShortcut({ className, ...props }: React.ComponentProps<"kbd">) {
-  return (
-    <Kbd
-      className={cn("ms-auto", SHORTCUT_KBD_CLASS_NAME, className)}
-      data-slot="command-shortcut"
-      {...props}
-    />
-  );
+function CommandShortcut({
+  className,
+  children,
+  ...props
 }
 
 function CommandFooter({ className, ...props }: React.ComponentProps<"div">) {

@@ -234,6 +234,17 @@ export function MainWorkspace(props: {
   const filePath = resolvedId.startsWith("file:") ? resolvedId.slice(5) : null;
   const review = state.reviews.find((tab) => tab.id === resolvedId);
   useWorkspaceShortcuts({
+    threadId: props.threadId,
+    onNavigate: (direction) => {
+      const index = tabs.findIndex((tab) => tab.id === resolvedId);
+      const next = tabs[(index + direction + tabs.length) % tabs.length];
+      if (!next) return;
+      select(next.id);
+      const tabElement = Array.from(
+        headerHost?.querySelectorAll<HTMLElement>("[data-tab-id]") ?? [],
+      ).find((element) => element.dataset.tabId === next.id);
+      tabElement?.querySelector<HTMLButtonElement>("button[aria-pressed]")?.focus();
+    },
     terminalActive: terminalVisible,
     onSplitTerminal: terminal.splitTerminal,
     onClose: () => {

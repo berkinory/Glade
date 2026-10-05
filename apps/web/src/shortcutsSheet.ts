@@ -232,6 +232,16 @@ const THREAD_JUMP_DEFINITIONS: readonly ShortcutDefinition[] = Array.from(
 
 const WORKSPACE_DEFINITIONS: readonly ShortcutDefinition[] = [
   {
+    command: "workspaceTab.previous",
+    label: "Previous workspace tab",
+    description: "Select the previous resource tab in this conversation, wrapping at the start.",
+  },
+  {
+    command: "workspaceTab.next",
+    label: "Next workspace tab",
+    description: "Select the next resource tab in this conversation, wrapping at the end.",
+  },
+  {
     command: "terminal.workspace.newFullWidth",
     label: "Open full-width terminal workspace",
     description: "Expand the active chat into the workspace terminal layout.",

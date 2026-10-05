@@ -14,7 +14,7 @@ import {
   COMPOSER_PICKER_MENU_SURFACE_CLASS_NAME,
 } from "../chat/composerPickerStyles";
 import { SWITCH_THUMB_CLASS_NAME, SWITCH_TRACK_CLASS_NAME } from "./switch";
-import { Kbd, SHORTCUT_KBD_CLASS_NAME } from "./kbd";
+import { ShortcutKbd } from "./kbd";
 
 const MenuCreateHandle = MenuPrimitive.createHandle;
 
@@ -351,14 +351,10 @@ function MenuSeparator({ className, ...props }: MenuPrimitive.Separator.Props) {
   );
 }
 
-function MenuShortcut({ className, ...props }: React.ComponentProps<"kbd">) {
-  return (
-    <Kbd
-      className={cn("ms-auto", SHORTCUT_KBD_CLASS_NAME, className)}
-      data-slot="menu-shortcut"
-      {...props}
-    />
-  );
+function MenuShortcut({
+  className,
+  children,
+  ...props
 }
 
 type MenuSubProps = MenuPrimitive.SubmenuRoot.Props & {

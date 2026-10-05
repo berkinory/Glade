@@ -4,7 +4,7 @@ import { type StarredModel, starredModelSlotKey } from "~/lib/starredModels";
 import { cn } from "~/lib/utils";
 import { type ProviderOptions } from "../../providerModelOptions";
 import { PROVIDER_ICON_COMPONENT_BY_PROVIDER } from "../ProviderIcon";
-import { ShortcutKbd } from "../ui/shortcut-kbd";
+import { ShortcutKbd } from "../ui/kbd";
 import { MenuItem } from "../ui/menu";
 import {
   type ComposerModelPickerRow as PickerRow,

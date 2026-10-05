@@ -34,7 +34,7 @@ import { ThreadPinToggleButton } from "./ThreadPinToggleButton";
 import { SidebarThreadRowContent } from "./SidebarThreadRowContent";
 import { selectThreadTerminalState } from "../terminalStateStore";
 import { DisclosureRegion } from "./ui/DisclosureRegion";
-import { ShortcutKbd } from "./ui/shortcut-kbd";
+import { ShortcutKbd } from "./ui/kbd";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 import {
   SidebarMenuButton,
@@ -49,11 +49,7 @@ import {
   resolveThreadProjectLabel,
   resolveThreadStatusTrailingIndicator,
 } from "./Sidebar.logic.statusTypes";
-import {
-  resolveThreadRowClassName,
-  resolveThreadRowTrailingReserveClass,
-  type SidebarDerivedProjectData,
-} from "./Sidebar.logic.status";
+import { resolveThreadRowClassName, type SidebarDerivedProjectData } from "./Sidebar.logic.status";
 import { cn } from "~/lib/utils";
 import { resolveThreadModelSummary } from "~/lib/threadModelSummary";
 import { beginThreadDrag, endThreadDrag } from "../lib/threadDrag";
@@ -185,6 +181,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
     timestampToneClassName?: string;
     hoverActions: ReactNode;
     draftIndicator: ReactNode;
+    pr: ReactNode;
   }) {
     // The jump shortcut owns the slot while it is visible; otherwise the shared rule decides which
     // status glyph shows here.
@@ -193,31 +190,36 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
       slotOccupied: Boolean(input.threadJumpLabel),
     });
     return (
-      <div className="relative flex shrink-0 items-center justify-end gap-[3px]">
-        {!input.threadJumpLabel && input.rightMetaChips.length > 0 ? (
-          <div className={THREAD_ROW_META_CHIP_HOVER_FADE_CLASS_NAME}>
-            <SidebarMetaChipStack chips={input.rightMetaChips} />
+      <div className="flex min-w-0 shrink-0 items-center gap-2">
+        <div className="grid min-w-0 items-center">
+          <div className="col-start-1 row-start-1 flex min-w-0 items-center justify-end gap-2">
+            {!input.threadJumpLabel && input.rightMetaChips.length > 0 ? (
+              <div className={THREAD_ROW_META_CHIP_HOVER_FADE_CLASS_NAME}>
+                <SidebarMetaChipStack chips={input.rightMetaChips} />
+              </div>
+            ) : null}
+            {input.threadJumpLabel ? (
+              <ShortcutKbd
+                shortcutLabel={input.threadJumpLabel}
+                className={cn("max-w-[8em]", THREAD_ROW_META_CHIP_HOVER_FADE_CLASS_NAME)}
+              />
+            ) : null}
+            {trailingStatus ? (
+              <span
+                title={trailingStatus.label}
+                className={threadRowStatusSlotClassName(
+                  input.isSubagentThread,
+                  input.timestampToneClassName,
+                )}
+              >
+                <SidebarStatusTrailingGlyph status={trailingStatus} />
+              </span>
+            ) : null}
+            {input.draftIndicator}
           </div>
-        ) : null}
-        {input.threadJumpLabel ? (
-          <ShortcutKbd
-            shortcutLabel={input.threadJumpLabel}
-            className={THREAD_ROW_META_CHIP_HOVER_FADE_CLASS_NAME}
-          />
-        ) : null}
-        {trailingStatus ? (
-          <span
-            title={trailingStatus.label}
-            className={threadRowStatusSlotClassName(
-              input.isSubagentThread,
-              input.timestampToneClassName,
-            )}
-          >
-            <SidebarStatusTrailingGlyph status={trailingStatus} />
-          </span>
-        ) : null}
-        {input.draftIndicator}
-        {input.hoverActions}
+          {input.hoverActions}
+        </div>
+        {input.pr}
       </div>
     );
   }
@@ -339,7 +341,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
     const threadStatus = resolveThreadStatusForSidebar(thread);
     const isSubagentThread = Boolean(thread.parentThreadId);
     const pr = prByThreadId.get(thread.id) ?? null;
-    const leadingPr = isSubagentThread || thread.forkSourceThreadId ? null : pr;
     const threadJumpLabel = visibleThreadJumpLabelByThreadId.get(thread.id) ?? null;
 
     const hasTrailingStatusGlyph = Boolean(threadStatus || threadJumpLabel);
@@ -358,13 +359,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
             />
           }
         >
-          {leadingPr ? (
-            <ThreadPrStatusBadge
-              pr={leadingPr}
-              onOpen={openPrLink}
-              className="pointer-events-auto absolute left-1.5 top-1/2 z-30 size-5 -translate-y-1/2"
-            />
-          ) : null}
           <div
             role="button"
             tabIndex={0}
@@ -373,12 +367,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
             className={cn(
               SIDEBAR_HEADER_ROW_CLASS_NAME,
               "relative gap-1.5 transition-colors",
-              leadingPr && "pl-8",
-              resolveThreadRowTrailingReserveClass({
-                metaChipCount: threadJumpLabel ? 0 : rightMetaChips.length,
-                hasTrailingGlyph: hasTrailingStatusGlyph,
-              }),
-              "group-hover/thread-row:pr-16 group-focus-within/thread-row:pr-16",
+              "pr-2",
               isActive
                 ? SIDEBAR_ROW_ACTIVE_CLASS_NAME
                 : cn(SIDEBAR_ROW_IDLE_TEXT_CLASS_NAME, SIDEBAR_ROW_HOVER_CLASS_NAME),
@@ -439,8 +428,9 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
                 ) : null
               }
             />
-            <div className="absolute top-1/2 right-1.5 flex -translate-y-1/2 items-center">
+            <div className="flex min-w-0 shrink-0 items-center">
               {renderThreadRowTrailingCluster({
+                pr: pr ? <ThreadPrStatusBadge pr={pr} onOpen={openPrLink} /> : null,
                 draftIndicator: <SidebarDraftIndicator threadId={thread.id} isActive={isActive} />,
                 isSubagentThread,
                 threadJumpLabel,
@@ -487,7 +477,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
       thread,
     });
     const isSubagentThread = Boolean(thread.parentThreadId);
-    const leadingPr = isSubagentThread || thread.forkSourceThreadId ? null : pr;
     const subagentIndentPx = Math.max(0, Math.min(depth - 1, 3) * 10);
     const showCompactMeta = !isSubagentThread;
     const threadJumpLabel = visibleThreadJumpLabelByThreadId.get(thread.id) ?? null;
@@ -510,13 +499,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
           virtualOffset === undefined ? undefined : { transform: `translateY(${virtualOffset}px)` }
         }
       >
-        {leadingPr ? (
-          <ThreadPrStatusBadge
-            pr={leadingPr}
-            onOpen={openPrLink}
-            className="pointer-events-auto absolute left-1.5 top-1/2 z-30 size-5 -translate-y-1/2"
-          />
-        ) : null}
         <Tooltip>
           <TooltipTrigger
             {...SIDEBAR_HOVER_CARD_TRIGGER_PROPS}
@@ -530,14 +512,8 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
                     isActive,
                     isSelected,
                   }),
-                  leadingPr ? "pl-8" : topLevel && !isSubagentThread ? "pl-2" : null,
-                  isSubagentThread
-                    ? "pr-7.5"
-                    : resolveThreadRowTrailingReserveClass({
-                        metaChipCount:
-                          showCompactMeta && !threadJumpLabel ? rightMetaChips.length : 0,
-                        hasTrailingGlyph: Boolean(threadStatus) || Boolean(threadJumpLabel),
-                      }),
+                  topLevel && !isSubagentThread ? "pl-2" : null,
+                  "pr-2",
                 )}
                 draggable
                 onDragStart={(event) => beginThreadDrag(event, thread.id)}
@@ -589,8 +565,9 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
                 threadStatus?.label === "Pending Approval" ? threadStatus.colorClass : null
               }
             />
-            <div className="absolute top-1/2 right-1.5 flex -translate-y-1/2 items-center">
+            <div className="flex min-w-0 shrink-0 items-center">
               {renderThreadRowTrailingCluster({
+                pr: pr ? <ThreadPrStatusBadge pr={pr} onOpen={openPrLink} /> : null,
                 draftIndicator: <SidebarDraftIndicator threadId={thread.id} isActive={isActive} />,
                 isSubagentThread,
                 threadJumpLabel,

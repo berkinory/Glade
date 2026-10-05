@@ -12,7 +12,7 @@ import { cn } from "../lib/utils";
 import type { RecentViewDisplayEntry } from "../recentViews.logic";
 import { ProviderIcon } from "./ProviderIcon";
 import TerminalIdentityIcon from "./terminal/TerminalIdentityIcon";
-import { ShortcutKbd } from "./ui/shortcut-kbd";
+import { ShortcutKbd } from "./ui/kbd";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 
 const NO_MODIFIERS = {

@@ -1,5 +1,7 @@
 # TODO
 
+- **G2 implemented:** Added configurable workspace tab navigation, unified readable shortcut hints and trailing sidebar PR/metadata layout; retained the 256-rule user budget with bounded runtime defaults and no saved-rule eviction. Full check passed; focused persistence tests and all 444 web tests passed. Full suite finished with server ENOSPC failures and desktop browser-vault timeouts. Mixed resource navigation, narrow sidebar and increased-font live verification remain unverified.
+
 - **G4 implemented:** Hidden Windows persistent-environment, editor-icon and process-tree helpers, including Effect teardown; native window-action errors notify without stale updates or duplicate calls; stdout/stderr EPIPE leaves the GUI alive and file logging available. Full check and suite passed (2,573 tests, 9 skipped), desktop build and Windows boundary passed. Isolated real launcher pipe loss and SIGTERM, file logging/fatal stream errors, and Dev renderer IPC rejections verified. Native Windows helper visibility and cleanup remain unverified.
 
 - **G1 complete:** Rebuilt scoped connections after protocol failures, added authenticated serialized turn settlement with durable caller-bound receipts, and retained drafts/uploads while delivery is unknown. Full check and suite passed (2,579 passed, 9 skipped); migration lineage verified through migration 5. Isolated Dev startup/hydration verified. Live provider transition, interactive recovery across navigation and real network interruption remain unverified.

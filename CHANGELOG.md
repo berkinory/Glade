@@ -4,6 +4,8 @@
 
 ### New
 
+- Move between tabs in the current conversation workspace with configurable keyboard shortcuts.
+
 - Initialize local Git repositories and publish them to GitHub from Source Control, choosing the account or organization, repository name and visibility.
 
 - Continue with another provider in the same chat, with a persistent record of each transition.
@@ -28,6 +30,8 @@
 - Add files and folders to Explorer with drag and drop, or paste files from the clipboard.
 
 ### Improved
+
+- Keyboard shortcut hints are more consistent and readable, and sidebar pull request and workspace indicators leave conversation titles easier to read.
 
 - Approval, tool progress and background-task details retain more useful explanations and error context.
 
@@ -102,6 +106,8 @@
 - Models load faster on first use, with a balanced initial reasoning effort when you have not chosen one.
 
 ### Fixed
+
+- Large custom keymaps preserve saved rules and unrelated default shortcuts.
 
 - Background helpers no longer flash command windows on Windows.
 - Failed desktop window actions show an understandable error.

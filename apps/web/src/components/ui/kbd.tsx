@@ -2,8 +2,6 @@ import type * as React from "react";
 
 import { cn, isMacNavigatorPlatform } from "~/lib/utils";
 
-export const SHORTCUT_KBD_CLASS_NAME = "h-4 min-w-4 shrink-0 px-1 text-ui-2xs";
-
 function Kbd({ className, ...props }: React.ComponentProps<"kbd">) {
   return (
     <kbd
@@ -17,23 +15,38 @@ function Kbd({ className, ...props }: React.ComponentProps<"kbd">) {
   );
 }
 
-function KbdGroup({ className, ...props }: React.ComponentProps<"kbd">) {
+function ShortcutKbd({
+  shortcutLabel,
+  className,
+  ...props
+}: Omit<React.ComponentProps<"kbd">, "children"> & { shortcutLabel: string }) {
+  const match = /^(?:[⌃⌥⇧⌘]+|(?:(?:Ctrl|Alt|Shift|Meta|Cmd)\+)+|Ctrl )/.exec(shortcutLabel);
+  const modifiers = match?.[0] ?? "";
+  const key = shortcutLabel.slice(modifiers.length);
+  const accessibleLabel = shortcutLabel
+    .replaceAll("⌃", "Control ")
+    .replaceAll("⌥", "Option ")
+    .replaceAll("⇧", "Shift ")
+    .replaceAll("⌘", "Command ")
+    .replaceAll("↵", "Enter");
   return (
-    <kbd
-      className={cn("inline-flex items-center gap-1", className)}
-      data-slot="kbd-group"
+    <Kbd
+      aria-label={accessibleLabel}
+      title={shortcutLabel}
       {...props}
-    />
+      className={cn("h-4 min-w-0 max-w-full gap-0.5 px-1 text-ui-2xs", className)}
+    >
+      {modifiers ? <span className="min-w-0 truncate">{modifiers}</span> : null}
+      <span className="shrink-0">{key}</span>
+    </Kbd>
   );
 }
 
 /** The "submit this dialog" chord, spelled for the host platform. */
 function SubmitShortcutKbd({ className }: { className?: string }) {
   return (
-    <Kbd className={cn(SHORTCUT_KBD_CLASS_NAME, className)}>
-      {isMacNavigatorPlatform() ? "⌘↵" : "Ctrl ↵"}
-    </Kbd>
+    <ShortcutKbd shortcutLabel={isMacNavigatorPlatform() ? "⌘↵" : "Ctrl ↵"} className={className} />
   );
 }
 
-export { Kbd, KbdGroup, SubmitShortcutKbd };
+export { ShortcutKbd, SubmitShortcutKbd };

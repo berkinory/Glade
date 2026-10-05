@@ -386,16 +386,10 @@ const makeKeybindings = Effect.gen(function* () {
       }
 
       const nextConfig = [...customConfig, ...missingDefaults];
-      const cappedConfig =
-        nextConfig.length > MAX_KEYBINDINGS_COUNT
-          ? nextConfig.slice(-MAX_KEYBINDINGS_COUNT)
-          : nextConfig;
-      if (nextConfig.length > MAX_KEYBINDINGS_COUNT) {
-        yield* Effect.logWarning("truncating keybindings config to max entries", {
-          path: keybindingsConfigPath,
-          maxEntries: MAX_KEYBINDINGS_COUNT,
-        });
-      }
+      // Runtime merging supplies missing defaults when the user file has no room. Never evict
+      // saved rules to make room for built-ins, or persist only half a platform pair.
+      const persistedConfig =
+        nextConfig.length <= MAX_KEYBINDINGS_COUNT ? nextConfig : customConfig;
 
       const migratedKeybindingCount =
         runtimeConfig.migratedLegacyCommandCount + runtimeConfig.migratedDefaultRuleCount;
@@ -405,7 +399,13 @@ const makeKeybindings = Effect.gen(function* () {
           count: migratedKeybindingCount,
         });
       }
-      yield* writeConfigAtomically(cappedConfig);
+      if (
+        persistedConfig !== customConfig ||
+        migratedKeybindingCount > 0 ||
+        runtimeConfig.migratedConfigShape
+      ) {
+        yield* writeConfigAtomically(persistedConfig);
+      }
       yield* Cache.invalidate(resolvedConfigCache, resolvedConfigCacheKey);
     }),
   );
@@ -501,19 +501,17 @@ const makeKeybindings = Effect.gen(function* () {
             ...customConfig.filter((entry) => keepExistingRuleDuringUpsert(entry, rule, replacing)),
             rule,
           ];
-          const cappedConfig =
-            nextConfig.length > MAX_KEYBINDINGS_COUNT
-              ? nextConfig.slice(-MAX_KEYBINDINGS_COUNT)
-              : nextConfig;
           if (nextConfig.length > MAX_KEYBINDINGS_COUNT) {
-            yield* Effect.logWarning("truncating keybindings config to max entries", {
-              path: keybindingsConfigPath,
-              maxEntries: MAX_KEYBINDINGS_COUNT,
-            });
+            return yield* Effect.fail(
+              new KeybindingsConfigError({
+                configPath: keybindingsConfigPath,
+                detail: `Keybindings are limited to ${MAX_KEYBINDINGS_COUNT} saved rules. Remove a rule before adding another.`,
+              }),
+            );
           }
-          yield* writeConfigAtomically(cappedConfig);
+          yield* writeConfigAtomically(nextConfig);
           const nextResolved = mergeWithDefaultKeybindings(
-            compileResolvedKeybindingsConfig(cappedConfig),
+            compileResolvedKeybindingsConfig(nextConfig),
           );
           yield* Cache.set(resolvedConfigCache, resolvedConfigCacheKey, {
             keybindings: nextResolved,

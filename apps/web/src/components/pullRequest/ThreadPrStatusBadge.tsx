@@ -39,7 +39,16 @@ export function ThreadPrStatusBadge({
               presentation.colorClass,
               className,
             )}
-            onClick={(event) => onOpen(event, pr.url)}
+            onPointerDown={(event) => event.stopPropagation()}
+            onPointerUp={(event) => event.stopPropagation()}
+            onMouseDown={(event) => event.stopPropagation()}
+            onDoubleClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onOpen(event, pr.url);
+            }}
           >
             <SidebarGlyph icon={PrIcon} variant="meta" className="size-3.5" />
           </button>

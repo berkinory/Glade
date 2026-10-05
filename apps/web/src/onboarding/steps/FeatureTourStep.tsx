@@ -2,7 +2,7 @@ import type { ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybin
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { ShortcutKbd } from "~/components/ui/shortcut-kbd";
+import { ShortcutKbd } from "~/components/ui/kbd";
 import { shortcutLabelForCommand } from "~/keybindings";
 import { ExternalLinkIcon } from "~/lib/icons";
 import { serverConfigQueryOptions } from "~/lib/serverReactQuery";

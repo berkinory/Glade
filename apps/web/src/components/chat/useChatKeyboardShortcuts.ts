@@ -321,6 +321,20 @@ export function useChatKeyboardShortcuts({
       });
       if (!command) return;
 
+      if (command === "workspaceTab.previous" || command === "workspaceTab.next") {
+        event.preventDefault();
+        event.stopPropagation();
+        window.dispatchEvent(
+          new CustomEvent("glade:navigate-workspace-tab", {
+            detail: {
+              threadId: activeThreadId,
+              direction: command === "workspaceTab.next" ? 1 : -1,
+            },
+          }),
+        );
+        return;
+      }
+
       if (command === "composer.focus.toggle") {
         if (isComposerApprovalState || isVoiceRecording || isVoiceTranscribing) return;
         event.preventDefault();

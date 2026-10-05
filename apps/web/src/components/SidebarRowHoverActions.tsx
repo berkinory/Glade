@@ -12,7 +12,7 @@ export function SidebarRowHoverActions({
     <div
       data-testid={`thread-hover-actions-${threadId}`}
       className={cn(
-        "pointer-events-none absolute inset-y-0 right-0 my-auto inline-flex items-center",
+        "pointer-events-none col-start-1 row-start-1 inline-flex items-center justify-end",
         "opacity-0 transition-opacity group-hover/thread-row:pointer-events-auto group-hover/thread-row:opacity-100 group-focus-within/thread-row:pointer-events-auto group-focus-within/thread-row:opacity-100",
       )}
     >

@@ -10,7 +10,7 @@ import {
 import type { SidebarActionBadge } from "./Sidebar.logic.statusTypes";
 import { SidebarGlyph } from "./sidebarGlyphs";
 import { SidebarLeadingIcon } from "./SidebarLeadingIcon";
-import { ShortcutKbd } from "./ui/shortcut-kbd";
+import { ShortcutKbd } from "./ui/kbd";
 import { SidebarMenuButton, SidebarMenuItem } from "./ui/sidebar";
 
 export function SidebarPrimaryAction({
