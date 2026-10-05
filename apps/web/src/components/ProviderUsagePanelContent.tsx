@@ -51,12 +51,6 @@ export function ProviderUsagePanelContent(props: {
         </p>
       ) : null}
       <ProviderUsageLimitRows rows={visibleRows} surface="popover" />
-      {props.resetCredits ? (
-        <ProviderUsageResetCredits
-          resetCredits={props.resetCredits}
-          surface={props.resetCreditsSurface ?? "popover"}
-        />
-      ) : null}
       {props.showUsageLines !== false && props.usageLines && props.usageLines.length > 0 ? (
         <ProviderUsageLineList
           className={cn(visibleRows.length > 0 && "pt-0.5")}
@@ -74,6 +68,12 @@ export function ProviderUsagePanelContent(props: {
               ? "No local usage data was found yet for the selected provider."
               : "No local usage data was found yet.")}
         </p>
+      ) : null}
+      {props.resetCredits ? (
+        <ProviderUsageResetCredits
+          resetCredits={props.resetCredits}
+          surface={props.resetCreditsSurface ?? "popover"}
+        />
       ) : null}
       {props.showLearnMore === true && learnMoreHref ? (
         <a

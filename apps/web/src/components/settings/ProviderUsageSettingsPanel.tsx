@@ -109,18 +109,17 @@ function ProviderUsageCard({
             {meterRows.length > 0 ? (
               <ProviderUsageLimitRows rows={meterRows} surface="settings" />
             ) : null}
-            {hasResetCredits && resetCredits ? (
-              <ProviderUsageResetCredits resetCredits={resetCredits} />
-            ) : null}
             {usageLines.length > 0 ? (
               <ProviderUsageLineList
                 className={cn(
-                  (meterRows.length > 0 || hasResetCredits) &&
-                    "border-t border-[color:var(--color-border)] pt-3",
+                  meterRows.length > 0 && "border-t border-[color:var(--color-border)] pt-3",
                 )}
                 lines={usageLines}
                 surface="settings"
               />
+            ) : null}
+            {hasResetCredits && resetCredits ? (
+              <ProviderUsageResetCredits resetCredits={resetCredits} />
             ) : null}
           </>
         ) : (
