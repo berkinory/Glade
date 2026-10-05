@@ -185,9 +185,9 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
       slotOccupied: Boolean(input.threadJumpLabel),
     });
     return (
-      <div className="flex min-w-0 shrink-0 items-center gap-2">
-        <div className="grid min-w-0 items-center">
-          <div className="col-start-1 row-start-1 flex min-w-0 items-center justify-end gap-2">
+      <div className="flex min-w-0 shrink-0 items-center gap-1">
+        <div className="relative grid min-w-0 items-center">
+          <div className="col-start-1 row-start-1 flex min-w-0 items-center justify-end gap-1">
             {!input.threadJumpLabel && input.metadata.chips.length > 0 ? (
               <div className={THREAD_ROW_META_CHIP_HOVER_FADE_CLASS_NAME}>
                 <SidebarMetaChipStack chips={input.metadata.chips} />
@@ -647,7 +647,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
     const collapsedProjectStatus = project.expanded ? null : projectStatus;
     const projectFolderIconClassName = sidebarHoverRevealHideClassName("project-header");
     const projectToolbarReserveClassName =
-      "group-hover/project-header:pr-[4.75rem] group-has-[:focus-visible]/project-header:pr-[4.75rem]";
+      "group-hover/project-header:pr-8 group-has-[:focus-visible]/project-header:pr-8";
     const projectRowLabel = resolveSidebarProjectRowLabel(project);
     return (
       <div className="group/collapsible">

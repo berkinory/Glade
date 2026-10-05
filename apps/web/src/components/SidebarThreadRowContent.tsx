@@ -198,7 +198,8 @@ export function SidebarThreadRowContent({
       >
         <span
           className={cn(
-            "min-w-0 flex-1 truncate-fade text-ui",
+            "min-w-0 flex-1 truncate text-ui",
+            !isSubagentThread && "group-hover/thread-row:pr-10 group-focus-within/thread-row:pr-10",
             isActive ? "text-foreground" : SIDEBAR_ROW_LABEL_TEXT_CLASS_NAME,
             variant === "standard" && isSubagentThread
               ? "leading-[18px] text-foreground/80"
