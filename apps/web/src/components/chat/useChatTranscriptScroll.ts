@@ -94,8 +94,12 @@ export function useChatTranscriptScroll({
   const animateNextAutoFollowScrollRef = useRef(false);
   const scrollToEnd = useCallback(
     (animated = false) => {
+      const target = legendListRef.current;
+      const container = target?.getScrollableNode();
+      // An unnecessary end target makes the list compensate later row resizes even when everything fits.
+      if (container instanceof HTMLElement && isScrollContainerNearBottom(container, 1)) return;
       programmaticScrollUntilRef.current = performance.now() + 200;
-      void legendListRef.current?.scrollToEnd?.({ animated });
+      void target?.scrollToEnd({ animated });
     },
     [legendListRef],
   );
