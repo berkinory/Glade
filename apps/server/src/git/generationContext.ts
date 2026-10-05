@@ -221,17 +221,16 @@ export function readGenerationContext(
     if (scope === "workingTree") hash.update(workingStamp).update(String(fileCount));
     if (fileCount === 0) return null;
     const incomplete = fileCount > entries.length || groups.has("other groups");
+    const heading = `${scope}: ${fileCount}${incomplete ? " (individual path coverage limited; all paths counted)" : ""} changed paths\n`;
+    const paths = entries.map((entry) => `${entry.status}\t${entry.file}`).join("\n");
     const inventory =
-      entries.length === fileCount && fileCount < 40
-        ? entries.map((entry) => `${entry.status}\t${entry.file}`).join("\n")
+      entries.length === fileCount && Buffer.byteLength(heading + paths) <= INVENTORY_BYTES
+        ? paths
         : Array.from(
             groups,
             ([group, value]) => `${group}: ${value.count}; examples: ${value.examples.join(", ")}`,
           ).join("\n");
-    const stagedSummary = prefix(
-      `${scope}: ${fileCount}${incomplete ? " (individual path coverage limited; all paths counted)" : ""} changed paths\n${inventory}`,
-      INVENTORY_BYTES,
-    );
+    const stagedSummary = prefix(heading + inventory, INVENTORY_BYTES);
     if (!includeContent)
       return {
         stagedSummary,
@@ -274,24 +273,13 @@ export function readGenerationContext(
         }
         return largest;
       });
-    let small = !incomplete && fileCount < 40;
-    if (small) {
-      let total = 0;
-      for (const entry of entries) {
-        total += yield* size(entry);
-        if (total > 1_000_000) {
-          small = false;
-          break;
-        }
-      }
-    }
-    const full = small
-      ? yield* read(
-          ["diff", ...diffArgs, "--patch", "--no-ext-diff", "--no-textconv", "--no-renames"],
-          budget,
-        )
-      : null;
-    if (full && !full.stdoutTruncated) stagedPatch = full.stdout;
+    // Patch size, rather than file count or blob size, determines evidence coverage.
+    // Prefix capture stops Git at the budget; reserve room for the evidence footer.
+    const full = yield* read(
+      ["diff", ...diffArgs, "--patch", "--no-ext-diff", "--no-textconv", "--no-renames"],
+      budget - 256,
+    );
+    if (!full.stdoutTruncated) stagedPatch = full.stdout;
     else {
       const representatives = new Map<string, (typeof entries)[number]>();
       for (const entry of entries) {

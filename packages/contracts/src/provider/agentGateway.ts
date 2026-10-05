@@ -60,20 +60,36 @@ export type GladeContextResult = typeof GladeContextResult.Type;
 
 export const GladeCreateThreadSpec = Schema.Struct({
   prompt: Schema.String.check(Schema.isNonEmpty()),
-  notifyCreatorOnComplete: Schema.optional(Schema.Boolean),
+  notifyCreatorOnComplete: Schema.optional(
+    Schema.Boolean.annotate({
+      description:
+        "Passively deliver the initial run result to the creator; does not wake it or replace waiting.",
+    }),
+  ),
   title: Schema.optional(Schema.String.check(Schema.isNonEmpty())),
-  target: ModelSelection,
+  target: ModelSelection.annotate({
+    description:
+      "Select provider, model slug and supported option keys/values from glade_capabilities.",
+  }),
   projectId: Schema.optional(ProjectId),
   environment: Schema.optional(Schema.Literals(["local", "worktree"])),
-  baseRef: Schema.optional(Schema.String.check(Schema.isNonEmpty())),
+  baseRef: Schema.optional(
+    Schema.String.check(Schema.isNonEmpty()).annotate({
+      description:
+        "Local Git revision, #PR or GitHub PR URL to pin the worktree. Defaults to the selected checkout's HEAD.",
+    }),
+  ),
 
   runtimeMode: Schema.optional(Schema.Literals(["approval-required", "full-access"])),
 });
 export type GladeCreateThreadSpec = typeof GladeCreateThreadSpec.Type;
 
-const GladeGatewayRequestId = Schema.String.check(Schema.isNonEmpty()).check(
-  Schema.isMaxLength(GLADE_GATEWAY_MAX_REQUEST_ID_LENGTH),
-);
+const GladeGatewayRequestId = Schema.String.check(Schema.isNonEmpty())
+  .check(Schema.isMaxLength(GLADE_GATEWAY_MAX_REQUEST_ID_LENGTH))
+  .annotate({
+    description:
+      "Stable identity of this exact creation plan. Keep it on rejection correction and unchanged durable retries.",
+  });
 
 export const GladeCreateThreadsInput = Schema.Struct({
   requestId: GladeGatewayRequestId,
