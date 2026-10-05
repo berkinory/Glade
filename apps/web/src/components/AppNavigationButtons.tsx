@@ -1,4 +1,4 @@
-import { ArrowLeft02Icon, ArrowRight02Icon } from "~/lib/icons";
+import { ChevronLeftIcon, ChevronRightIcon } from "~/lib/icons";
 import { goBackInAppHistory, goForwardInAppHistory, useAppNavigationState } from "~/appNavigation";
 import { isElectron } from "~/env";
 import { cn, isMacNavigatorPlatform } from "~/lib/utils";
@@ -28,7 +28,7 @@ export function AppNavigationButtons({ className }: { className?: string }) {
             />
           }
         >
-          <ArrowLeft02Icon className="size-6" />
+          <ChevronLeftIcon className="size-4" />
         </TooltipTrigger>
         <TooltipPopup side="bottom">Back ({backShortcutLabel})</TooltipPopup>
       </Tooltip>
@@ -46,7 +46,7 @@ export function AppNavigationButtons({ className }: { className?: string }) {
             />
           }
         >
-          <ArrowRight02Icon className="size-6" />
+          <ChevronRightIcon className="size-4" />
         </TooltipTrigger>
         <TooltipPopup side="bottom">Forward ({forwardShortcutLabel})</TooltipPopup>
       </Tooltip>
