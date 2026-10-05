@@ -49,7 +49,7 @@ export function isPlainRuntimeNoticeWorkEntry(
   );
 }
 
-export function isAgentActivityWorkEntry(entry: WorkLogEntry): boolean {
+function isAgentActivityWorkEntry(entry: WorkLogEntry): boolean {
   return (
     entry.itemType === "collab_agent_tool_call" ||
     isReasoningUpdateWorkEntry(entry) ||
@@ -63,7 +63,7 @@ function isUnmappedProviderEventWorkEntry(entry: Pick<WorkLogEntry, "activityKin
   return entry.activityKind === "provider.event.unmapped";
 }
 
-export function formatAgentActivityEntryTitle(entry: WorkLogEntry): string {
+function formatAgentActivityEntryTitle(entry: WorkLogEntry): string {
   if (isReasoningUpdateWorkEntry(entry)) {
     return "Reasoning";
   }

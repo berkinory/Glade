@@ -265,7 +265,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
   const {
     isWorking,
     activeTurnIdForTranscript,
-    openAgentActivityDetail,
     isSendBusy,
     dispatchDeliveryState,
     hasLiveTurn,
@@ -278,7 +277,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     enableComputerControl,
     editableUserMessageId,
     hasStreamingAssistantText,
-    setOpenAgentActivityId,
+    getAgentActivityDetail,
     activeTaskList,
     selectedModel,
     selectedPromptEffort,
@@ -606,7 +605,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                   <ChatTranscriptPane
                     activeThreadId={activeThread.id}
                     activeTurnId={activeTurnIdForTranscript}
-                    agentActivityDetail={openAgentActivityDetail}
                     hasMessages={timelineEntries.length > 0}
                     isWorking={isWorking}
                     workingLabel={resolveWorkingLabel({
@@ -683,8 +681,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                     onMessagesTouchStart={onMessagesTouchStart}
                     onMessagesTouchMove={onMessagesTouchMove}
                     onMessagesTouchEnd={onMessagesTouchEnd}
-                    onOpenAgentActivity={setOpenAgentActivityId}
-                    onCloseAgentActivityDetail={() => setOpenAgentActivityId(null)}
+                    getAgentActivityDetail={getAgentActivityDetail}
                     scrollButtonVisible={showScrollToBottom}
                     onScrollToBottom={onScrollToBottom}
                     contentInsetRightPx={contentInsetRightPx}

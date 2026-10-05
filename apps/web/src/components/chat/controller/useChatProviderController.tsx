@@ -3,7 +3,7 @@ import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { resolveComputerInvocationMode } from "@glade/shared/computer/computerInvocation";
 import { resolveLatestTailUserMessageEditTarget } from "@glade/shared/threads/conversationEdit";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState, useRef, useLayoutEffect } from "react";
+import { useRef, useLayoutEffect } from "react";
 import { deriveAgentActivityTimelineState } from "~/components/chat/agentActivity.logic";
 import { useChatLocalDispatch } from "~/components/chat/useChatLocalDispatch";
 import { useChatPendingInteractions } from "~/components/chat/useChatPendingInteractions";
@@ -134,31 +134,9 @@ export function useChatProviderController({
       latestTurnLive,
     });
 
-  const [openAgentActivityId, setOpenAgentActivityId] = useState<string | null>(null);
-
   const agentActivityTimelineState = deriveAgentActivityTimelineState(workLogEntries);
-
-  const openAgentActivityDetail = openAgentActivityId
-    ? (agentActivityTimelineState.detailById.get(openAgentActivityId) ?? null)
-    : null;
-
-  useEffect(() => {
-    const settle = window.setTimeout(() => {
-      setOpenAgentActivityId(null);
-    }, 0);
-    return () => window.clearTimeout(settle);
-  }, [setOpenAgentActivityId, activeThread?.id]);
-
-  useEffect(() => {
-    if (!openAgentActivityId || agentActivityTimelineState.detailById.has(openAgentActivityId)) {
-      return;
-    }
-
-    const settle = window.setTimeout(() => {
-      setOpenAgentActivityId(null);
-    }, 0);
-    return () => window.clearTimeout(settle);
-  }, [setOpenAgentActivityId, agentActivityTimelineState.detailById, openAgentActivityId]);
+  const getAgentActivityDetail = (activityId: string) =>
+    agentActivityTimelineState.detailById.get(activityId);
 
   const {
     respondingRequestKeys,
@@ -334,9 +312,8 @@ export function useChatProviderController({
     composerSubagentStripItems,
     stripSourceThreadId,
     workflowRunState,
-    setOpenAgentActivityId,
+    getAgentActivityDetail,
     agentActivityTimelineState,
-    openAgentActivityDetail,
     respondingRequestKeys,
     pendingApprovals,
     pendingUserInputs,

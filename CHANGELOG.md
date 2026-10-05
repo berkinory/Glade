@@ -31,6 +31,8 @@
 
 ### Improved
 
+- Inspect reasoning, subagent results, runtime notices and provider transitions directly in the conversation, with compact expandable details.
+
 - Active tools show their progress beside the current action, and tool details use compact, scrollable output with precise elapsed times.
 
 - Use a consistent icon family across the interface and refreshed brand artwork, while preserving file and folder symbols.

@@ -96,7 +96,7 @@ function formatLiveActivityProgress(progress: number): string {
   return `${Math.round(Math.min(100, Math.max(0, percent)))}%`;
 }
 
-function formatLiveActivityStateLabel(state: WorkLogLiveActivity["state"]): string {
+export function formatLiveActivityStateLabel(state: WorkLogLiveActivity["state"]): string {
   switch (state) {
     case "starting":
       return "Starting";

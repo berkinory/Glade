@@ -1,3 +1,4 @@
+import type { AgentActivityDetail } from "~/components/chat/agentActivity.logic";
 import {
   Robot01Icon,
   AlertCircleIcon,
@@ -247,7 +248,7 @@ export interface MessagesTimelineProps {
   turnDiffSummaryByAssistantMessageId: Map<MessageId, TurnDiffSummary>;
   expandedWorkGroups?: Record<string, boolean>;
   onToggleWorkGroup?: (groupId: string) => void;
-  onOpenAgentActivity?: (activityId: string) => void;
+  getAgentActivityDetail?: (activityId: string) => AgentActivityDetail | undefined;
   onOpenTurnDiff: (turnId: TurnId, filePath?: string) => void;
   onOpenThread?: (threadId: ThreadId) => void;
   computerControlEnabled?: boolean;

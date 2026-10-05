@@ -81,7 +81,7 @@ export function renderTimelineAssistantMessage(
     markdownCwd,
     onImageExpand,
     onOpenTurnDiff,
-    onOpenAgentActivity,
+    getAgentActivityDetail,
     computerControlEnabled,
     onEnableComputerControl,
     isWorking,
@@ -237,11 +237,7 @@ export function renderTimelineAssistantMessage(
           markdownCwd={markdownCwd}
           onImageExpand={onImageExpand}
           onOpenTurnDiff={onOpenTurnDiff}
-          {...(onOpenAgentActivity
-            ? {
-                onOpenAgentActivity,
-              }
-            : {})}
+          activityDetail={getAgentActivityDetail?.(workEntry.id)}
           {...(computerControlEnabled !== undefined
             ? {
                 computerControlEnabled,
@@ -257,6 +253,7 @@ export function renderTimelineAssistantMessage(
                 turnId: turnSummary.turnId,
               }
             : {})}
+          timestampFormat={timestampFormat}
         />
       );
       const isLiveGroup =
@@ -375,11 +372,7 @@ export function renderTimelineAssistantMessage(
                   density={prefersCompactWorkEntryRow(workEntry) ? "compact" : "default"}
                   markdownCwd={markdownCwd}
                   onImageExpand={onImageExpand}
-                  {...(onOpenAgentActivity
-                    ? {
-                        onOpenAgentActivity,
-                      }
-                    : {})}
+                  activityDetail={getAgentActivityDetail?.(workEntry.id)}
                   {...(computerControlEnabled !== undefined
                     ? {
                         computerControlEnabled,
@@ -390,6 +383,7 @@ export function renderTimelineAssistantMessage(
                         onEnableComputerControl,
                       }
                     : {})}
+                  timestampFormat={timestampFormat}
                 />
               ))}
             </div>
@@ -407,11 +401,7 @@ export function renderTimelineAssistantMessage(
           density={prefersCompactWorkEntryRow(item.entry) ? "compact" : "default"}
           markdownCwd={markdownCwd}
           onImageExpand={onImageExpand}
-          {...(onOpenAgentActivity
-            ? {
-                onOpenAgentActivity,
-              }
-            : {})}
+          activityDetail={getAgentActivityDetail?.(item.entry.id)}
           {...(computerControlEnabled !== undefined
             ? {
                 computerControlEnabled,
@@ -422,6 +412,7 @@ export function renderTimelineAssistantMessage(
                 onEnableComputerControl,
               }
             : {})}
+          timestampFormat={timestampFormat}
         />
       ) : (
         <div
@@ -610,6 +601,7 @@ export function renderTimelineAssistantMessage(
                       onEnableComputerControl,
                     }
                   : {})}
+                timestampFormat={timestampFormat}
               />
             </div>
           ))}

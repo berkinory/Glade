@@ -22,6 +22,9 @@ import {
 } from "~/lib/icons";
 import type { IconComponent } from "~/lib/iconComponent";
 import { ProviderTransitionDivider } from "./ProviderTransitionDivider";
+import type { TimestampFormat } from "../../appSettings";
+import type { AgentActivityDetail } from "./agentActivity.logic";
+import { AgentActivityDetails } from "./AgentActivityDetails";
 import type { TurnId } from "@glade/contracts/core/baseSchemas";
 import { createElement, memo, useMemo, type ReactElement, type ReactNode } from "react";
 import { basenameOfPath } from "~/file-icons";
@@ -36,14 +39,12 @@ import { cn } from "~/lib/utils";
 import { isFileChangeWorkLogEntry, type WorkLogEntry } from "../../workLog.types";
 import {
   formatAgentActivityEntryPreview,
-  isAgentActivityWorkEntry,
   isCodexActivityStatusWorkEntry,
   isPlainRuntimeNoticeWorkEntry,
   isReasoningUpdateWorkEntry,
 } from "./agentActivity.logic";
 import { ConnectedComputerSetupRequiredCard } from "./ComputerSetupRequiredCard";
 import { ComputerControlDeniedCard } from "./ComputerControlDeniedCard";
-import ChatMarkdown from "../ChatMarkdown";
 import { DiffStatLabel } from "./DiffStatLabel";
 import { type ExpandedImagePreview } from "./ExpandedImagePreview";
 import { LinkChipIcon } from "../LinkChipIcon";
@@ -71,7 +72,7 @@ import {
 } from "../../lib/toolCallLabel.presentations";
 import { formatLiveActivityMeta, useLiveActivityNow } from "../../lib/liveActivityPresentation";
 import { openWorkspaceFileReference, useWorkspaceFileOpener } from "../../lib/workspaceFileOpener";
-import { MUTED_LABEL_TEXT_CLASS_NAME, MUTED_LABEL_TEXT_COLOR } from "~/surfaceStyles";
+import { MUTED_LABEL_TEXT_CLASS_NAME } from "~/surfaceStyles";
 const WORK_ROW_MUTED_HOVER_TONE: Record<"tool-row" | "file-row", string> = {
   "tool-row": `${MUTED_LABEL_TEXT_CLASS_NAME} transition-colors group-hover/tool-row:text-foreground group-focus-visible/tool-row:text-foreground`,
   "file-row": `${MUTED_LABEL_TEXT_CLASS_NAME} transition-colors group-hover/file-row:text-foreground group-focus-visible/file-row:text-foreground`,
@@ -130,6 +131,15 @@ function workEntryPreview(workEntry: TimelineWorkEntry): string | null {
   if (isReasoningUpdateWorkEntry(workEntry)) {
     return formatAgentActivityEntryPreview(workEntry);
   }
+  if (workEntry.itemType === "collab_agent_tool_call") {
+    const task = workEntry.subagentAction?.prompt ?? workEntry.preview ?? workEntry.detail;
+    return (
+      task
+        ?.split("\n")
+        .find((line) => line.trim())
+        ?.trim() ?? null
+    );
+  }
   const isFileRelated =
     workEntry.requestKind === "file-read" ||
     workEntry.requestKind === "file-change" ||
@@ -143,9 +153,6 @@ function workEntryPreview(workEntry: TimelineWorkEntry): string | null {
     const names = workEntry.changedFiles.map((p) => basenameOfPath(p));
     if (names.length === 1) return names[0]!;
     return `${names.length} files`;
-  }
-  if (workEntry.itemType === "collab_agent_tool_call") {
-    return workEntry.detail ?? workEntry.subagentAction?.prompt ?? null;
   }
   if (workEntry.detail) {
     const filePath = extractFilePathFromDetail(workEntry.detail);
@@ -394,7 +401,8 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
   onImageExpand: (preview: ExpandedImagePreview) => void;
   turnId?: TurnId;
   onOpenTurnDiff?: (turnId: TurnId, filePath?: string) => void;
-  onOpenAgentActivity?: (activityId: string) => void;
+  activityDetail?: AgentActivityDetail | undefined;
+  timestampFormat: TimestampFormat;
   computerControlEnabled?: boolean;
   onEnableComputerControl?: () => void;
 }) {
@@ -408,7 +416,8 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
     onImageExpand,
     turnId,
     onOpenTurnDiff,
-    onOpenAgentActivity,
+    activityDetail,
+    timestampFormat,
     computerControlEnabled,
     onEnableComputerControl,
   } = props;
@@ -454,10 +463,15 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
     rawCommand ?? (showInlineAgentTaskPreview ? heading : (webFetchUrl ?? displayText));
   const changedFiles = workEntry.changedFiles ?? [];
   const showEditedRows = isFileChangeWorkEntry(workEntry) && changedFiles.length > 0;
-  const canOpenAgentActivity = Boolean(onOpenAgentActivity) && isAgentActivityWorkEntry(workEntry);
-  const openAgentActivity = canOpenAgentActivity
-    ? () => onOpenAgentActivity?.(workEntry.id)
-    : undefined;
+  const activityContent = activityDetail ? (
+    <AgentActivityDetails
+      detail={activityDetail}
+      fontSizePx={textFontSizePx}
+      markdownCwd={markdownCwd}
+      onImageExpand={onImageExpand}
+      timestampFormat={timestampFormat}
+    />
+  ) : undefined;
   const hasToolDetails = Boolean(workEntry.toolDetails);
   const providerContextLifecycle = workEntry.providerContextLifecycle;
   const opener = useWorkspaceFileOpener();
@@ -509,14 +523,14 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
   }
   const readFilePath =
     opener !== null &&
-    !canOpenAgentActivity &&
+    !activityDetail &&
     workEntry.detail &&
     (workEntry.requestKind === "file-read" || isFileReadToolEntry(workEntry))
       ? extractFilePathFromDetail(workEntry.detail)
       : null;
   const canOpenReadFile = readFilePath !== null;
   const canOpenToolDetails =
-    !canOpenAgentActivity &&
+    !activityDetail &&
     Boolean(
       providerContextLifecycle ||
       workEntry.toolDetails ||
@@ -529,7 +543,7 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
     readFilePath && opener?.prefetchFile ? () => opener.prefetchFile?.(readFilePath) : undefined;
   const rowFontSizePx = textFontSizePx;
   if (workEntry.activityKind === "provider.transition")
-    return <ProviderTransitionDivider entry={workEntry} onInspect={onOpenAgentActivity} />;
+    return <ProviderTransitionDivider entry={workEntry} detailContent={activityContent} />;
   return (
     <div className={cn(compact ? "py-0.5" : "rounded-lg py-1")}>
       {showEditedRows ? (
@@ -632,18 +646,12 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
                         <span data-live-activity-meta="true"> · {liveActivityMetaText}</span>
                       ) : null}
                     </p>
-                    <ChatMarkdown
-                      text={preview ?? ""}
-                      cwd={markdownCwd}
-                      isStreaming={false}
-                      className="leading-relaxed"
-                      style={{
-                        color: MUTED_LABEL_TEXT_COLOR,
-                        fontSize: `${Math.max(11, rowFontSizePx - 1)}px`,
-                        lineHeight: compact ? "18px" : "19px",
-                      }}
-                      onImageExpand={onImageExpand}
-                    />
+                    <p
+                      className={cn("truncate leading-5", MUTED_LABEL_TEXT_CLASS_NAME)}
+                      style={{ fontSize: `${rowFontSizePx}px` }}
+                    >
+                      {preview}
+                    </p>
                   </div>
                 ) : (
                   <p
@@ -667,15 +675,16 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
               </div>
             </>
           );
-          if (canOpenToolDetails) {
+          if (activityContent || canOpenToolDetails) {
             return (
               <ToolDetailsDisclosure
                 details={workEntry.toolDetails}
                 activity={workEntry.liveActivity}
                 detailContent={
-                  providerContextLifecycle ? (
+                  activityContent ??
+                  (providerContextLifecycle ? (
                     <ProviderContextLifecycleDetails info={providerContextLifecycle} />
-                  ) : undefined
+                  ) : undefined)
                 }
                 compact={compact}
                 tooltip={toolRowTooltipContent(rawCommand, displayText, displayText)}
@@ -686,9 +695,9 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
           }
           const rowContent = (
             <AgentActivityOpenSurface
-              canOpen={canOpenAgentActivity || canOpenReadFile}
+              canOpen={canOpenReadFile}
               compact={compact}
-              onOpen={openAgentActivity ?? openReadFile}
+              onOpen={openReadFile}
               onHover={prefetchReadFile}
               tooltip={toolRowTooltipContent(
                 rawCommand,

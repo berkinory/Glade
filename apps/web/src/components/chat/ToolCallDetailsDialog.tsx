@@ -26,7 +26,7 @@ export function ToolCallDetailsContent({
     return (
       <div className="rounded-lg border border-border/45 bg-background/60 px-3 py-2 text-ui leading-snug text-muted-foreground">
         No detailed payload was available for this tool call.
-        {elapsed ? <span className="ml-2 tabular-nums">{elapsed} elapsed</span> : null}
+        {elapsed ? <span className="ml-2 tabular-nums">{elapsed}</span> : null}
       </div>
     );
   }
@@ -109,7 +109,7 @@ export function ToolCallDetailsContent({
 
       {details?.output && !details.command ? <ToolOutputSection output={details.output} /> : null}
       {details && !details.command && elapsed ? (
-        <p className="text-ui-xs tabular-nums text-muted-foreground/68">{elapsed} elapsed</p>
+        <p className="text-ui-xs tabular-nums text-muted-foreground/68">{elapsed}</p>
       ) : null}
     </>
   );
@@ -125,7 +125,7 @@ function MarkdownToolCodeBlock(props: {
       text={createMarkdownCodeFence(props.language, props.children)}
       cwd={undefined}
       className={TOOL_DETAILS_MARKDOWN_CLASS_NAME}
-      codeBlockMeta={props.elapsed ? `${props.elapsed} elapsed` : undefined}
+      codeBlockMeta={props.elapsed ?? undefined}
     />
   );
 }

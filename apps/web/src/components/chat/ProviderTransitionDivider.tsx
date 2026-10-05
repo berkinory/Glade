@@ -2,14 +2,18 @@ import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import type { WorkLogEntry } from "../../workLog.types";
 import { ProviderIcon } from "../ProviderIcon";
 import { ConversationDivider } from "./ConversationDivider";
+import { useState, type ReactNode } from "react";
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";
+import { DisclosureChevron } from "../ui/DisclosureChevron";
 
 export function ProviderTransitionDivider({
   entry,
-  onInspect,
+  detailContent,
 }: {
   entry: WorkLogEntry;
-  onInspect: ((activityId: string) => void) | undefined;
+  detailContent: ReactNode;
 }) {
+  const [open, setOpen] = useState(false);
   const transition = entry.providerTransition;
   const destination = transition
     ? PROVIDER_DISPLAY_NAMES[transition.destination.provider]
@@ -42,21 +46,27 @@ export function ProviderTransitionDivider({
   );
   const className =
     "inline-flex min-w-0 shrink items-center gap-2 text-ui font-normal text-[var(--color-text-accent)]";
-  return (
-    <ConversationDivider kind="handoff">
-      {transition?.stage === "delivered" ? (
+  if (transition?.stage === "delivered" || !detailContent) {
+    return (
+      <ConversationDivider kind="handoff">
         <span className={className}>{content}</span>
-      ) : (
-        <button
-          type="button"
+      </ConversationDivider>
+    );
+  }
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <ConversationDivider kind="handoff">
+        <CollapsibleTrigger
           title={entry.label}
-          disabled={!onInspect}
-          onClick={() => onInspect?.(entry.id)}
           className={`${className} rounded-sm transition-opacity duration-100 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-border-focus)]/60`}
         >
           {content}
-        </button>
-      )}
-    </ConversationDivider>
+          <DisclosureChevron open={open} />
+        </CollapsibleTrigger>
+      </ConversationDivider>
+      <CollapsiblePanel>
+        <div className="min-w-0 pb-3 pt-1">{detailContent}</div>
+      </CollapsiblePanel>
+    </Collapsible>
   );
 }

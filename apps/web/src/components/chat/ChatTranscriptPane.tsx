@@ -27,13 +27,10 @@ import { composerOverlayAffordanceBottomPx } from "./composerOverlay";
 import { MessageTrail } from "./MessageTrail";
 import { createActiveTrailStore, deriveMessageTrailItems } from "./messageTrail.logic";
 import { createThreadFindHighlightStore, type ThreadFindHighlightStore } from "./threadFind.logic";
-import { AgentActivityDetailView } from "./AgentActivityDetailView";
-import type { AgentActivityDetail } from "./agentActivity.logic";
 interface ChatTranscriptPaneProps {
   activeThreadId: string;
   activeTurnId?: TurnId | null;
   activeTurnInProgress: boolean;
-  agentActivityDetail?: AgentActivityDetail | null;
   contentInsetRightPx?: ComponentProps<typeof MessagesTimeline>["contentInsetRightPx"];
   contentInsetBottomPx?: ComponentProps<typeof MessagesTimeline>["contentInsetBottomPx"];
   contentInsetBottomClearancePx?: ComponentProps<
@@ -76,8 +73,7 @@ interface ChatTranscriptPaneProps {
   onMessagesWheel: WheelEventHandler<HTMLDivElement>;
   onIsAtEndChange: (isAtEnd: boolean) => void;
   onNavigate?: () => void;
-  onCloseAgentActivityDetail?: () => void;
-  onOpenAgentActivity?: ComponentProps<typeof MessagesTimeline>["onOpenAgentActivity"];
+  getAgentActivityDetail?: ComponentProps<typeof MessagesTimeline>["getAgentActivityDetail"];
   onOpenTurnDiff: (turnId: TurnId, filePath?: string) => void;
   onOpenThread: (threadId: ThreadId) => void;
   computerControlEnabled?: ComponentProps<typeof MessagesTimeline>["computerControlEnabled"];
@@ -109,7 +105,6 @@ export function ChatTranscriptPane({
   activeThreadId,
   activeTurnId,
   activeTurnInProgress,
-  agentActivityDetail,
   contentInsetRightPx,
   contentInsetBottomPx,
   contentInsetBottomClearancePx,
@@ -148,8 +143,7 @@ export function ChatTranscriptPane({
   onMessagesWheel,
   onIsAtEndChange,
   onNavigate,
-  onCloseAgentActivityDetail,
-  onOpenAgentActivity,
+  getAgentActivityDetail,
   onOpenTurnDiff,
   onOpenThread,
   computerControlEnabled,
@@ -219,31 +213,7 @@ export function ChatTranscriptPane({
       )}
     >
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-        {agentActivityDetail && onCloseAgentActivityDetail ? (
-          <div className="absolute inset-0 z-20 bg-background">
-            <AgentActivityDetailView
-              detail={agentActivityDetail}
-              chatFontSizePx={chatFontSizePx}
-              contentInsetRightPx={contentInsetRightPx}
-              markdownCwd={markdownCwd}
-              onBack={onCloseAgentActivityDetail}
-              onImageExpand={onExpandTimelineImage}
-              timestampFormat={timestampFormat}
-            />
-          </div>
-        ) : null}
-        <div
-          className="flex min-h-0 flex-1 flex-col"
-          inert={Boolean(agentActivityDetail)}
-          aria-hidden={Boolean(agentActivityDetail)}
-          style={
-            agentActivityDetail
-              ? {
-                  visibility: "hidden",
-                }
-              : undefined
-          }
-        >
+        <div className="flex min-h-0 flex-1 flex-col">
           <MessagesTimeline
             key={activeThreadId}
             hasMessages={hasMessages}
@@ -347,7 +317,7 @@ export function ChatTranscriptPane({
             editableUserMessageId={editableUserMessageId ?? null}
             isRevertingCheckpoint={isRevertingCheckpoint}
             onImageExpand={onExpandTimelineImage}
-            followLiveOutput={followLiveOutput && !agentActivityDetail}
+            followLiveOutput={followLiveOutput}
             onIsAtEndChange={onIsAtEndChange}
             {...(onNavigate
               ? {
@@ -383,9 +353,9 @@ export function ChatTranscriptPane({
             contentInsetRightPx={contentInsetRightPx}
             contentInsetBottomPx={contentInsetBottomPx}
             contentInsetBottomClearancePx={contentInsetBottomClearancePx}
-            {...(onOpenAgentActivity
+            {...(getAgentActivityDetail
               ? {
-                  onOpenAgentActivity,
+                  getAgentActivityDetail,
                 }
               : {})}
             findHighlight={findHighlight}
@@ -409,40 +379,36 @@ export function ChatTranscriptPane({
           />
         </div>
 
-        {!agentActivityDetail ? (
-          <div
+        <div
+          className={cn(
+            "pointer-events-none absolute inset-x-0 bottom-6 z-30 flex justify-center py-1",
+            DISCLOSURE_CONTENT_MOTION_CLASS,
+            scrollButtonVisible ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0",
+          )}
+          style={scrollButtonFrameStyle}
+        >
+          <button
+            type="button"
+            onClick={onScrollToBottom}
+            data-scroll-anchor-ignore
+            aria-label="Scroll to bottom"
+            aria-hidden={!scrollButtonVisible}
+            tabIndex={scrollButtonVisible ? 0 : -1}
             className={cn(
-              "pointer-events-none absolute inset-x-0 bottom-6 z-30 flex justify-center py-1",
-              DISCLOSURE_CONTENT_MOTION_CLASS,
-              scrollButtonVisible ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0",
+              "flex size-8 items-center justify-center rounded-full border border-[color:var(--color-border)] bg-[var(--color-background-elevated-primary-opaque)] text-[var(--color-text-foreground)] backdrop-blur-md hover:cursor-pointer",
+              ELEVATED_HOVER_SURFACE_CLASS_NAME,
+              scrollButtonVisible ? "pointer-events-auto" : "pointer-events-none",
             )}
-            style={scrollButtonFrameStyle}
           >
-            <button
-              type="button"
-              onClick={onScrollToBottom}
-              data-scroll-anchor-ignore
-              aria-label="Scroll to bottom"
-              aria-hidden={!scrollButtonVisible}
-              tabIndex={scrollButtonVisible ? 0 : -1}
-              className={cn(
-                "flex size-8 items-center justify-center rounded-full border border-[color:var(--color-border)] bg-[var(--color-background-elevated-primary-opaque)] text-[var(--color-text-foreground)] backdrop-blur-md hover:cursor-pointer",
-                ELEVATED_HOVER_SURFACE_CLASS_NAME,
-                scrollButtonVisible ? "pointer-events-auto" : "pointer-events-none",
-              )}
-            >
-              <ArrowDown02Icon className="size-3.5" />
-            </button>
-          </div>
-        ) : null}
+            <ArrowDown02Icon className="size-3.5" />
+          </button>
+        </div>
 
-        {!agentActivityDetail ? (
-          <MessageTrail
-            items={trailItems}
-            activeStore={activeTrailStore}
-            onSelect={handleTrailSelect}
-          />
-        ) : null}
+        <MessageTrail
+          items={trailItems}
+          activeStore={activeTrailStore}
+          onSelect={handleTrailSelect}
+        />
       </div>
     </div>
   );

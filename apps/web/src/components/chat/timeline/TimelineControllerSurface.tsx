@@ -62,8 +62,9 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
   } = controller.state;
   const {
     markdownCwd,
+    timestampFormat,
     onImageExpand,
-    onOpenAgentActivity,
+    getAgentActivityDetail,
     computerControlEnabled,
     onEnableComputerControl,
     activeTurnInProgress,
@@ -139,9 +140,10 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
               density={prefersCompactWorkEntryRow(workEntry) ? "compact" : "default"}
               markdownCwd={markdownCwd}
               onImageExpand={onImageExpand}
-              {...(onOpenAgentActivity ? { onOpenAgentActivity } : {})}
+              activityDetail={getAgentActivityDetail?.(workEntry.id)}
               {...(computerControlEnabled !== undefined ? { computerControlEnabled } : {})}
               {...(onEnableComputerControl ? { onEnableComputerControl } : {})}
+              timestampFormat={timestampFormat}
             />
           );
           const isLiveGroup =
