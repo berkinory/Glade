@@ -482,8 +482,27 @@ export function useChatTranscriptScroll({
     });
     if (!wasNearEndBeforeResize) return;
 
+    // Anchored end space absorbs composer growth without moving content. Only compensate the
+    // portion that actually pushes the transcript footer past the viewport.
+    const footer = scrollContainer.querySelector<HTMLElement>("[data-tail-anchor-spacer]");
+    let scrollDeltaPx = insetDeltaPx;
+    if (footer) {
+      const contentEndPx = footer.getBoundingClientRect().bottom;
+      const viewportEndPx = scrollContainer.getBoundingClientRect().bottom;
+      scrollDeltaPx =
+        insetDeltaPx > 0
+          ? Math.min(
+              insetDeltaPx,
+              Math.max(0, contentEndPx + composerTranscriptInsetPx - viewportEndPx),
+            )
+          : contentEndPx + previous.insetPx < viewportEndPx - 1
+            ? 0
+            : insetDeltaPx;
+    }
+    if (Math.abs(scrollDeltaPx) < 0.5) return;
+
     programmaticScrollUntilRef.current = performance.now() + 200;
-    scrollContainer.scrollTop += insetDeltaPx;
+    scrollContainer.scrollTop += scrollDeltaPx;
   }, [legendListRef, activeThreadId, composerTranscriptInsetPx, isInactiveSplitPane]);
 
   const onScrollToBottom = useCallback(() => {

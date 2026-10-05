@@ -4,7 +4,6 @@ import type { WorkLogLiveActivity } from "../workLog.types";
 import { formatClockDuration } from "../session-logic";
 import { startVisibleInterval } from "./visibleInterval";
 
-const NO_ACTIVITY_THRESHOLD_MS = 30_000;
 const LIVE_ACTIVITY_TICK_MS = 1_000;
 const liveActivityClockListeners = new Set<() => void>();
 let stopLiveActivityClock: (() => void) | null = null;
@@ -141,27 +140,16 @@ export function formatLiveActivityMeta(
 
   const parts: string[] = [];
   const elapsed = formatLiveActivityElapsed(activity, nowMs);
-  const lastActivityAtMs = parseTimestamp(activity.lastActivityAt);
-
   if (isLiveActivityInProgress(activity)) {
     if (options?.subagent) {
       parts.push("Subagent working");
-    } else if (lastActivityAtMs !== null) {
-      const idleMs = Math.max(0, nowMs - lastActivityAtMs);
-      parts.push(
-        idleMs >= NO_ACTIVITY_THRESHOLD_MS
-          ? `No activity for ${formatClockDuration(idleMs)}`
-          : idleMs < 1_000
-            ? "Active now"
-            : `Active ${formatClockDuration(idleMs)} ago`,
-      );
     }
   } else {
     parts.push(formatLiveActivityStateLabel(activity.state));
   }
 
   if (elapsed !== null) {
-    parts.push(`${elapsed} elapsed`);
+    parts.push(elapsed);
   }
   if (activity.progress !== undefined) {
     parts.push(formatLiveActivityProgress(activity.progress));

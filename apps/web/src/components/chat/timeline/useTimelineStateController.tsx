@@ -60,8 +60,6 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
     timelineEntries,
     messageChangeSignal: messageChangeSignalProp,
     turnDiffSummaryByAssistantMessageId,
-    expandedWorkGroups,
-    onToggleWorkGroup,
     onOpenThread,
     activeTurnId,
     chatFontSizePx: chatFontSizePxProp,
@@ -161,26 +159,6 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
     [normalizedChatFontSizePx],
   );
 
-  const [localExpandedWorkGroups, setLocalExpandedWorkGroups] = useState<Record<string, boolean>>(
-    {},
-  );
-
-  const expandedWorkGroupsState = expandedWorkGroups ?? localExpandedWorkGroups;
-
-  const handleToggleWorkGroup = useCallback(
-    (groupId: string) => {
-      if (onToggleWorkGroup) {
-        onToggleWorkGroup(groupId);
-        return;
-      }
-      setLocalExpandedWorkGroups((current) => ({
-        ...current,
-        [groupId]: !(current[groupId] ?? false),
-      }));
-    },
-    [onToggleWorkGroup, setLocalExpandedWorkGroups],
-  );
-
   const [expandedCollapsedWork, setExpandedCollapsedWork] = useState<Record<string, boolean>>({});
 
   const setCollapsedWorkExpanded = useCallback(
@@ -210,10 +188,6 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
   const [expandedFileChangesByTurnId, setExpandedFileChangesByTurnId] = useState<
     Record<string, boolean>
   >({});
-
-  const [expandedFileListByTurnId, setExpandedFileListByTurnId] = useState<Record<string, boolean>>(
-    {},
-  );
 
   const [expandedUserMessagesById, setExpandedUserMessagesById] = useState<Record<string, boolean>>(
     {},
@@ -396,9 +370,7 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
       enteringMessageRowIds,
       expandedCollapsedWork,
       expandedFileChangesByTurnId,
-      expandedFileListByTurnId,
       expandedUserMessagesById,
-      expandedWorkGroupsState,
       findHighlight,
       firstUserMessageId,
       highlightedMessageId,
@@ -414,9 +386,7 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
       enteringMessageRowIds,
       expandedCollapsedWork,
       expandedFileChangesByTurnId,
-      expandedFileListByTurnId,
       expandedUserMessagesById,
-      expandedWorkGroupsState,
       findHighlight,
       firstUserMessageId,
       highlightedMessageId,
@@ -444,16 +414,12 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
     chatTypographyStyle,
     userMessageTypographyStyle,
     chatMessageFooterStyle,
-    expandedWorkGroupsState,
-    handleToggleWorkGroup,
     expandedCollapsedWork,
     setCollapsedWorkExpanded,
     toolGroupSummaryOverrides,
     setToolGroupSummaryOpen,
     expandedFileChangesByTurnId,
     setExpandedFileChangesByTurnId,
-    expandedFileListByTurnId,
-    setExpandedFileListByTurnId,
     expandedUserMessagesById,
     setExpandedUserMessagesById,
     editingUserMessageId,

@@ -39,6 +39,10 @@ export function deriveMessagesTimelineRows(input: {
     right: ReadonlyArray<WorkLogEntry>,
   ) => left.length === right.length && left.every((entry, index) => entry === right[index]);
 
+  const isLiveWorkGroup = (entries: ReadonlyArray<WorkLogEntry>): boolean =>
+    input.activeTurnInProgress === true &&
+    entries.some((entry) => input.activeTurnId == null || entry.turnId === input.activeTurnId);
+
   const appendWorkEntriesToPreviousAssistant = (
     groupedEntries: WorkLogEntry[],
     groupId: string,
@@ -70,6 +74,7 @@ export function deriveMessagesTimelineRows(input: {
     const shouldAttachToPreviousAssistant = options?.attachToPreviousAssistant ?? true;
     if (
       !shouldAttachToPreviousAssistant ||
+      isLiveWorkGroup(pendingWorkGroup.groupedEntries) ||
       !appendWorkEntriesToPreviousAssistant(pendingWorkGroup.groupedEntries, pendingWorkGroup.id)
     ) {
       nextRows.push(pendingWorkGroup);
@@ -133,6 +138,10 @@ export function deriveMessagesTimelineRows(input: {
     }
 
     const message = timelineEntry.message;
+    // Moving a live tool from the previous message into the next one invalidates both row heights.
+    if (pendingWorkGroup && isLiveWorkGroup(pendingWorkGroup.groupedEntries)) {
+      flushPendingWorkGroup({ attachToPreviousAssistant: false });
+    }
     const leadingWorkEntries =
       message.role === "assistant" ? pendingWorkGroup?.groupedEntries : undefined;
     const leadingWorkGroupId = message.role === "assistant" ? pendingWorkGroup?.id : undefined;

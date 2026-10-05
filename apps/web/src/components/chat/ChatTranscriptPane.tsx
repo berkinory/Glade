@@ -39,7 +39,6 @@ interface ChatTranscriptPaneProps {
   chatFontSizePx: number;
   emptyStateContent?: ReactNode;
   emptyStateProjectName: string | undefined;
-  expandedWorkGroups?: Record<string, boolean>;
   hasMessages: boolean;
   isRevertingCheckpoint: boolean;
   isWorking: boolean;
@@ -83,7 +82,6 @@ interface ChatTranscriptPaneProps {
   onEditUserMessage?: (messageId: MessageId, text: string) => boolean | Promise<boolean>;
   editableUserMessageId?: MessageId | null;
   onScrollToBottom: () => void;
-  onToggleWorkGroup?: (groupId: string) => void;
   resolvedTheme: "light" | "dark";
   scrollButtonVisible: boolean;
   terminalWorkspaceTerminalTabActive: boolean;
@@ -111,7 +109,6 @@ export function ChatTranscriptPane({
   chatFontSizePx,
   emptyStateContent,
   emptyStateProjectName,
-  expandedWorkGroups,
   hasMessages,
   isRevertingCheckpoint,
   isWorking,
@@ -153,7 +150,6 @@ export function ChatTranscriptPane({
   onRespondToAsyncUserInput,
   editableUserMessageId,
   onScrollToBottom,
-  onToggleWorkGroup,
   resolvedTheme,
   scrollButtonVisible,
   terminalWorkspaceTerminalTabActive,
@@ -366,16 +362,6 @@ export function ChatTranscriptPane({
                 emptyStateContent
               )
             }
-            {...(expandedWorkGroups
-              ? {
-                  expandedWorkGroups,
-                }
-              : {})}
-            {...(onToggleWorkGroup
-              ? {
-                  onToggleWorkGroup,
-                }
-              : {})}
           />
         </div>
 

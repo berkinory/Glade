@@ -35,10 +35,8 @@ import {
 } from "~/types";
 import { deriveTimelineEntries } from "~/workLog.timeline";
 import { UI_MOTION_LONG_MS } from "~/lib/uiMotion";
-export const MAX_VISIBLE_INLINE_TOOL_ENTRIES = 4;
 export const EMPTY_EDITOR_KEYBINDINGS: ResolvedKeybindingsConfig = [];
 export const EMPTY_AVAILABLE_EDITORS: ReadonlyArray<EditorId> = [];
-export const MAX_VISIBLE_CHANGED_FILES = 5;
 export const BOTTOM_CONTENT_INSET_PX = 64;
 export const MESSAGE_HOVER_REVEAL_CLASS_NAME =
   "opacity-0 transition-opacity pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto";
@@ -246,8 +244,6 @@ export interface MessagesTimelineProps {
   timelineEntries: ReturnType<typeof deriveTimelineEntries>;
   messageChangeSignal?: unknown;
   turnDiffSummaryByAssistantMessageId: Map<MessageId, TurnDiffSummary>;
-  expandedWorkGroups?: Record<string, boolean>;
-  onToggleWorkGroup?: (groupId: string) => void;
   getAgentActivityDetail?: (activityId: string) => AgentActivityDetail | undefined;
   onOpenTurnDiff: (turnId: TurnId, filePath?: string) => void;
   onOpenThread?: (threadId: ThreadId) => void;

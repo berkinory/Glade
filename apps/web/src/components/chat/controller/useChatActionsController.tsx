@@ -11,6 +11,8 @@ import { collectForegroundRunningSubagentStripItems } from "~/components/chat/Co
 import { resolveRuntimeModelDescriptor } from "~/components/chat/runtimeModelCapabilities";
 import { useChatKeyboardShortcuts } from "~/components/chat/useChatKeyboardShortcuts";
 import { toastManager } from "~/components/ui/toast";
+import { useStore } from "~/store";
+import { createComposerThreadMentionSourcesSelector } from "~/storeSelectors";
 import { useComposerDraftStore } from "~/composerDraftStore";
 import { resolveThreadMentionForThreadId } from "~/hooks/useComposerCommandMenuItems";
 import { splitComposerDropzoneFiles, useComposerDropzone } from "~/hooks/useComposerDropzone";
@@ -62,8 +64,6 @@ export function useChatActionsController({
     discardPromptHistoryNavigationForComposerMutation,
     dragDepthRef,
     setIsDragOverComposer,
-    composerThreadSummaries,
-    composerThreadProjects,
     createThreadHandoff,
     promptHistoryNavigationRef,
     applyingPromptHistoryNavigationRef,
@@ -303,9 +303,10 @@ export function useChatActionsController({
     disabled: false,
     currentThreadId: threadId,
     onDropThread: (droppedThreadId) => {
+      const state = useStore.getState();
       const mention = resolveThreadMentionForThreadId({
-        threads: composerThreadSummaries,
-        projects: composerThreadProjects,
+        threads: createComposerThreadMentionSourcesSelector()(state),
+        projects: state.projects,
         currentThreadId: threadId,
         threadId: droppedThreadId,
       });

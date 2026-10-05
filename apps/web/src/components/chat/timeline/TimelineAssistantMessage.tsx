@@ -11,7 +11,6 @@ import {
 } from "~/components/chat/MessageActionButton";
 import { MessageCopyButton } from "~/components/chat/MessageCopyButton";
 import {
-  capOpenWorkEntryRenderChunks,
   chunkCollapsedTurnItems,
   isFoldedWorkEntryChunk,
   planWorkEntryRenderChunks,
@@ -41,7 +40,6 @@ import { cn } from "~/lib/utils";
 import { MUTED_LABEL_TEXT_CLASS_NAME } from "~/surfaceStyles";
 import { formatDayAwareTimestamp } from "~/timestampFormat";
 import { isFileChangeWorkLogEntry, type WorkLogEntry } from "~/workLog.types";
-import { MAX_VISIBLE_CHANGED_FILES, MAX_VISIBLE_INLINE_TOOL_ENTRIES } from "./timelineSupport";
 import { collectAbsoluteFilePathsFromWorkEntries } from "./timelineTransitions";
 import type { TimelineController } from "./useTimelineController";
 export function renderTimelineAssistantMessage(
@@ -54,7 +52,6 @@ export function renderTimelineAssistantMessage(
   >,
 ) {
   const {
-    expandedWorkGroupsState,
     expandedCollapsedWork,
     settledTurnCollapseTransitions,
     appTypographyScale,
@@ -62,12 +59,10 @@ export function renderTimelineAssistantMessage(
     lastLiveWorkGroupId,
     toolGroupSummaryOverrides,
     setToolGroupSummaryOpen,
-    handleToggleWorkGroup,
     chatTypographyStyle,
     findHighlight,
     setCollapsedWorkExpanded,
     expandedFileChangesByTurnId,
-    expandedFileListByTurnId,
     editorKeybindings,
     installedEditors,
     chatMessageFooterStyle,
@@ -92,7 +87,7 @@ export function renderTimelineAssistantMessage(
     resolvedTheme,
   } = controller.props;
   const { tailContentRowId, scrollTailExpansionToEnd } = controller.navigation;
-  const { toggleFileChangesExpanded, toggleFileListExpanded } = controller.actions;
+  const { toggleFileChangesExpanded } = controller.actions;
   return (() => {
     const messageText = resolveAssistantMessageDisplayText(row);
     const buildWorkDisplay = (workEntries: WorkLogEntry[], workGroupId: string | null) => {
@@ -100,14 +95,6 @@ export function renderTimelineAssistantMessage(
       const toolEntries = displayEntries.filter((entry) => entry.tone === "tool");
       const statusEntries = displayEntries.filter((entry) => entry.tone !== "tool");
       const toolGroupId = toolEntries.length > 0 ? workGroupId : null;
-      const toolExpanded =
-        toolGroupId !== null ? (expandedWorkGroupsState[toolGroupId] ?? false) : false;
-      const visibleToolEntries =
-        toolExpanded || toolEntries.length <= MAX_VISIBLE_INLINE_TOOL_ENTRIES
-          ? toolEntries
-          : activeTurnInProgress
-            ? toolEntries.slice(-MAX_VISIBLE_INLINE_TOOL_ENTRIES)
-            : toolEntries.slice(0, MAX_VISIBLE_INLINE_TOOL_ENTRIES);
       const hasGenericFileChangeEntry = toolEntries.some(
         (workEntry) =>
           isFileChangeWorkLogEntry(workEntry) && (workEntry.changedFiles?.length ?? 0) === 0,
@@ -122,11 +109,8 @@ export function renderTimelineAssistantMessage(
         toolEntries,
         statusEntries,
         toolGroupId,
-        toolExpanded,
         orderedRenderableEntries: displayEntries.filter(isRenderableToolEntry),
         renderableToolEntries: toolEntries.filter(isRenderableToolEntry),
-        visibleRenderableToolEntries: visibleToolEntries.filter(isRenderableToolEntry),
-        hiddenToolCount: toolEntries.length - visibleToolEntries.length,
         hasGenericFileChangeEntry,
       };
     };
@@ -263,13 +247,7 @@ export function renderTimelineAssistantMessage(
       const plannedRenderChunks = planWorkEntryRenderChunks(display.orderedRenderableEntries, {
         tailIsLive: placement === "inline" && isLiveGroup,
       });
-      const cappedRenderPlan = capOpenWorkEntryRenderChunks(plannedRenderChunks, {
-        expanded: display.toolExpanded,
-        maxVisibleEntries: MAX_VISIBLE_INLINE_TOOL_ENTRIES,
-        keep: activeTurnInProgress ? "last" : "first",
-        shouldCapEntry: (workEntry) => workEntry.tone === "tool",
-      });
-      const renderChunks = cappedRenderPlan.chunks;
+      const renderChunks = plannedRenderChunks;
       const collapseAsSummary = renderChunks.some(isFoldedWorkEntryChunk);
       return (
         <>
@@ -302,56 +280,15 @@ export function renderTimelineAssistantMessage(
                   );
                 })}
               </div>
-              {display.toolGroupId && cappedRenderPlan.hasOverflow && (
-                <div className="py-0.5">
-                  <button
-                    type="button"
-                    className={cn(
-                      "transition-colors duration-100 hover:text-foreground",
-                      MUTED_LABEL_TEXT_CLASS_NAME,
-                    )}
-                    style={{
-                      fontSize: `${normalizedChatFontSizePx}px`,
-                    }}
-                    onClick={() => handleToggleWorkGroup(display.toolGroupId!)}
-                  >
-                    {display.toolExpanded
-                      ? "Show less"
-                      : `+${cappedRenderPlan.hiddenEntryCount} more tool calls`}
-                  </button>
-                </div>
-              )}
             </div>
           )}
-          {!hasCollapsedWork &&
-            !collapseAsSummary &&
-            display.visibleRenderableToolEntries.length > 0 && (
-              <div className={placement === "leading" ? "mb-1.5" : "mt-1.5"}>
-                <div className="space-y-px">
-                  {display.visibleRenderableToolEntries.map(renderInlineToolRow)}
-                </div>
-                {display.toolGroupId &&
-                  display.toolEntries.length > MAX_VISIBLE_INLINE_TOOL_ENTRIES && (
-                    <div className="py-0.5">
-                      <button
-                        type="button"
-                        className={cn(
-                          "transition-colors duration-100 hover:text-foreground",
-                          MUTED_LABEL_TEXT_CLASS_NAME,
-                        )}
-                        style={{
-                          fontSize: `${normalizedChatFontSizePx}px`,
-                        }}
-                        onClick={() => handleToggleWorkGroup(display.toolGroupId!)}
-                      >
-                        {display.toolExpanded
-                          ? "Show less"
-                          : `+${display.hiddenToolCount} more tool calls`}
-                      </button>
-                    </div>
-                  )}
+          {!hasCollapsedWork && !collapseAsSummary && display.renderableToolEntries.length > 0 && (
+            <div className={placement === "leading" ? "mb-1.5" : "mt-1.5"}>
+              <div className="space-y-px">
+                {display.renderableToolEntries.map(renderInlineToolRow)}
               </div>
-            )}
+            </div>
+          )}
           {!hasCollapsedWork && display.statusEntries.length > 0 && (
             <div
               className={cn(
@@ -631,8 +568,6 @@ export function renderTimelineAssistantMessage(
             const checkpointFiles = turnSummary.files;
             if (checkpointFiles.length === 0) return null;
             const fileChangesExpanded = expandedFileChangesByTurnId[turnSummary.turnId] ?? true;
-            const fileListExpanded = expandedFileListByTurnId[turnSummary.turnId] ?? false;
-            const fileListHasMounted = Object.hasOwn(expandedFileListByTurnId, turnSummary.turnId);
             const checkpointTurnCount = turnSummary.checkpointTurnCount;
             const checkpointTurnCounts =
               turnSummary.checkpointTurnCounts ??
@@ -653,8 +588,6 @@ export function renderTimelineAssistantMessage(
               0,
             );
             const editedFilesLabel = `Edited ${checkpointFiles.length} ${pluralize(checkpointFiles.length, "file")}`;
-            const firstCheckpointFiles = checkpointFiles.slice(0, MAX_VISIBLE_CHANGED_FILES);
-            const overflowCheckpointFiles = checkpointFiles.slice(MAX_VISIBLE_CHANGED_FILES);
             const renderCheckpointFileRow = (
               file: (typeof checkpointFiles)[number],
               withFirstReset: boolean,
@@ -763,30 +696,7 @@ export function renderTimelineAssistantMessage(
                   </div>
                 </div>
                 <DisclosureRegion open={fileChangesExpanded}>
-                  {firstCheckpointFiles.map((file) => renderCheckpointFileRow(file, true))}
-                  {overflowCheckpointFiles.length > 0 && fileListHasMounted ? (
-                    <DisclosureRegion open={fileListExpanded}>
-                      {overflowCheckpointFiles.map((file) => renderCheckpointFileRow(file, false))}
-                    </DisclosureRegion>
-                  ) : null}
-                  {overflowCheckpointFiles.length > 0 ? (
-                    <button
-                      type="button"
-                      className="flex w-full items-center justify-start gap-1.5 border-t border-[color:var(--color-border-light)] bg-transparent px-3 py-2 font-system-ui font-normal text-muted-foreground transition-colors hover:bg-[var(--color-background-button-secondary-hover)] hover:text-foreground"
-                      style={{
-                        fontSize: chatTypographyStyle.fontSize,
-                      }}
-                      aria-expanded={fileListExpanded}
-                      onClick={() => toggleFileListExpanded(turnSummary.turnId)}
-                    >
-                      <DisclosureChevron open={fileListExpanded} />
-                      <span>
-                        {fileListExpanded
-                          ? "Show less"
-                          : `Show ${overflowCheckpointFiles.length} more ${pluralize(overflowCheckpointFiles.length, "file")}`}
-                      </span>
-                    </button>
-                  ) : null}
+                  {checkpointFiles.map((file) => renderCheckpointFileRow(file, true))}
                 </DisclosureRegion>
               </div>
             );

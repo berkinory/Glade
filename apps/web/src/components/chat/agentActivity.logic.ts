@@ -1,3 +1,4 @@
+import { deepEqualJson } from "../../storeNormalization.shared";
 import { normalizeCompactToolLabel } from "../../lib/toolCallLabel.presentations";
 import type { WorkLogEntry } from "../../workLog.types";
 
@@ -12,6 +13,34 @@ export interface AgentActivityDetail {
 export interface AgentActivityTimelineState {
   timelineWorkEntries: WorkLogEntry[];
   detailById: Map<string, AgentActivityDetail>;
+}
+
+export function createAgentActivityTimelineSelector() {
+  let previous: AgentActivityTimelineState = { timelineWorkEntries: [], detailById: new Map() };
+  return (entries: ReadonlyArray<WorkLogEntry>): AgentActivityTimelineState => {
+    const next = deriveAgentActivityTimelineState(entries);
+    const previousEntries = new Map(previous.timelineWorkEntries.map((entry) => [entry.id, entry]));
+    next.timelineWorkEntries = next.timelineWorkEntries.map((entry) => {
+      const existing = previousEntries.get(entry.id);
+      return existing && deepEqualJson(existing, entry) ? existing : entry;
+    });
+    for (const [id, detail] of next.detailById) {
+      const existing = previous.detailById.get(id);
+      if (existing && deepEqualJson(existing, detail)) next.detailById.set(id, existing);
+    }
+    if (
+      next.timelineWorkEntries.length === previous.timelineWorkEntries.length &&
+      next.timelineWorkEntries.every(
+        (entry, index) => entry === previous.timelineWorkEntries[index],
+      ) &&
+      next.detailById.size === previous.detailById.size &&
+      [...next.detailById].every(([id, detail]) => detail === previous.detailById.get(id))
+    ) {
+      return previous;
+    }
+    previous = next;
+    return next;
+  };
 }
 
 const REASONING_GROUP_PREFIX = "agent-reasoning";
@@ -121,7 +150,7 @@ function formatAgentActivityEntrySummary(entry: WorkLogEntry): string | null {
   return normalizeOptionalText(entry.preview);
 }
 
-export function deriveAgentActivityTimelineState(
+function deriveAgentActivityTimelineState(
   entries: ReadonlyArray<WorkLogEntry>,
 ): AgentActivityTimelineState {
   const timelineWorkEntries: WorkLogEntry[] = [];

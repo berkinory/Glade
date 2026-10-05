@@ -47,8 +47,11 @@ import {
   createProjectSelector,
   createThreadSelector,
 } from "~/storeSelectors";
+import type { ComposerThreadMentionSource } from "~/types";
 import { useWorkflowRunUiStore } from "~/workflowRunUiStore";
 import { ChatViewProps, EMPTY_DISMISSED_PROVIDER_HEALTH_BANNERS } from "./chatViewSupport";
+
+const EMPTY_THREAD_MENTION_SOURCES: readonly ComposerThreadMentionSource[] = [];
 
 export function useChatSessionController(props: ChatViewProps) {
   const {
@@ -207,8 +210,15 @@ export function useChatSessionController(props: ChatViewProps) {
     threadId ? (state.threadDetailSyncById?.[threadId] ?? null) : null,
   );
 
+  const threadMentionsOpen = composerTrigger?.kind === "mention";
   const composerThreadSummaries = useStore(
-    useMemo(() => createComposerThreadMentionSourcesSelector(), []),
+    useMemo(
+      () =>
+        threadMentionsOpen
+          ? createComposerThreadMentionSourcesSelector()
+          : () => EMPTY_THREAD_MENTION_SOURCES,
+      [threadMentionsOpen],
+    ),
   );
 
   const composerThreadProjects = useStore((state) => state.projects);

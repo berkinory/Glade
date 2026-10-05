@@ -12,7 +12,6 @@ export function useTimelineActionsController({
 }) {
   const {
     setExpandedFileChangesByTurnId,
-    setExpandedFileListByTurnId,
     setEditingUserMessageId,
     setSubmittingEditedUserMessageId,
   } = state;
@@ -26,16 +25,6 @@ export function useTimelineActionsController({
       }));
     },
     [setExpandedFileChangesByTurnId],
-  );
-
-  const toggleFileListExpanded = useCallback(
-    (turnId: TurnId) => {
-      setExpandedFileListByTurnId((current) => ({
-        ...current,
-        [turnId]: !(current[turnId] ?? false),
-      }));
-    },
-    [setExpandedFileListByTurnId],
   );
 
   const cancelUserMessageEdit = useCallback(() => {
@@ -74,7 +63,6 @@ export function useTimelineActionsController({
   );
   return {
     toggleFileChangesExpanded,
-    toggleFileListExpanded,
     cancelUserMessageEdit,
     startUserMessageEdit,
     submitUserMessageEdit,

@@ -45,6 +45,8 @@
 
 - Active tools show their progress beside the current action, and tool details use compact, scrollable output with precise elapsed times.
 
+- Expanded tool groups and file changes show their complete contents without extra “Show more” steps.
+
 - Keyboard shortcut hints are more consistent and readable, and sidebar pull request and workspace indicators leave conversation titles easier to read.
 
 - Use clearer icons for tools, subagents and conversation activity, with recognizable service logos for supported MCP servers across providers and in the plugin library.
@@ -129,6 +131,9 @@
 - Push synchronizes incoming commits automatically, and Source Control shows conflicts with actions to resolve or cancel the operation.
 
 ### Fixed
+
+- Conversations no longer briefly jump when the subagent panel appears or grows, and new subagents avoid refreshing unchanged activity details.
+- Tool and subagent status rows show a single duration without redundant activity timestamps.
 
 - Subagent transcripts and status stay synchronized across parent turns, with reliable stopping and fewer duplicate activity rows.
 - Subagent completions and requests no longer trigger chat, desktop or sound notifications.

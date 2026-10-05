@@ -6,9 +6,7 @@ import {
   ENVIRONMENT_CONTENT_INSET_MOTION_CLASS,
 } from "~/components/chat/composerPickerStyles";
 import {
-  capOpenWorkEntryRenderChunks,
   isFoldedWorkEntryChunk,
-  MAX_VISIBLE_WORK_LOG_ENTRIES,
   planWorkEntryRenderChunks,
   resolveWorkEntryChunkFold,
   type MessagesTimelineRow,
@@ -39,10 +37,8 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
     appTypographyScale,
     normalizedChatFontSizePx,
     lastLiveWorkGroupId,
-    expandedWorkGroupsState,
     toolGroupSummaryOverrides,
     setToolGroupSummaryOpen,
-    handleToggleWorkGroup,
     chatTypographyStyle,
     findHighlight,
     workingLabel,
@@ -148,20 +144,10 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
           );
           const isLiveGroup =
             groupId === lastLiveWorkGroupId && (activeTurnInProgress || isWorking);
-          const isExpanded = expandedWorkGroupsState[groupId] ?? false;
           const plannedRenderChunks = planWorkEntryRenderChunks(groupedEntries, {
             tailIsLive: isLiveGroup,
           });
-          const cappedRenderPlan = capOpenWorkEntryRenderChunks(plannedRenderChunks, {
-            expanded: isExpanded,
-            maxVisibleEntries: MAX_VISIBLE_WORK_LOG_ENTRIES,
-            keep: "last",
-            // The capability-denied card carries the only affordance to unblock the agent, so it must never
-            // disappear behind the "Show more" cap.
-            shouldCapEntry: (workEntry) =>
-              !workEntry.computerControlDenied && !workEntry.computerSetupRequired,
-          });
-          const renderChunks = cappedRenderPlan.chunks;
+          const renderChunks = plannedRenderChunks;
           const hasCollapsedChunk = renderChunks.some(isFoldedWorkEntryChunk);
           if (hasCollapsedChunk) {
             return (
@@ -188,52 +174,10 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
                     );
                   })}
                 </div>
-                {cappedRenderPlan.hasOverflow && (
-                  <div className="mt-1.5 flex items-center justify-start gap-2 px-0.5">
-                    <button
-                      type="button"
-                      className={cn(
-                        "font-system-ui transition-colors duration-100 hover:text-foreground",
-                        MUTED_LABEL_TEXT_CLASS_NAME,
-                      )}
-                      style={{ fontSize: `${appTypographyScale.uiSmPx}px` }}
-                      onClick={() => handleToggleWorkGroup(groupId)}
-                    >
-                      {isExpanded ? "Show less" : `Show ${cappedRenderPlan.hiddenEntryCount} more`}
-                    </button>
-                  </div>
-                )}
               </div>
             );
           }
-          const hasOverflow = groupedEntries.length > MAX_VISIBLE_WORK_LOG_ENTRIES;
-          const visibleEntries =
-            hasOverflow && !isExpanded
-              ? groupedEntries.slice(-MAX_VISIBLE_WORK_LOG_ENTRIES)
-              : groupedEntries;
-          const hiddenCount = groupedEntries.length - visibleEntries.length;
-          const showOverflowToggle = hasOverflow;
-
-          return (
-            <div>
-              <div className="space-y-0.5">{visibleEntries.map(renderEntryRow)}</div>
-              {showOverflowToggle && (
-                <div className="mt-1.5 flex items-center justify-start gap-2 px-0.5">
-                  <button
-                    type="button"
-                    className={cn(
-                      "font-system-ui transition-colors duration-100 hover:text-foreground",
-                      MUTED_LABEL_TEXT_CLASS_NAME,
-                    )}
-                    style={{ fontSize: `${appTypographyScale.uiSmPx}px` }}
-                    onClick={() => handleToggleWorkGroup(groupId)}
-                  >
-                    {isExpanded ? "Show less" : `Show ${hiddenCount} more`}
-                  </button>
-                </div>
-              )}
-            </div>
-          );
+          return <div className="space-y-0.5">{groupedEntries.map(renderEntryRow)}</div>;
         })()}
 
       {row.kind === "message-segment" &&

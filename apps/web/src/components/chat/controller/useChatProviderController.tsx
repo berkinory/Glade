@@ -3,8 +3,8 @@ import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { resolveComputerInvocationMode } from "@glade/shared/computer/computerInvocation";
 import { resolveLatestTailUserMessageEditTarget } from "@glade/shared/threads/conversationEdit";
 import { useQuery } from "@tanstack/react-query";
-import { useRef, useLayoutEffect } from "react";
-import { deriveAgentActivityTimelineState } from "~/components/chat/agentActivity.logic";
+import { useRef, useLayoutEffect, useMemo } from "react";
+import { createAgentActivityTimelineSelector } from "~/components/chat/agentActivity.logic";
 import { useChatLocalDispatch } from "~/components/chat/useChatLocalDispatch";
 import { useChatPendingInteractions } from "~/components/chat/useChatPendingInteractions";
 import { useChatProviderModels } from "~/components/chat/useChatProviderModels";
@@ -139,7 +139,8 @@ export function useChatProviderController({
     latestTurnLive,
   });
 
-  const agentActivityTimelineState = deriveAgentActivityTimelineState(workLogEntries);
+  const selectAgentActivityTimeline = useMemo(() => createAgentActivityTimelineSelector(), []);
+  const agentActivityTimelineState = selectAgentActivityTimeline(workLogEntries);
   const getAgentActivityDetail = (activityId: string) =>
     agentActivityTimelineState.detailById.get(activityId);
 

@@ -10,8 +10,6 @@ import {
 } from "./toolCallGroup.logic";
 import type { ChatMessage, TurnDiffSummary, WorktreeSetupStep } from "../../types";
 
-export const MAX_VISIBLE_WORK_LOG_ENTRIES = 6;
-
 export function canSubmitUserMessageEdit(input: {
   draft: string;
   allowEmpty: boolean;
@@ -136,56 +134,6 @@ export function resolveWorkEntryChunkFold(
         liveSummary.entryCount === 1 || entry !== chunk.liveEntry || workEntryRowCount(entry) > 1,
     ),
     keySuffix: ":live",
-  };
-}
-
-export interface CappedWorkEntryRenderPlan {
-  chunks: WorkEntryRenderPlanChunk[];
-  hasOverflow: boolean;
-  hiddenEntryCount: number;
-}
-
-export function capOpenWorkEntryRenderChunks(
-  chunks: ReadonlyArray<WorkEntryRenderPlanChunk>,
-  options: {
-    expanded: boolean;
-    maxVisibleEntries: number;
-    keep: "first" | "last";
-    shouldCapEntry?: (entry: WorkLogEntry) => boolean;
-  },
-): CappedWorkEntryRenderPlan {
-  const shouldCapEntry = options.shouldCapEntry ?? (() => true);
-  const openEntries = chunks.flatMap((chunk) =>
-    isFoldedWorkEntryChunk(chunk) ? [] : chunk.entries.filter(shouldCapEntry),
-  );
-  const maxVisibleEntries = Math.max(0, options.maxVisibleEntries);
-  const hiddenEntryCount = Math.max(0, openEntries.length - maxVisibleEntries);
-  const hasOverflow = hiddenEntryCount > 0;
-
-  if (!hasOverflow || options.expanded) {
-    return { chunks: [...chunks], hasOverflow, hiddenEntryCount: 0 };
-  }
-
-  const visibleEntries =
-    maxVisibleEntries === 0
-      ? []
-      : options.keep === "last"
-        ? openEntries.slice(-maxVisibleEntries)
-        : openEntries.slice(0, maxVisibleEntries);
-  const visibleEntrySet = new Set(visibleEntries);
-
-  return {
-    chunks: chunks.map((chunk) => {
-      if (isFoldedWorkEntryChunk(chunk)) return chunk;
-      return {
-        ...chunk,
-        entries: chunk.entries.filter(
-          (entry) => !shouldCapEntry(entry) || visibleEntrySet.has(entry),
-        ),
-      };
-    }),
-    hasOverflow,
-    hiddenEntryCount,
   };
 }
 
