@@ -6,11 +6,13 @@ const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".mjs", ".cjs"]);
 const scopedRoots = [
   "apps/server/src/provider",
   "apps/server/src/git",
+  "apps/server/src/platform",
+  "packages/shared/src",
   "apps/desktop/src",
 ] as const;
 const scopedFiles = [
   "apps/server/src/workspace/editor/open.ts",
-  "apps/server/src/platform/processRunner.ts",
+  "apps/server/src/workspace/editor/editorAppIcons.ts",
 ] as const;
 
 function walk(relativeRoot: string): string[] {
@@ -57,16 +59,26 @@ for (const file of files) {
   if (/from\s+["']@glade\/shared\/windowsProcess["']/.test(source)) {
     report(file, "import the platform-neutral process runtime instead of windowsProcess");
   }
-  if (/\bprepareWindowsSafeProcess\b/.test(source)) {
+  const sharedPlatform = file.startsWith("packages/shared/src/platform/");
+  const effectBoundary = file === "apps/server/src/platform/effectProcessRuntime.ts";
+
+  if (!sharedPlatform && /\bprepareWindowsSafeProcess\b/.test(source)) {
     report(file, "Windows command preparation belongs to platformProcess/processRuntime");
   }
-  if (/\bwindowsVerbatimArguments\b/.test(source)) {
+  if (!sharedPlatform && !effectBoundary && /\bwindowsVerbatimArguments\b/.test(source)) {
     report(file, "windowsVerbatimArguments is owned by the shared process runtime");
   }
-  if (/\b(?:where\.exe|taskkill)\b/i.test(source)) {
+  if (
+    !sharedPlatform &&
+    file !== "apps/server/src/platform/processTreeController.ts" &&
+    /\b(?:where\.exe|taskkill)\b/i.test(source)
+  ) {
     report(file, "Windows executable/tree commands belong to the platform boundary");
   }
-  if (/\b(?:parseWindowsWslUncPath|resolveWindowsWslExe|resolveWindowsComSpec)\b/.test(source)) {
+  if (
+    !sharedPlatform &&
+    /\b(?:parseWindowsWslUncPath|resolveWindowsWslExe|resolveWindowsComSpec)\b/.test(source)
+  ) {
     report(file, "WSL and Windows shell translation belong to the shared platform boundary");
   }
 
@@ -92,6 +104,31 @@ for (const file of files) {
       report(file, "provider/Git process policy must not branch on win32");
     }
   }
+}
+
+const patchFile = "patches/@effect%2Fplatform-node-shared@4.0.0-beta.25.patch";
+const patch = fs.readFileSync(path.join(repoRoot, patchFile), "utf8");
+const patchedLines = patch
+  .split("\n")
+  .filter((line) => !line.startsWith("-"))
+  .join("\n");
+if (/NodeChildProcess\.exec\(/.test(patchedLines)) {
+  report(patchFile, "dependency teardown must invoke taskkill directly without a shell");
+}
+const killCalls = patchedLines
+  .split("\n")
+  .filter((line) => line.includes("NodeChildProcess.execFile("));
+if (killCalls.length !== 2 || killCalls.some((line) => !line.includes("windowsHide: true"))) {
+  report(patchFile, "source and executable dependency teardown must hide Windows helper windows");
+}
+for (const manifest of [
+  "package.json",
+  "apps/server/package.json",
+  "packages/shared/package.json",
+]) {
+  const source = fs.readFileSync(path.join(repoRoot, manifest), "utf8");
+  if (/"tree-kill"\s*:/.test(source))
+    report(manifest, "tree teardown belongs to the process runtime");
 }
 
 if (violations.length > 0) {

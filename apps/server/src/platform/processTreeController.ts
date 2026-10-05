@@ -1,5 +1,5 @@
-import { spawnProcessSync } from "@glade/shared/platform/processRuntime";
-import treeKill from "tree-kill";
+import { execProcessFile, spawnProcessSync } from "@glade/shared/platform/processRuntime";
+import path from "node:path";
 
 import { captureWindowsProcessChildrenMap } from "./windowsProcessSnapshot";
 
@@ -149,7 +149,12 @@ export function createProcessTreeKiller(
     signalPid,
     signalTree: (pid, signal, callback) => {
       if (process.platform === "win32") {
-        treeKill(pid, signal, callback);
+        execProcessFile(
+          path.win32.join(process.env.SystemRoot ?? "C:\\Windows", "System32", "taskkill.exe"),
+          ["/pid", String(pid), "/T", "/F"],
+          { encoding: "utf8", timeout: PROCESS_TREE_SCAN_TIMEOUT_MS, maxBuffer: 1_048_576 },
+          (error) => callback(error),
+        );
       } else {
         // Descendants were captured above; signaling the owned root must not spawn PATH tools.
         callback(signalPid(pid, signal));
@@ -228,7 +233,7 @@ export function createProcessTreeKiller(
       }
       if (includeRootTree) {
         deps.signalTree(rootPid, signal, (error) => {
-          if (error) onError(error, { pid: rootPid, source: "tree-kill" });
+          if (error) onError(error, { pid: rootPid, source: "root-tree" });
         });
       }
     },
@@ -334,7 +339,7 @@ export function signalProcessTree(input: {
   readonly includeRootTree?: boolean;
   readonly onError?: (
     error: Error,
-    context: { readonly pid: number; readonly source: "tree-kill" | "captured" },
+    context: { readonly pid: number; readonly source: "root-tree" | "captured" },
   ) => void;
   readonly processTreeKiller?: ProcessTreeKiller;
 }): void {

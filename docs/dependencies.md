@@ -22,7 +22,8 @@ The process-spawner patch is retained against the published package. It rejects
 unsafe process IDs before signaling a group and forwards `windowsHide` and
 `windowsVerbatimArguments` to Node's child-process API. Removing it would change
 process safety and Windows launch behavior. Its source and executable output
-are both patched.
+are both patched. Windows group cleanup invokes the system `taskkill.exe` directly
+with `windowsHide: true`, without an intermediate command shell.
 
 Keep all five Effect packages on the same exact beta when revisiting this pin.
 Compare executable output before changing the version, then run the workspace

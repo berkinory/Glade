@@ -103,6 +103,10 @@
 
 ### Fixed
 
+- Background helpers no longer flash command windows on Windows.
+- Failed desktop window actions show an understandable error.
+- Losing a launcher output pipe no longer closes the desktop app.
+
 - Chats and terminal output recover more reliably after connection loss.
 - Interrupted sends resolve their delivery status without duplicating messages or losing drafts and attachments.
 - Connection setup and voice dictation reach supported fallback paths without waiting for stalled error responses.

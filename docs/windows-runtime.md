@@ -106,3 +106,8 @@ tree discovery to deliver that signal. Descendant exit still requires identity v
 Windows releases also require the hosted Defender qualification described in
 [release documentation](release.md#windows-malware-qualification). This checks the final
 installer bytes before publication, not SmartScreen reputation or installation behavior.
+
+Persistent-environment probes and editor icon extraction hide their Windows helper windows.
+Root-tree signaling invokes the system taskkill executable through the shared process runner,
+with bounded output and timeout. Effect-created teardown helpers also invoke taskkill directly
+with hidden windows through the dependency patch; captured identity checks remain unchanged.

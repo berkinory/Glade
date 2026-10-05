@@ -15,7 +15,6 @@ import {
   safeConsoleError,
   sanitizeLogValue,
 } from "./lifecycle/desktopLogging";
-import { isBrokenPipeError } from "./lifecycle/desktopProcessErrors";
 import {
   BundleChangedDuringStartupError,
   createDesktopResources,
@@ -306,15 +305,6 @@ export function createDesktopRuntime(): void {
     }
   });
   if (process.platform !== "win32") {
-    process.on("uncaughtException", (error: unknown) => {
-      if (!isBrokenPipeError(error)) {
-        throw error;
-      }
-      if (lifecycle.shutdownInFlight()) return;
-      log.writeDesktopLogHeader("EPIPE received");
-      lifecycle.requestGracefulAppQuit("EPIPE");
-    });
-
     process.on("SIGINT", () => {
       if (lifecycle.shutdownInFlight()) return;
       log.writeDesktopLogHeader("SIGINT received");

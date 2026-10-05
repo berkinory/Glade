@@ -122,3 +122,15 @@ across their canvas and padding, avoiding a separate dark rectangle.
 Native materials belong to the OS compositor. Renderer-only captures do not
 include the native backdrop; capture the native window or screen to verify the
 composited appearance.
+
+## Window actions and launcher output
+
+Custom title-bar actions report rejected native calls through error notifications. Repeated
+clicks share the pending action; disposed controls discard late results and errors. Native
+state events own maximize/restore presentation, and a late initial read cannot replace a
+newer event.
+
+The logging owner handles stdout/stderr EPIPE at the stream boundary. Losing a launcher
+output sink leaves the GUI running and packaged file logging active, without writing an
+error back to that pipe. Other stream errors retain the fatal path. SIGINT and SIGTERM
+continue to request graceful shutdown on POSIX.

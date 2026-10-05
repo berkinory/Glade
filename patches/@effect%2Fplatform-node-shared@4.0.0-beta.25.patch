@@ -1,8 +1,8 @@
 diff --git a/dist/NodeChildProcessSpawner.js b/dist/NodeChildProcessSpawner.js
-index 7e51c00..fbf5eb7 100644
+index 7e51c003213c46f43a9c3aceb15a97956d99ff19..74afb6393f45e96099b20e440ed500af9af438f4 100644
 --- a/dist/NodeChildProcessSpawner.js
 +++ b/dist/NodeChildProcessSpawner.js
-@@ -240,6 +240,12 @@ const make = /*#__PURE__*/Effect.gen(function* () {
+@@ -240,9 +240,15 @@ const make = /*#__PURE__*/Effect.gen(function* () {
      });
    });
    const killProcessGroup = (command, childProcess, signal) => {
@@ -14,7 +14,11 @@ index 7e51c00..fbf5eb7 100644
 +    }
      if (globalThis.process.platform === "win32") {
        return Effect.callback(resume => {
-         NodeChildProcess.exec(`taskkill /pid ${childProcess.pid} /T /F`, error => {
+-        NodeChildProcess.exec(`taskkill /pid ${childProcess.pid} /T /F`, error => {
++        NodeChildProcess.execFile(`${globalThis.process.env.SystemRoot ?? "C:\\Windows"}\\System32\\taskkill.exe`, ["/pid", String(pid), "/T", "/F"], { windowsHide: true }, error => {
+           if (error) {
+             resume(Effect.fail(toPlatformError("kill", toError(error), command)));
+           } else {
 @@ -253,7 +259,7 @@ const make = /*#__PURE__*/Effect.gen(function* () {
      }
      return Effect.try({
@@ -36,10 +40,10 @@ index 7e51c00..fbf5eb7 100644
              const exited = yield* Deferred.isDone(exitSignal);
              const killWithTimeout = withTimeout(childProcess, cmd, cmd.options);
 diff --git a/src/NodeChildProcessSpawner.ts b/src/NodeChildProcessSpawner.ts
-index dc53baf..110ce95 100644
+index dc53bafb7a2619368b63e9d18965a4426bb2e32f..b2146577977dd8903982b694dbdcd7cbe0de1b37 100644
 --- a/src/NodeChildProcessSpawner.ts
 +++ b/src/NodeChildProcessSpawner.ts
-@@ -324,6 +324,12 @@ const make = Effect.gen(function*() {
+@@ -324,9 +324,15 @@ const make = Effect.gen(function*() {
      childProcess: NodeChildProcess.ChildProcess,
      signal: NodeJS.Signals
    ) => {
@@ -51,7 +55,11 @@ index dc53baf..110ce95 100644
 +    }
      if (globalThis.process.platform === "win32") {
        return Effect.callback<void, PlatformError.PlatformError>((resume) => {
-         NodeChildProcess.exec(`taskkill /pid ${childProcess.pid} /T /F`, (error) => {
+-        NodeChildProcess.exec(`taskkill /pid ${childProcess.pid} /T /F`, (error) => {
++        NodeChildProcess.execFile(`${globalThis.process.env.SystemRoot ?? "C:\\Windows"}\\System32\\taskkill.exe`, ["/pid", String(pid), "/T", "/F"], { windowsHide: true }, (error) => {
+           if (error) {
+             resume(Effect.fail(toPlatformError("kill", toError(error), command)))
+           } else {
 @@ -337,7 +343,7 @@ const make = Effect.gen(function*() {
      }
      return Effect.try({

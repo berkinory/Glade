@@ -29,11 +29,13 @@ describe("Effect process signal guards", () => {
         queueMicrotask(() => fake.emit("spawn"));
         return fake as unknown as import("node:child_process").ChildProcess;
       });
-      const exec = vi.spyOn(nodeChildProcess, "exec").mockImplementation((...args: unknown[]) => {
-        const callback = args.at(-1);
-        if (typeof callback === "function") callback(null, "", "");
-        return fake as unknown as import("node:child_process").ChildProcess;
-      });
+      const exec = vi
+        .spyOn(nodeChildProcess, "execFile")
+        .mockImplementation((...args: unknown[]) => {
+          const callback = args.at(-1);
+          if (typeof callback === "function") callback(null, "", "");
+          return fake as unknown as import("node:child_process").ChildProcess;
+        });
       syncBuiltinESMExports();
       try {
         await Effect.runPromise(

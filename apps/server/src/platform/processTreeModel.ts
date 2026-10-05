@@ -35,7 +35,7 @@ export interface ProcessTreeKiller {
     readonly includeRootTree?: boolean | undefined;
     readonly onError: (
       error: Error,
-      context: { readonly pid: number; readonly source: "tree-kill" | "captured" },
+      context: { readonly pid: number; readonly source: "root-tree" | "captured" },
     ) => void;
   }): void;
 }

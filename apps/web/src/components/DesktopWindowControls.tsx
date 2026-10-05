@@ -1,10 +1,11 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import type { DesktopWindowState } from "@glade/contracts/ipc/ipc";
 
 import { useDesktopCustomTitleBarActive } from "~/hooks/useDesktopCustomTitleBar";
 import { isElectron } from "~/env";
 import { Maximize2, Minimize2, MinusIcon, XIcon } from "~/lib/icons";
+import { toastManager } from "./ui/toast";
 import { cn, getNavigatorPlatform, isWindowsPlatform } from "~/lib/utils";
 
 const DEFAULT_WINDOW_STATE: DesktopWindowState = {
@@ -43,6 +44,7 @@ function CaptionSvg({ children }: { children: ReactNode }) {
 }
 
 export function DesktopWindowControls({ className }: { className?: string }) {
+  const runControl = useRef<((title: string, action: () => Promise<unknown>) => void) | null>(null);
   const [windowState, setWindowState] = useState<DesktopWindowState>(DEFAULT_WINDOW_STATE);
   const customTitleBarActive = useDesktopCustomTitleBarActive();
   const platform = getNavigatorPlatform();
@@ -52,14 +54,38 @@ export function DesktopWindowControls({ className }: { className?: string }) {
   useEffect(() => {
     if (!controls) return;
     let cancelled = false;
-
-    void controls.getState().then((state) => {
+    let stateRevision = 0;
+    const pending = new Set<string>();
+    const reportError = (title: string, error: unknown) => {
+      if (cancelled) return;
+      toastManager.add({
+        type: "error",
+        title,
+        description: error instanceof Error ? error.message : "Please try again.",
+      });
+    };
+    runControl.current = (title, action) => {
+      if (pending.has(title)) return;
+      pending.add(title);
+      void Promise.resolve()
+        .then(() => {
+          if (!cancelled) return action();
+        })
+        .catch((error: unknown) => reportError(title, error))
+        .finally(() => pending.delete(title));
+    };
+    runControl.current("Could not read window state", async () => {
+      const revision = stateRevision;
+      const state = await controls.getState();
+      if (!cancelled && revision === stateRevision) setWindowState(state);
+    });
+    const unsubscribe = controls.onState((state) => {
+      stateRevision += 1;
       if (!cancelled) setWindowState(state);
     });
-    const unsubscribe = controls.onState(setWindowState);
-
     return () => {
       cancelled = true;
+      runControl.current = null;
       unsubscribe();
     };
   }, [controls]);
@@ -78,7 +104,7 @@ export function DesktopWindowControls({ className }: { className?: string }) {
         title="Minimize"
         className={CAPTION_BUTTON_CLASS}
         onClick={() => {
-          void controls.minimize();
+          runControl.current?.("Could not minimize window", () => controls.minimize());
         }}
       >
         {useWindowsGlyphs ? (
@@ -95,7 +121,7 @@ export function DesktopWindowControls({ className }: { className?: string }) {
         title={isMaximized ? "Restore" : "Maximize"}
         className={CAPTION_BUTTON_CLASS}
         onClick={() => {
-          void controls.toggleMaximize().then(setWindowState);
+          runControl.current?.("Could not resize window", () => controls.toggleMaximize());
         }}
       >
         {useWindowsGlyphs ? (
@@ -112,7 +138,7 @@ export function DesktopWindowControls({ className }: { className?: string }) {
         title="Close"
         className={cn(CAPTION_BUTTON_CLASS, CLOSE_BUTTON_CLASS)}
         onClick={() => {
-          void controls.close();
+          runControl.current?.("Could not close window", () => controls.close());
         }}
       >
         {useWindowsGlyphs ? (

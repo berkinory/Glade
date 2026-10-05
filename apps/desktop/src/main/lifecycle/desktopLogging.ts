@@ -38,6 +38,16 @@ export function createDesktopLogging(): DesktopLog {
   let desktopLogSink: RotatingFileSink | null = null;
   let backendLogSink: RotatingFileSink | null = null;
   let restoreStdIoCapture: (() => void) | null = null;
+  const handleStreamError = (streamName: "stdout" | "stderr", error: Error): void => {
+    if (!isBrokenPipeError(error)) throw error;
+    // The launcher is gone; write only to the file sink to avoid another pipe error.
+    writeDesktopLogHeader(`${streamName} output pipe closed`);
+  };
+  const onStdoutError = (error: Error) => handleStreamError("stdout", error);
+  const onStderrError = (error: Error) => handleStreamError("stderr", error);
+  process.stdout.on("error", onStdoutError);
+  process.stderr.on("error", onStderrError);
+
   function logTimestamp(): string {
     return new Date().toISOString();
   }
@@ -140,6 +150,10 @@ export function createDesktopLogging(): DesktopLog {
     get writeBackendOutput() {
       return backendLogSink?.write.bind(backendLogSink);
     },
-    dispose: () => restoreStdIoCapture?.(),
+    dispose: () => {
+      restoreStdIoCapture?.();
+      process.stdout.off("error", onStdoutError);
+      process.stderr.off("error", onStderrError);
+    },
   };
 }

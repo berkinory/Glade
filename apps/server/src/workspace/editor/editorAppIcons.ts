@@ -1,9 +1,8 @@
-import { execFile } from "node:child_process";
+import { execProcessFileAsync } from "../../platform/processRunner";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { promisify } from "node:util";
 
 import { EDITORS, type EditorId } from "@glade/contracts/settings/editor";
 
@@ -15,7 +14,6 @@ import {
   type EditorDefinition,
 } from "./editorAppDiscovery";
 
-const execFileAsync = promisify(execFile);
 const MAX_DESKTOP_FILES_TO_SCAN = 1_500;
 const MAX_ICON_FILES_TO_SCAN = 8_000;
 const MAX_WINDOWS_PACKAGE_ICON_FILES_TO_SCAN = 1_200;
@@ -67,13 +65,11 @@ async function directoryExists(dirPath: string): Promise<boolean> {
 
 async function readPlistJson(infoPlistPath: string): Promise<Record<string, unknown> | null> {
   try {
-    const { stdout } = await execFileAsync("plutil", [
-      "-convert",
-      "json",
-      "-o",
-      "-",
-      infoPlistPath,
-    ]);
+    const { stdout } = await execProcessFileAsync(
+      "plutil",
+      ["-convert", "json", "-o", "-", infoPlistPath],
+      { encoding: "utf8", timeout: 5_000, maxBuffer: 1_048_576 },
+    );
     return JSON.parse(String(stdout)) as Record<string, unknown>;
   } catch {
     const xml = await fs.readFile(infoPlistPath, "utf8").catch(() => null);
@@ -617,16 +613,20 @@ async function writeIconArtifact(input: {
   }
 
   if (input.source.transform === "sips-icns") {
-    await execFileAsync("sips", [
-      "-s",
-      "format",
-      "png",
-      "-Z",
-      String(ICON_MAX_DIMENSION_PX),
-      input.source.sourcePath,
-      "--out",
-      input.outputPath,
-    ]);
+    await execProcessFileAsync(
+      "sips",
+      [
+        "-s",
+        "format",
+        "png",
+        "-Z",
+        String(ICON_MAX_DIMENSION_PX),
+        input.source.sourcePath,
+        "--out",
+        input.outputPath,
+      ],
+      { encoding: "utf8", timeout: 5_000, maxBuffer: 1_048_576 },
+    );
     return;
   }
 
@@ -641,7 +641,11 @@ async function writeIconArtifact(input: {
     "$bitmap.Dispose()",
     "$icon.Dispose()",
   ].join("; ");
-  await execFileAsync("powershell.exe", ["-NoProfile", "-Command", script]);
+  await execProcessFileAsync(
+    "powershell.exe",
+    ["-NoProfile", "-NonInteractive", "-Command", script],
+    { encoding: "utf8", timeout: 5_000, maxBuffer: 1_048_576 },
+  );
 }
 
 async function resolveCachedEditorIconUncached(input: {
