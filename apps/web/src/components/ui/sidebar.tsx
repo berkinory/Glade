@@ -1,4 +1,4 @@
-import { PanelLeftIcon } from "~/lib/icons";
+import { LayoutAlignLeftIcon } from "~/lib/icons";
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -411,7 +411,7 @@ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<t
       variant="ghost"
       {...props}
     >
-      <PanelLeftIcon aria-hidden className="size-4" />
+      <LayoutAlignLeftIcon aria-hidden className="size-4" />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   );

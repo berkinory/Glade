@@ -1,4 +1,4 @@
-import { EllipsisIcon, PanelRightCloseIcon, XIcon } from "~/lib/icons";
+import { EllipsisIcon, LayoutAlignRightIcon, XIcon } from "~/lib/icons";
 import {
   type PointerEvent as ReactPointerEvent,
   Suspense,
@@ -371,7 +371,7 @@ export function FloatingBrowserPanel(props: FloatingBrowserPanelProps) {
                     props.onPopToSidebar();
                   }}
                 >
-                  <PanelRightCloseIcon />
+                  <LayoutAlignRightIcon />
                 </IconButton>
                 <IconButton
                   type="button"

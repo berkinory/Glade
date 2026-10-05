@@ -40,7 +40,8 @@ const CHAT_SURFACE_CHIP_CLASS_NAME = cn(
   CHAT_SURFACE_CONTROL_IDLE_TEXT_CLASS_NAME,
   CHAT_SURFACE_CONTROL_HOVER_CLASS_NAME,
 );
-const CHAT_SURFACE_CHIP_GLYPH_CLASS_NAME = "size-3.5 shrink-0";
+const CHAT_SURFACE_CHIP_GLYPH_CLASS_NAME =
+  "size-[calc(var(--app-font-size-ui-sm,13px)*14/13)] shrink-0";
 const CHAT_SURFACE_CHIP_ICON_CLASS_NAME = cn(CHAT_SURFACE_CHIP_GLYPH_CLASS_NAME, "opacity-70");
 export function SurfaceChipIcon({
   icon: Icon,
@@ -60,11 +61,11 @@ const DOCK_TAB_CHIP_CLASS_NAME = cn(
   "inline-flex min-w-0 items-center pr-2.5",
 );
 const DOCK_TAB_ICON_SLOT_CLASS_NAME =
-  "relative flex size-4 shrink-0 cursor-pointer items-center justify-center rounded-full bg-transparent text-[var(--color-text-foreground-secondary)] transition-colors group-hover/dock-tab:bg-[var(--color-background-button-secondary-hover)] group-focus-within/dock-tab:bg-[var(--color-background-button-secondary-hover)] hover:bg-[var(--color-background-button-secondary)] hover:text-[var(--color-text-foreground)]";
+  "relative flex size-[calc(var(--app-font-size-ui-sm,13px)*16/13)] shrink-0 [&_svg]:size-[calc(var(--app-font-size-ui-sm,13px)*14/13)] cursor-pointer items-center justify-center rounded-full bg-transparent text-[var(--color-text-foreground-secondary)] transition-colors group-hover/dock-tab:bg-[var(--color-background-button-secondary-hover)] group-focus-within/dock-tab:bg-[var(--color-background-button-secondary-hover)] hover:bg-[var(--color-background-button-secondary)] hover:text-[var(--color-text-foreground)]";
 const DOCK_TAB_ICON_HOVER_HIDE_CLASS_NAME =
   "transition-opacity group-hover/dock-tab:opacity-0 group-focus-within/dock-tab:opacity-0";
 const DOCK_TAB_CLOSE_GLYPH_CLASS_NAME =
-  "absolute size-3.5 shrink-0 opacity-0 transition-opacity group-hover/dock-tab:opacity-100 group-focus-within/dock-tab:opacity-100";
+  "absolute size-[calc(var(--app-font-size-ui-sm,13px)*14/13)] shrink-0 opacity-0 transition-opacity group-hover/dock-tab:opacity-100 group-focus-within/dock-tab:opacity-100";
 
 // Keep the chip's hover group and close affordance together so callers cannot mismatch their group
 // names.
@@ -98,7 +99,11 @@ export function SurfaceTabChip({
   closePlacement?: "icon" | "trailing";
 }) {
   const trailingClose = closePlacement === "trailing";
-  const glyph = <span className="flex size-4 shrink-0 items-center justify-center">{icon}</span>;
+  const glyph = (
+    <span className="flex size-[calc(var(--app-font-size-ui-sm,13px)*16/13)] shrink-0 items-center justify-center [&_svg]:size-[calc(var(--app-font-size-ui-sm,13px)*14/13)]">
+      {icon}
+    </span>
+  );
   const labelClasses = cn(
     "flex min-w-0 items-center gap-1.5 text-left",
     trailingClose && "flex-1 self-stretch rounded-[inherit] px-2.5",
@@ -182,7 +187,7 @@ export function SurfaceTabChip({
             onClose();
           }}
         >
-          <XIcon className="size-3.5" />
+          <XIcon className={CHAT_SURFACE_CHIP_GLYPH_CLASS_NAME} />
         </button>
       ) : null}
     </div>

@@ -16,11 +16,14 @@ export const SearchInput = forwardRef<HTMLInputElement, InputProps>(function Sea
         type={type}
         size={size}
         variant={variant}
-        className={cn("[&>[data-slot=input]]:pl-8", className)}
+        className={cn(
+          "[&>[data-slot=input]]:pl-[calc(var(--app-font-size-ui,14px)+1.125rem)]",
+          className,
+        )}
         {...props}
       />
       <SearchIcon
-        className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground/70"
+        className="pointer-events-none absolute left-2.5 top-1/2 size-[var(--app-font-size-ui,14px)] -translate-y-1/2 text-muted-foreground/70"
         aria-hidden="true"
       />
     </div>

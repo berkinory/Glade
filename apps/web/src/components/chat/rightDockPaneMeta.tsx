@@ -1,8 +1,8 @@
 import type { IconComponent } from "~/lib/iconComponent";
 import type { ReactNode } from "react";
 import {
-  FolderLibraryIcon,
-  GitCommitHorizontalIcon,
+  Folder03Icon,
+  GitCompareIcon,
   InfoIcon,
   Globe02Icon,
   ComputerTerminal01Icon,
@@ -20,7 +20,7 @@ const RIGHT_DOCK_PANE_META: Record<RightDockPaneKind, RightDockPaneMeta> = {
   },
   explorer: {
     label: "Explorer",
-    Icon: FolderLibraryIcon,
+    Icon: Folder03Icon,
   },
   terminal: {
     label: "Terminal",
@@ -28,7 +28,7 @@ const RIGHT_DOCK_PANE_META: Record<RightDockPaneKind, RightDockPaneMeta> = {
   },
   git: {
     label: "Source Control",
-    Icon: GitCommitHorizontalIcon,
+    Icon: GitCompareIcon,
   },
 };
 const FALLBACK_RIGHT_DOCK_PANE_META: RightDockPaneMeta = {

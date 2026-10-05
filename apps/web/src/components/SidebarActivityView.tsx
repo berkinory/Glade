@@ -14,6 +14,7 @@ import { useComposerDraftStore } from "~/composerDraftStore";
 import { hasUnsentComposerDraft } from "~/composerDraftDomain";
 import { useSidebarStateStore } from "~/sidebarStateStore";
 import { ProjectSidebarIcon } from "./ProjectSidebarIcon";
+import { SidebarLeadingIcon } from "./SidebarLeadingIcon";
 import {
   useEffect,
   useRef,
@@ -189,13 +190,20 @@ function ActivityThreadRow({
               "group-hover/activity-row:pr-[4.25rem] group-focus-within/activity-row:pr-[4.25rem]",
             )}
           >
-            <ProviderIcon
-              provider={provider}
-              className="size-3 shrink-0 translate-y-px"
-              fallback={
-                <span className="size-3 shrink-0 rounded-full border border-dashed border-muted-foreground/40" />
-              }
-            />
+            <SidebarLeadingIcon size="sm" tone="text-inherit">
+              <ProviderIcon
+                provider={provider}
+                className={sidebarGlyphClass("leading")}
+                fallback={
+                  <span
+                    className={sidebarGlyphClass(
+                      "leading",
+                      "rounded-full border border-dashed border-muted-foreground/40",
+                    )}
+                  />
+                }
+              />
+            </SidebarLeadingIcon>
             <span
               className={cn(
                 "min-w-0 shrink truncate text-ui leading-5 font-normal",
@@ -206,21 +214,18 @@ function ActivityThreadRow({
             </span>
           </span>
           <SidebarDraftIndicator threadId={thread.id} isActive={isActive} activity />
-          <span className="flex min-w-0 items-center gap-1.5">
+          <span className="flex min-w-0 items-center gap-1.5 text-ui-sm">
             {isWorktree ? (
-              <GitForkIcon
-                className={sidebarGlyphClass("meta", "translate-y-px text-muted-foreground/70")}
-                aria-hidden
-              />
+              <GitForkIcon className="size-[1em] shrink-0 text-muted-foreground/70" aria-hidden />
             ) : project ? (
               <ProjectSidebarIcon
                 cwd={project.cwd}
                 appearance={project.appearance}
                 expanded={false}
-                glyphClassName={sidebarGlyphClass("meta")}
+                glyphClassName="size-[1em] shrink-0"
               />
             ) : (
-              <FolderIcon className={sidebarGlyphClass("meta")} aria-hidden />
+              <FolderIcon className="size-[1em] shrink-0" aria-hidden />
             )}
 
             <span className="min-w-0 truncate text-ui-sm text-muted-foreground/80">
@@ -230,16 +235,13 @@ function ActivityThreadRow({
               {pr ? (
                 <PrStateChip
                   pr={pr}
-                  className="[&_svg]:size-2.5"
+                  className="[&_svg]:size-[0.91em]"
                   onOpen={(event) => onOpenPullRequest(event, pr)}
                 />
               ) : null}
               {branch ? (
                 <span className="flex min-w-0 items-center gap-1 text-ui-sm text-muted-foreground/70">
-                  <WorkflowCircle04Icon
-                    className={sidebarGlyphClass("meta", "translate-y-px")}
-                    aria-hidden
-                  />
+                  <WorkflowCircle04Icon className="size-[1em] shrink-0" aria-hidden />
                   <span className="max-w-36 truncate">{branch}</span>
                 </span>
               ) : null}

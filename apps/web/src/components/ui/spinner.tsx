@@ -13,10 +13,12 @@ export function Spinner({ className, variant = "loading", ...props }: SpinnerPro
     <svg
       aria-label="Loading"
       role="status"
+      width="16"
+      height="16"
       {...props}
       viewBox="0 0 20 20"
       fill="currentColor"
-      className={cn("inline-block size-4 shrink-0", className)}
+      className={cn("inline-block shrink-0", className)}
     >
       {profile.dots.map(({ index, still, values }) => (
         <circle

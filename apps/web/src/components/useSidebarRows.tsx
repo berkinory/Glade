@@ -25,6 +25,7 @@ import {
 import { PreviewCard, PreviewCardPopup, PreviewCardTrigger } from "./ui/preview-card";
 import { SidebarIconButton } from "./SidebarIconButton";
 import { SidebarLeadingIcon } from "./SidebarLeadingIcon";
+import { sidebarGlyphClass } from "./sidebarGlyphs";
 import { SidebarMetaChipStack } from "./SidebarMetaChip";
 import { SidebarRowHoverActions } from "./SidebarRowHoverActions";
 import { SidebarSectionToolbar } from "./SidebarSectionToolbar";
@@ -706,6 +707,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
                   cwd={project.cwd}
                   expanded={project.expanded}
                   appearance={project.appearance}
+                  glyphClassName={sidebarGlyphClass("leading")}
                 />
                 {isProjectPinned ? (
                   <span className="absolute -right-1 -bottom-1 flex size-2.5 items-center justify-center rounded-sm bg-sidebar">

@@ -1,4 +1,4 @@
-import { CollapseIcon, ExpandIcon, PanelRightCloseIcon, PlusIcon } from "~/lib/icons";
+import { CollapseIcon, ExpandIcon, LayoutAlignRightIcon, PlusIcon } from "~/lib/icons";
 import {
   type CSSProperties,
   type ReactNode,
@@ -35,6 +35,7 @@ import { CHAT_BACKGROUND_CLASS_NAME } from "./composerPickerStyles";
 import { ComposerPickerMenuPopup } from "./ComposerPickerMenuPopup";
 import {
   CHAT_SURFACE_HEADER_ROW_CLASS_NAME,
+  CHAT_HEADER_CONTROL_CLASS_NAME,
   CHAT_SURFACE_CONTROL_ACTIVE_CLASS_NAME,
   CHAT_HEADER_ICON_CONTROL_CLASS_NAME,
   SurfaceChipIcon,
@@ -286,26 +287,31 @@ export function RightDock(props: RightDockProps) {
             )}
           >
             {props.primaryKinds ? (
-              <nav aria-label="Right sidebar panels" className="flex shrink-0 items-center gap-1">
+              <nav
+                aria-label="Right sidebar panels"
+                className="flex min-w-0 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
                 {props.primaryKinds.map((kind) => {
                   const { Icon, label } = getRightDockPaneMeta(kind);
                   return (
                     <IconButton
                       key={kind}
                       variant="chrome"
-                      size="icon-xs"
+                      size="xs"
                       label={label}
                       tooltip={label}
                       tooltipSide="bottom"
                       title={label}
                       aria-pressed={activePane?.kind === kind}
                       className={cn(
-                        CHAT_HEADER_ICON_CONTROL_CLASS_NAME,
+                        CHAT_HEADER_CONTROL_CLASS_NAME,
+                        "gap-1.5 px-2 text-ui-sm font-normal sm:text-ui-sm",
                         activePane?.kind === kind && CHAT_SURFACE_CONTROL_ACTIVE_CLASS_NAME,
                       )}
                       onClick={() => props.onAddPane(kind)}
                     >
                       <SurfaceChipIcon icon={Icon} />
+                      <span>{label}</span>
                     </IconButton>
                   );
                 })}
@@ -378,7 +384,7 @@ export function RightDock(props: RightDockProps) {
               className={CHAT_HEADER_ICON_CONTROL_CLASS_NAME}
               onClick={props.onCollapse}
             >
-              <PanelRightCloseIcon />
+              <LayoutAlignRightIcon />
             </IconButton>
           </div>
           <div className="relative min-h-0 flex-1">

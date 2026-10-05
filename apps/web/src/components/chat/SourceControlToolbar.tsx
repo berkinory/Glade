@@ -296,7 +296,7 @@ export function SourceControlToolbar({
           className="flex items-center gap-1 text-ui-xs text-destructive"
           onClick={() => void rebase.refetch()}
         >
-          <RefreshCwIcon className="size-3.5" /> Git operation status unavailable · Retry
+          <RefreshCwIcon className="size-[1.273em]" /> Git operation status unavailable · Retry
         </button>
       ) : null}
       {rebase.data?.conflicts.map((path) => (

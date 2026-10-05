@@ -123,7 +123,7 @@ export const ComposerSubagentStrip = function ComposerSubagentStrip({
                   title={item.label}
                   onClick={() => onOpenThread(item.threadId)}
                 >
-                  <CornerUpLeftIcon className="size-3 shrink-0 text-muted-foreground/55" />
+                  <CornerUpLeftIcon className="size-[0.923em] shrink-0 text-muted-foreground/55" />
                   <span className="min-w-0 flex-1 truncate text-ui font-medium text-foreground/85">
                     {item.label}
                   </span>

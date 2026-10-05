@@ -58,7 +58,7 @@ export function CommitDetail(props: {
   return (
     <section className="flex min-h-0 flex-1 flex-col border-t border-border/70">
       <div className="flex shrink-0 items-center gap-2 px-3 py-2">
-        <GitCommitHorizontalIcon className="size-4 shrink-0 text-muted-foreground" />
+        <GitCommitHorizontalIcon className="size-[1.231em] shrink-0 text-muted-foreground" />
         <span className="min-w-0 flex-1 truncate text-ui-sm font-medium">
           {props.commit.subject}
         </span>

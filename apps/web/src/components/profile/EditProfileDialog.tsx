@@ -161,7 +161,7 @@ function EditProfileDialogContent({
                       setError(null);
                     }}
                   >
-                    <Delete02Icon className="size-3.5" />
+                    <Delete02Icon />
                     Remove
                   </Button>
                 )}

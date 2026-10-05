@@ -3,7 +3,7 @@ import {
   HelpCircleIcon,
   GiftIcon,
   KeyboardIcon,
-  BellIcon,
+  NotebookIcon,
   GitForkIcon,
   ListFilterIcon,
 } from "~/lib/icons";
@@ -440,7 +440,7 @@ function shouldShowActivityOnboarding(): boolean {
     return true;
   }
 }
-export function SidebarActivityBellButton({
+export function SidebarActivityButton({
   active,
   showUnreadDot,
   shortcutLabel,
@@ -497,7 +497,7 @@ export function SidebarActivityBellButton({
           />
         }
       >
-        <BellIcon className={sidebarGlyphClass("leading")} />
+        <NotebookIcon className={sidebarGlyphClass("chrome")} />
         {showUnreadDot ? (
           <span
             aria-hidden

@@ -5,6 +5,7 @@ import { cn } from "~/lib/utils";
 import { Badge } from "./ui/badge";
 import { SearchInput } from "./ui/search-input";
 import { SidebarLeadingIcon } from "./SidebarLeadingIcon";
+import { sidebarGlyphClass } from "./sidebarGlyphs";
 import {
   SETTINGS_NAV_GROUPS,
   SETTINGS_NAV_ITEMS,
@@ -18,7 +19,6 @@ import {
   type SettingsSearchEntry,
 } from "../settingsSearchIndex";
 import {
-  SETTINGS_SIDEBAR_ICON_CLASS_NAME,
   SETTINGS_SIDEBAR_ITEM_CLASS_NAME,
   SETTINGS_SIDEBAR_ITEM_LABEL_CLASS_NAME,
   SETTINGS_SIDEBAR_LIST_GAP_CLASS_NAME,
@@ -45,7 +45,7 @@ function SettingsSearchResultRow(props: {
         onClick={() => onSelect(entry)}
       >
         <SidebarLeadingIcon size="sm" tone="text-inherit">
-          <Icon className={SETTINGS_SIDEBAR_ICON_CLASS_NAME} />
+          <Icon className={sidebarGlyphClass("leading")} />
         </SidebarLeadingIcon>
         <span className="min-w-0 text-left">
           <span className="block text-ui">{entry.title}</span>
@@ -116,7 +116,7 @@ export function SettingsSidebarNav(props: {
             onClick={props.onBack}
           >
             <SidebarLeadingIcon size="sm" tone="text-inherit">
-              <ArrowLeft02Icon className={SETTINGS_SIDEBAR_ICON_CLASS_NAME} />
+              <ArrowLeft02Icon className={sidebarGlyphClass("leading")} />
             </SidebarLeadingIcon>
             <span className={SETTINGS_SIDEBAR_ITEM_LABEL_CLASS_NAME}>Back to app</span>
           </button>
@@ -185,7 +185,7 @@ export function SettingsSidebarNav(props: {
                           onClick={() => props.onSelectSection(item.id)}
                         >
                           <SidebarLeadingIcon size="sm" tone="text-inherit">
-                            <item.icon className={SETTINGS_SIDEBAR_ICON_CLASS_NAME} />
+                            <item.icon className={sidebarGlyphClass("leading")} />
                           </SidebarLeadingIcon>
                           <span className={SETTINGS_SIDEBAR_ITEM_LABEL_CLASS_NAME}>
                             {item.label}

@@ -14,7 +14,7 @@ export function createBrandIcon(source: string, monochrome = false): IconCompone
         xmlns="http://www.w3.org/2000/svg"
         role={label ? "img" : undefined}
         aria-hidden={label ? undefined : true}
-        className={cn("size-4 shrink-0", className)}
+        className={cn("shrink-0", className)}
         {...props}
       >
         {monochrome ? (

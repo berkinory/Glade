@@ -269,7 +269,7 @@ function ToastActions({
           title={isCopied ? "Copied error message" : "Copy error message"}
           variant={TOAST_ACTION_BUTTON_VARIANT}
         >
-          {isCopied ? <CheckIcon className="size-3" /> : <Copy01Icon className="size-3" />}
+          {isCopied ? <CheckIcon /> : <Copy01Icon />}
           <span>{isCopied ? "Copied" : "Copy"}</span>
         </Button>
       )}

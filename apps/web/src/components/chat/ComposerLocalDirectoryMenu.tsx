@@ -405,7 +405,7 @@ export function ComposerLocalDirectoryMenu(props: {
               <ArrowUp02Icon className="size-3.5" />
             </button>
           ) : (
-            <FolderIcon className="size-3.5 shrink-0 text-muted-foreground/70" />
+            <FolderIcon className="size-[1.077em] shrink-0 text-muted-foreground/70" />
           )}
           <span className="min-w-0 flex-1 truncate text-ui-sm font-medium text-foreground/80">
             {headerLabel}

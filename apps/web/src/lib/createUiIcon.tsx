@@ -29,7 +29,7 @@ export function createUiIcon(icon: IconSvgElement, defaultFilled = false): IconC
         strokeWidth={Number(strokeWidth)}
         role={label ? "img" : undefined}
         aria-hidden={label ? undefined : true}
-        className={cn("size-4 shrink-0", className)}
+        className={cn("shrink-0", className)}
         {...props}
       />
     );

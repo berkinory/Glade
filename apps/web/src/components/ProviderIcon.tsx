@@ -58,7 +58,7 @@ export function ProviderOptionLabel({
 }) {
   return (
     <span className={cn("flex min-w-0 items-center gap-2", className)}>
-      <ProviderIcon provider={provider} className={cn("size-3.5", iconClassName)} />
+      <ProviderIcon provider={provider} className={cn("size-[1.077em]", iconClassName)} />
       <span className="min-w-0 truncate">{label}</span>
     </span>
   );

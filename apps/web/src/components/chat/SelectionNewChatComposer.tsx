@@ -151,7 +151,7 @@ export function SelectionNewChatComposer({
                       }}
                     >
                       Open in chat
-                      <ArrowUpRightIcon className="size-3" />
+                      <ArrowUpRightIcon />
                     </Button>
                     <Button
                       type="button"
@@ -215,7 +215,7 @@ export function SelectionNewChatComposer({
                   {busy ? (
                     <Spinner className="size-3" />
                   ) : (
-                    <ArrowUp02Icon aria-hidden="true" className="size-5 shrink-0 translate-y-px" />
+                    <ArrowUp02Icon aria-hidden="true" className="size-5 shrink-0" />
                   )}
                 </Button>
               </div>

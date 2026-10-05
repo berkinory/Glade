@@ -33,7 +33,7 @@ export function PrStateChip({
         className,
       )}
     >
-      <PrIcon className="size-3 shrink-0" aria-hidden />#{pr.number}
+      <PrIcon className="size-[1.091em] shrink-0" aria-hidden />#{pr.number}
     </span>
   );
 }

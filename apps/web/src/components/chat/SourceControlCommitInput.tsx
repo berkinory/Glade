@@ -112,12 +112,7 @@ export function SourceControlCommitInput(props: {
           disabled={!props.canCommit || generation.isPending}
           onClick={props.onCommit}
         >
-          {props.committing ? (
-            <Spinner variant="action" className="size-4" />
-          ) : (
-            <GitCommitHorizontalIcon className="size-4" />
-          )}{" "}
-          Commit
+          {props.committing ? <Spinner variant="action" /> : <GitCommitHorizontalIcon />} Commit
         </Button>
       </div>
       {generationError && (

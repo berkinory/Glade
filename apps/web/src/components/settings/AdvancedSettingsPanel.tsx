@@ -169,7 +169,7 @@ export function AdvancedSettingsPanel(props: {
           description="Reset Glade preferences, theme customizations, and provider preferences."
           control={
             <Button size="sm" variant="outline" onClick={() => props.onRestoreDefaults()}>
-              <UndoIcon className="size-3.5" />
+              <UndoIcon />
               Restore defaults
             </Button>
           }

@@ -100,7 +100,7 @@ function ProviderDocsLinks({ docs }: { docs: ProviderInstallSettings["docs"] }) 
               render={<a href={doc.href} target="_blank" rel="noreferrer" />}
             >
               <span>{doc.label}</span>
-              <ExternalLinkIcon className="size-3" />
+              <ExternalLinkIcon />
             </Button>
           ))}
         </div>

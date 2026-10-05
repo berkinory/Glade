@@ -74,9 +74,9 @@ export function BrowserTabStrip(props: BrowserTabStripProps) {
                 onClick={() => onSelectTab(tab.id)}
               >
                 {tab.faviconUrl ? (
-                  <img alt="" src={tab.faviconUrl} className="size-3 shrink-0 rounded-xs" />
+                  <img alt="" src={tab.faviconUrl} className="size-[0.923em] shrink-0 rounded-xs" />
                 ) : (
-                  <Globe02Icon className="size-3 shrink-0 text-muted-foreground" />
+                  <Globe02Icon className="size-[0.923em] shrink-0 text-muted-foreground" />
                 )}
                 <span className="truncate">{tab.title || "Untitled"}</span>
               </button>

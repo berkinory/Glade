@@ -2,7 +2,7 @@ import type { ComponentType } from "react";
 import { cn } from "~/lib/utils";
 
 const SIDEBAR_GLYPH = {
-  leading: "size-[15px] shrink-0",
+  leading: "size-[1em] shrink-0",
 
   chrome: "size-3.5 shrink-0",
 

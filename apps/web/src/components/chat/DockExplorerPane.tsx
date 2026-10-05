@@ -1,4 +1,4 @@
-import { PanelLeftIcon } from "~/lib/icons";
+import { LayoutAlignLeftIcon } from "~/lib/icons";
 import { useEffect, useId, useState, useCallback, useSyncExternalStore } from "react";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { isNormalizedWindowsAbsolutePath } from "@glade/shared/platform/path";
@@ -246,7 +246,7 @@ export const DockExplorerPane = function DockExplorerPane(props: {
                   onClick={() => setSidebarOpen((open) => !open)}
                   className="shrink-0"
                 >
-                  <PanelLeftIcon className="size-3.5" />
+                  <LayoutAlignLeftIcon className="size-3.5" />
                 </IconButton>
               }
               workspaceRoot={props.workspaceRoot}

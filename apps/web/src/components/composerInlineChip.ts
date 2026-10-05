@@ -65,7 +65,7 @@ export const COMPOSER_INLINE_LINK_CHIP_CLASS_NAME = composerInlineChipClassName(
 });
 
 export const COMPOSER_INLINE_CHIP_TOKEN_ICON_CLASS_NAME =
-  "inline-block size-[1em] shrink-0 align-middle -translate-y-px";
+  "inline-block size-[1em] shrink-0 align-[-0.125em]";
 
 export const COMPOSER_INLINE_CHIP_INLINE_ICON_CLASS_NAME = cn(
   COMPOSER_INLINE_CHIP_TOKEN_ICON_CLASS_NAME,

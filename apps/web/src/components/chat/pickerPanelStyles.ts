@@ -5,7 +5,7 @@ export const PICKER_PANEL_PLAIN_SEARCH_HEADER_CLASS_NAME =
   "sticky top-0 z-20 flex shrink-0 items-center gap-2 border-b border-border bg-transparent px-2.5 py-0 *:min-w-0";
 
 export const PICKER_PANEL_PLAIN_SEARCH_ICON_CLASS_NAME =
-  "size-3.5 shrink-0 text-muted-foreground/55";
+  "size-[calc(var(--app-font-size-ui,13px)*14/13)] shrink-0 text-muted-foreground/55";
 
 // Pair with the `unstyled` Input prop so no border/ring/fill is emitted; the child selector strips
 // the field's own horizontal padding because the magnifier already owns the left gutter.
@@ -15,7 +15,7 @@ export const PICKER_PANEL_PLAIN_SEARCH_INPUT_CLASS_NAME =
 export const PICKER_PANEL_ROW_GEOMETRY_CLASS_NAME =
   "min-h-[1.625rem] gap-2 rounded-md px-1.5 py-px sm:min-h-[1.625rem]";
 
-export const PICKER_PANEL_ROW_ICON_CLASS_NAME = "size-3.5 shrink-0 text-muted-foreground/70";
+export const PICKER_PANEL_ROW_ICON_CLASS_NAME = "size-[1.077em] shrink-0 text-muted-foreground/70";
 
 export const PICKER_PANEL_ROW_SELECTED_CLASS_NAME =
   "bg-[var(--color-background-elevated-secondary)] text-[var(--color-text-foreground)]";

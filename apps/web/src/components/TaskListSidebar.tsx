@@ -1,4 +1,4 @@
-import { CheckIcon, PanelRightCloseIcon } from "~/lib/icons";
+import { CheckIcon, LayoutAlignRightIcon } from "~/lib/icons";
 import { Spinner } from "~/components/ui/spinner";
 import { type TimestampFormat } from "../appSettings";
 import { Button } from "./ui/button";
@@ -53,7 +53,7 @@ export default function TaskListSidebar({
           onClick={onClose}
           aria-label="Close task list sidebar"
         >
-          <PanelRightCloseIcon className="size-3.5" />
+          <LayoutAlignRightIcon className="size-3.5" />
         </Button>
       </div>
       <ScrollArea className="min-h-0 flex-1">

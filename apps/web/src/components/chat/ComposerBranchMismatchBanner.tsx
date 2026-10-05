@@ -34,7 +34,7 @@ export function ComposerBranchMismatchBanner({
           </code>
           <ArrowRight02Icon
             aria-hidden="true"
-            className="size-3 shrink-0 text-muted-foreground/50"
+            className="size-[1em] shrink-0 text-muted-foreground/50"
           />
           <code
             className="min-w-0 truncate font-medium text-foreground/85"

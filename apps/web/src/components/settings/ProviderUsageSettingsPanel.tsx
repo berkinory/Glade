@@ -179,11 +179,7 @@ export function ProviderUsageSettingsPanel() {
           disabled={isRefreshing}
           onClick={() => refreshMutation.mutate()}
         >
-          {isRefreshing ? (
-            <Spinner variant="action" aria-hidden="true" className="size-3.5" />
-          ) : (
-            <UndoIcon className="size-3.5" />
-          )}
+          {isRefreshing ? <Spinner variant="action" aria-hidden="true" /> : <UndoIcon />}
           Refresh
         </Button>
       }

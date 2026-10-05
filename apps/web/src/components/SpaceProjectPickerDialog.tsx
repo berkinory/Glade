@@ -134,7 +134,7 @@ export function SpaceProjectPickerDialog(props: {
               candidateGroups.map((group) => (
                 <section key={group.key}>
                   <p className="mb-1 flex items-center gap-1.5 px-2 text-ui-xs font-medium text-muted-foreground/55">
-                    <SpaceIcon icon={group.icon} className="size-3" />
+                    <SpaceIcon icon={group.icon} className="size-[1.091em]" />
                     <span className="min-w-0 truncate">{group.label}</span>
                   </p>
                   <div className="space-y-1">

@@ -283,9 +283,9 @@ export function ProvidersStep(props: { readonly detection: ProviderDetection }) 
           onClick={() => void detection.detect()}
         >
           {detection.detecting ? (
-            <Spinner variant="action" className="size-3.5" aria-hidden />
+            <Spinner variant="action" className="size-[1.077em]" aria-hidden />
           ) : (
-            <RefreshCwIcon className="size-3.5" aria-hidden />
+            <RefreshCwIcon className="size-[1.077em]" aria-hidden />
           )}
           Re-detect
         </button>
@@ -305,7 +305,7 @@ export function ProvidersStep(props: { readonly detection: ProviderDetection }) 
                 className="inline-flex cursor-pointer items-center gap-1 text-foreground/70 transition-colors hover:text-foreground motion-reduce:transition-none"
                 onClick={finishConnect}
               >
-                <XIcon className="size-3.5" aria-hidden />
+                <XIcon className="size-[1.077em]" aria-hidden />
                 Done
               </button>
             </div>

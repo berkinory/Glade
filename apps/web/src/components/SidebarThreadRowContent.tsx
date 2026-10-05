@@ -8,6 +8,8 @@ import { SIDEBAR_ROW_LABEL_TEXT_CLASS_NAME } from "../sidebarRowStyles";
 import type { SidebarThreadSummary } from "../types";
 import { cn } from "../lib/utils";
 import { ProviderIcon } from "./ProviderIcon";
+import { SidebarLeadingIcon } from "./SidebarLeadingIcon";
+import { sidebarGlyphClass } from "./sidebarGlyphs";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 export interface SidebarThreadTerminalStatus {
   label: "Terminal input needed" | "Terminal task completed" | "Terminal process running";
@@ -32,9 +34,9 @@ function ProviderAvatarWithTerminal({
       ? `${terminalCount} ${pluralize(terminalCount, "terminal")} open`
       : (terminalStatus?.label ?? "Terminal open");
   const badgeColorClass = terminalStatus?.colorClass ?? "text-muted-foreground/55";
-  const avatarNode = <ProviderIcon provider={provider} className="size-3" />;
+  const avatarNode = <ProviderIcon provider={provider} className={sidebarGlyphClass("leading")} />;
   return (
-    <span className="relative inline-flex shrink-0 translate-y-px items-center">
+    <SidebarLeadingIcon size="sm" tone="text-inherit">
       {avatarNode}
       {projectBadge ? (
         <span className="sidebar-icon-chip absolute -bottom-1 -right-1 inline-flex size-2.5 items-center justify-center rounded-sm">
@@ -67,7 +69,7 @@ function ProviderAvatarWithTerminal({
           <TooltipPopup side="top">{badgeTooltip}</TooltipPopup>
         </Tooltip>
       ) : null}
-    </span>
+    </SidebarLeadingIcon>
   );
 }
 function renderSubagentLabel(input: {

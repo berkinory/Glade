@@ -2,7 +2,7 @@ import {
   WorkflowCircle04Icon,
   ArrowExpandIcon,
   ArrowLeftRightIcon,
-  PanelRightCloseIcon,
+  LayoutAlignRightIcon,
   PencilEdit02Icon,
 } from "~/lib/icons";
 import { type EditorId } from "@glade/contracts/settings/editor";
@@ -167,7 +167,7 @@ export function ChatHeader({
                 deletions={diffDeletions}
               />
             ) : null}
-            <SurfaceChipIcon icon={PanelRightCloseIcon} className="size-4" />
+            <SurfaceChipIcon icon={LayoutAlignRightIcon} className="size-4" />
           </Toggle>
         }
       />

@@ -2,8 +2,8 @@ import { forwardRef, type HTMLAttributes } from "react";
 import { cn } from "~/lib/utils";
 
 const SLOT_SIZE = {
-  sm: "size-4",
-  md: "size-5",
+  sm: "size-[calc(var(--app-font-size-ui,14px)*8/7)]",
+  md: "size-[calc(var(--app-font-size-ui,14px)*10/7)]",
 } as const;
 
 type SidebarLeadingIconSize = keyof typeof SLOT_SIZE;
@@ -25,7 +25,7 @@ export const SidebarLeadingIcon = forwardRef<HTMLSpanElement, SidebarLeadingIcon
         {...props}
         ref={ref}
         className={cn(
-          "relative inline-flex shrink-0 translate-y-px items-center justify-center",
+          "relative inline-flex shrink-0 translate-y-[0.025em] items-center justify-center",
           SLOT_SIZE[size],
           tone,
           className,

@@ -105,7 +105,7 @@ export function FeatureTourStep() {
           className="mt-2 inline-flex items-center gap-1.5 self-start text-ui text-muted-foreground transition-colors hover:text-foreground motion-reduce:transition-none"
         >
           Read the guide
-          <ExternalLinkIcon className="size-3" aria-hidden />
+          <ExternalLinkIcon className="size-[0.923em]" aria-hidden />
         </a>
       </div>
     </div>

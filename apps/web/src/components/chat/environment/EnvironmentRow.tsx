@@ -18,7 +18,7 @@ export const ENVIRONMENT_ROW_CLASS_NAME = cn(
   "disabled:pointer-events-none disabled:opacity-50",
 );
 export const ENVIRONMENT_ROW_ICON_CLASS_NAME =
-  "size-4 shrink-0 text-[var(--color-text-foreground)]";
+  "size-[1.143em] shrink-0 text-[var(--color-text-foreground)]";
 export function EnvironmentRowChevron({ className }: { className?: string }) {
   return <ChevronDownIcon aria-hidden className={cn("size-3 shrink-0 opacity-60", className)} />;
 }
@@ -103,7 +103,9 @@ export function EnvironmentRowBody({
       {compact ? (
         <span className="inline-flex shrink-0 items-center justify-center">{icon}</span>
       ) : (
-        <span className="flex size-4 shrink-0 items-center justify-center">{icon}</span>
+        <span className="flex size-[1.143em] shrink-0 items-center justify-center [&>svg]:size-full">
+          {icon}
+        </span>
       )}
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {trailing ? (

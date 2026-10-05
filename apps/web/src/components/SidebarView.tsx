@@ -66,7 +66,7 @@ import {
   ProjectSortMenu,
   SidebarHelpMenu,
   SortableProjectItem,
-  SidebarActivityBellButton,
+  SidebarActivityButton,
 } from "./sidebarSupport";
 export function SidebarView({ context }: { context: ReturnType<typeof useSidebarPanelEffects> }) {
   const {
@@ -289,7 +289,6 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
                 <SidebarIconButton
                   icon={SearchIcon}
                   label="Search"
-                  glyph="leading"
                   size="header"
                   tooltip={searchShortcutLabel ? `Search (${searchShortcutLabel})` : "Search"}
                   tooltipSide="bottom"
@@ -297,7 +296,7 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
                     setSearchPaletteOpen(true);
                   }}
                 />
-                <SidebarActivityBellButton
+                <SidebarActivityButton
                   active={activityViewEnabled}
                   showUnreadDot={hasUnreadActivity}
                   shortcutLabel={activityShortcutLabel}

@@ -94,7 +94,7 @@ function WhatsNewDialogContent({
             onClick={() => setView("changelog")}
           >
             View changelog
-            <ArrowRight02Icon className="size-3" />
+            <ArrowRight02Icon />
           </Button>
           <Button size="sm" onClick={() => onOpenChange(false)}>
             Got it

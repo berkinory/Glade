@@ -1,4 +1,4 @@
-import { ArrowUp02Icon, PanelLeftIcon } from "~/lib/icons";
+import { ArrowUp02Icon, LayoutAlignRightIcon } from "~/lib/icons";
 import { Spinner } from "~/components/ui/spinner";
 import { type ReactNode } from "react";
 import { cn } from "~/lib/utils";
@@ -88,7 +88,7 @@ export function ChatComposerFooter({
                 title={sidebarAction.title}
                 aria-label={sidebarAction.title}
               >
-                <PanelLeftIcon className="size-3.5" />
+                <LayoutAlignRightIcon />
                 <span className="sr-only sm:not-sr-only">{sidebarAction.label}</span>
               </Button>
             ) : null}
@@ -190,7 +190,7 @@ export function ChatComposerFooter({
               {submission.connecting || submission.busy || submission.preparingImages ? (
                 <Spinner variant="action" className="size-3.5" aria-hidden="true" />
               ) : (
-                <ArrowUp02Icon aria-hidden="true" className="size-5 shrink-0 translate-y-px" />
+                <ArrowUp02Icon aria-hidden="true" className="size-5 shrink-0" />
               )}
             </Button>
           </>

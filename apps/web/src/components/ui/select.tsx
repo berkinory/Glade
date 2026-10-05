@@ -24,12 +24,12 @@ const Select = SelectPrimitive.Root;
 // (SettingsSelectPopup). The legacy unstyled default surface was removed on
 // purpose — do not add it back.
 type SelectPopupSurface = "composer" | "settings";
-const settingsSelectOptionClassName = `[&>svg]:-mx-0.5 flex cursor-default select-none items-center ${COMPOSER_PICKER_OPTION_RADIUS_CLASS_NAME} text-ui text-[var(--color-text-foreground)] outline-none data-disabled:pointer-events-none data-highlighted:bg-[var(--color-background-button-secondary-hover)] data-highlighted:text-[var(--color-text-foreground)] data-disabled:opacity-64 [&>svg:not([class*='opacity-'])]:opacity-80 [&>svg]:pointer-events-none [&>svg]:shrink-0 grid in-data-[side=none]:min-w-[calc(var(--anchor-width)+1.25rem)]`;
+const settingsSelectOptionClassName = `[&>svg]:-mx-0.5 flex cursor-default select-none items-center ${COMPOSER_PICKER_OPTION_RADIUS_CLASS_NAME} text-ui text-[var(--color-text-foreground)] outline-none data-disabled:pointer-events-none data-highlighted:bg-[var(--color-background-button-secondary-hover)] data-highlighted:text-[var(--color-text-foreground)] data-disabled:opacity-64 [&>svg:not([class*='opacity-'])]:opacity-80 [&>svg]:pointer-events-none [&>svg]:shrink-0 [&_svg:not([class*='size-'])]:size-[1.077em] grid in-data-[side=none]:min-w-[calc(var(--anchor-width)+1.25rem)]`;
 const SelectPopupSurfaceContext = React.createContext<SelectPopupSurface>("composer");
 
 // Keep neutral select chrome on the same token families Codex uses for menus and list hover.
 const selectTriggerVariants = cva(
-  "relative inline-flex cursor-pointer select-none items-center justify-between gap-2 border rounded-md text-left text-ui outline-none transition-[color,background-color] data-disabled:pointer-events-none data-disabled:opacity-64 sm:text-ui [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4",
+  "relative inline-flex cursor-pointer select-none items-center justify-between gap-2 border rounded-md text-left text-ui outline-none transition-[color,background-color] data-disabled:pointer-events-none data-disabled:opacity-64 sm:text-ui [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-[1.143em]",
   {
     defaultVariants: {
       size: "default",
@@ -46,12 +46,12 @@ const selectTriggerVariants = cva(
         default: "min-h-9 px-[calc(--spacing(3)-1px)] sm:min-h-8",
         lg: "min-h-10 px-[calc(--spacing(3)-1px)] sm:min-h-9",
         sm: "min-h-8 gap-1.5 px-[calc(--spacing(2.5)-1px)] sm:min-h-7",
-        xs: "h-7 gap-1 rounded-sm px-[calc(--spacing(2)-1px)] text-ui-sm sm:h-6 sm:text-ui-xs [&_svg:not([class*='size-'])]:size-4 sm:[&_svg:not([class*='size-'])]:size-3.5",
+        xs: "h-7 gap-1 rounded-sm px-[calc(--spacing(2)-1px)] text-ui-sm sm:h-6 sm:text-ui-xs [&_svg:not([class*='size-'])]:size-[1.167em]",
       },
     },
   },
 );
-const selectTriggerIconClassName = "-me-1 size-4.5 opacity-80 sm:size-4";
+const selectTriggerIconClassName = "-me-1 size-[1.143em] opacity-80";
 interface SelectButtonProps extends useRender.ComponentProps<"button"> {
   size?: VariantProps<typeof selectTriggerVariants>["size"];
   variant?: VariantProps<typeof selectTriggerVariants>["variant"];
@@ -67,7 +67,7 @@ function SelectButton({ className, size, variant, render, children, ...props }: 
           {children}
         </span>
         {variant === "ghost" ? (
-          <ChevronDownIcon className="size-3 opacity-50" />
+          <ChevronDownIcon className="size-[0.923em] opacity-50" />
         ) : (
           <ChevronsDownUpIcon className={selectTriggerIconClassName} />
         )}
@@ -113,7 +113,7 @@ function SelectTrigger({
     >
       {children}
       <SelectPrimitive.Icon data-slot="select-icon">
-        <ChevronDownIcon className="size-3 opacity-50" />
+        <ChevronDownIcon className="size-[0.923em] opacity-50" />
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   );

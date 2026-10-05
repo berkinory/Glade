@@ -23,7 +23,7 @@ export function ComposerEffortSlider(props: {
   return (
     <div className="space-y-2 rounded-lg bg-muted/20 px-2.5 py-2.5" data-slot="effort-slider-card">
       <div className="flex items-center gap-2">
-        <Brain03Icon className="size-3.5 text-muted-foreground" />
+        <Brain03Icon className="size-[1.077em] text-muted-foreground" />
         <span className="flex-1 text-ui font-medium">Thinking</span>
         <span className="text-ui-sm font-medium text-[var(--color-text-accent)]">
           {level.label}

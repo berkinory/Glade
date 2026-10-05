@@ -1,7 +1,7 @@
 import {
   CollapseIcon,
   ExpandIcon,
-  PanelLeftIcon,
+  LayoutAlignRightIcon,
   FilterHorizontalIcon,
   Robot01Icon,
   CheckIcon,
@@ -76,7 +76,7 @@ export function ActiveTaskListCard({
             aria-label="Open tasks sidebar"
             title="Open tasks sidebar"
           >
-            <PanelLeftIcon className="size-3" />
+            <LayoutAlignRightIcon className="size-3" />
           </Button>
           <Button
             type="button"
@@ -142,7 +142,7 @@ export function ActiveTaskListCard({
               )}
             >
               <div className="flex min-w-0 items-center gap-1.5">
-                <Robot01Icon className="size-3 shrink-0" />
+                <Robot01Icon className="size-[0.923em] shrink-0" />
                 <span className="truncate">
                   {backgroundTaskCount} background {pluralize(backgroundTaskCount, "agent")}
                 </span>
