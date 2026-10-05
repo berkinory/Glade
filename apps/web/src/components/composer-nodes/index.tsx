@@ -29,7 +29,7 @@ import {
   formatComposerSkillChipLabel,
   resolveAgentChipColor,
 } from "../composerInlineChip";
-import { Robot01Icon, Book02Icon, MessageCircleIcon } from "~/lib/icons";
+import { BotIcon, Book02Icon, MessageCircleIcon } from "~/lib/icons";
 import { slashCommandIcon } from "~/lib/slashCommandIcons";
 import type { ComposerSlashCommand } from "~/composerSlashCommands";
 import { InlineLinkChip } from "../InlineLinkChip";
@@ -160,7 +160,7 @@ function renderAgentMentionChipDom(container: HTMLElement, alias: string, color:
   const colorStyles = resolveAgentChipColor(color);
   container.style.backgroundColor = colorStyles.bg;
   container.style.color = colorStyles.text;
-  const icon = createIconElement(Robot01Icon, COMPOSER_INLINE_AGENT_CHIP_ICON_CLASS_NAME);
+  const icon = createIconElement(BotIcon, COMPOSER_INLINE_AGENT_CHIP_ICON_CLASS_NAME);
   const label = document.createElement("span");
   label.className = COMPOSER_INLINE_CHIP_LABEL_CLASS_NAME;
   label.textContent = `@${alias}`;

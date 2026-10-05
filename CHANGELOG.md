@@ -44,7 +44,7 @@
 
 - Keyboard shortcut hints are more consistent and readable, and sidebar pull request and workspace indicators leave conversation titles easier to read.
 
-- Use a consistent icon family across the interface and refreshed brand artwork, while preserving file and folder symbols.
+- Use clearer icons for tools, subagents and conversation activity, with recognizable service logos for supported MCP servers across providers and in the plugin library.
 
 - Approval, tool progress and background-task details retain more useful explanations and error context.
 

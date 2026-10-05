@@ -1,6 +1,6 @@
 import type { IconComponent } from "~/lib/iconComponent";
 import {
-  Robot01Icon,
+  BotIcon,
   Brain03Icon,
   BugIcon,
   MousePointer01Icon,
@@ -10,11 +10,11 @@ import {
   InfoIcon,
   ListTodoIcon,
   MessageCircleIcon,
-  CollapseIcon,
+  FilterIcon,
 } from "~/lib/icons";
 const SLASH_COMMAND_ICONS: Record<string, IconComponent> = {
   clear: EraserIcon,
-  compact: CollapseIcon,
+  compact: FilterIcon,
   model: Brain03Icon,
   fast: EnergyFilledIcon,
   plan: ListTodoIcon,
@@ -23,7 +23,7 @@ const SLASH_COMMAND_ICONS: Record<string, IconComponent> = {
   review: BugIcon,
   fork: WorkflowCircle04Icon,
   status: InfoIcon,
-  subagents: Robot01Icon,
+  subagents: BotIcon,
   feedback: BugIcon,
   "computer-use": MousePointer01Icon,
 };

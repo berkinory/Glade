@@ -1,24 +1,27 @@
+import { resolveMcpToolIcon } from "~/lib/mcpToolIcon";
 import { GitHubIcon } from "~/lib/brandIcons";
 import {
-  CircleArrowUpIcon,
-  ArrowDownToLineIcon,
+  CheckmarkCircle02Icon,
+  BackgroundIcon,
   BookOpen01Icon,
-  Robot01Icon,
-  CheckIcon,
+  BotIcon,
+  Brain03Icon,
+  InfoIcon,
+  File02Icon,
   AlertCircleIcon,
   HelpCircleIcon,
-  SortingDownIcon,
+  FilterIcon,
   MousePointer01Icon,
   ViewIcon,
   Globe02Icon,
-  HammerIcon,
+  ToolsIcon,
   HistoryIcon,
   McpServerIcon,
   PencilEdit02Icon,
   SearchIcon,
   BlocksIcon,
   ComputerTerminal01Icon,
-  EnergyIcon,
+  Image01Icon,
 } from "~/lib/icons";
 import type { IconComponent } from "~/lib/iconComponent";
 import { ProviderTransitionDivider } from "./ProviderTransitionDivider";
@@ -85,7 +88,6 @@ const EMPTY_FILE_DIFF_STATS: ReadonlyMap<
   }
 > = new Map();
 type TimelineWorkEntry = WorkLogEntry;
-const AgentTaskIcon: IconComponent = (props) => <Robot01Icon {...props} />;
 const GladeToolIcon: IconComponent = ({ className, ...props }) => (
   <GladeLogo {...props} className={cn("text-current", className)} />
 );
@@ -101,13 +103,13 @@ function workToneIcon(tone: TimelineWorkEntry["tone"]): {
   }
   if (tone === "thinking") {
     return {
-      icon: Robot01Icon,
+      icon: Brain03Icon,
       className: "text-muted-foreground/40",
     };
   }
   if (tone === "info") {
     return {
-      icon: CheckIcon,
+      icon: InfoIcon,
       className: "text-muted-foreground/50",
     };
   }
@@ -186,18 +188,18 @@ function commandWorkEntryIcon(workEntry: TimelineWorkEntry): IconComponent {
 }
 function workEntryIcon(workEntry: TimelineWorkEntry): IconComponent {
   if (workEntry.activityKind === "user-input.requested") return HelpCircleIcon;
-  if (workEntry.activityKind === "user-input.resolved") return CircleArrowUpIcon;
-  if (workEntry.activityKind === "context-compaction") return SortingDownIcon;
-  if (workEntry.nativeEventType === "background_tasks_changed") return ArrowDownToLineIcon;
+  if (workEntry.activityKind === "user-input.resolved") return CheckmarkCircle02Icon;
+  if (workEntry.activityKind === "context-compaction") return FilterIcon;
+  if (workEntry.nativeEventType === "background_tasks_changed") return BackgroundIcon;
   if (workEntry.providerContextLifecycle) {
     return workEntry.providerContextLifecycle.nativeHistory === "unavailable"
       ? AlertCircleIcon
       : HistoryIcon;
   }
   if (workEntry.requestKind === "command") return commandWorkEntryIcon(workEntry);
-  if (workEntry.requestKind === "file-read") return SearchIcon;
+  if (workEntry.requestKind === "file-read") return File02Icon;
   if (workEntry.requestKind === "file-change") return PencilEdit02Icon;
-  if (workEntry.requestKind === "tool") return McpServerIcon;
+  if (workEntry.requestKind === "tool") return ToolsIcon;
   if (workEntry.itemType === "command_execution" || workEntry.command) {
     return commandWorkEntryIcon(workEntry);
   }
@@ -205,16 +207,16 @@ function workEntryIcon(workEntry: TimelineWorkEntry): IconComponent {
     return PencilEdit02Icon;
   }
   if (workEntry.itemType === "web_search") return Globe02Icon;
-  if (workEntry.itemType === "image_generation") return EnergyIcon;
+  if (workEntry.itemType === "image_generation") return Image01Icon;
   if (workEntry.itemType === "image_view") return ViewIcon;
-  if (isFileReadToolEntry(workEntry)) return SearchIcon;
+  if (isFileReadToolEntry(workEntry)) return File02Icon;
   switch (workEntry.itemType) {
     case "mcp_tool_call":
       return BlocksIcon;
     case "dynamic_tool_call":
-      return HammerIcon;
+      return ToolsIcon;
     case "collab_agent_tool_call":
-      return AgentTaskIcon;
+      return BotIcon;
   }
   return workToneIcon(workEntry.tone).icon;
 }
@@ -228,7 +230,7 @@ export function workEntryLeftIcon(
   classification = classifyWorkEntryTool(workEntry),
 ): IconComponent {
   if (classification.isComputer) return MousePointer01Icon;
-  if (classification.isGitHub) return GitHubIcon;
+  if (classification.mcpIcon) return classification.mcpIcon;
   if (classification.isGladeBrowser) return Globe02Icon;
   if (classification.gladeTitle !== null) return GladeToolIcon;
   if (workEntry.itemType === "mcp_tool_call") return McpServerIcon;
@@ -249,13 +251,13 @@ function classifyWorkEntryTool(workEntry: TimelineWorkEntry) {
     status,
   };
   const computerTool = computerToolName(workEntry.toolName);
+  const mcpIcon = resolveMcpToolIcon(workEntry);
   return {
     status,
     computerTool,
     isComputer: computerTool !== null || /^Computer Use:/i.test(workEntry.toolTitle ?? ""),
-    isGitHub: Boolean(
-      workEntry.toolName?.trim().toLowerCase().startsWith("mcp__codex_apps__github"),
-    ),
+    mcpIcon,
+    isGitHub: mcpIcon === GitHubIcon,
     isGladeBrowser: isGladeBrowserToolCall(titleInput),
     gladeTitle: deriveGladeMcpToolTitle(titleInput),
   };
@@ -270,11 +272,12 @@ export function prefersCompactWorkEntryRow(workEntry: TimelineWorkEntry): boolea
   const EntryIcon = workEntryIcon(workEntry);
   return (
     EntryIcon === ComputerTerminal01Icon ||
-    EntryIcon === HammerIcon ||
-    EntryIcon === AgentTaskIcon ||
+    EntryIcon === ToolsIcon ||
+    EntryIcon === BotIcon ||
     EntryIcon === PencilEdit02Icon ||
     EntryIcon === BlocksIcon ||
-    EntryIcon === SearchIcon
+    EntryIcon === SearchIcon ||
+    EntryIcon === File02Icon
   );
 }
 function capitalizePhrase(value: string): string {

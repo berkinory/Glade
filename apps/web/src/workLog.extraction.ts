@@ -494,6 +494,18 @@ function commandActionListPreview(action: CommandAction): string | undefined {
   return (action.path ? compactPath(action.path) : null) ?? action.name ?? undefined;
 }
 
+export function extractMcpService(payload: Record<string, unknown> | null): string | null {
+  const data = asObjectRecord(payload?.data);
+  const item = asObjectRecord(data?.item);
+  const appContext = asObjectRecord(item?.appContext);
+  const candidates = [appContext?.appName, payload?.server, data?.server, item?.server];
+  for (const candidate of candidates) {
+    const name = nonEmptyTrimmed(candidate);
+    if (name) return name;
+  }
+  return null;
+}
+
 export function extractToolName(payload: Record<string, unknown> | null): string | null {
   const data = asObjectRecord(payload?.data);
   const item = asObjectRecord(data?.item);

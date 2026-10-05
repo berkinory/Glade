@@ -3,7 +3,7 @@ import {
   ExpandIcon,
   LayoutAlignRightIcon,
   FilterHorizontalIcon,
-  Robot01Icon,
+  BotIcon,
   CheckIcon,
 } from "~/lib/icons";
 import { Spinner } from "~/components/ui/spinner";
@@ -142,7 +142,7 @@ export function ActiveTaskListCard({
               )}
             >
               <div className="flex min-w-0 items-center gap-1.5">
-                <Robot01Icon className="size-[0.923em] shrink-0" />
+                <BotIcon className="size-[0.923em] shrink-0" />
                 <span className="truncate">
                   {backgroundTaskCount} background {pluralize(backgroundTaskCount, "agent")}
                 </span>

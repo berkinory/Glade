@@ -59,6 +59,7 @@ import {
   extractToolCallId,
   extractToolCommand,
   extractToolName,
+  extractMcpService,
   extractToolTitle,
   extractWorkLogItemType,
   extractWorkLogRequestKind,
@@ -371,6 +372,7 @@ function normalizeWorkLogActivity(activity: OrchestrationThreadActivity): Derive
   const changedFiles = extractChangedFiles(payload);
   const title = extractToolTitle(payload);
   const toolName = extractToolName(payload);
+  const mcpService = extractMcpService(payload);
   const toolCallId = extractToolCallId(payload);
   const toolStatus = deriveToolLifecycleStatus(activity.kind, payload);
   const entry: DerivedWorkLogEntry = {
@@ -382,6 +384,7 @@ function normalizeWorkLogActivity(activity: OrchestrationThreadActivity): Derive
     tone: activity.tone === "approval" ? "info" : activity.tone,
     activityKind: activity.kind,
     ...(toolName ? { toolName } : {}),
+    ...(mcpService ? { mcpService } : {}),
     ...(toolCallId ? { toolCallId } : {}),
     ...(toolStatus ? { toolStatus } : {}),
   };

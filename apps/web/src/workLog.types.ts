@@ -63,6 +63,7 @@ export interface WorkLogEntry {
   tone: "thinking" | "tool" | "info" | "error";
   toolTitle?: string;
   toolName?: string;
+  mcpService?: string;
   toolCallId?: string;
   toolStatus?: GladeMcpToolStatus;
   liveActivity?: WorkLogLiveActivity;

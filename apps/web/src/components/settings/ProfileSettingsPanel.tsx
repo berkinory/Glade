@@ -1,10 +1,4 @@
-import {
-  Share02Icon,
-  PencilEdit02Icon,
-  ChartColumnIcon,
-  Robot01Icon,
-  Book02Icon,
-} from "~/lib/icons";
+import { Share02Icon, PencilEdit02Icon, ChartColumnIcon, BotIcon, Book02Icon } from "~/lib/icons";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { type ProfileStats, type ProfileTokenStats } from "@glade/contracts/server/stats";
@@ -217,7 +211,7 @@ function ProfileContent({
                   <span className="flex min-w-0 items-center gap-2.5">
                     <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-muted/60">
                       {skill.kind === "agent" ? (
-                        <Robot01Icon className="size-3" />
+                        <BotIcon className="size-3" />
                       ) : (
                         <Book02Icon className="size-3" />
                       )}

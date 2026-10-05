@@ -1,4 +1,4 @@
-import { Robot01Icon } from "~/lib/icons";
+import { BotIcon } from "~/lib/icons";
 import {
   COMPOSER_INLINE_AGENT_CHIP_CLASS_NAME,
   COMPOSER_INLINE_AGENT_CHIP_ICON_CLASS_NAME,
@@ -16,7 +16,7 @@ export const InlineAgentChip = function InlineAgentChip(props: { alias: string; 
       }}
     >
       <InlineChipContent
-        icon={<Robot01Icon className={COMPOSER_INLINE_AGENT_CHIP_ICON_CLASS_NAME} />}
+        icon={<BotIcon className={COMPOSER_INLINE_AGENT_CHIP_ICON_CLASS_NAME} />}
         label={`@${props.alias}`}
       />
     </span>

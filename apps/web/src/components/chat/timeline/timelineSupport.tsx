@@ -1,6 +1,6 @@
 import type { AgentActivityDetail } from "~/components/chat/agentActivity.logic";
 import {
-  Robot01Icon,
+  BotIcon,
   AlertCircleIcon,
   CircleCheckIcon,
   CornerDownRightIcon,
@@ -85,7 +85,7 @@ const USER_TURN_MARKER_PRESENTATION: Record<
   }
 > = {
   agent: {
-    Icon: Robot01Icon,
+    Icon: BotIcon,
     label: "Sent by agent",
   },
   steer: {

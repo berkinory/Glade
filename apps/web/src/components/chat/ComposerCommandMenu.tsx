@@ -1,5 +1,5 @@
 import {
-  Robot01Icon,
+  BotIcon,
   Brain03Icon,
   PlusMinusSquare01Icon,
   AlertCircleIcon,
@@ -452,7 +452,7 @@ function commandMenuItemGlyph(item: ComposerCommandItem, theme: "light" | "dark"
     case "model":
       return <Brain03Icon className={cls} />;
     case "agent":
-      return <Robot01Icon className={cls} />;
+      return <BotIcon className={cls} />;
     case "plugin":
       return <PuzzleIcon className={cls} />;
     case "thread":

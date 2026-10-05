@@ -1,7 +1,7 @@
 import {
-  ArrowDownToLineIcon,
+  BackgroundIcon,
   CornerUpLeftIcon,
-  Robot01Icon,
+  BotIcon,
   CollapseIcon,
   ExpandIcon,
   SquareFilledIcon,
@@ -68,7 +68,7 @@ export const ComposerSubagentStrip = function ComposerSubagentStrip({
           {compact && runningCount > 0 ? (
             <Spinner variant="working" className={COMPOSER_STACKED_PANEL_ICON_CLASS_NAME} />
           ) : (
-            <Robot01Icon className={COMPOSER_STACKED_PANEL_ICON_CLASS_NAME} />
+            <BotIcon className={COMPOSER_STACKED_PANEL_ICON_CLASS_NAME} />
           )}
           <ComposerStackedPanelRowLabel tone="meta">
             {runningCount > 0
@@ -193,7 +193,7 @@ export const ComposerSubagentStrip = function ComposerSubagentStrip({
                     aria-label="Run in background (ctrl+b)"
                     title="Run in background (ctrl+b)"
                   >
-                    <ArrowDownToLineIcon className="size-3" />
+                    <BackgroundIcon className="size-3" />
                   </Button>
                 ) : null}
                 {item.isActive && onStopItem ? (

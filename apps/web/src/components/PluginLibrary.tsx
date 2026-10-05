@@ -1,17 +1,4 @@
-import {
-  CanvaIcon,
-  FigmaIcon,
-  GitHubIcon,
-  GmailIcon,
-  GoogleCalendarIcon,
-  GoogleDriveIcon,
-  HuggingFaceIcon,
-  LinearIcon,
-  NotionIcon,
-  SlackIcon,
-  StripeIcon,
-  VercelIcon,
-} from "~/lib/brandIcons";
+import { resolveServiceBrand, type ServiceBrandArtwork } from "~/lib/serviceBrandArtwork";
 import {
   CheckIcon,
   AlertCircleIcon,
@@ -20,7 +7,6 @@ import {
   PuzzleIcon,
   SearchIcon,
 } from "~/lib/icons";
-import type { IconComponent } from "~/lib/iconComponent";
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import {
@@ -70,63 +56,9 @@ type PluginEntry = {
   plugin: ProviderPluginDescriptor;
   isFeatured: boolean;
 };
-type PluginBrandArtwork = {
-  color: string;
-  icon: IconComponent;
-};
 const PROVIDER_ICON: Record<ProviderKind, React.FC<React.SVGProps<SVGSVGElement>>> = {
   ...PROVIDER_ICON_COMPONENT_BY_PROVIDER,
   codex: HammerIcon,
-};
-const KNOWN_PLUGIN_BRANDS: Record<string, PluginBrandArtwork> = {
-  canva: {
-    icon: CanvaIcon,
-    color: "#00C4CC",
-  },
-  figma: {
-    icon: FigmaIcon,
-    color: "#F24E1E",
-  },
-  github: {
-    icon: GitHubIcon,
-    color: "#181717",
-  },
-  gmail: {
-    icon: GmailIcon,
-    color: "#EA4335",
-  },
-  googlecalendar: {
-    icon: GoogleCalendarIcon,
-    color: "#4285F4",
-  },
-  googledrive: {
-    icon: GoogleDriveIcon,
-    color: "#0F9D58",
-  },
-  huggingface: {
-    icon: HuggingFaceIcon,
-    color: "#FF9D00",
-  },
-  linear: {
-    icon: LinearIcon,
-    color: "#5E6AD2",
-  },
-  notion: {
-    icon: NotionIcon,
-    color: "#111111",
-  },
-  slack: {
-    icon: SlackIcon,
-    color: "#4A154B",
-  },
-  stripe: {
-    icon: StripeIcon,
-    color: "#635BFF",
-  },
-  vercel: {
-    icon: VercelIcon,
-    color: "#111111",
-  },
 };
 function pluginEntryKey(
   entry: Pick<PluginEntry, "marketplaceName" | "marketplacePath" | "plugin">,
@@ -140,24 +72,13 @@ function sectionTitle(value: string): string {
 function resolvePluginAccent(plugin: ProviderPluginDescriptor): string | undefined {
   return plugin.interface?.brandColor?.trim() || undefined;
 }
-function normalizeBrandKey(value: string | undefined): string {
-  return (value ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "");
-}
 function resolvePluginLogo(plugin: ProviderPluginDescriptor): string | undefined {
   return plugin.interface?.logo?.trim() || undefined;
 }
-function resolvePluginBrand(plugin: ProviderPluginDescriptor): PluginBrandArtwork | undefined {
-  const candidates = [
-    plugin.interface?.composerIcon,
-    plugin.interface?.displayName,
-    plugin.name,
-  ].map(normalizeBrandKey);
+function resolvePluginBrand(plugin: ProviderPluginDescriptor): ServiceBrandArtwork | undefined {
+  const candidates = [plugin.interface?.composerIcon, plugin.interface?.displayName, plugin.name];
   for (const candidate of candidates) {
-    if (!candidate) continue;
-    const knownBrand = KNOWN_PLUGIN_BRANDS[candidate];
+    const knownBrand = resolveServiceBrand(candidate);
     if (knownBrand) return knownBrand;
   }
   return undefined;
