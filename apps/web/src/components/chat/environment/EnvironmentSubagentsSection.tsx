@@ -1,6 +1,9 @@
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { providerComposerCapabilitiesQueryOptions } from "~/lib/providerDiscoveryReactQuery";
+import { interruptThreadTurn } from "../chatTaskActions";
 import { enrichSubagentWorkEntries } from "~/components/ChatView.logic.subagents";
 import { createRelevantWorkLogThreadsSelector } from "~/components/ChatView.selectors";
 import {
@@ -38,6 +41,10 @@ function NativeSubagentRow({
   onOpen: (id: ThreadId) => void;
 }) {
   const child = useStore(useMemo(() => createThreadSelector(thread.id), [thread.id]));
+  const setError = useStore((store) => store.setError);
+  const nativeControls = useQuery(
+    providerComposerCapabilitiesQueryOptions(thread.modelSelection.provider),
+  ).data?.nativeSubagentControls;
   const presentation = resolveSubagentPresentation({
     nickname: thread.subagentNickname,
     role: thread.subagentRole,
@@ -59,42 +66,60 @@ function NativeSubagentRow({
             ? "Failed"
             : "Status unavailable");
   return (
-    <button
-      type="button"
+    <div
       className={cn(
         ENVIRONMENT_ROW_CLASS_NAME,
-        "grid grid-cols-[auto_minmax(0,1fr)_auto] gap-y-0.5",
+        "group/subagent-row grid grid-cols-[minmax(0,1fr)_auto] gap-y-0.5",
       )}
-      onClick={() => onOpen(thread.id)}
     >
-      <SubagentAvatar threadId={thread.id} />
-      <span className="min-w-0 truncate" title={presentation.fullLabel}>
-        {presentation.primaryLabel}
-        {detail?.modelLabel ? (
-          <span className="ml-1.5 text-ui-xs text-muted-foreground" title={detail.modelLabel}>
-            {detail.modelLabel}
-          </span>
-        ) : null}
-      </span>
-      <SubagentStatusIndicator
-        statusKind={detail?.statusKind ?? normalizeSubagentStatusKind(status)}
-        statusLabel={status}
-      />
-      {detail?.task || detail?.latestUpdate ? (
-        <span className="col-start-2 flex min-w-0 flex-col gap-0.5">
-          {detail?.task ? (
-            <span className="truncate text-ui-xs text-muted-foreground" title={detail.task}>
-              {detail.task}
-            </span>
-          ) : null}
-          {detail?.latestUpdate ? (
-            <span className="line-clamp-2 text-ui-xs text-muted-foreground">
-              {detail.latestUpdate}
+      <button
+        type="button"
+        className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-0.5 text-left"
+        onClick={() => onOpen(thread.id)}
+      >
+        <SubagentAvatar threadId={thread.id} />
+        <span className="min-w-0 truncate" title={presentation.fullLabel}>
+          {presentation.primaryLabel}
+          {detail?.modelLabel ? (
+            <span className="ml-1.5 text-ui-xs text-muted-foreground" title={detail.modelLabel}>
+              {detail.modelLabel}
             </span>
           ) : null}
         </span>
-      ) : null}
-    </button>
+        {detail?.task || detail?.latestUpdate ? (
+          <span className="col-start-2 flex min-w-0 flex-col gap-0.5">
+            {detail?.task ? (
+              <span className="truncate text-ui-xs text-muted-foreground" title={detail.task}>
+                {detail.task}
+              </span>
+            ) : null}
+            {detail?.latestUpdate ? (
+              <span className="line-clamp-2 text-ui-xs text-muted-foreground">
+                {detail.latestUpdate}
+              </span>
+            ) : null}
+          </span>
+        ) : null}
+      </button>
+      <span className="self-start">
+        <SubagentStatusIndicator
+          statusKind={detail?.statusKind ?? normalizeSubagentStatusKind(status)}
+          statusLabel={status}
+          onStop={
+            detail?.isActive && nativeControls?.interrupt && !runtimeUnavailable
+              ? () => {
+                  void interruptThreadTurn(thread.id).catch((error: unknown) => {
+                    setError(
+                      thread.id,
+                      error instanceof Error ? error.message : "Could not stop subagent.",
+                    );
+                  });
+                }
+              : undefined
+          }
+        />
+      </span>
+    </div>
   );
 }
 

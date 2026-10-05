@@ -2,7 +2,6 @@ import { BackgroundIcon, BotIcon, CollapseIcon, ExpandIcon, SquareFilledIcon } f
 import { SubagentAvatar } from "./SubagentAvatar";
 import { SubagentStatusIndicator } from "./SubagentStatusIndicator";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { subagentStatusTextToneClassName } from "~/lib/subagentPresentation";
 import { cn } from "~/lib/utils";
 import { Button } from "../ui/button";
 import { DisclosureRegion } from "../ui/DisclosureRegion";
@@ -127,16 +126,6 @@ export const ComposerSubagentStrip = function ComposerSubagentStrip({
                     </span>
                   ) : null}
                 </span>
-                {item.statusLabel ? (
-                  <span
-                    className={cn(
-                      "shrink-0 text-ui-sm",
-                      subagentStatusTextToneClassName(item.statusKind),
-                    )}
-                  >
-                    {item.statusLabel}
-                  </span>
-                ) : null}
               </button>
               {item.isActive && !item.isBackground && onBackgroundItem ? (
                 <Button
@@ -155,6 +144,7 @@ export const ComposerSubagentStrip = function ComposerSubagentStrip({
                 </Button>
               ) : null}
               <SubagentStatusIndicator
+                variant="text"
                 statusKind={item.statusKind}
                 statusLabel={item.statusLabel}
                 onStop={item.isActive && onStopItem ? () => onStopItem(item) : undefined}
