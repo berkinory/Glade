@@ -121,15 +121,14 @@ export function SurfaceTabChip({
   const labelClasses = cn(
     "flex min-w-0 items-center gap-1.5 text-left",
     trailingClose && "flex-1 self-stretch rounded-[inherit] px-2.5",
-    trailingClose && onClose && "group-hover/dock-tab:pr-8 group-focus-within/dock-tab:pr-8",
-    trailingClose && onClose && active && "pr-8",
+    trailingClose && onClose && "pr-7",
     labelClassName,
   );
   const labelContent = (
     <>
       {trailingClose ? glyph : null}
       {leading}
-      <span className={trailingClose ? "min-w-0 flex-1 truncate-fade truncate-fade-4" : "truncate"}>
+      <span className={trailingClose ? "min-w-0 flex-1 truncate-fade truncate-fade-2" : "truncate"}>
         {label}
       </span>
       {trailing}

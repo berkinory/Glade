@@ -10,11 +10,10 @@ export function resolveTerminalCloseTitle(options: {
   terminalLabelsById: Record<string, string>;
   terminalTitleOverridesById: Record<string, string>;
 }): string {
-  return (
-    options.terminalTitleOverridesById[options.terminalId]?.trim() ||
-    options.terminalLabelsById[options.terminalId]?.trim() ||
-    "Terminal"
-  );
+  const override = options.terminalTitleOverridesById[options.terminalId]?.trim();
+  if (override) return override;
+  const label = options.terminalLabelsById[options.terminalId]?.trim();
+  return label && label !== "Terminal 1" ? label : "Terminal";
 }
 
 function buildTerminalCloseConfirmationMessage(terminalTitle: string | null | undefined): string {
