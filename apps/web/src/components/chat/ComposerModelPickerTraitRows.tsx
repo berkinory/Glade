@@ -1,12 +1,10 @@
 import { Brain03Icon, EnergyFilledIcon, LimitationIcon } from "~/lib/icons";
-import type { IconComponent } from "~/lib/iconComponent";
 import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
 import { useState, type ReactNode } from "react";
 import { cn } from "~/lib/utils";
 import { type ProviderOptions } from "../../providerModelOptions";
 import { MenuRadioGroup, MenuRadioItem, MenuSub, MenuSubTrigger } from "../ui/menu";
-import { ComposerEffortSliderCard } from "./ComposerEffortSliderCard";
 import { ComposerPickerMenuSubPopup } from "./ComposerPickerMenuPopup";
 import { COMPOSER_MUTED_ACCENT_TEXT_CLASS_NAME } from "./composerPickerStyles";
 import { getComposerTraitSelection } from "./composerTraits";
@@ -14,13 +12,18 @@ import { useComposerTraitCommit } from "./useComposerTraitCommit";
 type TraitOption = {
   value: string;
   label: string;
-  isDefault?: boolean;
-  icon?: IconComponent;
+  icon?: ReactNode;
 };
+function traitPriority(id: string, hasEffort: boolean): number {
+  if (id === "thinking" && !hasEffort) return 0;
+  if (id === "serviceTier" || id === "fastMode") return 1;
+  return 2;
+}
 function TraitRow(props: {
   label: string;
   value: string;
   options: ReadonlyArray<TraitOption>;
+  triggerIcon?: ReactNode;
   disabled?: boolean;
   onValueChange: (value: string) => void;
 }) {
@@ -37,7 +40,7 @@ function TraitRow(props: {
               COMPOSER_MUTED_ACCENT_TEXT_CLASS_NAME,
             )}
           >
-            {selectedOption?.icon ? <selectedOption.icon className="size-3.5 shrink-0" /> : null}
+            {props.triggerIcon ?? selectedOption?.icon}
             <span className="truncate">{selectedOption?.label ?? props.value}</span>
           </span>
         </span>
@@ -52,9 +55,8 @@ function TraitRow(props: {
         >
           {props.options.map((option) => (
             <MenuRadioItem key={option.value} value={option.value} onClick={() => setOpen(false)}>
-              {option.icon ? <option.icon className="size-3.5 shrink-0" /> : null}
+              {option.icon}
               {option.label}
-              {option.isDefault ? " (default)" : ""}
             </MenuRadioItem>
           ))}
         </MenuRadioGroup>
@@ -69,7 +71,6 @@ export function ComposerModelPickerTraitRows(props: {
   runtimeModel: ProviderModelDescriptor | undefined;
   modelOptions: ProviderOptions | undefined;
   prompt: string;
-  onPromptChange: (prompt: string) => void;
 }) {
   const { provider, threadId, model, modelOptions, prompt } = props;
   const selection = getComposerTraitSelection(
@@ -85,9 +86,26 @@ export function ComposerModelPickerTraitRows(props: {
     model,
     modelOptions,
   });
-  const usesEffortSlider = selection.effortLevels.length > 0;
   const rows: ReactNode[] = [];
-  for (const descriptor of selection.descriptors) {
+  const effortDescriptor = selection.primarySelectDescriptor;
+  if (effortDescriptor && selection.effortLevels.length > 0) {
+    rows.push(
+      <TraitRow
+        key={effortDescriptor.id}
+        label="Thinking"
+        value={selection.effort ?? ""}
+        options={selection.effortLevels}
+        triggerIcon={<Brain03Icon className="size-3.5 shrink-0" />}
+        onValueChange={(value) => commitTrait({ [effortDescriptor.id]: value })}
+      />,
+    );
+  }
+  const descriptors = selection.descriptors.toSorted(
+    (left, right) =>
+      traitPriority(left.id, effortDescriptor !== null) -
+      traitPriority(right.id, effortDescriptor !== null),
+  );
+  for (const descriptor of descriptors) {
     if (descriptor === selection.primarySelectDescriptor) continue;
     const isAdaptiveThinking = descriptor.id === "thinking";
     const isSpeed = descriptor.id === "serviceTier" || descriptor.id === "fastMode";
@@ -96,13 +114,9 @@ export function ComposerModelPickerTraitRows(props: {
       label: isAdaptiveThinking ? "Auto" : "Default",
       ...(isSpeed
         ? {
-            icon: LimitationIcon,
+            icon: <LimitationIcon className="size-3.5 shrink-0" />,
           }
-        : isAdaptiveThinking
-          ? {
-              icon: Brain03Icon,
-            }
-          : {}),
+        : {}),
     };
     if (isSpeed) {
       const fastOption =
@@ -122,7 +136,7 @@ export function ComposerModelPickerTraitRows(props: {
             {
               value: fastValue,
               label: "Fast",
-              icon: EnergyFilledIcon,
+              icon: <EnergyFilledIcon className="size-3.5 shrink-0" />,
             },
           ]}
           onValueChange={(value) =>
@@ -153,20 +167,10 @@ export function ComposerModelPickerTraitRows(props: {
             {
               value: "on",
               label: "On",
-              ...(isAdaptiveThinking
-                ? {
-                    icon: Brain03Icon,
-                  }
-                : {}),
             },
             {
               value: "off",
               label: "Off",
-              ...(isAdaptiveThinking
-                ? {
-                    icon: Brain03Icon,
-                  }
-                : {}),
             },
           ];
     const current = modelOptions?.[descriptor.id as keyof ProviderOptions];
@@ -182,6 +186,7 @@ export function ComposerModelPickerTraitRows(props: {
       <TraitRow
         key={descriptor.id}
         label={descriptor.label}
+        triggerIcon={isAdaptiveThinking ? <Brain03Icon className="size-3.5 shrink-0" /> : undefined}
         value={value}
         options={options}
         onValueChange={(value) =>
@@ -197,21 +202,6 @@ export function ComposerModelPickerTraitRows(props: {
       />,
     );
   }
-  if (rows.length === 0 && !usesEffortSlider) return null;
-  return (
-    <div className="flex flex-col gap-px border-t border-border p-1">
-      {rows}
-      {usesEffortSlider ? (
-        <ComposerEffortSliderCard
-          provider={provider}
-          threadId={threadId}
-          model={model}
-          runtimeModel={props.runtimeModel}
-          modelOptions={modelOptions}
-          prompt={prompt}
-          onPromptChange={props.onPromptChange}
-        />
-      ) : null}
-    </div>
-  );
+  if (rows.length === 0) return null;
+  return <div className="flex flex-col gap-px border-t border-border p-1">{rows}</div>;
 }

@@ -486,7 +486,6 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
               traitsRuntimeModel?.optionDescriptors ?? [],
             )}
             prompt={promptFor(traitsProvider)}
-            onPromptChange={props.onPromptChange}
           />
         </div>
       </ComposerPickerMenuPopup>
