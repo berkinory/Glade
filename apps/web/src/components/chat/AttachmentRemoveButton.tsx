@@ -1,35 +1,37 @@
 import { XIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
-
 export type AttachmentRemoveButtonSize = "sm" | "md";
 type AttachmentRemoveButtonPlacement = "corner" | "center-right";
-
 type AttachmentRemoveButtonTone = "solid" | "ghost";
-
 const ATTACHMENT_REMOVE_BUTTON_SIZE_STYLES: Record<
   AttachmentRemoveButtonSize,
-  { button: string; icon: string }
+  {
+    button: string;
+    icon: string;
+  }
 > = {
-  sm: { button: "size-3.5 focus-visible:ring-1", icon: "size-2.5" },
-  md: { button: "size-5 focus-visible:ring-2", icon: "size-3" },
+  sm: {
+    button: "size-3.5 focus-visible:ring-1",
+    icon: "size-2.5",
+  },
+  md: {
+    button: "size-5 focus-visible:ring-2",
+    icon: "size-3",
+  },
 };
-
 const ATTACHMENT_REMOVE_BUTTON_TONE_STYLES: Record<AttachmentRemoveButtonTone, string> = {
   solid: "bg-foreground/80 text-background shadow-sm transition-colors hover:bg-foreground",
   ghost:
     "text-[var(--color-text-foreground-tertiary)] transition-all hover:bg-[var(--color-background-button-secondary-hover)] hover:text-[var(--color-text-foreground)]",
 };
-
 interface AttachmentRemoveButtonProps {
   onRemove: () => void;
-
   label: string;
   size?: AttachmentRemoveButtonSize;
   placement?: AttachmentRemoveButtonPlacement;
   tone?: AttachmentRemoveButtonTone;
   className?: string;
 }
-
 export function AttachmentRemoveButton({
   onRemove,
   label,

@@ -1,16 +1,15 @@
+import { RefreshCwIcon, XIcon } from "~/lib/icons";
 import { Spinner } from "~/components/ui/spinner";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ServerProviderStatus } from "@glade/contracts/server/server";
 import { PROVIDER_DESCRIPTORS as VISIBLE_PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
-
 import { getCustomBinaryPathForProvider, useAppSettings } from "~/appSettings";
 import { ProviderIcon } from "~/components/ProviderIcon";
 import { Checkbox } from "~/components/ui/checkbox";
 import { DisclosureRegion } from "~/components/ui/DisclosureRegion";
 import { Skeleton } from "~/components/ui/skeleton";
-import { RefreshCwIcon, XIcon } from "~/lib/icons";
 import {
   findProviderStatus,
   normalizeProviderStatusForLocalConfig,
@@ -22,18 +21,39 @@ import { ONBOARDING_TILE_CLASS_NAME } from "../layout";
 import { classifyProviderSetup, summarizeProviderSetup, type ProviderSetupState } from "../logic";
 import type { ProviderDetection } from "../useProviderDetection";
 import { ProviderConnectTerminal } from "./ProviderConnectTerminal";
-
 const EMPTY_STATUSES: readonly ServerProviderStatus[] = [];
-
-const STATE_PRESENTATION: Record<ProviderSetupState, { label: string; dotClassName: string }> = {
-  connected: { label: "Connected", dotClassName: "bg-status-success" },
-  "needs-sign-in": { label: "Needs sign-in", dotClassName: "bg-warning" },
-  "not-installed": { label: "Not installed", dotClassName: "bg-muted-foreground/40" },
-  detecting: { label: "Detecting", dotClassName: "bg-muted-foreground/40" },
-  "check-failed": { label: "Could not check", dotClassName: "bg-warning" },
-  disabled: { label: "Disabled", dotClassName: "bg-muted-foreground/40" },
+const STATE_PRESENTATION: Record<
+  ProviderSetupState,
+  {
+    label: string;
+    dotClassName: string;
+  }
+> = {
+  connected: {
+    label: "Connected",
+    dotClassName: "bg-status-success",
+  },
+  "needs-sign-in": {
+    label: "Needs sign-in",
+    dotClassName: "bg-warning",
+  },
+  "not-installed": {
+    label: "Not installed",
+    dotClassName: "bg-muted-foreground/40",
+  },
+  detecting: {
+    label: "Detecting",
+    dotClassName: "bg-muted-foreground/40",
+  },
+  "check-failed": {
+    label: "Could not check",
+    dotClassName: "bg-warning",
+  },
+  disabled: {
+    label: "Disabled",
+    dotClassName: "bg-muted-foreground/40",
+  },
 };
-
 const INLINE_ACTION_CLASS_NAME =
   "cursor-pointer text-foreground underline decoration-foreground/40 underline-offset-[3px] transition-colors hover:decoration-foreground motion-reduce:transition-none";
 
@@ -70,17 +90,14 @@ function useDisabledProvidersDraft(): {
     () => new Set(settings.disabledProviders),
   );
   const draftRef = useRef(draft);
-
   const [pendingWrites, setPendingWrites] = useState(0);
   const serverDisabledProviders = settings.disabledProviders;
-
   useEffect(() => {
     if (pendingWrites > 0) return;
     const next = new Set(serverDisabledProviders);
     draftRef.current = next;
     setDraft(next);
   }, [pendingWrites, serverDisabledProviders]);
-
   const setProviderDisabled = (provider: ProviderKind, disabled: boolean) => {
     const next = new Set(draftRef.current);
     if (disabled) {
@@ -91,28 +108,31 @@ function useDisabledProvidersDraft(): {
     draftRef.current = next;
     setDraft(next);
     setPendingWrites((count) => count + 1);
-    void updateSettingsAndWait({ disabledProviders: [...next] }).finally(() => {
+    void updateSettingsAndWait({
+      disabledProviders: [...next],
+    }).finally(() => {
       setPendingWrites((count) => count - 1);
     });
   };
-
-  return { disabled: draft, setProviderDisabled };
+  return {
+    disabled: draft,
+    setProviderDisabled,
+  };
 }
-
 export function ProvidersStep(props: { readonly detection: ProviderDetection }) {
   const { detection } = props;
   const statuses = useDetectedProviderStatuses();
   const homeDir = useWorkspacePathsStore((store) => store.homeDir);
   const [connectingProvider, setConnectingProvider] = useState<ProviderKind | null>(null);
   const { disabled: disabledSet, setProviderDisabled } = useDisabledProvidersDraft();
-
   const refreshedOnEntryRef = useRef(false);
   useEffect(() => {
     if (refreshedOnEntryRef.current) return;
     refreshedOnEntryRef.current = true;
-    void detection.detect({ silent: true });
+    void detection.detect({
+      silent: true,
+    });
   }, [detection]);
-
   const rows = VISIBLE_PROVIDER_DESCRIPTORS.map((descriptor) => {
     const status = findProviderStatus(statuses, descriptor.kind);
     const state = classifyProviderSetup({
@@ -121,19 +141,27 @@ export function ProvidersStep(props: { readonly detection: ProviderDetection }) 
       detecting: detection.detecting,
       detectionFailed: detection.failed,
     });
-    return { descriptor, status, state };
+    return {
+      descriptor,
+      status,
+      state,
+    };
   });
   const summary = summarizeProviderSetup(
-    rows.map((row) => ({ provider: row.descriptor.kind, state: row.state })),
+    rows.map((row) => ({
+      provider: row.descriptor.kind,
+      state: row.state,
+    })),
   );
   const connecting = connectingProvider
     ? rows.find((row) => row.descriptor.kind === connectingProvider)
     : undefined;
   const connectingSignInCommand = connecting?.descriptor.usage?.signInCommand;
-
   const finishConnect = () => {
     setConnectingProvider(null);
-    void detection.detect({ silent: true });
+    void detection.detect({
+      silent: true,
+    });
   };
   const toggleConnect = (provider: ProviderKind) => {
     if (connectingProvider === provider) {
@@ -142,16 +170,17 @@ export function ProvidersStep(props: { readonly detection: ProviderDetection }) 
     }
     setConnectingProvider(provider);
   };
-
   const terminalRegionRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!connectingProvider) return;
     const frame = window.requestAnimationFrame(() => {
-      terminalRegionRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      terminalRegionRef.current?.scrollIntoView({
+        block: "nearest",
+        behavior: "smooth",
+      });
     });
     return () => window.cancelAnimationFrame(frame);
   }, [connectingProvider]);
-
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-3 gap-2.5">

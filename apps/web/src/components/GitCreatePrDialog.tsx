@@ -1,3 +1,4 @@
+import { ArrowUpRightIcon, GitPullRequestDraftIcon, GitPullRequestIcon } from "~/lib/icons";
 import { useEffect, useMemo, useState } from "react";
 import { Checkbox } from "~/components/ui/checkbox";
 import { DiffStat } from "~/components/ui/diff-stat";
@@ -17,9 +18,7 @@ import {
   GitDialogHeading,
   GitDialogShell,
 } from "./GitDialogChrome";
-import { ArrowUpRightIcon, GitPullRequestDraftIcon, GitPullRequestIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
-
 export interface GitCreatePrDialogSubmission {
   action: "create_pr" | "commit_push_pr";
   draft: boolean;
@@ -27,12 +26,10 @@ export interface GitCreatePrDialogSubmission {
   title: string | null;
   body: string | null;
 }
-
 export interface GitCreatePrDialogBrowserRequest {
   preparation: CreatePrBrowserPreparation;
   includeLocalChanges: boolean;
 }
-
 interface GitCreatePrDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -40,7 +37,6 @@ interface GitCreatePrDialogProps {
   onSubmit: (submission: GitCreatePrDialogSubmission) => void;
   onOpenInBrowser: (request: GitCreatePrDialogBrowserRequest) => void;
 }
-
 export function GitCreatePrDialog({
   open,
   onOpenChange,
@@ -51,14 +47,12 @@ export function GitCreatePrDialog({
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [includeLocalChanges, setIncludeLocalChanges] = useState(true);
-
   useEffect(() => {
     if (!open) return;
     setTitle("");
     setBody("");
     setIncludeLocalChanges(true);
   }, [open]);
-
   const view = useMemo(() => resolveCreatePrDialogView(context), [context]);
   const execution = useMemo(
     () => resolveCreatePrDialogExecution(context, includeLocalChanges),
@@ -71,7 +65,6 @@ export function GitCreatePrDialog({
   const canCreate = execution.kind === "run_action";
   const canOpenInBrowser = browserPreparation.kind !== "unavailable";
   const unavailableHint = execution.kind === "unavailable" ? execution.hint : null;
-
   const submit = (draft: boolean) => {
     if (execution.kind !== "run_action") return;
     onSubmit({
@@ -82,7 +75,6 @@ export function GitCreatePrDialog({
       body: body.trim() || null,
     });
   };
-
   return (
     <GitDialogShell open={open} onOpenChange={onOpenChange} onSubmitShortcut={() => submit(false)}>
       <GitDialogHeading
@@ -150,7 +142,12 @@ export function GitCreatePrDialog({
           disabled={!canOpenInBrowser}
           icon={<ArrowUpRightIcon />}
           label="Open PR in browser"
-          onClick={() => onOpenInBrowser({ preparation: browserPreparation, includeLocalChanges })}
+          onClick={() =>
+            onOpenInBrowser({
+              preparation: browserPreparation,
+              includeLocalChanges,
+            })
+          }
         />
       </GitDialogActionList>
     </GitDialogShell>

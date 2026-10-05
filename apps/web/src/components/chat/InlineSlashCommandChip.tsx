@@ -1,5 +1,5 @@
-import type { ComposerSlashCommand } from "~/composerSlashCommands";
 import { MessageCircleIcon } from "~/lib/icons";
+import type { ComposerSlashCommand } from "~/composerSlashCommands";
 import { slashCommandIcon } from "~/lib/slashCommandIcons";
 import {
   COMPOSER_INLINE_CHIP_INLINE_ICON_CLASS_NAME,
@@ -7,7 +7,6 @@ import {
   formatComposerSlashCommandChipLabel,
 } from "../composerInlineChip";
 import { InlineChipContent } from "../InlineChip";
-
 export function InlineSlashCommandChip(props: { command: ComposerSlashCommand }) {
   const Icon = slashCommandIcon(props.command, MessageCircleIcon);
   return (

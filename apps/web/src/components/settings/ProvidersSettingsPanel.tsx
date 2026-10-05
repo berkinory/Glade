@@ -1,3 +1,4 @@
+import { DownloadIcon, ExternalLinkIcon, GripVerticalIcon } from "~/lib/icons";
 import { Spinner } from "~/components/ui/spinner";
 import { ProviderSignIn } from "./ProviderSignIn";
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
@@ -22,12 +23,9 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
-
 import type { AppSettings, AppSettingsBinding } from "~/appSettings";
 import { useProviderStatusesForLocalConfig } from "~/hooks/useProviderStatusesForLocalConfig";
 import { useRefreshProviderStatusesNow } from "~/hooks/useProviderStatusRefresh";
-import { CentralIcon } from "~/lib/central-icons";
-import { DownloadIcon, ExternalLinkIcon } from "~/lib/icons";
 import {
   hasReconciledServerProviderStatuses,
   serverQueryKeys,
@@ -51,7 +49,6 @@ import {
   SETTINGS_OUTLINED_SURFACE_CLASS_NAME,
 } from "~/settingsPanelStyles";
 import { ELEVATED_HOVER_SURFACE_RAISED_TEXT_CLASS_NAME } from "~/surfaceStyles";
-
 import { Button } from "../ui/button";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";
 import { DisclosureChevron } from "../ui/DisclosureChevron";
@@ -74,7 +71,6 @@ import {
   setProviderListMembership,
   isProviderPickerProviderEnabled,
 } from "./providerInstallationModel";
-
 function providerSetupStatusLabel(input: {
   readonly status: ServerProviderStatus | undefined;
   readonly reconciled: boolean;
@@ -90,7 +86,6 @@ function providerSetupStatusLabel(input: {
   if (status.authStatus === "unknown") return "Installed · sign-in not verified";
   return "Connected";
 }
-
 function ProviderDocsLinks({ docs }: { docs: ProviderInstallSettings["docs"] }) {
   return (
     <div className={cn(SETTINGS_OUTLINED_SURFACE_CLASS_NAME, "px-3 py-2.5")}>
@@ -113,13 +108,11 @@ function ProviderDocsLinks({ docs }: { docs: ProviderInstallSettings["docs"] }) 
     </div>
   );
 }
-
 function formatProviderVersion(value: string | null | undefined): string | null {
   const trimmed = value?.trim();
   if (!trimmed) return null;
   return trimmed.startsWith("v") ? trimmed : `v${trimmed}`;
 }
-
 function providerUpdateStatusLabel(provider: ServerProviderStatus): string | null {
   const state = provider.updateState?.status;
   if (state === "queued") return "Update queued";
@@ -136,13 +129,11 @@ function providerUpdateStatusLabel(provider: ServerProviderStatus): string | nul
   const currentVersion = formatProviderVersion(provider.version);
   return currentVersion ? `Current ${currentVersion}` : null;
 }
-
 function providerUpdateFailureMessage(provider: ServerProviderStatus | undefined): string | null {
   const state = provider?.updateState;
   if (!state || (state.status !== "failed" && state.status !== "unchanged")) return null;
   return state.output?.trim() || state.message || "The provider update did not complete.";
 }
-
 function ProviderUpdateAction(props: {
   providerStatus: ServerProviderStatus;
   active: boolean;
@@ -167,7 +158,6 @@ function ProviderUpdateAction(props: {
     </Button>
   );
 }
-
 function ProviderInstallFieldControl(props: {
   field: ProviderInstallField;
   settings: AppSettings;
@@ -192,13 +182,14 @@ function ProviderInstallFieldControl(props: {
           id={id}
           checked={props.settings[props.field.settingsKey]}
           onCheckedChange={(checked) =>
-            props.updateSettings({ [props.field.settingsKey]: Boolean(checked) })
+            props.updateSettings({
+              [props.field.settingsKey]: Boolean(checked),
+            })
           }
         />
       </label>
     );
   }
-
   return (
     <label htmlFor={id} className="block">
       <span className="block text-ui leading-snug font-medium text-foreground">
@@ -211,7 +202,9 @@ function ProviderInstallFieldControl(props: {
         className="mt-1"
         value={props.settings[props.field.settingsKey]}
         onCommit={(nextValue) =>
-          props.updateSettings({ [props.field.settingsKey]: nextValue } as Partial<AppSettings>)
+          props.updateSettings({
+            [props.field.settingsKey]: nextValue,
+          } as Partial<AppSettings>)
         }
         placeholder={props.field.placeholder}
         spellCheck={false}
@@ -222,7 +215,6 @@ function ProviderInstallFieldControl(props: {
     </label>
   );
 }
-
 function ProviderToolRow(props: {
   config: ProviderInstallSettings;
   open: boolean;
@@ -242,7 +234,9 @@ function ProviderToolRow(props: {
   };
 }) {
   const { attributes, listeners, setActivatorNodeRef, setNodeRef, transform, transition } =
-    useSortable({ id: props.config.provider });
+    useSortable({
+      id: props.config.provider,
+    });
   const enabled = !props.settings.disabledProviders.includes(props.config.provider);
   const title = PROVIDER_DISPLAY_NAMES[props.config.provider];
   const isDirty = isProviderInstallConfigDirty(props.config, props.settings, props.defaults);
@@ -274,17 +268,18 @@ function ProviderToolRow(props: {
     ? shouldPromptProviderUpdate(props.providerStatus) &&
       (showProviderUpdateStatus || updateAdvisory?.status === "unknown")
     : false;
-
   const showSelfManagedUpdate = props.providerStatus
     ? shouldOfferProviderUpdateAction(props.providerStatus) &&
       !isProviderLatestVersionKnowable(props.providerStatus)
     : false;
-
   return (
     <Collapsible open={props.open} onOpenChange={props.onOpenChange}>
       <div
         ref={setNodeRef}
-        style={{ transform: CSS.Translate.toString(transform), transition }}
+        style={{
+          transform: CSS.Translate.toString(transform),
+          transition,
+        }}
         className="border-t border-border/70 first:border-t-0"
       >
         <div className="flex items-center gap-3 px-3 pt-3">
@@ -300,7 +295,7 @@ function ProviderToolRow(props: {
               SETTINGS_INSET_RADIUS_CLASS_NAME,
             )}
           >
-            <CentralIcon name="dot-grid-2x3" className="size-4" />
+            <GripVerticalIcon className="size-4" />
           </button>
           <ProviderIcon provider={props.config.provider} className="size-4 shrink-0" />
           <span className="flex-1 text-ui-lg font-medium">{title}</span>
@@ -436,13 +431,11 @@ function ProviderToolRow(props: {
     </Collapsible>
   );
 }
-
 export type ProvidersSettingsPanelProps = AppSettingsBinding & {
   readonly active: boolean;
   readonly resetEpoch: number;
   readonly updateSettingsAndWait: (patch: Partial<AppSettings>) => Promise<void>;
 };
-
 export function ProvidersSettingsPanel({
   settings,
   defaults,
@@ -489,7 +482,11 @@ export function ProvidersSettingsPanel({
     [providerVisibilityOptionsByProvider, settings.providerOrder],
   );
   const providerVisibilitySensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 4,
+      },
+    }),
   );
   const isProviderOrderDirty = !sameProviderOrder(settings.providerOrder, defaults.providerOrder);
   const providerStatusByProvider = useMemo(
@@ -510,7 +507,6 @@ export function ProvidersSettingsPanel({
     [serverSettingsQuery.data, settings.enableProviderUpdateChecks],
   );
   const installSettingsDirty = isProviderInstallSettingsDirty(settings, defaults);
-
   const updateProviderConfiguration = useCallback(
     async (patch: Partial<AppSettings>) => {
       if (providerEnablementMutationInFlightRef.current) return;
@@ -534,11 +530,9 @@ export function ProvidersSettingsPanel({
     },
     [updateSettingsAndWait],
   );
-
   useSettingsRestoreSignal(resetEpoch, () => {
     setOpenInstallProviders(createClosedProviderInstallDisclosureState());
   });
-
   const handleProviderOrderDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
@@ -546,11 +540,12 @@ export function ProvidersSettingsPanel({
       const fromIndex = settings.providerOrder.indexOf(active.id as ProviderKind);
       const toIndex = settings.providerOrder.indexOf(over.id as ProviderKind);
       if (fromIndex < 0 || toIndex < 0) return;
-      updateSettings({ providerOrder: arrayMove([...settings.providerOrder], fromIndex, toIndex) });
+      updateSettings({
+        providerOrder: arrayMove([...settings.providerOrder], fromIndex, toIndex),
+      });
     },
     [settings.providerOrder, updateSettings],
   );
-
   const runProviderUpdate = useCallback(
     async (provider: ProviderKind) => {
       if (updatingProviders.has(provider)) return;
@@ -558,7 +553,9 @@ export function ProvidersSettingsPanel({
       try {
         await withProviderUpdateTimeout({
           provider,
-          request: ensureNativeApi().server.updateProvider({ provider }),
+          request: ensureNativeApi().server.updateProvider({
+            provider,
+          }),
         })
           .then((result) => {
             const refreshedProvider = result.providers.find(
@@ -573,7 +570,13 @@ export function ProvidersSettingsPanel({
                 description: manualCommand
                   ? `${failureMessage}\n\nCopy the command below to update manually in a terminal.`
                   : failureMessage,
-                ...(manualCommand ? { data: { copyText: manualCommand } } : {}),
+                ...(manualCommand
+                  ? {
+                      data: {
+                        copyText: manualCommand,
+                      },
+                    }
+                  : {}),
               });
               return;
             }
@@ -592,7 +595,9 @@ export function ProvidersSettingsPanel({
           });
       } finally {
         await queryClient
-          .invalidateQueries({ queryKey: serverQueryKeys.config() })
+          .invalidateQueries({
+            queryKey: serverQueryKeys.config(),
+          })
           .catch(() => undefined);
         setUpdatingProviders((current) => {
           const next = new Set(current);
@@ -603,9 +608,7 @@ export function ProvidersSettingsPanel({
     },
     [queryClient, updatingProviders],
   );
-
   if (!active) return null;
-
   const refreshProviders = async () => {
     if (refreshProvidersInFlightRef.current) return;
     refreshProvidersInFlightRef.current = true;
@@ -617,7 +620,6 @@ export function ProvidersSettingsPanel({
       setRefreshingProviders(false);
     }
   };
-
   return (
     <div id={SETTINGS_TARGETS.providerUpdates} className="space-y-6">
       <SettingsSection title="Provider configuration">
@@ -690,7 +692,10 @@ export function ProvidersSettingsPanel({
                       providerStatus={providerStatusByProvider.get(provider)}
                       updatingProviders={updatingProviders}
                       onOpenChange={(open) =>
-                        setOpenInstallProviders((existing) => ({ ...existing, [provider]: open }))
+                        setOpenInstallProviders((existing) => ({
+                          ...existing,
+                          [provider]: open,
+                        }))
                       }
                       onUpdate={(provider) => void runProviderUpdate(provider)}
                       updateSettings={updateSettings}
@@ -736,7 +741,9 @@ export function ProvidersSettingsPanel({
               <Switch
                 checked={settings.enableProviderUpdateChecks}
                 onCheckedChange={(checked) =>
-                  updateSettings({ enableProviderUpdateChecks: Boolean(checked) })
+                  updateSettings({
+                    enableProviderUpdateChecks: Boolean(checked),
+                  })
                 }
                 aria-label="Automatic CLI update checks"
               />

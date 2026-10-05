@@ -1,16 +1,13 @@
-import { useLayoutEffect, useRef } from "react";
-
-import { Button } from "~/components/ui/button";
 import { ChevronLeftIcon, ChevronRightIcon, XIcon } from "~/lib/icons";
+import { useLayoutEffect, useRef } from "react";
+import { Button } from "~/components/ui/button";
 import { notifyNativeSurfaceOcclusionChange } from "~/lib/nativeSurfaceOcclusion";
 import type { ExpandedImagePreview } from "./ExpandedImagePreview";
-
 interface ExpandedImageOverlayProps {
   readonly expandedImage: ExpandedImagePreview | null;
   readonly onClose: () => void;
   readonly onNavigate: (direction: -1 | 1) => void;
 }
-
 export function ExpandedImageOverlay({
   expandedImage,
   onClose,
@@ -19,26 +16,26 @@ export function ExpandedImageOverlay({
   const expandedImageItem = expandedImage ? expandedImage.images[expandedImage.index] : null;
   const open = expandedImageItem !== null;
   const overlayRef = useRef<HTMLDivElement>(null);
-
   useLayoutEffect(() => {
     if (!open) {
       return;
     }
-
     const previousFocus = document.activeElement;
-    overlayRef.current?.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
+    overlayRef.current?.querySelector<HTMLButtonElement>("button")?.focus({
+      preventScroll: true,
+    });
     notifyNativeSurfaceOcclusionChange();
     return () => {
       notifyNativeSurfaceOcclusionChange();
       if (previousFocus instanceof HTMLElement && previousFocus.isConnected)
-        previousFocus.focus({ preventScroll: true });
+        previousFocus.focus({
+          preventScroll: true,
+        });
     };
   }, [open]);
-
   if (!expandedImage || !expandedImageItem) {
     return null;
   }
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-6 [-webkit-app-region:no-drag]"

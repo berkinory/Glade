@@ -4,10 +4,7 @@ import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
-
 import { cn } from "~/lib/utils";
-import { extendButtonIconChildSelectors } from "~/lib/central-icons";
-
 /** Slightly softer outline border for header chrome buttons in dark mode. */
 const headerButtonDarkBorderClassName =
   "dark:border-[color:color-mix(in_srgb,var(--color-border)_80%,transparent)]";
@@ -37,9 +34,7 @@ const headerButtonDarkBorderClassName =
 // variant into a fully rounded pill (dialog footers detect the `rounded-full`
 // class and skip their radius/sizing override for capsules).
 const buttonVariants = cva(
-  extendButtonIconChildSelectors(
-    "[&_svg]:-mx-0.5 relative inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-lg border font-medium text-ui outline-none pointer-coarse:after:absolute pointer-coarse:after:size-full pointer-coarse:after:min-h-11 pointer-coarse:after:min-w-11 focus-visible:ring-1 focus-visible:ring-ring/60 focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-64 sm:text-ui [&_svg:not([class*='opacity-'])]:opacity-80 [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
-  ),
+  "[&_svg]:-mx-0.5 relative inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-lg border font-medium text-ui outline-none pointer-coarse:after:absolute pointer-coarse:after:size-full pointer-coarse:after:min-h-11 pointer-coarse:after:min-w-11 focus-visible:ring-1 focus-visible:ring-ring/60 focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-64 sm:text-ui [&_svg:not([class*='opacity-'])]:opacity-80 [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
     defaultVariants: {
       shape: "default",
@@ -52,37 +47,26 @@ const buttonVariants = cva(
         default: "",
       },
       size: {
-        chip: extendButtonIconChildSelectors(
-          "h-auto gap-1 px-2 py-0.5 text-ui-sm sm:h-auto sm:text-ui-sm [&_svg:not([class*='size-'])]:size-3 sm:[&_svg:not([class*='size-'])]:size-3",
-        ),
+        chip: "h-auto gap-1 px-2 py-0.5 text-ui-sm sm:h-auto sm:text-ui-sm [&_svg:not([class*='size-'])]:size-3 sm:[&_svg:not([class*='size-'])]:size-3",
         default: "h-9 px-[calc(--spacing(3)-1px)] sm:h-8",
         icon: "size-9 sm:size-8",
-        "icon-chip": extendButtonIconChildSelectors(
+        "icon-chip":
           "size-6 sm:size-6 [&_svg:not([class*='size-'])]:size-3 sm:[&_svg:not([class*='size-'])]:size-3",
-        ),
         "icon-lg": "size-10 sm:size-9",
         "icon-sm": "size-8 sm:size-7",
-        "icon-xl": extendButtonIconChildSelectors(
+        "icon-xl":
           "size-11 sm:size-10 [&_svg:not([class*='size-'])]:size-5 sm:[&_svg:not([class*='size-'])]:size-4.5",
-        ),
-        "icon-xs": extendButtonIconChildSelectors(
+        "icon-xs":
           "size-7 rounded-sm sm:size-6 not-in-data-[slot=input-group]:[&_svg:not([class*='size-'])]:size-4 sm:not-in-data-[slot=input-group]:[&_svg:not([class*='size-'])]:size-3.5",
-        ),
         lg: "h-10 px-[calc(--spacing(3.5)-1px)] sm:h-9",
         sm: "h-8 gap-1.5 px-[calc(--spacing(2.5)-1px)] sm:h-7",
-        xl: extendButtonIconChildSelectors(
-          "h-11 px-[calc(--spacing(4)-1px)] text-ui-lg sm:h-10 sm:text-ui-lg [&_svg:not([class*='size-'])]:size-5 sm:[&_svg:not([class*='size-'])]:size-4.5",
-        ),
-        xs: extendButtonIconChildSelectors(
-          "h-7 gap-1 rounded-sm px-[calc(--spacing(2)-1px)] text-ui-sm sm:h-6 sm:text-ui-xs [&_svg:not([class*='size-'])]:size-4 sm:[&_svg:not([class*='size-'])]:size-3.5",
-        ),
+        xl: "h-11 px-[calc(--spacing(4)-1px)] text-ui-lg sm:h-10 sm:text-ui-lg [&_svg:not([class*='size-'])]:size-5 sm:[&_svg:not([class*='size-'])]:size-4.5",
+        xs: "h-7 gap-1 rounded-sm px-[calc(--spacing(2)-1px)] text-ui-sm sm:h-6 sm:text-ui-xs [&_svg:not([class*='size-'])]:size-4 sm:[&_svg:not([class*='size-'])]:size-3.5",
       },
       variant: {
         chrome:
           "border-transparent bg-transparent text-[var(--color-text-foreground-secondary)] focus-visible:ring-[color:var(--color-border-focus)]/60 focus-visible:ring-offset-0 [:hover,[data-pressed]]:bg-[var(--color-background-elevated-secondary)] [:hover,[data-pressed]]:text-[var(--color-text-foreground)] data-pressed:bg-[var(--color-background-elevated-secondary)] data-pressed:text-[var(--color-text-foreground)]",
-        "chrome-outline": extendButtonIconChildSelectors(
-          `border-[color:var(--color-border)] bg-transparent text-[var(--color-text-foreground)] focus-visible:ring-[color:var(--color-border-focus)]/60 [:hover,[data-pressed]]:bg-secondary ${headerButtonDarkBorderClassName} dark:[:hover,[data-pressed]]:bg-secondary [&_svg]:mx-0`,
-        ),
+        "chrome-outline": `border-[color:var(--color-border)] bg-transparent text-[var(--color-text-foreground)] focus-visible:ring-[color:var(--color-border-focus)]/60 [:hover,[data-pressed]]:bg-secondary ${headerButtonDarkBorderClassName} dark:[:hover,[data-pressed]]:bg-secondary [&_svg]:mx-0`,
         default:
           "border-transparent bg-primary text-primary-foreground [:hover,[data-pressed]]:bg-primary/90",
         destructive:
@@ -121,7 +105,6 @@ const buttonVariants = cva(
     ],
   },
 );
-
 interface ButtonProps extends useRender.ComponentProps<"button"> {
   variant?: VariantProps<typeof buttonVariants>["variant"];
   size?: VariantProps<typeof buttonVariants>["size"];
@@ -136,13 +119,18 @@ function Button({ className, variant, size, shape, render, ...props }: ButtonPro
   const typeValue: React.ButtonHTMLAttributes<HTMLButtonElement>["type"] = render
     ? undefined
     : "button";
-
   const defaultProps = {
-    className: cn(buttonVariants({ className, shape, size, variant })),
+    className: cn(
+      buttonVariants({
+        className,
+        shape,
+        size,
+        variant,
+      }),
+    ),
     "data-slot": "button",
     type: typeValue,
   };
-
   return useRender({
     defaultTagName: "button",
     props: mergeProps<"button">(defaultProps, props),
@@ -153,5 +141,4 @@ function Button({ className, variant, size, shape, render, ...props }: ButtonPro
 /** Dialog footers and inline error actions share this sizing override. */
 const dialogActionButtonClassName =
   "!h-auto !min-h-8 !rounded-md !px-3 !py-1 !font-normal sm:!min-h-7";
-
 export { Button, buttonVariants, dialogActionButtonClassName, headerButtonDarkBorderClassName };

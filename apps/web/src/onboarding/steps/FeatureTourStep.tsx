@@ -1,16 +1,13 @@
+import { ExternalLinkIcon } from "~/lib/icons";
 import type { ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-
 import { ShortcutKbd } from "~/components/ui/kbd";
 import { shortcutLabelForCommand } from "~/keybindings";
-import { ExternalLinkIcon } from "~/lib/icons";
 import { serverConfigQueryOptions } from "~/lib/serverReactQuery";
 import { cn } from "~/lib/utils";
 import { TOUR_CARDS, TOUR_SHORTCUT_COMMANDS } from "../tourContent";
-
 const EMPTY_KEYBINDINGS: ResolvedKeybindingsConfig = [];
-
 export function TourShortcutList(props: { className?: string }) {
   const keybindingsQuery = useQuery({
     ...serverConfigQueryOptions(),
@@ -34,12 +31,10 @@ export function TourShortcutList(props: { className?: string }) {
     </dl>
   );
 }
-
 export function FeatureTourStep() {
   const [selectedId, setSelectedId] = useState<string>(TOUR_CARDS[0]?.id ?? "");
   const selectedCard = TOUR_CARDS.find((card) => card.id === selectedId) ?? TOUR_CARDS[0];
   if (!selectedCard) return null;
-
   return (
     <div className="grid min-h-0 flex-1 grid-cols-[220px_minmax(0,1fr)] gap-8">
       <div className="flex flex-col gap-0.5" role="tablist" aria-label="Glade capabilities">

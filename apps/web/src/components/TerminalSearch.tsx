@@ -1,17 +1,14 @@
+import { ChevronDownIcon, ChevronUpIcon, XIcon } from "~/lib/icons";
 import { useMemo, useCallback } from "react";
-
 import type { SearchAddon, ISearchOptions } from "@xterm/addon-search";
 import { useEffect, useRef, useState } from "react";
 import { IconButton } from "~/components/ui/icon-button";
-import { ChevronDownIcon, ChevronUpIcon, XIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
-
 interface TerminalSearchProps {
   searchAddon: SearchAddon | null;
   isOpen: boolean;
   onClose: () => void;
 }
-
 const SEARCH_DECORATIONS = {
   matchBackground: "#515c6a",
   matchBorder: "#74879f",
@@ -21,14 +18,12 @@ const SEARCH_DECORATIONS = {
   activeMatchColorOverviewRuler: "#ffd33d",
 } satisfies NonNullable<ISearchOptions["decorations"]>;
 const SEARCH_DEBOUNCE_MS = 90;
-
 export function TerminalSearch({ searchAddon, isOpen, onClose }: TerminalSearchProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const searchTimerRef = useRef<number | null>(null);
   const [query, setQuery] = useState("");
   const [hasResults, setHasResults] = useState<boolean | null>(null);
   const [caseSensitive, setCaseSensitive] = useState(false);
-
   const searchOptions: ISearchOptions = useMemo(
     () => ({
       caseSensitive,
@@ -37,20 +32,17 @@ export function TerminalSearch({ searchAddon, isOpen, onClose }: TerminalSearchP
     }),
     [caseSensitive],
   );
-
   useEffect(() => {
     if (isOpen && inputRef.current) {
       inputRef.current.focus();
       inputRef.current.select();
     }
   }, [isOpen]);
-
   useEffect(() => {
     if (!isOpen && searchAddon) {
       searchAddon.clearDecorations();
     }
   }, [isOpen, searchAddon]);
-
   const handleSearch = (direction: "next" | "previous") => {
     if (!searchAddon || !query) return;
     if (searchTimerRef.current !== null) {
@@ -63,13 +55,11 @@ export function TerminalSearch({ searchAddon, isOpen, onClose }: TerminalSearchP
         : searchAddon.findPrevious(query, searchOptions);
     setHasResults(found);
   };
-
   const clearSearchTimer = useCallback(() => {
     if (searchTimerRef.current === null) return;
     window.clearTimeout(searchTimerRef.current);
     searchTimerRef.current = null;
   }, []);
-
   const scheduleSearch = (nextQuery: string) => {
     clearSearchTimer();
     if (!searchAddon || !nextQuery) {
@@ -77,26 +67,22 @@ export function TerminalSearch({ searchAddon, isOpen, onClose }: TerminalSearchP
       searchAddon?.clearDecorations();
       return;
     }
-
     searchTimerRef.current = window.setTimeout(() => {
       searchTimerRef.current = null;
       setHasResults(searchAddon.findNext(nextQuery, searchOptions));
     }, SEARCH_DEBOUNCE_MS);
   };
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newQuery = e.target.value;
     setQuery(newQuery);
     scheduleSearch(newQuery);
   };
-
   const prevCaseSensitiveRef = useRef(caseSensitive);
   const prevSearchAddonRef = useRef<SearchAddon | null>(searchAddon);
   useEffect(() => {
     const caseSensitivityChanged = prevCaseSensitiveRef.current !== caseSensitive;
     const searchAddonChanged = prevSearchAddonRef.current !== searchAddon;
     if (!caseSensitivityChanged && !searchAddonChanged) return;
-
     prevCaseSensitiveRef.current = caseSensitive;
     prevSearchAddonRef.current = searchAddon;
     if (searchAddon && query) {
@@ -107,9 +93,7 @@ export function TerminalSearch({ searchAddon, isOpen, onClose }: TerminalSearchP
       }, SEARCH_DEBOUNCE_MS);
     }
   }, [searchAddon, query, clearSearchTimer, caseSensitive, searchOptions]);
-
   useEffect(() => () => clearSearchTimer(), [clearSearchTimer]);
-
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
       e.preventDefault();
@@ -119,15 +103,12 @@ export function TerminalSearch({ searchAddon, isOpen, onClose }: TerminalSearchP
       handleSearch(e.shiftKey ? "previous" : "next");
     }
   };
-
   const handleClose = () => {
     setQuery("");
     setHasResults(null);
     onClose();
   };
-
   if (!isOpen) return null;
-
   return (
     <div className="absolute right-1 top-1 z-10 flex max-w-[calc(100%-0.5rem)] items-center rounded bg-popover/95 pl-2 pr-0.5 shadow-lg ring-1 ring-border/40 backdrop-blur">
       <input

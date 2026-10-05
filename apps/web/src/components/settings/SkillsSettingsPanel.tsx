@@ -1,12 +1,11 @@
+import { BlocksIcon } from "~/lib/icons";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ServerSettings } from "@glade/contracts/settings/settings";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
-
 import { ProviderIcon } from "~/components/ProviderIcon";
 import { SettingsRow, SettingsSection } from "~/components/settings/SettingsPanelPrimitives";
 import { Switch } from "~/components/ui/switch";
-import { SkillCubeIcon } from "~/lib/icons";
 import { ensureNativeApi } from "~/nativeApi";
 import {
   providerDiscoveryQueryKeys,
@@ -19,12 +18,10 @@ import {
   providerDisplayName,
   settingsSkillNameKey,
 } from "./skillsSettingsModel";
-
 function SkillProviderStack({ providers }: { providers: ReadonlyArray<ProviderKind> }) {
   if (providers.length === 0) {
     return null;
   }
-
   const label = providers.map(providerDisplayName).join(", ");
   const stackLabel = `Provider ${providers.length === 1 ? "copy" : "copies"}: ${label}`;
   return (
@@ -44,23 +41,19 @@ function SkillProviderStack({ providers }: { providers: ReadonlyArray<ProviderKi
     </span>
   );
 }
-
 export function SkillsSettingsPanel() {
   const queryClient = useQueryClient();
   const catalogQuery = useQuery(skillsCatalogQueryOptions());
   const serverSettingsQuery = useQuery(serverSettingsQueryOptions());
-
   const disabledSkillNames = new Set(
     (serverSettingsQuery.data?.skills.disabled ?? []).map((name) => settingsSkillNameKey(name)),
   );
-
   const catalogSkills = catalogQuery.data?.skills;
   const skillGroups = useMemo(() => buildSettingsSkillGroups(catalogSkills ?? []), [catalogSkills]);
   const skillSections = useMemo(
     () => buildSettingsSkillSectionsFromGroups(skillGroups),
     [skillGroups],
   );
-
   const setSkillEnabled = (skillName: string, enabled: boolean) => {
     const latestSettings = queryClient.getQueryData<ServerSettings>(serverQueryKeys.settings());
     const currentDisabled = latestSettings?.skills.disabled ?? [...disabledSkillNames];
@@ -75,25 +68,32 @@ export function SkillsSettingsPanel() {
     if (latestSettings) {
       queryClient.setQueryData(serverQueryKeys.settings(), {
         ...latestSettings,
-        skills: { disabled },
+        skills: {
+          disabled,
+        },
       });
     }
     void ensureNativeApi()
-      .server.updateSettings({ skills: { disabled } })
+      .server.updateSettings({
+        skills: {
+          disabled,
+        },
+      })
       .then((nextSettings) => {
         queryClient.setQueryData(serverQueryKeys.settings(), nextSettings);
-
-        void queryClient.invalidateQueries({ queryKey: providerDiscoveryQueryKeys.all });
+        void queryClient.invalidateQueries({
+          queryKey: providerDiscoveryQueryKeys.all,
+        });
       })
       .catch(() => {
-        void queryClient.invalidateQueries({ queryKey: serverQueryKeys.settings() });
+        void queryClient.invalidateQueries({
+          queryKey: serverQueryKeys.settings(),
+        });
       });
   };
-
   const totalSkills = skillGroups.length;
   const enabledSkills = skillGroups.filter((group) => !disabledSkillNames.has(group.key)).length;
   const gladeSkillsDir = catalogQuery.data?.gladeSkillsDir;
-
   return (
     <div className="space-y-8">
       <SettingsSection title="Portable skills">
@@ -143,7 +143,7 @@ export function SkillsSettingsPanel() {
                   key={group.key}
                   title={
                     <span className="inline-flex min-w-0 items-center gap-1.5">
-                      <SkillCubeIcon
+                      <BlocksIcon
                         aria-hidden="true"
                         className="size-3.5 shrink-0 text-muted-foreground"
                       />

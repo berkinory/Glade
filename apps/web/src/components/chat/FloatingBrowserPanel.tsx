@@ -1,3 +1,4 @@
+import { EllipsisIcon, PanelRightCloseIcon, XIcon } from "~/lib/icons";
 import {
   type PointerEvent as ReactPointerEvent,
   Suspense,
@@ -9,8 +10,6 @@ import {
 } from "react";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { CHAT_SURFACE_HEADER_HEIGHT_PX } from "@glade/shared/platform/desktopChrome";
-
-import { EllipsisIcon, PanelRightCloseIcon, XIcon } from "../../lib/icons";
 import { requestBrowserPanelBoundsSync } from "../../lib/browserPanelBoundsSync";
 import { DISCLOSURE_INNER_CLASS, disclosureWidthClassName } from "../../lib/disclosureMotion";
 import {
@@ -35,33 +34,53 @@ import {
 } from "./floatingBrowserPanel.logic";
 import { LazyBrowserPanel } from "./ChatThreadSurfacePrimitives";
 import { PanelStateMessage } from "./PanelStateMessage";
-
 interface FloatingBrowserPanelProps {
   threadId: ThreadId;
   onPopToSidebar: () => void;
   onClose: () => void;
 }
-
 const DEFAULT_FLOATING_RECT: FloatingBrowserPanelRect = {
   left: FLOATING_BROWSER_PANEL_MARGIN_PX,
   top: FLOATING_BROWSER_PANEL_MARGIN_PX,
   ...FLOATING_BROWSER_PANEL_DEFAULT_SIZE,
 };
-
 const RESIZE_HANDLES: ReadonlyArray<{
   edge: FloatingBrowserResizeEdge;
   className: string;
 }> = [
-  { edge: "n", className: "absolute -top-2 inset-x-4 h-4 cursor-ns-resize" },
-  { edge: "e", className: "absolute -right-2 inset-y-4 w-4 cursor-ew-resize" },
-  { edge: "s", className: "absolute -bottom-2 inset-x-4 h-4 cursor-ns-resize" },
-  { edge: "w", className: "absolute -left-2 inset-y-4 w-4 cursor-ew-resize" },
-  { edge: "ne", className: "absolute -right-2 -top-2 size-6 cursor-nesw-resize" },
-  { edge: "nw", className: "absolute -left-2 -top-2 size-6 cursor-nwse-resize" },
-  { edge: "se", className: "absolute -bottom-2 -right-2 size-6 cursor-nwse-resize" },
-  { edge: "sw", className: "absolute -bottom-2 -left-2 size-6 cursor-nesw-resize" },
+  {
+    edge: "n",
+    className: "absolute -top-2 inset-x-4 h-4 cursor-ns-resize",
+  },
+  {
+    edge: "e",
+    className: "absolute -right-2 inset-y-4 w-4 cursor-ew-resize",
+  },
+  {
+    edge: "s",
+    className: "absolute -bottom-2 inset-x-4 h-4 cursor-ns-resize",
+  },
+  {
+    edge: "w",
+    className: "absolute -left-2 inset-y-4 w-4 cursor-ew-resize",
+  },
+  {
+    edge: "ne",
+    className: "absolute -right-2 -top-2 size-6 cursor-nesw-resize",
+  },
+  {
+    edge: "nw",
+    className: "absolute -left-2 -top-2 size-6 cursor-nwse-resize",
+  },
+  {
+    edge: "se",
+    className: "absolute -bottom-2 -right-2 size-6 cursor-nwse-resize",
+  },
+  {
+    edge: "sw",
+    className: "absolute -bottom-2 -left-2 size-6 cursor-nesw-resize",
+  },
 ];
-
 function hostSize(host: HTMLElement): FloatingBrowserPanelHostSize {
   const rect = host.getBoundingClientRect();
   return {
@@ -69,7 +88,6 @@ function hostSize(host: HTMLElement): FloatingBrowserPanelHostSize {
     height: host.clientHeight || rect.height,
   };
 }
-
 export function FloatingBrowserPanel(props: FloatingBrowserPanelProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -80,7 +98,6 @@ export function FloatingBrowserPanel(props: FloatingBrowserPanelProps) {
   const panelRectRef = useRef<FloatingBrowserPanelRect>(DEFAULT_FLOATING_RECT);
   const [panelRect, setPanelRect] = useState<FloatingBrowserPanelRect>(DEFAULT_FLOATING_RECT);
   const [controlsOpen, setControlsOpen] = useState(false);
-
   const applyPanelRect = useCallback((next: FloatingBrowserPanelRect, host: HTMLElement) => {
     const clamped = clampFloatingBrowserPanelRect(next, hostSize(host));
     panelRectRef.current = clamped;
@@ -94,18 +111,15 @@ export function FloatingBrowserPanel(props: FloatingBrowserPanelProps) {
     requestBrowserPanelBoundsSync();
     return clamped;
   }, []);
-
   const commitPanelRect = useCallback(
     (next: FloatingBrowserPanelRect, host: HTMLElement) => {
       setPanelRect(applyPanelRect(next, host));
     },
     [applyPanelRect],
   );
-
   useLayoutEffect(() => {
     const host = hostRef.current;
     if (!host) return;
-
     const measure = () => {
       if (interactingRef.current) return;
       const size = hostSize(host);
@@ -127,28 +141,23 @@ export function FloatingBrowserPanel(props: FloatingBrowserPanelProps) {
       }
       commitPanelRect(clamped, host);
     };
-
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(host);
     return () => observer.disconnect();
   }, [commitPanelRect]);
-
   useEffect(() => {
     return () => {
       activeInteractionCleanupRef.current?.();
       activeInteractionCleanupRef.current = null;
     };
   }, []);
-
   useLayoutEffect(() => {
     requestBrowserPanelBoundsSync();
   }, [panelRect]);
-
   const startResize = (event: ReactPointerEvent<HTMLDivElement>) => {
     const host = hostRef.current;
     if (!host) return;
-
     const target = event.target;
     if (!(target instanceof Element)) return;
     const resizeHandle = target.closest<HTMLElement>("[data-floating-resize-edge]");
@@ -156,11 +165,9 @@ export function FloatingBrowserPanel(props: FloatingBrowserPanelProps) {
       | FloatingBrowserResizeEdge
       | undefined;
     if (!resizeEdge) return;
-
     event.preventDefault();
     event.stopPropagation();
     activeInteractionCleanupRef.current?.();
-
     const startClientX = event.clientX;
     const startClientY = event.clientY;
     const startRect = panelRectRef.current;
@@ -174,19 +181,21 @@ export function FloatingBrowserPanel(props: FloatingBrowserPanelProps) {
     let pendingDeltaX = 0;
     let pendingDeltaY = 0;
     let frameId = 0;
-
     const applyPendingRect = () => {
       frameId = 0;
       applyPanelRect(
         resizeFloatingBrowserPanelRect(
           startRect,
-          { edge: resizeEdge, deltaX: pendingDeltaX, deltaY: pendingDeltaY },
+          {
+            edge: resizeEdge,
+            deltaX: pendingDeltaX,
+            deltaY: pendingDeltaY,
+          },
           hostSize(host),
         ),
         host,
       );
     };
-
     const finish = () => {
       if (finished) return;
       finished = true;
@@ -202,13 +211,11 @@ export function FloatingBrowserPanel(props: FloatingBrowserPanelProps) {
       }
       commitPanelRect(panelRectRef.current, host);
     };
-
     const onPointerMove = (moveEvent: PointerEvent) => {
       pendingDeltaX = moveEvent.clientX - startClientX;
       pendingDeltaY = moveEvent.clientY - startClientY;
       if (frameId === 0) frameId = window.requestAnimationFrame(applyPendingRect);
     };
-
     document.body.style.cursor = cursor;
     document.body.style.userSelect = "none";
     detachPointerSession = attachPanelPointerOverlaySession(resizeOverlay, {
@@ -218,18 +225,15 @@ export function FloatingBrowserPanel(props: FloatingBrowserPanelProps) {
     });
     activeInteractionCleanupRef.current = finish;
   };
-
   const startHandleGesture = (event: ReactPointerEvent<HTMLElement>, expandOnClick = false) => {
     const host = hostRef.current;
     if (!host || event.button !== 0) return;
-
     event.preventDefault();
     event.stopPropagation();
     activeInteractionCleanupRef.current?.();
     didDragRef.current = false;
     const reopenMenuOnRelease = !controlsOpen;
     setControlsOpen(false);
-
     const startClientX = event.clientX;
     const startClientY = event.clientY;
     const startRect = panelRectRef.current;
@@ -238,7 +242,6 @@ export function FloatingBrowserPanel(props: FloatingBrowserPanelProps) {
     const previousBodyUserSelect = document.body.style.userSelect;
     let finished = false;
     let detachPointerSession = () => {};
-
     const finish = (openMenu: boolean) => {
       if (finished) return;
       finished = true;
@@ -261,7 +264,6 @@ export function FloatingBrowserPanel(props: FloatingBrowserPanelProps) {
     };
     const finishWithRelease = () => finish(true);
     const finishWithAbort = () => finish(false);
-
     const onPointerMove = (moveEvent: PointerEvent) => {
       const delta = {
         x: moveEvent.clientX - startClientX,
@@ -276,7 +278,6 @@ export function FloatingBrowserPanel(props: FloatingBrowserPanelProps) {
       }
       applyPanelRect(moveFloatingBrowserPanelRect(startRect, delta, hostSize(host)), host);
     };
-
     detachPointerSession = attachPanelPointerOverlaySession(resizeOverlay, {
       onMove: onPointerMove,
       onRelease: finishWithRelease,
@@ -284,13 +285,14 @@ export function FloatingBrowserPanel(props: FloatingBrowserPanelProps) {
     });
     activeInteractionCleanupRef.current = finishWithAbort;
   };
-
   return (
     <div
       ref={hostRef}
       data-floating-browser-host="true"
       className="pointer-events-none absolute inset-x-0 bottom-0 z-30 overflow-hidden"
-      style={{ top: `${CHAT_SURFACE_HEADER_HEIGHT_PX}px` }}
+      style={{
+        top: `${CHAT_SURFACE_HEADER_HEIGHT_PX}px`,
+      }}
     >
       <div
         ref={panelRef}
@@ -405,7 +407,6 @@ export function FloatingBrowserPanel(props: FloatingBrowserPanelProps) {
     </div>
   );
 }
-
 function FloatingBrowserPanelFallback() {
   return <PanelStateMessage loadingLabel="Loading browser" />;
 }

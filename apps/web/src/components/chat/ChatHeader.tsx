@@ -1,3 +1,10 @@
+import {
+  WorkflowCircle04Icon,
+  ArrowExpandIcon,
+  ArrowLeftRightIcon,
+  PanelRightCloseIcon,
+  PencilEdit02Icon,
+} from "~/lib/icons";
 import { type EditorId } from "@glade/contracts/settings/editor";
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
@@ -5,11 +12,7 @@ import { type ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybin
 import { isGenericChatThreadTitle } from "@glade/shared/threads/chatThreads";
 import React, { useContext } from "react";
 import { WorkspaceHeaderContext } from "./WorkspaceHeaderContext";
-import { FiGitBranch } from "react-icons/fi";
-import { HiMiniArrowsPointingOut } from "react-icons/hi2";
-import { TbExchange } from "react-icons/tb";
 import GitActionsControl from "../GitActionsControl";
-import { PanelRightCloseIcon, PencilIcon } from "~/lib/icons";
 import {
   CHAT_HEADER_TOGGLE_CLASS_NAME,
   ChatHeaderIconButton,
@@ -25,7 +28,6 @@ import { useOpenFavoriteEditorShortcut } from "~/hooks/useOpenFavoriteEditorShor
 import type { RepoDiffTotals } from "~/hooks/useRepoDiffTotals";
 import { ProviderIcon } from "../ProviderIcon";
 import { EnvironmentToggle, type EnvironmentToggleState } from "./environment/EnvironmentToggle";
-
 interface ChatHeaderProps {
   activeThreadId: ThreadId;
   activeThreadTitle: string;
@@ -37,7 +39,6 @@ interface ChatHeaderProps {
   }>;
   className?: string;
   hideSidebarControls?: boolean;
-
   minimalChrome?: boolean;
   isGitRepo: boolean;
   openInTarget: string | null;
@@ -71,7 +72,6 @@ interface ChatHeaderProps {
   onNavigateToThread: (threadId: ThreadId) => void;
   onRenameThread: () => void;
 }
-
 export function ChatHeader({
   activeThreadId,
   activeThreadTitle,
@@ -119,31 +119,26 @@ export function ChatHeader({
     deletions: diffDeletions,
     hasChanges: showDiffTotals,
   } = diffTotals;
-
   useOpenFavoriteEditorShortcut({
     keybindings,
     availableEditors,
     openInTarget,
     enabled: Boolean(activeProjectName),
   });
-
   const isSplitPane = surfaceMode === "split";
   const compact = isSplitPane;
-
   const inlineChatLayoutAction = chatLayoutAction?.kind === "maximize" ? chatLayoutAction : null;
   const showThreadProviderIcon = !isGenericChatThreadTitle(activeThreadTitle);
-
   const renderProviderIcon = (provider: ProviderKind | null, className: string) => {
     return (
       <ProviderIcon
         provider={provider}
         tone="header"
         className={className}
-        fallback={<FiGitBranch className={className} />}
+        fallback={<WorkflowCircle04Icon className={className} />}
       />
     );
   };
-
   const togglesRightDock = onToggleRightDock !== undefined;
   const rightPanelToggleControl = showDiffToggle ? (
     <Tooltip>
@@ -191,7 +186,6 @@ export function ChatHeader({
       </TooltipPopup>
     </Tooltip>
   ) : null;
-
   return (
     <div className={cn("flex min-w-0 flex-1 items-center gap-2", className)}>
       <div
@@ -246,7 +240,7 @@ export function ChatHeader({
                     <TooltipTrigger
                       render={
                         <ChatHeaderIconButton label="Rename chat" onClick={onRenameThread}>
-                          <PencilIcon className="size-3.5" />
+                          <PencilEdit02Icon className="size-3.5" />
                         </ChatHeaderIconButton>
                       }
                     />
@@ -277,7 +271,7 @@ export function ChatHeader({
                   label={inlineChatLayoutAction.label}
                   onClick={inlineChatLayoutAction.onClick}
                 >
-                  <HiMiniArrowsPointingOut className="size-3.5" />
+                  <ArrowExpandIcon className="size-3.5" />
                 </ChatHeaderIconButton>
               }
             />
@@ -295,7 +289,7 @@ export function ChatHeader({
                   label={changeThreadAction.label}
                   onClick={changeThreadAction.onClick}
                 >
-                  <TbExchange className="size-3.5" />
+                  <ArrowLeftRightIcon className="size-3.5" />
                 </ChatHeaderIconButton>
               }
             />

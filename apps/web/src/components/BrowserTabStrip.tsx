@@ -1,10 +1,8 @@
+import { Globe02Icon, PlusIcon, XIcon } from "~/lib/icons";
 import { useLayoutEffect, useRef } from "react";
 import type { BrowserTabState } from "@glade/contracts/ipc/ipc";
 import { isBlankBrowserTabUrl } from "@glade/shared/browser/browserSession";
-
-import { GlobeIcon, PlusIcon, XIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
-
 import {
   BROWSER_CHROME_CONTROL_CLASS_NAME,
   BROWSER_CHROME_CONTROL_FILLED_CLASS_NAME,
@@ -12,18 +10,15 @@ import {
 } from "./BrowserPanel.logic";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
-
 export interface BrowserTabStripProps {
   tabs: readonly BrowserTabState[];
   activeTabId: string | null;
   status: BrowserChromeStatus | null;
-
   dragRegion: boolean;
   onSelectTab: (tabId: string) => void;
   onCloseTab: (tabId: string) => void;
   onCreateTab: () => void;
 }
-
 function scrollTabIntoView(strip: HTMLElement, tab: HTMLElement): void {
   const stripRect = strip.getBoundingClientRect();
   const tabRect = tab.getBoundingClientRect();
@@ -35,11 +30,9 @@ function scrollTabIntoView(strip: HTMLElement, tab: HTMLElement): void {
     strip.scrollLeft = right - strip.clientWidth;
   }
 }
-
 export function BrowserTabStrip(props: BrowserTabStripProps) {
   const { activeTabId, onCloseTab, onCreateTab, onSelectTab } = props;
   const stripRef = useRef<HTMLDivElement>(null);
-
   useLayoutEffect(() => {
     const strip = stripRef.current;
     if (!strip || activeTabId === null) {
@@ -50,7 +43,6 @@ export function BrowserTabStrip(props: BrowserTabStripProps) {
       scrollTabIntoView(strip, activeTabElement);
     }
   }, [activeTabId]);
-
   return (
     <div
       className={cn(
@@ -84,7 +76,7 @@ export function BrowserTabStrip(props: BrowserTabStripProps) {
                 {tab.faviconUrl ? (
                   <img alt="" src={tab.faviconUrl} className="size-3 shrink-0 rounded-xs" />
                 ) : (
-                  <GlobeIcon className="size-3 shrink-0 text-muted-foreground" />
+                  <Globe02Icon className="size-3 shrink-0 text-muted-foreground" />
                 )}
                 <span className="truncate">{tab.title || "Untitled"}</span>
               </button>

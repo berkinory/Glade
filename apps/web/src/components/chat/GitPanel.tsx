@@ -1,13 +1,12 @@
+import { CircleCheckIcon, RefreshCwIcon } from "~/lib/icons";
 import { GitRevertDialog } from "./GitRevertDialog";
 import { GitMediaPreview, isGitMediaPath } from "./GitMediaPreview";
 import { EditSourceFile } from "./EditSourceFile";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { SourceControlToolbar } from "./SourceControlToolbar";
-
 import { type FileDiffMetadata } from "@pierre/diffs/react";
 import { useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type MouseEvent } from "react";
-
 import { showGitFileContextMenu } from "./gitFileContextMenu";
 import { useTheme } from "~/hooks/useTheme";
 import { buildFileDiffRenderKey, getRenderablePatch } from "~/lib/diffRendering";
@@ -21,12 +20,10 @@ import {
   gitStageFilesMutationOptions,
   gitUnstageFilesMutationOptions,
 } from "~/lib/gitReactQuery";
-import { CircleCheckIcon, RefreshCwIcon } from "~/lib/icons";
 import { expensiveReadErrorRefetchInterval } from "~/lib/expensiveReadRetry";
 import { hasUnsavedWorkspaceEditors } from "~/lib/workspaceEditorSession";
 import { cn } from "~/lib/utils";
 import { Alert } from "../ui/alert";
-
 import { Input } from "../ui/input";
 import { IconButton } from "../ui/icon-button";
 import { Spinner } from "../ui/spinner";
@@ -35,14 +32,11 @@ import { FileDiffCard, FileDiffSurface } from "./FileDiffView";
 import { GitFileSection, type SourceFile } from "./GitFileList";
 import { PanelStateMessage } from "./PanelStateMessage";
 import { selectGitFiles, type GitFileSelection, type GitFileSectionId } from "./gitFileSelection";
-
 type GitPanelSection = GitFileSectionId;
-
 interface SelectedFile {
   section: GitPanelSection;
   path: string;
 }
-
 function SelectedFileDiff(props: {
   fileDiff: FileDiffMetadata;
   theme: "light" | "dark";
@@ -63,7 +57,6 @@ function SelectedFileDiff(props: {
     </FileDiffSurface>
   );
 }
-
 export function GitPanel(props: {
   threadId: ThreadId;
   workspaceRoot: string | null;
@@ -75,14 +68,16 @@ export function GitPanel(props: {
   const { resolvedTheme } = useTheme();
   const theme = resolvedTheme as "light" | "dark";
   const cwd = props.workspaceRoot;
-
   const [selected, setSelected] = useState<SelectedFile | null>(null);
   useEffect(() => {
-    if (props.selectedFilePath) setSelected({ section: "unstaged", path: props.selectedFilePath });
+    if (props.selectedFilePath)
+      setSelected({
+        section: "unstaged",
+        path: props.selectedFilePath,
+      });
   }, [props.selectedFilePath]);
   const [fileSelection, setFileSelection] = useState<GitFileSelection | null>(null);
   const [reverting, setReverting] = useState<readonly SourceFile[] | null>(null);
-
   const [filter, setFilter] = useState("");
   const [search, setSearch] = useState("");
   useEffect(() => {
@@ -92,7 +87,6 @@ export function GitPanel(props: {
   const filesQuery = useQuery(gitSourceControlFilesQueryOptions(cwd, search));
   const coverage = filesQuery.data?.coverage;
   const large = coverage?.mode === "large";
-
   const stagedFiles = filesQuery.data?.staged ?? [];
   const unstagedFiles = filesQuery.data?.unstaged ?? [];
   useEffect(() => {
@@ -103,7 +97,11 @@ export function GitPanel(props: {
       const paths = current.paths.filter((path) => available.has(path));
       if (paths.length === current.paths.length) return current;
       return paths.length
-        ? { ...current, paths, anchor: available.has(current.anchor) ? current.anchor : paths[0]! }
+        ? {
+            ...current,
+            paths,
+            anchor: available.has(current.anchor) ? current.anchor : paths[0]!,
+          }
         : null;
     });
     setSelected((current) =>
@@ -126,16 +124,29 @@ export function GitPanel(props: {
     const renderable = getRenderablePatch(selectedPatch, `git-pane:selected:${theme}`);
     return renderable?.kind === "files" ? (renderable.files[0] ?? null) : null;
   }, [selectedPatch, theme]);
-
-  const stageMutation = useMutation(gitStageFilesMutationOptions({ cwd, queryClient }));
-  const unstageMutation = useMutation(gitUnstageFilesMutationOptions({ cwd, queryClient }));
-  const ignoreMutation = useMutation(gitSourceControlActionMutationOptions({ cwd, queryClient }));
+  const stageMutation = useMutation(
+    gitStageFilesMutationOptions({
+      cwd,
+      queryClient,
+    }),
+  );
+  const unstageMutation = useMutation(
+    gitUnstageFilesMutationOptions({
+      cwd,
+      queryClient,
+    }),
+  );
+  const ignoreMutation = useMutation(
+    gitSourceControlActionMutationOptions({
+      cwd,
+      queryClient,
+    }),
+  );
   const mutating =
     useIsMutating({
       predicate: (mutation) =>
         mutation.options.mutationKey?.[0] === "git" && mutation.options.mutationKey.includes(cwd),
     }) > 0;
-
   const rowTargets = (section: GitPanelSection, paths: string[]) => {
     const files = section === "staged" ? stagedFiles : unstagedFiles;
     const requested =
@@ -147,7 +158,6 @@ export function GitPanel(props: {
     const currentPaths = new Set(files.map((file) => file.path));
     return requested.filter((path) => currentPaths.has(path));
   };
-
   const stageAll = (section: GitPanelSection) => {
     const options = {
       onError: (error: Error) =>
@@ -157,8 +167,20 @@ export function GitPanel(props: {
           description: error.message,
         }),
     };
-    if (section === "staged") unstageMutation.mutate({ allChanges: true }, options);
-    else stageMutation.mutate({ allChanges: true }, options);
+    if (section === "staged")
+      unstageMutation.mutate(
+        {
+          allChanges: true,
+        },
+        options,
+      );
+    else
+      stageMutation.mutate(
+        {
+          allChanges: true,
+        },
+        options,
+      );
   };
   const stage = (paths: string[]) => {
     paths = rowTargets("unstaged", paths);
@@ -184,7 +206,6 @@ export function GitPanel(props: {
         }),
     });
   };
-
   const selectFile = (
     section: GitPanelSection,
     file: SourceFile,
@@ -194,14 +215,24 @@ export function GitPanel(props: {
     const range = event.shiftKey;
     const files = section === "staged" ? stagedFiles : unstagedFiles;
     setFileSelection((current) =>
-      selectGitFiles({ current, section, files, path: file.path, additive, range }),
+      selectGitFiles({
+        current,
+        section,
+        files,
+        path: file.path,
+        additive,
+        range,
+      }),
     );
     if (!additive && !range) {
       props.onSelectDiff?.(section, file.path, event.detail !== 2);
       setSelected((current) =>
         !props.onSelectDiff && current?.section === section && current.path === file.path
           ? null
-          : { section, path: file.path },
+          : {
+              section,
+              path: file.path,
+            },
       );
     }
   };
@@ -219,7 +250,11 @@ export function GitPanel(props: {
         : [file.path];
     const targets = files.filter((candidate) => selectedPaths.includes(candidate.path));
     if (selectedPaths.length === 1 || !fileSelection?.paths.includes(file.path)) {
-      setFileSelection({ section, paths: [file.path], anchor: file.path });
+      setFileSelection({
+        section,
+        paths: [file.path],
+        anchor: file.path,
+      });
     }
     const clicked = await showGitFileContextMenu(section, file, targets, {
       x: event.clientX,
@@ -249,7 +284,10 @@ export function GitPanel(props: {
         return;
       }
       ignoreMutation.mutate(
-        { action: "ignore", paths: targets.map((target) => target.path) },
+        {
+          action: "ignore",
+          paths: targets.map((target) => target.path),
+        },
         {
           onError: (error) =>
             toastManager.add({
@@ -259,20 +297,28 @@ export function GitPanel(props: {
             }),
           onSuccess: () => {
             setFileSelection(null);
-            toastManager.add({ type: "success", title: "Added to .gitignore" });
+            toastManager.add({
+              type: "success",
+              title: "Added to .gitignore",
+            });
           },
         },
       );
     }
   };
-
   const refresh = () => {
     if (!cwd) return;
-    void queryClient.invalidateQueries({ queryKey: gitQueryKeys.sourceControlFiles(cwd) });
-    void queryClient.invalidateQueries({ queryKey: gitQueryKeys.workingTreeDiffs(cwd) });
+    void queryClient.invalidateQueries({
+      queryKey: gitQueryKeys.sourceControlFiles(cwd),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: gitQueryKeys.workingTreeDiffs(cwd),
+    });
   };
-
-  let selectedResolved: { section: GitPanelSection; file: SourceFile } | null = null;
+  let selectedResolved: {
+    section: GitPanelSection;
+    file: SourceFile;
+  } | null = null;
   if (selected) {
     const findInSection = (section: GitPanelSection) =>
       (section === "staged" ? stagedFiles : unstagedFiles).find(
@@ -280,7 +326,10 @@ export function GitPanel(props: {
       ) ?? null;
     const preferred = findInSection(selected.section);
     if (preferred) {
-      selectedResolved = { section: selected.section, file: preferred };
+      selectedResolved = {
+        section: selected.section,
+        file: preferred,
+      };
     }
   }
   const selectedFileDiff = selectedResolved ? selectedDiff : null;
@@ -292,18 +341,19 @@ export function GitPanel(props: {
           ? [selectedResolved.file.path]
           : [],
     );
-
   const recovering =
     filesQuery.isError &&
-    expensiveReadErrorRefetchInterval({ state: { error: filesQuery.error } }) !== false;
+    expensiveReadErrorRefetchInterval({
+      state: {
+        error: filesQuery.error,
+      },
+    }) !== false;
   const isLoading = filesQuery.isLoading || recovering;
   const error = filesQuery.isError && !recovering ? filesQuery.error : null;
   const hasChanges = (coverage?.count ?? stagedFiles.length + unstagedFiles.length) > 0;
-
   if (!cwd) {
     return <PanelStateMessage>Source control is unavailable for this thread.</PanelStateMessage>;
   }
-
   return (
     <div className="flex h-full min-h-0 w-full flex-col">
       <SourceControlToolbar
@@ -446,7 +496,11 @@ export function GitPanel(props: {
               const targets = new Set(rowTargets("unstaged", [file.path]));
               setReverting(unstagedFiles.filter((entry) => targets.has(entry.path)));
             }}
-            {...(stagedFiles.length === 0 ? { onRefresh: refresh } : {})}
+            {...(stagedFiles.length === 0
+              ? {
+                  onRefresh: refresh,
+                }
+              : {})}
           />
         ) : null}
         {large && stagedFiles.length + unstagedFiles.length === 0 && !isLoading ? (

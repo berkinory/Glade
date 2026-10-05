@@ -12,13 +12,11 @@ import {
   ComposerStackedPanelRowMain,
 } from "./ComposerStackedPanelContent";
 import { COMPOSER_STACKED_PANEL_ICON_CLASS_NAME } from "./composerStackedPanelStyles";
-
 interface ComposerComputerControlEffortHintProps {
   onApply: () => void;
   onDismiss: () => void;
   attachedToPrevious?: boolean;
 }
-
 export function ComposerComputerControlEffortHint({
   onApply,
   onDismiss,

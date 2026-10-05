@@ -1,8 +1,6 @@
+import { ArrowLeft02Icon, ArrowRight02Icon } from "~/lib/icons";
 import { useState } from "react";
-
-import { ArrowLeftIcon, ArrowRightIcon } from "~/lib/icons";
 import { GladeLogo } from "~/components/GladeLogo";
-
 import { ChangelogAccordion } from "../whatsNew/ChangelogAccordion";
 import { ReleaseNotesSections } from "../whatsNew/ReleaseNotesSections";
 import type { WhatsNewEntry } from "../whatsNew/logic";
@@ -16,19 +14,14 @@ import {
   DialogPopup,
   DialogTitle,
 } from "./ui/dialog";
-
 type View = "current" | "changelog";
-
 export interface WhatsNewDialogProps {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
-
   readonly currentEntry: WhatsNewEntry | null;
-
   readonly allEntries: readonly WhatsNewEntry[];
   readonly currentVersion: string;
 }
-
 export default function WhatsNewDialog({
   open,
   onOpenChange,
@@ -45,12 +38,11 @@ export default function WhatsNewDialog({
       </Dialog>
     );
   }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPopup className="max-w-lg gap-0 p-0" showCloseButton={false}>
         {/* The view state lives below DialogPopup, which unmounts its children on close — every open boots
-   into the primary view without a reset effect, even if the user left the changelog open last time. */}
+         into the primary view without a reset effect, even if the user left the changelog open last time. */}
         <WhatsNewDialogContent
           currentEntry={currentEntry}
           allEntries={allEntries}
@@ -61,7 +53,6 @@ export default function WhatsNewDialog({
     </Dialog>
   );
 }
-
 function WhatsNewDialogContent({
   currentEntry,
   allEntries,
@@ -74,7 +65,6 @@ function WhatsNewDialogContent({
   readonly onOpenChange: (open: boolean) => void;
 }) {
   const [view, setView] = useState<View>("current");
-
   return (
     <>
       <DialogHeader className="gap-1 p-4 pr-12">
@@ -104,7 +94,7 @@ function WhatsNewDialogContent({
             onClick={() => setView("changelog")}
           >
             View changelog
-            <ArrowRightIcon className="size-3" />
+            <ArrowRight02Icon className="size-3" />
           </Button>
           <Button size="sm" onClick={() => onOpenChange(false)}>
             Got it
@@ -114,7 +104,6 @@ function WhatsNewDialogContent({
     </>
   );
 }
-
 function CurrentHeader({
   entry,
   currentVersion,
@@ -136,12 +125,11 @@ function CurrentHeader({
     </div>
   );
 }
-
 function ChangelogHeader({ onBack }: { readonly onBack: () => void }) {
   return (
     <div className="flex items-center gap-3">
       <Button size="icon-sm" variant="ghost" aria-label="Back to What's new" onClick={onBack}>
-        <ArrowLeftIcon className="size-4" />
+        <ArrowLeft02Icon className="size-4" />
       </Button>
       <div className="flex min-w-0 flex-col">
         <DialogTitle className="text-base">Complete changelog</DialogTitle>

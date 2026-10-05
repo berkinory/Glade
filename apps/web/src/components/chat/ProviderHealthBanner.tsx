@@ -1,3 +1,4 @@
+import { AlertCircleIcon, TriangleAlertIcon, XIcon } from "~/lib/icons";
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "../ui/alert";
@@ -6,10 +7,8 @@ import {
   EXPANDED_NOTIFICATION_SURFACE_CLASS_NAME,
   NOTIFICATION_ICON_CLASS_NAME,
 } from "../ui/notificationSurface";
-import { CircleAlertIcon, TriangleAlertIcon, XIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { ChatColumnBannerFrame } from "./ChatColumnBannerFrame";
-
 export const ProviderHealthBanner = function ProviderHealthBanner({
   onDismiss,
   status,
@@ -20,7 +19,6 @@ export const ProviderHealthBanner = function ProviderHealthBanner({
   if (!status || status.status === "ready") {
     return null;
   }
-
   const providerLabel = PROVIDER_DISPLAY_NAMES[status.provider] ?? status.provider;
   const defaultMessage =
     status.status === "error" || status.status === "update-required"
@@ -29,9 +27,8 @@ export const ProviderHealthBanner = function ProviderHealthBanner({
   const title = `${providerLabel} provider status`;
   const Icon =
     status.status === "error" || status.status === "update-required"
-      ? CircleAlertIcon
+      ? AlertCircleIcon
       : TriangleAlertIcon;
-
   return (
     <ChatColumnBannerFrame>
       <Alert

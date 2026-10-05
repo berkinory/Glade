@@ -1,23 +1,18 @@
-import { pluralize } from "@glade/shared/text/text";
-
 import { MessageCircleIcon } from "~/lib/icons";
+import { pluralize } from "@glade/shared/text/text";
 import { type ChatAssistantSelectionAttachment } from "../../types";
 import { AttachmentSummaryChip } from "./AttachmentSummaryChip";
-
 interface AssistantSelectionsSummaryChipProps {
   selections: ReadonlyArray<ChatAssistantSelectionAttachment>;
   onRemove?: (() => void) | undefined;
 }
-
 function selectionCountLabel(count: number): string {
   return `${count} ${pluralize(count, "selection")}`;
 }
-
 export function AssistantSelectionsSummaryChip(props: AssistantSelectionsSummaryChipProps) {
   if (props.selections.length === 0) {
     return null;
   }
-
   return (
     <AttachmentSummaryChip
       icon={MessageCircleIcon}

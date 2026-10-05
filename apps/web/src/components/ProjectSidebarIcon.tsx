@@ -1,6 +1,6 @@
+import { FolderIcon, Folder02Icon } from "~/lib/icons";
+import { NamedIcon } from "~/lib/namedIcons";
 import { useEffect, useState, type CSSProperties } from "react";
-
-import { CentralIcon } from "~/lib/central-icons";
 import {
   DEFAULT_PROJECT_ICON,
   projectColorValue,
@@ -9,19 +9,21 @@ import {
 } from "~/lib/projectAppearance";
 import { cn } from "~/lib/utils";
 import { resolveWsHttpUrl } from "~/lib/wsHttpUrl";
-import { FolderClosed, FolderOpen } from "./FolderClosed";
-
 const projectFaviconPresence = new Map<string, boolean>();
-
 function resolveProjectFaviconUrl(cwd: string): string {
-  const params = new URLSearchParams({ cwd, fallback: "none" });
+  const params = new URLSearchParams({
+    cwd,
+    fallback: "none",
+  });
   return resolveWsHttpUrl(`/api/project-favicon?${params.toString()}`);
 }
-
 function colorStyle(color: ProjectColor | null): CSSProperties | undefined {
-  return color ? { color: projectColorValue(color) } : undefined;
+  return color
+    ? {
+        color: projectColorValue(color),
+      }
+    : undefined;
 }
-
 export function ProjectEmojiGlyph({ emoji, className }: { emoji: string; className?: string }) {
   return (
     <svg viewBox="0 0 20 20" aria-hidden className={cn("shrink-0 overflow-visible", className)}>
@@ -31,7 +33,6 @@ export function ProjectEmojiGlyph({ emoji, className }: { emoji: string; classNa
     </svg>
   );
 }
-
 export function ProjectSidebarIcon({
   cwd,
   expanded,
@@ -49,7 +50,7 @@ export function ProjectSidebarIcon({
   }
   if (appearance?.kind === "icon" && appearance.icon !== DEFAULT_PROJECT_ICON) {
     return (
-      <CentralIcon
+      <NamedIcon
         name={appearance.icon}
         className={glyphClassName}
         style={colorStyle(appearance.color)}
@@ -65,7 +66,6 @@ export function ProjectSidebarIcon({
     />
   );
 }
-
 function ProjectFolderIcon({
   cwd,
   expanded,
@@ -78,42 +78,50 @@ function ProjectFolderIcon({
   glyphClassName: string;
 }) {
   const faviconSrc = resolveProjectFaviconUrl(cwd);
-
-  const [probe, setProbe] = useState<{ src: string; present: boolean } | null>(() => {
+  const [probe, setProbe] = useState<{
+    src: string;
+    present: boolean;
+  } | null>(() => {
     const cached = projectFaviconPresence.get(faviconSrc);
-    return cached === undefined ? null : { src: faviconSrc, present: cached };
+    return cached === undefined
+      ? null
+      : {
+          src: faviconSrc,
+          present: cached,
+        };
   });
   const hasFavicon = probe !== null && probe.src === faviconSrc && probe.present;
-  const FolderGlyph = expanded ? FolderOpen : FolderClosed;
-
+  const FolderGlyph = expanded ? Folder02Icon : FolderIcon;
   useEffect(() => {
     let cancelled = false;
     const image = new Image();
     const handleLoad = () => {
       projectFaviconPresence.set(faviconSrc, true);
       if (!cancelled) {
-        setProbe({ src: faviconSrc, present: true });
+        setProbe({
+          src: faviconSrc,
+          present: true,
+        });
       }
     };
     const handleError = () => {
       projectFaviconPresence.set(faviconSrc, false);
       if (!cancelled) {
-        setProbe({ src: faviconSrc, present: false });
+        setProbe({
+          src: faviconSrc,
+          present: false,
+        });
       }
     };
-
     image.addEventListener("load", handleLoad);
     image.addEventListener("error", handleError);
-
     image.src = faviconSrc;
-
     return () => {
       cancelled = true;
       image.removeEventListener("load", handleLoad);
       image.removeEventListener("error", handleError);
     };
   }, [faviconSrc]);
-
   if (hasFavicon)
     return (
       <img
@@ -123,7 +131,10 @@ function ProjectFolderIcon({
         className={cn(glyphClassName, "object-contain rounded-sm")}
         onError={() => {
           projectFaviconPresence.set(faviconSrc, false);
-          setProbe({ src: faviconSrc, present: false });
+          setProbe({
+            src: faviconSrc,
+            present: false,
+          });
         }}
       />
     );

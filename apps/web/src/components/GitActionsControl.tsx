@@ -1,3 +1,4 @@
+import { ChevronDownIcon } from "~/lib/icons";
 import { ComposerPickerMenuPopup } from "~/components/chat/ComposerPickerMenuPopup";
 import { Button } from "~/components/ui/button";
 import {
@@ -12,7 +13,6 @@ import {
 import { Input } from "~/components/ui/input";
 import { Menu, MenuGroup, MenuGroupLabel, MenuSeparator, MenuTrigger } from "~/components/ui/menu";
 import { Popover, PopoverPopup, PopoverTrigger } from "~/components/ui/popover";
-import { ChevronDownIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import {
   CHAT_HEADER_CONTROL_CLASS_NAME,
@@ -35,7 +35,6 @@ import { GitActionGlyph } from "./gitActionGlyphs";
 import { type GitGlyphName } from "./GitActionsControl.logic";
 import { GitCommitDialog } from "./GitCommitDialog";
 import { GitCreatePrDialog } from "./GitCreatePrDialog";
-
 import {
   GitPickerMenuRow,
   GitQuickActionIcon,
@@ -111,9 +110,7 @@ export default function GitActionsControl(props: GitActionsControlProps) {
       </ChatHeaderButton>
     );
   }
-
   const runnableCommitPushMenuItem = findRunnableCommitPushMenuItem(gitActionMenuItems);
-
   const gitMenuContent = (
     <>
       <MenuGroup>
@@ -178,7 +175,6 @@ export default function GitActionsControl(props: GitActionsControlProps) {
       )}
     </>
   );
-
   const gitActionDialogs = (
     <>
       <GitCreatePrDialog
@@ -302,10 +298,8 @@ export default function GitActionsControl(props: GitActionsControlProps) {
       </Dialog>
     </>
   );
-
   if (isPanel) {
     const showPanelPullRow = showPromotedPullAction;
-
     const panelPrimaryLabel = showPanelPullRow
       ? (promotedPull?.label ?? "Pull")
       : (runnableCommitPushMenuItem?.label ?? "Commit and Push");
@@ -342,7 +336,6 @@ export default function GitActionsControl(props: GitActionsControlProps) {
         </ComposerPickerMenuPopup>
       </Menu>
     );
-
     return (
       <>
         {!isRepo ? (
@@ -379,7 +372,6 @@ export default function GitActionsControl(props: GitActionsControlProps) {
       </>
     );
   }
-
   return (
     <>
       {!isRepo ? (

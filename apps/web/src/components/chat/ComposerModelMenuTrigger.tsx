@@ -1,8 +1,7 @@
+import { ChevronDownIcon, EnergyFilledIcon, SettingsIcon } from "~/lib/icons";
 import { Spinner } from "~/components/ui/spinner";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { useState } from "react";
-
-import { ChevronDownIcon, FastModeIcon, SettingsIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { PROVIDER_ICON_COMPONENT_BY_PROVIDER } from "../ProviderIcon";
 import { Button } from "../ui/button";
@@ -14,7 +13,6 @@ import {
   COMPOSER_PICKER_TRIGGER_TEXT_CLASS_NAME,
 } from "./composerPickerStyles";
 import { getProviderIconClassName } from "./ProviderModelPicker";
-
 export function ComposerModelMenuTrigger(props: {
   provider: ProviderKind;
   modelLabel: string;
@@ -25,12 +23,10 @@ export function ComposerModelMenuTrigger(props: {
   disabled?: boolean | undefined;
   isMenuOpen: boolean;
   loading?: boolean;
-
   openPlaceholderLabel?: string | null | undefined;
   shortcutLabel?: string | null | undefined;
 }) {
   const freezesLabel = props.isMenuOpen && Boolean(props.openPlaceholderLabel);
-
   const showsPlaceholder = freezesLabel && !props.hideModelLabel;
   // Opening must not move the trigger at all: Base UI opens on mousedown and cancels the open when
   // the matching mouseup lands outside the trigger, so a resize under the cursor eats the first
@@ -44,7 +40,6 @@ export function ComposerModelMenuTrigger(props: {
   if (freezesLabel && frozenLabel === null) setFrozenLabel(liveLabel);
   if (!freezesLabel && frozenLabel !== null) setFrozenLabel(null);
   const label = freezesLabel && frozenLabel !== null ? frozenLabel : liveLabel;
-
   const [hasShownPlaceholder, setHasShownPlaceholder] = useState(false);
   if (showsPlaceholder && !hasShownPlaceholder) setHasShownPlaceholder(true);
   const ProviderIcon = PROVIDER_ICON_COMPONENT_BY_PROVIDER[props.provider];
@@ -54,7 +49,6 @@ export function ComposerModelMenuTrigger(props: {
   ]
     .filter((part): part is string => typeof part === "string" && part.length > 0)
     .join(" · ");
-
   const triggerButton = (
     <Button
       size="sm"
@@ -71,10 +65,13 @@ export function ComposerModelMenuTrigger(props: {
             ? `Change model and reasoning, currently ${props.statusLabel}`
             : "Change model and reasoning"
       }
-      {...(hiddenTriggerTitle.length > 0 ? { title: hiddenTriggerTitle } : {})}
+      {...(hiddenTriggerTitle.length > 0
+        ? {
+            title: hiddenTriggerTitle,
+          }
+        : {})}
     />
   );
-
   const triggerContent = (
     <span className="flex min-w-0 items-center gap-1.5">
       <span className="relative flex min-w-0 items-center">
@@ -106,7 +103,7 @@ export function ComposerModelMenuTrigger(props: {
             </span>
           )}
           {label.showsFastBadge ? (
-            <FastModeIcon
+            <EnergyFilledIcon
               aria-hidden="true"
               className={cn("size-3.5 shrink-0", COMPOSER_MUTED_ACCENT_TEXT_CLASS_NAME)}
             />
@@ -141,9 +138,7 @@ export function ComposerModelMenuTrigger(props: {
       <ChevronDownIcon aria-hidden="true" className="ms-0.5 size-3 shrink-0 opacity-60" />
     </span>
   );
-
   if (props.loading) return <Button {...triggerButton.props}>{triggerContent}</Button>;
-
   if (!props.shortcutLabel) {
     return <MenuTrigger render={triggerButton}>{triggerContent}</MenuTrigger>;
   }

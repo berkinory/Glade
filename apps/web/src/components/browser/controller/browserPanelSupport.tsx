@@ -1,3 +1,5 @@
+import type { IconComponent } from "~/lib/iconComponent";
+import { AlertCircleIcon, Globe02Icon, RefreshCwIcon, CursorInWindowIcon } from "~/lib/icons";
 import { Spinner } from "~/components/ui/spinner";
 import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ServerLocalServerProcess } from "@glade/contracts/server/server";
@@ -14,9 +16,7 @@ import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import type { BrowserAnnotationDraft } from "~/lib/browserAnnotations";
-import { CentralIcon } from "~/lib/central-icons";
 import type { DockPaneRuntimeMode } from "~/lib/dockPaneActivation";
-import { CircleAlertIcon, GlobeIcon, RefreshCwIcon, type LucideIcon } from "~/lib/icons";
 import { NATIVE_SURFACE_MENU_OVERLAY_SELECTOR } from "~/lib/nativeSurfaceOcclusion";
 export interface BrowserPanelProps {
   hideTabs?: boolean;
@@ -54,7 +54,7 @@ const NATIVE_BROWSER_OBSCURING_OVERLAY_SELECTOR = [
   "[data-slot='toast-popup']",
   "[role='dialog'][aria-modal='true']",
 ].join(", ");
-export function BrowserActionMenuIcon({ icon: Icon }: { icon: LucideIcon }) {
+export function BrowserActionMenuIcon({ icon: Icon }: { icon: IconComponent }) {
   return (
     <span className={BROWSER_ACTION_MENU_ICON_CLASS_NAME}>
       <Icon aria-hidden="true" />
@@ -85,7 +85,7 @@ export function BrowserAnnotationButton(props: {
           />
         }
       >
-        <CentralIcon name="window-cursor" className="size-3.5" />
+        <CursorInWindowIcon className="size-3.5" />
       </TooltipTrigger>
       <TooltipPopup side="bottom">
         {props.controller.active
@@ -166,7 +166,6 @@ export function setBrowserWebviewOverlayOcclusion(
   if (!webview) {
     return;
   }
-
   webview.style.pointerEvents = occluded ? "none" : "auto";
 }
 function isVisibleOverlayElement(element: HTMLElement): boolean {
@@ -199,7 +198,6 @@ function candidateObscuresNativeBrowser(candidate: HTMLElement, element: HTMLEle
   if (!isVisibleOverlayElement(candidate)) {
     return false;
   }
-
   const elementRect = element.getBoundingClientRect();
   const candidateRects = candidate.getClientRects();
   for (const candidateRect of candidateRects) {
@@ -207,7 +205,6 @@ function candidateObscuresNativeBrowser(candidate: HTMLElement, element: HTMLEle
       return true;
     }
   }
-
   return false;
 }
 function hasTopLayerDomObstruction(element: HTMLElement): boolean {
@@ -215,14 +212,12 @@ function hasTopLayerDomObstruction(element: HTMLElement): boolean {
   if (rect.width <= 0 || rect.height <= 0) {
     return false;
   }
-
   for (const [xRatio, yRatio] of NATIVE_BROWSER_OVERLAY_SAMPLE_POINTS) {
     const x = rect.left + rect.width * xRatio;
     const y = rect.top + rect.height * yRatio;
     if (x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight) {
       continue;
     }
-
     const hitElements = document.elementsFromPoint(x, y);
     if (
       hasObscuringHitStackElementAboveSurface(hitElements, {
@@ -239,7 +234,6 @@ function hasTopLayerDomObstruction(element: HTMLElement): boolean {
       return true;
     }
   }
-
   return false;
 }
 export function hasNativeBrowserObscuringOverlay(element: HTMLElement): boolean {
@@ -251,7 +245,6 @@ export function hasNativeBrowserObscuringOverlay(element: HTMLElement): boolean 
       return true;
     }
   }
-
   return hasTopLayerDomObstruction(element);
 }
 export function isNativeBrowserTransitionSignalTarget(
@@ -261,11 +254,9 @@ export function isNativeBrowserTransitionSignalTarget(
   if (!(target instanceof HTMLElement)) {
     return false;
   }
-
   if (viewportElement.contains(target) || target.contains(viewportElement)) {
     return true;
   }
-
   return (
     target.closest(NATIVE_BROWSER_OBSCURING_OVERLAY_SELECTOR) !== null ||
     target.closest("[data-slot='sidebar-container']") !== null ||
@@ -276,7 +267,6 @@ export function isBrowserPerfLoggingEnabled(): boolean {
   if (typeof window === "undefined") {
     return false;
   }
-
   try {
     return window.localStorage.getItem("glade:browser-perf") === "1";
   } catch {
@@ -323,7 +313,7 @@ export function BrowserRuntimeError(props: { message: string; onReload: () => vo
       role="alert"
     >
       <div className="flex max-w-xs flex-col items-center">
-        <CircleAlertIcon className="size-7 text-white/35" aria-hidden="true" />
+        <AlertCircleIcon className="size-7 text-white/35" aria-hidden="true" />
         <p className="mt-3 text-ui-lg font-medium text-white/80">This page could not be loaded</p>
         <p className="mt-1 text-ui leading-snug text-white/45">{props.message}</p>
         <Button
@@ -344,7 +334,6 @@ function browserLocalServerUrl(server: ServerLocalServerProcess): string | null 
   if (addressWithUrl?.url) {
     return addressWithUrl.url;
   }
-
   const port = server.ports[0];
   if (!port) {
     return null;
@@ -354,7 +343,6 @@ function browserLocalServerUrl(server: ServerLocalServerProcess): string | null 
 function BrowserLocalServerThumbnail({ server }: { server: ServerLocalServerProcess }) {
   const label = localServerPrimaryLabel(server);
   const port = server.ports[0];
-
   return (
     <span
       aria-hidden="true"
@@ -390,7 +378,6 @@ export function BrowserLocalServersHome({
   servers: readonly ServerLocalServerProcess[];
 }) {
   const hasServers = servers.length > 0;
-
   return (
     <div className="absolute inset-0 z-20 flex flex-col overflow-hidden bg-[#0d0d0d] text-white">
       <div className="mx-auto flex h-full w-full max-w-[52rem] flex-col px-8 py-9">
@@ -424,7 +411,7 @@ export function BrowserLocalServersHome({
               </>
             ) : (
               <>
-                <GlobeIcon className="mb-4 size-16 stroke-[1.5] text-white/30" />
+                <Globe02Icon className="mb-4 size-16 stroke-[1.5] text-white/30" />
                 <p className="text-base font-semibold text-white">No local servers</p>
                 <p className="mt-2 text-ui leading-snug text-white/35">Try another browser URL</p>
               </>
@@ -434,7 +421,6 @@ export function BrowserLocalServersHome({
           <div className="mt-4 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pb-6">
             {servers.map((server) => {
               const url = browserLocalServerUrl(server);
-
               return (
                 <button
                   key={server.id}

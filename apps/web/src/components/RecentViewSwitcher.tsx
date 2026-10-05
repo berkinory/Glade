@@ -1,20 +1,18 @@
-import type { KeybindingShortcut } from "@glade/contracts/settings/keybindings";
-
-import { formatShortcutLabel } from "../keybindings";
 import {
   MessageCircleIcon,
   PanelLeftIcon,
   PinFilledIcon,
-  PluginIcon,
+  PuzzleIcon,
   SettingsIcon,
-} from "../lib/icons";
+} from "~/lib/icons";
+import type { KeybindingShortcut } from "@glade/contracts/settings/keybindings";
+import { formatShortcutLabel } from "../keybindings";
 import { cn } from "../lib/utils";
 import type { RecentViewDisplayEntry } from "../recentViews.logic";
 import { ProviderIcon } from "./ProviderIcon";
 import TerminalIdentityIcon from "./terminal/TerminalIdentityIcon";
 import { ShortcutKbd } from "./ui/kbd";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
-
 const NO_MODIFIERS = {
   metaKey: false,
   ctrlKey: false,
@@ -22,12 +20,26 @@ const NO_MODIFIERS = {
   altKey: false,
   modKey: false,
 } as const;
-
 const SWITCHER_FOOTER_SHORTCUTS: ReadonlyArray<KeybindingShortcut> = [
-  { ...NO_MODIFIERS, key: "Tab", ctrlKey: true },
-  { ...NO_MODIFIERS, key: "Tab", ctrlKey: true, shiftKey: true },
-  { ...NO_MODIFIERS, key: "Enter" },
-  { ...NO_MODIFIERS, key: "escape" },
+  {
+    ...NO_MODIFIERS,
+    key: "Tab",
+    ctrlKey: true,
+  },
+  {
+    ...NO_MODIFIERS,
+    key: "Tab",
+    ctrlKey: true,
+    shiftKey: true,
+  },
+  {
+    ...NO_MODIFIERS,
+    key: "Enter",
+  },
+  {
+    ...NO_MODIFIERS,
+    key: "escape",
+  },
 ];
 
 // Modifiers stay as whatever `formatShortcutLabel` produced so they remain platform-correct: ⌃/⇧ on
@@ -38,7 +50,6 @@ const FOOTER_KEY_GLYPHS: Readonly<Record<string, string>> = {
   Tab: "⇥",
   Enter: "↵",
 };
-
 function footerKeyLabel(shortcut: KeybindingShortcut): string {
   let label = formatShortcutLabel(shortcut);
   for (const [name, glyph] of Object.entries(FOOTER_KEY_GLYPHS)) {
@@ -46,14 +57,11 @@ function footerKeyLabel(shortcut: KeybindingShortcut): string {
   }
   return label;
 }
-
 function footerTooltipLabel(shortcut: KeybindingShortcut): string {
   return formatShortcutLabel(shortcut, "Win32").split("+").join(" + ");
 }
-
 function EntryIcon(props: { entry: RecentViewDisplayEntry }) {
   const className = "size-3.5";
-
   switch (props.entry.icon.kind) {
     case "terminal":
       return <TerminalIdentityIcon className={className} iconKey={props.entry.icon.iconKey} />;
@@ -64,10 +72,9 @@ function EntryIcon(props: { entry: RecentViewDisplayEntry }) {
     case "settings":
       return <SettingsIcon className={className} aria-hidden="true" />;
     case "plugins":
-      return <PluginIcon className={className} aria-hidden="true" />;
+      return <PuzzleIcon className={className} aria-hidden="true" />;
   }
 }
-
 export function RecentViewSwitcher(props: {
   entries: ReadonlyArray<RecentViewDisplayEntry>;
   selectedIndex: number;
@@ -75,12 +82,10 @@ export function RecentViewSwitcher(props: {
   if (props.entries.length === 0) {
     return null;
   }
-
   const selectedIndex =
     props.selectedIndex >= 0 && props.selectedIndex < props.entries.length
       ? props.selectedIndex
       : 0;
-
   return (
     <div className="pointer-events-none fixed inset-0 z-[90] flex items-start justify-center pt-[14vh]">
       <div

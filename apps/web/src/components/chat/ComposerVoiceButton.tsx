@@ -1,7 +1,6 @@
-import { Spinner } from "~/components/ui/spinner";
 import { MicIcon } from "~/lib/icons";
+import { Spinner } from "~/components/ui/spinner";
 import { Button } from "../ui/button";
-
 export const ComposerVoiceButton = function ComposerVoiceButton(props: {
   disabled?: boolean;
   isRecording: boolean;
@@ -14,7 +13,6 @@ export const ComposerVoiceButton = function ComposerVoiceButton(props: {
     : props.isRecording
       ? `Stop voice note (${props.durationLabel})`
       : "Record voice note";
-
   return (
     <Button
       size="icon-sm"

@@ -1,16 +1,14 @@
+import { AlertCircleIcon, XIcon } from "~/lib/icons";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import type { OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
 import { Alert, AlertAction, AlertDescription } from "../ui/alert";
 import { IconButton } from "../ui/icon-button";
-import { CircleAlertIcon, XIcon } from "~/lib/icons";
 import { ChatColumnBannerFrame } from "./ChatColumnBannerFrame";
-
 export type RateLimitStatus = {
   status: "rejected" | "allowed_warning";
   resetsAt?: string;
   utilization?: number;
 };
-
 export function deriveLatestRateLimitStatus(
   activities: ReadonlyArray<OrchestrationThreadActivity>,
 ): RateLimitStatus | null {
@@ -22,20 +20,26 @@ export function deriveLatestRateLimitStatus(
     if (!payload) continue;
     const status = payload.status;
     if (status !== "rejected" && status !== "allowed_warning") continue;
-
     if (typeof payload.resetsAt === "string") {
       const resetsAtMs = Date.parse(payload.resetsAt);
       if (!Number.isNaN(resetsAtMs) && resetsAtMs < now) continue;
     }
     return {
       status,
-      ...(typeof payload.resetsAt === "string" ? { resetsAt: payload.resetsAt } : {}),
-      ...(typeof payload.utilization === "number" ? { utilization: payload.utilization } : {}),
+      ...(typeof payload.resetsAt === "string"
+        ? {
+            resetsAt: payload.resetsAt,
+          }
+        : {}),
+      ...(typeof payload.utilization === "number"
+        ? {
+            utilization: payload.utilization,
+          }
+        : {}),
     };
   }
   return null;
 }
-
 function formatResetsAt(resetsAt: string): string {
   const ms = Date.parse(resetsAt);
   if (Number.isNaN(ms)) return "";
@@ -44,7 +48,6 @@ function formatResetsAt(resetsAt: string): string {
   const minutesLeft = Math.ceil(secondsLeft / 60);
   return ` Resets in ${minutesLeft}m.`;
 }
-
 export const RateLimitBanner = function RateLimitBanner({
   onDismiss,
   rateLimitStatus,
@@ -53,18 +56,15 @@ export const RateLimitBanner = function RateLimitBanner({
   rateLimitStatus: RateLimitStatus | null;
 }) {
   if (!rateLimitStatus) return null;
-
   const { status, resetsAt, utilization } = rateLimitStatus;
   const isRejected = status === "rejected";
-
   const message = isRejected
     ? `Rate limit reached.${resetsAt ? formatResetsAt(resetsAt) : ""}`
     : `Approaching rate limit${utilization !== undefined ? ` (${Math.round(utilization * 100)}% used)` : ""}.${resetsAt ? formatResetsAt(resetsAt) : ""}`;
-
   return (
     <ChatColumnBannerFrame>
       <Alert variant={isRejected ? "error" : "warning"}>
-        <CircleAlertIcon />
+        <AlertCircleIcon />
         <AlertDescription>{message}</AlertDescription>
         {onDismiss ? (
           <AlertAction>

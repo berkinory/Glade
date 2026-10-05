@@ -1,5 +1,5 @@
+import { XIcon } from "~/lib/icons";
 import { useCallback } from "react";
-
 import {
   useEffect,
   useRef,
@@ -8,14 +8,10 @@ import {
   type MouseEvent,
   type ReactNode,
 } from "react";
-
 import { IconButton } from "~/components/ui/icon-button";
-import { XIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { ELEVATED_HOVER_SURFACE_CLASS_NAME } from "~/surfaceStyles";
-
 const JUMP_CLICK_DELAY_MS = 180;
-
 interface EnvironmentEditableMessageRowProps {
   available: boolean;
   displayLabel: string;
@@ -32,7 +28,6 @@ interface EnvironmentEditableMessageRowProps {
   onRemove: () => void;
   onRename: (label: string | null) => void;
 }
-
 export function EnvironmentEditableMessageRow({
   available,
   displayLabel,
@@ -54,40 +49,34 @@ export function EnvironmentEditableMessageRow({
   const inputRef = useRef<HTMLInputElement>(null);
   const jumpClickTimeoutRef = useRef<number | null>(null);
   const suppressNextBlurCommitRef = useRef(false);
-
   const clearScheduledJump = useCallback(() => {
     if (jumpClickTimeoutRef.current !== null) {
       window.clearTimeout(jumpClickTimeoutRef.current);
       jumpClickTimeoutRef.current = null;
     }
   }, []);
-
   useEffect(() => {
     if (editing) {
       inputRef.current?.select();
     }
   }, [editing]);
   useEffect(() => () => clearScheduledJump(), [clearScheduledJump]);
-
   const beginEditing = () => {
     clearScheduledJump();
     suppressNextBlurCommitRef.current = false;
     setDraft(initialEditLabel);
     setEditing(true);
   };
-
   const commitEditing = () => {
     suppressNextBlurCommitRef.current = true;
     setEditing(false);
     const trimmed = draft.trim();
     onRename(trimmed.length === 0 ? null : trimmed);
   };
-
   const cancelEditing = () => {
     suppressNextBlurCommitRef.current = true;
     setEditing(false);
   };
-
   const handleInputBlur = () => {
     if (suppressNextBlurCommitRef.current) {
       suppressNextBlurCommitRef.current = false;
@@ -95,7 +84,6 @@ export function EnvironmentEditableMessageRow({
     }
     commitEditing();
   };
-
   const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
       event.preventDefault();
@@ -105,7 +93,6 @@ export function EnvironmentEditableMessageRow({
       cancelEditing();
     }
   };
-
   const handleLabelClick = (event: MouseEvent<HTMLButtonElement>) => {
     if (!available) {
       beginEditing();
@@ -120,14 +107,12 @@ export function EnvironmentEditableMessageRow({
       onJump();
     }, JUMP_CLICK_DELAY_MS);
   };
-
   const handleLabelKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (event.key === "F2" || (!available && event.key === "Enter")) {
       event.preventDefault();
       beginEditing();
     }
   };
-
   return (
     <li
       className={cn(

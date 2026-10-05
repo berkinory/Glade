@@ -1,3 +1,10 @@
+import {
+  TagIcon,
+  ArrowUp02Icon,
+  WorkflowCircle04Icon,
+  GitCommitHorizontalIcon,
+  GitMergeIcon,
+} from "~/lib/icons";
 import { CommitDetail } from "./CommitDetail";
 import { useCommitDrafts } from "./commitDraftStore";
 import { gitRebaseStateQueryOptions } from "~/lib/gitReactQuery";
@@ -5,9 +12,7 @@ import { invalidateGitQueriesForCwds } from "~/lib/gitQueryOptions";
 import type { GitRecentCommit } from "@glade/contracts/git/git";
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { IconTag } from "@tabler/icons-react";
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
-
 import { AuthorAvatar } from "../AuthorAvatar";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -17,15 +22,12 @@ import { copyTextToClipboard } from "../../lib/clipboard";
 import { showContextMenuFallback } from "~/contextMenuFallback";
 import { GIT_COMMIT_CONTEXT_MENU_ICONS } from "~/lib/contextMenuIcons";
 import { gitQueryKeys, gitStatusQueryOptions } from "../../lib/gitQueryOptions";
-import { ArrowUpIcon, GitBranchIcon, GitCommitIcon, GitMergeIcon } from "~/lib/icons";
 import { formatRelativeTime } from "~/lib/relativeTime";
 import { cn } from "~/lib/utils";
 import { ensureNativeApi } from "~/nativeApi";
 import { PanelStateMessage } from "./PanelStateMessage";
-
 const PAGE_SIZE = 20;
 const ROW_HEIGHT = 60;
-
 async function showCommitContextMenu(
   commit: GitRecentCommit,
   event: MouseEvent<HTMLButtonElement>,
@@ -35,13 +37,34 @@ async function showCommitContextMenu(
   const action = await showContextMenuFallback(
     [
       ...(undo
-        ? [{ id: "undo", label: "Undo commit", icon: GIT_COMMIT_CONTEXT_MENU_ICONS.undo }]
+        ? [
+            {
+              id: "undo",
+              label: "Undo commit",
+              icon: GIT_COMMIT_CONTEXT_MENU_ICONS.undo,
+            },
+          ]
         : []),
-      { id: "hash", label: "Copy commit hash", icon: GIT_COMMIT_CONTEXT_MENU_ICONS.hash },
-      { id: "short-hash", label: "Copy short hash", icon: GIT_COMMIT_CONTEXT_MENU_ICONS.shortHash },
-      { id: "subject", label: "Copy commit subject", icon: GIT_COMMIT_CONTEXT_MENU_ICONS.subject },
+      {
+        id: "hash",
+        label: "Copy commit hash",
+        icon: GIT_COMMIT_CONTEXT_MENU_ICONS.hash,
+      },
+      {
+        id: "short-hash",
+        label: "Copy short hash",
+        icon: GIT_COMMIT_CONTEXT_MENU_ICONS.shortHash,
+      },
+      {
+        id: "subject",
+        label: "Copy commit subject",
+        icon: GIT_COMMIT_CONTEXT_MENU_ICONS.subject,
+      },
     ],
-    { x: event.clientX, y: event.clientY },
+    {
+      x: event.clientX,
+      y: event.clientY,
+    },
   );
   if (!action) return;
   if (action === "undo") {
@@ -53,10 +76,12 @@ async function showCommitContextMenu(
   try {
     await copyTextToClipboard(value);
   } catch {
-    toastManager.add({ type: "error", title: "Could not copy commit details" });
+    toastManager.add({
+      type: "error",
+      title: "Could not copy commit details",
+    });
   }
 }
-
 function CommitRow(props: {
   commit: GitRecentCommit;
   selected: boolean;
@@ -93,7 +118,7 @@ function CommitRow(props: {
               className="inline-flex min-w-0 max-w-24 items-center gap-0.5 rounded border border-border/70 px-1 text-ui-xs text-muted-foreground"
               title={`Branches at this commit: ${commit.branches.join(", ")}`}
             >
-              <GitBranchIcon className="size-3 shrink-0" aria-hidden />
+              <WorkflowCircle04Icon className="size-3 shrink-0" aria-hidden />
               <span className="min-w-0 truncate">{commit.branches[0]}</span>
               {commit.branches.length > 1 ? (
                 <span className="shrink-0">+{commit.branches.length - 1}</span>
@@ -106,7 +131,7 @@ function CommitRow(props: {
               className="inline-flex max-w-20 shrink-0 items-center gap-0.5 truncate rounded border border-border/70 px-1 text-ui-xs text-muted-foreground"
               title={tag}
             >
-              <IconTag className="size-3 shrink-0" aria-hidden />
+              <TagIcon className="size-3 shrink-0" aria-hidden />
               <span className="truncate">{tag}</span>
             </span>
           ))}
@@ -119,19 +144,24 @@ function CommitRow(props: {
             </span>
           ) : null}
           {commit.pushStatus === "unpushed" ? (
-            <GitCommitIcon
+            <GitCommitHorizontalIcon
               className="size-3.5 shrink-0 text-warning"
               aria-label="Not pushed to the upstream branch"
             />
           ) : commit.pushStatus === "pushed" ? (
-            <ArrowUpIcon
+            <ArrowUp02Icon
               className="size-3.5 shrink-0 text-success"
               aria-label="Present on the upstream branch"
             />
           ) : null}
         </span>
         <span className="mt-1 flex items-center gap-1.5 text-ui-xs text-muted-foreground">
-          <AuthorAvatar actor={{ name: commit.authorName }} size="md" />
+          <AuthorAvatar
+            actor={{
+              name: commit.authorName,
+            }}
+            size="md"
+          />
           <span className="min-w-0 truncate">{commit.authorName || "Unknown author"}</span>
           <span className="shrink-0 font-mono">{commit.shortSha}</span>
           <span
@@ -145,7 +175,6 @@ function CommitRow(props: {
     </button>
   );
 }
-
 export function SourceControlHistory(props: {
   onSelectCommitFile?:
     | ((commit: GitRecentCommit, path: string, preview: boolean) => void)
@@ -159,7 +188,10 @@ export function SourceControlHistory(props: {
     mutationKey: ["git", "mutation", "undo", props.cwd],
     mutationFn: (expectedHead: string) => {
       if (!props.cwd) throw new Error("Repository unavailable.");
-      return ensureNativeApi().git.undoCommit({ cwd: props.cwd, expectedHead });
+      return ensureNativeApi().git.undoCommit({
+        cwd: props.cwd,
+        expectedHead,
+      });
     },
     onSuccess: ({ message }) => {
       if (props.cwd && !(useCommitDrafts.getState().messages[props.cwd] ?? "").trim())
@@ -179,7 +211,10 @@ export function SourceControlHistory(props: {
   const search = useDeferredValue(filter.trim());
   const [selectedSha, setSelectedSha] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const status = useQuery({ ...gitStatusQueryOptions(props.cwd), enabled: props.cwd !== null });
+  const status = useQuery({
+    ...gitStatusQueryOptions(props.cwd),
+    enabled: props.cwd !== null,
+  });
   const history = useInfiniteQuery({
     queryKey: [...gitQueryKeys.history(props.cwd), search],
     initialPageParam: 0,
@@ -189,7 +224,11 @@ export function SourceControlHistory(props: {
         cwd: props.cwd,
         limit: PAGE_SIZE,
         offset: pageParam,
-        ...(search ? { query: search } : {}),
+        ...(search
+          ? {
+              query: search,
+            }
+          : {}),
       });
     },
     getNextPageParam: (lastPage, pages) =>
@@ -235,10 +274,8 @@ export function SourceControlHistory(props: {
     isFetchNextPageError,
     fetchNextPage,
   ]);
-
   if (!props.cwd)
     return <PanelStateMessage>Open a Git workspace to see its history.</PanelStateMessage>;
-
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="shrink-0 space-y-2 border-b border-border/70 px-3 py-2">
@@ -280,12 +317,20 @@ export function SourceControlHistory(props: {
             {search ? "No matching commits." : "No commits on this branch yet."}
           </PanelStateMessage>
         ) : (
-          <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
+          <div
+            className="relative w-full"
+            style={{
+              height: virtualizer.getTotalSize(),
+            }}
+          >
             {rows.map((row) => (
               <div
                 key={row.key}
                 className="absolute left-0 top-0 w-full"
-                style={{ height: row.size, transform: `translateY(${row.start}px)` }}
+                style={{
+                  height: row.size,
+                  transform: `translateY(${row.start}px)`,
+                }}
               >
                 {row.index < commits.length ? (
                   <CommitRow

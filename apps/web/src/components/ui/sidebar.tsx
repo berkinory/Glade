@@ -1,8 +1,8 @@
+import { PanelLeftIcon } from "~/lib/icons";
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
-import { PanelLeftIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { UI_MOTION_LONG_CLASS } from "~/lib/uiMotion";
 import { Button } from "~/components/ui/button";
@@ -21,7 +21,6 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { useIsMobile } from "~/hooks/useMediaQuery";
 import { getLocalStorageItem, setLocalStorageItem } from "~/hooks/useLocalStorage";
 import { Schema } from "effect";
-
 export const SIDEBAR_DEFAULT_WIDTH_REDUCTION_PX = Math.round(16 * 16 * 0.05);
 export const SIDEBAR_DEFAULT_WIDTH_PX = 16 * 16 - SIDEBAR_DEFAULT_WIDTH_REDUCTION_PX;
 export const SIDEBAR_MAX_WIDTH_PX = 24 * 16;
@@ -44,7 +43,6 @@ const SIDEBAR_OFFCANVAS_MOTION_CLASS = `will-change-[translate] ${UI_MOTION_LONG
  * animating from the old geometry would look wrong. `!` beats the base duration/ease.
  */
 const SIDEBAR_OFFCANVAS_MOTION_SUPPRESSED_CLASS = "transition-none! duration-0!";
-
 type SidebarContextProps = {
   state: "expanded" | "collapsed";
   open: boolean;
@@ -54,7 +52,6 @@ type SidebarContextProps = {
   isMobile: boolean;
   toggleSidebar: () => void;
 };
-
 type SidebarResizableOptions = {
   maxWidth?: number;
   minWidth?: number;
@@ -69,7 +66,6 @@ type SidebarResizableOptions = {
   }) => boolean;
   storageKey?: string;
 };
-
 type SidebarResolvedResizableOptions = {
   maxWidth: number;
   minWidth: number;
@@ -84,24 +80,19 @@ type SidebarResolvedResizableOptions = {
   }) => boolean;
   storageKey: string | null;
 };
-
 type SidebarInstanceContextProps = {
   resizable: SidebarResolvedResizableOptions | null;
   side: "left" | "right";
 };
-
 const SidebarContext = React.createContext<SidebarContextProps | null>(null);
 const SidebarInstanceContext = React.createContext<SidebarInstanceContextProps | null>(null);
-
 function useSidebar() {
   const context = React.useContext(SidebarContext);
   if (!context) {
     throw new Error("useSidebar must be used within a SidebarProvider.");
   }
-
   return context;
 }
-
 function SidebarProvider({
   defaultOpen: defaultOpenProp,
   open: openProp,
@@ -143,7 +134,6 @@ function SidebarProvider({
   // We add a state so that we can do data-state="expanded" or "collapsed".
   // This makes it easier to style the sidebar with Tailwind classes.
   const state = open ? "expanded" : "collapsed";
-
   const contextValue = React.useMemo<SidebarContextProps>(
     () => ({
       isMobile,
@@ -156,7 +146,6 @@ function SidebarProvider({
     }),
     [state, open, setOpen, isMobile, openMobile, toggleSidebar],
   );
-
   return (
     <SidebarContext.Provider value={contextValue}>
       <div
@@ -185,7 +174,13 @@ function SidebarProvider({
 // detached content-seam rail so both agree on identical resize behavior.
 function resolveSidebarResizable(
   resizable: boolean | SidebarResizableOptions,
-  { collapsible, isMobile }: { collapsible: "offcanvas" | "icon" | "none"; isMobile: boolean },
+  {
+    collapsible,
+    isMobile,
+  }: {
+    collapsible: "offcanvas" | "icon" | "none";
+    isMobile: boolean;
+  },
 ): SidebarResolvedResizableOptions | null {
   if (isMobile || collapsible === "none" || !resizable) {
     return null;
@@ -195,8 +190,16 @@ function resolveSidebarResizable(
     maxWidth: options.maxWidth ?? Number.POSITIVE_INFINITY,
     minWidth: options.minWidth ?? SIDEBAR_RESIZE_DEFAULT_MIN_WIDTH,
     storageKey: options.storageKey ?? null,
-    ...(options.onResize ? { onResize: options.onResize } : {}),
-    ...(options.shouldAcceptWidth ? { shouldAcceptWidth: options.shouldAcceptWidth } : {}),
+    ...(options.onResize
+      ? {
+          onResize: options.onResize,
+        }
+      : {}),
+    ...(options.shouldAcceptWidth
+      ? {
+          shouldAcceptWidth: options.shouldAcceptWidth,
+        }
+      : {}),
   };
 }
 
@@ -219,18 +222,24 @@ function SidebarInstanceProvider({
   const collapsible = collapsibleProp ?? "offcanvas";
   const { isMobile } = useSidebar();
   const resolvedResizable = React.useMemo(
-    () => resolveSidebarResizable(resizable, { collapsible, isMobile }),
+    () =>
+      resolveSidebarResizable(resizable, {
+        collapsible,
+        isMobile,
+      }),
     [collapsible, isMobile, resizable],
   );
   const value = React.useMemo<SidebarInstanceContextProps>(
-    () => ({ resizable: resolvedResizable, side }),
+    () => ({
+      resizable: resolvedResizable,
+      side,
+    }),
     [resolvedResizable, side],
   );
   return (
     <SidebarInstanceContext.Provider value={value}>{children}</SidebarInstanceContext.Provider>
   );
 }
-
 function Sidebar({
   side: sideProp,
   variant: variantProp,
@@ -260,14 +269,20 @@ function Sidebar({
   const transparentSurface = transparentSurfaceProp ?? false;
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
   const resolvedResizable = React.useMemo<SidebarResolvedResizableOptions | null>(
-    () => resolveSidebarResizable(resizable, { collapsible, isMobile }),
+    () =>
+      resolveSidebarResizable(resizable, {
+        collapsible,
+        isMobile,
+      }),
     [collapsible, isMobile, resizable],
   );
   const instanceContextValue = React.useMemo<SidebarInstanceContextProps>(
-    () => ({ side, resizable: resolvedResizable }),
+    () => ({
+      side,
+      resizable: resolvedResizable,
+    }),
     [resolvedResizable, side],
   );
-
   if (collapsible === "none") {
     return (
       <SidebarInstanceContext.Provider value={instanceContextValue}>
@@ -285,7 +300,6 @@ function Sidebar({
       </SidebarInstanceContext.Provider>
     );
   }
-
   if (isMobile) {
     return (
       <SidebarInstanceContext.Provider value={instanceContextValue}>
@@ -316,7 +330,6 @@ function Sidebar({
       </SidebarInstanceContext.Provider>
     );
   }
-
   return (
     <SidebarInstanceContext.Provider value={instanceContextValue}>
       <div
@@ -383,10 +396,8 @@ function Sidebar({
     </SidebarInstanceContext.Provider>
   );
 }
-
 function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<typeof Button>) {
   const { toggleSidebar } = useSidebar();
-
   return (
     <Button
       className={cn("size-7", className)}
@@ -417,18 +428,14 @@ function SidebarHeaderTrigger({
   ...props
 }: React.ComponentProps<typeof Button>) {
   const { isMobile, open } = useSidebar();
-
   if (!isMobile && open) {
     return null;
   }
-
   return <SidebarTrigger className={className} onClick={onClick} {...props} />;
 }
-
 function clampSidebarWidth(width: number, options: SidebarResolvedResizableOptions): number {
   return Math.max(options.minWidth, Math.min(width, options.maxWidth));
 }
-
 function SidebarRail({
   placement: placementProp,
   className,
@@ -467,7 +474,6 @@ function SidebarRail({
   const canResize = resolvedResizable !== null && open;
   const railLabel = canResize ? "Resize Sidebar" : "Toggle Sidebar";
   const railTitle = canResize ? "Drag to resize sidebar" : "Toggle Sidebar";
-
   const applyPendingWidth = React.useCallback(
     (resizeState: NonNullable<typeof resizeStateRef.current>) => {
       if (!resolvedResizable || resizeState.pendingWidth === resizeState.width) return;
@@ -487,7 +493,6 @@ function SidebarRail({
     },
     [resolvedResizable],
   );
-
   const stopResize = React.useCallback(
     (pointerId: number) => {
       const resizeState = resizeStateRef.current;
@@ -514,13 +519,11 @@ function SidebarRail({
     },
     [applyPendingWidth, resolvedResizable],
   );
-
   const handlePointerDown = React.useCallback(
     (event: React.PointerEvent<HTMLButtonElement>) => {
       onPointerDown?.(event);
       if (event.defaultPrevented) return;
       if (!resolvedResizable || !open || event.button !== 0) return;
-
       const wrapper = event.currentTarget.closest<HTMLElement>("[data-slot='sidebar-wrapper']");
       const sidebarRoot =
         event.currentTarget.closest<HTMLElement>("[data-slot='sidebar']") ??
@@ -529,14 +532,12 @@ function SidebarRail({
       if (!wrapper || !sidebarRoot) {
         return;
       }
-
       const sidebarContainer = sidebarRoot.querySelector<HTMLElement>(
         "[data-slot='sidebar-container']",
       );
       if (!sidebarContainer) {
         return;
       }
-
       const startWidth = sidebarContainer.getBoundingClientRect().width;
       const initialWidth = clampSidebarWidth(startWidth, resolvedResizable);
       const transitionTargets = [
@@ -546,7 +547,6 @@ function SidebarRail({
       transitionTargets.forEach((element) => {
         element.style.setProperty("transition-duration", "0ms");
       });
-
       event.preventDefault();
       event.stopPropagation();
       resizeStateRef.current = {
@@ -570,14 +570,12 @@ function SidebarRail({
     },
     [onPointerDown, open, resolvedResizable, sidebarInstance?.side],
   );
-
   const handlePointerMove = React.useCallback(
     (event: React.PointerEvent<HTMLButtonElement>) => {
       onPointerMove?.(event);
       if (event.defaultPrevented) return;
       const resizeState = resizeStateRef.current;
       if (!resizeState || resizeState.pointerId !== event.pointerId || !resolvedResizable) return;
-
       event.preventDefault();
       const delta =
         resizeState.side === "right"
@@ -593,7 +591,6 @@ function SidebarRail({
       if (resizeState.rafId !== null) {
         return;
       }
-
       resizeState.rafId = window.requestAnimationFrame(() => {
         const activeResizeState = resizeStateRef.current;
         if (!activeResizeState) return;
@@ -603,31 +600,26 @@ function SidebarRail({
     },
     [applyPendingWidth, onPointerMove, resolvedResizable],
   );
-
   const endResizeInteraction = React.useCallback(
     (event: React.PointerEvent<HTMLButtonElement>) => {
       const resizeState = resizeStateRef.current;
       if (!resizeState || resizeState.pointerId !== event.pointerId) return;
-
       event.preventDefault();
       suppressClickRef.current = resizeState.moved;
       stopResize(event.pointerId);
     },
     [stopResize],
   );
-
   const handlePointerUp = (event: React.PointerEvent<HTMLButtonElement>) => {
     onPointerUp?.(event);
     if (event.defaultPrevented) return;
     endResizeInteraction(event);
   };
-
   const handlePointerCancel = (event: React.PointerEvent<HTMLButtonElement>) => {
     onPointerCancel?.(event);
     if (event.defaultPrevented) return;
     endResizeInteraction(event);
   };
-
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     onClick?.(event);
     if (event.defaultPrevented) return;
@@ -642,21 +634,18 @@ function SidebarRail({
     }
     toggleSidebar();
   };
-
   React.useEffect(() => {
     if (!resolvedResizable?.storageKey || typeof window === "undefined") return;
     const rail = railRef.current;
     if (!rail) return;
     const wrapper = rail.closest<HTMLElement>("[data-slot='sidebar-wrapper']");
     if (!wrapper) return;
-
     const storedWidth = getLocalStorageItem(resolvedResizable.storageKey, Schema.Finite);
     if (storedWidth === null) return;
     const clampedWidth = clampSidebarWidth(storedWidth, resolvedResizable);
     wrapper.style.setProperty("--sidebar-width", `${clampedWidth}px`);
     resolvedResizable.onResize?.(clampedWidth);
   }, [resolvedResizable]);
-
   React.useEffect(() => {
     return () => {
       const resizeState = resizeStateRef.current;
@@ -670,7 +659,6 @@ function SidebarRail({
       document.body.style.removeProperty("user-select");
     };
   }, []);
-
   return (
     <button
       aria-label={railLabel}
@@ -678,12 +666,12 @@ function SidebarRail({
         isContentSeam
           ? [
               /* Resize hit-area on the chat card seam. The visible divider is the card's
-                 border-inline edge (follows the rounded corner); hovering this rail
-                 intensifies that border via :has() in index.css — no overlay line here.
-                 This rail lives OUTSIDE <Sidebar>, so `in-data-[side]` cursor variants
-                 never match (no [data-side] ancestor). Set the cursor directly:
-                 `col-resize` (the ↔ handle) when resizing is available — matching the
-                 body cursor used during the drag — else `pointer` for the toggle. */
+     border-inline edge (follows the rounded corner); hovering this rail
+     intensifies that border via :has() in index.css — no overlay line here.
+     This rail lives OUTSIDE <Sidebar>, so `in-data-[side]` cursor variants
+     never match (no [data-side] ancestor). Set the cursor directly:
+     `col-resize` (the ↔ handle) when resizing is available — matching the
+     body cursor used during the drag — else `pointer` for the toggle. */
               "absolute inset-y-0 z-[25] hidden w-4 sm:flex",
               canResize ? "cursor-col-resize" : "cursor-pointer",
               side === "left" ? "left-0 -translate-x-1/2" : "right-0 translate-x-1/2",
@@ -715,7 +703,6 @@ function SidebarRail({
     />
   );
 }
-
 function SidebarInset({
   className,
   children,
@@ -753,7 +740,6 @@ function SidebarInset({
     </main>
   );
 }
-
 function SidebarInput({ className, ...props }: React.ComponentProps<typeof Input>) {
   return (
     <Input
@@ -764,7 +750,6 @@ function SidebarInput({ className, ...props }: React.ComponentProps<typeof Input
     />
   );
 }
-
 function SidebarHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -775,7 +760,6 @@ function SidebarHeader({ className, ...props }: React.ComponentProps<"div">) {
     />
   );
 }
-
 function SidebarFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -786,7 +770,6 @@ function SidebarFooter({ className, ...props }: React.ComponentProps<"div">) {
     />
   );
 }
-
 function SidebarSeparator({ className, ...props }: React.ComponentProps<typeof Separator>) {
   return (
     <Separator
@@ -797,7 +780,6 @@ function SidebarSeparator({ className, ...props }: React.ComponentProps<typeof S
     />
   );
 }
-
 function SidebarContent({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <ScrollArea hideScrollbars scrollFade className="h-auto min-h-0 flex-1">
@@ -813,7 +795,6 @@ function SidebarContent({ className, ...props }: React.ComponentProps<"div">) {
     </ScrollArea>
   );
 }
-
 function SidebarGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -824,7 +805,6 @@ function SidebarGroup({ className, ...props }: React.ComponentProps<"div">) {
     />
   );
 }
-
 function SidebarGroupLabel({ className, render, ...props }: useRender.ComponentProps<"div">) {
   const defaultProps = {
     className: cn(
@@ -835,14 +815,12 @@ function SidebarGroupLabel({ className, render, ...props }: useRender.ComponentP
     "data-sidebar": "group-label",
     "data-slot": "sidebar-group-label",
   };
-
   return useRender({
     defaultTagName: "div",
     props: mergeProps(defaultProps, props),
     render,
   });
 }
-
 function SidebarGroupAction({ className, render, ...props }: useRender.ComponentProps<"button">) {
   const defaultProps = {
     className: cn(
@@ -855,14 +833,12 @@ function SidebarGroupAction({ className, render, ...props }: useRender.Component
     "data-sidebar": "group-action",
     "data-slot": "sidebar-group-action",
   };
-
   return useRender({
     defaultTagName: "button",
     props: mergeProps(defaultProps, props),
     render,
   });
 }
-
 function SidebarGroupContent({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -873,7 +849,6 @@ function SidebarGroupContent({ className, ...props }: React.ComponentProps<"div"
     />
   );
 }
-
 function SidebarMenu({ className, ...props }: React.ComponentProps<"ul">) {
   return (
     <ul
@@ -884,7 +859,6 @@ function SidebarMenu({ className, ...props }: React.ComponentProps<"ul">) {
     />
   );
 }
-
 function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
   return (
     <li
@@ -895,7 +869,6 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
     />
   );
 }
-
 const sidebarMenuButtonVariants = cva(
   "peer/menu-button flex w-full cursor-pointer items-center gap-2 overflow-hidden rounded-xl p-2 text-left text-ui-lg leading-snug outline-hidden ring-ring/60 transition-[width,height,padding] hover:bg-[var(--sidebar-accent)] focus-visible:ring-1 active:bg-[var(--sidebar-accent-active)] active:text-[var(--sidebar-accent-foreground)] disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pe-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-[var(--sidebar-selected)] data-[active=true]:text-[var(--sidebar-accent-foreground)] data-[state=open]:hover:bg-[var(--sidebar-accent)] group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>span:last-child]:truncate [&>svg:not([class*='size-'])]:size-4 [&>svg]:shrink-0",
   {
@@ -917,7 +890,6 @@ const sidebarMenuButtonVariants = cva(
     },
   },
 );
-
 function SidebarMenuButton({
   isActive: isActiveProp,
   variant: variantProp,
@@ -937,33 +909,33 @@ function SidebarMenuButton({
   const variant = variantProp === undefined ? "default" : variantProp;
   const size = sizeProp === undefined ? "default" : sizeProp;
   const { isMobile, state } = useSidebar();
-
   const defaultProps = {
-    className: cn(sidebarMenuButtonVariants({ size, variant }), className),
+    className: cn(
+      sidebarMenuButtonVariants({
+        size,
+        variant,
+      }),
+      className,
+    ),
     "data-active": isActive,
     "data-sidebar": "menu-button",
     "data-size": size,
     "data-slot": "sidebar-menu-button",
   };
-
   const buttonProps = mergeProps<"button">(defaultProps, props);
-
   const buttonElement = useRender({
     defaultTagName: "button",
     props: buttonProps,
     render,
   });
-
   if (!tooltip) {
     return buttonElement;
   }
-
   if (typeof tooltip === "string") {
     tooltip = {
       children: tooltip,
     };
   }
-
   return (
     <Tooltip>
       <TooltipTrigger render={buttonElement as React.ReactElement<Record<string, unknown>>} />
@@ -976,7 +948,6 @@ function SidebarMenuButton({
     </Tooltip>
   );
 }
-
 function SidebarMenuBadge({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -995,7 +966,6 @@ function SidebarMenuBadge({ className, ...props }: React.ComponentProps<"div">) 
     />
   );
 }
-
 function SidebarMenuSkeleton({
   className,
   showIcon: showIconProp,
@@ -1007,7 +977,6 @@ function SidebarMenuSkeleton({
   // Random width between 50 to 90%, chosen once per mount so the bar doesn't
   // jitter on re-renders (lazy state init keeps the impure call out of render).
   const [width] = React.useState(() => `${Math.floor(Math.random() * 40) + 50}%`);
-
   return (
     <div
       className={cn("flex h-8 items-center gap-2 rounded-lg px-2", className)}
@@ -1028,7 +997,6 @@ function SidebarMenuSkeleton({
     </div>
   );
 }
-
 function SidebarMenuSub({ className, ...props }: React.ComponentProps<"ul">) {
   return (
     <ul
@@ -1043,7 +1011,6 @@ function SidebarMenuSub({ className, ...props }: React.ComponentProps<"ul">) {
     />
   );
 }
-
 function SidebarMenuSubItem({ className, ...props }: React.ComponentProps<"li">) {
   return (
     <li
@@ -1054,7 +1021,6 @@ function SidebarMenuSubItem({ className, ...props }: React.ComponentProps<"li">)
     />
   );
 }
-
 function SidebarMenuSubButton({
   size: sizeProp,
   isActive: isActiveProp,
@@ -1081,14 +1047,12 @@ function SidebarMenuSubButton({
     "data-size": size,
     "data-slot": "sidebar-menu-sub-button",
   };
-
   return useRender({
     defaultTagName: "a",
     props: mergeProps<"a">(defaultProps, props),
     render,
   });
 }
-
 export {
   Sidebar,
   SidebarContent,
@@ -1118,5 +1082,4 @@ export {
   SIDEBAR_OFFCANVAS_MOTION_SUPPRESSED_CLASS,
   useSidebar,
 };
-
 export type { SidebarResizableOptions };

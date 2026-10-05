@@ -1,10 +1,8 @@
+import { EnergyFilledIcon, WorkflowCircle04Icon, GitForkIcon, FolderIcon } from "~/lib/icons";
 import type { OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/threadEntities";
 import type { MouseEvent, ReactNode } from "react";
-
-import { FastModeIcon, GitBranchIcon, WorktreeIcon } from "~/lib/icons";
 import type { ProjectAppearance } from "~/lib/projectAppearance";
 import type { ThreadModelSummary } from "~/lib/threadModelSummary";
-import { FolderClosed } from "./FolderClosed";
 import { ProjectSidebarIcon } from "./ProjectSidebarIcon";
 import { ProviderIcon } from "./ProviderIcon";
 import {
@@ -17,7 +15,6 @@ import {
   SIDEBAR_HOVER_CARD_CONTAINER_PADDING_CLASS_NAME,
   SIDEBAR_HOVER_CARD_ROW_CLASS_NAME,
 } from "./sidebarHoverCardStyles";
-
 export type ThreadHoverCardContentProps = {
   title: string;
   timeLabel: string | null;
@@ -36,10 +33,8 @@ export type ThreadHoverCardContentProps = {
   model: ThreadModelSummary | null;
   status: ThreadStatusPill | null;
 };
-
 const META_ROW_CLASS_NAME = `${SIDEBAR_HOVER_CARD_ROW_CLASS_NAME} text-foreground/80`;
 const META_ICON_CLASS_NAME = "size-3.5 shrink-0 text-muted-foreground/75";
-
 function MetaRow({ icon, children }: { icon: ReactNode; children: string }) {
   return (
     <span className={META_ROW_CLASS_NAME}>
@@ -48,14 +43,13 @@ function MetaRow({ icon, children }: { icon: ReactNode; children: string }) {
     </span>
   );
 }
-
 function ModelRow({ model }: { model: ThreadModelSummary }) {
   return (
     <span className={META_ROW_CLASS_NAME}>
       <ProviderIcon provider={model.provider} className={META_ICON_CLASS_NAME} />
       <span className="min-w-0 truncate">{model.modelLabel}</span>
       {model.fastMode ? (
-        <FastModeIcon aria-hidden className="size-3.5 shrink-0 text-muted-foreground/75" />
+        <EnergyFilledIcon aria-hidden className="size-3.5 shrink-0 text-muted-foreground/75" />
       ) : null}
       {model.statusLabel ? (
         <span className="shrink-0 text-muted-foreground/70">{model.statusLabel}</span>
@@ -63,7 +57,6 @@ function ModelRow({ model }: { model: ThreadModelSummary }) {
     </span>
   );
 }
-
 export function ThreadHoverCardContent({
   title,
   timeLabel,
@@ -89,7 +82,6 @@ export function ThreadHoverCardContent({
     Boolean(pullRequest) ||
     Boolean(model) ||
     Boolean(status);
-
   return (
     <div
       className={`flex w-full flex-col gap-0 ${SIDEBAR_HOVER_CARD_CONTAINER_PADDING_CLASS_NAME}`}
@@ -133,7 +125,7 @@ export function ThreadHoverCardContent({
                     />
                   </span>
                 ) : (
-                  <FolderClosed className={META_ICON_CLASS_NAME} aria-hidden />
+                  <FolderIcon className={META_ICON_CLASS_NAME} aria-hidden />
                 )
               }
             >
@@ -141,17 +133,17 @@ export function ThreadHoverCardContent({
             </MetaRow>
           ) : null}
           {sourceProjectName ? (
-            <MetaRow icon={<FolderClosed className={META_ICON_CLASS_NAME} aria-hidden />}>
+            <MetaRow icon={<FolderIcon className={META_ICON_CLASS_NAME} aria-hidden />}>
               {sourceProjectName}
             </MetaRow>
           ) : null}
           {branch ? (
-            <MetaRow icon={<GitBranchIcon className={META_ICON_CLASS_NAME} aria-hidden />}>
+            <MetaRow icon={<WorkflowCircle04Icon className={META_ICON_CLASS_NAME} aria-hidden />}>
               {branch}
             </MetaRow>
           ) : null}
           {worktreeName ? (
-            <MetaRow icon={<WorktreeIcon className={META_ICON_CLASS_NAME} aria-hidden />}>
+            <MetaRow icon={<GitForkIcon className={META_ICON_CLASS_NAME} aria-hidden />}>
               {worktreeName}
             </MetaRow>
           ) : null}
@@ -162,7 +154,6 @@ export function ThreadHoverCardContent({
     </div>
   );
 }
-
 function PullRequestRow({
   pr,
   onOpen,
@@ -172,7 +163,6 @@ function PullRequestRow({
 }) {
   const presentation = resolvePrStatePresentation(pr);
   const PrIcon = PR_STATE_PRESENTATION_ICONS[presentation.iconKind];
-
   return (
     <a
       href={pr.url}

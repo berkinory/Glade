@@ -1,9 +1,9 @@
+import { FolderIcon, FolderPlusIcon, PlusIcon } from "~/lib/icons";
 import { type GitHubProjectProvisionProgressEvent } from "@glade/contracts/git/githubProjectProvisioning";
 import { type SpaceId } from "@glade/contracts/core/baseSchemas";
 import { parseGitHubRepositoryInput } from "@glade/shared/git/githubRepository";
 import { normalizeProjectDirectoryName } from "@glade/shared/threads/projectDirectoryName";
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
-
 import { isElectron } from "../env";
 import { useWindowFolderDrop } from "../hooks/useWindowFolderDrop";
 import { VOID_SPACE_KEY, spaceKey, toSpaceIconName } from "../lib/spaceGrouping";
@@ -14,8 +14,6 @@ import { joinProjectPath } from "../lib/projectPaths";
 import type { Space } from "../types";
 import { useVoidSpace } from "../spacesUiStore";
 import { cn } from "~/lib/utils";
-
-import { FolderClosed } from "./FolderClosed";
 import {
   CreateGitHubProjectFields,
   PROJECT_DIALOG_FIELD_CONTROL_CLASS_NAME,
@@ -37,17 +35,12 @@ import {
 import { ComposerPickerSelectPopup } from "./chat/ComposerPickerMenuPopup";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "./ui/input-group";
 import { Select, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { CentralIcon } from "~/lib/central-icons";
-
 interface CreateLocalProjectSubmitValue {
   readonly source: "local";
   readonly workspaceRoot: string;
-
   readonly spaceId: SpaceId | null;
-
   readonly createIfMissing: boolean;
 }
-
 interface CreateGitHubProjectSubmitValue {
   readonly source: "github";
   readonly operationId: string;
@@ -56,15 +49,12 @@ interface CreateGitHubProjectSubmitValue {
   readonly directoryName: string;
   readonly spaceId: SpaceId | null;
 }
-
 export type CreateProjectSubmitValue =
   | CreateLocalProjectSubmitValue
   | CreateGitHubProjectSubmitValue;
-
 export interface CreateProjectSubmitOptions {
   readonly signal: AbortSignal;
 }
-
 export function CreateProjectDialog(props: {
   open: boolean;
   githubProvisioningAvailable: boolean;
@@ -81,7 +71,6 @@ export function CreateProjectDialog(props: {
   const [directoryName, setDirectoryName] = useState("");
   const [directoryNameEdited, setDirectoryNameEdited] = useState(false);
   const [provisionProgress, setProvisionProgress] = useState<string | null>(null);
-
   const [pickedPath, setPickedPath] = useState<string | null>(null);
   const [selectedSpaceKey, setSelectedSpaceKey] = useState<string>(VOID_SPACE_KEY);
   const [spaceEditorOpen, setSpaceEditorOpen] = useState(false);
@@ -104,7 +93,6 @@ export function CreateProjectDialog(props: {
   const sourceFolderLabelId = `${fieldId}-source-folder`;
   const spaceLabelId = `${fieldId}-space`;
   const errorId = `${fieldId}-error`;
-
   useEffect(() => {
     if (props.open === openedRef.current) return;
     openedRef.current = props.open;
@@ -125,17 +113,14 @@ export function CreateProjectDialog(props: {
     setIsPickingFolder(false);
     setSubmitting(false);
     setFormError(null);
-
     const frame = requestAnimationFrame(() => document.getElementById(pathInputId)?.focus());
     return () => cancelAnimationFrame(frame);
   }, [pathInputId, props.activeSpaceId, props.defaultCloneParent, props.open]);
-
   useEffect(() => {
     if (!props.githubProvisioningAvailable && source === "github") {
       setSource("local");
     }
   }, [props.githubProvisioningAvailable, source]);
-
   const trimmedPath = path.trim();
   const parsedRepository = parseGitHubRepositoryInput(repositoryInput);
   const trimmedDestinationParent = destinationParent.trim();
@@ -147,7 +132,6 @@ export function CreateProjectDialog(props: {
       ? [...props.spaces, createdSpace]
       : props.spaces;
   const voidSpace = useVoidSpace();
-
   useEffect(() => {
     if (!props.open) return;
     const api = readNativeApi();
@@ -161,18 +145,15 @@ export function CreateProjectDialog(props: {
       setProvisionProgress(event.message);
     });
   }, [props.open]);
-
   const applyPickedFolder = useCallback(
     (picked: string) => {
       setPath(picked);
       setPickedPath(picked);
       setFormError(null);
-
       requestAnimationFrame(() => document.getElementById(submitButtonId)?.focus());
     },
     [submitButtonId],
   );
-
   const applyDestinationParent = useCallback(
     (picked: string) => {
       setDestinationParent(picked);
@@ -181,7 +162,6 @@ export function CreateProjectDialog(props: {
     },
     [directoryNameInputId],
   );
-
   const handleBrowse = async () => {
     if (isPickingFolder || submitting) return;
     const api = readNativeApi();
@@ -190,7 +170,6 @@ export function CreateProjectDialog(props: {
       return;
     }
     setIsPickingFolder(true);
-
     try {
       const picked = await api.dialogs.pickFolder();
       if (picked) {
@@ -202,16 +181,13 @@ export function CreateProjectDialog(props: {
     }
     setIsPickingFolder(false);
   };
-
   const isDropTarget = useWindowFolderDrop({
     enabled: props.open && isElectron && source === "local",
     onFolder: applyPickedFolder,
     onError: setFormError,
   });
-
   const submit = async () => {
     if (submitting) return;
-
     if (source === "local" && trimmedPath.length === 0) {
       setFormError("Type a folder path, or drop a folder above.");
       return;
@@ -253,7 +229,9 @@ export function CreateProjectDialog(props: {
             directoryName: normalizedDirectoryName ?? trimmedDirectoryName,
             spaceId,
           },
-          { signal: abortController.signal },
+          {
+            signal: abortController.signal,
+          },
         );
       } else {
         await props.onSubmit(
@@ -263,7 +241,9 @@ export function CreateProjectDialog(props: {
             spaceId,
             createIfMissing: trimmedPath !== pickedPath,
           },
-          { signal: abortController.signal },
+          {
+            signal: abortController.signal,
+          },
         );
       }
       submitAbortRef.current = null;
@@ -284,23 +264,24 @@ export function CreateProjectDialog(props: {
       setSubmitting(false);
     }
   };
-
   const submitOnEnter = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key !== "Enter") return;
     event.preventDefault();
     void submit();
   };
-
   const handleOpenChange = (open: boolean) => {
     if (!open) submitAbortRef.current?.abort();
     props.onOpenChange(open);
   };
-
   const handleCreateSpace = async (value: SpaceEditorValue) => {
     const api = readNativeApi();
     if (!api) throw new Error("The app server is unavailable.");
     const icon = toSpaceIconName(value.icon);
-    const { spaceId } = await createSpace({ api, name: value.name, icon });
+    const { spaceId } = await createSpace({
+      api,
+      name: value.name,
+      icon,
+    });
     const createdAt = new Date().toISOString();
     setCreatedSpace({
       id: spaceId,
@@ -312,15 +293,12 @@ export function CreateProjectDialog(props: {
     });
     setSelectedSpaceKey(spaceId);
   };
-
   const selectedSpace = spaces.find((space) => space.id === selectedSpaceKey) ?? null;
-
   const pickedFolderName =
     pickedPath !== null && trimmedPath === pickedPath
       ? (pickedPath.split(/[/\\]/).findLast(Boolean) ?? pickedPath)
       : null;
   const finalClonePath = joinProjectPath(trimmedDestinationParent, trimmedDirectoryName);
-
   return (
     <Dialog open={props.open} onOpenChange={handleOpenChange}>
       <DialogPopup>
@@ -349,14 +327,18 @@ export function CreateProjectDialog(props: {
             <>
               <InputGroup className={PROJECT_DIALOG_FIELD_CONTROL_CLASS_NAME}>
                 <InputGroupAddon className="w-10 self-stretch border-e border-foreground/12 ps-0">
-                  <FolderClosed className="size-4 text-muted-foreground/70" aria-hidden="true" />
+                  <FolderIcon className="size-4 text-muted-foreground/70" aria-hidden="true" />
                 </InputGroupAddon>
                 <InputGroupInput
                   id={pathInputId}
                   value={path}
                   aria-label="Project folder path"
                   aria-invalid={formError ? true : undefined}
-                  {...(formError ? { "aria-describedby": errorId } : {})}
+                  {...(formError
+                    ? {
+                        "aria-describedby": errorId,
+                      }
+                    : {})}
                   placeholder="/path/to/project"
                   spellCheck={false}
                   autoCorrect="off"
@@ -388,7 +370,7 @@ export function CreateProjectDialog(props: {
                     )}
                     onClick={() => void handleBrowse()}
                   >
-                    <CentralIcon name="folder-add-left" className="size-4.5" aria-hidden="true" />
+                    <FolderPlusIcon className="size-4.5" aria-hidden="true" />
                     {isPickingFolder ? (
                       "Opening the folder picker…"
                     ) : pickedFolderName ? (
@@ -495,7 +477,7 @@ export function CreateProjectDialog(props: {
                 className={cn(PROJECT_DIALOG_FIELD_CONTROL_CLASS_NAME, "w-9 shrink-0 sm:h-9")}
                 onClick={() => setSpaceEditorOpen(true)}
               >
-                <CentralIcon name="plus-medium" className="size-4" aria-hidden="true" />
+                <PlusIcon className="size-4" aria-hidden="true" />
               </Button>
             </div>
           </div>

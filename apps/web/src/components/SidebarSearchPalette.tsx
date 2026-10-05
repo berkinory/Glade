@@ -1,13 +1,16 @@
+import {
+  CheckIcon,
+  Folder02Icon,
+  MessageCircleIcon,
+  CornerUpLeftIcon,
+  FolderIcon,
+} from "~/lib/icons";
 import { useCallback } from "react";
-
-import { CheckIcon, FolderOpenFrontIcon, NewChatIcon } from "~/lib/icons";
 import { type FilesystemBrowseResult } from "@glade/contracts/workspace/filesystem";
 import { isGenericChatThreadTitle } from "@glade/shared/threads/chatThreads";
 import { Autocomplete as AutocompletePrimitive } from "@base-ui/react/autocomplete";
-import { LuCornerLeftUp } from "react-icons/lu";
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { FolderClosed } from "./FolderClosed";
 import {
   ACTION_ICONS,
   buildThemeCommandItems,
@@ -31,7 +34,6 @@ import {
   isUnsupportedWindowsProjectPath,
   normalizeProjectPathForDispatch,
 } from "~/lib/projectPaths";
-
 import {
   type SidebarSearchAction,
   type SidebarSearchProject,
@@ -55,7 +57,6 @@ import {
   CommandStatus,
 } from "./ui/command";
 import { Button } from "./ui/button";
-
 const PALETTE_INPUT_CLASS =
   "font-system-ui h-11 w-full min-w-0 bg-transparent px-3.5 text-ui-lg text-foreground outline-none placeholder:text-muted-foreground/70";
 const PALETTE_GROUP_LABEL_CLASS =
@@ -66,13 +67,11 @@ const PALETTE_ICON_CLASS = "size-3.5 shrink-0 text-muted-foreground";
 const PALETTE_TEXT_CLASS = "min-w-0 flex-1 truncate text-ui";
 const PALETTE_META_CLASS = "max-w-[45%] shrink-0 truncate text-ui-meta text-muted-foreground/70";
 const PALETTE_STATUS_CLASS = "px-4 pt-1 pb-3 text-ui text-muted-foreground/79";
-
 const SETTINGS_ACTION_IDS: ReadonlySet<string> = new Set([
   "settings",
   "usage-settings",
   "feedback",
 ]);
-
 interface SidebarSearchPaletteProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -81,7 +80,12 @@ interface SidebarSearchPaletteProps {
   threads: readonly SidebarSearchThread[];
   onCreateChat: () => void;
   onCreateThread: () => void;
-  onAddProjectPath: (path: string, options?: { createIfMissing?: boolean }) => Promise<void>;
+  onAddProjectPath: (
+    path: string,
+    options?: {
+      createIfMissing?: boolean;
+    },
+  ) => Promise<void>;
   homeDir: string | null;
   onOpenSettings: () => void;
   onOpenFeedback: () => void;
@@ -89,7 +93,6 @@ interface SidebarSearchPaletteProps {
   onOpenProject: (projectId: string) => void;
   onOpenThread: (threadId: string) => void;
 }
-
 function actionHandler(
   actionId: string,
   props: Pick<
@@ -112,11 +115,8 @@ function actionHandler(
       return null;
   }
 }
-
 const BROWSE_STALE_TIME_MS = 10_000;
-
 const EMPTY_BROWSE_ENTRIES: FilesystemBrowseResult["entries"] = [];
-
 function expandHomeInPath(value: string, homeDir: string | null): string {
   if (!homeDir) return value;
   if (value === "~") return homeDir;
@@ -125,7 +125,6 @@ function expandHomeInPath(value: string, homeDir: string | null): string {
   }
   return value;
 }
-
 export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
   const { activeTheme, resolvedTheme, setCodeThemeId, setTheme, theme } = useTheme();
   const [query, setQuery] = useState("");
@@ -141,15 +140,20 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
       : null;
   const setAddProjectError = useCallback(
     (message: string | null) =>
-      setAddProjectErrorState(message === null ? null : { query, message }),
+      setAddProjectErrorState(
+        message === null
+          ? null
+          : {
+              query,
+              message,
+            },
+      ),
     [query],
   );
-
   useEffect(() => {
     if (props.open) {
       return;
     }
-
     const timeoutId = window.setTimeout(() => {
       setQuery("");
       setHighlightedItemValue(null);
@@ -158,7 +162,6 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
     }, 0);
     return () => window.clearTimeout(timeoutId);
   }, [props.open, setAddProjectError]);
-
   const platform = getNavigatorPlatform();
   const trimmedQuery = query.trim();
   const unsupportedWindowsPath = isUnsupportedWindowsProjectPath(trimmedQuery, platform);
@@ -168,7 +171,6 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
   const leafSegment =
     canBrowse && !hasTrailingPathSeparator(query) ? getBrowseLeafPathSegment(query) : "";
   const expandedBrowsePath = canBrowse ? expandHomeInPath(browseDirectoryPath, props.homeDir) : "";
-
   const { data: browseResult, isFetching: isBrowseFetching } =
     useQuery<FilesystemBrowseResult | null>({
       queryKey: ["sidebar-palette-browse", expandedBrowsePath],
@@ -176,12 +178,13 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
         if (!canBrowse || expandedBrowsePath.length === 0) return null;
         const api = readNativeApi();
         if (!api) return null;
-        return await api.filesystem.browse({ partialPath: expandedBrowsePath });
+        return await api.filesystem.browse({
+          partialPath: expandedBrowsePath,
+        });
       },
       enabled: canBrowse && expandedBrowsePath.length > 0,
       staleTime: BROWSE_STALE_TIME_MS,
     });
-
   const browseEntries = browseResult?.entries ?? EMPTY_BROWSE_ENTRIES;
   const lowerFilter = leafSegment.toLowerCase();
   const showHidden = leafSegment.startsWith(".");
@@ -190,15 +193,12 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
       entry.name.toLowerCase().startsWith(lowerFilter) &&
       (showHidden || !entry.name.startsWith(".")),
   );
-
   const exactBrowseEntry =
     leafSegment.length === 0
       ? null
       : (filteredBrowseEntries.find((entry) => entry.name === leafSegment) ?? null);
-
   const browseParentPath = canBrowse ? getBrowseParentPath(query) : null;
   const canBrowseUp = canBrowse && canNavigateUp(query);
-
   const matchedActions =
     isBrowsing || !trimmedQuery
       ? []
@@ -232,7 +232,6 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
     query.trim().length > 0 &&
     (themeCommandItems.length > 0 || matchedCurrentThemes.length > 0);
   const matchedProjects = isBrowsing ? [] : matchSidebarSearchProjects(props.projects, query);
-
   const matchedThreads = useMemo(
     () => (isBrowsing ? [] : matchSidebarSearchThreads(props.threads, query)),
     [isBrowsing, props.threads, query],
@@ -247,11 +246,9 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
     highlightedItemValue !== null && highlightedItemValue.startsWith("folder:");
   const hasHighlightedBrowseItem =
     hasHighlightedFolderItem || highlightedItemValue === "__browse_up__";
-
   const highlightedFolderPath = hasHighlightedFolderItem
     ? (highlightedItemValue?.slice("folder:".length) ?? null)
     : null;
-
   const willCreateMissingFolder =
     canBrowse &&
     !hasHighlightedFolderItem &&
@@ -259,9 +256,7 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
     !hasTrailingPathSeparator(query) &&
     exactBrowseEntry === null &&
     !isBrowseFetching;
-
   const browseSubmitLabel = willCreateMissingFolder ? "Create & Add" : "Add";
-
   const resolveBrowseSubmitPath = (): string => {
     if (highlightedFolderPath) {
       return normalizeProjectPathForDispatch(highlightedFolderPath);
@@ -271,7 +266,6 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
       : (exactBrowseEntry?.fullPath ?? expandHomeInPath(trimmedQuery, props.homeDir));
     return normalizeProjectPathForDispatch(raw);
   };
-
   const submitBrowsePath = async () => {
     if (isAddingProject) return;
     if (trimmedQuery.length === 0 && !highlightedFolderPath) {
@@ -290,7 +284,6 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
     }
     setIsAddingProject(true);
     setAddProjectError(null);
-
     void Promise.resolve(
       props.onAddProjectPath(resolveBrowseSubmitPath(), {
         createIfMissing: willCreateMissingFolder,
@@ -306,10 +299,8 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
         setIsAddingProject(false);
       });
   };
-
   const isMac = isMacPlatform(platform);
   const submitModifierLabel = isMac ? "⌘" : "Ctrl";
-
   const handleBrowseInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (!isBrowsing) return;
     const isModifierPressed = isMac ? event.metaKey : event.ctrlKey;
@@ -332,7 +323,6 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
       setQuery(browseParentPath);
     }
   };
-
   const renderActionItem = (action: SidebarSearchAction) => {
     const onSelect = action.run ?? actionHandler(action.id, props);
     const Icon = action.icon ?? ACTION_ICONS[action.id];
@@ -360,7 +350,6 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
       </CommandItem>
     );
   };
-
   return (
     <CommandDialog open={props.open} onOpenChange={props.onOpenChange}>
       <CommandDialogPopup className="max-w-lg rounded-3xl border-transparent before:rounded-[calc(var(--radius-3xl)-1px)] before:shadow-none dark:before:shadow-none">
@@ -435,7 +424,7 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
                       if (browseParentPath) setQuery(browseParentPath);
                     }}
                   >
-                    <LuCornerLeftUp className={PALETTE_ICON_CLASS} />
+                    <CornerUpLeftIcon className={PALETTE_ICON_CLASS} />
                     <span className={PALETTE_TEXT_CLASS}>..</span>
                   </CommandItem>
                 ) : null}
@@ -449,7 +438,7 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
                     }}
                     onClick={() => setQuery(appendBrowsePathSegment(query, entry.name))}
                   >
-                    <FolderClosed className={PALETTE_ICON_CLASS} />
+                    <FolderIcon className={PALETTE_ICON_CLASS} />
                     <span className={PALETTE_TEXT_CLASS}>{entry.name}</span>
                   </CommandItem>
                 ))}
@@ -513,9 +502,9 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
                             className={cn(PALETTE_META_CLASS, "inline-flex items-center gap-1")}
                           >
                             {thread.projectName ? (
-                              <FolderClosed className="size-3 shrink-0" />
+                              <FolderIcon className="size-3 shrink-0" />
                             ) : (
-                              <NewChatIcon className="size-3 shrink-0" />
+                              <MessageCircleIcon className="size-3 shrink-0" />
                             )}
                             <span className="truncate">{thread.projectName || "Chat"}</span>
                           </span>
@@ -571,7 +560,7 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
                         />
                       </span>
                     ) : (
-                      <FolderOpenFrontIcon className={PALETTE_ICON_CLASS} />
+                      <Folder02Icon className={PALETTE_ICON_CLASS} />
                     )}
                     <span className={PALETTE_TEXT_CLASS}>{project.name || "Untitled project"}</span>
                     {}

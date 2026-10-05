@@ -1,14 +1,14 @@
+import {
+  CollapseIcon,
+  ExpandIcon,
+  PanelLeftIcon,
+  FilterHorizontalIcon,
+  Robot01Icon,
+  CheckIcon,
+} from "~/lib/icons";
 import { Spinner } from "~/components/ui/spinner";
 import { pluralize } from "@glade/shared/text/text";
-import {
-  PiArrowsInSimple,
-  PiArrowsOutSimple,
-  PiSidebarSimple,
-  PiSlidersHorizontal,
-} from "react-icons/pi";
-
 import type { ActiveTaskListState } from "../../session-logic";
-import { BotIcon, CheckIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { Button } from "../ui/button";
 import {
@@ -24,7 +24,6 @@ import {
   COMPOSER_STACKED_PANEL_ICON_CLASS_NAME,
   COMPOSER_STACKED_PANEL_SCROLL_REGION_CLASS_NAME,
 } from "./composerStackedPanelStyles";
-
 interface ActiveTaskListCardProps {
   activeTaskList: ActiveTaskListState;
   backgroundTaskCount?: number;
@@ -32,7 +31,6 @@ interface ActiveTaskListCardProps {
   onCompactChange: (compact: boolean) => void;
   onOpenSidebar: () => void;
 }
-
 function taskStatusIcon(status: ActiveTaskListState["tasks"][number]["status"]) {
   if (status === "completed") {
     return <CheckIcon className="size-3" />;
@@ -42,7 +40,6 @@ function taskStatusIcon(status: ActiveTaskListState["tasks"][number]["status"]) 
   }
   return <span className="block size-[7px] rounded-full border border-current" />;
 }
-
 export function ActiveTaskListCard({
   activeTaskList,
   backgroundTaskCount: backgroundTaskCountProp,
@@ -56,7 +53,6 @@ export function ActiveTaskListCard({
   const completedCount = activeTaskList.tasks.filter((task) => task.status === "completed").length;
   const hasInProgressTask = activeTaskList.tasks.some((task) => task.status === "inProgress");
   const taskOccurrenceCount = new Map<string, number>();
-
   return (
     <>
       <ComposerStackedPanelHeaderRow>
@@ -64,7 +60,7 @@ export function ActiveTaskListCard({
           {compact && hasInProgressTask ? (
             <Spinner variant="working" className={COMPOSER_STACKED_PANEL_ICON_CLASS_NAME} />
           ) : (
-            <PiSlidersHorizontal className={COMPOSER_STACKED_PANEL_ICON_CLASS_NAME} />
+            <FilterHorizontalIcon className={COMPOSER_STACKED_PANEL_ICON_CLASS_NAME} />
           )}
           <ComposerStackedPanelRowLabel tone="meta">
             {completedCount} out of {totalCount} tasks completed
@@ -80,7 +76,7 @@ export function ActiveTaskListCard({
             aria-label="Open tasks sidebar"
             title="Open tasks sidebar"
           >
-            <PiSidebarSimple className="size-3" />
+            <PanelLeftIcon className="size-3" />
           </Button>
           <Button
             type="button"
@@ -91,11 +87,7 @@ export function ActiveTaskListCard({
             aria-label={compact ? "Expand task banner" : "Collapse task banner"}
             title={compact ? "Expand task banner" : "Collapse task banner"}
           >
-            {compact ? (
-              <PiArrowsOutSimple className="size-3" />
-            ) : (
-              <PiArrowsInSimple className="size-3" />
-            )}
+            {compact ? <ExpandIcon className="size-3" /> : <CollapseIcon className="size-3" />}
           </Button>
         </div>
       </ComposerStackedPanelHeaderRow>
@@ -112,7 +104,6 @@ export function ActiveTaskListCard({
             {activeTaskList.tasks.map((task, index) => {
               const occurrence = (taskOccurrenceCount.get(task.task) ?? 0) + 1;
               taskOccurrenceCount.set(task.task, occurrence);
-
               return (
                 <li key={`${task.task}:${occurrence}`} className="flex items-start gap-2 py-1">
                   <div
@@ -151,7 +142,7 @@ export function ActiveTaskListCard({
               )}
             >
               <div className="flex min-w-0 items-center gap-1.5">
-                <BotIcon className="size-3 shrink-0" />
+                <Robot01Icon className="size-3 shrink-0" />
                 <span className="truncate">
                   {backgroundTaskCount} background {pluralize(backgroundTaskCount, "agent")}
                 </span>
@@ -163,5 +154,4 @@ export function ActiveTaskListCard({
     </>
   );
 }
-
 export type { ActiveTaskListCardProps };

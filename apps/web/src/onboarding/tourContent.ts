@@ -1,19 +1,21 @@
-import type { LucideIcon } from "~/lib/icons";
-import { BotIcon, GitBranchIcon, GitPullRequestIcon, GlobeIcon, KeyboardIcon } from "~/lib/icons";
-
+import type { IconComponent } from "~/lib/iconComponent";
+import {
+  Robot01Icon,
+  WorkflowCircle04Icon,
+  GitPullRequestIcon,
+  Globe02Icon,
+  KeyboardIcon,
+} from "~/lib/icons";
 const GLADE_DOCS_URL = "https://github.com/berkinory/Glade/blob/main/docs";
-
 export interface TourCard {
   readonly id: string;
-
   readonly label: string;
   readonly title: string;
   readonly description: string;
   readonly highlights: ReadonlyArray<string>;
   readonly docsHref: string;
-  readonly icon: LucideIcon;
+  readonly icon: IconComponent;
 }
-
 export const TOUR_CARDS: ReadonlyArray<TourCard> = [
   {
     id: "agents",
@@ -27,7 +29,7 @@ export const TOUR_CARDS: ReadonlyArray<TourCard> = [
       "Usage for every provider",
     ],
     docsHref: `${GLADE_DOCS_URL}/providers.md`,
-    icon: BotIcon,
+    icon: Robot01Icon,
   },
   {
     id: "tasks",
@@ -37,7 +39,7 @@ export const TOUR_CARDS: ReadonlyArray<TourCard> = [
       "Each task owns one body of work: its conversation, provider session, working environment, tool activity, and Git changes. Run tasks in parallel on managed Git worktrees so two agents never edit the same checkout.",
     highlights: ["Managed worktrees", "Forks from any message", "Subagents and split views"],
     docsHref: `${GLADE_DOCS_URL}/core-concepts.md`,
-    icon: GitBranchIcon,
+    icon: WorkflowCircle04Icon,
   },
   {
     id: "review",
@@ -60,7 +62,7 @@ export const TOUR_CARDS: ReadonlyArray<TourCard> = [
     description: "Agents drive a visible, task-owned browser you can watch and annotate.",
     highlights: ["Shared Chromium surface", "Element annotations"],
     docsHref: `${GLADE_DOCS_URL}/core-concepts.md`,
-    icon: GlobeIcon,
+    icon: Globe02Icon,
   },
   {
     id: "shortcuts",
@@ -73,11 +75,25 @@ export const TOUR_CARDS: ReadonlyArray<TourCard> = [
     icon: KeyboardIcon,
   },
 ];
-
 export const TOUR_SHORTCUT_COMMANDS = [
-  { command: "chat.new", label: "New task" },
-  { command: "sidebar.addProject", label: "Add project" },
-  { command: "sidebar.search", label: "Search sidebar" },
-  { command: "terminal.toggle", label: "Toggle terminal" },
-  { command: "diff.toggle", label: "Toggle diff" },
+  {
+    command: "chat.new",
+    label: "New task",
+  },
+  {
+    command: "sidebar.addProject",
+    label: "Add project",
+  },
+  {
+    command: "sidebar.search",
+    label: "Search sidebar",
+  },
+  {
+    command: "terminal.toggle",
+    label: "Toggle terminal",
+  },
+  {
+    command: "diff.toggle",
+    label: "Toggle diff",
+  },
 ] as const;

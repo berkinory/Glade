@@ -1,24 +1,21 @@
+import { UndoIcon } from "~/lib/icons";
 import { type ReactNode, useEffect, useEffectEvent, useRef } from "react";
 import { cn } from "~/lib/utils";
 import { Button } from "~/components/ui/button";
 import { Select, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { useRadioGroupKeyboardNav } from "~/hooks/useRadioGroupKeyboardNav";
-import { ResetIcon } from "~/lib/icons";
 import { SETTINGS_CONTROL_RADIUS_CLASS_NAME } from "~/settingsPanelStyles";
 import { SettingsSelectPopup } from "./SettingsPanelPrimitives";
-
 export function useSettingsRestoreSignal(epoch: number, onRestore: () => void): void {
   const previousEpochRef = useRef(epoch);
   const restore = useEffectEvent(onRestore);
-
   useEffect(() => {
     if (previousEpochRef.current === epoch) return;
     previousEpochRef.current = epoch;
     restore();
   }, [epoch]);
 }
-
 export function SettingResetButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <Tooltip>
@@ -34,7 +31,7 @@ export function SettingResetButton({ label, onClick }: { label: string; onClick:
               onClick();
             }}
           >
-            <ResetIcon className="size-3" />
+            <UndoIcon className="size-3" />
           </Button>
         }
       />
@@ -42,7 +39,6 @@ export function SettingResetButton({ label, onClick }: { label: string; onClick:
     </Tooltip>
   );
 }
-
 export function SettingsSelectControl({
   value,
   onValueChange,
@@ -76,12 +72,10 @@ export function SettingsSelectControl({
     </Select>
   );
 }
-
 export type SettingsSegmentedOption<T extends string> = {
   value: T;
   label: ReactNode;
 };
-
 export function SettingsSegmentedControl<T extends string>({
   value,
   onValueChange,

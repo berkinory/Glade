@@ -1,8 +1,8 @@
+import { GitForkIcon, LaptopIcon } from "~/lib/icons";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { PROVIDER_DESCRIPTORS as VISIBLE_PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
 import type { ReactNode } from "react";
-
 import { useAppSettings, type AppSettings } from "../appSettings";
 import { ProviderOptionLabel } from "../components/ProviderIcon";
 import {
@@ -12,25 +12,18 @@ import {
 } from "../components/settings/SettingControls";
 import { SettingsRow, SettingsSection } from "../components/settings/SettingsPanelPrimitives";
 import { SelectItem } from "../components/ui/select";
-import { CentralIcon } from "../lib/central-icons";
-import { WorktreeIcon } from "../lib/icons";
 import { SETTINGS_TARGETS } from "../settingsNavigation";
-
 const PROVIDER_SELECT_OPTIONS = VISIBLE_PROVIDER_DESCRIPTORS.map((descriptor) => descriptor.kind);
-
 const SIDEBAR_PROJECT_SORT_ORDER_LABELS = {
   updated_at: "Recently active",
   manual: "Manual order",
 } as const;
-
 function isProviderSelectOption(value: string): value is ProviderKind {
   return PROVIDER_SELECT_OPTIONS.includes(value as ProviderKind);
 }
-
 type BooleanSettingKey = {
   [Key in keyof AppSettings]-?: AppSettings[Key] extends boolean ? Key : never;
 }[keyof AppSettings];
-
 export function SettingsGeneralPanel(props: {
   renderBooleanSettingRow: (config: {
     settingKey: BooleanSettingKey;
@@ -53,7 +46,11 @@ export function SettingsGeneralPanel(props: {
             settings.defaultProvider !== defaults.defaultProvider ? (
               <SettingResetButton
                 label="default provider"
-                onClick={() => updateSettings({ defaultProvider: defaults.defaultProvider })}
+                onClick={() =>
+                  updateSettings({
+                    defaultProvider: defaults.defaultProvider,
+                  })
+                }
               />
             ) : null
           }
@@ -62,7 +59,9 @@ export function SettingsGeneralPanel(props: {
               value={settings.defaultProvider}
               onValueChange={(value) => {
                 if (!isProviderSelectOption(value)) return;
-                updateSettings({ defaultProvider: value });
+                updateSettings({
+                  defaultProvider: value,
+                });
               }}
               ariaLabel="Default provider"
               valueContent={
@@ -103,14 +102,18 @@ export function SettingsGeneralPanel(props: {
           control={
             <SettingsSegmentedControl
               value={settings.defaultThreadEnvMode}
-              onValueChange={(value) => updateSettings({ defaultThreadEnvMode: value })}
+              onValueChange={(value) =>
+                updateSettings({
+                  defaultThreadEnvMode: value,
+                })
+              }
               ariaLabel="New chat workspace"
               options={[
                 {
                   value: "local",
                   label: (
                     <>
-                      <CentralIcon name="macbook-air" className="size-3.5" />
+                      <LaptopIcon className="size-3.5" />
                       Local
                     </>
                   ),
@@ -119,7 +122,7 @@ export function SettingsGeneralPanel(props: {
                   value: "worktree",
                   label: (
                     <>
-                      <WorktreeIcon className="size-3.5" />
+                      <GitForkIcon className="size-3.5" />
                       New worktree
                     </>
                   ),
@@ -154,7 +157,9 @@ export function SettingsGeneralPanel(props: {
                 if (value !== "updated_at" && value !== "manual") {
                   return;
                 }
-                updateSettings({ sidebarProjectSortOrder: value });
+                updateSettings({
+                  sidebarProjectSortOrder: value,
+                });
               }}
               ariaLabel="Project sort order"
               valueContent={SIDEBAR_PROJECT_SORT_ORDER_LABELS[settings.sidebarProjectSortOrder]}

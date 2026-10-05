@@ -1,14 +1,11 @@
+import { ChevronRightIcon, File02Icon } from "~/lib/icons";
 import { type ButtonHTMLAttributes, type ReactNode, useState } from "react";
-
-import { ChevronRightIcon, FileIcon } from "~/lib/icons";
 import { formatPastedTextCountLabel, pastedTextTitle } from "~/lib/composerPastedText";
 import { AttachmentCard } from "./AttachmentCard";
-
 interface PastedTextCardMetrics {
   lineCount: number;
   charCount: number;
 }
-
 function PastedTextCardAction({ children, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
@@ -20,7 +17,6 @@ function PastedTextCardAction({ children, ...props }: ButtonHTMLAttributes<HTMLB
     </button>
   );
 }
-
 function PastedTextCardShell({
   text,
   metrics,
@@ -38,7 +34,7 @@ function PastedTextCardShell({
     <AttachmentCard
       size="sm"
       className={className}
-      icon={<FileIcon className="size-3" />}
+      icon={<File02Icon className="size-3" />}
       title={pastedTextTitle(text)}
       subtitle={action}
       onRemove={onRemove}
@@ -46,14 +42,12 @@ function PastedTextCardShell({
     />
   );
 }
-
 interface ComposerPastedTextCardProps {
   text: string;
   metrics: PastedTextCardMetrics;
   onShowInTextField: () => void;
   onRemove: () => void;
 }
-
 export function ComposerPastedTextCard({
   text,
   metrics,
@@ -77,15 +71,12 @@ export function ComposerPastedTextCard({
     />
   );
 }
-
 interface UserMessagePastedTextCardProps {
   text: string;
   metrics: PastedTextCardMetrics;
 }
-
 export function UserMessagePastedTextCard({ text, metrics }: UserMessagePastedTextCardProps) {
   const [expanded, setExpanded] = useState(false);
-
   return (
     <div className="flex flex-col items-start gap-1">
       <PastedTextCardShell

@@ -1,20 +1,17 @@
+import { ArrowLeft02Icon, ArrowRight02Icon } from "~/lib/icons";
 import { goBackInAppHistory, goForwardInAppHistory, useAppNavigationState } from "~/appNavigation";
 import { isElectron } from "~/env";
 import { cn, isMacNavigatorPlatform } from "~/lib/utils";
-import { IoIosArrowRoundBack, IoIosArrowRoundForward } from "react-icons/io";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
-
 export function AppNavigationButtons({ className }: { className?: string }) {
   const { canGoBack, canGoForward } = useAppNavigationState();
   const isMac = isMacNavigatorPlatform();
   const backShortcutLabel = isMac ? "⌘[" : "Alt+Left";
   const forwardShortcutLabel = isMac ? "⌘]" : "Alt+Right";
-
   if (!isElectron) {
     return null;
   }
-
   return (
     <div className={cn("-ms-1 flex shrink-0 items-center gap-0.5", className)}>
       <Tooltip>
@@ -31,7 +28,7 @@ export function AppNavigationButtons({ className }: { className?: string }) {
             />
           }
         >
-          <IoIosArrowRoundBack className="size-6" />
+          <ArrowLeft02Icon className="size-6" />
         </TooltipTrigger>
         <TooltipPopup side="bottom">Back ({backShortcutLabel})</TooltipPopup>
       </Tooltip>
@@ -49,7 +46,7 @@ export function AppNavigationButtons({ className }: { className?: string }) {
             />
           }
         >
-          <IoIosArrowRoundForward className="size-6" />
+          <ArrowRight02Icon className="size-6" />
         </TooltipTrigger>
         <TooltipPopup side="bottom">Forward ({forwardShortcutLabel})</TooltipPopup>
       </Tooltip>

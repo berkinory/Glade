@@ -1,18 +1,15 @@
+import { CheckIcon, Copy01Icon } from "~/lib/icons";
 import { useRef, type RefObject } from "react";
-import { CheckIcon, CopyIcon } from "~/lib/icons";
 import { useCopyToClipboard } from "../../lib/clipboard";
 import { anchoredToastManager } from "../ui/toast";
 import { MessageActionButton, MESSAGE_ACTION_ICON_CLASS_NAME } from "./MessageActionButton";
-
 const ANCHORED_TOAST_TIMEOUT_MS = 1000;
-
 function showCopyToast(
   ref: RefObject<HTMLButtonElement | null>,
   title: string,
   description?: string,
 ): void {
   if (!ref.current) return;
-
   anchoredToastManager.add({
     data: {
       tooltipStyle: true,
@@ -22,10 +19,13 @@ function showCopyToast(
     },
     timeout: ANCHORED_TOAST_TIMEOUT_MS,
     title,
-    ...(description ? { description } : {}),
+    ...(description
+      ? {
+          description,
+        }
+      : {}),
   });
 }
-
 export function MessageCopyButton({ text, className }: { text: string; className?: string }) {
   const ref = useRef<HTMLButtonElement>(null);
   const { copyToClipboard, isCopied } = useCopyToClipboard<void>({
@@ -33,7 +33,6 @@ export function MessageCopyButton({ text, className }: { text: string; className
     onError: (error: Error) => showCopyToast(ref, "Failed to copy", error.message),
     timeout: ANCHORED_TOAST_TIMEOUT_MS,
   });
-
   return (
     <MessageActionButton
       ref={ref}
@@ -46,7 +45,7 @@ export function MessageCopyButton({ text, className }: { text: string; className
       {isCopied ? (
         <CheckIcon className={`${MESSAGE_ACTION_ICON_CLASS_NAME} text-success`} />
       ) : (
-        <CopyIcon className={MESSAGE_ACTION_ICON_CLASS_NAME} />
+        <Copy01Icon className={MESSAGE_ACTION_ICON_CLASS_NAME} />
       )}
     </MessageActionButton>
   );

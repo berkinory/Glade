@@ -1,7 +1,7 @@
 "use client";
 
-import { Dialog as CommandDialogPrimitive } from "@base-ui/react/dialog";
 import { SearchIcon } from "~/lib/icons";
+import { Dialog as CommandDialogPrimitive } from "@base-ui/react/dialog";
 import type * as React from "react";
 import { UI_MOTION_BACKDROP_CLASS, UI_MOTION_DIALOG_CLASS } from "~/lib/uiMotion";
 import { cn } from "~/lib/utils";
@@ -18,17 +18,12 @@ import {
   AutocompleteStatus,
 } from "~/components/ui/autocomplete";
 import { ShortcutKbd } from "./kbd";
-
 const CommandDialog = CommandDialogPrimitive.Root;
-
 const CommandDialogPortal = CommandDialogPrimitive.Portal;
-
 const CommandCreateHandle = CommandDialogPrimitive.createHandle;
-
 function CommandDialogTrigger(props: CommandDialogPrimitive.Trigger.Props) {
   return <CommandDialogPrimitive.Trigger data-slot="command-dialog-trigger" {...props} />;
 }
-
 function CommandDialogBackdrop({ className, ...props }: CommandDialogPrimitive.Backdrop.Props) {
   return (
     <CommandDialogPrimitive.Backdrop
@@ -38,7 +33,6 @@ function CommandDialogBackdrop({ className, ...props }: CommandDialogPrimitive.B
     />
   );
 }
-
 function CommandDialogViewport({ className, ...props }: CommandDialogPrimitive.Viewport.Props) {
   return (
     <CommandDialogPrimitive.Viewport
@@ -55,7 +49,6 @@ function CommandDialogViewport({ className, ...props }: CommandDialogPrimitive.V
 // Shared popup surface for command palettes and palette-styled dialogs (e.g. the quit confirm):
 // same bg, border, overlay, shadow and nested-dialog motion as the ⌘P palette.
 const commandDialogPopupClassName = `palette-surface -translate-y-[calc(1.25rem*var(--nested-dialogs))] relative row-start-2 flex max-h-105 min-h-0 w-full min-w-0 max-w-xl scale-[calc(1-0.1*var(--nested-dialogs))] flex-col rounded-2xl border border-[color:var(--color-border-light)] bg-[var(--color-background-surface-under)] text-[var(--color-text-foreground)] opacity-[calc(1-0.1*var(--nested-dialogs))] shadow-lg/5 outline-none ${UI_MOTION_DIALOG_CLASS} will-change-transform before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-2xl)-1px)] before:bg-[var(--color-background-elevated-secondary)]/72 before:shadow-[0_1px_--theme(--color-black/4%)] data-nested:data-ending-style:translate-y-8 data-nested:data-starting-style:translate-y-8 data-nested-dialog-open:origin-top **:data-[slot=scroll-area-viewport]:data-has-overflow-y:pe-1 dark:before:shadow-[0_-1px_--theme(--color-white/6%)]`;
-
 function CommandDialogPopup({ className, children, ...props }: CommandDialogPrimitive.Popup.Props) {
   return (
     <CommandDialogPortal>
@@ -72,7 +65,6 @@ function CommandDialogPopup({ className, children, ...props }: CommandDialogPrim
     </CommandDialogPortal>
   );
 }
-
 function Command({
   autoHighlight: autoHighlightProp,
   keepHighlight: keepHighlightProp,
@@ -90,7 +82,6 @@ function Command({
     />
   );
 }
-
 function CommandInput({
   className,
   placeholder,
@@ -112,7 +103,6 @@ function CommandInput({
     </div>
   );
 }
-
 function CommandList({ className, ...props }: React.ComponentProps<typeof AutocompleteList>) {
   return (
     <AutocompleteList
@@ -136,7 +126,6 @@ function CommandStatus({ className, ...props }: React.ComponentProps<typeof Auto
     />
   );
 }
-
 function CommandEmpty({ className, ...props }: React.ComponentProps<typeof AutocompleteEmpty>) {
   return (
     <AutocompleteEmpty
@@ -146,7 +135,6 @@ function CommandEmpty({ className, ...props }: React.ComponentProps<typeof Autoc
     />
   );
 }
-
 function CommandPanel({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -158,11 +146,9 @@ function CommandPanel({ className, ...props }: React.ComponentProps<"div">) {
     />
   );
 }
-
 function CommandGroup({ className, ...props }: React.ComponentProps<typeof AutocompleteGroup>) {
   return <AutocompleteGroup className={className} data-slot="command-group" {...props} />;
 }
-
 function CommandGroupLabel({
   className,
   ...props
@@ -171,17 +157,14 @@ function CommandGroupLabel({
     <AutocompleteGroupLabel className={className} data-slot="command-group-label" {...props} />
   );
 }
-
 function CommandCollection({ ...props }: React.ComponentProps<typeof AutocompleteCollection>) {
   return <AutocompleteCollection data-slot="command-collection" {...props} />;
 }
-
 function CommandItem({ className, ...props }: React.ComponentProps<typeof AutocompleteItem>) {
   return (
     <AutocompleteItem className={cn("py-1.5", className)} data-slot="command-item" {...props} />
   );
 }
-
 function CommandSeparator({
   className,
   ...props
@@ -194,13 +177,22 @@ function CommandSeparator({
     />
   );
 }
-
 function CommandShortcut({
   className,
   children,
   ...props
+}: Omit<React.ComponentProps<"kbd">, "children"> & {
+  children: string;
+}) {
+  return (
+    <ShortcutKbd
+      shortcutLabel={children}
+      className={cn("ms-auto", className)}
+      data-slot="command-shortcut"
+      {...props}
+    />
+  );
 }
-
 function CommandFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -213,7 +205,6 @@ function CommandFooter({ className, ...props }: React.ComponentProps<"div">) {
     />
   );
 }
-
 export {
   commandDialogPopupClassName,
   CommandCreateHandle,

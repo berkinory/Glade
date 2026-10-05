@@ -1,7 +1,6 @@
 import { StarFilledIcon, StarIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { COMPOSER_PICKER_RADIUS_CLASS_NAME } from "./composerPickerStyles";
-
 export function ModelStarButton(props: {
   starred: boolean;
   label: string;

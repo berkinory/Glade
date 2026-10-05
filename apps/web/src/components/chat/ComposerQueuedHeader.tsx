@@ -1,5 +1,5 @@
+import { CornerDownRightIcon } from "~/lib/icons";
 import type { QueuedComposerTurn } from "../../composerDraftDomain";
-import { SteerIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import ChatMarkdown from "../ChatMarkdown";
 import {
@@ -13,7 +13,6 @@ import {
   COMPOSER_STACKED_PANEL_PREVIEW_MARKDOWN_CLASS_NAME,
 } from "./composerStackedPanelStyles";
 import { QueuedComposerActions } from "./QueuedComposerActions";
-
 function firstNonEmptyLine(value: string): string {
   return (
     value
@@ -23,7 +22,6 @@ function firstNonEmptyLine(value: string): string {
       ?.trim() ?? ""
   );
 }
-
 function compactQueuedComposerPreviewMarkdown(value: string): string {
   const firstLine = firstNonEmptyLine(value);
   if (firstLine.length === 0) {
@@ -41,17 +39,14 @@ function compactQueuedComposerPreviewMarkdown(value: string): string {
     .trim();
   return normalized.length > 0 ? normalized : "Queued follow-up";
 }
-
 interface ComposerQueuedHeaderProps {
   queuedTurns: QueuedComposerTurn[];
   onSteer: (queuedTurn: QueuedComposerTurn) => void;
   onRemove: (queuedTurnId: string) => void;
   onEdit: (queuedTurn: QueuedComposerTurn) => void;
-
   cwd?: string | undefined;
   attachedToPrevious?: boolean;
 }
-
 export const ComposerQueuedHeader = function ComposerQueuedHeader({
   queuedTurns,
   onSteer,
@@ -64,7 +59,6 @@ export const ComposerQueuedHeader = function ComposerQueuedHeader({
   if (queuedTurns.length === 0) {
     return null;
   }
-
   return (
     <ComposerStackedPanel attachedToPrevious={attachedToPrevious} className="flex flex-col">
       {queuedTurns.map((queuedTurn, queuedTurnIndex) => (
@@ -75,7 +69,7 @@ export const ComposerQueuedHeader = function ComposerQueuedHeader({
           className={cn(queuedTurnIndex > 0 && COMPOSER_STACKED_PANEL_DIVIDER_CLASS_NAME)}
         >
           <ComposerStackedPanelRowMain>
-            <SteerIcon className={COMPOSER_STACKED_PANEL_ICON_CLASS_NAME} />
+            <CornerDownRightIcon className={COMPOSER_STACKED_PANEL_ICON_CLASS_NAME} />
             <ChatMarkdown
               text={compactQueuedComposerPreviewMarkdown(queuedTurn.previewText)}
               cwd={cwd}

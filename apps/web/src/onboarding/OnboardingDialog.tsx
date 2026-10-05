@@ -1,6 +1,6 @@
+import { CheckIcon } from "~/lib/icons";
 import { PROVIDER_DESCRIPTORS as VISIBLE_PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
 import { useEffect, useState } from "react";
-
 import { useAppSettings } from "~/appSettings";
 import { APP_BASE_NAME } from "~/branding";
 import { GladeLogo } from "~/components/GladeLogo";
@@ -13,7 +13,6 @@ import {
 } from "~/components/ui/dialog";
 import { useProviderStatusesForLocalConfig } from "~/hooks/useProviderStatusesForLocalConfig";
 import { useTheme } from "~/hooks/useTheme";
-import { CheckIcon } from "~/lib/icons";
 import { findProviderStatus } from "~/lib/providerAvailability";
 import { cn } from "~/lib/utils";
 import { CODE_THEME_OPTIONS } from "../theme/theme.logic.shared";
@@ -37,7 +36,6 @@ import { ProvidersStep } from "./steps/ProvidersStep";
 import { ThemeStep } from "./steps/ThemeStep";
 import { WelcomeStep } from "./steps/WelcomeStep";
 import { useProviderDetection } from "./useProviderDetection";
-
 const STEP_TITLES: Record<OnboardingStep, string> = {
   welcome: `Welcome to ${APP_BASE_NAME}`,
   tour: `What ${APP_BASE_NAME} can do`,
@@ -46,7 +44,6 @@ const STEP_TITLES: Record<OnboardingStep, string> = {
   project: "Add your first project",
   done: "You're all set",
 };
-
 const STEP_DESCRIPTIONS: Record<Exclude<OnboardingStep, "done">, string> = {
   welcome: "A local-first workspace for coding agents. Setup takes about a minute.",
   tour: "",
@@ -54,15 +51,12 @@ const STEP_DESCRIPTIONS: Record<Exclude<OnboardingStep, "done">, string> = {
   theme: "Applies live behind this window. Change it anytime in Settings → Appearance.",
   project: `A project is a folder ${APP_BASE_NAME} works in. Git repositories unlock branches, worktrees, diffs and pull requests.`,
 };
-
 function isHeroStep(step: OnboardingStep): boolean {
   return step === "welcome" || step === "done";
 }
-
 function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
-
 function OnboardingFlow(props: {
   onComplete: () => void;
   projectBusy: boolean;
@@ -74,7 +68,6 @@ function OnboardingFlow(props: {
   const statuses = useProviderStatusesForLocalConfig();
   const providerDetection = useProviderDetection();
   const { activeTheme } = useTheme();
-
   const goBack = () => setStep(previousOnboardingStep(step));
   const goNext = () => setStep(nextOnboardingStep(step));
 
@@ -83,7 +76,6 @@ function OnboardingFlow(props: {
   useEffect(() => {
     if (isOnboardingSetupStep(step)) markEngaged();
   }, [markEngaged, step]);
-
   const providerSummary = summarizeProviderSetup(
     VISIBLE_PROVIDER_DESCRIPTORS.map((descriptor) => ({
       provider: descriptor.kind,
@@ -105,29 +97,44 @@ function OnboardingFlow(props: {
       ? `${plural(projectResults.length, "project")} added`
       : "No project yet",
   ].join(" · ");
-
   const description = step === "done" ? doneSummary : STEP_DESCRIPTIONS[step];
   const stepIndex = ONBOARDING_STEPS.indexOf(step);
   const hero = isHeroStep(step);
-
   const primaryAction = (() => {
     switch (step) {
       case "welcome":
-        return { label: "Get started", onPrimary: goNext };
+        return {
+          label: "Get started",
+          onPrimary: goNext,
+        };
       case "tour":
-        return { label: "Set up", onPrimary: goNext };
+        return {
+          label: "Set up",
+          onPrimary: goNext,
+        };
       case "providers":
       case "theme":
-        return { label: "Continue", onPrimary: goNext };
+        return {
+          label: "Continue",
+          onPrimary: goNext,
+        };
       case "project":
         return projectResults.length > 0
-          ? { label: "Continue", onPrimary: goNext }
-          : { label: "Skip for now", onPrimary: goNext };
+          ? {
+              label: "Continue",
+              onPrimary: goNext,
+            }
+          : {
+              label: "Skip for now",
+              onPrimary: goNext,
+            };
       case "done":
-        return { label: `Start using ${APP_BASE_NAME}`, onPrimary: props.onComplete };
+        return {
+          label: `Start using ${APP_BASE_NAME}`,
+          onPrimary: props.onComplete,
+        };
     }
   })();
-
   return (
     <div className="flex min-h-0 flex-1 flex-col outline-none" tabIndex={-1}>
       <DialogHeader
@@ -196,7 +203,6 @@ function OnboardingFlow(props: {
     </div>
   );
 }
-
 export function OnboardingDialog(props: {
   open: boolean;
   onOpenChange: (open: boolean) => void;

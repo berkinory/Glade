@@ -1,34 +1,27 @@
-import { MessageCircleIcon, SettingsIcon } from "~/lib/icons";
+import { MessageCircleIcon, SettingsIcon, FolderIcon } from "~/lib/icons";
 import { PinStatusIcon, pinActionLabel } from "~/lib/pin";
 import type { ProjectAppearance } from "~/lib/projectAppearance";
 import { cn } from "~/lib/utils";
-import { FolderClosed } from "./FolderClosed";
 import { ProjectSidebarIcon } from "./ProjectSidebarIcon";
 import {
   SIDEBAR_HOVER_CARD_CONTAINER_PADDING_CLASS_NAME,
   SIDEBAR_HOVER_CARD_ROW_CLASS_NAME,
 } from "./sidebarHoverCardStyles";
-
 export type ProjectHoverCardContentProps = {
   name: string;
   cwd: string;
   appearance: ProjectAppearance | null;
   isPinned: boolean;
   chatCount: number;
-
   path: string;
   onTogglePin: () => void;
   onEditProject: () => void;
 };
-
 const ROW_CLASS_NAME = SIDEBAR_HOVER_CARD_ROW_CLASS_NAME;
-
 const ICON_CLASS_NAME = "size-3.5 shrink-0 text-muted-foreground";
-
 function formatChatCount(count: number): string {
   return `${count} ${count === 1 ? "chat" : "chats"}`;
 }
-
 export function ProjectHoverCardContent({
   name,
   cwd,
@@ -72,7 +65,7 @@ export function ProjectHoverCardContent({
       </div>
       <div className="-mx-0.5 my-0.5 h-px bg-[color:var(--color-border)]" aria-hidden />
       <div className={cn(ROW_CLASS_NAME, "text-foreground/80")}>
-        <FolderClosed className={ICON_CLASS_NAME} aria-hidden />
+        <FolderIcon className={ICON_CLASS_NAME} aria-hidden />
         <span className="min-w-0 truncate">{path}</span>
       </div>
       <div className="-mx-0.5 my-0.5 h-px bg-[color:var(--color-border)]" aria-hidden />

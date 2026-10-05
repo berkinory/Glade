@@ -1,3 +1,4 @@
+import { SquarePenIcon } from "~/lib/icons";
 import { AssistantSelectionsSummaryChip } from "~/components/chat/AssistantSelectionsSummaryChip";
 import { BrowserAnnotationStrip } from "~/components/chat/BrowserAnnotationStrip";
 import {
@@ -17,7 +18,6 @@ import { type MessagesTimelineRow } from "~/components/chat/MessagesTimeline.log
 import { UserMessagePastedTextCard } from "~/components/chat/PastedTextChip";
 import { threadFindMarkdownProps } from "~/components/chat/threadFind.logic";
 import { hasLeadingUserMedia } from "~/components/chat/userTurnMarker";
-import { NewThreadIcon } from "~/lib/icons";
 import { deriveDisplayedUserMessageState } from "~/lib/terminalContext";
 import { cn } from "~/lib/utils";
 import { formatDayAwareTimestamp } from "~/timestampFormat";
@@ -35,7 +35,12 @@ import {
 import type { TimelineController } from "./useTimelineController";
 export function renderTimelineUserMessage(
   controller: TimelineController,
-  row: Extract<MessagesTimelineRow, { kind: "message" }>,
+  row: Extract<
+    MessagesTimelineRow,
+    {
+      kind: "message";
+    }
+  >,
 ) {
   const {
     expandedUserMessagesById,
@@ -71,7 +76,9 @@ export function renderTimelineUserMessage(
         attachment,
       ): attachment is Extract<
         NonNullable<TimelineMessage["attachments"]>[number],
-        { type: "image" }
+        {
+          type: "image";
+        }
       > => attachment.type === "image",
     );
     const assistantSelections = (row.message.attachments ?? []).filter(
@@ -79,7 +86,9 @@ export function renderTimelineUserMessage(
         attachment,
       ): attachment is Extract<
         NonNullable<TimelineMessage["attachments"]>[number],
-        { type: "assistant-selection" }
+        {
+          type: "assistant-selection";
+        }
       > => attachment.type === "assistant-selection",
     );
     const userFiles = (row.message.attachments ?? []).filter(
@@ -87,7 +96,9 @@ export function renderTimelineUserMessage(
         attachment,
       ): attachment is Extract<
         NonNullable<TimelineMessage["attachments"]>[number],
-        { type: "file" }
+        {
+          type: "file";
+        }
       > => attachment.type === "file",
     );
     const displayedUserMessage = deriveDisplayedUserMessageState(row.message.text, {
@@ -134,7 +145,11 @@ export function renderTimelineUserMessage(
         {showCrossTaskOrigin ? (
           <CrossTaskOriginLabel
             origin={crossTaskOrigin}
-            {...(onOpenThread ? { onOpenSourceThread: onOpenThread } : {})}
+            {...(onOpenThread
+              ? {
+                  onOpenSourceThread: onOpenThread,
+                }
+              : {})}
           />
         ) : null}
         <div className="flex w-full justify-end">
@@ -146,7 +161,7 @@ export function renderTimelineUserMessage(
           >
             {}
             {/* The cross-task origin label already attributes this turn to another Glade thread, so suppress the
-   dispatch chip here to avoid a duplicate "Sent by …" marker. */}
+             dispatch chip here to avoid a duplicate "Sent by …" marker. */}
             {showCrossTaskOrigin ? null : (
               <UserDispatchModeChip
                 dispatchMode={row.message.dispatchMode}
@@ -178,7 +193,10 @@ export function renderTimelineUserMessage(
                   <UserMessagePastedTextCard
                     key={pasted.index}
                     text={pasted.text}
-                    metrics={{ lineCount: pasted.lineCount, charCount: pasted.charCount }}
+                    metrics={{
+                      lineCount: pasted.lineCount,
+                      charCount: pasted.charCount,
+                    }}
                   />
                 ))}
               </div>
@@ -296,7 +314,7 @@ export function renderTimelineUserMessage(
                       )}
                       onClick={() => startUserMessageEdit(row.message.id)}
                     >
-                      <NewThreadIcon className={MESSAGE_ACTION_ICON_CLASS_NAME} />
+                      <SquarePenIcon className={MESSAGE_ACTION_ICON_CLASS_NAME} />
                     </MessageActionButton>
                   )}
                 </div>

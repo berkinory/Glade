@@ -1,5 +1,4 @@
-import { TerminalIcon } from "~/lib/icons";
-
+import { ComputerTerminal01Icon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import {
   COMPOSER_INLINE_CHIP_CLASS_NAME,
@@ -7,17 +6,14 @@ import {
   COMPOSER_INLINE_CHIP_LABEL_CLASS_NAME,
 } from "../composerInlineChip";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
-
 interface TerminalContextInlineChipProps {
   label: string;
   tooltipText: string;
   expired?: boolean;
 }
-
 export function TerminalContextInlineChip(props: TerminalContextInlineChipProps) {
   const { label, tooltipText, expired: expiredProp } = props;
   const expired = expiredProp ?? false;
-
   return (
     <Tooltip>
       <TooltipTrigger
@@ -29,7 +25,7 @@ export function TerminalContextInlineChip(props: TerminalContextInlineChipProps)
             )}
             data-terminal-context-expired={expired ? "true" : undefined}
           >
-            <TerminalIcon
+            <ComputerTerminal01Icon
               className={cn(
                 COMPOSER_INLINE_CHIP_ICON_CLASS_NAME,
                 "size-3.5",

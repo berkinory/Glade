@@ -1,3 +1,4 @@
+import { PencilEdit02Icon, ImageAdd01Icon, Delete02Icon } from "~/lib/icons";
 import { type ReactNode, useRef, useState } from "react";
 import { Dialog, DialogClose, DialogPopup, DialogTitle } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
@@ -7,16 +8,13 @@ import {
   InputGroupInput,
   InputGroupText,
 } from "~/components/ui/input-group";
-import { CentralIcon } from "~/lib/central-icons";
 import { cn } from "~/lib/utils";
 import { normalizeHandle } from "./profileFormatting";
 import { PROFILE_AVATAR_COLORS } from "./useProfileAvatarColor";
 import { AvatarImageError, compressAvatarImage } from "./avatarImage";
 import { ProfileAvatar } from "./ProfileAvatar";
-
 const fieldControlClassName = "h-9 rounded-xl border-foreground/12";
 const dialogButtonClassName = "h-11 rounded-lg px-4";
-
 interface EditProfileDialogProps {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
@@ -32,7 +30,6 @@ interface EditProfileDialogProps {
     avatarImage: string | null;
   }) => void;
 }
-
 export function EditProfileDialog({
   open,
   onOpenChange,
@@ -60,7 +57,6 @@ export function EditProfileDialog({
     </Dialog>
   );
 }
-
 function EditProfileDialogContent({
   onOpenChange,
   initials,
@@ -78,7 +74,6 @@ function EditProfileDialogContent({
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
   const handlePickFile = async (file: File | undefined) => {
     if (!file) {
       return;
@@ -93,7 +88,6 @@ function EditProfileDialogContent({
       setProcessing(false);
     }
   };
-
   const handleSave = () => {
     onSave({
       name: draftName.trim(),
@@ -103,7 +97,6 @@ function EditProfileDialogContent({
     });
     onOpenChange(false);
   };
-
   return (
     <>
       <DialogTitle className="px-4 pt-4 text-lg">Edit profile</DialogTitle>
@@ -128,7 +121,7 @@ function EditProfileDialogContent({
                 "bg-black/45 text-white backdrop-blur-sm transition-colors hover:bg-black/60",
               )}
             >
-              <CentralIcon name="pencil" className="size-3 opacity-100" />
+              <PencilEdit02Icon className="size-3 opacity-100" />
             </button>
           </div>
 
@@ -154,7 +147,7 @@ function EditProfileDialogContent({
                   disabled={processing}
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <CentralIcon name="add-image" className="size-3.5" />
+                  <ImageAdd01Icon className="size-3.5" />
                   {processing ? "Processing…" : draftImage ? "Replace photo" : "Upload photo"}
                 </Button>
                 {draftImage && (
@@ -168,7 +161,7 @@ function EditProfileDialogContent({
                       setError(null);
                     }}
                   >
-                    <CentralIcon name="trash-can-simple" className="size-3.5" />
+                    <Delete02Icon className="size-3.5" />
                     Remove
                   </Button>
                 )}
@@ -187,7 +180,9 @@ function EditProfileDialogContent({
                         draftColor === color &&
                         "ring-2 ring-foreground/70 ring-offset-2 ring-offset-popover",
                     )}
-                    style={{ backgroundColor: color }}
+                    style={{
+                      backgroundColor: color,
+                    }}
                   />
                 ))}
               </div>
@@ -250,7 +245,6 @@ function EditProfileDialogContent({
     </>
   );
 }
-
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-4 px-3.5 py-3">

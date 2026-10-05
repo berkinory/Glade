@@ -1,17 +1,14 @@
+import { ChevronDownIcon } from "~/lib/icons";
 import { useState, type ComponentPropsWithoutRef, type ReactNode } from "react";
-
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "~/components/ui/collapsible";
 import { DisclosureChevron } from "~/components/ui/DisclosureChevron";
-import { ChevronDownIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { ELEVATED_HOVER_SURFACE_CLASS_NAME } from "~/surfaceStyles";
-
 import {
   ENVIRONMENT_PANEL_SECTION_LABEL_CLASS_NAME,
   ENVIRONMENT_PANEL_SECTION_LABEL_INLINE_CLASS_NAME,
   ENVIRONMENT_PANEL_TITLE_CLASS_NAME,
 } from "./environmentPanelStyles";
-
 export const ENVIRONMENT_ROW_CLASS_NAME = cn(
   "flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1 text-left",
   "text-ui font-normal text-[var(--color-text-foreground)]",
@@ -20,14 +17,11 @@ export const ENVIRONMENT_ROW_CLASS_NAME = cn(
   "focus-visible:bg-[var(--color-background-elevated-secondary)]",
   "disabled:pointer-events-none disabled:opacity-50",
 );
-
 export const ENVIRONMENT_ROW_ICON_CLASS_NAME =
   "size-4 shrink-0 text-[var(--color-text-foreground)]";
-
 export function EnvironmentRowChevron({ className }: { className?: string }) {
   return <ChevronDownIcon aria-hidden className={cn("size-3 shrink-0 opacity-60", className)} />;
 }
-
 export function EnvironmentPanelTitle({ children }: { children: ReactNode }) {
   return <p className={ENVIRONMENT_PANEL_TITLE_CLASS_NAME}>{children}</p>;
 }
@@ -37,11 +31,9 @@ export function EnvironmentPanelTitle({ children }: { children: ReactNode }) {
 export function EnvironmentSectionDivider() {
   return <div className="my-1 border-t border-[color:var(--color-border-light)]" />;
 }
-
 function EnvironmentSectionLabel({ children }: { children: ReactNode }) {
   return <p className={ENVIRONMENT_PANEL_SECTION_LABEL_CLASS_NAME}>{children}</p>;
 }
-
 export function EnvironmentLabeledSection({
   label,
   children,
@@ -59,7 +51,6 @@ export function EnvironmentLabeledSection({
     </>
   );
 }
-
 export function EnvironmentCollapsibleSection({
   label,
   defaultOpen: defaultOpenProp,
@@ -95,7 +86,6 @@ export function EnvironmentCollapsibleSection({
     </Collapsible>
   );
 }
-
 export function EnvironmentRowBody({
   icon,
   label,
@@ -105,7 +95,6 @@ export function EnvironmentRowBody({
   icon: ReactNode;
   label: ReactNode;
   trailing?: ReactNode;
-
   compact?: boolean;
 }) {
   const compact = compactProp ?? false;
@@ -123,13 +112,11 @@ export function EnvironmentRowBody({
     </>
   );
 }
-
 type EnvironmentRowProps = Omit<ComponentPropsWithoutRef<"button">, "children"> & {
   icon: ReactNode;
   label: ReactNode;
   trailing?: ReactNode;
 };
-
 export function EnvironmentRow({
   icon,
   label,

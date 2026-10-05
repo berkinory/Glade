@@ -1,16 +1,16 @@
+import {
+  PlusIcon,
+  Archive04Icon,
+  Copy01Icon,
+  Folder02Icon,
+  PencilEdit02Icon,
+  PinIcon,
+  Delete02Icon,
+  XIcon,
+} from "~/lib/icons";
 import { useStore } from "../store";
 import { createClientPointMenuAnchor } from "~/lib/clientPointMenuAnchor";
 import { useMemo } from "react";
-import {
-  AddPlusIcon,
-  ArchiveIcon,
-  CopyIcon,
-  FolderOpenIcon,
-  PencilIcon,
-  PinIcon,
-  Trash2,
-  XIcon,
-} from "~/lib/icons";
 import { pinActionLabel } from "~/lib/pin";
 import { SpaceId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { EditProjectDialog } from "./EditProjectDialog";
@@ -43,7 +43,6 @@ import {
 } from "./sidebarSupport";
 import { SidebarSearchPaletteController } from "./SidebarSearchPaletteController";
 import type { useSidebarPanelEffects } from "./useSidebarPanelEffects";
-
 export function SidebarDialogs({
   context,
 }: {
@@ -99,19 +98,15 @@ export function SidebarDialogs({
     pinnedProjectIdSet,
   } = context;
   const sidebarThreadSummaryById = useStore((state) => state.sidebarThreadSummaryById);
-
   const relocateProjectDialogProject = relocateProjectDialogId
     ? (projectById.get(relocateProjectDialogId) ?? null)
     : null;
-
   const editProjectDialogProject = editProjectDialog
     ? (projectById.get(editProjectDialog.projectId) ?? null)
     : null;
-
   const projectContextMenuProject = projectContextMenuState
     ? (projectById.get(projectContextMenuState.projectId) ?? null)
     : null;
-
   const projectContextMenuThreads = useMemo(
     () =>
       projectContextMenuState
@@ -119,7 +114,6 @@ export function SidebarDialogs({
         : [],
     [projectContextMenuState, sidebarThreads],
   );
-
   const projectContextMenuAnchor = useMemo(
     () =>
       projectContextMenuState
@@ -127,13 +121,10 @@ export function SidebarDialogs({
         : null,
     [projectContextMenuState],
   );
-
   const projectContextMenuHasAnyThreads = projectContextMenuThreads.length > 0;
-
   const projectContextMenuHasArchivableThreads = projectContextMenuThreads.some(
     (thread) => thread.archivedAt == null,
   );
-
   const projectContextMenuIsPinned = projectContextMenuProject
     ? pinnedProjectIdSet.has(projectContextMenuProject.id)
     : false;
@@ -155,7 +146,11 @@ export function SidebarDialogs({
       <SpaceEditorDialog
         open={spaceEditorOpen}
         mode={spaceEditorMode}
-        {...(spaceEditorInitialValue ? { initialValue: spaceEditorInitialValue } : {})}
+        {...(spaceEditorInitialValue
+          ? {
+              initialValue: spaceEditorInitialValue,
+            }
+          : {})}
         existingNames={spaceEditorExistingNames}
         onOpenChange={(open) => {
           if (!open) closeSpaceEditor();
@@ -218,7 +213,7 @@ export function SidebarDialogs({
                   )
                 }
               >
-                <ProjectContextMenuIcon icon={CopyIcon} />
+                <ProjectContextMenuIcon icon={Copy01Icon} />
                 <span>Copy Path</span>
               </MenuItem>
               <MenuSeparator />
@@ -264,7 +259,7 @@ export function SidebarDialogs({
                     }}
                   >
                     <span className={PROJECT_CONTEXT_MENU_ICON_CLASS_NAME}>
-                      <AddPlusIcon />
+                      <PlusIcon />
                     </span>
                     <span>New space…</span>
                   </MenuItem>
@@ -277,7 +272,7 @@ export function SidebarDialogs({
                   void handleProjectContextMenuAction(projectContextMenuState.projectId, "rename")
                 }
               >
-                <ProjectContextMenuIcon icon={PencilIcon} />
+                <ProjectContextMenuIcon icon={PencilEdit02Icon} />
                 <span>Edit project</span>
               </MenuItem>
               <MenuItem
@@ -286,7 +281,7 @@ export function SidebarDialogs({
                   void handleProjectContextMenuAction(projectContextMenuState.projectId, "relocate")
                 }
               >
-                <ProjectContextMenuIcon icon={FolderOpenIcon} />
+                <ProjectContextMenuIcon icon={Folder02Icon} />
                 <span>Change project path…</span>
               </MenuItem>
               <MenuItem
@@ -314,7 +309,7 @@ export function SidebarDialogs({
                     )
                   }
                 >
-                  <ProjectContextMenuIcon icon={ArchiveIcon} />
+                  <ProjectContextMenuIcon icon={Archive04Icon} />
                   <span>Archive threads</span>
                 </MenuItem>
               ) : null}
@@ -328,7 +323,7 @@ export function SidebarDialogs({
                     )
                   }
                 >
-                  <ProjectContextMenuIcon icon={Trash2} />
+                  <ProjectContextMenuIcon icon={Delete02Icon} />
                   <span>Delete threads</span>
                 </MenuItem>
               ) : null}
@@ -384,7 +379,13 @@ export function SidebarDialogs({
           }}
           onOpenChange={(nextOpen) => {
             if (!nextOpen)
-              setEditProjectDialog((current) => current && { ...current, open: false });
+              setEditProjectDialog(
+                (current) =>
+                  current && {
+                    ...current,
+                    open: false,
+                  },
+              );
           }}
           onSave={(next) =>
             handleEditProjectSave(
@@ -407,13 +408,17 @@ export function SidebarDialogs({
           onAddProjectPath={addProjectFromPath}
           homeDir={homeDir}
           onOpenSettings={() => {
-            void navigate({ to: "/settings" });
+            void navigate({
+              to: "/settings",
+            });
           }}
           onOpenFeedback={openFeedbackDialog}
           onOpenUsageSettings={() => {
             void navigate({
               to: "/settings",
-              search: { section: "usage" },
+              search: {
+                section: "usage",
+              },
             });
           }}
           onOpenProject={handleOpenProjectFromSearch}

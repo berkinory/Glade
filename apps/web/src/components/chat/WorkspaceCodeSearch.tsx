@@ -1,3 +1,4 @@
+import { CaseSensitiveIcon } from "~/lib/icons";
 import { WorkspaceCodeSearchResults } from "./WorkspaceCodeSearchResults";
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -6,9 +7,7 @@ import type { ProjectContentMatch } from "@glade/contracts/workspace/project";
 import { projectSearchContentQueryOptions } from "~/lib/projectReactQuery";
 import { SearchInput } from "../ui/search-input";
 import { IconButton } from "../ui/icon-button";
-import { IconLetterCase } from "@tabler/icons-react";
 import { useExplorerListNavigation } from "./explorerListNavigation";
-
 export function WorkspaceCodeSearch(props: {
   cwd: string | null;
   selectedFilePath: string | null;
@@ -18,7 +17,9 @@ export function WorkspaceCodeSearch(props: {
   headerActions?: ReactNode;
   emptyContent?: ReactNode;
 }) {
-  const [debounced] = useDebouncedValue(props.query.trim(), { wait: 250 });
+  const [debounced] = useDebouncedValue(props.query.trim(), {
+    wait: 250,
+  });
   const [matchCase, setMatchCase] = useState(false);
   const [wholeWord, setWholeWord] = useState(false);
   const result = useQuery({
@@ -31,7 +32,6 @@ export function WorkspaceCodeSearch(props: {
     }),
     retry: false,
   });
-
   const query = props.query.trim();
   const pending = query !== debounced || result.isFetching || result.isPlaceholderData;
   const matches = !pending && query.length >= 2 ? (result.data?.matches ?? []) : [];
@@ -52,7 +52,7 @@ export function WorkspaceCodeSearch(props: {
                   className="rounded-[4px] text-muted-foreground aria-pressed:bg-primary/15 aria-pressed:text-foreground aria-pressed:ring-1 aria-pressed:ring-inset aria-pressed:ring-primary/60"
                   onClick={() => setMatchCase(!matchCase)}
                 >
-                  <IconLetterCase className="size-3.5" />
+                  <CaseSensitiveIcon className="size-3.5" />
                 </IconButton>
                 <IconButton
                   size="icon-chip"
@@ -88,7 +88,11 @@ export function WorkspaceCodeSearch(props: {
           matches={matches}
           selectedFilePath={props.selectedFilePath}
           onSelect={props.onSelect}
-          search={{ query, matchCase, wholeWord }}
+          search={{
+            query,
+            matchCase,
+            wholeWord,
+          }}
           pending={pending}
           error={result.error}
           truncated={result.data?.truncated ?? false}

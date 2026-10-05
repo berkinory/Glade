@@ -1,8 +1,7 @@
+import { TriangleAlertIcon } from "~/lib/icons";
 import { Spinner } from "~/components/ui/spinner";
 import { useEffect, useState } from "react";
-
 import { basenameOfPath } from "~/file-icons";
-import { TriangleAlertIcon } from "~/lib/icons";
 import { buildLocalImageUrl } from "~/lib/localImageUrls";
 import { useContainerSize } from "~/lib/pdf/useContainerSize";
 import { usePdfDocument } from "~/lib/pdf/usePdfDocument";
@@ -11,13 +10,11 @@ import { usePdfZoomController } from "~/lib/pdf/usePdfZoomController";
 import { cn } from "~/lib/utils";
 import { PdfPageView } from "./pdf/PdfPageView";
 import { PdfViewerToolbar } from "./pdf/PdfViewerToolbar";
-
 export function PdfFilePreview(props: {
   filePath: string;
   cwd: string | null | undefined;
   previewGrant?: string | null | undefined;
   cacheKey?: string | number | undefined;
-
   openInTarget: string | null;
   className?: string;
   onReload?: (() => void) | undefined;
@@ -33,7 +30,6 @@ export function PdfFilePreview(props: {
   });
   const fileName = basenameOfPath(props.filePath);
   const doc = usePdfDocument(previewUrl);
-
   useEffect(() => {
     if (doc.status === "ready") {
       onPreviewReady?.();
@@ -41,10 +37,8 @@ export function PdfFilePreview(props: {
       onPreviewError?.();
     }
   }, [doc.status, onPreviewError, onPreviewReady]);
-
   const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);
   const containerSize = useContainerSize(scrollRoot);
-
   const navigation = usePdfPageNavigation({
     scrollRoot,
     numPages: doc.numPages,
@@ -57,14 +51,16 @@ export function PdfFilePreview(props: {
     currentPage: navigation.currentPage,
     scrollToPage: navigation.scrollToPage,
   });
-
-  const pageNumbers = Array.from({ length: doc.numPages }, (_, index) => index + 1);
-
+  const pageNumbers = Array.from(
+    {
+      length: doc.numPages,
+    },
+    (_, index) => index + 1,
+  );
   const outerClassName = cn(
     "flex h-full min-h-0 min-w-0 flex-1 flex-col bg-[var(--app-content-surface)]",
     props.className,
   );
-
   const readyDocument = doc.document;
   const firstPageSize = doc.firstPageSize;
   if (doc.status === "ready" && readyDocument && firstPageSize) {
@@ -104,7 +100,6 @@ export function PdfFilePreview(props: {
       </div>
     );
   }
-
   if (doc.status === "error") {
     return (
       <div className={outerClassName}>
@@ -124,7 +119,6 @@ export function PdfFilePreview(props: {
       </div>
     );
   }
-
   return (
     <div className={outerClassName}>
       <div

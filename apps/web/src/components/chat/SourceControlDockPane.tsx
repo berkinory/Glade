@@ -1,3 +1,4 @@
+import { PlusMinusSquare01Icon, WorkflowCircle04Icon, HistoryIcon } from "~/lib/icons";
 import type { GitRecentCommit } from "@glade/contracts/git/git";
 import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -10,11 +11,9 @@ import { PanelStateMessage } from "./PanelStateMessage";
 import { PanelEmptyState } from "./PanelEmptyState";
 import type { SourceControlView } from "~/rightDockStore.logic";
 import { PanelTabBar } from "./PanelTabBar";
-import { ChangesIcon, GitBranchIcon, HistoryIcon } from "~/lib/icons";
 import { GitPanel } from "./GitPanel";
 import { SourceControlHistory } from "./SourceControlHistory";
 import { SourceControlTurnChanges } from "./SourceControlTurnChanges";
-
 export function SourceControlDockPane(props: {
   onSelectCommitFile?:
     | ((commit: GitRecentCommit, path: string, preview: boolean) => void)
@@ -33,7 +32,10 @@ export function SourceControlDockPane(props: {
 }) {
   const queryClient = useQueryClient();
   const initMutation = useMutation(
-    gitInitMutationOptions({ cwd: props.workspaceRoot, queryClient }),
+    gitInitMutationOptions({
+      cwd: props.workspaceRoot,
+      queryClient,
+    }),
   );
   const needsRepository = props.view === "history" || props.diffTurnId === null;
   const repository = useQuery({
@@ -56,7 +58,7 @@ export function SourceControlDockPane(props: {
     </PanelStateMessage>
   ) : repository.data?.isRepo === false ? (
     <PanelEmptyState
-      icon={<GitBranchIcon className="size-12" aria-hidden="true" />}
+      icon={<WorkflowCircle04Icon className="size-12" aria-hidden="true" />}
       title="Not a Git repository"
       description="Initialize a Git repository in this folder to track changes and history."
     >
@@ -79,15 +81,22 @@ export function SourceControlDockPane(props: {
       </Button>
     </PanelEmptyState>
   ) : null;
-
   return (
     <div className="flex h-full min-h-0 w-full flex-col">
       <PanelTabBar
         label="Source control views"
         activeId={props.view}
         tabs={[
-          { id: "changes", label: "Changes", icon: <ChangesIcon className="size-3.5" /> },
-          { id: "history", label: "History", icon: <HistoryIcon className="size-3.5" /> },
+          {
+            id: "changes",
+            label: "Changes",
+            icon: <PlusMinusSquare01Icon className="size-3.5" />,
+          },
+          {
+            id: "history",
+            label: "History",
+            icon: <HistoryIcon className="size-3.5" />,
+          },
         ]}
         onSelect={(view) => props.onViewChange(view === "history" ? "history" : "changes")}
       />

@@ -1,23 +1,21 @@
 import {
   GitMergeConflictIcon,
-  GitMergedSimpleIcon,
+  GitMergeIcon,
   GitPullRequestClosedIcon,
   GitPullRequestDraftIcon,
   GitPullRequestIcon,
-  type LucideIcon,
 } from "~/lib/icons";
-
+import type { IconComponent } from "~/lib/iconComponent";
 export interface PrStatePresentation {
   label: "PR open" | "PR closed" | "PR merged" | "PR draft" | "PR has conflicts";
   colorClass: string;
   iconKind: "pull-request" | "draft" | "pull-request-closed" | "merged-simple" | "merge-conflict";
 }
-
-export const PR_STATE_PRESENTATION_ICONS: Record<PrStatePresentation["iconKind"], LucideIcon> = {
+export const PR_STATE_PRESENTATION_ICONS: Record<PrStatePresentation["iconKind"], IconComponent> = {
   "pull-request": GitPullRequestIcon,
   draft: GitPullRequestDraftIcon,
   "pull-request-closed": GitPullRequestClosedIcon,
-  "merged-simple": GitMergedSimpleIcon,
+  "merged-simple": GitMergeIcon,
   "merge-conflict": GitMergeConflictIcon,
 };
 
@@ -32,7 +30,6 @@ export function resolvePrStatePresentation(pr: {
     if (pr.isDraft === true) {
       return {
         label: "PR draft",
-
         colorClass: "text-status-neutral",
         iconKind: "draft",
       };
@@ -40,14 +37,12 @@ export function resolvePrStatePresentation(pr: {
     if (pr.mergeability === "conflicting") {
       return {
         label: "PR has conflicts",
-
         colorClass: "text-status-failure",
         iconKind: "merge-conflict",
       };
     }
     return {
       label: "PR open",
-
       colorClass: "text-status-open",
       iconKind: "pull-request",
     };

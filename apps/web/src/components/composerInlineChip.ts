@@ -115,8 +115,6 @@ export const COMPOSER_INLINE_CHIP_ICON_CLASS_NAME = "size-3.5 shrink-0 opacity-8
 export const COMPOSER_ATTACHMENT_CHIP_CLASS_NAME =
   "inline-flex min-w-0 max-w-full items-center gap-0.5 rounded-full border border-[color:var(--color-border)] bg-[var(--composer-surface)] p-px text-ui-sm font-medium text-[var(--color-text-foreground)]";
 
-export const COMPOSER_INLINE_SKILL_CHIP_ICON_NAME = "building-blocks";
-
 function formatComposerInlineTokenLabel(name: string): string {
   return name
     .split(/[-_]/)

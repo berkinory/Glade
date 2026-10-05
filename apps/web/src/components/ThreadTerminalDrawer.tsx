@@ -1,7 +1,7 @@
+import { TriangleAlertIcon } from "~/lib/icons";
 import { terminalTabGroups, terminalLayoutPositions, type TerminalLayout } from "~/terminalLayout";
 import "@xterm/xterm/css/xterm.css";
 import { SearchAddon } from "@xterm/addon-search";
-import { TriangleAlertIcon } from "~/lib/icons";
 import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   type TerminalActivityState,
@@ -30,7 +30,6 @@ import type {
 import { useTerminalDrawerHeight } from "./terminal/useTerminalDrawerHeight";
 import { TerminalSearch } from "./TerminalSearch";
 import { TerminalScrollToBottom } from "./TerminalScrollToBottom";
-
 function serializeRuntimeEnv(runtimeEnv: Record<string, string> | undefined): string {
   if (!runtimeEnv) return "";
   const entries = Object.entries(runtimeEnv);
@@ -38,7 +37,6 @@ function serializeRuntimeEnv(runtimeEnv: Record<string, string> | undefined): st
   entries.sort(([left], [right]) => left.localeCompare(right));
   return JSON.stringify(entries);
 }
-
 function runtimeEnvFromSerialized(
   serializedRuntimeEnv: string,
 ): Record<string, string> | undefined {
@@ -46,13 +44,11 @@ function runtimeEnvFromSerialized(
   const entries = JSON.parse(serializedRuntimeEnv) as Array<[string, string]>;
   return Object.fromEntries(entries);
 }
-
 function getTerminalSelectionRect(mountElement: HTMLElement): DOMRect | null {
   const selection = window.getSelection();
   if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
     return null;
   }
-
   const range = selection.getRangeAt(0);
   const commonAncestor = range.commonAncestorContainer;
   const selectionRoot =
@@ -60,21 +56,17 @@ function getTerminalSelectionRect(mountElement: HTMLElement): DOMRect | null {
   if (!(selectionRoot instanceof Element) || !mountElement.contains(selectionRoot)) {
     return null;
   }
-
   const rects = Array.from(range.getClientRects()).filter(
     (rect) => rect.width > 0 || rect.height > 0,
   );
   if (rects.length > 0) {
     return rects[rects.length - 1] ?? null;
   }
-
   const boundingRect = range.getBoundingClientRect();
   return boundingRect.width > 0 || boundingRect.height > 0 ? boundingRect : null;
 }
-
 function TerminalRuntimeStatusOverlay({ status }: { status: TerminalRuntimeStatus }) {
   if (status !== "error") return null;
-
   return (
     <div
       className={cn(
@@ -87,7 +79,6 @@ function TerminalRuntimeStatusOverlay({ status }: { status: TerminalRuntimeStatu
     </div>
   );
 }
-
 interface TerminalViewportProps {
   threadId: ThreadId;
   terminalId: string;
@@ -98,18 +89,23 @@ interface TerminalViewportProps {
   onSessionExited: () => void;
   onTerminalMetadataChange: (
     terminalId: string,
-    metadata: { cliKind: TerminalCliKind | null; label: string },
+    metadata: {
+      cliKind: TerminalCliKind | null;
+      label: string;
+    },
   ) => void;
   onTerminalActivityChange: (
     terminalId: string,
-    activity: { hasRunningSubprocess: boolean; agentState: TerminalActivityState | null },
+    activity: {
+      hasRunningSubprocess: boolean;
+      agentState: TerminalActivityState | null;
+    },
   ) => void;
   onAddTerminalContext?: ((selection: TerminalContextSelection) => void) | undefined;
   focusRequestId: number;
   autoFocus: boolean;
   isVisible: boolean;
 }
-
 function TerminalViewport({
   threadId,
   terminalId,
@@ -130,7 +126,10 @@ function TerminalViewport({
   const terminalRef = useRef<Terminal | null>(null);
   const onAddTerminalContextRef = useRef(onAddTerminalContext);
   const terminalLabelRef = useRef(terminalLabel);
-  const selectionPointerRef = useRef<{ x: number; y: number } | null>(null);
+  const selectionPointerRef = useRef<{
+    x: number;
+    y: number;
+  } | null>(null);
   const selectionGestureActiveRef = useRef(false);
   const selectionActionRequestIdRef = useRef(0);
   const selectionActionOpenRef = useRef(false);
@@ -159,7 +158,11 @@ function TerminalViewport({
       terminalLabel,
       terminalCliKind,
       cwd,
-      ...(runtimeEnvPayload ? { runtimeEnv: runtimeEnvPayload } : {}),
+      ...(runtimeEnvPayload
+        ? {
+            runtimeEnv: runtimeEnvPayload,
+          }
+        : {}),
       callbacks: {
         onSessionExited,
         onTerminalMetadataChange,
@@ -185,35 +188,32 @@ function TerminalViewport({
     ],
   );
   const runtimeViewState = useMemo<TerminalRuntimeViewState>(
-    () => ({ autoFocus, isVisible }),
+    () => ({
+      autoFocus,
+      isVisible,
+    }),
     [autoFocus, isVisible],
   );
   const runtimeConfigRef = useRef(runtimeConfig);
   const runtimeViewStateRef = useRef(runtimeViewState);
-
   useLayoutEffect(() => {
     onAddTerminalContextRef.current = onAddTerminalContext;
   }, [onAddTerminalContext]);
-
   useEffect(() => {
     runtimeStatusMountedRef.current = true;
     return () => {
       runtimeStatusMountedRef.current = false;
     };
   }, []);
-
   useEffect(() => {
     runtimeConfigRef.current = runtimeConfig;
   }, [runtimeConfig]);
-
   useEffect(() => {
     runtimeViewStateRef.current = runtimeViewState;
   }, [runtimeViewState]);
-
   useEffect(() => {
     terminalLabelRef.current = terminalLabel;
   }, [terminalLabel]);
-
   useEffect(() => {
     const mount = containerRef.current;
     if (!mount || !runtimeCwdReady) {
@@ -228,12 +228,10 @@ function TerminalViewport({
       runtimeViewStateRef.current,
       mount,
     );
-
     terminalRef.current = attachedRuntime.terminal;
     setTerminalInstance(attachedRuntime.terminal);
     setSearchAddonInstance(attachedRuntime.searchAddon);
     setRuntimeStatus(attachedRuntime.runtimeStatus);
-
     return () => {
       if (selectionActionTimerRef.current !== null) {
         window.clearTimeout(selectionActionTimerRef.current);
@@ -246,26 +244,21 @@ function TerminalViewport({
       setSearchAddonInstance(null);
     };
   }, [runtimeCwdReady, runtimeKey]);
-
   useEffect(() => {
     if (!runtimeCwdReady) return;
     terminalRuntimeRegistry.syncConfig(runtimeKey, runtimeConfig);
   }, [runtimeConfig, runtimeCwdReady, runtimeKey]);
-
   useEffect(() => {
     if (!runtimeCwdReady) return;
     terminalRuntimeRegistry.setViewState(runtimeKey, runtimeViewState);
   }, [runtimeCwdReady, runtimeKey, runtimeViewState]);
-
   useEffect(() => {
     if (!autoFocus || !runtimeCwdReady) return;
     terminalRuntimeRegistry.focus(runtimeKey);
   }, [autoFocus, focusRequestId, runtimeCwdReady, runtimeKey]);
-
   useEffect(() => {
     const mount = containerRef.current;
     if (!mount) return;
-
     const handleKeyDown = (event: KeyboardEvent) => {
       if (
         event.key.toLowerCase() === "f" &&
@@ -278,13 +271,11 @@ function TerminalViewport({
         setSearchOpen(true);
       }
     };
-
     mount.addEventListener("keydown", handleKeyDown, true);
     return () => {
       mount.removeEventListener("keydown", handleKeyDown, true);
     };
   }, []);
-
   const clearSelectionAction = useCallback(() => {
     selectionActionRequestIdRef.current += 1;
     if (selectionActionTimerRef.current !== null) {
@@ -292,9 +283,11 @@ function TerminalViewport({
       selectionActionTimerRef.current = null;
     }
   }, []);
-
   const readSelectionAction = useCallback((): {
-    position: { x: number; y: number };
+    position: {
+      x: number;
+      y: number;
+    };
     selection: TerminalContextSelection;
   } | null => {
     const activeTerminal = terminalRef.current;
@@ -318,7 +311,10 @@ function TerminalViewport({
       selectionRect:
         selectionRect === null
           ? null
-          : { right: selectionRect.right, bottom: selectionRect.bottom },
+          : {
+              right: selectionRect.right,
+              bottom: selectionRect.bottom,
+            },
       pointer: selectionPointerRef.current,
     });
     return {
@@ -332,7 +328,6 @@ function TerminalViewport({
       },
     };
   }, [terminalId]);
-
   const showSelectionAction = useCallback(() => {
     if (selectionActionOpenRef.current) {
       return;
@@ -353,7 +348,6 @@ function TerminalViewport({
     if (!api) return;
     const requestId = ++selectionActionRequestIdRef.current;
     selectionActionOpenRef.current = true;
-
     void api.contextMenu
       .show(contextMenuItems, nextAction.position)
       .then((clicked) => {
@@ -372,19 +366,16 @@ function TerminalViewport({
         selectionActionOpenRef.current = false;
       });
   }, [clearSelectionAction, readSelectionAction, runtimeKey]);
-
   useEffect(() => {
     const terminal = terminalInstance;
     const mount = containerRef.current;
     if (!terminal || !mount) return;
-
     const selectionDisposable = terminal.onSelectionChange(() => {
       if (terminal.hasSelection()) {
         return;
       }
       clearSelectionAction();
     });
-
     const handleMouseUp = (event: MouseEvent) => {
       const shouldHandle = shouldHandleTerminalSelectionMouseUp(
         selectionGestureActiveRef.current,
@@ -394,7 +385,10 @@ function TerminalViewport({
       if (!shouldHandle) {
         return;
       }
-      selectionPointerRef.current = { x: event.clientX, y: event.clientY };
+      selectionPointerRef.current = {
+        x: event.clientX,
+        y: event.clientY,
+      };
       const delay = terminalSelectionActionDelayForClickCount(event.detail);
       selectionActionTimerRef.current = window.setTimeout(() => {
         selectionActionTimerRef.current = null;
@@ -403,12 +397,10 @@ function TerminalViewport({
         });
       }, delay);
     };
-
     const handlePointerDown = (event: PointerEvent) => {
       clearSelectionAction();
       selectionGestureActiveRef.current = event.button === 0;
     };
-
     window.addEventListener("mouseup", handleMouseUp);
     mount.addEventListener("pointerdown", handlePointerDown);
     return () => {
@@ -419,7 +411,6 @@ function TerminalViewport({
       selectionGestureActiveRef.current = false;
     };
   }, [clearSelectionAction, showSelectionAction, terminalInstance]);
-
   return (
     <div className="h-full min-h-0 w-full bg-[var(--app-terminal-background)] p-3">
       <div className="relative h-full min-h-0 w-full overflow-hidden">
@@ -438,7 +429,6 @@ function TerminalViewport({
     </div>
   );
 }
-
 interface ThreadTerminalDrawerProps {
   focusEnabled?: boolean;
   terminalLayouts?: Record<string, TerminalLayout> | undefined;
@@ -461,11 +451,17 @@ interface ThreadTerminalDrawerProps {
   onHeightChange: (height: number) => void;
   onTerminalMetadataChange: (
     terminalId: string,
-    metadata: { cliKind: TerminalCliKind | null; label: string },
+    metadata: {
+      cliKind: TerminalCliKind | null;
+      label: string;
+    },
   ) => void;
   onTerminalActivityChange: (
     terminalId: string,
-    activity: { hasRunningSubprocess: boolean; agentState: TerminalActivityState | null },
+    activity: {
+      hasRunningSubprocess: boolean;
+      agentState: TerminalActivityState | null;
+    },
   ) => void;
   onAddTerminalContext?: ((selection: TerminalContextSelection) => void) | undefined;
 }
@@ -485,7 +481,11 @@ export default function ThreadTerminalDrawer(props: ThreadTerminalDrawerProps) {
   const terminalVisualIdentityById = resolveTerminalVisualIdentityMap(props);
   const activeGroup = terminalTabGroups({
     terminalIds: props.terminalIds,
-    ...(props.terminalLayouts ? { terminalLayouts: props.terminalLayouts } : {}),
+    ...(props.terminalLayouts
+      ? {
+          terminalLayouts: props.terminalLayouts,
+        }
+      : {}),
   }).find((group) => group.terminalIds.includes(props.activeTerminalId));
   const positions = terminalLayoutPositions(activeGroup?.layout ?? props.activeTerminalId);
   const tiled = (activeGroup?.terminalIds.length ?? 0) > 1;
@@ -505,7 +505,13 @@ export default function ThreadTerminalDrawer(props: ThreadTerminalDrawerProps) {
         "thread-terminal-drawer relative flex w-full min-w-0 flex-col overflow-hidden bg-[var(--app-terminal-background)]",
         isWorkspaceMode ? "h-full min-h-0" : "shrink-0 border-t border-border/70",
       )}
-      style={isWorkspaceMode ? undefined : { height: drawerHeight }}
+      style={
+        isWorkspaceMode
+          ? undefined
+          : {
+              height: drawerHeight,
+            }
+      }
     >
       {!isWorkspaceMode ? (
         <div
@@ -530,7 +536,11 @@ export default function ThreadTerminalDrawer(props: ThreadTerminalDrawerProps) {
                 tiled && "p-px",
                 tiled && active && "outline outline-1 -outline-offset-1 outline-foreground/20",
               )}
-              style={positions[terminalId] ?? { inset: 0 }}
+              style={
+                positions[terminalId] ?? {
+                  inset: 0,
+                }
+              }
               onPointerDownCapture={() => {
                 if (!active) props.onFocusTerminal?.(terminalId);
               }}
@@ -546,7 +556,11 @@ export default function ThreadTerminalDrawer(props: ThreadTerminalDrawerProps) {
                 terminalLabel={identity?.title ?? "Terminal"}
                 terminalCliKind={identity?.cliKind ?? null}
                 cwd={props.cwd}
-                {...(props.runtimeEnv ? { runtimeEnv: props.runtimeEnv } : {})}
+                {...(props.runtimeEnv
+                  ? {
+                      runtimeEnv: props.runtimeEnv,
+                    }
+                  : {})}
                 onSessionExited={() => props.onTerminalSessionExited(terminalId)}
                 onTerminalMetadataChange={props.onTerminalMetadataChange}
                 onTerminalActivityChange={props.onTerminalActivityChange}

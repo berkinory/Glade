@@ -1,3 +1,4 @@
+import { PencilEdit02Icon, PlusIcon, UndoIcon, Delete02Icon } from "~/lib/icons";
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -20,7 +21,6 @@ import {
   type KeyboardEvent,
   type MouseEvent,
 } from "react";
-
 import type { Space } from "~/types";
 import { createClientPointMenuAnchor } from "~/lib/clientPointMenuAnchor";
 import {
@@ -31,7 +31,6 @@ import {
   type VoidSpacePresentation,
 } from "~/lib/spaceGrouping";
 import { cn } from "~/lib/utils";
-import { PencilIcon, PlusIcon, ResetIcon, Trash2 } from "~/lib/icons";
 import { SIDEBAR_SECTION_LABEL_CLASS_NAME } from "~/sidebarRowStyles";
 import { SpaceIcon, type SpaceIconValue } from "./SpaceIcon";
 import { ComposerPickerMenuPopup } from "./chat/ComposerPickerMenuPopup";
@@ -43,11 +42,8 @@ import {
 import { Menu, MenuGroup, MenuItem } from "./ui/menu";
 import { ShortcutKbd } from "./ui/kbd";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
-
 export type SpaceActivityTone = "attention" | "running" | "completed";
-
 export const PROJECT_SPACE_DRAG_MIME = "application/x-glade-project";
-
 function readDraggedProjectId(event: DragEvent): ProjectId | null {
   try {
     const payload = JSON.parse(event.dataTransfer.getData(PROJECT_SPACE_DRAG_MIME)) as {
@@ -58,7 +54,6 @@ function readDraggedProjectId(event: DragEvent): ProjectId | null {
     return null;
   }
 }
-
 function isProjectDrag(event: DragEvent): boolean {
   return event.dataTransfer.types.includes(PROJECT_SPACE_DRAG_MIME);
 }
@@ -79,16 +74,12 @@ const SPACE_ACTIVITY_LABEL: Record<SpaceActivityTone, string> = {
   running: "Working",
   completed: "Done",
 };
-
 const TAB_STRIP_FADE_CLASS_NAME =
   "mask-l-from-[calc(100%-min(var(--fade-size),var(--space-overflow-start)))] mask-r-from-[calc(100%-min(var(--fade-size),var(--space-overflow-end)))] [--fade-size:1.25rem] [--space-overflow-end:0px] [--space-overflow-start:0px]";
-
 const SPACE_TAB_CLASS_NAME =
   "relative flex size-6 shrink-0 cursor-pointer touch-none items-center justify-center rounded-md text-muted-foreground/70 outline-hidden transition-colors hover:bg-[var(--sidebar-accent)] hover:text-[var(--sidebar-accent-foreground)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring";
-
 const SPACE_TAB_ACTIVE_CLASS_NAME =
   "bg-[var(--sidebar-accent-active)] text-[var(--sidebar-accent-foreground)] ring-1 ring-border/70 ring-inset";
-
 function SpaceActivityDot({ tone }: { tone: SpaceActivityTone }) {
   return (
     <span
@@ -100,43 +91,32 @@ function SpaceActivityDot({ tone }: { tone: SpaceActivityTone }) {
     />
   );
 }
-
 type SortableState = ReturnType<typeof useSortable>;
-
 interface SpaceTabSortable {
   setNodeRef: SortableState["setNodeRef"];
   style: CSSProperties;
   isDragging: boolean;
-
   listeners: SortableState["listeners"];
 }
-
 function SpaceTab(props: {
   icon: SpaceIconValue;
   name: string;
-
   hint?: string;
-
   shortcutLabel?: string | null;
   active: boolean;
   activityTone: SpaceActivityTone | null;
   onSelect: () => void;
-
   onEdit: () => void;
-
   gestureHint?: string;
   onContextMenu?: (event: MouseEvent<HTMLButtonElement>) => void;
-
   onProjectDrop?: (projectId: ProjectId) => void;
   sortable?: SpaceTabSortable;
 }) {
   const toneLabel = props.activityTone ? SPACE_ACTIVITY_LABEL[props.activityTone] : null;
   const detail = toneLabel ?? props.hint ?? null;
-
   const dragDepthRef = useRef(0);
   const [dropActive, setDropActive] = useState(false);
   const { onProjectDrop } = props;
-
   const dropHandlers = onProjectDrop
     ? {
         onDragOver: (event: DragEvent<HTMLButtonElement>) => {
@@ -164,7 +144,6 @@ function SpaceTab(props: {
         },
       }
     : {};
-
   return (
     <Tooltip>
       <TooltipTrigger
@@ -180,9 +159,17 @@ function SpaceTab(props: {
             aria-label={[props.name, props.hint, toneLabel].filter(Boolean).join(", ")}
             onClick={props.onSelect}
             onDoubleClick={props.onEdit}
-            {...(props.onContextMenu ? { onContextMenu: props.onContextMenu } : {})}
+            {...(props.onContextMenu
+              ? {
+                  onContextMenu: props.onContextMenu,
+                }
+              : {})}
             {...dropHandlers}
-            {...(props.sortable ? { style: props.sortable.style } : {})}
+            {...(props.sortable
+              ? {
+                  style: props.sortable.style,
+                }
+              : {})}
             className={cn(
               SPACE_TAB_CLASS_NAME,
               props.active && SPACE_TAB_ACTIVE_CLASS_NAME,
@@ -211,7 +198,6 @@ function SpaceTab(props: {
     </Tooltip>
   );
 }
-
 function SortableSpaceTab(props: {
   space: Space;
   shortcutLabel: string | null;
@@ -222,8 +208,9 @@ function SortableSpaceTab(props: {
   onContextMenu: (event: MouseEvent<HTMLButtonElement>) => void;
   onProjectDrop: (projectId: ProjectId) => void;
 }) {
-  const sortable = useSortable({ id: props.space.id });
-
+  const sortable = useSortable({
+    id: props.space.id,
+  });
   return (
     <SpaceTab
       icon={props.space.icon}
@@ -241,8 +228,11 @@ function SortableSpaceTab(props: {
         style: {
           transform: CSS.Translate.toString(sortable.transform),
           transition: sortable.transition,
-
-          ...(sortable.isDragging ? { cursor: "grabbing" } : {}),
+          ...(sortable.isDragging
+            ? {
+                cursor: "grabbing",
+              }
+            : {}),
         },
         isDragging: sortable.isDragging,
         listeners: sortable.listeners,
@@ -255,11 +245,9 @@ function SortableSpaceTab(props: {
 // rendering every tab on each scroll frame.
 function useTabStripOverflow(dependencyKey: string) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
-
   useEffect(() => {
     const node = scrollerRef.current;
     if (!node) return;
-
     const update = () => {
       node.style.setProperty("--space-overflow-start", `${Math.round(node.scrollLeft)}px`);
       node.style.setProperty(
@@ -267,10 +255,10 @@ function useTabStripOverflow(dependencyKey: string) {
         `${Math.round(Math.max(0, node.scrollWidth - node.clientWidth - node.scrollLeft))}px`,
       );
     };
-
     update();
-    node.addEventListener("scroll", update, { passive: true });
-
+    node.addEventListener("scroll", update, {
+      passive: true,
+    });
     const observer = new ResizeObserver(update);
     observer.observe(node);
     return () => {
@@ -278,18 +266,14 @@ function useTabStripOverflow(dependencyKey: string) {
       observer.disconnect();
     };
   }, [dependencyKey]);
-
   return scrollerRef;
 }
-
 function SpaceNameLabel(props: {
   displayName: string;
-
   takenNames: ReadonlyArray<string>;
   onRename: (name: string) => void;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
-
   if (draft === null) {
     return (
       <span
@@ -301,7 +285,6 @@ function SpaceNameLabel(props: {
       </span>
     );
   }
-
   const trimmed = draft.trim();
   const isValid =
     trimmed.length > 0 &&
@@ -310,7 +293,6 @@ function SpaceNameLabel(props: {
     if (isValid && trimmed !== props.displayName) props.onRename(trimmed);
     setDraft(null);
   };
-
   return (
     <input
       value={draft}
@@ -337,12 +319,10 @@ function SpaceNameLabel(props: {
     />
   );
 }
-
 interface SpaceSwitcherProps {
   spaces: ReadonlyArray<Space>;
   activeSpaceId: SpaceId | null;
   activityBySpaceId: ReadonlyMap<SpaceId | null, SpaceActivityTone>;
-
   voidSpace: VoidSpacePresentation;
   onSelect: (spaceId: SpaceId | null) => void;
   onCreate: () => void;
@@ -350,30 +330,34 @@ interface SpaceSwitcherProps {
   onDelete: (space: Space) => void;
   onReorder: (orderedSpaceIds: ReadonlyArray<SpaceId>, movedSpaceId: SpaceId) => void;
   onRenameSpace: (space: Space, name: string) => void;
-
   onEditVoid: () => void;
   onRenameVoid: (name: string) => void;
   onResetVoid: () => void;
   onDropProject: (projectId: ProjectId, spaceId: SpaceId | null) => void;
-
   jumpShortcutLabelForTab?: (tabIndex: number) => string | null;
 }
-
 export function SpaceSwitcher(props: SpaceSwitcherProps) {
   if (props.spaces.length === 0) {
     return null;
   }
   return <SpaceSwitcherStrip {...props} />;
 }
-
 function SpaceSwitcherStrip(props: SpaceSwitcherProps) {
   const { onSelect } = props;
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 4,
+      },
+    }),
+  );
   const [contextState, setContextState] = useState<{
     space: Space | null;
-    position: { x: number; y: number };
+    position: {
+      x: number;
+      y: number;
+    };
   } | null>(null);
-
   const dragEndedRef = useRef(false);
   const contextAnchor = useMemo(
     () => (contextState ? createClientPointMenuAnchor(contextState.position) : null),
@@ -397,7 +381,6 @@ function SpaceSwitcherStrip(props: SpaceSwitcherProps) {
   const voidIsCustomized =
     props.voidSpace.name !== DEFAULT_VOID_SPACE.name ||
     props.voidSpace.icon !== DEFAULT_VOID_SPACE.icon;
-
   const selectFromClick = useCallback(
     (spaceId: SpaceId | null) => {
       if (dragEndedRef.current) {
@@ -408,7 +391,6 @@ function SpaceSwitcherStrip(props: SpaceSwitcherProps) {
     },
     [onSelect],
   );
-
   const handleTabStripKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     const tabs = Array.from(
@@ -427,14 +409,15 @@ function SpaceSwitcherStrip(props: SpaceSwitcherProps) {
     event.preventDefault();
     tabs[nextIndex]?.focus();
   }, []);
-
   useEffect(() => {
     if (activeSpaceId === null) return;
     scrollerRef.current
       ?.querySelector<HTMLButtonElement>('[data-space-tab][aria-selected="true"]')
-      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+      ?.scrollIntoView({
+        block: "nearest",
+        inline: "nearest",
+      });
   }, [activeSpaceId, scrollerRef, spaceOrderKey]);
-
   return (
     <div className="mb-2">
       <div
@@ -481,7 +464,13 @@ function SpaceSwitcherStrip(props: SpaceSwitcherProps) {
             onEdit={props.onEditVoid}
             onContextMenu={(event) => {
               event.preventDefault();
-              setContextState({ space: null, position: { x: event.clientX, y: event.clientY } });
+              setContextState({
+                space: null,
+                position: {
+                  x: event.clientX,
+                  y: event.clientY,
+                },
+              });
             }}
             onProjectDrop={(projectId) => props.onDropProject(projectId, null)}
           />
@@ -530,7 +519,10 @@ function SpaceSwitcherStrip(props: SpaceSwitcherProps) {
                       event.preventDefault();
                       setContextState({
                         space,
-                        position: { x: event.clientX, y: event.clientY },
+                        position: {
+                          x: event.clientX,
+                          y: event.clientY,
+                        },
                       });
                     }}
                   />
@@ -576,7 +568,7 @@ function SpaceSwitcherStrip(props: SpaceSwitcherProps) {
                   else props.onEditVoid();
                 }}
               >
-                <SidebarContextMenuIcon icon={PencilIcon} />
+                <SidebarContextMenuIcon icon={PencilEdit02Icon} />
                 <span>{contextState.space ? "Edit space…" : "Edit name and icon…"}</span>
               </MenuItem>
               {contextState.space ? (
@@ -588,7 +580,7 @@ function SpaceSwitcherStrip(props: SpaceSwitcherProps) {
                     if (target) props.onDelete(target);
                   }}
                 >
-                  <SidebarContextMenuIcon icon={Trash2} />
+                  <SidebarContextMenuIcon icon={Delete02Icon} />
                   <span>Delete space</span>
                 </MenuItem>
               ) : voidIsCustomized ? (
@@ -599,7 +591,7 @@ function SpaceSwitcherStrip(props: SpaceSwitcherProps) {
                     props.onResetVoid();
                   }}
                 >
-                  <SidebarContextMenuIcon icon={ResetIcon} />
+                  <SidebarContextMenuIcon icon={UndoIcon} />
                   <span>Reset to {DEFAULT_VOID_SPACE.name}</span>
                 </MenuItem>
               ) : null}

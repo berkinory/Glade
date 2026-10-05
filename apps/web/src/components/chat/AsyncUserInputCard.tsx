@@ -1,8 +1,8 @@
+import { HelpCircleIcon, CheckIcon } from "~/lib/icons";
 import type { AsyncUserInput } from "@glade/contracts/orchestration/asyncUserInput";
 import type { MessageId } from "@glade/contracts/core/baseSchemas";
 import type { UserInputQuestion } from "@glade/contracts/provider/runtimePayloads";
 import { useMemo, useRef, useState } from "react";
-import { CircleQuestionIcon, CheckIcon } from "~/lib/icons";
 import {
   buildPendingUserInputAnswers,
   derivePendingUserInputProgress,
@@ -14,7 +14,6 @@ import { Button } from "../ui/button";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";
 import { Textarea } from "../ui/textarea";
 import { UserInputQuestionForm } from "./UserInputQuestionForm";
-
 export function AsyncUserInputCard({
   messageId,
   input,
@@ -30,7 +29,10 @@ export function AsyncUserInputCard({
         id: `question-${index}`,
         header: "Question",
         question: question.title,
-        options: (question.options ?? []).map((label) => ({ label, description: label })),
+        options: (question.options ?? []).map((label) => ({
+          label,
+          description: label,
+        })),
         multiSelect: false,
       })),
     [input.questions],
@@ -61,7 +63,6 @@ export function AsyncUserInputCard({
   const disabled = answered || submitting || !onRespond;
   const progress = derivePendingUserInputProgress(questions, answers, questionIndex);
   const activeQuestion = progress.activeQuestion;
-
   const advance = async () => {
     if (disabled || inFlight.current || !progress.canAdvance) return;
     if (!progress.isLastQuestion) {
@@ -79,7 +80,10 @@ export function AsyncUserInputCard({
     setError(null);
     try {
       await onRespond!(messageId, response);
-      setSubmission({ answers: response, responseSequence: input.responseSequence ?? 0 });
+      setSubmission({
+        answers: response,
+        responseSequence: input.responseSequence ?? 0,
+      });
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : "The answer could not be submitted. Try again.",
@@ -89,11 +93,10 @@ export function AsyncUserInputCard({
       setSubmitting(false);
     }
   };
-
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="my-2">
       <CollapsibleTrigger className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-ui leading-snug text-muted-foreground hover:bg-muted/50 hover:text-foreground">
-        <CircleQuestionIcon className="size-3.5" aria-hidden="true" />
+        <HelpCircleIcon className="size-3.5" aria-hidden="true" />
         {questions.length} {questions.length === 1 ? "question" : "questions"}
         {answered && (
           <>
@@ -137,7 +140,10 @@ export function AsyncUserInputCard({
                     answers[questionId],
                     label,
                   );
-                  setAnswers((current) => ({ ...current, [questionId]: draft }));
+                  setAnswers((current) => ({
+                    ...current,
+                    [questionId]: draft,
+                  }));
                   return draft;
                 }}
                 onAdvance={() => void advance()}
@@ -159,7 +165,10 @@ export function AsyncUserInputCard({
                         answers[activeQuestion.id],
                         event.target.value,
                       );
-                      setAnswers((current) => ({ ...current, [activeQuestion.id]: draft }));
+                      setAnswers((current) => ({
+                        ...current,
+                        [activeQuestion.id]: draft,
+                      }));
                     }}
                   />
                   {error && (

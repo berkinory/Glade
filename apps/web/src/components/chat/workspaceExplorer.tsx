@@ -1,3 +1,4 @@
+import { FilePlusIcon, FolderPlusIcon } from "~/lib/icons";
 import type {
   ProjectContentMatch,
   ProjectFileSystemEntry,
@@ -6,7 +7,6 @@ import {
   isWorkspaceRelativePathSafe,
   joinWorkspaceRelativePath,
 } from "@glade/shared/platform/path";
-import { IconFilePlus, IconFolderPlus } from "@tabler/icons-react";
 import { useProjectFileChangeSubscription } from "~/hooks/useProjectFileChangeSubscription";
 import { refreshProjectDirectories } from "~/lib/projectDirectoryRefresh";
 import { useExplorerIntake } from "./useExplorerIntake";
@@ -17,7 +17,6 @@ import {
 } from "./useWorkspaceExplorerActions";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useSyncExternalStore } from "react";
-
 import { basenameOfPath } from "~/file-icons";
 import { type ChatFileReference } from "~/lib/chatReferences";
 import { showFileReferenceContextMenu } from "~/lib/fileReferenceContextMenu";
@@ -34,12 +33,9 @@ import {
 } from "~/lib/workspaceEditorSession";
 import { useExplorerListNavigation } from "./explorerListNavigation";
 import { PanelStateMessage } from "./PanelStateMessage";
-
 import { WorkspaceCodeSearch } from "./WorkspaceCodeSearch";
-
 const EXPLORER_SIDEBAR_CONTAINER_CLASS =
   "flex min-h-[11rem] w-full shrink-0 flex-col border-b border-border/65 bg-[var(--app-content-surface)] lg:h-full lg:w-56 lg:border-b-0 lg:border-r";
-
 function useExplorerEntryPrefetch(cwd: string | null) {
   const queryClient = useQueryClient();
   return (entry: Pick<ProjectFileSystemEntry, "path" | "kind">) => {
@@ -73,7 +69,6 @@ function useExplorerEntryPrefetch(cwd: string | null) {
       .catch(() => undefined);
   };
 }
-
 function explorerRevealPath(
   workspaceRoot: string | null,
   relativePath: string,
@@ -82,17 +77,26 @@ function explorerRevealPath(
     ? joinWorkspaceRelativePath(workspaceRoot, relativePath)
     : undefined;
 }
-
 function useTreeEntryContextMenu(
   workspaceRoot: string | null,
   onReferenceInChat: ((reference: ChatFileReference) => void) | undefined,
   actions: WorkspaceExplorerActions,
 ) {
-  return (entry: ProjectFileSystemEntry, position: { x: number; y: number }) => {
+  return (
+    entry: ProjectFileSystemEntry,
+    position: {
+      x: number;
+      y: number;
+    },
+  ) => {
     const revealPath = explorerRevealPath(workspaceRoot, entry.path);
     void showFileReferenceContextMenu({
       path: entry.path,
-      ...(revealPath ? { revealPath } : {}),
+      ...(revealPath
+        ? {
+            revealPath,
+          }
+        : {}),
       revealKind: entry.kind,
       position,
       onReferenceInChat,
@@ -107,7 +111,6 @@ function useTreeEntryContextMenu(
     });
   };
 }
-
 function ExplorerCreateButtons(props: {
   disabled?: boolean;
   onCreateFile: () => void;
@@ -123,7 +126,7 @@ function ExplorerCreateButtons(props: {
         disabled={props.disabled}
         onClick={props.onCreateFile}
       >
-        <IconFilePlus className="size-4" />
+        <FilePlusIcon className="size-4" />
       </button>
       <button
         type="button"
@@ -133,21 +136,31 @@ function ExplorerCreateButtons(props: {
         disabled={props.disabled}
         onClick={props.onCreateFolder}
       >
-        <IconFolderPlus className="size-4" />
+        <FolderPlusIcon className="size-4" />
       </button>
     </div>
   );
 }
-
 function WorkspaceFilesTreeBody(props: {
   workspaceRoot: string | null;
   selectedFilePath: string | null;
   expandedDirectories: ReadonlySet<string>;
-  onSelectFile: (path: string, options?: { preview?: boolean }) => void;
+  onSelectFile: (
+    path: string,
+    options?: {
+      preview?: boolean;
+    },
+  ) => void;
   onToggleDirectory: (path: string) => void;
   onPrefetchEntry: (entry: ProjectFileSystemEntry) => void;
   actions: WorkspaceExplorerActions;
-  onEntryContextMenu: (entry: ProjectFileSystemEntry, position: { x: number; y: number }) => void;
+  onEntryContextMenu: (
+    entry: ProjectFileSystemEntry,
+    position: {
+      x: number;
+      y: number;
+    },
+  ) => void;
 }) {
   const queryClient = useQueryClient();
   const subscribe = useCallback(
@@ -170,7 +183,6 @@ function WorkspaceFilesTreeBody(props: {
     </PanelStateMessage>
   );
 }
-
 export function WorkspaceExplorerSidebar(props: {
   isVisible?: boolean;
   workspaceRoot: string | null;
@@ -180,7 +192,12 @@ export function WorkspaceExplorerSidebar(props: {
   onQueryChange: (query: string) => void;
   onSelectMatch: (match: ProjectContentMatch) => void;
   containerClassName?: string;
-  onSelectFile: (path: string, options?: { preview?: boolean }) => void;
+  onSelectFile: (
+    path: string,
+    options?: {
+      preview?: boolean;
+    },
+  ) => void;
   onToggleDirectory: (path: string) => void;
   onReferenceInChat: ((reference: ChatFileReference) => void) | undefined;
   onDeleted?: ((path: string) => void) | undefined;
@@ -231,7 +248,6 @@ export function WorkspaceExplorerSidebar(props: {
   const rootName = props.workspaceRoot
     ? basenameOfPath(props.workspaceRoot.replace(/[\\/]+$/, "")) || props.workspaceRoot
     : null;
-
   return (
     <aside
       className={props.containerClassName ?? EXPLORER_SIDEBAR_CONTAINER_CLASS}

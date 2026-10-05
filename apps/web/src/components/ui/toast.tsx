@@ -1,21 +1,19 @@
 "use client";
 
-import { Spinner } from "~/components/ui/spinner";
-
-import { Toast, type ToastObject } from "@base-ui/react/toast";
-import { useMemo, useEffect, useState, type CSSProperties } from "react";
-import { useParams } from "@tanstack/react-router";
-import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
-  CircleAlertIcon,
+  AlertCircleIcon,
   CircleCheckIcon,
   CheckIcon,
-  CopyIcon,
+  Copy01Icon,
   InfoIcon,
   TriangleAlertIcon,
   XIcon,
 } from "~/lib/icons";
-
+import { Spinner } from "~/components/ui/spinner";
+import { Toast, type ToastObject } from "@base-ui/react/toast";
+import { useMemo, useEffect, useState, type CSSProperties } from "react";
+import { useParams } from "@tanstack/react-router";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { cn } from "~/lib/utils";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { APP_TOOLTIP_SURFACE_CLASS_NAME } from "~/components/chat/composerPickerStyles";
@@ -38,7 +36,6 @@ import {
   resolveVisibleToastThreadIds,
   shouldRenderToastForVisibleThreads,
 } from "./toastRouteVisibility";
-
 type ThreadToastData = {
   allowCrossThreadVisibility?: boolean;
   compactContextual?: boolean;
@@ -54,27 +51,23 @@ type ThreadToastData = {
     onNoUndo?: () => void;
   };
 };
-
 const toastManager = Toast.createToastManager<ThreadToastData>();
 const anchoredToastManager = Toast.createToastManager<ThreadToastData>();
 type ToastId = ReturnType<typeof toastManager.add>;
 const threadToastVisibleTimeoutRemainingMs = new Map<ToastId, number>();
-
 const TOAST_ICONS = {
-  error: CircleAlertIcon,
+  error: AlertCircleIcon,
   info: InfoIcon,
   loading: Spinner,
   success: CircleCheckIcon,
   warning: TriangleAlertIcon,
 } as const;
-
 function shouldUseCompactToast(toast: ToastObject<ThreadToastData>): boolean {
   if (toast.data?.compactContextual) {
     return true;
   }
   return !toast.data?.copyText && !toast.actionProps && !toast.data?.secondaryActionProps;
 }
-
 function isArchiveUndoToast(toast: ToastObject<ThreadToastData>): boolean {
   return Boolean(toast.data?.archiveUndo);
 }
@@ -92,29 +85,27 @@ const TOAST_ACTION_BUTTON_SIZE = "xs";
 const TOAST_ACTION_BUTTON_VARIANT = "ghost";
 const TOAST_ACTION_BUTTON_CLASS_NAME =
   "self-start rounded-md px-2 font-sans font-medium text-ui text-[var(--notification-fg)]/80 sm:text-ui [:hover,[data-pressed]]:bg-[var(--notification-fg)]/10 [:hover,[data-pressed]]:text-[var(--notification-fg)] data-pressed:bg-[var(--notification-fg)]/10 data-pressed:text-[var(--notification-fg)] focus-visible:ring-[var(--notification-fg)]/35";
-
 const ARCHIVE_UNDO_TOAST_LINK_CLASS_NAME =
   "rounded-sm font-medium text-[var(--info-foreground)] underline-offset-2 transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--info-foreground)]/35 disabled:pointer-events-none disabled:opacity-55";
-
 function toastTone(type: ToastObject<ThreadToastData>["type"]): NotificationTone {
   return type === "error" ? "error" : "default";
 }
-
 function toastRootClassName(
   position: ToastPosition,
   compact: boolean,
   tone: NotificationTone,
 ): string {
   return cn(
-    notificationSurfaceClassName({ compact, tone }),
+    notificationSurfaceClassName({
+      compact,
+      tone,
+    }),
     position.includes("center") ? "mx-auto" : compact ? "" : "w-full",
   );
 }
-
 function toastIconClassName(type: ToastObject<ThreadToastData>["type"]): string {
   return cn(NOTIFICATION_ICON_CLASS_NAME, type === "loading" && "opacity-90");
 }
-
 type ToastPosition =
   | "top-left"
   | "top-center"
@@ -122,11 +113,9 @@ type ToastPosition =
   | "bottom-left"
   | "bottom-center"
   | "bottom-right";
-
 interface ToastProviderProps extends Toast.Provider.Props {
   position?: ToastPosition;
 }
-
 function shouldRenderForActiveThread(
   data: ThreadToastData | undefined,
   visibleThreadIds: ReadonlySet<ThreadId>,
@@ -137,7 +126,6 @@ function shouldRenderForActiveThread(
     visibleThreadIds,
   });
 }
-
 function useVisibleThreadIdsFromRoute(): ReadonlySet<ThreadId> {
   const activeThreadId = useParams({
     strict: false,
@@ -151,7 +139,6 @@ function useVisibleThreadIdsFromRoute(): ReadonlySet<ThreadId> {
   const rightDockState = useRightDockStore(
     useMemo(() => selectRightDockState(activeThreadId), [activeThreadId]),
   );
-
   return resolveVisibleToastThreadIds({
     activeThreadId,
     splitView,
@@ -159,7 +146,6 @@ function useVisibleThreadIdsFromRoute(): ReadonlySet<ThreadId> {
     rightDockState,
   });
 }
-
 function ThreadToastVisibleAutoDismiss({
   toast,
   dismissAfterVisibleMs,
@@ -178,25 +164,21 @@ function ThreadToastVisibleAutoDismiss({
   useEffect(() => {
     if (!dismissAfterVisibleMs || dismissAfterVisibleMs <= 0) return;
     if (typeof window === "undefined" || typeof document === "undefined") return;
-
     let remainingMs = threadToastVisibleTimeoutRemainingMs.get(toastId) ?? dismissAfterVisibleMs;
     let startedAtMs: number | null = null;
     let timeoutId: number | null = null;
     let closed = false;
     let disposed = false;
-
     const clearTimer = () => {
       if (timeoutId === null) return;
       window.clearTimeout(timeoutId);
       timeoutId = null;
     };
-
     const toastHasFocus = () => {
       const toastElement = toastRef?.current;
       const activeElement = document.activeElement;
       return Boolean(toastElement && activeElement && toastElement.contains(activeElement));
     };
-
     const closeToast = () => {
       if (closed) return;
       closed = true;
@@ -204,7 +186,6 @@ function ThreadToastVisibleAutoDismiss({
       onNoUndo?.();
       toastManager.close(toastId);
     };
-
     const pause = () => {
       if (startedAtMs === null) return;
       remainingMs = Math.max(0, remainingMs - (Date.now() - startedAtMs));
@@ -212,7 +193,6 @@ function ThreadToastVisibleAutoDismiss({
       clearTimer();
       threadToastVisibleTimeoutRemainingMs.set(toastId, remainingMs);
     };
-
     const start = () => {
       if (closed || startedAtMs !== null) return;
       if (remainingMs <= 0) {
@@ -227,7 +207,6 @@ function ThreadToastVisibleAutoDismiss({
         closeToast();
       }, remainingMs);
     };
-
     const syncTimer = () => {
       // Focus events settle in a microtask, possibly after this effect was
       // cleaned up by navigation or an in-flight Undo changing `paused`.
@@ -247,14 +226,12 @@ function ThreadToastVisibleAutoDismiss({
     const syncTimerAfterFocusChange = () => {
       window.queueMicrotask(syncTimer);
     };
-
     syncTimer();
     document.addEventListener("visibilitychange", syncTimer);
     document.addEventListener("focusin", syncTimerAfterFocusChange);
     document.addEventListener("focusout", syncTimerAfterFocusChange);
     window.addEventListener("focus", syncTimer);
     window.addEventListener("blur", syncTimer);
-
     return () => {
       disposed = true;
       document.removeEventListener("visibilitychange", syncTimer);
@@ -266,10 +243,8 @@ function ThreadToastVisibleAutoDismiss({
       clearTimer();
     };
   }, [dismissAfterVisibleMs, onNoUndo, toastId, toastRef, paused]);
-
   return null;
 }
-
 function ToastActions({
   actionProps,
   copyText,
@@ -280,9 +255,7 @@ function ToastActions({
   secondaryActionProps: ThreadToastData["secondaryActionProps"];
 }) {
   const { copyToClipboard, isCopied } = useCopyToClipboard();
-
   if (!actionProps && !copyText && !secondaryActionProps) return null;
-
   return (
     <div className="-ms-2 mt-1.5 flex flex-wrap items-center gap-0.5">
       {copyText && (
@@ -296,7 +269,7 @@ function ToastActions({
           title={isCopied ? "Copied error message" : "Copy error message"}
           variant={TOAST_ACTION_BUTTON_VARIANT}
         >
-          {isCopied ? <CheckIcon className="size-3" /> : <CopyIcon className="size-3" />}
+          {isCopied ? <CheckIcon className="size-3" /> : <Copy01Icon className="size-3" />}
           <span>{isCopied ? "Copied" : "Copy"}</span>
         </Button>
       )}
@@ -327,7 +300,6 @@ function ToastActions({
     </div>
   );
 }
-
 function ToastCloseButton({
   compact: compactProp,
   disabled,
@@ -358,7 +330,6 @@ function ToastCloseButton({
     </Toast.Close>
   );
 }
-
 function blurFocusedToastElement(toast: ToastObject<ThreadToastData>) {
   if (typeof document === "undefined") return;
   const toastElement = toast.ref?.current;
@@ -371,7 +342,6 @@ function blurFocusedToastElement(toast: ToastObject<ThreadToastData>) {
     activeElement.blur();
   }
 }
-
 function ArchiveUndoToastSurface({
   archiveUndo,
   toast,
@@ -388,7 +358,6 @@ function ArchiveUndoToastSurface({
   const [undoPending, setUndoPending] = useState(false);
   // A pending Undo owns the next navigation; keep the Settings path idle until it settles.
   const actionsDisabled = undoPending;
-
   const handleUndoClick = () => {
     if (actionsDisabled) return;
     setUndoPending(true);
@@ -406,13 +375,11 @@ function ArchiveUndoToastSurface({
       }
     })();
   };
-
   const handleViewArchivedClick = () => {
     if (actionsDisabled) return;
     archiveUndo.onNoUndo?.();
     void archiveUndo.onViewArchived();
   };
-
   return (
     <>
       <ThreadToastVisibleAutoDismiss
@@ -457,7 +424,6 @@ function ArchiveUndoToastSurface({
     </>
   );
 }
-
 function ToastSurface({
   toast,
   compact,
@@ -469,7 +435,6 @@ function ToastSurface({
 }) {
   const Icon = toast.type ? TOAST_ICONS[toast.type as keyof typeof TOAST_ICONS] : null;
   const compactContextual = compact && toast.data?.compactContextual === true;
-
   return (
     <Toast.Content
       className={cn(
@@ -548,7 +513,6 @@ function ToastSurface({
     </Toast.Content>
   );
 }
-
 function ToastProvider({
   children,
   position: positionProp,
@@ -563,7 +527,6 @@ function ToastProvider({
     </Toast.Provider>
   );
 }
-
 function Toasts({ position: positionProp }: { position: ToastPosition }) {
   const position = positionProp ?? "top-center";
   const { toasts } = Toast.useToastManager<ThreadToastData>();
@@ -578,7 +541,6 @@ function Toasts({ position: positionProp }: { position: ToastPosition }) {
       return leftEnding ? 1 : -1;
     });
   const visibleToastLayout = buildVisibleToastLayout(visibleToasts);
-
   useEffect(() => {
     const activeToastIds = new Set(toasts.map((toast) => toast.id));
     for (const toastId of threadToastVisibleTimeoutRemainingMs.keys()) {
@@ -587,7 +549,6 @@ function Toasts({ position: positionProp }: { position: ToastPosition }) {
       }
     }
   }, [toasts]);
-
   return (
     <Toast.Portal data-slot="toast-portal">
       <Toast.Viewport
@@ -618,7 +579,6 @@ function Toasts({ position: positionProp }: { position: ToastPosition }) {
           );
           const compact = shouldUseCompactToast(toast);
           const archiveUndoToast = isArchiveUndoToast(toast);
-
           return (
             <Toast.Root
               className={cn(
@@ -729,7 +689,6 @@ function Toasts({ position: positionProp }: { position: ToastPosition }) {
     </Toast.Portal>
   );
 }
-
 function AnchoredToastProvider({
   children,
   timeout = DEFAULT_TOAST_TIMEOUT_MS,
@@ -742,11 +701,9 @@ function AnchoredToastProvider({
     </Toast.Provider>
   );
 }
-
 function AnchoredToasts() {
   const { toasts } = Toast.useToastManager<ThreadToastData>();
   const visibleThreadIds = useVisibleThreadIdsFromRoute();
-
   return (
     <Toast.Portal data-slot="toast-portal-anchored">
       <Toast.Viewport className="outline-none" data-slot="toast-viewport-anchored">
@@ -756,11 +713,9 @@ function AnchoredToasts() {
             const tooltipStyle = toast.data?.tooltipStyle ?? false;
             const positionerProps = toast.positionerProps;
             const compact = !tooltipStyle && shouldUseCompactToast(toast);
-
             if (!positionerProps?.anchor) {
               return null;
             }
-
             return (
               <Toast.Positioner
                 className="z-50 max-w-[min(--spacing(64),var(--available-width))]"
@@ -774,7 +729,10 @@ function AnchoredToasts() {
                     "relative text-balance transition-[scale,opacity] data-ending-style:scale-98 data-starting-style:scale-98 data-ending-style:opacity-0 data-starting-style:opacity-0",
                     tooltipStyle
                       ? "rounded-lg border bg-popover text-popover-foreground text-ui leading-snug shadow-md/5 [-webkit-app-region:no-drag] before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] before:shadow-[0_1px_--theme(--color-black/4%)] dark:before:shadow-[0_-1px_--theme(--color-white/6%)]"
-                      : notificationSurfaceClassName({ compact, tone: toastTone(toast.type) }),
+                      : notificationSurfaceClassName({
+                          compact,
+                          tone: toastTone(toast.type),
+                        }),
                   )}
                   data-slot="toast-popup"
                   toast={toast}
@@ -794,7 +752,6 @@ function AnchoredToasts() {
     </Toast.Portal>
   );
 }
-
 export {
   ToastProvider,
   type ToastPosition,

@@ -1,7 +1,12 @@
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  ArrowLeftRightIcon,
+  GitForkIcon,
+  LaptopIcon,
+} from "~/lib/icons";
 import type { ThreadEnvironmentMode } from "@glade/contracts/orchestration/threadEntities";
 import type { ReactNode } from "react";
-import { CheckIcon, ChevronDownIcon, HandoffIcon, WorktreeIcon } from "~/lib/icons";
-import { CentralIcon } from "~/lib/central-icons";
 import type { ThreadEnvironmentPresentation } from "~/lib/threadEnvironment";
 import { COMPOSER_TOOLBAR_PICKER_TRIGGER_CLASS_NAME } from "./composerPickerStyles";
 import { ComposerPickerMenuPopup } from "./ComposerPickerMenuPopup";
@@ -12,9 +17,7 @@ import {
   EnvironmentRowChevron,
 } from "./environment/EnvironmentRow";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuTrigger } from "../ui/menu";
-
 const ENV_MENU_ICON_CLASS_NAME = "size-3.5 text-muted-foreground";
-
 function WorkInMenuItem({
   icon,
   label,
@@ -31,7 +34,14 @@ function WorkInMenuItem({
   const selected = selectedProp ?? false;
   const disabled = disabledProp ?? false;
   return (
-    <MenuItem disabled={disabled} {...(onSelect ? { onClick: onSelect } : {})}>
+    <MenuItem
+      disabled={disabled}
+      {...(onSelect
+        ? {
+            onClick: onSelect,
+          }
+        : {})}
+    >
       {icon}
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {selected ? (
@@ -40,7 +50,6 @@ function WorkInMenuItem({
     </MenuItem>
   );
 }
-
 interface ComposerEnvironmentPickerProps {
   environmentPresentation: ThreadEnvironmentPresentation;
   onEnvModeChange: (mode: ThreadEnvironmentMode) => void;
@@ -52,7 +61,6 @@ interface ComposerEnvironmentPickerProps {
   disabled?: boolean;
   onOpenChange?: ((open: boolean) => void) | undefined;
 }
-
 export function ComposerEnvironmentPicker({
   environmentPresentation,
   onEnvModeChange,
@@ -66,9 +74,9 @@ export function ComposerEnvironmentPicker({
 }: ComposerEnvironmentPickerProps) {
   const envGlyph = (className: string) =>
     environmentPresentation.mode === "local" ? (
-      <CentralIcon name="macbook-air" className={className} />
+      <LaptopIcon className={className} />
     ) : (
-      <WorktreeIcon className={className} />
+      <GitForkIcon className={className} />
     );
   return (
     <Menu onOpenChange={onOpenChange}>
@@ -108,34 +116,34 @@ export function ComposerEnvironmentPicker({
           <MenuGroupLabel>Work in</MenuGroupLabel>
           {environmentPresentation.mode === "local" ? (
             <WorkInMenuItem
-              icon={<CentralIcon name="macbook-air" className={ENV_MENU_ICON_CLASS_NAME} />}
+              icon={<LaptopIcon className={ENV_MENU_ICON_CLASS_NAME} />}
               label={environmentPresentation.localOptionLabel}
               selected
             />
           ) : (
             <WorkInMenuItem
-              icon={<CentralIcon name="macbook-air" className={ENV_MENU_ICON_CLASS_NAME} />}
+              icon={<LaptopIcon className={ENV_MENU_ICON_CLASS_NAME} />}
               label={environmentPresentation.localOptionLabel}
               onSelect={() => onEnvModeChange("local")}
             />
           )}
           {canSwitchToWorktree ? (
             <WorkInMenuItem
-              icon={<WorktreeIcon className={ENV_MENU_ICON_CLASS_NAME} />}
+              icon={<GitForkIcon className={ENV_MENU_ICON_CLASS_NAME} />}
               label="New worktree"
               onSelect={() => onEnvModeChange("worktree")}
             />
           ) : null}
           {environmentPresentation.mode === "worktree" && !canHandoffToLocal ? (
             <WorkInMenuItem
-              icon={<WorktreeIcon className={ENV_MENU_ICON_CLASS_NAME} />}
+              icon={<GitForkIcon className={ENV_MENU_ICON_CLASS_NAME} />}
               label={environmentPresentation.worktreeOptionLabel}
               selected
             />
           ) : null}
           {canHandoffToLocal && onHandoffToLocal ? (
             <WorkInMenuItem
-              icon={<HandoffIcon className={ENV_MENU_ICON_CLASS_NAME} />}
+              icon={<ArrowLeftRightIcon className={ENV_MENU_ICON_CLASS_NAME} />}
               label="Hand off to local"
               disabled={handoffBusy}
               onSelect={() => onHandoffToLocal()}

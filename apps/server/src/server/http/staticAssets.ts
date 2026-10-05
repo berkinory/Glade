@@ -7,7 +7,7 @@ const STATIC_REVALIDATE_CACHE_CONTROL = "no-cache";
 
 const STATIC_ICON_CACHE_CONTROL = "public, max-age=86400";
 
-const ICON_DIRECTORY_PREFIXES = ["central-icons-reversed/", "central-icons-fill/"];
+const ICON_DIRECTORY_PREFIXES = ["brands/"];
 
 export function staticCacheControl(relativePath: string): string {
   const normalized = relativePath.replaceAll("\\", "/");

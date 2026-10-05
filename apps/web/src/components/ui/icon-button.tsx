@@ -36,7 +36,7 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconB
         {...buttonProps}
         ref={ref}
         aria-label={label}
-        className={cn("[&_svg,&_[data-slot=central-icon]]:mx-0", className)}
+        className={cn("[&_svg]:mx-0", className)}
         size={size}
         title={title}
         variant={variant}
@@ -54,7 +54,7 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconB
             {...buttonProps}
             ref={ref}
             aria-label={label}
-            className={cn("[&_svg,&_[data-slot=central-icon]]:mx-0", className)}
+            className={cn("[&_svg]:mx-0", className)}
             size={size}
             title={title}
             variant={variant}

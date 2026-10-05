@@ -14,6 +14,7 @@ This folder contains the Glade documentation and repository guides.
 ## Developing Glade
 
 - [Architecture](./architecture.md) — application boundaries and package responsibilities.
+- [Icon assets](./icon-assets.md) - UI and brand icon ownership, persisted appearance keys and licenses.
 - [Workspace layout](./workspace-layout.md) — repository structure and ownership.
 - [Handoff context](./handoff-context.md) - frozen evidence, preparation, retrieval and verification limits.
 - [Provider architecture](./provider-architecture.md) — provider integration boundaries.

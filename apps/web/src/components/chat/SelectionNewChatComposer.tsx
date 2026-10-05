@@ -1,8 +1,7 @@
+import { ArrowUpRightIcon, ArrowUp02Icon, XIcon } from "~/lib/icons";
 import { Spinner } from "~/components/ui/spinner";
 import type { ThreadEnvironmentMode } from "@glade/contracts/orchestration/threadEntities";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-
-import { ArrowUpRightIcon, ComposerSendArrowIcon, XIcon } from "~/lib/icons";
 import { resolveThreadEnvironmentPresentation } from "~/lib/threadEnvironment";
 import { ComposerPromptEditor, type ComposerPromptEditorHandle } from "../ComposerPromptEditor";
 import { Button } from "../ui/button";
@@ -18,7 +17,6 @@ import { cn } from "~/lib/utils";
 import { DisclosureRegion } from "../ui/DisclosureRegion";
 import { TRANSCRIPT_SELECTION_ACTION_HEIGHT_PX } from "./chatSelectionActions";
 import type { PendingTranscriptSelectionAction } from "./useTranscriptAssistantSelectionAction";
-
 interface SelectionNewChatComposerProps {
   action: PendingTranscriptSelectionAction;
   defaultEnvMode: ThreadEnvironmentMode;
@@ -27,7 +25,6 @@ interface SelectionNewChatComposerProps {
   onOpenInChat: (prompt: string, envMode: ThreadEnvironmentMode) => Promise<void>;
   onClose: () => void;
 }
-
 export function SelectionNewChatComposer({
   action,
   defaultEnvMode,
@@ -52,7 +49,6 @@ export function SelectionNewChatComposer({
       ...action.selection,
     },
   ];
-
   useLayoutEffect(() => {
     const surface = surfaceRef.current;
     if (!surface) return;
@@ -75,7 +71,6 @@ export function SelectionNewChatComposer({
       window.removeEventListener("resize", position);
     };
   }, [action]);
-
   useEffect(() => {
     const dismiss = (event: PointerEvent) => {
       if (
@@ -104,7 +99,6 @@ export function SelectionNewChatComposer({
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [onClose]);
-
   const submit = async (intent: "send" | "compose") => {
     const nextPrompt = inputRef.current?.readSnapshot().value ?? prompt;
     if (submittingRef.current || (intent === "send" && !nextPrompt.trim())) return;
@@ -121,7 +115,6 @@ export function SelectionNewChatComposer({
       setBusy(false);
     }
   };
-
   return (
     <div
       ref={surfaceRef}
@@ -129,7 +122,10 @@ export function SelectionNewChatComposer({
       role="dialog"
       aria-label="New chat from selection"
       className="fixed z-50 w-[320px] max-w-[calc(100vw-16px)] text-foreground"
-      style={{ left: action.left, top: action.top }}
+      style={{
+        left: action.left,
+        top: action.top,
+      }}
     >
       <div className={COMPOSER_INPUT_SHELL_CLASS_NAME}>
         <div className={COMPOSER_INPUT_SURFACE_CLASS_NAME}>
@@ -198,7 +194,9 @@ export function SelectionNewChatComposer({
               ) : null}
               <div className={cn(COMPOSER_FOOTER_ROW_CLASS_NAME, "gap-2")}>
                 <ComposerEnvironmentPicker
-                  environmentPresentation={resolveThreadEnvironmentPresentation({ envMode })}
+                  environmentPresentation={resolveThreadEnvironmentPresentation({
+                    envMode,
+                  })}
                   onEnvModeChange={setEnvMode}
                   canSwitchToWorktree={canUseWorktree && envMode === "local"}
                   disabled={busy}
@@ -217,10 +215,7 @@ export function SelectionNewChatComposer({
                   {busy ? (
                     <Spinner className="size-3" />
                   ) : (
-                    <ComposerSendArrowIcon
-                      aria-hidden="true"
-                      className="size-5 shrink-0 translate-y-px"
-                    />
+                    <ArrowUp02Icon aria-hidden="true" className="size-5 shrink-0 translate-y-px" />
                   )}
                 </Button>
               </div>

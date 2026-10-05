@@ -1,14 +1,13 @@
 import {
-  ChatBubbleIcon,
-  CircleQuestionIcon,
+  BubbleChatIcon,
+  HelpCircleIcon,
   GiftIcon,
   KeyboardIcon,
   BellIcon,
-  type LucideIcon,
-  WorktreeIcon,
+  GitForkIcon,
+  ListFilterIcon,
 } from "~/lib/icons";
-import { createCentralIconComponent } from "~/lib/central-icons";
-import { GoRepoForked } from "react-icons/go";
+import type { IconComponent } from "~/lib/iconComponent";
 import { useEffect, lazy, useState, type ComponentType, type ReactNode } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -50,46 +49,26 @@ import {
   SIDEBAR_CONTEXT_MENU_PANEL_CLASS_NAME,
   SidebarContextMenuIcon,
 } from "./sidebarContextMenuStyles";
-
-export const ExpandAllIcon = createCentralIconComponent("expand-45");
-
-export const CollapseAllIcon = createCentralIconComponent("minimize-45");
-
-const SortFilterIcon = createCentralIconComponent("filter-2");
-
 export const EMPTY_KEYBINDINGS: ResolvedKeybindingsConfig = [];
-
 export const subscribeGitHubProvisioningCapability = (listener: () => void) =>
   onNativeApiServerCapabilitiesChange(listener);
-
 export const readGitHubProvisioningCapability = () =>
   readNativeApiServerCapability(WS_GITHUB_PROJECT_PROVISIONING_CAPABILITY);
-
 export const readGitHubProvisioningServerCapability = () => false;
-
 export const THREAD_PREVIEW_LIMIT = 5;
-
 export const THREAD_PREVIEW_PAGE_SIZE = 5;
-
 export const preventFocusOnMouseDown = (event: React.MouseEvent) => {
   event.preventDefault();
 };
-
 const SIDEBAR_SORT_LABELS: Record<SidebarProjectSortOrder, string> = {
   updated_at: "Last user message",
   manual: "Manual",
 };
-
 export const EMPTY_THREAD_JUMP_LABELS = new Map<ThreadId, string>();
-
 export const ADD_PROJECT_SNAPSHOT_CATCH_UP_MAX_ATTEMPTS = 6;
-
 export const ADD_PROJECT_SNAPSHOT_CATCH_UP_DELAY_MS = 50;
-
 export const GITHUB_CANCEL_RECOVERY_MAX_ATTEMPTS = 40;
-
 export const GITHUB_CANCEL_RECOVERY_DELAY_MS = 250;
-
 export const DebugFeatureFlagsMenu = import.meta.env.DEV
   ? lazy(() =>
       import("./DebugFeatureFlagsMenu").then((module) => ({
@@ -97,7 +76,6 @@ export const DebugFeatureFlagsMenu = import.meta.env.DEV
       })),
     )
   : null;
-
 export type ProjectContextMenuId =
   | "open-in-finder"
   | "copy-path"
@@ -107,32 +85,27 @@ export type ProjectContextMenuId =
   | "archive-threads"
   | "delete-threads"
   | "delete";
-
 export type ProjectContextMenuState = {
   projectId: ProjectId;
-  position: { x: number; y: number };
+  position: {
+    x: number;
+    y: number;
+  };
 };
-
 export const PROJECT_CONTEXT_MENU_PANEL_CLASS_NAME = SIDEBAR_CONTEXT_MENU_PANEL_CLASS_NAME;
-
 export const PROJECT_CONTEXT_MENU_ITEM_CLASS_NAME = SIDEBAR_CONTEXT_MENU_ITEM_CLASS_NAME;
-
 export const PROJECT_CONTEXT_MENU_ICON_CLASS_NAME = SIDEBAR_CONTEXT_MENU_ICON_CLASS_NAME;
-
-export function ProjectContextMenuIcon({ icon }: { icon: LucideIcon }) {
+export function ProjectContextMenuIcon({ icon }: { icon: IconComponent }) {
   return <SidebarContextMenuIcon icon={icon} />;
 }
-
 export type DebugFeatureFlagsWindow = Window & {
   gladeShowFeatureFlags?: () => void;
   gladeHideFeatureFlags?: () => void;
 };
-
 export function readDebugFeatureFlagsMenuVisibility(): boolean {
   if (typeof window === "undefined") {
     return false;
   }
-
   try {
     return shouldShowDebugFeatureFlagsMenu({
       isDev: import.meta.env.DEV,
@@ -143,7 +116,6 @@ export function readDebugFeatureFlagsMenuVisibility(): boolean {
     return false;
   }
 }
-
 export function threadJumpLabelMapsEqual(
   left: ReadonlyMap<ThreadId, string>,
   right: ReadonlyMap<ThreadId, string>,
@@ -161,7 +133,6 @@ export function threadJumpLabelMapsEqual(
   }
   return true;
 }
-
 export function buildThreadJumpLabelMap(input: {
   keybindings: ResolvedKeybindingsConfig;
   platform: string;
@@ -174,7 +145,6 @@ export function buildThreadJumpLabelMap(input: {
   if (input.threadJumpCommandByThreadId.size === 0) {
     return EMPTY_THREAD_JUMP_LABELS;
   }
-
   const shortcutLabelOptions = {
     platform: input.platform,
     context: {
@@ -191,16 +161,13 @@ export function buildThreadJumpLabelMap(input: {
   }
   return mapping.size > 0 ? mapping : EMPTY_THREAD_JUMP_LABELS;
 }
-
 function WorktreeBadgeGlyph({ className }: { className?: string }) {
-  return <WorktreeIcon aria-hidden="true" className={sidebarGlyphClass("meta", className)} />;
+  return <GitForkIcon aria-hidden="true" className={sidebarGlyphClass("meta", className)} />;
 }
-
 export const THREAD_ROW_META_CHIP_HOVER_FADE_CLASS_NAME = cn(
   "flex shrink-0 items-center",
   sidebarHoverRevealHideClassName("thread-row"),
 );
-
 export function threadRowStatusSlotClassName(
   isSubagentThread: boolean,
   toneClassName?: string,
@@ -212,7 +179,6 @@ export function threadRowStatusSlotClassName(
     toneClassName ?? (isSubagentThread ? "text-muted-foreground/26" : "text-muted-foreground/38"),
   );
 }
-
 function resolveWorktreeBadgeLabel(
   thread: Pick<Thread, "envMode" | "worktreePath">,
 ): string | null {
@@ -221,32 +187,28 @@ function resolveWorktreeBadgeLabel(
     worktreePath: thread.worktreePath,
   }).worktreeBadgeLabel;
 }
-
 export type ThreadMetaChip = {
   id: "fork" | "worktree";
   tooltip: string;
   icon: ReactNode;
 };
-
 export function resolveThreadRowMetaChips(input: {
   thread: Pick<Thread, "forkSourceThreadId" | "envMode" | "worktreePath">;
 }): ThreadMetaChip[] {
   const chips: ThreadMetaChip[] = [];
-
   if (input.thread.forkSourceThreadId) {
     chips.push({
       id: "fork",
       tooltip: "Forked thread",
       icon: (
         <SidebarGlyph
-          icon={GoRepoForked}
+          icon={GitForkIcon}
           variant="meta"
           className="text-emerald-600 dark:text-emerald-300/90"
         />
       ),
     });
   }
-
   const worktreeBadgeLabel = resolveWorktreeBadgeLabel(input.thread);
   if (worktreeBadgeLabel) {
     chips.push({
@@ -255,10 +217,8 @@ export function resolveThreadRowMetaChips(input: {
       icon: <WorktreeBadgeGlyph className="text-muted-foreground/55" />,
     });
   }
-
   return chips;
 }
-
 export function terminalStatusFromThreadState(input: {
   runningTerminalIds: string[];
   terminalAttentionStatesById: Record<string, "attention" | "review">;
@@ -287,12 +247,10 @@ export function terminalStatusFromThreadState(input: {
   }
   return null;
 }
-
 export type SortableProjectHandleProps = Pick<
   ReturnType<typeof useSortable>,
   "attributes" | "listeners" | "setActivatorNodeRef"
 >;
-
 export function ProjectSortMenu({
   projectSortOrder,
   onProjectSortOrderChange,
@@ -304,7 +262,7 @@ export function ProjectSortMenu({
     <Menu>
       <SidebarIconButton
         render={<MenuTrigger />}
-        icon={SortFilterIcon}
+        icon={ListFilterIcon}
         label="Sort projects"
         tooltip="Sort projects"
         tooltipSide="right"
@@ -333,9 +291,7 @@ export function ProjectSortMenu({
     </Menu>
   );
 }
-
 const HELP_MENU_RELEASE_ENTRIES = sortEntriesByVersionDesc(CHANGELOG_ENTRIES).slice(0, 3);
-
 export function SidebarHelpMenu({
   onOpenShortcuts,
   onOpenFeedback,
@@ -347,18 +303,24 @@ export function SidebarHelpMenu({
     readonly open: boolean;
     readonly version: string | null;
     readonly openCount: number;
-  }>({ open: false, version: null, openCount: 0 });
-
+  }>({
+    open: false,
+    version: null,
+    openCount: 0,
+  });
   const openReleaseHistory = (version: string | null) => {
-    setReleaseHistory((prev) => ({ open: true, version, openCount: prev.openCount + 1 }));
+    setReleaseHistory((prev) => ({
+      open: true,
+      version,
+      openCount: prev.openCount + 1,
+    }));
   };
-
   return (
     <>
       <Menu>
         <SidebarIconButton
           render={<MenuTrigger />}
-          icon={CircleQuestionIcon}
+          icon={HelpCircleIcon}
           label="Help"
           tooltip="Help"
         />
@@ -394,7 +356,7 @@ export function SidebarHelpMenu({
               <span>Keyboard shortcuts</span>
             </MenuItem>
             <MenuItem className={SIDEBAR_CONTEXT_MENU_ITEM_CLASS_NAME} onClick={onOpenFeedback}>
-              <SidebarContextMenuIcon icon={ChatBubbleIcon} />
+              <SidebarContextMenuIcon icon={BubbleChatIcon} />
               <span>Send feedback</span>
             </MenuItem>
           </MenuGroup>
@@ -404,16 +366,20 @@ export function SidebarHelpMenu({
         key={releaseHistory.openCount}
         open={releaseHistory.open}
         onOpenChange={(open) => {
-          setReleaseHistory((prev) => ({ ...prev, open }));
+          setReleaseHistory((prev) => ({
+            ...prev,
+            open,
+          }));
         }}
         defaultExpandedVersion={releaseHistory.version}
       />
     </>
   );
 }
-
 export type SidebarNavItemDescriptor = {
-  readonly icon: ComponentType<{ className?: string }>;
+  readonly icon: ComponentType<{
+    className?: string;
+  }>;
   readonly iconClassName?: string;
   readonly label: string;
   readonly active: boolean;
@@ -422,7 +388,6 @@ export type SidebarNavItemDescriptor = {
   readonly onMouseEnter?: () => void;
   readonly onFocus?: () => void;
 };
-
 export function SortableProjectItem({
   projectId,
   disabled: disabledProp,
@@ -442,7 +407,10 @@ export function SortableProjectItem({
     transition,
     isDragging,
     isOver,
-  } = useSortable({ id: projectId, disabled });
+  } = useSortable({
+    id: projectId,
+    disabled,
+  });
   return (
     <li
       ref={setNodeRef}
@@ -450,21 +418,20 @@ export function SortableProjectItem({
         transform: CSS.Translate.toString(transform),
         transition,
       }}
-      className={`group/menu-item relative rounded-md ${
-        isDragging ? "z-20 opacity-80" : ""
-      } ${isOver && !isDragging ? "ring-1 ring-primary/40" : ""}`}
+      className={`group/menu-item relative rounded-md ${isDragging ? "z-20 opacity-80" : ""} ${isOver && !isDragging ? "ring-1 ring-primary/40" : ""}`}
       data-sidebar="menu-item"
       data-slot="sidebar-menu-item"
     >
-      {children({ attributes, listeners, setActivatorNodeRef })}
+      {children({
+        attributes,
+        listeners,
+        setActivatorNodeRef,
+      })}
     </li>
   );
 }
-
 const ACTIVITY_ONBOARDING_STORAGE_KEY = "glade:activity-onboarding:v1";
-
 const ACTIVITY_ONBOARDING_DURATION_MS = 8_000;
-
 function shouldShowActivityOnboarding(): boolean {
   if (typeof window === "undefined") return false;
   try {
@@ -473,7 +440,6 @@ function shouldShowActivityOnboarding(): boolean {
     return true;
   }
 }
-
 export function SidebarActivityBellButton({
   active,
   showUnreadDot,
@@ -487,7 +453,6 @@ export function SidebarActivityBellButton({
 }) {
   const [onboardingVisible, setOnboardingVisible] = useState(shouldShowActivityOnboarding);
   const [tooltipOpen, setTooltipOpen] = useState(onboardingVisible);
-
   useEffect(() => {
     if (!onboardingVisible) return;
     try {
@@ -499,12 +464,10 @@ export function SidebarActivityBellButton({
     }, ACTIVITY_ONBOARDING_DURATION_MS);
     return () => window.clearTimeout(timeout);
   }, [onboardingVisible]);
-
   const dismissOnboarding = () => {
     setOnboardingVisible(false);
     setTooltipOpen(false);
   };
-
   return (
     <Tooltip
       open={tooltipOpen}

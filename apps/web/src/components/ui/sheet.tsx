@@ -1,24 +1,19 @@
 "use client";
 
-import { Dialog as SheetPrimitive } from "@base-ui/react/dialog";
 import { XIcon } from "~/lib/icons";
+import { Dialog as SheetPrimitive } from "@base-ui/react/dialog";
 import { cn } from "~/lib/utils";
 import { UI_MOTION_BACKDROP_CLASS, UI_MOTION_LONG_CLASS } from "~/lib/uiMotion";
 import { Button } from "~/components/ui/button";
 import { ScrollArea } from "~/components/ui/scroll-area";
-
 const Sheet = SheetPrimitive.Root;
-
 const SheetPortal = SheetPrimitive.Portal;
-
 function SheetTrigger(props: SheetPrimitive.Trigger.Props) {
   return <SheetPrimitive.Trigger data-slot="sheet-trigger" {...props} />;
 }
-
 function SheetClose(props: SheetPrimitive.Close.Props) {
   return <SheetPrimitive.Close data-slot="sheet-close" {...props} />;
 }
-
 function SheetBackdrop({ className, ...props }: SheetPrimitive.Backdrop.Props) {
   return (
     <SheetPrimitive.Backdrop
@@ -28,7 +23,6 @@ function SheetBackdrop({ className, ...props }: SheetPrimitive.Backdrop.Props) {
     />
   );
 }
-
 function SheetViewport({
   className,
   side,
@@ -55,7 +49,6 @@ function SheetViewport({
     />
   );
 }
-
 function SheetPopup({
   className,
   children,
@@ -112,7 +105,6 @@ function SheetPopup({
     </SheetPortal>
   );
 }
-
 function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -125,7 +117,6 @@ function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {
     />
   );
 }
-
 function SheetFooter({
   className,
   variant: variantProp,
@@ -148,7 +139,6 @@ function SheetFooter({
     />
   );
 }
-
 function SheetTitle({ className, ...props }: SheetPrimitive.Title.Props) {
   return (
     <SheetPrimitive.Title
@@ -158,7 +148,6 @@ function SheetTitle({ className, ...props }: SheetPrimitive.Title.Props) {
     />
   );
 }
-
 function SheetDescription({ className, ...props }: SheetPrimitive.Description.Props) {
   return (
     <SheetPrimitive.Description
@@ -168,12 +157,13 @@ function SheetDescription({ className, ...props }: SheetPrimitive.Description.Pr
     />
   );
 }
-
 function SheetPanel({
   className,
   scrollFade: scrollFadeProp,
   ...props
-}: React.ComponentProps<"div"> & { scrollFade?: boolean }) {
+}: React.ComponentProps<"div"> & {
+  scrollFade?: boolean;
+}) {
   const scrollFade = scrollFadeProp ?? true;
   return (
     <ScrollArea scrollFade={scrollFade}>
@@ -188,7 +178,6 @@ function SheetPanel({
     </ScrollArea>
   );
 }
-
 export {
   Sheet,
   SheetTrigger,

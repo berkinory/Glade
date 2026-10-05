@@ -1,27 +1,26 @@
-import type { ComponentType } from "react";
 import {
-  BugReportIcon,
-  DeviceLaptopIcon,
-  FolderAddIcon,
-  MoonIcon,
-  NewChatIcon,
-  NewThreadIcon,
+  BugIcon,
+  LaptopIcon,
+  FolderPlusIcon,
+  Moon02Icon,
+  MessageCircleIcon,
+  SquarePenIcon,
   SettingsIcon,
   SunIcon,
-  UsageGaugeIcon,
+  LimitationIcon,
 } from "~/lib/icons";
-
-type IconComponent = ComponentType<{ className?: string }>;
-
+import type { ComponentType } from "react";
+type IconComponent = ComponentType<{
+  className?: string;
+}>;
 export const ACTION_ICONS: Record<string, IconComponent> = {
-  "new-chat": NewChatIcon,
-  "new-thread": NewThreadIcon,
-  "add-project": FolderAddIcon,
-  feedback: BugReportIcon,
+  "new-chat": MessageCircleIcon,
+  "new-thread": SquarePenIcon,
+  "add-project": FolderPlusIcon,
+  feedback: BugIcon,
   settings: SettingsIcon,
-  "usage-settings": UsageGaugeIcon,
+  "usage-settings": LimitationIcon,
 };
-
 export type ThemeCommandItem = {
   description: string;
   id: string;
@@ -29,7 +28,6 @@ export type ThemeCommandItem = {
   label: string;
   mode: "system" | "light" | "dark";
 };
-
 function queryTokens(query: string): string[] {
   return query
     .trim()
@@ -37,11 +35,9 @@ function queryTokens(query: string): string[] {
     .split(/\s+/)
     .filter((token) => token.length > 0);
 }
-
 function hasTokenEqual(query: string, token: string): boolean {
   return queryTokens(query).includes(token);
 }
-
 function createThemeCommandItem(
   mode: ThemeCommandItem["mode"],
   activeMode: ThemeCommandItem["mode"],
@@ -55,7 +51,6 @@ function createThemeCommandItem(
       isActive: activeMode === mode,
     };
   }
-
   return {
     id: `theme-command:${mode}`,
     label: `Switch to ${mode} theme`,
@@ -64,11 +59,9 @@ function createThemeCommandItem(
     isActive: activeMode === mode,
   };
 }
-
 function hasTokenPrefixOf(query: string, keyword: string): boolean {
   return queryTokens(query).some((token) => token.length >= 2 && keyword.startsWith(token));
 }
-
 export function buildThemeCommandItems(input: {
   query: string;
   resolvedTheme: "light" | "dark";
@@ -78,7 +71,6 @@ export function buildThemeCommandItems(input: {
   if (!normalizedQuery) {
     return [];
   }
-
   if (
     hasTokenEqual(normalizedQuery, "system") ||
     hasTokenEqual(normalizedQuery, "auto") ||
@@ -87,21 +79,18 @@ export function buildThemeCommandItems(input: {
   ) {
     return [createThemeCommandItem("system", input.theme)];
   }
-
   if (hasTokenEqual(normalizedQuery, "light")) {
     return [
       createThemeCommandItem("light", input.theme),
       createThemeCommandItem("system", input.theme),
     ];
   }
-
   if (hasTokenEqual(normalizedQuery, "dark")) {
     return [
       createThemeCommandItem("dark", input.theme),
       createThemeCommandItem("system", input.theme),
     ];
   }
-
   if (
     hasTokenPrefixOf(normalizedQuery, "theme") ||
     hasTokenPrefixOf(normalizedQuery, "appearance")
@@ -112,10 +101,8 @@ export function buildThemeCommandItems(input: {
       createThemeCommandItem("system", input.theme),
     ];
   }
-
   return [];
 }
-
 export function CodeThemeBadge(props: { accent: string; background: string; foreground: string }) {
   return (
     <span
@@ -131,9 +118,8 @@ export function CodeThemeBadge(props: { accent: string; background: string; fore
     </span>
   );
 }
-
 export const THEME_MODE_ICONS: Record<"system" | "light" | "dark", IconComponent> = {
-  system: DeviceLaptopIcon,
+  system: LaptopIcon,
   light: SunIcon,
-  dark: MoonIcon,
+  dark: Moon02Icon,
 };

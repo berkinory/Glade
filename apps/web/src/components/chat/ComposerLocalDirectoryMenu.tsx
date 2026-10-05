@@ -1,5 +1,5 @@
+import { ArrowUp02Icon, File02Icon, FolderIcon } from "~/lib/icons";
 import { useCallback } from "react";
-
 import type {
   ProjectFileSystemEntry,
   ProjectLocalSearchEntry,
@@ -8,7 +8,6 @@ import type { Ref } from "react";
 import { useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useDebouncedValue } from "@tanstack/react-pacer";
-import { ArrowUpIcon, FileIcon } from "~/lib/icons";
 import { expandLocalFolderPath } from "~/lib/localFolderMentions";
 import { projectSearchLocalEntriesQueryOptions } from "~/lib/projectReactQuery";
 import { readNativeApi } from "~/nativeApi";
@@ -17,7 +16,6 @@ import {
   ELEVATED_HOVER_SURFACE_CLASS_NAME,
   ELEVATED_HOVER_SURFACE_RAISED_TEXT_CLASS_NAME,
 } from "~/surfaceStyles";
-import { FolderClosed } from "../FolderClosed";
 import {
   Command,
   CommandGroup,
@@ -30,14 +28,12 @@ import {
   COMPOSER_COMMAND_MENU_SURFACE_CLASS_NAME,
   COMPOSER_PICKER_MENU_POPUP_BODY_CLASS_NAME,
 } from "./composerPickerStyles";
-
 type EntriesByPath = Record<string, readonly ProjectFileSystemEntry[] | undefined>;
 
 // Delay search requests until the user stops typing — keeps chat input smooth because every
 // keystroke reshapes mentionQuery in the parent.
 const LOCAL_SEARCH_DEBOUNCE_MS = 220;
 const LOCAL_SEARCH_MIN_QUERY_LENGTH = 2;
-
 function directoryMenuRowClassName(isHighlighted: boolean): string {
   return cn(
     "cursor-pointer select-none gap-2 rounded-lg px-2 py-1",
@@ -46,82 +42,89 @@ function directoryMenuRowClassName(isHighlighted: boolean): string {
       "bg-[var(--color-background-elevated-secondary)] text-[var(--color-text-foreground)]",
   );
 }
-
 const DIRECTORY_MENU_HEADER_ACTION_CLASS_NAME = cn(
   "shrink-0 rounded-md text-muted-foreground/70",
   ELEVATED_HOVER_SURFACE_RAISED_TEXT_CLASS_NAME,
 );
-
 export interface ComposerLocalDirectoryMenuHandle {
   moveHighlight: (direction: "up" | "down") => void;
   activateHighlighted: () => boolean;
 }
-
 type VisibleRow =
-  | { kind: "use-current"; separator: "/" | "\\" }
-  | { kind: "entry"; entry: ProjectFileSystemEntry }
-  | { kind: "search"; entry: ProjectLocalSearchEntry };
-
+  | {
+      kind: "use-current";
+      separator: "/" | "\\";
+    }
+  | {
+      kind: "entry";
+      entry: ProjectFileSystemEntry;
+    }
+  | {
+      kind: "search";
+      entry: ProjectLocalSearchEntry;
+    };
 function detectPathSeparator(value: string): "/" | "\\" {
   return value.includes("\\") ? "\\" : "/";
 }
-
 function joinDirectoryPath(directoryPath: string, childName: string): string {
   if (!childName) return directoryPath;
   const separator = detectPathSeparator(directoryPath);
   const needsSeparator = !directoryPath.endsWith(separator);
   return `${directoryPath}${needsSeparator ? separator : ""}${childName}`;
 }
-
 function isTildeRoot(directoryPath: string): boolean {
   return directoryPath === "~/" || directoryPath === "~\\";
 }
-
 function parentDirectory(directoryPath: string): string | null {
   if (!directoryPath) return null;
   if (directoryPath === "/") return null;
   if (/^[A-Za-z]:[\\/]$/.test(directoryPath)) return null;
   if (isTildeRoot(directoryPath)) return null;
-
   const separator = detectPathSeparator(directoryPath);
   const trimmed = directoryPath.endsWith(separator) ? directoryPath.slice(0, -1) : directoryPath;
   const lastIndex = trimmed.lastIndexOf(separator);
   if (lastIndex === -1) return null;
   if (lastIndex === 0) return "/";
-
   const parentSlice = trimmed.slice(0, lastIndex);
   if (/^[A-Za-z]:$/.test(parentSlice) || parentSlice === "~") {
     return `${parentSlice}${separator}`;
   }
   return parentSlice;
 }
-
-function deriveDirectoryAndFilter(mentionQuery: string): { directory: string; filter: string } {
+function deriveDirectoryAndFilter(mentionQuery: string): {
+  directory: string;
+  filter: string;
+} {
   const slashIndex = Math.max(mentionQuery.lastIndexOf("/"), mentionQuery.lastIndexOf("\\"));
   if (slashIndex === -1) {
-    return { directory: "/", filter: mentionQuery };
+    return {
+      directory: "/",
+      filter: mentionQuery,
+    };
   }
   const before = mentionQuery.slice(0, slashIndex);
   const after = mentionQuery.slice(slashIndex + 1);
-
   if (before === "" || /^[A-Za-z]:$/.test(before) || before === "~") {
-    return { directory: mentionQuery.slice(0, slashIndex + 1), filter: after };
+    return {
+      directory: mentionQuery.slice(0, slashIndex + 1),
+      filter: after,
+    };
   }
-  return { directory: before, filter: after };
+  return {
+    directory: before,
+    filter: after,
+  };
 }
-
 function basename(value: string): string {
   const parts = value.split(/[\\/]+/).filter(Boolean);
   return parts[parts.length - 1] ?? value;
 }
-
 function isRootDirectory(directoryPath: string): boolean {
   if (directoryPath === "/") return true;
   if (/^[A-Za-z]:[\\/]$/.test(directoryPath)) return true;
   if (isTildeRoot(directoryPath)) return true;
   return false;
 }
-
 function summarizeDirectoryLoadError(error: unknown): string {
   const raw = error instanceof Error ? error.message : String(error ?? "");
   if (/ENOENT|no such file or directory/i.test(raw)) {
@@ -135,7 +138,6 @@ function summarizeDirectoryLoadError(error: unknown): string {
   }
   return "Unable to load folders.";
 }
-
 export function ComposerLocalDirectoryMenu(props: {
   mentionQuery: string;
   rootLabel: string;
@@ -147,37 +149,40 @@ export function ComposerLocalDirectoryMenu(props: {
   const { mentionQuery, rootLabel, homeDir, onSelectEntry, onNavigateFolder, handleRef } = props;
   const [entriesByPath, setEntriesByPath] = useState<EntriesByPath>({});
   const [loadingPaths, setLoadingPaths] = useState<ReadonlySet<string>>(() => new Set());
-
-  const [errorState, setErrorState] = useState<{ dir: string; message: string } | null>(null);
+  const [errorState, setErrorState] = useState<{
+    dir: string;
+    message: string;
+  } | null>(null);
   const [highlightState, setHighlightState] = useState<{
     dir: string;
     filter: string;
     index: number;
   } | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
-
   const { directory, filter } = deriveDirectoryAndFilter(mentionQuery);
-
   const expandedDirectory = expandLocalFolderPath(directory, homeDir);
-
   const isAwaitingHomeDir =
     (directory === "~" || directory.startsWith("~/") || directory.startsWith("~\\")) &&
     (!homeDir || homeDir.trim().length === 0);
-
   const errorMessage =
     errorState !== null && errorState.dir === expandedDirectory ? errorState.message : null;
   const setErrorMessage = useCallback(
     (message: string | null) =>
-      setErrorState(message === null ? null : { dir: expandedDirectory, message }),
+      setErrorState(
+        message === null
+          ? null
+          : {
+              dir: expandedDirectory,
+              message,
+            },
+      ),
     [expandedDirectory],
   );
-
   useEffect(() => {
     if (!expandedDirectory) return;
     if (isAwaitingHomeDir) return;
     if (entriesByPath[expandedDirectory] !== undefined) return;
     if (loadingPaths.has(expandedDirectory)) return;
-
     let cancelled = false;
     const timeoutId = window.setTimeout(() => {
       if (cancelled) return;
@@ -186,7 +191,6 @@ export function ComposerLocalDirectoryMenu(props: {
         setErrorMessage("App is still connecting. Try again in a moment.");
         return;
       }
-
       setLoadingPaths((current) => new Set(current).add(expandedDirectory));
       void api.projects
         .listDirectories({
@@ -194,10 +198,16 @@ export function ComposerLocalDirectoryMenu(props: {
           includeFiles: true,
         })
         .then((result) => {
-          setEntriesByPath((current) => ({ ...current, [expandedDirectory]: result.entries }));
+          setEntriesByPath((current) => ({
+            ...current,
+            [expandedDirectory]: result.entries,
+          }));
         })
         .catch((error) => {
-          setEntriesByPath((current) => ({ ...current, [expandedDirectory]: [] }));
+          setEntriesByPath((current) => ({
+            ...current,
+            [expandedDirectory]: [],
+          }));
           setErrorMessage(summarizeDirectoryLoadError(error));
         })
         .finally(() => {
@@ -213,13 +223,10 @@ export function ComposerLocalDirectoryMenu(props: {
       window.clearTimeout(timeoutId);
     };
   }, [entriesByPath, expandedDirectory, isAwaitingHomeDir, loadingPaths, setErrorMessage]);
-
   const rawEntries = entriesByPath[expandedDirectory];
   const isLoading = loadingPaths.has(expandedDirectory);
-
   const normalizedFilter = filter.trim();
   const lowerFilter = normalizedFilter.toLowerCase();
-
   const includeDotfiles = normalizedFilter.startsWith(".");
   const folders: ProjectFileSystemEntry[] = [];
   const files: ProjectFileSystemEntry[] = [];
@@ -231,10 +238,12 @@ export function ComposerLocalDirectoryMenu(props: {
     if (entry.kind === "directory") folders.push(entry);
     else files.push(entry);
   }
-
   const currentFolderRow: VisibleRow | null =
     !isRootDirectory(directory) && filter.trim().length === 0
-      ? { kind: "use-current", separator: detectPathSeparator(directory) }
+      ? {
+          kind: "use-current",
+          separator: detectPathSeparator(directory),
+        }
       : null;
 
   // Debounce the raw filter so keystrokes don't fan out into fuzzy-search RPCs. The local listing
@@ -247,7 +256,6 @@ export function ComposerLocalDirectoryMenu(props: {
     !isAwaitingHomeDir &&
     expandedDirectory.length > 0 &&
     trimmedDebouncedFilter.length >= LOCAL_SEARCH_MIN_QUERY_LENGTH;
-
   const searchQuery = useQuery(
     projectSearchLocalEntriesQueryOptions({
       rootPath: shouldRunFuzzySearch ? expandedDirectory : null,
@@ -256,7 +264,6 @@ export function ComposerLocalDirectoryMenu(props: {
       enabled: shouldRunFuzzySearch,
     }),
   );
-
   const searchRows: ProjectLocalSearchEntry[] = [];
   const searchResult = shouldRunFuzzySearch ? searchQuery.data : undefined;
   if (searchResult) {
@@ -272,13 +279,23 @@ export function ComposerLocalDirectoryMenu(props: {
       searchRows.push(entry);
     }
   }
-
   const visibleRows: VisibleRow[] = [];
   if (currentFolderRow) visibleRows.push(currentFolderRow);
-  for (const entry of folders) visibleRows.push({ kind: "entry", entry });
-  for (const entry of files) visibleRows.push({ kind: "entry", entry });
-  for (const entry of searchRows) visibleRows.push({ kind: "search", entry });
-
+  for (const entry of folders)
+    visibleRows.push({
+      kind: "entry",
+      entry,
+    });
+  for (const entry of files)
+    visibleRows.push({
+      kind: "entry",
+      entry,
+    });
+  for (const entry of searchRows)
+    visibleRows.push({
+      kind: "search",
+      entry,
+    });
   const rawHighlightedIndex =
     highlightState !== null && highlightState.dir === directory && highlightState.filter === filter
       ? highlightState.index
@@ -290,9 +307,12 @@ export function ComposerLocalDirectoryMenu(props: {
         current !== null && current.dir === directory && current.filter === filter
           ? current.index
           : 0;
-      return { dir: directory, filter, index: typeof next === "function" ? next(base) : next };
+      return {
+        dir: directory,
+        filter,
+        index: typeof next === "function" ? next(base) : next,
+      };
     });
-
   const handleSelectCurrentDirectory = () => {
     const absoluteDirectory = expandedDirectory;
     void onSelectEntry(absoluteDirectory, {
@@ -302,7 +322,6 @@ export function ComposerLocalDirectoryMenu(props: {
       hasChildren: folders.length > 0 || files.length > 0,
     });
   };
-
   const handleActivateEntry = (entry: ProjectFileSystemEntry) => {
     if (entry.kind === "directory") {
       const displayPath = joinDirectoryPath(directory, entry.name);
@@ -312,7 +331,6 @@ export function ComposerLocalDirectoryMenu(props: {
       void onSelectEntry(absolute, entry);
     }
   };
-
   const handleActivateSearchEntry = (entry: ProjectLocalSearchEntry) => {
     if (entry.kind === "directory") {
       onNavigateFolder(entry.path);
@@ -324,7 +342,6 @@ export function ComposerLocalDirectoryMenu(props: {
       name: entry.name,
     });
   };
-
   const handleActivateRow = (row: VisibleRow) => {
     if (row.kind === "use-current") {
       handleSelectCurrentDirectory();
@@ -336,12 +353,10 @@ export function ComposerLocalDirectoryMenu(props: {
     }
     handleActivateEntry(row.entry);
   };
-
   const parent = parentDirectory(directory);
   const handleGoUp = () => {
     if (parent) onNavigateFolder(parent);
   };
-
   useImperativeHandle(handleRef, () => ({
     moveHighlight: (direction) => {
       if (visibleRows.length === 0) return;
@@ -359,21 +374,19 @@ export function ComposerLocalDirectoryMenu(props: {
       return true;
     },
   }));
-
   useEffect(() => {
     const node = listRef.current?.querySelector<HTMLElement>(
       `[data-highlight-index="${highlightedIndex}"]`,
     );
-    node?.scrollIntoView({ block: "nearest" });
+    node?.scrollIntoView({
+      block: "nearest",
+    });
   }, [highlightedIndex]);
-
   const headerLabel = directory || rootLabel;
   const visibleCount = visibleRows.length;
-
   const entryRowStartIndex = currentFolderRow ? 1 : 0;
   const searchRowStartIndex = entryRowStartIndex + folders.length + files.length;
   const isSearchPending = shouldRunFuzzySearch && searchQuery.isFetching && searchRows.length === 0;
-
   return (
     <Command autoHighlight={false} mode="none">
       <div className={COMPOSER_COMMAND_MENU_SURFACE_CLASS_NAME}>
@@ -389,10 +402,10 @@ export function ComposerLocalDirectoryMenu(props: {
                 "inline-flex size-5 items-center justify-center",
               )}
             >
-              <ArrowUpIcon className="size-3.5" />
+              <ArrowUp02Icon className="size-3.5" />
             </button>
           ) : (
-            <FolderClosed className="size-3.5 shrink-0 text-muted-foreground/70" />
+            <FolderIcon className="size-3.5 shrink-0 text-muted-foreground/70" />
           )}
           <span className="min-w-0 flex-1 truncate text-ui-sm font-medium text-foreground/80">
             {headerLabel}
@@ -516,7 +529,6 @@ export function ComposerLocalDirectoryMenu(props: {
     </Command>
   );
 }
-
 function UseCurrentFolderRow(props: {
   directoryLabel: string;
   index: number;
@@ -538,7 +550,7 @@ function UseCurrentFolderRow(props: {
       }}
       onClick={onActivate}
     >
-      <FolderClosed className="size-3.5 text-muted-foreground/60" />
+      <FolderIcon className="size-3.5 text-muted-foreground/60" />
       <div className="min-w-0 flex flex-1 items-center gap-1.5 overflow-hidden">
         <span className="shrink-0 text-ui-sm font-medium text-foreground/80">Use this folder</span>
         <span className="truncate text-ui-sm text-muted-foreground/55">{directoryLabel}</span>
@@ -546,7 +558,6 @@ function UseCurrentFolderRow(props: {
     </CommandItem>
   );
 }
-
 function buildSearchRowSubtitle(entry: ProjectLocalSearchEntry, rootPath: string): string {
   const parent = entry.parentPath ?? "";
   if (!parent) return "";
@@ -558,7 +569,6 @@ function buildSearchRowSubtitle(entry: ProjectLocalSearchEntry, rootPath: string
   }
   return parent;
 }
-
 function LocalSearchRow(props: {
   entry: ProjectLocalSearchEntry;
   rootPath: string;
@@ -570,7 +580,6 @@ function LocalSearchRow(props: {
   const { entry, rootPath, index, isHighlighted, onActivate, onHighlight } = props;
   const isDirectory = entry.kind === "directory";
   const subtitle = buildSearchRowSubtitle(entry, rootPath);
-
   return (
     <CommandItem
       data-highlight-index={index}
@@ -585,9 +594,9 @@ function LocalSearchRow(props: {
       onClick={() => onActivate(entry)}
     >
       {isDirectory ? (
-        <FolderClosed className="size-3.5 text-muted-foreground/60" />
+        <FolderIcon className="size-3.5 text-muted-foreground/60" />
       ) : (
-        <FileIcon className="size-3.5 text-muted-foreground/60" />
+        <File02Icon className="size-3.5 text-muted-foreground/60" />
       )}
       <div className="min-w-0 flex flex-1 items-center gap-3">
         <span className="min-w-0 flex-1 truncate text-ui-sm font-medium text-foreground/80">
@@ -602,7 +611,6 @@ function LocalSearchRow(props: {
     </CommandItem>
   );
 }
-
 function LocalEntryRow(props: {
   entry: ProjectFileSystemEntry;
   index: number;
@@ -612,7 +620,6 @@ function LocalEntryRow(props: {
 }) {
   const { entry, index, isHighlighted, onActivate, onHighlight } = props;
   const isDirectory = entry.kind === "directory";
-
   return (
     <CommandItem
       data-highlight-index={index}
@@ -627,9 +634,9 @@ function LocalEntryRow(props: {
       onClick={() => onActivate(entry)}
     >
       {isDirectory ? (
-        <FolderClosed className="size-3.5 text-muted-foreground/60" />
+        <FolderIcon className="size-3.5 text-muted-foreground/60" />
       ) : (
-        <FileIcon className="size-3.5 text-muted-foreground/60" />
+        <File02Icon className="size-3.5 text-muted-foreground/60" />
       )}
       <div className="min-w-0 flex flex-1 items-center gap-1.5 overflow-hidden">
         <span className="truncate text-ui-sm font-medium text-foreground/80">{entry.name}</span>

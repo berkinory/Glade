@@ -1,3 +1,4 @@
+import { PlusMinusSquare01Icon, WorkflowCircle04Icon, PinIcon, UndoIcon } from "~/lib/icons";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { pluralize } from "@glade/shared/text/text";
 import { AsyncUserInputCard } from "~/components/chat/AsyncUserInputCard";
@@ -35,10 +36,8 @@ import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "~/components/
 import { DisclosureChevron } from "~/components/ui/DisclosureChevron";
 import { DisclosureRegion } from "~/components/ui/DisclosureRegion";
 import { disclosureContentClassName } from "~/lib/disclosureMotion";
-import { ChangesIcon, GitBranchIcon, PinIcon, Undo2Icon } from "~/lib/icons";
 import { pinActionLabel } from "~/lib/pin";
 import { cn } from "~/lib/utils";
-
 import { MUTED_LABEL_TEXT_CLASS_NAME } from "~/surfaceStyles";
 import { formatDayAwareTimestamp } from "~/timestampFormat";
 import { isFileChangeWorkLogEntry, type WorkLogEntry } from "~/workLog.types";
@@ -47,11 +46,15 @@ import { collectAbsoluteFilePathsFromWorkEntries } from "./timelineTransitions";
 import type { TimelineController } from "./useTimelineController";
 export function renderTimelineAssistantMessage(
   controller: TimelineController,
-  row: Extract<MessagesTimelineRow, { kind: "message" }>,
+  row: Extract<
+    MessagesTimelineRow,
+    {
+      kind: "message";
+    }
+  >,
 ) {
   const {
     expandedWorkGroupsState,
-
     expandedCollapsedWork,
     settledTurnCollapseTransitions,
     appTypographyScale,
@@ -120,7 +123,6 @@ export function renderTimelineAssistantMessage(
         statusEntries,
         toolGroupId,
         toolExpanded,
-
         orderedRenderableEntries: displayEntries.filter(isRenderableToolEntry),
         renderableToolEntries: toolEntries.filter(isRenderableToolEntry),
         visibleRenderableToolEntries: visibleToolEntries.filter(isRenderableToolEntry),
@@ -142,10 +144,8 @@ export function renderTimelineAssistantMessage(
       streaming: row.assistantCopyStreaming,
     });
     const messagePinned = pinnedMessageIds?.has(row.message.id) ?? false;
-
     const showPinToggle =
       Boolean(onTogglePinMessage) && (assistantCopyState.visible || messagePinned);
-
     const showForkAction =
       Boolean(onForkFromMessage) &&
       assistantCopyState.visible &&
@@ -170,9 +170,7 @@ export function renderTimelineAssistantMessage(
       (turnSummary?.files.length ?? 0) > 0
         ? turnSummary!.files
         : [];
-
     const isTerminalAssistantMessage = row.showAssistantCopyButton && !row.assistantTurnInProgress;
-
     const assistantMeta = [
       isTerminalAssistantMessage
         ? formatDayAwareTimestamp(row.message.createdAt, timestampFormat)
@@ -197,7 +195,6 @@ export function renderTimelineAssistantMessage(
         ),
       ).values(),
     ];
-
     const collapsedComputerActionEntries = [
       ...new Map(
         (row.collapsedTurnItems ?? []).flatMap((item) =>
@@ -241,17 +238,32 @@ export function renderTimelineAssistantMessage(
           onImageExpand={onImageExpand}
           onOpenTurnDiff={onOpenTurnDiff}
           timestampFormat={timestampFormat}
-          {...(onOpenAgentActivity ? { onOpenAgentActivity } : {})}
-          {...(computerControlEnabled !== undefined ? { computerControlEnabled } : {})}
-          {...(onEnableComputerControl ? { onEnableComputerControl } : {})}
-          {...(turnSummary?.turnId ? { turnId: turnSummary.turnId } : {})}
+          {...(onOpenAgentActivity
+            ? {
+                onOpenAgentActivity,
+              }
+            : {})}
+          {...(computerControlEnabled !== undefined
+            ? {
+                computerControlEnabled,
+              }
+            : {})}
+          {...(onEnableComputerControl
+            ? {
+                onEnableComputerControl,
+              }
+            : {})}
+          {...(turnSummary?.turnId
+            ? {
+                turnId: turnSummary.turnId,
+              }
+            : {})}
         />
       );
       const isLiveGroup =
         display.toolGroupId !== null &&
         display.toolGroupId === lastLiveWorkGroupId &&
         (activeTurnInProgress || isWorking);
-
       const plannedRenderChunks = planWorkEntryRenderChunks(display.orderedRenderableEntries, {
         tailIsLive: placement === "inline" && isLiveGroup,
       });
@@ -275,7 +287,6 @@ export function renderTimelineAssistantMessage(
                       .filter((workEntry) => workEntry.tone === "tool")
                       .map(renderInlineToolRow);
                   }
-
                   const summaryRowKey = `${placement}:${row.message.id}:${chunk.id}`;
                   const summaryOverrideKey = `${summaryRowKey}${fold.keySuffix}`;
                   return (
@@ -303,7 +314,9 @@ export function renderTimelineAssistantMessage(
                       "transition-colors duration-100 hover:text-foreground",
                       MUTED_LABEL_TEXT_CLASS_NAME,
                     )}
-                    style={{ fontSize: `${normalizedChatFontSizePx}px` }}
+                    style={{
+                      fontSize: `${normalizedChatFontSizePx}px`,
+                    }}
                     onClick={() => handleToggleWorkGroup(display.toolGroupId!)}
                   >
                     {display.toolExpanded
@@ -330,7 +343,9 @@ export function renderTimelineAssistantMessage(
                           "transition-colors duration-100 hover:text-foreground",
                           MUTED_LABEL_TEXT_CLASS_NAME,
                         )}
-                        style={{ fontSize: `${normalizedChatFontSizePx}px` }}
+                        style={{
+                          fontSize: `${normalizedChatFontSizePx}px`,
+                        }}
                         onClick={() => handleToggleWorkGroup(display.toolGroupId!)}
                       >
                         {display.toolExpanded
@@ -362,9 +377,21 @@ export function renderTimelineAssistantMessage(
                   markdownCwd={markdownCwd}
                   onImageExpand={onImageExpand}
                   timestampFormat={timestampFormat}
-                  {...(onOpenAgentActivity ? { onOpenAgentActivity } : {})}
-                  {...(computerControlEnabled !== undefined ? { computerControlEnabled } : {})}
-                  {...(onEnableComputerControl ? { onEnableComputerControl } : {})}
+                  {...(onOpenAgentActivity
+                    ? {
+                        onOpenAgentActivity,
+                      }
+                    : {})}
+                  {...(computerControlEnabled !== undefined
+                    ? {
+                        computerControlEnabled,
+                      }
+                    : {})}
+                  {...(onEnableComputerControl
+                    ? {
+                        onEnableComputerControl,
+                      }
+                    : {})}
                 />
               ))}
             </div>
@@ -383,9 +410,21 @@ export function renderTimelineAssistantMessage(
           markdownCwd={markdownCwd}
           onImageExpand={onImageExpand}
           timestampFormat={timestampFormat}
-          {...(onOpenAgentActivity ? { onOpenAgentActivity } : {})}
-          {...(computerControlEnabled !== undefined ? { computerControlEnabled } : {})}
-          {...(onEnableComputerControl ? { onEnableComputerControl } : {})}
+          {...(onOpenAgentActivity
+            ? {
+                onOpenAgentActivity,
+              }
+            : {})}
+          {...(computerControlEnabled !== undefined
+            ? {
+                computerControlEnabled,
+              }
+            : {})}
+          {...(onEnableComputerControl
+            ? {
+                onEnableComputerControl,
+              }
+            : {})}
         />
       ) : (
         <div
@@ -412,7 +451,14 @@ export function renderTimelineAssistantMessage(
       const summary = summarizeToolCallGroup(chunk.entries);
       if (!summary) {
         return chunk.entries.map((entry) =>
-          renderCollapsedTurnItem({ kind: "work", id: entry.id, entry }, keyPrefix),
+          renderCollapsedTurnItem(
+            {
+              kind: "work",
+              id: entry.id,
+              entry,
+            },
+            keyPrefix,
+          ),
         );
       }
       const summaryOverrideKey = `turn:${row.message.id}:${chunk.id}`;
@@ -426,7 +472,14 @@ export function renderTimelineAssistantMessage(
           renderChildren={() => (
             <div className="space-y-0.5 pt-0.5">
               {chunk.entries.map((entry) =>
-                renderCollapsedTurnItem({ kind: "work", id: entry.id, entry }, keyPrefix),
+                renderCollapsedTurnItem(
+                  {
+                    kind: "work",
+                    id: entry.id,
+                    entry,
+                  },
+                  keyPrefix,
+                ),
               )}
             </div>
           )}
@@ -466,7 +519,9 @@ export function renderTimelineAssistantMessage(
                   "-ml-0.5 inline-flex items-center gap-1 pb-2 text-left transition-colors duration-100 hover:text-foreground",
                   MUTED_LABEL_TEXT_CLASS_NAME,
                 )}
-                style={{ fontSize: chatTypographyStyle.fontSize }}
+                style={{
+                  fontSize: chatTypographyStyle.fontSize,
+                }}
               >
                 <span>
                   {row.collapsedWorkElapsed ? `Worked for ${row.collapsedWorkElapsed}` : "Details"}
@@ -549,8 +604,16 @@ export function renderTimelineAssistantMessage(
                 markdownCwd={markdownCwd}
                 onImageExpand={onImageExpand}
                 timestampFormat={timestampFormat}
-                {...(computerControlEnabled !== undefined ? { computerControlEnabled } : {})}
-                {...(onEnableComputerControl ? { onEnableComputerControl } : {})}
+                {...(computerControlEnabled !== undefined
+                  ? {
+                      computerControlEnabled,
+                    }
+                  : {})}
+                {...(onEnableComputerControl
+                  ? {
+                      onEnableComputerControl,
+                    }
+                  : {})}
               />
             </div>
           ))}
@@ -601,10 +664,7 @@ export function renderTimelineAssistantMessage(
               (sum, file) => sum + (file.deletions ?? 0),
               0,
             );
-            const editedFilesLabel = `Edited ${checkpointFiles.length} ${pluralize(
-              checkpointFiles.length,
-              "file",
-            )}`;
+            const editedFilesLabel = `Edited ${checkpointFiles.length} ${pluralize(checkpointFiles.length, "file")}`;
             const firstCheckpointFiles = checkpointFiles.slice(0, MAX_VISIBLE_CHANGED_FILES);
             const overflowCheckpointFiles = checkpointFiles.slice(MAX_VISIBLE_CHANGED_FILES);
             const renderCheckpointFileRow = (
@@ -617,7 +677,13 @@ export function renderTimelineAssistantMessage(
               return (
                 <EditedFileRow
                   key={file.path}
-                  file={{ path: file.path, kind: fileKind, additions, deletions, workspaceRoot }}
+                  file={{
+                    path: file.path,
+                    kind: fileKind,
+                    additions,
+                    deletions,
+                    workspaceRoot,
+                  }}
                   editorConfig={{
                     keybindings: editorKeybindings,
                     availableEditors: installedEditors,
@@ -640,18 +706,22 @@ export function renderTimelineAssistantMessage(
                   )}
                 >
                   <div className="flex min-w-0 items-center gap-2.5">
-                    <ChangesIcon className="size-3.5 shrink-0 text-muted-foreground/70" />
+                    <PlusMinusSquare01Icon className="size-3.5 shrink-0 text-muted-foreground/70" />
                     <div className="min-w-0">
                       <div
                         className="truncate font-normal text-foreground/92"
-                        style={{ fontSize: chatTypographyStyle.fontSize }}
+                        style={{
+                          fontSize: chatTypographyStyle.fontSize,
+                        }}
                       >
                         {editedFilesLabel}
                       </div>
                       {totalAdditions + totalDeletions > 0 ? (
                         <div
                           className="font-system-ui tabular-nums"
-                          style={{ fontSize: chatTypographyStyle.fontSize }}
+                          style={{
+                            fontSize: chatTypographyStyle.fontSize,
+                          }}
                         >
                           <DiffStatLabel additions={totalAdditions} deletions={totalDeletions} />
                         </div>
@@ -663,15 +733,19 @@ export function renderTimelineAssistantMessage(
                       <button
                         type="button"
                         className="flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
-                        style={{ fontSize: chatTypographyStyle.fontSize }}
+                        style={{
+                          fontSize: chatTypographyStyle.fontSize,
+                        }}
                         onClick={() => onUndoTurnFiles(checkpointTurnCounts)}
                       >
                         Undo
-                        <Undo2Icon className="size-3" />
+                        <UndoIcon className="size-3" />
                       </button>
                     )}
                     <ReviewChangesButton
-                      style={{ fontSize: chatTypographyStyle.fontSize }}
+                      style={{
+                        fontSize: chatTypographyStyle.fontSize,
+                      }}
                       onClick={() => onOpenTurnDiff(turnSummary.turnId)}
                     />
                     <button
@@ -711,7 +785,9 @@ export function renderTimelineAssistantMessage(
                     <button
                       type="button"
                       className="flex w-full items-center justify-start gap-1.5 border-t border-[color:var(--color-border-light)] bg-transparent px-3 py-2 font-system-ui font-normal text-muted-foreground transition-colors hover:bg-[var(--color-background-button-secondary-hover)] hover:text-foreground"
-                      style={{ fontSize: chatTypographyStyle.fontSize }}
+                      style={{
+                        fontSize: chatTypographyStyle.fontSize,
+                      }}
                       aria-expanded={fileListExpanded}
                       onClick={() => toggleFileListExpanded(turnSummary.turnId)}
                     >
@@ -719,10 +795,7 @@ export function renderTimelineAssistantMessage(
                       <span>
                         {fileListExpanded
                           ? "Show less"
-                          : `Show ${overflowCheckpointFiles.length} more ${pluralize(
-                              overflowCheckpointFiles.length,
-                              "file",
-                            )}`}
+                          : `Show ${overflowCheckpointFiles.length} more ${pluralize(overflowCheckpointFiles.length, "file")}`}
                       </span>
                     </button>
                   ) : null}
@@ -747,7 +820,7 @@ export function renderTimelineAssistantMessage(
                   tooltip="Fork from here"
                   onClick={() => onForkFromMessage?.(row.message.id)}
                 >
-                  <GitBranchIcon className={MESSAGE_ACTION_ICON_CLASS_NAME} />
+                  <WorkflowCircle04Icon className={MESSAGE_ACTION_ICON_CLASS_NAME} />
                 </MessageActionButton>
               ) : null}
               {showPinToggle ? (

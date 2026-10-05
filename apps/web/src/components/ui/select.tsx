@@ -1,12 +1,11 @@
 "use client";
 
+import { ChevronDownIcon, ChevronsDownUpIcon, ChevronUpIcon, CheckIcon } from "~/lib/icons";
 import { mergeProps } from "@base-ui/react/merge-props";
 import { Select as SelectPrimitive } from "@base-ui/react/select";
 import { useRender } from "@base-ui/react/use-render";
 import { cva, type VariantProps } from "class-variance-authority";
-import { ChevronDownIcon, ChevronsUpDownIcon, ChevronUpIcon } from "~/lib/icons";
 import * as React from "react";
-
 import { cn } from "~/lib/utils";
 import { UI_MOTION_POPUP_CLASS } from "~/lib/uiMotion";
 import {
@@ -18,7 +17,6 @@ import {
   COMPOSER_PICKER_SELECT_OPTION_CLASS_NAME,
   COMPOSER_SURFACE_SHADOW_CLASS_NAME,
 } from "../chat/composerPickerStyles";
-
 const Select = SelectPrimitive.Root;
 
 // Every select popup uses a shared picker shell: "composer" is the app-wide
@@ -26,9 +24,7 @@ const Select = SelectPrimitive.Root;
 // (SettingsSelectPopup). The legacy unstyled default surface was removed on
 // purpose — do not add it back.
 type SelectPopupSurface = "composer" | "settings";
-
 const settingsSelectOptionClassName = `[&>svg]:-mx-0.5 flex cursor-default select-none items-center ${COMPOSER_PICKER_OPTION_RADIUS_CLASS_NAME} text-ui text-[var(--color-text-foreground)] outline-none data-disabled:pointer-events-none data-highlighted:bg-[var(--color-background-button-secondary-hover)] data-highlighted:text-[var(--color-text-foreground)] data-disabled:opacity-64 [&>svg:not([class*='opacity-'])]:opacity-80 [&>svg]:pointer-events-none [&>svg]:shrink-0 grid in-data-[side=none]:min-w-[calc(var(--anchor-width)+1.25rem)]`;
-
 const SelectPopupSurfaceContext = React.createContext<SelectPopupSurface>("composer");
 
 // Keep neutral select chrome on the same token families Codex uses for menus and list hover.
@@ -55,19 +51,15 @@ const selectTriggerVariants = cva(
     },
   },
 );
-
 const selectTriggerIconClassName = "-me-1 size-4.5 opacity-80 sm:size-4";
-
 interface SelectButtonProps extends useRender.ComponentProps<"button"> {
   size?: VariantProps<typeof selectTriggerVariants>["size"];
   variant?: VariantProps<typeof selectTriggerVariants>["variant"];
 }
-
 function SelectButton({ className, size, variant, render, children, ...props }: SelectButtonProps) {
   const typeValue: React.ButtonHTMLAttributes<HTMLButtonElement>["type"] = render
     ? undefined
     : "button";
-
   const defaultProps = {
     children: (
       <>
@@ -77,22 +69,27 @@ function SelectButton({ className, size, variant, render, children, ...props }: 
         {variant === "ghost" ? (
           <ChevronDownIcon className="size-3 opacity-50" />
         ) : (
-          <ChevronsUpDownIcon className={selectTriggerIconClassName} />
+          <ChevronsDownUpIcon className={selectTriggerIconClassName} />
         )}
       </>
     ),
-    className: cn(selectTriggerVariants({ size, variant }), "min-w-0", className),
+    className: cn(
+      selectTriggerVariants({
+        size,
+        variant,
+      }),
+      "min-w-0",
+      className,
+    ),
     "data-slot": "select-button",
     type: typeValue,
   };
-
   return useRender({
     defaultTagName: "button",
     props: mergeProps<"button">(defaultProps, props),
     render,
   });
 }
-
 function SelectTrigger({
   className,
   size: sizeProp,
@@ -104,7 +101,13 @@ function SelectTrigger({
   const variant = variantProp === undefined ? "default" : variantProp;
   return (
     <SelectPrimitive.Trigger
-      className={cn(selectTriggerVariants({ size, variant }), className)}
+      className={cn(
+        selectTriggerVariants({
+          size,
+          variant,
+        }),
+        className,
+      )}
       data-slot="select-trigger"
       {...props}
     >
@@ -115,7 +118,6 @@ function SelectTrigger({
     </SelectPrimitive.Trigger>
   );
 }
-
 function SelectValue({ className, ...props }: SelectPrimitive.Value.Props) {
   return (
     <SelectPrimitive.Value
@@ -125,7 +127,6 @@ function SelectValue({ className, ...props }: SelectPrimitive.Value.Props) {
     />
   );
 }
-
 function SelectPopup({
   className,
   shellClassName,
@@ -165,7 +166,6 @@ function SelectPopup({
       : COMPOSER_PICKER_MENU_SURFACE_CLASS_NAME,
     shellClassName,
   );
-
   const listClassName = cn(
     COMPOSER_PICKER_MENU_POPUP_BODY_CLASS_NAME,
     "max-h-[min(var(--available-height),28rem)]",
@@ -175,7 +175,6 @@ function SelectPopup({
     surface === "settings"
       ? "before:from-[var(--app-settings-surface)]"
       : "before:from-[var(--composer-surface)]";
-
   return (
     <SelectPopupSurfaceContext.Provider value={surface}>
       <SelectPrimitive.Portal>
@@ -231,7 +230,6 @@ function SelectPopup({
     </SelectPopupSurfaceContext.Provider>
   );
 }
-
 function SelectItem({
   className,
   children,
@@ -246,7 +244,6 @@ function SelectItem({
     popupSurface === "settings"
       ? settingsSelectOptionClassName
       : COMPOSER_PICKER_SELECT_OPTION_CLASS_NAME;
-
   return (
     <SelectPrimitive.Item
       className={cn(
@@ -265,26 +262,12 @@ function SelectItem({
           className="col-start-2 justify-self-end"
           data-slot="select-item-indicator"
         >
-          <svg
-            className="size-3"
-            fill="none"
-            height="24"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            viewBox="0 0 24 24"
-            width="24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path d="M5.252 12.7 10.2 18.63 18.748 5.37" />
-          </svg>
+          <CheckIcon className="size-3" strokeWidth="2" />
         </SelectPrimitive.ItemIndicator>
       )}
     </SelectPrimitive.Item>
   );
 }
-
 function SelectSeparator({ className, ...props }: SelectPrimitive.Separator.Props) {
   return (
     <SelectPrimitive.Separator
@@ -294,11 +277,9 @@ function SelectSeparator({ className, ...props }: SelectPrimitive.Separator.Prop
     />
   );
 }
-
 function SelectGroup(props: SelectPrimitive.Group.Props) {
   return <SelectPrimitive.Group data-slot="select-group" {...props} />;
 }
-
 function SelectGroupLabel(props: SelectPrimitive.GroupLabel.Props) {
   return (
     <SelectPrimitive.GroupLabel
@@ -308,7 +289,6 @@ function SelectGroupLabel(props: SelectPrimitive.GroupLabel.Props) {
     />
   );
 }
-
 export {
   Select,
   SelectTrigger,

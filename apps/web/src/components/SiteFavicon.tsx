@@ -1,6 +1,5 @@
+import { Globe02Icon } from "~/lib/icons";
 import { useEffect, useState } from "react";
-
-import { GlobeIcon } from "~/lib/icons";
 import {
   extractHostname,
   probeSiteFavicon,
@@ -8,14 +7,11 @@ import {
   siteFaviconStatusCache,
 } from "~/lib/siteFavicon";
 import { cn } from "~/lib/utils";
-
 export interface SiteFaviconProps {
   readonly url: string;
-
   readonly size?: number | undefined;
   readonly className?: string | undefined;
 }
-
 export const SiteFavicon = function SiteFavicon({ url, size, className }: SiteFaviconProps) {
   const host = extractHostname(url) ?? (url.includes(".") ? url : null);
   const faviconSrc = host ? resolveSiteFaviconUrl(host) : null;
@@ -23,32 +19,47 @@ export const SiteFavicon = function SiteFavicon({ url, size, className }: SiteFa
   // Seed from the shared cache so a known host renders its icon immediately. Keyed by src: a host
   // change derives back to the pending/fallback state in the same render, so the probe effect never
   // sets state synchronously.
-  const [probe, setProbe] = useState<{ src: string; status: "ok" | "fail" } | null>(() => {
+  const [probe, setProbe] = useState<{
+    src: string;
+    status: "ok" | "fail";
+  } | null>(() => {
     if (!faviconSrc) return null;
     const cached = siteFaviconStatusCache.get(faviconSrc);
-    return cached === undefined ? null : { src: faviconSrc, status: cached };
+    return cached === undefined
+      ? null
+      : {
+          src: faviconSrc,
+          status: cached,
+        };
   });
   const status: "ok" | "fail" | null = !faviconSrc
     ? "fail"
     : probe !== null && probe.src === faviconSrc
       ? probe.status
       : null;
-
   useEffect(() => {
     if (!faviconSrc) {
       return;
     }
     let cancelled = false;
     void probeSiteFavicon(faviconSrc).then((result) => {
-      if (!cancelled) setProbe({ src: faviconSrc, status: result });
+      if (!cancelled)
+        setProbe({
+          src: faviconSrc,
+          status: result,
+        });
     });
     return () => {
       cancelled = true;
     };
   }, [faviconSrc]);
-
-  const sizeStyle = size === undefined ? undefined : { width: `${size}px`, height: `${size}px` };
-
+  const sizeStyle =
+    size === undefined
+      ? undefined
+      : {
+          width: `${size}px`,
+          height: `${size}px`,
+        };
   if (status === "ok" && faviconSrc) {
     return (
       <img
@@ -59,11 +70,13 @@ export const SiteFavicon = function SiteFavicon({ url, size, className }: SiteFa
         style={sizeStyle}
         onError={() => {
           siteFaviconStatusCache.set(faviconSrc, "fail");
-          setProbe({ src: faviconSrc, status: "fail" });
+          setProbe({
+            src: faviconSrc,
+            status: "fail",
+          });
         }}
       />
     );
   }
-
-  return <GlobeIcon aria-hidden="true" className={className} style={sizeStyle} />;
+  return <Globe02Icon aria-hidden="true" className={className} style={sizeStyle} />;
 };

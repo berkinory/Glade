@@ -1,6 +1,6 @@
+import { FolderIcon } from "~/lib/icons";
+import { NamedIcon } from "~/lib/namedIcons";
 import { useId, useMemo, useState, type KeyboardEvent, type RefObject } from "react";
-
-import { CentralIcon } from "~/lib/central-icons";
 import {
   DEFAULT_PROJECT_ICON,
   PROJECT_COLOR_LABELS,
@@ -14,20 +14,15 @@ import {
 import { PROJECT_EMOJI_OPTIONS } from "~/lib/projectEmoji";
 import { handleRadioGridKeyDown } from "~/lib/radioGridKeyboard";
 import { cn } from "~/lib/utils";
-import { FolderClosed } from "./FolderClosed";
 import { ProjectEmojiGlyph } from "./ProjectSidebarIcon";
 import { Input } from "./ui/input";
 import { toggleVariants } from "./ui/toggle";
-
 const PICKER_TABS = ["emoji", "icons"] as const;
 type PickerTab = (typeof PICKER_TABS)[number];
-
 const GRID_COLUMNS = 8;
-
 const CELL_CLASS_NAME =
   "flex aspect-square cursor-pointer items-center justify-center rounded-xl outline-hidden transition-colors hover:bg-foreground/6 focus-visible:ring-2 focus-visible:ring-ring/50";
 const SELECTED_CELL_CLASS_NAME = "bg-foreground/9 hover:bg-foreground/9";
-
 function matchesQuery(query: string, ...fields: string[]): boolean {
   if (query.length === 0) return true;
   const words = fields.join(" ").toLowerCase().split(/\s+/);
@@ -37,7 +32,6 @@ function matchesQuery(query: string, ...fields: string[]): boolean {
     .filter(Boolean)
     .every((queryWord) => words.some((word) => word.startsWith(queryWord)));
 }
-
 export function ProjectAppearancePicker({
   value,
   searchInputRef,
@@ -45,25 +39,20 @@ export function ProjectAppearancePicker({
   onEmojiPicked,
 }: {
   value: ProjectAppearance | null;
-
   searchInputRef: RefObject<HTMLInputElement | null>;
   onChange: (next: ProjectAppearance | null) => void;
-
   onEmojiPicked: () => void;
 }) {
   const [tab, setTab] = useState<PickerTab>(value?.kind === "emoji" ? "emoji" : "icons");
   const [query, setQuery] = useState("");
-
   const [color, setColor] = useState<ProjectColor | null>(
     value?.kind === "icon" ? value.color : null,
   );
   const fieldId = useId();
   const trimmedQuery = query.trim();
-
   const selectedIcon =
     value?.kind === "emoji" ? null : value?.kind === "icon" ? value.icon : DEFAULT_PROJECT_ICON;
   const selectedEmoji = value?.kind === "emoji" ? value.emoji : null;
-
   const icons = useMemo(
     () =>
       PROJECT_ICON_OPTIONS.filter((option) =>
@@ -75,19 +64,15 @@ export function ProjectAppearancePicker({
     const matches = PROJECT_EMOJI_OPTIONS.filter(
       (option) => option.emoji === trimmedQuery || matchesQuery(trimmedQuery, option.keywords),
     ).map((option) => option.emoji);
-
     const typed = firstEmoji(trimmedQuery);
     return typed && !matches.includes(typed) ? [typed, ...matches] : matches;
   }, [trimmedQuery]);
-
   const selectedIconListed = icons.some((option) => option.name === selectedIcon);
   const selectedEmojiListed = selectedEmoji !== null && emoji.includes(selectedEmoji);
-
   const selectTab = (next: PickerTab) => {
     setTab(next);
     setQuery("");
   };
-
   const handleTabKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const index = PICKER_TABS.indexOf(tab);
     const nextIndex =
@@ -106,16 +91,21 @@ export function ProjectAppearancePicker({
     selectTab(next);
     event.currentTarget.querySelector<HTMLElement>(`[data-picker-tab="${next}"]`)?.focus();
   };
-
   const pickColor = (next: ProjectColor | null) => {
     setColor(next);
     if (value?.kind !== "emoji") {
-      onChange({ kind: "icon", icon: selectedIcon ?? DEFAULT_PROJECT_ICON, color: next });
+      onChange({
+        kind: "icon",
+        icon: selectedIcon ?? DEFAULT_PROJECT_ICON,
+        color: next,
+      });
     }
   };
-
-  const tintStyle = color ? { color: projectColorValue(color) } : undefined;
-
+  const tintStyle = color
+    ? {
+        color: projectColorValue(color),
+      }
+    : undefined;
   return (
     <div className="flex w-full flex-col gap-3">
       <div
@@ -142,7 +132,9 @@ export function ProjectAppearancePicker({
                 searchInputRef.current?.focus();
               }}
               className={cn(
-                toggleVariants({ size: "sm" }),
+                toggleVariants({
+                  size: "sm",
+                }),
                 "rounded-full px-3 font-normal",
                 !active && "text-muted-foreground hover:text-foreground",
               )}
@@ -196,7 +188,13 @@ export function ProjectAppearancePicker({
                   <span
                     aria-hidden
                     className="size-5 rounded-full bg-muted-foreground/70"
-                    style={option ? { backgroundColor: projectColorValue(option) } : undefined}
+                    style={
+                      option
+                        ? {
+                            backgroundColor: projectColorValue(option),
+                          }
+                        : undefined
+                    }
                   />
                 </button>
               );
@@ -212,7 +210,9 @@ export function ProjectAppearancePicker({
                 role="radiogroup"
                 aria-label="Icon"
                 onKeyDown={(event) =>
-                  handleRadioGridKeyDown(event, "[data-project-icon]", { columns: GRID_COLUMNS })
+                  handleRadioGridKeyDown(event, "[data-project-icon]", {
+                    columns: GRID_COLUMNS,
+                  })
                 }
                 className="grid grid-cols-8 gap-1"
               >
@@ -228,7 +228,13 @@ export function ProjectAppearancePicker({
                       aria-label={option.label}
                       title={option.label}
                       tabIndex={selected || (!selectedIconListed && index === 0) ? 0 : -1}
-                      onClick={() => onChange({ kind: "icon", icon: option.name, color })}
+                      onClick={() =>
+                        onChange({
+                          kind: "icon",
+                          icon: option.name,
+                          color,
+                        })
+                      }
                       className={cn(
                         CELL_CLASS_NAME,
                         "text-muted-foreground",
@@ -236,9 +242,9 @@ export function ProjectAppearancePicker({
                       )}
                     >
                       {option.name === DEFAULT_PROJECT_ICON ? (
-                        <FolderClosed className="size-5" style={tintStyle} />
+                        <FolderIcon className="size-5" style={tintStyle} />
                       ) : (
-                        <CentralIcon name={option.name} className="size-5" style={tintStyle} />
+                        <NamedIcon name={option.name} className="size-5" style={tintStyle} />
                       )}
                     </button>
                   );
@@ -273,7 +279,10 @@ export function ProjectAppearancePicker({
                     aria-label={option}
                     tabIndex={selected || (!selectedEmojiListed && index === 0) ? 0 : -1}
                     onClick={() => {
-                      onChange({ kind: "emoji", emoji: option });
+                      onChange({
+                        kind: "emoji",
+                        emoji: option,
+                      });
                       onEmojiPicked();
                     }}
                     className={cn(CELL_CLASS_NAME, selected && SELECTED_CELL_CLASS_NAME)}

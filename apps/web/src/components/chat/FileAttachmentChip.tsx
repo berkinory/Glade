@@ -1,7 +1,6 @@
+import { File02Icon } from "~/lib/icons";
 import { formatBytes } from "@glade/shared/text/formatBytes";
-
 import { basenameOfPath } from "~/file-icons";
-import { FileIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { type ChatFileAttachment } from "../../types";
 import { COMPOSER_ATTACHMENT_CHIP_CLASS_NAME } from "../composerInlineChip";
@@ -13,9 +12,7 @@ import {
   DraftAttachmentWarningIcon,
 } from "./DraftAttachmentWarning";
 import { FileEntryIcon } from "./FileEntryIcon";
-
 type FileAttachmentChipVariant = "pill" | "card";
-
 const MIME_TYPE_LABEL_BY_TYPE: Record<string, string> = {
   "application/gzip": "GZ",
   "application/json": "JSON",
@@ -45,7 +42,6 @@ const MIME_TYPE_LABEL_BY_TYPE: Record<string, string> = {
   "text/tab-separated-values": "TSV",
   "text/xml": "XML",
 };
-
 interface FileAttachmentChipProps {
   file: ChatFileAttachment;
   onRemove?: ((fileId: string) => void) | undefined;
@@ -64,19 +60,16 @@ function fileAttachmentTypeLabel(file: ChatFileAttachment): string {
     if (compoundExtension.length <= 12) {
       return compoundExtension;
     }
-
     const finalExtension = compoundExtension.split(".").pop();
     if (finalExtension) {
       return finalExtension;
     }
   }
-
   const mimeType = file.mimeType.trim().toLowerCase();
   const mappedMimeType = MIME_TYPE_LABEL_BY_TYPE[mimeType];
   if (mappedMimeType) {
     return mappedMimeType;
   }
-
   const mimeSubtype = mimeType.split("/")[1]?.trim();
   if (mimeSubtype && mimeSubtype !== "octet-stream") {
     const fallback = mimeSubtype
@@ -87,15 +80,12 @@ function fileAttachmentTypeLabel(file: ChatFileAttachment): string {
       return fallback;
     }
   }
-
   return "FILE";
 }
-
 function fileAttachmentDetail(file: ChatFileAttachment): string {
   const mimeType = file.mimeType.trim() || "Unknown type";
   return `${mimeType} - ${formatBytes(file.sizeBytes)}`;
 }
-
 function FileAttachmentPillTrigger({
   file,
   onRemove,
@@ -117,7 +107,7 @@ function FileAttachmentPillTrigger({
       )}
     >
       <span className="inline-flex h-7 min-w-0 max-w-[16rem] items-center gap-1.5 rounded-full pl-2 pr-2">
-        <FileIcon className="size-3.5 shrink-0 text-muted-foreground/90" />
+        <File02Icon className="size-3.5 shrink-0 text-muted-foreground/90" />
         <span className="min-w-0 truncate">{file.name}</span>
         <span className="shrink-0 text-muted-foreground/70">{formatBytes(file.sizeBytes)}</span>
         {nonPersisted ? <DraftAttachmentWarningIcon /> : null}
@@ -133,7 +123,6 @@ function FileAttachmentPillTrigger({
     </span>
   );
 }
-
 export function FileAttachmentChip({
   file,
   onRemove,
@@ -175,7 +164,6 @@ export function FileAttachmentChip({
         nonPersisted={nonPersisted}
       />
     );
-
   return (
     <Tooltip>
       <TooltipTrigger render={trigger} />

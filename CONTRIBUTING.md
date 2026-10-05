@@ -27,7 +27,7 @@ Use `bun run dev:build` to run the Dev desktop with a production web build.
 React Compiler optimizations remain enabled, while React development checks and
 web hot reload are absent. Turbo caches the web, backend and desktop builds and
 reuses them when inputs and environment are unchanged. The web build lives in
-`apps/web/dist-dev`; release icon pruning and asset precompression are skipped.
+`apps/web/dist-dev`; release asset precompression is skipped.
 The first launch includes build time. There are no code watchers in this mode;
 restart the command to apply any code changes. This mode uses the same
 Dev data directory as `bun run dev`; run one mode at a time.

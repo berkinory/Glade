@@ -1,7 +1,7 @@
+import { Robot01Icon, ChevronLeftIcon } from "~/lib/icons";
 import { pluralize } from "@glade/shared/text/text";
 import { ProviderTransitionActions } from "./ProviderTransitionActions";
 import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
-import { BotIcon, ChevronLeftIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import type { WorkLogEntry } from "../../workLog.types";
 import { formatShortTimestamp } from "../../timestampFormat";
@@ -19,9 +19,7 @@ import {
   formatAgentActivityEntryPreview,
   formatAgentActivityEntryTitle,
 } from "./agentActivity.logic";
-
 const DETAIL_BOTTOM_INSET_PX = 64;
-
 interface AgentActivityDetailViewProps {
   detail: AgentActivityDetail;
   chatFontSizePx: number;
@@ -31,7 +29,6 @@ interface AgentActivityDetailViewProps {
   onImageExpand: (preview: ExpandedImagePreview) => void;
   timestampFormat: TimestampFormat;
 }
-
 export function AgentActivityDetailView({
   detail,
   chatFontSizePx,
@@ -44,23 +41,31 @@ export function AgentActivityDetailView({
   const backRef = useRef<HTMLButtonElement>(null);
   useLayoutEffect(() => {
     const previousFocus = document.activeElement;
-    backRef.current?.focus({ preventScroll: true });
+    backRef.current?.focus({
+      preventScroll: true,
+    });
     return () => {
       if (previousFocus instanceof HTMLElement && previousFocus.isConnected)
         queueMicrotask(() => {
-          if (previousFocus.isConnected) previousFocus.focus({ preventScroll: true });
+          if (previousFocus.isConnected)
+            previousFocus.focus({
+              preventScroll: true,
+            });
         });
     };
   }, []);
   const chatTypographyStyle = getChatTranscriptTextStyle(chatFontSizePx);
   const footerTextStyle = getChatMessageFooterTextStyle(chatFontSizePx);
   const scrollStyle: CSSProperties = {
-    ...(contentInsetRightPx ? { paddingRight: contentInsetRightPx } : {}),
+    ...(contentInsetRightPx
+      ? {
+          paddingRight: contentInsetRightPx,
+        }
+      : {}),
     paddingBottom: DETAIL_BOTTOM_INSET_PX,
   };
   const prompt = findPrompt(detail.entries);
   const result = findResult(detail.entries);
-
   return (
     <div
       data-agent-activity-detail="true"
@@ -88,7 +93,7 @@ export function AgentActivityDetailView({
         <div className="mt-3 border-b border-border/55 pb-4">
           <div className="flex min-w-0 items-start gap-3">
             <span className="mt-1 flex size-7 shrink-0 items-center justify-center rounded-md border border-border/45 bg-background/65 text-muted-foreground/58">
-              <BotIcon className="size-3.5" />
+              <Robot01Icon className="size-3.5" />
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -157,7 +162,6 @@ export function AgentActivityDetailView({
     </div>
   );
 }
-
 function AgentActivitySection(props: { title: string; children: ReactNode }) {
   return (
     <section className="border-b border-border/45 py-4 last:border-b-0">
@@ -166,7 +170,6 @@ function AgentActivitySection(props: { title: string; children: ReactNode }) {
     </section>
   );
 }
-
 function AgentActivityEventRow(props: {
   entry: WorkLogEntry;
   markdownCwd: string | undefined;
@@ -178,7 +181,6 @@ function AgentActivityEventRow(props: {
   const preview = formatAgentActivityEntryPreview(props.entry);
   const title = formatAgentActivityEntryTitle(props.entry);
   const body = props.entry.detail ?? preview;
-
   return (
     <div className="py-3 first:pt-0 last:pb-0">
       <div className="flex min-w-0 items-baseline justify-between gap-3">
@@ -203,7 +205,6 @@ function AgentActivityEventRow(props: {
     </div>
   );
 }
-
 function findPrompt(entries: ReadonlyArray<WorkLogEntry>): string | null {
   for (const entry of entries) {
     const prompt = entry.subagentAction?.prompt;
@@ -213,7 +214,6 @@ function findPrompt(entries: ReadonlyArray<WorkLogEntry>): string | null {
   }
   return null;
 }
-
 function findResult(entries: ReadonlyArray<WorkLogEntry>): string | null {
   for (let index = entries.length - 1; index >= 0; index -= 1) {
     const entry = entries[index]!;

@@ -1,9 +1,9 @@
 import {
   PlusIcon,
-  TerminalIcon,
-  GlobeIcon,
-  SquareSplitVertical,
-  SquareSplitHorizontal,
+  ComputerTerminal01Icon,
+  Globe02Icon,
+  SquareSplitVerticalIcon,
+  SquareSplitHorizontalIcon,
 } from "~/lib/icons";
 import { isMacNavigatorPlatform } from "~/lib/utils";
 import type { TerminalSplitDirection } from "~/terminalLayout";
@@ -12,13 +12,12 @@ import { Menu, MenuItem, MenuTrigger } from "../ui/menu";
 import { Tooltip, TooltipTrigger, TooltipPopup } from "../ui/tooltip";
 import { ComposerPickerMenuPopup } from "./ComposerPickerMenuPopup";
 import { PanelTabBar, type PanelTab } from "./PanelTabBar";
-
 function TerminalSplitButton(props: {
   direction: TerminalSplitDirection;
   onSplit: (direction: TerminalSplitDirection) => void;
 }) {
   const sideBySide = props.direction === "vertical";
-  const Icon = sideBySide ? SquareSplitHorizontal : SquareSplitVertical;
+  const Icon = sideBySide ? SquareSplitHorizontalIcon : SquareSplitVerticalIcon;
   const label = sideBySide ? "Split terminal vertically" : "Split terminal horizontally";
   const shortcut = isMacNavigatorPlatform()
     ? sideBySide
@@ -47,7 +46,6 @@ function TerminalSplitButton(props: {
     </Tooltip>
   );
 }
-
 export function WorkspaceTabBar(props: {
   tabs: readonly PanelTab[];
   activeId: string | null;
@@ -81,11 +79,11 @@ export function WorkspaceTabBar(props: {
             </MenuTrigger>
             <ComposerPickerMenuPopup align="end" side="bottom" className="w-44 min-w-44">
               <MenuItem onClick={props.onAddTerminal}>
-                <TerminalIcon className="size-3.5" />
+                <ComputerTerminal01Icon className="size-3.5" />
                 Terminal
               </MenuItem>
               <MenuItem onClick={props.onAddBrowser}>
-                <GlobeIcon className="size-3.5" />
+                <Globe02Icon className="size-3.5" />
                 Browser
               </MenuItem>
             </ComposerPickerMenuPopup>

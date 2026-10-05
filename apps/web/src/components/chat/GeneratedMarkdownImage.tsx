@@ -1,14 +1,12 @@
+import { DownloadIcon, ArrowExpandIcon } from "~/lib/icons";
 import { Spinner } from "~/components/ui/spinner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type MouseEvent, useEffect, useRef, useState } from "react";
-
-import { DownloadIcon, Maximize2 } from "~/lib/icons";
 import { buildLocalImageUrl, localImageAbsolutePath } from "~/lib/localImageUrls";
 import {
   isLocalPreviewGrantUsable,
   projectLocalPreviewGrantQueryOptions,
 } from "~/lib/projectReactQuery";
-
 import {
   LocalImageErrorCard,
   useLocalImageDownloadClick,
@@ -16,7 +14,6 @@ import {
 } from "../LocalImagePreview";
 import type { ExpandedImagePreview } from "./ExpandedImagePreview";
 import { toastManager } from "../ui/toast";
-
 export interface GeneratedMarkdownImageProps {
   linked?: boolean;
   src: string;
@@ -24,15 +21,12 @@ export interface GeneratedMarkdownImageProps {
   cwd: string | undefined;
   onImageExpand?: ((preview: ExpandedImagePreview) => void) | undefined;
 }
-
 function stopPropagation(event: MouseEvent<HTMLElement>) {
   event.stopPropagation();
 }
-
 export function GeneratedMarkdownImage(props: GeneratedMarkdownImageProps) {
   return <GeneratedMarkdownImageContent key={JSON.stringify([props.src, props.cwd])} {...props} />;
 }
-
 function GeneratedMarkdownImageContent(props: GeneratedMarkdownImageProps) {
   const { src, alt, cwd, onImageExpand } = props;
   const queryClient = useQueryClient();
@@ -83,7 +77,6 @@ function GeneratedMarkdownImageContent(props: GeneratedMarkdownImageProps) {
       src,
       cwd,
       previewGrant,
-
       onPreviewError: () => {
         if (absolutePath !== null) setNeedsGrant(true);
       },
@@ -94,9 +87,16 @@ function GeneratedMarkdownImageContent(props: GeneratedMarkdownImageProps) {
     (grantQuery.isFetching || (grantQuery.isSuccess && isLocalPreviewGrantUsable(grantQuery.data)));
   const resolveGrantedUrl = async (download: boolean) => {
     if (!needsGrant || absolutePath === null) return download ? downloadUrl : previewUrl;
-
-    const grant = await queryClient.fetchQuery({ ...grantOptions, retry: retryGrant });
-    return buildLocalImageUrl({ src, cwd, download, grant: grant.grant });
+    const grant = await queryClient.fetchQuery({
+      ...grantOptions,
+      retry: retryGrant,
+    });
+    return buildLocalImageUrl({
+      src,
+      cwd,
+      download,
+      grant: grant.grant,
+    });
   };
   const accessibleName = alt?.trim() || "Generated image";
   const downloadImage = useLocalImageDownloadClick({
@@ -105,7 +105,6 @@ function GeneratedMarkdownImageContent(props: GeneratedMarkdownImageProps) {
     errorTitle: "Could not download generated image",
     resolveDownloadUrl: () => resolveGrantedUrl(true),
   });
-
   const expandImage = (event: MouseEvent<HTMLElement>) => {
     event.preventDefault();
     if (status === "error") {
@@ -113,13 +112,29 @@ function GeneratedMarkdownImageContent(props: GeneratedMarkdownImageProps) {
     }
     if (!onImageExpand) return;
     if (!needsGrant) {
-      onImageExpand({ images: [{ src: previewUrl, name: fileName || accessibleName }], index: 0 });
+      onImageExpand({
+        images: [
+          {
+            src: previewUrl,
+            name: fileName || accessibleName,
+          },
+        ],
+        index: 0,
+      });
       return;
     }
     void resolveGrantedUrl(false)
       .then((url) => {
         if (mounted.current) {
-          onImageExpand({ images: [{ src: url, name: fileName || accessibleName }], index: 0 });
+          onImageExpand({
+            images: [
+              {
+                src: url,
+                name: fileName || accessibleName,
+              },
+            ],
+            index: 0,
+          });
         }
       })
       .catch((error: unknown) => {
@@ -132,7 +147,6 @@ function GeneratedMarkdownImageContent(props: GeneratedMarkdownImageProps) {
         }
       });
   };
-
   if (props.linked) {
     return (
       <span className="chat-generated-image">
@@ -151,7 +165,6 @@ function GeneratedMarkdownImageContent(props: GeneratedMarkdownImageProps) {
       />
     );
   }
-
   return (
     <span className="chat-generated-image" data-status={resolvingGrant ? "loading" : status}>
       <button
@@ -168,7 +181,7 @@ function GeneratedMarkdownImageContent(props: GeneratedMarkdownImageProps) {
         <img {...imgProps} alt={accessibleName} className="chat-generated-image__img" />
         <span className="chat-generated-image__overlay" aria-hidden="true">
           <span className="chat-generated-image__overlay-pill chat-generated-image__overlay-pill--expand">
-            <Maximize2 className="size-3.5" />
+            <ArrowExpandIcon className="size-3.5" />
             <span>Expand</span>
           </span>
         </span>

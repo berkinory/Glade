@@ -1,29 +1,23 @@
+import { DownloadIcon, TriangleAlertIcon } from "~/lib/icons";
 import { Spinner } from "~/components/ui/spinner";
 import { type ImgHTMLAttributes, type MouseEvent, useState } from "react";
-
 import { downloadUrlAsBlob } from "~/lib/browserDownload";
-import { DownloadIcon, TriangleAlertIcon } from "~/lib/icons";
 import { buildLocalImageUrl, localImageFileName } from "~/lib/localImageUrls";
 import { cn } from "~/lib/utils";
 import { toastManager } from "./ui/toast";
-
 type LocalImagePreviewStatus = "loading" | "ready" | "error";
-
 type LocalImagePreviewImgProps = Pick<
   ImgHTMLAttributes<HTMLImageElement>,
   "src" | "loading" | "decoding" | "draggable" | "onLoad" | "onError"
 >;
-
 export interface LocalImagePreviewState {
   previewUrl: string;
   downloadUrl: string;
   fileName: string;
-
   downloadName: string;
   status: LocalImagePreviewStatus;
   imgProps: LocalImagePreviewImgProps;
 }
-
 export function useLocalImagePreview(input: {
   src: string;
   cwd: string | null | undefined;
@@ -46,28 +40,36 @@ export function useLocalImagePreview(input: {
     grant: previewGrant,
   });
   const fileName = localImageFileName(src);
-
   const [storedLoad, setStoredLoad] = useState<{
     url: string;
     generation: number;
     status: LocalImagePreviewStatus;
-  }>(() => ({ url: previewUrl, generation: 0, status: "loading" }));
+  }>(() => ({
+    url: previewUrl,
+    generation: 0,
+    status: "loading",
+  }));
   const load =
     storedLoad.url === previewUrl
       ? storedLoad
-      : { url: previewUrl, generation: storedLoad.generation + 1, status: "loading" as const };
+      : {
+          url: previewUrl,
+          generation: storedLoad.generation + 1,
+          status: "loading" as const,
+        };
   if (load !== storedLoad) {
     setStoredLoad(load);
   }
-
   const settleLoad = (status: Exclude<LocalImagePreviewStatus, "loading">) => {
     setStoredLoad((current) =>
       current.url === previewUrl && current.generation === load.generation
-        ? { ...current, status }
+        ? {
+            ...current,
+            status,
+          }
         : current,
     );
   };
-
   const imgProps: LocalImagePreviewImgProps = {
     src: previewUrl,
     loading: "lazy",
@@ -82,7 +84,6 @@ export function useLocalImagePreview(input: {
       input.onPreviewError?.();
     },
   };
-
   return {
     previewUrl,
     downloadUrl,
@@ -92,7 +93,6 @@ export function useLocalImagePreview(input: {
     imgProps,
   };
 }
-
 export function useLocalImageDownloadClick(input: {
   downloadUrl: string;
   downloadName: string;
@@ -105,7 +105,10 @@ export function useLocalImageDownloadClick(input: {
     void Promise.resolve()
       .then(async () => {
         const url = input.resolveDownloadUrl ? await input.resolveDownloadUrl() : input.downloadUrl;
-        await downloadUrlAsBlob({ url, filename: input.downloadName });
+        await downloadUrlAsBlob({
+          url,
+          filename: input.downloadName,
+        });
       })
       .catch((error: unknown) => {
         toastManager.add({
@@ -117,10 +120,8 @@ export function useLocalImageDownloadClick(input: {
       });
   };
 }
-
 export function LocalImageErrorCard(props: {
   downloadUrl: string;
-
   downloadName: string;
   className?: string | undefined;
   downloadAriaLabel?: string;
@@ -150,7 +151,6 @@ export function LocalImageErrorCard(props: {
     </span>
   );
 }
-
 export function LocalImagePreview(props: {
   src: string;
   cwd: string | null | undefined;
@@ -170,8 +170,10 @@ export function LocalImagePreview(props: {
     onPreviewReady: props.onPreviewReady,
     onPreviewError: props.onPreviewError,
   });
-  const handleDownloadClick = useLocalImageDownloadClick({ downloadUrl, downloadName });
-
+  const handleDownloadClick = useLocalImageDownloadClick({
+    downloadUrl,
+    downloadName,
+  });
   if (status === "error") {
     return (
       <LocalImageErrorCard
@@ -182,7 +184,6 @@ export function LocalImagePreview(props: {
       />
     );
   }
-
   return (
     <div className={cn("local-image-preview", props.className)} data-status={status}>
       {status === "loading" ? (

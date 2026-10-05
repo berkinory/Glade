@@ -1,16 +1,13 @@
+import type { IconComponent } from "~/lib/iconComponent";
+import { ClaudeIcon, OpenAIIcon } from "~/lib/brandIcons";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ReactNode, SVGProps } from "react";
-
 import { cn } from "~/lib/utils";
-import { ClaudeAI, type Icon, OpenAI } from "./Icons";
-
 type ProviderIconTone = "default" | "header";
-
-export const PROVIDER_ICON_COMPONENT_BY_PROVIDER: Record<ProviderKind, Icon> = {
-  codex: OpenAI,
-  claudeAgent: ClaudeAI,
+export const PROVIDER_ICON_COMPONENT_BY_PROVIDER: Record<ProviderKind, IconComponent> = {
+  codex: OpenAIIcon,
+  claudeAgent: ClaudeIcon,
 };
-
 function providerIconToneClassName(
   provider: ProviderKind | null | undefined,
   tone: ProviderIconTone = "default",
@@ -20,13 +17,11 @@ function providerIconToneClassName(
   }
   return "text-foreground";
 }
-
 export type ProviderIconProps = Omit<SVGProps<SVGSVGElement>, "ref"> & {
   readonly provider: ProviderKind | null | undefined;
   readonly fallback?: ReactNode;
   readonly tone?: ProviderIconTone;
 };
-
 export function ProviderIcon({
   provider,
   fallback: fallbackProp,
@@ -41,7 +36,6 @@ export function ProviderIcon({
   if (provider === null || provider === undefined) {
     return fallback;
   }
-
   const Icon = PROVIDER_ICON_COMPONENT_BY_PROVIDER[provider];
   return (
     <Icon
@@ -51,7 +45,6 @@ export function ProviderIcon({
     />
   );
 }
-
 export function ProviderOptionLabel({
   provider,
   label,

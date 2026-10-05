@@ -1,35 +1,32 @@
+import type { IconComponent } from "~/lib/iconComponent";
 import {
-  BotIcon,
-  BrainIcon,
+  Robot01Icon,
+  Brain03Icon,
   BugIcon,
-  ComputerUseIcon,
+  MousePointer01Icon,
   EraserIcon,
-  FastModeIcon,
-  GitBranchIcon,
+  EnergyFilledIcon,
+  WorkflowCircle04Icon,
   InfoIcon,
   ListTodoIcon,
-  type LucideIcon,
   MessageCircleIcon,
-  Minimize2,
-} from "./icons";
-
-const SLASH_COMMAND_ICONS: Record<string, LucideIcon> = {
+  CollapseIcon,
+} from "~/lib/icons";
+const SLASH_COMMAND_ICONS: Record<string, IconComponent> = {
   clear: EraserIcon,
-  compact: Minimize2,
-  model: BrainIcon,
-  fast: FastModeIcon,
+  compact: CollapseIcon,
+  model: Brain03Icon,
+  fast: EnergyFilledIcon,
   plan: ListTodoIcon,
   debug: BugIcon,
   default: MessageCircleIcon,
   review: BugIcon,
-  fork: GitBranchIcon,
+  fork: WorkflowCircle04Icon,
   status: InfoIcon,
-  subagents: BotIcon,
+  subagents: Robot01Icon,
   feedback: BugIcon,
-
-  "computer-use": ComputerUseIcon,
+  "computer-use": MousePointer01Icon,
 };
-
-export function slashCommandIcon(command: string, fallback: LucideIcon): LucideIcon {
+export function slashCommandIcon(command: string, fallback: IconComponent): IconComponent {
   return SLASH_COMMAND_ICONS[command] ?? fallback;
 }

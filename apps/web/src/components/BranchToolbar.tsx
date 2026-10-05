@@ -1,3 +1,4 @@
+import { ChevronDownIcon, GitForkIcon, HandIcon, ShieldCheckIcon, ShieldIcon } from "~/lib/icons";
 import { useQuery } from "@tanstack/react-query";
 import { gitBranchesQueryOptions } from "../lib/gitQueryOptions";
 import { Checkbox } from "./ui/checkbox";
@@ -5,11 +6,7 @@ import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
 import type { ServerProviderStatus } from "@glade/contracts/server/server";
 import type { RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
-import { ChevronDownIcon, WorktreeIcon } from "~/lib/icons";
-import { HiOutlineHandRaised } from "react-icons/hi2";
-import { CentralIcon } from "~/lib/central-icons";
 import { useCallback, useMemo, type ReactNode } from "react";
-
 import { newCommandId, cn } from "../lib/utils";
 import { readNativeApi } from "../nativeApi";
 import { useComposerDraftStore } from "../composerDraftStore";
@@ -46,11 +43,9 @@ import { ComposerEnvironmentPicker } from "./chat/ComposerEnvironmentPicker";
 import { Button } from "./ui/button";
 import { Menu, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "./ui/menu";
 import type { ThreadWorkspacePatch } from "../types";
-
 function WorktreeGlyph({ className }: { className?: string }) {
-  return <WorktreeIcon className={className} />;
+  return <GitForkIcon className={className} />;
 }
-
 function RuntimeModeMenuItem({
   mode,
   icon,
@@ -88,7 +83,6 @@ function RuntimeModeMenuItem({
     </MenuRadioItem>
   );
 }
-
 export interface BranchToolbarProps {
   threadId: ThreadId;
   className?: string;
@@ -99,13 +93,10 @@ export interface BranchToolbarProps {
   handoffBusy?: boolean;
   onCheckoutPullRequestRequest?: (reference: string) => void;
   onComposerFocusRequest?: () => void;
-
   variant?: BranchSelectorVariant;
-
   showBranchSelector?: boolean;
   showEnvironment?: boolean;
 }
-
 export interface RuntimeUsageControlsProps {
   provider?: ProviderKind | undefined;
   runtimeModel?: ProviderModelDescriptor | undefined;
@@ -117,10 +108,8 @@ export interface RuntimeUsageControlsProps {
   activeContextWindowLabel?: string | null | undefined;
   pendingContextWindowLabel?: string | null | undefined;
   className?: string | undefined;
-
   hideLabel?: boolean | undefined;
 }
-
 export function RuntimeUsageControls({
   provider,
   runtimeModel,
@@ -161,11 +150,11 @@ export function RuntimeUsageControls({
           >
             <span className="inline-flex items-center gap-1.5">
               {runtimeMode === "full-access" ? (
-                <CentralIcon name="shield-access" className="size-3.5 shrink-0" />
+                <ShieldCheckIcon className="size-3.5 shrink-0" />
               ) : runtimeMode === "auto" ? (
-                <CentralIcon name="shield-code" className="size-3.5 shrink-0" />
+                <ShieldIcon className="size-3.5 shrink-0" />
               ) : (
-                <HiOutlineHandRaised className="size-3.5 shrink-0" />
+                <HandIcon className="size-3.5 shrink-0" />
               )}
               <span className={cn("truncate", hideLabel ? "sr-only" : "@max-[480px]:sr-only")}>
                 {runtimePresentation.label}
@@ -200,18 +189,18 @@ export function RuntimeUsageControls({
             >
               <RuntimeModeMenuItem
                 mode="approval-required"
-                icon={<HiOutlineHandRaised className="size-4 shrink-0" />}
+                icon={<HandIcon className="size-4 shrink-0" />}
               />
               {autoModeAvailable ? (
                 <RuntimeModeMenuItem
                   mode="auto"
-                  icon={<CentralIcon name="shield-code" className="size-4 shrink-0" />}
+                  icon={<ShieldIcon className="size-4 shrink-0" />}
                 />
               ) : null}
               <RuntimeModeMenuItem
                 mode="full-access"
                 accent
-                icon={<CentralIcon name="shield-access" className="size-4 shrink-0" />}
+                icon={<ShieldCheckIcon className="size-4 shrink-0" />}
               />
             </MenuRadioGroup>
           </ComposerPickerMenuPopup>
@@ -220,7 +209,6 @@ export function RuntimeUsageControls({
     </div>
   );
 }
-
 export default function BranchToolbar({
   threadId,
   className,
@@ -274,7 +262,6 @@ export default function BranchToolbar({
     envMode: effectiveEnvMode,
     worktreePath: activeWorktreePath,
   });
-
   const setThreadWorkspace = useCallback(
     (patch: ThreadWorkspacePatch) => {
       if (!activeThreadId) return;
@@ -290,17 +277,22 @@ export default function BranchToolbar({
         existingAssociatedWorktreeBranch: serverThread?.associatedWorktreeBranch ?? null,
         existingAssociatedWorktreeRef: serverThread?.associatedWorktreeRef ?? null,
         ...(patch.associatedWorktreePath !== undefined
-          ? { patchAssociatedWorktreePath: patch.associatedWorktreePath }
+          ? {
+              patchAssociatedWorktreePath: patch.associatedWorktreePath,
+            }
           : {}),
         ...(patch.associatedWorktreeBranch !== undefined
-          ? { patchAssociatedWorktreeBranch: patch.associatedWorktreeBranch }
+          ? {
+              patchAssociatedWorktreeBranch: patch.associatedWorktreeBranch,
+            }
           : {}),
         ...(patch.associatedWorktreeRef !== undefined
-          ? { patchAssociatedWorktreeRef: patch.associatedWorktreeRef }
+          ? {
+              patchAssociatedWorktreeRef: patch.associatedWorktreeRef,
+            }
           : {}),
       });
       const api = readNativeApi();
-
       if (serverThread?.session && worktreePath !== activeWorktreePath && api) {
         void api.orchestration
           .dispatchCommand({
@@ -359,16 +351,13 @@ export default function BranchToolbar({
       effectiveEnvMode,
     ],
   );
-
   const canHandoffToLocal = Boolean(hasServerThread && activeWorktreePath);
   const canSwitchToWorktree = Boolean(
     !envLocked && !activeWorktreePath && effectiveEnvMode === "local",
   );
   const canSwitchToLocal = Boolean(!envLocked && effectiveEnvMode === "worktree");
   const showEnvPicker = effectiveEnvMode === "local" || canSwitchToLocal;
-
   if (!activeThreadId || !activeProject) return null;
-
   return (
     <div
       className={cn(
@@ -399,8 +388,16 @@ export default function BranchToolbar({
             }}
             actions={{
               onSetThreadWorkspace: setThreadWorkspace,
-              ...(onCheckoutPullRequestRequest ? { onCheckoutPullRequestRequest } : {}),
-              ...(onComposerFocusRequest ? { onComposerFocusRequest } : {}),
+              ...(onCheckoutPullRequestRequest
+                ? {
+                    onCheckoutPullRequestRequest,
+                  }
+                : {}),
+              ...(onComposerFocusRequest
+                ? {
+                    onComposerFocusRequest,
+                  }
+                : {}),
             }}
             variant={variant}
           />

@@ -1,10 +1,10 @@
+import { LockKeyholeIcon, Globe02Icon, UsersIcon, User02Icon } from "~/lib/icons";
 import { useId, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { GitPublishContextResult } from "@glade/contracts/git/githubRepositoryPublishing";
 import { isValidGitHubRepositoryNameWithOwner } from "@glade/shared/git/githubRepository";
 import { ensureNativeApi } from "~/nativeApi";
 import { invalidateGitQueriesForCwds } from "~/lib/gitQueryOptions";
-import { CentralIcon } from "~/lib/central-icons";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Toggle } from "../ui/toggle";
@@ -22,7 +22,6 @@ import {
 } from "../ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectItem } from "../ui/select";
 import { ComposerPickerSelectPopup } from "./ComposerPickerMenuPopup";
-
 export function GitPublishDialog(props: {
   cwd: string;
   context: GitPublishContextResult;
@@ -48,7 +47,11 @@ export function GitPublishDialog(props: {
     onSettled: () => invalidateGitQueriesForCwds(queryClient, [props.cwd]),
     onSuccess: (result) => {
       if (result.status !== "published") return;
-      toastManager.add({ type: "success", title: "Published to GitHub", description: result.url });
+      toastManager.add({
+        type: "success",
+        title: "Published to GitHub",
+        description: result.url,
+      });
       props.onClose();
     },
   });
@@ -56,7 +59,6 @@ export function GitPublishDialog(props: {
   const disabled = mutation.isPending || Boolean(pushFailed);
   const repository = `${owner.trim()}/${name.trim()}`;
   const selectedOwner = props.context.owners.find((candidate) => candidate.login === owner);
-
   return (
     <Dialog
       open
@@ -90,11 +92,11 @@ export function GitPublishDialog(props: {
               <SelectTrigger aria-labelledby={ownerId} className="w-full">
                 <SelectValue>
                   <span className="flex min-w-0 items-center gap-2">
-                    <CentralIcon
-                      name={selectedOwner?.kind === "organization" ? "user-group" : "user"}
-                      className="size-4"
-                      aria-hidden="true"
-                    />
+                    {selectedOwner?.kind === "organization" ? (
+                      <UsersIcon className="size-4" aria-hidden="true" />
+                    ) : (
+                      <User02Icon className="size-4" aria-hidden="true" />
+                    )}
                     <span className="truncate">{owner}</span>
                   </span>
                 </SelectValue>
@@ -103,11 +105,11 @@ export function GitPublishDialog(props: {
                 {props.context.owners.map((candidate) => (
                   <SelectItem key={candidate.login} value={candidate.login}>
                     <span className="flex items-center gap-2">
-                      <CentralIcon
-                        name={candidate.kind === "organization" ? "user-group" : "user"}
-                        className="size-4"
-                        aria-hidden="true"
-                      />
+                      {candidate.kind === "organization" ? (
+                        <UsersIcon className="size-4" aria-hidden="true" />
+                      ) : (
+                        <User02Icon className="size-4" aria-hidden="true" />
+                      )}
                       {candidate.login}
                     </span>
                   </SelectItem>
@@ -144,7 +146,7 @@ export function GitPublishDialog(props: {
                 disabled={disabled}
                 onPressedChange={() => setVisibility("private")}
               >
-                <CentralIcon name="lock" className="size-4" aria-hidden="true" />
+                <LockKeyholeIcon className="size-4" aria-hidden="true" />
                 Private
               </Toggle>
               <Toggle
@@ -154,7 +156,7 @@ export function GitPublishDialog(props: {
                 disabled={disabled}
                 onPressedChange={() => setVisibility("public")}
               >
-                <CentralIcon name="globe" className="size-4" aria-hidden="true" />
+                <Globe02Icon className="size-4" aria-hidden="true" />
                 Public
               </Toggle>
             </div>

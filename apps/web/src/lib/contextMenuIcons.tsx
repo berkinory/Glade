@@ -1,57 +1,60 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { IconFilePlus, IconFileOff, IconHash } from "@tabler/icons-react";
-
-import { THREAD_ARCHIVE_ICON } from "~/components/ThreadArchiveActionButton";
 import {
-  BELL_ICON_NAME,
-  COPY_ICON_NAME,
-  EYE_OPEN_ICON_NAME,
-  HANDOFF_ICON_NAME,
-  PENCIL_ICON_NAME,
-  PIN_ICON_NAME,
-  PlusIcon,
+  Archive04Icon,
+  ArrowLeftRightIcon,
+  BellIcon,
+  ComputerTerminal01Icon,
+  Copy01Icon,
+  Delete02Icon,
+  FilePlusIcon,
+  FileXIcon,
+  Folder02Icon,
+  FolderPlusIcon,
+  HashIcon,
+  MessageCircleIcon,
   MinusIcon,
-  RotateCcwIcon,
-  TERMINAL_ICON_NAME,
-  Trash2,
+  PencilEdit02Icon,
+  PinIcon,
+  PlusIcon,
+  TextIcon,
+  UndoIcon,
+  ViewIcon,
 } from "./icons";
 
 export const THREAD_CONTEXT_MENU_ICONS = {
-  rename: PENCIL_ICON_NAME,
-  pin: PIN_ICON_NAME,
-  clearNotification: BELL_ICON_NAME,
-  markUnread: EYE_OPEN_ICON_NAME,
-  handoff: HANDOFF_ICON_NAME,
-  copy: COPY_ICON_NAME,
-  openInTerminal: TERMINAL_ICON_NAME,
-
-  archive: renderToStaticMarkup(<THREAD_ARCHIVE_ICON size={24} />),
-
-  delete: renderToStaticMarkup(<Trash2 />),
+  rename: renderToStaticMarkup(<PencilEdit02Icon size={24} />),
+  pin: renderToStaticMarkup(<PinIcon size={24} />),
+  clearNotification: renderToStaticMarkup(<BellIcon size={24} />),
+  markUnread: renderToStaticMarkup(<ViewIcon size={24} />),
+  handoff: renderToStaticMarkup(<ArrowLeftRightIcon size={24} />),
+  copy: renderToStaticMarkup(<Copy01Icon size={24} />),
+  openInTerminal: renderToStaticMarkup(<ComputerTerminal01Icon size={24} />),
+  archive: renderToStaticMarkup(<Archive04Icon size={24} />),
+  delete: renderToStaticMarkup(<Delete02Icon size={24} />),
 } as const;
 
 export const FILE_CONTEXT_MENU_ICONS = {
-  reference: "chat-bubble-7",
-  copy: COPY_ICON_NAME,
+  reference: renderToStaticMarkup(<MessageCircleIcon size={24} />),
+  copy: renderToStaticMarkup(<Copy01Icon size={24} />),
   finder: "/finder.png",
-  fileManager: "folder-open-front",
-  createFile: renderToStaticMarkup(<IconFilePlus size={24} />),
-  createFolder: "folder-add-left",
-  rename: PENCIL_ICON_NAME,
-  delete: renderToStaticMarkup(<Trash2 />),
+  fileManager: renderToStaticMarkup(<Folder02Icon size={24} />),
+  createFile: renderToStaticMarkup(<FilePlusIcon size={24} />),
+  createFolder: renderToStaticMarkup(<FolderPlusIcon size={24} />),
+  rename: renderToStaticMarkup(<PencilEdit02Icon size={24} />),
+  delete: renderToStaticMarkup(<Delete02Icon size={24} />),
 } as const;
 
 export const GIT_FILE_CONTEXT_MENU_ICONS = {
-  ignore: renderToStaticMarkup(<IconFileOff size={24} />),
-  open: EYE_OPEN_ICON_NAME,
-  stage: renderToStaticMarkup(<PlusIcon className="size-4" />),
-  unstage: renderToStaticMarkup(<MinusIcon className="size-4" />),
-  revert: renderToStaticMarkup(<RotateCcwIcon className="size-4" />),
+  ignore: renderToStaticMarkup(<FileXIcon size={24} />),
+  open: renderToStaticMarkup(<ViewIcon size={24} />),
+  stage: renderToStaticMarkup(<PlusIcon size={24} />),
+  unstage: renderToStaticMarkup(<MinusIcon size={24} />),
+  revert: renderToStaticMarkup(<UndoIcon size={24} />),
 } as const;
 
 export const GIT_COMMIT_CONTEXT_MENU_ICONS = {
-  undo: renderToStaticMarkup(<RotateCcwIcon className="size-4" />),
-  hash: COPY_ICON_NAME,
-  shortHash: renderToStaticMarkup(<IconHash size={24} />),
-  subject: "text-block",
+  undo: renderToStaticMarkup(<UndoIcon size={24} />),
+  hash: renderToStaticMarkup(<Copy01Icon size={24} />),
+  shortHash: renderToStaticMarkup(<HashIcon size={24} />),
+  subject: renderToStaticMarkup(<TextIcon size={24} />),
 } as const;

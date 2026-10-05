@@ -1,6 +1,13 @@
+import {
+  Robot01Icon,
+  AlertCircleIcon,
+  CircleCheckIcon,
+  CornerDownRightIcon,
+  GitForkIcon,
+} from "~/lib/icons";
+import type { IconComponent } from "~/lib/iconComponent";
 import { Spinner } from "~/components/ui/spinner";
 import { ThreadId, type MessageId, type TurnId } from "@glade/contracts/core/baseSchemas";
-
 import { type EditorId } from "@glade/contracts/settings/editor";
 import { type ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import { LegendList, type LegendListRef } from "@legendapp/list/react";
@@ -18,14 +25,6 @@ import { type ThreadFindHighlight, type ThreadFindMatch } from "~/components/cha
 import { resolveUserTurnMarker, type UserTurnMarkerKind } from "~/components/chat/userTurnMarker";
 import type { WorkingLabel } from "~/components/ChatView.logic.dispatch";
 import { Button } from "~/components/ui/button";
-import {
-  BotIcon,
-  CircleAlertIcon,
-  CircleCheckIcon,
-  SteerIcon,
-  WorktreeIcon,
-  type LucideIcon,
-} from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import {
   type TurnDiffSummary,
@@ -35,7 +34,6 @@ import {
 } from "~/types";
 import { deriveTimelineEntries } from "~/workLog.timeline";
 import { UI_MOTION_LONG_MS } from "~/lib/uiMotion";
-
 export const MAX_VISIBLE_INLINE_TOOL_ENTRIES = 4;
 export const EMPTY_EDITOR_KEYBINDINGS: ResolvedKeybindingsConfig = [];
 export const EMPTY_AVAILABLE_EDITORS: ReadonlyArray<EditorId> = [];
@@ -48,11 +46,14 @@ export const FIND_FINE_SCROLL_RETRY_TIMEOUT_MS = 900;
 export const FIND_FINE_SCROLL_MAX_RETRY_FRAMES = 90;
 export const MESSAGE_SEND_ENTER_ANIMATION_MS = UI_MOTION_LONG_MS;
 export const MESSAGE_SEND_ENTER_CLEANUP_BUFFER_MS = 60;
-export const TRAIL_VIEWABILITY_CONFIG = { itemVisiblePercentThreshold: 0 } as const;
-
+export const TRAIL_VIEWABILITY_CONFIG = {
+  itemVisiblePercentThreshold: 0,
+} as const;
 export const EMPTY_MESSAGE_ID_SET: ReadonlySet<MessageId> = new Set();
 export function scrollLegendListToEnd(listRef: RefObject<LegendListRef | null>): void {
-  void listRef.current?.scrollToEnd?.({ animated: false });
+  void listRef.current?.scrollToEnd?.({
+    animated: false,
+  });
 }
 export function scrollLegendListToIndex(
   listRef: RefObject<LegendListRef | null>,
@@ -68,16 +69,28 @@ export function readLegendListState(
 export interface MessagesTimelineController {
   scrollToMessage: (
     messageId: MessageId,
-    options?: { segmentIndex?: number; fineScrollFind?: boolean },
+    options?: {
+      segmentIndex?: number;
+      fineScrollFind?: boolean;
+    },
   ) => void;
   setActiveFindMatch: (match: ThreadFindMatch | null) => void;
 }
 const USER_TURN_MARKER_PRESENTATION: Record<
   UserTurnMarkerKind,
-  { readonly Icon: LucideIcon; readonly label: string }
+  {
+    readonly Icon: IconComponent;
+    readonly label: string;
+  }
 > = {
-  agent: { Icon: BotIcon, label: "Sent by agent" },
-  steer: { Icon: SteerIcon, label: "Steering conversation" },
+  agent: {
+    Icon: Robot01Icon,
+    label: "Sent by agent",
+  },
+  steer: {
+    Icon: CornerDownRightIcon,
+    label: "Steering conversation",
+  },
 };
 export function UserDispatchModeChip({
   dispatchMode,
@@ -88,11 +101,13 @@ export function UserDispatchModeChip({
   dispatchOrigin: TimelineMessage["dispatchOrigin"];
   hasLeadingMedia: boolean;
 }) {
-  const markerKind = resolveUserTurnMarker({ dispatchMode, dispatchOrigin });
+  const markerKind = resolveUserTurnMarker({
+    dispatchMode,
+    dispatchOrigin,
+  });
   if (!markerKind) {
     return null;
   }
-
   const { Icon, label } = USER_TURN_MARKER_PRESENTATION[markerKind];
   return (
     <div
@@ -120,9 +135,8 @@ function WorktreeSetupStepGlyph({ status }: { status: WorktreeSetupStep["status"
     return <Spinner variant="working" className="size-2.5 text-[var(--color-text-foreground)]" />;
   }
   if (status === "error") {
-    return <CircleAlertIcon className="size-2.5 text-destructive" />;
+    return <AlertCircleIcon className="size-2.5 text-destructive" />;
   }
-
   return <span className="block size-2 rounded-full border border-[color:var(--color-border)]" />;
 }
 export function WorktreeSetupCard({
@@ -141,7 +155,7 @@ export function WorktreeSetupCard({
   return (
     <div className="w-fit max-w-full rounded-xl border border-[color:var(--color-border-light)] bg-[var(--color-background-elevated-primary)] px-3.5 py-3 font-system-ui shadow-xs">
       <div className="flex items-center gap-2">
-        <WorktreeIcon className="size-3.5 shrink-0 text-[var(--color-text-foreground-tertiary)]" />
+        <GitForkIcon className="size-3.5 shrink-0 text-[var(--color-text-foreground-tertiary)]" />
         <span className="inline-flex items-center gap-2 text-ui-lg font-medium text-[var(--color-text-foreground-secondary)]">
           <Spinner variant="working" aria-hidden="true" className="size-3.5" />
           Preparing worktree...
@@ -211,37 +225,24 @@ export interface MessagesTimelineProps {
   isWorking: boolean;
   workingLabel?: WorkingLabel | undefined;
   activeTurnInProgress: boolean;
-
   worktreeSetup?: WorktreeSetupSnapshot | null;
-
   worktreeSetupPendingAction?: WorktreeSetupResolutionAction | null;
-
   onResolveWorktreeSetup?: (action: WorktreeSetupResolutionAction) => void;
   followLiveOutput?: boolean;
   emptyStateContent?: ReactNode;
   listRef?: RefObject<LegendListRef | null>;
-
   controllerRef?: RefObject<MessagesTimelineController | null>;
-
   pinnedMessageIds?: ReadonlySet<MessageId>;
-
   onTogglePinMessage?: (messageId: MessageId) => void;
-
   onForkFromMessage?: (messageId: MessageId) => void;
   forkProvider?: "codex" | "claudeAgent";
-
   enteringUserMessageIds?: ReadonlySet<MessageId>;
-
   tailAnchorMessageId?: MessageId | null;
-
   tailAnchorScrollInFlightRef?: RefObject<boolean> | undefined;
-
   crossTaskOrigin?: CrossTaskOrigin | null;
-
   forkSource?: ForkSourceReference | null;
   handoffSource?: ForkSourceReference | null;
   timelineEntries: ReturnType<typeof deriveTimelineEntries>;
-
   messageChangeSignal?: unknown;
   turnDiffSummaryByAssistantMessageId: Map<MessageId, TurnDiffSummary>;
   expandedWorkGroups?: Record<string, boolean>;
@@ -249,9 +250,7 @@ export interface MessagesTimelineProps {
   onOpenAgentActivity?: (activityId: string) => void;
   onOpenTurnDiff: (turnId: TurnId, filePath?: string) => void;
   onOpenThread?: (threadId: ThreadId) => void;
-
   computerControlEnabled?: boolean;
-
   onEnableComputerControl?: () => void;
   onUndoTurnFiles?: (turnCounts: readonly number[]) => void;
   onRespondToAsyncUserInput?: (messageId: MessageId, answers: readonly string[]) => Promise<void>;
@@ -264,7 +263,6 @@ export interface MessagesTimelineProps {
   onImageExpand: (preview: ExpandedImagePreview) => void;
   onIsAtEndChange?: (isAtEnd: boolean) => void;
   onNavigate?: () => void;
-
   onTrailHighlightsChange?: (snapshot: ActiveTrailSnapshot) => void;
   onMessagesClickCapture?: ComponentProps<typeof LegendList>["onClickCapture"];
   onMessagesMouseUp?: ComponentProps<typeof LegendList>["onMouseUp"];
@@ -281,19 +279,19 @@ export interface MessagesTimelineProps {
   chatFontSizePx?: number;
   timestampFormat: TimestampFormat;
   workspaceRoot: string | undefined;
-
   keybindings?: ResolvedKeybindingsConfig;
   availableEditors?: ReadonlyArray<EditorId>;
-
   contentInsetRightPx?: number | undefined;
-
   contentInsetBottomPx?: number | undefined;
-
   contentInsetBottomClearancePx?: number | undefined;
-
   findHighlight?: ThreadFindHighlight | null;
 }
-export type TimelineMessage = Extract<MessagesTimelineRow, { kind: "message" }>["message"];
+export type TimelineMessage = Extract<
+  MessagesTimelineRow,
+  {
+    kind: "message";
+  }
+>["message"];
 export type SettledTurnCollapseTransition = {
   open: boolean;
   items: readonly CollapsedTurnItem[];

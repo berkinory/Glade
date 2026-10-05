@@ -31,6 +31,8 @@
 
 ### Improved
 
+- Use a consistent icon family across the interface and refreshed brand artwork, while preserving file and folder symbols.
+
 - Keyboard shortcut hints are more consistent and readable, and sidebar pull request and workspace indicators leave conversation titles easier to read.
 
 - Approval, tool progress and background-task details retain more useful explanations and error context.

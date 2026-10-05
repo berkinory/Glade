@@ -1,23 +1,19 @@
+import { ComputerTerminal01Icon } from "~/lib/icons";
 import { useMemo, type ReactNode } from "react";
-
 import { pluralize } from "@glade/shared/text/text";
-
 import { createThreadSelector } from "../storeSelectors";
 import { useStore } from "../store";
 import { resolveSubagentPresentationForThread } from "../lib/subagentPresentation";
 import { SIDEBAR_ROW_LABEL_TEXT_CLASS_NAME } from "../sidebarRowStyles";
 import type { SidebarThreadSummary } from "../types";
-import { TerminalIcon } from "../lib/icons";
 import { cn } from "../lib/utils";
 import { ProviderIcon } from "./ProviderIcon";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
-
 export interface SidebarThreadTerminalStatus {
   label: "Terminal input needed" | "Terminal task completed" | "Terminal process running";
   colorClass: string;
   pulse: boolean;
 }
-
 function ProviderAvatarWithTerminal({
   thread,
   terminalStatus,
@@ -36,9 +32,7 @@ function ProviderAvatarWithTerminal({
       ? `${terminalCount} ${pluralize(terminalCount, "terminal")} open`
       : (terminalStatus?.label ?? "Terminal open");
   const badgeColorClass = terminalStatus?.colorClass ?? "text-muted-foreground/55";
-
   const avatarNode = <ProviderIcon provider={provider} className="size-3" />;
-
   return (
     <span className="relative inline-flex shrink-0 translate-y-px items-center">
       {avatarNode}
@@ -65,7 +59,7 @@ function ProviderAvatarWithTerminal({
                     {terminalCount}
                   </span>
                 ) : (
-                  <TerminalIcon className={cn("size-2.5", badgeColorClass)} />
+                  <ComputerTerminal01Icon className={cn("size-2.5", badgeColorClass)} />
                 )}
               </span>
             }
@@ -76,7 +70,6 @@ function ProviderAvatarWithTerminal({
     </span>
   );
 }
-
 function renderSubagentLabel(input: {
   thread: SidebarThreadSummary;
   threads?: Parameters<typeof resolveSubagentPresentationForThread>[0]["threads"];
@@ -98,10 +91,14 @@ function renderSubagentLabel(input: {
     (presentation.nickname && presentation.title && presentation.title !== presentation.nickname
       ? presentation.title
       : null);
-
   return (
     <span className="min-w-0 truncate">
-      <span className="font-medium" style={{ color: presentation.accentColor }}>
+      <span
+        className="font-medium"
+        style={{
+          color: presentation.accentColor,
+        }}
+      >
         {presentation.nickname ?? presentation.primaryLabel}
       </span>
       {supportingLabel ? (
@@ -112,7 +109,6 @@ function renderSubagentLabel(input: {
     </span>
   );
 }
-
 function SidebarSubagentLabel({
   thread,
   roleClassName,
@@ -125,14 +121,12 @@ function SidebarSubagentLabel({
     [thread.parentThreadId],
   );
   const parentThread = useStore(selectParentThread);
-
   return renderSubagentLabel({
     thread,
     threads: parentThread ? [parentThread] : undefined,
     roleClassName,
   });
 }
-
 export function SidebarThreadRowContent({
   thread,
   terminalStatus,
@@ -169,20 +163,23 @@ export function SidebarThreadRowContent({
           },
         })
       : null;
-
   return (
     <>
       {variant === "standard" && isSubagentThread ? (
         <span
           aria-hidden="true"
           className="relative inline-flex h-3.5 w-[18px] shrink-0 items-center"
-          style={{ marginLeft: `${subagentIndentPx}px` }}
+          style={{
+            marginLeft: `${subagentIndentPx}px`,
+          }}
         >
           <span className="absolute left-1.5 top-0 bottom-0 w-px rounded-full bg-border/35" />
           <span className="absolute left-1.5 top-1/2 h-px w-2.5 -translate-y-1/2 bg-border/35" />
           <span
             className="absolute left-1.5 top-1/2 size-[5px] -translate-x-1/2 -translate-y-1/2 rounded-full"
-            style={{ backgroundColor: subagentPresentation?.accentColor }}
+            style={{
+              backgroundColor: subagentPresentation?.accentColor,
+            }}
           />
         </span>
       ) : (

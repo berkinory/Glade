@@ -1,243 +1,341 @@
-import { type CSSProperties, type FC, type SVGProps } from "react";
-import { PiSquareSplitHorizontal, PiSquareSplitVertical } from "react-icons/pi";
-import { RiApps2Line } from "react-icons/ri";
-import { SiGithub } from "react-icons/si";
-import { VscMcp } from "react-icons/vsc";
-import { CentralIcon, type CentralIconVariant } from "./central-icons";
-import {
-  IconAlertCircle,
-  IconAlertOctagon,
-  IconAlertTriangle,
-  IconArchive,
-  IconArrowBackUp,
-  IconArrowDown,
-  IconArrowLeft,
-  IconArrowRight,
-  IconArrowUp,
-  IconArrowUpRight,
-  IconBolt,
-  IconBrain,
-  IconBulb,
-  IconBug,
-  IconCamera,
-  IconCheck,
-  IconChevronDown,
-  IconChevronLeft,
-  IconChevronRight,
-  IconChevronUp,
-  IconCircleCheck,
-  IconDots,
-  IconDownload,
-  IconExternalLink,
-  IconEye,
-  IconFile,
-  IconFlag,
-  IconFolder,
-  IconFolderOpen,
-  IconHistory,
-  IconInfoCircle,
-  IconListCheck,
-  IconListDetails,
-  IconMaximize,
-  IconMinimize,
-  IconMinus,
-  IconDeviceDesktop,
-  IconDeviceLaptop,
-  IconMessageCircle,
-  IconMoon,
-  IconPaperclip,
-  IconPlus,
-  IconRefresh,
-  IconRotate2,
-  IconSelector,
-  IconStar,
-  IconStarFilled,
-  IconSun,
-  IconTextWrap,
-  IconTrash,
-  IconX,
-  type TablerIcon,
-} from "@tabler/icons-react";
+import Airplane01Glyph from "@hugeicons/core-free-icons/Airplane01Icon";
+import AlertCircleGlyph from "@hugeicons/core-free-icons/AlertCircleIcon";
+import AppWindowGlyph from "@hugeicons/core-free-icons/AppWindowIcon";
+import Archive04Glyph from "@hugeicons/core-free-icons/Archive04Icon";
+import ArrowDown02Glyph from "@hugeicons/core-free-icons/ArrowDown02Icon";
+import ArrowDownToLineGlyph from "@hugeicons/core-free-icons/ArrowDownToLineIcon";
+import ArrowExpandGlyph from "@hugeicons/core-free-icons/ArrowExpandIcon";
+import ArrowLeft02Glyph from "@hugeicons/core-free-icons/ArrowLeft02Icon";
+import ArrowLeftRightGlyph from "@hugeicons/core-free-icons/ArrowLeftRightIcon";
+import ArrowRight02Glyph from "@hugeicons/core-free-icons/ArrowRight02Icon";
+import ArrowUp02Glyph from "@hugeicons/core-free-icons/ArrowUp02Icon";
+import ArrowUpDownGlyph from "@hugeicons/core-free-icons/ArrowUpDownIcon";
+import ArrowUpRightGlyph from "@hugeicons/core-free-icons/ArrowUpRight01Icon";
+import ArrowUpToLineGlyph from "@hugeicons/core-free-icons/ArrowUpToLineIcon";
+import AttachmentGlyph from "@hugeicons/core-free-icons/AttachmentIcon";
+import AudioLinesGlyph from "@hugeicons/core-free-icons/AudioLinesIcon";
+import BackpackGlyph from "@hugeicons/core-free-icons/Backpack01Icon";
+import BellGlyph from "@hugeicons/core-free-icons/BellIcon";
+import BlocksGlyph from "@hugeicons/core-free-icons/BlocksIcon";
+import BookGlyph from "@hugeicons/core-free-icons/Book01Icon";
+import BookOpen01Glyph from "@hugeicons/core-free-icons/BookOpen01Icon";
+import Brain03Glyph from "@hugeicons/core-free-icons/Brain03Icon";
+import BriefcaseBusinessGlyph from "@hugeicons/core-free-icons/BriefcaseBusinessIcon";
+import BriefcaseGlyph from "@hugeicons/core-free-icons/Briefcase01Icon";
+import BubbleChatGlyph from "@hugeicons/core-free-icons/BubbleChatIcon";
+import BugGlyph from "@hugeicons/core-free-icons/Bug01Icon";
+import CalendarGlyph from "@hugeicons/core-free-icons/Calendar01Icon";
+import CameraGlyph from "@hugeicons/core-free-icons/Camera01Icon";
+import CaseSensitiveGlyph from "@hugeicons/core-free-icons/CaseSensitiveIcon";
+import ChartColumnGlyph from "@hugeicons/core-free-icons/ChartColumnIcon";
+import ChartLineGlyph from "@hugeicons/core-free-icons/ChartLineIcon";
+import CheckGlyph from "@hugeicons/core-free-icons/CheckIcon";
+import ChevronDownGlyph from "@hugeicons/core-free-icons/ChevronDownIcon";
+import ChevronLeftGlyph from "@hugeicons/core-free-icons/ChevronLeftIcon";
+import ChevronRightGlyph from "@hugeicons/core-free-icons/ChevronRightIcon";
+import ChevronUpGlyph from "@hugeicons/core-free-icons/ChevronUpIcon";
+import ChevronsDownUpGlyph from "@hugeicons/core-free-icons/ChevronsDownUpIcon";
+import CircleArrowUpGlyph from "@hugeicons/core-free-icons/CircleArrowUp01Icon";
+import CircleCheckGlyph from "@hugeicons/core-free-icons/CircleCheckIcon";
+import CloudDownloadGlyph from "@hugeicons/core-free-icons/CloudDownloadIcon";
+import CloudGlyph from "@hugeicons/core-free-icons/CloudIcon";
+import CloudUploadGlyph from "@hugeicons/core-free-icons/CloudUploadIcon";
+import CodeSquareGlyph from "@hugeicons/core-free-icons/CodeSquareIcon";
+import Coffee03Glyph from "@hugeicons/core-free-icons/Coffee03Icon";
+import CollapseGlyph from "@hugeicons/core-free-icons/CollapseIcon";
+import CommandGlyph from "@hugeicons/core-free-icons/CommandIcon";
+import ComputerTerminal01Glyph from "@hugeicons/core-free-icons/ComputerTerminal01Icon";
+import Copy01Glyph from "@hugeicons/core-free-icons/Copy01Icon";
+import CornerDownRightGlyph from "@hugeicons/core-free-icons/CornerDownRightIcon";
+import CornerUpLeftGlyph from "@hugeicons/core-free-icons/CornerUpLeftIcon";
+import CursorInWindowGlyph from "@hugeicons/core-free-icons/CursorInWindowIcon";
+import DashboardSquare01Glyph from "@hugeicons/core-free-icons/DashboardSquare01Icon";
+import Delete02Glyph from "@hugeicons/core-free-icons/Delete02Icon";
+import DollarCircleGlyph from "@hugeicons/core-free-icons/DollarCircleIcon";
+import DownloadGlyph from "@hugeicons/core-free-icons/Download01Icon";
+import DumbbellGlyph from "@hugeicons/core-free-icons/Dumbbell01Icon";
+import EarthGlyph from "@hugeicons/core-free-icons/EarthIcon";
+import EllipsisGlyph from "@hugeicons/core-free-icons/EllipsisIcon";
+import EnergyGlyph from "@hugeicons/core-free-icons/EnergyIcon";
+import EraserGlyph from "@hugeicons/core-free-icons/EraserIcon";
+import ExpandGlyph from "@hugeicons/core-free-icons/ExpandIcon";
+import ExternalLinkGlyph from "@hugeicons/core-free-icons/ExternalLinkIcon";
+import FeatherGlyph from "@hugeicons/core-free-icons/FeatherIcon";
+import File02Glyph from "@hugeicons/core-free-icons/File02Icon";
+import FilePlusGlyph from "@hugeicons/core-free-icons/FilePlusIcon";
+import FileXGlyph from "@hugeicons/core-free-icons/FileXIcon";
+import FilterHorizontalGlyph from "@hugeicons/core-free-icons/FilterHorizontalIcon";
+import Flag02Glyph from "@hugeicons/core-free-icons/Flag02Icon";
+import FlaskConicalGlyph from "@hugeicons/core-free-icons/FlaskConicalIcon";
+import FlowerGlyph from "@hugeicons/core-free-icons/FlowerIcon";
+import Folder02Glyph from "@hugeicons/core-free-icons/Folder02Icon";
+import FolderGlyph from "@hugeicons/core-free-icons/Folder01Icon";
+import FolderLibraryGlyph from "@hugeicons/core-free-icons/FolderLibraryIcon";
+import FolderPlusGlyph from "@hugeicons/core-free-icons/FolderPlusIcon";
+import GalaxyGlyph from "@hugeicons/core-free-icons/GalaxyIcon";
+import GameController03Glyph from "@hugeicons/core-free-icons/GameController03Icon";
+import GiftGlyph from "@hugeicons/core-free-icons/GiftIcon";
+import GitCommitHorizontalGlyph from "@hugeicons/core-free-icons/GitCommitHorizontalIcon";
+import GitForkGlyph from "@hugeicons/core-free-icons/GitForkIcon";
+import GitMergeConflictGlyph from "@hugeicons/core-free-icons/GitMergeConflictIcon";
+import GitMergeGlyph from "@hugeicons/core-free-icons/GitMergeIcon";
+import GitPullRequestClosedGlyph from "@hugeicons/core-free-icons/GitPullRequestClosedIcon";
+import GitPullRequestDraftGlyph from "@hugeicons/core-free-icons/GitPullRequestDraftIcon";
+import GitPullRequestGlyph from "@hugeicons/core-free-icons/GitPullRequestIcon";
+import Globe02Glyph from "@hugeicons/core-free-icons/Globe02Icon";
+import GraduationCapGlyph from "@hugeicons/core-free-icons/GraduationCapIcon";
+import GripVerticalGlyph from "@hugeicons/core-free-icons/GripVerticalIcon";
+import HammerGlyph from "@hugeicons/core-free-icons/HammerIcon";
+import HandGlyph from "@hugeicons/core-free-icons/HandIcon";
+import HashGlyph from "@hugeicons/core-free-icons/HashIcon";
+import HeartGlyph from "@hugeicons/core-free-icons/HeartIcon";
+import HeartPulseGlyph from "@hugeicons/core-free-icons/HeartPulseIcon";
+import HelpCircleGlyph from "@hugeicons/core-free-icons/HelpCircleIcon";
+import HistoryGlyph from "@hugeicons/core-free-icons/HistoryIcon";
+import Home01Glyph from "@hugeicons/core-free-icons/Home01Icon";
+import ImageAdd01Glyph from "@hugeicons/core-free-icons/ImageAdd01Icon";
+import InfoGlyph from "@hugeicons/core-free-icons/InfoIcon";
+import KeyGlyph from "@hugeicons/core-free-icons/Key01Icon";
+import KeyRoundGlyph from "@hugeicons/core-free-icons/KeyRoundIcon";
+import KeyboardGlyph from "@hugeicons/core-free-icons/KeyboardIcon";
+import LaptopGlyph from "@hugeicons/core-free-icons/LaptopIcon";
+import LightbulbGlyph from "@hugeicons/core-free-icons/LightbulbIcon";
+import LimitationGlyph from "@hugeicons/core-free-icons/LimitationIcon";
+import Link01Glyph from "@hugeicons/core-free-icons/Link01Icon";
+import ListChecksGlyph from "@hugeicons/core-free-icons/ListChecksIcon";
+import ListFilterGlyph from "@hugeicons/core-free-icons/ListFilterIcon";
+import ListTodoGlyph from "@hugeicons/core-free-icons/ListTodoIcon";
+import LockKeyholeGlyph from "@hugeicons/core-free-icons/LockKeyholeIcon";
+import McpServerGlyph from "@hugeicons/core-free-icons/McpServerIcon";
+import MessageCircleGlyph from "@hugeicons/core-free-icons/MessageCircleIcon";
+import MessagesSquareGlyph from "@hugeicons/core-free-icons/MessagesSquareIcon";
+import MicGlyph from "@hugeicons/core-free-icons/Mic01Icon";
+import MinusGlyph from "@hugeicons/core-free-icons/MinusIcon";
+import MonitorGlyph from "@hugeicons/core-free-icons/MonitorIcon";
+import Moon02Glyph from "@hugeicons/core-free-icons/Moon02Icon";
+import MousePointer01Glyph from "@hugeicons/core-free-icons/MousePointer01Icon";
+import Navigation05Glyph from "@hugeicons/core-free-icons/Navigation05Icon";
+import Notebook01Glyph from "@hugeicons/core-free-icons/Notebook01Icon";
+import OctagonAlertGlyph from "@hugeicons/core-free-icons/OctagonAlertIcon";
+import PaletteGlyph from "@hugeicons/core-free-icons/PaletteIcon";
+import PanelLeftGlyph from "@hugeicons/core-free-icons/PanelLeftIcon";
+import PanelRightCloseGlyph from "@hugeicons/core-free-icons/PanelRightCloseIcon";
+import PauseGlyph from "@hugeicons/core-free-icons/PauseIcon";
+import PawPrintGlyph from "@hugeicons/core-free-icons/PawPrintIcon";
+import PencilEdit02Glyph from "@hugeicons/core-free-icons/PencilEdit02Icon";
+import PillGlyph from "@hugeicons/core-free-icons/PillIcon";
+import PinGlyph from "@hugeicons/core-free-icons/PinIcon";
+import PineTreeGlyph from "@hugeicons/core-free-icons/PineTreeIcon";
+import PlayGlyph from "@hugeicons/core-free-icons/PlayIcon";
+import PlusGlyph from "@hugeicons/core-free-icons/PlusIcon";
+import PlusMinusSquare01Glyph from "@hugeicons/core-free-icons/PlusMinusSquare01Icon";
+import PopcornGlyph from "@hugeicons/core-free-icons/PopcornIcon";
+import PuzzleGlyph from "@hugeicons/core-free-icons/PuzzleIcon";
+import RefreshCwGlyph from "@hugeicons/core-free-icons/RefreshCwIcon";
+import Robot01Glyph from "@hugeicons/core-free-icons/Robot01Icon";
+import Rocket01Glyph from "@hugeicons/core-free-icons/Rocket01Icon";
+import RulerGlyph from "@hugeicons/core-free-icons/RulerIcon";
+import ScaleGlyph from "@hugeicons/core-free-icons/ScaleIcon";
+import SchoolGlyph from "@hugeicons/core-free-icons/SchoolIcon";
+import SearchGlyph from "@hugeicons/core-free-icons/Search01Icon";
+import ServerStack03Glyph from "@hugeicons/core-free-icons/ServerStack03Icon";
+import SettingsGlyph from "@hugeicons/core-free-icons/Settings01Icon";
+import Share02Glyph from "@hugeicons/core-free-icons/Share02Icon";
+import ShieldCheckGlyph from "@hugeicons/core-free-icons/ShieldCheckIcon";
+import ShieldGlyph from "@hugeicons/core-free-icons/Shield01Icon";
+import ShoppingBagGlyph from "@hugeicons/core-free-icons/ShoppingBag01Icon";
+import SortingDownGlyph from "@hugeicons/core-free-icons/SortingDownIcon";
+import SparkleGlyph from "@hugeicons/core-free-icons/SparkleIcon";
+import SquareGlyph from "@hugeicons/core-free-icons/SquareIcon";
+import SquarePenGlyph from "@hugeicons/core-free-icons/SquarePenIcon";
+import SquareSplitHorizontalGlyph from "@hugeicons/core-free-icons/SquareSplitHorizontalIcon";
+import SquareSplitVerticalGlyph from "@hugeicons/core-free-icons/SquareSplitVerticalIcon";
+import StarGlyph from "@hugeicons/core-free-icons/StarIcon";
+import SunGlyph from "@hugeicons/core-free-icons/Sun01Icon";
+import TagGlyph from "@hugeicons/core-free-icons/Tag01Icon";
+import TargetGlyph from "@hugeicons/core-free-icons/Target01Icon";
+import TextGlyph from "@hugeicons/core-free-icons/TextIcon";
+import TextWrapGlyph from "@hugeicons/core-free-icons/TextWrapIcon";
+import TriangleAlertGlyph from "@hugeicons/core-free-icons/TriangleAlertIcon";
+import TrophyGlyph from "@hugeicons/core-free-icons/TrophyIcon";
+import UndoGlyph from "@hugeicons/core-free-icons/UndoIcon";
+import User02Glyph from "@hugeicons/core-free-icons/User02Icon";
+import UsersGlyph from "@hugeicons/core-free-icons/UsersIcon";
+import ViewGlyph from "@hugeicons/core-free-icons/ViewIcon";
+import WorkflowCircle04Glyph from "@hugeicons/core-free-icons/WorkflowCircle04Icon";
+import WorkflowSquare01Glyph from "@hugeicons/core-free-icons/WorkflowSquare01Icon";
+import WrenchGlyph from "@hugeicons/core-free-icons/Wrench01Icon";
+import XGlyph from "@hugeicons/core-free-icons/XIcon";
+import { createUiIcon } from "./createUiIcon";
 
-export type LucideIcon = FC<SVGProps<SVGSVGElement>>;
-
-function adaptIcon(Component: TablerIcon): LucideIcon {
-  return function AdaptedIcon(props) {
-    return <Component {...(props as any)} />;
-  };
-}
-
-function centralIconWrapper(name: string, variant?: CentralIconVariant): LucideIcon {
-  return function CentralIconWrapper({ className, style, ...rest }) {
-    const ariaLabelRaw = (rest as { ["aria-label"]?: unknown })["aria-label"];
-    const label = typeof ariaLabelRaw === "string" ? ariaLabelRaw : undefined;
-    return (
-      <CentralIcon
-        name={name}
-        variant={variant}
-        className={typeof className === "string" ? className : undefined}
-        style={style as CSSProperties | undefined}
-        label={label}
-      />
-    );
-  };
-}
-
-export const AppsIcon: LucideIcon = (props) => (
-  <RiApps2Line className={props.className} style={props.style} />
-);
-
-export const BackgroundTrayIcon: LucideIcon = centralIconWrapper("arrow-down-wall");
-export const ContextCompactionIcon: LucideIcon = centralIconWrapper("arrows-hide");
-export const ComputerUseIcon: LucideIcon = centralIconWrapper("cursor-1");
-export const PanelExpandIcon: LucideIcon = centralIconWrapper("expand-45");
-export const PanelCollapseIcon: LucideIcon = centralIconWrapper("minimize-45");
-export const BackToParentIcon: LucideIcon = centralIconWrapper("arrow-share-left");
-export const WorkflowIcon: LucideIcon = centralIconWrapper("agents");
-export const SteerIcon: LucideIcon = centralIconWrapper("arrow-corner-down-right");
-export const ComposerSendArrowIcon: LucideIcon = centralIconWrapper("arrow-up");
-export const HANDOFF_ICON_NAME = "arrow-left-right";
-export const HandoffIcon: LucideIcon = centralIconWrapper(HANDOFF_ICON_NAME);
-export const SkillCubeIcon: LucideIcon = centralIconWrapper("building-blocks");
-export const NewThreadIcon: LucideIcon = centralIconWrapper("compose-pencil");
-
-export const FolderAddIcon: LucideIcon = centralIconWrapper("folder-add-left");
-export const FolderOpenFrontIcon: LucideIcon = centralIconWrapper("folder-open-front");
-export const UsageGaugeIcon: LucideIcon = centralIconWrapper("gauge");
-export const BugReportIcon: LucideIcon = centralIconWrapper("bug");
-
-export const AddPlusIcon: LucideIcon = centralIconWrapper("plus-medium");
-export const EraserIcon: LucideIcon = centralIconWrapper("eraser");
-export const ArrowLeftIcon = adaptIcon(IconArrowLeft);
-export const ArrowRightIcon = adaptIcon(IconArrowRight);
-export const ArrowDownIcon = adaptIcon(IconArrowDown);
-export const ArrowUpIcon = adaptIcon(IconArrowUp);
-export const ArrowUpRightIcon = adaptIcon(IconArrowUpRight);
-export const SortIcon: LucideIcon = centralIconWrapper("arrow-top-bottom");
-
-export const AGENT_ROBOT_ICON_NAME = "robot";
-export const BotIcon: LucideIcon = centralIconWrapper(AGENT_ROBOT_ICON_NAME);
-export const BookOpenIcon: LucideIcon = centralIconWrapper("newspaper-2");
-export const BugIcon = adaptIcon(IconBug);
-export const CameraIcon = adaptIcon(IconCamera);
-export const CheckIcon = adaptIcon(IconCheck);
-export const ChevronDownIcon = adaptIcon(IconChevronDown);
-export const ChevronLeftIcon = adaptIcon(IconChevronLeft);
-export const ChevronRightIcon = adaptIcon(IconChevronRight);
-export const ChevronUpIcon = adaptIcon(IconChevronUp);
-export const ChevronsUpDownIcon = adaptIcon(IconSelector);
-export const CircleAlertIcon = adaptIcon(IconAlertCircle);
-export const OctagonAlertIcon = adaptIcon(IconAlertOctagon);
-export const CircleCheckIcon = adaptIcon(IconCircleCheck);
-
-export const CircleQuestionIcon: LucideIcon = centralIconWrapper("circle-questionmark");
-export const ArrowUpCircleIcon: LucideIcon = centralIconWrapper("arrow-up-circle");
-export const CloudSyncIcon = centralIconWrapper("cloud-sync");
-export const ChangesIcon = centralIconWrapper("changes");
-export const COPY_ICON_NAME = "square-behind-square-6";
-export const CopyIcon = centralIconWrapper(COPY_ICON_NAME);
-export const LightbulbIcon = adaptIcon(IconBulb);
-
-export const DownloadIcon = adaptIcon(IconDownload);
-
-export const BELL_ICON_NAME = "notes";
-export const BellIcon: LucideIcon = centralIconWrapper(BELL_ICON_NAME);
-export const EllipsisIcon = adaptIcon(IconDots);
-export const ExternalLinkIcon = adaptIcon(IconExternalLink);
-export const EyeIcon = adaptIcon(IconEye);
-
-export const CodeIcon: LucideIcon = centralIconWrapper("code");
-export const EYE_OPEN_ICON_NAME = "eye-open";
-export const EyeOpenIcon: LucideIcon = centralIconWrapper(EYE_OPEN_ICON_NAME);
-export const PaperclipIcon = adaptIcon(IconPaperclip);
-export const ArchiveIcon = adaptIcon(IconArchive);
-export const BrainIcon = adaptIcon(IconBrain);
-export const FileIcon = adaptIcon(IconFile);
-export const FlagIcon = adaptIcon(IconFlag);
-export const FolderIcon = adaptIcon(IconFolder);
-export const FolderOpenIcon = adaptIcon(IconFolderOpen);
-
-export const FoldersIcon: LucideIcon = centralIconWrapper("folders");
-export const GiftIcon: LucideIcon = centralIconWrapper("gift-2");
-export const GitCommitIcon: LucideIcon = centralIconWrapper("commits");
-export const GitBranchIcon: LucideIcon = centralIconWrapper("branch");
-
-export const GitMergeIcon: LucideIcon = centralIconWrapper("merged");
-export const GitMergedSimpleIcon: LucideIcon = centralIconWrapper("merged-simple");
-export const PushIcon: LucideIcon = centralIconWrapper("cloud-simple-upload");
-export const GitHubIcon: LucideIcon = (props) => (
-  <SiGithub className={props.className} style={props.style} />
-);
-export const GitPullRequestIcon = centralIconWrapper("pull-request");
-
-export const GitPullRequestDraftIcon: LucideIcon = centralIconWrapper("draft");
-export const GitPullRequestClosedIcon: LucideIcon = centralIconWrapper("request-closed");
-export const GitMergeConflictIcon: LucideIcon = centralIconWrapper("merge-conflict");
-
-export const GlobeIcon: LucideIcon = centralIconWrapper("globe");
-
-export const McpIcon: LucideIcon = (props) => (
-  <VscMcp className={props.className} style={props.style} />
-);
-export const PluginIcon: LucideIcon = centralIconWrapper("puzzle");
-
-export const HammerIcon: LucideIcon = centralIconWrapper("hammer");
-export const HistoryIcon = adaptIcon(IconHistory);
-export const InfoIcon = adaptIcon(IconInfoCircle);
-export const KeyboardIcon: LucideIcon = centralIconWrapper("keyboard");
-export const ListChecksIcon = adaptIcon(IconListCheck);
-export const ListTodoIcon = adaptIcon(IconListDetails);
-export const Maximize2 = adaptIcon(IconMaximize);
-export const Minimize2 = adaptIcon(IconMinimize);
-export const MessageCircleIcon = adaptIcon(IconMessageCircle);
-export const MinusIcon = adaptIcon(IconMinus);
-export const ChatBubbleIcon: LucideIcon = centralIconWrapper("bubble-text");
-export const NewChatIcon: LucideIcon = centralIconWrapper("chat-bubble-7");
-export const MicIcon: LucideIcon = centralIconWrapper("microphone");
-export const PanelLeftIcon = centralIconWrapper("sidebar-simple-left-wide");
-export const PanelRightCloseIcon = centralIconWrapper("sidebar-simple-right-wide");
-export const WindowIcon: LucideIcon = centralIconWrapper("window");
-export const LayoutSidebarIcon: LucideIcon = centralIconWrapper("layout-sidebar");
-export const PENCIL_ICON_NAME = "pencil";
-export const PencilIcon: LucideIcon = centralIconWrapper(PENCIL_ICON_NAME);
-export const PIN_ICON_NAME = "pin";
-export const PinIcon: LucideIcon = centralIconWrapper(PIN_ICON_NAME);
-
-export const PinFilledIcon: LucideIcon = centralIconWrapper("pin", "fill");
-export const PauseIcon: LucideIcon = centralIconWrapper("pause", "fill");
-export const PlayIcon: LucideIcon = centralIconWrapper("play", "fill");
-
-export const PlusIcon = adaptIcon(IconPlus);
-export const RefreshCwIcon = adaptIcon(IconRefresh);
-export const RotateCcwIcon = adaptIcon(IconRotate2);
-export const SearchIcon: LucideIcon = centralIconWrapper("magnifying-glass");
-
-export const SettingsIcon: LucideIcon = centralIconWrapper("settings-gear-4");
-export const StarIcon = adaptIcon(IconStar);
-export const StarFilledIcon = adaptIcon(IconStarFilled);
-export const SunIcon = adaptIcon(IconSun);
-export const MoonIcon = adaptIcon(IconMoon);
-export const DeviceLaptopIcon = adaptIcon(IconDeviceLaptop);
-export const MonitorIcon = adaptIcon(IconDeviceDesktop);
-export const StopIcon: LucideIcon = centralIconWrapper("stop", "fill");
-export const StopFilledIcon: LucideIcon = centralIconWrapper("stop", "fill");
-export const SquareSplitHorizontal: LucideIcon = (props) => (
-  <PiSquareSplitHorizontal className={props.className} style={props.style} />
-);
-export const SquareSplitVertical: LucideIcon = (props) => (
-  <PiSquareSplitVertical className={props.className} style={props.style} />
-);
-export const TERMINAL_ICON_NAME = "console";
-export const TerminalIcon = centralIconWrapper(TERMINAL_ICON_NAME);
-export const TerminalSquare = centralIconWrapper("console");
-export const TextWrapIcon = adaptIcon(IconTextWrap);
-export const Trash2 = adaptIcon(IconTrash);
-export const TriangleAlertIcon = adaptIcon(IconAlertTriangle);
-export const Undo2Icon = adaptIcon(IconArrowBackUp);
-
-export const ResetIcon: LucideIcon = centralIconWrapper("arrow-rotate-counter-clockwise");
-export const WorktreeIcon = centralIconWrapper("arrow-split-right");
-export const XIcon = adaptIcon(IconX);
-export const ZapIcon = adaptIcon(IconBolt);
-
-export const FastModeIcon: LucideIcon = centralIconWrapper("zap", "fill");
+export const Airplane01Icon = createUiIcon(Airplane01Glyph);
+export const AlertCircleIcon = createUiIcon(AlertCircleGlyph);
+export const AppWindowIcon = createUiIcon(AppWindowGlyph);
+export const Archive04Icon = createUiIcon(Archive04Glyph);
+export const ArrowDown02Icon = createUiIcon(ArrowDown02Glyph);
+export const ArrowDownToLineIcon = createUiIcon(ArrowDownToLineGlyph);
+export const ArrowExpandIcon = createUiIcon(ArrowExpandGlyph);
+export const ArrowLeft02Icon = createUiIcon(ArrowLeft02Glyph);
+export const ArrowLeftRightIcon = createUiIcon(ArrowLeftRightGlyph);
+export const ArrowRight02Icon = createUiIcon(ArrowRight02Glyph);
+export const ArrowUp02Icon = createUiIcon(ArrowUp02Glyph);
+export const ArrowUpDownIcon = createUiIcon(ArrowUpDownGlyph);
+export const ArrowUpRightIcon = createUiIcon(ArrowUpRightGlyph);
+export const ArrowUpToLineIcon = createUiIcon(ArrowUpToLineGlyph);
+export const AttachmentIcon = createUiIcon(AttachmentGlyph);
+export const AudioLinesIcon = createUiIcon(AudioLinesGlyph);
+export const BackpackIcon = createUiIcon(BackpackGlyph);
+export const BellIcon = createUiIcon(BellGlyph);
+export const BlocksIcon = createUiIcon(BlocksGlyph);
+export const BookIcon = createUiIcon(BookGlyph);
+export const BookOpen01Icon = createUiIcon(BookOpen01Glyph);
+export const Brain03Icon = createUiIcon(Brain03Glyph);
+export const BriefcaseBusinessIcon = createUiIcon(BriefcaseBusinessGlyph);
+export const BriefcaseIcon = createUiIcon(BriefcaseGlyph);
+export const BubbleChatIcon = createUiIcon(BubbleChatGlyph);
+export const BugIcon = createUiIcon(BugGlyph);
+export const CalendarIcon = createUiIcon(CalendarGlyph);
+export const CameraIcon = createUiIcon(CameraGlyph);
+export const CaseSensitiveIcon = createUiIcon(CaseSensitiveGlyph);
+export const ChartColumnIcon = createUiIcon(ChartColumnGlyph);
+export const ChartLineIcon = createUiIcon(ChartLineGlyph);
+export const CheckIcon = createUiIcon(CheckGlyph);
+export const ChevronDownIcon = createUiIcon(ChevronDownGlyph);
+export const ChevronLeftIcon = createUiIcon(ChevronLeftGlyph);
+export const ChevronRightIcon = createUiIcon(ChevronRightGlyph);
+export const ChevronUpIcon = createUiIcon(ChevronUpGlyph);
+export const ChevronsDownUpIcon = createUiIcon(ChevronsDownUpGlyph);
+export const CircleArrowUpIcon = createUiIcon(CircleArrowUpGlyph);
+export const CircleCheckIcon = createUiIcon(CircleCheckGlyph);
+export const CloudDownloadIcon = createUiIcon(CloudDownloadGlyph);
+export const CloudIcon = createUiIcon(CloudGlyph);
+export const CloudUploadIcon = createUiIcon(CloudUploadGlyph);
+export const CodeSquareIcon = createUiIcon(CodeSquareGlyph);
+export const Coffee03Icon = createUiIcon(Coffee03Glyph);
+export const CollapseIcon = createUiIcon(CollapseGlyph);
+export const CommandIcon = createUiIcon(CommandGlyph);
+export const ComputerTerminal01Icon = createUiIcon(ComputerTerminal01Glyph);
+export const Copy01Icon = createUiIcon(Copy01Glyph);
+export const CornerDownRightIcon = createUiIcon(CornerDownRightGlyph);
+export const CornerUpLeftIcon = createUiIcon(CornerUpLeftGlyph);
+export const CursorInWindowIcon = createUiIcon(CursorInWindowGlyph);
+export const DashboardSquare01Icon = createUiIcon(DashboardSquare01Glyph);
+export const Delete02Icon = createUiIcon(Delete02Glyph);
+export const DollarCircleIcon = createUiIcon(DollarCircleGlyph);
+export const DownloadIcon = createUiIcon(DownloadGlyph);
+export const DumbbellIcon = createUiIcon(DumbbellGlyph);
+export const EarthIcon = createUiIcon(EarthGlyph);
+export const EllipsisIcon = createUiIcon(EllipsisGlyph);
+export const EnergyFilledIcon = createUiIcon(EnergyGlyph, true);
+export const EnergyIcon = createUiIcon(EnergyGlyph);
+export const EraserIcon = createUiIcon(EraserGlyph);
+export const ExpandIcon = createUiIcon(ExpandGlyph);
+export const ExternalLinkIcon = createUiIcon(ExternalLinkGlyph);
+export const FeatherIcon = createUiIcon(FeatherGlyph);
+export const File02Icon = createUiIcon(File02Glyph);
+export const FilePlusIcon = createUiIcon(FilePlusGlyph);
+export const FileXIcon = createUiIcon(FileXGlyph);
+export const FilterHorizontalIcon = createUiIcon(FilterHorizontalGlyph);
+export const Flag02Icon = createUiIcon(Flag02Glyph);
+export const FlaskConicalIcon = createUiIcon(FlaskConicalGlyph);
+export const FlowerIcon = createUiIcon(FlowerGlyph);
+export const Folder02Icon = createUiIcon(Folder02Glyph);
+export const FolderIcon = createUiIcon(FolderGlyph);
+export const FolderLibraryIcon = createUiIcon(FolderLibraryGlyph);
+export const FolderPlusIcon = createUiIcon(FolderPlusGlyph);
+export const GalaxyIcon = createUiIcon(GalaxyGlyph);
+export const GameController03Icon = createUiIcon(GameController03Glyph);
+export const GiftIcon = createUiIcon(GiftGlyph);
+export const GitCommitHorizontalIcon = createUiIcon(GitCommitHorizontalGlyph);
+export const GitForkIcon = createUiIcon(GitForkGlyph);
+export const GitMergeConflictIcon = createUiIcon(GitMergeConflictGlyph);
+export const GitMergeIcon = createUiIcon(GitMergeGlyph);
+export const GitPullRequestClosedIcon = createUiIcon(GitPullRequestClosedGlyph);
+export const GitPullRequestDraftIcon = createUiIcon(GitPullRequestDraftGlyph);
+export const GitPullRequestIcon = createUiIcon(GitPullRequestGlyph);
+export const Globe02Icon = createUiIcon(Globe02Glyph);
+export const GraduationCapIcon = createUiIcon(GraduationCapGlyph);
+export const GripVerticalIcon = createUiIcon(GripVerticalGlyph);
+export const HammerIcon = createUiIcon(HammerGlyph);
+export const HandIcon = createUiIcon(HandGlyph);
+export const HashIcon = createUiIcon(HashGlyph);
+export const HeartIcon = createUiIcon(HeartGlyph);
+export const HeartPulseIcon = createUiIcon(HeartPulseGlyph);
+export const HelpCircleIcon = createUiIcon(HelpCircleGlyph);
+export const HistoryIcon = createUiIcon(HistoryGlyph);
+export const Home01Icon = createUiIcon(Home01Glyph);
+export const ImageAdd01Icon = createUiIcon(ImageAdd01Glyph);
+export const InfoIcon = createUiIcon(InfoGlyph);
+export const KeyIcon = createUiIcon(KeyGlyph);
+export const KeyRoundIcon = createUiIcon(KeyRoundGlyph);
+export const KeyboardIcon = createUiIcon(KeyboardGlyph);
+export const LaptopIcon = createUiIcon(LaptopGlyph);
+export const LightbulbIcon = createUiIcon(LightbulbGlyph);
+export const LimitationIcon = createUiIcon(LimitationGlyph);
+export const Link01Icon = createUiIcon(Link01Glyph);
+export const ListChecksIcon = createUiIcon(ListChecksGlyph);
+export const ListFilterIcon = createUiIcon(ListFilterGlyph);
+export const ListTodoIcon = createUiIcon(ListTodoGlyph);
+export const LockKeyholeIcon = createUiIcon(LockKeyholeGlyph);
+export const McpServerIcon = createUiIcon(McpServerGlyph);
+export const MessageCircleIcon = createUiIcon(MessageCircleGlyph);
+export const MessagesSquareIcon = createUiIcon(MessagesSquareGlyph);
+export const MicIcon = createUiIcon(MicGlyph);
+export const MinusIcon = createUiIcon(MinusGlyph);
+export const MonitorIcon = createUiIcon(MonitorGlyph);
+export const Moon02Icon = createUiIcon(Moon02Glyph);
+export const MousePointer01Icon = createUiIcon(MousePointer01Glyph);
+export const Navigation05Icon = createUiIcon(Navigation05Glyph);
+export const Notebook01Icon = createUiIcon(Notebook01Glyph);
+export const OctagonAlertIcon = createUiIcon(OctagonAlertGlyph);
+export const PaletteIcon = createUiIcon(PaletteGlyph);
+export const PanelLeftIcon = createUiIcon(PanelLeftGlyph);
+export const PanelRightCloseIcon = createUiIcon(PanelRightCloseGlyph);
+export const PauseFilledIcon = createUiIcon(PauseGlyph, true);
+export const PawPrintIcon = createUiIcon(PawPrintGlyph);
+export const PencilEdit02Icon = createUiIcon(PencilEdit02Glyph);
+export const PillIcon = createUiIcon(PillGlyph);
+export const PinFilledIcon = createUiIcon(PinGlyph, true);
+export const PinIcon = createUiIcon(PinGlyph);
+export const PineTreeIcon = createUiIcon(PineTreeGlyph);
+export const PlayFilledIcon = createUiIcon(PlayGlyph, true);
+export const PlusIcon = createUiIcon(PlusGlyph);
+export const PlusMinusSquare01Icon = createUiIcon(PlusMinusSquare01Glyph);
+export const PopcornIcon = createUiIcon(PopcornGlyph);
+export const PuzzleIcon = createUiIcon(PuzzleGlyph);
+export const RefreshCwIcon = createUiIcon(RefreshCwGlyph);
+export const Robot01Icon = createUiIcon(Robot01Glyph);
+export const Rocket01Icon = createUiIcon(Rocket01Glyph);
+export const RulerIcon = createUiIcon(RulerGlyph);
+export const ScaleIcon = createUiIcon(ScaleGlyph);
+export const SchoolIcon = createUiIcon(SchoolGlyph);
+export const SearchIcon = createUiIcon(SearchGlyph);
+export const ServerStack03Icon = createUiIcon(ServerStack03Glyph);
+export const SettingsIcon = createUiIcon(SettingsGlyph);
+export const Share02Icon = createUiIcon(Share02Glyph);
+export const ShieldCheckIcon = createUiIcon(ShieldCheckGlyph);
+export const ShieldIcon = createUiIcon(ShieldGlyph);
+export const ShoppingBagIcon = createUiIcon(ShoppingBagGlyph);
+export const SortingDownIcon = createUiIcon(SortingDownGlyph);
+export const SparkleIcon = createUiIcon(SparkleGlyph);
+export const SquareFilledIcon = createUiIcon(SquareGlyph, true);
+export const SquarePenIcon = createUiIcon(SquarePenGlyph);
+export const SquareSplitHorizontalIcon = createUiIcon(SquareSplitHorizontalGlyph);
+export const SquareSplitVerticalIcon = createUiIcon(SquareSplitVerticalGlyph);
+export const StarFilledIcon = createUiIcon(StarGlyph, true);
+export const StarIcon = createUiIcon(StarGlyph);
+export const SunIcon = createUiIcon(SunGlyph);
+export const TagIcon = createUiIcon(TagGlyph);
+export const TargetIcon = createUiIcon(TargetGlyph);
+export const TextIcon = createUiIcon(TextGlyph);
+export const TextWrapIcon = createUiIcon(TextWrapGlyph);
+export const TriangleAlertIcon = createUiIcon(TriangleAlertGlyph);
+export const TrophyIcon = createUiIcon(TrophyGlyph);
+export const UndoIcon = createUiIcon(UndoGlyph);
+export const User02Icon = createUiIcon(User02Glyph);
+export const UsersIcon = createUiIcon(UsersGlyph);
+export const ViewIcon = createUiIcon(ViewGlyph);
+export const WorkflowCircle04Icon = createUiIcon(WorkflowCircle04Glyph);
+export const WorkflowSquare01Icon = createUiIcon(WorkflowSquare01Glyph);
+export const WrenchIcon = createUiIcon(WrenchGlyph);
+export const XIcon = createUiIcon(XGlyph);

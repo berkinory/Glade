@@ -1,3 +1,19 @@
+import {
+  SettingsIcon,
+  PaletteIcon,
+  BellIcon,
+  KeyboardIcon,
+  User02Icon,
+  BriefcaseBusinessIcon,
+  FilterHorizontalIcon,
+  WorkflowCircle04Icon,
+  Archive04Icon,
+  PuzzleIcon,
+  BlocksIcon,
+  CursorInWindowIcon,
+  LimitationIcon,
+} from "~/lib/icons";
+import type { IconComponent } from "~/lib/iconComponent";
 const SETTINGS_SECTION_IDS = [
   "general",
   "profile",
@@ -31,7 +47,7 @@ export type SettingsNavItem = {
   label: string;
   description: string;
 
-  icon: string;
+  icon: IconComponent;
 
   badge?: string;
 };
@@ -51,112 +67,112 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
     group: "app",
     label: "General",
     description: "Choose defaults for new chats, navigation, and the Environment panel.",
-    icon: "settings-gear-4",
+    icon: SettingsIcon,
   },
   {
     id: "appearance",
     group: "app",
     label: "Appearance",
     description: "Customize the theme, typography, density, and time format.",
-    icon: "color-palette",
+    icon: PaletteIcon,
   },
   {
     id: "notifications",
     group: "app",
     label: "Notifications",
     description: "Choose how Glade tells you when work finishes or needs attention.",
-    icon: "bell",
+    icon: BellIcon,
   },
   {
     id: "shortcuts",
     group: "app",
     label: "Keyboard shortcuts",
     description: "Capture, customize, and add shortcuts for every Glade command.",
-    icon: "shortcut",
+    icon: KeyboardIcon,
   },
   {
     id: "profile",
     group: "app",
     label: "Activity",
     description: "Your local activity, streaks, and a shareable stats card.",
-    icon: "user",
+    icon: User02Icon,
   },
   {
     id: "advanced",
     group: "app",
     label: "Advanced",
     description: "Manage connections, recovery, updates, and app defaults.",
-    icon: "toolbox",
+    icon: BriefcaseBusinessIcon,
   },
   {
     id: "behavior",
     group: "workspace",
     label: "Chat",
     description: "Choose how chats respond and when to ask for confirmation.",
-    icon: "settings-slider-hor",
+    icon: FilterHorizontalIcon,
   },
   {
     id: "files",
     group: "workspace",
     label: "Files & diffs",
     description: "Choose which files appear and how diffs are displayed.",
-    icon: "branch-simple",
+    icon: WorkflowCircle04Icon,
   },
   {
     id: "worktrees",
     group: "workspace",
     label: "Git & worktrees",
     description: "Configure Git generation and clean up worktrees created by Glade.",
-    icon: "branch-simple",
+    icon: WorkflowCircle04Icon,
   },
   {
     id: "archived",
     group: "workspace",
     label: "Archived chats",
     description: "Find and restore archived chats.",
-    icon: "archive",
+    icon: Archive04Icon,
   },
   {
     id: "providers",
     group: "agents",
     label: "Providers",
     description: "Choose visible coding agents and manage their installed CLI tools.",
-    icon: "puzzle",
+    icon: PuzzleIcon,
   },
   {
     id: "skills",
     group: "agents",
     label: "Skills",
     description: "Review reusable workflows discovered across all configured providers.",
-    icon: "building-blocks",
+    icon: BlocksIcon,
   },
   {
     id: "mcp",
     group: "agents",
     label: "MCP servers",
     description: "Manage native tools, connections and authentication.",
-    icon: "puzzle",
+    icon: PuzzleIcon,
   },
   {
     id: "plugins",
     group: "agents",
     label: "Plugins",
     description: "Manage native installed plugins and session loading.",
-    icon: "building-blocks",
+    icon: BlocksIcon,
   },
   {
     id: "computer",
     group: "agents",
     label: "Computer use",
     description: "Let agents see and control this computer's desktop, and check backend status.",
-    icon: "computer-use",
+    icon: CursorInWindowIcon,
   },
   {
     id: "usage",
     group: "agents",
     label: "Usage & limits",
     description: "See remaining quota and credits for every signed-in provider.",
-    icon: "gauge",
+    icon: LimitationIcon,
   },
 ];
 

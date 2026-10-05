@@ -2,7 +2,6 @@ import { PlusIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { Button } from "../ui/button";
 import { COMPOSER_EXTRAS_TRIGGER_ATTRIBUTE } from "./ComposerExtrasPanel";
-
 export function ComposerExtrasTrigger(props: {
   open: boolean;
   panelId: string;
@@ -19,7 +18,9 @@ export function ComposerExtrasTrigger(props: {
       aria-label="Composer extras"
       aria-expanded={props.open}
       aria-controls={props.open ? props.panelId : undefined}
-      {...{ [COMPOSER_EXTRAS_TRIGGER_ATTRIBUTE]: "" }}
+      {...{
+        [COMPOSER_EXTRAS_TRIGGER_ATTRIBUTE]: "",
+      }}
       onClick={props.onToggle}
     >
       <PlusIcon aria-hidden="true" className="size-4 text-primary" />

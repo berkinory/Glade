@@ -1,6 +1,6 @@
+import { FolderIcon } from "~/lib/icons";
 import BranchToolbar, { RuntimeUsageControls } from "~/components/BranchToolbar";
 import { resolveActiveThreadTitle } from "../../ChatView.logic.worktree";
-import { FolderClosed } from "~/components/FolderClosed";
 import { ComposerActiveTaskListCard } from "~/components/chat/ComposerActiveTaskListCard";
 import { ComposerExtrasTrigger } from "~/components/chat/ComposerExtrasTrigger";
 import {
@@ -41,7 +41,6 @@ export function createChatPresentation(
     setIsComposerExtrasPanelOpen,
     onRegisterCommitAndPushTrigger,
     settings,
-
     activeTaskListCompact,
     setActiveTaskListCompact,
   } = controller.session;
@@ -123,7 +122,6 @@ export function createChatPresentation(
   } = controller.submission;
   const { scheduleComposerFocus, isVoiceRecording, isVoiceTranscribing } = controller.composer;
   const { mainContentWidth, previewSession, previewLayout } = surface;
-
   const activeThreadDisplayTitle = resolveActiveThreadTitle({
     title: activeThread.title,
     subagentTitle: activeThread.parentThreadId
@@ -135,7 +133,6 @@ export function createChatPresentation(
     isHomeChat: isChatProject,
     isEmpty: timelineEntries.length === 0,
   });
-
   const handleRenameActiveThread = async (newTitle: string) => {
     const outcome = await dispatchThreadRename({
       threadId: activeThread.id,
@@ -152,7 +149,6 @@ export function createChatPresentation(
       });
       throw error;
     });
-
     if (outcome === "empty") {
       toastManager.add({
         type: "warning",
@@ -164,7 +160,6 @@ export function createChatPresentation(
       return;
     }
   };
-
   const runtimeUsageControlsProps = {
     provider: selectedProvider,
     runtimeModel: selectedRuntimeModel,
@@ -176,9 +171,7 @@ export function createChatPresentation(
     activeContextWindowLabel: contextWindowSelectionStatus.activeLabel,
     pendingContextWindowLabel: contextWindowSelectionStatus.pendingSelectedLabel,
   };
-
   const relocateComposerLeadingControls = composerFooterControlsPlan.relocateLeadingControls;
-
   const renderComposerLeadingControls = (options: { iconOnly: boolean }) => (
     <>
       <ComposerExtrasTrigger
@@ -186,7 +179,6 @@ export function createChatPresentation(
         panelId={COMPOSER_EXTRAS_PANEL_ID}
         onToggle={() => {
           setIsComposerExtrasPanelOpen((open) => !open);
-
           scheduleComposerFocus();
         }}
       />
@@ -199,7 +191,6 @@ export function createChatPresentation(
       ) : null}
     </>
   );
-
   const branchToolbarProps = {
     threadId: activeThread.id,
     onEnvModeChange,
@@ -209,18 +200,16 @@ export function createChatPresentation(
     handoffBusy,
     onComposerFocusRequest: scheduleComposerFocus,
     ...(canCheckoutPullRequestIntoThread
-      ? { onCheckoutPullRequestRequest: openPullRequestDialog }
+      ? {
+          onCheckoutPullRequestRequest: openPullRequestDialog,
+        }
       : {}),
   };
-
   const showEmptyLandingBranchToolbar =
     isCenteredEmptyLanding && activeProject?.kind === "project" && !isHomeChatContainer;
-
   const showEmptyLandingProjectPicker =
     isCenteredEmptyLanding && isLocalDraftThread && activeProject?.kind === "project";
-
   const showContainerChatWorkspacePicker = isEmptyChatLanding && isHomeChatContainer;
-
   const emptyLandingProjectChip =
     !showContainerChatWorkspacePicker &&
     !showEmptyLandingProjectPicker &&
@@ -231,18 +220,16 @@ export function createChatPresentation(
           COMPOSER_TOOLBAR_TRIGGER_TEXT_CLASS_NAME,
         )}
       >
-        <FolderClosed className="size-3.5 shrink-0" />
+        <FolderIcon className="size-3.5 shrink-0" />
         <span className="min-w-0 truncate">{activeProjectDisplayName}</span>
       </span>
     ) : null;
-
   const showEmptyLandingControls =
     isCenteredEmptyLanding &&
     (isEmptyChatLanding ||
       showEmptyLandingProjectPicker ||
       emptyLandingProjectChip !== null ||
       showEmptyLandingBranchToolbar);
-
   const emptyLandingControls = showEmptyLandingControls ? (
     <div
       data-empty-landing-controls="true"
@@ -306,7 +293,6 @@ export function createChatPresentation(
       </div>
     </div>
   ) : null;
-
   const environmentPanelProps: Omit<EnvironmentPanelProps, "open" | "variant"> = {
     gitCwd: threadWorkspaceCwd,
     openInTarget: threadWorkspaceCwd,
@@ -340,39 +326,30 @@ export function createChatPresentation(
     onClose: closeEnvironmentPanelAfterAction,
     onRegisterCommitAndPushTrigger,
   };
-
   const environmentAppliesContentInset = environmentPanelVisible && !environmentUsesFloatingOverlay;
-
   const environmentOverlayVariant = environmentUsesFloatingOverlay ? "floating" : "docked";
-
   const environmentInsetPx = environmentAppliesContentInset
     ? ENVIRONMENT_DOCKED_CONTENT_INSET_PX
     : 0;
-
   const previewCaps = computerPreviewCardCaps(
     settings.computerPreviewSize === "large" ? "large" : "compact",
   );
-
   const previewBudgetPx = computerPreviewBudgetPx({
     mainContentWidthPx: mainContentWidth,
     environmentInsetPx: environmentInsetPx,
     caps: previewCaps,
   });
-
   const previewReservesInset =
     environmentOverlayVariant === "docked" &&
     settings.autoOpenComputerPane &&
     previewSession?.phase === "live" &&
     (previewLayout?.hasFrame === true || previewLayout?.hasVisibleStatus === true) &&
     previewLayout?.floating !== true;
-
   const previewInsetPx = previewReservesInset
     ? Math.min(previewLayout?.width ?? previewBudgetPx, previewBudgetPx) + 24
     : 0;
-
   const contentInsetRightPx =
     environmentInsetPx + previewInsetPx > 0 ? environmentInsetPx + previewInsetPx : undefined;
-
   const environmentHeaderState =
     environmentEnabled && !rightDockOpen
       ? {
@@ -380,15 +357,10 @@ export function createChatPresentation(
           onOpenChange: setEnvironmentPanelOpenPreference,
         }
       : null;
-
   const showComposerLiveChangesHeader = latestTurnLive && activeTurnLiveDiffState.hasChanges;
-
   const showComposerActiveTaskListCard = Boolean(activeTaskList && !taskListSidebarOpen);
-
   const showComposerWorkflowRunCard = workflowRunState !== null;
-
   const showComposerSubagentStrip = composerSubagentStripItems.length > 0;
-
   const showComposerComputerControlEffortHint = shouldShowComputerControlEffortHint({
     enableComputerControl,
     computerControlAvailable,
@@ -396,12 +368,10 @@ export function createChatPresentation(
     provider: selectedProvider,
     traits: composerTraitSelection,
   });
-
   const composerBackgroundTaskCount = workflowRunState
     ? (activeBackgroundTasks?.taskIds.filter((taskId) => !workflowRunState.taskIds.includes(taskId))
         .length ?? 0)
     : (activeBackgroundTasks?.activeCount ?? 0);
-
   const renderActiveTaskListCard = (attachedToPrevious: boolean) =>
     activeTaskList && showComposerActiveTaskListCard ? (
       <ComposerActiveTaskListCard
@@ -419,7 +389,6 @@ export function createChatPresentation(
     showComposerActiveTaskListCard,
     showComposerSubagentStrip,
     showComposerWorkflowRunCard,
-
     showComposerComputerControlEffortHint,
     emptyLandingControls,
     relocateComposerLeadingControls,

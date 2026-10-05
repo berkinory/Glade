@@ -1,8 +1,7 @@
+import { CheckIcon } from "~/lib/icons";
 import type { ProjectId } from "@glade/contracts/core/baseSchemas";
 import { useEffect, useMemo, useState } from "react";
-
 import type { Project, Space } from "~/types";
-import { CheckIcon } from "~/lib/icons";
 import { groupItemsBySpace, spaceDisplayName } from "~/lib/spaceGrouping";
 import { isOrdinarySpaceProject } from "~/lib/spaces";
 import { cn } from "~/lib/utils";
@@ -22,7 +21,6 @@ import {
   DialogTitle,
 } from "./ui/dialog";
 import { SearchInput } from "./ui/search-input";
-
 export function SpaceProjectPickerDialog(props: {
   open: boolean;
   targetSpace: Space | null;
@@ -41,7 +39,6 @@ export function SpaceProjectPickerDialog(props: {
   const voidSpace = useVoidSpace();
   const homeDir = useWorkspacePathsStore((state) => state.homeDir);
   const chatWorkspaceRoot = useWorkspacePathsStore((state) => state.chatWorkspaceRoot);
-
   useEffect(() => {
     if (!props.open) return;
     setQuery("");
@@ -49,15 +46,15 @@ export function SpaceProjectPickerDialog(props: {
     setSubmitting(false);
     setError(null);
   }, [props.open, props.targetSpace?.id]);
-
   const targetSpaceId = props.targetSpace?.id ?? null;
-
   const movableProjects = useMemo(
     () =>
       props.projects.filter(
         (project) =>
-          isOrdinarySpaceProject(project, { homeDir, chatWorkspaceRoot }) &&
-          (project.spaceId ?? null) !== targetSpaceId,
+          isOrdinarySpaceProject(project, {
+            homeDir,
+            chatWorkspaceRoot,
+          }) && (project.spaceId ?? null) !== targetSpaceId,
       ),
     [chatWorkspaceRoot, homeDir, props.projects, targetSpaceId],
   );
@@ -86,7 +83,6 @@ export function SpaceProjectPickerDialog(props: {
       }),
     [activeSpaceId, candidates, props.spaces, voidSpace],
   );
-
   const submit = async () => {
     if (selectedIds.size === 0 || submitting) return;
     setSubmitting(true);
@@ -107,14 +103,12 @@ export function SpaceProjectPickerDialog(props: {
       setSubmitting(false);
     }
   };
-
   const emptyMessage =
     props.projects.length === 0
       ? "No projects yet."
       : movableProjects.length === 0
         ? `Every project is already in ${props.targetSpace?.name ?? "this space"}.`
         : "No matching projects.";
-
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
       <DialogPopup className="max-w-md">
@@ -176,7 +170,7 @@ export function SpaceProjectPickerDialog(props: {
                             {project.name}
                           </span>
                           {/* Presentational: the row itself is the checkbox, so this must not be another focusable control.
-   Mirrors ui/checkbox's chrome. */}
+                           Mirrors ui/checkbox's chrome. */}
                           <span
                             aria-hidden="true"
                             className={cn(

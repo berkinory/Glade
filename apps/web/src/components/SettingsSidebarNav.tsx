@@ -1,6 +1,6 @@
+import { ArrowLeft02Icon, SettingsIcon } from "~/lib/icons";
+import type { IconComponent } from "~/lib/iconComponent";
 import { type KeyboardEvent as ReactKeyboardEvent, useState } from "react";
-
-import { CentralIcon } from "~/lib/central-icons";
 import { cn } from "~/lib/utils";
 import { Badge } from "./ui/badge";
 import { SearchInput } from "./ui/search-input";
@@ -27,20 +27,16 @@ import {
   SETTINGS_SIDEBAR_SECTION_CLASS_NAME,
   SETTINGS_SIDEBAR_SECTION_LABEL_CLASS_NAME,
 } from "../settingsSidebarNavStyles";
-
 const SETTINGS_SEARCH_RESULTS_LIMIT = 12;
-
-const SETTINGS_SECTION_ICON_BY_ID = new Map<SettingsSectionId, string>(
+const SETTINGS_SECTION_ICON_BY_ID = new Map<SettingsSectionId, IconComponent>(
   SETTINGS_NAV_ITEMS.map((item) => [item.id, item.icon]),
 );
-
 function SettingsSearchResultRow(props: {
   entry: SettingsSearchEntry;
   onSelect: (entry: SettingsSearchEntry) => void;
 }) {
   const { entry, onSelect } = props;
-  const icon = SETTINGS_SECTION_ICON_BY_ID.get(entry.section) ?? "settings-gear-4";
-
+  const Icon = SETTINGS_SECTION_ICON_BY_ID.get(entry.section) ?? SettingsIcon;
   return (
     <li>
       <button
@@ -49,7 +45,7 @@ function SettingsSearchResultRow(props: {
         onClick={() => onSelect(entry)}
       >
         <SidebarLeadingIcon size="sm" tone="text-inherit">
-          <CentralIcon name={icon} className={SETTINGS_SIDEBAR_ICON_CLASS_NAME} />
+          <Icon className={SETTINGS_SIDEBAR_ICON_CLASS_NAME} />
         </SidebarLeadingIcon>
         <span className="min-w-0 text-left">
           <span className="block text-ui">{entry.title}</span>
@@ -61,13 +57,15 @@ function SettingsSearchResultRow(props: {
     </li>
   );
 }
-
 export function SettingsSidebarNav(props: {
   activeSection: SettingsSectionId;
-
   onBack: (() => void) | null;
-  onSelectSection: (section: SettingsSectionId, options?: { target?: string }) => void;
-
+  onSelectSection: (
+    section: SettingsSectionId,
+    options?: {
+      target?: string;
+    },
+  ) => void;
   searchContext?: SettingsSearchContext | undefined;
 }) {
   const { onSelectSection } = props;
@@ -79,13 +77,18 @@ export function SettingsSidebarNav(props: {
     SETTINGS_SEARCH_RESULTS_LIMIT,
     props.searchContext,
   );
-
   const handleSelectResult = (entry: SettingsSearchEntry) => {
     const target = settingsSearchEntryTarget(entry);
-    onSelectSection(entry.section, target ? { target } : undefined);
+    onSelectSection(
+      entry.section,
+      target
+        ? {
+            target,
+          }
+        : undefined,
+    );
     setQuery("");
   };
-
   const handleSearchKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
       event.preventDefault();
@@ -100,7 +103,6 @@ export function SettingsSidebarNav(props: {
       setQuery("");
     }
   };
-
   return (
     <div className="px-1.5 py-1.5">
       {props.onBack ? (
@@ -114,7 +116,7 @@ export function SettingsSidebarNav(props: {
             onClick={props.onBack}
           >
             <SidebarLeadingIcon size="sm" tone="text-inherit">
-              <CentralIcon name="arrow-left" className={SETTINGS_SIDEBAR_ICON_CLASS_NAME} />
+              <ArrowLeft02Icon className={SETTINGS_SIDEBAR_ICON_CLASS_NAME} />
             </SidebarLeadingIcon>
             <span className={SETTINGS_SIDEBAR_ITEM_LABEL_CLASS_NAME}>Back to app</span>
           </button>
@@ -154,7 +156,6 @@ export function SettingsSidebarNav(props: {
             if (items.length === 0) {
               return null;
             }
-
             return (
               <section
                 key={group.id}
@@ -184,10 +185,7 @@ export function SettingsSidebarNav(props: {
                           onClick={() => props.onSelectSection(item.id)}
                         >
                           <SidebarLeadingIcon size="sm" tone="text-inherit">
-                            <CentralIcon
-                              name={item.icon}
-                              className={SETTINGS_SIDEBAR_ICON_CLASS_NAME}
-                            />
+                            <item.icon className={SETTINGS_SIDEBAR_ICON_CLASS_NAME} />
                           </SidebarLeadingIcon>
                           <span className={SETTINGS_SIDEBAR_ITEM_LABEL_CLASS_NAME}>
                             {item.label}

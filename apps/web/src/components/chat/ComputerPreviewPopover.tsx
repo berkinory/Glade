@@ -1,7 +1,7 @@
+import { CollapseIcon, ExpandIcon, XIcon } from "~/lib/icons";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-
 import { useAppSettings } from "../../appSettings";
 import {
   selectThreadComputerPreviewFloating,
@@ -12,7 +12,6 @@ import {
 import { useComputerDesktopControl } from "../../hooks/useComputerDesktopControl";
 import { useThreadComputerStateSeed } from "../../hooks/useThreadComputerStateSeed";
 import { disclosurePopClassName } from "../../lib/disclosureMotion";
-import { PanelCollapseIcon, PanelExpandIcon, XIcon } from "../../lib/icons";
 import { cn } from "../../lib/utils";
 import { computerCanvasLabel, shouldSubscribeToComputerStream } from "../ComputerPanel.logic";
 import { useComputerImageStream } from "../computer/useComputerImageStream";
@@ -30,21 +29,15 @@ import {
   type ComputerPreviewCardSize,
   type ComputerPreviewSession,
 } from "./ComputerPreviewPopover.logic";
-
 const FALLBACK_ASPECT_RATIO = "16 / 10";
-
 const SLOT_FALLBACK_WIDTH_PX = 320;
 const SLOT_FALLBACK_HEIGHT_PX = 616;
-
 export function ComputerPreviewPopover(props: {
   readonly threadId: ThreadId;
-
   readonly maxWidthPx?: number | undefined;
-
   readonly size?: ComputerPreviewCardSize | undefined;
 }) {
   const session = useComputerStateStore(selectThreadComputerPreviewSession(props.threadId));
-
   const { settings } = useAppSettings();
   if (!settings.autoOpenComputerPane || session === undefined) {
     return null;
@@ -58,7 +51,6 @@ export function ComputerPreviewPopover(props: {
     />
   );
 }
-
 function ComputerPreviewPopoverCard(props: {
   readonly threadId: ThreadId;
   readonly session: ComputerPreviewSession;
@@ -88,23 +80,25 @@ function ComputerPreviewPopoverCard(props: {
   // dead space. In the env rail the offset parent is the full-height rail wrapper, so its height is
   // the container height; width comes from the rail budget prop instead, because the shrink-fit
   // wrapper cannot measure what the freed gutter will be.
-  const slotSize = useObservedSize(cardRef, { offsetParent: true });
-
+  const slotSize = useObservedSize(cardRef, {
+    offsetParent: true,
+  });
   useThreadComputerStateSeed(threadId);
-
   useEffect(() => {
     if (session.phase === "armed") {
       markPreviewLive(threadId);
     }
   }, [markPreviewLive, session.phase, threadId]);
-
   const streamWanted = shouldSubscribeToComputerStream({
     runtimeMode: "live",
     isVisible: open,
     threadState,
   });
-
-  const tap = useComputerPreviewTap({ canvasRef, threadId, enabled: streamWanted });
+  const tap = useComputerPreviewTap({
+    canvasRef,
+    threadId,
+    enabled: streamWanted,
+  });
   const frameSource = computerPreviewFrameSource({
     streamWanted,
     tapActive: tap.active,
@@ -115,9 +109,7 @@ function ComputerPreviewPopoverCard(props: {
     computerId: streamWanted && threadState ? threadState.computerId : null,
     enabled: frameSource === "stills",
   });
-
   const frameSignal = tap.active || tap.frameSize !== null || streamStatus.kind === "streaming";
-
   const [hasFrame, setHasFrame] = useState(() => frameSignal);
   if (frameSignal && !hasFrame) {
     setHasFrame(true);
@@ -141,7 +133,10 @@ function ComputerPreviewPopoverCard(props: {
       decodedDims.width !== heldFrameDims.width ||
       decodedDims.height !== heldFrameDims.height)
   ) {
-    setHeldFrameDims({ width: decodedDims.width, height: decodedDims.height });
+    setHeldFrameDims({
+      width: decodedDims.width,
+      height: decodedDims.height,
+    });
   }
   const frameDims = heldFrameDims ?? threadState?.screenSize ?? undefined;
   const frameAspect =
@@ -165,7 +160,6 @@ function ComputerPreviewPopoverCard(props: {
     cardHeightPx: frameDims ? fitWidth / frameAspect : fitWidth * 0.625,
   });
   const clampedFloating = float.position;
-
   useEffect(() => {
     notePreviewLayout(threadId, {
       hasFrame,
@@ -189,8 +183,15 @@ function ComputerPreviewPopoverCard(props: {
       )}
       style={
         clampedFloating !== undefined
-          ? { width: fitWidth, left: clampedFloating.x, top: clampedFloating.y }
-          : { width: fitWidth, maxWidth: "calc(100vw - 2rem)" }
+          ? {
+              width: fitWidth,
+              left: clampedFloating.x,
+              top: clampedFloating.y,
+            }
+          : {
+              width: fitWidth,
+              maxWidth: "calc(100vw - 2rem)",
+            }
       }
     >
       <ComputerPreviewViewport
@@ -221,12 +222,16 @@ function ComputerPreviewPopoverCard(props: {
   }
   return card;
 }
-
 function useObservedSize(
   ref: RefObject<HTMLElement | null>,
-  options?: { readonly offsetParent?: boolean },
+  options?: {
+    readonly offsetParent?: boolean;
+  },
 ) {
-  const [size, setSize] = useState({ width: 0, height: 0 });
+  const [size, setSize] = useState({
+    width: 0,
+    height: 0,
+  });
   const measureParent = options?.offsetParent === true;
   useEffect(() => {
     const element = measureParent ? (ref.current?.offsetParent as HTMLElement | null) : ref.current;
@@ -237,7 +242,10 @@ function useObservedSize(
         const height = element.clientHeight;
         return previous.width === width && previous.height === height
           ? previous
-          : { width, height };
+          : {
+              width,
+              height,
+            };
       });
     };
     update();
@@ -247,12 +255,16 @@ function useObservedSize(
   }, [ref, measureParent]);
   return size;
 }
-
 function ComputerPreviewViewport(props: {
   readonly children: ReactNode;
   readonly threadId: ThreadId;
   readonly floating: boolean;
-  readonly frameDims: { readonly width: number; readonly height: number } | undefined;
+  readonly frameDims:
+    | {
+        readonly width: number;
+        readonly height: number;
+      }
+    | undefined;
   readonly hasFrame: boolean;
   readonly streamStatus: ReturnType<typeof useComputerImageStream>["status"];
   readonly statusLabel: string | null;
@@ -311,7 +323,7 @@ function ComputerPreviewViewport(props: {
                 aria-label="Dock the computer preview back into the chat rail"
                 className="grid size-7 place-items-center rounded-full text-white drop-shadow-[0_1px_2px_rgb(0_0_0/0.6)] transition-colors duration-100 hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
               >
-                <PanelCollapseIcon className="size-4" />
+                <CollapseIcon className="size-4" />
               </button>
             ) : (
               <button
@@ -321,7 +333,7 @@ function ComputerPreviewViewport(props: {
                 aria-label="Float the computer preview as a draggable window"
                 className="grid size-7 place-items-center rounded-full text-white drop-shadow-[0_1px_2px_rgb(0_0_0/0.6)] transition-colors duration-100 hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
               >
-                <PanelExpandIcon className="size-4" />
+                <ExpandIcon className="size-4" />
               </button>
             )}
             <ComputerPreviewHideButton threadId={threadId} />
@@ -331,7 +343,6 @@ function ComputerPreviewViewport(props: {
     </div>
   );
 }
-
 function ComputerPreviewHideButton(props: { readonly threadId: ThreadId }) {
   const hidePreviewForTask = useComputerStateStore((store) => store.hidePreviewForTask);
   return (
@@ -346,7 +357,6 @@ function ComputerPreviewHideButton(props: { readonly threadId: ThreadId }) {
     </button>
   );
 }
-
 function ComputerPreviewStreamStatus(props: {
   status: ReturnType<typeof useComputerImageStream>["status"];
 }) {

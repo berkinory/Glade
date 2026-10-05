@@ -1,13 +1,8 @@
-import { HiOutlineArchiveBox } from "react-icons/hi2";
-
+import { Archive04Icon } from "~/lib/icons";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-
 import { cn } from "~/lib/utils";
 import { SIDEBAR_TRAILING_ICON_CLASS, sidebarGlyphClass } from "./sidebarGlyphs";
 import { SidebarIconButton } from "./SidebarIconButton";
-
-export const THREAD_ARCHIVE_ICON = HiOutlineArchiveBox;
-
 export function ThreadArchiveActionButton({
   threadId,
   toneClassName,
@@ -16,14 +11,13 @@ export function ThreadArchiveActionButton({
 }: {
   threadId: ThreadId;
   toneClassName?: string;
-
   compact?: boolean;
   onArchive: () => void;
 }) {
   const isCompact = compact === true;
   return (
     <SidebarIconButton
-      icon={THREAD_ARCHIVE_ICON}
+      icon={Archive04Icon}
       label="Archive thread"
       title="Archive thread"
       data-testid={`thread-archive-${threadId}`}

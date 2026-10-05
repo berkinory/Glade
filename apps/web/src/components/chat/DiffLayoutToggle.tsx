@@ -1,6 +1,5 @@
-import { SquareSplitHorizontal, SquareSplitVertical } from "~/lib/icons";
+import { SquareSplitHorizontalIcon, SquareSplitVerticalIcon } from "~/lib/icons";
 import { IconButton } from "../ui/icon-button";
-
 export function DiffLayoutToggle(props: {
   value: "unified" | "split";
   onChange: (value: "unified" | "split") => void;
@@ -16,9 +15,9 @@ export function DiffLayoutToggle(props: {
       onClick={() => props.onChange(nextValue)}
     >
       {nextValue === "split" ? (
-        <SquareSplitHorizontal className="size-3.5" />
+        <SquareSplitHorizontalIcon className="size-3.5" />
       ) : (
-        <SquareSplitVertical className="size-3.5" />
+        <SquareSplitVerticalIcon className="size-3.5" />
       )}
     </IconButton>
   );

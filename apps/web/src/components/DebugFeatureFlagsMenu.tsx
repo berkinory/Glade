@@ -1,4 +1,4 @@
-import { FlagIcon } from "~/lib/icons";
+import { Flag02Icon } from "~/lib/icons";
 import {
   FEATURE_FLAGS,
   setFeatureFlagEnabled,
@@ -17,7 +17,6 @@ import {
 import { ComposerPickerMenuPopup } from "./chat/ComposerPickerMenuPopup";
 import { SidebarMenuButton } from "./ui/sidebar";
 import { toastManager } from "./ui/toast";
-
 function triggerActionFailedToasts(values: Record<ToggleFeatureFlagId, boolean>): void {
   const copyText =
     "Error: Git command failed in /Users/ibrahime/Documents/Projects/glade\n\n" +
@@ -25,9 +24,12 @@ function triggerActionFailedToasts(values: Record<ToggleFeatureFlagId, boolean>)
     "fatal: unable to access upstream remote for local debug toast preview";
   const toastData = {
     copyText,
-    ...(values["persist-action-failed-debug-toasts"] ? {} : { dismissAfterVisibleMs: 30_000 }),
+    ...(values["persist-action-failed-debug-toasts"]
+      ? {}
+      : {
+          dismissAfterVisibleMs: 30_000,
+        }),
   };
-
   toastManager.add({
     type: "error",
     title: "Action failed",
@@ -41,10 +43,8 @@ function triggerActionFailedToasts(values: Record<ToggleFeatureFlagId, boolean>)
     data: toastData,
   });
 }
-
 export function DebugFeatureFlagsMenu() {
   const values = useFeatureFlags();
-
   return (
     <Menu>
       <MenuTrigger
@@ -55,7 +55,7 @@ export function DebugFeatureFlagsMenu() {
           />
         }
       >
-        <FlagIcon className="size-[15px]" />
+        <Flag02Icon className="size-[15px]" />
         <span>Feature flags</span>
       </MenuTrigger>
       <ComposerPickerMenuPopup align="start" side="top" className="min-w-72">
@@ -78,7 +78,6 @@ export function DebugFeatureFlagsMenu() {
                 </MenuItem>
               );
             }
-
             return (
               <MenuCheckboxItem
                 key={flag.id}

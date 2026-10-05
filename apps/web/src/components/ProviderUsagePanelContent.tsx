@@ -1,8 +1,7 @@
+import { ExternalLinkIcon, TriangleAlertIcon } from "~/lib/icons";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ServerCodexResetCredits } from "@glade/contracts/server/server";
 import { providerUsageLabel } from "@glade/shared/provider/providerUsage";
-
-import { ExternalLinkIcon, TriangleAlertIcon } from "~/lib/icons";
 import type { OpenUsageUsageLine } from "~/lib/openUsageRateLimits";
 import {
   deriveProviderUsageLearnMoreHref,
@@ -11,11 +10,9 @@ import {
 } from "~/lib/rateLimits";
 import { deriveProviderUsageDisplayRows } from "~/lib/providerUsageDisplay";
 import { cn } from "~/lib/utils";
-
 import { ProviderUsageLimitRows } from "./ProviderUsageLimitRows";
 import { ProviderUsageLineList } from "./ProviderUsageLineList";
 import { ProviderUsageResetCredits } from "./ProviderUsageResetCredits";
-
 export function ProviderUsagePanelContent(props: {
   provider: ProviderKind | null | undefined;
   rateLimits: ReadonlyArray<ProviderRateLimit>;
@@ -36,7 +33,6 @@ export function ProviderUsagePanelContent(props: {
     props.learnMoreHref ??
     deriveRateLimitLearnMoreHref(props.rateLimits) ??
     deriveProviderUsageLearnMoreHref(props.provider);
-
   return (
     <div className={cn("space-y-2", props.className)}>
       {props.showTitle !== false ? (

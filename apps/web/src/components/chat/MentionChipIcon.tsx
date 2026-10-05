@@ -1,3 +1,4 @@
+import { MessageCircleIcon, PuzzleIcon } from "~/lib/icons";
 import { getFileIconUrl, getFolderIconUrl, inferEntryKindFromPath } from "~/file-icons";
 import {
   findThreadProviderMentionReferenceForToken,
@@ -5,8 +6,7 @@ import {
   threadIdFromProviderMentionReference,
   type MentionChipKind,
 } from "~/lib/composerMentions";
-import { createCentralIconElement } from "~/lib/central-icons";
-import { MessageCircleIcon, PluginIcon } from "~/lib/icons";
+import { createIconElement } from "~/lib/createIconElement";
 import { COMPOSER_INLINE_CHIP_INLINE_ICON_CLASS_NAME } from "../composerInlineChip";
 import { FileEntryIcon } from "./FileEntryIcon";
 import type { ProviderMentionReference } from "@glade/contracts/provider/providerDiscovery";
@@ -14,9 +14,7 @@ import { threadIdFromThreadMentionPath } from "@glade/shared/threads/threadMenti
 import { useStore } from "~/store";
 import { resolveThreadDisplayProvider } from "~/lib/threadDisplayProvider";
 import { ProviderIcon } from "../ProviderIcon";
-
 export type { MentionChipKind };
-
 export const MentionChipIcon = function MentionChipIcon(props: {
   path: string;
   theme: "light" | "dark";
@@ -26,8 +24,16 @@ export const MentionChipIcon = function MentionChipIcon(props: {
 }) {
   const className = props.className ?? COMPOSER_INLINE_CHIP_INLINE_ICON_CLASS_NAME;
   const resolvedKind = resolveMentionChipKind(props.path, {
-    ...(props.kind ? { kind: props.kind } : {}),
-    ...(props.mentionReferences ? { mentionReferences: props.mentionReferences } : {}),
+    ...(props.kind
+      ? {
+          kind: props.kind,
+        }
+      : {}),
+    ...(props.mentionReferences
+      ? {
+          mentionReferences: props.mentionReferences,
+        }
+      : {}),
   });
   const threadMention = findThreadProviderMentionReferenceForToken(
     props.path,
@@ -51,7 +57,7 @@ export const MentionChipIcon = function MentionChipIcon(props: {
     );
   }
   if (resolvedKind === "plugin") {
-    return <PluginIcon className={className} />;
+    return <PuzzleIcon className={className} />;
   }
   return (
     <FileEntryIcon
@@ -61,14 +67,13 @@ export const MentionChipIcon = function MentionChipIcon(props: {
     />
   );
 };
-
 export function createMentionChipIconElement(
   path: string,
   kind: MentionChipKind = "path",
   className: string = COMPOSER_INLINE_CHIP_INLINE_ICON_CLASS_NAME,
-): HTMLElement {
+): HTMLElement | SVGSVGElement {
   if (kind === "plugin" || path.startsWith("plugin://")) {
-    return createCentralIconElement("puzzle", className) ?? document.createElement("span");
+    return createIconElement(PuzzleIcon, className);
   }
   const icon = document.createElement("img");
   icon.src =

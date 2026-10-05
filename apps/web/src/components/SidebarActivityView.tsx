@@ -1,3 +1,13 @@
+import {
+  PlusIcon,
+  CircleCheckIcon,
+  WorkflowCircle04Icon,
+  SquarePenIcon,
+  ArrowUpDownIcon,
+  UndoIcon,
+  GitForkIcon,
+  FolderIcon,
+} from "~/lib/icons";
 import { SidebarDraftIndicator } from "./SidebarDraftIndicator";
 import { useShallow } from "zustand/react/shallow";
 import { useComposerDraftStore } from "~/composerDraftStore";
@@ -12,20 +22,9 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
-
 import type { OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/threadEntities";
 import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { resolveThreadEnvironmentMode } from "@glade/shared/threads/threadEnvironment";
-
-import {
-  AddPlusIcon,
-  CircleCheckIcon,
-  GitBranchIcon,
-  NewThreadIcon,
-  SortIcon,
-  Undo2Icon,
-  WorktreeIcon,
-} from "~/lib/icons";
 import { beginThreadDrag, endThreadDrag } from "~/lib/threadDrag";
 import { cn } from "~/lib/utils";
 import {
@@ -40,7 +39,6 @@ import {
 import { resolveThreadPullRequestFallback } from "../hooks/useThreadPullRequests";
 import type { Project, SidebarThreadSummary } from "../types";
 import { ComposerPickerMenuPopup } from "./chat/ComposerPickerMenuPopup";
-import { FolderClosed } from "./FolderClosed";
 import { ProviderIcon } from "./ProviderIcon";
 import { PrStateChip } from "./pullRequest/PrStateChip";
 import {
@@ -89,16 +87,13 @@ import {
   MenuTrigger,
 } from "./ui/menu";
 import { Tooltip, TooltipTrigger } from "./ui/tooltip";
-
 const ACTIVITY_LIST_BASE_LIMIT = 20;
 const ACTIVITY_LIST_PAGE_SIZE = 20;
 const EMPTY_PROJECT_GROUPS: ActivityProjectGroup[] = [];
-
 function stopRowActivation(event: MouseEvent) {
   event.preventDefault();
   event.stopPropagation();
 }
-
 function ActivityThreadRow({
   thread,
   project,
@@ -150,16 +145,16 @@ function ActivityThreadRow({
     threadId: thread.id,
   });
   const actionToneClassName = SIDEBAR_THREAD_HOVER_ACTION_TONE_CLASS_NAME;
-
-  const trailingStatus = resolveThreadStatusTrailingIndicator({ status, isActive });
-
+  const trailingStatus = resolveThreadStatusTrailingIndicator({
+    status,
+    isActive,
+  });
   const rowGestures = createSidebarThreadRowGestures({
     threadId: thread.id,
     onRename: isLocalDraft ? () => {} : onRename,
     onRenamePointerUp: isLocalDraft ? () => {} : onRenamePointerUp,
     onContextMenu: isLocalDraft ? () => {} : onContextMenu,
   });
-
   return (
     <Tooltip>
       <TooltipTrigger
@@ -191,7 +186,6 @@ function ActivityThreadRow({
           <span
             className={cn(
               "flex min-w-0 items-center gap-1.5 overflow-hidden pr-5 transition-[padding] duration-100 ease-out",
-
               "group-hover/activity-row:pr-[4.25rem] group-focus-within/activity-row:pr-[4.25rem]",
             )}
           >
@@ -214,7 +208,7 @@ function ActivityThreadRow({
           <SidebarDraftIndicator threadId={thread.id} isActive={isActive} activity />
           <span className="flex min-w-0 items-center gap-1.5">
             {isWorktree ? (
-              <WorktreeIcon
+              <GitForkIcon
                 className={sidebarGlyphClass("meta", "translate-y-px text-muted-foreground/70")}
                 aria-hidden
               />
@@ -226,7 +220,7 @@ function ActivityThreadRow({
                 glyphClassName={sidebarGlyphClass("meta")}
               />
             ) : (
-              <FolderClosed className={sidebarGlyphClass("meta")} aria-hidden />
+              <FolderIcon className={sidebarGlyphClass("meta")} aria-hidden />
             )}
 
             <span className="min-w-0 truncate text-ui-sm text-muted-foreground/80">
@@ -242,7 +236,7 @@ function ActivityThreadRow({
               ) : null}
               {branch ? (
                 <span className="flex min-w-0 items-center gap-1 text-ui-sm text-muted-foreground/70">
-                  <GitBranchIcon
+                  <WorkflowCircle04Icon
                     className={sidebarGlyphClass("meta", "translate-y-px")}
                     aria-hidden
                   />
@@ -286,7 +280,7 @@ function ActivityThreadRow({
               onArchive={onArchive}
             />
             <SidebarIconButton
-              icon={isSettled ? Undo2Icon : CircleCheckIcon}
+              icon={isSettled ? UndoIcon : CircleCheckIcon}
               label={isSettled ? "Undo" : "Done"}
               title={isSettled ? "Undo" : "Done"}
               iconClassName={SIDEBAR_TRAILING_ICON_CLASS}
@@ -304,13 +298,11 @@ function ActivityThreadRow({
     </Tooltip>
   );
 }
-
 function ActivitySectionLabel({
   label,
   onContextMenu,
 }: {
   label: string;
-
   onContextMenu?: (position: SidebarRowContextMenuPosition) => void;
 }) {
   return (
@@ -322,7 +314,10 @@ function ActivitySectionLabel({
             onContextMenu: (event: MouseEvent) => {
               event.preventDefault();
               event.stopPropagation();
-              onContextMenu({ x: event.clientX, y: event.clientY });
+              onContextMenu({
+                x: event.clientX,
+                y: event.clientY,
+              });
             },
           }
         : {})}
@@ -331,7 +326,6 @@ function ActivitySectionLabel({
     </div>
   );
 }
-
 function ActivityCollapsibleSection({
   label,
   open,
@@ -365,7 +359,6 @@ function ActivityCollapsibleSection({
     </div>
   );
 }
-
 function ActivityScopeMenu({
   options,
   projectById,
@@ -384,7 +377,6 @@ function ActivityScopeMenu({
       : scopeSelection === "chats"
         ? "Glade"
         : resolveThreadProjectLabel(projectById.get(scopeSelection));
-
   return (
     <Menu onOpenChange={(open) => setMenuOpen(open)}>
       <MenuTrigger
@@ -445,7 +437,6 @@ function ActivityScopeMenu({
     </Menu>
   );
 }
-
 function ActivityFilterMenu({
   groupMode,
   onChangeGroupMode,
@@ -460,7 +451,7 @@ function ActivityFilterMenu({
   return (
     <Menu>
       <SidebarIconButton
-        icon={SortIcon}
+        icon={ArrowUpDownIcon}
         label="Activity options"
         tooltip="Activity options"
         tooltipSide="bottom"
@@ -487,7 +478,6 @@ function ActivityFilterMenu({
     </Menu>
   );
 }
-
 function ActivityShowMoreRow({
   canShowMore,
   canShowLess,
@@ -521,7 +511,6 @@ function ActivityShowMoreRow({
     </div>
   );
 }
-
 export function SidebarActivityView({
   threads,
   projectById,
@@ -556,7 +545,6 @@ export function SidebarActivityView({
   onVisibleThreadIdsChange: (threadIds: readonly ThreadId[]) => void;
   resolveThreadStatus: (thread: SidebarThreadSummary) => ThreadStatusPill | null;
   onOpenThread: (threadId: ThreadId) => void;
-
   onOpenThreadPullRequest: (
     event: MouseEvent<HTMLElement>,
     thread: SidebarThreadSummary,
@@ -565,21 +553,13 @@ export function SidebarActivityView({
   onSetThreadSettled: (threadId: ThreadId, settled: boolean) => void;
   onToggleThreadPinned: (threadId: ThreadId) => void;
   onArchiveThread: (threadId: ThreadId) => void;
-
   onMarkThreadRead: (threadId: ThreadId, completedAt?: string) => void;
-
   onRenameThread: (threadId: ThreadId) => void;
-
   onThreadRenamePointerUp: (event: ReactPointerEvent<HTMLElement>, threadId: ThreadId) => void;
-
   onThreadContextMenu: (threadId: ThreadId, position: SidebarRowContextMenuPosition) => void;
-
   onProjectContextMenu: (projectId: ProjectId, position: SidebarRowContextMenuPosition) => void;
-
   renderThreadHoverCard: (thread: SidebarThreadSummary, anchorId: string) => ReactNode;
-
   onCreateChat: () => void;
-
   onAddProject: () => void;
 }) {
   const scopeSelection = useSidebarStateStore((state) => state.activityScope);
@@ -601,9 +581,7 @@ export function SidebarActivityView({
   const [projectExtraPagesByKey, setProjectExtraPagesByKey] = useState<ReadonlyMap<string, number>>(
     () => new Map(),
   );
-
   const isRealProject = (projectId: ProjectId) => projectById.get(projectId)?.kind === "project";
-
   const scopeOptions = collectActivityScopeOptions(threads, isRealProject, draftThreadIds);
   if (
     scopeSelection &&
@@ -611,10 +589,13 @@ export function SidebarActivityView({
     projectById.has(scopeSelection) &&
     !scopeOptions.some((option) => option.kind === "project" && option.projectId === scopeSelection)
   ) {
-    scopeOptions.push({ kind: "project", projectId: scopeSelection, threadCount: 0 });
+    scopeOptions.push({
+      kind: "project",
+      projectId: scopeSelection,
+      threadCount: 0,
+    });
   }
   const unreadThreads = collectUnreadActivityThreads(threads);
-
   const { scope: activeScope, projectFilterIds } = resolveActivityScope(
     scopeSelection,
     scopeOptions,
@@ -622,7 +603,6 @@ export function SidebarActivityView({
   useEffect(() => {
     if (threadsHydrated && scopeSelection !== activeScope) setScopeSelection(activeScope);
   }, [activeScope, scopeSelection, setScopeSelection, threadsHydrated]);
-
   const model = buildActivityViewModel({
     threads,
     pinnedThreadIdSet,
@@ -631,18 +611,18 @@ export function SidebarActivityView({
     projectFilterIds,
   });
   const scopedPinnedThreads = model.pinned;
-
   const nowMs = Math.floor(Date.now() / 60_000) * 60_000;
   const { recent: recentThreads, rest: remainingActiveThreads } = splitRecentActivityThreads(
     model.active,
-    { nowMs },
+    {
+      nowMs,
+    },
   );
   const dateBuckets = splitActivityThreadsByDateBucket(remainingActiveThreads, nowMs);
   const projectGroups =
     groupMode === "project"
       ? groupActivityThreadsByProject(model.active, isRealProject)
       : EMPTY_PROJECT_GROUPS;
-
   const earlierPaging = resolveSidebarThreadListPaging({
     totalCount: dateBuckets.earlier.length,
     baseLimit: ACTIVITY_LIST_BASE_LIMIT,
@@ -668,7 +648,6 @@ export function SidebarActivityView({
       threads: group.threads.slice(0, paging.previewLimit),
     };
   });
-
   const ordinaryVisibleThreadIds = collectVisibleActivityThreadIds({
     groupMode,
     pinnedOpen,
@@ -715,13 +694,11 @@ export function SidebarActivityView({
     },
     [onVisibleThreadIdsChange],
   );
-
   const markAllRead = () => {
     for (const thread of unreadThreads) {
       onMarkThreadRead(thread.id, thread.latestTurn?.completedAt ?? undefined);
     }
   };
-
   const renderRow = (thread: SidebarThreadSummary, isSettled: boolean) => (
     <ActivityThreadRow
       key={thread.id}
@@ -756,7 +733,6 @@ export function SidebarActivityView({
   );
   const renderActiveRow = (thread: SidebarThreadSummary) =>
     renderRow(thread, isThreadSettledForActivity(thread, settledOverrideByThreadId));
-
   const isEmpty =
     model.active.length === 0 &&
     model.settled.length === 0 &&
@@ -769,7 +745,6 @@ export function SidebarActivityView({
       : activeScope === "chats"
         ? "No activity in Glade chats"
         : "No activity for this project";
-
   return (
     <div className="flex flex-col gap-3">
       {scopedPinnedThreads.length > 0 ? (
@@ -805,14 +780,14 @@ export function SidebarActivityView({
         />
         <SidebarSectionToolbar revealOnHover className="mr-0">
           <SidebarIconButton
-            icon={NewThreadIcon}
+            icon={SquarePenIcon}
             label="Start new chat in last used project"
             tooltip="New chat"
             tooltipSide="bottom"
             onClick={onCreateChat}
           />
           <SidebarIconButton
-            icon={AddPlusIcon}
+            icon={PlusIcon}
             label="Add project"
             tooltip="Add project"
             tooltipSide="bottom"

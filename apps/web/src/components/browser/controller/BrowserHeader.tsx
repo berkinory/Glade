@@ -1,5 +1,16 @@
+import {
+  ArrowLeft02Icon,
+  ArrowRight02Icon,
+  CameraIcon,
+  EllipsisIcon,
+  ExternalLinkIcon,
+  Globe02Icon,
+  PlusIcon,
+  RefreshCwIcon,
+  XIcon,
+  Link01Icon,
+} from "~/lib/icons";
 import { Spinner } from "~/components/ui/spinner";
-import { CentralIcon } from "~/lib/central-icons";
 import { isBlankBrowserTabUrl } from "@glade/shared/browser/browserSession";
 import {
   BROWSER_COPY_LINK_TOAST_TITLE,
@@ -35,17 +46,6 @@ import { Input } from "~/components/ui/input";
 import { Menu, MenuItem, MenuSeparator, MenuTrigger } from "~/components/ui/menu";
 import { toastManager } from "~/components/ui/toast";
 import { isElectron } from "~/env";
-import {
-  ArrowLeftIcon,
-  ArrowRightIcon,
-  CameraIcon,
-  EllipsisIcon,
-  ExternalLinkIcon,
-  GlobeIcon,
-  PlusIcon,
-  RefreshCwIcon,
-  XIcon,
-} from "~/lib/icons";
 import { cn, isMacNavigatorPlatform } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
 import {
@@ -134,7 +134,6 @@ export function BrowserHeader({
         : undefined,
       isEditing: isAddressEditingRef.current,
     });
-
     if (decision.type === "replace") {
       setAddressValue(decision.value);
       if (activeTabId) {
@@ -144,7 +143,6 @@ export function BrowserHeader({
         }
       }
     }
-
     previousActiveTabIdRef.current = activeTabId;
   }, [
     activeTab,
@@ -179,7 +177,15 @@ export function BrowserHeader({
     if (!ensureLiveRuntime() || !api || !activeTab) return;
     const url = normalizeBrowserAddressInput(addressValue);
     updateAddress(url, activeTab.id);
-    void runBrowserCommand(threadId, { kind: "navigate", tabId: activeTab.id, url }, setLocalError);
+    void runBrowserCommand(
+      threadId,
+      {
+        kind: "navigate",
+        tabId: activeTab.id,
+        url,
+      },
+      setLocalError,
+    );
   };
   const onChooseSuggestion = (suggestion: BrowserAddressSuggestion) => {
     if (!api || !ensureLiveRuntime()) return;
@@ -189,7 +195,10 @@ export function BrowserHeader({
     if (suggestion.kind === "tab" && typeof suggestion.tabId === "string") {
       void runBrowserCommand(
         threadId,
-        { kind: "select", tabId: suggestion.tabId },
+        {
+          kind: "select",
+          tabId: suggestion.tabId,
+        },
         setLocalError,
       ).then(() => {
         window.requestAnimationFrame(() => {
@@ -201,7 +210,15 @@ export function BrowserHeader({
       if (activeTab) addressDraftsByTabIdRef.current.set(activeTab.id, suggestion.url);
       void runBrowserCommand(
         threadId,
-        { kind: "navigate", url: suggestion.url, ...(activeTab ? { tabId: activeTab.id } : {}) },
+        {
+          kind: "navigate",
+          url: suggestion.url,
+          ...(activeTab
+            ? {
+                tabId: activeTab.id,
+              }
+            : {}),
+        },
         setLocalError,
       );
     }
@@ -209,7 +226,13 @@ export function BrowserHeader({
   const onCreateTab = () => {
     if (!api) return;
     if (!isLiveRuntime) requestLiveRuntime();
-    void runBrowserCommand(threadId, { kind: "new" }, setLocalError).then((state) => {
+    void runBrowserCommand(
+      threadId,
+      {
+        kind: "new",
+      },
+      setLocalError,
+    ).then((state) => {
       if (!state) return;
       setAddressSuggestionsSuppressed(true);
       window.requestAnimationFrame(() => {
@@ -261,10 +284,12 @@ export function BrowserHeader({
     if (!api || !isLiveRuntime) return;
     return api.browser.onCopyLink((event) => {
       if (event.threadId === threadId)
-        toastManager.add({ type: "success", title: BROWSER_COPY_LINK_TOAST_TITLE });
+        toastManager.add({
+          type: "success",
+          title: BROWSER_COPY_LINK_TOAST_TITLE,
+        });
     });
   }, [api, isLiveRuntime, threadId]);
-
   useImperativeHandle(ref, () => ({
     createTab: onCreateTab,
     navigate: (url, tabId) => {
@@ -272,7 +297,15 @@ export function BrowserHeader({
       updateAddress(url, tabId);
       void runBrowserCommand(
         threadId,
-        { kind: "navigate", url, ...(tabId ? { tabId } : {}) },
+        {
+          kind: "navigate",
+          url,
+          ...(tabId
+            ? {
+                tabId,
+              }
+            : {}),
+        },
         setLocalError,
       );
     },
@@ -293,12 +326,15 @@ export function BrowserHeader({
               if (ensureLiveRuntime() && activeTab)
                 void runBrowserCommand(
                   threadId,
-                  { kind: "back", tabId: activeTab.id },
+                  {
+                    kind: "back",
+                    tabId: activeTab.id,
+                  },
                   setLocalError,
                 );
             }}
           >
-            <ArrowLeftIcon className="size-3.5" />
+            <ArrowLeft02Icon className="size-3.5" />
             <span className="sr-only">Go back</span>
           </Button>
           <Button
@@ -311,12 +347,15 @@ export function BrowserHeader({
               if (ensureLiveRuntime() && activeTab)
                 void runBrowserCommand(
                   threadId,
-                  { kind: "forward", tabId: activeTab.id },
+                  {
+                    kind: "forward",
+                    tabId: activeTab.id,
+                  },
                   setLocalError,
                 );
             }}
           >
-            <ArrowRightIcon className="size-3.5" />
+            <ArrowRight02Icon className="size-3.5" />
             <span className="sr-only">Go forward</span>
           </Button>
           <Button
@@ -329,7 +368,10 @@ export function BrowserHeader({
               if (ensureLiveRuntime() && activeTab)
                 void runBrowserCommand(
                   threadId,
-                  { kind: "reload", tabId: activeTab.id },
+                  {
+                    kind: "reload",
+                    tabId: activeTab.id,
+                  },
                   setLocalError,
                 );
             }}
@@ -407,7 +449,7 @@ export function BrowserHeader({
                     ) : suggestion.faviconUrl ? (
                       <img alt="" src={suggestion.faviconUrl} className="size-3 rounded-[2px]" />
                     ) : (
-                      <GlobeIcon className="size-3 text-muted-foreground" />
+                      <Globe02Icon className="size-3 text-muted-foreground" />
                     )}
                   </span>
                   <span className="min-w-0 flex-1">
@@ -459,7 +501,7 @@ export function BrowserHeader({
           title="Copy link"
           onClick={copyActiveTabLink}
         >
-          <CentralIcon name="link" className="size-3.5" />
+          <Link01Icon className="size-3.5" />
           <span className="sr-only">Copy link</span>
         </Button>
         <Menu modal={false} open={browserActionsMenuOpen} onOpenChange={setBrowserActionsMenuOpen}>

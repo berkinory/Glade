@@ -1,3 +1,11 @@
+import {
+  CloudDownloadIcon,
+  ArrowDownToLineIcon,
+  ArrowUpToLineIcon,
+  RefreshCwIcon,
+  ArrowUp02Icon,
+  ArrowDown02Icon,
+} from "~/lib/icons";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { GitPublishContextResult } from "@glade/contracts/git/githubRepositoryPublishing";
 import { GitPublishDialog } from "./GitPublishDialog";
@@ -10,14 +18,6 @@ import { SourceControlCommitInput } from "./SourceControlCommitInput";
 import { Tooltip, TooltipTrigger, TooltipPopup } from "../ui/tooltip";
 import { Spinner } from "../ui/spinner";
 import { toastManager } from "../ui/toast";
-import {
-  IconCloudDownload,
-  IconArrowBarToDown,
-  IconArrowBarToUp,
-  IconRefreshAlert,
-  IconArrowUp,
-  IconArrowDown,
-} from "@tabler/icons-react";
 import { useState } from "react";
 import { ensureNativeApi } from "~/nativeApi";
 import {
@@ -36,7 +36,6 @@ import {
   type SourceControlAction,
 } from "~/lib/gitReactQuery";
 import { hasUnsavedWorkspaceEditors } from "~/lib/workspaceEditorSession";
-
 export function SourceControlToolbar({
   cwd,
   threadId,
@@ -60,10 +59,18 @@ export function SourceControlToolbar({
   );
   const status = useQuery(gitStatusQueryOptions(cwd));
   const rebase = useQuery(gitRebaseStateQueryOptions(cwd));
-  const mutation = useMutation(gitSourceControlActionMutationOptions({ cwd, queryClient }));
+  const mutation = useMutation(
+    gitSourceControlActionMutationOptions({
+      cwd,
+      queryClient,
+    }),
+  );
   const [publishContext, setPublishContext] = useState<GitPublishContextResult | null>(null);
   const publishContextMutation = useMutation({
-    mutationFn: () => ensureNativeApi().git.publishContext({ cwd }),
+    mutationFn: () =>
+      ensureNativeApi().git.publishContext({
+        cwd,
+      }),
   });
   const disabled = busy || mutation.isPending || checkingCommit || publishContextMutation.isPending;
   const rebasing = rebase.data?.inProgress ?? false;
@@ -77,7 +84,6 @@ export function SourceControlToolbar({
     hasChanges &&
     !files.isError &&
     message.trim().length > 0;
-
   const run = (request: SourceControlAction) => {
     if (disabled) return;
     if (
@@ -94,7 +100,10 @@ export function SourceControlToolbar({
       onSuccess: () => {
         if (request.action === "commit") {
           if (useCommitDrafts.getState().messages[cwd] === message) setDraft(cwd, "");
-          toastManager.add({ type: "success", title: "Changes committed" });
+          toastManager.add({
+            type: "success",
+            title: "Changes committed",
+          });
         } else
           toastManager.add({
             type: "success",
@@ -116,7 +125,6 @@ export function SourceControlToolbar({
         }),
     });
   };
-
   const commit = async () => {
     if (!canCommit || !files.data) return;
     setCheckingCommit(true);
@@ -130,7 +138,10 @@ export function SourceControlToolbar({
       const api = ensureNativeApi();
       if (!scope.staged) {
         assertCommitScope(scope, await readCommitScope(cwd));
-        const staged = await api.git.stageFiles({ cwd, paths: scope.paths });
+        const staged = await api.git.stageFiles({
+          cwd,
+          paths: scope.paths,
+        });
         if (!staged.ok)
           throw new Error("Could not stage all changes. Your message has been preserved.");
         const after = await readCommitScope(cwd);
@@ -139,9 +150,15 @@ export function SourceControlToolbar({
       } else {
         assertCommitScope(scope, await readCommitScope(cwd));
       }
-      await mutation.mutateAsync({ action: "commit", message: message.trim() });
+      await mutation.mutateAsync({
+        action: "commit",
+        message: message.trim(),
+      });
       if ((useCommitDrafts.getState().messages[cwd] ?? "") === message) setDraft(cwd, "");
-      toastManager.add({ type: "success", title: "Changes committed" });
+      toastManager.add({
+        type: "success",
+        title: "Changes committed",
+      });
     } catch (error) {
       toastManager.add({
         type: "error",
@@ -155,12 +172,14 @@ export function SourceControlToolbar({
       });
     }
   };
-
   const push = () => {
     if (disabled) return;
     publishContextMutation.mutate(undefined, {
       onSuccess: (context) => {
-        if (context.hasRemote) run({ action: "push" });
+        if (context.hasRemote)
+          run({
+            action: "push",
+          });
         else setPublishContext(context);
       },
       onError: (error) =>
@@ -171,7 +190,6 @@ export function SourceControlToolbar({
         }),
     });
   };
-
   return (
     <div className="flex shrink-0 flex-col gap-1.5 border-b border-border/70 px-2 py-1.5">
       <div className="flex min-w-0 items-center gap-1">
@@ -198,11 +216,11 @@ export function SourceControlToolbar({
               }
             >
               <span className="inline-flex items-center gap-0.5">
-                <IconArrowUp aria-hidden className="size-3" />
+                <ArrowUp02Icon aria-hidden className="size-3" />
                 {status.data.aheadCount}
               </span>
               <span className="inline-flex items-center gap-0.5">
-                <IconArrowDown aria-hidden className="size-3" />
+                <ArrowDown02Icon aria-hidden className="size-3" />
                 {status.data.behindCount}
               </span>
             </TooltipTrigger>
@@ -218,12 +236,16 @@ export function SourceControlToolbar({
           label="Fetch all remotes"
           tooltip="Fetch"
           disabled={disabled}
-          onClick={() => run({ action: "fetch" })}
+          onClick={() =>
+            run({
+              action: "fetch",
+            })
+          }
         >
           {mutation.isPending && mutation.variables?.action === "fetch" ? (
             <Spinner variant="action" />
           ) : (
-            <IconCloudDownload className="size-4" />
+            <CloudDownloadIcon className="size-4" />
           )}
         </IconButton>
         <IconButton
@@ -236,12 +258,16 @@ export function SourceControlToolbar({
             rebase.isError ||
             Boolean(rebase.data?.conflicts.length)
           }
-          onClick={() => run({ action: "pull" })}
+          onClick={() =>
+            run({
+              action: "pull",
+            })
+          }
         >
           {mutation.isPending && mutation.variables?.action === "pull" ? (
             <Spinner variant="action" />
           ) : (
-            <IconArrowBarToDown className="size-4" />
+            <ArrowDownToLineIcon className="size-4" />
           )}
         </IconButton>
         <IconButton
@@ -260,7 +286,7 @@ export function SourceControlToolbar({
           (mutation.isPending && mutation.variables?.action === "push") ? (
             <Spinner variant="action" className="size-4" />
           ) : (
-            <IconArrowBarToUp className="size-4" />
+            <ArrowUpToLineIcon className="size-4" />
           )}
         </IconButton>
       </div>
@@ -270,7 +296,7 @@ export function SourceControlToolbar({
           className="flex items-center gap-1 text-ui-xs text-destructive"
           onClick={() => void rebase.refetch()}
         >
-          <IconRefreshAlert className="size-3.5" /> Git operation status unavailable · Retry
+          <RefreshCwIcon className="size-3.5" /> Git operation status unavailable · Retry
         </button>
       ) : null}
       {rebase.data?.conflicts.map((path) => (
@@ -297,7 +323,10 @@ export function SourceControlToolbar({
               onClick={() =>
                 run({
                   action: "rebase",
-                  rebase: { action: "continue", operation: rebase.data?.kind ?? "rebase" },
+                  rebase: {
+                    action: "continue",
+                    operation: rebase.data?.kind ?? "rebase",
+                  },
                 })
               }
             >
@@ -310,7 +339,10 @@ export function SourceControlToolbar({
               onClick={() =>
                 run({
                   action: "rebase",
-                  rebase: { action: "abort", operation: rebase.data?.kind ?? "rebase" },
+                  rebase: {
+                    action: "abort",
+                    operation: rebase.data?.kind ?? "rebase",
+                  },
                 })
               }
             >

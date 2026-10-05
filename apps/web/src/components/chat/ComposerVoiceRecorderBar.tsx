@@ -1,10 +1,8 @@
+import { XIcon } from "~/lib/icons";
 import { Spinner } from "~/components/ui/spinner";
 import { useEffect, useRef, useState } from "react";
-
-import { XIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { Button } from "../ui/button";
-
 interface ComposerVoiceRecorderBarProps {
   disabled?: boolean;
   durationLabel: string;
@@ -14,16 +12,13 @@ interface ComposerVoiceRecorderBarProps {
   onDiscard: () => void;
   onStop: () => void;
 }
-
 const BAR_WIDTH_PX = 2;
 const BAR_GAP_PX = 2;
 const BAR_MIN_HEIGHT_PX = 3;
 const BAR_MAX_HEIGHT_PX = 22;
-
 export function ComposerVoiceRecorderBar(props: ComposerVoiceRecorderBarProps) {
   const trackRef = useRef<HTMLDivElement | null>(null);
   const [visibleBarCount, setVisibleBarCount] = useState(96);
-
   useEffect(() => {
     const node = trackRef.current;
     if (!node) {
@@ -41,9 +36,7 @@ export function ComposerVoiceRecorderBar(props: ComposerVoiceRecorderBarProps) {
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
-
   const visibleLevels = props.waveformLevels.slice(-visibleBarCount);
-
   return (
     <div className="flex min-w-0 flex-1 items-center gap-2.5">
       <div ref={trackRef} className="relative flex h-7 min-w-0 flex-1 items-center overflow-hidden">
@@ -53,7 +46,9 @@ export function ComposerVoiceRecorderBar(props: ComposerVoiceRecorderBarProps) {
         />
         <div
           className="relative ml-auto flex h-full items-center"
-          style={{ gap: `${BAR_GAP_PX}px` }}
+          style={{
+            gap: `${BAR_GAP_PX}px`,
+          }}
         >
           {visibleLevels.map((level, index) => {
             const clamped = Math.max(0.04, Math.min(1, level));

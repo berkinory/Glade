@@ -1,32 +1,26 @@
+import { CheckIcon, FolderIcon, FolderPlusIcon } from "~/lib/icons";
 import type { ProjectId } from "@glade/contracts/core/baseSchemas";
 import { useEffect, useState, type FormEvent } from "react";
-
 import { useAppSettings } from "~/appSettings";
 import { Button } from "~/components/ui/button";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "~/components/ui/input-group";
 import { isElectron } from "~/env";
 import { useWindowFolderDrop } from "~/hooks/useWindowFolderDrop";
-import { CentralIcon } from "~/lib/central-icons";
-import { CheckIcon, FolderIcon } from "~/lib/icons";
 import { createOrRecoverProjectFromPath } from "~/lib/projectCreation";
 import { expandProjectHomePath } from "~/lib/projectPaths";
 import { cn } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
 import { useStore } from "~/store";
 import { useWorkspacePathsStore } from "~/workspacePathsStore";
-
 export interface OnboardingProjectResult {
   readonly projectId: ProjectId;
   readonly workspaceRoot: string;
   readonly created: boolean;
 }
-
 const FIELD_CONTROL_CLASS_NAME = "h-9 rounded-lg border-foreground/12";
-
 export function ProjectStep(props: {
   results: ReadonlyArray<OnboardingProjectResult>;
   onResult: (result: OnboardingProjectResult) => void;
-
   onBusyChange: (busy: boolean) => void;
 }) {
   const { settings } = useAppSettings();
@@ -36,14 +30,12 @@ export function ProjectStep(props: {
   const [picking, setPicking] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const { onBusyChange } = props;
   const busy = picking || submitting;
   useEffect(() => {
     onBusyChange(busy);
   }, [busy, onBusyChange]);
   useEffect(() => () => onBusyChange(false), [onBusyChange]);
-
   const addProject = async (rawPath: string) => {
     const api = readNativeApi();
     const workspaceRoot = expandProjectHomePath(rawPath.trim(), homeDir);
@@ -54,7 +46,6 @@ export function ProjectStep(props: {
       const result = await createOrRecoverProjectFromPath({
         api,
         workspaceRoot,
-
         spaceId: null,
         defaultProvider: settings.defaultProvider,
         loadSnapshot: () => api.orchestration.getShellSnapshot().catch(() => null),
@@ -74,7 +65,6 @@ export function ProjectStep(props: {
       setSubmitting(false);
     }
   };
-
   const browse = async () => {
     const api = readNativeApi();
     if (!api) return;
@@ -90,18 +80,15 @@ export function ProjectStep(props: {
       setPicking(false);
     }
   };
-
   const isDropTarget = useWindowFolderDrop({
     enabled: isElectron && !busy,
     onFolder: (dropped) => void addProject(dropped),
     onError: setError,
   });
-
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
     void addProject(path);
   };
-
   return (
     <div className="flex flex-col gap-4">
       {isElectron ? (
@@ -114,11 +101,7 @@ export function ProjectStep(props: {
           )}
           onClick={() => void browse()}
         >
-          <CentralIcon
-            name="folder-add-left"
-            className="size-[22px] text-foreground/70"
-            aria-hidden="true"
-          />
+          <FolderPlusIcon className="size-[22px] text-foreground/70" aria-hidden="true" />
           {picking ? (
             <span>Opening the folder picker…</span>
           ) : (

@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 import {
   ChevronDownIcon,
   ChevronLeftIcon,
@@ -8,6 +6,7 @@ import {
   PlusIcon,
   RefreshCwIcon,
 } from "~/lib/icons";
+import { useState } from "react";
 import { formatZoomPercent, PDF_ZOOM_PRESETS, type PdfZoomMode } from "~/lib/pdf/pdfZoom";
 import { cn } from "~/lib/utils";
 import { ComposerPickerMenuPopup } from "../chat/ComposerPickerMenuPopup";
@@ -19,7 +18,6 @@ import {
 import { OpenInPicker } from "../chat/OpenInPicker";
 import { Badge } from "../ui/badge";
 import { Menu, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger } from "../ui/menu";
-
 interface PdfViewerToolbarProps {
   fileName: string;
   currentPage: number;
@@ -35,7 +33,6 @@ interface PdfViewerToolbarProps {
   openInTarget: string | null;
   onReload?: (() => void) | undefined;
 }
-
 function zoomSelectionValue(mode: PdfZoomMode, scale: number): string {
   if (mode.type === "fit-width") {
     return "fit-width";
@@ -45,10 +42,8 @@ function zoomSelectionValue(mode: PdfZoomMode, scale: number): string {
   }
   return String(Math.round(scale * 100));
 }
-
 export const PdfViewerToolbar = function PdfViewerToolbar(props: PdfViewerToolbarProps) {
   const selectionValue = zoomSelectionValue(props.zoomMode, props.scale);
-
   return (
     <div
       className={cn(
@@ -153,7 +148,6 @@ export const PdfViewerToolbar = function PdfViewerToolbar(props: PdfViewerToolba
     </div>
   );
 };
-
 function PdfPageIndicator({
   currentPage,
   numPages,
@@ -164,19 +158,16 @@ function PdfPageIndicator({
   onJumpToPage: (pageNumber: number) => void;
 }) {
   const [draft, setDraft] = useState(String(currentPage));
-
   const commit = () => {
     const parsed = Number.parseInt(draft, 10);
     if (Number.isFinite(parsed)) {
       const clamped = Math.min(Math.max(parsed, 1), Math.max(numPages, 1));
       onJumpToPage(clamped);
-
       setDraft(String(clamped));
     } else {
       setDraft(String(currentPage));
     }
   };
-
   return (
     <span className="flex items-center gap-1 text-ui-sm tabular-nums text-muted-foreground">
       <input

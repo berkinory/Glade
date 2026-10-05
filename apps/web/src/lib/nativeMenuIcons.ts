@@ -1,5 +1,4 @@
 import type { ContextMenuItem, DesktopContextMenuItem } from "@glade/contracts/ipc/ipc";
-import { getCentralIconUrl } from "./central-icons";
 
 const NATIVE_MENU_ICON_POINTS = 16;
 const NATIVE_MENU_ICON_SCALE = 2;
@@ -10,22 +9,13 @@ export function isInlineSvgMenuIcon(icon: string): boolean {
   return icon.startsWith("<svg");
 }
 
-async function loadMenuIconSvg(icon: string): Promise<string | null> {
-  if (isInlineSvgMenuIcon(icon)) return icon;
-  const iconUrl = getCentralIconUrl(icon);
-  if (!iconUrl) return null;
-  const response = await fetch(iconUrl);
-  return response.ok ? response.text() : null;
-}
-
 async function rasterizeMenuIcon(icon: string): Promise<string | null> {
   const image = new Image();
   if (icon.startsWith("/")) {
     image.src = icon;
   } else {
-    const markup = await loadMenuIconSvg(icon);
-    if (!markup) return null;
-    const svg = markup.replaceAll("currentColor", "#000");
+    if (!isInlineSvgMenuIcon(icon)) return null;
+    const svg = icon.replaceAll("currentColor", "#000");
     image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
   }
   await image.decode();

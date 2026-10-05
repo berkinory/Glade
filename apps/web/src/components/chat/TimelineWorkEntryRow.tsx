@@ -1,7 +1,29 @@
+import { GitHubIcon } from "~/lib/brandIcons";
+import {
+  CircleArrowUpIcon,
+  ArrowDownToLineIcon,
+  BookOpen01Icon,
+  Robot01Icon,
+  CheckIcon,
+  AlertCircleIcon,
+  HelpCircleIcon,
+  SortingDownIcon,
+  MousePointer01Icon,
+  ViewIcon,
+  Globe02Icon,
+  HammerIcon,
+  HistoryIcon,
+  McpServerIcon,
+  PencilEdit02Icon,
+  SearchIcon,
+  BlocksIcon,
+  ComputerTerminal01Icon,
+  EnergyIcon,
+} from "~/lib/icons";
+import type { IconComponent } from "~/lib/iconComponent";
 import { ProviderTransitionDivider } from "./ProviderTransitionDivider";
 import type { TurnId } from "@glade/contracts/core/baseSchemas";
 import { createElement, memo, useMemo, type ReactElement, type ReactNode } from "react";
-
 import { basenameOfPath } from "~/file-icons";
 import {
   AgentActivityOpenSurface,
@@ -9,33 +31,9 @@ import {
   ToolDetailsDisclosure,
 } from "./TimelineWorkEntryDetails";
 import type { TimestampFormat } from "../../appSettings";
-import {
-  ArrowUpCircleIcon,
-  BackgroundTrayIcon,
-  BookOpenIcon,
-  BotIcon,
-  CheckIcon,
-  CircleAlertIcon,
-  CircleQuestionIcon,
-  ContextCompactionIcon,
-  ComputerUseIcon,
-  EyeIcon,
-  GitHubIcon,
-  GlobeIcon,
-  HammerIcon,
-  HistoryIcon,
-  type LucideIcon,
-  McpIcon,
-  PencilIcon,
-  SearchIcon,
-  SkillCubeIcon,
-  TerminalIcon,
-  ZapIcon,
-} from "~/lib/icons";
 import { describeLinkChip } from "~/lib/linkChips";
 import { computerToolName, describeComputerToolCall } from "~/lib/computerToolPresentation";
 import { cn } from "~/lib/utils";
-
 import { isFileChangeWorkLogEntry, type WorkLogEntry } from "../../workLog.types";
 import {
   formatAgentActivityEntryPreview,
@@ -75,35 +73,35 @@ import {
 import { formatLiveActivityMeta, useLiveActivityNow } from "../../lib/liveActivityPresentation";
 import { openWorkspaceFileReference, useWorkspaceFileOpener } from "../../lib/workspaceFileOpener";
 import { MUTED_LABEL_TEXT_CLASS_NAME, MUTED_LABEL_TEXT_COLOR } from "~/surfaceStyles";
-
 const WORK_ROW_MUTED_HOVER_TONE: Record<"tool-row" | "file-row", string> = {
   "tool-row": `${MUTED_LABEL_TEXT_CLASS_NAME} transition-colors group-hover/tool-row:text-foreground group-focus-visible/tool-row:text-foreground`,
   "file-row": `${MUTED_LABEL_TEXT_CLASS_NAME} transition-colors group-hover/file-row:text-foreground group-focus-visible/file-row:text-foreground`,
 };
-const EMPTY_FILE_DIFF_STATS: ReadonlyMap<string, { additions: number; deletions: number }> =
-  new Map();
-
+const EMPTY_FILE_DIFF_STATS: ReadonlyMap<
+  string,
+  {
+    additions: number;
+    deletions: number;
+  }
+> = new Map();
 type TimelineWorkEntry = WorkLogEntry;
-
-const AgentTaskIcon: LucideIcon = (props) => <BotIcon {...props} />;
-
-const GladeToolIcon: LucideIcon = ({ className, ...props }) => (
+const AgentTaskIcon: IconComponent = (props) => <Robot01Icon {...props} />;
+const GladeToolIcon: IconComponent = ({ className, ...props }) => (
   <GladeLogo {...props} className={cn("text-current", className)} />
 );
-
 function workToneIcon(tone: TimelineWorkEntry["tone"]): {
-  icon: LucideIcon;
+  icon: IconComponent;
   className: string;
 } {
   if (tone === "error") {
     return {
-      icon: CircleAlertIcon,
+      icon: AlertCircleIcon,
       className: "text-muted-foreground/50",
     };
   }
   if (tone === "thinking") {
     return {
-      icon: BotIcon,
+      icon: Robot01Icon,
       className: "text-muted-foreground/40",
     };
   }
@@ -113,13 +111,11 @@ function workToneIcon(tone: TimelineWorkEntry["tone"]): {
       className: "text-muted-foreground/50",
     };
   }
-
   return {
-    icon: BookOpenIcon,
+    icon: BookOpen01Icon,
     className: "text-muted-foreground/45",
   };
 }
-
 function extractFilePathFromDetail(detail: string): string | null {
   const plainPathMatch = /^(.+?\.[A-Za-z0-9][A-Za-z0-9._-]*)(?::\d+)?(?::\d+)?$/u.exec(
     detail.trim(),
@@ -127,12 +123,10 @@ function extractFilePathFromDetail(detail: string): string | null {
   if (plainPathMatch?.[1]?.includes("/")) {
     return plainPathMatch[1].trim();
   }
-
   return extractToolArgumentField(detail, ["file_path", "filePath", "path", "filename"], {
     fallbackScan: "whenUnparsed",
   });
 }
-
 function workEntryPreview(workEntry: TimelineWorkEntry): string | null {
   if (isReasoningUpdateWorkEntry(workEntry)) {
     return formatAgentActivityEntryPreview(workEntry);
@@ -141,52 +135,38 @@ function workEntryPreview(workEntry: TimelineWorkEntry): string | null {
     workEntry.requestKind === "file-read" ||
     workEntry.requestKind === "file-change" ||
     workEntry.itemType === "file_change";
-
   if (workEntry.itemType === "command_execution" || workEntry.command || workEntry.rawCommand) {
     const command = workEntry.command ?? workEntry.rawCommand;
-
     if (command) return deriveFriendlyCommandTarget(command);
   }
-
   if (workEntry.preview) return workEntry.preview;
-
   if (workEntry.changedFiles && workEntry.changedFiles.length > 0) {
     const names = workEntry.changedFiles.map((p) => basenameOfPath(p));
     if (names.length === 1) return names[0]!;
     return `${names.length} files`;
   }
-
   if (workEntry.itemType === "collab_agent_tool_call") {
     return workEntry.detail ?? workEntry.subagentAction?.prompt ?? null;
   }
-
   if (workEntry.detail) {
     const filePath = extractFilePathFromDetail(workEntry.detail);
     if (filePath) return basenameOfPath(filePath);
-
     if (isFileRelated) return null;
-
     const trimmedDetail = workEntry.detail.trim();
     if (trimmedDetail.startsWith("{") || trimmedDetail.startsWith("[")) return null;
-
     if (toolWorkEntryStatus(workEntry) !== "failed" && isPrefixedToolArgumentSummary(trimmedDetail))
       return null;
-
     const readLinesMatch = /^Read\s+(\d+\s+lines?)$/i.exec(trimmedDetail);
     if (readLinesMatch?.[1]) return readLinesMatch[1];
-
     return trimmedDetail;
   }
-
   return null;
 }
-
 function isFileReadToolEntry(workEntry: TimelineWorkEntry): boolean {
   const name = (workEntry.toolName ?? "").toLowerCase().replace(/[^a-z]/g, "");
   return name === "read" || name === "readfile" || name === "viewfile";
 }
-
-function commandWorkEntryIcon(workEntry: TimelineWorkEntry): LucideIcon {
+function commandWorkEntryIcon(workEntry: TimelineWorkEntry): IconComponent {
   const command = workEntry.command ?? workEntry.rawCommand;
   switch (command ? resolveCommandVisualKind(command) : "terminal") {
     case "inspect":
@@ -195,73 +175,65 @@ function commandWorkEntryIcon(workEntry: TimelineWorkEntry): LucideIcon {
     case "github":
       return GitHubIcon;
     case "terminal":
-      return TerminalIcon;
+      return ComputerTerminal01Icon;
   }
 }
-
-function workEntryIcon(workEntry: TimelineWorkEntry): LucideIcon {
-  if (workEntry.activityKind === "user-input.requested") return CircleQuestionIcon;
-  if (workEntry.activityKind === "user-input.resolved") return ArrowUpCircleIcon;
-  if (workEntry.activityKind === "context-compaction") return ContextCompactionIcon;
-
-  if (workEntry.nativeEventType === "background_tasks_changed") return BackgroundTrayIcon;
+function workEntryIcon(workEntry: TimelineWorkEntry): IconComponent {
+  if (workEntry.activityKind === "user-input.requested") return HelpCircleIcon;
+  if (workEntry.activityKind === "user-input.resolved") return CircleArrowUpIcon;
+  if (workEntry.activityKind === "context-compaction") return SortingDownIcon;
+  if (workEntry.nativeEventType === "background_tasks_changed") return ArrowDownToLineIcon;
   if (workEntry.providerContextLifecycle) {
     return workEntry.providerContextLifecycle.nativeHistory === "unavailable"
-      ? CircleAlertIcon
+      ? AlertCircleIcon
       : HistoryIcon;
   }
-
   if (workEntry.requestKind === "command") return commandWorkEntryIcon(workEntry);
   if (workEntry.requestKind === "file-read") return SearchIcon;
-  if (workEntry.requestKind === "file-change") return PencilIcon;
-  if (workEntry.requestKind === "tool") return McpIcon;
-
+  if (workEntry.requestKind === "file-change") return PencilEdit02Icon;
+  if (workEntry.requestKind === "tool") return McpServerIcon;
   if (workEntry.itemType === "command_execution" || workEntry.command) {
     return commandWorkEntryIcon(workEntry);
   }
   if (workEntry.itemType === "file_change") {
-    return PencilIcon;
+    return PencilEdit02Icon;
   }
-  if (workEntry.itemType === "web_search") return GlobeIcon;
-  if (workEntry.itemType === "image_generation") return ZapIcon;
-  if (workEntry.itemType === "image_view") return EyeIcon;
+  if (workEntry.itemType === "web_search") return Globe02Icon;
+  if (workEntry.itemType === "image_generation") return EnergyIcon;
+  if (workEntry.itemType === "image_view") return ViewIcon;
   if (isFileReadToolEntry(workEntry)) return SearchIcon;
-
   switch (workEntry.itemType) {
     case "mcp_tool_call":
-      return SkillCubeIcon;
+      return BlocksIcon;
     case "dynamic_tool_call":
       return HammerIcon;
     case "collab_agent_tool_call":
       return AgentTaskIcon;
   }
-
   return workToneIcon(workEntry.tone).icon;
 }
-
-export function renderWorkEntryIcon(Icon: LucideIcon, className: string): ReactElement {
-  return createElement(Icon, { className });
+export function renderWorkEntryIcon(Icon: IconComponent, className: string): ReactElement {
+  return createElement(Icon, {
+    className,
+  });
 }
-
 export function workEntryLeftIcon(
   workEntry: TimelineWorkEntry,
   classification = classifyWorkEntryTool(workEntry),
-): LucideIcon {
-  if (classification.isComputer) return ComputerUseIcon;
+): IconComponent {
+  if (classification.isComputer) return MousePointer01Icon;
   if (classification.isGitHub) return GitHubIcon;
-  if (classification.isGladeBrowser) return GlobeIcon;
+  if (classification.isGladeBrowser) return Globe02Icon;
   if (classification.gladeTitle !== null) return GladeToolIcon;
-  if (workEntry.itemType === "mcp_tool_call") return McpIcon;
+  if (workEntry.itemType === "mcp_tool_call") return McpServerIcon;
   return workEntryIcon(workEntry);
 }
-
 function toolWorkEntryStatus(workEntry: TimelineWorkEntry): GladeMcpToolStatus {
   if (workEntry.toolStatus) return workEntry.toolStatus;
   return workEntry.activityKind !== undefined && workEntry.activityKind !== "tool.completed"
     ? "running"
     : "completed";
 }
-
 function classifyWorkEntryTool(workEntry: TimelineWorkEntry) {
   const status = toolWorkEntryStatus(workEntry);
   const titleInput = {
@@ -282,26 +254,23 @@ function classifyWorkEntryTool(workEntry: TimelineWorkEntry) {
     gladeTitle: deriveGladeMcpToolTitle(titleInput),
   };
 }
-
 export function prefersCompactWorkEntryRow(workEntry: TimelineWorkEntry): boolean {
   if (isCodexActivityStatusWorkEntry(workEntry)) {
     return true;
   }
-
   if (workEntry.itemType === "command_execution" || workEntry.command || workEntry.rawCommand) {
     return true;
   }
   const EntryIcon = workEntryIcon(workEntry);
   return (
-    EntryIcon === TerminalIcon ||
+    EntryIcon === ComputerTerminal01Icon ||
     EntryIcon === HammerIcon ||
     EntryIcon === AgentTaskIcon ||
-    EntryIcon === PencilIcon ||
-    EntryIcon === SkillCubeIcon ||
+    EntryIcon === PencilEdit02Icon ||
+    EntryIcon === BlocksIcon ||
     EntryIcon === SearchIcon
   );
 }
-
 function capitalizePhrase(value: string): string {
   const trimmed = value.trim();
   if (trimmed.length === 0) {
@@ -309,7 +278,6 @@ function capitalizePhrase(value: string): string {
   }
   return `${trimmed.charAt(0).toUpperCase()}${trimmed.slice(1)}`;
 }
-
 function toolWorkEntryHeading(
   workEntry: TimelineWorkEntry,
   classification: ReturnType<typeof classifyWorkEntryTool>,
@@ -318,9 +286,11 @@ function toolWorkEntryHeading(
     const title = normalizeCompactToolLabel(workEntry.toolTitle ?? "");
     if (title && !isGenericToolTitle(title) && !computerToolName(title))
       return capitalizePhrase(title);
-    return describeComputerToolCall({ toolName: workEntry.toolName, args: undefined })!.summary;
+    return describeComputerToolCall({
+      toolName: workEntry.toolName,
+      args: undefined,
+    })!.summary;
   }
-
   if (workEntry.activityKind === "turn.tasks.updated") {
     return capitalizePhrase(workEntry.label);
   }
@@ -332,7 +302,6 @@ function toolWorkEntryHeading(
   }
   return capitalizePhrase(normalizeCompactToolLabel(workEntry.toolTitle));
 }
-
 function combineWorkEntryDisplayText(heading: string, preview: string | null): string {
   if (!preview) {
     return heading;
@@ -341,7 +310,6 @@ function combineWorkEntryDisplayText(heading: string, preview: string | null): s
     ? heading
     : `${heading} ${preview}`;
 }
-
 function workEntryDisplayParts(
   workEntry: TimelineWorkEntry,
   classification = classifyWorkEntryTool(workEntry),
@@ -367,17 +335,18 @@ function workEntryDisplayParts(
     : isReasoningUpdateWorkEntry(workEntry) && preview
       ? preview
       : combineWorkEntryDisplayText(heading, preview);
-  return { heading, preview, displayText };
+  return {
+    heading,
+    preview,
+    displayText,
+  };
 }
-
 export function workEntryDisplayText(workEntry: TimelineWorkEntry): string {
   return workEntryDisplayParts(workEntry).displayText;
 }
-
 function isFileChangeWorkEntry(workEntry: TimelineWorkEntry): boolean {
   return isFileChangeWorkLogEntry(workEntry);
 }
-
 function commandTooltipContent(command: string, displayText: string) {
   return (
     <div className="max-w-96 whitespace-pre-wrap leading-tight">
@@ -410,13 +379,18 @@ function toolRowTooltipContent(
   }
   return fallback ? <span className="whitespace-pre-wrap">{fallback}</span> : null;
 }
-
 export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
   workEntry: TimelineWorkEntry;
   chatMetaFontSizePx: number;
   textFontSizePx?: number;
   density?: "default" | "compact";
-  fileDiffStatByPath?: ReadonlyMap<string, { additions: number; deletions: number }>;
+  fileDiffStatByPath?: ReadonlyMap<
+    string,
+    {
+      additions: number;
+      deletions: number;
+    }
+  >;
   markdownCwd: string | undefined;
   onImageExpand: (preview: ExpandedImagePreview) => void;
   turnId?: TurnId;
@@ -447,9 +421,7 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
   const isCodexStatusRow = isCodexActivityStatusWorkEntry(workEntry);
   const isPlainRuntimeNoticeRow = isPlainRuntimeNoticeWorkEntry(workEntry);
   const EntryIcon = workEntryIcon(workEntry);
-
   const webFetchUrl = extractWebFetchUrl(workEntry);
-
   const classification = classifyWorkEntryTool(workEntry);
   const isGitHubToolRow = classification.isGitHub;
   const isComputerToolRow = classification.isComputer;
@@ -491,9 +463,7 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
     : undefined;
   const hasToolDetails = Boolean(workEntry.toolDetails);
   const providerContextLifecycle = workEntry.providerContextLifecycle;
-
   const opener = useWorkspaceFileOpener();
-
   const toolDiffStatsByPath = useMemo(
     () =>
       isFileChangeWorkEntry(workEntry)
@@ -519,21 +489,27 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
       />
     );
   }
-
   const computerControlDenied = workEntry.computerControlDenied;
   if (computerControlDenied) {
     return (
       <div className={cn(compact ? "py-0.5" : "py-1")}>
         <ComputerControlDeniedCard
-          {...(computerControlEnabled !== undefined ? { computerControlEnabled } : {})}
+          {...(computerControlEnabled !== undefined
+            ? {
+                computerControlEnabled,
+              }
+            : {})}
           textFontSizePx={textFontSizePx}
           metaFontSizePx={chatMetaFontSizePx}
-          {...(onEnableComputerControl ? { onEnable: onEnableComputerControl } : {})}
+          {...(onEnableComputerControl
+            ? {
+                onEnable: onEnableComputerControl,
+              }
+            : {})}
         />
       </div>
     );
   }
-
   const readFilePath =
     opener !== null &&
     !canOpenAgentActivity &&
@@ -554,12 +530,9 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
     : undefined;
   const prefetchReadFile =
     readFilePath && opener?.prefetchFile ? () => opener.prefetchFile?.(readFilePath) : undefined;
-
   const rowFontSizePx = textFontSizePx;
-
   if (workEntry.activityKind === "provider.transition")
     return <ProviderTransitionDivider entry={workEntry} onInspect={onOpenAgentActivity} />;
-
   return (
     <div className={cn(compact ? "py-0.5" : "rounded-lg py-1")}>
       {showEditedRows ? (
@@ -648,17 +621,15 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
                 </span>
               ) : null}
               <div
-                className={cn(
-                  "min-w-0 overflow-hidden",
-
-                  showInlineAgentTaskPreview && "flex-1",
-                )}
+                className={cn("min-w-0 overflow-hidden", showInlineAgentTaskPreview && "flex-1")}
               >
                 {showInlineAgentTaskPreview ? (
                   <div className={cn(compact ? "space-y-[1px]" : "space-y-0.5")}>
                     <p
                       className={cn("truncate font-medium leading-5", MUTED_LABEL_TEXT_CLASS_NAME)}
-                      style={{ fontSize: `${rowFontSizePx}px` }}
+                      style={{
+                        fontSize: `${rowFontSizePx}px`,
+                      }}
                     >
                       <span data-work-entry-display-text="true">{heading}</span>
                       {liveActivityMetaText ? (
@@ -682,13 +653,14 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
                   <p
                     className={cn(
                       compact ? "truncate leading-5" : "truncate leading-6",
-
                       WORK_ROW_MUTED_HOVER_TONE["tool-row"],
                       isPlainRuntimeNoticeRow && "italic",
                     )}
                     data-runtime-notice-row={isPlainRuntimeNoticeRow ? "true" : undefined}
                     data-codex-status-row={isCodexStatusRow ? "true" : undefined}
-                    style={{ fontSize: `${rowFontSizePx}px` }}
+                    style={{
+                      fontSize: `${rowFontSizePx}px`,
+                    }}
                   >
                     <span data-work-entry-display-text="true">{displayText}</span>
                     {liveActivityMetaText ? (
@@ -717,7 +689,6 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
               </ToolDetailsDisclosure>
             );
           }
-
           const rowContent = (
             <AgentActivityOpenSurface
               canOpen={canOpenAgentActivity || canOpenReadFile}
@@ -733,14 +704,12 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
               {rowContentChildren}
             </AgentActivityOpenSurface>
           );
-
           return rowContent;
         })()
       )}
     </div>
   );
 });
-
 export function EditedFileRowContent(props: {
   filePath: string;
   additions: number | undefined;
@@ -760,11 +729,13 @@ export function EditedFileRowContent(props: {
         )}
         data-tool-icon="edit"
       >
-        <PencilIcon className={compact ? "size-3.5" : "size-4"} />
+        <PencilEdit02Icon className={compact ? "size-3.5" : "size-4"} />
       </span>
       <span
         className={cn("font-system-ui shrink-0", WORK_ROW_MUTED_HOVER_TONE["file-row"])}
-        style={{ fontSize: `${fontSizePx}px` }}
+        style={{
+          fontSize: `${fontSizePx}px`,
+        }}
       >
         Edited
       </span>
@@ -772,17 +743,20 @@ export function EditedFileRowContent(props: {
         className={cn(
           "font-system-ui max-w-[28rem] truncate underline-offset-2",
           WORK_ROW_MUTED_HOVER_TONE["file-row"],
-
           "group-hover/file-row:underline group-focus-visible/file-row:underline",
         )}
-        style={{ fontSize: `${fontSizePx}px` }}
+        style={{
+          fontSize: `${fontSizePx}px`,
+        }}
       >
         {basenameOfPath(filePath)}
       </span>
       {hasStat ? (
         <span
           className="font-system-ui shrink-0 tabular-nums whitespace-nowrap"
-          style={{ fontSize: `${fontSizePx}px` }}
+          style={{
+            fontSize: `${fontSizePx}px`,
+          }}
         >
           <DiffStatLabel additions={additions ?? 0} deletions={deletions ?? 0} />
         </span>

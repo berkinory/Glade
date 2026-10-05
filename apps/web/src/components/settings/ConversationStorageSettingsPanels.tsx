@@ -1,12 +1,11 @@
+import { Archive04Icon } from "~/lib/icons";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { pluralize } from "@glade/shared/text/text";
 import { collectSubagentDescendants } from "@glade/shared/threads/threadHierarchy";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
-
 import { Button } from "~/components/ui/button";
 import { gitRemoveWorktreeMutationOptions } from "~/lib/gitReactQuery";
-import { ArchiveIcon } from "~/lib/icons";
 import { deleteArchivedThreadsFromClient } from "~/lib/archivedThreadDelete";
 import { formatRelativeTime } from "~/lib/relativeTime";
 import { serverQueryKeys, serverWorktreesQueryOptions } from "~/lib/serverReactQuery";
@@ -19,20 +18,17 @@ import { createThreadShellsSelector } from "~/storeSelectors";
 import { formatWorktreePathForDisplay, isThreadAssociatedWithWorktree } from "~/worktreeCleanup";
 import { toastManager } from "../ui/toast";
 import { SettingsEmptyState, SettingsListRow, SettingsSection } from "./SettingsPanelPrimitives";
-
 type ArchivedSortableThread = {
   id: string;
   archivedAt?: string | null | undefined;
   updatedAt?: string | null | undefined;
   createdAt: string;
 };
-
 function compareArchivedThreads(left: ArchivedSortableThread, right: ArchivedSortableThread) {
   const leftKey = left.archivedAt ?? left.updatedAt ?? left.createdAt;
   const rightKey = right.archivedAt ?? right.updatedAt ?? right.createdAt;
   return rightKey.localeCompare(leftKey) || right.id.localeCompare(left.id);
 }
-
 function WorktreesStatus(props: { children: string; error?: boolean }) {
   return (
     <SettingsEmptyState layout="status" tone={props.error ? "destructive" : "muted"}>
@@ -40,17 +36,18 @@ function WorktreesStatus(props: { children: string; error?: boolean }) {
     </SettingsEmptyState>
   );
 }
-
 export function WorktreesSettingsPanel({ active }: { readonly active: boolean }) {
   const queryClient = useQueryClient();
   const worktreesQuery = useQuery(serverWorktreesQueryOptions());
-  const removeWorktreeMutation = useMutation(gitRemoveWorktreeMutationOptions({ queryClient }));
+  const removeWorktreeMutation = useMutation(
+    gitRemoveWorktreeMutationOptions({
+      queryClient,
+    }),
+  );
   const removeDeletedThreadFromClientState = useStore(
     (store) => store.removeDeletedThreadFromClientState,
   );
-
   const threadShells = useStore(useMemo(() => createThreadShellsSelector(), []));
-
   const worktreesByWorkspaceRoot = useMemo(() => {
     type WorktreeGroup = {
       workspaceRoot: string;
@@ -82,7 +79,6 @@ export function WorktreesSettingsPanel({ active }: { readonly active: boolean })
     }
     return groups;
   }, [threadShells, worktreesQuery.data?.worktrees]);
-
   const deleteManagedWorktree = useCallback(
     async (input: { workspaceRoot: string; worktreePath: string }) => {
       const api = readNativeApi() ?? ensureNativeApi();
@@ -96,7 +92,6 @@ export function WorktreesSettingsPanel({ active }: { readonly active: boolean })
         });
         return;
       }
-
       const linkedThreads = snapshot.threads.filter((thread) =>
         isThreadAssociatedWithWorktree(thread, input.worktreePath),
       );
@@ -122,7 +117,6 @@ export function WorktreesSettingsPanel({ active }: { readonly active: boolean })
             ),
       );
       if (!confirmed) return;
-
       try {
         await deleteArchivedThreadsFromClient({
           api: api.orchestration,
@@ -134,7 +128,9 @@ export function WorktreesSettingsPanel({ active }: { readonly active: boolean })
           path: input.worktreePath,
           force: true,
         });
-        await queryClient.invalidateQueries({ queryKey: serverQueryKeys.worktrees() });
+        await queryClient.invalidateQueries({
+          queryKey: serverQueryKeys.worktrees(),
+        });
         toastManager.add({
           type: "success",
           title: "Worktree deleted",
@@ -153,9 +149,7 @@ export function WorktreesSettingsPanel({ active }: { readonly active: boolean })
     },
     [queryClient, removeDeletedThreadFromClientState, removeWorktreeMutation],
   );
-
   if (!active) return null;
-
   if (worktreesQuery.isLoading) {
     return <WorktreesStatus>Loading managed worktrees...</WorktreesStatus>;
   }
@@ -171,7 +165,6 @@ export function WorktreesSettingsPanel({ active }: { readonly active: boolean })
   if (worktreesByWorkspaceRoot.length === 0) {
     return <WorktreesStatus>No app-managed worktrees found yet.</WorktreesStatus>;
   }
-
   return (
     <div className="space-y-6">
       {worktreesByWorkspaceRoot.map((group) => (
@@ -248,7 +241,6 @@ export function WorktreesSettingsPanel({ active }: { readonly active: boolean })
     </div>
   );
 }
-
 export function ArchivedSettingsPanel({ active }: { readonly active: boolean }) {
   const removeDeletedThreadFromClientState = useStore(
     (store) => store.removeDeletedThreadFromClientState,
@@ -278,11 +270,13 @@ export function ArchivedSettingsPanel({ active }: { readonly active: boolean }) 
       .filter((thread) => !knownProjectIds.has(thread.projectId))
       .toSorted(compareArchivedThreads);
     if (orphanedThreads.length > 0) {
-      groups.push({ project: null, threads: orphanedThreads });
+      groups.push({
+        project: null,
+        threads: orphanedThreads,
+      });
     }
     return groups.filter((group) => group.threads.length > 0);
   }, [projects, threadShells]);
-
   const unarchiveThread = useCallback(async (threadId: ThreadId) => {
     const api = readNativeApi();
     if (!api) return;
@@ -314,7 +308,6 @@ export function ArchivedSettingsPanel({ active }: { readonly active: boolean }) 
     ],
     [threadShells],
   );
-
   const deleteArchivedThread = useCallback(
     async (threadId: ThreadId, threadTitle: string) => {
       const api = readNativeApi();
@@ -344,7 +337,6 @@ export function ArchivedSettingsPanel({ active }: { readonly active: boolean }) 
     },
     [collectSubtreeDeletionOrder, removeDeletedThreadFromClientState],
   );
-
   const archivedThreadCount = archivedGroups.reduce(
     (count, group) => count + group.threads.length,
     0,
@@ -383,15 +375,28 @@ export function ArchivedSettingsPanel({ active }: { readonly active: boolean }) 
       setIsDeletingAll(false);
     }
   }, [archivedGroups, collectSubtreeDeletionOrder, removeDeletedThreadFromClientState]);
-
   const handleContextMenu = useCallback(
-    async (threadId: ThreadId, threadTitle: string, position: { x: number; y: number }) => {
+    async (
+      threadId: ThreadId,
+      threadTitle: string,
+      position: {
+        x: number;
+        y: number;
+      },
+    ) => {
       const api = readNativeApi();
       if (!api) return;
       const clicked = await api.contextMenu.show(
         [
-          { id: "restore", label: "Restore" },
-          { id: "delete", label: "Delete", destructive: true },
+          {
+            id: "restore",
+            label: "Restore",
+          },
+          {
+            id: "delete",
+            label: "Delete",
+            destructive: true,
+          },
         ],
         position,
       );
@@ -403,14 +408,12 @@ export function ArchivedSettingsPanel({ active }: { readonly active: boolean }) 
     },
     [deleteArchivedThread, unarchiveThread],
   );
-
   if (!active) return null;
-
   if (archivedGroups.length === 0) {
     return (
       <SettingsEmptyState>
         <div className="mx-auto mb-3 flex size-11 items-center justify-center rounded-full border border-border/70 bg-background/70 text-muted-foreground">
-          <ArchiveIcon className="size-5" />
+          <Archive04Icon className="size-5" />
         </div>
         <div className="text-ui-lg font-medium text-foreground">No archived chats</div>
         <div className="mt-1 text-ui leading-snug text-muted-foreground">
@@ -419,7 +422,6 @@ export function ArchivedSettingsPanel({ active }: { readonly active: boolean }) 
       </SettingsEmptyState>
     );
   }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2">

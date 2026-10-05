@@ -1,3 +1,4 @@
+import { PlusIcon, XIcon, FolderIcon } from "~/lib/icons";
 import {
   Fragment,
   memo,
@@ -12,13 +13,11 @@ import { type ProjectDirectoryEntry } from "@glade/contracts/workspace/project";
 import { type ProjectId, type SpaceId } from "@glade/contracts/core/baseSchemas";
 import { readNativeApi } from "../../nativeApi";
 import { useStore } from "../../store";
-import { PlusIcon, XIcon } from "~/lib/icons";
 import { getLocalFoldersGroupLabel } from "~/lib/localFoldersGroupLabel";
 import type { ProjectAppearance } from "~/lib/projectAppearance";
 import { groupItemsBySpace, spaceDisplayName } from "~/lib/spaceGrouping";
 import { useVoidSpace } from "~/spacesUiStore";
 import { cn } from "~/lib/utils";
-import { FolderClosed } from "../FolderClosed";
 import { ProjectSidebarIcon } from "../ProjectSidebarIcon";
 import { SpaceIcon } from "../SpaceIcon";
 import { PickerPanelShell } from "./PickerPanelShell";
@@ -45,7 +44,6 @@ import {
 } from "../ui/combobox";
 import { useWorkspacePathsStore } from "../../workspacePathsStore";
 import { useSpacesUiStore } from "../../spacesUiStore";
-
 interface ProjectPickerProps {
   align?: "start" | "center" | "end";
   side?: "top" | "bottom";
@@ -57,22 +55,16 @@ interface ProjectPickerProps {
   onSelectWorkspaceRoot?: ((workspaceRoot: string) => void) | undefined;
   onCreateProjectFromPath?: ((workspaceRoot: string) => void | Promise<void>) | undefined;
   onResetToHome?: (() => void | Promise<void>) | undefined;
-
   triggerClassName?: string;
-
   triggerVariant?: ComponentProps<typeof PickerTriggerButton>["variant"];
-
   renderTrigger?: ReactElement<Record<string, unknown>>;
-
   emptyTriggerLabel?: string;
   addActionLabel?: string;
   resetActionLabel?: string;
   searchPlaceholder?: string;
 }
-
 interface ActiveFolderOption {
   projectId: ProjectId | null;
-
   appearance: ProjectAppearance | null;
   spaceId: SpaceId | null;
   spaceName: string;
@@ -80,7 +72,6 @@ interface ActiveFolderOption {
   primaryLabel: string;
   secondaryLabel: string | null;
 }
-
 function startActiveFolderSelection(
   folder: ActiveFolderOption,
   handlers: {
@@ -97,7 +88,6 @@ function startActiveFolderSelection(
   }
   return handlers.onSelectWorkspaceRoot?.(folder.cwd);
 }
-
 function basenameOfPath(value: string | null | undefined): string | null {
   if (!value) return null;
   const normalized = value.replace(/[\\/]+$/, "");
@@ -105,11 +95,9 @@ function basenameOfPath(value: string | null | undefined): string | null {
   const basename = separatorIndex === -1 ? normalized : normalized.slice(separatorIndex + 1);
   return basename.length > 0 ? basename : null;
 }
-
 function directorySearchHaystack(entry: ProjectDirectoryEntry): string {
   return [entry.name, entry.path].join(" ").toLowerCase();
 }
-
 function joinDirectoryPath(rootPath: string, relativePath: string): string {
   if (!relativePath) return rootPath;
   const separator = rootPath.includes("\\") ? "\\" : "/";
@@ -117,16 +105,18 @@ function joinDirectoryPath(rootPath: string, relativePath: string): string {
   const normalizedRelative = relativePath.split(/[\\/]+/).join(separator);
   return `${normalizedRoot}${separator}${normalizedRelative}`;
 }
-
 function getNavigatorPlatform(): string {
   const navigatorLike = globalThis.navigator as
-    | (Navigator & { userAgentData?: { platform?: string } })
+    | (Navigator & {
+        userAgentData?: {
+          platform?: string;
+        };
+      })
     | undefined;
   return [navigatorLike?.platform, navigatorLike?.userAgentData?.platform]
     .filter(Boolean)
     .join(" ");
 }
-
 export const ProjectPicker = memo(function ProjectPicker({
   align: alignProp,
   side: sideProp,
@@ -170,12 +160,10 @@ export const ProjectPicker = memo(function ProjectPicker({
   const [resetTriggerFocused, setResetTriggerFocused] = useState(false);
   const resetInFlightRef = useRef(false);
   const isProjectSelectionMode = selectionMode === "project";
-
   const activeFolderOptions = (() => {
     const seen = new Set<string>();
     const nextOptions: ActiveFolderOption[] = [];
     const getSpaceName = (spaceId: SpaceId | null) => spaceDisplayName(spaceId, spaces, voidSpace);
-
     for (const project of projects.filter((project) => project.kind === "project")) {
       const folderName = basenameOfPath(project.cwd) ?? project.folderName ?? project.name;
       if (!folderName || folderName.startsWith(".") || seen.has(project.cwd)) {
@@ -196,7 +184,6 @@ export const ProjectPicker = memo(function ProjectPicker({
         secondaryLabel,
       });
     }
-
     const selectedFolderName = basenameOfPath(selectedWorkspaceRoot);
     if (
       !isProjectSelectionMode &&
@@ -215,7 +202,6 @@ export const ProjectPicker = memo(function ProjectPicker({
         secondaryLabel: selectedWorkspaceRoot,
       });
     }
-
     return nextOptions;
   })();
   const activeFolderPathSet = new Set(activeFolderOptions.map((entry) => entry.cwd));
@@ -230,7 +216,6 @@ export const ProjectPicker = memo(function ProjectPicker({
       .filter((entry) => !activeFolderPathSet.has(entry.absolutePath));
   })();
   const localFoldersGroupLabel = getLocalFoldersGroupLabel(homeDir, getNavigatorPlatform());
-
   const normalizedQuery = deferredQuery.trim().toLowerCase();
   const matchingActiveFolderOptions = (() => {
     if (normalizedQuery.length === 0) return activeFolderOptions;
@@ -256,7 +241,6 @@ export const ProjectPicker = memo(function ProjectPicker({
       directorySearchHaystack(entry).includes(normalizedQuery),
     );
   })();
-
   const selectableDirectoryPaths = [
     ...activeFolderOptions.map((entry) => entry.cwd),
     ...localFolderOptions.map((entry) => entry.absolutePath),
@@ -297,7 +281,6 @@ export const ProjectPicker = memo(function ProjectPicker({
   ) : (
     emptyTriggerLabel
   );
-
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
     if (!nextOpen) {
@@ -305,7 +288,6 @@ export const ProjectPicker = memo(function ProjectPicker({
       setErrorMessage(null);
     }
   };
-
   useEffect(() => {
     if (
       isProjectSelectionMode ||
@@ -316,7 +298,6 @@ export const ProjectPicker = memo(function ProjectPicker({
     ) {
       return;
     }
-
     let cancelled = false;
     const timeoutId = window.setTimeout(() => {
       if (cancelled) return;
@@ -325,11 +306,12 @@ export const ProjectPicker = memo(function ProjectPicker({
         setErrorMessage("App is still connecting. Try again in a moment.");
         return;
       }
-
       setIsLoadingDirectories(true);
       setErrorMessage(null);
       void api.projects
-        .listDirectories({ cwd: homeDir })
+        .listDirectories({
+          cwd: homeDir,
+        })
         .then((result) => {
           setDirectoryEntries(
             result.entries.flatMap((entry) =>
@@ -339,7 +321,11 @@ export const ProjectPicker = memo(function ProjectPicker({
                       path: entry.path,
                       name: entry.name,
                       hasChildren: entry.hasChildren ?? false,
-                      ...(entry.parentPath ? { parentPath: entry.parentPath } : {}),
+                      ...(entry.parentPath
+                        ? {
+                            parentPath: entry.parentPath,
+                          }
+                        : {}),
                     } satisfies ProjectDirectoryEntry,
                   ]
                 : [],
@@ -358,7 +344,6 @@ export const ProjectPicker = memo(function ProjectPicker({
       window.clearTimeout(timeoutId);
     };
   }, [directoryEntries.length, homeDir, isLoadingDirectories, isProjectSelectionMode, open]);
-
   const handleSelectActiveFolder = (folder: ActiveFolderOption) => {
     try {
       const selection = startActiveFolderSelection(folder, {
@@ -377,7 +362,6 @@ export const ProjectPicker = memo(function ProjectPicker({
       setErrorMessage(error instanceof Error ? error.message : "Unable to select project.");
     }
   };
-
   const handleAddNewProject = async () => {
     if (isPicking) return;
     const api = readNativeApi();
@@ -385,7 +369,6 @@ export const ProjectPicker = memo(function ProjectPicker({
       setErrorMessage("App is still connecting. Try again in a moment.");
       return;
     }
-
     setIsPicking(true);
     setErrorMessage(null);
     try {
@@ -406,7 +389,6 @@ export const ProjectPicker = memo(function ProjectPicker({
       setErrorMessage(error instanceof Error ? error.message : "Unable to open the folder picker.");
     }
   };
-
   const handleResetToHome = () => {
     if (resetInFlightRef.current) {
       return;
@@ -434,7 +416,6 @@ export const ProjectPicker = memo(function ProjectPicker({
       setOpen(true);
     }
   };
-
   const shouldShowResetToHome = showResetToHome || isProjectSelectionMode;
   const canResetFromTrigger =
     renderTrigger === undefined && selectedFolderOption !== null && onResetToHome !== undefined;
@@ -443,7 +424,6 @@ export const ProjectPicker = memo(function ProjectPicker({
   const loadingAddProjectLabel = isProjectSelectionMode
     ? "Adding project..."
     : "Opening folder picker...";
-
   const renderActiveFolderOption = (folder: ActiveFolderOption, index: number) => {
     const selected = isProjectSelectionMode
       ? folder.projectId === selectedProjectId
@@ -470,7 +450,7 @@ export const ProjectPicker = memo(function ProjectPicker({
               />
             </span>
           ) : (
-            <FolderClosed className={PICKER_PANEL_ROW_ICON_CLASS_NAME} />
+            <FolderIcon className={PICKER_PANEL_ROW_ICON_CLASS_NAME} />
           )}
           <span className="min-w-0 truncate">{folder.primaryLabel}</span>
           {folder.secondaryLabel ? (
@@ -482,7 +462,6 @@ export const ProjectPicker = memo(function ProjectPicker({
       </ComboboxItem>
     );
   };
-
   const handleValueChange = (selectedValue: string | null) => {
     if (!selectedValue) return;
     const activeFolder = activeFolderOptions.find((entry) => entry.cwd === selectedValue);
@@ -498,7 +477,6 @@ export const ProjectPicker = memo(function ProjectPicker({
       setOpen(false);
     }
   };
-
   return (
     <Combobox
       items={selectableDirectoryPaths}
@@ -519,7 +497,7 @@ export const ProjectPicker = memo(function ProjectPicker({
                   isProjectSelectionMode ? "project-picker-trigger" : "workspace-picker-trigger"
                 }
                 icon={
-                  <FolderClosed
+                  <FolderIcon
                     className={cn(
                       "size-3.5 transition-opacity duration-100 ease-out motion-reduce:transition-none",
                       canResetFromTrigger && "group-hover/project-picker-trigger:opacity-0",
@@ -529,8 +507,16 @@ export const ProjectPicker = memo(function ProjectPicker({
                 }
                 label={triggerLabel}
                 hideChevron
-                {...(triggerVariant ? { variant: triggerVariant } : {})}
-                {...(triggerClassName ? { className: triggerClassName } : {})}
+                {...(triggerVariant
+                  ? {
+                      variant: triggerVariant,
+                    }
+                  : {})}
+                {...(triggerClassName
+                  ? {
+                      className: triggerClassName,
+                    }
+                  : {})}
               />
             }
           />
@@ -669,7 +655,7 @@ export const ProjectPicker = memo(function ProjectPicker({
                     )}
                   >
                     <div className="flex min-w-0 items-center gap-2">
-                      <FolderClosed className={PICKER_PANEL_ROW_ICON_CLASS_NAME} />
+                      <FolderIcon className={PICKER_PANEL_ROW_ICON_CLASS_NAME} />
                       <span className="truncate">{entry.name}</span>
                     </div>
                   </ComboboxItem>

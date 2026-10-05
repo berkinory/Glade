@@ -27,10 +27,7 @@ export function useWorkspaceFileOpener(): WorkspaceFileOpener | null {
 
 const FILE_POSITION_SUFFIX_PATTERN = /:\d+(?::\d+)?$/;
 const TRAILING_PATH_SEPARATOR_PATTERN = /[\\/]+$/;
-const GLADE_PUBLIC_ASSET_PATH_PREFIXES = [
-  "/central-icons-reversed/",
-  "/central-icons-fill/",
-] as const;
+const GLADE_PUBLIC_ASSET_PATH_PREFIXES = ["/brands/"] as const;
 const GLADE_WEB_PUBLIC_WORKSPACE_DIR = "apps/web/public";
 
 function resolveGladePublicAssetOpenTarget(path: string, workspaceRoot: string | null) {

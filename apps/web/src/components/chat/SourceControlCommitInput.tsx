@@ -1,17 +1,15 @@
+import { SparkleIcon, GitCommitHorizontalIcon } from "~/lib/icons";
 import { useMutation } from "@tanstack/react-query";
-import { IconSparkles } from "@tabler/icons-react";
 import { getProviderStartOptions, useAppSettings } from "~/appSettings";
 import { ensureNativeApi } from "~/nativeApi";
 import { useCopyToClipboard } from "~/lib/clipboard";
 import { useCommitDrafts } from "./commitDraftStore";
-import { GitCommitIcon } from "~/lib/icons";
 import { Button } from "../ui/button";
 import { IconButton } from "../ui/icon-button";
 import { Textarea } from "../ui/textarea";
 import { Spinner } from "../ui/spinner";
 import { assertCommitScope, readCommitScope, type CommitScope } from "./sourceControlCommitScope";
 import { toastManager } from "../ui/toast";
-
 export function SourceControlCommitInput(props: {
   cwd: string;
   message: string;
@@ -39,7 +37,9 @@ export function SourceControlCommitInput(props: {
       const result = await ensureNativeApi().git.generateCommitMessage({
         cwd,
         ...(settings.textGenerationModel
-          ? { textGenerationModel: settings.textGenerationModel }
+          ? {
+              textGenerationModel: settings.textGenerationModel,
+            }
           : {}),
         ...(settings.textGenerationModel
           ? {
@@ -49,11 +49,18 @@ export function SourceControlCommitInput(props: {
               },
             }
           : {}),
-        ...(settings.codexHomePath ? { codexHomePath: settings.codexHomePath } : {}),
+        ...(settings.codexHomePath
+          ? {
+              codexHomePath: settings.codexHomePath,
+            }
+          : {}),
         providerOptions: getProviderStartOptions(settings),
       });
       assertCommitScope(scope, await readCommitScope(cwd));
-      return { message: result.message, scope };
+      return {
+        message: result.message,
+        scope,
+      };
     },
     onError: (error, cwd) => setGenerationError(cwd, error.message),
     onSuccess: (_result, cwd) => setGenerationError(cwd, undefined),
@@ -82,7 +89,7 @@ export function SourceControlCommitInput(props: {
                 {generation.isPending ? (
                   <Spinner variant="action" className="size-3.5" />
                 ) : (
-                  <IconSparkles className="size-3.5" />
+                  <SparkleIcon className="size-3.5" />
                 )}
               </IconButton>
             }
@@ -108,7 +115,7 @@ export function SourceControlCommitInput(props: {
           {props.committing ? (
             <Spinner variant="action" className="size-4" />
           ) : (
-            <GitCommitIcon className="size-4" />
+            <GitCommitHorizontalIcon className="size-4" />
           )}{" "}
           Commit
         </Button>

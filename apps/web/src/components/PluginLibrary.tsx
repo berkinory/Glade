@@ -1,3 +1,26 @@
+import {
+  CanvaIcon,
+  FigmaIcon,
+  GitHubIcon,
+  GmailIcon,
+  GoogleCalendarIcon,
+  GoogleDriveIcon,
+  HuggingFaceIcon,
+  LinearIcon,
+  NotionIcon,
+  SlackIcon,
+  StripeIcon,
+  VercelIcon,
+} from "~/lib/brandIcons";
+import {
+  CheckIcon,
+  AlertCircleIcon,
+  HammerIcon,
+  ListChecksIcon,
+  PuzzleIcon,
+  SearchIcon,
+} from "~/lib/icons";
+import type { IconComponent } from "~/lib/iconComponent";
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import {
@@ -6,21 +29,6 @@ import {
 } from "@glade/contracts/provider/providerDiscovery";
 import { useQuery } from "@tanstack/react-query";
 import React, { useMemo, type ReactNode, useDeferredValue, useState } from "react";
-import type { IconType } from "react-icons";
-import {
-  SiCanva,
-  SiFigma,
-  SiGithub,
-  SiGmail,
-  SiGooglecalendar,
-  SiGoogledrive,
-  SiHuggingface,
-  SiLinear,
-  SiNotion,
-  SiSlack,
-  SiStripe,
-  SiVercel,
-} from "react-icons/si";
 import { PROVIDER_ICON_COMPONENT_BY_PROVIDER } from "./ProviderIcon";
 import { useStore } from "~/store";
 import { DEFAULT_PROVIDER_ORDER } from "~/providerOrdering";
@@ -42,14 +50,6 @@ import {
 } from "~/lib/providerDiscoveryReactQuery";
 import { serverConfigQueryOptions } from "~/lib/serverReactQuery";
 import { useFocusedChatContext } from "~/focusedChatContext";
-import {
-  CheckIcon,
-  CircleAlertIcon,
-  HammerIcon,
-  ListChecksIcon,
-  PluginIcon,
-  SearchIcon,
-} from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "./ui/input-group";
 import { SidebarInset } from "./ui/sidebar";
@@ -59,9 +59,11 @@ import {
   useDesktopTopBarWindowControlsGutterClassName,
 } from "~/hooks/useDesktopTopBarGutter";
 import { Skeleton } from "./ui/skeleton";
-
 type DiscoveryTab = "plugins" | "skills";
-type ProviderCapabilities = { plugins: boolean; skills: boolean };
+type ProviderCapabilities = {
+  plugins: boolean;
+  skills: boolean;
+};
 type PluginEntry = {
   marketplaceName: string;
   marketplacePath: string | null;
@@ -70,70 +72,96 @@ type PluginEntry = {
 };
 type PluginBrandArtwork = {
   color: string;
-  icon: IconType;
+  icon: IconComponent;
 };
-
 const PROVIDER_ICON: Record<ProviderKind, React.FC<React.SVGProps<SVGSVGElement>>> = {
   ...PROVIDER_ICON_COMPONENT_BY_PROVIDER,
   codex: HammerIcon,
 };
 const KNOWN_PLUGIN_BRANDS: Record<string, PluginBrandArtwork> = {
-  canva: { icon: SiCanva, color: "#00C4CC" },
-  figma: { icon: SiFigma, color: "#F24E1E" },
-  github: { icon: SiGithub, color: "#181717" },
-  gmail: { icon: SiGmail, color: "#EA4335" },
-  googlecalendar: { icon: SiGooglecalendar, color: "#4285F4" },
-  googledrive: { icon: SiGoogledrive, color: "#0F9D58" },
-  huggingface: { icon: SiHuggingface, color: "#FF9D00" },
-  linear: { icon: SiLinear, color: "#5E6AD2" },
-  notion: { icon: SiNotion, color: "#111111" },
-  slack: { icon: SiSlack, color: "#4A154B" },
-  stripe: { icon: SiStripe, color: "#635BFF" },
-  vercel: { icon: SiVercel, color: "#111111" },
+  canva: {
+    icon: CanvaIcon,
+    color: "#00C4CC",
+  },
+  figma: {
+    icon: FigmaIcon,
+    color: "#F24E1E",
+  },
+  github: {
+    icon: GitHubIcon,
+    color: "#181717",
+  },
+  gmail: {
+    icon: GmailIcon,
+    color: "#EA4335",
+  },
+  googlecalendar: {
+    icon: GoogleCalendarIcon,
+    color: "#4285F4",
+  },
+  googledrive: {
+    icon: GoogleDriveIcon,
+    color: "#0F9D58",
+  },
+  huggingface: {
+    icon: HuggingFaceIcon,
+    color: "#FF9D00",
+  },
+  linear: {
+    icon: LinearIcon,
+    color: "#5E6AD2",
+  },
+  notion: {
+    icon: NotionIcon,
+    color: "#111111",
+  },
+  slack: {
+    icon: SlackIcon,
+    color: "#4A154B",
+  },
+  stripe: {
+    icon: StripeIcon,
+    color: "#635BFF",
+  },
+  vercel: {
+    icon: VercelIcon,
+    color: "#111111",
+  },
 };
-
 function pluginEntryKey(
   entry: Pick<PluginEntry, "marketplaceName" | "marketplacePath" | "plugin">,
 ): string {
   return `${entry.marketplacePath ?? entry.marketplaceName}::${entry.plugin.id}`;
 }
-
 function sectionTitle(value: string): string {
   const n = value.trim();
   return n.length === 0 ? "Unknown" : n;
 }
-
 function resolvePluginAccent(plugin: ProviderPluginDescriptor): string | undefined {
   return plugin.interface?.brandColor?.trim() || undefined;
 }
-
 function normalizeBrandKey(value: string | undefined): string {
   return (value ?? "")
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "");
 }
-
 function resolvePluginLogo(plugin: ProviderPluginDescriptor): string | undefined {
   return plugin.interface?.logo?.trim() || undefined;
 }
-
 function resolvePluginBrand(plugin: ProviderPluginDescriptor): PluginBrandArtwork | undefined {
   const candidates = [
     plugin.interface?.composerIcon,
     plugin.interface?.displayName,
     plugin.name,
   ].map(normalizeBrandKey);
-
   for (const candidate of candidates) {
     if (!candidate) continue;
     const knownBrand = KNOWN_PLUGIN_BRANDS[candidate];
     if (knownBrand) return knownBrand;
   }
-
   return undefined;
 }
-
 function nameToHue(name: string): number {
   let h = 0;
   for (let i = 0; i < name.length; i++) {
@@ -141,7 +169,6 @@ function nameToHue(name: string): number {
   }
   return Math.abs(h) % 360;
 }
-
 function PluginGlyph({ plugin }: { plugin: ProviderPluginDescriptor }) {
   const accent = resolvePluginAccent(plugin);
   const logo = resolvePluginLogo(plugin);
@@ -157,12 +184,17 @@ function PluginGlyph({ plugin }: { plugin: ProviderPluginDescriptor }) {
         background: `linear-gradient(145deg, hsl(${hue} 55% 30%), hsl(${hue} 45% 18%))`,
         boxShadow: `0 0 0 0.5px hsl(${hue} 40% 30% / 0.35)`,
       };
-
   if (logo && !logoFailed) {
     return (
       <span
         className="inline-flex size-11 shrink-0 items-center justify-center rounded-[14px] border border-border/60 bg-background"
-        style={accent ? { boxShadow: `0 0 0 0.5px ${accent}25` } : undefined}
+        style={
+          accent
+            ? {
+                boxShadow: `0 0 0 0.5px ${accent}25`,
+              }
+            : undefined
+        }
       >
         <img
           src={logo}
@@ -174,29 +206,37 @@ function PluginGlyph({ plugin }: { plugin: ProviderPluginDescriptor }) {
       </span>
     );
   }
-
   if (brand) {
     const BrandIcon = brand.icon;
     return (
       <span
         className="inline-flex size-11 shrink-0 items-center justify-center rounded-[14px] border border-border/60 bg-background"
-        style={accent ? { boxShadow: `0 0 0 0.5px ${accent}25` } : undefined}
+        style={
+          accent
+            ? {
+                boxShadow: `0 0 0 0.5px ${accent}25`,
+              }
+            : undefined
+        }
       >
-        <BrandIcon className="size-5" style={{ color: brand.color }} />
+        <BrandIcon
+          className="size-5"
+          style={{
+            color: brand.color,
+          }}
+        />
       </span>
     );
   }
-
   return (
     <span
       className="inline-flex size-11 shrink-0 items-center justify-center rounded-[14px]"
       style={style}
     >
-      <PluginIcon className="size-5 text-white/80" />
+      <PuzzleIcon className="size-5 text-white/80" />
     </span>
   );
 }
-
 function SkillGlyph({ skill }: { skill: ProviderSkillDescriptor }) {
   const hue = nameToHue(skill.interface?.displayName ?? skill.name);
   return (
@@ -211,7 +251,6 @@ function SkillGlyph({ skill }: { skill: ProviderSkillDescriptor }) {
     </span>
   );
 }
-
 function TabButton({
   label,
   active,
@@ -237,7 +276,6 @@ function TabButton({
     </button>
   );
 }
-
 function ProviderToggleButton({
   label,
   active,
@@ -271,7 +309,6 @@ function ProviderToggleButton({
     </button>
   );
 }
-
 function EmptyPanel({ title, description }: { title: string; description: string }) {
   return (
     <div className="flex min-h-40 items-center justify-center rounded-xl border border-dashed border-border/60 bg-background/40 px-5 py-6 text-center">
@@ -282,16 +319,14 @@ function EmptyPanel({ title, description }: { title: string; description: string
     </div>
   );
 }
-
 function InlineWarning({ children }: { children: ReactNode }) {
   return (
     <div className="flex items-start gap-2 rounded-xl border border-amber-500/20 bg-amber-500/6 px-3 py-2.5 text-ui leading-snug text-muted-foreground">
-      <CircleAlertIcon className="mt-0.5 size-3.5 shrink-0 text-amber-500" />
+      <AlertCircleIcon className="mt-0.5 size-3.5 shrink-0 text-amber-500" />
       <div>{children}</div>
     </div>
   );
 }
-
 function InstalledStatus({ installed }: { installed: boolean }) {
   if (!installed) return null;
   return (
@@ -300,7 +335,6 @@ function InstalledStatus({ installed }: { installed: boolean }) {
     </span>
   );
 }
-
 function PluginGridItem({ entry }: { entry: PluginEntry }) {
   const description =
     entry.plugin.interface?.shortDescription ??
@@ -312,7 +346,6 @@ function PluginGridItem({ entry }: { entry: PluginEntry }) {
         : entry.plugin.source.type === "npm"
           ? entry.plugin.source.package
           : entry.marketplaceName);
-
   return (
     <div className="flex items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-[var(--sidebar-accent)]">
       <PluginGlyph plugin={entry.plugin} />
@@ -326,11 +359,9 @@ function PluginGridItem({ entry }: { entry: PluginEntry }) {
     </div>
   );
 }
-
 function SkillGridItem({ skill }: { skill: ProviderSkillDescriptor }) {
   const description =
     skill.interface?.shortDescription ?? skill.description ?? "No description available.";
-
   return (
     <div className="flex items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-[var(--sidebar-accent)]">
       <SkillGlyph skill={skill} />
@@ -344,11 +375,9 @@ function SkillGridItem({ skill }: { skill: ProviderSkillDescriptor }) {
     </div>
   );
 }
-
 function SectionHeader({ title }: { title: string }) {
   return <h2 className="px-3 pb-1 pt-2 text-[15px] font-semibold text-foreground">{title}</h2>;
 }
-
 export function PluginLibrary() {
   const desktopTopBarTrafficLightGutterClassName = useDesktopTopBarTrafficLightGutterClassName();
   const desktopTopBarWindowControlsGutterClassName =
@@ -356,12 +385,10 @@ export function PluginLibrary() {
   const firstProject = useStore(useMemo(() => createFirstProjectSelector(), []));
   const { activeProject: focusedProject, activeThread, focusedThreadId } = useFocusedChatContext();
   const activeProject = focusedProject ?? firstProject ?? null;
-
   const preferredProvider =
     activeThread?.modelSelection.provider ??
     activeProject?.defaultModelSelection?.provider ??
     "codex";
-
   const [selectedProvider, setSelectedProvider] = useState<ProviderKind>(preferredProvider);
   const [selectedTab, setSelectedTab] = useState<DiscoveryTab>("plugins");
   const [pluginSearch, setPluginSearch] = useState("");
@@ -369,7 +396,6 @@ export function PluginLibrary() {
   const deferredPluginSearch = useDeferredValue(pluginSearch);
   const deferredSkillSearch = useDeferredValue(skillSearch);
   const providerThreadId = focusedThreadId;
-
   const serverConfigQuery = useQuery(serverConfigQueryOptions());
   const codexCapabilitiesQuery = useQuery(providerComposerCapabilitiesQueryOptions("codex"));
   const claudeCapabilitiesQuery = useQuery(providerComposerCapabilitiesQueryOptions("claudeAgent"));
@@ -383,7 +409,6 @@ export function PluginLibrary() {
       skills: supportsSkillDiscovery(claudeCapabilitiesQuery.data),
     },
   };
-
   const supportsSelectedTab =
     selectedTab === "plugins"
       ? providerCapabilities[selectedProvider].plugins
@@ -399,17 +424,14 @@ export function PluginLibrary() {
           ? providerCapabilities[provider].plugins
           : providerCapabilities[provider].skills,
       ) ?? selectedProvider);
-
   const discoveryCwd = resolveProviderDiscoveryCwd({
     activeThreadWorktreePath: activeThread?.worktreePath ?? null,
     activeProjectCwd: activeProject?.cwd ?? null,
     serverCwd: serverConfigQuery.data?.cwd ?? null,
   });
-
   const providerLabel = PROVIDER_DISPLAY_NAMES[effectiveProvider];
   const canListPlugins = providerCapabilities[effectiveProvider].plugins;
   const canListSkills = providerCapabilities[effectiveProvider].skills;
-
   const pluginsQuery = useQuery(
     providerPluginsQueryOptions({
       provider: effectiveProvider,
@@ -418,7 +440,6 @@ export function PluginLibrary() {
       enabled: selectedTab === "plugins" && canListPlugins,
     }),
   );
-
   const skillsQuery = useQuery(
     providerSkillsQueryOptions({
       provider: effectiveProvider,
@@ -427,9 +448,7 @@ export function PluginLibrary() {
       enabled: selectedTab === "skills" && canListSkills && discoveryCwd !== null,
     }),
   );
-
   const discoveredSkills = skillsQuery.data?.skills ?? [];
-
   const featuredPluginIds = new Set(pluginsQuery.data?.featuredPluginIds ?? []);
   const pluginEntries: PluginEntry[] = (pluginsQuery.data?.marketplaces ?? []).flatMap((m) =>
     m.plugins.map((plugin) => ({
@@ -439,19 +458,22 @@ export function PluginLibrary() {
       isFeatured: featuredPluginIds.has(plugin.id),
     })),
   );
-
   const installedPluginEntries = pluginEntries.filter((entry) =>
     isInstalledProviderPlugin(entry.plugin),
   );
-
   const pluginSearchQuery = normalizeProviderDiscoveryText(deferredPluginSearch);
   const filteredPluginEntries = pluginSearchQuery
     ? rankProviderDiscoveryItems(installedPluginEntries, pluginSearchQuery, (entry) =>
         buildPluginSearchFields(entry.plugin),
       )
     : installedPluginEntries;
-
-  const marketplaceSectionsByPath = new Map<string, { title: string; entries: PluginEntry[] }>();
+  const marketplaceSectionsByPath = new Map<
+    string,
+    {
+      title: string;
+      entries: PluginEntry[];
+    }
+  >();
   for (const entry of filteredPluginEntries) {
     const sectionKey = entry.marketplacePath ?? entry.marketplaceName;
     const existing = marketplaceSectionsByPath.get(sectionKey);
@@ -469,12 +491,10 @@ export function PluginLibrary() {
     title: v.title,
     entries: v.entries,
   }));
-
   const skillSearchQuery = normalizeProviderDiscoveryText(deferredSkillSearch);
   const filteredSkills = skillSearchQuery
     ? rankProviderDiscoveryItems(discoveredSkills, skillSearchQuery, buildSkillSearchFields)
     : discoveredSkills;
-
   return (
     <SidebarInset className="h-dvh min-h-0 overflow-hidden isolate">
       <div className="flex h-full flex-col">

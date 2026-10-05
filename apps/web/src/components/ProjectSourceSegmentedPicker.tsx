@@ -1,12 +1,8 @@
+import { FolderIcon } from "~/lib/icons";
+import { GitHubIcon } from "~/lib/brandIcons";
 import type { ReactNode } from "react";
-
-import { GitHubIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
-
-import { FolderClosed } from "./FolderClosed";
-
 export type ProjectSource = "local" | "github";
-
 const PROJECT_SOURCES: ReadonlyArray<{
   readonly value: ProjectSource;
   readonly label: string;
@@ -15,7 +11,7 @@ const PROJECT_SOURCES: ReadonlyArray<{
   {
     value: "local",
     label: "Folder",
-    icon: <FolderClosed className="size-3.5" aria-hidden="true" />,
+    icon: <FolderIcon className="size-3.5" aria-hidden="true" />,
   },
   {
     value: "github",
@@ -23,7 +19,6 @@ const PROJECT_SOURCES: ReadonlyArray<{
     icon: <GitHubIcon className="size-3.5" aria-hidden="true" />,
   },
 ];
-
 export function ProjectSourceSegmentedPicker(props: {
   readonly value: ProjectSource;
   readonly disabled: boolean;
@@ -37,7 +32,6 @@ export function ProjectSourceSegmentedPicker(props: {
   const chipLeft =
     activeIndex === 0 ? `calc(-1px - ${overhang})` : `calc(0.125rem + ${activeIndex} * (${cell}))`;
   const chipWidth = `calc(${cell} + 0.125rem + 1px + ${overhang})`;
-
   return (
     <div className={cn("px-1", props.className)}>
       <div
@@ -48,7 +42,10 @@ export function ProjectSourceSegmentedPicker(props: {
         <div
           aria-hidden
           className="sidebar-segmented-thumb pointer-events-none absolute -inset-y-[1.5px] z-0 rounded-md transition-[left,width] duration-120 ease-out motion-reduce:transition-none"
-          style={{ left: chipLeft, width: chipWidth }}
+          style={{
+            left: chipLeft,
+            width: chipWidth,
+          }}
         />
         {PROJECT_SOURCES.map((source, index) => {
           const active = source.value === props.value;
@@ -76,7 +73,9 @@ export function ProjectSourceSegmentedPicker(props: {
             >
               <span
                 className="flex items-center gap-1.5 transition-transform duration-120 ease-out motion-reduce:transition-none"
-                style={{ transform: `translateX(${labelShift})` }}
+                style={{
+                  transform: `translateX(${labelShift})`,
+                }}
               >
                 {source.icon}
                 {source.label}

@@ -1,9 +1,8 @@
+import { UndoIcon } from "~/lib/icons";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
-
 import { logoutCurrentBrowserSession } from "~/authLogout";
 import { useOnboardingDialogStore } from "~/onboarding/onboardingDialogStore";
-import { ResetIcon } from "~/lib/icons";
 import { APP_VERSION } from "~/branding";
 import { Button } from "~/components/ui/button";
 import { toastManager } from "~/components/ui/toast";
@@ -13,7 +12,6 @@ import { useStore } from "~/store";
 import { createAllThreadsMessagelessSelector, createThreadShellsSelector } from "~/storeSelectors";
 import { SettingsRow, SettingsSection } from "./SettingsPanelPrimitives";
 import { DesktopUpdateSettingsRow } from "./DesktopUpdateSettingsRow";
-
 export function AdvancedSettingsPanel(props: {
   active: boolean;
   onOpenReleaseHistory: () => void;
@@ -21,20 +19,16 @@ export function AdvancedSettingsPanel(props: {
 }) {
   const authSessionQuery = useQuery(serverAuthSessionQueryOptions());
   const syncServerReadModel = useStore((store) => store.syncServerReadModel);
-
   const threadShells = useStore(useMemo(() => createThreadShellsSelector(), []));
   const allThreadsMessageless = useStore(useMemo(() => createAllThreadsMessagelessSelector(), []));
   const projectCount = useStore((store) => store.projects.length);
   const threadsHydrated = useStore((store) => store.threadsHydrated);
-
   const [isRepairingLocalState, setIsRepairingLocalState] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-
   const shouldOfferRecoveryTools = useMemo(() => {
     if (!threadsHydrated || projectCount === 0) return false;
     return threadShells.length === 0 || allThreadsMessageless;
   }, [allThreadsMessageless, projectCount, threadShells.length, threadsHydrated]);
-
   const repairLocalState = useCallback(async () => {
     if (isRepairingLocalState) return;
     const api = readNativeApi() ?? ensureNativeApi();
@@ -46,7 +40,6 @@ export function AdvancedSettingsPanel(props: {
       ].join("\n"),
     );
     if (!confirmed) return;
-
     setIsRepairingLocalState(true);
     await api.orchestration
       .repairState()
@@ -69,7 +62,6 @@ export function AdvancedSettingsPanel(props: {
         setIsRepairingLocalState(false);
       });
   }, [isRepairingLocalState, syncServerReadModel]);
-
   const logoutCurrentSession = useCallback(async () => {
     if (isLoggingOut) return;
     const api = readNativeApi() ?? ensureNativeApi();
@@ -90,9 +82,7 @@ export function AdvancedSettingsPanel(props: {
     });
     if (result !== "redirecting") setIsLoggingOut(false);
   }, [isLoggingOut]);
-
   if (!props.active) return null;
-
   return (
     <div className="space-y-6">
       {authSessionQuery.data?.authenticated ? (
@@ -179,7 +169,7 @@ export function AdvancedSettingsPanel(props: {
           description="Reset Glade preferences, theme customizations, and provider preferences."
           control={
             <Button size="sm" variant="outline" onClick={() => props.onRestoreDefaults()}>
-              <ResetIcon className="size-3.5" />
+              <UndoIcon className="size-3.5" />
               Restore defaults
             </Button>
           }

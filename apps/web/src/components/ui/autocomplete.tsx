@@ -1,15 +1,12 @@
 "use client";
 
+import { ChevronsDownUpIcon, XIcon } from "~/lib/icons";
 import { Autocomplete as AutocompletePrimitive } from "@base-ui/react/autocomplete";
-import { ChevronsUpDownIcon, XIcon } from "~/lib/icons";
-
 import { cn } from "~/lib/utils";
 import { UI_MOTION_POPUP_CLASS } from "~/lib/uiMotion";
 import { Input } from "~/components/ui/input";
 import { ScrollArea } from "~/components/ui/scroll-area";
-
 const Autocomplete = AutocompletePrimitive.Root;
-
 function AutocompleteInput({
   className,
   showTrigger: showTriggerProp,
@@ -30,7 +27,6 @@ function AutocompleteInput({
   const showClear = showClearProp ?? false;
   const variant = variantProp ?? "default";
   const sizeValue = (size ?? "default") as "sm" | "default" | "lg" | number;
-
   return (
     <div className="relative not-has-[>*.w-full]:w-fit w-full text-foreground has-disabled:opacity-64">
       {startAddon && (
@@ -63,7 +59,7 @@ function AutocompleteInput({
           )}
         >
           <AutocompletePrimitive.Icon data-slot="autocomplete-icon">
-            <ChevronsUpDownIcon />
+            <ChevronsDownUpIcon />
           </AutocompletePrimitive.Icon>
         </AutocompleteTrigger>
       )}
@@ -80,7 +76,6 @@ function AutocompleteInput({
     </div>
   );
 }
-
 function AutocompletePopup({
   className,
   children,
@@ -148,7 +143,6 @@ function AutocompleteItem({ className, children, ...props }: AutocompletePrimiti
     </AutocompletePrimitive.Item>
   );
 }
-
 function AutocompleteSeparator({ className, ...props }: AutocompletePrimitive.Separator.Props) {
   return (
     <AutocompletePrimitive.Separator
@@ -158,7 +152,6 @@ function AutocompleteSeparator({ className, ...props }: AutocompletePrimitive.Se
     />
   );
 }
-
 function AutocompleteGroup({ className, ...props }: AutocompletePrimitive.Group.Props) {
   return (
     <AutocompletePrimitive.Group
@@ -168,7 +161,6 @@ function AutocompleteGroup({ className, ...props }: AutocompletePrimitive.Group.
     />
   );
 }
-
 function AutocompleteGroupLabel({ className, ...props }: AutocompletePrimitive.GroupLabel.Props) {
   return (
     <AutocompletePrimitive.GroupLabel
@@ -178,7 +170,6 @@ function AutocompleteGroupLabel({ className, ...props }: AutocompletePrimitive.G
     />
   );
 }
-
 function AutocompleteEmpty({ className, ...props }: AutocompletePrimitive.Empty.Props) {
   return (
     <AutocompletePrimitive.Empty
@@ -191,17 +182,14 @@ function AutocompleteEmpty({ className, ...props }: AutocompletePrimitive.Empty.
     />
   );
 }
-
 function AutocompleteRow({ className, ...props }: AutocompletePrimitive.Row.Props) {
   return (
     <AutocompletePrimitive.Row className={className} data-slot="autocomplete-row" {...props} />
   );
 }
-
 function AutocompleteValue({ ...props }: AutocompletePrimitive.Value.Props) {
   return <AutocompletePrimitive.Value data-slot="autocomplete-value" {...props} />;
 }
-
 function AutocompleteList({ className, ...props }: AutocompletePrimitive.List.Props) {
   return (
     <ScrollArea scrollbarGutter scrollFade>
@@ -213,7 +201,6 @@ function AutocompleteList({ className, ...props }: AutocompletePrimitive.List.Pr
     </ScrollArea>
   );
 }
-
 function AutocompleteClear({ className, ...props }: AutocompletePrimitive.Clear.Props) {
   return (
     <AutocompletePrimitive.Clear
@@ -228,7 +215,6 @@ function AutocompleteClear({ className, ...props }: AutocompletePrimitive.Clear.
     </AutocompletePrimitive.Clear>
   );
 }
-
 function AutocompleteStatus({ className, ...props }: AutocompletePrimitive.Status.Props) {
   return (
     <AutocompletePrimitive.Status
@@ -241,11 +227,9 @@ function AutocompleteStatus({ className, ...props }: AutocompletePrimitive.Statu
     />
   );
 }
-
 function AutocompleteCollection({ ...props }: AutocompletePrimitive.Collection.Props) {
   return <AutocompletePrimitive.Collection data-slot="autocomplete-collection" {...props} />;
 }
-
 function AutocompleteTrigger({
   className,
   children,
@@ -261,9 +245,7 @@ function AutocompleteTrigger({
     </AutocompletePrimitive.Trigger>
   );
 }
-
 const useAutocompleteFilter = AutocompletePrimitive.useFilter;
-
 export {
   Autocomplete,
   AutocompleteInput,

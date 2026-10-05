@@ -1,10 +1,9 @@
+import { PencilEdit02Icon } from "~/lib/icons";
 import type { FileDiffMetadata } from "@pierre/diffs";
 import { useState } from "react";
 import { ensureNativeApi } from "~/nativeApi";
 import { resolveFileDiffPath } from "~/lib/diffRendering";
-import { PencilIcon } from "~/lib/icons";
 import { Button } from "../ui/button";
-
 export function EditSourceFile(props: {
   cwd: string | null;
   file: FileDiffMetadata;
@@ -25,7 +24,11 @@ export function EditSourceFile(props: {
         if (!props.cwd) return;
         setOpening(true);
         void ensureNativeApi()
-          .projects.readFile({ cwd: props.cwd, relativePath: path, maxBytes: 1 })
+          .projects.readFile({
+            cwd: props.cwd,
+            relativePath: path,
+            maxBytes: 1,
+          })
           .then(() => {
             setError(null);
             props.onOpenFile(path);
@@ -36,7 +39,7 @@ export function EditSourceFile(props: {
           .finally(() => setOpening(false));
       }}
     >
-      <PencilIcon className="size-3.5" />
+      <PencilEdit02Icon className="size-3.5" />
       {error ? "File unavailable" : "Edit"}
     </Button>
   );

@@ -1,3 +1,4 @@
+import { FolderIcon, CommandIcon } from "~/lib/icons";
 import type {
   KeybindingCommand,
   KeybindingRule,
@@ -5,14 +6,12 @@ import type {
 } from "@glade/contracts/settings/keybindings";
 import { useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-
 import { resolveAndPersistPreferredEditor } from "~/editorPreferences";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { ShortcutKbd } from "~/components/ui/kbd";
 import { toastManager } from "~/components/ui/toast";
 import { formatKeybindingWhenExpression } from "~/keybindings";
-import { CentralIcon } from "~/lib/central-icons";
 import { keybindingFromKeyboardEvent, keybindingValueFromShortcut } from "~/lib/keybindingCapture";
 import { ensureNativeApi } from "~/nativeApi";
 import { serverConfigQueryOptions, serverQueryKeys } from "~/lib/serverReactQuery";
@@ -30,19 +29,15 @@ import {
   SETTINGS_CARD_ROW_TITLE_CLASS_NAME,
 } from "~/settingsPanelStyles";
 import { SettingsCard, SettingsEmptyState, SettingsRow } from "./SettingsPanelPrimitives";
-
 const EMPTY_KEYBINDINGS: ResolvedKeybindingsConfig = [];
-
 const SETTINGS_SHORTCUT_CONTEXT: ShortcutSheetContext = {
   terminalFocus: false,
   terminalOpen: false,
   terminalWorkspaceOpen: false,
 };
-
 const EDITABLE_SHORTCUT_DEFINITIONS = listEditableShortcutDefinitions();
 const DEFAULT_NEW_SHORTCUT_COMMAND =
   EDITABLE_SHORTCUT_DEFINITIONS[0]?.command ?? ("sidebar.toggle" as KeybindingCommand);
-
 export function KeyboardShortcutsSettingsPanel() {
   const [query, setQuery] = useState("");
   const [editingCommand, setEditingCommand] = useState<KeybindingCommand | null>(null);
@@ -59,7 +54,6 @@ export function KeyboardShortcutsSettingsPanel() {
   const [openKeybindingsError, setOpenKeybindingsError] = useState<string | null>(null);
   const keybindingsConfigPath = serverConfigQuery.data?.keybindingsConfigPath ?? null;
   const availableEditors = serverConfigQuery.data?.availableEditors;
-
   const openKeybindingsFile = () => {
     if (!keybindingsConfigPath) return;
     setOpenKeybindingsError(null);
@@ -81,16 +75,13 @@ export function KeyboardShortcutsSettingsPanel() {
         setIsOpeningKeybindings(false);
       });
   };
-
   const keybindings = serverConfigQuery.data?.keybindings ?? EMPTY_KEYBINDINGS;
   const platform = getNavigatorPlatform();
-
   const sections = buildShortcutSheetSections({
     keybindings,
     platform,
     context: SETTINGS_SHORTCUT_CONTEXT,
   });
-
   const filteredSections = filterShortcutSheetSections(sections, query);
   const beginEditing = (entry: ShortcutSheetEntry) => {
     if (!entry.command || !entry.binding) return;
@@ -100,7 +91,15 @@ export function KeyboardShortcutsSettingsPanel() {
     const when = formatKeybindingWhenExpression(entry.binding.whenAst);
     setKeyValue(key);
     setWhenValue(when);
-    setReplacingRule({ command: entry.command, key, ...(when ? { when } : {}) });
+    setReplacingRule({
+      command: entry.command,
+      key,
+      ...(when
+        ? {
+            when,
+          }
+        : {}),
+    });
     setCaptureError(null);
   };
   const beginAdding = () => {
@@ -139,12 +138,26 @@ export function KeyboardShortcutsSettingsPanel() {
         rule: {
           command: activeCommand,
           key: keyValue.trim().toLowerCase(),
-          ...(whenValue.trim() ? { when: whenValue.trim() } : {}),
+          ...(whenValue.trim()
+            ? {
+                when: whenValue.trim(),
+              }
+            : {}),
         },
-        ...(replacingRule ? { replacing: replacingRule } : {}),
+        ...(replacingRule
+          ? {
+              replacing: replacingRule,
+            }
+          : {}),
       });
       queryClient.setQueryData(serverQueryKeys.config(), (current: typeof serverConfigQuery.data) =>
-        current ? { ...current, keybindings: result.keybindings, issues: result.issues } : current,
+        current
+          ? {
+              ...current,
+              keybindings: result.keybindings,
+              issues: result.issues,
+            }
+          : current,
       );
       toastManager.add({
         type: "success",
@@ -163,7 +176,6 @@ export function KeyboardShortcutsSettingsPanel() {
       setIsSaving(false);
     }
   };
-
   return (
     <div className="space-y-4">
       <SettingsRow
@@ -187,7 +199,7 @@ export function KeyboardShortcutsSettingsPanel() {
             disabled={!keybindingsConfigPath || isOpeningKeybindings}
             onClick={openKeybindingsFile}
           >
-            <CentralIcon name="folder" className="size-3.5" />
+            <FolderIcon className="size-3.5" />
             {isOpeningKeybindings ? "Opening..." : "Open file"}
           </Button>
         }
@@ -285,10 +297,7 @@ export function KeyboardShortcutsSettingsPanel() {
           }}
           className="[&>[data-slot=input]]:pr-9"
         />
-        <CentralIcon
-          name="cmd-box"
-          className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/70"
-        />
+        <CommandIcon className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/70" />
       </div>
       {filteredSections.length > 0 ? (
         <SettingsCard>

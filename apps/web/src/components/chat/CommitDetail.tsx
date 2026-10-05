@@ -1,10 +1,10 @@
+import { ChevronDownIcon, Copy01Icon, GitCommitHorizontalIcon, XIcon } from "~/lib/icons";
 import type { GitRecentCommit } from "@glade/contracts/git/git";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useTheme } from "~/hooks/useTheme";
 import { copyTextToClipboard } from "~/lib/clipboard";
 import { getRenderablePatch, resolveFileDiffPath } from "~/lib/diffRendering";
-import { ChevronDownIcon, CopyIcon, GitCommitIcon, XIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { ensureNativeApi } from "~/nativeApi";
 import { Button } from "../ui/button";
@@ -16,7 +16,6 @@ import { GitMediaPreview, isGitMediaPath } from "./GitMediaPreview";
 import { PanelStateMessage } from "./PanelStateMessage";
 import { WorkspaceDiffFile } from "./WorkspaceDiffFile";
 import { EditSourceFile } from "./EditSourceFile";
-
 export function CommitDetail(props: {
   filePath?: string | undefined;
   onSelectFile?: ((path: string, preview: boolean) => void) | undefined;
@@ -29,14 +28,17 @@ export function CommitDetail(props: {
   const [expandedPaths, setExpandedPaths] = useState<ReadonlySet<string>>(() => new Set());
   const detail = useQuery({
     queryKey: ["git", "history-commit", props.cwd, props.commit.sha],
-    queryFn: () => ensureNativeApi().git.readCommit({ cwd: props.cwd, sha: props.commit.sha }),
+    queryFn: () =>
+      ensureNativeApi().git.readCommit({
+        cwd: props.cwd,
+        sha: props.commit.sha,
+      }),
     staleTime: Infinity,
   });
   const renderable = useMemo(
     () => getRenderablePatch(detail.data?.patch, `history:${props.commit.sha}`),
     [detail.data?.patch, props.commit.sha],
   );
-
   const selectedFile =
     renderable?.kind === "files"
       ? renderable.files.find((file) => resolveFileDiffPath(file) === props.filePath)
@@ -56,7 +58,7 @@ export function CommitDetail(props: {
   return (
     <section className="flex min-h-0 flex-1 flex-col border-t border-border/70">
       <div className="flex shrink-0 items-center gap-2 px-3 py-2">
-        <GitCommitIcon className="size-4 shrink-0 text-muted-foreground" />
+        <GitCommitHorizontalIcon className="size-4 shrink-0 text-muted-foreground" />
         <span className="min-w-0 flex-1 truncate text-ui-sm font-medium">
           {props.commit.subject}
         </span>
@@ -65,11 +67,14 @@ export function CommitDetail(props: {
           tooltip="Copy commit hash"
           onClick={() => {
             void copyTextToClipboard(props.commit.sha).catch(() =>
-              toastManager.add({ type: "error", title: "Could not copy commit hash" }),
+              toastManager.add({
+                type: "error",
+                title: "Could not copy commit hash",
+              }),
             );
           }}
         >
-          <CopyIcon className="size-3.5" />
+          <Copy01Icon className="size-3.5" />
         </IconButton>
         <IconButton
           label="Close commit details"

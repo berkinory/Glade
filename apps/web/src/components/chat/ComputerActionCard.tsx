@@ -1,9 +1,7 @@
-import type { ReactNode } from "react";
-
-import { Button } from "~/components/ui/button";
 import { MonitorIcon } from "~/lib/icons";
+import type { ReactNode } from "react";
+import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
-
 export function ComputerActionCard({
   tone,
   title,
@@ -17,12 +15,19 @@ export function ComputerActionCard({
   readonly textFontSizePx?: number | undefined;
   readonly metaFontSizePx?: number | undefined;
   readonly action?:
-    | { readonly label: string; readonly disabled?: boolean; readonly onClick: () => void }
+    | {
+        readonly label: string;
+        readonly disabled?: boolean;
+        readonly onClick: () => void;
+      }
     | undefined;
-
   readonly children?: ReactNode;
 }) {
-  const metaStyle = metaFontSizePx ? { fontSize: `${metaFontSizePx}px` } : undefined;
+  const metaStyle = metaFontSizePx
+    ? {
+        fontSize: `${metaFontSizePx}px`,
+      }
+    : undefined;
   return (
     <div className="flex items-start gap-3 rounded-xl border border-[color:var(--color-border-light)] bg-[var(--color-background-elevated-primary)] p-3">
       <span
@@ -40,7 +45,13 @@ export function ComputerActionCard({
       <div className="min-w-0 flex-1 space-y-0.5">
         <p
           className="font-medium text-[var(--color-text-foreground)]"
-          style={textFontSizePx ? { fontSize: `${textFontSizePx}px` } : undefined}
+          style={
+            textFontSizePx
+              ? {
+                  fontSize: `${textFontSizePx}px`,
+                }
+              : undefined
+          }
         >
           {title}
         </p>

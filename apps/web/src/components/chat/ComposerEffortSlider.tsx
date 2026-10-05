@@ -1,15 +1,12 @@
-import { CentralIcon } from "~/lib/central-icons";
-import { ResetIcon } from "~/lib/icons";
+import { UndoIcon, Brain03Icon } from "~/lib/icons";
 import { Slider } from "../ui/slider";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
-
 type EffortLevel = {
   value: string;
   label: string;
   description?: string;
   isDefault?: boolean;
 };
-
 export function ComposerEffortSlider(props: {
   levels: ReadonlyArray<EffortLevel>;
   value: string | null;
@@ -23,11 +20,10 @@ export function ComposerEffortSlider(props: {
   );
   const level = props.levels[index];
   if (!level) return null;
-
   return (
     <div className="space-y-2 rounded-lg bg-muted/20 px-2.5 py-2.5" data-slot="effort-slider-card">
       <div className="flex items-center gap-2">
-        <CentralIcon name="brain" className="size-3.5 text-muted-foreground" />
+        <Brain03Icon className="size-3.5 text-muted-foreground" />
         <span className="flex-1 text-ui font-medium">Thinking</span>
         <span className="text-ui-sm font-medium text-[var(--color-text-accent)]">
           {level.label}
@@ -45,7 +41,7 @@ export function ComposerEffortSlider(props: {
                 />
               }
             >
-              <ResetIcon aria-hidden="true" className="size-3" />
+              <UndoIcon aria-hidden="true" className="size-3" />
             </TooltipTrigger>
             <TooltipPopup variant="picker">Reset to default</TooltipPopup>
           </Tooltip>

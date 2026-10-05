@@ -1,5 +1,5 @@
-import { useEffect, useRef, type ReactNode } from "react";
 import { SearchIcon } from "~/lib/icons";
+import { useEffect, useRef, type ReactNode } from "react";
 import { cn } from "~/lib/utils";
 import { Input } from "../ui/input";
 import {
@@ -14,7 +14,6 @@ import {
   PICKER_PANEL_PLAIN_SEARCH_ICON_CLASS_NAME,
   PICKER_PANEL_PLAIN_SEARCH_INPUT_CLASS_NAME,
 } from "./pickerPanelStyles";
-
 export const MENU_NAVIGATION_KEYS = new Set([
   "ArrowDown",
   "ArrowUp",
@@ -25,7 +24,6 @@ export const MENU_NAVIGATION_KEYS = new Set([
   "Enter",
   "Escape",
 ]);
-
 export function PickerPanelShell(props: {
   searchPlaceholder?: string;
   query?: string;
@@ -38,7 +36,6 @@ export function PickerPanelShell(props: {
   widthClassName?: string;
   bleedParentPadding?: boolean;
   listMaxHeightClassName?: string;
-
   variant?: "default" | "plain";
 }) {
   const {
@@ -63,20 +60,16 @@ export function PickerPanelShell(props: {
   const bleedParentPadding = bleedParentPaddingProp ?? false;
   const isPlain = (variantProp ?? "default") === "plain";
   const searchInputRef = useRef<HTMLInputElement | null>(null);
-
   useEffect(() => {
     if (!autoFocusSearch || !onQueryChange) {
       return;
     }
-
     const frame = requestAnimationFrame(() => {
       searchInputRef.current?.focus();
       searchInputRef.current?.select();
     });
-
     return () => cancelAnimationFrame(frame);
   }, [autoFocusSearch, onQueryChange]);
-
   return (
     <div
       className={cn(

@@ -1,11 +1,9 @@
+import { WorkflowCircle04Icon } from "~/lib/icons";
 import { ConversationDivider } from "./ConversationDivider";
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { memo, type MouseEvent } from "react";
-
-import { GitBranchIcon } from "~/lib/icons";
 import { ProviderIcon } from "../ProviderIcon";
-
 export interface ForkSourceReference {
   readonly sourceThreadId: ThreadId;
   readonly sourceTitle: string;
@@ -14,11 +12,9 @@ export interface ForkSourceReference {
     readonly targetProvider: ProviderKind;
   };
 }
-
 function shouldUseClientNavigation(event: MouseEvent<HTMLAnchorElement>): boolean {
   return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
 }
-
 export const ForkSourceDivider = memo(function ForkSourceDivider({
   source,
   onOpenSourceThread,
@@ -27,7 +23,6 @@ export const ForkSourceDivider = memo(function ForkSourceDivider({
   readonly onOpenSourceThread: (threadId: ThreadId) => void;
 }) {
   const sourceHref = `/${encodeURIComponent(source.sourceThreadId)}`;
-
   return (
     <ConversationDivider kind={source.handoff ? "handoff" : "fork"}>
       <a
@@ -55,7 +50,10 @@ export const ForkSourceDivider = memo(function ForkSourceDivider({
           </>
         ) : (
           <>
-            <GitBranchIcon className="size-4 shrink-0 text-muted-foreground/70" aria-hidden />
+            <WorkflowCircle04Icon
+              className="size-4 shrink-0 text-muted-foreground/70"
+              aria-hidden
+            />
             <span className="truncate">Continued from chat</span>
           </>
         )}

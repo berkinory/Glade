@@ -1,13 +1,12 @@
+import { GitPullRequestIcon } from "~/lib/icons";
 import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useQuery } from "@tanstack/react-query";
 import { gitStatusQueryOptions } from "../../../lib/gitQueryOptions";
-import { GitPullRequestIcon } from "~/lib/icons";
 import {
   PR_STATE_PRESENTATION_ICONS,
   resolvePrStatePresentation,
 } from "../../pullRequest/pullRequestStatePresentation";
 import { ENVIRONMENT_ROW_CLASS_NAME, EnvironmentLabeledSection } from "./EnvironmentRow";
-
 export function EnvironmentPullRequestSection({
   gitCwd,
   enabled,
@@ -18,7 +17,9 @@ export function EnvironmentPullRequestSection({
   enabled: boolean;
   activeThreadId: ThreadId | null;
   projectId: ProjectId | null;
-  configuredRepositories: ReadonlyArray<{ readonly nameWithOwner: string }>;
+  configuredRepositories: ReadonlyArray<{
+    readonly nameWithOwner: string;
+  }>;
   showDiffColors?: boolean;
   onOpenUrl: (url: string) => void;
   onClose: () => void;

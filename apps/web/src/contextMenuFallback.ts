@@ -1,5 +1,4 @@
 import type { ContextMenuItem } from "@glade/contracts/ipc/ipc";
-import { createCentralIconElement } from "./lib/central-icons";
 import { isInlineSvgMenuIcon } from "./lib/nativeMenuIcons";
 
 function createMenuIconElement(icon: string): HTMLElement | null {
@@ -10,7 +9,7 @@ function createMenuIconElement(icon: string): HTMLElement | null {
     image.className = "size-4 shrink-0 object-contain";
     return image;
   }
-  if (!isInlineSvgMenuIcon(icon)) return createCentralIconElement(icon, "opacity-60");
+  if (!isInlineSvgMenuIcon(icon)) return null;
   const wrapper = document.createElement("span");
   wrapper.className = "flex size-4 shrink-0 items-center justify-center opacity-60 [&>svg]:size-4";
   wrapper.innerHTML = icon;

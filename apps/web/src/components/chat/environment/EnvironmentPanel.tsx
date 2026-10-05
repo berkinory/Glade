@@ -1,3 +1,5 @@
+import { GitHubIcon } from "~/lib/brandIcons";
+import { ArrowUpRightIcon, PlusMinusSquare01Icon, SettingsIcon } from "~/lib/icons";
 import type { EditorId } from "@glade/contracts/settings/editor";
 import type {
   MessageId,
@@ -9,7 +11,6 @@ import type { PinnedMessage } from "@glade/contracts/orchestration/threadEntitie
 import type { ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import { useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-
 import { useAppSettings } from "~/appSettings";
 import { SETTINGS_TARGETS } from "~/settingsNavigation";
 import {
@@ -21,10 +22,8 @@ import GitActionsControl from "~/components/GitActionsControl";
 import { DiffStat } from "~/components/ui/diff-stat";
 import { IconButton } from "~/components/ui/icon-button";
 import type { RepoDiffTotals } from "~/hooks/useRepoDiffTotals";
-import { ArrowUpRightIcon, ChangesIcon, GitHubIcon, SettingsIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { useWorkspacePathsStore } from "~/workspacePathsStore";
-
 import { EnvironmentEditorSection } from "./EnvironmentEditorSection";
 import { formatEnvironmentDirectory } from "./EnvironmentPanel.logic";
 import { EnvironmentUsageSection } from "./EnvironmentUsageSection";
@@ -39,15 +38,11 @@ import {
   EnvironmentRow,
   EnvironmentSectionDivider,
 } from "./EnvironmentRow";
-
 export const ENVIRONMENT_DOCKED_CONTENT_INSET_PX = 312;
-
 const ENVIRONMENT_PANEL_OVERLAY_WRAPPER_CLASS_NAME =
   "pointer-events-none absolute inset-y-0 right-0 z-20 flex flex-col items-end gap-3 overflow-x-clip overflow-y-auto p-3";
-
 export interface EnvironmentPanelProps {
   open: boolean;
-
   variant: "docked" | "floating";
   gitCwd: string | null;
   openInTarget: string | null;
@@ -60,51 +55,34 @@ export interface EnvironmentPanelProps {
     readonly nameWithOwner: string;
     readonly url: string;
   } | null;
-  githubRepositories?: ReadonlyArray<{ readonly nameWithOwner: string }>;
+  githubRepositories?: ReadonlyArray<{
+    readonly nameWithOwner: string;
+  }>;
   isGitRepo: boolean;
   keybindings: ResolvedKeybindingsConfig;
   availableEditors: ReadonlyArray<EditorId>;
   activeThreadId: ThreadId | null;
-
   activeProvider: ProviderKind;
   // Whether the active runtime exposes git actions (hides "Commit and Push" otherwise).
   showGitActions: boolean;
-
   diffOpen: boolean;
-
   diffDisabledReason?: string | null;
-
   diffTotals: RepoDiffTotals;
-
   branchToolbar: Omit<BranchToolbarProps, "variant">;
-
   railBottom?: ReactNode;
-
   pinnedMessages: readonly PinnedMessage[];
-
   pinnedMessageTextById: ReadonlyMap<MessageId, string>;
-
   notes: string;
-
   activeProjectId: ProjectId | null;
-
   onToggleDiff: () => void;
-
   onOpenGithubRepository?: (url: string) => void;
-
   onJumpToPinnedMessage: (messageId: MessageId) => void;
-
   onUnpinMessage: (messageId: MessageId) => void;
-
   onRenamePinnedMessage: (messageId: MessageId, label: string | null) => void;
-
   onNotesChange: (threadId: ThreadId, notes: string) => Promise<void>;
-
   onClose: () => void;
-
   onRegisterCommitAndPushTrigger?: (trigger: (() => void) | null) => void;
 }
-
 export function EnvironmentPanel({
   open,
   variant,
@@ -149,7 +127,6 @@ export function EnvironmentPanel({
   // Disable the Changes row only when the diff cannot be opened *and* is not already open (so an open
   // diff stays toggleable closed even when there are no pending changes).
   const changesDisabled = diffDisabledReason !== null && !diffOpen;
-
   const content = (
     <div className="flex flex-col gap-0.5 p-1.5">
       <div className="flex items-center justify-between gap-2 px-2 pb-0.5 pt-0.5">
@@ -162,7 +139,9 @@ export function EnvironmentPanel({
           onClick={() =>
             void navigate({
               to: "/settings",
-              search: { target: SETTINGS_TARGETS.environmentPanel },
+              search: {
+                target: SETTINGS_TARGETS.environmentPanel,
+              },
             })
           }
         >
@@ -172,7 +151,7 @@ export function EnvironmentPanel({
 
       {isGitRepo ? (
         <EnvironmentRow
-          icon={<ChangesIcon className={ENVIRONMENT_ROW_ICON_CLASS_NAME} aria-hidden />}
+          icon={<PlusMinusSquare01Icon className={ENVIRONMENT_ROW_ICON_CLASS_NAME} aria-hidden />}
           label="Changes"
           trailing={hasChanges ? <DiffStat insertions={additions} deletions={deletions} /> : null}
           disabled={changesDisabled}
@@ -223,7 +202,7 @@ export function EnvironmentPanel({
       <EnvironmentLocalServersSection enabled={open} />
 
       {/* Each renders its own leading divider only when it actually shows, so toggling any section via the
-   header gear menu never leaves a doubled or dangling rule. */}
+       header gear menu never leaves a doubled or dangling rule. */}
       {settings.showEnvironmentUsage ? <EnvironmentUsageSection provider={activeProvider} /> : null}
 
       {settings.showEnvironmentRepository && githubRepository && onOpenGithubRepository ? (
@@ -287,7 +266,6 @@ export function EnvironmentPanel({
       ) : null}
     </div>
   );
-
   return (
     <div
       className={ENVIRONMENT_PANEL_OVERLAY_WRAPPER_CLASS_NAME}

@@ -1,11 +1,11 @@
-import { BotIcon, CircleCheckIcon, FolderIcon, type LucideIcon } from "~/lib/icons";
+import type { IconComponent } from "~/lib/iconComponent";
+import { Robot01Icon, CircleCheckIcon, FolderIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { ONBOARDING_TILE_CLASS_NAME } from "../layout";
-
 const WELCOME_POINTS: ReadonlyArray<{
   readonly title: string;
   readonly description: string;
-  readonly icon: LucideIcon;
+  readonly icon: IconComponent;
 }> = [
   {
     title: "Local-first",
@@ -15,7 +15,7 @@ const WELCOME_POINTS: ReadonlyArray<{
   {
     title: "Your own agents",
     description: "Drives the CLIs, accounts and keys already set up here.",
-    icon: BotIcon,
+    icon: Robot01Icon,
   },
   {
     title: "Verify before done",
@@ -23,7 +23,6 @@ const WELCOME_POINTS: ReadonlyArray<{
     icon: CircleCheckIcon,
   },
 ];
-
 export function WelcomeStep() {
   return (
     <ul className="grid grid-cols-3 gap-4">

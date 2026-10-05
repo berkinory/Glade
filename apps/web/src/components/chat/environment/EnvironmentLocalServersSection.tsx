@@ -1,14 +1,12 @@
+import { Globe02Icon, RefreshCwIcon, SquareFilledIcon } from "~/lib/icons";
 import { Spinner } from "~/components/ui/spinner";
 import type { ReactNode } from "react";
-
 import type { ServerLocalServerProcess } from "@glade/contracts/server/server";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { localServerPrimaryLabel } from "~/lib/localServers";
-
 import { LocalServerIdentity } from "../../LocalServerIdentity";
 import { ComposerPickerMenuPopup } from "../ComposerPickerMenuPopup";
 import { Menu, MenuItem, MenuTrigger } from "../../ui/menu";
-import { GlobeIcon, RefreshCwIcon, StopFilledIcon } from "~/lib/icons";
 import {
   serverLocalServersQueryOptions,
   serverStopLocalServerMutationOptions,
@@ -19,12 +17,10 @@ import {
   EnvironmentRowBody,
   EnvironmentRowChevron,
 } from "./EnvironmentRow";
-
 function describeServerCount(count: number): string {
   if (count === 0) return "No servers running";
   return `${count} server${count === 1 ? "" : "s"} running`;
 }
-
 function LocalServersRefreshButton({
   refreshing,
   onRefresh,
@@ -49,7 +45,6 @@ function LocalServersRefreshButton({
     </MenuItem>
   );
 }
-
 function LocalServerRow({
   server,
   stopping,
@@ -64,7 +59,6 @@ function LocalServerRow({
   const stopHint = server.isStoppable
     ? `Stop ${primaryLabel}`
     : (server.stopDisabledReason ?? server.args ?? server.displayName);
-
   return (
     <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-[0.5rem] py-0.5 pl-2 pr-2.5">
       {}
@@ -86,13 +80,12 @@ function LocalServerRow({
         {stopping ? (
           <Spinner variant="action" className="size-3.5" />
         ) : (
-          <StopFilledIcon className="size-3.5" />
+          <SquareFilledIcon className="size-3.5" />
         )}
       </MenuItem>
     </div>
   );
 }
-
 function LocalServersPlaceholder({
   icon,
   title,
@@ -110,19 +103,18 @@ function LocalServersPlaceholder({
     </div>
   );
 }
-
 export function EnvironmentLocalServersSection({ enabled }: { enabled: boolean }) {
   const queryClient = useQueryClient();
   const localServersQuery = useQuery(serverLocalServersQueryOptions(enabled));
   const stopLocalServerMutation = useMutation(
-    serverStopLocalServerMutationOptions({ queryClient }),
+    serverStopLocalServerMutationOptions({
+      queryClient,
+    }),
   );
-
   const servers = localServersQuery.data?.servers ?? [];
   const serverCount = servers.length;
   const isBusy = localServersQuery.isFetching || stopLocalServerMutation.isPending;
   const activeStoppingPid = stopLocalServerMutation.variables?.pid ?? null;
-
   const trailing = (
     <>
       {isBusy ? (
@@ -143,12 +135,11 @@ export function EnvironmentLocalServersSection({ enabled }: { enabled: boolean }
       <EnvironmentRowChevron />
     </>
   );
-
   return (
     <Menu>
       <MenuTrigger render={<button type="button" className={ENVIRONMENT_ROW_CLASS_NAME} />}>
         <EnvironmentRowBody
-          icon={<GlobeIcon className={ENVIRONMENT_ROW_ICON_CLASS_NAME} aria-hidden />}
+          icon={<Globe02Icon className={ENVIRONMENT_ROW_ICON_CLASS_NAME} aria-hidden />}
           label="Local Servers"
           trailing={trailing}
         />
@@ -171,7 +162,7 @@ export function EnvironmentLocalServersSection({ enabled }: { enabled: boolean }
           />
         ) : localServersQuery.isError ? (
           <LocalServersPlaceholder
-            icon={<GlobeIcon className="size-4" />}
+            icon={<Globe02Icon className="size-4" />}
             title="Couldn't scan local ports"
             subtitle={
               localServersQuery.error instanceof Error
@@ -181,7 +172,7 @@ export function EnvironmentLocalServersSection({ enabled }: { enabled: boolean }
           />
         ) : serverCount === 0 ? (
           <LocalServersPlaceholder
-            icon={<GlobeIcon className="size-4" />}
+            icon={<Globe02Icon className="size-4" />}
             title="No servers running"
             subtitle="Local dev servers will appear here."
           />

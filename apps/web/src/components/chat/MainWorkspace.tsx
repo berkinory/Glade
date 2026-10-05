@@ -1,3 +1,9 @@
+import {
+  Globe02Icon,
+  GitCommitHorizontalIcon,
+  PlusMinusSquare01Icon,
+  ComputerTerminal01Icon,
+} from "~/lib/icons";
 import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -26,7 +32,6 @@ import {
 import { selectMainWorkspace, useMainWorkspaceStore } from "~/mainWorkspaceStore";
 import { selectRightDockState, useRightDockStore } from "~/rightDockStore";
 import { useStore } from "~/store";
-import { GlobeIcon, GitCommitIcon, ChangesIcon, TerminalIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { runBrowserCommand } from "../browser/controller/browserActions";
 import { toastManager } from "../ui/toast";
@@ -44,15 +49,18 @@ import { useWorkspaceShortcuts } from "./useWorkspaceShortcuts";
 import { terminalTabGroups } from "~/terminalLayout";
 import { Spinner } from "../ui/spinner";
 import { useWorkspaceTabSelection } from "./useWorkspaceTabSelection";
-
 const DockTerminalPane = lazy(() => import("./DockTerminalPane"));
-
 export function MainWorkspace(props: {
   threadId: ThreadId;
   projectId: ProjectId | null;
   workspaceRoot: string | null;
   revealPosition?:
-    | { filePath: string; lineNumber: number; column?: number; requestId: number }
+    | {
+        filePath: string;
+        lineNumber: number;
+        column?: number;
+        requestId: number;
+      }
     | undefined;
   onReferenceInChat: (reference: ChatFileReference) => void;
   onAddPane: (kind: "terminal" | "browser" | "explorer" | "git") => void;
@@ -98,7 +106,11 @@ export function MainWorkspace(props: {
   const browserPane = dock.panes.find((pane) => pane.kind === "browser");
   const reportBrowserError = (description: string | null) => {
     if (description)
-      toastManager.add({ type: "error", title: "Browser action failed", description });
+      toastManager.add({
+        type: "error",
+        title: "Browser action failed",
+        description,
+      });
   };
   const closeTerminalPane = () => {
     if (terminalPane) closePane(props.threadId, terminalPane.id);
@@ -136,9 +148,9 @@ export function MainWorkspace(props: {
       onDoubleClick: () => pinReview(props.threadId, tab.id),
       icon:
         tab.kind === "commit" ? (
-          <GitCommitIcon className="size-3.5" />
+          <GitCommitHorizontalIcon className="size-3.5" />
         ) : (
-          <ChangesIcon className="size-3.5" />
+          <PlusMinusSquare01Icon className="size-3.5" />
         ),
       onClose: () => closeReview(props.threadId, tab.id),
     })),
@@ -149,7 +161,7 @@ export function MainWorkspace(props: {
             terminalId: group.terminalIds[0]!,
             ...terminal.terminalState,
           }),
-          icon: <TerminalIcon className="size-3.5" />,
+          icon: <ComputerTerminal01Icon className="size-3.5" />,
           trailing: group.terminalIds.some((id) =>
             terminal.terminalState.runningTerminalIds.includes(id),
           ) ? (
@@ -173,11 +185,14 @@ export function MainWorkspace(props: {
         ? browser.tabs.map((tab) => ({
             id: `browser:${tab.id}`,
             label: tab.title || tab.url || "Browser",
-            icon: <GlobeIcon className="size-3.5" />,
+            icon: <Globe02Icon className="size-3.5" />,
             onClose: () => {
               void runBrowserCommand(
                 props.threadId,
-                { kind: "close", tabId: tab.id },
+                {
+                  kind: "close",
+                  tabId: tab.id,
+                },
                 reportBrowserError,
               ).then((next) => {
                 if (next && next.tabs.length === 0) closeBrowserPane();
@@ -188,7 +203,7 @@ export function MainWorkspace(props: {
             {
               id: "browser",
               label: "Browser",
-              icon: <GlobeIcon className="size-3.5" />,
+              icon: <Globe02Icon className="size-3.5" />,
               onClose: closeBrowserPane,
             },
           ]
@@ -205,7 +220,9 @@ export function MainWorkspace(props: {
   const select = (id: string) => {
     if (id.startsWith("file:")) {
       const path = id.slice(5);
-      openFile(props.threadId, path, { preview: dock.previewFilePath === path });
+      openFile(props.threadId, path, {
+        preview: dock.previewFilePath === path,
+      });
     } else if (id.startsWith("terminal:")) {
       const group = terminalGroups.find((tab) => tab.id === id.slice(9));
       if (group)
@@ -219,7 +236,10 @@ export function MainWorkspace(props: {
       selectTab(props.threadId, "browser");
       void runBrowserCommand(
         props.threadId,
-        { kind: "select", tabId: id.slice(8) },
+        {
+          kind: "select",
+          tabId: id.slice(8),
+        },
         reportBrowserError,
       );
     } else selectTab(props.threadId, id);
@@ -249,7 +269,10 @@ export function MainWorkspace(props: {
     onSplitTerminal: terminal.splitTerminal,
     onClose: () => {
       if (resolvedId === "chat") {
-        if (tabs.length === 1) void navigate({ to: "/" });
+        if (tabs.length === 1)
+          void navigate({
+            to: "/",
+          });
       } else if (terminalVisible) {
         void terminal
           .closeTerminal(terminal.terminalState.activeTerminalId, closeTerminalPane)
@@ -276,12 +299,23 @@ export function MainWorkspace(props: {
       onAddBrowser={() => {
         props.onAddPane("browser");
         if (browser?.tabs.length)
-          void runBrowserCommand(props.threadId, { kind: "new" }, reportBrowserError);
+          void runBrowserCommand(
+            props.threadId,
+            {
+              kind: "new",
+            },
+            reportBrowserError,
+          );
       }}
     />
   );
   return (
-    <WorkspaceHeaderContext value={{ host: headerHost, tabs: tabBar }}>
+    <WorkspaceHeaderContext
+      value={{
+        host: headerHost,
+        tabs: tabBar,
+      }}
+    >
       <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
         <div ref={setHeaderHost} className="shrink-0" />
         <div className="relative min-h-0 min-w-0 flex-1">

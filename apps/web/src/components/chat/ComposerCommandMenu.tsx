@@ -1,3 +1,16 @@
+import {
+  Robot01Icon,
+  Brain03Icon,
+  PlusMinusSquare01Icon,
+  AlertCircleIcon,
+  LaptopIcon,
+  WorkflowCircle04Icon,
+  PuzzleIcon,
+  BlocksIcon,
+  ComputerTerminal01Icon,
+  GitForkIcon,
+} from "~/lib/icons";
+import type { IconComponent } from "~/lib/iconComponent";
 import { type ProjectEntry } from "@glade/contracts/workspace/project";
 import { type ModelSlug } from "@glade/contracts/provider/model";
 import {
@@ -10,19 +23,6 @@ import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { type ReactNode } from "react";
 import { type ComposerTriggerKind } from "../../composer-logic";
 import { type ComposerSlashCommand } from "../../composerSlashCommands";
-import {
-  BotIcon,
-  BrainIcon,
-  ChangesIcon,
-  CircleAlertIcon,
-  DeviceLaptopIcon,
-  GitBranchIcon,
-  type LucideIcon,
-  PluginIcon,
-  SkillCubeIcon,
-  TerminalIcon,
-  WorktreeIcon,
-} from "~/lib/icons";
 import { type ProviderCommandNotice } from "~/lib/claudeArtifactCommands";
 import { slashCommandIcon } from "~/lib/slashCommandIcons";
 import { formatSkillScope } from "~/lib/providerDiscovery";
@@ -35,7 +35,6 @@ import {
   ComposerMenuPanel,
   type ComposerMenuPanelGroup,
 } from "./ComposerMenuPanel";
-
 function humanizeProviderCommandName(command: string): string {
   return command
     .split(/[-_]/g)
@@ -43,9 +42,13 @@ function humanizeProviderCommandName(command: string): string {
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 }
-
 function commandMenuTitle(
-  item: Extract<ComposerCommandItem, { type: "slash-command" | "provider-native-command" }>,
+  item: Extract<
+    ComposerCommandItem,
+    {
+      type: "slash-command" | "provider-native-command";
+    }
+  >,
 ): string {
   switch (item.command) {
     case "clear":
@@ -70,56 +73,43 @@ function commandMenuTitle(
       return humanizeProviderCommandName(item.command);
   }
 }
-
 function commandMenuTrailingMeta(item: ComposerCommandItem): string | null {
   if (item.type === "agent") {
     return "delegate task to subagent";
   }
-
   if (item.type === "plugin") {
     return "Plugin";
   }
-
   if (item.type === "thread") {
     return null;
   }
-
   if (item.type === "local-root") {
     return "Local";
   }
-
   if (item.type === "skill") {
     return formatSkillScope(item.skill.scope);
   }
-
   if (item.type === "model") {
     return "Model";
   }
-
   if (item.type === "slash-command" || item.type === "provider-native-command") {
     return `/${item.command}`;
   }
-
   if (item.type === "path") {
     return item.description.length > 0 ? item.description : null;
   }
-
   return null;
 }
-
 function commandMenuSecondaryText(item: ComposerCommandItem): string | null {
   if (item.type === "provider-native-command" && item.notice) {
     return item.notice.summary;
   }
-
   if (item.type === "slash-command" || item.type === "provider-native-command") {
     return item.description;
   }
-
   if (item.type === "agent") {
     return item.description;
   }
-
   if (
     item.type === "plugin" ||
     item.type === "skill" ||
@@ -128,10 +118,8 @@ function commandMenuSecondaryText(item: ComposerCommandItem): string | null {
   ) {
     return item.description;
   }
-
   return null;
 }
-
 export type ComposerCommandItem =
   | {
       id: string;
@@ -162,7 +150,6 @@ export type ComposerCommandItem =
       command: ProviderNativeCommandDescriptor["name"];
       label: string;
       description: string;
-
       notice?: ProviderCommandNotice | null;
     }
   | {
@@ -220,13 +207,11 @@ export type ComposerCommandItem =
       label: string;
       description: string;
     };
-
 type ComposerCommandGroupModel = {
   id: string;
   label: string | null;
   items: ComposerCommandItem[];
 };
-
 function groupCommandItems(
   items: ComposerCommandItem[],
   triggerKind: ComposerTriggerKind | null,
@@ -245,30 +230,53 @@ function groupCommandItems(
         item.type !== "path" &&
         item.type !== "agent",
     );
-
     const groups: ComposerCommandGroupModel[] = [];
     if (pluginItems.length > 0) {
-      groups.push({ id: "plugins", label: "Plugins", items: pluginItems });
+      groups.push({
+        id: "plugins",
+        label: "Plugins",
+        items: pluginItems,
+      });
     }
     if (threadItems.length > 0) {
-      groups.push({ id: "chats", label: "Chats", items: threadItems });
+      groups.push({
+        id: "chats",
+        label: "Chats",
+        items: threadItems,
+      });
     }
     if (localItems.length > 0) {
-      groups.push({ id: "local", label: "Local", items: localItems });
+      groups.push({
+        id: "local",
+        label: "Local",
+        items: localItems,
+      });
     }
     if (agentItems.length > 0) {
-      groups.push({ id: "subagents", label: "Subagents", items: agentItems });
+      groups.push({
+        id: "subagents",
+        label: "Subagents",
+        items: agentItems,
+      });
     }
     if (otherItems.length > 0) {
-      groups.push({ id: "other", label: null, items: otherItems });
+      groups.push({
+        id: "other",
+        label: null,
+        items: otherItems,
+      });
     }
     return groups;
   }
-
   if (triggerKind !== "slash-command" || !groupSlashCommandSections) {
-    return [{ id: "default", label: null, items }];
+    return [
+      {
+        id: "default",
+        label: null,
+        items,
+      },
+    ];
   }
-
   const builtInItems = items.filter((item) => item.type === "slash-command");
   const providerItems = items.filter((item) => item.type === "provider-native-command");
   const skillItems = items.filter((item) => item.type === "skill");
@@ -278,30 +286,44 @@ function groupCommandItems(
       item.type !== "provider-native-command" &&
       item.type !== "skill",
   );
-
   const groups: ComposerCommandGroupModel[] = [];
   if (builtInItems.length > 0) {
-    groups.push({ id: "built-in", label: "Built-in", items: builtInItems });
+    groups.push({
+      id: "built-in",
+      label: "Built-in",
+      items: builtInItems,
+    });
   }
   if (providerItems.length > 0) {
-    groups.push({ id: "provider", label: "Provider", items: providerItems });
+    groups.push({
+      id: "provider",
+      label: "Provider",
+      items: providerItems,
+    });
   }
   if (skillItems.length > 0) {
-    groups.push({ id: "skills", label: "Skills", items: skillItems });
+    groups.push({
+      id: "skills",
+      label: "Skills",
+      items: skillItems,
+    });
   }
   if (otherItems.length > 0) {
-    groups.push({ id: "other", label: null, items: otherItems });
+    groups.push({
+      id: "other",
+      label: null,
+      items: otherItems,
+    });
   }
   return groups;
 }
-
 function CommandNoticeBadge(props: { notice: string }) {
   return (
     <Tooltip>
       <TooltipTrigger
         render={<span role="img" aria-label={props.notice} className="inline-flex items-center" />}
       >
-        <CircleAlertIcon className="size-3.5 text-warning" />
+        <AlertCircleIcon className="size-3.5 text-warning" />
       </TooltipTrigger>
       <TooltipPopup
         side="top"
@@ -313,7 +335,6 @@ function CommandNoticeBadge(props: { notice: string }) {
     </Tooltip>
   );
 }
-
 export function ComposerCommandMenu(props: {
   items: ComposerCommandItem[];
   resolvedTheme: "light" | "dark";
@@ -353,7 +374,6 @@ export function ComposerCommandMenu(props: {
     })),
   }));
   const itemsById = new Map(props.items.map((item) => [item.id, item]));
-
   return (
     <ComposerMenuPanel
       groups={panelGroups}
@@ -389,17 +409,13 @@ export function ComposerCommandMenu(props: {
     />
   );
 }
-
 const COMPOSER_COMMAND_ITEM_FILE_ICON_CLASSNAME =
   "size-3.5 text-[var(--color-text-foreground)] opacity-70 dark:opacity-80";
-
 const COMPOSER_COMMAND_ITEM_GLYPH_CLASSNAME = COMPOSER_MENU_PANEL_GLYPH_CLASS_NAME;
-
-function commandMenuSlashGlyph(command: string, fallback: LucideIcon): ReactNode {
+function commandMenuSlashGlyph(command: string, fallback: IconComponent): ReactNode {
   const Icon = slashCommandIcon(command, fallback);
   return <Icon className={COMPOSER_COMMAND_ITEM_GLYPH_CLASSNAME} />;
 }
-
 function commandMenuItemGlyph(item: ComposerCommandItem, theme: "light" | "dark"): ReactNode {
   const cls = COMPOSER_COMMAND_ITEM_GLYPH_CLASSNAME;
   switch (item.type) {
@@ -415,33 +431,33 @@ function commandMenuItemGlyph(item: ComposerCommandItem, theme: "light" | "dark"
         />
       );
     case "local-root":
-      return <DeviceLaptopIcon className={cls} />;
+      return <LaptopIcon className={cls} />;
     case "fork-target":
       return item.target === "local" ? (
-        <DeviceLaptopIcon className={cls} />
+        <LaptopIcon className={cls} />
       ) : (
-        <WorktreeIcon className={cls} />
+        <GitForkIcon className={cls} />
       );
     case "review-target":
       return item.target === "changes" ? (
-        <ChangesIcon className={cls} />
+        <PlusMinusSquare01Icon className={cls} />
       ) : (
-        <GitBranchIcon className={cls} />
+        <WorkflowCircle04Icon className={cls} />
       );
     case "slash-command":
-      return commandMenuSlashGlyph(item.command, TerminalIcon);
+      return commandMenuSlashGlyph(item.command, ComputerTerminal01Icon);
     case "provider-native-command":
-      return commandMenuSlashGlyph(item.command, SkillCubeIcon);
+      return commandMenuSlashGlyph(item.command, BlocksIcon);
     case "model":
-      return <BrainIcon className={cls} />;
+      return <Brain03Icon className={cls} />;
     case "agent":
-      return <BotIcon className={cls} />;
+      return <Robot01Icon className={cls} />;
     case "plugin":
-      return <PluginIcon className={cls} />;
+      return <PuzzleIcon className={cls} />;
     case "thread":
       return <ProviderIcon provider={item.provider} className={cls} />;
     case "skill":
-      return <SkillCubeIcon className={cls} />;
+      return <BlocksIcon className={cls} />;
     default:
       return null;
   }

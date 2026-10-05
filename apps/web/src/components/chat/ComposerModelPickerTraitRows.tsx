@@ -1,8 +1,8 @@
+import { Brain03Icon, EnergyFilledIcon, LimitationIcon } from "~/lib/icons";
+import type { IconComponent } from "~/lib/iconComponent";
 import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
 import { useState, type ReactNode } from "react";
-
-import { CentralIcon } from "~/lib/central-icons";
 import { cn } from "~/lib/utils";
 import { type ProviderOptions } from "../../providerModelOptions";
 import { MenuRadioGroup, MenuRadioItem, MenuSub, MenuSubTrigger } from "../ui/menu";
@@ -11,9 +11,12 @@ import { ComposerPickerMenuSubPopup } from "./ComposerPickerMenuPopup";
 import { COMPOSER_MUTED_ACCENT_TEXT_CLASS_NAME } from "./composerPickerStyles";
 import { getComposerTraitSelection } from "./composerTraits";
 import { useComposerTraitCommit } from "./useComposerTraitCommit";
-
-type TraitOption = { value: string; label: string; isDefault?: boolean; icon?: string };
-
+type TraitOption = {
+  value: string;
+  label: string;
+  isDefault?: boolean;
+  icon?: IconComponent;
+};
 function TraitRow(props: {
   label: string;
   value: string;
@@ -34,13 +37,7 @@ function TraitRow(props: {
               COMPOSER_MUTED_ACCENT_TEXT_CLASS_NAME,
             )}
           >
-            {selectedOption?.icon ? (
-              <CentralIcon
-                name={selectedOption.icon}
-                variant={selectedOption.icon === "zap" ? "fill" : "reversed"}
-                className="size-3.5 shrink-0"
-              />
-            ) : null}
+            {selectedOption?.icon ? <selectedOption.icon className="size-3.5 shrink-0" /> : null}
             <span className="truncate">{selectedOption?.label ?? props.value}</span>
           </span>
         </span>
@@ -55,13 +52,7 @@ function TraitRow(props: {
         >
           {props.options.map((option) => (
             <MenuRadioItem key={option.value} value={option.value} onClick={() => setOpen(false)}>
-              {option.icon ? (
-                <CentralIcon
-                  name={option.icon}
-                  variant={option.icon === "zap" ? "fill" : "reversed"}
-                  className="size-3.5 shrink-0"
-                />
-              ) : null}
+              {option.icon ? <option.icon className="size-3.5 shrink-0" /> : null}
               {option.label}
               {option.isDefault ? " (default)" : ""}
             </MenuRadioItem>
@@ -71,7 +62,6 @@ function TraitRow(props: {
     </MenuSub>
   );
 }
-
 export function ComposerModelPickerTraitRows(props: {
   provider: ProviderKind;
   threadId: ThreadId;
@@ -89,9 +79,13 @@ export function ComposerModelPickerTraitRows(props: {
     modelOptions,
     props.runtimeModel,
   );
-  const commitTrait = useComposerTraitCommit({ threadId, provider, model, modelOptions });
+  const commitTrait = useComposerTraitCommit({
+    threadId,
+    provider,
+    model,
+    modelOptions,
+  });
   const usesEffortSlider = selection.effortLevels.length > 0;
-
   const rows: ReactNode[] = [];
   for (const descriptor of selection.descriptors) {
     if (descriptor === selection.primarySelectDescriptor) continue;
@@ -100,7 +94,15 @@ export function ComposerModelPickerTraitRows(props: {
     const defaultOption: TraitOption = {
       value: "__inherit__",
       label: isAdaptiveThinking ? "Auto" : "Default",
-      ...(isSpeed ? { icon: "gauge" } : isAdaptiveThinking ? { icon: "brain" } : {}),
+      ...(isSpeed
+        ? {
+            icon: LimitationIcon,
+          }
+        : isAdaptiveThinking
+          ? {
+              icon: Brain03Icon,
+            }
+          : {}),
     };
     if (isSpeed) {
       const fastOption =
@@ -115,7 +117,14 @@ export function ComposerModelPickerTraitRows(props: {
           key={descriptor.id}
           label="Speed"
           value={current === true || current === fastValue ? fastValue : "__inherit__"}
-          options={[defaultOption, { value: fastValue, label: "Fast", icon: "zap" }]}
+          options={[
+            defaultOption,
+            {
+              value: fastValue,
+              label: "Fast",
+              icon: EnergyFilledIcon,
+            },
+          ]}
           onValueChange={(value) =>
             commitTrait({
               [descriptor.id]:
@@ -134,12 +143,31 @@ export function ComposerModelPickerTraitRows(props: {
       descriptor.type === "select"
         ? [
             defaultOption,
-            ...descriptor.options.map((option) => ({ value: option.id, label: option.label })),
+            ...descriptor.options.map((option) => ({
+              value: option.id,
+              label: option.label,
+            })),
           ]
         : [
             defaultOption,
-            { value: "on", label: "On", ...(isAdaptiveThinking ? { icon: "brain" } : {}) },
-            { value: "off", label: "Off", ...(isAdaptiveThinking ? { icon: "brain" } : {}) },
+            {
+              value: "on",
+              label: "On",
+              ...(isAdaptiveThinking
+                ? {
+                    icon: Brain03Icon,
+                  }
+                : {}),
+            },
+            {
+              value: "off",
+              label: "Off",
+              ...(isAdaptiveThinking
+                ? {
+                    icon: Brain03Icon,
+                  }
+                : {}),
+            },
           ];
     const current = modelOptions?.[descriptor.id as keyof ProviderOptions];
     const value =

@@ -1,16 +1,11 @@
+import { XIcon } from "~/lib/icons";
+import type { IconComponent } from "~/lib/iconComponent";
 import { forwardRef, type ComponentProps, type ReactNode } from "react";
-
 import { CHAT_SURFACE_HEADER_HEIGHT_PX } from "@glade/shared/platform/desktopChrome";
-
-import { CentralIcon } from "~/lib/central-icons";
-import { type LucideIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
-
 import { Button } from "../ui/button";
-
 export const CHAT_SURFACE_HEADER_HEIGHT_CLASS: `h-[${typeof CHAT_SURFACE_HEADER_HEIGHT_PX}px]` =
   "h-[46px]";
-
 export const CHAT_SURFACE_HEADER_PADDING_X_CLASS = "px-3 sm:px-5";
 
 // Implemented as the `.chat-surface-divider` component class (a 1px background gradient, see
@@ -20,23 +15,17 @@ export const CHAT_SURFACE_HEADER_PADDING_X_CLASS = "px-3 sm:px-5";
 // lines double their alpha into a brighter dot). Apply alongside {@link
 // CHAT_SURFACE_HEADER_HEIGHT_CLASS} so heights and dividers line up.
 export const CHAT_SURFACE_HEADER_DIVIDER_CLASS_NAME = "chat-surface-divider";
-
 export const CHAT_SURFACE_HEADER_ROW_CLASS_NAME = cn(
   "flex shrink-0 items-center",
   CHAT_SURFACE_HEADER_HEIGHT_CLASS,
   CHAT_SURFACE_HEADER_DIVIDER_CLASS_NAME,
 );
-
 export const CHAT_HEADER_ICON_STRENGTH_CLASS_NAME =
   "text-[var(--color-text-foreground)] [&_svg]:!opacity-100";
-
 export const CHAT_HEADER_CONTROL_CLASS_NAME = "!h-7 shrink-0 rounded-lg";
-
 const CHAT_SURFACE_CONTROL_IDLE_TEXT_CLASS_NAME = "text-[var(--color-text-foreground-secondary)]";
-
 export const CHAT_SURFACE_CONTROL_ACTIVE_CLASS_NAME =
   "bg-[var(--color-background-button-secondary)] text-[var(--color-text-foreground)]";
-
 const CHAT_SURFACE_CONTROL_HOVER_CLASS_NAME =
   "hover:bg-[var(--color-background-button-secondary-hover)] hover:text-[var(--color-text-foreground)]";
 
@@ -51,37 +40,29 @@ const CHAT_SURFACE_CHIP_CLASS_NAME = cn(
   CHAT_SURFACE_CONTROL_IDLE_TEXT_CLASS_NAME,
   CHAT_SURFACE_CONTROL_HOVER_CLASS_NAME,
 );
-
 const CHAT_SURFACE_CHIP_GLYPH_CLASS_NAME = "size-3.5 shrink-0";
-
 const CHAT_SURFACE_CHIP_ICON_CLASS_NAME = cn(CHAT_SURFACE_CHIP_GLYPH_CLASS_NAME, "opacity-70");
-
 export function SurfaceChipIcon({
   icon: Icon,
   className,
 }: {
-  icon: LucideIcon;
+  icon: IconComponent;
   className?: string;
 }) {
   return <Icon aria-hidden className={cn(CHAT_SURFACE_CHIP_ICON_CLASS_NAME, className)} />;
 }
-
 export const CHAT_HEADER_TOGGLE_CLASS_NAME = cn(
   CHAT_SURFACE_CHIP_CLASS_NAME,
   "data-pressed:text-[var(--color-text-foreground)]",
 );
-
 const DOCK_TAB_CHIP_CLASS_NAME = cn(
   CHAT_SURFACE_CHIP_CLASS_NAME,
   "inline-flex min-w-0 items-center pr-2.5",
 );
-
 const DOCK_TAB_ICON_SLOT_CLASS_NAME =
   "relative flex size-4 shrink-0 cursor-pointer items-center justify-center rounded-full bg-transparent text-[var(--color-text-foreground-secondary)] transition-colors group-hover/dock-tab:bg-[var(--color-background-button-secondary-hover)] group-focus-within/dock-tab:bg-[var(--color-background-button-secondary-hover)] hover:bg-[var(--color-background-button-secondary)] hover:text-[var(--color-text-foreground)]";
-
 const DOCK_TAB_ICON_HOVER_HIDE_CLASS_NAME =
   "transition-opacity group-hover/dock-tab:opacity-0 group-focus-within/dock-tab:opacity-0";
-
 const DOCK_TAB_CLOSE_GLYPH_CLASS_NAME =
   "absolute size-3.5 shrink-0 opacity-0 transition-opacity group-hover/dock-tab:opacity-100 group-focus-within/dock-tab:opacity-100";
 
@@ -162,7 +143,7 @@ export function SurfaceTabChip({
           >
             {icon}
           </span>
-          <CentralIcon name="cross-small" className={DOCK_TAB_CLOSE_GLYPH_CLASS_NAME} />
+          <XIcon className={DOCK_TAB_CLOSE_GLYPH_CLASS_NAME} />
         </button>
       ) : (
         glyph
@@ -201,20 +182,16 @@ export function SurfaceTabChip({
             onClose();
           }}
         >
-          <CentralIcon name="cross-small" className="size-3.5" />
+          <XIcon className="size-3.5" />
         </button>
       ) : null}
     </div>
   );
 }
-
 export const CHAT_HEADER_ICON_CONTROL_CLASS_NAME =
   "!size-7 shrink-0 rounded-lg [&_svg,&_[data-slot=central-icon]]:mx-0";
-
 export const CHAT_HEADER_SPLIT_LEADING_CLASS_NAME = "rounded-e-none border-e-0";
-
 export const CHAT_HEADER_SPLIT_TRAILING_CLASS_NAME = "rounded-s-none border-s-0";
-
 export function ChatHeaderSplitGroup({
   label,
   className,
@@ -230,23 +207,18 @@ export function ChatHeaderSplitGroup({
     </div>
   );
 }
-
 export function ChatHeaderSplitDivider() {
   return <div aria-hidden="true" className="w-px self-stretch bg-border" />;
 }
-
 type ChatHeaderControlTone = "plain" | "outline";
-
 function chatHeaderControlVariant(
   tone: ChatHeaderControlTone,
 ): NonNullable<ComponentProps<typeof Button>["variant"]> {
   return tone === "outline" ? "chrome-outline" : "chrome";
 }
-
 type ChatHeaderButtonBaseProps = Omit<ComponentProps<typeof Button>, "variant" | "size"> & {
   tone?: ChatHeaderControlTone;
 };
-
 export const ChatHeaderButton = forwardRef<HTMLButtonElement, ChatHeaderButtonBaseProps>(
   function ChatHeaderButton({ tone: toneProp, className, ...props }, ref) {
     const tone = toneProp ?? "outline";
@@ -265,7 +237,6 @@ export const ChatHeaderButton = forwardRef<HTMLButtonElement, ChatHeaderButtonBa
     );
   },
 );
-
 type ChatHeaderIconButtonBaseProps = Omit<
   ComponentProps<typeof Button>,
   "variant" | "size" | "aria-label"
@@ -274,7 +245,6 @@ type ChatHeaderIconButtonBaseProps = Omit<
   tone?: ChatHeaderControlTone;
   children?: ReactNode;
 };
-
 export const ChatHeaderIconButton = forwardRef<HTMLButtonElement, ChatHeaderIconButtonBaseProps>(
   function ChatHeaderIconButton({ label, tone: toneProp, className, children, ...props }, ref) {
     const tone = toneProp ?? "plain";

@@ -1,9 +1,8 @@
 "use client";
 
+import { ChevronRightIcon, CheckIcon } from "~/lib/icons";
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
-import { ChevronRightIcon } from "~/lib/icons";
 import * as React from "react";
-
 import { cn } from "~/lib/utils";
 import { UI_MOTION_POPUP_CLASS } from "~/lib/uiMotion";
 import { observeNativeSurfaceOverlay } from "~/lib/nativeSurfaceOcclusion";
@@ -15,14 +14,11 @@ import {
 } from "../chat/composerPickerStyles";
 import { SWITCH_THUMB_CLASS_NAME, SWITCH_TRACK_CLASS_NAME } from "./switch";
 import { ShortcutKbd } from "./kbd";
-
 const MenuCreateHandle = MenuPrimitive.createHandle;
-
 type MenuProps = MenuPrimitive.Root.Props & {
   /** Keep a controlled menu open while one of its portalled submenus is being entered. */
   keepOpenOnSubmenuInteraction?: boolean;
 };
-
 function Menu({
   keepOpenOnSubmenuInteraction: keepOpenOnSubmenuInteractionProp,
   onOpenChange,
@@ -45,12 +41,9 @@ function Menu({
     }
     onOpenChange?.(nextOpen, eventDetails);
   };
-
   return <MenuPrimitive.Root onOpenChange={handleOpenChange} {...props} />;
 }
-
 const MenuPortal = MenuPrimitive.Portal;
-
 function MenuTrigger({ className, children, ...props }: MenuPrimitive.Trigger.Props) {
   return (
     <MenuPrimitive.Trigger className={className} data-slot="menu-trigger" {...props}>
@@ -93,9 +86,7 @@ function MenuPopupBase({
     surface === "composer"
       ? COMPOSER_PICKER_MENU_SURFACE_CLASS_NAME
       : APP_TRANSLUCENT_POPUP_SURFACE_CLASS_NAME;
-
   const isComposerSurface = surface === "composer";
-
   return (
     <MenuPrimitive.Portal>
       <MenuPrimitive.Positioner
@@ -140,11 +131,9 @@ function MenuPopupBase({
     </MenuPrimitive.Portal>
   );
 }
-
 function MenuGroup(props: MenuPrimitive.Group.Props) {
   return <MenuPrimitive.Group data-slot="menu-group" {...props} />;
 }
-
 function MenuItem({
   className,
   inset,
@@ -171,7 +160,6 @@ function MenuItem({
     />
   );
 }
-
 function MenuCheckboxItem({
   className,
   children,
@@ -220,31 +208,16 @@ function MenuCheckboxItem({
         <>
           <span className="col-start-1 min-w-0">{children}</span>
           <MenuPrimitive.CheckboxItemIndicator className="col-start-2 justify-self-end">
-            <svg
-              className="size-3"
-              fill="none"
-              height="24"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-              width="24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path d="M5.252 12.7 10.2 18.63 18.748 5.37" />
-            </svg>
+            <CheckIcon className="size-3" strokeWidth="2" />
           </MenuPrimitive.CheckboxItemIndicator>
         </>
       )}
     </MenuPrimitive.CheckboxItem>
   );
 }
-
 function MenuRadioGroup(props: MenuPrimitive.RadioGroup.Props) {
   return <MenuPrimitive.RadioGroup data-slot="menu-radio-group" {...props} />;
 }
-
 function MenuRadioItem({
   className,
   children,
@@ -275,20 +248,7 @@ function MenuRadioItem({
           <span className="col-start-1 min-w-0">{children}</span>
           <div className="col-start-2 flex shrink-0 items-center justify-end gap-0.5">
             <MenuPrimitive.RadioItemIndicator className="shrink-0 data-unchecked:hidden">
-              <svg
-                className="size-3"
-                fill="none"
-                height="24"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                viewBox="0 0 24 24"
-                width="24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path d="M5.252 12.7 10.2 18.63 18.748 5.37" />
-              </svg>
+              <CheckIcon className="size-3" strokeWidth="2" />
             </MenuPrimitive.RadioItemIndicator>
             {trailing}
           </div>
@@ -297,27 +257,13 @@ function MenuRadioItem({
         <span className="flex w-full min-w-0 items-center gap-2">
           {children}
           <MenuPrimitive.RadioItemIndicator className="ml-auto shrink-0">
-            <svg
-              className="size-3"
-              fill="none"
-              height="24"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-              width="24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path d="M5.252 12.7 10.2 18.63 18.748 5.37" />
-            </svg>
+            <CheckIcon className="size-3" strokeWidth="2" />
           </MenuPrimitive.RadioItemIndicator>
         </span>
       )}
     </MenuPrimitive.RadioItem>
   );
 }
-
 function MenuGroupLabel({
   className,
   inset,
@@ -340,7 +286,6 @@ function MenuGroupLabel({
     />
   );
 }
-
 function MenuSeparator({ className, ...props }: MenuPrimitive.Separator.Props) {
   return (
     <MenuPrimitive.Separator
@@ -350,18 +295,26 @@ function MenuSeparator({ className, ...props }: MenuPrimitive.Separator.Props) {
     />
   );
 }
-
 function MenuShortcut({
   className,
   children,
   ...props
+}: Omit<React.ComponentProps<"kbd">, "children"> & {
+  children: string;
+}) {
+  return (
+    <ShortcutKbd
+      shortcutLabel={children}
+      className={cn("ms-auto", className)}
+      data-slot="menu-shortcut"
+      {...props}
+    />
+  );
 }
-
 type MenuSubProps = MenuPrimitive.SubmenuRoot.Props & {
   /** Keep a hover-open submenu mounted when focus moves into its portalled popup. */
   keepOpenOnFocusOut?: boolean;
 };
-
 function FocusStableMenuSub({
   defaultOpen,
   onOpenChange,
@@ -380,7 +333,6 @@ function FocusStableMenuSub({
     if (controlledOpen === undefined) setUncontrolledOpen(nextOpen);
     onOpenChange?.(nextOpen, eventDetails);
   };
-
   return (
     <MenuPrimitive.SubmenuRoot
       data-slot="menu-sub"
@@ -390,7 +342,6 @@ function FocusStableMenuSub({
     />
   );
 }
-
 function MenuSub({ keepOpenOnFocusOut: keepOpenOnFocusOutProp, ...props }: MenuSubProps) {
   const keepOpenOnFocusOut = keepOpenOnFocusOutProp ?? false;
   return keepOpenOnFocusOut ? (
@@ -405,7 +356,6 @@ function MenuSub({ keepOpenOnFocusOut: keepOpenOnFocusOutProp, ...props }: MenuS
 function MenuSubTriggerBase(props: MenuPrimitive.SubmenuTrigger.Props) {
   return <MenuPrimitive.SubmenuTrigger data-slot="menu-sub-trigger-base" {...props} />;
 }
-
 function MenuSubTrigger({
   className,
   inset,
@@ -432,7 +382,6 @@ function MenuSubTrigger({
     </MenuPrimitive.SubmenuTrigger>
   );
 }
-
 function MenuSubPopup({
   className,
   surface: surfaceProp,
@@ -456,7 +405,6 @@ function MenuSubPopup({
   const align = alignProp ?? "start";
   const side = sideProp ?? "inline-end";
   const defaultAlignOffset = align !== "center" ? -5 : undefined;
-
   return (
     <MenuPopupBase
       align={align}
@@ -471,7 +419,6 @@ function MenuSubPopup({
     />
   );
 }
-
 export {
   MenuCreateHandle,
   Menu,

@@ -1,3 +1,12 @@
+import {
+  PlusIcon,
+  SquarePenIcon,
+  SearchIcon,
+  SettingsIcon,
+  TriangleAlertIcon,
+  ExpandIcon,
+  CollapseIcon,
+} from "~/lib/icons";
 import { SidebarUsageIndicators } from "./SidebarUsageIndicators";
 import { useStore } from "../store";
 import { useSidebarStateStore } from "../sidebarStateStore";
@@ -7,13 +16,6 @@ import { SidebarLeadingControls } from "./SidebarHeaderNavigationControls";
 import { isMacNavigatorPlatform } from "../lib/utils";
 import { SIDEBAR_NAV_ITEM_IDS } from "../sidebarNavOrdering";
 import { SidebarDialogs } from "./SidebarDialogs";
-import {
-  AddPlusIcon,
-  NewThreadIcon,
-  SearchIcon,
-  SettingsIcon,
-  TriangleAlertIcon,
-} from "~/lib/icons";
 import { Suspense, useCallback } from "react";
 import { DndContext } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -60,15 +62,12 @@ import { SpaceSwitcher } from "./SpaceSwitcher";
 import type { useSidebarPanelEffects } from "./useSidebarPanelEffects";
 import { useSidebarRows } from "./useSidebarRows";
 import {
-  ExpandAllIcon,
-  CollapseAllIcon,
   DebugFeatureFlagsMenu,
   ProjectSortMenu,
   SidebarHelpMenu,
   SortableProjectItem,
   SidebarActivityBellButton,
 } from "./sidebarSupport";
-
 export function SidebarView({ context }: { context: ReturnType<typeof useSidebarPanelEffects> }) {
   const {
     showDebugFeatureFlagsMenu,
@@ -159,17 +158,14 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     renderProjectItem,
   } = useSidebarRows(context);
   const markThreadVisited = useStore((state) => state.markThreadVisited);
-
   const setAllProjectsExpanded = useStore((state) => state.setAllProjectsExpanded);
   const collapseProjectsExcept = useStore((state) => state.collapseProjectsExcept);
-
   const chatSectionExpanded = useSidebarStateStore((state) => state.chatSectionExpanded);
   const setChatSectionExpanded = useSidebarStateStore((state) => state.setChatSectionExpanded);
   const setThreadListExtraPagesByProjectCwd = useSidebarStateStore(
     (state) => state.setThreadListExtraPagesByProjectCwd,
   );
   const activityViewEnabled = useSidebarStateStore((state) => state.activityViewEnabled);
-
   const handleToggleProjects = useCallback(() => {
     if (allProjectsExpanded) {
       const closingCwds = new Set(
@@ -193,31 +189,30 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     standardProjects,
     setThreadListExtraPagesByProjectCwd,
   ]);
-
   const isMacDesktop = isMacNavigatorPlatform();
-
   const titlebarControls = <SidebarLeadingControls className="hidden md:flex" />;
-
   const headerControls = <SidebarLeadingControls className="ml-auto hidden md:flex" />;
-
   const wordmark = (
     <div className="flex w-full items-center gap-1.5">
       <SidebarTrigger className="shrink-0 text-muted-foreground/75 hover:text-foreground md:hidden" />
       {headerControls}
     </div>
   );
-
   const sidebarHelpMenuProps = {
-    onOpenShortcuts: () => void navigate({ to: "/settings", search: { section: "shortcuts" } }),
+    onOpenShortcuts: () =>
+      void navigate({
+        to: "/settings",
+        search: {
+          section: "shortcuts",
+        },
+      }),
     onOpenFeedback: openFeedbackDialog,
   };
-
   const sidebarSurfaceKey = isOnSettings
     ? "settings"
     : activityViewEnabled
       ? "activity"
       : "threads";
-
   return (
     <>
       {isElectron ? (
@@ -321,13 +316,25 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
                       <SidebarPrimaryAction
                         key={id}
                         icon={item.icon}
-                        {...(item.iconClassName ? { iconClassName: item.iconClassName } : {})}
+                        {...(item.iconClassName
+                          ? {
+                              iconClassName: item.iconClassName,
+                            }
+                          : {})}
                         label={item.label}
                         active={item.active}
                         badge={item.badge}
                         onClick={item.onClick}
-                        {...(item.onMouseEnter ? { onMouseEnter: item.onMouseEnter } : {})}
-                        {...(item.onFocus ? { onFocus: item.onFocus } : {})}
+                        {...(item.onMouseEnter
+                          ? {
+                              onMouseEnter: item.onMouseEnter,
+                            }
+                          : {})}
+                        {...(item.onFocus
+                          ? {
+                              onFocus: item.onFocus,
+                            }
+                          : {})}
                       />
                     );
                   })}
@@ -396,7 +403,7 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
                     <>
                       {standardProjects.length > 0 ? (
                         <SidebarIconButton
-                          icon={allProjectsExpanded ? CollapseAllIcon : ExpandAllIcon}
+                          icon={allProjectsExpanded ? CollapseIcon : ExpandIcon}
                           label={
                             allProjectsExpanded
                               ? focusedProjectId
@@ -419,11 +426,13 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
                       <ProjectSortMenu
                         projectSortOrder={appSettings.sidebarProjectSortOrder}
                         onProjectSortOrderChange={(sortOrder) => {
-                          updateSettings({ sidebarProjectSortOrder: sortOrder });
+                          updateSettings({
+                            sidebarProjectSortOrder: sortOrder,
+                          });
                         }}
                       />
                       <SidebarIconButton
-                        icon={AddPlusIcon}
+                        icon={PlusIcon}
                         label="Add project"
                         onClick={handleStartAddProject}
                         tooltip="Add project"
@@ -528,7 +537,7 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
                 </SidebarMenuButton>
                 <SidebarSectionToolbar placement="overlay" revealOnHover>
                   <SidebarIconButton
-                    icon={NewThreadIcon}
+                    icon={SquarePenIcon}
                     label="Open new chat home"
                     onClick={(event) => {
                       event.preventDefault();
@@ -584,7 +593,11 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
                       SIDEBAR_ROW_HOVER_CLASS_NAME,
                       "flex-1",
                     )}
-                    onClick={() => void navigate({ to: "/settings" })}
+                    onClick={() =>
+                      void navigate({
+                        to: "/settings",
+                      })
+                    }
                   >
                     <SidebarLeadingIcon size="sm" tone={SIDEBAR_ROW_LABEL_TEXT_CLASS_NAME}>
                       <SidebarGlyph icon={SettingsIcon} variant="leading" />

@@ -1,15 +1,12 @@
+import { ArrowDown02Icon } from "~/lib/icons";
 import { useCallback } from "react";
-
 import type { Terminal } from "@xterm/xterm";
 import { useEffect, useRef, useState } from "react";
 import { IconButton } from "~/components/ui/icon-button";
-import { ArrowDownIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
-
 interface TerminalScrollToBottomProps {
   terminal: Terminal | null;
 }
-
 export function TerminalScrollToBottom({ terminal }: TerminalScrollToBottomProps) {
   const [visibility, setVisibility] = useState<{
     terminal: Terminal;
@@ -20,7 +17,6 @@ export function TerminalScrollToBottom({ terminal }: TerminalScrollToBottomProps
       ? visibility.visible
       : false;
   const visibilityRafRef = useRef<number | null>(null);
-
   const checkPosition = useCallback(() => {
     if (!terminal) return;
     const buf = terminal.buffer.active;
@@ -28,10 +24,12 @@ export function TerminalScrollToBottom({ terminal }: TerminalScrollToBottomProps
     setVisibility((current) =>
       current !== null && current.terminal === terminal && current.visible === nextVisible
         ? current
-        : { terminal, visible: nextVisible },
+        : {
+            terminal,
+            visible: nextVisible,
+          },
     );
   }, [terminal]);
-
   const scheduleVisibilityCheck = useCallback(() => {
     if (visibilityRafRef.current !== null) {
       return;
@@ -41,7 +39,6 @@ export function TerminalScrollToBottom({ terminal }: TerminalScrollToBottomProps
       checkPosition();
     });
   }, [checkPosition]);
-
   useEffect(() => {
     if (!terminal) {
       return;
@@ -58,9 +55,7 @@ export function TerminalScrollToBottom({ terminal }: TerminalScrollToBottomProps
       d2.dispose();
     };
   }, [terminal, scheduleVisibilityCheck]);
-
   const handleClick = () => terminal?.scrollToBottom();
-
   return (
     <div
       className={cn(
@@ -75,7 +70,7 @@ export function TerminalScrollToBottom({ terminal }: TerminalScrollToBottomProps
         size="icon-xs"
         variant="outline"
       >
-        <ArrowDownIcon className="size-3.5" />
+        <ArrowDown02Icon className="size-3.5" />
       </IconButton>
     </div>
   );

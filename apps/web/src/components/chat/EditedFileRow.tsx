@@ -1,11 +1,9 @@
+import { Copy01Icon } from "~/lib/icons";
 import type { EditorId } from "@glade/contracts/settings/editor";
 import type { ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import type { CSSProperties } from "react";
-
 import { useCopyPathToClipboard } from "~/hooks/useCopyToClipboard";
-import { CopyIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
-
 import { MenuItem } from "../ui/menu";
 import { DiffStatLabel } from "./DiffStatLabel";
 import { FileEntryIcon } from "./FileEntryIcon";
@@ -16,7 +14,6 @@ import {
   joinWorkspaceRelativePath,
   workspaceRelativePathOf,
 } from "@glade/shared/platform/path";
-
 interface EditedFileRowProps {
   file: {
     path: string;
@@ -36,7 +33,6 @@ interface EditedFileRowProps {
   };
   onReview: () => void;
 }
-
 const MENU_ICON_CLASS_NAME = "size-3.5 shrink-0 text-muted-foreground";
 const EDITED_FILE_EDITOR_ORDER: ReadonlyArray<EditorId> = [
   "file-manager",
@@ -46,14 +42,12 @@ const EDITED_FILE_EDITOR_ORDER: ReadonlyArray<EditorId> = [
   "terminal",
   "iterm",
 ];
-
 export function EditedFileRow(props: EditedFileRowProps) {
   const copyPathToClipboard = useCopyPathToClipboard();
   const { absolutePath, relativePath } = resolveEditedFilePathTargets(
     props.file.path,
     props.file.workspaceRoot,
   );
-
   return (
     <div
       data-edited-file-row="true"
@@ -76,7 +70,9 @@ export function EditedFileRow(props: EditedFileRowProps) {
         />
         <span
           className="font-system-ui min-w-0 truncate font-normal text-[var(--color-text-foreground)] underline-offset-2 group-hover/file-row:underline group-focus-visible/file-row:underline"
-          style={{ fontSize: props.appearance.fontSize }}
+          style={{
+            fontSize: props.appearance.fontSize,
+          }}
           title={props.file.path}
         >
           {props.file.path}
@@ -84,7 +80,9 @@ export function EditedFileRow(props: EditedFileRowProps) {
         {props.file.additions + props.file.deletions > 0 ? (
           <span
             className="font-system-ui ml-auto shrink-0 tabular-nums"
-            style={{ fontSize: props.appearance.fontSize }}
+            style={{
+              fontSize: props.appearance.fontSize,
+            }}
           >
             <DiffStatLabel additions={props.file.additions} deletions={props.file.deletions} />
           </span>
@@ -93,9 +91,15 @@ export function EditedFileRow(props: EditedFileRowProps) {
 
       <OpenInPicker
         variant="compact"
-        {...(props.editorConfig.keybindings ? { keybindings: props.editorConfig.keybindings } : {})}
+        {...(props.editorConfig.keybindings
+          ? {
+              keybindings: props.editorConfig.keybindings,
+            }
+          : {})}
         {...(props.editorConfig.availableEditors
-          ? { availableEditors: props.editorConfig.availableEditors }
+          ? {
+              availableEditors: props.editorConfig.availableEditors,
+            }
           : {})}
         openInTarget={props.file.kind === "deleted" ? null : absolutePath}
         menuOptions={{
@@ -110,7 +114,7 @@ export function EditedFileRow(props: EditedFileRowProps) {
                   if (absolutePath) copyPathToClipboard(absolutePath);
                 }}
               >
-                <CopyIcon className={MENU_ICON_CLASS_NAME} />
+                <Copy01Icon className={MENU_ICON_CLASS_NAME} />
                 <span>Copy absolute path</span>
               </MenuItem>
               <MenuItem
@@ -119,7 +123,7 @@ export function EditedFileRow(props: EditedFileRowProps) {
                   if (relativePath) copyPathToClipboard(relativePath);
                 }}
               >
-                <CopyIcon className={MENU_ICON_CLASS_NAME} />
+                <Copy01Icon className={MENU_ICON_CLASS_NAME} />
                 <span>Copy relative path</span>
               </MenuItem>
             </>
@@ -129,24 +133,26 @@ export function EditedFileRow(props: EditedFileRowProps) {
     </div>
   );
 }
-
 function resolveEditedFilePathTargets(filePath: string, workspaceRoot: string | undefined) {
   const trimmedPath = filePath.trim();
   if (trimmedPath.length === 0) {
-    return { absolutePath: null, relativePath: null };
+    return {
+      absolutePath: null,
+      relativePath: null,
+    };
   }
-
   if (isLocalAbsolutePath(trimmedPath)) {
     return {
       absolutePath: trimmedPath,
       relativePath: workspaceRoot ? workspaceRelativePathOf(trimmedPath, workspaceRoot) : null,
     };
   }
-
   if (!isWorkspaceRelativePathSafe(trimmedPath)) {
-    return { absolutePath: null, relativePath: null };
+    return {
+      absolutePath: null,
+      relativePath: null,
+    };
   }
-
   const relativePath = trimmedPath.replace(/\\/g, "/");
   return {
     absolutePath: workspaceRoot ? joinWorkspaceRelativePath(workspaceRoot, relativePath) : null,

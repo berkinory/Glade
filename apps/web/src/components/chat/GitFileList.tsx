@@ -1,35 +1,60 @@
+import { ViewIcon, MinusIcon, PlusIcon, RefreshCwIcon, UndoIcon } from "~/lib/icons";
 import type {
   GitSourceControlFileStatus,
   GitSourceControlFilesResult,
 } from "@glade/contracts/git/git";
 import { useLayoutEffect, useRef, useState, type MouseEvent } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-
 import { useTheme } from "~/hooks/useTheme";
 import { splitRepoRelativePath } from "~/lib/diffRendering";
-import { EyeOpenIcon, MinusIcon, PlusIcon, RefreshCwIcon, RotateCcwIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { IconButton } from "../ui/icon-button";
 import { CHAT_HEADER_ICON_CONTROL_CLASS_NAME } from "./chatHeaderControls";
 import { FileEntryIcon } from "./FileEntryIcon";
-
 export type SourceFile = GitSourceControlFilesResult["staged"][number];
-
 export function canRevertFile(file: SourceFile): boolean {
   return ["M", "U", "D", "T"].includes(file.status);
 }
-
-const statusPresentation: Record<GitSourceControlFileStatus, { label: string; color: string }> = {
-  M: { label: "Modified", color: "text-warning" },
-  U: { label: "Untracked", color: "text-[var(--color-decoration-added)]" },
-  A: { label: "Added", color: "text-[var(--color-decoration-added)]" },
-  D: { label: "Deleted", color: "text-destructive" },
-  R: { label: "Renamed", color: "text-info" },
-  C: { label: "Copied", color: "text-info" },
-  T: { label: "Type changed", color: "text-warning" },
-  "!": { label: "Conflict", color: "text-destructive" },
+const statusPresentation: Record<
+  GitSourceControlFileStatus,
+  {
+    label: string;
+    color: string;
+  }
+> = {
+  M: {
+    label: "Modified",
+    color: "text-warning",
+  },
+  U: {
+    label: "Untracked",
+    color: "text-[var(--color-decoration-added)]",
+  },
+  A: {
+    label: "Added",
+    color: "text-[var(--color-decoration-added)]",
+  },
+  D: {
+    label: "Deleted",
+    color: "text-destructive",
+  },
+  R: {
+    label: "Renamed",
+    color: "text-info",
+  },
+  C: {
+    label: "Copied",
+    color: "text-info",
+  },
+  T: {
+    label: "Type changed",
+    color: "text-warning",
+  },
+  "!": {
+    label: "Conflict",
+    color: "text-destructive",
+  },
 };
-
 function GitFileRow(props: {
   file: SourceFile;
   theme: "light" | "dark";
@@ -90,7 +115,7 @@ function GitFileRow(props: {
               tooltip="Open file in Explorer"
               onClick={() => props.onOpenFile(filePath)}
             >
-              <EyeOpenIcon className="size-3.5" />
+              <ViewIcon className="size-3.5" />
             </IconButton>
           ) : null}
           {props.onRevert && props.revertAllowed && canRevertFile(props.file) ? (
@@ -102,7 +127,7 @@ function GitFileRow(props: {
               disabled={props.actionDisabled}
               onClick={() => props.onRevert?.(props.file)}
             >
-              <RotateCcwIcon className="size-3.5" />
+              <UndoIcon className="size-3.5" />
             </IconButton>
           ) : null}
           <IconButton
@@ -131,7 +156,6 @@ function GitFileRow(props: {
     </div>
   );
 }
-
 export function GitFileSection(props: {
   title: string;
   files: readonly SourceFile[];
@@ -219,7 +243,13 @@ export function GitFileSection(props: {
         </div>
       </header>
       {props.files.length > 0 ? (
-        <div ref={listRef} className="relative" style={{ height: virtualizer.getTotalSize() }}>
+        <div
+          ref={listRef}
+          className="relative"
+          style={{
+            height: virtualizer.getTotalSize(),
+          }}
+        >
           {virtualizer.getVirtualItems().map((item) => {
             const file = props.files[item.index]!;
             return (
@@ -246,7 +276,11 @@ export function GitFileSection(props: {
                   onContextMenu={props.onContextMenu}
                   onAction={props.onAction}
                   onOpenFile={props.onOpenFile}
-                  {...(props.onRevert ? { onRevert: props.onRevert } : {})}
+                  {...(props.onRevert
+                    ? {
+                        onRevert: props.onRevert,
+                      }
+                    : {})}
                 />
               </div>
             );

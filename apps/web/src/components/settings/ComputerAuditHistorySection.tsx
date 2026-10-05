@@ -1,3 +1,4 @@
+import { MousePointer01Icon } from "~/lib/icons";
 import {
   COMPUTER_AUDIT_HISTORY_MAX_LIMIT,
   type ComputerAuditHistoryEntry,
@@ -5,16 +6,13 @@ import {
 } from "@glade/contracts/computer/computerAudit";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-
 import { ensureNativeApi } from "~/nativeApi";
 import { serverQueryKeys } from "~/lib/serverReactQuery";
 import { describeComputerToolCall } from "~/lib/computerToolPresentation";
-import { ComputerUseIcon } from "~/lib/icons";
 import { DisclosureChevron } from "~/components/ui/DisclosureChevron";
 import { DisclosureRegion } from "~/components/ui/DisclosureRegion";
 import { Button } from "~/components/ui/button";
 import { SettingsCard, SettingsListRow, SettingsSectionShell } from "./SettingsPanelPrimitives";
-
 const PAGE_SIZE = 30;
 const EFFECT_LABELS: Record<ComputerAuditHistoryEntry["effect"], string> = {
   verified: "Effect observed",
@@ -23,9 +21,10 @@ const EFFECT_LABELS: Record<ComputerAuditHistoryEntry["effect"], string> = {
   refused: "Blocked",
   error: "Failed",
 };
-
-type AuditPage = { readonly before?: string; readonly limit: number };
-
+type AuditPage = {
+  readonly before?: string;
+  readonly limit: number;
+};
 function nextComputerAuditHistoryPage(
   last: ComputerGetAuditHistoryResult,
   pages: readonly ComputerGetAuditHistoryResult[],
@@ -34,9 +33,11 @@ function nextComputerAuditHistoryPage(
     COMPUTER_AUDIT_HISTORY_MAX_LIMIT -
     pages.reduce((count, page) => count + page.entries.length, 0);
   if (!last.nextCursor || remaining <= 0) return undefined;
-  return { before: last.nextCursor, limit: Math.min(PAGE_SIZE, remaining) };
+  return {
+    before: last.nextCursor,
+    limit: Math.min(PAGE_SIZE, remaining),
+  };
 }
-
 function computerAuditHistoryEntries(
   pages: readonly ComputerGetAuditHistoryResult[],
 ): readonly ComputerAuditHistoryEntry[] {
@@ -44,13 +45,14 @@ function computerAuditHistoryEntries(
     ...new Map(pages.flatMap((page) => page.entries).map((entry) => [entry.id, entry])).values(),
   ].slice(0, COMPUTER_AUDIT_HISTORY_MAX_LIMIT);
 }
-
 export function ComputerAuditHistorySection() {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
   const history = useInfiniteQuery({
     queryKey: serverQueryKeys.computerAuditHistory(),
-    initialPageParam: { limit: PAGE_SIZE } as AuditPage,
+    initialPageParam: {
+      limit: PAGE_SIZE,
+    } as AuditPage,
     queryFn: ({ pageParam }) => ensureNativeApi().computer.getAuditHistory(pageParam),
     getNextPageParam: nextComputerAuditHistoryPage,
     enabled: open,
@@ -70,7 +72,6 @@ export function ComputerAuditHistorySection() {
       exact: true,
     });
   };
-
   return (
     <SettingsSectionShell
       title="Recent Computer actions"
@@ -127,7 +128,6 @@ export function ComputerAuditHistorySection() {
     </SettingsSectionShell>
   );
 }
-
 function ComputerAuditHistoryList(props: {
   readonly entries: readonly ComputerAuditHistoryEntry[];
   readonly status: ComputerGetAuditHistoryResult["status"];
@@ -143,9 +143,11 @@ function ComputerAuditHistoryList(props: {
                 <SettingsListRow
                   title={
                     <span className="flex items-center gap-2">
-                      <ComputerUseIcon className="size-4 shrink-0" />
-                      {describeComputerToolCall({ toolName: entry.tool, args: undefined })
-                        ?.summary ?? "Computer action"}
+                      <MousePointer01Icon className="size-4 shrink-0" />
+                      {describeComputerToolCall({
+                        toolName: entry.tool,
+                        args: undefined,
+                      })?.summary ?? "Computer action"}
                     </span>
                   }
                   description={

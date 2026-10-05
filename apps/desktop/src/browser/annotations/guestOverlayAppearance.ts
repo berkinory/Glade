@@ -176,9 +176,7 @@ export const OVERLAY_MARKUP = `
     <span class="chip" aria-hidden="true">div</span>
     <textarea rows="1" maxlength="${GUEST_ANNOTATION_MAX_COMMENT_LENGTH}" placeholder="Add a comment…" aria-label="Annotation comment"></textarea>
     <button type="button" aria-label="Save annotation" title="Save annotation (Enter)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M12 19V5" /><path d="M5 12l7-7 7 7" />
-      </svg>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" color="currentColor" class="" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path d="M12 5.5V19" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"></path><path d="M18 11C18 11 13.5811 5.00001 12 5C10.4188 4.99999 6 11 6 11" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"></path></svg>
     </button>
   </section>
   <div class="notice" role="status" aria-live="polite" hidden></div>

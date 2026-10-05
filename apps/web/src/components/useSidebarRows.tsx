@@ -1,6 +1,6 @@
+import { SquarePenIcon } from "~/lib/icons";
 import { SidebarDraftIndicator } from "./SidebarDraftIndicator";
 import { SIDEBAR_TRAILING_ICON_FORCE_CLASS } from "./sidebarGlyphs";
-import { NewThreadIcon } from "~/lib/icons";
 import { useTerminalStateStore } from "../terminalStateStore";
 import { useSidebarStateStore } from "../sidebarStateStore";
 import { ThreadPrStatusBadge } from "~/components/pullRequest/ThreadPrStatusBadge";
@@ -77,7 +77,6 @@ import {
   terminalStatusFromThreadState,
   SortableProjectHandleProps,
 } from "./sidebarSupport";
-
 export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects>) {
   const {
     spaces,
@@ -115,10 +114,8 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
     showMoreThreadsForProject,
   } = context;
   const terminalStateByThreadId = useTerminalStateStore((state) => state.terminalStateByThreadId);
-
   const selectedThreadIds = useSidebarStateStore((state) => state.selectedThreadIds);
   const clearSelection = useSidebarStateStore((state) => state.clearSelection);
-
   function renderThreadArchiveAction(
     threadId: ThreadId,
     toneClassName: string,
@@ -135,7 +132,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
       />
     );
   }
-
   function renderThreadHoverActions(input: {
     threadId: ThreadId;
     isPinned: boolean;
@@ -144,7 +140,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
   }) {
     const compact = input.compact === true;
     const includePinToggle = input.includePinToggle !== false;
-
     return (
       <SidebarRowHoverActions threadId={input.threadId}>
         <div
@@ -172,7 +167,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
       </SidebarRowHoverActions>
     );
   }
-
   function renderThreadRowTrailingCluster(input: {
     isSubagentThread: boolean;
     threadJumpLabel: string | null;
@@ -223,7 +217,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
       </div>
     );
   }
-
   function renderListSectionHeader(label: string, toolbar: ReactNode) {
     return (
       <div className="group/project-header relative my-1">
@@ -241,7 +234,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
       </div>
     );
   }
-
   function renderPinnedThreadsSection() {
     if (pinnedThreads.length === 0) {
       return null;
@@ -257,7 +249,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
       </div>
     );
   }
-
   function renderThreadHoverCardPopup(
     thread: SidebarThreadSummary,
     hoverAnchorId: string,
@@ -300,7 +291,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
       </TooltipPopup>
     );
   }
-
   function renderProjectHoverCardPopup(
     project: (typeof sortedProjects)[number],
     chatCount: number,
@@ -324,7 +314,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
       </PreviewCardPopup>
     );
   }
-
   function renderPinnedThreadRow(thread: SidebarThreadSummary) {
     const threadTerminalState = selectThreadTerminalState(terminalStateByThreadId, thread.id);
     const terminalStatus = terminalStatusFromThreadState({
@@ -342,7 +331,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
     const isSubagentThread = Boolean(thread.parentThreadId);
     const pr = prByThreadId.get(thread.id) ?? null;
     const threadJumpLabel = visibleThreadJumpLabelByThreadId.get(thread.id) ?? null;
-
     const hasTrailingStatusGlyph = Boolean(threadStatus || threadJumpLabel);
     const hoverAnchorId = createSidebarThreadHoverAnchorId({
       scope: "pinned",
@@ -450,7 +438,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
       </Tooltip>
     );
   }
-
   function renderThreadRow(
     thread: SidebarThreadSummary,
     orderedProjectThreadIds: readonly ThreadId[],
@@ -484,7 +471,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
       scope: topLevel ? "chat" : "project",
       threadId: thread.id,
     });
-
     return (
       <SidebarMenuSubItem
         key={thread.id}
@@ -496,7 +482,11 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
         data-thread-item
         data-sidebar-thread-id={thread.id}
         style={
-          virtualOffset === undefined ? undefined : { transform: `translateY(${virtualOffset}px)` }
+          virtualOffset === undefined
+            ? undefined
+            : {
+                transform: `translateY(${virtualOffset}px)`,
+              }
         }
       >
         <Tooltip>
@@ -535,7 +525,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
                 }}
                 onContextMenu={(event) => {
                   event.preventDefault();
-
                   if (selectedThreadIds.size > 0 && selectedThreadIds.has(thread.id)) {
                     void handleMultiSelectContextMenu({
                       x: event.clientX,
@@ -591,11 +580,10 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
       </SidebarMenuSubItem>
     );
   }
-
   function renderProjectThreadActions(project: (typeof sortedProjects)[number]) {
     return (
       <SidebarIconButton
-        icon={NewThreadIcon}
+        icon={SquarePenIcon}
         label={`Create new thread in ${project.name}`}
         tooltip={newThreadShortcutLabel ? `New thread (${newThreadShortcutLabel})` : "New thread"}
         tooltipSide="top"
@@ -615,7 +603,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
       />
     );
   }
-
   function renderProjectThreadList(
     project: (typeof sortedProjects)[number],
     projectSidebarData: SidebarDerivedProjectData,
@@ -647,7 +634,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
       </>
     );
   }
-
   function renderProjectItem(
     project: (typeof sortedProjects)[number],
     dragHandleProps: SortableProjectHandleProps | null,
@@ -662,9 +648,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
     const projectFolderIconClassName = sidebarHoverRevealHideClassName("project-header");
     const projectToolbarReserveClassName =
       "group-hover/project-header:pr-[4.75rem] group-has-[:focus-visible]/project-header:pr-[4.75rem]";
-
     const projectRowLabel = resolveSidebarProjectRowLabel(project);
-
     return (
       <div className="group/collapsible">
         <PreviewCard>
@@ -696,7 +680,9 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
                       event.dataTransfer.effectAllowed = "move";
                       event.dataTransfer.setData(
                         PROJECT_SPACE_DRAG_MIME,
-                        JSON.stringify({ projectId: project.id }),
+                        JSON.stringify({
+                          projectId: project.id,
+                        }),
                       );
                     },
                   }
@@ -796,7 +782,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
       </div>
     );
   }
-
   return {
     renderListSectionHeader,
     renderPinnedThreadsSection,

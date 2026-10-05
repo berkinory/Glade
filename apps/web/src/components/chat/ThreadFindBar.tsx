@@ -1,8 +1,7 @@
+import { ArrowDown02Icon, ArrowUp02Icon, SearchIcon, XIcon } from "~/lib/icons";
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
-
 import { IconButton } from "~/components/ui/icon-button";
 import { DisclosureRegion } from "../ui/DisclosureRegion";
-import { ArrowDownIcon, ArrowUpIcon, SearchIcon, XIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { MUTED_LABEL_TEXT_CLASS_NAME } from "~/surfaceStyles";
 import type { TimelineEntry } from "../../workLog.types";
@@ -16,7 +15,6 @@ import {
   type ThreadFindHighlight,
   type ThreadFindMatch,
 } from "./threadFind.logic";
-
 interface ThreadFindBarProps {
   open: boolean;
   focusNonce: number;
@@ -26,12 +24,9 @@ interface ThreadFindBarProps {
   onHighlightChange: (highlight: ThreadFindHighlight | null) => void;
   onActiveMatchChange: (match: ThreadFindMatch | null) => void;
 }
-
 const FIND_QUERY_MAX_LENGTH = 200;
-
 const FIND_STEP_BUTTON_CLASS_NAME =
   "size-7 rounded-md border-transparent bg-transparent text-muted-foreground shadow-none hover:bg-muted-foreground/15 hover:text-foreground sm:size-7";
-
 function ThreadFindBar({
   open,
   focusNonce,
@@ -69,13 +64,11 @@ function ThreadFindBar({
   const matchCount = matches.length;
   const safeIndex = matchCount === 0 ? -1 : Math.min(Math.max(activeIndex, 0), matchCount - 1);
   const hasQuery = normalizeFindQuery(deferredQuery).length > 0;
-
   useEffect(() => {
     if (!open) {
       onHighlightChangeRef.current(null);
     }
   }, [open]);
-
   useEffect(() => {
     if (!open) return;
     const queryChanged = activeQueryRef.current !== deferredQuery;
@@ -95,7 +88,10 @@ function ThreadFindBar({
     activeQueryRef.current = deferredQuery;
     activeMatchRef.current = match;
     setActiveIndex(nextIndex);
-    onHighlightChangeRef.current({ query: deferredQuery, activeMatch: match });
+    onHighlightChangeRef.current({
+      query: deferredQuery,
+      activeMatch: match,
+    });
     onActiveMatchChangeRef.current(match);
     if (match && (queryChanged || previous === null)) {
       if (jumpFrameRef.current !== null) window.cancelAnimationFrame(jumpFrameRef.current);
@@ -106,7 +102,6 @@ function ThreadFindBar({
       });
     }
   }, [deferredQuery, matches, open]);
-
   useEffect(() => {
     if (!open) {
       return;
@@ -126,21 +121,18 @@ function ThreadFindBar({
     input.focus();
     input.select();
   }, [focusNonce, open]);
-
   useEffect(
     () => () => {
       if (jumpFrameRef.current !== null) window.cancelAnimationFrame(jumpFrameRef.current);
     },
     [],
   );
-
   const handleQueryChange = (nextQuery: string) => {
     setQuery(nextQuery);
     activeIndexRef.current = 0;
     activeMatchRef.current = null;
     setActiveIndex(0);
   };
-
   const handleStep = (direction: "next" | "previous") => {
     if (deferredQuery !== query || matchCount === 0) {
       return;
@@ -155,7 +147,6 @@ function ThreadFindBar({
       onJumpRef.current(match);
     }
   };
-
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Escape") {
       event.preventDefault();
@@ -169,7 +160,6 @@ function ThreadFindBar({
       handleStep(event.shiftKey ? "previous" : "next");
     }
   };
-
   return (
     <div
       role="search"
@@ -205,7 +195,7 @@ function ThreadFindBar({
         className={FIND_STEP_BUTTON_CLASS_NAME}
         label="Previous match (Shift+Enter)"
       >
-        <ArrowUpIcon className="size-4" />
+        <ArrowUp02Icon className="size-4" />
       </IconButton>
       <IconButton
         onClick={() => handleStep("next")}
@@ -213,7 +203,7 @@ function ThreadFindBar({
         className={FIND_STEP_BUTTON_CLASS_NAME}
         label="Next match (Enter)"
       >
-        <ArrowDownIcon className="size-4" />
+        <ArrowDown02Icon className="size-4" />
       </IconButton>
       <div aria-hidden="true" className="mx-0.5 h-4 w-px shrink-0 bg-border" />
       <IconButton
@@ -226,7 +216,6 @@ function ThreadFindBar({
     </div>
   );
 }
-
 export function ChatThreadFindHost({
   open,
   focusNonce,

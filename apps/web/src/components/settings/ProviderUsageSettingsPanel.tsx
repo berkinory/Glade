@@ -1,3 +1,4 @@
+import { UndoIcon, TriangleAlertIcon } from "~/lib/icons";
 import { Spinner } from "~/components/ui/spinner";
 import { Switch } from "../ui/switch";
 import type { ServerProviderUsageSnapshot } from "@glade/contracts/server/server";
@@ -9,7 +10,6 @@ import {
 } from "@glade/shared/provider/providerUsage";
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-
 import { useAppSettings } from "~/appSettings";
 import { ProviderIcon } from "~/components/ProviderIcon";
 import { ProviderUsageLimitRows } from "~/components/ProviderUsageLimitRows";
@@ -18,7 +18,6 @@ import { ProviderUsageResetCredits } from "~/components/ProviderUsageResetCredit
 import { SettingsCard, SettingsSectionShell } from "~/components/settings/SettingsPanelPrimitives";
 import { Button } from "~/components/ui/button";
 import { useProviderUsageSummary } from "~/hooks/useProviderUsageSummary";
-import { RotateCcwIcon, TriangleAlertIcon } from "~/lib/icons";
 import { deriveProviderUsageDisplayRows } from "~/lib/providerUsageDisplay";
 import { deriveAccountRateLimits, type ProviderRateLimit } from "~/lib/rateLimits";
 import {
@@ -29,14 +28,11 @@ import {
 import { cn } from "~/lib/utils";
 import { useStore } from "~/store";
 import { createAllThreadsSelector } from "~/storeSelectors";
-
 const PILL_CLASS_NAME = "shrink-0 rounded-full px-2 py-1 text-ui-sm font-medium leading-none";
-
 interface StatusPill {
   label: string;
   className: string;
 }
-
 function statusPill(status: ServerProviderUsageSnapshot["status"]): StatusPill | null {
   switch (status) {
     case "needs-auth":
@@ -45,14 +41,19 @@ function statusPill(status: ServerProviderUsageSnapshot["status"]): StatusPill |
         className: "bg-amber-500/12 text-amber-600 dark:text-amber-400",
       };
     case "unsupported":
-      return { label: "Unsupported", className: "bg-muted text-muted-foreground" };
+      return {
+        label: "Unsupported",
+        className: "bg-muted text-muted-foreground",
+      };
     case "error":
-      return { label: "Unavailable", className: "bg-red-500/12 text-red-600 dark:text-red-400" };
+      return {
+        label: "Unavailable",
+        className: "bg-red-500/12 text-red-600 dark:text-red-400",
+      };
     default:
       return null;
   }
 }
-
 function ProviderUsageCard({
   snapshot,
   threadRateLimits,
@@ -76,7 +77,6 @@ function ProviderUsageCard({
   const hasResetCredits = Boolean(resetCredits && resetCredits.availableCount > 0);
   const hasUsage = meterRows.length > 0 || usageLines.length > 0 || hasResetCredits;
   const pill = status === "ok" ? null : statusPill(snapshot.status);
-
   return (
     <SettingsCard>
       <div className="space-y-3.5 p-4">
@@ -133,7 +133,6 @@ function ProviderUsageCard({
     </SettingsCard>
   );
 }
-
 function mergeProviderUsageRefresh(
   previous: readonly ServerProviderUsageSnapshot[] | undefined,
   next: readonly ServerProviderUsageSnapshot[],
@@ -147,17 +146,18 @@ function mergeProviderUsageRefresh(
     (provider) => nextByProvider.get(provider) ?? previousByProvider.get(provider),
   ).filter((snapshot): snapshot is ServerProviderUsageSnapshot => snapshot !== undefined);
 }
-
 export function ProviderUsageSettingsPanel() {
   const queryClient = useQueryClient();
   const { settings, updateSettings } = useAppSettings();
   const codexHomePath = settings.codexHomePath || null;
   const threads = useStore(useMemo(() => createAllThreadsSelector(), []));
-
   const threadRateLimits = deriveAccountRateLimits(threads);
   const usageQuery = useQuery(serverAllProviderUsageQueryOptions());
   const refreshMutation = useMutation({
-    mutationFn: () => fetchAllProviderUsage({ forceRefresh: true }),
+    mutationFn: () =>
+      fetchAllProviderUsage({
+        forceRefresh: true,
+      }),
     onSuccess: (data) => {
       queryClient.setQueryData<readonly ServerProviderUsageSnapshot[]>(
         serverQueryKeys.allProviderUsage(),
@@ -165,13 +165,9 @@ export function ProviderUsageSettingsPanel() {
       );
     },
   });
-
   const cards = selectVisibleProviderUsageSnapshots(usageQuery.data ?? []);
-
   const showInitialLoading = usageQuery.isPending && !usageQuery.data;
-
   const isRefreshing = usageQuery.isFetching || refreshMutation.isPending;
-
   return (
     <SettingsSectionShell
       title="Provider usage"
@@ -186,7 +182,7 @@ export function ProviderUsageSettingsPanel() {
           {isRefreshing ? (
             <Spinner variant="action" aria-hidden="true" className="size-3.5" />
           ) : (
-            <RotateCcwIcon className="size-3.5" />
+            <UndoIcon className="size-3.5" />
           )}
           Refresh
         </Button>
@@ -220,7 +216,9 @@ export function ProviderUsageSettingsPanel() {
               onChange={(event) => {
                 const value = event.currentTarget.value;
                 if (value === "five-hour" || value === "weekly" || value === "both")
-                  updateSettings({ sidebarUsageWindow: value });
+                  updateSettings({
+                    sidebarUsageWindow: value,
+                  });
               }}
             >
               <option value="five-hour">Five-hour</option>

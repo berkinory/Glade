@@ -8,7 +8,7 @@ import babel from "@rolldown/plugin-babel";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import { defineConfig, type Plugin } from "vite";
 import pkg from "./package.json" with { type: "json" };
-import { listFiles, pruneProductionIcons } from "./scripts/production-assets";
+import { listFiles } from "./scripts/production-assets";
 
 const port = Number(process.env.PORT ?? 5733);
 const sourcemapEnv = process.env.GLADE_WEB_SOURCEMAP?.trim().toLowerCase();
@@ -19,31 +19,6 @@ const buildSourcemap =
     : sourcemapEnv === "hidden"
       ? "hidden"
       : false;
-
-function centralIconPrunePlugin(): Plugin {
-  let resolvedRoot = process.cwd();
-  let resolvedOutDir = "dist";
-  return {
-    name: "glade-central-icon-prune",
-    apply: "build",
-    configResolved(config) {
-      resolvedRoot = config.root;
-      resolvedOutDir = path.resolve(config.root, config.build.outDir);
-    },
-    closeBundle: {
-      order: "pre",
-      sequential: true,
-      async handler() {
-        await pruneProductionIcons(path.join(resolvedRoot, "public"), resolvedOutDir, [
-          path.join(resolvedRoot, "src"),
-          path.resolve(resolvedRoot, "../../apps/server/src"),
-          path.resolve(resolvedRoot, "../../packages/contracts/src"),
-          path.resolve(resolvedRoot, "../../packages/shared/src"),
-        ]);
-      },
-    },
-  };
-}
 
 const gzip = promisify(zlib.gzip);
 const brotliCompress = promisify(zlib.brotliCompress);
@@ -132,15 +107,10 @@ export default defineConfig(({ mode }) => ({
       presets: [reactCompilerPreset()],
     }),
     tailwindcss(),
-    ...(mode === "desktop-dev" ? [] : [centralIconPrunePlugin(), precompressPlugin()]),
+    ...(mode === "desktop-dev" ? [] : [precompressPlugin()]),
   ],
   optimizeDeps: {
-    include: [
-      "@pierre/diffs",
-      "@pierre/diffs/react",
-      "@pierre/diffs/worker/worker.js",
-      "react-icons/gr",
-    ],
+    include: ["@pierre/diffs", "@pierre/diffs/react", "@pierre/diffs/worker/worker.js"],
   },
   define: {
     "import.meta.env.VITE_WS_URL": JSON.stringify(process.env.VITE_WS_URL ?? ""),

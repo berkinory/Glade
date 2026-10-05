@@ -1,12 +1,12 @@
+import type { IconComponent } from "~/lib/iconComponent";
 import {
   CheckIcon,
-  CopyIcon,
+  Copy01Icon,
   InfoIcon,
   LightbulbIcon,
   OctagonAlertIcon,
   TextWrapIcon,
   TriangleAlertIcon,
-  type LucideIcon,
 } from "~/lib/icons";
 import type { ProviderMentionReference } from "@glade/contracts/provider/providerDiscovery";
 import "katex/dist/katex.min.css";
@@ -93,33 +93,35 @@ import {
   FindAwareMarkdownText,
   FindAwareShikiHtml,
 } from "./ChatMarkdownFind";
-
 import { IncrementalShikiCodeBlock } from "./IncrementalShikiCodeBlock";
 import { createIncrementalMarkdownPlugin } from "../markdownIncremental";
-
 const EXTERNAL_HTTP_HREF_PATTERN = /^https?:\/\//i;
-
 const MARKDOWN_EXTERNAL_LINK_CLASS_NAME =
   "inline font-medium text-[var(--info-foreground)] underline-offset-2 hover:underline";
 const MARKDOWN_EXTERNAL_LINK_ICON_CLASS_NAME = `${COMPOSER_INLINE_CHIP_TOKEN_ICON_CLASS_NAME} ${COMPOSER_INLINE_CHIP_ICON_LABEL_GAP_CLASS_NAME}`;
-
 function isExternalHttpHref(href: string | undefined): href is string {
   return typeof href === "string" && EXTERNAL_HTTP_HREF_PATTERN.test(href);
 }
-
 class CodeHighlightErrorBoundary extends React.Component<
-  { fallback: ReactNode; children: ReactNode },
-  { hasError: boolean }
+  {
+    fallback: ReactNode;
+    children: ReactNode;
+  },
+  {
+    hasError: boolean;
+  }
 > {
   constructor(props: { fallback: ReactNode; children: ReactNode }) {
     super(props);
-    this.state = { hasError: false };
+    this.state = {
+      hasError: false,
+    };
   }
-
   static getDerivedStateFromError() {
-    return { hasError: true };
+    return {
+      hasError: true,
+    };
   }
-
   override render() {
     if (this.state.hasError) {
       return this.props.fallback;
@@ -127,7 +129,6 @@ class CodeHighlightErrorBoundary extends React.Component<
     return this.props.children;
   }
 }
-
 interface ChatMarkdownProps {
   text: string;
   cwd: string | undefined;
@@ -136,26 +137,18 @@ interface ChatMarkdownProps {
   className?: string | undefined;
   style?: CSSProperties | undefined;
   onImageExpand?: ((preview: ExpandedImagePreview) => void) | undefined;
-
   findQuery?: string | undefined;
-
   findActiveRange?: ThreadFindRange | null | undefined;
-
   variant?: "assistant" | "user";
-
   mentionReferences?: ReadonlyArray<ProviderMentionReference> | undefined;
-
   terminalContexts?: ReadonlyArray<ParsedTerminalContextEntry> | undefined;
   // Receives the 1-based line of the task item in `text` so the caller can flip that `[ ]` marker at
   // the source (line numbers stay valid because the internal dollar protection is length- and
   // newline-preserving).
   onTaskToggle?: ((input: { sourceLine: number; checked: boolean }) => void) | undefined;
-
   knownAbsoluteFilePaths?: ReadonlyArray<string> | undefined;
 }
-
 const TaskItemSourceLineContext = React.createContext<number | null>(null);
-
 function MarkdownTaskCheckbox(props: {
   checked: boolean;
   onTaskToggle: ChatMarkdownProps["onTaskToggle"];
@@ -169,11 +162,18 @@ function MarkdownTaskCheckbox(props: {
       className="chat-markdown-task-checkbox"
       checked={checked}
       disabled={!interactive}
-      {...(interactive ? { onChange: () => onTaskToggle({ sourceLine, checked: !checked }) } : {})}
+      {...(interactive
+        ? {
+            onChange: () =>
+              onTaskToggle({
+                sourceLine,
+                checked: !checked,
+              }),
+          }
+        : {})}
     />
   );
 }
-
 const CODE_FENCE_LANGUAGE_REGEX = /(?:^|\s)language-([^\s]+)/;
 type MarkdownRemarkPlugins = NonNullable<
   React.ComponentProps<typeof ReactMarkdown>["remarkPlugins"]
@@ -187,7 +187,6 @@ interface ParsedMarkdownProps {
   rehypePlugins: MarkdownRehypePlugins;
   components: Components;
 }
-
 const ParsedMarkdown = memo(function ParsedMarkdown(props: ParsedMarkdownProps) {
   return (
     <ReactMarkdown
@@ -200,10 +199,14 @@ const ParsedMarkdown = memo(function ParsedMarkdown(props: ParsedMarkdownProps) 
     </ReactMarkdown>
   );
 });
-
 const MARKDOWN_REMARK_PLUGINS: MarkdownRemarkPlugins = [
   remarkGfm,
-  [remarkMath, { singleDollarTextMath: true }],
+  [
+    remarkMath,
+    {
+      singleDollarTextMath: true,
+    },
+  ],
   remarkGithubAlerts,
 ];
 // User prompts are casual typing, not authored markdown: hard-break single newlines and skip math
@@ -215,39 +218,45 @@ function markdownUrlTransform(href: string): string {
   const restoredHref = restoreLiteralDollarPlaceholders(href);
   return rewriteMarkdownFileUriHref(restoredHref) ?? defaultUrlTransform(restoredHref);
 }
-
 function restoreLiteralDollarsInNode(node: unknown): void {
   if (!node || typeof node !== "object") {
     return;
   }
-
   if ("type" in node && node.type === "text" && "value" in node && typeof node.value === "string") {
     node.value = restoreLiteralDollarPlaceholders(node.value);
   }
-
   if ("children" in node && Array.isArray(node.children)) {
     for (const child of node.children) {
       restoreLiteralDollarsInNode(child);
     }
   }
 }
-
 function rehypeRestoreLiteralDollars() {
   return (tree: unknown) => {
     restoreLiteralDollarsInNode(tree);
   };
 }
-
 const MARKDOWN_REHYPE_PLUGINS: MarkdownRehypePlugins = [
-  [rehypeKatex, { output: "htmlAndMathml", strict: false, throwOnError: false }],
+  [
+    rehypeKatex,
+    {
+      output: "htmlAndMathml",
+      strict: false,
+      throwOnError: false,
+    },
+  ],
   rehypeRestoreLiteralDollars,
 ];
 type MarkdownTextNode = {
   type: "text";
   value: string;
   position?: {
-    start?: { offset?: number };
-    end?: { offset?: number };
+    start?: {
+      offset?: number;
+    };
+    end?: {
+      offset?: number;
+    };
   };
 };
 type MarkdownParentNode = {
@@ -260,7 +269,6 @@ const CHAT_FIND_TEXT_START_ATTRIBUTE = "data-chat-find-text-start";
 function remarkFindableText() {
   return (tree: MarkdownNode) => wrapFindableTextNodes(tree);
 }
-
 function wrapFindableTextNodes(node: MarkdownNode): void {
   if (!node || typeof node !== "object" || !("children" in node) || !Array.isArray(node.children)) {
     return;
@@ -274,7 +282,6 @@ function wrapFindableTextNodes(node: MarkdownNode): void {
     return child;
   });
 }
-
 function wrapFindableTextNode(node: MarkdownTextNode): MarkdownNode {
   const startOffset = node.position?.start?.offset;
   if (startOffset === undefined || node.value.length === 0) {
@@ -284,17 +291,17 @@ function wrapFindableTextNode(node: MarkdownTextNode): MarkdownNode {
     type: "chatFindText",
     data: {
       hName: CHAT_FIND_TEXT_TAG_NAME,
-      hProperties: { [CHAT_FIND_TEXT_START_ATTRIBUTE]: String(startOffset) },
+      hProperties: {
+        [CHAT_FIND_TEXT_START_ATTRIBUTE]: String(startOffset),
+      },
     },
     children: [node],
   };
 }
-
 function extractRawFenceInfo(className: string | undefined): string {
   const match = className?.match(CODE_FENCE_LANGUAGE_REGEX);
   return match?.[1] ?? "text";
 }
-
 function nodeToPlainText(node: ReactNode): string {
   if (typeof node === "string" || typeof node === "number") {
     return String(node);
@@ -302,40 +309,44 @@ function nodeToPlainText(node: ReactNode): string {
   if (Array.isArray(node)) {
     return node.map((child) => nodeToPlainText(child)).join("");
   }
-  if (isValidElement<{ children?: ReactNode }>(node)) {
+  if (
+    isValidElement<{
+      children?: ReactNode;
+    }>(node)
+  ) {
     return nodeToPlainText(node.props.children);
   }
   return "";
 }
-
-function extractCodeBlock(
-  children: ReactNode,
-): { className: string | undefined; code: string } | null {
+function extractCodeBlock(children: ReactNode): {
+  className: string | undefined;
+  code: string;
+} | null {
   const childNodes = Children.toArray(children);
   if (childNodes.length !== 1) {
     return null;
   }
-
   const onlyChild = childNodes[0];
-  if (!isValidElement<{ className?: string; children?: ReactNode }>(onlyChild)) {
+  if (
+    !isValidElement<{
+      className?: string;
+      children?: ReactNode;
+    }>(onlyChild)
+  ) {
     return null;
   }
-
   return {
     className: onlyChild.props.className,
     code: nodeToPlainText(onlyChild.props.children),
   };
 }
-
 const INLINE_CODE_FILE_PATH_MAX_LENGTH = 120;
-
 function inlineCodeFilePath(raw: string): string | null {
   const value = raw.trim().replace(/^['"`]+|['"`]+$/g, "");
   if (value.length === 0 || /\s/.test(value) || value.includes("://")) {
     return null;
   }
   const withoutPosition = value.replace(MARKDOWN_LINK_POSITION_SUFFIX_PATTERN, "");
-
   if (resolveMarkdownFileLinkTarget(withoutPosition)) {
     return value;
   }
@@ -344,7 +355,6 @@ function inlineCodeFilePath(raw: string): string | null {
   }
   return pathLooksLikeKnownFile(withoutPosition) ? value : null;
 }
-
 function ComposerChipElement(props: {
   serializedSegment: string | undefined;
   theme: "light" | "dark";
@@ -363,7 +373,11 @@ function ComposerChipElement(props: {
         path={segment.path}
         theme={props.theme}
         mentionReferences={props.mentionReferences}
-        {...(segment.kind ? { kind: segment.kind } : {})}
+        {...(segment.kind
+          ? {
+              kind: segment.kind,
+            }
+          : {})}
       />
     );
   }
@@ -375,7 +389,6 @@ function ComposerChipElement(props: {
   }
   return <InlineLinkChip url={segment.url} interactive />;
 }
-
 function CodeBlockHeaderTitle({ fence }: { fence: CodeFenceInfo }) {
   if (fence.isFileReference && fence.fileName) {
     return (
@@ -395,10 +408,8 @@ function CodeBlockHeaderTitle({ fence }: { fence: CodeFenceInfo }) {
       </span>
     );
   }
-
   return <span className="chat-markdown-codeblock__lang">{fence.language}</span>;
 }
-
 function MarkdownCodeBlock({
   code,
   fence,
@@ -426,7 +437,6 @@ function MarkdownCodeBlock({
       .catch(() => undefined);
   };
   const toggleWrap = () => setWrap((previous) => !previous);
-
   useEffect(
     () => () => {
       if (copiedTimerRef.current != null) {
@@ -436,7 +446,6 @@ function MarkdownCodeBlock({
     },
     [],
   );
-
   return (
     <div className="chat-markdown-codeblock" data-wrap={wrap ? "true" : "false"}>
       <div className="chat-markdown-codeblock__header">
@@ -462,7 +471,7 @@ function MarkdownCodeBlock({
             size="icon-xs"
             variant="ghost"
           >
-            {copied ? <CheckIcon className="size-3" /> : <CopyIcon className="size-3" />}
+            {copied ? <CheckIcon className="size-3" /> : <Copy01Icon className="size-3" />}
           </IconButton>
         </div>
       </div>
@@ -470,7 +479,6 @@ function MarkdownCodeBlock({
     </div>
   );
 }
-
 interface SuspenseShikiCodeBlockProps {
   language: string;
   code: string;
@@ -478,20 +486,16 @@ interface SuspenseShikiCodeBlockProps {
   isStreaming: boolean;
   sourceOffset: number;
 }
-
 type SyntaxHighlightingModule = typeof import("../lib/syntaxHighlighting");
 let syntaxHighlightingModulePromise: Promise<SyntaxHighlightingModule> | null = null;
-
 function getSyntaxHighlightingModulePromise(): Promise<SyntaxHighlightingModule> {
   syntaxHighlightingModulePromise ??= import("../lib/syntaxHighlighting");
   return syntaxHighlightingModulePromise;
 }
-
 const STREAMING_CODE_HIGHLIGHT_INTERVAL_MS = 160;
 const STREAMING_CODE_HIGHLIGHT_MAX_INTERVAL_MS = 1_000;
 const STREAMING_CODE_HIGHLIGHT_BASE_CHARS = 8_000;
 const STREAMING_CODE_HIGHLIGHT_SLOW_CHARS = 80_000;
-
 function streamingCodeHighlightIntervalMs(codeLength: number): number {
   if (codeLength <= STREAMING_CODE_HIGHLIGHT_BASE_CHARS) {
     return STREAMING_CODE_HIGHLIGHT_INTERVAL_MS;
@@ -506,7 +510,6 @@ function streamingCodeHighlightIntervalMs(codeLength: number): number {
       progress * (STREAMING_CODE_HIGHLIGHT_MAX_INTERVAL_MS - STREAMING_CODE_HIGHLIGHT_INTERVAL_MS),
   );
 }
-
 function SuspenseShikiCodeBlock({
   language,
   code: liveCode,
@@ -531,7 +534,6 @@ function SuspenseShikiCodeBlock({
     />
   );
 }
-
 function LoadedShikiCodeBlock({
   syntaxHighlighting,
   language,
@@ -539,7 +541,9 @@ function LoadedShikiCodeBlock({
   themeName,
   isStreaming,
   sourceOffset,
-}: SuspenseShikiCodeBlockProps & { syntaxHighlighting: SyntaxHighlightingModule }) {
+}: SuspenseShikiCodeBlockProps & {
+  syntaxHighlighting: SyntaxHighlightingModule;
+}) {
   const [startedStreaming] = useState(isStreaming);
   if (startedStreaming) {
     return (
@@ -557,7 +561,6 @@ function LoadedShikiCodeBlock({
   const cachedHighlightedHtml = !isStreaming
     ? syntaxHighlighting.getCachedSyntaxHighlightedHtml(cacheKey)
     : null;
-
   if (cachedHighlightedHtml != null) {
     return <FindAwareShikiHtml html={cachedHighlightedHtml} sourceOffset={sourceOffset} />;
   }
@@ -576,7 +579,6 @@ function LoadedShikiCodeBlock({
     />
   );
 }
-
 function UncachedShikiCodeBlock({
   syntaxHighlighting,
   cacheKey,
@@ -596,16 +598,13 @@ function UncachedShikiCodeBlock({
     language,
     themeName,
   );
-
   useEffect(() => {
     if (!isStreaming) {
       syntaxHighlighting.cacheSyntaxHighlightedHtml(cacheKey, highlightedHtml, code);
     }
   }, [cacheKey, code, highlightedHtml, isStreaming, syntaxHighlighting]);
-
   return <FindAwareShikiHtml html={highlightedHtml} sourceOffset={sourceOffset} />;
 }
-
 interface MarkdownRenderContextValue {
   cwd: ChatMarkdownProps["cwd"];
   knownAbsoluteFilePaths: string[] | undefined;
@@ -619,22 +618,43 @@ interface MarkdownRenderContextValue {
   terminalContexts: ChatMarkdownProps["terminalContexts"];
   sourceText: string;
 }
-
 const MarkdownRenderContext = createContext<MarkdownRenderContextValue | null>(null);
-
-const GITHUB_ALERTS: Record<GithubAlertKind, { title: string; icon: LucideIcon }> = {
-  note: { title: "Note", icon: InfoIcon },
-  tip: { title: "Tip", icon: LightbulbIcon },
-  important: { title: "Important", icon: InfoIcon },
-  warning: { title: "Warning", icon: TriangleAlertIcon },
-  caution: { title: "Caution", icon: OctagonAlertIcon },
+const GITHUB_ALERTS: Record<
+  GithubAlertKind,
+  {
+    title: string;
+    icon: IconComponent;
+  }
+> = {
+  note: {
+    title: "Note",
+    icon: InfoIcon,
+  },
+  tip: {
+    title: "Tip",
+    icon: LightbulbIcon,
+  },
+  important: {
+    title: "Important",
+    icon: InfoIcon,
+  },
+  warning: {
+    title: "Warning",
+    icon: TriangleAlertIcon,
+  },
+  caution: {
+    title: "Caution",
+    icon: OctagonAlertIcon,
+  },
 };
-
 const MarkdownLinkContext = createContext(false);
-
 const MARKDOWN_COMPONENTS: Components = {
   blockquote: function MarkdownBlockquote({ node: _node, children, ...props }) {
-    const kind = (props as { "data-github-alert"?: GithubAlertKind })["data-github-alert"];
+    const kind = (
+      props as {
+        "data-github-alert"?: GithubAlertKind;
+      }
+    )["data-github-alert"];
     const alert = kind ? GITHUB_ALERTS[kind] : undefined;
     if (!alert) return <blockquote {...props}>{children}</blockquote>;
     const Icon = alert.icon;
@@ -690,13 +710,16 @@ const MARKDOWN_COMPONENTS: Components = {
         </a>
       );
     }
-
     return (
       <OpenableFileChip
         targetPath={targetPath}
         theme={resolvedTheme}
         label={linkedChildren}
-        {...(restoredHref ? { href: restoredHref } : {})}
+        {...(restoredHref
+          ? {
+              href: restoredHref,
+            }
+          : {})}
       />
     );
   },
@@ -706,7 +729,6 @@ const MARKDOWN_COMPONENTS: Components = {
     if (!codeBlock) {
       return <pre {...props}>{children}</pre>;
     }
-
     const fence = parseCodeFenceInfo(extractRawFenceInfo(codeBlock.className));
     const code = dedentCode(codeBlock.code);
     const blockStart = node?.position?.start?.offset ?? 0;
@@ -719,7 +741,6 @@ const MARKDOWN_COMPONENTS: Components = {
         </FindAwareCodeFallback>
       </pre>
     );
-
     return (
       <MarkdownCodeBlock code={code} fence={fence}>
         <CodeHighlightErrorBoundary fallback={highlightedFallback}>
@@ -739,7 +760,6 @@ const MARKDOWN_COMPONENTS: Components = {
   code: function MarkdownInlineCode({ node, className, children, ...props }) {
     const { sourceText, knownAbsoluteFilePaths, cwd, resolvedTheme } =
       useContext(MarkdownRenderContext)!;
-
     if (!className) {
       const filePath = inlineCodeFilePath(nodeToPlainText(children));
       if (filePath) {
@@ -797,7 +817,15 @@ const MARKDOWN_COMPONENTS: Components = {
         className="inline-block cursor-zoom-in rounded-sm focus-visible:outline-2"
         aria-label={`Expand ${alt || "image"}`}
         onClick={() =>
-          onImageExpand({ images: [{ src: restoredSrc, name: alt || "Image" }], index: 0 })
+          onImageExpand({
+            images: [
+              {
+                src: restoredSrc,
+                name: alt || "Image",
+              },
+            ],
+            index: 0,
+          })
         }
       >
         {image}
@@ -826,7 +854,6 @@ const MARKDOWN_COMPONENTS: Components = {
     }
     return <input {...props} />;
   },
-
   ...({
     [COMPOSER_CHIP_TAG_NAME]: function MarkdownComposerChip(props: {
       className?: string | undefined;
@@ -870,7 +897,6 @@ const MARKDOWN_COMPONENTS: Components = {
     },
   } as unknown as Components),
 };
-
 function ChatMarkdown({
   text,
   cwd,
@@ -905,9 +931,7 @@ function ChatMarkdown({
     }
     return [...new Set([...(knownAbsoluteFilePathsProp ?? []), ...extractedAbsoluteFilePaths])];
   }, [extractedAbsoluteFilePaths, knownAbsoluteFilePathsProp]);
-
   const smoothedText = useSmoothStreamedText(text, isStreaming);
-
   const normalizedText = useMemo(
     () =>
       isUserVariant
@@ -944,7 +968,12 @@ function ChatMarkdown({
     return [
       ...MARKDOWN_REMARK_PLUGINS,
       incrementalMarkdownPlugin,
-      [remarkWikiLinks, { root: wikiLinkRoot ?? cwd }],
+      [
+        remarkWikiLinks,
+        {
+          root: wikiLinkRoot ?? cwd,
+        },
+      ],
       remarkFindableText,
     ];
   }, [composerChipsRemarkPlugin, incrementalMarkdownPlugin, wikiLinkRoot, cwd]);
@@ -981,7 +1010,6 @@ function ChatMarkdown({
       sourceText,
     ],
   );
-
   return (
     <div
       ref={rootRef}
@@ -1005,5 +1033,4 @@ function ChatMarkdown({
     </div>
   );
 }
-
 export default memo(ChatMarkdown);

@@ -1,10 +1,9 @@
+import { PencilEdit02Icon } from "~/lib/icons";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useComposerDraftStore } from "~/composerDraftStore";
 import { hasUnsentComposerDraft } from "~/composerDraftDomain";
-import { CentralIcon } from "~/lib/central-icons";
 import { cn } from "~/lib/utils";
 import { sidebarHoverRevealHideClassName } from "../sidebarRowStyles";
-
 export function SidebarDraftIndicator({
   threadId,
   isActive,
@@ -18,7 +17,6 @@ export function SidebarDraftIndicator({
     hasUnsentComposerDraft(state.draftsByThreadId[threadId]),
   );
   if (!hasDraft || isActive) return null;
-
   return (
     <span
       aria-label="Unsent draft"
@@ -30,7 +28,7 @@ export function SidebarDraftIndicator({
         sidebarHoverRevealHideClassName(activity ? "activity-row" : "thread-row"),
       )}
     >
-      <CentralIcon name="pencil" className="size-3" />
+      <PencilEdit02Icon className="size-3" />
     </span>
   );
 }

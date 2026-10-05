@@ -1,40 +1,34 @@
+import { ArrowExpandIcon, CollapseIcon, MinusIcon, XIcon } from "~/lib/icons";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-
 import type { DesktopWindowState } from "@glade/contracts/ipc/ipc";
-
 import { useDesktopCustomTitleBarActive } from "~/hooks/useDesktopCustomTitleBar";
 import { isElectron } from "~/env";
-import { Maximize2, Minimize2, MinusIcon, XIcon } from "~/lib/icons";
 import { toastManager } from "./ui/toast";
 import { cn, getNavigatorPlatform, isWindowsPlatform } from "~/lib/utils";
-
 const DEFAULT_WINDOW_STATE: DesktopWindowState = {
   isMaximized: false,
   isFullscreen: false,
 };
-
 const GLYPH_MINIMIZE = "\uE921";
 const GLYPH_MAXIMIZE = "\uE922";
 const GLYPH_RESTORE = "\uE923";
 const GLYPH_CLOSE = "\uE8BB";
-
 const CAPTION_BUTTON_CLASS =
   "flex h-full w-[46px] shrink-0 items-center justify-center text-foreground/90 outline-none transition-colors duration-80 select-none hover:bg-foreground/[0.09] active:bg-foreground/[0.05] [-webkit-app-region:no-drag]";
-
 const CLOSE_BUTTON_CLASS = "hover:bg-[#c42b1c] hover:text-white active:bg-[#b9281b]";
-
 function CaptionGlyph({ glyph }: { glyph: string }) {
   return (
     <span
       aria-hidden="true"
       className="text-[10px] leading-none"
-      style={{ fontFamily: '"Segoe Fluent Icons", "Segoe MDL2 Assets"' }}
+      style={{
+        fontFamily: '"Segoe Fluent Icons", "Segoe MDL2 Assets"',
+      }}
     >
       {glyph}
     </span>
   );
 }
-
 function CaptionSvg({ children }: { children: ReactNode }) {
   return (
     <span aria-hidden="true" className="flex size-3.5 items-center justify-center">
@@ -42,7 +36,6 @@ function CaptionSvg({ children }: { children: ReactNode }) {
     </span>
   );
 }
-
 export function DesktopWindowControls({ className }: { className?: string }) {
   const runControl = useRef<((title: string, action: () => Promise<unknown>) => void) | null>(null);
   const [windowState, setWindowState] = useState<DesktopWindowState>(DEFAULT_WINDOW_STATE);
@@ -50,7 +43,6 @@ export function DesktopWindowControls({ className }: { className?: string }) {
   const platform = getNavigatorPlatform();
   const useWindowsGlyphs = isWindowsPlatform(platform);
   const controls = typeof window === "undefined" ? undefined : window.desktopBridge?.windowControls;
-
   useEffect(() => {
     if (!controls) return;
     let cancelled = false;
@@ -89,13 +81,10 @@ export function DesktopWindowControls({ className }: { className?: string }) {
       unsubscribe();
     };
   }, [controls]);
-
   if (!isElectron || !customTitleBarActive || !controls) {
     return null;
   }
-
   const { isMaximized } = windowState;
-
   return (
     <div className={cn("flex h-[46px] items-stretch [-webkit-app-region:no-drag]", className)}>
       <button
@@ -128,7 +117,11 @@ export function DesktopWindowControls({ className }: { className?: string }) {
           <CaptionGlyph glyph={isMaximized ? GLYPH_RESTORE : GLYPH_MAXIMIZE} />
         ) : (
           <CaptionSvg>
-            {isMaximized ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
+            {isMaximized ? (
+              <CollapseIcon className="size-3.5" />
+            ) : (
+              <ArrowExpandIcon className="size-3.5" />
+            )}
           </CaptionSvg>
         )}
       </button>

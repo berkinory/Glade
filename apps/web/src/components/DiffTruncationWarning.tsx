@@ -1,12 +1,9 @@
-import type { HTMLAttributes } from "react";
-
 import { TriangleAlertIcon } from "~/lib/icons";
+import type { HTMLAttributes } from "react";
 import { cn } from "~/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
-
 const DEFAULT_DIFF_TRUNCATION_MESSAGE =
   "Glade stopped reading at the diff size limit. Some files or changes may be missing.";
-
 export function DiffTruncationWarning({
   className,
   children = DEFAULT_DIFF_TRUNCATION_MESSAGE,

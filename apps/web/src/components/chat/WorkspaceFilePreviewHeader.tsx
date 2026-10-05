@@ -1,21 +1,20 @@
+import {
+  ChevronRightIcon,
+  CodeSquareIcon,
+  Copy01Icon,
+  MessageCircleIcon,
+  EllipsisIcon,
+  ViewIcon,
+  RefreshCwIcon,
+} from "~/lib/icons";
 import { Spinner } from "~/components/ui/spinner";
 import {
   isWorkspaceRelativePathSafe,
   joinWorkspaceRelativePath,
 } from "@glade/shared/platform/path";
 import { type ReactNode, Fragment, useLayoutEffect, useRef, useState } from "react";
-
 import { useCopyFileContentsToClipboard, useCopyPathToClipboard } from "~/hooks/useCopyToClipboard";
 import type { ChatFileReference } from "~/lib/chatReferences";
-import {
-  ChevronRightIcon,
-  CodeIcon,
-  CopyIcon,
-  MessageCircleIcon,
-  EllipsisIcon,
-  EyeOpenIcon,
-  RefreshCwIcon,
-} from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { Menu, MenuItem, MenuTrigger } from "../ui/menu";
 import { CHAT_SURFACE_HEADER_DIVIDER_CLASS_NAME, ChatHeaderIconButton } from "./chatHeaderControls";
@@ -26,7 +25,6 @@ import {
   calculateBreadcrumbLayout,
   type CollapsedBreadcrumbLayout,
 } from "./workspaceFilePreviewBreadcrumb";
-
 interface WorkspaceFilePreviewHeaderProps {
   actions?: ReactNode;
   leading?: ReactNode;
@@ -44,34 +42,35 @@ interface WorkspaceFilePreviewHeaderProps {
         onChange: (rendered: boolean) => void;
       }
     | undefined;
-  reload?: { onClick: () => void; pending: boolean } | undefined;
+  reload?:
+    | {
+        onClick: () => void;
+        pending: boolean;
+      }
+    | undefined;
   onReferenceInChat?: ((reference: ChatFileReference) => void) | undefined;
 }
-
 const MARKDOWN_VIEW_SEGMENTS = [
   {
     rendered: false,
     label: "Source",
     title: "Source view",
-    Icon: CodeIcon,
+    Icon: CodeSquareIcon,
   },
   {
     rendered: true,
     label: "Preview",
     title: "Rendered preview — browse and toggle task lists",
-    Icon: EyeOpenIcon,
+    Icon: ViewIcon,
   },
 ] as const;
-
 interface BreadcrumbSegment {
   name: string;
   key: string;
 }
-
 const DIRTY_DOT_RESERVE_PX = 12;
 const FILE_ICON_RESERVE_PX = 20;
 const MEASURE_EPSILON_PX = 1;
-
 function CollapsingPathBreadcrumb(props: {
   prefixSegments: BreadcrumbSegment[];
   fileSegment: string;
@@ -83,7 +82,6 @@ function CollapsingPathBreadcrumb(props: {
   const measureRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLSpanElement>(null);
   const [collapsedLayout, setCollapsedLayout] = useState<CollapsedBreadcrumbLayout | null>(null);
-
   useLayoutEffect(() => {
     const nav = navRef.current;
     const measure = measureRef.current;
@@ -91,7 +89,6 @@ function CollapsingPathBreadcrumb(props: {
     if (!nav || !measure || !file) {
       return;
     }
-
     const compute = () => {
       const crumbWidths = Array.from(
         measure.querySelectorAll<HTMLElement>('[data-measure="crumb"]'),
@@ -108,7 +105,6 @@ function CollapsingPathBreadcrumb(props: {
         trailingReserveWidth:
           FILE_ICON_RESERVE_PX + (dirty ? DIRTY_DOT_RESERVE_PX : 0) + MEASURE_EPSILON_PX,
       });
-
       setCollapsedLayout((current) => {
         if (current === nextLayout) return current;
         if (current === null || nextLayout === null) return nextLayout;
@@ -118,16 +114,13 @@ function CollapsingPathBreadcrumb(props: {
           : nextLayout;
       });
     };
-
     compute();
-
     const observer = new ResizeObserver(compute);
     observer.observe(nav);
     observer.observe(measure);
     observer.observe(file);
     return () => observer.disconnect();
   }, [filePath, prefixSegments.length, dirty]);
-
   const visiblePrefix =
     collapsedLayout === null
       ? prefixSegments
@@ -136,14 +129,12 @@ function CollapsingPathBreadcrumb(props: {
     collapsedLayout !== null &&
     collapsedLayout.showEllipsis &&
     visiblePrefix.length < prefixSegments.length;
-
   const crumbChevron = (
     <ChevronRightIcon
       aria-hidden="true"
       className="mx-0.5 size-3 shrink-0 text-muted-foreground/40"
     />
   );
-
   return (
     <nav
       ref={navRef}
@@ -201,13 +192,11 @@ function CollapsingPathBreadcrumb(props: {
     </nav>
   );
 }
-
 export const WorkspaceFilePreviewHeader = function WorkspaceFilePreviewHeader(
   props: WorkspaceFilePreviewHeaderProps,
 ) {
   const { path: filePath, workspaceRoot, contentsForCopy } = props.file;
   const { markdownView } = props;
-
   const relativeSegments = filePath
     .replace(/\\/g, "/")
     .split("/")
@@ -217,16 +206,13 @@ export const WorkspaceFilePreviewHeader = function WorkspaceFilePreviewHeader(
     key: relativeSegments.slice(0, index + 1).join("/"),
   }));
   const fileSegment = relativeSegments.at(-1) ?? filePath;
-
   const { onReferenceInChat } = props;
   const copyFileContents = useCopyFileContentsToClipboard();
   const copyPathToClipboard = useCopyPathToClipboard();
-
   const openInTarget =
     !isWorkspaceRelativePathSafe(filePath) || !workspaceRoot
       ? filePath
       : joinWorkspaceRelativePath(workspaceRoot, filePath);
-
   return (
     <div
       className={cn(
@@ -310,7 +296,7 @@ export const WorkspaceFilePreviewHeader = function WorkspaceFilePreviewHeader(
           </MenuTrigger>
           <ComposerPickerMenuPopup align="end" side="bottom" className="w-52 min-w-52">
             <MenuItem onClick={() => copyPathToClipboard(openInTarget)}>
-              <CopyIcon className="size-3.5 shrink-0 text-muted-foreground" />
+              <Copy01Icon className="size-3.5 shrink-0 text-muted-foreground" />
               <span>Copy path</span>
             </MenuItem>
             {contentsForCopy != null ? (
@@ -321,12 +307,18 @@ export const WorkspaceFilePreviewHeader = function WorkspaceFilePreviewHeader(
                   })
                 }
               >
-                <CopyIcon className="size-3.5 shrink-0 text-muted-foreground" />
+                <Copy01Icon className="size-3.5 shrink-0 text-muted-foreground" />
                 Copy contents
               </MenuItem>
             ) : null}
             {onReferenceInChat ? (
-              <MenuItem onClick={() => onReferenceInChat({ path: filePath })}>
+              <MenuItem
+                onClick={() =>
+                  onReferenceInChat({
+                    path: filePath,
+                  })
+                }
+              >
                 <MessageCircleIcon className="size-3.5 shrink-0 text-muted-foreground" />
                 Reference in chat
               </MenuItem>

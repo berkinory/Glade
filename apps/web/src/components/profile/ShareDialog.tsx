@@ -1,9 +1,8 @@
+import { Copy01Icon, DownloadIcon } from "~/lib/icons";
+import { RedditIcon, XBrandIcon, LinkedInIcon } from "~/lib/brandIcons";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { SiReddit, SiX } from "react-icons/si";
-import { FaLinkedinIn } from "react-icons/fa6";
 import type { ProfileStats, ProfileTokenStats } from "@glade/contracts/server/stats";
 import { Dialog, DialogPopup, DialogTitle } from "~/components/ui/dialog";
-import { CopyIcon, DownloadIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { SHARE_CARD_HEIGHT, SHARE_CARD_WIDTH, ShareCard } from "./ShareCard";
 import {
@@ -14,11 +13,12 @@ import {
   shareIntentUrl,
 } from "./shareCardExport";
 import { downloadBlob } from "../../lib/browserDownload";
-
 const PREVIEW_WIDTH = 480;
-const CARD_EXPORT_SIZE = { width: SHARE_CARD_WIDTH, height: SHARE_CARD_HEIGHT } as const;
+const CARD_EXPORT_SIZE = {
+  width: SHARE_CARD_WIDTH,
+  height: SHARE_CARD_HEIGHT,
+} as const;
 type CopyResult = "copied" | "render-failed" | "clipboard-unavailable";
-
 interface ShareDialogProps {
   readonly stats: ProfileStats;
   readonly tokenStats: ProfileTokenStats | null;
@@ -29,7 +29,6 @@ interface ShareDialogProps {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
 }
-
 export function ShareDialog({
   stats,
   tokenStats,
@@ -45,7 +44,6 @@ export function ShareDialog({
   const [busy, setBusy] = useState<ShareTarget | "copy" | "save" | null>(null);
   const [previewWidth, setPreviewWidth] = useState(PREVIEW_WIDTH);
   const [status, setStatus] = useState<string | null>(null);
-
   useEffect(() => {
     if (!open) {
       return;
@@ -54,39 +52,32 @@ export function ShareDialog({
     if (!node) {
       return;
     }
-
     const updatePreviewWidth = (width: number) => {
       setPreviewWidth(Math.max(1, Math.min(PREVIEW_WIDTH, Math.floor(width))));
     };
     updatePreviewWidth(node.clientWidth || PREVIEW_WIDTH);
-
     if (typeof ResizeObserver === "undefined") {
       const handleResize = () => updatePreviewWidth(node.clientWidth || PREVIEW_WIDTH);
       window.addEventListener("resize", handleResize);
       return () => window.removeEventListener("resize", handleResize);
     }
-
     const observer = new ResizeObserver((entries) => {
       updatePreviewWidth(entries[0]?.contentRect.width ?? node.clientWidth ?? PREVIEW_WIDTH);
     });
     observer.observe(node);
     return () => observer.disconnect();
   }, [open]);
-
   const copyCardToClipboard = async (): Promise<CopyResult> => {
     const node = cardRef.current;
     if (!node) {
       return "render-failed";
     }
-
     const blob = await renderNodeToPngBlob(node, CARD_EXPORT_SIZE);
     if (!blob) {
       return "render-failed";
     }
-
     return (await copyImageToClipboard(blob)) ? "copied" : "clipboard-unavailable";
   };
-
   const handleCopy = () => {
     setBusy("copy");
     setStatus(null);
@@ -98,7 +89,6 @@ export function ShareDialog({
         setBusy(null);
       });
   };
-
   const handleShare = (target: ShareTarget) => {
     setBusy(target);
     setStatus(null);
@@ -111,7 +101,6 @@ export function ShareDialog({
         setBusy(null);
       });
   };
-
   const handleSave = () => {
     const node = cardRef.current;
     if (!node) {
@@ -132,10 +121,8 @@ export function ShareDialog({
         setBusy(null);
       });
   };
-
   const previewScale = previewWidth / SHARE_CARD_WIDTH;
   const actionsDisabled = busy !== null;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPopup className="sm:max-w-[560px]">
@@ -144,7 +131,9 @@ export function ShareDialog({
           <div
             ref={previewRef}
             className="w-full max-w-[480px] overflow-hidden rounded-2xl border bg-white shadow-sm"
-            style={{ aspectRatio: `${SHARE_CARD_WIDTH} / ${SHARE_CARD_HEIGHT}` }}
+            style={{
+              aspectRatio: `${SHARE_CARD_WIDTH} / ${SHARE_CARD_HEIGHT}`,
+            }}
           >
             <div
               style={{
@@ -173,7 +162,7 @@ export function ShareDialog({
               disabled={actionsDisabled}
               onClick={() => void handleCopy()}
             >
-              <CopyIcon className="size-5" />
+              <Copy01Icon className="size-5" />
             </ShareButton>
             <ShareButton
               label="X"
@@ -181,7 +170,7 @@ export function ShareDialog({
               disabled={actionsDisabled}
               onClick={() => void handleShare("x")}
             >
-              <SiX className="size-5" />
+              <XBrandIcon className="size-5" />
             </ShareButton>
             <ShareButton
               label="LinkedIn"
@@ -189,7 +178,7 @@ export function ShareDialog({
               disabled={actionsDisabled}
               onClick={() => void handleShare("linkedin")}
             >
-              <FaLinkedinIn className="size-5" />
+              <LinkedInIcon className="size-5" />
             </ShareButton>
             <ShareButton
               label="Reddit"
@@ -197,7 +186,7 @@ export function ShareDialog({
               disabled={actionsDisabled}
               onClick={() => void handleShare("reddit")}
             >
-              <SiReddit className="size-5" />
+              <RedditIcon className="size-5" />
             </ShareButton>
             <ShareButton
               label="Save"
@@ -218,7 +207,6 @@ export function ShareDialog({
     </Dialog>
   );
 }
-
 function copyStatusMessage(result: CopyResult): string {
   switch (result) {
     case "copied":
@@ -229,7 +217,6 @@ function copyStatusMessage(result: CopyResult): string {
       return "Image copy unavailable. Use Save instead.";
   }
 }
-
 function shareStatusMessage(result: CopyResult): string {
   switch (result) {
     case "copied":
@@ -240,7 +227,6 @@ function shareStatusMessage(result: CopyResult): string {
       return "Composer opened. Image copy unavailable; use Save to attach.";
   }
 }
-
 interface ShareButtonProps {
   readonly label: string;
   readonly ariaLabel?: string;
@@ -249,7 +235,6 @@ interface ShareButtonProps {
   readonly onClick: () => void;
   readonly children: ReactNode;
 }
-
 function ShareButton({ label, ariaLabel, busy, disabled, onClick, children }: ShareButtonProps) {
   return (
     <div className="flex flex-col items-center gap-2">

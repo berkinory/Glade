@@ -1,8 +1,8 @@
+import { PlusIcon } from "~/lib/icons";
 import { isShortcutComposition } from "@glade/shared/settings/shortcutEvent";
 import { useSidebarDesktopUpdate } from "./useSidebarDesktopUpdate";
 import { useStore } from "../store";
 import { useSidebarStateStore } from "../sidebarStateStore";
-import { AddPlusIcon } from "~/lib/icons";
 import { useEffect } from "react";
 import { ProjectId, SpaceId } from "@glade/contracts/core/baseSchemas";
 import { isOrdinarySpaceProject } from "../lib/spaces";
@@ -28,7 +28,6 @@ import {
   threadJumpLabelMapsEqual,
   buildThreadJumpLabelMap,
 } from "./sidebarSupport";
-
 export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDerivedLists>) {
   const {
     projects,
@@ -66,15 +65,12 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
     showThreadJumpHintsRef,
   } = context;
   const toggleProject = useStore((state) => state.toggleProject);
-
   const selectedThreadIds = useSidebarStateStore((state) => state.selectedThreadIds);
   const clearSelection = useSidebarStateStore((state) => state.clearSelection);
-
   const setThreadListExtraPagesByProjectCwd = useSidebarStateStore(
     (state) => state.setThreadListExtraPagesByProjectCwd,
   );
   const activityViewEnabled = useSidebarStateStore((state) => state.activityViewEnabled);
-
   const resetProjectThreadPagingOnClose = (projectId: ProjectId) => {
     const project = projectById.get(projectId);
     if (!project?.expanded) return;
@@ -86,7 +82,6 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
       return next;
     });
   };
-
   const handleProjectTitleClick = (
     event: React.MouseEvent<HTMLButtonElement>,
     projectId: ProjectId,
@@ -108,7 +103,6 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
     resetProjectThreadPagingOnClose(projectId);
     toggleProject(projectId);
   };
-
   const handleProjectTitleKeyDown = (
     event: React.KeyboardEvent<HTMLButtonElement>,
     projectId: ProjectId,
@@ -121,7 +115,6 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
     resetProjectThreadPagingOnClose(projectId);
     toggleProject(projectId);
   };
-
   useEffect(() => {
     const onMouseDown = (event: globalThis.MouseEvent) => {
       if (selectedThreadIds.size === 0) return;
@@ -129,13 +122,11 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
       if (!shouldClearThreadSelectionOnMouseDown(target)) return;
       clearSelection();
     };
-
     window.addEventListener("mousedown", onMouseDown);
     return () => {
       window.removeEventListener("mousedown", onMouseDown);
     };
   }, [clearSelection, selectedThreadIds.size]);
-
   useEffect(() => {
     const clearThreadJumpHints = () => {
       setThreadJumpLabelByThreadId((current) =>
@@ -154,7 +145,6 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
       event.key !== "Shift" &&
       !showThreadJumpHintsRef.current &&
       threadJumpLabelsRef.current === EMPTY_THREAD_JUMP_LABELS;
-
     const onKeyDown = (event: KeyboardEvent) => {
       if (
         event.defaultPrevented ||
@@ -162,7 +152,6 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
         document.activeElement?.hasAttribute("data-keybinding-capture")
       )
         return;
-
       const shortcutContext = getCurrentSidebarShortcutContext();
       if (!shouldIgnoreThreadJumpHintUpdate(event)) {
         const shouldShowHints = shouldShowThreadJumpHints(event, keybindings, {
@@ -189,7 +178,6 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
           setShowThreadJumpHints(true);
         }
       }
-
       const command = resolveShortcutCommand(event, keybindings, {
         context: shortcutContext,
       });
@@ -220,12 +208,19 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
         event.stopPropagation();
         void navigate({
           to: "/settings",
-          search: { section: "usage" },
+          search: {
+            section: "usage",
+          },
         });
         return;
       }
       if (command === "space.previous" || command === "space.next") {
-        if (!isProjectsSidebarSurface({ isOnSettings })) return;
+        if (
+          !isProjectsSidebarSurface({
+            isOnSettings,
+          })
+        )
+          return;
         event.preventDefault();
         event.stopPropagation();
         const orderedSpaceIds: ReadonlyArray<SpaceId | null> = [
@@ -240,8 +235,12 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
       }
       const spaceJumpIndex = spaceJumpIndexFromCommand(command ?? "");
       if (spaceJumpIndex !== null) {
-        if (!isProjectsSidebarSurface({ isOnSettings })) return;
-
+        if (
+          !isProjectsSidebarSurface({
+            isOnSettings,
+          })
+        )
+          return;
         const orderedSpaceIds: ReadonlyArray<SpaceId | null> = [
           null,
           ...spaces.map((space) => space.id),
@@ -269,7 +268,6 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
       if (command !== "chat.visible.next" && command !== "chat.visible.previous") {
         return;
       }
-
       event.preventDefault();
       event.stopPropagation();
       const nextThreadId = getNextVisibleSidebarThreadId({
@@ -308,13 +306,20 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
     const onWindowBlur = () => {
       clearThreadJumpHints();
     };
-
-    window.addEventListener("keydown", onKeyDown, { capture: true });
-    window.addEventListener("keyup", onKeyUp, { capture: true });
+    window.addEventListener("keydown", onKeyDown, {
+      capture: true,
+    });
+    window.addEventListener("keyup", onKeyUp, {
+      capture: true,
+    });
     window.addEventListener("blur", onWindowBlur);
     return () => {
-      window.removeEventListener("keydown", onKeyDown, { capture: true });
-      window.removeEventListener("keyup", onKeyUp, { capture: true });
+      window.removeEventListener("keydown", onKeyDown, {
+        capture: true,
+      });
+      window.removeEventListener("keyup", onKeyUp, {
+        capture: true,
+      });
       window.removeEventListener("blur", onWindowBlur);
     };
   }, [
@@ -341,11 +346,14 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
     setShowThreadJumpHints,
     setCreateProjectDialogOpen,
   ]);
-
   const desktopUpdate = useSidebarDesktopUpdate();
-
   const searchPaletteProjects: SidebarSearchProject[] = projects
-    .filter((project) => isOrdinarySpaceProject(project, { homeDir, chatWorkspaceRoot }))
+    .filter((project) =>
+      isOrdinarySpaceProject(project, {
+        homeDir,
+        chatWorkspaceRoot,
+      }),
+    )
     .map((project) => ({
       id: project.id,
       name: project.name,
@@ -358,7 +366,6 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
     }));
-
   const searchPaletteActions: SidebarSearchAction[] = [
     {
       id: "new-chat",
@@ -401,14 +408,12 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
       keywords: ["usage", "limits", "credits", "quota", "providers"],
       shortcutLabel: usageSettingsShortcutLabel,
     },
-
     ...(spaces.length > 0
       ? [
           {
             id: "switch-space-void",
             label: `Switch to ${voidSpace.name}`,
             description: "Jump to unassigned projects.",
-
             keywords: ["space", "switch", "void", "unassigned", voidSpace.name],
             requiresQuery: true,
             run: () => handleSelectSpace(null),
@@ -438,10 +443,9 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
       description: "Group projects into a focused work context.",
       keywords: ["space", "create", "new", "group", "workspace"],
       run: () => openSpaceCreator(),
-      icon: AddPlusIcon,
+      icon: PlusIcon,
     },
   ];
-
   const setThreadListExtraPagesForProject = (projectCwd: string, nextExtraPages: number) => {
     const cwdKey = normalizeSidebarProjectThreadListCwd(projectCwd);
     if (cwdKey.length === 0) return;
@@ -457,7 +461,6 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
       return next;
     });
   };
-
   const showMoreThreadsForProject = (projectCwd: string, currentExtraPages: number) => {
     setThreadListExtraPagesForProject(projectCwd, currentExtraPages + 1);
   };

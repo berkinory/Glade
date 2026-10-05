@@ -1,24 +1,23 @@
+import {
+  CheckIcon,
+  Copy01Icon,
+  CollapseIcon,
+  ExpandIcon,
+  PauseFilledIcon,
+  PlayFilledIcon,
+  SquareFilledIcon,
+  WorkflowSquare01Icon,
+  XIcon,
+} from "~/lib/icons";
 import { Spinner } from "~/components/ui/spinner";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { pluralize } from "@glade/shared/text/text";
 import { useState } from "react";
-
 import { formatContextWindowTokens } from "~/lib/contextWindow";
 import {
   subagentStatusDotClassName,
   subagentStatusTextToneClassName,
 } from "~/lib/subagentPresentation";
-import {
-  CheckIcon,
-  CopyIcon,
-  PanelCollapseIcon,
-  PanelExpandIcon,
-  PauseIcon,
-  PlayIcon,
-  StopIcon,
-  WorkflowIcon,
-  XIcon,
-} from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { useCopyToClipboard } from "../../lib/clipboard";
 import { useNowMs } from "~/hooks/useNowMs";
@@ -43,7 +42,6 @@ import {
   COMPOSER_STACKED_PANEL_ICON_CLASS_NAME,
   COMPOSER_STACKED_PANEL_SCROLL_REGION_CLASS_NAME,
 } from "./composerStackedPanelStyles";
-
 interface WorkflowRunCardProps {
   workflowRun: WorkflowRunState;
   compact: boolean;
@@ -55,26 +53,39 @@ interface WorkflowRunCardProps {
   onDismiss: () => void;
   attachedToPrevious?: boolean;
 }
-
 function settledWorkflowPresentation(workflowRun: WorkflowRunState): {
   label: string;
   toneClassName: string;
 } {
   if (workflowRun.pausedByUser) {
-    return { label: "Paused", toneClassName: "text-amber-300/80" };
+    return {
+      label: "Paused",
+      toneClassName: "text-amber-300/80",
+    };
   }
   switch (workflowRun.status) {
     case "paused":
-      return { label: "Paused", toneClassName: "text-amber-300/80" };
+      return {
+        label: "Paused",
+        toneClassName: "text-amber-300/80",
+      };
     case "failed":
-      return { label: "Failed", toneClassName: "text-rose-300/85" };
+      return {
+        label: "Failed",
+        toneClassName: "text-rose-300/85",
+      };
     case "stopped":
-      return { label: "Stopped", toneClassName: "text-amber-300/80" };
+      return {
+        label: "Stopped",
+        toneClassName: "text-amber-300/80",
+      };
     default:
-      return { label: "Completed", toneClassName: "text-emerald-300/75" };
+      return {
+        label: "Completed",
+        toneClassName: "text-emerald-300/75",
+      };
   }
 }
-
 function agentRowMeta(agent: WorkflowAgentRow, nowMs: number): string | null {
   const elapsedMs = workflowElapsedMs(agent, nowMs);
   const parts = [
@@ -83,7 +94,6 @@ function agentRowMeta(agent: WorkflowAgentRow, nowMs: number): string | null {
   ].filter((part): part is string => part !== null);
   return parts.length > 0 ? parts.join(" · ") : null;
 }
-
 function agentDetailStatsLine(agent: WorkflowAgentRow, nowMs: number): string | null {
   const elapsedMs = workflowElapsedMs(agent, nowMs);
   const parts = [
@@ -95,7 +105,6 @@ function agentDetailStatsLine(agent: WorkflowAgentRow, nowMs: number): string | 
   ].filter((part): part is string => part !== null);
   return parts.length > 0 ? parts.join(" · ") : null;
 }
-
 function WorkflowAgentDetail({
   agent,
   nowMs,
@@ -115,7 +124,6 @@ function WorkflowAgentDetail({
     .join(" · ");
   const statsLine = agentDetailStatsLine(agent, nowMs);
   const { threadId } = agent;
-
   return (
     <div
       data-testid="workflow-agent-detail"
@@ -176,7 +184,6 @@ function WorkflowAgentDetail({
     </div>
   );
 }
-
 function WorkflowAgentRowView({
   agent,
   nowMs,
@@ -191,7 +198,6 @@ function WorkflowAgentRowView({
   onOpenThread: (threadId: ThreadId) => void;
 }) {
   const meta = agentRowMeta(agent, nowMs);
-
   return (
     <div>
       <button
@@ -248,7 +254,6 @@ function WorkflowAgentRowView({
     </div>
   );
 }
-
 export function WorkflowRunCard({
   workflowRun,
   compact,
@@ -263,7 +268,6 @@ export function WorkflowRunCard({
   const nowMs = useNowMs(!workflowRun.settled);
   const attachedToPrevious = attachedToPreviousProp ?? false;
   const { copyToClipboard, isCopied } = useCopyToClipboard();
-
   const [filterPhaseTitle, setFilterPhaseTitle] = useState<string | null>(null);
   const [expandedAgentIds, setExpandedAgentIds] = useState<ReadonlySet<string>>(new Set());
   const toggleAgentExpanded = (taskId: string) => {
@@ -301,7 +305,6 @@ export function WorkflowRunCard({
     phase,
     agents: workflowRun.agents.filter((agent) => agent.phase === phase.title),
   }));
-
   const showPhasePills = (phaseGroups?.length ?? 0) > 1;
   const selectedPhaseTitle =
     filterPhaseTitle !== null && phaseGroups?.some(({ phase }) => phase.title === filterPhaseTitle)
@@ -318,7 +321,6 @@ export function WorkflowRunCard({
   const selectPhase = (title: string) => {
     setFilterPhaseTitle((previous) => (previous === title ? null : title));
   };
-
   return (
     <ComposerStackedPanel
       passthroughSideMargins
@@ -330,7 +332,7 @@ export function WorkflowRunCard({
           {compact && workflowRun.runningCount > 0 ? (
             <Spinner variant="working" className={COMPOSER_STACKED_PANEL_ICON_CLASS_NAME} />
           ) : (
-            <WorkflowIcon className={COMPOSER_STACKED_PANEL_ICON_CLASS_NAME} />
+            <WorkflowSquare01Icon className={COMPOSER_STACKED_PANEL_ICON_CLASS_NAME} />
           )}
           <ComposerStackedPanelRowLabel tone="meta">
             <span className="font-medium text-foreground/80">{workflowRun.name}</span>
@@ -356,7 +358,7 @@ export function WorkflowRunCard({
                   aria-label="Resume workflow"
                   title="Resume workflow"
                 >
-                  <PlayIcon className="size-3" />
+                  <PlayFilledIcon className="size-3" />
                 </Button>
               ) : null}
               <Button
@@ -382,7 +384,7 @@ export function WorkflowRunCard({
                 aria-label="Pause workflow"
                 title="Pause workflow (resume replays completed agents from cache)"
               >
-                <PauseIcon className="size-3" />
+                <PauseFilledIcon className="size-3" />
               </Button>
               <Button
                 type="button"
@@ -393,7 +395,7 @@ export function WorkflowRunCard({
                 aria-label="Stop workflow"
                 title="Stop workflow"
               >
-                <StopIcon className="size-3" />
+                <SquareFilledIcon className="size-3" />
               </Button>
             </>
           )}
@@ -406,11 +408,7 @@ export function WorkflowRunCard({
             aria-label={compact ? "Expand workflow panel" : "Collapse workflow panel"}
             title={compact ? "Expand workflow panel" : "Collapse workflow panel"}
           >
-            {compact ? (
-              <PanelExpandIcon className="size-3" />
-            ) : (
-              <PanelCollapseIcon className="size-3" />
-            )}
+            {compact ? <ExpandIcon className="size-3" /> : <CollapseIcon className="size-3" />}
           </Button>
         </div>
       </ComposerStackedPanelHeaderRow>
@@ -511,7 +509,7 @@ export function WorkflowRunCard({
                 aria-label="Copy script path and run id"
                 title={savedLine}
               >
-                {isCopied ? <CheckIcon className="size-3" /> : <CopyIcon className="size-3" />}
+                {isCopied ? <CheckIcon className="size-3" /> : <Copy01Icon className="size-3" />}
               </Button>
             </div>
           ) : null}

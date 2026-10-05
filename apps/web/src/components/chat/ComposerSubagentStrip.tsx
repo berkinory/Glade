@@ -1,15 +1,14 @@
+import {
+  ArrowDownToLineIcon,
+  CornerUpLeftIcon,
+  Robot01Icon,
+  CollapseIcon,
+  ExpandIcon,
+  SquareFilledIcon,
+} from "~/lib/icons";
 import { Spinner } from "~/components/ui/spinner";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { pluralize } from "@glade/shared/text/text";
-
-import {
-  BackgroundTrayIcon,
-  BackToParentIcon,
-  BotIcon,
-  PanelCollapseIcon,
-  PanelExpandIcon,
-  StopIcon,
-} from "~/lib/icons";
 import {
   subagentStatusDotClassName,
   subagentStatusTextToneClassName,
@@ -33,7 +32,6 @@ import {
   COMPOSER_STACKED_PANEL_ICON_CLASS_NAME,
   COMPOSER_STACKED_PANEL_SCROLL_REGION_CLASS_NAME,
 } from "./composerStackedPanelStyles";
-
 interface ComposerSubagentStripProps {
   items: ReadonlyArray<ComposerSubagentStripRow>;
   compact: boolean;
@@ -44,7 +42,6 @@ interface ComposerSubagentStripProps {
   onStopAll?: () => void;
   attachedToPrevious?: boolean;
 }
-
 export const ComposerSubagentStrip = function ComposerSubagentStrip({
   items,
   compact,
@@ -60,7 +57,6 @@ export const ComposerSubagentStrip = function ComposerSubagentStrip({
     (item): item is ComposerSubagentStripItem => item.kind === "subagent",
   );
   const runningCount = subagentItems.filter((item) => item.isActive).length;
-
   return (
     <ComposerStackedPanel
       passthroughSideMargins
@@ -72,7 +68,7 @@ export const ComposerSubagentStrip = function ComposerSubagentStrip({
           {compact && runningCount > 0 ? (
             <Spinner variant="working" className={COMPOSER_STACKED_PANEL_ICON_CLASS_NAME} />
           ) : (
-            <BotIcon className={COMPOSER_STACKED_PANEL_ICON_CLASS_NAME} />
+            <Robot01Icon className={COMPOSER_STACKED_PANEL_ICON_CLASS_NAME} />
           )}
           <ComposerStackedPanelRowLabel tone="meta">
             {runningCount > 0
@@ -90,7 +86,7 @@ export const ComposerSubagentStrip = function ComposerSubagentStrip({
             aria-label="Stop all subagents"
             title="Stop all running subagents"
           >
-            <StopIcon className="size-3" />
+            <SquareFilledIcon className="size-3" />
           </Button>
         ) : null}
         <Button
@@ -102,11 +98,7 @@ export const ComposerSubagentStrip = function ComposerSubagentStrip({
           aria-label={compact ? "Expand subagent strip" : "Collapse subagent strip"}
           title={compact ? "Expand subagent strip" : "Collapse subagent strip"}
         >
-          {compact ? (
-            <PanelExpandIcon className="size-3" />
-          ) : (
-            <PanelCollapseIcon className="size-3" />
-          )}
+          {compact ? <ExpandIcon className="size-3" /> : <CollapseIcon className="size-3" />}
         </Button>
       </ComposerStackedPanelHeaderRow>
 
@@ -131,7 +123,7 @@ export const ComposerSubagentStrip = function ComposerSubagentStrip({
                   title={item.label}
                   onClick={() => onOpenThread(item.threadId)}
                 >
-                  <BackToParentIcon className="size-3 shrink-0 text-muted-foreground/55" />
+                  <CornerUpLeftIcon className="size-3 shrink-0 text-muted-foreground/55" />
                   <span className="min-w-0 flex-1 truncate text-ui font-medium text-foreground/85">
                     {item.label}
                   </span>
@@ -201,7 +193,7 @@ export const ComposerSubagentStrip = function ComposerSubagentStrip({
                     aria-label="Run in background (ctrl+b)"
                     title="Run in background (ctrl+b)"
                   >
-                    <BackgroundTrayIcon className="size-3" />
+                    <ArrowDownToLineIcon className="size-3" />
                   </Button>
                 ) : null}
                 {item.isActive && onStopItem ? (
@@ -217,7 +209,7 @@ export const ComposerSubagentStrip = function ComposerSubagentStrip({
                     aria-label="Stop subagent"
                     title="Stop subagent"
                   >
-                    <StopIcon className="size-3" />
+                    <SquareFilledIcon className="size-3" />
                   </Button>
                 ) : null}
               </div>

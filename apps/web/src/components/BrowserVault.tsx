@@ -1,18 +1,16 @@
+import { KeyIcon, KeyRoundIcon, ViewIcon, Delete02Icon } from "~/lib/icons";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   BrowserVaultSettings,
   BrowserVaultSnapshot,
 } from "@glade/contracts/browser/browserVault";
-import { CentralIcon } from "~/lib/central-icons";
 import { readNativeApi } from "~/nativeApi";
 import { Button } from "./ui/button";
 import { Dialog, DialogHeader, DialogPanel, DialogPopup, DialogTitle } from "./ui/dialog";
 import { DisclosureRegion } from "./ui/DisclosureRegion";
 import { Switch } from "./ui/switch";
 import { BrowserVaultMaster } from "./BrowserVaultMaster";
-
 const OPEN_EVENT = "glade:open-browser-vault";
-
 export function BrowserVaultButton() {
   if (!readNativeApi()?.browser.vault) return null;
   return (
@@ -25,11 +23,10 @@ export function BrowserVaultButton() {
       title="Saved logins"
       onClick={() => window.dispatchEvent(new Event(OPEN_EVENT))}
     >
-      <CentralIcon name="key-1" className="size-3.5" />
+      <KeyIcon className="size-3.5" />
     </Button>
   );
 }
-
 export function BrowserVaultDialog() {
   const api = readNativeApi()?.browser.vault;
   const [open, setOpen] = useState(false);
@@ -38,12 +35,18 @@ export function BrowserVaultDialog() {
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [master, setMaster] = useState<
-    { kind: "setup" | "unlock" } | { kind: "reveal"; id: string } | null
+    | {
+        kind: "setup" | "unlock";
+      }
+    | {
+        kind: "reveal";
+        id: string;
+      }
+    | null
   >(null);
   const revision = useRef(0);
   const mounted = useRef(false);
   const lastPrompt = useRef<string | undefined>(undefined);
-
   const reload = useCallback(async () => {
     if (!api || !mounted.current) return;
     const request = ++revision.current;
@@ -59,10 +62,8 @@ export function BrowserVaultDialog() {
         setError("Saved logins could not be loaded.");
     }
   }, [api]);
-
   useEffect(() => {
     const effectRevision = revision;
-
     mounted.current = true;
     const show = () => {
       setOpen(true);
@@ -80,7 +81,6 @@ export function BrowserVaultDialog() {
       window.removeEventListener(OPEN_EVENT, show);
     };
   }, [api, reload]);
-
   const act = async (action: () => Promise<unknown>) => {
     if (busy) return;
     setBusy(true);
@@ -96,9 +96,13 @@ export function BrowserVaultDialog() {
   };
   const configure = (changes: Partial<BrowserVaultSettings>) => {
     if (!snapshot || !api) return;
-    void act(() => api.configure({ ...snapshot.settings, ...changes }));
+    void act(() =>
+      api.configure({
+        ...snapshot.settings,
+        ...changes,
+      }),
+    );
   };
-
   if (!api) return null;
   return (
     <Dialog
@@ -114,7 +118,7 @@ export function BrowserVaultDialog() {
       <DialogPopup className="max-w-lg">
         <DialogHeader className="pb-3">
           <DialogTitle className="flex items-center gap-2 pr-8">
-            <CentralIcon name="key-1" className="size-4 text-muted-foreground" />
+            <KeyIcon className="size-4 text-muted-foreground" />
             Saved logins
           </DialogTitle>
         </DialogHeader>
@@ -150,7 +154,9 @@ export function BrowserVaultDialog() {
                   <Button
                     size="sm"
                     onClick={() =>
-                      setMaster({ kind: snapshot.protection.configured ? "unlock" : "setup" })
+                      setMaster({
+                        kind: snapshot.protection.configured ? "unlock" : "setup",
+                      })
                     }
                   >
                     {snapshot.protection.configured ? "Unlock" : "Set master password"}
@@ -183,7 +189,12 @@ export function BrowserVaultDialog() {
                       variant="ghost"
                       disabled={busy}
                       onClick={() => {
-                        void act(() => api.respond({ id: prompt.id, save: false }));
+                        void act(() =>
+                          api.respond({
+                            id: prompt.id,
+                            save: false,
+                          }),
+                        );
                       }}
                     >
                       Not now
@@ -192,7 +203,12 @@ export function BrowserVaultDialog() {
                       size="sm"
                       disabled={busy}
                       onClick={() => {
-                        void act(() => api.respond({ id: prompt.id, save: true }));
+                        void act(() =>
+                          api.respond({
+                            id: prompt.id,
+                            save: true,
+                          }),
+                        );
                       }}
                     >
                       {prompt.mode === "update" ? "Update" : "Save"}
@@ -207,7 +223,7 @@ export function BrowserVaultDialog() {
                 </div>
                 {snapshot.logins.length === 0 ? (
                   <div className="flex flex-col items-center gap-3 py-6 text-center">
-                    <CentralIcon name="keyhole" className="size-7 text-muted-foreground/60" />
+                    <KeyRoundIcon className="size-7 text-muted-foreground/60" />
                     <p className="text-ui leading-snug text-muted-foreground">No saved logins.</p>
                     <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
                       Back to browser
@@ -218,7 +234,7 @@ export function BrowserVaultDialog() {
                     {snapshot.logins.map((login) => (
                       <li key={login.id} className="py-3">
                         <div className="flex items-start gap-3">
-                          <CentralIcon name="key-1" className="mt-1 size-4 text-muted-foreground" />
+                          <KeyIcon className="mt-1 size-4 text-muted-foreground" />
                           <div className="min-w-0 flex-1">
                             <p className="break-words text-ui leading-snug font-medium">
                               {login.origin}
@@ -248,12 +264,17 @@ export function BrowserVaultDialog() {
                             onClick={() =>
                               setMaster(
                                 snapshot.protection.configured
-                                  ? { kind: "reveal", id: login.id }
-                                  : { kind: "setup" },
+                                  ? {
+                                      kind: "reveal",
+                                      id: login.id,
+                                    }
+                                  : {
+                                      kind: "setup",
+                                    },
                               )
                             }
                           >
-                            <CentralIcon name="eye-open" className="size-4" />
+                            <ViewIcon className="size-4" />
                           </Button>
                           <Button
                             variant="ghost"
@@ -263,7 +284,7 @@ export function BrowserVaultDialog() {
                             disabled={busy}
                             onClick={() => setDeleting(login.id)}
                           >
-                            <CentralIcon name="trash-can" className="size-4" />
+                            <Delete02Icon className="size-4" />
                           </Button>
                         </div>
                         <DisclosureRegion
@@ -328,7 +349,10 @@ export function BrowserVaultDialog() {
                       if (snapshot.protection.configured) {
                         setMaster(null);
                         void act(() => api.lock());
-                      } else setMaster({ kind: "setup" });
+                      } else
+                        setMaster({
+                          kind: "setup",
+                        });
                     }}
                   >
                     {snapshot.protection.configured ? "Lock saved logins" : "Set up"}
@@ -340,7 +364,11 @@ export function BrowserVaultDialog() {
                     aria-label="Allow agents to find saved accounts"
                     checked={snapshot.settings.agentUse}
                     disabled={busy}
-                    onCheckedChange={(agentUse) => configure({ agentUse })}
+                    onCheckedChange={(agentUse) =>
+                      configure({
+                        agentUse,
+                      })
+                    }
                   />
                 </label>
                 <p className="text-ui leading-snug text-muted-foreground">
@@ -353,7 +381,14 @@ export function BrowserVaultDialog() {
                     checked={snapshot.settings.offerSave}
                     disabled={busy}
                     onCheckedChange={(offerSave) =>
-                      configure({ offerSave, ...(offerSave ? {} : { autosave: false }) })
+                      configure({
+                        offerSave,
+                        ...(offerSave
+                          ? {}
+                          : {
+                              autosave: false,
+                            }),
+                      })
                     }
                   />
                 </label>
@@ -363,7 +398,11 @@ export function BrowserVaultDialog() {
                     aria-label="Autosave accepted logins"
                     checked={snapshot.settings.autosave}
                     disabled={busy || !snapshot.settings.offerSave}
-                    onCheckedChange={(autosave) => configure({ autosave })}
+                    onCheckedChange={(autosave) =>
+                      configure({
+                        autosave,
+                      })
+                    }
                   />
                 </label>
               </section>

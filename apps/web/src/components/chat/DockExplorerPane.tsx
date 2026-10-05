@@ -1,9 +1,8 @@
+import { PanelLeftIcon } from "~/lib/icons";
 import { useEffect, useId, useState, useCallback, useSyncExternalStore } from "react";
-
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { isNormalizedWindowsAbsolutePath } from "@glade/shared/platform/path";
 import { useQueryClient } from "@tanstack/react-query";
-
 import { directoryChain, useExplorerRevealRequestStore } from "~/explorerRevealRequestStore";
 import type { ChatFileReference } from "~/lib/chatReferences";
 import { basenameOfPath } from "~/file-icons";
@@ -21,16 +20,18 @@ import { PanelStateMessage } from "./PanelStateMessage";
 import { IconButton } from "../ui/icon-button";
 import { disclosureWidthClassName } from "~/lib/disclosureMotion";
 import { cn } from "~/lib/utils";
-import { PanelLeftIcon } from "~/lib/icons";
 import { WorkspaceExplorerSidebar } from "./workspaceExplorer";
-
 const DOCK_EXPLORER_SIDEBAR_CLASS = "h-full min-h-0 shrink-0 bg-[var(--app-content-surface)]";
-
 export const DockExplorerPane = function DockExplorerPane(props: {
   navigationOnly?: boolean;
   onRevealPosition?: (
     position:
-      | { filePath: string; lineNumber: number; column?: number; requestId: number }
+      | {
+          filePath: string;
+          lineNumber: number;
+          column?: number;
+          requestId: number;
+        }
       | undefined,
   ) => void;
   threadId: ThreadId;
@@ -64,7 +65,6 @@ export const DockExplorerPane = function DockExplorerPane(props: {
     column?: number;
     requestId: number;
   }>();
-
   const revealRequest = useExplorerRevealRequestStore(
     (state) => state.requestsByThreadId[props.threadId],
   );
@@ -73,12 +73,18 @@ export const DockExplorerPane = function DockExplorerPane(props: {
     if (!revealRequest) return;
     setCodeQuery("");
     const nextPosition = revealRequest.position
-      ? { ...revealRequest.position, requestId: revealRequest.nonce }
+      ? {
+          ...revealRequest.position,
+          requestId: revealRequest.nonce,
+        }
       : undefined;
     setRevealPosition(nextPosition);
     onRevealPosition?.(
       nextPosition && revealRequest.filePath
-        ? { ...nextPosition, filePath: revealRequest.filePath }
+        ? {
+            ...nextPosition,
+            filePath: revealRequest.filePath,
+          }
         : undefined,
     );
     if (revealRequest.filePath)
@@ -96,13 +102,15 @@ export const DockExplorerPane = function DockExplorerPane(props: {
       expand(directoryChain(revealRequest.path));
       return;
     }
-
     const reveal = async () => {
       let parentPath = "";
       const paths: string[] = [];
       for (const segment of revealRequest.path.split("/").filter(Boolean)) {
         const listing = await queryClient.fetchQuery(
-          projectListDirectoriesQueryOptions({ cwd: workspaceRoot, relativePath: parentPath }),
+          projectListDirectoriesQueryOptions({
+            cwd: workspaceRoot,
+            relativePath: parentPath,
+          }),
         );
         if (cancelled) return;
         const entry = listing.entries.find(
@@ -131,8 +139,12 @@ export const DockExplorerPane = function DockExplorerPane(props: {
     acknowledgeRequest,
     onRevealPosition,
   ]);
-
-  const handleSelectFile = (path: string, options?: { preview?: boolean }) => {
+  const handleSelectFile = (
+    path: string,
+    options?: {
+      preview?: boolean;
+    },
+  ) => {
     openFile(props.threadId, path, {
       preview: props.navigationOnly === true && options?.preview === true && !dirtyPaths.has(path),
     });
@@ -141,7 +153,6 @@ export const DockExplorerPane = function DockExplorerPane(props: {
     setRevealPosition(undefined);
     onRevealPosition?.(undefined);
   };
-
   const handleToggleDirectory = (path: string) => {
     setExpandedDirectories((current) => {
       const next = new Set(current);
@@ -153,7 +164,6 @@ export const DockExplorerPane = function DockExplorerPane(props: {
       return next;
     });
   };
-
   return (
     <div className="flex h-full min-h-0 w-full flex-col">
       {!props.navigationOnly ? (
@@ -198,10 +208,18 @@ export const DockExplorerPane = function DockExplorerPane(props: {
               query={codeQuery}
               onQueryChange={setCodeQuery}
               onSelectMatch={(match) => {
-                handleSelectFile(match.path, { preview: true });
-                const position = { lineNumber: match.lineNumber, requestId: Date.now() };
+                handleSelectFile(match.path, {
+                  preview: true,
+                });
+                const position = {
+                  lineNumber: match.lineNumber,
+                  requestId: Date.now(),
+                };
                 setRevealPosition(position);
-                onRevealPosition?.({ ...position, filePath: match.path });
+                onRevealPosition?.({
+                  ...position,
+                  filePath: match.path,
+                });
               }}
               containerClassName="flex min-h-0 flex-1 flex-col"
               onSelectFile={handleSelectFile}

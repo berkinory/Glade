@@ -1,6 +1,5 @@
-import { useEffect, useState, type KeyboardEvent } from "react";
-
 import { XIcon } from "~/lib/icons";
+import { useEffect, useState, type KeyboardEvent } from "react";
 import { cn } from "~/lib/utils";
 import { GladeLogo } from "~/components/GladeLogo";
 
@@ -14,10 +13,8 @@ const CARD_EDGE_INSET_PX = 12;
 const CARD_MIN_WIDTH_PX = 176;
 const CARD_MAX_WIDTH_PX = 288;
 const CARD_FALLBACK_WIDTH_PX = 256;
-
 function useSidebarFittedWidth(): number {
   const [width, setWidth] = useState(CARD_FALLBACK_WIDTH_PX);
-
   useEffect(() => {
     const gap = document.querySelector<HTMLElement>(LEFT_SIDEBAR_GAP_SELECTOR);
     if (!gap) {
@@ -35,10 +32,8 @@ function useSidebarFittedWidth(): number {
     observer.observe(gap);
     return () => observer.disconnect();
   }, []);
-
   return width;
 }
-
 export interface WhatsNewPopoutCardProps {
   readonly currentVersion: string;
   readonly onOpen: () => void;
@@ -58,14 +53,12 @@ export function WhatsNewPopoutCard({
   className,
 }: WhatsNewPopoutCardProps) {
   const cardWidth = useSidebarFittedWidth();
-
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       onOpen();
     }
   };
-
   return (
     <div
       className={cn(
@@ -75,7 +68,6 @@ export function WhatsNewPopoutCard({
       )}
       style={{
         width: cardWidth,
-
         animationName: "whats-new-popout-in",
       }}
     >

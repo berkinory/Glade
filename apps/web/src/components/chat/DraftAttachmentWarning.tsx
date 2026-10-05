@@ -1,19 +1,13 @@
+import { AlertCircleIcon } from "~/lib/icons";
 import { forwardRef, type ComponentPropsWithoutRef } from "react";
-
-import { CircleAlertIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
-
 const DRAFT_ATTACHMENT_WARNING_LABEL = "Draft attachment may not persist";
-
 export const DRAFT_ATTACHMENT_WARNING_DESCRIPTION =
   "Draft attachment is kept in memory and may be lost on navigation.";
-
 type DraftAttachmentWarningVariant = "inline" | "badge";
-
 type DraftAttachmentWarningIconProps = ComponentPropsWithoutRef<"span"> & {
   variant?: DraftAttachmentWarningVariant;
 };
-
 export const DraftAttachmentWarningIcon = forwardRef<
   HTMLSpanElement,
   DraftAttachmentWarningIconProps
@@ -31,7 +25,7 @@ export const DraftAttachmentWarningIcon = forwardRef<
         className,
       )}
     >
-      <CircleAlertIcon className="size-3" />
+      <AlertCircleIcon className="size-3" />
     </span>
   );
 });

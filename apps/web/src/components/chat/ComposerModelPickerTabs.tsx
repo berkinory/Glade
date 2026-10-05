@@ -1,14 +1,12 @@
+import { PlusIcon, StarFilledIcon } from "~/lib/icons";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import { type ReactNode } from "react";
-
-import { PlusIcon, StarFilledIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { PROVIDER_ICON_COMPONENT_BY_PROVIDER } from "../ProviderIcon";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { type ComposerModelPickerTab, STARRED_TAB } from "./ComposerModelPicker.logic";
 import { getProviderIconClassName, resolveLiveProviderAvailability } from "./ProviderModelPicker";
-
 function PickerTabButton(props: {
   label: string;
   active: boolean;
@@ -43,16 +41,17 @@ function PickerTabButton(props: {
     </Tooltip>
   );
 }
-
 export type ComposerModelPickerProviderTab = {
   provider: ProviderKind;
   label: string;
   // Null when the provider can be opened; otherwise why not ("Sign in", "Checking"…).
   unavailableLabel: string | null;
 };
-
 export function resolveComposerModelPickerProviderTabs(
-  options: ReadonlyArray<{ value: ProviderKind; label: string }>,
+  options: ReadonlyArray<{
+    value: ProviderKind;
+    label: string;
+  }>,
   providers: ReadonlyArray<ServerProviderStatus> | undefined,
 ): ComposerModelPickerProviderTab[] {
   return options.map((option) => {
@@ -66,7 +65,6 @@ export function resolveComposerModelPickerProviderTabs(
     };
   });
 }
-
 export function ComposerModelPickerTabs(props: {
   tab: ComposerModelPickerTab;
   providerTabs: ReadonlyArray<ComposerModelPickerProviderTab>;

@@ -11,14 +11,13 @@ import {
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-
 import {
   INLINE_TERMINAL_CONTEXT_PLACEHOLDER,
   type TerminalContextDraft,
 } from "~/lib/terminalContext";
 import { formatComposerMentionToken } from "~/lib/composerMentions";
 import { basenameOfPath } from "~/file-icons";
-import { createCentralIconElement } from "~/lib/central-icons";
+import { createIconElement } from "~/lib/createIconElement";
 import {
   COMPOSER_INLINE_DECORATOR_HOST_CLASS_NAME,
   COMPOSER_EDITOR_INLINE_CHIP_CLASS_NAME,
@@ -26,19 +25,17 @@ import {
   COMPOSER_INLINE_AGENT_CHIP_ICON_CLASS_NAME,
   COMPOSER_INLINE_CHIP_LABEL_CLASS_NAME,
   COMPOSER_INLINE_CHIP_INLINE_ICON_CLASS_NAME,
-  COMPOSER_INLINE_SKILL_CHIP_ICON_NAME,
   formatComposerSlashCommandChipLabel,
   formatComposerSkillChipLabel,
   resolveAgentChipColor,
 } from "../composerInlineChip";
-import { AGENT_ROBOT_ICON_NAME, MessageCircleIcon } from "~/lib/icons";
+import { Robot01Icon, BlocksIcon, MessageCircleIcon } from "~/lib/icons";
 import { slashCommandIcon } from "~/lib/slashCommandIcons";
 import type { ComposerSlashCommand } from "~/composerSlashCommands";
 import { InlineLinkChip } from "../InlineLinkChip";
 import { ComposerPendingTerminalContextChip } from "../chat/ComposerPendingTerminalContexts";
 import { createMentionChipIconElement, type MentionChipKind } from "../chat/MentionChipIcon";
 import { ProviderIcon } from "../ProviderIcon";
-
 export type SerializedComposerMentionNode = Spread<
   {
     kind?: MentionChipKind;
@@ -50,7 +47,6 @@ export type SerializedComposerMentionNode = Spread<
   },
   SerializedTextNode
 >;
-
 export type SerializedComposerSkillNode = Spread<
   {
     skillName: string;
@@ -59,7 +55,6 @@ export type SerializedComposerSkillNode = Spread<
   },
   SerializedTextNode
 >;
-
 export type SerializedComposerSlashCommandNode = Spread<
   {
     command: ComposerSlashCommand;
@@ -68,7 +63,6 @@ export type SerializedComposerSlashCommandNode = Spread<
   },
   SerializedTextNode
 >;
-
 export type SerializedComposerAgentMentionNode = Spread<
   {
     alias: string;
@@ -78,7 +72,6 @@ export type SerializedComposerAgentMentionNode = Spread<
   },
   SerializedTextNode
 >;
-
 export type SerializedComposerLinkNode = Spread<
   {
     url: string;
@@ -87,7 +80,6 @@ export type SerializedComposerLinkNode = Spread<
   },
   SerializedLexicalNode
 >;
-
 export type SerializedComposerTerminalContextNode = Spread<
   {
     context: TerminalContextDraft;
@@ -96,13 +88,11 @@ export type SerializedComposerTerminalContextNode = Spread<
   },
   SerializedLexicalNode
 >;
-
 function resetInlineChipContainer(container: HTMLElement): void {
   container.textContent = "";
   container.style.setProperty("user-select", "none");
   container.style.setProperty("-webkit-user-select", "none");
 }
-
 function renderMentionChipDom(
   container: HTMLElement,
   pathValue: string,
@@ -110,7 +100,6 @@ function renderMentionChipDom(
   provider?: ProviderKind,
 ): void {
   resetInlineChipContainer(container);
-
   const icon =
     kind === "thread"
       ? (() => {
@@ -126,35 +115,24 @@ function renderMentionChipDom(
           return host;
         })()
       : createMentionChipIconElement(pathValue, kind, COMPOSER_INLINE_CHIP_INLINE_ICON_CLASS_NAME);
-
   const label = document.createElement("span");
   label.className = COMPOSER_INLINE_CHIP_LABEL_CLASS_NAME;
   label.textContent = kind === "thread" ? pathValue : basenameOfPath(pathValue);
-
   container.append(icon, label);
 }
-
 function renderSkillChipDom(container: HTMLElement, name: string): void {
   resetInlineChipContainer(container);
-
-  const icon = createCentralIconElement(
-    COMPOSER_INLINE_SKILL_CHIP_ICON_NAME,
-    COMPOSER_INLINE_CHIP_INLINE_ICON_CLASS_NAME,
-  );
-
+  const icon = createIconElement(BlocksIcon, COMPOSER_INLINE_CHIP_INLINE_ICON_CLASS_NAME);
   const label = document.createElement("span");
   label.className = COMPOSER_INLINE_CHIP_LABEL_CLASS_NAME;
   label.textContent = formatComposerSkillChipLabel(name);
-
   if (icon) {
     container.append(icon, label);
   } else {
     container.append(label);
   }
 }
-
 const slashCommandIconMarkupCache = new Map<ComposerSlashCommand, string>();
-
 function slashCommandIconMarkup(command: ComposerSlashCommand): string {
   const cached = slashCommandIconMarkupCache.get(command);
   if (cached !== undefined) {
@@ -167,58 +145,42 @@ function slashCommandIconMarkup(command: ComposerSlashCommand): string {
   slashCommandIconMarkupCache.set(command, markup);
   return markup;
 }
-
 function renderSlashCommandChipDom(container: HTMLElement, command: ComposerSlashCommand): void {
   resetInlineChipContainer(container);
-
   const icon = document.createElement("span");
   icon.ariaHidden = "true";
   icon.innerHTML = slashCommandIconMarkup(command);
-
   const label = document.createElement("span");
   label.className = COMPOSER_INLINE_CHIP_LABEL_CLASS_NAME;
   label.textContent = formatComposerSlashCommandChipLabel(command);
-
   container.append(icon, label);
 }
-
 function renderAgentMentionChipDom(container: HTMLElement, alias: string, color: string): void {
   resetInlineChipContainer(container);
-
   const colorStyles = resolveAgentChipColor(color);
   container.style.backgroundColor = colorStyles.bg;
   container.style.color = colorStyles.text;
-
-  const icon = createCentralIconElement(
-    AGENT_ROBOT_ICON_NAME,
-    COMPOSER_INLINE_AGENT_CHIP_ICON_CLASS_NAME,
-  );
-
+  const icon = createIconElement(Robot01Icon, COMPOSER_INLINE_AGENT_CHIP_ICON_CLASS_NAME);
   const label = document.createElement("span");
   label.className = COMPOSER_INLINE_CHIP_LABEL_CLASS_NAME;
   label.textContent = `@${alias}`;
-
   if (icon) {
     container.append(icon, label);
   } else {
     container.append(label);
   }
 }
-
 function ComposerLinkDecorator(props: { url: string }) {
   return <InlineLinkChip url={props.url} />;
 }
-
 export class ComposerMentionNode extends TextNode {
   __kind: MentionChipKind;
   __path: string;
   __provider: ProviderKind | undefined;
   __threadId: string | undefined;
-
   static override getType(): string {
     return "composer-mention";
   }
-
   static override clone(node: ComposerMentionNode): ComposerMentionNode {
     return new ComposerMentionNode(
       node.__path,
@@ -228,7 +190,6 @@ export class ComposerMentionNode extends TextNode {
       node.__key,
     );
   }
-
   static override importJSON(serializedNode: SerializedComposerMentionNode): ComposerMentionNode {
     return $createComposerMentionNode(
       serializedNode.path,
@@ -237,7 +198,6 @@ export class ComposerMentionNode extends TextNode {
       serializedNode.threadId,
     );
   }
-
   constructor(
     path: string,
     kind: MentionChipKind = "path",
@@ -252,32 +212,35 @@ export class ComposerMentionNode extends TextNode {
     this.__provider = provider;
     this.__threadId = threadId;
   }
-
   getMentionThreadId(): string | undefined {
     return this.getLatest().__threadId;
   }
-
   getMentionProvider(): ProviderKind | undefined {
     return this.getLatest().__provider;
   }
-
   setMentionProvider(provider: ProviderKind): void {
     const self = this.getWritable();
     self.__provider = provider;
   }
-
   override exportJSON(): SerializedComposerMentionNode {
     return {
       ...super.exportJSON(),
       kind: this.__kind,
       path: this.__path,
-      ...(this.__provider ? { provider: this.__provider } : {}),
-      ...(this.__threadId ? { threadId: this.__threadId } : {}),
+      ...(this.__provider
+        ? {
+            provider: this.__provider,
+          }
+        : {}),
+      ...(this.__threadId
+        ? {
+            threadId: this.__threadId,
+          }
+        : {}),
       type: "composer-mention",
       version: 1,
     };
   }
-
   override createDOM(_config: EditorConfig): HTMLElement {
     const dom = document.createElement("span");
     dom.className = COMPOSER_EDITOR_INLINE_CHIP_CLASS_NAME;
@@ -286,7 +249,6 @@ export class ComposerMentionNode extends TextNode {
     renderMentionChipDom(dom, this.__path, this.__kind, this.__provider);
     return dom;
   }
-
   override updateDOM(
     prevNode: ComposerMentionNode,
     dom: HTMLElement,
@@ -303,24 +265,19 @@ export class ComposerMentionNode extends TextNode {
     }
     return false;
   }
-
   override canInsertTextBefore(): false {
     return false;
   }
-
   override canInsertTextAfter(): false {
     return false;
   }
-
   override isTextEntity(): true {
     return true;
   }
-
   override isToken(): true {
     return true;
   }
 }
-
 export function $createComposerMentionNode(
   path: string,
   kind: MentionChipKind = "path",
@@ -329,29 +286,23 @@ export function $createComposerMentionNode(
 ): ComposerMentionNode {
   return $applyNodeReplacement(new ComposerMentionNode(path, kind, provider, threadId));
 }
-
 export class ComposerSkillNode extends TextNode {
   __skillName: string;
-
   static override getType(): string {
     return "composer-skill";
   }
-
   static override clone(node: ComposerSkillNode): ComposerSkillNode {
     return new ComposerSkillNode(node.__skillName, node.__key);
   }
-
   static override importJSON(serializedNode: SerializedComposerSkillNode): ComposerSkillNode {
     return $createComposerSkillNode(serializedNode.skillName);
   }
-
   constructor(name: string, key?: NodeKey) {
     const normalizedName = name.startsWith("$") || name.startsWith("/") ? name.slice(1) : name;
     const prefix = name.startsWith("/") ? "/" : "$";
     super(`${prefix}${normalizedName}`, key);
     this.__skillName = normalizedName;
   }
-
   override exportJSON(): SerializedComposerSkillNode {
     return {
       ...super.exportJSON(),
@@ -360,7 +311,6 @@ export class ComposerSkillNode extends TextNode {
       version: 1,
     };
   }
-
   override createDOM(_config: EditorConfig): HTMLElement {
     const dom = document.createElement("span");
     dom.className = COMPOSER_EDITOR_INLINE_CHIP_CLASS_NAME;
@@ -369,7 +319,6 @@ export class ComposerSkillNode extends TextNode {
     renderSkillChipDom(dom, this.__skillName);
     return dom;
   }
-
   override updateDOM(
     prevNode: ComposerSkillNode,
     dom: HTMLElement,
@@ -381,50 +330,39 @@ export class ComposerSkillNode extends TextNode {
     }
     return false;
   }
-
   override canInsertTextBefore(): false {
     return false;
   }
-
   override canInsertTextAfter(): true {
     return true;
   }
-
   override isTextEntity(): true {
     return true;
   }
-
   override isToken(): true {
     return true;
   }
 }
-
 export function $createComposerSkillNode(name: string): ComposerSkillNode {
   return $applyNodeReplacement(new ComposerSkillNode(name));
 }
-
 export class ComposerSlashCommandNode extends TextNode {
   __command: ComposerSlashCommand;
-
   static override getType(): string {
     return "composer-slash-command";
   }
-
   static override clone(node: ComposerSlashCommandNode): ComposerSlashCommandNode {
     return new ComposerSlashCommandNode(node.__command, node.__key);
   }
-
   static override importJSON(
     serializedNode: SerializedComposerSlashCommandNode,
   ): ComposerSlashCommandNode {
     return $createComposerSlashCommandNode(serializedNode.command);
   }
-
   constructor(command: ComposerSlashCommand, key?: NodeKey) {
     super(`/${command}`, key);
     this.__command = command;
   }
-
   override exportJSON(): SerializedComposerSlashCommandNode {
     return {
       ...super.exportJSON(),
@@ -433,7 +371,6 @@ export class ComposerSlashCommandNode extends TextNode {
       version: 1,
     };
   }
-
   override createDOM(_config: EditorConfig): HTMLElement {
     const dom = document.createElement("span");
     dom.className = COMPOSER_EDITOR_INLINE_CHIP_CLASS_NAME;
@@ -442,7 +379,6 @@ export class ComposerSlashCommandNode extends TextNode {
     renderSlashCommandChipDom(dom, this.__command);
     return dom;
   }
-
   override updateDOM(
     prevNode: ComposerSlashCommandNode,
     dom: HTMLElement,
@@ -454,54 +390,43 @@ export class ComposerSlashCommandNode extends TextNode {
     }
     return false;
   }
-
   override canInsertTextBefore(): false {
     return false;
   }
-
   override canInsertTextAfter(): true {
     return true;
   }
-
   override isTextEntity(): true {
     return true;
   }
-
   override isToken(): true {
     return true;
   }
 }
-
 export function $createComposerSlashCommandNode(
   command: ComposerSlashCommand,
 ): ComposerSlashCommandNode {
   return $applyNodeReplacement(new ComposerSlashCommandNode(command));
 }
-
 export class ComposerAgentMentionNode extends TextNode {
   __alias: string;
   __color: string;
-
   static override getType(): string {
     return "composer-agent-mention";
   }
-
   static override clone(node: ComposerAgentMentionNode): ComposerAgentMentionNode {
     return new ComposerAgentMentionNode(node.__alias, node.__color, node.__key);
   }
-
   static override importJSON(
     serializedNode: SerializedComposerAgentMentionNode,
   ): ComposerAgentMentionNode {
     return $createComposerAgentMentionNode(serializedNode.alias, serializedNode.color);
   }
-
   constructor(alias: string, color: string, key?: NodeKey) {
     super(`@${alias}`, key);
     this.__alias = alias;
     this.__color = color;
   }
-
   override exportJSON(): SerializedComposerAgentMentionNode {
     return {
       ...super.exportJSON(),
@@ -511,7 +436,6 @@ export class ComposerAgentMentionNode extends TextNode {
       version: 1,
     };
   }
-
   override createDOM(_config: EditorConfig): HTMLElement {
     const dom = document.createElement("span");
     dom.className = COMPOSER_INLINE_AGENT_CHIP_CLASS_NAME;
@@ -520,7 +444,6 @@ export class ComposerAgentMentionNode extends TextNode {
     renderAgentMentionChipDom(dom, this.__alias, this.__color);
     return dom;
   }
-
   override updateDOM(
     prevNode: ComposerAgentMentionNode,
     dom: HTMLElement,
@@ -532,51 +455,40 @@ export class ComposerAgentMentionNode extends TextNode {
     }
     return false;
   }
-
   override canInsertTextBefore(): false {
     return false;
   }
-
   override canInsertTextAfter(): false {
     return false;
   }
-
   override isTextEntity(): true {
     return true;
   }
-
   override isToken(): true {
     return true;
   }
 }
-
 export function $createComposerAgentMentionNode(
   alias: string,
   color: string,
 ): ComposerAgentMentionNode {
   return $applyNodeReplacement(new ComposerAgentMentionNode(alias, color));
 }
-
 export class ComposerLinkNode extends DecoratorNode<ReactElement> {
   __url: string;
-
   static override getType(): string {
     return "composer-link";
   }
-
   static override clone(node: ComposerLinkNode): ComposerLinkNode {
     return new ComposerLinkNode(node.__url, node.__key);
   }
-
   static override importJSON(serializedNode: SerializedComposerLinkNode): ComposerLinkNode {
     return $createComposerLinkNode(serializedNode.url);
   }
-
   constructor(url: string, key?: NodeKey) {
     super(key);
     this.__url = url;
   }
-
   override exportJSON(): SerializedComposerLinkNode {
     return {
       url: this.__url,
@@ -584,60 +496,47 @@ export class ComposerLinkNode extends DecoratorNode<ReactElement> {
       version: 1,
     };
   }
-
   override createDOM(): HTMLElement {
     const dom = document.createElement("span");
     dom.className = COMPOSER_INLINE_DECORATOR_HOST_CLASS_NAME;
     return dom;
   }
-
   override updateDOM(): false {
     return false;
   }
-
   override decorate(): ReactElement {
     return <ComposerLinkDecorator url={this.__url} />;
   }
-
   override getTextContent(): string {
     return this.__url;
   }
-
   override isInline(): true {
     return true;
   }
 }
-
 export function $createComposerLinkNode(url: string): ComposerLinkNode {
   return $applyNodeReplacement(new ComposerLinkNode(url));
 }
-
 function ComposerTerminalContextDecorator(props: { context: TerminalContextDraft }) {
   return <ComposerPendingTerminalContextChip context={props.context} />;
 }
-
 export class ComposerTerminalContextNode extends DecoratorNode<ReactElement> {
   __context: TerminalContextDraft;
-
   static override getType(): string {
     return "composer-terminal-context";
   }
-
   static override clone(node: ComposerTerminalContextNode): ComposerTerminalContextNode {
     return new ComposerTerminalContextNode(node.__context, node.__key);
   }
-
   static override importJSON(
     serializedNode: SerializedComposerTerminalContextNode,
   ): ComposerTerminalContextNode {
     return $createComposerTerminalContextNode(serializedNode.context);
   }
-
   constructor(context: TerminalContextDraft, key?: NodeKey) {
     super(key);
     this.__context = context;
   }
-
   override exportJSON(): SerializedComposerTerminalContextNode {
     return {
       ...super.exportJSON(),
@@ -646,36 +545,29 @@ export class ComposerTerminalContextNode extends DecoratorNode<ReactElement> {
       version: 1,
     };
   }
-
   override createDOM(): HTMLElement {
     const dom = document.createElement("span");
     dom.className = COMPOSER_INLINE_DECORATOR_HOST_CLASS_NAME;
     return dom;
   }
-
   override updateDOM(): false {
     return false;
   }
-
   override getTextContent(): string {
     return INLINE_TERMINAL_CONTEXT_PLACEHOLDER;
   }
-
   override isInline(): true {
     return true;
   }
-
   override decorate(): ReactElement {
     return <ComposerTerminalContextDecorator context={this.__context} />;
   }
 }
-
 export function $createComposerTerminalContextNode(
   context: TerminalContextDraft,
 ): ComposerTerminalContextNode {
   return $applyNodeReplacement(new ComposerTerminalContextNode(context));
 }
-
 export type ComposerInlineTokenNode =
   | ComposerMentionNode
   | ComposerSkillNode
@@ -683,7 +575,6 @@ export type ComposerInlineTokenNode =
   | ComposerTerminalContextNode
   | ComposerAgentMentionNode
   | ComposerLinkNode;
-
 export function isComposerInlineTokenNode(
   candidate: unknown,
 ): candidate is ComposerInlineTokenNode {
@@ -696,7 +587,6 @@ export function isComposerInlineTokenNode(
     candidate instanceof ComposerLinkNode
   );
 }
-
 export const COMPOSER_NODE_CLASSES = [
   ComposerMentionNode,
   ComposerSkillNode,

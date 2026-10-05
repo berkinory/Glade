@@ -1,9 +1,7 @@
-import { forwardRef } from "react";
-
 import { SearchIcon } from "~/lib/icons";
+import { forwardRef } from "react";
 import { cn } from "~/lib/utils";
 import { Input, type InputProps } from "./input";
-
 export const SearchInput = forwardRef<HTMLInputElement, InputProps>(function SearchInput(
   { className, type: typeProp, size: sizeProp, variant: variantProp, ...props },
   ref,

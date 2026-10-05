@@ -1,17 +1,15 @@
+import { CheckIcon, ChevronLeftIcon, ChevronRightIcon } from "~/lib/icons";
 import type { UserInputQuestion } from "@glade/contracts/provider/runtimePayloads";
 import { useEffect, useEffectEvent, useRef, type ReactNode } from "react";
 import {
   derivePendingUserInputProgress,
   type PendingUserInputDraftAnswer,
 } from "../../pendingUserInput";
-import { CheckIcon, ChevronLeftIcon, ChevronRightIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { ComposerChoiceRow } from "./ComposerChoiceRow";
 import { COMPOSER_INPUT_SURFACE_CLASS_NAME } from "./composerPickerStyles";
-
 const NAV_BUTTON_CLASS_NAME =
   "flex size-5 items-center justify-center rounded-md text-[var(--color-text-foreground-tertiary)] transition-colors duration-100 hover:bg-[var(--color-background-button-secondary-hover)] hover:text-[var(--color-text-foreground)] disabled:pointer-events-none disabled:opacity-30";
-
 export function UserInputQuestionForm({
   questions,
   submissionVersion,
@@ -47,7 +45,6 @@ export function UserInputQuestionForm({
   useEffect(() => {
     onAdvanceRef.current = onAdvance;
   }, [onAdvance]);
-
   useEffect(() => {
     return () => {
       if (autoAdvanceTimerRef.current !== null) {
@@ -56,7 +53,6 @@ export function UserInputQuestionForm({
       }
     };
   }, [activeQuestion?.id, isResponding, submissionVersion]);
-
   const handleOptionSelection = (questionId: string, optionLabel: string) => {
     const nextDraftAnswer = onToggleOption(questionId, optionLabel);
     if (!autoAdvance || activeQuestion?.multiSelect) {
@@ -67,7 +63,13 @@ export function UserInputQuestionForm({
     }
     autoAdvanceTimerRef.current = window.setTimeout(() => {
       autoAdvanceTimerRef.current = null;
-      onAdvanceRef.current(nextDraftAnswer ? { [questionId]: nextDraftAnswer } : undefined);
+      onAdvanceRef.current(
+        nextDraftAnswer
+          ? {
+              [questionId]: nextDraftAnswer,
+            }
+          : undefined,
+      );
     }, 200);
   };
   const handleCancel = () => {
@@ -100,23 +102,19 @@ export function UserInputQuestionForm({
     handleOptionSelection(activeQuestion.id, option.label);
   };
   const handleEffectShortcut = useEffectEvent(handleShortcut);
-
   useEffect(() => {
     if (keyboardShortcuts !== "global" || !activeQuestion || isResponding) return;
     const handler = (event: KeyboardEvent) => handleEffectShortcut(event);
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [activeQuestion, isResponding, keyboardShortcuts]);
-
   if (!activeQuestion) {
     return null;
   }
-
   const questionCount = questions.length;
   const showNavigation = questionCount > 1;
   const canGoBack = progress.questionIndex > 0;
   const canGoForward = !progress.isLastQuestion && progress.canAdvance;
-
   return (
     <div
       className={cn(COMPOSER_INPUT_SURFACE_CLASS_NAME, "overflow-hidden px-3.5 py-3")}

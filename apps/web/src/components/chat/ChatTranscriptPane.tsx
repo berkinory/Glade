@@ -1,3 +1,4 @@
+import { ArrowDown02Icon } from "~/lib/icons";
 import { type MessageId, type ThreadId, type TurnId } from "@glade/contracts/core/baseSchemas";
 import { type LegendListRef } from "@legendapp/list/react";
 import {
@@ -15,7 +16,6 @@ import {
 } from "react";
 import { type TimestampFormat } from "../../appSettings";
 import { type TurnDiffSummary, type WorktreeSetupSnapshot } from "../../types";
-import { ArrowDownIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { ELEVATED_HOVER_SURFACE_CLASS_NAME } from "~/surfaceStyles";
 import { DISCLOSURE_CONTENT_MOTION_CLASS } from "~/lib/disclosureMotion";
@@ -29,7 +29,6 @@ import { createActiveTrailStore, deriveMessageTrailItems } from "./messageTrail.
 import { createThreadFindHighlightStore, type ThreadFindHighlightStore } from "./threadFind.logic";
 import { AgentActivityDetailView } from "./AgentActivityDetailView";
 import type { AgentActivityDetail } from "./agentActivity.logic";
-
 interface ChatTranscriptPaneProps {
   activeThreadId: string;
   activeTurnId?: TurnId | null;
@@ -55,7 +54,6 @@ interface ChatTranscriptPaneProps {
   onTogglePinMessage?: (messageId: MessageId) => void;
   onForkFromMessage?: (messageId: MessageId) => void;
   forkProvider?: "codex" | "claudeAgent";
-
   enteringUserMessageIds?: ComponentProps<typeof MessagesTimeline>["enteringUserMessageIds"];
   tailAnchorMessageId?: ComponentProps<typeof MessagesTimeline>["tailAnchorMessageId"];
   tailAnchorScrollInFlightRef?: ComponentProps<
@@ -107,7 +105,6 @@ interface ChatTranscriptPaneProps {
   onResolveWorktreeSetup?: ComponentProps<typeof MessagesTimeline>["onResolveWorktreeSetup"];
   findHighlightStore?: ThreadFindHighlightStore | null;
 }
-
 export function ChatTranscriptPane({
   activeThreadId,
   activeTurnId,
@@ -131,7 +128,6 @@ export function ChatTranscriptPane({
   onTogglePinMessage,
   onForkFromMessage,
   forkProvider,
-
   enteringUserMessageIds,
   tailAnchorMessageId,
   tailAnchorScrollInFlightRef,
@@ -182,9 +178,15 @@ export function ChatTranscriptPane({
   const scrollButtonFrameStyle: CSSProperties | undefined =
     contentInsetRightPx || contentInsetBottomPx
       ? {
-          ...(contentInsetRightPx ? { paddingRight: contentInsetRightPx } : {}),
+          ...(contentInsetRightPx
+            ? {
+                paddingRight: contentInsetRightPx,
+              }
+            : {}),
           ...(contentInsetBottomPx
-            ? { bottom: composerOverlayAffordanceBottomPx(contentInsetBottomPx) }
+            ? {
+                bottom: composerOverlayAffordanceBottomPx(contentInsetBottomPx),
+              }
             : {}),
         }
       : undefined;
@@ -207,7 +209,6 @@ export function ChatTranscriptPane({
   const handleTrailSelect = (messageId: MessageId) => {
     timelineControllerRef?.current?.scrollToMessage(messageId);
   };
-
   return (
     <div
       data-chat-transcript-pane="true"
@@ -235,46 +236,124 @@ export function ChatTranscriptPane({
           className="flex min-h-0 flex-1 flex-col"
           inert={Boolean(agentActivityDetail)}
           aria-hidden={Boolean(agentActivityDetail)}
-          style={agentActivityDetail ? { visibility: "hidden" } : undefined}
+          style={
+            agentActivityDetail
+              ? {
+                  visibility: "hidden",
+                }
+              : undefined
+          }
         >
           <MessagesTimeline
             key={activeThreadId}
             hasMessages={hasMessages}
             isWorking={isWorking}
-            {...(workingLabel ? { workingLabel } : {})}
+            {...(workingLabel
+              ? {
+                  workingLabel,
+                }
+              : {})}
             worktreeSetup={worktreeSetup}
             worktreeSetupPendingAction={worktreeSetupPendingAction ?? null}
-            {...(onResolveWorktreeSetup ? { onResolveWorktreeSetup } : {})}
+            {...(onResolveWorktreeSetup
+              ? {
+                  onResolveWorktreeSetup,
+                }
+              : {})}
             activeTurnId={activeTurnId ?? null}
             activeTurnInProgress={activeTurnInProgress}
             listRef={listRef}
-            {...(timelineControllerRef ? { controllerRef: timelineControllerRef } : {})}
-            {...(pinnedMessageIds ? { pinnedMessageIds } : {})}
-            {...(onTogglePinMessage ? { onTogglePinMessage } : {})}
-            {...(onForkFromMessage ? { onForkFromMessage } : {})}
-            {...(forkProvider ? { forkProvider } : {})}
-            {...(enteringUserMessageIds ? { enteringUserMessageIds } : {})}
+            {...(timelineControllerRef
+              ? {
+                  controllerRef: timelineControllerRef,
+                }
+              : {})}
+            {...(pinnedMessageIds
+              ? {
+                  pinnedMessageIds,
+                }
+              : {})}
+            {...(onTogglePinMessage
+              ? {
+                  onTogglePinMessage,
+                }
+              : {})}
+            {...(onForkFromMessage
+              ? {
+                  onForkFromMessage,
+                }
+              : {})}
+            {...(forkProvider
+              ? {
+                  forkProvider,
+                }
+              : {})}
+            {...(enteringUserMessageIds
+              ? {
+                  enteringUserMessageIds,
+                }
+              : {})}
             tailAnchorMessageId={tailAnchorMessageId ?? null}
-            {...(tailAnchorScrollInFlightRef ? { tailAnchorScrollInFlightRef } : {})}
-            {...(crossTaskOrigin ? { crossTaskOrigin } : {})}
-            {...(forkSource ? { forkSource } : {})}
-            {...(handoffSource ? { handoffSource } : {})}
+            {...(tailAnchorScrollInFlightRef
+              ? {
+                  tailAnchorScrollInFlightRef,
+                }
+              : {})}
+            {...(crossTaskOrigin
+              ? {
+                  crossTaskOrigin,
+                }
+              : {})}
+            {...(forkSource
+              ? {
+                  forkSource,
+                }
+              : {})}
+            {...(handoffSource
+              ? {
+                  handoffSource,
+                }
+              : {})}
             timelineEntries={timelineEntries}
             messageChangeSignal={messageChangeSignal}
             turnDiffSummaryByAssistantMessageId={turnDiffSummaryByAssistantMessageId}
             onOpenTurnDiff={onOpenTurnDiff}
             onOpenThread={onOpenThread}
-            {...(computerControlEnabled !== undefined ? { computerControlEnabled } : {})}
-            {...(onEnableComputerControl ? { onEnableComputerControl } : {})}
-            {...(onUndoTurnFiles ? { onUndoTurnFiles } : {})}
-            {...(onEditUserMessage ? { onEditUserMessage } : {})}
-            {...(onRespondToAsyncUserInput ? { onRespondToAsyncUserInput } : {})}
+            {...(computerControlEnabled !== undefined
+              ? {
+                  computerControlEnabled,
+                }
+              : {})}
+            {...(onEnableComputerControl
+              ? {
+                  onEnableComputerControl,
+                }
+              : {})}
+            {...(onUndoTurnFiles
+              ? {
+                  onUndoTurnFiles,
+                }
+              : {})}
+            {...(onEditUserMessage
+              ? {
+                  onEditUserMessage,
+                }
+              : {})}
+            {...(onRespondToAsyncUserInput
+              ? {
+                  onRespondToAsyncUserInput,
+                }
+              : {})}
             editableUserMessageId={editableUserMessageId ?? null}
             isRevertingCheckpoint={isRevertingCheckpoint}
             onImageExpand={onExpandTimelineImage}
             followLiveOutput={followLiveOutput && !agentActivityDetail}
             onIsAtEndChange={onIsAtEndChange}
-            {...(onNavigate ? { onNavigate } : {})}
+            {...(onNavigate
+              ? {
+                  onNavigate,
+                }
+              : {})}
             onTrailHighlightsChange={activeTrailStore.set}
             onMessagesScroll={onMessagesScroll}
             onMessagesClickCapture={onMessagesClickCapture}
@@ -291,12 +370,24 @@ export function ChatTranscriptPane({
             chatFontSizePx={chatFontSizePx}
             timestampFormat={timestampFormat}
             workspaceRoot={workspaceRoot}
-            {...(keybindings ? { keybindings } : {})}
-            {...(availableEditors ? { availableEditors } : {})}
+            {...(keybindings
+              ? {
+                  keybindings,
+                }
+              : {})}
+            {...(availableEditors
+              ? {
+                  availableEditors,
+                }
+              : {})}
             contentInsetRightPx={contentInsetRightPx}
             contentInsetBottomPx={contentInsetBottomPx}
             contentInsetBottomClearancePx={contentInsetBottomClearancePx}
-            {...(onOpenAgentActivity ? { onOpenAgentActivity } : {})}
+            {...(onOpenAgentActivity
+              ? {
+                  onOpenAgentActivity,
+                }
+              : {})}
             findHighlight={findHighlight}
             emptyStateContent={
               emptyStateContent === undefined ? (
@@ -305,8 +396,16 @@ export function ChatTranscriptPane({
                 emptyStateContent
               )
             }
-            {...(expandedWorkGroups ? { expandedWorkGroups } : {})}
-            {...(onToggleWorkGroup ? { onToggleWorkGroup } : {})}
+            {...(expandedWorkGroups
+              ? {
+                  expandedWorkGroups,
+                }
+              : {})}
+            {...(onToggleWorkGroup
+              ? {
+                  onToggleWorkGroup,
+                }
+              : {})}
           />
         </div>
 
@@ -314,7 +413,6 @@ export function ChatTranscriptPane({
           <div
             className={cn(
               "pointer-events-none absolute inset-x-0 bottom-6 z-30 flex justify-center py-1",
-
               DISCLOSURE_CONTENT_MOTION_CLASS,
               scrollButtonVisible ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0",
             )}
@@ -333,7 +431,7 @@ export function ChatTranscriptPane({
                 scrollButtonVisible ? "pointer-events-auto" : "pointer-events-none",
               )}
             >
-              <ArrowDownIcon className="size-3.5" />
+              <ArrowDown02Icon className="size-3.5" />
             </button>
           </div>
         ) : null}

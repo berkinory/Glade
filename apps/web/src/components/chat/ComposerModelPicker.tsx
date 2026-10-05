@@ -1,3 +1,4 @@
+import { SearchIcon } from "~/lib/icons";
 import { type ModelSlug, type ProviderModelOptions } from "@glade/contracts/provider/model";
 import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
@@ -10,7 +11,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-
 import { appHistory } from "../../appNavigation";
 import { useComposerDraftStore } from "../../composerDraftStore";
 import { useStarredModels } from "../../hooks/useStarredModels";
@@ -19,7 +19,6 @@ import {
   type ProviderModelOption,
   type ProviderOptions,
 } from "../../providerModelOptions";
-import { SearchIcon } from "~/lib/icons";
 import { starredModelSlotKey } from "~/lib/starredModels";
 import { cn, isMacNavigatorPlatform } from "~/lib/utils";
 import { Input } from "../ui/input";
@@ -65,11 +64,9 @@ import {
   resolveVisibleProviderOptions,
 } from "./ProviderModelPicker";
 import { resolveRuntimeModelDescriptor } from "./runtimeModelCapabilities";
-
 export type ComposerModelSelectionOptions = {
   modelOptions?: ProviderOptions;
 };
-
 type ComposerModelPickerProps = {
   provider: ProviderKind;
   model: ModelSlug;
@@ -79,18 +76,15 @@ type ComposerModelPickerProps = {
   discoveryErrorsByProvider?: Partial<Record<ProviderKind, string | undefined>>;
   hiddenProviders?: ReadonlyArray<ProviderKind>;
   providerOrder?: ReadonlyArray<ProviderKind>;
-
   hideModelLabel?: boolean;
   hideStatusLabel?: boolean;
   disabled?: boolean;
-
   onProviderModelChange: (
     provider: ProviderKind,
     model: ModelSlug,
     options?: ComposerModelSelectionOptions,
   ) => void;
   onSelectionCommitted?: () => void;
-
   threadId: ThreadId;
   runtimeModel?: ProviderModelDescriptor | undefined;
   runtimeModelsByProvider?: Partial<
@@ -99,23 +93,29 @@ type ComposerModelPickerProps = {
   modelOptions: ProviderModelOptions[ProviderKind] | undefined;
   prompt: string;
   onPromptChange: (prompt: string) => void;
-
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   shortcutLabel?: string | null;
 };
-
 function groupRowElements(
   rows: ReadonlyArray<PickerRow>,
   renderRow: (row: PickerRow, index: number) => ReactNode,
 ): ReactNode[] {
-  const groups: Array<{ key: string; label: string | null; items: ReactNode[] }> = [];
+  const groups: Array<{
+    key: string;
+    label: string | null;
+    items: ReactNode[];
+  }> = [];
   rows.forEach((row, index) => {
     const lastGroup = groups.at(-1);
     const group =
       lastGroup && lastGroup.label === row.groupLabel
         ? lastGroup
-        : { key: row.key, label: row.groupLabel, items: [] };
+        : {
+            key: row.key,
+            label: row.groupLabel,
+            items: [],
+          };
     if (group !== lastGroup) groups.push(group);
     group.items.push(renderRow(row, index));
   });
@@ -130,13 +130,11 @@ function groupRowElements(
     </MenuGroup>
   ));
 }
-
 export function ComposerModelPicker(props: ComposerModelPickerProps) {
   const { onOpenChange, open, threadId } = props;
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const isMenuOpen = open ?? uncontrolledOpen;
   const activeProvider = props.provider;
-
   const { starredModels, toggleStarredModel, unstarModel } = useStarredModels();
   const connectedProviders = new Set(
     props.providers
@@ -146,12 +144,10 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
   const usableStarredModels = starredModels.filter((entry) =>
     connectedProviders.has(entry.provider),
   );
-
   const [tab, setTab] = useState<ComposerModelPickerTab>(activeProvider);
   const [query, setQuery] = useState("");
   const normalizedQuery = useDeferredValue(query).trim().toLowerCase();
   const searchInputRef = useRef<HTMLInputElement | null>(null);
-
   const [wasMenuOpen, setWasMenuOpen] = useState(isMenuOpen);
   if (wasMenuOpen !== isMenuOpen) {
     setWasMenuOpen(isMenuOpen);
@@ -160,7 +156,6 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
       setQuery("");
     }
   }
-
   const selectionCommittedWhileOpenRef = useRef(false);
   const setMenuOpen = (nextOpen: boolean) => {
     if (open === undefined) {
@@ -172,7 +167,6 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
       props.onSelectionCommitted?.();
     }
   };
-
   useEffect(() => {
     if (!isMenuOpen) return;
     const frame = requestAnimationFrame(() => searchInputRef.current?.focus());
@@ -205,7 +199,6 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
         runtimeModels: props.runtimeModelsByProvider?.[provider],
       }),
     );
-
   const modelLabel = resolveProviderModelLabel({
     provider: props.provider,
     lockedProvider: null,
@@ -219,7 +212,6 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
     props.modelOptions,
     props.runtimeModel,
   );
-
   const providerTabs = resolveComposerModelPickerProviderTabs(
     resolveVisibleProviderOptions({
       provider: props.provider,
@@ -230,7 +222,6 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
     }).filter((option) => connectedProviders.has(option.value)),
     props.providers,
   );
-
   const rows =
     tab === STARRED_TAB
       ? buildStarredTabRows({
@@ -267,9 +258,7 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
     traitsModels?.find((model) => model.isDefault) ??
     traitsModels?.find((model) => !model.hidden);
   const traitsModel = traitsRuntimeModel?.slug ?? rememberedModel ?? "";
-
   const starredModelSlots = new Set(starredModels.map(starredModelSlotKey));
-
   const commitRow = (
     row: PickerRow,
     model: ModelSlug,
@@ -283,7 +272,9 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
         : null;
     const effortPatch =
       matchedEffort !== null && selection.primarySelectDescriptor
-        ? { [selection.primarySelectDescriptor.id]: matchedEffort }
+        ? {
+            [selection.primarySelectDescriptor.id]: matchedEffort,
+          }
         : {};
     props.onProviderModelChange(row.provider, model, {
       modelOptions: resolveComposerModelOptions(
@@ -302,14 +293,11 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
     setMenuOpen(false);
     props.onSelectionCommitted?.();
   };
-
   const selectRow = (row: PickerRow) => {
     if (props.disabled) return;
     const model = row.selectableModel;
     if (model === null) return;
-
     const selection = traitSelectionFor(row.provider, model);
-
     const keepOpen =
       row.provider === props.provider &&
       row.preset === null &&
@@ -319,12 +307,15 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
       row,
       model,
       row.preset
-        ? buildStarredModelOptionsPatch({ provider: row.provider, selection, starred: row.preset })
+        ? buildStarredModelOptionsPatch({
+            provider: row.provider,
+            selection,
+            starred: row.preset,
+          })
         : {},
       keepOpen,
     );
   };
-
   const openTabs: ComposerModelPickerTab[] = [
     STARRED_TAB,
     ...providerTabs
@@ -349,14 +340,17 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
   useEffect(() => {
     if (!isMenuOpen) return;
     const listener = (event: KeyboardEvent) => onShortcutKeyDown(event);
-    window.addEventListener("keydown", listener, { capture: true });
-    return () => window.removeEventListener("keydown", listener, { capture: true });
+    window.addEventListener("keydown", listener, {
+      capture: true,
+    });
+    return () =>
+      window.removeEventListener("keydown", listener, {
+        capture: true,
+      });
   }, [isMenuOpen]);
-
   const shortcutModifierLabel = isMacNavigatorPlatform() ? "⌘" : "Ctrl ";
   const isTabLoading = tab !== STARRED_TAB && (props.loadingModelProviders?.[tab] ?? false);
   const discoveryError = tab === STARRED_TAB ? undefined : props.discoveryErrorsByProvider?.[tab];
-
   return (
     <Menu
       open={isMenuOpen}
@@ -378,7 +372,9 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
         align="start"
         side="top"
         className="w-[min(18.5rem,92vw)] bg-popover/55 [--picker-option-min-h:1.75rem] backdrop-blur-3xl backdrop-saturate-200"
-        {...{ [MODEL_PICKER_POPUP_ATTRIBUTE]: "" }}
+        {...{
+          [MODEL_PICKER_POPUP_ATTRIBUTE]: "",
+        }}
         onKeyDownCapture={(event) => {
           if (event.key !== "Tab" || event.shiftKey || event.nativeEvent.isComposing) return;
           event.preventDefault();
@@ -419,7 +415,6 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
                   return;
                 }
                 if (event.key === "Tab" || MENU_NAVIGATION_KEYS.has(event.key)) return;
-
                 event.stopPropagation();
               }}
             />
@@ -438,12 +433,17 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
             ) : null}
             {isTabLoading ? (
               <div className="space-y-2 px-2 py-2" aria-label="Loading models">
-                {Array.from({ length: 5 }, (_, index) => (
-                  <Skeleton
-                    key={index}
-                    className={cn("h-3.5 rounded-full", index % 3 === 0 ? "w-32" : "w-44")}
-                  />
-                ))}
+                {Array.from(
+                  {
+                    length: 5,
+                  },
+                  (_, index) => (
+                    <Skeleton
+                      key={index}
+                      className={cn("h-3.5 rounded-full", index % 3 === 0 ? "w-32" : "w-44")}
+                    />
+                  ),
+                )}
               </div>
             ) : rows.length > 0 ? (
               <div className="flex flex-col gap-px">

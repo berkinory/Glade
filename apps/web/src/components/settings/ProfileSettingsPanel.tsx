@@ -1,3 +1,10 @@
+import {
+  Share02Icon,
+  PencilEdit02Icon,
+  ChartColumnIcon,
+  Robot01Icon,
+  BlocksIcon,
+} from "~/lib/icons";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { type ProfileStats, type ProfileTokenStats } from "@glade/contracts/server/stats";
@@ -6,7 +13,6 @@ import {
   serverProfileStatsQueryOptions,
   serverProfileTokenStatsQueryOptions,
 } from "~/lib/serverReactQuery";
-import { CentralIcon } from "~/lib/central-icons";
 import { ProviderIcon } from "~/components/ProviderIcon";
 import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
@@ -32,11 +38,9 @@ import {
   formatProfileUsageBasis,
   toDisplayName,
 } from "../profile/profileFormatting";
-
 export function ProfileSettingsPanel() {
   const coreQuery = useQuery(serverProfileStatsQueryOptions());
   const tokenQuery = useQuery(serverProfileTokenStatsQueryOptions());
-
   if (coreQuery.isPending) {
     return <ProfileSkeleton />;
   }
@@ -52,7 +56,6 @@ export function ProfileSettingsPanel() {
       </div>
     );
   }
-
   return (
     <ProfileContent
       stats={coreQuery.data}
@@ -61,7 +64,6 @@ export function ProfileSettingsPanel() {
     />
   );
 }
-
 function ProfileContent({
   stats,
   tokenStats,
@@ -73,7 +75,6 @@ function ProfileContent({
 }) {
   const [shareOpen, setShareOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-
   const defaultName = toDisplayName(stats.identity.homeDirBasename);
   const { name, setName } = useProfileName(defaultName);
   const { handle, setHandle } = useProfileHandle(stats.identity.defaultHandle);
@@ -86,17 +87,16 @@ function ProfileContent({
   const modelUsage = selectProfileModelUsage(stats, tokenStats);
   const peakHourLabel = formatPeakHourLabel(stats.activeHours.startHour);
   const mostWorkedProjectLabel = formatMostWorkedProjectLabel(stats.mostWorkedProject);
-
   return (
     <div className="flex min-w-0 flex-col gap-7">
       {}
       <div className="flex items-center justify-end gap-2">
         <Button variant="outline" size="sm" onClick={() => setShareOpen(true)}>
-          <CentralIcon name="share-os" />
+          <Share02Icon />
           Share
         </Button>
         <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-          <CentralIcon name="pencil" />
+          <PencilEdit02Icon />
           Edit
         </Button>
       </div>
@@ -152,9 +152,19 @@ function ProfileContent({
         ) : (
           <ActivityHeatmap
             cells={heatmap.cells}
-            layout={{ fill: true, radius: 5, gap: 3 }}
-            tooltip={{ show: true, unit: heatmap.unit }}
-            months={{ show: true, position: "bottom" }}
+            layout={{
+              fill: true,
+              radius: 5,
+              gap: 3,
+            }}
+            tooltip={{
+              show: true,
+              unit: heatmap.unit,
+            }}
+            months={{
+              show: true,
+              position: "bottom",
+            }}
           />
         )}
       </section>
@@ -168,11 +178,7 @@ function ProfileContent({
               label="Most used provider"
               value={
                 topProvider.provider
-                  ? `${formatProviderLabel(topProvider.provider)}${
-                      topProvider.percent !== null
-                        ? ` · ${topProvider.percent}% of ${formatProfileUsageBasis(topProvider.metric)}`
-                        : ""
-                    }`
+                  ? `${formatProviderLabel(topProvider.provider)}${topProvider.percent !== null ? ` · ${topProvider.percent}% of ${formatProfileUsageBasis(topProvider.metric)}` : ""}`
                   : "—"
               }
             />
@@ -180,11 +186,7 @@ function ProfileContent({
               label="Most used reasoning"
               value={
                 stats.insights.topReasoning
-                  ? `${capitalize(stats.insights.topReasoning)}${
-                      stats.insights.topReasoningPercent !== null
-                        ? ` · ${stats.insights.topReasoningPercent}%`
-                        : ""
-                    }`
+                  ? `${capitalize(stats.insights.topReasoning)}${stats.insights.topReasoningPercent !== null ? ` · ${stats.insights.topReasoningPercent}%` : ""}`
                   : "—"
               }
             />
@@ -214,10 +216,11 @@ function ProfileContent({
                 >
                   <span className="flex min-w-0 items-center gap-2.5">
                     <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-muted/60">
-                      <CentralIcon
-                        name={skill.kind === "agent" ? "agent" : "building-blocks"}
-                        className="size-3"
-                      />
+                      {skill.kind === "agent" ? (
+                        <Robot01Icon className="size-3" />
+                      ) : (
+                        <BlocksIcon className="size-3" />
+                      )}
                     </span>
                     <span className="truncate text-ui leading-snug">{skill.displayName}</span>
                   </span>
@@ -292,7 +295,6 @@ function ProfileContent({
     </div>
   );
 }
-
 function StatTile({ label, value }: { label: string; value: string | null }) {
   return (
     <div className="flex flex-col items-center gap-0.5 px-3 py-3">
@@ -307,7 +309,6 @@ function StatTile({ label, value }: { label: string; value: string | null }) {
     </div>
   );
 }
-
 function InsightRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-3">
@@ -318,18 +319,15 @@ function InsightRow({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
-
 function formatHour(hour: number): string {
   const normalized = ((hour % 24) + 24) % 24;
   if (normalized === 0) return "12 AM";
   if (normalized === 12) return "12 PM";
   return normalized < 12 ? `${normalized} AM` : `${normalized - 12} PM`;
 }
-
 function formatPeakHourLabel(startHour: number | null): string {
   return startHour === null ? "—" : formatHour(startHour);
 }
-
 function formatMostWorkedProjectLabel(project: ProfileStats["mostWorkedProject"]): string {
   if (!project) {
     return "—";
@@ -337,7 +335,6 @@ function formatMostWorkedProjectLabel(project: ProfileStats["mostWorkedProject"]
   const promptLabel = project.promptCount === 1 ? "prompt" : "prompts";
   return `${project.title} · ${formatNumber(project.promptCount)} ${promptLabel}`;
 }
-
 function ModelUsageRow({
   provider,
   model,
@@ -354,7 +351,7 @@ function ModelUsageRow({
           {provider !== "unknown" ? (
             <ProviderIcon provider={provider} className="size-3.5 shrink-0" />
           ) : (
-            <CentralIcon name="chart-2" className="size-3.5 shrink-0 text-muted-foreground" />
+            <ChartColumnIcon className="size-3.5 shrink-0 text-muted-foreground" />
           )}
           <span className="truncate">
             {model === "unknown"
@@ -367,13 +364,14 @@ function ModelUsageRow({
       <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
         <div
           className="h-full rounded-full bg-[var(--info)]"
-          style={{ width: `${Math.min(100, Math.max(2, percent))}%` }}
+          style={{
+            width: `${Math.min(100, Math.max(2, percent))}%`,
+          }}
         />
       </div>
     </li>
   );
 }
-
 function ProfileSkeleton() {
   return (
     <div className="flex flex-col items-center gap-7">
@@ -391,7 +389,6 @@ function ProfileSkeleton() {
     </div>
   );
 }
-
 function capitalize(value: string): string {
   return value.length > 0 ? value[0]!.toUpperCase() + value.slice(1) : value;
 }

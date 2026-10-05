@@ -1,19 +1,15 @@
-import { EllipsisIcon, NewThreadIcon, SteerIcon, Trash2 } from "~/lib/icons";
-
+import { EllipsisIcon, SquarePenIcon, CornerDownRightIcon, Delete02Icon } from "~/lib/icons";
 import type { QueuedComposerTurn } from "../../composerDraftDomain";
-
 import { Button } from "../ui/button";
 import { IconButton } from "../ui/icon-button";
 import { Menu, MenuItem, MenuTrigger } from "../ui/menu";
 import { ComposerPickerMenuPopup } from "./ComposerPickerMenuPopup";
-
 type QueuedComposerActionsProps = {
   queuedTurn: QueuedComposerTurn;
   onSteer: (queuedTurn: QueuedComposerTurn) => void;
   onRemove: (queuedTurnId: string) => void;
   onEdit: (queuedTurn: QueuedComposerTurn) => void;
 };
-
 function QueuedComposerActions({
   queuedTurn,
   onSteer,
@@ -23,7 +19,7 @@ function QueuedComposerActions({
   return (
     <div className="flex shrink-0 items-center gap-0">
       <Button variant="subtle" size="chip" onClick={() => void onSteer(queuedTurn)}>
-        <SteerIcon />
+        <CornerDownRightIcon />
         <span>Steer</span>
       </Button>
       <IconButton
@@ -32,7 +28,7 @@ function QueuedComposerActions({
         label="Delete message"
         onClick={() => onRemove(queuedTurn.id)}
       >
-        <Trash2 />
+        <Delete02Icon />
       </IconButton>
       <Menu>
         <MenuTrigger
@@ -49,11 +45,11 @@ function QueuedComposerActions({
         </MenuTrigger>
         <ComposerPickerMenuPopup align="end" side="top" sideOffset={6}>
           <MenuItem className="gap-2" onClick={() => onEdit(queuedTurn)}>
-            <NewThreadIcon className="size-3.5" aria-hidden />
+            <SquarePenIcon className="size-3.5" aria-hidden />
             <span>Edit message</span>
           </MenuItem>
           <MenuItem className="gap-2" onClick={() => onRemove(queuedTurn.id)}>
-            <Trash2 className="size-3.5" aria-hidden />
+            <Delete02Icon className="size-3.5" aria-hidden />
             <span>Delete message</span>
           </MenuItem>
         </ComposerPickerMenuPopup>
@@ -61,5 +57,4 @@ function QueuedComposerActions({
     </div>
   );
 }
-
 export { QueuedComposerActions };

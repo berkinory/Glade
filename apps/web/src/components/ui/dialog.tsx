@@ -1,26 +1,20 @@
 "use client";
 
-import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { XIcon } from "~/lib/icons";
+import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { UI_MOTION_BACKDROP_CLASS, UI_MOTION_DIALOG_CLASS } from "~/lib/uiMotion";
 import { cn } from "~/lib/utils";
 import { Button, dialogActionButtonClassName } from "~/components/ui/button";
 import { ScrollArea } from "~/components/ui/scroll-area";
-
 const DialogCreateHandle = DialogPrimitive.createHandle;
-
 const Dialog = DialogPrimitive.Root;
-
 const DialogPortal = DialogPrimitive.Portal;
-
 function DialogTrigger(props: DialogPrimitive.Trigger.Props) {
   return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />;
 }
-
 function DialogClose(props: DialogPrimitive.Close.Props) {
   return <DialogPrimitive.Close data-slot="dialog-close" {...props} />;
 }
-
 function DialogBackdrop({ className, ...props }: DialogPrimitive.Backdrop.Props) {
   return (
     <DialogPrimitive.Backdrop
@@ -30,7 +24,6 @@ function DialogBackdrop({ className, ...props }: DialogPrimitive.Backdrop.Props)
     />
   );
 }
-
 function DialogViewport({ className, ...props }: DialogPrimitive.Viewport.Props) {
   return (
     <DialogPrimitive.Viewport
@@ -55,7 +48,6 @@ const dialogPopupClassName = `-translate-y-[calc(1.25rem*var(--nested-dialogs))]
 // geometry in footers, so they are excluded from the sizing override.
 const dialogFooterButtonSlotSelector =
   "[&_[data-slot=button]:not([class*='size-9']):not([class*='size-8']):not([class*='size-7']):not([class*='rounded-full'])]";
-
 const dialogFooterButtonClassName = dialogActionButtonClassName
   .split(/\s+/)
   .filter(Boolean)
@@ -64,10 +56,8 @@ const dialogFooterButtonClassName = dialogActionButtonClassName
 
 /** Shared label style for form fields inside dialogs (SpaceEditorDialog, CreateProjectDialog). */
 const dialogFieldLabelClassName = "text-ui-sm font-medium text-foreground/80";
-
 const dialogPanelFieldClassName =
   "[&_[data-slot=textarea-control]]:min-h-24 [&_[data-slot=textarea-control]_[data-slot=textarea]]:px-2.5 [&_[data-slot=textarea-control]_[data-slot=textarea]]:py-2";
-
 function DialogPopup({
   className,
   children,
@@ -111,7 +101,6 @@ function DialogPopup({
     </DialogPortal>
   );
 }
-
 function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -124,7 +113,6 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
     />
   );
 }
-
 function DialogFooter({
   className,
   variant: variantProp,
@@ -149,7 +137,6 @@ function DialogFooter({
     />
   );
 }
-
 function DialogTitle({ className, ...props }: DialogPrimitive.Title.Props) {
   return (
     <DialogPrimitive.Title
@@ -159,7 +146,6 @@ function DialogTitle({ className, ...props }: DialogPrimitive.Title.Props) {
     />
   );
 }
-
 function DialogDescription({ className, ...props }: DialogPrimitive.Description.Props) {
   return (
     <DialogPrimitive.Description
@@ -169,12 +155,13 @@ function DialogDescription({ className, ...props }: DialogPrimitive.Description.
     />
   );
 }
-
 function DialogPanel({
   className,
   scrollFade: scrollFadeProp,
   ...props
-}: React.ComponentProps<"div"> & { scrollFade?: boolean }) {
+}: React.ComponentProps<"div"> & {
+  scrollFade?: boolean;
+}) {
   const scrollFade = scrollFadeProp ?? true;
   return (
     <ScrollArea scrollFade={scrollFade}>
@@ -190,7 +177,6 @@ function DialogPanel({
     </ScrollArea>
   );
 }
-
 export {
   dialogFieldLabelClassName,
   dialogFooterButtonClassName,

@@ -1,14 +1,11 @@
+import { NamedIcon } from "~/lib/namedIcons";
 import {
   SPACE_ICON_NAMES,
   type SpaceIconName,
 } from "@glade/contracts/orchestration/threadEntities";
-
-import { CentralIcon } from "~/lib/central-icons";
 import { UNFILED_SPACE_SPECIAL_ICON, type VoidSpaceIconName } from "~/lib/spaceGrouping";
 import { cn } from "~/lib/utils";
-
 export type SpaceIconValue = VoidSpaceIconName;
-
 const SPACE_ICON_LABELS: Record<SpaceIconName, string> = {
   bag: "Bag",
   home: "Home",
@@ -31,28 +28,31 @@ const SPACE_ICON_LABELS: Record<SpaceIconName, string> = {
   school: "School",
   backpack: "Backpack",
 };
-
 export interface SpaceIconOption {
   readonly name: SpaceIconValue;
   readonly label: string;
 }
-
 export const SPACE_ICON_OPTIONS: ReadonlyArray<SpaceIconOption> = SPACE_ICON_NAMES.map((name) => ({
   name,
   label: SPACE_ICON_LABELS[name],
 }));
-
 export const VOID_SPACE_ICON_OPTIONS: ReadonlyArray<SpaceIconOption> = [
-  { name: UNFILED_SPACE_SPECIAL_ICON, label: "Black hole" },
+  {
+    name: UNFILED_SPACE_SPECIAL_ICON,
+    label: "Black hole",
+  },
   ...SPACE_ICON_OPTIONS,
 ];
-
 export function SpaceIcon(props: {
   icon: SpaceIconValue;
   className?: string | undefined;
   label?: string;
 }) {
   return (
-    <CentralIcon name={props.icon} label={props.label} className={cn("size-4", props.className)} />
+    <NamedIcon
+      name={props.icon}
+      aria-label={props.label}
+      className={cn("size-4", props.className)}
+    />
   );
 }

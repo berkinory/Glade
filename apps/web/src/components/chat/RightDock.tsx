@@ -1,3 +1,4 @@
+import { CollapseIcon, ExpandIcon, PanelRightCloseIcon, PlusIcon } from "~/lib/icons";
 import {
   type CSSProperties,
   type ReactNode,
@@ -6,7 +7,6 @@ import {
   useRef,
   useState,
 } from "react";
-
 import { cn } from "~/lib/utils";
 import { useIsMobile } from "~/hooks/useMediaQuery";
 import {
@@ -14,7 +14,6 @@ import {
   EMPTY_PANE_ID_SET,
   reconcileKeepMountedPaneIds,
 } from "~/lib/dockPaneActivation";
-import { PanelCollapseIcon, PanelExpandIcon, PanelRightCloseIcon, PlusIcon } from "~/lib/icons";
 import type {
   RightDockPane,
   RightDockPaneKind,
@@ -47,7 +46,6 @@ import {
   resolveRightDockPaneLabel,
 } from "./rightDockPaneMeta";
 import { useDesktopTopBarWindowControlsGutterClassName } from "~/hooks/useDesktopTopBarGutter";
-
 interface RightDockProps {
   state: RightDockThreadState;
   initialWidth?: "half" | "fixed";
@@ -60,11 +58,9 @@ interface RightDockProps {
     wrapper: HTMLElement;
   }) => boolean;
   paneLabelOverrides?: Record<string, string | undefined>;
-
   paneIconOverrides?: Record<string, ReactNode | undefined>;
   addMenuKinds: readonly RightDockPaneKind[];
   primaryKinds?: readonly RightDockPaneKind[];
-
   onSelectPane?: ((paneId: string) => void) | undefined;
   onClosePane: (paneId: string) => void;
   onCollapse: () => void;
@@ -75,10 +71,13 @@ interface RightDockProps {
   browserRuntimeMode?: DockPaneRuntimeMode;
   renderPane: (
     pane: RightDockPane,
-    context: { runtimeMode: DockPaneRuntimeMode; isActive: boolean; isVisible: boolean },
+    context: {
+      runtimeMode: DockPaneRuntimeMode;
+      isActive: boolean;
+      isVisible: boolean;
+    },
   ) => ReactNode;
 }
-
 function RightDockTab(props: {
   pane: RightDockPane;
   label: string;
@@ -119,7 +118,6 @@ function useKeepMountedPaneIds(
     activePaneId,
     activePaneKind,
   });
-
   useLayoutEffect(() => {
     setCommittedPaneIds((current) => {
       const next = reconcileKeepMountedPaneIds({
@@ -134,10 +132,8 @@ function useKeepMountedPaneIds(
       return next;
     });
   }, [activePaneId, activePaneKind, panes]);
-
   return renderedPaneIds;
 }
-
 export function RightDock(props: RightDockProps) {
   const { onCollapse } = props;
   const paneCount = props.state.panes.length;
@@ -145,12 +141,9 @@ export function RightDock(props: RightDockProps) {
   const onSelectPane = props.onSelectPane;
   const activePaneRuntimeMode = props.activePaneRuntimeMode ?? "live";
   const browserRuntimeMode = props.browserRuntimeMode ?? "live";
-
   const desktopTopBarWindowControlsGutterClassName =
     useDesktopTopBarWindowControlsGutterClassName();
-
   const keepMountedPaneIds = useKeepMountedPaneIds(props.state.panes, activePane);
-
   const contentRef = useRef<HTMLDivElement | null>(null);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const expansionKey = props.motionKey ?? "dock";
@@ -172,7 +165,6 @@ export function RightDock(props: RightDockProps) {
     update();
     const observer = new ResizeObserver(update);
     observer.observe(shell);
-
     const siblings = Array.from(shell.children).filter(
       (element): element is HTMLElement => element instanceof HTMLElement && element !== wrapper,
     );
@@ -182,7 +174,6 @@ export function RightDock(props: RightDockProps) {
     }));
     siblings.forEach((element) => {
       element.inert = true;
-
       element.style.visibility = "hidden";
     });
     return () => {
@@ -221,34 +212,40 @@ export function RightDock(props: RightDockProps) {
   const renderedPanes = props.state.panes.filter(
     (pane) => pane.id === activePane?.id || keepMountedPaneIds.has(pane.id),
   );
-
   const [motionState, setMotionState] = useState<{
     key: RightDockProps["motionKey"];
     allow: boolean;
-  }>(() => ({ key: props.motionKey, allow: !props.state.open }));
+  }>(() => ({
+    key: props.motionKey,
+    allow: !props.state.open,
+  }));
   const shouldSuppressChromeMotion = !(motionState.key === props.motionKey && motionState.allow);
-
   useEffect(() => {
     if (!shouldSuppressChromeMotion) {
       return;
     }
     const frameId = window.requestAnimationFrame(() => {
-      setMotionState({ key: props.motionKey, allow: true });
+      setMotionState({
+        key: props.motionKey,
+        allow: true,
+      });
     });
     return () => window.cancelAnimationFrame(frameId);
   }, [props.motionKey, shouldSuppressChromeMotion]);
-
   const chromeMotionClass = shouldSuppressChromeMotion
     ? SIDEBAR_OFFCANVAS_MOTION_SUPPRESSED_CLASS
     : SIDEBAR_OFFCANVAS_MOTION_CLASS;
-
   return (
     <SidebarProvider
       defaultOpen={false}
       open={props.state.open}
       onOpenChange={props.onOpenChange}
       className="w-auto min-h-0 flex-none bg-transparent"
-      style={{ "--sidebar-width": props.defaultWidth } as CSSProperties}
+      style={
+        {
+          "--sidebar-width": props.defaultWidth,
+        } as CSSProperties
+      }
     >
       <Sidebar
         side="right"
@@ -257,7 +254,14 @@ export function RightDock(props: RightDockProps) {
           "border-l border-[var(--app-surface-divider)] text-foreground",
           chromeMotionClass,
         )}
-        style={maximized ? { width: expandedWidth || undefined, zIndex: 30 } : undefined}
+        style={
+          maximized
+            ? {
+                width: expandedWidth || undefined,
+                zIndex: 30,
+              }
+            : undefined
+        }
         data-dock-maximized={maximized ? "true" : undefined}
         innerClassName={CHAT_BACKGROUND_CLASS_NAME}
         rail={!maximized ? <SidebarRail /> : null}
@@ -362,7 +366,7 @@ export function RightDock(props: RightDockProps) {
                 className={CHAT_HEADER_ICON_CONTROL_CLASS_NAME}
                 onClick={() => setExpandedKey(maximized ? null : expansionKey)}
               >
-                {maximized ? <PanelCollapseIcon /> : <PanelExpandIcon />}
+                {maximized ? <CollapseIcon /> : <ExpandIcon />}
               </IconButton>
             ) : null}
             <IconButton
@@ -381,7 +385,6 @@ export function RightDock(props: RightDockProps) {
             {renderedPanes.map((pane) => {
               const isActive = pane.id === activePane?.id;
               const isVisible = isActive && props.state.open;
-
               const runtimeMode: DockPaneRuntimeMode =
                 pane.kind === "browser"
                   ? browserRuntimeMode
@@ -403,7 +406,11 @@ export function RightDock(props: RightDockProps) {
                       : undefined
                   }
                 >
-                  {props.renderPane(pane, { runtimeMode, isActive, isVisible })}
+                  {props.renderPane(pane, {
+                    runtimeMode,
+                    isActive,
+                    isVisible,
+                  })}
                 </div>
               );
             })}

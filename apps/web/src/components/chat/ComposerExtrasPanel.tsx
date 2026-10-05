@@ -1,31 +1,22 @@
+import { CheckIcon, EnergyFilledIcon, AttachmentIcon } from "~/lib/icons";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useEffect, useId, useRef, useState, type ChangeEvent } from "react";
-
-import { CheckIcon, FastModeIcon, PaperclipIcon } from "~/lib/icons";
-
 import {
   COMPOSER_MENU_PANEL_GLYPH_CLASS_NAME,
   ComposerMenuPanel,
   type ComposerMenuPanelGroup,
 } from "./ComposerMenuPanel";
-
 export const COMPOSER_EXTRAS_TRIGGER_ATTRIBUTE = "data-composer-extras-trigger";
-
 const GLYPH = COMPOSER_MENU_PANEL_GLYPH_CLASS_NAME;
-
 const ROW_FILES = "extras:files";
-
 const ROW_FAST = "extras:fast";
-
 const CHECK = <CheckIcon className="size-3.5 text-foreground/70" />;
-
 export function ComposerExtrasPanel(props: {
   supportsFastMode: boolean;
   fastModeEnabled: boolean;
   threadId?: ThreadId;
   onAddAttachments: (files: File[]) => void;
   onToggleFastMode: () => void;
-
   onClose: () => void;
   panelId: string;
 }) {
@@ -33,7 +24,6 @@ export function ComposerExtrasPanel(props: {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [activeRowId, setActiveRowId] = useState<string | null>(ROW_FILES);
-
   const groups: ComposerMenuPanelGroup[] = [
     {
       id: "add",
@@ -41,15 +31,14 @@ export function ComposerExtrasPanel(props: {
       rows: [
         {
           id: ROW_FILES,
-          icon: <PaperclipIcon className={GLYPH} />,
+          icon: <AttachmentIcon className={GLYPH} />,
           title: "Files and folders",
         },
-
         ...(props.supportsFastMode
           ? [
               {
                 id: ROW_FAST,
-                icon: <FastModeIcon className={GLYPH} />,
+                icon: <EnergyFilledIcon className={GLYPH} />,
                 title: "Speed",
                 secondary: props.fastModeEnabled ? "Fast" : "Default",
                 trailing: props.fastModeEnabled ? CHECK : null,
@@ -59,33 +48,27 @@ export function ComposerExtrasPanel(props: {
       ],
     },
   ];
-
   const selectableRowIds = groups.flatMap((group) =>
     group.rows.filter((row) => !row.disabled).map((row) => row.id),
   );
-
   const highlightedRowId =
     activeRowId && selectableRowIds.includes(activeRowId)
       ? activeRowId
       : (selectableRowIds[0] ?? null);
-
   const selectRow = (rowId: string) => {
     if (rowId === ROW_FILES) {
       fileInputRef.current?.click();
       return;
     }
-
     if (rowId === ROW_FAST) {
       props.onToggleFastMode();
       props.onClose();
       return;
     }
   };
-
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
-
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
@@ -94,7 +77,6 @@ export function ComposerExtrasPanel(props: {
         }
         return;
       }
-
       if (event.key === "ArrowDown" || event.key === "ArrowUp") {
         if (selectableRowIds.length === 0) return;
         event.preventDefault();
@@ -106,7 +88,6 @@ export function ComposerExtrasPanel(props: {
         setActiveRowId(selectableRowIds[nextIndex] ?? null);
         return;
       }
-
       if (event.key === "Enter" || event.key === "Tab") {
         if (!highlightedRowId) return;
         event.preventDefault();
@@ -114,13 +95,11 @@ export function ComposerExtrasPanel(props: {
         selectRow(highlightedRowId);
       }
     };
-
     window.addEventListener("keydown", onKeyDown, true);
     return () => {
       window.removeEventListener("keydown", onKeyDown, true);
     };
   });
-
   useEffect(() => {
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target;
@@ -134,13 +113,11 @@ export function ComposerExtrasPanel(props: {
       }
       props.onClose();
     };
-
     window.addEventListener("pointerdown", onPointerDown, true);
     return () => {
       window.removeEventListener("pointerdown", onPointerDown, true);
     };
   });
-
   const handleFileInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
     if (files.length > 0) {
@@ -149,7 +126,6 @@ export function ComposerExtrasPanel(props: {
     event.target.value = "";
     props.onClose();
   };
-
   return (
     <div ref={containerRef} id={props.panelId} data-testid="composer-extras-panel">
       <input

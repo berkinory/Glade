@@ -1,12 +1,11 @@
+import { CheckIcon, PanelRightCloseIcon } from "~/lib/icons";
 import { Spinner } from "~/components/ui/spinner";
 import { type TimestampFormat } from "../appSettings";
 import { Button } from "./ui/button";
 import { ScrollArea } from "./ui/scroll-area";
-import { CheckIcon, PanelRightCloseIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import type { ActiveTaskListState } from "../session-logic";
 import { formatTimestamp } from "../timestampFormat";
-
 function stepStatusIcon(status: string): React.ReactNode {
   if (status === "completed") {
     return (
@@ -28,7 +27,6 @@ function stepStatusIcon(status: string): React.ReactNode {
     </span>
   );
 }
-
 export default function TaskListSidebar({
   activeTaskList,
   timestampFormat,

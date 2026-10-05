@@ -1,7 +1,6 @@
-import { ArrowRightIcon, TriangleAlertIcon } from "~/lib/icons";
+import { ArrowRight02Icon, TriangleAlertIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { COMPOSER_INPUT_SURFACE_CLASS_NAME } from "./composerPickerStyles";
-
 export function ComposerBranchMismatchBanner({
   threadBranch,
   currentBranch,
@@ -33,7 +32,10 @@ export function ComposerBranchMismatchBanner({
           >
             {threadBranch}
           </code>
-          <ArrowRightIcon aria-hidden="true" className="size-3 shrink-0 text-muted-foreground/50" />
+          <ArrowRight02Icon
+            aria-hidden="true"
+            className="size-3 shrink-0 text-muted-foreground/50"
+          />
           <code
             className="min-w-0 truncate font-medium text-foreground/85"
             title={`Current branch: ${currentBranch}`}

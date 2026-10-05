@@ -1,12 +1,10 @@
+import { ArrowUp02Icon, PanelLeftIcon } from "~/lib/icons";
 import { Spinner } from "~/components/ui/spinner";
 import { type ReactNode } from "react";
-
-import { ComposerSendArrowIcon, LayoutSidebarIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import type { derivePendingUserInputProgress } from "../../pendingUserInput";
 import type { SessionPhase } from "../../types";
 import { Button } from "../ui/button";
-
 import { ComposerVoiceButton } from "./ComposerVoiceButton";
 import { ComposerVoiceRecorderBar } from "./ComposerVoiceRecorderBar";
 import { COMPOSER_FOOTER_ROW_CLASS_NAME } from "./composerPickerStyles";
@@ -15,8 +13,11 @@ interface ChatComposerFooterProps {
   leadingControls: ReactNode;
   composerPickerControls: ReactNode;
   contextMeter: ReactNode;
-
-  sidebarAction: { title: string; label: string; onClick: () => void } | null;
+  sidebarAction: {
+    title: string;
+    label: string;
+    onClick: () => void;
+  } | null;
   voice: {
     enabled: boolean;
     recording: boolean;
@@ -40,17 +41,14 @@ interface ChatComposerFooterProps {
     preparingWorktree: boolean;
     hasContent: boolean;
     hasPendingUserInputs: boolean;
-
     onInterrupt: () => void;
   };
 }
-
 export function ChatComposerFooter({
   isComposerFooterCompact,
   leadingControls,
   composerPickerControls,
   contextMeter,
-
   sidebarAction,
   voice,
   pendingInput,
@@ -90,7 +88,7 @@ export function ChatComposerFooter({
                 title={sidebarAction.title}
                 aria-label={sidebarAction.title}
               >
-                <LayoutSidebarIcon className="size-3.5" />
+                <PanelLeftIcon className="size-3.5" />
                 <span className="sr-only sm:not-sr-only">{sidebarAction.label}</span>
               </Button>
             ) : null}
@@ -192,10 +190,7 @@ export function ChatComposerFooter({
               {submission.connecting || submission.busy || submission.preparingImages ? (
                 <Spinner variant="action" className="size-3.5" aria-hidden="true" />
               ) : (
-                <ComposerSendArrowIcon
-                  aria-hidden="true"
-                  className="size-5 shrink-0 translate-y-px"
-                />
+                <ArrowUp02Icon aria-hidden="true" className="size-5 shrink-0 translate-y-px" />
               )}
             </Button>
           </>

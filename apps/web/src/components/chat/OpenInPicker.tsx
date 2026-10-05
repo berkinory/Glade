@@ -1,9 +1,9 @@
+import { ChevronDownIcon } from "~/lib/icons";
 import { type EditorId } from "@glade/contracts/settings/editor";
 import { type ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import { useQuery } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { useEditorLaunchers, type EditorLaunchers } from "~/hooks/useEditorLaunchers";
-import { ChevronDownIcon } from "~/lib/icons";
 import { serverConfigQueryOptions } from "~/lib/serverReactQuery";
 import { cn } from "~/lib/utils";
 import {
@@ -24,29 +24,21 @@ import {
   CHAT_HEADER_SPLIT_LEADING_CLASS_NAME,
   CHAT_HEADER_SPLIT_TRAILING_CLASS_NAME,
 } from "./chatHeaderControls";
-
 const EMPTY_KEYBINDINGS: ResolvedKeybindingsConfig = [];
 const EMPTY_AVAILABLE_EDITORS: ReadonlyArray<EditorId> = [];
-
 interface OpenInPickerPrimaryAction {
   onClick: () => void;
   disabled?: boolean;
   icon?: ReactNode;
 }
-
 interface OpenInPickerProps {
   keybindings?: ResolvedKeybindingsConfig;
   availableEditors?: ReadonlyArray<EditorId>;
   openInTarget: string | null;
-
   labelMode?: "responsive" | "always";
-
   variant?: "split" | "compact";
-
   defaultEditor?: EditorId;
-
   primaryAction?: OpenInPickerPrimaryAction;
-
   menuOptions?: {
     additionalItems?: ReactNode;
     editorOrder?: ReadonlyArray<EditorId>;
@@ -54,12 +46,10 @@ interface OpenInPickerProps {
     label?: string;
   };
 }
-
 type OpenInPickerContentProps = OpenInPickerProps & {
   keybindings: ResolvedKeybindingsConfig;
   availableEditors: ReadonlyArray<EditorId>;
 };
-
 export function OpenInPicker(props: OpenInPickerProps) {
   return props.keybindings !== undefined && props.availableEditors !== undefined ? (
     <OpenInPickerContent
@@ -71,7 +61,6 @@ export function OpenInPicker(props: OpenInPickerProps) {
     <OpenInPickerWithConfig {...props} />
   );
 }
-
 function OpenInPickerWithConfig(props: OpenInPickerProps) {
   const config = useQuery(serverConfigQueryOptions()).data;
   return (
@@ -84,7 +73,6 @@ function OpenInPickerWithConfig(props: OpenInPickerProps) {
     />
   );
 }
-
 function OpenInPickerContent({ primaryAction, ...props }: OpenInPickerContentProps) {
   return primaryAction ? (
     <PrimaryActionOpenInPicker {...props} primaryAction={primaryAction} />
@@ -92,7 +80,6 @@ function OpenInPickerContent({ primaryAction, ...props }: OpenInPickerContentPro
     <EditorActionOpenInPicker {...props} />
   );
 }
-
 interface OpenInPickerFrameProps {
   labelMode: "responsive" | "always";
   variant: "split" | "compact";
@@ -102,10 +89,8 @@ interface OpenInPickerFrameProps {
   onMenuOpenChange?: (open: boolean) => void;
   menuContent: ReactNode;
 }
-
 const COMPACT_ACTION_BUTTON_CLASS_NAME =
   "inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-[var(--color-background-button-secondary-hover)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 disabled:pointer-events-none disabled:opacity-50 data-popup-open:bg-[var(--color-background-button-secondary-hover)] data-popup-open:text-foreground";
-
 function OpenInPickerFrame(props: OpenInPickerFrameProps) {
   if (props.variant === "compact") {
     return (
@@ -123,7 +108,13 @@ function OpenInPickerFrame(props: OpenInPickerFrameProps) {
           {props.primaryAction.icon ?? null}
           <span className="sr-only">Open</span>
         </button>
-        <Menu {...(props.onMenuOpenChange ? { onOpenChange: props.onMenuOpenChange } : {})}>
+        <Menu
+          {...(props.onMenuOpenChange
+            ? {
+                onOpenChange: props.onMenuOpenChange,
+              }
+            : {})}
+        >
           <MenuTrigger
             render={
               <button
@@ -161,7 +152,13 @@ function OpenInPickerFrame(props: OpenInPickerFrameProps) {
         </span>
       </ChatHeaderButton>
       <ChatHeaderSplitDivider />
-      <Menu {...(props.onMenuOpenChange ? { onOpenChange: props.onMenuOpenChange } : {})}>
+      <Menu
+        {...(props.onMenuOpenChange
+          ? {
+              onOpenChange: props.onMenuOpenChange,
+            }
+          : {})}
+      >
         <MenuTrigger
           render={
             <ChatHeaderIconButton
@@ -178,11 +175,9 @@ function OpenInPickerFrame(props: OpenInPickerFrameProps) {
     </ChatHeaderSplitGroup>
   );
 }
-
 function EditorActionOpenInPicker(props: OpenInPickerContentProps) {
   const launchers = useEditorLaunchers(props);
   const PrimaryIcon = launchers.primaryOption?.Icon;
-
   return (
     <OpenInPickerFrame
       labelMode={props.labelMode ?? "responsive"}
@@ -205,14 +200,11 @@ function EditorActionOpenInPicker(props: OpenInPickerContentProps) {
     />
   );
 }
-
 type PrimaryActionOpenInPickerProps = OpenInPickerContentProps & {
   primaryAction: OpenInPickerPrimaryAction;
 };
-
 function PrimaryActionOpenInPicker({ primaryAction, ...props }: PrimaryActionOpenInPickerProps) {
   const [launcherMenuMounted, setLauncherMenuMounted] = useState(false);
-
   return (
     <OpenInPickerFrame
       labelMode={props.labelMode ?? "responsive"}
@@ -227,7 +219,6 @@ function PrimaryActionOpenInPicker({ primaryAction, ...props }: PrimaryActionOpe
     />
   );
 }
-
 function OpenInPickerMenuWithLaunchers(props: OpenInPickerContentProps) {
   const launchers = useEditorLaunchers(props);
   return (
@@ -239,7 +230,6 @@ function OpenInPickerMenuWithLaunchers(props: OpenInPickerContentProps) {
     />
   );
 }
-
 function OpenInPickerMenuPopup({
   launchers,
   openInTarget,
@@ -259,7 +249,6 @@ function OpenInPickerMenuPopup({
         ...options.filter(({ value }) => !menuEditorOrder.includes(value)),
       ]
     : options;
-
   return (
     <ComposerPickerMenuPopup align="end" side="bottom" className="w-44 min-w-44">
       {displayedOptions.length === 0 && <MenuItem disabled>No installed editors found</MenuItem>}
