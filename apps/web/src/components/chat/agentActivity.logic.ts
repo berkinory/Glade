@@ -59,6 +59,17 @@ function isAgentActivityWorkEntry(entry: WorkLogEntry): boolean {
   );
 }
 
+function hasReasoningDetail(entry: WorkLogEntry): boolean {
+  const body = entry.detail ?? entry.preview;
+  if (!body?.trim()) return false;
+  const lines = body.split(/\r?\n/u).filter((line) => line.trim());
+  return (
+    lines.length > 1 ||
+    body.trim().length > 180 ||
+    cleanReasoningProgressText(body) !== formatAgentActivityEntryPreview(entry)
+  );
+}
+
 function isUnmappedProviderEventWorkEntry(entry: Pick<WorkLogEntry, "activityKind">): boolean {
   return entry.activityKind === "provider.event.unmapped";
 }
@@ -146,7 +157,9 @@ export function deriveAgentActivityTimelineState(
     };
 
     timelineWorkEntries.push(displayEntry);
-    detailById.set(groupId, buildAgentActivityDetail(groupId, displayEntry, groupEntries));
+    if (groupEntries.length > 1 || hasReasoningDetail(first)) {
+      detailById.set(groupId, buildAgentActivityDetail(groupId, displayEntry, groupEntries));
+    }
   };
 
   for (const entry of entries) {
@@ -173,7 +186,10 @@ export function deriveAgentActivityTimelineState(
         }
       : entry;
     timelineWorkEntries.push(displayEntry);
-    if (isAgentActivityWorkEntry(entry)) {
+    if (
+      isAgentActivityWorkEntry(entry) &&
+      (!isReasoningUpdateWorkEntry(entry) || hasReasoningDetail(entry))
+    ) {
       detailById.set(entry.id, buildAgentActivityDetail(entry.id, displayEntry, [entry]));
     }
   }

@@ -29,6 +29,7 @@ import { ProviderTransitionDivider } from "./ProviderTransitionDivider";
 import type { TimestampFormat } from "../../appSettings";
 import type { AgentActivityDetail } from "./agentActivity.logic";
 import { AgentActivityDetails } from "./AgentActivityDetails";
+import { hasToolCallDetailsContent } from "./ToolCallDetailsDialog.logic";
 import type { TurnId } from "@glade/contracts/core/baseSchemas";
 import { createElement, memo, useMemo, type ReactElement, type ReactNode } from "react";
 import { basenameOfPath } from "~/file-icons";
@@ -477,7 +478,7 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
       timestampFormat={timestampFormat}
     />
   ) : undefined;
-  const hasToolDetails = Boolean(workEntry.toolDetails);
+  const hasToolDetails = hasToolCallDetailsContent(workEntry.toolDetails, workEntry.liveActivity);
   const providerContextLifecycle = workEntry.providerContextLifecycle;
   const opener = useWorkspaceFileOpener();
   const toolDiffStatsByPath = useMemo(
@@ -536,11 +537,8 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
   const canOpenReadFile = readFilePath !== null;
   const canOpenToolDetails =
     !activityDetail &&
-    Boolean(
-      providerContextLifecycle ||
-      workEntry.toolDetails ||
-      (workEntry.liveActivity && !canOpenReadFile),
-    );
+    !isReasoningUpdateWorkEntry(workEntry) &&
+    Boolean(providerContextLifecycle || (hasToolDetails && !canOpenReadFile));
   const openReadFile = readFilePath
     ? () => openWorkspaceFileReference(opener, readFilePath)
     : undefined;

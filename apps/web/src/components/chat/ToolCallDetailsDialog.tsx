@@ -5,6 +5,7 @@ import type { WorkLogToolDetails, WorkLogToolOutputDetails } from "../../lib/too
 import type { WorkLogLiveActivity } from "../../workLog.types";
 import { formatLiveActivityElapsed, useLiveActivityNow } from "../../lib/liveActivityPresentation";
 import ChatMarkdown from "../ChatMarkdown";
+import { hasToolCallDetailsContent } from "./ToolCallDetailsDialog.logic";
 
 const DETAIL_HEADER_CLASS_NAME = "border-b border-border/45 px-3 py-2 text-ui-xs font-medium";
 const DETAIL_CODE_BLOCK_CLASS_NAME =
@@ -22,14 +23,7 @@ export function ToolCallDetailsContent({
   const nowMs = useLiveActivityNow(activity);
   const elapsed = activity ? formatLiveActivityElapsed(activity, nowMs) : null;
 
-  if (!details && !activity?.detail) {
-    return (
-      <div className="rounded-lg border border-border/45 bg-background/60 px-3 py-2 text-ui leading-snug text-muted-foreground">
-        No detailed payload was available for this tool call.
-        {elapsed ? <span className="ml-2 tabular-nums">{elapsed}</span> : null}
-      </div>
-    );
-  }
+  if (!hasToolCallDetailsContent(details, activity)) return null;
 
   return (
     <>
