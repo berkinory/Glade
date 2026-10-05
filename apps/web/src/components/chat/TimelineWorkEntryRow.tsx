@@ -15,6 +15,7 @@ import {
   ViewIcon,
   Globe02Icon,
   ToolsIcon,
+  FlowIcon,
   HistoryIcon,
   McpServerIcon,
   PencilEdit02Icon,
@@ -199,7 +200,7 @@ function workEntryIcon(workEntry: TimelineWorkEntry): IconComponent {
   if (workEntry.requestKind === "command") return commandWorkEntryIcon(workEntry);
   if (workEntry.requestKind === "file-read") return File02Icon;
   if (workEntry.requestKind === "file-change") return PencilEdit02Icon;
-  if (workEntry.requestKind === "tool") return ToolsIcon;
+  if (workEntry.requestKind === "tool") return FlowIcon;
   if (workEntry.itemType === "command_execution" || workEntry.command) {
     return commandWorkEntryIcon(workEntry);
   }
@@ -273,6 +274,7 @@ export function prefersCompactWorkEntryRow(workEntry: TimelineWorkEntry): boolea
   return (
     EntryIcon === ComputerTerminal01Icon ||
     EntryIcon === ToolsIcon ||
+    EntryIcon === FlowIcon ||
     EntryIcon === BotIcon ||
     EntryIcon === PencilEdit02Icon ||
     EntryIcon === BlocksIcon ||
