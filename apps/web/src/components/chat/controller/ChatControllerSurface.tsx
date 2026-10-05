@@ -358,25 +358,30 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
   const composerSection = (
     <>
       {activeThread?.error ? (
-        <div
-          role="alert"
-          className="mx-3 mb-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-ui-sm"
-        >
-          <details>
-            <summary className="cursor-pointer text-destructive">
-              This chat encountered an error
-            </summary>
-            <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words">
-              {activeThread.error}
-            </pre>
-          </details>
-          <button
-            type="button"
-            className="mt-1 underline"
-            onClick={() => setThreadError(activeThread.id, null)}
+        <div className={cn(CHAT_COLUMN_GUTTER_CLASS_NAME, "mb-2")}>
+          <div
+            role="alert"
+            className={cn(
+              CHAT_COLUMN_FRAME_CLASS_NAME,
+              "rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-ui-sm",
+            )}
           >
-            Dismiss
-          </button>
+            <details>
+              <summary className="cursor-pointer text-destructive">
+                This chat encountered an error
+              </summary>
+              <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words">
+                {activeThread.error}
+              </pre>
+            </details>
+            <button
+              type="button"
+              className="mt-1 underline"
+              onClick={() => setThreadError(activeThread.id, null)}
+            >
+              Dismiss
+            </button>
+          </div>
         </div>
       ) : null}
       {(activeThread?.backgroundWork?.taskIds.length ?? 0) > 0 ? (
