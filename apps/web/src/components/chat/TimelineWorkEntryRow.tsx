@@ -499,7 +499,7 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
   const liveActivityNowMs = useLiveActivityNow(workEntry.liveActivity);
   const liveActivityMetaText = workEntry.liveActivity
     ? formatLiveActivityMeta(workEntry.liveActivity, liveActivityNowMs, {
-        subagent: workEntry.itemType === "collab_agent_tool_call",
+        subagent: (workEntry.subagents?.length ?? 0) > 0,
       })
     : null;
 
