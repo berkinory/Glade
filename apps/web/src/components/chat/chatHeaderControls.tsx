@@ -100,6 +100,7 @@ export function SurfaceTabChip({
   onSelect,
   onDoubleClick,
   onClose,
+  closePlacement = "icon",
 }: {
   icon: ReactNode;
   label: ReactNode;
@@ -113,17 +114,38 @@ export function SurfaceTabChip({
   onSelect?: (() => void) | undefined;
   onDoubleClick?: (() => void) | undefined;
   onClose?: (() => void) | undefined;
+  closePlacement?: "icon" | "trailing";
 }) {
+  const trailingClose = closePlacement === "trailing";
+  const glyph = <span className="flex size-4 shrink-0 items-center justify-center">{icon}</span>;
+  const labelClasses = cn(
+    "flex min-w-0 items-center gap-1.5 text-left",
+    trailingClose && "flex-1 self-stretch rounded-[inherit] px-2.5",
+    trailingClose && onClose && "group-hover/dock-tab:pr-8 group-focus-within/dock-tab:pr-8",
+    trailingClose && onClose && active && "pr-8",
+    labelClassName,
+  );
+  const labelContent = (
+    <>
+      {trailingClose ? glyph : null}
+      {leading}
+      <span className={trailingClose ? "min-w-0 flex-1 truncate-fade truncate-fade-4" : "truncate"}>
+        {label}
+      </span>
+      {trailing}
+    </>
+  );
   return (
     <div
       className={cn(
         "group/dock-tab",
         DOCK_TAB_CHIP_CLASS_NAME,
         active && CHAT_SURFACE_CONTROL_ACTIVE_CLASS_NAME,
+        trailingClose && "relative !flex !min-w-0 !px-0",
         className,
       )}
     >
-      {onClose ? (
+      {trailingClose ? null : onClose ? (
         <button
           type="button"
           className={DOCK_TAB_ICON_SLOT_CLASS_NAME}
@@ -142,12 +164,12 @@ export function SurfaceTabChip({
           <CentralIcon name="cross-small" className={DOCK_TAB_CLOSE_GLYPH_CLASS_NAME} />
         </button>
       ) : (
-        <span className="flex size-4 shrink-0 items-center justify-center">{icon}</span>
+        glyph
       )}
       {onSelect ? (
         <button
           type="button"
-          className={cn("flex min-w-0 items-center gap-1.5 text-left", labelClassName)}
+          className={labelClasses}
           title={title}
           aria-pressed={active}
           onDoubleClick={onDoubleClick}
@@ -156,20 +178,31 @@ export function SurfaceTabChip({
             onSelect();
           }}
         >
-          {leading}
-          <span className="truncate">{label}</span>
-          {trailing}
+          {labelContent}
         </button>
       ) : (
-        <span
-          className={cn("flex min-w-0 items-center gap-1.5 text-left", labelClassName)}
-          title={title}
-        >
-          {leading}
-          <span className="truncate">{label}</span>
-          {trailing}
+        <span className={labelClasses} title={title}>
+          {labelContent}
         </span>
       )}
+      {trailingClose && onClose ? (
+        <button
+          type="button"
+          className={cn(
+            "absolute right-1 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-[opacity,background-color,color] hover:bg-foreground/10 hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring/60",
+            !active &&
+              "opacity-0 group-hover/dock-tab:opacity-100 group-focus-within/dock-tab:opacity-100 pointer-coarse:pointer-events-none",
+          )}
+          aria-label={closeLabel}
+          title={closeLabel}
+          onClick={(event) => {
+            event.stopPropagation();
+            onClose();
+          }}
+        >
+          <CentralIcon name="cross-small" className="size-3.5" />
+        </button>
+      ) : null}
     </div>
   );
 }

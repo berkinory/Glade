@@ -2112,6 +2112,29 @@ label:has(> select#reasoning-effort) select {
   --truncate-fade-size: --value([length], [percentage]);
 }
 
+.workspace-content-tab {
+  position: relative;
+}
+
+.workspace-content-tab[data-separator]::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: -2px;
+  top: 50%;
+  width: 1px;
+  height: 12px;
+  transform: translateY(-50%);
+  background: color-mix(in srgb, var(--foreground) 12%, transparent);
+  pointer-events: none;
+}
+
+.workspace-content-tab:hover::before,
+.workspace-content-tab:focus-within::before,
+.workspace-content-tab:hover + .workspace-content-tab::before,
+.workspace-content-tab:focus-within + .workspace-content-tab::before {
+  opacity: 0;
+}
+
 .chat-generated-image__overlay {
   position: absolute;
   inset: 0;

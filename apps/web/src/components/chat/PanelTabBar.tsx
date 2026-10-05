@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "~/lib/utils";
 import { SurfaceTabChip } from "./chatHeaderControls";
 
@@ -21,9 +21,11 @@ export function PanelTabBar(props: {
   activeId: string | null;
   onSelect: (id: string) => void;
   actions?: ReactNode;
+  contentTabs?: boolean;
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const wheelRegionRef = useRef<HTMLElement>(null);
+  const [frozenWidth, setFrozenWidth] = useState<number | null>(null);
   const pinnedTabs = props.tabs.filter((tab) => tab.id === props.pinnedTabId);
   const scrollableTabs = props.tabs.filter((tab) => tab.id !== props.pinnedTabId);
   const tabIds = JSON.stringify(props.tabs.map((tab) => tab.id));
@@ -34,6 +36,7 @@ export function PanelTabBar(props: {
     const wheel = (event: WheelEvent) => {
       const delta = event.deltaX || (event.shiftKey ? event.deltaY : 0);
       if (!delta || scroller.scrollWidth <= scroller.clientWidth) return;
+      if (event.deltaX && event.target instanceof Node && scroller.contains(event.target)) return;
       event.preventDefault();
       scroller.scrollLeft +=
         delta * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? scroller.clientWidth : 1);
@@ -44,32 +47,76 @@ export function PanelTabBar(props: {
   useLayoutEffect(() => {
     const scroller = scrollerRef.current;
     if (!scroller) return;
-    const active = Array.from(scroller.children).find(
-      (element) => element.getAttribute("data-tab-id") === props.activeId,
-    );
-    if (!active) return;
-    const bounds = scroller.getBoundingClientRect();
-    const tab = active.getBoundingClientRect();
-    if (tab.left < bounds.left) scroller.scrollLeft += tab.left - bounds.left;
-    else if (tab.right > bounds.right) scroller.scrollLeft += tab.right - bounds.right;
+    const reveal = () => {
+      const active = Array.from(scroller.children).find(
+        (element) => element.getAttribute("data-tab-id") === props.activeId,
+      );
+      if (!active) return;
+      const bounds = scroller.getBoundingClientRect();
+      const tab = active.getBoundingClientRect();
+      if (tab.left < bounds.left) scroller.scrollLeft += tab.left - bounds.left;
+      else if (tab.right > bounds.right) scroller.scrollLeft += tab.right - bounds.right;
+    };
+    const observer = new ResizeObserver(reveal);
+    observer.observe(scroller);
+    return () => observer.disconnect();
   }, [props.activeId, tabIds]);
-  const renderTab = (tab: PanelTab) => (
-    <div key={tab.id} data-tab-id={tab.id} className="[-webkit-app-region:no-drag] shrink-0">
-      <SurfaceTabChip
-        active={tab.id === props.activeId}
-        title={tab.label}
-        label={tab.label}
-        labelClassName={cn("max-w-40", tab.preview && "italic")}
-        icon={tab.icon}
-        leading={tab.leading}
-        trailing={tab.trailing}
-        closeLabel={`Close ${tab.label}`}
-        onSelect={() => props.onSelect(tab.id)}
-        onClose={tab.onClose}
-        onDoubleClick={tab.onDoubleClick}
-      />
-    </div>
-  );
+  const renderTab = (tab: PanelTab, index: number, pinned = false) => {
+    const content = props.contentTabs && !pinned;
+    const previous = scrollableTabs[index - 1] ?? pinnedTabs.at(-1);
+    return (
+      <div
+        key={tab.id}
+        data-tab-id={tab.id}
+        data-separator={
+          props.contentTabs &&
+          previous &&
+          previous.id !== props.activeId &&
+          tab.id !== props.activeId
+            ? ""
+            : undefined
+        }
+        className={cn(
+          "[-webkit-app-region:no-drag]",
+          content
+            ? "workspace-content-tab min-w-[min(9em,100%)] basis-[18em] shrink text-ui-sm"
+            : "shrink-0",
+          content && frozenWidth !== null && "!min-w-0 !shrink-0",
+        )}
+        style={content && frozenWidth !== null ? { flexBasis: frozenWidth } : undefined}
+      >
+        <SurfaceTabChip
+          active={tab.id === props.activeId}
+          title={tab.label}
+          label={tab.label}
+          labelClassName={cn(!content && "max-w-40", tab.preview && "italic")}
+          className={cn(
+            content && "w-full",
+            content &&
+              tab.id === props.activeId &&
+              "shadow-[inset_0_0_0_0.5px_var(--app-surface-divider)]",
+          )}
+          closePlacement={content ? "trailing" : "icon"}
+          icon={tab.icon}
+          leading={tab.leading}
+          trailing={tab.trailing}
+          closeLabel={`Close ${tab.label}`}
+          onSelect={() => props.onSelect(tab.id)}
+          onClose={
+            tab.onClose
+              ? () => {
+                  const first = scrollerRef.current?.firstElementChild;
+                  if (content && wheelRegionRef.current?.matches(":hover") && first)
+                    setFrozenWidth(first.getBoundingClientRect().width);
+                  tab.onClose?.();
+                }
+              : undefined
+          }
+          onDoubleClick={tab.onDoubleClick}
+        />
+      </div>
+    );
+  };
   return (
     <div
       className={cn(
@@ -82,13 +129,18 @@ export function PanelTabBar(props: {
           ref={wheelRegionRef}
           aria-label={props.label}
           className="[-webkit-app-region:no-drag] flex w-fit min-w-0 max-w-full items-center gap-1"
+          onPointerLeave={() => setFrozenWidth(null)}
         >
-          {pinnedTabs.map(renderTab)}
+          {pinnedTabs.map((tab, index) => renderTab(tab, index, true))}
           <div
             ref={scrollerRef}
-            className="flex min-w-0 items-center gap-1 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className={cn(
+              "flex min-w-0 items-center gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+              props.contentTabs &&
+                "scroll-fade-x [--scroll-fade-size:1rem] [--scroll-fade-reveal:1rem]",
+            )}
           >
-            {scrollableTabs.map(renderTab)}
+            {scrollableTabs.map((tab, index) => renderTab(tab, index))}
           </div>
         </nav>
       </div>

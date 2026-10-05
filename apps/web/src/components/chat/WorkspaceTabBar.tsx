@@ -60,6 +60,7 @@ export function WorkspaceTabBar(props: {
     <PanelTabBar
       label="Workspace tabs"
       pinnedTabId="chat"
+      contentTabs
       className="h-auto flex-1 border-0 bg-transparent p-0"
       tabs={props.tabs}
       activeId={props.activeId}
