@@ -93,6 +93,7 @@ export function shouldHideProviderNativeCommandFromComposerMenu(
   const appCommandIsAvailable = options.availableAppCommands?.has(normalizedCommand) ?? true;
   return (
     normalizedCommand === "computer-use" ||
+    normalizedCommand === "status" ||
     normalizedCommand === "debug" ||
     normalizedCommand === "default" ||
     (normalizedCommand === "export" && appCommandIsAvailable) ||
@@ -156,12 +157,6 @@ const COMPOSER_SLASH_COMMAND_DEFINITIONS: Record<
     command: "fork",
     label: "/fork",
     description: "Fork this thread into local or a new worktree",
-    source: "app",
-  },
-  status: {
-    command: "status",
-    label: "/status",
-    description: "Show context usage and rate-limit status",
     source: "app",
   },
   "computer-use": {
@@ -350,7 +345,6 @@ export function getAvailableComposerSlashCommands(input: {
           ...(input.supportsFastSlashCommand ? (["fast"] as const) : []),
           ...(input.canOfferReviewCommand ? (["review"] as const) : []),
           ...(input.canOfferForkCommand ? (["fork"] as const) : []),
-          "status",
           "computer-use",
           ...(input.canOfferExportCommand ? (["export"] as const) : []),
           "rename",

@@ -13,7 +13,6 @@ import { AmbientRailSlot } from "~/components/chat/AmbientRailSlot";
 import { ChatHeader } from "~/components/chat/ChatHeader";
 import { ChatSurfaceHeader } from "~/components/chat/ChatSurfaceHeader";
 import { ChatTranscriptPane } from "~/components/chat/ChatTranscriptPane";
-import { ComposerSlashStatusDialog } from "~/components/chat/ComposerSlashStatusDialog";
 import { ComputerPreviewPopover } from "~/components/chat/ComputerPreviewPopover";
 import { ExpandedImageOverlay } from "~/components/chat/ExpandedImageOverlay";
 import { ProjectPicker } from "~/components/chat/ProjectPicker";
@@ -117,9 +116,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     closePullRequestDialog,
     handlePreparedPullRequestThread,
 
-    activeContextWindow,
-    activeCumulativeCostUsd,
-    activeRateLimitStatus,
     isContainerLandingProject,
     runtimeMode,
     diffEnvironmentPending,
@@ -140,7 +136,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     turnDiffSummaryByAssistantMessageId,
     threadArtifactWorkspaceRoot,
     transcriptEmptyStateContent,
-    activeRootBranch,
   } = controller.transcript;
   const {
     isGitRepo,
@@ -154,7 +149,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     shouldRenderChatPaneContent,
     shouldShowProviderHealthBanner,
     visibleActiveProviderStatus,
-    fastModeEnabled,
     activeProviderHealthBannerDismissalKey,
   } = controller.discovery;
   const {
@@ -178,8 +172,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     environmentEnabled,
     terminalDrawerProps,
     environmentPanelVisible,
-    envMode,
-    envState,
     pendingTranscriptSelectionAction,
     selectionChatEnvMode,
     dismissTranscriptSelectionAction,
@@ -279,7 +271,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     hasStreamingAssistantText,
     getAgentActivityDetail,
     activeTaskList,
-    selectedModel,
     selectedPromptEffort,
     selectedModelSelection,
     providerOptionsForDispatch,
@@ -292,9 +283,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     handleForkFromMessage,
     handleEnableComputerControlFromDenial,
     onEditUserMessage,
-    isSlashStatusDialogOpen,
-    setIsSlashStatusDialogOpen,
-    contextWindowSelectionStatus,
   } = controller.submission;
   if (!activeThread) {
     return (
@@ -799,21 +787,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
         ) : null}
       </div>
 
-      <ComposerSlashStatusDialog
-        open={isSlashStatusDialogOpen}
-        onOpenChange={setIsSlashStatusDialogOpen}
-        selectedModel={selectedModel}
-        fastModeEnabled={fastModeEnabled}
-        selectedPromptEffort={selectedPromptEffort}
-        envMode={envMode}
-        envState={envState}
-        branch={activeThread?.branch ?? activeRootBranch}
-        contextWindow={activeContextWindow}
-        cumulativeCostUsd={activeCumulativeCostUsd}
-        rateLimitStatus={activeRateLimitStatus}
-        activeContextWindowLabel={contextWindowSelectionStatus.activeLabel}
-        pendingContextWindowLabel={contextWindowSelectionStatus.pendingSelectedLabel}
-      />
       <ProviderHandoffDialog
         provider={pendingProviderHandoff?.modelSelection.provider ?? null}
         model={pendingProviderHandoff?.modelSelection.model ?? null}

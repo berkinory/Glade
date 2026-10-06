@@ -364,8 +364,6 @@ export function useChatSubmissionController({
     handleForkFromMessage,
     handleForkTargetSelection,
     handleReviewTargetSelection,
-    isSlashStatusDialogOpen,
-    setIsSlashStatusDialogOpen,
     handleStandaloneSlashCommand,
     handleSlashCommandSelection,
   } = useComposerSlashCommands({
@@ -484,8 +482,6 @@ export function useChatSubmissionController({
     handleNavigateLocalFolder,
     handleEnableComputerControlFromDenial,
     handleForkFromMessage,
-    isSlashStatusDialogOpen,
-    setIsSlashStatusDialogOpen,
 
     onSelectComposerItem,
     onComposerMenuItemHighlighted,

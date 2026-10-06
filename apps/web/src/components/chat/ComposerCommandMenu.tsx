@@ -64,8 +64,6 @@ function commandMenuTitle(
       return "Code Review";
     case "fork":
       return "Fork";
-    case "status":
-      return "Status";
     case "feedback":
       return "Feedback Glade";
     default:

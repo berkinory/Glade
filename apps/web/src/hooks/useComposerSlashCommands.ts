@@ -1,5 +1,5 @@
 import { useThreadCompaction } from "./useThreadCompaction";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import type { ComposerCommandItem } from "../components/chat/ComposerCommandMenu";
 import { toastManager } from "../components/ui/toast";
 import {
@@ -28,7 +28,6 @@ function wasPromptReplacementApplied(result: number | false): boolean {
 }
 
 export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
-  const [isSlashStatusDialogOpen, setIsSlashStatusDialogOpen] = useState(false);
   const openGlobalFeedbackDialog = useFeedbackDialogStore((state) => state.openDialog);
   const {
     activeProject,
@@ -267,12 +266,6 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
         await compactProviderThread(slashInvocation.args || undefined);
         return true;
       }
-      if (slashInvocation.command === "status") {
-        editorActions.clearComposerSlashDraft();
-        setIsSlashStatusDialogOpen(true);
-        return true;
-      }
-
       if (slashInvocation.command === "rename") {
         editorActions.clearComposerSlashDraft();
         void runRenameSlashCommand(slashInvocation.args).catch((error) => {
@@ -459,16 +452,6 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
         return;
       }
 
-      if (item.command === "status") {
-        const applied = clearSlashCommandFromComposer();
-        if (wasPromptReplacementApplied(applied)) {
-          editorActions.setComposerHighlightedItemId(null);
-          setIsSlashStatusDialogOpen(true);
-          editorActions.scheduleComposerFocus();
-        }
-        return;
-      }
-
       if (item.command === "fast") {
         const applied = clearSlashCommandFromComposer();
         if (!wasPromptReplacementApplied(applied)) {
@@ -570,8 +553,6 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
     handleForkFromMessage,
     handleForkTargetSelection,
     handleReviewTargetSelection,
-    isSlashStatusDialogOpen,
-    setIsSlashStatusDialogOpen,
     handleStandaloneSlashCommand,
     handleSlashCommandSelection,
   };

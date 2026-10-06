@@ -6,7 +6,6 @@ import {
   EraserIcon,
   EnergyFilledIcon,
   WorkflowCircle04Icon,
-  InfoIcon,
   ListTodoIcon,
   MessageCircleIcon,
   FilterIcon,
@@ -21,7 +20,6 @@ const SLASH_COMMAND_ICONS: Record<string, IconComponent> = {
   default: MessageCircleIcon,
   review: BugIcon,
   fork: WorkflowCircle04Icon,
-  status: InfoIcon,
   feedback: BugIcon,
   "computer-use": MousePointer01Icon,
 };
