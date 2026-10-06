@@ -89,10 +89,17 @@ export function useThreadHandoff() {
       createdAt,
     });
 
-    syncServerShellSnapshot(await api.orchestration.getShellSnapshot());
-    try {
-      await api.orchestration.prepareHandoff({ threadId: thread.id });
-    } catch (cause) {
+    void api.orchestration
+      .getShellSnapshot()
+      .then(syncServerShellSnapshot)
+      .catch((cause: unknown) => {
+        toastManager.add({
+          type: "error",
+          title: "Could not refresh chat list",
+          description: cause instanceof Error ? cause.message : "Try refreshing the chat list.",
+        });
+      });
+    void api.orchestration.prepareHandoff({ threadId: thread.id }).catch((cause: unknown) => {
       toastManager.add({
         type: "error",
         title: "Handoff context needs preparation",
@@ -101,7 +108,7 @@ export function useThreadHandoff() {
             ? cause.message
             : "Retry preparation in this chat. The source and draft are intact.",
       });
-    }
+    });
     return thread.id;
   };
 

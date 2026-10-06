@@ -8,11 +8,13 @@
 
 ### Improved
 
+- Provider transitions prepare in the chat while you continue using other chats.
 - Visual replies blend into the chat with automatic height and compact download and expand controls.
 - Visual previews require a smaller browser download while keeping local network access blocked.
 
 ### Fixed
 
+- Continuing a Claude chat with Codex works after the Claude session has been retired.
 - Changing the app theme preserves edits and interactive state in visual replies.
 
 ### Removed

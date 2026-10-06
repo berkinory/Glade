@@ -5,6 +5,7 @@ import { ConversationDivider } from "./ConversationDivider";
 import { useState, type ReactNode } from "react";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";
 import { DisclosureChevron } from "../ui/DisclosureChevron";
+import { Spinner } from "../ui/spinner";
 
 export function ProviderTransitionDivider({
   entry,
@@ -35,6 +36,7 @@ export function ProviderTransitionDivider({
                 : `Continuing with ${destination}`;
   const content = (
     <>
+      {transition?.stage === "preparing" ? <Spinner className="size-4" /> : null}
       {transition ? (
         <ProviderIcon provider={transition.source.provider} className="size-4 shrink-0" />
       ) : null}

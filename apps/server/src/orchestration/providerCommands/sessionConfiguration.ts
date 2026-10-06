@@ -130,7 +130,7 @@ export function makeProviderSessionConfiguration(input: {
       !suppressContextBootstrapOnNextStartThreadIds.has(threadId);
 
     const desiredRuntimeMode = options?.runtimeMode ?? thread.runtimeMode;
-    const currentProvider: ProviderKind | undefined = Schema.is(ProviderKind)(
+    let currentProvider: ProviderKind | undefined = Schema.is(ProviderKind)(
       thread.session?.providerName,
     )
       ? thread.session.providerName
@@ -141,13 +141,21 @@ export function makeProviderSessionConfiguration(input: {
         .listSessions()
         .pipe(Effect.map((sessions) => sessions.find((session) => session.threadId === threadId)));
 
+    const retiredHandoffSource =
+      thread.handoff?.sourceRetired === true &&
+      ["activating", "activated"].includes(thread.handoff.stage ?? "") &&
+      thread.handoff.destinationModelSelection?.provider === requestedModelSelection?.provider &&
+      currentProvider === thread.handoff.sourceProvider;
     const activeSession =
       currentProvider !== undefined &&
-      thread.latestTurn === null &&
+      (thread.latestTurn === null || retiredHandoffSource) &&
       requestedModelSelection !== undefined &&
       requestedModelSelection.provider !== currentProvider
         ? yield* resolveActiveSession(threadId)
         : undefined;
+    if (retiredHandoffSource && activeSession?.provider !== currentProvider) {
+      currentProvider = undefined;
+    }
 
     const establishedProvider =
       currentProvider !== undefined && (activeSession !== undefined || thread.latestTurn !== null)

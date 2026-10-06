@@ -118,6 +118,119 @@ describe("same-chat handoff delivery", () => {
     expect(detail).toContain("[redacted]");
   });
 
+  it("continues a completed Claude chat with Codex after retiring the Claude session", async () => {
+    const codex = { provider: "codex" as const, model: "gpt-6.1-sol" };
+    const harness = await createHarness({
+      threadModelSelection: { provider: "claudeAgent", model: "claude-opus-5-5" },
+      handoffContext: "Frozen Claude context",
+    });
+    await Effect.runPromise(
+      harness.engine.dispatch({
+        type: "thread.turn.start",
+        commandId: CommandId.makeUnsafe("claude-turn"),
+        threadId,
+        modelSelection: { provider: "claudeAgent", model: "claude-opus-5-5" },
+        message: {
+          messageId: asMessageId("claude-request"),
+          role: "user",
+          text: "Create a file",
+          attachments: [],
+        },
+        runtimeMode: "approval-required",
+        createdAt: date,
+      }),
+    );
+    await waitFor(() => harness.sendTurn.mock.calls.length === 1);
+    await Effect.runPromise(
+      harness.engine.dispatch({
+        type: "thread.session.set",
+        commandId: CommandId.makeUnsafe("claude-turn-running"),
+        threadId,
+        session: {
+          threadId,
+          providerName: "claudeAgent",
+          status: "running",
+          activeTurnId: asTurnId("turn-1"),
+          lastError: null,
+          runtimeMode: "approval-required",
+          updatedAt: date,
+        },
+        createdAt: date,
+      }),
+    );
+    harness.setRuntimeSessionTurnState({ threadId, status: "ready" });
+    await Effect.runPromise(
+      harness.engine.dispatch({
+        type: "thread.session.set",
+        commandId: CommandId.makeUnsafe("claude-turn-completed"),
+        threadId,
+        session: {
+          threadId,
+          providerName: "claudeAgent",
+          status: "ready",
+          activeTurnId: null,
+          lastError: null,
+          runtimeMode: "approval-required",
+          updatedAt: date,
+        },
+        createdAt: date,
+      }),
+    );
+    await harness.drain();
+    expect((await readHarnessThread(harness))?.latestTurn?.state).toBe("completed");
+
+    await Effect.runPromise(
+      harness.engine.dispatch({
+        type: "thread.handoff.start",
+        commandId: operationId,
+        threadId,
+        modelSelection: codex,
+        runtimeMode: "approval-required",
+        createdAt: date,
+      }),
+    );
+    const pending = (await readHarnessThread(harness))!;
+    await Effect.runPromise(
+      harness.engine.dispatch({
+        type: "thread.meta.update",
+        commandId: CommandId.makeUnsafe("claude-context-ready"),
+        threadId,
+        expectedHandoffOperationId: operationId,
+        handoff: { ...pending.handoff!, stage: "ready" },
+      }),
+    );
+    // The retired session projection may still report Claude when destination admission begins.
+    harness.interceptEngineDispatch((command) =>
+      command.type === "thread.session.set" &&
+      String(command.commandId).startsWith("server:handoff-source-retired")
+        ? Effect.succeed({ sequence: 0 })
+        : undefined,
+    );
+    await Effect.runPromise(
+      harness.engine.dispatch({
+        type: "thread.turn.start",
+        commandId: CommandId.makeUnsafe("codex-continuation"),
+        threadId,
+        handoffOperationId: operationId,
+        modelSelection: codex,
+        message: {
+          messageId: asMessageId("codex-continuation"),
+          role: "user",
+          text: "Continue",
+          attachments: [],
+        },
+        runtimeMode: "approval-required",
+        createdAt: date,
+      }),
+    );
+    await harness.drain();
+    expect(harness.sendTurn).toHaveBeenCalledTimes(2);
+    expect((await readHarnessThread(harness))?.handoff?.stage).toBe("delivered");
+    expect(
+      (await Effect.runPromise(harness.listSessions())).map((session) => session.provider),
+    ).toEqual(["codex"]);
+  });
+
   it.each(["cancelled", "source-changed"] as const)(
     "retires late destination startup without sending after %s",
     async (failure) => {
