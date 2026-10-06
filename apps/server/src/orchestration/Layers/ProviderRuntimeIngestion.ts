@@ -1,3 +1,4 @@
+import { subagentName } from "@glade/shared/threads/subagentName";
 import { applyNativeThreadTitle } from "../runtimeActivities/nativeThreadTitles.ts";
 import { isAwaitingRequestedTurn } from "../turnStartSession.ts";
 import { asString, isNonBlankString } from "@glade/shared/text/text";
@@ -506,16 +507,10 @@ function subagentThreadTitle(identity: {
   role?: string | undefined;
   providerThreadId?: string | undefined;
 }): string {
-  if (identity.nickname && identity.role) {
-    return `${identity.nickname} [${identity.role}]`;
-  }
-  if (identity.nickname) {
-    return identity.nickname;
-  }
-  if (identity.role) {
-    return `Subagent [${identity.role}]`;
-  }
-  return identity.providerThreadId ? `Subagent ${identity.providerThreadId}` : "Subagent";
+  const nickname =
+    identity.nickname?.trim() ||
+    (identity.providerThreadId ? subagentName(identity.providerThreadId) : "Subagent");
+  return identity.role ? `${nickname} [${identity.role}]` : nickname;
 }
 
 const takeCached = <Key, Value>(cache: Cache.Cache<Key, Value>, key: Key) =>
@@ -1664,7 +1659,7 @@ const make = Effect.gen(function* () {
               sourceThreadId: parentThread.id,
               ...(sourceTurnId !== null ? { sourceTurnId } : {}),
               subagentAgentId: identity?.agentId ?? null,
-              subagentNickname: identity?.nickname ?? null,
+              subagentNickname: identity?.nickname ?? subagentName(providerThreadId),
               subagentRole: identity?.role ?? null,
               createdAt: now,
             });
@@ -1723,7 +1718,7 @@ const make = Effect.gen(function* () {
                 gatewayOperationId: null,
                 gatewayOperationIndex: null,
                 subagentAgentId: identity?.agentId ?? null,
-                subagentNickname: identity?.nickname ?? null,
+                subagentNickname: identity?.nickname ?? subagentName(providerThreadId),
                 subagentRole: identity?.role ?? null,
                 modelSelection: resolvedModelSelection ?? parentThread.modelSelection,
                 latestTurn: null,

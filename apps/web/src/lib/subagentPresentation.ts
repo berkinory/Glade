@@ -1,3 +1,4 @@
+import { resolveSubagentName } from "@glade/shared/threads/subagentName";
 import { asRecord } from "@glade/shared/transport/payloadValues";
 import {
   buildSubagentIdentityDirectory,
@@ -203,11 +204,17 @@ export function resolveSubagentPresentation(input: {
     ? null
     : parsedTitle.nickname;
   const titleLabel = isGenericSubagentTitle(titleWithoutWorkerRole) ? null : titleWithoutWorkerRole;
-  const nickname = explicitNickname ?? parsedTitleNickname;
+  const providedNickname = explicitNickname ?? parsedTitleNickname;
+  const nickname =
+    providedNickname && input.fallbackId
+      ? resolveSubagentName(input.fallbackId, providedNickname)
+      : providedNickname;
   const role = explicitRole ?? parsedTitleRole;
   const resolvedTitle = parsedTitleNickname ? null : titleLabel;
   const normalizedFallbackId = normalizeWhitespace(input.fallbackId);
-  const primaryLabel = nickname ?? resolvedTitle ?? "Subagent";
+  const primaryLabel = normalizedFallbackId
+    ? resolveSubagentName(normalizedFallbackId, nickname)
+    : (nickname ?? resolvedTitle ?? "Subagent");
   const fullLabel = role && nickname ? `${nickname} [${role}]` : primaryLabel;
 
   return {

@@ -1,4 +1,8 @@
-import { SubagentToolAvatars, subagentToolHeading } from "./SubagentToolPresentation";
+import {
+  SubagentToolAvatars,
+  SubagentToolLinks,
+  subagentToolHeading,
+} from "./SubagentToolPresentation";
 import { resolveMcpToolIcon } from "~/lib/mcpToolIcon";
 import { GitHubIcon } from "~/lib/brandIcons";
 import {
@@ -347,7 +351,8 @@ function workEntryDisplayParts(
 } {
   const webFetchUrl = extractWebFetchUrl(workEntry);
   const heading = toolWorkEntryHeading(workEntry, classification);
-  const rawPreview = workEntryPreview(workEntry);
+  const rawPreview =
+    workEntry.itemType === "collab_agent_tool_call" ? null : workEntryPreview(workEntry);
   const preview =
     !classification.isGitHub &&
     (classification.isGladeBrowser || classification.gladeTitle !== null)
@@ -472,14 +477,9 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
             : isMcpToolRow
               ? "mcp"
               : undefined;
-  const { heading, preview, displayText } = workEntryDisplayParts(workEntry, classification);
-  const showInlineAgentTaskPreview =
-    workEntry.itemType === "collab_agent_tool_call" &&
-    Boolean(preview) &&
-    normalizeToolTextForComparison(heading) !== normalizeToolTextForComparison(preview ?? "");
+  const { displayText } = workEntryDisplayParts(workEntry, classification);
   const rawCommand = workEntry.rawCommand ?? workEntry.command;
-  const hoverText =
-    rawCommand ?? (showInlineAgentTaskPreview ? heading : (webFetchUrl ?? displayText));
+  const hoverText = rawCommand ?? webFetchUrl ?? displayText;
   const changedFiles = workEntry.changedFiles ?? [];
   const showEditedRows = isFileChangeWorkEntry(workEntry) && changedFiles.length > 0;
   const activityContent = activityDetail ? (
@@ -655,55 +655,29 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
                   )}
                 </span>
               ) : null}
-              <div
-                className={cn("min-w-0 overflow-hidden", showInlineAgentTaskPreview && "flex-1")}
-              >
-                {showInlineAgentTaskPreview ? (
-                  <div className={cn(compact ? "space-y-[1px]" : "space-y-0.5")}>
-                    <p
-                      className={cn("truncate font-medium leading-5", MUTED_LABEL_TEXT_CLASS_NAME)}
-                      style={{
-                        fontSize: `${rowFontSizePx}px`,
-                      }}
-                    >
-                      <span data-work-entry-display-text="true">{heading}</span>
-                      {liveActivityMetaText ? (
-                        <span data-live-activity-meta="true"> · {liveActivityMetaText}</span>
-                      ) : null}
-                    </p>
-                    <p
-                      className={cn("truncate leading-5", MUTED_LABEL_TEXT_CLASS_NAME)}
-                      style={{ fontSize: `${rowFontSizePx}px` }}
-                    >
-                      {preview}
-                    </p>
-                  </div>
-                ) : (
-                  <p
-                    className={cn(
-                      compact ? "truncate leading-5" : "truncate leading-6",
-                      WORK_ROW_MUTED_HOVER_TONE["tool-row"],
-                      isPlainRuntimeNoticeRow && "italic",
-                    )}
-                    data-runtime-notice-row={isPlainRuntimeNoticeRow ? "true" : undefined}
-                    data-codex-status-row={isCodexStatusRow ? "true" : undefined}
-                    style={{
-                      fontSize: `${rowFontSizePx}px`,
-                    }}
+              <div className="min-w-0 overflow-hidden">
+                <p
+                  className={cn(
+                    compact ? "truncate leading-5" : "truncate leading-6",
+                    WORK_ROW_MUTED_HOVER_TONE["tool-row"],
+                    isPlainRuntimeNoticeRow && "italic",
+                  )}
+                  data-runtime-notice-row={isPlainRuntimeNoticeRow ? "true" : undefined}
+                  data-codex-status-row={isCodexStatusRow ? "true" : undefined}
+                  style={{
+                    fontSize: `${rowFontSizePx}px`,
+                  }}
+                >
+                  <span
+                    className={workEntry.toolStatus === "running" ? "work-text-shimmer" : undefined}
+                    data-work-entry-display-text="true"
                   >
-                    <span
-                      className={
-                        workEntry.toolStatus === "running" ? "work-text-shimmer" : undefined
-                      }
-                      data-work-entry-display-text="true"
-                    >
-                      {displayText}
-                    </span>
-                    {liveActivityMetaText ? (
-                      <span data-live-activity-meta="true"> · {liveActivityMetaText}</span>
-                    ) : null}
-                  </p>
-                )}
+                    {displayText}
+                  </span>
+                  {liveActivityMetaText ? (
+                    <span data-live-activity-meta="true"> · {liveActivityMetaText}</span>
+                  ) : null}
+                </p>
               </div>
             </>
           );
@@ -717,6 +691,11 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
                   (providerContextLifecycle ? (
                     <ProviderContextLifecycleDetails info={providerContextLifecycle} />
                   ) : undefined)
+                }
+                relatedContent={
+                  workEntry.subagents?.length ? (
+                    <SubagentToolLinks subagents={workEntry.subagents} />
+                  ) : undefined
                 }
                 compact={compact}
                 tooltip={toolRowTooltipContent(rawCommand, displayText, displayText)}

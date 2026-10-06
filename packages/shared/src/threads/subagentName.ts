@@ -35,7 +35,42 @@ const LAST_NAMES = [
   "Wren",
 ];
 
-export function subagentName(identity: string): string {
+const NAMES = [
+  "Ada",
+  "Turing",
+  "Curie",
+  "Tesla",
+  "Hopper",
+  "Sagan",
+  "Feynman",
+  "Darwin",
+  "Kepler",
+  "Euler",
+  "Noether",
+  "Pascal",
+  "Faraday",
+  "Bohr",
+  "Raman",
+  "Newton",
+  "Galileo",
+  "Hypatia",
+  "Socrates",
+  "Plato",
+  "Aristotle",
+  "Descartes",
+  "Spinoza",
+  "Kant",
+  "Hume",
+  "Leibniz",
+  "Hilbert",
+  "Gauss",
+  "Riemann",
+  "Ramanujan",
+  "Shannon",
+  "Lovelace",
+] as const;
+
+function identityHash(identity: string): number {
   const nativeId = identity.startsWith("subagent:")
     ? identity.slice(identity.lastIndexOf(":") + 1)
     : identity;
@@ -44,5 +79,23 @@ export function subagentName(identity: string): string {
   for (let i = 0; i < nativeId.length; i++) {
     hash = Math.imul(hash ^ nativeId.charCodeAt(i), 16777619);
   }
-  return `${FIRST_NAMES[(hash >>> 0) % FIRST_NAMES.length]} ${LAST_NAMES[(hash >>> 16) % LAST_NAMES.length]}`;
+  return hash >>> 0;
+}
+
+export function subagentName(identity: string): string {
+  return NAMES[identityHash(identity) % NAMES.length] ?? NAMES[0];
+}
+
+export function resolveSubagentName(
+  identity: string,
+  nickname?: string | null,
+  taskDescription?: string | null,
+): string {
+  const name = nickname?.trim();
+  const hash = identityHash(identity);
+  // Keep existing stored generated names readable without rewriting user data.
+  const legacyName = `${FIRST_NAMES[hash % FIRST_NAMES.length]} ${LAST_NAMES[(hash >>> 16) % LAST_NAMES.length]}`;
+  return name && name !== taskDescription?.trim() && name !== legacyName
+    ? name
+    : subagentName(identity);
 }

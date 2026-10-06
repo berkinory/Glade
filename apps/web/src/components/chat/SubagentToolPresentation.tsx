@@ -1,3 +1,6 @@
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { useNavigate } from "@tanstack/react-router";
+import { useStore } from "~/store";
 import type { WorkLogSubagent, WorkLogSubagentAction } from "~/workLog.types";
 import { resolveSubagentPresentation } from "~/lib/subagentPresentation";
 import { SubagentAvatar } from "./SubagentAvatar";
@@ -53,5 +56,37 @@ export function SubagentToolAvatars({ subagents }: { subagents: ReadonlyArray<Wo
         />
       ))}
     </span>
+  );
+}
+
+export function SubagentToolLinks({ subagents }: { subagents: ReadonlyArray<WorkLogSubagent> }) {
+  const shells = useStore((state) => state.threadShellById);
+  const navigate = useNavigate();
+  return (
+    <div className="mb-2 flex flex-wrap gap-2 text-ui-sm">
+      {subagents.map((agent) => {
+        const id = ThreadId.makeUnsafe(agent.resolvedThreadId ?? agent.threadId);
+        const thread = shells?.[id];
+        if (!thread || thread.archivedAt) return null;
+        const name = resolveSubagentPresentation({
+          nickname: agent.nickname,
+          title: agent.title,
+          fallbackId: agent.threadId,
+        }).primaryLabel;
+        return (
+          <button
+            key={id}
+            type="button"
+            className="inline-flex items-center gap-1.5 rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={() => {
+              void navigate({ to: "/$threadId", params: { threadId: id } });
+            }}
+          >
+            <SubagentAvatar threadId={id} className="size-[1.143em]" />
+            Open {name}
+          </button>
+        );
+      })}
+    </div>
   );
 }

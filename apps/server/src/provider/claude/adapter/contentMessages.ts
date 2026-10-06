@@ -14,6 +14,7 @@ import {
   nativeProviderRefs,
   asCanonicalTurnId,
   extractContentBlockText,
+  extractTextContent,
 } from "./messageContent";
 import {
   tryParseCompleteJsonRecord,
@@ -265,6 +266,25 @@ export function makeClaudeContentMessages(input: {
         context.turnState.items.push(stripDiagnosticImages(message.message));
       }
 
+      const content = message.message.content;
+      const prompt = context.subagentRefs
+        ? typeof content === "string"
+          ? extractTextContent(content)
+          : content.map(extractContentBlockText).filter(Boolean).join("\n")
+        : "";
+      if (prompt.trim() && context.turnState) {
+        const stamp = yield* makeEventStamp();
+        yield* offerRuntimeEvent(context, {
+          ...stamp,
+          type: "item.completed",
+          provider: PROVIDER,
+          threadId: context.session.threadId,
+          turnId: context.turnState.turnId,
+          ...(message.uuid ? { itemId: asRuntimeItemId(message.uuid) } : {}),
+          payload: { itemType: "user_message", status: "completed", detail: prompt },
+          providerRefs: nativeProviderRefs(context),
+        });
+      }
       for (const toolResult of toolResultBlocksFromUserMessage(message)) {
         const toolEntry = Array.from(context.inFlightTools.entries()).find(
           ([, tool]) => tool.itemId === toolResult.toolUseId,

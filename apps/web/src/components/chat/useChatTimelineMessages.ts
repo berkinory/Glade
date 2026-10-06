@@ -1,3 +1,7 @@
+import { useStore } from "~/store";
+import { createThreadSelector } from "~/storeSelectors";
+import { retainThreadDetailSubscription } from "~/threadDetailSubscriptionRetention";
+import { subagentInitialPrompt } from "./subagentTranscript";
 import { MessageId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Thread } from "../../types";
@@ -113,6 +117,13 @@ export function useChatTimelineMessages({ threadId, activeThread }: ChatTimeline
       }
     }, ATTACHMENT_PREVIEW_HANDOFF_TTL_MS);
   }, []);
+  const parentId =
+    activeThread?.creationSource === "provider_native" ? activeThread.parentThreadId : null;
+  const parent = useStore(useMemo(() => createThreadSelector(parentId), [parentId]));
+  useEffect(() => {
+    if (parentId) return retainThreadDetailSubscription(parentId);
+  }, [parentId]);
+  const initialPrompt = subagentInitialPrompt(activeThread, parent);
   const serverMessages = activeThread?.messages;
   const timelineMessages = useMemo(() => {
     const messages = serverMessages ?? [];
@@ -162,8 +173,8 @@ export function useChatTimelineMessages({ threadId, activeThread }: ChatTimeline
       pendingMessages.length === 0
         ? serverMessagesWithPreviewHandoff
         : [...serverMessagesWithPreviewHandoff, ...pendingMessages];
-    return withPending;
-  }, [serverMessages, attachmentPreviewHandoffByMessageId, optimisticUserMessages]);
+    return initialPrompt ? [initialPrompt, ...withPending] : withPending;
+  }, [serverMessages, attachmentPreviewHandoffByMessageId, optimisticUserMessages, initialPrompt]);
 
   useEffect(() => {
     if (!activeThread?.id) return;

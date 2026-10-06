@@ -1,17 +1,20 @@
 import { nonEmptyTrimmed } from "../text/text";
 import { asArray } from "../transport/payloadValues";
 import { asRecord } from "../transport/payloadValues";
-import { subagentName } from "./subagentName";
+import { resolveSubagentName } from "./subagentName";
 
-function normalizeClaudeTaskNickname(item: Record<string, unknown>): Record<string, unknown> {
-  if (item.toolName !== "Agent" && item.toolName !== "Task") return item;
+function normalizeTaskNickname(item: Record<string, unknown>): Record<string, unknown> {
   const input = asRecord(item.input);
-  const identity = nonEmptyTrimmed(item.receiverThreadId);
-  if (!identity) return item;
+  const identity = firstStringValue(item, [
+    "receiverThreadId",
+    "receiver_thread_id",
+    "threadId",
+    "thread_id",
+  ]);
   const nickname = nonEmptyTrimmed(item.nickname);
-  if (nickname && nickname !== nonEmptyTrimmed(input?.description)) return item;
-  // Stored Claude activities used the task description as a nickname before names were assigned.
-  return { ...item, nickname: subagentName(identity) };
+  if (!identity || !nickname) return item;
+  const name = resolveSubagentName(identity, nickname, nonEmptyTrimmed(input?.description));
+  return name === nickname ? item : { ...item, nickname: name };
 }
 export interface ParsedSubagentReceiverAgent {
   providerThreadId: string;
@@ -178,7 +181,7 @@ export function decodeSubagentReceiverAgents(
   item: Record<string, unknown>,
   fallbackThreadIds: ReadonlyArray<string>,
 ): ReadonlyArray<ParsedSubagentReceiverAgent> {
-  item = normalizeClaudeTaskNickname(item);
+  item = normalizeTaskNickname(item);
   const topLevelModel = firstStringValue(item, [
     "model",
     "modelName",
@@ -433,7 +436,7 @@ export function collectSubagentProviderThreadIds(
 export function extractSubagentIdentityHints(
   item: Record<string, unknown>,
 ): ReadonlyArray<ParsedSubagentIdentityHint> {
-  item = normalizeClaudeTaskNickname(item);
+  item = normalizeTaskNickname(item);
   const hints: ParsedSubagentIdentityHint[] = [];
   const seen = new Set<string>();
 

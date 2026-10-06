@@ -156,6 +156,7 @@ function shouldKeepActivityForWorkLog(
   latestTurnId: TurnId | undefined,
   visibleTurnIds: ReadonlySet<TurnId | string> | undefined,
 ): boolean {
+  if (activity.kind === "subagent.prompt") return false;
   if (activity.kind === PROVIDER_CONTEXT_LIFECYCLE_ACTIVITY_KIND) {
     return true;
   }

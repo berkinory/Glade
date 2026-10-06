@@ -21,10 +21,14 @@ const TURN_ID_KEY_SEPARATOR = "\n";
 function visibleTurnIdsKey(
   messages: Thread["messages"] | undefined,
   latestTurnId: TurnId | null,
+  activities: ReadonlyArray<OrchestrationThreadActivity>,
 ): string {
   const turnIds = new Set<TurnId>();
   for (const message of messages ?? []) {
     if (message.turnId) turnIds.add(message.turnId);
+  }
+  for (const activity of activities) {
+    if (activity.turnId) turnIds.add(activity.turnId);
   }
   if (latestTurnId) turnIds.add(latestTurnId);
   return [...turnIds].join(TURN_ID_KEY_SEPARATOR);
@@ -50,7 +54,11 @@ export function useChatWorkLog({
 
   // `messages` changes identity on every streaming flush; keying the Set on its turn ids keeps the
   // work log derivation and the store selector below stable until a turn actually appears.
-  const workLogVisibleTurnIdsKey = visibleTurnIdsKey(activeThread?.messages, activeLatestTurnId);
+  const workLogVisibleTurnIdsKey = visibleTurnIdsKey(
+    activeThread?.messages,
+    activeLatestTurnId,
+    activeThread?.creationSource === "provider_native" ? threadActivities : EMPTY_ACTIVITIES,
+  );
   const workLogVisibleTurnIds = useMemo(
     () =>
       new Set(

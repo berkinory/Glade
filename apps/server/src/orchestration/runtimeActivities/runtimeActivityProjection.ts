@@ -571,6 +571,31 @@ export function projectProviderRuntimeActivities(
           },
         ];
       }
+      if (
+        event.type === "item.completed" &&
+        event.payload.itemType === "user_message" &&
+        event.payload.detail?.trim() &&
+        event.providerRefs?.providerParentThreadId &&
+        event.providerRefs.providerThreadId &&
+        event.providerRefs.providerThreadId !== event.providerRefs.providerParentThreadId
+      ) {
+        return [
+          {
+            id: event.itemId
+              ? EventId.makeUnsafe(
+                  `subagent-prompt:${event.threadId}:${event.providerRefs.providerThreadId}:${event.itemId}`,
+                )
+              : event.eventId,
+            createdAt: event.createdAt,
+            tone: "info",
+            kind: "subagent.prompt",
+            summary: "Subagent instructions",
+            payload: { text: event.payload.detail },
+            turnId: toTurnId(event.turnId) ?? null,
+            ...maybeSequence,
+          },
+        ];
+      }
       if (!isToolLifecycleItemType(event.payload.itemType)) {
         return [];
       }
