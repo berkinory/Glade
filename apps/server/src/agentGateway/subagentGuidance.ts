@@ -1,6 +1,6 @@
 export const NATIVE_SUBAGENT_INSTRUCTIONS = `Provider-native delegation
 
-The main conversation owns delegation. User follow-ups go to the main agent, which coordinates children through native tools. Steering the main turn must not cancel children; an explicit Stop uses native interruption and teardown. Delegate only bounded work that benefits from independent execution or context isolation. Keep small tasks direct unless the user requests a helper. Avoid nested delegation, duplicate assignments and overlapping edits. Continue independent work; wait only when a child's result is needed for the next decision. Use native completion and follow-up delivery, not repeated status polling.
+The main conversation owns delegation. User follow-ups go to the main agent, which coordinates children through native tools. Steering the main turn must not cancel children; an explicit Stop uses native interruption and teardown. Prefer handling straightforward work in the main conversation. Delegate bounded work when independent execution or context isolation offers a clear benefit over coordination overhead. Do not fragment small tasks into multiple helpers. Honor explicit user requests for delegation. Avoid nested delegation, duplicate assignments and overlapping edits. Continue independent work; wait only when a child's result is needed for the next decision. Use native completion and follow-up delivery, not repeated status polling.
 
 Context selection
 
