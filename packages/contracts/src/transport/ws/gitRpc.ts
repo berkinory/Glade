@@ -1,3 +1,8 @@
+import {
+  GitLocalWorktreeInput,
+  GitLocalWorktreeActionInput,
+  GitLocalWorktreeState,
+} from "../../git/localWorktree";
 import * as Rpc from "effect/unstable/rpc/Rpc";
 import { WS_METHODS } from "./ws";
 import {
@@ -302,5 +307,16 @@ export const WsGitUndoCommitRpc = Rpc.make(WS_METHODS.gitUndoCommit, {
 export const WsGitCheckUndoCommitRpc = Rpc.make(WS_METHODS.gitCheckUndoCommit, {
   payload: GitStatusInput,
   success: Schema.NullOr(Schema.String),
+  error: WsRpcError,
+});
+
+export const WsGitLocalWorktreeRpc = Rpc.make(WS_METHODS.gitLocalWorktree, {
+  payload: GitLocalWorktreeInput,
+  success: GitLocalWorktreeState,
+  error: WsRpcError,
+});
+export const WsGitLocalWorktreeActionRpc = Rpc.make(WS_METHODS.gitLocalWorktreeAction, {
+  payload: GitLocalWorktreeActionInput,
+  success: GitLocalWorktreeState,
   error: WsRpcError,
 });

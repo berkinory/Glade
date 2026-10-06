@@ -384,6 +384,9 @@ export function gitSourceControlActionMutationOptions(input: {
         void input.queryClient.invalidateQueries({
           queryKey: ["git", "rebase-state", cwd],
         });
+        void input.queryClient.invalidateQueries({
+          queryKey: ["git", "local-worktree", cwd],
+        });
       }
     },
   });

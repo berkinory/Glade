@@ -492,6 +492,9 @@ export function createWsNativeApi(): NativeApi {
       undoCommit: (input) =>
         transport.request(WS_METHODS.gitUndoCommit, input, { timeoutMs: null }),
       rebaseState: (input) => transport.request(WS_METHODS.gitRebaseState, input),
+      localWorktree: (input) => transport.request(WS_METHODS.gitLocalWorktree, input),
+      localWorktreeAction: (input) =>
+        transport.request(WS_METHODS.gitLocalWorktreeAction, input, { timeoutMs: null }),
       revertUnstagedFile: (input) => transport.request(WS_METHODS.gitRevertUnstagedFile, input),
       unstageFiles: (input) => transport.request(WS_METHODS.gitUnstageFiles, input),
       handoffThread: (input) => transport.request(WS_METHODS.gitHandoffThread, input),

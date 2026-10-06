@@ -1,3 +1,4 @@
+import { GitLocalWorktreeInput, GitLocalWorktreeActionInput } from "../../git/localWorktree";
 import { GladeAppOpenRequest } from "../../provider/agentGatewayTools";
 import { PreviewWorkspaceRestoreInput } from "../../orchestration/workspaceRestore";
 import {
@@ -185,6 +186,8 @@ export const WS_METHODS = {
   gitCommitStaged: "git.commitStaged",
   gitFetch: "git.fetch",
   gitIgnorePaths: "git.ignorePaths",
+  gitLocalWorktree: "git.localWorktree",
+  gitLocalWorktreeAction: "git.localWorktreeAction",
   gitRebase: "git.rebase",
   gitCheckUndoCommit: "git.checkUndoCommit",
   gitUndoCommit: "git.undoCommit",
@@ -358,6 +361,8 @@ const WebSocketRequestBody = Schema.Union([
   tagRequestBody(WS_METHODS.gitCheckUndoCommit, GitStatusInput),
   tagRequestBody(WS_METHODS.gitUndoCommit, GitUndoCommitInput),
   tagRequestBody(WS_METHODS.gitRebaseState, GitRebaseStateInput),
+  tagRequestBody(WS_METHODS.gitLocalWorktree, GitLocalWorktreeInput),
+  tagRequestBody(WS_METHODS.gitLocalWorktreeAction, GitLocalWorktreeActionInput),
   tagRequestBody(WS_METHODS.gitRevertUnstagedFile, GitRevertUnstagedFileInput),
   tagRequestBody(WS_METHODS.gitUnstageFiles, GitUnstageFilesInput),
   tagRequestBody(WS_METHODS.gitHandoffThread, GitHandoffThreadInput),

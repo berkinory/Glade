@@ -1,3 +1,4 @@
+import { localWorktreeRoutes } from "../../git/localWorktreeRoutes";
 import { AppPresentation } from "../../agentGateway/Services/AppPresentation";
 import { HandoffPreparation } from "../../orchestration/Services/HandoffPreparation";
 import { readGitSidebarSummary } from "../../git/gitSidebarSummary";
@@ -603,9 +604,28 @@ const makeWsRpcHandlersLayer = () =>
       const dispatchOrchestrationCommand = (command: OrchestrationCommand) =>
         Effect.gen(function* () {
           const attachmentPrincipal = yield* CurrentManagedAttachmentPrincipal;
-          return yield* runtimeStartup.enqueueCommand(
+          const dispatch = runtimeStartup.enqueueCommand(
             orchestrationEngine.dispatch(command, { attachmentPrincipal }),
           );
+          if (command.type !== "thread.turn.start") return yield* dispatch;
+          const thread = yield* projectionReadModelQuery.getThreadShellById(command.threadId);
+          if (Option.isNone(thread)) return yield* dispatch;
+          const project = yield* projectionReadModelQuery.getProjectShellById(
+            thread.value.projectId,
+          );
+          const cwd =
+            thread.value.worktreePath ??
+            (Option.isSome(project) ? project.value.workspaceRoot : null);
+          // Git integration and accepting a new turn share the repository mutation queue.
+          // The accepted turn is visible before a queued integration checks for active agents.
+          if (!cwd) return yield* dispatch;
+          const repository = yield* git.execute({
+            cwd,
+            operation: "turn workspace",
+            args: ["rev-parse", "--git-common-dir"],
+            allowNonZeroExit: true,
+          });
+          return yield* repository.code === 0 ? git.withMutation(cwd, dispatch) : dispatch;
         });
 
       const stopLocalServerAndTrackedProjectRun = Effect.fnUntraced(function* (input: {
@@ -1605,6 +1625,25 @@ const makeWsRpcHandlersLayer = () =>
               )
               .pipe(Effect.onExit(() => refreshGitStatusInBackground(input.cwd))),
             "Failed to undo commit",
+          ),
+        [WS_METHODS.gitLocalWorktree]: (input) =>
+          rpcEffect(
+            localWorktreeRoutes(git, orchestrationEngine).read(input.threadId),
+            "Failed to read local worktree",
+          ),
+        [WS_METHODS.gitLocalWorktreeAction]: (input) =>
+          rpcEffect(
+            localWorktreeRoutes(git, orchestrationEngine)
+              .run(input)
+              .pipe(
+                Effect.tap((state) =>
+                  Effect.all([
+                    refreshGitStatusInBackground(state.cwd),
+                    refreshGitStatusInBackground(state.targetCwd),
+                  ]),
+                ),
+              ),
+            "Failed to update local worktree",
           ),
         [WS_METHODS.gitRebaseState]: (input) =>
           rpcEffect(

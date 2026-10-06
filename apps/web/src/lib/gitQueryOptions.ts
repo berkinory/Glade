@@ -175,6 +175,7 @@ async function refreshGitAvailability(queryClient: QueryClient, cwd: string): Pr
   await queryClient.invalidateQueries({ queryKey: gitQueryKeys.history(cwd) });
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: ["git", "rebase-state", cwd] }),
+    queryClient.invalidateQueries({ queryKey: ["git", "local-worktree", cwd] }),
     queryClient.invalidateQueries({
       queryKey: gitQueryKeys.githubRepository(cwd),
       exact: true,

@@ -1,3 +1,4 @@
+import { WorktreeGitActions } from "./WorktreeGitActions";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCommitDrafts } from "./commitDraftStore";
@@ -241,6 +242,7 @@ export function SourceControlToolbar({
           )}
         </IconButton>
       </div>
+      <WorktreeGitActions threadId={threadId} />
       {rebase.isError ? (
         <button
           type="button"

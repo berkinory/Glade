@@ -1,3 +1,4 @@
+import { WorktreeGitActions } from "../WorktreeGitActions";
 import type { EditorId } from "@glade/contracts/settings/editor";
 import type {
   MessageId,
@@ -184,6 +185,10 @@ export function EnvironmentPanel({
       ) : null}
 
       {isGitRepo ? <BranchToolbar {...branchToolbar} variant="panel" /> : null}
+
+      {showGitActions && worktree.path && activeThreadId ? (
+        <WorktreeGitActions threadId={activeThreadId} visible={open} />
+      ) : null}
 
       {showGitActions ? (
         <GitActionsControl

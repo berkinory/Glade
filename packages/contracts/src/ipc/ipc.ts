@@ -1,4 +1,9 @@
 import type {
+  GitLocalWorktreeInput,
+  GitLocalWorktreeActionInput,
+  GitLocalWorktreeState,
+} from "../git/localWorktree";
+import type {
   PreviewWorkspaceRestoreInput,
   WorkspaceRestorePreview,
 } from "../orchestration/workspaceRestore";
@@ -745,6 +750,8 @@ export interface NativeApi {
     checkUndoCommit: (input: GitStatusInput) => Promise<string | null>;
     undoCommit: (input: GitUndoCommitInput) => Promise<GitUndoCommitResult>;
     rebaseState: (input: GitRebaseStateInput) => Promise<GitRebaseStateResult>;
+    localWorktree: (input: GitLocalWorktreeInput) => Promise<GitLocalWorktreeState>;
+    localWorktreeAction: (input: GitLocalWorktreeActionInput) => Promise<GitLocalWorktreeState>;
     revertUnstagedFile: (input: GitRevertUnstagedFileInput) => Promise<GitRevertUnstagedFileResult>;
     unstageFiles: (input: GitUnstageFilesInput) => Promise<GitUnstageFilesResult>;
     handoffThread: (input: GitHandoffThreadInput) => Promise<GitHandoffThreadResult>;

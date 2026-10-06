@@ -1,3 +1,5 @@
+import { hasUnsavedWorkspaceEditors } from "~/lib/workspaceEditorSession";
+import { invalidateProjectFileQueriesForCwds } from "~/lib/projectReactQuery";
 import { resolveProviderModelSelection } from "~/lib/providerModelSelection";
 import { RuntimeMode, type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
@@ -99,6 +101,13 @@ export async function prepareChatSendWorkspace({
   queryClient,
 }: Input) {
   const threadIdForSend = activeThread.id;
+  if (isServerThread && resolvedThreadWorktreePath && !hasUnsavedWorkspaceEditors(queryClient)) {
+    const state = await api.git.localWorktreeAction({ threadId: threadIdForSend, action: "sync" });
+    await queryClient.invalidateQueries({
+      queryKey: ["git", "local-worktree", resolvedThreadWorktreePath],
+    });
+    await invalidateProjectFileQueriesForCwds(queryClient, [state.cwd]);
+  }
   const isFirstMessage = !isServerThread || !hasNativeUserMessages;
   const firstSendCreatedAt = new Date();
   const firstComposerImageNameForTitle = composerImagesForSend[0]?.name ?? null;

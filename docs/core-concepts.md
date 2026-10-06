@@ -343,3 +343,34 @@ Recent rows reuse project appearance, preferring explicit emoji, icon or color o
 a favicon. Favicon discovery checks root and declared icons first, then a bounded
 set of shallow frontend directories. Symlinks outside the project and oversized
 files are rejected. Workspace resize handles live outside the clipped panel surface.
+
+## Local worktree integration
+
+Worktree chats show their branch and local destination above the composer and in Environment
+and Source Control. The destination is the branch checked out in the repository's primary
+checkout, usually `main`; it is not automatically a remote branch.
+
+- **Update from <branch>** brings the primary checkout's committed changes into a clean worktree.
+- **Merge into <branch>** integrates committed worktree changes into a clean primary checkout.
+- **AI commit & merge into <branch>** generates a message, commits the worktree changes and
+  integrates them locally. A partial staged selection with remaining unstaged changes needs a
+  manual commit first. Generation is checked against the actual commit contents.
+
+These actions do not fetch, push or open a PR. Existing remote Git actions remain available.
+The worktree and conversation stay in place after integration. Before a subsequent message sent
+through the composer, a clean worktree with no remaining unique commits fast-forwards to the
+primary checkout. Worktrees with pending work, active agents, unsaved editors or Git operations
+are not automatically updated. Other turn-start paths do not perform this composer preparation.
+
+Unpublished branches are rebased onto the local destination before a fast-forward integration.
+Branches with an upstream or commits reachable from known remote refs use a merge to preserve
+published history. These checks use locally available refs and do not contact remotes. Local
+integration refuses dirty primary checkouts and active agents in either affected checkout.
+
+A conflict stays in the source worktree. Resolve and stage the files in Source Control, then
+use **Continue**; **Abort** restores the worktree's pre-operation state. Retry **Merge** after
+continuing. The primary checkout is not changed while resolving a worktree conflict. A failure
+after the AI commit may leave that commit in the worktree; review it and retry integration.
+
+Local chats continue to use their existing Git controls. Two chats in the same checkout share
+files and the Git index; local integration does not provide isolation or per-chat undo there.

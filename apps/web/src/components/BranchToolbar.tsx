@@ -1,3 +1,4 @@
+import { WorktreeGitActions } from "./chat/WorktreeGitActions";
 import { useQuery } from "@tanstack/react-query";
 import { gitBranchesQueryOptions } from "../lib/gitQueryOptions";
 import { Checkbox } from "./ui/checkbox";
@@ -406,6 +407,9 @@ export default function BranchToolbar({
           />
         ) : null}
 
+        {!isPanel && activeWorktreePath && hasServerThread ? (
+          <WorktreeGitActions threadId={threadId} summaryOnly />
+        ) : null}
         {showEnvironment ? (
           !hasServerThread ? (
             <label
