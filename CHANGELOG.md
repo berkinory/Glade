@@ -30,6 +30,7 @@
 - Opening a path in the terminal no longer types into a busy shell, and a terminal that fails to close stays open and usable.
 - Voice dictation is available for Codex ChatGPT sign-ins, and invalid transcription responses show a clear error.
 - Chats show why they are blocked by a provider delivery failure as soon as it happens, including after a restart.
+- Very large code blocks in chat no longer freeze the window.
 
 ### Removed
 

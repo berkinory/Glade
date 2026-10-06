@@ -2,17 +2,29 @@ import { useEffect, useRef } from "react";
 import { shouldRepairDesktopProjectSnapshot } from "../lib/desktopProjectRecovery";
 import { readNativeApi } from "../nativeApi";
 import { useStore } from "../store";
-import { createAllThreadsSelector } from "../storeSelectors";
-import { createDesktopProjectRecoveryAttemptGate } from "./-desktopProjectRecoveryAttempt";
+import type { AppState } from "../storeState";
+import {
+  createDesktopProjectRecoveryAttemptGate,
+  type DesktopProjectRecoveryAttemptGate,
+} from "./-desktopProjectRecoveryAttempt";
+
+// Returns a primitive so streaming deltas, which replace thread shells, do not re-render this.
+function selectHasThreadWithoutProject(state: AppState): boolean {
+  const threadIds = state.threadIds ?? [];
+  if (threadIds.length === 0) return false;
+  const projectIds = new Set(state.projects.map((project) => project.id));
+  return threadIds.some((threadId) => {
+    const shell = state.threadShellById?.[threadId];
+    return shell !== undefined && !projectIds.has(shell.projectId);
+  });
+}
 
 export function DesktopProjectBootstrap() {
   const syncServerReadModel = useStore((store) => store.syncServerReadModel);
-  const projects = useStore((store) => store.projects);
-  const threads = useStore(selectAllThreads);
+  const hasProjects = useStore((store) => store.projects.length > 0);
+  const hasThreadWithoutProject = useStore(selectHasThreadWithoutProject);
   const threadsHydrated = useStore((store) => store.threadsHydrated);
-  const recoveryAttemptGateRef = useRef<ReturnType<
-    typeof createDesktopProjectRecoveryAttemptGate
-  > | null>(null);
+  const recoveryAttemptGateRef = useRef<DesktopProjectRecoveryAttemptGate | null>(null);
   if (recoveryAttemptGateRef.current === null) {
     recoveryAttemptGateRef.current = createDesktopProjectRecoveryAttemptGate();
   }
@@ -24,10 +36,7 @@ export function DesktopProjectBootstrap() {
     if (!api || !threadsHydrated) {
       return;
     }
-
-    const projectIds = new Set(projects.map((project) => project.id));
-    const hasThreadWithoutProject = threads.some((thread) => !projectIds.has(thread.projectId));
-    if (projects.length > 0 && !hasThreadWithoutProject) {
+    if (hasProjects && !hasThreadWithoutProject) {
       return;
     }
 
@@ -58,8 +67,13 @@ export function DesktopProjectBootstrap() {
       disposed = true;
       attempt.release();
     };
-  }, [projects, recoveryAttemptGate, syncServerReadModel, threads, threadsHydrated]);
+  }, [
+    hasThreadWithoutProject,
+    hasProjects,
+    recoveryAttemptGate,
+    syncServerReadModel,
+    threadsHydrated,
+  ]);
 
   return null;
 }
-const selectAllThreads = createAllThreadsSelector();

@@ -16,6 +16,19 @@ import { createRelevantWorkLogThreadsSelector } from "../ChatView.selectors";
 import { deriveComposerSubagentStripItems } from "./ComposerSubagentStrip.logic";
 import { deriveWorkflowRunState, type WorkflowSubagentThreadRef } from "./WorkflowRunCard.logic";
 const EMPTY_ACTIVITIES: OrchestrationThreadActivity[] = [];
+const TURN_ID_KEY_SEPARATOR = "\n";
+
+function visibleTurnIdsKey(
+  messages: Thread["messages"] | undefined,
+  latestTurnId: TurnId | null,
+): string {
+  const turnIds = new Set<TurnId>();
+  for (const message of messages ?? []) {
+    if (message.turnId) turnIds.add(message.turnId);
+  }
+  if (latestTurnId) turnIds.add(latestTurnId);
+  return [...turnIds].join(TURN_ID_KEY_SEPARATOR);
+}
 interface ChatWorkLogInput {
   activeThread: Thread | undefined;
   latestTurnSettled: boolean;
@@ -35,18 +48,18 @@ export function useChatWorkLog({
   const activeLatestTurnCompletedAt = activeLatestTurn?.completedAt ?? null;
   const threadActivities = activeThread?.activities ?? EMPTY_ACTIVITIES;
 
-  const workLogVisibleTurnIds = useMemo(() => {
-    const turnIds = new Set<TurnId>();
-    for (const message of activeThread?.messages ?? []) {
-      if (message.turnId) {
-        turnIds.add(message.turnId);
-      }
-    }
-    if (activeLatestTurnId) {
-      turnIds.add(activeLatestTurnId);
-    }
-    return turnIds;
-  }, [activeLatestTurnId, activeThread?.messages]);
+  // `messages` changes identity on every streaming flush; keying the Set on its turn ids keeps the
+  // work log derivation and the store selector below stable until a turn actually appears.
+  const workLogVisibleTurnIdsKey = visibleTurnIdsKey(activeThread?.messages, activeLatestTurnId);
+  const workLogVisibleTurnIds = useMemo(
+    () =>
+      new Set(
+        workLogVisibleTurnIdsKey === ""
+          ? []
+          : (workLogVisibleTurnIdsKey.split(TURN_ID_KEY_SEPARATOR) as TurnId[]),
+      ),
+    [workLogVisibleTurnIdsKey],
+  );
   const rawWorkLogEntries = useMemo(
     () =>
       deriveWorkLogEntries(threadActivities, activeLatestTurnId ?? undefined, {

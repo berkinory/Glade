@@ -523,13 +523,20 @@ function SuspenseShikiCodeBlock({
   themeName,
   isStreaming,
   sourceOffset,
-}: SuspenseShikiCodeBlockProps) {
+  oversizedFallback,
+}: SuspenseShikiCodeBlockProps & {
+  oversizedFallback: ReactNode;
+}) {
   const code = useThrottledStreamingValue(
     liveCode,
     isStreaming,
     streamingCodeHighlightIntervalMs(liveCode.length),
   );
   const syntaxHighlighting = use(getSyntaxHighlightingModulePromise());
+  // Shiki runs synchronously during render; past this size it freezes the window.
+  if (code.length > syntaxHighlighting.MAX_SYNTAX_HIGHLIGHT_INPUT_CHARS) {
+    return oversizedFallback;
+  }
   return (
     <LoadedShikiCodeBlock
       syntaxHighlighting={syntaxHighlighting}
@@ -759,6 +766,7 @@ const MARKDOWN_COMPONENTS: Components = {
               themeName={diffThemeName}
               isStreaming={isStreaming}
               sourceOffset={sourceOffset}
+              oversizedFallback={highlightedFallback}
             />
           </Suspense>
         </CodeHighlightErrorBoundary>

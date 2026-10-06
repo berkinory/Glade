@@ -424,7 +424,6 @@ export function providerModelsQueryOptions(
         ? undefined
         : queryClient.getQueryData<ProviderListModelsResult>(globalQueryKey),
     staleTime: (query) => (query.state.data?.stale ? 0 : 30 * 60_000),
-    refetchOnWindowFocus: "always",
     refetchInterval: (query) =>
       query.state.data?.stale && !query.state.data.error ? 1_000 : false,
   });
