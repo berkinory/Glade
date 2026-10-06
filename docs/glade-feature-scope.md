@@ -39,7 +39,7 @@ attachment APIs or a keyboard capture watcher.
 
 ## Workspace editing
 
-Each conversation owns main workspace tabs for chat, files, commit and turn diffs, terminals, and browser pages. The chat tab uses the provider icon and name and stays at the left of the tab strip. Workspace tabs replace the chat title in the existing top bar; no extra tab row is added. Provider usage stays in the left sidebar, and chat headers do not show Open in or Commit and push actions. Explorer and Git remain navigation panels in the right sidebar. Selecting Explorer files or Git files opens or focuses their main workspace tab. Single-clicks reuse one italic preview tab across files and Git diffs; double-clicking a file or its tab, editing, or opening a chat file reference keeps it as a permanent tab. File search opens previews too. The provider chat tab cannot be closed. Cmd+W or Ctrl+W closes the active resource tab and returns to the most recently used open tab; when only the chat tab remains, the shortcut leaves the conversation without closing the app. The tab strip supports horizontal trackpad scrolling and reveals newly selected tabs. The plus menu contains only Terminal and Browser. Terminals use the main tab strip without an inner toolbar or split panes. File diffs share the file viewer header, offer unified and side-by-side layouts, and expose Edit to open the working file. Saved project actions, automatic setup scripts, and project Run controls are not supported. Tab selection is remembered per conversation.
+Each conversation owns main workspace tabs for chat, files, commit and turn diffs, terminals, and browser pages. The chat tab uses the provider icon and name and stays at the left of the tab strip. Workspace tabs replace the chat title in the existing top bar; no extra tab row is added. Provider usage stays in the left sidebar, and chat headers do not show Open in or Commit and push actions. Explorer and Git remain navigation panels in the right sidebar. Selecting Explorer files or Git files opens or focuses their main workspace tab. Single-clicks reuse one italic preview tab per group across files and Git diffs; double-clicking a file or its tab, editing, or opening a chat file reference keeps it as a permanent tab. File search opens previews too. The provider chat tab cannot be closed. Cmd+W or Ctrl+W closes the active resource tab and returns to the most recently used open tab; when only the chat tab remains, the shortcut leaves the conversation without closing the app. The tab strip supports horizontal trackpad scrolling and reveals newly selected tabs. The plus menu contains only Terminal and Browser. Terminals use the main tab strip without an inner toolbar or split panes. File diffs share the file viewer header, offer unified and side-by-side layouts, and expose Edit to open the working file. Saved project actions, automatic setup scripts, and project Run controls are not supported. Tab selection is remembered per conversation.
 
 File tabs accept tree selections, chat links and file references. Opening
 an existing file selects its tab; line and column links reveal source without changing
@@ -55,7 +55,15 @@ parent, and empty tree space targets the workspace root. Imports preserve source
 and refuse existing names; partial folder failures report what needs review.
 Editor and composer paste retain their existing behavior.
 
-Workspace tabs share one tab bar; terminal and browser tab rows are folded into it. Existing split conversations retain their panel layout; splitting individual workspace tabs is not supported yet. Environment and its
+Main workspace tabs support two groups, side by side or stacked. A tab's context menu splits
+or moves it; dropping a tab or Explorer file on the right or bottom edge creates a split,
+and dropping in the center opens or moves it into that group. New resources open in the
+focused group, while existing resources focus their owning group. Chat remains a single,
+nonclosable tab. Moving chat, terminals, or browser tabs preserves their sessions. Browser
+tabs move together because a conversation owns one native browser surface. Closing a group's
+last tab collapses the split; Cmd/Ctrl+W uses the focused group's recent tabs. The divider
+can be dragged, adjusted with arrow keys, or reset with a double-click. Groups and their
+sizes are remembered per conversation. Existing split conversations retain their panel layout. Environment and its
 trigger hide while the right sidebar is open, retaining the previous preference
 and panel state until it closes.
 

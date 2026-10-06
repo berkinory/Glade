@@ -11,6 +11,8 @@ export interface PanelTab {
   preview?: boolean;
   onDoubleClick?: () => void;
   onClose?: (() => void) | undefined;
+  onContextMenu?: ((position: { x: number; y: number }) => void) | undefined;
+  onDragStart?: ((data: DataTransfer) => void) | undefined;
 }
 
 export function PanelTabBar(props: {
@@ -54,7 +56,21 @@ export function PanelTabBar(props: {
     else if (tab.right > bounds.right) scroller.scrollLeft += tab.right - bounds.right;
   }, [props.activeId, tabIds]);
   const renderTab = (tab: PanelTab) => (
-    <div key={tab.id} data-tab-id={tab.id} className="[-webkit-app-region:no-drag] shrink-0">
+    <div
+      key={tab.id}
+      data-tab-id={tab.id}
+      className="[-webkit-app-region:no-drag] shrink-0"
+      draggable={Boolean(tab.onDragStart)}
+      onDragStart={(event) => tab.onDragStart?.(event.dataTransfer)}
+      onContextMenu={
+        tab.onContextMenu
+          ? (event) => {
+              event.preventDefault();
+              tab.onContextMenu?.({ x: event.clientX, y: event.clientY });
+            }
+          : undefined
+      }
+    >
       <SurfaceTabChip
         active={tab.id === props.activeId}
         title={tab.label}

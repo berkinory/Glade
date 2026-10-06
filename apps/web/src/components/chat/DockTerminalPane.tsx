@@ -15,6 +15,8 @@ import { useTerminalStateStore } from "~/terminalStateStore";
 import ThreadTerminalDrawer from "../ThreadTerminalDrawer";
 
 function DockTerminalPane(props: {
+  terminalId?: string;
+  focusEnabled?: boolean;
   workspaceRoot?: string | null;
   focusRequestId?: number;
   hostThreadId: ThreadId;
@@ -90,14 +92,15 @@ function DockTerminalPane(props: {
       height={terminalState.terminalHeight}
       presentationMode="workspace"
       isVisible={props.isActive ?? true}
-      terminalIds={terminalState.terminalIds}
+      terminalIds={props.terminalId ? [props.terminalId] : terminalState.terminalIds}
       terminalLabelsById={terminalState.terminalLabelsById}
       terminalTitleOverridesById={terminalState.terminalTitleOverridesById}
       terminalCliKindsById={terminalState.terminalCliKindsById}
       terminalAttentionStatesById={terminalState.terminalAttentionStatesById ?? {}}
       runningTerminalIds={terminalState.runningTerminalIds}
-      activeTerminalId={terminalState.activeTerminalId}
+      activeTerminalId={props.terminalId ?? terminalState.activeTerminalId}
       focusRequestId={terminal.focusRequestId + (props.focusRequestId ?? 0)}
+      focusEnabled={props.focusEnabled ?? true}
       onTerminalSessionExited={onSessionExited}
       onHeightChange={terminal.setTerminalHeight}
       onTerminalMetadataChange={terminal.setTerminalMetadata}

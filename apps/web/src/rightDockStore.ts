@@ -94,35 +94,56 @@ export const useRightDockStore = create<RightDockStore>()(
         commit(set, threadId, (state) => updatePaneInState(state, paneId, patch)),
       openFile: (threadId, path, options) => {
         const workspace = useMainWorkspaceStore.getState();
-        const previewReviewId = workspace.states[threadId]?.previewReviewId;
+        const main = workspace.states[threadId];
+        const owner =
+          main?.layout.groups.findIndex((group) => group.tabIds.includes(`file:${path}`)) ?? -1;
+        const target = owner >= 0 ? owner : (main?.layout.activeGroup ?? 0);
+        const inTargetGroup = (id: string) =>
+          !main || main.layout.groups[target]?.tabIds.includes(id);
+        const previewReviewId = main?.previewReviewIds.find(inTargetGroup);
         const dock = useRightDockStore.getState().dockStateByThreadId[threadId];
-        const replacesPreview = !dock?.filePaths.includes(path) || dock.previewFilePath === path;
+        const replacesPreview =
+          !dock?.filePaths.includes(path) || dock.previewFilePaths?.includes(path);
         if (options?.preview && replacesPreview && previewReviewId)
           workspace.closeReview(threadId, previewReviewId);
         commit(set, threadId, (state) => {
           const existing = state.filePaths.includes(path);
-          if (options?.preview && (!existing || state.previewFilePath === path)) {
-            const previousIndex = state.previewFilePath
-              ? state.filePaths.indexOf(state.previewFilePath)
-              : -1;
+          if (options?.preview && (!existing || state.previewFilePaths?.includes(path))) {
+            const previousPreview =
+              state.previewFilePaths?.find((file) => inTargetGroup(`file:${file}`)) ?? null;
+            const previousIndex = previousPreview ? state.filePaths.indexOf(previousPreview) : -1;
             const filePaths = state.filePaths.filter(
-              (file) => file !== state.previewFilePath && file !== path,
+              (file) => file !== previousPreview && file !== path,
             );
             filePaths.splice(previousIndex < 0 ? filePaths.length : previousIndex, 0, path);
-            return { ...state, filePaths, activeFilePath: path, previewFilePath: path };
+            return {
+              ...state,
+              filePaths,
+              activeFilePath: path,
+              previewFilePaths: [
+                ...(state.previewFilePaths ?? []).filter(
+                  (file) => file !== previousPreview && file !== path,
+                ),
+                path,
+              ],
+            };
           }
           return {
             ...state,
             filePaths: existing ? state.filePaths : [...state.filePaths, path],
             activeFilePath: path,
-            ...(state.previewFilePath === path ? { previewFilePath: null } : {}),
+            ...(state.previewFilePaths?.includes(path)
+              ? { previewFilePaths: (state.previewFilePaths ?? []).filter((file) => file !== path) }
+              : {}),
           };
         });
         useMainWorkspaceStore.getState().selectTab(threadId, `file:${path}`);
       },
       pinFile: (threadId, path) =>
         commit(set, threadId, (state) =>
-          state.previewFilePath === path ? { ...state, previewFilePath: null } : state,
+          state.previewFilePaths?.includes(path)
+            ? { ...state, previewFilePaths: state.previewFilePaths.filter((file) => file !== path) }
+            : state,
         ),
       closeFile: (threadId, path) =>
         commit(set, threadId, (state) => {
@@ -132,7 +153,9 @@ export const useRightDockStore = create<RightDockStore>()(
           return {
             ...state,
             filePaths,
-            ...(state.previewFilePath === path ? { previewFilePath: null } : {}),
+            ...(state.previewFilePaths?.includes(path)
+              ? { previewFilePaths: (state.previewFilePaths ?? []).filter((file) => file !== path) }
+              : {}),
             activeFilePath:
               state.activeFilePath === path
                 ? (filePaths[Math.min(index, filePaths.length - 1)] ?? null)

@@ -187,6 +187,7 @@ export function WorkspaceExplorerTree(props: {
                 />
               ) : row.kind === "entry" ? (
                 <ExplorerRow
+                  workspaceRoot={props.workspaceRoot}
                   entry={row.entry}
                   depth={row.depth}
                   expanded={expanded}

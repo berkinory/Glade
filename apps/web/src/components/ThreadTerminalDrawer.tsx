@@ -439,6 +439,7 @@ function TerminalViewport({
 }
 
 interface ThreadTerminalDrawerProps {
+  focusEnabled?: boolean;
   threadId: ThreadId;
   cwd: string;
   runtimeEnv?: Record<string, string>;
@@ -529,7 +530,7 @@ export default function ThreadTerminalDrawer(props: ThreadTerminalDrawerProps) {
                 onTerminalActivityChange={props.onTerminalActivityChange}
                 onAddTerminalContext={props.onAddTerminalContext}
                 focusRequestId={props.focusRequestId}
-                autoFocus={active}
+                autoFocus={active && (props.focusEnabled ?? true)}
                 isVisible={(props.isVisible ?? true) && active}
               />
             </div>

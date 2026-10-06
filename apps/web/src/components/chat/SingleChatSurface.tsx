@@ -456,10 +456,14 @@ export function SingleChatSurface(props: {
   const openGitPreview = (tab: WorkspaceReviewTab, preview: boolean) => {
     const replacesPreview =
       !mainWorkspace.reviews.some((review) => review.id === tab.id) ||
-      mainWorkspace.previewReviewId === tab.id;
-    if (preview && replacesPreview && dockState.previewFilePath) {
-      useRightDockStore.getState().closeFile(props.threadId, dockState.previewFilePath);
-    }
+      mainWorkspace.previewReviewIds.includes(tab.id);
+    const owner = mainWorkspace.layout.groups.findIndex((group) => group.tabIds.includes(tab.id));
+    const target = owner >= 0 ? owner : mainWorkspace.layout.activeGroup;
+    const previewFile = dockState.previewFilePaths?.find((path) =>
+      mainWorkspace.layout.groups[target]?.tabIds.includes(`file:${path}`),
+    );
+    if (preview && replacesPreview && previewFile)
+      useRightDockStore.getState().closeFile(props.threadId, previewFile);
     openReview(props.threadId, tab, preview);
   };
 
@@ -500,12 +504,15 @@ export function SingleChatSurface(props: {
 
   useEffect(() => {
     if (terminalPresentation) return;
-    const terminalVisible = mainWorkspace.activeTabId === "terminal";
+    const terminalVisible =
+      mainWorkspace.activeTabId === "terminal" ||
+      mainWorkspace.layout.groups.some((group) => group.activeTabId?.startsWith("terminal:"));
     if (terminalOpen !== terminalVisible) {
       setTerminalOpen(props.threadId, terminalVisible);
     }
   }, [
     mainWorkspace.activeTabId,
+    mainWorkspace.layout,
     props.threadId,
     setTerminalOpen,
     terminalOpen,

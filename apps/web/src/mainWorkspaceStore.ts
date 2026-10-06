@@ -2,6 +2,16 @@ import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { isRecord } from "@glade/shared/transport/payloadValues";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import {
+  DEFAULT_WORKSPACE_LAYOUT,
+  sanitizeWorkspaceLayout,
+  selectWorkspaceTab,
+  reconcileWorkspaceTabs,
+  moveWorkspaceTab,
+  splitWorkspaceTab,
+  type WorkspaceLayout,
+  type WorkspaceSplitDirection,
+} from "./mainWorkspaceLayout";
 import { sanitizeStringKeyedRecord } from "./persistedRecord";
 
 export type WorkspaceReviewTab =
@@ -10,15 +20,17 @@ export type WorkspaceReviewTab =
   | { id: string; kind: "diff"; turnId: TurnId; filePath: string | null };
 
 interface MainWorkspaceState {
-  previewReviewId: string | null;
+  layout: WorkspaceLayout;
+  previewReviewIds: string[];
   activeTabId: string;
   reviews: WorkspaceReviewTab[];
 }
 
 const EMPTY_WORKSPACE: MainWorkspaceState = {
+  layout: DEFAULT_WORKSPACE_LAYOUT,
   activeTabId: "chat",
   reviews: [],
-  previewReviewId: null,
+  previewReviewIds: [],
 };
 
 function sanitizeWorkspace(value: unknown): MainWorkspaceState | null {
@@ -52,13 +64,21 @@ function sanitizeWorkspace(value: unknown): MainWorkspaceState | null {
     }
   }
   return {
+    layout: sanitizeWorkspaceLayout(value.layout),
     activeTabId: typeof value.activeTabId === "string" ? value.activeTabId : "chat",
     reviews,
-    previewReviewId:
-      typeof value.previewReviewId === "string" &&
-      reviews.some((tab) => tab.id === value.previewReviewId)
-        ? value.previewReviewId
-        : null,
+    previewReviewIds: [
+      ...new Set(
+        (Array.isArray(value.previewReviewIds)
+          ? value.previewReviewIds
+          : typeof value.previewReviewId === "string"
+            ? [value.previewReviewId]
+            : []
+        ).filter(
+          (id): id is string => typeof id === "string" && reviews.some((tab) => tab.id === id),
+        ),
+      ),
+    ],
   };
 }
 
@@ -69,6 +89,11 @@ interface MainWorkspaceStore {
   pinReview: (threadId: ThreadId, tabId: string) => void;
   closeReview: (threadId: ThreadId, tabId: string) => void;
   clearThread: (threadId: ThreadId) => void;
+  reconcileTabs: (threadId: ThreadId, ids: readonly string[], selected: string) => void;
+  focusGroup: (threadId: ThreadId, group: number) => void;
+  moveTab: (threadId: ThreadId, id: string, group: number) => void;
+  splitTab: (threadId: ThreadId, id: string, direction: WorkspaceSplitDirection) => void;
+  resizeSplit: (threadId: ThreadId, ratio: number) => void;
 }
 
 export const useMainWorkspaceStore = create<MainWorkspaceStore>()(
@@ -79,28 +104,40 @@ export const useMainWorkspaceStore = create<MainWorkspaceStore>()(
         set((store) => ({
           states: {
             ...store.states,
-            [threadId]: { ...(store.states[threadId] ?? EMPTY_WORKSPACE), activeTabId },
+            [threadId]: {
+              ...(store.states[threadId] ?? EMPTY_WORKSPACE),
+              activeTabId,
+              layout: selectWorkspaceTab(
+                (store.states[threadId] ?? EMPTY_WORKSPACE).layout,
+                activeTabId,
+              ),
+            },
           },
         })),
       openReview: (threadId, tab, preview = false) =>
         set((store) => {
           const state = store.states[threadId] ?? EMPTY_WORKSPACE;
           const existing = state.reviews.some((review) => review.id === tab.id);
-          const replacePreview = preview && (!existing || state.previewReviewId === tab.id);
+          const owner = state.layout.groups.findIndex((group) => group.tabIds.includes(tab.id));
+          const target = owner >= 0 ? owner : state.layout.activeGroup;
+          const previousPreview = state.previewReviewIds.find((id) =>
+            state.layout.groups[target]?.tabIds.includes(id),
+          );
+          const replacePreview = preview && (!existing || state.previewReviewIds.includes(tab.id));
           const reviews = replacePreview
-            ? state.reviews.filter((review) => review.id !== state.previewReviewId)
+            ? state.reviews.filter((review) => review.id !== previousPreview)
             : state.reviews;
+          const previewReviewIds = state.previewReviewIds.filter((id) =>
+            replacePreview ? id !== previousPreview && id !== tab.id : id !== tab.id,
+          );
           return {
             states: {
               ...store.states,
               [threadId]: {
                 ...state,
-                previewReviewId: replacePreview
-                  ? tab.id
-                  : state.previewReviewId === tab.id
-                    ? null
-                    : state.previewReviewId,
+                previewReviewIds: replacePreview ? [...previewReviewIds, tab.id] : previewReviewIds,
                 activeTabId: tab.id,
+                layout: selectWorkspaceTab(state.layout, tab.id),
                 reviews: reviews.some((review) => review.id === tab.id)
                   ? reviews.map((review) => (review.id === tab.id ? tab : review))
                   : [...reviews, tab],
@@ -116,7 +153,7 @@ export const useMainWorkspaceStore = create<MainWorkspaceStore>()(
               ...store.states,
               [threadId]: {
                 ...state,
-                previewReviewId: state.previewReviewId === tabId ? null : state.previewReviewId,
+                previewReviewIds: state.previewReviewIds.filter((id) => id !== tabId),
               },
             },
           };
@@ -129,8 +166,83 @@ export const useMainWorkspaceStore = create<MainWorkspaceStore>()(
               ...store.states,
               [threadId]: {
                 ...state,
-                previewReviewId: state.previewReviewId === tabId ? null : state.previewReviewId,
+                previewReviewIds: state.previewReviewIds.filter((id) => id !== tabId),
                 reviews: state.reviews.filter((tab) => tab.id !== tabId),
+              },
+            },
+          };
+        }),
+      reconcileTabs: (threadId, ids, selected) =>
+        set((store) => {
+          const state = store.states[threadId] ?? EMPTY_WORKSPACE;
+          const layout = reconcileWorkspaceTabs(state.layout, ids, selected);
+          if (JSON.stringify(layout) === JSON.stringify(state.layout)) return {};
+          return {
+            states: {
+              ...store.states,
+              [threadId]: {
+                ...state,
+                layout,
+                activeTabId: layout.groups[layout.activeGroup]?.activeTabId ?? "chat",
+              },
+            },
+          };
+        }),
+      focusGroup: (threadId, activeGroup) =>
+        set((store) => {
+          const state = store.states[threadId] ?? EMPTY_WORKSPACE;
+          const group = state.layout.groups[activeGroup];
+          if (!group || state.layout.activeGroup === activeGroup) return {};
+          return {
+            states: {
+              ...store.states,
+              [threadId]: {
+                ...state,
+                activeTabId: group.activeTabId ?? "chat",
+                layout: { ...state.layout, activeGroup },
+              },
+            },
+          };
+        }),
+      moveTab: (threadId, id, group) =>
+        set((store) => {
+          const state = store.states[threadId] ?? EMPTY_WORKSPACE;
+          const layout = moveWorkspaceTab(state.layout, id, group);
+          return {
+            states: {
+              ...store.states,
+              [threadId]: {
+                ...state,
+                layout,
+                activeTabId: layout.groups[layout.activeGroup]?.activeTabId ?? "chat",
+              },
+            },
+          };
+        }),
+      splitTab: (threadId, id, direction) =>
+        set((store) => {
+          const state = store.states[threadId] ?? EMPTY_WORKSPACE;
+          const layout = splitWorkspaceTab(state.layout, id, direction);
+          return {
+            states: {
+              ...store.states,
+              [threadId]: {
+                ...state,
+                layout,
+                activeTabId: layout.groups[layout.activeGroup]?.activeTabId ?? "chat",
+              },
+            },
+          };
+        }),
+      resizeSplit: (threadId, ratio) =>
+        set((store) => {
+          const state = store.states[threadId] ?? EMPTY_WORKSPACE;
+          return {
+            states: {
+              ...store.states,
+              [threadId]: {
+                ...state,
+                layout: { ...state.layout, ratio: Math.max(0.2, Math.min(0.8, ratio)) },
               },
             },
           };

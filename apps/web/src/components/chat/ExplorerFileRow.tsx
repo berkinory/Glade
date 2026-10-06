@@ -8,6 +8,7 @@ import {
   type DragEvent as ReactDragEvent,
 } from "react";
 import { CHAT_FILE_REFERENCE_DRAG_TYPE, formatChatFileReference } from "~/lib/chatReferences";
+import { writeWorkspaceResourceDrag } from "~/lib/workspaceResourceDrag";
 import { cn } from "~/lib/utils";
 import { DisclosureChevron } from "../ui/DisclosureChevron";
 import { EXPLORER_ROW_PROPS } from "./explorerListNavigation";
@@ -44,6 +45,7 @@ function usePrefetchIntent(prefetch: () => void) {
 export const ExplorerRow = forwardRef<
   HTMLButtonElement,
   {
+    workspaceRoot: string;
     entry: ProjectFileSystemEntry;
     depth: number;
     selected: boolean;
@@ -56,6 +58,7 @@ export const ExplorerRow = forwardRef<
   } & ComponentPropsWithoutRef<"button">
 >(function ExplorerRow(
   {
+    workspaceRoot,
     entry,
     depth,
     selected,
@@ -89,6 +92,12 @@ export const ExplorerRow = forwardRef<
   };
   const handleDragStart = (event: ReactDragEvent<HTMLButtonElement>) => {
     setFileReferenceDragData(event.dataTransfer, entry.path);
+    if (!isDirectory)
+      writeWorkspaceResourceDrag(event.dataTransfer, {
+        kind: "file",
+        workspaceRoot,
+        path: entry.path,
+      });
   };
 
   return (

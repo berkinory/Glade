@@ -2,12 +2,11 @@ import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  lazy,
-  Suspense,
   useCallback,
   useEffect,
   useEffectEvent,
   useState,
+  useRef,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
@@ -27,25 +26,27 @@ import {
 import { selectMainWorkspace, useMainWorkspaceStore } from "~/mainWorkspaceStore";
 import { selectRightDockState, useRightDockStore } from "~/rightDockStore";
 import { useStore } from "~/store";
-import { GlobeIcon, GitCommitIcon, ChangesIcon, PlusIcon, TerminalIcon } from "~/lib/icons";
+import { GlobeIcon, GitCommitIcon, ChangesIcon, TerminalIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { runBrowserCommand } from "../browser/controller/browserActions";
 import { toastManager } from "../ui/toast";
-import { Button } from "../ui/button";
-import { Menu, MenuItem, MenuTrigger } from "../ui/menu";
-import { WorkspaceFilePreview } from "../WorkspaceFilePreview";
 import type { ChatFileReference } from "~/lib/chatReferences";
-import { LazyBrowserPanel } from "./ChatThreadSurfacePrimitives";
-import { ComposerPickerMenuPopup } from "./ComposerPickerMenuPopup";
-import { WorkspaceGitDiff } from "./WorkspaceGitDiff";
-import { CommitDetail } from "./CommitDetail";
-import { SourceControlTurnChanges } from "./SourceControlTurnChanges";
 import { FileEntryIcon } from "./FileEntryIcon";
-import { PanelTabBar, type PanelTab } from "./PanelTabBar";
-import { PanelStateMessage } from "./PanelStateMessage";
-import { useWorkspaceTabSelection } from "./useWorkspaceTabSelection";
+import { type PanelTab } from "./PanelTabBar";
 
-const DockTerminalPane = lazy(() => import("./DockTerminalPane"));
+import { reconcileWorkspaceTabs, type WorkspaceSplitDirection } from "~/mainWorkspaceLayout";
+import {
+  writeWorkspaceResourceDrag,
+  type WorkspaceResourceDrag,
+} from "~/lib/workspaceResourceDrag";
+import { showContextMenuFallback } from "~/contextMenuFallback";
+import { WorkspaceResource } from "./WorkspaceResource";
+import { WorkspaceGroupTabBar } from "./WorkspaceGroupTabBar";
+import {
+  WorkspaceSplitSurface,
+  workspaceGroupPlacement,
+  useWorkspaceDragging,
+} from "./WorkspaceSplitSurface";
 
 export function MainWorkspace(props: {
   threadId: ThreadId;
@@ -90,10 +91,12 @@ export function MainWorkspace(props: {
   const dirtyPaths = props.workspaceRoot
     ? dirtyWorkspaceEditorPaths(queryClient, props.workspaceRoot)
     : new Set<string>();
-  const previewDirty = dock.previewFilePath ? dirtyPaths.has(dock.previewFilePath) : false;
-  useEffect(() => {
-    if (previewDirty && dock.previewFilePath) pinFile(props.threadId, dock.previewFilePath);
-  }, [previewDirty, dock.previewFilePath, pinFile, props.threadId]);
+  const dirtyPreviews = (dock.previewFilePaths ?? []).filter((path) => dirtyPaths.has(path));
+  const dirtyPreviewsKey = JSON.stringify(dirtyPreviews);
+  const pinDirtyPreviews = useEffectEvent(() => {
+    for (const path of dirtyPreviews) pinFile(props.threadId, path);
+  });
+  useEffect(() => pinDirtyPreviews(), [dirtyPreviewsKey]);
   const terminalPane = dock.panes.find((pane) => pane.kind === "terminal");
   const browserPane = dock.panes.find((pane) => pane.kind === "browser");
   const reportBrowserError = (description: string | null) => {
@@ -114,7 +117,7 @@ export function MainWorkspace(props: {
     },
     ...dock.filePaths.map((path) => ({
       id: `file:${path}`,
-      preview: dock.previewFilePath === path,
+      preview: dock.previewFilePaths?.includes(path) ?? false,
       onDoubleClick: () => pinFile(props.threadId, path),
       label: basenameOfPath(path),
       icon: <FileEntryIcon pathValue={path} kind="file" className="size-3.5" />,
@@ -128,7 +131,7 @@ export function MainWorkspace(props: {
         : tab.kind === "commit"
           ? tab.subject || tab.sha.slice(0, 7)
           : "Turn changes",
-      preview: state.previewReviewId === tab.id,
+      preview: state.previewReviewIds.includes(tab.id),
       onDoubleClick: () => pinReview(props.threadId, tab.id),
       icon:
         tab.kind === "commit" ? (
@@ -191,35 +194,118 @@ export function MainWorkspace(props: {
           ? `browser:${browser.activeTabId}`
           : "browser"
         : state.activeTabId;
+  const tabIds = tabs.map((tab) => tab.id);
+  const tabIdsKey = JSON.stringify(tabIds);
+  const layout = reconcileWorkspaceTabs(state.layout, tabIds, activeId);
+  const split = layout.groups.length > 1;
+  const dragging = useWorkspaceDragging();
+  const synchronize = useEffectEvent(() => {
+    useMainWorkspaceStore.getState().reconcileTabs(props.threadId, tabIds, activeId);
+    if (!tabIds.includes(activeId)) {
+      const browserId = layout.groups.find((group) =>
+        group.activeTabId?.startsWith("browser:"),
+      )?.activeTabId;
+      if (browserId && browserId.slice(8) !== browser?.activeTabId)
+        void runBrowserCommand(
+          props.threadId,
+          { kind: "select", tabId: browserId.slice(8) },
+          reportBrowserError,
+        );
+    }
+  });
+  useEffect(() => synchronize(), [tabIdsKey, activeId]);
+  const previousBrowserSelection = useRef(browser?.activeTabId);
+  const synchronizeBrowserSelection = useEffectEvent(() => {
+    const changed = previousBrowserSelection.current !== browser?.activeTabId;
+    previousBrowserSelection.current = browser?.activeTabId;
+    if (!changed || !browser?.activeTabId || !tabIds.includes(activeId)) return;
+    const browserVisible = layout.groups.some(
+      (group) => group.activeTabId === "browser" || group.activeTabId?.startsWith("browser:"),
+    );
+    if (browserVisible) selectTab(props.threadId, `browser:${browser.activeTabId}`);
+  });
+  useEffect(() => synchronizeBrowserSelection(), [browser?.activeTabId]);
   const select = (id: string) => {
     if (id.startsWith("file:")) {
       const path = id.slice(5);
-      openFile(props.threadId, path, { preview: dock.previewFilePath === path });
-    } else if (id.startsWith("terminal:")) {
-      terminal.activateTerminal(id.slice(9));
-      selectTab(props.threadId, "terminal");
-    } else if (id.startsWith("browser:")) {
-      selectTab(props.threadId, "browser");
+      openFile(props.threadId, path, { preview: dock.previewFilePaths?.includes(path) ?? false });
+    }
+    if (id.startsWith("terminal:")) terminal.activateTerminal(id.slice(9));
+    if (id.startsWith("browser:"))
       void runBrowserCommand(
         props.threadId,
         { kind: "select", tabId: id.slice(8) },
         reportBrowserError,
       );
-    } else selectTab(props.threadId, id);
+    selectTab(props.threadId, id);
   };
-  const resolvedId = useWorkspaceTabSelection({
-    tabIds: tabs.map((tab) => tab.id),
-    activeId,
-    onSelect: select,
-  });
-  const terminalVisible = resolvedId.startsWith("terminal:");
-  const browserVisible = resolvedId === "browser" || resolvedId.startsWith("browser:");
-  const filePath = resolvedId.startsWith("file:") ? resolvedId.slice(5) : null;
-  const review = state.reviews.find((tab) => tab.id === resolvedId);
+  const focus = (group: number) => {
+    if (layout.activeGroup === group) return;
+    useMainWorkspaceStore.getState().focusGroup(props.threadId, group);
+    const id = layout.groups[group]?.activeTabId;
+    if (id) select(id);
+  };
+  const pin = (id: string) => {
+    if (id.startsWith("file:")) pinFile(props.threadId, id.slice(5));
+    else if (state.reviews.some((review) => review.id === id)) pinReview(props.threadId, id);
+  };
+  const move = (id: string, group: number) => {
+    pin(id);
+    useMainWorkspaceStore.getState().moveTab(props.threadId, id, group);
+    select(id);
+  };
+  const splitTab = (id: string, direction: WorkspaceSplitDirection) => {
+    pin(id);
+    useMainWorkspaceStore.getState().splitTab(props.threadId, id, direction);
+    select(id);
+  };
+  const showTabMenu = async (tab: PanelTab, group: number, position: { x: number; y: number }) => {
+    if (tabs.length === 1 && !tab.onClose) return;
+    const clicked = await showContextMenuFallback(
+      [
+        ...(tabs.length > 1
+          ? [
+              { id: "right", label: split ? "Arrange side by side" : "Split right" },
+              { id: "down", label: split ? "Arrange stacked" : "Split down" },
+            ]
+          : []),
+        ...(split ? [{ id: "move", label: "Move to other group" }] : []),
+        ...(tab.onClose ? [{ id: "close", label: "Close tab", separatorBefore: true }] : []),
+      ],
+      position,
+    );
+    if (clicked === "right" || clicked === "down")
+      splitTab(tab.id, clicked === "right" ? "horizontal" : "vertical");
+    if (clicked === "move") move(tab.id, group === 0 ? 1 : 0);
+    if (clicked === "close") tab.onClose?.();
+  };
+  const groupTabs = (group: number) =>
+    layout.groups[group]!.tabIds.flatMap((id) => {
+      const tab = tabs.find((candidate) => candidate.id === id);
+      return tab
+        ? [
+            {
+              ...tab,
+              onDragStart: (data: DataTransfer) => {
+                data.effectAllowed = "move";
+                writeWorkspaceResourceDrag(data, {
+                  kind: "tab",
+                  threadId: props.threadId,
+                  tabId: id,
+                });
+              },
+              onContextMenu: (position: { x: number; y: number }) => {
+                void showTabMenu(tab, group, position);
+              },
+            },
+          ]
+        : [];
+    });
   const closeActive = useEffectEvent(() => {
-    if (resolvedId === "chat") {
+    const id = layout.groups[layout.activeGroup]?.activeTabId;
+    if (id === "chat") {
       if (tabs.length === 1) void navigate({ to: "/" });
-    } else tabs.find((tab) => tab.id === resolvedId)?.onClose?.();
+    } else tabs.find((tab) => tab.id === id)?.onClose?.();
   });
   useEffect(() => {
     window.addEventListener("glade:close-workspace-tab", closeActive);
@@ -231,148 +317,179 @@ export function MainWorkspace(props: {
       unsubscribe?.();
     };
   }, []);
-  const tabBar = (
-    <PanelTabBar
-      label="Workspace tabs"
-      pinnedTabId="chat"
-      className="h-auto flex-1 border-0 bg-transparent p-0"
-      tabs={tabs}
-      activeId={resolvedId}
-      onSelect={select}
-      actions={
-        <Menu modal={false}>
-          <MenuTrigger
-            render={<Button variant="chrome" size="icon-xs" aria-label="Open workspace tab" />}
-          >
-            <PlusIcon className="size-3.5" />
-          </MenuTrigger>
-          <ComposerPickerMenuPopup align="end" side="bottom" className="w-44 min-w-44">
-            <MenuItem
-              onClick={() => {
-                if (terminalPane) terminal.createTerminal();
-                props.onAddPane("terminal");
-              }}
-            >
-              <TerminalIcon className="size-3.5" />
-              Terminal
-            </MenuItem>
-            <MenuItem
-              onClick={() => {
-                props.onAddPane("browser");
-                if (browser?.tabs.length)
-                  void runBrowserCommand(props.threadId, { kind: "new" }, reportBrowserError);
-              }}
-            >
-              <GlobeIcon className="size-3.5" />
-              Browser
-            </MenuItem>
-          </ComposerPickerMenuPopup>
-        </Menu>
-      }
-    />
+  const header = (group: number) => (
+    <div className="flex min-w-0 flex-1 items-center" onPointerDownCapture={() => focus(group)}>
+      <WorkspaceGroupTabBar
+        tabs={groupTabs(group)}
+        activeId={layout.groups[group]!.activeTabId}
+        focused={layout.activeGroup === group}
+        split={split}
+        onSelect={select}
+        onAddTerminal={() => {
+          focus(group);
+          if (terminalPane) terminal.createTerminal();
+          props.onAddPane("terminal");
+        }}
+        onAddBrowser={() => {
+          focus(group);
+          props.onAddPane("browser");
+          if (browser?.tabs.length)
+            void runBrowserCommand(props.threadId, { kind: "new" }, reportBrowserError);
+        }}
+      />
+    </div>
   );
+  const tabBar =
+    split && layout.direction === "horizontal" ? (
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <div style={{ flex: layout.ratio }} className="flex min-w-0">
+          {header(0)}
+        </div>
+        <div
+          style={{ flex: 1 - layout.ratio }}
+          className="flex min-w-0 border-l border-border/65 pl-2"
+        >
+          {header(1)}
+        </div>
+      </div>
+    ) : (
+      header(0)
+    );
+  const workspace = {
+    threadId: props.threadId,
+    projectId: props.projectId,
+    root: props.workspaceRoot,
+    revealPosition: props.revealPosition,
+    terminalFocusRequestId: terminal.focusRequestId,
+  };
+  const owner = (id: string) =>
+    Math.max(
+      0,
+      layout.groups.findIndex((group) => group.tabIds.includes(id)),
+    );
+  const shown = (id: string) => layout.groups[owner(id)]?.activeTabId === id;
+  const browserGroup = layout.groups.findIndex((group) =>
+    group.tabIds.some((id) => id === "browser" || id.startsWith("browser:")),
+  );
+  const resources = tabs.filter(
+    (tab) =>
+      tab.id !== "chat" &&
+      !tab.id.startsWith("browser") &&
+      (tab.id.startsWith("terminal:") || shown(tab.id)),
+  );
+  const chatGroup = owner("chat");
+  const secondaryHeader = split && layout.direction === "vertical";
+  const panelStyle = (group: number) => ({
+    ...workspaceGroupPlacement(layout, group),
+    ...(secondaryHeader && group === 1 ? { paddingTop: 37 } : {}),
+  });
   return (
     <WorkspaceHeaderContext value={{ host: headerHost, tabs: tabBar }}>
       <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
         <div ref={setHeaderHost} className="shrink-0" />
-        <div className="relative min-h-0 min-w-0 flex-1">
+        <WorkspaceSplitSurface
+          layout={layout}
+          dragging={dragging}
+          onFocus={focus}
+          onResize={(ratio) => useMainWorkspaceStore.getState().resizeSplit(props.threadId, ratio)}
+          onDropResource={(resource: WorkspaceResourceDrag, target) => {
+            if (
+              resource.kind === "tab" &&
+              (resource.threadId !== props.threadId || !tabIds.includes(resource.tabId))
+            )
+              return;
+            if (resource.kind === "file" && resource.workspaceRoot !== props.workspaceRoot) return;
+            const id = resource.kind === "tab" ? resource.tabId : `file:${resource.path}`;
+            if (resource.kind === "file") {
+              focus(target.group);
+              openFile(props.threadId, resource.path, { preview: !target.split });
+            }
+            if (target.split) splitTab(id, target.split);
+            else if (resource.kind === "tab" || tabIds.includes(id)) move(id, target.group);
+          }}
+        >
+          {secondaryHeader ? (
+            <div
+              className="z-10 flex h-[37px] min-w-0 items-center border-b border-border/65 px-2"
+              style={workspaceGroupPlacement(layout, 1)}
+            >
+              {header(1)}
+            </div>
+          ) : null}
           <div
+            key="chat-surface"
+            data-workspace-group={chatGroup}
+            style={panelStyle(chatGroup)}
             className={cn(
-              "absolute inset-0 flex min-h-0 flex-col",
-              resolvedId !== "chat" && "invisible pointer-events-none",
+              "relative flex min-h-0 min-w-0 flex-col",
+              !shown("chat") && "invisible pointer-events-none",
             )}
-            inert={resolvedId !== "chat"}
-            aria-hidden={resolvedId !== "chat"}
+            inert={!shown("chat")}
+            aria-hidden={!shown("chat")}
           >
             {props.children}
           </div>
-          {filePath ? (
-            <WorkspaceFilePreview
-              key={filePath}
-              workspaceRoot={props.workspaceRoot}
-              filePath={filePath}
-              editable
-              onEdit={() => pinFile(props.threadId, filePath)}
-              liveRevalidationEnabled
-              revealPosition={
-                props.revealPosition?.filePath === filePath ? props.revealPosition : undefined
+          {resources.map((tab) => (
+            <div
+              key={tab.id}
+              data-workspace-group={owner(tab.id)}
+              style={panelStyle(owner(tab.id))}
+              className={cn(
+                "relative flex min-h-0 min-w-0 flex-col overflow-hidden",
+                !shown(tab.id) && "invisible pointer-events-none",
+              )}
+              inert={!shown(tab.id)}
+              aria-hidden={!shown(tab.id)}
+            >
+              <WorkspaceResource
+                id={tab.id}
+                review={state.reviews.find((review) => review.id === tab.id)}
+                workspace={workspace}
+                visible={shown(tab.id)}
+                focused={layout.activeGroup === owner(tab.id) && shown(tab.id)}
+                onOpenFile={(path, edit) => {
+                  focus(owner(tab.id));
+                  if (edit) pinFile(props.threadId, path);
+                  else openFile(props.threadId, path);
+                }}
+                onReferenceInChat={props.onReferenceInChat}
+                actions={{
+                  close: tab.id.startsWith("terminal:") ? closeTerminalPane : () => tab.onClose?.(),
+                  currentChanges: () => props.onAddPane("git"),
+                }}
+              />
+            </div>
+          ))}
+          {browserPane ? (
+            <div
+              key="browser-surface"
+              data-workspace-group={Math.max(0, browserGroup)}
+              style={panelStyle(Math.max(0, browserGroup))}
+              className={cn(
+                "relative min-h-0 min-w-0 overflow-hidden",
+                !layout.groups[browserGroup]?.activeTabId?.startsWith("browser") &&
+                  "invisible pointer-events-none",
+              )}
+              inert={!layout.groups[browserGroup]?.activeTabId?.startsWith("browser")}
+              data-native-browser-surface={
+                layout.groups[browserGroup]?.activeTabId?.startsWith("browser") ? "true" : undefined
               }
-              onReferenceInChat={props.onReferenceInChat}
-            />
-          ) : null}
-          {review?.kind === "commit" && props.workspaceRoot ? (
-            <div className="flex h-full min-h-0 flex-col">
-              <CommitDetail
-                key={review.id}
-                cwd={props.workspaceRoot}
-                filePath={review.filePath}
-                commit={review}
-                onClose={() => closeReview(props.threadId, review.id)}
-                onOpenFile={(path) => openFile(props.threadId, path)}
+            >
+              <WorkspaceResource
+                id="browser"
+                workspace={workspace}
+                visible={
+                  !dragging &&
+                  Boolean(layout.groups[browserGroup]?.activeTabId?.startsWith("browser"))
+                }
+                focused={layout.activeGroup === browserGroup}
+                onOpenFile={(_path) => {}}
+                onReferenceInChat={props.onReferenceInChat}
+                actions={{ close: closeBrowserPane, currentChanges: () => props.onAddPane("git") }}
               />
             </div>
           ) : null}
-          {review?.kind === "gitFile" && props.workspaceRoot ? (
-            <WorkspaceGitDiff
-              key={review.id}
-              cwd={props.workspaceRoot}
-              filePath={review.filePath}
-              scope={review.scope}
-              onOpenFile={(path) => openFile(props.threadId, path)}
-            />
-          ) : null}
-          {review?.kind === "diff" ? (
-            <SourceControlTurnChanges
-              key={review.id}
-              threadId={props.threadId}
-              turnId={review.turnId}
-              filePath={review.filePath}
-              cwd={props.workspaceRoot}
-              onOpenFile={(path) => openFile(props.threadId, path)}
-              onCurrentChanges={() => props.onAddPane("git")}
-            />
-          ) : null}
-          {terminalPane ? (
-            <div
-              className={cn(
-                "absolute inset-0",
-                !terminalVisible && "invisible pointer-events-none",
-              )}
-              inert={!terminalVisible}
-              aria-hidden={!terminalVisible}
-            >
-              <Suspense fallback={<PanelStateMessage loadingLabel="Loading terminal" />}>
-                <DockTerminalPane
-                  hostThreadId={props.threadId}
-                  projectId={props.projectId}
-                  workspaceRoot={props.workspaceRoot}
-                  isActive={terminalVisible}
-                  focusRequestId={terminal.focusRequestId}
-                  onClosePanel={closeTerminalPane}
-                />
-              </Suspense>
-            </div>
-          ) : null}
-          {browserPane ? (
-            <div
-              className={cn("absolute inset-0", !browserVisible && "invisible pointer-events-none")}
-              inert={!browserVisible}
-              aria-hidden={!browserVisible}
-              data-native-browser-surface={browserVisible ? "true" : undefined}
-            >
-              <Suspense fallback={<PanelStateMessage loadingLabel="Loading browser" />}>
-                <LazyBrowserPanel
-                  mode="sidebar"
-                  threadId={props.threadId}
-                  hideTabs
-                  runtimeMode="live"
-                  isVisible={browserVisible}
-                  onClosePanel={closeBrowserPane}
-                />
-              </Suspense>
-            </div>
-          ) : null}
-        </div>
+        </WorkspaceSplitSurface>
       </div>
     </WorkspaceHeaderContext>
   );
