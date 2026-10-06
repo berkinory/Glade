@@ -110,11 +110,6 @@ export const ComposerSubagentStrip = function ComposerSubagentStrip({
                 <SubagentAvatar threadId={item.threadId} />
                 <span className="min-w-0 flex-1 truncate text-ui font-medium text-foreground/85">
                   <span>{item.primaryLabel}</span>
-                  {item.role ? (
-                    <span className="ml-1 text-ui-sm font-normal text-muted-foreground/55">
-                      ({item.role})
-                    </span>
-                  ) : null}
                   {item.modelLabel ? (
                     <span className="ml-1.5 text-ui-sm font-normal text-muted-foreground/45">
                       {item.modelLabel}

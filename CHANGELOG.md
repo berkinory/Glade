@@ -8,6 +8,7 @@
 
 ### Improved
 
+- Subagent rows use stable names instead of Claude task descriptions, show model names or aliases without extra labels, and keep task prompts, agent types and redundant background-agent banners out of the compact panels.
 - Provider transitions prepare in the chat while you continue using other chats.
 - Visual replies blend into the chat with automatic height and compact download and expand controls.
 - Visual previews require a smaller browser download while keeping local network access blocked.

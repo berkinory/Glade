@@ -164,7 +164,6 @@ describe("Claude subagentLifecycle", () => {
         const data = collabStarted.payload.data as Record<string, unknown>;
         assert.equal(data.receiverThreadId, "tool-task-1");
         assert.equal(data.agentType, "code-reviewer");
-        assert.equal(data.nickname, "Review the database layer");
       }
 
       const textDeltas = runtimeEvents.filter(

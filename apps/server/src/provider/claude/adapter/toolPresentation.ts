@@ -5,6 +5,7 @@ import {
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { ToolInFlight, ClaudeToolResultStreamKind } from "./sessionTypes";
 import { extractTextContent } from "./messageContent";
+import { subagentName } from "@glade/shared/threads/subagentName";
 
 export function classifyToolItemType(toolName: string): CanonicalItemType {
   const normalized = toolName.toLowerCase();
@@ -127,7 +128,6 @@ function subagentReceiverData(
 ): Record<string, unknown> {
   const {
     subagent_type: subagentType,
-    description,
     prompt,
     model,
     run_in_background: runInBackground,
@@ -135,7 +135,7 @@ function subagentReceiverData(
   return {
     receiverThreadId: tool.itemId,
     ...(typeof subagentType === "string" ? { agentType: subagentType } : {}),
-    ...(typeof description === "string" ? { nickname: description } : {}),
+    nickname: subagentName(tool.itemId),
     ...(typeof prompt === "string" ? { prompt } : {}),
     ...(typeof model === "string" ? { model } : {}),
     ...(runInBackground === true ? { background: true } : {}),

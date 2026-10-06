@@ -1,7 +1,9 @@
 import { ComputerTerminal01Icon } from "~/lib/icons";
-import { type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { pluralize } from "@glade/shared/text/text";
-import { resolveSubagentPresentation } from "../lib/subagentPresentation";
+import { resolveSubagentPresentationForThread } from "../lib/subagentPresentation";
+import { createThreadSelector } from "../storeSelectors";
+import { useStore } from "../store";
 import { SIDEBAR_ROW_LABEL_TEXT_CLASS_NAME } from "../sidebarRowStyles";
 import type { SidebarThreadSummary } from "../types";
 import { cn } from "../lib/utils";
@@ -92,12 +94,13 @@ export function SidebarThreadRowContent({
 }) {
   const subagentIndentPx = subagentIndentPxProp ?? 0;
   const isSubagentThread = Boolean(thread.parentThreadId);
+  const parent = useStore(
+    useMemo(() => createThreadSelector(thread.parentThreadId), [thread.parentThreadId]),
+  );
   const subagentPresentation = isSubagentThread
-    ? resolveSubagentPresentation({
-        nickname: thread.subagentNickname,
-        role: thread.subagentRole,
-        title: thread.title,
-        fallbackId: thread.id,
+    ? resolveSubagentPresentationForThread({
+        thread,
+        threads: parent ? [parent] : undefined,
       })
     : null;
   return (

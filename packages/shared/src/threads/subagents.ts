@@ -1,6 +1,18 @@
 import { nonEmptyTrimmed } from "../text/text";
 import { asArray } from "../transport/payloadValues";
 import { asRecord } from "../transport/payloadValues";
+import { subagentName } from "./subagentName";
+
+function normalizeClaudeTaskNickname(item: Record<string, unknown>): Record<string, unknown> {
+  if (item.toolName !== "Agent" && item.toolName !== "Task") return item;
+  const input = asRecord(item.input);
+  const identity = nonEmptyTrimmed(item.receiverThreadId);
+  if (!identity) return item;
+  const nickname = nonEmptyTrimmed(item.nickname);
+  if (nickname && nickname !== nonEmptyTrimmed(input?.description)) return item;
+  // Stored Claude activities used the task description as a nickname before names were assigned.
+  return { ...item, nickname: subagentName(identity) };
+}
 export interface ParsedSubagentReceiverAgent {
   providerThreadId: string;
   agentId?: string | undefined;
@@ -166,6 +178,7 @@ export function decodeSubagentReceiverAgents(
   item: Record<string, unknown>,
   fallbackThreadIds: ReadonlyArray<string>,
 ): ReadonlyArray<ParsedSubagentReceiverAgent> {
+  item = normalizeClaudeTaskNickname(item);
   const topLevelModel = firstStringValue(item, [
     "model",
     "modelName",
@@ -271,6 +284,7 @@ export function decodeSubagentReceiverAgents(
     "agent_nickname",
     "receiverAgentNickname",
     "receiver_agent_nickname",
+    "nickname",
   ]);
   const role = sanitizeSubagentRole(
     firstStringValue(item, [
@@ -419,6 +433,7 @@ export function collectSubagentProviderThreadIds(
 export function extractSubagentIdentityHints(
   item: Record<string, unknown>,
 ): ReadonlyArray<ParsedSubagentIdentityHint> {
+  item = normalizeClaudeTaskNickname(item);
   const hints: ParsedSubagentIdentityHint[] = [];
   const seen = new Set<string>();
 

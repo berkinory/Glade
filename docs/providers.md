@@ -122,6 +122,8 @@ Capabilities vary. Do not assume a control available for one provider exists for
 
 ### Native subagents
 
+Provider-assigned names are preserved. Claude task descriptions are kept in task details; helpers without a native name receive a stable Glade name derived from their identity. Compact rows show the name and reported model or requested alias without agent-type suffixes or task prompts. Requested aliases do not establish which exact model version ran.
+
 Ask for delegation and any per-task model/thinking choices in the main chat using ordinary language. The main agent decides which work benefits from delegation and uses the selected provider's native tools. Supported choices depend on those tools and native agent profiles; an explicit request does not prove the setting was applied.
 
 Open subagents from the in-chat strip or **Environment → Subagents**. Each inactive helper stays visible until three subsequent parent turns finish without giving it new work or instructions. Its last-used turn and turns completed while it was working do not count. Running, queued and approval/input-blocked helpers stay visible. Hiding a helper does not delete its sidebar entry or transcript; using it again restores it. Visibility comes from persisted activity, so restarting preserves the same window. Both surfaces open the same transcript. Send follow-up instructions to the main chat; subagent transcripts are for following work and handling native approval or input requests. Steering the main chat does not stop its children. Explicit Stop follows native cancellation and session shutdown. Background and individual stop actions appear only where the adapter supports them.

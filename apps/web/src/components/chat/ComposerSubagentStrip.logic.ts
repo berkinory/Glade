@@ -88,11 +88,7 @@ function toStripItem(
     statusLabel ?? subagent.rawStatus,
     subagent.isActive,
   );
-  const reportedModelLabel = formatSubagentModelLabel(subagent.model);
-  const modelLabel =
-    reportedModelLabel && subagent.modelIsRequestedHint
-      ? `Requested: ${reportedModelLabel}`
-      : reportedModelLabel;
+  const modelLabel = formatSubagentModelLabel(subagent.model);
   const threadId = ThreadId.makeUnsafe(subagent.resolvedThreadId ?? subagent.threadId);
 
   return {

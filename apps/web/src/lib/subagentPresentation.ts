@@ -236,7 +236,7 @@ export function resolveSubagentPresentationForThread(input: {
       : null;
 
   return resolveSubagentPresentation({
-    nickname: input.thread.subagentNickname ?? derivedIdentity?.nickname,
+    nickname: derivedIdentity?.nickname ?? input.thread.subagentNickname,
     role: input.thread.subagentRole ?? derivedIdentity?.role,
     title: input.thread.title,
     fallbackId: input.thread.id,

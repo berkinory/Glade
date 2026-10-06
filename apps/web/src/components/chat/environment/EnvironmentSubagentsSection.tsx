@@ -78,28 +78,17 @@ function NativeSubagentRow({
         onClick={() => onOpen(thread.id)}
       >
         <SubagentAvatar threadId={thread.id} />
-        <span className="min-w-0 truncate" title={presentation.fullLabel}>
-          {presentation.primaryLabel}
+        <span
+          className="min-w-0 truncate"
+          title={detail?.primaryLabel ?? presentation.primaryLabel}
+        >
+          {detail?.primaryLabel ?? presentation.primaryLabel}
           {detail?.modelLabel ? (
             <span className="ml-1.5 text-ui-xs text-muted-foreground" title={detail.modelLabel}>
               {detail.modelLabel}
             </span>
           ) : null}
         </span>
-        {detail?.task || detail?.latestUpdate ? (
-          <span className="col-start-2 flex min-w-0 flex-col gap-0.5">
-            {detail?.task ? (
-              <span className="truncate text-ui-xs text-muted-foreground" title={detail.task}>
-                {detail.task}
-              </span>
-            ) : null}
-            {detail?.latestUpdate ? (
-              <span className="line-clamp-2 text-ui-xs text-muted-foreground">
-                {detail.latestUpdate}
-              </span>
-            ) : null}
-          </span>
-        ) : null}
       </button>
       <span className="self-start">
         <SubagentStatusIndicator
