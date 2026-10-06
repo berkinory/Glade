@@ -97,6 +97,26 @@ const ChatWidthMode = Schema.Literals(CHAT_WIDTH_MODES);
 type ChatWidthMode = typeof ChatWidthMode.Type;
 export { DEFAULT_CHAT_WIDTH };
 
+const PersistedUiDensity = Schema.String.pipe(
+  Schema.decodeTo(
+    UiDensity,
+    SchemaTransformation.transform({
+      decode: (value) => normalizeUiDensityValue(value),
+      encode: (value) => value,
+    }),
+  ),
+);
+
+const PersistedChatWidth = Schema.String.pipe(
+  Schema.decodeTo(
+    ChatWidthMode,
+    SchemaTransformation.transform({
+      decode: (value) => normalizeChatWidthModeValue(value),
+      encode: (value) => value,
+    }),
+  ),
+);
+
 function getDefaultNativeFontSmoothing(platform = globalThis.navigator?.platform ?? "") {
   return /mac|iphone|ipad|ipod/i.test(platform);
 }
@@ -120,6 +140,16 @@ const PersistedProviderKind = Schema.String.pipe(
     SchemaTransformation.transform({
       decode: (provider) => (Schema.is(ProviderKind)(provider) ? provider : "codex"),
       encode: (provider) => provider,
+    }),
+  ),
+);
+
+const PersistedDesktopAppIcon = Schema.String.pipe(
+  Schema.decodeTo(
+    DesktopAppIcon,
+    SchemaTransformation.transform({
+      decode: (icon) => (icon === "dark" ? "dark" : "default"),
+      encode: (icon) => icon,
     }),
   ),
 );
@@ -171,8 +201,8 @@ const AppSettingsSchema = Schema.Struct({
   claudeEnableArtifacts: Schema.Boolean.pipe(withDefaults(() => false)),
 
   onboardingCompletedAt: Schema.NullOr(Schema.String).pipe(withDefaults((): string | null => null)),
-  uiDensity: UiDensity.pipe(withDefaults(() => DEFAULT_UI_DENSITY)),
-  chatWidth: ChatWidthMode.pipe(withDefaults(() => DEFAULT_CHAT_WIDTH)),
+  uiDensity: PersistedUiDensity.pipe(withDefaults(() => DEFAULT_UI_DENSITY)),
+  chatWidth: PersistedChatWidth.pipe(withDefaults(() => DEFAULT_CHAT_WIDTH)),
   chatFontSizePx: Schema.Number.pipe(withDefaults(() => DEFAULT_CHAT_FONT_SIZE_PX)),
   chatCodeFontFamily: Schema.String.check(Schema.isMaxLength(256)).pipe(withDefaults(() => "")),
   terminalFontSizePx: Schema.Number.pipe(withDefaults(() => DEFAULT_TERMINAL_FONT_SIZE_PX)),
@@ -212,7 +242,7 @@ const AppSettingsSchema = Schema.Struct({
   voiceSendOnEnter: Schema.Boolean.pipe(withDefaults(() => false)),
   enableProviderUpdateChecks: Schema.Boolean.pipe(withDefaults(() => true)),
   enableNativeFontSmoothing: Schema.Boolean.pipe(withDefaults(getDefaultNativeFontSmoothing)),
-  desktopAppIcon: DesktopAppIcon.pipe(withDefaults(() => "default" as const)),
+  desktopAppIcon: PersistedDesktopAppIcon.pipe(withDefaults(() => "default" as const)),
 
   useCustomTitleBar: Schema.Boolean.pipe(withDefaults(() => true)),
   enableTaskCompletionToasts: Schema.Boolean.pipe(withDefaults(() => true)),

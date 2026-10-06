@@ -186,28 +186,6 @@ export function createThreadShellsSelector(): (state: AppState) => readonly Thre
   return (state) => collectByIds(state.threadIds, state.threadShellById, EMPTY_THREAD_SHELLS);
 }
 
-export function createAllThreadsMessagelessSelector(): (state: AppState) => boolean {
-  let previousThreadIds: readonly ThreadId[] | undefined;
-  let previousMessageIdsByThreadId: AppState["messageIdsByThreadId"] | undefined;
-  let previousResult = true;
-
-  return (state) => {
-    if (
-      previousThreadIds === state.threadIds &&
-      previousMessageIdsByThreadId === state.messageIdsByThreadId
-    ) {
-      return previousResult;
-    }
-
-    previousThreadIds = state.threadIds;
-    previousMessageIdsByThreadId = state.messageIdsByThreadId;
-    previousResult = (state.threadIds ?? []).every(
-      (threadId) => (state.messageIdsByThreadId?.[threadId]?.length ?? 0) === 0,
-    );
-    return previousResult;
-  };
-}
-
 export function createThreadProjectIdSelector(
   threadId: ThreadId | null | undefined,
 ): (state: AppState) => ProjectId | null {

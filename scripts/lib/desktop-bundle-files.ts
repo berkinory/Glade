@@ -54,8 +54,14 @@ export function createDesktopBundleFilePatterns(
       `${resources}icon.icns`,
     );
   }
-  if (platform !== "linux") files.push(`${resources}app-icon-linux.png`);
-  if (platform !== "win") files.push(`${resources}app-icon-windows.ico`, `${resources}icon.ico`);
+  if (platform !== "linux")
+    files.push(`${resources}app-icon-linux.png`, `${resources}icon-dark.png`);
+  if (platform !== "win")
+    files.push(
+      `${resources}app-icon-windows.ico`,
+      `${resources}icon.ico`,
+      `${resources}icon-dark.ico`,
+    );
 
   return files;
 }

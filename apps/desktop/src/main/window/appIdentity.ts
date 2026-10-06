@@ -1,5 +1,5 @@
 import type { DesktopAppIcon } from "@glade/contracts/ipc/ipc";
-import { app, BrowserWindow, nativeImage, nativeTheme, shell } from "electron";
+import { app, BrowserWindow, nativeImage, shell } from "electron";
 import * as ChildProcess from "node:child_process";
 import * as FS from "node:fs";
 import * as OS from "node:os";
@@ -26,11 +26,7 @@ import {
   STATE_DIR,
 } from "../desktopEnvironment";
 import { formatErrorMessage } from "../lifecycle/desktopLogging";
-import {
-  desktopAppIconResourceName,
-  isDesktopAppIcon,
-  usesMacBundleAppIcon,
-} from "./desktopAppIcon";
+import { desktopAppIconResourceName, isDesktopAppIcon } from "./desktopAppIcon";
 import { persistMacAppIcon } from "./macAppIcon";
 import {
   LSREGISTER_PATH,
@@ -85,12 +81,6 @@ export function createAppIdentity(
     if (process.platform === "win32") {
       app.setAppUserModelId(APP_USER_MODEL_ID);
     }
-  }
-
-  function usesLegacyMacDockIcon(): boolean {
-    if (process.platform !== "darwin") return false;
-    const darwinMajor = Number.parseInt(OS.release().split(".")[0] ?? "", 10);
-    return Number.isFinite(darwinMajor) && darwinMajor < 25;
   }
 
   function readDesktopAppIcon(): DesktopAppIcon {
@@ -236,7 +226,7 @@ export function createAppIdentity(
 
   async function syncMacAppBundleIcon(
     icon: DesktopAppIcon,
-    image: Electron.NativeImage | null,
+    image: Electron.NativeImage,
   ): Promise<void> {
     if (!app.isPackaged || lastPersistedMacAppIcon === icon) return;
     const bundlePath = resolveMacAppBundlePath(process.execPath, process.platform);
@@ -244,7 +234,7 @@ export function createAppIdentity(
     await persistMacAppIcon({
       bundlePath,
       cacheDirectory: Path.join(STATE_DIR, "mac-app-icons"),
-      png: icon === "default" ? null : (image?.toPNG() ?? null),
+      png: image.toPNG(),
     });
     lastPersistedMacAppIcon = icon;
   }
@@ -334,24 +324,9 @@ export function createAppIdentity(
     ) {
       return;
     }
-    if (
-      usesMacBundleAppIcon({
-        icon,
-        platform: process.platform,
-        usesLegacyDockIcon: usesLegacyMacDockIcon(),
-      })
-    ) {
-      // Remove the persistent override before asking AppKit to reload the bundle icon, otherwise it can
-      // read the previous custom artwork again.
-      await syncMacAppBundleIcon(icon, null);
-      app.dock?.setIcon(null as unknown as Electron.NativeImage);
-      return;
-    }
-
     const resourceName = desktopAppIconResourceName({
       icon,
       platform: process.platform,
-      isDarkAppearance: process.platform === "darwin" && nativeTheme.shouldUseDarkColors,
     });
     const iconPath =
       desktopFlavor === "development"
@@ -454,18 +429,6 @@ export function createAppIdentity(
     });
   }
 
-  function registerMacAppearanceIconSync(): void {
-    if (process.platform !== "darwin") {
-      return;
-    }
-
-    nativeTheme.on("updated", () => {
-      void applyPersistedDesktopAppIcon().catch((error) => {
-        console.warn("[desktop] Failed to persist the macOS app icon", error);
-      });
-    });
-  }
-
   function readLaunchVersionRecordContents(): string | null {
     try {
       return FS.readFileSync(resolveLaunchVersionRecordPath(app.getPath("userData")), "utf8");
@@ -527,7 +490,6 @@ export function createAppIdentity(
     applyDesktopAppIcon,
     applyPersistedDesktopAppIcon,
     applyInitialMacDockIcon,
-    registerMacAppearanceIconSync,
     refreshMacIconCacheOnVersionChange,
     dispose: () => {
       windowsIcon.dispose();

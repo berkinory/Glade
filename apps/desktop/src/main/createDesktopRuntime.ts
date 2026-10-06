@@ -225,7 +225,6 @@ export function createDesktopRuntime(): void {
           }
         }
         identity.applyInitialMacDockIcon();
-        identity.registerMacAppearanceIconSync();
         identity.refreshMacIconCacheOnVersionChange();
         configureMediaPermissions(windows.getMainWindow);
         computer.initializeDesktopComputer();

@@ -151,7 +151,6 @@ export function createMainWindow({
     const resourceName = desktopAppIconResourceName({
       icon,
       platform: process.platform,
-      isDarkAppearance: false,
     });
     const iconPath =
       desktopFlavor === "development"

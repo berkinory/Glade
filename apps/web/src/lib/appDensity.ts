@@ -1,12 +1,11 @@
-export const UI_DENSITY_MODES = ["compact", "comfortable", "spacious"] as const;
+export const UI_DENSITY_MODES = ["comfortable", "compact"] as const;
 export type UiDensity = (typeof UI_DENSITY_MODES)[number];
 
 export const DEFAULT_UI_DENSITY: UiDensity = "comfortable";
 
 const DENSITY_SCALE_BY_MODE: Record<UiDensity, number> = {
-  compact: 0.85,
   comfortable: 1,
-  spacious: 1.15,
+  compact: 0.85,
 };
 
 const BASE_ROW_HEIGHT_REM = 1.75;

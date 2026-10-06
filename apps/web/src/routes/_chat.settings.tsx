@@ -106,19 +106,14 @@ const EDITOR_CARET_STYLE_OPTIONS = [
 
 const UI_DENSITY_OPTIONS = [
   {
-    value: "compact",
-    label: "Compact",
-    description: "Tighter spacing in the sidebar, composer, and settings rows.",
-  },
-  {
     value: "comfortable",
-    label: "Comfortable",
+    label: "Default",
     description: "Balanced spacing for everyday use.",
   },
   {
-    value: "spacious",
-    label: "Spacious",
-    description: "More breathing room across the main workspace surfaces.",
+    value: "compact",
+    label: "Compact",
+    description: "Tighter spacing in the sidebar, composer, and settings rows.",
   },
 ] as const satisfies ReadonlyArray<{
   value: UiDensity;
@@ -129,18 +124,13 @@ const UI_DENSITY_OPTIONS = [
 const CHAT_WIDTH_OPTIONS = [
   {
     value: "standard",
-    label: "Standard",
+    label: "Default",
     description: "Keeps the chat column at the default reading width (46rem).",
   },
   {
     value: "wide",
     label: "Wide",
     description: "Gives tables and wide content more room (72rem).",
-  },
-  {
-    value: "full",
-    label: "Full",
-    description: "Lets the chat column use the full window width.",
   },
 ] as const satisfies ReadonlyArray<{
   value: ChatWidthMode;
@@ -359,7 +349,6 @@ function SettingsRouteView() {
             }
             control={
               <AppIconPicker
-                platform={platform}
                 value={settings.desktopAppIcon}
                 onValueChange={async (desktopAppIcon) => {
                   if (desktopAppIcon !== settings.desktopAppIcon) {
@@ -453,7 +442,7 @@ function SettingsRouteView() {
         <SettingsRow
           id="setting-chat-width"
           title="Chat width"
-          description="Control how wide the chat column grows. Wide and Full give tables and wide content more room."
+          description="Control how wide the chat column grows. Wide gives tables and wide content more room."
           resetAction={
             settings.chatWidth !== defaults.chatWidth ? (
               <SettingResetButton

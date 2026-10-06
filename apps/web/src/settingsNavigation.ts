@@ -102,7 +102,7 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
     id: "advanced",
     group: "app",
     label: "Advanced",
-    description: "Manage connections, recovery, updates, and app defaults.",
+    description: "Manage connections, updates, and app defaults.",
     icon: BriefcaseBusinessIcon,
   },
   {

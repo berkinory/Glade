@@ -128,13 +128,14 @@ try {
     copy("assets/prod/black-macos-legacy-1024.png", `apps/desktop/resources/${filename}`);
   }
   render(dark, "apps/desktop/resources/dock-icon-dark.png");
+  render(dark, "apps/desktop/resources/icon-dark.png");
+  ico("apps/desktop/resources/icon-dark.png", "apps/desktop/resources/icon-dark.ico");
   copy("assets/prod/black-universal-1024.png", "apps/web/public/glade.png");
   for (const filename of ["icon.ico", "app-icon-windows.ico"]) {
     copy("assets/prod/glade-black-windows.ico", `apps/desktop/resources/${filename}`);
   }
   for (const [name, content] of [
     ["default", light],
-    ["icon-group-600-macos", light],
     ["dark", dark],
   ] as const) {
     render(content, `apps/web/public/app-icons/${name}.png`, 256);

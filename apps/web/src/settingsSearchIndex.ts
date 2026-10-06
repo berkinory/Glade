@@ -156,7 +156,7 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     title: "UI density",
     target: "setting-ui-density",
     keywords:
-      "Control spacing in the sidebar, composer, chat gutters, and settings rows without changing font size. compact comfortable",
+      "Control spacing in the sidebar, composer, chat gutters, and settings rows without changing font size. default compact",
   },
   {
     id: "appearance:chat-width",
@@ -164,7 +164,7 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     title: "Chat width",
     target: "setting-chat-width",
     keywords:
-      "Control how wide the chat column grows so tables and wide content get more room. standard wide full",
+      "Control how wide the chat column grows so tables and wide content get more room. default wide",
   },
   {
     id: "appearance:base-font-size",
@@ -409,14 +409,6 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     target: "setting-shortcuts-file",
     keywords:
       "Open the persisted keybindings.json file to edit advanced bindings directly. shortcuts",
-  },
-  {
-    id: "advanced:recovery-tools",
-    section: "advanced",
-    title: "Recovery tools",
-    target: "setting-recovery-tools",
-    keywords:
-      "Rebuild local project indexes without clearing existing chats when the local state gets out of sync.",
   },
   {
     id: "advanced:version",

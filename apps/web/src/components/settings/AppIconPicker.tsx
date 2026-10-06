@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import type { DesktopAppIcon } from "@glade/contracts/ipc/ipc";
 import { Spinner } from "~/components/ui/spinner";
-import { cn, isMacPlatform } from "~/lib/utils";
+import { cn } from "~/lib/utils";
 
 interface AppIconOption {
   readonly label: string;
@@ -10,24 +10,16 @@ interface AppIconOption {
 }
 
 const APP_ICON_OPTIONS = {
-  default: { label: "Default icon", src: "/app-icons/default.png" },
-  icon: { label: "Icon", src: "/app-icons/icon-group-600-macos.png" },
+  default: { label: "Light icon", src: "/app-icons/default.png" },
   dark: { label: "Dark icon", src: "/app-icons/dark.png" },
 } as const satisfies Record<DesktopAppIcon, AppIconOption>;
 
-const MAC_DESKTOP_APP_ICONS = ["default", "icon", "dark"] as const;
-const OTHER_DESKTOP_APP_ICONS = ["default", "icon"] as const;
-
-function desktopAppIconsForPlatform(platform: string): ReadonlyArray<DesktopAppIcon> {
-  return isMacPlatform(platform) ? MAC_DESKTOP_APP_ICONS : OTHER_DESKTOP_APP_ICONS;
-}
+const DESKTOP_APP_ICONS = ["default", "dark"] as const;
 
 export function AppIconPicker({
-  platform,
   value,
   onValueChange,
 }: {
-  readonly platform: string;
   readonly value: DesktopAppIcon;
   readonly onValueChange: (value: DesktopAppIcon) => void | Promise<void>;
 }) {
@@ -36,7 +28,7 @@ export function AppIconPicker({
 
   return (
     <div className="flex items-center gap-1" role="group" aria-label="App icon" aria-busy={busy}>
-      {desktopAppIconsForPlatform(platform).map((icon) => {
+      {DESKTOP_APP_ICONS.map((icon) => {
         const option = APP_ICON_OPTIONS[icon];
         const selected = value === icon;
         const applying = pendingIcon === icon;
