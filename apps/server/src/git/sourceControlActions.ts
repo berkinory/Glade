@@ -11,10 +11,13 @@ import type { GitRebaseInput } from "@glade/contracts/git/git";
 import { isWorkspaceRelativePathSafe } from "@glade/shared/platform/path";
 import { GitCommandError } from "./Errors.ts";
 import type { GitCoreShape } from "./Services/GitCore.ts";
+import { GIT_WRITE_EXECUTION } from "./Services/GitCommands.ts";
 
 export function sourceControlActions(git: GitCoreShape) {
   const run = (cwd: string, args: readonly string[]) =>
     git.execute({ operation: "SourceControl", cwd, args, timeoutMs: 120_000 });
+  const write = (cwd: string, args: readonly string[]) =>
+    git.execute({ operation: "SourceControl", cwd, args, ...GIT_WRITE_EXECUTION });
   const fail = (cwd: string, detail: string) =>
     new GitCommandError({ operation: "SourceControl", command: "git", cwd, detail });
   const io = <T>(cwd: string, operation: () => Promise<T>) =>
@@ -88,9 +91,9 @@ export function sourceControlActions(git: GitCoreShape) {
               );
           }
         }
-        yield* git.commit(cwd, message, "", { timeoutMs: 120_000 });
+        yield* git.commit(cwd, message, "");
       }),
-    fetch: (cwd: string) => run(cwd, ["fetch", "--all", "--prune"]).pipe(Effect.asVoid),
+    fetch: (cwd: string) => write(cwd, ["fetch", "--all", "--prune"]).pipe(Effect.asVoid),
     rebase: (input: GitRebaseInput) =>
       Effect.gen(function* () {
         const state = yield* rebaseState(input.cwd);
@@ -100,7 +103,7 @@ export function sourceControlActions(git: GitCoreShape) {
               input.cwd,
               "This operation requires manual recovery in the terminal.",
             );
-          yield* run(input.cwd, ["-c", "core.editor=true", input.operation, `--${input.action}`]);
+          yield* write(input.cwd, ["-c", "core.editor=true", input.operation, `--${input.action}`]);
           return;
         }
         const active = state.kind === "rebase";
@@ -113,7 +116,7 @@ export function sourceControlActions(git: GitCoreShape) {
             "--end-of-options",
             `${input.target}^{commit}`,
           ]);
-          yield* run(input.cwd, [
+          yield* write(input.cwd, [
             "-c",
             "core.editor=true",
             "rebase",
@@ -148,7 +151,7 @@ export function sourceControlActions(git: GitCoreShape) {
                 "The rebase no longer matches the pending push. Resolve it manually.",
               );
           }
-          yield* run(input.cwd, ["-c", "core.editor=true", "rebase", `--${input.action}`]);
+          yield* write(input.cwd, ["-c", "core.editor=true", "rebase", `--${input.action}`]);
           if (pending) {
             yield* intent.clear();
             if (input.action === "continue" && !(yield* rebaseState(input.cwd)).inProgress) {

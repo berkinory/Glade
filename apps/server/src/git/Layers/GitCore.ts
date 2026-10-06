@@ -6,7 +6,7 @@ import { isWorkspaceRelativePathSafe } from "@glade/shared/platform/path";
 
 import { GitCommandError } from "../Errors.ts";
 import { GitCore, type GitCommitOptions, type GitCoreShape } from "../Services/GitCore.ts";
-import { GitCommands } from "../Services/GitCommands.ts";
+import { GIT_WRITE_EXECUTION, GitCommands } from "../Services/GitCommands.ts";
 import { GitStatus } from "../Services/GitStatus.ts";
 import { GitDiff } from "../Services/GitDiff.ts";
 import { GitWorktrees } from "../Services/GitWorktrees.ts";
@@ -162,7 +162,7 @@ const makeGitCore = () =>
             }
           : null;
         yield* executeGit("GitCore.commit.commit", cwd, args, {
-          ...(options?.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
+          ...GIT_WRITE_EXECUTION,
           ...(progress ? { progress } : {}),
         }).pipe(Effect.asVoid);
         const commitSha = yield* runGitStdout("GitCore.commit.revParseHead", cwd, [
@@ -228,13 +228,14 @@ const makeGitCore = () =>
             "Choose valid workspace-relative files to stage.",
           ),
         );
-      return runGit(
+      return executeGit(
         "GitCore.stageFiles",
         cwd,
         allChanges
           ? ["add", "-A", "--", ":/"]
           : ["add", "--", ...paths.map((path) => `:(literal)${path}`)],
-      );
+        GIT_WRITE_EXECUTION,
+      ).pipe(Effect.asVoid);
     };
 
     const revertUnstagedFile: GitCoreShape["revertUnstagedFile"] = (cwd, filePath) =>
@@ -302,12 +303,13 @@ const makeGitCore = () =>
           { allowNonZeroExit: true },
         ).pipe(Effect.map((result) => result.code === 0));
 
-        yield* runGit(
+        yield* executeGit(
           "GitCore.unstageFiles",
           cwd,
           headExists
             ? ["reset", "-q", "HEAD", "--", ...targets]
             : ["rm", "--cached", "-q", "-r", "--", ...targets],
+          GIT_WRITE_EXECUTION,
         );
       });
 

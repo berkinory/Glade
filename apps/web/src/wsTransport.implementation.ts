@@ -555,17 +555,23 @@ export class WsTransport extends WsTransportBase {
     signal?: AbortSignal,
   ): Promise<GitRunStackedActionResult> {
     let result: GitRunStackedActionResult | null = null;
-    await this.getClientRuntime(client).runPromise(
-      Stream.runForEach(client[WS_METHODS.gitRunStackedAction](params as never), (event) =>
-        Effect.sync(() => {
-          this.emit(WS_CHANNELS.gitActionProgress, event as GitActionProgressEvent);
-          if ((event as GitActionProgressEvent).kind === "action_finished") {
-            result = (event as Extract<GitActionProgressEvent, { kind: "action_finished" }>).result;
-          }
-        }),
-      ),
-      signal ? { signal } : undefined,
-    );
+    try {
+      await this.getClientRuntime(client).runPromise(
+        Stream.runForEach(client[WS_METHODS.gitRunStackedAction](params as never), (event) =>
+          Effect.sync(() => {
+            this.emit(WS_CHANNELS.gitActionProgress, event as GitActionProgressEvent);
+            if ((event as GitActionProgressEvent).kind === "action_finished") {
+              result = (event as Extract<GitActionProgressEvent, { kind: "action_finished" }>)
+                .result;
+            }
+          }),
+        ),
+        signal ? { signal } : undefined,
+      );
+    } catch (error) {
+      // The final result already arrived; a socket drop before stream completion changes nothing.
+      if (!result) throw error;
+    }
     if (!result) throw new Error("Git action stream completed without a final result.");
     return result;
   }

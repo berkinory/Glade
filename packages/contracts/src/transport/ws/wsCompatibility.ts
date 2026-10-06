@@ -34,6 +34,8 @@ export const WS_NEGOTIATE_QUERY = {
 export const WS_GITHUB_PROJECT_PROVISIONING_CAPABILITY = "projects.github-provisioning";
 export const WS_TURN_DISPATCH_SETTLEMENT_CAPABILITY = "orchestration.turn-dispatch-settlement";
 export const WS_PROJECT_FILE_WATCH_CAPABILITY = "projects.file-watch";
+// Older servers ignore `resume` on git.runStackedAction and would run the mutation again.
+export const WS_GIT_ACTION_REATTACH_CAPABILITY = "git.action-reattach";
 // Older servers ignore `onlyIfIdle` and would deliver automatic terminal input to a busy program.
 export const WS_TERMINAL_IDLE_INPUT_CAPABILITY = "terminal.idle-input";
 
@@ -52,6 +54,7 @@ export const WS_SERVER_CAPABILITIES = [
 
   WS_GITHUB_PROJECT_PROVISIONING_CAPABILITY,
   WS_PROJECT_FILE_WATCH_CAPABILITY,
+  WS_GIT_ACTION_REATTACH_CAPABILITY,
 
   "transport.http-negotiate",
 ] as const;

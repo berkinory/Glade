@@ -3,6 +3,7 @@ import * as fs from "node:fs/promises";
 import { Effect } from "effect";
 import { GitCommandError } from "./Errors";
 import type { GitCoreShape } from "./Services/GitCore";
+import { GIT_WRITE_EXECUTION } from "./Services/GitCommands";
 import { readGitOperation } from "./gitOperationState";
 
 export function pushIntent(cwd: string, execute: GitCoreShape["execute"]) {
@@ -88,6 +89,8 @@ export function synchronizePush(
   const { cwd, branch, remote, target } = input;
   const run = (args: readonly string[]) =>
     execute({ cwd, args, operation: "synchronize push", timeoutMs: 120_000 });
+  const write = (args: readonly string[]) =>
+    execute({ cwd, args, operation: "synchronize push", ...GIT_WRITE_EXECUTION });
   const fail = (detail: string) =>
     new GitCommandError({ cwd, operation: "synchronize push", command: "git", detail });
   return Effect.gen(function* () {
@@ -108,7 +111,7 @@ export function synchronizePush(
       return yield* fail("Automatic synchronization requires the same fetch and push destination.");
     const advertised = yield* run(["ls-remote", "--heads", remote, `refs/heads/${target}`]);
     if (advertised.stdout.trim()) {
-      yield* run(["fetch", "--no-tags", remote, `refs/heads/${target}`]);
+      yield* write(["fetch", "--no-tags", remote, `refs/heads/${target}`]);
       const upstream = (yield* run(["rev-parse", "FETCH_HEAD"])).stdout.trim();
       const counts = (yield* run([
         "rev-list",
@@ -132,7 +135,7 @@ export function synchronizePush(
         )
           return yield* fail("The branch changed during synchronization. Try Push again.");
         yield* run(["merge-base", head, upstream]);
-        if ((counts[0] ?? 0) === 0) yield* run(["merge", "--ff-only", upstream]);
+        if ((counts[0] ?? 0) === 0) yield* write(["merge", "--ff-only", upstream]);
         else {
           if ((yield* run(["rev-list", "--merges", `${upstream}..${head}`])).stdout.trim())
             return yield* fail("Outgoing merge commits require manual integration before pushing.");
@@ -156,7 +159,7 @@ export function synchronizePush(
               );
           }
           yield* intent.save(branch, head);
-          yield* run(["-c", "core.editor=true", "rebase", "--no-autostash", upstream]).pipe(
+          yield* write(["-c", "core.editor=true", "rebase", "--no-autostash", upstream]).pipe(
             Effect.onExit(() =>
               Effect.gen(function* () {
                 if ((yield* readGitOperation(cwd, execute)).kind !== "rebase")
@@ -171,7 +174,12 @@ export function synchronizePush(
       return yield* fail(
         "The upstream branch is missing. Choose a publication destination explicitly.",
       );
-    yield* run(["push", ...(input.hasUpstream ? [] : ["-u"]), remote, `HEAD:refs/heads/${target}`]);
+    yield* write([
+      "push",
+      ...(input.hasUpstream ? [] : ["-u"]),
+      remote,
+      `HEAD:refs/heads/${target}`,
+    ]);
     return {
       status: "pushed" as const,
       branch,

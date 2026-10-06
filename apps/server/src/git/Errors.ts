@@ -63,6 +63,16 @@ export class GitManagerError extends Schema.TaggedErrorClass<GitManagerError>()(
   }
 }
 
+// Reattach and ownership failures are shown to the user verbatim.
+export class GitActionRunError extends Schema.TaggedErrorClass<GitActionRunError>()(
+  "GitActionRunError",
+  { detail: Schema.String },
+) {
+  override get message(): string {
+    return this.detail;
+  }
+}
+
 export function gitManagerError(
   operation: string,
   detail: string,

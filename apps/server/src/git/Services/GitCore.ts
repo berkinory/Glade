@@ -42,7 +42,8 @@ export interface ExecuteGitInput {
   readonly args: ReadonlyArray<string>;
   readonly env?: NodeJS.ProcessEnv;
   readonly allowNonZeroExit?: boolean;
-  readonly timeoutMs?: number;
+  /** null waits for completion or caller interruption without a wall-clock deadline. */
+  readonly timeoutMs?: number | null;
   readonly maxOutputBytes?: number;
   readonly outputMode?: "error" | "truncate" | "prefix";
   readonly progress?: ExecuteGitProgress;
@@ -106,7 +107,6 @@ interface GitCommitProgress {
 }
 
 export interface GitCommitOptions {
-  readonly timeoutMs?: number;
   readonly progress?: GitCommitProgress;
 }
 

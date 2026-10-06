@@ -31,7 +31,6 @@ import { WsComputerRpcGroup } from "@glade/contracts/transport/ws/computerRpc";
 import { WsFeatureRpcGroup } from "@glade/contracts/transport/ws/rpc";
 import { WsRpcError } from "@glade/contracts/transport/ws/rpcErrors";
 import {
-  type GitActionProgressEvent,
   type GitRemoveWorktreeInput,
   type GitWorktreeSetupProgressEvent,
 } from "@glade/contracts/git/git";
@@ -75,6 +74,7 @@ import {
 } from "../../git/githubRepositoryPublishing";
 import { GitHubCli } from "../../git/Services/GitHubCli";
 import { GitManager } from "../../git/Services/GitManager";
+import { GitActionRuns } from "../../git/Services/GitActionRuns";
 import { GitStatusBroadcaster } from "../../git/Services/GitStatusBroadcaster";
 import {
   beginGitHandoff,
@@ -370,6 +370,7 @@ const makeWsRpcHandlersLayer = () =>
       const git = yield* GitCore;
       const github = yield* GitHubCli;
       const gitManager = yield* GitManager;
+      const gitActionRuns = yield* GitActionRuns;
       const textGenerationProviders = yield* TextGenerationProviders;
       const gitStatusBroadcaster = yield* GitStatusBroadcaster;
       const keybindings = yield* Keybindings;
@@ -1439,26 +1440,14 @@ const makeWsRpcHandlersLayer = () =>
             ),
             "Failed to pull branch",
           ),
+        // The stream only observes a server-owned run; a dropped socket neither stops nor repeats it.
         [WS_METHODS.gitRunStackedAction]: (input) =>
-          bufferLiveUiStream(
-            Stream.callback<GitActionProgressEvent, WsRpcError>((queue) =>
-              gitManager
-                .runStackedAction(input, {
-                  actionId: input.actionId,
-                  progressReporter: {
-                    publish: (event) => Queue.offer(queue, event).pipe(Effect.asVoid),
-                  },
-                })
-                .pipe(
-                  Effect.tap(() => refreshGitStatusInBackground(input.cwd)),
-                  Effect.matchCauseEffect({
-                    onFailure: (cause) =>
-                      Queue.fail(queue, toWsRpcError(cause, "Git action failed")),
-                    onSuccess: () => Queue.end(queue).pipe(Effect.asVoid),
-                  }),
-                ),
+          Stream.unwrap(
+            Effect.map(CurrentManagedAttachmentPrincipal.asEffect(), (owner) =>
+              gitActionRuns
+                .attach(input, owner)
+                .pipe(Stream.mapError((error) => toWsRpcError(error, "Git action failed"))),
             ),
-            { label: "git.stacked-action" },
           ),
         [WS_METHODS.gitResolvePullRequest]: (input) =>
           rpcEffect(gitManager.resolvePullRequest(input), "Failed to resolve pull request"),

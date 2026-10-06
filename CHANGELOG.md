@@ -15,6 +15,7 @@
 - Visual previews require a smaller browser download while keeping local network access blocked.
 - Chat activity hides routine accepted approvals while keeping refusals, broader grants and Computer permission decisions visible.
 - Long lists of edited files scroll within the chat instead of pushing the rest of the conversation away.
+- Long commits, pushes and hooks run to completion regardless of duration or output volume, and Git actions keep their progress across reconnects without running twice.
 - Full Access no longer asks again before Codex uses Glade's own tools.
 
 ### Fixed

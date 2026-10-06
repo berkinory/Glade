@@ -27,6 +27,7 @@ import { ComputerServiceLive } from "./computer/Layers/ComputerService";
 import { KeybindingsLive } from "./settings/Layers/Keybindings";
 import { GitCoreLive } from "./git/Layers/GitCore";
 import { GitLayerLive, TextGenerationLayerLive } from "./git/runtimeLayer";
+import { GitActionRunsLive } from "./git/Layers/GitActionRuns";
 import { TerminalLayerLive } from "./terminal/runtimeLayer";
 import { AuthControlPlaneLive } from "./auth/Layers/AuthControlPlane";
 import { BootstrapCredentialServiceLive } from "./auth/Layers/BootstrapCredentialService";
@@ -138,6 +139,9 @@ function makeServerRuntimeServicesLayer(
     authControlPlaneLayer,
     serverAuthLayer,
   );
+  const gitActionRunsLayer = GitActionRunsLive.pipe(
+    Layer.provide(Layer.mergeAll(GitLayerLive, sessionCredentialLayer)),
+  );
   const agentGatewayLayer = AgentGatewayLive.pipe(
     Layer.provideMerge(VisualReplyPreviewLive),
     Layer.provideMerge(AppPresentationLive),
@@ -171,6 +175,7 @@ function makeServerRuntimeServicesLayer(
     threadDeletionReactorLayer,
     ComputerServiceLive,
     GitLayerLive,
+    gitActionRunsLayer,
     TextGenerationLayerLive,
     TerminalLayerLive,
     KeybindingsLive,

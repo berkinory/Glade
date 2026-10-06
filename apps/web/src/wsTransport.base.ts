@@ -4,6 +4,7 @@ import { WsScopedSubscriptions } from "./wsScopedSubscriptions";
 import type { GitStatusWatchInput, GitStatusStreamEvent } from "@glade/contracts/git/git";
 import { ORCHESTRATION_WS_METHODS } from "@glade/contracts/orchestration/rpc";
 import {
+  WS_GIT_ACTION_REATTACH_CAPABILITY,
   WS_TURN_DISPATCH_SETTLEMENT_CAPABILITY,
   WS_BOOTSTRAP_METHOD,
   WS_BOOTSTRAP_PATH,
@@ -69,6 +70,8 @@ import type {
   WsRequestOptions,
   WsThreadStreamFailure,
 } from "./wsTransport.support";
+const MAX_GIT_ACTION_REATTACH_ATTEMPTS = 8;
+
 export abstract class WsTransportBase {
   protected abstract stopStream(
     key: string,
@@ -268,7 +271,7 @@ export abstract class WsTransportBase {
         });
 
       if (method === WS_METHODS.gitRunStackedAction) {
-        return (await this.runGitActionStream(client, params, abortScope.signal)) as T;
+        return (await this.runReattachableGitAction(client, params, abortScope.signal)) as T;
       }
       if (method === WS_METHODS.gitCreateDetachedWorktree) {
         return (await this.runWorktreeSetupStream(client, params, abortScope.signal)) as T;
@@ -338,6 +341,51 @@ export abstract class WsTransportBase {
       throw error;
     } finally {
       abortScope.cleanup();
+    }
+  }
+  // A dropped socket leaves the server-owned action running. Reattach to it by ID; never resend it.
+  private async runReattachableGitAction(
+    initialClient: RpcClientInstance,
+    params: unknown,
+    callerSignal: AbortSignal | undefined,
+  ): Promise<GitRunStackedActionResult> {
+    const signal = callerSignal
+      ? AbortSignal.any([callerSignal, this.lifetime.signal])
+      : this.lifetime.signal;
+    const unknownOutcome = (cause: unknown) =>
+      new WsTransportRpcError({
+        message:
+          "The connection dropped during the Git action and its result is unknown. Check the repository status before trying again.",
+        cause,
+      });
+    const canReattach = () =>
+      this.compatibility?.capabilities.includes(WS_GIT_ACTION_REATTACH_CAPABILITY) === true;
+    let client = initialClient;
+    let resume = false;
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        if (resume) {
+          client = await awaitWithAbort(this.getClient(), signal);
+          // An older server ignores `resume` and would run the mutation a second time.
+          if (!canReattach()) throw unknownOutcome(null);
+        }
+        return await this.runGitActionStream(
+          client,
+          resume ? { ...(params as object), resume: true } : params,
+          signal,
+        );
+      } catch (error) {
+        if (
+          signal.aborted ||
+          this.disposed ||
+          !(isRuntimeInterruptFailure(error) || Schema.is(RpcClientError.RpcClientError)(error))
+        )
+          throw error;
+        if (attempt >= MAX_GIT_ACTION_REATTACH_ATTEMPTS || !canReattach())
+          throw unknownOutcome(error);
+        resume = true;
+        await delayMs(getReconnectRetryDelayMs(attempt), signal);
+      }
     }
   }
   subscribe<C extends WsPushChannel>(

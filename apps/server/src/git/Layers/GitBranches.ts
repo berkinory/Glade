@@ -3,7 +3,7 @@ import { Effect, Exit, Layer } from "effect";
 import { parseGitHubRepositoryNameWithOwnerFromRemoteUrl } from "@glade/shared/git/githubRepository";
 import { GitCheckoutDirtyWorktreeError, GitCommandError } from "../Errors.ts";
 import type { GitCoreShape } from "../Services/GitCore.ts";
-import { GitCommands } from "../Services/GitCommands.ts";
+import { GIT_WRITE_EXECUTION, GitCommands } from "../Services/GitCommands.ts";
 import { GitStatus } from "../Services/GitStatus.ts";
 import { GitBranches } from "../Services/GitBranches.ts";
 import { commandLabel, createGitCommandError } from "./GitCommands.ts";
@@ -305,7 +305,7 @@ const makeGitBranches = Effect.gen(function* () {
         true,
       ).pipe(Effect.map((stdout) => stdout.trim()));
       yield* executeGit("GitCore.pullCurrentBranch.pull", cwd, ["pull", "--ff-only"], {
-        timeoutMs: 30_000,
+        ...GIT_WRITE_EXECUTION,
         fallbackErrorMessage: "git pull failed",
       }).pipe(
         Effect.mapError((error) => {
@@ -482,7 +482,7 @@ const makeGitBranches = Effect.gen(function* () {
         input.cwd,
         ["push", "-u", remoteName, input.branch],
         {
-          timeoutMs: 30_000,
+          ...GIT_WRITE_EXECUTION,
           fallbackErrorMessage: "git branch publish failed",
         },
       );

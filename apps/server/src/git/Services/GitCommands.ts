@@ -2,9 +2,13 @@ import { Effect, ServiceMap } from "effect";
 import type { GitCommandError } from "../Errors.ts";
 import type { ExecuteGitInput, ExecuteGitResult, GitCoreShape } from "./GitCore.ts";
 
+// Writes scale with repository size, network speed and hooks. Bound the retained output, not the
+// operation; caller interruption still closes the owned process scope.
+export const GIT_WRITE_EXECUTION = { timeoutMs: null, outputMode: "truncate" } as const;
+
 export interface ExecuteGitOptions {
   priority?: "foreground" | "background" | undefined;
-  timeoutMs?: number | undefined;
+  timeoutMs?: number | null | undefined;
   allowNonZeroExit?: boolean | undefined;
   fallbackErrorMessage?: string | undefined;
   env?: NodeJS.ProcessEnv | undefined;

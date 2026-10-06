@@ -296,6 +296,9 @@ interface CollectedGitOutput {
   readonly truncated: boolean;
 }
 
+// Failures usually print their reason last, so truncated diagnostics keep the end as well.
+const RETAINED_TAIL_CHARS = 64_000;
+
 const collectGitOutput = Effect.fn(function* <E>(
   input: Pick<ExecuteGitInput, "operation" | "cwd" | "args">,
   stream: Stream.Stream<Uint8Array, E>,
@@ -304,11 +307,13 @@ const collectGitOutput = Effect.fn(function* <E>(
   outputMode: "error" | "truncate" | "prefix",
   lineDelimiter: "\n" | "\0" = "\n",
   stop?: () => Effect.Effect<void>,
+  keepTail = false,
 ): Effect.fn.Return<CollectedGitOutput, GitCommandError> {
   const decoder = new TextDecoder();
   let receivedBytes = 0;
   let retainedBytes = 0;
   let text = "";
+  let tail = "";
   let lineBuffer = "";
   let truncated = false;
   let retainedPrefixComplete = false;
@@ -316,7 +321,11 @@ const collectGitOutput = Effect.fn(function* <E>(
     lineDelimiter === "\0" ? lineBuffer.indexOf("\0") : lineBuffer.search(/[\r\n]/);
 
   const appendRetainedPrefix = (decoded: string) => {
-    if (retainedPrefixComplete || decoded.length === 0) return;
+    if (decoded.length === 0) return;
+    if (retainedPrefixComplete) {
+      if (keepTail) tail = (tail + decoded).slice(-RETAINED_TAIL_CHARS);
+      return;
+    }
     const decodedBytes = Buffer.byteLength(decoded, "utf8");
     const remainingBytes = maxOutputBytes - retainedBytes;
     const retained =
@@ -327,6 +336,7 @@ const collectGitOutput = Effect.fn(function* <E>(
     if (appendedBytes < decodedBytes) {
       retainedPrefixComplete = true;
       truncated = true;
+      if (keepTail) tail = decoded.slice(retained.length).slice(-RETAINED_TAIL_CHARS);
     }
   };
 
@@ -376,7 +386,7 @@ const collectGitOutput = Effect.fn(function* <E>(
         }
       }
 
-      if (outputMode !== "error" && retainedPrefixComplete && !onLine) {
+      if (outputMode !== "error" && retainedPrefixComplete && !onLine && !keepTail) {
         return;
       }
       const decoded = decoder.decode(chunk, { stream: true });
@@ -398,7 +408,7 @@ const collectGitOutput = Effect.fn(function* <E>(
   lineBuffer += remainder;
   if (!(outputMode === "prefix" && truncated && lineDelimiter === "\0"))
     yield* emitCompleteLines(true);
-  return { text, truncated };
+  return { text: tail ? `${text}\n[output truncated]\n${tail}` : text, truncated };
 });
 
 const makeGitCommands = Effect.gen(function* () {
@@ -419,7 +429,7 @@ const makeGitCommands = Effect.gen(function* () {
       ...input,
       args: [...input.args],
     } as const;
-    const timeoutMs = input.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    const timeoutMs = input.timeoutMs === undefined ? DEFAULT_TIMEOUT_MS : input.timeoutMs;
     const maxOutputBytes = input.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES;
     const outputMode = input.outputMode ?? "error";
 
@@ -461,6 +471,9 @@ const makeGitCommands = Effect.gen(function* () {
             maxOutputBytes,
             input.progress?.onStderrLine,
             outputMode,
+            "\n",
+            undefined,
+            outputMode === "truncate",
           ),
           child.exitCode.pipe(
             Effect.mapError(toGitCommandError(commandInput, "failed to report exit code.")),
@@ -501,6 +514,8 @@ const makeGitCommands = Effect.gen(function* () {
       } satisfies ExecuteGitResult;
     });
 
+    // A null deadline still ends with caller interruption, which closes the process scope.
+    if (timeoutMs === null) return yield* Effect.scoped(commandEffect);
     return yield* commandEffect.pipe(
       Effect.scoped,
       Effect.timeoutOption(timeoutMs),

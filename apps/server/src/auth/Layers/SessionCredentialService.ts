@@ -625,6 +625,44 @@ const makeSessionCredentialService = Effect.gen(function* () {
         ),
       );
 
+  const runAuthenticatedWork: SessionCredentialServiceShape["runAuthenticatedWork"] = (
+    sessionId,
+    effect,
+  ) =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        // Subscribe before the durable check: a concurrent revoke either fails the check or
+        // publishes its removal into this subscription before the work starts.
+        const changes = yield* PubSub.subscribe(changesPubSub);
+        const session = yield* activeConnectionsSemaphore
+          .withPermit(loadActiveSession(sessionId))
+          .pipe(
+            Effect.mapError((cause) =>
+              toSessionCredentialError("Failed to authorize session work.", cause),
+            ),
+          );
+        if (Option.isNone(session)) {
+          return yield* toSessionCredentialError("Authenticated session is no longer active.");
+        }
+        const now = yield* Clock.currentTimeMillis;
+        const removed = Stream.fromSubscription(changes).pipe(
+          Stream.filter(
+            (change) => change.type === "clientRemoved" && change.sessionId === sessionId,
+          ),
+          Stream.take(1),
+          Stream.runDrain,
+        );
+        const expiry = Effect.sleep(
+          Duration.millis(Math.max(0, DateTime.toEpochMillis(session.value.expiresAt) - now)),
+        );
+        const ended = removed.pipe(
+          Effect.raceFirst(expiry),
+          Effect.andThen(Effect.fail(toSessionCredentialError("Authenticated session ended."))),
+        );
+        return yield* effect.pipe(Effect.raceFirst(ended));
+      }),
+    );
+
   const runAuthenticatedConnection: SessionCredentialServiceShape["runAuthenticatedConnection"] = (
     sessionId,
     effect,
@@ -672,6 +710,7 @@ const makeSessionCredentialService = Effect.gen(function* () {
     },
     revoke,
     revokeAllExcept,
+    runAuthenticatedWork,
     runAuthenticatedConnection,
   } satisfies SessionCredentialServiceShape;
 });

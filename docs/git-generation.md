@@ -24,3 +24,12 @@ chunk boundaries are preserved; scoped teardown still completes before returning
 Git action progress and failures belong to the captured action, including after
 workspace navigation. Failure messages identify the failed phase and preserve the
 server's detail. Earlier successful steps are not retried automatically.
+
+Staging, committing, pulling, pushing, fetching and rebasing have no fixed wall-clock
+deadline: transfers and hooks run until Git finishes, the caller is interrupted, or the
+server stops, and interruption still tears down the process scope. Read and probe commands
+keep their deadlines. These writes keep draining stdout and stderr past the retained 1 MB
+diagnostic prefix, so heavy hook or transfer output never fails the operation by itself;
+failure details keep the end of stderr as well. Stacked actions continue across reconnects
+and the client reattaches to the same run instead of resending it; see
+[transport.md](transport.md).
