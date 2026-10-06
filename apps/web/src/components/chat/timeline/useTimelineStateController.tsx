@@ -348,7 +348,10 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
     });
   }, [resolvedListRef, timelineRootRef]);
 
-  const lastLiveWorkGroupId = useMemo(() => findLastLiveWorkGroupId(rows), [rows]);
+  const lastLiveWorkGroupId = useMemo(
+    () => findLastLiveWorkGroupId(rows, activeTurnId ?? null),
+    [activeTurnId, rows],
+  );
 
   const firstUserMessageId = useMemo(() => {
     for (const row of rows) {

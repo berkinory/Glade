@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import { createMarkdownCodeFence, formatShellTranscript } from "~/lib/toolCallDetailsFormatting";
 import { cn } from "~/lib/utils";
 import type { WorkLogToolDetails, WorkLogToolOutputDetails } from "../../lib/toolCallDetails";
@@ -6,6 +6,14 @@ import type { WorkLogLiveActivity } from "../../workLog.types";
 import { formatLiveActivityElapsed, useLiveActivityNow } from "../../lib/liveActivityPresentation";
 import ChatMarkdown from "../ChatMarkdown";
 import { hasToolCallDetailsContent } from "./ToolCallDetailsDialog.logic";
+
+// The diff renderer pulls in its worker pool, so it loads only once a tool's details are opened.
+const ToolPatchDiff = lazy(() =>
+  import("./ToolDiffView").then((module) => ({ default: module.ToolPatchDiff })),
+);
+const ToolEditsDiff = lazy(() =>
+  import("./ToolDiffView").then((module) => ({ default: module.ToolEditsDiff })),
+);
 
 const DETAIL_HEADER_CLASS_NAME = "border-b border-border/45 px-3 py-2 text-ui-xs font-medium";
 const DETAIL_CODE_BLOCK_CLASS_NAME =
@@ -60,38 +68,22 @@ export function ToolCallDetailsContent({
 
       {details?.diff ? (
         <ToolDetailSection title="Diff">
-          <DiffCodeBlock>{details.diff}</DiffCodeBlock>
+          <Suspense fallback={null}>
+            <ToolPatchDiff
+              patch={details.diff}
+              fallback={(text) => (
+                <MarkdownToolCodeBlock language="diff">{text}</MarkdownToolCodeBlock>
+              )}
+            />
+          </Suspense>
         </ToolDetailSection>
       ) : null}
 
       {details?.edits?.length ? (
         <ToolDetailSection title="Edits">
-          <div className="space-y-3">
-            {details.edits.map((edit, index) => (
-              <div
-                key={`${edit.path ?? "edit"}:${index}`}
-                className="overflow-hidden rounded-lg border border-border/45 bg-background/58"
-              >
-                {edit.path ? (
-                  <div className="border-b border-border/45 px-3 py-2 font-chat-code text-chat-code text-muted-foreground/72">
-                    {edit.path}
-                  </div>
-                ) : null}
-                <div className="grid gap-0 md:grid-cols-2">
-                  {edit.oldText !== undefined ? (
-                    <TextChangeBlock title="Before" tone="remove">
-                      {edit.oldText}
-                    </TextChangeBlock>
-                  ) : null}
-                  {edit.newText !== undefined ? (
-                    <TextChangeBlock title="After" tone="add">
-                      {edit.newText}
-                    </TextChangeBlock>
-                  ) : null}
-                </div>
-              </div>
-            ))}
-          </div>
+          <Suspense fallback={null}>
+            <ToolEditsDiff edits={details.edits} />
+          </Suspense>
         </ToolDetailSection>
       ) : null}
 
@@ -192,27 +184,6 @@ function LabeledCodeBlock(props: { title: string; tone: "output" | "error"; chil
   );
 }
 
-function TextChangeBlock(props: { title: string; tone: "add" | "remove"; children: string }) {
-  return (
-    <div
-      className={cn(
-        "min-w-0 border-border/45 md:[&:not(:first-child)]:border-l",
-        props.tone === "add" ? "bg-emerald-500/5" : "bg-rose-500/5",
-      )}
-    >
-      <div
-        className={cn(
-          DETAIL_HEADER_CLASS_NAME,
-          props.tone === "add" ? "text-emerald-200/82" : "text-rose-200/82",
-        )}
-      >
-        {props.title}
-      </div>
-      <ToolCodeBlock bare>{props.children}</ToolCodeBlock>
-    </div>
-  );
-}
-
 function ToolCodeBlock(props: { children: string; tone?: "default" | "command"; bare?: boolean }) {
   return (
     <pre
@@ -225,32 +196,6 @@ function ToolCodeBlock(props: { children: string; tone?: "default" | "command"; 
       )}
     >
       {props.children}
-    </pre>
-  );
-}
-
-function DiffCodeBlock({ children }: { children: string }) {
-  const lines = children.split(/\r?\n/);
-  return (
-    <pre className="max-h-[min(12lh,32vh)] overflow-auto rounded-lg border border-border/45 bg-background/70 px-0 py-2 font-chat-code text-chat-code leading-relaxed">
-      {lines.map((line, index) => (
-        <span
-          key={`${index}:${line.slice(0, 24)}`}
-          className={cn(
-            "block min-w-max whitespace-pre-wrap break-words px-3",
-            line.startsWith("+") && !line.startsWith("+++")
-              ? "bg-emerald-500/8 text-emerald-100/92"
-              : null,
-            line.startsWith("-") && !line.startsWith("---")
-              ? "bg-rose-500/8 text-rose-100/92"
-              : null,
-            line.startsWith("@@") ? "text-sky-200/90" : null,
-            /^(diff --git|index |--- |\+\+\+ )/.test(line) ? "text-muted-foreground/62" : null,
-          )}
-        >
-          {line.length > 0 ? line : " "}
-        </span>
-      ))}
     </pre>
   );
 }

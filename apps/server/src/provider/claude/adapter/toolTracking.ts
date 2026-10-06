@@ -126,18 +126,18 @@ export function makeClaudeToolTracking(input: {
       const serializedInput = toolInputFingerprint(input.toolInput);
       const inputFingerprint =
         Object.keys(input.toolInput).length > 0 ? serializedInput : undefined;
-      const detail = summarizeToolRequest(
-        input.toolName,
-        input.toolInput,
-        serializedInput ?? undefined,
-      );
+      // A streamed tool call opens with an empty input; summarising it would publish "Tool: {}" until
+      // the input arrives and the input_json_delta update supplies the real detail.
+      const detail = inputFingerprint
+        ? summarizeToolRequest(input.toolName, input.toolInput, serializedInput ?? undefined)
+        : undefined;
 
       const tool: ToolInFlight = {
         itemId: input.itemId,
         itemType,
         toolName: input.toolName,
         title: titleForTool(itemType),
-        detail,
+        ...(detail ? { detail } : {}),
         input: input.toolInput,
         partialInputJson: "",
         ...(inputFingerprint ? { lastEmittedInputFingerprint: inputFingerprint } : {}),

@@ -25,6 +25,7 @@ import {
   ComputerTerminal01Icon,
   Image01Icon,
   ChartAreaIcon,
+  FolderIcon,
 } from "~/lib/icons";
 import type { IconComponent } from "~/lib/iconComponent";
 import { SubagentReplyNotice } from "./SubagentReplyNotice";
@@ -148,10 +149,7 @@ function workEntryPreview(workEntry: TimelineWorkEntry): string | null {
         ?.trim() ?? null
     );
   }
-  const isFileRelated =
-    workEntry.requestKind === "file-read" ||
-    workEntry.requestKind === "file-change" ||
-    workEntry.itemType === "file_change";
+  const isFileRelated = workEntry.toolKind === "read" || workEntry.toolKind === "edit";
   if (workEntry.itemType === "command_execution" || workEntry.command || workEntry.rawCommand) {
     const command = workEntry.command ?? workEntry.rawCommand;
     if (command) return deriveFriendlyCommandTarget(command);
@@ -176,10 +174,6 @@ function workEntryPreview(workEntry: TimelineWorkEntry): string | null {
   }
   return null;
 }
-function isFileReadToolEntry(workEntry: TimelineWorkEntry): boolean {
-  const name = (workEntry.toolName ?? "").toLowerCase().replace(/[^a-z]/g, "");
-  return name === "read" || name === "readfile" || name === "viewfile";
-}
 function commandWorkEntryIcon(workEntry: TimelineWorkEntry): IconComponent {
   const command = workEntry.command ?? workEntry.rawCommand;
   switch (command ? resolveCommandVisualKind(command) : "terminal") {
@@ -202,29 +196,36 @@ function workEntryIcon(workEntry: TimelineWorkEntry): IconComponent {
       ? AlertCircleIcon
       : HistoryIcon;
   }
-  if (workEntry.requestKind === "command") return commandWorkEntryIcon(workEntry);
-  if (workEntry.requestKind === "file-read") return File02Icon;
-  if (workEntry.requestKind === "file-change") return PencilEdit02Icon;
-  if (workEntry.requestKind === "tool") return FlowIcon;
-  if (workEntry.itemType === "command_execution" || workEntry.command) {
-    return commandWorkEntryIcon(workEntry);
-  }
-  if (workEntry.itemType === "file_change") {
-    return PencilEdit02Icon;
-  }
-  if (workEntry.itemType === "web_search") return Globe02Icon;
-  if (workEntry.itemType === "image_generation") return Image01Icon;
-  if (workEntry.itemType === "image_view") return ViewIcon;
-  if (isFileReadToolEntry(workEntry)) return File02Icon;
-  switch (workEntry.itemType) {
-    case "mcp_tool_call":
-      return BlocksIcon;
-    case "dynamic_tool_call":
-      return ToolsIcon;
-    case "collab_agent_tool_call":
+  switch (workEntry.toolKind) {
+    case "command":
+      return commandWorkEntryIcon(workEntry);
+    case "read":
+      return File02Icon;
+    case "list":
+      return FolderIcon;
+    case "search":
+      return SearchIcon;
+    case "edit":
+      return PencilEdit02Icon;
+    case "fetch":
+    case "web_search":
+      return Globe02Icon;
+    case "agent":
       return BotIcon;
+    case "image_view":
+      return ViewIcon;
+    case "image_generation":
+      return Image01Icon;
+    case "mcp":
+      return BlocksIcon;
+    case "tool":
+      return workEntry.requestKind === "tool" ? FlowIcon : ToolsIcon;
   }
   return workToneIcon(workEntry.tone).icon;
+}
+// A fetched page's favicon stands in for generic fetch tools, but a recognised MCP brand stays visible.
+export function workEntryLinkIconUrl(workEntry: TimelineWorkEntry): string | null {
+  return resolveMcpToolIcon(workEntry) ? null : extractWebFetchUrl(workEntry);
 }
 export function renderWorkEntryIcon(Icon: IconComponent, className: string): ReactElement {
   return createElement(Icon, {
@@ -286,6 +287,7 @@ export function prefersCompactWorkEntryRow(workEntry: TimelineWorkEntry): boolea
     EntryIcon === PencilEdit02Icon ||
     EntryIcon === BlocksIcon ||
     EntryIcon === SearchIcon ||
+    EntryIcon === FolderIcon ||
     EntryIcon === File02Icon
   );
 }
@@ -366,9 +368,6 @@ function workEntryDisplayParts(
     displayText,
   };
 }
-export function workEntryDisplayText(workEntry: TimelineWorkEntry): string {
-  return workEntryDisplayParts(workEntry).displayText;
-}
 function isFileChangeWorkEntry(workEntry: TimelineWorkEntry): boolean {
   return isFileChangeWorkLogEntry(workEntry);
 }
@@ -447,6 +446,7 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
   const isPlainRuntimeNoticeRow = isPlainRuntimeNoticeWorkEntry(workEntry);
   const EntryIcon = workEntryIcon(workEntry);
   const webFetchUrl = extractWebFetchUrl(workEntry);
+  const linkIconUrl = workEntryLinkIconUrl(workEntry);
   const classification = classifyWorkEntryTool(workEntry);
   const isGitHubToolRow = classification.isGitHub;
   const isComputerToolRow = classification.isComputer;
@@ -459,7 +459,7 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
     !isGladeBrowserToolRow &&
     !isGladeToolRow;
   const LeftIcon = workEntryLeftIcon(workEntry, classification);
-  const leftIconKind = webFetchUrl
+  const leftIconKind = linkIconUrl
     ? "web-fetch"
     : isComputerToolRow
       ? "computer"
@@ -541,10 +541,7 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
     );
   }
   const readFilePath =
-    opener !== null &&
-    !activityDetail &&
-    workEntry.detail &&
-    (workEntry.requestKind === "file-read" || isFileReadToolEntry(workEntry))
+    opener !== null && !activityDetail && workEntry.detail && workEntry.toolKind === "read"
       ? extractFilePathFromDetail(workEntry.detail)
       : null;
   const canOpenReadFile = readFilePath !== null;
@@ -565,7 +562,13 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
   return (
     <div className={cn(compact ? "py-0.5" : "rounded-lg py-1")}>
       {showEditedRows ? (
-        <div className={EDITED_FILE_LIST_CLASS_NAME}>
+        <div
+          className={
+            changedFiles.length > EDITED_FILE_LIST_SCROLL_THRESHOLD
+              ? EDITED_FILE_LIST_CLASS_NAME
+              : "space-y-0.5"
+          }
+        >
           {changedFiles.map((changedFilePath) => {
             const summaryStat = fileDiffStatByPath?.get(changedFilePath);
             const changedFileStat =
@@ -636,6 +639,7 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
                   className={cn(
                     "flex shrink-0 items-center justify-center",
                     WORK_ROW_MUTED_HOVER_TONE["tool-row"],
+                    workEntry.toolStatus === "failed" && "text-destructive/85",
                     workEntry.subagents?.length ? "min-w-4" : compact ? "size-4" : "size-5",
                   )}
                   data-tool-icon={leftIconKind}
@@ -644,8 +648,8 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
                   {workEntry.itemType === "collab_agent_tool_call" &&
                   workEntry.subagents?.length ? (
                     <SubagentToolAvatars subagents={workEntry.subagents} />
-                  ) : webFetchUrl ? (
-                    <LinkChipIcon url={webFetchUrl} className={compact ? "size-3.5" : "size-4"} />
+                  ) : linkIconUrl ? (
+                    <LinkChipIcon url={linkIconUrl} className={compact ? "size-3.5" : "size-4"} />
                   ) : (
                     renderWorkEntryIcon(LeftIcon, compact ? "size-3.5" : "size-4")
                   )}
@@ -687,7 +691,14 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
                       fontSize: `${rowFontSizePx}px`,
                     }}
                   >
-                    <span data-work-entry-display-text="true">{displayText}</span>
+                    <span
+                      className={
+                        workEntry.toolStatus === "running" ? "work-text-shimmer" : undefined
+                      }
+                      data-work-entry-display-text="true"
+                    >
+                      {displayText}
+                    </span>
                     {liveActivityMetaText ? (
                       <span data-live-activity-meta="true"> · {liveActivityMetaText}</span>
                     ) : null}
@@ -736,6 +747,8 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
   );
 });
 // Long edit lists scroll in place so one large turn cannot push the rest of the transcript away.
+// Short lists stay unclipped so an opened row's diff is not trapped in the list's scroll box.
+const EDITED_FILE_LIST_SCROLL_THRESHOLD = 8;
 export const EDITED_FILE_LIST_CLASS_NAME =
   "scroll-fade-y max-h-[min(10lh,30vh)] space-y-0.5 overflow-y-auto";
 

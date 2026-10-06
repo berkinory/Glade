@@ -51,6 +51,7 @@ import {
   isRenderableToolLifecycleActivity,
   reconcileSettledLiveActivities,
 } from "./workLog.reconciliation";
+import { classifyWorkLogToolKind } from "./workLog.toolKind";
 import {
   asComputerBuildSignature,
   asComputerPermissions,
@@ -486,6 +487,16 @@ function normalizeWorkLogActivity(activity: OrchestrationThreadActivity): Derive
   }
   if (requestKind) {
     entry.requestKind = requestKind;
+  }
+  const toolKind = classifyWorkLogToolKind({
+    itemType,
+    requestKind,
+    toolName,
+    command: commandPreview.command ?? commandPreview.rawCommand,
+    commandActionType: commandAction?.type,
+  });
+  if (toolKind) {
+    entry.toolKind = toolKind;
   }
   if (
     activity.kind === "tool.started" &&

@@ -12,11 +12,9 @@ import {
 import { MessageCopyButton } from "~/components/chat/MessageCopyButton";
 import {
   chunkCollapsedTurnItems,
-  isFoldedWorkEntryChunk,
   planWorkEntryRenderChunks,
   resolveAssistantMessageCopyState,
   resolveAssistantMessageDisplayText,
-  resolveWorkEntryChunkFold,
   type CollapsedTurnChunk,
   type CollapsedTurnItem,
   type MessagesTimelineRow,
@@ -245,36 +243,34 @@ export function renderTimelineAssistantMessage(
         display.toolGroupId !== null &&
         display.toolGroupId === lastLiveWorkGroupId &&
         (activeTurnInProgress || isWorking);
-      const plannedRenderChunks = planWorkEntryRenderChunks(display.orderedRenderableEntries, {
+      const renderChunks = planWorkEntryRenderChunks(display.orderedRenderableEntries, {
         tailIsLive: placement === "inline" && isLiveGroup,
       });
-      const renderChunks = plannedRenderChunks;
-      const collapseAsSummary = renderChunks.some(isFoldedWorkEntryChunk);
+      const collapseAsSummary = renderChunks.some((chunk) => chunk.summary !== null);
       return (
         <>
           {!hasCollapsedWork && collapseAsSummary && display.renderableToolEntries.length > 0 && (
             <div className={placement === "leading" ? "mb-1.5" : "mt-1.5"}>
               <div className="space-y-px">
                 {renderChunks.map((chunk) => {
-                  const fold = resolveWorkEntryChunkFold(chunk);
-                  if (!fold) {
+                  const summary = chunk.summary;
+                  if (!summary) {
                     return chunk.entries
                       .filter((workEntry) => workEntry.tone === "tool")
                       .map(renderInlineToolRow);
                   }
                   const summaryRowKey = `${placement}:${row.message.id}:${chunk.id}`;
-                  const summaryOverrideKey = `${summaryRowKey}${fold.keySuffix}`;
                   return (
                     <ToolCallGroupSummaryRow
                       key={`inline-tool-summary:${summaryRowKey}`}
-                      summary={fold.summary}
-                      liveEntry={chunk.liveEntry}
-                      open={toolGroupSummaryOverrides[summaryOverrideKey] ?? false}
-                      onToggle={(open) => setToolGroupSummaryOpen(summaryOverrideKey, open)}
+                      summary={summary}
+                      live={chunk.live}
+                      open={toolGroupSummaryOverrides[summaryRowKey] ?? chunk.live}
+                      onToggle={(open) => setToolGroupSummaryOpen(summaryRowKey, open)}
                       fontSizePx={normalizedChatFontSizePx}
                       renderChildren={() => (
                         <div className="space-y-px pt-0.5">
-                          {fold.entries.map(renderInlineToolRow)}
+                          {chunk.entries.map(renderInlineToolRow)}
                         </div>
                       )}
                     />

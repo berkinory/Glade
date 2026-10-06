@@ -232,6 +232,9 @@ function mergeDerivedWorkLogEntries(
   const requestKind = preservePreviousToolSemantics
     ? previous.requestKind
     : (next.requestKind ?? previous.requestKind);
+  const toolKind = preservePreviousToolSemantics
+    ? previous.toolKind
+    : (next.toolKind ?? previous.toolKind);
   const subagents = next.subagents ?? previous.subagents;
   const subagentAction = next.subagentAction ?? previous.subagentAction;
   const gladeThreadCreation = next.gladeThreadCreation ?? previous.gladeThreadCreation;
@@ -265,6 +268,7 @@ function mergeDerivedWorkLogEntries(
     ...(toolTitle ? { toolTitle } : {}),
     ...(itemType ? { itemType } : {}),
     ...(requestKind ? { requestKind } : {}),
+    ...(toolKind ? { toolKind } : {}),
     ...(subagents ? { subagents } : {}),
     ...(subagentAction ? { subagentAction } : {}),
     ...(gladeThreadCreation ? { gladeThreadCreation } : {}),

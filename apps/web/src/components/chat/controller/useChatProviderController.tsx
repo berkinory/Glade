@@ -249,8 +249,11 @@ export function useChatProviderController({
   // Providers that clear `activeTurnId` on every terminal event (Claude) would otherwise leave the
   // transcript with no active turn while work is still in progress, collapsing the newest answer into
   // a closed "Worked for" disclosure. The latest turn is the transcript's own notion of "current", so
-  // fall back to it.
-  const activeTurnIdForTranscript = activeThread?.session?.activeTurnId ?? activeLatestTurnId;
+  // fall back to it — except while a new message is waiting for its turn to start: the settled turn
+  // is no longer current then, and treating it as active would briefly unfold it.
+  const awaitingNewTurn = (isSendBusy || isAwaitingTurnStart) && latestTurnSettled;
+  const activeTurnIdForTranscript =
+    activeThread?.session?.activeTurnId ?? (awaitingNewTurn ? null : activeLatestTurnId);
 
   const editableUserMessageId = (() => {
     if (!activeThread || !isServerThread) {

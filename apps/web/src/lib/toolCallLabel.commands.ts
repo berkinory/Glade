@@ -184,6 +184,21 @@ export function deriveFriendlyCommandTarget(rawCommand: string): string {
   return target.length <= 72 ? target : `${target.slice(0, 69).trimEnd()}…`;
 }
 
+export function classifyInspectCommand(rawCommand: string): "read" | "search" | "list" | null {
+  const command = stripCommandDisplayWrappers(unwrapShellCommandIfPresent(rawCommand));
+  const [tool] = splitToolAndArgs(firstShellCommandSegment(command));
+  if (!Object.hasOwn(INSPECT_COMMAND_PRESENTATIONS, tool)) return null;
+  switch (INSPECT_COMMAND_PRESENTATIONS[tool]![2]) {
+    case "file":
+      return "read";
+    case "directory":
+      return "list";
+    case "search":
+    case "find":
+      return "search";
+  }
+}
+
 export function resolveCommandVisualKind(rawCommand: string): CommandVisualKind {
   const command = stripCommandDisplayWrappers(unwrapShellCommandIfPresent(rawCommand));
   const [tool] = splitToolAndArgs(firstShellCommandSegment(command));

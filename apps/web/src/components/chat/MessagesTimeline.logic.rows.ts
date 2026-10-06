@@ -207,7 +207,7 @@ export function deriveMessagesTimelineRows(input: {
       ? (tailEntry.message.textSegments?.[tailEntry.segmentIndex]?.text ?? tailEntry.message.text)
       : tailEntry.message.text
     ).trim().length > 0;
-  const lastLiveWorkGroupId = findLastLiveWorkGroupId(nextRows);
+  const lastLiveWorkGroupId = findLastLiveWorkGroupId(nextRows, input.activeTurnId ?? null);
   const hasLiveToolGroup = nextRows.some((row) => {
     const groups =
       row.kind === "work"
@@ -221,7 +221,7 @@ export function deriveMessagesTimelineRows(input: {
     return groups.some(({ entries, id }) =>
       planWorkEntryRenderChunks(entries, {
         tailIsLive: input.isWorking && id != null && id === lastLiveWorkGroupId,
-      }).some((chunk) => chunk.liveEntry !== null),
+      }).some((chunk) => chunk.live),
     );
   });
   if (
@@ -305,12 +305,12 @@ function collapseSettledTurns(
 
     if (message.streaming) continue;
     const turnId = message.turnId ?? null;
+    // Without an active turn id no settled turn is current, e.g. while a new message awaits its turn.
     const turnIsActive =
       activeTurnInProgress &&
-      (activeTurnId != null
-        ? (turnId != null && turnId === activeTurnId) ||
-          message.id === lastTerminalAssistantMessageId
-        : message.id === lastTerminalAssistantMessageId);
+      activeTurnId != null &&
+      ((turnId != null && turnId === activeTurnId) ||
+        message.id === lastTerminalAssistantMessageId);
     if (turnIsActive) continue;
 
     const foldIndices: number[] = [];

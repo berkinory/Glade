@@ -260,6 +260,34 @@
   }
 }
 
+/* Live work labels keep their text stable and signal progress with a sweep instead. The fill is
+   made transparent through text-fill-color so `currentColor` still resolves to the muted ink. */
+.work-text-shimmer {
+  background: linear-gradient(100deg, currentColor 35%, var(--foreground) 50%, currentColor 65%) 0
+    0 / 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: work-text-shimmer 2.4s linear infinite;
+}
+
+@keyframes work-text-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .work-text-shimmer {
+    animation: none;
+    background: none;
+    -webkit-text-fill-color: currentColor;
+  }
+}
+
 /* The composer model trigger swaps to a fixed placeholder while its menu is open; this
    plays on the model label when it comes back. */
 @keyframes composer-trigger-label-enter {

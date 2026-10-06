@@ -49,6 +49,20 @@ interface WorkLogComputerSetupRequired {
   bundleId?: string;
 }
 
+export type WorkLogToolKind =
+  | "command"
+  | "read"
+  | "list"
+  | "search"
+  | "edit"
+  | "fetch"
+  | "web_search"
+  | "agent"
+  | "image_view"
+  | "image_generation"
+  | "mcp"
+  | "tool";
+
 export interface WorkLogEntry {
   id: string;
   createdAt: string;
@@ -71,6 +85,7 @@ export interface WorkLogEntry {
   toolDetails?: WorkLogToolDetails;
   itemType?: ToolLifecycleItemType;
   requestKind?: WorkLogRequestKind;
+  toolKind?: WorkLogToolKind;
   subagents?: ReadonlyArray<WorkLogSubagent>;
   subagentAction?: WorkLogSubagentAction;
   gladeThreadCreation?: WorkLogGladeThreadCreation;

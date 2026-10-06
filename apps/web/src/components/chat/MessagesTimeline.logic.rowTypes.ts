@@ -3,7 +3,7 @@ import type { MessageId, TurnId } from "@glade/contracts/core/baseSchemas";
 import type { WorkLogEntry } from "../../workLog.types";
 import { normalizeCompactToolLabel as normalizeCompactToolLabelValue } from "../../lib/toolCallLabel.presentations";
 import {
-  isSummarizableToolCallEntry,
+  isGroupableWorkEntry,
   MIN_COLLAPSIBLE_TOOL_GROUP_SIZE,
   summarizeToolCallGroup,
   workEntryRowCount,
@@ -58,7 +58,7 @@ export function chunkCollapsedTurnItems(
   };
 
   for (const item of items) {
-    if (item.kind === "work" && isSummarizableToolCallEntry(item.entry)) {
+    if (item.kind === "work" && isGroupableWorkEntry(item.entry)) {
       pendingRun.push(item);
       continue;
     }
@@ -81,15 +81,12 @@ function chunkWorkEntries(entries: ReadonlyArray<WorkLogEntry>): WorkEntryChunk[
   });
 }
 
-export interface WorkEntryRenderPlanChunk {
+interface WorkEntryRenderPlanChunk {
   id: string;
   entries: WorkLogEntry[];
+  // Non-null when the chunk renders as a collapsible group.
   summary: ToolCallGroupSummary | null;
-  liveEntry: WorkLogEntry | null;
-}
-
-function pickLiveToolEntry(entries: ReadonlyArray<WorkLogEntry>): WorkLogEntry {
-  return entries.findLast((entry) => entry.toolStatus === "running") ?? entries.at(-1)!;
+  live: boolean;
 }
 
 export function planWorkEntryRenderChunks(
@@ -99,55 +96,36 @@ export function planWorkEntryRenderChunks(
   const chunks = chunkWorkEntries(entries);
   return chunks.map((chunk, index) => {
     const entries = chunk.kind === "item" ? [chunk.entry] : chunk.entries;
-    const isLiveTail = options.tailIsLive && index === chunks.length - 1;
-    const summary = summarizeToolCallGroup(entries, {
-      includeSingleEntry: isLiveTail || entries.some((entry) => entry.toolStatus === "running"),
-    });
-    const collapsed = summary !== null && !summary.hasRunningEntry && !isLiveTail;
     return {
       id: chunk.id,
       entries,
-      summary: collapsed ? summary : null,
-      liveEntry: summary !== null && !collapsed ? pickLiveToolEntry(entries) : null,
+      summary: chunk.kind === "tool-group" ? summarizeToolCallGroup(entries) : null,
+      live:
+        (options.tailIsLive && index === chunks.length - 1) ||
+        entries.some((entry) => entry.toolStatus === "running"),
     };
   });
 }
 
-export function isFoldedWorkEntryChunk(chunk: WorkEntryRenderPlanChunk): boolean {
-  return chunk.summary !== null || chunk.liveEntry !== null;
-}
-
-export function resolveWorkEntryChunkFold(
-  chunk: WorkEntryRenderPlanChunk,
-): { summary: ToolCallGroupSummary; entries: WorkLogEntry[]; keySuffix: string } | null {
-  if (chunk.summary !== null) {
-    return { summary: chunk.summary, entries: chunk.entries, keySuffix: "" };
-  }
-  const liveSummary = chunk.liveEntry
-    ? summarizeToolCallGroup(chunk.entries, { includeSingleEntry: true })
-    : null;
-  if (!liveSummary) return null;
-  return {
-    summary: liveSummary,
-
-    entries: chunk.entries.filter(
-      (entry) =>
-        liveSummary.entryCount === 1 || entry !== chunk.liveEntry || workEntryRowCount(entry) > 1,
-    ),
-    keySuffix: ":live",
-  };
-}
-
-export function findLastLiveWorkGroupId(rows: ReadonlyArray<MessagesTimelineRow>): string | null {
+// Only the active turn's trailing group is live. While a new turn is being requested the previous
+// turn's group is still the trailing one, and treating it as live would briefly unfold it.
+export function findLastLiveWorkGroupId(
+  rows: ReadonlyArray<MessagesTimelineRow>,
+  activeTurnId: TurnId | null,
+): string | null {
+  const belongsToActiveTurn = (entries: ReadonlyArray<WorkLogEntry> | undefined) =>
+    activeTurnId !== null && (entries ?? []).some((entry) => entry.turnId === activeTurnId);
   for (let index = rows.length - 1; index >= 0; index -= 1) {
     const row = rows[index]!;
     if (row.kind === "work") {
-      return row.id;
+      return belongsToActiveTurn(row.groupedEntries) ? row.id : null;
     }
     if (row.kind === "message") {
-      const groupId = row.inlineWorkGroupId ?? row.leadingWorkGroupId;
-      if (groupId) {
-        return groupId;
+      if (row.inlineWorkGroupId) {
+        return belongsToActiveTurn(row.inlineWorkEntries) ? row.inlineWorkGroupId : null;
+      }
+      if (row.leadingWorkGroupId) {
+        return belongsToActiveTurn(row.leadingWorkEntries) ? row.leadingWorkGroupId : null;
       }
 
       if (row.message.role === "user") {

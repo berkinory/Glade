@@ -7,9 +7,7 @@ import {
   ENVIRONMENT_CONTENT_INSET_MOTION_CLASS,
 } from "~/components/chat/composerPickerStyles";
 import {
-  isFoldedWorkEntryChunk,
   planWorkEntryRenderChunks,
-  resolveWorkEntryChunkFold,
   type MessagesTimelineRow,
 } from "~/components/chat/MessagesTimeline.logic.rowTypes";
 
@@ -146,30 +144,28 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
           );
           const isLiveGroup =
             groupId === lastLiveWorkGroupId && (activeTurnInProgress || isWorking);
-          const plannedRenderChunks = planWorkEntryRenderChunks(groupedEntries, {
+          const renderChunks = planWorkEntryRenderChunks(groupedEntries, {
             tailIsLive: isLiveGroup,
           });
-          const renderChunks = plannedRenderChunks;
-          const hasCollapsedChunk = renderChunks.some(isFoldedWorkEntryChunk);
-          if (hasCollapsedChunk) {
+          if (renderChunks.some((chunk) => chunk.summary !== null)) {
             return (
               <div>
                 <div className="space-y-0.5">
                   {renderChunks.map((chunk) => {
-                    const fold = resolveWorkEntryChunkFold(chunk);
-                    if (!fold) return chunk.entries.map(renderEntryRow);
-                    const summaryKey = `${groupId}:${chunk.id}${fold.keySuffix}`;
+                    const summary = chunk.summary;
+                    if (!summary) return chunk.entries.map(renderEntryRow);
+                    const summaryKey = `${groupId}:${chunk.id}`;
                     return (
                       <ToolCallGroupSummaryRow
                         key={`tool-summary:${groupId}:${chunk.id}`}
-                        summary={fold.summary}
-                        liveEntry={chunk.liveEntry}
-                        open={toolGroupSummaryOverrides[summaryKey] ?? false}
+                        summary={summary}
+                        live={chunk.live}
+                        open={toolGroupSummaryOverrides[summaryKey] ?? chunk.live}
                         onToggle={(open) => setToolGroupSummaryOpen(summaryKey, open)}
                         fontSizePx={normalizedChatFontSizePx}
                         renderChildren={() => (
                           <div className="space-y-0.5 pt-0.5">
-                            {fold.entries.map(renderEntryRow)}
+                            {chunk.entries.map(renderEntryRow)}
                           </div>
                         )}
                       />
