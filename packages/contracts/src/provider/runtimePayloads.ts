@@ -139,6 +139,12 @@ export type ThreadRealtimeClosedPayload = typeof ThreadRealtimeClosedPayload.Typ
 
 export const TurnStartedPayload = Schema.Struct({
   backgroundParentTurnId: Schema.optional(TurnId),
+  backgroundReplySource: Schema.optional(
+    Schema.Struct({
+      providerThreadId: TrimmedNonEmptyStringSchema,
+      nickname: TrimmedNonEmptyStringSchema,
+    }),
+  ),
   model: Schema.optional(TrimmedNonEmptyStringSchema),
   effort: Schema.optional(TrimmedNonEmptyStringSchema),
 });

@@ -1,6 +1,4 @@
-import { ThreadId, type TurnId } from "@glade/contracts/core/baseSchemas";
-import type { OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
-import { asObjectRecord } from "@glade/shared/transport/payloadValues";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import type { WorkLogEntry, WorkLogSubagent } from "../../workLog.types";
 import {
@@ -121,50 +119,24 @@ function collectSubagentStripItems(
   entries: ReadonlyArray<WorkLogEntry>,
   backgroundedThreadIds: ReadonlySet<string>,
   viewedThreadId: ThreadId | null,
-  completedTurns: ReadonlyMap<TurnId, number>,
 ): ComposerSubagentStripItem[] {
   const subagentByKey = new Map<string, WorkLogSubagent>();
-  const lastUseByKey = new Map<string, { at: number; turnId: TurnId | null }>();
-  const inactiveSinceByKey = new Map<string, number>();
   for (const entry of entries) {
     for (const subagent of entry.subagents ?? []) {
       const key = subagentKey(subagent);
       const previous = subagentByKey.get(key);
       subagentByKey.set(key, previous ? mergeSubagentSnapshots(previous, subagent) : subagent);
-      const at = Date.parse(entry.createdAt);
-      const action = entry.subagentAction?.tool.toLowerCase().replace(/[^a-z]/g, "");
-      if (
-        !previous ||
-        action === "spawnagent" ||
-        action === "sendinput" ||
-        action === "resumeagent"
-      ) {
-        lastUseByKey.set(key, { at, turnId: entry.turnId ?? null });
-      }
-      const terminal = normalizeSubagentStatusKind(subagent.rawStatus);
-      if (
-        (terminal === "completed" || terminal === "failed" || terminal === "stopped") &&
-        terminal !== normalizeSubagentStatusKind(previous?.rawStatus)
-      ) {
-        inactiveSinceByKey.set(key, at);
-      }
     }
   }
   return [...subagentByKey.entries()].flatMap(([key, subagent]) => {
     const item = toStripItem(key, subagent, backgroundedThreadIds, viewedThreadId);
     if (item.isActive || item.statusKind === "queued" || subagent.hasPendingInteraction)
       return [item];
-    const lastUse = lastUseByKey.get(key)!;
-    const inactiveSince = Math.max(
-      lastUse.at,
-      inactiveSinceByKey.get(key) ?? 0,
-      subagent.lastCompletedAt ? Date.parse(subagent.lastCompletedAt) : 0,
-    );
-    // Metadata, waiting and duplicate completion events never reset the inactivity window.
-    const idleTurns = [...completedTurns].filter(
-      ([turnId, completedAt]) => turnId !== lastUse.turnId && completedAt > inactiveSince,
-    ).length;
-    return idleTurns < 3 ? [item] : [];
+    return item.statusKind === "completed" ||
+      item.statusKind === "failed" ||
+      item.statusKind === "stopped"
+      ? []
+      : [item];
   });
 }
 
@@ -204,7 +176,6 @@ function withParentRow(
 
 export function deriveComposerSubagentStripItems(input: {
   workEntries: ReadonlyArray<WorkLogEntry>;
-  parentActivities: ReadonlyArray<OrchestrationThreadActivity>;
 
   backgroundedProviderThreadIds?: ReadonlySet<string>;
 
@@ -221,22 +192,11 @@ export function deriveComposerSubagentStripItems(input: {
 
   const backgroundedThreadIds = input.backgroundedProviderThreadIds ?? NO_BACKGROUNDED_THREAD_IDS;
   const viewedThreadId = input.viewedThreadId ?? null;
-  const completedTurns = new Map<TurnId, number>();
-  for (const activity of input.parentActivities) {
-    if (
-      activity.kind === "turn.completed" &&
-      activity.turnId &&
-      asObjectRecord(activity.payload)?.state === "completed"
-    ) {
-      completedTurns.set(activity.turnId, Date.parse(activity.createdAt));
-    }
-  }
 
   const items = collectSubagentStripItems(
     entriesWithSubagents,
     backgroundedThreadIds,
     viewedThreadId,
-    completedTurns,
   );
   return withParentRow(items, input.parentRow);
 }

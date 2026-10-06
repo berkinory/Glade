@@ -27,6 +27,7 @@ import {
   ChartAreaIcon,
 } from "~/lib/icons";
 import type { IconComponent } from "~/lib/iconComponent";
+import { SubagentReplyNotice } from "./SubagentReplyNotice";
 import { ProviderTransitionDivider } from "./ProviderTransitionDivider";
 import type { TimestampFormat } from "../../appSettings";
 import type { AgentActivityDetail } from "./agentActivity.logic";
@@ -557,6 +558,8 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
   const prefetchReadFile =
     readFilePath && opener?.prefetchFile ? () => opener.prefetchFile?.(readFilePath) : undefined;
   const rowFontSizePx = textFontSizePx;
+  if (workEntry.activityKind === "response.started")
+    return <SubagentReplyNotice entry={workEntry} />;
   if (workEntry.activityKind === "provider.transition")
     return <ProviderTransitionDivider entry={workEntry} detailContent={activityContent} />;
   return (

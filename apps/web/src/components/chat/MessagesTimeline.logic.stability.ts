@@ -162,6 +162,8 @@ function workLogEntryContentEqual(a: WorkLogEntry, b: WorkLogEntry): boolean {
     a.itemType === b.itemType &&
     a.requestKind === b.requestKind &&
     a.activityKind === b.activityKind &&
+    a.replySource?.threadId === b.replySource?.threadId &&
+    a.replySource?.nickname === b.replySource?.nickname &&
     a.toolName === b.toolName &&
     a.toolCallId === b.toolCallId &&
     a.toolStatus === b.toolStatus &&

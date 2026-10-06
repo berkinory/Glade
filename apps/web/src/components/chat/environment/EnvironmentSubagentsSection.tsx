@@ -149,7 +149,6 @@ export function EnvironmentSubagentsSection({
   if (!root || !shells) return null;
   const details = deriveComposerSubagentStripItems({
     workEntries: enrichSubagentWorkEntries(entries, relevantThreads, root.id),
-    parentActivities: rootThread?.activities ?? [],
     backgroundedProviderThreadIds: NO_BACKGROUND_IDS,
   }).filter((item): item is ComposerSubagentStripItem => item.kind === "subagent");
   const detailById = new Map(

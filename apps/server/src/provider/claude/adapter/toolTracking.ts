@@ -221,7 +221,12 @@ export function makeClaudeToolTracking(input: {
         turnId,
         payload:
           context.backgroundReplySourceTurnId && !context.subagentRefs
-            ? { backgroundParentTurnId: context.backgroundReplySourceTurnId }
+            ? {
+                backgroundParentTurnId: context.backgroundReplySourceTurnId,
+                ...(context.backgroundReplySource
+                  ? { backgroundReplySource: context.backgroundReplySource }
+                  : {}),
+              }
             : {},
         providerRefs: {
           ...nativeProviderRefs(context),
@@ -232,7 +237,12 @@ export function makeClaudeToolTracking(input: {
           method: "claude/synthetic-turn-start",
           payload:
             context.backgroundReplySourceTurnId && !context.subagentRefs
-              ? { backgroundParentTurnId: context.backgroundReplySourceTurnId }
+              ? {
+                  backgroundParentTurnId: context.backgroundReplySourceTurnId,
+                  ...(context.backgroundReplySource
+                    ? { backgroundReplySource: context.backgroundReplySource }
+                    : {}),
+                }
               : {},
         },
       });

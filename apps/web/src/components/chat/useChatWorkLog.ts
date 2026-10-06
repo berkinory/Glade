@@ -261,20 +261,13 @@ export function useChatWorkLog({
     () =>
       deriveComposerSubagentStripItems({
         workEntries: stripWorkLogEntries,
-        parentActivities: stripSourceActivities,
         backgroundedProviderThreadIds: backgroundedSubagentToolUseIds,
         viewedThreadId: stripParentThread ? (activeThread?.id ?? null) : null,
         parentRow: stripParentThread
           ? { threadId: stripParentThread.id, label: stripParentThread.title ?? null }
           : null,
       }),
-    [
-      activeThread?.id,
-      backgroundedSubagentToolUseIds,
-      stripSourceActivities,
-      stripParentThread,
-      stripWorkLogEntries,
-    ],
+    [activeThread?.id, backgroundedSubagentToolUseIds, stripParentThread, stripWorkLogEntries],
   );
 
   const workflowSubagentThreadsByToolUseId = useMemo(() => {

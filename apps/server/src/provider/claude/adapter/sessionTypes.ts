@@ -188,6 +188,7 @@ export interface ClaudeSessionTurn {
   settledReasoningMessageIds?: Set<string>;
   authenticationInProgress?: boolean;
   backgroundReplySourceTurnId?: TurnId;
+  backgroundReplySource?: { providerThreadId: string; nickname: string };
   taskTurnIds?: Map<string, TurnId>;
   toolTurnIds?: Map<string, TurnId>;
   nativeSessionState?: "ready" | "running" | "waiting";

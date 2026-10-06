@@ -1,3 +1,4 @@
+import { subagentName } from "@glade/shared/threads/subagentName";
 import { makeClaudeInteractionSettlement } from "./interactionSettlement";
 import { makeClaudeWorkflowRuntime } from "./workflowRuntime";
 import { Effect, FileSystem } from "effect";
@@ -496,7 +497,19 @@ export function makeClaudeSystemMessages(input: {
           if (context.terminalTaskIds.has(message.task_id)) return;
           context.terminalTaskIds.add(message.task_id);
           const ownerTurnId = context.taskTurnIds?.get(message.task_id) ?? context.lastTurnId;
-          if (ownerTurnId) context.backgroundReplySourceTurnId = ownerTurnId;
+          const run = subagentRunForTask(context, message.tool_use_id, message.task_id);
+          if (ownerTurnId) {
+            context.backgroundReplySourceTurnId = ownerTurnId;
+            const providerThreadId = run?.toolUseId ?? message.tool_use_id;
+            if (providerThreadId) {
+              context.backgroundReplySource = {
+                providerThreadId,
+                nickname: subagentName(providerThreadId),
+              };
+            } else {
+              delete context.backgroundReplySource;
+            }
+          }
           yield* settlePendingHumanInteractionsForAgent(context, message.task_id);
           context.knownBackgroundTaskIds.delete(message.task_id);
           const workflowTaskId = context.workflowTaskIdByMemberTaskId.get(message.task_id);
@@ -544,7 +557,6 @@ export function makeClaudeSystemMessages(input: {
           context.workflowTaskIdByMemberTaskId.delete(message.task_id);
           context.workflowRuntimeStates.delete(message.task_id);
           yield* stopWorkflowRuntimePoller(context, message.task_id);
-          const run = subagentRunForTask(context, message.tool_use_id, message.task_id);
           if (run) {
             context.subagentRuns.delete(run.toolUseId);
             context.pendingSubagentStops.delete(run.toolUseId);

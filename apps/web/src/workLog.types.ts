@@ -86,6 +86,8 @@ export interface WorkLogEntry {
     stage: HandoffTransitionStage;
   };
 
+  replySource?: { threadId: string; nickname: string };
+
   activityKind?: OrchestrationThreadActivity["kind"];
 
   nativeEventType?: string;

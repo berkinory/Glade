@@ -372,6 +372,7 @@ export function makeClaudeTurnDispatch(input: {
       yield* Effect.uninterruptible(
         Effect.gen(function* () {
           delete context.backgroundReplySourceTurnId;
+          delete context.backgroundReplySource;
           context.turnState = turnState;
           context.lastTurnId = turnId;
           context.session = {

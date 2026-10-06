@@ -396,6 +396,13 @@ function normalizeWorkLogActivity(activity: OrchestrationThreadActivity): Derive
     ...(toolCallId ? { toolCallId } : {}),
     ...(toolStatus ? { toolStatus } : {}),
   };
+  if (activity.kind === "response.started") {
+    const source = asObjectRecord(payload?.replySource);
+    const threadId = nonEmptyTrimmed(source?.threadId);
+    const nickname = nonEmptyTrimmed(source?.nickname);
+    if (threadId && nickname) entry.replySource = { threadId, nickname };
+    else entry.label = "Subagent reply";
+  }
   if (activity.kind === VISUAL_REPLY_ACTIVITY_KIND) {
     const reply = Schema.decodeUnknownOption(VisualReply)(activity.payload);
     if (Option.isSome(reply)) entry.visualReply = reply.value;

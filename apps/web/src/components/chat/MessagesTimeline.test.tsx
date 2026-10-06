@@ -111,7 +111,7 @@ it("preserves separate background replies, clocks and checkpoints without user m
               entry: {
                 id: `boundary-${index}`,
                 createdAt: message.createdAt.replace(":10.", ":00."),
-                label: "Background reply",
+                label: "Subagent reply",
                 tone: "info" as const,
                 activityKind: "response.started",
                 turnId: message.turnId,

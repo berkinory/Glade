@@ -94,8 +94,20 @@ export function projectProviderRuntimeActivities(
               createdAt: event.createdAt,
               tone: "info",
               kind: "response.started",
-              summary: "Background reply",
-              payload: { backgroundParentTurnId: event.payload.backgroundParentTurnId },
+              summary: event.payload.backgroundReplySource
+                ? `Reply from ${event.payload.backgroundReplySource.nickname}`
+                : "Subagent reply",
+              payload: {
+                backgroundParentTurnId: event.payload.backgroundParentTurnId,
+                ...(event.payload.backgroundReplySource
+                  ? {
+                      replySource: {
+                        threadId: `subagent:${event.threadId}:${event.payload.backgroundReplySource.providerThreadId}`,
+                        nickname: event.payload.backgroundReplySource.nickname,
+                      },
+                    }
+                  : {}),
+              },
               turnId: toTurnId(event.turnId) ?? null,
               ...maybeSequence,
             },
