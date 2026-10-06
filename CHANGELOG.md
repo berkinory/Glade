@@ -32,6 +32,7 @@
 - Chats show why they are blocked by a provider delivery failure as soon as it happens, including after a restart.
 - Very large code blocks in chat no longer freeze the window.
 - The file explorer shows a loading state while a folder opens instead of briefly showing it empty.
+- The Windows taskbar icon recovers if its first-launch setup is interrupted.
 
 ### Removed
 

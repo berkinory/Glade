@@ -20,13 +20,23 @@ function logShellEnvironmentWarning(message: string, error?: unknown): void {
 // whether they may skip their own probe, so a failed probe here must let them run theirs.
 export interface ShellEnvironmentSyncResult {
   readonly pathHydrated: boolean;
+  readonly durationMs: number;
+}
+
+interface ShellEnvironmentSyncOptions {
+  platform?: NodeJS.Platform;
+  readEnvironment?: ShellEnvironmentReader;
+  readLaunchctlPath?: typeof readPathFromLaunchctl;
+  readWindowsEnvironment?: WindowsEnvironmentReader;
+  userShell?: string;
+  logWarning?: (message: string, error?: unknown) => void;
 }
 
 function syncWindowsEnvironment(
   env: NodeJS.ProcessEnv,
   readWindowsEnvironment: WindowsEnvironmentReader,
   logWarning: (message: string, error?: unknown) => void,
-): ShellEnvironmentSyncResult {
+): boolean {
   try {
     const persisted = readWindowsEnvironment();
 
@@ -42,24 +52,26 @@ function syncWindowsEnvironment(
       }
     }
 
-    return { pathHydrated: Boolean(persisted.PATH) };
+    return Boolean(persisted.PATH);
   } catch (error) {
     logWarning("Failed to synchronize the desktop Windows environment.", error);
-    return { pathHydrated: false };
+    return false;
   }
 }
 
 export function syncShellEnvironment(
   env: NodeJS.ProcessEnv = process.env,
-  options: {
-    platform?: NodeJS.Platform;
-    readEnvironment?: ShellEnvironmentReader;
-    readLaunchctlPath?: typeof readPathFromLaunchctl;
-    readWindowsEnvironment?: WindowsEnvironmentReader;
-    userShell?: string;
-    logWarning?: (message: string, error?: unknown) => void;
-  } = {},
+  options: ShellEnvironmentSyncOptions = {},
 ): ShellEnvironmentSyncResult {
+  const startedAt = performance.now();
+  const pathHydrated = hydrateShellEnvironment(env, options);
+  return { pathHydrated, durationMs: Math.round(performance.now() - startedAt) };
+}
+
+function hydrateShellEnvironment(
+  env: NodeJS.ProcessEnv,
+  options: ShellEnvironmentSyncOptions,
+): boolean {
   const platform = options.platform ?? process.platform;
   const logWarning = options.logWarning ?? logShellEnvironmentWarning;
 
@@ -71,7 +83,7 @@ export function syncShellEnvironment(
     );
   }
 
-  if (platform !== "darwin" && platform !== "linux") return { pathHydrated: false };
+  if (platform !== "darwin" && platform !== "linux") return false;
 
   const readEnvironment =
     options.readEnvironment ?? createCachedLoginShellEnvironmentReader({ env, platform });
@@ -115,9 +127,9 @@ export function syncShellEnvironment(
       }
     }
 
-    return { pathHydrated: Boolean(resolvedPath) };
+    return Boolean(resolvedPath);
   } catch (error) {
     logWarning("Failed to synchronize the desktop shell environment.", error);
-    return { pathHydrated: false };
+    return false;
   }
 }

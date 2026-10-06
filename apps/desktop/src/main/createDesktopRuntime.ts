@@ -1,13 +1,16 @@
 import { configureElectronNetwork } from "betterwright/electron";
 import { app, BrowserWindow, protocol } from "electron";
-import * as Path from "node:path";
 import { isBackendReadinessAborted } from "../backend/backendReadiness";
 import { createBackendSupervisor } from "../backend/backendSupervisor";
 import { createDesktopBrowserServices } from "../browser/desktopBrowserServices";
 import { LOCAL_HTML_PREVIEW_SCHEME } from "../browser/localHtmlPreviewProtocol";
 import { createDesktopComputerSetup } from "../computer/desktopComputerSetup";
-import { ensureWindowsShellAppUserModelHelper } from "../windowsShell/windowsShellAppUserModel";
-import { DESKTOP_SCHEME, isDevelopment, STATE_DIR, userDataPath } from "./desktopEnvironment";
+import {
+  DESKTOP_SCHEME,
+  isDevelopment,
+  shellEnvironmentSync,
+  userDataPath,
+} from "./desktopEnvironment";
 import { createRegisterDesktopIpc } from "./ipc/registerDesktopIpc";
 import {
   createDesktopLogging,
@@ -27,6 +30,9 @@ import { createMainWindow } from "./window/mainWindow";
 
 export function createDesktopRuntime(): void {
   const log = createDesktopLogging();
+  log.writeDesktopLogHeader(
+    `shell environment sync platform=${process.platform} pathHydrated=${shellEnvironmentSync.pathHydrated} durationMs=${shellEnvironmentSync.durationMs}`,
+  );
   const resources = createDesktopResources(log, {
     isQuitting: () => lifecycle.isQuitting(),
     markQuitting: () => lifecycle.markQuitting(),
@@ -214,15 +220,6 @@ export function createDesktopRuntime(): void {
       .then(() => {
         log.writeDesktopLogHeader("app ready");
         identity.configureAppIdentity();
-        if (process.platform === "win32") {
-          try {
-            ensureWindowsShellAppUserModelHelper(Path.join(STATE_DIR, "taskbar-icons"));
-          } catch (error) {
-            console.warn(
-              `[desktop] Failed to prepare Windows shell icon helper: ${formatErrorMessage(error)}`,
-            );
-          }
-        }
         identity.applyInitialMacDockIcon();
         identity.refreshMacIconCacheOnVersionChange();
         configureMediaPermissions(windows.getMainWindow);

@@ -248,14 +248,14 @@ export function createAppIdentity(
     resolve?.();
   }
 
-  function stampWindowsShellAppUserModel(
+  async function stampWindowsShellAppUserModel(
     input: Parameters<typeof applyWindowsShellAppUserModel>[0],
     options?: {
       flush?: boolean;
     },
-  ): void {
+  ): Promise<void> {
     try {
-      applyWindowsShellAppUserModel(input, Path.join(STATE_DIR, "taskbar-icons"), options);
+      await applyWindowsShellAppUserModel(input, Path.join(STATE_DIR, "taskbar-icons"), options);
     } catch (error) {
       console.warn(
         `[desktop] Failed to stamp Windows AppUserModel icon properties: ${formatErrorMessage(error)}`,
@@ -272,16 +272,14 @@ export function createAppIdentity(
   ): Promise<void> {
     cancelDeferredWindowsShellStamp();
     if (options?.immediate === true) {
-      stampWindowsShellAppUserModel(input, options);
-      return Promise.resolve();
+      return stampWindowsShellAppUserModel(input, options);
     }
     return new Promise((resolve) => {
       windowsShellStampResolve = resolve;
       windowsShellStampTimer = setImmediate(() => {
         windowsShellStampTimer = null;
         windowsShellStampResolve = null;
-        stampWindowsShellAppUserModel(input, options);
-        resolve();
+        void stampWindowsShellAppUserModel(input, options).then(resolve);
       });
     });
   }

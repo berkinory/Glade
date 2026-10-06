@@ -2,6 +2,7 @@ import * as ChildProcess from "node:child_process";
 import * as Crypto from "node:crypto";
 import * as FS from "node:fs";
 import * as Path from "node:path";
+import { execProcessFile } from "@glade/shared/platform/processRuntime";
 
 const APPUSERMODEL_FMTID = "9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3";
 
@@ -236,6 +237,7 @@ export interface ApplyWindowsShellAppUserModelOptions {
 }
 
 const WINDOWS_SHELL_HELPER_TIMEOUT_MS = 2500;
+const WINDOWS_SHELL_HELPER_COMPILE_TIMEOUT_MS = 60_000;
 
 function windowsShellIconResource(iconPath: string, iconIndex = 0): string {
   return `${iconPath},${iconIndex}`;
@@ -269,41 +271,79 @@ function resolveCscCompiler(exists: (path: string) => boolean = FS.existsSync): 
   return null;
 }
 
-export function ensureWindowsShellAppUserModelHelper(cacheDirectory: string): string {
-  FS.mkdirSync(cacheDirectory, { recursive: true });
-  const exePath = Path.join(cacheDirectory, windowsShellAppUserModelHelperName());
-  if (FS.existsSync(exePath)) return exePath;
+const compiledHelpers = new Map<string, Promise<string>>();
+
+// csc writes /out incrementally, so a killed or interrupted compile would leave a truncated exe that
+// existsSync accepts on every later launch. Compile to a private temp path and rename it into place.
+async function compileWindowsShellAppUserModelHelper(
+  cacheDirectory: string,
+  exePath: string,
+): Promise<string> {
   const csc = resolveCscCompiler();
   if (!csc) throw new Error("csc.exe not found");
-  const csPath = Path.join(cacheDirectory, "windows-shell-appusermodel.cs");
-  FS.writeFileSync(csPath, WINDOWS_SHELL_APPUSERMODEL_SOURCE, "utf8");
-  const compiled = ChildProcess.spawnSync(
-    csc,
-    [
-      "/nologo",
-      "/target:exe",
-      "/platform:x64",
-      `/main:Glade.ShellAppUserModel`,
-      `/out:${exePath}`,
-      csPath,
-    ],
-    { windowsHide: true, encoding: "utf8" },
-  );
-  if (compiled.status !== 0 || !FS.existsSync(exePath)) {
-    throw new Error(compiled.stderr?.toString().trim() || "Failed to compile Windows shell helper");
+  const suffix = `${process.pid}-${Crypto.randomBytes(4).toString("hex")}`;
+  const csPath = Path.join(cacheDirectory, `windows-shell-appusermodel-${suffix}.cs`);
+  const tempExePath = `${exePath}.${suffix}.tmp`;
+  try {
+    await FS.promises.writeFile(csPath, WINDOWS_SHELL_APPUSERMODEL_SOURCE, "utf8");
+    await new Promise<void>((resolve, reject) => {
+      execProcessFile(
+        csc,
+        [
+          "/nologo",
+          "/target:exe",
+          "/platform:x64",
+          `/main:Glade.ShellAppUserModel`,
+          `/out:${tempExePath}`,
+          csPath,
+        ],
+        { encoding: "utf8", timeout: WINDOWS_SHELL_HELPER_COMPILE_TIMEOUT_MS },
+        (error, stdout, stderr) => {
+          if (error) {
+            reject(new Error(stderr.trim() || stdout.trim() || error.message));
+            return;
+          }
+          resolve();
+        },
+      );
+    });
+    try {
+      await FS.promises.rename(tempExePath, exePath);
+    } catch (error) {
+      // Another launch may have installed (and be running) the same helper meanwhile.
+      if (!FS.existsSync(exePath)) throw error;
+    }
+    return exePath;
+  } finally {
+    await Promise.all([
+      FS.promises.rm(csPath, { force: true }),
+      FS.promises.rm(tempExePath, { force: true }),
+    ]);
   }
-  return exePath;
 }
 
-export function applyWindowsShellAppUserModel(
+function ensureWindowsShellAppUserModelHelper(cacheDirectory: string): Promise<string> {
+  const existing = compiledHelpers.get(cacheDirectory);
+  if (existing) return existing;
+  const exePath = Path.join(cacheDirectory, windowsShellAppUserModelHelperName());
+  const compiled = (async () => {
+    await FS.promises.mkdir(cacheDirectory, { recursive: true });
+    if (FS.existsSync(exePath)) return exePath;
+    return compileWindowsShellAppUserModelHelper(cacheDirectory, exePath);
+  })();
+  compiledHelpers.set(cacheDirectory, compiled);
+  compiled.catch(() => compiledHelpers.delete(cacheDirectory));
+  return compiled;
+}
+
+export async function applyWindowsShellAppUserModel(
   input: WindowsShellAppUserModelInput,
   cacheDirectory: string,
   _options?: ApplyWindowsShellAppUserModelOptions,
-): void {
-  const helper = ensureWindowsShellAppUserModelHelper(cacheDirectory);
+): Promise<void> {
   const iconResource = windowsShellIconResource(input.iconPath);
   const hwnd = input.hwnd === undefined || input.hwnd === null ? "-" : String(input.hwnd);
-  runHelper(helper, [
+  const args = [
     "apply",
     input.appId,
     iconResource,
@@ -311,7 +351,22 @@ export function applyWindowsShellAppUserModel(
     input.displayName,
     hwnd,
     ...input.shortcutPaths,
-  ]);
+  ];
+  const helper = await ensureWindowsShellAppUserModelHelper(cacheDirectory);
+  try {
+    runHelper(helper, args);
+  } catch (error) {
+    if (!isUnlaunchableExecutableError(error)) throw error;
+    // A truncated helper left by an older interrupted compile cannot load; rebuild it once.
+    compiledHelpers.delete(cacheDirectory);
+    await FS.promises.rm(helper, { force: true });
+    runHelper(await ensureWindowsShellAppUserModelHelper(cacheDirectory), args);
+  }
+}
+
+function isUnlaunchableExecutableError(error: unknown): boolean {
+  const code = (error as NodeJS.ErrnoException | null)?.code;
+  return code === "EFTYPE" || code === "ENOEXEC" || code === "UNKNOWN";
 }
 
 function runHelper(helper: string, args: string[]): void {

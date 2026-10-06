@@ -664,12 +664,18 @@ export function createMainWindow({
     window.webContents.on("did-finish-load", notify);
   }
 
+  // Programmatic zoom emits no zoom-changed event, so the renderer's cached factor is pushed here.
+  function setWebContentsZoomFactor(webContents: Electron.WebContents, zoomFactor: number): void {
+    webContents.setZoomFactor(zoomFactor);
+    sendDesktopZoomFactor(webContents);
+  }
+
   function adjustWebContentsZoom(webContents: Electron.WebContents, multiplier: number): void {
     const nextZoomFactor = Math.min(
       DESKTOP_MENU_MAX_ZOOM_FACTOR,
       Math.max(DESKTOP_MENU_MIN_ZOOM_FACTOR, webContents.getZoomFactor() * multiplier),
     );
-    webContents.setZoomFactor(nextZoomFactor);
+    setWebContentsZoomFactor(webContents, nextZoomFactor);
   }
 
   function handleDesktopPhysicalZoomShortcut(
@@ -684,6 +690,7 @@ export function createMainWindow({
 
     event.preventDefault();
     applyDesktopPhysicalZoomAction(target, action);
+    sendDesktopZoomFactor(target);
     return true;
   }
 
@@ -713,7 +720,7 @@ export function createMainWindow({
 
     event.preventDefault();
     if (action === "resetZoom") {
-      target.setZoomFactor(1);
+      setWebContentsZoomFactor(target, 1);
     } else {
       adjustWebContentsZoom(
         target,
@@ -724,7 +731,8 @@ export function createMainWindow({
   }
 
   function resetWindowZoomFromMenu(): void {
-    resolveMenuTargetWindow()?.webContents.setZoomFactor(1);
+    const webContents = resolveMenuTargetWindow()?.webContents;
+    if (webContents) setWebContentsZoomFactor(webContents, 1);
   }
 
   function adjustWindowZoomFromMenu(multiplier: number): void {
