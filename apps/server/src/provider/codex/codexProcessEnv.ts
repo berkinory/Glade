@@ -9,7 +9,26 @@ import {
   registerProviderCredentialKey,
 } from "../core/providerChildEnvironment.ts";
 
-const CODEX_PROCESS_SHELL_ENV_NAMES = ["PATH", "SSH_AUTH_SOCK"] as const;
+// Kept in memory only: the value is a provider API key and must never reach a disk cache.
+// Missing keys are memoized too, so a shell without the export is probed once per process.
+const loginShellProviderKeys = new Map<string, string | undefined>();
+
+function readProviderKeyFromLoginShell(
+  shell: string,
+  envKey: string,
+  readEnvironment: ShellEnvironmentReader,
+): string | undefined {
+  const memoKey = `${shell}\0${envKey}`;
+  if (loginShellProviderKeys.has(memoKey)) return loginShellProviderKeys.get(memoKey);
+  let value: string | undefined;
+  try {
+    value = readEnvironment(shell, [envKey])[envKey];
+  } catch {
+    value = undefined;
+  }
+  loginShellProviderKeys.set(memoKey, value);
+  return value;
+}
 
 export async function buildCodexProcessEnv(
   input: {
@@ -29,23 +48,20 @@ export async function buildCodexProcessEnv(
   const providerEnvKey = readActiveCodexProviderEnvKey(effectiveEnv);
   if (providerEnvKey) registerProviderCredentialKey(providerEnvKey);
 
-  if (platform === "darwin" || platform === "linux") {
-    try {
-      const shell = resolveLoginShell(platform, effectiveEnv.SHELL);
-      if (shell && providerEnvKey && !effectiveEnv[providerEnvKey]?.trim()) {
-        const shellEnvironment = (input.readEnvironment ?? readEnvironmentFromLoginShell)(shell, [
-          ...CODEX_PROCESS_SHELL_ENV_NAMES,
+  if (
+    providerEnvKey &&
+    !effectiveEnv[providerEnvKey]?.trim() &&
+    (platform === "darwin" || platform === "linux")
+  ) {
+    const shell = resolveLoginShell(platform, effectiveEnv.SHELL);
+    const value = shell
+      ? readProviderKeyFromLoginShell(
+          shell,
           providerEnvKey,
-        ]);
-        if (shellEnvironment.PATH) effectiveEnv.PATH = shellEnvironment.PATH;
-        if (!effectiveEnv.SSH_AUTH_SOCK && shellEnvironment.SSH_AUTH_SOCK) {
-          effectiveEnv.SSH_AUTH_SOCK = shellEnvironment.SSH_AUTH_SOCK;
-        }
-        if (shellEnvironment[providerEnvKey]) {
-          effectiveEnv[providerEnvKey] = shellEnvironment[providerEnvKey];
-        }
-      }
-    } catch {}
+          input.readEnvironment ?? readEnvironmentFromLoginShell,
+        )
+      : undefined;
+    if (value) effectiveEnv[providerEnvKey] = value;
   }
 
   return effectiveEnv;

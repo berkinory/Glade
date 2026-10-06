@@ -133,23 +133,26 @@ async function mapWithConcurrency<T, R>(
   return results.toSorted((left, right) => left.index - right.index).map((entry) => entry.value);
 }
 
+interface RecentFile {
+  readonly path: string;
+  readonly mtimeMs: number;
+  readonly size: number;
+}
+
 async function listRecentFiles(
   paths: ReadonlyArray<string>,
   maxFiles: number = MAX_RECENT_USAGE_FILES,
-): Promise<ReadonlyArray<string>> {
+): Promise<ReadonlyArray<RecentFile>> {
   const filesWithStats = await mapWithConcurrency(
     paths,
     PROVIDER_USAGE_FILE_READ_CONCURRENCY,
-    async (path) => ({
-      path,
-      mtimeMs: (await safeStat(path))?.mtimeMs ?? 0,
-    }),
+    async (path): Promise<RecentFile> => {
+      const stats = await safeStat(path);
+      return { path, mtimeMs: stats?.mtimeMs ?? 0, size: stats?.size ?? 0 };
+    },
   );
 
-  return filesWithStats
-    .toSorted((left, right) => right.mtimeMs - left.mtimeMs)
-    .slice(0, maxFiles)
-    .map((entry) => entry.path);
+  return filesWithStats.toSorted((left, right) => right.mtimeMs - left.mtimeMs).slice(0, maxFiles);
 }
 
 function buildUsageLines(input: {
@@ -227,7 +230,7 @@ async function listRecentCodexSessionFiles(sessionsRoot: string): Promise<Readon
     }
   }
 
-  return listRecentFiles(candidates);
+  return (await listRecentFiles(candidates)).map((file) => file.path);
 }
 
 async function readFileRange(
@@ -437,7 +440,7 @@ function resolveClaudeProjectsRoot(homeDir: string): string {
 async function listRecentClaudeTranscriptFiles(
   projectsRoot: string,
   maxFiles: number = MAX_RECENT_USAGE_FILES,
-): Promise<ReadonlyArray<string>> {
+): Promise<ReadonlyArray<RecentFile>> {
   const candidates: string[] = [];
   const projectEntries = await safeReadDir(projectsRoot);
 
@@ -462,8 +465,11 @@ async function listRecentClaudeTranscriptFiles(
 // so a few large transcripts are enough to exhaust old space and abort the backend. Stream chunks
 // and cap individual records so malformed or tool-heavy lines cannot recreate the same problem
 // inside a line reader.
-async function readClaudeUsageSamples(path: string): Promise<ReadonlyArray<ClaudeUsageSample>> {
+async function readClaudeUsageSamples(
+  path: string,
+): Promise<{ readonly samples: ReadonlyArray<ClaudeUsageSample>; readonly complete: boolean }> {
   const samples: ClaudeUsageSample[] = [];
+  let complete = true;
   const seenKeys = new Set<string>();
   const stream = createReadStream(path);
   let lineChunks: Buffer[] = [];
@@ -548,10 +554,35 @@ async function readClaudeUsageSamples(path: string): Promise<ReadonlyArray<Claud
       collectLine(Buffer.concat(lineChunks, lineBytes), lineIndex);
     }
   } catch {
+    complete = false;
   } finally {
     stream.destroy();
   }
 
+  return { samples, complete };
+}
+
+interface CachedClaudeTranscript {
+  readonly mtimeMs: number;
+  readonly size: number;
+  readonly samples: ReadonlyArray<ClaudeUsageSample>;
+}
+
+// Samples are deduplicated per transcript, so a file's samples depend only on its own bytes and
+// can be reused until its size or mtime changes.
+const claudeTranscriptSamples = new Map<string, CachedClaudeTranscript>();
+
+async function readCachedClaudeUsageSamples(
+  file: RecentFile,
+): Promise<ReadonlyArray<ClaudeUsageSample>> {
+  const cached = claudeTranscriptSamples.get(file.path);
+  if (cached && cached.mtimeMs === file.mtimeMs && cached.size === file.size) {
+    return cached.samples;
+  }
+  const { samples, complete } = await readClaudeUsageSamples(file.path);
+  if (complete) {
+    claudeTranscriptSamples.set(file.path, { mtimeMs: file.mtimeMs, size: file.size, samples });
+  }
   return samples;
 }
 
@@ -614,13 +645,19 @@ async function loadClaudeUsageSnapshot(input: { homeDir: string }): Promise<Usag
     return null;
   }
 
+  const lookbackStartMs = Date.now() - LOOKBACK_30D_MS;
   const usageSamples = (
     await mapWithConcurrency(
-      transcriptFiles,
+      // Every sample in a file predates its last write, so older files cannot reach the window.
+      transcriptFiles.filter((file) => file.mtimeMs >= lookbackStartMs),
       PROVIDER_USAGE_FILE_READ_CONCURRENCY,
-      readClaudeUsageSamples,
+      readCachedClaudeUsageSamples,
     )
   ).flat();
+  const listedPaths = new Set(transcriptFiles.map((file) => file.path));
+  for (const path of claudeTranscriptSamples.keys()) {
+    if (!listedPaths.has(path)) claudeTranscriptSamples.delete(path);
+  }
 
   if (usageSamples.length === 0) {
     return null;

@@ -67,19 +67,56 @@ export function collectDescendantProcesses(
   return descendants;
 }
 
+const PROCESS_TREE_SCAN_ARGS = ["-eo", "pid=,ppid=,lstart=,command="] as const;
+
+function processTreeScanOptions() {
+  return {
+    env: { ...process.env, LC_ALL: "C" },
+    encoding: "utf8",
+    maxBuffer: PROCESS_TREE_SCAN_MAX_BUFFER_BYTES,
+    timeout: PROCESS_TREE_SCAN_TIMEOUT_MS,
+  } as const;
+}
+
 function captureProcessChildrenMapSync(): ProcessChildrenMap | null {
   try {
-    const result = spawnProcessSync("ps", ["-eo", "pid=,ppid=,lstart=,command="], {
-      env: { ...process.env, LC_ALL: "C" },
-      encoding: "utf8",
-      maxBuffer: PROCESS_TREE_SCAN_MAX_BUFFER_BYTES,
-      timeout: PROCESS_TREE_SCAN_TIMEOUT_MS,
-    });
+    const result = spawnProcessSync("ps", PROCESS_TREE_SCAN_ARGS, processTreeScanOptions());
     if (result.error || result.status !== 0) return null;
     return parseProcessChildrenMap(result.stdout, true);
   } catch {
     return null;
   }
+}
+
+// A full scan takes tens of milliseconds on a loaded machine, so async teardown callers must not
+// block the event loop on it. The terminal's synchronous dispose path keeps the sync variant.
+function captureProcessChildrenMapAsync(): Promise<ProcessChildrenMap | null> {
+  return new Promise((resolve) => {
+    try {
+      execProcessFile(
+        "ps",
+        PROCESS_TREE_SCAN_ARGS,
+        { ...processTreeScanOptions(), killSignal: "SIGKILL" },
+        (error, stdout) => resolve(error ? null : parseProcessChildrenMap(stdout, true)),
+      );
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+function capturedTreeFromChildrenMap(
+  rootPid: number,
+  childrenByParentPid: ProcessChildrenMap | null,
+): CapturedProcessTree {
+  if (!childrenByParentPid) return { descendants: [], captureComplete: false };
+  if (!childrenByParentPid.has(rootPid) && !processesByPid(childrenByParentPid).has(rootPid)) {
+    return { descendants: [], captureComplete: true };
+  }
+  return {
+    descendants: collectDescendantProcesses(rootPid, childrenByParentPid),
+    captureComplete: true,
+  };
 }
 
 function readCurrentProcesses(pids: readonly number[]): ProcessIdentityMap | null {
@@ -181,15 +218,7 @@ export function createProcessTreeKiller(
       ) {
         childrenByParentPid = deps.captureChildrenMap();
       }
-      if (!childrenByParentPid) return { descendants: [], captureComplete: false };
-
-      if (!childrenByParentPid.has(rootPid) && !processesByPid(childrenByParentPid).has(rootPid)) {
-        return { descendants: [], captureComplete: true };
-      }
-      return {
-        descendants: collectDescendantProcesses(rootPid, childrenByParentPid),
-        captureComplete: true,
-      };
+      return capturedTreeFromChildrenMap(rootPid, childrenByParentPid);
     },
     inspect: (tree) => {
       if (tree.captureComplete === false) {
@@ -263,8 +292,18 @@ export async function captureProcessTree(
     return { descendants: [], captureComplete: false };
   }
   const platform = options.platform ?? process.platform;
-  const killer = options.processTreeKiller ?? defaultProcessTreeKiller;
-  if (platform !== "win32") return killer.capture(rootPid);
+  if (platform !== "win32") {
+    if (options.processTreeKiller) return options.processTreeKiller.capture(rootPid);
+    let childrenByParentPid: ProcessChildrenMap | null = null;
+    for (
+      let attempt = 0;
+      attempt < PROCESS_TREE_CAPTURE_ATTEMPTS && !childrenByParentPid;
+      attempt += 1
+    ) {
+      childrenByParentPid = await captureProcessChildrenMapAsync();
+    }
+    return capturedTreeFromChildrenMap(rootPid, childrenByParentPid);
+  }
 
   const childrenByParentPid = await (
     options.captureWindowsChildren ?? captureWindowsProcessChildrenMap

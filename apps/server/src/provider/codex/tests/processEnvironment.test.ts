@@ -28,7 +28,7 @@ describe("Codex launch environment", () => {
     }
   });
 
-  it("hydrates the active custom provider env_key from the effective CODEX_HOME", async () => {
+  it("hydrates only the active custom provider env_key from the login shell, once per process", async () => {
     const homePath = mkdtempSync(path.join(os.tmpdir(), "glade-codex-env-"));
     try {
       writeFileSync(
@@ -40,25 +40,21 @@ describe("Codex launch environment", () => {
           'env_key = "MY_COMPANY_PROXY_KEY"',
         ].join("\n"),
       );
-      const readEnvironment = vi.fn(() => ({
-        PATH: "/opt/homebrew/bin:/usr/bin",
-        SSH_AUTH_SOCK: "/tmp/ssh.sock",
-        MY_COMPANY_PROXY_KEY: "proxy-secret",
-      }));
-      const env = await buildCodexProcessEnv({
-        env: { SHELL: "/bin/zsh", PATH: "/usr/bin" },
-        homePath,
-        platform: "darwin",
-        readEnvironment,
-      });
-      expect(readEnvironment).toHaveBeenCalledWith("/bin/zsh", [
-        "PATH",
-        "SSH_AUTH_SOCK",
-        "MY_COMPANY_PROXY_KEY",
-      ]);
+      const readEnvironment = vi.fn(() => ({ MY_COMPANY_PROXY_KEY: "proxy-secret" }));
+      const build = () =>
+        buildCodexProcessEnv({
+          env: { SHELL: "/bin/zsh", PATH: "/usr/bin" },
+          homePath,
+          platform: "darwin",
+          readEnvironment,
+        });
+      const env = await build();
+      await build();
+      expect(readEnvironment).toHaveBeenCalledTimes(1);
+      expect(readEnvironment).toHaveBeenCalledWith("/bin/zsh", ["MY_COMPANY_PROXY_KEY"]);
       expect(env.CODEX_HOME).toBe(homePath);
       expect(env.MY_COMPANY_PROXY_KEY).toBe("proxy-secret");
-      expect(env.PATH).toBe("/opt/homebrew/bin:/usr/bin");
+      expect(env.PATH).toBe("/usr/bin");
     } finally {
       rmSync(homePath, { recursive: true, force: true });
     }

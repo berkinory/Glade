@@ -609,18 +609,6 @@ const makeWsRpcHandlersLayer = () =>
           );
         });
 
-      const stopLocalServerAndTrackedProjectRun = Effect.fnUntraced(function* (input: {
-        pid: number;
-        port: number;
-      }) {
-        const localServer =
-          (yield* Effect.promise(() => listLocalServers())).servers.find(
-            (server) => server.pid === input.pid && server.ports.includes(input.port),
-          ) ?? null;
-        const result = yield* Effect.promise(() => stopLocalServer(input, localServer));
-        return result;
-      });
-
       const loadServerConfig = Effect.gen(function* () {
         const keybindingsConfig = yield* keybindings.loadConfigState;
         const providerStatuses = yield* providerHealth.getStatuses;
@@ -634,7 +622,7 @@ const makeWsRpcHandlersLayer = () =>
           issues: keybindingsConfig.issues,
           providers: providerStatuses,
           gitTextGenerationProviders: textGenerationProviders.listProviders(),
-          availableEditors: resolveAvailableEditors(),
+          availableEditors: yield* Effect.promise(() => resolveAvailableEditors()),
         };
       });
 
@@ -1774,7 +1762,10 @@ const makeWsRpcHandlersLayer = () =>
             "Failed to list local servers",
           ),
         [WS_METHODS.serverStopLocalServer]: (input) =>
-          rpcEffect(stopLocalServerAndTrackedProjectRun(input), "Failed to stop local server"),
+          rpcEffect(
+            Effect.promise(() => stopLocalServer(input)),
+            "Failed to stop local server",
+          ),
         [WS_METHODS.statsGetProfileStats]: (input) =>
           rpcEffect(profileStatsQuery.getProfileStats(input), "Failed to load profile stats"),
         [WS_METHODS.statsGetProfileTokenStats]: (input) =>

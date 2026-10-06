@@ -72,6 +72,7 @@ import {
   writeProviderStatusCache,
 } from "../core/providerStatusCache";
 import { makeProviderMaintenanceCommandCoordinator } from "../core/providerMaintenanceCommandCoordinator";
+import { invalidateCliVersionGates } from "../core/cliVersionGate.ts";
 import {
   enrichProviderStatusWithVersionAdvisory,
   makeProviderMaintenanceCapabilities,
@@ -1672,6 +1673,8 @@ function makeProviderHealthLive(options?: { readonly providerUpdateTimeoutMs?: n
             ),
             waitForProviderDisablement.pipe(Effect.as({ _tag: "disabled" as const })),
           );
+          // Even a failed or interrupted update may have replaced the binary.
+          invalidateCliVersionGates();
           const finishedAt = yield* nowIso;
           if (commandOutcome._tag === "disabled") {
             const providers = yield* setProviderUpdateState(

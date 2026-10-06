@@ -515,7 +515,7 @@ async function resolveWindowsStoreEditorIconSource(input: {
     };
   };
 
-  const appxPackageDir = resolveWindowsStorePackageInstallLocation(
+  const appxPackageDir = await resolveWindowsStorePackageInstallLocation(
     packages,
     input.platform,
     input.env,

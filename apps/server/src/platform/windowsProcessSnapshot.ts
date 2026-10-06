@@ -22,7 +22,7 @@ $ErrorActionPreference = 'Stop'
 while (($request = [Console]::In.ReadLine()) -ne $null) {
   try {
     [Console]::Out.WriteLine('${SNAPSHOT_START_MARKER}')
-    Get-CimInstance Win32_Process -ErrorAction Stop | ForEach-Object {
+    Get-CimInstance Win32_Process -Property ProcessId,ParentProcessId,CreationDate,CommandLine,Name -ErrorAction Stop | ForEach-Object {
       $command = if ($_.CommandLine) { [string]$_.CommandLine } else { [string]$_.Name }
       $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($command))
       [Console]::Out.WriteLine(("{0}\t{1}\t{2}\t{3}" -f $_.ProcessId, $_.ParentProcessId, ([string]$_.CreationDate), $encoded))

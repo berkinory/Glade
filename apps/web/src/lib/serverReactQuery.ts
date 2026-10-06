@@ -257,8 +257,9 @@ export function serverProviderUsageSnapshotQueryOptions(input: {
   return queryOptions({
     queryKey: serverQueryKeys.providerUsage(input.provider, input.homePath),
     enabled: (input.enabled ?? true) && input.provider !== null && input.provider !== undefined,
-    staleTime: 30_000,
-    refetchInterval: 30_000,
+    // Longer than the server's 30s snapshot cache, so polls rarely land on a cached value.
+    staleTime: 60_000,
+    refetchInterval: 60_000,
     refetchOnWindowFocus: false,
     retry: false,
     queryFn: async () => {

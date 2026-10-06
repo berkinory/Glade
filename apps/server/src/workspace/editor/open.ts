@@ -273,10 +273,17 @@ function isCommandAvailable(command: string, options: CommandAvailabilityOptions
   return resolveExecutable(command, options) !== null;
 }
 
-export function resolveAvailableEditors(
-  platform: NodeJS.Platform = process.platform,
-  env: NodeJS.ProcessEnv = process.env,
-): ReadonlyArray<EditorId> {
+const AVAILABLE_EDITORS_TTL_MS = 30_000;
+let availableEditorsMemo: {
+  readonly key: string;
+  readonly expiresAt: number;
+  readonly value: Promise<ReadonlyArray<EditorId>>;
+} | null = null;
+
+async function discoverAvailableEditors(
+  platform: NodeJS.Platform,
+  env: NodeJS.ProcessEnv,
+): Promise<ReadonlyArray<EditorId>> {
   const available: EditorId[] = [];
 
   const resolve = createBatchExecutableResolver({ platform, env });
@@ -295,11 +302,11 @@ export function resolveAvailableEditors(
     }
 
     if (
-      resolveWindowsStorePackageInstallLocation(
+      (await resolveWindowsStorePackageInstallLocation(
         getEditorWindowsStorePackages(editor),
         platform,
         env,
-      ) !== null
+      )) !== null
     ) {
       available.push(editor.id);
       continue;
@@ -314,6 +321,21 @@ export function resolveAvailableEditors(
   }
 
   return available;
+}
+
+// Runs on every server-config subscription, so reconnect storms share one discovery.
+export function resolveAvailableEditors(
+  platform: NodeJS.Platform = process.platform,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<ReadonlyArray<EditorId>> {
+  const key = JSON.stringify([platform, env.PATH ?? env.Path ?? ""]);
+  const now = Date.now();
+  if (availableEditorsMemo?.key === key && availableEditorsMemo.expiresAt > now) {
+    return availableEditorsMemo.value;
+  }
+  const value = discoverAvailableEditors(platform, env);
+  availableEditorsMemo = { key, expiresAt: now + AVAILABLE_EDITORS_TTL_MS, value };
+  return value;
 }
 
 export interface OpenShape {

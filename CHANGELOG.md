@@ -20,6 +20,8 @@
 - Background remote refreshes never open credential prompts, run once per repository across worktrees, and no longer hold up local git status.
 - Diff totals stay responsive while agents create many new files.
 - Returning to Glade, scrolling the sidebar and agent tool runs trigger far fewer git and GitHub refreshes.
+- Claude sessions, forks and skill and agent lists start faster.
+- Usage indicators use far less CPU with large Claude histories.
 
 ### Fixed
 
@@ -38,6 +40,8 @@
 - The Windows taskbar icon recovers if its first-launch setup is interrupted.
 - Source control, history and branch changes open immediately instead of waiting for a slow remote fetch, and git commands start faster on Windows.
 - Diffs and change totals no longer fail when a project contains another Git repository.
+- Skill and agent lists use your configured Claude CLI path.
+- Custom Codex providers no longer make the app stall, and the local server list no longer hangs when system tools stop responding.
 
 ### Removed
 

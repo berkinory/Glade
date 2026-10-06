@@ -1,4 +1,3 @@
-import { execFile } from "node:child_process";
 import path from "node:path";
 
 import type {
@@ -10,8 +9,12 @@ import type {
 } from "@glade/contracts/server/server";
 
 import { redactSensitiveProcessArgs } from "../../platform/processArgumentRedaction";
+import { execProcessFileAsync } from "../../platform/processRunner";
 
 const PROCESS_OUTPUT_MAX_BUFFER_BYTES = 2 * 1024 * 1024;
+// lsof can block indefinitely on an unresponsive network mount.
+const PROCESS_COMMAND_TIMEOUT_MS = 5_000;
+const LOCAL_SERVER_SCAN_TTL_MS = 3_000;
 const STOP_SIGNAL_SETTLE_MS = 450;
 const MAX_PROCESS_ARGS_CHARS = 1_000;
 const PROCESS_LINEAGE_MAX_DEPTH = 4;
@@ -118,21 +121,14 @@ const pageTitleInFlight = new Map<string, Promise<string | null>>();
 
 const pageTitleProbeArgs = new WeakMap<ServerLocalServerProcess, string>();
 
-function execFileText(command: string, args: readonly string[]): Promise<string> {
-  return new Promise((resolve, reject) => {
-    execFile(
-      command,
-      [...args],
-      { encoding: "utf8", maxBuffer: PROCESS_OUTPUT_MAX_BUFFER_BYTES },
-      (error, stdout) => {
-        if (error) {
-          reject(error);
-          return;
-        }
-        resolve(stdout);
-      },
-    );
+async function execFileText(command: string, args: readonly string[]): Promise<string> {
+  const { stdout } = await execProcessFileAsync(command, args, {
+    encoding: "utf8",
+    maxBuffer: PROCESS_OUTPUT_MAX_BUFFER_BYTES,
+    timeout: PROCESS_COMMAND_TIMEOUT_MS,
+    killSignal: "SIGKILL",
   });
+  return stdout;
 }
 
 function parseLsofEndpoint(
@@ -941,7 +937,7 @@ function buildLocalServerProcesses(
   );
 }
 
-export async function listLocalServers(): Promise<ServerListLocalServersResult> {
+async function scanLocalServers(): Promise<ServerListLocalServersResult> {
   const listeners = await readLsofListeners();
   const pids = [...new Set(listeners.map((listener) => listener.pid))];
   const processInfoByPid = await readProcessInfoWithAncestors(pids);
@@ -952,6 +948,31 @@ export async function listLocalServers(): Promise<ServerListLocalServersResult> 
     generatedAt: new Date().toISOString(),
     servers: await enrichLocalServerProcessesWithPageTitles(servers),
   };
+}
+
+interface LocalServerScan {
+  readonly result: Promise<ServerListLocalServersResult>;
+  expiresAtMs: number;
+}
+
+let currentScan: LocalServerScan | null = null;
+
+// Shared by every client so concurrent panels trigger one scan; a pending scan never expires.
+export function listLocalServers(): Promise<ServerListLocalServersResult> {
+  if (currentScan && currentScan.expiresAtMs > Date.now()) {
+    return currentScan.result;
+  }
+  const scan: LocalServerScan = { result: scanLocalServers(), expiresAtMs: Infinity };
+  currentScan = scan;
+  scan.result.then(
+    () => {
+      if (currentScan === scan) scan.expiresAtMs = Date.now() + LOCAL_SERVER_SCAN_TTL_MS;
+    },
+    () => {
+      if (currentScan === scan) currentScan = null;
+    },
+  );
+  return scan.result;
 }
 
 function isProcessAlive(pid: number): boolean {
@@ -967,17 +988,14 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// Revalidates the pid/port before signaling so stale UI rows cannot kill arbitrary processes.
+// Revalidates the pid/port against a fresh scan, never the shared cache, so stale UI rows cannot
+// kill arbitrary processes.
 export async function stopLocalServer(
   input: ServerStopLocalServerInput,
-  prevalidatedTarget?: ServerLocalServerProcess | null,
 ): Promise<ServerStopLocalServerResult> {
-  const target =
-    prevalidatedTarget !== undefined
-      ? prevalidatedTarget
-      : (await listLocalServers()).servers.find(
-          (server) => server.pid === input.pid && server.ports.includes(input.port),
-        );
+  const target = (await scanLocalServers()).servers.find(
+    (server) => server.pid === input.pid && server.ports.includes(input.port),
+  );
 
   if (!target) {
     return {
@@ -1004,7 +1022,9 @@ export async function stopLocalServer(
     };
   }
 
+  currentScan = null;
   await delay(STOP_SIGNAL_SETTLE_MS);
+  currentScan = null;
   const stillAlive = isProcessAlive(input.pid);
   return {
     pid: input.pid,

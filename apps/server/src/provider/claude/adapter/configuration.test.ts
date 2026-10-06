@@ -177,6 +177,36 @@ describe("Claude configuration", () => {
     }).pipe(Effect.provide(layer));
   });
 
+  it.effect("listSkills uses the configured Claude binary", () => {
+    const executables: Array<string | undefined> = [];
+    const layer = makeClaudeAdapterLive({
+      createQuery: (input) => {
+        executables.push(input.options.pathToClaudeCodeExecutable);
+        return new FakeClaudeQuery();
+      },
+    }).pipe(
+      Layer.provideMerge(ServerConfig.layerTest("/tmp/claude-adapter-test", "/tmp")),
+      Layer.provideMerge(NodeServices.layer),
+    );
+
+    return Effect.gen(function* () {
+      const adapter = yield* ClaudeAdapter;
+      const listSkills = adapter.listSkills;
+      if (!listSkills) {
+        assert.fail("Expected Claude adapter to support skill discovery.");
+      }
+      const request = { provider: "claudeAgent", cwd: "/tmp/project" } as const;
+      const runtime = { binaryPath: "/custom/bin/claude", identity: "account-a" };
+
+      yield* listSkills(request, runtime);
+      yield* listSkills(request, runtime);
+      assert.deepEqual(executables, ["/custom/bin/claude"]);
+
+      yield* listSkills(request, { ...runtime, identity: "account-b" });
+      assert.deepEqual(executables, ["/custom/bin/claude", "/custom/bin/claude"]);
+    }).pipe(Effect.provide(layer));
+  });
+
   it.effect("rejects unsupported live model switches before changing an Auto session", () => {
     const query = new FakeClaudeQuery();
     (

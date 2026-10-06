@@ -22,6 +22,7 @@ import { type ClaudeAdapterShape } from "../Services/ClaudeAdapter.ts";
 import { toMessage } from "../claude/adapter/streamErrors";
 import { isProviderVersionSupported, providerUpgradeMessage } from "../core/compatibility.ts";
 import { resolveExecutable } from "@glade/shared/platform/executable";
+import { cliBinaryFingerprint, makeCliVersionGate } from "../core/cliVersionGate.ts";
 
 const CLAUDE_NATIVE_COMMAND_LOOKUP_TIMEOUT_MS = 2_000;
 
@@ -35,6 +36,9 @@ export function makeClaudeSessionAccessLive(options?: ClaudeAdapterLiveOptions) 
         buildClaudeProcessEnv({ homeDir: serverConfig.homeDir }),
       );
       const readClaudeCliVersion = options?.readClaudeCliVersion ?? readInstalledClaudeCliVersion;
+      const versionGate = makeCliVersionGate({
+        isSupported: (version) => isProviderVersionSupported(PROVIDER, version),
+      });
       const requireSession = (
         threadId: ThreadId,
       ): Effect.Effect<ClaudeSessionContext, ProviderAdapterError> => {
@@ -111,13 +115,20 @@ export function makeClaudeSessionAccessLive(options?: ClaudeAdapterLiveOptions) 
               issue: `Claude CLI at "${binaryPath}" was not found or is not executable.`,
             });
           }
+          const fingerprint = cliBinaryFingerprint(resolvedBinaryPath);
           const installedVersion = yield* Effect.tryPromise({
             try: () =>
-              readClaudeCliVersion({
-                binaryPath: resolvedBinaryPath,
-                ...(input.cwd ? { cwd: input.cwd } : {}),
-                env: claudeSdkEnv,
-              }),
+              versionGate.check(
+                JSON.stringify([resolvedBinaryPath, claudeSdkEnv.PATH ?? ""]),
+                async () => ({
+                  version: await readClaudeCliVersion({
+                    binaryPath: resolvedBinaryPath,
+                    ...(input.cwd ? { cwd: input.cwd } : {}),
+                    env: claudeSdkEnv,
+                  }),
+                  fingerprint,
+                }),
+              ),
             catch: (cause) =>
               new ProviderAdapterValidationError({
                 provider: PROVIDER,

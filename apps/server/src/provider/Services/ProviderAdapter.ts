@@ -54,6 +54,13 @@ import type { Stream } from "effect";
 
 export const PROVIDER_ADAPTER_RUNTIME_EVENT_BUFFER_CAPACITY = 2_048;
 
+// Resolved once by the discovery service from settings, so adapters never guess the executable.
+export interface ProviderDiscoveryRuntime {
+  readonly binaryPath: string;
+  // Changes when the executable, provider settings or signed-in account change.
+  readonly identity: string;
+}
+
 export interface ProviderAdapterCapabilities {
   readonly supportsSkillMentions?: boolean;
   readonly supportsSkillDiscovery?: boolean;
@@ -172,6 +179,7 @@ export interface ProviderAdapterShape<TError> {
 
   readonly listSkills?: (
     input: ProviderListSkillsInput,
+    runtime: ProviderDiscoveryRuntime,
   ) => Effect.Effect<ProviderListSkillsResult, TError>;
 
   readonly listCommands?: (
@@ -192,6 +200,7 @@ export interface ProviderAdapterShape<TError> {
 
   readonly listAgents?: (
     input: ProviderListAgentsInput,
+    runtime: ProviderDiscoveryRuntime,
   ) => Effect.Effect<ProviderListAgentsResult, TError>;
 
   readonly prewarmVoice?: (

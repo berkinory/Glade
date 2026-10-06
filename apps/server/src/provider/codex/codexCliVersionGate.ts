@@ -8,13 +8,16 @@ import {
 import { buildCodexProcessEnv } from "./codexProcessEnv.ts";
 import { CODEX_PROTOCOL_VERSION } from "./protocol/version.ts";
 import { assertCodexWorkingDirectoryExists } from "./codexWorkingDirectory.ts";
-import { executableIdentity, resolveExecutable } from "@glade/shared/platform/executable";
+import { resolveExecutable } from "@glade/shared/platform/executable";
+import {
+  cliBinaryFingerprint,
+  makeCliVersionGate,
+  type CliVersionProbeResult,
+} from "../core/cliVersionGate.ts";
 
 const CODEX_VERSION_CHECK_TIMEOUT_MS = 4_000;
 
 const CODEX_VERSION_CHECK_MAX_OUTPUT_BYTES = 1024 * 1024;
-
-const CODEX_VERSION_CHECK_CACHE_TTL_MS = 10 * 60 * 1000;
 
 function isMissingExecutableSpawnError(error: Error): boolean {
   const lower = error.message.toLowerCase();
@@ -107,23 +110,15 @@ function runCodexVersionCommand(input: {
   });
 }
 
-interface CodexCliBinaryFingerprint {
-  readonly path: string;
-  readonly identity: string;
-}
-
 async function runCodexCliVersionGate(input: {
   readonly binaryPath: string;
   readonly cwd: string;
   readonly homePath?: string;
-}): Promise<{ fingerprint: CodexCliBinaryFingerprint | null; version: string | null }> {
+}): Promise<CliVersionProbeResult> {
   const env = await buildCodexProcessEnv(input.homePath ? { homePath: input.homePath } : {});
-  // Resolved against the env the spawn below uses, never `process.env`. On macOS and Linux
-  // `buildCodexProcessEnv` can replace PATH with the login shell's, so resolving through the process
-  // environment could fingerprint a different `codex` than the one being probed — or none at all —
-  // and the staleness check would then be watching the wrong file.
-  const resolvedPath = resolveExecutable(input.binaryPath, { env });
-  const identity = resolvedPath ? executableIdentity(resolvedPath) : null;
+  // Resolved against the env the spawn below uses, never `process.env`, so the staleness check
+  // fingerprints the same `codex` that is probed.
+  const fingerprint = cliBinaryFingerprint(resolveExecutable(input.binaryPath, { env }));
   const result = await runCodexVersionCommand({
     binaryPath: input.binaryPath,
     cwd: input.cwd,
@@ -157,35 +152,13 @@ async function runCodexCliVersionGate(input: {
     throw new Error(formatCodexCliUpgradeMessage(parsedVersion));
   }
 
-  return {
-    fingerprint: resolvedPath && identity ? { path: resolvedPath, identity } : null,
-    version: parsedVersion,
-  };
-}
-
-interface CodexCliVersionGateEntry {
-  promise: Promise<string | null>;
-
-  expiresAt: number;
-
-  fingerprint: CodexCliBinaryFingerprint | null;
-}
-
-function codexCliVersionGateKey(binaryPath: string, homePath: string | undefined): string {
-  return JSON.stringify([binaryPath, homePath ?? ""]);
-}
-
-function isCodexCliVersionGateStale(entry: CodexCliVersionGateEntry): boolean {
-  if (!entry.fingerprint) {
-    // Nothing was located at probe time, so there is nothing to compare against. The probe is what
-    // reports that failure, and failures are never cached, so no stale pass can hide here.
-    return false;
-  }
-  return executableIdentity(entry.fingerprint.path) !== entry.fingerprint.identity;
+  return { fingerprint, version: parsedVersion };
 }
 
 export function createCodexCliVersionGate() {
-  const codexCliVersionGates = new Map<string, CodexCliVersionGateEntry>();
+  const gate = makeCliVersionGate({
+    isSupported: (version) => version !== null && isCodexCliVersionSupported(version),
+  });
 
   return async function assertSupportedCodexCliVersion(input: {
     readonly binaryPath: string;
@@ -196,45 +169,9 @@ export function createCodexCliVersionGate() {
     // otherwise misreported as a missing Codex binary. This is per-call state, so it must run even when
     // the version verdict is cached.
     assertCodexWorkingDirectoryExists(input.cwd);
-
-    const key = codexCliVersionGateKey(input.binaryPath, input.homePath);
-    const now = Date.now();
-    const existing = codexCliVersionGates.get(key);
-    if (existing) {
-      if (existing.expiresAt === 0) {
-        return existing.promise;
-      }
-      if (existing.expiresAt > now && !isCodexCliVersionGateStale(existing)) {
-        return existing.promise;
-      }
-      codexCliVersionGates.delete(key);
-    }
-
-    for (const [otherKey, entry] of codexCliVersionGates) {
-      if (entry.expiresAt !== 0 && entry.expiresAt <= now) {
-        codexCliVersionGates.delete(otherKey);
-      }
-    }
-
-    const entry: CodexCliVersionGateEntry = {
-      promise: Promise.resolve(null),
-      expiresAt: 0,
-      fingerprint: null,
-    };
-    entry.promise = runCodexCliVersionGate(input).then(
-      ({ fingerprint, version }) => {
-        entry.fingerprint = fingerprint;
-        entry.expiresAt = Date.now() + CODEX_VERSION_CHECK_CACHE_TTL_MS;
-        return version;
-      },
-      (error: unknown) => {
-        if (codexCliVersionGates.get(key) === entry) {
-          codexCliVersionGates.delete(key);
-        }
-        throw error;
-      },
+    return gate.check(
+      JSON.stringify([input.binaryPath, input.homePath ?? "", process.env.PATH ?? ""]),
+      () => runCodexCliVersionGate(input),
     );
-    codexCliVersionGates.set(key, entry);
-    return entry.promise;
   };
 }

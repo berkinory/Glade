@@ -19,6 +19,7 @@ import { ServerSettingsService } from "../../settings/serverSettings.ts";
 import { ProviderValidationError } from "../core/Errors.ts";
 import type { ProviderDiscoveryError } from "../Services/ProviderDiscoveryService.ts";
 import { ProviderAdapterRegistry } from "../Services/ProviderAdapterRegistry.ts";
+import type { ProviderDiscoveryRuntime } from "../Services/ProviderAdapter.ts";
 import {
   ProviderDiscoveryService,
   type ProviderDiscoveryServiceShape,
@@ -161,6 +162,37 @@ const make = Effect.gen(function* () {
     );
   });
 
+  const resolveDiscoveryContext = (
+    request: ProviderListModelsInput,
+    operation: "listModels" | "listSkills" | "listAgents",
+  ) =>
+    Effect.gen(function* () {
+      const settings = yield* serverSettings.getSettings.pipe(
+        Effect.mapError(
+          (cause) =>
+            new ProviderValidationError({
+              operation: `ProviderDiscoveryService.${operation}`,
+              issue: "Provider settings are unavailable.",
+              cause,
+            }),
+        ),
+      );
+      return yield* modelDiscoveryContext({ request, settings, homeDir: serverConfig.homeDir });
+    });
+
+  const resolveDiscoveryRuntime = (
+    request: ProviderListModelsInput,
+    operation: "listSkills" | "listAgents",
+  ) =>
+    resolveDiscoveryContext(request, operation).pipe(
+      Effect.map(
+        (context): ProviderDiscoveryRuntime => ({
+          binaryPath: context.binaryPath,
+          identity: `${context.identity}:${context.workspaceIdentity ?? ""}`,
+        }),
+      ),
+    );
+
   const getComposerCapabilities: ProviderDiscoveryServiceShape["getComposerCapabilities"] = (
     input,
   ) =>
@@ -201,7 +233,11 @@ const make = Effect.gen(function* () {
       }
       const adapter = yield* registry.getByProvider(parsed.provider);
       if (!adapter.listSkills) return { skills: [], source: "unsupported", cached: false };
-      const nativeResult = yield* adapter.listSkills(parsed);
+      const runtime = yield* resolveDiscoveryRuntime(
+        { provider: parsed.provider, cwd: parsed.cwd },
+        "listSkills",
+      );
+      const nativeResult = yield* adapter.listSkills(parsed, runtime);
       const settings = yield* serverSettings.getSettings.pipe(
         Effect.mapError(
           (cause) =>
@@ -329,20 +365,7 @@ const make = Effect.gen(function* () {
           cached: false,
         };
       }
-      const context = yield* modelDiscoveryContext({
-        request: parsed,
-        settings: yield* serverSettings.getSettings.pipe(
-          Effect.mapError(
-            (cause) =>
-              new ProviderValidationError({
-                operation: "ProviderDiscoveryService.listModels",
-                issue: "Provider settings are unavailable.",
-                cause,
-              }),
-          ),
-        ),
-        homeDir: serverConfig.homeDir,
-      });
+      const context = yield* resolveDiscoveryContext(parsed, "listModels");
       const request = { ...parsed, binaryPath: context.binaryPath };
       const listModelsFromAdapter = adapter.listModels;
       const discover = (cwd: string) =>
@@ -381,7 +404,10 @@ const make = Effect.gen(function* () {
           cached: false,
         };
       }
-      return yield* adapter.listAgents(parsed);
+      return yield* adapter.listAgents(
+        parsed,
+        yield* resolveDiscoveryRuntime(parsed, "listAgents"),
+      );
     });
 
   return {

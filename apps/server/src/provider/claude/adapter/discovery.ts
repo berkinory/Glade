@@ -3,6 +3,7 @@ import type { ServerConfigShape } from "../../../server/config.ts";
 import { Effect, Duration, Schema } from "effect";
 import type { ClaudeProcessOwnershipShape } from "../../Services/ClaudeProcessOwnership.ts";
 import type {
+  AgentInfo,
   SDKUserMessage,
   ModelInfo,
   Options as ClaudeQueryOptions,
@@ -30,7 +31,17 @@ import { type ClaudeAdapterShape } from "../../Services/ClaudeAdapter.ts";
 import { withClaudeArtifactOptIn } from "../claudeProcessEnv.ts";
 import { createClaudeSkillBridge, isSharedClaudeSkill } from "../claudeSkillBridge.ts";
 import { discoverSkillsCatalog } from "../../core/skillsCatalog.ts";
+import { makeDiscoveryResultCache } from "../../core/discoveryResultCache.ts";
 import type { ProviderSkillDescriptor } from "@glade/contracts/provider/providerDiscovery";
+
+// Each miss spawns a temporary Claude CLI. Keys carry the runtime identity (executable, settings,
+// account) and, for skills, the skill catalog, so installs and upgrades miss naturally; the TTL
+// bounds what the key cannot see, such as newly added agent files.
+const TEMPORARY_DISCOVERY_CACHE = {
+  successTtlMs: 5 * 60_000,
+  failureTtlMs: 30_000,
+  maxEntries: 32,
+} as const;
 
 export function makeClaudeDiscovery(input: {
   readonly runSdkPromise: <A, E>(
@@ -325,7 +336,12 @@ export function makeClaudeDiscovery(input: {
       return result;
     });
 
-  const listAgents: NonNullable<ClaudeAdapterShape["listAgents"]> = (request) =>
+  const temporaryAgentsCache =
+    makeDiscoveryResultCache<ReadonlyArray<AgentInfo>>(TEMPORARY_DISCOVERY_CACHE);
+  const temporarySkillNamesCache =
+    makeDiscoveryResultCache<ReadonlySet<string>>(TEMPORARY_DISCOVERY_CACHE);
+
+  const listAgents: NonNullable<ClaudeAdapterShape["listAgents"]> = (request, runtime) =>
     Effect.gen(function* () {
       const cwd = request.cwd ?? serverConfig.cwd;
       const context = sessions
@@ -336,8 +352,12 @@ export function makeClaudeDiscovery(input: {
         try: () =>
           context
             ? context.query.supportedAgents()
-            : discoverViaTemporaryProcess(cwd, env, request.binaryPath ?? "claude", (query) =>
-                query.supportedAgents(),
+            : temporaryAgentsCache.lookup(
+                JSON.stringify([runtime.identity, runtime.binaryPath, cwd]),
+                () =>
+                  discoverViaTemporaryProcess(cwd, env, runtime.binaryPath, (query) =>
+                    query.supportedAgents(),
+                  ),
               ),
         catch: (cause) =>
           toRequestError(
@@ -358,8 +378,36 @@ export function makeClaudeDiscovery(input: {
       } satisfies ProviderListAgentsResult;
     });
 
+  const discoverSkillNamesViaTemporaryProcess = async (
+    cwd: string,
+    env: NodeJS.ProcessEnv,
+    binaryPath: string,
+  ): Promise<ReadonlySet<string>> => {
+    const bridge = await createClaudeSkillBridge({
+      cwd,
+      homeDir: serverConfig.homeDir,
+      baseDir: serverConfig.baseDir,
+      stateDir: serverConfig.stateDir,
+    });
+    try {
+      return await discoverViaTemporaryProcess(
+        cwd,
+        env,
+        binaryPath,
+        async (query) => new Set((await query.supportedCommands()).map((command) => command.name)),
+        {
+          ...(bridge.plugin ? { plugins: [bridge.plugin] } : {}),
+          skills: [...bridge.enabledSkills],
+        },
+      );
+    } finally {
+      await bridge.cleanup();
+    }
+  };
+
   const listSkills: NonNullable<ClaudeAdapterShape["listSkills"]> = (
     request: ProviderListSkillsInput,
+    runtime,
   ) =>
     Effect.gen(function* () {
       const catalog = yield* Effect.tryPromise({
@@ -387,32 +435,22 @@ export function makeClaudeDiscovery(input: {
         });
         names = session.initSkillNames ?? new Set(commands.map((command) => command.name));
       } else {
-        const bridge = yield* Effect.tryPromise({
-          try: () =>
-            createClaudeSkillBridge({
-              cwd: request.cwd,
-              homeDir: serverConfig.homeDir,
-              baseDir: serverConfig.baseDir,
-              stateDir: serverConfig.stateDir,
-            }),
-          catch: (cause) => toRequestError(CLAUDE_DISCOVERY_THREAD_ID, "listSkills", cause),
-        });
         const env = yield* resolveClaudeSdkEnv;
+        const key = JSON.stringify([
+          runtime.identity,
+          runtime.binaryPath,
+          request.cwd,
+          catalog.map((skill) => [skill.name, skill.path, skill.enabled]),
+        ]);
         names = yield* Effect.tryPromise({
           try: () =>
-            discoverViaTemporaryProcess(
-              request.cwd,
-              env,
-              "claude",
-              async (query) =>
-                new Set((await query.supportedCommands()).map((command) => command.name)),
-              {
-                ...(bridge.plugin ? { plugins: [bridge.plugin] } : {}),
-                skills: [...bridge.enabledSkills],
-              },
+            temporarySkillNamesCache.lookup(
+              key,
+              () => discoverSkillNamesViaTemporaryProcess(request.cwd, env, runtime.binaryPath),
+              { forceReload: request.forceReload === true },
             ),
           catch: (cause) => toRequestError(CLAUDE_DISCOVERY_THREAD_ID, "listSkills", cause),
-        }).pipe(Effect.ensuring(Effect.promise(bridge.cleanup)));
+        });
       }
       const skills: ProviderSkillDescriptor[] = [];
       const seen = new Set<string>();

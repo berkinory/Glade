@@ -1,8 +1,9 @@
-import { execFileSync } from "node:child_process";
 import { statSync } from "node:fs";
 import { join } from "node:path";
 
 import { EDITORS } from "@glade/contracts/settings/editor";
+
+import { execProcessFileAsync } from "../../platform/processRunner";
 
 export type EditorDefinition = (typeof EDITORS)[number];
 
@@ -11,25 +12,8 @@ export interface WindowsStorePackageDefinition {
   readonly publisherId: string;
 }
 
-type ExecFileSyncLike = (
-  file: string,
-  args: readonly string[],
-  options: {
-    encoding: "utf8";
-    env: NodeJS.ProcessEnv;
-    stdio: ["ignore", "pipe", "ignore"];
-    timeout: number;
-    windowsHide: true;
-  },
-) => string | Buffer;
-
-interface WindowsStorePowerShellLookupOptions {
-  readonly useCache?: boolean;
-  readonly now?: () => number;
-}
-
 interface CachedPowerShellAppxLookup {
-  readonly value: string | null;
+  readonly value: Promise<string | null>;
   readonly expiresAt: number;
 }
 
@@ -150,41 +134,10 @@ function resolvePowerShellCacheKey(
   });
 }
 
-function readPowerShellAppxLookupCache(key: string, now: number): string | null | undefined {
-  const cached = powershellAppxLookupCache.get(key);
-  if (!cached) return undefined;
-  if (cached.expiresAt > now) return cached.value;
-  powershellAppxLookupCache.delete(key);
-  return undefined;
-}
-
-function writePowerShellAppxLookupCache(key: string, value: string | null, now: number): void {
-  powershellAppxLookupCache.set(key, {
-    value,
-    expiresAt: now + POWERSHELL_APPX_LOOKUP_CACHE_TTL_MS,
-  });
-}
-
-function resolveWindowsStorePackageDirectoryFromPowerShell(
-  packages: readonly WindowsStorePackageDefinition[] | undefined,
-  platform: NodeJS.Platform,
+async function queryWindowsStorePackageInstallLocation(
+  packageDefs: readonly WindowsStorePackageDefinition[],
   env: NodeJS.ProcessEnv,
-  execFile: ExecFileSyncLike = execFileSync,
-  options: WindowsStorePowerShellLookupOptions = {},
-): string | null {
-  if (platform !== "win32" || !packages) return null;
-
-  const packageDefs = uniqueWindowsStorePackageDefinitions(packages);
-  if (packageDefs.length === 0) return null;
-
-  const now = options.now?.() ?? Date.now();
-  const useCache = options.useCache ?? execFile === execFileSync;
-  const cacheKey = useCache ? resolvePowerShellCacheKey(packageDefs, platform, env) : null;
-  if (cacheKey) {
-    const cached = readPowerShellAppxLookupCache(cacheKey, now);
-    if (cached !== undefined) return cached;
-  }
-
+): Promise<string | null> {
   const packageArray = `@(${packageDefs
     .map(
       (packageDef) =>
@@ -207,38 +160,48 @@ function resolveWindowsStorePackageDirectoryFromPowerShell(
   ].join("; ");
 
   try {
-    const stdout = execFile("powershell.exe", ["-NoProfile", "-Command", script], {
-      encoding: "utf8",
-      env,
-      stdio: ["ignore", "pipe", "ignore"],
-      timeout: POWERSHELL_APPX_LOOKUP_TIMEOUT_MS,
-      windowsHide: true,
-    });
-    const result =
-      String(stdout)
+    const { stdout } = await execProcessFileAsync(
+      "powershell.exe",
+      ["-NoProfile", "-NonInteractive", "-Command", script],
+      {
+        encoding: "utf8",
+        env,
+        timeout: POWERSHELL_APPX_LOOKUP_TIMEOUT_MS,
+        killSignal: "SIGKILL",
+      },
+    );
+    return (
+      stdout
         .split(/\r?\n/)
         .map((line) => line.trim())
-        .find(Boolean) ?? null;
-    if (cacheKey) writePowerShellAppxLookupCache(cacheKey, result, now);
-    return result;
+        .find(Boolean) ?? null
+    );
   } catch {
-    if (cacheKey) writePowerShellAppxLookupCache(cacheKey, null, now);
     return null;
   }
 }
 
+// Both hits and misses are cached: a missing Store package would otherwise cost a PowerShell
+// launch on every lookup.
 export function resolveWindowsStorePackageInstallLocation(
   packages: readonly WindowsStorePackageDefinition[] | undefined,
   platform: NodeJS.Platform,
   env: NodeJS.ProcessEnv,
-  execFile: ExecFileSyncLike = execFileSync,
-  options: WindowsStorePowerShellLookupOptions = {},
-): string | null {
-  return resolveWindowsStorePackageDirectoryFromPowerShell(
-    packages,
-    platform,
-    env,
-    execFile,
-    options,
-  );
+): Promise<string | null> {
+  if (platform !== "win32" || !packages) return Promise.resolve(null);
+
+  const packageDefs = uniqueWindowsStorePackageDefinitions(packages);
+  if (packageDefs.length === 0) return Promise.resolve(null);
+
+  const now = Date.now();
+  const cacheKey = resolvePowerShellCacheKey(packageDefs, platform, env);
+  const cached = powershellAppxLookupCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) return cached.value;
+
+  const value = queryWindowsStorePackageInstallLocation(packageDefs, env);
+  powershellAppxLookupCache.set(cacheKey, {
+    value,
+    expiresAt: now + POWERSHELL_APPX_LOOKUP_CACHE_TTL_MS,
+  });
+  return value;
 }

@@ -1,5 +1,5 @@
 import OS from "node:os";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 function readQuotedAssignmentValue(trimmedLine: string, key: string): string | undefined {
@@ -67,13 +67,29 @@ export function resolveCodexHome(env: NodeJS.ProcessEnv = process.env): string {
   return configured && configured.length > 0 ? configured : join(OS.homedir(), ".codex");
 }
 
+interface CodexConfigSnapshot {
+  readonly mtimeMs: number;
+  readonly size: number;
+  readonly content: string;
+}
+
+const codexConfigSnapshots = new Map<string, CodexConfigSnapshot>();
+
 function readCodexConfigContent(env: NodeJS.ProcessEnv = process.env): string | undefined {
   const configPath = join(resolveCodexHome(env), "config.toml");
-  if (!existsSync(configPath)) {
+  const stats = statSync(configPath, { throwIfNoEntry: false });
+  if (!stats) {
+    codexConfigSnapshots.delete(configPath);
     return undefined;
   }
 
-  return readFileSync(configPath, "utf8");
+  const cached = codexConfigSnapshots.get(configPath);
+  if (cached && cached.mtimeMs === stats.mtimeMs && cached.size === stats.size) {
+    return cached.content;
+  }
+  const content = readFileSync(configPath, "utf8");
+  codexConfigSnapshots.set(configPath, { mtimeMs: stats.mtimeMs, size: stats.size, content });
+  return content;
 }
 
 export function readActiveCodexProviderEnvKey(
