@@ -3,7 +3,7 @@ import type { OrchestrationThreadPullRequest } from "@glade/contracts/orchestrat
 import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { resolveThreadWorkspaceCwd } from "@glade/shared/threads/threadEnvironment";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { resolveSidebarThreadPullRequest } from "../components/Sidebar.logic.statusTypes";
 import { ensureNativeApi } from "../nativeApi";
@@ -17,9 +17,13 @@ export type ThreadPullRequestSource = Pick<
   "id" | "projectId" | "branch" | "envMode" | "worktreePath" | "lastKnownPr"
 >;
 
-const THREAD_PR_STALE_TIME_MS = 30_000;
+const THREAD_PR_STALE_TIME_MS = 5 * 60_000;
 
 const THREAD_PR_REFETCH_INTERVAL_MS = 900_000;
+
+function sidebarQueryKey(repositoryCwd: string) {
+  return ["git", "sidebar", repositoryCwd] as const;
+}
 
 // Also accepts persisted `lastKnownPr` entries, whose draft/mergeability/diff fields are optional
 // because older rows predate them.
@@ -101,40 +105,76 @@ export function useThreadPullRequests(input: {
     ...repository,
     worktreeCwds: repository.worktreeCwds.toSorted(),
   }));
+  const queryClient = useQueryClient();
   const queries = useQueries({
     queries: targets.map((target) => ({
-      queryKey: ["git", "sidebar", target.cwd, target.worktreeCwds],
-      queryFn: () => ensureNativeApi().git.sidebarSummary(target),
+      queryKey: sidebarQueryKey(target.cwd),
+      // Keeps summaries for worktrees that scrolled in after this fetch started; their
+      // subscriptions already delivered fresher data than this read could.
+      queryFn: async () => {
+        const result = await ensureNativeApi().git.sidebarSummary(target);
+        const previous = queryClient.getQueryData<GitSidebarSummaryResult>(
+          sidebarQueryKey(target.cwd),
+        );
+        const fetched = new Set(result.worktrees.map((worktree) => worktree.cwd));
+        return {
+          ...result,
+          worktrees: [
+            ...result.worktrees,
+            ...(previous?.worktrees.filter((worktree) => !fetched.has(worktree.cwd)) ?? []),
+          ],
+        };
+      },
       staleTime: THREAD_PR_STALE_TIME_MS,
       gcTime: 60_000,
       refetchInterval: THREAD_PR_REFETCH_INTERVAL_MS,
       refetchIntervalInBackground: false,
     })),
   });
-  const queryClient = useQueryClient();
-  const targetsKey = JSON.stringify(targets);
+  // Subscribing only once a repository has data lets each subscription's first summary upsert
+  // into it instead of racing the initial read.
+  const subscriptionsKey = targets
+    .flatMap((target, index) =>
+      queries[index]?.data ? target.worktreeCwds.map((cwd) => `${target.cwd}\0${cwd}`) : [],
+    )
+    .join("\n");
+  const subscriptions = useRef(new Map<string, () => void>());
   useEffect(() => {
-    const subscriptions = (JSON.parse(targetsKey) as typeof targets).flatMap((target) =>
-      target.worktreeCwds.map((cwd) =>
+    const wanted = new Set(subscriptionsKey ? subscriptionsKey.split("\n") : []);
+    for (const [key, unsubscribe] of subscriptions.current) {
+      if (wanted.has(key)) continue;
+      unsubscribe();
+      subscriptions.current.delete(key);
+    }
+    for (const key of wanted) {
+      if (subscriptions.current.has(key)) continue;
+      const [repositoryCwd = "", cwd = ""] = key.split("\0");
+      subscriptions.current.set(
+        key,
         ensureNativeApi().git.onStatus({ cwd, summaryOnly: true }, (event) => {
           if (event._tag !== "summaryUpdated") return;
           queryClient.setQueryData<GitSidebarSummaryResult>(
-            ["git", "sidebar", target.cwd, target.worktreeCwds],
+            sidebarQueryKey(repositoryCwd),
             (previous) =>
-              previous
-                ? {
-                    ...previous,
-                    worktrees: previous.worktrees.map((worktree) =>
-                      worktree.cwd === cwd ? { ...worktree, summary: event.summary } : worktree,
-                    ),
-                  }
-                : previous,
+              previous && {
+                ...previous,
+                worktrees: [
+                  ...previous.worktrees.filter((worktree) => worktree.cwd !== cwd),
+                  { cwd, summary: event.summary },
+                ],
+              },
           );
         }),
-      ),
-    );
-    return () => subscriptions.forEach((unsubscribe) => unsubscribe());
-  }, [queryClient, targetsKey]);
+      );
+    }
+  }, [queryClient, subscriptionsKey]);
+  useEffect(() => {
+    const current = subscriptions.current;
+    return () => {
+      current.forEach((unsubscribe) => unsubscribe());
+      current.clear();
+    };
+  }, []);
   const byRepository = new Map(targets.map((target, index) => [target.cwd, queries[index]?.data]));
   const result = new Map<ThreadId, ThreadPullRequest>();
   for (const thread of input.threads) {

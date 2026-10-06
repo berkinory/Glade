@@ -24,7 +24,7 @@ interface CheckpointDiffQueryInput {
 }
 
 export const providerQueryKeys = {
-  all: ["providers"] as const,
+  threadCheckpointDiffs: (threadId: ThreadId) => ["providers", "checkpointDiff", threadId] as const,
   checkpointDiff: (input: CheckpointDiffQueryInput) =>
     [
       "providers",

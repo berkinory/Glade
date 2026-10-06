@@ -19,6 +19,7 @@
 - Full Access no longer asks again before Codex uses Glade's own tools.
 - Background remote refreshes never open credential prompts, run once per repository across worktrees, and no longer hold up local git status.
 - Diff totals stay responsive while agents create many new files.
+- Returning to Glade, scrolling the sidebar and agent tool runs trigger far fewer git and GitHub refreshes.
 
 ### Fixed
 

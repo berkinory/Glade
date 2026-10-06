@@ -498,9 +498,10 @@ export function subscribeStreamEvents(
       state.shellSnapshotFallbackTimer = null;
     }
     window.clearInterval(threadDetailCatchupInterval);
-    state.needsProviderInvalidation = false;
+    state.pendingCheckpointDiffThreadIds = new Set();
     state.needsBroadGitInvalidation = false;
     state.pendingGitInvalidationThreadIds = new Set();
+    state.pendingToolGitInvalidationThreadIds = new Set();
     state.threadProjectionReconcileInFlight.clear();
     state.threadProjectionTerminalFencePending.clear();
     state.threadProjectionTerminalFenceSequenceById.clear();

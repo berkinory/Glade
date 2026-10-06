@@ -1,10 +1,10 @@
 import { useEffect } from "react";
-import { focusManager, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import type { GitStatusResult } from "@glade/contracts/git/git";
 import { mergeGitStatusParts } from "@glade/shared/git/git";
 
 import { ensureNativeApi } from "../nativeApi";
-import { gitQueryKeys } from "../lib/gitQueryOptions";
+import { activeGitStatusCwds, gitQueryKeys } from "../lib/gitQueryOptions";
 
 export function useGitStatusPush() {
   const queryClient = useQueryClient();
@@ -28,13 +28,7 @@ export function useGitStatusPush() {
         state.pending.clear();
         state.running = true;
         const keys: (readonly unknown[])[] = pending.has("repository")
-          ? [
-              gitQueryKeys.history(cwd),
-              gitQueryKeys.branches(cwd),
-              ["git", "rebase-state", cwd],
-              ["git", "recent-commits", cwd],
-              ["git", "stash-info", cwd],
-            ]
+          ? [gitQueryKeys.history(cwd), gitQueryKeys.branches(cwd), ["git", "rebase-state", cwd]]
           : [];
         if (pending.has("files"))
           keys.push(gitQueryKeys.workingTreeDiffs(cwd), gitQueryKeys.sourceControlFiles(cwd));
@@ -62,14 +56,7 @@ export function useGitStatusPush() {
     };
     const subscriptions = new Map<string, () => void>();
     const reconcile = () => {
-      const active = new Set(
-        queryClient
-          .getQueryCache()
-          .findAll({ queryKey: gitQueryKeys.statuses })
-          .flatMap((query) =>
-            query.isActive() && typeof query.queryKey[2] === "string" ? [query.queryKey[2]] : [],
-          ),
-      );
+      const active = activeGitStatusCwds(queryClient);
       for (const [cwd, unsubscribe] of subscriptions) {
         if (!active.has(cwd)) {
           unsubscribe();
@@ -109,18 +96,11 @@ export function useGitStatusPush() {
         reconcile();
     });
     reconcile();
-    const stopFocus = focusManager.subscribe((focused) => {
-      if (!focused) return;
-      for (const cwd of subscriptions.keys()) {
-        schedule(cwd, ["repository", "files"]);
-      }
-    });
     return () => {
       disposed = true;
       refreshes.forEach((state) => {
         if (state.timer) clearTimeout(state.timer);
       });
-      stopFocus();
       unsubscribe();
       subscriptions.forEach((stop) => stop());
     };

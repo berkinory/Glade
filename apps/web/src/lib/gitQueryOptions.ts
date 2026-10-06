@@ -36,8 +36,6 @@ export const gitQueryKeys = {
   githubRepository: (cwd: string | null) => ["git", "github-repository", cwd] as const,
   status: (cwd: string | null) => ["git", "status", cwd] as const,
   branches: (cwd: string | null) => ["git", "branches", cwd] as const,
-  recentCommits: (cwd: string | null, limit: number) =>
-    ["git", "recent-commits", cwd, limit] as const,
   pullRequest: (cwd: string | null) => ["git", "pull-request", cwd] as const,
   workingTreeDiffs: (cwd: string | null) => ["git", "working-tree-diff", cwd] as const,
   sourceControlFiles: (cwd: string | null) => ["git", "source-control-files", cwd] as const,
@@ -106,6 +104,16 @@ export const gitMutationKeys = {
     ["git", "mutation", "revert-unstaged-file", cwd] as const,
   unstageFiles: (cwd: string | null) => ["git", "mutation", "unstage-files", cwd] as const,
 };
+
+// An active status query is exactly when useGitStatusPush holds a server watcher subscription.
+export function activeGitStatusCwds(queryClient: QueryClient): Set<string> {
+  return new Set(
+    queryClient
+      .getQueryCache()
+      .findAll({ queryKey: gitQueryKeys.statuses, type: "active" })
+      .flatMap((query) => (typeof query.queryKey[2] === "string" ? [query.queryKey[2]] : [])),
+  );
+}
 
 type GitRefreshDepth = "availability" | "active-details";
 
@@ -190,19 +198,11 @@ async function refreshGitAvailability(queryClient: QueryClient, cwd: string): Pr
       exact: true,
       refetchType: "none",
     }),
-    queryClient.invalidateQueries({
-      queryKey: ["git", "recent-commits", cwd] as const,
-      refetchType: "none",
-    }),
   ]);
   await Promise.all([
     refetchFreshGitQueries(queryClient, gitQueryKeys.githubRepository(cwd)),
     refetchFreshGitQueries(queryClient, gitQueryKeys.status(cwd)),
     refetchFreshGitQueries(queryClient, gitQueryKeys.branches(cwd)),
-    ...queryClient
-      .getQueryCache()
-      .findAll({ queryKey: ["git", "recent-commits", cwd] as const, type: "active" })
-      .map((query) => refetchFreshGitQueries(queryClient, query.queryKey)),
   ]);
 }
 
@@ -367,7 +367,6 @@ function cachedGitCwds(queryClient: QueryClient): string[] {
     "github-repository",
     "status",
     "branches",
-    "recent-commits",
     "working-tree-diff",
     "source-control-files",
     "pull-request",

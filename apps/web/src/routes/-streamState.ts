@@ -16,9 +16,10 @@ export interface ThreadCatchupBackoff {
 export function createStreamState() {
   return {
     disposed: false,
-    needsProviderInvalidation: false,
+    pendingCheckpointDiffThreadIds: new Set<ThreadId>(),
     needsBroadGitInvalidation: false,
     pendingGitInvalidationThreadIds: new Set<ThreadId>(),
+    pendingToolGitInvalidationThreadIds: new Set<ThreadId>(),
     pendingProjectFileInvalidationThreadIds: new Set<ThreadId>(),
     pendingDomainEvents: [] as OrchestrationEvent[],
     immediatelyFlushedAssistantMessageIds: new Set<string>(),

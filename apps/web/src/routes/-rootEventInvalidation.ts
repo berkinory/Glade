@@ -12,8 +12,12 @@ const FILE_CHANGE_EVENT_TYPES = new Set<OrchestrationEvent["type"]>([
   "thread.conversation-rolled-back",
 ]);
 
-export function shouldInvalidateProviderQueriesForEvent(event: OrchestrationEvent): boolean {
-  return FILE_CHANGE_EVENT_TYPES.has(event.type);
+export function getCheckpointDiffInvalidationThreadIdForEvent(
+  event: OrchestrationEvent,
+): ThreadId | null {
+  return FILE_CHANGE_EVENT_TYPES.has(event.type) && "threadId" in event.payload
+    ? (event.payload.threadId as ThreadId)
+    : null;
 }
 
 export function shouldInvalidateGitQueriesForEvent(event: OrchestrationEvent): boolean {
@@ -45,7 +49,8 @@ function activityItemType(event: OrchestrationEvent): unknown {
   return payload?.itemType ?? data?.itemType ?? item?.type ?? item?.kind;
 }
 
-function isPotentiallyFileMutatingToolCompletion(event: OrchestrationEvent): boolean {
+// The server's repository watcher already pushes these changes for any cwd with a live status query.
+export function isPotentiallyFileMutatingToolCompletion(event: OrchestrationEvent): boolean {
   if (
     event.type !== "thread.activity-appended" ||
     event.payload.activity.kind !== "tool.completed"

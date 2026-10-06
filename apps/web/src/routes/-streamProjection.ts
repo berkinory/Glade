@@ -155,7 +155,7 @@ export function createStreamProjection(
           useStore.getState() === stateBeforeProjectionApply,
       );
       if (projectionSettlesCurrentTurn || projectionRepairsTerminalFence) {
-        state.needsProviderInvalidation = true;
+        state.pendingCheckpointDiffThreadIds.add(threadId);
         state.pendingGitInvalidationThreadIds.add(threadId);
         batching.domainEventFlushThrottler.maybeExecute();
       }
