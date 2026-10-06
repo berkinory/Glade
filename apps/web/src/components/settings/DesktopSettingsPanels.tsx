@@ -105,31 +105,6 @@ export function NotificationsSettingsPanel({
     <div className="space-y-6">
       <SettingsSection title="Activity alerts">
         <SettingsRow
-          id="setting-activity-sounds"
-          title="Activity sounds"
-          description="Play distinct sounds when a chat or managed terminal agent finishes or needs your approval or reply, even while you are viewing it."
-          resetAction={
-            settings.enableActivitySounds !== defaults.enableActivitySounds ? (
-              <SettingResetButton
-                label="activity sounds"
-                onClick={() =>
-                  updateSettings({ enableActivitySounds: defaults.enableActivitySounds })
-                }
-              />
-            ) : null
-          }
-          control={
-            <Switch
-              checked={settings.enableActivitySounds}
-              onCheckedChange={(checked) =>
-                updateSettings({ enableActivitySounds: Boolean(checked) })
-              }
-              aria-label="Activity sounds"
-            />
-          }
-        />
-
-        <SettingsRow
           id="setting-activity-toasts"
           title="In-app notifications"
           description="Show an in-app toast when a chat or managed terminal agent finishes or needs input."
@@ -157,15 +132,49 @@ export function NotificationsSettingsPanel({
         />
 
         <SettingsRow
+          id="setting-activity-sounds"
+          title="Activity sounds"
+          description="Play distinct sounds when a chat or managed terminal agent finishes or needs your approval or reply, even while you are viewing it."
+          resetAction={
+            settings.enableActivitySounds !== defaults.enableActivitySounds ? (
+              <SettingResetButton
+                label="activity sounds"
+                onClick={() =>
+                  updateSettings({ enableActivitySounds: defaults.enableActivitySounds })
+                }
+              />
+            ) : null
+          }
+          control={
+            <Switch
+              checked={settings.enableActivitySounds}
+              onCheckedChange={(checked) =>
+                updateSettings({ enableActivitySounds: Boolean(checked) })
+              }
+              aria-label="Activity sounds"
+            />
+          }
+        />
+
+        <SettingsRow
           id="setting-desktop-notifications"
           title="Desktop notifications"
-          description="Show an OS notification when a chat or managed terminal agent finishes or needs input while the app is in the background."
+          description="Show system alerts for activity while Glade is in the background."
           status={
-            permission.isError
-              ? "Could not read notification permission. Retry to check again."
-              : permission.data
-                ? notificationPermissionText(permission.data.status)
-                : "Checking notification permission"
+            permission.isError ? (
+              <span role="alert" className="text-destructive">
+                Could not read notification permission. Retry to check again.
+              </span>
+            ) : permission.data ? (
+              <span
+                className={permission.data.status === "denied" ? "text-destructive" : undefined}
+                role={permission.data.status === "denied" ? "alert" : undefined}
+              >
+                {notificationPermissionText(permission.data.status)}
+              </span>
+            ) : (
+              "Checking notification permission"
+            )
           }
           resetAction={
             settings.enableSystemTaskCompletionNotifications !==

@@ -384,7 +384,10 @@ function ProviderToolRow(props: {
         {enabled &&
         props.providerStatus?.available &&
         (props.config.provider === "codex" || props.config.provider === "claudeAgent") ? (
-          <ProviderSignIn provider={props.config.provider} />
+          <ProviderSignIn
+            provider={props.config.provider}
+            authenticated={props.providerStatus.authStatus === "authenticated"}
+          />
         ) : null}
         <CollapsiblePanel>
           <div className="border-t border-border/70 bg-muted/20 px-3 py-3">

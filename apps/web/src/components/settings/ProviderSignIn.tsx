@@ -42,7 +42,13 @@ async function request(
   return Schema.decodeUnknownSync(Schema.NullOr(ProviderAuthenticationStatus))(body);
 }
 
-export function ProviderSignIn({ provider }: { provider: Provider }) {
+export function ProviderSignIn({
+  provider,
+  authenticated,
+}: {
+  provider: Provider;
+  authenticated: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [view, setView] = useState<ProviderAuthenticationStatus | null>(null);
@@ -185,6 +191,8 @@ export function ProviderSignIn({ provider }: { provider: Provider }) {
       setBusy(false);
     }
   }
+  if (authenticated && !open) return null;
+
   return (
     <div className="space-y-2 px-3 pb-3">
       <Button

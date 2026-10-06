@@ -16,6 +16,7 @@ import { resolveProviderDiscoveryCwd } from "~/lib/providerDiscovery";
 import { serverConfigQueryOptions } from "~/lib/serverReactQuery";
 
 import { SelectItem } from "../ui/select";
+import { ProviderOptionLabel } from "../ProviderIcon";
 import { SettingResetButton, SettingsSelectControl } from "./SettingControls";
 import { SettingsRow, SettingsSection } from "./SettingsPanelPrimitives";
 
@@ -116,7 +117,12 @@ export function ModelsSettingsPanel({
               }}
               ariaLabel="Git text generation model"
               triggerClassName="w-full sm:w-52"
-              valueContent={selectedGitTextGenerationModelLabel}
+              valueContent={
+                <ProviderOptionLabel
+                  provider={currentGitTextGenerationProvider}
+                  label={selectedGitTextGenerationModelLabel}
+                />
+              }
             >
               {gitTextGenerationModelOptions.map((option) => (
                 <SelectItem
@@ -124,7 +130,10 @@ export function ModelsSettingsPanel({
                   key={`${option.provider}:${option.slug}`}
                   value={`${option.provider}:${option.slug}`}
                 >
-                  {PROVIDER_DISPLAY_NAMES[option.provider]} / {option.name}
+                  <ProviderOptionLabel
+                    provider={option.provider}
+                    label={`${PROVIDER_DISPLAY_NAMES[option.provider]} / ${option.name}`}
+                  />
                 </SelectItem>
               ))}
             </SettingsSelectControl>

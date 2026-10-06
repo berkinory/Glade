@@ -6,6 +6,7 @@ import path from "node:path";
 import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { AuthSessionId } from "@glade/contracts/core/baseSchemas";
+import { PROVIDER_AUTHENTICATION_PATH } from "@glade/contracts/provider/providerAuthentication";
 import {
   ATTACHMENT_CANCEL_ROUTE_PATH,
   ATTACHMENT_UPLOAD_ROUTE_PATH,
@@ -26,6 +27,7 @@ import { SqlitePersistenceMemory } from "../../persistence/Layers/Sqlite";
 import { AUTH_JSON_BODY_MAX_BYTES } from "./httpBody";
 import { authEffectRouteLayer } from "./authRoutes";
 import { binaryUploadEffectRouteLayer } from "./binaryUploadRoutes";
+import { providerAuthenticationRouteLayer } from "./providerAuthenticationRoute";
 import {
   ProviderAdapterRegistry,
   type ProviderAdapterRegistryShape,
@@ -112,7 +114,8 @@ async function withAuthEffectServer(
   run: (origin: string) => Promise<void>,
   routeLayer:
     | typeof authEffectRouteLayer
-    | typeof binaryUploadEffectRouteLayer = authEffectRouteLayer,
+    | typeof binaryUploadEffectRouteLayer
+    | typeof providerAuthenticationRouteLayer = authEffectRouteLayer,
   overrides?: {
     readonly providerAdapterRegistry?: ProviderAdapterRegistryShape;
     readonly serverSettingsLayer?: Layer.Layer<ServerSettingsService>;
@@ -153,6 +156,10 @@ async function withAuthEffectServer(
           );
           if (routeLayer === authEffectRouteLayer) {
             yield* httpServer.serve(yield* HttpRouter.toHttpEffect(authEffectRouteLayer));
+          } else if (routeLayer === providerAuthenticationRouteLayer) {
+            yield* httpServer.serve(
+              yield* HttpRouter.toHttpEffect(providerAuthenticationRouteLayer),
+            );
           } else {
             yield* httpServer.serve(yield* HttpRouter.toHttpEffect(binaryUploadEffectRouteLayer));
           }
@@ -341,6 +348,41 @@ describe("authEffectRouteLayer", () => {
       expect(cookie).toContain("Secure");
       expect(sideEffects.count).toBe(1);
     });
+  });
+});
+
+describe("providerAuthenticationRouteLayer", () => {
+  it("serves a signed-in status and exposes auth errors to the trusted app origin", async () => {
+    const config = {
+      host: "127.0.0.1",
+      authToken: "local-token",
+      devUrl: new URL("http://localhost:5733"),
+    } as ServerConfigShape;
+    await withAuthEffectServer(
+      config,
+      makeServerAuth({ count: 0 }),
+      async (serverOrigin) => {
+        const url = `${serverOrigin}${PROVIDER_AUTHENTICATION_PATH}`;
+        const headers = { Origin: "http://localhost:5733", "Content-Type": "application/json" };
+        const body = JSON.stringify({ provider: "codex", action: "status" });
+        const authenticated = await fetch(url, {
+          method: "POST",
+          headers: { ...headers, Cookie: "glade_session=cookie-token" },
+          body,
+        });
+        expect(authenticated.status).toBe(200);
+        expect(authenticated.headers.get("access-control-allow-origin")).toBe(headers.Origin);
+        await expect(authenticated.json()).resolves.toBeNull();
+
+        const unauthenticated = await fetch(url, { method: "POST", headers, body });
+        expect(unauthenticated.status).toBe(401);
+        expect(unauthenticated.headers.get("access-control-allow-origin")).toBe(headers.Origin);
+        await expect(unauthenticated.json()).resolves.toEqual({
+          error: "Authentication required.",
+        });
+      },
+      providerAuthenticationRouteLayer,
+    );
   });
 });
 

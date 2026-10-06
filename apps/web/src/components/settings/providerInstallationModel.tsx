@@ -36,8 +36,8 @@ const PROVIDER_INSTALL_SETTINGS: readonly ProviderInstallSettings[] = [
   {
     provider: "codex",
     docs: [
-      { label: "Install", href: "https://help.openai.com/en/articles/11096431" },
-      { label: "Update", href: "https://help.openai.com/en/articles/11096431" },
+      { label: "Install", href: "https://developers.openai.com/codex/cli" },
+      { label: "Update", href: "https://developers.openai.com/codex/cli" },
       { label: "Config", href: "https://github.com/openai/codex/blob/main/docs/config.md" },
     ],
     fields: [
