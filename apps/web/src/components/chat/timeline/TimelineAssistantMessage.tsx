@@ -24,6 +24,7 @@ import {
 import { ReviewChangesButton } from "~/components/chat/ReviewChangesButton";
 import { threadFindMarkdownProps } from "~/components/chat/threadFind.logic";
 import {
+  EDITED_FILE_LIST_CLASS_NAME,
   EditedFileRowContent,
   prefersCompactWorkEntryRow,
   TimelineWorkEntryRow,
@@ -499,7 +500,7 @@ export function renderTimelineAssistantMessage(
           ) : null}
           {renderWorkDisplay(inlineWorkDisplay, "inline")}
           {inlineEditedFilesFromTurnSummary.length > 0 && (
-            <div className="mt-2 space-y-0.5">
+            <div className={cn("mt-2", EDITED_FILE_LIST_CLASS_NAME)}>
               {inlineEditedFilesFromTurnSummary.map((file) => (
                 <button
                   key={`inline-summary-edit:${row.message.id}:${file.path}`}

@@ -562,7 +562,7 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
   return (
     <div className={cn(compact ? "py-0.5" : "rounded-lg py-1")}>
       {showEditedRows ? (
-        <div className="space-y-0.5">
+        <div className={EDITED_FILE_LIST_CLASS_NAME}>
           {changedFiles.map((changedFilePath) => {
             const summaryStat = fileDiffStatByPath?.get(changedFilePath);
             const changedFileStat =
@@ -732,6 +732,10 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
     </div>
   );
 });
+// Long edit lists scroll in place so one large turn cannot push the rest of the transcript away.
+export const EDITED_FILE_LIST_CLASS_NAME =
+  "scroll-fade-y max-h-[min(10lh,30vh)] space-y-0.5 overflow-y-auto";
+
 export function EditedFileRowContent(props: {
   filePath: string;
   additions: number | undefined;

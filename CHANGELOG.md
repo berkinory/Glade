@@ -13,6 +13,7 @@
 - Visual replies blend into the chat with automatic height and compact download and expand controls.
 - Visual previews require a smaller browser download while keeping local network access blocked.
 - Chat activity hides routine accepted approvals while keeping refusals, broader grants and Computer permission decisions visible.
+- Long lists of edited files scroll within the chat instead of pushing the rest of the conversation away.
 
 ### Fixed
 
