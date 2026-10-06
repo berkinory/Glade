@@ -73,6 +73,7 @@ import { Effect, ServiceMap, Schema, Option } from "effect";
 import {
   GLADE_AGENT_GATEWAY_TOKEN_ENV,
   GLADE_MCP_SERVER_NAME,
+  listAgentGatewayMcpTools,
 } from "../../agentGateway/mcpInjection.ts";
 import { shouldAllowGladeComputerProviderTool } from "../../agentGateway/computerToolPermission.ts";
 import { renderGladeHarnessPolicy } from "../../agentGateway/harnessPolicy.ts";
@@ -812,6 +813,7 @@ export interface CodexAppServerManagerEvents {
 
 const CODEX_DISCOVERY_CACHE_MAX_ENTRIES = 128;
 const GATEWAY_TURN_CANCELLATION_TIMEOUT_MS = 2_000;
+const GATEWAY_CATALOG_TIMEOUT_MS = 2_000;
 
 function getRecentCacheEntry<K, V>(cache: Map<K, V>, key: K): V | undefined {
   const value = cache.get(key);
@@ -3810,28 +3812,40 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     const isMcpToolCallApproval =
       request.method === MCP_SERVER_ELICITATION_REQUEST_METHOD &&
       this.isMcpToolCallApprovalRequest(request.params);
-    if (
+    const gladeToolName =
       isMcpToolCallApproval &&
-      this.readString(request.params, "serverName") === GLADE_MCP_SERVER_NAME &&
-      context.gatewaySessionLease !== undefined &&
+      this.readString(request.params, "serverName") === GLADE_MCP_SERVER_NAME
+        ? this.readGladeMcpApprovalToolName(request.params)
+        : undefined;
+    const gatewaySessionLease = context.gatewaySessionLease;
+    const ownsActiveGladeCall = () =>
+      context.gatewaySessionLease === gatewaySessionLease &&
       context.gatewayCredentialRetired !== true &&
       !context.stopping &&
-      shouldAllowGladeComputerProviderTool({
+      context.session.status === "running" &&
+      rawRoute.turnId !== undefined &&
+      rawRoute.turnId === context.session.activeTurnId &&
+      providerThreadId === readResumeCursorThreadId(context.session.resumeCursor);
+    const acceptsGladeCall =
+      gladeToolName !== undefined &&
+      gatewaySessionLease !== undefined &&
+      ownsActiveGladeCall() &&
+      (shouldAllowGladeComputerProviderTool({
         computerControlEnabled: context.enableComputerControl === true,
-        activeTurn:
-          context.session.status === "running" &&
-          rawRoute.turnId !== undefined &&
-          rawRoute.turnId === context.session.activeTurnId &&
-          providerThreadId === readResumeCursorThreadId(context.session.resumeCursor),
-
+        activeTurn: true,
         runtimeMode: context.session.runtimeMode,
-        permission: {
-          name: this.readGladeMcpApprovalToolName(request.params),
-        },
-      })
-    ) {
-      // This exact call still passes through the gateway's task consent and revocation checks. Never
-      // grant persistence to unrelated MCP tools.
+        permission: { name: `mcp__glade__${gladeToolName}` },
+      }) ||
+        // Codex asks for MCP approval separately from its command approval policy. Full Access
+        // covers the tools this session's gateway credential actually serves; the session can stop
+        // or change mode while the catalog is read, so ownership is checked again afterwards.
+        (context.session.runtimeMode === "full-access" &&
+          (await this.gatewayServesTool(gatewaySessionLease, gladeToolName)) &&
+          ownsActiveGladeCall() &&
+          context.session.runtimeMode === "full-access"));
+    if (acceptsGladeCall) {
+      // Each call still passes the gateway's authorization, consent and revocation checks. Accept
+      // only this call so no persistent grant outlives the current mode or turn.
       await this.writeMessage(context, {
         id: request.id,
         result: { action: "accept", content: null, _meta: null },
@@ -4312,12 +4326,28 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
   private readGladeMcpApprovalToolName(params: unknown): string | undefined {
     const meta = this.readObject(params, "_meta");
     const explicitName = this.readString(meta, "tool_name");
-    if (explicitName !== undefined) return `mcp__glade__${explicitName}`;
+    if (explicitName !== undefined) return explicitName;
 
-    const name = /^Allow the glade MCP server to run tool "([a-z_]+)"\?$/.exec(
+    return /^Allow the glade MCP server to run tool "([a-z_]+)"\?$/.exec(
       this.readString(params, "message") ?? "",
     )?.[1];
-    return name === undefined ? undefined : `mcp__glade__${name}`;
+  }
+
+  // The gateway's capability-filtered catalog for this credential is the source of truth; a
+  // look-alike name on the same server or an unreadable catalog keeps the provider prompt.
+  private async gatewayServesTool(
+    lease: AgentGatewaySessionLease,
+    toolName: string,
+  ): Promise<boolean> {
+    try {
+      const tools = await listAgentGatewayMcpTools({
+        connection: lease.connection,
+        signal: AbortSignal.timeout(GATEWAY_CATALOG_TIMEOUT_MS),
+      });
+      return tools.some((tool) => tool.name === toolName);
+    } catch {
+      return false;
+    }
   }
 
   private parseThreadSnapshot(method: string, response: unknown): CodexThreadSnapshot {

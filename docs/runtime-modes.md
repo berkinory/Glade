@@ -14,7 +14,9 @@ Glade exposes three runtime modes in the permission picker:
   `approvalPolicy: never`, `sandbox: danger-full-access`, and
   `approvalsReviewer: user`. Claude Code uses
   `permissionMode: bypassPermissions` with
-  `allowDangerouslySkipPermissions: true`.
+  `allowDangerouslySkipPermissions: true`. Codex MCP approval prompts for
+  Glade's own tools served to the session are accepted one call at a time;
+  other MCP servers keep their prompts.
 
 The reviewer is sent explicitly on every Codex thread start, resume, fork, and
 turn so switching away from Auto cannot inherit a sticky auto-review setting.

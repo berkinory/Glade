@@ -9,6 +9,7 @@ import {
   ProviderAdapterRequestError,
   ProviderAdapterValidationError,
 } from "../../provider/core/Errors.ts";
+import { isProviderDeliveryBlockDetail } from "@glade/shared/provider/providerDeliveryBlock";
 import { makeReactorTestHarness, asMessageId, waitFor, asTurnId } from "./reactorTestFixtures";
 
 describe("Provider reactor turnDispatch", () => {
@@ -285,12 +286,19 @@ describe("Provider reactor turnDispatch", () => {
     const thread = await readHarnessThread(harness);
     expect(thread?.session?.status).toBe("error");
     expect(thread?.session?.activeTurnId).toBeNull();
-    expect(thread?.session?.lastError).toBe(
+    expect(thread?.session?.lastError).toContain(
       "Provider adapter request failed (codex) for turn/start: turn start failed",
     );
     expect(
       thread?.activities.some((activity) => activity.kind === "provider.turn.start.failed"),
     ).toBe(true);
+    await waitFor(async () =>
+      isProviderDeliveryBlockDetail((await readHarnessThread(harness))?.session?.lastError),
+    );
+    expect((await readHarnessThread(harness))?.session).toMatchObject({
+      status: "error",
+      activeTurnId: null,
+    });
     await waitFor(async () => {
       const delivery = await Effect.runPromise(
         harness.deliveryRepository.firstBlockingDeliveryForThread({

@@ -302,9 +302,19 @@ function codexAccountAuthLabel(input: {
   }
 }
 
+// Current Codex CLI reports `login status` as plain text, usually on stderr, instead of JSON.
+function codexPlainTextLoginMethod(result: CommandResult): "chatgpt" | "apiKey" | undefined {
+  const output = `${result.stdout}\n${result.stderr}`.toLowerCase();
+  if (/^logged in using chatgpt\s*$/m.test(output)) return "chatgpt";
+  if (/^logged in using an api key\b/m.test(output)) return "apiKey";
+  return undefined;
+}
+
 function extractCodexAccountTypeFromOutput(result: CommandResult): string | undefined {
   const parsed = decodeUnknownJson(result.stdout.trim());
-  if (Result.isFailure(parsed)) return undefined;
+  if (Result.isFailure(parsed)) {
+    return codexPlainTextLoginMethod(result) === "apiKey" ? "apiKey" : undefined;
+  }
   const walk = (value: unknown): string | undefined => {
     if (Array.isArray(value)) {
       for (const entry of value) {
@@ -463,7 +473,15 @@ function parseAuthStatusFromOutput(result: CommandResult): {
     };
   }
   if (result.code === 0) {
-    return { status: "ready", authStatus: "authenticated" };
+    // Unknown successful output stays authenticated without advertising ChatGPT-only dictation.
+    const voiceTranscriptionAvailable = resolveVoiceTranscriptionAvailability(
+      codexPlainTextLoginMethod(result),
+    );
+    return {
+      status: "ready",
+      authStatus: "authenticated",
+      ...(voiceTranscriptionAvailable !== undefined ? { voiceTranscriptionAvailable } : {}),
+    };
   }
 
   const detail = detailFromResult(result);

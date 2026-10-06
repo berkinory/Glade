@@ -1,5 +1,5 @@
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { PROVIDER_DELIVERY_BLOCK_SUMMARY } from "@glade/shared/provider/providerDeliveryBlock";
+import { isProviderDeliveryBlockDetail } from "@glade/shared/provider/providerDeliveryBlock";
 import { useEffect, useRef } from "react";
 
 import type { Thread } from "~/types";
@@ -12,7 +12,7 @@ function threadErrorToastId(threadId: ThreadId): string {
 }
 
 function threadErrorToastTitle(error: string): string {
-  if (error.startsWith(PROVIDER_DELIVERY_BLOCK_SUMMARY)) {
+  if (isProviderDeliveryBlockDetail(error)) {
     return "This chat is blocked by an earlier provider error.";
   }
   const firstLine = error.split(/\r?\n/u, 1)[0]?.trim() ?? "";

@@ -13,6 +13,7 @@ import { AgentGatewayOperationRepository } from "../../agentGateway/Services/Age
 import { awaitInflightClaimSettlement, PROVIDER_COMMAND_CLAIM_LEASE_MS } from "./deliveryClaims";
 import { ProviderDeliveryGate } from "../Services/ProviderDeliveryGate.ts";
 import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
+import { type OrchestrationSession } from "@glade/contracts/orchestration/threadEntities";
 import {
   type ProviderIntentEvent,
   isProviderSideEffectIntent,
@@ -24,6 +25,7 @@ import {
 import {
   PROVIDER_DELIVERY_BLOCK_SUMMARY,
   formatProviderDeliveryBlockDetail,
+  isProviderDeliveryBlockDetail,
 } from "@glade/shared/provider/providerDeliveryBlock";
 import {
   runBoundedProviderCall,
@@ -138,6 +140,51 @@ export function makeProviderIntentSource(input: {
       return true;
     });
 
+    // Reads the durable session log rather than the projection, which can lag during replay or
+    // startup. The detail is merged over the session's real state so a live turn keeps its status
+    // and activeTurnId, and the conditional write loses to any session that changed since the read.
+    const surfaceQuarantinedThreadBlock = Effect.fnUntraced(function* (input: {
+      readonly threadId: ThreadId;
+      readonly blockerDetail: string;
+    }) {
+      const detail = formatProviderDeliveryBlockDetail(input.blockerDetail);
+      const highWater = yield* orchestrationEngine.getEventHighWaterSequence;
+      const session = yield* orchestrationEngine
+        .readThreadEventsThrough(input.threadId, 0, highWater, ["thread.session-set"])
+        .pipe(
+          Stream.runFold(
+            (): OrchestrationSession | null => null,
+            (latest, event) =>
+              event.type === "thread.session-set" ? event.payload.session : latest,
+          ),
+        );
+      const createdAt = new Date().toISOString();
+      if (session === null) {
+        yield* setThreadSessionError({ threadId: input.threadId, detail, createdAt });
+        return;
+      }
+      if (isProviderDeliveryBlockDetail(session.lastError)) return;
+      yield* setThreadSession({
+        threadId: input.threadId,
+        expectedSession: session,
+        session: { ...session, lastError: detail, updatedAt: createdAt },
+        createdAt,
+      });
+    });
+
+    const surfaceQuarantinedThreadBlockSafely = (input: {
+      readonly threadId: ThreadId;
+      readonly blockerDetail: string;
+    }) =>
+      surfaceQuarantinedThreadBlock(input).pipe(
+        Effect.catchCause((cause) =>
+          Effect.logWarning("failed to surface quarantined-thread block", {
+            threadId: input.threadId,
+            cause: Cause.pretty(cause),
+          }),
+        ),
+      );
+
     const settleTerminalFailure = Effect.fnUntraced(function* (input: {
       readonly event: ProviderIntentEvent;
       readonly claimOwner: string;
@@ -168,6 +215,10 @@ export function makeProviderIntentSource(input: {
         );
       }
       deliveryGate.quarantine(input.event.payload.threadId);
+      yield* surfaceQuarantinedThreadBlockSafely({
+        threadId: input.event.payload.threadId,
+        blockerDetail: input.detail,
+      });
       yield* requireCursorAdvance(input.event);
     });
 
@@ -693,6 +744,7 @@ export function makeProviderIntentSource(input: {
     });
 
     const startupRecoveryNotifiedThreads = new Set<ThreadId>();
+    const startupBlockSurfacedThreads = new Set<ThreadId>();
     yield* Effect.gen(function* () {
       const pageSize = 100;
       let afterEventSequence: number | undefined;
@@ -704,7 +756,18 @@ export function makeProviderIntentSource(input: {
         });
         for (const blocker of startupBlockers) {
           const settledQuit = yield* isSettledQuitInterruptBlocker(blocker);
-          if (!settledQuit && !isSafeLegacyProviderBlocker(blocker.lastError)) continue;
+          if (!settledQuit && !isSafeLegacyProviderBlocker(blocker.lastError)) {
+            // A surviving blocker keeps the thread quarantined across the restart; explain it now
+            // instead of waiting for the next skipped message.
+            if (!startupBlockSurfacedThreads.has(blocker.threadId)) {
+              startupBlockSurfacedThreads.add(blocker.threadId);
+              yield* surfaceQuarantinedThreadBlockSafely({
+                threadId: blocker.threadId,
+                blockerDetail: blocker.lastError ?? "an earlier provider command failed",
+              });
+            }
+            continue;
+          }
           const reconciled = yield* deliveryRepository.reconcile({
             reconciliationId: crypto.randomUUID(),
             consumerName: PROVIDER_COMMAND_REACTOR_CONSUMER,

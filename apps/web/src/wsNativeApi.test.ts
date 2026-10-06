@@ -842,4 +842,45 @@ describe("wsNativeApi", () => {
       });
     },
   );
+
+  it.each([
+    { status: 200, body: '"unexpected"', message: "returned an invalid response" },
+    { status: 200, body: '{"text":42}', message: "returned an invalid response" },
+    { status: 200, body: '{"text":"   "}', message: "returned an invalid response" },
+    { status: 200, body: "<html>oops</html>", message: "returned an invalid response" },
+    { status: 502, body: "null", message: "failed with status 502" },
+    { status: 403, body: '{"error":"Upload rejected"}', message: "Upload rejected" },
+  ])(
+    "rejects a $status voice response $body without a second transcription",
+    async ({ status, body, message }) => {
+      Object.defineProperty(getWindowForTest(), "desktopBridge", {
+        configurable: true,
+        writable: true,
+        value: { getWsUrl: () => "ws://127.0.0.1:3773/ws?token=desktop-secret" },
+      });
+      vi.stubGlobal(
+        "fetch",
+        vi.fn<typeof fetch>().mockResolvedValue(new Response(body, { status })),
+      );
+
+      const { createWsNativeApi } = await import("./wsNativeApi");
+      const api = createWsNativeApi();
+
+      await expect(
+        api.server.transcribeVoice({
+          provider: "codex",
+          cwd: "/repo",
+          audioBase64: "AQID",
+          mimeType: "audio/wav",
+          sampleRateHz: 24_000,
+          durationMs: 1000,
+        }),
+      ).rejects.toThrow(message);
+      expect(requestMock).not.toHaveBeenCalledWith(
+        WS_METHODS.serverTranscribeVoice,
+        expect.anything(),
+        expect.anything(),
+      );
+    },
+  );
 });

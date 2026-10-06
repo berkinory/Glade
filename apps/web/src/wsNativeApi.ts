@@ -36,7 +36,7 @@ import {
   type ServerProviderStatusesUpdatedPayload,
   type ServerLifecycleStreamEvent,
   type ServerSettingsUpdatedPayload,
-  type ServerVoiceTranscriptionResult,
+  ServerVoiceTranscriptionResult,
   ServerConfigUpdatedPayload,
 } from "@glade/contracts/server/server";
 import type { TerminalEvent } from "@glade/contracts/terminal/terminal";
@@ -48,6 +48,7 @@ import {
   type ComputerEvent,
 } from "@glade/contracts/computer/computer";
 import { VOICE_TRANSCRIPTION_UPLOAD_ROUTE_PATH } from "@glade/shared/transport/binaryTransfer";
+import { Option, Schema } from "effect";
 import { showConfirmDialogFallback } from "./confirmDialogFallback";
 import { showContextMenuFallback } from "./contextMenuFallback";
 import { requireHttpExternalUrl } from "./lib/externalUrl";
@@ -192,6 +193,8 @@ async function requestAuthJson<T>(
   return payload as T;
 }
 
+const decodeVoiceTranscriptionResult = Schema.decodeUnknownOption(ServerVoiceTranscriptionResult);
+
 async function requestVoiceTranscriptionUpload(
   input: Parameters<NativeApi["server"]["transcribeVoice"]>[0],
 ) {
@@ -216,18 +219,21 @@ async function requestVoiceTranscriptionUpload(
     void response.body?.cancel().catch(() => undefined);
     throw new VoiceUploadRouteUnavailableError();
   }
-  const payload = (await response.json().catch(() => null)) as
-    | ServerVoiceTranscriptionResult
-    | { readonly error?: unknown }
-    | null;
-  if (!response.ok || !payload || !("text" in payload)) {
+  const payload: unknown = await response.json().catch(() => null);
+  const result = response.ok ? decodeVoiceTranscriptionResult(payload) : Option.none();
+  if (Option.isNone(result)) {
     const message =
-      payload && "error" in payload && typeof payload.error === "string"
+      payload !== null &&
+      typeof payload === "object" &&
+      "error" in payload &&
+      typeof payload.error === "string"
         ? payload.error
-        : `Voice transcription failed with status ${response.status}.`;
+        : response.ok
+          ? "The voice transcription service returned an invalid response. Please try again."
+          : `Voice transcription failed with status ${response.status}.`;
     throw new Error(message);
   }
-  return payload;
+  return result.value;
 }
 
 class VoiceUploadRouteUnavailableError extends Error {}

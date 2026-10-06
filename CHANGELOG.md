@@ -15,6 +15,7 @@
 - Visual previews require a smaller browser download while keeping local network access blocked.
 - Chat activity hides routine accepted approvals while keeping refusals, broader grants and Computer permission decisions visible.
 - Long lists of edited files scroll within the chat instead of pushing the rest of the conversation away.
+- Full Access no longer asks again before Codex uses Glade's own tools.
 
 ### Fixed
 
@@ -26,6 +27,8 @@
 - Glade recovers abandoned startup locks that contain only Finder metadata, and explains locks it cannot verify with a way to open the logs.
 - Quitting asks for confirmation when the app window can't respond instead of quitting without checking for running chats.
 - Opening a path in the terminal no longer types into a busy shell, and a terminal that fails to close stays open and usable.
+- Voice dictation is available for Codex ChatGPT sign-ins, and invalid transcription responses show a clear error.
+- Chats show why they are blocked by a provider delivery failure as soon as it happens, including after a restart.
 
 ### Removed
 

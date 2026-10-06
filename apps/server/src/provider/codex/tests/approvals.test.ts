@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApprovalRequestId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { fullAccessTurnOverrides, createRequestHarness } from "./requestHarness.testSupport";
 import {
@@ -327,6 +327,114 @@ describe("MCP tool call elicitation approvals", () => {
     expect(emitEvent).toHaveBeenCalledWith(
       expect.objectContaining({ kind: "request", requestKind: "tool" }),
     );
+  });
+
+  describe("in Full Access", () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    function fullAccessHarness(onCatalogRead: () => void = () => {}) {
+      const harness = computerApprovalHarness();
+      harness.context.enableComputerControl = false;
+      harness.context.session.runtimeMode = "full-access";
+      harness.context.gatewaySessionLease = {
+        release: vi.fn(),
+        connection: { url: "http://127.0.0.1:1/mcp", bearerToken: "lease-token" },
+      } as { release: () => void };
+      const fetchMock = vi.fn(async (_url: unknown, init?: RequestInit) => {
+        onCatalogRead();
+        const { id } = JSON.parse(String(init?.body)) as { id: string };
+        const tools = ["glade_send_message", "glade_read_thread"].map((name) => ({
+          name,
+          description: name,
+          inputSchema: { type: "object" },
+        }));
+        return Response.json({ jsonrpc: "2.0", id, result: { tools } });
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      return { ...harness, fetchMock };
+    }
+
+    const sendMessageParams = () => {
+      const params = approvalParams();
+      params._meta.tool_name = "glade_send_message";
+      return params;
+    };
+
+    it("accepts a single served gateway call without persistent permission", async () => {
+      const { manager, context, emitEvent, writeMessage } = fullAccessHarness();
+      await handleServerRequestForTest(manager, context, {
+        id: 80,
+        method: "mcpServer/elicitation/request",
+        params: sendMessageParams(),
+      });
+      expect(writeMessage).toHaveBeenCalledWith(context, {
+        id: 80,
+        result: { action: "accept", content: null, _meta: null },
+      });
+      expect(context.pendingApprovals.size).toBe(0);
+      expect(emitEvent).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      "unserved-tool",
+      "other-server",
+      "approval-required",
+      "auto",
+      "stale-turn",
+      "retired",
+      "stopping",
+      "no-lease",
+      "catalog-unavailable",
+      "stopped-during-catalog",
+    ])("preserves provider approval for %s requests", async (condition) => {
+      let stopDuringCatalog = false;
+      const { manager, context, emitEvent, writeMessage, fetchMock } = fullAccessHarness(() => {
+        if (stopDuringCatalog) context.stopping = true;
+      });
+      const params = sendMessageParams();
+      switch (condition) {
+        case "unserved-tool":
+          params._meta.tool_name = "glade_send_message_anywhere";
+          break;
+        case "other-server":
+          params.serverName = "other";
+          break;
+        case "approval-required":
+        case "auto":
+          context.session.runtimeMode = condition;
+          break;
+        case "stale-turn":
+          params.turnId = "turn_old";
+          break;
+        case "retired":
+          context.gatewayCredentialRetired = true;
+          break;
+        case "stopping":
+          context.stopping = true;
+          break;
+        case "no-lease":
+          context.gatewaySessionLease = undefined;
+          break;
+        case "catalog-unavailable":
+          fetchMock.mockRejectedValueOnce(new Error("gateway unavailable"));
+          break;
+        case "stopped-during-catalog":
+          stopDuringCatalog = true;
+          break;
+      }
+      await handleServerRequestForTest(manager, context, {
+        id: 81,
+        method: "mcpServer/elicitation/request",
+        params,
+      });
+      expect(context.pendingApprovals.size).toBe(1);
+      expect(writeMessage).not.toHaveBeenCalled();
+      expect(emitEvent).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "request", requestKind: "tool" }),
+      );
+    });
   });
 
   it("tracks approval elicitations as tool requests and accepts them with the MCP response shape", async () => {

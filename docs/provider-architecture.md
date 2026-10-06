@@ -52,6 +52,8 @@ Codex protocol artifacts come from the pinned 0.158.0 CLI. `bun run --filter @gl
 
 Codex chat and discovery sessions lease one app-server per executable, provider home, launch arguments, extra skill roots and effective environment. The pool owns the transport, global request IDs and native thread routing; session state and gateway authority remain separate. Gateway credentials are supplied in each thread's MCP HTTP configuration, never in the shared process environment. Resume reloads that configuration before the thread becomes ready.
 
+Codex asks for MCP tool approval separately from its command approval policy. In Full Access, Glade accepts that prompt for a single call only when it names the managed `glade` server, the tool appears in the catalog served to the session's gateway credential, and the request belongs to the session's active native thread and turn while the credential is live and the session is not stopping. Supervised and Auto keep the provider prompt, except for the existing Computer delegation in Supervised mode. No persistent grant is returned; gateway authorization, Computer consent and revocation still run on every call.
+
 Shared Codex process stderr is logged once as process diagnostics, without attributing it to chat sessions. Native protocol errors retain their thread routing, while process failures still reach every affected session.
 
 Stopping a session interrupts its active turn and unsubscribes its native thread. Other leases keep the process alive; the last lease tears down the complete process tree and awaits exit proof. Shared crashes close all affected sessions and apply bounded restart backoff. The existing provider idle timeout still retires chat leases. Native Codex retains unsubscribed thread contexts according to its own lifecycle and creates configured MCP clients per thread, so sharing the app-server does not promise a shared MCP child process.
@@ -59,6 +61,8 @@ Stopping a session interrupts its active turn and unsubscribes its native thread
 Model selections name native models. Unset and legacy default selections resolve through live discovery: Codex uses `isDefault`, and Claude uses the `resolvedModel` of its hidden `default` entry. Native descriptors own model options; shared code retains legacy selections without guessing model-family capabilities. Claude applies acknowledged live flags, and native context usage replaces Glade budget overrides. Historical cache-review records remain readable only for explicit held-message recovery.
 
 `ProviderManagement` owns validation and protects managed gateway configuration before routing native MCP/plugin actions to adapters. Its contracts keep session-only actions distinct from persistent changes. Native failures retain their kind and retry state; an upstream retry without an attempt count does not acquire an invented counter. Codex account limits come from native account APIs instead of an undocumented HTTP endpoint or credential refresh implementation.
+
+A provider command that settles as dead or uncertain quarantines its chat. The intent source writes the blocking reason to the chat's session as soon as it settles, and once per chat at startup for a blocker that survives restart. The write merges over the latest durable session, so a running turn keeps its status and active turn, and it is dropped if a newer session lands first. Sending the next message still clears the blocker explicitly; the ambiguous command is never replayed.
 
 ## Provider-specific state
 
@@ -126,6 +130,8 @@ only an explicit start creates a process. Close requires the current attachment
 identity and verifies owned process teardown. Renderer remounts do not start another
 login. CLI exit triggers provider status and catalog refresh; exit code zero alone
 is not proof of authentication. Server shutdown disposes retained attempts.
+
+Codex health accepts JSON or the plain-text `login status` output. Voice dictation is advertised only for an explicit ChatGPT sign-in; an API-key sign-in disables it, and other successful output stays authenticated without claiming voice support.
 
 Provider transitions continue in the same chat through `thread.handoff.start`. `HandoffPreparation` owns isolated destination-model evidence generation; `HandoffTransitions` validates immutable source boundaries and generations and persists stage changes. Source runtime retirement precedes destination admission, and only native first-turn acceptance marks delivery. Recovery of an interrupted turn-start RPC settles its original orchestration receipt without sending another turn. That receipt proves app-command acceptance only: the composer still waits for the matching transition operation and delivery message before clearing its captured draft. Uncertain or failed provider acceptance preserves the draft and never compensates attachments already accepted by orchestration. See [handoff-context.md](handoff-context.md) for accounting, retrieval and failure recovery. Codex rewind reads only the required descending turn-ID tail and returns no fabricated retained-history snapshot.
 

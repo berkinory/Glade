@@ -36,7 +36,7 @@ The instance id is a fresh UUID per server boot. That is what makes a restart mi
 
 ## Recovery and interrupted sends
 
-HTTP negotiation discards unusable error bodies before entering the bootstrap socket fallback. HTTP 426 still decodes the typed incompatibility response within the negotiation deadline; authentication failures stop recovery. Voice upload uses its RPC fallback on 404/405 without reading the response body. Other upload failures never trigger another transcription request.
+HTTP negotiation discards unusable error bodies before entering the bootstrap socket fallback. HTTP 426 still decodes the typed incompatibility response within the negotiation deadline; authentication failures stop recovery. Voice upload uses its RPC fallback on 404/405 without reading the response body. A successful response must decode as the shared transcription result; an invalid one is reported to the composer as an error. Other upload failures and invalid responses never trigger another transcription request.
 
 Recoverable feature RPC protocol errors rebuild the complete client through the reconnect owner. Recovery immediately fences old callbacks and retry timers, closes the old scope/runtime before replacing it, probes the feature connection, and restores subscriptions. Terminal creation continues to wait for terminal-output readiness. Thread resume cursors remain scoped to the server generation. Disposal cancels connection and settlement work; permanent incompatibility or authentication failures remain visible.
 
