@@ -8,10 +8,7 @@ import {
 import { Button } from "~/components/ui/button";
 import { Dialog, DialogPopup, DialogTitle } from "~/components/ui/dialog";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
-import { ExpandIcon, CollapseIcon, CodeSquareIcon, DownloadIcon, ViewIcon } from "~/lib/icons";
-import { FileContentsView } from "~/components/WorkspaceFileContents";
-import { useTheme } from "~/hooks/useTheme";
-import { resolveDiffThemeName } from "~/lib/diffRendering";
+import { ExpandIcon, CollapseIcon, DownloadIcon } from "~/lib/icons";
 import { downloadBlob } from "~/lib/browserDownload";
 import { resolveWsHttpUrl } from "~/lib/wsHttpUrl";
 import { VisualReplyFrame } from "./VisualReplyFrame";
@@ -24,10 +21,9 @@ export function VisualReplyCard({
   readonly activityId: string;
 }) {
   const container = useRef<HTMLDivElement>(null);
-  const { resolvedTheme } = useTheme();
   const [visible, setVisible] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const [sourceOpen, setSourceOpen] = useState(false);
+  const [contentHeight, setContentHeight] = useState(420);
   useEffect(() => {
     const element = container.current;
     if (!element) return;
@@ -60,19 +56,9 @@ export function VisualReplyCard({
   const header = (inDialog: boolean) => {
     const actions = [
       {
-        id: "source",
-        label: sourceOpen ? "View visual" : "View source",
-        icon: sourceOpen ? ViewIcon : CodeSquareIcon,
-        pressed: sourceOpen,
-        onClick: () => {
-          setSourceOpen((value) => !value);
-        },
-      },
-      {
         id: "save",
         label: "Save HTML",
         icon: DownloadIcon,
-        pressed: undefined,
         onClick: () => {
           if (source.data)
             downloadBlob(
@@ -85,14 +71,21 @@ export function VisualReplyCard({
         id: "expand",
         label: inDialog ? "Collapse visual" : "Expand visual",
         icon: inDialog ? CollapseIcon : ExpandIcon,
-        pressed: undefined,
         onClick: () => setExpanded(!inDialog),
       },
     ];
     return (
-      <div className="flex items-center gap-1 border-b border-border px-3 py-2">
-        <span className="min-w-0 flex-1 truncate text-ui-sm font-medium">{reply.title}</span>
-        {actions.map(({ id, label, icon: Icon, pressed, onClick }) => (
+      <div
+        className={
+          inDialog
+            ? "flex items-center gap-1 border-b border-border px-3 py-2"
+            : "absolute end-2 top-2 z-10 flex items-center gap-1 rounded-lg border border-border bg-background/90 p-1 opacity-0 shadow-sm transition-opacity group-hover/visual:opacity-100 focus-within:opacity-100 pointer-coarse:opacity-100"
+        }
+      >
+        {inDialog && (
+          <span className="min-w-0 flex-1 truncate text-ui-sm font-medium">{reply.title}</span>
+        )}
+        {actions.map(({ id, label, icon: Icon, onClick }) => (
           <Tooltip key={id}>
             <TooltipTrigger
               render={
@@ -100,10 +93,8 @@ export function VisualReplyCard({
                   variant="ghost"
                   size="icon-sm"
                   aria-label={label}
-                  aria-pressed={pressed}
                   disabled={!source.data}
                   onClick={onClick}
-                  className={pressed ? "bg-accent text-accent-foreground" : undefined}
                 >
                   <Icon className="size-4" />
                 </Button>
@@ -133,27 +124,19 @@ export function VisualReplyCard({
       );
     if (!source.data)
       return <p className="p-4 text-ui-sm text-muted-foreground">Loading visual...</p>;
-    if (sourceOpen)
-      return (
-        <div className="editor-file-viewer h-full overflow-auto text-ui-sm">
-          <FileContentsView
-            path="visual.html"
-            contents={source.data}
-            themeName={resolveDiffThemeName(resolvedTheme)}
-          />
-        </div>
-      );
-    return <VisualReplyFrame html={source.data} title={reply.title} />;
+    return (
+      <VisualReplyFrame
+        html={source.data}
+        title={reply.title}
+        onContentHeight={expanded ? undefined : setContentHeight}
+      />
+    );
   };
   return (
     <>
-      <div
-        ref={container}
-        className="my-3 overflow-hidden rounded-xl border border-border bg-card"
-        data-visual-reply={activityId}
-      >
+      <div ref={container} className="group/visual relative my-3" data-visual-reply={activityId}>
         {header(false)}
-        <div className="overflow-hidden" style={{ height: "min(420px, 60vh)" }}>
+        <div className="overflow-hidden" style={{ height: contentHeight }}>
           {visible && !expanded ? body() : <div className="h-full bg-muted/20" />}
         </div>
       </div>

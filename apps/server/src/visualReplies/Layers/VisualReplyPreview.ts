@@ -1,7 +1,6 @@
 import { install, Browser, computeExecutablePath } from "@puppeteer/browsers";
 import puppeteer from "puppeteer-core";
 import { randomUUID } from "node:crypto";
-import { createServer } from "node:net";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { Effect, Layer, Semaphore } from "effect";
@@ -10,11 +9,12 @@ import {
   DEFAULT_VISUAL_REPLY_THEME,
   visualReplyDocument,
 } from "@glade/shared/attachments/visualReplyDocument";
+import { publicPreviewProxy } from "../publicPreviewProxy";
 import { ServerConfig } from "../../server/config";
 import { VisualReplyError } from "../visualReplySource";
 import { VisualReplyPreview, type VisualReplyPreviewShape } from "../Services/VisualReplyPreview";
 
-// Chrome for Testing pinned to puppeteer-core 25.12.0, independent of installed user browsers.
+// Chrome headless shell pinned to puppeteer-core 25.12.0, independent of installed user browsers.
 const CHROME_BUILD = "154.0.8037.57";
 
 export const VisualReplyPreviewLive = Layer.effect(
@@ -25,7 +25,7 @@ export const VisualReplyPreviewLive = Layer.effect(
     const cacheDir = path.join(config.stateDir, "tools", "visual-replies");
     const executablePath = computeExecutablePath({
       cacheDir,
-      browser: Browser.CHROME,
+      browser: Browser.CHROMEHEADLESSSHELL,
       buildId: CHROME_BUILD,
     });
     const capture: VisualReplyPreviewShape["capture"] = (input) =>
@@ -36,51 +36,21 @@ export const VisualReplyPreviewLive = Layer.effect(
               buildId: CHROME_BUILD,
             });
             yield* Effect.tryPromise({
-              try: () => install({ cacheDir, browser: Browser.CHROME, buildId: CHROME_BUILD }),
+              try: () =>
+                install({ cacheDir, browser: Browser.CHROMEHEADLESSSHELL, buildId: CHROME_BUILD }),
               catch: (cause) =>
                 new VisualReplyError({
                   message: `Preview browser installation failed: ${String(cause)}`,
                 }),
             });
           }
-          // CDP request interception does not cover WebSockets, prefetch or service workers. The
-          // mandatory dead-end proxy blocks those too, including Chromium's implicit loopback bypass.
-          const proxy = yield* Effect.acquireRelease(
-            Effect.tryPromise({
-              try: () =>
-                new Promise<ReturnType<typeof createServer>>((resolve, reject) => {
-                  const server = createServer((socket) => {
-                    socket.destroy();
-                  });
-                  server.once("error", reject);
-                  server.listen(0, "127.0.0.1", () => {
-                    resolve(server);
-                  });
-                }),
-              catch: (cause) =>
-                new VisualReplyError({ message: `Preview isolation failed: ${String(cause)}` }),
-            }),
-            (server) =>
-              Effect.promise(
-                () =>
-                  new Promise<void>((resolve) => {
-                    server.close(() => {
-                      resolve();
-                    });
-                  }),
-              ),
-          );
-          const address = proxy.address();
-          if (!address || typeof address === "string")
-            return yield* new VisualReplyError({
-              message: "Preview proxy did not acquire a port.",
-            });
+          const proxyPort = yield* publicPreviewProxy;
           const browser = yield* Effect.acquireRelease(
             Effect.tryPromise({
               try: () =>
                 puppeteer.launch({
                   executablePath,
-                  headless: true,
+                  headless: "shell",
                   pipe: true,
                   handleSIGINT: false,
                   handleSIGTERM: false,
@@ -93,12 +63,13 @@ export const VisualReplyPreviewLive = Layer.effect(
                       : {}),
                   },
                   args: [
-                    `--proxy-server=http://127.0.0.1:${address.port}`,
+                    `--proxy-server=socks5://127.0.0.1:${proxyPort}`,
                     "--proxy-bypass-list=<-loopback>",
                     "--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1",
                     "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
                     "--disable-background-networking",
                     "--disable-component-update",
+                    "--disable-quic",
                   ],
                 }),
               catch: (cause) =>
@@ -115,13 +86,6 @@ export const VisualReplyPreviewLive = Layer.effect(
               });
               const page = await context.newPage();
               await page.setViewport({ width: input.width, height: input.height });
-              await page.setRequestInterception(true);
-              page.on("request", (request) => {
-                const action = request.url().startsWith("data:")
-                  ? request.continue()
-                  : request.abort();
-                void action.catch(() => undefined);
-              });
               page.on("dialog", (dialog) => {
                 void dialog.dismiss().catch(() => undefined);
               });
@@ -146,7 +110,7 @@ export const VisualReplyPreviewLive = Layer.effect(
               await page.evaluate("document.fonts.ready");
               const contentHeight = Number(
                 await page.evaluate(
-                  "Math.max(document.body.scrollHeight, document.documentElement.scrollHeight)",
+                  "Math.ceil(document.body.getBoundingClientRect().top + Math.max(document.body.scrollHeight, document.body.getBoundingClientRect().height) + (parseFloat(getComputedStyle(document.body).marginBottom) || 0))",
                 ),
               );
               const png = await page.screenshot({ type: "png" });

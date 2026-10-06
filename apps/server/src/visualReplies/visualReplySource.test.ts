@@ -49,7 +49,7 @@ describe("visual reply workspace boundary", () => {
         { title: "Escape", path: "../secret.html" },
         { title: "Symlink", path: "escape.html" },
         { title: "Disguised", html: '<img src="fake.png">' },
-        { title: "Remote", html: '<script src="https://example.test/app.js"></script>' },
+        { title: "Host file", html: '<script src="file:///etc/passwd"></script>' },
         { title: "Invalid input", html: "one", path: "view.html" },
       ]) {
         await expect(

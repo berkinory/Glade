@@ -93,7 +93,10 @@ export const prepareVisualReply = (input: {
       for (const node of elements(document)) {
         if (node.tagName === "a" || node.tagName === "area") {
           node.attrs = node.attrs.filter(
-            (attr) => attr.name !== "href" || attr.value.startsWith("#"),
+            (attr) =>
+              attr.name !== "href" ||
+              attr.value.startsWith("#") ||
+              /^https?:\/\//iu.test(attr.value),
           );
         }
         if (
@@ -104,16 +107,18 @@ export const prepareVisualReply = (input: {
           if (parent) parent.childNodes = parent.childNodes.filter((child) => child !== node);
           continue;
         }
-        if (
-          (node.tagName === "script" && node.attrs.some((attr) => attr.name === "src")) ||
-          (node.tagName === "link" && node.attrs.some((attr) => attr.name === "href"))
-        )
-          throw new Error(
-            "Use self-contained HTML: inline scripts and styles instead of loading external resources.",
+        if (node.tagName === "script" || node.tagName === "link") {
+          const resource = node.attrs.find(
+            (attr) => attr.name === (node.tagName === "script" ? "src" : "href"),
           );
+          if (resource && !/^https?:\/\//iu.test(resource.value))
+            throw new Error(
+              "External scripts and styles must use absolute HTTP(S) URLs; inline local resources.",
+            );
+        }
         if (node.tagName !== "img") continue;
         const src = node.attrs.find((attr) => attr.name === "src");
-        if (!src || src.value.startsWith("data:")) continue;
+        if (!src || src.value.startsWith("data:") || /^https?:\/\//iu.test(src.value)) continue;
         if (/^[a-z][a-z\d+.-]*:/iu.test(src.value) || src.value.startsWith("//"))
           throw new Error(
             "Images must be embedded data URLs or files inside the caller workspace.",

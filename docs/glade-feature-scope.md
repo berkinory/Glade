@@ -181,35 +181,32 @@ use managed attachment quotas and cleanup. Activity history caps preserve visual
 reply references. The authenticated source endpoint serves plain text; generic HTML
 attachments download with a restrictive sandbox policy.
 
-Cards support syntax-highlighted source viewing, saving, expansion and collapse.
+Inline visuals blend into the transcript; save and expand icons appear on hover or keyboard focus (always on touch screens). The expanded dialog retains its toolbar.
 Visuals run their local scripts immediately in an opaque iframe with no same-origin
-access, popups, form submission, downloads or host bridge. Source and visual views
-keep a fixed viewport with internal scrolling. View and expanded modes render the
+access, popups, form submission, downloads or host bridge. Inline height follows content between 80 and 2000 pixels, with internal scrolling beyond that limit. Expanded views use a fixed viewport. View and expanded modes render the
 original HTML at display resolution in the application theme; PNG previews are for
-agent validation. Script failures are displayed in the card. Interactive controls
+agent validation. Script failures are displayed beside the visual. Interactive controls
 must be present in the generated HTML; the host does not turn every label into an
 editor. State stays in memory: localStorage, sessionStorage and IndexedDB are not
 available in the opaque sandbox.
 
-CSP blocks network subresources and embedded frames; desktop navigation guards
+CSP permits HTTP(S) resources but blocks embedded frames; desktop navigation guards
 prevent the frame leaving its document. Web clients remove a frame after unexpected
 navigation, but iframe CSP is not a network firewall for self-navigation. Hidden
 cards unmount their frames and lose transient interactive state. Cards follow
-application colors and typography.
+application colors and typography through theme messages, preserving in-memory edits during theme changes. HTTP(S) links open through the host only when the frame has focus and the user has just interacted with it.
 
 `html_preview` optionally captures a screenshot and bounded console output in a
-separate, sandboxed headless Chrome process. First use downloads pinned Chrome for
-Testing to the server's private tools cache. Preview admits one request at a time,
-blocks network requests with interception and a dead-end proxy, denies downloads,
+separate, sandboxed Chrome headless shell process. First use downloads the pinned shell to the server's private tools cache. Preview admits one request at a time,
+routes TCP traffic through a mandatory public-network SOCKS proxy, denies downloads,
 uses a temporary profile, limits rendering to 20 seconds, and closes the process
-after each request. Publishing and displaying a reply do not launch this browser.
+after each request. The proxy blocks private, loopback, link-local, reserved, translated and host interface addresses; DNS results are checked and pinned to prevent rebinding. This server-side proxy applies to preview capture; displayed frames use the client browser network and permission policies. Publishing and displaying a reply do not launch this browser.
 
 Inputs accept exactly one inline HTML string or workspace file, up to 2 MiB.
 Inline HTML also works in chats without a ready workspace; file inputs and local images require one.
 Local PNG, JPEG, GIF and WebP images are embedded after canonical workspace containment
 and byte checks, up to 8 MiB total; prepared documents are limited to 16 MiB. Inline
-SVG is supported. Scripts and styles must be inline; CDNs and external stylesheets
-are unsupported. Theme variables are `--glade-background`, `--glade-foreground`,
+SVG is supported. Absolute HTTP(S) scripts, styles and images are supported; inline assets are preferred for predictable rendering. Local scripts and styles must be inlined. Theme variables are `--glade-background`, `--glade-foreground`,
 `--glade-muted`, `--glade-accent`, `--glade-border`, `--glade-font-family` and
 `--glade-font-size`. A preview can be retained only with the unchanged source and
 within its originating provider session.

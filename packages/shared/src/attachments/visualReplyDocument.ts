@@ -1,11 +1,11 @@
 export const VISUAL_REPLY_CSP = [
   "default-src 'none'",
-  "script-src 'unsafe-inline'",
-  "style-src 'unsafe-inline'",
-  "img-src data:",
-  "font-src data:",
-  "media-src data:",
-  "connect-src 'none'",
+  "script-src 'unsafe-inline' https: http:",
+  "style-src 'unsafe-inline' https: http:",
+  "img-src data: https: http:",
+  "font-src data: https: http:",
+  "media-src data: https: http:",
+  "connect-src https: http: wss: ws:",
   "frame-src 'none'",
   "object-src 'none'",
   "base-uri 'none'",
@@ -62,9 +62,25 @@ export function visualReplyDocument(input: {
     addEventListener('click', event => {
       const link = event.composedPath().find(node => node instanceof HTMLAnchorElement);
       if (!link) return;
+      if (link.getAttribute('href')?.startsWith('#')) return;
       event.preventDefault();
-
+      if (event.isTrusted && navigator.userActivation.isActive && /^https?:/.test(link.href)) {
+        parent.postMessage({ channel: settings.channel, kind: 'open-link', url: link.href }, '*');
+      }
     }, true);
+    addEventListener('DOMContentLoaded', () => {
+      let previous = 0;
+      const reportHeight = () => {
+        const body = document.body;
+        const height = Math.ceil(body.getBoundingClientRect().top + scrollY + Math.max(body.scrollHeight, body.getBoundingClientRect().height) + (parseFloat(getComputedStyle(body).marginBottom) || 0));
+        if (height !== previous) {
+          previous = height;
+          parent.postMessage({ channel: settings.channel, kind: 'height', height }, '*');
+        }
+      };
+      new ResizeObserver(reportHeight).observe(document.body);
+      reportHeight();
+    });
   })();</script>`;
   const cssValue = (value: string) => value.replace(/[<>{};]/gu, "");
   const themeCss = Object.entries(input.theme)

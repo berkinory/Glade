@@ -1,5 +1,24 @@
 # Glade Changelog
 
+## 0.2.1 - Unreleased
+
+### New
+
+- Visual replies and previews can load public web resources, and visual links open in your browser.
+
+### Improved
+
+- Visual replies blend into the chat with automatic height and compact download and expand controls.
+- Visual previews require a smaller browser download while keeping local network access blocked.
+
+### Fixed
+
+- Changing the app theme preserves edits and interactive state in visual replies.
+
+### Removed
+
+- Removed the source-code view from visual replies.
+
 ## 0.2.0 - 2026-10-06
 
 ### New
