@@ -24,6 +24,8 @@ export interface OrchestrationProjectionPipelineShape {
       // True when the deferred phase had no projector for this event and its cursor was advanced inside
       // the hot transaction, so the caller must not run a separate deferred pass for it.
       readonly deferredPhaseSettled: boolean;
+      // Filesystem cleanup for the projected event. Run it only after the transaction commits.
+      readonly afterCommit: Effect.Effect<void>;
     },
     ProjectionRepositoryError
   >;

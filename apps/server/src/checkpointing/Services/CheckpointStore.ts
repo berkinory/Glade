@@ -7,6 +7,7 @@ import type { Effect } from "effect";
 
 import type { CheckpointStoreError } from "../Errors.ts";
 import { CheckpointRef } from "@glade/contracts/core/baseSchemas";
+import type { OrchestrationCheckpointFile } from "@glade/contracts/orchestration/threadEntities";
 
 interface CaptureCheckpointInput {
   readonly cwd: string;
@@ -28,6 +29,12 @@ interface DiffCheckpointsInput {
   readonly fallbackFromToHead?: boolean;
   readonly ignoreWhitespace: boolean;
   readonly maxOutputBytes?: number;
+}
+
+interface SummarizeCheckpointDiffInput {
+  readonly cwd: string;
+  readonly fromCheckpointRef: CheckpointRef;
+  readonly toCheckpointRef: CheckpointRef;
 }
 
 interface DeleteCheckpointRefsInput {
@@ -69,6 +76,11 @@ export interface CheckpointStoreShape {
   readonly diffCheckpoints: (
     input: DiffCheckpointsInput,
   ) => Effect.Effect<string, CheckpointStoreError>;
+
+  // Per-file kind and line counts between two checkpoints, without generating the patch text.
+  readonly summarizeCheckpointDiff: (
+    input: SummarizeCheckpointDiffInput,
+  ) => Effect.Effect<OrchestrationCheckpointFile[], CheckpointStoreError>;
 
   readonly deleteCheckpointRefs: (
     input: DeleteCheckpointRefsInput,

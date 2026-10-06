@@ -174,6 +174,19 @@ export function makeSnapshotThreadQueries(input: { readonly sql: SqlClient.SqlCl
       `,
   });
 
+  const listChildThreadIdRows = SqlSchema.findAll({
+    Request: Schema.Struct({ parentThreadId: ThreadId }),
+    Result: ProjectionThreadIdLookupRowSchema,
+    execute: ({ parentThreadId }) =>
+      sql`
+        SELECT
+          thread_id AS "threadId"
+        FROM projection_threads
+        WHERE parent_thread_id = ${parentThreadId}
+          AND deleted_at IS NULL
+      `,
+  });
+
   const getThreadRowById = SqlSchema.findOneOption({
     Request: ThreadIdLookupInput,
     Result: ProjectionThreadDbRowSchema,
@@ -461,6 +474,7 @@ export function makeSnapshotThreadQueries(input: { readonly sql: SqlClient.SqlCl
     getFullThreadDiffContextRow,
     getAnyThreadIdRowById,
     getThreadRowById,
+    listChildThreadIdRows,
     listThreadRowsByIds,
     listLatestTurnRowsByThreads,
     listThreadSessionRowsByThreads,

@@ -783,12 +783,9 @@ const make = Effect.gen(function* () {
     const budgetKey = `${parentThreadId}:${sourceTurnId ?? "session"}`;
     const slotState = yield* Cache.get(nativeChildIdsBySourceTurn, budgetKey);
     if (!slotState.initialized) {
-      const snapshot = yield* projectionSnapshotQuery.getShellSnapshot();
-      for (const thread of snapshot.threads) {
-        if (
-          thread.parentThreadId === parentThreadId &&
-          (thread.sourceTurnId ?? null) === sourceTurnId
-        ) {
+      const children = yield* projectionSnapshotQuery.listChildThreadShells(parentThreadId);
+      for (const thread of children) {
+        if ((thread.sourceTurnId ?? null) === sourceTurnId) {
           slotState.childIds.add(thread.id);
         }
       }

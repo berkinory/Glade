@@ -37,6 +37,9 @@ export function collectThreadAttachmentRelativePaths(
 }
 
 export const runAttachmentSideEffects = Effect.fn(function* (sideEffects: AttachmentSideEffects) {
+  if (sideEffects.deletedThreadIds.size === 0 && sideEffects.prunedThreadRelativePaths.size === 0) {
+    return;
+  }
   const serverConfig = yield* Effect.service(ServerConfig);
   const fileSystem = yield* Effect.service(FileSystem.FileSystem);
   const path = yield* Effect.service(Path.Path);

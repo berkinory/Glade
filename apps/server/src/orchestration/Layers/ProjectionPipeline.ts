@@ -325,18 +325,21 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
       Effect.provideService(ServerConfig, serverConfig),
     );
 
+  // File removal must wait for the caller's commit: a rolled-back revert or delete would otherwise
+  // lose legacy attachment files while its events were never written.
   const runProjectorsForHotEvent = (
     selectedProjectors: ReadonlyArray<ProjectorDefinition>,
     event: OrchestrationEvent,
     phaseCursor: ProjectorName,
   ) =>
     runProjectorsForEventCore(selectedProjectors, event, phaseCursor).pipe(
-      Effect.flatMap((attachmentSideEffects) =>
-        runProjectorAttachmentSideEffects(selectedProjectors, event, attachmentSideEffects),
+      Effect.map((attachmentSideEffects) =>
+        runProjectorAttachmentSideEffects(selectedProjectors, event, attachmentSideEffects).pipe(
+          Effect.provideService(FileSystem.FileSystem, fileSystem),
+          Effect.provideService(Path.Path, path),
+          Effect.provideService(ServerConfig, serverConfig),
+        ),
       ),
-      Effect.provideService(FileSystem.FileSystem, fileSystem),
-      Effect.provideService(Path.Path, path),
-      Effect.provideService(ServerConfig, serverConfig),
     );
 
   const initializeHotProjectionCursor = Effect.gen(function* () {
@@ -545,7 +548,7 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
             selectProjectorsForEvent(event, "hot"),
             event,
             ORCHESTRATION_PROJECTOR_NAMES.hot,
-          ).pipe(Effect.as({ deferredPhaseSettled })),
+          ).pipe(Effect.map((afterCommit) => ({ deferredPhaseSettled, afterCommit }))),
         ),
       );
 

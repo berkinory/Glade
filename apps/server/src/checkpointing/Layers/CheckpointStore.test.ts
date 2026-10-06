@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -9,6 +10,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { CheckpointStoreLive } from "./CheckpointStore.ts";
 import { CheckpointStore } from "../Services/CheckpointStore.ts";
 import { GitCore, type GitCoreShape } from "../../git/Services/GitCore.ts";
+import { GitCoreLive } from "../../git/Layers/GitCore.ts";
+import { ServerConfig } from "../../server/config.ts";
 import { CheckpointRef } from "@glade/contracts/core/baseSchemas";
 
 async function waitFor(predicate: () => boolean, timeoutMs = 1_000): Promise<void> {
@@ -350,4 +353,61 @@ describe("CheckpointStoreLive", () => {
 
     expect(result).toBe("success");
   });
+});
+
+it("summarizes added, deleted, renamed and binary files", async () => {
+  const cwd = mkdtempSync(join(tmpdir(), "glade-checkpoint-summary-"));
+  const git = (...args: string[]) => execFileSync("git", args, { cwd, encoding: "utf8" });
+  const summaryRuntime = ManagedRuntime.make(
+    CheckpointStoreLive.pipe(
+      Layer.provide(
+        GitCoreLive.pipe(
+          Layer.provide(ServerConfig.layerTest(cwd, { prefix: "glade-checkpoint-summary-test-" })),
+        ),
+      ),
+      Layer.provide(NodeServices.layer),
+    ),
+  );
+  const lines = (count: number) =>
+    Array.from({ length: count }, (_, index) => `line ${index}\n`).join("");
+  try {
+    git("init", "-q");
+    git("config", "user.name", "Checkpoint Test");
+    git("config", "user.email", "checkpoint@example.invalid");
+    writeFileSync(join(cwd, "modified.ts"), "a\nb\nc\n");
+    writeFileSync(join(cwd, "deleted.ts"), "one\ntwo\n");
+    writeFileSync(join(cwd, "before rename.ts"), lines(20));
+    writeFileSync(join(cwd, "image.bin"), Buffer.from([0, 1, 2, 3]));
+    git("add", ".");
+    git("commit", "-qm", "baseline");
+    const from = CheckpointRef.makeUnsafe("refs/glade-checkpoints/summary/from");
+    const to = CheckpointRef.makeUnsafe("refs/glade-checkpoints/summary/to");
+    git("update-ref", from, "HEAD");
+    writeFileSync(join(cwd, "modified.ts"), "a\nB\nc\nd\n");
+    rmSync(join(cwd, "deleted.ts"));
+    git("mv", "before rename.ts", "after\trename.ts");
+    writeFileSync(join(cwd, "after\trename.ts"), `${lines(20)}extra\n`);
+    writeFileSync(join(cwd, "image.bin"), Buffer.from([0, 9, 8, 7]));
+    writeFileSync(join(cwd, "added.ts"), "new\n");
+    git("add", "-A");
+    git("commit", "-qm", "turn");
+    git("update-ref", to, "HEAD");
+
+    const files = await summaryRuntime.runPromise(
+      Effect.flatMap(CheckpointStore.asEffect(), (store) =>
+        store.summarizeCheckpointDiff({ cwd, fromCheckpointRef: from, toCheckpointRef: to }),
+      ),
+    );
+
+    expect(files).toEqual([
+      { path: "added.ts", kind: "added", additions: 1, deletions: 0 },
+      { path: "after\trename.ts", kind: "renamed", additions: 1, deletions: 0 },
+      { path: "deleted.ts", kind: "deleted", additions: 0, deletions: 2 },
+      { path: "image.bin", kind: "modified", additions: 0, deletions: 0 },
+      { path: "modified.ts", kind: "modified", additions: 2, deletions: 1 },
+    ]);
+  } finally {
+    await summaryRuntime.dispose();
+    rmSync(cwd, { recursive: true, force: true });
+  }
 });

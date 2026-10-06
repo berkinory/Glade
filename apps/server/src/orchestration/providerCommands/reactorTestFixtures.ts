@@ -371,6 +371,7 @@ export function makeReactorTestHarness() {
       previewScopedRestore: () => Effect.succeed({ fingerprint: "empty", files: [] }),
       restoreScopedCheckpoint,
       diffCheckpoints: () => Effect.succeed(""),
+      summarizeCheckpointDiff: () => Effect.succeed([]),
       deleteCheckpointRefs: () => Effect.void,
       ...input?.checkpointStore,
     };

@@ -155,6 +155,11 @@ export interface ProjectionSnapshotQueryShape {
     threadIds: ReadonlyArray<ThreadId>,
   ) => Effect.Effect<ReadonlyArray<OrchestrationThreadShell>, ProjectionRepositoryError>;
 
+  // Non-deleted child threads (archived included), matching the shell snapshot's visibility.
+  readonly listChildThreadShells: (
+    parentThreadId: ThreadId,
+  ) => Effect.Effect<ReadonlyArray<OrchestrationThreadShell>, ProjectionRepositoryError>;
+
   readonly threadIdExistsIncludingDeleted: (
     threadId: ThreadId,
   ) => Effect.Effect<boolean, ProjectionRepositoryError>;

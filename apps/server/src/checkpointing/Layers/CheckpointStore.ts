@@ -12,6 +12,7 @@ import { GitCommandError } from "../../git/Errors.ts";
 import { GitCore } from "../../git/Services/GitCore.ts";
 import { CheckpointStore, type CheckpointStoreShape } from "../Services/CheckpointStore.ts";
 import { CheckpointRef } from "@glade/contracts/core/baseSchemas";
+import { parseCheckpointFilesFromRawNumstat } from "../Diffs.ts";
 
 const CHECKPOINT_DIFF_MAX_OUTPUT_BYTES = 10_000_000;
 
@@ -342,10 +343,16 @@ const makeCheckpointStore = Effect.gen(function* () {
       ),
     );
 
-  const diffCheckpoints: CheckpointStoreShape["diffCheckpoints"] = (input) =>
+  const resolveDiffCommits = (
+    operation: string,
+    input: {
+      readonly cwd: string;
+      readonly fromCheckpointRef: CheckpointRef;
+      readonly toCheckpointRef: CheckpointRef;
+      readonly fallbackFromToHead?: boolean;
+    },
+  ) =>
     Effect.gen(function* () {
-      const operation = "CheckpointStore.diffCheckpoints";
-
       let [fromCommitOid, toCommitOid] = yield* Effect.all(
         [
           resolveCheckpointCommit(input.cwd, input.fromCheckpointRef),
@@ -369,6 +376,13 @@ const makeCheckpointStore = Effect.gen(function* () {
           detail: "Checkpoint ref is unavailable for diff operation.",
         });
       }
+      return [fromCommitOid, toCommitOid] as const;
+    });
+
+  const diffCheckpoints: CheckpointStoreShape["diffCheckpoints"] = (input) =>
+    Effect.gen(function* () {
+      const operation = "CheckpointStore.diffCheckpoints";
+      const [fromCommitOid, toCommitOid] = yield* resolveDiffCommits(operation, input);
 
       const result = yield* git.execute({
         operation,
@@ -388,6 +402,34 @@ const makeCheckpointStore = Effect.gen(function* () {
       });
 
       return result.stdout;
+    });
+
+  // Rename detection follows the same `git diff` defaults as diffCheckpoints, and `--minimal` keeps
+  // the line counts identical to the patch the UI renders.
+  const summarizeCheckpointDiff: CheckpointStoreShape["summarizeCheckpointDiff"] = (input) =>
+    Effect.gen(function* () {
+      const operation = "CheckpointStore.summarizeCheckpointDiff";
+      const [fromCommitOid, toCommitOid] = yield* resolveDiffCommits(operation, input);
+
+      const result = yield* git.execute({
+        operation,
+        cwd: input.cwd,
+        args: [
+          "diff",
+          "--raw",
+          "--numstat",
+          "-z",
+          "--minimal",
+          "--no-color",
+          "--no-ext-diff",
+          "--no-textconv",
+          fromCommitOid,
+          toCommitOid,
+        ],
+        maxOutputBytes: CHECKPOINT_DIFF_MAX_OUTPUT_BYTES,
+      });
+
+      return parseCheckpointFilesFromRawNumstat(result.stdout);
     });
 
   // Rolls the working tree back to `treeOid` for the provided paths without touching the repository
@@ -477,6 +519,7 @@ const makeCheckpointStore = Effect.gen(function* () {
     previewScopedRestore,
     restoreScopedCheckpoint,
     diffCheckpoints,
+    summarizeCheckpointDiff,
     deleteCheckpointRefs,
   } satisfies CheckpointStoreShape;
 });

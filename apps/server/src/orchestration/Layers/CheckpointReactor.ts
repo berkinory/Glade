@@ -22,7 +22,6 @@ import {
   startDrainableWorkerProducers,
 } from "../../platform/workers/drainableWorker";
 
-import { parseCheckpointFilesFromUnifiedDiff } from "../../checkpointing/Diffs.ts";
 import {
   checkpointRefForThreadMessageStart,
   checkpointRefForThreadRevertRescue,
@@ -434,15 +433,12 @@ const make = Effect.gen(function* () {
 
     const files = fromCheckpointExists
       ? yield* checkpointStore
-          .diffCheckpoints({
+          .summarizeCheckpointDiff({
             cwd: input.cwd,
             fromCheckpointRef,
             toCheckpointRef: targetCheckpointRef,
-            fallbackFromToHead: false,
-            ignoreWhitespace: false,
           })
           .pipe(
-            Effect.flatMap((diff) => parseCheckpointFilesFromUnifiedDiff(diff)),
             Effect.tapError((error) =>
               appendCaptureFailureActivity({
                 threadId: input.threadId,
@@ -711,17 +707,13 @@ const make = Effect.gen(function* () {
       cwd: checkpointCwd,
       checkpointRef: liveCheckpointRef,
     });
-    const diff = yield* checkpointStore
-      .diffCheckpoints({
+    const files = yield* checkpointStore
+      .summarizeCheckpointDiff({
         cwd: checkpointCwd,
         fromCheckpointRef,
         toCheckpointRef: liveCheckpointRef,
-        fallbackFromToHead: false,
-        ignoreWhitespace: false,
       })
-      .pipe(Effect.catch(() => Effect.succeed("")));
-
-    const files = yield* parseCheckpointFilesFromUnifiedDiff(diff);
+      .pipe(Effect.catch(() => Effect.succeed([])));
 
     const maxTurnCount = thread.checkpoints.reduce(
       (max, checkpoint) => Math.max(max, checkpoint.checkpointTurnCount),

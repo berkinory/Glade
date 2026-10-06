@@ -66,10 +66,9 @@ export function makeProviderTaskControl(input: {
     resolveLiveProviderTurnId,
   } = projectionAccess;
   const readActiveNativeChildren = Effect.fnUntraced(function* (ownerId: ThreadId) {
-    const snapshot = yield* projectionSnapshotQuery.getShellSnapshot();
-    return snapshot.threads.filter(
+    const children = yield* projectionSnapshotQuery.listChildThreadShells(ownerId);
+    return children.filter(
       (child) =>
-        child.parentThreadId === ownerId &&
         resolveSubagentProviderThreadId(child.id, ownerId) !== undefined &&
         child.session?.activeTurnId !== null &&
         child.session?.status === "running",

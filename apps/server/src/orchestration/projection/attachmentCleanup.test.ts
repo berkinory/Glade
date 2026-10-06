@@ -16,6 +16,10 @@ import {
 } from "@glade/contracts/core/baseSchemas";
 import { CorrelationId } from "@glade/contracts/orchestration/threadEntities";
 import { runManagedAttachmentCleanupBatch } from "../../attachments/managedAttachmentCleanup.ts";
+import { OrchestrationEngineLive } from "../Layers/OrchestrationEngine.ts";
+import { OrchestrationProjectionSnapshotQueryLive } from "../Layers/ProjectionSnapshotQuery.ts";
+import { OrchestrationEngineService } from "../Services/OrchestrationEngine.ts";
+import { OrchestrationCommandReceiptRepositoryLive } from "../../persistence/Layers/OrchestrationCommandReceipts.ts";
 import {
   makeProjectionPipelinePrefixedTestLayer,
   makeAppendAndProject,
@@ -524,6 +528,135 @@ it.layer(
       assert.isTrue(yield* exists(attachmentsRootDir));
       assert.isTrue(yield* exists(attachmentsSentinelPath));
       assert.isTrue(yield* exists(stateDirSentinelPath));
+    }),
+  );
+});
+
+it.layer(
+  Layer.fresh(
+    OrchestrationEngineLive.pipe(
+      Layer.provide(OrchestrationProjectionSnapshotQueryLive),
+      Layer.provide(OrchestrationCommandReceiptRepositoryLive),
+      Layer.provideMerge(
+        makeProjectionPipelinePrefixedTestLayer("glade-projection-attachments-rollback-"),
+      ),
+    ),
+  ),
+)("OrchestrationEngine attachment side effects", (it) => {
+  it.effect("rolled-back revert command keeps legacy attachment files", () =>
+    Effect.gen(function* () {
+      const fileSystem = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const engine = yield* OrchestrationEngineService;
+      const appendAndProject = makeAppendAndProject(
+        yield* OrchestrationEventStore,
+        yield* OrchestrationProjectionPipeline,
+      );
+      const sql = yield* SqlClient.SqlClient;
+      const { attachmentsDir } = yield* ServerConfig;
+      const now = new Date().toISOString();
+      const projectId = ProjectId.makeUnsafe("project-rollback-files");
+      const threadId = ThreadId.makeUnsafe("thread-rollback-files");
+      const turnId = TurnId.makeUnsafe("turn-rollback-files");
+      const messageId = MessageId.makeUnsafe("message-rollback-files");
+      const attachmentId = "thread-rollback-files-00000000-0000-4000-8000-000000000001";
+      const attachmentPath = path.join(attachmentsDir, `${attachmentId}.png`);
+      const threadEventBase = (index: number) => ({
+        eventId: EventId.makeUnsafe(`evt-rollback-files-${index}`),
+        aggregateKind: "thread" as const,
+        aggregateId: threadId,
+        occurredAt: now,
+        commandId: CommandId.makeUnsafe(`cmd-rollback-files-${index}`),
+        causationEventId: null,
+        correlationId: CorrelationId.makeUnsafe(`cmd-rollback-files-${index}`),
+        metadata: {},
+      });
+
+      yield* engine.dispatch({
+        type: "project.create",
+        commandId: CommandId.makeUnsafe("cmd-rollback-project"),
+        projectId,
+        title: "Rollback files",
+        workspaceRoot: "/tmp/project-rollback-files",
+        defaultModelSelection: { provider: "codex", model: "gpt-5-codex" },
+        createdAt: now,
+      });
+      yield* engine.dispatch({
+        type: "thread.create",
+        commandId: CommandId.makeUnsafe("cmd-rollback-thread"),
+        threadId,
+        projectId,
+        title: "Rollback files",
+        modelSelection: { provider: "codex", model: "gpt-5-codex" },
+        runtimeMode: "full-access",
+        branch: null,
+        worktreePath: null,
+        createdAt: now,
+      });
+      yield* appendAndProject({
+        ...threadEventBase(1),
+        type: "thread.turn-diff-completed",
+        payload: {
+          threadId,
+          turnId,
+          checkpointTurnCount: 1,
+          checkpointRef: CheckpointRef.makeUnsafe(
+            "refs/historical/checkpoints/thread-rollback-files/turn/1",
+          ),
+          status: "ready",
+          files: [],
+          assistantMessageId: messageId,
+          completedAt: now,
+        },
+      });
+      yield* appendAndProject({
+        ...threadEventBase(2),
+        type: "thread.message-sent",
+        payload: {
+          threadId,
+          messageId,
+          role: "assistant",
+          text: "Remove",
+          attachments: [
+            {
+              type: "image",
+              id: attachmentId,
+              name: "remove.png",
+              mimeType: "image/png",
+              sizeBytes: 6,
+            },
+          ],
+          turnId,
+          streaming: false,
+          createdAt: now,
+          updatedAt: now,
+        },
+      });
+      yield* fileSystem.makeDirectory(attachmentsDir, { recursive: true });
+      yield* fileSystem.writeFileString(attachmentPath, "remove");
+
+      yield* sql`
+        CREATE TRIGGER reject_rollback_receipt
+        BEFORE INSERT ON orchestration_command_receipts
+        WHEN NEW.command_id = 'cmd-rollback-revert'
+        BEGIN
+          SELECT RAISE(ABORT, 'forced receipt failure');
+        END
+      `;
+      const revertCommand = {
+        type: "thread.revert.complete",
+        commandId: CommandId.makeUnsafe("cmd-rollback-revert"),
+        threadId,
+        turnCount: 0,
+        createdAt: now,
+      } as const;
+      const rolledBack = yield* Effect.result(engine.dispatch(revertCommand));
+      assert.strictEqual(rolledBack._tag, "Failure");
+      assert.isTrue(yield* exists(attachmentPath));
+
+      yield* sql`DROP TRIGGER reject_rollback_receipt`;
+      yield* engine.dispatch(revertCommand);
+      assert.isFalse(yield* exists(attachmentPath));
     }),
   );
 });

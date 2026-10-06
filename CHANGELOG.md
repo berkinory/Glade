@@ -22,6 +22,7 @@
 - Returning to Glade, scrolling the sidebar and agent tool runs trigger far fewer git and GitHub refreshes.
 - Claude sessions, forks and skill and agent lists start faster.
 - Usage indicators use far less CPU with large Claude histories.
+- Turn change summaries appear for very large turns too.
 
 ### Fixed
 
@@ -43,6 +44,7 @@
 - Skill and agent lists use your configured Claude CLI path.
 - Custom Codex providers no longer make the app stall, and the local server list no longer hangs when system tools stop responding.
 - The last lines of terminal output are kept when you quit, and busy terminals write far less to disk.
+- Reverting or deleting a chat no longer removes attached images when the change fails to save.
 
 ### Removed
 

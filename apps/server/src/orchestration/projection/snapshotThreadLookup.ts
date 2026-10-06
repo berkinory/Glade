@@ -57,6 +57,9 @@ export function makeSnapshotThreadLookup(input: {
     typeof makeSnapshotHistoryQueries
   >["getThreadSessionRowByThread"];
   readonly sql: SqlClient.SqlClient;
+  readonly listChildThreadIdRows: ReturnType<
+    typeof makeSnapshotThreadQueries
+  >["listChildThreadIdRows"];
   readonly listThreadRowsByIds: ReturnType<typeof makeSnapshotThreadQueries>["listThreadRowsByIds"];
   readonly listLatestTurnRowsByThreads: ReturnType<
     typeof makeSnapshotThreadQueries
@@ -80,6 +83,7 @@ export function makeSnapshotThreadLookup(input: {
     getLatestTurnRowByThread,
     getThreadSessionRowByThread,
     sql,
+    listChildThreadIdRows,
     listThreadRowsByIds,
     listLatestTurnRowsByThreads,
     listThreadSessionRowsByThreads,
@@ -350,6 +354,19 @@ export function makeSnapshotThreadLookup(input: {
       );
   };
 
+  const listChildThreadShells: ProjectionSnapshotQueryShape["listChildThreadShells"] = (
+    parentThreadId,
+  ) =>
+    listChildThreadIdRows({ parentThreadId }).pipe(
+      Effect.mapError(
+        toPersistenceSqlOrDecodeError(
+          "ProjectionSnapshotQuery.listChildThreadShells:query",
+          "ProjectionSnapshotQuery.listChildThreadShells:decodeRows",
+        ),
+      ),
+      Effect.flatMap((rows) => getThreadShellsByIds(rows.map((row) => row.threadId))),
+    );
+
   const getThreadShellById: ProjectionSnapshotQueryShape["getThreadShellById"] = (threadId) =>
     sql
       .withTransaction(loadThreadShell(threadId, "ProjectionSnapshotQuery.getThreadShellById"))
@@ -408,6 +425,7 @@ export function makeSnapshotThreadLookup(input: {
     getFullThreadDiffContext,
     getThreadShellById,
     getThreadShellsByIds,
+    listChildThreadShells,
     threadIdExistsIncludingDeleted,
     findSyntheticSubagentParentThread,
   };

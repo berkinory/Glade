@@ -110,6 +110,7 @@ interface EngineAdmissionState {
 }
 
 type CommittedCommandResult = {
+  readonly afterCommitEffects: ReadonlyArray<Effect.Effect<void>>;
   readonly committedEvents: OrchestrationEvent[];
 
   readonly deferredSettledSequences: ReadonlySet<number>;
@@ -951,6 +952,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
         }
         const committedEvents: OrchestrationEvent[] = [];
         const deferredSettledSequences = new Set<number>();
+        const afterCommitEffects: Array<Effect.Effect<void>> = [];
         let nextCommandReadModel = commandReadModel;
 
         if (command.type === "thread.turn.start") {
@@ -980,9 +982,10 @@ const makeOrchestrationEngine = Effect.gen(function* () {
           if (isShellMetadataEvent(savedEvent)) {
             yield* projectionPipeline.projectMetadataEvent(savedEvent);
           } else {
-            const { deferredPhaseSettled } =
+            const { deferredPhaseSettled, afterCommit } =
               yield* projectionPipeline.projectHotEventInCurrentTransaction(savedEvent);
             if (deferredPhaseSettled) deferredSettledSequences.add(savedEvent.sequence);
+            afterCommitEffects.push(afterCommit);
           }
           committedEvents.push(savedEvent);
         }
@@ -1016,6 +1019,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
         }
 
         return {
+          afterCommitEffects,
           committedEvents,
           deferredSettledSequences,
           lastSequence: lastSavedEvent.sequence,
@@ -1065,6 +1069,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
         );
 
       commandReadModel = committedCommand.nextCommandReadModel;
+      yield* Effect.all(committedCommand.afterCommitEffects, { discard: true });
       yield* Effect.forEach(
         committedCommand.committedEvents,
         (event) =>
