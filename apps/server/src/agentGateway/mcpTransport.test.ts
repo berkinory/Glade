@@ -14,6 +14,8 @@ import { makeAgentGatewayInFlightRequestRegistry } from "./inFlightRequestRegist
 import { makeAgentGatewayMcpTransport } from "./mcpTransport.ts";
 import { FALLBACK_OBJECT_DESCRIPTION } from "./sanitizeToolInputSchema.ts";
 import { countSchemaKeyOccurrences } from "./schemaTestUtils.ts";
+import { GladeAppOpenInput } from "@glade/contracts/provider/agentGatewayTools";
+import { toolInputSchema } from "./protocol.ts";
 import {
   acquireAgentGatewaySessionLease,
   AGENT_GATEWAY_NO_CAPABILITIES,
@@ -517,6 +519,49 @@ const findToolOrThrow = (tools: ReadonlyArray<unknown>, name: string): Record<st
 };
 
 describe("makeAgentGatewayMcpTransport tools/list schema sanitization", () => {
+  it.effect("advertises object unions as MCP object inputs and preserves branch validation", () =>
+    Effect.gen(function* () {
+      const transport = makeTransport({
+        threads: [makeThread("thread-union")],
+        tools: [
+          {
+            definition: {
+              name: "glade_open_in_app",
+              description: "Open a workspace surface",
+              inputSchema: toolInputSchema(GladeAppOpenInput),
+            },
+            requiredCapability: "thread:read",
+            handler: () => Effect.succeed({ content: [{ type: "text" as const, text: "opened" }] }),
+          },
+        ],
+      });
+      const response = yield* post(transport, "token-1", {
+        jsonrpc: "2.0",
+        id: "union-list",
+        method: "tools/list",
+      });
+      const tool = findToolOrThrow(listedTools(response.body), "glade_open_in_app");
+      assert.equal((tool.inputSchema as Record<string, unknown>).type, "object");
+      for (const args of [
+        { kind: "file", path: "README.md" },
+        { kind: "diff" },
+        { kind: "terminal" },
+      ]) {
+        const call = yield* post(transport, "token-1", toolCallBody("glade_open_in_app", args));
+        assert.equal(
+          (call.body as { result: { content: Array<{ text: string }> } }).result.content[0]?.text,
+          "opened",
+        );
+      }
+      const invalid = yield* post(
+        transport,
+        "token-1",
+        toolCallBody("glade_open_in_app", { kind: "file" }),
+      );
+      assert.equal((invalid.body as { error: { code: number } }).error.code, -32602);
+    }),
+  );
+
   it.effect("serves sanitized schemas while keeping stored definitions dirty", () =>
     Effect.gen(function* () {
       const recursiveTool: ToolEntry = {
@@ -580,8 +625,8 @@ describe("makeAgentGatewayMcpTransport tools/list", () => {
   const catalog: ReadonlyArray<ToolEntry> = [
     {
       definition: {
-        name: "glade_read_thread",
-        description: "Read a thread",
+        name: "glade_context",
+        description: "Read current context",
         inputSchema: { type: "object" },
       },
       requiredCapability: "thread:read",
@@ -593,7 +638,7 @@ describe("makeAgentGatewayMcpTransport tools/list", () => {
         description: "Click",
         inputSchema: { type: "object" },
         annotations: { title: "Click" },
-        _meta: { "anthropic/alwaysLoad": true },
+        _meta: { "anthropic/searchHint": "desktop click" },
       },
       requiredCapability: "computer:control",
       handler: ok,
@@ -608,36 +653,36 @@ describe("makeAgentGatewayMcpTransport tools/list", () => {
       assert.equal(response.status, 200);
       assert.deepEqual(
         listedTools(response.body).map((tool) => tool.name),
-        ["glade_read_thread"],
+        ["glade_context"],
       );
     }),
   );
 
-  it.effect("passes tool _meta through verbatim to a caller that holds the capability", () =>
-    Effect.gen(function* () {
-      const transport = makeTransport({
-        threads: [makeThread("thread-computer")],
-        tools: catalog,
-        leaseCapabilities: { enableComputerControl: true },
-      });
-      const response = yield* post(transport, "token-1", listBody);
-      assert.equal(response.status, 200);
-      const tools = listedTools(response.body);
-      assert.deepEqual(
-        tools.map((tool) => tool.name),
-        ["glade_read_thread", "computer_click"],
-      );
-      assert.deepEqual(tools[1], {
-        name: "computer_click",
-        description: "Click",
-        inputSchema: { type: "object" },
-        annotations: { title: "Click" },
-        _meta: { "anthropic/alwaysLoad": true },
-      });
-      // A tool that declares no _meta must not gain an empty one: an MCP client is entitled to treat the
-      // key's absence as "no hints".
-      assert.isFalse("_meta" in tools[0]!);
-    }),
+  it.effect(
+    "applies eager loading to core tools and preserves search hints on deferred tools",
+    () =>
+      Effect.gen(function* () {
+        const transport = makeTransport({
+          threads: [makeThread("thread-computer")],
+          tools: catalog,
+          leaseCapabilities: { enableComputerControl: true },
+        });
+        const response = yield* post(transport, "token-1", listBody);
+        assert.equal(response.status, 200);
+        const tools = listedTools(response.body);
+        assert.deepEqual(
+          tools.map((tool) => tool.name),
+          ["glade_context", "computer_click"],
+        );
+        assert.deepEqual(tools[1], {
+          name: "computer_click",
+          description: "Click",
+          inputSchema: { type: "object" },
+          annotations: { title: "Click" },
+          _meta: { "anthropic/alwaysLoad": false, "anthropic/searchHint": "desktop click" },
+        });
+        assert.deepEqual(tools[0]!._meta, { "anthropic/alwaysLoad": true });
+      }),
   );
 
   it.effect("withholds discovery-only tools from the list but still dispatches them", () =>
@@ -664,7 +709,7 @@ describe("makeAgentGatewayMcpTransport tools/list", () => {
       assert.equal(listResponse.status, 200);
       assert.deepEqual(
         listedTools(listResponse.body).map((tool) => tool.name),
-        ["glade_read_thread", "computer_click"],
+        ["glade_context", "computer_click"],
       );
       const callResponse = yield* post(transport, "token-1", toolCallBody("computer_drag"));
       assert.equal(callResponse.status, 200);

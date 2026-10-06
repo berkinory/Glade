@@ -150,5 +150,6 @@ export function buildMcpInitializeResult(input: {
 
 export function toolInputSchema(schema: Schema.Top): Record<string, unknown> {
   const document = Schema.toJsonSchemaDocument(schema);
-  return { ...document.schema, $defs: document.definitions };
+  // MCP requires an explicit object root even when JSON Schema represents object unions via anyOf.
+  return { ...document.schema, type: "object", $defs: document.definitions };
 }

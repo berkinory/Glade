@@ -25,6 +25,7 @@ import {
   type JsonRpcRequest,
 } from "./protocol.ts";
 import { sanitizeToolInputSchema } from "./sanitizeToolInputSchema.ts";
+import { shouldAutoLoadTool } from "./toolLoadingPolicy.ts";
 import {
   filterToolsByCapability,
   GatewayToolError,
@@ -112,7 +113,10 @@ export function makeAgentGatewayMcpTransport(input: {
   for (const tool of input.tools) {
     servedDefinitionByToolName.set(tool.definition.name, {
       ...tool.definition,
-
+      _meta: {
+        ...tool.definition._meta,
+        "anthropic/alwaysLoad": shouldAutoLoadTool(tool.definition.name),
+      },
       inputSchema: sanitizeToolInputSchema(tool.definition.inputSchema) as Record<string, unknown>,
     });
   }
@@ -138,6 +142,10 @@ export function makeAgentGatewayMcpTransport(input: {
                 (tool) =>
                   servedDefinitionByToolName.get(tool.definition.name) ?? {
                     ...tool.definition,
+                    _meta: {
+                      ...tool.definition._meta,
+                      "anthropic/alwaysLoad": shouldAutoLoadTool(tool.definition.name),
+                    },
                     inputSchema: sanitizeToolInputSchema(tool.definition.inputSchema) as Record<
                       string,
                       unknown

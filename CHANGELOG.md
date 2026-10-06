@@ -8,6 +8,7 @@
 
 ### Improved
 
+- Claude chats load core Glade tools automatically and discover other tools as needed, reducing context usage.
 - Subagent rows use stable names instead of Claude task descriptions, show model names or aliases without extra labels, and keep task prompts, agent types and redundant background-agent banners out of the compact panels.
 - Provider transitions prepare in the chat while you continue using other chats.
 - Visual replies blend into the chat with automatic height and compact download and expand controls.
@@ -17,6 +18,7 @@
 
 ### Fixed
 
+- Glade tools, including visual replies, are available in Claude chats without manually naming them.
 - Continuing a Claude chat with Codex works after the Claude session has been retired.
 - Changing the app theme preserves edits and interactive state in visual replies.
 - Conversation rows stay correctly positioned as activity details change, and message navigation stays clear of the text at every chat width and side panel layout.
