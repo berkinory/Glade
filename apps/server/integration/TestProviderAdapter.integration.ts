@@ -51,7 +51,7 @@ type FixtureProviderRuntimeEvent = {
 export type LegacyProviderRuntimeEvent = FixtureProviderRuntimeEvent;
 
 interface SessionState {
-  readonly session: ProviderSession;
+  session: ProviderSession;
   readonly lifecycleGeneration: string | undefined;
   snapshot: ProviderThreadSnapshot;
   turnCount: number;
@@ -368,6 +368,8 @@ export const makeTestProviderAdapterHarness = (options?: MakeTestProviderAdapter
         };
 
         if (response.deferCompletion) {
+          // Real adapters report the dispatched turn as live until it completes.
+          state.session = { ...state.session, status: "running", activeTurnId: turnId };
           state.deferredCompletionEvents = deferredTurnCompletedEvents;
         } else if (deferredTurnCompletedEvents.length === 0) {
           yield* emit({
@@ -441,6 +443,7 @@ export const makeTestProviderAdapterHarness = (options?: MakeTestProviderAdapter
         });
         const deferredCompletionEvents = state.deferredCompletionEvents;
         state.deferredCompletionEvents = [];
+        state.session = { ...state.session, status: "ready", activeTurnId: undefined };
         yield* Effect.forEach(deferredCompletionEvents, emit, { discard: true });
       });
     };

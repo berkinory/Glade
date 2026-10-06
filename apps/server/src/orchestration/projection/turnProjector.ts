@@ -6,6 +6,7 @@ import {
 import { Effect, Option } from "effect";
 import { settleTurnStateFromSession } from "../turnLifecycle.ts";
 import { ProjectorDefinition } from "./projectorRegistration";
+import { isInProgressTurnDiff } from "@glade/shared/threads/inProgressTurnDiff";
 import {
   retainProjectionTurnsAfterRevert,
   retainTurnScopedProjectionRowsAfterConversationRollback,
@@ -226,10 +227,8 @@ export function makeTurnProjector(input: {
             threadId: event.payload.threadId,
             turnId: event.payload.turnId,
           });
-          const isProviderDiffPlaceholder =
-            event.payload.status === "missing" &&
-            event.payload.checkpointRef.startsWith("provider-diff:");
-          const nextState = isProviderDiffPlaceholder
+          const isInProgressDiff = isInProgressTurnDiff(event.payload);
+          const nextState = isInProgressDiff
             ? Option.match(existingTurn, {
                 onNone: () => "running" as const,
                 onSome: (turn) => turn.state,
@@ -257,7 +256,7 @@ export function makeTurnProjector(input: {
               checkpointFiles: event.payload.files,
               startedAt: existingTurn.value.startedAt ?? event.payload.completedAt,
               requestedAt: existingTurn.value.requestedAt ?? event.payload.completedAt,
-              completedAt: isProviderDiffPlaceholder
+              completedAt: isInProgressDiff
                 ? existingTurn.value.completedAt
                 : event.payload.completedAt,
             });
@@ -272,7 +271,7 @@ export function makeTurnProjector(input: {
             state: nextState,
             requestedAt: event.payload.completedAt,
             startedAt: event.payload.completedAt,
-            completedAt: isProviderDiffPlaceholder ? null : event.payload.completedAt,
+            completedAt: isInProgressDiff ? null : event.payload.completedAt,
             checkpointTurnCount: event.payload.checkpointTurnCount,
             checkpointRef: event.payload.checkpointRef,
             checkpointStatus: event.payload.status,

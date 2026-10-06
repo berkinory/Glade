@@ -66,3 +66,12 @@ export function deriveTurnStartSession(input: {
     updatedAt: input.requestedAt,
   };
 }
+
+// Provider startup reports "ready" before the requested turn reaches the provider. That is a provider
+// fact, not a thread settlement: the turn is still in flight until it runs or fails, and in-flight
+// guards, the turn-start timeout and client ordering all key off "starting".
+export function isAwaitingRequestedTurn(
+  session: Pick<OrchestrationSession, "status" | "activeTurnId"> | null | undefined,
+): boolean {
+  return session?.status === "starting" && session.activeTurnId === null;
+}

@@ -1,4 +1,5 @@
 import { applyNativeThreadTitle } from "../runtimeActivities/nativeThreadTitles.ts";
+import { isAwaitingRequestedTurn } from "../turnStartSession.ts";
 import { asString, isNonBlankString } from "@glade/shared/text/text";
 import { asRecord, isRecord } from "@glade/shared/transport/payloadValues";
 import { Schema } from "effect";
@@ -1929,7 +1930,15 @@ const make = Effect.gen(function* () {
           lastError = null;
         }
 
-        if (shouldApplyThreadLifecycle) {
+        const isStartupReady =
+          status === "ready" &&
+          (event.type === "session.started" ||
+            event.type === "thread.started" ||
+            event.type === "session.state.changed");
+        if (
+          shouldApplyThreadLifecycle &&
+          !(isStartupReady && isAwaitingRequestedTurn(thread.session))
+        ) {
           yield* orchestrationEngine.dispatch({
             type: "thread.session.set",
             commandId: providerCommandId(event, "thread-session-set", thread.id),

@@ -21,6 +21,7 @@ import { providerStartOptionsFromServerSettings } from "../../settings/settingsP
 import { resolveThreadWorkspaceState } from "@glade/shared/threads/threadEnvironment";
 import { type ProviderSession } from "@glade/contracts/provider/provider";
 import { providerWorkspaceChanged } from "../projectRelocationPaths.ts";
+import { isAwaitingRequestedTurn } from "../turnStartSession.ts";
 import { PendingInterruptEscalation } from "./runtimeState";
 import { makeProviderContextBootstrap } from "./contextBootstrap";
 import { ThreadSessionSettings } from "../Services/ThreadSessionSettings.ts";
@@ -235,13 +236,20 @@ export function makeProviderSessionConfiguration(input: {
           );
     };
 
-    const bindSessionToThread = (session: ProviderSession) =>
-      setThreadSession({
+    const bindSessionToThread = Effect.fnUntraced(function* (session: ProviderSession) {
+      const currentSession = (yield* resolveThread(threadId))?.session;
+      // Keep the pending start's updatedAt so turn-start failure handling can still compare-and-set it.
+      const pendingStart =
+        session.status === "ready" && isAwaitingRequestedTurn(currentSession)
+          ? currentSession
+          : undefined;
+      yield* setThreadSession({
         threadId,
         session: {
           threadId,
-          status:
-            session.status === "connecting"
+          status: pendingStart
+            ? "starting"
+            : session.status === "connecting"
               ? "starting"
               : session.status === "closed"
                 ? "stopped"
@@ -251,10 +259,11 @@ export function makeProviderSessionConfiguration(input: {
 
           activeTurnId: null,
           lastError: session.lastError ?? null,
-          updatedAt: session.updatedAt,
+          updatedAt: pendingStart?.updatedAt ?? session.updatedAt,
         },
         createdAt,
       });
+    });
 
     const activeSessionBeforeEnsure = yield* resolveActiveSession(threadId);
     const workspaceChanged =

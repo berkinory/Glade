@@ -1,4 +1,5 @@
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
+import { isInProgressTurnDiff } from "@glade/shared/threads/inProgressTurnDiff";
 import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import type { OrchestrationPendingInteraction } from "@glade/contracts/orchestration/threadEntities";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
@@ -245,10 +246,6 @@ export function checkpointStatusToLatestTurnState(
   return "completed";
 }
 
-function isProviderDiffPlaceholderRef(checkpointRef: string | null | undefined): boolean {
-  return checkpointRef?.startsWith("provider-diff:") === true;
-}
-
 export function buildLatestTurn(params: {
   previous: Thread["latestTurn"];
   turnId: NonNullable<Thread["latestTurn"]>["turnId"];
@@ -466,13 +463,11 @@ export function applyTurnDiffSummaryToThread(
       )
     : sortTurnDiffSummaries([...thread.turnDiffSummaries, nextSummary]);
 
-  // Mirror of the server projector's placeholder guard: a provider-diff placeholder only carries live
-  // diff totals and must never change the turn lifecycle — neither close a running turn nor flip an
-  // already-settled one to "interrupted" when it loses the race against session settlement.
+  // Mirror of the server projector's guard: an in-progress diff must never change the turn lifecycle,
+  // neither close a running turn nor flip an already-settled one to "interrupted" when it loses the
+  // race against session settlement.
   const isSameTurnPlaceholder =
-    isProviderDiffPlaceholderRef(nextSummary.checkpointRef) &&
-    nextSummary.status === "missing" &&
-    thread.latestTurn?.turnId === nextSummary.turnId;
+    isInProgressTurnDiff(nextSummary) && thread.latestTurn?.turnId === nextSummary.turnId;
   const latestTurn =
     thread.latestTurn === null || thread.latestTurn.turnId === nextSummary.turnId
       ? isSameTurnPlaceholder

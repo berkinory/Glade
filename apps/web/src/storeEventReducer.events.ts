@@ -527,11 +527,26 @@ export function applyOrchestrationEvent(
           // Historical scheduled turns preserve the user's composer modes, matching server replay.
           const adoptTurnModes = event.payload.dispatchOrigin !== "automation";
           const runtimeMode = adoptTurnModes ? event.payload.runtimeMode : thread.runtimeMode;
+          // Mirrors the server projection: a requested turn is in flight until it runs or fails.
+          const session =
+            thread.session?.status === "connecting" ||
+            thread.session?.status === "running" ||
+            (thread.session != null && thread.session.updatedAt > event.payload.createdAt)
+              ? thread.session
+              : {
+                  provider: thread.session?.provider ?? modelSelection.provider,
+                  status: "connecting" as const,
+                  orchestrationStatus: "starting" as const,
+                  activeTurnId: undefined,
+                  createdAt: event.payload.createdAt,
+                  updatedAt: event.payload.createdAt,
+                };
 
           return {
             ...thread,
             modelSelection,
             runtimeMode,
+            session,
 
             updatedAt:
               (thread.updatedAt ?? thread.createdAt) > event.payload.createdAt
