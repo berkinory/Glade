@@ -96,8 +96,9 @@ Her maddenin bir sınıfı var:
 - [ ] **22: kimsenin okumadığı `hasChildren` için her alt klasör taranıyor (refactor).**
       `workspaceEntries.ts:260-269, 329` her alt dizin için tam `readdir` yapıyor ve `EXPLORER_EXCLUDED_NAMES` (`:45`) `node_modules`'u dışlamıyor. Alanı okuyan yok: `ProjectPicker.tsx:323` yalnız kopyalıyor, `ComposerLocalDirectoryMenu.tsx:319` kendisi hesaplıyor, explorer ağacı hiç bakmıyor. Alanı her yerden sil: server (`directoryHasChildDirectories`), contracts (`packages/contracts/src/workspace/project.ts:42,51`), web (`ProjectPicker`, `ComposerLocalDirectoryMenu`). `resolveRealPathWithinRoot` hedef doğrulaması ve sıralama aynı kalır. Bu contract değişikliği olduğu için tam `bun run test`.
 
-- [ ] **F: explorer yüklenirken boş görünüyor (düzelt).**
+- [x] **F: explorer yüklenirken boş görünüyor (düzelt).**
       `projectReactQuery.ts:223` `placeholderData: previous ?? { entries: [] }` dönüyor; TanStack v5'te placeholder varken sorgu `success` olduğu için `WorkspaceExplorerTree.tsx:61`'deki yükleniyor dalı hiç çalışmıyor. Dizin listeleme sorgusundan `placeholderData`'yı kaldır; `DockExplorerPane` `fetchQuery` kullandığı için etkilenmez. Aynı dosyada `includeFiles` sorgu anahtarında yok (`:398`); farklı `includeFiles` değerleri aynı cache girdisini paylaşıyor. Bunu da düzelt.
+      **Durum:** eksik anahtar listeleme değil `searchLocalEntries` sorgusundaydı; düzeltildi. Placeholder kalkınca `useQueries`'in pozisyon bazlı `previous`'ı yüzünden başka klasörün içeriğinin anlık görünmesi de ortadan kalktı.
 
 - [ ] **G: explorer git çağrıları arka plan şeridinde bekliyor (ölç-sonra-karar).**
       Klasör listesi başına `rev-parse` ve `check-ignore` (`workspaceEntries.ts:341-350`) `withPermit(..., "background")` ile ortak kuyrukta bekliyor (`Layers/WorkspaceEntries.ts:32`), oysa listeleme etkileşimli. #22 ve P1 #6'dan sonra ölç: status yenilemesi yoğunken klasör açmada kuyruk bekleme süresi. Anlamlıysa listeleme çağrılarını foreground'a al. Hover prefetch'i zaten 150 ms niyet gecikmeli (`ExplorerFileRow.tsx:23-41`); dokunma.

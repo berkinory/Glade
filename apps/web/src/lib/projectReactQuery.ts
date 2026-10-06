@@ -37,8 +37,12 @@ export const projectQueryKeys = {
     limit: number,
     kind: ProjectEntry["kind"] | null = null,
   ) => ["projects", "search-entries", cwd, query, limit, kind] as const,
-  searchLocalEntries: (rootPath: string | null, query: string, limit: number) =>
-    ["projects", "search-local-entries", rootPath, query, limit] as const,
+  searchLocalEntries: (
+    rootPath: string | null,
+    query: string,
+    limit: number,
+    includeFiles: boolean,
+  ) => ["projects", "search-local-entries", rootPath, query, limit, includeFiles] as const,
   searchContent: (
     cwd: string | null,
     query: string,
@@ -220,7 +224,6 @@ export function projectListDirectoriesQueryOptions(input: {
     },
     enabled: (input.enabled ?? true) && input.cwd !== null,
     staleTime: input.staleTime ?? DEFAULT_LIST_DIRECTORIES_STALE_TIME,
-    placeholderData: (previous) => previous ?? { entries: [] },
   });
 }
 
@@ -394,8 +397,14 @@ export function projectSearchLocalEntriesQueryOptions(input: {
 }) {
   const limit = input.limit ?? DEFAULT_SEARCH_LOCAL_ENTRIES_LIMIT;
   const trimmedQuery = input.query.trim();
+  const includeFiles = input.includeFiles ?? true;
   return queryOptions({
-    queryKey: projectQueryKeys.searchLocalEntries(input.rootPath, trimmedQuery, limit),
+    queryKey: projectQueryKeys.searchLocalEntries(
+      input.rootPath,
+      trimmedQuery,
+      limit,
+      includeFiles,
+    ),
     queryFn: async () => {
       const api = ensureNativeApi();
       if (!input.rootPath) {
@@ -405,7 +414,7 @@ export function projectSearchLocalEntriesQueryOptions(input: {
         rootPath: input.rootPath,
         query: trimmedQuery,
         limit,
-        ...(input.includeFiles !== undefined ? { includeFiles: input.includeFiles } : {}),
+        includeFiles,
       });
     },
     enabled: (input.enabled ?? true) && input.rootPath !== null && trimmedQuery.length >= 2,
