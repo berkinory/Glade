@@ -908,7 +908,7 @@ export const makeGitManager = Effect.gen(function* () {
             Effect.logError("Git message generation failed", {
               correlationId,
               stage: error.operation,
-              provider: input.textGenerationModelSelection?.provider ?? "codex",
+              provider: input.textGenerationModelSelection?.provider ?? "configured/default",
               model:
                 input.textGenerationModelSelection?.model ?? input.textGenerationModel ?? "default",
               durationMs: Date.now() - started,

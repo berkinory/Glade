@@ -123,9 +123,6 @@ export type ModelCapabilities = {
 
 export type ModelSlug = string;
 
-export const GIT_TEXT_GENERATION_PROVIDERS = ["codex"] as const satisfies readonly ProviderKind[];
-export type GitTextGenerationProvider = (typeof GIT_TEXT_GENERATION_PROVIDERS)[number];
-
 export const PROVIDER_DISPLAY_NAMES: Record<ProviderKind, string> = {
   codex: "Codex",
   claudeAgent: "Claude",

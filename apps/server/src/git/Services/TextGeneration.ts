@@ -2,6 +2,7 @@ import { ServiceMap } from "effect";
 import type { Effect } from "effect";
 import type { ChatAttachment } from "@glade/contracts/orchestration/threadEntities";
 import type { ModelSelection, ProviderStartOptions } from "@glade/contracts/provider/sessionPolicy";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 
 import type { TextGenerationError } from "../Errors.ts";
 
@@ -111,6 +112,19 @@ export class CodexTextGeneration extends ServiceMap.Service<
   CodexTextGeneration,
   TextGenerationShape
 >()("glade/git/Services/TextGeneration/CodexTextGeneration") {}
+
+export class ClaudeTextGeneration extends ServiceMap.Service<
+  ClaudeTextGeneration,
+  TextGenerationShape
+>()("glade/git/Services/TextGeneration/ClaudeTextGeneration") {}
+
+export class TextGenerationProviders extends ServiceMap.Service<
+  TextGenerationProviders,
+  {
+    readonly get: (provider: ProviderKind) => TextGenerationShape | undefined;
+    readonly listProviders: () => ReadonlyArray<ProviderKind>;
+  }
+>()("glade/git/Services/TextGeneration/Providers") {}
 
 export class TextGeneration extends ServiceMap.Service<TextGeneration, TextGenerationShape>()(
   "glade/git/Services/TextGeneration",

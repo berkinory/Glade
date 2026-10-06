@@ -24,10 +24,6 @@ import {
 import * as Semaphore from "effect/Semaphore";
 import { writeFileStringAtomically } from "../platform/filesystem/atomicWrite";
 import { ServerConfig } from "../server/config";
-import {
-  GIT_TEXT_GENERATION_PROVIDER_ORDER,
-  hasDedicatedTextGenerationProvider,
-} from "../git/textGenerationSelection";
 export interface ServerSettingsShape {
   readonly start: Effect.Effect<void, ServerSettingsError>;
   readonly ready: Effect.Effect<void, ServerSettingsError>;
@@ -91,9 +87,7 @@ export class ServerSettingsService extends ServiceMap.Service<
         const revisionRef = yield* Ref.make(0);
         const emitChange = (settings: ServerSettings) =>
           PubSub.publish(changesPubSub, settings).pipe(Effect.asVoid);
-        const projectSettings = (settings: ServerSettings) =>
-          resolveTextGenerationProvider(settings);
-        const getSettings = Ref.get(currentSettingsRef).pipe(Effect.map(projectSettings));
+        const getSettings = Ref.get(currentSettingsRef);
         const updateSettings = (patch: ServerSettingsPatch) =>
           Ref.get(currentSettingsRef).pipe(
             Effect.flatMap((currentSettings) =>
@@ -102,7 +96,6 @@ export class ServerSettingsService extends ServiceMap.Service<
             Effect.tap((nextSettings) => Ref.set(currentSettingsRef, nextSettings)),
             Effect.tap(() => Ref.update(revisionRef, (revision) => revision + 1)),
             Effect.tap(emitChange),
-            Effect.map(projectSettings),
           );
 
         return {
@@ -124,39 +117,14 @@ export class ServerSettingsService extends ServiceMap.Service<
           updateSettingsView: (patch) =>
             updateSettings(patch).pipe(Effect.map(toServerSettingsView)),
           get streamChanges() {
-            return Stream.fromPubSub(changesPubSub).pipe(Stream.map(projectSettings));
+            return Stream.fromPubSub(changesPubSub);
           },
           get streamViews() {
-            return Stream.fromPubSub(changesPubSub).pipe(
-              Stream.map(projectSettings),
-              Stream.map(toServerSettingsView),
-            );
+            return Stream.fromPubSub(changesPubSub).pipe(Stream.map(toServerSettingsView));
           },
         } satisfies ServerSettingsShape;
       }),
     );
-}
-
-function resolveTextGenerationProvider(settings: ServerSettings): ServerSettings {
-  const selection = settings.textGenerationModelSelection;
-  if (
-    hasDedicatedTextGenerationProvider(selection?.provider) &&
-    settings.providers[selection!.provider].enabled
-  ) {
-    return settings;
-  }
-
-  const fallback = GIT_TEXT_GENERATION_PROVIDER_ORDER.find(
-    (provider) => settings.providers[provider].enabled,
-  );
-  if (!fallback) {
-    return settings;
-  }
-
-  return {
-    ...settings,
-    textGenerationModelSelection: null,
-  };
 }
 
 function normalizeSettings(
@@ -350,8 +318,7 @@ const makeServerSettings = Effect.gen(function* () {
     yield* Deferred.succeed(startedDeferred, undefined).pipe(Effect.orDie);
   });
 
-  const projectSettings = (settings: ServerSettings) => resolveTextGenerationProvider(settings);
-  const getSettings = Ref.get(settingsRef).pipe(Effect.map(projectSettings));
+  const getSettings = Ref.get(settingsRef);
   const updateSettings = (patch: ServerSettingsPatch) =>
     writeSemaphore.withPermits(1)(
       Effect.gen(function* () {
@@ -368,7 +335,7 @@ const makeServerSettings = Effect.gen(function* () {
         yield* Ref.set(settingsRef, next);
         yield* Ref.set(revisionRef, nextRevision);
         yield* emitChange(next);
-        return projectSettings(next);
+        return next;
       }),
     );
 
@@ -387,13 +354,10 @@ const makeServerSettings = Effect.gen(function* () {
     updateSettings,
     updateSettingsView: (patch) => updateSettings(patch).pipe(Effect.map(toServerSettingsView)),
     get streamChanges() {
-      return Stream.fromPubSub(changesPubSub).pipe(Stream.map(projectSettings));
+      return Stream.fromPubSub(changesPubSub);
     },
     get streamViews() {
-      return Stream.fromPubSub(changesPubSub).pipe(
-        Stream.map(projectSettings),
-        Stream.map(toServerSettingsView),
-      );
+      return Stream.fromPubSub(changesPubSub).pipe(Stream.map(toServerSettingsView));
     },
   } satisfies ServerSettingsShape;
 });

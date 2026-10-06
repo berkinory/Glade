@@ -1,9 +1,5 @@
 import { normalizeModelSlug } from "@glade/shared/provider/model";
-import {
-  GIT_TEXT_GENERATION_PROVIDERS,
-  PROVIDER_DISPLAY_NAMES,
-  type GitTextGenerationProvider,
-} from "@glade/contracts/provider/model";
+import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 
 import { useQuery } from "@tanstack/react-query";
@@ -23,6 +19,8 @@ import { SelectItem } from "../ui/select";
 import { SettingResetButton, SettingsSelectControl } from "./SettingControls";
 import { SettingsRow, SettingsSection } from "./SettingsPanelPrimitives";
 
+const NO_PROVIDERS: ReadonlyArray<ProviderKind> = [];
+
 export function ModelsSettingsPanel({
   settings,
   defaults,
@@ -32,6 +30,7 @@ export function ModelsSettingsPanel({
   const serverConfigQuery = useQuery(serverConfigQueryOptions());
 
   const { textGenerationModel, textGenerationProvider } = settings;
+  const supportedProviders = serverConfigQuery.data?.gitTextGenerationProviders ?? NO_PROVIDERS;
   const currentGitTextGenerationProvider = textGenerationProvider ?? "codex";
   const modelHint = textGenerationModel;
   const gitWritingModelHintByProvider = useMemo<Partial<Record<ProviderKind, string | null>>>(
@@ -48,18 +47,22 @@ export function ModelsSettingsPanel({
     discoveryEnabled: active,
     cwd: providerModelDiscoveryCwd,
     modelHintByProvider: gitWritingModelHintByProvider,
-    prefetchProviders: GIT_TEXT_GENERATION_PROVIDERS,
+    prefetchProviders: supportedProviders,
   });
   const gitTextGenerationModelOptions = useMemo(() => {
     const discoveredOptionsByProvider = {} as Record<
-      GitTextGenerationProvider,
-      (typeof gitWritingCatalogOptionsByProvider)[GitTextGenerationProvider]
+      ProviderKind,
+      (typeof gitWritingCatalogOptionsByProvider)[ProviderKind]
     >;
-    for (const provider of GIT_TEXT_GENERATION_PROVIDERS) {
+    for (const provider of supportedProviders) {
       discoveredOptionsByProvider[provider] = gitWritingCatalogOptionsByProvider[provider];
     }
-    return getGitTextGenerationModelOptions(settings, discoveredOptionsByProvider);
-  }, [gitWritingCatalogOptionsByProvider, settings]);
+    return getGitTextGenerationModelOptions(
+      settings,
+      supportedProviders,
+      discoveredOptionsByProvider,
+    );
+  }, [gitWritingCatalogOptionsByProvider, settings, supportedProviders]);
   const currentGitTextGenerationModel =
     normalizeModelSlug(textGenerationModel, currentGitTextGenerationProvider) ??
     gitWritingCatalogOptionsByProvider[currentGitTextGenerationProvider].find(

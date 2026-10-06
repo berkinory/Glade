@@ -1,21 +1,18 @@
 import { normalizeModelSlug } from "@glade/shared/provider/model";
-import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import {
   type ProviderStartOptions,
   type ModelSelection,
 } from "@glade/contracts/provider/sessionPolicy";
-import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { Effect, Layer } from "effect";
 
 import { providerDisabledSettingsMessage } from "../../provider/core/enabledProviderAdapter.ts";
 import { ServerSettingsService } from "../../settings/serverSettings.ts";
 import { TextGenerationError } from "../Errors.ts";
 import * as TextGen from "../Services/TextGeneration.ts";
-import * as Selection from "../textGenerationSelection.ts";
 import { ProviderDiscoveryService } from "../../provider/Services/ProviderDiscoveryService.ts";
 
 const makeProviderTextGeneration = Effect.gen(function* () {
-  const codexTextGeneration = yield* TextGen.CodexTextGeneration;
+  const providers = yield* TextGen.TextGenerationProviders;
   const serverSettings = yield* ServerSettingsService;
   const discovery = yield* ProviderDiscoveryService;
 
@@ -69,18 +66,9 @@ const makeProviderTextGeneration = Effect.gen(function* () {
         ...(reasoningEffort ? { reasoningEffort } : {}),
         ...(descriptor?.supportsFastMode ? { fastMode: true } : {}),
       };
-      const modelSelection: ModelSelection = { provider: "codex", model: selectedModel, options };
+      const modelSelection: ModelSelection = { provider, model: selectedModel, options };
       return { ...input, model: selectedModel, modelSelection };
     });
-
-  const resolveRequestedProvider = (input: {
-    readonly model?: string;
-    readonly modelSelection?: ModelSelection;
-  }): ProviderKind => input.modelSelection?.provider ?? "codex";
-
-  const implementations = {
-    codex: codexTextGeneration,
-  } satisfies Record<Selection.GitTextGenerationProvider, TextGen.TextGenerationShape>;
 
   const resolveImplementation = (
     operation: string,
@@ -90,7 +78,6 @@ const makeProviderTextGeneration = Effect.gen(function* () {
     },
   ) =>
     Effect.gen(function* () {
-      const requestedProvider = resolveRequestedProvider(input);
       const settings = yield* serverSettings.getSettings.pipe(
         Effect.mapError(
           (cause) =>
@@ -101,27 +88,21 @@ const makeProviderTextGeneration = Effect.gen(function* () {
             }),
         ),
       );
-      const fallbackModelSelection = Selection.hasDedicatedTextGenerationProvider(requestedProvider)
-        ? undefined
-        : settings.textGenerationModelSelection;
-      const provider = fallbackModelSelection?.provider ?? requestedProvider;
-      if (!Selection.hasDedicatedTextGenerationProvider(provider)) {
-        return yield* Effect.fail(
-          new TextGenerationError({
-            operation,
-            detail: `${PROVIDER_DISPLAY_NAMES[requestedProvider]} does not support Git text generation, and no supported fallback is enabled.`,
-          }),
-        );
-      }
+      const configuredSelection = input.model ? null : settings.textGenerationModelSelection;
+      const provider = input.modelSelection?.provider ?? configuredSelection?.provider ?? "codex";
       if (!settings.providers[provider].enabled) {
         return yield* Effect.fail(
           new TextGenerationError({ operation, detail: providerDisabledSettingsMessage(provider) }),
         );
       }
-      return {
-        implementation: implementations[provider],
-        fallbackModelSelection,
-      };
+      const implementation = providers.get(provider);
+      if (!implementation) {
+        return yield* new TextGenerationError({
+          operation,
+          detail: `${provider} does not support Git text generation.`,
+        });
+      }
+      return { implementation, configuredSelection };
     });
 
   const call = <
@@ -141,10 +122,13 @@ const makeProviderTextGeneration = Effect.gen(function* () {
     ) => Effect.Effect<Output, TextGenerationError>,
   ) =>
     resolveImplementation(operation, input).pipe(
-      Effect.flatMap(({ implementation, fallbackModelSelection }) =>
+      Effect.flatMap(({ implementation, configuredSelection }) =>
         Effect.gen(function* () {
-          let selection = fallbackModelSelection ??
-            input.modelSelection ?? { provider: "codex" as const, model: input.model ?? "" };
+          let selection = input.modelSelection ??
+            configuredSelection ?? {
+              provider: "codex" as const,
+              model: input.model ?? "",
+            };
           if (!normalizeModelSlug(selection.model, selection.provider)) {
             const catalog = yield* discovery
               .listModels({

@@ -187,17 +187,6 @@ export function makeProviderConversationNaming(input: {
     const attachments = input.attachments ?? [];
 
     const textGenerationInput = yield* resolveConfiguredTextGenerationInput();
-    if (!textGenerationInput) {
-      yield* Effect.logDebug(
-        "provider command reactor has no Git-writing model for worktree branch naming; keeping temporary branch",
-        {
-          threadId: input.threadId,
-          cwd,
-          branch: oldBranch,
-        },
-      );
-      return;
-    }
     const branchNameGenerationInput: BranchNameGenerationInput = {
       cwd,
       message: input.messageText,

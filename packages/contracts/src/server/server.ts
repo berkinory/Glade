@@ -146,6 +146,7 @@ export const ServerConfig = Schema.Struct({
   keybindings: ResolvedKeybindingsConfig,
   issues: ServerConfigIssues,
   providers: ServerProviderStatuses,
+  gitTextGenerationProviders: Schema.optional(Schema.Array(ProviderKind)),
   availableEditors: Schema.Array(EditorId),
 });
 export type ServerConfig = typeof ServerConfig.Type;

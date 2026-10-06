@@ -35,6 +35,7 @@ import {
   type GitRemoveWorktreeInput,
   type GitWorktreeSetupProgressEvent,
 } from "@glade/contracts/git/git";
+import { TextGenerationProviders } from "../../git/Services/TextGeneration";
 import { type GitHubProjectProvisionProgressEvent } from "@glade/contracts/git/githubProjectProvisioning";
 import {
   type ServerConfigStreamEvent,
@@ -369,6 +370,7 @@ const makeWsRpcHandlersLayer = () =>
       const git = yield* GitCore;
       const github = yield* GitHubCli;
       const gitManager = yield* GitManager;
+      const textGenerationProviders = yield* TextGenerationProviders;
       const gitStatusBroadcaster = yield* GitStatusBroadcaster;
       const keybindings = yield* Keybindings;
       const open = yield* Open;
@@ -630,6 +632,7 @@ const makeWsRpcHandlersLayer = () =>
           keybindings: keybindingsConfig.keybindings,
           issues: keybindingsConfig.issues,
           providers: providerStatuses,
+          gitTextGenerationProviders: textGenerationProviders.listProviders(),
           availableEditors: resolveAvailableEditors(),
         };
       });

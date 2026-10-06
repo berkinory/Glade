@@ -40,6 +40,8 @@
 
 ### Improved
 
+- Choose any supported provider for Git writing, including Claude, when generating commit messages, branch names, diff summaries and pull request text.
+
 - Follow native subagents from the chat and Environment with character avatars, clearer model information and a return to the main chat; inactive helpers leave these panels after three unused turns.
 - Subagents choose supported models and thinking from current provider options, with focused context and follow-up instructions coordinated through the main chat.
 

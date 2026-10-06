@@ -1,17 +1,7 @@
 import {
-  GIT_TEXT_GENERATION_PROVIDERS,
-  type GitTextGenerationProvider,
-} from "@glade/contracts/provider/model";
-import {
   type ModelSelection,
   type ProviderStartOptions,
 } from "@glade/contracts/provider/sessionPolicy";
-import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
-
-export const GIT_TEXT_GENERATION_PROVIDER_ORDER = GIT_TEXT_GENERATION_PROVIDERS;
-export type { GitTextGenerationProvider };
-
-const GIT_TEXT_GENERATION_PROVIDER_SET = new Set<ProviderKind>(GIT_TEXT_GENERATION_PROVIDERS);
 
 export interface TextGenerationProviderInput {
   readonly modelSelection?: ModelSelection;
@@ -19,21 +9,11 @@ export interface TextGenerationProviderInput {
   readonly codexHomePath?: string;
 }
 
-export function hasDedicatedTextGenerationProvider(
-  provider: ProviderKind | undefined,
-): provider is GitTextGenerationProvider {
-  return provider !== undefined && GIT_TEXT_GENERATION_PROVIDER_SET.has(provider);
-}
-
 export function resolveTextGenerationInputForSelection(
   modelSelection: ModelSelection | null | undefined,
   providerOptions: ProviderStartOptions | undefined,
-): TextGenerationProviderInput | null {
+): TextGenerationProviderInput {
   if (!modelSelection) return { ...(providerOptions ? { providerOptions } : {}) };
-  if (!hasDedicatedTextGenerationProvider(modelSelection.provider)) {
-    return null;
-  }
-
   if (modelSelection.provider === "codex") {
     return {
       modelSelection,

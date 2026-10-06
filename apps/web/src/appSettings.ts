@@ -7,10 +7,6 @@ import {
 } from "@glade/contracts/provider/sessionPolicy";
 import { DesktopAppIcon } from "@glade/contracts/ipc/ipc";
 import {
-  GIT_TEXT_GENERATION_PROVIDERS,
-  type GitTextGenerationProvider,
-} from "@glade/contracts/provider/model";
-import {
   DEFAULT_SERVER_SETTINGS,
   DEFAULT_SERVER_SETTINGS_VIEW,
   type ServerSettingsView,
@@ -664,7 +660,7 @@ export function getAppModelOptions(
 }
 
 function mapCatalogModelOptionsToAppModelOptions(
-  provider: GitTextGenerationProvider,
+  provider: ProviderKind,
   options: ReadonlyArray<ProviderModelOption & { isSelectedHint?: boolean }>,
 ): AppModelOption[] {
   return options.map((option) => ({
@@ -676,14 +672,12 @@ function mapCatalogModelOptionsToAppModelOptions(
 
 export function getGitTextGenerationModelOptions(
   settings: Pick<AppSettings, "textGenerationModel" | "textGenerationProvider">,
+  providers: ReadonlyArray<ProviderKind>,
   discoveredOptionsByProvider?: Partial<
-    Record<
-      GitTextGenerationProvider,
-      ReadonlyArray<ProviderModelOption & { isSelectedHint?: boolean }>
-    >
+    Record<ProviderKind, ReadonlyArray<ProviderModelOption & { isSelectedHint?: boolean }>>
   >,
 ): AppModelOption[] {
-  const options = GIT_TEXT_GENERATION_PROVIDERS.flatMap((provider) => {
+  const options = providers.flatMap((provider) => {
     const discovered = discoveredOptionsByProvider?.[provider];
     if (discovered !== undefined) {
       return mapCatalogModelOptionsToAppModelOptions(provider, discovered);
@@ -709,7 +703,11 @@ export function getGitTextGenerationModelOptions(
   const selectedProvider =
     settings.textGenerationProvider ??
     resolveTextGenerationProvider(selectedModel !== undefined ? { model: selectedModel } : {});
-  if (selectedModel && !seen.has(`${selectedProvider}:${selectedModel}`)) {
+  if (
+    selectedModel &&
+    providers.includes(selectedProvider) &&
+    !seen.has(`${selectedProvider}:${selectedModel}`)
+  ) {
     deduped.push({
       provider: selectedProvider,
       slug: selectedModel,
