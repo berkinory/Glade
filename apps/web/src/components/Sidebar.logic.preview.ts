@@ -1,5 +1,5 @@
 import type { SidebarThreadSummary, Thread } from "../types";
-import { SIDEBAR_THREAD_PREWARM_LIMIT, hasUnseenCompletion } from "./Sidebar.logic.statusTypes";
+import { SIDEBAR_THREAD_PREWARM_LIMIT } from "./Sidebar.logic.statusTypes";
 import type { SidebarThreadSortInput } from "./Sidebar.logic.statusTypes";
 
 export function getVisibleSidebarEntriesForPreview<
@@ -201,14 +201,4 @@ export function getLatestUserMessageTimestamp(thread: SidebarThreadSortInput): n
   }
 
   return toSortableTimestamp(thread.updatedAt ?? thread.createdAt) ?? Number.NEGATIVE_INFINITY;
-}
-
-export function isUnseenFinishedThread(thread: SidebarThreadSortInput): boolean {
-  if (thread.hasLiveTailWork === true) {
-    return false;
-  }
-  return hasUnseenCompletion({
-    latestTurn: thread.latestTurn ?? null,
-    lastVisitedAt: thread.lastVisitedAt,
-  });
 }

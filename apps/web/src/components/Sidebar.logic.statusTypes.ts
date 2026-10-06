@@ -75,11 +75,6 @@ export type SidebarThreadSortInput = {
   updatedAt?: string | undefined;
   latestUserMessageAt?: string | null | undefined;
   messages?: ReadonlyArray<Pick<ChatMessage, "role" | "createdAt">> | undefined;
-
-  latestTurn?: Thread["latestTurn"] | undefined;
-  lastVisitedAt?: Thread["lastVisitedAt"] | undefined;
-  hasLiveTailWork?: boolean | undefined;
-  session?: Thread["session"] | undefined;
 };
 
 function nonEmptyDisplayValue(value: string | null | undefined): string | null {

@@ -29,7 +29,7 @@
 
 ### Fixed
 
-- Chats no longer jump around the sidebar while they start or run alongside other active chats.
+- Chats keep their place in the sidebar until you send a message instead of jumping as they start, run and finish.
 - Glade tools, including visual replies, are available in Claude chats without manually naming them.
 - Continuing a Claude chat with Codex works after the Claude session has been retired.
 - Changing the app theme preserves edits and interactive state in visual replies.

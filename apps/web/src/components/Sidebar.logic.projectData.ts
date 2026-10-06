@@ -8,7 +8,6 @@ import type {
 } from "./Sidebar.logic.statusTypes";
 import {
   buildProjectThreadTree,
-  isThreadActivelyWorking,
   resolveProjectStatusIndicator,
   resolveSidebarThreadListPaging,
   resolveThreadStatusPill,
@@ -18,26 +17,14 @@ import {
   getLatestUserMessageTimestamp,
   getUnpinnedThreadsForSidebar,
   getVisibleSidebarEntriesForPreview,
-  isUnseenFinishedThread,
   toSortableTimestamp,
 } from "./Sidebar.logic.preview";
-
-function threadSortAttentionRank(thread: SidebarThreadSortInput): number {
-  if (isThreadActivelyWorking(thread) || thread.session?.status === "connecting") {
-    return 2;
-  }
-  if (isUnseenFinishedThread(thread)) {
-    return 1;
-  }
-  return 0;
-}
 
 export function sortThreadsForSidebar<T extends { id: Thread["id"] } & SidebarThreadSortInput>(
   threads: readonly T[],
 ): T[] {
+  // Order changes only through the user's own messages; lifecycle status lives in the row's pill.
   return threads.toSorted((left, right) => {
-    const byAttentionRank = threadSortAttentionRank(right) - threadSortAttentionRank(left);
-    if (byAttentionRank !== 0) return byAttentionRank;
     const rightTimestamp = getLatestUserMessageTimestamp(right);
     const leftTimestamp = getLatestUserMessageTimestamp(left);
     const byTimestamp =
