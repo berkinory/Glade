@@ -39,7 +39,6 @@ export const ProjectDirectoryEntry = Schema.Struct({
   path: TrimmedNonEmptyString,
   name: TrimmedNonEmptyString,
   parentPath: Schema.optional(TrimmedNonEmptyString),
-  hasChildren: Schema.Boolean,
 });
 export type ProjectDirectoryEntry = typeof ProjectDirectoryEntry.Type;
 
@@ -48,7 +47,6 @@ export const ProjectFileSystemEntry = Schema.Struct({
   name: TrimmedNonEmptyString,
   parentPath: Schema.optional(TrimmedNonEmptyString),
   kind: ProjectEntryKind,
-  hasChildren: Schema.optional(Schema.Boolean),
   isGitIgnored: Schema.optional(Schema.Boolean),
 });
 export type ProjectFileSystemEntry = typeof ProjectFileSystemEntry.Type;

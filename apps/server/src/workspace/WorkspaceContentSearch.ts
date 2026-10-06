@@ -10,7 +10,7 @@ import {
   PROJECT_SEARCH_CONTENT_MIN_QUERY_LENGTH,
 } from "@glade/contracts/workspace/project";
 import { createContentSearchPattern } from "@glade/shared/text/searchQuery";
-import { resolveRealPathWithinRoot } from "./realPathContainment";
+import { resolveRealPathWithinRealRoot } from "./realPathContainment";
 
 interface ContentIndex {
   entries: readonly { path: string; kind: "file" | "directory" }[];
@@ -50,11 +50,13 @@ export class WorkspaceContentSearch {
 
   private async read(
     cwd: string,
+    realRoot: string,
     relativePath: string,
     signal: AbortSignal,
   ): Promise<string | null> {
     signal.throwIfAborted();
-    const absolute = await resolveRealPathWithinRoot(cwd, path.join(cwd, relativePath));
+    // Each file is still resolved: a symlink can be swapped to point outside the root at any time.
+    const absolute = await resolveRealPathWithinRealRoot(realRoot, path.join(cwd, relativePath));
     if (!absolute) return null;
     const handle = await fs.open(absolute, "r");
     try {
@@ -108,6 +110,7 @@ export class WorkspaceContentSearch {
     try {
       // Other searches share this index build; cancellation ends this wait without cancelling their build.
       const index = await abortable(getIndex(), signal);
+      const realRoot = await fs.realpath(input.cwd);
       truncated = index.truncated;
       const files = index.entries.filter((entry) => entry.kind === "file");
       let next = 0;
@@ -119,7 +122,7 @@ export class WorkspaceContentSearch {
             const file = files[next++]!;
             let contents: string | null;
             try {
-              contents = await this.read(input.cwd, file.path, signal);
+              contents = await this.read(input.cwd, realRoot, file.path, signal);
             } catch (error) {
               if (signal.aborted) break;
               if (

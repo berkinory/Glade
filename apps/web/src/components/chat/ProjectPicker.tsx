@@ -320,7 +320,6 @@ export const ProjectPicker = memo(function ProjectPicker({
                     {
                       path: entry.path,
                       name: entry.name,
-                      hasChildren: entry.hasChildren ?? false,
                       ...(entry.parentPath
                         ? {
                             parentPath: entry.parentPath,

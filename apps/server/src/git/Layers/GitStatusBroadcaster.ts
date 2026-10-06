@@ -9,6 +9,9 @@ import type {
 } from "@glade/contracts/git/git";
 import { mergeGitStatusParts } from "@glade/shared/git/git";
 
+import { runProcess } from "../../platform/processRunner";
+import { GitCommandsLive } from "./GitCommands";
+import { GitCommands } from "../Services/GitCommands";
 import { GitCore } from "../Services/GitCore";
 import { GitManager } from "../Services/GitManager";
 import {
@@ -27,7 +30,7 @@ import {
   splitRemoteStatusDetails,
 } from "../gitStatusCache";
 
-import { watchGitRepository } from "../gitRepositoryChanges";
+import { watchGitRepository, type WorktreeIgnoreCheck } from "../gitRepositoryChanges";
 
 interface GitStatusChange {
   readonly cwd: string;
@@ -47,6 +50,7 @@ export const GitStatusBroadcasterLive = Layer.effect(
   Effect.gen(function* () {
     const gitCore = yield* GitCore;
     const gitManager = yield* GitManager;
+    const { withPermit } = yield* GitCommands;
     const changesPubSub = yield* Effect.acquireRelease(
       PubSub.unbounded<GitStatusChange>(),
       (pubsub) => PubSub.shutdown(pubsub),
@@ -172,10 +176,38 @@ export const GitStatusBroadcasterLive = Layer.effect(
       });
     };
 
+    // GitCore cannot pipe stdin, and watcher batches can hold thousands of paths.
+    const isEveryPathIgnored: WorktreeIgnoreCheck = (cwd, relativePaths) =>
+      withPermit(
+        Effect.tryPromise((signal) =>
+          runProcess("git", ["-c", "core.fsmonitor=false", "check-ignore", "-z", "--stdin"], {
+            cwd,
+            signal,
+            stdin: `${relativePaths.join("\0")}\0`,
+            allowNonZeroExit: true,
+            timeoutMs: 10_000,
+            maxBufferBytes: 8 * 1024 * 1024,
+            outputMode: "truncate",
+          }),
+        ),
+        "background",
+      ).pipe(
+        Effect.map(
+          (result) =>
+            (result.code === 0 || result.code === 1) &&
+            !result.stdoutTruncated &&
+            new Set(result.stdout.split("\0").filter(Boolean)).size === relativePaths.length,
+        ),
+        // Unknown ignore state refreshes, exactly as every change did before this check existed.
+        Effect.catch((error) =>
+          Effect.logDebug("Worktree ignore check failed", error).pipe(Effect.as(false)),
+        ),
+      );
+
     const fullSubscribers = new Map<string, number>();
     const watchers = yield* RcMap.make({
       lookup: (cwd: string) =>
-        watchGitRepository(cwd, gitCore.execute).pipe(
+        watchGitRepository(cwd, gitCore.execute, isEveryPathIgnored).pipe(
           Stream.tapError((error) =>
             Effect.logWarning("Repository watcher failed; retrying", error),
           ),
@@ -254,4 +286,4 @@ export const GitStatusBroadcasterLive = Layer.effect(
       streamStatus,
     } satisfies GitStatusBroadcasterShape;
   }),
-);
+).pipe(Layer.provide(GitCommandsLive));

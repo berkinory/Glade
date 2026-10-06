@@ -13,7 +13,7 @@ import { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { ProviderServiceError } from "../../provider/core/Errors.ts";
 import { isRollbackStillInProgressError } from "./interactionPolicy";
 import { ProviderCommandExecutionError } from "./providerCallPolicy";
-import { clearWorkspaceIndexCache } from "../../workspace/workspaceEntries.ts";
+import { invalidateWorkspaceIndex } from "../../workspace/workspaceEntries.ts";
 import { type ProviderIntentEvent } from "../providerIntentClassification.ts";
 import {
   collectTailTurnIds,
@@ -107,7 +107,7 @@ export function makeProviderConversationEdit(input: {
   ) {
     if (!plan) return;
     yield* checkpointStore.restoreScopedCheckpoint(plan);
-    clearWorkspaceIndexCache(plan.cwd);
+    invalidateWorkspaceIndex(plan.cwd);
   });
 
   const processConversationRollbackRequestedWithoutLease = Effect.fnUntraced(function* (

@@ -316,7 +316,6 @@ export function ComposerLocalDirectoryMenu(props: {
       kind: "directory",
       path: ".",
       name: basename(absoluteDirectory) || absoluteDirectory,
-      hasChildren: folders.length > 0 || files.length > 0,
     });
   };
   const handleActivateEntry = (entry: ProjectFileSystemEntry) => {

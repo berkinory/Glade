@@ -102,16 +102,12 @@ export async function isInsideGitWorkTree(
   );
 }
 
-export async function filterGitIgnoredPaths(
+async function findGitIgnoredPaths(
   cwd: string,
-  relativePaths: string[],
+  relativePaths: readonly string[],
   runGit: WorkspaceGitRunner,
-  options?: { respectIndex: boolean },
-): Promise<string[]> {
-  if (relativePaths.length === 0) {
-    return relativePaths;
-  }
-
+  respectIndex: boolean,
+): Promise<Set<string>> {
   const ignoredPaths = new Set<string>();
   let chunk: string[] = [];
   let chunkBytes = 0;
@@ -125,7 +121,7 @@ export async function filterGitIgnoredPaths(
       [
         ...WORKSPACE_GIT_HARDENED_CONFIG_ARGS,
         "check-ignore",
-        ...(options?.respectIndex ? [] : ["--no-index"]),
+        ...(respectIndex ? [] : ["--no-index"]),
         "-z",
         "--stdin",
       ],
@@ -168,12 +164,39 @@ export async function filterGitIgnoredPaths(
     if (chunkBytes >= GIT_CHECK_IGNORE_MAX_STDIN_BYTES) await flushChunk();
   }
   await flushChunk();
+  return ignoredPaths;
+}
 
+export async function filterGitIgnoredPaths(
+  cwd: string,
+  relativePaths: string[],
+  runGit: WorkspaceGitRunner,
+  options?: { respectIndex: boolean },
+): Promise<string[]> {
+  if (relativePaths.length === 0) {
+    return relativePaths;
+  }
+  let ignoredPaths = await findGitIgnoredPaths(cwd, relativePaths, runGit, false);
+  // The index can only un-ignore tracked paths, and consulting it costs far more per path in large
+  // repositories, so only the paths the patterns ignore are rechecked against it.
+  if (options?.respectIndex && ignoredPaths.size > 0) {
+    ignoredPaths = await findGitIgnoredPaths(cwd, [...ignoredPaths], runGit, true);
+  }
   if (ignoredPaths.size === 0) {
     return relativePaths;
   }
-
   return relativePaths.filter((relativePath) => !ignoredPaths.has(relativePath));
+}
+
+function isCompleteNullSeparatedOutput(
+  result: ProcessRunResult | null,
+): result is ProcessRunResult {
+  return (
+    result !== null &&
+    result.code === 0 &&
+    !result.stdoutTruncated &&
+    (result.stdout.length === 0 || result.stdout.endsWith("\0"))
+  );
 }
 
 async function buildWorkspaceIndexFromGit(
@@ -184,50 +207,36 @@ async function buildWorkspaceIndexFromGit(
     return null;
   }
 
-  const listedFiles = await runGit(
-    [
-      ...WORKSPACE_GIT_HARDENED_CONFIG_ARGS,
-      "ls-files",
-      "--cached",
-      "--others",
-      "--exclude-standard",
-      "-z",
-    ],
-    {
+  const listGitFiles = (args: readonly string[]) =>
+    runGit([...WORKSPACE_GIT_HARDENED_CONFIG_ARGS, "ls-files", ...args, "-z"], {
       cwd,
       allowNonZeroExit: true,
       timeoutMs: 20_000,
       maxBufferBytes: 16 * 1024 * 1024,
       outputMode: "truncate",
-    },
-  ).catch(() => null);
+    }).catch(() => null);
+  const [listedFiles, deletedFiles, ignoredTrackedFiles] = await Promise.all([
+    listGitFiles(["--cached", "--others", "--exclude-standard"]),
+    listGitFiles(["--deleted"]),
+    listGitFiles(["--cached", "--ignored", "--exclude-standard"]),
+  ]);
   if (!listedFiles || listedFiles.code !== 0) {
     return null;
   }
-
-  const deletedFiles = await runGit(
-    [...WORKSPACE_GIT_HARDENED_CONFIG_ARGS, "ls-files", "--deleted", "-z"],
-    {
-      cwd,
-      allowNonZeroExit: true,
-      timeoutMs: 20_000,
-      maxBufferBytes: 16 * 1024 * 1024,
-      outputMode: "truncate",
-    },
-  ).catch(() => null);
-  // An incomplete exclusion set could resurrect missing paths; use the filesystem instead.
+  // An incomplete exclusion set could resurrect missing or ignored paths; use the filesystem instead.
   if (
-    !deletedFiles ||
-    deletedFiles.code !== 0 ||
-    deletedFiles.stdoutTruncated ||
-    (deletedFiles.stdout.length > 0 && !deletedFiles.stdout.endsWith("\0"))
+    !isCompleteNullSeparatedOutput(deletedFiles) ||
+    !isCompleteNullSeparatedOutput(ignoredTrackedFiles)
   )
     return null;
-  const deletedPaths = new Set(
-    splitNullSeparatedPaths(deletedFiles.stdout, false).map(toPosixPath),
+  const excludedPaths = new Set(
+    [
+      ...splitNullSeparatedPaths(deletedFiles.stdout, false),
+      ...splitNullSeparatedPaths(ignoredTrackedFiles.stdout, false),
+    ].map(toPosixPath),
   );
 
-  const listedPaths = splitNullSeparatedPaths(
+  const filePaths = splitNullSeparatedPaths(
     listedFiles.stdout,
     Boolean(listedFiles.stdoutTruncated),
   )
@@ -235,10 +244,9 @@ async function buildWorkspaceIndexFromGit(
     .filter(
       (entry) =>
         entry.length > 0 &&
-        !deletedPaths.has(entry) &&
+        !excludedPaths.has(entry) &&
         !isPathInIgnoredDirectory(parentPathOf(entry) ?? ""),
     );
-  const filePaths = await filterGitIgnoredPaths(cwd, listedPaths, runGit);
 
   const uniqueFiles = [...new Set(filePaths)];
   const files = uniqueFiles.slice(0, WORKSPACE_INDEX_MAX_FILES);

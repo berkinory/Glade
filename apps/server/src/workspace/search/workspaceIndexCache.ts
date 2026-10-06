@@ -13,6 +13,7 @@ export interface CachedWorkspaceIndex extends WorkspaceIndex {
   search: WorkspaceEntrySearch;
 }
 interface CacheSlot {
+  readonly runGit: WorkspaceGitRunner;
   index?: CachedWorkspaceIndex;
   pending?: Promise<CachedWorkspaceIndex>;
   failed?: { cause: unknown; at: number };
@@ -65,7 +66,7 @@ export async function getWorkspaceIndex(
 ): Promise<CachedWorkspaceIndex> {
   let slot = slots.get(cwd);
   if (!slot) {
-    slot = {};
+    slot = { runGit };
     slots.set(cwd, slot);
   }
   if (slot.failed && Date.now() - slot.failed.at < RETRY_MS) throw slot.failed.cause;
@@ -82,9 +83,12 @@ export async function getWorkspaceIndex(
   return cached;
 }
 
-export function clearWorkspaceIndexCache(cwd: string): void {
+export function invalidateWorkspaceIndex(cwd: string): void {
+  const slot = slots.get(cwd);
   // In-flight builds can finish for their callers, but cannot repopulate an invalidated slot.
   slots.delete(cwd);
+  // Rebuild recently searched workspaces now so the next mention does not wait on a cold build.
+  if (slot) void getWorkspaceIndex(cwd, slot.runGit).catch(() => undefined);
 }
 export function prewarmWorkspaceSearchIndex(
   input: ProjectPrewarmSearchIndexInput,

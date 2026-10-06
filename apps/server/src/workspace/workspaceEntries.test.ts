@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { runProcess } from "../platform/processRunner";
 import type { WorkspaceGitRunner } from "./workspaceEntries";
 import * as workspace from "./workspaceEntries";
+import { buildWorkspaceIndex } from "./search/workspaceIndex";
 
 const roots: string[] = [];
 const runGit: WorkspaceGitRunner = (args, options) => runProcess("git", args, options);
@@ -24,7 +25,6 @@ async function search(cwd: string, query: string, runner = runGit, limit = 80) {
 afterEach(async () => {
   vi.restoreAllMocks();
   for (const cwd of roots.splice(0)) {
-    workspace.clearWorkspaceIndexCache(cwd);
     await fs.rm(cwd, { recursive: true, force: true });
   }
 });
@@ -36,23 +36,24 @@ describe("workspace file search", () => {
     await write(cwd, "src/dist/generated.ts");
     await write(cwd, "src/node_modules/dependency.ts");
     await write(cwd, "src/secret.ts");
+    await write(cwd, "src/generated-cache/output.ts");
     await runGit(["add", "."], { cwd });
-    await write(cwd, "src/.gitignore", "secret.ts\n");
-    const fromGit = await search(cwd, "", runGit);
-    workspace.clearWorkspaceIndexCache(cwd);
+    await write(cwd, "src/.gitignore", "secret.ts\ngenerated-cache/\n");
     const filesystem: WorkspaceGitRunner = (args, options) =>
       args.includes("ls-files")
         ? Promise.reject(new Error("Git listing unavailable"))
         : runGit(args, options);
-    const fromFilesystem = await search(cwd, "", filesystem);
-    expect(fromGit.entries.map((entry) => entry.path).toSorted()).toEqual([
-      "src/.gitignore",
-      "src/visible.ts",
-    ]);
-    expect(fromFilesystem.entries.map((entry) => entry.path).toSorted()).toEqual(
-      fromGit.entries.map((entry) => entry.path).toSorted(),
-    );
-    expect(fromGit.truncated).toBe(false);
+    const filePaths = async (runner: WorkspaceGitRunner) => {
+      const index = await buildWorkspaceIndex(cwd, runner);
+      expect(index.truncated).toBe(false);
+      return index.entries
+        .filter((entry) => entry.kind === "file")
+        .map((entry) => entry.path)
+        .toSorted();
+    };
+    const fromGit = await filePaths(runGit);
+    expect(fromGit).toEqual(["src/.gitignore", "src/visible.ts"]);
+    expect(await filePaths(filesystem)).toEqual(fromGit);
   });
 
   it("finds typoed and canonically equivalent multilingual filenames without rewriting paths", async () => {
@@ -120,7 +121,7 @@ describe("workspace file search", () => {
     const blocked: WorkspaceGitRunner = async (args, options) => {
       calls++;
       const result = await runGit(args, options);
-      if (args.includes("check-ignore")) {
+      if (args.includes("ls-files")) {
         entered();
         await gate;
       }
@@ -133,9 +134,9 @@ describe("workspace file search", () => {
     const refreshCalls = calls;
     await search(cwd, "old.ts", blocked);
     expect(calls).toBe(refreshCalls);
-    workspace.clearWorkspaceIndexCache(cwd);
     await fs.rm(path.join(cwd, "old.ts"));
     await write(cwd, "new.ts");
+    workspace.invalidateWorkspaceIndex(cwd);
     expect((await search(cwd, "new.ts")).entries[0]?.path).toBe("new.ts");
     release();
     await new Promise<void>((resolve) => setImmediate(resolve));
@@ -145,9 +146,10 @@ describe("workspace file search", () => {
   it("reports failed ignore evaluation instead of revealing ignored files", async () => {
     const cwd = await fixture();
     await write(cwd, "secret.ts");
+    await runGit(["add", "."], { cwd });
     await write(cwd, ".gitignore", "secret.ts\n");
     const broken: WorkspaceGitRunner = (args, options) =>
-      args.includes("check-ignore")
+      args.includes("--ignored") || args.includes("check-ignore")
         ? Promise.reject(new Error("Git ignore check failed"))
         : runGit(args, options);
     await expect(search(cwd, "secret", broken)).rejects.toThrow("ignore rules");

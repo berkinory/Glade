@@ -34,6 +34,14 @@ export async function resolveRealPathWithinRoot(
   return isContainedPath(realRoot, realTarget) ? realTarget : null;
 }
 
+export async function resolveRealPathWithinRealRoot(
+  realRoot: string,
+  absolutePath: string,
+): Promise<string | null> {
+  const realTarget = await fs.realpath(absolutePath);
+  return isContainedPath(realRoot, realTarget) ? realTarget : null;
+}
+
 export async function resolveRealPathForCreateWithinRoot(
   workspaceRoot: string,
   absolutePath: string,

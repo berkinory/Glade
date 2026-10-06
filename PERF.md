@@ -95,33 +95,36 @@ Her maddenin bir sınıfı var:
 
 ## P2: explorer, workspace araması ve watcher'lar
 
-- [ ] **22: kimsenin okumadığı `hasChildren` için her alt klasör taranıyor (refactor).**
+- [x] **22: kimsenin okumadığı `hasChildren` için her alt klasör taranıyor (refactor).**
       `workspaceEntries.ts:260-269, 329` her alt dizin için tam `readdir` yapıyor ve `EXPLORER_EXCLUDED_NAMES` (`:45`) `node_modules`'u dışlamıyor. Alanı okuyan yok: `ProjectPicker.tsx:323` yalnız kopyalıyor, `ComposerLocalDirectoryMenu.tsx:319` kendisi hesaplıyor, explorer ağacı hiç bakmıyor. Alanı her yerden sil: server (`directoryHasChildDirectories`), contracts (`packages/contracts/src/workspace/project.ts:42,51`), web (`ProjectPicker`, `ComposerLocalDirectoryMenu`). `resolveRealPathWithinRoot` hedef doğrulaması ve sıralama aynı kalır. Bu contract değişikliği olduğu için tam `bun run test`.
 
 - [x] **F: explorer yüklenirken boş görünüyor (düzelt).**
       `projectReactQuery.ts:223` `placeholderData: previous ?? { entries: [] }` dönüyor; TanStack v5'te placeholder varken sorgu `success` olduğu için `WorkspaceExplorerTree.tsx:61`'deki yükleniyor dalı hiç çalışmıyor. Dizin listeleme sorgusundan `placeholderData`'yı kaldır; `DockExplorerPane` `fetchQuery` kullandığı için etkilenmez. Aynı dosyada `includeFiles` sorgu anahtarında yok (`:398`); farklı `includeFiles` değerleri aynı cache girdisini paylaşıyor. Bunu da düzelt.
       **Durum:** eksik anahtar listeleme değil `searchLocalEntries` sorgusundaydı; düzeltildi. Placeholder kalkınca `useQueries`'in pozisyon bazlı `previous`'ı yüzünden başka klasörün içeriğinin anlık görünmesi de ortadan kalktı.
 
-- [ ] **G: explorer git çağrıları arka plan şeridinde bekliyor (ölç-sonra-karar).**
+- [x] **G: explorer git çağrıları arka plan şeridinde bekliyor (ölç-sonra-karar).**
       Klasör listesi başına `rev-parse` ve `check-ignore` (`workspaceEntries.ts:341-350`) `withPermit(..., "background")` ile ortak kuyrukta bekliyor (`Layers/WorkspaceEntries.ts:32`), oysa listeleme etkileşimli. #22 ve P1 #6'dan sonra ölç: status yenilemesi yoğunken klasör açmada kuyruk bekleme süresi. Anlamlıysa listeleme çağrılarını foreground'a al. Hover prefetch'i zaten 150 ms niyet gecikmeli (`ExplorerFileRow.tsx:23-41`); dokunma.
+      **Ölçüm:** gecikme kuyruk sırasından değil CPU/disk çekişmesinden geliyor (100k repo, 24 kuyrukta background 2680 ms / foreground 2526 ms); foreground'a alınmadı. Asıl maliyet index'li `check-ignore` idi (500 klasör: 390 ms, `--no-index` 9 ms). `filterGitIgnoredPaths` önce `--no-index`, sonra yalnız ignore edilen alt kümeyi index'le kontrol ediyor; 100k repo kök listelemesi 413 ms → ~40 ms.
 
-- [ ] **13: workspace index soğuk build bekletiyor ve ignore'u iki kez uyguluyor (iyileştir).**
+- [x] **13: workspace index soğuk build bekletiyor ve ignore'u iki kez uyguluyor (iyileştir).**
       İlk taramadaki "15 saniyede bir yeniden kurulum" doğru değil: build istek üzerine yapılıyor, bayat endeks 60 saniyeye kadar arka planda yenilenirken sunuluyor (`workspaceIndexCache.ts:62-83`). Gerçek sorunlar:
       Birincisi, `ls-files --cached --others --exclude-standard` sonrası tüm listeye 256 KB'lık sıralı parçalarla `check-ignore --no-index` uygulanıyor; amaç tracked ama ignore'a uyan dosyaları dışlamak (commit `9cce50901`). Bunu tek bir `git ls-files --cached --ignored --exclude-standard -z` ile o küçük kümeyi alıp listeden çıkararak yap; `ls-files` ve `--deleted` paralel çalışsın. Dosya sistemi taraması fallback'i (`buildWorkspaceIndex`) `check-ignore` kullanmaya devam eder. `workspaceEntries.test.ts`'teki tabloya dizin kalıbına uyan tracked dosya vakasını (`.convex/` gibi) ekle; davranış eşdeğerliğini o kanıtlar.
       İkincisi, `CheckpointReactor.ts:431,1123,1297` ve `conversationEdit.ts:110` her checkpoint sonrası slotu siliyor, sonraki @-mention soğuk build bekliyor. `WorkspaceEntries.invalidate` slotu temizlesin ve slot varsa (yakın zamanda arama yapıldıysa) hemen yeni build başlatsın; çağıranlar modül fonksiyonu yerine bu servisi kullansın. Geçersiz kılınan build sonucunun cache'e geri yazılmaması korunmalı.
       `core.fsmonitor=false` ve `core.untrackedCache=false` **ellenmeyecek**: fsmonitor repo config'iyle keyfi komut çalıştırabilir (güven sınırı), untracked cache index'e yazar ve bayat sonuç riski taşır (commit `37d7f8031`).
-      Ölç: 100 bin dosyalık bir repoda build süresi, önce ve sonra.
+      Ölç: 100 bin dosyalık bir repoda build süresi, önce ve sonra. **Ölçüm:** ~450 ms → ~175 ms. **Durum:** çağıranlar servise taşınmadı (sahiplik dışı layer dosyaları); bunun yerine invalidation slotu temizleyip varsa aynı runner'la hemen yeniden kuruyor (`invalidateWorkspaceIndex`).
 
-- [ ] **26: içerik aramasında dosya başına gereksiz realpath (iyileştir).**
+- [x] **26: içerik aramasında dosya başına gereksiz realpath (iyileştir).**
       `WorkspaceContentSearch.ts:57` her dosya için `resolveRealPathWithinRoot` çağırıyor; bu her seferinde kökün de `realpath`'ini alıyor (`realPathContainment.ts:30-33`). Kökü arama başına bir kez çöz; `realPathContainment`'a çözülmüş kök alan bir varyant ekle (ikinci bir containment yolu değil). Dosya başına `realpath` ve containment kontrolü kalır: symlink sonradan değişebilir, bu bir güven sınırı. ripgrep'e geçmek **ellenmeyecek**: projede yok; yeni bağımlılık, paketleme ve Windows/WSL çözümü ister, `searchQuery.ts`'teki `u` bayrağı ve lookbehind Rust regex'te desteklenmiyor.
 
-- [ ] **H: worktree watcher'ı her dosya değişikliğinde status zincirini tetikliyor (iyileştir + düzelt).**
+- [x] **H: worktree watcher'ı her dosya değişikliğinde status zincirini tetikliyor (iyileştir + düzelt).**
       `gitRepositoryChanges.ts:187-190` tüm ağacı recursive izliyor ve yalnız `.git`'i filtreliyor; her event `GitStatusBroadcaster.ts:179-186`'da status zincirini tetikliyor. 300 ms penceresindeki yolları biriktir, tek `check-ignore --stdin` ile (index'i dikkate alarak) hepsi ignore ediliyorsa yenilemeyi atla; dosya adı `null` gelirse her zaman yenile.
-      Linux'ta (düzelt): server Bun ile çalışıyor ve recursive izleme `node_modules` dahil her dizine ayrı inotify watch ekliyor; `ENOSPC` olursa hata tüm `Stream.merge`'i düşürüyor ve git metadata watcher'ı da duruyor, ardından 5 saniyelik retry her denemede ağacı yeniden tarıyor. Worktree watcher'ının hatası metadata watcher'ından ayrılsın; ayrı retry ve açık bir uyarı olsun, sessiz fallback değil. Ölç: büyük repoda inotify watch sayısı (`/proc/<pid>/fdinfo`).
+      **Ölçüm:** gerçek `npm install` sırasında worktree yenilemesi 4 → 1 (kalan `package-lock.json`), `rm -rf node_modules` 3 → 1. GitCore stdin geçiremediği için kontrol `withPermit` + `runProcess` ile yapılıyor. `.lock` uzantısını kırpan hata da düzeltildi.
+      Linux'ta (düzelt): server Bun ile çalışıyor ve recursive izleme `node_modules` dahil her dizine ayrı inotify watch ekliyor; `ENOSPC` olursa hata tüm `Stream.merge`'i düşürüyor ve git metadata watcher'ı da duruyor, ardından 5 saniyelik retry her denemede ağacı yeniden tarıyor. Worktree watcher'ının hatası metadata watcher'ından ayrılsın; ayrı retry ve açık bir uyarı olsun, sessiz fallback değil. Ölç: büyük repoda inotify watch sayısı (`/proc/<pid>/fdinfo`). **Durum:** worktree watcher hatası ayrıldı (5 sn'den 5 dk'ya ikiye katlanan backoff, `ENOSPC`'de inotify limitini anan uyarı); Linux'ta ölçülmedi.
 
-- [ ] **I: dizin watcher'ları ve yerel yol araması (ölç-sonra-karar).**
+- [x] **I: dizin watcher'ları ve yerel yol araması (ölç-sonra-karar).**
       `workspaceDirectoryChanges.ts:52-56` klasör başına iki watcher kuruyor ve üst dizindeki eşleşen her event'te yeniden kuruyor. Ölç: macOS FSEvents'te alt klasördeki düzenleme `rename` mı `change` mı üretiyor; gerekirse yeniden kurulumu yalnız `rename`'de yap. `resolveRealPathForCreateWithinRoot` kapsamını koru.
       Yerel yol araması (`workspaceEntries.ts:393-477`) her sorguda diski yeniden tarıyor; web zaten debounce ve en az 2 karakter şartı uyguluyor. Ölç: home kökünde p95 süre ve `truncated` oranı. Gerekirse aynı modülde `rootPath + includeFiles + includeDotfiles` anahtarlı, 10 saniyelik tek girdili aday cache'i.
+      **Ölçüm (macOS):** üst dizin watcher'ı yalnız hedef klasörün kendisi yeniden adlandırılınca tetikleniyor; değişiklik yok. Home kökü araması p95 129 ms (dosyalı) / 179 ms (yalnız klasör); kesilme 600 ms bütçeden değil 100k aday sınırından. Cache eklenmedi; madde kapandı.
 
 **Doğrulama:** `bun run check`, tam `bun run test` (contracts değişiyor), `bun scripts/check-windows-runtime-boundary.ts` (watcher'lar). Dev'de explorer, proje seçici, @-mention ve source control; ajan dosya değiştirdikten hemen sonra @-mention. `npm install` veya build çalışırken status yenileme sayısı. Windows ve WSL'de watcher davranışı, Linux'ta büyük repo ile watcher dayanıklılığı.
 

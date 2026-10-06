@@ -2,7 +2,7 @@ import { Effect, Layer } from "effect";
 
 import {
   browseWorkspaceEntries,
-  clearWorkspaceIndexCache,
+  invalidateWorkspaceIndex,
   listWorkspaceDirectories,
   prewarmWorkspaceSearchIndex,
   resolveWorkspaceFileBySuffix,
@@ -69,7 +69,7 @@ export const WorkspaceEntriesLive = Layer.effect(
           try: () => resolveWorkspaceFileReferences(input, runGit),
           catch: (cause) => toWorkspaceEntriesError("resolve workspace file references", cause),
         }),
-      invalidate: (cwd) => Effect.sync(() => clearWorkspaceIndexCache(cwd)),
+      invalidate: (cwd) => Effect.sync(() => invalidateWorkspaceIndex(cwd)),
     };
   }),
 ).pipe(Layer.provide(GitCommandsLive));

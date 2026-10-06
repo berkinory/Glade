@@ -11,7 +11,7 @@ import {
 } from "./search/workspaceIndex";
 import { getWorkspaceIndex, type CachedWorkspaceIndex } from "./search/workspaceIndexCache";
 export {
-  clearWorkspaceIndexCache,
+  invalidateWorkspaceIndex,
   prewarmWorkspaceSearchIndex,
 } from "./search/workspaceIndexCache";
 export type { WorkspaceGitRunner } from "./search/workspaceIndex";
@@ -21,7 +21,6 @@ import {
   FilesystemBrowseResult,
 } from "@glade/contracts/workspace/filesystem";
 import {
-  ProjectDirectoryEntry,
   ProjectFileSystemEntry,
   ProjectListDirectoriesInput,
   ProjectListDirectoriesResult,
@@ -257,17 +256,6 @@ async function mapWithConcurrency<TInput, TOutput>(
   return results;
 }
 
-async function directoryHasChildDirectories(absolutePath: string): Promise<boolean> {
-  try {
-    const dirents = await fs.readdir(absolutePath, { withFileTypes: true });
-    return dirents.some(
-      (dirent) => dirent.isDirectory() && dirent.name !== "." && dirent.name !== "..",
-    );
-  } catch {
-    return false;
-  }
-}
-
 function resolveDirectoryWithinRoot(cwd: string, relativePath: string): string {
   if (path.isAbsolute(relativePath) || isWindowsAbsolutePath(relativePath)) {
     throw new Error("Directory path is outside the workspace root.");
@@ -298,45 +286,29 @@ export async function listWorkspaceDirectories(
     throw new Error("Directory path is outside the workspace root.");
   }
   const dirents = await fs.readdir(targetDirectory, { withFileTypes: true });
-  const entries = await mapWithConcurrency(
-    dirents
-      .filter(
-        (dirent) =>
-          dirent.name.length > 0 &&
-          dirent.name !== "." &&
-          dirent.name !== ".." &&
-          !EXPLORER_EXCLUDED_NAMES.has(dirent.name) &&
-          (dirent.isDirectory() || (input.includeFiles === true && dirent.isFile())),
-      )
-      .toSorted((left, right) => {
-        if (left.isDirectory() !== right.isDirectory()) {
-          return left.isDirectory() ? -1 : 1;
-        }
-        return left.name.localeCompare(right.name);
-      }),
-    16,
-    async (dirent) => {
-      const childRelativePath = toPosixPath(
-        relativePath ? path.join(relativePath, dirent.name) : dirent.name,
-      );
-      if (dirent.isDirectory()) {
-        const childAbsolutePath = path.join(input.cwd, childRelativePath);
-        return {
-          path: childRelativePath,
-          name: dirent.name,
-          kind: "directory",
-          ...(relativePath ? { parentPath: relativePath } : {}),
-          hasChildren: await directoryHasChildDirectories(childAbsolutePath),
-        } satisfies ProjectDirectoryEntry & ProjectFileSystemEntry;
+  const entries = dirents
+    .filter(
+      (dirent) =>
+        dirent.name.length > 0 &&
+        dirent.name !== "." &&
+        dirent.name !== ".." &&
+        !EXPLORER_EXCLUDED_NAMES.has(dirent.name) &&
+        (dirent.isDirectory() || (input.includeFiles === true && dirent.isFile())),
+    )
+    .toSorted((left, right) => {
+      if (left.isDirectory() !== right.isDirectory()) {
+        return left.isDirectory() ? -1 : 1;
       }
-      return {
-        path: childRelativePath,
+      return left.name.localeCompare(right.name);
+    })
+    .map(
+      (dirent): ProjectFileSystemEntry => ({
+        path: toPosixPath(relativePath ? path.join(relativePath, dirent.name) : dirent.name),
         name: dirent.name,
-        kind: "file",
+        kind: dirent.isDirectory() ? "directory" : "file",
         ...(relativePath ? { parentPath: relativePath } : {}),
-      } satisfies ProjectFileSystemEntry;
-    },
-  );
+      }),
+    );
 
   const visiblePaths = (await isInsideGitWorkTree(input.cwd, runGit))
     ? new Set(

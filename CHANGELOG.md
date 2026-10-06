@@ -23,6 +23,9 @@
 - Claude sessions, forks and skill and agent lists start faster.
 - Usage indicators use far less CPU with large Claude histories.
 - Turn change summaries appear for very large turns too.
+- The file explorer and project picker open folders faster, especially in large repositories.
+- File mentions open faster after agents change files and in large repositories.
+- Installing dependencies or running builds no longer keeps source control busy, and file watching recovers on Linux when watch limits are reached.
 
 ### Fixed
 

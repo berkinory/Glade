@@ -33,7 +33,7 @@ import {
   isManagedCheckpointRefForThread,
   resolveThreadWorkspaceCwd,
 } from "../../checkpointing/Utils.ts";
-import { clearWorkspaceIndexCache } from "../../workspace/workspaceEntries.ts";
+import { invalidateWorkspaceIndex } from "../../workspace/workspaceEntries.ts";
 import { CheckpointStore } from "../../checkpointing/Services/CheckpointStore.ts";
 import { ProjectionTurnRepository } from "../../persistence/Services/ProjectionTurns.ts";
 import { ProjectionTurnRepositoryLive } from "../../persistence/Layers/ProjectionTurns.ts";
@@ -427,7 +427,7 @@ const make = Effect.gen(function* () {
       checkpointRef: targetCheckpointRef,
     });
 
-    clearWorkspaceIndexCache(input.cwd);
+    invalidateWorkspaceIndex(input.cwd);
 
     const checkpointStatus = fromCheckpointExists ? input.status : ("missing" as const);
 
@@ -1112,7 +1112,7 @@ const make = Effect.gen(function* () {
         { discard: true },
       );
 
-      clearWorkspaceIndexCache(checkpointCwd);
+      invalidateWorkspaceIndex(checkpointCwd);
       yield* orchestrationEngine.dispatch({
         type: "thread.turn.diff.complete",
         commandId: serverCommandId("checkpoint-files-undone"),
@@ -1286,7 +1286,7 @@ const make = Effect.gen(function* () {
       return;
     }
 
-    clearWorkspaceIndexCache(checkpointCwd);
+    invalidateWorkspaceIndex(checkpointCwd);
 
     const completionFailure = yield* orchestrationEngine
       .dispatch({
