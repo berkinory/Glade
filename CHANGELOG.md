@@ -42,6 +42,7 @@
 - Diffs and change totals no longer fail when a project contains another Git repository.
 - Skill and agent lists use your configured Claude CLI path.
 - Custom Codex providers no longer make the app stall, and the local server list no longer hangs when system tools stop responding.
+- The last lines of terminal output are kept when you quit, and busy terminals write far less to disk.
 
 ### Removed
 
