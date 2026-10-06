@@ -140,6 +140,34 @@ describe("database lifecycle lock", () => {
     expect((await fs.lstat(path.join(lockPath, "owner.json"))).isSymbolicLink()).toBe(true);
   });
 
+  it.each(["", ".reaper"])(
+    "recovers an ownerless lock%s directory holding only Finder metadata",
+    async (suffix) => {
+      const dbPath = await makeDbPath();
+      const lockPath = `${dbPath}.lifecycle-lock`;
+      if (suffix) await writeOwnedDirectory(lockPath, 2_147_483_647);
+      await fs.mkdir(`${lockPath}${suffix}`, { mode: 0o700 });
+      await fs.writeFile(path.join(`${lockPath}${suffix}`, ".DS_Store"), "Finder metadata");
+
+      await Effect.runPromise(withDatabaseLifecycleLock(dbPath, Effect.void));
+
+      expect(await fs.readdir(path.dirname(dbPath))).toEqual([]);
+    },
+  );
+
+  it("preserves an unverifiable lock that also holds Finder metadata", async () => {
+    const dbPath = await makeDbPath();
+    const lockPath = `${dbPath}.lifecycle-lock`;
+    await fs.mkdir(lockPath, { mode: 0o700 });
+    await fs.writeFile(path.join(lockPath, ".DS_Store"), "Finder metadata");
+    await fs.writeFile(path.join(lockPath, "unrecognized"), "kept");
+
+    await expect(
+      Effect.runPromise(withDatabaseLifecycleLock(dbPath, Effect.void)),
+    ).rejects.toBeInstanceOf(DatabaseLifecycleLockedError);
+    expect(await fs.readdir(lockPath)).toEqual([".DS_Store", "unrecognized"]);
+  });
+
   it("makes server startup refuse while recovery owns the database", async () => {
     const dbPath = await makeDbPath();
 

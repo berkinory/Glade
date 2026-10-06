@@ -252,9 +252,8 @@ export function useChatWorkspaceController({
   const closeTerminal = (terminalId: string) =>
     closeChatTerminal(terminalActionContext, terminalState, terminalId);
   const handleTerminalSessionExited = useCallback(
-    (terminalId: string) =>
-      handleChatTerminalSessionExited(terminalActionContext, terminalState, terminalId),
-    [terminalActionContext, terminalState],
+    (terminalId: string) => handleChatTerminalSessionExited(terminalActionContext, terminalId),
+    [terminalActionContext],
   );
   const closeActiveWorkspaceView = () =>
     closeActiveChatTerminalWorkspaceView(terminalActionContext, terminalState);

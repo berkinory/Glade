@@ -8,6 +8,9 @@ import {
   shouldPromptForRunningChatsBeforeQuit,
 } from "./runningChatsQuitGuard";
 
+const unexpectedNativeConfirmation = () =>
+  Promise.reject(new Error("unexpected native confirmation"));
+
 describe("running chats quit guard", () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -61,17 +64,33 @@ describe("running chats quit guard", () => {
     });
   });
 
-  it("allows quit immediately when the renderer is unavailable", async () => {
+  it("asks natively once when the renderer is unavailable, and a cancel or failure stays", async () => {
     const guard = makeRunningChatsQuitGuard(() => "q1");
     const send = vi.fn();
+    let answer: (allow: boolean) => void = () => undefined;
+    const confirmWithoutRenderer = vi.fn(
+      () => new Promise<boolean>((resolve) => (answer = resolve)),
+    );
+    const ask = () =>
+      guard.askRenderer({ send, isRendererAvailable: () => false, confirmWithoutRenderer });
+
+    const first = ask();
+    const second = ask();
+    await Promise.resolve();
+    answer(false);
+    await expect(first).resolves.toBe(false);
+    await expect(second).resolves.toBe(false);
+    expect(confirmWithoutRenderer).toHaveBeenCalledOnce();
+    expect(send).not.toHaveBeenCalled();
 
     await expect(
       guard.askRenderer({
         send,
         isRendererAvailable: () => false,
+        confirmWithoutRenderer: () => Promise.reject(new Error("dialog failed")),
       }),
-    ).resolves.toBe(true);
-    expect(send).not.toHaveBeenCalled();
+    ).resolves.toBe(false);
+    expect(guard.hasAllowedQuit()).toBe(false);
   });
 
   it("allows quit when the renderer reports no running chats", async () => {
@@ -80,6 +99,7 @@ describe("running chats quit guard", () => {
     const decision = guard.askRenderer({
       send,
       isRendererAvailable: () => true,
+      confirmWithoutRenderer: unexpectedNativeConfirmation,
     });
 
     expect(send).toHaveBeenCalledWith({ requestId: "q1", presentation: "in-app" });
@@ -93,6 +113,7 @@ describe("running chats quit guard", () => {
     const first = guard.askRenderer({
       send: vi.fn(),
       isRendererAvailable: () => true,
+      confirmWithoutRenderer: unexpectedNativeConfirmation,
     });
     guard.receiveResponse({ requestId: "q1", phase: "ready", runningCount: 2 });
     guard.receiveResponse({ requestId: "q1", phase: "decision", allow: false });
@@ -102,6 +123,7 @@ describe("running chats quit guard", () => {
     const second = guard.askRenderer({
       send: vi.fn(),
       isRendererAvailable: () => true,
+      confirmWithoutRenderer: unexpectedNativeConfirmation,
     });
     guard.receiveResponse({ requestId: "q1", phase: "decision", allow: true });
     await expect(second).resolves.toBe(true);
@@ -113,10 +135,12 @@ describe("running chats quit guard", () => {
     const first = guard.askRenderer({
       send,
       isRendererAvailable: () => true,
+      confirmWithoutRenderer: unexpectedNativeConfirmation,
     });
     const second = guard.askRenderer({
       send,
       isRendererAvailable: () => true,
+      confirmWithoutRenderer: unexpectedNativeConfirmation,
     });
 
     expect(send).toHaveBeenCalledOnce();
@@ -125,17 +149,20 @@ describe("running chats quit guard", () => {
     await expect(second).resolves.toBe(false);
   });
 
-  it("fails open if the renderer never acknowledges the request", async () => {
+  it("asks natively if the renderer never acknowledges the request", async () => {
     vi.useFakeTimers();
     const guard = makeRunningChatsQuitGuard(() => "q1");
+    const confirmWithoutRenderer = vi.fn(async () => true);
     const decision = guard.askRenderer({
       send: vi.fn(),
       isRendererAvailable: () => true,
+      confirmWithoutRenderer,
       readyTimeoutMs: 50,
     });
 
     await vi.advanceTimersByTimeAsync(50);
     await expect(decision).resolves.toBe(true);
+    expect(confirmWithoutRenderer).toHaveBeenCalledOnce();
   });
 
   it("does not time out after the renderer says chats are running", async () => {
@@ -144,6 +171,7 @@ describe("running chats quit guard", () => {
     const decision = guard.askRenderer({
       send: vi.fn(),
       isRendererAvailable: () => true,
+      confirmWithoutRenderer: unexpectedNativeConfirmation,
       readyTimeoutMs: 50,
     });
     guard.receiveResponse({ requestId: "q1", phase: "ready", runningCount: 1 });
@@ -153,25 +181,27 @@ describe("running chats quit guard", () => {
     await expect(decision).resolves.toBe(false);
   });
 
-  it("allows a pending ask when the renderer dies mid-confirmation, without latching", async () => {
+  it("moves a pending ask to the native confirmation when the renderer dies", async () => {
     const requestIds = ["q1", "q2"];
     const guard = makeRunningChatsQuitGuard(() => requestIds.shift() ?? "unexpected");
     const first = guard.askRenderer({
       send: vi.fn(),
       isRendererAvailable: () => true,
+      confirmWithoutRenderer: async () => false,
     });
-    expect(guard.hasPendingAsk()).toBe(true);
 
-    // The renderer hosting the ask is gone — the quit it was part of must proceed, but no user said
-    // yes, so the allowed latch must not set.
-    guard.allowPending();
-
-    await expect(first).resolves.toBe(true);
-    expect(guard.hasPendingAsk()).toBe(false);
+    const decision = guard.rendererGone();
+    expect(decision).toBe(first);
+    await expect(first).resolves.toBe(false);
+    expect(guard.rendererGone()).toBeNull();
     expect(guard.hasAllowedQuit()).toBe(false);
 
     const send = vi.fn();
-    const second = guard.askRenderer({ send, isRendererAvailable: () => true });
+    const second = guard.askRenderer({
+      send,
+      isRendererAvailable: () => true,
+      confirmWithoutRenderer: unexpectedNativeConfirmation,
+    });
     expect(send).toHaveBeenCalledWith({ requestId: "q2", presentation: "in-app" });
     guard.receiveResponse({ requestId: "q2", phase: "decision", allow: true });
     await expect(second).resolves.toBe(true);
@@ -183,6 +213,7 @@ describe("running chats quit guard", () => {
     const first = guard.askRenderer({
       send: vi.fn(),
       isRendererAvailable: () => true,
+      confirmWithoutRenderer: unexpectedNativeConfirmation,
     });
     guard.receiveResponse({ requestId: "q1", phase: "ready", runningCount: 1 });
 
@@ -190,7 +221,11 @@ describe("running chats quit guard", () => {
 
     await expect(first).resolves.toBe(false);
     const send = vi.fn();
-    const second = guard.askRenderer({ send, isRendererAvailable: () => true });
+    const second = guard.askRenderer({
+      send,
+      isRendererAvailable: () => true,
+      confirmWithoutRenderer: unexpectedNativeConfirmation,
+    });
     expect(send).toHaveBeenCalledWith({ requestId: "q2", presentation: "in-app" });
     guard.receiveResponse({ requestId: "q2", phase: "decision", allow: true });
     await expect(second).resolves.toBe(true);
@@ -202,6 +237,7 @@ describe("running chats quit guard", () => {
     const decision = guard.askRenderer({
       send: vi.fn(),
       isRendererAvailable: () => true,
+      confirmWithoutRenderer: unexpectedNativeConfirmation,
       presentation: "native",
       presentNativeConfirmation,
     });
@@ -218,11 +254,12 @@ describe("running chats quit guard", () => {
     expect(guard.hasAllowedQuit()).toBe(false);
   });
 
-  it("fails open if the native sheet presenter throws", async () => {
+  it("stays if the native sheet presenter throws", async () => {
     const guard = makeRunningChatsQuitGuard(() => "q1");
     const decision = guard.askRenderer({
       send: vi.fn(),
       isRendererAvailable: () => true,
+      confirmWithoutRenderer: unexpectedNativeConfirmation,
       presentation: "native",
       presentNativeConfirmation: () => {
         throw new Error("sheet failed");
@@ -236,6 +273,6 @@ describe("running chats quit guard", () => {
       chats: [{ id: "a", title: "Fix the tray" }],
     });
 
-    await expect(decision).resolves.toBe(true);
+    await expect(decision).resolves.toBe(false);
   });
 });

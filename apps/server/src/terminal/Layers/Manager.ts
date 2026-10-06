@@ -917,6 +917,12 @@ class TerminalManagerRuntime extends EventEmitter<TerminalManagerEvents> {
 
   async write(raw: TerminalWriteInput): Promise<void> {
     const input = decodeTerminalWriteInput(raw);
+    if (input.onlyIfIdle) {
+      await this.runWithThreadLock(input.threadId, () =>
+        this.writeIfIdle(input.threadId, input.terminalId, input.data),
+      );
+      return;
+    }
     const session = this.requireSession(input.threadId, input.terminalId);
     if (!session.process || session.status !== "running") {
       if (session.status === "exited") {
@@ -926,7 +932,67 @@ class TerminalManagerRuntime extends EventEmitter<TerminalManagerEvents> {
         `Terminal is not running for thread: ${input.threadId}, terminal: ${input.terminalId}`,
       );
     }
-    const nextIdentityState = consumeTerminalIdentityInput(session.pendingInputBuffer, input.data);
+    this.writeToSession(session, session.process, input.data);
+  }
+
+  // Automatic input must never become keystrokes for a running program. Only a process snapshot
+  // requested after this call began counts as proof of idleness, and user input that arrives while
+  // it is taken aborts the write.
+  private async writeIfIdle(threadId: string, terminalId: string, data: string): Promise<void> {
+    const session = this.requireSession(threadId, terminalId);
+    const ptyProcess = session.process;
+    const pid = session.pid;
+    if (!ptyProcess || session.status !== "running" || pid === null) {
+      throw new Error("The terminal is not running, so the command was not sent.");
+    }
+    const inspectionStartedAt = Date.now();
+    const activity = await this.inspectFreshSubprocessActivity(pid);
+    if (activity === null) {
+      throw new Error(
+        "Glade could not verify that the terminal is idle, so the command was not sent.",
+      );
+    }
+    if (
+      this.sessions.get(toSessionKey(threadId, terminalId)) !== session ||
+      session.process !== ptyProcess ||
+      session.status !== "running"
+    ) {
+      throw new Error("The terminal changed while it was checked, so the command was not sent.");
+    }
+    if (
+      activity.hasRunningSubprocess ||
+      session.managedAgentRunning ||
+      (session.lastInputAt !== null && session.lastInputAt >= inspectionStartedAt)
+    ) {
+      throw new Error("The terminal is busy, so the command was not sent.");
+    }
+    this.writeToSession(session, ptyProcess, data);
+  }
+
+  private async inspectFreshSubprocessActivity(
+    pid: number,
+  ): Promise<TerminalSubprocessActivity | null> {
+    const observer = this.processSnapshotObserver;
+    if (observer) {
+      // The observer shares an in-flight poll that may predate this request. Drain it so the
+      // deciding snapshot was requested afterwards; an unavailable snapshot is never idle.
+      if ((await observer.capture()) === null) return null;
+      const children = await observer.capture();
+      return children === null ? null : inspectSubprocessActivity(pid, children);
+    }
+    if (this.useDefaultSubprocessChecker) {
+      const children = await captureProcessChildrenMap();
+      return children === null ? null : inspectSubprocessActivity(pid, children);
+    }
+    return normalizeSubprocessActivity(await this.subprocessChecker(pid));
+  }
+
+  private writeToSession(
+    session: TerminalSessionState,
+    ptyProcess: PtyProcess,
+    data: string,
+  ): void {
+    const nextIdentityState = consumeTerminalIdentityInput(session.pendingInputBuffer, data);
     session.pendingInputBuffer = nextIdentityState.buffer;
     if (
       nextIdentityState.identity &&
@@ -936,7 +1002,7 @@ class TerminalManagerRuntime extends EventEmitter<TerminalManagerEvents> {
       session.providerDescendantObserved = false;
       this.emitActivityEvent(session);
     }
-    const submittedPrompt = input.data.includes("\r") || input.data.includes("\n");
+    const submittedPrompt = data.includes("\r") || data.includes("\n");
     if (submittedPrompt && session.detectedCliKind !== null && !session.hasRunningSubprocess) {
       session.hasRunningSubprocess = true;
       this.emitActivityEvent(session);
@@ -944,7 +1010,7 @@ class TerminalManagerRuntime extends EventEmitter<TerminalManagerEvents> {
     session.lastInputAt = Date.now();
 
     this.bumpSubprocessPolling();
-    session.process.write(input.data);
+    ptyProcess.write(data);
   }
 
   async ackOutput(raw: TerminalAckOutputInput): Promise<void> {

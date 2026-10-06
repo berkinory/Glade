@@ -92,3 +92,13 @@ reset it. Terminal snapshots and output chunks include a monotonically increasin
 `outputSequence` for the running session. While opening, the client buffers live
 chunks and replays only chunks newer than the snapshot, preserving output when
 a PTY starts before its viewport mounts. This contract requires protocol revision 3.
+
+Automatic terminal input such as the `cd` sent by **Open Path in Terminal** uses
+`terminal.write` with `onlyIfIdle`. Under the thread's terminal lock, the server
+takes a fresh process snapshot and refuses the write when the session runs a
+subprocess or managed agent, received user input during the check, changed
+identity, or could not be inspected. The client's running state is only a hint.
+Clients require the `terminal.idle-input` capability because older servers would
+ignore the flag. Ordinary keystrokes are not checked. An explicit
+`terminal.close` keeps the client's tile, xterm and history until the server
+confirms; a failed close stays visible and never becomes an `exit` write.

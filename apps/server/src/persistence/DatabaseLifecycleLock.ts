@@ -149,6 +149,30 @@ async function pathExists(targetPath: string): Promise<boolean> {
   }
 }
 
+const FINDER_METADATA_FILE_NAME = ".DS_Store";
+
+async function removeOwnerlessDirectory(targetPath: string): Promise<boolean> {
+  try {
+    const stat = await fs.lstat(targetPath);
+    if (!stat.isDirectory() || stat.isSymbolicLink()) return false;
+    const entries = await fs.readdir(targetPath, { withFileTypes: true });
+    if (entries.length === 1) {
+      const [entry] = entries;
+      // Finder metadata is not ownership; anything else, including a linked .DS_Store, is kept.
+      if (entry?.name !== FINDER_METADATA_FILE_NAME || !entry.isFile()) return false;
+      await fs.unlink(path.join(targetPath, FINDER_METADATA_FILE_NAME));
+    } else if (entries.length !== 0) {
+      return false;
+    }
+    // Never remove recursively. Owners publish a complete directory atomically, so rmdir refuses
+    // when another contender has already published its owner.json in the meantime.
+    await fs.rmdir(targetPath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function tryPublishOwnedDirectory(
   targetPath: string,
   owner: DatabaseLifecycleLockOwner,
@@ -160,6 +184,14 @@ async function tryPublishOwnedDirectory(
     published = true;
   } catch (cause) {
     if (!(await pathExists(targetPath))) throw cause;
+    if (await removeOwnerlessDirectory(targetPath)) {
+      try {
+        await fs.rename(stagingPath, targetPath);
+        published = true;
+      } catch (retryCause) {
+        if (!(await pathExists(targetPath))) throw retryCause;
+      }
+    }
   } finally {
     if (!published) {
       await fs.rm(stagingPath, { recursive: true, force: true }).catch(() => undefined);

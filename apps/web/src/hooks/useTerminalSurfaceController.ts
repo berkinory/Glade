@@ -12,7 +12,10 @@ import {
 import { readNativeApi } from "~/nativeApi";
 import { selectThreadTerminalState, useTerminalStateStore } from "~/terminalStateStore";
 import { randomTerminalId } from "~/components/terminal/terminalIds";
-import { disposeAndCloseTerminalSession } from "~/components/terminal/terminalSession";
+import {
+  closeTerminalSession,
+  releaseTerminalSession,
+} from "~/components/terminal/terminalSession";
 
 type TerminalMetadata = { cliKind: TerminalCliKind | null; label: string };
 type TerminalActivity = {
@@ -74,17 +77,24 @@ export function useTerminalSurfaceController(threadId: ThreadId) {
       }),
     });
     if (!confirmed) return;
-    const latest = selectThreadTerminalState(
+    const openIds = selectThreadTerminalState(
       useTerminalStateStore.getState().terminalStateByThreadId,
       threadId,
+    ).terminalIds;
+    const results = await Promise.all(
+      terminalIds
+        .filter((terminalId) => openIds.includes(terminalId))
+        .map(async (terminalId) => {
+          if (!(await closeTerminalSession({ api, threadId, terminalId }))) return false;
+          closeTerminalStore(threadId, terminalId);
+          return true;
+        }),
     );
-    const closingFinal = latest.terminalIds.every((id) => terminalIds.includes(id));
-    for (const terminalId of terminalIds) {
-      if (!latest.terminalIds.includes(terminalId)) continue;
-      disposeAndCloseTerminalSession({ api, threadId, terminalId });
-      closeTerminalStore(threadId, terminalId);
-    }
-    if (closingFinal) onLastClosed();
+    const remaining = selectThreadTerminalState(
+      useTerminalStateStore.getState().terminalStateByThreadId,
+      threadId,
+    ).terminalIds;
+    if (results.some(Boolean) && remaining.length === 0) onLastClosed();
     bumpFocusRequest();
   };
 
@@ -109,10 +119,9 @@ export function useTerminalSurfaceController(threadId: ThreadId) {
         terminalTitleOverridesById: terminalState.terminalTitleOverridesById,
       }),
     });
-    if (!confirmed) {
+    if (!confirmed || !(await closeTerminalSession({ api, threadId, terminalId }))) {
       return;
     }
-    disposeAndCloseTerminalSession({ api, threadId, terminalId });
     if (onLastClosed) {
       const finalTerminal =
         selectThreadTerminalState(
@@ -128,12 +137,7 @@ export function useTerminalSurfaceController(threadId: ThreadId) {
   };
 
   const disposeExitedTerminal = (terminalId: string) => {
-    disposeAndCloseTerminalSession({
-      api: readNativeApi(),
-      threadId,
-      terminalId,
-      processAlreadyExited: true,
-    });
+    releaseTerminalSession({ api: readNativeApi(), threadId, terminalId });
   };
 
   const handleTerminalSessionExited = (terminalId: string) => {

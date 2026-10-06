@@ -93,15 +93,16 @@ export function parseQuitConfirmationResponse(
 
 export interface RunningChatsQuitGuard {
   readonly hasAllowedQuit: () => boolean;
-  readonly hasPendingAsk: () => boolean;
   readonly cancelPending: () => void;
-  // Resolve the pending ask as allowed WITHOUT latching `allowed` — a dead renderer proved the ask
-  // can never be answered, not that the user said yes, so a later quit must still get to ask.
-  readonly allowPending: () => void;
+  // A renderer that died while hosting the ask can never answer it, and that is not proof that no
+  // chats run. The pending ask moves to the native confirmation; the returned decision is shared
+  // with every waiting quit request. Returns null when no ask was pending.
+  readonly rendererGone: () => Promise<boolean> | null;
   readonly receiveResponse: (payload: unknown) => void;
   readonly askRenderer: (input: {
     readonly send: (request: DesktopQuitConfirmationRequest) => void;
     readonly isRendererAvailable: () => boolean;
+    readonly confirmWithoutRenderer: () => Promise<boolean>;
     readonly readyTimeoutMs?: number;
     readonly presentation?: DesktopQuitConfirmationPresentation;
     readonly presentNativeConfirmation?: (
@@ -116,6 +117,7 @@ interface PendingQuitConfirmation {
   readonly presentNativeConfirmation:
     | ((chats: ReadonlyArray<DesktopQuitConfirmationChat>) => boolean | Promise<boolean>)
     | undefined;
+  readonly confirmWithoutRenderer: () => Promise<boolean>;
   waitingForDecision: boolean;
   readyTimer: ReturnType<typeof setTimeout> | null;
   readonly resolve: (allow: boolean) => void;
@@ -128,16 +130,36 @@ export function makeRunningChatsQuitGuard(
   let inFlight: Promise<boolean> | null = null;
   let pending: PendingQuitConfirmation | null = null;
 
-  const finish = (allow: boolean): void => {
+  const takePending = (): PendingQuitConfirmation | null => {
     const current = pending;
     pending = null;
     if (current?.readyTimer) {
       clearTimeout(current.readyTimer);
     }
+    return current;
+  };
+
+  const settle = (current: PendingQuitConfirmation | null, allow: boolean): void => {
     if (allow) {
       allowed = true;
     }
     current?.resolve(allow);
+  };
+
+  const finish = (allow: boolean): void => {
+    settle(takePending(), allow);
+  };
+
+  // Cancelling or failing to show the native dialog never counts as permission to quit.
+  const confirmNatively = (confirm: () => Promise<boolean>): Promise<boolean> =>
+    Promise.resolve()
+      .then(confirm)
+      .catch(() => false);
+
+  const fallBackToNativeConfirmation = (): void => {
+    const current = takePending();
+    if (!current) return;
+    void confirmNatively(current.confirmWithoutRenderer).then((allow) => settle(current, allow));
   };
 
   const presentNativeSheet = (
@@ -146,7 +168,7 @@ export function makeRunningChatsQuitGuard(
   ): void => {
     const presenter = current.presentNativeConfirmation;
     if (!presenter) {
-      finish(true);
+      fallBackToNativeConfirmation();
       return;
     }
     const requestId = current.requestId;
@@ -160,7 +182,7 @@ export function makeRunningChatsQuitGuard(
         },
         () => {
           if (pending?.requestId === requestId) {
-            finish(true);
+            finish(false);
           }
         },
       );
@@ -168,17 +190,14 @@ export function makeRunningChatsQuitGuard(
 
   return {
     hasAllowedQuit: () => allowed,
-    hasPendingAsk: () => pending !== null,
     cancelPending(): void {
       finish(false);
     },
-    allowPending(): void {
-      const current = pending;
-      pending = null;
-      if (current?.readyTimer) {
-        clearTimeout(current.readyTimer);
-      }
-      current?.resolve(true);
+    rendererGone(): Promise<boolean> | null {
+      if (pending === null) return null;
+      const decision = inFlight;
+      fallBackToNativeConfirmation();
+      return decision;
     },
     receiveResponse(payload: unknown): void {
       const response = parseQuitConfirmationResponse(payload);
@@ -210,7 +229,13 @@ export function makeRunningChatsQuitGuard(
         return inFlight;
       }
       if (!input.isRendererAvailable()) {
-        return Promise.resolve(true);
+        const decision = confirmNatively(input.confirmWithoutRenderer).then((allow) => {
+          inFlight = null;
+          settle(null, allow);
+          return allow;
+        });
+        inFlight = decision;
+        return decision;
       }
 
       inFlight = new Promise<boolean>((resolve) => {
@@ -220,10 +245,11 @@ export function makeRunningChatsQuitGuard(
           requestId,
           presentation,
           presentNativeConfirmation: input.presentNativeConfirmation,
+          confirmWithoutRenderer: input.confirmWithoutRenderer,
           waitingForDecision: false,
           readyTimer: setTimeout(() => {
             if (pending?.requestId === requestId && !pending.waitingForDecision) {
-              finish(true);
+              fallBackToNativeConfirmation();
             }
           }, input.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS),
           resolve: (allow) => {
@@ -234,7 +260,7 @@ export function makeRunningChatsQuitGuard(
         try {
           input.send({ requestId, presentation });
         } catch {
-          finish(true);
+          fallBackToNativeConfirmation();
         }
       });
       return inFlight;

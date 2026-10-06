@@ -102,7 +102,11 @@ export function RunningChatsQuitCoordinator() {
     }
 
     return subscribe((request) => {
-      const running = listRunningChatsFromDesktopStore(useStore.getState());
+      const state = useStore.getState();
+      // An unhydrated store is not proof that nothing runs. Leaving the request unanswered lets the
+      // desktop host fall back to its native confirmation.
+      if (!state.threadsHydrated) return;
+      const running = listRunningChatsFromDesktopStore(state);
       if (running.length === 0) {
         reply({ requestId: request.requestId, phase: "decision", allow: true });
         return;

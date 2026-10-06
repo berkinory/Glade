@@ -1,5 +1,6 @@
-import { app, type BrowserWindow } from "electron";
+import { app, type BrowserWindow, dialog } from "electron";
 import { runAfterDesktopShutdown } from "../../backend/backendShutdown";
+import { APP_DISPLAY_NAME } from "../desktopEnvironment";
 import { DESKTOP_IPC_CHANNELS } from "../ipc/ipcChannels";
 import { formatErrorMessage, type DesktopLog } from "./desktopLogging";
 import {
@@ -106,6 +107,20 @@ export function createDesktopShutdown({
       !window.webContents.isCrashed(),
     );
   }
+  async function confirmQuitWithoutRenderer(): Promise<boolean> {
+    const quitButtonIndex = 1;
+    const result = await dialog.showMessageBox({
+      type: "warning",
+      title: `Quit ${APP_DISPLAY_NAME}?`,
+      message: `Quit ${APP_DISPLAY_NAME}?`,
+      detail: `${APP_DISPLAY_NAME} couldn't check for running chats because its window isn't responding. Quitting stops any chat that is still running.`,
+      buttons: ["Cancel", "Quit"],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+    });
+    return result.response === quitButtonIndex;
+  }
   async function confirmRunningChatsThenQuit(reason: string): Promise<void> {
     if (
       !shouldPromptForRunningChatsBeforeQuit(reason) ||
@@ -133,6 +148,7 @@ export function createDesktopShutdown({
         window.webContents.send(DESKTOP_IPC_CHANNELS.quitConfirmationRequest, request);
       },
       isRendererAvailable: isMainRendererAvailable,
+      confirmWithoutRenderer: confirmQuitWithoutRenderer,
       presentation,
     });
     if (!allowed) {
@@ -172,8 +188,7 @@ export function createDesktopShutdown({
     },
     shutdownInFlight: () => desktopShutdownPromise !== null,
     cancelPending: () => runningChatsQuitGuard.cancelPending(),
-    hasPendingAsk: () => runningChatsQuitGuard.hasPendingAsk(),
-    allowPending: () => runningChatsQuitGuard.allowPending(),
+    rendererGone: () => runningChatsQuitGuard.rendererGone(),
     resolveQuitConfirmation: (payload: unknown) => runningChatsQuitGuard.receiveResponse(payload),
   };
 }

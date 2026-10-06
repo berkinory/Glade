@@ -94,8 +94,7 @@ interface WindowLifecycle {
   confirmRunningChatsThenQuit(reason: string): Promise<void>;
   requestGracefulAppQuit(reason: string): void;
   cancelPending(): void;
-  hasPendingAsk(): boolean;
-  allowPending(): void;
+  rendererGone(): Promise<boolean> | null;
 }
 export interface WindowDependencies {
   identity: WindowIdentity;
@@ -506,19 +505,10 @@ export function createMainWindow({
       reloadTimer = null;
     };
 
-    window.webContents.on("render-process-gone", (_event, details) => {
-      // A renderer that dies while hosting the quit-confirmation ask can never answer it — declining
-      // would abandon a requested quit and (worse) show the recovery prompt below, leaving a dead-UI app
-      // alive forever.
-      const quitAskPending = lifecycle.hasPendingAsk();
-      lifecycle.allowPending();
-      const description = `reason=${details.reason} exitCode=${details.exitCode}`;
-      log.writeDesktopLogHeader(`renderer process gone ${description}`);
-      safeConsoleError(`[desktop] renderer process gone (${description})`);
-
+    const recoverFromRendererCrash = (reason: string): void => {
       const response = rendererCrashPolicy.respondToCrash({
-        reason: details.reason,
-        quitting: lifecycle.isQuitting() || quitAskPending,
+        reason,
+        quitting: lifecycle.isQuitting(),
         nowMs: Date.now(),
       });
 
@@ -540,9 +530,26 @@ export function createMainWindow({
           log.writeDesktopLogHeader(
             `renderer recovery prompt cause=${response.cause} crashes=${response.crashes}`,
           );
-          presentRendererCrashRecovery(window, details.reason, response);
+          presentRendererCrashRecovery(window, reason, response);
           return;
       }
+    };
+
+    window.webContents.on("render-process-gone", (_event, details) => {
+      const description = `reason=${details.reason} exitCode=${details.exitCode}`;
+      log.writeDesktopLogHeader(`renderer process gone ${description}`);
+      safeConsoleError(`[desktop] renderer process gone (${description})`);
+
+      // A renderer that dies while hosting the quit ask can never answer it, so the ask moves to a
+      // native confirmation. Recovery waits for that decision; a declined quit must not leave a dead UI.
+      const pendingQuitDecision = lifecycle.rendererGone();
+      if (pendingQuitDecision === null) {
+        recoverFromRendererCrash(details.reason);
+        return;
+      }
+      void pendingQuitDecision.then((allowed) => {
+        if (!allowed) recoverFromRendererCrash(details.reason);
+      });
     });
 
     // A hung renderer is not a crash — Chromium keeps the process alive — so it never reaches the

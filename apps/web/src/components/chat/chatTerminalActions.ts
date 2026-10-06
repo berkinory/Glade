@@ -9,7 +9,7 @@ import { readNativeApi } from "~/nativeApi";
 import type { ThreadTerminalState } from "~/terminalStateNormalization";
 import { useTerminalStateStore } from "~/terminalStateStore";
 import { randomTerminalId } from "../terminal/terminalIds";
-import { disposeAndCloseTerminalSession } from "../terminal/terminalSession";
+import { closeTerminalSession, releaseTerminalSession } from "../terminal/terminalSession";
 
 export interface ChatTerminalActionContext {
   activeThreadId: ThreadId | null;
@@ -105,29 +105,18 @@ export async function closeChatTerminal(
     }),
   });
   if (!confirmed) return;
-  disposeAndCloseTerminalSession({
-    api,
-    threadId: ctx.activeThreadId,
-    terminalId,
-    clearHistoryBeforeClose: state.terminalIds.length <= 1,
-  });
-  terminalStore().closeTerminal(ctx.activeThreadId, terminalId);
+  const threadId = ctx.activeThreadId;
+  if (!(await closeTerminalSession({ api, threadId, terminalId }))) return;
+  terminalStore().closeTerminal(threadId, terminalId);
   ctx.requestTerminalFocus();
 }
 
 export function handleChatTerminalSessionExited(
   ctx: ChatTerminalActionContext,
-  state: ThreadTerminalState,
   terminalId: string,
 ): void {
   if (!ctx.activeThreadId) return;
-  disposeAndCloseTerminalSession({
-    api: readNativeApi(),
-    threadId: ctx.activeThreadId,
-    terminalId,
-    clearHistoryBeforeClose: state.terminalIds.length <= 1,
-    processAlreadyExited: true,
-  });
+  releaseTerminalSession({ api: readNativeApi(), threadId: ctx.activeThreadId, terminalId });
   terminalStore().closeTerminal(ctx.activeThreadId, terminalId);
   ctx.requestTerminalFocus();
 }

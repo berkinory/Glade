@@ -51,6 +51,23 @@ IPC channel values, preload methods, environment variables, stored paths and dat
 formats are unchanged. Moving a source file does not authorize changing one of
 those contracts.
 
+## Startup locks and quitting
+
+The server publishes its database lifecycle lock atomically. Startup recovers an
+ownerless lock or stale-lock recovery guard only when it is empty or holds nothing
+but Finder's `.DS_Store`; live owners, invalid owner metadata, links and unknown
+files stay in place, and a populated lock is never removed recursively. When the
+backend reports a lock it cannot verify, the desktop dialog does not claim that
+another server owns it: it names the backend log file and offers **Open logs**
+next to **Try again** and **Quit**.
+
+User-initiated quits ask the renderer for running chats. When the renderer is
+missing, crashed, unanswering or not yet hydrated, the host shows a native quit
+confirmation instead of treating that as an empty list. One decision is in flight
+at a time and repeated quit requests wait for it; cancelling, or failing to show
+the dialog, keeps the app open. A renderer that crashes during the ask moves it to
+the native confirmation, and crash recovery runs only if the user stays.
+
 ## Verification
 
 Run the existing desktop tests with `bun run --cwd apps/desktop test`. Browser

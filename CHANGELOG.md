@@ -23,6 +23,9 @@
 - Changing the app theme preserves edits and interactive state in visual replies.
 - Conversation rows stay correctly positioned as activity details change, and message navigation stays clear of the text at every chat width and side panel layout.
 - Image attachments stay reliable when the composer remounts or an image finishes preparing after you switch chats.
+- Glade recovers abandoned startup locks that contain only Finder metadata, and explains locks it cannot verify with a way to open the logs.
+- Quitting asks for confirmation when the app window can't respond instead of quitting without checking for running chats.
+- Opening a path in the terminal no longer types into a busy shell, and a terminal that fails to close stays open and usable.
 
 ### Removed
 

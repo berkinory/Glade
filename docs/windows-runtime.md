@@ -72,6 +72,8 @@ The current boundary deliberately fails closed but does not yet establish creati
 
 Terminal sessions continue to use the PTY service. On Windows, runtime selection intentionally loads node-pty's ConPTY implementation even when the backend runs under Bun. ConPTY details stay inside the terminal runtime; providers and generic process callers must not depend on them.
 
+Automatic terminal input (`terminal.write` with `onlyIfIdle`) is authorized by a process snapshot requested after the call began: the Windows snapshot observer's in-flight poll is drained first, and an unavailable snapshot rejects the write instead of counting as an idle shell.
+
 ## Filesystem semantics
 
 Use `apps/server/src/platform/filesystemPlatform.ts` for platform-sensitive durability and identity operations. It centralizes writable-handle fsync on Windows, POSIX directory fsync/no-follow behavior, and the documented Windows file-identity fallback used by guarded recovery code.

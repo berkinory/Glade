@@ -34,12 +34,15 @@ export const WS_NEGOTIATE_QUERY = {
 export const WS_GITHUB_PROJECT_PROVISIONING_CAPABILITY = "projects.github-provisioning";
 export const WS_TURN_DISPATCH_SETTLEMENT_CAPABILITY = "orchestration.turn-dispatch-settlement";
 export const WS_PROJECT_FILE_WATCH_CAPABILITY = "projects.file-watch";
+// Older servers ignore `onlyIfIdle` and would deliver automatic terminal input to a busy program.
+export const WS_TERMINAL_IDLE_INPUT_CAPABILITY = "terminal.idle-input";
 
 export const WS_CLIENT_REQUIRED_CAPABILITIES = [
   "orchestration.cursor-safe-streams",
   WS_TURN_DISPATCH_SETTLEMENT_CAPABILITY,
   "orchestration.thread-detail-snapshot",
   "rpc.typed-errors",
+  WS_TERMINAL_IDLE_INPUT_CAPABILITY,
 
   "git.worktree-setup-progress",
 ] as const;

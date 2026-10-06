@@ -256,8 +256,9 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
         threadId,
       );
 
-      // Reuse the active terminal when one is already open and idle so that repeatedly invoking "Open
-      // Path in Terminal" doesn't pile up tabs.
+      // Reuse the active terminal when it looks idle so that repeatedly invoking "Open Path in Terminal"
+      // doesn't pile up tabs. The client's running state is only a hint: the server refuses the `cd`
+      // unless it verifies the shell is idle, and a refusal falls back to a fresh terminal.
       const candidateBaseTerminalId =
         currentTerminalState.activeTerminalId ||
         currentTerminalState.terminalIds[0] ||
@@ -266,10 +267,6 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
         currentTerminalState.terminalOpen &&
         currentTerminalState.terminalIds.includes(candidateBaseTerminalId) &&
         !currentTerminalState.runningTerminalIds.includes(candidateBaseTerminalId);
-      const shouldCreateNewTerminal = !baseTerminalAvailable;
-      const targetTerminalId = shouldCreateNewTerminal
-        ? `terminal-${randomUUID()}`
-        : candidateBaseTerminalId;
 
       const previousTerminalOpen = currentTerminalState.terminalOpen;
       const previousPresentationMode = currentTerminalState.presentationMode;
@@ -277,31 +274,28 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
 
       terminalStore.setTerminalPresentationMode(threadId, "drawer");
       terminalStore.setTerminalOpen(threadId, true);
-      if (shouldCreateNewTerminal) {
-        terminalStore.newTerminal(threadId, targetTerminalId);
-      } else {
-        terminalStore.setActiveTerminal(threadId, targetTerminalId);
+      if (baseTerminalAvailable) {
+        terminalStore.setActiveTerminal(threadId, candidateBaseTerminalId);
+        const navigated = await api.terminal
+          .write({
+            threadId,
+            terminalId: candidateBaseTerminalId,
+            data: `cd ${quotePosixShellArgument(threadWorkspacePath)}\r`,
+            onlyIfIdle: true,
+          })
+          .then(
+            () => true,
+            () => false,
+          );
+        if (navigated) return;
       }
 
-      const cdCommand = `cd ${quotePosixShellArgument(threadWorkspacePath)}\r`;
+      const newTerminalId = `terminal-${randomUUID()}`;
+      terminalStore.newTerminal(threadId, newTerminalId);
       try {
-        if (shouldCreateNewTerminal) {
-          await api.terminal.open({
-            threadId,
-            terminalId: targetTerminalId,
-            cwd: threadWorkspacePath,
-          });
-        }
-
-        await api.terminal.write({
-          threadId,
-          terminalId: targetTerminalId,
-          data: cdCommand,
-        });
+        await api.terminal.open({ threadId, terminalId: newTerminalId, cwd: threadWorkspacePath });
       } catch (error) {
-        if (shouldCreateNewTerminal) {
-          terminalStore.closeTerminal(threadId, targetTerminalId);
-        }
+        terminalStore.closeTerminal(threadId, newTerminalId);
         terminalStore.setTerminalPresentationMode(threadId, previousPresentationMode);
         terminalStore.setTerminalOpen(threadId, previousTerminalOpen);
         if (previousActiveTerminalId) {

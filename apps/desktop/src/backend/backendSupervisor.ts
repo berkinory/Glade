@@ -241,27 +241,42 @@ export function createBackendSupervisor({
     if (lifecycle.isQuitting() || backendLifecycleDialogInFlight) return;
 
     const task = (async () => {
-      const processDetail =
-        block.ownerPid === null
-          ? "Another Glade server is already using this database."
-          : `Another Glade server (process ${block.ownerPid}) is already using this database.`;
-      const result = await dialog.showMessageBox({
-        type: "warning",
-        title: "Glade is already running elsewhere",
-        message: "Your local Glade data is in use by another process.",
-        detail: `${processDetail}\n\nStop the other Glade app or development server, then try again. Your data has not been changed.`,
-        buttons: ["Try again", "Quit"],
-        defaultId: 0,
-        cancelId: 1,
-        noLink: true,
-      });
-      if (result.response === 0) {
-        // Let a fast failed retry present the block again instead of racing this dialog task's finalizer
-        // and leaving the window inert.
-        backendLifecycleDialogInFlight = null;
-        await restartBackendAfterCrash("database lifecycle lock retry", "lifecycle");
-      } else {
-        lifecycle.requestGracefulAppQuit("database lifecycle lock");
+      const ownerKnown = block.ownerPid !== null;
+      const processDetail = ownerKnown
+        ? `Another Glade server (process ${block.ownerPid}) is already using this database.`
+        : "Glade could not verify who holds the database lock. It may be left over from an interrupted startup, or another Glade server may still be using it.";
+      for (;;) {
+        const result = await dialog.showMessageBox({
+          type: "warning",
+          title: ownerKnown
+            ? "Glade is already running elsewhere"
+            : "Glade could not verify database ownership",
+          message: ownerKnown
+            ? "Your local Glade data is in use by another process."
+            : "Glade could not safely open your local data.",
+          detail: [
+            processDetail,
+            "Close any other Glade app or development server using this data, then try again. If this keeps happening, open the logs to see the underlying lock error. Your data has not been changed.",
+            `Log file:\n${Path.join(LOG_DIR, BACKEND_LOG_FILE_NAME)}`,
+          ].join("\n\n"),
+          buttons: ["Try again", "Open logs", "Quit"],
+          defaultId: 0,
+          cancelId: 2,
+          noLink: true,
+        });
+        if (result.response === 1) {
+          await openDesktopLogDirectory();
+          continue;
+        }
+        if (result.response === 0) {
+          // Let a fast failed retry present the block again instead of racing this dialog task's finalizer
+          // and leaving the window inert.
+          backendLifecycleDialogInFlight = null;
+          await restartBackendAfterCrash("database lifecycle lock retry", "lifecycle");
+        } else {
+          lifecycle.requestGracefulAppQuit("database lifecycle lock");
+        }
+        return;
       }
     })().finally(() => {
       if (backendLifecycleDialogInFlight === task) {

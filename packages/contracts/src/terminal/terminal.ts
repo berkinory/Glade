@@ -48,6 +48,8 @@ export type TerminalOpenInput = Schema.Codec.Encoded<typeof TerminalOpenInput>;
 export const TerminalWriteInput = Schema.Struct({
   ...TerminalSessionInput.fields,
   data: Schema.String.check(Schema.isNonEmpty()).check(Schema.isMaxLength(65_536)),
+  // Automatic input is rejected unless the server verifies the session is idle.
+  onlyIfIdle: Schema.optional(Schema.Boolean),
 });
 export type TerminalWriteInput = Schema.Codec.Encoded<typeof TerminalWriteInput>;
 
