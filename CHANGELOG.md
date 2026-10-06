@@ -1,243 +1,82 @@
 # Glade Changelog
 
-## 0.1.2 - Unreleased
+## 0.2.0 - 2026-10-06
 
 ### New
 
-- Agents can publish interactive charts, diagrams and HTML visuals in chat, with app themes, highlighted source, saving, expansion and optional screenshot previews.
-
-- Move between tabs in the current conversation workspace with configurable keyboard shortcuts.
-
-- Continue with another provider in the same chat, with a persistent record of each transition.
-
-- Initialize local Git repositories and publish them to GitHub from Source Control, choosing the account or organization, repository name and visibility.
-
-- Hear distinct sounds when agents finish or need your approval or reply, with a single toggle to mute them.
-
-- Split terminals side by side or above and below within one tab, with keyboard shortcuts, balanced tiling and shared activity indicators.
-
-- Enable optional whole-window transparency with native macOS vibrancy or Windows 11 Mica.
-
-- Update worktree chats from the local project checkout and commit and merge back without a push or pull request.
-
-- Chats get automatic titles from the first meaningful message while preserving manual renames.
-
-- Agents can inspect task diffs, fork conversations, inspect local servers, and open files, diffs and terminals in Glade.
-- Sign in to Claude and Codex from provider settings.
-- Show Claude and Codex usage limits in the sidebar, with five-hour and weekly views.
-
-- Chats with unsent messages are marked in the sidebar and easier to find in Activity.
-
-- Cycle supported model effort levels with Shift+Tab in the composer.
-- Links to other chats in agent replies open the referenced conversation directly.
-
-- Choose native windows on macOS in the Computer panel for you or Codex to inspect; stopping or disconnecting preserves your windows.
-
-- Add files and folders to Explorer with drag and drop, or paste files from the clipboard.
-
-- Codex can open task browser tabs, request screenshots, read structured page records, fill forms, upload files from the task workspace, prepare page downloads in private storage, use embedded page controls and keyboard shortcuts, answer supported browser dialogs, adopt sign-in popups and hand control back. Task tabs also support manual address navigation, back/forward controls, isolated task sessions and an explicitly shared personal profile.
-- Agents can inspect browser layouts at different viewport sizes and in light or dark themes.
+- Agents can create interactive charts, diagrams and other visuals in chat, with theme support, expansion, saving and source inspection. ([65d6518a0](https://github.com/berkinory/Glade/commit/65d6518a065a2009097cc19759c180ab72f3ddc1))
+- Continue with another provider in the same chat while preserving context and a record of the handoff. ([bf04f7241](https://github.com/berkinory/Glade/commit/bf04f7241b230bc677252da4f0ac7cd598dca66d), [3cd47a8a9](https://github.com/berkinory/Glade/commit/3cd47a8a91007cd8f173ef899ee7f705f273b388))
+- Open files, diffs, terminals and browser pages in conversation workspace tabs, with configurable navigation shortcuts. ([baeefe9e9](https://github.com/berkinory/Glade/commit/baeefe9e947fa831e5ff30619e5958ffdc19b7a5), [e6ef0f1cf](https://github.com/berkinory/Glade/commit/e6ef0f1cf488f35c86fd870a56e5a840e73baa90))
+- Split terminals horizontally or vertically within a workspace tab. ([728ab177e](https://github.com/berkinory/Glade/commit/728ab177efe9c36ab6dcbdd4c4d19ba616a14e5e))
+- Create local Git repositories and publish them to GitHub from Source Control. ([1141ffe5b](https://github.com/berkinory/Glade/commit/1141ffe5b5c964234bad879351614f0b54e3033d))
+- Sign in to Claude and Codex directly from provider settings. ([4c606b49a](https://github.com/berkinory/Glade/commit/4c606b49a2d41d897d59595d817351443e2e939c))
+- See Claude and Codex usage limits in the sidebar, with short-term and weekly views and expandable credit balances. ([4c606b49a](https://github.com/berkinory/Glade/commit/4c606b49a2d41d897d59595d817351443e2e939c), [5cffa3d65](https://github.com/berkinory/Glade/commit/5cffa3d655f87b539d04057c5b771f79d47655d3))
+- Add files and folders to Explorer by dragging them in or pasting from the clipboard. ([d93f9c1f7](https://github.com/berkinory/Glade/commit/d93f9c1f778b6d33b83b8a221e32f7cecf1500c2))
+- Hear distinct sounds for completed replies and requests for your attention, with an option to mute them. ([11d754af5](https://github.com/berkinory/Glade/commit/11d754af5e6685b24334526ff9b19ef11160fe4a))
+- Enable native window transparency on macOS and Windows 11. ([d552f882a](https://github.com/berkinory/Glade/commit/d552f882a6eeeffc6433bcec7f3d02a03b1c38c4))
+- Agents can inspect task diffs, fork conversations, discover local servers and open files, diffs and terminals in Glade. ([5f43094f8](https://github.com/berkinory/Glade/commit/5f43094f83476787138c17f5a8eeb8925c1365f1))
+- Cycle supported model effort levels with Shift+Tab in the composer. ([493ceb3b8](https://github.com/berkinory/Glade/commit/493ceb3b8842e92ff519b83abd21f0837c6c156d))
+- Open referenced conversations directly from chat links in agent replies. ([493ceb3b8](https://github.com/berkinory/Glade/commit/493ceb3b8842e92ff519b83abd21f0837c6c156d))
+- Chats receive automatic titles from meaningful messages while preserving manual renames. ([43427aefa](https://github.com/berkinory/Glade/commit/43427aefa125da9f2e8114fb6d747f4d294f562e))
+- Unsent drafts are marked in the sidebar and easier to find in Activity. ([b1c843277](https://github.com/berkinory/Glade/commit/b1c8432777cbb6849650f313b04cd8835467b36e))
 
 ### Improved
 
-- Choose any supported provider for Git writing, including Claude, when generating commit messages, branch names, diff summaries and pull request text.
-
-- Follow native subagents from the chat and Environment with character avatars, clearer model information and a return to the main chat; inactive helpers leave these panels after three unused turns.
-- Subagents choose supported models and thinking from current provider options, with focused context and follow-up instructions coordinated through the main chat.
-
-- Inspect reasoning, subagent results, runtime notices and provider transitions directly in the conversation, with compact expandable details.
-
-- Active tools show their progress beside the current action, and tool details use compact, scrollable output with precise elapsed times.
-
-- Expanded tool groups and file changes show their complete contents without extra “Show more” steps.
-
-- Keyboard shortcut hints are more consistent and readable, and sidebar pull request and workspace indicators leave conversation titles easier to read.
-
-- Use clearer icons for tools, subagents and conversation activity, with recognizable service logos for supported MCP servers across providers and in the plugin library.
-
-- Approval, tool progress and background-task details retain more useful explanations and error context.
-
-- Provider transitions show transferred context and preserve drafts until the destination accepts the message.
-- Editing or reverting long Codex conversations avoids downloading unrelated history.
-
-- Claude shows available thinking, tool summaries, retry delays and sign-in status.
-
-- Extra usage credits stay accessible in a compact expandable section.
-
-- File mentions handle misspelled and multilingual names, with more complete and responsive searches in large projects.
-
-- Explorer content search cancels outdated scans, reuses unchanged files and colors visible result lines.
-- Source Control filtering reuses recent repository reads while refreshes keep changes current.
-
-- Explorer searches file contents directly; filename search stays in the quick-open menu.
-
-- Diff layouts switch with one button and a tooltip; the right sidebar starts wider with tighter resizing limits.
-
-- Pinned chats show project or chat icons, reveal names on hover, and keep labels steady when keyboard shortcuts appear.
-
-- Chat, files, commit diffs, terminals and browser pages share conversation workspace tabs, with Explorer and Git in the right sidebar and reusable file and diff previews.
-
-- Agents can page through conversation lists with smaller responses and create tasks with explicit provider and model selection.
-- Loading and activity indicators share a consistent dot-matrix style, with distinct animations for agents, terminals and voice.
-
-- The Environment panel shows the working directory and worktree location, including the source directory before a new worktree is created.
-
-- Activity keeps the open chat visible and shows recognizable project icons, including monorepo favicons.
-
-- Desktop downloads and installations are smaller by omitting unused language and dependency resources.
-
-- Unavailable notification controls are easier to distinguish while an action is in progress.
-
-- Chat messages fade smoothly at the header and message input while scrolling, keeping the latest reply clear.
-- Markdown images open in a larger preview, while linked images keep their normal link behavior.
-
-- New chats offer a direct Worktree toggle, and project selection stays clear of other chats' worktrees.
-- You can start another chat while a worktree is being prepared.
-
-- Creating a pull request with your own title and description avoids unnecessary message generation.
-- Git failures identify the failed step and preserve action details when switching workspaces.
-- Prepared pull request chats open without waiting for unrelated Git refreshes.
-
-- GitHub lookups pause during rate limits and resume after the cooldown instead of repeatedly failing.
-
-- Chat switching avoids unnecessary control delays, and long activity histories need less repeated processing.
-
-- Deleted files are easier to recognize in Source Control.
-
-- Voice dictation shows microphone preparation, works while agents are running, and can be finished or sent with Enter.
-
-- Windows release installers are checked with Microsoft Defender before publication.
-
-- Profile statistics stay responsive with larger conversation histories.
-
-- Agents can request screenshots of selected native windows; browser and native screenshots remain available in task history after their targets close or the app restarts.
-
-- Coding agents can group known browser steps into one call, with clear stopping points when an action fails or needs human input.
-
-- Task downloads survive browser reconnects, history remains visible after tabs close or the app restarts, and previously saved files can recover their confirmed status.
-
-- Source Control uses clearer folder ordering and stays usable with very large change lists.
-- Source Control keeps selected actions visible and applies stage, unstage and revert to the whole selection within each group.
-- Changes and History preview images from the selected version, and videos show static thumbnails in Explorer and Git previews.
-
-- Markdown opens in preview by default, with your viewing preference remembered across files.
-- Environment hides while the right sidebar is open and returns to its previous state when it closes.
-- Source Control can generate a message and commit all changes when nothing is staged.
-- AI commit messages and pull request descriptions handle large changes with less unnecessary context.
-- Explorer navigation can be hidden to give files more room, and highlighted file rows are easier to distinguish.
-- Provider handoffs preserve key decisions and unfinished work, with access to earlier conversation details when needed.
-
-- Models load faster on first use, with a balanced initial reasoning effort when you have not chosen one.
-- History loads faster with fewer repeated Git reads and keeps open previews during file updates.
-- Empty space across the top bar supports window dragging and native title-bar actions more consistently.
-- File links open together in editable workspace tabs without losing unsaved edits; turn changes and file diffs remain available in Source Control.
-- Source Control and History stay up to date after file and repository changes, and the latest unpushed commit can be undone without losing its changes.
-- Push synchronizes incoming commits automatically, and Source Control shows conflicts with actions to resolve or cancel the operation.
+- Follow subagents in chat and Environment with character avatars, clearer model information and a quick return to the main conversation. ([85f1c7c5a](https://github.com/berkinory/Glade/commit/85f1c7c5a6fe69d0610dc4eea11d4ea4ea8787f0))
+- Subagents use current provider model and thinking options, with focused context and follow-up instructions coordinated through the main chat. ([85f1c7c5a](https://github.com/berkinory/Glade/commit/85f1c7c5a6fe69d0610dc4eea11d4ea4ea8787f0))
+- Source Control and History stay up to date as files and repositories change, while keeping open previews in place. ([ec6856ee5](https://github.com/berkinory/Glade/commit/ec6856ee5b719a42f991cadd4151f559f9329024), [6fa09d682](https://github.com/berkinory/Glade/commit/6fa09d6826b171d6629dedae47095f79c49f7bdb))
+- Push synchronizes incoming commits automatically and offers clear actions to resolve conflicts or cancel the operation. ([ec6856ee5](https://github.com/berkinory/Glade/commit/ec6856ee5b719a42f991cadd4151f559f9329024))
+- Undo the latest unpublished commit without losing its changes. ([ec6856ee5](https://github.com/berkinory/Glade/commit/ec6856ee5b719a42f991cadd4151f559f9329024))
+- Use either provider for Git writing, including commit messages and branch names, with better handling of large changes. ([a337bdcb9](https://github.com/berkinory/Glade/commit/a337bdcb95e961e2d53ccf5dade8efcbe8f080f0), [18212a60b](https://github.com/berkinory/Glade/commit/18212a60b380e8ec414ae4875bf7d6018845a1de))
+- File mentions find misspelled and multilingual filenames more reliably, including in large projects. ([7ddb07983](https://github.com/berkinory/Glade/commit/7ddb07983667df8f4f2a66c0c7be5be54eb9d1ae))
+- Explorer searches file contents with faster repeat searches and highlighted matches; quick-open handles filename search. ([9a3e78475](https://github.com/berkinory/Glade/commit/9a3e784754e180f6857021a2cb21f6991c10d9a7), [9918cea52](https://github.com/berkinory/Glade/commit/9918cea52b10021c4fc444f794774406b65d96b3))
+- Explorer and Git previews show images and video thumbnails, including media from the selected revision. ([5f51a61c6](https://github.com/berkinory/Glade/commit/5f51a61c6763dcd91f752a216189eb385bdf819a))
+- Markdown opens in preview by default and remembers your viewing preference across files. ([f62446c7f](https://github.com/berkinory/Glade/commit/f62446c7f927a91a9b9212ff9165b2ba023dfaed))
+- Voice dictation works while agents are running and can be finished or sent with Enter. ([1478e1871](https://github.com/berkinory/Glade/commit/1478e1871a46f2109aef9b05741886b4ba3349f0))
+- Tool activity and reasoning show clearer progress and expandable details without hiding long results. ([42c94c5dd](https://github.com/berkinory/Glade/commit/42c94c5dd14f6f70e82394a74822c09d1f2d4d6e), [3457f46e0](https://github.com/berkinory/Glade/commit/3457f46e0a187f2932a4ed57a64738efbc1cecd5))
+- Desktop downloads and installations are smaller. ([614aa7d61](https://github.com/berkinory/Glade/commit/614aa7d61584a7eeee87cfda3a10cbba1a3c68ed))
+- Provider handoffs retain key decisions and unfinished work, show transferred context and keep earlier conversation details accessible. ([3cd47a8a9](https://github.com/berkinory/Glade/commit/3cd47a8a91007cd8f173ef899ee7f705f273b388), [bf04f7241](https://github.com/berkinory/Glade/commit/bf04f7241b230bc677252da4f0ac7cd598dca66d))
+- Agents can browse conversation lists in pages and choose a provider and model when creating tasks. ([5f43094f8](https://github.com/berkinory/Glade/commit/5f43094f83476787138c17f5a8eeb8925c1365f1))
+- New chats offer a direct Worktree toggle, and you can start another chat while a worktree is being prepared. ([c58efa7d2](https://github.com/berkinory/Glade/commit/c58efa7d2ea5a0a60332dd425fcda43e41f471c6))
+- Environment shows the working directory and worktree location, including the source checkout while preparation is pending. ([196e1453f](https://github.com/berkinory/Glade/commit/196e1453fb243e3e6a8a8300547f435f97e4ef93), [13b16dd74](https://github.com/berkinory/Glade/commit/13b16dd749c079ab64fa0787a2c703e71c9ab23f))
+- File links open in editable workspace tabs without losing unsaved edits; Explorer navigation can be hidden to give files more room. ([f62446c7f](https://github.com/berkinory/Glade/commit/f62446c7f927a91a9b9212ff9165b2ba023dfaed), [55d8e3309](https://github.com/berkinory/Glade/commit/55d8e3309b60fbd1d4d80f104c5e73a1c1a53a53))
+- Source Control stays responsive with large change lists and applies stage, unstage and revert to the full selection within each group. ([5f51a61c6](https://github.com/berkinory/Glade/commit/5f51a61c6763dcd91f752a216189eb385bdf819a))
+- Generate a commit message and commit all changes directly when nothing is staged. ([f62446c7f](https://github.com/berkinory/Glade/commit/f62446c7f927a91a9b9212ff9165b2ba023dfaed))
+- GitHub lookups pause during rate limits and resume after the cooldown. ([d89b6cb7b](https://github.com/berkinory/Glade/commit/d89b6cb7bf8ee41f296695b7291ab500e0017d85))
+- Models load faster on first use and start with balanced reasoning when no effort preference is set. ([46cddbaae](https://github.com/berkinory/Glade/commit/46cddbaae7976249f96d821609a1ee42c922f1f8))
+- Chat switching and Activity stay more responsive with long conversation histories. ([76cbd4c7c](https://github.com/berkinory/Glade/commit/76cbd4c7c32229762aa86ba98d71ee3f5e2f5501))
+- Profile statistics load faster with larger conversation histories. ([19a15c164](https://github.com/berkinory/Glade/commit/19a15c1640297a484687fa1b67a96e8d3d79ea68))
+- Markdown images open in a larger preview while linked images keep their normal link behavior. ([493ceb3b8](https://github.com/berkinory/Glade/commit/493ceb3b8842e92ff519b83abd21f0837c6c156d))
+- Project icons, including monorepo favicons, make pinned chats and Activity easier to identify. ([7afd1c5a5](https://github.com/berkinory/Glade/commit/7afd1c5a56d0d89e4a91b8e6ef53191ebe83b833), [b1c843277](https://github.com/berkinory/Glade/commit/b1c8432777cbb6849650f313b04cd8835467b36e))
+- Tool activity uses recognizable service logos for supported MCP servers across providers and the plugin library. ([cf10daff9](https://github.com/berkinory/Glade/commit/cf10daff9f81c82a29df972c7aabf0fa1a1f859c))
 
 ### Fixed
 
-- Conversations no longer briefly jump when the subagent panel appears or grows, and new subagents avoid refreshing unchanged activity details.
-- Tool and subagent status rows show a single duration without redundant activity timestamps.
-
-- Subagent transcripts and status stay synchronized across parent turns, with reliable stopping and fewer duplicate activity rows.
-- Subagent completions and requests no longer trigger chat, desktop or sound notifications.
-
-- Copy, pin and fork actions stay hidden until the assistant finishes its turn.
-
-- Menu labels and selected items stay visible, with consistent mouse and keyboard navigation.
-
-- Chats and terminal output recover more reliably after connection loss.
-- Interrupted sends resolve their delivery status without duplicating messages or losing drafts and attachments.
-- Connection setup and voice dictation reach supported fallback paths without waiting for stalled error responses.
-
-- Large custom keymaps preserve saved rules and unrelated default shortcuts.
-
-- Background helpers no longer flash command windows on Windows.
-- Failed desktop window actions show an understandable error.
-- Losing a launcher output pipe no longer closes the desktop app.
-
-- Wide code blocks and closing side panels no longer introduce unwanted horizontal scrolling in conversations.
-
-- Keyboard shortcuts follow your keyboard layout consistently.
-- Desktop menu shortcuts follow custom bindings and respect focused controls.
-
-- Runtime warnings retain their available explanation in details.
-- Replies triggered by background agents stay visible with accurate work durations.
-
-- Collapsed notification stacks no longer show wider cards behind the front notification.
-
-- Cmd/Ctrl+W closes the focused terminal shell, preserving the other splits until the last shell closes.
-
-- Explorer and Source Control show the project checkout while a new chat is waiting for its worktree.
-
-- File refresh controls stay steady during background updates.
-
-- Unpublished commits can be undone when remotes use conflicting tag names, while published commits remain protected.
-
-- Closing workspace tabs returns to the most recently used tab, while the provider chat tab stays protected.
-
-- Sidebar provider and terminal indicators stay visible for unnamed chats, and draft markers appear only on inactive chats.
-- Project dragging cancels after a lost mouse release or window focus change instead of starting on hover.
-
-- Chats started with punctuation now receive a title when a meaningful message arrives.
-
-- Temporary model discovery failures keep your last available model list.
-
-- Activity remembers its project filter, and unread chats retain their status after reopening Glade.
-- Workspace panels resize reliably and slide smoothly when opening or closing.
-
-- Claude compaction handles startup delays, respects cancellation and keeps the current session settings.
-- Claude chats recover from missing native conversations without repeatedly reopening a broken session.
-- Codex chats renew their agent connection after a stalled turn retires it.
-
-- Chats keep native background work visible and wait for successful completion before notifying you.
-- Desktop notifications retain their chat actions, including Windows Notification Center notifications.
-- Background chat errors open the affected chat; visible errors remain beside the message input.
-
-- Browser panels load correctly again after workspace panel changes.
-
-- Open menus take priority over keyboard shortcuts, and dismissing them preserves your chat selection.
-- Returning from agent details preserves your place in the conversation.
-
-- Worktree preparation stays reachable when switching chats, and failed sends restore the correct draft.
-- Sending a message no longer clears text or attachments added while the send was being prepared.
-- Pressing Up while editing a message keeps your draft in place.
-
-- Git message generation reports terminal Codex authentication failures promptly.
-- Opening a pull request reuses its verified worktree without retargeting another fork's branch.
-
-- Chats keep their pull request association when another chat changes a shared checkout's branch.
-
-- Chat navigation keeps the displayed route and selected conversation in sync.
-
-- Deleted files no longer appear in workspace search or file suggestions.
-- File downloads and chat exports support accented characters and emoji in filenames.
-
-- Profile activity dates stay correct across time zones.
-
-- Provider updates preserve executable search paths on Windows and no longer wait for interactive input.
-- HTTPS connection failures are handled reliably, and stopping processes does not depend on executable search paths.
-
-- Personal browser tabs save pending cookies when closing.
-- Explorer stays in sync when files are added or changed outside Glade.
-
-- Failed commit message generation reports an error instead of silently substituting a generic message.
-- Source Control recognizes folders without Git promptly and shows clear messages instead of raw command errors.
-- Activity keeps usage with missing historical model information without assigning it to a newer model.
-- The message input no longer briefly changes size when switching chats.
+- Interrupted sends and reconnects preserve messages, drafts and attachments without duplicate delivery. ([3dcb8b016](https://github.com/berkinory/Glade/commit/3dcb8b016ddee352fe8a92be24e5fe0269937ed1), [c58efa7d2](https://github.com/berkinory/Glade/commit/c58efa7d2ea5a0a60332dd425fcda43e41f471c6))
+- Claude recovers from missing native conversations, and Codex renews its connection after a stalled turn. ([31e3c2d4b](https://github.com/berkinory/Glade/commit/31e3c2d4b60be696d86e4660566f2d3983d436cf))
+- Claude compaction handles startup delays, respects cancellation and preserves the current session settings. ([31e3c2d4b](https://github.com/berkinory/Glade/commit/31e3c2d4b60be696d86e4660566f2d3983d436cf))
+- Background work remains visible, and completion notifications wait for the main task to finish. ([a3fdd6295](https://github.com/berkinory/Glade/commit/a3fdd62951bc7fbddadddca2ff189f718d05100f), [85f1c7c5a](https://github.com/berkinory/Glade/commit/85f1c7c5a6fe69d0610dc4eea11d4ea4ea8787f0))
+- Keyboard shortcuts respect custom bindings, keyboard layouts and focused controls. ([1c51b91eb](https://github.com/berkinory/Glade/commit/1c51b91eb29afd325dfad4b12f0fc7554d3a9680), [3dcb8b016](https://github.com/berkinory/Glade/commit/3dcb8b016ddee352fe8a92be24e5fe0269937ed1))
+- Git actions keep their workspace ownership, and chats retain pull request associations when a shared checkout changes branches. ([7419ae569](https://github.com/berkinory/Glade/commit/7419ae5692ad91f359ae25606bf15567cec377f5), [d89b6cb7b](https://github.com/berkinory/Glade/commit/d89b6cb7bf8ee41f296695b7291ab500e0017d85))
+- Explorer reflects external file changes and removes deleted files from search results. ([d93f9c1f7](https://github.com/berkinory/Glade/commit/d93f9c1f778b6d33b83b8a221e32f7cecf1500c2), [272b17ff0](https://github.com/berkinory/Glade/commit/272b17ff02be53faa3bd40bb09110bed08298205))
+- Provider updates and process cleanup work more reliably on Windows. ([385af3741](https://github.com/berkinory/Glade/commit/385af3741a9c15ccb81bc59a75113dca3210606b))
+- Subagent transcripts and status stay synchronized across parent turns, with reliable stopping and fewer duplicate activity rows. ([85f1c7c5a](https://github.com/berkinory/Glade/commit/85f1c7c5a6fe69d0610dc4eea11d4ea4ea8787f0), [3457f46e0](https://github.com/berkinory/Glade/commit/3457f46e0a187f2932a4ed57a64738efbc1cecd5))
+- Worktree preparation stays reachable when switching chats, and sends preserve newer text and attachments added while preparation is running. ([c58efa7d2](https://github.com/berkinory/Glade/commit/c58efa7d2ea5a0a60332dd425fcda43e41f471c6))
+- Activity remembers its project filter, and unread chats retain their status after restarting Glade. ([b1c843277](https://github.com/berkinory/Glade/commit/b1c8432777cbb6849650f313b04cd8835467b36e))
+- Temporary model discovery failures preserve the last available model list. ([4c606b49a](https://github.com/berkinory/Glade/commit/4c606b49a2d41d897d59595d817351443e2e939c))
+- Desktop notifications retain their chat actions, and background errors open the affected conversation. ([a3fdd6295](https://github.com/berkinory/Glade/commit/a3fdd62951bc7fbddadddca2ff189f718d05100f))
+- Git message generation reports failures clearly instead of silently substituting a generic message. ([ab97de7a9](https://github.com/berkinory/Glade/commit/ab97de7a92c0a0bbfe4f4184ee133b7d87a34787), [7419ae569](https://github.com/berkinory/Glade/commit/7419ae5692ad91f359ae25606bf15567cec377f5))
+- File downloads and chat exports preserve accented characters and emoji in filenames. ([272b17ff0](https://github.com/berkinory/Glade/commit/272b17ff02be53faa3bd40bb09110bed08298205))
+- Profile activity dates stay correct across time zones, and older usage keeps its original model attribution. ([19a15c164](https://github.com/berkinory/Glade/commit/19a15c1640297a484687fa1b67a96e8d3d79ea68), [6fa09d682](https://github.com/berkinory/Glade/commit/6fa09d6826b171d6629dedae47095f79c49f7bdb))
+- Closing workspace tabs returns to the most recently used tab; closing a split terminal preserves the other shells. ([baeefe9e9](https://github.com/berkinory/Glade/commit/baeefe9e947fa831e5ff30619e5958ffdc19b7a5), [728ab177e](https://github.com/berkinory/Glade/commit/728ab177efe9c36ab6dcbdd4c4d19ba616a14e5e))
+- Losing the launcher output connection no longer closes the desktop app. ([b8cc658cb](https://github.com/berkinory/Glade/commit/b8cc658cb5b09829bb44771450b7da591d9f3e8d))
 
 ### Removed
 
-- Remove the subagent prompt command; request delegation naturally in the main conversation.
-
-- Importing projects and conversations from Codex and Claude Code.
-
-- Terminal split panes and their secondary toolbar.
-
-- Saved project actions, automatic worktree setup scripts and project Run controls.
-
-- Ask why actions for files and selected lines were removed.
-- Pull request panels and management actions were removed; PR links open externally from Environment and the sidebar.
+- Importing projects and conversations from Codex and Claude Code was removed. ([72259e088](https://github.com/berkinory/Glade/commit/72259e088f6226f2fc8ca6efd93fb2eb6e0ad6a9))
+- Saved project actions, automatic worktree setup scripts and project Run controls were removed. ([7324430d2](https://github.com/berkinory/Glade/commit/7324430d2138e4be1393222452015a62c124e17a))
+- Built-in pull request management and Ask why actions were removed; pull request links open externally. ([18212a60b](https://github.com/berkinory/Glade/commit/18212a60b380e8ec414ae4875bf7d6018845a1de))
+- The subagent prompt command was removed; request delegation naturally in the main conversation. ([85f1c7c5a](https://github.com/berkinory/Glade/commit/85f1c7c5a6fe69d0610dc4eea11d4ea4ea8787f0))
 
 ## 0.1.1 - 2026-10-01
 
