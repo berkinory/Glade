@@ -26,6 +26,7 @@ import type { RepoDiffTotals } from "~/hooks/useRepoDiffTotals";
 import { cn } from "~/lib/utils";
 import { useWorkspacePathsStore } from "~/workspacePathsStore";
 import { EnvironmentEditorSection } from "./EnvironmentEditorSection";
+import { EnvironmentDirectoryPath } from "./EnvironmentDirectoryPath";
 import { formatEnvironmentDirectory } from "./EnvironmentPanel.logic";
 import { EnvironmentUsageSection } from "./EnvironmentUsageSection";
 import { EnvironmentLocalServersSection } from "./EnvironmentLocalServersSection";
@@ -183,14 +184,14 @@ export function EnvironmentPanel({
           {worktree.pending ? (
             <p className="mb-1">Created when you send the first message. Base directory:</p>
           ) : null}
-          <code
-            className="block select-text break-all text-ui-sm"
-            title={workingDirectory ?? undefined}
-          >
-            {workingDirectory
-              ? formatEnvironmentDirectory(workingDirectory, homeDir)
-              : "No working directory available"}
-          </code>
+          <EnvironmentDirectoryPath
+            path={workingDirectory}
+            displayPath={
+              workingDirectory
+                ? formatEnvironmentDirectory(workingDirectory, homeDir)
+                : "No working directory available"
+            }
+          />
           {worktree.path && worktree.path !== openInTarget ? (
             <p className="mt-1">
               Worktree root:{" "}

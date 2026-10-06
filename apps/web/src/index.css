@@ -105,6 +105,24 @@
 }
 
 @layer components {
+  .environment-directory-viewport {
+    container-type: inline-size;
+  }
+
+  .environment-directory-viewport:hover .environment-directory-path {
+    animation: environment-directory-marquee 7s ease-in-out infinite alternate;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .environment-directory-viewport:hover {
+      overflow-x: auto;
+    }
+
+    .environment-directory-viewport:hover .environment-directory-path {
+      animation: none;
+    }
+  }
+
   .sidebar-icon-button {
     @apply items-center justify-center rounded-sm p-0.5 text-muted-foreground/60 transition-colors hover:text-foreground/82 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring;
     background: transparent;
@@ -204,6 +222,18 @@
     background: var(--app-settings-surface, var(--color-background-surface));
     -webkit-backdrop-filter: var(--app-settings-backdrop-filter, none);
     backdrop-filter: var(--app-settings-backdrop-filter, none);
+  }
+}
+
+@keyframes environment-directory-marquee {
+  0%,
+  15% {
+    transform: translateX(0);
+  }
+
+  85%,
+  100% {
+    transform: translateX(min(0px, calc(100cqw - 100%)));
   }
 }
 
