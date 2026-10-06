@@ -20,6 +20,10 @@ function resolvePositionedContainer(row: HTMLElement): HTMLElement | null {
 export function useTimelineRowOverlapGuard(): (element: HTMLElement | null) => (() => void) | void {
   const observerRef = useRef<ResizeObserver | null>(null);
   const observedRowsRef = useRef(new Set<HTMLElement>());
+  // Last top this guard read or wrote per container, so position observers can
+  // skip the guard's own corrections and style changes that do not move a row.
+  const knownTopsRef = useRef(new WeakMap<HTMLElement, number>());
+  const positionCheckQueuedRef = useRef(false);
 
   const closeOverlaps = useCallback((entries?: readonly ResizeObserverEntry[]) => {
     const containerTops = new Map<HTMLElement, number>();
@@ -32,6 +36,7 @@ export function useTimelineRowOverlapGuard(): (element: HTMLElement | null) => (
         continue;
       }
       const top = Number.parseFloat(container.style.top);
+      knownTopsRef.current.set(container, top);
       if (!Number.isFinite(top) || top < OUT_OF_VIEW_THRESHOLD_PX) {
         continue;
       }
@@ -95,6 +100,7 @@ export function useTimelineRowOverlapGuard(): (element: HTMLElement | null) => (
       const minTop = previous.top + previous.height;
       if (current.top < minTop - OVERLAP_EPSILON_PX) {
         current.top = minTop;
+        knownTopsRef.current.set(current.container, minTop);
         current.container.style.top = `${minTop}px`;
       }
     }
@@ -117,9 +123,34 @@ export function useTimelineRowOverlapGuard(): (element: HTMLElement | null) => (
 
       observerRef.current ??= new ResizeObserver(closeOverlaps);
       const observer = observerRef.current;
-      observer.observe(element);
+      observer.observe(element, { box: "border-box" });
       observedRowsRef.current.add(element);
+
+      // The list can commit a stale container top after a resize correction
+      // without any row changing size. Mutation callbacks run before paint, and
+      // one queued pass covers every container moved in the same batch.
+      const container = resolvePositionedContainer(element);
+      const positionObserver = container
+        ? new MutationObserver(() => {
+            if (
+              !container.isConnected ||
+              positionCheckQueuedRef.current ||
+              Number.parseFloat(container.style.top) === knownTopsRef.current.get(container)
+            ) {
+              return;
+            }
+            positionCheckQueuedRef.current = true;
+            queueMicrotask(() => {
+              positionCheckQueuedRef.current = false;
+              closeOverlaps();
+            });
+          })
+        : null;
+      if (container && positionObserver) {
+        positionObserver.observe(container, { attributes: true, attributeFilter: ["style"] });
+      }
       return () => {
+        positionObserver?.disconnect();
         observer.unobserve(element);
         observedRowsRef.current.delete(element);
       };

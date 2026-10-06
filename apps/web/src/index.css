@@ -2727,6 +2727,13 @@ diffs-container {
   background-color: color-mix(in srgb, var(--foreground) 22%, transparent);
 }
 
+/* Lets the message rail's gutter follow the transcript's animated right inset. */
+@property --message-trail-content-inset {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
 @property --transcript-bottom-fade {
   syntax: "<number>";
   inherits: false;

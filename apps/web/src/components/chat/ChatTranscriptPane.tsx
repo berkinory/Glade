@@ -392,6 +392,7 @@ export function ChatTranscriptPane({
 
         <MessageTrail
           items={trailItems}
+          contentInsetRightPx={contentInsetRightPx}
           activeStore={activeTrailStore}
           onSelect={handleTrailSelect}
         />

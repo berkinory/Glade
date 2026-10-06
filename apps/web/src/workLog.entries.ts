@@ -27,6 +27,7 @@ import {
 } from "./lib/toolCallLabel.descriptors";
 import { normalizeToolTextForComparison } from "./lib/toolCallLabel.presentations";
 import { deriveWorkLogToolDetails } from "./lib/toolCallDetails";
+import { computerToolName } from "./lib/computerToolPresentation";
 import { compareActivitiesByOrder } from "./workLog.ordering";
 import {
   CHECKPOINT_REVERT_FAILED_ACTIVITY_KIND,
@@ -121,6 +122,7 @@ export function deriveWorkLogEntries(
         activity.kind !== "task.updated" &&
         activity.kind !== "task.completed" &&
         !isQuietTurnLifecycleActivity(activity) &&
+        !isRoutineApprovalAcceptance(activity) &&
         activity.kind !== "account.rate-limits.updated" &&
         activity.kind !== "context-window.updated" &&
         activity.kind !== "context-window.configured" &&
@@ -189,6 +191,23 @@ function isQuietTurnLifecycleActivity(activity: OrchestrationThreadActivity): bo
   }
 
   return activity.tone !== "error";
+}
+
+// Presentation only: the activity stays durable and pending approvals are derived
+// from raw activities. Refusals, cancellations, errors, session or permission
+// grants and every Computer consent (including clipboard, which has no task
+// scope) stay visible.
+function isRoutineApprovalAcceptance(activity: OrchestrationThreadActivity): boolean {
+  if (activity.kind !== "approval.resolved" || activity.tone === "error") {
+    return false;
+  }
+  const payload = asObjectRecord(activity.payload);
+  return (
+    payload?.decision === "accept" &&
+    payload.approvalScope === undefined &&
+    payload.requestKind !== "permissions" &&
+    computerToolName(extractToolName(payload)) === null
+  );
 }
 
 function isUninformativeCommandStartEntry(entry: DerivedWorkLogEntry): boolean {

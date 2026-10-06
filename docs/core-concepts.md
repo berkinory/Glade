@@ -315,10 +315,14 @@ send restores content to its captured thread, preserving newer edits and attachm
 An unconfirmed delivery keeps the workspace and uploads intact and asks you to check
 the chat before retrying; it is not automatically resent. Entering prompt history with
 Up requires an empty composer; normal Up/Down history navigation still works afterward.
+Images still being prepared when you switch chats are discarded and their previews
+released; they never attach to another chat or change its pending count.
 
 ### Reading and linking conversations
 
 The conversation scrolls vertically; wide code blocks scroll horizontally within their own boundaries. Environment clips its sliding panel at the overlay boundary in floating and docked modes, while its content and bottom rail remain vertically scrollable.
+
+The message navigation rail appears only when the space left of the chosen chat width, after any docked panel, can hold it. Otherwise it hides and gives up keyboard focus. Activity rows omit routine single-use accepted approvals; refusals, cancellations, errors, session or permission grants and every Computer consent stay visible.
 
 Agent details retain the mounted conversation, including scroll position and expanded rows. Returning restores keyboard focus. Transcript edge fades follow scroll progress; unsupported scroll-timeline browsers keep the content clear and retain the composer footer dissolve.
 

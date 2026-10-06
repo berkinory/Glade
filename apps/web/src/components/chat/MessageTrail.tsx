@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type CSSProperties,
   type FocusEvent as ReactFocusEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
@@ -35,9 +36,10 @@ interface MessageTrailProps {
 
   activeStore: ActiveTrailStore;
   onSelect: (messageId: MessageId) => void;
+  contentInsetRightPx?: number | undefined;
 }
 
-const MIN_PANE_WIDTH_PX = 864;
+const RAIL_CONTENT_CLEARANCE_PX = 16;
 
 const RAIL_WIDTH_PX = 56;
 
@@ -59,7 +61,12 @@ const TICK_FOCUS_OPACITY = 1;
 const TOOLTIP_ESTIMATED_H_PX = 56;
 const TOOLTIP_OFFSET_X_PX = 8;
 
-export function MessageTrail({ items, activeStore, onSelect }: MessageTrailProps) {
+export function MessageTrail({
+  items,
+  activeStore,
+  onSelect,
+  contentInsetRightPx = 0,
+}: MessageTrailProps) {
   const rootRef = useRef<HTMLElement | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
@@ -291,14 +298,13 @@ export function MessageTrail({ items, activeStore, onSelect }: MessageTrailProps
 
   useEffect(() => {
     const root = rootRef.current;
-    const pane = root?.parentElement;
-    if (!pane || typeof ResizeObserver === "undefined") {
+    if (!root || typeof ResizeObserver === "undefined") {
       return;
     }
     let pendingRaf: number | null = null;
     const measure = () => {
       pendingRaf = null;
-      setHasGutter(pane.clientWidth >= MIN_PANE_WIDTH_PX);
+      setHasGutter(root.clientWidth >= RAIL_WIDTH_PX);
     };
     const schedule = () => {
       if (pendingRaf === null) {
@@ -307,7 +313,7 @@ export function MessageTrail({ items, activeStore, onSelect }: MessageTrailProps
     };
     schedule();
     const observer = new ResizeObserver(schedule);
-    observer.observe(pane);
+    observer.observe(root);
     return () => {
       if (pendingRaf !== null) {
         cancelAnimationFrame(pendingRaf);
@@ -335,6 +341,10 @@ export function MessageTrail({ items, activeStore, onSelect }: MessageTrailProps
 
   useEffect(() => {
     if (!visible) {
+      const activeElement = document.activeElement;
+      if (activeElement instanceof HTMLElement && rootRef.current?.contains(activeElement)) {
+        activeElement.blur();
+      }
       cancelFrame();
       latestPointerClientYRef.current = null;
       focusOverrideIndexRef.current = null;
@@ -477,9 +487,20 @@ export function MessageTrail({ items, activeStore, onSelect }: MessageTrailProps
       className={cn(
         "absolute inset-y-0 left-0 z-20 hidden flex-col justify-center sm:flex",
         DISCLOSURE_CONTENT_MOTION_CLASS,
+        // The inset animates with the transcript's padding so the measured gap
+        // never runs ahead of the text column while a side panel slides.
+        "transition-[opacity,transform,--message-trail-content-inset] duration-120",
         visible ? "opacity-100" : "pointer-events-none opacity-0",
       )}
-      style={{ width: RAIL_WIDTH_PX }}
+      style={
+        {
+          "--message-trail-content-inset": `${contentInsetRightPx}px`,
+          width: RAIL_WIDTH_PX,
+          // The rail is only shown when this box can hold it, so it shrinks to
+          // the real gutter left of the configured chat column.
+          maxWidth: `max(0px, calc((100% - var(--app-chat-max-width, 46rem) - var(--message-trail-content-inset)) / 2 - ${RAIL_CONTENT_CLEARANCE_PX}px))`,
+        } as CSSProperties
+      }
     >
       {}
       <div

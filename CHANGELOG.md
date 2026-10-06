@@ -12,11 +12,14 @@
 - Provider transitions prepare in the chat while you continue using other chats.
 - Visual replies blend into the chat with automatic height and compact download and expand controls.
 - Visual previews require a smaller browser download while keeping local network access blocked.
+- Chat activity hides routine accepted approvals while keeping refusals, broader grants and Computer permission decisions visible.
 
 ### Fixed
 
 - Continuing a Claude chat with Codex works after the Claude session has been retired.
 - Changing the app theme preserves edits and interactive state in visual replies.
+- Conversation rows stay correctly positioned as activity details change, and message navigation stays clear of the text at every chat width and side panel layout.
+- Image attachments stay reliable when the composer remounts or an image finishes preparing after you switch chats.
 
 ### Removed
 
