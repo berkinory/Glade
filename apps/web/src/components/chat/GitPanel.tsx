@@ -267,15 +267,6 @@ export function GitPanel(props: {
     }
     if (clicked === "revert") setReverting(targets);
     if (clicked === "ignore") {
-      if (!targets.every((target) => target.status === "U")) {
-        toastManager.add({
-          type: "info",
-          title: "Git already tracks these files",
-          description:
-            ".gitignore applies to untracked files. Existing tracked files are kept in the repository.",
-        });
-        return;
-      }
       if (hasUnsavedWorkspaceEditors(queryClient, cwd)) {
         toastManager.add({
           type: "error",

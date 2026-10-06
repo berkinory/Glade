@@ -31,11 +31,15 @@ export function showGitFileContextMenu(
             : GIT_FILE_CONTEXT_MENU_ICONS.stage,
         separatorBefore: true,
       },
-      {
-        id: "ignore" as const,
-        label: "Add to .gitignore",
-        icon: GIT_FILE_CONTEXT_MENU_ICONS.ignore,
-      },
+      ...(targets.every((target) => target.status === "U")
+        ? [
+            {
+              id: "ignore" as const,
+              label: "Add to .gitignore",
+              icon: GIT_FILE_CONTEXT_MENU_ICONS.ignore,
+            },
+          ]
+        : []),
       ...(section === "unstaged" && targets.every(canRevertFile)
         ? [
             {
