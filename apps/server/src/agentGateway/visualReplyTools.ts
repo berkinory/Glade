@@ -23,6 +23,12 @@ import { mcpToolResultError, mcpToolResultJson, toolInputSchema } from "./protoc
 import { errorText } from "./toolInput";
 import type { ToolContext, ToolEntry } from "./toolRuntime";
 
+const VISUAL_REPLY_LAYOUT_GUIDE =
+  "The page is part of the reply: use fluid width and let content determine height. Keep html, body and the outermost container transparent, with no outer horizontal padding, framing card, border, shadow or repeated banner title. Add a background only when the content requires a distinct surface, such as an actual UI mockup or a meaningful inner panel; use themed surfaces and --glade-radius. Do not fill the page merely to decorate or separate it. Use clear visual hierarchy, readable spacing and restrained accents. Give charts explicit pixel heights; avoid 100vh and height:100% on html/body. Make initial HTML/SVG meaningful before scripts run, then enhance it with working interactions.";
+
+const VISUAL_REPLY_THEME_GUIDE =
+  "Live CSS variables: --glade-background (transparent reply canvas), --glade-foreground, --glade-muted, --glade-accent, --glade-border; --glade-surface/--glade-surface-foreground and --glade-secondary/--glade-secondary-foreground for intentional inner surfaces; --glade-input, --glade-ring, --glade-radius; --glade-chart-1 through --glade-chart-5; --glade-font-family, --glade-font-mono, --glade-font-size. Use these instead of hardcoded light/dark surface and text colors. Native controls follow the reader's color scheme. Theme changes preserve interactive state.";
+
 interface VisualReplyToolServices {
   readonly preview: VisualReplyPreviewShape;
   readonly snapshots: ProjectionSnapshotQueryShape;
@@ -32,7 +38,7 @@ interface VisualReplyToolServices {
 }
 
 export function makeVisualReplyTools(services: VisualReplyToolServices): readonly ToolEntry[] {
-  const prepare = (source: VisualReplyInput, context: ToolContext) =>
+  const prepare = (source: VisualReplyInput | VisualReplyPreviewInput, context: ToolContext) =>
     Effect.gen(function* () {
       yield* context.assertCallerTurnActive();
       const thread = yield* services.snapshots.getThreadShellById(
@@ -97,7 +103,10 @@ export function makeVisualReplyTools(services: VisualReplyToolServices): readonl
       definition: {
         name: "html_preview",
         description:
-          "Check a visual reply in a separate sandboxed browser and return its screenshot, content height and bounded console output. Provide exactly one of html or path (inside the caller workspace). Inline scripts, styles and SVG; local PNG/JPEG/GIF/WebP images are embedded. Public HTTP(S) resources are available; private/local network destinations, files outside the workspace and browser permissions are blocked. Prefer inline assets for reliable previews. The first preview downloads a pinned Chrome headless shell once; each preview closes its browser. Pass the returned previewAttachmentId to html_render with the same source to retain the screenshot. Preview alone does not publish a reply.",
+          "Check a visual reply in a separate sandboxed browser and return its screenshot, content height and bounded console output. Provide exactly one of html or path (inside the caller workspace). Inline scripts, styles and SVG; local PNG/JPEG/GIF/WebP images are embedded. Public HTTP(S) resources are available; private/local network destinations, files outside the workspace and browser permissions are blocked. Prefer inline assets for reliable previews. The first preview downloads a pinned Chrome headless shell once; each preview closes its browser. Pass the returned previewAttachmentId to html_render with the same source to retain the screenshot. Preview alone does not publish a reply. Width defaults to 728px; use about 390px to check narrow layouts. appearance selects light or dark, defaulting to dark. The screenshot is cropped to content up to the requested height. " +
+          VISUAL_REPLY_LAYOUT_GUIDE +
+          " " +
+          VISUAL_REPLY_THEME_GUIDE,
         inputSchema: toolInputSchema(VisualReplyPreviewInput),
         annotations: {
           readOnlyHint: false,
@@ -112,8 +121,9 @@ export function makeVisualReplyTools(services: VisualReplyToolServices): readonl
           const prepared = yield* prepare(source, context);
           const result = yield* services.preview.capture({
             html: prepared.html,
-            width: source.width ?? 960,
+            width: source.width ?? 728,
             height: source.height ?? 720,
+            appearance: source.appearance ?? "dark",
           });
           yield* context.assertCallerTurnActive();
           const preview = yield* store({
@@ -147,7 +157,10 @@ export function makeVisualReplyTools(services: VisualReplyToolServices): readonl
       definition: {
         name: "html_render",
         description:
-          "Publish a persistent visual reply inline in the current Glade conversation, before your final written answer. Use it for charts, diagrams, galleries, interactive tables or mockups. Provide exactly one of html or path inside the caller workspace. Prefer self-contained HTML with inline styles, scripts and SVG; absolute HTTP(S) resources and links are supported; local raster images are embedded. Use CSS variables --glade-background, --glade-foreground, --glade-muted, --glade-accent, --glade-border, --glade-font-family and --glade-font-size to follow the reader's theme. Scripts run immediately inside an opaque sandbox; pages cannot access Glade APIs or the browser session. localStorage, sessionStorage and IndexedDB are unavailable; use in-memory state. Keep content naturally sized, without viewport-height layouts; the chat follows its height up to 2000px. Theme changes update CSS variables without resetting state. Interactive plans and tables need actual editable inputs and functioning change/completion handlers; edits are transient. Make the initial HTML/SVG meaningful before scripts run and progressively enhance interactions. html_preview is an optional screenshot/console check for complex visuals or debugging, not a prerequisite. Its screenshot is for validation; readers see themed HTML. Publishing itself needs no extra browser. Do not repeat the visual in your final answer.",
+          "Publish a persistent visual reply inline in the current Glade conversation before the final answer. Use it for charts, diagrams, galleries, interactive tables or mockups. Provide exactly one of html or a workspace path. Prefer self-contained HTML with inline styles, scripts and SVG; public HTTP(S) resources and links are supported, and local raster images are embedded. Scripts run in an opaque sandbox without Glade APIs, browser-session access or persistent storage. Keep edits in memory and provide working inputs and completion controls when interaction is requested. Pass height (80–2000px), normally the preview contentHeight. A smaller height deliberately scrolls the content. Height is measured at nine widths when the preview browser is installed, then follows live layout up to 2000px. html_preview is an optional screenshot/console check for complex visuals or debugging; publishing never downloads a browser. The reader sees the visual, so the final reply should add only information the visual does not convey. " +
+          VISUAL_REPLY_LAYOUT_GUIDE +
+          " " +
+          VISUAL_REPLY_THEME_GUIDE,
         inputSchema: toolInputSchema(VisualReplyInput),
         annotations: {
           readOnlyHint: false,
@@ -178,6 +191,7 @@ export function makeVisualReplyTools(services: VisualReplyToolServices): readonl
                   "Preview is unavailable, belongs to another session, or was captured from different HTML. Preview the current source again.",
               });
           }
+          const heights = yield* services.preview.measure(prepared.html);
           const attachment = yield* store({
             type: "file",
             bytes: Buffer.from(prepared.html),
@@ -187,6 +201,8 @@ export function makeVisualReplyTools(services: VisualReplyToolServices): readonl
           });
           const reply: VisualReply = {
             version: 1,
+            height: source.height,
+            ...(heights ? { heights } : {}),
             threadId: ThreadId.makeUnsafe(context.callerThreadId),
             title: source.title,
             attachmentId: attachment.id,
@@ -217,6 +233,10 @@ export function makeVisualReplyTools(services: VisualReplyToolServices): readonl
                     threadId: reply.threadId,
                     title: reply.title,
                     attachmentId: reply.attachmentId,
+                    height: source.height,
+                    ...(heights
+                      ? { heights: heights.map(([width, height]) => [width, height]) }
+                      : {}),
                     ...(reply.previewAttachmentId
                       ? { previewAttachmentId: reply.previewAttachmentId }
                       : {}),

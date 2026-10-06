@@ -1,10 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   type VisualReply,
   VISUAL_REPLY_MAX_DOCUMENT_BYTES,
   VISUAL_REPLY_ROUTE,
 } from "@glade/contracts/orchestration/visualReply";
+import {
+  VISUAL_REPLY_COLUMN_WIDTH,
+  visualReplyFrameHeight,
+} from "@glade/shared/attachments/visualReplyLayout";
 import { Button } from "~/components/ui/button";
 import { Dialog, DialogPopup, DialogTitle } from "~/components/ui/dialog";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
@@ -23,7 +27,18 @@ export function VisualReplyCard({
   const container = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const [contentHeight, setContentHeight] = useState(420);
+  const [contentHeight, setContentHeight] = useState<number>();
+  const [width, setWidth] = useState(VISUAL_REPLY_COLUMN_WIDTH);
+  const height = visualReplyFrameHeight(reply, width, contentHeight);
+  useLayoutEffect(() => {
+    const element = container.current;
+    if (!element) return;
+    const measure = () => setWidth(element.getBoundingClientRect().width);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
   useEffect(() => {
     const element = container.current;
     if (!element) return;
@@ -136,7 +151,7 @@ export function VisualReplyCard({
     <>
       <div ref={container} className="group/visual relative my-3" data-visual-reply={activityId}>
         {header(false)}
-        <div className="overflow-hidden" style={{ height: contentHeight }}>
+        <div className="overflow-hidden" style={{ height }}>
           {visible && !expanded ? body() : <div className="h-full bg-muted/20" />}
         </div>
       </div>

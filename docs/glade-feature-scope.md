@@ -181,6 +181,9 @@ use managed attachment quotas and cleanup. Activity history caps preserve visual
 reply references. The authenticated source endpoint serves plain text; generic HTML
 attachments download with a restrictive sandbox policy.
 
+Inline visuals use a transparent canvas with no default body padding and rounded frame corners when content paints a background. Agents keep the outer page unframed and use intentional themed inner surfaces; live theme variables include surfaces, controls, categorical chart colors, radius and monospace typography.
+Published replies retain the requested height and optional width measurements. Inline height uses the larger measurement bracketing the current width until the iframe reports its live content height. An explicitly shorter height scrolls; otherwise narrow layouts may grow up to 2000 pixels. Existing replies without measurements still use live sizing.
+Preview defaults to dark at a 728-pixel width, supports an explicit light appearance, and crops screenshots to content within the requested height.
 Inline visuals blend into the transcript; save and expand icons appear on hover or keyboard focus (always on touch screens). The expanded dialog retains its toolbar.
 Visuals run their local scripts immediately in an opaque iframe with no same-origin
 access, popups, form submission, downloads or host bridge. Inline height follows content between 80 and 2000 pixels, with internal scrolling beyond that limit. Expanded views use a fixed viewport. View and expanded modes render the
@@ -200,7 +203,7 @@ application colors and typography through theme messages, preserving in-memory e
 separate, sandboxed Chrome headless shell process. First use downloads the pinned shell to the server's private tools cache. Preview admits one request at a time,
 routes TCP traffic through a mandatory public-network SOCKS proxy, denies downloads,
 uses a temporary profile, limits rendering to 20 seconds, and closes the process
-after each request. The proxy blocks private, loopback, link-local, reserved, translated and host interface addresses; DNS results are checked and pinned to prevent rebinding. This server-side proxy applies to preview capture; displayed frames use the client browser network and permission policies. Publishing and displaying a reply do not launch this browser.
+after each request. The proxy blocks private, loopback, link-local, reserved, translated and host interface addresses; DNS results are checked and pinned to prevent rebinding. This server-side proxy applies to preview capture; displayed frames use the client browser network and permission policies. Publishing measures initial content heights at nine widths only when the preview browser is already installed, with a six-second budget; it never downloads a browser. Displaying a reply does not launch a browser.
 
 Inputs accept exactly one inline HTML string or workspace file, up to 2 MiB.
 Inline HTML also works in chats without a ready workspace; file inputs and local images require one.

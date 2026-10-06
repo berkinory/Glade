@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   visualReplyDocument,
+  visualReplyThemeForAppearance,
   type VisualReplyTheme,
 } from "@glade/shared/attachments/visualReplyDocument";
 import { openExternalLink } from "~/lib/linkChips";
@@ -28,11 +29,20 @@ export function VisualReplyFrame({
       const style = getComputedStyle(root);
       const color = (name: string) => style.getPropertyValue(`--${name}`).trim();
       setTheme({
-        background: color("background"),
+        ...visualReplyThemeForAppearance(root.classList.contains("dark") ? "dark" : "light"),
+        background: "transparent",
         foreground: color("foreground"),
         muted: color("muted-foreground"),
         accent: color("primary"),
         border: color("border"),
+        surface: color("card"),
+        surfaceForeground: color("card-foreground"),
+        secondary: color("secondary"),
+        secondaryForeground: color("secondary-foreground"),
+        input: color("input"),
+        ring: color("ring"),
+        radius: color("radius"),
+        fontMono: color("font-mono-family"),
         fontFamily: getComputedStyle(document.body).fontFamily,
         fontSize: style.getPropertyValue("--app-font-size-ui").trim(),
         colorScheme: root.classList.contains("dark") ? "dark" : "light",
@@ -60,9 +70,10 @@ export function VisualReplyFrame({
       } else if (
         event.data.kind === "height" &&
         typeof event.data.height === "number" &&
-        Number.isFinite(event.data.height)
+        Number.isFinite(event.data.height) &&
+        event.data.height >= 0
       ) {
-        onContentHeight?.(Math.min(2000, Math.max(80, event.data.height)));
+        onContentHeight?.(event.data.height);
       } else if (
         event.data.kind === "open-link" &&
         typeof event.data.url === "string" &&
@@ -104,9 +115,9 @@ export function VisualReplyFrame({
         srcDoc={initialDocument}
         sandbox="allow-scripts"
         referrerPolicy="no-referrer"
-        style={{ colorScheme: theme?.colorScheme }}
+        style={{ colorScheme: theme?.colorScheme, borderRadius: theme?.radius }}
         allow="camera 'none'; microphone 'none'; geolocation 'none'; clipboard-read 'none'; clipboard-write 'none'; payment 'none'; usb 'none'; serial 'none'; bluetooth 'none'; fullscreen 'none'"
-        className="block min-h-0 w-full flex-1 border-0 bg-background"
+        className="block min-h-0 w-full flex-1 border-0 bg-transparent"
         onLoad={() => {
           loads.current += 1;
           if (loads.current > 1) setNavigated(true);

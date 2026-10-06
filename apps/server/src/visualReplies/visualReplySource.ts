@@ -69,7 +69,7 @@ function elements(node: Node): Element[] {
 }
 
 export const prepareVisualReply = (input: {
-  readonly source: VisualReplyInput;
+  readonly source: Omit<VisualReplyInput, "height">;
   readonly workspaceRoot: string | null;
 }) =>
   Effect.tryPromise({

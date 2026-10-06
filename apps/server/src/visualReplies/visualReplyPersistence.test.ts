@@ -135,6 +135,7 @@ it("publishes owned HTML atomically, retains it through replay and prunes it wit
       render.handler(
         {
           title: "Chart",
+          height: 340,
           html: '<h1>Persisted chart</h1><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="20"/></svg>',
         },
         context,
@@ -146,6 +147,7 @@ it("publishes owned HTML atomically, retains it through replay and prunes it wit
       (entry) => entry.kind === VISUAL_REPLY_ACTIVITY_KIND,
     )!;
     const reply = Schema.decodeUnknownSync(VisualReply)(activity.payload);
+    expect(reply.height).toBe(340);
     const claimed = Option.getOrThrow(
       await runtime.runPromise(attachments.findClaimedById({ attachmentId: reply.attachmentId })),
     );
