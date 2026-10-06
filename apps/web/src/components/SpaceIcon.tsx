@@ -7,6 +7,7 @@ import { UNFILED_SPACE_SPECIAL_ICON, type VoidSpaceIconName } from "~/lib/spaceG
 import { cn } from "~/lib/utils";
 export type SpaceIconValue = VoidSpaceIconName;
 const SPACE_ICON_LABELS: Record<SpaceIconName, string> = {
+  briefcase: "Work",
   bag: "Bag",
   home: "Home",
   "code-brackets": "Code",

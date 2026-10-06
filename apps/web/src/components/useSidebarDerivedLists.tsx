@@ -13,11 +13,7 @@ import { isHomeChatContainerProject } from "../lib/chatProjects";
 import { type SidebarThreadSummary } from "../types";
 import { type EditProjectValue } from "./EditProjectDialog";
 import { normalizeSidebarProjectThreadListCwd } from "./Sidebar.uiState";
-import {
-  buildProjectThreadTree,
-  resolveProjectStatusIndicator,
-  type SidebarDerivedProjectData,
-} from "./Sidebar.logic.status";
+import { buildProjectThreadTree, type SidebarDerivedProjectData } from "./Sidebar.logic.status";
 import {
   getSidebarThreadIdsToPrewarm,
   getUnpinnedThreadsForSidebar,
@@ -34,7 +30,6 @@ import { pruneProjectThreadListPagingForCollapsedProjects } from "./Sidebar.logi
 import { isTerminalFocused } from "../lib/terminalFocus";
 import { hasThreadDetailResumeCursor } from "../threadDetailResumeCursors";
 import { retainThreadDetailSubscription } from "../threadDetailSubscriptionRetention";
-import { type SpaceActivityTone } from "./SpaceSwitcher";
 import type { useSidebarProjectCommands } from "./useSidebarProjectCommands";
 import {
   THREAD_PREVIEW_LIMIT,
@@ -160,32 +155,15 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
       chatWorkspaceRoot,
     }),
   );
-  const spaceActivityById = (() => {
-    const priority: Record<SpaceActivityTone, number> = {
-      attention: 3,
-      running: 2,
-      completed: 1,
-    };
-    const activity = new Map<SpaceId | null, SpaceActivityTone>();
-    for (const project of allStandardProjectsBase) {
-      const status = resolveProjectStatusIndicator(
-        (sidebarThreadsByProjectId.get(project.id) ?? []).map(resolveThreadStatusForSidebar),
-      );
-      if (!status) continue;
-      const tone: SpaceActivityTone =
-        status.label === "Working" || status.label === "Background" || status.label === "Connecting"
-          ? "running"
-          : status.label === "Completed"
-            ? "completed"
-            : "attention";
-      const projectSpaceId = project.spaceId ?? null;
-      const current = activity.get(projectSpaceId);
-      if (!current || priority[tone] > priority[current]) {
-        activity.set(projectSpaceId, tone);
-      }
-    }
-    return activity;
-  })();
+  const unreadSpaceIds = new Set<SpaceId | null>(
+    allStandardProjectsBase
+      .filter((project) =>
+        (sidebarThreadsByProjectId.get(project.id) ?? []).some(
+          (thread) => resolveThreadStatusForSidebar(thread)?.label === "Completed",
+        ),
+      )
+      .map((project) => project.spaceId ?? null),
+  );
   const standardProjectsBase = allStandardProjectsBase.filter(
     (project) => (project.spaceId ?? null) === activeSpaceId,
   );
@@ -394,7 +372,7 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     visibleChatThreadRows,
     visibleChatThreadIds,
     allStandardProjectsBase,
-    spaceActivityById,
+    unreadSpaceIds,
     pinnedProjectIdSet,
     standardProjects,
     projectEmptyState,

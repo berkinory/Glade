@@ -11,7 +11,7 @@ const DEFAULT_VOID_SPACE_NAME = "Home";
 export const DEFAULT_VOID_SPACE_ICON: SpaceIconName = "home";
 export const UNFILED_SPACE_SPECIAL_ICON = "black-hole";
 
-export const DEFAULT_SPACE_ICON: SpaceIconName = "bag";
+export const DEFAULT_SPACE_ICON: SpaceIconName = "briefcase";
 
 export type VoidSpaceIconName = SpaceIconName | typeof UNFILED_SPACE_SPECIAL_ICON;
 

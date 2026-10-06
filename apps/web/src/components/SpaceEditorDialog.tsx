@@ -3,7 +3,6 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import { handleRadioGridKeyDown } from "~/lib/radioGridKeyboard";
 import { DEFAULT_SPACE_ICON, DEFAULT_VOID_SPACE_ICON } from "~/lib/spaceGrouping";
-import { suggestSpaceIcon } from "~/lib/spaceIconSuggestion";
 
 import { Button } from "./ui/button";
 import {
@@ -51,8 +50,6 @@ export function SpaceEditorDialog(props: {
   const defaultIcon: SpaceIconValue = isVoid ? DEFAULT_VOID_SPACE_ICON : DEFAULT_SPACE_ICON;
   const [name, setName] = useState("");
   const [icon, setIcon] = useState<SpaceIconValue>(defaultIcon);
-  // Editing starts pinned: a rename must never silently swap an icon someone already chose.
-  const [iconPinned, setIconPinned] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const nameInputRef = useRef<HTMLInputElement | null>(null);
@@ -68,7 +65,6 @@ export function SpaceEditorDialog(props: {
     if (!props.open) return;
     setName(props.initialValue?.name ?? "");
     setIcon(props.initialValue?.icon ?? defaultIcon);
-    setIconPinned(props.mode !== "create");
     setSubmitting(false);
     setSubmitError(null);
 
@@ -132,8 +128,6 @@ export function SpaceEditorDialog(props: {
               {...(visibleNameError ? { "aria-describedby": nameErrorId } : {})}
               onChange={(event) => {
                 setName(event.target.value);
-
-                if (!iconPinned) setIcon(suggestSpaceIcon(event.target.value));
               }}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
@@ -158,7 +152,7 @@ export function SpaceEditorDialog(props: {
               role="radiogroup"
               aria-labelledby={iconLegendId}
               onKeyDown={(event) => handleRadioGridKeyDown(event, "[data-space-icon]")}
-              className="grid grid-cols-10 gap-1.5 max-sm:grid-cols-5"
+              className="grid grid-cols-7 gap-1.5 max-sm:grid-cols-5"
             >
               {iconOptions.map((option) => {
                 const selected = icon === option.name;
@@ -171,10 +165,7 @@ export function SpaceEditorDialog(props: {
                     aria-checked={selected}
                     aria-label={option.label}
                     tabIndex={selected ? 0 : -1}
-                    onClick={() => {
-                      setIcon(option.name);
-                      setIconPinned(true);
-                    }}
+                    onClick={() => setIcon(option.name)}
                     className={cn(
                       ICON_CELL_CLASS_NAME,
                       selected

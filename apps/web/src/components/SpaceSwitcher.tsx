@@ -42,7 +42,6 @@ import {
 import { Menu, MenuGroup, MenuItem } from "./ui/menu";
 import { ShortcutKbd } from "./ui/kbd";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
-export type SpaceActivityTone = "attention" | "running" | "completed";
 export const PROJECT_SPACE_DRAG_MIME = "application/x-glade-project";
 function readDraggedProjectId(event: DragEvent): ProjectId | null {
   try {
@@ -58,36 +57,17 @@ function isProjectDrag(event: DragEvent): boolean {
   return event.dataTransfer.types.includes(PROJECT_SPACE_DRAG_MIME);
 }
 
-// A tab dot is a whole space summarised into one pixel, so it has to speak the same colour language
-// as the per-thread status dots it stands in for (see the `dotClass` values in Sidebar.logic.ts):
-// amber = you are blocking something, sky = work in flight, emerald = finished. Tones are per-theme
-// because a 400-weight dot dies on the light sidebar and glares on the dark one.
-const SPACE_ACTIVITY_DOT_CLASS_NAME: Record<SpaceActivityTone, string> = {
-  attention: "bg-amber-500 dark:bg-amber-300/90",
-  running: "bg-sky-500 dark:bg-sky-300/80",
-  completed: "bg-emerald-500 dark:bg-emerald-300/90",
-};
-
-// Spoken and hover wording for a tone. The internal tone keys must never reach a user.
-const SPACE_ACTIVITY_LABEL: Record<SpaceActivityTone, string> = {
-  attention: "Needs attention",
-  running: "Working",
-  completed: "Done",
-};
 const TAB_STRIP_FADE_CLASS_NAME =
   "mask-l-from-[calc(100%-min(var(--fade-size),var(--space-overflow-start)))] mask-r-from-[calc(100%-min(var(--fade-size),var(--space-overflow-end)))] [--fade-size:1.25rem] [--space-overflow-end:0px] [--space-overflow-start:0px]";
 const SPACE_TAB_CLASS_NAME =
   "relative flex size-6 shrink-0 cursor-pointer touch-none items-center justify-center rounded-md text-muted-foreground/70 outline-hidden transition-colors hover:bg-[var(--sidebar-accent)] hover:text-[var(--sidebar-accent-foreground)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring";
 const SPACE_TAB_ACTIVE_CLASS_NAME =
   "bg-[var(--sidebar-accent-active)] text-[var(--sidebar-accent-foreground)] ring-1 ring-border/70 ring-inset";
-function SpaceActivityDot({ tone }: { tone: SpaceActivityTone }) {
+function SpaceUnreadDot() {
   return (
     <span
       aria-hidden="true"
-      className={cn(
-        "pointer-events-none absolute top-0.5 right-0.5 size-1.5 rounded-full ring-2 ring-[var(--sidebar)]",
-        SPACE_ACTIVITY_DOT_CLASS_NAME[tone],
-      )}
+      className="pointer-events-none absolute top-0.5 right-0.5 size-1.5 rounded-full bg-sky-500 ring-2 ring-[var(--sidebar)] dark:bg-sky-300/80"
     />
   );
 }
@@ -104,7 +84,7 @@ function SpaceTab(props: {
   hint?: string;
   shortcutLabel?: string | null;
   active: boolean;
-  activityTone: SpaceActivityTone | null;
+  unread: boolean;
   onSelect: () => void;
   onEdit: () => void;
   gestureHint?: string;
@@ -112,8 +92,7 @@ function SpaceTab(props: {
   onProjectDrop?: (projectId: ProjectId) => void;
   sortable?: SpaceTabSortable;
 }) {
-  const toneLabel = props.activityTone ? SPACE_ACTIVITY_LABEL[props.activityTone] : null;
-  const detail = toneLabel ?? props.hint ?? null;
+  const detail = props.unread ? "Unread" : (props.hint ?? null);
   const dragDepthRef = useRef(0);
   const [dropActive, setDropActive] = useState(false);
   const { onProjectDrop } = props;
@@ -156,7 +135,9 @@ function SpaceTab(props: {
             data-space-tab
             aria-selected={props.active}
             tabIndex={props.active ? 0 : -1}
-            aria-label={[props.name, props.hint, toneLabel].filter(Boolean).join(", ")}
+            aria-label={[props.name, props.hint, props.unread && "Unread"]
+              .filter(Boolean)
+              .join(", ")}
             onClick={props.onSelect}
             onDoubleClick={props.onEdit}
             {...(props.onContextMenu
@@ -180,7 +161,7 @@ function SpaceTab(props: {
         }
       >
         <SpaceIcon icon={props.icon} className="size-3.5" />
-        {props.activityTone ? <SpaceActivityDot tone={props.activityTone} /> : null}
+        {props.unread ? <SpaceUnreadDot /> : null}
       </TooltipTrigger>
       <TooltipPopup side="bottom">
         {props.name}
@@ -202,7 +183,7 @@ function SortableSpaceTab(props: {
   space: Space;
   shortcutLabel: string | null;
   active: boolean;
-  activityTone: SpaceActivityTone | null;
+  unread: boolean;
   onSelect: () => void;
   onEdit: () => void;
   onContextMenu: (event: MouseEvent<HTMLButtonElement>) => void;
@@ -217,7 +198,7 @@ function SortableSpaceTab(props: {
       name={props.space.name}
       shortcutLabel={props.shortcutLabel}
       active={props.active}
-      activityTone={props.activityTone}
+      unread={props.unread}
       gestureHint="Double-click to edit · Drag to reorder"
       onSelect={props.onSelect}
       onEdit={props.onEdit}
@@ -322,7 +303,7 @@ function SpaceNameLabel(props: {
 interface SpaceSwitcherProps {
   spaces: ReadonlyArray<Space>;
   activeSpaceId: SpaceId | null;
-  activityBySpaceId: ReadonlyMap<SpaceId | null, SpaceActivityTone>;
+  unreadSpaceIds: ReadonlySet<SpaceId | null>;
   voidSpace: VoidSpacePresentation;
   onSelect: (spaceId: SpaceId | null) => void;
   onCreate: () => void;
@@ -459,7 +440,7 @@ function SpaceSwitcherStrip(props: SpaceSwitcherProps) {
             gestureHint="Double-click to edit"
             shortcutLabel={props.jumpShortcutLabelForTab?.(0) ?? null}
             active={activeSpaceId === null}
-            activityTone={props.activityBySpaceId.get(null) ?? null}
+            unread={props.unreadSpaceIds.has(null)}
             onSelect={() => selectFromClick(null)}
             onEdit={props.onEditVoid}
             onContextMenu={(event) => {
@@ -511,7 +492,7 @@ function SpaceSwitcherStrip(props: SpaceSwitcherProps) {
                     space={space}
                     shortcutLabel={props.jumpShortcutLabelForTab?.(index + 1) ?? null}
                     active={activeSpaceId === space.id}
-                    activityTone={props.activityBySpaceId.get(space.id) ?? null}
+                    unread={props.unreadSpaceIds.has(space.id)}
                     onSelect={() => selectFromClick(space.id)}
                     onEdit={() => props.onEdit(space)}
                     onProjectDrop={(projectId) => props.onDropProject(projectId, space.id)}

@@ -130,7 +130,7 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     visibleChatThreadRows,
     visibleChatThreadIds,
     allStandardProjectsBase,
-    spaceActivityById,
+    unreadSpaceIds,
     standardProjects,
     projectEmptyState,
     allProjectsExpanded,
@@ -380,7 +380,7 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
                   <SpaceSwitcher
                     spaces={spaces}
                     activeSpaceId={activeSpaceId}
-                    activityBySpaceId={spaceActivityById}
+                    unreadSpaceIds={unreadSpaceIds}
                     voidSpace={voidSpace}
                     onSelect={handleSelectSpace}
                     onCreate={() => openSpaceCreator()}

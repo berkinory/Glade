@@ -160,6 +160,7 @@ export const RESERVED_VOID_SPACE_ID = "void";
 export const SPACE_PROJECTS_ASSIGN_MAX_COUNT = 200;
 
 export const SPACE_ICON_NAMES = [
+  "briefcase",
   "bag",
   "home",
   "code-brackets",
