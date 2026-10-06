@@ -9,14 +9,15 @@
 ### Improved
 
 - Claude chats load core Glade tools automatically and discover other tools as needed, reducing context usage.
+
 - Subagent rows use stable names instead of Claude task descriptions, show model names or aliases without extra labels, and keep task prompts, agent types and redundant background-agent banners out of the compact panels.
 - Provider transitions prepare in the chat while you continue using other chats.
 - Visual replies blend into the chat with automatic height and compact download and expand controls.
 - Visual previews require a smaller browser download while keeping local network access blocked.
 - Chat activity hides routine accepted approvals while keeping refusals, broader grants and Computer permission decisions visible.
 - Long lists of edited files scroll within the chat instead of pushing the rest of the conversation away.
-- Long commits, pushes and hooks run to completion regardless of duration or output volume, and Git actions keep their progress across reconnects without running twice.
 - Full Access no longer asks again before Codex uses Glade's own tools.
+- Long commits, pushes and hooks run to completion regardless of duration or output volume, and Git actions keep their progress across reconnects without running twice.
 - Background remote refreshes never open credential prompts, run once per repository across worktrees, and no longer hold up local git status.
 - Diff totals stay responsive while agents create many new files.
 - Returning to Glade, scrolling the sidebar and agent tool runs trigger far fewer git and GitHub refreshes.
@@ -35,11 +36,11 @@
 - Changing the app theme preserves edits and interactive state in visual replies.
 - Conversation rows stay correctly positioned as activity details change, and message navigation stays clear of the text at every chat width and side panel layout.
 - Image attachments stay reliable when the composer remounts or an image finishes preparing after you switch chats.
+- Voice dictation is available for Codex ChatGPT sign-ins, and invalid transcription responses show a clear error.
+- Chats show why they are blocked by a provider delivery failure as soon as it happens, including after a restart.
 - Glade recovers abandoned startup locks that contain only Finder metadata, and explains locks it cannot verify with a way to open the logs.
 - Quitting asks for confirmation when the app window can't respond instead of quitting without checking for running chats.
 - Opening a path in the terminal no longer types into a busy shell, and a terminal that fails to close stays open and usable.
-- Voice dictation is available for Codex ChatGPT sign-ins, and invalid transcription responses show a clear error.
-- Chats show why they are blocked by a provider delivery failure as soon as it happens, including after a restart.
 - Very large code blocks in chat no longer freeze the window.
 - The file explorer shows a loading state while a folder opens instead of briefly showing it empty.
 - The Windows taskbar icon recovers if its first-launch setup is interrupted.
