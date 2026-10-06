@@ -48,7 +48,7 @@ import {
   DEBUG_FEATURE_FLAGS_MENU_STORAGE_KEY,
   shouldShowDebugFeatureFlagsMenu,
 } from "./Sidebar.logic.statusTypes";
-import { resolveThreadStatusPill } from "./Sidebar.logic.status";
+import { isThreadActivelyWorking, resolveThreadStatusPill } from "./Sidebar.logic.status";
 import { parseDiffRouteSearch } from "../diffRouteSearch";
 import { normalizeSettingsSection } from "../settingsNavigation";
 import { selectSplitView, useSplitViewStore } from "../splitViewStore";
@@ -410,6 +410,25 @@ export function useSidebarShellState() {
     });
   };
 
+  const parentsWithWorkingSubagents = new Set<ThreadId>();
+  for (const child of persistedSidebarThreads) {
+    if (
+      !child.parentThreadId ||
+      child.archivedAt ||
+      child.hasPendingApprovals ||
+      child.hasPendingUserInput ||
+      !isThreadActivelyWorking(child)
+    )
+      continue;
+    const visited = new Set<ThreadId>();
+    let parentId: ThreadId | null | undefined = child.parentThreadId;
+    while (parentId && !visited.has(parentId)) {
+      visited.add(parentId);
+      parentsWithWorkingSubagents.add(parentId);
+      parentId = sidebarThreadSummaryById[parentId]?.parentThreadId;
+    }
+  }
+
   const resolveThreadStatusForSidebar = (thread: SidebarThreadSummary) =>
     resolveThreadStatusPill({
       thread: {
@@ -418,6 +437,7 @@ export function useSidebarShellState() {
       },
       hasPendingApprovals: thread.hasPendingApprovals,
       hasPendingUserInput: thread.hasPendingUserInput,
+      hasWorkingSubagent: parentsWithWorkingSubagents.has(thread.id),
     });
 
   useEffect(() => {

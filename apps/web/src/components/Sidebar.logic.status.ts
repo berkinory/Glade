@@ -64,6 +64,7 @@ export function resolveThreadStatusPill(input: {
   thread: ThreadStatusInput;
   hasPendingApprovals: boolean;
   hasPendingUserInput: boolean;
+  hasWorkingSubagent?: boolean;
 }): ThreadStatusPill | null {
   const { thread } = input;
 
@@ -114,7 +115,7 @@ export function resolveThreadStatusPill(input: {
       dismissible: false,
     };
   }
-  if (isThreadActivelyWorking(thread)) {
+  if (input.hasWorkingSubagent || isThreadActivelyWorking(thread)) {
     return {
       label: "Working",
       colorClass: "text-sky-600 dark:text-sky-300/80",

@@ -8,6 +8,10 @@ import cloudAttentiveBrown from "~/assets/subagents/bloub-cloud-attentive-brown.
 import cloudExcitedTeal from "~/assets/subagents/bloub-cloud-excited-teal.svg";
 import cloudShyPurple from "~/assets/subagents/bloub-cloud-shy-purple.svg";
 import { cn } from "~/lib/utils";
+import { useMemo } from "react";
+import { useStore } from "~/store";
+import type { AppState } from "~/storeState";
+import { subagentAvatarIndex } from "./SubagentAvatar.logic";
 
 const AVATARS = [
   circleAttentiveRed,
@@ -22,17 +26,27 @@ const AVATARS = [
 ];
 
 export function SubagentAvatar({ threadId, className }: { threadId: string; className?: string }) {
-  // Random thread identities distribute avatars without changing them on remount or restart.
-  const identity = threadId.startsWith("subagent:")
-    ? threadId.slice(threadId.lastIndexOf(":") + 1)
-    : threadId;
-  let hash = 2166136261;
-  for (let i = 0; i < identity.length; i++) {
-    hash = Math.imul(hash ^ identity.charCodeAt(i), 16777619);
-  }
+  const selectAvatar = useMemo(() => {
+    let previousShells: AppState["threadShellById"];
+    let previousIndex = 0;
+    let initialized = false;
+    return (state: Pick<AppState, "threadShellById">) => {
+      if (!initialized || previousShells !== state.threadShellById) {
+        previousShells = state.threadShellById;
+        previousIndex = subagentAvatarIndex(
+          threadId,
+          Object.values(previousShells ?? {}),
+          AVATARS.length,
+        );
+        initialized = true;
+      }
+      return previousIndex;
+    };
+  }, [threadId]);
+  const avatarIndex = useStore(selectAvatar);
   return (
     <img
-      src={AVATARS[(hash >>> 0) % AVATARS.length]}
+      src={AVATARS[avatarIndex]}
       alt=""
       aria-hidden="true"
       draggable={false}
