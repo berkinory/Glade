@@ -6,6 +6,7 @@ import * as SqlClient from "effect/unstable/sql/SqlClient";
 
 import { MigrationLineageUnsupportedError, MigrationSchemaTooNewError } from "./Errors.ts";
 import Baseline from "./Migrations/001_Baseline.ts";
+import VisualReplyAttachments from "./Migrations/006_VisualReplyAttachments.ts";
 
 import ProfileTurnLookup from "./Migrations/002_ProfileTurnLookup.ts";
 
@@ -17,6 +18,7 @@ export const migrationEntries = [
   [3, "ProjectImportHistory", ProjectImportHistory],
   [4, "MessageAttribution", MessageAttribution],
   [5, "CommandReceiptOwner", CommandReceiptOwner],
+  [6, "VisualReplyAttachments", VisualReplyAttachments],
 ] as const;
 
 const LATEST_MIGRATION_ID = Math.max(...migrationEntries.map(([id]) => id));

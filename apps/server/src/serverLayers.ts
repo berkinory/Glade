@@ -1,3 +1,4 @@
+import { VisualReplyPreviewLive } from "./visualReplies/Layers/VisualReplyPreview";
 import { HandoffTransitionsLive } from "./orchestration/Layers/HandoffTransitions";
 import { ThreadTitleGenerationLive } from "./orchestration/Layers/ThreadTitleGeneration";
 import { AppPresentationLive } from "./agentGateway/Layers/AppPresentation";
@@ -138,6 +139,7 @@ function makeServerRuntimeServicesLayer(
     serverAuthLayer,
   );
   const agentGatewayLayer = AgentGatewayLive.pipe(
+    Layer.provideMerge(VisualReplyPreviewLive),
     Layer.provideMerge(AppPresentationLive),
     Layer.provideMerge(agentGatewayCredentialsLayer),
     Layer.provideMerge(runtimeServicesLayer),

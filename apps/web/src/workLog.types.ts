@@ -1,3 +1,4 @@
+import type { VisualReply } from "@glade/contracts/orchestration/visualReply";
 import type {
   ComputerPermission,
   ComputerBuildSignature,
@@ -73,6 +74,7 @@ export interface WorkLogEntry {
   subagents?: ReadonlyArray<WorkLogSubagent>;
   subagentAction?: WorkLogSubagentAction;
   gladeThreadCreation?: WorkLogGladeThreadCreation;
+  visualReply?: VisualReply;
 
   computerControlDenied?: WorkLogComputerControlDenied;
   computerSetupRequired?: WorkLogComputerSetupRequired;

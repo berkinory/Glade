@@ -82,6 +82,18 @@ export function isGladeBrowserToolCall(input: GladeMcpToolTitleInput): boolean {
   return resolveGladeBrowserToolName([input.toolName, input.title, input.fallbackLabel]) !== null;
 }
 
+export function isGladeVisualToolCall(input: GladeMcpToolTitleInput): boolean {
+  const presentation = resolveGladeMcpToolPresentation([
+    input.toolName,
+    input.title,
+    input.fallbackLabel,
+  ]);
+  return (
+    presentation === GLADE_MCP_TOOL_PRESENTATIONS.glade_html_preview ||
+    presentation === GLADE_MCP_TOOL_PRESENTATIONS.glade_html_render
+  );
+}
+
 export function deriveGladeMcpToolTitle(input: GladeMcpToolTitleInput): string | null {
   const presentation = resolveGladeMcpToolPresentation([
     input.toolName,

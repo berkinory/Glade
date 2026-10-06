@@ -24,6 +24,7 @@ import {
   BlocksIcon,
   ComputerTerminal01Icon,
   Image01Icon,
+  ChartAreaIcon,
 } from "~/lib/icons";
 import type { IconComponent } from "~/lib/iconComponent";
 import { ProviderTransitionDivider } from "./ProviderTransitionDivider";
@@ -69,6 +70,7 @@ import {
   deriveGladeMcpToolTitle,
   isGenericToolTitle,
   isGladeBrowserToolCall,
+  isGladeVisualToolCall,
   sanitizeGladeMcpToolPreview,
   type GladeMcpToolStatus,
 } from "../../lib/toolCallLabel.descriptors";
@@ -232,6 +234,7 @@ export function workEntryLeftIcon(
   workEntry: TimelineWorkEntry,
   classification = classifyWorkEntryTool(workEntry),
 ): IconComponent {
+  if (classification.isVisual) return ChartAreaIcon;
   if (classification.isComputer) return MousePointer01Icon;
   if (classification.mcpIcon) return classification.mcpIcon;
   if (classification.isGladeBrowser) return Globe02Icon;
@@ -262,6 +265,7 @@ function classifyWorkEntryTool(workEntry: TimelineWorkEntry) {
     mcpIcon,
     isGitHub: mcpIcon === GitHubIcon,
     isGladeBrowser: isGladeBrowserToolCall(titleInput),
+    isVisual: isGladeVisualToolCall(titleInput),
     gladeTitle: deriveGladeMcpToolTitle(titleInput),
   };
 }

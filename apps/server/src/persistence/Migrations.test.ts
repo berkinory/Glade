@@ -1,4 +1,5 @@
 import MessageAttribution from "./Migrations/004_MessageAttribution";
+import VisualReplyAttachments from "./Migrations/006_VisualReplyAttachments";
 import { assert, it } from "@effect/vitest";
 import { Effect } from "effect";
 import { describe } from "vitest";
@@ -11,6 +12,32 @@ import { MigrationLineageUnsupportedError, MigrationSchemaTooNewError } from "./
 import * as NodeSqliteClient from "./NodeSqliteClient.ts";
 
 describe("baseline migrations", () => {
+  it.effect("adds visual reply ownership without changing existing attachment rows", () =>
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      yield* Baseline;
+      yield* sql`INSERT INTO managed_attachment_blobs (
+        attachment_id, owner_thread_id, owner_kind, owner_id, kind, original_name,
+        mime_type, reserved_bytes, size_bytes, sha256, relative_path, state, claim_command_id, claim_message_id, claimed_at, created_at, updated_at
+      ) VALUES ('existing', 'thread', 'session', 'owner', 'file', 'kept.txt',
+        'text/plain', 4, 4, ${"a".repeat(64)}, 'objects/kept.txt', 'claimed', 'cmd', 'msg', '2026-10-01', '2026-10-01', '2026-10-01')`;
+      yield* VisualReplyAttachments;
+      yield* VisualReplyAttachments;
+      assert.deepStrictEqual(
+        yield* sql`SELECT attachment_id, original_name, size_bytes, state, purpose FROM managed_attachment_blobs`,
+        [
+          {
+            attachment_id: "existing",
+            original_name: "kept.txt",
+            size_bytes: 4,
+            state: "claimed",
+            purpose: null,
+          },
+        ],
+      );
+    }).pipe(Effect.provide(NodeSqliteClient.layerMemory())),
+  );
+
   it.effect("creates a fresh database and applies migrations after the baseline", () =>
     Effect.gen(function* () {
       const sql = yield* SqlClient.SqlClient;

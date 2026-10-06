@@ -1,3 +1,8 @@
+import {
+  claimVisualReplyAttachments,
+  visualReplyAttachmentIds,
+} from "../../visualReplies/visualReplyAttachments";
+import { VISUAL_REPLY_ACTIVITY_KIND } from "@glade/contracts/orchestration/visualReply";
 import type { ChatAttachment } from "@glade/contracts/orchestration/threadEntities";
 import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import type { OrchestrationReadModel } from "@glade/contracts/orchestration/snapshots";
@@ -281,11 +286,23 @@ const makeOrchestrationEngine = Effect.gen(function* () {
     principal: ManagedAttachmentPrincipal,
   ): Effect.Effect<void, OrchestrationCommandPreviouslyRejectedError | PersistenceSqlError> =>
     Effect.gen(function* () {
-      if (command.type !== "thread.turn.start") return;
-      const requestedIds = command.message.attachments
-        .filter((attachment) => attachment.type === "image" || attachment.type === "file")
-        .map((attachment) => attachment.id)
-        .toSorted();
+      const visualCommand =
+        command.type === "thread.activity.append" &&
+        command.activity.kind === VISUAL_REPLY_ACTIVITY_KIND
+          ? command
+          : null;
+      if (command.type !== "thread.turn.start" && !visualCommand) return;
+      const requestedIds = (
+        command.type === "thread.turn.start"
+          ? command.message.attachments
+              .filter((attachment) => attachment.type === "image" || attachment.type === "file")
+              .map((attachment) => attachment.id)
+          : visualReplyAttachmentIds(visualCommand!.activity.payload)
+      ).toSorted();
+      const claimMessageId =
+        command.type === "thread.turn.start"
+          ? command.message.messageId
+          : visualCommand!.activity.id;
       const claimed = yield* Effect.forEach(
         requestedIds,
         (attachmentId) => managedAttachments.findClaimedById({ attachmentId }),
@@ -298,10 +315,11 @@ const makeOrchestrationEngine = Effect.gen(function* () {
         requestedIds.length === claimedAttachments.length &&
         claimedAttachments.every(
           (attachment) =>
-            attachment.ownerThreadId === command.threadId &&
+            attachment.ownerThreadId ===
+              (command.type === "thread.turn.start" ? command.threadId : visualCommand!.threadId) &&
             attachment.ownerKind === principal.ownerKind &&
             attachment.ownerId === principal.ownerId &&
-            attachment.claimMessageId === command.message.messageId,
+            attachment.claimMessageId === claimMessageId,
         );
       if (!exactIdentity) {
         return yield* new OrchestrationCommandPreviouslyRejectedError({
@@ -924,6 +942,13 @@ const makeOrchestrationEngine = Effect.gen(function* () {
         OrchestrationDispatchError,
         never
       > = Effect.gen(function* () {
+        if (command.type === "thread.activity.append") {
+          yield* claimVisualReplyAttachments({
+            command,
+            principal: envelope.attachmentPrincipal,
+            repository: managedAttachments,
+          });
+        }
         const committedEvents: OrchestrationEvent[] = [];
         const deferredSettledSequences = new Set<number>();
         let nextCommandReadModel = commandReadModel;

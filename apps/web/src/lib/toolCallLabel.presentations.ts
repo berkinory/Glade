@@ -155,6 +155,16 @@ function presentComputerTool(present: string, past: string): GladeMcpToolPresent
 }
 
 export const GLADE_MCP_TOOL_PRESENTATIONS = {
+  glade_html_preview: {
+    running: "Previewing visual",
+    completed: "Previewed visual",
+    failed: "Couldn't preview visual",
+  },
+  glade_html_render: {
+    running: "Creating visual",
+    completed: "Created visual",
+    failed: "Couldn't create visual",
+  },
   glade_context: {
     running: "Glade is checking its context",
     completed: "Glade checked its context",
@@ -290,6 +300,9 @@ export const GLADE_MCP_TOOL_PRESENTATION_ENTRIES = Object.entries(GLADE_MCP_TOOL
 );
 
 export function extractGladeMcpToolName(normalizedCandidate: string): string | null {
+  if (normalizedCandidate === "html_preview" || normalizedCandidate === "html_render") {
+    return `glade_${normalizedCandidate}`;
+  }
   if (BROWSER_TOOL_NAME_SET.has(normalizedCandidate)) {
     return `glade_${normalizedCandidate}`;
   }

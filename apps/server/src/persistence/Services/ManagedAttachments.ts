@@ -11,6 +11,7 @@ export interface ManagedAttachmentBlob {
   readonly ownerKind: string;
   readonly ownerId: string;
   readonly kind: string;
+  readonly purpose: "visual-reply" | "visual-reply-preview" | null;
   readonly originalName: string;
   readonly mimeType: string;
   readonly reservedBytes: number;
@@ -98,6 +99,7 @@ export interface ManagedAttachmentRepositoryShape {
     readonly ownerKind: string;
     readonly ownerId: string;
     readonly kind: string;
+    readonly purpose?: "visual-reply" | "visual-reply-preview";
     readonly originalName: string;
     readonly mimeType: string;
     readonly reservedBytes: number;

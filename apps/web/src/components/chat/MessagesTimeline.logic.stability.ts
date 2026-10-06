@@ -208,6 +208,15 @@ function isRowUnchanged(a: MessagesTimelineRow, b: MessagesTimelineRow): boolean
   if (a.kind !== b.kind || a.id !== b.id) return false;
 
   switch (a.kind) {
+    case "visual-reply": {
+      const visual = b as typeof a;
+      return (
+        a.createdAt === visual.createdAt &&
+        a.reply.attachmentId === visual.reply.attachmentId &&
+        a.reply.previewAttachmentId === visual.reply.previewAttachmentId &&
+        a.reply.title === visual.reply.title
+      );
+    }
     case "working":
       return true;
 

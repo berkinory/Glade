@@ -1,3 +1,6 @@
+import { makeVisualReplyTools } from "../visualReplyTools";
+import { VisualReplyPreview } from "../../visualReplies/Services/VisualReplyPreview";
+import { ManagedAttachmentRepository } from "../../persistence/Services/ManagedAttachments";
 import { FileSystem, Path } from "effect";
 import { AppPresentation } from "../Services/AppPresentation";
 import { CheckpointDiffQuery } from "../../checkpointing/Services/CheckpointDiffQuery";
@@ -96,6 +99,8 @@ const AGENT_GATEWAY_INSTRUCTIONS =
   "Glade tools operate under this session's thread identity and capabilities. Use the provider-delivered <glade_host_context> for host policy and each tool's description for its inputs, effects and recovery rules. Use browser_* only for Glade's shared in-app browser runtime.";
 
 const makeAgentGateway = Effect.gen(function* () {
+  const visualPreview = yield* VisualReplyPreview;
+  const managedAttachments = yield* ManagedAttachmentRepository;
   const diffs = yield* CheckpointDiffQuery;
   const presentation = yield* AppPresentation;
   const fs = yield* FileSystem.FileSystem;
@@ -880,6 +885,13 @@ const makeAgentGateway = Effect.gen(function* () {
       : [];
 
   const tools: ReadonlyArray<ToolEntry> = [
+    ...makeVisualReplyTools({
+      preview: visualPreview,
+      snapshots: snapshotQuery,
+      engine: orchestrationEngine,
+      attachments: managedAttachments,
+      config: serverConfig,
+    }),
     ...readTools,
     ...makeThreadDiffTools(diffs, snapshotQuery),
     makeForkThreadTool(orchestrationEngine, snapshotQuery, eventStore),

@@ -294,6 +294,12 @@ export function createMainWindow({
       Menu.buildFromTemplate(menuTemplate).popup({ window });
     });
 
+    // Generated srcdoc visuals may run scripts, but cannot navigate into the authenticated app
+    // or issue navigation requests outside their opaque sandbox.
+    window.webContents.on("will-frame-navigate", (event) => {
+      if (!event.isMainFrame && event.frame?.url.startsWith("about:srcdoc")) event.preventDefault();
+    });
+
     window.webContents.setWindowOpenHandler(({ url }) => {
       const externalUrl = getSafeExternalUrl(url);
       if (externalUrl) {

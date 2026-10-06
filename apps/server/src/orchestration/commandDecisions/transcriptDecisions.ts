@@ -1,3 +1,4 @@
+import { VISUAL_REPLY_ACTIVITY_KIND } from "@glade/contracts/orchestration/visualReply";
 import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import { Effect } from "effect";
 import { requireThread, requireThreadNotArchived } from "../commandInvariants.ts";
@@ -205,12 +206,26 @@ export function decideTranscriptCommand({
             ];
       }
       case "thread.activity.append": {
-        yield* (command.requireUnarchived ? requireThreadNotArchived : requireThread)({
+        const thread = yield* (
+          command.requireUnarchived ? requireThreadNotArchived : requireThread
+        )({
           readModel,
           command,
           threadId: command.threadId,
         });
         const activity = command.activity;
+        if (
+          activity.kind === VISUAL_REPLY_ACTIVITY_KIND &&
+          (thread.archivedAt !== null ||
+            activity.turnId === null ||
+            thread.session?.activeTurnId !== activity.turnId ||
+            thread.session.status !== "running")
+        ) {
+          return yield* new OrchestrationCommandInvariantError({
+            commandType: command.type,
+            detail: "Visual replies require the caller's active turn in an unarchived thread.",
+          });
+        }
         const requestId =
           typeof activity.payload === "object" &&
           activity.payload !== null &&

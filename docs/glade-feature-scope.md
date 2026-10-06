@@ -171,3 +171,45 @@ Audit implementation, registration, contracts, startup, background work, UI, sea
 onboarding, assets, dependencies, docs and release scripts together.
 Verify retained functionality as well as removals. Use the actual Dev launcher for
 icon checks; build and verify signed artifacts from the final source snapshot.
+
+## Visual replies
+
+Agents can publish self-contained HTML with `html_render`, independently of browser
+automation. A reply belongs to its active turn, survives reloads and projection
+rebuilds, and is removed with its turn or conversation. HTML and optional PNG previews
+use managed attachment quotas and cleanup. Activity history caps preserve visual
+reply references. The authenticated source endpoint serves plain text; generic HTML
+attachments download with a restrictive sandbox policy.
+
+Cards support syntax-highlighted source viewing, saving, expansion and collapse.
+Visuals run their local scripts immediately in an opaque iframe with no same-origin
+access, popups, form submission, downloads or host bridge. Source and visual views
+keep a fixed viewport with internal scrolling. View and expanded modes render the
+original HTML at display resolution in the application theme; PNG previews are for
+agent validation. Script failures are displayed in the card. Interactive controls
+must be present in the generated HTML; the host does not turn every label into an
+editor. State stays in memory: localStorage, sessionStorage and IndexedDB are not
+available in the opaque sandbox.
+
+CSP blocks network subresources and embedded frames; desktop navigation guards
+prevent the frame leaving its document. Web clients remove a frame after unexpected
+navigation, but iframe CSP is not a network firewall for self-navigation. Hidden
+cards unmount their frames and lose transient interactive state. Cards follow
+application colors and typography.
+
+`html_preview` optionally captures a screenshot and bounded console output in a
+separate, sandboxed headless Chrome process. First use downloads pinned Chrome for
+Testing to the server's private tools cache. Preview admits one request at a time,
+blocks network requests with interception and a dead-end proxy, denies downloads,
+uses a temporary profile, limits rendering to 20 seconds, and closes the process
+after each request. Publishing and displaying a reply do not launch this browser.
+
+Inputs accept exactly one inline HTML string or workspace file, up to 2 MiB.
+Inline HTML also works in chats without a ready workspace; file inputs and local images require one.
+Local PNG, JPEG, GIF and WebP images are embedded after canonical workspace containment
+and byte checks, up to 8 MiB total; prepared documents are limited to 16 MiB. Inline
+SVG is supported. Scripts and styles must be inline; CDNs and external stylesheets
+are unsupported. Theme variables are `--glade-background`, `--glade-foreground`,
+`--glade-muted`, `--glade-accent`, `--glade-border`, `--glade-font-family` and
+`--glade-font-size`. A preview can be retained only with the unchanged source and
+within its originating provider session.

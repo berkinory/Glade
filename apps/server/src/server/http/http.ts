@@ -1,3 +1,4 @@
+import { visualReplyRouteLayer } from "../../visualReplies/visualReplyRoute";
 import { providerAuthenticationRouteLayer } from "./providerAuthenticationRoute";
 import type { ServerReadiness } from "../readiness";
 import { type ServerShutdownController } from "../lifecycle/serverShutdown";
@@ -27,6 +28,7 @@ export function makeEffectHttpRouteLayer(
     providerAuthenticationRouteLayer,
     projectFaviconEffectRouteLayer,
     threadExportEffectRouteLayer,
+    visualReplyRouteLayer,
     siteFaviconEffectRouteLayer,
     editorIconEffectRouteLayer,
     localImageEffectRouteLayer,

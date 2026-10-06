@@ -1,3 +1,6 @@
+import { VisualReplyPreviewLive } from "../../visualReplies/Layers/VisualReplyPreview";
+import { ManagedAttachmentRepositoryLive } from "../../persistence/Layers/ManagedAttachments";
+import { SqlitePersistenceMemory } from "../../persistence/Layers/Sqlite";
 import { AgentGatewayDiscovery } from "../Services/AgentGatewayDiscovery";
 import { AppPresentationLive } from "./AppPresentation";
 import { CheckpointDiffQuery } from "../../checkpointing/Services/CheckpointDiffQuery";
@@ -1030,6 +1033,8 @@ function makeHarnessLayer(
   const unavailable = () =>
     Effect.die(new Error("This fixture does not exercise the new tool boundary."));
   const gatewayLayer = AgentGatewayLive.pipe(
+    Layer.provide(VisualReplyPreviewLive),
+    Layer.provide(ManagedAttachmentRepositoryLive.pipe(Layer.provide(SqlitePersistenceMemory))),
     Layer.provide(
       Layer.mergeAll(
         AppPresentationLive,

@@ -1,3 +1,4 @@
+import { VISUAL_REPLY_ACTIVITY_KIND } from "@glade/contracts/orchestration/visualReply";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import type * as SqlStatement from "effect/unstable/sql/Statement";
 import type * as SqlConnection from "effect/unstable/sql/SqlConnection";
@@ -77,6 +78,7 @@ export function makeSnapshotHistoryQueries(input: {
         ) AS ranks
         JOIN projection_thread_activities AS ranked USING (thread_id, activity_id)
         WHERE activity_rank <= ${MAX_SNAPSHOT_THREAD_ACTIVITIES}
+          OR kind = ${VISUAL_REPLY_ACTIVITY_KIND}
           OR (
             kind IN ('approval.requested', 'user-input.requested')
             AND json_extract(payload_json, '$.requestId') IS NOT NULL
@@ -377,6 +379,7 @@ export function makeSnapshotHistoryQueries(input: {
                 AND (SELECT has_newer_turn FROM cutoff_turn_state)
               )
             )
+            OR activity.kind = ${VISUAL_REPLY_ACTIVITY_KIND}
             OR (
               kind IN ('approval.requested', 'user-input.requested')
               AND json_extract(payload_json, '$.requestId') IS NOT NULL

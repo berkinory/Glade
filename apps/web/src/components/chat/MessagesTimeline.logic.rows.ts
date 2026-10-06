@@ -88,6 +88,16 @@ export function deriveMessagesTimelineRows(input: {
       continue;
     }
 
+    if (timelineEntry.kind === "work" && timelineEntry.entry.visualReply) {
+      flushPendingWorkGroup();
+      nextRows.push({
+        kind: "visual-reply",
+        id: timelineEntry.entry.id,
+        createdAt: timelineEntry.createdAt,
+        reply: timelineEntry.entry.visualReply,
+      });
+      continue;
+    }
     if (timelineEntry.kind === "work") {
       if (
         ["response.started", "provider.transition"].includes(timelineEntry.entry.activityKind ?? "")
@@ -108,6 +118,7 @@ export function deriveMessagesTimelineRows(input: {
         if (
           !nextEntry ||
           nextEntry.kind !== "work" ||
+          nextEntry.entry.visualReply !== undefined ||
           ["response.started", "provider.transition"].includes(nextEntry.entry.activityKind ?? "")
         )
           break;
@@ -305,6 +316,7 @@ function collapseSettledTurns(
     const foldIndices: number[] = [];
     for (let scan = pass - 1; scan >= 0; scan -= 1) {
       const prev = rows[scan]!;
+      if (prev.kind === "visual-reply") continue;
       if (prev.kind === "work") {
         if (
           prev.groupedEntries.some((entry) =>

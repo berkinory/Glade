@@ -152,6 +152,18 @@ export const attachmentsEffectRouteLayer = HttpRouter.add(
       headers: {
         "Cache-Control": "private, no-store",
         Pragma: "no-cache",
+        ...(filePath.toLowerCase().endsWith(".html") ||
+        (Option.isSome(managedBlob) && managedBlob.value.mimeType === "text/html")
+          ? {
+              "Content-Security-Policy": "sandbox; default-src 'none'",
+              "X-Content-Type-Options": "nosniff",
+              "Content-Disposition": downloadDisposition(
+                Option.isSome(managedBlob)
+                  ? managedBlob.value.originalName
+                  : nodePath.basename(filePath),
+              ),
+            }
+          : {}),
       },
     });
   }).pipe(Effect.catchTag("AuthError", (error) => Effect.succeed(authErrorResponse(error)))),

@@ -1,3 +1,4 @@
+import { VISUAL_REPLY_ACTIVITY_KIND } from "@glade/contracts/orchestration/visualReply";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import type { OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
 import { isStalePendingRequestFailureDetail } from "./lib/pendingInteraction";
@@ -219,6 +220,7 @@ export function capThreadActivities<TActivity extends Thread["activities"][numbe
   const retainedIds = new Set(activities.slice(dropCount).map((activity) => activity.id));
   const pendingRequestIds = pendingInteractionRequestIds(activities);
   for (const activity of activities) {
+    if (activity.kind === VISUAL_REPLY_ACTIVITY_KIND) retainedIds.add(activity.id);
     const requestId = activityRequestId(activity);
     if (
       requestId !== null &&

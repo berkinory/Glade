@@ -6,6 +6,9 @@ await loadClaudeAgentSdk();
 await import("open");
 await import("node-pty");
 await import("@xterm/headless");
+await import("parse5");
+await import("puppeteer-core");
+await import("@puppeteer/browsers");
 
 const parsePatchFiles = await import("@pierre/diffs").then((module) => module.parsePatchFiles);
 const patches = parsePatchFiles(

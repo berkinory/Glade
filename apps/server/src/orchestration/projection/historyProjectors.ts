@@ -1,3 +1,6 @@
+import { ManagedAttachmentRepository } from "../../persistence/Services/ManagedAttachments";
+import { visualReplyAttachmentIds } from "../../visualReplies/visualReplyAttachments";
+import { VISUAL_REPLY_ACTIVITY_KIND } from "@glade/contracts/orchestration/visualReply";
 import type { ServiceMap } from "effect";
 
 import { ProjectionTurnRepository } from "../../persistence/Services/ProjectionTurns.ts";
@@ -13,6 +16,7 @@ import {
 } from "./historyPruning";
 
 export function makeHistoryProjectors(input: {
+  readonly managedAttachments: ServiceMap.Service.Shape<typeof ManagedAttachmentRepository>;
   readonly projectionTurnRepository: ServiceMap.Service.Shape<typeof ProjectionTurnRepository>;
   readonly projectionThreadActivityRepository: ServiceMap.Service.Shape<
     typeof ProjectionThreadActivityRepository
@@ -23,6 +27,7 @@ export function makeHistoryProjectors(input: {
   readonly projectionThreadRepository: ServiceMap.Service.Shape<typeof ProjectionThreadRepository>;
 }) {
   const {
+    managedAttachments,
     projectionTurnRepository,
     projectionThreadActivityRepository,
     projectionThreadSessionRepository,
@@ -74,6 +79,18 @@ export function makeHistoryProjectors(input: {
           if (keptRows.length === existingRows.length) {
             return;
           }
+          const retainedIds = new Set(keptRows.map((row) => row.activityId));
+          const removedAttachmentIds = existingRows
+            .filter(
+              (row) => !retainedIds.has(row.activityId) && row.kind === VISUAL_REPLY_ACTIVITY_KIND,
+            )
+            .flatMap((row) => visualReplyAttachmentIds(row.payload));
+          yield* managedAttachments.markCleanupByIds({
+            attachmentIds: removedAttachmentIds,
+            ownerThreadId: event.payload.threadId,
+            reason: "visual-reply-pruned",
+            requestedAt: event.occurredAt,
+          });
           yield* projectionThreadActivityRepository.deleteByThreadId({
             threadId: event.payload.threadId,
           });

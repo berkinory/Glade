@@ -78,6 +78,7 @@ function extensionFor(input: {
 
 export function reserveManagedAttachmentUpload(input: {
   readonly type: "image" | "file";
+  readonly purpose?: "visual-reply" | "visual-reply-preview";
   readonly threadId: string;
   readonly name: string;
   readonly mimeType: string;
@@ -107,6 +108,7 @@ export function reserveManagedAttachmentUpload(input: {
       ownerKind: input.principal.ownerKind,
       ownerId: input.principal.ownerId,
       kind: input.type,
+      ...(input.purpose ? { purpose: input.purpose } : {}),
       originalName: metadata.name,
       mimeType: metadata.mimeType,
       reservedBytes: input.reservedBytes,
@@ -260,7 +262,7 @@ export function persistReservedManagedAttachment(input: {
       );
     }
     return {
-      type: finalized.attachment.kind as "image" | "file",
+      type: finalized.attachment.kind === "image" ? "image" : "file",
       id: finalized.attachment.attachmentId,
       name: finalized.attachment.originalName,
       mimeType: finalized.attachment.mimeType,

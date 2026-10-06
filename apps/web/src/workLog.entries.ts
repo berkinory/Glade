@@ -1,3 +1,7 @@
+import {
+  VisualReply,
+  VISUAL_REPLY_ACTIVITY_KIND,
+} from "@glade/contracts/orchestration/visualReply";
 import { Schema, Option } from "effect";
 import { CommandId, ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { HandoffTransitionStage } from "@glade/contracts/orchestration/threadEntities";
@@ -373,6 +377,10 @@ function normalizeWorkLogActivity(activity: OrchestrationThreadActivity): Derive
     ...(toolCallId ? { toolCallId } : {}),
     ...(toolStatus ? { toolStatus } : {}),
   };
+  if (activity.kind === VISUAL_REPLY_ACTIVITY_KIND) {
+    const reply = Schema.decodeUnknownOption(VisualReply)(activity.payload);
+    if (Option.isSome(reply)) entry.visualReply = reply.value;
+  }
   if (activity.kind === "provider.transition") {
     const transition = Option.getOrUndefined(
       Option.orElse(decodeTransitionSummary(payload), () =>

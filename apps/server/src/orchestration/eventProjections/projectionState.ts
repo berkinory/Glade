@@ -1,3 +1,4 @@
+import { VISUAL_REPLY_ACTIVITY_KIND } from "@glade/contracts/orchestration/visualReply";
 import { OrchestrationThread } from "@glade/contracts/orchestration/threadEntities";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { Schema, Effect } from "effect";
@@ -60,13 +61,19 @@ function upsertThreadActivity(
   activity: OrchestrationThread["activities"][number],
   historyLimit: number,
 ): ReadonlyArray<OrchestrationThread["activities"][number]> {
+  const cap = (next: ReadonlyArray<OrchestrationThread["activities"][number]>) => {
+    const cutoff = next.length - historyLimit;
+    return next.filter(
+      (entry, index) => index >= cutoff || entry.kind === VISUAL_REPLY_ACTIVITY_KIND,
+    );
+  };
   const existingIndex = activities.findIndex((entry) => entry.id === activity.id);
   if (activity.kind === "provider.transition" && existingIndex >= 0)
     activity = { ...activity, sequence: activities[existingIndex]!.sequence };
   if (existingIndex >= 0 && compareThreadActivities(activities[existingIndex]!, activity) === 0) {
     const next = [...activities];
     next[existingIndex] = activity;
-    return next.slice(-historyLimit);
+    return cap(next);
   }
 
   const withoutExisting =
@@ -75,7 +82,7 @@ function upsertThreadActivity(
       : [...activities.slice(0, existingIndex), ...activities.slice(existingIndex + 1)];
   const last = withoutExisting.at(-1);
   if (!last || compareThreadActivities(last, activity) <= 0) {
-    return [...withoutExisting, activity].slice(-historyLimit);
+    return cap([...withoutExisting, activity]);
   }
 
   let low = 0;
@@ -88,9 +95,7 @@ function upsertThreadActivity(
       high = middle;
     }
   }
-  return [...withoutExisting.slice(0, low), activity, ...withoutExisting.slice(low)].slice(
-    -historyLimit,
-  );
+  return cap([...withoutExisting.slice(0, low), activity, ...withoutExisting.slice(low)]);
 }
 
 export type ProjectionEffect = Effect.Effect<

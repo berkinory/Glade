@@ -4,6 +4,8 @@
 
 ### New
 
+- Agents can publish interactive charts, diagrams and HTML visuals in chat, with app themes, highlighted source, saving, expansion and optional screenshot previews.
+
 - Move between tabs in the current conversation workspace with configurable keyboard shortcuts.
 
 - Continue with another provider in the same chat, with a persistent record of each transition.

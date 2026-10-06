@@ -21,6 +21,7 @@ const blobColumns = (sql: SqlClient.SqlClient) => sql`
   owner_kind AS "ownerKind",
   owner_id AS "ownerId",
   kind,
+  purpose,
   original_name AS "originalName",
   mime_type AS "mimeType",
   reserved_bytes AS "reservedBytes",
@@ -48,7 +49,7 @@ const makeRepository = (limits: ManagedAttachmentLimits) =>
         const inserted = yield* sql<ManagedAttachmentBlob>`
           INSERT INTO managed_attachment_blobs (
             attachment_id, owner_thread_id, owner_kind, owner_id,
-            kind, original_name, mime_type, reserved_bytes, size_bytes, sha256,
+            kind, purpose, original_name, mime_type, reserved_bytes, size_bytes, sha256,
             relative_path, state, staging_expires_at,
             claim_command_id, claim_message_id, claimed_at,
             delete_reason, delete_requested_at, deleted_at,
@@ -56,7 +57,7 @@ const makeRepository = (limits: ManagedAttachmentLimits) =>
           )
           SELECT
             ${input.attachmentId}, ${input.ownerThreadId}, ${input.ownerKind}, ${input.ownerId},
-            ${input.kind}, ${input.originalName}, ${input.mimeType}, ${input.reservedBytes}, NULL, NULL,
+            ${input.kind}, ${input.purpose ?? null}, ${input.originalName}, ${input.mimeType}, ${input.reservedBytes}, NULL, NULL,
             ${input.relativePath}, 'uploading', NULL,
             NULL, NULL, NULL,
             NULL, NULL, NULL,
@@ -364,6 +365,7 @@ const makeRepository = (limits: ManagedAttachmentLimits) =>
         return attachmentIds;
       }).pipe(Effect.mapError(toPersistenceSqlError("ManagedAttachment.markCleanupByThread")));
 
+    // Visual replies are owned by activity projections, which prune their blobs separately.
     const markUnreferencedClaimedForCleanup: ManagedAttachmentRepositoryShape["markUnreferencedClaimedForCleanup"] =
       (input) => {
         const retainedAttachmentIds = [...new Set(input.retainedAttachmentIds)];
@@ -378,6 +380,7 @@ const makeRepository = (limits: ManagedAttachmentLimits) =>
                     updated_at = ${input.requestedAt}
                 WHERE owner_thread_id = ${input.ownerThreadId}
                   AND state = 'claimed'
+                  AND purpose IS NULL
                 RETURNING attachment_id AS "attachmentId"
               `
               : yield* sql<{ readonly attachmentId: string }>`
@@ -388,6 +391,7 @@ const makeRepository = (limits: ManagedAttachmentLimits) =>
                     updated_at = ${input.requestedAt}
                 WHERE owner_thread_id = ${input.ownerThreadId}
                   AND state = 'claimed'
+                  AND purpose IS NULL
                   AND attachment_id NOT IN ${sql.in(retainedAttachmentIds)}
                 RETURNING attachment_id AS "attachmentId"
               `;

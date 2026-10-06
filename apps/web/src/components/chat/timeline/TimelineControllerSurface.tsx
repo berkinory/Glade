@@ -1,3 +1,4 @@
+import { VisualReplyCard } from "~/components/visual-replies/VisualReplyCard";
 import { Spinner } from "~/components/ui/spinner";
 import { LegendList } from "@legendapp/list/react";
 import {
@@ -117,6 +118,7 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
       }
     >
       {forkDividerBeforeRowId === row.id ? forkSourceDivider : null}
+      {row.kind === "visual-reply" && <VisualReplyCard reply={row.reply} activityId={row.id} />}
       {row.kind === "work" &&
         (() => {
           const groupId = row.id;

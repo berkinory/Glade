@@ -1,3 +1,4 @@
+import type { VisualReply } from "@glade/contracts/orchestration/visualReply";
 import type { MessageId, TurnId } from "@glade/contracts/core/baseSchemas";
 import type { WorkLogEntry } from "../../workLog.types";
 import { normalizeCompactToolLabel as normalizeCompactToolLabelValue } from "../../lib/toolCallLabel.presentations";
@@ -172,6 +173,7 @@ interface TimelineDiffMessage {
 }
 
 export type MessagesTimelineRow =
+  | { kind: "visual-reply"; id: string; createdAt: string; reply: VisualReply }
   | {
       kind: "work";
       id: string;
