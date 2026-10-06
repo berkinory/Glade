@@ -4,7 +4,7 @@ import { ProviderUsageMenuControl } from "./ProviderUsageMenuControl";
 export function SidebarUsageIndicators() {
   const { settings } = useAppSettings();
   return (
-    <div className="flex items-center gap-1 empty:hidden">
+    <div className="flex shrink-0 items-center gap-0.5 empty:hidden">
       {settings.sidebarUsageProviders
         .filter((provider) => !settings.disabledProviders.includes(provider))
         .map((provider) => (

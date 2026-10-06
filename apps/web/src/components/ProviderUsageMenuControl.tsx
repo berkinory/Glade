@@ -181,30 +181,30 @@ export function ProviderUsageMenuControl({
             <button
               type="button"
               aria-label={`${model.menuTitle}. ${description}`}
-              className="relative flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="relative flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           }
         >
-          <svg viewBox="0 0 36 36" className="absolute inset-0 size-9 -rotate-90" aria-hidden>
+          <svg viewBox="0 0 36 36" className="absolute inset-0 size-6 -rotate-90" aria-hidden>
             {rows.map(({ duration, row }, index) => (
               <g key={duration}>
                 <circle
                   cx="18"
                   cy="18"
-                  r={index === 0 ? 16 : 12}
+                  r={index === 0 ? 16.5 : 11.5}
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth="2"
+                  strokeWidth="3"
                   opacity="0.15"
                 />
                 <circle
                   cx="18"
                   cy="18"
-                  r={index === 0 ? 16 : 12}
+                  r={index === 0 ? 16.5 : 11.5}
                   fill="none"
                   pathLength="100"
                   stroke="currentColor"
-                  strokeWidth="2"
+                  strokeWidth="3"
                   strokeDasharray={`${row.remainingPercent} 100`}
                   className={
                     row.remainingPercent <= 10
@@ -217,7 +217,7 @@ export function ProviderUsageMenuControl({
               </g>
             ))}
           </svg>
-          <ProviderIcon provider={provider} className="size-3.5" />
+          <ProviderIcon provider={provider} className="size-2.5" />
         </MenuTrigger>
       </ProviderUsageMenuPopup>
     );

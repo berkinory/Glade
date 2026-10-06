@@ -573,7 +573,6 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
       </SidebarContent>
 
       <SidebarFooter className={cn("gap-2 border-sidebar-border border-t p-2 font-system-ui")}>
-        <SidebarUsageIndicators />
         <SidebarMenu>
           <SidebarMenuItem>
             <div className="flex flex-col gap-1">
@@ -604,6 +603,7 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
                     <span>Settings</span>
                   </SidebarMenuButton>
                 )}
+                <SidebarUsageIndicators />
                 {showDesktopUpdateButton ? (
                   <Tooltip>
                     <TooltipTrigger
