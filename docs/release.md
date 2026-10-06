@@ -91,6 +91,16 @@ The local keychain does not transfer to GitHub runners. Missing Apple secrets st
 4. Commit the reviewed source on `main` and push it to `origin`. Wait for exact-commit CI and warm the Cua release cache before tagging that commit `vX.Y.Z` and pushing the tag. Do not push inherited upstream tags.
 5. Verify the GitHub Release notes link all four installers and list their SHA-256 checksums. The ten assets are four installers, two macOS update ZIPs, three platform update manifests, and the Windows blockmap. Verify both Homebrew architecture checksums.
 
+## Recovering 0.2.0
+
+`release-recover-020.yml` repairs the interrupted 0.2.0 publication without rebuilding successful
+platforms. It verifies the original tag and exact-commit CI, rebuilds only Windows x64 and macOS
+x64 from that unchanged tag, and reuses macOS arm64 and Linux artifacts from run `37447536901`.
+The Windows qualification script comes from the recovery workflow commit and runs outside the
+release checkout; packaged source and provenance still identify the original tag. All four
+artifacts pass the usual assembly verification before publication. Platform failures no longer
+cancel sibling builds. This recovery workflow is specific to the unpublished 0.2.0 release.
+
 ## Development and production
 
 Only Dev and Prod are supported. Dev uses blueprint artwork and an isolated profile; Prod uses production artwork and the stable update feed. See [product scope](glade-feature-scope.md).

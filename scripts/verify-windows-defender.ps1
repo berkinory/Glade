@@ -62,7 +62,8 @@ try {
       (Get-FileHash -LiteralPath $installer.FullName -Algorithm SHA256).Hash
     } else { $null }
     $report.scans += [ordered]@{ file = $installer.Name; sha256Before = $hashBefore; sha256After = $hashAfter; exitCode = $scanExitCode }
-    if ($scanExitCode -ne 0 -or $text -notmatch '(?im)^\s*Scan finished\.\s*$' -or $text -notmatch '(?im)^\s*Scan of .+ found no threats\.\s*$') {
+    $cleanScanPattern = '(?im)^\s*(?:Scanning|Scan of) ' + [regex]::Escape($installer.FullName) + ' found no threats\.\s*$'
+    if ($scanExitCode -ne 0 -or $text -notmatch '(?im)^\s*Scan finished\.\s*$' -or $text -notmatch $cleanScanPattern) {
       throw 'The exact installer scan did not provide explicit clean completion evidence.'
     }
     if ($hashAfter -ne $hashBefore) { throw 'Installer disappeared or changed during the scan.' }

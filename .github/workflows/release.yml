@@ -95,7 +95,7 @@ jobs:
     name: Build ${{ matrix.id }}
     needs: checks
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         include:
           - id: mac-arm64

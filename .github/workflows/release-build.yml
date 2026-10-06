@@ -18,6 +18,10 @@ on:
       target:
         required: true
         type: string
+      release_tag:
+        description: "Recover an existing release tag using the current qualification script"
+        type: string
+        default: ""
       publish:
         required: true
         type: boolean
@@ -53,15 +57,35 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Preserve recovery qualification script
+        if: inputs.release_tag != ''
+        shell: bash
+        run: cp scripts/verify-windows-defender.ps1 "$RUNNER_TEMP/verify-windows-defender.ps1"
+      - name: Checkout original release source
+        if: inputs.release_tag != ''
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.release_tag }}
+          fetch-depth: 0
       - name: Setup Node for provenance verification
         uses: ./.github/actions/setup-node
       - name: Verify exact source before building
         id: source
         shell: bash
+        env:
+          RECOVERY_TAG: ${{ inputs.release_tag }}
         run: |
           set -euo pipefail
           version=$(node -p 'require("./apps/desktop/package.json").version')
-          node scripts/verify-release-source-provenance.ts "$version" "v$version" "$PUBLISH_RELEASE" "$GITHUB_SHA" "$GITHUB_REF_TYPE" "$GITHUB_REF_NAME"
+          source_commit="$GITHUB_SHA"
+          ref_type="$GITHUB_REF_TYPE"
+          ref_name="$GITHUB_REF_NAME"
+          if [[ -n "$RECOVERY_TAG" ]]; then
+            source_commit=$(git rev-parse "$RECOVERY_TAG^{commit}")
+            ref_type=tag
+            ref_name="$RECOVERY_TAG"
+          fi
+          node scripts/verify-release-source-provenance.ts "$version" "v$version" "$PUBLISH_RELEASE" "$source_commit" "$ref_type" "$ref_name"
       - uses: ./.github/actions/setup-workspace
         with:
           electron: "true"
@@ -83,13 +107,14 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
           GLADE_MAC_ICON_CATALOG: ${{ github.workspace }}/assets/prod/Glade-Assets.car
           RELEASE_VERSION: ${{ steps.source.outputs.version }}
+          SOURCE_COMMIT: ${{ steps.source.outputs.source_commit }}
           SOURCE_TAG: ${{ steps.source.outputs.source_tag }}
           LOCKFILE_SHA256: ${{ steps.source.outputs.lockfile_sha256 }}
           BUILD_PLATFORM: ${{ inputs.platform }}
           BUILD_ARCH: ${{ inputs.arch }}
         run: |
           set -euo pipefail
-          args=(--output-dir release --verbose --build-version "$RELEASE_VERSION" --source-commit "$GITHUB_SHA" --lockfile-sha256 "$LOCKFILE_SHA256")
+          args=(--output-dir release --verbose --build-version "$RELEASE_VERSION" --source-commit "$SOURCE_COMMIT" --lockfile-sha256 "$LOCKFILE_SHA256")
           if [[ -n "$SOURCE_TAG" ]]; then args+=(--source-tag "$SOURCE_TAG"); fi
           case "$BUILD_PLATFORM" in
             mac)
@@ -120,6 +145,7 @@ jobs:
           BUILD_ARCH: ${{ inputs.arch }}
           BUILD_TARGET: ${{ inputs.target }}
           RELEASE_VERSION: ${{ steps.source.outputs.version }}
+          SOURCE_COMMIT: ${{ steps.source.outputs.source_commit }}
           SOURCE_TAG: ${{ steps.source.outputs.source_tag }}
           LOCKFILE_SHA256: ${{ steps.source.outputs.lockfile_sha256 }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -145,7 +171,7 @@ jobs:
           node scripts/write-release-artifact-provenance.ts \
             --assets-dir release-publish --platform "$BUILD_PLATFORM" --arch "$BUILD_ARCH" \
             --target "$BUILD_TARGET" --version "$RELEASE_VERSION" \
-            --source-commit "$GITHUB_SHA" --source-tag "$SOURCE_TAG" \
+            --source-commit "$SOURCE_COMMIT" --source-tag "$SOURCE_TAG" \
             --lockfile-sha256 "$LOCKFILE_SHA256" --publication "$PUBLISH_RELEASE" \
             --signed "$signed" --allow-unsigned-windows-publication true \
             --expected-mac-team-id "$APPLE_TEAM_ID"
@@ -153,7 +179,11 @@ jobs:
         if: inputs.platform == 'win'
         shell: pwsh
         timeout-minutes: 15
-        run: ./scripts/verify-windows-defender.ps1 -AssetsDirectory release-publish -EvidenceDirectory defender-evidence
+        env:
+          RECOVERY_TAG: ${{ inputs.release_tag }}
+        run: |
+          $verifier = if ($env:RECOVERY_TAG) { Join-Path $env:RUNNER_TEMP 'verify-windows-defender.ps1' } else { './scripts/verify-windows-defender.ps1' }
+          & $verifier -AssetsDirectory release-publish -EvidenceDirectory defender-evidence
       - name: Upload Defender qualification evidence
         if: always() && inputs.platform == 'win'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
