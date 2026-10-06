@@ -326,7 +326,7 @@ const makeGitHubCli = Effect.gen(function* () {
     });
     return Effect.suspend(() => {
       const paused = readOnly ? readBudget.check(identity) : null;
-      return paused ? Effect.fail(paused) : withPermit(admitted, input.priority);
+      return paused ? Effect.fail(paused) : withPermit(admitted, input.priority, "network");
     });
   };
 

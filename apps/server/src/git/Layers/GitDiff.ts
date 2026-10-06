@@ -14,9 +14,9 @@ import type { GitCoreShape, ExecuteGitResult, GitWorkingTreePatch } from "../Ser
 import { GitCommands } from "../Services/GitCommands.ts";
 import { GitStatus } from "../Services/GitStatus.ts";
 import { GitDiff } from "../Services/GitDiff.ts";
+import { withIntentToAddIndex } from "../gitIntentToAddIndex.ts";
 import {
   DEFAULT_MAX_OUTPUT_BYTES,
-  commandLabel,
   createGitCommandError,
   truncateUtf8Prefix,
 } from "./GitCommands.ts";
@@ -36,8 +36,6 @@ const UNCOMMITTED_BLAME_RESULT: GitBlameLineResult = {
 const WORKING_TREE_DIFF_TIMEOUT_MS = 15_000;
 
 const BLAME_LINE_TIMEOUT_MS = 10_000;
-
-const MAX_UNTRACKED_DIFF_CONCURRENCY = 4;
 
 interface PatchAccumulator {
   readonly chunks: string[];
@@ -92,13 +90,6 @@ function toWorkingTreePatch(accumulator: PatchAccumulator): GitWorkingTreePatch 
   };
 }
 
-function isSuccessfulNoIndexDiff(result: ExecuteGitResult): boolean {
-  // `--no-index` uses code 1 both for a normal difference and for some read errors. A produced diff
-  // record distinguishes the normal case. Stderr is not decisive because Git may emit advisory
-  // warnings (for example, line-ending conversion) alongside it.
-  return result.code === 0 || (result.code === 1 && result.stdout.length > 0);
-}
-
 const makeGitDiff = Effect.gen(function* () {
   const fileSystem = yield* FileSystem.FileSystem;
   const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
@@ -122,7 +113,14 @@ const makeGitDiff = Effect.gen(function* () {
         ...(filePath === undefined ? [] : ["--", `:(literal)${filePath}`]),
       ],
       { allowNonZeroExit: true, ...(env ? { env } : {}) },
-    ).pipe(Effect.map((result) => result.stdout.split("\0").filter((entry) => entry.length > 0)));
+    ).pipe(
+      // Embedded repositories are listed as directories; their contents are not part of this diff.
+      Effect.map((result) =>
+        result.stdout.split("\0").filter((entry) => entry.length > 0 && !entry.endsWith("/")),
+      ),
+    );
+
+  const intentToAddGit = { fileSystem, executeGit };
 
   const readUntrackedPatches = (
     cwd: string,
@@ -130,116 +128,83 @@ const makeGitDiff = Effect.gen(function* () {
     accumulator: PatchAccumulator,
     files?: ReadonlyArray<string>,
     maxOutputBytes = DEFAULT_MAX_OUTPUT_BYTES,
-  ) => {
-    if (accumulator.truncated) {
-      return Effect.succeed(toWorkingTreePatch(accumulator));
-    }
-    const resolveFiles: Effect.Effect<ReadonlyArray<string>, GitCommandError> = files
-      ? Effect.succeed(files)
-      : listUntrackedFiles(cwd, operationPrefix);
-    return resolveFiles.pipe(
-      Effect.flatMap((untrackedFiles) =>
-        Effect.gen(function* () {
-          // Sequential capture is intentional: parallel children would race for the shared budget and make
-          // the retained file prefix nondeterministic. Stop launching work as soon as the ordered prefix is
-          // full.
-          for (const filePath of untrackedFiles.toSorted()) {
-            if (accumulator.truncated) break;
-            const separatorBytes = accumulator.bytes > 0 && !accumulator.endsWithNewline ? 1 : 0;
-            const remainingBytes = maxOutputBytes - accumulator.bytes - separatorBytes;
-            if (remainingBytes <= 0) {
-              accumulator.truncated = true;
-              break;
-            }
-
-            const operation = `${operationPrefix}.untrackedPatch`;
-            const args = [
+  ) =>
+    Effect.gen(function* () {
+      if (accumulator.truncated) return toWorkingTreePatch(accumulator);
+      const untrackedFiles = files ?? (yield* listUntrackedFiles(cwd, operationPrefix));
+      if (untrackedFiles.length === 0) return toWorkingTreePatch(accumulator);
+      const separatorBytes = accumulator.bytes > 0 && !accumulator.endsWithNewline ? 1 : 0;
+      const remainingBytes = maxOutputBytes - accumulator.bytes - separatorBytes;
+      if (remainingBytes <= 0) {
+        accumulator.truncated = true;
+        return toWorkingTreePatch(accumulator);
+      }
+      const result = yield* withIntentToAddIndex(
+        intentToAddGit,
+        cwd,
+        untrackedFiles,
+        `${operationPrefix}.untrackedIndex`,
+        (env) =>
+          executeGit(
+            `${operationPrefix}.untrackedPatch`,
+            cwd,
+            [
               "diff",
-              "--no-index",
               "--patch",
               "--no-color",
+              "--no-ext-diff",
+              "--no-renames",
+              "--relative",
               "--src-prefix=a/",
               "--dst-prefix=b/",
-              "--",
-              "/dev/null",
-              filePath,
-            ];
-            const result = yield* executeGit(operation, cwd, args, {
-              allowNonZeroExit: true,
+            ],
+            {
+              env,
               timeoutMs: WORKING_TREE_DIFF_TIMEOUT_MS,
               maxOutputBytes: remainingBytes,
               outputMode: "truncate",
-            });
-            const stderr = result.stderr.trim();
-            if (!isSuccessfulNoIndexDiff(result)) {
-              return yield* createGitCommandError(
-                operation,
-                cwd,
-                args,
-                stderr.length > 0
-                  ? stderr
-                  : `${commandLabel(args)} failed: code=${result.code ?? "null"}`,
-              );
-            }
-            appendPatchSegment(
-              accumulator,
-              result.stdout,
-              result.stdoutTruncated === true,
-              maxOutputBytes,
-            );
-          }
-          return toWorkingTreePatch(accumulator);
-        }),
-      ),
-    );
-  };
+            },
+          ),
+      );
+      appendPatchSegment(
+        accumulator,
+        result.stdout,
+        result.stdoutTruncated === true,
+        maxOutputBytes,
+      );
+      return toWorkingTreePatch(accumulator);
+    });
 
+  // `--no-renames` keeps a new file from pairing with a deleted tracked one.
   const readUntrackedNumstats = (
     cwd: string,
     operationPrefix: string,
     files?: ReadonlyArray<string>,
-  ) => {
-    const resolveFiles: Effect.Effect<ReadonlyArray<string>, GitCommandError> = files
-      ? Effect.succeed(files)
-      : listUntrackedFiles(cwd, operationPrefix);
-    return resolveFiles.pipe(
-      Effect.flatMap((untrackedFiles) =>
-        Effect.forEach(
-          untrackedFiles,
-          (filePath) => {
-            const operation = `${operationPrefix}.untrackedNumstat`;
-            const args = ["diff", "--no-index", "--numstat", "-z", "--", "/dev/null", filePath];
-            return executeGit(operation, cwd, args, {
-              allowNonZeroExit: true,
-              timeoutMs: WORKING_TREE_DIFF_TIMEOUT_MS,
-            }).pipe(
-              Effect.flatMap((result) => {
-                const stderr = result.stderr.trim();
-                if (isSuccessfulNoIndexDiff(result)) {
-                  return Effect.succeed(result.stdout);
-                }
-                return Effect.fail(
-                  createGitCommandError(
-                    operation,
-                    cwd,
-                    args,
-                    stderr.length > 0
-                      ? stderr
-                      : `${commandLabel(args)} failed: code=${result.code ?? "null"}`,
-                  ),
-                );
-              }),
-            );
-          },
-          { concurrency: MAX_UNTRACKED_DIFF_CONCURRENCY },
-        ),
-      ),
-    );
-  };
+  ) =>
+    Effect.gen(function* () {
+      const untrackedFiles = files ?? (yield* listUntrackedFiles(cwd, operationPrefix));
+      if (untrackedFiles.length === 0) return "";
+      return yield* withIntentToAddIndex(
+        intentToAddGit,
+        cwd,
+        untrackedFiles,
+        `${operationPrefix}.untrackedIndex`,
+        (env) =>
+          executeGit(
+            `${operationPrefix}.untrackedNumstat`,
+            cwd,
+            ["diff", "--numstat", "-z", "--no-renames", "--no-ext-diff", "--relative"],
+            { env, timeoutMs: WORKING_TREE_DIFF_TIMEOUT_MS, maxOutputBytes: 10_000_000 },
+          ).pipe(Effect.map((result) => result.stdout)),
+      );
+    });
 
   const resolveBranchMergeBase = (cwd: string) =>
     Effect.gen(function* () {
-      const details = yield* statusDetails(cwd);
+      const details = yield* statusDetails(cwd, {
+        refreshUpstream: "background",
+        metadataOnly: true,
+      });
       const baseBranch =
         details.upstreamRef ??
         (details.branch
@@ -871,7 +836,7 @@ const makeGitDiff = Effect.gen(function* () {
                     seededGitlinks,
                   ),
                 );
-                const totals = summarizeGitNumstatOutputs([tracked, ...untracked]);
+                const totals = summarizeGitNumstatOutputs([tracked, untracked]);
                 return {
                   additions: totals.insertions,
                   deletions: totals.deletions,
@@ -905,14 +870,14 @@ const makeGitDiff = Effect.gen(function* () {
       }).pipe(Effect.map((result) => result.stdout));
       const untracked = includeUntracked
         ? yield* readUntrackedNumstats(cwd, "GitCore.readDiffStats")
-        : [];
-      const totals = summarizeGitNumstatOutputs([tracked, ...untracked]);
+        : "";
+      const totals = summarizeGitNumstatOutputs([tracked, untracked]);
       return {
         additions: totals.insertions,
         deletions: totals.deletions,
         fileCount: totals.files.length,
         ...(scope === "unstaged" && includeUntrackedFiles
-          ? { untrackedFiles: summarizeGitNumstatOutputs(untracked).files }
+          ? { untrackedFiles: summarizeGitNumstatOutputs([untracked]).files }
           : {}),
       };
     });

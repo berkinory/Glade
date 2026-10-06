@@ -25,7 +25,11 @@ import type {
   ExecuteGitResult,
   GitCoreShape,
 } from "../Services/GitCore.ts";
-import { GitCommands, type ExecuteGitOptions } from "../Services/GitCommands.ts";
+import {
+  GitCommands,
+  type ExecuteGitOptions,
+  type GitProcessLane,
+} from "../Services/GitCommands.ts";
 
 const COALESCED_READ_COMMANDS = new Set([
   "status",
@@ -39,6 +43,10 @@ const COALESCED_READ_COMMANDS = new Set([
   "show",
   "ls-files",
 ]);
+
+const NETWORK_COMMANDS = new Set(["fetch", "pull", "push", "ls-remote", "clone"]);
+
+const NETWORK_LANE_CAPACITY = 3;
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
@@ -71,6 +79,15 @@ export function truncateUtf8Prefix(value: string, maxBytes: number): string {
     prefixEnd -= 1;
   }
   return encoded.subarray(0, prefixEnd).toString("utf8");
+}
+
+function gitSubcommand(args: readonly string[]): string | undefined {
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index]!;
+    if (arg === "-c" || arg === "-C") index += 1;
+    else if (!arg.startsWith("-")) return arg;
+  }
+  return undefined;
 }
 
 export function commandLabel(args: readonly string[]): string {
@@ -415,7 +432,10 @@ const makeGitCommands = Effect.gen(function* () {
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const commandSpawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-  const queue = new GitProcessQueue(6);
+  const queues: Record<GitProcessLane, GitProcessQueue> = {
+    local: new GitProcessQueue(6),
+    network: new GitProcessQueue(NETWORK_LANE_CAPACITY),
+  };
   const reads = yield* makeKeyedSingleFlightCache<ExecuteGitResult, GitCommandError>({
     maxEntries: 512,
     ttlMs: 0,
@@ -423,7 +443,8 @@ const makeGitCommands = Effect.gen(function* () {
   const withPermit = <A, E, R>(
     effect: Effect.Effect<A, E, R>,
     priority: "foreground" | "background" = "foreground",
-  ) => queue.run(effect, priority);
+    lane: GitProcessLane = "local",
+  ) => queues[lane].run(effect, priority);
   const executeProcess: GitCoreShape["execute"] = Effect.fnUntraced(function* (input) {
     const commandInput = {
       ...input,
@@ -445,6 +466,8 @@ const makeGitCommands = Effect.gen(function* () {
             cwd: commandInput.cwd,
             env: {
               ...process.env,
+              // Git runs without a usable terminal here; a prompt would wait until the timeout.
+              GIT_TERMINAL_PROMPT: "0",
               ...input.env,
               ...trace2Monitor.env,
             },
@@ -537,10 +560,14 @@ const makeGitCommands = Effect.gen(function* () {
   });
 
   const execute: GitCoreShape["execute"] = (input) => {
-    const command = withPermit(executeProcess(input), input.priority);
-    const readCommand = input.args[input.args[0] === "--no-optional-locks" ? 1 : 0];
+    const subcommand = gitSubcommand(input.args) ?? "";
+    const command = withPermit(
+      executeProcess(input),
+      input.priority,
+      NETWORK_COMMANDS.has(subcommand) ? "network" : "local",
+    );
     if (
-      !COALESCED_READ_COMMANDS.has(readCommand ?? "") ||
+      !COALESCED_READ_COMMANDS.has(subcommand) ||
       input.env ||
       input.progress ||
       (input.args[0] === "symbolic-ref" &&

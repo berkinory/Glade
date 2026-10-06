@@ -67,6 +67,38 @@ function explicitPowerShellScript(
   }
 }
 
+// A Windows PATH walk stats every directory for every PATHEXT spelling, synchronously, before
+// each spawn; hot callers like git spawn constantly, so bare-command hits are reused while the
+// resolved file still exists.
+const resolvedWindowsCommands = new Map<string, string>();
+
+function resolveNativeExecutable(
+  command: string,
+  platform: NodeJS.Platform,
+  env: NodeJS.ProcessEnv,
+  cwd: string | undefined,
+): string | null {
+  const lookup = () =>
+    resolveExecutable(command, { platform, env, ...(cwd !== undefined ? { cwd } : {}) });
+  if (platform !== "win32" || hasPathSeparator(command)) return lookup();
+
+  const key = [command, env.PATH ?? env.Path ?? env.path, env.PATHEXT].join("\0");
+  const cached = resolvedWindowsCommands.get(key);
+  if (cached !== undefined && isFile(cached)) return cached;
+  const resolved = lookup();
+  if (resolved === null) resolvedWindowsCommands.delete(key);
+  else resolvedWindowsCommands.set(key, resolved);
+  return resolved;
+}
+
+function isFile(filePath: string): boolean {
+  try {
+    return statSync(filePath).isFile();
+  } catch {
+    return false;
+  }
+}
+
 function nativeExecutable(
   command: string,
   platform: NodeJS.Platform,
@@ -75,7 +107,7 @@ function nativeExecutable(
 ): string | null {
   return (
     explicitPowerShellScript(command, platform, cwd) ??
-    resolveExecutable(command, { platform, env, ...(cwd !== undefined ? { cwd } : {}) })
+    resolveNativeExecutable(command, platform, env, cwd)
   );
 }
 

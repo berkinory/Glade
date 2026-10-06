@@ -181,6 +181,7 @@ const makeMetadata = Effect.gen(function* () {
         const prefix = `refs/remotes/${primaryRemote}/`;
         const defaultBranch = head?.startsWith(prefix) ? head.slice(prefix.length) || null : null;
         const value: RepositoryMetadata = {
+          commonDir,
           configValue: (key) => config.get(key),
           hasRef: (ref) => refs.has(ref),
           primaryRemote,

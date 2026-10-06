@@ -2,6 +2,7 @@ import { Effect, ServiceMap } from "effect";
 import type { GitCommandError } from "../Errors";
 
 export interface RepositoryMetadata {
+  readonly commonDir: string;
   readonly configValue: (key: string) => string | undefined;
   readonly hasRef: (ref: string) => boolean;
   readonly primaryRemote: string | null;

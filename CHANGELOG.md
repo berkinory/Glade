@@ -17,6 +17,8 @@
 - Long lists of edited files scroll within the chat instead of pushing the rest of the conversation away.
 - Long commits, pushes and hooks run to completion regardless of duration or output volume, and Git actions keep their progress across reconnects without running twice.
 - Full Access no longer asks again before Codex uses Glade's own tools.
+- Background remote refreshes never open credential prompts, run once per repository across worktrees, and no longer hold up local git status.
+- Diff totals stay responsive while agents create many new files.
 
 ### Fixed
 
@@ -33,6 +35,8 @@
 - Very large code blocks in chat no longer freeze the window.
 - The file explorer shows a loading state while a folder opens instead of briefly showing it empty.
 - The Windows taskbar icon recovers if its first-launch setup is interrupted.
+- Source control, history and branch changes open immediately instead of waiting for a slow remote fetch, and git commands start faster on Windows.
+- Diffs and change totals no longer fail when a project contains another Git repository.
 
 ### Removed
 

@@ -1288,7 +1288,10 @@ export const makeGitManager = Effect.gen(function* () {
   );
 
   const status: GitManagerShape["status"] = Effect.fnUntraced(function* (input) {
-    const details = yield* gitCore.statusDetails(input.cwd, { metadataOnly: true });
+    const details = yield* gitCore.statusDetails(input.cwd, {
+      metadataOnly: true,
+      refreshUpstream: "background",
+    });
 
     const pr =
       details.branch !== null

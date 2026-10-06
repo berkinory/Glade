@@ -130,7 +130,10 @@ export const GitStatusBroadcasterLive = Layer.effect(
         // cache state would double the git work on every poll (the sidebar polls at 60 s against a 30 s
         // TTL, so the reuse check could never pass on that path).
         if (cached?.remote && isCachedRemoteStatusFresh({ cached })) {
-          const details = yield* gitCore.statusDetails(normalizedCwd, { metadataOnly: true });
+          const details = yield* gitCore.statusDetails(normalizedCwd, {
+            metadataOnly: true,
+            refreshUpstream: "background",
+          });
           if (canReuseCachedRemoteStatus({ cached, details })) {
             const local = yield* updateCachedLocalStatus(
               normalizedCwd,
@@ -150,7 +153,7 @@ export const GitStatusBroadcasterLive = Layer.effect(
       const normalizedCwd = normalizeCwd(cwd);
       return Effect.gen(function* () {
         const details = yield* gitCore.statusDetails(normalizedCwd, {
-          refreshUpstream: false,
+          refreshUpstream: "none",
           metadataOnly: true,
         });
         const local = yield* updateCachedLocalStatus(
@@ -179,8 +182,16 @@ export const GitStatusBroadcasterLive = Layer.effect(
           Stream.retry(Schedule.spaced("5 seconds")),
           Stream.runForEach(({ repositoryChanged }) =>
             Effect.gen(function* () {
-              if (fullSubscribers.has(cwd)) yield* refreshWatchedStatus(cwd, repositoryChanged);
-              const summary = yield* gitCore.summary(cwd);
+              // Started together so both reads share one in-flight `git status` process.
+              const [, summary] = yield* Effect.all(
+                [
+                  fullSubscribers.has(cwd)
+                    ? refreshWatchedStatus(cwd, repositoryChanged)
+                    : Effect.void,
+                  gitCore.summary(cwd),
+                ],
+                { concurrency: "unbounded" },
+              );
               yield* PubSub.publish(changesPubSub, {
                 cwd,
                 event: { _tag: "summaryUpdated", summary },

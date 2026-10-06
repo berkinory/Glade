@@ -179,6 +179,51 @@ it.layer(TestLayer)("git integration", (it) => {
       }),
     );
 
+    it.effect("counts untracked files the way Git reports new files", () =>
+      Effect.gen(function* () {
+        const core = yield* GitCore;
+        const tmp = yield* makeTmpDir();
+        yield* initRepoWithCommit(tmp);
+        yield* git(tmp, ["config", "core.bigFileThreshold", "1k"]);
+        const untracked = [
+          { path: ".gitattributes", contents: "*.dat binary\n", insertions: 1 },
+          { path: "attributed.dat", contents: "one\ntwo\n", insertions: 0 },
+          { path: "big.txt", contents: "line\n".repeat(1_000), insertions: 0 },
+          { path: "binary.bin", contents: "\u0000\u0001binary", insertions: 0 },
+          { path: "dir/text.txt", contents: "a\nb\nc\n", insertions: 3 },
+          { path: "empty.txt", contents: "", insertions: 0 },
+          { path: "no-newline.txt", contents: "a\nb", insertions: 2 },
+        ];
+        yield* Effect.promise(() => fs.mkdir(path.join(tmp, "dir")));
+        for (const file of untracked)
+          yield* writeTextFile(path.join(tmp, file.path), file.contents);
+        yield* writeTextFile(path.join(tmp, "README.md"), "# changed\n");
+        yield* git(tmp, ["init", "nested"]);
+        yield* writeTextFile(path.join(tmp, "nested", "inside.txt"), "not part of this diff\n");
+
+        const expectedFiles = untracked.map((file) => ({
+          path: file.path,
+          insertions: file.insertions,
+          deletions: 0,
+        }));
+        const expectedTotals = { additions: 7, deletions: 1, fileCount: untracked.length + 1 };
+        expect(yield* core.readDiffStats(tmp, "unstaged", undefined, true)).toEqual({
+          ...expectedTotals,
+          untrackedFiles: expectedFiles,
+        });
+        expect(yield* core.readDiffStats(tmp, "unstaged")).toEqual(expectedTotals);
+        expect(yield* core.readDiffStats(tmp, "workingTree")).toEqual(expectedTotals);
+        expect(yield* core.readDiffStats(tmp, "ref", "HEAD")).toEqual(expectedTotals);
+
+        const patch = (yield* core.readUnstagedPatch(tmp)).patch;
+        expect(patch).toContain("+++ b/dir/text.txt\n@@ -0,0 +1,3 @@\n+a\n+b\n+c\n");
+        expect(patch).toContain("+a\n+b\n\\ No newline at end of file\n");
+        expect(patch).toContain("Binary files /dev/null and b/binary.bin differ");
+        expect(patch).toContain("Binary files /dev/null and b/attributed.dat differ");
+        expect(patch).toContain("diff --git a/empty.txt b/empty.txt\nnew file mode 100644\n");
+      }),
+    );
+
     it.effect("truncates an oversized unstaged patch instead of failing", () =>
       Effect.gen(function* () {
         const core = yield* GitCore;

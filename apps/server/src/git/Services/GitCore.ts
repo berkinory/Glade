@@ -57,6 +57,10 @@ export interface ExecuteGitResult {
   readonly stderrTruncated?: boolean;
 }
 
+// "await" blocks on a stale-upstream fetch; "background" returns local state and lets the
+// watcher republish once the fetch lands.
+export type StatusUpstreamRefresh = "await" | "background" | "none";
+
 export interface GitStatusDetails extends Omit<GitStatusResult, "pr"> {
   isRepo: boolean;
   hasOriginRemote: boolean;
@@ -215,7 +219,10 @@ export interface GitCoreShape {
 
   readonly statusDetails: (
     cwd: string,
-    options?: { readonly refreshUpstream?: boolean; readonly metadataOnly?: boolean },
+    options?: {
+      readonly refreshUpstream?: StatusUpstreamRefresh;
+      readonly metadataOnly?: boolean;
+    },
   ) => Effect.Effect<GitStatusDetails, GitCommandError>;
 
   readonly readBranchContext: (cwd: string) => Effect.Effect<GitBranchContext, GitCommandError>;

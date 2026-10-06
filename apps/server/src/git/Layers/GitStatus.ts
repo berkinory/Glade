@@ -9,8 +9,12 @@ import {
   summarizeGitNumstatOutputs,
 } from "../gitStatusParsing.ts";
 import { GitCommandError } from "../Errors.ts";
-import type { GitCoreShape } from "../Services/GitCore.ts";
-import { GitCommands, type GitCommandsShape } from "../Services/GitCommands.ts";
+import type { GitCoreShape, StatusUpstreamRefresh } from "../Services/GitCore.ts";
+import {
+  GitCommands,
+  NON_INTERACTIVE_GIT_ENV,
+  type GitCommandsShape,
+} from "../Services/GitCommands.ts";
 import { GitStatus } from "../Services/GitStatus.ts";
 import { GitRepositoryMetadata } from "../Services/GitRepositoryMetadata";
 import { GitRepositoryMetadataLive } from "./GitRepositoryMetadata";
@@ -34,15 +38,16 @@ type StatusUpstreamRefreshResult = {
   readonly completedAt: number;
 };
 
+// Worktrees share remote-tracking refs, so one fetch per repository serves all of them.
 interface StatusUpstreamRefreshCacheKeyFields {
-  readonly cwd: string;
+  readonly commonDir: string;
   readonly upstreamRef: string;
   readonly remoteName: string;
   readonly upstreamBranch: string;
 }
 
 function statusUpstreamRefreshBackoffMapKey(key: StatusUpstreamRefreshCacheKeyFields): string {
-  return `${key.cwd}\u0000${key.upstreamRef}\u0000${key.remoteName}\u0000${key.upstreamBranch}`;
+  return `${key.commonDir}\u0000${key.upstreamRef}\u0000${key.remoteName}\u0000${key.upstreamBranch}`;
 }
 
 function makeStatusUpstreamRefreshCacheTimeToLive() {
@@ -120,7 +125,6 @@ export function parseRemoteNames(stdout: string): ReadonlyArray<string> {
 const makeGitStatus = Effect.gen(function* () {
   const fileSystem = yield* FileSystem.FileSystem;
   const commands = yield* GitCommands;
-  const runGit = commands.runGit;
   const executeGit: GitCommandsShape["executeGit"] = (operation, cwd, args, options) =>
     commands.executeGit(operation, cwd, args, { priority: "background", ...options });
   const runGitStdout: GitCommandsShape["runGitStdout"] = (
@@ -239,19 +243,6 @@ const makeGitStatus = Effect.gen(function* () {
       };
     });
 
-  const fetchUpstreamRef = (
-    cwd: string,
-    upstream: { upstreamRef: string; remoteName: string; upstreamBranch: string },
-  ): Effect.Effect<void, GitCommandError> => {
-    const refspec = `+refs/heads/${upstream.upstreamBranch}:refs/remotes/${upstream.upstreamRef}`;
-    return runGit(
-      "GitCore.fetchUpstreamRef",
-      cwd,
-      ["fetch", "--quiet", "--no-tags", upstream.remoteName, refspec],
-      true,
-    );
-  };
-
   const fetchUpstreamRefForStatus = (
     cwd: string,
     upstream: { upstreamRef: string; remoteName: string; upstreamBranch: string },
@@ -263,6 +254,7 @@ const makeGitStatus = Effect.gen(function* () {
       ["fetch", "--quiet", "--no-tags", upstream.remoteName, refspec],
       {
         timeoutMs: Duration.toMillis(STATUS_UPSTREAM_REFRESH_TIMEOUT),
+        env: NON_INTERACTIVE_GIT_ENV,
       },
     ).pipe(Effect.asVoid);
   };
@@ -272,7 +264,7 @@ const makeGitStatus = Effect.gen(function* () {
   const statusUpstreamRefreshCache = yield* Cache.makeWith({
     capacity: STATUS_UPSTREAM_REFRESH_CACHE_CAPACITY,
     lookup: (cacheKey: StatusUpstreamRefreshCacheKey) =>
-      fetchUpstreamRefForStatus(cacheKey.cwd, {
+      fetchUpstreamRefForStatus(cacheKey.commonDir, {
         upstreamRef: cacheKey.upstreamRef,
         remoteName: cacheKey.remoteName,
         upstreamBranch: cacheKey.upstreamBranch,
@@ -282,7 +274,7 @@ const makeGitStatus = Effect.gen(function* () {
           const failures = upstreamRefreshPolicy.getFailureCount(cacheKey);
           const logFields = {
             cause,
-            cwd: cacheKey.cwd,
+            commonDir: cacheKey.commonDir,
             remoteName: cacheKey.remoteName,
             upstreamBranch: cacheKey.upstreamBranch,
           };
@@ -320,19 +312,16 @@ const makeGitStatus = Effect.gen(function* () {
             : null
           : yield* resolveCurrentUpstream(cwd);
       if (!upstream) return false;
+      const { commonDir } = yield* metadata.read(cwd);
       const refreshed = yield* Cache.get(
         statusUpstreamRefreshCache,
-        new StatusUpstreamRefreshCacheKey({ cwd, ...upstream }),
+        new StatusUpstreamRefreshCacheKey({ commonDir, ...upstream }),
       );
       return refreshed.status === "refreshed" && refreshed.completedAt >= startedAt;
     });
 
   const refreshCheckedOutBranchUpstream = (cwd: string): Effect.Effect<void, GitCommandError> =>
-    Effect.gen(function* () {
-      const upstream = yield* resolveCurrentUpstream(cwd);
-      if (!upstream) return;
-      yield* fetchUpstreamRef(cwd, upstream);
-    });
+    refreshStatusUpstreamIfStale(cwd).pipe(Effect.asVoid);
 
   const remoteBranchExists = (
     cwd: string,
@@ -508,12 +497,28 @@ const makeGitStatus = Effect.gen(function* () {
       ),
     );
 
-  const readStatusDetails = (cwd: string, refreshUpstream: boolean, metadataOnly: boolean) =>
+  // A fetch can wait on the network or a credential helper until its timeout, so read paths
+  // refresh in the background and the git-dir watcher republishes status once refs move.
+  const refreshUpstreamInBackground = (cwd: string, upstreamRef: string | undefined) =>
+    refreshStatusUpstreamIfStale(cwd, upstreamRef).pipe(
+      Effect.catchIf(isMissingGitCwdError, () => Effect.void),
+      Effect.ignoreCause({ log: true }),
+      Effect.forkIn(statusRefreshScope),
+    );
+
+  const readStatusDetails = (
+    cwd: string,
+    refreshUpstream: StatusUpstreamRefresh,
+    metadataOnly: boolean,
+  ) =>
     Effect.gen(function* () {
       let status = yield* readPorcelainStatus(cwd);
       if (status === null) return NON_REPOSITORY_STATUS_DETAILS;
       const initialUpstream = parseGitStatusPorcelain(status.stdout).upstreamRef;
-      if (refreshUpstream && initialUpstream) {
+      if (refreshUpstream === "background" && initialUpstream) {
+        yield* refreshUpstreamInBackground(cwd, initialUpstream);
+      }
+      if (refreshUpstream === "await" && initialUpstream) {
         const refreshed = yield* refreshStatusUpstreamIfStale(cwd, initialUpstream).pipe(
           Effect.catch(() => Effect.succeed(false)),
         );
@@ -682,7 +687,7 @@ const makeGitStatus = Effect.gen(function* () {
     });
 
   const statusDetails: GitCoreShape["statusDetails"] = (cwd, options) =>
-    readStatusDetails(cwd, options?.refreshUpstream ?? true, options?.metadataOnly ?? false);
+    readStatusDetails(cwd, options?.refreshUpstream ?? "await", options?.metadataOnly ?? false);
 
   const readBranchContext: GitCoreShape["readBranchContext"] = (cwd) =>
     Effect.gen(function* () {
@@ -726,13 +731,9 @@ const makeGitStatus = Effect.gen(function* () {
 
   const status: GitCoreShape["status"] = (input) =>
     Effect.gen(function* () {
-      const details = yield* readStatusDetails(input.cwd, false, false);
+      const details = yield* readStatusDetails(input.cwd, "none", false);
       if (details.hasUpstream) {
-        yield* refreshStatusUpstreamIfStale(input.cwd, details.upstreamRef ?? undefined).pipe(
-          Effect.catchIf(isMissingGitCwdError, () => Effect.void),
-          Effect.ignoreCause({ log: true }),
-          Effect.forkIn(statusRefreshScope),
-        );
+        yield* refreshUpstreamInBackground(input.cwd, details.upstreamRef ?? undefined);
       }
       return {
         branch: details.branch,

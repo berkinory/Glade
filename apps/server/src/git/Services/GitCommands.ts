@@ -6,6 +6,19 @@ import type { ExecuteGitInput, ExecuteGitResult, GitCoreShape } from "./GitCore.
 // operation; caller interruption still closes the owned process scope.
 export const GIT_WRITE_EXECUTION = { timeoutMs: null, outputMode: "truncate" } as const;
 
+// Background network work must fail instead of opening credential prompts nobody asked for.
+// User-started pushes and pulls omit this so a credential manager can still ask to sign in.
+export const NON_INTERACTIVE_GIT_ENV = {
+  GIT_TERMINAL_PROMPT: "0",
+  GCM_INTERACTIVE: "never",
+  GIT_ASKPASS: "",
+  SSH_ASKPASS: "",
+  SSH_ASKPASS_REQUIRE: "never",
+} as const;
+
+// Network commands wait on remotes for seconds, so they queue apart from local reads.
+export type GitProcessLane = "local" | "network";
+
 export interface ExecuteGitOptions {
   priority?: "foreground" | "background" | undefined;
   timeoutMs?: number | null | undefined;
@@ -21,6 +34,7 @@ export interface GitCommandsShape {
   readonly withPermit: <A, E, R>(
     effect: Effect.Effect<A, E, R>,
     priority?: "foreground" | "background",
+    lane?: GitProcessLane,
   ) => Effect.Effect<A, E, R>;
   readonly execute: GitCoreShape["execute"];
   readonly executeGit: (
