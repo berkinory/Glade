@@ -96,8 +96,8 @@ To upgrade:
    `cuaResults.test.ts`; a shape change there is a breaking upstream change to handle in
    `apps/server/src/computer`. Check the release notes for renamed tools, error codes and
    environment allowlist changes.
-4. Re-run the macOS checks in [Computer Use](computer-use.md#verifying), including a signed
-   packaged build before release.
+4. Re-check Computer Use grants, actions and the kill switch on macOS in the Dev app and in a
+   signed packaged build before release.
 
 ## Terminal image decoder
 

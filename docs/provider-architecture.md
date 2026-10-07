@@ -116,8 +116,7 @@ Glade renders harness policy once per provider. Codex receives it as `developerI
 Browser Use and Computer Use reach providers only as gateway tools. `browser_*` tools are registered when the server runs under the desktop app; `computer_*` tools are listed only while the chat's
 Computer Use mode is on, and because both providers read `tools/list` once per session, changing
 that mode restarts the provider session with its resume cursor (immediately when idle, otherwise at
-the next turn start). The chat comes from the gateway session lease, never from tool input. See
-[Browser Use](browser-use.md) and [Computer Use](computer-use.md).
+the next turn start). The chat comes from the gateway session lease, never from tool input.
 
 Edit, revert and file undo preview scoped checkpoint restores before confirmation. Each removed turn contributes its git diff paths, with the first affected turn start as the restore target and the last affected turn end as the expected workspace state. Later file changes require explicit consent per path, and a fingerprint is revalidated before provider rollback and again before restoring. The real git index and unrelated files are preserved. Claude rollback starts its replacement native session before deleting the superseded history.
 

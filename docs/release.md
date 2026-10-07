@@ -50,7 +50,7 @@ outside ASAR. Packaging fetches and verifies it against `apps/desktop/src/comput
 packages; a target without a pinned driver fails to package. electron-builder signs the macOS
 executable with the app identity before the app, so signed builds need no extra secrets. Unsigned
 local macOS packages ad-hoc sign it; verify Computer Use grants with a signed build. See
-[Computer Use](computer-use.md) and [dependency maintenance](dependencies.md#cua-driver).
+[dependency maintenance](dependencies.md#cua-driver).
 
 Desktop packages retain only English Chromium locales. The backend bundles its diff parser so
 server-side syntax-highlighting resources are not shipped. Unused Effect API-documentation UI

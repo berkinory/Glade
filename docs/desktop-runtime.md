@@ -61,8 +61,7 @@ The desktop hosts native surfaces for agents and nothing else; policy and state 
 the backend. `browser` owns the agent browser's tabs, CDP sessions and panel placement, and
 `computer` owns the embedded Cua Driver and the macOS Accessibility and Screen Recording probes
 (renderer IPC `desktop:computer-permissions-get`, `-request` and `-open-settings`). Desktop shutdown
-stops the driver after the backend has exited. See [Browser Use](browser-use.md) and
-[Computer Use](computer-use.md).
+stops the driver after the backend has exited.
 
 ## Verification
 
