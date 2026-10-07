@@ -64,7 +64,7 @@ export function isBareComputerToolName(normalizedName: string): boolean {
   return isComputerTool(normalizedName);
 }
 
-export interface ComputerToolTarget {
+interface ComputerToolTarget {
   readonly app: string;
   readonly windowTitle: string | null;
 }
@@ -86,13 +86,8 @@ export function computerToolTarget(output: string): ComputerToolTarget | null {
   return match?.[1] ? { app: match[1], windowTitle: parseQuoted(match[2]) } : null;
 }
 
-// `TextEdit — Untitled`, or the app alone for an untitled window.
-const targetLabel = (target: ComputerToolTarget | null) =>
-  target
-    ? target.windowTitle
-      ? shortPreview(`${target.app} — ${target.windowTitle}`)
-      : target.app
-    : null;
+// The row names only the app; the window title stays in the expanded output.
+const targetLabel = (target: ComputerToolTarget | null) => target?.app ?? null;
 
 // Cua names the element it acted on as `[3] AXButton "Save"`; show the label, or the role in words
 // when the label is empty, never the index.
@@ -137,7 +132,7 @@ function accessPresentation(
 
 const VERIFY_STATUS = /^Status: (satisfied|unsatisfied|unknown)\b/u;
 
-// `Confirmed "Saved" · TextEdit — Untitled`: the first condition's label (or role) and the outcome.
+// `Confirmed "Saved" · TextEdit`: the first condition's label (or role) and the outcome.
 function verifyPresentation(
   call: GatewayToolCall,
   lines: ReadonlyArray<string>,
@@ -157,7 +152,7 @@ function verifyPresentation(
   return presentGatewayToolCall(COMPUTER_TOOL_WORDING.computer_verify, call, preview);
 }
 
-// `Clicked "Save" · TextEdit — Untitled`, `Read window · TextEdit — Untitled`,
+// `Clicked "Save" · TextEdit`, `Read window · TextEdit`,
 // `Access granted · TextEdit`. Element indices, the accessibility tree and Cua's report lines never
 // reach the row.
 export function describeComputerToolCall(call: GatewayToolCall): GatewayToolPresentation | null {
