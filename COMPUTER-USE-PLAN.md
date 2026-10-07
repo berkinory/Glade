@@ -316,7 +316,8 @@ Revisions (as built):
 - Packaging (`scripts/build-desktop-artifact.ts`) stages only the target's driver through `fetch-cua-driver.mjs --platform --arch --stage`, and fails when the target has no pinned artifact. The staged production install passes `--os`/`--cpu` for the target (`--cpu=*` for universal), so cross-arch and universal macOS builds carry the matching `@trycua` and `@ubjs` native packages. Signing needs no new secrets: `mac.binaries` signs the driver with the existing `CSC_*` identity.
 - `release-build.yml` fetches and verifies each matrix target's driver before packaging; `ci.yml`'s desktop build lane verifies the Linux x64 pin explicitly because a Turbo replay skips the build's fetch. No Rust or Swift steps were left after Phase 1.
 - Docs: `docs/browser-use.md`, `docs/computer-use.md`, plus the listed doc updates. CHANGELOG: two New lines and one Removed line (the vault shipped in 0.1.0–0.2.0).
-- License notice not added: the Cua repository and its driver releases are MIT, but the SDK's native package declares `MIT AND MPL-2.0` and its `@ubjs/*` dependencies, which ship unpacked in the app, are MPL-2.0. The notice set needs a decision covering both licenses before it goes under `docs/licenses/`.
+- Packaged macOS team check: `TeamIdentifier=not set` (ad-hoc) now counts as no team, so an unsigned local package refuses the driver instead of trusting any ad-hoc executable. Computer Use is verified through the Dev app or a signed build.
+- License notices: [docs/licenses/cua-driver.md](docs/licenses/cua-driver.md) (MIT, driver and SDK) and [docs/licenses/cua-driver-node-runtime.md](docs/licenses/cua-driver-node-runtime.md) (MPL-2.0 runtime and `@ubjs/*`, redistributed unmodified, with source locations).
 - Verified on macOS arm64: unsigned `package:mac:arm64` contains `Contents/Resources/cua-driver/darwin-universal/cua-driver` (0755, outside ASAR, ad-hoc signed) and the darwin-arm64 `@trycua` and `@ubjs` native files in `app.asar.unpacked`. The packaged app was not launched.
 
 ### Phase 9: cross-platform pass
@@ -407,9 +408,6 @@ TextEdit, structured path first, then pixel path:
 - Found and fixed during the pass: `/computer-use` collided with a provider skill of the same name in Claude threads (renamed to `/computer`), and the command was not offered on new chats.
 
 ## 9. Open items
-
-- Cua license notice under `docs/licenses/` (MIT for the driver, MPL-2.0 for the SDK's native and `@ubjs` packages); see Phase 8 revisions.
-- Packaged macOS team-signature check: `codesign -dv` reports `TeamIdentifier=not set` for both an ad-hoc driver and an ad-hoc app, so an unsigned local package accepts any ad-hoc signed executable there. Signed releases are unaffected; treating `not set` as no team would make unsigned packages refuse the driver.
 
 - Record token measurements from the provider acceptance runs here.
 - Page dialogs in the visible panel: v1 dismisses and reports them. A user-facing answer path would need a non-blocking prompt in the panel.

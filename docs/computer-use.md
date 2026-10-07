@@ -101,3 +101,7 @@ See [dependency maintenance](dependencies.md#cua-driver).
    and read it back, then exercise a screenshot and zoom.
 4. Kill the `cua-driver` process: Settings recovers with a new generation within a few seconds.
    Quitting Glade stops the daemon and the proxy.
+
+## Licenses
+
+The bundled driver and SDK are MIT licensed ([notice](licenses/cua-driver.md)); the SDK's Node runtime is MPL-2.0 ([notice](licenses/cua-driver-node-runtime.md)).

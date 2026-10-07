@@ -42,7 +42,11 @@ function codesign(args: ReadonlyArray<string>): Promise<{ ok: boolean; output: s
   });
 }
 
-const teamIdentifier = (output: string) => /^TeamIdentifier=(.+)$/mu.exec(output)?.[1] ?? null;
+// Ad-hoc signatures report "not set"; two of those must never count as the same team.
+const teamIdentifier = (output: string) => {
+  const team = /^TeamIdentifier=(.+)$/mu.exec(output)?.[1];
+  return team === undefined || team === "not set" ? null : team;
+};
 
 // Packaged macOS builds re-sign the executable with Glade's identity after the build verified the
 // upstream bytes, so its hash no longer matches the release. There the executable must carry a
