@@ -10,6 +10,7 @@ import {
 import { COMPOSER_STACKED_PANEL_ICON_CLASS_NAME } from "../chat/composerStackedPanelStyles";
 import { IconButton } from "../ui/icon-button";
 import { ComputerActivityPreview } from "./ComputerActivityPreview";
+import { ComputerKillSwitchHint } from "./ComputerKillSwitchKbd";
 import { selectComputerActivity } from "./ComputerActivityPreview.logic";
 import { setComputerUseMode, useThreadComputerUse } from "./computerUseState";
 
@@ -34,6 +35,7 @@ export function ComputerComposerPanel(props: { threadId: ThreadId; attachedToPre
             <CursorInWindowIcon aria-hidden className={COMPOSER_STACKED_PANEL_ICON_CLASS_NAME} />
             <ComposerStackedPanelRowLabel>{MODE_LABEL[mode]}</ComposerStackedPanelRowLabel>
           </ComposerStackedPanelRowMain>
+          <ComputerKillSwitchHint />
           <IconButton
             variant="ghost"
             size="icon-chip"

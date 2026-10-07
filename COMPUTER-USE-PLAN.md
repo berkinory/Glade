@@ -512,4 +512,4 @@ Checks: `computerAccessGate.test.ts` (grant gate, eight category-tier cases, pro
 - Page dialogs reach the user through the panel bar (8c); `prompt()` stays unsupported because Electron's renderer refuses it.
 - Keyboard shortcuts do not reach Glade while focus is inside a page view.
 - Toggling Computer Use restarts the provider session to change the tool list, which throws away the prompt cache of the tool block every time. Measure the cost and consider always listing the computer tools (refusing while off) or deferring them behind tool search.
-- Web: the kill switch has no UI yet (Settings > Computer Use should show the shortcut; the composer's computer row could show it as a hint), and the new refusal codes (`no_progress`, `user_active`, `browser_read_only`, `click_only`) and the change list in action results render as plain tool output.
+- Web: the change list in action results renders only as plain tool output.

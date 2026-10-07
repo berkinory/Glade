@@ -26,6 +26,7 @@ import {
 import { BrowserContentBlockerRow } from "../browser/BrowserContentBlockerRow";
 import { Button } from "../ui/button";
 import { toastManager } from "../ui/toast";
+import { ComputerKillSwitchKbd } from "./ComputerKillSwitchKbd";
 import { useComputerState } from "./computerUseState";
 
 const SCOPE_LABEL: Record<ComputerAccessScope, string> = {
@@ -182,6 +183,12 @@ export function ComputerSettings() {
       </SettingsSection>
       <SettingsSection title="Computer Use">
         <DriverRow status={state?.status ?? null} />
+        <SettingsRow
+          id="setting-computer-kill-switch"
+          title="Stop shortcut"
+          description="Stops Computer Use in every chat from any app, even while the agent is using the pointer."
+          control={<ComputerKillSwitchKbd />}
+        />
         {isMac ? null : (
           <SettingsRow
             id="setting-computer-platform"

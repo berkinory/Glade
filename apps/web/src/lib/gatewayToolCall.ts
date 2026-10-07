@@ -86,19 +86,34 @@ export function previewAt(what: string | null, where: string | null): string | n
   return where ? `${what} · ${where}` : what;
 }
 
-// Gateway refusals arrive as `{"error":{"code","message"}}`; anything else reads as plain text.
+// Refusals the user should read in their own words rather than the message written for the agent.
+const REFUSAL_LABELS: Readonly<Record<string, string>> = {
+  no_progress: "Stopped repeating an action that had no effect",
+  user_active: "Waited for you to stop using the mouse or keyboard",
+  browser_read_only: "Browsers are read-only for Computer Use",
+  click_only: "Terminals and code editors are click-only for Computer Use",
+  covered: "Something on the page was covering it",
+  user_picking: "Waited for you to finish picking an element",
+  stale_ref: "The page changed before the action",
+};
+
+// Gateway refusals arrive as `{"error":{"code","message"}}` (a failed browser_batch step as
+// `[2/3] browser_click failed (<code>): …`); anything else reads as plain text.
 function gatewayToolErrorMessage(output: string | null): string | null {
   if (!output) return null;
   const text = output.trim();
   let message: string = text;
+  let code = /^\[\d+\/\d+\] \S+ failed \(([a-z_]+)\)/u.exec(text)?.[1] ?? null;
   if (text.startsWith("{")) {
     try {
       const error = asObjectRecord(asObjectRecord(JSON.parse(text))?.error);
       if (typeof error?.message === "string") message = error.message;
+      if (typeof error?.code === "string") code = error.code;
     } catch {
       message = text;
     }
   }
+  if (code && Object.hasOwn(REFUSAL_LABELS, code)) return REFUSAL_LABELS[code]!;
   const first = stripUntrustedContent(message)[0];
   return first ? shortPreview(first) : null;
 }

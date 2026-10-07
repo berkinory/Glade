@@ -8,6 +8,7 @@ import {
 import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
 import { toastManager } from "../ui/toast";
+import { ComputerKillSwitchHint } from "./ComputerKillSwitchKbd";
 
 // Stop interrupts the turn; the server cancels in-flight Cua calls and the rest of that turn.
 export function ComputerActivityPreview(props: { threadId: ThreadId; activity: string }) {
@@ -28,6 +29,7 @@ export function ComputerActivityPreview(props: { threadId: ThreadId; activity: s
           <ComposerStackedPanelRowLabel>{props.activity}</ComposerStackedPanelRowLabel>
         </span>
       </ComposerStackedPanelRowMain>
+      <ComputerKillSwitchHint />
       <Button variant="subtle" size="chip" onClick={stop}>
         Stop
       </Button>

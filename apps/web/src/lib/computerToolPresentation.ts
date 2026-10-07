@@ -1,4 +1,5 @@
 import { pluralize } from "@glade/shared/text/text";
+import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import {
   previewAt,
   presentGatewayToolCall,
@@ -26,7 +27,7 @@ const COMPUTER_TOOL_WORDING = {
   computer_scroll: ["Scrolling", "Scrolled", "scroll"],
   computer_type: ["Typing", "Typed", "type"],
   computer_key: ["Pressing", "Pressed", "press keys"],
-  computer_wait: ["Waiting", "Waited", "wait"],
+  computer_verify: ["Checking window", "Checked window", "check the window"],
 } as const satisfies Record<string, GatewayToolWording>;
 
 const ACT_WORDING = {
@@ -79,17 +80,20 @@ const parseQuoted = (quoted: string | undefined): string | null => {
   }
 };
 
-// The app and window a computer tool result names: action results end with
-// `Window: <app> "<title>"`; a window read only names its app on its APP_CONTENT marker, since its
-// header sits inside the block.
+// The app and window a computer tool result names in its closing `Window: <app> "<title>"` line.
 export function computerToolTarget(output: string): ComputerToolTarget | null {
-  const action = stripUntrustedContent(output).findLast((line) => line.startsWith("Window: "));
-  const match = action ? /^Window: (.+?) ("(?:[^"\\]|\\.)*")$/u.exec(action) : null;
-  if (match?.[1]) return { app: match[1], windowTitle: parseQuoted(match[2]) };
-  const marker = /^--- APP_CONTENT nonce=[0-9a-f]+ app=("(?:[^"\\]|\\.)*")/mu.exec(output);
-  const app = parseQuoted(marker?.[1]);
-  return app ? { app, windowTitle: null } : null;
+  const line = stripUntrustedContent(output).findLast((entry) => entry.startsWith("Window: "));
+  const match = line ? /^Window: (.+?) ("(?:[^"\\]|\\.)*")$/u.exec(line) : null;
+  return match?.[1] ? { app: match[1], windowTitle: parseQuoted(match[2]) } : null;
 }
+
+// `TextEdit — Untitled`, or the app alone for an untitled window.
+const targetLabel = (target: ComputerToolTarget | null) =>
+  target
+    ? target.windowTitle
+      ? shortPreview(`${target.app} — ${target.windowTitle}`)
+      : target.app
+    : null;
 
 // Cua names the element it acted on as `[3] AXButton "Save"`; show the label, or the role in words
 // when the label is empty, never the index.
@@ -142,13 +146,35 @@ function accessPresentation(
   return null;
 }
 
-// `Clicked "Save" · TextEdit`, `Read window "Untitled" · TextEdit`, `Access granted · TextEdit`.
-// Element indices, the accessibility tree and Cua's report lines never reach the row.
+const VERIFY_STATUS = /^Status: (satisfied|unsatisfied|unknown)\b/u;
+
+// `Confirmed "Saved" · TextEdit — Untitled`: the first condition's label (or role) and the outcome.
+function verifyPresentation(
+  call: GatewayToolCall,
+  lines: ReadonlyArray<string>,
+  where: string | null,
+): GatewayToolPresentation {
+  const condition = Array.isArray(call.args.conditions)
+    ? asObjectRecord(call.args.conditions[0])
+    : null;
+  const subject = condition
+    ? (stringArg(condition, "label_contains") ?? stringArg(condition, "role"))
+    : null;
+  const preview = previewAt(subject ? `"${shortPreview(subject)}"` : null, where);
+  const status = lines.map((line) => VERIFY_STATUS.exec(line)?.[1]).find(Boolean);
+  if (call.status === "completed" && status) {
+    return { heading: status === "satisfied" ? "Confirmed" : "Not confirmed", preview };
+  }
+  return presentGatewayToolCall(COMPUTER_TOOL_WORDING.computer_verify, call, preview);
+}
+
+// `Clicked "Save" · TextEdit — Untitled`, `Read window · TextEdit — Untitled`,
+// `Access granted · TextEdit`. Element indices, the accessibility tree and Cua's report lines never
+// reach the row.
 export function describeComputerToolCall(call: GatewayToolCall): GatewayToolPresentation | null {
   if (!isComputerTool(call.tool)) return null;
   const lines = call.output ? stripUntrustedContent(call.output) : [];
-  const target = call.output ? computerToolTarget(call.output) : null;
-  const app = target?.app ?? null;
+  const where = targetLabel(call.output ? computerToolTarget(call.output) : null);
   const { args } = call;
   switch (call.tool) {
     case "computer_request_access":
@@ -166,18 +192,10 @@ export function describeComputerToolCall(call: GatewayToolCall): GatewayToolPres
         action && Object.hasOwn(ACT_WORDING, action)
           ? ACT_WORDING[action as keyof typeof ACT_WORDING]
           : COMPUTER_TOOL_WORDING.computer_act;
-      return presentGatewayToolCall(wording, call, previewAt(actTarget(call, lines), app));
+      return presentGatewayToolCall(wording, call, previewAt(actTarget(call, lines), where));
     }
-    case "computer_window_state":
-      return presentGatewayToolCall(
-        COMPUTER_TOOL_WORDING.computer_window_state,
-        call,
-        target?.windowTitle
-          ? previewAt(`"${shortPreview(target.windowTitle)}"`, app)
-          : previewAt(null, app),
-      );
     case "computer_apps": {
-      const count = lines.filter((line) => /^\S.* pid \d+/u.test(line)).length;
+      const count = Number(/^(\d+) running apps?\./u.exec(lines[0] ?? "")?.[1] ?? 0);
       const apps = `${count} ${pluralize(count, "app")}`;
       return presentGatewayToolCall(
         count > 0
@@ -187,25 +205,21 @@ export function describeComputerToolCall(call: GatewayToolCall): GatewayToolPres
         null,
       );
     }
+    case "computer_verify":
+      return verifyPresentation(call, lines, where);
     case "computer_key":
       return presentGatewayToolCall(
         COMPUTER_TOOL_WORDING.computer_key,
         call,
-        previewAt(stringArg(args, "key"), app),
+        previewAt(stringArg(args, "text"), where),
       );
     case "computer_scroll":
       return presentGatewayToolCall(
         COMPUTER_TOOL_WORDING.computer_scroll,
         call,
-        previewAt(stringArg(args, "direction"), app),
-      );
-    case "computer_wait":
-      return presentGatewayToolCall(
-        COMPUTER_TOOL_WORDING.computer_wait,
-        call,
-        typeof args.seconds === "number" ? `${args.seconds}s` : null,
+        previewAt(stringArg(args, "scroll_direction"), where),
       );
     default:
-      return presentGatewayToolCall(COMPUTER_TOOL_WORDING[call.tool], call, previewAt(null, app));
+      return presentGatewayToolCall(COMPUTER_TOOL_WORDING[call.tool], call, previewAt(null, where));
   }
 }
