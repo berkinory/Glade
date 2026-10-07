@@ -1,12 +1,12 @@
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { createHash } from "node:crypto";
+import { homedir } from "node:os";
 import { setTimeout as delay } from "node:timers/promises";
 import { resolveBaseCodexHomePath } from "../codexHomePaths";
 import { CodexPooledProcess, type CodexProcessLease } from "./codexPooledProcess";
 
 interface ProcessInput {
   readonly binaryPath: string;
-  readonly cwd: string;
   readonly env: NodeJS.ProcessEnv;
   readonly argv: readonly string[];
   readonly skillsRoots?: readonly string[];
@@ -16,7 +16,9 @@ export class CodexProcessPool {
   private readonly failures = new Map<string, { count: number; retryAt: number }>();
   constructor(
     private readonly options: {
-      readonly spawn: (input: ProcessInput) => ChildProcessWithoutNullStreams;
+      readonly spawn: (
+        input: ProcessInput & { readonly cwd: string },
+      ) => ChildProcessWithoutNullStreams;
       readonly teardown: (
         child: ChildProcessWithoutNullStreams,
       ) => Promise<{ readonly capturedBeforeRootExit?: boolean }>;
@@ -53,7 +55,10 @@ export class CodexProcessPool {
       await delay(remaining, undefined, signal ? { signal } : undefined);
     }
     const process = new CodexPooledProcess(
-      this.options.spawn(input),
+      // One app-server serves threads from many workspaces, each opened with its own cwd. Its
+      // process cwd must outlive all of them: once a workspace it was spawned in is deleted, Codex
+      // fails every later config load ("No such file or directory") for every thread it serves.
+      this.options.spawn({ ...input, cwd: homedir() }),
       this.options.teardown,
       (lifetimeMs) => {
         const count = lifetimeMs >= 60_000 ? 1 : (this.failures.get(key)?.count ?? 0) + 1;

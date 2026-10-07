@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
@@ -9,6 +9,7 @@ import {
   createSyntheticCodexAppServer,
   createSyntheticCodexManager,
 } from "./syntheticCodex.testSupport";
+import { formatMissingCodexWorkingDirectoryError } from "../codexWorkingDirectory";
 
 describe("shared Codex process", () => {
   it("isolates thread credentials and notifications, retaining other threads through stop and credential rotation", async () => {
@@ -217,6 +218,34 @@ describe("shared Codex process", () => {
       rmSync(cwd, { recursive: true, force: true });
     }
     expect(teardownProcessTree).toHaveBeenCalledTimes(2);
+  });
+  it("keeps opening threads after an earlier thread's workspace is deleted", async () => {
+    const root = mkdtempSync(join(tmpdir(), "glade-codex-deleted-"));
+    const [gone, kept] = [join(root, "gone"), join(root, "kept")];
+    for (const dir of [gone, kept]) mkdirSync(dir);
+    const fake = createSyntheticCodexAppServer();
+    const { manager } = createSyntheticCodexManager(fake);
+    const start = (id: string, cwd: string) =>
+      manager.startSession({
+        threadId: ThreadId.makeUnsafe(id),
+        provider: "codex",
+        cwd,
+        runtimeMode: "full-access",
+        agentGatewayCapabilityInput: AGENT_GATEWAY_NO_CAPABILITIES,
+      });
+    try {
+      const old = await start("old", gone);
+      rmSync(gone, { recursive: true });
+      const next = await start("next", kept);
+      await expect(manager.sendTurn({ threadId: old.threadId, input: "go" })).rejects.toThrow(
+        formatMissingCodexWorkingDirectoryError(gone),
+      );
+      await manager.sendTurn({ threadId: next.threadId, input: "go" });
+      expect(fake.children).toHaveLength(1);
+    } finally {
+      await manager.stopAll();
+      rmSync(root, { recursive: true, force: true });
+    }
   });
   it.each(["complete", "abort", "stop"] as const)(
     "keeps foreground sessions alive and title events isolated when auxiliary generation %ss",

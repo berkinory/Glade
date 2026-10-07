@@ -12,6 +12,7 @@ import { codexUpdatedModelSelection } from "./codexStateNotifications.ts";
 import { asString } from "@glade/shared/text/text";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import { createCodexCliVersionGate } from "./codexCliVersionGate";
+import { assertCodexWorkingDirectoryExists } from "./codexWorkingDirectory";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
@@ -969,7 +970,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       const processLease = await this.processPool.acquire(
         {
           binaryPath: codexBinaryPath,
-          cwd: resolvedCwd,
           env: processEnv,
           argv,
           skillsRoots: codexExtraSkillsRoots({
@@ -1230,6 +1230,8 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         "Codex session gateway authority is retired; resume the provider runtime before starting another turn.",
       );
     }
+    // Codex accepts a turn for a thread whose workspace is gone and only fails inside the turn.
+    if (context.session.cwd) assertCodexWorkingDirectoryExists(context.session.cwd);
 
     const turnInput = buildCodexTurnInput(input);
     if (turnInput.length === 0) {
@@ -1837,7 +1839,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       const processLease = await this.processPool.acquire(
         {
           binaryPath: codexBinaryPath,
-          cwd: resolvedCwd,
           env: processEnv,
           argv,
           skillsRoots: codexExtraSkillsRoots({
@@ -3154,7 +3155,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     const processLease = await this.processPool.acquire(
       {
         binaryPath: providerOptions?.codex?.binaryPath ?? "codex",
-        cwd: normalizedCwd,
         env: processEnv,
         argv,
         skillsRoots: codexExtraSkillsRoots({

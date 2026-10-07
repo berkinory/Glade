@@ -1,6 +1,7 @@
 import { vi } from "vitest";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { EventEmitter } from "node:events";
+import { existsSync } from "node:fs";
 import { PassThrough } from "node:stream";
 import type { AgentGatewaySessionLease } from "../../../agentGateway/sessionLease";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
@@ -68,6 +69,7 @@ export function createSyntheticCodexAppServer(options?: {
   };
 
   const spawnAppServer = (input?: {
+    readonly cwd?: string;
     readonly env: NodeJS.ProcessEnv;
     readonly argv?: readonly string[];
   }): ChildProcessWithoutNullStreams => {
@@ -111,6 +113,12 @@ export function createSyntheticCodexAppServer(options?: {
         const respond = (result: unknown) => {
           queueMicrotask(() => stdout.write(`${JSON.stringify({ id: request.id, result })}\n`));
         };
+        // Real Codex resolves config against its process cwd when a thread opens.
+        if (request.method.startsWith("thread/") && input?.cwd && !existsSync(input.cwd)) {
+          const error = { code: -32600, message: "failed to load configuration: No such file" };
+          queueMicrotask(() => stdout.write(`${JSON.stringify({ id: request.id, error })}\n`));
+          continue;
+        }
         if (request.method === "initialize") {
           respond({});
         } else if (request.method === "skills/extraRoots/set") {
@@ -177,6 +185,7 @@ export function createSyntheticCodexAppServer(options?: {
 export function createSyntheticCodexManager(
   fake: {
     readonly spawnAppServer: (input?: {
+      readonly cwd?: string;
       readonly env: NodeJS.ProcessEnv;
       readonly argv?: readonly string[];
     }) => ChildProcessWithoutNullStreams;

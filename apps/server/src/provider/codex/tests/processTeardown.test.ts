@@ -33,7 +33,6 @@ async function createTeardownContext(
     manager as unknown as { processPool: CodexProcessPool }
   ).processPool.acquire({
     binaryPath: "codex",
-    cwd: "/repo",
     env: {},
     argv: ["app-server"],
   });
