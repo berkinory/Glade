@@ -359,6 +359,14 @@ Browser workstream:
 7. Blocker: `@ghostery/adblocker-electron` (MPL-2.0) on the browser partition with ads, tracking and cookie-notice lists, cached on disk and refreshed in the background.
 8. Shared control: the desktop records the last human input per tab; agent calls that arrive within a short window wait briefly, then proceed and say the user was active; element picking and agent clicks cannot collide.
 
+Browser workstream revisions (as built, details and numbers in 8c):
+
+- Dialogs: Electron's `disableDialogs` dismissed confirms the user's own panel clicks opened. Glade now replaces the WebContents' internal `-run-dialog` handler (`disableDialogs` stays as the fallback), so a dialog pauses only its page: agent-caused ones block page tools until `browser_dialog`, user-caused ones (within 2 s of human input) appear in a panel bar and only the user answers them. `prompt()` is refused by Electron's renderer itself, so dialogs are alert and confirm only. The armed one-shot answer is gone.
+- Shared control uses `input-event` (mouse and keyboard; `before-input-event` only sees keys), filtered by the agent-acting flag; the quiet window and the "user active" threshold are both 1.5 s, capped at 2 s of waiting. Picking makes agent input fail with `user_picking` rather than wait.
+- Forms: date and time inputs take values through the native setter; selects match normalised labels; console and network reads are paginated (20 per page) and console repeats grouped.
+- Blocker: one `onBeforeRequest` (and one `onHeadersReceived`) per session, policy first; Ghostery's full prebuilt list set already contains uBlock Origin's filters, privacy, unbreak and annoyance lists, so no extra lists were added. The setting lives under Settings > Browser & Computer Use. uBlock Origin Lite was not an option (MV3 `declarativeNetRequest`, unsupported in Electron).
+- Commits: shared control and dialogs landed in `fix(desktop): reliable browser actions` rather than a separate commit, because both reshape the same tab run loop.
+
 Computer workstream:
 
 1. `computer_act` returns what changed (Cua `get_window_state` diff or effect summary), not just "ok".
@@ -399,7 +407,7 @@ Benchmark (outside the repo, plan section 5 still forbids a new in-repo harness)
 - No credential vault. Sign-in happens in the panel by the user; a password-manager handoff may come later as its own feature, never a Glade-held secret store.
 - Element picking returns through CDP inspect mode and the agent's own ref table (Phase 4), replacing the old annotation overlay.
 - Loopback stays reachable from the agent browser; only Glade's own ports and the dangerous schemes are blocked (Phase 2 revision, see Approval model).
-- Agent browser dialogs are dismissed and reported; `browser_dialog` arms the next answer (Phase 2 revision, see Browser host design).
+- Page dialogs pause only their page and wait: the agent answers its own with `browser_dialog`, the user answers theirs in the panel (Phase 10, superseding the Phase 2 dismiss-and-arm design).
 - The browser panel is a dock beside the chat, not a workspace tab; it hides its native view whenever Glade UI must draw over it (Phase 4).
 - Computer Use is available on every platform the pinned Cua release supports, including Windows, with the delivery mode that platform allows.
 
@@ -443,8 +451,35 @@ TextEdit, structured path first, then pixel path:
 - Claude (Sonnet 5, medium), started with `/computer` on a new chat (draft flow): asked for `full`, was granted `act` and continued with it, added a second line (a structured click on the text area returned AX error -25206 and was reported as unverifiable; typing still landed), read both lines back from the tree, then `computer_screenshot` + `computer_zoom` of the text area matched the tree. Passed in 65 s.
 - Found and fixed during the pass: `/computer-use` collided with a provider skill of the same name in Claude threads (renamed to `/computer`), and the command was not offered on new chats.
 
+## 8c. Phase 10 browser workstream (2026-10-07, macOS arm64, scratch plain Electron 43.5.0)
+
+Verified with a scratch Electron main driving the built desktop modules (`BrowserTabs`, the host dispatch, `ContentBlocker`) against the bench fixture site plus extra pages (fixed/sticky layout, controls, service worker, ads), the two reference pages, hidden views only. The Glade Dev app was not launched; the panel dialog bar and the Settings row were type-checked, not seen running.
+
+Snapshot size, chars / 4, default (viewport plus one screen, interactive), then `filter: all`, then `scope: "page"`:
+
+| Page                                      | Before (Phase 2, whole page) | Default | `filter: all` | `scope: "page"`      |
+| ----------------------------------------- | ---------------------------- | ------- | ------------- | -------------------- |
+| MDN `<input>`                             | 5,529                        | 637     | 3,282         | 6,009 (24k-char cap) |
+| Wikipedia "Electron (software framework)" | 3,443                        | 946     | 3,582         | 3,502                |
+| Fixture 2,000-row table                   | 6,017                        | 450     | 2,752         | 6,016 (cap)          |
+
+Snapshot time stays at 100–500 ms (one `DOMSnapshot.captureSnapshot` per renderer: 1 MB on MDN in ~60 ms, 2.5 MB on the table in ~140 ms; the AX tree dominates).
+
+Outcomes:
+
+1. Snapshot: the overlay page lists only the consent buttons (heading and Subscribe hidden under the backdrop); aria-hidden, opacity 0 and `left:-9999px` nodes are gone; a fixed header and a sticky bar hide the rows under them; `cursor:pointer`/`onclick`/`tabindex` containers appear as `clickable`; an invisible styled checkbox stays listed; a password field shows `filled` and no masked text; an over-long value is cut at 100 characters; the scope note counts elements above and below.
+2. Refs: an SPA re-render marks the new buttons with `+`; a node replaced by `innerHTML` is `stale_ref`; navigating the cross-origin (OOPIF) frame drops only that frame's refs while the same-origin frame's refs keep working.
+3. Actions: clicking under the cookie backdrop fails with `covered … by <div#ov> "We use cookies…"`; after Reject the same ref clicks; a link to another document reports the new URL and title, a hash route only the URL, a delayed insert "3 new interactive elements"; `browser_fill` set text, a `maxlength=3` field (read back as "123"), a select by lower-case label, date, time, a radio, the hidden checkbox and a password in one call; "tomorrow" in a date input is refused; a checkbox whose click handler returns false reports "still unchecked".
+4. Results and dialogs: an agent click opening `confirm()` returns that dialog as its result, a snapshot then fails with `dialog_open`, the tab list marks the tab, `browser_dialog` accepts it and the page continues ("Deleted"); an alert after real input events on the view is the user's: the agent can neither snapshot nor answer it, the user (panel actor) can.
+5. Envelope: page-derived text arrives in `content` and the gateway wraps it in `PAGE_CONTENT` blocks; server gateway tests pass. Not exercised with a live provider turn.
+6. Policy: Glade's port, 169.254.169.254, `data:` and `file:` navigations refused; a popup straight to Glade's port is denied; a popup and a top-level navigation redirected to blocked addresses end on an empty error page with a "blocked loading" note; page and service-worker fetches to blocked hosts fail while the worker's allowed fetch succeeds.
+7. Blocker: from a cold cache the engine (8.96 MB serialized) is built and cached in ~0.4–0.9 s without stalling startup; googlesyndication, google-analytics and doubleclick requests are blocked and load again when switched off; Glade's port and `file:` stay refused with the blocker on; a OneTrust banner is hidden on a public host name (the lists exempt IP and local hosts from element hiding); a failing list fetch leaves pages unblocked and schedules a retry.
+8. Shared control: a key press right before an agent call delays it by ~1 s and the result says the user was just using the tab; agent clicks during picking fail with `user_picking`.
+
+Checks: `bun run check`, full `bun run test` (all packages), `bun run build:desktop` (Ghostery stays external and resolves from the packaged node_modules), `bun scripts/check-windows-runtime-boundary.ts`.
+
 ## 9. Open items
 
 - Record token measurements from the provider acceptance runs here.
-- Page dialogs in the visible panel: v1 dismisses and reports them. A user-facing answer path would need a non-blocking prompt in the panel.
+- Page dialogs reach the user through the panel bar (8c); `prompt()` stays unsupported because Electron's renderer refuses it.
 - Keyboard shortcuts do not reach Glade while focus is inside a page view.

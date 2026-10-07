@@ -7,9 +7,11 @@
 - Browser Use is rebuilt: each chat has its own browser panel, agents browse with your existing sign-ins, and you can pick an element on a page to send to the composer.
 - Computer Use is rebuilt on the Cua driver: agents use desktop apps after you grant access to each app in the chat.
 - Visual replies and previews can load public web resources, and visual links open in your browser.
+- Glade's browser blocks ads, trackers and cookie notices by default, with a switch in Settings.
 
 ### Improved
 
+- Browser Use reads pages with far fewer tokens and acts more reliably: it skips hidden and covered elements, waits for what each action causes, fills whole forms at once, and leaves page dialogs and clicks you make in the panel to you.
 - Claude chats load core Glade tools automatically and discover other tools as needed, reducing context usage.
 
 - Subagent rows use stable names instead of Claude task descriptions, show model names or aliases without extra labels, and keep task prompts, agent types and redundant background-agent banners out of the compact panels.
