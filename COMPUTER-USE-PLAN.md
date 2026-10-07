@@ -325,6 +325,15 @@ Snapshot size, `filter: interactive` (chars / 4): example.com ≈ 7 tokens, MDN 
 
 Phase 1 had dropped the inherited environment from the backend's spawn environment; Phase 2 restores it (minus stale desktop host variables).
 
+### Browser provider acceptance (2026-10-07, Dev app, macOS)
+
+Same five-step script (open MDN, find and click the "HTML" link, search "input element" through the site's search box, screenshot, read console), browser tools only:
+
+- Codex (GPT-6.1-Sol, medium): all five steps passed in 19 s.
+- Claude (Sonnet 5, medium): all five steps passed in 23 s.
+
+Per-step token counts were not read from the usage panel; snapshot sizes are in 8a.
+
 ## 9. Open items
 
 - Record token measurements from the provider acceptance runs here.
