@@ -24,12 +24,17 @@ connection and every policy decision, and providers only see gateway tools.
   either `ready` with the driver generation and the MCP proxy's `command`, `args` and environment,
   or `unavailable` with a reason (`unsupported_platform`, `binary_missing`, `binary_mismatch`,
   `permissions_required`, `starting`, `failed`). The server can also ask the desktop to re-encode a
-  screenshot as JPEG (`computer.encodeJpeg`), since the server has no image codec.
+  screenshot as JPEG (`computer.encodeJpeg`), since the server has no image codec, and for the
+  seconds since the user last used the mouse or keyboard (`computer.userIdle`, Electron's
+  `powerMonitor.getSystemIdleTime()`, whole seconds; `null` on Linux, where Chromium cannot tell
+  outside X11). The desktop sends `computer.killSwitch` when the kill switch shortcut is pressed.
 - **Server.** `ComputerHost` launches exactly the published stdio MCP proxy for each generation
   and is an MCP client to it; no Glade code speaks Cua's socket protocol. It runs
   `check_permissions` and `health_report` on connect, relaunches a dead proxy and reports status.
   Each thread gets its own Cua session. `ComputerAccess` owns grants and the access cards;
-  `computerTask.ts` owns in-flight calls and the per-turn image budget.
+  `computerTask.ts` owns in-flight calls and the per-turn image budget; `windowSnapshots.ts` owns
+  each window's element indexes; `computerProgressGuard.ts` the repeat guard; `appCategories.ts`
+  the browser and terminal/IDE lists.
 - **Gateway.** The `computer_*` tools are listed only while the chat's Computer Use mode is not
   off. Providers read the tool list once per session, so changing the mode restarts the provider
   session with its resume cursor (at once when idle, otherwise at the next turn start).
@@ -46,23 +51,68 @@ connection and every policy decision, and providers only see gateway tools.
   session sees and revokes them; paired devices do not. An answer only settles a card of the chat
   it was given in.
 - Every window-scoped call checks that the window belongs to the pid it names.
+- App categories cap every grant without extra prompts. Apps are identified at action time by the
+  bundle id of the process that owns the target window (macOS), or by executable name on Windows
+  and Linux. Browsers are read-only: web work goes through Browser Use, so input and act or full
+  requests are refused with a pointer to the `browser_*` tools. Terminals and IDEs (Glade included)
+  take plain clicks and scrolling under `act`; typing, keys, right-clicks, modifier clicks, drags,
+  `set_value` and menus need `full`.
 - Calls outside a grant return typed errors the model can read (`computer_use_off`,
-  `window_not_found`, `access_required`, `unknown_element`, `stopped`, or Cua's own code).
+  `window_not_found`, `access_required`, `browser_read_only`, `click_only`, `unknown_element`,
+  `no_progress`, `user_active`, `stopped`, or Cua's own code).
 - Stop (or the turn interrupt) cancels in-flight Cua calls, refuses the rest of that turn and ends
-  the chat's Cua session, which releases held input.
+  the chat's Cua session, which releases held input. Cua holds no keys or buttons between calls
+  (drags are one call), so ending the session and cancelling the in-flight call is the release.
+- Kill switch: Control+Option+Command+Escape on macOS, Control+Alt+Shift+Escape elsewhere, registered
+  system-wide by the desktop while the driver is ready (no default Glade keybinding uses Escape with
+  modifiers; macOS keeps Command+Option+Escape for Force Quit). It interrupts every turn that is
+  still using the computer, exactly like Stop in each chat, and ends every Cua session at once.
+- Foreground delivery (and drags, which are always foreground) yields to the user: when the mouse
+  or keyboard was used within the last second it is refused with `user_active` and the agent
+  retries later. Cua's foreground drags move the real pointer and reset the OS idle clock (its
+  foreground keys do not), so after the agent's own foreground input the check first waits until
+  a full idle second has passed. Background delivery is unaffected; on
+  Linux the check is skipped because the idle time is unknown.
 
 ## Tools
 
 Structured (preferred): `computer_apps`, `computer_window_state` (accessibility tree, screenshot
 only on request), `computer_act` (click, type, keys, scroll, set value, menu by element index, with
-background or foreground delivery), `computer_request_access`, `computer_stop`.
+background or foreground delivery), `computer_verify` (Cua's `verify_state`: waits up to 10 s for
+element conditions with stable samples), `computer_request_access`, `computer_stop`.
 
 Pixel (fallback, window-scoped): `computer_screenshot`, `computer_zoom`, `computer_left_click`,
 `computer_right_click`, `computer_double_click`, `computer_triple_click`,
-`computer_left_click_drag`, `computer_scroll`, `computer_type`, `computer_key`, `computer_wait`.
-Screenshots are capped at 1280 px on the longest edge and re-encoded as JPEG at that size;
-coordinates are in that screenshot's space. A turn returns at most 20 images. Whole-screen actions
-are not exposed, so every call names an app window a grant can cover.
+`computer_left_click_drag`, `computer_scroll`, `computer_type`, `computer_key`. Names and
+parameters follow Anthropic's `computer_toolset_20260801` members (`coordinate`,
+`start_coordinate`, `region`, `scroll_direction`, `scroll_amount`, `text` for keys and click
+modifiers) plus the window. Screenshots are window-only at most 1568 px on the long edge (Cua's documented size, passed
+explicitly because the driver setting may be native size) and re-encoded as JPEG at that size; coordinates are in that screenshot's space. Whole-screen
+actions are not exposed, so every call names an app window a grant can cover. Cua 0.34 has no
+batch tool, so there is no `computer_batch`.
+
+Element indexes are Glade's, not Cua's: an element keeps its index across reads and actions of the
+same window (identity is the role and label path plus position among identical siblings) and an
+index is never reused, so a stale one is refused rather than hitting another element.
+
+Results:
+
+- Every action reports Cua's effect and evidence, and, when the agent has read the window before,
+  re-reads it 150 ms later and lists what changed (`+` new, `~` new value or state, `-` gone,
+  capped) or says nothing changed. New and gone elements are only listed when both reads covered
+  the whole window. The re-read includes a screenshot at the same size, discarded, because a
+  tree-only read would replace the screenshot Cua maps pixel coordinates through and the next pixel
+  action would be refused (`screenshot_context_missing`). Text inputs and the window itself keep
+  their index while their label changes (TextEdit reports a text area's contents as its label).
+- The same action with the same input that showed no effect (not confirmed and no tree change)
+  twice in a row is refused with `no_progress` until the agent reads the app again or does
+  something else. Glade never replays an action itself.
+- Window titles and accessibility text reach the model inside nonce-delimited `APP_CONTENT` blocks
+  (the same envelope Browser Use uses for `PAGE_CONTENT`), a provenance cue rather than a security
+  boundary. The closing `Window: <app> "<title>"` line stays outside because the chat timeline
+  reads it.
+- A turn returns at most 60 images. This is a runaway guard, not a context budget: Claude and Codex
+  own their history and compact it.
 
 ## Platforms
 
@@ -98,12 +148,14 @@ See [dependency maintenance](dependencies.md#cua-driver).
 1. `bun run build:desktop` (fetches and verifies the driver) and `bun run check`.
 2. Contract and trust tests: `apps/server/src/computer/cuaResults.test.ts` decodes fixtures
    captured from the pinned release; `apps/server/src/agentGateway/computer/computerAccessGate.test.ts`
-   covers the grant gate.
+   covers the grant gate, the app category tiers and the progress guard.
 3. Launch the Dev app through LaunchServices, grant both permissions, and confirm Settings shows the
    driver ready. Turn on `/computer` in a chat, grant TextEdit and ask the agent to type a sentence
    and read it back, then exercise a screenshot and zoom.
 4. Kill the `cua-driver` process: Settings recovers with a new generation within a few seconds.
    Quitting Glade stops the daemon and the proxy.
+5. While an agent works in TextEdit, press the kill switch: the turn stops as with Stop. Ask for
+   typing in Terminal under `act` (refused) and a click in Safari (refused).
 
 ## Licenses
 

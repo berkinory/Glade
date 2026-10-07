@@ -92,7 +92,7 @@ Durable truth and side effects stay in `apps/server`; the desktop owns native su
 - The desktop starts the driver with the upstream embedded-host entry point so Accessibility and Screen Recording grants attach to Glade's signing identity. It publishes `computer.connection` (`{state: "ready", generation, driverVersion, mcp}` or `{state: "unavailable", reason, message}`) over the host RPC after every change and whenever a backend authenticates.
 - Permission checks, setup guidance and "open System Settings" actions come from the upstream `/electron` entry point; Glade keeps no Swift helper.
 - The server `ComputerHost` service holds: availability and health, per-thread opt-in, the approval lease (which app or window the agent may act on, granted by the user from a chat card), and the active task for Stop. It proxies tool calls to Cua, enforcing ownership and approval before dispatch and classifying results with Cua's `effect` / `escalation` fields.
-- Stop and the Escape key cancel through Cua's cancellation, which releases held input. Glade adds no second kill switch.
+- Stop cancels through Cua's cancellation and ends the thread's Cua session, which releases held input. A desktop global shortcut is the kill switch for every thread at once (Phase 10).
 
 ### Tool surface
 
@@ -127,7 +127,7 @@ Action results are one line plus URL and title. They never embed a fresh snapsho
 Two layers over the same Cua connection.
 
 1. _Structured_ (primary): `computer_apps` (running apps and windows), `computer_window_state` (accessibility tree for a window, screenshot only when `include_screenshot: true`), `computer_act` (click, type, press, scroll, set value, menu, by `element_token` with `delivery: background | foreground`), `computer_request_access` (asks the user to grant an app or window), `computer_stop`.
-2. _Pixel_ (fallback, Anthropic-shaped vocabulary): `computer_screenshot`, `computer_zoom`, `computer_left_click`, `computer_right_click`, `computer_double_click`, `computer_triple_click`, `computer_left_click_drag`, `computer_mouse_move`, `computer_scroll`, `computer_type`, `computer_key`, `computer_hold_key`, `computer_wait`. Coordinates are in the pixel space of the last returned screenshot; screenshots are downscaled before they leave the server and at most 20 are kept per turn context.
+2. _Pixel_ (fallback, Anthropic-shaped vocabulary): `computer_screenshot`, `computer_zoom`, `computer_left_click`, `computer_right_click`, `computer_double_click`, `computer_triple_click`, `computer_left_click_drag`, `computer_mouse_move`, `computer_scroll`, `computer_type`, `computer_key`, `computer_hold_key`, `computer_wait`. Coordinates are in the pixel space of the last returned screenshot; screenshots are downscaled before they leave the server, with a per-turn runaway cap (Phase 10).
 
 Guidance in `harnessPolicy.ts` says: prefer structured, screenshot only after an `unverifiable` or `refused` effect or when the tree lacks the target, zoom before taking a higher-resolution screenshot.
 
@@ -379,6 +379,18 @@ Computer workstream:
 8. Window and AX text from apps goes through the same untrusted envelope.
 9. Pixel vocabulary aligned with Anthropic's `computer_toolset_20260801` naming where it differs.
 
+Computer workstream revisions (as built, verification in 8d):
+
+1. Cua 0.34 has no `since:` diff on `get_window_state`. Glade keeps its own element indexes per thread and window (identity = parent's index, role and label plus position among identical siblings; values and states excluded, and labels of text inputs and the root too; never reused) and, when the agent has read the window before, re-reads it (with a discarded screenshot, which keeps Cua's pixel context) 150 ms after each action and lists added, changed and removed elements (capped at 15 lines) plus Cua's `evidence` read-back. Re-reading makes Cua stale the agent's tokens, which is why indexes became Glade's: the agent's indexes stay valid across actions.
+2. Progress guard (`computerProgressGuard.ts`): the same tool with the same input that ran twice in a row with no observed effect (not `confirmed`/`partial` and no tree change) is refused with `no_progress`; any read-only computer tool or a different action resets it. No auto-replay.
+3. Human yield: desktop `computer.userIdle` returns `powerMonitor.getSystemIdleTime()` (whole seconds) on macOS and Windows, `null` on Linux (Chromium reports 0 outside X11). Cua 0.34 exposes no user-input clock (its session `idle_seconds` is agent idleness), and a native `CGEventSourceSecondsSinceLastEventType` binding would need native code, so 1 s granularity it is. Foreground delivery and drags refuse with `user_active` when idle < 1 s; the idle clock counts the agent's own foreground events too, so after one the check waits until 1.1 s have passed before reading it.
+4. `computer_wait` is replaced by `computer_verify` over Cua's `verify_state` (element conditions by role/label with value, enabled and selected; stable samples; timeout ≤ 10 s). Window predicates are not exposed because the call resolves the window first. Cua 0.34 has no batch tool, so no `computer_batch`.
+5. Screenshots request `max_image_dimension: 1568` explicitly (the stored driver setting may be 0, native size) and stay window-only JPEG. The per-turn cap is 60 images: Claude and Codex own and compact their history, so the cap only stops runaway loops.
+6. Categories (`appCategories.ts`, bundle ids on macOS, executable names elsewhere, resolved from the window's pid through `list_apps` and cached per pid and app name): browsers are read-only whatever the grant (`browser_read_only`, and `computer_request_access` refuses act/full for a browser without a card); terminals and IDEs, Glade included, take plain clicks and scrolling under `act` (`click_only` for typing, keys, right-click, modifier clicks, drag, set_value, menus); `full` lifts it. `computer_apps` marks both categories.
+7. Kill switch: `Control+Alt+Command+Escape` on macOS, `Control+Alt+Shift+Escape` elsewhere, registered with `globalShortcut` only while the driver is ready (no default keybinding uses Escape with modifiers). The desktop sends `computer.killSwitch`; the server stops every thread's in-flight Cua calls, ends all Cua sessions, and dispatches `thread.turn.interrupt` for each thread whose latest computer turn is still the active turn, so the timeline shows the same interrupted turn as Stop. Cua 0.34 holds no input between calls (no hold-key tool, drags are atomic), so cancellation plus `end_session` is the release.
+8. `untrustedContent.ts` moved from `agentGateway/browser/` to `agentGateway/` and takes a kind: `PAGE_CONTENT` (browser) or `APP_CONTENT` (computer: `computer_apps` listing, window trees, change lists, evidence, verify observations). The trailing `Window: <app> "<title>"` line stays outside because the web timeline parses it.
+9. Pixel params now follow `computer_toolset_20260801` (names already matched): `coordinate`, `start_coordinate`, `region`, `scroll_direction`, `scroll_amount`, `text` for keys and for click modifiers (`shift`, `ctrl`, `alt`, `cmd`/`super`). Modifier clicks are sent foreground (macOS needs physical modifier state) and so need full. `middle_click`, `mouse_move`, `hold_key`, `left_mouse_down/up`, `cursor_position` and `key.repeat` were not added.
+
 Benchmark (outside the repo, plan section 5 still forbids a new in-repo harness): local fixture site with pages that report outcomes to the fixture server; the same task list run with Claude and Codex against Glade's tools and against `@playwright/mcp` and `chrome-devtools-mcp`; injection cases adapted from published suites (AgentDojo, WASP) with a benign canary; metrics: success, tool calls, tokens, wall time, and for injections diverted vs completed. Results are recorded in section 8.
 
 ## 5. Verification policy
@@ -478,8 +490,26 @@ Outcomes:
 
 Checks: `bun run check`, full `bun run test` (all packages), `bun run build:desktop` (Ghostery stays external and resolves from the packaged node_modules), `bun scripts/check-windows-runtime-boundary.ts`.
 
+## 8d. Phase 10 computer workstream (2026-10-07, macOS arm64)
+
+Live run: once the benchmark's Glade (Dev) had exited, a scratch Electron main started the real desktop host (`startDesktopHost`) inside the Dev bundle launched through LaunchServices (driver ready, both grants, Dev identity), and a scratch server process drove the real `computer_*` gateway handlers over the host RPC with `ComputerHostLive` and in-memory grants (no orchestration engine, so the kill switch's interrupt dispatch was not exercised). Apps: TextEdit (`note.txt` in the scratchpad), Terminal (opened for the run and quit after), Helium (the user's running Chromium browser).
+
+- Act diff: typing into TextEdit's text area by index returned `Effect: confirmed` and `~ [1] AXTextArea "…Second line…"`; index 1 stayed valid across actions. Background `cmd+s` returned `unverifiable` with a foreground escalation and "No change".
+- `computer_verify` on `label_contains: "Second line"`: satisfied, stable, 654 ms, 2 samples.
+- Progress guard: third identical background pixel click with no effect refused with `no_progress`, Cua saw two; a `computer_zoom` reset it.
+- Tiers: Helium click and `cmd+l` refused `browser_read_only` under a full grant, `computer_request_access` act for Helium refused without a card; Terminal typing, return and a menu refused `click_only` under act; typing allowed under full. `computer_apps` marks both.
+- Human yield: idle read 0 while another process kept dragging in the foreground, and a foreground key press was refused `user_active`; the background press right after went through. Cua's foreground keys left the idle clock untouched (4 s right after), its foreground drag reset it (39 s to 1 s), which is why Glade waits out its own real input before reading it.
+- Kill switch: registered (`globalShortcut.isRegistered` true while ready); the chord sent through Cua's HID path fired it, the desktop logged the press and the server's `killSwitch` stream received it. A pid-targeted hotkey and System Events keystrokes cannot trigger it.
+- Screenshots: TextEdit 1312×844 (native, under the cap), Helium 1568×983.
+- Timing: Cua's own `press_key` takes ~1.7 s and a pixel click ~1.5 s; Glade adds ~0.3 s for the re-read and ~0.7 s for `list_apps` the first time an app is acted on.
+- Found and fixed during the run: (1) the re-read dropped Cua's screenshot context, so every pixel action after the first failed with `screenshot_context_missing` (the re-read now keeps a screenshot); (2) TextEdit reports a text area's contents as its label, so typing re-indexed it (text input labels left out of the identity); (3) a diff against a query-filtered read listed everything unseen as new (added and removed now need two complete reads); (4) Cua session labels restarted per server process, so after a backend restart under the same daemon every call failed with "session has ended" (labels now carry a per-process nonce); (5) Helium was missing from the browser list.
+
+Checks: `computerAccessGate.test.ts` (grant gate, eight category-tier cases, progress guard) and `cuaResults.test.ts`; the `bun run check` stages pass for everything outside `apps/web` (formatting, lint and an import cycle in another agent's in-progress `apps/web` files fail); full `bun run test`; `bun run build:desktop`; `bun scripts/check-windows-runtime-boundary.ts`. Not run: a provider turn (Claude or Codex) against the new tools, the access card, and the kill switch's turn interrupt through the orchestration engine.
+
 ## 9. Open items
 
 - Record token measurements from the provider acceptance runs here.
 - Page dialogs reach the user through the panel bar (8c); `prompt()` stays unsupported because Electron's renderer refuses it.
 - Keyboard shortcuts do not reach Glade while focus is inside a page view.
+- Toggling Computer Use restarts the provider session to change the tool list, which throws away the prompt cache of the tool block every time. Measure the cost and consider always listing the computer tools (refusing while off) or deferring them behind tool search.
+- Web: the kill switch has no UI yet (Settings > Computer Use should show the shortcut; the composer's computer row could show it as a hint), and the new refusal codes (`no_progress`, `user_active`, `browser_read_only`, `click_only`) and the change list in action results render as plain tool output.
