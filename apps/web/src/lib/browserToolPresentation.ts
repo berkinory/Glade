@@ -33,6 +33,11 @@ const BROWSER_TOOL_WORDING = {
   browser_upload: ["Uploading", "Uploaded", "upload files"],
   browser_console: ["Reading console", "Read console", "read the console"],
   browser_network: ["Reading network requests", "Read network requests", "read network requests"],
+  browser_content_blocker: [
+    "Changing content blocker",
+    "Changed content blocker",
+    "change the content blocker",
+  ],
   browser_batch: ["Running browser steps", "Ran browser steps", "run browser steps"],
   browser_evaluate: ["Evaluating script", "Evaluated script", "evaluate the script"],
   // Every listed tool needs wording; the index signature admits one before the contracts list it.
@@ -204,6 +209,15 @@ function browserWording(tool: BrowserToolName, args: GatewayToolCall["args"]): G
     return args.accept
       ? ["Accepting dialog", "Accepted dialog", "accept the dialog"]
       : ["Dismissing dialog", "Dismissed dialog", "dismiss the dialog"];
+  }
+  if (tool === "browser_content_blocker" && typeof args.enabled === "boolean") {
+    return args.enabled
+      ? ["Turning on content blocker", "Turned on content blocker", "turn on the content blocker"]
+      : [
+          "Turning off content blocker",
+          "Turned off content blocker",
+          "turn off the content blocker",
+        ];
   }
   if (tool === "browser_fill" && Array.isArray(args.fields) && args.fields.length > 0) {
     return ["Filling", "Filled", "fill the form"];

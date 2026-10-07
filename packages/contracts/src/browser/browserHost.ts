@@ -3,6 +3,7 @@ import { ThreadId } from "../core/baseSchemas";
 import {
   BrowserClickInput,
   BrowserConsoleInput,
+  BrowserContentBlockerInput,
   BrowserDialogInput,
   BrowserDragInput,
   BrowserFillInput,
@@ -77,6 +78,8 @@ export const BROWSER_HOST_METHODS = {
   "browser.upload": scoped(BrowserUploadInput),
   "browser.console": scoped(BrowserConsoleInput),
   "browser.network": scoped(BrowserNetworkInput),
+  // Turns the content blocker on or off for the tab's site and reloads the tab.
+  "browser.contentBlocker": scoped(BrowserContentBlockerInput),
   // Sent by the server when a thread is archived or deleted; closes every tab of the thread.
   "browser.closeThread": scoped(Schema.Struct({})),
 } as const;
@@ -136,6 +139,9 @@ export const BrowserTabState = Schema.Struct({
   canGoForward: Schema.Boolean,
   active: Schema.Boolean,
   dialog: Schema.NullOr(BrowserPageDialog),
+  // Whether the content blocker applies to the page's site when it is on; null for pages without
+  // a site, such as about:blank.
+  siteBlocking: Schema.NullOr(Schema.Boolean),
 });
 export const BrowserTabsChanged = Schema.Struct({ tabs: Schema.Array(BrowserTabState) });
 export type BrowserTabsChanged = typeof BrowserTabsChanged.Type;

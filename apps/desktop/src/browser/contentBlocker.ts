@@ -1,4 +1,4 @@
-import { ElectronBlocker } from "@ghostery/adblocker-electron";
+import { ElectronBlocker, Request } from "@ghostery/adblocker-electron";
 import {
   ipcMain,
   type IpcMainInvokeEvent,
@@ -27,6 +27,10 @@ const RETRY_AFTER_MS = 60 * 60 * 1000;
 // Ghostery's preload in every frame, registered on the partition only while blocking is on; it
 // runs in the preload's isolated world and talks to the main process over two IPC channels.
 //
+// Sites the user or agent turned blocking off for are kept by registrable domain (eTLD+1, parsed
+// by the engine's own Request) next to the on/off setting. Every request and cosmetic injection
+// of a page on such a site is let through, including its third-party ones.
+//
 // The serialized engine is cached on disk and rebuilt from the lists in the background once a
 // day. Startup never waits for the network: until an engine is loaded, nothing is blocked.
 export class ContentBlocker {
@@ -34,13 +38,16 @@ export class ContentBlocker {
   private preloadId: string | null = null;
   private timer: NodeJS.Timeout | null = null;
   private on: boolean;
+  private readonly allowedSites: Set<string>;
 
   constructor(
     private readonly session: Session,
     private readonly files: { readonly cache: string; readonly setting: string },
     private readonly log: (message: string) => void,
   ) {
-    this.on = readSetting(files.setting);
+    const setting = readSetting(files.setting);
+    this.on = setting.enabled;
+    this.allowedSites = new Set(setting.allowedSites);
   }
 
   start(): void {
@@ -61,15 +68,31 @@ export class ContentBlocker {
   }
 
   setEnabled(enabled: boolean): boolean {
-    FS.mkdirSync(Path.dirname(this.files.setting), { recursive: true });
-    FS.writeFileSync(this.files.setting, JSON.stringify({ version: 1, enabled }), "utf8");
     this.on = enabled;
+    this.save();
     this.applyCosmetics();
     return enabled;
   }
 
+  // Whether blocking applies to the page at `url` while the blocker is on; null when the page has
+  // no site to key an exception by.
+  siteBlocking(url: string): boolean | null {
+    const site = siteOf(url);
+    return site === null ? null : !this.allowedSites.has(site);
+  }
+
+  // Returns the site the setting now applies to. Pages pick it up on their next load.
+  setSiteBlocking(url: string, blocking: boolean): string | null {
+    const site = siteOf(url);
+    if (site === null) return null;
+    if (blocking) this.allowedSites.delete(site);
+    else this.allowedSites.add(site);
+    this.save();
+    return site;
+  }
+
   onBeforeRequest(details: OnBeforeRequestListenerDetails, callback: BeforeRequestCallback): void {
-    const engine = this.active();
+    const engine = this.activeFor(pageUrl(details));
     if (engine) engine.onBeforeRequest(details, callback);
     else callback({});
   }
@@ -78,9 +101,29 @@ export class ContentBlocker {
     details: OnHeadersReceivedListenerDetails,
     callback: HeadersReceivedCallback,
   ): void {
-    const engine = this.active();
+    const engine = this.activeFor(pageUrl(details));
     if (engine) engine.onHeadersReceived(details, callback);
     else callback({});
+  }
+
+  private activeFor(page: string | null): ElectronBlocker | null {
+    const engine = this.active();
+    if (!engine || this.allowedSites.size === 0 || page === null) return engine;
+    const site = siteOf(page);
+    return site !== null && this.allowedSites.has(site) ? null : engine;
+  }
+
+  private save(): void {
+    FS.mkdirSync(Path.dirname(this.files.setting), { recursive: true });
+    FS.writeFileSync(
+      this.files.setting,
+      JSON.stringify({
+        version: 1,
+        enabled: this.on,
+        allowedSites: [...this.allowedSites].toSorted(),
+      }),
+      "utf8",
+    );
   }
 
   private active(): ElectronBlocker | null {
@@ -144,7 +187,7 @@ export class ContentBlocker {
       });
       ipcMain.handle(INJECT_COSMETICS, (event, url: unknown, update: CosmeticsUpdate) =>
         this.fromPartition(event) && typeof url === "string"
-          ? this.active()?.onInjectCosmeticFilters(event, url, update)
+          ? this.activeFor(event.sender.getURL())?.onInjectCosmeticFilters(event, url, update)
           : undefined,
       );
       ipcMain.handle(MUTATION_OBSERVER, (event) =>
@@ -164,16 +207,32 @@ export class ContentBlocker {
   }
 }
 
-// On unless the user turned it off.
-function readSetting(path: string): boolean {
+function siteOf(url: string): string | null {
+  if (!/^https?:/iu.test(url)) return null;
+  return Request.fromRawDetails({ url }).domain || null;
+}
+
+// The top-level page a request belongs to: the request itself for a navigation, else the page its
+// tab shows.
+function pageUrl(details: OnBeforeRequestListenerDetails | OnHeadersReceivedListenerDetails) {
+  if (details.resourceType === "mainFrame") return details.url;
+  const webContents = details.webContents;
+  return webContents && !webContents.isDestroyed() ? webContents.getURL() : null;
+}
+
+// On unless the user turned it off; no site exceptions unless some were stored.
+function readSetting(path: string): { enabled: boolean; allowedSites: string[] } {
   try {
     const stored: unknown = JSON.parse(FS.readFileSync(path, "utf8"));
-    return !(
-      typeof stored === "object" &&
-      stored !== null &&
-      Reflect.get(stored, "enabled") === false
-    );
+    if (typeof stored !== "object" || stored === null) return { enabled: true, allowedSites: [] };
+    const sites: unknown = Reflect.get(stored, "allowedSites");
+    return {
+      enabled: Reflect.get(stored, "enabled") !== false,
+      allowedSites: Array.isArray(sites)
+        ? sites.filter((site): site is string => typeof site === "string")
+        : [],
+    };
   } catch {
-    return true;
+    return { enabled: true, allowedSites: [] };
   }
 }

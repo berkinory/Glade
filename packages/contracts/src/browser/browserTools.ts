@@ -168,6 +168,11 @@ export const BrowserDialogInput = Schema.Struct({
   ...tab,
 });
 
+export const BrowserContentBlockerInput = Schema.Struct({
+  enabled: Schema.Boolean,
+  ...tab,
+});
+
 export const BrowserUploadInput = Schema.Struct({
   ref: BrowserRef,
   paths: Schema.Array(Text(4096).check(Schema.isNonEmpty())).check(
@@ -223,6 +228,7 @@ export const BROWSER_BATCH_TOOLS = [
   "browser_upload",
   "browser_console",
   "browser_network",
+  "browser_content_blocker",
 ] as const;
 export type BrowserBatchTool = (typeof BROWSER_BATCH_TOOLS)[number];
 

@@ -13,6 +13,7 @@ import { BrowserFailure } from "./browserFailure";
 import { navigate } from "./browserNavigation";
 import type { BrowserTab } from "./browserTab";
 import type { BrowserTabs } from "./browserTabs";
+import type { ContentBlocker } from "./contentBlocker";
 import { click, drag, hover, press } from "./cdp/actions";
 import type { PageRead } from "./cdp/buffers";
 import { visibleChallenge } from "./cdp/challenge";
@@ -77,6 +78,7 @@ const joined = (...parts: string[]) => parts.filter(Boolean).join("\n");
 export function createBrowserHostDispatch(
   tabs: BrowserTabs,
   gladePorts: () => ReadonlySet<number>,
+  blocker: ContentBlocker,
 ): (method: string, params: unknown) => Promise<BrowserHostResult> {
   // Panel calls answer without draining the notices and page messages the agent has not seen yet.
   const reply = (
@@ -342,6 +344,26 @@ export function createBrowserHostDispatch(
     "browser.network": async (params) => {
       const tab = tabFor("browser.network", params);
       return read(tab, () => tab.buffers.readNetwork(params), params.actor);
+    },
+    "browser.contentBlocker": async (params) => {
+      const tab = tabFor("browser.contentBlocker", params);
+      const site = blocker.setSiteBlocking(tab.webContents.getURL(), params.enabled);
+      if (site === null) {
+        throw new BrowserFailure("invalid_input", "This page has no site to set the blocker for.");
+      }
+      const settingOff = blocker.enabled()
+        ? ""
+        : " The blocker is off in Settings, so this applies once the user turns it back on.";
+      const report = await navigated(tab, { history: "reload", actor: params.actor });
+      if ("image" in report) return report;
+      const state = params.enabled ? "on" : "off";
+      return {
+        ...report,
+        text: joined(
+          `Turned the content blocker ${state} for ${site} and reloaded the tab.${settingOff}`,
+          report.text,
+        ),
+      };
     },
     "browser.closeThread": async (params) => ({
       page: null,

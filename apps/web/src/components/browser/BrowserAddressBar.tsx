@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { ArrowLeft02Icon, ArrowRight02Icon, RefreshCwIcon } from "~/lib/icons";
 import { IconButton } from "../ui/icon-button";
 import { Input } from "../ui/input";
@@ -8,6 +8,8 @@ export function BrowserAddressBar(props: {
   tab: BrowserTab | null;
   onOpen: (url: string) => void;
   onHistory: (history: "back" | "forward" | "reload") => void;
+  // Page actions after the address field.
+  children?: ReactNode;
 }) {
   const { tab } = props;
   // What the user is typing, kept per tab so page navigations do not overwrite it mid-edit.
@@ -60,6 +62,7 @@ export function BrowserAddressBar(props: {
           }
         }}
       />
+      {props.children}
     </form>
   );
 }

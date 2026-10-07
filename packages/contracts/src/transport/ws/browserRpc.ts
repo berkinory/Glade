@@ -33,6 +33,12 @@ export const BrowserPanelCommand = Schema.Union([
     tabId: BrowserTabId,
     accept: Schema.Boolean,
   }),
+  Schema.Struct({
+    threadId: ThreadId,
+    action: Schema.Literal("contentBlocker"),
+    tabId: BrowserTabId,
+    enabled: Schema.Boolean,
+  }),
 ]);
 export type BrowserPanelCommand = typeof BrowserPanelCommand.Type;
 

@@ -16,6 +16,7 @@ import { BrowserAddressBar } from "./BrowserAddressBar";
 import { BrowserAgentActivity } from "./BrowserAgentActivity";
 import { BrowserPageDialog } from "./BrowserPageDialog";
 import { BrowserPickElement } from "./BrowserPickElement";
+import { BrowserSiteMenu } from "./BrowserSiteMenu";
 import { useBrowserPanelStore } from "./browserPanelStore";
 import { BrowserTabStrip } from "./BrowserTabStrip";
 import { useBrowserTabs } from "./useBrowserTabs";
@@ -83,7 +84,15 @@ function BrowserPanelContent(props: { threadId: ThreadId; onClose: () => void })
           if (activeTab)
             runCommand({ threadId, action: "navigate", tabId: activeTab.tabId, history });
         }}
-      />
+      >
+        <BrowserSiteMenu
+          tab={activeTab}
+          onSiteBlocking={(enabled) => {
+            if (activeTab)
+              runCommand({ threadId, action: "contentBlocker", tabId: activeTab.tabId, enabled });
+          }}
+        />
+      </BrowserAddressBar>
       <BrowserAgentActivity threadId={threadId} />
       <BrowserPageDialog
         dialog={activeTab?.dialog ?? null}

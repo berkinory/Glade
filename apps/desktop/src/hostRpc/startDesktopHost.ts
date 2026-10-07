@@ -57,7 +57,7 @@ export async function startDesktopHost(input: {
     blocker,
     parking,
   });
-  const browserDispatch = createBrowserHostDispatch(tabs, input.gladePorts);
+  const browserDispatch = createBrowserHostDispatch(tabs, input.gladePorts, blocker);
   const killSwitch = createComputerKillSwitch({
     onPressed: () => notify(COMPUTER_KILL_SWITCH_NOTIFICATION, {}),
     log: input.computer.log,

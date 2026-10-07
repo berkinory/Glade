@@ -40,25 +40,31 @@ export function makeBrowserWsHandlers(input: {
       const scope = { threadId: command.threadId, workspaceDir, actor: "user" as const };
       const { action } = command;
       const call =
-        command.action === "dialog"
-          ? host.call("browser.dialog", {
+        command.action === "contentBlocker"
+          ? host.call("browser.contentBlocker", {
               ...scope,
               tabId: command.tabId,
-              accept: command.accept,
+              enabled: command.enabled,
             })
-          : command.action === "navigate"
-            ? host.call("browser.navigate", {
+          : command.action === "dialog"
+            ? host.call("browser.dialog", {
                 ...scope,
                 tabId: command.tabId,
-                ...(command.url !== undefined ? { url: command.url } : {}),
-                ...(command.history !== undefined ? { history: command.history } : {}),
+                accept: command.accept,
               })
-            : host.call("browser.tabs", {
-                ...scope,
-                action,
-                ...("tabId" in command ? { tabId: command.tabId } : {}),
-                ...("url" in command && command.url !== undefined ? { url: command.url } : {}),
-              });
+            : command.action === "navigate"
+              ? host.call("browser.navigate", {
+                  ...scope,
+                  tabId: command.tabId,
+                  ...(command.url !== undefined ? { url: command.url } : {}),
+                  ...(command.history !== undefined ? { history: command.history } : {}),
+                })
+              : host.call("browser.tabs", {
+                  ...scope,
+                  action,
+                  ...("tabId" in command ? { tabId: command.tabId } : {}),
+                  ...("url" in command && command.url !== undefined ? { url: command.url } : {}),
+                });
       yield* call.pipe(
         Effect.mapError((error) => new WsRpcError({ message: error.message, code: error.code })),
       );

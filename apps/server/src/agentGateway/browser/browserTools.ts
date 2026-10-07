@@ -4,6 +4,7 @@ import {
   BrowserBatchInput,
   BrowserClickInput,
   BrowserConsoleInput,
+  BrowserContentBlockerInput,
   BrowserDialogInput,
   BrowserDragInput,
   BrowserEvaluateInput,
@@ -220,6 +221,14 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     readOnly: true,
     description:
       "Recent requests (500 kept) as id, method, status, type and URL, 20 per page with the newest on page 1; failedOnly keeps errors and 4xx/5xx. Pass requestId to read that response body (text, first 20000 characters).",
+  },
+  browser_content_blocker: {
+    method: "browser.contentBlocker",
+    input: BrowserContentBlockerInput,
+    title: "Set the content blocker",
+    readOnly: false,
+    description:
+      "Turn Glade's ad, tracker and cookie-notice blocker on or off for the tab's site (remembered for that site), then reload the tab.",
   },
 };
 
