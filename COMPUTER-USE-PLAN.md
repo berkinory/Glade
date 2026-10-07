@@ -369,6 +369,14 @@ Per-step token counts were not read from the usage panel; snapshot sizes are in 
 
 Driver started under the Dev bundle (`accessibility`/`screenRecording` true, no health problems), the server connected its proxy, `kill -9` of the daemon produced a new generation and a reconnect within ~1.2 s, and quitting the app stopped daemon and proxy. The real gateway MCP transport and computer tools, driven from a scratch script against the live daemon: `tools/list` empty while off and 16 tools while on, `computer_use_off` refusal, `computer_apps`, `access_required` for an ungranted window, `computer_window_state` tree after a read grant, act refused under a read grant, zoom JPEG, screenshot PNG at 1279×802. Not exercised live: the desktop JPEG re-encode, the access card round trip in the web, and provider turns (Claude, Codex).
 
+### Computer provider acceptance (2026-10-07, Dev app launched through LaunchServices, macOS)
+
+TextEdit, structured path first, then pixel path:
+
+- Codex (GPT-6.1-Sol, medium), started with `/computer` on an existing chat: requested access (granted `act` from the question card), typed "Glade computer use works." and read it back from the window state tree. Passed in 60 s.
+- Claude (Sonnet 5, medium), started with `/computer` on a new chat (draft flow): asked for `full`, was granted `act` and continued with it, added a second line (a structured click on the text area returned AX error -25206 and was reported as unverifiable; typing still landed), read both lines back from the tree, then `computer_screenshot` + `computer_zoom` of the text area matched the tree. Passed in 65 s.
+- Found and fixed during the pass: `/computer-use` collided with a provider skill of the same name in Claude threads (renamed to `/computer`), and the command was not offered on new chats.
+
 ## 9. Open items
 
 - Phase 8: fetch per build target (cross-arch and macOS universal builds also need both darwin native SDK packages installed), and run a signed packaged build to confirm the team-signature check.
