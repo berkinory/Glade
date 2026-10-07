@@ -1,6 +1,7 @@
 import { app, BrowserWindow, protocol } from "electron";
 import { isBackendReadinessAborted } from "../backend/backendReadiness";
 import { createBackendSupervisor } from "../backend/backendSupervisor";
+import { allowParkedViewRendering } from "../browser/browserViewParking";
 import { startDesktopHost, type DesktopHost } from "../hostRpc/startDesktopHost";
 import { resolveCuaBinary } from "../computer/cuaBinary";
 import { createComputerPermissions } from "../computer/cuaPermissions";
@@ -55,6 +56,7 @@ export function createDesktopRuntime(): void {
     requestGracefulAppQuit: (reason) => lifecycle.requestGracefulAppQuit(reason),
   });
   app.setPath("userData", userDataPath);
+  allowParkedViewRendering(process.platform, app.commandLine);
   const hasSingleInstanceLock = app.requestSingleInstanceLock();
   const identity = createAppIdentity(resources, () => windows.getMainWindow());
   let desktopHost: DesktopHost | null = null;

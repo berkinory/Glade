@@ -1,4 +1,4 @@
-import type { BrowserWindow, WebContentsView } from "electron";
+import type { BrowserWindow, CommandLine, WebContentsView } from "electron";
 
 export interface BrowserViewParking {
   // Keeps a view the panel does not show where it still renders.
@@ -14,18 +14,28 @@ interface Parked {
   readonly slot: number;
 }
 
-// On Linux Chromium renders a view only while it is in a shown window and not fully covered: a
-// detached tab runs no animation frames, its mouse moves wait out the 5 s input-ack timeout and its
-// screenshots never return. A window's own page is always drawn below its child views, so nothing
-// can cover a parked view there. Instead every tab the panel does not show keeps its size but sits
-// up and to the left of the main window, with one pixel left inside it: column 0, rows 0 to its
-// slot. Higher slots sit lower, so each view keeps row `slot` to itself and none is occluded. A
-// minimized window keeps rendering them. macOS renders detached views and parks nothing.
+// Windows' native occlusion tracking keeps a parked view from producing frames even inside a shown,
+// uncovered window. The switch only takes effect before the app is ready.
+export function allowParkedViewRendering(
+  platform: NodeJS.Platform,
+  commandLine: CommandLine,
+): void {
+  if (platform === "win32")
+    commandLine.appendSwitch("disable-features", "CalculateNativeWinOcclusion");
+}
+
+// On Linux and Windows Chromium renders a view only while it is in a shown window and not fully
+// covered: a detached tab runs no animation frames, its mouse moves wait out the 5 s input-ack
+// timeout and its screenshots never return. A window's own page is always drawn below its child
+// views, so nothing can cover a parked view there. Instead every tab the panel does not show keeps
+// its size but sits up and to the left of the main window, with one pixel left inside it: column 0,
+// rows 0 to its slot. Higher slots sit lower, so each view keeps row `slot` to itself and none is
+// occluded. A minimized window keeps rendering them. macOS renders detached views and parks nothing.
 export function createBrowserViewParking(
   platform: NodeJS.Platform,
   window: () => BrowserWindow | null,
 ): BrowserViewParking {
-  if (platform !== "linux") return NO_PARKING;
+  if (platform !== "linux" && platform !== "win32") return NO_PARKING;
   const parked = new Map<WebContentsView, Parked>();
   const unpark = (view: WebContentsView) => {
     const entry = parked.get(view);
