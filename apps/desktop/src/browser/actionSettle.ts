@@ -1,10 +1,14 @@
+import { ActionRequests } from "./actionRequests";
 import type { BrowserTab } from "./browserTab";
 import { waitForLoad } from "./browserNavigation";
 
 // After an input action: a navigation it causes starts within this window...
 const NAVIGATION_START_MS = 100;
-// ...and gets this long to load; otherwise the DOM must go quiet for QUIET_MS, capped.
+// ...and gets this long to load. Otherwise requests the action started within REQUEST_WINDOW_MS
+// of its end get REQUESTS_CAP_MS to finish, then the DOM must go quiet for QUIET_MS, capped.
 const NAVIGATION_LOAD_MS = 5_000;
+const REQUEST_WINDOW_MS = 150;
+const REQUESTS_CAP_MS = 1_000;
 const QUIET_MS = 100;
 const QUIET_CAP_MS = 3_000;
 const WATCH_SETUP_MS = 500;
@@ -12,12 +16,14 @@ const WATCH_SETUP_MS = 500;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Installed before the action so mutations it causes synchronously are counted too. Counts added
-// elements that look interactive; settles once nothing changed for `quietMs`.
+// elements that look interactive (and options among them); settles once nothing changed for
+// `quietMs`.
 const WATCH = `(() => {
   const key = Symbol.for("glade.settle");
   window[key]?.stop();
   const selector = 'a[href],button,input,select,textarea,summary,[role=button],[role=link],[role=menuitem],[role=tab],[role=option],[role=checkbox],[role=radio],[role=switch],[tabindex],[contenteditable=""],[contenteditable=true],[onclick]';
   let added = 0;
+  let options = 0;
   let last = performance.now();
   const observer = new MutationObserver((records) => {
     last = performance.now();
@@ -25,6 +31,8 @@ const WATCH = `(() => {
       if (node.nodeType !== 1) continue;
       if (node.matches(selector)) added += 1;
       added += node.querySelectorAll(selector).length;
+      if (node.matches("[role=option]")) options += 1;
+      options += node.querySelectorAll("[role=option]").length;
     }
   });
   observer.observe(document, { subtree: true, childList: true, attributes: true, characterData: true });
@@ -36,7 +44,7 @@ const WATCH = `(() => {
       last = Math.max(last, started);
       const tick = () => {
         const now = performance.now();
-        if (now - last >= quietMs || now - started >= capMs) { stop(); resolve(added); }
+        if (now - last >= quietMs || now - started >= capMs) { stop(); resolve({ added, options }); }
         else setTimeout(tick, 20);
       };
       tick();
@@ -57,13 +65,38 @@ async function evaluate<T>(tab: BrowserTab, expression: string, timeoutMs: numbe
   return Promise.race([evaluation, sleep(timeoutMs).then(() => undefined)]);
 }
 
+// Glade's own report plus text taken from the page, which the gateway marks as untrusted.
+export interface ActionReport {
+  readonly text: string;
+  readonly content?: string | undefined;
+}
+
+// What an action reports right away, plus an optional read once the page settled (a combobox's
+// committed value, the options that appeared), appended to its line.
+export interface ActionOutcome {
+  readonly line: string;
+  readonly afterSettle?: (settled: Settled) => Promise<ActionReport>;
+}
+
+export interface Settled {
+  // Options ([role=option]) added to the main document while the action ran.
+  readonly optionsAdded: number;
+}
+
+export interface SettleOptions {
+  // How long the action's own requests may take; uploads send more.
+  readonly requestsCapMs?: number;
+}
+
 // Runs an input action and waits the way a user would before looking again: for a navigation it
-// starts, or for the DOM to stop changing. Never waits for network idle. Returns the action's line
-// plus what changed.
+// starts, or for the requests it started and then for the DOM to stop changing. Never waits for
+// network idle and never pauses the page, which the user shares. Returns the action's line plus
+// what changed.
 export async function actAndSettle(
   tab: BrowserTab,
-  action: () => Promise<string>,
-): Promise<string> {
+  action: () => Promise<string | ActionOutcome>,
+  options: SettleOptions = {},
+): Promise<ActionReport> {
   const { webContents } = tab;
   const before = tab.page();
   let started: () => void = () => undefined;
@@ -74,33 +107,49 @@ export async function actAndSettle(
     if (details.isMainFrame && !details.isSameDocument) started();
   };
   webContents.on("did-start-navigation", onNavigation);
-  let line: string;
-  let added: number | undefined;
+  const requests = new ActionRequests(tab.cdp);
+  let outcome: ActionOutcome;
+  let settled: { added: number; options: number } | undefined;
   try {
     await evaluate(tab, WATCH, WATCH_SETUP_MS);
-    line = await action();
+    const result = await action();
+    outcome = typeof result === "string" ? { line: result } : result;
+    const actionEnded = Date.now();
     const navigating = await Promise.race([
       navigationStarted,
       sleep(NAVIGATION_START_MS).then(() => false),
     ]);
     if (navigating) {
+      requests.close();
       if (!(await waitForLoad(webContents, NAVIGATION_LOAD_MS))) {
         tab.addNotice("The page is still loading.");
       }
     } else {
-      added = await evaluate<number>(
+      await sleep(Math.max(0, actionEnded + REQUEST_WINDOW_MS - Date.now()));
+      await requests.settle(options.requestsCapMs ?? REQUESTS_CAP_MS);
+      settled = await evaluate<{ added: number; options: number }>(
         tab,
         `window[Symbol.for("glade.settle")]?.settle(${QUIET_MS}, ${QUIET_CAP_MS})`,
         QUIET_CAP_MS + 500,
       );
     }
   } finally {
+    requests.stop();
     webContents.off("did-start-navigation", onNavigation);
   }
+  // The page may have navigated or replaced the element; the action itself already happened.
+  const extra: ActionReport = outcome.afterSettle
+    ? await outcome.afterSettle({ optionsAdded: settled?.options ?? 0 }).catch(() => ({ text: "" }))
+    : { text: "" };
+  const line = `${outcome.line}${extra.text}`;
   const after = tab.page();
   const changes: string[] = [];
   if (after.url !== before.url) changes.push(`URL is now ${after.url}`);
   if (after.title !== before.title) changes.push(`title is now ${JSON.stringify(after.title)}`);
+  const added = settled?.added;
   if (added) changes.push(`${added} new interactive element${added === 1 ? "" : "s"} appeared`);
-  return changes.length > 0 ? `${line} Then ${changes.join("; ")}.` : line;
+  return {
+    text: changes.length > 0 ? `${line} Then ${changes.join("; ")}.` : line,
+    content: extra.content,
+  };
 }

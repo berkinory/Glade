@@ -42,14 +42,25 @@ app and is exposed to every provider as `browser_*` gateway tools.
   switch provably unchanged, the control is clicked once from script; a toggle that changed is
   never clicked again. Then
   it dispatches real `Input.*` events and waits the way Chrome DevTools MCP does: up to 100 ms for a
-  main-frame navigation to start (then up to 5 s for its load), otherwise until a
-  `MutationObserver` installed before the action sees 100 ms without changes (capped at 3 s). It
-  never waits for network idle. The result is one line plus what changed: URL, title, how many
+  main-frame navigation to start (then up to 5 s for its load); otherwise for the requests the
+  action itself started (sent before 150 ms after it ended; WebSocket, EventSource, media, prefetch
+  and ping excluded) for up to 1 s (5 s for uploads), then until a `MutationObserver` installed
+  before the action sees 100 ms without changes (capped at 3 s). It never waits for network idle
+  and never pauses the page, which the user shares. The result is one line plus what changed: URL, title, how many
   interactive elements appeared, and notes for a new tab, a download or a dialog. Checkbox and
-  radio clicks report the resulting state, typed text is read back (a password field only reports
-  its length), date and time inputs are set through the native value setter, and `<select>`
-  options match by value or by label ignoring case and spacing. `browser_fill` sets several fields
-  in one call.
+  radio clicks report the resulting state, and date and time inputs are set through the native
+  value setter. Typed text is read back (a password field only reports lengths) and a mismatch is
+  classified: a field that lost the start of the text or got it out of order (a script moving the
+  caret) is refilled once at once and checked again, unless it is a typeahead; a `maxlength` cut
+  and any other change are only reported. Typing into a combobox-like field (`role=combobox`,
+  `aria-autocomplete`, a `list` attribute, or options appearing) waits up to 1.5 s for suggestions
+  and lists the visible options with refs in the page content. A click on an option reads back
+  the combobox that controls its listbox (or the focused one) after the page settles and says
+  whether it took the choice. `browser_select` matches `<select>` options by value or by label
+  ignoring case and spacing; on an ARIA listbox or combobox it opens the list (by click, then
+  ArrowDown), clicks the options whose labels match (exact, else a unique partial match) and
+  reads back what the widget shows. `browser_fill` sets several fields in one call, custom
+  selects included.
 - **Coordinates, hover and drag.** `browser_click`, `browser_hover` and each end of `browser_drag`
   take either a ref or `x`/`y`. Points are in the pixels of the tab's latest agent
   `browser_screenshot` (each tab keeps that screenshot's viewport rect and image size, so a

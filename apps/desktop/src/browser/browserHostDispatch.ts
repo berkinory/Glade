@@ -8,13 +8,14 @@ import type { BrowserNavigateInput } from "@glade/contracts/browser/browserTools
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { Option, Schema } from "effect";
 import type { BrowserPageDialog } from "@glade/contracts/browser/browserHost";
-import { actAndSettle } from "./actionSettle";
+import { actAndSettle, type ActionOutcome, type SettleOptions } from "./actionSettle";
 import { BrowserFailure } from "./browserFailure";
 import { navigate } from "./browserNavigation";
 import type { BrowserTab } from "./browserTab";
 import type { BrowserTabs } from "./browserTabs";
 import { click, drag, hover, press, scroll } from "./cdp/actions";
 import type { PageRead } from "./cdp/buffers";
+import { withOptionCommit } from "./cdp/combobox";
 import { uploadFiles } from "./cdp/fileChooser";
 import { fillFields, selectOptions, typeText } from "./cdp/forms";
 import { readPageText } from "./cdp/pageText";
@@ -27,6 +28,8 @@ import { DialogInterrupt } from "./pageDialogs";
 const NAVIGATION_TIMEOUT_MS = 35_000;
 const ACTION_TIMEOUT_MS = 17_000;
 const FILL_TIMEOUT_MS = 28_000;
+// An upload's own requests may take this long before the result is read.
+const UPLOAD_REQUESTS_CAP_MS = 5_000;
 // Tools that keep working while a page dialog waits for an answer: they do not touch the page.
 const DIALOG_SAFE_METHODS = new Set<BrowserHostMethod>([
   "browser.tabs",
@@ -90,17 +93,18 @@ export function createBrowserHostDispatch(
   // Input actions wait for what they cause; one that opens a dialog reports it as its outcome.
   const act = async (
     tab: BrowserTab,
-    operation: () => Promise<string>,
+    operation: () => Promise<string | ActionOutcome>,
     actor?: Actor,
     timeoutMs = ACTION_TIMEOUT_MS,
+    settle?: SettleOptions,
   ): Promise<BrowserHostResult> => {
     if (actor !== "user") tab.assertNotPicking();
     try {
-      const line = await tab.run(() => actAndSettle(tab, operation), {
+      const report = await tab.run(() => actAndSettle(tab, operation, settle), {
         byUser: actor === "user",
         timeoutMs,
       });
-      return reply(tab, line, actor);
+      return reply(tab, report.text, actor, report.content);
     } catch (error) {
       if (!(error instanceof DialogInterrupt)) throw error;
       const { dialog } = error;
@@ -178,7 +182,14 @@ export function createBrowserHostDispatch(
     },
     "browser.click": async (params) => {
       const tab = tabFor("browser.click", params);
-      return act(tab, () => click(tab.cdp, tab.refs, tab.lastScreenshot(), params), params.actor);
+      return act(
+        tab,
+        () =>
+          withOptionCommit(tab.cdp, tab.refs, params.ref, () =>
+            click(tab.cdp, tab.refs, tab.lastScreenshot(), params),
+          ),
+        params.actor,
+      );
     },
     "browser.hover": async (params) => {
       const tab = tabFor("browser.hover", params);
@@ -237,7 +248,13 @@ export function createBrowserHostDispatch(
     },
     "browser.upload": async (params) => {
       const tab = tabFor("browser.upload", params);
-      return act(tab, () => uploadFiles(tab.cdp, tab.refs, params), params.actor);
+      return act(
+        tab,
+        () => uploadFiles(tab.cdp, tab.refs, params),
+        params.actor,
+        ACTION_TIMEOUT_MS,
+        { requestsCapMs: UPLOAD_REQUESTS_CAP_MS },
+      );
     },
     "browser.console": async (params) => {
       const tab = tabFor("browser.console", params);

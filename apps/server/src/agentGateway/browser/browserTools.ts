@@ -123,7 +123,7 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     title: "Type text",
     readOnly: false,
     description:
-      "Type text. With ref, focus that field and replace its content (date and time inputs take their value directly, like 2026-10-07); without, type into the focused element. Reports when the field ends up with a different value. submit presses Enter afterwards.",
+      "Type text. With ref, focus that field and replace its content (date and time inputs take their value directly, like 2026-10-07); without, type into the focused element. Reports when the field ends up with a different value and lists suggestions an autocomplete shows. submit presses Enter afterwards.",
     action: true,
   },
   browser_fill: {
@@ -150,7 +150,7 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     title: "Select options",
     readOnly: false,
     description:
-      "Choose options of a <select> ref by value or label (case and spacing do not matter). For custom dropdowns, click the options instead.",
+      "Choose options by value or label (case and spacing do not matter) in a <select>, or by label in an ARIA listbox or combobox, which is opened first. Reports what the control shows afterwards.",
     action: true,
   },
   browser_scroll: {

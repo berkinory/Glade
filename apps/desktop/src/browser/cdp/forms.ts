@@ -3,23 +3,31 @@ import type {
   BrowserSelectInput,
   BrowserTypeInput,
 } from "@glade/contracts/browser/browserTools";
+import type { ActionOutcome } from "../actionSettle";
 import { BrowserFailure } from "../browserFailure";
 import { click } from "./actions";
+import { selectCustom } from "./ariaSelect";
 import type { CdpSession } from "./cdpSession";
+import { COMBO_LIKE, echo, optionsAfterTyping } from "./combobox";
 import { characterKey, parseKeyChord, pressKey } from "./keyboard";
 import { callOn } from "./pointer";
 import { rethrowStaleNode, type RefTable } from "./refs";
+import { typedMismatch } from "./typedValue";
 
 // Short text goes key by key so pages see real keydown/keypress/input; longer text is inserted at
 // once, which frameworks still observe as an input event.
 const KEYSTROKE_LIMIT = 64;
-const MAX_ECHO = 100;
+// A custom select picked inside browser_fill gets this long to show its choice.
+const FILL_SELECT_SETTLE_MS = 300;
 
 interface FieldInfo {
   readonly kind: "select" | "toggle" | "native" | "text" | "other";
   readonly password: boolean;
   readonly checked: boolean | null;
   readonly value: string;
+  // -1 when the field has no maxlength.
+  readonly maxLength: number;
+  readonly comboLike: boolean;
 }
 
 // Inputs whose value has a fixed format (dates, colors, ranges) take it through the native value
@@ -36,7 +44,8 @@ const DESCRIBE_FIELD = `function () {
     : this instanceof HTMLInputElement || this instanceof HTMLTextAreaElement || this.isContentEditable ? "text"
     : "other";
   const value = this instanceof HTMLInputElement || this instanceof HTMLTextAreaElement || this instanceof HTMLSelectElement ? this.value : (this.innerText || "");
-  return { kind, password: type === "password", checked, value };
+  const maxLength = this instanceof HTMLInputElement || this instanceof HTMLTextAreaElement ? this.maxLength : -1;
+  return { kind, password: type === "password", checked, value, maxLength, comboLike: (${COMBO_LIKE}).call(this) };
 }`;
 
 const SET_NATIVE_VALUE = `function (value) {
@@ -58,7 +67,7 @@ const SELECT_CONTENTS = `function () {
 
 // Matches an option by exact value, or by label or text compared without case and extra spaces.
 const SELECT_OPTIONS = `function (values) {
-  if (!(this instanceof HTMLSelectElement)) return { error: "The ref is not a <select>; click it and choose the option instead." };
+  if (!(this instanceof HTMLSelectElement)) return { custom: true };
   const norm = (text) => String(text).replace(/\\s+/g, " ").trim().toLowerCase();
   const wanted = values.map(norm);
   const matched = Array.from(this.options).filter((o) => values.includes(o.value) || wanted.includes(norm(o.label)) || wanted.includes(norm(o.text)));
@@ -73,21 +82,8 @@ const SELECT_OPTIONS = `function (values) {
   return { selected: chosen.map((o) => o.label || o.value) };
 }`;
 
-const echo = (text: string) =>
-  JSON.stringify(text.length > MAX_ECHO ? `${text.slice(0, MAX_ECHO - 1)}…` : text);
-
 async function describeField(cdp: CdpSession, refs: RefTable, ref: string): Promise<FieldInfo> {
   return callOn<FieldInfo>(cdp, refs.resolve(ref), DESCRIBE_FIELD).catch(rethrowStaleNode(ref));
-}
-
-// Pages can reformat, mask or reject what was typed; say so instead of assuming it landed.
-function readBack(field: FieldInfo, typed: string, after: FieldInfo): string {
-  const actual =
-    after.kind === "text" && after.value.endsWith("\n") ? after.value.trimEnd() : after.value;
-  if (actual === typed) return "";
-  if (field.password)
-    return ` The field holds ${actual.length} characters, not the ${typed.length} typed.`;
-  return ` The field now reads ${echo(actual)}.`;
 }
 
 async function typeKeys(cdp: CdpSession, text: string): Promise<void> {
@@ -114,45 +110,94 @@ async function replaceText(cdp: CdpSession, refs: RefTable, ref: string, text: s
   const field = await describeField(cdp, refs, ref);
   if (field.kind === "native") {
     await setNative(cdp, refs, ref, text);
-    return "";
+    return { field, note: "" };
   }
+  const enter = async (atOnce: boolean) => {
+    await callOn(cdp, target, SELECT_CONTENTS).catch(rethrowStaleNode(ref));
+    if (text.length === 0) await pressKey(cdp, parseKeyChord("Backspace").key, 0);
+    if (atOnce && text.length > 0) await cdp.send("Input.insertText", { text });
+    else await typeKeys(cdp, text);
+  };
   await cdp
     .send("DOM.focus", { backendNodeId: target.backendNodeId }, target.sessionId)
     .catch(async () => click(cdp, refs, null, { ref }))
     .catch(rethrowStaleNode(ref));
-  await callOn(cdp, target, SELECT_CONTENTS).catch(rethrowStaleNode(ref));
-  if (text.length === 0) await pressKey(cdp, parseKeyChord("Backspace").key, 0);
-  await typeKeys(cdp, text);
-  return field.kind === "text" ? readBack(field, text, await describeField(cdp, refs, ref)) : "";
+  await enter(false);
+  if (field.kind !== "text") return { field, note: "" };
+  const read = async () => (await describeField(cdp, refs, ref)).value;
+  // Typeahead fields need their keystrokes; refilling them at once would hide the suggestions.
+  const note = await typedMismatch(text, await read(), {
+    password: field.password,
+    maxLength: field.maxLength,
+    refill: field.comboLike
+      ? null
+      : async () => {
+          await enter(true);
+          return read();
+        },
+  });
+  return { field, note };
 }
 
 export async function typeText(
   cdp: CdpSession,
   refs: RefTable,
   input: typeof BrowserTypeInput.Type,
-): Promise<string> {
+): Promise<ActionOutcome> {
   let note = "";
-  if (input.ref) note = await replaceText(cdp, refs, input.ref, input.text);
-  else await typeKeys(cdp, input.text);
+  let comboLike = false;
+  if (input.ref) {
+    const typed = await replaceText(cdp, refs, input.ref, input.text);
+    note = typed.note;
+    comboLike = typed.field.comboLike;
+  } else await typeKeys(cdp, input.text);
   if (input.submit) await pressKey(cdp, characterKey("\n"), 0);
   const where = input.ref ? ` into ${refs.describe(input.ref)}` : "";
-  return `Typed ${input.text.length} characters${where}${input.submit ? " and pressed Enter" : ""}.${note}`;
+  const line = `Typed ${input.text.length} characters${where}${input.submit ? " and pressed Enter" : ""}.${note}`;
+  const target = input.ref && !input.submit ? refs.resolve(input.ref) : null;
+  if (!target) return { line };
+  return {
+    line,
+    afterSettle: ({ optionsAdded }) =>
+      optionsAfterTyping(cdp, refs, target, comboLike, optionsAdded),
+  };
+}
+
+// Null when the ref is not a native <select>.
+async function selectNative(
+  cdp: CdpSession,
+  refs: RefTable,
+  ref: string,
+  values: readonly string[],
+): Promise<string | null> {
+  const result = await callOn<{ error?: string; selected?: string[]; custom?: true }>(
+    cdp,
+    refs.resolve(ref),
+    SELECT_OPTIONS,
+    [{ value: values }],
+  ).catch(rethrowStaleNode(ref));
+  if (result.custom) return null;
+  if (result.error) throw new BrowserFailure("invalid_input", result.error);
+  return `Selected ${result.selected!.map((label) => JSON.stringify(label)).join(", ")} in ${refs.describe(ref)}.`;
 }
 
 export async function selectOptions(
   cdp: CdpSession,
   refs: RefTable,
   input: Pick<typeof BrowserSelectInput.Type, "ref" | "values">,
-): Promise<string> {
-  const target = refs.resolve(input.ref);
-  const result = await callOn<{ error?: string; selected?: string[] }>(
-    cdp,
-    target,
-    SELECT_OPTIONS,
-    [{ value: input.values }],
-  ).catch(rethrowStaleNode(input.ref));
-  if (result.error) throw new BrowserFailure("invalid_input", result.error);
-  return `Selected ${result.selected!.map((label) => JSON.stringify(label)).join(", ")} in ${refs.describe(input.ref)}.`;
+): Promise<string | ActionOutcome> {
+  return (
+    (await selectNative(cdp, refs, input.ref, input.values)) ??
+    selectCustom(cdp, refs, input.ref, input.values)
+  );
+}
+
+// A custom select inside a fill: picked, given a moment, then read back.
+async function selectInFill(cdp: CdpSession, refs: RefTable, ref: string, value: string) {
+  const outcome = await selectCustom(cdp, refs, ref, [value]);
+  await new Promise((resolve) => setTimeout(resolve, FILL_SELECT_SETTLE_MS));
+  const after = await outcome.afterSettle?.({ optionsAdded: 0 }).catch(() => ({ text: "" }));
+  return `${outcome.line}${after?.text ?? ""}`;
 }
 
 // Fills each field the way its kind needs and reports one line per field. A field that fails
@@ -179,12 +224,15 @@ export async function fillFields(
       } else if (typeof value === "boolean") {
         throw new BrowserFailure("invalid_input", `${label} is not a checkbox; pass text.`);
       } else if (field.kind === "select") {
-        lines.push(await selectOptions(cdp, refs, { ref, values: [value] }));
+        lines.push(
+          (await selectNative(cdp, refs, ref, [value])) ??
+            (await selectInFill(cdp, refs, ref, value)),
+        );
       } else if (field.kind === "text" || field.kind === "native") {
-        const note = await replaceText(cdp, refs, ref, value);
+        const { note } = await replaceText(cdp, refs, ref, value);
         lines.push(`${label}: ${field.password ? "filled" : `set to ${echo(value)}`}.${note}`);
       } else {
-        throw new BrowserFailure("invalid_input", `${label} is not a form field.`);
+        lines.push(await selectInFill(cdp, refs, ref, value));
       }
     } catch (error) {
       if (lines.length === 0 || !(error instanceof BrowserFailure)) throw error;
