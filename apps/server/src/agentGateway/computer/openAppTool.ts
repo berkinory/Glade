@@ -187,12 +187,23 @@ export const makeOpenAppTool = (services: ComputerToolServices): ToolEntry => {
             : [],
         );
 
-        const launched = yield* callCua(services, context, "launch_app", launchArgs(app, targets));
-        const result = Schema.decodeUnknownOption(CuaLaunchedApp)(launched.structuredContent);
-        if (Option.isNone(result)) {
-          return yield* refuse("computer_protocol", "Cua's launch_app returned no pid.");
-        }
-        const { pid } = result.value;
+        // macOS hands a running app back to itself; Cua's Windows and Linux launch_app starts the
+        // launch path again, which opens a second instance of most apps.
+        const pid =
+          (process.platform === "darwin" ? null : app.pid) ??
+          (yield* Effect.gen(function* () {
+            const launched = yield* callCua(
+              services,
+              context,
+              "launch_app",
+              launchArgs(app, targets),
+            );
+            const result = Schema.decodeUnknownOption(CuaLaunchedApp)(launched.structuredContent);
+            if (Option.isNone(result)) {
+              return yield* refuse("computer_protocol", "Cua's launch_app returned no pid.");
+            }
+            return result.value.pid;
+          }));
         services.access.apps.set(pid, app.name, {
           name: app.name,
           bundleId: app.bundleId,
