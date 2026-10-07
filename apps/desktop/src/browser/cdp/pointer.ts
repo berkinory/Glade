@@ -2,6 +2,7 @@ import type { BrowserTarget } from "@glade/contracts/browser/browserTools";
 import { BrowserFailure } from "../browserFailure";
 import type { CdpSession } from "./cdpSession";
 import { rethrowStaleNode, type RefTable, type RefTarget } from "./refs";
+import { DESCRIBE_NODE, hitRelation, nodeAtPoint } from "./hitTest";
 import { viewportPoint, type ScreenshotFrame } from "./screenshotFrame";
 
 type Quad = readonly number[];
@@ -73,13 +74,13 @@ async function frameOffset(cdp: CdpSession, sessionId: string | undefined) {
   return { x, y };
 }
 
-// Scrolls the ref into view and returns its border box in its own frame's viewport and the offset
-// of that frame in the main frame's viewport, both in CSS pixels.
-async function locate(cdp: CdpSession, refs: RefTable, ref: string) {
-  const target = refs.resolve(ref);
+// Scrolls the target into view (unless the caller already placed it) and returns its border box
+// in its own frame's viewport and the offset of that frame in the main frame's viewport, both in
+// CSS pixels.
+async function locate(cdp: CdpSession, target: RefTarget, ref: string, scroll = true) {
   const node = { backendNodeId: target.backendNodeId };
   try {
-    await cdp.send("DOM.scrollIntoViewIfNeeded", node, target.sessionId);
+    if (scroll) await cdp.send("DOM.scrollIntoViewIfNeeded", node, target.sessionId);
     const offset = await frameOffset(cdp, target.sessionId);
     const { model } = await cdp.send<BoxModel>("DOM.getBoxModel", node, target.sessionId);
     const xs = [0, 2, 4, 6].map((index) => model.border[index]!);
@@ -88,7 +89,7 @@ async function locate(cdp: CdpSession, refs: RefTable, ref: string) {
     const y = Math.min(...ys);
     const box = { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
     if (box.width < 1 || box.height < 1) throw new Error("Could not compute box model.");
-    return { target, box, offset };
+    return { box, offset };
   } catch (error) {
     if (error instanceof Error && /Could not compute box model/iu.test(error.message)) {
       throw new BrowserFailure(
@@ -102,28 +103,35 @@ async function locate(cdp: CdpSession, refs: RefTable, ref: string) {
 
 // The border box in main-frame viewport CSS pixels, after scrolling the ref into view.
 export async function elementBounds(cdp: CdpSession, refs: RefTable, ref: string): Promise<Box> {
-  const { box, offset } = await locate(cdp, refs, ref);
+  const { box, offset } = await locate(cdp, refs.resolve(ref), ref);
   return { ...box, x: box.x + offset.x, y: box.y + offset.y };
 }
 
-// `<tag#id.class> "text"` for a hit-tested node, which may be a text node.
-const DESCRIBE_NODE = `(node) => {
-  const el = node.nodeType === 1 ? node : node.parentElement;
-  if (!el) return "another element";
-  const id = el.id ? "#" + el.id : "";
-  const classes = typeof el.className === "string" && el.className.trim() ? "." + el.className.trim().split(/\\s+/).slice(0, 2).join(".") : "";
-  const text = (el.innerText || el.textContent || "").replace(/\\s+/g, " ").trim().slice(0, 80);
-  return "<" + el.localName + id + classes + ">" + (text ? " " + JSON.stringify(text) : "");
-}`;
-
-// Null when the hit node is the target, inside it (shadow trees included) or inside one of its
-// labels; otherwise a short description of what is on top.
-const HIT_BELONGS = `function (hit) {
-  const within = (node, root) => { for (let n = node; n; n = n.parentNode || n.host) if (n === root) return true; return false; };
-  if (within(hit, this)) return null;
-  for (const label of this.labels || []) if (within(hit, label)) return null;
-  return (${DESCRIBE_NODE})(hit);
-}`;
+// The element a function called on `target` returns, in the same frame, or null.
+export async function elementTarget(
+  cdp: CdpSession,
+  target: RefTarget,
+  fn: string,
+  args: ReadonlyArray<{ readonly value: unknown }> = [],
+): Promise<RefTarget | null> {
+  const objectId = await resolveObject(cdp, target.backendNodeId, target.sessionId);
+  const { result } = await cdp.send<{ result: { objectId?: string; subtype?: string } }>(
+    "Runtime.callFunctionOn",
+    { objectId, functionDeclaration: fn, arguments: args },
+    target.sessionId,
+  );
+  if (!result.objectId || result.subtype !== "node") return null;
+  const { node } = await cdp.send<{ node: { backendNodeId: number } }>(
+    "DOM.describeNode",
+    { objectId: result.objectId },
+    target.sessionId,
+  );
+  return {
+    backendNodeId: node.backendNodeId,
+    sessionId: target.sessionId,
+    frameId: target.frameId,
+  };
+}
 
 // Points inside the box to try, center first: a sticky header or a badge can cover part of it.
 const PROBES = [
@@ -134,54 +142,80 @@ const PROBES = [
   [0.75, 0.75],
 ] as const;
 
-// What a real click at (x, y) would hit, in the target's own frame. Null means the target gets it
-// or the location cannot be tested (outside the viewport), which is left to the click itself.
-async function coveringElement(
-  cdp: CdpSession,
-  target: RefTarget,
-  x: number,
-  y: number,
-): Promise<string | null> {
-  const hit = await cdp
-    .send<{ backendNodeId: number }>(
-      "DOM.getNodeForLocation",
-      { x: Math.round(x), y: Math.round(y), includeUserAgentShadowDOM: false },
-      target.sessionId,
-    )
-    .catch(() => null);
-  if (!hit || hit.backendNodeId === target.backendNodeId) return null;
-  const objectId = await resolveObject(cdp, hit.backendNodeId, target.sessionId).catch(() => null);
-  if (!objectId) return null;
-  // A node in another frame of the same renderer cannot be compared in JavaScript; it is not
-  // part of the target either way.
-  return callOn<string | null>(cdp, target, HIT_BELONGS, [{ objectId }]).catch(
-    () => "an element in another frame",
-  );
+// Where a sticky header or footer covers the element after the default scroll, aligning it to the
+// other edge of the viewport usually frees it.
+const ALIGNMENTS = ["end", "start"] as const;
+const ALIGN = `function (block) { this.scrollIntoView({ block, inline: "nearest" }); }`;
+const LABEL_CONTROL = `function () { return this instanceof HTMLLabelElement ? this.control : null; }`;
+
+export interface ClickPoint {
+  readonly x: number;
+  readonly y: number;
+  // Set when the click lands on a related element rather than the target itself.
+  readonly via?: string;
 }
 
-// The main-frame viewport point to click, after checking that the element itself receives it.
-export async function clickPoint(cdp: CdpSession, refs: RefTable, ref: string) {
-  const { target, box, offset } = await locate(cdp, refs, ref);
+type Probe = ClickPoint | { readonly cover: string };
+
+async function probe(
+  cdp: CdpSession,
+  target: RefTarget,
+  ref: string,
+  scroll: boolean,
+): Promise<Probe> {
+  const { box, offset } = await locate(cdp, target, ref, scroll);
+  let related: ClickPoint | null = null;
   let cover: string | null = null;
   for (const [fx, fy] of PROBES) {
     const x = box.x + box.width * fx;
     const y = box.y + box.height * fy;
-    const covering = await coveringElement(cdp, target, x, y);
-    if (covering === null) return { x: x + offset.x, y: y + offset.y };
-    cover ??= covering;
+    const relation = await hitRelation(cdp, target, x, y);
+    const point = { x: x + offset.x, y: y + offset.y };
+    if (relation === null || relation.kind === "inside" || relation.kind === "label") return point;
+    if (relation.kind === "wrapper") {
+      related ??= { ...point, via: `${relation.what}, which shares its click handler` };
+    } else cover ??= relation.what;
+  }
+  return related ?? { cover: cover ?? "another element" };
+}
+
+// The main-frame viewport point to click. The element itself, its descendants and its labels may
+// receive it; failing that, a wrapper that shares its click handler, the control of a label, or
+// the element after aligning it to the other viewport edges. An unrelated element on top (a modal,
+// a banner) fails with covered instead of being clicked.
+export async function clickPoint(
+  cdp: CdpSession,
+  refs: RefTable,
+  ref: string,
+): Promise<ClickPoint> {
+  const target = refs.resolve(ref);
+  const first = await probe(cdp, target, ref, true);
+  if (!("cover" in first)) return first;
+  const control = await elementTarget(cdp, target, LABEL_CONTROL).catch(() => null);
+  if (control) {
+    const viaControl = await probe(cdp, control, ref, true).catch(() => null);
+    if (viaControl && !("cover" in viaControl)) {
+      return {
+        ...viaControl,
+        via: viaControl.via ?? "its form control, since the label is covered",
+      };
+    }
+  }
+  for (const block of ALIGNMENTS) {
+    await callOn(cdp, target, ALIGN, [{ value: block }]).catch(rethrowStaleNode(ref));
+    const aligned = await probe(cdp, target, ref, false);
+    if (!("cover" in aligned)) return aligned;
   }
   throw new BrowserFailure(
     "covered",
-    `${refs.describe(ref)} is covered by ${cover}. Dismiss or use the covering element first, or take a new browser_snapshot.`,
+    `${refs.describe(ref)} is covered by ${first.cover}. Dismiss or use the covering element first, or take a new browser_snapshot.`,
   );
 }
 
 export const mouse = (cdp: CdpSession, event: Record<string, unknown>) =>
   cdp.send("Input.dispatchMouseEvent", event);
 
-export interface PointerTarget {
-  readonly x: number;
-  readonly y: number;
+export interface PointerTarget extends ClickPoint {
   // `button "Save" (e12)` for a ref, `<canvas#game> at (310, 140)` for a point.
   readonly label: string;
   readonly ref: string | undefined;
@@ -210,19 +244,14 @@ export async function resolveTarget(
     width: viewport.clientWidth,
     height: viewport.clientHeight,
   });
-  const hit = await cdp
-    .send<{ backendNodeId: number }>("DOM.getNodeForLocation", {
-      x: Math.round(point.x),
-      y: Math.round(point.y),
-      includeUserAgentShadowDOM: false,
-    })
-    .catch(() => null);
-  const what = hit
-    ? await callOn<string>(
-        cdp,
-        { backendNodeId: hit.backendNodeId, sessionId: undefined },
-        `function () { return (${DESCRIBE_NODE})(this); }`,
-      ).catch(() => "the page")
-    : "the page";
+  const hit = await nodeAtPoint(cdp, undefined, point.x, point.y);
+  const what =
+    hit !== null
+      ? await callOn<string>(
+          cdp,
+          { backendNodeId: hit, sessionId: undefined },
+          `function () { return (${DESCRIBE_NODE})(this); }`,
+        ).catch(() => "the page")
+      : "the page";
   return { ...point, label: `${what} at (${input.x}, ${input.y})`, ref: undefined };
 }

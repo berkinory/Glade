@@ -14,13 +14,21 @@ import type { ScreenshotFrame } from "./screenshotFrame";
 
 const BUTTON_BITS = { left: 1, right: 2, middle: 4 } as const;
 
-// null for anything that is not a checkbox, radio or switch.
+// null for anything that is not a checkbox, radio or switch, or a label of one.
 const TOGGLE_STATE = `function () {
-  const role = this.getAttribute && this.getAttribute("role");
-  if (this instanceof HTMLInputElement && (this.type === "checkbox" || this.type === "radio")) return this.checked;
-  if (role === "checkbox" || role === "radio" || role === "switch") return this.getAttribute("aria-checked") === "true";
+  const el = this instanceof HTMLLabelElement && this.control ? this.control : this;
+  const role = el.getAttribute && el.getAttribute("role");
+  if (el instanceof HTMLInputElement && (el.type === "checkbox" || el.type === "radio")) return el.checked;
+  if (role === "checkbox" || role === "radio" || role === "switch") return el.getAttribute("aria-checked") === "true";
   return null;
 }`;
+const IS_RADIO = `function () {
+  const el = this instanceof HTMLLabelElement && this.control ? this.control : this;
+  return (el instanceof HTMLInputElement && el.type === "radio") || el.getAttribute("role") === "radio";
+}`;
+const SCRIPT_CLICK = `function () { (this instanceof HTMLLabelElement && this.control ? this.control : this).click(); }`;
+
+const toggleWord = (checked: boolean) => (checked ? "checked" : "unchecked");
 
 export async function click(
   cdp: CdpSession,
@@ -28,11 +36,11 @@ export async function click(
   screenshot: ScreenshotFrame | null,
   input: Omit<typeof BrowserClickInput.Type, "tabId">,
 ): Promise<string> {
-  const { x, y, label, ref } = await resolveTarget(cdp, refs, screenshot, input);
+  const { x, y, label, ref, via } = await resolveTarget(cdp, refs, screenshot, input);
   const target = ref === undefined ? undefined : refs.resolve(ref);
-  const before = target
-    ? await callOn<boolean | null>(cdp, target, TOGGLE_STATE).catch(() => null)
-    : null;
+  const state = () =>
+    target ? callOn<boolean | null>(cdp, target, TOGGLE_STATE).catch(() => null) : null;
+  const before = await state();
   const button = input.button ?? "left";
   const modifiers = modifierMask(input.modifiers ?? []);
   await mouse(cdp, { type: "mouseMoved", x, y, modifiers });
@@ -50,14 +58,25 @@ export async function click(
   }
   const verb =
     input.count === 2 ? "Double-clicked" : input.count === 3 ? "Triple-clicked" : "Clicked";
-  const done = `${verb} ${label}.`;
+  const done = via ? `${verb} ${label} through ${via}.` : `${verb} ${label}.`;
   if (!target || before === null) return done;
   // A page that ignores the click or flips the state back leaves the toggle where it was.
-  const after = await callOn<boolean | null>(cdp, target, TOGGLE_STATE).catch(() => null);
+  const after = await state();
   if (after === null) return done;
-  return after === before
-    ? `${done} It is still ${after ? "checked" : "unchecked"}; the click did not change it.`
-    : `${done} It is now ${after ? "checked" : "unchecked"}.`;
+  if (after !== before) return `${done} It is now ${toggleWord(after)}.`;
+  // A click that landed on a related element may not reach the control's own handling. Only then,
+  // and only when the state provably did not change after a single plain click, the control is
+  // clicked once from script; a toggle that did change is never clicked again.
+  const plain = (input.count ?? 1) === 1 && button === "left" && modifiers === 0;
+  const settledRadio = before && (await callOn<boolean>(cdp, target, IS_RADIO).catch(() => true));
+  if (via && plain && !settledRadio) {
+    await callOn(cdp, target, SCRIPT_CLICK).catch(() => undefined);
+    const scripted = await state();
+    if (scripted !== null && scripted !== before) {
+      return `${done} That did not change it, so Glade clicked the control from script; it is now ${toggleWord(scripted)}.`;
+    }
+  }
+  return `${done} It is still ${toggleWord(after)}; the click did not change it.`;
 }
 
 // The mouse stays where it ends, so a menu opened by hovering stays open for the next call.

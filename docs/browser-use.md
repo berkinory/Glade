@@ -30,9 +30,17 @@ app and is exposed to every provider as `browser_*` gateway tools.
   start with `+`. Long trees stop at whole lines with a hint to narrow by `depth` or `ref`, so no
   ref is ever cut.
 - **Actions.** An action resolves its ref to a box (scrolling it into view; no box is
-  `not_visible`), hit-tests the click point in the element's own frame with
-  `DOM.getNodeForLocation` (center first, then four inset points) and fails with `covered`, naming
-  the covering element, instead of clicking an overlay; a hit on the element's label counts. Then
+  `not_visible`) and hit-tests the click point in the element's own frame with
+  `DOM.getNodeForLocation` (center first, then four inset points; the call takes document
+  coordinates, so the frame's scroll offset is added). A hit on the element, its descendants or
+  its label is clicked. A hit on a close wrapper that holds no other control and carries the click
+  handler (inline, React or Vue props, or an `addEventListener` listener read through CDP) is
+  clicked and the result says it went through that element; a covered label falls back to its
+  control; an element under a sticky header or footer is aligned to the other viewport edges and
+  tested again. Anything else fails with `covered`, naming the covering element, instead of
+  clicking an overlay. When a single plain click through a wrapper leaves a checkbox, radio or
+  switch provably unchanged, the control is clicked once from script; a toggle that changed is
+  never clicked again. Then
   it dispatches real `Input.*` events and waits the way Chrome DevTools MCP does: up to 100 ms for a
   main-frame navigation to start (then up to 5 s for its load), otherwise until a
   `MutationObserver` installed before the action sees 100 ms without changes (capped at 3 s). It
