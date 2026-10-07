@@ -11,6 +11,7 @@ import {
   isDevelopment,
   shellEnvironmentSync,
   userDataPath,
+  DESKTOP_CONTENT_BLOCKER_PATH,
 } from "./desktopEnvironment";
 import { createRegisterDesktopIpc } from "./ipc/registerDesktopIpc";
 import {
@@ -149,6 +150,11 @@ export function createDesktopRuntime(): void {
     try {
       desktopHost = await startDesktopHost({
         gladePorts: () => gladePorts(backend.getHttpUrl()),
+        contentBlocker: {
+          cache: Path.join(userDataPath, "content-blocker", "engine.bin"),
+          setting: DESKTOP_CONTENT_BLOCKER_PATH,
+        },
+        log: log.writeDesktopLogHeader,
         computer: {
           // Packaged builds keep the driver outside ASAR in Resources; source runs use the copy
           // scripts/fetch-cua-driver.mjs placed in apps/desktop/resources.

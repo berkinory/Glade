@@ -148,5 +148,9 @@ contextBridge.exposeInMainWorld("desktopBridge", {
     placeView: (placement) => ipcRenderer.send(IPC.browserPlaceView, placement),
     pickElement: (target) => ipcRenderer.invoke(IPC.browserPickElement, target),
     cancelPick: (threadId) => ipcRenderer.send(IPC.browserCancelPick, threadId),
+    contentBlocker: {
+      getEnabled: () => ipcRenderer.invoke(IPC.browserContentBlockerGet),
+      setEnabled: (enabled) => ipcRenderer.invoke(IPC.browserContentBlockerSet, enabled),
+    },
   },
 } satisfies DesktopBridge);

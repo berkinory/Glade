@@ -10,8 +10,9 @@ const decodePlacement = Schema.decodeUnknownOption(BrowserViewPlacement);
 const decodePickTarget = Schema.decodeUnknownOption(BrowserPickTarget);
 const decodeThreadId = Schema.decodeUnknownOption(ThreadId);
 
-// Only what must stay in step with the native view crosses here: placement and element picking.
-// Tab state and navigation go through the backend so they have one owner.
+// Only what must stay in step with the native views crosses here: placement, element picking and
+// the content blocker setting. Tab state and navigation go through the backend so they have one
+// owner.
 export function registerBrowserViewIpc(desktopHost: () => DesktopHost | null): void {
   const picks = new Map<ThreadId, AbortController>();
   const watchedRenderers = new WeakSet<WebContents>();
@@ -58,6 +59,20 @@ export function registerBrowserViewIpc(desktopHost: () => DesktopHost | null): v
     } finally {
       if (picks.get(threadId) === controller) picks.delete(threadId);
     }
+  });
+
+  ipcMain.removeHandler(DESKTOP_IPC_CHANNELS.browserContentBlockerGet);
+  ipcMain.handle(DESKTOP_IPC_CHANNELS.browserContentBlockerGet, () => {
+    const host = desktopHost();
+    if (!host) throw new Error("Glade's browser is unavailable.");
+    return host.blocker.enabled();
+  });
+  ipcMain.removeHandler(DESKTOP_IPC_CHANNELS.browserContentBlockerSet);
+  ipcMain.handle(DESKTOP_IPC_CHANNELS.browserContentBlockerSet, (_event, enabled: unknown) => {
+    const host = desktopHost();
+    if (!host) throw new Error("Glade's browser is unavailable.");
+    if (typeof enabled !== "boolean") throw new Error("Expected a boolean blocker setting.");
+    return host.blocker.setEnabled(enabled);
   });
 
   ipcMain.removeAllListeners(DESKTOP_IPC_CHANNELS.browserCancelPick);

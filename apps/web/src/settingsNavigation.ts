@@ -166,8 +166,9 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
   {
     id: "computer",
     group: "agents",
-    label: "Computer Use",
-    description: "Driver status, macOS permissions, and the apps agents may use.",
+    label: "Browser & Computer Use",
+    description:
+      "The built-in browser's blocker, the Computer Use driver, permissions and app access.",
     icon: CursorInWindowIcon,
     desktopOnly: true,
   },

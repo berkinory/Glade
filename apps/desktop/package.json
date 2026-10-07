@@ -16,6 +16,8 @@
     "smoke-test": "bun scripts/smoke-test.mjs"
   },
   "dependencies": {
+    "@ghostery/adblocker-electron": "2.18.2",
+    "@ghostery/adblocker-electron-preload": "2.18.2",
     "@trycua/cua-driver": "0.34.0",
     "effect": "catalog:",
     "electron": "43.5.0",

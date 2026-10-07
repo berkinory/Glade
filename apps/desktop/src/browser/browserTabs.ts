@@ -5,6 +5,7 @@ import * as FS from "node:fs";
 import * as Path from "node:path";
 import { BrowserFailure } from "./browserFailure";
 import { BROWSER_PARTITION, BROWSER_WEB_PREFERENCES, BrowserTab } from "./browserTab";
+import type { ContentBlocker } from "./contentBlocker";
 import { browserUrlBlockReason } from "./browserUrlPolicy";
 
 // Hidden views still lay out at these bounds, so pages render a desktop viewport before the panel
@@ -57,13 +58,19 @@ export class BrowserTabs {
     private readonly options: {
       readonly gladePorts: () => ReadonlySet<number>;
       readonly onChanged: (tabs: BrowserTabsChanged["tabs"]) => void;
+      readonly blocker: ContentBlocker;
     },
   ) {
     const browserSession = session.fromPartition(BROWSER_PARTITION);
+    const { blocker } = options;
     browserSession.on("will-download", (_event, item, webContents) =>
       this.handleDownload(item, webContents),
     );
-    // Covers redirects, subframes and fetches too, so no page can reach Glade's own server.
+    // Electron keeps one listener per webRequest event and session; registering a second one
+    // silently replaces the first. Glade's URL policy and the content blocker therefore share
+    // these: the policy runs first and its cancel is final, then the blocker decides. Covers
+    // redirects, popups, subframes, fetches and service workers, so no page can reach Glade's own
+    // server or a blocked address.
     browserSession.webRequest.onBeforeRequest((details, callback) => {
       const kind =
         details.resourceType === "mainFrame"
@@ -71,10 +78,15 @@ export class BrowserTabs {
           : details.resourceType === "subFrame"
             ? "frame"
             : "resource";
-      callback({
-        cancel: browserUrlBlockReason(details.url, this.options.gladePorts(), kind) !== null,
-      });
+      if (browserUrlBlockReason(details.url, this.options.gladePorts(), kind) !== null) {
+        callback({ cancel: true });
+        return;
+      }
+      blocker.onBeforeRequest(details, callback);
     });
+    browserSession.webRequest.onHeadersReceived((details, callback) =>
+      blocker.onHeadersReceived(details, callback),
+    );
   }
 
   // A WebContents has no renderer until its first load, and CDP commands sent before that fail with

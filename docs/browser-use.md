@@ -106,6 +106,20 @@ agent input on that tab fails with `user_picking` instead of moving the page und
   IPv4-mapped IPv6). Other loopback ports and private LAN addresses stay reachable for testing
   local dev servers. Host names are checked as written: a public name that resolves to a blocked
   address is not caught.
+- A built-in content blocker, on by default (Settings > Browser & Computer Use), runs
+  Ghostery's engine with its full prebuilt list set: EasyList, EasyPrivacy, Peter Lowe's list and
+  uBlock Origin's filters, privacy, unbreak and cookie-notice/annoyance lists. It applies to agent
+  and panel alike. The compiled engine is cached as `content-blocker/engine.bin` in Electron's user
+  data folder and rebuilt from the lists in the background once a day (an hour after a failed
+  try); startup never waits for it, so a fresh offline install simply runs unblocked until the
+  lists arrive. Network blocking is the second half of the partition's single `onBeforeRequest`
+  listener (Electron allows one per session; the URL policy runs first and its cancel is final)
+  plus its single `onHeadersReceived` listener. Element hiding (cookie banners) needs Ghostery's
+  vetted preload in every frame: it is registered on the browser partition only while the blocker
+  is on, runs in the preload's isolated world of the sandboxed, context-isolated views, and calls
+  two Ghostery IPC channels whose handlers ignore any sender outside the partition. The lists
+  exempt local addresses from element hiding, so dev servers render as written. License notice:
+  [licenses/ghostery-adblocker.md](licenses/ghostery-adblocker.md).
 - Pages get no permissions: microphone, camera, geolocation, notifications, devices and external
   protocol launches (`mailto:` and app links) are all denied.
 - There is no credential vault. When a page needs a sign-in, the agent says so and the user signs

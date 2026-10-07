@@ -23,6 +23,7 @@ import {
   SettingsSectionShell,
   SettingsCard,
 } from "../settings/SettingsPanelPrimitives";
+import { BrowserContentBlockerRow } from "../browser/BrowserContentBlockerRow";
 import { Button } from "../ui/button";
 import { toastManager } from "../ui/toast";
 import { useComputerState } from "./computerUseState";
@@ -176,7 +177,10 @@ export function ComputerSettings() {
   );
   return (
     <div className="space-y-6">
-      <SettingsSection title="Status">
+      <SettingsSection title="Browser">
+        <BrowserContentBlockerRow />
+      </SettingsSection>
+      <SettingsSection title="Computer Use">
         <DriverRow status={state?.status ?? null} />
         {isMac ? null : (
           <SettingsRow

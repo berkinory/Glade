@@ -343,6 +343,15 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
   },
 
   {
+    id: "computer:content-blocker",
+    section: "computer",
+    title: "Block ads, trackers and cookie notices",
+    target: "setting-browser-content-blocker",
+    applies: () => isElectron,
+    keywords:
+      "Browser ad blocker adblock trackers tracking privacy cookie banners consent notices filter lists Ghostery built-in browser",
+  },
+  {
     id: "computer:driver",
     section: "computer",
     title: "Cua Driver",

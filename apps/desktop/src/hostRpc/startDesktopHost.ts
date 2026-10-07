@@ -1,8 +1,11 @@
 import { BROWSER_TABS_CHANGED_NOTIFICATION } from "@glade/contracts/browser/browserHost";
 import { COMPUTER_CONNECTION_NOTIFICATION } from "@glade/contracts/computer/computerHost";
+import { session } from "electron";
 import * as Crypto from "node:crypto";
 import { createBrowserHostDispatch } from "../browser/browserHostDispatch";
+import { BROWSER_PARTITION } from "../browser/browserTab";
 import { BrowserTabs } from "../browser/browserTabs";
+import { ContentBlocker } from "../browser/contentBlocker";
 import { BrowserViewSurface } from "../browser/browserViewSurface";
 import { dispatchComputerHost } from "../computer/computerHostDispatch";
 import type { CuaBinary } from "../computer/cuaBinary";
@@ -15,6 +18,7 @@ export interface DesktopHost {
   readonly token: string;
   readonly tabs: BrowserTabs;
   readonly views: BrowserViewSurface;
+  readonly blocker: ContentBlocker;
   readonly computer: CuaHost;
   readonly close: () => Promise<void>;
 }
@@ -23,6 +27,8 @@ export interface DesktopHost {
 // macOS permission probes need the app's identity.
 export async function startDesktopHost(input: {
   readonly gladePorts: () => ReadonlySet<number>;
+  readonly contentBlocker: { readonly cache: string; readonly setting: string };
+  readonly log: (message: string) => void;
   readonly computer: {
     readonly binary: Promise<CuaBinary>;
     readonly permissions: ComputerPermissions;
@@ -32,9 +38,16 @@ export async function startDesktopHost(input: {
 }): Promise<DesktopHost> {
   const token = Crypto.randomBytes(32).toString("base64url");
   let notify: (method: string, params: unknown) => void = () => undefined;
+  const blocker = new ContentBlocker(
+    session.fromPartition(BROWSER_PARTITION),
+    input.contentBlocker,
+    input.log,
+  );
+  blocker.start();
   const tabs = new BrowserTabs({
     gladePorts: input.gladePorts,
     onChanged: (states) => notify(BROWSER_TABS_CHANGED_NOTIFICATION, { tabs: states }),
+    blocker,
   });
   const browserDispatch = createBrowserHostDispatch(tabs, input.gladePorts);
   const computer = startCuaHost({
@@ -58,9 +71,11 @@ export async function startDesktopHost(input: {
     token,
     tabs,
     views: new BrowserViewSurface(tabs),
+    blocker,
     computer,
     close: async () => {
       tabs.closeAll();
+      blocker.stop();
       await computer.stop();
       await server.close();
     },

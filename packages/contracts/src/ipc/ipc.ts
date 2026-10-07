@@ -457,6 +457,11 @@ export interface DesktopBridge {
     // Resolves with null when the pick is cancelled (Escape, toggle off, another pick).
     pickElement: (target: BrowserPickTarget) => Promise<BrowserPickedElement | null>;
     cancelPick: (threadId: string) => void;
+    // The built-in ad, tracker and cookie-notice blocker of Glade's browser; on by default.
+    contentBlocker: {
+      getEnabled: () => Promise<boolean>;
+      setEnabled: (enabled: boolean) => Promise<boolean>;
+    };
   };
 }
 
