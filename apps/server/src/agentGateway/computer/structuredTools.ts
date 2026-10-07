@@ -1,26 +1,25 @@
 import { ComputerAccessScope } from "@glade/contracts/computer/computerUse";
 import { Effect, Option, Schema } from "effect";
 
-import {
-  CuaListApps,
-  CuaListWindows,
-  CuaWindowState,
-  resultText,
-  type CuaElement,
-} from "../../computer/cuaResults.ts";
+import { appCategory, type ActionClass } from "../../computer/appCategories.ts";
+import { CuaListApps, CuaListWindows, resultText } from "../../computer/cuaResults.ts";
 import type { ToolEntry } from "../toolRuntime.ts";
+import { untrustedContent } from "../untrustedContent.ts";
+import { keyCall, performAction } from "./computerActions.ts";
 import {
-  actionContent,
+  appContent,
   callCua,
   callerThread,
   computerTool,
-  imageContent,
-  keyCall,
-  refuse,
   SCREENSHOT_MAX_EDGE,
+  imageContent,
+  recordSnapshot,
+  refuse,
   windowFor,
   type ComputerToolServices,
 } from "./computerCalls.ts";
+import { renderElements } from "./elementText.ts";
+import { makeVerifyTool } from "./verifyTool.ts";
 
 const WindowRef = {
   pid: Schema.Int.annotate({ description: "Process id from computer_apps." }),
@@ -57,7 +56,10 @@ const ActInput = Schema.Struct({
   ...WindowRef,
   action: Schema.Literals(ACT_ACTIONS),
   element: Schema.optional(
-    Schema.Int.annotate({ description: "Element index from the latest computer_window_state." }),
+    Schema.Int.annotate({
+      description:
+        "Element index from computer_window_state or an action's change list; indexes stay valid while the element exists.",
+    }),
   ),
   text: Schema.optional(Schema.String.annotate({ description: "type: text to insert." })),
   key: Schema.optional(
@@ -87,35 +89,20 @@ const RequestAccessInput = Schema.Struct({
   reason: Schema.String.annotate({ description: "One sentence the user sees on the card." }),
 });
 
-const MAX_TREE_CHARS = 24_000;
 const ACCESS_WAIT_MS = 45_000;
 
-const valueText = (element: CuaElement) => {
-  const { value } = element;
-  if (value === undefined || value === null || value === "") return "";
-  const text = typeof value === "string" ? value : JSON.stringify(value);
-  if (text === element.label) return "";
-  return ` = ${JSON.stringify(text.length > 120 ? `${text.slice(0, 120)}…` : text)}`;
+// Plain clicks and scrolling are click-class; everything that enters text, opens context menus
+// or runs menu commands is input-class (see appCategories).
+const ACT_CLASS: Record<(typeof ACT_ACTIONS)[number], ActionClass> = {
+  click: "click",
+  double_click: "click",
+  scroll: "click",
+  right_click: "input",
+  type: "input",
+  press: "input",
+  set_value: "input",
+  menu: "input",
 };
-
-function renderElements(elements: ReadonlyArray<CuaElement>): string {
-  const lines: string[] = [];
-  let length = 0;
-  for (const element of elements) {
-    const label = element.label ? ` ${JSON.stringify(element.label)}` : "";
-    const states = `${element.enabled === false ? " (disabled)" : ""}${element.selected ? " (selected)" : ""}`;
-    const line = `${"  ".repeat(element.depth ?? 0)}[${element.element_index}] ${element.role}${label}${valueText(element)}${states}`;
-    if (length + line.length > MAX_TREE_CHARS) {
-      lines.push(
-        `… ${elements.length - lines.length} more elements; narrow with query or max_depth.`,
-      );
-      break;
-    }
-    lines.push(line);
-    length += line.length + 1;
-  }
-  return lines.join("\n");
-}
 
 // The Cua tool and arguments for one computer_act, or why the input cannot form one.
 function actCall(
@@ -165,6 +152,13 @@ function actCall(
   }
 }
 
+// computer_apps marks apps whose category caps every grant.
+const CATEGORY_NOTE = {
+  browser: " [browser: read only, use browser_* tools]",
+  terminal_or_ide: " [terminal or IDE: click and scroll only unless full control]",
+  other: "",
+} as const;
+
 export function makeStructuredComputerTools(services: ComputerToolServices): ToolEntry[] {
   const apps = computerTool(services, {
     name: "computer_apps",
@@ -190,17 +184,27 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
           Option.getOrElse(() => []),
         );
         const lines = running.map((app) => {
+          const category = appCategory({
+            name: app.name,
+            bundleId: app.bundle_id ?? null,
+            launchPath: app.launch_path ?? null,
+          });
           const own = windows
             .filter((window) => window.pid === app.pid)
             .map(
               (window) =>
                 `  window ${window.window_id} ${JSON.stringify(window.title)}${window.is_on_screen ? "" : " (off screen)"}${window.minimized ? " (minimized)" : ""}`,
             );
-          return [`${app.name} pid ${app.pid}${app.active ? " (frontmost)" : ""}`, ...own].join(
-            "\n",
-          );
+          return [
+            `${app.name} pid ${app.pid}${app.active ? " (frontmost)" : ""}${CATEGORY_NOTE[category]}`,
+            ...own,
+          ].join("\n");
         });
-        return { content: [{ type: "text", text: lines.join("\n") || "No running apps." }] };
+        const text =
+          lines.length > 0
+            ? `${lines.length} running ${lines.length === 1 ? "app" : "apps"}.\n${untrustedContent("APP_CONTENT", "source=computer_apps", lines.join("\n"))}`
+            : "No running apps.";
+        return { content: [{ type: "text", text }] };
       }),
   });
 
@@ -208,12 +212,15 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
     name: "computer_window_state",
     title: "Read a window",
     description:
-      'Accessibility tree of one window: one line per element, `[index] role "label" = value`. Act on elements by index with computer_act; indexes are valid until the next computer_window_state of that window. include_screenshot adds a JPEG only when the tree is not enough. Needs read access.',
+      'Accessibility tree of one window: one line per element, `[index] role "label" = value`. Act on elements by index with computer_act; an index keeps meaning the same element across reads and actions until the element disappears. include_screenshot adds a JPEG only when the tree is not enough. Needs read access.',
     input: WindowStateInput,
     readOnly: true,
     run: (input, context) =>
       Effect.gen(function* () {
-        const window = yield* windowFor(services, context, input, "read");
+        const window = yield* windowFor(services, context, input, {
+          scope: "read",
+          action: "read",
+        });
         const result = yield* callCua(services, context, "get_window_state", {
           pid: input.pid,
           window_id: input.window_id,
@@ -222,17 +229,14 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
           ...(input.query ? { query: input.query } : {}),
           ...(input.max_depth ? { max_depth: input.max_depth } : {}),
         });
-        const state = Schema.decodeUnknownOption(CuaWindowState)(result.structuredContent);
-        const elements = Option.match(state, {
-          onNone: () => [] as ReadonlyArray<CuaElement>,
-          onSome: (value) => value.elements ?? [],
-        });
-        services.access.tasks.rememberElements(
-          callerThread(context),
-          { pid: input.pid, windowId: input.window_id },
-          new Map(elements.map((element) => [element.element_index, element.element_token])),
+        const snapshot = recordSnapshot(
+          services,
+          context,
+          input,
+          result,
+          input.query !== undefined || input.max_depth !== undefined,
         );
-        const notes = Option.match(state, {
+        const notes = Option.match(snapshot.state, {
           onNone: () => [],
           onSome: (value) => [
             ...(value.truncated ? ["The tree was truncated; narrow with query or max_depth."] : []),
@@ -240,12 +244,16 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
           ],
         });
         const header = `${window.app_name} window ${window.window_id} ${JSON.stringify(window.title)}`;
-        const tree = elements.length > 0 ? renderElements(elements) : resultText(result);
+        const tree =
+          snapshot.elements.length > 0 ? renderElements(snapshot.elements) : resultText(result);
         const image = input.include_screenshot
           ? yield* imageContent(services, context, result)
           : [];
         return {
-          content: [{ type: "text", text: [header, ...notes, tree].join("\n") }, ...image],
+          content: [
+            { type: "text", text: [...notes, appContent(window, `${header}\n${tree}`)].join("\n") },
+            ...image,
+          ],
         };
       }),
   });
@@ -254,21 +262,19 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
     name: "computer_act",
     title: "Act on a window",
     description:
-      "Act through the accessibility tree: click, double_click, right_click or set_value an element; type text (into element or the focused field); press a key or chord; scroll (element or window); menu runs a menu bar item by path. Delivery is background unless foreground is asked. The result reports Cua's effect (confirmed, partial, unverifiable, suspected_noop, refused) and any escalation. Needs act access; foreground needs full control.",
+      "Act through the accessibility tree: click, double_click, right_click or set_value an element; type text (into element or the focused field); press a key or chord; scroll (element or window); menu runs a menu bar item by path. Delivery is background unless foreground is asked. The result reports Cua's effect (confirmed, partial, unverifiable, suspected_noop, refused), what changed in the window since you last read it, and any escalation. Needs act access; foreground needs full control. Browsers are read-only; terminals and IDEs take only click and scroll without full control.",
     input: ActInput,
     readOnly: false,
     run: (input, context) =>
       Effect.gen(function* () {
-        const window = yield* windowFor(
-          services,
-          context,
-          input,
-          input.delivery === "foreground" ? "full" : "act",
-        );
+        const window = yield* windowFor(services, context, input, {
+          scope: input.delivery === "foreground" ? "full" : "act",
+          action: ACT_CLASS[input.action],
+        });
         const token =
           input.element === undefined
             ? undefined
-            : services.access.tasks.elementToken(
+            : services.access.snapshots.token(
                 callerThread(context),
                 { pid: input.pid, windowId: input.window_id },
                 input.element,
@@ -276,12 +282,12 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
         if (token === null) {
           return yield* refuse(
             "unknown_element",
-            `Element ${input.element} is not in this window's latest computer_window_state. Read the window again.`,
+            `Element ${input.element} is not in this window's latest tree. Read the window again with computer_window_state.`,
           );
         }
         const call = actCall(input, token);
         if (typeof call === "string") return yield* refuse("invalid_input", call);
-        return actionContent(yield* callCua(services, context, call.tool, call.args), window);
+        return yield* performAction(services, context, input, window, call);
       }),
   });
 
@@ -289,11 +295,34 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
     name: "computer_request_access",
     title: "Request Computer Use access",
     description:
-      "Ask the user for access to an app (or one window) before acting on it: read, act or full. Shows a card in the chat and waits up to 45 s. If the answer is pending, call again with the same app to keep waiting; never act on the app before it is granted. A denial is final for this thread unless the user asks again.",
+      "Ask the user for access to an app (or one window) before acting on it: read, act or full. Shows a card in the chat and waits up to 45 s. If the answer is pending, call again with the same app to keep waiting; never act on the app before it is granted. A denial is final for this thread unless the user asks again. Browsers can only be granted read.",
     input: RequestAccessInput,
     readOnly: false,
     run: (input, context) =>
       Effect.gen(function* () {
+        if (input.scope !== "read") {
+          const listed = yield* callCua(services, context, "list_apps", {});
+          const app = Schema.decodeUnknownOption(CuaListApps)(listed.structuredContent).pipe(
+            Option.flatMap((value) =>
+              Option.fromNullishOr(
+                value.apps.find((entry) => entry.name.toLowerCase() === input.app.toLowerCase()),
+              ),
+            ),
+          );
+          if (
+            Option.isSome(app) &&
+            appCategory({
+              name: app.value.name,
+              bundleId: app.value.bundle_id ?? null,
+              launchPath: app.value.launch_path ?? null,
+            }) === "browser"
+          ) {
+            return yield* refuse(
+              "browser_read_only",
+              `${input.app} is a web browser, which Computer Use can only read. Do web work with the browser_* tools in Glade's own browser, or request scope "read" to look at it.`,
+            );
+          }
+        }
         const windowTitle =
           input.window_id === undefined
             ? null
@@ -345,5 +374,5 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
         .pipe(Effect.as({ content: [{ type: "text", text: "Computer Use session ended." }] })),
   });
 
-  return [apps, windowState, act, requestAccess, stop];
+  return [apps, windowState, act, makeVerifyTool(services), requestAccess, stop];
 }

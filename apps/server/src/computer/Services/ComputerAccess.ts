@@ -2,8 +2,11 @@ import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { ComputerAccessScope } from "@glade/contracts/computer/computerUse";
 import { ServiceMap, type Effect } from "effect";
 
+import type { AppIdentities } from "../appIdentities.ts";
 import type { ComputerGrants } from "../computerGrants.ts";
+import type { ComputerProgressGuard } from "../computerProgressGuard.ts";
 import type { ComputerTasks } from "../computerTask.ts";
+import type { WindowSnapshots } from "../windowSnapshots.ts";
 
 interface ComputerAccessRequest {
   readonly threadId: ThreadId;
@@ -25,6 +28,9 @@ export type ComputerAccessOutcome =
 export interface ComputerAccessShape {
   readonly grants: ComputerGrants;
   readonly tasks: ComputerTasks;
+  readonly snapshots: WindowSnapshots;
+  readonly progress: ComputerProgressGuard;
+  readonly apps: AppIdentities;
   // Shows the access card in the thread (or joins the open one for the same target) and waits.
   readonly requestAccess: (request: ComputerAccessRequest) => Effect.Effect<ComputerAccessOutcome>;
 }

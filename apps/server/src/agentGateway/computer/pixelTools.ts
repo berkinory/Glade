@@ -1,31 +1,33 @@
 import { Effect, Schema } from "effect";
 
 import type { ToolEntry } from "../toolRuntime.ts";
+import { keyCall, windowAction } from "./computerActions.ts";
 import {
   callCua,
   computerTool,
-  imageContent,
-  keyCall,
   SCREENSHOT_MAX_EDGE,
-  windowAction,
+  imageContent,
   windowFor,
   type ComputerToolServices,
 } from "./computerCalls.ts";
 
 // Pixel tools address one window in the pixel space of its latest computer_screenshot (or a
 // computer_window_state screenshot). Cua maps those pixels back to the screen itself, so the
-// server passes coordinates through unchanged.
+// server passes coordinates through unchanged. Names and parameters follow Anthropic's computer
+// toolset (coordinate, start_coordinate, region, scroll_direction, text) with a window added.
 const WindowRef = {
   pid: Schema.Int.annotate({ description: "Process id from computer_apps." }),
   window_id: Schema.Int.annotate({ description: "Window id from computer_apps." }),
 };
-const Coordinate = Schema.Number.annotate({
-  description: "Pixels in the latest screenshot of this window.",
-});
-const Point = { ...WindowRef, x: Coordinate, y: Coordinate };
+const pair = (description: string) =>
+  Schema.Array(Schema.Number)
+    .check(Schema.isMinLength(2), Schema.isMaxLength(2))
+    .annotate({ description });
+const Coordinate = pair("[x, y] in pixels of the latest screenshot of this window.");
 const Modifiers = Schema.optional(
-  Schema.Array(Schema.Literals(["cmd", "shift", "option", "ctrl"])).annotate({
-    description: "Modifier keys held during the click.",
+  Schema.String.annotate({
+    description:
+      'Modifier keys held during the click, "+"-joined: shift, ctrl, alt (option), cmd (super). Modifier clicks are delivered in the foreground and need full control.',
   }),
 );
 const Delivery = Schema.optional(
@@ -35,13 +37,36 @@ const Delivery = Schema.optional(
   }),
 );
 
-const ClickInput = Schema.Struct({ ...Point, modifiers: Modifiers, delivery: Delivery });
-const MAX_WAIT_SECONDS = 10;
+const ClickInput = Schema.Struct({
+  ...WindowRef,
+  coordinate: Coordinate,
+  text: Modifiers,
+  delivery: Delivery,
+});
+
+const MODIFIER_NAMES: Record<string, string> = {
+  shift: "shift",
+  ctrl: "ctrl",
+  control: "ctrl",
+  alt: "option",
+  option: "option",
+  cmd: "cmd",
+  command: "cmd",
+  super: "cmd",
+  meta: "cmd",
+};
+
+const modifierList = (text: string | undefined) =>
+  (text ?? "")
+    .split("+")
+    .map((part) => part.trim().toLowerCase())
+    .filter((part) => part.length > 0)
+    .map((part) => MODIFIER_NAMES[part] ?? part);
+
+const scopeFor = (delivery: "background" | "foreground" | undefined) =>
+  delivery === "foreground" ? "full" : "act";
 
 export function makePixelComputerTools(services: ComputerToolServices): ToolEntry[] {
-  const scopeFor = (delivery: "background" | "foreground" | undefined) =>
-    delivery === "foreground" ? "full" : "act";
-
   const click = (
     name: string,
     title: string,
@@ -56,17 +81,31 @@ export function makePixelComputerTools(services: ComputerToolServices): ToolEntr
       input: ClickInput,
       readOnly: false,
       run: (input, context) =>
-        windowAction(services, context, input, scopeFor(input.delivery), {
-          tool,
-          args: {
-            pid: input.pid,
-            window_id: input.window_id,
-            x: input.x,
-            y: input.y,
-            delivery_mode: input.delivery ?? "background",
-            ...(input.modifiers && input.modifiers.length > 0 ? { modifier: input.modifiers } : {}),
-            ...extra,
-          },
+        Effect.suspend(() => {
+          const modifier = modifierList(input.text);
+          // macOS only sees physical modifier state, so Cua requires foreground for these.
+          const delivery = modifier.length > 0 ? "foreground" : (input.delivery ?? "background");
+          return windowAction(
+            services,
+            context,
+            input,
+            {
+              scope: scopeFor(delivery),
+              action: tool === "right_click" || modifier.length > 0 ? "input" : "click",
+            },
+            {
+              tool,
+              args: {
+                pid: input.pid,
+                window_id: input.window_id,
+                x: input.coordinate[0],
+                y: input.coordinate[1],
+                delivery_mode: delivery,
+                ...(modifier.length > 0 ? { modifier } : {}),
+                ...extra,
+              },
+            },
+          );
         }),
     });
 
@@ -74,12 +113,12 @@ export function makePixelComputerTools(services: ComputerToolServices): ToolEntr
     computerTool(services, {
       name: "computer_screenshot",
       title: "Screenshot a window",
-      description: `JPEG of one window, at most ${SCREENSHOT_MAX_EDGE} px on the long edge; pixel tools take coordinates in this image. Use it when the accessibility tree lacks the target or an action's effect is unverifiable. Needs read access.`,
+      description: `JPEG of one window only, at most ${SCREENSHOT_MAX_EDGE} px on the long edge; pixel tools take coordinates in this image. Use it when the accessibility tree lacks the target or an action's effect is unverifiable. Needs read access.`,
       input: Schema.Struct(WindowRef),
       readOnly: true,
       run: (input, context) =>
         Effect.gen(function* () {
-          yield* windowFor(services, context, input, "read");
+          yield* windowFor(services, context, input, { scope: "read", action: "read" });
           const result = yield* callCua(services, context, "get_window_state", {
             pid: input.pid,
             window_id: input.window_id,
@@ -93,84 +132,114 @@ export function makePixelComputerTools(services: ComputerToolServices): ToolEntr
       name: "computer_zoom",
       title: "Zoom into a window",
       description:
-        "JPEG close-up of a region (x1,y1)-(x2,y2) of the latest screenshot, for reading small text before asking for anything larger. Coordinates for actions stay in the screenshot's space. Needs read access.",
+        "JPEG close-up of region [x0, y0, x1, y1] of the latest screenshot, for reading small text before asking for anything larger. Coordinates for actions stay in the screenshot's space. Needs read access.",
       input: Schema.Struct({
         ...WindowRef,
-        x1: Coordinate,
-        y1: Coordinate,
-        x2: Coordinate,
-        y2: Coordinate,
+        region: Schema.Array(Schema.Number)
+          .check(Schema.isMinLength(4), Schema.isMaxLength(4))
+          .annotate({ description: "[x0, y0, x1, y1]: top-left and bottom-right corners." }),
       }),
       readOnly: true,
       run: (input, context) =>
         Effect.gen(function* () {
-          yield* windowFor(services, context, input, "read");
-          const result = yield* callCua(services, context, "zoom", input);
+          yield* windowFor(services, context, input, { scope: "read", action: "read" });
+          const [x1, y1, x2, y2] = input.region;
+          const result = yield* callCua(services, context, "zoom", {
+            pid: input.pid,
+            window_id: input.window_id,
+            x1,
+            y1,
+            x2,
+            y2,
+          });
           return { content: yield* imageContent(services, context, result) };
         }),
     }),
-    click("computer_left_click", "Click at a point", "Left-click at (x, y).", "click"),
+    click("computer_left_click", "Click at a point", "Left-click at coordinate.", "click"),
     click(
       "computer_right_click",
       "Right-click at a point",
-      "Right-click at (x, y).",
+      "Right-click at coordinate.",
       "right_click",
     ),
     click(
       "computer_double_click",
       "Double-click at a point",
-      "Double-click at (x, y).",
+      "Double-click at coordinate.",
       "double_click",
     ),
-    click("computer_triple_click", "Triple-click at a point", "Triple-click at (x, y).", "click", {
-      count: 3,
-    }),
+    click(
+      "computer_triple_click",
+      "Triple-click at a point",
+      "Triple-click at coordinate.",
+      "click",
+      { count: 3 },
+    ),
     computerTool(services, {
       name: "computer_left_click_drag",
       title: "Drag between points",
       description:
-        "Press at (start_x, start_y), drag to (x, y) and release. The pointer must move for real, so this fronts the window and needs full control.",
-      input: Schema.Struct({ ...Point, start_x: Coordinate, start_y: Coordinate }),
+        "Press at start_coordinate, drag to coordinate and release. The pointer must move for real, so this fronts the window and needs full control.",
+      input: Schema.Struct({
+        ...WindowRef,
+        start_coordinate: Coordinate,
+        coordinate: Coordinate,
+      }),
       readOnly: false,
       run: (input, context) =>
-        windowAction(services, context, input, "full", {
-          tool: "drag",
-          args: {
-            pid: input.pid,
-            window_id: input.window_id,
-            from_x: input.start_x,
-            from_y: input.start_y,
-            to_x: input.x,
-            to_y: input.y,
-            delivery_mode: "foreground",
+        windowAction(
+          services,
+          context,
+          input,
+          { scope: "full", action: "input" },
+          {
+            tool: "drag",
+            args: {
+              pid: input.pid,
+              window_id: input.window_id,
+              from_x: input.start_coordinate[0],
+              from_y: input.start_coordinate[1],
+              to_x: input.coordinate[0],
+              to_y: input.coordinate[1],
+              delivery_mode: "foreground",
+            },
           },
-        }),
+        ),
     }),
     computerTool(services, {
       name: "computer_scroll",
       title: "Scroll at a point",
       description:
-        "Scroll the region under (x, y) by amount wheel notches. Needs act access; foreground needs full control.",
+        "Scroll the region under coordinate by scroll_amount wheel notches. Needs act access; foreground needs full control.",
       input: Schema.Struct({
-        ...Point,
-        direction: Schema.Literals(["up", "down", "left", "right"]),
-        amount: Schema.optional(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 50 }))),
+        ...WindowRef,
+        coordinate: Coordinate,
+        scroll_direction: Schema.Literals(["up", "down", "left", "right"]),
+        scroll_amount: Schema.optional(
+          Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 50 })),
+        ),
         delivery: Delivery,
       }),
       readOnly: false,
       run: (input, context) =>
-        windowAction(services, context, input, scopeFor(input.delivery), {
-          tool: "scroll",
-          args: {
-            pid: input.pid,
-            window_id: input.window_id,
-            x: input.x,
-            y: input.y,
-            direction: input.direction,
-            amount: input.amount ?? 3,
-            delivery_mode: input.delivery ?? "background",
+        windowAction(
+          services,
+          context,
+          input,
+          { scope: scopeFor(input.delivery), action: "click" },
+          {
+            tool: "scroll",
+            args: {
+              pid: input.pid,
+              window_id: input.window_id,
+              x: input.coordinate[0],
+              y: input.coordinate[1],
+              direction: input.scroll_direction,
+              amount: input.scroll_amount ?? 3,
+              delivery_mode: input.delivery ?? "background",
+            },
           },
-        }),
+        ),
     }),
     computerTool(services, {
       name: "computer_type",
@@ -180,49 +249,52 @@ export function makePixelComputerTools(services: ComputerToolServices): ToolEntr
       input: Schema.Struct({ ...WindowRef, text: Schema.String, delivery: Delivery }),
       readOnly: false,
       run: (input, context) =>
-        windowAction(services, context, input, scopeFor(input.delivery), {
-          tool: "type_text",
-          args: {
-            pid: input.pid,
-            window_id: input.window_id,
-            text: input.text,
-            delivery_mode: input.delivery ?? "background",
+        windowAction(
+          services,
+          context,
+          input,
+          { scope: scopeFor(input.delivery), action: "input" },
+          {
+            tool: "type_text",
+            args: {
+              pid: input.pid,
+              window_id: input.window_id,
+              text: input.text,
+              delivery_mode: input.delivery ?? "background",
+            },
           },
-        }),
+        ),
     }),
     computerTool(services, {
       name: "computer_key",
       title: "Press a key",
       description:
-        'Press a key ("return", "escape", "tab", "down") or a chord ("cmd+a", "cmd+shift+z") in the window. Needs act access; foreground needs full control.',
-      input: Schema.Struct({ ...WindowRef, key: Schema.String, delivery: Delivery }),
+        'Press a key or "+"-joined chord in the window, e.g. "return", "escape", "tab", "down", "cmd+a", "cmd+shift+z". Needs act access; foreground needs full control.',
+      input: Schema.Struct({
+        ...WindowRef,
+        text: Schema.String.annotate({ description: "The key or chord." }),
+        delivery: Delivery,
+      }),
       readOnly: false,
       run: (input, context) =>
         Effect.suspend(() => {
-          const key = keyCall(input.key);
-          return windowAction(services, context, input, scopeFor(input.delivery), {
-            tool: key.tool,
-            args: {
-              pid: input.pid,
-              window_id: input.window_id,
-              delivery_mode: input.delivery ?? "background",
-              ...key.args,
+          const key = keyCall(input.text);
+          return windowAction(
+            services,
+            context,
+            input,
+            { scope: scopeFor(input.delivery), action: "input" },
+            {
+              tool: key.tool,
+              args: {
+                pid: input.pid,
+                window_id: input.window_id,
+                delivery_mode: input.delivery ?? "background",
+                ...key.args,
+              },
             },
-          });
+          );
         }),
-    }),
-    computerTool(services, {
-      name: "computer_wait",
-      title: "Wait",
-      description: `Wait up to ${MAX_WAIT_SECONDS} seconds for the app to settle, then look again.`,
-      input: Schema.Struct({
-        seconds: Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: MAX_WAIT_SECONDS })),
-      }),
-      readOnly: true,
-      run: (input) =>
-        Effect.sleep(input.seconds * 1000).pipe(
-          Effect.as({ content: [{ type: "text" as const, text: `Waited ${input.seconds}s.` }] }),
-        ),
     }),
   ];
 }

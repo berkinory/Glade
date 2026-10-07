@@ -41,6 +41,12 @@ export interface ComputerHostShape {
   ) => Effect.Effect<CuaToolResult, ComputerHostError>;
   // Ends the thread's Cua session, which releases held input and hides the agent cursor.
   readonly endSession: (threadId: string) => Effect.Effect<void>;
+  readonly endAllSessions: Effect.Effect<void>;
+  // Whole seconds since the user last touched the mouse or keyboard; null where the platform
+  // cannot tell.
+  readonly userIdleSeconds: Effect.Effect<number | null, ComputerHostError>;
+  // One element per press of the desktop's Computer Use kill switch shortcut.
+  readonly killSwitch: Stream.Stream<void>;
   readonly encodeJpeg: (png: string) => Effect.Effect<ComputerEncodedImage, ComputerHostError>;
 }
 

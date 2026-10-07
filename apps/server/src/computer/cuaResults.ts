@@ -46,6 +46,7 @@ export const CuaListApps = Schema.Struct({
       running: Schema.Boolean,
       active: Schema.Boolean,
       bundle_id: NullableString,
+      launch_path: NullableString,
     }),
   ),
 });
@@ -57,6 +58,7 @@ export const CuaElement = Schema.Struct({
   label: NullableString,
   value: Schema.optional(Schema.Unknown),
   depth: Schema.optional(Schema.Int),
+  parent_index: Schema.optional(Schema.NullOr(Schema.Int)),
   enabled: Schema.optional(Schema.Boolean),
   selected: Schema.optional(Schema.Boolean),
 });
@@ -75,6 +77,17 @@ export type CuaWindowState = typeof CuaWindowState.Type;
 export const CuaActionOutcome = Schema.Struct({
   effect: Schema.Literals(["confirmed", "partial", "unverifiable", "suspected_noop", "refused"]),
   summary: NullableString,
+  // What Cua observed after the action: a value read back from the element, or a window change.
+  evidence: Schema.optional(
+    Schema.NullOr(
+      Schema.Array(
+        Schema.Struct({
+          kind: Schema.String,
+          detail: NullableString,
+        }),
+      ),
+    ),
+  ),
   escalation: Schema.optional(
     Schema.NullOr(Schema.Struct({ target: Schema.String, reason: Schema.String })),
   ),
@@ -105,3 +118,18 @@ export const resultImage = (result: CuaToolResult) =>
   result.content.find(
     (part): part is typeof Image.Type => part.type === "image" && "data" in part,
   ) ?? null;
+
+export const CuaVerifyResult = Schema.Struct({
+  status: Schema.Literals(["satisfied", "unsatisfied", "unknown"]),
+  stable: Schema.Boolean,
+  elapsed_ms: Schema.Int,
+  samples: Schema.Int,
+  predicates: Schema.Array(
+    Schema.Struct({
+      index: Schema.Int,
+      status: Schema.Literals(["satisfied", "unsatisfied", "unknown"]),
+      unknown_reason: NullableString,
+      observed_json: NullableString,
+    }),
+  ),
+});

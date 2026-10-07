@@ -2,11 +2,17 @@ import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { ComputerAccessScope } from "@glade/contracts/computer/computerUse";
 import { Effect, Option, Schema } from "effect";
 
+import {
+  categoryRefusal,
+  type ActionClass,
+  type AppIdentity,
+} from "../../computer/appCategories.ts";
 import { MAX_IMAGES_PER_TURN } from "../../computer/computerTask.ts";
 import {
-  CuaActionOutcome,
   CuaFailure,
+  CuaListApps,
   CuaListWindows,
+  CuaWindowState,
   resultImage,
   resultText,
   type CuaToolResult,
@@ -22,6 +28,7 @@ import {
   type ToolContext,
   type ToolEntry,
 } from "../toolRuntime.ts";
+import { untrustedContent } from "../untrustedContent.ts";
 
 export interface ComputerToolServices {
   readonly host: ComputerHostShape;
@@ -29,12 +36,26 @@ export interface ComputerToolServices {
   readonly computerUse: ThreadComputerUseShape;
 }
 
+export interface WindowInput {
+  readonly pid: number;
+  readonly window_id: number;
+}
+
+// What a tool needs from the grant (scope) and what it does to the app (action class, for the
+// app category check).
+export interface WindowNeed {
+  readonly scope: ComputerAccessScope;
+  readonly action: ActionClass;
+}
+
 type Content = McpToolCallResult["content"][number];
 
 const CALL_TIMEOUT_MS = 30_000;
-// Long edge of screenshots handed to the model. Cua scales its own coordinate space to the image
-// it returns, so pixel actions use the model's coordinates unchanged.
-export const SCREENSHOT_MAX_EDGE = 1280;
+// Long edge of window screenshots handed to the model: the size Cua documents and current Claude
+// and GPT models take without further downscaling. Passed explicitly because the driver's stored
+// setting may be 0 (native Retina size). Cua scales its coordinate space to the image it returns,
+// so pixel actions use the model's coordinates unchanged.
+export const SCREENSHOT_MAX_EDGE = 1568;
 
 const refusal = (code: string, message: string) => new GatewayToolError(code, message);
 export const refuse = (code: string, message: string) => Effect.fail(refusal(code, message));
@@ -44,6 +65,14 @@ export const callerThread = (context: ToolContext) => ThreadId.makeUnsafe(contex
 
 const isComputerUseOn = (services: ComputerToolServices, threadId: string) =>
   services.computerUse.mode(ThreadId.makeUnsafe(threadId)) !== "off";
+
+// App-provided text (titles, accessibility labels and values) handed to the model.
+export const appContent = (window: CuaWindow, text: string) =>
+  untrustedContent(
+    "APP_CONTENT",
+    `app=${JSON.stringify(window.app_name)} window=${window.window_id}`,
+    text,
+  );
 
 // One Cua tools/call in the caller thread's own Cua session. Stop aborts it, which cancels it in
 // Cua; a Cua tool error becomes a typed refusal carrying Cua's code and text.
@@ -102,28 +131,54 @@ const requireComputerUse = (services: ComputerToolServices, context: ToolContext
 
 // The window as Cua lists it now: the grant check needs its app, and a pid/window pair that does
 // not match is refused before anything acts on it.
-const resolveWindow = (
-  services: ComputerToolServices,
-  context: ToolContext,
-  pid: number,
-  windowId: number,
-) =>
+const resolveWindow = (services: ComputerToolServices, context: ToolContext, input: WindowInput) =>
   Effect.gen(function* () {
-    const listed = yield* callCua(services, context, "list_windows", { pid });
+    const listed = yield* callCua(services, context, "list_windows", { pid: input.pid });
     const windows = Schema.decodeUnknownOption(CuaListWindows)(listed.structuredContent).pipe(
       Option.map((value) => value.windows),
       Option.getOrElse((): ReadonlyArray<CuaWindow> => []),
     );
     // Cua can list other processes' windows too. Later calls pass the agent's pid to Cua, so the
     // granted window must belong to that pid.
-    const window = windows.find((entry) => entry.window_id === windowId && entry.pid === pid);
+    const window = windows.find(
+      (entry) => entry.window_id === input.window_id && entry.pid === input.pid,
+    );
     if (!window) {
       return yield* refuse(
         "window_not_found",
-        `pid ${pid} has no window ${windowId}. Call computer_apps for current pids and window ids.`,
+        `pid ${input.pid} has no window ${input.window_id}. Call computer_apps for current pids and window ids.`,
       );
     }
     return window;
+  });
+
+// The running app's identity by pid. An app Cua does not list as a regular app (a menu-bar
+// accessory) is known by its window's name only and falls in no restricted category.
+const appIdentity = (
+  services: ComputerToolServices,
+  context: ToolContext,
+  pid: number,
+  name: string,
+) =>
+  Effect.gen(function* () {
+    const cached = services.access.apps.get(pid, name);
+    if (cached) return cached;
+    const listed = yield* callCua(services, context, "list_apps", {});
+    const app = Schema.decodeUnknownOption(CuaListApps)(listed.structuredContent).pipe(
+      Option.flatMap((value) =>
+        Option.fromNullishOr(value.apps.find((entry) => entry.running && entry.pid === pid)),
+      ),
+    );
+    const identity: AppIdentity = Option.match(app, {
+      onNone: () => ({ name, bundleId: null, launchPath: null }),
+      onSome: (value) => ({
+        name,
+        bundleId: value.bundle_id ?? null,
+        launchPath: value.launch_path ?? null,
+      }),
+    });
+    services.access.apps.set(pid, name, identity);
+    return identity;
   });
 
 const SCOPE_NEEDS: Record<ComputerAccessScope, string> = {
@@ -132,36 +187,59 @@ const SCOPE_NEEDS: Record<ComputerAccessScope, string> = {
   full: "full control",
 };
 
-// The grant gate every window-scoped tool passes before Cua sees the call.
+// The gate every window-scoped tool passes before Cua sees the call: the thread's grant, then the
+// target app's category, checked against the app that owns the window right now.
 const authorize = (
   services: ComputerToolServices,
   context: ToolContext,
   window: CuaWindow,
-  scope: ComputerAccessScope,
+  need: WindowNeed,
 ) =>
   Effect.gen(function* () {
     const grant = services.access.grants.check(
       callerThread(context),
       { app: window.app_name, windowId: window.window_id },
-      scope,
+      need.scope,
     );
     if (!grant) {
       return yield* refuse(
         "access_required",
-        `This thread has no ${SCOPE_NEEDS[scope]} to ${window.app_name}. Call computer_request_access with app "${window.app_name}" and scope "${scope}", then retry.`,
+        `This thread has no ${SCOPE_NEEDS[need.scope]} to ${window.app_name}. Call computer_request_access with app "${window.app_name}" and scope "${need.scope}", then retry.`,
       );
     }
+    if (need.action === "read" || window.pid === null) return;
+    const app = yield* appIdentity(services, context, window.pid, window.app_name);
+    const refused = categoryRefusal(app, need.action, grant.scope);
+    if (refused) return yield* refuse(refused.code, refused.message);
   });
 
 export const windowFor = (
   services: ComputerToolServices,
   context: ToolContext,
-  input: { readonly pid: number; readonly window_id: number },
-  scope: ComputerAccessScope,
+  input: WindowInput,
+  need: WindowNeed,
 ) =>
-  resolveWindow(services, context, input.pid, input.window_id).pipe(
-    Effect.tap((window) => authorize(services, context, window, scope)),
+  resolveWindow(services, context, input).pipe(
+    Effect.tap((window) => authorize(services, context, window, need)),
   );
+
+// A fresh tree of the window under Glade's stable indexes, and what changed since the last one.
+export const recordSnapshot = (
+  services: ComputerToolServices,
+  context: ToolContext,
+  input: WindowInput,
+  result: CuaToolResult,
+  filtered: boolean,
+) => {
+  const state = Schema.decodeUnknownOption(CuaWindowState)(result.structuredContent);
+  const recorded = services.access.snapshots.record(
+    callerThread(context),
+    { pid: input.pid, windowId: input.window_id },
+    Option.match(state, { onNone: () => [], onSome: (value) => value.elements ?? [] }),
+    !filtered && Option.isSome(state) && state.value.truncated !== true,
+  );
+  return { state, ...recorded };
+};
 
 // Screenshots leave the server as JPEG at Cua's pixel size, within the turn's image budget.
 export const imageContent = (
@@ -189,57 +267,6 @@ export const imageContent = (
       { type: "image", data: encoded.data, mimeType: "image/jpeg" },
     ] as Content[];
   });
-
-// Action results carry Cua's effect classification; an escalation says which rung to try next.
-// The closing `Window:` line names the target for the model and the chat timeline.
-export const actionContent = (result: CuaToolResult, window: CuaWindow): McpToolCallResult => {
-  const outcome = Schema.decodeUnknownOption(CuaActionOutcome)(result.structuredContent);
-  const lines = [resultText(result) || "Done."];
-  if (Option.isSome(outcome)) {
-    lines.push(`Effect: ${outcome.value.effect}.`);
-    const escalation = outcome.value.escalation;
-    if (escalation) {
-      lines.push(
-        `Escalation: ${escalation.target} (${escalation.reason}).${
-          escalation.target === "foreground"
-            ? " Retry with delivery: foreground, which needs full control."
-            : escalation.target === "pixel"
-              ? " Take a computer_screenshot and use the pixel tools."
-              : ""
-        }`,
-      );
-    }
-  }
-  lines.push(`Window: ${window.app_name} ${JSON.stringify(window.title)}`);
-  return {
-    content: [{ type: "text", text: lines.join("\n") }],
-    ...(Option.isSome(outcome) && outcome.value.effect === "refused" ? { isError: true } : {}),
-  };
-};
-
-// One input action on a window: resolve and authorize it, run the Cua tool, report the outcome.
-export const windowAction = (
-  services: ComputerToolServices,
-  context: ToolContext,
-  input: { readonly pid: number; readonly window_id: number },
-  scope: ComputerAccessScope,
-  call: { readonly tool: string; readonly args: Readonly<Record<string, unknown>> },
-) =>
-  windowFor(services, context, input, scope).pipe(
-    Effect.flatMap((window) =>
-      callCua(services, context, call.tool, call.args).pipe(
-        Effect.map((result) => actionContent(result, window)),
-      ),
-    ),
-  );
-
-// Chords like "cmd+shift+s" go to Cua's hotkey; single keys to press_key.
-export const keyCall = (key: string) => {
-  const parts = key.split("+").map((part) => part.trim().toLowerCase());
-  return parts.length > 1
-    ? { tool: "hotkey", args: { keys: parts } }
-    : { tool: "press_key", args: { key: parts[0] } };
-};
 
 export interface ComputerToolSpec<Input> {
   readonly name: string;
@@ -282,6 +309,12 @@ export function computerTool<Input>(
               refusal("invalid_input", `Invalid ${spec.name} input: ${error.message}`),
             ),
           ),
+        ),
+        // Any look at an app (tree, screenshot, zoom, verify) ends a run of fruitless repeats.
+        Effect.tap(() =>
+          spec.readOnly
+            ? Effect.sync(() => services.access.progress.recordRead(context.callerThreadId))
+            : Effect.void,
         ),
         Effect.flatMap((input) => spec.run(input, context)),
         Effect.catch((error) => Effect.succeed(gatewayToolErrorResult(error))),

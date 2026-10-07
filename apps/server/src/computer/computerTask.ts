@@ -1,6 +1,7 @@
-// Screenshots stay in the provider's context for the rest of the turn; past this many the model
-// must work from the accessibility tree or finish.
-export const MAX_IMAGES_PER_TURN = 20;
+// A runaway guard, not a context budget: Claude and Codex own their history and compact it, so
+// the images a turn returns do not all stay in context. A turn that needs more than this many
+// screenshots is looping; it must work from the accessibility tree or finish.
+export const MAX_IMAGES_PER_TURN = 60;
 
 interface ComputerCall {
   readonly signal: AbortSignal;
@@ -16,16 +17,13 @@ export interface ComputerTasks {
   readonly stop: (threadId: string, turnId?: string) => void;
   // Counts one returned image against the turn's budget; false once it is spent.
   readonly takeImage: (threadId: string, turnId: string | null) => boolean;
-  readonly rememberElements: (
-    threadId: string,
-    window: { readonly pid: number; readonly windowId: number },
-    tokens: ReadonlyMap<number, string>,
-  ) => void;
-  readonly elementToken: (
-    threadId: string,
-    window: { readonly pid: number; readonly windowId: number },
-    index: number,
-  ) => string | null;
+  // The turn of each thread's latest computer call, unless that turn was stopped. The turn may
+  // have ended since; callers check before acting on it.
+  readonly activeTurns: () => ReadonlyArray<{ readonly threadId: string; readonly turnId: string }>;
+  // When an agent action last drove the real pointer or keyboard (any thread), so the user-activity
+  // check can tell the agent's own input from the user's.
+  readonly markRealInput: () => void;
+  readonly lastRealInputAt: () => number;
   readonly clearThread: (threadId: string) => void;
 }
 
@@ -35,16 +33,11 @@ interface ThreadTask {
   stoppedTurnId: string | null;
   imageTurnId: string | null;
   images: number;
-  // element_index → element_token of the latest snapshot per window. Cua stales a token once a
-  // newer snapshot of its window exists, so only the latest one is kept.
-  readonly elements: Map<string, ReadonlyMap<number, string>>;
 }
-
-const windowKey = (window: { readonly pid: number; readonly windowId: number }) =>
-  `${window.pid}:${window.windowId}`;
 
 export function makeComputerTasks(): ComputerTasks {
   const threads = new Map<string, ThreadTask>();
+  let realInputAt = 0;
   const task = (threadId: string) => {
     let entry = threads.get(threadId);
     if (!entry) {
@@ -54,7 +47,6 @@ export function makeComputerTasks(): ComputerTasks {
         stoppedTurnId: null,
         imageTurnId: null,
         images: 0,
-        elements: new Map(),
       };
       threads.set(threadId, entry);
     }
@@ -86,11 +78,16 @@ export function makeComputerTasks(): ComputerTasks {
       entry.images += 1;
       return true;
     },
-    rememberElements: (threadId, window, tokens) => {
-      task(threadId).elements.set(windowKey(window), tokens);
+    activeTurns: () =>
+      [...threads.entries()].flatMap(([threadId, entry]) =>
+        entry.turnId !== null && entry.stoppedTurnId !== entry.turnId
+          ? [{ threadId, turnId: entry.turnId }]
+          : [],
+      ),
+    markRealInput: () => {
+      realInputAt = Date.now();
     },
-    elementToken: (threadId, window, index) =>
-      threads.get(threadId)?.elements.get(windowKey(window))?.get(index) ?? null,
+    lastRealInputAt: () => realInputAt,
     clearThread: (threadId) => {
       const entry = threads.get(threadId);
       for (const controller of entry?.inFlight ?? []) controller.abort();

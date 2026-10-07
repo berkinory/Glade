@@ -12,8 +12,11 @@ import { Deferred, Effect, Layer, Option, Stream } from "effect";
 import { randomUUID } from "node:crypto";
 
 import { OrchestrationEngineService } from "../../orchestration/Services/OrchestrationEngine.ts";
+import { makeAppIdentities } from "../appIdentities.ts";
 import { makeComputerGrants, type ComputerTarget } from "../computerGrants.ts";
+import { makeComputerProgressGuard } from "../computerProgressGuard.ts";
 import { makeComputerTasks } from "../computerTask.ts";
+import { makeWindowSnapshots } from "../windowSnapshots.ts";
 import {
   ComputerAccess,
   type ComputerAccessOutcome,
@@ -59,6 +62,9 @@ export const ComputerAccessLive = Layer.effect(
     const host = yield* ComputerHost;
     const grants = makeComputerGrants();
     const tasks = makeComputerTasks();
+    const snapshots = makeWindowSnapshots();
+    const progress = makeComputerProgressGuard();
+    const apps = makeAppIdentities();
     const pendingById = new Map<string, PendingAccess>();
     const pendingIdByTarget = new Map<string, string>();
 
@@ -199,6 +205,8 @@ export const ComputerAccessLive = Layer.effect(
           case "thread.deleted":
             grants.clearThread(event.payload.threadId);
             tasks.clearThread(event.payload.threadId);
+            snapshots.clearThread(event.payload.threadId);
+            progress.clearThread(event.payload.threadId);
             return Effect.void;
           default:
             return Effect.void;
@@ -210,6 +218,57 @@ export const ComputerAccessLive = Layer.effect(
       Effect.forkScoped,
     );
 
-    return { grants, tasks, requestAccess } satisfies ComputerAccessShape;
+    // The kill switch stops every turn that is still using the computer the same way the chat's
+    // Stop does (an interrupt, which the timeline shows and which stops the Cua calls below), and
+    // ends every Cua session at once so held input is released even before the interrupt lands.
+    const killAll = Effect.gen(function* () {
+      const running = tasks.activeTurns();
+      for (const { threadId, turnId } of running) tasks.stop(threadId, turnId);
+      yield* host.endAllSessions;
+      const readModel = yield* engine.getReadModel();
+      const live = running.filter(({ threadId, turnId }) =>
+        readModel.threads.some(
+          (thread) => thread.id === threadId && thread.session?.activeTurnId === turnId,
+        ),
+      );
+      yield* Effect.logInfo("computer kill switch", { threads: live.length });
+      yield* Effect.forEach(
+        live,
+        ({ threadId, turnId }) =>
+          engine
+            .dispatch({
+              type: "thread.turn.interrupt",
+              commandId: CommandId.makeUnsafe(`server:computer-kill-switch:${randomUUID()}`),
+              threadId: ThreadId.makeUnsafe(threadId),
+              turnId: TurnId.makeUnsafe(turnId),
+              createdAt: new Date().toISOString(),
+            })
+            .pipe(
+              Effect.catch((error) =>
+                Effect.logWarning("computer kill switch interrupt failed", {
+                  threadId,
+                  error: String(error),
+                }),
+              ),
+            ),
+        { discard: true },
+      );
+    });
+    yield* host.killSwitch.pipe(
+      Stream.runForEach(() => killAll),
+      Effect.catchCause((cause) =>
+        Effect.logError("computer kill switch loop stopped", { cause: String(cause) }),
+      ),
+      Effect.forkScoped,
+    );
+
+    return {
+      grants,
+      tasks,
+      snapshots,
+      progress,
+      apps,
+      requestAccess,
+    } satisfies ComputerAccessShape;
   }),
 );

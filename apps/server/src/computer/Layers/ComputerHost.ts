@@ -1,8 +1,11 @@
 import {
   COMPUTER_CONNECTION_NOTIFICATION,
   COMPUTER_ENCODE_JPEG_METHOD,
+  COMPUTER_KILL_SWITCH_NOTIFICATION,
+  COMPUTER_USER_IDLE_METHOD,
   ComputerConnection,
   ComputerEncodedImage,
+  ComputerUserIdle,
 } from "@glade/contracts/computer/computerHost";
 import { Effect, Layer, Option, Schedule, Schema, Stream, SubscriptionRef } from "effect";
 import * as Crypto from "node:crypto";
@@ -21,6 +24,7 @@ const HEALTH_TIMEOUT_MS = 10_000;
 const END_SESSION_TIMEOUT_MS = 5_000;
 const SESSION_ENDED = /session has ended/u;
 const ENCODE_TIMEOUT_MS = 10_000;
+const USER_IDLE_TIMEOUT_MS = 2_000;
 const JPEG_QUALITY = 75;
 // A proxy that dies while its daemon generation is still current is relaunched quickly at first,
 // then every few seconds.
@@ -216,6 +220,9 @@ export const ComputerHostLive = Layer.effect(
       ),
     );
     const decodeImage = Schema.decodeUnknownEffect(ComputerEncodedImage);
+    const decodeUserIdle = Schema.decodeUnknownEffect(ComputerUserIdle);
+    const endLabel = (mcp: CuaMcpClient, label: string) =>
+      request(mcp, "end_session", { session: label }, END_SESSION_TIMEOUT_MS).pipe(Effect.ignore);
     return {
       configured: desktopHost.configured,
       status: SubscriptionRef.changes(status),
@@ -253,13 +260,35 @@ export const ComputerHostLive = Layer.effect(
           const label = current?.sessions.get(threadId);
           if (!current || !label) return Effect.void;
           current.sessions.delete(threadId);
-          return request(
-            current.mcp,
-            "end_session",
-            { session: label },
-            END_SESSION_TIMEOUT_MS,
-          ).pipe(Effect.ignore);
+          return endLabel(current.mcp, label);
         }),
+      endAllSessions: Effect.suspend(() => {
+        const current = client;
+        if (!current) return Effect.void;
+        const labels = [...current.sessions.values()];
+        current.sessions.clear();
+        return Effect.forEach(labels, (label) => endLabel(current.mcp, label), {
+          concurrency: "unbounded",
+          discard: true,
+        });
+      }),
+      userIdleSeconds: desktopHost
+        .request(COMPUTER_USER_IDLE_METHOD, {}, USER_IDLE_TIMEOUT_MS)
+        .pipe(
+          Effect.flatMap(decodeUserIdle),
+          Effect.map((idle) => idle.idleSeconds),
+          Effect.mapError(
+            (error) =>
+              new ComputerHostError({
+                code: "protocol",
+                message: `Reading user activity failed: ${error.message}`,
+              }),
+          ),
+        ),
+      killSwitch: desktopHost.notifications.pipe(
+        Stream.filter((notification) => notification.method === COMPUTER_KILL_SWITCH_NOTIFICATION),
+        Stream.map(() => undefined),
+      ),
       encodeJpeg: (png) =>
         desktopHost
           .request(
