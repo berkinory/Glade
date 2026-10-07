@@ -40,6 +40,7 @@ export interface DesktopPlatformBuildConfig {
   readonly files?: ReadonlyArray<string>;
   readonly linux?: Record<string, unknown>;
   readonly mac?: Record<string, unknown>;
+  readonly npmRebuild?: boolean;
   readonly nsis?: Record<string, unknown>;
   readonly win?: Record<string, unknown>;
 }
@@ -175,6 +176,10 @@ export function createDesktopPlatformBuildConfig(
 
   return {
     ...nativePackaging,
+    // Every Windows native dependency is N-API with a prebuild (node-pty, the Cua SDK) or an
+    // optional accelerator (msgpackr-extract has no win32-arm64 prebuild and falls back to
+    // JavaScript), so an Electron rebuild only adds an MSVC dependency and breaks cross-builds.
+    npmRebuild: false,
 
     nsis: {
       guid: WINDOWS_INSTALLER_GUID,
