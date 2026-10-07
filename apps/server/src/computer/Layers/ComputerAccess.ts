@@ -14,6 +14,7 @@ import { randomUUID } from "node:crypto";
 
 import { OrchestrationEngineService } from "../../orchestration/Services/OrchestrationEngine.ts";
 import { makeAppIdentities } from "../appIdentities.ts";
+import { makeClipboardConsent } from "../clipboardConsent.ts";
 import {
   makeComputerGrants,
   scopeCovers,
@@ -278,8 +279,13 @@ export const ComputerAccessLive = Layer.effect(
         ),
       );
 
+    const clipboard = makeClipboardConsent({ appendActivity, runtimeModeOf });
+
     const answerAccess = (threadId: string, requestId: string, answers: Record<string, unknown>) =>
       Effect.gen(function* () {
+        if (yield* clipboard.answer(threadId, requestId, answers)) {
+          return yield* appendResolved(threadId, requestId, answers as Record<string, string>);
+        }
         // An answer only settles a request of the thread it was given in.
         const candidate = pendingById.get(requestId);
         const pending = candidate?.threadId === threadId ? candidate : undefined;
@@ -326,6 +332,7 @@ export const ComputerAccessLive = Layer.effect(
             return host.endSession(event.payload.threadId);
           case "thread.deleted":
             grants.clearThread(event.payload.threadId);
+            clipboard.clearThread(event.payload.threadId);
             for (const key of fullAnswered) {
               if (key.startsWith(`${event.payload.threadId}\u0000`)) fullAnswered.delete(key);
             }
@@ -395,6 +402,7 @@ export const ComputerAccessLive = Layer.effect(
       apps,
       grantFor,
       requestAccess,
+      clipboardRead: clipboard.request,
     } satisfies ComputerAccessShape;
   }),
 );

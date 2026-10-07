@@ -137,7 +137,18 @@ export function makeInputComputerTools(services: ComputerToolServices): ToolEntr
       const run =
         plan.run?.(target) ??
         Effect.forEach(calls, (call) => callCua(services, context, call.tool, call.args)).pipe(
-          Effect.map((results) => results.at(-1)!),
+          Effect.map((results): CuaToolResult => {
+            const last = results.at(-1)!;
+            return calls.length === 1
+              ? last
+              : {
+                  ...last,
+                  content: [
+                    { type: "text", text: `Sent ${calls.length} keys in order; the last:` },
+                    ...last.content,
+                  ],
+                };
+          }),
         );
       return yield* performAction(
         services,

@@ -51,6 +51,27 @@ export const CuaListApps = Schema.Struct({
   ),
 });
 
+// get_accessibility_tree: running regular apps and on-screen windows, front to back.
+export const CuaDesktopTree = Schema.Struct({
+  apps: Schema.Array(
+    Schema.Struct({ pid: Schema.Int, name: Schema.String, bundle_id: NullableString }),
+  ),
+  windows: Schema.Array(
+    Schema.Struct({
+      window_id: Schema.Int,
+      pid: Schema.NullOr(Schema.Int),
+      app_name: Schema.String,
+      title: Schema.String,
+    }),
+  ),
+});
+
+// clipboard_read and clipboard_write; text only when include_text was asked.
+export const CuaClipboard = Schema.Struct({
+  types: Schema.Array(Schema.String),
+  text: NullableString,
+});
+
 // launch_app also returns the app's windows; Glade lists them itself while it waits for targets.
 export const CuaLaunchedApp = Schema.Struct({
   pid: Schema.Int,

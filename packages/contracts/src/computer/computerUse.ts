@@ -19,6 +19,12 @@ export const COMPUTER_ACCESS_ANSWERS = {
   deny: "Deny",
 } as const;
 
+// The card for reading the clipboard, which is gated per thread rather than per app.
+export const COMPUTER_CLIPBOARD_ANSWERS = {
+  allow: "Allow clipboard reading",
+  deny: "Deny",
+} as const;
+
 export const isComputerAccessRequestId = (requestId: string): boolean =>
   requestId.startsWith(COMPUTER_ACCESS_REQUEST_PREFIX);
 

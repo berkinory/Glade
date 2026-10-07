@@ -22,7 +22,7 @@ export const WindowTarget = {
   app: Schema.optionalKey(
     Schema.String.check(Schema.isMinLength(1)).annotate({
       description:
-        "Instead of pid and window_id: app name or bundle id; uses its frontmost window.",
+        "Instead of pid and window_id: app name or bundle id; uses its frontmost window, so pass window_id when it has several.",
     }),
   ),
 };

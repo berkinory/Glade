@@ -71,7 +71,7 @@ connection and every policy decision, and providers only see gateway tools.
   `set_value` and menus need `full`.
 - Calls outside a grant return typed errors the model can read (`computer_use_off`,
   `window_not_found`, `access_required`, `browser_read_only`, `click_only`, `unknown_element`,
-  `no_progress`, `user_active`, `menu_item_not_found`, `file_exists`, `app_not_found`,
+  `no_progress`, `user_active`, `menu_item_not_found`, `access_denied`, `file_exists`, `app_not_found`,
   `unsupported_target`, `target_not_found`, `unsupported_platform`, `stopped`, or Cua's own
   code).
 - Stop (or the turn interrupt) cancels in-flight Cua calls, refuses the rest of that turn and ends
@@ -90,13 +90,19 @@ connection and every policy decision, and providers only see gateway tools.
 
 ## Tools
 
-Reading: `computer_apps`, `computer_window_state` (accessibility tree, screenshot only on request),
+Reading: `computer_apps` (Cua's `get_accessibility_tree`: running apps and their on-screen windows
+front to back, fast and without permissions; `installed: true` adds apps that are not running from
+`list_apps`), `computer_window_state` (accessibility tree, screenshot only on request),
 `computer_screenshot` (with `region`, a zoomed close-up), `computer_verify` (Cua's `verify_state`:
 waits up to 10 s for element conditions with stable samples). Input, one tool per action as in
 Anthropic's `computer_toolset_20260801` and Codex/Cua: `computer_left_click`, `computer_right_click`,
 `computer_double_click`, `computer_triple_click`, `computer_type`, `computer_key`, `computer_scroll`,
 `computer_set_value`, `computer_menu`, `computer_left_click_drag`. Apps and panels:
-`computer_open_app`, `computer_file_dialog` (a macOS Open or Save panel in one call). Session:
+`computer_open_app`, `computer_file_dialog` (a macOS Open or Save panel in one call),
+`computer_window_frame` (Cua's `set_window_frame`: x, y, width, height in desktop points, then the
+window is listed again and the result states the geometry it ended up with; needs `act`, and
+browsers refuse it like other input). Clipboard: `computer_clipboard_write`,
+`computer_clipboard_read`. Session:
 `computer_request_access`, `computer_stop`.
 
 Every window tool names its window by `pid` and `window_id` or by `app` (a name or bundle id, which
@@ -123,6 +129,17 @@ each target opened in; window titles are listed inside `APP_CONTENT`. Opening ta
 macOS-only: Cua 0.34 on Windows and Linux hands `urls` to the system's default handler (the
 default browser, `xdg-open`) instead of the named app, so there the call refuses `open` with
 `unsupported_platform` and only launches.
+
+Clipboard: `computer_clipboard_write` takes exactly one of `text`, `image_path` or `file_path`
+(absolute, existing files) and reports the clipboard's types, never its contents. The clipboard
+belongs to no app, so writing is allowed whenever Computer Use is on; pasting is input to an app and
+meets that app's grant. Paste with `computer_menu` Edit > Paste, which works in the background;
+`computer_key` cmd+v lands in the foreground on an `element_index`. `computer_clipboard_read`
+returns plain text inside `APP_CONTENT` (`source=clipboard`) plus the types. Because the clipboard
+can hold anything the user copied, reading is allowed without asking only in Full access; Approve
+for me and Ask for approval show one card per chat ("Allow clipboard reading" or "Deny") and the
+answer stands for the chat until the server restarts. A denial refuses with `access_denied`. Glade
+never logs clipboard contents.
 
 Menus: `computer_menu` takes the path as an array or one string with `>`, `▸` or `→`. Cua's
 `invoke_menu` matches titles exactly except `...` for `…`, so Glade retries a segment Cua cannot
@@ -224,14 +241,16 @@ See [dependency maintenance](dependencies.md#cua-driver).
 2. Contract and trust tests: `apps/server/src/computer/cuaResults.test.ts` decodes fixtures
    captured from the pinned release; `apps/server/src/agentGateway/computer/computerAccessGate.test.ts`
    covers the grant gate, the app category tiers (including the file dialog's full-control rule and
-   the browser launch rule) and
-   the progress guard.
+   the browser launch rule),
+   the progress guard and the clipboard read consent per permission mode.
 3. Launch the Dev app through LaunchServices, grant both permissions, and confirm Settings shows the
    driver ready. Turn on `/computer` in a chat, grant TextEdit and ask the agent to type a sentence
    and read it back, then exercise a screenshot and a zoomed region. Save the document into a scratch folder
    with `computer_file_dialog`, once more under the same name (refused with `file_exists`), and open
    a PDF in Preview with it. Quit Preview and open the PDF with `computer_open_app` (launched, the
-   target's window confirmed), again while it runs (reused), and try a `tel:` target (refused).
+   target's window confirmed), again while it runs (reused), and try a `tel:` target (refused). Copy text with
+   `computer_clipboard_write`, paste it into TextEdit with Edit > Paste and read it back (a card
+   asks first outside Full access), and resize the TextEdit window with `computer_window_frame`.
 4. Kill the `cua-driver` process: Settings recovers with a new generation within a few seconds.
    Quitting Glade stops the daemon and the proxy.
 5. While an agent works in TextEdit, press the kill switch: the turn stops as with Stop. Ask for

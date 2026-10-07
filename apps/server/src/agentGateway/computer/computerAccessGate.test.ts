@@ -353,4 +353,21 @@ describe("computer access gate", () => {
       yield* Fiber.interrupt(fullRequest);
     }),
   );
+
+  it.effect.each([
+    ["full-access reads the clipboard without asking", "full-access", false],
+    ["auto asks once before reading the clipboard", "auto", true],
+    ["approval-required asks once before reading the clipboard", "approval-required", true],
+  ] as const)("%s", ([, mode, asks]) =>
+    Effect.gen(function* () {
+      const { calls, call, activityKinds } = yield* setup("confirmed", mode);
+      const read = yield* call("computer_clipboard_read", {}).pipe(Effect.forkChild);
+      while (!read.pollUnsafe() && !activityKinds().includes("user-input.requested")) {
+        yield* Effect.yieldNow;
+      }
+      assert.strictEqual(activityKinds().includes("user-input.requested"), asks);
+      assert.strictEqual(calls.includes("clipboard_read"), !asks);
+      yield* Fiber.interrupt(read);
+    }),
+  );
 });

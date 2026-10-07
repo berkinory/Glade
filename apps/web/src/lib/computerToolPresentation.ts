@@ -30,6 +30,13 @@ const COMPUTER_TOOL_WORDING = {
   computer_set_value: ["Setting value", "Set value", "set the value"],
   computer_menu: ["Choosing menu item", "Chose", "choose the menu item"],
   computer_verify: ["Checking window", "Checked window", "check the window"],
+  computer_clipboard_write: [
+    "Copying to clipboard",
+    "Copied to clipboard",
+    "copy to the clipboard",
+  ],
+  computer_clipboard_read: ["Reading clipboard", "Read clipboard", "read the clipboard"],
+  computer_window_frame: ["Moving window", "Moved window", "move the window"],
 } as const satisfies Record<string, GatewayToolWording>;
 
 type ComputerToolName = keyof typeof COMPUTER_TOOL_WORDING;

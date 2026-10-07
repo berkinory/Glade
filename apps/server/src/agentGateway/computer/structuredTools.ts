@@ -5,7 +5,6 @@ import { appCategory } from "../../computer/appCategories.ts";
 import { scopeCovers } from "../../computer/computerGrants.ts";
 import { CuaListApps, CuaListWindows, resultText } from "../../computer/cuaResults.ts";
 import type { ToolEntry } from "../toolRuntime.ts";
-import { untrustedContent } from "../untrustedContent.ts";
 import {
   appContent,
   callCua,
@@ -15,13 +14,15 @@ import {
   refuse,
   SCREENSHOT_MAX_EDGE,
   windowLine,
-  windowSummary,
   type ComputerToolServices,
 } from "./computerCalls.ts";
 import { renderElements, sheetLines } from "./elementText.ts";
+import { makeAppsTool } from "./appsTool.ts";
+import { makeClipboardTools } from "./clipboardTools.ts";
 import { makeFileDialogTool } from "./fileDialogTool.ts";
 import { makeOpenAppTool } from "./openAppTool.ts";
 import { makeVerifyTool } from "./verifyTool.ts";
+import { makeWindowFrameTool } from "./windowFrameTool.ts";
 import { readWindow } from "./windowRead.ts";
 import { targetFor, WindowTarget } from "./windowTarget.ts";
 
@@ -57,59 +58,7 @@ const RequestAccessInput = Schema.Struct({
 
 const ACCESS_WAIT_MS = 45_000;
 
-// computer_apps marks apps whose category caps every grant.
-const CATEGORY_NOTE = {
-  browser: " [browser: read only, use browser_* tools]",
-  terminal_or_ide: " [terminal or IDE: click and scroll only unless full control]",
-  other: "",
-} as const;
-
 export function makeStructuredComputerTools(services: ComputerToolServices): ToolEntry[] {
-  const apps = computerTool(services, {
-    name: "computer_apps",
-    title: "List apps and windows",
-    description:
-      "Running apps and their windows with the pid and window_id every other computer_* tool takes. Needs no access grant.",
-    input: Schema.Struct({}),
-    readOnly: true,
-    run: (_input, context) =>
-      Effect.gen(function* () {
-        const [appsResult, windowsResult] = yield* Effect.all([
-          callCua(services, context, "list_apps", {}),
-          callCua(services, context, "list_windows", {}),
-        ]);
-        const running = Schema.decodeUnknownOption(CuaListApps)(appsResult.structuredContent).pipe(
-          Option.map((value) => value.apps.filter((app) => app.running)),
-          Option.getOrElse(() => []),
-        );
-        const windows = Schema.decodeUnknownOption(CuaListWindows)(
-          windowsResult.structuredContent,
-        ).pipe(
-          Option.map((value) => value.windows),
-          Option.getOrElse(() => []),
-        );
-        const lines = running.map((app) => {
-          const category = appCategory({
-            name: app.name,
-            bundleId: app.bundle_id ?? null,
-            launchPath: app.launch_path ?? null,
-          });
-          const own = windows
-            .filter((window) => window.pid === app.pid)
-            .map((window) => `  ${windowSummary(window)}`);
-          return [
-            `${app.name} pid ${app.pid}${app.active ? " (frontmost)" : ""}${CATEGORY_NOTE[category]}`,
-            ...own,
-          ].join("\n");
-        });
-        const text =
-          lines.length > 0
-            ? `${lines.length} running ${lines.length === 1 ? "app" : "apps"}.\n${untrustedContent("APP_CONTENT", "source=computer_apps", lines.join("\n"))}`
-            : "No running apps.";
-        return { content: [{ type: "text", text }] };
-      }),
-  });
-
   const windowState = computerTool(services, {
     name: "computer_window_state",
     title: "Read a window",
@@ -266,12 +215,14 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
   });
 
   return [
-    apps,
+    makeAppsTool(services),
     makeOpenAppTool(services),
     windowState,
     screenshot,
     makeFileDialogTool(services),
     makeVerifyTool(services),
+    ...makeClipboardTools(services),
+    makeWindowFrameTool(services),
     requestAccess,
     stop,
   ];
