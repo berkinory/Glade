@@ -210,6 +210,10 @@ jobs:
           turbo: "true"
           save-electron-cache: "true"
 
+      # Turbo can replay the desktop build without running its fetch, so verify the pin explicitly.
+      - name: Verify pinned Cua Driver release
+        run: node apps/desktop/scripts/fetch-cua-driver.mjs --platform linux --arch x64
+
       - name: Build desktop pipeline
         run: bun run build:desktop
 

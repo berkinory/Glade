@@ -90,6 +90,23 @@ jobs:
         with:
           electron: "true"
           turbo: "true"
+      # Packaging stages the same verified copy; fetching first fails fast on a bad pin or download.
+      # Recovered releases older than the Cua Driver have no fetch script.
+      - name: Fetch and verify pinned Cua Driver
+        if: hashFiles('apps/desktop/scripts/fetch-cua-driver.mjs') != ''
+        shell: bash
+        env:
+          BUILD_PLATFORM: ${{ inputs.platform }}
+          BUILD_ARCH: ${{ inputs.arch }}
+        run: |
+          set -euo pipefail
+          case "$BUILD_PLATFORM" in
+            mac) node_platform=darwin ;;
+            linux) node_platform=linux ;;
+            win) node_platform=win32 ;;
+            *) exit 1 ;;
+          esac
+          node apps/desktop/scripts/fetch-cua-driver.mjs --platform "$node_platform" --arch "$BUILD_ARCH"
       - name: Build platform artifact
         shell: bash
         env:

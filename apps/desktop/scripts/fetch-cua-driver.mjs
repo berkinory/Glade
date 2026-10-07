@@ -1,8 +1,10 @@
 // Downloads the pinned upstream Cua Driver executable for one platform into
 // apps/desktop/resources/cua-driver/<artifact>/, verifying the archive and the extracted
 // executable against src/computer/cuaRelease.json. Skips the download when a verified copy exists.
+// --stage copies the verified executable into <dir>/<artifact>/ for a packaging stage.
 //
-//   node scripts/fetch-cua-driver.mjs [--platform darwin|linux|win32] [--arch x64|arm64]
+//   node scripts/fetch-cua-driver.mjs [--platform darwin|linux|win32] [--arch x64|arm64|universal]
+//                                     [--stage <dir>]
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
@@ -33,12 +35,15 @@ function option(name, fallback) {
 
 const platform = option("platform", process.platform);
 const arch = option("arch", process.arch);
+const stageDir = option("stage", null);
 // Mirrors cuaArtifactKey in src/computer/cuaBinary.ts: macOS ships one universal executable.
 const key = platform === "darwin" ? "darwin-universal" : `${platform}-${arch}`;
 const artifact = release.artifacts[key];
 if (!artifact) {
-  console.log(`[cua-driver] No pinned Cua Driver build for ${platform}-${arch}; skipping.`);
-  process.exit(0);
+  // A package must not ship without its driver; a dev run on such a host just has no Computer Use.
+  const log = stageDir ? console.error : console.log;
+  log(`[cua-driver] No pinned Cua Driver build for ${platform}-${arch}; skipping.`);
+  process.exit(stageDir ? 1 : 0);
 }
 
 async function sha256(path) {
@@ -49,47 +54,59 @@ async function sha256(path) {
 
 const targetDir = join(desktopDir, "resources/cua-driver", key);
 const target = join(targetDir, artifact.executable);
-if (existsSync(target) && (await sha256(target)) === artifact.executableSha256) {
-  console.log(`[cua-driver] ${release.version} ${key} already present.`);
-  process.exit(0);
+
+async function install() {
+  const workDir = mkdtempSync(join(tmpdir(), "glade-cua-driver-"));
+  try {
+    const url = `${release.downloadBaseUrl}/${artifact.archive}`;
+    console.log(`[cua-driver] Downloading ${url}`);
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Download failed with HTTP ${response.status}: ${url}`);
+    const archive = join(workDir, artifact.archive);
+    writeFileSync(archive, Buffer.from(await response.arrayBuffer()));
+    const archiveSha = await sha256(archive);
+    if (archiveSha !== artifact.archiveSha256) {
+      throw new Error(
+        `${artifact.archive} has SHA-256 ${archiveSha}, expected ${artifact.archiveSha256}.`,
+      );
+    }
+
+    // Only the executable: it links no bundled library (otool -L / ldd show system libraries only).
+    const extractDir = join(workDir, "extract");
+    mkdirSync(extractDir);
+    if (artifact.archive.endsWith(".zip") && process.platform === "linux") {
+      execFileSync("unzip", ["-q", archive, artifact.executable, "-d", extractDir]);
+    } else {
+      // bsdtar (macOS, Windows) reads zip archives too.
+      execFileSync("tar", ["-xf", archive, "-C", extractDir, artifact.executable]);
+    }
+    const extracted = join(extractDir, artifact.executable);
+    const executableSha = await sha256(extracted);
+    if (executableSha !== artifact.executableSha256) {
+      throw new Error(
+        `${artifact.executable} has SHA-256 ${executableSha}, expected ${artifact.executableSha256}.`,
+      );
+    }
+    mkdirSync(targetDir, { recursive: true });
+    rmSync(target, { force: true });
+    copyFileSync(extracted, target);
+    chmodSync(target, 0o755);
+    console.log(`[cua-driver] Installed ${release.version} ${key} at ${target}`);
+  } finally {
+    rmSync(workDir, { recursive: true, force: true });
+  }
 }
 
-const workDir = mkdtempSync(join(tmpdir(), "glade-cua-driver-"));
-try {
-  const url = `${release.downloadBaseUrl}/${artifact.archive}`;
-  console.log(`[cua-driver] Downloading ${url}`);
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`Download failed with HTTP ${response.status}: ${url}`);
-  const archive = join(workDir, artifact.archive);
-  writeFileSync(archive, Buffer.from(await response.arrayBuffer()));
-  const archiveSha = await sha256(archive);
-  if (archiveSha !== artifact.archiveSha256) {
-    throw new Error(
-      `${artifact.archive} has SHA-256 ${archiveSha}, expected ${artifact.archiveSha256}.`,
-    );
-  }
+if (existsSync(target) && (await sha256(target)) === artifact.executableSha256) {
+  console.log(`[cua-driver] ${release.version} ${key} already present.`);
+} else {
+  await install();
+}
 
-  // Only the executable: it links no bundled library (otool -L / ldd show system libraries only).
-  const extractDir = join(workDir, "extract");
-  mkdirSync(extractDir);
-  if (artifact.archive.endsWith(".zip") && process.platform === "linux") {
-    execFileSync("unzip", ["-q", archive, artifact.executable, "-d", extractDir]);
-  } else {
-    // bsdtar (macOS, Windows) reads zip archives too.
-    execFileSync("tar", ["-xf", archive, "-C", extractDir, artifact.executable]);
-  }
-  const extracted = join(extractDir, artifact.executable);
-  const executableSha = await sha256(extracted);
-  if (executableSha !== artifact.executableSha256) {
-    throw new Error(
-      `${artifact.executable} has SHA-256 ${executableSha}, expected ${artifact.executableSha256}.`,
-    );
-  }
-  mkdirSync(targetDir, { recursive: true });
-  rmSync(target, { force: true });
-  copyFileSync(extracted, target);
-  chmodSync(target, 0o755);
-  console.log(`[cua-driver] Installed ${release.version} ${key} at ${target}`);
-} finally {
-  rmSync(workDir, { recursive: true, force: true });
+if (stageDir) {
+  const stagedDir = join(resolve(stageDir), key);
+  mkdirSync(stagedDir, { recursive: true });
+  copyFileSync(target, join(stagedDir, artifact.executable));
+  chmodSync(join(stagedDir, artifact.executable), 0o755);
+  console.log(`[cua-driver] Staged ${release.version} ${key} in ${stagedDir}`);
 }

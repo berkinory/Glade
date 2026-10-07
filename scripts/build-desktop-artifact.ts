@@ -76,6 +76,7 @@ const encodeJsonString = Schema.encodeEffect(Schema.UnknownFromJsonString);
 
 interface PlatformConfig {
   readonly cliFlag: "--mac" | "--linux" | "--win";
+  readonly nodePlatform: "darwin" | "linux" | "win32";
   readonly defaultTarget: string;
   readonly archChoices: ReadonlyArray<typeof BuildArch.Type>;
 }
@@ -83,16 +84,19 @@ interface PlatformConfig {
 const PLATFORM_CONFIG: Record<typeof BuildPlatform.Type, PlatformConfig> = {
   mac: {
     cliFlag: "--mac",
+    nodePlatform: "darwin",
     defaultTarget: "dmg",
     archChoices: ["arm64", "x64", "universal"],
   },
   linux: {
     cliFlag: "--linux",
+    nodePlatform: "linux",
     defaultTarget: "AppImage",
     archChoices: ["x64", "arm64"],
   },
   win: {
     cliFlag: "--win",
+    nodePlatform: "win32",
     defaultTarget: "nsis",
     archChoices: ["x64", "arm64"],
   },
@@ -742,11 +746,15 @@ const installFrozenStageDependencies = Effect.fn("installFrozenStageDependencies
   repoRoot: string,
   stageAppDir: string,
   platform: typeof BuildPlatform.Type,
-  _arch: typeof BuildArch.Type,
+  arch: typeof BuildArch.Type,
   verbose: boolean,
 ) {
   const path = yield* Path.Path;
   const fs = yield* FileSystem.FileSystem;
+  // Optional native packages (the Cua SDK's) follow the target, not the build host; a universal
+  // macOS app needs both architectures so electron-builder can merge them.
+  const targetOs = `--os=${PLATFORM_CONFIG[platform].nodePlatform}`;
+  const targetCpu = `--cpu=${arch === "universal" ? "*" : arch}`;
 
   for (const relativePath of RELEASE_WORKSPACE_MANIFEST_PATHS) {
     const destination = path.join(stageAppDir, relativePath);
@@ -772,14 +780,14 @@ const installFrozenStageDependencies = Effect.fn("installFrozenStageDependencies
         ...commandOutputOptions(verbose),
 
         shell: process.platform === "win32",
-      })`bun install --omit=dev --ignore-scripts --linker hoisted`,
+      })`bun install --omit=dev --ignore-scripts --linker hoisted ${targetOs} ${targetCpu}`,
     );
   } else {
     yield* runCommand(
       ChildProcess.make({
         cwd: stageAppDir,
         ...commandOutputOptions(verbose),
-      })`bun install --frozen-lockfile --ignore-scripts --linker hoisted`,
+      })`bun install --frozen-lockfile --ignore-scripts --linker hoisted ${targetOs} ${targetCpu}`,
     );
   }
 
@@ -1087,11 +1095,19 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
   yield* fs.copy(distDirs.desktopDist, path.join(stageAppDir, "apps/desktop/dist-electron"));
   yield* fs.makeDirectory(stageResourcesDir, { recursive: true });
   for (const entry of yield* fs.readDirectory(distDirs.desktopResources)) {
+    // The source tree holds whichever driver builds were fetched there; only the target's ships.
+    if (entry === "cua-driver") continue;
     yield* fs.copy(
       path.join(distDirs.desktopResources, entry),
       path.join(stageResourcesDir, entry),
     );
   }
+  yield* runCommand(
+    ChildProcess.make({
+      cwd: repoRoot,
+      ...commandOutputOptions(options.verbose),
+    })`${process.execPath} ${path.join(repoRoot, "apps/desktop/scripts/fetch-cua-driver.mjs")} --platform ${platformConfig.nodePlatform} --arch ${options.arch} --stage ${path.join(stageResourcesDir, "cua-driver")}`,
+  );
   yield* fs.copy(distDirs.serverDist, path.join(stageAppDir, "apps/server/dist"));
   yield* stageClientFavicons(stageAppDir, options.flavor);
 
