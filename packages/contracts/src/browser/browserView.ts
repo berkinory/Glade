@@ -51,11 +51,35 @@ export interface BrowserCapture {
   readonly mimeType: "image/jpeg";
 }
 
+// Everything below is read from the page and is untrusted page data.
+export interface BrowserPickedDetails {
+  // Verified to match only this element when it was picked; null when no short one was found.
+  readonly selector: string | null;
+  // A form field's label.
+  readonly fieldLabel: string | null;
+  // For elements without an accessible name: the first distinct short texts inside, and how many
+  // more there are.
+  readonly contains: { readonly texts: readonly string[]; readonly more: number } | null;
+  // Nearest landmarks and sections, outermost first, at most four.
+  readonly context: ReadonlyArray<{ readonly role: string; readonly name: string }>;
+  // Position among elements with the same role and name (or tag and text); null when unique.
+  readonly rank: { readonly index: number; readonly total: number } | null;
+  // Size and non-default computed styles: `160×40 · padding 10px 16px · 14px/600 · #fff on #2563eb`.
+  readonly style: string;
+}
+
 export interface BrowserPickedElement {
   readonly tabId: string;
   readonly ref: typeof BrowserRef.Type;
+  // The accessible role when it says something, otherwise the element's tag name.
   readonly role: string;
+  // The accessible name; empty when the role is a tag name.
   readonly name: string;
+  // `button "Save"`, or `div.pricing-card` built from identifier-like id and class tokens only.
+  readonly label: string;
   readonly url: string;
+  readonly title: string;
+  // Null when the page could not be read, e.g. the element sits in a cross-origin frame.
+  readonly details: BrowserPickedDetails | null;
   readonly screenshot: { readonly data: string; readonly mimeType: "image/jpeg" } | null;
 }

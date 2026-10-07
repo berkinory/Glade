@@ -1,18 +1,14 @@
 import type { BrowserPickedElement, BrowserPickTheme } from "@glade/contracts/browser/browserView";
 import type { BrowserTab } from "../browserTab";
 import type { CdpSession } from "./cdpSession";
+import { readPickDetails } from "./pickDetails";
+import { readPickTarget } from "./pickLabel";
 import { PickOverlay, type OverlayBox } from "./pickOverlay";
 import { captureZoom } from "./screenshot";
 
 // Chromium's own highlight stays invisible; Glade's overlay draws the hovered element instead.
 const CLEAR = { r: 0, g: 0, b: 0, a: 0 };
 const HIGHLIGHT = { showInfo: false, contentColor: CLEAR, borderColor: CLEAR };
-
-interface AxNode {
-  readonly ignored?: boolean;
-  readonly role?: { readonly value?: unknown };
-  readonly name?: { readonly value?: unknown };
-}
 
 // Chromium's own inspect mode highlights what the user hovers and reports the clicked node, so no
 // page script is injected. Out-of-process iframes run their own inspector and are not pickable.
@@ -54,17 +50,6 @@ async function nodeBox(cdp: CdpSession, node: { nodeId?: number; backendNodeId?:
   return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y } satisfies OverlayBox;
 }
 
-async function nodeLabel(cdp: CdpSession, nodeId: number): Promise<string> {
-  const { nodes } = await cdp.send<{ nodes: readonly AxNode[] }>("Accessibility.getPartialAXTree", {
-    nodeId,
-    fetchRelatives: false,
-  });
-  const node = nodes.find((candidate) => !candidate.ignored) ?? nodes[0];
-  const role = String(node?.role?.value ?? "") || "generic";
-  const name = String(node?.name?.value ?? "").slice(0, 80);
-  return name ? `${role} "${name}"` : role;
-}
-
 // Follows Chromium's hover target with the overlay; stale answers for an earlier node are dropped.
 function trackHover(tab: BrowserTab, overlay: PickOverlay): () => void {
   let latest = 0;
@@ -72,8 +57,8 @@ function trackHover(tab: BrowserTab, overlay: PickOverlay): () => void {
     if (method !== "Overlay.nodeHighlightRequested" || sessionId !== undefined) return;
     const nodeId = Number(params.nodeId);
     const request = ++latest;
-    void Promise.all([nodeBox(tab.cdp, { nodeId }), nodeLabel(tab.cdp, nodeId)])
-      .then(([box, label]) => (request === latest ? overlay.show(box, label) : undefined))
+    void Promise.all([nodeBox(tab.cdp, { nodeId }), readPickTarget(tab.cdp, { nodeId })])
+      .then(([box, target]) => (request === latest ? overlay.show(box, target.label) : undefined))
       .catch(() => (request === latest ? overlay.hide() : undefined));
   });
   // Answers still in flight must not show the overlay again once the pick ends.
@@ -83,19 +68,20 @@ function trackHover(tab: BrowserTab, overlay: PickOverlay): () => void {
   };
 }
 
-async function describePicked(tab: BrowserTab, backendNodeId: number) {
-  const { nodes } = await tab.cdp.send<{ nodes: readonly AxNode[] }>(
-    "Accessibility.getPartialAXTree",
-    { backendNodeId, fetchRelatives: false },
-  );
-  const node = nodes.find((candidate) => !candidate.ignored) ?? nodes[0];
-  const role = String(node?.role?.value ?? "") || "generic";
-  const name = String(node?.name?.value ?? "");
+async function describePicked(
+  tab: BrowserTab,
+  backendNodeId: number,
+  isolatedWorld: number | null,
+) {
+  const { role, name, label } = await readPickTarget(tab.cdp, { backendNodeId });
   const ref = tab.refs.refFor({ backendNodeId, sessionId: undefined }, { role, name });
+  const details = await readPickDetails(tab.cdp, backendNodeId, isolatedWorld, name).catch(
+    () => null,
+  );
   const screenshot = await captureZoom(tab.cdp, tab.refs, tab.webContents, null, { ref })
     .then(({ data }) => ({ data, mimeType: "image/jpeg" as const }))
     .catch(() => null);
-  return { ref, role, name, screenshot };
+  return { ref, role, name, label, details, screenshot };
 }
 
 // Resolves with the clicked element as a ref in the tab's agent ref table, or null when the pick
@@ -138,7 +124,7 @@ export async function pickElement(
   if (backendNodeId === null) return null;
   const id = backendNodeId;
   const element = await cdp
-    .exclusive(() => describePicked(tab, id))
+    .exclusive(() => describePicked(tab, id, overlay.world()))
     .catch((error: unknown) => {
       void overlay.remove();
       throw error;
@@ -147,5 +133,5 @@ export async function pickElement(
     .catch(() => null)
     .then((box) => overlay.confirm(box));
   const page = tab.page();
-  return { tabId: tab.id, url: page.url, ...element };
+  return { tabId: tab.id, url: page.url, title: page.title, ...element };
 }

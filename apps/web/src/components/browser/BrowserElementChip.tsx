@@ -1,7 +1,4 @@
-import {
-  describeBrowserElementReference,
-  type BrowserElementReference,
-} from "~/lib/browserElementReference";
+import type { BrowserElementReference } from "~/lib/browserElementReference";
 import { CursorInWindowIcon } from "~/lib/icons";
 import {
   COMPOSER_INLINE_CHIP_INLINE_ICON_CLASS_NAME,
@@ -10,18 +7,17 @@ import {
 import { InlineChipContent } from "../InlineChip";
 
 export function BrowserElementChip(props: { reference: BrowserElementReference }) {
-  const label = describeBrowserElementReference(props.reference);
   return (
     <span
       className={COMPOSER_INLINE_LINK_CHIP_CLASS_NAME}
-      title={`${label} · ${props.reference.ref} on ${props.reference.tabId} · ${props.reference.url}`}
+      title={props.reference.details}
       contentEditable={false}
       suppressContentEditableWarning
       spellCheck={false}
     >
       <InlineChipContent
         icon={<CursorInWindowIcon className={COMPOSER_INLINE_CHIP_INLINE_ICON_CLASS_NAME} />}
-        label={label}
+        label={props.reference.label}
       />
     </span>
   );

@@ -9,7 +9,7 @@ export interface OverlayBox {
 }
 
 type OverlayCall =
-  | { readonly op: "show"; readonly box: OverlayBox; readonly label: string }
+  | { readonly op: "show"; readonly box: OverlayBox; readonly label: string; readonly size: string }
   | { readonly op: "hide" }
   | { readonly op: "confirm"; readonly box: OverlayBox | null }
   | { readonly op: "remove" };
@@ -30,15 +30,21 @@ function installPickOverlay(theme: BrowserPickTheme): void {
   const label = document.createElement("div");
   const base = "position: fixed; left: 0; top: 0; box-sizing: border-box; opacity: 0;";
   box.style.cssText = `${base} border: 1.5px solid ${theme.accent}; border-radius: 6px; background: color-mix(in srgb, ${theme.accent} 12%, transparent); transition: ${moving};`;
-  label.style.cssText = `${base} max-width: 320px; padding: 3px 8px; border-radius: 8px; border: 1px solid ${theme.border}; background: ${theme.surface}; color: ${theme.foreground}; font: 12px/1.4 ${theme.fontFamily || "system-ui, sans-serif"}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18); transition: ${moving};`;
+  label.style.cssText = `${base} max-width: 320px; padding: 3px 8px; border-radius: 8px; border: 1px solid ${theme.border}; background: ${theme.surface}; color: ${theme.foreground}; font: 12px/1.4 ${theme.fontFamily || "system-ui, sans-serif"}; white-space: nowrap; display: flex; gap: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18); transition: ${moving};`;
+  const name = document.createElement("span");
+  const size = document.createElement("span");
+  name.style.cssText = "min-width: 0; overflow: hidden; text-overflow: ellipsis;";
+  size.style.cssText = "flex: none; opacity: 0.6; font-variant-numeric: tabular-nums;";
+  label.append(name, size);
   root.append(box, label);
   document.documentElement.append(host);
 
-  const place = (target: OverlayBox, text: string) => {
+  const place = (target: OverlayBox, text: string, dimensions: string) => {
     box.style.transform = `translate(${target.x}px, ${target.y}px)`;
     box.style.width = `${target.width}px`;
     box.style.height = `${target.height}px`;
-    label.textContent = text;
+    name.textContent = text;
+    size.textContent = dimensions;
     const labelHeight = label.offsetHeight || 24;
     const above = target.y - labelHeight - 6;
     const top =
@@ -57,7 +63,7 @@ function installPickOverlay(theme: BrowserPickTheme): void {
   Object.defineProperty(globalThis, "__gladePickOverlay", {
     configurable: true,
     value: (call: OverlayCall) => {
-      if (call.op === "show") place(call.box, call.label);
+      if (call.op === "show") place(call.box, call.label, call.size);
       else if (call.op === "hide") {
         // Instant, so the element screenshot that follows never contains the overlay.
         box.style.transition = "none";
@@ -72,7 +78,7 @@ function installPickOverlay(theme: BrowserPickTheme): void {
           fadeOutAndRemove(150);
           return;
         }
-        place(call.box, "Added to chat");
+        place(call.box, "Added to chat", "");
         box.animate(
           [
             { boxShadow: `0 0 0 0 color-mix(in srgb, ${theme.accent} 45%, transparent)` },
@@ -115,7 +121,13 @@ export class PickOverlay {
   }
 
   show(box: OverlayBox, label: string): Promise<void> {
-    return this.call({ op: "show", box, label });
+    const size = `${Math.round(box.width)} × ${Math.round(box.height)}`;
+    return this.call({ op: "show", box, label, size });
+  }
+
+  // The overlay's isolated world in the main frame; null when it could not be installed.
+  world(): number | null {
+    return this.contextId;
   }
 
   hide(): Promise<void> {
