@@ -14,6 +14,7 @@ import { IconButton } from "../ui/icon-button";
 import { toastManager } from "../ui/toast";
 import { BrowserAddressBar } from "./BrowserAddressBar";
 import { BrowserAgentActivity } from "./BrowserAgentActivity";
+import { BrowserCaptureButton } from "./BrowserCaptureButton";
 import { BrowserPageDialog } from "./BrowserPageDialog";
 import { BrowserPickElement } from "./BrowserPickElement";
 import { BrowserSiteMenu } from "./BrowserSiteMenu";
@@ -62,6 +63,7 @@ function BrowserPanelContent(props: { threadId: ThreadId; onClose: () => void })
           onNewTab={() => runCommand({ threadId, action: "open" })}
         />
         <BrowserPickElement threadId={threadId} tabId={activeTab?.tabId ?? null} />
+        <BrowserCaptureButton threadId={threadId} tabId={activeTab?.tabId ?? null} />
         <IconButton
           label="Close browser"
           tooltip="Close browser"
