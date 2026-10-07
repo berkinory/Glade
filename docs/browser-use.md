@@ -28,7 +28,20 @@ app and is exposed to every provider as `browser_*` gateway tools.
   document (main frame, same-process or out-of-process iframe), and numbers are never reused. A
   stale ref is an error, never a guess. Lines of elements first listed since the previous snapshot
   start with `+`. Long trees stop at whole lines with a hint to narrow by `depth` or `ref`, so no
-  ref is ever cut. Actions resolve a ref to a box and dispatch real `Input.*` events.
+  ref is ever cut.
+- **Actions.** An action resolves its ref to a box (scrolling it into view; no box is
+  `not_visible`), hit-tests the click point in the element's own frame with
+  `DOM.getNodeForLocation` (center first, then four inset points) and fails with `covered`, naming
+  the covering element, instead of clicking an overlay; a hit on the element's label counts. Then
+  it dispatches real `Input.*` events and waits the way Chrome DevTools MCP does: up to 100 ms for a
+  main-frame navigation to start (then up to 5 s for its load), otherwise until a
+  `MutationObserver` installed before the action sees 100 ms without changes (capped at 3 s). It
+  never waits for network idle. The result is one line plus what changed: URL, title, how many
+  interactive elements appeared, and notes for a new tab, a download or a dialog. Checkbox and
+  radio clicks report the resulting state, typed text is read back (a password field only reports
+  its length), date and time inputs are set through the native value setter, and `<select>`
+  options match by value or by label ignoring case and spacing. `browser_fill` sets several fields
+  in one call.
 - **Server (`apps/server/src/browser`, `apps/server/src/desktopHost`).** `DesktopHostClient` holds
   the RPC connection and reconnects with backoff; `BrowserHost` makes typed browser calls and keeps
   the latest tab list per chat. The gateway passes the chat from the session lease, never from
@@ -50,10 +63,12 @@ messages described in [Computer Use](computer-use.md). Schemas live in
 ## Tools
 
 `browser_tabs`, `browser_navigate`, `browser_snapshot`, `browser_find`, `browser_get_text`,
-`browser_click`, `browser_hover`, `browser_type`, `browser_press`, `browser_select`,
+`browser_click`, `browser_hover`, `browser_type`, `browser_fill`, `browser_press`, `browser_select`,
 `browser_scroll`, `browser_screenshot`, `browser_dialog`, `browser_upload`, `browser_console`,
 `browser_network` and `browser_batch` (an ordered list that stops at the first failure). Action
-results are one line naming the element, plus URL and title; they never embed a new snapshot.
+results are one line naming the element plus what changed; they never embed a new snapshot. Other
+results end with the tab's URL and title. Console and network reads return 20 entries per page,
+newest page first, and group repeated console messages.
 `browser_evaluate` is not listed and always refuses until a per-chat setting exists.
 
 ## Panel
@@ -62,8 +77,10 @@ The browser panel docks beside the chat; the header globe button and the `browse
 open it. It has a tab strip, an address bar, a line showing what the agent is doing with Stop, and
 an element picker. Picking uses CDP inspect mode: the picked element joins the same ref table the
 agent uses and lands in the composer as a chip with its role, name and URL, with its screenshot
-attached. The panel stays interactive while the agent works: agent calls wait briefly (up to 3 s)
-while the user is clicking or typing in the page. Tab state reaches the web through the
+attached. The panel stays interactive while the agent works: an agent call that arrives within
+1.5 s of the user's last click, key or wheel event in that tab waits until the user pauses for
+1.5 s (at most 2 s) and its result says the user was active. While the user is picking an element,
+agent input on that tab fails with `user_picking` instead of moving the page under them. Tab state reaches the web through the
 `browser.subscribeTabs` WebSocket subscription; native view placement is one IPC message.
 
 ## Policy and limits
@@ -77,9 +94,14 @@ while the user is clicking or typing in the page. Tab state reaches the web thro
   protocol launches (`mailto:` and app links) are all denied.
 - There is no credential vault. When a page needs a sign-in, the agent says so and the user signs
   in inside the panel; credentials never pass through Glade or the model.
-- Page dialogs are disabled: Electron dismisses them and the tool result reports what the page
-  asked. `browser_dialog` arms a one-shot answer for the next alert, confirm or prompt, and the
-  agent repeats its action. The panel offers no dialog prompts.
+- Page dialogs wait for an answer instead of blocking anything. Glade replaces Electron's
+  internal `-run-dialog` handler on each browser view (with `disableDialogs` kept as the fallback
+  if that internal event ever changes), so an alert or confirm pauses only its page. A dialog the
+  agent's action opens is that action's result; until `browser_dialog` answers it, other page
+  tools refuse with `dialog_open` (tabs, navigation, console and network keep working). A dialog
+  that opens within 2 s of the user's own input in the tab belongs to the user: the agent cannot
+  answer it or navigate away from it. The panel shows every open dialog above the page with OK and
+  Cancel. Electron refuses `prompt()` in the page itself.
 - Downloads go to `<workspace>/.glade/downloads/`; a symlinked `.glade` or `downloads` folder
   cancels them. Uploads accept only regular files inside the chat workspace. Popups open as tabs and keep `window.opener`, so sign-in popups work.
 - Console and network logs are ring buffers of 500 entries per tab, read on demand.

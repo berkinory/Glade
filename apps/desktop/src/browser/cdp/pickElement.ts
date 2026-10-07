@@ -75,10 +75,12 @@ export async function pickElement(
   if (signal.aborted) waiting.abort();
   const picked = waitForPick(tab, waiting.signal);
   let backendNodeId: number | null = null;
+  const stopPicking = tab.startPicking();
   try {
     await cdp.send("Overlay.setInspectMode", { mode: "searchForNode", highlightConfig: HIGHLIGHT });
     backendNodeId = await picked;
   } finally {
+    stopPicking();
     waiting.abort();
     signal.removeEventListener("abort", forwardAbort);
     // Leaves inspect mode before the element screenshot so the highlight is not captured.

@@ -1,5 +1,6 @@
 import type { BrowserModifier } from "@glade/contracts/browser/browserTools";
 import { BrowserFailure } from "../browserFailure";
+import type { CdpSession } from "./cdpSession";
 
 export interface KeyDefinition {
   readonly key: string;
@@ -109,4 +110,20 @@ export function modifierMask(modifiers: readonly BrowserModifier[]): number {
 
 export function modifierKey(modifier: BrowserModifier): KeyDefinition {
   return MODIFIER_KEYS[modifier];
+}
+
+export async function pressKey(cdp: CdpSession, definition: KeyDefinition, modifiers: number) {
+  const text = modifiers & ~8 ? undefined : definition.text;
+  const base = {
+    key: definition.key,
+    code: definition.code,
+    windowsVirtualKeyCode: definition.keyCode,
+    modifiers,
+  };
+  await cdp.send("Input.dispatchKeyEvent", {
+    ...base,
+    type: text ? "keyDown" : "rawKeyDown",
+    ...(text ? { text, unmodifiedText: text } : {}),
+  });
+  await cdp.send("Input.dispatchKeyEvent", { ...base, type: "keyUp" });
 }

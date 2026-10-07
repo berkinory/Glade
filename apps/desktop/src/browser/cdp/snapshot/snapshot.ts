@@ -2,6 +2,7 @@ import type { BrowserFindInput, BrowserSnapshotInput } from "@glade/contracts/br
 import * as Vm from "node:vm";
 import { BrowserFailure } from "../../browserFailure";
 import type { CdpSession } from "../cdpSession";
+import type { PageRead } from "../buffers";
 import type { RefTable } from "../refs";
 import { collectTree, type CollectedTree, type SnapshotNode } from "./collectTree";
 import { renderMatches, renderSnapshot, type SnapshotMatch } from "./snapshotFormat";
@@ -30,14 +31,14 @@ function scopeNote(tree: CollectedTree): string | null {
   if (tree.below > 0) {
     parts.push(`${tree.below} elements below (${screens(contentHeight - y - height)} screens)`);
   }
-  return `(Viewport only. Not shown: ${parts.join(", ")}. Scroll, use browser_find, or pass scope: "page".)`;
+  return `Viewport only; not shown: ${parts.join(", ")}. Scroll, use browser_find, or pass scope: "page".`;
 }
 
 export async function takeSnapshot(
   cdp: CdpSession,
   refs: RefTable,
   input: typeof BrowserSnapshotInput.Type,
-): Promise<string> {
+): Promise<PageRead> {
   // A ref subtree is something the model asked for by name; it is never cut to the viewport.
   const whole = input.scope === "page" || input.ref !== undefined;
   const tree = await collectTree(cdp, refs, whole ? null : SCOPE_MARGIN);
@@ -56,16 +57,17 @@ export async function takeSnapshot(
     isNew: (ref) => refs.isNew(ref),
   });
   if (!input.ref) refs.markSnapshot();
+  const notes = [];
   if (lines.length === 0) {
-    lines.push(
+    notes.push(
       filter === "interactive"
-        ? "(no interactive elements here; try filter: all)"
-        : "(nothing rendered here)",
+        ? "No interactive elements here; try filter: all."
+        : "Nothing is rendered here.",
     );
   }
-  const note = node ? null : scopeNote(tree);
-  if (note) lines.push(note);
-  return lines.join("\n");
+  const scope = node ? null : scopeNote(tree);
+  if (scope) notes.push(scope);
+  return { content: lines.join("\n"), note: notes.join(" ") };
 }
 
 function matcher(query: string, regex: boolean): (texts: readonly string[]) => boolean[] {
@@ -121,7 +123,9 @@ export async function findElements(
     if (!target?.ref || seen.has(target.ref)) return;
     seen.add(target.ref);
     const context = chain.slice(0, targetIndex).findLast((node) => node.name.length > 0);
-    matches.push({ node: target, context });
+    // Matched text inside an element is what the model searched for; show it.
+    const text = entry.node.role === "text" && entry.node !== target ? entry.node.name : undefined;
+    matches.push({ node: target, context, text });
   });
   return renderMatches(matches.slice(0, FIND_MAX_MATCHES), matches.length);
 }

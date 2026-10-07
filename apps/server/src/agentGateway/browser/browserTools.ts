@@ -6,6 +6,7 @@ import {
   BrowserConsoleInput,
   BrowserDialogInput,
   BrowserEvaluateInput,
+  BrowserFillInput,
   BrowserFindInput,
   BrowserGetTextInput,
   BrowserHoverInput,
@@ -41,6 +42,8 @@ interface BrowserToolSpec {
   readonly title: string;
   readonly readOnly: boolean;
   readonly description: string;
+  // Input actions report what changed themselves; the others end with the tab's URL and title.
+  readonly action?: true;
 }
 
 const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
@@ -90,7 +93,8 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     title: "Click an element",
     readOnly: false,
     description:
-      "Click ref with real mouse events after scrolling it into view; count 2 double-clicks. Waits briefly for a navigation it starts and reports dialogs, popups and downloads it caused.",
+      "Click ref with real mouse events after scrolling it into view; count 2 double-clicks. Fails with covered when another element (a modal, a banner) would receive the click. Waits for a navigation it starts or for the page to settle, then reports what changed: URL or title, new elements, a dialog, a new tab, a download. Checkbox and radio clicks report the resulting state.",
+    action: true,
   },
   browser_hover: {
     method: "browser.hover",
@@ -98,6 +102,7 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     title: "Hover an element",
     readOnly: false,
     description: "Move the mouse over ref, for menus and tooltips.",
+    action: true,
   },
   browser_type: {
     method: "browser.type",
@@ -105,7 +110,17 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     title: "Type text",
     readOnly: false,
     description:
-      "Type text. With ref, focus that field and replace its content; without, type into the focused element. submit presses Enter afterwards.",
+      "Type text. With ref, focus that field and replace its content (date and time inputs take their value directly, like 2026-10-07); without, type into the focused element. Reports when the field ends up with a different value. submit presses Enter afterwards.",
+    action: true,
+  },
+  browser_fill: {
+    method: "browser.fill",
+    input: BrowserFillInput,
+    title: "Fill form fields",
+    readOnly: false,
+    description:
+      "Set several form fields in one call: text fields and textareas get their text, selects an option label or value, date and time inputs their value, checkboxes, radios and switches true or false. Reports one line per field and stops at the first field that fails.",
+    action: true,
   },
   browser_press: {
     method: "browser.press",
@@ -114,6 +129,7 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     readOnly: false,
     description:
       "Press a key or chord on the focused element, for example Enter, Escape, ArrowDown, Control+A or Meta+K; repeat presses it several times.",
+    action: true,
   },
   browser_select: {
     method: "browser.select",
@@ -121,7 +137,8 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     title: "Select options",
     readOnly: false,
     description:
-      "Choose options of a <select> ref by value or label. For custom dropdowns, click the options instead.",
+      "Choose options of a <select> ref by value or label (case and spacing do not matter). For custom dropdowns, click the options instead.",
+    action: true,
   },
   browser_scroll: {
     method: "browser.scroll",
@@ -130,6 +147,7 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     readOnly: false,
     description:
       "Scroll the page by direction and amount in CSS px (default about one screen), or bring ref into view; with ref and direction, scroll inside that element.",
+    action: true,
   },
   browser_screenshot: {
     method: "browser.screenshot",
@@ -145,7 +163,7 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     title: "Answer page dialogs",
     readOnly: false,
     description:
-      "Page alerts, confirms and prompts are dismissed automatically and reported. To accept the next one, call this with accept: true (text answers a prompt), then repeat the action that opens it.",
+      "Answer the page's open alert or confirm: accept true for OK, false for Cancel. While a dialog is open the page is paused and other page tools refuse. Dialogs the user's own clicks open are theirs to answer.",
   },
   browser_upload: {
     method: "browser.upload",
@@ -154,6 +172,7 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     readOnly: false,
     description:
       "Attach files to a file input. ref is the <input type=file> or the button that opens the file chooser; paths are files inside this thread's workspace, relative or absolute.",
+    action: true,
   },
   browser_console: {
     method: "browser.console",
@@ -161,7 +180,7 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     title: "Read the console",
     readOnly: true,
     description:
-      "Recent console messages and page errors of the current document (500 kept). Filter by level or text; clear empties the buffer after reading.",
+      "Console messages and page errors of the current document (500 kept), 20 per page with the newest on page 1; repeats are grouped. Filter by level or text; clear empties the buffer after reading.",
   },
   browser_network: {
     method: "browser.network",
@@ -169,7 +188,7 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     title: "Read network requests",
     readOnly: true,
     description:
-      "Recent requests (500 kept) as id, method, status, type and URL; failedOnly keeps errors and 4xx/5xx. Pass requestId to read that response body (text, first 20000 characters).",
+      "Recent requests (500 kept) as id, method, status, type and URL, 20 per page with the newest on page 1; failedOnly keeps errors and 4xx/5xx. Pass requestId to read that response body (text, first 20000 characters).",
   },
 };
 
@@ -181,17 +200,23 @@ const annotations = (spec: { readonly title: string; readonly readOnly: boolean 
   openWorldHint: true,
 });
 
-function resultContent(result: BrowserHostResult): McpToolCallResult["content"] {
-  const lines = [
-    "image" in result ? `Screenshot ${result.image.width}x${result.image.height}.` : result.text,
-  ];
-  if (result.page) {
+function resultContent(
+  spec: BrowserToolSpec,
+  result: BrowserHostResult,
+): McpToolCallResult["content"] {
+  const lines: string[] = [];
+  if ("image" in result) lines.push(`Screenshot ${result.image.width}x${result.image.height}.`);
+  else {
+    if (result.text) lines.push(result.text);
+    if (result.content) lines.push(result.content);
+  }
+  if (result.page && !spec.action) {
     lines.push(
       `Tab: ${result.page.tabId}`,
       `URL: ${result.page.url}`,
-      `Title: ${result.page.title}`,
+      `Title: ${JSON.stringify(result.page.title)}`,
     );
-  }
+  } else if (result.page) lines.push(`Tab: ${result.page.tabId}`);
   for (const notice of result.notices) lines.push(`Note: ${notice}`);
   const text = { type: "text" as const, text: lines.join("\n") };
   return "image" in result
@@ -296,7 +321,7 @@ export function makeBrowserTools(services: {
         invoke(name as BrowserBatchTool, args, context).pipe(
           Effect.match({
             onFailure: failure,
-            onSuccess: (result) => ({ content: resultContent(result) }),
+            onSuccess: (result) => ({ content: resultContent(spec, result) }),
           }),
         ),
     }),
@@ -356,7 +381,7 @@ export function makeBrowserTools(services: {
             });
             return { content, isError: true };
           }
-          const [first, ...rest] = resultContent(outcome.success);
+          const [first, ...rest] = resultContent(SPECS[step.tool], outcome.success);
           content.push(
             { type: "text", text: `${label}\n${first!.type === "text" ? first!.text : ""}` },
             ...rest,

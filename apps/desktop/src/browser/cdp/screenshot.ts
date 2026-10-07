@@ -1,7 +1,7 @@
 import type { BrowserScreenshotInput } from "@glade/contracts/browser/browserTools";
 import type { WebContents } from "electron";
 import { BrowserFailure, withTimeout } from "../browserFailure";
-import { elementBounds } from "./actions";
+import { elementBounds } from "./pointer";
 import type { CdpSession } from "./cdpSession";
 import type { RefTable } from "./refs";
 

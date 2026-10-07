@@ -11,13 +11,19 @@ import { Effect, Layer, Option, Schema, Stream, SubscriptionRef } from "effect";
 import { DesktopHostClient } from "../../desktopHost/Services/DesktopHostClient.ts";
 import { BrowserHost, BrowserHostError, type BrowserHostShape } from "../Services/BrowserHost.ts";
 
-// Navigation waits up to 30 s on the desktop; uploads may click and wait for a chooser.
+// Navigation waits up to 30 s on the desktop; input actions up to 17 s (28 s for a fill) for
+// what they cause.
 const TIMEOUT_MS: Partial<Record<BrowserHostMethod, number>> = {
   "browser.tabs": 40_000,
   "browser.navigate": 40_000,
   "browser.click": 20_000,
-  "browser.press": 20_000,
+  "browser.hover": 20_000,
   "browser.type": 20_000,
+  "browser.press": 20_000,
+  "browser.select": 20_000,
+  "browser.scroll": 20_000,
+  "browser.upload": 20_000,
+  "browser.fill": 32_000,
 };
 const DEFAULT_TIMEOUT_MS = 15_000;
 

@@ -4,6 +4,7 @@ import {
   BrowserClickInput,
   BrowserConsoleInput,
   BrowserDialogInput,
+  BrowserFillInput,
   BrowserFindInput,
   BrowserGetTextInput,
   BrowserHoverInput,
@@ -25,6 +26,9 @@ export const BROWSER_FAILURE_CODES = [
   "tab_not_found",
   "stale_ref",
   "not_visible",
+  "covered",
+  "dialog_open",
+  "user_picking",
   "blocked_url",
   "navigation_failed",
   "upload_failed",
@@ -57,6 +61,7 @@ export const BROWSER_HOST_METHODS = {
   "browser.click": scoped(BrowserClickInput),
   "browser.hover": scoped(BrowserHoverInput),
   "browser.type": scoped(BrowserTypeInput),
+  "browser.fill": scoped(BrowserFillInput),
   "browser.press": scoped(BrowserPressInput),
   "browser.select": scoped(BrowserSelectInput),
   "browser.scroll": scoped(BrowserScrollInput),
@@ -79,9 +84,12 @@ export const BrowserPage = Schema.Struct({
   title: Schema.String,
 });
 
+// `text` is Glade's own report; `content` is text taken from the page (snapshot lines, page text,
+// console output, a dialog's message), which the gateway marks as untrusted page data.
 export const BrowserTextResult = Schema.Struct({
   page: Schema.NullOr(BrowserPage),
   text: Schema.String,
+  content: Schema.optional(Schema.String),
   notices: Schema.Array(Schema.String),
 });
 export type BrowserTextResult = typeof BrowserTextResult.Type;
@@ -101,6 +109,15 @@ export type BrowserImageResult = typeof BrowserImageResult.Type;
 export const BrowserHostResult = Schema.Union([BrowserImageResult, BrowserTextResult]);
 export type BrowserHostResult = typeof BrowserHostResult.Type;
 
+// A page's alert or confirm waiting for an answer (Electron refuses prompt() in the page itself). `audience: "user"` marks one the user's
+// own input in the panel caused; only the user answers it.
+export const BrowserPageDialog = Schema.Struct({
+  type: Schema.Literals(["alert", "confirm"]),
+  message: Schema.String,
+  audience: Schema.Literals(["user", "agent"]),
+});
+export type BrowserPageDialog = typeof BrowserPageDialog.Type;
+
 export const BROWSER_TABS_CHANGED_NOTIFICATION = "browser.tabsChanged";
 export const BrowserTabState = Schema.Struct({
   tabId: Schema.String,
@@ -111,6 +128,7 @@ export const BrowserTabState = Schema.Struct({
   canGoBack: Schema.Boolean,
   canGoForward: Schema.Boolean,
   active: Schema.Boolean,
+  dialog: Schema.NullOr(BrowserPageDialog),
 });
 export const BrowserTabsChanged = Schema.Struct({ tabs: Schema.Array(BrowserTabState) });
 export type BrowserTabsChanged = typeof BrowserTabsChanged.Type;

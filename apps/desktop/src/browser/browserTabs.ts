@@ -133,7 +133,9 @@ export class BrowserTabs {
   }
 
   private adopt(view: WebContentsView, threadId: ThreadId, downloadDir: string | null): BrowserTab {
-    const tab = new BrowserTab(`t${this.nextId++}`, threadId, view, downloadDir);
+    const tab = new BrowserTab(`t${this.nextId++}`, threadId, view, downloadDir, () =>
+      this.changed(),
+    );
     view.setBounds(DEFAULT_BOUNDS);
     this.tabs.set(tab.id, tab);
     this.activeByThread.set(threadId, tab.id);
@@ -225,6 +227,7 @@ export class BrowserTabs {
           canGoBack: tab.webContents.navigationHistory.canGoBack(),
           canGoForward: tab.webContents.navigationHistory.canGoForward(),
           active: this.activeByThread.get(tab.threadId) === tab.id,
+          dialog: tab.dialogs.current(),
         })),
       );
     }, CHANGE_DEBOUNCE_MS);

@@ -5,14 +5,14 @@ import type { BrowserTab } from "./browserTab";
 import { browserUrlBlockReason, normalizeNavigationUrl } from "./browserUrlPolicy";
 
 const NAVIGATION_TIMEOUT_MS = 30_000;
-const SETTLE_DELAY_MS = 150;
-const SETTLE_TIMEOUT_MS = 10_000;
+const HISTORY_START_MS = 150;
+const HISTORY_TIMEOUT_MS = 10_000;
 // Chromium reports a navigation replaced by a redirect or a client-side route as aborted.
 const ERR_ABORTED = -3;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-function waitForLoad(webContents: WebContents, timeoutMs: number): Promise<boolean> {
+export function waitForLoad(webContents: WebContents, timeoutMs: number): Promise<boolean> {
   if (!webContents.isLoading()) return Promise.resolve(true);
   return new Promise((resolve) => {
     const done = (loaded: boolean) => {
@@ -24,14 +24,6 @@ function waitForLoad(webContents: WebContents, timeoutMs: number): Promise<boole
     const timer = setTimeout(() => done(false), timeoutMs);
     webContents.on("did-stop-loading", onStop);
   });
-}
-
-// After an input action, give a triggered navigation a moment to start, then wait for it.
-export async function settleAfterAction(tab: BrowserTab): Promise<void> {
-  await sleep(SETTLE_DELAY_MS);
-  if (!(await waitForLoad(tab.webContents, SETTLE_TIMEOUT_MS))) {
-    tab.addNotice("The page is still loading.");
-  }
 }
 
 export async function navigate(
@@ -69,6 +61,9 @@ export async function navigate(
   else if (input.history === "forward") history.goForward();
   else if (input.history === "reload") webContents.reload();
   else throw new BrowserFailure("invalid_input", "Pass url or history.");
-  await settleAfterAction(tab);
+  await sleep(HISTORY_START_MS);
+  if (!(await waitForLoad(webContents, HISTORY_TIMEOUT_MS))) {
+    tab.addNotice("The page is still loading.");
+  }
   return input.history === "reload" ? "Reloaded." : `Went ${input.history}.`;
 }

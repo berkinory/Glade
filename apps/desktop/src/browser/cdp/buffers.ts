@@ -8,7 +8,27 @@ import type { CdpSession } from "./cdpSession";
 const CAPACITY = 500;
 const MAX_ENTRY_CHARS = 2_000;
 const MAX_BODY_CHARS = 20_000;
-const DEFAULT_LIMIT = 50;
+const PAGE_SIZE = 20;
+
+// Glade's note about the read, kept apart from the page-derived lines.
+export interface PageRead {
+  readonly content: string;
+  readonly note: string;
+}
+
+// Page 1 is the newest PAGE_SIZE lines; each page keeps chronological order.
+function paginate(lines: readonly string[], page = 1, noun: string, hint: string): PageRead {
+  if (lines.length === 0) return { content: "", note: `No ${noun} recorded.` };
+  const pages = Math.ceil(lines.length / PAGE_SIZE);
+  const current = Math.min(page, pages);
+  const end = lines.length - (current - 1) * PAGE_SIZE;
+  const start = Math.max(0, end - PAGE_SIZE);
+  const older = current < pages ? ` Older ones: page ${current + 1}.` : "";
+  return {
+    content: lines.slice(start, end).join("\n"),
+    note: `${noun[0]!.toUpperCase()}${noun.slice(1)} ${start + 1}–${end} of ${lines.length}, oldest first.${older}${hint}`,
+  };
+}
 
 type Level = "error" | "warning" | "info" | "debug";
 interface ConsoleEntry {
@@ -109,7 +129,7 @@ export class PageBuffers {
     });
   }
 
-  readConsole(input: typeof BrowserConsoleInput.Type): string {
+  readConsole(input: typeof BrowserConsoleInput.Type): PageRead {
     const matches = patternFilter(input.pattern);
     const entries = this.consoleEntries.filter(
       (entry) =>
@@ -117,32 +137,35 @@ export class PageBuffers {
         matches(entry.text),
     );
     if (input.clear) this.consoleEntries = [];
-    const shown = entries.slice(-(input.limit ?? DEFAULT_LIMIT));
-    if (shown.length === 0) return "No console messages.";
-    const lines = shown.map((entry) => `[${entry.level}] ${entry.text}`);
-    if (entries.length > shown.length)
-      lines.unshift(`(${entries.length - shown.length} older matches not shown)`);
-    return lines.join("\n");
+    // A message logged in a loop is one line with a count.
+    const lines: string[] = [];
+    let repeats = 0;
+    entries.forEach((entry, index) => {
+      const next = entries[index + 1];
+      if (next && next.level === entry.level && next.text === entry.text) {
+        repeats += 1;
+        return;
+      }
+      lines.push(`[${entry.level}] ${entry.text}${repeats > 0 ? ` (×${repeats + 1})` : ""}`);
+      repeats = 0;
+    });
+    return paginate(lines, input.page, "console messages", "");
   }
 
-  async readNetwork(input: typeof BrowserNetworkInput.Type): Promise<string> {
-    if (input.requestId) return this.readBody(input.requestId);
+  async readNetwork(input: typeof BrowserNetworkInput.Type): Promise<PageRead> {
+    if (input.requestId) return { content: await this.readBody(input.requestId), note: "" };
     const matches = patternFilter(input.pattern);
-    const entries = [...this.requests.values()].filter(
-      (entry) =>
-        matches(entry.url) &&
-        (!input.failedOnly || entry.failure !== undefined || (entry.status ?? 0) >= 400),
-    );
-    const shown = entries.slice(-(input.limit ?? DEFAULT_LIMIT));
-    if (shown.length === 0) return "No network requests recorded.";
-    const lines = shown.map(
-      (entry) =>
-        `${entry.requestId} ${entry.method} ${entry.failure ?? entry.status ?? "pending"} ${entry.type} ${clip(entry.url)}`,
-    );
-    if (entries.length > shown.length)
-      lines.unshift(`(${entries.length - shown.length} older matches not shown)`);
-    lines.push("Pass requestId to read a response body.");
-    return lines.join("\n");
+    const lines = [...this.requests.values()]
+      .filter(
+        (entry) =>
+          matches(entry.url) &&
+          (!input.failedOnly || entry.failure !== undefined || (entry.status ?? 0) >= 400),
+      )
+      .map(
+        (entry) =>
+          `${entry.requestId} ${entry.method} ${entry.failure ?? entry.status ?? "pending"} ${entry.type} ${clip(entry.url)}`,
+      );
+    return paginate(lines, input.page, "requests", " Pass requestId to read a response body.");
   }
 
   private async readBody(requestId: string): Promise<string> {

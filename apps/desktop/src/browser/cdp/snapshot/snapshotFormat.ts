@@ -67,12 +67,13 @@ export function renderSnapshot(roots: readonly SnapshotNode[], options: RenderOp
 export interface SnapshotMatch {
   readonly node: SnapshotNode;
   readonly context: SnapshotNode | undefined;
+  readonly text: string | undefined;
 }
 
 export function renderMatches(matches: readonly SnapshotMatch[], total: number): string {
   if (matches.length === 0) return "No elements matched.";
-  const lines = matches.map(({ node, context }) => {
-    const line = formatSnapshotLine(node, 0, false);
+  const lines = matches.map(({ node, context, text }) => {
+    const line = `${formatSnapshotLine(node, 0, false)}${text ? ` text=${quote(text)}` : ""}`;
     return context
       ? `${line}  (in ${context.role}${context.name ? ` ${quote(context.name)}` : ""})`
       : line;

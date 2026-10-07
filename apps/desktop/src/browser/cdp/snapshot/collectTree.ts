@@ -80,6 +80,8 @@ const NOT_CLICKABLE_ROLES = new Set(["RootWebArea", "WebArea", "LabelText"]);
 // Styled checkboxes and radios are often invisible inputs under a visible label; the input is
 // still what the model should act on.
 const KEPT_WHEN_INVISIBLE = new Set(["checkbox", "radio", "switch"]);
+// Date and time inputs are set as a whole; their segment spinbuttons only add lines.
+const WHOLE_VALUE_ROLES = new Set(["Date", "DateTime", "InputTime"]);
 const MAX_FRAMES = 24;
 const MAX_FRAME_DEPTH = 3;
 
@@ -222,11 +224,13 @@ async function collectDocument(
       interactive,
       // Text that repeats the element's name or value adds tokens, not meaning; a password
       // field's text is its masked value.
-      children: children.filter(
-        (child) =>
-          child.role !== "text" ||
-          (!password && !label.includes(child.name.trim()) && child.name !== String(rawValue)),
-      ),
+      children: WHOLE_VALUE_ROLES.has(role)
+        ? []
+        : children.filter(
+            (child) =>
+              child.role !== "text" ||
+              (!password && !label.includes(child.name.trim()) && child.name !== String(rawValue)),
+          ),
     };
     if (role === "Iframe" && backendNodeId !== undefined) {
       frames.push({ holder: out, backendNodeId });

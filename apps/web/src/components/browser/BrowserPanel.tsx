@@ -14,6 +14,7 @@ import { IconButton } from "../ui/icon-button";
 import { toastManager } from "../ui/toast";
 import { BrowserAddressBar } from "./BrowserAddressBar";
 import { BrowserAgentActivity } from "./BrowserAgentActivity";
+import { BrowserPageDialog } from "./BrowserPageDialog";
 import { BrowserPickElement } from "./BrowserPickElement";
 import { useBrowserPanelStore } from "./browserPanelStore";
 import { BrowserTabStrip } from "./BrowserTabStrip";
@@ -84,6 +85,12 @@ function BrowserPanelContent(props: { threadId: ThreadId; onClose: () => void })
         }}
       />
       <BrowserAgentActivity threadId={threadId} />
+      <BrowserPageDialog
+        dialog={activeTab?.dialog ?? null}
+        onAnswer={(accept) => {
+          if (activeTab) runCommand({ threadId, action: "dialog", tabId: activeTab.tabId, accept });
+        }}
+      />
       {/* The active tab's native view is placed over this box. */}
       <div ref={setContentElement} className="relative min-h-0 flex-1">
         {tabs === null ? (

@@ -27,6 +27,12 @@ export const BrowserPanelCommand = Schema.Union([
     url: Schema.optional(Url),
     history: Schema.optional(Schema.Literals(["back", "forward", "reload"])),
   }),
+  Schema.Struct({
+    threadId: ThreadId,
+    action: Schema.Literal("dialog"),
+    tabId: BrowserTabId,
+    accept: Schema.Boolean,
+  }),
 ]);
 export type BrowserPanelCommand = typeof BrowserPanelCommand.Type;
 

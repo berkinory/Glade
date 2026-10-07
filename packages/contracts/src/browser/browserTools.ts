@@ -83,6 +83,19 @@ export const BrowserScrollInput = Schema.Struct({
   ...tab,
 });
 
+export const BrowserFillInput = Schema.Struct({
+  fields: Schema.Array(
+    Schema.Struct({
+      ref: BrowserRef,
+      value: Schema.Union([Text(20_000), Schema.Boolean]).annotate({
+        description:
+          "Text for text fields, an option label or value for selects, a date like 2026-10-07 for date inputs, true or false for checkboxes, radios and switches.",
+      }),
+    }),
+  ).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
+  ...tab,
+});
+
 export const BrowserRegion = Schema.Struct({
   x: Schema.Number,
   y: Schema.Number,
@@ -99,7 +112,6 @@ export const BrowserScreenshotInput = Schema.Struct({
 
 export const BrowserDialogInput = Schema.Struct({
   accept: Schema.Boolean,
-  text: Schema.optional(Text(4096)),
   ...tab,
 });
 
@@ -117,10 +129,14 @@ export const BrowserEvaluateInput = Schema.Struct({
   ...tab,
 });
 
+const Page = Schema.optional(Count(1, 500)).annotate({
+  description: "Page of results, 1 (newest) by default.",
+});
+
 export const BrowserConsoleInput = Schema.Struct({
   level: Schema.optional(Schema.Literals(["all", "error", "warning", "info", "debug"])),
   pattern: Schema.optional(Text(512)),
-  limit: Schema.optional(Count(1, 500)),
+  page: Page,
   clear: Schema.optional(Schema.Boolean),
   ...tab,
 });
@@ -128,7 +144,7 @@ export const BrowserConsoleInput = Schema.Struct({
 export const BrowserNetworkInput = Schema.Struct({
   pattern: Schema.optional(Text(512)),
   failedOnly: Schema.optional(Schema.Boolean),
-  limit: Schema.optional(Count(1, 500)),
+  page: Page,
   requestId: Schema.optional(Text(256)),
   ...tab,
 });
@@ -142,6 +158,7 @@ export const BROWSER_BATCH_TOOLS = [
   "browser_click",
   "browser_hover",
   "browser_type",
+  "browser_fill",
   "browser_press",
   "browser_select",
   "browser_scroll",

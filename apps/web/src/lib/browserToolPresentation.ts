@@ -11,6 +11,7 @@ const BROWSER_TOOL_WORDING = {
   browser_click: ["Clicking", "Clicked", "click"],
   browser_hover: ["Hovering", "Hovered", "hover"],
   browser_type: ["Typing", "Typed", "type"],
+  browser_fill: ["Filling form", "Filled form", "fill the form"],
   browser_press: ["Pressing keys", "Pressed", "press keys"],
   browser_select: ["Selecting", "Selected", "select"],
   browser_scroll: ["Scrolling", "Scrolled", "scroll"],
