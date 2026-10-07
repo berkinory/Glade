@@ -12,11 +12,23 @@ app and is exposed to every provider as `browser_*` gateway tools.
   panel closed. Automation uses raw Chrome DevTools Protocol through `webContents.debugger`,
   attached on the first agent call, with iframe auto-attach and one command queue per tab. Tabs
   belong to one chat and live until the app quits; they are not stored.
-- **Snapshots and refs.** `browser_snapshot` turns `Accessibility.getFullAXTree` into compact text
-  with `ref=eN` handles. Refs stay valid until the main frame navigates; a stale ref returns an
-  error telling the model to snapshot again. Long trees stop at whole lines with a hint to narrow by
-  `depth` or `ref`, so no ref is ever cut. Actions resolve a ref to a box and dispatch real
-  `Input.*` events.
+- **Snapshots and refs.** `browser_snapshot` merges `Accessibility.getFullAXTree` with one
+  `DOMSnapshot.captureSnapshot` per renderer (layout, paint order, a few computed styles) into
+  compact text with `ref=eN` handles. By default it covers the viewport plus one screen (800 CSS px)
+  above and below and ends with a note counting the interactive elements left out above and below;
+  `scope: "page"` lists everything. Hidden content never reaches the model: invisible, zero-opacity
+  and off-screen (pushed past the top or left edge) nodes are dropped, as are elements fully covered
+  by an opaque layer that paints above them (a modal or cookie banner; a fixed full-screen backdrop
+  also hides what is scrolled away under it). Styled checkboxes and radios stay listed even when the
+  input itself is invisible. Elements the tree calls plain containers but that have a click listener,
+  their own pointer cursor or an explicit tab stop are listed as `clickable`. Names and values are
+  cut at 100 characters, long `<select>`s show their first five options, and password values are
+  never emitted (a filled one shows `filled`). A ref is keyed by (CDP session, backend node id) and
+  belongs to its frame's document: it survives DOM updates, dies when that frame commits a new
+  document (main frame, same-process or out-of-process iframe), and numbers are never reused. A
+  stale ref is an error, never a guess. Lines of elements first listed since the previous snapshot
+  start with `+`. Long trees stop at whole lines with a hint to narrow by `depth` or `ref`, so no
+  ref is ever cut. Actions resolve a ref to a box and dispatch real `Input.*` events.
 - **Server (`apps/server/src/browser`, `apps/server/src/desktopHost`).** `DesktopHostClient` holds
   the RPC connection and reconnects with backoff; `BrowserHost` makes typed browser calls and keeps
   the latest tab list per chat. The gateway passes the chat from the session lease, never from

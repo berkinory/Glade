@@ -42,11 +42,16 @@ export class BrowserTab {
     this.cdp = new CdpSession(webContents);
     watchDialogs(this.cdp, (notice) => this.addNotice(notice));
     this.buffers = new PageBuffers(this.cdp);
+    // Refs die with their frame's document. Same-document updates (Page.navigatedWithinDocument,
+    // DOM changes) keep them.
     this.cdp.on((method, params, sessionId) => {
-      const mainFrameCommit =
-        method === "Page.frameNavigated" && sessionId === undefined && !params.frame.parentId;
-      if (mainFrameCommit || method === "Glade.detached") this.refs.invalidate();
-      if (method === "Target.detachedFromTarget") this.refs.dropSession(params.sessionId);
+      if (method === "Glade.detached") this.refs.invalidate();
+      else if (method === "Target.detachedFromTarget") this.refs.dropSession(params.sessionId);
+      else if (method === "Page.frameDetached") this.refs.dropFrame(params.frameId);
+      else if (method === "Page.frameNavigated") {
+        if (sessionId === undefined && !params.frame.parentId) this.refs.invalidate();
+        else this.refs.dropFrame(params.frame.id);
+      }
     });
     // CDP input arrives through the same pipeline, so only input outside agent operations counts.
     webContents.on("input-event", (_event, input) => {

@@ -27,6 +27,7 @@ export const BrowserNavigateInput = Schema.Struct({
 
 export const BrowserSnapshotInput = Schema.Struct({
   filter: Schema.optional(Schema.Literals(["interactive", "all"])),
+  scope: Schema.optional(Schema.Literals(["viewport", "page"])),
   depth: Schema.optional(Count(1, 64)),
   ref: Schema.optional(BrowserRef),
   ...tab,

@@ -66,7 +66,7 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     title: "Snapshot the page",
     readOnly: true,
     description:
-      'Accessibility snapshot of the page, iframes included: one line per element, `- role "name" [ref=eN] value=… states`. Act on elements through these refs. filter "interactive" (default) lists controls only; "all" adds text and structure. Narrow large pages with depth or a ref subtree. Refs stay valid until the page navigates.',
+      'Accessibility snapshot of what is on screen plus about one screen around it, iframes included: one line per element, `- role "name" [ref=eN] value=… states`; `+` instead of `-` marks elements that were not in your previous snapshot. Hidden, covered and off-screen elements are left out; a note says how many are above or below. Act on elements through these refs. filter "interactive" (default) lists controls, including elements that only look clickable; "all" adds text and structure. scope "page" lists the whole page; narrow large pages with depth or a ref subtree. Refs stay valid while their element stays in the document.',
   },
   browser_find: {
     method: "browser.find",

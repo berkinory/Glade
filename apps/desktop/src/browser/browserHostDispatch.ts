@@ -16,7 +16,7 @@ import { armDialogAnswer } from "./cdp/dialogs";
 import { uploadFiles } from "./cdp/fileChooser";
 import { readPageText } from "./cdp/pageText";
 import { captureScreenshot } from "./cdp/screenshot";
-import { findElements, takeSnapshot } from "./cdp/snapshot";
+import { findElements, takeSnapshot } from "./cdp/snapshot/snapshot";
 
 // Each stays below the server's timeout for the same call: navigation waits up to 30 s for the
 // load, and settling actions up to 10 s after the input.
