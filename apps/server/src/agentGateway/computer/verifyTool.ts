@@ -8,6 +8,7 @@ import {
   computerTool,
   imageContent,
   windowFor,
+  windowLine,
   type ComputerToolServices,
 } from "./computerCalls.ts";
 
@@ -95,6 +96,7 @@ export const makeVerifyTool = (services: ComputerToolServices): ToolEntry =>
                   )
                   .join("\n"),
               ),
+              windowLine(window),
             ].join("\n"),
         });
         const image = input.include_screenshot

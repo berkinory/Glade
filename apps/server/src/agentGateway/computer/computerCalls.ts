@@ -74,6 +74,11 @@ export const appContent = (window: CuaWindow, text: string) =>
     text,
   );
 
+// Glade's report line naming the window a result is about, outside any APP_CONTENT block so the
+// chat timeline can name the target.
+export const windowLine = (window: CuaWindow) =>
+  `Window: ${window.app_name} ${JSON.stringify(window.title)}`;
+
 // One Cua tools/call in the caller thread's own Cua session. Stop aborts it, which cancels it in
 // Cua; a Cua tool error becomes a typed refusal carrying Cua's code and text.
 export const callCua = (

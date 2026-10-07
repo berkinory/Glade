@@ -109,8 +109,8 @@ Results:
   something else. Glade never replays an action itself.
 - Window titles and accessibility text reach the model inside nonce-delimited `APP_CONTENT` blocks
   (the same envelope Browser Use uses for `PAGE_CONTENT`), a provenance cue rather than a security
-  boundary. The closing `Window: <app> "<title>"` line stays outside because the chat timeline
-  reads it.
+  boundary. Action, window-read and verify results end with a `Window: <app> "<title>"` line
+  outside the block because the chat timeline reads it.
 - A turn returns at most 60 images. This is a runaway guard, not a context budget: Claude and Codex
   own their history and compact it.
 

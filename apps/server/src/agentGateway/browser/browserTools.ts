@@ -44,7 +44,8 @@ interface BrowserToolSpec {
   readonly title: string;
   readonly readOnly: boolean;
   readonly description: string;
-  // Input actions report what changed themselves; the others end with the tab's URL and title.
+  // Input actions report what changed themselves and end with the page's host; the others end
+  // with the tab's URL and title.
   readonly action?: true;
 }
 
@@ -231,7 +232,11 @@ function resultContent(
       `URL: ${result.page.url}`,
       `Title: ${JSON.stringify(result.page.title)}`,
     );
-  } else if (result.page) lines.push(`Tab: ${result.page.tabId}`);
+  } else if (result.page) {
+    lines.push(`Tab: ${result.page.tabId}`);
+    const host = URL.parse(result.page.url)?.host;
+    if (host) lines.push(`Host: ${host}`);
+  }
   for (const notice of result.notices) lines.push(`Note: ${notice}`);
   const text = { type: "text" as const, text: lines.join("\n") };
   return "image" in result

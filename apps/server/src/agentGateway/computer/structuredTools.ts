@@ -16,6 +16,7 @@ import {
   recordSnapshot,
   refuse,
   windowFor,
+  windowLine,
   type ComputerToolServices,
 } from "./computerCalls.ts";
 import { renderElements } from "./elementText.ts";
@@ -251,7 +252,12 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
           : [];
         return {
           content: [
-            { type: "text", text: [...notes, appContent(window, `${header}\n${tree}`)].join("\n") },
+            {
+              type: "text",
+              text: [...notes, appContent(window, `${header}\n${tree}`), windowLine(window)].join(
+                "\n",
+              ),
+            },
             ...image,
           ],
         };

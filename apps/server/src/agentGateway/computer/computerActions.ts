@@ -18,6 +18,7 @@ import {
   refuse,
   SCREENSHOT_MAX_EDGE,
   windowFor,
+  windowLine,
   type ComputerToolServices,
   type WindowInput,
   type WindowNeed,
@@ -143,7 +144,7 @@ function actionContent(
       }`,
     );
   }
-  lines.push(`Window: ${window.app_name} ${JSON.stringify(window.title)}`);
+  lines.push(windowLine(window));
   return {
     content: [{ type: "text", text: lines.join("\n") }],
     ...(Option.isSome(outcome) && outcome.value.effect === "refused" ? { isError: true } : {}),

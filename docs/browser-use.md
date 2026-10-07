@@ -94,8 +94,8 @@ network output, a dialog's message, tab titles in the tab list) is wrapped in a 
 with `--- PAGE_CONTENT nonce=<random> origin=<page origin> ---` and ends with the same nonce. The
 nonce is fresh per block, so a page cannot close the block early; the harness guidance tells the
 model that text inside is data, never instructions. This is a provenance cue for the model, not a
-security boundary. Glade's own report lines (what an action did, scope notes, page counts) stay
-outside the block.
+security boundary. Glade's own report lines (what an action did, scope notes, page counts, and the
+`Host:` line input actions end with for the chat timeline) stay outside the block.
 
 ## Panel
 

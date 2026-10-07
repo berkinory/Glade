@@ -119,7 +119,9 @@ function browserTarget(tool: BrowserToolName, call: GatewayToolCall, lines: stri
   const { args } = call;
   const first = lines[0];
   const url = reportedUrl(lines);
-  const host = hostOf(url);
+  // Input actions end with the page's `Host:` line.
+  const host =
+    lines.findLast((line) => line.startsWith("Host: "))?.slice("Host: ".length) ?? hostOf(url);
   switch (tool) {
     case "browser_navigate":
     case "browser_tabs": {
@@ -157,7 +159,7 @@ function browserTarget(tool: BrowserToolName, call: GatewayToolCall, lines: stri
     case "browser_press": {
       const key = stringArg(args, "key");
       const repeat = typeof args.repeat === "number" && args.repeat > 1 ? ` ×${args.repeat}` : "";
-      return key ? `${shortPreview(key)}${repeat}` : null;
+      return previewAt(key ? `${shortPreview(key)}${repeat}` : null, host);
     }
     case "browser_scroll": {
       const direction = stringArg(args, "direction");
