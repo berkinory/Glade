@@ -27,6 +27,7 @@
 - The file explorer and project picker open folders faster, especially in large repositories.
 - File mentions open faster after agents change files and in large repositories.
 - Installing dependencies or running builds no longer keeps source control busy, and file watching recovers on Linux when watch limits are reached.
+- Question cards point out that you can type your own answer instead of picking an option.
 
 ### Fixed
 
@@ -50,6 +51,7 @@
 - Custom Codex providers no longer make the app stall, and the local server list no longer hangs when system tools stop responding.
 - The last lines of terminal output are kept when you quit, and busy terminals write far less to disk.
 - Reverting or deleting a chat no longer removes attached images when the change fails to save.
+- Option numbers in question and approval cards line up with their text.
 
 ### Removed
 

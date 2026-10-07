@@ -180,7 +180,7 @@ export function UserInputQuestionForm({
                 onSelect={() => handleOptionSelection(activeQuestion.id, option.label)}
                 trailing={
                   isSelected ? (
-                    <CheckIcon className="mt-0.5 size-3.5 shrink-0 text-[var(--color-text-foreground)]" />
+                    <CheckIcon className="size-3.5 text-[var(--color-text-foreground)]" />
                   ) : null
                 }
               />
@@ -189,7 +189,12 @@ export function UserInputQuestionForm({
         </div>
       ) : null}
       {onCancel ? (
-        <div className="mt-2.5 flex justify-end">
+        <div className="mt-2.5 flex items-center justify-between gap-3">
+          <span className="min-w-0 truncate pl-2 text-ui-sm text-muted-foreground/55">
+            {activeQuestion.options.length > 0
+              ? "Or type your own answer below"
+              : "Type your answer below"}
+          </span>
           <button
             type="button"
             disabled={isResponding}
