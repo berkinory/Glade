@@ -11,7 +11,6 @@ export type RecentView =
   | {
       kind: "thread";
       threadId: ThreadId;
-      splitViewId?: string | undefined;
     }
   | {
       kind: "settings";
@@ -30,7 +29,6 @@ export interface RecentViewDisplayEntry {
   subtitle: string;
   isCurrent: boolean;
   isPinned: boolean;
-  isSplit: boolean;
   isTerminal: boolean;
   provider?: ProviderKind | undefined;
   terminalVisualIdentity?: ResolvedTerminalVisualIdentity | undefined;
@@ -52,8 +50,6 @@ export interface RecentViewThreadDraftSummary {
 
 export interface RecentViewAvailability {
   availableThreadIds: ReadonlySet<ThreadId>;
-  availableSplitViewIds: ReadonlySet<string>;
-  threadIdsBySplitViewId?: ReadonlyMap<string, ReadonlySet<ThreadId>> | undefined;
 }
 
 const SETTINGS_LABELS: Readonly<Record<string, string>> = {
@@ -72,9 +68,7 @@ function normalizeOptionalId(value: string | null | undefined): string | undefin
 export function recentViewKey(view: RecentView): string {
   switch (view.kind) {
     case "thread":
-      return view.splitViewId
-        ? `thread:${view.threadId}:split:${view.splitViewId}`
-        : `thread:${view.threadId}`;
+      return `thread:${view.threadId}`;
     case "settings":
       return view.section ? `settings:${view.section}` : "settings";
     case "plugins":
@@ -86,11 +80,8 @@ export function deriveCurrentRecentView(input: {
   pathname: string;
   routeThreadId: ThreadId | null;
   activeThreadId: ThreadId | null;
-  splitViewId?: string | undefined;
   settingsSection?: string | undefined;
 }): RecentView | null {
-  const splitViewId = normalizeOptionalId(input.splitViewId);
-
   if (input.pathname === "/settings") {
     const section = normalizeOptionalId(input.settingsSection);
     return {
@@ -104,11 +95,7 @@ export function deriveCurrentRecentView(input: {
   }
 
   if (input.routeThreadId) {
-    return {
-      kind: "thread",
-      threadId: input.activeThreadId ?? input.routeThreadId,
-      ...(splitViewId ? { splitViewId } : {}),
-    };
+    return { kind: "thread", threadId: input.activeThreadId ?? input.routeThreadId };
   }
 
   return null;
@@ -153,20 +140,7 @@ function normalizeAvailableView(
 ): RecentView | null {
   switch (view.kind) {
     case "thread": {
-      if (!availability.availableThreadIds.has(view.threadId)) {
-        return null;
-      }
-      if (view.splitViewId) {
-        const splitThreadIds = availability.threadIdsBySplitViewId?.get(view.splitViewId);
-        const splitStillContainsThread = splitThreadIds ? splitThreadIds.has(view.threadId) : true;
-        if (
-          !availability.availableSplitViewIds.has(view.splitViewId) ||
-          !splitStillContainsThread
-        ) {
-          return { kind: "thread", threadId: view.threadId };
-        }
-      }
-      return view;
+      return availability.availableThreadIds.has(view.threadId) ? view : null;
     }
     case "settings":
     case "plugins":
@@ -231,7 +205,6 @@ export function buildRecentViewDisplayEntries(input: {
       kind: view.kind,
       isCurrent: key === currentKey,
       isPinned: false,
-      isSplit: view.kind === "thread" && Boolean(view.splitViewId),
       isTerminal: Boolean(terminalVisualIdentity),
       ...(terminalVisualIdentity ? { terminalVisualIdentity } : {}),
     };
@@ -243,11 +216,7 @@ export function buildRecentViewDisplayEntries(input: {
         const projectName = thread ? projectNameById.get(thread.projectId) : null;
         const provider = summary?.modelSelection.provider;
         const title = normalizeOptionalId(thread?.title) ?? "New chat";
-        const subtitleParts = [
-          projectName ?? "Chat",
-          base.isTerminal ? "Terminal" : "Chat",
-          base.isSplit ? "Split" : null,
-        ].filter((part): part is string => Boolean(part));
+        const subtitleParts = [projectName ?? "Chat", base.isTerminal ? "Terminal" : "Chat"];
         return {
           ...base,
           icon: resolveThreadDisplayIcon({ provider, terminalVisualIdentity }),

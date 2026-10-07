@@ -52,14 +52,12 @@ export function useChatEnvironmentController({
   const { threadId } = useChatThreadContext();
   const {
     hideHeader,
-    surfaceMode,
     settings,
     updateSettings,
     activeThread,
 
     legendListRef,
     composerTranscriptInsetPx,
-    isInactiveSplitPane,
     composerImagesRef,
     composerFilesRef,
     composerAssistantSelectionsRef,
@@ -143,8 +141,7 @@ export function useChatEnvironmentController({
 
   const environmentEnabled = !hideHeader;
 
-  const environmentUsesFloatingOverlay =
-    isTerminalEnvironmentContext || isMobileViewport || surfaceMode === "split";
+  const environmentUsesFloatingOverlay = isTerminalEnvironmentContext || isMobileViewport;
 
   const environmentDefaultOpen = resolveDefaultEnvironmentPanelOpen({
     environmentEnabled,
@@ -321,7 +318,6 @@ export function useChatEnvironmentController({
     timelineEntries,
     hasStreamingAssistantText,
     composerTranscriptInsetPx,
-    isInactiveSplitPane,
   });
 
   const selectionChatEnvMode = useProjectPreferencesStore((state) =>
@@ -345,11 +341,7 @@ export function useChatEnvironmentController({
   } = useTranscriptAssistantSelectionAction({
     scope: {
       threadId,
-      enabled:
-        Boolean(activeThread) &&
-        !isInactiveSplitPane &&
-        pendingUserInputs.length === 0 &&
-        !isComposerApprovalState,
+      enabled: Boolean(activeThread) && pendingUserInputs.length === 0 && !isComposerApprovalState,
     },
     composer: {
       composerImagesRef,
@@ -372,7 +364,6 @@ export function useChatEnvironmentController({
   });
 
   useLayoutEffect(() => {
-    if (isInactiveSplitPane) return;
     const composerForm = composerFormRef.current;
     if (!composerForm) return;
     const measureComposerFormWidth = () => composerForm.clientWidth;
@@ -430,7 +421,6 @@ export function useChatEnvironmentController({
     composerFormRef,
     activeThread?.id,
     composerFooterHasWideActions,
-    isInactiveSplitPane,
   ]);
 
   useEffect(() => {
@@ -461,14 +451,14 @@ export function useChatEnvironmentController({
   }, [setIsRevertingCheckpoint, activeThread?.id]);
 
   useEffect(() => {
-    if (!activeThread?.id || terminalState.terminalOpen || isInactiveSplitPane) return;
+    if (!activeThread?.id || terminalState.terminalOpen) return;
     const frame = window.requestAnimationFrame(() => {
       focusComposer();
     });
     return () => {
       window.cancelAnimationFrame(frame);
     };
-  }, [activeThread?.id, focusComposer, isInactiveSplitPane, terminalState.terminalOpen]);
+  }, [activeThread?.id, focusComposer, terminalState.terminalOpen]);
 
   useLayoutEffect(() => {
     setExpandedImage(null);

@@ -49,9 +49,7 @@ import {
   shouldShowDebugFeatureFlagsMenu,
 } from "./Sidebar.logic.statusTypes";
 import { isThreadActivelyWorking, resolveThreadStatusPill } from "./Sidebar.logic.status";
-import { parseDiffRouteSearch } from "../diffRouteSearch";
 import { normalizeSettingsSection } from "../settingsNavigation";
-import { selectSplitView, useSplitViewStore } from "../splitViewStore";
 import { useSidebarThreadActions } from "../hooks/useSidebarThreadActions";
 import { useWorkspacePathsStore } from "../workspacePathsStore";
 import { useFocusedChatContext } from "../focusedChatContext";
@@ -129,13 +127,7 @@ export function useSidebarShellState() {
 
   const { handleNewChat } = useHandleNewChat();
 
-  const routeSearch = parseDiffRouteSearch(settingsSectionSearch);
-
   const activeSettingsSection = normalizeSettingsSection(settingsSectionSearch.section);
-
-  const activeSplitView = useSplitViewStore(
-    useMemo(() => selectSplitView(routeSearch.splitViewId ?? null), [routeSearch.splitViewId]),
-  );
 
   useEffect(() => {
     const api = readNativeApi();
@@ -502,12 +494,10 @@ export function useSidebarShellState() {
     archiveAllThreadsInProject,
     deleteProjectThreads,
   } = useSidebarThreadActions({
-    activeSplitView,
     appSettings,
     clearTerminalState,
     handleNewChat,
     projectById,
-    routeSplitViewId: routeSearch.splitViewId ?? null,
     routeThreadId,
     sidebarThreads,
     sidebarTreeThreads,
@@ -589,9 +579,7 @@ export function useSidebarShellState() {
     handleNewThread,
     handleNewChat,
     routeThreadId,
-    routeSearch,
     activeSettingsSection,
-    activeSplitView,
     keybindings,
     serverCwd,
     providerStatuses,

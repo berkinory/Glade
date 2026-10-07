@@ -48,7 +48,6 @@ export default function GitActionsControl(props: GitActionsControlProps) {
   const {
     visibleWhen,
     promotedPull,
-    hideQuickActionLabel,
     isGitActionRunning,
     runSyncWithRemote,
     gitActionMenuItems,
@@ -97,16 +96,14 @@ export default function GitActionsControl(props: GitActionsControlProps) {
       <ChatHeaderButton
         type="button"
         tone="outline"
-        className={hideQuickActionLabel ? "gap-1" : "gap-1.5"}
+        className="gap-1.5"
         aria-label={promotedPull.label}
         title={promotedPull.label}
         disabled={isGitActionRunning}
         onClick={runSyncWithRemote}
       >
         <GitActionGlyph name="sync" />
-        {!hideQuickActionLabel ? (
-          <span className="truncate font-normal">{promotedPull.label}</span>
-        ) : null}
+        <span className="truncate font-normal">{promotedPull.label}</span>
       </ChatHeaderButton>
     );
   }
@@ -389,11 +386,9 @@ export default function GitActionsControl(props: GitActionsControlProps) {
           {promotedPull ? (
             <Button
               variant="chrome-outline"
-              size={hideQuickActionLabel ? "icon-xs" : "xs"}
+              size="xs"
               className={cn(
-                hideQuickActionLabel
-                  ? CHAT_HEADER_ICON_CONTROL_CLASS_NAME
-                  : CHAT_HEADER_CONTROL_CLASS_NAME,
+                CHAT_HEADER_CONTROL_CLASS_NAME,
                 CHAT_HEADER_ICON_STRENGTH_CLASS_NAME,
                 CHAT_HEADER_SPLIT_LEADING_CLASS_NAME,
               )}
@@ -403,9 +398,7 @@ export default function GitActionsControl(props: GitActionsControlProps) {
               onClick={runSyncWithRemote}
             >
               <GitActionGlyph name="sync" />
-              {!hideQuickActionLabel ? (
-                <span className="font-normal">{promotedPull.label}</span>
-              ) : null}
+              <span className="font-normal">{promotedPull.label}</span>
             </Button>
           ) : quickActionDisabledReason ? (
             <Popover>
@@ -416,23 +409,19 @@ export default function GitActionsControl(props: GitActionsControlProps) {
                     aria-label={quickAction.label}
                     aria-disabled="true"
                     className={cn(
-                      hideQuickActionLabel
-                        ? CHAT_HEADER_ICON_CONTROL_CLASS_NAME
-                        : CHAT_HEADER_CONTROL_CLASS_NAME,
+                      CHAT_HEADER_CONTROL_CLASS_NAME,
                       CHAT_HEADER_ICON_STRENGTH_CLASS_NAME,
                       CHAT_HEADER_SPLIT_LEADING_CLASS_NAME,
                       "cursor-not-allowed opacity-64",
                     )}
-                    size={hideQuickActionLabel ? "icon-xs" : "xs"}
+                    size="xs"
                     variant="chrome-outline"
                     title={quickAction.label}
                   />
                 }
               >
                 <GitQuickActionIcon quickAction={quickAction} />
-                {!hideQuickActionLabel ? (
-                  <span className="font-normal">{quickAction.label}</span>
-                ) : null}
+                <span className="font-normal">{quickAction.label}</span>
               </PopoverTrigger>
               <PopoverPopup tooltipStyle side="bottom" align="start">
                 {quickActionDisabledReason}
@@ -441,11 +430,9 @@ export default function GitActionsControl(props: GitActionsControlProps) {
           ) : (
             <Button
               variant="chrome-outline"
-              size={hideQuickActionLabel ? "icon-xs" : "xs"}
+              size="xs"
               className={cn(
-                hideQuickActionLabel
-                  ? CHAT_HEADER_ICON_CONTROL_CLASS_NAME
-                  : CHAT_HEADER_CONTROL_CLASS_NAME,
+                CHAT_HEADER_CONTROL_CLASS_NAME,
                 CHAT_HEADER_ICON_STRENGTH_CLASS_NAME,
                 CHAT_HEADER_SPLIT_LEADING_CLASS_NAME,
               )}
@@ -455,9 +442,7 @@ export default function GitActionsControl(props: GitActionsControlProps) {
               onClick={runQuickAction}
             >
               <GitQuickActionIcon quickAction={quickAction} />
-              {!hideQuickActionLabel ? (
-                <span className="font-normal">{quickAction.label}</span>
-              ) : null}
+              <span className="font-normal">{quickAction.label}</span>
             </Button>
           )}
           <ChatHeaderSplitDivider />

@@ -57,12 +57,10 @@ import {
 export function useGitActionsControl({
   gitCwd,
   activeThreadId,
-  hideQuickActionLabel: hideQuickActionLabelProp,
   variant: variantProp,
   visibleWhen: visibleWhenProp,
   onRegisterCommitAndPushTrigger,
 }: GitActionsControlProps) {
-  const hideQuickActionLabel = hideQuickActionLabelProp ?? false;
   const variant = variantProp ?? "header";
   const visibleWhen = visibleWhenProp ?? "always";
   const isPanel = variant === "panel";
@@ -903,7 +901,6 @@ export function useGitActionsControl({
   return {
     visibleWhen,
     promotedPull,
-    hideQuickActionLabel,
     isGitActionRunning,
     runSyncWithRemote,
     gitActionMenuItems,

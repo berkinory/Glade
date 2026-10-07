@@ -47,10 +47,6 @@ function canHandleComposerPickerShortcut(
 interface ChatKeyboardShortcutsInput {
   onToggleTerminal?: () => void;
   onOpenTerminal?: () => void;
-  expandTerminalWorkspace: () => void;
-  onSplitSurface?: () => void;
-  surfaceMode: "single" | "split";
-  isFocusedPane: boolean;
   activeThreadId: ThreadId | null;
   hasLiveTurn: boolean;
   composerFormRef: RefObject<HTMLFormElement | null>;
@@ -95,10 +91,9 @@ interface ChatKeyboardShortcutsInput {
 }
 
 type ChatKeyboardShortcutsControllerInput = {
-  props: Pick<ChatKeyboardShortcutsInput, "onToggleTerminal" | "onOpenTerminal" | "onSplitSurface">;
+  props: Pick<ChatKeyboardShortcutsInput, "onToggleTerminal" | "onOpenTerminal">;
   workspace: Pick<
     ChatKeyboardShortcutsInput,
-    | "expandTerminalWorkspace"
     | "activeThreadId"
     | "terminalState"
     | "terminalWorkspaceOpen"
@@ -115,8 +110,6 @@ type ChatKeyboardShortcutsControllerInput = {
   >;
   session: Pick<
     ChatKeyboardShortcutsInput,
-    | "surfaceMode"
-    | "isFocusedPane"
     | "composerFormRef"
     | "setThreadFindOpen"
     | "setThreadFindFocusNonce"
@@ -165,9 +158,8 @@ export function useChatKeyboardShortcuts({
   transcript,
   discovery,
 }: ChatKeyboardShortcutsControllerInput) {
-  const { onToggleTerminal, onOpenTerminal, onSplitSurface } = props;
+  const { onToggleTerminal, onOpenTerminal } = props;
   const {
-    expandTerminalWorkspace,
     activeThreadId,
     terminalState,
     terminalWorkspaceOpen,
@@ -183,8 +175,6 @@ export function useChatKeyboardShortcuts({
     activeProject,
   } = workspace;
   const {
-    surfaceMode,
-    isFocusedPane,
     composerFormRef,
     setThreadFindOpen,
     setThreadFindFocusNonce,
@@ -218,16 +208,6 @@ export function useChatKeyboardShortcuts({
   const { keybindings, shouldRenderChatPaneContent, onToggleDiff, showGitActions, isGitRepo } =
     discovery;
   useEffect(() => {
-    const revealTerminal = () => {
-      if (onOpenTerminal) {
-        onOpenTerminal();
-      } else if (surfaceMode === "split") {
-        expandTerminalWorkspace();
-      }
-    };
-    if (surfaceMode === "split" && !isFocusedPane) {
-      return;
-    }
     const handler = (event: globalThis.KeyboardEvent) => {
       if (!activeThreadId || event.defaultPrevented || event.isComposing) return;
       const picker = document.querySelector<HTMLElement>("[data-model-picker-popup]");
@@ -397,13 +377,6 @@ export function useChatKeyboardShortcuts({
         event.stopPropagation();
         if (onToggleTerminal) {
           onToggleTerminal();
-        } else if (surfaceMode === "split") {
-          if (terminalWorkspaceOpen) {
-            setTerminalOpen(false);
-          } else {
-            setTerminalOpen(true);
-            expandTerminalWorkspace();
-          }
         } else {
           toggleTerminalVisibility();
         }
@@ -422,7 +395,7 @@ export function useChatKeyboardShortcuts({
         event.preventDefault();
         event.stopPropagation();
         createTerminalFromShortcut();
-        revealTerminal();
+        onOpenTerminal?.();
         return;
       }
 
@@ -494,15 +467,6 @@ export function useChatKeyboardShortcuts({
         return;
       }
 
-      if (command === "chat.split") {
-        event.preventDefault();
-        event.stopPropagation();
-        if (surfaceMode === "single" && onSplitSurface) {
-          onSplitSurface();
-        }
-        return;
-      }
-
       if (command === "thread.copyId") {
         event.preventDefault();
         event.stopPropagation();
@@ -533,12 +497,10 @@ export function useChatKeyboardShortcuts({
     terminalWorkspaceTerminalTabActive,
     onToggleDiff,
     onInterruptFromStopControl,
-    onSplitSurface,
     showGitActions,
     isGitRepo,
     composerSubagentStripItems,
     onBackgroundAllForegroundSubagentStripItems,
-    isFocusedPane,
     hasLiveTurn,
     cycleEffort,
     cancelEffortPreview,
@@ -549,13 +511,11 @@ export function useChatKeyboardShortcuts({
     isVoiceRecording,
     isVoiceTranscribing,
     setTerminalWorkspaceTab,
-    surfaceMode,
     scheduleComposerFocus,
     toggleComposerFocus,
     toggleTerminalVisibility,
     onToggleTerminal,
     onOpenTerminal,
-    expandTerminalWorkspace,
     activeThread,
     selectedProvider,
     selectedModel,

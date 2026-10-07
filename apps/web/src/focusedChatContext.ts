@@ -3,13 +3,6 @@ import { useMemo } from "react";
 import { useCommittedChatRoute } from "./hooks/useCommittedChatRoute";
 import type { DraftThreadState } from "./composerDraftDomain";
 import { useComposerDraftStore } from "./composerDraftStore";
-import { useDiffRouteSearch } from "./hooks/useDiffRouteSearch";
-import {
-  resolveSplitViewFocusedPaneThreadId,
-  selectSplitView,
-  useSplitViewStore,
-} from "./splitViewStore";
-import { type SplitView } from "./splitViewModel";
 import { useStore } from "./store";
 import { createProjectSelector } from "./storeSelectors";
 import type { Project, Thread } from "./types";
@@ -62,8 +55,6 @@ function createFocusedThreadSelector(threadId: ThreadIdType | null) {
 
 export interface FocusedChatContext {
   routeThreadId: ThreadIdType | null;
-  splitView: SplitView | null;
-  focusedThreadId: ThreadIdType | null;
   activeThread: FocusedThreadMetadata | null;
   activeDraftThread: DraftThreadState | null;
   activeProject: Project | null;
@@ -73,31 +64,18 @@ export interface FocusedChatContext {
 export function useFocusedChatContext(): FocusedChatContext {
   const draftThreadsByThreadId = useComposerDraftStore((store) => store.draftThreadsByThreadId);
   const { threadId: routeThreadId } = useCommittedChatRoute();
-  const routeSearch = useDiffRouteSearch();
-  const activeSplitView = useSplitViewStore(
-    useMemo(() => selectSplitView(routeSearch.splitViewId ?? null), [routeSearch.splitViewId]),
-  );
-  const focusedThreadId = activeSplitView
-    ? resolveSplitViewFocusedPaneThreadId(activeSplitView)
-    : routeThreadId;
   const activeThread = useStore(
-    useMemo(() => createFocusedThreadSelector(focusedThreadId), [focusedThreadId]),
+    useMemo(() => createFocusedThreadSelector(routeThreadId), [routeThreadId]),
   );
   const activeDraftThread =
-    focusedThreadId !== null ? (draftThreadsByThreadId[focusedThreadId] ?? null) : null;
-  const activeProjectId =
-    activeDraftThread?.projectId ??
-    activeThread?.projectId ??
-    activeSplitView?.ownerProjectId ??
-    null;
+    routeThreadId !== null ? (draftThreadsByThreadId[routeThreadId] ?? null) : null;
+  const activeProjectId = activeDraftThread?.projectId ?? activeThread?.projectId ?? null;
   const activeProject = useStore(
     useMemo(() => createProjectSelector(activeProjectId), [activeProjectId]),
   );
 
   return {
     routeThreadId,
-    splitView: activeSplitView,
-    focusedThreadId,
     activeThread: activeThread ?? null,
     activeDraftThread,
     activeProject: activeProject ?? null,

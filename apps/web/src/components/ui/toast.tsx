@@ -29,8 +29,6 @@ import {
   notificationSurfaceClassName,
   type NotificationTone,
 } from "./notificationSurface";
-import { useDiffRouteSearch } from "../../hooks/useDiffRouteSearch";
-import { selectSplitView, useSplitViewStore } from "../../splitViewStore";
 import { selectRightDockState, useRightDockStore } from "../../rightDockStore";
 import {
   resolveVisibleToastThreadIds,
@@ -132,16 +130,11 @@ function useVisibleThreadIdsFromRoute(): ReadonlySet<ThreadId> {
     select: (params) =>
       typeof params.threadId === "string" ? ThreadId.makeUnsafe(params.threadId) : null,
   });
-  const routeSearch = useDiffRouteSearch();
-  const splitView = useSplitViewStore(
-    useMemo(() => selectSplitView(routeSearch.splitViewId ?? null), [routeSearch.splitViewId]),
-  );
   const rightDockState = useRightDockStore(
     useMemo(() => selectRightDockState(activeThreadId), [activeThreadId]),
   );
   return resolveVisibleToastThreadIds({
     activeThreadId,
-    splitView,
     rightDockRendered: true,
     rightDockState,
   });

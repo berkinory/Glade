@@ -19,9 +19,11 @@ production artwork. Production updates come only from the Glade release reposito
 - Alternate application channels: no extra installers, flavors, badges, update feeds,
   profile import or automatic remote diagnostics.
 - Side chats: no right dock pane, creation command, expiry worker, or retained side chat
-  conversation history. Regular forks and split views remain available.
+  conversation history. Regular forks remain available.
 - Temporary chats: no composer toggle, sidebar badge, or delete-on-leave lifecycle.
   Existing conversations and unsent drafts remain available as regular chats.
+- Chat split views: no split routes, sidebar drag-to-split, split shortcut or multi-pane
+  chat layout. Terminal splits remain available.
 - Terminal threads: no project action, creation shortcut, terminal-specific draft slot,
   or automatic thread naming and deletion. The main workspace hosts chat terminals;
   the bottom terminal drawer has been removed.
@@ -75,9 +77,8 @@ shell; its tab disappears when the last shell closes.
 Terminal tab activity includes every tile. Closing a terminal tab confirms running activity once
 and closes its sessions; when an individual shell exits, its tile collapses and siblings expand.
 Layouts survive reloads, and existing xterm views and PTY sessions remain attached while tiling.
-Existing split conversations retain their panel layout. Environment and its
-trigger hide while the right sidebar is open, retaining the previous preference
-and panel state until it closes.
+Environment and its trigger hide while the right sidebar is open, retaining the previous
+preference and panel state until it closes.
 
 All editable workspace text files use the shared Pierre editor, including large
 files. Cmd/Ctrl+F opens its in-file
@@ -140,9 +141,8 @@ the branch has an upstream. Incoming counts reflect the last fetched remote stat
 
 History pages through commits on the current branch as the virtualized list scrolls.
 Filtering searches commit messages across the branch, including unloaded pages.
-Selecting a commit shows its details below the history list. In single conversations,
-selecting a commit file opens its read-only diff in the main workspace preview tab;
-large patches are capped and marked partial. Split conversations retain inline file previews.
+Selecting a commit shows its details below the history list. Selecting a commit file opens
+its read-only diff in the main workspace preview tab; large patches are capped and marked partial.
 Commit rows offer an icon menu to copy the full hash, short hash, or subject, and undo
 the latest eligible unpublished commit while preserving staged and unstaged changes.
 History rows show author initials, relative time, and tags. Commits reachable

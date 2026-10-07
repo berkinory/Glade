@@ -4,7 +4,6 @@ import { type ProviderModelOptions } from "@glade/contracts/provider/model";
 import { type ProviderNativeCommandDescriptor } from "@glade/contracts/provider/providerDiscovery";
 import { type ModelSelection, type RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
 import type { ComposerTrigger } from "../composer-logic";
-import { type SplitViewId } from "../splitViewModel";
 import type { Project, Thread } from "../types";
 type ComposerSnapshot = { value: string; cursor: number; expandedCursor: number };
 export type ComposerSlashCommandInput = {
@@ -19,10 +18,7 @@ export type ComposerSlashCommandInput = {
 
     threadId: ThreadId;
     syncServerShellSnapshot: (snapshot: OrchestrationShellSnapshot) => void;
-    navigateToThread: (
-      threadId: ThreadId,
-      options?: { splitViewId?: SplitViewId },
-    ) => Promise<void>;
+    navigateToThread: (threadId: ThreadId) => Promise<void>;
     handleClearConversation: () => Promise<void> | void;
   };
   provider: {

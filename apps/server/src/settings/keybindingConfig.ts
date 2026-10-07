@@ -104,6 +104,7 @@ const LEGACY_KEYBINDING_COMMAND_ALIASES = {
 } as const satisfies Record<string, KeybindingRule["command"]>;
 
 const RETIRED_LEGACY_KEYBINDING_COMMANDS = new Set([
+  "chat.split",
   "sidebar.importThread",
   "chat.newGemini",
   "chat.newTerminal",
@@ -148,7 +149,6 @@ const CREATION_COMMANDS_WITH_TERMINAL_ESCAPE = new Set<KeybindingRule["command"]
   "chat.newLocal",
   "chat.newClaude",
   "chat.newCodex",
-  "chat.split",
 ]);
 
 export function readKeybindingEntryCommand(entry: unknown): string | null {

@@ -2,8 +2,6 @@ import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 
 const THREAD_DRAG_MIME = "application/x-glade-thread";
 
-export const THREAD_MENTION_DROPZONE_ATTRIBUTE = "data-thread-mention-dropzone";
-
 export interface ThreadDragPayload {
   threadId: ThreadId;
 }
@@ -63,12 +61,4 @@ export function readThreadDragPayload(
     return null;
   }
   return null;
-}
-
-export function isWithinThreadMentionDropzone(target: unknown): boolean {
-  if (typeof Node === "undefined" || !(target instanceof Node)) return false;
-
-  const element = target instanceof Element ? target : target.parentElement;
-  if (!element) return false;
-  return element.closest(`[${THREAD_MENTION_DROPZONE_ATTRIBUTE}="true"]`) !== null;
 }

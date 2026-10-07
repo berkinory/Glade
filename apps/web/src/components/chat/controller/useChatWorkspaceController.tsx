@@ -14,7 +14,6 @@ import {
   collapseChatTerminalWorkspace,
   createChatTerminal,
   createChatTerminalFromShortcut,
-  expandChatTerminalWorkspace,
   handleChatTerminalSessionExited,
   openNewFullWidthChatTerminal,
   setChatTerminalHeight,
@@ -48,7 +47,7 @@ export function useChatWorkspaceController({
   props: ChatViewProps;
   session: ReturnType<typeof useChatSessionController>;
 }) {
-  const { threadId, panelState } = props;
+  const { threadId, diffPanelOpen } = props;
   const {
     composerDraft,
     activeThread,
@@ -60,7 +59,6 @@ export function useChatWorkspaceController({
     rawSearch,
     dismissedRateLimitBannerKey,
     draftThread,
-    isFocusedPane,
     settings,
     setPullRequestDialogState,
     setComposerHighlightedItemId,
@@ -134,7 +132,7 @@ export function useChatWorkspaceController({
 
   const diffOpen = rawSearch.panel === "diff";
 
-  const resolvedDiffOpen = panelState ? panelState.panel === "diff" : diffOpen;
+  const resolvedDiffOpen = diffPanelOpen ?? diffOpen;
 
   const onRespondToAsyncUserInput = useAsyncUserInputResponse(threadId);
 
@@ -208,7 +206,6 @@ export function useChatWorkspaceController({
     onOpenTerminal: props.onOpenTerminal,
     threadId,
     activeThreadId,
-    isFocusedPane,
   });
   const terminalActionContext = useMemo(
     () => ({
@@ -226,7 +223,6 @@ export function useChatWorkspaceController({
     setChatTerminalHeight(terminalActionContext, height);
   const toggleTerminalVisibility = () =>
     toggleChatTerminalVisibility(terminalActionContext, terminalState);
-  const expandTerminalWorkspace = () => expandChatTerminalWorkspace(terminalActionContext);
   const collapseTerminalWorkspace = () => collapseChatTerminalWorkspace(terminalActionContext);
   const createNewTerminal = () => createChatTerminal(terminalActionContext);
   const createTerminalFromShortcut = () => createChatTerminalFromShortcut(terminalActionContext);
@@ -290,7 +286,7 @@ export function useChatWorkspaceController({
   const diffDisabledReason = diffEnvironmentState.disabledReason;
 
   const repoDiffBadgeRefreshIntervalMs =
-    isFocusedPane && latestTurnLive && !diffEnvironmentPending && !resolvedDiffOpen
+    latestTurnLive && !diffEnvironmentPending && !resolvedDiffOpen
       ? GIT_WORKING_TREE_DIFF_LIVE_REFETCH_INTERVAL_MS
       : false;
 
@@ -440,7 +436,6 @@ export function useChatWorkspaceController({
     storeSetTerminalActivity,
     storeOpenTerminalThreadPage,
     toggleTerminalVisibility,
-    expandTerminalWorkspace,
     collapseTerminalWorkspace,
     createNewTerminal,
     createTerminalFromShortcut,

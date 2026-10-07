@@ -100,12 +100,7 @@ function normalizeRecentView(input: unknown): RecentView | null {
   if (record.kind === "thread") {
     const threadId = normalizeOptionalId(record.threadId);
     if (!threadId) return null;
-    const splitViewId = normalizeOptionalId(record.splitViewId);
-    return {
-      kind: "thread",
-      threadId: threadId as ThreadId,
-      ...(splitViewId ? { splitViewId } : {}),
-    };
+    return { kind: "thread", threadId: threadId as ThreadId };
   }
   if (record.kind === "settings") {
     const section = normalizeOptionalId(record.section);

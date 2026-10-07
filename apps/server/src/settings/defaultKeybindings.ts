@@ -57,7 +57,6 @@ export const DEFAULT_KEYBINDINGS: ReadonlyArray<KeybindingRule> = [
   { key: "mod+alt+n", command: "chat.newChat", when: "!terminalFocus || isMac" },
   { key: "mod+alt+c", command: "chat.newClaude", when: "!terminalFocus || isMac" },
   { key: "mod+alt+x", command: "chat.newCodex", when: "!terminalFocus || isMac" },
-  { key: "mod+\\", command: "chat.split", when: "!terminalFocus || isMac" },
 
   { key: "ctrl+tab", command: "view.recent.next" },
   { key: "ctrl+shift+tab", command: "view.recent.previous" },

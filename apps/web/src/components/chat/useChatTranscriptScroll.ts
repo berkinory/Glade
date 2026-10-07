@@ -28,7 +28,6 @@ interface ChatTranscriptScrollInput {
   timelineEntries: readonly TimelineEntry[];
   hasStreamingAssistantText: boolean;
   composerTranscriptInsetPx: number;
-  isInactiveSplitPane: boolean;
 }
 
 export function useChatTranscriptScroll({
@@ -37,7 +36,6 @@ export function useChatTranscriptScroll({
   timelineEntries,
   hasStreamingAssistantText,
   composerTranscriptInsetPx,
-  isInactiveSplitPane,
 }: ChatTranscriptScrollInput) {
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
@@ -471,7 +469,7 @@ export function useChatTranscriptScroll({
     if (previous.threadId !== threadId) return;
 
     const insetDeltaPx = composerTranscriptInsetPx - previous.insetPx;
-    if (isInactiveSplitPane || Math.abs(insetDeltaPx) < 0.5) return;
+    if (Math.abs(insetDeltaPx) < 0.5) return;
 
     const scrollContainer = legendListRef.current?.getScrollableNode?.();
     if (!(scrollContainer instanceof HTMLElement)) return;
@@ -503,7 +501,7 @@ export function useChatTranscriptScroll({
 
     programmaticScrollUntilRef.current = performance.now() + 200;
     scrollContainer.scrollTop += scrollDeltaPx;
-  }, [legendListRef, activeThreadId, composerTranscriptInsetPx, isInactiveSplitPane]);
+  }, [legendListRef, activeThreadId, composerTranscriptInsetPx]);
 
   const onScrollToBottom = useCallback(() => {
     cancelPendingScrollGesture();

@@ -78,7 +78,7 @@ const whenThreadJumpAvailable = whenOr(
   whenAnd(whenNotTerminalFocus, whenNot(whenIdentifier("terminalWorkspaceOpen"))),
   whenIdentifier("isMac"),
 );
-// App-level `mod` chords (new chat/terminal/provider chat/split, copy thread id) bind to `mod`,
+// App-level `mod` chords (new chat/terminal/provider chat, copy thread id) bind to `mod`,
 // which is Cmd on macOS. xterm never forwards a Cmd-chord to the PTY, so a bare `!terminalFocus`
 // guard silently dropped these chords whenever the terminal had focus — the chord did nothing
 // instead of running the command. `|| isMac` lets them fire from the terminal on macOS while still
@@ -139,11 +139,6 @@ const DEFAULT_SHORTCUT_FALLBACKS: ResolvedKeybindingsConfig = [
   {
     command: "chat.newCodex",
     shortcut: commandShortcut("x", { altKey: true }),
-    whenAst: whenModChordAllowed,
-  },
-  {
-    command: "chat.split",
-    shortcut: commandShortcut("\\"),
     whenAst: whenModChordAllowed,
   },
 

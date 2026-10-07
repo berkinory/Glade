@@ -1,6 +1,6 @@
 import { type ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   type EmptyRouteRestoreRecoveryState,
@@ -12,14 +12,11 @@ import {
   waitForEmptyRouteRestoreFallbackDelay,
 } from "../chatRouteRecovery";
 import { useComposerDraftStore } from "../composerDraftStore";
-import { parseDiffRouteSearch, stripDiffSearchParams } from "../diffRouteSearch";
+import { parseDiffRouteSearch } from "../diffRouteSearch";
 import { readNativeApi } from "../nativeApi";
-import { isSplitRoute } from "../splitViewRoute";
-import { selectSplitView, useSplitViewStore } from "../splitViewStore";
 import { useStore } from "../store";
 import { createThreadExistsSelector, createThreadProjectIdSelector } from "../storeSelectors";
 import { SingleChatSurface } from "../components/chat/SingleChatSurface";
-import { SplitChatSurface } from "../components/chat/SplitChatSurface";
 import { resolveSingleProjectId } from "./-chatThreadRoute.logic";
 
 function ChatThreadRouteView() {
@@ -38,10 +35,6 @@ function ChatThreadRouteView() {
   );
   const draftThreadExists = draftThreadState !== null;
   const routeThreadExists = threadExists || draftThreadExists;
-  const splitView = useSplitViewStore(
-    useMemo(() => selectSplitView(search.splitViewId ?? null), [search.splitViewId]),
-  );
-  const splitViewsHydrated = useSplitViewStore((store) => store.hasHydrated);
   const activeProjectId = resolveSingleProjectId({
     threadProjectId,
     draftProjectId: draftThreadState?.projectId ?? null,
@@ -81,7 +74,7 @@ function ChatThreadRouteView() {
   }, [missingThreadRecoveryState, routeThreadExists]);
 
   useEffect(() => {
-    if (!threadsHydrated || !splitViewsHydrated) {
+    if (!threadsHydrated) {
       return;
     }
 
@@ -125,21 +118,6 @@ function ChatThreadRouteView() {
       }
     }
 
-    if (isSplitRoute(search)) {
-      if (!splitView) {
-        void navigate({
-          to: "/$threadId",
-          params: { threadId },
-          replace: true,
-          search: (previous) => ({
-            ...stripDiffSearchParams(previous),
-            splitViewId: undefined,
-          }),
-        });
-      }
-      return;
-    }
-
     if (!routeThreadExists) {
       void navigate({ to: "/", replace: true });
     }
@@ -148,16 +126,11 @@ function ChatThreadRouteView() {
     missingThreadRecoveryState,
     navigate,
     routeThreadExists,
-    search,
-    splitView,
-    splitViewsHydrated,
-    threadId,
     threadsHydrated,
   ]);
 
   if (
     !threadsHydrated ||
-    !splitViewsHydrated ||
     shouldHoldMissingThreadRouteFallback({
       hasKnownServerThreads,
       recoveryState: missingThreadRecoveryState,
@@ -165,10 +138,6 @@ function ChatThreadRouteView() {
     })
   ) {
     return null;
-  }
-
-  if (splitView && search.splitViewId) {
-    return <SplitChatSurface splitViewId={search.splitViewId} routeThreadId={threadId} />;
   }
 
   if (!routeThreadExists) {

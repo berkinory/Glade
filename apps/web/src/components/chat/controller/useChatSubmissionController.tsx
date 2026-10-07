@@ -363,12 +363,8 @@ export function useChatSubmissionController({
 
       threadId,
       syncServerShellSnapshot,
-      navigateToThread: (nextThreadId, options) =>
-        navigate({
-          to: "/$threadId",
-          params: { threadId: nextThreadId },
-          ...(options?.splitViewId ? { search: () => ({ splitViewId: options.splitViewId }) } : {}),
-        }),
+      navigateToThread: (nextThreadId) =>
+        navigate({ to: "/$threadId", params: { threadId: nextThreadId } }),
       handleClearConversation: async () => {
         if (!activeProject) {
           toastManager.add({

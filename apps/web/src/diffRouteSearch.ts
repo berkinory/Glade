@@ -3,7 +3,6 @@ import { TurnId } from "@glade/contracts/core/baseSchemas";
 export type ChatRightPanel = "diff";
 
 export interface DiffRouteSearch {
-  splitViewId?: string | undefined;
   panel?: ChatRightPanel | undefined;
   diff?: "1" | undefined;
   diffTurnId?: TurnId | undefined;
@@ -12,7 +11,6 @@ export interface DiffRouteSearch {
 
 export function diffRouteSearchEquals(left: DiffRouteSearch, right: DiffRouteSearch): boolean {
   return (
-    left.splitViewId === right.splitViewId &&
     left.panel === right.panel &&
     left.diff === right.diff &&
     left.diffTurnId === right.diffTurnId &&
@@ -46,7 +44,6 @@ export function stripDiffSearchParams<T extends Record<string, unknown>>(
 }
 
 export function parseDiffRouteSearch(search: Record<string, unknown>): DiffRouteSearch {
-  const splitViewId = normalizeSearchString(search.splitViewId);
   const panelRaw = normalizeSearchString(search.panel);
   const panel: ChatRightPanel | undefined = panelRaw === "diff" ? "diff" : undefined;
   const diff = panel === "diff" || isDiffOpenValue(search.diff) ? "1" : undefined;
@@ -56,7 +53,6 @@ export function parseDiffRouteSearch(search: Record<string, unknown>): DiffRoute
   const diffFilePath = diff ? normalizeSearchString(search.diffFilePath) : undefined;
 
   return {
-    ...(splitViewId ? { splitViewId } : {}),
     ...(resolvedPanel ? { panel: resolvedPanel } : {}),
     ...(diff ? { diff } : {}),
     ...(diffTurnId ? { diffTurnId } : {}),

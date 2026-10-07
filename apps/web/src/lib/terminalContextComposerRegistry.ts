@@ -4,49 +4,36 @@ export type TerminalContextComposerTarget = (selection: TerminalContextSelection
 
 type RegistryListener = () => void;
 
-const targetsByPaneScopeId = new Map<string, TerminalContextComposerTarget>();
-const listenersByPaneScopeId = new Map<string, Set<RegistryListener>>();
+let currentTarget: TerminalContextComposerTarget | undefined;
+const listeners = new Set<RegistryListener>();
 
-function notifyTargetChanged(paneScopeId: string): void {
-  const listeners = listenersByPaneScopeId.get(paneScopeId);
-  if (!listeners) return;
+function notifyTargetChanged(): void {
   for (const listener of listeners) {
     listener();
   }
 }
 
 export function registerTerminalContextComposerTarget(
-  paneScopeId: string,
   target: TerminalContextComposerTarget,
 ): () => void {
-  targetsByPaneScopeId.set(paneScopeId, target);
-  notifyTargetChanged(paneScopeId);
+  currentTarget = target;
+  notifyTargetChanged();
   return () => {
-    if (targetsByPaneScopeId.get(paneScopeId) !== target) {
+    if (currentTarget !== target) {
       return;
     }
-    targetsByPaneScopeId.delete(paneScopeId);
-    notifyTargetChanged(paneScopeId);
+    currentTarget = undefined;
+    notifyTargetChanged();
   };
 }
 
-export function getTerminalContextComposerTarget(
-  paneScopeId: string,
-): TerminalContextComposerTarget | undefined {
-  return targetsByPaneScopeId.get(paneScopeId);
+export function getTerminalContextComposerTarget(): TerminalContextComposerTarget | undefined {
+  return currentTarget;
 }
 
-export function subscribeTerminalContextComposerTarget(
-  paneScopeId: string,
-  listener: RegistryListener,
-): () => void {
-  const listeners = listenersByPaneScopeId.get(paneScopeId) ?? new Set<RegistryListener>();
+export function subscribeTerminalContextComposerTarget(listener: RegistryListener): () => void {
   listeners.add(listener);
-  listenersByPaneScopeId.set(paneScopeId, listeners);
   return () => {
     listeners.delete(listener);
-    if (listeners.size === 0) {
-      listenersByPaneScopeId.delete(paneScopeId);
-    }
   };
 }

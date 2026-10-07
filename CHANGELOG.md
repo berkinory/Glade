@@ -66,6 +66,7 @@
 
 - Removed the browser's saved-login vault; agents use the sign-ins you make in the browser panel instead.
 - Removed the source-code view from visual replies.
+- Removed chat split views; terminal splits remain.
 
 ## 0.2.0 - 2026-10-06
 

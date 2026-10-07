@@ -31,7 +31,7 @@ export const TOUR_CARDS: ReadonlyArray<TourCard> = [
     title: "One task, one isolated environment",
     description:
       "Each task owns one body of work: its conversation, provider session, working environment, tool activity, and Git changes. Run tasks in parallel on managed Git worktrees so two agents never edit the same checkout.",
-    highlights: ["Managed worktrees", "Forks from any message", "Subagents and split views"],
+    highlights: ["Managed worktrees", "Forks from any message", "Subagents"],
     docsHref: `${GLADE_DOCS_URL}/core-concepts.md`,
     icon: WorkflowCircle04Icon,
   },

@@ -51,13 +51,6 @@ export function toggleChatTerminalVisibility(
   setChatTerminalOpen(ctx, !state.terminalOpen);
 }
 
-export function expandChatTerminalWorkspace(ctx: ChatTerminalActionContext): void {
-  if (!ctx.activeThreadId) return;
-  terminalStore().setTerminalPresentationMode(ctx.activeThreadId, "workspace");
-  terminalStore().setTerminalWorkspaceLayout(ctx.activeThreadId, "both");
-  setChatTerminalWorkspaceTab(ctx, "terminal");
-}
-
 export function collapseChatTerminalWorkspace(ctx: ChatTerminalActionContext): void {
   if (ctx.activeThreadId) terminalStore().setTerminalPresentationMode(ctx.activeThreadId, "drawer");
 }

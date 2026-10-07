@@ -39,7 +39,6 @@ import { useHandleNewThread } from "~/hooks/useHandleNewThread";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
 import { useTheme } from "~/hooks/useTheme";
 import { useThreadHandoff } from "~/hooks/useThreadHandoff";
-import { SINGLE_CHAT_PANE_SCOPE_ID } from "~/lib/chatPaneScope";
 import { gitCreateDetachedWorktreeMutationOptions } from "~/lib/gitReactQuery";
 import { useStore } from "~/store";
 import {
@@ -54,21 +53,9 @@ import { ChatViewProps, EMPTY_DISMISSED_PROVIDER_HEALTH_BANNERS } from "./chatVi
 const EMPTY_THREAD_MENTION_SOURCES: readonly ComposerThreadMentionSource[] = [];
 
 export function useChatSessionController(props: ChatViewProps) {
-  const {
-    threadId,
-    hideHeader: hideHeaderProp,
-    paneScopeId: paneScopeIdProp,
-    surfaceMode: surfaceModeProp,
-    isFocusedPane: isFocusedPaneProp,
-  } = props;
-
-  const paneScopeId = paneScopeIdProp ?? SINGLE_CHAT_PANE_SCOPE_ID;
+  const { threadId, hideHeader: hideHeaderProp } = props;
 
   const hideHeader = hideHeaderProp ?? false;
-
-  const surfaceMode = surfaceModeProp ?? "single";
-
-  const isFocusedPane = isFocusedPaneProp ?? true;
 
   const markThreadVisited = useStore((store) => store.markThreadVisited);
 
@@ -116,8 +103,6 @@ export function useChatSessionController(props: ChatViewProps) {
   const createWorktreeMutation = useMutation(
     gitCreateDetachedWorktreeMutationOptions({ queryClient }),
   );
-
-  const isInactiveSplitPane = surfaceMode === "split" && !isFocusedPane;
 
   const {
     composerDraft,
@@ -449,10 +434,7 @@ export function useChatSessionController(props: ChatViewProps) {
   return {
     taskListSidebarOpen,
     setTaskListSidebarOpen,
-    paneScopeId,
     hideHeader,
-    surfaceMode,
-    isFocusedPane,
     markThreadVisited,
     syncServerShellSnapshot,
     setStoreThreadError,
@@ -474,7 +456,6 @@ export function useChatSessionController(props: ChatViewProps) {
     resolvedTheme,
     queryClient,
     createWorktreeMutation,
-    isInactiveSplitPane,
     composerDraft,
     prompt,
     composerImages,

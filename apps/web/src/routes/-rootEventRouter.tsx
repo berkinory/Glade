@@ -3,9 +3,7 @@ import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
-import { parseDiffRouteSearch } from "../diffRouteSearch";
 import { readNativeApi } from "../nativeApi";
-import { resolveSplitViewThreadIds, selectSplitView, useSplitViewStore } from "../splitViewStore";
 import { useStore } from "../store";
 import { arraysShallowEqual } from "../storeNormalization.shared";
 import { EMPTY_THREAD_IDS } from "../storeState";
@@ -32,21 +30,9 @@ export function EventRouter() {
   const serverThreadIds = useStore((store) => store.threadIds ?? EMPTY_THREAD_IDS);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { pathname, threadId: routeThreadId, search } = useCommittedChatRoute();
+  const { pathname, threadId: routeThreadId } = useCommittedChatRoute();
 
-  const routeSearch = parseDiffRouteSearch(search);
-  const activeSplitView = useSplitViewStore(
-    useMemo(() => selectSplitView(routeSearch.splitViewId ?? null), [routeSearch.splitViewId]),
-  );
-  const hostThreadIds = useMemo(
-    () =>
-      activeSplitView
-        ? resolveSplitViewThreadIds(activeSplitView)
-        : routeThreadId
-          ? [routeThreadId]
-          : [],
-    [activeSplitView, routeThreadId],
-  );
+  const hostThreadIds = useMemo(() => (routeThreadId ? [routeThreadId] : []), [routeThreadId]);
   const retainedThreadIds = useRetainedThreadDetailIds();
   const serverThreadIdSet = useMemo(() => new Set(serverThreadIds), [serverThreadIds]);
 

@@ -46,7 +46,7 @@ export function useHandleNewThread() {
   const providerStatusesReconciled = hasReconciledServerProviderStatuses(queryClient);
   const navigate = useNavigate();
   const router = useRouter();
-  const { activeDraftThread, activeProjectId, activeThread, focusedThreadId, routeThreadId } =
+  const { activeDraftThread, activeProjectId, activeThread, routeThreadId } =
     useFocusedChatContext();
   const openChatThreadPage = useTerminalStateStore((store) => store.openChatThreadPage);
   const clearTerminalState = useTerminalStateStore((store) => store.clearTerminalState);
@@ -134,8 +134,8 @@ export function useHandleNewThread() {
       pending.submittingThreadIds.has(id) || pending.localDispatchByThreadId[id] != null;
 
     const storedDraftThreadCandidate = getDraftThreadByProjectId(projectId);
-    const latestActiveDraftThreadCandidate: DraftThreadState | null = focusedThreadId
-      ? getDraftThread(focusedThreadId)
+    const latestActiveDraftThreadCandidate: DraftThreadState | null = routeThreadId
+      ? getDraftThread(routeThreadId)
       : null;
     const storedDraftThread =
       !shouldForceFreshThread &&
@@ -146,15 +146,15 @@ export function useHandleNewThread() {
     const latestActiveDraftThread: DraftThreadState | null =
       !shouldForceFreshThread &&
       latestActiveDraftThreadCandidate &&
-      focusedThreadId !== null &&
-      !isPreparing(focusedThreadId)
+      routeThreadId !== null &&
+      !isPreparing(routeThreadId)
         ? latestActiveDraftThreadCandidate
         : null;
     const bootstrapPlan = resolveThreadBootstrapPlan({
       storedDraftThread,
       latestActiveDraftThread,
       projectId,
-      routeThreadId: focusedThreadId,
+      routeThreadId,
     });
 
     const projectDefaultModelSelection =
@@ -212,7 +212,7 @@ export function useHandleNewThread() {
         setProjectDraftThreadId(projectId, bootstrapPlan.threadId);
         restoreComposerDraft(bootstrapPlan.threadId, preservedComposerDraft);
         openChatThreadPage(bootstrapPlan.threadId);
-        if (focusedThreadId === bootstrapPlan.threadId) {
+        if (routeThreadId === bootstrapPlan.threadId) {
           return bootstrapPlan.threadId;
         }
         await navigate({
@@ -300,7 +300,7 @@ export function useHandleNewThread() {
     activeDraftThread,
     activeProjectId,
     activeThread,
-    activeContextThreadId: focusedThreadId,
+    activeContextThreadId: routeThreadId,
     handleNewThread,
     projects,
     routeThreadId,

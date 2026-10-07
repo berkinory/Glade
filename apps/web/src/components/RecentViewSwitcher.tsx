@@ -1,10 +1,4 @@
-import {
-  MessageCircleIcon,
-  PanelLeftIcon,
-  PinFilledIcon,
-  PuzzleIcon,
-  SettingsIcon,
-} from "~/lib/icons";
+import { MessageCircleIcon, PinFilledIcon, PuzzleIcon, SettingsIcon } from "~/lib/icons";
 import type { KeybindingShortcut } from "@glade/contracts/settings/keybindings";
 import { formatShortcutLabel } from "../keybindings";
 import { cn } from "../lib/utils";
@@ -125,14 +119,9 @@ export function RecentViewSwitcher(props: {
                     Current
                   </span>
                 ) : null}
-                {entry.isSplit || entry.isPinned ? (
+                {entry.isPinned ? (
                   <div className="flex shrink-0 items-center gap-1.5 text-muted-foreground">
-                    {entry.isSplit ? (
-                      <PanelLeftIcon className="size-3.5" aria-label="Split view" />
-                    ) : null}
-                    {entry.isPinned ? (
-                      <PinFilledIcon className="size-3.5" aria-label="Pinned" />
-                    ) : null}
+                    <PinFilledIcon className="size-3.5" aria-label="Pinned" />
                   </div>
                 ) : null}
               </div>

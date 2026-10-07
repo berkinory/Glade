@@ -10,7 +10,6 @@ import { useComposerDraftStore } from "../composerDraftStore";
 import { useHandleNewChat } from "../hooks/useHandleNewChat";
 import { isHomeChatContainerProject } from "../lib/chatProjects";
 import { VOID_SPACE_KEY } from "../lib/spaceGrouping";
-import { resolveSplitViewThreadIds, useSplitViewStore } from "../splitViewStore";
 import { EMPTY_THREAD_IDS } from "../storeState";
 import { useStore } from "../store";
 import { useSpacesUiStore } from "../spacesUiStore";
@@ -62,7 +61,7 @@ function ChatIndexRouteView() {
           workspacePaths,
         };
 
-  const resolveRestoreRoute: RestoreRouteResolver = ({ availableSplitViewIds }) => {
+  const resolveRestoreRoute: RestoreRouteResolver = () => {
     const rememberedDraftId = landingSpace
       ? useSpacesUiStore.getState().getLastDraftThreadId(landingSpace.spaceId)
       : null;
@@ -79,18 +78,11 @@ function ChatIndexRouteView() {
         ? { threadId: rememberedDraftId }
         : null
       : readSidebarUiState().lastThreadRoute;
-    const rememberedSplitView = lastThreadRoute?.splitViewId
-      ? useSplitViewStore.getState().splitViewsById[lastThreadRoute.splitViewId]
-      : undefined;
     return resolveChatIndexRestoreRoute({
       lastThreadRoute,
-      availableSplitViewIds,
       threadIds,
       sidebarThreadSummaryById,
       draftProjectIdByThreadId,
-      rememberedSplitViewThreadIds: rememberedSplitView
-        ? resolveSplitViewThreadIds(rememberedSplitView)
-        : undefined,
       landingSpace,
     });
   };

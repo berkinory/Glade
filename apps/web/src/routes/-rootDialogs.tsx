@@ -17,14 +17,12 @@ import { WhatsNewPopoutCard } from "../whatsNew/WhatsNewPopoutCard";
 
 export function GlobalShortcutsDialog() {
   const [open, setOpen] = useState(false);
-  const { focusedThreadId } = useFocusedChatContext();
+  const { routeThreadId } = useFocusedChatContext();
   const serverConfigQuery = useQuery(serverConfigQueryOptions());
   const keybindings = serverConfigQuery.data?.keybindings ?? [];
   const platform = getNavigatorPlatform();
   const activeThreadTerminalState = useTerminalStateStore((state) =>
-    focusedThreadId
-      ? selectThreadTerminalState(state.terminalStateByThreadId, focusedThreadId)
-      : null,
+    routeThreadId ? selectThreadTerminalState(state.terminalStateByThreadId, routeThreadId) : null,
   );
   const terminalOpen = activeThreadTerminalState?.terminalOpen ?? false;
   const terminalWorkspaceOpen = shouldRenderTerminalWorkspace({

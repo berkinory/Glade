@@ -48,7 +48,6 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     isOnSettings,
     appSettings,
     routeThreadId,
-    routeSearch,
     activityVisibleThreadIds,
     suppressProjectClickAfterDragRef,
     optimisticPinnedStateByProjectId,
@@ -232,27 +231,13 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     if (isOnSettings || routeThreadId === null) {
       return;
     }
-    const nextLastThreadRoute = {
-      threadId: routeThreadId,
-      ...(routeSearch.splitViewId
-        ? {
-            splitViewId: routeSearch.splitViewId,
-          }
-        : {}),
-    };
     const settle = window.setTimeout(() => {
-      setLastThreadRoute((current) => {
-        if (
-          current?.threadId === nextLastThreadRoute.threadId &&
-          current?.splitViewId === nextLastThreadRoute.splitViewId
-        ) {
-          return current;
-        }
-        return nextLastThreadRoute;
-      });
+      setLastThreadRoute((current) =>
+        current?.threadId === routeThreadId ? current : { threadId: routeThreadId },
+      );
     }, 0);
     return () => window.clearTimeout(settle);
-  }, [isOnSettings, routeSearch.splitViewId, routeThreadId, setLastThreadRoute]);
+  }, [isOnSettings, routeThreadId, setLastThreadRoute]);
   const handleThreadClick = (
     event: MouseEvent,
     threadId: ThreadId,

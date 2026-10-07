@@ -1,10 +1,9 @@
 import { terminalRuntimeEnv } from "~/lib/terminalRuntimeEnv";
 import { type ProjectId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { resolveThreadWorkspaceCwd } from "@glade/shared/threads/threadEnvironment";
-import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 
 import { useTerminalSurfaceController } from "~/hooks/useTerminalSurfaceController";
-import { SINGLE_CHAT_PANE_SCOPE_ID } from "~/lib/chatPaneScope";
 import {
   getTerminalContextComposerTarget,
   subscribeTerminalContextComposerTarget,
@@ -52,19 +51,10 @@ function DockTerminalPane(props: {
   const { terminalState } = terminal;
   const setTerminalOpen = useTerminalStateStore((store) => store.setTerminalOpen);
   const closingFinalTerminalRef = useRef(false);
-  const subscribeToComposerTarget = useCallback(
-    (listener: () => void) =>
-      subscribeTerminalContextComposerTarget(SINGLE_CHAT_PANE_SCOPE_ID, listener),
-    [],
-  );
-  const readComposerTarget = useCallback(
-    () => getTerminalContextComposerTarget(SINGLE_CHAT_PANE_SCOPE_ID),
-    [],
-  );
   const composerTarget = useSyncExternalStore(
-    subscribeToComposerTarget,
-    readComposerTarget,
-    readComposerTarget,
+    subscribeTerminalContextComposerTarget,
+    getTerminalContextComposerTarget,
+    getTerminalContextComposerTarget,
   );
 
   useEffect(() => {

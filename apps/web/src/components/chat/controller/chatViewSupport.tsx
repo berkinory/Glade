@@ -8,7 +8,6 @@ import { type EditorId } from "@glade/contracts/settings/editor";
 import { type ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import { lazy } from "react";
 import { type RateLimitStatus } from "~/components/chat/RateLimitBanner";
-import { type SplitViewPanePanelState } from "~/splitViewModel";
 import { type ChatMessage, type Thread } from "~/types";
 export const ThreadTerminalDrawer = lazy(() => import("~/components/ThreadTerminalDrawer"));
 export const EMPTY_ACTIVITIES: OrchestrationThreadActivity[] = [];
@@ -64,16 +63,10 @@ export function warnVoiceGuard(event: string, details?: Record<string, unknown>)
 export interface ChatViewProps {
   threadId: ThreadId;
   hideHeader?: boolean;
-  paneScopeId?: string;
-  surfaceMode?: "single" | "split";
-  isFocusedPane?: boolean;
-  panelState?: SplitViewPanePanelState;
+  diffPanelOpen?: boolean;
   onToggleDiffPanel?: () => void;
   onToggleRightDock?: () => void;
   onToggleTerminal?: () => void;
   onOpenTerminal?: () => void;
   onOpenTurnDiffPanel?: (turnId: TurnId, filePath?: string) => void;
-  onSplitSurface?: () => void;
-  onMaximizeSurface?: () => void;
-  onChangeThreadInSplitPane?: () => void;
 }

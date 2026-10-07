@@ -7,7 +7,6 @@ import { createChatTerminalFromShortcut } from "./chatTerminalActions";
 export function useChatTerminalState(input: {
   threadId: ThreadId;
   activeThreadId: ThreadId | null;
-  isFocusedPane: boolean;
   onOpenTerminal?: (() => void) | undefined;
 }) {
   const { onOpenTerminal } = input;
@@ -31,7 +30,7 @@ export function useChatTerminalState(input: {
 
   useEffect(() => {
     const onMenuAction = window.desktopBridge?.onMenuAction;
-    if (typeof onMenuAction !== "function" || !input.isFocusedPane) return;
+    if (typeof onMenuAction !== "function") return;
     return onMenuAction((action) => {
       if (action === "new-terminal-tab") {
         createChatTerminalFromShortcut({
@@ -41,13 +40,7 @@ export function useChatTerminalState(input: {
         onOpenTerminal?.();
       }
     });
-  }, [
-    input.activeThreadId,
-    input.isFocusedPane,
-    onOpenTerminal,
-    requestTerminalFocus,
-    terminalState,
-  ]);
+  }, [input.activeThreadId, onOpenTerminal, requestTerminalFocus, terminalState]);
 
   return {
     terminalState,

@@ -6,7 +6,6 @@ import { useNavigate } from "@tanstack/react-router";
 import {
   lazy,
   type ReactNode,
-  startTransition,
   Suspense,
   useCallback,
   useEffect,
@@ -17,10 +16,8 @@ import {
 
 import { useComposerDraftStore } from "../../composerDraftStore";
 import type { DiffRouteSearch } from "../../diffRouteSearch";
-import { stripDiffSearchParams } from "../../diffRouteSearch";
 import { useDockPaneRuntimeActivation } from "../../hooks/useDockPaneRuntimeActivation";
 import { appendChatFileReference, type ChatFileReference } from "../../lib/chatReferences";
-import { SINGLE_CHAT_PANE_SCOPE_ID } from "../../lib/chatPaneScope";
 import type { DockPaneRuntimeMode } from "../../lib/dockPaneActivation";
 import { canComposerHandlePanelWidth } from "../../lib/panelResize";
 import {
@@ -40,15 +37,8 @@ import {
   type RightDockPane,
   type RightDockPaneKind,
 } from "../../rightDockStore.logic";
-import { useSplitViewStore } from "../../splitViewStore";
-import {
-  type SplitDirection,
-  type SplitDropSide,
-  type SplitViewPanePanelState,
-} from "../../splitViewModel";
 import { useStore } from "../../store";
 import { createProjectSelector, createThreadWorkspaceMetadataSelector } from "../../storeSelectors";
-import { ChatPaneDropOverlay } from "../chat-drop-overlay/ChatPaneDropOverlay";
 import { DeferredChatView } from "./ChatThreadSurfacePrimitives";
 import { MainWorkspace } from "./MainWorkspace";
 import {
@@ -86,8 +76,6 @@ const DockExplorerPane = lazy(() =>
 );
 const RIGHT_SIDEBAR_DEFAULT_WIDTH = "22rem";
 
-const allowAnySplitDirection = (_direction: SplitDirection) => true;
-
 function shouldAcceptDockWidth({
   currentWidth,
   nextWidth,
@@ -101,8 +89,6 @@ function shouldAcceptDockWidth({
   const previousSidebarWidth = wrapper.style.getPropertyValue("--sidebar-width");
   return canComposerHandlePanelWidth({
     nextWidth,
-
-    paneScopeId: SINGLE_CHAT_PANE_SCOPE_ID,
     applyWidth: (width) => {
       wrapper.style.setProperty("--sidebar-width", `${width}px`);
     },
@@ -127,8 +113,6 @@ export function SingleChatSurface(props: {
   projectId: ProjectId | null;
 }) {
   const navigate = useNavigate();
-  const createSplitView = useSplitViewStore((store) => store.createFromThread);
-  const createSplitViewFromDrop = useSplitViewStore((store) => store.createFromDrop);
   const dockState = useRightDockStore(
     useMemo(() => selectRightDockState(props.threadId), [props.threadId]),
   );
@@ -213,12 +197,7 @@ export function SingleChatSurface(props: {
       activePane,
     });
 
-  const chatPanelState: SplitViewPanePanelState = {
-    panel: activePane?.kind === "git" && activePane.sourceControlView === "changes" ? "diff" : null,
-    diffTurnId: activePane?.kind === "git" ? activePane.diffTurnId : null,
-    diffFilePath: activePane?.kind === "git" ? activePane.diffFilePath : null,
-    hasOpenedPanel: dockState.panes.length > 0,
-  };
+  const diffPanelOpen = activePane?.kind === "git" && activePane.sourceControlView === "changes";
 
   const handleToggleDiff = () => {
     requestImmediateDockHydration("git");
@@ -338,46 +317,6 @@ export function SingleChatSurface(props: {
     }),
     [workspaceRoot, requestImmediateDockHydration, openPane, props.threadId, prefetchOpenerFile],
   );
-  const handleSplitSurface = () => {
-    if (!props.projectId) return;
-    const splitViewId = createSplitView({
-      sourceThreadId: props.threadId,
-      ownerProjectId: props.projectId,
-    });
-    startTransition(() => {
-      void navigate({
-        to: "/$threadId",
-        params: { threadId: props.threadId },
-        replace: true,
-        search: () => ({ splitViewId }),
-      });
-    });
-  };
-
-  const handleDropThread = (payload: {
-    threadId: ThreadId;
-    direction: SplitDirection;
-    side: SplitDropSide;
-  }) => {
-    if (!props.projectId) return;
-    if (payload.threadId === props.threadId) return;
-    const splitViewId = createSplitViewFromDrop({
-      sourceThreadId: props.threadId,
-      ownerProjectId: props.projectId,
-      droppedThreadId: payload.threadId,
-      direction: payload.direction,
-      side: payload.side,
-    });
-    startTransition(() => {
-      void navigate({
-        to: "/$threadId",
-        params: { threadId: payload.threadId },
-        replace: true,
-        search: () => ({ splitViewId }),
-      });
-    });
-  };
-
   useEffect(() => {
     const { nextAppliedSearchKey, panelPatch } = resolveRoutePanelBootstrap({
       scopeId: props.threadId,
@@ -405,7 +344,7 @@ export function SingleChatSurface(props: {
       to: "/$threadId",
       params: { threadId: props.threadId },
       replace: true,
-      search: (previous) => stripDiffSearchParams(previous),
+      search: {},
     });
   }, [
     navigate,
@@ -415,8 +354,6 @@ export function SingleChatSurface(props: {
     requestImmediateDockHydration,
     setDockOpen,
   ]);
-
-  const excludedThreadIds = new Set<ThreadId>([props.threadId]);
 
   const openGitPreview = (tab: WorkspaceReviewTab, preview: boolean) => {
     const replacesPreview =
@@ -556,12 +493,7 @@ export function SingleChatSurface(props: {
       <div
         className={cn(CHAT_MAIN_VIEWPORT_SHELL_CLASS_NAME, CHAT_MAIN_CONTENT_SURFACE_CLASS_NAME)}
       >
-        <ChatPaneDropOverlay
-          canDropInDirection={allowAnySplitDirection}
-          excludedThreadIds={excludedThreadIds}
-          onDrop={handleDropThread}
-          className="flex h-full min-h-0 min-w-0 flex-1"
-        >
+        <div className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col">
           <RouteInsetSurface surfaceClassName={CHAT_BACKGROUND_CLASS_NAME}>
             <MainWorkspace
               key={props.threadId}
@@ -574,22 +506,18 @@ export function SingleChatSurface(props: {
             >
               <DeferredChatView
                 threadId={props.threadId}
-                paneScopeId={SINGLE_CHAT_PANE_SCOPE_ID}
                 deferMount={isBrandNewDraftThread}
-                surfaceMode="single"
-                isFocusedPane
-                panelState={chatPanelState}
+                diffPanelOpen={diffPanelOpen}
                 onToggleDiff={handleToggleDiff}
                 onToggleRightDock={handleToggleRightDock}
                 onToggleTerminal={handleToggleTerminalPane}
                 onOpenTerminal={() => handleAddDockPane("terminal")}
                 onOpenTurnDiff={handleOpenTurnDiff}
-                onSplitSurface={handleSplitSurface}
               />
             </MainWorkspace>
           </RouteInsetSurface>
-        </ChatPaneDropOverlay>
-        <BrowserPanel threadId={props.threadId} paneScopeId={SINGLE_CHAT_PANE_SCOPE_ID} />
+        </div>
+        <BrowserPanel threadId={props.threadId} />
         <RightDock
           state={sidebarState}
           initialWidth="fixed"

@@ -1,4 +1,3 @@
-import { useSplitViewStore } from "../splitViewStore";
 import { useSidebarStateStore } from "../sidebarStateStore";
 import { pinActionLabel } from "~/lib/pin";
 import { THREAD_CONTEXT_MENU_ICONS } from "~/lib/contextMenuIcons";
@@ -19,7 +18,6 @@ import { quotePosixShellArgument } from "../lib/shellQuote";
 import { DEFAULT_THREAD_TERMINAL_ID, type SidebarThreadSummary } from "../types";
 import { selectThreadTerminalState, useTerminalStateStore } from "../terminalStateStore";
 import { toastManager } from "./ui/toast";
-import type { LastThreadRoute } from "../chatRouteRestore";
 import { useCopyPathToClipboard, useCopyThreadIdToClipboard } from "~/hooks/useCopyToClipboard";
 import { useThreadActivationController } from "../hooks/useThreadActivationController";
 import { useThreadDetailPrewarm } from "../threadDetailPrewarm";
@@ -30,8 +28,6 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
     navigate,
     appSettings,
     routeThreadId,
-    routeSearch,
-    activeSplitView,
     setRenameDialogThreadId,
     setProjectContextMenuState,
     setOptimisticActiveThreadId,
@@ -49,20 +45,16 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
     projectCwdById,
   } = context;
   const terminalStateByThreadId = useTerminalStateStore((state) => state.terminalStateByThreadId);
-  const splitViewsById = useSplitViewStore((state) => state.splitViewsById);
   const sidebarThreadSummaryById = useStore((state) => state.sidebarThreadSummaryById);
 
   const markThreadUnread = useStore((state) => state.markThreadUnread);
   const openChatThreadPage = useTerminalStateStore((state) => state.openChatThreadPage);
   const openTerminalThreadPage = useTerminalStateStore((state) => state.openTerminalThreadPage);
-  const setSplitFocusedPane = useSplitViewStore((state) => state.setFocusedPane);
 
   const selectedThreadIds = useSidebarStateStore((state) => state.selectedThreadIds);
   const clearSelection = useSidebarStateStore((state) => state.clearSelection);
   const removeFromSelection = useSidebarStateStore((state) => state.removeFromSelection);
   const setSelectionAnchor = useSidebarStateStore((state) => state.setAnchor);
-
-  const setLastThreadRoute = useSidebarStateStore((state) => state.setLastThreadRoute);
 
   const commitRename = async (threadId: ThreadId, newTitle: string, originalTitle: string) => {
     const outcome = await dispatchThreadRename({
@@ -434,26 +426,17 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
     removeFromSelection(ids);
   };
 
-  const rememberLastThreadRouteNow = (nextLastThreadRoute: LastThreadRoute) => {
-    setLastThreadRoute(nextLastThreadRoute);
-  };
-
   const { activateThreadFromSidebarIntent } = useThreadActivationController({
-    activeSplitView,
     clearSelection,
     navigate,
     openChatThreadPage,
     openTerminalThreadPage,
     prewarmThreadDetailForIntent,
-    rememberLastThreadRouteNow,
-    routeSplitViewId: routeSearch.splitViewId,
     routeThreadId,
     selectedThreadCount: selectedThreadIds.size,
     setOptimisticActiveThreadId,
     setSelectionAnchor,
-    setSplitFocusedPane,
     sidebarThreadSummaryById,
-    splitViewsById,
     terminalStateByThreadId,
   });
 

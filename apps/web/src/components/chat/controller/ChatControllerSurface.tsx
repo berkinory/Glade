@@ -50,8 +50,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     desktopTopBarWindowControlsGutterClassName,
     isDragOverComposer,
     hideHeader,
-    surfaceMode,
-    isFocusedPane,
     threadFindOpen,
     threadFindFocusNonce,
     setThreadFindOpen,
@@ -75,7 +73,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     pullRequestDialogState,
     taskListSidebarOpen,
     setTaskListSidebarOpen,
-    isInactiveSplitPane,
     handleNewThread,
     expandedImage,
     setExpandedImage,
@@ -137,7 +134,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     diffPanelShortcutLabel,
     repoDiffTotals,
     showGitActions,
-    chatSplitShortcutLabel,
     onToggleDiff,
     shouldRenderChatPaneContent,
     shouldShowProviderHealthBanner,
@@ -172,14 +168,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     closeExpandedImage,
     navigateExpandedImage,
   } = controller.environment;
-  const {
-    onToggleRightDock,
-    onSplitSurface,
-    onMaximizeSurface,
-    onChangeThreadInSplitPane,
-    onOpenTurnDiffPanel,
-    threadId,
-  } = controller.props;
+  const { onToggleRightDock, onOpenTurnDiffPanel, threadId } = controller.props;
   const { setThreadError } = controller.composer;
   const navigate = useNavigate();
   const onOpenTurnDiff = useCallback(
@@ -208,7 +197,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
       void navigate({
         to: "/$threadId",
         params: { threadId: nextThreadId },
-        search: (previous) => stripDiffSearchParams(previous),
+        search: {},
       });
     },
     [navigate],
@@ -399,32 +388,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
           rightDockOpen={rightDockOpen}
           {...(onToggleRightDock ? { onToggleRightDock } : {})}
           environment={environmentHeaderState}
-          surfaceMode={surfaceMode}
-          chatLayoutAction={
-            surfaceMode === "single" && onSplitSurface
-              ? {
-                  kind: "split",
-                  label: "Split chat",
-                  shortcutLabel: chatSplitShortcutLabel,
-                  onClick: onSplitSurface,
-                }
-              : surfaceMode === "split" && isFocusedPane && onMaximizeSurface
-                ? {
-                    kind: "maximize",
-                    label: "Expand this chat",
-                    shortcutLabel: null,
-                    onClick: onMaximizeSurface,
-                  }
-                : null
-          }
-          changeThreadAction={
-            surfaceMode === "split" && isFocusedPane && onChangeThreadInSplitPane
-              ? {
-                  label: "Change thread",
-                  onClick: onChangeThreadInSplitPane,
-                }
-              : null
-          }
           onToggleDiff={onToggleDiff}
           onNavigateToThread={onNavigateToThread}
           onRenameThread={() => setRenameDialogOpen(true)}
@@ -743,7 +706,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
         }}
         onConfirm={() => void confirmProviderHandoff()}
       />
-      {!isInactiveSplitPane && activeProject ? (
+      {activeProject ? (
         <TranscriptSelectionActionLayer
           key={threadId}
           action={pendingTranscriptSelectionAction}

@@ -1,15 +1,11 @@
-import { SINGLE_CHAT_PANE_SCOPE_ID } from "./chatPaneScope";
-
 const COMPOSER_COMPACT_MIN_LEFT_CONTROLS_WIDTH_PX = 160;
 
 export function canComposerHandlePanelWidth(input: {
   nextWidth: number;
-  paneScopeId?: string;
   applyWidth: (width: number) => void;
   resetWidth: () => void;
 }): boolean {
-  const paneScopeId = input.paneScopeId ?? SINGLE_CHAT_PANE_SCOPE_ID;
-  const composerForm = findComposerForm(paneScopeId);
+  const composerForm = document.querySelector<HTMLElement>("[data-chat-composer-form='true']");
   if (!composerForm) return true;
 
   const composerViewport = findNearestMeasurableAncestor(composerForm);
@@ -46,16 +42,6 @@ export function canComposerHandlePanelWidth(input: {
   input.resetWidth();
 
   return !hasComposerOverflow && !overflowsViewport && !violatesMinimumComposerWidth;
-}
-
-function findComposerForm(paneScopeId: string): HTMLElement | null {
-  const composerForms = document.querySelectorAll<HTMLElement>("[data-chat-composer-form='true']");
-  for (const composerForm of composerForms) {
-    if (composerForm.dataset.chatPaneScope === paneScopeId) {
-      return composerForm;
-    }
-  }
-  return null;
 }
 
 export function createPanelResizeOverlay(cursor = "col-resize"): HTMLDivElement {

@@ -86,7 +86,6 @@ export function ChatComposerSurface({
   } = controller.transcript;
   const {
     composerFormRef,
-    paneScopeId,
     taskListSidebarOpen,
     setTaskListSidebarOpen,
     workflowRunCardCompact,
@@ -257,7 +256,6 @@ export function ChatComposerSurface({
         }}
         className="relative z-10 w-full overflow-visible"
         data-chat-composer-form="true"
-        data-chat-pane-scope={paneScopeId}
       >
         <ComposerColumnFrame>
           {}

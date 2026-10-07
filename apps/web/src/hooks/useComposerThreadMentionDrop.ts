@@ -6,7 +6,6 @@ import {
   getActiveThreadDragId,
   isThreadDragTransfer,
   readThreadDragPayload,
-  THREAD_MENTION_DROPZONE_ATTRIBUTE,
 } from "~/lib/threadDrag";
 
 // A chat cannot mention itself, so its own row must not light the composer up.
@@ -71,7 +70,6 @@ export function useComposerThreadMentionDrop(input: {
   return {
     isThreadDragOverComposer,
     threadMentionDropzoneProps: {
-      [THREAD_MENTION_DROPZONE_ATTRIBUTE]: "true",
       onDragEnter: onDragEnterOrOver,
       onDragOver: onDragEnterOrOver,
       onDragLeave,

@@ -59,7 +59,6 @@ export function useChatComposerController({
     composerCursor,
     composerTerminalContexts,
     insertComposerDraftTerminalContext,
-    paneScopeId,
     addComposerDraftPastedTexts,
   } = session;
   const { threadId } = useChatThreadContext();
@@ -335,8 +334,8 @@ export function useChatComposerController({
     if (!canAddTerminalContextToChat) {
       return;
     }
-    return registerTerminalContextComposerTarget(paneScopeId, addRegisteredTerminalContextToDraft);
-  }, [addRegisteredTerminalContextToDraft, canAddTerminalContextToChat, paneScopeId]);
+    return registerTerminalContextComposerTarget(addRegisteredTerminalContextToDraft);
+  }, [addRegisteredTerminalContextToDraft, canAddTerminalContextToChat]);
 
   const addPastedTextToDraft = (text: string) => {
     if (!activeThread) {

@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import { useSplitViewStore } from "../splitViewStore";
 import { useStore } from "../store";
 import { useEffect, startTransition } from "react";
 import { MAX_PINNED_PROJECTS } from "@glade/contracts/orchestration/threadEntities";
@@ -74,7 +73,6 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
     projectByIdRef,
   } = context;
   const draftThreadsByThreadId = useComposerDraftStore((state) => state.draftThreadsByThreadId);
-  const splitViewsById = useSplitViewStore((state) => state.splitViewsById);
 
   const setProjectExpanded = useStore((state) => state.setProjectExpanded);
 
@@ -387,9 +385,6 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
     return resolveSettingsBackTarget({
       lastThreadRoute,
       availableThreadIds,
-      availableSplitViewIds: new Set(
-        Object.keys(splitViewsById).filter((splitViewId) => splitViewsById[splitViewId]),
-      ),
       latestThreadId: latestThread?.id ?? null,
     });
   };
@@ -420,9 +415,7 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
       void navigate({
         to: "/$threadId",
         params: { threadId: ThreadId.makeUnsafe(target.threadId) },
-        search: () => ({
-          splitViewId: target.splitViewId,
-        }),
+        search: () => ({}),
       });
     });
     return true;

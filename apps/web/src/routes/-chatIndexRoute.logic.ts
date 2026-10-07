@@ -15,7 +15,6 @@ export interface ChatIndexLandingSpace {
 
 export function resolveChatIndexRestoreRoute(input: {
   readonly lastThreadRoute: LastThreadRoute | null;
-  readonly availableSplitViewIds: ReadonlySet<string>;
   readonly threadIds: readonly ThreadId[];
   readonly sidebarThreadSummaryById: Readonly<
     Record<
@@ -28,9 +27,6 @@ export function resolveChatIndexRestoreRoute(input: {
   >;
 
   readonly draftProjectIdByThreadId: ReadonlyMap<string, ProjectId>;
-  // Populated panes from the split named by `lastThreadRoute`. `undefined` means the current client
-  // state could not resolve that split, so a Space-scoped restore must fail closed.
-  readonly rememberedSplitViewThreadIds: readonly ThreadId[] | undefined;
   readonly landingSpace: ChatIndexLandingSpace | null;
 }): LastThreadRoute | null {
   const { draftProjectIdByThreadId, landingSpace, sidebarThreadSummaryById } = input;
@@ -66,23 +62,8 @@ export function resolveChatIndexRestoreRoute(input: {
     availableThreadIds.add(threadId);
   }
 
-  const restorableRoute = resolveRestorableThreadRoute({
+  return resolveRestorableThreadRoute({
     lastThreadRoute: input.lastThreadRoute,
     availableThreadIds,
-    availableSplitViewIds: input.availableSplitViewIds,
   });
-  if (!landingSpace || !restorableRoute?.splitViewId) {
-    return restorableRoute;
-  }
-
-  const splitThreadIds = input.rememberedSplitViewThreadIds;
-  if (
-    splitThreadIds === undefined ||
-    splitThreadIds.length === 0 ||
-    splitThreadIds.some((threadId) => !availableThreadIds.has(threadId))
-  ) {
-    return { threadId: restorableRoute.threadId };
-  }
-
-  return restorableRoute;
 }

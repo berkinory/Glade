@@ -16,9 +16,8 @@ export function usePanelWidthResize(input: {
   readonly defaultWidth: number;
   readonly minWidth: number;
   readonly chatMinWidth: number;
-  readonly paneScopeId: string;
 }) {
-  const { storageKey, defaultWidth, minWidth, chatMinWidth, paneScopeId } = input;
+  const { storageKey, defaultWidth, minWidth, chatMinWidth } = input;
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [widthState, setWidthState] = useState<{ key: string; value: number }>(() => ({
     key: storageKey,
@@ -57,7 +56,6 @@ export function usePanelWidthResize(input: {
       }
       const accepted = canComposerHandlePanelWidth({
         nextWidth: pendingWidth,
-        paneScopeId,
         applyWidth: (width) => {
           wrapper.style.width = `${width}px`;
         },

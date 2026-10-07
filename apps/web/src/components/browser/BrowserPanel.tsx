@@ -134,7 +134,7 @@ function BrowserPanelContent(props: { threadId: ThreadId; onClose: () => void })
 
 // The thread's browser, docked to the right of its chat pane. Desktop app only: the pages are
 // native views the desktop places over the content box.
-export function BrowserPanel(props: { threadId: ThreadId; paneScopeId: string }) {
+export function BrowserPanel(props: { threadId: ThreadId }) {
   const open = useBrowserPanelStore((store) => store.openByThreadId[props.threadId] === true);
   const setOpen = useBrowserPanelStore((store) => store.setOpen);
   const { wrapperRef, width, startResize } = usePanelWidthResize({
@@ -142,7 +142,6 @@ export function BrowserPanel(props: { threadId: ThreadId; paneScopeId: string })
     defaultWidth: DEFAULT_WIDTH_PX,
     minWidth: MIN_WIDTH_PX,
     chatMinWidth: CHAT_MIN_WIDTH_PX,
-    paneScopeId: props.paneScopeId,
   });
   if (!isElectron) return null;
 

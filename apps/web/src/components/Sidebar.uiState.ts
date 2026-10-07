@@ -79,7 +79,6 @@ export function readSidebarUiState(): SidebarUiState {
       dismissedThreadStatusKeyByThreadId?: Record<string, string>;
       lastThreadRoute?: {
         threadId?: unknown;
-        splitViewId?: unknown;
       } | null;
       activityViewEnabled?: boolean;
     };
@@ -88,13 +87,7 @@ export function readSidebarUiState(): SidebarUiState {
       parsed.lastThreadRoute &&
       typeof parsed.lastThreadRoute.threadId === "string" &&
       parsed.lastThreadRoute.threadId.length > 0
-        ? {
-            threadId: parsed.lastThreadRoute.threadId,
-            ...(typeof parsed.lastThreadRoute.splitViewId === "string" &&
-            parsed.lastThreadRoute.splitViewId.length > 0
-              ? { splitViewId: parsed.lastThreadRoute.splitViewId }
-              : {}),
-          }
+        ? { threadId: parsed.lastThreadRoute.threadId }
         : null;
 
     const projectThreadListExtraPagesByCwd = sanitizeProjectThreadListExtraPagesByCwd(
@@ -173,12 +166,7 @@ export function persistSidebarUiState(input: SidebarUiState): void {
           ),
         ),
         lastThreadRoute: input.lastThreadRoute
-          ? {
-              threadId: input.lastThreadRoute.threadId,
-              ...(input.lastThreadRoute.splitViewId
-                ? { splitViewId: input.lastThreadRoute.splitViewId }
-                : {}),
-            }
+          ? { threadId: input.lastThreadRoute.threadId }
           : null,
         activityViewEnabled: input.activityViewEnabled,
       }),

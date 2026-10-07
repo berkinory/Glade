@@ -4,7 +4,6 @@ import { createContext, useContext, type ReactNode } from "react";
 interface ChatThreadContextValue {
   threadId: ThreadId;
   projectId: ProjectId | null;
-  surfaceMode: "single" | "split";
 }
 
 const ChatThreadContext = createContext<ChatThreadContextValue | null>(null);

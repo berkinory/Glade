@@ -7,8 +7,6 @@ import { useMemo, useEffect, useRef, useState } from "react";
 import { toastManager } from "../components/ui/toast";
 import { resolveVisibleToastThreadIds } from "../components/ui/toastRouteVisibility";
 import { useAppSettings } from "../appSettings";
-import { useDiffRouteSearch } from "../hooks/useDiffRouteSearch";
-import { selectSplitView, useSplitViewStore } from "../splitViewStore";
 import { selectRightDockState, useRightDockStore } from "../rightDockStore";
 import { useStore } from "../store";
 import { createAllThreadsSelector } from "../storeSelectors";
@@ -45,7 +43,7 @@ function focusThread(threadId: Thread["id"], navigate: ReturnType<typeof useNavi
   void navigate({
     to: "/$threadId",
     params: { threadId },
-    search: (previous) => ({ ...previous, splitViewId: undefined }),
+    search: (previous) => previous,
   });
 }
 
@@ -120,10 +118,6 @@ export function TaskCompletionNotifications() {
     select: (params) =>
       typeof params.threadId === "string" ? ThreadId.makeUnsafe(params.threadId) : null,
   });
-  const routeSearch = useDiffRouteSearch();
-  const splitView = useSplitViewStore(
-    useMemo(() => selectSplitView(routeSearch.splitViewId ?? null), [routeSearch.splitViewId]),
-  );
   const rightDockState = useRightDockStore(
     useMemo(() => selectRightDockState(activeThreadId), [activeThreadId]),
   );
@@ -133,7 +127,6 @@ export function TaskCompletionNotifications() {
   const terminalStateByThreadId = useTerminalStateStore((store) => store.terminalStateByThreadId);
   const visibleThreadIds = resolveVisibleToastThreadIds({
     activeThreadId,
-    splitView,
     rightDockRendered: true,
     rightDockState,
   });

@@ -369,8 +369,6 @@ export function useChatDiscoveryController({
 
   const diffPanelShortcutLabel = shortcutLabelForCommand(keybindings, "diff.toggle");
 
-  const chatSplitShortcutLabel = shortcutLabelForCommand(keybindings, "chat.split");
-
   const modelPickerShortcutLabel =
     shortcutLabelForCommand(keybindings, "modelPicker.toggle") ??
     formatShortcutLabel({
@@ -459,7 +457,6 @@ export function useChatDiscoveryController({
     closeTerminalShortcutLabel,
     closeWorkspaceShortcutLabel,
     diffPanelShortcutLabel,
-    chatSplitShortcutLabel,
     modelPickerShortcutLabel,
     onToggleDiff,
     envLocked,

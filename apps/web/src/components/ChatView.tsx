@@ -13,8 +13,8 @@ export default function ChatView(props: ChatViewProps) {
   );
   const projectId = useStore(projectIdSelector);
   const context = useMemo(
-    () => ({ threadId: props.threadId, projectId, surfaceMode: props.surfaceMode ?? "single" }),
-    [props.threadId, projectId, props.surfaceMode],
+    () => ({ threadId: props.threadId, projectId }),
+    [props.threadId, projectId],
   );
   return (
     <ChatThreadProvider value={context}>

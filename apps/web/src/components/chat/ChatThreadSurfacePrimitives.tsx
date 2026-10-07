@@ -2,15 +2,14 @@ import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { useEffect, useState } from "react";
 
 import ChatView from "../ChatView";
-import type { SplitViewPanePanelState } from "../../splitViewModel";
 import { CHAT_BACKGROUND_CLASS_NAME } from "./composerPickerStyles";
 import { Spinner } from "../ui/spinner";
 import { cn } from "~/lib/utils";
 import { scheduleDeferredChatMount } from "./deferredChatMount";
 
-export const noopChatSurfaceAction = () => {};
+const noopChatSurfaceAction = () => {};
 
-export function ChatMountLoader() {
+function ChatMountLoader() {
   return (
     <div
       className={cn(
@@ -30,23 +29,17 @@ export function ChatMountLoader() {
 export function DeferredChatView(props: {
   threadId: ThreadId;
   hideHeader?: boolean;
-  paneScopeId: string;
   deferMount: boolean;
-  surfaceMode: "single" | "split";
-  isFocusedPane: boolean;
-  panelState: SplitViewPanePanelState;
+  diffPanelOpen: boolean;
   onToggleDiff: () => void;
   onToggleRightDock?: () => void;
   onToggleTerminal?: () => void;
   onOpenTerminal?: () => void;
   onOpenTurnDiff: (turnId: TurnId, filePath?: string) => void;
-  onSplitSurface?: () => void;
-  onMaximize?: () => void;
-  onChangeThread?: () => void;
   onMounted?: () => void;
 }) {
   const onMounted = props.onMounted ?? noopChatSurfaceAction;
-  const mountKey = `${props.paneScopeId}:${props.threadId}`;
+  const mountKey = props.threadId;
   const [readyMountKey, setReadyMountKey] = useState<string | null>(() =>
     props.deferMount ? null : mountKey,
   );
@@ -76,21 +69,14 @@ export function DeferredChatView(props: {
 
   return (
     <ChatView
-      key={props.paneScopeId}
       threadId={props.threadId}
       hideHeader={props.hideHeader ?? false}
-      paneScopeId={props.paneScopeId}
-      surfaceMode={props.surfaceMode}
-      isFocusedPane={props.isFocusedPane}
-      panelState={props.panelState}
+      diffPanelOpen={props.diffPanelOpen}
       onToggleDiffPanel={props.onToggleDiff}
       {...(props.onToggleRightDock ? { onToggleRightDock: props.onToggleRightDock } : {})}
       {...(props.onToggleTerminal ? { onToggleTerminal: props.onToggleTerminal } : {})}
       {...(props.onOpenTerminal ? { onOpenTerminal: props.onOpenTerminal } : {})}
       onOpenTurnDiffPanel={props.onOpenTurnDiff}
-      {...(props.onSplitSurface ? { onSplitSurface: props.onSplitSurface } : {})}
-      {...(props.onMaximize ? { onMaximizeSurface: props.onMaximize } : {})}
-      {...(props.onChangeThread ? { onChangeThreadInSplitPane: props.onChangeThread } : {})}
     />
   );
 }

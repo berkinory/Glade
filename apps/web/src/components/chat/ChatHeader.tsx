@@ -1,10 +1,4 @@
-import {
-  WorkflowCircle04Icon,
-  ArrowExpandIcon,
-  ArrowLeftRightIcon,
-  LayoutAlignRightIcon,
-  PencilEdit02Icon,
-} from "~/lib/icons";
+import { WorkflowCircle04Icon, LayoutAlignRightIcon, PencilEdit02Icon } from "~/lib/icons";
 import { type EditorId } from "@glade/contracts/settings/editor";
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
@@ -54,21 +48,10 @@ interface ChatHeaderProps {
   diffDisabledReason?: string | null;
   rightDockOpen?: boolean;
   onToggleRightDock?: () => void;
-  surfaceMode?: "single" | "split";
   // When provided, the header collapses the Open-in-editor + git-actions + diff-toggle cluster into
   // one Environment button that drives the Environment panel; otherwise the legacy cluster is
   // rendered.
   environment?: EnvironmentToggleState | null;
-  chatLayoutAction?: {
-    kind: "split" | "maximize";
-    label: string;
-    shortcutLabel: string | null;
-    onClick: () => void;
-  } | null;
-  changeThreadAction?: {
-    label: string;
-    onClick: () => void;
-  } | null;
   onToggleDiff: () => void;
   onNavigateToThread: (threadId: ThreadId) => void;
   onRenameThread: () => void;
@@ -95,10 +78,7 @@ export function ChatHeader({
   diffDisabledReason: diffDisabledReasonProp,
   rightDockOpen: rightDockOpenProp,
   onToggleRightDock,
-  surfaceMode: surfaceModeProp,
   environment: environmentProp,
-  chatLayoutAction: chatLayoutActionProp,
-  changeThreadAction: changeThreadActionProp,
   onToggleDiff,
   onNavigateToThread,
   onRenameThread,
@@ -110,10 +90,7 @@ export function ChatHeader({
   const showDiffToggle = showDiffToggleProp ?? true;
   const diffDisabledReason = diffDisabledReasonProp ?? null;
   const rightDockOpen = rightDockOpenProp ?? false;
-  const surfaceMode = surfaceModeProp ?? "single";
   const environment = environmentProp ?? null;
-  const chatLayoutAction = chatLayoutActionProp ?? null;
-  const changeThreadAction = changeThreadActionProp ?? null;
   const { isMobile, state } = useSidebar();
   const {
     additions: diffAdditions,
@@ -126,9 +103,6 @@ export function ChatHeader({
     openInTarget,
     enabled: Boolean(activeProjectName),
   });
-  const isSplitPane = surfaceMode === "split";
-  const compact = isSplitPane;
-  const inlineChatLayoutAction = chatLayoutAction?.kind === "maximize" ? chatLayoutAction : null;
   const showThreadProviderIcon = !isGenericChatThreadTitle(activeThreadTitle);
   const renderProviderIcon = (provider: ProviderKind | null, className: string) => {
     return (
@@ -258,44 +232,8 @@ export function ChatHeader({
           <GitActionsControl
             gitCwd={gitCwd}
             activeThreadId={activeThreadId}
-            hideQuickActionLabel={compact}
             visibleWhen="pull-available"
           />
-        ) : null}
-
-        {inlineChatLayoutAction ? (
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <ChatHeaderIconButton
-                  type="button"
-                  label={inlineChatLayoutAction.label}
-                  onClick={inlineChatLayoutAction.onClick}
-                >
-                  <ArrowExpandIcon className="size-3.5" />
-                </ChatHeaderIconButton>
-              }
-            />
-            <TooltipPopup side="bottom">{inlineChatLayoutAction.label}</TooltipPopup>
-          </Tooltip>
-        ) : null}
-
-        {}
-        {changeThreadAction ? (
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <ChatHeaderIconButton
-                  type="button"
-                  label={changeThreadAction.label}
-                  onClick={changeThreadAction.onClick}
-                >
-                  <ArrowLeftRightIcon className="size-3.5" />
-                </ChatHeaderIconButton>
-              }
-            />
-            <TooltipPopup side="bottom">{changeThreadAction.label}</TooltipPopup>
-          </Tooltip>
         ) : null}
 
         <BrowserPanelToggle threadId={activeThreadId} keybindings={keybindings} />

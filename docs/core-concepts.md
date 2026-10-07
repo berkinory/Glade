@@ -196,7 +196,6 @@ Keep task ownership clear before scaling beyond one task.
 - `mod+n` — create a task
 - `mod+j` — toggle the terminal in the main workspace
 - `mod+d` — toggle the diff view
-- `mod+\` — split the current view
 
 Check the [keyboard reference](./KEYBINDINGS.md) for the
 complete current list.

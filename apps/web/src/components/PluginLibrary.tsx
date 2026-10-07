@@ -304,7 +304,7 @@ export function PluginLibrary() {
   const desktopTopBarWindowControlsGutterClassName =
     useDesktopTopBarWindowControlsGutterClassName();
   const firstProject = useStore(useMemo(() => createFirstProjectSelector(), []));
-  const { activeProject: focusedProject, activeThread, focusedThreadId } = useFocusedChatContext();
+  const { activeProject: focusedProject, activeThread, routeThreadId } = useFocusedChatContext();
   const activeProject = focusedProject ?? firstProject ?? null;
   const preferredProvider =
     activeThread?.modelSelection.provider ??
@@ -316,7 +316,7 @@ export function PluginLibrary() {
   const [skillSearch, setSkillSearch] = useState("");
   const deferredPluginSearch = useDeferredValue(pluginSearch);
   const deferredSkillSearch = useDeferredValue(skillSearch);
-  const providerThreadId = focusedThreadId;
+  const providerThreadId = routeThreadId;
   const serverConfigQuery = useQuery(serverConfigQueryOptions());
   const codexCapabilitiesQuery = useQuery(providerComposerCapabilitiesQueryOptions("codex"));
   const claudeCapabilitiesQuery = useQuery(providerComposerCapabilitiesQueryOptions("claudeAgent"));

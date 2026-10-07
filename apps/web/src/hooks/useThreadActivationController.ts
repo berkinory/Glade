@@ -1,34 +1,23 @@
 import type { useNavigate } from "@tanstack/react-router";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-import type { LastThreadRoute } from "../chatRouteRestore";
-import { type PaneId, type SplitView, type SplitViewId } from "../splitViewModel";
 import { selectThreadTerminalState } from "../terminalStateStore";
 import type { SidebarThreadSummary } from "../types";
-import {
-  resolvePreferredSplitForCommand,
-  resolveThreadCommandActivation,
-} from "../threadActivation.logic";
 
 type Navigate = ReturnType<typeof useNavigate>;
 type ThreadTerminalStateById = Parameters<typeof selectThreadTerminalState>[0];
 type SidebarThreadActivationSummary = Pick<SidebarThreadSummary, "id" | "projectId">;
 
 export type ThreadActivationControllerInput = {
-  activeSplitView: SplitView | null;
   clearSelection: () => void;
   navigate: Navigate;
   openChatThreadPage: (threadId: ThreadId) => void;
   openTerminalThreadPage: (threadId: ThreadId) => void;
   prewarmThreadDetailForIntent: (threadId: ThreadId) => void;
-  rememberLastThreadRouteNow: (nextLastThreadRoute: LastThreadRoute) => void;
-  routeSplitViewId: string | null | undefined;
   routeThreadId: ThreadId | null | undefined;
   selectedThreadCount: number;
   setOptimisticActiveThreadId: (threadId: ThreadId) => void;
   setSelectionAnchor: (threadId: ThreadId) => void;
-  setSplitFocusedPane: (splitViewId: SplitViewId, paneId: PaneId) => void;
   sidebarThreadSummaryById: Readonly<Partial<Record<ThreadId, SidebarThreadActivationSummary>>>;
-  splitViewsById: Record<SplitViewId, SplitView | undefined>;
   terminalStateByThreadId: ThreadTerminalStateById;
 };
 
@@ -36,75 +25,7 @@ function activateThreadFromSidebarIntent(
   input: ThreadActivationControllerInput,
   threadId: ThreadId,
 ): void {
-  const {
-    activeSplitView,
-    clearSelection,
-    navigate,
-    prewarmThreadDetailForIntent,
-    rememberLastThreadRouteNow,
-    routeSplitViewId,
-    routeThreadId,
-    selectedThreadCount,
-    setOptimisticActiveThreadId,
-    setSelectionAnchor,
-    setSplitFocusedPane,
-    sidebarThreadSummaryById,
-    splitViewsById,
-  } = input;
-
-  const targetThread = sidebarThreadSummaryById[threadId];
-  // Active split wins first; otherwise every persisted split block can restore deterministically.
-  const preferredSplitCandidate = resolvePreferredSplitForCommand({
-    activeSplitView,
-    splitViewsById,
-    threadId,
-  });
-  const preferredSplit = preferredSplitCandidate;
-  const activation = resolveThreadCommandActivation({
-    threadId,
-    threadExists: targetThread !== undefined,
-    activeSidebarThreadId:
-      routeSplitViewId && preferredSplitCandidate && !preferredSplit ? null : routeThreadId,
-    preferredSplitViewId: preferredSplit?.splitViewId ?? null,
-    splitPaneId: preferredSplit?.paneId ?? null,
-  });
-
-  if (activation.kind === "ignore") {
-    return;
-  }
-
-  if (activation.kind === "single") {
-    activateThreadSingle(input, activation.threadId);
-    return;
-  }
-
-  if (routeThreadId === activation.threadId && routeSplitViewId === activation.splitViewId) {
-    return;
-  }
-
-  prewarmThreadDetailForIntent(activation.threadId);
-  setOptimisticActiveThreadId(activation.threadId);
-  if (selectedThreadCount > 0) {
-    clearSelection();
-  }
-  setSelectionAnchor(activation.threadId);
-  setSplitFocusedPane(activation.splitViewId, activation.paneId);
-  rememberLastThreadRouteNow({
-    threadId: activation.threadId,
-    splitViewId: activation.splitViewId,
-  });
-  void navigate({
-    to: "/$threadId",
-    params: { threadId: activation.threadId },
-    search: (previous) => ({
-      ...previous,
-      splitViewId: activation.splitViewId,
-    }),
-  });
-}
-
-function activateThreadSingle(input: ThreadActivationControllerInput, threadId: ThreadId): void {
-  if (!input.sidebarThreadSummaryById[threadId]) return;
+  if (!input.sidebarThreadSummaryById[threadId] || threadId === input.routeThreadId) return;
 
   input.prewarmThreadDetailForIntent(threadId);
   input.setOptimisticActiveThreadId(threadId);
@@ -123,61 +44,13 @@ function activateThreadSingle(input: ThreadActivationControllerInput, threadId: 
     input.openChatThreadPage(threadId);
   }
 
-  void input.navigate({
-    to: "/$threadId",
-    params: { threadId },
-    search: (previous) => ({
-      ...previous,
-      splitViewId: undefined,
-    }),
-  });
+  void input.navigate({ to: "/$threadId", params: { threadId }, search: (previous) => previous });
 }
 
 export function useThreadActivationController(input: ThreadActivationControllerInput): {
   activateThreadFromSidebarIntent: (threadId: ThreadId) => void;
 } {
-  const {
-    activeSplitView,
-    clearSelection,
-    navigate,
-    openChatThreadPage,
-    openTerminalThreadPage,
-    prewarmThreadDetailForIntent,
-    rememberLastThreadRouteNow,
-    routeSplitViewId,
-    routeThreadId,
-    selectedThreadCount,
-    setOptimisticActiveThreadId,
-    setSelectionAnchor,
-    setSplitFocusedPane,
-    sidebarThreadSummaryById,
-    splitViewsById,
-    terminalStateByThreadId,
-  } = input;
-
-  const activateThread = (threadId: ThreadId) => {
-    activateThreadFromSidebarIntent(
-      {
-        activeSplitView,
-        clearSelection,
-        navigate,
-        openChatThreadPage,
-        openTerminalThreadPage,
-        prewarmThreadDetailForIntent,
-        rememberLastThreadRouteNow,
-        routeSplitViewId,
-        routeThreadId,
-        selectedThreadCount,
-        setOptimisticActiveThreadId,
-        setSelectionAnchor,
-        setSplitFocusedPane,
-        sidebarThreadSummaryById,
-        splitViewsById,
-        terminalStateByThreadId,
-      },
-      threadId,
-    );
+  return {
+    activateThreadFromSidebarIntent: (threadId) => activateThreadFromSidebarIntent(input, threadId),
   };
-
-  return { activateThreadFromSidebarIntent: activateThread };
 }

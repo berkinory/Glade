@@ -7,7 +7,6 @@ import { MenuItem } from "./ui/menu";
 export interface GitActionsControlProps {
   gitCwd: string | null;
   activeThreadId: ThreadId | null;
-  hideQuickActionLabel?: boolean;
   variant?: "header" | "panel";
   visibleWhen?: "always" | "pull-available";
   // Lets a parent capture "run commit & push for this instance's repo" so a global keyboard shortcut
