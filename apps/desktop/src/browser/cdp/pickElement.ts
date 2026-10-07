@@ -1,6 +1,6 @@
 import type { BrowserPickedElement } from "@glade/contracts/browser/browserView";
 import type { BrowserTab } from "../browserTab";
-import { captureScreenshot } from "./screenshot";
+import { captureZoom } from "./screenshot";
 
 const HIGHLIGHT = {
   showInfo: true,
@@ -52,7 +52,7 @@ async function describePicked(tab: BrowserTab, backendNodeId: number) {
   const role = String(node?.role?.value ?? "") || "generic";
   const name = String(node?.name?.value ?? "");
   const ref = tab.refs.refFor({ backendNodeId, sessionId: undefined }, { role, name });
-  const screenshot = await captureScreenshot(tab.cdp, tab.refs, tab.webContents, { ref })
+  const screenshot = await captureZoom(tab.cdp, tab.refs, tab.webContents, null, { ref })
     .then(({ data }) => ({ data, mimeType: "image/jpeg" as const }))
     .catch(() => null);
   return { ref, role, name, screenshot };

@@ -4,9 +4,19 @@ import type {
   BrowserPressInput,
   BrowserTarget,
 } from "@glade/contracts/browser/browserTools";
+import { BrowserFailure } from "../browserFailure";
 import type { CdpSession } from "./cdpSession";
 import { dragBetween } from "./drag";
-import { modifierKey, modifierMask, parseKeyChord, pressKey } from "./keyboard";
+import { formatChord } from "./keyChords";
+import {
+  editingCommands,
+  keyChords,
+  keyDefinition,
+  keyModifiers,
+  modifierKey,
+  modifierMask,
+  pressKey,
+} from "./keyboard";
 import { callOn, mouse, resolveTarget } from "./pointer";
 import type { RefTable } from "./refs";
 import type { ScreenshotFrame } from "./screenshotFrame";
@@ -41,7 +51,7 @@ export async function click(
     target ? callOn<boolean | null>(cdp, target, TOGGLE_STATE).catch(() => null) : null;
   const before = await state();
   const button = input.button ?? "left";
-  const modifiers = modifierMask(input.modifiers ?? []);
+  const modifiers = modifierMask(keyModifiers(input.modifiers));
   await mouse(cdp, { type: "mouseMoved", x, y, modifiers });
   for (let clickCount = 1; clickCount <= (input.count ?? 1); clickCount += 1) {
     await mouse(cdp, {
@@ -104,12 +114,23 @@ export async function drag(
   return `Dragged ${from.label} to ${to.label}.`;
 }
 
+// Each press is a whole chord: modifiers down in order, the key, modifiers up in reverse.
+const MAX_PRESSES = 200;
+
 export async function press(
   cdp: CdpSession,
   input: typeof BrowserPressInput.Type,
 ): Promise<string> {
-  const chord = parseKeyChord(input.key);
-  const modifier = (name: (typeof chord.modifiers)[number], type: string, held: number) =>
+  const chords = keyChords(input.key);
+  const repeat = input.repeat ?? 1;
+  if (chords.length * repeat > MAX_PRESSES) {
+    throw new BrowserFailure("invalid_input", `At most ${MAX_PRESSES} key presses per call.`);
+  }
+  const modifier = (
+    name: (typeof chords)[number]["modifiers"][number],
+    type: string,
+    held: number,
+  ) =>
     cdp.send("Input.dispatchKeyEvent", {
       type,
       key: modifierKey(name).key,
@@ -117,17 +138,24 @@ export async function press(
       windowsVirtualKeyCode: modifierKey(name).keyCode,
       modifiers: held,
     });
-  for (let index = 0; index < (input.repeat ?? 1); index += 1) {
-    let held = 0;
-    for (const name of chord.modifiers) {
-      held |= modifierMask([name]);
-      await modifier(name, "rawKeyDown", held);
-    }
-    await pressKey(cdp, chord.key, chord.modifierMask);
-    for (const name of chord.modifiers.toReversed()) {
-      held &= ~modifierMask([name]);
-      await modifier(name, "keyUp", held);
+  for (let index = 0; index < repeat; index += 1) {
+    for (const chord of chords) {
+      let held = 0;
+      for (const name of chord.modifiers) {
+        held |= modifierMask([name]);
+        await modifier(name, "rawKeyDown", held);
+      }
+      await pressKey(
+        cdp,
+        keyDefinition(chord.key),
+        modifierMask(chord.modifiers),
+        editingCommands(chord),
+      );
+      for (const name of chord.modifiers.toReversed()) {
+        held &= ~modifierMask([name]);
+        await modifier(name, "keyUp", held);
+      }
     }
   }
-  return `Pressed ${input.key}${(input.repeat ?? 1) > 1 ? ` ×${input.repeat}` : ""}.`;
+  return `Pressed ${chords.map(formatChord).join(" ")}${repeat > 1 ? ` ×${repeat}` : ""}.`;
 }

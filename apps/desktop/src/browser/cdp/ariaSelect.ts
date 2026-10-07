@@ -10,7 +10,7 @@ import {
   waitForOptions,
   type ListedOption,
 } from "./combobox";
-import { parseKeyChord, pressKey } from "./keyboard";
+import { keyDefinition, pressKey } from "./keyboard";
 import { callOn } from "./pointer";
 import { rethrowStaleNode, type RefTable, type RefTarget } from "./refs";
 
@@ -47,7 +47,7 @@ async function openList(cdp: CdpSession, refs: RefTable, ref: string, target: Re
   if (listed.total === 0) {
     // Many comboboxes open from the keyboard only.
     await callOn(cdp, target, FOCUS).catch(() => undefined);
-    await pressKey(cdp, parseKeyChord("ArrowDown").key, 0);
+    await pressKey(cdp, keyDefinition("ArrowDown"), 0);
     listed = await waitForOptions(cdp, target, OPEN_WAIT_MS);
   }
   if (listed.total > listed.options.length) {
@@ -88,7 +88,7 @@ export async function selectCustom(
   for (const value of wanted) {
     const option = pick(listed.options, value);
     if (!option) {
-      if (opened) await pressKey(cdp, parseKeyChord("Escape").key, 0);
+      if (opened) await pressKey(cdp, keyDefinition("Escape"), 0);
       const labels = listed.options.slice(0, 10).map((o) => echo(o.name));
       throw new BrowserFailure(
         "invalid_input",

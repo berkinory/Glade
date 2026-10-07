@@ -7,6 +7,8 @@ export interface SnapshotNode {
   readonly role: string;
   readonly name: string;
   readonly value: string | undefined;
+  // The accessible description (often a placeholder or hint); only browser_find reads it.
+  readonly description?: string;
   readonly states: readonly string[];
   readonly ref: string | undefined;
   readonly interactive: boolean;
@@ -38,6 +40,7 @@ interface AxNode {
   readonly role?: AxValue;
   readonly name?: AxValue;
   readonly value?: AxValue;
+  readonly description?: AxValue;
   readonly properties?: ReadonlyArray<{ readonly name: string; readonly value: AxValue }>;
   readonly childIds?: readonly string[];
   readonly backendDOMNodeId?: number;
@@ -254,10 +257,12 @@ async function collectDocument(
       );
     }
     const value = !hasValue || password || String(rawValue) === name ? undefined : String(rawValue);
+    const description = String(node.description?.value ?? "").trim();
     const out: SnapshotNode = {
       role: shownRole,
       name: label,
       value,
+      ...(description && description !== label ? { description } : {}),
       states: nodeStates,
       ref,
       interactive,

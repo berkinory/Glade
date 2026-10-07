@@ -1,4 +1,10 @@
-import type { BrowserModifier } from "@glade/contracts/browser/browserTools";
+import {
+  KeyParseError,
+  parseKeys,
+  parseModifiers,
+  type KeyChord,
+  type KeyModifier,
+} from "./keyChords";
 import { BrowserFailure } from "../browserFailure";
 import type { CdpSession } from "./cdpSession";
 
@@ -9,8 +15,8 @@ export interface KeyDefinition {
   readonly text?: string;
 }
 
-const MODIFIER_BITS: Record<BrowserModifier, number> = { Alt: 1, Control: 2, Meta: 4, Shift: 8 };
-const MODIFIER_KEYS: Record<BrowserModifier, KeyDefinition> = {
+const MODIFIER_BITS: Record<KeyModifier, number> = { Alt: 1, Control: 2, Meta: 4, Shift: 8 };
+const MODIFIER_KEYS: Record<KeyModifier, KeyDefinition> = {
   Alt: { key: "Alt", code: "AltLeft", keyCode: 18 },
   Control: { key: "Control", code: "ControlLeft", keyCode: 17 },
   Meta: { key: "Meta", code: "MetaLeft", keyCode: 91 },
@@ -32,6 +38,7 @@ const NAMED_KEYS: Record<string, KeyDefinition> = {
   End: { key: "End", code: "End", keyCode: 35 },
   PageUp: { key: "PageUp", code: "PageUp", keyCode: 33 },
   PageDown: { key: "PageDown", code: "PageDown", keyCode: 34 },
+  Insert: { key: "Insert", code: "Insert", keyCode: 45 },
   ...Object.fromEntries(
     Array.from({ length: 12 }, (_, index) => [
       `F${index + 1}`,
@@ -39,33 +46,6 @@ const NAMED_KEYS: Record<string, KeyDefinition> = {
     ]),
   ),
 };
-
-const ALIASES: Record<string, string> = {
-  ctrl: "Control",
-  control: "Control",
-  cmd: "Meta",
-  command: "Meta",
-  meta: "Meta",
-  super: "Meta",
-  alt: "Alt",
-  option: "Alt",
-  shift: "Shift",
-  esc: "Escape",
-  return: "Enter",
-  up: "ArrowUp",
-  down: "ArrowDown",
-  left: "ArrowLeft",
-  right: "ArrowRight",
-  del: "Delete",
-  " ": "Space",
-};
-
-function canonical(name: string): string {
-  const alias = ALIASES[name.toLowerCase()];
-  if (alias) return alias;
-  const named = Object.keys(NAMED_KEYS).find((key) => key.toLowerCase() === name.toLowerCase());
-  return named ?? name;
-}
 
 export function characterKey(char: string): KeyDefinition {
   const named = char === "\n" || char === "\r" ? NAMED_KEYS.Enter : undefined;
@@ -75,44 +55,57 @@ export function characterKey(char: string): KeyDefinition {
   return { key: char, code, keyCode: code ? upper.charCodeAt(0) : 0, text: char };
 }
 
-export interface KeyChord {
-  readonly modifiers: readonly BrowserModifier[];
-  readonly modifierMask: number;
-  readonly key: KeyDefinition;
+// A key name from the shared key parser: a named key, a modifier, or one character.
+export function keyDefinition(name: string): KeyDefinition {
+  return (
+    NAMED_KEYS[name] ??
+    (name in MODIFIER_KEYS ? MODIFIER_KEYS[name as KeyModifier] : characterKey(name))
+  );
 }
 
-// "Control+Shift+A", "Enter", "cmd+k": modifiers first, then exactly one key.
-export function parseKeyChord(chord: string): KeyChord {
-  const parts = chord === "+" ? ["+"] : chord.split("+").map((part) => part.trim() || "+");
-  const keyName = canonical(parts.at(-1)!);
-  const modifiers = parts.slice(0, -1).map((part) => {
-    const name = canonical(part);
-    if (!(name in MODIFIER_BITS)) {
-      throw new BrowserFailure("invalid_input", `Unknown modifier "${part}" in "${chord}".`);
-    }
-    return name as BrowserModifier;
-  });
-  const named =
-    NAMED_KEYS[keyName] ??
-    (keyName in MODIFIER_KEYS ? MODIFIER_KEYS[keyName as BrowserModifier] : undefined);
-  if (!named && [...keyName].length !== 1) {
-    throw new BrowserFailure(
-      "invalid_input",
-      `Unknown key "${keyName}". Use a single character or a key name such as Enter, Tab, Escape, ArrowDown.`,
-    );
+function invalidInput<T>(parse: () => T): T {
+  try {
+    return parse();
+  } catch (error) {
+    if (error instanceof KeyParseError) throw new BrowserFailure("invalid_input", error.message);
+    throw error;
   }
-  return { modifiers, modifierMask: modifierMask(modifiers), key: named ?? characterKey(keyName) };
 }
 
-export function modifierMask(modifiers: readonly BrowserModifier[]): number {
+// "cmd" follows the platform the page runs on, which is this desktop's.
+export const keyChords = (input: string | readonly string[]): KeyChord[] =>
+  invalidInput(() => parseKeys(input, process.platform));
+export const keyModifiers = (input: string | readonly string[] | undefined): KeyModifier[] =>
+  input === undefined ? [] : invalidInput(() => parseModifiers(input, process.platform));
+
+export function modifierMask(modifiers: readonly KeyModifier[]): number {
   return modifiers.reduce((mask, modifier) => mask | MODIFIER_BITS[modifier], 0);
 }
 
-export function modifierKey(modifier: BrowserModifier): KeyDefinition {
+export function modifierKey(modifier: KeyModifier): KeyDefinition {
   return MODIFIER_KEYS[modifier];
 }
 
-export async function pressKey(cdp: CdpSession, definition: KeyDefinition, modifiers: number) {
+// On macOS, Chromium runs editing shortcuts in the browser process, so synthetic key events need
+// the command named explicitly; elsewhere the renderer maps the keys itself.
+const MAC_EDITING_COMMANDS: Readonly<Record<string, string>> = {
+  "Meta+a": "selectAll",
+  "Meta+z": "undo",
+  "Shift+Meta+Z": "redo",
+};
+
+export function editingCommands(chord: KeyChord): string[] {
+  if (process.platform !== "darwin") return [];
+  const command = MAC_EDITING_COMMANDS[[...chord.modifiers, chord.key].join("+")];
+  return command ? [command] : [];
+}
+
+export async function pressKey(
+  cdp: CdpSession,
+  definition: KeyDefinition,
+  modifiers: number,
+  commands: readonly string[] = [],
+) {
   const text = modifiers & ~8 ? undefined : definition.text;
   const base = {
     key: definition.key,
@@ -124,6 +117,7 @@ export async function pressKey(cdp: CdpSession, definition: KeyDefinition, modif
     ...base,
     type: text ? "keyDown" : "rawKeyDown",
     ...(text ? { text, unmodifiedText: text } : {}),
+    ...(commands.length > 0 ? { commands } : {}),
   });
   await cdp.send("Input.dispatchKeyEvent", { ...base, type: "keyUp" });
 }

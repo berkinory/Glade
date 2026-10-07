@@ -21,8 +21,9 @@ import { uploadFiles } from "./cdp/fileChooser";
 import { fillFields, selectOptions, typeText } from "./cdp/forms";
 import { readPageText } from "./cdp/pageText";
 import { scroll } from "./cdp/scrolling";
-import { captureScreenshot } from "./cdp/screenshot";
-import { findElements, takeSnapshot } from "./cdp/snapshot/snapshot";
+import { captureViewport, captureZoom } from "./cdp/screenshot";
+import { findElements } from "./cdp/snapshot/findElements";
+import { takeSnapshot } from "./cdp/snapshot/snapshot";
 import { DialogInterrupt } from "./pageDialogs";
 import { waitForConditions } from "./pageWait";
 
@@ -255,7 +256,7 @@ export function createBrowserHostDispatch(
     },
     "browser.scroll": async (params) => {
       const tab = tabFor("browser.scroll", params);
-      return act(tab, () => scroll(tab.cdp, tab.refs, params), params.actor);
+      return act(tab, () => scroll(tab.cdp, tab.refs, tab.lastScreenshot(), params), params.actor);
     },
     "browser.wait": async (params) => {
       const tab = tabFor("browser.wait", params);
@@ -268,11 +269,21 @@ export function createBrowserHostDispatch(
       const tab = tabFor("browser.screenshot", params);
       const { frame, ...image } = await run(
         tab,
-        () => captureScreenshot(tab.cdp, tab.refs, tab.webContents, params),
+        () => captureViewport(tab.cdp, tab.webContents, params.scale),
         params.actor,
       );
-      // Only screenshots the agent saw define its coordinates.
+      // Only full screenshots the agent saw define its coordinates.
       if (params.actor !== "user") tab.recordScreenshot(frame);
+      const { notices } = tab.result("");
+      return { page: tab.page(), image: { ...image, mimeType: "image/jpeg" }, notices };
+    },
+    "browser.zoom": async (params) => {
+      const tab = tabFor("browser.zoom", params);
+      const image = await run(
+        tab,
+        () => captureZoom(tab.cdp, tab.refs, tab.webContents, tab.lastScreenshot(), params),
+        params.actor,
+      );
       const { notices } = tab.result("");
       return { page: tab.page(), image: { ...image, mimeType: "image/jpeg" }, notices };
     },

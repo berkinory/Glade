@@ -20,9 +20,11 @@ app and is exposed to every provider as `browser_*` gateway tools.
   from before are stale (numbering continues, so an old ref never names a new element).
 - **Snapshots and refs.** `browser_snapshot` merges `Accessibility.getFullAXTree` with one
   `DOMSnapshot.captureSnapshot` per renderer (layout, paint order, a few computed styles) into
-  compact text with `ref=eN` handles. By default it covers the viewport plus one screen (800 CSS px)
-  above and below and ends with a note counting the interactive elements left out above and below;
-  `scope: "page"` lists everything. Hidden content never reaches the model: invisible, zero-opacity
+  compact text with `ref=eN` handles. `filter` follows Claude's `read_page`: by default it lists
+  visible elements (controls plus named structure such as headings, within the viewport and one
+  screen, 800 CSS px, above and below) and ends with a note counting the interactive elements left
+  out above and below; `"interactive"` keeps only controls and `"all"` covers the whole page.
+  `text: true` adds static text lines. Hidden content never reaches the model: invisible, zero-opacity
   and off-screen (pushed past the top or left edge) nodes are dropped, as are elements fully covered
   by an opaque layer that paints above them (a modal or cookie banner; a fixed full-screen backdrop
   also hides what is scrolled away under it). Styled checkboxes and radios stay listed even when the
@@ -74,19 +76,30 @@ app and is exposed to every provider as `browser_*` gateway tools.
   ArrowDown), clicks the options whose labels match (exact, else a unique partial match) and
   reads back what the widget shows. `browser_fill` sets several fields in one call, custom
   selects included.
-- **Scrolling and finding.** `browser_scroll` sends a real wheel event over the page or the
-  ref, waits for the animated scroll to stop, and reports the position of the element that
+- **Scrolling and finding.** `browser_scroll` takes Claude's `scroll_direction` and
+  `scroll_amount` in wheel notches (1 to 10, default 3, 100 CSS px each), or `pixels` for an exact
+  jump through a long virtualized list. It sends a real wheel event over the page center, the ref,
+  or a `coordinate` in screenshot pixels, resolves the element that scrolls once (a virtualized
+  list replaces the rows under the wheel), waits for the animated scroll to stop, and reports the position of the element that
   scrolled (`4,800 of 319,520px (2%)`, or that it is already at the end) and how many elements with
   text appeared, listing the first eight by heading or first line in the page content (feeds that
-  load on scroll, virtualized rows). `browser_find` gives each match inside a row, list item,
+  load on scroll, virtualized rows). A ref without a direction is scrolled into view.
+  `browser_find` takes exact text, a regex, or a natural-language description: when no element
+  contains the query verbatim, role words (button, link, field, checkbox, dropdown, tab, menu item
+  and synonyms) pick roles and the remaining words must appear in the element's name, value,
+  description (placeholders land there) or text, or in the text of the row it sits in; words with
+  digits must always match. Matches are ranked, and a query whose words match nothing but that
+  names a role lists that role's elements with a note. It gives each match inside a row, list item,
   article, tree item or option that container's text as one capped context line; with no match it
   says whether the document is still loading, how many screens continue below the viewport, or
-  that the viewport is at the end.
+  that the viewport is at the end, and points to `browser_snapshot`.
 - **Coordinates, hover and drag.** `browser_click`, `browser_hover` and each end of `browser_drag`
   take either a ref or `x`/`y`. Points are in the pixels of the tab's latest agent
-  `browser_screenshot` (each tab keeps that screenshot's viewport rect and image size, so a
-  downscaled or element screenshot maps back to viewport CSS pixels); before any screenshot they are
-  viewport CSS pixels. A point is not hit-tested against overlays: it clicks whatever is there, and
+  `browser_screenshot`, which always shows the whole viewport (each tab keeps its image size, so a
+  downscaled screenshot maps back to viewport CSS pixels); before any screenshot they are viewport
+  CSS pixels. `browser_zoom` captures a region `[x0, y0, x1, y1]` in those same pixels, or a ref's
+  box, rendered at up to twice its on-screen size, and never changes the frame, as with Claude's
+  `zoom`. A point is not hit-tested against overlays: it clicks whatever is there, and
   the result names what it hit (`<canvas#game> at (310, 140)`). The virtual mouse stays where the
   last action left it and snapshots never move it, so a CSS `:hover` menu opened by
   `browser_hover` stays open for the next snapshot and click. `browser_drag` presses, moves in ten
@@ -118,13 +131,25 @@ messages described in [Computer Use](computer-use.md). Schemas live in
 
 `browser_tabs`, `browser_navigate`, `browser_snapshot`, `browser_find`, `browser_get_text`,
 `browser_click`, `browser_hover`, `browser_drag`, `browser_type`, `browser_fill`, `browser_press`,
-`browser_select`, `browser_scroll`, `browser_wait`, `browser_screenshot`, `browser_dialog`, `browser_upload`,
-`browser_console`, `browser_network` and `browser_batch` (an ordered list that stops at the first
-failure). Action results are one line naming the element plus what changed; they never embed a
+`browser_select`, `browser_scroll`, `browser_wait`, `browser_screenshot`, `browser_zoom`,
+`browser_dialog`, `browser_upload`, `browser_console`, `browser_network` and `browser_batch`.
+Names and parameters follow Playwright MCP, and where Claude and Codex were trained on something
+else the shapes match theirs. `browser_batch` takes Claude's `{actions: [{name, input}]}`, with or
+without the `browser_` prefix on `name`; it runs in order and, after a failure, reports each later
+action as `Not executed: an earlier action in this batch failed.` Refs are emitted as `eN`, and
+every ref input also takes `ref_N`, `@eN` and a bare `N`; a stale ref names `browser_snapshot` and
+`browser_find` as the way to re-read. `browser_press` parses keys loosely through
+`apps/desktop/src/browser/cdp/keyChords.ts` (pure, so Computer Use can share it): chords like `ctrl+a` or `Control+Shift+K`, xdotool
+names (`Return`, `BackSpace`, `super`, `Prior`), space-separated sequences (`Down Down Return`),
+key arrays (`["CTRL", "A"]`) and a `repeat` count for the whole sequence. `cmd` is Command on
+macOS and Control elsewhere; on macOS, Command+A, Command+Z and Shift+Command+Z carry the editing
+command Chromium needs from synthetic key events. Click `modifiers` take `"ctrl+shift"` or an
+array. `browser_fill` values take text, numbers or booleans. Action results are one line naming the element plus what changed; they never embed a
 new snapshot. Other results end with the tab's URL and title. `browser_get_text` reads the main
 content or, with a ref, that element's subtree. Console and network reads return 20 entries per
 page, newest page first, and group repeated console messages.
-`browser_wait` takes up to five conditions (`text` visible in the main document, `textGone`, `url`
+`browser_wait` with only `duration` (seconds, at most 10, as in Claude's and Codex's `wait`)
+pauses. Otherwise it takes up to five conditions (`text` visible in the main document, `textGone`, `url`
 as a substring or a `*` pattern, `gone` for a ref that leaves or hides) and a timeout up to 30 s,
 and returns which one held, with the matching element's text as page content so a toast is read
 before it vanishes. Text counts only when its deepest containing element renders (opacity and

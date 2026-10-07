@@ -22,7 +22,9 @@ function formatSnapshotLine(node: SnapshotNode, depth: number, isNew: boolean): 
 }
 
 export interface RenderOptions {
-  readonly filter: "interactive" | "all";
+  // Controls only, or every element that has a role worth naming; text lines only with `text`.
+  readonly controlsOnly: boolean;
+  readonly text: boolean;
   readonly depth: number | undefined;
   readonly maxChars: number;
   readonly isNew: (ref: string) => boolean;
@@ -42,7 +44,10 @@ export function renderSnapshot(roots: readonly SnapshotNode[], options: RenderOp
     }
   };
   const visit = (node: SnapshotNode, depth: number) => {
-    const included = options.filter === "all" || node.interactive;
+    const included =
+      node.role === "text"
+        ? options.text
+        : node.interactive || (!options.controlsOnly && node.name.trim() !== "");
     const childDepth = included ? depth + 1 : depth;
     if (included) {
       push(formatSnapshotLine(node, depth, node.ref !== undefined && options.isNew(node.ref)));

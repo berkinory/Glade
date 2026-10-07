@@ -527,8 +527,57 @@ Regression: the round-2 `actions` scenario gives the same results apart from por
 
 Checks: `bun run check`, `bun run test` for desktop, server (`@glade/cli`) and contracts, `bun run build:desktop`, `bun scripts/check-windows-runtime-boundary.ts`. Not run: a provider turn against the new tools, the panel notice seen in the Dev app (type-checked; the web dialog bar renders it as an OK-only notice), the full `bun run test` for web.
 
+## 8f. Browser tool vocabulary aligned with Claude and Codex (2026-10-07, macOS arm64, scratch plain Electron)
+
+Revision to the browser tool surface (section 3), following the round-2 research on what the models were trained on:
+
+- `browser_screenshot` always captures the whole viewport and alone sets the coordinate frame. Region and ref capture moved to `browser_zoom(region [x0, y0, x1, y1] | ref)`, which never changes the frame (Claude's `zoom`, `computer_zoom`). Before, a region or ref screenshot replaced the frame and later `x`/`y` clicks missed.
+- `browser_scroll` takes `scroll_direction` and `scroll_amount` in notches (1 to 10, default 3, 100 CSS px each), `ref` or `coordinate`, and `pixels` for exact jumps through long virtualized lists (Item #5000 of a 10,000-row list is one call; at ten notches it would be 160).
+- `browser_batch` takes `{actions: [{name, input}]}` with or without the `browser_` prefix; later actions after a failure report `Not executed: an earlier action in this batch failed.`
+- Ref inputs accept `ref_N`, `@eN` and bare `N` (decoded to `eN` in the contract); stale-ref errors name `browser_snapshot` and `browser_find`.
+- Keys parse loosely (chords, xdotool names, sequences, arrays, `repeat`) in `apps/desktop/src/browser/cdp/keyChords.ts`, which is pure so it can move to `packages/shared` once Computer Use adopts it (shared code needs two consumers); `cmd` is platform-mapped, and macOS Command+A/Z carry Chromium's editing commands. Click modifiers take a string or an array.
+- `browser_snapshot` `filter`: none = visible elements, `interactive` = visible controls, `all` = also off-screen (was `scope: "page"`); `text: true` adds static text.
+- `browser_find` reads natural language (role synonyms, ranked word matches including row text and placeholders), keeps exact substring and regex, and points to `browser_snapshot` on no match.
+- `browser_wait` accepts `duration` in seconds (at most 10) as a pause; seconds rather than milliseconds because that is the unit of Claude's and Codex's own `wait`. `browser_fill` values accept numbers.
+
+Verified in the scratch harness against every page of the bench `site` and `site2` fixtures (snapshot in all three filters, natural-language find of each page's heading and first button, screenshot, zoom, scroll), plus coordinate clicks on the canvas after region and ref zooms, the virtual list, the infinite feed, keys and the ported round-2 scenarios. `browser_batch` was driven through the gateway handler with a stub host.
+
+## 8g. File dialogs, menu paths and per-step cost (2026-10-07, macOS arm64, Dev bundle via `open`)
+
+Diagnosis from benchmark v3 (C1 TextEdit bold title and list saved as RTF into a folder; C3 Preview to TextEdit to a Save panel), Glade transcripts at fad3a013e:
+
+- **Where the tokens went.** Glade × Claude C1 made 95 calls; its context grew from about 58k to 138k tokens, and the 8.6M total is that context re-read on every call, so the call count is the cost. Of the 80k growth, 20 images (15 `computer_screenshot`, 2 zooms, 3 `include_screenshot` reads, about 1.5k tokens each) were roughly 30k and tool text about 15k. Window reads were 40k characters, 54% of them the app's menu bar (Apple ▸ Recent Items, Services, Window lists). Codex C3: 19 reads, 63k characters, 68% menu bar.
+- **Save panel phase.** Claude C1 spent calls 52 to 93 (42 of 95) in the Save panel. Six of its reads came back cut by Cua's 1 s walk budget: the column browser lists every visible folder and the walk never reached the name field or buttons, so queries returned only `AXSheet "save"`. The separately listed "Save" window resolves to no elements (`ax_window_unresolved`). Background keys were refused (`same_pid_keyboard_ambiguity`, TextEdit had four windows) and foreground clicks on the sheet failed (`exact target window did not become focused`). It found the folder by pressing through the Where pop-up and column view. Claude C3 spent 13 of 36 calls the same way.
+- **Codex C1 failure.** `["File", "Save"]` failed twice with "path segment 1 was not found": an untitled document's item is "Save…", and Cua matches exactly apart from `...` for `…` (and case-sensitively: `"file"` fails). Its foreground cmd+s did open the sheet, but the next read used `max_depth: 1` and the result said nothing about a sheet. Codex C3 then put the full path into the name field with `set_value`, which saved a file named with colons.
+- **Diffs.** Every menu action's change list was mostly menu items (`+ … 33 more`); typing re-read the whole window although Cua had confirmed the text by reading it back.
+
+Probed directly against Cua 0.34 (raw MCP calls on the Dev daemon): sheet controls are actionable by element through the parent window (upstream #4507 shipped), a `max_depth: 5` read lists every Save panel control in about 300 ms where a full walk times out at 1 s (and still at 5 s), and keys cannot reach the panel by window: background is refused, foreground fails the focus check (#4551, open), and `click` with `action: "confirm"` on the Go to Folder field does not commit. Desktop-scoped `hotkey`/`press_key` (no pid) reach the panel while the app is frontmost; once another app took focus, a re-activated TextEdit no longer routed them to the panel. The replace prompt is a nested `AXSheet` with the "already exists" text and Cancel/Replace; while it or Go to Folder is up, the panel's Save button is not in the tree.
+
+Changes:
+
+1. `computer_file_dialog` (save or open; folder `path`, `file_name`, `overwrite`): opens the panel through the File menu when none is showing (a sheet, or a new Open window), Command-Shift-G and Return as desktop keys each gated on the user-activity yield and Cua's frontmost pid, the Go to Folder field and the name by `set_value`, the format pop-up by extension when one matches, Save/Open by AXPress, the replace prompt refused (`file_exists`, panel left open) unless `overwrite`, then a stat of that one target path. Needs `full`; one gate-table case covers that.
+2. Menus: path as array or a string with `>`, `▸`, `→`; ellipsis flip, then tree titles at that level matched without case, ellipsis or `⌘` suffix; `menu_item_not_found` with `details.available`.
+3. Reads: a cut read that shows a sheet repeats at depth 5; open sheets are named first; actions report `Sheet opened`/`Sheet closed`; a no-change re-read is repeated once 450 ms later (sheets animate in).
+4. Cost: menu bar collapsed to one line in reads and left out of diffs; long labels and values cut to 80 characters plus the length; the diff opens with a count and lists at most ten labelled elements, changed ones first; no re-read when Cua confirmed the effect. Screenshots stay opt-in (the post-action read still grabs one only to keep Cua's pixel context, never returned).
+
+Measured on the same scripted TextEdit run through the real tool handlers, HEAD (exported to a scratch tree) against this change, characters of the result (≈ tokens × 4):
+
+| Step                                        | Before                                                             | After                                         |
+| ------------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------- |
+| `computer_window_state`, new document       | 8,796                                                              | 1,718                                         |
+| `computer_act` type 45 chars                | 644 (re-read, 9 menu-item lines)                                   | 94 (confirmed, no re-read)                    |
+| `computer_act` click Bold                   | 631                                                                | 461                                           |
+| `computer_act` menu File ▸ Save…            | 410, sheet not mentioned                                           | 312, `Sheet opened: [341] "save"`             |
+| `computer_window_state` with the Save sheet | 4,929, cut before any panel button; scenario could not find Cancel | 3,242 with every panel control                |
+| Save the document into a folder             | 42 calls in the benchmark (Claude C1)                              | one `computer_file_dialog`, 586 chars, 15.9 s |
+
+Live (Dev app via `open`, isolated `GLADE_HOME`, port offset 40; a scratch script driving the real handlers against the live daemon with in-memory full-access grants and no idle reading): TextEdit save into a scratch folder in one call (file on disk, title changed, Rich Text format picked); the same name again refused with `file_exists`, then replaced with `overwrite: true`; Preview open of a PDF in one call (7.3 s, new window); `"format > font > bold ⌘B"` ran Format ▸ Font ▸ Bold; `"File → Sav"` and `["Fiel", "Save"]` refused with the File menu's and the menu bar's titles. Not exercised: a provider turn, the access card, the user-activity yield with a real idle reading, Open panels hosted as sheets, non-English panels, and Windows or Linux (the tool assumes the macOS panel).
+
+Found during probing: a desktop-scoped key sent after focus had moved to another app lands in that app (two probe Returns reached the Claude app), which is why the tool checks the frontmost pid right before each key.
+
 ## 9. Open items
 
+- When Cua ships foreground keys to a window's attached sheet (trycua/cua#4551), send Go to Folder's keys to the window instead of the desktop and drop the frontmost check.
 - Record token measurements from the provider acceptance runs here.
 - Page dialogs reach the user through the panel bar (8c); `prompt()` stays unsupported because Electron's renderer refuses it.
 - Keyboard shortcuts do not reach Glade while focus is inside a page view.

@@ -9,7 +9,7 @@ import { click } from "./actions";
 import { selectCustom } from "./ariaSelect";
 import type { CdpSession } from "./cdpSession";
 import { COMBO_LIKE, echo, optionsAfterTyping } from "./combobox";
-import { characterKey, parseKeyChord, pressKey } from "./keyboard";
+import { characterKey, keyDefinition, pressKey } from "./keyboard";
 import { callOn } from "./pointer";
 import { rethrowStaleNode, type RefTable } from "./refs";
 import { typedMismatch } from "./typedValue";
@@ -114,7 +114,7 @@ async function replaceText(cdp: CdpSession, refs: RefTable, ref: string, text: s
   }
   const enter = async (atOnce: boolean) => {
     await callOn(cdp, target, SELECT_CONTENTS).catch(rethrowStaleNode(ref));
-    if (text.length === 0) await pressKey(cdp, parseKeyChord("Backspace").key, 0);
+    if (text.length === 0) await pressKey(cdp, keyDefinition("Backspace"), 0);
     if (atOnce && text.length > 0) await cdp.send("Input.insertText", { text });
     else await typeKeys(cdp, text);
   };
@@ -210,7 +210,8 @@ export async function fillFields(
   input: typeof BrowserFillInput.Type,
 ): Promise<string> {
   const lines: string[] = [];
-  for (const { ref, value } of input.fields) {
+  for (const { ref, value: given } of input.fields) {
+    const value = typeof given === "number" ? String(given) : given;
     const field = await describeField(cdp, refs, ref);
     const label = refs.describe(ref);
     try {

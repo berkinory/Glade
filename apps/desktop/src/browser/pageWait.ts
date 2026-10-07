@@ -74,7 +74,14 @@ export async function waitForConditions(
   tab: BrowserTab,
   input: typeof BrowserWaitInput.Type,
 ): Promise<{ readonly text: string; readonly content?: string }> {
-  const conditions = input.conditions.map(only);
+  if ((input.conditions === undefined) === (input.duration === undefined)) {
+    throw new BrowserFailure("invalid_input", "Pass conditions, or duration for a plain pause.");
+  }
+  if (input.duration !== undefined) {
+    await new Promise((resolve) => setTimeout(resolve, input.duration! * 1000));
+    return { text: `Waited ${input.duration} s.` };
+  }
+  const conditions = input.conditions!.map(only);
   const timeoutMs = input.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const urls = new Map(
     conditions.filter((c) => c.kind === "url").map((c) => [c.value, urlMatcher(c.value)]),

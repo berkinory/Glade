@@ -22,6 +22,7 @@ import {
   BrowserTypeInput,
   BrowserUploadInput,
   BrowserWaitInput,
+  BrowserZoomInput,
   type BrowserBatchTool,
 } from "@glade/contracts/browser/browserTools";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
@@ -73,7 +74,7 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     title: "Snapshot the page",
     readOnly: true,
     description:
-      'Accessibility snapshot of what is on screen plus about one screen around it, iframes included: one line per element, `- role "name" [ref=eN] value=… states`; `+` instead of `-` marks elements that were not in your previous snapshot. Hidden, covered and off-screen elements are left out; a note says how many are above or below. Invalid fields show invalid="message"; scroll containers show how far they are scrolled. Act on elements through these refs. filter "interactive" (default) lists controls, including elements that only look clickable; "all" adds text and structure. scope "page" lists the whole page; narrow large pages with depth or a ref subtree. Refs stay valid while their element stays in the document.',
+      'Accessibility snapshot of the page, same idea as Claude\'s read_page, iframes included: one line per element, `- role "name" [ref=eN] value=… states`; `+` marks elements new since your previous snapshot. By default it lists visible elements (on screen plus about one screen around); filter "interactive" keeps only controls, "all" adds off-screen elements; text: true adds static text. Hidden and covered elements are left out. Invalid fields show invalid="message"; scroll containers show how far they are scrolled. Narrow large pages with depth or a ref subtree. Refs stay valid while their element stays in the document.',
   },
   browser_find: {
     method: "browser.find",
@@ -81,7 +82,7 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     title: "Find elements",
     readOnly: true,
     description:
-      "Search elements by role, name or value (case-insensitive text, or a regex with regex: true). Returns up to 20 refs with their context and the text of the table row or list item each sits in; cheaper than a full snapshot when you know what you need.",
+      'Find elements by a natural-language description ("search field", "add to cart button"), exact text, or a regex with regex: true. Matches role, name, value, placeholder and text, best first. Returns up to 20 refs with context and the text of the table row or list item each sits in; cheaper than a snapshot when you know what you need.',
   },
   browser_get_text: {
     method: "browser.getText",
@@ -97,7 +98,7 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     title: "Click an element",
     readOnly: false,
     description:
-      "Click ref with real mouse events after scrolling it into view; count 2 double-clicks. Fails with covered when another element (a modal, a banner) would receive the click. Instead of ref, x and y click a point in the last browser_screenshot's pixels (viewport CSS px if none was taken), for targets without a ref like canvas content; it hits whatever is there. Waits for a navigation it starts or for the page to settle, then reports what changed: URL or title, new elements, a dialog, a new tab, a download. Checkbox and radio clicks report the resulting state.",
+      'Click ref with real mouse events after scrolling it into view; count 2 double-clicks; modifiers like "ctrl+shift". Fails with covered when another element (a modal, a banner) would receive the click. Instead of ref, x and y click a point in the last browser_screenshot\'s pixels (viewport CSS px if none was taken; browser_zoom does not change them), for targets without a ref like canvas content. Waits for a navigation it starts or for the page to settle, then reports what changed: URL or title, new elements, a dialog, a new tab, a download. Checkbox and radio clicks report the resulting state.',
     action: true,
   },
   browser_hover: {
@@ -133,7 +134,7 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     title: "Fill form fields",
     readOnly: false,
     description:
-      "Set several form fields in one call: text fields and textareas get their text, selects an option label or value, date and time inputs their value, checkboxes, radios and switches true or false. Reports one line per field and stops at the first field that fails.",
+      "Set several form fields in one call, like Claude's form_input: text fields get text or a number, selects an option label or value, date and time inputs their value, checkboxes, radios and switches true or false. Reports one line per field and stops at the first field that fails.",
     action: true,
   },
   browser_press: {
@@ -142,7 +143,7 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     title: "Press a key",
     readOnly: false,
     description:
-      "Press a key or chord on the focused element, for example Enter, Escape, ArrowDown, Control+A or Meta+K; repeat presses it several times.",
+      'Press keys on the focused element: a chord like "ctrl+a" or "Shift+Tab", a space-separated sequence like "Down Down Return" (xdotool names work), or an array like ["CTRL", "A"]. cmd is Command on macOS and Control elsewhere. repeat runs the whole sequence again.',
     action: true,
   },
   browser_select: {
@@ -160,7 +161,7 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     title: "Scroll",
     readOnly: false,
     description:
-      "Scroll the page by direction and amount in CSS px (default most of a screen), or bring ref into view; with ref and direction, scroll the scroll container at ref (a sidebar, a long list). Reports the new position and what newly appeared.",
+      "Scroll with the mouse wheel: scroll_direction (default down) by scroll_amount notches (1-10, default 3, about 100 CSS px each), over the page, the scroll container at ref (a sidebar, a long list) or coordinate [x, y] in screenshot pixels. pixels sets an exact distance instead, for long virtualized lists. ref without a direction scrolls that element into view. Reports the new position and what newly appeared.",
     action: true,
   },
   browser_wait: {
@@ -169,7 +170,7 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     title: "Wait for the page",
     readOnly: true,
     description:
-      "Wait until one of up to 5 conditions holds, each one of: text (visible on the page), textGone, url (substring, * as wildcard) or gone (a ref that disappears). Returns which matched; fails after timeoutMs (default 10000, max 30000). Use it for toasts, slow results and pages that finish loading on their own.",
+      "Wait until one of up to 5 conditions holds, each one of: text (visible on the page), textGone, url (substring, * as wildcard) or gone (a ref that disappears). Returns which matched; fails after timeoutMs (default 10000, max 30000). Use it for toasts, slow results and pages that finish loading on their own. duration (seconds, at most 10) instead of conditions just pauses.",
   },
   browser_screenshot: {
     method: "browser.screenshot",
@@ -177,7 +178,15 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     title: "Take a screenshot",
     readOnly: true,
     description:
-      "JPEG of the viewport, a ref or a region in CSS px, at most 1280 px on the long edge. For seeing layout and visuals; prefer refs, and use its pixels as x and y only for targets without one. Works while the browser panel is hidden.",
+      "JPEG of the viewport, at most 1280 px on the long edge. Its pixels become the x and y of later clicks; prefer refs, and use them only for targets without one. Works while the browser panel is hidden.",
+  },
+  browser_zoom: {
+    method: "browser.zoom",
+    input: BrowserZoomInput,
+    title: "Zoom into the page",
+    readOnly: true,
+    description:
+      "JPEG close-up of region [x0, y0, x1, y1] in the last browser_screenshot's pixels, or of ref's box. Never changes the coordinates later clicks use.",
   },
   browser_dialog: {
     method: "browser.dialog",
@@ -227,8 +236,13 @@ function resultContent(
   result: BrowserHostResult,
 ): McpToolCallResult["content"] {
   const lines: string[] = [];
-  if ("image" in result) lines.push(`Screenshot ${result.image.width}x${result.image.height}.`);
-  else {
+  if ("image" in result) {
+    lines.push(
+      spec.method === "browser.zoom"
+        ? `Zoom ${result.image.width}x${result.image.height}; x and y still use the last browser_screenshot.`
+        : `Screenshot ${result.image.width}x${result.image.height}.`,
+    );
+  } else {
     if (result.text) lines.push(result.text);
     if (result.content)
       lines.push(
@@ -252,6 +266,16 @@ function resultContent(
     ? [text, { type: "image" as const, data: result.image.data, mimeType: result.image.mimeType }]
     : [text];
 }
+
+const NOT_EXECUTED = "Not executed: an earlier action in this batch failed.";
+
+// Batch actions name tools as Claude's own browser_batch does, with or without the prefix.
+const batchTool = (name: string): BrowserBatchTool | undefined => {
+  const tool = name.startsWith("browser_") ? name : `browser_${name}`;
+  return (BROWSER_BATCH_TOOLS as readonly string[]).includes(tool)
+    ? (tool as BrowserBatchTool)
+    : undefined;
+};
 
 const failure = (error: BrowserHostError) =>
   gatewayToolErrorResult(new GatewayToolError(error.code, error.message));
@@ -362,35 +386,35 @@ export function makeBrowserTools(services: {
     definition: {
       name: "browser_batch",
       description:
-        "Run up to 20 browser_* calls in order and stop at the first failure. Each step is {tool, args} with that tool's arguments. Use it for predictable sequences such as type, press Enter, snapshot.",
-      // Hand-written because steps carry free-form args: the generated schema for an unknown
-      // record admits only null values, and each step's args are decoded by its own tool anyway.
+        'Run up to 20 browser tool calls in order, like Claude\'s browser_batch: actions is a list of {name, input}, name being a browser tool with or without the browser_ prefix ("click" or "browser_click"). Stops at the first failure. Use it for predictable sequences such as type, press Enter, snapshot.',
+      // Hand-written because inputs are free-form: the generated schema for an unknown record
+      // admits only null values, and each action's input is decoded by its own tool anyway.
       inputSchema: {
         type: "object",
         properties: {
-          steps: {
+          actions: {
             type: "array",
             minItems: 1,
             maxItems: 20,
             items: {
               type: "object",
               properties: {
-                tool: { type: "string", enum: BROWSER_BATCH_TOOLS },
-                args: { type: "object", description: "That tool's arguments." },
+                name: { type: "string", description: "Browser tool name, e.g. browser_click." },
+                input: { type: "object", description: "That tool's input." },
               },
-              required: ["tool", "args"],
+              required: ["name"],
               additionalProperties: false,
             },
           },
         },
-        required: ["steps"],
+        required: ["actions"],
         additionalProperties: false,
       },
       annotations: annotations({ title: "Run browser steps", readOnly: false }),
     },
     handler: (args, context) =>
       Effect.gen(function* () {
-        const { steps } = yield* Schema.decodeUnknownEffect(BrowserBatchInput)(args).pipe(
+        const { actions } = yield* Schema.decodeUnknownEffect(BrowserBatchInput)(args).pipe(
           Effect.mapError(
             (error) =>
               new BrowserHostError({
@@ -399,24 +423,39 @@ export function makeBrowserTools(services: {
               }),
           ),
         );
+        const tools = actions.map(({ name }) => batchTool(name));
+        const unknown = actions.find((_, index) => tools[index] === undefined);
+        if (unknown) {
+          return yield* new BrowserHostError({
+            code: "invalid_input",
+            message: `Unknown browser tool "${unknown.name}" in browser_batch. Use one of: ${BROWSER_BATCH_TOOLS.join(", ")}.`,
+          });
+        }
         const content: Array<McpToolCallResult["content"][number]> = [];
-        for (const [index, step] of steps.entries()) {
-          const outcome = yield* Effect.result(invoke(step.tool, step.args, context));
-          const label = `[${index + 1}/${steps.length}] ${step.tool}`;
+        let failed = false;
+        for (const [index, action] of actions.entries()) {
+          const tool = tools[index]!;
+          const label = `[${index + 1}/${actions.length}] ${tool}`;
+          if (failed) {
+            content.push({ type: "text", text: `${label}\n${NOT_EXECUTED}` });
+            continue;
+          }
+          const outcome = yield* Effect.result(invoke(tool, action.input ?? {}, context));
           if (outcome._tag === "Failure") {
+            failed = true;
             content.push({
               type: "text",
-              text: `${label} failed (${outcome.failure.code}): ${outcome.failure.message}\nRemaining steps were skipped.`,
+              text: `${label} failed (${outcome.failure.code}): ${outcome.failure.message}`,
             });
-            return { content, isError: true };
+            continue;
           }
-          const [first, ...rest] = resultContent(SPECS[step.tool], outcome.success);
+          const [first, ...rest] = resultContent(SPECS[tool], outcome.success);
           content.push(
             { type: "text", text: `${label}\n${first!.type === "text" ? first!.text : ""}` },
             ...rest,
           );
         }
-        return { content };
+        return failed ? { content, isError: true } : { content };
       }).pipe(Effect.catch((error) => Effect.succeed(failure(error)))),
   };
 

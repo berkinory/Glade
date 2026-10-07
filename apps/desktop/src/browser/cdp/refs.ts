@@ -10,7 +10,7 @@ export interface RefTarget {
 }
 
 const STALE =
-  "is stale or unknown. Take a new browser_snapshot (or browser_find) and use its refs.";
+  "is stale or not found on the current page. Re-read the page with browser_snapshot or browser_find and use the new refs.";
 
 const MAX_LABEL_NAME = 60;
 // The last two cover an out-of-process frame whose target or session is already gone.

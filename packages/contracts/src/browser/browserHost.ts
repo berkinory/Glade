@@ -20,6 +20,7 @@ import {
   BrowserTypeInput,
   BrowserUploadInput,
   BrowserWaitInput,
+  BrowserZoomInput,
 } from "./browserTools";
 
 export const BROWSER_FAILURE_CODES = [
@@ -70,6 +71,7 @@ export const BROWSER_HOST_METHODS = {
   "browser.scroll": scoped(BrowserScrollInput),
   "browser.wait": scoped(BrowserWaitInput),
   "browser.screenshot": scoped(BrowserScreenshotInput),
+  "browser.zoom": scoped(BrowserZoomInput),
   "browser.dialog": scoped(BrowserDialogInput),
   // Paths are absolute and already validated against the thread workspace by the server.
   "browser.upload": scoped(BrowserUploadInput),

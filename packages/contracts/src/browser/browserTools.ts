@@ -1,9 +1,21 @@
-import { Schema } from "effect";
+import { Schema, SchemaTransformation } from "effect";
 
-// Refs come from browser_snapshot and browser_find; tab ids from browser_tabs.
-export const BrowserRef = Schema.String.check(Schema.isPattern(/^e[1-9][0-9]*$/u)).annotate({
-  description: 'Element ref from browser_snapshot or browser_find, for example "e12".',
-});
+// Refs come from browser_snapshot and browser_find as eN. Input also takes the forms other
+// browser tools taught models (ref_N, @eN, a bare N) and decodes every one to eN.
+const REF_PREFIX = /^(?:ref_|@?e)/iu;
+export const BrowserRef = Schema.String.check(Schema.isPattern(/^(?:ref_|@?e)?[1-9][0-9]*$/iu))
+  .annotate({
+    description: 'Element ref from browser_snapshot or browser_find, for example "e12".',
+  })
+  .pipe(
+    Schema.decodeTo(
+      Schema.String,
+      SchemaTransformation.transform({
+        decode: (ref) => `e${ref.replace(REF_PREFIX, "")}`,
+        encode: (ref) => ref,
+      }),
+    ),
+  );
 export const BrowserTabId = Schema.String.check(Schema.isPattern(/^t[1-9][0-9]*$/u)).annotate({
   description: "Tab id from browser_tabs. Defaults to the thread's active tab.",
 });
@@ -27,7 +39,7 @@ export const BrowserNavigateInput = Schema.Struct({
 
 export const BrowserSnapshotInput = Schema.Struct({
   filter: Schema.optional(Schema.Literals(["interactive", "all"])),
-  scope: Schema.optional(Schema.Literals(["viewport", "page"])),
+  text: Schema.optional(Schema.Boolean),
   depth: Schema.optional(Count(1, 64)),
   ref: Schema.optional(BrowserRef),
   ...tab,
@@ -45,10 +57,10 @@ export const BrowserGetTextInput = Schema.Struct({
   ...tab,
 });
 
-export const BrowserModifier = Schema.Literals(["Alt", "Control", "Meta", "Shift"]);
-export type BrowserModifier = typeof BrowserModifier.Type;
+// "ctrl+shift" or ["ctrl", "shift"]; the desktop parses the names.
+const Modifiers = Schema.Union([Text(64), Schema.Array(Text(16)).check(Schema.isMaxLength(4))]);
 
-const Coordinate = Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 100_000 }));
+const Coordinate = Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 100_000 }));
 // Either ref, or x and y in the pixels of the tab's latest browser_screenshot (viewport CSS pixels
 // before any screenshot). The desktop rejects any other combination.
 const target = {
@@ -62,7 +74,7 @@ export type BrowserTarget = typeof BrowserTarget.Type;
 export const BrowserClickInput = Schema.Struct({
   ...target,
   button: Schema.optional(Schema.Literals(["left", "right", "middle"])),
-  modifiers: Schema.optional(Schema.Array(BrowserModifier)),
+  modifiers: Schema.optional(Modifiers),
   count: Schema.optional(Count(1, 3)),
   ...tab,
 });
@@ -83,8 +95,11 @@ export const BrowserTypeInput = Schema.Struct({
 });
 
 export const BrowserPressInput = Schema.Struct({
-  key: Text(64).check(Schema.isNonEmpty()),
-  repeat: Schema.optional(Count(1, 50)),
+  key: Schema.Union([
+    Text(256).check(Schema.isNonEmpty()),
+    Schema.Array(Text(32)).check(Schema.isMinLength(1), Schema.isMaxLength(8)),
+  ]),
+  repeat: Schema.optional(Count(1, 100)),
   ...tab,
 });
 
@@ -95,10 +110,12 @@ export const BrowserSelectInput = Schema.Struct({
 });
 
 export const BrowserScrollInput = Schema.Struct({
+  scroll_direction: Schema.optional(Schema.Literals(["up", "down", "left", "right"])),
+  scroll_amount: Schema.optional(Count(1, 10)),
+  // Long virtualized lists need exact jumps far past ten notches.
+  pixels: Schema.optional(Count(1, 1_000_000)),
   ref: Schema.optional(BrowserRef),
-  direction: Schema.optional(Schema.Literals(["up", "down", "left", "right"])),
-  // Long virtualized lists need jumps far past one screen.
-  amount: Schema.optional(Count(1, 1_000_000)),
+  coordinate: Schema.optional(Schema.Tuple([Coordinate, Coordinate])),
   ...tab,
 });
 
@@ -106,7 +123,7 @@ export const BrowserFillInput = Schema.Struct({
   fields: Schema.Array(
     Schema.Struct({
       ref: BrowserRef,
-      value: Schema.Union([Text(20_000), Schema.Boolean]).annotate({
+      value: Schema.Union([Text(20_000), Schema.Finite, Schema.Boolean]).annotate({
         description:
           "Text for text fields, an option label or value for selects, a date like 2026-10-07 for date inputs, true or false for checkboxes, radios and switches.",
       }),
@@ -115,17 +132,15 @@ export const BrowserFillInput = Schema.Struct({
   ...tab,
 });
 
-export const BrowserRegion = Schema.Struct({
-  x: Schema.Number,
-  y: Schema.Number,
-  width: Schema.Number.check(Schema.isGreaterThan(0)),
-  height: Schema.Number.check(Schema.isGreaterThan(0)),
+export const BrowserScreenshotInput = Schema.Struct({
+  scale: Schema.optional(Schema.Number.check(Schema.isBetween({ minimum: 0.1, maximum: 1 }))),
+  ...tab,
 });
 
-export const BrowserScreenshotInput = Schema.Struct({
+// [x0, y0, x1, y1] in the same pixels as x and y; a zoom never changes that frame.
+export const BrowserZoomInput = Schema.Struct({
+  region: Schema.optional(Schema.Tuple([Coordinate, Coordinate, Coordinate, Coordinate])),
   ref: Schema.optional(BrowserRef),
-  region: Schema.optional(BrowserRegion),
-  scale: Schema.optional(Schema.Number.check(Schema.isBetween({ minimum: 0.1, maximum: 1 }))),
   ...tab,
 });
 
@@ -139,10 +154,11 @@ export const BrowserWaitCondition = Schema.Struct({
 export type BrowserWaitCondition = typeof BrowserWaitCondition.Type;
 
 export const BrowserWaitInput = Schema.Struct({
-  conditions: Schema.Array(BrowserWaitCondition).check(
-    Schema.isMinLength(1),
-    Schema.isMaxLength(5),
+  conditions: Schema.optional(
+    Schema.Array(BrowserWaitCondition).check(Schema.isMinLength(1), Schema.isMaxLength(5)),
   ),
+  // Seconds, as in Claude's and Codex's own wait tools.
+  duration: Schema.optional(Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 10 }))),
   timeoutMs: Schema.optional(Count(100, 30_000)),
   ...tab,
 });
@@ -202,6 +218,7 @@ export const BROWSER_BATCH_TOOLS = [
   "browser_scroll",
   "browser_wait",
   "browser_screenshot",
+  "browser_zoom",
   "browser_dialog",
   "browser_upload",
   "browser_console",
@@ -209,11 +226,12 @@ export const BROWSER_BATCH_TOOLS = [
 ] as const;
 export type BrowserBatchTool = (typeof BROWSER_BATCH_TOOLS)[number];
 
+// The shape of Claude's own browser_batch; `name` may leave out the browser_ prefix.
 export const BrowserBatchInput = Schema.Struct({
-  steps: Schema.Array(
+  actions: Schema.Array(
     Schema.Struct({
-      tool: Schema.Literals(BROWSER_BATCH_TOOLS),
-      args: Schema.Record(Schema.String, Schema.Unknown),
+      name: Text(64),
+      input: Schema.optional(Schema.Record(Schema.String, Schema.Unknown)),
     }),
   ).check(Schema.isMinLength(1), Schema.isMaxLength(20)),
 });

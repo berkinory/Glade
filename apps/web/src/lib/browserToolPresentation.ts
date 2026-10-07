@@ -28,6 +28,7 @@ const BROWSER_TOOL_WORDING = {
   browser_scroll: ["Scrolling", "Scrolled", "scroll"],
   browser_wait: ["Waiting for page", "Waited for page", "wait for the page"],
   browser_screenshot: ["Taking screenshot", "Took screenshot", "take a screenshot"],
+  browser_zoom: ["Zooming in", "Zoomed in", "zoom in"],
   browser_dialog: ["Answering dialog", "Answered dialog", "answer the dialog"],
   browser_upload: ["Uploading", "Uploaded", "upload files"],
   browser_console: ["Reading console", "Read console", "read the console"],
@@ -158,12 +159,14 @@ function browserTarget(tool: BrowserToolName, call: GatewayToolCall, lines: stri
       return previewAt(fields > 1 ? `${fields} fields` : null, host);
     }
     case "browser_press": {
-      const key = stringArg(args, "key");
+      const key = Array.isArray(args.key)
+        ? args.key.filter((part): part is string => typeof part === "string").join("+")
+        : stringArg(args, "key");
       const repeat = typeof args.repeat === "number" && args.repeat > 1 ? ` ×${args.repeat}` : "";
       return previewAt(key ? `${shortPreview(key)}${repeat}` : null, host);
     }
     case "browser_scroll": {
-      const direction = stringArg(args, "direction");
+      const direction = stringArg(args, "scroll_direction");
       const element = elementLabel(first);
       if (direction) return previewAt(element ? `${direction} in ${element}` : direction, host);
       return previewAt(element ? `${element} into view` : null, host);
@@ -205,8 +208,8 @@ function browserWording(tool: BrowserToolName, args: GatewayToolCall["args"]): G
   if (tool === "browser_fill" && Array.isArray(args.fields) && args.fields.length > 0) {
     return ["Filling", "Filled", "fill the form"];
   }
-  if (tool === "browser_batch" && Array.isArray(args.steps) && args.steps.length > 0) {
-    const steps = `${args.steps.length} browser ${pluralize(args.steps.length, "step")}`;
+  if (tool === "browser_batch" && Array.isArray(args.actions) && args.actions.length > 0) {
+    const steps = `${args.actions.length} browser ${pluralize(args.actions.length, "step")}`;
     return [`Running ${steps}`, `Ran ${steps}`, "run browser steps"];
   }
   return BROWSER_TOOL_WORDING[tool];
