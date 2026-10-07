@@ -71,7 +71,8 @@ connection and every policy decision, and providers only see gateway tools.
   `set_value` and menus need `full`.
 - Calls outside a grant return typed errors the model can read (`computer_use_off`,
   `window_not_found`, `access_required`, `browser_read_only`, `click_only`, `unknown_element`,
-  `no_progress`, `user_active`, `stopped`, or Cua's own code).
+  `no_progress`, `user_active`, `menu_item_not_found`, `file_exists`, `stopped`, or Cua's own
+  code).
 - Stop (or the turn interrupt) cancels in-flight Cua calls, refuses the rest of that turn and ends
   the chat's Cua session, which releases held input. Cua holds no keys or buttons between calls
   (drags are one call), so ending the session and cancelling the in-flight call is the release.
@@ -90,8 +91,38 @@ connection and every policy decision, and providers only see gateway tools.
 
 Structured (preferred): `computer_apps`, `computer_window_state` (accessibility tree, screenshot
 only on request), `computer_act` (click, type, keys, scroll, set value, menu by element index, with
-background or foreground delivery), `computer_verify` (Cua's `verify_state`: waits up to 10 s for
-element conditions with stable samples), `computer_request_access`, `computer_stop`.
+background or foreground delivery), `computer_file_dialog` (a macOS Open or Save panel in one call),
+`computer_verify` (Cua's `verify_state`: waits up to 10 s for element conditions with stable
+samples), `computer_request_access`, `computer_stop`.
+
+Menus: `computer_act` `menu` takes the path as an array or one string with `>`, `▸` or `→`. Cua's
+`invoke_menu` matches titles exactly except `...` for `…`, so Glade retries a segment Cua cannot
+find with the ellipsis flipped, then against the titles the window's tree lists at that level
+(ignoring case, a trailing ellipsis and `⌘` shortcut suffixes). When nothing matches it refuses
+with `menu_item_not_found` and the available titles in `details.available`. Closed menus can omit
+items an app adds only while the menu is open (TextEdit's File ▸ Save…).
+
+Sheets: a Save panel or alert attached to a window is an `AXSheet` in that window's tree, and Cua
+0.34 acts on its controls by element through the window. A full-depth walk of a Save panel spends
+Cua's 1 s budget in the column browser and is cut before the panel's buttons, so a cut read that
+shows a sheet is repeated at depth 5, where every panel control sits. Window reads name open sheets
+first, and action results say `Sheet opened` or `Sheet closed`.
+
+`computer_file_dialog` takes the document window (or an app's standalone Open window), `action`
+`save` or `open`, an absolute `path` (the folder to save into, or the file to open) and an optional
+`file_name`. It opens the panel through File ▸ Save As…/Save… or Open… when none is showing, goes
+to the folder with Go to Folder, sets the name with `set_value` (never a path in the name field),
+picks a matching format from the panel's format pop-up when the extension implies one, presses
+Save or Open and waits for the panel to close. An existing file is refused with `file_exists`
+(the panel stays open) unless `overwrite` is true. The result states the saved or opened path,
+checked on disk for that one path only, and the app's window titles.
+
+The panel runs in macOS's out-of-process panel service, which takes no keys Cua aims at a window
+(Cua 0.34; upstream trycua/cua#4551 is open). Go to Folder therefore needs two desktop-scoped keys,
+Command-Shift-G and Return, sent to the frontmost app: each goes only after the user paused (the
+same yield as foreground delivery) and right after Cua confirmed the app is frontmost, otherwise
+the call refuses with `user_active`. That is why the tool needs `full` control; the app stays in
+front afterwards. Everything else in the panel is driven by element.
 
 Pixel (fallback, window-scoped): `computer_screenshot`, `computer_zoom`, `computer_left_click`,
 `computer_right_click`, `computer_double_click`, `computer_triple_click`,
@@ -109,13 +140,18 @@ index is never reused, so a stale one is refused rather than hitting another ele
 
 Results:
 
-- Every action reports Cua's effect and evidence, and, when the agent has read the window before,
-  re-reads it 150 ms later and lists what changed (`+` new, `~` new value or state, `-` gone,
-  capped) or says nothing changed. New and gone elements are only listed when both reads covered
+- Every action reports Cua's effect and evidence, and, when the agent has read the window before
+  and Cua did not confirm the effect by reading the element back, re-reads it 150 ms later (and
+  once more 450 ms after that when nothing changed yet, since sheets animate in) and lists what
+  changed: one line counting new, changed and gone elements, then at most ten of them (`~` new
+  value or state first, then `+` new, `-` gone; elements with neither label nor value are counted
+  but not listed). The menu bar is left out of the change list. New and gone elements are only listed when both reads covered
   the whole window. The re-read includes a screenshot at the same size, discarded, because a
   tree-only read would replace the screenshot Cua maps pixel coordinates through and the next pixel
   action would be refused (`screenshot_context_missing`). Text inputs and the window itself keep
   their index while their label changes (TextEdit reports a text area's contents as its label).
+- Window reads collapse the menu bar to one line of menu titles and cut long labels and values
+  (a text area's whole document) to an 80-character excerpt with the length.
 - The same action with the same input that showed no effect (not confirmed and no tree change)
   twice in a row is refused with `no_progress` until the agent reads the app again or does
   something else. Glade never replays an action itself.
@@ -160,10 +196,13 @@ See [dependency maintenance](dependencies.md#cua-driver).
 1. `bun run build:desktop` (fetches and verifies the driver) and `bun run check`.
 2. Contract and trust tests: `apps/server/src/computer/cuaResults.test.ts` decodes fixtures
    captured from the pinned release; `apps/server/src/agentGateway/computer/computerAccessGate.test.ts`
-   covers the grant gate, the app category tiers and the progress guard.
+   covers the grant gate, the app category tiers (including the file dialog's full-control rule) and
+   the progress guard.
 3. Launch the Dev app through LaunchServices, grant both permissions, and confirm Settings shows the
    driver ready. Turn on `/computer` in a chat, grant TextEdit and ask the agent to type a sentence
-   and read it back, then exercise a screenshot and zoom.
+   and read it back, then exercise a screenshot and zoom. Save the document into a scratch folder
+   with `computer_file_dialog`, once more under the same name (refused with `file_exists`), and open
+   a PDF in Preview with it.
 4. Kill the `cua-driver` process: Settings recovers with a new generation within a few seconds.
    Quitting Glade stops the daemon and the proxy.
 5. While an agent works in TextEdit, press the kill switch: the turn stops as with Stop. Ask for
