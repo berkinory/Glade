@@ -72,8 +72,6 @@ export interface ChatViewProps {
   onToggleRightDock?: () => void;
   onToggleTerminal?: () => void;
   onOpenTerminal?: () => void;
-  onToggleBrowserPanel?: () => void;
-  onOpenBrowserUrl?: (url: string) => void;
   onOpenTurnDiffPanel?: (turnId: TurnId, filePath?: string) => void;
   onSplitSurface?: () => void;
   onMaximizeSurface?: () => void;

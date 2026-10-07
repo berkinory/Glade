@@ -77,12 +77,10 @@ interface PreparedChatTurn {
   currentActiveGitBranchForSend: string | null;
   queuedChatTurn: QueuedComposerChatTurn | null;
   turnDispatchSettings: TurnDispatchSettings;
-  computerControlSequenceForSend: number;
   promptForSend: string;
   composerImagesSnapshot: ChatTurnSubmissionInput["composerImages"];
   composerFilesSnapshot: ChatTurnSubmissionInput["composerFiles"];
   composerAssistantSelectionsSnapshot: ChatTurnSubmissionInput["composerAssistantSelections"];
-  composerBrowserAnnotationsSnapshot: ChatTurnSubmissionInput["composerBrowserAnnotations"];
   composerFileCommentsSnapshot: ChatTurnSubmissionInput["composerFileComments"];
   composerTerminalContextsSnapshot: ChatTurnSubmissionInput["composerTerminalContexts"];
   composerPastedTextsSnapshot: ChatTurnSubmissionInput["composerPastedTexts"];
@@ -205,7 +203,6 @@ export function useChatTurnExecution({
         composerImagesSnapshot,
         composerFilesSnapshot,
         composerAssistantSelectionsSnapshot,
-        composerBrowserAnnotationsSnapshot,
         composerFileCommentsSnapshot,
         composerTerminalContextsSnapshot,
         composerPastedTextsSnapshot,
@@ -651,7 +648,6 @@ export function useChatTurnExecution({
           draftStore.addFiles(threadIdForSend, composerFilesSnapshot);
           for (const selection of composerAssistantSelectionsSnapshot)
             draftStore.addAssistantSelection(threadIdForSend, selection);
-          draftStore.addBrowserAnnotations(threadIdForSend, composerBrowserAnnotationsSnapshot);
           for (const comment of composerFileCommentsSnapshot)
             draftStore.addFileComment(threadIdForSend, comment);
           draftStore.setTerminalContexts(threadIdForSend, [

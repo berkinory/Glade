@@ -127,7 +127,6 @@ export interface ChatTurnSubmissionInput {
   composerAssistantSelections: ReturnType<
     typeof useChatComposerDraft
   >["composerAssistantSelections"];
-  composerBrowserAnnotations: ReturnType<typeof useChatComposerDraft>["composerBrowserAnnotations"];
   composerFileComments: ReturnType<typeof useChatComposerDraft>["composerFileComments"];
   composerTerminalContexts: ReturnType<typeof useChatComposerDraft>["composerTerminalContexts"];
   composerPastedTexts: ReturnType<typeof useChatComposerDraft>["composerPastedTexts"];
@@ -156,9 +155,6 @@ export interface ChatTurnSubmissionInput {
   composerAssistantSelectionsRef: ReturnType<
     typeof useChatComposerDraft
   >["composerAssistantSelectionsRef"];
-  composerBrowserAnnotationsRef: ReturnType<
-    typeof useChatComposerDraft
-  >["composerBrowserAnnotationsRef"];
   composerFileCommentsRef: ReturnType<typeof useChatComposerDraft>["composerFileCommentsRef"];
   composerTerminalContextsRef: ReturnType<
     typeof useChatComposerDraft
@@ -173,9 +169,6 @@ export interface ChatTurnSubmissionInput {
   addComposerAssistantSelectionToDraft: ReturnType<
     typeof useChatComposerDraft
   >["addComposerAssistantSelectionToDraft"];
-  addComposerDraftBrowserAnnotations: ReturnType<
-    typeof useChatComposerDraft
-  >["addComposerDraftBrowserAnnotations"];
   addComposerFileCommentToDraft: ReturnType<
     typeof useChatComposerDraft
   >["addComposerFileCommentToDraft"];
@@ -202,7 +195,6 @@ export interface ChatTurnSubmissionInput {
   selectedModel: string;
   selectedPromptEffort: ReturnType<typeof useChatProviderModels>["selectedPromptEffort"];
   turnDispatchSettings: TurnDispatchSettings;
-  computerControlChangeSequence: RefObject<number>;
   activeThreadIdRef: RefObject<ThreadId>;
   armTranscriptAutoFollow: ReturnType<typeof useChatTranscriptScroll>["armTranscriptAutoFollow"];
   tailAnchorScrollInFlightRef: ReturnType<
@@ -266,7 +258,6 @@ export type ChatTurnSubmissionControllerInput = {
     | "composerImages"
     | "composerFiles"
     | "composerAssistantSelections"
-    | "composerBrowserAnnotations"
     | "composerFileComments"
     | "composerTerminalContexts"
     | "composerPastedTexts"
@@ -284,7 +275,6 @@ export type ChatTurnSubmissionControllerInput = {
     | "composerImagesRef"
     | "composerFilesRef"
     | "composerAssistantSelectionsRef"
-    | "composerBrowserAnnotationsRef"
     | "composerFileCommentsRef"
     | "composerTerminalContextsRef"
     | "composerPastedTextsRef"
@@ -293,7 +283,6 @@ export type ChatTurnSubmissionControllerInput = {
     | "addComposerImagesToDraft"
     | "addComposerFilesToDraft"
     | "addComposerAssistantSelectionToDraft"
-    | "addComposerDraftBrowserAnnotations"
     | "addComposerFileCommentToDraft"
     | "addComposerTerminalContextsToDraft"
     | "addComposerPastedTextsToDraft"
@@ -310,7 +299,6 @@ export type ChatTurnSubmissionControllerInput = {
   >;
   composer: Pick<
     ChatTurnSubmissionInput,
-    | "computerControlChangeSequence"
     | "scheduleComposerFocus"
     | "setThreadError"
     | "isVoiceTranscribing"

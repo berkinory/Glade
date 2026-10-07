@@ -24,8 +24,6 @@ using separate worktrees also have separate working directories and branches.
 - **Conversation** — user messages, agent responses, plans, tools, approvals, and subagent activity
 - **Composer** — objectives, attachments, provider selection, model selection, and task controls
 - **Terminal** — a real shell opened in the task's working directory
-- **Browser** — a shared live page surface for previews, semantic automation, and page-declared
-  WebMCP tools
 - **Diff and Git views** — the changes produced in the environment and the path toward committing or
   opening a PR
 
@@ -124,7 +122,7 @@ Glade supplies the shared workspace around it:
 
 - Durable tasks
 - Conversation and activity presentation
-- Terminals, browser, files, and diffs
+- Terminals, files, and diffs
 - Git environments
 - Approvals and user input
 - Handoffs and orchestration
@@ -198,7 +196,6 @@ Keep task ownership clear before scaling beyond one task.
 - `mod+n` — create a task
 - `mod+j` — toggle the terminal in the main workspace
 - `mod+d` — toggle the diff view
-- `mod+shift+b` — toggle the browser
 - `mod+\` — split the current view
 
 Check the [keyboard reference](./KEYBINDINGS.md) for the
@@ -322,7 +319,7 @@ released; they never attach to another chat or change its pending count.
 
 The conversation scrolls vertically; wide code blocks scroll horizontally within their own boundaries. Environment clips its sliding panel at the overlay boundary in floating and docked modes, while its content and bottom rail remain vertically scrollable.
 
-The message navigation rail appears only when the space left of the chosen chat width, after any docked panel, can hold it. Otherwise it hides and gives up keyboard focus. Activity rows omit routine single-use accepted approvals; refusals, cancellations, errors, session or permission grants and every Computer consent stay visible.
+The message navigation rail appears only when the space left of the chosen chat width, after any docked panel, can hold it. Otherwise it hides and gives up keyboard focus. Activity rows omit routine single-use accepted approvals; refusals, cancellations, errors and session or permission grants stay visible.
 
 Agent details retain the mounted conversation, including scroll position and expanded rows. Returning restores keyboard focus. Transcript edge fades follow scroll progress; unsupported scroll-timeline browsers keep the content clear and retain the composer footer dissolve.
 

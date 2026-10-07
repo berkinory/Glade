@@ -4,10 +4,8 @@ import { HandoffPreparation } from "../../orchestration/Services/HandoffPreparat
 import { readGitSidebarSummary } from "../../git/gitSidebarSummary";
 import { ProviderManagement } from "../../provider/Services/ProviderManagement.ts";
 import { sourceControlActions } from "../../git/sourceControlActions.ts";
-import { AgentGatewaySessionRegistry } from "../../agentGateway/Services/AgentGatewaySessionRegistry";
 import { execFile } from "node:child_process";
 
-import { COMPUTER_WS_METHODS, type ComputerEvent } from "@glade/contracts/computer/computer";
 import { ORCHESTRATION_WS_METHODS } from "@glade/contracts/orchestration/rpc";
 import { type OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
@@ -27,7 +25,6 @@ import {
 } from "@glade/contracts/transport/ws/wsCompatibility";
 import { WS_METHODS } from "@glade/contracts/transport/ws/ws";
 import { WsBootstrapRpcGroup } from "@glade/contracts/transport/ws/bootstrapRpc";
-import { WsComputerRpcGroup } from "@glade/contracts/transport/ws/computerRpc";
 import { WsFeatureRpcGroup } from "@glade/contracts/transport/ws/rpc";
 import { WsRpcError } from "@glade/contracts/transport/ws/rpcErrors";
 import {
@@ -63,10 +60,6 @@ import {
   isThreadDetailEventFor,
   THREAD_DETAIL_EVENT_TYPES,
 } from "@glade/shared/threads/threadDetailEvents";
-import { ComputerService } from "../../computer/Services/ComputerService";
-import { makeWsComputerHandlers } from "../../computer/wsComputerHandlers";
-import { makeComputerFrameRouteLayer } from "../../computer/computerFrameRoute";
-import { ComputerEventInterests } from "../../computer/computerEventInterests";
 import { GitCore } from "../../git/Services/GitCore";
 import {
   publishGitHubRepository,
@@ -197,9 +190,7 @@ class WsRequestAdmissionMiddleware extends RpcMiddleware.Service<WsRequestAdmiss
   { error: WsRpcError, requiredForClient: false },
 ) {}
 
-const AdmittedWsFeatureRpcGroup = WsFeatureRpcGroup.merge(WsComputerRpcGroup).middleware(
-  WsRequestAdmissionMiddleware,
-);
+const AdmittedWsFeatureRpcGroup = WsFeatureRpcGroup.middleware(WsRequestAdmissionMiddleware);
 
 const wsRequestAdmissionMiddlewareLayer = Layer.effect(
   WsRequestAdmissionMiddleware,
@@ -409,13 +400,6 @@ const makeWsRpcHandlersLayer = () =>
             ),
           ),
       });
-      const computerService = Option.getOrUndefined(yield* Effect.serviceOption(ComputerService));
-      const connectionSessions = yield* WsConnectionSessions;
-      const computerInterests = new ComputerEventInterests(connectionSessions.onClose);
-      const computerHandlers = makeWsComputerHandlers(
-        computerService,
-        Option.getOrUndefined(yield* Effect.serviceOption(AgentGatewaySessionRegistry)),
-      );
       const githubProjectProvisioner = yield* makeGitHubProjectProvisioner({
         homeDir: config.homeDir,
         fileSystem,
@@ -2030,44 +2014,6 @@ const makeWsRpcHandlersLayer = () =>
           rpcEffect(providerDiscoveryService.listModels(input), "Failed to list models"),
         [WS_METHODS.providerListAgents]: (input) =>
           rpcEffect(providerDiscoveryService.listAgents(input), "Failed to list agents"),
-
-        ...computerHandlers,
-        [COMPUTER_WS_METHODS.getAuditHistory]: (input) =>
-          requireWsOwnerSession.pipe(
-            Effect.andThen(computerHandlers[COMPUTER_WS_METHODS.getAuditHistory](input)),
-          ),
-        [COMPUTER_WS_METHODS.getThreadState]: (input, { headers }) =>
-          Effect.suspend(() => {
-            computerInterests.watch(
-              Headers.get(headers, WS_CONNECTION_SESSION_HEADER),
-              input.threadId,
-            );
-            return computerHandlers[COMPUTER_WS_METHODS.getThreadState](input);
-          }),
-        [COMPUTER_WS_METHODS.subscribeEvents]: (_, { clientId, headers }) =>
-          streamAdmission.guard(
-            clientId,
-            { key: "computer.events" },
-            computerService?.supported !== true
-              ? Stream.never
-              : bufferLiveUiStream(
-                  Stream.callback<ComputerEvent>((queue) =>
-                    Effect.gen(function* () {
-                      const connectionKey = Headers.get(headers, WS_CONNECTION_SESSION_HEADER);
-                      const unsubscribe = computerInterests.subscribe(
-                        connectionKey,
-                        computerService.manager.onEvent.bind(computerService.manager),
-                        (event) => {
-                          Effect.runFork(Queue.offer(queue, event).pipe(Effect.asVoid));
-                        },
-                      );
-
-                      yield* Effect.addFinalizer(() => Effect.sync(unsubscribe));
-                    }),
-                  ),
-                  { label: "computer.events" },
-                ),
-          ),
       });
     }),
   );
@@ -2131,18 +2077,6 @@ export function authenticateRpcWebSocketUpgrade(input: {
     return Effect.succeed(null);
   }
   return input.serverAuth.authenticateWebSocketUpgrade(input.request);
-}
-
-export function authorizeComputerFrameWebSocketUpgrade(input: {
-  readonly config: Pick<ServerConfigShape, "authToken" | "host" | "publicUrl">;
-  readonly legacyToken: string | null;
-  readonly request: AuthRequest;
-  readonly serverAuth: Pick<ServerAuthShape, "authenticateWebSocketUpgrade">;
-}): Effect.Effect<boolean> {
-  return authenticateRpcWebSocketUpgrade(input).pipe(
-    Effect.as(true),
-    Effect.orElseSucceed(() => false),
-  );
 }
 
 export function makeWebsocketRpcRouteLayer<R>(
@@ -2322,24 +2256,7 @@ export const makeWebsocketNegotiationRouteLayer = () =>
     makeWebsocketBootstrapRouteLayer(makeBootstrapWebSocketHttpEffect),
   );
 
-const computerFrameRouteLayer = makeComputerFrameRouteLayer({
-  authorizeUpgrade: (request) =>
-    Effect.gen(function* () {
-      const config = yield* ServerConfig;
-      const serverAuth = yield* ServerAuth;
-      const url = trustedWebSocketRequestUrl(request, config);
-      if (url === null) return false;
-      return yield* authorizeComputerFrameWebSocketUpgrade({
-        config,
-        legacyToken: url.searchParams.get("token"),
-        request: makeEffectAuthRequest(request),
-        serverAuth,
-      });
-    }),
-});
-
 export const websocketRpcRouteLayer = Layer.mergeAll(
-  computerFrameRouteLayer,
   makeWebsocketNegotiationRouteLayer(),
 
   makeWebsocketRpcRouteLayer(makeRpcWebSocketHttpEffect).pipe(

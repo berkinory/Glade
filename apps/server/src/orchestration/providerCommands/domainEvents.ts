@@ -10,7 +10,6 @@ import type { ServiceMap } from "effect";
 import { ThreadSessionSettings } from "../Services/ThreadSessionSettings.ts";
 import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
 import { Option, Duration, Effect, Cause } from "effect";
-import { ComputerService } from "../../computer/Services/ComputerService";
 import { QueuedTurnPromotionRepository } from "../../persistence/Services/QueuedTurnPromotions.ts";
 
 import { makeProviderHumanResponses } from "./humanResponses";
@@ -45,7 +44,6 @@ export function makeProviderDomainEvents(input: {
     typeof makeProviderQueuedTurns
   >["drainQueuedTurnsForSession"];
   readonly threadSessionSettings: ServiceMap.Service.Shape<typeof ThreadSessionSettings>;
-  readonly computerService: Option.Option<ServiceMap.Service.Shape<typeof ComputerService>>;
   readonly queuedTurnPromotions: ServiceMap.Service.Shape<typeof QueuedTurnPromotionRepository>;
   readonly clearStaleProviderResumeState: (input: {
     threadId: ThreadId;
@@ -110,7 +108,6 @@ export function makeProviderDomainEvents(input: {
     queuedDispatchState,
     drainQueuedTurnsForSession,
     threadSessionSettings,
-    computerService,
     queuedTurnPromotions,
     clearStaleProviderResumeState,
     clearThreadRuntimeCaches,
@@ -217,10 +214,6 @@ export function makeProviderDomainEvents(input: {
           }
           return;
         case "thread.deleted":
-          if (Option.isSome(computerService))
-            yield* Effect.promise(() =>
-              computerService.value.manager.handleThreadRemoved(event.payload.threadId),
-            );
           // Cancel any queued/promoting turns for the deleted thread BEFORE clearing runtime caches so a
           // concurrent drain cannot resurrect them (see cancelThread). Best-effort: the event stays unclaimed
           // either way.
@@ -241,10 +234,6 @@ export function makeProviderDomainEvents(input: {
           yield* clearThreadRuntimeCaches(event.payload.threadId);
           return;
         case "thread.archived":
-          if (Option.isSome(computerService))
-            yield* Effect.promise(() =>
-              computerService.value.manager.handleThreadRemoved(event.payload.threadId),
-            );
           // Archive cleanup shares this durable, sequence-ordered provider source with later turn-start
           // intents. An immediate unarchive/send therefore cannot race an older archive stop against the new
           // turn.
@@ -269,10 +258,6 @@ export function makeProviderDomainEvents(input: {
             threadId: event.payload.threadId,
             action: { type: "unarchive" },
           });
-          if (Option.isSome(computerService))
-            yield* Effect.promise(() =>
-              computerService.value.manager.handleThreadRestored(event.payload.threadId),
-            );
           return;
         case "thread.meta-updated": {
           if (event.payload.titleSource === "user" && event.payload.title !== undefined) {

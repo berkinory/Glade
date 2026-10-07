@@ -92,7 +92,6 @@ function createDefaultPanePanelState(): SplitViewPanePanelState {
     diffTurnId: null,
     diffFilePath: null,
     hasOpenedPanel: false,
-    lastOpenPanel: "browser",
   };
 }
 
@@ -578,8 +577,7 @@ export const useSplitViewStore = create<SplitViewStore>()(
               leaf.panel.panel === nextPanel.panel &&
               leaf.panel.diffTurnId === nextPanel.diffTurnId &&
               leaf.panel.diffFilePath === nextPanel.diffFilePath &&
-              leaf.panel.hasOpenedPanel === nextPanel.hasOpenedPanel &&
-              leaf.panel.lastOpenPanel === nextPanel.lastOpenPanel
+              leaf.panel.hasOpenedPanel === nextPanel.hasOpenedPanel
             ) {
               return splitView;
             }

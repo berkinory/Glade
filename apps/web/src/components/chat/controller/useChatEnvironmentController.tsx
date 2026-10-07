@@ -120,7 +120,6 @@ export function useChatEnvironmentController({
     setRenameDialogOpen,
     resolvedThreadEnvMode,
     resolvedThreadWorktreePath,
-    computerControlGeneration,
     storeOpenTerminalThreadPage,
     terminalWorkspaceOpen,
   } = workspace;
@@ -136,8 +135,6 @@ export function useChatEnvironmentController({
     hasStreamingAssistantText,
     pendingUserInputs,
     providerOptionsForDispatch,
-    enableComputerControl,
-    computerControlMode,
   } = provider;
 
   const rightDockOpen = useRightDockStore((store) => selectRightDockState(threadId)(store).open);
@@ -602,9 +599,6 @@ export function useChatEnvironmentController({
   const turnDispatchSettings: TurnDispatchSettings = {
     modelSelection: selectedModelSelection,
     providerOptions: providerOptionsForDispatch,
-    enableComputerControl,
-    computerControlMode,
-    computerControlGeneration,
     assistantDeliveryMode,
     runtimeMode,
 

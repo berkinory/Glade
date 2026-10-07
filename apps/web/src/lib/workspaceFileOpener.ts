@@ -1,4 +1,4 @@
-import { isSupportedLocalPreviewFilePath } from "@glade/shared/browser/localPreviewFiles";
+import { isSupportedLocalPreviewFilePath } from "@glade/shared/attachments/localPreviewFiles";
 import {
   isLocalAbsolutePath,
   isWorkspaceRelativePathSafe,

@@ -4,7 +4,6 @@ import { join } from "node:path";
 import waitOn from "wait-on";
 
 import { buildNotificationPermissions } from "./build-notification-permissions.mjs";
-import { buildComputerHelper } from "./build-computer-helper.mjs";
 import { configureMacLauncher, desktopDir, resolveElectronPath } from "./electron-launcher.mjs";
 import { createSourceDesktopEnvironment } from "./source-desktop-launch.mjs";
 
@@ -13,22 +12,19 @@ const devServerUrl = `http://localhost:${port}`;
 const requiredFiles = [
   "dist-electron/main.js",
   "dist-electron/preload.js",
-  "dist-electron/guestPreload.js",
   "../server/dist/index.mjs",
 ];
 const watchedDirectories = [
   {
     directory: "dist-electron",
-    files: new Set(["main.js", "preload.js", "guestPreload.js"]),
+    files: new Set(["main.js", "preload.js"]),
   },
 ];
 const forcedShutdownTimeoutMs = 1_500;
 const restartDebounceMs = 120;
 const childTreeGracePeriodMs = 1_200;
-const staleComputerUseGracePeriodMs = 300;
 
 if (process.platform === "darwin") {
-  buildComputerHelper({ arch: process.arch });
   buildNotificationPermissions();
 }
 
@@ -85,50 +81,6 @@ function cleanupStaleDevApps() {
   const devRoot = escapeExtendedRegex(desktopDir);
   const commandPattern = `^${executable}[[:space:]]+--glade-dev-root=${devRoot}([[:space:]]|$)`;
   spawnSync("pkill", ["-f", "--", commandPattern], { stdio: "ignore" });
-}
-
-function listStaleComputerUsePids() {
-  if (process.platform !== "darwin") {
-    return [];
-  }
-
-  const candidatePids = listPidsByExactProcessName("Electron");
-
-  return candidatePids.filter((pid) => {
-    const command = readProcessCommand(pid);
-    if (!/Glade \(Dev\)\.app\/Contents\/MacOS\/Electron/.test(command)) {
-      return false;
-    }
-    if (!/computerUseMcp\.mjs\s+mcp(?:\s|$)/.test(command)) {
-      return false;
-    }
-
-    if (command.includes(desktopDir)) {
-      return false;
-    }
-    return true;
-  });
-}
-
-function cleanupStaleComputerUseApps() {
-  const stalePids = listStaleComputerUsePids();
-  if (stalePids.length === 0) {
-    return;
-  }
-
-  console.error(
-    `[desktop-dev] Cleaning up ${stalePids.length} stale Glade (Dev) Computer Use helper process${stalePids.length === 1 ? "" : "es"} from other worktrees.`,
-  );
-
-  for (const pid of stalePids) {
-    spawnSync("kill", ["-TERM", String(pid)], { stdio: "ignore" });
-  }
-
-  spawnSync("sleep", [String(staleComputerUseGracePeriodMs / 1000)], { stdio: "ignore" });
-
-  for (const pid of stalePids) {
-    spawnSync("kill", ["-KILL", String(pid)], { stdio: "ignore" });
-  }
 }
 
 function warnIfAlphaAppRunning() {
@@ -312,7 +264,6 @@ async function shutdown(exitCode) {
 
 startWatchers();
 cleanupStaleDevApps();
-cleanupStaleComputerUseApps();
 warnIfAlphaAppRunning();
 startApp();
 

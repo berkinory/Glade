@@ -4,7 +4,7 @@ import { ProjectFaviconResolver } from "../../project/Services/ProjectFaviconRes
 import nodePath from "node:path";
 import { authErrorResponse } from "../../auth/effectHttp";
 import { ServerConfig } from "../config";
-import { tryParseHost, resolveFavicon } from "../../browser/siteFaviconCache";
+import { tryParseHost, resolveFavicon } from "./siteFaviconCache";
 import { requireAuthenticatedRequest, isLegacyTokenAuthorized } from "./requestAuthorization";
 import { streamedFileResponse, SVG_DOCUMENT_SECURITY_HEADERS } from "./httpResponse";
 

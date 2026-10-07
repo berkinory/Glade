@@ -54,10 +54,7 @@ import {
   expandCollapsedComposerCursor,
   isCollapsedCursorAdjacentToInlineToken,
 } from "~/composer-logic";
-import {
-  matchComposerLinkToken,
-  matchComposerSlashCommandChipToken,
-} from "~/composer-editor-mentions";
+import { matchComposerLinkToken } from "~/composer-editor-mentions";
 import { parseBareComposerLink } from "~/lib/linkChips";
 import { type TerminalContextDraft } from "~/lib/terminalContext";
 import { shouldCollapsePastedText } from "~/lib/composerPastedText";
@@ -74,7 +71,6 @@ import {
 import {
   ComposerMentionNode,
   ComposerTerminalContextNode,
-  $createComposerSlashCommandNode,
   $createComposerLinkNode,
   isComposerInlineTokenNode,
   COMPOSER_NODE_CLASSES,
@@ -370,27 +366,6 @@ function ComposerInlineTokenBackspacePlugin() {
       COMMAND_PRIORITY_HIGH,
     );
   }, [editor, onRemoveTerminalContext]);
-
-  return null;
-}
-
-function ComposerSlashCommandTransformPlugin() {
-  const [editor] = useLexicalComposerContext();
-
-  useEffect(() => {
-    return editor.registerNodeTransform(TextNode, (node) => {
-      if (isComposerInlineTokenNode(node)) {
-        return;
-      }
-      const match = matchComposerSlashCommandChipToken(node.getTextContent());
-      if (!match) {
-        return;
-      }
-      const splitNodes = node.splitText(match.start, match.end);
-      const commandNode = match.start === 0 ? splitNodes[0] : splitNodes[1];
-      commandNode?.replace($createComposerSlashCommandNode(match.command));
-    });
-  }, [editor]);
 
   return null;
 }
@@ -830,7 +805,6 @@ function ComposerPromptEditorInner({
         <ComposerInlineTokenArrowPlugin />
         <ComposerInlineTokenSelectionNormalizePlugin />
         <ComposerInlineTokenBackspacePlugin />
-        <ComposerSlashCommandTransformPlugin />
         <ComposerLinkTransformPlugin />
         <ComposerLinkPastePlugin />
         <ComposerThreadMentionProviderPlugin />

@@ -20,7 +20,6 @@ import {
   resolveTailUserMessageEditTarget,
 } from "@glade/shared/threads/conversationEdit";
 import { serverCommandId } from "./deliveryClaims";
-import { computerActivationMetadata } from "../../computer/computerActivation.ts";
 import { ThreadSessionSettings } from "../Services/ThreadSessionSettings.ts";
 import { EditReplayWorkspaceRestorePlan } from "./runtimeState";
 
@@ -291,7 +290,6 @@ export function makeProviderConversationEdit(input: {
       ...(payload.providerOptions !== undefined
         ? { providerOptions: payload.providerOptions }
         : {}),
-      ...computerActivationMetadata(payload),
       ...(payload.assistantDeliveryMode !== undefined
         ? { assistantDeliveryMode: payload.assistantDeliveryMode }
         : {}),

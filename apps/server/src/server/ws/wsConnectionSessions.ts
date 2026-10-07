@@ -27,8 +27,6 @@ export const WS_CONNECTION_SESSION_HEADER = "x-glade-ws-connection-session";
 export interface WsConnectionSessionsShape {
   readonly register: (session: WsConnectionSession) => Effect.Effect<string, never, Scope.Scope>;
   readonly lookup: (key: string | undefined) => WsConnectionSession | undefined;
-
-  readonly onClose: (key: string, cleanup: () => void) => boolean;
 }
 
 export class WsConnectionSessions extends ServiceMap.Service<
@@ -37,33 +35,16 @@ export class WsConnectionSessions extends ServiceMap.Service<
 >()("glade/ws/WsConnectionSessions") {}
 
 export const makeWsConnectionSessions = Effect.sync(() => {
-  const sessions = new Map<
-    string,
-    { readonly session: WsConnectionSession; readonly cleanups: Set<() => void> }
-  >();
+  const sessions = new Map<string, WsConnectionSession>();
   return {
     register: (session: WsConnectionSession) =>
       Effect.gen(function* () {
         const key = randomUUID();
-        const cleanups = new Set<() => void>();
-        sessions.set(key, { session, cleanups });
-        yield* Effect.addFinalizer(() =>
-          Effect.sync(() => {
-            sessions.delete(key);
-            for (const cleanup of cleanups) cleanup();
-            cleanups.clear();
-          }),
-        );
+        sessions.set(key, session);
+        yield* Effect.addFinalizer(() => Effect.sync(() => sessions.delete(key)));
         return key;
       }),
-    lookup: (key: string | undefined) =>
-      key === undefined ? undefined : sessions.get(key)?.session,
-    onClose: (key: string, cleanup: () => void) => {
-      const connection = sessions.get(key);
-      if (!connection) return false;
-      connection.cleanups.add(cleanup);
-      return true;
-    },
+    lookup: (key: string | undefined) => (key === undefined ? undefined : sessions.get(key)),
   } satisfies WsConnectionSessionsShape;
 });
 

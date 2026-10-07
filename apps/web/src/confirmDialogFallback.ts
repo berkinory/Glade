@@ -1,4 +1,3 @@
-import { notifyNativeSurfaceOcclusionChange } from "./lib/nativeSurfaceOcclusion";
 import { ELEVATED_HOVER_SURFACE_CLASS_NAME } from "./surfaceStyles";
 
 export function showConfirmDialogFallback(message: string): Promise<boolean> {
@@ -49,7 +48,6 @@ export function showConfirmDialogFallback(message: string): Promise<boolean> {
       document.removeEventListener("keydown", onKeyDown);
       backdrop.remove();
       viewport.remove();
-      notifyNativeSurfaceOcclusionChange();
       resolve(result);
     }
 
@@ -89,7 +87,6 @@ export function showConfirmDialogFallback(message: string): Promise<boolean> {
 
     document.body.appendChild(backdrop);
     document.body.appendChild(viewport);
-    notifyNativeSurfaceOcclusionChange();
 
     requestAnimationFrame(() => confirmBtn.focus());
   });

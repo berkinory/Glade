@@ -2,7 +2,7 @@
   "$schema": "https://unpkg.com/knip@6.38.0/schema.json",
   "cycles": { "dynamicImports": true },
   // Host tools and Electron's built-in filesystem are not npm dependencies.
-  "ignoreBinaries": ["rustc", "pkill", "pgrep", "mkfifo"],
+  "ignoreBinaries": ["pkill", "pgrep"],
   "ignoreDependencies": ["original-fs"],
   "ignore": ["apps/server/src/provider/codex/protocol/generated/**"],
   "ignoreIssues": {
@@ -22,7 +22,7 @@
       "ignoreDependencies": ["@glade/web"],
     },
     "apps/desktop": {
-      "entry": ["scripts/source-desktop-bootstrap.cjs", "scripts/find-cua-artifact.mjs"],
+      "entry": ["scripts/source-desktop-bootstrap.cjs"],
     },
     "scripts": {
       // Artwork generation is documented in docs/release.md; notarization is a builder hook.

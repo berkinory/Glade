@@ -11,7 +11,6 @@ import {
   PuzzleIcon,
   BlocksIcon,
   Book02Icon,
-  CursorInWindowIcon,
   LimitationIcon,
 } from "~/lib/icons";
 import type { IconComponent } from "~/lib/iconComponent";
@@ -21,7 +20,6 @@ const SETTINGS_SECTION_IDS = [
   "appearance",
   "notifications",
   "behavior",
-  "computer",
   "shortcuts",
   "worktrees",
   "archived",
@@ -160,13 +158,6 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
     label: "Plugins",
     description: "Manage native installed plugins and session loading.",
     icon: BlocksIcon,
-  },
-  {
-    id: "computer",
-    group: "agents",
-    label: "Computer use",
-    description: "Let agents see and control this computer's desktop, and check backend status.",
-    icon: CursorInWindowIcon,
   },
   {
     id: "usage",

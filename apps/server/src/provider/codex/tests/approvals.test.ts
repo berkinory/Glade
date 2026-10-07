@@ -248,11 +248,9 @@ describe("MCP tool call elicitation approvals", () => {
     },
   });
 
-  function computerApprovalHarness() {
+  function gladeApprovalHarness() {
     const harness = createCollabNotificationHarness();
     const context = Object.assign(harness.context, {
-      enableComputerControl: true,
-
       gatewaySessionLease: { release: vi.fn() } as { release: () => void } | undefined,
     });
     context.session.runtimeMode = "approval-required";
@@ -260,83 +258,13 @@ describe("MCP tool call elicitation approvals", () => {
     return { ...harness, context };
   }
 
-  it("delegates exact active Glade Computer calls to gateway consent without persistent permission", async () => {
-    const { manager, context, emitEvent, writeMessage } = computerApprovalHarness();
-    for (const toolName of ["computer_click", "computer_type_text", "computer_read_clipboard"]) {
-      const params = approvalParams();
-      params._meta.tool_name = toolName;
-      await handleServerRequestForTest(manager, context, {
-        id: toolName,
-        method: "mcpServer/elicitation/request",
-        params,
-      });
-      expect(writeMessage).toHaveBeenCalledWith(context, {
-        id: toolName,
-        result: { action: "accept", content: null, _meta: null },
-      });
-    }
-    expect(context.pendingApprovals.size).toBe(0);
-    expect(emitEvent).not.toHaveBeenCalled();
-  });
-
-  it.each([
-    "other-server",
-    "disabled",
-    "no-lease",
-    "retired",
-    "stopping",
-    "inactive",
-    "stale-turn",
-    "child-thread",
-  ])("preserves provider approval for %s requests", async (condition) => {
-    const { manager, context, emitEvent, writeMessage } = computerApprovalHarness();
-    const params = approvalParams();
-    switch (condition) {
-      case "other-server":
-        params.serverName = "other";
-        break;
-      case "disabled":
-        context.enableComputerControl = false;
-        break;
-      case "no-lease":
-        context.gatewaySessionLease = undefined;
-        break;
-      case "retired":
-        context.gatewayCredentialRetired = true;
-        break;
-      case "stopping":
-        context.stopping = true;
-        break;
-      case "inactive":
-        context.session.status = "ready";
-        break;
-      case "stale-turn":
-        params.turnId = "turn_old";
-        break;
-      case "child-thread":
-        params.threadId = "provider_child";
-        break;
-    }
-    await handleServerRequestForTest(manager, context, {
-      id: 74,
-      method: "mcpServer/elicitation/request",
-      params,
-    });
-    expect(context.pendingApprovals.size).toBe(1);
-    expect(writeMessage).not.toHaveBeenCalled();
-    expect(emitEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ kind: "request", requestKind: "tool" }),
-    );
-  });
-
   describe("in Full Access", () => {
     afterEach(() => {
       vi.unstubAllGlobals();
     });
 
     function fullAccessHarness(onCatalogRead: () => void = () => {}) {
-      const harness = computerApprovalHarness();
-      harness.context.enableComputerControl = false;
+      const harness = gladeApprovalHarness();
       harness.context.session.runtimeMode = "full-access";
       harness.context.gatewaySessionLease = {
         release: vi.fn(),

@@ -100,7 +100,6 @@ function resolveThreadFindDocumentText(message: ChatMessage, text = message.text
   if (message.role === "user") {
     const displayed = deriveDisplayedUserMessageState(text, {
       hideImageOnlyBootstrapPrompt: messageHasVisibleMedia(message),
-      messageId: message.id,
     });
     return resolveUserMessageMarkdownText(displayed.visibleText, displayed.contexts);
   }
@@ -476,27 +475,11 @@ export function wrapFindQueryInHtml(
   return segments.join("");
 }
 
-export function eventTargetsInAppBrowser(target: EventTarget | null): boolean {
-  if (typeof Element === "undefined" || !(target instanceof Element)) {
-    return false;
-  }
-  return (
-    target.closest(
-      "[data-floating-browser-host='true'], [data-floating-browser-panel='true'], [data-browser-panel='true']",
-    ) !== null
-  );
-}
-
 export function shouldCaptureChatFindShortcut(input: {
   shouldRenderChatPaneContent: boolean;
   terminalWorkspaceTerminalTabActive: boolean;
-  inAppBrowserFocused: boolean;
 }): boolean {
-  return (
-    input.shouldRenderChatPaneContent &&
-    !input.terminalWorkspaceTerminalTabActive &&
-    !input.inAppBrowserFocused
-  );
+  return input.shouldRenderChatPaneContent && !input.terminalWorkspaceTerminalTabActive;
 }
 
 export interface ThreadFindHighlightStore {

@@ -76,12 +76,6 @@ export const DEFAULT_EDITOR_CARET_STYLE: EditorCaretStyle = "line";
 export const SidebarProjectSortOrder = Schema.Literals(["updated_at", "manual"]);
 export type SidebarProjectSortOrder = typeof SidebarProjectSortOrder.Type;
 const DEFAULT_SIDEBAR_PROJECT_SORT_ORDER: SidebarProjectSortOrder = "manual";
-export const ComputerPreviewSize = Schema.Literals(["compact", "large"]);
-export type ComputerPreviewSize = typeof ComputerPreviewSize.Type;
-const DEFAULT_COMPUTER_PREVIEW_SIZE: ComputerPreviewSize = "compact";
-export const AgentCursorColorMode = Schema.Literals(["stock", "custom"]);
-export type AgentCursorColorMode = typeof AgentCursorColorMode.Type;
-export const DEFAULT_AGENT_CURSOR_COLOR_MODE: AgentCursorColorMode = "stock";
 
 export const FollowUpBehavior = Schema.Literals(["queue", "steer"]);
 export type FollowUpBehavior = typeof FollowUpBehavior.Type;
@@ -245,22 +239,6 @@ const AppSettingsSchema = Schema.Struct({
   enableSystemTaskCompletionNotifications: Schema.Boolean.pipe(withDefaults(() => true)),
   enableActivitySounds: Schema.Boolean.pipe(withDefaults(() => true)),
 
-  autoOpenComputerPane: Schema.Boolean.pipe(withDefaults(() => true)),
-
-  computerPreviewSize: ComputerPreviewSize.pipe(withDefaults(() => DEFAULT_COMPUTER_PREVIEW_SIZE)),
-
-  computerControlEnabled: Schema.Boolean.pipe(withDefaults(() => false)),
-
-  agentCursorColorMode: AgentCursorColorMode.pipe(
-    withDefaults(() => DEFAULT_AGENT_CURSOR_COLOR_MODE),
-  ),
-  agentCursorFillColor: Schema.String.check(Schema.isMaxLength(7)).pipe(withDefaults(() => "")),
-  agentCursorRimColor: Schema.String.check(Schema.isMaxLength(7)).pipe(withDefaults(() => "")),
-
-  allowComputerControlInNewChats: Schema.optionalKey(Schema.Boolean),
-  // One-shot composer hint that suggests Medium effort for faster desktop actions. Set when the user
-  // applies or dismisses it, so the hint never asks twice.
-  dismissedComputerControlEffortHint: Schema.Boolean.pipe(withDefaults(() => false)),
   sidebarProjectSortOrder: Schema.String.pipe(
     // Retired persisted sort values must not invalidate unrelated preferences.
     Schema.decodeTo(
@@ -341,27 +319,6 @@ export function normalizeTerminalFontSizePx(value: number | null | undefined): n
   );
 }
 
-export function normalizeCursorHexColor(value: string | null | undefined): string {
-  const candidate = (value ?? "").trim().toLowerCase();
-  return /^#[0-9a-f]{6}$/.test(candidate) ? candidate : "";
-}
-
-// Stock mode resolves to null no matter what colors are stored, so switching back to stock never
-// leaves a stale override in the pushed payload. A channel with no valid color is omitted, not sent
-// empty, because the driver treats an omitted channel as stock.
-export function resolveAgentCursorColors(
-  settings: Pick<
-    AppSettings,
-    "agentCursorColorMode" | "agentCursorFillColor" | "agentCursorRimColor"
-  >,
-): { fill?: string; rim?: string } | null {
-  if ((settings.agentCursorColorMode ?? DEFAULT_AGENT_CURSOR_COLOR_MODE) !== "custom") return null;
-  const fill = normalizeCursorHexColor(settings.agentCursorFillColor);
-  const rim = normalizeCursorHexColor(settings.agentCursorRimColor);
-  if (!fill && !rim) return null;
-  return { ...(fill ? { fill } : {}), ...(rim ? { rim } : {}) };
-}
-
 export function normalizeTerminalFontFamily(value: string | null | undefined): string {
   return (value ?? "").replace(/[;{}<>\n\r]/g, "").slice(0, 256);
 }
@@ -397,20 +354,12 @@ function normalizeProviderBinaryPathOverride(
 }
 
 function normalizeAppSettings(settings: AppSettings): AppSettings {
-  const {
-    allowComputerControlInNewChats: legacyAllowComputerControlInNewChats,
-    ...currentSettings
-  } = settings;
   return {
-    ...currentSettings,
-    computerControlEnabled:
-      settings.computerControlEnabled || legacyAllowComputerControlInNewChats === true,
+    ...settings,
     claudeBinaryPath: normalizeProviderBinaryPathOverride("claudeAgent", settings.claudeBinaryPath),
     codexBinaryPath: normalizeProviderBinaryPathOverride("codex", settings.codexBinaryPath),
     uiDensity: normalizeUiDensityValue(settings.uiDensity),
     chatWidth: normalizeChatWidthModeValue(settings.chatWidth),
-    agentCursorFillColor: normalizeCursorHexColor(settings.agentCursorFillColor),
-    agentCursorRimColor: normalizeCursorHexColor(settings.agentCursorRimColor),
     chatFontSizePx: normalizeChatFontSizePx(settings.chatFontSizePx),
     terminalFontSizePx: normalizeTerminalFontSizePx(settings.terminalFontSizePx),
     terminalFontFamily: normalizeTerminalFontFamily(settings.terminalFontFamily),

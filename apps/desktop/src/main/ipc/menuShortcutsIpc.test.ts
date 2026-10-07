@@ -15,7 +15,7 @@ describe("menu shortcut IPC authority", () => {
     expect(handle.mock.calls[0]?.[0]).toBe(DESKTOP_IPC_CHANNELS.setMenuShortcuts);
     const handler = handle.mock.calls[0]![1];
     const trusted = { sender: owner, senderFrame: mainFrame } as IpcMainInvokeEvent;
-    const shortcuts = { "terminal.new": null, "sidebar.toggle": null, "browser.toggle": null };
+    const shortcuts = { "terminal.new": null, "sidebar.toggle": null };
     const state = { shortcuts, capturing: true };
     for (const sender of [
       { ...trusted, sender: {} },

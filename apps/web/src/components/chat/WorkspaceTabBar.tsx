@@ -1,7 +1,6 @@
 import {
   PlusIcon,
   ComputerTerminal01Icon,
-  Globe02Icon,
   SquareSplitVerticalIcon,
   SquareSplitHorizontalIcon,
 } from "~/lib/icons";
@@ -51,7 +50,6 @@ export function WorkspaceTabBar(props: {
   activeId: string | null;
   onSelect: (id: string) => void;
   onAddTerminal: () => void;
-  onAddBrowser: () => void;
   onSplitTerminal?: ((direction: TerminalSplitDirection) => void) | undefined;
 }) {
   return (
@@ -81,10 +79,6 @@ export function WorkspaceTabBar(props: {
               <MenuItem onClick={props.onAddTerminal}>
                 <ComputerTerminal01Icon className="size-3.5" />
                 Terminal
-              </MenuItem>
-              <MenuItem onClick={props.onAddBrowser}>
-                <Globe02Icon className="size-3.5" />
-                Browser
               </MenuItem>
             </ComposerPickerMenuPopup>
           </Menu>

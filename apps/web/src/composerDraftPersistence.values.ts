@@ -1,6 +1,5 @@
 import * as Schema from "effect/Schema";
 import * as Option from "effect/Option";
-import { resolveComputerControlMode } from "./computerControlMode";
 import { ProviderStartOptions, RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
@@ -11,7 +10,6 @@ import type { DeepMutable } from "effect/Types";
 import { normalizePersistedAttachment } from "./composerDraftAttachments";
 import { normalizeModelSelection, normalizeProviderKind } from "./composerDraftModels";
 import { normalizeAssistantSelectionAttachment } from "./lib/assistantSelections";
-import { normalizeBrowserAnnotations } from "./lib/browserAnnotations";
 import { normalizePastedTextContent } from "./lib/composerPastedText";
 import { isPullRequestContextScope } from "./lib/pullRequestContext";
 import { normalizeFileCommentSelection } from "./lib/fileComments";
@@ -55,9 +53,6 @@ export function normalizePersistedPromptHistorySavedDraft(
         return normalized ? [normalized] : [];
       })
     : [];
-  const browserAnnotations = Array.isArray(candidate.browserAnnotations)
-    ? normalizeBrowserAnnotations(candidate.browserAnnotations)
-    : [];
   const terminalContexts = Array.isArray(candidate.terminalContexts)
     ? candidate.terminalContexts.flatMap((entry) => {
         const normalized = normalizePersistedTerminalContextDraft(entry);
@@ -92,7 +87,6 @@ export function normalizePersistedPromptHistorySavedDraft(
     prompt,
     attachments,
     ...(assistantSelections.length > 0 ? { assistantSelections } : {}),
-    ...(browserAnnotations.length > 0 ? { browserAnnotations } : {}),
     ...(terminalContexts.length > 0 ? { terminalContexts } : {}),
     ...(fileComments.length > 0 ? { fileComments } : {}),
     ...(pastedTexts.length > 0 ? { pastedTexts } : {}),
@@ -285,21 +279,6 @@ export function normalizePersistedQueuedTurns(
     const runtimeMode = Schema.is(RuntimeMode)(candidate.runtimeMode)
       ? candidate.runtimeMode
       : null;
-    const computerControlMode = resolveComputerControlMode(
-      candidate.computerControlMode === "off" ||
-        candidate.computerControlMode === "request" ||
-        candidate.computerControlMode === "chat"
-        ? candidate.computerControlMode
-        : undefined,
-      candidate.enableComputerControl === true,
-    );
-    const computerControlGeneration =
-      typeof candidate.computerControlGeneration === "number" &&
-      Number.isSafeInteger(candidate.computerControlGeneration) &&
-      candidate.computerControlGeneration >= 0
-        ? candidate.computerControlGeneration
-        : undefined;
-    const enableComputerControl = computerControlMode !== "off";
     if (
       id.length === 0 ||
       createdAt.length === 0 ||
@@ -330,9 +309,6 @@ export function normalizePersistedQueuedTurns(
             const normalized = normalizePersistedAssistantSelection(selection);
             return normalized ? [normalized] : [];
           })
-        : [];
-      const browserAnnotations = Array.isArray(candidate.browserAnnotations)
-        ? normalizeBrowserAnnotations(candidate.browserAnnotations)
         : [];
       const fileComments = Array.isArray(candidate.fileComments)
         ? candidate.fileComments.flatMap((comment) => {
@@ -374,7 +350,6 @@ export function normalizePersistedQueuedTurns(
         prompt,
         images,
         ...(assistantSelections.length > 0 ? { assistantSelections } : {}),
-        ...(browserAnnotations.length > 0 ? { browserAnnotations } : {}),
         terminalContexts,
         ...(fileComments.length > 0 ? { fileComments } : {}),
         ...(pastedTexts.length > 0 ? { pastedTexts } : {}),
@@ -386,9 +361,6 @@ export function normalizePersistedQueuedTurns(
         selectedPromptEffort,
         modelSelection,
         ...(providerOptionsForDispatch ? { providerOptionsForDispatch } : {}),
-        enableComputerControl,
-        computerControlMode,
-        ...(computerControlGeneration !== undefined ? { computerControlGeneration } : {}),
 
         runtimeMode,
 

@@ -2,7 +2,6 @@ import { spawn } from "node:child_process";
 import waitOn from "wait-on";
 
 import { buildNotificationPermissions } from "./build-notification-permissions.mjs";
-import { buildComputerHelper } from "./build-computer-helper.mjs";
 import { configureMacLauncher, desktopDir, resolveElectronPath } from "./electron-launcher.mjs";
 import { spawnSourceDesktop } from "./source-desktop-launch.mjs";
 
@@ -15,10 +14,7 @@ if (isDevBuild) {
   });
 }
 
-if (process.platform === "darwin") {
-  buildComputerHelper({ arch: process.arch });
-  if (!isDevBuild) buildNotificationPermissions();
-}
+if (process.platform === "darwin" && !isDevBuild) buildNotificationPermissions();
 
 const electronPath = resolveElectronPath();
 if (process.platform === "darwin") configureMacLauncher(electronPath);

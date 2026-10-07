@@ -1,12 +1,9 @@
-import { COMPUTER_USE_SLASH_COMMAND } from "../computer/computerInvocation";
-
 export const BUILT_IN_COMPOSER_SLASH_COMMANDS = [
   "clear",
   "compact",
   "model",
   "review",
   "fork",
-  COMPUTER_USE_SLASH_COMMAND,
   "fast",
   "export",
 

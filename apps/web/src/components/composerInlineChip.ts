@@ -127,7 +127,3 @@ function formatComposerInlineTokenLabel(name: string): string {
 export function formatComposerSkillChipLabel(name: string): string {
   return formatComposerInlineTokenLabel(name);
 }
-
-export function formatComposerSlashCommandChipLabel(command: string): string {
-  return formatComposerInlineTokenLabel(command);
-}

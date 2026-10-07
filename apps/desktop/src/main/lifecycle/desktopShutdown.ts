@@ -12,12 +12,6 @@ interface ShutdownBackend {
   stopBackendAndWaitForExit(): Promise<void>;
   cancelBackendReadinessWait(): void;
 }
-interface ShutdownComputer {
-  dispose(): Promise<void>;
-}
-interface ShutdownBrowser {
-  dispose(reason: string): Promise<void>;
-}
 interface ShutdownUpdates {
   isInstallPreparing(): boolean;
   deferQuit(reason: string): void;
@@ -29,8 +23,6 @@ interface DisposableDomain {
 export interface ShutdownDependencies {
   backend: ShutdownBackend;
   getMainWindow(): BrowserWindow | null;
-  computer: ShutdownComputer;
-  browser: ShutdownBrowser;
   updates: ShutdownUpdates;
   log: DesktopLog;
   resources: DisposableDomain;
@@ -39,8 +31,6 @@ export interface ShutdownDependencies {
 export function createDesktopShutdown({
   backend,
   getMainWindow,
-  computer,
-  browser,
   updates,
   log,
   resources,
@@ -77,8 +67,6 @@ export function createDesktopShutdown({
       async () => {
         updates.clearTimers();
         backend.cancelBackendReadinessWait();
-        await computer.dispose();
-        await browser.dispose(reason);
         resources.dispose();
         identity.dispose();
         log.dispose();

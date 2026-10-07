@@ -3,11 +3,7 @@ import { providerAuthenticationRouteLayer } from "./providerAuthenticationRoute"
 import type { ServerReadiness } from "../readiness";
 import { type ServerShutdownController } from "../lifecycle/serverShutdown";
 import { Layer } from "effect";
-import {
-  makeHealthEffectRouteLayer,
-  makeDesktopShutdownEffectRouteLayer,
-  makeDesktopComputerEmergencyStopRouteLayer,
-} from "./lifecycleRoutes";
+import { makeHealthEffectRouteLayer, makeDesktopShutdownEffectRouteLayer } from "./lifecycleRoutes";
 import { authEffectRouteLayer } from "./authRoutes";
 import { projectFaviconEffectRouteLayer, siteFaviconEffectRouteLayer } from "./faviconRoutes";
 import { threadExportEffectRouteLayer } from "./threadExportRoute";
@@ -23,7 +19,6 @@ export function makeEffectHttpRouteLayer(
   return Layer.mergeAll(
     makeHealthEffectRouteLayer(readiness),
     makeDesktopShutdownEffectRouteLayer(shutdownController),
-    makeDesktopComputerEmergencyStopRouteLayer(),
     authEffectRouteLayer,
     providerAuthenticationRouteLayer,
     projectFaviconEffectRouteLayer,

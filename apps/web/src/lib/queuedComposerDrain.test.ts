@@ -26,7 +26,6 @@ function makeQueuedChatTurn(id: string): QueuedComposerTurn {
     images: [],
     files: [],
     assistantSelections: [],
-    browserAnnotations: [],
     terminalContexts: [],
     fileComments: [],
     pastedTexts: [],

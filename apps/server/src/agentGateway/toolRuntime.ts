@@ -45,7 +45,7 @@ export interface ToolContext {
   readonly jsonRpcRequestId: JsonRpcId;
 }
 
-export type ToolHandler = (
+type ToolHandler = (
   args: Record<string, unknown>,
   context: ToolContext,
 ) => Effect.Effect<McpToolCallResult>;

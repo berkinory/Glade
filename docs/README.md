@@ -9,7 +9,6 @@ This folder contains the Glade documentation and repository guides.
 - [Providers](./providers.md) — what Glade manages and what stays provider-owned.
 - [Keybindings](./KEYBINDINGS.md) — default shortcuts and custom keymaps.
 - [Remote access](./REMOTE.md) — server options and access from another device.
-- [Computer Use](./computer-use-cua/README.md) — supported platforms, permissions, and native driver ownership.
 
 ## Developing Glade
 

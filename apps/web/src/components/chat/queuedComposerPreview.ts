@@ -1,7 +1,5 @@
-import type { BrowserAnnotationDraft } from "../../lib/browserAnnotations";
 import type { ComposerFileAttachment, ComposerImageAttachment } from "../../composerDraftDomain";
 import { formatAssistantSelectionQueuePreview } from "../../lib/assistantSelections";
-import { formatBrowserAnnotationLabel } from "../../lib/browserAnnotations";
 import { pastedTextTitle, type PastedTextDraft } from "../../lib/composerPastedText";
 import { formatFileCommentLabel, type FileCommentDraft } from "../../lib/fileComments";
 import {
@@ -15,7 +13,6 @@ export function buildQueuedComposerPreviewText(input: {
   images: ReadonlyArray<ComposerImageAttachment>;
   files: ReadonlyArray<ComposerFileAttachment>;
   assistantSelections: ReadonlyArray<{ id: string }>;
-  browserAnnotations: ReadonlyArray<BrowserAnnotationDraft>;
   terminalContexts: ReadonlyArray<TerminalContextDraft>;
   fileComments: ReadonlyArray<FileCommentDraft>;
   pastedTexts: ReadonlyArray<PastedTextDraft>;
@@ -34,10 +31,6 @@ export function buildQueuedComposerPreviewText(input: {
   }
   if (input.assistantSelections.length > 0) {
     return formatAssistantSelectionQueuePreview(input.assistantSelections.length);
-  }
-  const firstBrowserAnnotation = input.browserAnnotations[0];
-  if (firstBrowserAnnotation) {
-    return `#${firstBrowserAnnotation.ordinal} ${formatBrowserAnnotationLabel(firstBrowserAnnotation)}`;
   }
   const firstTerminalContext = input.terminalContexts[0];
   if (firstTerminalContext) {

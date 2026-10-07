@@ -1,7 +1,4 @@
 import { describe, it, expect } from "vitest";
-import { ComputerManager } from "../../computer/ComputerManager.ts";
-import { FakeComputerBackend } from "../../computer/FakeComputerBackend.ts";
-import { makeAgentGatewaySessionRegistry } from "../../agentGateway/Layers/AgentGatewaySessionRegistry.ts";
 import { ThreadId, CommandId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { Effect, Option, Duration } from "effect";
 
@@ -21,83 +18,6 @@ import {
 describe("Provider reactor queuedTurns", () => {
   const { createHarness, closeReactorScope, seedQueuedTurnBehindLiveTurn } =
     makeReactorTestHarness();
-
-  it("does not revive stale Computer consent when a durable queued turn is promoted after re-enable", async () => {
-    const manager = new ComputerManager({ backend: new FakeComputerBackend() });
-    const registry = makeAgentGatewaySessionRegistry();
-    const threadId = ThreadId.makeUnsafe("thread-1");
-    registry.issue(threadId, "codex", { additionalCapabilities: ["computer:control"] });
-    const harness = await createHarness({
-      gatewaySessions: registry,
-      computerService: {
-        supported: true,
-        availability: { kind: "available", backend: "fake" },
-        manager,
-      },
-    });
-    const createdAt = new Date().toISOString();
-    try {
-      harness.setRuntimeSessionTurnState({
-        threadId,
-        status: "running",
-        activeTurnId: asTurnId("computer-blocking"),
-      });
-      await Effect.runPromise(
-        harness.engine.dispatch({
-          type: "thread.session.set",
-          commandId: CommandId.makeUnsafe("computer-queue-session"),
-          threadId,
-          session: {
-            threadId,
-            status: "running",
-            providerName: "codex",
-            runtimeMode: "approval-required",
-            activeTurnId: asTurnId("computer-blocking"),
-            lastError: null,
-            updatedAt: createdAt,
-          },
-          createdAt,
-        }),
-      );
-      await Effect.runPromise(
-        harness.engine.dispatch({
-          type: "thread.turn.start",
-          commandId: CommandId.makeUnsafe("computer-queued-consent"),
-          threadId,
-          message: {
-            messageId: asMessageId("computer-queued-message"),
-            role: "user",
-            text: "Continue",
-            attachments: [],
-          },
-          enableComputerControl: true,
-          computerControlGeneration: 0,
-          runtimeMode: "approval-required",
-
-          createdAt,
-        }),
-      );
-      await harness.drain();
-      expect(harness.sendTurn).not.toHaveBeenCalled();
-      await manager.setControlEnabled(threadId, false);
-      await manager.setControlEnabled(threadId, true);
-      harness.setRuntimeSessionTurnState({ threadId, status: "ready" });
-      await harness.emitRuntimeEvent({
-        type: "turn.completed",
-        eventId: asEventId("computer-blocking-completed"),
-        provider: "codex",
-        threadId,
-        createdAt,
-        turnId: asTurnId("computer-blocking"),
-        payload: { state: "completed" },
-        providerRefs: {},
-      } as ProviderRuntimeEvent);
-      await waitFor(() => harness.sendTurn.mock.calls.length === 1);
-      expect(harness.startSession.mock.calls.at(-1)?.[1].enableComputerControl).toBe(false);
-    } finally {
-      await manager.dispose();
-    }
-  });
 
   const settleLiveTurn = async (
     harness: Awaited<ReturnType<typeof createHarness>>,

@@ -1,5 +1,4 @@
 import type { ComposerFileAttachment, ComposerImageAttachment } from "../../composerDraftDomain";
-import { type BrowserAnnotationDraft } from "../../lib/browserAnnotations";
 import { type PastedTextDraft } from "../../lib/composerPastedText";
 import { type FileCommentDraft } from "../../lib/fileComments";
 import { type PullRequestContextDraft } from "../../lib/pullRequestContext";
@@ -10,11 +9,9 @@ import { ComposerImageAttachmentChip } from "./ComposerImageAttachmentChip";
 import { FileAttachmentChip } from "./FileAttachmentChip";
 import { ComposerPastedTextCard } from "./PastedTextChip";
 import { FileCommentsSummaryChip } from "./FileCommentsSummaryChip";
-import { BrowserAnnotationStrip } from "./BrowserAnnotationStrip";
 
 interface ComposerReferenceAttachmentsProps {
   assistantSelections: ReadonlyArray<ChatAssistantSelectionAttachment>;
-  browserAnnotations?: ReadonlyArray<BrowserAnnotationDraft>;
   fileComments: ReadonlyArray<FileCommentDraft>;
   pastedTexts?: ReadonlyArray<PastedTextDraft>;
   pullRequestContexts?: ReadonlyArray<PullRequestContextDraft>;
@@ -23,7 +20,6 @@ interface ComposerReferenceAttachmentsProps {
   nonPersistedImageIdSet: ReadonlySet<string>;
   onExpandImage: (preview: ExpandedImagePreview) => void;
   onRemoveAssistantSelections: () => void;
-  onRemoveBrowserAnnotation?: (annotationId: string) => void;
   onRemoveFileComments: () => void;
   onRemovePastedText?: (pastedTextId: string) => void;
   onShowPastedTextInField?: (pastedTextId: string) => void;
@@ -34,7 +30,6 @@ interface ComposerReferenceAttachmentsProps {
 
 export function ComposerReferenceAttachments({
   assistantSelections,
-  browserAnnotations = [],
   fileComments,
   pastedTexts: pastedTextsProp,
   pullRequestContexts: pullRequestContextsProp,
@@ -43,7 +38,6 @@ export function ComposerReferenceAttachments({
   nonPersistedImageIdSet,
   onExpandImage,
   onRemoveAssistantSelections,
-  onRemoveBrowserAnnotation,
   onRemoveFileComments,
   onRemovePastedText,
   onShowPastedTextInField,
@@ -55,7 +49,6 @@ export function ComposerReferenceAttachments({
   const pullRequestContexts = pullRequestContextsProp ?? [];
   if (
     assistantSelections.length === 0 &&
-    browserAnnotations.length === 0 &&
     fileComments.length === 0 &&
     pastedTexts.length === 0 &&
     pullRequestContexts.length === 0 &&
@@ -70,10 +63,6 @@ export function ComposerReferenceAttachments({
       <AssistantSelectionsSummaryChip
         selections={assistantSelections}
         onRemove={assistantSelections.length > 0 ? onRemoveAssistantSelections : undefined}
-      />
-      <BrowserAnnotationStrip
-        annotations={browserAnnotations}
-        onRemove={onRemoveBrowserAnnotation}
       />
       <FileCommentsSummaryChip
         comments={fileComments}

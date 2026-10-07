@@ -1,4 +1,3 @@
-import { resolveComputerControlMode } from "./computerControlMode";
 import { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { DeepMutable } from "effect/Types";
@@ -25,7 +24,6 @@ import {
   PersistedPullRequestContextDraft,
   PersistedQueuedTerminalContextDraft,
   PersistedTerminalContextDraft,
-  cloneBrowserAnnotation,
   normalizePersistedModelSelectionMap,
 } from "./composerDraftPersistence.types";
 import type {
@@ -83,11 +81,6 @@ export function partializeComposerDraftStoreState(
           assistantSelections: queuedTurn.assistantSelections.map((value) =>
             encodeAssistantSelection(value),
           ),
-          ...(queuedTurn.browserAnnotations.length > 0
-            ? {
-                browserAnnotations: queuedTurn.browserAnnotations.map(cloneBrowserAnnotation),
-              }
-            : {}),
           terminalContexts: queuedTurn.terminalContexts.map((value) =>
             encodeQueuedTerminalContext(value),
           ),
@@ -117,18 +110,6 @@ export function partializeComposerDraftStoreState(
           ...(queuedTurn.providerOptionsForDispatch
             ? { providerOptionsForDispatch: queuedTurn.providerOptionsForDispatch }
             : {}),
-          enableComputerControl:
-            resolveComputerControlMode(
-              queuedTurn.computerControlMode,
-              queuedTurn.enableComputerControl,
-            ) !== "off",
-          ...(queuedTurn.computerControlGeneration !== undefined
-            ? { computerControlGeneration: queuedTurn.computerControlGeneration }
-            : {}),
-          computerControlMode: resolveComputerControlMode(
-            queuedTurn.computerControlMode,
-            queuedTurn.enableComputerControl,
-          ),
 
           runtimeMode: queuedTurn.runtimeMode,
 
@@ -147,7 +128,6 @@ export function partializeComposerDraftStoreState(
       draft.promptHistorySavedDraft === null &&
       draft.persistedAttachments.length === 0 &&
       draft.assistantSelections.length === 0 &&
-      draft.browserAnnotations.length === 0 &&
       draft.terminalContexts.length === 0 &&
       draft.fileComments.length === 0 &&
       draft.pastedTexts.length === 0 &&
@@ -155,9 +135,7 @@ export function partializeComposerDraftStoreState(
       !hasReferenceData &&
       !hasQueuedTurns &&
       !hasModelData &&
-      draft.runtimeMode === null &&
-      draft.enableComputerControl === undefined &&
-      draft.computerControlMode === undefined
+      draft.runtimeMode === null
     ) {
       continue;
     }
@@ -178,12 +156,6 @@ export function partializeComposerDraftStoreState(
                     assistantSelections: draft.promptHistorySavedDraft.assistantSelections.map(
                       (value) => encodeAssistantSelection(value),
                     ),
-                  }
-                : {}),
-              ...(draft.promptHistorySavedDraft.browserAnnotations.length > 0
-                ? {
-                    browserAnnotations:
-                      draft.promptHistorySavedDraft.browserAnnotations.map(cloneBrowserAnnotation),
                   }
                 : {}),
               ...(draft.promptHistorySavedDraft.terminalContexts.length > 0
@@ -231,11 +203,6 @@ export function partializeComposerDraftStoreState(
             ),
           }
         : {}),
-      ...(draft.browserAnnotations.length > 0
-        ? {
-            browserAnnotations: draft.browserAnnotations.map(cloneBrowserAnnotation),
-          }
-        : {}),
       ...(draft.terminalContexts.length > 0
         ? {
             terminalContexts: draft.terminalContexts.map((value) => encodeTerminalContext(value)),
@@ -269,16 +236,6 @@ export function partializeComposerDraftStoreState(
           }
         : {}),
       ...(draft.runtimeMode ? { runtimeMode: draft.runtimeMode } : {}),
-
-      ...(draft.computerControlGeneration !== undefined
-        ? { computerControlGeneration: draft.computerControlGeneration }
-        : {}),
-      ...(draft.computerControlMode !== undefined
-        ? { computerControlMode: draft.computerControlMode }
-        : {}),
-      ...(draft.enableComputerControl !== undefined
-        ? { enableComputerControl: draft.enableComputerControl }
-        : {}),
     };
     persistedDraftsByThreadId[threadId as ThreadId] = persistedDraft;
   }

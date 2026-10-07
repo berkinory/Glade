@@ -51,7 +51,6 @@ import {
   type AgentGatewayOperationRecord,
 } from "../Services/AgentGatewayOperationRepository.ts";
 import { AgentGatewayLive } from "./AgentGateway.ts";
-import { ComputerService } from "../../computer/Services/ComputerService.ts";
 
 import { recordCreatedWorktreeInPlan } from "../operationPlan.ts";
 import { makeAgentGatewayInFlightRequestRegistry } from "../inFlightRequestRegistry.ts";
@@ -230,7 +229,6 @@ const VALID_TOKENS: Record<string, string> = {
   "token-parent": "thread-parent",
   "token-parent-claude": "thread-parent",
   "token-parent-readonly": "thread-parent",
-  "token-parent-computer": "thread-parent",
   "token-ghost": "thread-ghost",
 };
 
@@ -278,8 +276,6 @@ function makeHarnessLayer(
     readonly providerRuntimeEvents?: ReadonlyArray<PersistedProviderRuntimeEvent>;
     readonly operationalDiagnostics?: ReadonlyArray<OperationalDiagnostic>;
     readonly providerDeliveryBlockers?: ReadonlyArray<ProviderBlockingDeliveryEvidence>;
-
-    readonly computerService?: Layer.Layer<ComputerService>;
   } = {},
 ) {
   const inFlightRequests = makeAgentGatewayInFlightRequestRegistry();
@@ -324,9 +320,7 @@ function makeHarnessLayer(
             capabilities:
               token === "token-parent-readonly"
                 ? new Set(["thread:read"] as const)
-                : token === "token-parent-computer"
-                  ? new Set(["thread:read", "computer:control"] as const)
-                  : new Set(["thread:read", "thread:write", "diagnostics:read"] as const),
+                : new Set(["thread:read", "thread:write", "diagnostics:read"] as const),
           }
         : null;
     },
@@ -1066,7 +1060,6 @@ function makeHarnessLayer(
     Layer.provide(providerRuntimeEventsLayer),
     Layer.provide(ServerConfig.layerTest(process.cwd(), process.cwd())),
     Layer.provide(NodeServices.layer),
-    Layer.provide(options.computerService ?? Layer.empty),
   );
 
   const makeHarness = Effect.gen(function* () {

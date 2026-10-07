@@ -1,5 +1,4 @@
 import { resolveFollowUpDispatchMode } from "~/appSettings";
-import { parseComputerInvocation } from "@glade/shared/computer/computerInvocation";
 import { useLayoutEffect, useRef } from "react";
 import { ComposerModelMenuTrigger } from "~/components/chat/ComposerModelMenuTrigger";
 import { ComposerModelPicker } from "~/components/chat/ComposerModelPicker";
@@ -60,7 +59,6 @@ export function useChatSubmissionController({
     syncServerShellSnapshot,
     setComposerHighlightedItemId,
     settings,
-    composerEditorRef,
     setPrompt,
     navigate,
     prompt,
@@ -91,12 +89,7 @@ export function useChatSubmissionController({
     selectedModelSelection,
     onAdvanceActivePendingUserInput,
   } = provider;
-  const {
-    scheduleComposerFocus,
-    handleModelPickerOpenChange,
-    reportChatActionFailure,
-    handleComputerControlModeChange,
-  } = composer;
+  const { scheduleComposerFocus, handleModelPickerOpenChange, reportChatActionFailure } = composer;
   const { isLocalDraftThread, activeProject, isServerThread, activeContextWindow, runtimeMode } =
     workspace;
   const { envMode } = environment;
@@ -343,14 +336,6 @@ export function useChatSubmissionController({
     clearComposerSlashDraft,
   } = useChatComposerEditing({ session, provider, composer });
 
-  const handleEnableComputerControlFromDenial = () => {
-    const currentPrompt = composerEditorRef.current?.readSnapshot()?.value ?? promptRef.current;
-    if (!parseComputerInvocation(currentPrompt)) {
-      setComposerPromptValue(`/computer-use ${currentPrompt}`);
-    }
-    handleComputerControlModeChange("request");
-  };
-
   const slashEditorActions = {
     resolveActiveComposerTrigger,
     applyPromptReplacement,
@@ -480,7 +465,6 @@ export function useChatSubmissionController({
     handleCreateProjectFromPickerPath,
     handleSelectLocalDirectoryMention,
     handleNavigateLocalFolder,
-    handleEnableComputerControlFromDenial,
     handleForkFromMessage,
 
     onSelectComposerItem,

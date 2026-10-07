@@ -72,7 +72,6 @@ export async function startSelectionChat(
     assistantSelections: [attachment],
     images: [],
     files: [],
-    browserAnnotations: [],
     terminalContexts: [],
     fileComments: [],
     pastedTexts: [],

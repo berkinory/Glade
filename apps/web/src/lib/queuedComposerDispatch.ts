@@ -14,7 +14,6 @@ import {
 import { useStore } from "../store";
 import { getThreadFromState } from "../threadDerivation";
 import { appendAssistantSelectionsToPrompt } from "./assistantSelections";
-import { appendBrowserAnnotationsToPrompt } from "./browserAnnotations";
 import {
   filterPromptProviderMentionReferences,
   filterPromptSkillReferences,
@@ -53,22 +52,18 @@ export async function dispatchQueuedComposerTurnHeadless(input: {
 
   const sendableTerminalContexts = filterTerminalContextsWithText(queuedTurn.terminalContexts);
   const sendablePastedTexts = filterPastedTextsWithText(queuedTurn.pastedTexts);
-  const messageText = appendBrowserAnnotationsToPrompt(
-    appendPullRequestContextsToPrompt(
-      appendPastedTextsToPrompt(
-        appendFileCommentsToPrompt(
-          appendTerminalContextsToPrompt(
-            appendAssistantSelectionsToPrompt(queuedTurn.prompt, queuedTurn.assistantSelections),
-            sendableTerminalContexts,
-          ),
-          queuedTurn.fileComments,
+  const messageText = appendPullRequestContextsToPrompt(
+    appendPastedTextsToPrompt(
+      appendFileCommentsToPrompt(
+        appendTerminalContextsToPrompt(
+          appendAssistantSelectionsToPrompt(queuedTurn.prompt, queuedTurn.assistantSelections),
+          sendableTerminalContexts,
         ),
-        sendablePastedTexts,
+        queuedTurn.fileComments,
       ),
-      queuedTurn.pullRequestContexts,
+      sendablePastedTexts,
     ),
-    queuedTurn.browserAnnotations,
-    messageId,
+    queuedTurn.pullRequestContexts,
   );
   const outgoingTextSeed =
     messageText || (queuedTurn.images.length > 0 ? IMAGE_ONLY_BOOTSTRAP_PROMPT : "");

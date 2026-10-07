@@ -11,11 +11,6 @@ import type {
 } from "@glade/contracts/orchestration/snapshots";
 import { WS_PROJECT_FILE_WATCH_CAPABILITY } from "@glade/contracts/transport/ws/wsCompatibility";
 import { WS_CHANNELS, WS_METHODS, type WsPushChannel } from "@glade/contracts/transport/ws/ws";
-import {
-  COMPUTER_WS_CHANNELS,
-  COMPUTER_WS_METHODS,
-  type ComputerEvent,
-} from "@glade/contracts/computer/computer";
 import type {
   GitActionProgressEvent,
   GitCreateDetachedWorktreeResult,
@@ -133,14 +128,6 @@ export class WsTransport extends WsTransportBase {
             },
             restartChannel,
           );
-        } else if (channel === COMPUTER_WS_CHANNELS.event) {
-          this.startStream(
-            client,
-            "computer.events",
-            client[COMPUTER_WS_METHODS.subscribeEvents]({}),
-            (event: ComputerEvent) => this.emit(COMPUTER_WS_CHANNELS.event, event),
-            restartChannel,
-          );
         } else if (channel === ORCHESTRATION_WS_CHANNELS.domainEvent) {
           this.startStream(
             client,
@@ -171,7 +158,6 @@ export class WsTransport extends WsTransportBase {
       void this.stopStream("server.providers");
     else if (channel === WS_CHANNELS.serverSettingsUpdated) void this.stopStream("server.settings");
     else if (channel === WS_CHANNELS.terminalEvent) void this.stopStream("terminal.events");
-    else if (channel === COMPUTER_WS_CHANNELS.event) void this.stopStream("computer.events");
     else if (channel === ORCHESTRATION_WS_CHANNELS.domainEvent)
       void this.stopStream("orchestration.domain");
   }

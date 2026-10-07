@@ -8,7 +8,6 @@ export const ThreadSessionSettingsLive = Layer.effect(
     Effect.sync(() => {
       const modelSelections = new Map<string, ModelSelection>();
       const providerOptions = new Map<string, ProviderStartOptions>();
-      const computerControl = new Map<string, boolean>();
       const editResendStartKeys = new Set<string>();
       const clearEditResendStartsForThread = (threadId: string) => {
         const prefix = `${threadId}:`;
@@ -26,10 +25,6 @@ export const ThreadSessionSettingsLive = Layer.effect(
         setProviderOptions: (threadId: string, options: ProviderStartOptions) => {
           providerOptions.set(threadId, options);
         },
-        getComputerControl: (threadId: string) => computerControl.get(threadId),
-        setComputerControl: (threadId: string, enabled: boolean) => {
-          computerControl.set(threadId, enabled);
-        },
         markEditResendStart: (threadId: string, messageId: string) => {
           editResendStartKeys.add(`${threadId}:${messageId}`);
         },
@@ -40,7 +35,6 @@ export const ThreadSessionSettingsLive = Layer.effect(
         clearThread: (threadId: string) => {
           modelSelections.delete(threadId);
           providerOptions.delete(threadId);
-          computerControl.delete(threadId);
           clearEditResendStartsForThread(threadId);
         },
       };
@@ -49,7 +43,6 @@ export const ThreadSessionSettingsLive = Layer.effect(
         dispose: () => {
           modelSelections.clear();
           providerOptions.clear();
-          computerControl.clear();
           editResendStartKeys.clear();
         },
       };

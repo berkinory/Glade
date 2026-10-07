@@ -1,13 +1,8 @@
-import { type MessageId, type ThreadId } from "@glade/contracts/core/baseSchemas";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   extractTrailingAssistantSelections,
   type ParsedAssistantSelectionEntry,
 } from "./assistantSelections";
-import {
-  buildBrowserAnnotationsPromptBlock,
-  extractTrailingBrowserAnnotations,
-  type BrowserAnnotationDraft,
-} from "./browserAnnotations";
 import { extractTrailingFileComments, type ParsedFileCommentEntry } from "./fileComments";
 import { extractTrailingPastedTexts, type ParsedPastedTextEntry } from "./composerPastedText";
 import {
@@ -46,7 +41,6 @@ export interface DisplayedUserMessageState {
   fileComments: ParsedFileCommentEntry[];
   pastedTexts: ParsedPastedTextEntry[];
   pullRequestContexts: ParsedPullRequestContextEntry[];
-  browserAnnotations: BrowserAnnotationDraft[];
 }
 
 export interface ParsedTerminalContextEntry {
@@ -71,7 +65,6 @@ const TRAILING_SERIALIZED_COMPOSER_BLOCK_PATTERNS = [
 
 interface DisplayedUserMessageOptions {
   hideImageOnlyBootstrapPrompt?: boolean;
-  messageId: MessageId | undefined;
 }
 
 export function normalizeTerminalContextText(text: string): string {
@@ -226,25 +219,9 @@ export function appendTerminalContextsToPrompt(
 export function appendOriginalComposerPromptBlocks(input: {
   editedPrompt: string;
   originalPrompt: string;
-  messageId?: MessageId;
 }): string {
   let remainingPrompt = input.originalPrompt;
   const originalBlocks: string[] = [];
-  if (input.messageId) {
-    const extractedBrowserAnnotations = extractTrailingBrowserAnnotations(
-      input.originalPrompt,
-      input.messageId,
-    );
-    if (extractedBrowserAnnotations.annotations.length > 0) {
-      remainingPrompt = extractedBrowserAnnotations.promptText;
-      originalBlocks.push(
-        buildBrowserAnnotationsPromptBlock(
-          extractedBrowserAnnotations.annotations,
-          input.messageId,
-        ),
-      );
-    }
-  }
   let strippedBlock = true;
   while (strippedBlock) {
     strippedBlock = false;
@@ -298,13 +275,7 @@ export function deriveDisplayedUserMessageState(
   prompt: string,
   options: DisplayedUserMessageOptions,
 ): DisplayedUserMessageState {
-  const extractedBrowserAnnotations =
-    options.messageId === undefined
-      ? { promptText: prompt, annotations: [] }
-      : extractTrailingBrowserAnnotations(prompt, options.messageId);
-  const extractedPullRequestContexts = extractTrailingPullRequestContexts(
-    extractedBrowserAnnotations.promptText,
-  );
+  const extractedPullRequestContexts = extractTrailingPullRequestContexts(prompt);
   const extractedPastedTexts = extractTrailingPastedTexts(extractedPullRequestContexts.promptText);
   const extractedFileComments = extractTrailingFileComments(extractedPastedTexts.promptText);
   const extractedContexts = extractTrailingTerminalContexts(extractedFileComments.promptText);
@@ -326,7 +297,6 @@ export function deriveDisplayedUserMessageState(
     fileComments: extractedFileComments.comments,
     pastedTexts: extractedPastedTexts.pastedTexts,
     pullRequestContexts: extractedPullRequestContexts.pullRequestContexts,
-    browserAnnotations: extractedBrowserAnnotations.annotations,
   };
 }
 

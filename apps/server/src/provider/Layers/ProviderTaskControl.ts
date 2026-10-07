@@ -18,7 +18,6 @@ import {
   ProviderRespondToUserInputInput,
 } from "@glade/contracts/provider/provider";
 import { AGENT_GATEWAY_CREDENTIAL_ROTATION_REQUIRED } from "../../agentGateway/sessionLease.ts";
-import { computerApprovalGate } from "../../computer/ComputerApprovalGate.ts";
 import { ProviderValidationError } from "../core/Errors.ts";
 import { ProviderRuntimeBindings } from "../Services/ProviderRuntimeBindings";
 
@@ -248,18 +247,6 @@ export const ProviderTaskControlLive = Layer.effect(
 
     const respondToInteraction = (response: InteractionResponse) => {
       const { input } = response;
-      if (response.kind === "approval" && input.requestId.startsWith("computer:")) {
-        return Effect.gen(function* () {
-          if (
-            !computerApprovalGate.respond(input.threadId, input.requestId, response.input.decision)
-          ) {
-            return yield* toValidationError(
-              "ProviderService.respondToRequest",
-              "This computer approval expired or belongs to another conversation.",
-            );
-          }
-        });
-      }
       const operation =
         response.kind === "approval"
           ? "ProviderService.respondToRequest"

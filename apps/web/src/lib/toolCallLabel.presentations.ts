@@ -1,6 +1,4 @@
 import type { ToolLifecycleItemType } from "@glade/contracts/provider/runtimeMetadata";
-import { BROWSER_TOOL_TITLES } from "@glade/shared/browser/browserAutomationPresentation";
-import { COMPUTER_TOOL_DESCRIPTORS, type ComputerToolName } from "./computerToolPresentation";
 import { extractToolArgumentField } from "./toolArgumentSummary";
 
 export function normalizeCompactToolLabel(value: string): string {
@@ -101,57 +99,6 @@ export interface GladeMcpToolPresentation {
   readonly running: string;
   readonly completed: string;
   readonly failed: string;
-}
-
-const BROWSER_HISTORY_TITLES = {
-  ...BROWSER_TOOL_TITLES,
-  browser_snapshot: "Snapshot browser page",
-  browser_webmcp_tools: "Discover page WebMCP tools",
-  browser_webmcp_call: "Call page WebMCP tool",
-  browser_click: "Click browser target",
-  browser_hover: "Hover browser target",
-  browser_drag: "Drag between browser targets",
-  browser_type: "Type into browser target",
-  browser_select: "Select browser options",
-  browser_press: "Press browser keys",
-  browser_scroll: "Scroll browser page",
-  browser_wait: "Wait for browser condition",
-  browser_evaluate: "Evaluate browser expression",
-} as const;
-
-type BrowserHistoryToolName = keyof typeof BROWSER_HISTORY_TITLES;
-
-type GladeBrowserToolName = `glade_${BrowserHistoryToolName}`;
-
-const BROWSER_HISTORY_TOOL_NAMES = Object.keys(BROWSER_HISTORY_TITLES) as BrowserHistoryToolName[];
-
-const BROWSER_TOOL_NAME_SET = new Set<string>(BROWSER_HISTORY_TOOL_NAMES);
-
-const GLADE_BROWSER_TOOL_PRESENTATIONS = Object.fromEntries(
-  BROWSER_HISTORY_TOOL_NAMES.map((toolName) => {
-    const title = BROWSER_HISTORY_TITLES[toolName];
-    return [`glade_${toolName}`, { running: title, completed: title, failed: title }];
-  }),
-) as Record<GladeBrowserToolName, GladeMcpToolPresentation>;
-
-// Every browser tool had a curated presentation and every computer tool had none, so the most
-// consequential rows in the transcript — an agent moving a pointer on the user's own machine — fell
-// through to the invented "Glade is handling computer click" fallback. The wording deliberately
-// keeps the machine in the sentence ("this computer's desktop") rather than saying "the desktop",
-// because on the backends that matter it is the user's own.
-const GLADE_COMPUTER_TOOL_PRESENTATIONS = Object.fromEntries(
-  Object.entries(COMPUTER_TOOL_DESCRIPTORS).map(([name, [, present, past]]) => [
-    `glade_${name}`,
-    presentComputerTool(present, past),
-  ]),
-) as Record<`glade_${ComputerToolName}`, GladeMcpToolPresentation>;
-
-function presentComputerTool(present: string, past: string): GladeMcpToolPresentation {
-  return {
-    running: `Glade is ${present}`,
-    completed: `Glade ${past}`,
-    failed: `Glade couldn't finish ${present}`,
-  };
 }
 
 export const GLADE_MCP_TOOL_PRESENTATIONS = {
@@ -270,8 +217,6 @@ export const GLADE_MCP_TOOL_PRESENTATIONS = {
     completed: "Glade updated a thread",
     failed: "Glade couldn't update a thread",
   },
-  ...GLADE_BROWSER_TOOL_PRESENTATIONS,
-  ...GLADE_COMPUTER_TOOL_PRESENTATIONS,
 } as const satisfies Record<string, GladeMcpToolPresentation>;
 
 export function normalizeGladeMcpIdentifier(value: string): string {
@@ -281,13 +226,6 @@ export function normalizeGladeMcpIdentifier(value: string): string {
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
 }
-
-const GLADE_BROWSER_TOOL_NAME_BY_PRESENTATION = new Map<string, GladeBrowserToolName>(
-  BROWSER_HISTORY_TOOL_NAMES.map((toolName) => [
-    normalizeGladeMcpIdentifier(BROWSER_HISTORY_TITLES[toolName]),
-    `glade_${toolName}`,
-  ]),
-);
 
 export const GLADE_MCP_TOOL_PRESENTATION_ENTRIES = Object.entries(GLADE_MCP_TOOL_PRESENTATIONS).map(
   ([toolName, presentation]) => ({
@@ -303,9 +241,6 @@ export function extractGladeMcpToolName(normalizedCandidate: string): string | n
   if (normalizedCandidate === "html_preview" || normalizedCandidate === "html_render") {
     return `glade_${normalizedCandidate}`;
   }
-  if (BROWSER_TOOL_NAME_SET.has(normalizedCandidate)) {
-    return `glade_${normalizedCandidate}`;
-  }
   if (normalizedCandidate.startsWith("mcp_glade_glade_")) {
     return normalizedCandidate.slice("mcp_glade_".length);
   }
@@ -317,24 +252,6 @@ export function extractGladeMcpToolName(normalizedCandidate: string): string | n
   }
   if (normalizedCandidate.startsWith("glade_")) {
     return normalizedCandidate;
-  }
-  return null;
-}
-
-export function resolveGladeBrowserToolName(
-  candidates: ReadonlyArray<string | null | undefined>,
-): GladeBrowserToolName | null {
-  for (const candidate of candidates) {
-    if (!candidate) continue;
-    const normalizedCandidate = normalizeGladeMcpIdentifier(candidate);
-    const extractedToolName = extractGladeMcpToolName(normalizedCandidate);
-    const candidateToolName =
-      extractedToolName ??
-      GLADE_BROWSER_TOOL_NAME_BY_PRESENTATION.get(normalizedCandidate) ??
-      normalizedCandidate;
-    if (candidateToolName in GLADE_BROWSER_TOOL_PRESENTATIONS) {
-      return candidateToolName as GladeBrowserToolName;
-    }
   }
   return null;
 }

@@ -1,5 +1,4 @@
 import { SINGLE_CHAT_PANE_SCOPE_ID } from "./chatPaneScope";
-import { notifyNativeSurfaceOcclusionChange } from "./nativeSurfaceOcclusion";
 
 const COMPOSER_COMPACT_MIN_LEFT_CONTROLS_WIDTH_PX = 160;
 
@@ -68,13 +67,11 @@ export function createPanelResizeOverlay(cursor = "col-resize"): HTMLDivElement 
   overlay.style.cursor = cursor;
   overlay.style.background = "transparent";
   document.body.append(overlay);
-  notifyNativeSurfaceOcclusionChange();
   return overlay;
 }
 
 export function removePanelResizeOverlay(overlay: HTMLDivElement): void {
   overlay.remove();
-  notifyNativeSurfaceOcclusionChange();
 }
 
 export function attachPanelPointerOverlaySession(

@@ -16,7 +16,6 @@ import {
   AlertCircleIcon,
   HelpCircleIcon,
   FilterIcon,
-  MousePointer01Icon,
   ViewIcon,
   Globe02Icon,
   ToolsIcon,
@@ -47,7 +46,6 @@ import {
   ToolDetailsDisclosure,
 } from "./TimelineWorkEntryDetails";
 import { describeLinkChip } from "~/lib/linkChips";
-import { computerToolName, describeComputerToolCall } from "~/lib/computerToolPresentation";
 import { cn } from "~/lib/utils";
 import { isFileChangeWorkLogEntry, type WorkLogEntry } from "../../workLog.types";
 import {
@@ -56,8 +54,6 @@ import {
   isPlainRuntimeNoticeWorkEntry,
   isReasoningUpdateWorkEntry,
 } from "./agentActivity.logic";
-import { ConnectedComputerSetupRequiredCard } from "./ComputerSetupRequiredCard";
-import { ComputerControlDeniedCard } from "./ComputerControlDeniedCard";
 import { DiffStatLabel } from "./DiffStatLabel";
 import { type ExpandedImagePreview } from "./ExpandedImagePreview";
 import { LinkChipIcon } from "../LinkChipIcon";
@@ -74,8 +70,6 @@ import {
 } from "../../lib/toolCallLabel.commands";
 import {
   deriveGladeMcpToolTitle,
-  isGenericToolTitle,
-  isGladeBrowserToolCall,
   isGladeVisualToolCall,
   sanitizeGladeMcpToolPreview,
   type GladeMcpToolStatus,
@@ -241,9 +235,7 @@ export function workEntryLeftIcon(
   classification = classifyWorkEntryTool(workEntry),
 ): IconComponent {
   if (classification.isVisual) return ChartAreaIcon;
-  if (classification.isComputer) return MousePointer01Icon;
   if (classification.mcpIcon) return classification.mcpIcon;
-  if (classification.isGladeBrowser) return Globe02Icon;
   if (classification.gladeTitle !== null) return GladeToolIcon;
   if (workEntry.itemType === "mcp_tool_call") return McpServerIcon;
   return workEntryIcon(workEntry);
@@ -262,15 +254,11 @@ function classifyWorkEntryTool(workEntry: TimelineWorkEntry) {
     fallbackLabel: workEntry.label,
     status,
   };
-  const computerTool = computerToolName(workEntry.toolName);
   const mcpIcon = resolveMcpToolIcon(workEntry);
   return {
     status,
-    computerTool,
-    isComputer: computerTool !== null || /^Computer Use:/i.test(workEntry.toolTitle ?? ""),
     mcpIcon,
     isGitHub: mcpIcon === GitHubIcon,
-    isGladeBrowser: isGladeBrowserToolCall(titleInput),
     isVisual: isGladeVisualToolCall(titleInput),
     gladeTitle: deriveGladeMcpToolTitle(titleInput),
   };
@@ -313,15 +301,6 @@ function toolWorkEntryHeading(
       classification.status,
     );
   }
-  if (classification.computerTool) {
-    const title = normalizeCompactToolLabel(workEntry.toolTitle ?? "");
-    if (title && !isGenericToolTitle(title) && !computerToolName(title))
-      return capitalizePhrase(title);
-    return describeComputerToolCall({
-      toolName: workEntry.toolName,
-      args: undefined,
-    })!.summary;
-  }
   if (workEntry.activityKind === "turn.tasks.updated") {
     return capitalizePhrase(workEntry.label);
   }
@@ -354,8 +333,7 @@ function workEntryDisplayParts(
   const rawPreview =
     workEntry.itemType === "collab_agent_tool_call" ? null : workEntryPreview(workEntry);
   const preview =
-    !classification.isGitHub &&
-    (classification.isGladeBrowser || classification.gladeTitle !== null)
+    !classification.isGitHub && classification.gladeTitle !== null
       ? sanitizeGladeMcpToolPreview({
           preview: rawPreview,
           heading,
@@ -426,8 +404,6 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
   onOpenTurnDiff?: (turnId: TurnId, filePath?: string) => void;
   activityDetail?: AgentActivityDetail | undefined;
   timestampFormat: TimestampFormat;
-  computerControlEnabled?: boolean;
-  onEnableComputerControl?: () => void;
 }) {
   const {
     workEntry,
@@ -441,8 +417,6 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
     onOpenTurnDiff,
     activityDetail,
     timestampFormat,
-    computerControlEnabled,
-    onEnableComputerControl,
   } = props;
   const textFontSizePx = textFontSizePxProp ?? chatMetaFontSizePx;
   const density = densityProp ?? "default";
@@ -454,29 +428,19 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
   const linkIconUrl = workEntryLinkIconUrl(workEntry);
   const classification = classifyWorkEntryTool(workEntry);
   const isGitHubToolRow = classification.isGitHub;
-  const isComputerToolRow = classification.isComputer;
-  const isGladeBrowserToolRow = !isGitHubToolRow && classification.isGladeBrowser;
-  const isGladeToolRow =
-    !isGitHubToolRow && !isGladeBrowserToolRow && classification.gladeTitle !== null;
+  const isGladeToolRow = !isGitHubToolRow && classification.gladeTitle !== null;
   const isMcpToolRow =
-    workEntry.itemType === "mcp_tool_call" &&
-    !isGitHubToolRow &&
-    !isGladeBrowserToolRow &&
-    !isGladeToolRow;
+    workEntry.itemType === "mcp_tool_call" && !isGitHubToolRow && !isGladeToolRow;
   const LeftIcon = workEntryLeftIcon(workEntry, classification);
   const leftIconKind = linkIconUrl
     ? "web-fetch"
-    : isComputerToolRow
-      ? "computer"
-      : isGitHubToolRow || EntryIcon === GitHubIcon
-        ? "github"
-        : isGladeBrowserToolRow
-          ? "browser"
-          : isGladeToolRow
-            ? "glade"
-            : isMcpToolRow
-              ? "mcp"
-              : undefined;
+    : isGitHubToolRow || EntryIcon === GitHubIcon
+      ? "github"
+      : isGladeToolRow
+        ? "glade"
+        : isMcpToolRow
+          ? "mcp"
+          : undefined;
   const { displayText } = workEntryDisplayParts(workEntry, classification);
   const rawCommand = workEntry.rawCommand ?? workEntry.command;
   const hoverText = rawCommand ?? webFetchUrl ?? displayText;
@@ -507,39 +471,6 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
         subagent: (workEntry.subagents?.length ?? 0) > 0,
       })
     : null;
-
-  // A computer-control denial renders as an actionable card (enable + retry) instead of a buried
-  // tool-error line. Kept after the hooks above so the early return never changes hook order.
-  if (workEntry.computerSetupRequired) {
-    return (
-      <ConnectedComputerSetupRequiredCard
-        {...workEntry.computerSetupRequired}
-        textFontSizePx={textFontSizePx}
-        metaFontSizePx={chatMetaFontSizePx}
-      />
-    );
-  }
-  const computerControlDenied = workEntry.computerControlDenied;
-  if (computerControlDenied) {
-    return (
-      <div className={cn(compact ? "py-0.5" : "py-1")}>
-        <ComputerControlDeniedCard
-          {...(computerControlEnabled !== undefined
-            ? {
-                computerControlEnabled,
-              }
-            : {})}
-          textFontSizePx={textFontSizePx}
-          metaFontSizePx={chatMetaFontSizePx}
-          {...(onEnableComputerControl
-            ? {
-                onEnable: onEnableComputerControl,
-              }
-            : {})}
-        />
-      </div>
-    );
-  }
   const readFilePath =
     opener !== null && !activityDetail && workEntry.detail && workEntry.toolKind === "read"
       ? extractFilePathFromDetail(workEntry.detail)

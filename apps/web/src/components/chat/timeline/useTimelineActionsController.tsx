@@ -39,12 +39,12 @@ export function useTimelineActionsController({
   );
 
   const submitUserMessageEdit = useCallback(
-    (messageId: MessageId, text: string, allowEmpty = false) => {
+    (messageId: MessageId, text: string) => {
       if (!onEditUserMessage) {
         return Promise.resolve();
       }
       const nextText = text.trim();
-      if (!nextText && !allowEmpty) {
+      if (!nextText) {
         return Promise.resolve();
       }
       setSubmittingEditedUserMessageId(messageId);

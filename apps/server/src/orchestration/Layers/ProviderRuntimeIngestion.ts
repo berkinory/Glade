@@ -6,10 +6,6 @@ import { asRecord, isRecord } from "@glade/shared/transport/payloadValues";
 import { Schema } from "effect";
 import type { TaggedFailure } from "../../platform/operationError.ts";
 import {
-  startComputerTurnTiming,
-  endComputerTurnTiming,
-} from "../../computer/computerTurnTiming.ts";
-import {
   type AssistantDeliveryMode,
   type RuntimeMode,
 } from "@glade/contracts/provider/sessionPolicy";
@@ -64,7 +60,6 @@ import {
 } from "../../provider/codex/codexGeneratedImages.ts";
 import { parseCheckpointFilesFromUnifiedDiff } from "../../checkpointing/Diffs.ts";
 import { ProviderService } from "../../provider/Services/ProviderService.ts";
-import { ComputerService } from "../../computer/Services/ComputerService.ts";
 
 import {
   classifyTerminalTurnApplicability,
@@ -553,7 +548,6 @@ const make = Effect.gen(function* () {
   const projectionSnapshotQuery = yield* ProjectionSnapshotQuery;
   const activityRepository = yield* ProjectionThreadActivityRepository;
   const providerService = yield* ProviderService;
-  const computerService = yield* Effect.serviceOption(ComputerService);
   const pendingInteractions = yield* ProjectionPendingInteractionRepository;
   const runtimeEvents = yield* ProviderRuntimeEventRepository;
   const commandReceipts = yield* OrchestrationCommandReceiptRepository;
@@ -1823,7 +1817,6 @@ const make = Effect.gen(function* () {
       }
 
       if (event.type === "turn.started" && eventTurnId) {
-        startComputerTurnTiming(thread.id, eventTurnId);
         yield* matchStartedTurnAssistantDeliveryMode(thread.id, eventTurnId);
       }
 
@@ -1831,37 +1824,6 @@ const make = Effect.gen(function* () {
         yield* matchStartedTurnAssistantDeliveryMode(thread.id, eventTurnId, {
           recordUnmatched: false,
         });
-      }
-
-      // Keep explicit terminal identities even when they cannot replace the thread's active projection:
-      // the old turn may still own the desktop, while the manager refuses to release a newer owner. A
-      // turnless ambiguous completion proves neither turn has ended.
-      const computerSessionEnded =
-        event.type === "session.exited" ||
-        event.type === "runtime.error" ||
-        (event.type === "session.state.changed" &&
-          (event.payload.state === "stopped" || event.payload.state === "error"));
-      if (
-        Option.isSome(computerService) &&
-        (computerSessionEnded ||
-          (isTerminalTurnEvent &&
-            (eventTurnId !== undefined || (shouldApplyThreadLifecycle && !hasAmbiguousTurns))))
-      ) {
-        const releasedTurnId = isTerminalTurnEvent
-          ? eventTurnId
-          : (rawEventTurnId ?? activeTurnId ?? undefined);
-        endComputerTurnTiming(thread.id, releasedTurnId);
-        yield* Effect.tryPromise(() =>
-          computerService.value.manager.releaseDesktopControl(thread.id, releasedTurnId),
-        ).pipe(
-          Effect.catchCause(() =>
-            Effect.logWarning("computer desktop lease release failed", {
-              threadId: thread.id,
-              turnId: releasedTurnId,
-              eventType: event.type,
-            }),
-          ),
-        );
       }
 
       if (event.type === "session.started") {

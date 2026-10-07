@@ -91,7 +91,7 @@
   :root {
     /* One token for the INTERNAL chat-surface dividers: the horizontal chrome-bar
        hairlines (chat/dock/diff headers) AND the right-side pane splits
-       (diff/browser/dock). All resolve through here so those divider directions read
+       (diff/dock). All resolve through here so those divider directions read
        as the same line. The straight sidebar↔route seam is intentionally NOT one of
        these — it stays at full --color-border (see --seam-line) so the outer content
        edge remains distinct.

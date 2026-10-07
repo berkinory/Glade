@@ -13,7 +13,6 @@ import {
 import { ProviderModelOptions } from "@glade/contracts/provider/model";
 import { PersistedComposerImageAttachment } from "./composerDraftDomain";
 import { LegacyCodexFields, normalizeModelSelection } from "./composerDraftModels";
-import type { BrowserAnnotationDraft } from "./lib/browserAnnotations";
 import { PULL_REQUEST_CONTEXT_SCOPES } from "./lib/pullRequestContext";
 
 const DraftThreadEnvModeSchema = Schema.Literals(["local", "worktree"]);
@@ -39,13 +38,6 @@ export function normalizePersistedModelSelectionMap(
     }
   }
   return result;
-}
-
-export function cloneBrowserAnnotation(annotation: BrowserAnnotationDraft): BrowserAnnotationDraft {
-  return {
-    ...annotation,
-    source: { ...annotation.source },
-  };
 }
 
 export const PersistedTerminalContextDraft = Schema.Struct({
@@ -112,25 +104,6 @@ export const PersistedAssistantSelectionDraft = Schema.Struct({
 
 type PersistedAssistantSelectionDraft = typeof PersistedAssistantSelectionDraft.Type;
 
-const PersistedBrowserAnnotationDraft = Schema.Struct({
-  id: Schema.String,
-  ordinal: Schema.Number,
-  tabId: Schema.String,
-  documentKey: Schema.optionalKey(Schema.String),
-  source: Schema.Struct({
-    url: Schema.String,
-    pageTitle: Schema.String,
-  }),
-  selector: Schema.String,
-  tagName: Schema.String,
-  role: Schema.NullOr(Schema.String),
-  name: Schema.NullOr(Schema.String),
-  text: Schema.NullOr(Schema.String),
-  fingerprint: Schema.String,
-  comment: Schema.NullOr(Schema.String),
-  capturedAt: Schema.String,
-});
-
 const PersistedQueuedComposerChatTurn = Schema.Struct({
   id: Schema.String,
   kind: Schema.Literal("chat"),
@@ -139,7 +112,6 @@ const PersistedQueuedComposerChatTurn = Schema.Struct({
   prompt: Schema.String,
   images: Schema.Array(PersistedComposerImageAttachment),
   assistantSelections: Schema.optionalKey(Schema.Array(PersistedAssistantSelectionDraft)),
-  browserAnnotations: Schema.optionalKey(Schema.Array(PersistedBrowserAnnotationDraft)),
   terminalContexts: Schema.Array(PersistedQueuedTerminalContextDraft),
   fileComments: Schema.optionalKey(Schema.Array(PersistedFileCommentDraft)),
   pastedTexts: Schema.optionalKey(Schema.Array(PersistedPastedTextDraft)),
@@ -151,9 +123,6 @@ const PersistedQueuedComposerChatTurn = Schema.Struct({
   selectedPromptEffort: Schema.NullOr(Schema.String),
   modelSelection: ModelSelection,
   providerOptionsForDispatch: Schema.optionalKey(ProviderStartOptions),
-  enableComputerControl: Schema.optionalKey(Schema.Boolean),
-  computerControlMode: Schema.optionalKey(Schema.Literals(["off", "request", "chat"])),
-  computerControlGeneration: Schema.optionalKey(Schema.Number),
 
   runtimeMode: RuntimeMode,
 
@@ -172,7 +141,6 @@ const PersistedComposerPromptHistorySavedDraft = Schema.Union([
     prompt: Schema.String,
     attachments: Schema.optionalKey(Schema.Array(PersistedComposerImageAttachment)),
     assistantSelections: Schema.optionalKey(Schema.Array(PersistedAssistantSelectionDraft)),
-    browserAnnotations: Schema.optionalKey(Schema.Array(PersistedBrowserAnnotationDraft)),
     terminalContexts: Schema.optionalKey(Schema.Array(PersistedTerminalContextDraft)),
     fileComments: Schema.optionalKey(Schema.Array(PersistedFileCommentDraft)),
     pastedTexts: Schema.optionalKey(Schema.Array(PersistedPastedTextDraft)),
@@ -200,7 +168,6 @@ const PersistedComposerThreadDraftState = Schema.Struct({
       }),
     ),
   ),
-  browserAnnotations: Schema.optionalKey(Schema.Array(PersistedBrowserAnnotationDraft)),
   terminalContexts: Schema.optionalKey(Schema.Array(PersistedTerminalContextDraft)),
   fileComments: Schema.optionalKey(Schema.Array(PersistedFileCommentDraft)),
   pastedTexts: Schema.optionalKey(Schema.Array(PersistedPastedTextDraft)),
@@ -214,10 +181,6 @@ const PersistedComposerThreadDraftState = Schema.Struct({
   ),
   activeProvider: Schema.optionalKey(Schema.NullOr(ProviderKind)),
   runtimeMode: Schema.optionalKey(RuntimeMode),
-
-  enableComputerControl: Schema.optionalKey(Schema.Boolean),
-  computerControlMode: Schema.optionalKey(Schema.Literals(["off", "request", "chat"])),
-  computerControlGeneration: Schema.optionalKey(Schema.Number),
 });
 
 export type PersistedComposerThreadDraftState = typeof PersistedComposerThreadDraftState.Type;

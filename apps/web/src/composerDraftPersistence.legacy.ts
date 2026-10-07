@@ -18,7 +18,6 @@ import {
   normalizeProviderKind,
   normalizeProviderModelOptions,
 } from "./composerDraftModels";
-import { normalizeBrowserAnnotations } from "./lib/browserAnnotations";
 import { ensureInlineTerminalContextPlaceholders } from "./lib/terminalContext";
 import { DEFAULT_RUNTIME_MODE } from "./types";
 import {
@@ -211,9 +210,6 @@ export function normalizePersistedDraftsByThreadId(
           return normalized ? [normalized] : [];
         })
       : [];
-    const browserAnnotations = Array.isArray(draftCandidate.browserAnnotations)
-      ? normalizeBrowserAnnotations(draftCandidate.browserAnnotations)
-      : [];
     const fileComments = Array.isArray(draftCandidate.fileComments)
       ? draftCandidate.fileComments.flatMap((entry) => {
           const normalized = normalizePersistedFileCommentDraft(entry);
@@ -242,23 +238,6 @@ export function normalizePersistedDraftsByThreadId(
     const runtimeMode = Schema.is(RuntimeMode)(draftCandidate.runtimeMode)
       ? draftCandidate.runtimeMode
       : null;
-
-    const enableComputerControl =
-      typeof draftCandidate.enableComputerControl === "boolean"
-        ? draftCandidate.enableComputerControl
-        : undefined;
-    const computerControlMode =
-      draftCandidate.computerControlMode === "off" ||
-      draftCandidate.computerControlMode === "request" ||
-      draftCandidate.computerControlMode === "chat"
-        ? draftCandidate.computerControlMode
-        : undefined;
-    const computerControlGeneration =
-      typeof draftCandidate.computerControlGeneration === "number" &&
-      Number.isSafeInteger(draftCandidate.computerControlGeneration) &&
-      draftCandidate.computerControlGeneration >= 0
-        ? draftCandidate.computerControlGeneration
-        : undefined;
     const prompt = ensureInlineTerminalContextPlaceholders(
       promptCandidate,
       terminalContexts.length,
@@ -320,16 +299,13 @@ export function normalizePersistedDraftsByThreadId(
       attachments.length === 0 &&
       terminalContexts.length === 0 &&
       assistantSelections.length === 0 &&
-      browserAnnotations.length === 0 &&
       fileComments.length === 0 &&
       pastedTexts.length === 0 &&
       pullRequestContexts.length === 0 &&
       !hasReferenceData &&
       !hasQueuedTurns &&
       !hasModelData &&
-      !runtimeMode &&
-      enableComputerControl === undefined &&
-      computerControlMode === undefined
+      !runtimeMode
     ) {
       continue;
     }
@@ -339,7 +315,6 @@ export function normalizePersistedDraftsByThreadId(
       ...(promptHistorySavedDraft !== null ? { promptHistorySavedDraft } : {}),
       attachments,
       ...(assistantSelections.length > 0 ? { assistantSelections } : {}),
-      ...(browserAnnotations.length > 0 ? { browserAnnotations } : {}),
       ...(terminalContexts.length > 0 ? { terminalContexts } : {}),
       ...(fileComments.length > 0 ? { fileComments } : {}),
       ...(pastedTexts.length > 0 ? { pastedTexts } : {}),
@@ -350,10 +325,6 @@ export function normalizePersistedDraftsByThreadId(
 
       ...(hasModelData ? { modelSelectionByProvider, activeProvider } : {}),
       ...(runtimeMode ? { runtimeMode } : {}),
-
-      ...(enableComputerControl !== undefined ? { enableComputerControl } : {}),
-      ...(computerControlMode !== undefined ? { computerControlMode } : {}),
-      ...(computerControlGeneration !== undefined ? { computerControlGeneration } : {}),
     };
   }
 

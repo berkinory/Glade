@@ -3,7 +3,6 @@ import { type WsCompatibilityError } from "@glade/contracts/transport/ws/wsCompa
 import { Outlet } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { DiffWorkerPoolProvider } from "../components/DiffWorkerPoolProvider";
-import { BrowserVaultDialog } from "~/components/BrowserVault";
 import { APP_DISPLAY_NAME, APP_VERSION } from "../branding";
 import { DesktopWindowControls } from "../components/DesktopWindowControls";
 import { QueuedComposerDrainCoordinator } from "../components/QueuedComposerDrainCoordinator";
@@ -107,7 +106,6 @@ export function RootRouteView() {
             <EventRouter />
             <ProviderStatusRefreshCoordinator />
             <GlobalShortcutsDialog />
-            <BrowserVaultDialog />
             <GlobalFeedbackDialog />
             <GlobalWhatsNewSurface />
             <TaskCompletionNotifications />

@@ -12,8 +12,6 @@ import type { ProviderProjectionAccessShape } from "../Services/ProviderProjecti
 import { ServerSettingsService } from "../../settings/serverSettings.ts";
 import { makeProviderThreadProjection } from "./threadProjection";
 import { Option, Effect, Schema } from "effect";
-import { AgentGatewaySessionRegistry } from "../../agentGateway/Services/AgentGatewaySessionRegistry";
-import { ComputerService } from "../../computer/Services/ComputerService";
 import { ThreadId, ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { ProviderAdapterValidationError } from "../../provider/core/Errors.ts";
 import { providerDisabledSettingsMessage } from "../../provider/core/enabledProviderAdapter.ts";
@@ -45,10 +43,6 @@ export function makeProviderSessionConfiguration(input: {
   readonly providerService: ServiceMap.Service.Shape<typeof ProviderService>;
   readonly serverSettings: ServiceMap.Service.Shape<typeof ServerSettingsService>;
   readonly setThreadSession: ReturnType<typeof makeProviderThreadProjection>["setThreadSession"];
-  readonly gatewaySessions: Option.Option<
-    ServiceMap.Service.Shape<typeof AgentGatewaySessionRegistry>
-  >;
-  readonly computerService: Option.Option<ServiceMap.Service.Shape<typeof ComputerService>>;
   readonly freshSessionContextBootstrapThreadIds: Set<string>;
 }) {
   const {
@@ -62,15 +56,12 @@ export function makeProviderSessionConfiguration(input: {
     providerService,
     serverSettings,
     setThreadSession,
-    gatewaySessions,
-    computerService,
     freshSessionContextBootstrapThreadIds,
     projectionAccess,
     orchestrationEngine,
   } = input;
 
-  const { resolveThread, resolveProjectedThreadWorkspaceCwd, hasLiveProviderTurn } =
-    projectionAccess;
+  const { resolveThread, resolveProjectedThreadWorkspaceCwd } = projectionAccess;
   const clearThreadRuntimeCaches = (threadId: ThreadId) =>
     Effect.sync(() => {
       threadSessionSettings.clearThread(threadId);
@@ -116,7 +107,6 @@ export function makeProviderSessionConfiguration(input: {
     options?: {
       readonly modelSelection?: ModelSelection;
       readonly providerOptions?: ProviderStartOptions;
-      readonly enableComputerControl?: boolean;
       readonly runtimeMode?: RuntimeMode;
       readonly registerPriorTranscriptBootstrapOnFreshStart?: boolean;
     },
@@ -205,9 +195,6 @@ export function makeProviderSessionConfiguration(input: {
       ...(effectiveCwd ? { cwd: effectiveCwd } : {}),
       modelSelection: desiredModelSelection,
       providerOptions: resolvedProviderOptions,
-      ...(options?.enableComputerControl !== undefined
-        ? { enableComputerControl: options.enableComputerControl }
-        : {}),
       runtimeMode: desiredRuntimeMode,
     };
 
@@ -293,48 +280,14 @@ export function makeProviderSessionConfiguration(input: {
       const modelChanged =
         requestedModelSelection !== undefined &&
         requestedModelSelection.model !== activeSessionBeforeEnsure?.model;
-      const requestedComputerControl = options?.enableComputerControl;
 
-      const previousComputerControl =
-        Option.isSome(gatewaySessions) && gatewaySessions.value.computerControlProvisioned
-          ? gatewaySessions.value.computerControlProvisioned(threadId, reusableSession.provider)
-          : (threadSessionSettings.getComputerControl(threadId) ?? false);
-      const computerControlChanged =
-        requestedComputerControl !== undefined &&
-        requestedComputerControl !== previousComputerControl;
-
-      if (!runtimeModeChanged && !providerChanged && !workspaceChanged && !computerControlChanged) {
+      if (!runtimeModeChanged && !providerChanged && !workspaceChanged) {
         return {
           activeSessionBeforeEnsure,
           activeSession: reusableSession,
           nativeResumeSucceeded: false,
           nativeResumeFailed: false,
           nativeSessionRestarted: false,
-          computerControlRestartDeferred: false,
-          forkComputerControl: undefined,
-        };
-      }
-
-      // P1 activation stickiness: a computer-control-only change never restarts under a live turn. The
-      // caller keeps the previously provisioned flag cached so the next turn still observes the change
-      // and restarts between turns. Liveness comes from the runtime, never the projection:
-      // terminal-driven drains dispatch the queued turn before the projector clears the session row, so a
-      // projected running turn here is stale, not live.
-      if (
-        computerControlChanged &&
-        !runtimeModeChanged &&
-        !providerChanged &&
-        !workspaceChanged &&
-        (yield* hasLiveProviderTurn(threadId))
-      ) {
-        return {
-          activeSessionBeforeEnsure,
-          activeSession: reusableSession,
-          nativeResumeSucceeded: false,
-          nativeResumeFailed: false,
-          nativeSessionRestarted: false,
-          computerControlRestartDeferred: true,
-          forkComputerControl: undefined,
         };
       }
 
@@ -361,7 +314,6 @@ export function makeProviderSessionConfiguration(input: {
         providerChanged,
         workspaceChanged,
         modelChanged,
-        computerControlChanged,
         hasResumeCursor: resumeCursor !== undefined,
       });
 
@@ -371,9 +323,6 @@ export function makeProviderSessionConfiguration(input: {
       );
       const restartedSession = restartedOutcome.session;
       threadSessionSettings.setModelSelection(threadId, desiredModelSelection);
-      if (options?.enableComputerControl !== undefined) {
-        threadSessionSettings.setComputerControl(threadId, options.enableComputerControl);
-      }
       yield* Effect.logInfo("provider command reactor restarted provider session", {
         threadId,
         previousSessionId: existingSessionThreadId,
@@ -390,8 +339,6 @@ export function makeProviderSessionConfiguration(input: {
         nativeResumeFailed:
           restartedOutcome.nativeResumeAttempted && !restartedOutcome.nativeResumeSucceeded,
         nativeSessionRestarted: true,
-        computerControlRestartDeferred: false,
-        forkComputerControl: undefined,
       };
     }
 
@@ -402,18 +349,6 @@ export function makeProviderSessionConfiguration(input: {
           operation: "forkThread",
           issue: "Native conversation forking is unavailable.",
         });
-      const parentCanContinueChatControl =
-        Option.isSome(computerService) &&
-        computerService.value.manager.canContinueChatControl(thread.forkSourceThreadId);
-      const forkComputerControl = Option.isSome(computerService)
-        ? yield* Effect.promise(() =>
-            computerService.value.manager.admitControl(
-              threadId,
-              parentCanContinueChatControl ? "chat" : "off",
-              0,
-            ),
-          )
-        : (options?.enableComputerControl ?? false);
       const creation = yield* Stream.runHead(
         orchestrationEngine.readThreadEvents(threadId, 0, ["thread.created"]),
       ).pipe(
@@ -441,11 +376,9 @@ export function makeProviderSessionConfiguration(input: {
         ...providerSessionOptions,
         sourceThreadId: thread.forkSourceThreadId,
         forkPoint,
-        enableComputerControl: forkComputerControl,
       });
       if (forked) {
         threadSessionSettings.setModelSelection(threadId, desiredModelSelection);
-        threadSessionSettings.setComputerControl(threadId, forkComputerControl);
         const forkedSession =
           (yield* resolveActiveSession(threadId)) ??
           ({
@@ -467,8 +400,6 @@ export function makeProviderSessionConfiguration(input: {
           nativeResumeSucceeded: false,
           nativeResumeFailed: false,
           nativeSessionRestarted: false,
-          computerControlRestartDeferred: false,
-          forkComputerControl,
         };
       }
     }
@@ -493,9 +424,6 @@ export function makeProviderSessionConfiguration(input: {
     const startedSession = startOutcome.session;
 
     threadSessionSettings.setModelSelection(threadId, desiredModelSelection);
-    if (options?.enableComputerControl !== undefined) {
-      threadSessionSettings.setComputerControl(threadId, options.enableComputerControl);
-    }
     yield* bindSessionToThread(startedSession);
     suppressContextBootstrapOnNextStartThreadIds.delete(threadId);
     return {
@@ -506,8 +434,6 @@ export function makeProviderSessionConfiguration(input: {
       nativeResumeSucceeded: startOutcome.nativeResumeSucceeded,
       nativeResumeFailed: startOutcome.nativeResumeFailed,
       nativeSessionRestarted: true,
-      computerControlRestartDeferred: false,
-      forkComputerControl: undefined,
     };
   });
   return {

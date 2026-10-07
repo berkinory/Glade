@@ -10,7 +10,6 @@ import { gitStatusQueryOptions } from "../../lib/gitQueryOptions";
 import { newCommandId, newProjectId } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
 import { useComposerDraftStore } from "../../composerDraftStore";
-import type { BrowserAnnotationDraft } from "../../lib/browserAnnotations";
 import type {
   ComposerAssistantSelectionAttachment,
   ComposerFileAttachment,
@@ -18,7 +17,6 @@ import type {
   DraftThreadEnvMode,
 } from "../../composerDraftDomain";
 import { formatAssistantSelectionTitleSeed } from "../../lib/assistantSelections";
-import { formatBrowserAnnotationLabel } from "../../lib/browserAnnotations";
 import { resolveFirstSendTarget } from "../../lib/chatFirstSend";
 import { type PastedTextDraft } from "../../lib/composerPastedText";
 import { formatFileCommentTitleSeed, type FileCommentDraft } from "../../lib/fileComments";
@@ -41,7 +39,6 @@ interface Input {
   trimmedPromptForSend: string;
   composerFilesForSend: ComposerFileAttachment[];
   composerAssistantSelectionsForSend: ComposerAssistantSelectionAttachment[];
-  composerBrowserAnnotationsForSend: BrowserAnnotationDraft[];
   sendableComposerTerminalContexts: TerminalContextDraft[];
   composerFileCommentsForSend: FileCommentDraft[];
   sendableComposerPastedTexts: PastedTextDraft[];
@@ -75,7 +72,6 @@ export async function prepareChatSendWorkspace({
   trimmedPromptForSend,
   composerFilesForSend,
   composerAssistantSelectionsForSend,
-  composerBrowserAnnotationsForSend,
   sendableComposerTerminalContexts,
   composerFileCommentsForSend,
   sendableComposerPastedTexts,
@@ -110,8 +106,6 @@ export async function prepareChatSendWorkspace({
       titleSeed = `File: ${composerFilesForSend[0]?.name ?? "attachment"}`;
     } else if (composerAssistantSelectionsForSend.length > 0) {
       titleSeed = formatAssistantSelectionTitleSeed(composerAssistantSelectionsForSend.length);
-    } else if (composerBrowserAnnotationsForSend.length > 0) {
-      titleSeed = formatBrowserAnnotationLabel(composerBrowserAnnotationsForSend[0]!);
     } else if (sendableComposerTerminalContexts.length > 0) {
       titleSeed = formatTerminalContextLabel(sendableComposerTerminalContexts[0]!);
     } else if (composerFileCommentsForSend.length > 0) {

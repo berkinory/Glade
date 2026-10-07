@@ -10,12 +10,7 @@ import {
   type AgentGatewayWriteAuthority,
 } from "../Services/AgentGatewaySessionRegistry.ts";
 
-const PROVIDER_SESSION_CAPABILITIES = [
-  "thread:read",
-  "thread:write",
-  "diagnostics:read",
-  "browser:control",
-] as const;
+const PROVIDER_SESSION_CAPABILITIES = ["thread:read", "thread:write", "diagnostics:read"] as const;
 
 export function makeAgentGatewaySessionRegistry(options?: {
   readonly now?: () => number;
@@ -30,41 +25,8 @@ export function makeAgentGatewaySessionRegistry(options?: {
   const sessions = new Map<string, RegisteredSession>();
   const sessionsByKey = new Map<string, RegisteredSession>();
 
-  const disabledComputerThreads = new Set<string>();
-  const visibleIdentity = (identity: AgentGatewaySessionIdentity): AgentGatewaySessionIdentity =>
-    disabledComputerThreads.has(identity.threadId)
-      ? {
-          ...identity,
-          capabilities: new Set(
-            [...identity.capabilities].filter((capability) => capability !== "computer:control"),
-          ),
-        }
-      : identity;
   return {
-    setComputerControlEnabled: (threadId, enabled) => {
-      if (enabled) disabledComputerThreads.delete(threadId);
-      else {
-        disabledComputerThreads.add(threadId);
-        for (const row of sessionsByKey.values()) {
-          if (row.identity.threadId !== threadId) continue;
-          row.identity = {
-            ...row.identity,
-            capabilities: new Set(
-              [...row.identity.capabilities].filter(
-                (capability) => capability !== "computer:control",
-              ),
-            ),
-          };
-        }
-      }
-    },
-    computerControlProvisioned: (threadId, provider) => {
-      const candidates = [...sessionsByKey.values()].filter(
-        (row) => row.identity.threadId === threadId && row.identity.provider === provider,
-      );
-      return candidates.at(-1)?.identity.capabilities.has("computer:control") ?? false;
-    },
-    issue: (threadId, provider, issueOptions) => {
+    issue: (threadId, provider) => {
       const issuedAt = now();
       const sessionKey = `gateway-session:${randomId()}`;
       const token = `sagw_session_${randomId()}`;
@@ -73,13 +35,7 @@ export function makeAgentGatewaySessionRegistry(options?: {
         threadId,
         provider,
         issuedAt,
-        capabilities: new Set<AgentGatewayCapability>([
-          ...PROVIDER_SESSION_CAPABILITIES,
-          ...(issueOptions?.additionalCapabilities ?? []).filter(
-            (capability) =>
-              capability !== "computer:control" || !disabledComputerThreads.has(threadId),
-          ),
-        ]),
+        capabilities: new Set<AgentGatewayCapability>(PROVIDER_SESSION_CAPABILITIES),
       };
       const registered: RegisteredSession = {
         identity,
@@ -89,10 +45,7 @@ export function makeAgentGatewaySessionRegistry(options?: {
       sessionsByKey.set(sessionKey, registered);
       return { token, ...identity };
     },
-    verify: (token) => {
-      const identity = sessions.get(token)?.identity;
-      return identity ? visibleIdentity(identity) : null;
-    },
+    verify: (token) => sessions.get(token)?.identity ?? null,
     bindWriteAuthority: (token, turnId) => {
       const registered = sessions.get(token);
       if (!registered || registered.retiredWriteTurnId !== undefined) return null;

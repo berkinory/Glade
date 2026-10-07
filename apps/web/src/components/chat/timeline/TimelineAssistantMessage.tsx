@@ -76,8 +76,6 @@ export function renderTimelineAssistantMessage(
     onImageExpand,
     onOpenTurnDiff,
     getAgentActivityDetail,
-    computerControlEnabled,
-    onEnableComputerControl,
     isWorking,
     onRespondToAsyncUserInput,
     onOpenThread,
@@ -178,24 +176,8 @@ export function renderTimelineAssistantMessage(
         ),
       ).values(),
     ];
-    const collapsedComputerActionEntries = [
-      ...new Map(
-        (row.collapsedTurnItems ?? []).flatMap((item) =>
-          item.kind === "work" &&
-          (item.entry.computerSetupRequired || item.entry.computerControlDenied)
-            ? [[item.entry.computerSetupRequired ? "setup" : "denied", item.entry] as const]
-            : [],
-        ),
-      ).values(),
-    ];
     const collapsedTurnItems = row.collapsedTurnItems?.filter(
-      (item) =>
-        item.kind !== "work" ||
-        !(
-          item.entry.gladeThreadCreation ||
-          item.entry.computerSetupRequired ||
-          item.entry.computerControlDenied
-        ),
+      (item) => item.kind !== "work" || !item.entry.gladeThreadCreation,
     );
     const hasCollapsedWork = Boolean(collapsedTurnItems && collapsedTurnItems.length > 0);
     const isCollapsedWorkExpanded = hasCollapsedWork
@@ -221,16 +203,6 @@ export function renderTimelineAssistantMessage(
           onImageExpand={onImageExpand}
           onOpenTurnDiff={onOpenTurnDiff}
           activityDetail={getAgentActivityDetail?.(workEntry.id)}
-          {...(computerControlEnabled !== undefined
-            ? {
-                computerControlEnabled,
-              }
-            : {})}
-          {...(onEnableComputerControl
-            ? {
-                onEnableComputerControl,
-              }
-            : {})}
           {...(turnSummary?.turnId
             ? {
                 turnId: turnSummary.turnId,
@@ -307,16 +279,6 @@ export function renderTimelineAssistantMessage(
                   markdownCwd={markdownCwd}
                   onImageExpand={onImageExpand}
                   activityDetail={getAgentActivityDetail?.(workEntry.id)}
-                  {...(computerControlEnabled !== undefined
-                    ? {
-                        computerControlEnabled,
-                      }
-                    : {})}
-                  {...(onEnableComputerControl
-                    ? {
-                        onEnableComputerControl,
-                      }
-                    : {})}
                   timestampFormat={timestampFormat}
                 />
               ))}
@@ -336,16 +298,6 @@ export function renderTimelineAssistantMessage(
           markdownCwd={markdownCwd}
           onImageExpand={onImageExpand}
           activityDetail={getAgentActivityDetail?.(item.entry.id)}
-          {...(computerControlEnabled !== undefined
-            ? {
-                computerControlEnabled,
-              }
-            : {})}
-          {...(onEnableComputerControl
-            ? {
-                onEnableComputerControl,
-              }
-            : {})}
           timestampFormat={timestampFormat}
         />
       ) : (
@@ -516,29 +468,6 @@ export function renderTimelineAssistantMessage(
               ))}
             </div>
           )}
-          {collapsedComputerActionEntries.map((workEntry) => (
-            <div key={`computer-action:${row.message.id}:${workEntry.id}`} className="mt-2">
-              <TimelineWorkEntryRow
-                workEntry={workEntry}
-                chatMetaFontSizePx={appTypographyScale.chatMetaPx}
-                textFontSizePx={normalizedChatFontSizePx}
-                density="compact"
-                markdownCwd={markdownCwd}
-                onImageExpand={onImageExpand}
-                {...(computerControlEnabled !== undefined
-                  ? {
-                      computerControlEnabled,
-                    }
-                  : {})}
-                {...(onEnableComputerControl
-                  ? {
-                      onEnableComputerControl,
-                    }
-                  : {})}
-                timestampFormat={timestampFormat}
-              />
-            </div>
-          ))}
           {!row.assistantTurnInProgress && row.showAssistantCopyButton
             ? gladeThreadCreationRecaps.map((creation) => (
                 <div key={creation.operationId} className="mt-2 mb-4">

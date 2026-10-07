@@ -3,7 +3,6 @@ import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { RefObject } from "react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { collapseExpandedComposerCursor, detectComposerTrigger } from "../../composer-logic";
-import { resolveComputerControlMode } from "../../computerControlMode";
 import type { QueuedComposerTurn } from "../../composerDraftDomain";
 import { cloneComposerImageAttachment } from "../../lib/composerSend";
 import { queuedComposerDrain } from "../../lib/queuedComposerDrain";
@@ -33,9 +32,6 @@ interface ChatQueuedTurnsInput {
   addComposerAssistantSelectionToDraft: ReturnType<
     typeof useChatComposerDraft
   >["addComposerAssistantSelectionToDraft"];
-  addComposerDraftBrowserAnnotations: ReturnType<
-    typeof useChatComposerDraft
-  >["addComposerDraftBrowserAnnotations"];
   addComposerFileCommentToDraft: ReturnType<
     typeof useChatComposerDraft
   >["addComposerFileCommentToDraft"];
@@ -62,9 +58,6 @@ interface ChatQueuedTurnsInput {
     typeof useChatComposerDraft
   >["setComposerDraftRuntimeMode"];
 
-  setComposerDraftComputerControlMode: ReturnType<
-    typeof useChatComposerDraft
-  >["setComposerDraftComputerControlMode"];
   setComposerCursor: ReturnType<typeof useChatComposerDraft>["setComposerCursor"];
   setComposerTrigger: ReturnType<typeof useChatComposerDraft>["setComposerTrigger"];
   scheduleComposerFocus: () => void;
@@ -97,14 +90,12 @@ type ChatQueuedTurnsControllerInput = {
     | "addComposerImagesToDraft"
     | "addComposerFilesToDraft"
     | "addComposerAssistantSelectionToDraft"
-    | "addComposerDraftBrowserAnnotations"
     | "addComposerFileCommentToDraft"
     | "addComposerTerminalContextsToDraft"
     | "addComposerPastedTextsToDraft"
     | "addComposerPullRequestContextsToDraft"
     | "setComposerDraftModelSelection"
     | "setComposerDraftRuntimeMode"
-    | "setComposerDraftComputerControlMode"
     | "setComposerCursor"
     | "setComposerTrigger"
     | "removeQueuedComposerTurnFromDraft"
@@ -145,7 +136,6 @@ export function useChatQueuedTurns({
     addComposerImagesToDraft,
     addComposerFilesToDraft,
     addComposerAssistantSelectionToDraft,
-    addComposerDraftBrowserAnnotations,
     addComposerFileCommentToDraft,
     addComposerTerminalContextsToDraft,
     addComposerPastedTextsToDraft,
@@ -154,7 +144,6 @@ export function useChatQueuedTurns({
     setComposerDraftModelSelection,
     setComposerDraftRuntimeMode,
 
-    setComposerDraftComputerControlMode,
     setComposerCursor,
     setComposerTrigger,
     removeQueuedComposerTurnFromDraft,
@@ -212,8 +201,6 @@ export function useChatQueuedTurns({
       const restoredFiles = queuedTurn.kind === "chat" ? queuedTurn.files : [];
       const restoredAssistantSelections =
         queuedTurn.kind === "chat" ? queuedTurn.assistantSelections : [];
-      const restoredBrowserAnnotations =
-        queuedTurn.kind === "chat" ? queuedTurn.browserAnnotations : [];
       const restoredFileComments = queuedTurn.kind === "chat" ? queuedTurn.fileComments : [];
       promptRef.current = nextPrompt;
       clearComposerDraftContent(activeThread.id);
@@ -233,9 +220,6 @@ export function useChatQueuedTurns({
         }
         for (const selection of restoredAssistantSelections) {
           addComposerAssistantSelectionToDraft(selection);
-        }
-        if (restoredBrowserAnnotations.length > 0) {
-          addComposerDraftBrowserAnnotations(activeThread.id, restoredBrowserAnnotations);
         }
         for (const comment of restoredFileComments) {
           addComposerFileCommentToDraft(comment);
@@ -257,13 +241,6 @@ export function useChatQueuedTurns({
       setComposerDraftModelSelection(activeThread.id, queuedTurn.modelSelection);
       setComposerDraftRuntimeMode(activeThread.id, queuedTurn.runtimeMode);
 
-      const restoredComputerMode = resolveComputerControlMode(
-        queuedTurn.computerControlMode,
-        queuedTurn.enableComputerControl,
-      );
-      setComposerDraftComputerControlMode(activeThread.id, restoredComputerMode, {
-        generation: queuedTurn.computerControlGeneration ?? 0,
-      });
       setComposerCursor(collapseExpandedComposerCursor(nextPrompt, nextPrompt.length));
       setComposerTrigger(detectComposerTrigger(nextPrompt, nextPrompt.length));
       scheduleComposerFocus();
@@ -274,7 +251,6 @@ export function useChatQueuedTurns({
       setComposerTrigger,
       activeThread,
       addComposerAssistantSelectionToDraft,
-      addComposerDraftBrowserAnnotations,
       addComposerFileCommentToDraft,
       addComposerFilesToDraft,
       addComposerImagesToDraft,
@@ -285,7 +261,6 @@ export function useChatQueuedTurns({
       scheduleComposerFocus,
       setDraftThreadContext,
 
-      setComposerDraftComputerControlMode,
       setComposerDraftModelSelection,
       setComposerDraftPrompt,
       setComposerDraftRuntimeMode,

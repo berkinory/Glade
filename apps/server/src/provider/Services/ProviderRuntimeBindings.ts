@@ -11,7 +11,6 @@ interface SessionBindingMetadata {
   readonly lifecycleGeneration?: string;
   readonly modelSelection?: unknown;
   readonly providerOptions?: unknown;
-  readonly enableComputerControl?: boolean;
   readonly lastRuntimeEvent?: string;
   readonly lastRuntimeEventAt?: string;
   readonly runtimePayload?: Record<string, unknown>;

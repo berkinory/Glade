@@ -55,9 +55,6 @@ when displaying untrusted content.
 
 ## Patches
 
-- **BetterWright 2.7.3:** removed. It only modified cookie import for host-owned
-  sessions; Glade has no runtime caller of that retired feature. There is no
-  reason to carry its upstream customization into browser automation.
 - **Legend List 3.3.3:** retained. A deferred end-follow frame must recheck that
   following is still enabled, and visible-content anchoring must include the
   partially visible row. The installed release still lacks both changes.

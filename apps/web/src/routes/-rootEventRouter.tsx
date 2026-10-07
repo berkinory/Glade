@@ -3,7 +3,6 @@ import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
-import { useComputerEventBridge } from "../hooks/useComputerEventBridge";
 import { parseDiffRouteSearch } from "../diffRouteSearch";
 import { readNativeApi } from "../nativeApi";
 import { resolveSplitViewThreadIds, selectSplitView, useSplitViewStore } from "../splitViewStore";
@@ -19,7 +18,6 @@ import {
 import { useWorkspacePathsStore } from "../workspacePathsStore";
 import { createStreamRuntime } from "./-streamRuntime";
 export function EventRouter() {
-  useComputerEventBridge();
   const syncServerShellSnapshot = useStore((store) => store.syncServerShellSnapshot);
   const syncServerThreadDetailHotPath = useStore((store) => store.syncServerThreadDetailHotPath);
   const applyShellEvent = useStore((store) => store.applyShellEvent);

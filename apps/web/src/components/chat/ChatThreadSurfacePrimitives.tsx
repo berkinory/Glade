@@ -1,5 +1,5 @@
 import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
-import { lazy, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import ChatView from "../ChatView";
 import type { SplitViewPanePanelState } from "../../splitViewModel";
@@ -7,8 +7,6 @@ import { CHAT_BACKGROUND_CLASS_NAME } from "./composerPickerStyles";
 import { Spinner } from "../ui/spinner";
 import { cn } from "~/lib/utils";
 import { scheduleDeferredChatMount } from "./deferredChatMount";
-
-export const LazyBrowserPanel = lazy(() => import("../BrowserPanel"));
 
 export const noopChatSurfaceAction = () => {};
 
@@ -41,8 +39,6 @@ export function DeferredChatView(props: {
   onToggleRightDock?: () => void;
   onToggleTerminal?: () => void;
   onOpenTerminal?: () => void;
-  onToggleBrowser: () => void;
-  onOpenBrowserUrl: (url: string) => void;
   onOpenTurnDiff: (turnId: TurnId, filePath?: string) => void;
   onSplitSurface?: () => void;
   onMaximize?: () => void;
@@ -91,8 +87,6 @@ export function DeferredChatView(props: {
       {...(props.onToggleRightDock ? { onToggleRightDock: props.onToggleRightDock } : {})}
       {...(props.onToggleTerminal ? { onToggleTerminal: props.onToggleTerminal } : {})}
       {...(props.onOpenTerminal ? { onOpenTerminal: props.onOpenTerminal } : {})}
-      onToggleBrowserPanel={props.onToggleBrowser}
-      onOpenBrowserUrl={props.onOpenBrowserUrl}
       onOpenTurnDiffPanel={props.onOpenTurnDiff}
       {...(props.onSplitSurface ? { onSplitSurface: props.onSplitSurface } : {})}
       {...(props.onMaximize ? { onMaximizeSurface: props.onMaximize } : {})}

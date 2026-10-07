@@ -9,6 +9,14 @@ export const GLADE_DESKTOP_BUNDLE_ID_ENV = "GLADE_DESKTOP_BUNDLE_ID";
 export const GLADE_SOURCE_DESKTOP_BUILD_MARKER = "glade-source-desktop-build-v2";
 export const GLADE_DESKTOP_SMOKE_USER_DATA_ENV = "GLADE_DESKTOP_SMOKE_USER_DATA";
 
+// The `tccutil` service names for the macOS privacy grants the dev launcher clears when it
+// re-signs the bundle, since rows tied to the old signature never match again.
+export const TCC_SERVICE_NAMES = {
+  accessibility: "Accessibility",
+  screenRecording: "ScreenCapture",
+  inputMonitoring: "ListenEvent",
+} as const;
+
 export type GladeDesktopFlavor = "production" | "development";
 export const GLADE_PACKAGED_DESKTOP_FLAVORS = ["production"] as const;
 export type GladePackagedDesktopFlavor = (typeof GLADE_PACKAGED_DESKTOP_FLAVORS)[number];

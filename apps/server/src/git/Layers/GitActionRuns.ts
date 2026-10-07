@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 import { AuthSessionId } from "@glade/contracts/core/baseSchemas";
 import type { GitActionProgressEvent, GitRunStackedActionInput } from "@glade/contracts/git/git";
-import { stableJsonStringify } from "@glade/shared/browser/browserAutomationCatalogue";
+import { canonicalJson } from "../../agentGateway/creationUtils.ts";
 import { Cause, Effect, Exit, Layer, Queue, Scope, Stream } from "effect";
 
 import type { ManagedAttachmentPrincipal } from "../../attachments/managedAttachmentPrincipal";
@@ -38,7 +38,7 @@ const unavailable = () =>
   });
 
 function fingerprintOf(command: Omit<GitRunStackedActionInput, "resume">): string {
-  return createHash("sha256").update(stableJsonStringify(command)).digest("hex");
+  return createHash("sha256").update(canonicalJson(command)).digest("hex");
 }
 
 function record(run: ActionRun, event: GitActionProgressEvent): void {

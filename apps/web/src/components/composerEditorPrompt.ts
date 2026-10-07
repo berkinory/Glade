@@ -16,7 +16,6 @@ import {
   ComposerTerminalContextNode,
   $createComposerMentionNode,
   $createComposerSkillNode,
-  $createComposerSlashCommandNode,
   $createComposerAgentMentionNode,
   $createComposerTerminalContextNode,
   $createComposerLinkNode,
@@ -60,10 +59,6 @@ export function $setComposerEditorPrompt(
     if (segment.type === "skill") {
       const prefixedName = `${segment.prefix ?? "$"}${segment.name}`;
       paragraph.append($createComposerSkillNode(prefixedName));
-      continue;
-    }
-    if (segment.type === "slash-command") {
-      paragraph.append($createComposerSlashCommandNode(segment.command));
       continue;
     }
     if (segment.type === "terminal-context") {

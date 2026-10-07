@@ -60,8 +60,6 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
     timestampFormat,
     onImageExpand,
     getAgentActivityDetail,
-    computerControlEnabled,
-    onEnableComputerControl,
     activeTurnInProgress,
     isWorking,
 
@@ -137,8 +135,6 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
               markdownCwd={markdownCwd}
               onImageExpand={onImageExpand}
               activityDetail={getAgentActivityDetail?.(workEntry.id)}
-              {...(computerControlEnabled !== undefined ? { computerControlEnabled } : {})}
-              {...(onEnableComputerControl ? { onEnableComputerControl } : {})}
               timestampFormat={timestampFormat}
             />
           );

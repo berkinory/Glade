@@ -12,7 +12,6 @@ import {
 import { useComposerDraftStore } from "~/composerDraftStore";
 import type { ComposerImageAttachment } from "../../../composerDraftDomain";
 import { useComposerImageIntake } from "~/hooks/useComposerImageIntake";
-import { useComputerControlModeChange } from "~/hooks/useComputerControlModeChange";
 import { createPastedTextDraft } from "~/lib/composerPastedText";
 import { effectiveComposerAttachmentCount } from "../../../lib/composerAttachmentCapacity";
 import {
@@ -49,7 +48,6 @@ export function useChatComposerController({
     addComposerImagesToDraft,
     composerEditorRef,
     pendingComposerFocusRef,
-    setComposerDraftComputerControlMode,
     setIsModelPickerOpen,
     setIsTraitsPickerOpen,
     promptRef,
@@ -160,13 +158,6 @@ export function useChatComposerController({
       focusComposer();
     });
   }, [pendingComposerFocusRef, focusComposer]);
-
-  const { change: handleComputerControlModeChange, sequence: computerControlChangeSequence } =
-    useComputerControlModeChange({
-      threadId,
-      setMode: setComposerDraftComputerControlMode,
-      focusComposer: scheduleComposerFocus,
-    });
 
   const composerFocusRequestNonce = useComposerDraftStore(
     (store) => store.focusRequestsByThreadId[threadId] ?? 0,
@@ -370,8 +361,6 @@ export function useChatComposerController({
     focusComposer,
     toggleComposerFocus,
     scheduleComposerFocus,
-    handleComputerControlModeChange,
-    computerControlChangeSequence,
     cycleEffort,
     cancelEffortPreview,
     handleModelPickerOpenChange,

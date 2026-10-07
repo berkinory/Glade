@@ -10,7 +10,6 @@ import { Cause, Deferred, Effect, Exit, Fiber, Option } from "effect";
 import type { ProjectionSnapshotQueryShape } from "../orchestration/Services/ProjectionSnapshotQuery.ts";
 import type { AgentGatewayShape } from "./Services/AgentGateway.ts";
 import type { AgentGatewayCredentialsShape } from "./Services/AgentGatewayCredentials.ts";
-import type { AgentGatewayCapability } from "./Services/AgentGatewaySessionRegistry.ts";
 import { extractBearerToken } from "./bearerToken.ts";
 import {
   buildMcpInitializeResult,
@@ -58,8 +57,6 @@ function invalidRequestResponse(
   };
 }
 
-// Authority 401s: the credential itself is unusable, so there is no tool call to deny and
-// `onCapabilityDenied` must never fire from these paths.
 type AgentGatewayAuthorityFailureCode = "revoked-token" | "thread-gone" | "provider-mismatch";
 
 function invalidSessionResponse(
@@ -89,17 +86,6 @@ export function makeAgentGatewayMcpTransport(input: {
   readonly requireThreadShell: (
     threadId: string,
   ) => Effect.Effect<OrchestrationThreadShell, TaggedFailure>;
-  // Must not fail; the denial response is returned regardless. Fires only for tool-call denials —
-  // never for authority 401s, which carry their own structured retry detail instead.
-  readonly onCapabilityDenied?: (denial: {
-    readonly toolName: string;
-    readonly requiredCapability: string;
-    readonly callerThreadId: string;
-    readonly callerTurnId: string | null;
-  }) => Effect.Effect<void>;
-
-  readonly isComputerToolName?: (toolName: string) => boolean;
-  readonly computerControlCapability?: AgentGatewayCapability;
 }): AgentGatewayShape["handleMcpPost"] {
   const toolsByName = new Map(input.tools.map((tool) => [tool.definition.name, tool]));
 
@@ -178,38 +164,12 @@ export function makeAgentGatewayMcpTransport(input: {
             );
           const tool = toolsByName.get(toolName);
           if (!tool) {
-            const computerControlCapability = input.computerControlCapability;
-            if (
-              computerControlCapability === undefined ||
-              context.callerCapabilities.has(computerControlCapability) ||
-              input.isComputerToolName?.(toolName) !== true
-            ) {
-              return jsonRpcError(
-                request.id,
-                JSON_RPC_INVALID_PARAMS,
-                `Unknown tool "${toolName}".`,
-              );
-            }
-            // Computer tools need an active turn: an inactive turn reports the authority error and never fires
-            // the denial hook.
-            const authorityError = yield* readCallerAuthorityError();
-            if (authorityError !== null) {
-              return jsonRpcResult(request.id, gatewayToolErrorResult(authorityError));
-            }
-            if (input.onCapabilityDenied) {
-              yield* input.onCapabilityDenied({
-                toolName,
-                requiredCapability: computerControlCapability,
-                callerThreadId: context.callerThreadId,
-                callerTurnId: context.callerTurnId,
-              });
-            }
-            return capabilityDeniedResult(computerControlCapability);
+            return jsonRpcError(request.id, JSON_RPC_INVALID_PARAMS, `Unknown tool "${toolName}".`);
           }
           const rawArgs = request.params.arguments;
           const args = rawArgs === undefined ? {} : asRecord(rawArgs);
-          // Turn-active first: an inactive turn reports the authority error and never fires the denial hook,
-          // even for a tool whose capability the caller also lacks.
+          // Turn-active first: an inactive turn reports the authority error even for a tool whose
+          // capability the caller also lacks.
           if (tool.requiresActiveTurn) {
             const authorityError = yield* readCallerAuthorityError();
             if (authorityError !== null) {
@@ -218,14 +178,6 @@ export function makeAgentGatewayMcpTransport(input: {
           }
           const requiredCapability = tool.requiredCapability;
           if (!context.callerCapabilities.has(requiredCapability)) {
-            if (input.onCapabilityDenied) {
-              yield* input.onCapabilityDenied({
-                toolName,
-                requiredCapability,
-                callerThreadId: context.callerThreadId,
-                callerTurnId: context.callerTurnId,
-              });
-            }
             return capabilityDeniedResult(requiredCapability);
           }
           const validation = validators.get(toolName)!.safeParse(args);

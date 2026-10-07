@@ -58,7 +58,6 @@ Useful controls:
 
 - `mod+j` opens the terminal in the right sidebar.
 - `mod+d` opens the diff view.
-- `mod+shift+b` opens the browser.
 - Approval and user-input requests appear in the task.
 - Send a follow-up when the agent needs a correction or additional constraint.
 - Interrupt the turn when it is clearly heading in the wrong direction.

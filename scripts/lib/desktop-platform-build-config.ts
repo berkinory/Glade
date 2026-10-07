@@ -11,10 +11,6 @@ const MICROPHONE_USAGE_DESCRIPTION =
   "Glade needs microphone access so you can record voice notes and transcribe them into the chat composer.";
 const MAC_ENTITLEMENTS_PATH = "apps/desktop/resources/entitlements.mac.plist";
 const MAC_INHERITED_ENTITLEMENTS_PATH = "apps/desktop/resources/entitlements.mac.inherit.plist";
-export const MAC_COMPUTER_HELPER_STAGE_PATH =
-  "apps/desktop/native/computer/build/glade-computer-helper";
-const MAC_COMPUTER_HELPER_ASAR_EXCLUSION = "!apps/desktop/native/computer/build/**";
-const MAC_COMPUTER_HELPER_BUNDLE_PATH = "Contents/Helpers/glade-computer-helper";
 const WINDOWS_INSTALLER_GUID = "5ae5e85a-0788-48c2-ab48-b8fd29cfc1e1";
 
 export const MAC_ICON_ASSET_NAME = "Glade";
@@ -58,8 +54,8 @@ export interface DesktopNativeBuildHostInput {
 export function validateDesktopNativeBuildHost(input: DesktopNativeBuildHostInput): string | null {
   if (input.platform === "mac" && input.hostPlatform !== "darwin") {
     return [
-      "macOS desktop artifacts include the native Swift ComputerPermission helper.",
-      `Build mac/${input.arch} on macOS so the helper can be compiled and signed.`,
+      "macOS desktop artifacts include the native notification permission module.",
+      `Build mac/${input.arch} on macOS so the module can be compiled and signed.`,
       `Current host is ${input.hostPlatform}/${input.hostArch}.`,
     ].join(" ");
   }
@@ -101,18 +97,10 @@ export function createDesktopPlatformBuildConfig(
         : {}),
       entitlements: MAC_ENTITLEMENTS_PATH,
       entitlementsInherit: MAC_INHERITED_ENTITLEMENTS_PATH,
-      binaries: [MAC_COMPUTER_HELPER_BUNDLE_PATH, "Contents/Resources/cua-driver/cua-driver"],
-
       x64ArchFiles:
-        "Contents/{Helpers/glade-computer-helper,Resources/cua-driver/cua-driver,Resources/app.asar.unpacked/node_modules/**/darwin-*/**,Resources/app.asar.unpacked/node_modules/**/*-darwin-*/**}",
+        "Contents/{Resources/app.asar.unpacked/node_modules/**/darwin-*/**,Resources/app.asar.unpacked/node_modules/**/*-darwin-*/**}",
       extendInfo: {
         NSMicrophoneUsageDescription: MICROPHONE_USAGE_DESCRIPTION,
-        NSScreenCaptureUsageDescription:
-          "Glade captures the windows you authorize for Computer use.",
-        NSAccessibilityUsageDescription:
-          "Glade controls the windows you authorize for Computer use.",
-        NSLocalNetworkUsageDescription:
-          "Glade connects to the browsers it drives on this Mac so agents can browse in the background.",
         CFBundleIconName: MAC_ICON_ASSET_NAME,
       },
     } satisfies Record<string, unknown>;
@@ -137,20 +125,8 @@ export function createDesktopPlatformBuildConfig(
 
         writeUpdateInfo: false,
       },
-      files: [
-        ...files,
-        "apps/desktop/native-dist/*.node",
-        MAC_COMPUTER_HELPER_ASAR_EXCLUSION,
-        "!apps/desktop/resources/cua-driver/**",
-        "!apps/desktop/prod-resources/cua-driver/**",
-      ],
+      files: [...files, "apps/desktop/native-dist/*.node"],
       extraFiles: [
-        { from: "apps/desktop/resources/cua-driver", to: "Resources/cua-driver" },
-        {
-          from: MAC_COMPUTER_HELPER_STAGE_PATH,
-          to: "Helpers/glade-computer-helper",
-        },
-
         {
           from: MAC_ICON_ASSETS_CAR_STAGE_PATH,
           to: MAC_ICON_ASSETS_CAR_BUNDLE_PATH,
@@ -163,13 +139,6 @@ export function createDesktopPlatformBuildConfig(
   if (input.platform === "linux") {
     return {
       ...nativePackaging,
-
-      files: [
-        ...files,
-        "!apps/desktop/resources/cua-driver/**",
-        "!apps/desktop/prod-resources/cua-driver/**",
-      ],
-      extraResources: [{ from: "apps/desktop/resources/cua-driver", to: "cua-driver" }],
       linux: {
         target: [input.target],
         executableName: "glade",

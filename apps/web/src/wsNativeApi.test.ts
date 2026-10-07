@@ -631,21 +631,6 @@ describe("wsNativeApi", () => {
     });
   });
 
-  it("closes the fallback browser after its last tab closes", async () => {
-    const { createWsNativeApi } = await import("./wsNativeApi");
-    const api = createWsNativeApi();
-    const threadId = ThreadId.makeUnsafe("thread-1");
-    const opened = await api.browser.open({ threadId });
-    const tabId = opened.activeTabId;
-
-    expect(tabId).toBeTruthy();
-    const nextState = await api.browser.closeTab({ threadId, tabId: tabId ?? "" });
-
-    expect(nextState.open).toBe(false);
-    expect(nextState.tabs).toHaveLength(0);
-    expect(nextState.activeTabId).toBeNull();
-  });
-
   it("forwards context menu metadata to desktop bridge", async () => {
     vi.stubGlobal("navigator", { platform: "Win32" });
     const showContextMenu = vi.fn().mockResolvedValue("delete");
@@ -666,8 +651,6 @@ describe("wsNativeApi", () => {
       ],
       { x: 200, y: 300 },
     );
-
-    expect(api.browser.vault).toBeUndefined();
 
     expect(showContextMenu).toHaveBeenCalledWith(
       [

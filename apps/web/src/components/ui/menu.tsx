@@ -5,7 +5,6 @@ import { Menu as MenuPrimitive } from "@base-ui/react/menu";
 import * as React from "react";
 import { cn } from "~/lib/utils";
 import { UI_MOTION_POPUP_CLASS } from "~/lib/uiMotion";
-import { observeNativeSurfaceOverlay } from "~/lib/nativeSurfaceOcclusion";
 import {
   APP_TRANSLUCENT_POPUP_SURFACE_CLASS_NAME,
   COMPOSER_PICKER_MENU_OPTION_CLASS_NAME,
@@ -90,7 +89,6 @@ function MenuPopupBase({
   return (
     <MenuPrimitive.Portal>
       <MenuPrimitive.Positioner
-        ref={observeNativeSurfaceOverlay}
         align={align}
         alignOffset={alignOffset}
         anchor={anchor}

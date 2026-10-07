@@ -10,7 +10,6 @@ import {
   type ThreadJumpKeybindingCommand,
 } from "@glade/contracts/settings/keybindings";
 import { shortcutEventKey, isShortcutComposition } from "@glade/shared/settings/shortcutEvent";
-import { isKeyboardShortcutsHelpChord } from "@glade/shared/browser/browserShortcuts";
 import { isMacPlatform, isWindowsPlatform } from "./lib/utils";
 
 export interface ShortcutEventLike {
@@ -626,6 +625,50 @@ export function isTerminalClearShortcut(event: ShortcutEventLike): boolean {
   const key = event.key.toLowerCase();
 
   return key === "l" && event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey;
+}
+
+interface KeyboardShortcutChord {
+  readonly meta: boolean;
+  readonly ctrl: boolean;
+  readonly shift: boolean;
+  readonly alt: boolean;
+  readonly key: string;
+  readonly code?: string;
+  readonly type?: string;
+  readonly repeat?: boolean;
+}
+
+interface KeyboardShortcutPlatform {
+  readonly isMac: boolean;
+  readonly isWindows: boolean;
+}
+
+function isKeyboardShortcutsHelpChord(
+  chord: KeyboardShortcutChord,
+  platform: KeyboardShortcutPlatform,
+): boolean {
+  if (
+    (chord.type !== undefined && chord.type.toLowerCase() !== "keydown") ||
+    chord.shift ||
+    chord.alt ||
+    chord.repeat
+  ) {
+    return false;
+  }
+
+  if (
+    chord.key === "-" ||
+    (platform.isWindows && (chord.code === "Minus" || chord.code === "NumpadSubtract"))
+  ) {
+    return false;
+  }
+
+  const isSlash = chord.code === "Slash" || chord.code === "NumpadDivide" || chord.key === "/";
+  if (!isSlash) {
+    return false;
+  }
+
+  return platform.isMac ? chord.meta && !chord.ctrl : chord.ctrl && !chord.meta;
 }
 
 export function isKeyboardShortcutsHelpShortcut(

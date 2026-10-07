@@ -9,7 +9,6 @@ production artwork. Production updates come only from the Glade release reposito
 - Editor view: no separate chat rail or editor-specific route state.
   Workspace editing opens in the conversation’s main workspace tabs.
 - Browser login import: no cookie extraction, browser profile enumeration or import IPC.
-  Manual sign-in, existing browser sessions and the ordinary password vault remain.
 - AppSnap: no capture picker, global capture shortcut, composer capture cards,
   announcement or background watcher. Existing image attachments remain readable.
 - Custom model registration: no editor, registration settings schema or saved custom
@@ -29,17 +28,16 @@ production artwork. Production updates come only from the Glade release reposito
 
 These are physical removals, not dormant implementations behind feature flags.
 
-## Shared Computer functionality
+## Browser Use and Computer Use
 
-`apps/desktop/native/computer` provides the permission guide, permission checks,
-input release, Escape monitoring, activation shield and preview frame tap used by
-Computer Use. `apps/desktop/src/computer/computerPermissions.ts` owns permission state and guide lifecycle;
-`apps/desktop/src/computer/computerHelperProtocol.ts` validates helper messages. These do not expose capture
-attachment APIs or a keyboard capture watcher.
+Browser Use (the in-app browser that agents drive through the agent gateway) and
+Computer Use (desktop control) are being rebuilt and are unavailable on this branch.
+Neither has a settings page, slash command, chat card, desktop host or server runtime
+until the rebuild lands. [COMPUTER-USE-PLAN.md](../COMPUTER-USE-PLAN.md) tracks the work.
 
 ## Workspace editing
 
-Each conversation owns main workspace tabs for chat, files, commit and turn diffs, terminals, and browser pages. The chat tab uses the provider icon and name and stays at the left of the tab strip. Workspace tabs replace the chat title in the existing top bar; no extra tab row is added. Provider usage stays in the left sidebar, and chat headers do not show Open in or Commit and push actions. Explorer and Git remain navigation panels in the right sidebar. Selecting Explorer files or Git files opens or focuses their main workspace tab. Single-clicks reuse one italic preview tab across files and Git diffs; double-clicking a file or its tab, editing, or opening a chat file reference keeps it as a permanent tab. File search opens previews too. The provider chat tab cannot be closed. Cmd+W or Ctrl+W closes the active resource tab and returns to the most recently used open tab; when only the chat tab remains, the shortcut leaves the conversation without closing the app. The tab strip supports horizontal trackpad scrolling and reveals newly selected tabs. The plus menu contains only Terminal and Browser. Terminals use the main tab strip without an inner toolbar. File diffs share the file viewer header, offer unified and side-by-side layouts, and expose Edit to open the working file. Saved project actions, automatic setup scripts, and project Run controls are not supported. Tab selection is remembered per conversation. Configurable `workspaceTab.previous` and `workspaceTab.next` shortcuts cycle through these tabs in visual order and wrap at either end, using the same selection path as a click. Sidebar PR status appears after the workspace metadata with its accessible open action. Metadata and hover actions share an intrinsic grid width in pinned and ordinary rows, so titles reserve the actual content width as typography changes.
+Each conversation owns main workspace tabs for chat, files, commit and turn diffs, and terminals. The chat tab uses the provider icon and name and stays at the left of the tab strip. Workspace tabs replace the chat title in the existing top bar; no extra tab row is added. Provider usage stays in the left sidebar, and chat headers do not show Open in or Commit and push actions. Explorer and Git remain navigation panels in the right sidebar. Selecting Explorer files or Git files opens or focuses their main workspace tab. Single-clicks reuse one italic preview tab across files and Git diffs; double-clicking a file or its tab, editing, or opening a chat file reference keeps it as a permanent tab. File search opens previews too. The provider chat tab cannot be closed. Cmd+W or Ctrl+W closes the active resource tab and returns to the most recently used open tab; when only the chat tab remains, the shortcut leaves the conversation without closing the app. The tab strip supports horizontal trackpad scrolling and reveals newly selected tabs. The plus menu contains only Terminal. Terminals use the main tab strip without an inner toolbar. File diffs share the file viewer header, offer unified and side-by-side layouts, and expose Edit to open the working file. Saved project actions, automatic setup scripts, and project Run controls are not supported. Tab selection is remembered per conversation. Configurable `workspaceTab.previous` and `workspaceTab.next` shortcuts cycle through these tabs in visual order and wrap at either end, using the same selection path as a click. Sidebar PR status appears after the workspace metadata with its accessible open action. Metadata and hover actions share an intrinsic grid width in pinned and ordinary rows, so titles reserve the actual content width as typography changes.
 
 File tabs accept tree selections, chat links and file references. Opening
 an existing file selects its tab; line and column links reveal source without changing
@@ -174,8 +172,7 @@ icon checks; build and verify signed artifacts from the final source snapshot.
 
 ## Visual replies
 
-Agents can publish self-contained HTML with `html_render`, independently of browser
-automation. A reply belongs to its active turn, survives reloads and projection
+Agents can publish self-contained HTML with `html_render`. A reply belongs to its active turn, survives reloads and projection
 rebuilds, and is removed with its turn or conversation. HTML and optional PNG previews
 use managed attachment quotas and cleanup. Activity history caps preserve visual
 reply references. The authenticated source endpoint serves plain text; generic HTML

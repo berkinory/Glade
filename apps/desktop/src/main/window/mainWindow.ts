@@ -13,8 +13,6 @@ import {
 } from "electron";
 import * as Path from "node:path";
 import { shouldDeferDesktopWindowClose } from "../../backend/backendShutdown";
-import { hardenBrowserAnnotationWebviewPreferences } from "../../browser/annotations/webviewSecurity";
-import { BROWSER_SESSION_PARTITION } from "../../browser/browserSessionPolicy";
 import {
   APP_DISPLAY_NAME,
   CONTEXT_MENU_ICON_DATA_URL_PREFIX,
@@ -78,10 +76,6 @@ interface WindowResources {
   resolveNotificationIconPath(): string | null;
 }
 
-interface WindowBrowser {
-  setWindow(window: BrowserWindow | null): void;
-  getGuestPreloadPath(): string;
-}
 interface WindowUpdates {
   check(reason: string): Promise<void>;
   getState(): DesktopUpdateState;
@@ -99,7 +93,6 @@ interface WindowLifecycle {
 export interface WindowDependencies {
   identity: WindowIdentity;
   resources: WindowResources;
-  browser: WindowBrowser;
   updates: WindowUpdates;
   lifecycle: WindowLifecycle;
   log: DesktopLog;
@@ -108,7 +101,6 @@ export interface WindowDependencies {
 export function createMainWindow({
   identity,
   resources,
-  browser,
   updates,
   lifecycle,
   log,
@@ -232,30 +224,12 @@ export function createMainWindow({
         contextIsolation: true,
         nodeIntegration: false,
         sandbox: true,
-        webviewTag: true,
-
         backgroundThrottling: true,
       },
     });
-    browser.setWindow(window);
     attachDesktopZoomFactorSync(window);
     attachRendererCrashRecovery(window);
     attachDesktopPhysicalZoomShortcuts(window);
-
-    window.webContents.on("will-attach-webview", (event, webPreferences, params) => {
-      const partition = params.partition;
-      if (
-        partition === undefined ||
-        !hardenBrowserAnnotationWebviewPreferences({
-          partition,
-          expectedPartition: BROWSER_SESSION_PARTITION,
-          preloadPath: browser.getGuestPreloadPath(),
-          webPreferences,
-        })
-      ) {
-        event.preventDefault();
-      }
-    });
 
     window.webContents.on("context-menu", (event, params) => {
       event.preventDefault();
@@ -385,7 +359,6 @@ export function createMainWindow({
       if (mainWindow === window) {
         mainWindow = null;
       }
-      browser.setWindow(null);
     });
 
     mainWindow = window;
@@ -915,11 +888,6 @@ export function createMainWindow({
             label: "Toggle Sidebar",
             ...acceleratorProps(menuShortcuts.getAccelerator("sidebar.toggle")),
             click: () => dispatchMenuAction("toggle-sidebar"),
-          },
-          {
-            label: "Toggle Browser",
-            ...acceleratorProps(menuShortcuts.getAccelerator("browser.toggle")),
-            click: () => dispatchMenuAction("toggle-browser"),
           },
           { type: "separator" },
           { role: "reload" },

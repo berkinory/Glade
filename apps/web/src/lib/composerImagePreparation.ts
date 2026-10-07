@@ -1,5 +1,3 @@
-import { MODEL_SCREEN_IMAGE_MAX_DIMENSION } from "@glade/shared/computer/modelImageBudget";
-
 import {
   PROVIDER_SEND_TURN_MAX_IMAGE_BYTES,
   PROVIDER_SEND_TURN_MAX_IMAGE_IMPORT_BYTES,
@@ -371,16 +369,9 @@ function optimizeInWorker(
   });
 }
 
-async function optimizeOversizedComposerImage(file: File, maxDimension?: number): Promise<File> {
+async function optimizeOversizedComposerImage(file: File): Promise<File> {
   const dimensions = await readImageDimensions(file);
-  const bounded = boundedRenderSize(dimensions.width, dimensions.height);
-  const scale = maxDimension
-    ? Math.min(1, maxDimension / Math.max(bounded.width, bounded.height))
-    : 1;
-  const renderSize = {
-    width: Math.max(1, Math.round(bounded.width * scale)),
-    height: Math.max(1, Math.round(bounded.height * scale)),
-  };
+  const renderSize = boundedRenderSize(dimensions.width, dimensions.height);
   const mimeType = outputMimeType(file);
   let blob: Blob;
   if (typeof Worker === "function" && typeof OffscreenCanvas === "function") {
@@ -423,11 +414,4 @@ export async function prepareComposerImageFile(file: File): Promise<File> {
       cause,
     });
   }
-}
-
-export async function prepareModelScreenImage(file: File): Promise<File> {
-  const dimensions = await readImageDimensions(file);
-  if (Math.max(dimensions.width, dimensions.height) <= MODEL_SCREEN_IMAGE_MAX_DIMENSION)
-    return file;
-  return optimizeOversizedComposerImage(file, MODEL_SCREEN_IMAGE_MAX_DIMENSION);
 }

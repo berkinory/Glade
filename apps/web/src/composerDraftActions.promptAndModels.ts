@@ -33,7 +33,6 @@ import {
   reconcileProviderScopedModelSelection,
   stripNonStickyModelOptions,
 } from "./composerDraftModels";
-import { normalizeBrowserAnnotations } from "./lib/browserAnnotations";
 import { ensureInlineTerminalContextPlaceholders } from "./lib/terminalContext";
 import {
   availableComposerAttachmentSlots,
@@ -66,8 +65,6 @@ export function createPromptAndModelsActions(
   | "setModelOptions"
   | "setProviderModelOptions"
   | "setRuntimeMode"
-  | "setComputerControlMode"
-  | "setEnableComputerControl"
 > {
   return {
     setStickyModelSelection: (modelSelection) => {
@@ -176,7 +173,6 @@ export function createPromptAndModelsActions(
                 nonPersistedImageIds: [],
                 persistedAttachments: [],
                 assistantSelections: [],
-                browserAnnotations: [],
                 terminalContexts: [],
                 fileComments: [],
                 pastedTexts: [],
@@ -214,7 +210,6 @@ export function createPromptAndModelsActions(
           nonPersistedImageIds: [...savedDraft.nonPersistedImageIds],
           persistedAttachments: [...savedDraft.persistedAttachments],
           assistantSelections: normalizeAssistantSelections(savedDraft.assistantSelections),
-          browserAnnotations: normalizeBrowserAnnotations(savedDraft.browserAnnotations),
           terminalContexts: normalizeTerminalContextsForThread(
             threadId,
             savedDraft.terminalContexts,
@@ -528,55 +523,6 @@ export function createPromptAndModelsActions(
         const nextDraft: ComposerThreadDraftState = {
           ...base,
           runtimeMode: nextRuntimeMode,
-        };
-        return putComposerDraft(state, threadId, nextDraft);
-      });
-    },
-
-    setComputerControlMode: (threadId, mode, options) => {
-      if (threadId.length === 0) return;
-
-      set((state) => ({
-        draftsByThreadId: {
-          ...state.draftsByThreadId,
-          [threadId]: {
-            ...(state.draftsByThreadId[threadId] ?? createEmptyThreadDraft()),
-            computerControlMode: mode,
-            ...(options?.generation !== undefined
-              ? { computerControlGeneration: options.generation }
-              : {}),
-            enableComputerControl: mode !== "off",
-            ...(mode === "off" && options?.revokeQueued
-              ? {
-                  queuedTurns: (state.draftsByThreadId[threadId]?.queuedTurns ?? []).map(
-                    (turn) => ({
-                      ...turn,
-                      computerControlMode: "off" as const,
-                      enableComputerControl: false,
-                    }),
-                  ),
-                }
-              : {}),
-          },
-        },
-      }));
-    },
-    setEnableComputerControl: (threadId, enabled) => {
-      if (threadId.length === 0) {
-        return;
-      }
-      set((state) => {
-        const base = state.draftsByThreadId[threadId] ?? createEmptyThreadDraft();
-        if (
-          base.enableComputerControl === enabled &&
-          base.computerControlMode === (enabled ? "chat" : "off")
-        ) {
-          return state;
-        }
-        const nextDraft: ComposerThreadDraftState = {
-          ...base,
-          enableComputerControl: enabled,
-          computerControlMode: enabled ? "chat" : "off",
         };
         return putComposerDraft(state, threadId, nextDraft);
       });

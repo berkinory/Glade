@@ -13,21 +13,17 @@
     "start": "bun run scripts/start-electron.mjs",
     "typecheck": "bun ../../node_modules/@typescript/native/bin/tsc --noEmit --tsBuildInfoFile node_modules/.cache/typescript-native.tsbuildinfo",
     "test": "vitest run --passWithNoTests",
-    "smoke-test": "bun scripts/smoke-test.mjs",
-    "smoke:browser-lifecycle": "bun build scripts/browser-lifecycle-smoke.ts --target=node --external=electron --external=betterwright --external=betterwright/* --external=ws --external=effect --outfile=.smoke/browser-lifecycle.mjs && electron .smoke/browser-lifecycle.mjs"
+    "smoke-test": "bun scripts/smoke-test.mjs"
   },
   "dependencies": {
-    "betterwright": "2.7.3",
     "effect": "catalog:",
     "electron": "43.5.0",
-    "electron-updater": "^6.6.2",
-    "ws": "^8.21.0"
+    "electron-updater": "^6.6.2"
   },
   "devDependencies": {
     "@glade/contracts": "workspace:*",
     "@glade/shared": "workspace:*",
     "@types/node": "catalog:",
-    "@types/ws": "^8.5.13",
     "node-api-headers": "^1.9.0",
     "tsdown": "catalog:",
     "typescript": "catalog:",

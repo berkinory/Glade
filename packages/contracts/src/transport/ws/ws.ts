@@ -99,7 +99,6 @@ import {
   ProjectManageEntryInput,
 } from "../../workspace/project";
 import { FilesystemBrowseInput } from "../../workspace/filesystem";
-import { COMPUTER_WS_CHANNELS, ComputerEvent } from "../../computer/computer";
 import { OpenInEditorInput } from "../../settings/editor";
 import {
   ServerConfigUpdatedPayload,
@@ -446,7 +445,6 @@ export interface WsPushPayloadByChannel {
   readonly [WS_CHANNELS.gitWorktreeSetupProgress]: typeof GitWorktreeSetupProgressEvent.Type;
   readonly [WS_CHANNELS.projectProvisionProgress]: typeof GitHubProjectProvisionProgressEvent.Type;
   readonly [WS_CHANNELS.terminalEvent]: typeof TerminalEvent.Type;
-  readonly [COMPUTER_WS_CHANNELS.event]: typeof ComputerEvent.Type;
   readonly [ORCHESTRATION_WS_CHANNELS.domainEvent]: OrchestrationEvent;
   readonly [ORCHESTRATION_WS_CHANNELS.shellEvent]: OrchestrationShellStreamItem;
   readonly [ORCHESTRATION_WS_CHANNELS.threadEvent]: OrchestrationThreadStreamItem;
@@ -500,7 +498,6 @@ export const WsPushProjectProvisionProgress = makeWsPushSchema(
   GitHubProjectProvisionProgressEvent,
 );
 export const WsPushTerminalEvent = makeWsPushSchema(WS_CHANNELS.terminalEvent, TerminalEvent);
-export const WsPushComputerEvent = makeWsPushSchema(COMPUTER_WS_CHANNELS.event, ComputerEvent);
 export const WsPushOrchestrationDomainEvent = makeWsPushSchema(
   ORCHESTRATION_WS_CHANNELS.domainEvent,
   OrchestrationEvent,
@@ -525,7 +522,6 @@ export const WsPushChannelSchema = Schema.Literals([
   WS_CHANNELS.serverProviderStatusesUpdated,
   WS_CHANNELS.serverSettingsUpdated,
   WS_CHANNELS.terminalEvent,
-  COMPUTER_WS_CHANNELS.event,
   ORCHESTRATION_WS_CHANNELS.domainEvent,
   ORCHESTRATION_WS_CHANNELS.shellEvent,
   ORCHESTRATION_WS_CHANNELS.threadEvent,
@@ -543,7 +539,6 @@ export const WsPush = Schema.Union([
   WsPushGitWorktreeSetupProgress,
   WsPushProjectProvisionProgress,
   WsPushTerminalEvent,
-  WsPushComputerEvent,
   WsPushOrchestrationDomainEvent,
   WsPushOrchestrationShellEvent,
   WsPushOrchestrationThreadEvent,

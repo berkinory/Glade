@@ -100,8 +100,8 @@ Modified symbols retain physical-key fallback (for example Option-generated
 brackets). The recorder and dispatcher use the same key identity and modifier
 syntax. IME composition, dead keys and AltGraph do not execute or record shortcuts.
 
-The desktop View menu follows effective bindings for New Terminal Tab, Toggle
-Sidebar and Toggle Browser after loading, editing, resetting or reconnecting.
+The desktop View menu follows effective bindings for New Terminal Tab and Toggle
+Sidebar after loading, editing, resetting or reconnecting.
 Only unconditional bindings without conditional chord conflicts receive native
 accelerators. Bindings that Electron cannot represent safely, including modified
 punctuation and layout-specific characters, remain available through the renderer;

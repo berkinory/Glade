@@ -321,22 +321,6 @@ export function createDesktopResources(log: DesktopLog, lifecycle: ResourceLifec
     return resolveResourcePath("glade.png") ?? resolveIconPath("png");
   }
 
-  function resolveComputerHelperPath(): string {
-    if (app.isPackaged) {
-      return Path.resolve(process.resourcesPath, "..", "Helpers", "glade-computer-helper");
-    }
-    return Path.resolve(__dirname, "..", ".electron-runtime", "computer", "glade-computer-helper");
-  }
-
-  function resolveComputerAppBundlePath(): string {
-    let directory = Path.dirname(app.getPath("exe"));
-    while (directory !== Path.dirname(directory)) {
-      if (directory.endsWith(".app")) return directory;
-      directory = Path.dirname(directory);
-    }
-    return app.getPath("exe");
-  }
-
   function restartAfterStartupBundleSwap(error: BundleChangedDuringStartupError): void {
     const baselineSize = error.baseline?.size ?? "unreadable";
     const currentSize = error.current?.size ?? "unreadable";
@@ -428,8 +412,6 @@ export function createDesktopResources(log: DesktopLog, lifecycle: ResourceLifec
     registerDesktopProtocol,
     resolveResourcePath,
     resolveNotificationIconPath,
-    resolveComputerHelperPath,
-    resolveComputerAppBundlePath,
     restartAfterStartupBundleSwap,
     startBundleSwapWatcher,
     dispose: () => {

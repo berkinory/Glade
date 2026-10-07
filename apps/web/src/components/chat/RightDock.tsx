@@ -67,7 +67,6 @@ interface RightDockProps {
   onAddPane: (kind: RightDockPaneKind) => void;
   motionKey?: string;
   activePaneRuntimeMode?: DockPaneRuntimeMode;
-  browserRuntimeMode?: DockPaneRuntimeMode;
   renderPane: (
     pane: RightDockPane,
     context: {
@@ -137,7 +136,6 @@ export function RightDock(props: RightDockProps) {
   const activePane = resolveActivePane(props.state);
   const onSelectPane = props.onSelectPane;
   const activePaneRuntimeMode = props.activePaneRuntimeMode ?? "live";
-  const browserRuntimeMode = props.browserRuntimeMode ?? "live";
   const desktopTopBarWindowControlsGutterClassName =
     useDesktopTopBarWindowControlsGutterClassName();
   const keepMountedPaneIds = useKeepMountedPaneIds(props.state.panes, activePane);
@@ -312,12 +310,7 @@ export function RightDock(props: RightDockProps) {
             {renderedPanes.map((pane) => {
               const isActive = pane.id === activePane?.id;
               const isVisible = isActive && props.state.open;
-              const runtimeMode: DockPaneRuntimeMode =
-                pane.kind === "browser"
-                  ? browserRuntimeMode
-                  : isActive
-                    ? activePaneRuntimeMode
-                    : "live";
+              const runtimeMode: DockPaneRuntimeMode = isActive ? activePaneRuntimeMode : "live";
               return (
                 <div
                   key={pane.id}
@@ -327,11 +320,6 @@ export function RightDock(props: RightDockProps) {
                   )}
                   aria-hidden={isVisible ? undefined : true}
                   inert={isVisible ? undefined : true}
-                  data-native-browser-surface={
-                    pane.kind === "browser" && isActive && runtimeMode === "live"
-                      ? "true"
-                      : undefined
-                  }
                 >
                   {props.renderPane(pane, {
                     runtimeMode,

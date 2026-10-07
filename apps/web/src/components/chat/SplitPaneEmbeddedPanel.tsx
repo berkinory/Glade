@@ -5,7 +5,6 @@ import { Schema } from "effect";
 import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
-  Suspense,
   useRef,
   useState,
 } from "react";
@@ -19,17 +18,13 @@ import {
   removePanelResizeOverlay,
 } from "../../lib/panelResize";
 import type { PaneId, SplitViewId, SplitViewPanePanelState } from "../../splitViewModel";
-import { LazyBrowserPanel } from "./ChatThreadSurfacePrimitives";
-import { PanelStateMessage } from "./PanelStateMessage";
 
 const SPLIT_PANE_PANEL_DEFAULT_WIDTH_PX = 22 * 16;
-const BROWSER_SPLIT_PANE_PANEL_DEFAULT_WIDTH_PX = 30 * 16;
 const SPLIT_PANE_CHAT_MIN_WIDTH = 20 * 16;
 const SINGLE_PANEL_MIN_WIDTH = 26 * 16;
-const BROWSER_PANEL_MIN_WIDTH = 21 * 16;
 const RIGHT_PANEL_SIDEBAR_WIDTH_STORAGE_KEY = "chat_right_panel_width";
 // Split panes cannot reuse the desktop Sidebar primitive because it positions the panel against the
-// viewport. This embedded shell keeps browser/diff content anchored to the pane.
+// viewport. This embedded shell keeps explorer/diff content anchored to the pane.
 export function SplitPaneEmbeddedPanel(props: {
   explorerOpen: boolean;
   workspaceRoot: string | null;
@@ -39,7 +34,6 @@ export function SplitPaneEmbeddedPanel(props: {
   panelOpen: boolean;
   panel: ChatRightPanel | null | undefined;
   threadId: ThreadId | null;
-  onClosePanel: () => void;
   panelState: Pick<SplitViewPanePanelState, "panel" | "diffTurnId" | "diffFilePath">;
   isFocused: boolean;
   onUpdatePanelState: (
@@ -47,15 +41,10 @@ export function SplitPaneEmbeddedPanel(props: {
   ) => void;
 }) {
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const panelWidthStorageKey =
-    props.panel === "browser" ? "browser" : props.panel === "diff" ? "diff" : "panel";
+  const panelWidthStorageKey = props.panel === "diff" ? "diff" : "panel";
   const storageKey = `${RIGHT_PANEL_SIDEBAR_WIDTH_STORAGE_KEY}:${props.splitViewId}:${props.paneId}:${panelWidthStorageKey}`;
-  const defaultPanelWidth =
-    props.panel === "browser"
-      ? BROWSER_SPLIT_PANE_PANEL_DEFAULT_WIDTH_PX
-      : SPLIT_PANE_PANEL_DEFAULT_WIDTH_PX;
-  const minPanelWidth =
-    props.panel === "browser" ? BROWSER_PANEL_MIN_WIDTH : SINGLE_PANEL_MIN_WIDTH;
+  const defaultPanelWidth = SPLIT_PANE_PANEL_DEFAULT_WIDTH_PX;
+  const minPanelWidth = SINGLE_PANEL_MIN_WIDTH;
 
   const [panelWidthState, setPanelWidthState] = useState<{ key: string; value: number }>(() => ({
     key: storageKey,
@@ -144,7 +133,6 @@ export function SplitPaneEmbeddedPanel(props: {
   return (
     <div
       ref={wrapperRef}
-      data-native-browser-surface={props.panel === "browser" ? "true" : undefined}
       className="relative flex h-full min-h-0 min-w-0 flex-none border-l border-[var(--app-surface-divider)] bg-[var(--app-content-surface,var(--card))] text-foreground"
       style={
         {
@@ -158,15 +146,7 @@ export function SplitPaneEmbeddedPanel(props: {
         className="absolute inset-y-0 left-0 z-20 w-2 -translate-x-1/2 cursor-col-resize bg-transparent before:absolute before:inset-y-0 before:left-1/2 before:w-px before:-translate-x-1/2 before:bg-[var(--app-surface-divider)]"
         onPointerDown={startResize}
       />
-      {props.panel === "browser" ? (
-        <Suspense fallback={<PanelStateMessage loadingLabel="Loading browser" />}>
-          <LazyBrowserPanel
-            mode="sidebar"
-            threadId={props.threadId}
-            onClosePanel={props.onClosePanel}
-          />
-        </Suspense>
-      ) : props.explorerOpen ? (
+      {props.explorerOpen ? (
         <DockExplorerPane
           threadId={props.threadId}
           workspaceRoot={props.workspaceRoot}

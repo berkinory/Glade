@@ -1,9 +1,5 @@
 import { nonEmptyTrimmed } from "@glade/shared/text/text";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
-import type {
-  ComputerPermission,
-  ComputerBuildSignature,
-} from "@glade/contracts/computer/computer";
 import { isToolLifecycleItemType } from "@glade/contracts/provider/runtimeMetadata";
 import type { OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
 import {
@@ -15,23 +11,9 @@ import {
 import { approvalRequestKindFromRequestType } from "@glade/shared/threads/threadSummary";
 import { stripTrailingToolExitCode } from "./features/chat/timeline/toolOutputSummary";
 import { pluralize } from "@glade/shared/text/text";
-import { isGenericToolTitle } from "./lib/toolCallLabel.descriptors";
 import { normalizeCompactToolLabel } from "./lib/toolCallLabel.presentations";
-import { computerToolName, describeComputerToolCall } from "./lib/computerToolPresentation";
 import { compactPath } from "./lib/toolCallLabel.shell";
 import type { WorkLogEntry, WorkLogSubagent, WorkLogSubagentAction } from "./workLog.types";
-
-export function asComputerPermissions(value: unknown): readonly ComputerPermission[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter(
-    (entry): entry is ComputerPermission =>
-      entry === "accessibility" || entry === "screenRecording",
-  );
-}
-
-export function asComputerBuildSignature(value: unknown): ComputerBuildSignature | undefined {
-  return value === "adhoc" || value === "signed" ? value : undefined;
-}
 
 export function firstFiniteNumber(...values: unknown[]): number | undefined {
   return values.find(
@@ -551,132 +533,6 @@ export function extractToolName(payload: Record<string, unknown> | null): string
     }
   }
   return null;
-}
-
-export function deriveComputerToolDescription(input: {
-  activity: OrchestrationThreadActivity;
-  payload: Record<string, unknown> | null;
-  toolName: string | null;
-  title: string | null;
-}) {
-  if (input.payload?.approvalScope === "computer-foreground") {
-    return {
-      summary:
-        input.activity.kind === "approval.requested"
-          ? "Asked to show Computer on screen"
-          : input.payload.decision === "accept"
-            ? "Computer allowed on screen"
-            : input.payload.decision === "decline"
-              ? "Computer kept in the background"
-              : "On-screen request cancelled",
-    };
-  }
-  if (input.payload?.approvalScope === "computer-task") {
-    return {
-      summary:
-        input.activity.kind === "approval.requested"
-          ? `Computer task approval requested`
-          : input.payload.decision === "accept"
-            ? `Computer task approved`
-            : input.payload.decision === "decline"
-              ? `Computer task declined`
-              : `Computer task approval cancelled`,
-    };
-  }
-  if (!computerToolName(input.toolName)) {
-    return null;
-  }
-  const explicitTitle = normalizeCompactToolLabel(input.title ?? "");
-  if (
-    explicitTitle.length > 0 &&
-    !isGenericToolTitle(explicitTitle) &&
-    !computerToolName(explicitTitle)
-  ) {
-    return null;
-  }
-  const progressTitle = normalizeCompactToolLabel(input.activity.summary);
-  if (
-    input.activity.kind === "tool.updated" &&
-    progressTitle.length > 0 &&
-    !isGenericToolTitle(progressTitle) &&
-    !computerToolName(progressTitle)
-  ) {
-    return { summary: progressTitle };
-  }
-  return describeComputerToolCall({
-    toolName: input.toolName,
-    args: extractComputerToolArgs(input.payload) ?? undefined,
-  });
-}
-
-function extractComputerToolArgs(
-  payload: Record<string, unknown> | null,
-): Readonly<Record<string, unknown>> | null {
-  if (!payload) {
-    return null;
-  }
-  const data = asObjectRecord(payload.data);
-  const item = asObjectRecord(data?.item);
-  const dataInvocation = asObjectRecord(data?.invocation);
-  const itemInvocation = asObjectRecord(item?.invocation);
-  const dataInput = asObjectRecord(data?.input);
-  const itemInput = asObjectRecord(item?.input);
-  const candidates = [
-    item?.arguments,
-    itemInput?.arguments,
-    itemInput?.args,
-    item?.input,
-    itemInvocation?.arguments,
-    itemInvocation?.input,
-    dataInvocation?.arguments,
-    dataInvocation?.input,
-    data?.arguments,
-    dataInput?.arguments,
-    dataInput?.args,
-    data?.input,
-    data?.rawInput,
-    payload.arguments,
-    payload.input,
-  ];
-  for (const candidate of candidates) {
-    const args = asArgumentRecord(candidate);
-    if (args) {
-      return args;
-    }
-  }
-  return parseHistoricalToolParamsDisplay(payload.toolParamsDisplay);
-}
-
-function asArgumentRecord(value: unknown): Record<string, unknown> | null {
-  if (typeof value === "string") {
-    try {
-      return asArgumentRecord(JSON.parse(value));
-    } catch {
-      return null;
-    }
-  }
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
-}
-
-function parseHistoricalToolParamsDisplay(value: unknown): Record<string, unknown> | null {
-  const record = asArgumentRecord(value);
-  if (record) {
-    return record;
-  }
-  if (!Array.isArray(value)) {
-    return null;
-  }
-  const result: Record<string, unknown> = {};
-  for (const entry of value) {
-    const row = asObjectRecord(entry);
-    const name = nonEmptyTrimmed(row?.name ?? row?.display_name ?? row?.displayName) ?? null;
-    if (name) {
-      result[name] = row?.value;
-    }
-  }
-  return Object.keys(result).length > 0 ? result : null;
 }
 
 export function extractToolCallId(payload: Record<string, unknown> | null): string | null {

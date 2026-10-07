@@ -1,64 +1,10 @@
-import { isRecord } from "@glade/shared/transport/payloadValues";
 import { assert, describe, it } from "@effect/vitest";
 
-import { BROWSER_TOOL_CATALOGUE } from "@glade/shared/browser/browserAutomationCatalogue";
-import { BrowserWebMcpCallInput } from "@glade/contracts/browser/automation/browserAutomationToolInputs";
-import { Schema } from "effect";
-
 import { FALLBACK_OBJECT_DESCRIPTION, sanitizeToolInputSchema } from "./sanitizeToolInputSchema.ts";
-import { countSchemaKeyOccurrences } from "./schemaTestUtils.ts";
 
 const cloneJson = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
 
-const asJsonRecord = (node: unknown, label: string): Record<string, unknown> => {
-  if (isRecord(node)) return node;
-  throw new Error(`Expected ${label} to be an object schema.`);
-};
-
-const findCatalogueEntryOrThrow = (name: string) => {
-  const entry = BROWSER_TOOL_CATALOGUE.find((candidate) => candidate.name === name);
-  if (entry === undefined) {
-    throw new Error(`Expected the browser catalogue to define ${name}.`);
-  }
-  return entry;
-};
-
 describe("sanitizeToolInputSchema", () => {
-  it("strips recursive references from the WebMCP argument contract", () => {
-    const document = Schema.toJsonSchemaDocument(BrowserWebMcpCallInput);
-    const entry = { inputSchema: { ...document.schema, $defs: document.definitions } };
-    assert.isAbove(countSchemaKeyOccurrences(entry.inputSchema, "$ref"), 0);
-    assert.isAbove(countSchemaKeyOccurrences(entry.inputSchema, "$defs"), 0);
-
-    const input = cloneJson(entry.inputSchema);
-    const output = asJsonRecord(sanitizeToolInputSchema(input), "sanitized webmcp schema");
-
-    assert.equal(countSchemaKeyOccurrences(output, "$ref"), 0);
-    assert.equal(countSchemaKeyOccurrences(output, "$defs"), 0);
-
-    const outputProperties = asJsonRecord(output.properties, "sanitized webmcp properties");
-    const inputProperties = asJsonRecord(
-      asJsonRecord(input, "cloned webmcp schema").properties,
-      "cloned webmcp properties",
-    );
-    for (const propertyName of Object.keys(inputProperties)) {
-      if (propertyName === "arguments") continue;
-      assert.deepEqual(outputProperties[propertyName], inputProperties[propertyName]);
-    }
-    assert.include(JSON.stringify(outputProperties.toolId), "never substitute the page tool name");
-    if (!Array.isArray(output.required)) {
-      throw new Error("Expected the sanitized webmcp schema to keep its required list.");
-    }
-    assert.sameMembers(output.required, ["discoveryId", "toolId"]);
-  });
-
-  it("preserves the current browser_run input contract without mutating it", () => {
-    const entry = findCatalogueEntryOrThrow("browser_run");
-    const before = cloneJson(entry.inputSchema);
-    assert.deepEqual(sanitizeToolInputSchema(entry.inputSchema), before);
-    assert.deepEqual(entry.inputSchema, before);
-  });
-
   it("sanitizes $refs inside arrays", () => {
     assert.deepEqual(sanitizeToolInputSchema([{ $ref: "#/$defs/JsonValue" }, { type: "string" }]), [
       { type: "object", description: FALLBACK_OBJECT_DESCRIPTION },

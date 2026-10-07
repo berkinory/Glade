@@ -1,15 +1,9 @@
 import { describe, it, assert } from "@effect/vitest";
 import { Effect, Stream, Random, Fiber, Exit } from "effect";
 import { ClaudeAdapter } from "../../Services/ClaudeAdapter.ts";
-import type { SDKMessage, PermissionResult, HookInput } from "@anthropic-ai/claude-agent-sdk";
+import type { SDKMessage, PermissionResult } from "@anthropic-ai/claude-agent-sdk";
 import { ProviderItemId, ApprovalRequestId } from "@glade/contracts/core/baseSchemas";
-import {
-  makeHarness,
-  THREAD_ID,
-  makeDeterministicRandomService,
-  makeGatewayCredentialsHarness,
-  makeMultiQueryHarness,
-} from "./adapterTestFixtures";
+import { makeHarness, THREAD_ID, makeDeterministicRandomService } from "./adapterTestFixtures";
 
 describe("Claude approvals", () => {
   it.effect("keeps Auto reviewer-gated after accepting one request for the session", () => {
@@ -296,88 +290,6 @@ describe("Claude approvals", () => {
       Effect.provide(harness.layer),
     );
   });
-
-  it.effect(
-    "lets active approval-required Computer tools reach the authoritative gateway gate",
-    () => {
-      const gateway = makeGatewayCredentialsHarness();
-      const harness = makeMultiQueryHarness({ gatewayCredentials: gateway.credentials });
-      return Effect.gen(function* () {
-        const adapter = yield* ClaudeAdapter;
-
-        yield* adapter.startSession({
-          threadId: THREAD_ID,
-          provider: "claudeAgent",
-          runtimeMode: "approval-required",
-          enableComputerControl: true,
-        });
-
-        yield* adapter.sendTurn({
-          threadId: THREAD_ID,
-          input: "Click the target",
-          attachments: [],
-        });
-
-        const hooks = harness.createInputs[0]!.options.hooks!.PreToolUse![0]!.hooks;
-        for (const hook of hooks)
-          yield* Effect.promise(() =>
-            hook(
-              {
-                hook_event_name: "PreToolUse",
-                tool_name: "mcp__glade__computer_click",
-                tool_input: {},
-                tool_use_id: "tool-use-computer-click",
-                session_id: "sdk-computer",
-                transcript_path: "/tmp/transcript",
-                cwd: "/tmp",
-              } as HookInput,
-              "tool-use-computer-click",
-              { signal: new AbortController().signal },
-            ),
-          );
-        const turn = (yield* adapter.listSessions()).find(
-          (session) => session.threadId === THREAD_ID,
-        )?.activeTurnId;
-        assert.isDefined(turn);
-        assert.equal(
-          yield* Effect.promise(() =>
-            gateway.credentials.nativeToolCalls.resolve(
-              "gateway-token-1",
-              "tool-use-computer-click",
-              "computer_click",
-            ),
-          ),
-          turn,
-        );
-
-        const canUseTool = harness.createInputs[0]?.options.canUseTool;
-        assert.equal(typeof canUseTool, "function");
-        if (!canUseTool) {
-          return;
-        }
-
-        const result = yield* Effect.promise(() =>
-          canUseTool(
-            "mcp__glade__computer_click",
-            { x: 12, y: 34 },
-            {
-              signal: new AbortController().signal,
-              toolUseID: "tool-use-computer-click",
-              requestId: "request-computer-click",
-            },
-          ),
-        );
-
-        assert.deepEqual(result, {
-          behavior: "allow",
-          updatedInput: { x: 12, y: 34 },
-        });
-      }).pipe(
-        Effect.provideService(Random.Random, makeDeterministicRandomService()),
-        Effect.provide(harness.layer),
-      );
-    },
-  );
 
   it.effect("handles AskUserQuestion via user-input.requested/resolved lifecycle", () => {
     const harness = makeHarness();

@@ -24,7 +24,6 @@ import {
 } from "../ChatView.logic.subagents";
 import type { QueuedSteerGate } from "../ChatView.logic.dispatch";
 import { buildWorkflowResumePrompt } from "./WorkflowRunCard.logic";
-import { useChatComposerDraft } from "./useChatComposerDraft";
 import { useChatLocalDispatch } from "./useChatLocalDispatch";
 import { useChatProviderModels } from "./useChatProviderModels";
 import { useChatProviderStatus } from "./useChatProviderStatus";
@@ -58,10 +57,6 @@ interface ChatTurnFollowUpsInput {
   selectedModel: string;
   selectedPromptEffort: ReturnType<typeof useChatProviderModels>["selectedPromptEffort"];
   turnDispatchSettings: TurnDispatchSettings;
-  computerControlChangeSequence: RefObject<number>;
-  setComposerDraftComputerControlMode: ReturnType<
-    typeof useChatComposerDraft
-  >["setComposerDraftComputerControlMode"];
   setOptimisticUserMessages: ReturnType<
     typeof useChatTimelineMessages
   >["setOptimisticUserMessages"];
@@ -92,7 +87,6 @@ type ChatTurnFollowUpsControllerInput = {
     ChatTurnFollowUpsInput,
     | "activeThread"
     | "sendInFlightRef"
-    | "setComposerDraftComputerControlMode"
     | "isRevertingCheckpoint"
     | "setIsRevertingCheckpoint"
     | "markWorkflowRunDismissed"
@@ -115,7 +109,7 @@ type ChatTurnFollowUpsControllerInput = {
     | "selectedPromptEffort"
     | "workflowRunState"
   >;
-  composer: Pick<ChatTurnFollowUpsInput, "setThreadError" | "computerControlChangeSequence">;
+  composer: Pick<ChatTurnFollowUpsInput, "setThreadError">;
   transcript: Pick<ChatTurnFollowUpsInput, "setTailAnchor" | "setOptimisticUserMessages">;
   environment: Pick<
     ChatTurnFollowUpsInput,
@@ -141,8 +135,6 @@ export function useChatTurnFollowUps({
 
     isRevertingCheckpoint,
     setIsRevertingCheckpoint,
-    setComposerDraftComputerControlMode,
-
     markWorkflowRunDismissed,
   } = session;
   const { isServerThread, activeThreadId } = workspace;
@@ -156,7 +148,7 @@ export function useChatTurnFollowUps({
     selectedPromptEffort,
     workflowRunState,
   } = provider;
-  const { setThreadError, computerControlChangeSequence } = composer;
+  const { setThreadError } = composer;
 
   const {
     turnDispatchSettings,
@@ -201,11 +193,9 @@ export function useChatTurnFollowUps({
       setIsRevertingCheckpoint(true);
       setThreadError(activeThread.id, null);
       const messageCreatedAt = new Date().toISOString();
-      const computerControlSequenceForEdit = computerControlChangeSequence.current;
       const editedTextWithOriginalContext = appendOriginalComposerPromptBlocks({
         editedPrompt: text,
         originalPrompt: originalMessage.text,
-        messageId,
       });
       const outgoingMessageText = editedTextWithOriginalContext;
       return await (async () => {
@@ -230,12 +220,6 @@ export function useChatTurnFollowUps({
           ...editAndResendDispatchFields(turnDispatchSettings),
           createdAt: messageCreatedAt,
         });
-        if (
-          turnDispatchSettings.computerControlMode === "request" &&
-          computerControlChangeSequence.current === computerControlSequenceForEdit
-        ) {
-          setComposerDraftComputerControlMode(activeThread.id, "off");
-        }
         return true;
       })()
         .catch((err: unknown) => {
@@ -264,8 +248,6 @@ export function useChatTurnFollowUps({
       persistThreadSettingsForNextTurn,
       setThreadError,
       turnDispatchSettings,
-      computerControlChangeSequence,
-      setComposerDraftComputerControlMode,
     ],
   );
 
@@ -284,7 +266,6 @@ export function useChatTurnFollowUps({
       images: [],
       files: [],
       assistantSelections: [],
-      browserAnnotations: [],
       terminalContexts: [],
       fileComments: [],
       pastedTexts: [],

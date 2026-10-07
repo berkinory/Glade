@@ -247,8 +247,6 @@ export interface MessagesTimelineProps {
   getAgentActivityDetail?: (activityId: string) => AgentActivityDetail | undefined;
   onOpenTurnDiff: (turnId: TurnId, filePath?: string) => void;
   onOpenThread?: (threadId: ThreadId) => void;
-  computerControlEnabled?: boolean;
-  onEnableComputerControl?: () => void;
   onUndoTurnFiles?: (turnCounts: readonly number[]) => void;
   onRespondToAsyncUserInput?: (messageId: MessageId, answers: readonly string[]) => Promise<void>;
   onEditUserMessage?: (messageId: MessageId, text: string) => boolean | Promise<boolean>;

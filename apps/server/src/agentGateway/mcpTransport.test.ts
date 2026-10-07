@@ -6,8 +6,6 @@ import { type OrchestrationThreadShell } from "@glade/contracts/orchestration/th
 import { Deferred, Effect, Fiber, Option } from "effect";
 
 import type { ProjectionSnapshotQueryShape } from "../orchestration/Services/ProjectionSnapshotQuery.ts";
-import { makeAgentGatewayBrowserTools } from "./browserTools.ts";
-import { BrowserHostRpcError } from "../browserAutomation/browserHostRpcClient.ts";
 import { makeAgentGatewaySessionRegistry } from "./Layers/AgentGatewaySessionRegistry.ts";
 import type { AgentGatewayCredentialsShape } from "./Services/AgentGatewayCredentials.ts";
 import { makeAgentGatewayInFlightRequestRegistry } from "./inFlightRequestRegistry.ts";
@@ -21,7 +19,6 @@ import {
   AGENT_GATEWAY_NO_CAPABILITIES,
   type AgentGatewayCapabilityInput,
   type AgentGatewaySessionLease,
-  type AgentGatewaySessionLeaseOptions,
 } from "./sessionLease.ts";
 import type { ToolEntry } from "./toolRuntime.ts";
 
@@ -70,22 +67,12 @@ function makeThread(threadId: string): OrchestrationThreadShell {
   };
 }
 
-export interface McpTransportTestDenial {
-  readonly toolName: string;
-  readonly requiredCapability: string;
-  readonly callerThreadId: string;
-  readonly callerTurnId: string | null;
-}
-
 function makeTransport(input: {
   readonly tools: ReadonlyArray<ToolEntry>;
   readonly threads: ReadonlyArray<OrchestrationThreadShell>;
   readonly leaseCapabilities?: AgentGatewayCapabilityInput;
 
   readonly ghostThreads?: ReadonlyArray<string>;
-
-  readonly computerToolNames?: ReadonlyArray<string>;
-  readonly onCapabilityDenied?: (denial: McpTransportTestDenial) => Effect.Effect<void>;
 }) {
   const threads = new Map(input.threads.map((thread) => [String(thread.id), thread]));
   let nextSession = 0;
@@ -129,12 +116,8 @@ function makeTransport(input: {
       nativeToolCalls.revoke(token);
       if (session) inFlightRequests.revokeSession(session.sessionKey);
     },
-    connectionForThread: (
-      threadId: ThreadId,
-      _provider: unknown,
-      options?: AgentGatewaySessionLeaseOptions,
-    ) => {
-      const issued = sessionRegistry.issue(threadId, "codex", options);
+    connectionForThread: (threadId: ThreadId) => {
+      const issued = sessionRegistry.issue(threadId, "codex");
       return {
         url: "http://127.0.0.1:48123/mcp",
         bearerToken: issued.token,
@@ -179,13 +162,6 @@ function makeTransport(input: {
       const thread = threads.get(threadId);
       return thread ? Effect.succeed(thread) : Effect.fail(new InjectedFailure("missing thread"));
     },
-    ...(input.onCapabilityDenied ? { onCapabilityDenied: input.onCapabilityDenied } : {}),
-    ...(input.computerToolNames
-      ? {
-          isComputerToolName: (toolName: string) => input.computerToolNames!.includes(toolName),
-          computerControlCapability: "computer:control" as const,
-        }
-      : {}),
   });
   return Object.assign(transport, {
     leases,
@@ -248,11 +224,11 @@ describe("makeAgentGatewayMcpTransport cancellation", () => {
           tools: [
             {
               definition: {
-                name: "browser_click",
+                name: "glade_test_write",
                 description: "test",
                 inputSchema: { type: "object" },
               },
-              requiredCapability: "browser:control",
+              requiredCapability: "thread:write",
               requiresActiveTurn: true,
               handler: () => {
                 handlerCalls += 1;
@@ -271,9 +247,9 @@ describe("makeAgentGatewayMcpTransport cancellation", () => {
         transport.setThreadTurn("thread-rotated", "turn-b");
         const body = {
           jsonrpc: "2.0",
-          id: "browser-click",
+          id: "test-write",
           method: "tools/call",
-          params: { name: "browser_click", arguments: {} },
+          params: { name: "glade_test_write", arguments: {} },
         };
 
         const lateA = yield* post(transport, "token-1", body);
@@ -291,46 +267,38 @@ describe("makeAgentGatewayMcpTransport cancellation", () => {
         const hostStarted = yield* Deferred.make<void>();
         const hostAbortObserved = yield* Deferred.make<void>();
         let hostCalls = 0;
-        const browserRun = makeAgentGatewayBrowserTools({
-          available: true,
-          execute: () => {
+        const waitingTool: ToolEntry = {
+          definition: {
+            name: "glade_test_wait",
+            description: "test",
+            inputSchema: { type: "object" },
+          },
+          requiredCapability: "thread:write",
+          requiresActiveTurn: true,
+          handler: () => {
             hostCalls += 1;
-            return Effect.tryPromise({
-              try: (signal) => {
-                return new Promise<never>((_resolve, reject) => {
+            return Effect.promise(
+              (signal) =>
+                new Promise<never>(() => {
                   signal.addEventListener(
                     "abort",
-                    () => {
-                      Deferred.doneUnsafe(hostAbortObserved, Effect.void);
-                      reject(new Error("browser host request aborted"));
-                    },
+                    () => Deferred.doneUnsafe(hostAbortObserved, Effect.void),
                     { once: true },
                   );
-
                   Deferred.doneUnsafe(hostStarted, Effect.void);
-                });
-              },
-              catch: (error) => new BrowserHostRpcError("transport", String(error)),
-            });
+                }),
+            );
           },
-        }).find((tool) => tool.definition.name === "browser_run");
-        assert.isDefined(browserRun);
+        };
         const transport = makeTransport({
           threads: [makeThread("thread-detached")],
-          tools: [browserRun!],
+          tools: [waitingTool],
         });
         const body = {
           jsonrpc: "2.0",
-          id: "detached-browser-wait",
+          id: "detached-wait",
           method: "tools/call",
-          params: {
-            name: "browser_run",
-            arguments: {
-              tabId: "53756993-1de8-47a5-82c9-e00766199802",
-              code: 'await page.getByText("STOP_SENTINEL_NEVER_APPEARS").waitFor(); return true;',
-              timeoutMs: 30_000,
-            },
-          },
+          params: { name: "glade_test_wait", arguments: {} },
         };
 
         const request = yield* post(transport, "token-1", body).pipe(Effect.forkChild);
@@ -634,52 +602,36 @@ describe("makeAgentGatewayMcpTransport tools/list", () => {
     },
     {
       definition: {
-        name: "computer_click",
-        description: "Click",
+        name: "glade_test_hinted",
+        description: "Hinted",
         inputSchema: { type: "object" },
-        annotations: { title: "Click" },
-        _meta: { "anthropic/searchHint": "desktop click" },
+        annotations: { title: "Hinted" },
+        _meta: { "anthropic/searchHint": "test hint" },
       },
-      requiredCapability: "computer:control",
+      requiredCapability: "thread:read",
       handler: ok,
     },
   ];
   const listBody = { jsonrpc: "2.0", id: "list", method: "tools/list" };
 
-  it.effect("omits tools the caller's session was never granted", () =>
-    Effect.gen(function* () {
-      const transport = makeTransport({ threads: [makeThread("thread-plain")], tools: catalog });
-      const response = yield* post(transport, "token-1", listBody);
-      assert.equal(response.status, 200);
-      assert.deepEqual(
-        listedTools(response.body).map((tool) => tool.name),
-        ["glade_context"],
-      );
-    }),
-  );
-
   it.effect(
     "applies eager loading to core tools and preserves search hints on deferred tools",
     () =>
       Effect.gen(function* () {
-        const transport = makeTransport({
-          threads: [makeThread("thread-computer")],
-          tools: catalog,
-          leaseCapabilities: { enableComputerControl: true },
-        });
+        const transport = makeTransport({ threads: [makeThread("thread-hinted")], tools: catalog });
         const response = yield* post(transport, "token-1", listBody);
         assert.equal(response.status, 200);
         const tools = listedTools(response.body);
         assert.deepEqual(
           tools.map((tool) => tool.name),
-          ["glade_context", "computer_click"],
+          ["glade_context", "glade_test_hinted"],
         );
         assert.deepEqual(tools[1], {
-          name: "computer_click",
-          description: "Click",
+          name: "glade_test_hinted",
+          description: "Hinted",
           inputSchema: { type: "object" },
-          annotations: { title: "Click" },
-          _meta: { "anthropic/alwaysLoad": false, "anthropic/searchHint": "desktop click" },
+          annotations: { title: "Hinted" },
+          _meta: { "anthropic/alwaysLoad": false, "anthropic/searchHint": "test hint" },
         });
         assert.deepEqual(tools[0]!._meta, { "anthropic/alwaysLoad": true });
       }),
@@ -691,27 +643,26 @@ describe("makeAgentGatewayMcpTransport tools/list", () => {
         ...catalog,
         {
           definition: {
-            name: "computer_drag",
-            description: "Drag",
+            name: "glade_test_hidden",
+            description: "Hidden",
             inputSchema: { type: "object" },
           },
-          requiredCapability: "computer:control",
+          requiredCapability: "thread:read",
           discoveryOnly: true,
           handler: ok,
         },
       ];
       const transport = makeTransport({
-        threads: [makeThread("thread-computer")],
+        threads: [makeThread("thread-discovery")],
         tools: discoveryCatalog,
-        leaseCapabilities: { enableComputerControl: true },
       });
       const listResponse = yield* post(transport, "token-1", listBody);
       assert.equal(listResponse.status, 200);
       assert.deepEqual(
         listedTools(listResponse.body).map((tool) => tool.name),
-        ["glade_context", "computer_click"],
+        ["glade_context", "glade_test_hinted"],
       );
-      const callResponse = yield* post(transport, "token-1", toolCallBody("computer_drag"));
+      const callResponse = yield* post(transport, "token-1", toolCallBody("glade_test_hidden"));
       assert.equal(callResponse.status, 200);
       assert.equal(
         (callResponse.body as { result: { content: Array<{ text: string }> } }).result.content[0]
@@ -729,134 +680,15 @@ const toolCallBody = (name: string, args: Record<string, unknown> = {}) => ({
   params: { name, arguments: args },
 });
 
-const toolResultErrorOf = (response: { body?: unknown }): Record<string, unknown> => {
-  const body = response.body as { result: { content: Array<{ text: string }> } };
-  return JSON.parse(body.result.content[0]!.text) as Record<string, unknown>;
-};
-
 const rpcErrorOf = (response: { body?: unknown }): { code: number; message: string } =>
   (response.body as { error: { code: number; message: string } }).error;
 
 const authorityDataOf = (response: { body?: unknown }): { code: string; retry: string } =>
   (response.body as { data: { code: string; retry: string } }).data;
 
-describe("makeAgentGatewayMcpTransport capability truth", () => {
-  const computerClick: ToolEntry = {
-    definition: {
-      name: "computer_click",
-      description: "Click",
-      inputSchema: { type: "object" },
-    },
-    requiredCapability: "computer:control",
-    requiresActiveTurn: true,
-    handler: () => Effect.succeed({ content: [{ type: "text" as const, text: "clicked" }] }),
-  };
-
-  it.effect(
-    "checks turn authority before capability and keeps the denial hook silent on inactive turns",
-    () =>
-      Effect.gen(function* () {
-        let handlerCalls = 0;
-        const denials: Array<McpTransportTestDenial> = [];
-        const transport = makeTransport({
-          threads: [makeThread("thread-order")],
-          tools: [
-            {
-              ...computerClick,
-              handler: () => {
-                handlerCalls += 1;
-                return Effect.succeed({ content: [{ type: "text" as const, text: "clicked" }] });
-              },
-            },
-          ],
-          onCapabilityDenied: (denial) =>
-            Effect.sync(() => {
-              denials.push(denial);
-            }),
-        });
-
-        const denied = yield* post(transport, "token-1", toolCallBody("computer_click"));
-        assert.equal(denied.status, 200);
-        assert.equal(
-          (toolResultErrorOf(denied).error as { code: string }).code,
-          "capability_denied",
-        );
-        assert.equal(denials.length, 1);
-        assert.equal(handlerCalls, 0);
-
-        transport.setThreadTurnState("thread-order", "completed");
-        const inactive = yield* post(transport, "token-1", {
-          ...toolCallBody("computer_click"),
-          id: "call-computer_click-inactive",
-        });
-        assert.equal(inactive.status, 200);
-        assert.equal(
-          (toolResultErrorOf(inactive).error as { code: string }).code,
-          "caller_turn_inactive",
-        );
-        assert.equal(denials.length, 1);
-        assert.equal(handlerCalls, 0);
-      }),
-  );
-
-  it.effect("denies an in-catalog computer name with the hook and explicit capability", () =>
+describe("makeAgentGatewayMcpTransport session authority", () => {
+  it.effect("reports structured authority codes with retry rules", () =>
     Effect.gen(function* () {
-      const denials: Array<McpTransportTestDenial> = [];
-      const transport = makeTransport({
-        threads: [makeThread("thread-denied")],
-
-        tools: [],
-        computerToolNames: ["computer_click"],
-        onCapabilityDenied: (denial) =>
-          Effect.sync(() => {
-            denials.push(denial);
-          }),
-      });
-      const response = yield* post(transport, "token-1", toolCallBody("computer_click"));
-      assert.equal(response.status, 200);
-      const error = toolResultErrorOf(response).error as {
-        code: string;
-        details: { requiredCapability: string };
-      };
-      assert.equal(error.code, "capability_denied");
-      assert.equal(error.details.requiredCapability, "computer:control");
-      assert.deepEqual(denials, [
-        {
-          toolName: "computer_click",
-          requiredCapability: "computer:control",
-          callerThreadId: "thread-denied",
-          callerTurnId: "turn-thread-denied",
-        },
-      ]);
-    }),
-  );
-
-  it.effect("keeps the denial hook silent for an unknown computer tool on an inactive turn", () =>
-    Effect.gen(function* () {
-      const denials: Array<McpTransportTestDenial> = [];
-      const transport = makeTransport({
-        threads: [makeThread("thread-quiet")],
-        tools: [],
-        computerToolNames: ["computer_click"],
-        onCapabilityDenied: (denial) =>
-          Effect.sync(() => {
-            denials.push(denial);
-          }),
-      });
-      transport.setThreadTurnState("thread-quiet", "completed");
-      const response = yield* post(transport, "token-1", toolCallBody("computer_click"));
-      assert.equal(response.status, 200);
-      assert.equal(
-        (toolResultErrorOf(response).error as { code: string }).code,
-        "caller_turn_inactive",
-      );
-      assert.deepEqual(denials, []);
-    }),
-  );
-
-  it.effect("reports structured authority codes with retry rules and never fires the hook", () =>
-    Effect.gen(function* () {
-      const denials: Array<McpTransportTestDenial> = [];
       const transport = makeTransport({
         threads: [
           makeThread("thread-authority"),
@@ -874,12 +706,7 @@ describe("makeAgentGatewayMcpTransport capability truth", () => {
           },
         ],
         ghostThreads: ["thread-ghost"],
-        tools: [computerClick],
-        computerToolNames: ["computer_click"],
-        onCapabilityDenied: (denial) =>
-          Effect.sync(() => {
-            denials.push(denial);
-          }),
+        tools: [],
       });
       const listBody = { jsonrpc: "2.0", id: "list", method: "tools/list" };
       const missing = yield* transport({ authorizationHeader: undefined, body: listBody });
@@ -907,7 +734,6 @@ describe("makeAgentGatewayMcpTransport capability truth", () => {
         retry: "re-lease",
       });
       assert.include(rpcErrorOf(mismatch).message, "Do not retry with this token");
-      assert.deepEqual(denials, []);
     }),
   );
 });

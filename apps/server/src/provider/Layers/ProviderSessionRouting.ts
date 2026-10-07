@@ -18,7 +18,6 @@ import {
   readPersistedCwd,
   readPersistedModelSelection,
   readPersistedProviderOptions,
-  readPersistedComputerControl,
 } from "../core/providerRuntimeBinding";
 import { ProviderIdleRuntime } from "../Services/ProviderIdleRuntime";
 import { ProviderRuntimeBindings } from "../Services/ProviderRuntimeBindings";
@@ -153,7 +152,6 @@ export const ProviderSessionRoutingLive = Layer.effect(
                 "The saved native session profile is incomplete. Send an ordinary message before compacting.",
               );
             }
-            const persistedComputerControl = readPersistedComputerControl(binding.runtimePayload);
             yield* validateAutoRuntimeMode(
               input.operation,
               binding.provider,
@@ -168,7 +166,6 @@ export const ProviderSessionRoutingLive = Layer.effect(
               ...(persistedCwd ? { cwd: persistedCwd } : {}),
               ...(persistedModelSelection ? { modelSelection: persistedModelSelection } : {}),
               ...(persistedProviderOptions ? { providerOptions: persistedProviderOptions } : {}),
-              ...(persistedComputerControl ? { enableComputerControl: true } : {}),
               ...(hasPersistedResumeCursor ? { resumeCursor: binding.resumeCursor } : {}),
               runtimeMode: binding.runtimeMode ?? "full-access",
             };
@@ -184,20 +181,14 @@ export const ProviderSessionRoutingLive = Layer.effect(
             yield* bindings.withBindingWriteLock(
               threadId,
               bindings
-                .upsertSessionBinding(resumed, threadId, {
-                  lifecycleGeneration: lease.generation,
-                  ...(persistedComputerControl ? { enableComputerControl: true } : {}),
-                })
+                .upsertSessionBinding(resumed, threadId, { lifecycleGeneration: lease.generation })
                 .pipe(
                   Effect.andThen(
                     requiresCredentialRotation
                       ? directory.upsert({
                           threadId,
                           provider: binding.provider,
-                          runtimePayload: {
-                            [AGENT_GATEWAY_CREDENTIAL_ROTATION_REQUIRED]: false,
-                            ...(persistedComputerControl ? { enableComputerControl: true } : {}),
-                          },
+                          runtimePayload: { [AGENT_GATEWAY_CREDENTIAL_ROTATION_REQUIRED]: false },
                         })
                       : Effect.void,
                   ),

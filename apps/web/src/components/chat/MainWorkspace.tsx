@@ -1,5 +1,4 @@
 import {
-  Globe02Icon,
   GitCommitHorizontalIcon,
   PlusMinusSquare01Icon,
   ComputerTerminal01Icon,
@@ -16,7 +15,6 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import { selectThreadBrowserState, useBrowserStateStore } from "~/browserStateStore";
 import { useComposerDraftStore } from "~/composerDraftStore";
 import { basenameOfPath } from "~/file-icons";
 import { WorkspaceHeaderContext } from "./WorkspaceHeaderContext";
@@ -33,11 +31,9 @@ import { selectMainWorkspace, useMainWorkspaceStore } from "~/mainWorkspaceStore
 import { selectRightDockState, useRightDockStore } from "~/rightDockStore";
 import { useStore } from "~/store";
 import { cn } from "~/lib/utils";
-import { runBrowserCommand } from "../browser/controller/browserActions";
 import { toastManager } from "../ui/toast";
 import { WorkspaceFilePreview } from "../WorkspaceFilePreview";
 import type { ChatFileReference } from "~/lib/chatReferences";
-import { LazyBrowserPanel } from "./ChatThreadSurfacePrimitives";
 import { WorkspaceGitDiff } from "./WorkspaceGitDiff";
 import { CommitDetail } from "./CommitDetail";
 import { SourceControlTurnChanges } from "./SourceControlTurnChanges";
@@ -63,7 +59,7 @@ export function MainWorkspace(props: {
       }
     | undefined;
   onReferenceInChat: (reference: ChatFileReference) => void;
-  onAddPane: (kind: "terminal" | "browser" | "explorer" | "git") => void;
+  onAddPane: (kind: "terminal" | "explorer" | "git") => void;
   children: ReactNode;
 }) {
   const navigate = useNavigate();
@@ -77,7 +73,6 @@ export function MainWorkspace(props: {
   const pinFile = useRightDockStore((store) => store.pinFile);
   const closePane = useRightDockStore((store) => store.closePane);
   const terminal = useTerminalSurfaceController(props.threadId);
-  const browser = useBrowserStateStore(selectThreadBrowserState(props.threadId));
   const provider = useStore((store) => {
     const thread = store.threadShellById?.[props.threadId];
     return thread ? resolveThreadDisplayProvider(thread) : null;
@@ -103,20 +98,8 @@ export function MainWorkspace(props: {
     if (previewDirty && dock.previewFilePath) pinFile(props.threadId, dock.previewFilePath);
   }, [previewDirty, dock.previewFilePath, pinFile, props.threadId]);
   const terminalPane = dock.panes.find((pane) => pane.kind === "terminal");
-  const browserPane = dock.panes.find((pane) => pane.kind === "browser");
-  const reportBrowserError = (description: string | null) => {
-    if (description)
-      toastManager.add({
-        type: "error",
-        title: "Browser action failed",
-        description,
-      });
-  };
   const closeTerminalPane = () => {
     if (terminalPane) closePane(props.threadId, terminalPane.id);
-  };
-  const closeBrowserPane = () => {
-    if (browserPane) closePane(props.threadId, browserPane.id);
   };
   const terminalGroups = terminalTabGroups(terminal.terminalState);
   const activeTerminalGroup = terminalGroups.find((group) =>
@@ -180,43 +163,11 @@ export function MainWorkspace(props: {
           },
         }))
       : []),
-    ...(browserPane
-      ? browser?.tabs.length
-        ? browser.tabs.map((tab) => ({
-            id: `browser:${tab.id}`,
-            label: tab.title || tab.url || "Browser",
-            icon: <Globe02Icon className="size-3.5" />,
-            onClose: () => {
-              void runBrowserCommand(
-                props.threadId,
-                {
-                  kind: "close",
-                  tabId: tab.id,
-                },
-                reportBrowserError,
-              ).then((next) => {
-                if (next && next.tabs.length === 0) closeBrowserPane();
-              });
-            },
-          }))
-        : [
-            {
-              id: "browser",
-              label: "Browser",
-              icon: <Globe02Icon className="size-3.5" />,
-              onClose: closeBrowserPane,
-            },
-          ]
-      : []),
   ];
   const activeId =
     state.activeTabId === "terminal"
       ? `terminal:${activeTerminalGroup?.id ?? terminal.terminalState.activeTerminalId}`
-      : state.activeTabId === "browser"
-        ? browser?.activeTabId
-          ? `browser:${browser.activeTabId}`
-          : "browser"
-        : state.activeTabId;
+      : state.activeTabId;
   const select = (id: string) => {
     if (id.startsWith("file:")) {
       const path = id.slice(5);
@@ -232,16 +183,6 @@ export function MainWorkspace(props: {
             : group.terminalIds[0]!,
         );
       selectTab(props.threadId, "terminal");
-    } else if (id.startsWith("browser:")) {
-      selectTab(props.threadId, "browser");
-      void runBrowserCommand(
-        props.threadId,
-        {
-          kind: "select",
-          tabId: id.slice(8),
-        },
-        reportBrowserError,
-      );
     } else selectTab(props.threadId, id);
   };
   const resolvedId = useWorkspaceTabSelection({
@@ -250,7 +191,6 @@ export function MainWorkspace(props: {
     onSelect: select,
   });
   const terminalVisible = resolvedId.startsWith("terminal:");
-  const browserVisible = resolvedId === "browser" || resolvedId.startsWith("browser:");
   const filePath = resolvedId.startsWith("file:") ? resolvedId.slice(5) : null;
   const review = state.reviews.find((tab) => tab.id === resolvedId);
   useWorkspaceShortcuts({
@@ -295,17 +235,6 @@ export function MainWorkspace(props: {
       onAddTerminal={() => {
         if (terminalPane) terminal.createTerminal();
         props.onAddPane("terminal");
-      }}
-      onAddBrowser={() => {
-        props.onAddPane("browser");
-        if (browser?.tabs.length)
-          void runBrowserCommand(
-            props.threadId,
-            {
-              kind: "new",
-            },
-            reportBrowserError,
-          );
       }}
     />
   );
@@ -392,25 +321,6 @@ export function MainWorkspace(props: {
                   isActive={terminalVisible}
                   focusRequestId={terminal.focusRequestId}
                   onClosePanel={closeTerminalPane}
-                />
-              </Suspense>
-            </div>
-          ) : null}
-          {browserPane ? (
-            <div
-              className={cn("absolute inset-0", !browserVisible && "invisible pointer-events-none")}
-              inert={!browserVisible}
-              aria-hidden={!browserVisible}
-              data-native-browser-surface={browserVisible ? "true" : undefined}
-            >
-              <Suspense fallback={<PanelStateMessage loadingLabel="Loading browser" />}>
-                <LazyBrowserPanel
-                  mode="sidebar"
-                  threadId={props.threadId}
-                  hideTabs
-                  runtimeMode="live"
-                  isVisible={browserVisible}
-                  onClosePanel={closeBrowserPane}
                 />
               </Suspense>
             </div>

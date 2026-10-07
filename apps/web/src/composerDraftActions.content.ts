@@ -49,11 +49,6 @@ export function createContentActions(
                 (item) => !consumed.assistantSelections.includes(item),
               )
             : [],
-          browserAnnotations: consumed
-            ? current.browserAnnotations.filter(
-                (item) => !consumed.browserAnnotations.includes(item),
-              )
-            : [],
           terminalContexts: consumed
             ? current.terminalContexts.filter((item) => !consumed.terminalContexts.includes(item))
             : [],

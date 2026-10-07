@@ -2,8 +2,7 @@ import type { ServiceMap } from "effect";
 import type { ProjectionSnapshotQueryShape } from "../Services/ProjectionSnapshotQuery.ts";
 import type { OrchestrationThreadShell } from "@glade/contracts/orchestration/threadEntities";
 import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
-import { Option, Effect, Cause } from "effect";
-import { ComputerService } from "../../computer/Services/ComputerService";
+import { Effect, Cause } from "effect";
 import { makeProviderThreadProjection } from "./threadProjection";
 import { ProviderService } from "../../provider/Services/ProviderService.ts";
 import { QueuedTurnPromotionRepository } from "../../persistence/Services/QueuedTurnPromotions.ts";
@@ -23,7 +22,6 @@ import { makeProviderContextBootstrap } from "./contextBootstrap";
 export function makeProviderTaskControl(input: {
   readonly projectionAccess: ProviderProjectionAccessShape;
   readonly projectionSnapshotQuery: ProjectionSnapshotQueryShape;
-  readonly computerService: Option.Option<ServiceMap.Service.Shape<typeof ComputerService>>;
   readonly appendProviderFailureActivity: ReturnType<
     typeof makeProviderThreadProjection
   >["appendProviderFailureActivity"];
@@ -42,7 +40,6 @@ export function makeProviderTaskControl(input: {
   readonly setThreadSession: ReturnType<typeof makeProviderThreadProjection>["setThreadSession"];
 }) {
   const {
-    computerService,
     appendProviderFailureActivity,
     settleInterruptedProviderTurn,
     providerService,
@@ -104,28 +101,6 @@ export function makeProviderTaskControl(input: {
     const providerThread = yield* resolveProviderSessionThread(input.threadId);
     if (!thread) {
       return;
-    }
-
-    // P1 activation stickiness: Stop is an explicit off. A crowded inbox of queued and steered turns
-    // must not resurrect computer control after the user halted it, so clear the durable chat intent up
-    // front. Best-effort: a consent-store failure must not fail the stop itself (that would leave the
-    // turn running with the button looking dead); it is logged and the interrupt proceeds.
-    if (Option.isSome(computerService)) {
-      yield* Effect.promise(() =>
-        computerService.value.manager.admitControl(input.threadId, "off", 0),
-      ).pipe(
-        Effect.catchCause((cause) =>
-          Cause.hasInterruptsOnly(cause)
-            ? Effect.failCause(cause)
-            : Effect.logWarning(
-                "provider command reactor could not clear computer intent on stop",
-                {
-                  threadId: input.threadId,
-                  cause: Cause.pretty(cause),
-                },
-              ).pipe(Effect.asVoid),
-        ),
-      );
     }
 
     const interruptSession = thread.session;

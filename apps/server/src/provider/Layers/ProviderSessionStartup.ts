@@ -11,7 +11,6 @@ import { ProviderLifecycle } from "../Services/ProviderLifecycle";
 import {
   readPersistedProviderOptions,
   PRIOR_TRANSCRIPT_BOOTSTRAP_PENDING,
-  readPersistedComputerControl,
   hasResumeCursor,
   readPersistedModelSelection,
   readPersistedCwd,
@@ -131,18 +130,12 @@ export const ProviderSessionStartupLive = Layer.effect(
                 (persistedBinding?.provider === input.provider
                   ? readPersistedProviderOptions(persistedBinding.runtimePayload)
                   : undefined);
-              const effectiveComputerControl =
-                input.enableComputerControl ??
-                (persistedBinding?.provider === input.provider
-                  ? readPersistedComputerControl(persistedBinding.runtimePayload)
-                  : false);
               let replacementStarted = false;
               const startupLifecycle = new ProviderStartupLifecycle();
               const startAndPersistReplacement = Effect.gen(function* () {
                 yield* ensureProviderEnabled(input.provider, "ProviderService.startSession");
                 const resolvedAdapterStartInput = {
                   ...adapterStartInput,
-                  enableComputerControl: effectiveComputerControl,
                   lifecycleGeneration: lease.generation,
                   ...(effectiveProviderOptions !== undefined
                     ? { providerOptions: effectiveProviderOptions }
@@ -222,11 +215,9 @@ export const ProviderSessionStartupLive = Layer.effect(
                   bindings.upsertSessionBinding(session, threadId, {
                     modelSelection: input.modelSelection,
                     providerOptions: effectiveProviderOptions,
-                    enableComputerControl: effectiveComputerControl,
                     lifecycleGeneration: lease.generation,
                     runtimePayload: {
                       [AGENT_GATEWAY_CREDENTIAL_ROTATION_REQUIRED]: false,
-                      ...(effectiveComputerControl ? { enableComputerControl: true } : {}),
                       [PRIOR_TRANSCRIPT_BOOTSTRAP_PENDING]: priorTranscriptBootstrapPending,
                     },
                   }),
@@ -267,12 +258,6 @@ export const ProviderSessionStartupLive = Layer.effect(
               const previousProviderOptions = readPersistedProviderOptions(
                 persistedBinding.runtimePayload,
               );
-              const previousComputerControl = readPersistedComputerControl(
-                persistedBinding.runtimePayload,
-              );
-              // Otherwise the previous binding's value is recycled with its generation.
-              const restoredComputerControl =
-                input.enableComputerControl ?? previousComputerControl;
               const previousCwd = readPersistedCwd(persistedBinding.runtimePayload);
               yield* previousAdapter.stopSession(threadId);
 
@@ -296,7 +281,6 @@ export const ProviderSessionStartupLive = Layer.effect(
                           ...(previousProviderOptions !== undefined
                             ? { providerOptions: previousProviderOptions }
                             : {}),
-                          ...(restoredComputerControl ? { enableComputerControl: true } : {}),
                           ...(persistedBinding.resumeCursor !== undefined
                             ? { resumeCursor: persistedBinding.resumeCursor }
                             : {}),
@@ -313,7 +297,6 @@ export const ProviderSessionStartupLive = Layer.effect(
                             lifecycleGeneration: previousGeneration,
                             modelSelection: previousModelSelection,
                             providerOptions: previousProviderOptions,
-                            enableComputerControl: restoredComputerControl,
                           }),
                         );
 

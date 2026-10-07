@@ -7,7 +7,6 @@ import {
   type ComposerThreadDraftState,
   type DraftThreadState,
   buildDraftThreadState,
-  createEmptyThreadDraft,
   draftThreadStatesEqual,
   removeProjectDraftMappingsForThread,
 } from "./composerDraftDomain";
@@ -430,7 +429,7 @@ export function createDraftThreadsActions(
         });
       } else get().clearDraftThread(threadId);
     },
-    clearDraftThread: (threadId, options) => {
+    clearDraftThread: (threadId) => {
       if (threadId.length === 0) {
         return;
       }
@@ -455,22 +454,8 @@ export function createDraftThreadsActions(
           state.draftThreadsByThreadId;
         const { [threadId]: _removedComposerDraft, ...restDraftsByThreadId } =
           state.draftsByThreadId;
-        const computerControl = options?.preserveComputerControl
-          ? _removedComposerDraft?.enableComputerControl
-          : undefined;
         return {
-          draftsByThreadId:
-            computerControl === undefined
-              ? restDraftsByThreadId
-              : {
-                  ...restDraftsByThreadId,
-                  [threadId]: {
-                    ...createEmptyThreadDraft(),
-                    enableComputerControl: computerControl,
-                    computerControlMode: _removedComposerDraft?.computerControlMode,
-                    computerControlGeneration: _removedComposerDraft?.computerControlGeneration,
-                  },
-                },
+          draftsByThreadId: restDraftsByThreadId,
           draftThreadsByThreadId: restDraftThreadsByThreadId,
           projectDraftThreadIdByProjectId: nextProjectDraftThreadIdByProjectId,
         };

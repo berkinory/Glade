@@ -11,7 +11,6 @@ import { Layer } from "effect";
 import { AgentGatewayLive } from "./agentGateway/Layers/AgentGateway";
 import { AgentGatewayOperationRepositoryLive } from "./agentGateway/Layers/AgentGatewayOperationRepository";
 import { AgentGatewayCredentialsWithSecretsLive } from "./agentGateway/Layers/AgentGatewayCredentials";
-import { BrowserAutomationHostLive } from "./browserAutomation/Layers/BrowserAutomationHost";
 import { CheckpointDiffQueryLive } from "./checkpointing/Layers/CheckpointDiffQuery";
 import { CheckpointStoreLive } from "./checkpointing/Layers/CheckpointStore";
 import { CheckpointReactorLive } from "./orchestration/Layers/CheckpointReactor";
@@ -23,7 +22,6 @@ import { RuntimeReceiptBusLive } from "./orchestration/Layers/RuntimeReceiptBus"
 import { ThreadDeletionReactorLive } from "./orchestration/Layers/ThreadDeletionReactor";
 import { TurnCheckpointCoordinatorLive } from "./orchestration/Layers/TurnCheckpointCoordinator";
 import { OrchestrationLayerLive } from "./orchestration/runtimeLayer";
-import { ComputerServiceLive } from "./computer/Layers/ComputerService";
 import { KeybindingsLive } from "./settings/Layers/Keybindings";
 import { GitCoreLive } from "./git/Layers/GitCore";
 import { GitLayerLive, TextGenerationLayerLive } from "./git/runtimeLayer";
@@ -76,7 +74,6 @@ function makeServerRuntimeServicesLayer(
   );
   const runtimeIngestionLayer = ProviderRuntimeIngestionLive.pipe(
     Layer.provideMerge(runtimeServicesLayer),
-    Layer.provideMerge(ComputerServiceLive),
   );
   const threadGitMetadataReactorLayer = ThreadGitMetadataReactorLive.pipe(
     Layer.provideMerge(runtimeServicesLayer),
@@ -156,15 +153,11 @@ function makeServerRuntimeServicesLayer(
     Layer.provideMerge(ThreadDiagnosticsQueryLive),
     Layer.provideMerge(ServerSettingsLive),
     Layer.provideMerge(providerHealthLayer),
-    Layer.provideMerge(BrowserAutomationHostLive),
-
-    Layer.provideMerge(ComputerServiceLive),
   );
 
   return Layer.mergeAll(
     agentGatewayCredentialsLayer,
     agentGatewayLayer,
-    BrowserAutomationHostLive,
     managedAttachmentCleanupLayer,
     AgentGatewayOperationRepositoryLive,
     providerHealthLayer,
@@ -173,7 +166,6 @@ function makeServerRuntimeServicesLayer(
     providerCommandReactorLayer,
     threadGitMetadataReactorLayer,
     threadDeletionReactorLayer,
-    ComputerServiceLive,
     GitLayerLive,
     gitActionRunsLayer,
     TextGenerationLayerLive,

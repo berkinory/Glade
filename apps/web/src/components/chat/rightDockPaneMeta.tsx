@@ -1,12 +1,6 @@
 import type { IconComponent } from "~/lib/iconComponent";
 import type { ReactNode } from "react";
-import {
-  Folder03Icon,
-  GitCompareIcon,
-  InfoIcon,
-  Globe02Icon,
-  ComputerTerminal01Icon,
-} from "~/lib/icons";
+import { Folder03Icon, GitCompareIcon, InfoIcon, ComputerTerminal01Icon } from "~/lib/icons";
 import { type RightDockPane, type RightDockPaneKind } from "~/rightDockStore.logic";
 import { SurfaceChipIcon } from "./chatHeaderControls";
 export interface RightDockPaneMeta {
@@ -14,10 +8,6 @@ export interface RightDockPaneMeta {
   Icon: IconComponent;
 }
 const RIGHT_DOCK_PANE_META: Record<RightDockPaneKind, RightDockPaneMeta> = {
-  browser: {
-    label: "Browser",
-    Icon: Globe02Icon,
-  },
   explorer: {
     label: "Explorer",
     Icon: Folder03Icon,

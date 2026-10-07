@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import BranchToolbar from "~/components/BranchToolbar";
@@ -9,11 +9,9 @@ import { PullRequestThreadDialog } from "~/components/PullRequestThreadDialog";
 import { RenameThreadDialog } from "~/components/RenameThreadDialog";
 import { SidebarHeaderNavigationControls } from "~/components/SidebarHeaderNavigationControls";
 import TerminalWorkspaceTabs from "~/components/TerminalWorkspaceTabs";
-import { AmbientRailSlot } from "~/components/chat/AmbientRailSlot";
 import { ChatHeader } from "~/components/chat/ChatHeader";
 import { ChatSurfaceHeader } from "~/components/chat/ChatSurfaceHeader";
 import { ChatTranscriptPane } from "~/components/chat/ChatTranscriptPane";
-import { ComputerPreviewPopover } from "~/components/chat/ComputerPreviewPopover";
 import { ExpandedImageOverlay } from "~/components/chat/ExpandedImageOverlay";
 import { ProjectPicker } from "~/components/chat/ProjectPicker";
 import { ProviderHandoffDialog } from "~/components/chat/ProviderHandoffDialog";
@@ -36,11 +34,6 @@ import {
 import { EnvironmentPanel } from "~/components/chat/environment/EnvironmentPanel";
 import { SidebarHeaderTrigger } from "~/components/ui/sidebar";
 import { isElectron } from "~/env";
-import {
-  selectThreadComputerPreviewLayout,
-  selectThreadComputerPreviewSession,
-  useComputerStateStore,
-} from "~/computerStateStore";
 import { stripDiffSearchParams } from "~/diffRouteSearch";
 import { startSelectionChat } from "~/lib/selectionChat";
 import { cn } from "~/lib/utils";
@@ -189,24 +182,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
   } = controller.props;
   const { setThreadError } = controller.composer;
   const navigate = useNavigate();
-  const previewSession = useComputerStateStore(selectThreadComputerPreviewSession(threadId));
-  const previewLayout = useComputerStateStore(selectThreadComputerPreviewLayout(threadId));
-  const mainContentRef = useRef<HTMLDivElement | null>(null);
-  const [mainContentWidth, setMainContentWidth] = useState(1600);
-
-  useEffect(() => {
-    const element = mainContentRef.current;
-    if (!element) return;
-    const update = () => {
-      const width = element.clientWidth;
-      setMainContentWidth((previous) => (previous === width ? previous : width));
-    };
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-
   const onOpenTurnDiff = useCallback(
     (turnId: TurnId, filePath?: string) => {
       if (diffEnvironmentPending) return;
@@ -266,7 +241,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     activeWorktreeSetup,
     worktreeSetupPendingAction,
     onResolveWorktreeSetup,
-    enableComputerControl,
     editableUserMessageId,
     hasStreamingAssistantText,
     getAgentActivityDetail,
@@ -281,7 +255,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     handleCreateProjectFromPickerPath,
     handleResetWorkspaceToHome,
     handleForkFromMessage,
-    handleEnableComputerControlFromDenial,
     onEditUserMessage,
   } = controller.submission;
   if (!activeThread) {
@@ -325,11 +298,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
       </div>
     );
   }
-  const presentation = createChatPresentation(controller, activeThread, {
-    mainContentWidth,
-    previewSession,
-    previewLayout,
-  });
+  const presentation = createChatPresentation(controller, activeThread);
   const {
     activeThreadDisplayTitle,
     environmentHeaderState,
@@ -341,7 +310,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     branchToolbarProps,
     environmentPanelProps,
     environmentOverlayVariant,
-    previewBudgetPx,
   } = presentation;
   const composerSection = (
     <>
@@ -505,7 +473,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
           onSelectTab={setTerminalWorkspaceTab}
         />
       ) : null}
-      <div ref={mainContentRef} className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
+      <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           <div
             aria-hidden={terminalWorkspaceTerminalTabActive}
@@ -626,8 +594,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                     turnDiffSummaryByAssistantMessageId={turnDiffSummaryByAssistantMessageId}
                     onOpenTurnDiff={onOpenTurnDiff}
                     onOpenThread={onNavigateToThread}
-                    computerControlEnabled={enableComputerControl}
-                    onEnableComputerControl={handleEnableComputerControlFromDenial}
                     onUndoTurnFiles={(turnCounts) => {
                       void undoTurnFiles({
                         thread: activeThread,
@@ -755,18 +721,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
               {...environmentPanelProps}
               open={environmentPanelVisible}
               variant={environmentOverlayVariant}
-              railBottom={
-                previewSession ? (
-                  <AmbientRailSlot envOpen={environmentPanelVisible}>
-                    <ComputerPreviewPopover
-                      key={threadId}
-                      threadId={threadId}
-                      maxWidthPx={previewBudgetPx}
-                      size={settings.computerPreviewSize === "large" ? "large" : "compact"}
-                    />
-                  </AmbientRailSlot>
-                ) : undefined
-              }
             />
           ) : null}
         </div>

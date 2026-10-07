@@ -14,7 +14,6 @@ import {
   ComposerTerminalContextNode,
   ComposerMentionNode,
   ComposerSkillNode,
-  ComposerSlashCommandNode,
   ComposerAgentMentionNode,
   isComposerInlineTokenNode,
   type ComposerInlineTokenNode,
@@ -103,7 +102,6 @@ function getAbsoluteOffsetForPointInternal(
     if (
       node instanceof ComposerMentionNode ||
       node instanceof ComposerSkillNode ||
-      node instanceof ComposerSlashCommandNode ||
       node instanceof ComposerAgentMentionNode
     ) {
       return getAbsoluteOffsetForInlineTokenPoint(node, offset, pointOffset, expanded);
@@ -137,7 +135,6 @@ function findSelectionPointAtOffset(
   if (
     node instanceof ComposerMentionNode ||
     node instanceof ComposerSkillNode ||
-    node instanceof ComposerSlashCommandNode ||
     node instanceof ComposerAgentMentionNode ||
     node instanceof ComposerLinkNode ||
     node instanceof ComposerTerminalContextNode

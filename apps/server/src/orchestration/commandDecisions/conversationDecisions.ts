@@ -16,7 +16,6 @@ import {
 import { OrchestrationCommandInvariantError } from "../Errors.ts";
 import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import { EventId, TurnId } from "@glade/contracts/core/baseSchemas";
-import { computerActivationMetadata } from "../../computer/computerActivation.ts";
 import {
   CommandDecisionInput,
   CommandDecisionEffect,
@@ -212,7 +211,6 @@ export function decideConversationCommand({
             ...(command.providerOptions !== undefined
               ? { providerOptions: command.providerOptions }
               : {}),
-            ...computerActivationMetadata({ ...command, userMessageText: command.text }),
             ...(command.assistantDeliveryMode !== undefined
               ? { assistantDeliveryMode: command.assistantDeliveryMode }
               : {}),

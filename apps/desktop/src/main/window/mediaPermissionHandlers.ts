@@ -1,5 +1,4 @@
 import { session, systemPreferences, type BrowserWindow } from "electron";
-import { BROWSER_SESSION_PARTITION } from "../../browser/browserSessionPolicy";
 import { isClipboardWritePermission } from "./clipboardPermissions";
 import { isTrustedMediaPermissionRequest } from "./mediaPermissions";
 export function configureMediaPermissions(getMainWindow: () => BrowserWindow | null): void {
@@ -11,12 +10,6 @@ export function configureMediaPermissions(getMainWindow: () => BrowserWindow | n
     {
       targetSession: session.defaultSession,
       trustedRequester: trustedMainRenderer,
-    },
-    {
-      // Browser pages are untrusted web origins. They must never inherit the microphone grant used by
-      // Glade's own voice-composer renderer.
-      targetSession: session.fromPartition(BROWSER_SESSION_PARTITION),
-      trustedRequester: () => null,
     },
   ];
 

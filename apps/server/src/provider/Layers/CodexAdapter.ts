@@ -56,7 +56,6 @@ import { AgentGatewayCredentials } from "../../agentGateway/Services/AgentGatewa
 import {
   acquireAgentGatewaySessionLease,
   AGENT_GATEWAY_NO_CAPABILITIES,
-  captureAgentGatewayCapabilityInput,
 } from "../../agentGateway/sessionLease.ts";
 import { filterProviderPromptImageAttachments } from "../core/promptAttachments.ts";
 import { resolveProviderAttachmentPath } from "../core/providerAttachmentPaths.ts";
@@ -2056,7 +2055,7 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
           ? { forkSourceResumeCursor: input.forkSourceResumeCursor }
           : {}),
         ...(input.providerOptions !== undefined ? { providerOptions: input.providerOptions } : {}),
-        agentGatewayCapabilityInput: captureAgentGatewayCapabilityInput(input),
+        agentGatewayCapabilityInput: AGENT_GATEWAY_NO_CAPABILITIES,
         runtimeMode: input.runtimeMode,
         ...codexModelSelectionOverrides(input.modelSelection),
       };

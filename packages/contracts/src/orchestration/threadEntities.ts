@@ -720,10 +720,6 @@ export const OrchestrationThreadShell = Schema.Struct({
 
 export type OrchestrationThreadShell = typeof OrchestrationThreadShell.Type;
 
-export const ComputerControlMode = Schema.Literals(["off", "request", "chat"]);
-
-export type ComputerControlMode = typeof ComputerControlMode.Type;
-
 export const TurnCountRange = Schema.Struct({
   fromTurnCount: NonNegativeInt,
   toTurnCount: NonNegativeInt,

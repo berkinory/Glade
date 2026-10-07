@@ -16,7 +16,7 @@ The release workflow hashes and checks all platform artifacts against their sour
 
 ## Local builds
 
-Install the versions in `.mise.toml`, Xcode, and the Rust toolchain pinned in `packages/shared/src/computer/cuaDriverRelease.json`. Run `bun install --frozen-lockfile`. Build each platform on its matching host:
+Install the versions in `.mise.toml` and Xcode. Run `bun install --frozen-lockfile`. Build each platform on its matching host:
 
 ```sh
 CSC_IDENTITY_AUTO_DISCOVERY=false bun run package:mac:arm64
@@ -45,10 +45,9 @@ bun run package:mac:arm64 -- --signed
 Artifacts land in `release/`. Local notarization uses the keychain profile; CI uses App Store Connect API credentials. Never commit private keys or passwords.
 
 Desktop packages retain only English Chromium locales. The backend bundles its diff parser so
-server-side syntax-highlighting resources are not shipped. The Electron browser uses the regular
-Playwright driver, without the optional Patchright stealth driver. Unused Effect API-documentation
-UI payloads and gzip web sidecars are excluded; original web assets and Brotli sidecars remain for
-desktop and HTTP access. Cua is staged from the pinned provisioner, without local SDKs or cached builds.
+server-side syntax-highlighting resources are not shipped. Unused Effect API-documentation UI
+payloads and gzip web sidecars are excluded; original web assets and Brotli sidecars remain for
+desktop and HTTP access.
 
 ## GitHub Actions
 
@@ -59,10 +58,7 @@ and publication. The four build jobs run in parallel through `release-build.yml`
 before those jobs start. Release jobs restore dependency and build caches without uploading duplicate
 archives. See [CI and automation](ci.md) for cache ownership and debugging. Pushing a stable `vX.Y.Z` tag publishes only
 after both macOS packages are signed and notarized; manual publication also requires running on that
-exact tag. Existing releases are never overwritten. The Cua native cache refreshes weekly and when
-its build inputs change for macOS arm64, macOS x64 and Linux x64. Native macOS and Linux Cua checks
-run on native input changes and manual requests. macOS host and lifecycle checks also run for relevant
-runtime and dependency changes. Linux host tests already run in the full CI unit suite.
+exact tag. Existing releases are never overwritten.
 
 Workspace setup retries a failed frozen-lockfile Bun install once. This covers transient
 workspace prepare failures during a cold dependency extraction; a second failure still stops
@@ -88,7 +84,7 @@ The local keychain does not transfer to GitHub runners. Missing Apple secrets st
 1. Align package versions with `node scripts/update-release-package-versions.ts X.Y.Z`, then refresh `bun.lock` with `bun install --lockfile-only --ignore-scripts`.
 2. Update `CHANGELOG.md`; the in-app What's new and release history read it at build time. Use `New` for newly available capabilities, `Improved` for refinements, `Fixed` for corrected behavior, and `Removed` for retired functionality. Keep the `## X.Y.Z - date`, `### Category` and `- entry` layout, which the app parses. Mark a version released only when it really ships.
 3. Run `bun run check`, `bun run test`, `bun scripts/check-windows-runtime-boundary.ts`, and `bun scripts/check-migration-lineage.ts`. Check the packaged app with an isolated profile on each supported platform.
-4. Commit the reviewed source on `main` and push it to `origin`. Wait for exact-commit CI and warm the Cua release cache before tagging that commit `vX.Y.Z` and pushing the tag. Do not push inherited upstream tags.
+4. Commit the reviewed source on `main` and push it to `origin`. Wait for exact-commit CI before tagging that commit `vX.Y.Z` and pushing the tag. Do not push inherited upstream tags.
 5. Verify the GitHub Release notes link all four installers and list their SHA-256 checksums. The ten assets are four installers, two macOS update ZIPs, three platform update manifests, and the Windows blockmap. Verify both Homebrew architecture checksums.
 
 ## Recovering 0.2.0

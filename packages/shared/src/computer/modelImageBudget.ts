@@ -1,1 +1,0 @@
-export const MODEL_SCREEN_IMAGE_MAX_DIMENSION = 1_536;

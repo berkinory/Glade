@@ -42,11 +42,6 @@ import {
 import type { TerminalEvent } from "@glade/contracts/terminal/terminal";
 import { WS_CHANNELS, WS_METHODS, type WsWelcomePayload } from "@glade/contracts/transport/ws/ws";
 import type { WsBootstrapNegotiateResult } from "@glade/contracts/transport/ws/wsCompatibility";
-import {
-  COMPUTER_WS_CHANNELS,
-  COMPUTER_WS_METHODS,
-  type ComputerEvent,
-} from "@glade/contracts/computer/computer";
 import { VOICE_TRANSCRIPTION_UPLOAD_ROUTE_PATH } from "@glade/shared/transport/binaryTransfer";
 import { Option, Schema } from "effect";
 import { showConfirmDialogFallback } from "./confirmDialogFallback";
@@ -58,18 +53,32 @@ import { WsTransport } from "./wsTransport.implementation";
 import type { WsThreadStreamFailure } from "./wsTransport.support";
 import { emitWsCompatibilityIssue, emitWsTransportState } from "./wsTransportEvents";
 import { resolveWsHttpUrl } from "./lib/wsHttpUrl";
-import {
-  createListenerRegistry,
-  fallbackBrowserStateListeners,
-  defaultBrowserTitle,
-  createFallbackTab,
-  cloneBrowserState,
-  getFallbackBrowserState,
-  emitFallbackBrowserState,
-  markFallbackBrowserStateChanged,
-  ensureFallbackBrowserWorkspace,
-  resolveFallbackBrowserTab,
-} from "./wsNativeApiBrowser";
+
+function createListenerRegistry<T>() {
+  const listeners = new Set<(payload: T) => void>();
+  return {
+    get size() {
+      return listeners.size;
+    },
+    subscribe(listener: (payload: T) => void) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    emit(payload: T) {
+      for (const listener of listeners) {
+        try {
+          listener(payload);
+        } catch {
+          // A listener must not prevent delivery to the remaining subscribers.
+        }
+      }
+    },
+    clear() {
+      listeners.clear();
+    },
+  };
+}
+
 let instance: { api: NativeApi; transport: WsTransport } | null = null;
 
 export function readWsServerCapabilities(): ReadonlyArray<string> | null {
@@ -137,7 +146,6 @@ function omitNullUserInputAnswers(
   };
 }
 const terminalEventListeners = createListenerRegistry<TerminalEvent>();
-const computerEventListeners = createListenerRegistry<ComputerEvent>();
 const orchestrationDomainEventListeners = createListenerRegistry<OrchestrationEvent>();
 const orchestrationShellEventListeners = createListenerRegistry<OrchestrationShellStreamItem>();
 const orchestrationThreadEventListeners = createListenerRegistry<OrchestrationThreadStreamItem>();
@@ -153,12 +161,10 @@ function clearWsNativeApiListeners(): void {
   gitWorktreeSetupProgressListeners.clear();
   projectProvisionProgressListeners.clear();
   terminalEventListeners.clear();
-  computerEventListeners.clear();
   orchestrationDomainEventListeners.clear();
   orchestrationShellEventListeners.clear();
   orchestrationThreadEventListeners.clear();
   threadStreamFailureListeners.clear();
-  fallbackBrowserStateListeners.clear();
 }
 
 async function requestAuthJson<T>(
@@ -347,9 +353,6 @@ export function createWsNativeApi(): NativeApi {
   });
   transport.subscribe(WS_CHANNELS.terminalEvent, (message) => {
     terminalEventListeners.emit(message.data);
-  });
-  transport.subscribe(COMPUTER_WS_CHANNELS.event, (message) => {
-    computerEventListeners.emit(message.data);
   });
   transport.subscribe(ORCHESTRATION_WS_CHANNELS.shellEvent, (message) => {
     orchestrationShellEventListeners.emit(message.data);
@@ -678,220 +681,6 @@ export function createWsNativeApi(): NativeApi {
       },
       onShellEvent: orchestrationShellEventListeners.subscribe,
       onThreadEvent: orchestrationThreadEventListeners.subscribe,
-    },
-    computer: {
-      getStatus: (input) => transport.request(COMPUTER_WS_METHODS.getStatus, input),
-      getAuditHistory: (input) => transport.request(COMPUTER_WS_METHODS.getAuditHistory, input),
-      getState: (input) => transport.request(COMPUTER_WS_METHODS.getState, input),
-      provision: (input) =>
-        transport.request(COMPUTER_WS_METHODS.provision, input, { timeoutMs: null }),
-      getThreadState: (input) => transport.request(COMPUTER_WS_METHODS.getThreadState, input),
-      setControlEnabled: (input) => transport.request(COMPUTER_WS_METHODS.setControlEnabled, input),
-      inputClick: (input) => transport.request(COMPUTER_WS_METHODS.inputClick, input),
-      inputScroll: (input) => transport.request(COMPUTER_WS_METHODS.inputScroll, input),
-      inputKey: (input) => transport.request(COMPUTER_WS_METHODS.inputKey, input),
-      onEvent: computerEventListeners.subscribe,
-    },
-    browser: {
-      ...(window.desktopBridge?.browser?.vault
-        ? { vault: window.desktopBridge.browser.vault }
-        : {}),
-      open: async (input) => {
-        if (window.desktopBridge) {
-          return window.desktopBridge.browser.open(input);
-        }
-        const state = ensureFallbackBrowserWorkspace(input.threadId);
-        if (input.initialUrl && state.tabs.length > 0) {
-          const activeTab = resolveFallbackBrowserTab(state);
-          activeTab.url = input.initialUrl;
-          activeTab.title = defaultBrowserTitle(input.initialUrl);
-          activeTab.lastCommittedUrl = input.initialUrl;
-        }
-        markFallbackBrowserStateChanged(state);
-        return emitFallbackBrowserState(input.threadId);
-      },
-      close: async (input) => {
-        if (window.desktopBridge) {
-          return window.desktopBridge.browser.close(input);
-        }
-        const state = getFallbackBrowserState(input.threadId);
-        state.open = false;
-        state.activeTabId = null;
-        state.tabs = [];
-        state.lastError = null;
-        markFallbackBrowserStateChanged(state);
-        return emitFallbackBrowserState(input.threadId);
-      },
-      hide: async (input) => {
-        if (window.desktopBridge) {
-          await window.desktopBridge.browser.hide(input);
-        }
-      },
-      getState: async (input) => {
-        if (window.desktopBridge) {
-          return window.desktopBridge.browser.getState(input);
-        }
-        return cloneBrowserState(getFallbackBrowserState(input.threadId));
-      },
-      setPanelBounds: async (input) => {
-        if (window.desktopBridge) {
-          await window.desktopBridge.browser.setPanelBounds(input);
-          return;
-        }
-      },
-      attachWebview: async (input) => {
-        if (window.desktopBridge) {
-          return window.desktopBridge.browser.attachWebview(input);
-        }
-        return cloneBrowserState(getFallbackBrowserState(input.threadId));
-      },
-      detachWebview: async (input) => {
-        if (window.desktopBridge) {
-          await window.desktopBridge.browser.detachWebview(input);
-        }
-      },
-      copyLink: async (input) => {
-        if (window.desktopBridge) {
-          await window.desktopBridge.browser.copyLink(input);
-          return;
-        }
-        throw new Error("Copying the browser link requires the desktop app.");
-      },
-      copyScreenshotToClipboard: async (input) => {
-        if (window.desktopBridge) {
-          await window.desktopBridge.browser.copyScreenshotToClipboard(input);
-          return;
-        }
-        throw new Error("Browser screenshots require the desktop app.");
-      },
-      captureScreenshot: async (input) => {
-        if (window.desktopBridge) {
-          return window.desktopBridge.browser.captureScreenshot(input);
-        }
-        throw new Error("Browser screenshots require the desktop app.");
-      },
-      capturePreview: async (input) => window.desktopBridge?.browser.capturePreview(input) ?? null,
-      navigate: async (input) => {
-        if (window.desktopBridge) {
-          return window.desktopBridge.browser.navigate(input);
-        }
-        const state = ensureFallbackBrowserWorkspace(input.threadId);
-        const tab = resolveFallbackBrowserTab(state, input.tabId);
-        tab.url = input.url;
-        tab.title = defaultBrowserTitle(input.url);
-        tab.lastCommittedUrl = input.url;
-        tab.lastError = null;
-        tab.status = "live";
-        state.activeTabId = tab.id;
-        markFallbackBrowserStateChanged(state);
-        return emitFallbackBrowserState(input.threadId);
-      },
-      reload: async (input) => {
-        if (window.desktopBridge) {
-          return window.desktopBridge.browser.reload(input);
-        }
-        return cloneBrowserState(getFallbackBrowserState(input.threadId));
-      },
-      goBack: async (input) => {
-        if (window.desktopBridge) {
-          return window.desktopBridge.browser.goBack(input);
-        }
-        return cloneBrowserState(getFallbackBrowserState(input.threadId));
-      },
-      goForward: async (input) => {
-        if (window.desktopBridge) {
-          return window.desktopBridge.browser.goForward(input);
-        }
-        return cloneBrowserState(getFallbackBrowserState(input.threadId));
-      },
-      newTab: async (input) => {
-        if (window.desktopBridge) {
-          return window.desktopBridge.browser.newTab(input);
-        }
-        const state = ensureFallbackBrowserWorkspace(input.threadId);
-        const tab = createFallbackTab(input.url);
-        state.tabs = [...state.tabs, tab];
-        if (input.activate !== false || !state.activeTabId) {
-          state.activeTabId = tab.id;
-        }
-        markFallbackBrowserStateChanged(state);
-        return emitFallbackBrowserState(input.threadId);
-      },
-      closeTab: async (input) => {
-        if (window.desktopBridge) {
-          return window.desktopBridge.browser.closeTab(input);
-        }
-        const state = ensureFallbackBrowserWorkspace(input.threadId);
-        const nextTabs = state.tabs.filter((tab) => tab.id !== input.tabId);
-        if (nextTabs.length === state.tabs.length) {
-          return cloneBrowserState(state);
-        }
-        state.tabs = nextTabs;
-        if (nextTabs.length === 0) {
-          state.open = false;
-          state.activeTabId = null;
-          state.lastError = null;
-        } else if (!state.tabs.some((tab) => tab.id === state.activeTabId)) {
-          state.activeTabId = state.tabs[0]?.id ?? null;
-        }
-        markFallbackBrowserStateChanged(state);
-        return emitFallbackBrowserState(input.threadId);
-      },
-      selectTab: async (input) => {
-        if (window.desktopBridge) {
-          return window.desktopBridge.browser.selectTab(input);
-        }
-        const state = ensureFallbackBrowserWorkspace(input.threadId);
-        const tab = resolveFallbackBrowserTab(state, input.tabId);
-        state.activeTabId = tab.id;
-        markFallbackBrowserStateChanged(state);
-        return emitFallbackBrowserState(input.threadId);
-      },
-      openDevTools: async (input) => {
-        if (window.desktopBridge) {
-          await window.desktopBridge.browser.openDevTools(input);
-        }
-      },
-      annotations: {
-        start: async (input) => {
-          if (window.desktopBridge) {
-            return window.desktopBridge.browser.annotations.start(input);
-          }
-          throw new Error("Browser annotations require the desktop app.");
-        },
-        cancel: async (input) => {
-          if (window.desktopBridge) {
-            await window.desktopBridge.browser.annotations.cancel(input);
-            return;
-          }
-          throw new Error("Browser annotations require the desktop app.");
-        },
-        syncMarkers: async (input) => {
-          if (window.desktopBridge) {
-            await window.desktopBridge.browser.annotations.syncMarkers(input);
-            return;
-          }
-          throw new Error("Browser annotations require the desktop app.");
-        },
-        onEvent: (callback) => {
-          if (window.desktopBridge) {
-            return window.desktopBridge.browser.annotations.onEvent(callback);
-          }
-          return () => {};
-        },
-      },
-      onState: (callback) => {
-        if (window.desktopBridge) {
-          return window.desktopBridge.browser.onState(callback);
-        }
-        return fallbackBrowserStateListeners.subscribe(callback);
-      },
-      onCopyLink: (callback) => {
-        if (window.desktopBridge) {
-          return window.desktopBridge.browser.onBrowserCopyLink(callback);
-        }
-        return () => {};
-      },
     },
   };
 

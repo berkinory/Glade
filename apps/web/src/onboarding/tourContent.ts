@@ -1,11 +1,5 @@
 import type { IconComponent } from "~/lib/iconComponent";
-import {
-  Robot01Icon,
-  WorkflowCircle04Icon,
-  GitPullRequestIcon,
-  Globe02Icon,
-  KeyboardIcon,
-} from "~/lib/icons";
+import { Robot01Icon, WorkflowCircle04Icon, GitPullRequestIcon, KeyboardIcon } from "~/lib/icons";
 const GLADE_DOCS_URL = "https://github.com/berkinory/Glade/blob/main/docs";
 export interface TourCard {
   readonly id: string;
@@ -54,15 +48,6 @@ export const TOUR_CARDS: ReadonlyArray<TourCard> = [
     ],
     docsHref: `${GLADE_DOCS_URL}/quickstart.md`,
     icon: GitPullRequestIcon,
-  },
-  {
-    id: "browser",
-    label: "Browser",
-    title: "Verify in a real browser",
-    description: "Agents drive a visible, task-owned browser you can watch and annotate.",
-    highlights: ["Shared Chromium surface", "Element annotations"],
-    docsHref: `${GLADE_DOCS_URL}/core-concepts.md`,
-    icon: Globe02Icon,
   },
   {
     id: "shortcuts",

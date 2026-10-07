@@ -11,7 +11,6 @@ import type {
 import type { PinnedMessage } from "@glade/contracts/orchestration/threadEntities";
 import type { ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import { useNavigate } from "@tanstack/react-router";
-import type { ReactNode } from "react";
 import { useAppSettings } from "~/appSettings";
 import { SETTINGS_TARGETS } from "~/settingsNavigation";
 import {
@@ -71,7 +70,6 @@ export interface EnvironmentPanelProps {
   diffDisabledReason?: string | null;
   diffTotals: RepoDiffTotals;
   branchToolbar: Omit<BranchToolbarProps, "variant">;
-  railBottom?: ReactNode;
   pinnedMessages: readonly PinnedMessage[];
   pinnedMessageTextById: ReadonlyMap<MessageId, string>;
   notes: string;
@@ -115,7 +113,6 @@ export function EnvironmentPanel({
   onNotesChange,
   onClose,
   onRegisterCommitAndPushTrigger,
-  railBottom,
 }: EnvironmentPanelProps) {
   const githubRepository = githubRepositoryProp ?? null;
   const githubRepositories = githubRepositoriesProp ?? [];
@@ -289,7 +286,6 @@ export function EnvironmentPanel({
       >
         <div className="min-h-0 overflow-y-auto">{content}</div>
       </div>
-      {railBottom}
     </div>
   );
 }

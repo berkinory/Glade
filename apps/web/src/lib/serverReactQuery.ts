@@ -1,4 +1,3 @@
-import type { ComputerProvisionResult } from "@glade/contracts/computer/computer";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type {
   ServerConfig,
@@ -29,8 +28,6 @@ export const serverQueryKeys = {
     ["server", "profileStats", "peak-hour-v2", utcOffsetMinutes] as const,
   profileTokenStats: (utcOffsetMinutes: number) =>
     ["server", "profileTokenStats", utcOffsetMinutes] as const,
-  computerStatus: () => ["server", "computerStatus"] as const,
-  computerAuditHistory: () => ["server", "computerAuditHistory"] as const,
 };
 
 const serverMutationKeys = {
@@ -46,35 +43,6 @@ export function serverConfigQueryOptions() {
     },
     staleTime: Infinity,
   });
-}
-
-export const COMPUTER_STATUS_VISIBLE_REFETCH_INTERVAL_MS = 10_000;
-
-export function computerStatusQueryOptions() {
-  return queryOptions({
-    queryKey: serverQueryKeys.computerStatus(),
-    queryFn: async () => {
-      const api = ensureNativeApi();
-
-      if (!api.computer) {
-        throw new Error("This app build cannot read computer status.");
-      }
-      return api.computer.getStatus({});
-    },
-    staleTime: LOCAL_SERVERS_DEFAULT_STALE_TIME_MS,
-  });
-}
-
-let computerProvisionInFlight: Promise<ComputerProvisionResult> | undefined;
-export function provisionComputer(): Promise<ComputerProvisionResult> {
-  if (computerProvisionInFlight) return computerProvisionInFlight;
-  const api = ensureNativeApi();
-  if (!api.computer?.provision)
-    return Promise.reject(new Error("This app build cannot set up computer control."));
-  computerProvisionInFlight = api.computer.provision({}).finally(() => {
-    computerProvisionInFlight = undefined;
-  });
-  return computerProvisionInFlight;
 }
 
 interface ProviderStatusSnapshot {

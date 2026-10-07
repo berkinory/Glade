@@ -75,7 +75,6 @@ function shouldKeepBuiltInSlashCommandDespiteNativeCollision(
   command: ComposerSlashCommand,
 ): boolean {
   return (
-    command === "computer-use" ||
     command === "export" ||
     command === "feedback" ||
     command === "fork" ||
@@ -92,7 +91,6 @@ export function shouldHideProviderNativeCommandFromComposerMenu(
   const normalizedCommand = normalizeComposerSlashCommandName(command);
   const appCommandIsAvailable = options.availableAppCommands?.has(normalizedCommand) ?? true;
   return (
-    normalizedCommand === "computer-use" ||
     normalizedCommand === "status" ||
     normalizedCommand === "debug" ||
     normalizedCommand === "default" ||
@@ -157,12 +155,6 @@ const COMPOSER_SLASH_COMMAND_DEFINITIONS: Record<
     command: "fork",
     label: "/fork",
     description: "Fork this thread into local or a new worktree",
-    source: "app",
-  },
-  "computer-use": {
-    command: "computer-use",
-    label: "/computer-use",
-    description: "Use Glade Computer for this request only",
     source: "app",
   },
   fast: {
@@ -345,7 +337,6 @@ export function getAvailableComposerSlashCommands(input: {
           ...(input.supportsFastSlashCommand ? (["fast"] as const) : []),
           ...(input.canOfferReviewCommand ? (["review"] as const) : []),
           ...(input.canOfferForkCommand ? (["fork"] as const) : []),
-          "computer-use",
           ...(input.canOfferExportCommand ? (["export"] as const) : []),
           "rename",
           "feedback",
@@ -354,7 +345,6 @@ export function getAvailableComposerSlashCommands(input: {
           ...(input.canOfferForkCommand ? (["fork"] as const) : []),
           ...(input.canOfferExportCommand ? (["export"] as const) : []),
           "rename",
-          "computer-use",
           "feedback",
         ];
   return availableCommands.filter((command) => !collidingNativeCommandNames.has(command));

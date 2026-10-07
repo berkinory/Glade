@@ -22,27 +22,11 @@ import {
 } from "electron";
 import * as FS from "node:fs";
 import * as Path from "node:path";
-import type { BrowserVault } from "../../browser/automation/browserVault";
-import { registerBrowserIpcHandlers } from "../../browser/browserIpc";
-import type { DesktopBrowserManager } from "../../browser/browserManager";
-import { registerBrowserVaultIpc } from "../../browser/browserVaultIpc";
 import {
-  normalizeAgentCursorStylePreference,
-  writeAgentCursorPreference,
-} from "../../computer/agentCursorPreference";
-import type { DesktopComputerManager } from "../../computer/computerPermissions";
-import {
-  COMPUTER_SETTINGS_PANE_URLS,
-  registerComputerIpcHandlers,
-} from "../../computer/computerPermissionsIpc";
-import type { CuaDriverHost } from "../../computer/cua/cuaDriverHost";
-import {
-  AGENT_CURSOR_PREFERENCE_PATH,
   DESKTOP_CUSTOM_TITLE_BAR_PATH,
   MAC_CONTEXT_MENU_LABEL_TRAILING_PADDING,
   MAX_CLIPBOARD_IMAGE_DATA_URL_LENGTH,
 } from "../desktopEnvironment";
-import { safeConsoleError } from "../lifecycle/desktopLogging";
 import { showDesktopConfirmDialog } from "../window/confirmDialog";
 import {
   createExclusiveApplyQueue,
@@ -97,15 +81,6 @@ interface IpcMenu {
   createContextMenuIcon: (dataUrl: unknown, template?: boolean) => Electron.NativeImage | undefined;
   getDestructiveMenuIcon: () => Electron.NativeImage | undefined;
 }
-interface IpcBrowser {
-  getManager(): DesktopBrowserManager;
-  getVault(): BrowserVault;
-  startBrowserPerformanceLogging(): void;
-}
-interface IpcComputer {
-  getManager(): DesktopComputerManager | null;
-  getHost(): CuaDriverHost | undefined;
-}
 interface IpcUpdates {
   getState(): DesktopUpdateState;
   check: (reason: string) => Promise<void>;
@@ -122,8 +97,6 @@ export interface DesktopIpcDependencies {
   windows: IpcWindow;
   identity: IpcIdentity;
   contextMenu: IpcMenu;
-  browser: IpcBrowser;
-  computer: IpcComputer;
   updates: IpcUpdates;
   control: IpcControl;
 }
@@ -131,8 +104,6 @@ export function createRegisterDesktopIpc({
   windows,
   identity,
   contextMenu,
-  browser,
-  computer,
   updates,
   control,
 }: DesktopIpcDependencies) {
@@ -142,11 +113,6 @@ export function createRegisterDesktopIpc({
       () => windows.getMainWindow()?.webContents ?? null,
       windows.setMenuShortcuts,
     );
-    ipcMain.removeAllListeners(DESKTOP_IPC_CHANNELS.browser.webMcpCompatibilityPolicy);
-    ipcMain.on(DESKTOP_IPC_CHANNELS.browser.webMcpCompatibilityPolicy, (event: IpcMainEvent) => {
-      event.returnValue = browser.getManager().isWebMcpCompatibilityAllowed(event.sender.id);
-    });
-
     ipcMain.removeAllListeners(DESKTOP_IPC_CHANNELS.wsUrl);
     ipcMain.on(DESKTOP_IPC_CHANNELS.wsUrl, (event: IpcMainEvent) => {
       event.returnValue =
@@ -462,21 +428,6 @@ export function createRegisterDesktopIpc({
       control.requestGracefulAppQuit("custom-title-bar-relaunch");
     });
 
-    ipcMain.removeHandler(DESKTOP_IPC_CHANNELS.computerSetCursorStyle);
-    ipcMain.handle(
-      DESKTOP_IPC_CHANNELS.computerSetCursorStyle,
-      async (_event, rawStyle: unknown) => {
-        const style = normalizeAgentCursorStylePreference(rawStyle);
-        writeAgentCursorPreference(AGENT_CURSOR_PREFERENCE_PATH, style);
-        const host = computer.getHost();
-        if (host) {
-          await host.setCursorStyle(style).catch((error: unknown) => {
-            safeConsoleError("[desktop] live cursor style push failed", error);
-          });
-        }
-      },
-    );
-
     ipcMain.removeHandler(DESKTOP_IPC_CHANNELS.updateGetState);
     ipcMain.handle(DESKTOP_IPC_CHANNELS.updateGetState, async () => updates.getState());
 
@@ -544,29 +495,7 @@ export function createRegisterDesktopIpc({
           ...(typeof input?.threadId === "string" ? { threadId: input.threadId } : {}),
         }),
     );
-    const computerManager = computer.getManager();
-    if (computerManager) {
-      registerComputerIpcHandlers(ipcMain, computerManager, {
-        openPermissionSettingsPane: (pane) => {
-          const paneUrl = COMPUTER_SETTINGS_PANE_URLS[pane];
-          if (!paneUrl) return Promise.resolve(false);
-          return shell
-            .openExternal(paneUrl)
-            .then(() => true)
-            .catch(() => false);
-        },
-        restartApp: () => {
-          app.relaunch();
-          control.requestGracefulAppQuit("computer-permission-relaunch");
-        },
-      });
-    }
     registerDesktopVoiceTranscriptionHandler();
-    browser.startBrowserPerformanceLogging();
-    registerBrowserIpcHandlers(ipcMain, browser.getManager());
-    registerBrowserVaultIpc(ipcMain, browser.getManager(), browser.getVault(), () => {
-      windows.getMainWindow()?.webContents.send(DESKTOP_IPC_CHANNELS.browser.vault.changed);
-    });
   }
   return { registerIpcHandlers };
 }

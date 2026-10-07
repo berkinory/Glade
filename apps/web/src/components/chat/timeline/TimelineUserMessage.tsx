@@ -1,6 +1,5 @@
 import { SquarePenIcon } from "~/lib/icons";
 import { AssistantSelectionsSummaryChip } from "~/components/chat/AssistantSelectionsSummaryChip";
-import { BrowserAnnotationStrip } from "~/components/chat/BrowserAnnotationStrip";
 import {
   USER_MESSAGE_BUBBLE_BORDER_CLASS_NAME,
   USER_MESSAGE_BUBBLE_RADIUS_CLASS_NAME,
@@ -104,7 +103,6 @@ export function renderTimelineUserMessage(
     const displayedUserMessage = deriveDisplayedUserMessageState(row.message.text, {
       hideImageOnlyBootstrapPrompt:
         userImages.length > 0 || userFiles.length > 0 || assistantSelections.length > 0,
-      messageId: row.message.id,
     });
     const renderedAssistantSelections =
       assistantSelections.length > 0
@@ -119,7 +117,6 @@ export function renderTimelineUserMessage(
     const renderedFileComments = displayedUserMessage.fileComments;
     const renderedPastedTexts = displayedUserMessage.pastedTexts;
     const renderedPullRequestContexts = displayedUserMessage.pullRequestContexts;
-    const renderedBrowserAnnotations = displayedUserMessage.browserAnnotations;
     const userMessageText = displayedUserMessage.visibleText;
     const userMessageExpanded = expandedUserMessagesById[row.message.id] ?? false;
     const showUserText = userMessageText.trim().length > 0 || terminalContexts.length > 0;
@@ -128,12 +125,11 @@ export function renderTimelineUserMessage(
     const showEditUserMessage =
       Boolean(onEditUserMessage) &&
       row.message.id === latestEditableUserMessageId &&
-      (displayedUserMessage.copyText.trim().length > 0 || renderedBrowserAnnotations.length > 0);
+      displayedUserMessage.copyText.trim().length > 0;
     const hasLeadingMedia = hasLeadingUserMedia({
       imageCount: userImages.length,
       fileCount: userFiles.length,
       assistantSelectionCount: renderedAssistantSelections.length,
-      browserAnnotationCount: renderedBrowserAnnotations.length,
       fileCommentCount: renderedFileComments.length,
       pastedTextCount: renderedPastedTexts.length,
       pullRequestContextCount: renderedPullRequestContexts.length,
@@ -172,14 +168,6 @@ export function renderTimelineUserMessage(
             {renderedAssistantSelections.length > 0 && (
               <div className="mb-1 flex max-w-[240px] flex-wrap justify-end gap-1.5 self-end">
                 <AssistantSelectionsSummaryChip selections={renderedAssistantSelections} />
-              </div>
-            )}
-            {renderedBrowserAnnotations.length > 0 && (
-              <div className="mb-1 flex w-full max-w-[28rem] justify-end self-end">
-                <BrowserAnnotationStrip
-                  annotations={renderedBrowserAnnotations}
-                  className="justify-end"
-                />
               </div>
             )}
             {renderedFileComments.length > 0 && (
@@ -243,17 +231,10 @@ export function renderTimelineUserMessage(
                 key={row.message.id}
                 initialValue={displayedUserMessage.copyText}
                 disabled={isSubmittingThisEdit || isRevertingCheckpoint}
-                allowEmpty={renderedBrowserAnnotations.length > 0}
                 chatTypographyStyle={userMessageTypographyStyle}
                 borderClassName={USER_MESSAGE_BUBBLE_BORDER_CLASS_NAME}
                 onCancel={cancelUserMessageEdit}
-                onSubmit={(text) =>
-                  void submitUserMessageEdit(
-                    row.message.id,
-                    text,
-                    renderedBrowserAnnotations.length > 0,
-                  )
-                }
+                onSubmit={(text) => void submitUserMessageEdit(row.message.id, text)}
               />
             ) : showUserText ? (
               <div

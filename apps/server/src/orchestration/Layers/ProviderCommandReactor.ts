@@ -12,8 +12,6 @@ import { OrchestrationEventDeliveryRepository } from "../../persistence/Services
 import { QueuedTurnPromotionRepository } from "../../persistence/Services/QueuedTurnPromotions.ts";
 import { ProjectionSnapshotQuery } from "../Services/ProjectionSnapshotQuery.ts";
 import { ProviderService } from "../../provider/Services/ProviderService.ts";
-import { ComputerService } from "../../computer/Services/ComputerService";
-import { AgentGatewaySessionRegistry } from "../../agentGateway/Services/AgentGatewaySessionRegistry";
 import { ProjectionPendingInteractionRepository } from "../../persistence/Services/ProjectionPendingInteractions.ts";
 import { CheckpointStore } from "../../checkpointing/Services/CheckpointStore.ts";
 import { GitCore } from "../../git/Services/GitCore.ts";
@@ -76,10 +74,6 @@ const make = Effect.gen(function* () {
   const providerService = yield* ProviderService;
   const handoffPreparation = yield* Effect.serviceOption(HandoffPreparation);
   const handoffTransitions = yield* Effect.serviceOption(HandoffTransitions);
-
-  const computerService = yield* Effect.serviceOption(ComputerService);
-
-  const gatewaySessions = yield* Effect.serviceOption(AgentGatewaySessionRegistry);
 
   const pendingInteractions = yield* ProjectionPendingInteractionRepository;
 
@@ -187,8 +181,6 @@ const make = Effect.gen(function* () {
       providerService,
       serverSettings,
       setThreadSession,
-      gatewaySessions,
-      computerService,
       freshSessionContextBootstrapThreadIds,
     });
   const {
@@ -228,7 +220,6 @@ const make = Effect.gen(function* () {
   } = makeProviderTaskControl({
     projectionAccess,
     projectionSnapshotQuery,
-    computerService,
     appendProviderFailureActivity,
     settleInterruptedProviderTurn,
     providerService,
@@ -248,7 +239,6 @@ const make = Effect.gen(function* () {
     serverConfig,
     managedAttachments,
     providerService,
-    computerService,
     threadSessionSettings,
     ensureSessionForThread,
     gatewayOperations,
@@ -282,8 +272,6 @@ const make = Effect.gen(function* () {
     hasHandledTurnStartRecently,
     enqueueQueuedTurnStart,
     appendProviderFailureActivity,
-    computerService,
-    gatewaySessions,
     threadSessionSettings,
     orchestrationEngine,
     interruptProviderTurn,
@@ -319,7 +307,6 @@ const make = Effect.gen(function* () {
     queuedDispatchState,
     drainQueuedTurnsForSession,
     threadSessionSettings,
-    computerService,
     queuedTurnPromotions,
     clearStaleProviderResumeState,
     clearThreadRuntimeCaches,

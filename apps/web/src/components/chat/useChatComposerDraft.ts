@@ -8,7 +8,6 @@ import {
   type ComposerTrigger,
 } from "../../composer-logic";
 import { useComposerDraftStore, useComposerThreadDraft } from "../../composerDraftStore";
-import type { BrowserAnnotationDraft } from "../../lib/browserAnnotations";
 import type {
   ComposerAssistantSelectionAttachment,
   ComposerFileAttachment,
@@ -38,7 +37,6 @@ export function useChatComposerDraft({ threadId }: ChatComposerDraftInput) {
   const composerImages = composerDraft.images;
   const composerFiles = composerDraft.files;
   const composerAssistantSelections = composerDraft.assistantSelections;
-  const composerBrowserAnnotations = composerDraft.browserAnnotations;
   const composerFileComments = composerDraft.fileComments;
   const composerTerminalContexts = composerDraft.terminalContexts;
   const composerPastedTexts = composerDraft.pastedTexts;
@@ -54,7 +52,6 @@ export function useChatComposerDraft({ threadId }: ChatComposerDraftInput) {
         imageCount: composerImages.length,
         fileCount: composerFiles.length,
         assistantSelectionCount: composerAssistantSelections.length,
-        browserAnnotationCount: composerBrowserAnnotations.length,
         fileCommentCount: composerFileComments.length,
         terminalContexts: composerTerminalContexts,
         pastedTexts: composerPastedTexts,
@@ -62,7 +59,6 @@ export function useChatComposerDraft({ threadId }: ChatComposerDraftInput) {
       }),
     [
       composerAssistantSelections.length,
-      composerBrowserAnnotations.length,
       composerFileComments.length,
       composerFiles.length,
       composerImages.length,
@@ -87,12 +83,6 @@ export function useChatComposerDraft({ threadId }: ChatComposerDraftInput) {
   );
   const setComposerDraftRuntimeMode = useComposerDraftStore((store) => store.setRuntimeMode);
 
-  const setComposerDraftComputerControlMode = useComposerDraftStore(
-    (store) => store.setComputerControlMode,
-  );
-  const setComposerDraftComputerControl = useComposerDraftStore(
-    (store) => store.setEnableComputerControl,
-  );
   const enqueueQueuedComposerTurn = useComposerDraftStore((store) => store.enqueueQueuedTurn);
   const insertQueuedComposerTurn = useComposerDraftStore((store) => store.insertQueuedTurn);
   const removeQueuedComposerTurnFromDraft = useComposerDraftStore(
@@ -104,12 +94,6 @@ export function useChatComposerDraft({ threadId }: ChatComposerDraftInput) {
   const removeComposerDraftFile = useComposerDraftStore((store) => store.removeFile);
   const addComposerDraftAssistantSelection = useComposerDraftStore(
     (store) => store.addAssistantSelection,
-  );
-  const addComposerDraftBrowserAnnotations = useComposerDraftStore(
-    (store) => store.addBrowserAnnotations,
-  );
-  const removeComposerDraftBrowserAnnotation = useComposerDraftStore(
-    (store) => store.removeBrowserAnnotation,
   );
   const clearComposerDraftAssistantSelections = useComposerDraftStore(
     (store) => store.clearAssistantSelections,
@@ -152,9 +136,6 @@ export function useChatComposerDraft({ threadId }: ChatComposerDraftInput) {
 
   const composerAssistantSelectionsRef = useRef<ComposerAssistantSelectionAttachment[]>(
     composerAssistantSelections,
-  );
-  const composerBrowserAnnotationsRef = useRef<BrowserAnnotationDraft[]>(
-    composerBrowserAnnotations,
   );
   const composerTerminalContextsRef = useRef<TerminalContextDraft[]>(composerTerminalContexts);
   const composerFileCommentsRef = useRef<FileCommentDraft[]>(composerFileComments);
@@ -345,17 +326,6 @@ export function useChatComposerDraft({ threadId }: ChatComposerDraftInput) {
       threadId,
     ],
   );
-  const removeComposerBrowserAnnotationFromDraft = useCallback(
-    (annotationId: string) => {
-      discardPromptHistoryNavigationForComposerMutation();
-      removeComposerDraftBrowserAnnotation(threadId, annotationId);
-    },
-    [
-      discardPromptHistoryNavigationForComposerMutation,
-      removeComposerDraftBrowserAnnotation,
-      threadId,
-    ],
-  );
 
   const showComposerPastedTextInField = useCallback(
     (pastedTextId: string) => {
@@ -398,10 +368,6 @@ export function useChatComposerDraft({ threadId }: ChatComposerDraftInput) {
   }, [composerAssistantSelections]);
 
   useEffect(() => {
-    composerBrowserAnnotationsRef.current = composerBrowserAnnotations;
-  }, [composerBrowserAnnotations]);
-
-  useEffect(() => {
     composerTerminalContextsRef.current = composerTerminalContexts;
   }, [composerTerminalContexts]);
 
@@ -441,7 +407,6 @@ export function useChatComposerDraft({ threadId }: ChatComposerDraftInput) {
     composerImages,
     composerFiles,
     composerAssistantSelections,
-    composerBrowserAnnotations,
     composerFileComments,
     composerTerminalContexts,
     composerPastedTexts,
@@ -459,13 +424,10 @@ export function useChatComposerDraft({ threadId }: ChatComposerDraftInput) {
     setComposerDraftProviderModelOptions,
     setComposerDraftRuntimeMode,
 
-    setComposerDraftComputerControlMode,
-    setComposerDraftComputerControl,
     enqueueQueuedComposerTurn,
     insertQueuedComposerTurn,
     removeQueuedComposerTurnFromDraft,
     removeComposerDraftFile,
-    addComposerDraftBrowserAnnotations,
     insertComposerDraftTerminalContext,
     addComposerDraftPastedTexts,
     setComposerDraftTerminalContexts,
@@ -477,7 +439,6 @@ export function useChatComposerDraft({ threadId }: ChatComposerDraftInput) {
     clearProjectDraftThreadId,
     promptRef,
     composerAssistantSelectionsRef,
-    composerBrowserAnnotationsRef,
     composerTerminalContextsRef,
     composerFileCommentsRef,
     composerPastedTextsRef,
@@ -509,7 +470,6 @@ export function useChatComposerDraft({ threadId }: ChatComposerDraftInput) {
     removeComposerPastedTextFromDraft,
     addComposerPullRequestContextsToDraft,
     removeComposerPullRequestContextFromDraft,
-    removeComposerBrowserAnnotationFromDraft,
     showComposerPastedTextInField,
   };
 }

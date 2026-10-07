@@ -18,7 +18,6 @@ import {
 } from "./lib/brand-assets.ts";
 import {
   createDesktopPlatformBuildConfig,
-  MAC_COMPUTER_HELPER_STAGE_PATH,
   MAC_ICON_ASSET_NAME,
   MAC_ICON_COMPOSER_DEPLOYMENT_TARGET,
   validateDesktopNativeBuildHost,
@@ -72,11 +71,6 @@ const iconSourceFor = (assetPath: string) =>
   );
 const NodePtySmokeScript = Effect.zipWith(RepoRoot, Effect.service(Path.Path), (repoRoot, path) =>
   path.join(repoRoot, "scripts/node-pty-smoke.mjs"),
-);
-const ComputerHelperBuildScript = Effect.zipWith(
-  RepoRoot,
-  Effect.service(Path.Path),
-  (repoRoot, path) => path.join(repoRoot, "apps/desktop/scripts/build-computer-helper.mjs"),
 );
 const encodeJsonString = Schema.encodeEffect(Schema.UnknownFromJsonString);
 
@@ -906,32 +900,6 @@ const assertPlatformBuildResources = Effect.fn("assertPlatformBuildResources")(f
   }
 });
 
-const stageMacComputerHelper = Effect.fn("stageMacComputerHelper")(function* (
-  stageAppDir: string,
-  arch: typeof BuildArch.Type,
-  verbose: boolean,
-) {
-  const path = yield* Path.Path;
-  const fs = yield* FileSystem.FileSystem;
-  const buildScript = yield* ComputerHelperBuildScript;
-  const outputPath = path.join(stageAppDir, MAC_COMPUTER_HELPER_STAGE_PATH);
-
-  yield* fs.makeDirectory(path.dirname(outputPath), { recursive: true });
-  yield* Effect.log(`[desktop-artifact] Building native Computer helper (${arch})...`);
-  yield* runCommand(
-    ChildProcess.make({
-      cwd: stageAppDir,
-      ...commandOutputOptions(verbose),
-    })`node ${buildScript} --arch ${arch} --release --output ${outputPath}`,
-  );
-
-  if (!(yield* fs.exists(outputPath))) {
-    return yield* new BuildScriptError({
-      message: `Computer helper build completed but output was not found at ${outputPath}`,
-    });
-  }
-});
-
 const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
   options: ResolvedBuildOptions,
 ) {
@@ -1119,8 +1087,6 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
   yield* fs.copy(distDirs.desktopDist, path.join(stageAppDir, "apps/desktop/dist-electron"));
   yield* fs.makeDirectory(stageResourcesDir, { recursive: true });
   for (const entry of yield* fs.readDirectory(distDirs.desktopResources)) {
-    // Cua is provisioned below; local SDKs and cached builds are not release resources.
-    if (entry === "cua-driver") continue;
     yield* fs.copy(
       path.join(distDirs.desktopResources, entry),
       path.join(stageResourcesDir, entry),
@@ -1139,26 +1105,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
     ),
   );
 
-  if (options.platform === "mac" || options.platform === "linux") {
-    const provisionCua = path.join(repoRoot, "apps/desktop/scripts/provision-cua-driver.mjs");
-    const cuaDestination = path.join(stageResourcesDir, "cua-driver");
-    const cuaPlatform = options.platform === "mac" ? "darwin" : "linux";
-    yield* Effect.log("[desktop-artifact] Verifying and staging pinned Cua Driver...");
-    yield* timedBuildStage(
-      "cua-provision",
-      runCommand(
-        ChildProcess.make({
-          cwd: repoRoot,
-          ...commandOutputOptions(options.verbose),
-        })`node ${provisionCua} --destination ${cuaDestination} --platform ${cuaPlatform} --arch ${options.arch}`,
-      ),
-    );
-  }
   if (options.platform === "mac") {
-    yield* timedBuildStage(
-      "computer-helper",
-      stageMacComputerHelper(stageAppDir, options.arch, options.verbose),
-    );
     yield* runCommand(
       ChildProcess.make({
         cwd: repoRoot,

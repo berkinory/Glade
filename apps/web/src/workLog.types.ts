@@ -1,8 +1,4 @@
 import type { VisualReply } from "@glade/contracts/orchestration/visualReply";
-import type {
-  ComputerPermission,
-  ComputerBuildSignature,
-} from "@glade/contracts/computer/computer";
 import type { ToolLifecycleItemType } from "@glade/contracts/provider/runtimeMetadata";
 import type { OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
 import type { HandoffTransitionStage } from "@glade/contracts/orchestration/threadEntities";
@@ -38,15 +34,6 @@ export interface ProviderContextLifecycleInfo {
   recapCharacters: number;
   recapPreview: string | null;
   recapPreviewTruncated: boolean;
-}
-
-interface WorkLogComputerSetupRequired {
-  missing: readonly ComputerPermission[];
-  // Only an `adhoc` build gets the stale-grant explanation, because only there can System Settings
-  // show the switch on while the grant does not apply.
-  buildSignature?: ComputerBuildSignature;
-
-  bundleId?: string;
 }
 
 export type WorkLogToolKind =
@@ -91,8 +78,6 @@ export interface WorkLogEntry {
   gladeThreadCreation?: WorkLogGladeThreadCreation;
   visualReply?: VisualReply;
 
-  computerControlDenied?: WorkLogComputerControlDenied;
-  computerSetupRequired?: WorkLogComputerSetupRequired;
   providerContextLifecycle?: ProviderContextLifecycleInfo;
   providerTransition?: {
     operationId: CommandId;
@@ -126,10 +111,6 @@ export interface WorkLogLiveActivity {
   detail?: string;
   progress?: number;
   elapsedSeconds?: number;
-}
-
-interface WorkLogComputerControlDenied {
-  toolName: string | null;
 }
 
 export interface WorkLogGladeCreatedThread {

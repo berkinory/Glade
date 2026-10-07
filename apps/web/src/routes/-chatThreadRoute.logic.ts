@@ -55,9 +55,6 @@ export function resolveSingleProjectId(input: {
 export function normalizeSingleSearchFromPane(
   panelState: Pick<ChatPanelStateSnapshot, "panel" | "diffTurnId" | "diffFilePath">,
 ): DiffRouteSearch {
-  if (panelState.panel === "browser") {
-    return { panel: "browser" };
-  }
   if (panelState.panel === "diff") {
     return {
       panel: "diff",

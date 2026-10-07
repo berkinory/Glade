@@ -1,4 +1,3 @@
-import { CUA_HOST_SOCKET_ENV } from "@glade/shared/computer/cuaDriverProtocol";
 import { GLADE_DESKTOP_BUNDLE_ID_ENV } from "@glade/shared/platform/desktopIdentity";
 import { NetService } from "@glade/shared/platform/Net";
 import { applyShellEnvironmentHydrationMarker } from "@glade/shared/platform/shell";
@@ -10,18 +9,12 @@ import * as FS from "node:fs";
 import * as OS from "node:os";
 import * as Path from "node:path";
 import {
-  GLADE_BROWSER_HOST_PIPE_PATH,
-  resolveBrowserHostPipeBackendEnv,
-} from "../browser/browserUsePipeServer";
-import {
   BACKEND_FORCE_KILL_DELAY_MS,
   BACKEND_LOG_FILE_NAME,
   BACKEND_MAX_OLD_SPACE_ENV_KEYS,
   BACKEND_SHUTDOWN_TIMEOUT_MS,
   BASE_DIR,
   DESKTOP_BACKEND_SHUTDOWN_TOKEN,
-  DESKTOP_BROWSER_HOST_CAPABILITY,
-  DESKTOP_BROWSER_HOST_CAPABILITY_FD,
   desktopIdentity,
   isDevelopment,
   LOG_DIR,
@@ -36,7 +29,6 @@ import {
   safeConsoleError,
   sanitizeLogValue,
 } from "../main/lifecycle/desktopLogging";
-import { isBrokenPipeError } from "../main/lifecycle/desktopProcessErrors";
 import type { ServedStaticRoot } from "../main/lifecycle/desktopResources";
 import { resolveBackendNodeArgs } from "./backendNodeOptions";
 import { captureBackendProcessOutput } from "./backendProcessOutput";
@@ -72,29 +64,17 @@ interface BackendWindows {
   getMainWindow(): BrowserWindow | null;
   createWindow(): BrowserWindow;
 }
-interface BackendBrowser {
-  isHostAvailable(): boolean;
-}
-interface BackendComputer {
-  getHostEndpoint(): string | undefined;
-  suspend(): Promise<void>;
-  resume(): void;
-}
 export interface BackendDependencies {
   log: DesktopLog;
   resources: BackendResources;
   lifecycle: BackendLifecycle;
   windows: BackendWindows;
-  browser: BackendBrowser;
-  computer: BackendComputer;
 }
 export function createBackendSupervisor({
   log,
   resources,
   lifecycle,
   windows,
-  browser,
-  computer,
 }: BackendDependencies) {
   let backendReadinessAbortController: AbortController | null = null;
   let backendPort = 0;
@@ -123,14 +103,7 @@ export function createBackendSupervisor({
   function backendEnv(): NodeJS.ProcessEnv {
     const servedStaticRoot = resources.resolveServedStaticRoot();
     const env: NodeJS.ProcessEnv = {
-      ...resolveBrowserHostPipeBackendEnv(
-        process.env,
-        browser.isHostAvailable() ? GLADE_BROWSER_HOST_PIPE_PATH : null,
-        browser.isHostAvailable() ? DESKTOP_BROWSER_HOST_CAPABILITY_FD : null,
-      ),
-
       ...(servedStaticRoot?.snapshotted ? { GLADE_STATIC_DIR: servedStaticRoot.dir } : {}),
-      ...(computer.getHostEndpoint() ? { [CUA_HOST_SOCKET_ENV]: computer.getHostEndpoint() } : {}),
       [GLADE_DESKTOP_BUNDLE_ID_ENV]: desktopIdentity.bundleId,
       GLADE_MODE: "desktop",
       GLADE_NO_BROWSER: "1",
@@ -336,29 +309,14 @@ export function createBackendSupervisor({
         GLADE_DESKTOP_PARENT_STDIN: "1",
       },
       // Keep output piped in every environment so startup blockers and readiness are observable even when
-      // packaged log setup is unavailable. The fourth pipe carries the browser-host capability and must
-      // never be inherited.
-      stdio: ["pipe", "pipe", "pipe", "pipe"],
+      // packaged log setup is unavailable.
+      stdio: ["pipe", "pipe", "pipe"],
     });
-    const capabilityPipe = child.stdio[DESKTOP_BROWSER_HOST_CAPABILITY_FD];
-    if (capabilityPipe && "end" in capabilityPipe) {
-      capabilityPipe.on("error", (error) => {
-        if (!isBrokenPipeError(error)) {
-          safeConsoleError("[desktop] failed to deliver browser host capability", error);
-        }
-      });
-      capabilityPipe.end(DESKTOP_BROWSER_HOST_CAPABILITY);
-    } else {
-      child.kill();
-      scheduleBackendRestart("browser host capability pipe was unavailable");
-      return;
-    }
     const listeningDetector = new ServerListeningDetector();
     const startupBlockDetector = new BackendStartupBlockDetector();
     const outputTailDetector = new BackendOutputTailDetector();
     backendListeningDetector = listeningDetector;
     backendProcess = child;
-    computer.resume();
     let backendSessionClosed = false;
     const closeBackendSession = (details: string) => {
       if (backendSessionClosed) return;
@@ -535,7 +493,6 @@ export function createBackendSupervisor({
     return child;
   }
   async function stopBackendAndWaitForExit(): Promise<void> {
-    await computer.suspend();
     const child = takeBackendProcessForShutdown();
     if (!child) return;
     const backendChild = child;

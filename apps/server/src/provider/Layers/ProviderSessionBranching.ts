@@ -133,8 +133,6 @@ export const ProviderSessionBranchingLive = Layer.effect(
                 ...(effectiveProviderOptions !== undefined
                   ? { providerOptions: effectiveProviderOptions }
                   : {}),
-
-                ...(input.enableComputerControl ? { enableComputerControl: true } : {}),
                 lastRuntimeEvent: "provider.thread.forked",
                 lastRuntimeEventAt: new Date().toISOString(),
               });
@@ -157,7 +155,6 @@ export const ProviderSessionBranchingLive = Layer.effect(
                   ...(effectiveProviderOptions !== undefined
                     ? { providerOptions: effectiveProviderOptions }
                     : {}),
-                  ...(input.enableComputerControl ? { enableComputerControl: true } : {}),
                   lastRuntimeEvent: "provider.thread.forked",
                   lastRuntimeEventAt: new Date().toISOString(),
                 },

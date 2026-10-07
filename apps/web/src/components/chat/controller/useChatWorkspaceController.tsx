@@ -23,11 +23,6 @@ import {
   toggleChatTerminalVisibility,
 } from "~/components/chat/chatTerminalActions";
 import type { DraftThreadEnvMode } from "../../../composerDraftDomain";
-import {
-  useThreadComputerAvailability,
-  useThreadComputerControlGeneration,
-} from "~/computerStateStore";
-import { useThreadComputerStateSeed } from "~/hooks/useThreadComputerStateSeed";
 import { isHomeChatContainerProject } from "~/lib/chatProjects";
 import { deriveCumulativeCostUsd, deriveLatestContextWindowState } from "~/lib/contextWindow";
 import { GIT_WORKING_TREE_DIFF_LIVE_REFETCH_INTERVAL_MS } from "../../../lib/gitQueryOptions";
@@ -77,15 +72,6 @@ export function useChatWorkspaceController({
     clearProjectDraftThreadId,
     markThreadVisited,
   } = session;
-
-  useThreadComputerStateSeed(threadId);
-
-  const computerAvailability = useThreadComputerAvailability(threadId);
-
-  const computerControlGeneration =
-    useThreadComputerControlGeneration(threadId) ?? composerDraft.computerControlGeneration ?? 0;
-
-  const computerControlAvailable = computerAvailability?.kind === "available";
 
   const [activeThreadBranchAtActivation, setActiveThreadBranchAtActivation] = useState<{
     threadId: ThreadId;
@@ -147,8 +133,6 @@ export function useChatWorkspaceController({
   const canCheckoutPullRequestIntoThread = isLocalDraftThread;
 
   const diffOpen = rawSearch.panel === "diff";
-
-  const browserOpen = rawSearch.panel === "browser";
 
   const resolvedDiffOpen = panelState ? panelState.panel === "diff" : diffOpen;
 
@@ -418,8 +402,6 @@ export function useChatWorkspaceController({
     markThreadVisited,
   ]);
   return {
-    computerControlGeneration,
-    computerControlAvailable,
     settledThreadBranchWarningDismissedThreadId,
     setSettledThreadBranchWarningDismissedThreadId,
     settledThreadBranchAtActivation,
@@ -429,7 +411,6 @@ export function useChatWorkspaceController({
     isLocalDraftThread,
     canCheckoutPullRequestIntoThread,
     diffOpen,
-    browserOpen,
     resolvedDiffOpen,
     onRespondToAsyncUserInput,
     activeThreadId,

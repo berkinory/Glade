@@ -6,7 +6,6 @@ import type { ProviderProjectionAccessShape } from "../Services/ProviderProjecti
 import { QueuedTurnSourceEvent, PROVIDER_COMMAND_CLAIM_LEASE_MS } from "./deliveryClaims";
 import { ThreadId, CommandId } from "@glade/contracts/core/baseSchemas";
 import { ProviderCommandExecutionError } from "./providerCallPolicy";
-import { computerActivationMetadata } from "../../computer/computerActivation.ts";
 import { QueuedDispatchState } from "../Services/QueuedDispatchState.ts";
 
 export function makeProviderQueuedTurns(input: {
@@ -99,7 +98,6 @@ export function makeProviderQueuedTurns(input: {
           ...(nextQueuedTurn.providerOptions !== undefined
             ? { providerOptions: nextQueuedTurn.providerOptions }
             : {}),
-          ...computerActivationMetadata(nextQueuedTurn),
           ...(nextQueuedTurn.reviewTarget !== undefined
             ? { reviewTarget: nextQueuedTurn.reviewTarget }
             : {}),

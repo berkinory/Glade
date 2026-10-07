@@ -2,7 +2,6 @@ import type { IconComponent } from "~/lib/iconComponent";
 import {
   Brain03Icon,
   BugIcon,
-  MousePointer01Icon,
   EraserIcon,
   EnergyFilledIcon,
   WorkflowCircle04Icon,
@@ -21,7 +20,6 @@ const SLASH_COMMAND_ICONS: Record<string, IconComponent> = {
   review: BugIcon,
   fork: WorkflowCircle04Icon,
   feedback: BugIcon,
-  "computer-use": MousePointer01Icon,
 };
 export function slashCommandIcon(command: string, fallback: IconComponent): IconComponent {
   return SLASH_COMMAND_ICONS[command] ?? fallback;

@@ -3,14 +3,12 @@ import { providerComposerCapabilitiesQueryOptions } from "~/lib/providerDiscover
 import { Spinner } from "~/components/ui/spinner";
 import { pendingRequestInstanceKey } from "@glade/shared/threads/threadSummary";
 import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
-import { useCallback } from "react";
 import { ComposerPromptEditor } from "~/components/ComposerPromptEditor";
 import { Button } from "~/components/ui/button";
 import { ChatComposerFooter } from "~/components/chat/ChatComposerFooter";
 import { ComposerBranchMismatchBanner } from "~/components/chat/ComposerBranchMismatchBanner";
 import { ComposerColumnFrame } from "~/components/chat/ComposerColumnFrame";
 import { ComposerCommandMenu } from "~/components/chat/ComposerCommandMenu";
-import { ComposerComputerControlEffortHint } from "~/components/chat/ComposerComputerControlEffortHint";
 import { ComposerExpiredUserInputNotice } from "~/components/chat/ComposerExpiredUserInputNotice";
 import { ComposerExtrasPanel } from "~/components/chat/ComposerExtrasPanel";
 
@@ -23,7 +21,6 @@ import { ComposerReferenceAttachments } from "~/components/chat/ComposerReferenc
 import { ComposerSubagentStrip } from "~/components/chat/ComposerSubagentStrip";
 import { collectRunningSubagentStripItems } from "~/components/chat/ComposerSubagentStrip.logic";
 import { ContextWindowMeter } from "~/components/chat/ContextWindowMeter";
-import { COMPUTER_CONTROL_HINT_EFFORT } from "~/components/chat/composerComputerControlHint";
 import { WorkflowRunCard } from "~/components/chat/WorkflowRunCard";
 import {
   COMPOSER_COMMAND_MENU_FLOATING_WRAPPER_CLASS_NAME,
@@ -34,7 +31,6 @@ import {
 import { collapseExpandedComposerCursor } from "~/composer-logic";
 import { cn } from "~/lib/utils";
 
-import { buildNextProviderOptions } from "~/providerModelOptions";
 import { backgroundSubagent, stopSubagent, stopWorkflowTask } from "../chatTaskActions";
 import { useChatThreadContext } from "../ChatThreadContext";
 import type { createChatPresentation } from "./chatPresentation";
@@ -105,7 +101,6 @@ export function ChatComposerSurface({
     resolvedTheme,
     composerCommandPicker,
     composerAssistantSelections,
-    composerBrowserAnnotations,
     composerFileComments,
     composerPastedTexts,
     composerPullRequestContexts,
@@ -113,7 +108,6 @@ export function ChatComposerSurface({
     composerImages,
     setExpandedImage,
     clearComposerAssistantSelectionsFromDraft,
-    removeComposerBrowserAnnotationFromDraft,
     clearComposerFileCommentsFromDraft,
     removeComposerPastedTextFromDraft,
     showComposerPastedTextInField,
@@ -126,8 +120,6 @@ export function ChatComposerSurface({
     isComposerFooterCompact,
 
     composerSendState,
-    setComposerDraftProviderModelOptions,
-    updateSettings,
     removeComposerImageFromDraft,
     discardPromptHistoryNavigationForComposerMutation,
     removeComposerDraftFile,
@@ -142,7 +134,6 @@ export function ChatComposerSurface({
     onEditQueuedComposerTurn,
 
     composerTraitSelection,
-    selectedProviderModelOptions,
     toggleFastMode,
 
     handleSelectLocalDirectoryMention,
@@ -170,33 +161,7 @@ export function ChatComposerSurface({
     cancelComposerVoiceRecording,
     submitComposerVoiceRecording,
   } = controller.composer;
-  const composerEffortOptionId = composerTraitSelection.primarySelectDescriptor?.id ?? "effort";
-  const { selectedProvider, selectedModelForPickerWithCustomFallback } = controller.provider;
-  const applyComputerControlEffortHint = useCallback(() => {
-    setComposerDraftProviderModelOptions(
-      threadId,
-      selectedProvider,
-      buildNextProviderOptions(selectedProvider, selectedProviderModelOptions, {
-        [composerEffortOptionId]: COMPUTER_CONTROL_HINT_EFFORT,
-      }),
-      { model: selectedModelForPickerWithCustomFallback, persistSticky: true },
-    );
-    updateSettings({ dismissedComputerControlEffortHint: true });
-    scheduleComposerFocus();
-  }, [
-    composerEffortOptionId,
-    scheduleComposerFocus,
-    selectedModelForPickerWithCustomFallback,
-    selectedProvider,
-    selectedProviderModelOptions,
-    setComposerDraftProviderModelOptions,
-    threadId,
-    updateSettings,
-  ]);
-  const dismissComputerControlEffortHint = useCallback(() => {
-    updateSettings({ dismissedComputerControlEffortHint: true });
-    scheduleComposerFocus();
-  }, [scheduleComposerFocus, updateSettings]);
+  const { selectedProvider } = controller.provider;
   const {
     workflowRunState,
     composerSubagentStripItems,
@@ -263,7 +228,6 @@ export function ChatComposerSurface({
     showComposerSubagentStrip,
     showComposerWorkflowRunCard,
 
-    showComposerComputerControlEffortHint,
     emptyLandingControls,
     relocateComposerLeadingControls,
     renderComposerLeadingControls,
@@ -397,19 +361,6 @@ export function ChatComposerSurface({
               }
             />
 
-            {showComposerComputerControlEffortHint ? (
-              <ComposerComputerControlEffortHint
-                onApply={applyComputerControlEffortHint}
-                onDismiss={dismissComputerControlEffortHint}
-                attachedToPrevious={
-                  showComposerLiveChangesHeader ||
-                  showComposerActiveTaskListCard ||
-                  showComposerWorkflowRunCard ||
-                  showComposerSubagentStrip ||
-                  queuedComposerTurns.length > 0
-                }
-              />
-            ) : null}
             {settledThreadBranchMismatch ? (
               <div className="pb-2">
                 <ComposerBranchMismatchBanner {...settledThreadBranchMismatch} />
@@ -568,7 +519,6 @@ export function ChatComposerSurface({
                   {!isComposerApprovalState &&
                     pendingUserInputs.length === 0 &&
                     (composerAssistantSelections.length > 0 ||
-                      composerBrowserAnnotations.length > 0 ||
                       composerFileComments.length > 0 ||
                       composerPastedTexts.length > 0 ||
                       composerPullRequestContexts.length > 0 ||
@@ -576,7 +526,6 @@ export function ChatComposerSurface({
                       composerImages.length > 0) && (
                       <ComposerReferenceAttachments
                         assistantSelections={composerAssistantSelections}
-                        browserAnnotations={composerBrowserAnnotations}
                         fileComments={composerFileComments}
                         pastedTexts={composerPastedTexts}
                         pullRequestContexts={composerPullRequestContexts}
@@ -585,7 +534,6 @@ export function ChatComposerSurface({
                         nonPersistedImageIdSet={nonPersistedComposerImageIdSet}
                         onExpandImage={setExpandedImage}
                         onRemoveAssistantSelections={clearComposerAssistantSelectionsFromDraft}
-                        onRemoveBrowserAnnotation={removeComposerBrowserAnnotationFromDraft}
                         onRemoveFileComments={clearComposerFileCommentsFromDraft}
                         onRemovePastedText={removeComposerPastedTextFromDraft}
                         onShowPastedTextInField={showComposerPastedTextInField}

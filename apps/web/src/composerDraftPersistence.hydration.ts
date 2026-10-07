@@ -12,7 +12,6 @@ import {
   type QueuedComposerTurn,
 } from "./composerDraftDomain";
 import { normalizeProviderKind } from "./composerDraftModels";
-import { normalizeBrowserAnnotations } from "./lib/browserAnnotations";
 import { normalizePullRequestContexts } from "./lib/pullRequestContext";
 import type {
   PersistedComposerPromptHistorySavedDraft,
@@ -33,7 +32,6 @@ function hydrateQueuedTurnsFromPersisted(
       images: hydrateImagesFromPersisted(queuedTurn.images),
       files: [],
       assistantSelections: normalizeAssistantSelections(queuedTurn.assistantSelections ?? []),
-      browserAnnotations: normalizeBrowserAnnotations(queuedTurn.browserAnnotations ?? []),
       terminalContexts: normalizeTerminalContextsForThread(
         threadId,
         queuedTurn.terminalContexts.map((context) => ({ ...context, threadId })),
@@ -61,7 +59,6 @@ function hydratePromptHistorySavedDraft(
       nonPersistedImageIds: [],
       persistedAttachments: [],
       assistantSelections: [],
-      browserAnnotations: [],
       terminalContexts: [],
       fileComments: [],
       pastedTexts: [],
@@ -78,7 +75,6 @@ function hydratePromptHistorySavedDraft(
     nonPersistedImageIds: [],
     persistedAttachments: [...attachments],
     assistantSelections: normalizeAssistantSelections(savedDraft.assistantSelections ?? []),
-    browserAnnotations: normalizeBrowserAnnotations(savedDraft.browserAnnotations ?? []),
     terminalContexts:
       savedDraft.terminalContexts?.map((context) => ({
         ...context,
@@ -116,7 +112,6 @@ export function toHydratedThreadDraft(
     nonPersistedImageIds: [],
     persistedAttachments: [...persistedDraft.attachments],
     assistantSelections: normalizeAssistantSelections(persistedDraft.assistantSelections ?? []),
-    browserAnnotations: normalizeBrowserAnnotations(persistedDraft.browserAnnotations ?? []),
     terminalContexts:
       persistedDraft.terminalContexts?.map((context) => ({
         ...context,
@@ -133,12 +128,5 @@ export function toHydratedThreadDraft(
     modelSelectionByProvider,
     activeProvider,
     runtimeMode: persistedDraft.runtimeMode ?? null,
-
-    computerControlMode: persistedDraft.computerControlMode,
-    computerControlGeneration: persistedDraft.computerControlGeneration,
-    enableComputerControl:
-      typeof persistedDraft.enableComputerControl === "boolean"
-        ? persistedDraft.enableComputerControl
-        : undefined,
   };
 }

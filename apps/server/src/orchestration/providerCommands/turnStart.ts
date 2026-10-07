@@ -5,8 +5,6 @@ import { ThreadSessionSettings } from "../Services/ThreadSessionSettings.ts";
 import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
 import { makeProviderThreadProjection } from "./threadProjection";
 import { Option, Effect, Cause, Schema, Exit } from "effect";
-import { ComputerService } from "../../computer/Services/ComputerService";
-import { AgentGatewaySessionRegistry } from "../../agentGateway/Services/AgentGatewaySessionRegistry";
 import { OrchestrationEngineService } from "../Services/OrchestrationEngine.ts";
 import { ServerConfig } from "../../server/config.ts";
 import { ManagedAttachmentRepository } from "../../persistence/Services/ManagedAttachments.ts";
@@ -14,7 +12,6 @@ import { ProviderService } from "../../provider/Services/ProviderService.ts";
 import { type ProviderIntentEvent } from "../providerIntentClassification.ts";
 import { TurnId, ProviderKind, CommandId } from "@glade/contracts/core/baseSchemas";
 import { turnStartKeyForEvent } from "./deliveryClaims";
-import { computerActivationMetadata } from "../../computer/computerActivation.ts";
 import { providerSupportsNativeTurnSteering } from "@glade/shared/provider/providerMetadata";
 import { deriveTurnStartSession } from "../turnStartSession.ts";
 import { DEFAULT_RUNTIME_MODE } from "./contextLifecycle";
@@ -50,10 +47,6 @@ export function makeProviderTurnStart(input: {
   readonly appendProviderFailureActivity: ReturnType<
     typeof makeProviderThreadProjection
   >["appendProviderFailureActivity"];
-  readonly computerService: Option.Option<ServiceMap.Service.Shape<typeof ComputerService>>;
-  readonly gatewaySessions: Option.Option<
-    ServiceMap.Service.Shape<typeof AgentGatewaySessionRegistry>
-  >;
   readonly threadSessionSettings: ServiceMap.Service.Shape<typeof ThreadSessionSettings>;
   readonly orchestrationEngine: ServiceMap.Service.Shape<typeof OrchestrationEngineService>;
   readonly interruptProviderTurn: ReturnType<
@@ -82,8 +75,6 @@ export function makeProviderTurnStart(input: {
     hasHandledTurnStartRecently,
     enqueueQueuedTurnStart,
     appendProviderFailureActivity,
-    computerService,
-    gatewaySessions,
     threadSessionSettings,
     orchestrationEngine,
     interruptProviderTurn,
@@ -221,29 +212,10 @@ export function makeProviderTurnStart(input: {
       const liveTurnId = yield* resolveLiveProviderTurnId(event.payload.threadId);
       const hasLiveTurn = liveTurnId !== undefined;
 
-      const activation = computerActivationMetadata(event.payload);
-      const requiresComputerProfile =
-        hasLiveTurn &&
-        event.payload.dispatchMode === "steer" &&
-        activation.enableComputerControl &&
-        (Option.isNone(computerService) ||
-          computerService.value.manager.canActivateControl(
-            event.payload.threadId,
-            activation.computerControlGeneration,
-          )) &&
-        !(Option.isSome(gatewaySessions) && gatewaySessions.value.computerControlProvisioned
-          ? gatewaySessions.value.computerControlProvisioned(
-              event.payload.threadId,
-              providerName as ProviderKind,
-            )
-          : (threadSessionSettings.getComputerControl(event.payload.threadId) ?? false));
-      // Installing a new catalog requires a turn boundary; a live steer cannot gain tools merely because
-      // the composer consumed its activation chip.
       const isNativeSteer =
         event.payload.dispatchMode === "steer" &&
         providerSupportsNativeTurnSteering(providerName) &&
-        hasLiveTurn &&
-        !requiresComputerProfile;
+        hasLiveTurn;
       if (event.payload.dispatchMode === "steer") {
         // The decider records its projected decision on the message immediately, then this runtime check
         // corrects either race direction before delivery: only a genuinely live native steer continues the
@@ -335,7 +307,6 @@ export function makeProviderTurnStart(input: {
         ...(event.payload.providerOptions !== undefined
           ? { providerOptions: event.payload.providerOptions }
           : {}),
-        ...computerActivationMetadata(event.payload),
         ...(event.payload.runtimeMode !== undefined
           ? { runtimeMode: event.payload.runtimeMode }
           : {}),

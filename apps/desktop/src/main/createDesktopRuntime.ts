@@ -1,10 +1,6 @@
-import { configureElectronNetwork } from "betterwright/electron";
 import { app, BrowserWindow, protocol } from "electron";
 import { isBackendReadinessAborted } from "../backend/backendReadiness";
 import { createBackendSupervisor } from "../backend/backendSupervisor";
-import { createDesktopBrowserServices } from "../browser/desktopBrowserServices";
-import { LOCAL_HTML_PREVIEW_SCHEME } from "../browser/localHtmlPreviewProtocol";
-import { createDesktopComputerSetup } from "../computer/desktopComputerSetup";
 import {
   DESKTOP_SCHEME,
   isDevelopment,
@@ -42,22 +38,6 @@ export function createDesktopRuntime(): void {
   app.setPath("userData", userDataPath);
   const hasSingleInstanceLock = app.requestSingleInstanceLock();
   const identity = createAppIdentity(resources, () => windows.getMainWindow());
-  const browser = createDesktopBrowserServices(
-    { getMainWindow: () => windows.getMainWindow() },
-    {
-      dispatchMenuAction: (action) => windows.dispatchMenuAction(action),
-      resolveMenuTargetWindow: () => windows.resolveMenuTargetWindow(),
-      handleDesktopPhysicalZoomShortcut: (event, input, target) =>
-        windows.handleDesktopPhysicalZoomShortcut(event, input, target),
-      handleDesktopZoomShortcut: (event, input, target) =>
-        windows.handleDesktopZoomShortcut(event, input, target),
-    },
-  );
-  const computer = createDesktopComputerSetup(
-    resources,
-    () => windows.getMainWindow(),
-    () => backend.getHttpUrl(),
-  );
   const backend = createBackendSupervisor({
     log,
     resources,
@@ -69,8 +49,6 @@ export function createDesktopRuntime(): void {
       getMainWindow: () => windows.getMainWindow(),
       createWindow: () => windows.createWindow(),
     },
-    browser,
-    computer,
   });
   const updates = createUpdates({
     resources: {
@@ -91,10 +69,6 @@ export function createDesktopRuntime(): void {
   const windows = createMainWindow({
     identity,
     resources,
-    browser: {
-      setWindow: (window) => browser.getManager().setWindow(window),
-      getGuestPreloadPath: browser.getGuestPreloadPath,
-    },
     updates,
     lifecycle: {
       shutdownComplete: () => lifecycle.shutdownComplete(),
@@ -110,8 +84,6 @@ export function createDesktopRuntime(): void {
   const lifecycle = createDesktopShutdown({
     backend,
     getMainWindow: windows.getMainWindow,
-    computer,
-    browser,
     updates,
     log,
     resources,
@@ -121,8 +93,6 @@ export function createDesktopRuntime(): void {
     windows,
     identity,
     contextMenu: windows,
-    browser,
-    computer,
     updates,
     control: {
       getWsUrl: backend.getWsUrl,
@@ -142,20 +112,9 @@ export function createDesktopRuntime(): void {
         codeCache: true,
       },
     },
-    {
-      scheme: LOCAL_HTML_PREVIEW_SCHEME,
-      privileges: { standard: true, secure: true, supportFetchAPI: true },
-    },
   ]);
   if (hasSingleInstanceLock) identity.repairBrowserProfileBeforeElectronReady(userDataPath);
   identity.configureAppIdentity();
-  configureElectronNetwork();
-  const browserEngineFeatures = new Set([
-    ...app.commandLine.getSwitchValue("enable-features").split(",").filter(Boolean),
-    "WebMCPTesting",
-    "DevToolsWebMCPSupport",
-  ]);
-  app.commandLine.appendSwitch("enable-features", [...browserEngineFeatures].join(","));
   if (!hasSingleInstanceLock) app.quit();
   else app.on("second-instance", () => windows.focusMainWindow());
   async function bootstrap(): Promise<void> {
@@ -163,16 +122,9 @@ export function createDesktopRuntime(): void {
     updates.configure();
 
     await backend.reserveBackendEndpoint("bootstrap");
-    await browser.restoreSessions();
 
     ipc.registerIpcHandlers();
     log.writeDesktopLogHeader("bootstrap ipc handlers registered");
-    try {
-      await browser.ensureBrowserHostPipeServer();
-    } catch (error) {
-      console.warn("[Glade browser] Failed to start browser host pipe", error);
-    }
-    await computer.startCuaHost();
     backend.startBackend();
     log.writeDesktopLogHeader("bootstrap backend start requested");
 
@@ -223,7 +175,6 @@ export function createDesktopRuntime(): void {
         identity.applyInitialMacDockIcon();
         identity.refreshMacIconCacheOnVersionChange();
         configureMediaPermissions(windows.getMainWindow);
-        computer.initializeDesktopComputer();
         windows.configureApplicationMenu();
         try {
           resources.registerDesktopProtocol();

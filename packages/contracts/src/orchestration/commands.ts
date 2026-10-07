@@ -30,7 +30,6 @@ import {
   PROVIDER_SEND_TURN_MAX_INPUT_CHARS,
   ChatAttachmentList,
   TurnMessageContentCheck,
-  ComputerControlMode,
   UploadChatAttachmentList,
   OrchestrationSession,
   OrchestrationThreadActivity,
@@ -306,9 +305,6 @@ export const ThreadTurnStartCommand = Schema.Struct({
   handoffOperationId: Schema.optional(CommandId),
   modelSelection: Schema.optional(ModelSelection),
   providerOptions: Schema.optional(ProviderStartOptions),
-  enableComputerControl: Schema.optional(Schema.Boolean),
-  computerControlMode: Schema.optional(ComputerControlMode),
-  computerControlGeneration: Schema.optional(NonNegativeInt),
   reviewTarget: Schema.optional(ProviderReviewTarget),
   assistantDeliveryMode: Schema.optional(AssistantDeliveryMode),
   dispatchMode: Schema.optional(TurnDispatchMode).pipe(
@@ -346,9 +342,6 @@ export const ClientThreadTurnStartCommand = Schema.Struct({
   handoffOperationId: Schema.optional(CommandId),
   modelSelection: Schema.optional(ModelSelection),
   providerOptions: Schema.optional(ProviderStartOptions),
-  enableComputerControl: Schema.optional(Schema.Boolean),
-  computerControlMode: Schema.optional(ComputerControlMode),
-  computerControlGeneration: Schema.optional(NonNegativeInt),
   reviewTarget: Schema.optional(ProviderReviewTarget),
   assistantDeliveryMode: Schema.optional(AssistantDeliveryMode),
   dispatchMode: Schema.optional(TurnDispatchMode).pipe(
@@ -406,9 +399,6 @@ const ThreadDispatchQueuedTurnCommand = Schema.Struct({
   messageId: MessageId,
   modelSelection: Schema.optional(ModelSelection),
   providerOptions: Schema.optional(ProviderStartOptions),
-  enableComputerControl: Schema.optional(Schema.Boolean),
-  computerControlMode: Schema.optional(ComputerControlMode),
-  computerControlGeneration: Schema.optional(NonNegativeInt),
   reviewTarget: Schema.optional(ProviderReviewTarget),
   assistantDeliveryMode: Schema.optional(AssistantDeliveryMode),
   dispatchMode: Schema.optional(TurnDispatchMode).pipe(
@@ -468,9 +458,6 @@ const ThreadMessageEditAndResendCommand = Schema.Struct({
   text: TrimmedNonEmptyString.check(Schema.isMaxLength(PROVIDER_SEND_TURN_MAX_INPUT_CHARS)),
   modelSelection: Schema.optional(ModelSelection),
   providerOptions: Schema.optional(ProviderStartOptions),
-  enableComputerControl: Schema.optional(Schema.Boolean),
-  computerControlMode: Schema.optional(ComputerControlMode),
-  computerControlGeneration: Schema.optional(NonNegativeInt),
   assistantDeliveryMode: Schema.optional(AssistantDeliveryMode),
   runtimeMode: RuntimeMode,
 

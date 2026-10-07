@@ -1,7 +1,3 @@
-import {
-  resolveComputerControlMode,
-  type ComposerComputerControlMode,
-} from "../computerControlMode";
 import { ThreadId, type ThreadId as ThreadIdType } from "@glade/contracts/core/baseSchemas";
 import type {
   AssistantDeliveryMode,
@@ -24,9 +20,6 @@ export interface TurnDispatchSettings {
   readonly modelSelection: ModelSelection;
 
   readonly providerOptions: ProviderStartOptions | undefined;
-  readonly enableComputerControl: boolean;
-  readonly computerControlMode?: ComposerComputerControlMode | undefined;
-  readonly computerControlGeneration?: number | undefined;
   readonly assistantDeliveryMode: AssistantDeliveryMode;
   readonly runtimeMode: RuntimeMode;
 
@@ -42,27 +35,10 @@ export function resolveQueuedTurnDispatchSettings(
   if (!queuedTurn) {
     return settings;
   }
-  const queuedMode = resolveComputerControlMode(
-    queuedTurn.computerControlMode,
-    queuedTurn.enableComputerControl,
-  );
-  const liveMode = resolveComputerControlMode(
-    settings.computerControlMode,
-    settings.enableComputerControl,
-  );
-  const sameGeneration =
-    settings.computerControlGeneration === undefined ||
-    settings.computerControlGeneration === (queuedTurn.computerControlGeneration ?? 0);
-  const computerControlMode =
-    sameGeneration && (queuedMode === "request" || liveMode === "chat") ? queuedMode : "off";
-  const enableComputerControl = computerControlMode !== "off";
   return {
     ...settings,
     modelSelection: queuedTurn.modelSelection ?? settings.modelSelection,
     providerOptions: queuedTurn.providerOptionsForDispatch ?? settings.providerOptions,
-    enableComputerControl,
-    computerControlGeneration: queuedTurn.computerControlGeneration ?? 0,
-    computerControlMode,
     runtimeMode: queuedTurn.runtimeMode ?? settings.runtimeMode,
 
     envMode: (queuedTurn.kind === "chat" ? queuedTurn.envMode : undefined) ?? settings.envMode,
@@ -73,12 +49,6 @@ function turnDispatchIdentityFields(settings: TurnDispatchSettings) {
   return {
     modelSelection: settings.modelSelection,
     ...(settings.providerOptions ? { providerOptions: settings.providerOptions } : {}),
-    enableComputerControl: settings.enableComputerControl,
-    computerControlGeneration: settings.computerControlGeneration ?? 0,
-    computerControlMode: resolveComputerControlMode(
-      settings.computerControlMode,
-      settings.enableComputerControl,
-    ),
     assistantDeliveryMode: settings.assistantDeliveryMode,
   };
 }
@@ -111,12 +81,6 @@ export function queuedChatTurnDispatchFields(settings: TurnDispatchSettings) {
   return {
     modelSelection: settings.modelSelection,
     ...(settings.providerOptions ? { providerOptionsForDispatch: settings.providerOptions } : {}),
-    enableComputerControl: settings.enableComputerControl,
-    computerControlGeneration: settings.computerControlGeneration ?? 0,
-    computerControlMode: resolveComputerControlMode(
-      settings.computerControlMode,
-      settings.enableComputerControl,
-    ),
 
     ...turnDispatchModeFields(settings),
     envMode: settings.envMode,

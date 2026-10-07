@@ -47,9 +47,6 @@ import {
   type OrchestrationEngineShape,
 } from "../Services/OrchestrationEngine.ts";
 import { ProviderRuntimeIngestionService } from "../Services/ProviderRuntimeIngestion.ts";
-import { ComputerManager } from "../../computer/ComputerManager.ts";
-
-import { ComputerService } from "../../computer/Services/ComputerService.ts";
 import { ProjectionSnapshotQuery } from "../Services/ProjectionSnapshotQuery.ts";
 import { ServerConfig } from "../../server/config.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -318,7 +315,6 @@ describe("ProviderRuntimeIngestion", () => {
   async function createHarness(options?: {
     readonly startIngestion?: boolean;
     readonly persistedStream?: boolean;
-    readonly computerManager?: ComputerManager;
   }) {
     const workspaceRoot = makeTempDir("glade-provider-project-");
     fs.mkdirSync(path.join(workspaceRoot, ".git"));
@@ -335,15 +331,6 @@ describe("ProviderRuntimeIngestion", () => {
       Layer.provideMerge(SqlitePersistenceMemory),
     );
     const layer = ProviderRuntimeIngestionLive.pipe(
-      Layer.provideMerge(
-        options?.computerManager
-          ? Layer.succeed(ComputerService, {
-              supported: true,
-              availability: { kind: "available", backend: "test" },
-              manager: options.computerManager,
-            })
-          : Layer.empty,
-      ),
       Layer.provideMerge(orchestrationLayer),
       Layer.provideMerge(OrchestrationProjectionSnapshotQueryLive),
       Layer.provideMerge(SqlitePersistenceMemory),

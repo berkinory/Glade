@@ -2,7 +2,7 @@ import { isRecord } from "@glade/shared/transport/payloadValues";
 import type { TurnId } from "@glade/contracts/core/baseSchemas";
 import { sanitizeStringKeyedRecord } from "./persistedRecord";
 
-const RIGHT_DOCK_PANE_KINDS = ["browser", "explorer", "terminal", "git"] as const;
+const RIGHT_DOCK_PANE_KINDS = ["explorer", "terminal", "git"] as const;
 
 export type RightDockPaneKind = (typeof RIGHT_DOCK_PANE_KINDS)[number];
 export type SourceControlView = "changes" | "history";

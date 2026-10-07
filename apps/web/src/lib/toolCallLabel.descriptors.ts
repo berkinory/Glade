@@ -1,4 +1,3 @@
-import { COMPUTER_TOOL_TITLES, computerToolName } from "./computerToolPresentation";
 import {
   GLADE_MCP_TOOL_PRESENTATIONS,
   GLADE_MCP_TOOL_PRESENTATION_ENTRIES,
@@ -9,7 +8,6 @@ import {
   humanizeMcpToolIdentifier,
   normalizeCompactToolLabel,
   normalizeGladeMcpIdentifier,
-  resolveGladeBrowserToolName,
 } from "./toolCallLabel.presentations";
 import type {
   GladeMcpToolPresentation,
@@ -76,10 +74,6 @@ export interface GladeMcpToolTitleInput {
   readonly title?: string | null | undefined;
   readonly fallbackLabel?: string | null | undefined;
   readonly status?: GladeMcpToolStatus | undefined;
-}
-
-export function isGladeBrowserToolCall(input: GladeMcpToolTitleInput): boolean {
-  return resolveGladeBrowserToolName([input.toolName, input.title, input.fallbackLabel]) !== null;
 }
 
 export function isGladeVisualToolCall(input: GladeMcpToolTitleInput): boolean {
@@ -184,10 +178,6 @@ export function isGenericToolTitle(value: string): boolean {
 export function normalizeToolDescriptor(value: string | null): string | null {
   if (!value) {
     return null;
-  }
-  const computerTool = computerToolName(value);
-  if (computerTool) {
-    return COMPUTER_TOOL_TITLES[computerTool];
   }
   const mcpIdentifier = humanizeMcpToolIdentifier(value);
   if (mcpIdentifier) {

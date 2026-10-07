@@ -11,12 +11,8 @@ import {
 } from "./toolCallGroup.logic";
 import type { ChatMessage, TurnDiffSummary, WorktreeSetupStep } from "../../types";
 
-export function canSubmitUserMessageEdit(input: {
-  draft: string;
-  allowEmpty: boolean;
-  disabled: boolean;
-}): boolean {
-  return (input.allowEmpty || input.draft.trim().length > 0) && !input.disabled;
+export function canSubmitUserMessageEdit(input: { draft: string; disabled: boolean }): boolean {
+  return input.draft.trim().length > 0 && !input.disabled;
 }
 
 export type CollapsedTurnItem =

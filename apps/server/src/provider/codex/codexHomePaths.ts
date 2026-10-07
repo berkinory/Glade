@@ -13,10 +13,6 @@ export function resolveBaseCodexHomePath(
   return explicitHomePath?.trim() || env.CODEX_HOME?.trim() || path.join(homedir(), ".codex");
 }
 
-export function resolveActiveCodexHomeWritePath(input: CodexHomePathsInput = {}): string {
-  return resolveBaseCodexHomePath(input.env ?? process.env, input.homePath);
-}
-
 export function resolveCodexHomeAllowlistCandidates(
   input: CodexHomePathsInput = {},
 ): readonly string[] {

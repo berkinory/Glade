@@ -50,14 +50,6 @@ import {
 import type { DeepPartial } from "../../settings/settingsMerge";
 import type { ServerSettings } from "@glade/contracts/settings/settings";
 import { type TextGenerationShape, TextGeneration } from "../../git/Services/TextGeneration.ts";
-import {
-  type ComputerServiceShape,
-  ComputerService,
-} from "../../computer/Services/ComputerService.ts";
-import {
-  type AgentGatewaySessionRegistryShape,
-  AgentGatewaySessionRegistry,
-} from "../../agentGateway/Services/AgentGatewaySessionRegistry.ts";
 import path from "node:path";
 import os from "node:os";
 import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
@@ -170,8 +162,6 @@ export function makeReactorTestHarness() {
     readonly omitStopRuntimeSession?: boolean;
     readonly serverSettings?: DeepPartial<ServerSettings>;
     readonly confirmNativeResume?: (resumeCursor: unknown) => boolean;
-    readonly computerService?: ComputerServiceShape;
-    readonly gatewaySessions?: AgentGatewaySessionRegistryShape;
   }): Promise<ReactorTestHarness> {
     const now = new Date().toISOString();
     const baseDir = input?.baseDir ?? fs.mkdtempSync(path.join(os.tmpdir(), "glade-reactor-"));
@@ -516,16 +506,6 @@ export function makeReactorTestHarness() {
       Layer.provideMerge(OrchestrationProjectionSnapshotQueryLive),
       Layer.provideMerge(TurnCheckpointCoordinatorLive),
       Layer.provideMerge(Layer.succeed(ProviderService, service)),
-      Layer.provideMerge(
-        input?.computerService
-          ? Layer.succeed(ComputerService, input.computerService)
-          : Layer.empty,
-      ),
-      Layer.provideMerge(
-        input?.gatewaySessions
-          ? Layer.succeed(AgentGatewaySessionRegistry, input.gatewaySessions)
-          : Layer.empty,
-      ),
       Layer.provideMerge(
         Layer.succeed(ProviderHealth, {
           getStatuses: Effect.succeed([]),

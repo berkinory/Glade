@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 
 import { AdvancedSettingsPanel } from "~/components/settings/AdvancedSettingsPanel";
 import { AppIconPicker } from "~/components/settings/AppIconPicker";
-import { ComputerSettingsPanel } from "~/components/settings/ComputerSettingsPanel";
 import {
   ArchivedSettingsPanel,
   WorktreesSettingsPanel,
@@ -895,12 +894,6 @@ function SettingsRouteView() {
               <div className="contents">
                 <NotificationsSettingsPanel
                   active={activeSection === "notifications"}
-                  settings={settings}
-                  defaults={defaults}
-                  updateSettings={updateSettings}
-                />
-                <ComputerSettingsPanel
-                  active={activeSection === "computer"}
                   settings={settings}
                   defaults={defaults}
                   updateSettings={updateSettings}

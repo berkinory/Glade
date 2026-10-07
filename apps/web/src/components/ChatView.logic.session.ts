@@ -271,7 +271,6 @@ export function derivePromptHistoryFromMessages(
     }
     const prompt = deriveDisplayedUserMessageState(message.text, {
       hideImageOnlyBootstrapPrompt: true,
-      messageId: message.id,
     }).copyText.trim();
     if (prompt.length === 0) {
       continue;

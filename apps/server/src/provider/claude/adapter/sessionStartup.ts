@@ -256,10 +256,7 @@ export function makeClaudeSessionStartup(input: {
         systemPrompt: {
           type: "preset",
           preset: "claude_code",
-          append: buildEmbeddedClaudeSystemPromptAppend(
-            agentGatewayCredentials !== undefined,
-            input.enableComputerControl === true,
-          ),
+          append: buildEmbeddedClaudeSystemPromptAppend(agentGatewayCredentials !== undefined),
 
           excludeDynamicSections: true,
           ...(snapshotSupported ? { snapshot: true } : {}),

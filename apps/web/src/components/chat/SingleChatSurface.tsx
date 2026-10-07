@@ -18,7 +18,6 @@ import {
 import { useComposerDraftStore } from "../../composerDraftStore";
 import type { DiffRouteSearch } from "../../diffRouteSearch";
 import { stripDiffSearchParams } from "../../diffRouteSearch";
-import { useBrowserPanelDesktopBridge } from "../../hooks/useBrowserPanelDesktopBridge";
 import { useDockPaneRuntimeActivation } from "../../hooks/useDockPaneRuntimeActivation";
 import { appendChatFileReference, type ChatFileReference } from "../../lib/chatReferences";
 import { SINGLE_CHAT_PANE_SCOPE_ID } from "../../lib/chatPaneScope";
@@ -65,7 +64,6 @@ import {
   CHAT_MAIN_CONTENT_SURFACE_CLASS_NAME,
   CHAT_MAIN_VIEWPORT_SHELL_CLASS_NAME,
 } from "./composerPickerStyles";
-import { routeSingleDockPaneOpenRequest } from "./dockPaneOpenRequest";
 import { RouteInsetSurface } from "../RouteInsetSurface";
 import { WorkspaceSearchPalette, type WorkspaceSearchPaletteMode } from "../WorkspaceSearchPalette";
 import {
@@ -139,7 +137,7 @@ export function SingleChatSurface(props: {
   const mainWorkspace = useMainWorkspaceStore(selectMainWorkspace(props.threadId));
   const openPane = useCallback(
     (threadId: ThreadId, input: Omit<OpenPaneInput, "paneId">) => {
-      if (input.kind === "terminal" || input.kind === "browser") {
+      if (input.kind === "terminal") {
         openDockPane(threadId, { ...input, activate: false });
         selectMainTab(threadId, input.kind);
       } else if (input.kind === "git" && input.diffTurnId) {
@@ -215,16 +213,10 @@ export function SingleChatSurface(props: {
     });
 
   const chatPanelState: SplitViewPanePanelState = {
-    panel:
-      mainWorkspace.activeTabId === "browser"
-        ? "browser"
-        : activePane?.kind === "git" && activePane.sourceControlView === "changes"
-          ? "diff"
-          : null,
+    panel: activePane?.kind === "git" && activePane.sourceControlView === "changes" ? "diff" : null,
     diffTurnId: activePane?.kind === "git" ? activePane.diffTurnId : null,
     diffFilePath: activePane?.kind === "git" ? activePane.diffFilePath : null,
     hasOpenedPanel: dockState.panes.length > 0,
-    lastOpenPanel: "browser",
   };
 
   const handleToggleDiff = () => {
@@ -235,11 +227,6 @@ export function SingleChatSurface(props: {
       openPane(props.threadId, { kind: "git", sourceControlView: "changes" });
     }
   };
-  const handleToggleBrowser = () => {
-    requestImmediateDockHydration("browser");
-    if (mainWorkspace.activeTabId === "browser") selectMainTab(props.threadId, "chat");
-    else openPane(props.threadId, { kind: "browser" });
-  };
   const handleToggleRightDock = () => {
     if (!dockState.open && sidebarState.activePaneId === null) {
       requestImmediateDockHydration("explorer");
@@ -247,10 +234,6 @@ export function SingleChatSurface(props: {
       return;
     }
     setDockOpen(props.threadId, !dockState.open);
-  };
-  const handleOpenBrowserUrl = () => {
-    requestImmediateDockHydration("browser");
-    openPane(props.threadId, { kind: "browser" });
   };
   const handleOpenTurnDiff = (turnId: TurnId, filePath?: string) => {
     requestImmediateDockHydration("git");
@@ -406,10 +389,7 @@ export function SingleChatSurface(props: {
       return;
     }
 
-    if (panelPatch.panel === "browser") {
-      requestImmediateDockHydration("browser");
-      openPane(props.threadId, { kind: "browser" });
-    } else if (panelPatch.panel === "diff") {
+    if (panelPatch.panel === "diff") {
       requestImmediateDockHydration("git");
       openPane(props.threadId, {
         kind: "git",
@@ -434,22 +414,6 @@ export function SingleChatSurface(props: {
     requestImmediateDockHydration,
     setDockOpen,
   ]);
-
-  useBrowserPanelDesktopBridge({
-    onToggle: () => {
-      requestImmediateDockHydration("browser");
-      if (mainWorkspace.activeTabId === "browser") selectMainTab(props.threadId, "chat");
-      else openPane(props.threadId, { kind: "browser" });
-    },
-    onOpen: (requestedThreadId) => {
-      routeSingleDockPaneOpenRequest({
-        currentThreadId: props.threadId,
-        requestedThreadId,
-        requestImmediateHydration: () => requestImmediateDockHydration("browser"),
-        openPane: (threadId) => openPane(threadId, { kind: "browser" }),
-      });
-    },
-  });
 
   const excludedThreadIds = new Set<ThreadId>([props.threadId]);
 
@@ -618,8 +582,6 @@ export function SingleChatSurface(props: {
                 onToggleRightDock={handleToggleRightDock}
                 onToggleTerminal={handleToggleTerminalPane}
                 onOpenTerminal={() => handleAddDockPane("terminal")}
-                onToggleBrowser={handleToggleBrowser}
-                onOpenBrowserUrl={handleOpenBrowserUrl}
                 onOpenTurnDiff={handleOpenTurnDiff}
                 onSplitSurface={handleSplitSurface}
               />

@@ -21,7 +21,7 @@ Glade provides the shared operating surface around each provider:
 - Provider and model selection
 - Conversation and tool activity
 - Approvals and user-input requests
-- Terminal, browser, file, and diff surfaces
+- Terminal, file, and diff surfaces
 - Git environments and checkpoints
 - Session continuation where supported
 - Provider handoffs

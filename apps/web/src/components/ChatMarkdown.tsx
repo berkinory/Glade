@@ -76,7 +76,6 @@ import { InlineAgentChip } from "./chat/InlineAgentChip";
 import { InlineLinkChip } from "./InlineLinkChip";
 import { InlineMentionChip } from "./chat/InlineMentionChip";
 import { InlineSkillChip } from "./chat/InlineSkillChip";
-import { InlineSlashCommandChip } from "./chat/InlineSlashCommandChip";
 import {
   COMPOSER_CHIP_SEGMENT_ATTRIBUTE,
   COMPOSER_CHIP_TAG_NAME,
@@ -384,9 +383,6 @@ function ComposerChipElement(props: {
   }
   if (segment.type === "agent-mention") {
     return <InlineAgentChip alias={segment.alias} color={segment.color} />;
-  }
-  if (segment.type === "slash-command") {
-    return <InlineSlashCommandChip command={segment.command} />;
   }
   return <InlineLinkChip url={segment.url} interactive />;
 }

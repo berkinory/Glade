@@ -1,11 +1,6 @@
 import { createEmptyThreadDraft } from "../../composerDraftDomain";
 import { usePendingTurnDispatchStore } from "../../pendingTurnDispatch";
 import { hasUnsavedWorkspaceEditors } from "~/lib/workspaceEditorSession";
-import { resolveComputerInvocationMode } from "@glade/shared/computer/computerInvocation";
-import {
-  prepareComputerPermissionGuide,
-  readLocalComputerPermissionBridge,
-} from "~/lib/computerProvisioning";
 import { useCallback } from "react";
 import {
   filterPromptProviderMentionReferences,
@@ -18,7 +13,6 @@ import { resolveFollowUpDispatchMode } from "../../appSettings";
 import { useComposerDraftStore } from "../../composerDraftStore";
 import type { QueuedComposerChatTurn } from "../../composerDraftDomain";
 import { appendAssistantSelectionsToPrompt } from "../../lib/assistantSelections";
-import { appendBrowserAnnotationsToPrompt } from "../../lib/browserAnnotations";
 import { appendPastedTextsToPrompt } from "../../lib/composerPastedText";
 import {
   findPendingBlobComposerAttachments,
@@ -46,7 +40,6 @@ import { toastManager } from "../ui/toast";
 import type { ChatTurnSubmissionControllerInput } from "./chatSendTypes";
 import { prepareChatSendWorkspace } from "./prepareChatSendWorkspace";
 import { buildQueuedComposerPreviewText } from "./queuedComposerPreview";
-import { resolveChatPromptCaptures } from "./resolveChatPromptCaptures";
 import { useChatTurnExecution } from "./useChatTurnExecution";
 
 export function useChatTurnSubmission({
@@ -95,7 +88,6 @@ export function useChatTurnSubmission({
     composerImages,
     composerFiles,
     composerAssistantSelections,
-    composerBrowserAnnotations,
     composerFileComments,
     composerTerminalContexts,
     composerPastedTexts,
@@ -123,7 +115,6 @@ export function useChatTurnSubmission({
     setThreadError,
     isVoiceTranscribing,
     waitForPendingComposerImages,
-    computerControlChangeSequence,
   } = composer;
   const {
     activeProject,
@@ -259,7 +250,6 @@ export function useChatTurnSubmission({
             runtimeMode:
               activeThread.handoff.destinationRuntimeMode ?? dispatchSettings.runtimeMode,
           };
-        const computerControlSequenceForSend = computerControlChangeSequence.current;
         const liveComposerSnapshot =
           queuedChatTurn === null ? (composerEditorRef.current?.readSnapshot() ?? null) : null;
         let promptForSend =
@@ -269,19 +259,6 @@ export function useChatTurnSubmission({
             createEmptyThreadDraft()),
           prompt: promptForSend,
         };
-        if (queuedChatTurn === null) {
-          // Read the live editor snapshot, not an earlier React render. A queued command already froze its
-          // mode and generation and must not be inferred again.
-          const mode = resolveComputerInvocationMode({
-            messageText: promptForSend,
-            enableComputerControl: settings.computerControlEnabled,
-          });
-          dispatchSettings = {
-            ...dispatchSettings,
-            computerControlMode: mode,
-            enableComputerControl: mode !== "off",
-          };
-        }
         let composerImagesForSend =
           queuedChatTurn?.images ??
           useComposerDraftStore.getState().draftsByThreadId[activeThread.id]?.images ??
@@ -305,8 +282,6 @@ export function useChatTurnSubmission({
         const composerFilesForSend = queuedChatTurn?.files ?? composerFiles;
         const composerAssistantSelectionsForSend =
           queuedChatTurn?.assistantSelections ?? composerAssistantSelections;
-        const composerBrowserAnnotationsForSend =
-          queuedChatTurn?.browserAnnotations ?? composerBrowserAnnotations;
         const composerFileCommentsForSend = queuedChatTurn?.fileComments ?? composerFileComments;
         const composerTerminalContextsForSend =
           queuedChatTurn?.terminalContexts ?? composerTerminalContexts;
@@ -338,7 +313,6 @@ export function useChatTurnSubmission({
           imageCount: composerImagesForSend.length,
           fileCount: composerFilesForSend.length,
           assistantSelectionCount: composerAssistantSelectionsForSend.length,
-          browserAnnotationCount: composerBrowserAnnotationsForSend.length,
           fileCommentCount: composerFileCommentsForSend.length,
           terminalContexts: composerTerminalContextsForSend,
           pastedTexts: composerPastedTextsForSend,
@@ -350,7 +324,6 @@ export function useChatTurnSubmission({
           composerImagesForSend.length === 0 &&
           composerFilesForSend.length === 0 &&
           composerAssistantSelectionsForSend.length === 0 &&
-          composerBrowserAnnotationsForSend.length === 0 &&
           composerFileCommentsForSend.length === 0 &&
           sendableComposerTerminalContexts.length === 0 &&
           sendableComposerPastedTexts.length === 0 &&
@@ -380,36 +353,6 @@ export function useChatTurnSubmission({
         }
         if (!activeProject) return false;
 
-        if (dispatchSettings.computerControlMode === "request") {
-          const computerPermission = readLocalComputerPermissionBridge();
-          const activeThreadBeforeCheck = activeThreadIdRef.current;
-          const draftBeforeCheck = promptRef.current;
-          sendPreflightInFlightRef.current = true;
-          const ready = await prepareComputerPermissionGuide({
-            ...(computerPermission
-              ? {
-                  getPermissionState: computerPermission.getState,
-                  startPermissionSetup: computerPermission.startPermissionSetup,
-                }
-              : {}),
-            isCurrent: () =>
-              activeThreadIdRef.current === activeThreadBeforeCheck &&
-              computerControlChangeSequence.current === computerControlSequenceForSend &&
-              (queuedChatTurn !== null || promptRef.current === draftBeforeCheck),
-          })
-            .catch((error) => {
-              toastManager.add({
-                type: "error",
-                title: "Computer permission setup could not start",
-                description: String(error),
-              });
-              return false;
-            })
-            .finally(() => {
-              sendPreflightInFlightRef.current = false;
-            });
-          if (!ready) return false;
-        }
         sendPreflightInFlightRef.current = true;
         const sendProviderAvailability = await resolveProviderSendAvailabilityWithRefresh({
           provider: selectedModelSelectionForSend.provider,
@@ -425,16 +368,6 @@ export function useChatTurnSubmission({
           });
           return false;
         }
-
-        const captures = await resolveChatPromptCaptures({
-          api,
-          activeThread,
-          promptForSend,
-          composerImagesForSend,
-          composerFilesForSend,
-          composerAssistantSelectionsForSend,
-        });
-        composerImagesForSend = captures.composerImagesForSend;
 
         if (hasQueueableLiveTurn && dispatchMode === "queue" && queuedChatTurn === null) {
           clearComposerDraftContent(activeThread.id, { consumedDraft, preservePreviewUrls: true });
@@ -460,7 +393,6 @@ export function useChatTurnSubmission({
               images: queuedImagesForPersistence,
               files: composerFilesForSend,
               assistantSelections: composerAssistantSelectionsForSend,
-              browserAnnotations: composerBrowserAnnotationsForSend,
               terminalContexts: sendableComposerTerminalContexts,
               fileComments: composerFileCommentsForSend,
               pastedTexts: sendableComposerPastedTexts,
@@ -470,7 +402,6 @@ export function useChatTurnSubmission({
             images: queuedImagesForPersistence,
             files: composerFilesForSend,
             assistantSelections: composerAssistantSelectionsForSend,
-            browserAnnotations: composerBrowserAnnotationsForSend,
             fileComments: composerFileCommentsForSend,
             terminalContexts: sendableComposerTerminalContexts,
             pastedTexts: sendableComposerPastedTexts,
@@ -513,7 +444,6 @@ export function useChatTurnSubmission({
           trimmedPromptForSend,
           composerFilesForSend,
           composerAssistantSelectionsForSend,
-          composerBrowserAnnotationsForSend,
           sendableComposerTerminalContexts,
           composerFileCommentsForSend,
           sendableComposerPastedTexts,
@@ -577,9 +507,6 @@ export function useChatTurnSubmission({
         const composerImagesSnapshot = [...composerImagesForSend];
         const composerFilesSnapshot = [...composerFilesForSend];
         const composerAssistantSelectionsSnapshot = [...composerAssistantSelectionsForSend];
-        const composerBrowserAnnotationsSnapshot = composerBrowserAnnotationsForSend.map(
-          (annotation) => ({ ...annotation, source: { ...annotation.source } }),
-        );
         const composerFileCommentsSnapshot = [...composerFileCommentsForSend];
         const composerTerminalContextsSnapshot = [...sendableComposerTerminalContexts];
         const composerPastedTextsSnapshot = [...sendableComposerPastedTexts];
@@ -587,25 +514,21 @@ export function useChatTurnSubmission({
         const composerSkillsSnapshot = [...selectedComposerSkillsForSend];
         const composerMentionsSnapshot = [...selectedComposerMentionsForSend];
 
-        const messageTextForSend = appendBrowserAnnotationsToPrompt(
-          appendPullRequestContextsToPrompt(
-            appendPastedTextsToPrompt(
-              appendFileCommentsToPrompt(
-                appendTerminalContextsToPrompt(
-                  appendAssistantSelectionsToPrompt(
-                    promptForSend,
-                    composerAssistantSelectionsSnapshot,
-                  ),
-                  composerTerminalContextsSnapshot,
+        const messageTextForSend = appendPullRequestContextsToPrompt(
+          appendPastedTextsToPrompt(
+            appendFileCommentsToPrompt(
+              appendTerminalContextsToPrompt(
+                appendAssistantSelectionsToPrompt(
+                  promptForSend,
+                  composerAssistantSelectionsSnapshot,
                 ),
-                composerFileCommentsSnapshot,
+                composerTerminalContextsSnapshot,
               ),
-              composerPastedTextsSnapshot,
+              composerFileCommentsSnapshot,
             ),
-            composerPullRequestContextsSnapshot,
+            composerPastedTextsSnapshot,
           ),
-          composerBrowserAnnotationsSnapshot,
-          messageIdForSend,
+          composerPullRequestContextsSnapshot,
         );
         const messageCreatedAt = new Date().toISOString();
         const outgoingTextSeed =
@@ -703,7 +626,6 @@ export function useChatTurnSubmission({
           nextAssociatedWorktreeBranch,
           nextAssociatedWorktreeRef,
           turnDispatchSettings: dispatchSettings,
-          computerControlSequenceForSend,
           api,
           targetProjectCwdForSend,
           threadIdForSend,
@@ -736,7 +658,6 @@ export function useChatTurnSubmission({
           composerImagesSnapshot,
           composerFilesSnapshot,
           composerAssistantSelectionsSnapshot,
-          composerBrowserAnnotationsSnapshot,
           composerFileCommentsSnapshot,
           composerTerminalContextsSnapshot,
           composerPastedTextsSnapshot,
@@ -776,7 +697,6 @@ export function useChatTurnSubmission({
       sendPreflightInFlightRef,
       sendInFlightRef,
       turnDispatchSettings,
-      computerControlChangeSequence,
 
       hasQueueableLiveTurn,
       scheduleComposerFocus,
@@ -816,7 +736,6 @@ export function useChatTurnSubmission({
       composerImages,
       composerFiles,
       composerAssistantSelections,
-      composerBrowserAnnotations,
       composerFileComments,
       composerTerminalContexts,
       composerPastedTexts,

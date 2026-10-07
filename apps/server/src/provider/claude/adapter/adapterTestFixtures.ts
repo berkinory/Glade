@@ -360,7 +360,6 @@ export function makeGatewayCredentialsHarness(options?: {
 }) {
   let sequence = 0;
   const revokedTokens: string[] = [];
-  const leasedCapabilities: Array<readonly string[]> = [];
   const cancelledTurns: Array<{ readonly token: string; readonly turnId: string }> = [];
   const nativeToolCalls = makeNativeToolCallRegistry();
   const credentials = {
@@ -388,15 +387,12 @@ export function makeGatewayCredentialsHarness(options?: {
       nativeToolCalls.revoke(token);
       revokedTokens.push(token);
     },
-    connectionForThread: (_threadId, _provider, leaseOptions) => {
-      leasedCapabilities.push(leaseOptions?.additionalCapabilities ?? []);
-      return {
-        url: "http://127.0.0.1:48123/mcp",
-        bearerToken: `gateway-token-${++sequence}`,
-      };
-    },
+    connectionForThread: () => ({
+      url: "http://127.0.0.1:48123/mcp",
+      bearerToken: `gateway-token-${++sequence}`,
+    }),
   } satisfies AgentGatewayCredentialsShape;
-  return { cancelledTurns, credentials, leasedCapabilities, revokedTokens };
+  return { cancelledTurns, credentials, revokedTokens };
 }
 
 export function makeDeterministicRandomService(seed = 0x1234_5678): {

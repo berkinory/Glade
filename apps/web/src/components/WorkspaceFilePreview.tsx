@@ -7,7 +7,7 @@ import {
   isSupportedLocalImagePath,
   isSupportedLocalPdfPath,
   lowerCaseExtensionOf,
-} from "@glade/shared/browser/localPreviewFiles";
+} from "@glade/shared/attachments/localPreviewFiles";
 import {
   isLocalAbsolutePath,
   isWorkspaceRelativePathSafe,

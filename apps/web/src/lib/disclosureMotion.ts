@@ -1,9 +1,5 @@
 import { cn } from "~/lib/utils";
-import {
-  UI_MOTION_QUICK_CLASS,
-  UI_MOTION_DEFAULT_CLASS,
-  UI_MOTION_DEFAULT_MS,
-} from "~/lib/uiMotion";
+import { UI_MOTION_DEFAULT_CLASS, UI_MOTION_DEFAULT_MS } from "~/lib/uiMotion";
 
 export const DISCLOSURE_TRANSITION_MS = UI_MOTION_DEFAULT_MS;
 export const DISCLOSURE_CLEANUP_BUFFER_MS = 40;
@@ -52,17 +48,4 @@ export function disclosureContentClassName(open: boolean, className?: string) {
 
 export function disclosureChevronClassName(open: boolean, className?: string) {
   return cn(DISCLOSURE_CHEVRON_MOTION_CLASS, open && "rotate-90", className);
-}
-
-const DISCLOSURE_POP_MOTION_CLASS = `origin-top-right transition-[opacity,transform] ${UI_MOTION_DEFAULT_CLASS}`;
-
-const DISCLOSURE_POP_OPEN_CLASS = "translate-y-0 scale-100 opacity-100";
-const DISCLOSURE_POP_CLOSED_CLASS = `translate-y-1 scale-[0.985] opacity-0 pointer-events-none ${UI_MOTION_QUICK_CLASS}`;
-
-export function disclosurePopClassName(open: boolean, className?: string) {
-  return cn(
-    DISCLOSURE_POP_MOTION_CLASS,
-    open ? DISCLOSURE_POP_OPEN_CLASS : DISCLOSURE_POP_CLOSED_CLASS,
-    className,
-  );
 }

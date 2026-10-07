@@ -9,7 +9,6 @@ import {
 } from "../../ChatView.logic.worktree";
 import { shouldRenderProviderHealthBanner } from "../../ChatView.logic.session";
 import { useChatProviderStatus } from "~/components/chat/useChatProviderStatus";
-import { toastManager } from "~/components/ui/toast";
 import { stripComposerTriggerText } from "~/composer-logic";
 import { canOfferForkSlashCommand, canOfferReviewSlashCommand } from "~/composerSlashCommands";
 import { stripDiffSearchParams } from "~/diffRouteSearch";
@@ -19,7 +18,6 @@ import { useRepoDiffTotals } from "~/hooks/useRepoDiffTotals";
 import { formatShortcutLabel, shortcutLabelForCommand } from "~/keybindings";
 import { findProviderStatus } from "~/lib/providerAvailability";
 import { resolveAvailableHandoffTargetProviders } from "~/lib/threadHandoff";
-import { readNativeApi } from "~/nativeApi";
 import {
   ChatViewProps,
   EMPTY_AVAILABLE_EDITORS,
@@ -69,7 +67,6 @@ export function useChatDiscoveryController({
     activeLatestTurn,
     diffEnvironmentPending,
     diffOpen,
-    browserOpen,
     terminalState,
     terminalWorkspaceTerminalTabActive,
   } = workspace;
@@ -105,7 +102,7 @@ export function useChatDiscoveryController({
     serverSettingsQuery,
     workLogEntries,
   } = provider;
-  const { threadId, onToggleDiffPanel, onToggleBrowserPanel, onOpenBrowserUrl } = props;
+  const { threadId, onToggleDiffPanel } = props;
 
   const currentActiveGitBranch = (() => {
     if (gitStatusQuery.data !== undefined) {
@@ -404,47 +401,6 @@ export function useChatDiscoveryController({
     });
   };
 
-  const onToggleBrowser = () => {
-    if (onToggleBrowserPanel) {
-      onToggleBrowserPanel();
-      return;
-    }
-    void navigate({
-      to: "/$threadId",
-      params: { threadId },
-      replace: true,
-      search: (previous) => {
-        const rest = stripDiffSearchParams(previous);
-        return browserOpen ? { ...rest, panel: undefined } : { ...rest, panel: "browser" };
-      },
-    });
-  };
-
-  const openBrowserUrl = (url: string) => {
-    const api = readNativeApi();
-    void api?.browser.open({ threadId, initialUrl: url }).catch((error) => {
-      toastManager.add({
-        type: "error",
-        title: "Could not open repository",
-        description:
-          error instanceof Error ? error.message : "The in-app browser could not open GitHub.",
-      });
-    });
-    if (onOpenBrowserUrl) {
-      onOpenBrowserUrl(url);
-      return;
-    }
-    void navigate({
-      to: "/$threadId",
-      params: { threadId },
-      replace: true,
-      search: (previous) => ({
-        ...stripDiffSearchParams(previous),
-        panel: "browser",
-      }),
-    });
-  };
-
   const envLocked = Boolean(
     activeThread &&
     (activeThread.messages.length > 0 ||
@@ -504,8 +460,6 @@ export function useChatDiscoveryController({
     chatSplitShortcutLabel,
     modelPickerShortcutLabel,
     onToggleDiff,
-    onToggleBrowser,
-    openBrowserUrl,
     envLocked,
     isTerminalPrimarySurface,
     isTerminalEnvironmentContext,

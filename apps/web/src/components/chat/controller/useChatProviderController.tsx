@@ -1,6 +1,5 @@
 import { MessageId } from "@glade/contracts/core/baseSchemas";
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
-import { resolveComputerInvocationMode } from "@glade/shared/computer/computerInvocation";
 import { resolveLatestTailUserMessageEditTarget } from "@glade/shared/threads/conversationEdit";
 import { useQuery } from "@tanstack/react-query";
 import { useRef, useLayoutEffect, useMemo } from "react";
@@ -104,13 +103,6 @@ export function useChatProviderController({
     composerSkills,
     composerMentions,
   });
-
-  const computerControlMode = resolveComputerInvocationMode({
-    messageText: prompt,
-    enableComputerControl: settings.computerControlEnabled,
-  });
-
-  const enableComputerControl = computerControlMode !== "off";
 
   const featureFlags = useFeatureFlags();
 
@@ -311,8 +303,6 @@ export function useChatProviderController({
     selectedComposerMentionsRef,
     updateSelectedComposerSkills,
     updateSelectedComposerMentions,
-    computerControlMode,
-    enableComputerControl,
     serverSettingsQuery,
     phase,
     isConnecting,

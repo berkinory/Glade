@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { partializeComposerDraftStoreState } from "./composerDraftPersistence.serialization";
 import { useComposerDraftStore } from "./composerDraftStore";
 import { normalizeCurrentPersistedComposerDraftStoreState } from "./composerDraftPersistence.serialization";
-import { toHydratedThreadDraft } from "./composerDraftPersistence.hydration";
 import {
   makeImage,
   makeQueuedChatTurn,
@@ -23,84 +22,6 @@ import {
 } from "./lib/terminalContext";
 
 describe("composerDraftStore persisted-state hydration", () => {
-  it.each([true, false])(
-    "restores a Computer-only choice of %s after serialization and hydration",
-    (enabled) => {
-      resetComposerDraftStore();
-      const threadId = ThreadId.makeUnsafe("thread-computer-choice");
-      useComposerDraftStore.getState().setEnableComputerControl(threadId, enabled);
-
-      const serialized = JSON.stringify(
-        partializeComposerDraftStoreState(useComposerDraftStore.getState()),
-      );
-      const restored = normalizeCurrentPersistedComposerDraftStoreState(JSON.parse(serialized));
-      const draft = restored.draftsByThreadId[threadId];
-      expect(draft?.enableComputerControl).toBe(enabled);
-      expect(toHydratedThreadDraft(threadId, draft!).enableComputerControl).toBe(enabled);
-    },
-  );
-
-  it.each(["off", "request", "chat"] as const)(
-    "round-trips explicit %s intent without changing other draft content",
-    (mode) => {
-      resetComposerDraftStore();
-      const threadId = ThreadId.makeUnsafe("computer-mode-roundtrip");
-      const store = useComposerDraftStore.getState();
-      store.setPrompt(threadId, "Keep my unsent message");
-      store.setComputerControlMode(threadId, mode, { generation: 7 });
-      store.enqueueQueuedTurn(threadId, {
-        ...makeQueuedChatTurn("mode-queue"),
-        computerControlMode: mode,
-        computerControlGeneration: 7,
-        enableComputerControl: mode !== "off",
-      });
-      const persisted = normalizeCurrentPersistedComposerDraftStoreState(
-        JSON.parse(
-          JSON.stringify(partializeComposerDraftStoreState(useComposerDraftStore.getState())),
-        ),
-      );
-      const draft = toHydratedThreadDraft(threadId, persisted.draftsByThreadId[threadId]!);
-      expect(draft.prompt).toBe("Keep my unsent message");
-      expect(draft.computerControlMode).toBe(mode);
-      expect(draft.computerControlGeneration).toBe(7);
-      expect(draft.enableComputerControl).toBe(mode !== "off");
-      expect(draft.queuedTurns[0]?.computerControlMode).toBe(mode);
-      expect(draft.queuedTurns[0]?.computerControlGeneration).toBe(7);
-      store.setComputerControlMode(threadId, "off");
-      expect(
-        useComposerDraftStore.getState().draftsByThreadId[threadId]?.queuedTurns[0]
-          ?.computerControlMode,
-      ).toBe(mode);
-    },
-  );
-
-  it("preserves a request without promoting it to the chat default", () => {
-    resetComposerDraftStore();
-    const threadId = ThreadId.makeUnsafe("computer-request-legacy");
-    const store = useComposerDraftStore.getState();
-    store.setComputerControlMode(threadId, "request", { generation: 7 });
-    const draft = useComposerDraftStore.getState().draftsByThreadId[threadId];
-    expect(draft?.computerControlMode).toBe("request");
-    expect(draft?.enableComputerControl).toBe(true);
-    expect(draft?.computerControlGeneration).toBe(7);
-  });
-
-  it("explicit off revokes queued intent while preserving queued messages", () => {
-    resetComposerDraftStore();
-    const threadId = ThreadId.makeUnsafe("computer-revoke-queue");
-    const store = useComposerDraftStore.getState();
-    store.enqueueQueuedTurn(threadId, {
-      ...makeQueuedChatTurn("request"),
-      computerControlMode: "chat",
-      enableComputerControl: true,
-    });
-    store.setComputerControlMode(threadId, "off", { revokeQueued: true });
-    const queued = useComposerDraftStore.getState().draftsByThreadId[threadId]?.queuedTurns[0];
-    expect(queued?.computerControlMode).toBe("off");
-    expect(queued?.enableComputerControl).toBe(false);
-    expect(queued?.previewText).toBe("queued chat request");
-  });
-
   it("normalizes null and empty persisted states", () => {
     const emptyState = {
       draftsByThreadId: {},

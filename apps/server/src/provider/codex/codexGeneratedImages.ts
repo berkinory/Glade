@@ -8,12 +8,9 @@ import {
 } from "@glade/contracts/provider/runtimePayloads";
 import { type ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import { Option, Schema } from "effect";
-import { isSupportedLocalImagePath as isSupportedLocalImagePathShared } from "@glade/shared/browser/localPreviewFiles";
+import { isSupportedLocalImagePath as isSupportedLocalImagePathShared } from "@glade/shared/attachments/localPreviewFiles";
 
-import {
-  resolveActiveCodexHomeWritePath,
-  resolveCodexHomeAllowlistCandidates,
-} from "./codexHomePaths.ts";
+import { resolveCodexHomeAllowlistCandidates } from "./codexHomePaths.ts";
 
 const GeneratedImageItem = Schema.Struct({
   type: Schema.Literal("imageGeneration"),
@@ -32,14 +29,6 @@ export function isCodexGeneratedImageItemType(raw: unknown): boolean {
 }
 
 const isSupportedLocalImagePath = isSupportedLocalImagePathShared;
-
-function resolveCodexHomePath(homePath?: string): string {
-  return resolveActiveCodexHomeWritePath(homePath?.trim() ? { homePath } : {});
-}
-
-export function resolveCodexGeneratedImagesRoot(homePath?: string): string {
-  return path.join(resolveCodexHomePath(homePath), "generated_images");
-}
 
 export function resolveCodexGeneratedImagesRoots(homePath?: string): readonly string[] {
   const homes = resolveCodexHomeAllowlistCandidates(homePath?.trim() ? { homePath } : {});

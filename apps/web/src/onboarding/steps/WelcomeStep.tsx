@@ -19,7 +19,7 @@ const WELCOME_POINTS: ReadonlyArray<{
   },
   {
     title: "Verify before done",
-    description: "Diff, terminal, browser and PR stay in one loop.",
+    description: "Diff, terminal and PR stay in one loop.",
     icon: CircleCheckIcon,
   },
 ];

@@ -26,14 +26,4 @@ export default defineConfig([
     ...shared,
     entry: ["src/preload.ts"],
   },
-  {
-    ...shared,
-    entry: ["src/browser/annotations/guestPreload.ts"],
-  },
-  {
-    ...shared,
-
-    entry: ["src/cuaDriverHostStandalone.ts"],
-    noExternal: (id) => id.startsWith("@glade/"),
-  },
 ]);

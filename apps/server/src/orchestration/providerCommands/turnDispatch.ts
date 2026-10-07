@@ -7,7 +7,6 @@ import { ServerConfig } from "../../server/config.ts";
 import { ManagedAttachmentRepository } from "../../persistence/Services/ManagedAttachments.ts";
 import { ProviderService } from "../../provider/Services/ProviderService.ts";
 import { Option, Effect, Cause } from "effect";
-import { ComputerService } from "../../computer/Services/ComputerService";
 import {
   type ModelSelection,
   type ProviderStartOptions,
@@ -37,7 +36,6 @@ import {
   wrapProviderContext,
 } from "./inputProjection";
 
-import { parseComputerInvocation } from "@glade/shared/computer/computerInvocation";
 import {
   resolveThreadMentionPromptProjection,
   threadMentionContextSuffix,
@@ -47,7 +45,6 @@ import {
   ProviderServiceError,
 } from "../../provider/core/Errors.ts";
 import { resolveProviderDispatchAttachments } from "../../provider/core/providerAttachmentPaths.ts";
-import { computerActivationMetadata } from "../../computer/computerActivation.ts";
 import {
   ProviderContextLifecycleReason,
   ProviderContextLifecycleEvidence,
@@ -72,7 +69,6 @@ export function makeProviderTurnDispatch(input: {
   readonly serverConfig: ServiceMap.Service.Shape<typeof ServerConfig>;
   readonly managedAttachments: ServiceMap.Service.Shape<typeof ManagedAttachmentRepository>;
   readonly providerService: ServiceMap.Service.Shape<typeof ProviderService>;
-  readonly computerService: Option.Option<ServiceMap.Service.Shape<typeof ComputerService>>;
   readonly threadSessionSettings: ServiceMap.Service.Shape<typeof ThreadSessionSettings>;
   readonly ensureSessionForThread: ReturnType<
     typeof makeProviderSessionConfiguration
@@ -110,7 +106,6 @@ export function makeProviderTurnDispatch(input: {
     serverConfig,
     managedAttachments,
     providerService,
-    computerService,
     threadSessionSettings,
     ensureSessionForThread,
     gatewayOperations,
@@ -147,9 +142,6 @@ export function makeProviderTurnDispatch(input: {
     readonly reviewTarget?: ProviderReviewTarget;
     readonly modelSelection?: ModelSelection;
     readonly providerOptions?: ProviderStartOptions;
-    readonly enableComputerControl?: boolean;
-    readonly computerControlMode?: "off" | "request" | "chat";
-    readonly computerControlGeneration?: number;
     readonly runtimeMode?: RuntimeMode;
 
     readonly dispatchMode?: "queue" | "steer";
@@ -173,14 +165,7 @@ export function makeProviderTurnDispatch(input: {
           "Native subagent conversations are read-only. Send follow-up instructions to the main conversation.",
       });
     }
-    const computerInvocation =
-      input.dispatchOrigin === undefined || input.dispatchOrigin === "user"
-        ? parseComputerInvocation(input.messageText)
-        : null;
-
-    const authoredMessageText = computerInvocation
-      ? computerInvocation.prompt || "Use Glade Computer for this task."
-      : input.messageText;
+    const authoredMessageText = input.messageText;
     const threadMentionProjection = yield* resolveThreadMentionPromptProjection({
       mentions: input.mentions,
       snapshotQuery: projectionSnapshotQuery,
@@ -188,28 +173,6 @@ export function makeProviderTurnDispatch(input: {
     });
     let mentionContextSuffix = threadMentionContextSuffix(threadMentionProjection.contextBlocks);
     const providerMentions = threadMentionProjection.providerMentions;
-    const activation = computerActivationMetadata(input);
-
-    const requestedMode = activation.computerControlMode;
-    const generation = activation.computerControlGeneration;
-    const enableComputerControl = Option.isNone(computerService)
-      ? activation.enableComputerControl
-      : input.dispatchMode === "steer" && requestedMode === "off"
-        ? false
-        : yield* Effect.promise(() =>
-            computerService.value.manager.admitControl(
-              input.threadId,
-              requestedMode,
-              generation,
-              requestedMode === "request" && computerInvocation !== null,
-            ),
-          );
-    yield* Effect.logDebug("provider command reactor computer inputs", {
-      threadId: input.threadId,
-      mode: activation.computerControlMode,
-      generation,
-      enableComputerControl,
-    });
     const transcriptBoundaryMessageId = input.messageId;
     const selectedProvider =
       input.modelSelection?.provider ??
@@ -326,13 +289,10 @@ export function makeProviderTurnDispatch(input: {
       nativeResumeSucceeded,
       nativeResumeFailed,
       nativeSessionRestarted,
-      computerControlRestartDeferred,
-      forkComputerControl,
       lifecycleGeneration: destinationGeneration,
     } = yield* ensureSessionForThread(input.threadId, input.createdAt, {
       ...(input.modelSelection !== undefined ? { modelSelection: input.modelSelection } : {}),
       ...(input.providerOptions !== undefined ? { providerOptions: input.providerOptions } : {}),
-      ...(input.dispatchMode === "steer" ? {} : { enableComputerControl }),
       ...(input.runtimeMode !== undefined ? { runtimeMode: input.runtimeMode } : {}),
     });
     const validateHandoffAdmission =
@@ -363,15 +323,6 @@ export function makeProviderTurnDispatch(input: {
     }
     if (input.modelSelection !== undefined) {
       threadSessionSettings.setModelSelection(input.threadId, input.modelSelection);
-    }
-    if (input.dispatchMode !== "steer" && computerControlRestartDeferred !== true) {
-      // A fork provisions the parent-derived flag, not this turn's resolved value; a deferred
-      // control-only restart provisions nothing yet. In both cases the resolved value must not overwrite
-      // the authoritative cache.
-      threadSessionSettings.setComputerControl(
-        input.threadId,
-        forkComputerControl ?? enableComputerControl,
-      );
     }
 
     if (handoffBootstrapText && operationId && Option.isSome(transitions))
@@ -592,7 +543,6 @@ export function makeProviderTurnDispatch(input: {
       const ensureSessionForStaleRetry = ensureSessionForThread(input.threadId, input.createdAt, {
         ...(input.modelSelection !== undefined ? { modelSelection: input.modelSelection } : {}),
         ...(input.providerOptions !== undefined ? { providerOptions: input.providerOptions } : {}),
-        enableComputerControl,
         ...(input.runtimeMode !== undefined ? { runtimeMode: input.runtimeMode } : {}),
       });
       const replayWithTranscriptBootstrap = (

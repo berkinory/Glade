@@ -16,7 +16,6 @@ import {
   type WsPushMessage,
 } from "@glade/contracts/transport/ws/ws";
 import { WsBootstrapRpcGroup } from "@glade/contracts/transport/ws/bootstrapRpc";
-import { WsComputerRpcGroup } from "@glade/contracts/transport/ws/computerRpc";
 import { WsFeatureRpcGroup } from "@glade/contracts/transport/ws/rpc";
 import type {
   ProjectFileChangeEvent,
@@ -161,7 +160,7 @@ export function awaitWithAbort<A>(
   });
 }
 
-export const makeRpcClient = RpcClient.make(WsFeatureRpcGroup.merge(WsComputerRpcGroup));
+export const makeRpcClient = RpcClient.make(WsFeatureRpcGroup);
 
 export const makeBootstrapRpcClient = RpcClient.make(WsBootstrapRpcGroup);
 

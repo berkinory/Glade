@@ -17,7 +17,6 @@ import {
 import { PROVIDER_SEND_TURN_MAX_INPUT_CHARS } from "@glade/contracts/orchestration/threadEntities";
 import { providerSupportsNativeTurnSteering } from "@glade/shared/provider/providerMetadata";
 import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
-import { computerActivationMetadata } from "../../computer/computerActivation.ts";
 import {
   CommandDecisionInput,
   CommandDecisionEffect,
@@ -226,7 +225,6 @@ export function decideTurnCommand({
             ? { providerOptions: command.providerOptions }
             : {}),
           ...(command.reviewTarget !== undefined ? { reviewTarget: command.reviewTarget } : {}),
-          ...computerActivationMetadata({ ...command, userMessageText: command.message.text }),
           assistantDeliveryMode: command.assistantDeliveryMode ?? DEFAULT_ASSISTANT_DELIVERY_MODE,
           dispatchMode,
           dispatchOrigin: command.dispatchOrigin ?? "user",
@@ -377,7 +375,6 @@ export function decideTurnCommand({
               ? { providerOptions: command.providerOptions }
               : {}),
             ...(command.reviewTarget !== undefined ? { reviewTarget: command.reviewTarget } : {}),
-            ...computerActivationMetadata(command),
             assistantDeliveryMode: command.assistantDeliveryMode ?? DEFAULT_ASSISTANT_DELIVERY_MODE,
             dispatchMode: command.dispatchMode ?? "queue",
             dispatchOrigin: command.dispatchOrigin ?? "user",

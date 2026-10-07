@@ -14,16 +14,8 @@ export interface SettingsSearchEntry {
   keywords: string;
   target?: string | null;
 
-  applies?: (context: SettingsSearchContext) => boolean;
+  applies?: () => boolean;
 }
-
-export interface SettingsSearchContext {
-  readonly computerBackendIsVisibleDesktop: boolean;
-}
-
-const DEFAULT_SETTINGS_SEARCH_CONTEXT: SettingsSearchContext = {
-  computerBackendIsVisibleDesktop: false,
-};
 
 export function settingsSearchEntryTarget(entry: SettingsSearchEntry): string | null {
   return entry.target === undefined ? settingRowAnchorId(entry.title) : entry.target;
@@ -239,49 +231,6 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
   },
 
   {
-    id: "computer:status",
-    section: "computer",
-    title: "Computer status",
-    keywords:
-      "Whether agents can see and control this computer's desktop right now. desktop backend availability health kwin hyprland nested wayland linux mac macos screen recording accessibility computer use control status set up install plugin repair",
-
-    target: null,
-  },
-  {
-    id: "computer:open-automatically",
-    section: "computer",
-    title: "Automatic preview",
-    target: "setting-automatic-preview",
-    keywords:
-      "Open the live preview when an agent first uses the desktop in a chat. auto open computer use",
-    applies: () => true,
-  },
-  {
-    id: "computer:how-agents-use-the-desktop",
-    section: "computer",
-    title: "Computer control",
-    target: "setting-computer-control",
-    keywords:
-      "Let the agent use the desktop in any chat. Approval gates and Stop still apply. enable toggle permission desktop agent computer use control",
-  },
-  {
-    id: "computer:cursor-colors",
-    section: "computer",
-    title: "Cursor colors",
-    target: "setting-cursor-colors",
-    keywords:
-      "The agent pointer's colors: stock monochrome by default, or custom fill and rim. agent cursor arrow pointer color hex custom",
-  },
-  {
-    id: "computer:always-allowed",
-    section: "computer",
-    title: "Always allowed",
-    keywords:
-      "Durable per-app always-allow grants from computer approvals, with expiry and revoke. always allow approval grant revoke app bundle consent computer use",
-    target: null,
-  },
-
-  {
     id: "behavior:follow-up-behavior",
     section: "behavior",
     title: "Follow-up behavior",
@@ -447,13 +396,6 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     keywords: "reset preferences theme provider settings",
   },
   {
-    id: "computer:preview-size",
-    section: "computer",
-    title: "Preview size",
-    target: "setting-preview-size",
-    keywords: "compact large computer preview",
-  },
-  {
     id: "mcp:servers",
     section: "mcp",
     title: "MCP servers",
@@ -487,16 +429,12 @@ export function settingsSectionLabel(section: SettingsSectionId): string {
 export function rankSettingsSearchEntries(
   query: string,
   limit: number,
-  context: SettingsSearchContext | undefined = DEFAULT_SETTINGS_SEARCH_CONTEXT,
 ): readonly SettingsSearchEntry[] {
   const trimmed = query.trim();
   if (trimmed.length === 0) {
     return [];
   }
-  const resolvedContext = context ?? DEFAULT_SETTINGS_SEARCH_CONTEXT;
-  const available = SETTINGS_SEARCH_ENTRIES.filter(
-    (entry) => entry.applies?.(resolvedContext) ?? true,
-  );
+  const available = SETTINGS_SEARCH_ENTRIES.filter((entry) => entry.applies?.() ?? true);
   const ranked = rankProviderDiscoveryItems(available, trimmed, (entry) => [
     { value: entry.title },
     { value: entry.keywords, weight: 200 },

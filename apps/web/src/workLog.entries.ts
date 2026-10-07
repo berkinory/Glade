@@ -7,10 +7,6 @@ import { CommandId, ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { HandoffTransitionStage } from "@glade/contracts/orchestration/threadEntities";
 import { nonEmptyTrimmed } from "@glade/shared/text/text";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
-import {
-  COMPUTER_CONTROL_DENIED_ACTIVITY_KIND,
-  COMPUTER_SETUP_REQUIRED_ACTIVITY_KIND,
-} from "@glade/contracts/computer/computer";
 import type {
   OrchestrationLatestTurnState,
   OrchestrationThreadActivity,
@@ -27,7 +23,6 @@ import {
 } from "./lib/toolCallLabel.descriptors";
 import { normalizeToolTextForComparison } from "./lib/toolCallLabel.presentations";
 import { deriveWorkLogToolDetails } from "./lib/toolCallDetails";
-import { computerToolName } from "./lib/computerToolPresentation";
 import { compareActivitiesByOrder } from "./workLog.ordering";
 import {
   CHECKPOINT_REVERT_FAILED_ACTIVITY_KIND,
@@ -53,11 +48,8 @@ import {
 } from "./workLog.reconciliation";
 import { classifyWorkLogToolKind } from "./workLog.toolKind";
 import {
-  asComputerBuildSignature,
-  asComputerPermissions,
   collabPayloadItem,
   deriveCommandActionDisplay,
-  deriveComputerToolDescription,
   extractChangedFiles,
   extractCollabAction,
   extractCollabSubagents,
@@ -173,13 +165,6 @@ function shouldKeepActivityForWorkLog(
     return true;
   }
 
-  if (activity.kind === COMPUTER_SETUP_REQUIRED_ACTIVITY_KIND) {
-    return true;
-  }
-  if (activity.kind === COMPUTER_CONTROL_DENIED_ACTIVITY_KIND) {
-    return true;
-  }
-
   if (visibleTurnIds && visibleTurnIds.size > 0) {
     return activity.turnId !== null && visibleTurnIds.has(activity.turnId);
   }
@@ -197,8 +182,7 @@ function isQuietTurnLifecycleActivity(activity: OrchestrationThreadActivity): bo
 
 // Presentation only: the activity stays durable and pending approvals are derived
 // from raw activities. Refusals, cancellations, errors, session or permission
-// grants and every Computer consent (including clipboard, which has no task
-// scope) stay visible.
+// grants stay visible.
 function isRoutineApprovalAcceptance(activity: OrchestrationThreadActivity): boolean {
   if (activity.kind !== "approval.resolved" || activity.tone === "error") {
     return false;
@@ -207,8 +191,7 @@ function isRoutineApprovalAcceptance(activity: OrchestrationThreadActivity): boo
   return (
     payload?.decision === "accept" &&
     payload.approvalScope === undefined &&
-    payload.requestKind !== "permissions" &&
-    computerToolName(extractToolName(payload)) === null
+    payload.requestKind !== "permissions"
   );
 }
 
@@ -522,33 +505,14 @@ function normalizeWorkLogActivity(activity: OrchestrationThreadActivity): Derive
       entry.gladeThreadCreation = gladeThreadCreation;
     }
   }
-  if (activity.kind === COMPUTER_SETUP_REQUIRED_ACTIVITY_KIND) {
-    const buildSignature = asComputerBuildSignature(payload?.buildSignature);
-    const bundleId = nonEmptyTrimmed(payload?.bundleId) ?? null;
-    entry.computerSetupRequired = {
-      missing: asComputerPermissions(payload?.missing),
-      ...(buildSignature ? { buildSignature } : {}),
-      ...(bundleId ? { bundleId } : {}),
-    };
-  }
-  if (activity.kind === COMPUTER_CONTROL_DENIED_ACTIVITY_KIND) {
-    entry.computerControlDenied = { toolName: nonEmptyTrimmed(payload?.toolName) ?? null };
-  }
   if (activity.kind === PROVIDER_CONTEXT_LIFECYCLE_ACTIVITY_KIND) {
     const providerContextLifecycle = extractProviderContextLifecycleInfo(payload);
     if (providerContextLifecycle) {
       entry.providerContextLifecycle = providerContextLifecycle;
     }
   }
-  const computerToolDescription = deriveComputerToolDescription({
-    activity,
-    payload,
-    toolName,
-    title: commandActionDisplay?.title ?? title,
-  });
   const readableTitle =
     extractCollabActionTitle(payload) ??
-    computerToolDescription?.summary ??
     deriveGladeMcpToolTitle({
       toolName,
       title: commandActionDisplay?.title ?? title,

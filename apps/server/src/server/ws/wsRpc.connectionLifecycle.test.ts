@@ -12,7 +12,6 @@ import {
   type WsBootstrapNegotiateResult,
 } from "@glade/contracts/transport/ws/wsCompatibility";
 import { type AuthSessionId } from "@glade/contracts/core/baseSchemas";
-import { type ComputerEvent } from "@glade/contracts/computer/computer";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { Duration, Effect, Exit, Layer, Schema, Scope } from "effect";
 import { HttpRouter, HttpServerRequest } from "effect/unstable/http";
@@ -41,7 +40,6 @@ import {
   type WsConnectionSessionsShape,
 } from "./wsConnectionSessions";
 import { makeCurrentWsFeatureCompatibilitySearchParams } from "./wsCompatibility";
-import { ComputerEventInterests } from "../../computer/computerEventInterests";
 
 const PingRpc = Rpc.make("test.ping", {
   payload: Schema.Struct({ label: Schema.String }),
@@ -810,18 +808,9 @@ describe("websocketRpcRouteLayer connection lifecycle", () => {
         attachmentPrincipal: { ownerKind: "session", ownerId: issued.sessionId },
       });
 
-      const interests = new ComputerEventInterests(server.connectionSessions.onClose);
-      const event = {
-        type: "computer.thread-state",
-        state: { threadId: "state-only-view" },
-      } as ComputerEvent;
-      interests.watch(sessionKey, "state-only-view");
-      expect(interests.accepts(sessionKey, event)).toBe(true);
-
       socket.close();
       await waitForClose(socket);
       await waitForObserved(() => server.connectionSessions.lookup(sessionKey) === undefined);
-      expect(interests.accepts(sessionKey, event)).toBe(false);
     } finally {
       await server.close();
     }

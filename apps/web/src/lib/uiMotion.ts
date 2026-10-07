@@ -1,7 +1,6 @@
 export const UI_MOTION_DEFAULT_MS = 100;
 export const UI_MOTION_LONG_MS = 120;
 
-export const UI_MOTION_QUICK_CLASS = "duration-80 ease-out motion-reduce:transition-none";
 export const UI_MOTION_DEFAULT_CLASS = "duration-100 ease-out motion-reduce:transition-none";
 export const UI_MOTION_LONG_CLASS = "duration-120 ease-out motion-reduce:transition-none";
 

@@ -61,7 +61,7 @@ Tool rows and the plugin library share `serviceBrandArtwork.ts`. MCP icons are
 selected from explicit app metadata, a qualified `mcp__server__tool` name, or a
 separate server identity. Connector tool prefixes are used only within the
 `codex_apps` namespace. Unknown MCPs retain `McpServerIcon`; generic tool approval
-requests use `ToolsIcon`. Glade and Computer tools retain their dedicated icons.
+requests use `ToolsIcon`. Glade tools retain their dedicated icons.
 
 Local artwork is used without runtime image downloads. The selected MCP services
 include Context7, Exa, Firecrawl, Playwright, Chrome DevTools,

@@ -1,7 +1,6 @@
 import { ChevronLeftIcon, ChevronRightIcon, XIcon } from "~/lib/icons";
 import { useLayoutEffect, useRef } from "react";
 import { Button } from "~/components/ui/button";
-import { notifyNativeSurfaceOcclusionChange } from "~/lib/nativeSurfaceOcclusion";
 import type { ExpandedImagePreview } from "./ExpandedImagePreview";
 interface ExpandedImageOverlayProps {
   readonly expandedImage: ExpandedImagePreview | null;
@@ -24,9 +23,7 @@ export function ExpandedImageOverlay({
     overlayRef.current?.querySelector<HTMLButtonElement>("button")?.focus({
       preventScroll: true,
     });
-    notifyNativeSurfaceOcclusionChange();
     return () => {
-      notifyNativeSurfaceOcclusionChange();
       if (previousFocus instanceof HTMLElement && previousFocus.isConnected)
         previousFocus.focus({
           preventScroll: true,

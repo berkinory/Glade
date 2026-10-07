@@ -1,5 +1,4 @@
 import type { PendingUserInputRecoveryDraft } from "./pendingUserInputRecovery";
-import type { ComposerComputerControlMode } from "./computerControlMode";
 
 import {
   type ModelSelection,
@@ -21,7 +20,6 @@ import * as Equal from "effect/Equal";
 import * as Schema from "effect/Schema";
 
 import { normalizeAssistantSelectionAttachment } from "./lib/assistantSelections";
-import { type BrowserAnnotationDraft, normalizeBrowserAnnotations } from "./lib/browserAnnotations";
 import {
   type PastedTextDraft,
   countPastedTextLines,
@@ -78,7 +76,6 @@ export interface ComposerPromptHistorySavedDraft {
   nonPersistedImageIds: string[];
   persistedAttachments: PersistedComposerImageAttachment[];
   assistantSelections: ComposerAssistantSelectionAttachment[];
-  browserAnnotations: BrowserAnnotationDraft[];
   terminalContexts: TerminalContextDraft[];
   fileComments: FileCommentDraft[];
   pastedTexts: PastedTextDraft[];
@@ -98,7 +95,6 @@ export interface QueuedComposerChatTurn {
   images: ComposerImageAttachment[];
   files: ComposerFileAttachment[];
   assistantSelections: ComposerAssistantSelectionAttachment[];
-  browserAnnotations: BrowserAnnotationDraft[];
   terminalContexts: TerminalContextDraft[];
   fileComments: FileCommentDraft[];
   pastedTexts: PastedTextDraft[];
@@ -110,9 +106,6 @@ export interface QueuedComposerChatTurn {
   selectedPromptEffort: string | null;
   modelSelection: ModelSelection;
   providerOptionsForDispatch?: ProviderStartOptions | undefined;
-  enableComputerControl?: boolean | undefined;
-  computerControlMode?: ComposerComputerControlMode | undefined;
-  computerControlGeneration?: number | undefined;
 
   runtimeMode: RuntimeMode;
 
@@ -131,7 +124,6 @@ export interface ComposerThreadDraftState {
   nonPersistedImageIds: string[];
   persistedAttachments: PersistedComposerImageAttachment[];
   assistantSelections: ComposerAssistantSelectionAttachment[];
-  browserAnnotations: BrowserAnnotationDraft[];
   terminalContexts: TerminalContextDraft[];
   fileComments: FileCommentDraft[];
   pastedTexts: PastedTextDraft[];
@@ -143,10 +135,6 @@ export interface ComposerThreadDraftState {
   modelSelectionByProvider: Partial<Record<ProviderKind, ModelSelection>>;
   activeProvider: ProviderKind | null;
   runtimeMode: RuntimeMode | null;
-
-  enableComputerControl?: boolean | undefined;
-  computerControlMode?: ComposerComputerControlMode | undefined;
-  computerControlGeneration?: number | undefined;
 }
 
 export interface DraftThreadState {
@@ -228,10 +216,7 @@ export interface ComposerDraftStoreState {
   clearProjectDraftThreadById: (projectId: ProjectId, threadId: ThreadId) => void;
   markDraftThreadPromoting: (threadId: ThreadId, promotedTo?: ThreadId) => void;
   finalizePromotedDraftThread: (threadId: ThreadId) => void;
-  clearDraftThread: (
-    threadId: ThreadId,
-    options?: { readonly preserveComputerControl?: boolean },
-  ) => void;
+  clearDraftThread: (threadId: ThreadId) => void;
   setStickyModelSelection: (modelSelection: ModelSelection | null | undefined) => void;
   setPrompt: (threadId: ThreadId, prompt: string) => void;
   setPromptHistorySavedDraft: (
@@ -268,12 +253,6 @@ export interface ComposerDraftStoreState {
   ) => void;
   setRuntimeMode: (threadId: ThreadId, runtimeMode: RuntimeMode | null | undefined) => void;
 
-  setComputerControlMode: (
-    threadId: ThreadId,
-    mode: ComposerComputerControlMode,
-    options?: { revokeQueued?: boolean; generation?: number },
-  ) => void;
-  setEnableComputerControl: (threadId: ThreadId, enabled: boolean) => void;
   enqueueQueuedTurn: (threadId: ThreadId, queuedTurn: QueuedComposerTurn) => void;
   insertQueuedTurn: (threadId: ThreadId, queuedTurn: QueuedComposerTurn, index: number) => void;
   removeQueuedTurn: (threadId: ThreadId, queuedTurnId: string) => void;
@@ -288,16 +267,6 @@ export interface ComposerDraftStoreState {
   ) => boolean;
   removeAssistantSelection: (threadId: ThreadId, selectionId: string) => void;
   clearAssistantSelections: (threadId: ThreadId) => void;
-  addBrowserAnnotation: (
-    threadId: ThreadId,
-    annotation: Omit<BrowserAnnotationDraft, "ordinal"> & { ordinal?: number },
-  ) => boolean;
-  addBrowserAnnotations: (
-    threadId: ThreadId,
-    annotations: ReadonlyArray<Omit<BrowserAnnotationDraft, "ordinal"> & { ordinal?: number }>,
-  ) => number;
-  removeBrowserAnnotation: (threadId: ThreadId, annotationId: string) => void;
-  clearBrowserAnnotations: (threadId: ThreadId) => void;
   addFileComment: (threadId: ThreadId, comment: FileCommentDraft) => boolean;
   removeFileComment: (threadId: ThreadId, commentId: string) => void;
   clearFileComments: (threadId: ThreadId) => void;
@@ -433,7 +402,6 @@ export function createEmptyThreadDraft(): ComposerThreadDraftState {
     nonPersistedImageIds: [],
     persistedAttachments: [],
     assistantSelections: [],
-    browserAnnotations: [],
     terminalContexts: [],
     fileComments: [],
     pastedTexts: [],
@@ -445,8 +413,6 @@ export function createEmptyThreadDraft(): ComposerThreadDraftState {
     modelSelectionByProvider: {},
     activeProvider: null,
     runtimeMode: null,
-
-    enableComputerControl: undefined,
   };
 }
 
@@ -642,7 +608,6 @@ export function captureComposerPromptHistorySavedDraft(input: {
     nonPersistedImageIds: [...draft.nonPersistedImageIds],
     persistedAttachments: [...draft.persistedAttachments],
     assistantSelections: normalizeAssistantSelections(draft.assistantSelections),
-    browserAnnotations: normalizeBrowserAnnotations(draft.browserAnnotations),
     terminalContexts: normalizeTerminalContextsForThread(threadId, draft.terminalContexts),
     fileComments: normalizeFileComments(draft.fileComments),
     pastedTexts: normalizePastedTexts(draft.pastedTexts),
@@ -677,7 +642,6 @@ export function shouldRemoveDraft(draft: ComposerThreadDraftState): boolean {
     draft.files.length === 0 &&
     draft.persistedAttachments.length === 0 &&
     draft.assistantSelections.length === 0 &&
-    draft.browserAnnotations.length === 0 &&
     draft.terminalContexts.length === 0 &&
     draft.fileComments.length === 0 &&
     draft.pastedTexts.length === 0 &&
@@ -687,9 +651,7 @@ export function shouldRemoveDraft(draft: ComposerThreadDraftState): boolean {
     draft.queuedTurns.length === 0 &&
     Object.keys(draft.modelSelectionByProvider).length === 0 &&
     draft.activeProvider === null &&
-    draft.runtimeMode === null &&
-    draft.enableComputerControl === undefined &&
-    draft.computerControlMode === undefined
+    draft.runtimeMode === null
   );
 }
 
@@ -709,7 +671,6 @@ const EMPTY_FILES: ComposerFileAttachment[] = [];
 const EMPTY_IDS: string[] = [];
 const EMPTY_PERSISTED_ATTACHMENTS: PersistedComposerImageAttachment[] = [];
 const EMPTY_TERMINAL_CONTEXTS: TerminalContextDraft[] = [];
-const EMPTY_BROWSER_ANNOTATIONS: BrowserAnnotationDraft[] = [];
 const EMPTY_PASTED_TEXTS: PastedTextDraft[] = [];
 const EMPTY_PULL_REQUEST_CONTEXTS: PullRequestContextDraft[] = [];
 const EMPTY_SKILLS: ProviderSkillReference[] = [];
@@ -720,7 +681,6 @@ Object.freeze(EMPTY_FILES);
 Object.freeze(EMPTY_IDS);
 Object.freeze(EMPTY_PERSISTED_ATTACHMENTS);
 Object.freeze(EMPTY_TERMINAL_CONTEXTS);
-Object.freeze(EMPTY_BROWSER_ANNOTATIONS);
 Object.freeze(EMPTY_PASTED_TEXTS);
 Object.freeze(EMPTY_PULL_REQUEST_CONTEXTS);
 Object.freeze(EMPTY_SKILLS);
@@ -737,7 +697,6 @@ const EMPTY_THREAD_DRAFT = Object.freeze<ComposerThreadDraftState>({
   nonPersistedImageIds: EMPTY_IDS,
   persistedAttachments: EMPTY_PERSISTED_ATTACHMENTS,
   assistantSelections: [],
-  browserAnnotations: EMPTY_BROWSER_ANNOTATIONS,
   terminalContexts: EMPTY_TERMINAL_CONTEXTS,
   fileComments: [],
   pastedTexts: EMPTY_PASTED_TEXTS,
@@ -749,8 +708,6 @@ const EMPTY_THREAD_DRAFT = Object.freeze<ComposerThreadDraftState>({
   modelSelectionByProvider: EMPTY_MODEL_SELECTION_BY_PROVIDER,
   activeProvider: null,
   runtimeMode: null,
-
-  enableComputerControl: undefined,
 });
 
 export function selectComposerThreadDraft(
@@ -769,7 +726,6 @@ export function hasUnsentComposerDraft(state: ComposerThreadDraftState | undefin
     draft.files.length ||
     draft.persistedAttachments.length ||
     draft.assistantSelections.length ||
-    draft.browserAnnotations.length ||
     draft.terminalContexts.length ||
     draft.fileComments.length ||
     draft.pastedTexts.length ||

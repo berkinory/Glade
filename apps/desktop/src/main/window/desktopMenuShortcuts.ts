@@ -58,7 +58,7 @@ function accelerator(
 
 export function createDesktopMenuShortcuts(platform: NodeJS.Platform, changed: () => void) {
   let state: DesktopMenuShortcutState = {
-    shortcuts: { "terminal.new": null, "sidebar.toggle": null, "browser.toggle": null },
+    shortcuts: { "terminal.new": null, "sidebar.toggle": null },
     capturing: false,
   };
   const getAccelerator = (command: DesktopMenuShortcutCommand) =>
@@ -79,7 +79,7 @@ export function createDesktopMenuShortcuts(platform: NodeJS.Platform, changed: (
     isCapturing: () => state.capturing,
     reset: () =>
       apply({
-        shortcuts: { "terminal.new": null, "sidebar.toggle": null, "browser.toggle": null },
+        shortcuts: { "terminal.new": null, "sidebar.toggle": null },
         capturing: false,
       }),
     shouldIgnoreNativeShortcut: (

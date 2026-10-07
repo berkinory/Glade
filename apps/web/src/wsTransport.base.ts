@@ -33,7 +33,6 @@ import type {
 import { Effect, Exit, ManagedRuntime, Schema, Scope } from "effect";
 import { RpcClient, RpcClientError } from "effect/unstable/rpc";
 import { APP_VERSION } from "./branding";
-import { useComputerStateStore } from "./computerStateStore";
 import { getUnaryRpcCapacityRetryDelayMs } from "./lib/expensiveReadRetry";
 import { resetThreadDetailResumeCursors } from "./threadDetailResumeCursors";
 import type { WsTransportState } from "./wsTransportEvents";
@@ -584,8 +583,6 @@ export abstract class WsTransportBase {
       // reset to force full snapshots. `lastServerInstanceId` survives failed reconnects, unlike
       // `compatibility`, so an outage longer than the first retry still detects the change.
       resetThreadDetailResumeCursors();
-
-      useComputerStateStore.getState().clear();
     }
     this.lastServerInstanceId = compatibility.serverInstanceId;
     this.setCompatibility(compatibility);

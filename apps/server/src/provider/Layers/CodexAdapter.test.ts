@@ -266,7 +266,7 @@ validationLayer("CodexAdapterLive validation", (it) => {
         serviceTier: "fast",
         runtimeMode: "full-access",
 
-        agentGatewayCapabilityInput: { enableComputerControl: false },
+        agentGatewayCapabilityInput: {},
       });
     }),
   );

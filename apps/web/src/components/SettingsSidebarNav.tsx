@@ -15,7 +15,6 @@ import {
   rankSettingsSearchEntries,
   settingsSearchEntryTarget,
   settingsSectionLabel,
-  type SettingsSearchContext,
   type SettingsSearchEntry,
 } from "../settingsSearchIndex";
 import {
@@ -66,17 +65,12 @@ export function SettingsSidebarNav(props: {
       target?: string;
     },
   ) => void;
-  searchContext?: SettingsSearchContext | undefined;
 }) {
   const { onSelectSection } = props;
   const [query, setQuery] = useState("");
   const trimmedQuery = query.trim();
   const isSearching = trimmedQuery.length > 0;
-  const results = rankSettingsSearchEntries(
-    trimmedQuery,
-    SETTINGS_SEARCH_RESULTS_LIMIT,
-    props.searchContext,
-  );
+  const results = rankSettingsSearchEntries(trimmedQuery, SETTINGS_SEARCH_RESULTS_LIMIT);
   const handleSelectResult = (entry: SettingsSearchEntry) => {
     const target = settingsSearchEntryTarget(entry);
     onSelectSection(

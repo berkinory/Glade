@@ -6,7 +6,6 @@ import type { Dispatch, RefObject, SetStateAction } from "react";
 import { useEffect } from "react";
 import { readStarredModelSlugs } from "~/lib/starredModels";
 import { isMacNavigatorPlatform } from "~/lib/utils";
-import { isElectron } from "../../env";
 import { resolveShortcutCommand } from "../../keybindings";
 import { isEditableEventTarget } from "../../lib/editableEventTarget";
 import { isTerminalFocused } from "../../lib/terminalFocus";
@@ -14,7 +13,7 @@ import type { Project } from "../../types";
 import { type Thread } from "../../types";
 import { resolveCycledModelSlug } from "../ChatView.logic.worktree";
 import { collectForegroundRunningSubagentStripItems } from "./ComposerSubagentStrip.logic";
-import { eventTargetsInAppBrowser, shouldCaptureChatFindShortcut } from "./threadFind.logic";
+import { shouldCaptureChatFindShortcut } from "./threadFind.logic";
 import { useChatProviderModels } from "./useChatProviderModels";
 import type { ThreadTerminalState } from "~/terminalStateNormalization";
 import { useChatWorkLog } from "./useChatWorkLog";
@@ -88,7 +87,6 @@ interface ChatKeyboardShortcutsInput {
   commitAndPushTriggerRef: RefObject<(() => void) | null>;
   showGitActions: boolean;
   isGitRepo: boolean;
-  onToggleBrowser: () => void;
   copyThreadIdToClipboard: (threadId: string) => void;
   activeProject: Project | undefined;
   activeThread: Thread | undefined;
@@ -152,12 +150,7 @@ type ChatKeyboardShortcutsControllerInput = {
   transcript: Pick<ChatKeyboardShortcutsInput, "isComposerApprovalState">;
   discovery: Pick<
     ChatKeyboardShortcutsInput,
-    | "keybindings"
-    | "shouldRenderChatPaneContent"
-    | "onToggleDiff"
-    | "showGitActions"
-    | "isGitRepo"
-    | "onToggleBrowser"
+    "keybindings" | "shouldRenderChatPaneContent" | "onToggleDiff" | "showGitActions" | "isGitRepo"
   >;
 };
 export function useChatKeyboardShortcuts({
@@ -220,14 +213,8 @@ export function useChatKeyboardShortcuts({
     handleTraitsPickerOpenChange,
   } = composer;
   const { isComposerApprovalState } = transcript;
-  const {
-    keybindings,
-    shouldRenderChatPaneContent,
-    onToggleDiff,
-    showGitActions,
-    isGitRepo,
-    onToggleBrowser,
-  } = discovery;
+  const { keybindings, shouldRenderChatPaneContent, onToggleDiff, showGitActions, isGitRepo } =
+    discovery;
   useEffect(() => {
     const revealTerminal = () => {
       if (onOpenTerminal) {
@@ -357,7 +344,6 @@ export function useChatKeyboardShortcuts({
           !shouldCaptureChatFindShortcut({
             shouldRenderChatPaneContent,
             terminalWorkspaceTerminalTabActive,
-            inAppBrowserFocused: eventTargetsInAppBrowser(event.target),
           })
         ) {
           return;
@@ -499,14 +485,6 @@ export function useChatKeyboardShortcuts({
         return;
       }
 
-      if (command === "browser.toggle") {
-        event.preventDefault();
-        event.stopPropagation();
-        if (!isElectron) return;
-        onToggleBrowser();
-        return;
-      }
-
       if (command === "chat.split") {
         event.preventDefault();
         event.stopPropagation();
@@ -544,7 +522,6 @@ export function useChatKeyboardShortcuts({
     terminalWorkspaceChatTabActive,
     terminalWorkspaceOpen,
     terminalWorkspaceTerminalTabActive,
-    onToggleBrowser,
     onToggleDiff,
     onInterruptFromStopControl,
     onSplitSurface,

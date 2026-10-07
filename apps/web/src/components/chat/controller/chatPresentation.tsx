@@ -3,14 +3,7 @@ import BranchToolbar, { RuntimeUsageControls } from "~/components/BranchToolbar"
 import { resolveActiveThreadTitle } from "../../ChatView.logic.worktree";
 import { ComposerActiveTaskListCard } from "~/components/chat/ComposerActiveTaskListCard";
 import { ComposerExtrasTrigger } from "~/components/chat/ComposerExtrasTrigger";
-import {
-  computerPreviewBudgetPx,
-  computerPreviewCardCaps,
-  type ComputerPreviewSession,
-} from "~/components/chat/ComputerPreviewPopover.logic";
-import type { ComputerPreviewLayout } from "~/computerStateStore";
 import { ProjectPicker } from "~/components/chat/ProjectPicker";
-import { shouldShowComputerControlEffortHint } from "~/components/chat/composerComputerControlHint";
 import {
   COMPOSER_FOLDER_PICKER_CAPSULE_HOVER_CLASS_NAME,
   COMPOSER_TOOLBAR_TRIGGER_TEXT_CLASS_NAME,
@@ -20,6 +13,7 @@ import {
   type EnvironmentPanelProps,
 } from "~/components/chat/environment/EnvironmentPanel";
 import { toastManager } from "~/components/ui/toast";
+import { openExternalLink } from "~/lib/linkChips";
 import { resolveSubagentPresentationForThread } from "~/lib/subagentPresentation";
 import { buildDraftThreadRenameCreateInput, dispatchThreadRename } from "~/lib/threadRename";
 import { cn } from "~/lib/utils";
@@ -28,11 +22,6 @@ import type { ChatController } from "./useChatController";
 export function createChatPresentation(
   controller: ChatController,
   activeThread: NonNullable<ChatController["session"]["activeThread"]>,
-  surface: {
-    mainContentWidth: number;
-    previewSession: ComputerPreviewSession | undefined;
-    previewLayout: ComputerPreviewLayout | undefined;
-  },
 ) {
   const {
     taskListSidebarOpen,
@@ -40,7 +29,6 @@ export function createChatPresentation(
     isComposerExtrasPanelOpen,
     setIsComposerExtrasPanelOpen,
     onRegisterCommitAndPushTrigger,
-    settings,
     activeTaskListCompact,
     setActiveTaskListCompact,
   } = controller.session;
@@ -60,7 +48,6 @@ export function createChatPresentation(
     diffDisabledReason,
     activeProjectId,
     latestTurnLive,
-    computerControlAvailable,
   } = controller.workspace;
   const {
     timelineEntries,
@@ -82,7 +69,6 @@ export function createChatPresentation(
     activeTaskList,
     workflowRunState,
     composerSubagentStripItems,
-    enableComputerControl,
     activeBackgroundTasks,
   } = controller.provider;
   const {
@@ -94,7 +80,6 @@ export function createChatPresentation(
     showGitActions,
     repoDiffTotals,
     onToggleDiff,
-    openBrowserUrl,
     activeTurnLiveDiffState,
   } = controller.discovery;
   const {
@@ -118,10 +103,8 @@ export function createChatPresentation(
     handleResetWorkspaceToHome,
     handleSelectProjectForEmptyDraft,
     handleCreateProjectFromPickerPath,
-    composerTraitSelection,
   } = controller.submission;
   const { scheduleComposerFocus, isVoiceRecording, isVoiceTranscribing } = controller.composer;
-  const { mainContentWidth, previewSession, previewLayout } = surface;
   const activeThreadDisplayTitle = resolveActiveThreadTitle({
     title: activeThread.title,
     subagentTitle: activeThread.parentThreadId
@@ -318,7 +301,7 @@ export function createChatPresentation(
     notes: threadNotes,
     activeProjectId,
     onToggleDiff,
-    onOpenGithubRepository: openBrowserUrl,
+    onOpenGithubRepository: openExternalLink,
     onJumpToPinnedMessage: handleJumpToPinnedMessage,
     onUnpinMessage: handleUnpinMessage,
     onRenamePinnedMessage: handleRenamePinnedMessage,
@@ -331,25 +314,7 @@ export function createChatPresentation(
   const environmentInsetPx = environmentAppliesContentInset
     ? ENVIRONMENT_DOCKED_CONTENT_INSET_PX
     : 0;
-  const previewCaps = computerPreviewCardCaps(
-    settings.computerPreviewSize === "large" ? "large" : "compact",
-  );
-  const previewBudgetPx = computerPreviewBudgetPx({
-    mainContentWidthPx: mainContentWidth,
-    environmentInsetPx: environmentInsetPx,
-    caps: previewCaps,
-  });
-  const previewReservesInset =
-    environmentOverlayVariant === "docked" &&
-    settings.autoOpenComputerPane &&
-    previewSession?.phase === "live" &&
-    (previewLayout?.hasFrame === true || previewLayout?.hasVisibleStatus === true) &&
-    previewLayout?.floating !== true;
-  const previewInsetPx = previewReservesInset
-    ? Math.min(previewLayout?.width ?? previewBudgetPx, previewBudgetPx) + 24
-    : 0;
-  const contentInsetRightPx =
-    environmentInsetPx + previewInsetPx > 0 ? environmentInsetPx + previewInsetPx : undefined;
+  const contentInsetRightPx = environmentInsetPx > 0 ? environmentInsetPx : undefined;
   const environmentHeaderState =
     environmentEnabled && !rightDockOpen
       ? {
@@ -361,13 +326,6 @@ export function createChatPresentation(
   const showComposerActiveTaskListCard = Boolean(activeTaskList && !taskListSidebarOpen);
   const showComposerWorkflowRunCard = workflowRunState !== null;
   const showComposerSubagentStrip = composerSubagentStripItems.length > 0;
-  const showComposerComputerControlEffortHint = shouldShowComputerControlEffortHint({
-    enableComputerControl,
-    computerControlAvailable,
-    dismissed: settings.dismissedComputerControlEffortHint,
-    provider: selectedProvider,
-    traits: composerTraitSelection,
-  });
   const composerBackgroundTaskCount = workflowRunState
     ? (activeBackgroundTasks?.taskIds.filter((taskId) => !workflowRunState.taskIds.includes(taskId))
         .length ?? 0)
@@ -389,7 +347,6 @@ export function createChatPresentation(
     showComposerActiveTaskListCard,
     showComposerSubagentStrip,
     showComposerWorkflowRunCard,
-    showComposerComputerControlEffortHint,
     emptyLandingControls,
     relocateComposerLeadingControls,
     renderComposerLeadingControls,
@@ -401,6 +358,5 @@ export function createChatPresentation(
     branchToolbarProps,
     environmentPanelProps,
     environmentOverlayVariant,
-    previewBudgetPx,
   } as const;
 }

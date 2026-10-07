@@ -44,7 +44,6 @@ export function toRuntimePayloadFromSession(
   extra?: {
     readonly modelSelection?: unknown;
     readonly providerOptions?: unknown;
-    readonly enableComputerControl?: boolean;
     readonly lastRuntimeEvent?: string;
     readonly lastRuntimeEventAt?: string;
     readonly lifecycleGeneration?: string;
@@ -58,9 +57,6 @@ export function toRuntimePayloadFromSession(
     lastError: nonEmptyTrimmed(session.lastError) ?? null,
     ...(extra?.modelSelection !== undefined ? { modelSelection: extra.modelSelection } : {}),
     ...(extra?.providerOptions !== undefined ? { providerOptions: extra.providerOptions } : {}),
-    ...(extra?.enableComputerControl !== undefined
-      ? { enableComputerControl: extra.enableComputerControl }
-      : {}),
     ...(extra?.lastRuntimeEvent !== undefined ? { lastRuntimeEvent: extra.lastRuntimeEvent } : {}),
     ...(extra?.lastRuntimeEventAt !== undefined
       ? { lastRuntimeEventAt: extra.lastRuntimeEventAt }
@@ -83,12 +79,6 @@ export function readPersistedProviderOptions(
 ): ProviderStartOptions | undefined {
   const raw = (asRecord(runtimePayload) ?? {}).providerOptions;
   return Option.getOrUndefined(Schema.decodeUnknownOption(ProviderStartOptions)(raw));
-}
-
-export function readPersistedComputerControl(
-  runtimePayload: ProviderRuntimeBinding["runtimePayload"],
-): boolean {
-  return (asRecord(runtimePayload) ?? {}).enableComputerControl === true;
 }
 
 export function readPersistedCwd(

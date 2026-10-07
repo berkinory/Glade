@@ -4,7 +4,6 @@ import { ServiceMap } from "effect";
 import type {
   AgentGatewaySessionIdentity,
   AgentGatewayWriteAuthority,
-  AgentGatewayCapability,
 } from "./AgentGatewaySessionRegistry.ts";
 import type {
   AgentGatewayCancellation,
@@ -25,11 +24,7 @@ export interface AgentGatewayCredentialsShape {
 
   readonly setListeningPort: (port: number) => void;
 
-  readonly issueSessionToken: (
-    threadId: ThreadId,
-    provider: ProviderKind,
-    options?: { readonly additionalCapabilities?: readonly AgentGatewayCapability[] },
-  ) => string;
+  readonly issueSessionToken: (threadId: ThreadId, provider: ProviderKind) => string;
 
   readonly verifySessionToken: (token: string) => string | null;
 
@@ -58,7 +53,6 @@ export interface AgentGatewayCredentialsShape {
   readonly connectionForThread: (
     threadId: ThreadId,
     provider: ProviderKind,
-    options?: { readonly additionalCapabilities?: readonly AgentGatewayCapability[] },
   ) => AgentGatewayMcpConnection;
 }
 

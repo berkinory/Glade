@@ -135,27 +135,6 @@ import type {
 } from "../workspace/project";
 import type { FilesystemBrowseInput, FilesystemBrowseResult } from "../workspace/filesystem";
 import type {
-  ComputerActionResult,
-  ComputerControlEnabledResult,
-  ComputerEvent,
-  ComputerGetStateInput,
-  ComputerGetStatusInput,
-  ComputerInputClickInput,
-  ComputerInputKeyInput,
-  ComputerInputScrollInput,
-  ComputerProvisionInput,
-  ComputerProvisionResult,
-  ComputerSetControlEnabledInput,
-  ComputerState,
-  ComputerStatusResult,
-  ComputerThreadInput,
-  ThreadComputerState,
-} from "../computer/computer";
-import type {
-  ComputerGetAuditHistoryInput,
-  ComputerGetAuditHistoryResult,
-} from "../computer/computerAudit";
-import type {
   ServerConfig,
   ServerDiagnosticsResult,
   ServerReadThreadDiagnosticsInput,
@@ -245,7 +224,6 @@ import type {
   StatsGetProfileTokenStatsInput,
   StatsGetProfileTokenStatsResult,
 } from "../server/stats";
-import type { BrowserAnnotationMethods } from "../browser/browserAnnotations";
 
 export interface ContextMenuItem<T extends string = string> {
   id: T;
@@ -306,163 +284,6 @@ export interface DesktopUpdateActionResult {
   accepted: boolean;
   completed: boolean;
   state: DesktopUpdateState;
-}
-
-export interface BrowserTabState {
-  openerTabId?: string;
-  id: string;
-  url: string;
-  title: string;
-
-  runtimeSurface?: "native" | "renderer";
-  status: "live" | "suspended";
-  isLoading: boolean;
-  canGoBack: boolean;
-  canGoForward: boolean;
-  faviconUrl: string | null;
-  lastCommittedUrl: string | null;
-  lastError: string | null;
-}
-
-export interface ThreadBrowserState {
-  threadId: ThreadId;
-  version: number;
-  open: boolean;
-  activeTabId: string | null;
-  tabs: BrowserTabState[];
-  lastError: string | null;
-}
-
-export interface BrowserOpenInput {
-  threadId: ThreadId;
-  initialUrl?: string;
-}
-
-export interface BrowserThreadInput {
-  threadId: ThreadId;
-}
-
-export interface BrowserTabInput {
-  threadId: ThreadId;
-  tabId: string;
-}
-
-export interface BrowserNavigateInput {
-  threadId: ThreadId;
-  tabId?: string;
-  url: string;
-}
-
-export interface BrowserNewTabInput {
-  threadId: ThreadId;
-  url?: string;
-  activate?: boolean;
-}
-
-export interface BrowserPanelBounds {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-export interface BrowserSetPanelBoundsInput {
-  threadId: ThreadId;
-  bounds: BrowserPanelBounds | null;
-  surface?: "native" | "renderer";
-
-  occluded?: boolean;
-
-  preview?: boolean;
-
-  pageZoomFactor?: number;
-}
-
-export interface BrowserAttachWebviewInput extends BrowserTabInput {
-  webContentsId: number;
-}
-
-export interface BrowserDetachWebviewInput extends BrowserTabInput {
-  webContentsId: number;
-}
-
-export interface BrowserCaptureScreenshotResult {
-  name: string;
-  mimeType: "image/png";
-  sizeBytes: number;
-  bytes: Uint8Array;
-}
-
-export type DesktopComputerPlatform = "macos" | "windows" | "linux" | "other";
-export type DesktopComputerPermission =
-  | "granted"
-  | "denied"
-  | "not-determined"
-  | "restricted"
-  | "unknown";
-export type DesktopComputerStatus =
-  | "unsupported"
-  | "disabled"
-  | "permission-required"
-  | "starting"
-  | "ready"
-  | "error";
-
-export type DesktopComputerSettingsPane = "accessibility" | "input-monitoring" | "screen-recording";
-
-export type DesktopComputerPermissionKind = "accessibility" | "inputMonitoring" | "screenRecording";
-
-export type DesktopComputerPermissionGuideState = "closed" | "granted";
-
-export interface DesktopComputerState {
-  platform: DesktopComputerPlatform;
-  supported: boolean;
-  status: DesktopComputerStatus;
-
-  accessibilityPermission?: DesktopComputerPermission;
-  inputMonitoringPermission: DesktopComputerPermission;
-  screenRecordingPermission: DesktopComputerPermission;
-  message: string | null;
-
-  permissionSetupErrorCode?:
-    | "permission_setup_bundle_unavailable"
-    | "permission_setup_registration_unresolved"
-    | "permission_setup_identity_mismatch";
-
-  appDisplayName: string;
-}
-
-export interface BrowserCopyLinkEvent {
-  threadId: ThreadId;
-  url: string;
-}
-
-export interface BrowserUseOpenPanelRequest {
-  threadId: ThreadId;
-}
-
-interface BrowserControlMethods {
-  vault?: import("../browser/browserVault").BrowserVaultMethods;
-  open: (input: BrowserOpenInput) => Promise<ThreadBrowserState>;
-  close: (input: BrowserThreadInput) => Promise<ThreadBrowserState>;
-  hide: (input: BrowserThreadInput) => Promise<void>;
-  getState: (input: BrowserThreadInput) => Promise<ThreadBrowserState>;
-  setPanelBounds: (input: BrowserSetPanelBoundsInput) => Promise<void>;
-  attachWebview: (input: BrowserAttachWebviewInput) => Promise<ThreadBrowserState>;
-  detachWebview: (input: BrowserDetachWebviewInput) => Promise<void>;
-  copyLink: (input: BrowserTabInput) => Promise<void>;
-  copyScreenshotToClipboard: (input: BrowserTabInput) => Promise<void>;
-  captureScreenshot: (input: BrowserTabInput) => Promise<BrowserCaptureScreenshotResult>;
-  capturePreview: (input: BrowserTabInput) => Promise<string | null>;
-  navigate: (input: BrowserNavigateInput) => Promise<ThreadBrowserState>;
-  reload: (input: BrowserTabInput) => Promise<ThreadBrowserState>;
-  goBack: (input: BrowserTabInput) => Promise<ThreadBrowserState>;
-  goForward: (input: BrowserTabInput) => Promise<ThreadBrowserState>;
-  newTab: (input: BrowserNewTabInput) => Promise<ThreadBrowserState>;
-  closeTab: (input: BrowserTabInput) => Promise<ThreadBrowserState>;
-  selectTab: (input: BrowserTabInput) => Promise<ThreadBrowserState>;
-  openDevTools: (input: BrowserTabInput) => Promise<void>;
-  onState: (listener: (state: ThreadBrowserState) => void) => () => void;
 }
 
 export interface DesktopNotificationPermission {
@@ -526,18 +347,6 @@ export interface DesktopCustomTitleBarState {
 export const DesktopAppIcon = Schema.Literals(["default", "dark"]);
 export type DesktopAppIcon = typeof DesktopAppIcon.Type;
 
-export interface DesktopComputerPreviewFrame {
-  readonly windowId: number;
-  readonly seq: number;
-  readonly jpeg: Uint8Array;
-}
-
-export interface DesktopAgentCursorStyle {
-  readonly fill?: string;
-  readonly rim?: string;
-  readonly shadow?: string;
-}
-
 export interface DesktopClipboardFile {
   path: string;
   name: string;
@@ -595,13 +404,6 @@ export interface DesktopBridge {
     relaunch: () => Promise<void>;
   };
 
-  computerPreview?: {
-    onFrame: (listener: (frame: DesktopComputerPreviewFrame) => void) => () => void;
-  };
-
-  computer?: {
-    setCursorStyle: (style: DesktopAgentCursorStyle | null) => Promise<void>;
-  };
   setMenuShortcuts: (state: DesktopMenuShortcutState) => Promise<void>;
   onMenuAction: (listener: (action: string) => void) => () => void;
   onQuitConfirmationRequest: (
@@ -623,39 +425,10 @@ export interface DesktopBridge {
     isSupported: () => Promise<boolean>;
     show: (input: DesktopNotificationInput) => Promise<boolean>;
   };
-  computerPermissions: {
-    getState: (
-      permissions?: readonly DesktopComputerPermissionKind[],
-    ) => Promise<DesktopComputerState>;
-    requestPermissions: (
-      permissions?: readonly DesktopComputerPermissionKind[],
-    ) => Promise<DesktopComputerState>;
-    // Reads current grants without prompting, then walks the floating permission coach through each
-    // pane still missing a grant — opening its System Settings page and raising that pane's prompt as
-    // each step begins, so macOS never shows several permission dialogs at once.
-    startPermissionSetup: (
-      permissions: readonly DesktopComputerPermissionKind[],
-    ) => Promise<DesktopComputerState>;
-    openPermissionSettings: (pane: DesktopComputerSettingsPane) => Promise<boolean>;
-    restartApp: () => Promise<void>;
-    showPermissionGuide: (pane: DesktopComputerSettingsPane) => Promise<void>;
-    hidePermissionGuide: () => Promise<void>;
-    onPermissionGuideState: (
-      listener: (state: DesktopComputerPermissionGuideState) => void,
-    ) => () => void;
-    onState: (listener: (state: DesktopComputerState) => void) => () => void;
-  };
   server?: {
     transcribeVoice: (
       input: ServerVoiceTranscriptionInput,
     ) => Promise<ServerVoiceTranscriptionResult>;
-  };
-  browser: BrowserControlMethods & {
-    annotations: BrowserAnnotationMethods;
-    onBrowserUseOpenPanelRequest: (
-      listener: (request: BrowserUseOpenPanelRequest) => void,
-    ) => () => void;
-    onBrowserCopyLink: (listener: (event: BrowserCopyLinkEvent) => void) => () => void;
   };
 }
 
@@ -902,27 +675,5 @@ export interface NativeApi {
     onDomainEvent: (callback: (event: OrchestrationEvent) => void) => () => void;
     onShellEvent: (callback: (event: OrchestrationShellStreamItem) => void) => () => void;
     onThreadEvent: (callback: (event: OrchestrationThreadStreamItem) => void) => () => void;
-  };
-  browser: BrowserControlMethods & {
-    annotations: BrowserAnnotationMethods;
-    onCopyLink: (callback: (event: BrowserCopyLinkEvent) => void) => () => void;
-  };
-
-  computer: {
-    getStatus: (input: ComputerGetStatusInput) => Promise<ComputerStatusResult>;
-    getAuditHistory: (
-      input: ComputerGetAuditHistoryInput,
-    ) => Promise<ComputerGetAuditHistoryResult>;
-    provision: (input: ComputerProvisionInput) => Promise<ComputerProvisionResult>;
-    setControlEnabled: (
-      input: ComputerSetControlEnabledInput,
-    ) => Promise<ComputerControlEnabledResult>;
-    getThreadState: (input: ComputerThreadInput) => Promise<ThreadComputerState>;
-    getState: (input: ComputerGetStateInput) => Promise<ComputerState>;
-
-    inputClick: (input: ComputerInputClickInput) => Promise<ComputerActionResult>;
-    inputScroll: (input: ComputerInputScrollInput) => Promise<ComputerActionResult>;
-    inputKey: (input: ComputerInputKeyInput) => Promise<ComputerActionResult>;
-    onEvent: (callback: (event: ComputerEvent) => void) => () => void;
   };
 }

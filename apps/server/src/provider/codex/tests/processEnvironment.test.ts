@@ -60,24 +60,20 @@ describe("Codex launch environment", () => {
     }
   });
 
-  it("keeps the private desktop browser host out of the Codex process", async () => {
+  it("keeps private Glade host variables out of the Codex process", async () => {
     const homePath = mkdtempSync(path.join(os.tmpdir(), "glade-codex-private-host-"));
     try {
       const env = await buildCodexProcessEnv({
         env: {
           CODEX_HOME: homePath,
-          GLADE_BROWSER_HOST_PIPE_PATH: "/tmp/glade-browser-host.sock",
-          GLADE_BROWSER_USE_PIPE_PATH: "/tmp/legacy-browser-use.sock",
-          GLADE_BROWSER_HOST_CAPABILITY: "desktop-capability",
-          GLADE_BROWSER_HOST_CAPABILITY_FD: "3",
+          GLADE_AUTH_TOKEN: "backend-secret",
+          GLADE_DESKTOP_SHUTDOWN_TOKEN: "desktop-secret",
           NODE_REPL_SANDBOX_ALLOWED_UNIX_SOCKETS: "/tmp/existing.sock",
         },
         platform: "darwin",
       });
-      expect(env.GLADE_BROWSER_HOST_PIPE_PATH).toBeUndefined();
-      expect(env.GLADE_BROWSER_USE_PIPE_PATH).toBeUndefined();
-      expect(env.GLADE_BROWSER_HOST_CAPABILITY).toBeUndefined();
-      expect(env.GLADE_BROWSER_HOST_CAPABILITY_FD).toBeUndefined();
+      expect(env.GLADE_AUTH_TOKEN).toBeUndefined();
+      expect(env.GLADE_DESKTOP_SHUTDOWN_TOKEN).toBeUndefined();
       expect(env.NODE_REPL_SANDBOX_ALLOWED_UNIX_SOCKETS).toBeUndefined();
     } finally {
       rmSync(homePath, { recursive: true, force: true });

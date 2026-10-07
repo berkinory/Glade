@@ -6,44 +6,12 @@ import type {
   AgentGatewayCredentialsShape,
   AgentGatewayMcpConnection,
 } from "./Services/AgentGatewayCredentials.ts";
-import type { AgentGatewayCapability } from "./Services/AgentGatewaySessionRegistry.ts";
 
-export interface AgentGatewaySessionLeaseOptions {
-  readonly additionalCapabilities?: readonly AgentGatewayCapability[];
-}
-
-// Adapters never assemble capability lists.
 export interface AgentGatewayCapabilityInput {
-  readonly enableComputerControl?: boolean | undefined;
-
   readonly nativeToolCallScope?: boolean | undefined;
 }
 
 export const AGENT_GATEWAY_NO_CAPABILITIES: AgentGatewayCapabilityInput = {};
-
-export function agentGatewayCapabilitiesFor(
-  input: AgentGatewayCapabilityInput,
-): readonly AgentGatewayCapability[] {
-  const capabilities: AgentGatewayCapability[] = [];
-  if (input.enableComputerControl === true) capabilities.push("computer:control");
-  return capabilities;
-}
-
-function agentGatewaySessionLeaseOptionsFor(
-  input: AgentGatewayCapabilityInput,
-): AgentGatewaySessionLeaseOptions | undefined {
-  const additionalCapabilities = agentGatewayCapabilitiesFor(input);
-  return additionalCapabilities.length === 0 ? undefined : { additionalCapabilities };
-}
-
-export function captureAgentGatewayCapabilityInput(
-  input: AgentGatewayCapabilityInput,
-): AgentGatewayCapabilityInput {
-  return {
-    enableComputerControl: input.enableComputerControl === true,
-    ...(input.nativeToolCallScope ? { nativeToolCallScope: true } : {}),
-  };
-}
 
 type AgentGatewaySessionLeaseCredentials = Pick<
   AgentGatewayCredentialsShape,
@@ -168,11 +136,7 @@ export function acquireAgentGatewaySessionLease(
 ): AgentGatewaySessionLease | undefined {
   if (credentials === undefined) return undefined;
 
-  const options = agentGatewaySessionLeaseOptionsFor(capabilityInput);
-  const connection =
-    options === undefined
-      ? credentials.connectionForThread(threadId, provider)
-      : credentials.connectionForThread(threadId, provider, options);
+  const connection = credentials.connectionForThread(threadId, provider);
   const nativeToolCalls = capabilityInput.nativeToolCallScope
     ? credentials.nativeToolCalls
     : undefined;

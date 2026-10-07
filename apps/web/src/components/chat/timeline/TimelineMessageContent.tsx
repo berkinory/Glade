@@ -24,7 +24,6 @@ import { FileEntryIcon } from "~/components/chat/FileEntryIcon";
 import { InlineAgentChip } from "~/components/chat/InlineAgentChip";
 import { InlineMentionChip } from "~/components/chat/InlineMentionChip";
 import { InlineSkillChip } from "~/components/chat/InlineSkillChip";
-import { InlineSlashCommandChip } from "~/components/chat/InlineSlashCommandChip";
 import { canSubmitUserMessageEdit } from "~/components/chat/MessagesTimeline.logic.rowTypes";
 import {
   collectCaseInsensitiveSubstringRanges,
@@ -179,9 +178,6 @@ function renderUserMessageInlineText(
     if (segment.type === "link") {
       return [<InlineLinkChip key={`${key}:link`} url={segment.url} interactive />];
     }
-    if (segment.type === "slash-command") {
-      return [<InlineSlashCommandChip key={`${key}:command`} command={segment.command} />];
-    }
     return [];
   });
 }
@@ -208,7 +204,6 @@ function hasOnlyInlineSkillChips(
 export const UserMessageEditForm = memo(function UserMessageEditForm(props: {
   initialValue: string;
   disabled: boolean;
-  allowEmpty: boolean;
   chatTypographyStyle: CSSProperties;
   borderClassName: string;
   onCancel: () => void;
@@ -218,7 +213,6 @@ export const UserMessageEditForm = memo(function UserMessageEditForm(props: {
   const [draft, setDraft] = useState(props.initialValue);
   const canSubmit = canSubmitUserMessageEdit({
     draft,
-    allowEmpty: props.allowEmpty,
     disabled: props.disabled,
   });
 

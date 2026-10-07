@@ -25,7 +25,6 @@ function resolveDesktopMenuShortcuts(
   const shortcuts: Record<DesktopMenuShortcutCommand, KeybindingShortcut | null> = {
     "terminal.new": null,
     "sidebar.toggle": null,
-    "browser.toggle": null,
   };
   for (const command of DESKTOP_MENU_SHORTCUT_COMMANDS) {
     const binding = resolveKeybindingForCommand(keybindings, command, { platform });

@@ -12,7 +12,6 @@ export interface SplitViewPanePanelState {
   diffTurnId: TurnId | null;
   diffFilePath: string | null;
   hasOpenedPanel: boolean;
-  lastOpenPanel: ChatRightPanel;
 }
 
 export interface LeafPane {

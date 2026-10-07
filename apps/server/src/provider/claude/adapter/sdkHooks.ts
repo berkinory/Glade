@@ -28,7 +28,6 @@ import {
   remapAnswersToClaudeQuestionText,
 } from "./messageContent";
 
-import { shouldAllowGladeComputerProviderTool } from "../../../agentGateway/computerToolPermission.ts";
 import { classifyRequestType, summarizeToolRequest } from "./toolPresentation";
 import { redactSensitiveJsonFields } from "../../../diagnostics/sensitiveKeys.ts";
 import { type ProviderApprovalDecision } from "@glade/contracts/provider/sessionPolicy";
@@ -233,20 +232,6 @@ export function makeClaudeSdkHooks(dependencies: {
           context.turnState?.turnId ??
           (callbackOptions.agentID !== undefined ? context.lastTurnId : undefined);
 
-        if (
-          shouldAllowGladeComputerProviderTool({
-            computerControlEnabled:
-              input.enableComputerControl === true && context.gatewaySessionLease !== undefined,
-            activeTurn: context.turnState !== undefined && interactionTurnId !== undefined,
-            runtimeMode,
-            permission: { name: toolName },
-          })
-        ) {
-          return {
-            behavior: "allow",
-            updatedInput: toolInput,
-          } satisfies PermissionResult;
-        }
         if (runtimeMode === "full-access" || context.approvalsAlwaysAllowedForSession) {
           return {
             behavior: "allow",

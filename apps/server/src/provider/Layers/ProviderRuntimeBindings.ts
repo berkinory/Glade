@@ -14,7 +14,6 @@ import {
   toRuntimeStatus,
   toRuntimePayloadFromSession,
   shouldRefreshResumeCursorForEvent,
-  readPersistedComputerControl,
   isTerminalRuntimeEvent,
   runtimeActiveTurnId,
   runtimeLastErrorForEvent,
@@ -72,7 +71,6 @@ export const ProviderRuntimeBindingsLive = Layer.effect(
         readonly lifecycleGeneration?: string;
         readonly modelSelection?: unknown;
         readonly providerOptions?: unknown;
-        readonly enableComputerControl?: boolean;
         readonly lastRuntimeEvent?: string;
         readonly lastRuntimeEventAt?: string;
         readonly runtimePayload?: Record<string, unknown>;
@@ -253,12 +251,9 @@ export const ProviderRuntimeBindingsLive = Layer.effect(
             return;
           }
           const existingBinding = yield* directory.getBinding(input.threadId);
-          const enableComputerControl =
-            Option.isSome(existingBinding) &&
-            readPersistedComputerControl(existingBinding.value.runtimePayload);
-          // The row must keep the generation that owned this dispatch alongside the computer-control flag,
-          // atomically with the turn intent write. A retained older dispatch settling after a lifecycle
-          // rotation must never regress the row: only persist a generation that is still current.
+          // The row must keep the generation that owned this dispatch, atomically with the turn intent
+          // write. A retained older dispatch settling after a lifecycle rotation must never regress the
+          // row: only persist a generation that is still current.
           const dispatchLifecycleGeneration =
             input.lifecycleGeneration !== undefined &&
             lifecycle.currentGeneration(input.threadId) === input.lifecycleGeneration
@@ -287,15 +282,8 @@ export const ProviderRuntimeBindingsLive = Layer.effect(
                 ? { lifecycleGeneration: dispatchLifecycleGeneration }
                 : {}),
               ...(input.resumeCursor !== undefined ? { resumeCursor: input.resumeCursor } : {}),
-              ...(input.modelSelection !== undefined || enableComputerControl
-                ? {
-                    runtimePayload: {
-                      ...(input.modelSelection !== undefined
-                        ? { modelSelection: input.modelSelection }
-                        : {}),
-                      ...(enableComputerControl ? { enableComputerControl: true } : {}),
-                    },
-                  }
+              ...(input.modelSelection !== undefined
+                ? { runtimePayload: { modelSelection: input.modelSelection } }
                 : {}),
             });
             markPersistenceSucceeded(false);
@@ -315,7 +303,6 @@ export const ProviderRuntimeBindingsLive = Layer.effect(
               ...(input.modelSelection !== undefined
                 ? { modelSelection: input.modelSelection }
                 : {}),
-              ...(enableComputerControl ? { enableComputerControl: true } : {}),
               activeTurnId: input.turnId,
               lastRuntimeEvent: input.lastRuntimeEvent,
               lastRuntimeEventAt: new Date().toISOString(),
@@ -514,9 +501,6 @@ export const ProviderRuntimeBindingsLive = Layer.effect(
               status: preserveShutdownStop ? "stopped" : eventStatus,
               ...(resumeCursor !== undefined ? { resumeCursor } : {}),
               runtimePayload: {
-                ...(readPersistedComputerControl(binding.runtimePayload)
-                  ? { enableComputerControl: true }
-                  : {}),
                 activeTurnId: preserveShutdownStop ? null : activeTurnId,
                 ...(event.type === "turn.started" && event.turnId !== undefined
                   ? { lastNativeTurnId: String(event.turnId) }
