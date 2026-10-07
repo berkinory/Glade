@@ -10,13 +10,12 @@ import {
 import type { SnapshotDiff } from "../../computer/windowSnapshots.ts";
 import type { McpToolCallResult } from "../protocol.ts";
 import type { ToolContext } from "../toolRuntime.ts";
+import type { GatewayToolError } from "../toolRuntime.ts";
 import {
   appContent,
   callCua,
   callerThread,
-  recordSnapshot,
   refuse,
-  SCREENSHOT_MAX_EDGE,
   windowFor,
   windowLine,
   type ComputerToolServices,
@@ -24,6 +23,7 @@ import {
   type WindowNeed,
 } from "./computerCalls.ts";
 import { renderDiff } from "./elementText.ts";
+import { readWindow } from "./windowRead.ts";
 
 export interface CuaCall {
   readonly tool: string;
@@ -37,6 +37,7 @@ const USER_ACTIVE_SECONDS = 1;
 const OWN_INPUT_SETTLE_MS = 1_100;
 // Lets the app apply the action before the window is read again.
 const OBSERVE_SETTLE_MS = 150;
+const LATE_CHANGE_MS = 450;
 
 // Chords like "cmd+shift+s" go to Cua's hotkey; single keys to press_key.
 export const keyCall = (key: string) => {
@@ -48,7 +49,7 @@ export const keyCall = (key: string) => {
 
 // Foreground delivery moves the real pointer and keyboard, so it waits for the user to pause
 // rather than fight them. Background delivery never reaches this check.
-const yieldToUser = (services: ComputerToolServices) =>
+export const yieldToUser = (services: ComputerToolServices) =>
   Effect.gen(function* () {
     const sinceOwnInput = Date.now() - services.access.tasks.lastRealInputAt();
     if (sinceOwnInput < OWN_INPUT_SETTLE_MS) {
@@ -70,35 +71,38 @@ type Observation =
   | { readonly kind: "diff"; readonly diff: SnapshotDiff }
   | { readonly kind: "failed"; readonly message: string };
 
+const hasChanges = (diff: SnapshotDiff) =>
+  diff.added.length +
+    diff.changed.length +
+    diff.removed.length +
+    diff.sheetsOpened.length +
+    diff.sheetsClosed.length >
+  0;
+
 // Re-reads the window's tree after an action when the agent has read it before, so the result
-// can say what changed and the agent's element indexes stay current.
-const observe = (services: ComputerToolServices, context: ToolContext, input: WindowInput) =>
-  services.access.snapshots.has(callerThread(context), {
+// can say what changed and the agent's element indexes stay current. Sheets and dialogs animate
+// in after the first re-read, so a read that shows nothing yet is repeated once.
+const observe = (services: ComputerToolServices, context: ToolContext, input: WindowInput) => {
+  const reread = Effect.sleep(OBSERVE_SETTLE_MS).pipe(
+    Effect.andThen(readWindow(services, context, input, { screenshot: "context" })),
+  );
+  return services.access.snapshots.has(callerThread(context), {
     pid: input.pid,
     windowId: input.window_id,
   })
-    ? Effect.sleep(OBSERVE_SETTLE_MS).pipe(
-        Effect.andThen(
-          // A tree-only read would replace the screenshot Cua maps pixel coordinates through,
-          // and the next pixel action would be refused; this read keeps one at the same size.
-          callCua(services, context, "get_window_state", {
-            pid: input.pid,
-            window_id: input.window_id,
-            max_image_dimension: SCREENSHOT_MAX_EDGE,
-          }),
+    ? reread.pipe(
+        Effect.flatMap(({ diff }) =>
+          diff && !hasChanges(diff)
+            ? Effect.sleep(LATE_CHANGE_MS).pipe(Effect.andThen(reread))
+            : Effect.succeed({ diff }),
         ),
-        Effect.map((result): Observation => {
-          const { diff } = recordSnapshot(services, context, input, result, false);
-          return diff ? { kind: "diff", diff } : { kind: "none" };
-        }),
+        Effect.map(({ diff }): Observation => (diff ? { kind: "diff", diff } : { kind: "none" })),
         Effect.catch((error) =>
           Effect.succeed<Observation>({ kind: "failed", message: error.message }),
         ),
       )
     : Effect.succeed<Observation>({ kind: "none" });
-
-const hasChanges = (diff: SnapshotDiff) =>
-  diff.added.length + diff.changed.length + diff.removed.length > 0;
+};
 
 // Action results carry Cua's effect classification, what changed in the window and any
 // escalation. The closing `Window:` line names the target for the model and the chat timeline.
@@ -117,11 +121,19 @@ function actionContent(
     }
   }
   if (observation.kind === "diff") {
+    for (const sheet of observation.diff.sheetsOpened) {
+      lines.push(
+        `Sheet opened: [${sheet.index}] ${JSON.stringify(sheet.element.label ?? "")}; its controls are in this window's tree. For an Open or Save panel use computer_file_dialog.`,
+      );
+    }
+    for (const sheet of observation.diff.sheetsClosed) {
+      lines.push(`Sheet closed: [${sheet.index}] ${JSON.stringify(sheet.element.label ?? "")}.`);
+    }
     const rendered = renderDiff(observation.diff);
     if (rendered) {
-      lines.push("Changes in the window (+ new, ~ changed, - gone; indexes stay valid):");
+      lines.push("Changes in the window (indexes stay valid):");
       appLines.push(rendered);
-    } else {
+    } else if (observation.diff.sheetsOpened.length + observation.diff.sheetsClosed.length === 0) {
       lines.push(
         observation.diff.comparable
           ? "No change in the window's accessibility tree."
@@ -152,14 +164,21 @@ function actionContent(
 }
 
 // One input action on an authorized window: refuse fruitless repeats, yield to the user before
-// foreground input, run the Cua tool, then report what it changed. `input` is the tool's own
-// input; identical inputs are the same action for the progress guard.
+// foreground input, run the Cua tool (or `run`, which performs the call its own way), then report
+// what it changed. `input` is the tool's own input; identical inputs are the same action for the
+// progress guard. An effect Cua confirmed by reading the element back needs no re-read.
 export const performAction = (
   services: ComputerToolServices,
   context: ToolContext,
   input: WindowInput,
   window: CuaWindow,
   call: CuaCall,
+  run: Effect.Effect<CuaToolResult, GatewayToolError> = callCua(
+    services,
+    context,
+    call.tool,
+    call.args,
+  ),
 ) =>
   Effect.gen(function* () {
     const threadId = callerThread(context);
@@ -172,16 +191,18 @@ export const performAction = (
     }
     const foreground = call.args.delivery_mode === "foreground";
     if (foreground) yield* yieldToUser(services);
-    const result = yield* callCua(services, context, call.tool, call.args).pipe(
+    const result = yield* run.pipe(
       Effect.ensuring(
         foreground ? Effect.sync(() => services.access.tasks.markRealInput()) : Effect.void,
       ),
     );
     const outcome = Schema.decodeUnknownOption(CuaActionOutcome)(result.structuredContent);
-    const observation = yield* observe(services, context, input);
-    const confirmed =
-      Option.isSome(outcome) &&
-      (outcome.value.effect === "confirmed" || outcome.value.effect === "partial");
+    const effect = Option.isSome(outcome) ? outcome.value.effect : null;
+    const observation =
+      effect === "confirmed"
+        ? ({ kind: "none" } as const)
+        : yield* observe(services, context, input);
+    const confirmed = effect === "confirmed" || effect === "partial";
     services.access.progress.recordAction(
       threadId,
       actionKey,

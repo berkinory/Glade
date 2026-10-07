@@ -13,21 +13,30 @@ export interface IndexedElement {
 
 export interface SnapshotDiff {
   // Added and removed are empty unless both snapshots covered the whole window (no query, not
-  // truncated): against a filtered read, everything it left out would look new or gone.
+  // truncated): against a filtered read, everything it left out would look new or gone. The menu
+  // bar is left out: menus are run by path, and every opened menu would flood the list.
   readonly added: ReadonlyArray<IndexedElement>;
   readonly removed: ReadonlyArray<IndexedElement>;
   readonly changed: ReadonlyArray<IndexedElement>;
   readonly comparable: boolean;
+  // Attached sheets (Save panels, alerts) that appeared or went away since the last read that
+  // was not filtered by a query; sheets sit near the root, so depth-limited reads still see them.
+  readonly sheetsOpened: ReadonlyArray<IndexedElement>;
+  readonly sheetsClosed: ReadonlyArray<IndexedElement>;
 }
+
+// How much of the window a snapshot lists: all of it, everything near the root (cut by Cua's time
+// budget or a depth limit), or only what a query matched.
+type SnapshotCoverage = "complete" | "partial" | "filtered";
 
 export interface WindowSnapshots {
   // Records a Cua snapshot of the window and returns its elements under Glade's indexes plus what
-  // changed since the previous one. `complete` says the snapshot lists the whole window.
+  // changed since the previous one.
   readonly record: (
     threadId: string,
     window: WindowKey,
     elements: ReadonlyArray<CuaElement>,
-    complete: boolean,
+    coverage: SnapshotCoverage,
   ) => { readonly elements: ReadonlyArray<IndexedElement>; readonly diff: SnapshotDiff | null };
   readonly has: (threadId: string, window: WindowKey) => boolean;
   // The current Cua token for a Glade index, or null when the latest snapshot does not list it.
@@ -44,6 +53,9 @@ interface WindowTable {
   // snapshot of it exists, so only the latest one is actionable.
   latest: Map<number, CuaElement>;
   latestComplete: boolean;
+  // Glade indexes of the latest snapshot inside the app's menu bar.
+  menuBar: Set<number>;
+  sheets: Map<number, CuaElement>;
 }
 
 // Long-lived windows (chat apps, feeds) keep producing new identities; past this many the table
@@ -94,6 +106,23 @@ function assignIndexes(table: WindowTable, elements: ReadonlyArray<CuaElement>) 
   });
 }
 
+// Parents precede children in Cua's walk, so one pass finds every menu-bar descendant.
+function menuBarIndexes(indexed: ReadonlyArray<IndexedElement>) {
+  const cuaInside = new Set<number>();
+  const inside = new Set<number>();
+  for (const { index, element } of indexed) {
+    const parent = element.parent_index;
+    if (
+      element.role === "AXMenuBar" ||
+      (parent !== undefined && parent !== null && cuaInside.has(parent))
+    ) {
+      cuaInside.add(element.element_index);
+      inside.add(index);
+    }
+  }
+  return inside;
+}
+
 const sameState = (left: CuaElement, right: CuaElement) =>
   left.label === right.label &&
   JSON.stringify(left.value ?? null) === JSON.stringify(right.value ?? null) &&
@@ -111,38 +140,69 @@ export function makeWindowSnapshots(): WindowSnapshots {
     const key = windowKey(window);
     let table = windows.get(key);
     if (!table) {
-      table = { indexes: new Map(), next: 0, latest: new Map(), latestComplete: false };
+      table = {
+        indexes: new Map(),
+        next: 0,
+        latest: new Map(),
+        latestComplete: false,
+        menuBar: new Set(),
+        sheets: new Map(),
+      };
       windows.set(key, table);
     }
     return table;
   };
 
   return {
-    record: (threadId, window, elements, complete) => {
+    record: (threadId, window, elements, coverage) => {
       const existed = threads.get(threadId)?.has(windowKey(window)) ?? false;
       const table = tableFor(threadId, window);
       if (table.indexes.size > MAX_IDENTITIES) table.indexes.clear();
       const previous = table.latest;
+      const previousMenuBar = table.menuBar;
       const indexed = assignIndexes(table, elements);
+      const menuBar = menuBarIndexes(indexed);
       const current = new Set(indexed.map((entry) => entry.index));
+      const complete = coverage === "complete";
       const comparable = complete && table.latestComplete;
+      const sheets = new Map(
+        indexed
+          .filter((entry) => entry.element.role === "AXSheet")
+          .map((entry) => [entry.index, entry.element]),
+      );
+      const outside = indexed.filter((entry) => !menuBar.has(entry.index));
       const diff: SnapshotDiff | null = existed
         ? {
-            added: comparable ? indexed.filter((entry) => !previous.has(entry.index)) : [],
-            changed: indexed.filter((entry) => {
+            added: comparable ? outside.filter((entry) => !previous.has(entry.index)) : [],
+            changed: outside.filter((entry) => {
               const before = previous.get(entry.index);
               return before !== undefined && !sameState(before, entry.element);
             }),
             removed: comparable
               ? [...previous.entries()]
-                  .filter(([index]) => !current.has(index))
+                  .filter(([index]) => !current.has(index) && !previousMenuBar.has(index))
                   .map(([index, element]) => ({ index, element }))
               : [],
             comparable,
+            sheetsOpened:
+              coverage === "filtered"
+                ? []
+                : [...sheets.entries()]
+                    .filter(([index]) => !table.sheets.has(index))
+                    .map(([index, element]) => ({ index, element })),
+            sheetsClosed:
+              coverage === "filtered"
+                ? []
+                : [...table.sheets.entries()]
+                    .filter(([index]) => !sheets.has(index))
+                    .map(([index, element]) => ({ index, element })),
           }
         : null;
       table.latest = new Map(indexed.map((entry) => [entry.index, entry.element]));
       table.latestComplete = complete;
+      table.menuBar = menuBar;
+      if (coverage !== "filtered") table.sheets = sheets;
+      else for (const [index, element] of sheets) table.sheets.set(index, element);
       return { elements: indexed, diff };
     },
     has: (threadId, window) => threads.get(threadId)?.has(windowKey(window)) ?? false,

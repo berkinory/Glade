@@ -57,8 +57,10 @@ const CALL_TIMEOUT_MS = 30_000;
 // so pixel actions use the model's coordinates unchanged.
 export const SCREENSHOT_MAX_EDGE = 1568;
 
-const refusal = (code: string, message: string) => new GatewayToolError(code, message);
-export const refuse = (code: string, message: string) => Effect.fail(refusal(code, message));
+const refusal = (code: string, message: string, details?: unknown) =>
+  new GatewayToolError(code, message, details);
+export const refuse = (code: string, message: string, details?: unknown) =>
+  Effect.fail(refusal(code, message, details));
 
 // Thread ownership comes from the gateway session (context.callerThreadId), never tool input.
 export const callerThread = (context: ToolContext) => ThreadId.makeUnsafe(context.callerThreadId);
@@ -79,9 +81,9 @@ export const appContent = (window: CuaWindow, text: string) =>
 export const windowLine = (window: CuaWindow) =>
   `Window: ${window.app_name} ${JSON.stringify(window.title)}`;
 
-// One Cua tools/call in the caller thread's own Cua session. Stop aborts it, which cancels it in
-// Cua; a Cua tool error becomes a typed refusal carrying Cua's code and text.
-export const callCua = (
+// One Cua tools/call in the caller thread's own Cua session, returned as Cua answered it (tool
+// errors included). Stop aborts it, which cancels it in Cua.
+export const callCuaResult = (
   services: ComputerToolServices,
   context: ToolContext,
   name: string,
@@ -102,7 +104,7 @@ export const callCua = (
       else call.signal.addEventListener("abort", onAbort, { once: true });
       return Effect.sync(() => call.signal.removeEventListener("abort", onAbort));
     });
-    const result = yield* Effect.raceFirst(
+    return yield* Effect.raceFirst(
       services.host.callTool(name, args, { timeoutMs, threadId }),
       stopped,
     ).pipe(
@@ -116,15 +118,30 @@ export const callCua = (
         ),
       ),
     );
-    if (result.isError) {
-      const code = Schema.decodeUnknownOption(CuaFailure)(result.structuredContent).pipe(
-        Option.map((failure) => failure.code),
-        Option.getOrElse(() => "cua_error"),
-      );
-      return yield* refuse(code, resultText(result) || `${name} failed.`);
-    }
-    return result;
   });
+
+// A Cua tool error as a typed refusal carrying Cua's code and text.
+export const refuseCuaError = (name: string, result: CuaToolResult) => {
+  const code = Schema.decodeUnknownOption(CuaFailure)(result.structuredContent).pipe(
+    Option.map((failure) => failure.code),
+    Option.getOrElse(() => "cua_error"),
+  );
+  return refuse(code, resultText(result) || `${name} failed.`);
+};
+
+// The same call, refusing when Cua answered with a tool error.
+export const callCua = (
+  services: ComputerToolServices,
+  context: ToolContext,
+  name: string,
+  args: Readonly<Record<string, unknown>>,
+  timeoutMs = CALL_TIMEOUT_MS,
+) =>
+  callCuaResult(services, context, name, args, timeoutMs).pipe(
+    Effect.flatMap((result) =>
+      result.isError ? refuseCuaError(name, result) : Effect.succeed(result),
+    ),
+  );
 
 const requireComputerUse = (services: ComputerToolServices, context: ToolContext) =>
   isComputerUseOn(services, context.callerThreadId)
@@ -231,20 +248,24 @@ export const windowFor = (
     Effect.tap((window) => authorize(services, context, window, need)),
   );
 
+// How a window read was narrowed: not at all, by a depth limit, or by a query.
+export type ReadScope = "full" | "depth" | "query";
+
 // A fresh tree of the window under Glade's stable indexes, and what changed since the last one.
 export const recordSnapshot = (
   services: ComputerToolServices,
   context: ToolContext,
   input: WindowInput,
   result: CuaToolResult,
-  filtered: boolean,
+  scope: ReadScope,
 ) => {
   const state = Schema.decodeUnknownOption(CuaWindowState)(result.structuredContent);
+  const truncated = Option.isNone(state) || state.value.truncated === true;
   const recorded = services.access.snapshots.record(
     callerThread(context),
     { pid: input.pid, windowId: input.window_id },
     Option.match(state, { onNone: () => [], onSome: (value) => value.elements ?? [] }),
-    !filtered && Option.isSome(state) && state.value.truncated !== true,
+    scope === "query" ? "filtered" : scope === "depth" || truncated ? "partial" : "complete",
   );
   return { state, ...recorded };
 };

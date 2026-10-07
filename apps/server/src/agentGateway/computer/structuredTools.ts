@@ -12,16 +12,16 @@ import {
   callCua,
   callerThread,
   computerTool,
-  SCREENSHOT_MAX_EDGE,
   imageContent,
-  recordSnapshot,
   refuse,
   windowFor,
   windowLine,
   type ComputerToolServices,
 } from "./computerCalls.ts";
-import { renderElements } from "./elementText.ts";
+import { renderElements, sheetLines } from "./elementText.ts";
+import { invokeMenu } from "./menuInvoke.ts";
 import { makeVerifyTool } from "./verifyTool.ts";
+import { readWindow } from "./windowRead.ts";
 
 const WindowRef = {
   pid: Schema.Int.annotate({ description: "Process id from computer_apps." }),
@@ -73,9 +73,13 @@ const ActInput = Schema.Struct({
   direction: Schema.optional(Schema.Literals(["up", "down", "left", "right"])),
   amount: Schema.optional(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 50 }))),
   menu_path: Schema.optional(
-    Schema.Array(Schema.String)
-      .check(Schema.isMinLength(1), Schema.isMaxLength(16))
-      .annotate({ description: 'menu: labels from the menu bar down, e.g. ["File", "Save"].' }),
+    Schema.Union([
+      Schema.Array(Schema.String).check(Schema.isMinLength(1), Schema.isMaxLength(16)),
+      Schema.String.check(Schema.isMinLength(1)),
+    ]).annotate({
+      description:
+        'menu: titles from the menu bar down, as ["File", "Save As…"] or "File > Save As…". Case, a trailing "…" and shortcut suffixes do not matter.',
+    }),
   ),
   delivery: Delivery,
 });
@@ -214,7 +218,7 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
     name: "computer_window_state",
     title: "Read a window",
     description:
-      'Accessibility tree of one window: one line per element, `[index] role "label" = value`. Act on elements by index with computer_act; an index keeps meaning the same element across reads and actions until the element disappears. include_screenshot adds a JPEG only when the tree is not enough. Needs read access.',
+      'Accessibility tree of one window: one line per element, `[index] role "label" = value`, long text cut to an excerpt with its length. Attached sheets (Save panels, alerts) are named first and listed in the tree; the menu bar is one line of menu titles. Act on elements by index with computer_act; an index keeps meaning the same element across reads and actions until the element disappears. include_screenshot adds a JPEG only when the tree is not enough. Needs read access.',
     input: WindowStateInput,
     readOnly: true,
     run: (input, context) =>
@@ -223,41 +227,27 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
           scope: "read",
           action: "read",
         });
-        const result = yield* callCua(services, context, "get_window_state", {
-          pid: input.pid,
-          window_id: input.window_id,
-          include_screenshot: input.include_screenshot === true,
-          max_image_dimension: SCREENSHOT_MAX_EDGE,
+        const read = yield* readWindow(services, context, input, {
           ...(input.query ? { query: input.query } : {}),
-          ...(input.max_depth ? { max_depth: input.max_depth } : {}),
-        });
-        const snapshot = recordSnapshot(
-          services,
-          context,
-          input,
-          result,
-          input.query !== undefined || input.max_depth !== undefined,
-        );
-        const notes = Option.match(snapshot.state, {
-          onNone: () => [],
-          onSome: (value) => [
-            ...(value.truncated ? ["The tree was truncated; narrow with query or max_depth."] : []),
-            ...(value.degraded_reason ? [`Degraded: ${value.degraded_reason}.`] : []),
-          ],
+          ...(input.max_depth ? { maxDepth: input.max_depth } : {}),
+          screenshot: input.include_screenshot ? "return" : "none",
         });
         const header = `${window.app_name} window ${window.window_id} ${JSON.stringify(window.title)}`;
         const tree =
-          snapshot.elements.length > 0 ? renderElements(snapshot.elements) : resultText(result);
+          read.elements.length > 0 ? renderElements(read.elements) : resultText(read.result);
         const image = input.include_screenshot
-          ? yield* imageContent(services, context, result)
+          ? yield* imageContent(services, context, read.result)
           : [];
         return {
           content: [
             {
               type: "text",
-              text: [...notes, appContent(window, `${header}\n${tree}`), windowLine(window)].join(
-                "\n",
-              ),
+              text: [
+                ...read.notes,
+                ...sheetLines(read.elements),
+                appContent(window, `${header}\n${tree}`),
+                windowLine(window),
+              ].join("\n"),
             },
             ...image,
           ],
@@ -269,7 +259,7 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
     name: "computer_act",
     title: "Act on a window",
     description:
-      "Act through the accessibility tree: click, double_click, right_click or set_value an element; type text (into element or the focused field); press a key or chord; scroll (element or window); menu runs a menu bar item by path. Delivery is background unless foreground is asked. The result reports Cua's effect (confirmed, partial, unverifiable, suspected_noop, refused), what changed in the window since you last read it, and any escalation. Needs act access; foreground needs full control. Browsers are read-only; terminals and IDEs take only click and scroll without full control.",
+      "Act through the accessibility tree: click, double_click, right_click or set_value an element; type text (into element or the focused field); press a key or chord; scroll (element or window); menu runs a menu bar item by path (an unknown title returns the titles available at that level). Delivery is background unless foreground is asked. The result reports Cua's effect (confirmed, partial, unverifiable, suspected_noop, refused), what changed in the window since you last read it, and any escalation. Needs act access; foreground needs full control. Browsers are read-only; terminals and IDEs take only click and scroll without full control.",
     input: ActInput,
     readOnly: false,
     run: (input, context) =>
@@ -294,7 +284,16 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
         }
         const call = actCall(input, token);
         if (typeof call === "string") return yield* refuse("invalid_input", call);
-        return yield* performAction(services, context, input, window, call);
+        return input.action === "menu" && input.menu_path !== undefined
+          ? yield* performAction(
+              services,
+              context,
+              input,
+              window,
+              call,
+              invokeMenu(services, context, input, input.menu_path),
+            )
+          : yield* performAction(services, context, input, window, call);
       }),
   });
 
