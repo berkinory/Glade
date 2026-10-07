@@ -14,6 +14,10 @@ still run formatting, lint, workflow lint, the Windows boundary checker and migr
 Heavy lanes skip only when the change filter succeeds and reports no code. The gate rejects failed,
 cancelled or unexpectedly skipped lanes, and prints the lane results in the run summary.
 
+The desktop build lane also downloads the pinned Linux x64 Cua Driver and checks it against
+`apps/desktop/src/computer/cuaRelease.json`, because a replayed Turbo build skips the fetch inside
+the desktop build. Each release build verifies its own target's driver before packaging.
+
 Windows checks cover changes under server, desktop, packages, scripts, dependency patches,
 shared root configuration, manifests, lockfile and workspace setup. Web-only changes skip Windows.
 Core and web suites run sequentially on one runner; all three server shards remain parallel.

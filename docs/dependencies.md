@@ -73,6 +73,32 @@ when displaying untrusted content.
   merged after this beta. No matching upstream unsafe-PID PR was found during
   the audit. Remove the patch only after comparing the replacement artifact.
 
+## Cua Driver
+
+Computer Use runs the upstream Cua Driver, pinned and unpatched. Two pins move together:
+
+- `@trycua/cua-driver` in `apps/desktop/package.json` (exact version), the embedded-host SDK. It
+  installs one optional native package per platform (`@trycua/cua-driver-<platform>-<arch>`) and
+  depends on `@ubjs/*`; packaging installs the target's packages and unpacks them from ASAR.
+- `apps/desktop/src/computer/cuaRelease.json`: the matching `cua-driver-rs-vX.Y.Z` GitHub release,
+  with each `-binary` archive's name and SHA-256 and the extracted executable's SHA-256.
+  `apps/desktop/scripts/fetch-cua-driver.mjs` downloads and verifies one artifact before `dev`,
+  `build` and packaging; CI verifies the Linux x64 entry on every code change.
+
+To upgrade:
+
+1. Bump the npm version and run `bun install`.
+2. Update `cuaRelease.json`: take archive digests from the release's `SHA256SUMS` (or
+   `gh api repos/trycua/cua/releases/tags/cua-driver-rs-vX.Y.Z`), extract each archive and hash the
+   executable. Delete `apps/desktop/resources/cua-driver/` and run the fetch script for each
+   artifact (`--platform darwin|linux|win32 --arch x64|arm64`) to prove the hashes.
+3. Recapture `apps/server/src/computer/fixtures/` from the new release and run
+   `cuaResults.test.ts`; a shape change there is a breaking upstream change to handle in
+   `apps/server/src/computer`. Check the release notes for renamed tools, error codes and
+   environment allowlist changes.
+4. Re-run the macOS checks in [Computer Use](computer-use.md#verifying), including a signed
+   packaged build before release.
+
 ## Terminal image decoder
 
 `@xterm/addon-image@0.9.0` registers its sixel handler before the WASM decoder

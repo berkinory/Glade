@@ -44,6 +44,14 @@ bun run package:mac:arm64 -- --signed
 
 Artifacts land in `release/`. Local notarization uses the keychain profile; CI uses App Store Connect API credentials. Never commit private keys or passwords.
 
+Each package carries the target's pinned Cua Driver for Computer Use in `Resources/cua-driver/`,
+outside ASAR. Packaging fetches and verifies it against `apps/desktop/src/computer/cuaRelease.json`
+(one universal executable for both macOS architectures) and installs the target's native SDK
+packages; a target without a pinned driver fails to package. electron-builder signs the macOS
+executable with the app identity before the app, so signed builds need no extra secrets. Unsigned
+local macOS packages ad-hoc sign it; verify Computer Use grants with a signed build. See
+[Computer Use](computer-use.md) and [dependency maintenance](dependencies.md#cua-driver).
+
 Desktop packages retain only English Chromium locales. The backend bundles its diff parser so
 server-side syntax-highlighting resources are not shipped. Unused Effect API-documentation UI
 payloads and gzip web sidecars are excluded; original web assets and Brotli sidecars remain for
@@ -54,7 +62,8 @@ desktop and HTTP access.
 `.github/workflows/release.yml` verifies the release source and requires successful CI for the
 exact commit on `main` before publishing. It reuses that result instead of rerunning the same checks
 on the tag. An unpublished manual build runs the checks itself. A failed gate skips all four builds
-and publication. The four build jobs run in parallel through `release-build.yml`; publication credentials are checked
+and publication. The four build jobs run in parallel through `release-build.yml`, each of which first fetches and
+verifies its target's Cua Driver; publication credentials are checked
 before those jobs start. Release jobs restore dependency and build caches without uploading duplicate
 archives. See [CI and automation](ci.md) for cache ownership and debugging. Pushing a stable `vX.Y.Z` tag publishes only
 after both macOS packages are signed and notarized; manual publication also requires running on that

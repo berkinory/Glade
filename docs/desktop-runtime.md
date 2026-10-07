@@ -54,6 +54,16 @@ at a time and repeated quit requests wait for it; cancelling, or failing to show
 the dialog, keeps the app open. A renderer that crashes during the ask moves it to
 the native confirmation, and crash recovery runs only if the user stays.
 
+## Agent hosts
+
+The desktop hosts native surfaces for agents and nothing else; policy and state live in the server.
+`hostRpc/startDesktopHost.ts` starts the desktop host RPC server and passes its path and token to
+the backend. `browser` owns the agent browser's tabs, CDP sessions and panel placement, and
+`computer` owns the embedded Cua Driver and the macOS Accessibility and Screen Recording probes
+(renderer IPC `desktop:computer-permissions-get`, `-request` and `-open-settings`). Desktop shutdown
+stops the driver after the backend has exited. See [Browser Use](browser-use.md) and
+[Computer Use](computer-use.md).
+
 ## Verification
 
 Run the existing desktop tests with `bun run --cwd apps/desktop test`. Tests live

@@ -4,6 +4,8 @@
 
 ### New
 
+- Browser Use is rebuilt: each chat has its own browser panel, agents browse with your existing sign-ins, and you can pick an element on a page to send to the composer.
+- Computer Use is rebuilt on the Cua driver: agents use desktop apps after you grant access to each app in the chat.
 - Visual replies and previews can load public web resources, and visual links open in your browser.
 
 ### Improved
@@ -55,6 +57,7 @@
 
 ### Removed
 
+- Removed the browser's saved-login vault; agents use the sign-ins you make in the browser panel instead.
 - Removed the source-code view from visual replies.
 
 ## 0.2.0 - 2026-10-06

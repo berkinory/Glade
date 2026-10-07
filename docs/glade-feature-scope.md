@@ -46,6 +46,7 @@ app (read, act or full control); grants last until Glade restarts and can be rev
 which also shows the driver status and, on macOS, the Accessibility and Screen Recording
 permissions. While a turn uses the computer, the composer shows the app and window with Stop.
 On Windows and Linux, Settings states the platform's input limits instead of permissions.
+See [Browser Use](browser-use.md) and [Computer Use](computer-use.md) for how both work.
 
 ## Workspace editing
 

@@ -1,6 +1,6 @@
 # Computer Use and Browser Use rewrite
 
-Status: in progress on `feat/computer-use-rewrite`. This file is the single source of truth for the rewrite until it ships. It follows [AGENTS.md](AGENTS.md); where this plan is silent, AGENTS.md rules apply.
+Status: Phases 0–8 done on `feat/computer-use-rewrite`; Phase 9 (Windows and Linux on real machines) is open. This file is the single source of truth for the rewrite until it ships. It follows [AGENTS.md](AGENTS.md); where this plan is silent, AGENTS.md rules apply.
 
 ## 1. Decision
 
@@ -145,6 +145,19 @@ Work happens in a dedicated worktree on branch `feat/computer-use-rewrite`, crea
 ```bash
 git worktree add ../glade-cu -b feat/computer-use-rewrite main
 ```
+
+| Phase                 | Status                                                               |
+| --------------------- | -------------------------------------------------------------------- |
+| 0 Upstream spikes     | Done (section 8)                                                     |
+| 1 Teardown            | Done                                                                 |
+| 2 Browser host core   | Done (section 8a)                                                    |
+| 3 Browser tools       | Done; Claude and Codex acceptance passed                             |
+| 4 Browser panel       | Done                                                                 |
+| 5 Cua embedded host   | Done (section 8b)                                                    |
+| 6 Computer tools      | Done; Claude and Codex acceptance passed                             |
+| 7 Computer UI         | Done                                                                 |
+| 8 Packaging, CI, docs | Done except the Cua license notice (see Phase 8 revisions)           |
+| 9 Cross-platform pass | Open: needs real Windows and Linux machines and a signed macOS build |
 
 ### Phase 0: upstream spikes (throwaway, not committed to the branch)
 
@@ -298,7 +311,23 @@ Checks: `bun run build:desktop` on macOS; CI green on the branch; `bun run test`
 
 Commits: `build: fetch the upstream Cua driver at build time`, `docs: Browser Use and Computer Use rewrite`.
 
+Revisions (as built):
+
+- Packaging (`scripts/build-desktop-artifact.ts`) stages only the target's driver through `fetch-cua-driver.mjs --platform --arch --stage`, and fails when the target has no pinned artifact. The staged production install passes `--os`/`--cpu` for the target (`--cpu=*` for universal), so cross-arch and universal macOS builds carry the matching `@trycua` and `@ubjs` native packages. Signing needs no new secrets: `mac.binaries` signs the driver with the existing `CSC_*` identity.
+- `release-build.yml` fetches and verifies each matrix target's driver before packaging; `ci.yml`'s desktop build lane verifies the Linux x64 pin explicitly because a Turbo replay skips the build's fetch. No Rust or Swift steps were left after Phase 1.
+- Docs: `docs/browser-use.md`, `docs/computer-use.md`, plus the listed doc updates. CHANGELOG: two New lines and one Removed line (the vault shipped in 0.1.0–0.2.0).
+- License notice not added: the Cua repository and its driver releases are MIT, but the SDK's native package declares `MIT AND MPL-2.0` and its `@ubjs/*` dependencies, which ship unpacked in the app, are MPL-2.0. The notice set needs a decision covering both licenses before it goes under `docs/licenses/`.
+- Verified on macOS arm64: unsigned `package:mac:arm64` contains `Contents/Resources/cua-driver/darwin-universal/cua-driver` (0755, outside ASAR, ad-hoc signed) and the darwin-arm64 `@trycua` and `@ubjs` native files in `app.asar.unpacked`. The packaged app was not launched.
+
 ### Phase 9: cross-platform pass
+
+Checklist (each needs a real machine; record results here):
+
+- Signed macOS release build (arm64 and x64): `codesign -dv` on `Contents/Resources/cua-driver/darwin-universal/cua-driver` shows the Glade team; notarization accepts it; Settings shows the driver ready (the team-signature check passes); grants attach to `com.agent.glade`; TextEdit acceptance passes.
+- Windows x64 (packaged NSIS install): `resources/cua-driver/win32-x64/cua-driver.exe` present and passes the hash check; the Defender gate stays clean with the driver inside; the host RPC named pipe authenticates; Browser Use end to end (open, snapshot, click, type, upload, download, popup sign-in, panel pick); Computer Use structured and pixel paths with foreground delivery; Stop releases held input; quit leaves no `cua-driver.exe` process.
+- Linux x64 AppImage on X11: the driver keeps its exec bit inside the mounted AppImage and starts; Browser Use end to end; Computer Use background input through X11 and AT-SPI trees.
+- Linux on one Wayland compositor (GNOME or KDE): structured actions work; Settings states the Wayland limit; pixel tools escalate or refuse with a readable error.
+- Windows arm64 and Linux arm64 have pinned artifacts but no release target; build one locally only if a release target is added.
 
 - Windows: Browser Use end to end; Cua foreground path; named pipe RPC; executable launch from `resources`
 - Linux (X11 and one Wayland compositor): Browser Use end to end; Cua X11 background path; Wayland reports semantic-only in Settings
@@ -379,7 +408,8 @@ TextEdit, structured path first, then pixel path:
 
 ## 9. Open items
 
-- Phase 8: fetch per build target (cross-arch and macOS universal builds also need both darwin native SDK packages installed), and run a signed packaged build to confirm the team-signature check.
+- Cua license notice under `docs/licenses/` (MIT for the driver, MPL-2.0 for the SDK's native and `@ubjs` packages); see Phase 8 revisions.
+- Packaged macOS team-signature check: `codesign -dv` reports `TeamIdentifier=not set` for both an ad-hoc driver and an ad-hoc app, so an unsigned local package accepts any ad-hoc signed executable there. Signed releases are unaffected; treating `not set` as no team would make unsigned packages refuse the driver.
 
 - Record token measurements from the provider acceptance runs here.
 - Page dialogs in the visible panel: v1 dismisses and reports them. A user-facing answer path would need a non-blocking prompt in the panel.
