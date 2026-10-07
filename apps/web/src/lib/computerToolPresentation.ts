@@ -16,11 +16,9 @@ const COMPUTER_TOOL_WORDING = {
   computer_open_app: ["Opening", "Opened", "open the app"],
   computer_file_dialog: ["Saving file", "Saved", "save the file"],
   computer_window_state: ["Reading window", "Read window", "read the window"],
-  computer_act: ["Using app", "Used app", "use the app"],
   computer_request_access: ["Requesting access", "Requested access", "get access"],
   computer_stop: ["Stopping Computer Use", "Stopped Computer Use", "stop Computer Use"],
   computer_screenshot: ["Taking screenshot", "Took screenshot", "take a screenshot"],
-  computer_zoom: ["Zooming in", "Zoomed in", "zoom in"],
   computer_left_click: ["Clicking", "Clicked", "click"],
   computer_right_click: ["Right-clicking", "Right-clicked", "right-click"],
   computer_double_click: ["Double-clicking", "Double-clicked", "double-click"],
@@ -29,18 +27,9 @@ const COMPUTER_TOOL_WORDING = {
   computer_scroll: ["Scrolling", "Scrolled", "scroll"],
   computer_type: ["Typing", "Typed", "type"],
   computer_key: ["Pressing", "Pressed", "press keys"],
+  computer_set_value: ["Setting value", "Set value", "set the value"],
+  computer_menu: ["Choosing menu item", "Chose", "choose the menu item"],
   computer_verify: ["Checking window", "Checked window", "check the window"],
-} as const satisfies Record<string, GatewayToolWording>;
-
-const ACT_WORDING = {
-  click: COMPUTER_TOOL_WORDING.computer_left_click,
-  double_click: COMPUTER_TOOL_WORDING.computer_double_click,
-  right_click: COMPUTER_TOOL_WORDING.computer_right_click,
-  type: COMPUTER_TOOL_WORDING.computer_type,
-  press: COMPUTER_TOOL_WORDING.computer_key,
-  scroll: COMPUTER_TOOL_WORDING.computer_scroll,
-  set_value: ["Setting value", "Set value", "set the value"],
-  menu: ["Choosing menu item", "Chose", "choose the menu item"],
 } as const satisfies Record<string, GatewayToolWording>;
 
 type ComputerToolName = keyof typeof COMPUTER_TOOL_WORDING;
@@ -110,24 +99,14 @@ function actedElement(lines: ReadonlyArray<string>): string | null {
   return null;
 }
 
-function actTarget(call: GatewayToolCall, lines: ReadonlyArray<string>): string | null {
-  const { args } = call;
-  switch (args.action) {
-    case "press":
-      return stringArg(args, "key");
-    case "scroll":
-      return stringArg(args, "direction");
-    case "menu":
-      return Array.isArray(args.menu_path)
-        ? shortPreview(args.menu_path.filter((part) => typeof part === "string").join(" › "))
-        : null;
-    case "type": {
-      const element = actedElement(lines);
-      return element ? `into ${element}` : null;
-    }
-    default:
-      return actedElement(lines);
-  }
+// `File › Save As…` from a path given as an array or one "File > Save As…" string.
+function menuPathLabel(path: unknown): string | null {
+  const parts = Array.isArray(path)
+    ? path.filter((part): part is string => typeof part === "string")
+    : typeof path === "string"
+      ? path.split(/\s*[>▸→]\s*/u)
+      : [];
+  return parts.length > 0 ? shortPreview(parts.join(" › ")) : null;
 }
 
 function accessPresentation(
@@ -188,14 +167,6 @@ export function describeComputerToolCall(call: GatewayToolCall): GatewayToolPres
           stringArg(args, "app") ? `to ${stringArg(args, "app")}` : null,
         )
       );
-    case "computer_act": {
-      const action = stringArg(args, "action");
-      const wording =
-        action && Object.hasOwn(ACT_WORDING, action)
-          ? ACT_WORDING[action as keyof typeof ACT_WORDING]
-          : COMPUTER_TOOL_WORDING.computer_act;
-      return presentGatewayToolCall(wording, call, previewAt(actTarget(call, lines), where));
-    }
     case "computer_apps": {
       const count = Number(/^(\d+) running apps?\./u.exec(lines[0] ?? "")?.[1] ?? 0);
       const apps = `${count} ${pluralize(count, "app")}`;
@@ -242,6 +213,38 @@ export function describeComputerToolCall(call: GatewayToolCall): GatewayToolPres
     }
     case "computer_verify":
       return verifyPresentation(call, lines, where);
+    case "computer_left_click":
+    case "computer_right_click":
+    case "computer_double_click":
+    case "computer_triple_click":
+    case "computer_set_value":
+      return presentGatewayToolCall(
+        COMPUTER_TOOL_WORDING[call.tool],
+        call,
+        previewAt(actedElement(lines), where),
+      );
+    case "computer_type": {
+      const element = actedElement(lines);
+      return presentGatewayToolCall(
+        COMPUTER_TOOL_WORDING.computer_type,
+        call,
+        previewAt(element ? `into ${element}` : null, where),
+      );
+    }
+    case "computer_menu":
+      return presentGatewayToolCall(
+        COMPUTER_TOOL_WORDING.computer_menu,
+        call,
+        previewAt(menuPathLabel(args.menu_path), where),
+      );
+    case "computer_screenshot":
+      return presentGatewayToolCall(
+        Array.isArray(args.region)
+          ? ["Zooming in", "Zoomed in", "zoom in"]
+          : COMPUTER_TOOL_WORDING.computer_screenshot,
+        call,
+        previewAt(null, where),
+      );
     case "computer_key":
       return presentGatewayToolCall(
         COMPUTER_TOOL_WORDING.computer_key,

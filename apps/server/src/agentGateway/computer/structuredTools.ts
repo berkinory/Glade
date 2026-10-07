@@ -1,12 +1,11 @@
 import { ComputerAccessScope } from "@glade/contracts/computer/computerUse";
 import { Effect, Option, Schema } from "effect";
 
-import { appCategory, type ActionClass } from "../../computer/appCategories.ts";
+import { appCategory } from "../../computer/appCategories.ts";
 import { scopeCovers } from "../../computer/computerGrants.ts";
 import { CuaListApps, CuaListWindows, resultText } from "../../computer/cuaResults.ts";
 import type { ToolEntry } from "../toolRuntime.ts";
 import { untrustedContent } from "../untrustedContent.ts";
-import { keyCall, performAction } from "./computerActions.ts";
 import {
   appContent,
   callCua,
@@ -14,82 +13,40 @@ import {
   computerTool,
   imageContent,
   refuse,
-  windowFor,
+  SCREENSHOT_MAX_EDGE,
   windowLine,
   windowSummary,
   type ComputerToolServices,
 } from "./computerCalls.ts";
 import { renderElements, sheetLines } from "./elementText.ts";
 import { makeFileDialogTool } from "./fileDialogTool.ts";
-import { invokeMenu } from "./menuInvoke.ts";
 import { makeOpenAppTool } from "./openAppTool.ts";
 import { makeVerifyTool } from "./verifyTool.ts";
 import { readWindow } from "./windowRead.ts";
-
-const WindowRef = {
-  pid: Schema.Int.annotate({ description: "Process id from computer_apps." }),
-  window_id: Schema.Int.annotate({ description: "Window id from computer_apps." }),
-};
-const Delivery = Schema.optional(
-  Schema.Literals(["background", "foreground"]).annotate({
-    description:
-      "background (default) acts without taking focus; foreground briefly fronts the window and needs full control.",
-  }),
-);
+import { targetFor, WindowTarget } from "./windowTarget.ts";
 
 const WindowStateInput = Schema.Struct({
-  ...WindowRef,
-  query: Schema.optional(
+  ...WindowTarget,
+  query: Schema.optionalKey(
     Schema.String.annotate({ description: "Keep only elements whose text matches." }),
   ),
-  max_depth: Schema.optional(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 40 }))),
-  include_screenshot: Schema.optional(Schema.Boolean),
+  max_depth: Schema.optionalKey(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 40 }))),
+  include_screenshot: Schema.optionalKey(Schema.Boolean),
 });
 
-const ACT_ACTIONS = [
-  "click",
-  "double_click",
-  "right_click",
-  "type",
-  "press",
-  "scroll",
-  "set_value",
-  "menu",
-] as const;
-
-const ActInput = Schema.Struct({
-  ...WindowRef,
-  action: Schema.Literals(ACT_ACTIONS),
-  element: Schema.optional(
-    Schema.Int.annotate({
+const ScreenshotInput = Schema.Struct({
+  ...WindowTarget,
+  region: Schema.optionalKey(
+    Schema.Array(Schema.Finite).check(Schema.isMinLength(4), Schema.isMaxLength(4)).annotate({
       description:
-        "Element index from computer_window_state or an action's change list; indexes stay valid while the element exists.",
+        "[x0, y0, x1, y1] of the latest screenshot to zoom into; coordinates stay in the full screenshot's space.",
     }),
   ),
-  text: Schema.optional(Schema.String.annotate({ description: "type: text to insert." })),
-  key: Schema.optional(
-    Schema.String.annotate({
-      description: 'press: a key ("return", "escape", "down") or a chord ("cmd+s").',
-    }),
-  ),
-  value: Schema.optional(Schema.String.annotate({ description: "set_value: the new value." })),
-  direction: Schema.optional(Schema.Literals(["up", "down", "left", "right"])),
-  amount: Schema.optional(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 50 }))),
-  menu_path: Schema.optional(
-    Schema.Union([
-      Schema.Array(Schema.String).check(Schema.isMinLength(1), Schema.isMaxLength(16)),
-      Schema.String.check(Schema.isMinLength(1)),
-    ]).annotate({
-      description:
-        'menu: titles from the menu bar down, as ["File", "Save As…"] or "File > Save As…". Case, a trailing "…" and shortcut suffixes do not matter.',
-    }),
-  ),
-  delivery: Delivery,
 });
 
 const RequestAccessInput = Schema.Struct({
   app: Schema.String.annotate({ description: "App name exactly as computer_apps lists it." }),
-  window_id: Schema.optional(
+  window_id: Schema.optionalKey(
     Schema.Int.annotate({ description: "Narrow the request to one window." }),
   ),
   scope: ComputerAccessScope.annotate({
@@ -99,67 +56,6 @@ const RequestAccessInput = Schema.Struct({
 });
 
 const ACCESS_WAIT_MS = 45_000;
-
-// Plain clicks and scrolling are click-class; everything that enters text, opens context menus
-// or runs menu commands is input-class (see appCategories).
-const ACT_CLASS: Record<(typeof ACT_ACTIONS)[number], ActionClass> = {
-  click: "click",
-  double_click: "click",
-  scroll: "click",
-  right_click: "input",
-  type: "input",
-  press: "input",
-  set_value: "input",
-  menu: "input",
-};
-
-// The Cua tool and arguments for one computer_act, or why the input cannot form one.
-function actCall(
-  input: typeof ActInput.Type,
-  elementToken: string | undefined,
-): { readonly tool: string; readonly args: Record<string, unknown> } | string {
-  const base = {
-    pid: input.pid,
-    window_id: input.window_id,
-    ...(elementToken ? { element_token: elementToken } : {}),
-  };
-  const delivered = { ...base, delivery_mode: input.delivery ?? "background" };
-  const missing = (field: string) => `computer_act ${input.action} needs ${field}.`;
-  switch (input.action) {
-    case "click":
-    case "double_click":
-    case "right_click":
-      return elementToken ? { tool: input.action, args: delivered } : missing("element");
-    case "set_value":
-      if (!elementToken) return missing("element");
-      return input.value === undefined
-        ? missing("value")
-        : { tool: "set_value", args: { ...base, value: input.value } };
-    case "type":
-      return input.text === undefined
-        ? missing("text")
-        : { tool: "type_text", args: { ...delivered, text: input.text } };
-    case "press": {
-      if (input.key === undefined) return missing("key");
-      const key = keyCall(input.key);
-      return { tool: key.tool, args: { ...delivered, ...key.args } };
-    }
-    case "scroll":
-      return input.direction === undefined
-        ? missing("direction")
-        : {
-            tool: "scroll",
-            args: { ...delivered, direction: input.direction, amount: input.amount ?? 3 },
-          };
-    case "menu":
-      return input.menu_path === undefined
-        ? missing("menu_path")
-        : {
-            tool: "invoke_menu",
-            args: { pid: input.pid, window_id: input.window_id, path: input.menu_path },
-          };
-  }
-}
 
 // computer_apps marks apps whose category caps every grant.
 const CATEGORY_NOTE = {
@@ -218,16 +114,16 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
     name: "computer_window_state",
     title: "Read a window",
     description:
-      'Accessibility tree of one window: one line per element, `[index] role "label" = value`, long text cut to an excerpt with its length. Attached sheets (Save panels, alerts) are named first and listed in the tree; the menu bar is one line of menu titles. Act on elements by index with computer_act; an index keeps meaning the same element across reads and actions until the element disappears. include_screenshot adds a JPEG only when the tree is not enough. Needs read access.',
+      'Accessibility tree of one window: one line per element, `[index] role "label" = value`, long text cut to an excerpt with its length. Attached sheets (Save panels, alerts) are named first and listed in the tree; the menu bar is one line of menu titles. Act on elements by index (element_index in the input tools); an index keeps meaning the same element across reads and actions until the element disappears. include_screenshot adds a JPEG only when the tree is not enough. Needs read access.',
     input: WindowStateInput,
     readOnly: true,
     run: (input, context) =>
       Effect.gen(function* () {
-        const window = yield* windowFor(services, context, input, {
+        const { target, window } = yield* targetFor(services, context, input, {
           scope: "read",
           action: "read",
         });
-        const read = yield* readWindow(services, context, input, {
+        const read = yield* readWindow(services, context, target, {
           ...(input.query ? { query: input.query } : {}),
           ...(input.max_depth ? { maxDepth: input.max_depth } : {}),
           screenshot: input.include_screenshot ? "return" : "none",
@@ -255,45 +151,32 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
       }),
   });
 
-  const act = computerTool(services, {
-    name: "computer_act",
-    title: "Act on a window",
-    description:
-      "Act through the accessibility tree: click, double_click, right_click or set_value an element; type text (into element or the focused field); press a key or chord; scroll (element or window); menu runs a menu bar item by path (an unknown title returns the titles available at that level). Delivery is background unless foreground is asked. The result reports Cua's effect (confirmed, partial, unverifiable, suspected_noop, refused), what changed in the window since you last read it, and any escalation. Needs act access; foreground needs full control. Browsers are read-only; terminals and IDEs take only click and scroll without full control.",
-    input: ActInput,
-    readOnly: false,
+  const screenshot = computerTool(services, {
+    name: "computer_screenshot",
+    title: "Screenshot a window",
+    description: `JPEG of one window only, at most ${SCREENSHOT_MAX_EDGE} px on the long edge; coordinate inputs are pixels of this image. With region, a close-up of part of it for small text (Anthropic's zoom). Use it when the accessibility tree lacks the target or an effect is unverifiable. Needs read access.`,
+    input: ScreenshotInput,
+    readOnly: true,
     run: (input, context) =>
       Effect.gen(function* () {
-        const window = yield* windowFor(services, context, input, {
-          scope: input.delivery === "foreground" ? "full" : "act",
-          action: ACT_CLASS[input.action],
+        const { target } = yield* targetFor(services, context, input, {
+          scope: "read",
+          action: "read",
         });
-        const token =
-          input.element === undefined
-            ? undefined
-            : services.access.snapshots.token(
-                callerThread(context),
-                { pid: input.pid, windowId: input.window_id },
-                input.element,
-              );
-        if (token === null) {
-          return yield* refuse(
-            "unknown_element",
-            `Element ${input.element} is not in this window's latest tree. Read the window again with computer_window_state.`,
-          );
-        }
-        const call = actCall(input, token);
-        if (typeof call === "string") return yield* refuse("invalid_input", call);
-        return input.action === "menu" && input.menu_path !== undefined
-          ? yield* performAction(
-              services,
-              context,
-              input,
-              window,
-              call,
-              invokeMenu(services, context, input, input.menu_path),
-            )
-          : yield* performAction(services, context, input, window, call);
+        const result = input.region
+          ? yield* callCua(services, context, "zoom", {
+              ...target,
+              x1: input.region[0],
+              y1: input.region[1],
+              x2: input.region[2],
+              y2: input.region[3],
+            })
+          : yield* callCua(services, context, "get_window_state", {
+              ...target,
+              include_accessibility_tree: false,
+              max_image_dimension: SCREENSHOT_MAX_EDGE,
+            });
+        return { content: yield* imageContent(services, context, result) };
       }),
   });
 
@@ -386,7 +269,7 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
     apps,
     makeOpenAppTool(services),
     windowState,
-    act,
+    screenshot,
     makeFileDialogTool(services),
     makeVerifyTool(services),
     requestAccess,

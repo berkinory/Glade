@@ -32,13 +32,13 @@ const FileDialogInput = Schema.Struct({
     description:
       "Absolute folder to save into, or the file to open (or its folder, with file_name). ~/ is the home folder.",
   }),
-  file_name: Schema.optional(
+  file_name: Schema.optionalKey(
     Schema.String.annotate({
       description:
         "save: the name to save as (its extension picks the format when it can); open: the file in path.",
     }),
   ),
-  overwrite: Schema.optional(
+  overwrite: Schema.optionalKey(
     Schema.Boolean.annotate({ description: "save: replace an existing file. Default false." }),
   ),
 });

@@ -90,11 +90,24 @@ connection and every policy decision, and providers only see gateway tools.
 
 ## Tools
 
-Structured (preferred): `computer_apps`, `computer_open_app`, `computer_window_state` (accessibility tree, screenshot
-only on request), `computer_act` (click, type, keys, scroll, set value, menu by element index, with
-background or foreground delivery), `computer_file_dialog` (a macOS Open or Save panel in one call),
-`computer_verify` (Cua's `verify_state`: waits up to 10 s for element conditions with stable
-samples), `computer_request_access`, `computer_stop`.
+Reading: `computer_apps`, `computer_window_state` (accessibility tree, screenshot only on request),
+`computer_screenshot` (with `region`, a zoomed close-up), `computer_verify` (Cua's `verify_state`:
+waits up to 10 s for element conditions with stable samples). Input, one tool per action as in
+Anthropic's `computer_toolset_20260801` and Codex/Cua: `computer_left_click`, `computer_right_click`,
+`computer_double_click`, `computer_triple_click`, `computer_type`, `computer_key`, `computer_scroll`,
+`computer_set_value`, `computer_menu`, `computer_left_click_drag`. Apps and panels:
+`computer_open_app`, `computer_file_dialog` (a macOS Open or Save panel in one call). Session:
+`computer_request_access`, `computer_stop`.
+
+Every window tool names its window by `pid` and `window_id` or by `app` (a name or bundle id, which
+resolves to the app's frontmost window). Input tools address an `element_index` from the window's
+tree (preferred) or a `coordinate` in the window's latest screenshot; type, key and scroll without
+either go to the window's focus, and drags take `start_coordinate` and `coordinate`. `delivery` is
+background unless foreground is asked. The grant, app category, repeat guard and user yield run in
+one shared path for all of them. Triple clicks need a coordinate (Cua repeats clicks only on the
+pixel path). `computer_key` reads xdotool and `+` syntax (`Return`, `super+c`, `cmd+shift+z`,
+`ctrl++`) and runs space-separated keys in order (`Down Down Return`); `cmd` means Command on macOS
+and Control elsewhere.
 
 `computer_open_app` takes an app name or bundle id (resolved through Cua's `list_apps`, which also
 lists installed apps that are not running) and optional `open` targets, and calls Cua's
@@ -111,7 +124,7 @@ macOS-only: Cua 0.34 on Windows and Linux hands `urls` to the system's default h
 default browser, `xdg-open`) instead of the named app, so there the call refuses `open` with
 `unsupported_platform` and only launches.
 
-Menus: `computer_act` `menu` takes the path as an array or one string with `>`, `▸` or `→`. Cua's
+Menus: `computer_menu` takes the path as an array or one string with `>`, `▸` or `→`. Cua's
 `invoke_menu` matches titles exactly except `...` for `…`, so Glade retries a segment Cua cannot
 find with the ellipsis flipped, then against the titles the window's tree lists at that level
 (ignoring case, a trailing ellipsis and `⌘` shortcut suffixes). When nothing matches it refuses
@@ -140,15 +153,13 @@ same yield as foreground delivery) and right after Cua confirmed the app is fron
 the call refuses with `user_active`. That is why the tool needs `full` control; the app stays in
 front afterwards. Everything else in the panel is driven by element.
 
-Pixel (fallback, window-scoped): `computer_screenshot`, `computer_zoom`, `computer_left_click`,
-`computer_right_click`, `computer_double_click`, `computer_triple_click`,
-`computer_left_click_drag`, `computer_scroll`, `computer_type`, `computer_key`. Names and
-parameters follow Anthropic's `computer_toolset_20260801` members (`coordinate`,
+Coordinates and screenshots: parameter names follow Anthropic's computer toolset (`coordinate`,
 `start_coordinate`, `region`, `scroll_direction`, `scroll_amount`, `text` for keys and click
-modifiers) plus the window. Screenshots are window-only at most 1568 px on the long edge (Cua's documented size, passed
-explicitly because the driver setting may be native size) and re-encoded as JPEG at that size; coordinates are in that screenshot's space. Whole-screen
-actions are not exposed, so every call names an app window a grant can cover. Cua 0.34 has no
-batch tool, so there is no `computer_batch`.
+modifiers). Screenshots are window-only at most 1568 px on the long edge (Cua's documented size,
+passed explicitly because the driver setting may be native size) and re-encoded as JPEG at that
+size; coordinates are in that screenshot's space, and a zoomed `region` does not change them.
+Whole-screen actions are not exposed, so every call names an app window a grant can cover. Cua 0.34
+has no batch tool, so there is no `computer_batch`.
 
 Element indexes are Glade's, not Cua's: an element keeps its index across reads and actions of the
 same window (identity is the role and label path plus position among identical siblings) and an
@@ -217,7 +228,7 @@ See [dependency maintenance](dependencies.md#cua-driver).
    the progress guard.
 3. Launch the Dev app through LaunchServices, grant both permissions, and confirm Settings shows the
    driver ready. Turn on `/computer` in a chat, grant TextEdit and ask the agent to type a sentence
-   and read it back, then exercise a screenshot and zoom. Save the document into a scratch folder
+   and read it back, then exercise a screenshot and a zoomed region. Save the document into a scratch folder
    with `computer_file_dialog`, once more under the same name (refused with `file_exists`), and open
    a PDF in Preview with it. Quit Preview and open the PDF with `computer_open_app` (launched, the
    target's window confirmed), again while it runs (reused), and try a `tel:` target (refused).

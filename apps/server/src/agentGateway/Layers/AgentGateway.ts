@@ -7,7 +7,7 @@ import { makeBrowserTools } from "../browser/browserTools";
 import { ComputerAccess } from "../../computer/Services/ComputerAccess";
 import { ComputerHost } from "../../computer/Services/ComputerHost";
 import { ThreadComputerUse } from "../../orchestration/Services/ThreadComputerUse";
-import { makePixelComputerTools } from "../computer/pixelTools";
+import { makeInputComputerTools } from "../computer/inputTools";
 import { makeStructuredComputerTools } from "../computer/structuredTools";
 import { AppPresentation } from "../Services/AppPresentation";
 import { CheckpointDiffQuery } from "../../checkpointing/Services/CheckpointDiffQuery";
@@ -590,7 +590,7 @@ const makeAgentGateway = Effect.gen(function* () {
     ...(Option.isSome(computerServices)
       ? [
           ...makeStructuredComputerTools(computerServices.value),
-          ...makePixelComputerTools(computerServices.value),
+          ...makeInputComputerTools(computerServices.value),
         ]
       : []),
   ];

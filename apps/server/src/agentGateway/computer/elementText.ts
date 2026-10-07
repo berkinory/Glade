@@ -28,7 +28,7 @@ const elementLine = ({ index, element }: IndexedElement, indent: boolean) => {
 };
 
 // One line per element, `[index] role "label" = value`, indented by depth and capped. The menu
-// bar collapses to its menu titles: menus are run by path with computer_act's menu action.
+// bar collapses to its menu titles: menus are run by path with computer_menu.
 export function renderElements(elements: ReadonlyArray<IndexedElement>): string {
   const lines: string[] = [];
   const menuBar = new Set<number>();
@@ -46,7 +46,7 @@ export function renderElements(elements: ReadonlyArray<IndexedElement>): string 
       const titles = elements
         .filter((item) => item.element.parent_index === element.element_index && item.element.label)
         .map((item) => item.element.label);
-      line = `${"  ".repeat(element.depth ?? 0)}[${entry.index}] AXMenuBar: ${titles.join(", ")} (run items with computer_act menu)`;
+      line = `${"  ".repeat(element.depth ?? 0)}[${entry.index}] AXMenuBar: ${titles.join(", ")} (run items with computer_menu)`;
     }
     if (length + line.length > MAX_TREE_CHARS) {
       lines.push(`… more elements; narrow with query or max_depth.`);

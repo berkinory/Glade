@@ -16,7 +16,7 @@ import { ThreadComputerUseLive } from "../../orchestration/Layers/ThreadComputer
 import { ThreadComputerUse } from "../../orchestration/Services/ThreadComputerUse.ts";
 import type { McpToolCallResult } from "../protocol.ts";
 import type { ToolContext, ToolEntry } from "../toolRuntime.ts";
-import { makePixelComputerTools } from "./pixelTools.ts";
+import { makeInputComputerTools } from "./inputTools.ts";
 import { makeStructuredComputerTools } from "./structuredTools.ts";
 
 const THREAD = ThreadId.makeUnsafe("thread-gate");
@@ -131,7 +131,7 @@ const setup = Effect.fnUntraced(function* (
   computerUse.set(THREAD, "on");
   const services = { host, access, computerUse };
   const tools = new Map(
-    [...makeStructuredComputerTools(services), ...makePixelComputerTools(services)].map(
+    [...makeStructuredComputerTools(services), ...makeInputComputerTools(services)].map(
       (tool): [string, ToolEntry] => [tool.definition.name, tool],
     ),
   );
@@ -200,7 +200,7 @@ describe("computer access gate", () => {
       const state = yield* call("computer_window_state", WINDOW);
       assert.isUndefined(state.isError);
       assert.include(calls, "get_window_state");
-      const act = yield* call("computer_act", { ...WINDOW, action: "click", element: 2 });
+      const act = yield* call("computer_left_click", { ...WINDOW, element_index: 2 });
       assert.strictEqual(errorCode(act), "access_required");
     }),
   );
@@ -217,16 +217,15 @@ describe("computer access gate", () => {
         autoGrantedIn: null,
       });
       yield* call("computer_window_state", WINDOW);
-      const click = yield* call("computer_act", { ...WINDOW, action: "click", element: 2 }).pipe(
+      const click = yield* call("computer_left_click", { ...WINDOW, element_index: 2 }).pipe(
         Effect.forkChild,
       );
       while (!calls.includes("click")) yield* Effect.yieldNow;
       access.tasks.stop(THREAD, TURN);
       assert.strictEqual(errorCode(yield* Fiber.join(click)), "stopped");
-      const again = yield* call("computer_act", {
+      const again = yield* call("computer_left_click", {
         ...WINDOW,
-        action: "click",
-        element: 2,
+        element_index: 2,
         delivery: "foreground",
       });
       assert.strictEqual(errorCode(again), "stopped");

@@ -16,11 +16,9 @@ import {
   callCua,
   callerThread,
   refuse,
-  windowFor,
   windowLine,
   type ComputerToolServices,
   type WindowInput,
-  type WindowNeed,
 } from "./computerCalls.ts";
 import { renderDiff } from "./elementText.ts";
 import { readWindow } from "./windowRead.ts";
@@ -38,14 +36,6 @@ const OWN_INPUT_SETTLE_MS = 1_100;
 // Lets the app apply the action before the window is read again.
 const OBSERVE_SETTLE_MS = 150;
 const LATE_CHANGE_MS = 450;
-
-// Chords like "cmd+shift+s" go to Cua's hotkey; single keys to press_key.
-export const keyCall = (key: string) => {
-  const parts = key.split("+").map((part) => part.trim().toLowerCase());
-  return parts.length > 1
-    ? { tool: "hotkey", args: { keys: parts } }
-    : { tool: "press_key", args: { key: parts[0] } };
-};
 
 // Foreground delivery moves the real pointer and keyboard, so it waits for the user to pause
 // rather than fight them. Background delivery never reaches this check.
@@ -151,7 +141,7 @@ function actionContent(
         escalation.target === "foreground"
           ? " Retry with delivery: foreground, which needs full control."
           : escalation.target === "pixel"
-            ? " Take a computer_screenshot and use the pixel tools."
+            ? " Take a computer_screenshot and act by coordinate."
             : ""
       }`,
     );
@@ -210,14 +200,3 @@ export const performAction = (
     );
     return actionContent(result, window, outcome, observation);
   });
-
-export const windowAction = (
-  services: ComputerToolServices,
-  context: ToolContext,
-  input: WindowInput,
-  need: WindowNeed,
-  call: CuaCall,
-) =>
-  windowFor(services, context, input, need).pipe(
-    Effect.flatMap((window) => performAction(services, context, input, window, call)),
-  );

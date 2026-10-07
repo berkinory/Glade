@@ -17,12 +17,13 @@ import {
   windowSummary,
   type ComputerToolServices,
 } from "./computerCalls.ts";
+import { matchApps } from "./windowTarget.ts";
 
 const OpenAppInput = Schema.Struct({
   app: Schema.String.check(Schema.isMinLength(1)).annotate({
     description: 'App name ("TextEdit") or bundle id ("com.apple.TextEdit").',
   }),
-  open: Schema.optional(
+  open: Schema.optionalKey(
     Schema.Array(Schema.String).check(Schema.isMinLength(1), Schema.isMaxLength(16)).annotate({
       description:
         "Absolute file or folder paths, or http(s) URLs, to open in the app (macOS only).",
@@ -89,24 +90,14 @@ const targetWindow = (
   ) ?? null;
 
 export const makeOpenAppTool = (services: ComputerToolServices): ToolEntry => {
-  // The installed or running app the input names, as Cua's list_apps knows it. A running entry
-  // wins over an installed copy with the same name.
+  // The installed or running app the input names, as Cua's list_apps knows it.
   const resolveApp = (context: ToolContext, query: string) =>
     Effect.gen(function* () {
       const listed = yield* callCua(services, context, "list_apps", {});
-      const wanted = query
-        .trim()
-        .toLowerCase()
-        .replace(/\.app$/u, "");
-      const matches = Schema.decodeUnknownOption(CuaListApps)(listed.structuredContent).pipe(
-        Option.map((value) =>
-          value.apps.filter(
-            (app) => app.name.toLowerCase() === wanted || app.bundle_id?.toLowerCase() === wanted,
-          ),
-        ),
-        Option.getOrElse(() => []),
+      const app = Schema.decodeUnknownOption(CuaListApps)(listed.structuredContent).pipe(
+        Option.map((value) => matchApps(value.apps, query)[0]),
+        Option.getOrUndefined,
       );
-      const app = matches.find((entry) => entry.running) ?? matches[0];
       if (!app) {
         return yield* refuse(
           "app_not_found",

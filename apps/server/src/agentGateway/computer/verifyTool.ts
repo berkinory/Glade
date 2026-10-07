@@ -15,13 +15,13 @@ import {
 const MAX_TIMEOUT_MS = 10_000;
 
 const Condition = Schema.Struct({
-  role: Schema.optional(
+  role: Schema.optionalKey(
     Schema.String.check(Schema.isMinLength(1)).annotate({ description: 'e.g. "AXButton".' }),
   ),
-  label_contains: Schema.optional(Schema.String.check(Schema.isMinLength(1))),
-  value_equals: Schema.optional(Schema.String),
-  enabled: Schema.optional(Schema.Boolean),
-  selected: Schema.optional(Schema.Boolean),
+  label_contains: Schema.optionalKey(Schema.String.check(Schema.isMinLength(1))),
+  value_equals: Schema.optionalKey(Schema.String),
+  enabled: Schema.optionalKey(Schema.Boolean),
+  selected: Schema.optionalKey(Schema.Boolean),
 }).annotate({
   description:
     "An element matching role and/or label_contains exists, with the given value and state when set. Absence cannot be proven, so there is no exists:false.",
@@ -31,17 +31,17 @@ const VerifyInput = Schema.Struct({
   pid: Schema.Int.annotate({ description: "Process id from computer_apps." }),
   window_id: Schema.Int.annotate({ description: "Window id from computer_apps." }),
   conditions: Schema.Array(Condition).check(Schema.isMinLength(1), Schema.isMaxLength(8)),
-  timeout_ms: Schema.optional(
+  timeout_ms: Schema.optionalKey(
     Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: MAX_TIMEOUT_MS })).annotate({
       description: "How long to wait for all conditions (default 5000); 0 checks once.",
     }),
   ),
-  stable_samples: Schema.optional(
+  stable_samples: Schema.optionalKey(
     Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 5 })).annotate({
       description: "Consecutive satisfied samples required (default 2).",
     }),
   ),
-  include_screenshot: Schema.optional(Schema.Boolean),
+  include_screenshot: Schema.optionalKey(Schema.Boolean),
 });
 
 // Cua's verify_state: waits, bounded, until every condition holds in the window's tree.
