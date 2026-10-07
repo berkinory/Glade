@@ -10,12 +10,13 @@ export type ActionClass = "read" | "click" | "input";
 
 export interface AppIdentity {
   readonly name: string;
-  // macOS bundle id; Cua reports the executable or package id elsewhere, when it knows one.
+  // macOS bundle id, Linux desktop file id; Cua reports the executable elsewhere, when it knows one.
   readonly bundleId: string | null;
   readonly launchPath: string | null;
 }
 
-// macOS bundle ids, matched exactly or as a prefix ending in a dot (Chrome channels, JetBrains).
+// macOS bundle ids and Linux desktop file ids, matched exactly or as a prefix ending in a dot
+// (Chrome channels, JetBrains).
 const BUNDLE_IDS: Record<Exclude<AppCategory, "other">, ReadonlyArray<string>> = {
   browser: [
     "com.apple.Safari",
@@ -41,6 +42,7 @@ const BUNDLE_IDS: Record<Exclude<AppCategory, "other">, ReadonlyArray<string>> =
     "app.zen-browser.zen",
     "com.kagi.kagimacOS",
     "com.openai.atlas",
+    "org.gnome.Epiphany",
   ],
   terminal_or_ide: [
     "com.apple.Terminal",
@@ -66,6 +68,13 @@ const BUNDLE_IDS: Record<Exclude<AppCategory, "other">, ReadonlyArray<string>> =
     "com.panic.Nova",
     "com.agent.glade",
     "com.agent.glade.",
+    "org.gnome.Terminal",
+    "org.gnome.Console",
+    "org.gnome.Ptyxis",
+    "org.kde.konsole",
+    "org.wezfurlong.wezterm",
+    "io.elementary.terminal",
+    "org.codeberg.dnkl.foot",
   ],
 };
 
@@ -99,6 +108,16 @@ const EXECUTABLES: Record<Exclude<AppCategory, "other">, ReadonlyArray<string>> 
     "conhost",
     "gnome-terminal",
     "gnome-terminal-server",
+    "kgx",
+    "ptyxis",
+    "xfce4-terminal",
+    "mate-terminal",
+    "lxterminal",
+    "qterminal",
+    "terminology",
+    "foot",
+    "tilda",
+    "guake",
     "konsole",
     "xterm",
     "alacritty",
