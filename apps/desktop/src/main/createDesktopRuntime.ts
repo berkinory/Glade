@@ -152,6 +152,7 @@ export function createDesktopRuntime(): void {
     try {
       desktopHost = await startDesktopHost({
         gladePorts: () => gladePorts(backend.getHttpUrl()),
+        mainWindow: () => windows.getMainWindow(),
         contentBlocker: {
           cache: Path.join(userDataPath, "content-blocker", "engine.bin"),
           setting: DESKTOP_CONTENT_BLOCKER_PATH,

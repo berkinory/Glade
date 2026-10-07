@@ -10,6 +10,7 @@ import {
   BrowserTab,
   type CarriedTabState,
 } from "./browserTab";
+import type { BrowserViewParking } from "./browserViewParking";
 import type { ContentBlocker } from "./contentBlocker";
 import { browserUrlBlockReason } from "./browserUrlPolicy";
 
@@ -62,6 +63,7 @@ export class BrowserTabs {
       readonly gladePorts: () => ReadonlySet<number>;
       readonly onChanged: (tabs: BrowserTabsChanged["tabs"]) => void;
       readonly blocker: ContentBlocker;
+      readonly parking: BrowserViewParking;
     },
   ) {
     const browserSession = session.fromPartition(BROWSER_PARTITION);
@@ -148,7 +150,7 @@ export class BrowserTabs {
 
   closeAll(): void {
     clearInterval(this.sweepTimer);
-    for (const entry of this.tabs.values()) if (isLive(entry)) entry.destroy();
+    for (const entry of this.tabs.values()) if (isLive(entry)) this.release(entry);
   }
 
   private entry(threadId: ThreadId, tabId: string | undefined): TabEntry {
@@ -173,7 +175,7 @@ export class BrowserTabs {
 
   private discard(entry: TabEntry): void {
     this.forget(entry);
-    if (isLive(entry)) entry.destroy();
+    if (isLive(entry)) this.release(entry);
   }
 
   private sweep(): void {
@@ -210,7 +212,7 @@ export class BrowserTabs {
       downloads: tab.downloads,
       notices: tab.takeNotices(),
     });
-    tab.destroy();
+    this.release(tab);
     this.changed();
   }
 
@@ -242,6 +244,7 @@ export class BrowserTabs {
       restored,
     );
     view.setBounds(DEFAULT_BOUNDS);
+    this.options.parking.park(view);
     this.tabs.set(tab.id, tab);
     if (!restored) this.activeByThread.set(threadId, tab.id);
     const webContents = view.webContents;
@@ -284,6 +287,11 @@ export class BrowserTabs {
     this.enforceLiveCap(threadId, tab);
     this.changed();
     return tab;
+  }
+
+  private release(tab: BrowserTab): void {
+    this.options.parking.unpark(tab.view);
+    tab.destroy();
   }
 
   private forget(entry: TabEntry): void {

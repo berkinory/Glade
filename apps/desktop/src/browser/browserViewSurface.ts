@@ -3,6 +3,7 @@ import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { BrowserWindow } from "electron";
 import type { BrowserTab } from "./browserTab";
 import type { BrowserTabs } from "./browserTabs";
+import type { BrowserViewParking } from "./browserViewParking";
 
 interface Shown {
   readonly tab: BrowserTab;
@@ -14,7 +15,10 @@ interface Shown {
 export class BrowserViewSurface {
   private readonly shown = new Map<ThreadId, Shown>();
 
-  constructor(private readonly tabs: BrowserTabs) {}
+  constructor(
+    private readonly tabs: BrowserTabs,
+    private readonly parking: BrowserViewParking,
+  ) {}
 
   show(
     window: BrowserWindow,
@@ -27,6 +31,7 @@ export class BrowserViewSurface {
       this.hide(placement.threadId);
     }
     if (!this.shown.has(placement.threadId)) {
+      this.parking.unpark(view);
       window.contentView.addChildView(view);
       tab.setShownInPanel(true);
       this.shown.set(placement.threadId, { tab, window });
@@ -46,6 +51,7 @@ export class BrowserViewSurface {
     this.shown.delete(threadId);
     current.tab.setShownInPanel(false);
     if (!current.window.isDestroyed()) current.window.contentView.removeChildView(current.tab.view);
+    this.parking.park(current.tab.view);
   }
 
   // A reloaded renderer forgets which views it placed; nothing it shows may stay covered.

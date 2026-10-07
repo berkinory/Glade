@@ -3,11 +3,12 @@ import {
   COMPUTER_CONNECTION_NOTIFICATION,
   COMPUTER_KILL_SWITCH_NOTIFICATION,
 } from "@glade/contracts/computer/computerHost";
-import { session } from "electron";
+import { session, type BrowserWindow } from "electron";
 import * as Crypto from "node:crypto";
 import { createBrowserHostDispatch } from "../browser/browserHostDispatch";
 import { BROWSER_PARTITION } from "../browser/browserTab";
 import { BrowserTabs } from "../browser/browserTabs";
+import { createBrowserViewParking } from "../browser/browserViewParking";
 import { ContentBlocker } from "../browser/contentBlocker";
 import { BrowserViewSurface } from "../browser/browserViewSurface";
 import { dispatchComputerHost } from "../computer/computerHostDispatch";
@@ -31,6 +32,7 @@ export interface DesktopHost {
 // macOS permission probes need the app's identity.
 export async function startDesktopHost(input: {
   readonly gladePorts: () => ReadonlySet<number>;
+  readonly mainWindow: () => BrowserWindow | null;
   readonly contentBlocker: { readonly cache: string; readonly setting: string };
   readonly log: (message: string) => void;
   readonly computer: {
@@ -48,10 +50,12 @@ export async function startDesktopHost(input: {
     input.log,
   );
   blocker.start();
+  const parking = createBrowserViewParking(process.platform, input.mainWindow);
   const tabs = new BrowserTabs({
     gladePorts: input.gladePorts,
     onChanged: (states) => notify(BROWSER_TABS_CHANGED_NOTIFICATION, { tabs: states }),
     blocker,
+    parking,
   });
   const browserDispatch = createBrowserHostDispatch(tabs, input.gladePorts);
   const killSwitch = createComputerKillSwitch({
@@ -81,7 +85,7 @@ export async function startDesktopHost(input: {
     path: server.path,
     token,
     tabs,
-    views: new BrowserViewSurface(tabs),
+    views: new BrowserViewSurface(tabs, parking),
     blocker,
     computer,
     close: async () => {
