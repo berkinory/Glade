@@ -41,7 +41,7 @@ function platformLimits(platform: string): string {
     return "On Windows, actions that need the real pointer or keyboard bring the window to the front while they run.";
   }
   if (isLinuxPlatform(platform)) {
-    return "On Linux, X11 apps accept background input. On Wayland only accessibility-tree actions work; screenshot-driven actions need the window in front.";
+    return "On Linux with X11, clicks, typing and menus run in the background; key presses, scrolling and right-clicks in GTK apps bring the window to the front unless Cua Driver can write to /dev/uinput. On Wayland only accessibility-tree actions work; screenshot-driven actions need the window in front.";
   }
   return "Computer Use is not supported on this platform.";
 }
