@@ -58,6 +58,7 @@ export function projectEvent(
     case "thread.message-sent":
       return projectMessageEvent(nextBase, event, historyLimit);
     case "thread.interaction-mode-set":
+    case "thread.computer-use-set":
     case "thread.proposed-plan-upserted":
       return Effect.succeed(nextBase);
     case "thread.turn-diff-completed":

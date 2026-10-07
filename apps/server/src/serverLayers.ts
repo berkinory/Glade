@@ -13,6 +13,7 @@ import { BrowserHostLive } from "./browser/Layers/BrowserHost";
 import { DesktopHostClientLive } from "./desktopHost/Layers/DesktopHostClient";
 import { ComputerAccessLive } from "./computer/Layers/ComputerAccess";
 import { ComputerHostLive } from "./computer/Layers/ComputerHost";
+import { ThreadComputerUseLive } from "./orchestration/Layers/ThreadComputerUse";
 import { AgentGatewayOperationRepositoryLive } from "./agentGateway/Layers/AgentGatewayOperationRepository";
 import { AgentGatewayCredentialsWithSecretsLive } from "./agentGateway/Layers/AgentGatewayCredentials";
 import { CheckpointDiffQueryLive } from "./checkpointing/Layers/CheckpointDiffQuery";
@@ -149,6 +150,8 @@ function makeServerRuntimeServicesLayer(
   ).pipe(Layer.provideMerge(DesktopHostClientLive), Layer.provideMerge(runtimeServicesLayer));
   const agentGatewayLayer = AgentGatewayLive.pipe(
     Layer.provideMerge(desktopHostLayers),
+    // The same instance the provider command reactor writes; layers are shared by reference.
+    Layer.provideMerge(ThreadComputerUseLive),
     Layer.provideMerge(VisualReplyPreviewLive),
     Layer.provideMerge(AppPresentationLive),
     Layer.provideMerge(agentGatewayCredentialsLayer),

@@ -4,6 +4,11 @@ import { ManagedAttachmentRepository } from "../../persistence/Services/ManagedA
 import { FileSystem, Path } from "effect";
 import { BrowserHost } from "../../browser/Services/BrowserHost";
 import { makeBrowserTools } from "../browser/browserTools";
+import { ComputerAccess } from "../../computer/Services/ComputerAccess";
+import { ComputerHost } from "../../computer/Services/ComputerHost";
+import { ThreadComputerUse } from "../../orchestration/Services/ThreadComputerUse";
+import { makePixelComputerTools } from "../computer/pixelTools";
+import { makeStructuredComputerTools } from "../computer/structuredTools";
 import { AppPresentation } from "../Services/AppPresentation";
 import { CheckpointDiffQuery } from "../../checkpointing/Services/CheckpointDiffQuery";
 import { makeThreadDiffTools } from "../threadDiffTools";
@@ -99,6 +104,13 @@ const makeAgentGateway = Effect.gen(function* () {
     yield* Effect.serviceOption(BrowserHost),
     (host) => host.available,
   );
+  // Registered whenever the desktop app hosts the driver; each thread lists them only while its
+  // Computer Use setting is on.
+  const computerServices = Option.all({
+    host: Option.filter(yield* Effect.serviceOption(ComputerHost), (host) => host.configured),
+    access: yield* Effect.serviceOption(ComputerAccess),
+    computerUse: yield* Effect.serviceOption(ThreadComputerUse),
+  });
   const loadProviderAvailabilities = Effect.gen(function* () {
     const [settings, statuses] = yield* Effect.all([
       serverSettings.getSettings,
@@ -574,6 +586,12 @@ const makeAgentGateway = Effect.gen(function* () {
     setThreadArchived,
     ...(Option.isSome(browserHost)
       ? makeBrowserTools({ host: browserHost.value, snapshots: snapshotQuery, fs, path })
+      : []),
+    ...(Option.isSome(computerServices)
+      ? [
+          ...makeStructuredComputerTools(computerServices.value),
+          ...makePixelComputerTools(computerServices.value),
+        ]
       : []),
   ];
 

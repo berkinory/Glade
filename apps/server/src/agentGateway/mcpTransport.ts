@@ -123,7 +123,10 @@ export function makeAgentGatewayMcpTransport(input: {
         case "tools/list":
           return jsonRpcResult(request.id, {
             tools: filterToolsByCapability(input.tools, context.callerCapabilities)
-              .filter((tool) => tool.discoveryOnly !== true)
+              .filter(
+                (tool) =>
+                  tool.discoveryOnly !== true && (tool.listedFor?.(context.callerThreadId) ?? true),
+              )
               .map(
                 (tool) =>
                   servedDefinitionByToolName.get(tool.definition.name) ?? {

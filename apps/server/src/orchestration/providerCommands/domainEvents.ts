@@ -8,6 +8,7 @@ import { OrchestrationCommandInvariantError } from "../Errors.ts";
 import type { ProviderServiceShape } from "../../provider/Services/ProviderService.ts";
 import type { ServiceMap } from "effect";
 import { ThreadSessionSettings } from "../Services/ThreadSessionSettings.ts";
+import { ThreadComputerUse } from "../Services/ThreadComputerUse.ts";
 import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
 import { Option, Duration, Effect, Cause } from "effect";
 import { QueuedTurnPromotionRepository } from "../../persistence/Services/QueuedTurnPromotions.ts";
@@ -44,6 +45,7 @@ export function makeProviderDomainEvents(input: {
     typeof makeProviderQueuedTurns
   >["drainQueuedTurnsForSession"];
   readonly threadSessionSettings: ServiceMap.Service.Shape<typeof ThreadSessionSettings>;
+  readonly threadComputerUse: ServiceMap.Service.Shape<typeof ThreadComputerUse>;
   readonly queuedTurnPromotions: ServiceMap.Service.Shape<typeof QueuedTurnPromotionRepository>;
   readonly clearStaleProviderResumeState: (input: {
     threadId: ThreadId;
@@ -108,6 +110,7 @@ export function makeProviderDomainEvents(input: {
     queuedDispatchState,
     drainQueuedTurnsForSession,
     threadSessionSettings,
+    threadComputerUse,
     queuedTurnPromotions,
     clearStaleProviderResumeState,
     clearThreadRuntimeCaches,
@@ -133,6 +136,7 @@ export function makeProviderDomainEvents(input: {
   } = input;
   const { resolveProviderSessionThread, hasLiveProviderTurn, resolveThread } = projectionAccess;
   const processQueueDrainEvent = Effect.fnUntraced(function* (event: ProviderQueueDrainEvent) {
+    threadComputerUse.turnEnded(event.threadId);
     if (
       event.provider === "claudeAgent" &&
       event.type === "turn.completed" &&
@@ -325,6 +329,24 @@ export function makeProviderDomainEvents(input: {
           });
           return;
         }
+        case "thread.computer-use-set": {
+          threadComputerUse.set(event.payload.threadId, event.payload.computerUse);
+          // Like a runtime-mode change: an idle session restarts now so the provider lists the
+          // computer tools before the next turn; a running turn defers it to the next turn start.
+          const thread = yield* resolveThread(event.payload.threadId);
+          if (!thread?.session || thread.session.status === "stopped") return;
+          if (thread.session.activeTurnId !== null) return;
+          const cachedProviderOptions = threadSessionSettings.getProviderOptions(
+            event.payload.threadId,
+          );
+          yield* ensureSessionForThread(event.payload.threadId, event.occurredAt, {
+            ...(cachedProviderOptions !== undefined
+              ? { providerOptions: cachedProviderOptions }
+              : {}),
+            modelSelection: thread.modelSelection,
+          });
+          return;
+        }
         case "thread.legacy-cache-abandoned":
           yield* drainQueuedTurnsForSession(event.payload.threadId);
           return;
@@ -332,6 +354,7 @@ export function makeProviderDomainEvents(input: {
           yield* processTurnQueued(event);
           return;
         case "thread.turn-start-requested": {
+          threadComputerUse.turnStarted(event.payload.threadId);
           const thread = yield* resolveThread(event.payload.threadId);
           const message = thread?.messages.find(
             (message) => message.id === event.payload.messageId,

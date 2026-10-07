@@ -1,4 +1,5 @@
 import { WorkspaceRestoreConfirmation } from "./workspaceRestore";
+import { ComputerUseMode } from "../computer/computerUse";
 import { ProviderForkPoint } from "../provider/provider";
 import { Schema } from "effect";
 import {
@@ -74,6 +75,7 @@ export const OrchestrationEventType = Schema.Literals([
   "thread.pinned-message-done-set",
   "thread.pinned-message-label-set",
   "thread.runtime-mode-set",
+  "thread.computer-use-set",
   "thread.interaction-mode-set",
   "thread.message-sent",
   "thread.async-user-input-answered",
@@ -295,6 +297,12 @@ export const ThreadPinnedMessageLabelSetPayload = Schema.Struct({
 export const ThreadRuntimeModeSetPayload = Schema.Struct({
   threadId: ThreadId,
   runtimeMode: RuntimeMode,
+  updatedAt: IsoDateTime,
+});
+
+export const ThreadComputerUseSetPayload = Schema.Struct({
+  threadId: ThreadId,
+  computerUse: ComputerUseMode,
   updatedAt: IsoDateTime,
 });
 
@@ -583,6 +591,11 @@ export const OrchestrationEvent = Schema.Union([
     ...EventBaseFields,
     type: Schema.Literal("thread.runtime-mode-set"),
     payload: ThreadRuntimeModeSetPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("thread.computer-use-set"),
+    payload: ThreadComputerUseSetPayload,
   }),
   Schema.Struct({
     ...EventBaseFields,

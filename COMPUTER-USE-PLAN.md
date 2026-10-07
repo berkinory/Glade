@@ -46,17 +46,16 @@ Keep untouched: `apps/server/src/visualReplies/**` (Puppeteer headless shell for
 ```
 packages/contracts/src/browser/     tool input schemas, ref grammar, host method params/results
 packages/contracts/src/desktopHost/ host RPC env names, auth, framing limits
-packages/contracts/src/computer/    tool names + input/output schemas, state + approval schemas
+packages/contracts/src/computer/    driver connection notification, JPEG method, Computer Use mode, access-card contract
 packages/shared/src/desktopHost/    frame codec (desktop + server)
-packages/shared/src/computer/       Cua tool result decoding, screenshot budget (server + web)
 
 apps/desktop/src/browser/           WebContentsView tabs, CDP sessions, snapshot engine and format, actions
 apps/desktop/src/hostRpc/           desktop host RPC server (pure node:net) and its startup
-apps/desktop/src/computer/          Cua embedded host: binary resolution, lifecycle, permissions, MCP handoff
+apps/desktop/src/computer/          Cua embedded host: release manifest, binary check, lifecycle, permissions, JPEG encoding
 
 apps/server/src/desktopHost/        DesktopHostClient service (RPC client, reconnect, notifications)
 apps/server/src/browser/            BrowserHost service (typed browser calls over DesktopHostClient)
-apps/server/src/computer/           ComputerHost service (MCP client to Cua), approval + lease state
+apps/server/src/computer/           ComputerHost (MCP client to Cua, sessions), ComputerAccess (grants, tasks, access cards), result decoders
 apps/server/src/agentGateway/browser/   browser_* gateway tools + guidance
 apps/server/src/agentGateway/computer/  computer_* gateway tools + guidance
 
@@ -89,8 +88,8 @@ Durable truth and side effects stay in `apps/server`; the desktop owns native su
 
 ### Computer host design (desktop + server)
 
-- The desktop vendors the signed upstream `cua-driver` executable per platform and architecture, outside ASAR, with its executable bit and code signature preserved. A manifest in `packages/shared/src/computer/cuaRelease.json` records version, per-artifact SHA-256 and the upstream release URL. A build script downloads and verifies; nothing compiles Rust.
-- The desktop starts the driver with the upstream embedded-host entry point so Accessibility and Screen Recording grants attach to Glade's signing identity. The desktop passes the resulting loopback MCP URL + token to the server at startup and again on restart.
+- The desktop vendors the signed upstream `cua-driver` executable per platform and architecture, outside ASAR, with its executable bit and code signature preserved. A manifest in `apps/desktop/src/computer/cuaRelease.json` (only the desktop runtime and its fetch script read it) records version, the upstream release URL, and per artifact the `-binary` archive name and SHA-256 plus the extracted executable's SHA-256. A build script downloads and verifies; nothing compiles Rust.
+- The desktop starts the driver with the upstream embedded-host entry point so Accessibility and Screen Recording grants attach to Glade's signing identity. It publishes `computer.connection` (`{state: "ready", generation, driverVersion, mcp}` or `{state: "unavailable", reason, message}`) over the host RPC after every change and whenever a backend authenticates.
 - Permission checks, setup guidance and "open System Settings" actions come from the upstream `/electron` entry point; Glade keeps no Swift helper.
 - The server `ComputerHost` service holds: availability and health, per-thread opt-in, the approval lease (which app or window the agent may act on, granted by the user from a chat card), and the active task for Stop. It proxies tool calls to Cua, enforcing ownership and approval before dispatch and classifying results with Cua's `effect` / `escalation` fields.
 - Stop and the Escape key cancel through Cua's cancellation, which releases held input. Glade adds no second kill switch.
@@ -123,7 +122,7 @@ Names are canonical gateway names; providers may prefix them.
 
 Action results are one line plus URL and title. They never embed a fresh snapshot.
 
-**Computer** (loaded only when the thread has Computer Use enabled):
+**Computer** (listed only while the thread has Computer Use on; see Phase 6 revisions for the Cua mapping):
 
 Two layers over the same Cua connection.
 
@@ -136,7 +135,7 @@ Guidance in `harnessPolicy.ts` says: prefer structured, screenshot only after an
 
 - Browser Use needs no approval beyond gateway availability. Host policy, not the model, blocks `file:`, `chrome:`, `chrome-extension:`, `devtools:`, `view-source:` and `javascript:` URLs and every request to Glade's own backend and dev UI ports on loopback (`webRequest.onBeforeRequest` on the browser partition, so redirects, frames and fetches are covered too). Other loopback ports stay reachable: testing the user's local dev servers is a core use case, so the original "block loopback" rule was revised in Phase 2.
 - `browser_evaluate` is registered but hidden from `tools/list` and always refuses with `evaluate_disabled` until a per-thread setting exists. Phase 4 or 7 adds the setting UI, lists the tool when it is on, and adds the desktop `browser.evaluate` method.
-- Computer Use is off per thread by default. The user turns it on with the `/computer-use` slash command (one request) or the thread setting (sticky). The first action against an app or window produces a chat card asking for a grant with scope `read`, `act` or `full`; grants live for the thread and are listed in Settings. The server refuses tool calls outside a grant with a typed error the model can read.
+- Computer Use is off per thread by default. The user turns it on with the `/computer-use` slash command (one request) or the thread setting (sticky). `computer_request_access` produces a chat card asking for a grant with scope `read`, `act` or `full`; grants live in server memory for the thread (no migration; a restart asks again) and are listed in Settings. The server refuses tool calls outside a grant with a typed error the model can read.
 - Stop in the chat, or Escape while a task runs, cancels the task and clears foreground delivery for the turn.
 
 ## 4. Phases
@@ -233,6 +232,15 @@ Checks: `bun run check`; Dev app on macOS: driver starts, permission state refle
 
 Commits: `feat(desktop): embed the upstream Cua driver`, `feat(server): computer host over Cua MCP`.
 
+Revisions (as built):
+
+- Manifest lives in `apps/desktop` (desktop runtime + fetch script are its only readers). macOS uses the universal `-binary` archive for both architectures, so the directory is `resources/cua-driver/darwin-universal/`; others are `<platform>-<arch>`. Only the executable is extracted: it links system libraries only (`otool -L`), and the Windows `cua-driver-uia.exe` worker is reserved and default-off upstream. `fetch-cua-driver.mjs` runs before `dev` and `build` in `apps/desktop/package.json` and skips when a verified copy exists.
+- Packaging: electron-builder `extraResources` copies `resources/cua-driver` to `Resources/cua-driver`; `mac.binaries` signs the executable with the app identity before the app; the SDK packages (`@trycua/**`, `@ubjs/**`) are unpacked from ASAR because the SDK hands dlopen a path next to its own files, and the desktop imports it from `app.asar.unpacked` by file URL (it is ESM only). Re-signing changes the bytes, so packaged macOS builds check that the executable is validly signed by the app's own team instead of the upstream hash; every other build checks the hash. `NSAccessibilityUsageDescription` and `NSScreenCaptureUsageDescription` are restored in `extendInfo`.
+- The embedded host's environment is limited to Cua's allowlist, which rejects `DO_NOT_TRACK`: the daemon gets `CUA_DRIVER_RS_TELEMETRY_ENABLED=0`, the published proxy environment adds `DO_NOT_TRACK=1`. `noOverlay` stays default (agent cursor shown).
+- Lifecycle: permissions are polled every 3 s on macOS (and re-read on every permissions IPC call); the driver starts once both grants are present, stops when one is revoked, restarts with 1–30 s backoff on unexpected exit (`waitForExit(generation)`), and stops as part of the desktop shutdown that already defers quit until the backend has exited.
+- Permissions IPC: `desktop:computer-permissions-get`, `-request` (prompts Accessibility), `-open-settings` (Screen Recording pane, else Accessibility); bridge `window.desktopBridge.computer.{getPermissions, requestPermissions, openSettings}`, type `DesktopComputerPermissions`.
+- Server: `ComputerHost` launches exactly the published proxy (shared process runtime, minimal inherited environment, supervised teardown) per generation, runs `check_permissions` + `health_report` on connect, relaunches a dead proxy, and exposes status. A minimal line-delimited JSON-RPC client replaces an MCP SDK dependency; giving up on a call sends `notifications/cancelled`. Cua binds a named session to the connection that created it and never revives an ended one from another, so `ComputerHost` gives each thread a session label unique to the current connection, rotates it after `end_session`, and retries once when Cua reports the session ended. JPEG encoding of screenshots runs on the desktop (`computer.encodeJpeg`, Electron `nativeImage`) because the server has no image codec.
+
 ### Phase 6: computer tools in the gateway
 
 - `apps/server/src/agentGateway/computer/structuredTools.ts`, `pixelTools.ts`, `computerGuidance.ts`, registration gated on the thread's Computer Use setting
@@ -243,6 +251,16 @@ Commits: `feat(desktop): embed the upstream Cua driver`, `feat(server): computer
 Checks: `bun run check`; approval gate test (one file, trust boundary: an ungranted window is refused, a granted one passes, Stop clears). **Provider acceptance in the Dev app** for Claude and Codex: enable Computer Use for the thread, grant TextEdit, ask the agent to write a sentence and read it back via tree; then ask for a screenshot-driven task in an app without an accessibility tree (a canvas-heavy app) to exercise the pixel path and zoom.
 
 Commits: `feat(server): computer_* gateway tools and per-thread Computer Use`.
+
+Revisions (as built):
+
+- Tools and their Cua mapping. Structured: `computer_apps` (list_apps + list_windows, no grant), `computer_window_state` (get_window_state; elements rendered as `[index] role "label" = value`, tokens kept server-side per thread and window; screenshot only with `include_screenshot`), `computer_act` (click, double_click, right_click, set_value, type_text, press_key/hotkey, scroll, invoke_menu, by element index, `delivery: background | foreground`), `computer_request_access`, `computer_stop` (end_session). Pixel, window-scoped: `computer_screenshot` (get_window_state without tree), `computer_zoom` (zoom), `computer_left_click`/`right_click`/`double_click`/`triple_click` (click count 3), `computer_left_click_drag` (drag, foreground only on macOS so it needs full), `computer_scroll`, `computer_type` (type_text), `computer_key` (press_key or hotkey), `computer_wait` (server sleep ≤ 10 s). Dropped: `computer_mouse_move` (Cua's window-scoped move_cursor moves only the agent overlay, no real hover) and `computer_hold_key` (no Cua equivalent). Desktop-scope (whole screen) actions are not exposed: every pixel tool names a pid and window so grants apply.
+- Coordinates: screenshots are requested with `max_image_dimension: 1280` and re-encoded to JPEG at the same size; Cua maps its own downscaled screenshot space back to the screen, so no per-thread scale is tracked. At most 20 images per turn (`computerTask.ts`); past that, image tools refuse with `image_budget_exhausted`.
+- Gate: thread from the session lease; Computer Use mode, then `list_windows({pid})` resolves the window's app, then the grant check (`read` for state/screenshot/zoom, `act` for input, `full` for foreground and drag). Refusals: `computer_use_off`, `window_not_found`, `access_required` (names the `computer_request_access` call), `unknown_element`, `stopped`, Cua's own `structuredContent.code`. Action results report Cua's `effect` and `escalation`; `refused` is an error.
+- Setting: `thread.computer-use.set {threadId, computerUse: "off" | "once" | "on"}` → event `thread.computer-use-set` (not projected). The provider command reactor keeps the mode in `ThreadComputerUse` (in memory, shared with the gateway); `once` binds to the next turn start and turns off when that turn completes or aborts.
+- Tool visibility: the gateway's MCP transport is POST-only, so it cannot push `notifications/tools/list_changed`, and both providers read `tools/list` once per session (Codex at thread start through its per-thread MCP config). Computer tools carry `listedFor` (mode ≠ off) and the reactor restarts the provider session, keeping its resume cursor, whenever the listed state differs from what the running session was provisioned with: immediately when the session is idle (as for a runtime-mode change), otherwise at the next turn start. The same mechanism applies to Claude and Codex.
+- Access card: reuses the provider user-input card. `computer_request_access` appends a `user-input.requested` activity with `requestId: "computer-access:<uuid>"`, one question `{id: "computer-access", header: "Computer Use", options: "Allow read" | "Allow act" | "Allow full control" | "Deny"}` and an extra `computerAccess: {app, windowId, windowTitle, scope, reason}` for a dedicated card later. The web answers with the existing `thread.user-input.respond {requestId, answers: {"computer-access": "<label>"}}`; the reactor skips provider routing for that prefix, `ComputerAccess` applies the grant or denial and appends `user-input.resolved`. The tool waits 45 s, then returns pending and the model calls again (Codex times MCP calls out at 60 s).
+- Stop: `thread.turn-interrupt-requested` aborts the thread's in-flight Cua calls (cancelled in Cua), refuses every later call of that turn, and ends the thread's Cua session (releases held input, hides the cursor).
 
 ### Phase 7: computer UI
 
@@ -315,6 +333,7 @@ Commits: `fix(desktop): …` as needed per platform.
 - **Telemetry:** default-on PostHog telemetry; the host sets `DO_NOT_TRACK=1` and `CUA_DRIVER_RS_TELEMETRY_ENABLED=0` in the embedded environment.
 - **MCP tools (0.34.0):** `list_apps`, `list_windows`, `get_window_state`, `verify_state`, `launch_app`, `kill_app`, `bring_to_front`, `set_window_frame`, `invoke_menu`, `click`, `double_click`, `right_click`, `drag`, `type_text`, `press_key`, `hotkey`, `set_value`, `scroll`, `clipboard_read`, `clipboard_write`, `get_screen_size`, `get_desktop_state`, `get_cursor_position`, `move_cursor`, agent cursor tools, `check_permissions`, `health_report`, `get_config`, `set_config`, `get_accessibility_tree`, `zoom`, `page`, Cua's own `browser_*` tools, recording/replay, session tools, `check_for_update`, `install_extension`, `parse_visual_regions`. Glade exposes its `computer_*` surface over these and never forwards Cua's `browser_*`, update, extension, recording or config tools.
 - **CDP spike:** folded into Phase 2's manual check instead of a throwaway script; `webContents.debugger` + `Accessibility.getFullAXTree` is stable Electron API and the risk is in ref bookkeeping, which Phase 2 builds anyway.
+- **Phase 5/6 findings (0.34.0):** tool errors carry `structuredContent.code` (e.g. `background_unavailable`: background scroll does not reach Electron/Chromium windows on macOS); action results carry `effect`/`escalation`; window screenshots are PNG with `screenshot_scale`, zoom is JPEG; standalone `cua-driver mcp` requires CuaDriver.app, so only the embedded path is used.
 - **Launcher grant reset:** the dev launcher clears TCC rows whenever the bundle is re-signed. It imports `TCC_SERVICE_NAMES` from the old computer module; Phase 1 keeps that constant (moved next to the launcher's identity code) so teardown does not re-sign the bundle.
 
 ## 8a. Phase 2 manual check (2026-10-07, macOS arm64, plain Electron 43.5.0)
@@ -334,7 +353,14 @@ Same five-step script (open MDN, find and click the "HTML" link, search "input e
 
 Per-step token counts were not read from the usage panel; snapshot sizes are in 8a.
 
+## 8b. Phase 5/6 verification (2026-10-07, macOS arm64, Dev bundle via `open`)
+
+Driver started under the Dev bundle (`accessibility`/`screenRecording` true, no health problems), the server connected its proxy, `kill -9` of the daemon produced a new generation and a reconnect within ~1.2 s, and quitting the app stopped daemon and proxy. The real gateway MCP transport and computer tools, driven from a scratch script against the live daemon: `tools/list` empty while off and 16 tools while on, `computer_use_off` refusal, `computer_apps`, `access_required` for an ungranted window, `computer_window_state` tree after a read grant, act refused under a read grant, zoom JPEG, screenshot PNG at 1279×802. Not exercised live: the desktop JPEG re-encode, the access card round trip in the web, and provider turns (Claude, Codex).
+
 ## 9. Open items
+
+- Phase 8: fetch per build target (cross-arch and macOS universal builds also need both darwin native SDK packages installed), and run a signed packaged build to confirm the team-signature check.
+- Phase 7: the web needs a read path for a thread's Computer Use mode and the grant list (a computer WS group); the server has no subscription for them yet.
 
 - Record token measurements from the provider acceptance runs here.
 - Page dialogs in the visible panel: v1 dismisses and reports them. A user-facing answer path would need a non-blocking prompt in the panel.

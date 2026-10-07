@@ -1,4 +1,5 @@
 import { WorkspaceRestoreConfirmation } from "./workspaceRestore";
+import { ComputerUseMode } from "../computer/computerUse";
 import { Schema, Struct } from "effect";
 import {
   CommandId,
@@ -289,6 +290,14 @@ const ThreadRuntimeModeSetCommand = Schema.Struct({
   createdAt: IsoDateTime,
 });
 
+const ThreadComputerUseSetCommand = Schema.Struct({
+  type: Schema.Literal("thread.computer-use.set"),
+  commandId: CommandId,
+  threadId: ThreadId,
+  computerUse: ComputerUseMode,
+  createdAt: IsoDateTime,
+});
+
 export const ThreadTurnStartCommand = Schema.Struct({
   type: Schema.Literal("thread.turn.start"),
   asyncUserInputResponse: Schema.optional(AsyncUserInputResponse),
@@ -500,6 +509,7 @@ const DispatchableClientOrchestrationCommand = Schema.Union([
   ThreadPinnedMessageRemoveCommand,
   ThreadPinnedMessageLabelSetCommand,
   ThreadRuntimeModeSetCommand,
+  ThreadComputerUseSetCommand,
 
   ThreadTurnStartCommand,
   ThreadLegacyCacheAbandonCommand,
@@ -538,6 +548,7 @@ export const ClientOrchestrationCommand = Schema.Union([
   ThreadPinnedMessageRemoveCommand,
   ThreadPinnedMessageLabelSetCommand,
   ThreadRuntimeModeSetCommand,
+  ThreadComputerUseSetCommand,
 
   ClientThreadTurnStartCommand,
   ThreadLegacyCacheAbandonCommand,
