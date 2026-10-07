@@ -125,6 +125,14 @@ before it vanishes. Text counts only when its deepest containing element renders
 visibility checked), has a box on the page and is outside `aria-hidden`. Each 150 ms poll is its
 own short tab operation that does not wait for the user to pause, so the panel and the user's
 input are never locked out while the agent waits (on a security check, for example).
+Short-lived page messages are kept too: a `MutationObserver` in an isolated world of each
+same-process frame (installed with `Page.addScriptToEvaluateOnNewDocument` and a binding scoped to
+that world, so page scripts cannot see it) reports the visible text of live regions
+(`role=status|alert|log`, `aria-live=polite|assertive`) and toast-like elements when it appears or
+changes and when it goes away. The tab keeps the last 20. The next agent result on the tab lists
+the ones not reported yet as `Announced: "…" (seen at <time>, now gone)` in its page content, and a
+`text` condition of `browser_wait` also matches a message shown since the agent's previous call on
+the tab, even if it is gone.
 `browser_evaluate` is not listed and always refuses until a per-chat setting exists. For Claude,
 `browser_navigate`, `browser_snapshot`, `browser_find`, `browser_get_text`, `browser_click`,
 `browser_type`, `browser_fill` and `browser_scroll` are marked `anthropic/alwaysLoad` so the core
@@ -133,7 +141,7 @@ search round trip); the rest stay deferred.
 
 Everything a result takes from the page (snapshot lines, find matches, page text, console and
 network output, a dialog's message, tab titles in the tab list, suggested options, items that
-appeared after a scroll, the text a wait matched) is wrapped in a block that starts
+appeared after a scroll, the text a wait matched, announced page messages) is wrapped in a block that starts
 with `--- PAGE_CONTENT nonce=<random> origin=<page origin> ---` and ends with the same nonce. The
 nonce is fresh per block, so a page cannot close the block early; the harness guidance tells the
 model that text inside is data, never instructions, and to tell the user in one sentence when a

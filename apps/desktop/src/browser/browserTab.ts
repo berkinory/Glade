@@ -7,6 +7,7 @@ import { PageBuffers } from "./cdp/buffers";
 import { CdpSession } from "./cdp/cdpSession";
 import { RefTable } from "./cdp/refs";
 import type { ScreenshotFrame } from "./cdp/screenshotFrame";
+import { PageAnnouncements } from "./pageAnnouncements";
 import { PageDialogs } from "./pageDialogs";
 import { PagePrints } from "./pagePrints";
 
@@ -40,8 +41,11 @@ export class BrowserTab {
   readonly buffers: PageBuffers;
   readonly dialogs: PageDialogs;
   readonly prints: PagePrints;
+  readonly announcements: PageAnnouncements;
   private notices: string[] = [];
   private shownInPanel = false;
+  private agentCallAt = 0;
+  private previousAgentCallAt = 0;
   private lastHumanInputAt = 0;
   private agentActing = false;
   private picking = false;
@@ -69,6 +73,7 @@ export class BrowserTab {
       audience: () => (this.shownInPanel && this.userJustActed() ? "user" : "agent"),
       notify: (text) => this.addNotice(text),
     });
+    this.announcements = new PageAnnouncements(this.cdp);
     webContents.on("did-navigate", () => this.noteChallenge(null));
     webContents.on("will-prevent-unload", () =>
       this.addNotice("The page asked to confirm leaving; it was allowed to leave."),
@@ -97,6 +102,17 @@ export class BrowserTab {
 
   page() {
     return { tabId: this.id, url: this.webContents.getURL(), title: this.webContents.getTitle() };
+  }
+
+  // Marks the start of an agent tool call on this tab.
+  noteAgentCall(): void {
+    this.previousAgentCallAt = this.agentCallAt;
+    this.agentCallAt = Date.now();
+  }
+
+  // When the agent's call before the current one started; 0 before its second call.
+  previousAgentCall(): number {
+    return this.previousAgentCallAt;
   }
 
   // Set by the panel's view surface while this tab's view is on screen.

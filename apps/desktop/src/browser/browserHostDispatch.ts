@@ -77,16 +77,17 @@ export function createBrowserHostDispatch(
   tabs: BrowserTabs,
   gladePorts: () => ReadonlySet<number>,
 ): (method: string, params: unknown) => Promise<BrowserHostResult> {
-  // Panel calls answer without draining the notices the agent has not seen yet.
+  // Panel calls answer without draining the notices and page messages the agent has not seen yet.
   const reply = (
     tab: BrowserTab,
     message: string,
     actor: Actor,
     content?: string,
-  ): BrowserHostResult =>
-    actor === "user"
-      ? { page: tab.page(), text: message, notices: [] }
-      : tab.result(message, content);
+  ): BrowserHostResult => {
+    if (actor === "user") return { page: tab.page(), text: message, notices: [] };
+    const page = [content, tab.announcements.drain()].filter(Boolean).join("\n\n");
+    return tab.result(message, page || content);
+  };
   const run = <T>(tab: BrowserTab, operation: () => Promise<T>, actor: Actor, timeoutMs?: number) =>
     tab.run(operation, { byUser: actor === "user", timeoutMs }).catch((error: unknown) => {
       if (error instanceof DialogInterrupt) throw dialogBlock(error.dialog);
@@ -147,6 +148,7 @@ export function createBrowserHostDispatch(
     },
   ) => {
     const tab = tabs.resolve(params.threadId, params.tabId);
+    if (params.actor !== "user") tab.noteAgentCall();
     const dialog = tab.dialogs.current();
     if (dialog && params.actor !== "user") {
       const userOwned = dialog.audience === "user";

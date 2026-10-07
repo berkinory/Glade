@@ -83,6 +83,8 @@ export async function waitForConditions(
     .filter((c) => c.kind === "text" || c.kind === "textGone")
     .map((c) => c.value);
   const started = Date.now();
+  // Text that came and went since the agent's previous call on this tab (a toast) still counts.
+  const since = tab.previousAgentCall();
   const check = async () => {
     const visible = needles.length
       ? await tab.cdp
@@ -96,6 +98,9 @@ export async function waitForConditions(
       const index = needles.indexOf(condition.value);
       const shown = visible[index];
       if (condition.kind === "text" && typeof shown === "string") return { ...condition, shown };
+      const earlier =
+        condition.kind === "text" ? tab.announcements.seen(condition.value, since) : null;
+      if (earlier) return { ...condition, shown: earlier.text, when: earlier.when };
       if (condition.kind === "textGone" && shown === null) return condition;
       if (condition.kind === "url" && urls.get(condition.value)!(tab.webContents.getURL())) {
         return condition;
@@ -111,7 +116,7 @@ export async function waitForConditions(
     return null;
   };
   for (;;) {
-    let matched: { kind: Kind; value: string; shown?: string } | null;
+    let matched: { kind: Kind; value: string; shown?: string; when?: string } | null;
     try {
       matched = await tab.run(check, { passive: true, timeoutMs: POLL_TIMEOUT_MS });
     } catch (error) {
@@ -124,7 +129,8 @@ export async function waitForConditions(
     const elapsed = ((Date.now() - started) / 1000).toFixed(1);
     if (matched) {
       const where = matched.kind === "url" ? ` The URL is ${tab.webContents.getURL()}.` : "";
-      const text = `Matched ${describe(matched)} after ${elapsed} s.${where}`;
+      const earlier = matched.when ? ` The page announced it earlier (${matched.when}).` : "";
+      const text = `Matched ${describe(matched)} after ${elapsed} s.${where}${earlier}`;
       // The element's whole text, so a toast that vanishes soon has already been read.
       return matched.shown ? { text: `${text} It reads:`, content: matched.shown } : { text };
     }
