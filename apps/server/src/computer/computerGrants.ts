@@ -7,6 +7,8 @@ export interface ComputerTarget {
 }
 
 interface ComputerGrant extends ComputerTarget {
+  // The window's title when it was granted, for Settings; null for an app-wide grant.
+  readonly windowTitle: string | null;
   readonly scope: ComputerAccessScope;
   readonly grantedAt: string;
 }
@@ -28,6 +30,8 @@ export interface ComputerGrants {
     readonly grants: ReadonlyArray<ComputerGrant>;
   }>;
   readonly clearThread: (threadId: string) => void;
+  // Called after any grant is added or removed.
+  readonly onChange: (listener: () => void) => () => void;
 }
 
 const RANK: Record<ComputerAccessScope, number> = { read: 0, act: 1, full: 2 };
@@ -43,6 +47,10 @@ const targetKey = (target: ComputerTarget) =>
 export function makeComputerGrants(): ComputerGrants {
   const grants = new Map<string, ComputerGrant[]>();
   const denials = new Map<string, Set<string>>();
+  const listeners = new Set<() => void>();
+  const changed = () => {
+    for (const listener of listeners) listener();
+  };
 
   return {
     check: (threadId, target, scope) =>
@@ -56,6 +64,7 @@ export function makeComputerGrants(): ComputerGrants {
       const rest = (grants.get(threadId) ?? []).filter((entry) => !sameTarget(entry, grant));
       grants.set(threadId, [...rest, grant]);
       denials.get(threadId)?.delete(targetKey(grant));
+      changed();
     },
     deny: (threadId, target) => {
       const set = denials.get(threadId) ?? new Set<string>();
@@ -67,15 +76,23 @@ export function makeComputerGrants(): ComputerGrants {
       const current = grants.get(threadId) ?? [];
       const rest = current.filter((entry) => !sameTarget(entry, target));
       grants.set(threadId, rest);
-      return rest.length !== current.length;
+      const removed = rest.length !== current.length;
+      if (removed) changed();
+      return removed;
     },
     list: () =>
       [...grants.entries()]
         .filter(([, entries]) => entries.length > 0)
         .map(([threadId, entries]) => ({ threadId, grants: entries })),
     clearThread: (threadId) => {
+      const hadGrants = (grants.get(threadId)?.length ?? 0) > 0;
       grants.delete(threadId);
       denials.delete(threadId);
+      if (hadGrants) changed();
+    },
+    onChange: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
     },
   };
 }

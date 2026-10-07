@@ -189,7 +189,8 @@ export const imageContent = (
   });
 
 // Action results carry Cua's effect classification; an escalation says which rung to try next.
-export const actionContent = (result: CuaToolResult): McpToolCallResult => {
+// The closing `Window:` line names the target for the model and the chat timeline.
+export const actionContent = (result: CuaToolResult, window: CuaWindow): McpToolCallResult => {
   const outcome = Schema.decodeUnknownOption(CuaActionOutcome)(result.structuredContent);
   const lines = [resultText(result) || "Done."];
   if (Option.isSome(outcome)) {
@@ -207,11 +208,28 @@ export const actionContent = (result: CuaToolResult): McpToolCallResult => {
       );
     }
   }
+  lines.push(`Window: ${window.app_name} ${JSON.stringify(window.title)}`);
   return {
     content: [{ type: "text", text: lines.join("\n") }],
     ...(Option.isSome(outcome) && outcome.value.effect === "refused" ? { isError: true } : {}),
   };
 };
+
+// One input action on a window: resolve and authorize it, run the Cua tool, report the outcome.
+export const windowAction = (
+  services: ComputerToolServices,
+  context: ToolContext,
+  input: { readonly pid: number; readonly window_id: number },
+  scope: ComputerAccessScope,
+  call: { readonly tool: string; readonly args: Readonly<Record<string, unknown>> },
+) =>
+  windowFor(services, context, input, scope).pipe(
+    Effect.flatMap((window) =>
+      callCua(services, context, call.tool, call.args).pipe(
+        Effect.map((result) => actionContent(result, window)),
+      ),
+    ),
+  );
 
 // Chords like "cmd+shift+s" go to Cua's hotkey; single keys to press_key.
 export const keyCall = (key: string) => {

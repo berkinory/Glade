@@ -24,6 +24,7 @@ import { ComputerHost } from "../Services/ComputerHost.ts";
 interface PendingAccess {
   readonly threadId: string;
   readonly target: ComputerTarget;
+  readonly windowTitle: string | null;
   readonly outcome: Deferred.Deferred<ComputerAccessOutcome>;
 }
 
@@ -127,6 +128,7 @@ export const ComputerAccessLive = Layer.effect(
           pendingById.set(requestId, {
             threadId: request.threadId,
             target,
+            windowTitle: request.windowTitle,
             outcome: yield* Deferred.make<ComputerAccessOutcome>(),
           });
           pendingIdByTarget.set(key, requestId);
@@ -157,14 +159,20 @@ export const ComputerAccessLive = Layer.effect(
           } else {
             grants.grant(pending.threadId, {
               ...pending.target,
+              windowTitle: pending.target.windowId === null ? null : pending.windowTitle,
               scope: answer,
               grantedAt: new Date().toISOString(),
             });
             yield* Deferred.succeed(pending.outcome, { status: "granted", scope: answer });
           }
         } else {
-          // A card from before a server restart or an unreadable answer: settle the card so it
-          // closes; the agent asks again if it still needs access.
+          // A card from before a server restart or an unreadable (typed) answer: settle the card so
+          // it closes; the agent asks again if it still needs access, which opens a fresh card.
+          if (pending) {
+            pendingById.delete(requestId);
+            pendingIdByTarget.delete(targetKey(pending.threadId, pending.target));
+            yield* Deferred.succeed(pending.outcome, { status: "pending" });
+          }
           yield* Effect.logWarning("computer access answer had no open request", { requestId });
         }
         yield* appendActivity(threadId, {

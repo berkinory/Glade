@@ -103,6 +103,7 @@ describe("computer access gate", () => {
       access.grants.grant(THREAD, {
         app: "glade (dev)",
         windowId: null,
+        windowTitle: null,
         scope: "read",
         grantedAt: "2026-10-07T00:00:00.000Z",
       });
@@ -120,6 +121,7 @@ describe("computer access gate", () => {
       access.grants.grant(THREAD, {
         app: "Glade (Dev)",
         windowId: WINDOW.window_id,
+        windowTitle: null,
         scope: "full",
         grantedAt: "2026-10-07T00:00:00.000Z",
       });

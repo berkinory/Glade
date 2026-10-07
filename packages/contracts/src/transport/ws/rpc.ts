@@ -97,6 +97,7 @@ import {
   WsSubscribeTerminalEventsRpc,
 } from "./terminalRpc";
 import { WsBrowserCommandRpc, WsBrowserSubscribeTabsRpc } from "./browserRpc";
+import { WsComputerRevokeGrantRpc, WsComputerSubscribeRpc } from "./computerRpc";
 import {
   WsServerGetConfigRpc,
   WsServerGetEnvironmentRpc,
@@ -223,6 +224,8 @@ export const WsFeatureRpcGroup = RpcGroup.make(
   WsSubscribeTerminalEventsRpc,
   WsBrowserSubscribeTabsRpc,
   WsBrowserCommandRpc,
+  WsComputerSubscribeRpc,
+  WsComputerRevokeGrantRpc,
   WsServerGetConfigRpc,
   WsServerGetEnvironmentRpc,
   WsServerGetSettingsRpc,

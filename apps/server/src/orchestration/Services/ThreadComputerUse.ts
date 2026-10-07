@@ -16,6 +16,13 @@ export interface ThreadComputerUseShape {
   readonly provisioned: (threadId: ThreadId) => boolean;
   readonly markProvisioned: (threadId: ThreadId, listed: boolean) => void;
   readonly clear: (threadId: ThreadId) => void;
+  // Threads whose mode is not off, for Settings and the composer.
+  readonly enabled: () => ReadonlyArray<{
+    readonly threadId: ThreadId;
+    readonly mode: ComputerUseMode;
+  }>;
+  // Called after any thread's mode changes, including "once" ending with its turn.
+  readonly onChange: (listener: () => void) => () => void;
 }
 
 export class ThreadComputerUse extends ServiceMap.Service<

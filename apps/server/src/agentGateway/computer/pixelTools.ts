@@ -2,12 +2,12 @@ import { Effect, Schema } from "effect";
 
 import type { ToolEntry } from "../toolRuntime.ts";
 import {
-  actionContent,
   callCua,
   computerTool,
   imageContent,
   keyCall,
   SCREENSHOT_MAX_EDGE,
+  windowAction,
   windowFor,
   type ComputerToolServices,
 } from "./computerCalls.ts";
@@ -56,22 +56,18 @@ export function makePixelComputerTools(services: ComputerToolServices): ToolEntr
       input: ClickInput,
       readOnly: false,
       run: (input, context) =>
-        windowFor(services, context, input, scopeFor(input.delivery)).pipe(
-          Effect.andThen(
-            callCua(services, context, tool, {
-              pid: input.pid,
-              window_id: input.window_id,
-              x: input.x,
-              y: input.y,
-              delivery_mode: input.delivery ?? "background",
-              ...(input.modifiers && input.modifiers.length > 0
-                ? { modifier: input.modifiers }
-                : {}),
-              ...extra,
-            }),
-          ),
-          Effect.map(actionContent),
-        ),
+        windowAction(services, context, input, scopeFor(input.delivery), {
+          tool,
+          args: {
+            pid: input.pid,
+            window_id: input.window_id,
+            x: input.x,
+            y: input.y,
+            delivery_mode: input.delivery ?? "background",
+            ...(input.modifiers && input.modifiers.length > 0 ? { modifier: input.modifiers } : {}),
+            ...extra,
+          },
+        }),
     });
 
   return [
@@ -137,20 +133,18 @@ export function makePixelComputerTools(services: ComputerToolServices): ToolEntr
       input: Schema.Struct({ ...Point, start_x: Coordinate, start_y: Coordinate }),
       readOnly: false,
       run: (input, context) =>
-        windowFor(services, context, input, "full").pipe(
-          Effect.andThen(
-            callCua(services, context, "drag", {
-              pid: input.pid,
-              window_id: input.window_id,
-              from_x: input.start_x,
-              from_y: input.start_y,
-              to_x: input.x,
-              to_y: input.y,
-              delivery_mode: "foreground",
-            }),
-          ),
-          Effect.map(actionContent),
-        ),
+        windowAction(services, context, input, "full", {
+          tool: "drag",
+          args: {
+            pid: input.pid,
+            window_id: input.window_id,
+            from_x: input.start_x,
+            from_y: input.start_y,
+            to_x: input.x,
+            to_y: input.y,
+            delivery_mode: "foreground",
+          },
+        }),
     }),
     computerTool(services, {
       name: "computer_scroll",
@@ -165,20 +159,18 @@ export function makePixelComputerTools(services: ComputerToolServices): ToolEntr
       }),
       readOnly: false,
       run: (input, context) =>
-        windowFor(services, context, input, scopeFor(input.delivery)).pipe(
-          Effect.andThen(
-            callCua(services, context, "scroll", {
-              pid: input.pid,
-              window_id: input.window_id,
-              x: input.x,
-              y: input.y,
-              direction: input.direction,
-              amount: input.amount ?? 3,
-              delivery_mode: input.delivery ?? "background",
-            }),
-          ),
-          Effect.map(actionContent),
-        ),
+        windowAction(services, context, input, scopeFor(input.delivery), {
+          tool: "scroll",
+          args: {
+            pid: input.pid,
+            window_id: input.window_id,
+            x: input.x,
+            y: input.y,
+            direction: input.direction,
+            amount: input.amount ?? 3,
+            delivery_mode: input.delivery ?? "background",
+          },
+        }),
     }),
     computerTool(services, {
       name: "computer_type",
@@ -188,17 +180,15 @@ export function makePixelComputerTools(services: ComputerToolServices): ToolEntr
       input: Schema.Struct({ ...WindowRef, text: Schema.String, delivery: Delivery }),
       readOnly: false,
       run: (input, context) =>
-        windowFor(services, context, input, scopeFor(input.delivery)).pipe(
-          Effect.andThen(
-            callCua(services, context, "type_text", {
-              pid: input.pid,
-              window_id: input.window_id,
-              text: input.text,
-              delivery_mode: input.delivery ?? "background",
-            }),
-          ),
-          Effect.map(actionContent),
-        ),
+        windowAction(services, context, input, scopeFor(input.delivery), {
+          tool: "type_text",
+          args: {
+            pid: input.pid,
+            window_id: input.window_id,
+            text: input.text,
+            delivery_mode: input.delivery ?? "background",
+          },
+        }),
     }),
     computerTool(services, {
       name: "computer_key",
@@ -208,18 +198,18 @@ export function makePixelComputerTools(services: ComputerToolServices): ToolEntr
       input: Schema.Struct({ ...WindowRef, key: Schema.String, delivery: Delivery }),
       readOnly: false,
       run: (input, context) =>
-        windowFor(services, context, input, scopeFor(input.delivery)).pipe(
-          Effect.andThen(() => {
-            const key = keyCall(input.key);
-            return callCua(services, context, key.tool, {
+        Effect.suspend(() => {
+          const key = keyCall(input.key);
+          return windowAction(services, context, input, scopeFor(input.delivery), {
+            tool: key.tool,
+            args: {
               pid: input.pid,
               window_id: input.window_id,
               delivery_mode: input.delivery ?? "background",
               ...key.args,
-            });
-          }),
-          Effect.map(actionContent),
-        ),
+            },
+          });
+        }),
     }),
     computerTool(services, {
       name: "computer_wait",

@@ -165,6 +165,10 @@ import {
 import { bufferLiveUiStream, type LiveUiStreamDropReport } from "./wsStreamBackpressure";
 import { makeBrowserWsHandlers } from "../../browser/browserWsHandlers";
 import { BrowserHost } from "../../browser/Services/BrowserHost";
+import { makeComputerWsHandlers } from "../../computer/computerWsHandlers";
+import { ComputerAccess } from "../../computer/Services/ComputerAccess";
+import { ComputerHost } from "../../computer/Services/ComputerHost";
+import { ThreadComputerUse } from "../../orchestration/Services/ThreadComputerUse";
 import {
   makeCursorSafeSnapshotLiveStream,
   makeResnapshotEscalationTracker,
@@ -837,9 +841,16 @@ const makeWsRpcHandlersLayer = () =>
         snapshots: projectionReadModelQuery,
         streamAdmission,
       });
+      const computerHandlers = makeComputerWsHandlers({
+        host: yield* Effect.serviceOption(ComputerHost),
+        access: yield* Effect.serviceOption(ComputerAccess),
+        computerUse: yield* Effect.serviceOption(ThreadComputerUse),
+        streamAdmission,
+      });
 
       return AdmittedWsFeatureRpcGroup.of({
         ...browserHandlers,
+        ...computerHandlers,
         [ORCHESTRATION_WS_METHODS.prepareHandoff]: (input) =>
           rpcEffect(
             handoffPreparation.prepare(input).pipe(Effect.asVoid),

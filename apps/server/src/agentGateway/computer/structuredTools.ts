@@ -259,7 +259,7 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
     readOnly: false,
     run: (input, context) =>
       Effect.gen(function* () {
-        yield* windowFor(
+        const window = yield* windowFor(
           services,
           context,
           input,
@@ -281,7 +281,7 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
         }
         const call = actCall(input, token);
         if (typeof call === "string") return yield* refuse("invalid_input", call);
-        return actionContent(yield* callCua(services, context, call.tool, call.args));
+        return actionContent(yield* callCua(services, context, call.tool, call.args), window);
       }),
   });
 
