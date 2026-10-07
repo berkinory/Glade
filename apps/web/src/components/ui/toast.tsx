@@ -11,7 +11,7 @@ import {
 } from "~/lib/icons";
 import { Spinner } from "~/components/ui/spinner";
 import { Toast, type ToastObject } from "@base-ui/react/toast";
-import { useMemo, useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { useParams } from "@tanstack/react-router";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { cn } from "~/lib/utils";
@@ -29,7 +29,6 @@ import {
   notificationSurfaceClassName,
   type NotificationTone,
 } from "./notificationSurface";
-import { selectRightDockState, useRightDockStore } from "../../rightDockStore";
 import {
   resolveVisibleToastThreadIds,
   shouldRenderToastForVisibleThreads,
@@ -130,14 +129,7 @@ function useVisibleThreadIdsFromRoute(): ReadonlySet<ThreadId> {
     select: (params) =>
       typeof params.threadId === "string" ? ThreadId.makeUnsafe(params.threadId) : null,
   });
-  const rightDockState = useRightDockStore(
-    useMemo(() => selectRightDockState(activeThreadId), [activeThreadId]),
-  );
-  return resolveVisibleToastThreadIds({
-    activeThreadId,
-    rightDockRendered: true,
-    rightDockState,
-  });
+  return resolveVisibleToastThreadIds(activeThreadId);
 }
 function ThreadToastVisibleAutoDismiss({
   toast,

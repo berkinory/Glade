@@ -94,8 +94,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     threadBreadcrumbs,
     terminalWorkspaceTerminalTabActive,
     activeProject,
-    resolvedDiffOpen,
-    diffDisabledReason,
     setRenameDialogOpen,
     renameDialogOpen,
     visibleActiveRateLimitStatus,
@@ -131,17 +129,13 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     isGitRepo,
     keybindings,
     availableEditors,
-    diffPanelShortcutLabel,
-    repoDiffTotals,
     showGitActions,
-    onToggleDiff,
     shouldRenderChatPaneContent,
     shouldShowProviderHealthBanner,
     visibleActiveProviderStatus,
     activeProviderHealthBannerDismissalKey,
   } = controller.discovery;
   const {
-    rightDockOpen,
     tailAnchorScrollInFlightRef,
     isUserScrollDetached,
     onIsAtEndChange,
@@ -168,7 +162,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     closeExpandedImage,
     navigateExpandedImage,
   } = controller.environment;
-  const { onToggleRightDock, onOpenTurnDiffPanel, threadId } = controller.props;
+  const { onOpenTurnDiffPanel, threadId } = controller.props;
   const { setThreadError } = controller.composer;
   const navigate = useNavigate();
   const onOpenTurnDiff = useCallback(
@@ -375,20 +369,12 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
           activeProjectName={activeProjectDisplayName}
           threadBreadcrumbs={threadBreadcrumbs}
           minimalChrome={isCenteredEmptyLanding}
-          isGitRepo={isGitRepo}
           openInTarget={threadWorkspaceCwd}
           keybindings={keybindings}
           availableEditors={availableEditors}
-          diffToggleShortcutLabel={diffPanelShortcutLabel}
           gitCwd={threadWorkspaceCwd}
-          diffTotals={repoDiffTotals}
           showGitActions={showGitActions}
-          diffOpen={resolvedDiffOpen}
-          diffDisabledReason={diffDisabledReason}
-          rightDockOpen={rightDockOpen}
-          {...(onToggleRightDock ? { onToggleRightDock } : {})}
           environment={environmentHeaderState}
-          onToggleDiff={onToggleDiff}
           onNavigateToThread={onNavigateToThread}
           onRenameThread={() => setRenameDialogOpen(true)}
         />

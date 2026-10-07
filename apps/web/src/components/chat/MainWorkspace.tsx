@@ -1,27 +1,14 @@
-import {
-  GitCommitHorizontalIcon,
-  PlusMinusSquare01Icon,
-  ComputerTerminal01Icon,
-} from "~/lib/icons";
+import { GitCommitHorizontalIcon, PlusMinusSquare01Icon } from "~/lib/icons";
 import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  lazy,
-  Suspense,
-  useCallback,
-  useEffect,
-  useState,
-  useSyncExternalStore,
-  type ReactNode,
-} from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useComposerDraftStore } from "~/composerDraftStore";
 import { basenameOfPath } from "~/file-icons";
 import { WorkspaceHeaderContext } from "./WorkspaceHeaderContext";
 import { ProviderIcon } from "../ProviderIcon";
-import { useTerminalSurfaceController } from "~/hooks/useTerminalSurfaceController";
 import { resolveThreadDisplayProvider } from "~/lib/threadDisplayProvider";
-import { resolveTerminalCloseTitle } from "~/lib/terminalCloseConfirmation";
+import { isTerminalFocused } from "~/lib/terminalFocus";
 import {
   dirtyWorkspaceEditorPaths,
   dirtyWorkspaceEditorRevision,
@@ -31,21 +18,16 @@ import { selectMainWorkspace, useMainWorkspaceStore } from "~/mainWorkspaceStore
 import { selectRightDockState, useRightDockStore } from "~/rightDockStore";
 import { useStore } from "~/store";
 import { cn } from "~/lib/utils";
-import { toastManager } from "../ui/toast";
 import { WorkspaceFilePreview } from "../WorkspaceFilePreview";
 import type { ChatFileReference } from "~/lib/chatReferences";
 import { WorkspaceGitDiff } from "./WorkspaceGitDiff";
 import { CommitDetail } from "./CommitDetail";
 import { SourceControlTurnChanges } from "./SourceControlTurnChanges";
 import { FileEntryIcon } from "./FileEntryIcon";
-import { type PanelTab } from "./PanelTabBar";
-import { PanelStateMessage } from "./PanelStateMessage";
-import { WorkspaceTabBar } from "./WorkspaceTabBar";
+import { PanelTabBar, type PanelTab } from "./PanelTabBar";
 import { useWorkspaceShortcuts } from "./useWorkspaceShortcuts";
-import { terminalTabGroups } from "~/terminalLayout";
-import { Spinner } from "../ui/spinner";
 import { useWorkspaceTabSelection } from "./useWorkspaceTabSelection";
-const DockTerminalPane = lazy(() => import("./DockTerminalPane"));
+import { useWorkspaceSidebarStore } from "~/workspaceSidebarStore";
 export function MainWorkspace(props: {
   threadId: ThreadId;
   projectId: ProjectId | null;
@@ -59,7 +41,6 @@ export function MainWorkspace(props: {
       }
     | undefined;
   onReferenceInChat: (reference: ChatFileReference) => void;
-  onAddPane: (kind: "terminal" | "explorer" | "git") => void;
   children: ReactNode;
 }) {
   const navigate = useNavigate();
@@ -71,8 +52,6 @@ export function MainWorkspace(props: {
   const closeFile = useRightDockStore((store) => store.closeFile);
   const openFile = useRightDockStore((store) => store.openFile);
   const pinFile = useRightDockStore((store) => store.pinFile);
-  const closePane = useRightDockStore((store) => store.closePane);
-  const terminal = useTerminalSurfaceController(props.threadId);
   const provider = useStore((store) => {
     const thread = store.threadShellById?.[props.threadId];
     return thread ? resolveThreadDisplayProvider(thread) : null;
@@ -97,14 +76,6 @@ export function MainWorkspace(props: {
   useEffect(() => {
     if (previewDirty && dock.previewFilePath) pinFile(props.threadId, dock.previewFilePath);
   }, [previewDirty, dock.previewFilePath, pinFile, props.threadId]);
-  const terminalPane = dock.panes.find((pane) => pane.kind === "terminal");
-  const closeTerminalPane = () => {
-    if (terminalPane) closePane(props.threadId, terminalPane.id);
-  };
-  const terminalGroups = terminalTabGroups(terminal.terminalState);
-  const activeTerminalGroup = terminalGroups.find((group) =>
-    group.terminalIds.includes(terminal.terminalState.activeTerminalId),
-  );
   const tabs: PanelTab[] = [
     {
       id: "chat",
@@ -137,60 +108,20 @@ export function MainWorkspace(props: {
         ),
       onClose: () => closeReview(props.threadId, tab.id),
     })),
-    ...(terminalPane
-      ? terminalGroups.map((group) => ({
-          id: `terminal:${group.id}`,
-          label: resolveTerminalCloseTitle({
-            terminalId: group.terminalIds[0]!,
-            ...terminal.terminalState,
-          }),
-          icon: <ComputerTerminal01Icon className="size-3.5" />,
-          trailing: group.terminalIds.some((id) =>
-            terminal.terminalState.runningTerminalIds.includes(id),
-          ) ? (
-            <Spinner className="size-3" aria-label="Terminal running" />
-          ) : null,
-          onClose: () => {
-            void terminal
-              .closeTerminalGroup(group.terminalIds, closeTerminalPane)
-              .catch((error: unknown) => {
-                toastManager.add({
-                  type: "error",
-                  title: "Could not close terminal",
-                  description: String(error),
-                });
-              });
-          },
-        }))
-      : []),
   ];
-  const activeId =
-    state.activeTabId === "terminal"
-      ? `terminal:${activeTerminalGroup?.id ?? terminal.terminalState.activeTerminalId}`
-      : state.activeTabId;
   const select = (id: string) => {
     if (id.startsWith("file:")) {
       const path = id.slice(5);
       openFile(props.threadId, path, {
         preview: dock.previewFilePath === path,
       });
-    } else if (id.startsWith("terminal:")) {
-      const group = terminalGroups.find((tab) => tab.id === id.slice(9));
-      if (group)
-        terminal.activateTerminal(
-          group.terminalIds.includes(terminal.terminalState.activeTerminalId)
-            ? terminal.terminalState.activeTerminalId
-            : group.terminalIds[0]!,
-        );
-      selectTab(props.threadId, "terminal");
     } else selectTab(props.threadId, id);
   };
   const resolvedId = useWorkspaceTabSelection({
     tabIds: tabs.map((tab) => tab.id),
-    activeId,
+    activeId: state.activeTabId,
     onSelect: select,
   });
-  const terminalVisible = resolvedId.startsWith("terminal:");
   const filePath = resolvedId.startsWith("file:") ? resolvedId.slice(5) : null;
   const review = state.reviews.find((tab) => tab.id === resolvedId);
   useWorkspaceShortcuts({
@@ -205,37 +136,26 @@ export function MainWorkspace(props: {
       ).find((element) => element.dataset.tabId === next.id);
       tabElement?.querySelector<HTMLButtonElement>("button[aria-pressed]")?.focus();
     },
-    terminalActive: terminalVisible,
-    onSplitTerminal: terminal.splitTerminal,
     onClose: () => {
+      // A focused shell closes itself in the terminal view.
+      if (isTerminalFocused()) return;
       if (resolvedId === "chat") {
         if (tabs.length === 1)
           void navigate({
             to: "/",
           });
-      } else if (terminalVisible) {
-        void terminal
-          .closeTerminal(terminal.terminalState.activeTerminalId, closeTerminalPane)
-          .catch((error: unknown) => {
-            toastManager.add({
-              type: "error",
-              title: "Could not close terminal",
-              description: String(error),
-            });
-          });
       } else tabs.find((tab) => tab.id === resolvedId)?.onClose?.();
     },
   });
   const tabBar = (
-    <WorkspaceTabBar
+    <PanelTabBar
+      label="Workspace tabs"
+      pinnedTabId="chat"
+      contentTabs
+      className="h-auto flex-1 border-0 bg-transparent p-0"
       tabs={tabs}
       activeId={resolvedId}
       onSelect={select}
-      onSplitTerminal={terminalVisible ? terminal.splitTerminal : undefined}
-      onAddTerminal={() => {
-        if (terminalPane) terminal.createTerminal();
-        props.onAddPane("terminal");
-      }}
     />
   );
   return (
@@ -301,29 +221,8 @@ export function MainWorkspace(props: {
               filePath={review.filePath}
               cwd={props.workspaceRoot}
               onOpenFile={(path) => openFile(props.threadId, path)}
-              onCurrentChanges={() => props.onAddPane("git")}
+              onCurrentChanges={() => useWorkspaceSidebarStore.getState().show("git")}
             />
-          ) : null}
-          {terminalPane ? (
-            <div
-              className={cn(
-                "absolute inset-0",
-                !terminalVisible && "invisible pointer-events-none",
-              )}
-              inert={!terminalVisible}
-              aria-hidden={!terminalVisible}
-            >
-              <Suspense fallback={<PanelStateMessage loadingLabel="Loading terminal" />}>
-                <DockTerminalPane
-                  hostThreadId={props.threadId}
-                  projectId={props.projectId}
-                  workspaceRoot={props.workspaceRoot}
-                  isActive={terminalVisible}
-                  focusRequestId={terminal.focusRequestId}
-                  onClosePanel={closeTerminalPane}
-                />
-              </Suspense>
-            </div>
           ) : null}
         </div>
       </div>

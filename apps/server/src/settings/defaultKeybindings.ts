@@ -35,6 +35,7 @@ export const DEFAULT_KEYBINDINGS: ReadonlyArray<KeybindingRule> = [
   { key: "ctrl+1", command: "terminal.workspace.terminal", when: "terminalWorkspaceOpen" },
   { key: "ctrl+2", command: "terminal.workspace.chat", when: "terminalWorkspaceOpen" },
   { key: "mod+shift+b", command: "browser.toggle", when: "!terminalFocus" },
+  { key: "mod+e", command: "explorer.toggle", when: "!terminalFocus" },
   { key: "mod+d", command: "diff.toggle", when: "!terminalFocus" },
 
   { key: "cmd+l", command: "composer.focus.toggle", when: "!terminalFocus" },

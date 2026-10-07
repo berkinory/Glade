@@ -1,4 +1,4 @@
-import { WorkflowCircle04Icon, LayoutAlignRightIcon, PencilEdit02Icon } from "~/lib/icons";
+import { WorkflowCircle04Icon, PencilEdit02Icon } from "~/lib/icons";
 import { type EditorId } from "@glade/contracts/settings/editor";
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
@@ -7,22 +7,14 @@ import { isGenericChatThreadTitle } from "@glade/shared/threads/chatThreads";
 import React, { useContext } from "react";
 import { WorkspaceHeaderContext } from "./WorkspaceHeaderContext";
 import GitActionsControl from "../GitActionsControl";
-import {
-  CHAT_HEADER_TOGGLE_CLASS_NAME,
-  ChatHeaderIconButton,
-  SurfaceChipIcon,
-} from "./chatHeaderControls";
-import { DiffStat } from "../ui/diff-stat";
+import { ChatHeaderIconButton } from "./chatHeaderControls";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { SidebarHeaderNavigationControls } from "../SidebarHeaderNavigationControls";
-import { Toggle } from "../ui/toggle";
 import { useSidebar } from "../ui/sidebar";
 import { cn } from "~/lib/utils";
 import { useOpenFavoriteEditorShortcut } from "~/hooks/useOpenFavoriteEditorShortcut";
-import type { RepoDiffTotals } from "~/hooks/useRepoDiffTotals";
 import { ProviderIcon } from "../ProviderIcon";
 import { EnvironmentToggle, type EnvironmentToggleState } from "./environment/EnvironmentToggle";
-import { BrowserPanelToggle } from "../browser/BrowserPanelToggle";
 interface ChatHeaderProps {
   activeThreadId: ThreadId;
   activeThreadTitle: string;
@@ -35,24 +27,13 @@ interface ChatHeaderProps {
   className?: string;
   hideSidebarControls?: boolean;
   minimalChrome?: boolean;
-  isGitRepo: boolean;
   openInTarget: string | null;
   keybindings: ResolvedKeybindingsConfig;
   availableEditors: ReadonlyArray<EditorId>;
-  diffToggleShortcutLabel: string | null;
   gitCwd: string | null;
-  diffTotals: RepoDiffTotals;
   showGitActions?: boolean;
-  showDiffToggle?: boolean;
-  diffOpen: boolean;
-  diffDisabledReason?: string | null;
-  rightDockOpen?: boolean;
-  onToggleRightDock?: () => void;
-  // When provided, the header collapses the Open-in-editor + git-actions + diff-toggle cluster into
-  // one Environment button that drives the Environment panel; otherwise the legacy cluster is
-  // rendered.
+  // When provided, the header shows one Environment button that drives the Environment panel.
   environment?: EnvironmentToggleState | null;
-  onToggleDiff: () => void;
   onNavigateToThread: (threadId: ThreadId) => void;
   onRenameThread: () => void;
 }
@@ -65,21 +46,12 @@ export function ChatHeader({
   className,
   hideSidebarControls: hideSidebarControlsProp,
   minimalChrome: minimalChromeProp,
-  isGitRepo,
   openInTarget,
   keybindings,
   availableEditors,
-  diffToggleShortcutLabel,
   gitCwd,
-  diffTotals,
   showGitActions: showGitActionsProp,
-  showDiffToggle: showDiffToggleProp,
-  diffOpen,
-  diffDisabledReason: diffDisabledReasonProp,
-  rightDockOpen: rightDockOpenProp,
-  onToggleRightDock,
   environment: environmentProp,
-  onToggleDiff,
   onNavigateToThread,
   onRenameThread,
 }: ChatHeaderProps) {
@@ -87,16 +59,8 @@ export function ChatHeader({
   const workspaceHeader = useContext(WorkspaceHeaderContext);
   const minimalChrome = minimalChromeProp ?? false;
   const showGitActions = showGitActionsProp ?? true;
-  const showDiffToggle = showDiffToggleProp ?? true;
-  const diffDisabledReason = diffDisabledReasonProp ?? null;
-  const rightDockOpen = rightDockOpenProp ?? false;
   const environment = environmentProp ?? null;
   const { isMobile, state } = useSidebar();
-  const {
-    additions: diffAdditions,
-    deletions: diffDeletions,
-    hasChanges: showDiffTotals,
-  } = diffTotals;
   useOpenFavoriteEditorShortcut({
     keybindings,
     availableEditors,
@@ -114,53 +78,6 @@ export function ChatHeader({
       />
     );
   };
-  const togglesRightDock = onToggleRightDock !== undefined;
-  const rightPanelToggleControl = showDiffToggle ? (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <Toggle
-            className={cn(
-              CHAT_HEADER_TOGGLE_CLASS_NAME,
-              togglesRightDock || !showDiffTotals
-                ? "!size-7 [&_svg,&_[data-slot=central-icon]]:mx-0"
-                : null,
-            )}
-            pressed={togglesRightDock ? rightDockOpen : diffOpen}
-            onPressedChange={togglesRightDock ? onToggleRightDock : onToggleDiff}
-            aria-label={togglesRightDock ? "Toggle right sidebar" : "Toggle diff panel"}
-            variant="default"
-            size="xs"
-            disabled={
-              togglesRightDock ? false : !isGitRepo || (diffDisabledReason !== null && !diffOpen)
-            }
-          >
-            {!togglesRightDock && showDiffTotals ? (
-              <DiffStat
-                className="font-system-ui text-ui-sm sm:text-ui-xs font-normal tracking-normal"
-                insertions={diffAdditions}
-                deletions={diffDeletions}
-              />
-            ) : null}
-            <SurfaceChipIcon icon={LayoutAlignRightIcon} className="size-4" />
-          </Toggle>
-        }
-      />
-      <TooltipPopup side="bottom">
-        {togglesRightDock
-          ? rightDockOpen
-            ? "Close right sidebar"
-            : "Open right sidebar"
-          : !isGitRepo
-            ? "Diff panel is unavailable because this project is not a git repository."
-            : diffDisabledReason && !diffOpen
-              ? diffDisabledReason
-              : diffToggleShortcutLabel
-                ? `Toggle diff panel (${diffToggleShortcutLabel})`
-                : "Toggle diff panel"}
-      </TooltipPopup>
-    </Tooltip>
-  ) : null;
   return (
     <div className={cn("flex min-w-0 flex-1 items-center gap-2", className)}>
       <div
@@ -236,19 +153,7 @@ export function ChatHeader({
           />
         ) : null}
 
-        <BrowserPanelToggle threadId={activeThreadId} keybindings={keybindings} />
-        {}
-        {environment ? (
-          <>
-            <EnvironmentToggle environment={environment} />
-            {rightPanelToggleControl}
-          </>
-        ) : (
-          <>
-            {}
-            {rightPanelToggleControl}
-          </>
-        )}
+        {environment ? <EnvironmentToggle environment={environment} /> : null}
       </div>
     </div>
   );

@@ -1,53 +1,70 @@
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { isRecord } from "@glade/shared/transport/payloadValues";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 import { useMainWorkspaceStore } from "./mainWorkspaceStore";
-import { randomUUID } from "./lib/utils";
-import {
-  type OpenPaneInput,
-  type RightDockPane,
-  type RightDockThreadState,
-  closePaneInState,
-  createDefaultRightDockState,
-  openPaneInState,
-  sanitizeRightDockStateByThreadId,
-  setActivePaneInState,
-  setDockOpenInState,
-  toggleSingletonPaneInState,
-  updatePaneInState,
-} from "./rightDockStore.logic";
+import { sanitizeStringKeyedRecord } from "./persistedRecord";
 
 const RIGHT_DOCK_STORAGE_KEY = "glade:right-dock-state:v1";
 
+export type SourceControlView = "changes" | "history";
+
+// Per-thread workspace file tabs and the Source Control subview. Which right sidebar view is open
+// lives in the per-window workspace sidebar store.
+interface RightDockThreadState {
+  filePaths: string[];
+  activeFilePath: string | null;
+  previewFilePath?: string | null;
+  sourceControlView: SourceControlView;
+}
+
 interface RightDockStore {
   dockStateByThreadId: Record<string, RightDockThreadState | undefined>;
-  openPane: (
-    threadId: ThreadId,
-    input: Omit<OpenPaneInput, "paneId"> & { paneId?: string; activate?: boolean },
-  ) => void;
-  toggleSingletonPane: (
-    threadId: ThreadId,
-    input: Omit<OpenPaneInput, "paneId"> & { paneId?: string },
-  ) => void;
-  closePane: (threadId: ThreadId, paneId: string) => void;
-  setActivePane: (threadId: ThreadId, paneId: string) => void;
-  setDockOpen: (threadId: ThreadId, open: boolean) => void;
-  updatePane: (
-    threadId: ThreadId,
-    paneId: string,
-    patch: Partial<Pick<RightDockPane, "sourceControlView" | "diffTurnId" | "diffFilePath">>,
-  ) => void;
+  setSourceControlView: (threadId: ThreadId, view: SourceControlView) => void;
   openFile: (threadId: ThreadId, path: string, options?: { preview?: boolean }) => void;
   pinFile: (threadId: ThreadId, path: string) => void;
   closeFile: (threadId: ThreadId, path: string) => void;
-  clearThreadDockState: (threadId: ThreadId) => void;
 }
 
-const DEFAULT_RIGHT_DOCK_STATE = createDefaultRightDockState();
+const DEFAULT_RIGHT_DOCK_STATE: RightDockThreadState = {
+  filePaths: [],
+  activeFilePath: null,
+  sourceControlView: "changes",
+};
 Object.freeze(DEFAULT_RIGHT_DOCK_STATE);
-Object.freeze(DEFAULT_RIGHT_DOCK_STATE.panes);
 Object.freeze(DEFAULT_RIGHT_DOCK_STATE.filePaths);
+
+const isFilePath = (path: unknown): path is string => typeof path === "string" && path.length > 0;
+
+function sanitizeRightDockThreadState(value: unknown): RightDockThreadState | null {
+  if (!isRecord(value)) return null;
+  // Files were once dock panes; those older states still carry them under `panes`.
+  const legacyFiles = (Array.isArray(value.panes) ? value.panes : [])
+    .filter(isRecord)
+    .filter((pane) => pane.kind === "file");
+  const filePaths = [
+    ...new Set([
+      ...(Array.isArray(value.filePaths) ? value.filePaths.filter(isFilePath) : []),
+      ...legacyFiles.map((pane) => pane.filePath).filter(isFilePath),
+    ]),
+  ];
+  const legacyActiveFile = legacyFiles.find((pane) => pane.id === value.activePaneId)?.filePath;
+  const requestedActiveFile = isFilePath(legacyActiveFile)
+    ? legacyActiveFile
+    : value.activeFilePath;
+  return {
+    filePaths,
+    activeFilePath:
+      isFilePath(requestedActiveFile) && filePaths.includes(requestedActiveFile)
+        ? requestedActiveFile
+        : (filePaths[0] ?? null),
+    ...(isFilePath(value.previewFilePath) && filePaths.includes(value.previewFilePath)
+      ? { previewFilePath: value.previewFilePath }
+      : {}),
+    sourceControlView: value.sourceControlView === "history" ? "history" : "changes",
+  };
+}
 
 function commit(
   set: (fn: (store: RightDockStore) => Partial<RightDockStore>) => void,
@@ -73,25 +90,10 @@ export const useRightDockStore = create<RightDockStore>()(
   persist(
     (set) => ({
       dockStateByThreadId: {},
-      openPane: (threadId, input) =>
-        commit(set, threadId, (state) => {
-          const next = openPaneInState(state, { ...input, paneId: input.paneId ?? randomUUID() });
-          return input.activate === false
-            ? { ...next, open: state.open, activePaneId: state.activePaneId }
-            : next;
-        }),
-      toggleSingletonPane: (threadId, input) =>
+      setSourceControlView: (threadId, sourceControlView) =>
         commit(set, threadId, (state) =>
-          toggleSingletonPaneInState(state, { ...input, paneId: input.paneId ?? randomUUID() }),
+          state.sourceControlView === sourceControlView ? state : { ...state, sourceControlView },
         ),
-      closePane: (threadId, paneId) =>
-        commit(set, threadId, (state) => closePaneInState(state, paneId)),
-      setActivePane: (threadId, paneId) =>
-        commit(set, threadId, (state) => setActivePaneInState(state, paneId)),
-      setDockOpen: (threadId, open) =>
-        commit(set, threadId, (state) => setDockOpenInState(state, open)),
-      updatePane: (threadId, paneId, patch) =>
-        commit(set, threadId, (state) => updatePaneInState(state, paneId, patch)),
       openFile: (threadId, path, options) => {
         const workspace = useMainWorkspaceStore.getState();
         const previewReviewId = workspace.states[threadId]?.previewReviewId;
@@ -139,27 +141,15 @@ export const useRightDockStore = create<RightDockStore>()(
                 : state.activeFilePath,
           };
         }),
-      clearThreadDockState: (threadId) => {
-        useMainWorkspaceStore.getState().clearThread(threadId);
-        set((store) => {
-          if (!Object.hasOwn(store.dockStateByThreadId, threadId)) {
-            return {};
-          }
-          const next = { ...store.dockStateByThreadId };
-          delete next[threadId];
-          return { dockStateByThreadId: next };
-        });
-      },
     }),
     {
       name: RIGHT_DOCK_STORAGE_KEY,
       storage: createJSONStorage(() => localStorage),
-      // Validate persisted panes on rehydrate so a stale/unknown pane kind from an older app version can
-      // never crash the dock during render.
       merge: (persisted, current) => ({
         ...current,
-        dockStateByThreadId: sanitizeRightDockStateByThreadId(
+        dockStateByThreadId: sanitizeStringKeyedRecord(
           (persisted as { dockStateByThreadId?: unknown } | undefined)?.dockStateByThreadId,
+          sanitizeRightDockThreadState,
         ),
       }),
     },

@@ -32,7 +32,6 @@ export function DeferredChatView(props: {
   deferMount: boolean;
   diffPanelOpen: boolean;
   onToggleDiff: () => void;
-  onToggleRightDock?: () => void;
   onToggleTerminal?: () => void;
   onOpenTerminal?: () => void;
   onOpenTurnDiff: (turnId: TurnId, filePath?: string) => void;
@@ -73,7 +72,6 @@ export function DeferredChatView(props: {
       hideHeader={props.hideHeader ?? false}
       diffPanelOpen={props.diffPanelOpen}
       onToggleDiffPanel={props.onToggleDiff}
-      {...(props.onToggleRightDock ? { onToggleRightDock: props.onToggleRightDock } : {})}
       {...(props.onToggleTerminal ? { onToggleTerminal: props.onToggleTerminal } : {})}
       {...(props.onOpenTerminal ? { onOpenTerminal: props.onOpenTerminal } : {})}
       onOpenTurnDiffPanel={props.onOpenTurnDiff}

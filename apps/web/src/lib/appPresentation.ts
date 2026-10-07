@@ -1,7 +1,9 @@
 import type { GladeAppOpenRequest } from "@glade/contracts/provider/agentGatewayTools";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useRightDockStore } from "../rightDockStore";
+import { useMainWorkspaceStore } from "../mainWorkspaceStore";
 import { useTerminalStateStore } from "../terminalStateStore";
+import { useWorkspaceSidebarStore } from "../workspaceSidebarStore";
 import { useExplorerRevealRequestStore } from "../explorerRevealRequestStore";
 import { acknowledgeAppPresentation } from "../wsNativeApi";
 
@@ -25,14 +27,17 @@ export async function presentAppRequest(
           target.line === undefined ? undefined : { lineNumber: target.line, column: 1 },
         );
     } else if (target.kind === "diff") {
-      dock.openPane(request.threadId, {
-        kind: "git",
-        diffTurnId: target.turnId ?? null,
-        diffFilePath: target.path ?? null,
-      });
+      if (target.turnId)
+        useMainWorkspaceStore.getState().openReview(request.threadId, {
+          id: `diff:${target.turnId}`,
+          kind: "diff",
+          turnId: target.turnId,
+          filePath: target.path ?? null,
+        });
+      else useWorkspaceSidebarStore.getState().show("git");
     } else {
       useTerminalStateStore.getState().openChatThreadPage(request.threadId);
-      dock.openPane(request.threadId, { kind: "terminal" });
+      useWorkspaceSidebarStore.getState().show("terminal");
     }
   } catch (cause) {
     error = cause instanceof Error ? cause.message : "Could not open the requested view.";

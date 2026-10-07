@@ -16,9 +16,13 @@ const intersects = (a: DOMRect, b: DOMRect) =>
   a.right > b.left && a.left < b.right && a.bottom > b.top && a.top < b.bottom;
 
 // Native views paint above every HTML layer, so any Glade UI that has to show over the panel takes
-// the view off: a modal anywhere, a menu or popover crossing it, or a resize drag in progress.
+// the view off: a modal anywhere, a menu, popover or tooltip crossing it (the activity bar's
+// tooltips open over the page), or a resize drag in progress.
 function isCovered(rect: DOMRect): boolean {
   if (document.querySelector("[data-panel-resize-overlay]")) return true;
+  const tooltips = document.querySelectorAll('[data-slot="tooltip-popup"]');
+  if (Array.from(tooltips).some((tooltip) => intersects(tooltip.getBoundingClientRect(), rect)))
+    return true;
   return visibleOverlayElements().some(
     (overlay) =>
       overlay.getAttribute("aria-modal") === "true" ||

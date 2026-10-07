@@ -2,12 +2,15 @@ import { cn } from "~/lib/utils";
 import type { ThreadStatusPill } from "./Sidebar.logic.statusTypes";
 import { Spinner } from "~/components/ui/spinner";
 
+export const SIDEBAR_STATUS_DOT_CLASS_NAME =
+  "size-[7px] shrink-0 rounded-full bg-[var(--color-text-accent)]";
+
 function SidebarUnreadCompletionGlyph({ className }: { className?: string }) {
   return (
     <span
       role="img"
       aria-label="Unread completion"
-      className={cn("size-[7px] shrink-0 rounded-full bg-[var(--color-text-accent)]", className)}
+      className={cn(SIDEBAR_STATUS_DOT_CLASS_NAME, className)}
     />
   );
 }

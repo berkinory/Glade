@@ -1,6 +1,6 @@
 import { PlusMinusSquare01Icon, WorkflowCircle04Icon, HistoryIcon } from "~/lib/icons";
 import type { GitRecentCommit } from "@glade/contracts/git/git";
-import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { gitBranchesQueryOptions } from "~/lib/gitQueryOptions";
 import { gitInitMutationOptions } from "~/lib/gitReactQuery";
@@ -9,11 +9,10 @@ import { Spinner } from "../ui/spinner";
 import { toastManager } from "../ui/toast";
 import { PanelStateMessage } from "./PanelStateMessage";
 import { PanelEmptyState } from "./PanelEmptyState";
-import type { SourceControlView } from "~/rightDockStore.logic";
+import type { SourceControlView } from "~/rightDockStore";
 import { PanelTabBar } from "./PanelTabBar";
 import { GitPanel } from "./GitPanel";
 import { SourceControlHistory } from "./SourceControlHistory";
-import { SourceControlTurnChanges } from "./SourceControlTurnChanges";
 export function SourceControlDockPane(props: {
   onSelectCommitFile?:
     | ((commit: GitRecentCommit, path: string, preview: boolean) => void)
@@ -25,10 +24,7 @@ export function SourceControlDockPane(props: {
   workspaceRoot: string | null;
   onOpenFile: (filePath: string) => void;
   view: SourceControlView;
-  diffTurnId: TurnId | null;
-  diffFilePath: string | null;
   onViewChange: (view: SourceControlView) => void;
-  onCurrentChanges: () => void;
 }) {
   const queryClient = useQueryClient();
   const initMutation = useMutation(
@@ -37,10 +33,9 @@ export function SourceControlDockPane(props: {
       queryClient,
     }),
   );
-  const needsRepository = props.view === "history" || props.diffTurnId === null;
   const repository = useQuery({
     ...gitBranchesQueryOptions(props.workspaceRoot),
-    enabled: needsRepository && props.workspaceRoot !== null,
+    enabled: props.workspaceRoot !== null,
     retry: false,
   });
   const repositoryState = !props.workspaceRoot ? (
@@ -101,7 +96,7 @@ export function SourceControlDockPane(props: {
         onSelect={(view) => props.onViewChange(view === "history" ? "history" : "changes")}
       />
       <div className="min-h-0 flex-1">
-        {needsRepository && repositoryState ? (
+        {repositoryState ? (
           repositoryState
         ) : props.view === "history" ? (
           <SourceControlHistory
@@ -110,20 +105,9 @@ export function SourceControlDockPane(props: {
             onSelectCommitFile={props.onSelectCommitFile}
             onOpenFile={props.onOpenFile}
           />
-        ) : props.diffTurnId ? (
-          <SourceControlTurnChanges
-            key={props.diffTurnId}
-            threadId={props.threadId}
-            turnId={props.diffTurnId}
-            filePath={props.diffFilePath}
-            cwd={props.workspaceRoot}
-            onOpenFile={props.onOpenFile}
-            onCurrentChanges={props.onCurrentChanges}
-          />
         ) : (
           <GitPanel
             onSelectDiff={props.onSelectDiff}
-            selectedFilePath={props.diffFilePath}
             threadId={props.threadId}
             workspaceRoot={props.workspaceRoot}
             onOpenFile={props.onOpenFile}

@@ -68,7 +68,6 @@ interface MainWorkspaceStore {
   openReview: (threadId: ThreadId, tab: WorkspaceReviewTab, preview?: boolean) => void;
   pinReview: (threadId: ThreadId, tabId: string) => void;
   closeReview: (threadId: ThreadId, tabId: string) => void;
-  clearThread: (threadId: ThreadId) => void;
 }
 
 export const useMainWorkspaceStore = create<MainWorkspaceStore>()(
@@ -134,12 +133,6 @@ export const useMainWorkspaceStore = create<MainWorkspaceStore>()(
               },
             },
           };
-        }),
-      clearThread: (threadId) =>
-        set((store) => {
-          const states = { ...store.states };
-          delete states[threadId];
-          return { states };
         }),
     }),
     {

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Globe02Icon, PlusIcon } from "~/lib/icons";
 import { PanelTabBar } from "../chat/PanelTabBar";
 import { IconButton } from "../ui/icon-button";
@@ -9,12 +10,12 @@ export function BrowserTabStrip(props: {
   onSelect: (tabId: string) => void;
   onClose: (tabId: string) => void;
   onNewTab: () => void;
+  children?: ReactNode;
 }) {
   return (
     <PanelTabBar
       label="Browser tabs"
       contentTabs
-      className="h-auto flex-1 border-0 bg-transparent p-0"
       tabs={props.tabs.map((tab) => ({
         id: tab.tabId,
         label: tab.title || tab.url || "New tab",
@@ -24,9 +25,17 @@ export function BrowserTabStrip(props: {
       activeId={props.tabs.find((tab) => tab.active)?.tabId ?? null}
       onSelect={props.onSelect}
       actions={
-        <IconButton label="New tab" tooltip="New tab" tooltipSide="bottom" onClick={props.onNewTab}>
-          <PlusIcon className="size-3.5" />
-        </IconButton>
+        <div className="flex items-center gap-1">
+          {props.children}
+          <IconButton
+            label="New tab"
+            tooltip="New tab"
+            tooltipSide="bottom"
+            onClick={props.onNewTab}
+          >
+            <PlusIcon className="size-3.5" />
+          </IconButton>
+        </div>
       }
     />
   );

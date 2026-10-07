@@ -1,12 +1,9 @@
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-import type { RightDockThreadState } from "../../rightDockStore.logic";
 
-export function resolveVisibleToastThreadIds(input: {
-  activeThreadId: ThreadId | null;
-  rightDockRendered: boolean;
-  rightDockState?: RightDockThreadState | null;
-}): ReadonlySet<ThreadId> {
-  return input.activeThreadId ? new Set([input.activeThreadId]) : new Set<ThreadId>();
+export function resolveVisibleToastThreadIds(
+  activeThreadId: ThreadId | null,
+): ReadonlySet<ThreadId> {
+  return activeThreadId ? new Set([activeThreadId]) : new Set<ThreadId>();
 }
 
 export function shouldRenderToastForVisibleThreads(input: {

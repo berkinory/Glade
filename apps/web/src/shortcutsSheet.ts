@@ -160,9 +160,14 @@ const AVAILABLE_NOW_DEFINITIONS: readonly ShortcutDefinition[] = [
     description: "Search the current transcript and jump to each matching message.",
   },
   {
+    command: "explorer.toggle",
+    label: "Toggle Explorer",
+    description: "Open or close Explorer in the right sidebar.",
+  },
+  {
     command: "terminal.toggle",
     label: "Toggle terminal",
-    description: "Show or hide the terminal surface for the active chat.",
+    description: "Open or close the terminal in the right sidebar.",
   },
   {
     command: "terminal.new",
@@ -177,12 +182,12 @@ const AVAILABLE_NOW_DEFINITIONS: readonly ShortcutDefinition[] = [
   {
     command: "diff.toggle",
     label: "Toggle Source Control",
-    description: "Open or close Source Control.",
+    description: "Open or close Source Control in the right sidebar.",
   },
   {
     command: "browser.toggle",
     label: "Toggle browser",
-    description: "Show or hide the browser panel for the active chat in the desktop app.",
+    description: "Open or close the browser in the right sidebar in the desktop app.",
   },
   {
     command: "thread.copyId",

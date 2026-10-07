@@ -8,7 +8,7 @@ import { readStarredModelSlugs } from "~/lib/starredModels";
 import { isMacNavigatorPlatform } from "~/lib/utils";
 import { isElectron } from "../../env";
 import { resolveShortcutCommand } from "../../keybindings";
-import { useBrowserPanelStore } from "../browser/browserPanelStore";
+import { useWorkspaceSidebarStore } from "~/workspaceSidebarStore";
 import { isEditableEventTarget } from "../../lib/editableEventTarget";
 import { isTerminalFocused } from "../../lib/terminalFocus";
 import type { Project } from "../../types";
@@ -441,10 +441,12 @@ export function useChatKeyboardShortcuts({
         return;
       }
 
-      if (command === "browser.toggle" && isElectron) {
+      if (command === "explorer.toggle" || (command === "browser.toggle" && isElectron)) {
         event.preventDefault();
         event.stopPropagation();
-        useBrowserPanelStore.getState().toggle(activeThreadId);
+        useWorkspaceSidebarStore
+          .getState()
+          .toggle(command === "explorer.toggle" ? "explorer" : "browser");
         return;
       }
 

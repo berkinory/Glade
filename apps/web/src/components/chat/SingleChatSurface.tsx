@@ -16,10 +16,7 @@ import {
 
 import { useComposerDraftStore } from "../../composerDraftStore";
 import type { DiffRouteSearch } from "../../diffRouteSearch";
-import { useDockPaneRuntimeActivation } from "../../hooks/useDockPaneRuntimeActivation";
 import { appendChatFileReference, type ChatFileReference } from "../../lib/chatReferences";
-import type { DockPaneRuntimeMode } from "../../lib/dockPaneActivation";
-import { canComposerHandlePanelWidth } from "../../lib/panelResize";
 import {
   prefetchWorkspaceFile,
   resolveDockFileOpenTarget,
@@ -30,13 +27,7 @@ import {
 } from "../../lib/workspaceFileOpener";
 import { requestExplorerFileReveal, requestExplorerReveal } from "../../explorerRevealRequestStore";
 import { selectRightDockState, useRightDockStore } from "../../rightDockStore";
-import { useTerminalStateStore } from "../../terminalStateStore";
-import {
-  resolveActivePane,
-  type OpenPaneInput,
-  type RightDockPane,
-  type RightDockPaneKind,
-} from "../../rightDockStore.logic";
+import { useWorkspaceSidebarStore } from "../../workspaceSidebarStore";
 import { useStore } from "../../store";
 import { createProjectSelector, createThreadWorkspaceMetadataSelector } from "../../storeSelectors";
 import { DeferredChatView } from "./ChatThreadSurfacePrimitives";
@@ -47,9 +38,7 @@ import {
   type WorkspaceReviewTab,
 } from "../../mainWorkspaceStore";
 import { PanelStateMessage } from "./PanelStateMessage";
-import { RightDock } from "./RightDock";
-import { BrowserPanel } from "../browser/BrowserPanel";
-import { getRightDockPaneMeta } from "./rightDockPaneMeta";
+import { WorkspaceSidebar } from "../workspaceSidebar/WorkspaceSidebar";
 import {
   CHAT_BACKGROUND_CLASS_NAME,
   CHAT_MAIN_CONTENT_SURFACE_CLASS_NAME,
@@ -63,7 +52,6 @@ import {
 } from "../../routes/-chatThreadRoute.logic";
 import { cn } from "~/lib/utils";
 
-const PRIMARY_DOCK_PANE_KINDS = ["explorer", "git"] as const;
 const SourceControlDockPane = lazy(() =>
   import("./SourceControlDockPane").then((module) => ({
     default: module.SourceControlDockPane,
@@ -74,39 +62,6 @@ const DockExplorerPane = lazy(() =>
     default: module.DockExplorerPane,
   })),
 );
-const RIGHT_SIDEBAR_DEFAULT_WIDTH = "22rem";
-
-function shouldAcceptDockWidth({
-  currentWidth,
-  nextWidth,
-  wrapper,
-}: {
-  currentWidth: number;
-  nextWidth: number;
-  wrapper: HTMLElement;
-}) {
-  if (nextWidth <= currentWidth) return true;
-  const previousSidebarWidth = wrapper.style.getPropertyValue("--sidebar-width");
-  return canComposerHandlePanelWidth({
-    nextWidth,
-    applyWidth: (width) => {
-      wrapper.style.setProperty("--sidebar-width", `${width}px`);
-    },
-    resetWidth: () => {
-      if (previousSidebarWidth.length > 0) {
-        wrapper.style.setProperty("--sidebar-width", previousSidebarWidth);
-      } else {
-        wrapper.style.removeProperty("--sidebar-width");
-      }
-    },
-  });
-}
-
-function RightDockPanePlaceholder(props: { kind: RightDockPaneKind }) {
-  const { label } = getRightDockPaneMeta(props.kind);
-  return <PanelStateMessage>{label} panel is coming soon.</PanelStateMessage>;
-}
-
 export function SingleChatSurface(props: {
   threadId: ThreadId;
   search: DiffRouteSearch;
@@ -116,41 +71,15 @@ export function SingleChatSurface(props: {
   const dockState = useRightDockStore(
     useMemo(() => selectRightDockState(props.threadId), [props.threadId]),
   );
-  const openDockPane = useRightDockStore((store) => store.openPane);
   const selectMainTab = useMainWorkspaceStore((store) => store.selectTab);
   const openReview = useMainWorkspaceStore((store) => store.openReview);
   const mainWorkspace = useMainWorkspaceStore(selectMainWorkspace(props.threadId));
-  const openPane = useCallback(
-    (threadId: ThreadId, input: Omit<OpenPaneInput, "paneId">) => {
-      if (input.kind === "terminal") {
-        openDockPane(threadId, { ...input, activate: false });
-        selectMainTab(threadId, input.kind);
-      } else if (input.kind === "git" && input.diffTurnId) {
-        openReview(threadId, {
-          id: `diff:${input.diffTurnId}`,
-          kind: "diff",
-          turnId: input.diffTurnId,
-          filePath: input.diffFilePath ?? null,
-        });
-      } else openDockPane(threadId, input);
-    },
-    [openDockPane, selectMainTab, openReview],
-  );
-  const closePane = useRightDockStore((store) => store.closePane);
-  const setActivePane = useRightDockStore((store) => store.setActivePane);
-  const setDockOpen = useRightDockStore((store) => store.setDockOpen);
-  const updatePane = useRightDockStore((store) => store.updatePane);
-  const terminalPresentation = useTerminalStateStore((store) => {
-    const state = store.terminalStateByThreadId[props.threadId];
-    return state?.terminalOpen && state.presentationMode === "workspace";
-  });
-  const terminalOpen = useTerminalStateStore(
-    (store) => store.terminalStateByThreadId[props.threadId]?.terminalOpen ?? false,
-  );
-  const setTerminalOpen = useTerminalStateStore((store) => store.setTerminalOpen);
-  const setTerminalPresentationMode = useTerminalStateStore(
-    (store) => store.setTerminalPresentationMode,
-  );
+  const sidebarOpen = useWorkspaceSidebarStore((store) => store.open);
+  const sidebarView = useWorkspaceSidebarStore((store) => store.view);
+  const showView = useWorkspaceSidebarStore((store) => store.show);
+  const toggleView = useWorkspaceSidebarStore((store) => store.toggle);
+  const setSidebarOpen = useWorkspaceSidebarStore((store) => store.setOpen);
+  const setSourceControlView = useRightDockStore((store) => store.setSourceControlView);
   const activeProject = useStore(
     useMemo(() => createProjectSelector(props.projectId), [props.projectId]),
   );
@@ -180,67 +109,30 @@ export function SingleChatSurface(props: {
     column?: number;
     requestId: number;
   }>();
-  const sidebarPanes = dockState.panes.filter(
-    (pane) => pane.kind === "explorer" || pane.kind === "git",
-  );
-  const sidebarState = {
-    ...dockState,
-    panes: sidebarPanes,
-    activePaneId: sidebarPanes.some((pane) => pane.id === dockState.activePaneId)
-      ? dockState.activePaneId
-      : (sidebarPanes[0]?.id ?? null),
-  };
-  const activePane = resolveActivePane(sidebarState);
-  const { activePaneRuntimeMode, requestImmediateHydration: requestImmediateDockHydration } =
-    useDockPaneRuntimeActivation({
-      threadId: props.threadId,
-      activePane,
+  const diffPanelOpen = sidebarOpen && sidebarView === "git";
+  const handleToggleDiff = () => toggleView("git");
+  const handleOpenTurnDiff = (turnId: TurnId, filePath?: string) =>
+    openReview(props.threadId, {
+      id: `diff:${turnId}`,
+      kind: "diff",
+      turnId,
+      filePath: filePath ?? null,
     });
-
-  const diffPanelOpen = activePane?.kind === "git" && activePane.sourceControlView === "changes";
-
-  const handleToggleDiff = () => {
-    requestImmediateDockHydration("git");
-    if (activePane?.kind === "git" && activePane.sourceControlView === "changes") {
-      setDockOpen(props.threadId, false);
-    } else {
-      openPane(props.threadId, { kind: "git", sourceControlView: "changes" });
-    }
-  };
-  const handleToggleRightDock = () => {
-    if (!dockState.open && sidebarState.activePaneId === null) {
-      requestImmediateDockHydration("explorer");
-      openPane(props.threadId, { kind: "explorer" });
-      return;
-    }
-    setDockOpen(props.threadId, !dockState.open);
-  };
-  const handleOpenTurnDiff = (turnId: TurnId, filePath?: string) => {
-    requestImmediateDockHydration("git");
-    openPane(props.threadId, {
-      kind: "git",
-      sourceControlView: "changes",
-      diffTurnId: turnId,
-      diffFilePath: filePath ?? null,
-    });
-  };
 
   const handleOpenWorkspaceSearchFile = useCallback(
     (relativePath: string) => {
-      requestImmediateDockHydration("explorer");
-      openPane(props.threadId, { kind: "explorer" });
+      showView("explorer");
       requestExplorerFileReveal(props.threadId, relativePath, undefined, { preview: true });
     },
-    [requestImmediateDockHydration, openPane, props.threadId],
+    [showView, props.threadId],
   );
 
   const handleOpenWorkspaceSearchDirectory = useCallback(
     (relativePath: string) => {
-      requestImmediateDockHydration("explorer");
-      openPane(props.threadId, { kind: "explorer" });
+      showView("explorer");
       requestExplorerReveal(props.threadId, relativePath);
     },
-    [requestImmediateDockHydration, openPane, props.threadId],
+    [showView, props.threadId],
   );
 
   useEffect(() => {
@@ -291,8 +183,7 @@ export function SingleChatSurface(props: {
       openFile: (path) => {
         const directoryPath = resolveWorkspaceDirectoryOpenTarget(path, workspaceRoot);
         if (directoryPath !== null) {
-          requestImmediateDockHydration("explorer");
-          openPane(props.threadId, { kind: "explorer" });
+          showView("explorer");
           requestExplorerReveal(props.threadId, directoryPath);
           return true;
         }
@@ -301,8 +192,7 @@ export function SingleChatSurface(props: {
         if (!targetPath) {
           return false;
         }
-        requestImmediateDockHydration("explorer");
-        openPane(props.threadId, { kind: "explorer" });
+        showView("explorer");
         const position = /:(\d+)(?::(\d+))?$/.exec(path);
         requestExplorerFileReveal(
           props.threadId,
@@ -315,7 +205,7 @@ export function SingleChatSurface(props: {
       },
       prefetchFile: prefetchOpenerFile,
     }),
-    [workspaceRoot, requestImmediateDockHydration, openPane, props.threadId, prefetchOpenerFile],
+    [workspaceRoot, showView, props.threadId, prefetchOpenerFile],
   );
   useEffect(() => {
     const { nextAppliedSearchKey, panelPatch } = resolveRoutePanelBootstrap({
@@ -329,31 +219,22 @@ export function SingleChatSurface(props: {
       return;
     }
 
-    if (panelPatch.panel === "diff") {
-      requestImmediateDockHydration("git");
-      openPane(props.threadId, {
-        kind: "git",
-        sourceControlView: "changes",
-        diffTurnId: panelPatch.diffTurnId ?? null,
-        diffFilePath: panelPatch.diffFilePath ?? null,
+    if (panelPatch.panel !== "diff") setSidebarOpen(false);
+    else if (panelPatch.diffTurnId)
+      openReview(props.threadId, {
+        id: `diff:${panelPatch.diffTurnId}`,
+        kind: "diff",
+        turnId: panelPatch.diffTurnId,
+        filePath: panelPatch.diffFilePath ?? null,
       });
-    } else {
-      setDockOpen(props.threadId, false);
-    }
+    else showView("git");
     void navigate({
       to: "/$threadId",
       params: { threadId: props.threadId },
       replace: true,
       search: {},
     });
-  }, [
-    navigate,
-    openPane,
-    props.search,
-    props.threadId,
-    requestImmediateDockHydration,
-    setDockOpen,
-  ]);
+  }, [navigate, openReview, props.search, props.threadId, setSidebarOpen, showView]);
 
   const openGitPreview = (tab: WorkspaceReviewTab, preview: boolean) => {
     const replacesPreview =
@@ -365,60 +246,8 @@ export function SingleChatSurface(props: {
     openReview(props.threadId, tab, preview);
   };
 
-  const handleAddDockPane = (kind: RightDockPaneKind) => {
-    requestImmediateDockHydration(kind);
-    if (kind === "terminal") {
-      setTerminalPresentationMode(props.threadId, "drawer");
-    }
-    openPane(props.threadId, { kind });
-  };
-
-  const handleToggleTerminalPane = () => {
-    if (mainWorkspace.activeTabId === "terminal") {
-      selectMainTab(props.threadId, "chat");
-    } else {
-      handleAddDockPane("terminal");
-    }
-  };
-
-  useEffect(() => {
-    if (dockState.open && sidebarState.activePaneId === null) {
-      requestImmediateDockHydration("explorer");
-      openPane(props.threadId, { kind: "explorer" });
-    }
-  }, [
-    sidebarState.activePaneId,
-    dockState.open,
-    openPane,
-    props.threadId,
-    requestImmediateDockHydration,
-  ]);
-
-  useEffect(() => {
-    if (!terminalPresentation) return;
-    setTerminalPresentationMode(props.threadId, "drawer");
-    openPane(props.threadId, { kind: "terminal" });
-  }, [openPane, props.threadId, setTerminalPresentationMode, terminalPresentation]);
-
-  useEffect(() => {
-    if (terminalPresentation) return;
-    const terminalVisible = mainWorkspace.activeTabId === "terminal";
-    if (terminalOpen !== terminalVisible) {
-      setTerminalOpen(props.threadId, terminalVisible);
-    }
-  }, [
-    mainWorkspace.activeTabId,
-    props.threadId,
-    setTerminalOpen,
-    terminalOpen,
-    terminalPresentation,
-  ]);
-
-  const renderDockPane = (
-    pane: RightDockPane,
-    context: { runtimeMode: DockPaneRuntimeMode; isActive: boolean; isVisible: boolean },
-  ): ReactNode => {
-    switch (pane.kind) {
+  const renderToolView = (view: "explorer" | "git", visible: boolean): ReactNode => {
+    switch (view) {
       case "git":
         return (
           <Suspense fallback={<PanelStateMessage loadingLabel="Loading source control" />}>
@@ -449,19 +278,11 @@ export function SingleChatSurface(props: {
                 )
               }
               onOpenFile={(filePath) => {
-                requestImmediateDockHydration("explorer");
-                openPane(props.threadId, { kind: "explorer" });
+                showView("explorer");
                 requestExplorerFileReveal(props.threadId, filePath);
               }}
-              view={pane.sourceControlView}
-              diffTurnId={null}
-              diffFilePath={null}
-              onViewChange={(sourceControlView) =>
-                updatePane(props.threadId, pane.id, { sourceControlView })
-              }
-              onCurrentChanges={() =>
-                updatePane(props.threadId, pane.id, { diffTurnId: null, diffFilePath: null })
-              }
+              view={dockState.sourceControlView}
+              onViewChange={(view) => setSourceControlView(props.threadId, view)}
             />
           </Suspense>
         );
@@ -473,19 +294,12 @@ export function SingleChatSurface(props: {
               onRevealPosition={setRevealPosition}
               threadId={props.threadId}
               workspaceRoot={workspaceRoot}
-              isVisible={context.isVisible}
+              isVisible={visible}
               onReferenceInChat={handleReferenceInChat}
             />
           </Suspense>
         );
-      default:
-        return <RightDockPanePlaceholder kind={pane.kind} />;
     }
-  };
-
-  const handleSelectDockPane = (paneId: string) => {
-    requestImmediateDockHydration(dockState.panes.find((pane) => pane.id === paneId)?.kind);
-    setActivePane(props.threadId, paneId);
   };
 
   return (
@@ -502,44 +316,24 @@ export function SingleChatSurface(props: {
               workspaceRoot={workspaceRoot}
               revealPosition={revealPosition}
               onReferenceInChat={handleReferenceInChat}
-              onAddPane={handleAddDockPane}
             >
               <DeferredChatView
                 threadId={props.threadId}
                 deferMount={isBrandNewDraftThread}
                 diffPanelOpen={diffPanelOpen}
                 onToggleDiff={handleToggleDiff}
-                onToggleRightDock={handleToggleRightDock}
-                onToggleTerminal={handleToggleTerminalPane}
-                onOpenTerminal={() => handleAddDockPane("terminal")}
+                onToggleTerminal={() => toggleView("terminal")}
+                onOpenTerminal={() => showView("terminal")}
                 onOpenTurnDiff={handleOpenTurnDiff}
               />
             </MainWorkspace>
           </RouteInsetSurface>
         </div>
-        <BrowserPanel threadId={props.threadId} />
-        <RightDock
-          state={sidebarState}
-          initialWidth="fixed"
-          minWidth={288}
-          maxWidth={368}
-          defaultWidth={RIGHT_SIDEBAR_DEFAULT_WIDTH}
-          shouldAcceptWidth={shouldAcceptDockWidth}
-          addMenuKinds={[]}
-          primaryKinds={PRIMARY_DOCK_PANE_KINDS}
-          motionKey={props.threadId}
-          activePaneRuntimeMode={activePaneRuntimeMode}
-          onSelectPane={handleSelectDockPane}
-          onClosePane={(paneId) => {
-            if (dockState.panes.find((pane) => pane.id === paneId)?.kind !== "explorer") {
-              closePane(props.threadId, paneId);
-              return;
-            }
-            closePane(props.threadId, paneId);
-          }}
-          onOpenChange={(open) => setDockOpen(props.threadId, open)}
-          onAddPane={handleAddDockPane}
-          renderPane={renderDockPane}
+        <WorkspaceSidebar
+          threadId={props.threadId}
+          projectId={props.projectId}
+          workspaceRoot={workspaceRoot}
+          renderToolView={renderToolView}
         />
         <WorkspaceSearchPalette
           open={searchPaletteOpen}

@@ -30,6 +30,7 @@ export const STATIC_KEYBINDING_COMMANDS = [
   "terminal.workspace.terminal",
   "terminal.workspace.chat",
   "browser.toggle",
+  "explorer.toggle",
   "diff.toggle",
   "composer.focus.toggle",
   "chat.find",

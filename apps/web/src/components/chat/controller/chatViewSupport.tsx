@@ -65,7 +65,6 @@ export interface ChatViewProps {
   hideHeader?: boolean;
   diffPanelOpen?: boolean;
   onToggleDiffPanel?: () => void;
-  onToggleRightDock?: () => void;
   onToggleTerminal?: () => void;
   onOpenTerminal?: () => void;
   onOpenTurnDiffPanel?: (turnId: TurnId, filePath?: string) => void;
