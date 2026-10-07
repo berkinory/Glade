@@ -288,6 +288,14 @@ describe("computer access gate", () => {
       undefined,
     ],
     ["any other app takes typing under act", "other", "act", "computer_type", typing, undefined],
+    [
+      "the file dialog's desktop keys need full control",
+      "other",
+      "act",
+      "computer_file_dialog",
+      { action: "save", path: "/tmp" },
+      "access_required",
+    ],
   ] as const)("%s", ([, app, scope, tool, args, refusal]) =>
     Effect.gen(function* () {
       const { call, errorCode, grant } = yield* setup("confirmed");

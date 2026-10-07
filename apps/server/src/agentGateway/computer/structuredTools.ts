@@ -19,6 +19,7 @@ import {
   type ComputerToolServices,
 } from "./computerCalls.ts";
 import { renderElements, sheetLines } from "./elementText.ts";
+import { makeFileDialogTool } from "./fileDialogTool.ts";
 import { invokeMenu } from "./menuInvoke.ts";
 import { makeVerifyTool } from "./verifyTool.ts";
 import { readWindow } from "./windowRead.ts";
@@ -382,5 +383,13 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
         .pipe(Effect.as({ content: [{ type: "text", text: "Computer Use session ended." }] })),
   });
 
-  return [apps, windowState, act, makeVerifyTool(services), requestAccess, stop];
+  return [
+    apps,
+    windowState,
+    act,
+    makeFileDialogTool(services),
+    makeVerifyTool(services),
+    requestAccess,
+    stop,
+  ];
 }
