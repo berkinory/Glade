@@ -7,6 +7,7 @@ import {
 import { terminalScopeIdsForThread } from "@glade/shared/threads/terminalThreads";
 import { Cause, Effect, Layer, Option, Stream } from "effect";
 
+import { BrowserHost } from "../../browser/Services/BrowserHost";
 import { ServerConfig } from "../../server/config";
 import { GitCore } from "../../git/Services/GitCore";
 import { pruneProjectedArchivedManagedWorktrees } from "../../git/managedWorktrees";
@@ -93,6 +94,7 @@ const make = Effect.gen(function* () {
   const profileStatsArchive = yield* ProfileStatsArchive;
   const providerService = yield* ProviderService;
   const terminalManager = yield* TerminalManager;
+  const browserHost = yield* BrowserHost;
   const projectionSnapshotQuery = yield* ProjectionSnapshotQuery;
   const serverConfig = yield* ServerConfig;
   const git = yield* GitCore;
@@ -165,6 +167,19 @@ const make = Effect.gen(function* () {
     openedAtOrBefore?: string,
   ) => closeThreadTerminalScopes(terminalManager, threadId, deleteHistory, openedAtOrBefore);
 
+  const closeThreadBrowserTabs = (threadId: ThreadDeletedEvent["payload"]["threadId"]) =>
+    browserHost.available
+      ? browserHost.call("browser.closeThread", { threadId, workspaceDir: null }).pipe(
+          Effect.asVoid,
+          Effect.catch((error) =>
+            Effect.logDebug("thread lifecycle cleanup skipped browser tab close", {
+              threadId,
+              error: error.message,
+            }),
+          ),
+        )
+      : Effect.void;
+
   const waitForThreadPurgeFence = Effect.fn(function* (
     threadId: ThreadDeletedEvent["payload"]["threadId"],
   ) {
@@ -208,6 +223,7 @@ const make = Effect.gen(function* () {
   ) {
     const providerCleanupSucceeded = yield* stopProviderSession(threadId);
     const terminalCleanupSucceeded = yield* closeThreadTerminals(threadId, true);
+    yield* closeThreadBrowserTabs(threadId);
     return providerCleanupSucceeded && terminalCleanupSucceeded;
   });
 
@@ -225,6 +241,7 @@ const make = Effect.gen(function* () {
         });
         return;
       }
+      if (attempt === 1) yield* closeThreadBrowserTabs(threadId);
       const terminalCleanupSucceeded = yield* closeThreadTerminals(
         threadId,
         false,

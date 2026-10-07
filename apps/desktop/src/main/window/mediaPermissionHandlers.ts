@@ -1,4 +1,5 @@
 import { session, systemPreferences, type BrowserWindow } from "electron";
+import { BROWSER_PARTITION } from "../../browser/browserTab";
 import { isClipboardWritePermission } from "./clipboardPermissions";
 import { isTrustedMediaPermissionRequest } from "./mediaPermissions";
 export function configureMediaPermissions(getMainWindow: () => BrowserWindow | null): void {
@@ -11,7 +12,15 @@ export function configureMediaPermissions(getMainWindow: () => BrowserWindow | n
       targetSession: session.defaultSession,
       trustedRequester: trustedMainRenderer,
     },
+    {
+      // Browser pages are untrusted web origins. They must never inherit the microphone grant used by
+      // Glade's own voice-composer renderer, and the denial also covers geolocation, notifications
+      // and external protocol launches (Electron asks for "openExternal" before opening mailto:).
+      targetSession: session.fromPartition(BROWSER_PARTITION),
+      trustedRequester: () => null,
+    },
   ];
+  session.fromPartition(BROWSER_PARTITION).setDevicePermissionHandler(() => false);
 
   for (const { targetSession, trustedRequester } of permissionTargets) {
     if (!targetSession) continue;

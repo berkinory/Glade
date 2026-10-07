@@ -12,18 +12,36 @@ import { browserUrlBlockReason } from "./browserUrlPolicy";
 const DEFAULT_BOUNDS = { x: 0, y: 0, width: 1280, height: 800 };
 const CHANGE_DEBOUNCE_MS = 100;
 
+// Every folder below the workspace is created or checked without following links, so a symlinked
+// `.glade` or `downloads` cannot send a page's download outside the workspace.
 function downloadTarget(workspaceDir: string, suggested: string): string {
-  const directory = Path.join(workspaceDir, ".glade", "downloads");
-  FS.mkdirSync(directory, { recursive: true });
-  const ignore = Path.join(directory, ".gitignore");
-  if (!FS.existsSync(ignore)) FS.writeFileSync(ignore, "*\n");
+  let directory = FS.realpathSync(workspaceDir);
+  for (const part of [".glade", "downloads"]) {
+    directory = Path.join(directory, part);
+    FS.mkdirSync(directory, { recursive: true });
+    if (!FS.lstatSync(directory).isDirectory()) {
+      throw new Error(`${directory} is not a plain folder.`);
+    }
+  }
+  writeExclusive(Path.join(directory, ".gitignore"), "*\n");
   const base = Path.basename(suggested).replace(/[\u0000-\u001f<>:"/\\|?*]/gu, "_") || "download";
   const { name, ext } = Path.parse(base);
-  let candidate = Path.join(directory, base);
-  for (let index = 1; FS.existsSync(candidate); index += 1) {
-    candidate = Path.join(directory, `${name} (${index})${ext}`);
+  // Reserving the name with an exclusive create keeps two downloads from claiming the same file.
+  for (let index = 0; ; index += 1) {
+    const candidate = Path.join(directory, index === 0 ? base : `${name} (${index})${ext}`);
+    if (writeExclusive(candidate, "")) return candidate;
   }
-  return candidate;
+}
+
+// Fails on any existing entry, including a dangling symlink, instead of writing through it.
+function writeExclusive(path: string, contents: string): boolean {
+  try {
+    FS.writeFileSync(path, contents, { flag: "wx" });
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EEXIST") return false;
+    throw error;
+  }
 }
 
 // Owns every agent browser tab. Tabs belong to exactly one thread; callers pass the thread from
@@ -96,6 +114,15 @@ export class BrowserTabs {
     tab.destroy();
   }
 
+  closeThread(threadId: ThreadId): number {
+    const closing = this.list(threadId);
+    for (const tab of closing) {
+      this.forget(tab);
+      tab.destroy();
+    }
+    return closing.length;
+  }
+
   // Sends the full list again, for a backend that just connected and has none.
   announce(): void {
     this.changed();
@@ -163,9 +190,19 @@ export class BrowserTabs {
       );
       return;
     }
-    const target = downloadTarget(tab.downloadDir, item.getFilename());
+    let target: string;
+    try {
+      target = downloadTarget(tab.downloadDir, item.getFilename());
+    } catch (error) {
+      item.cancel();
+      tab.addNotice(
+        `Canceled the download of ${item.getFilename()}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return;
+    }
     item.setSavePath(target);
     item.once("done", (_event, state) => {
+      if (state !== "completed") FS.rmSync(target, { force: true });
       tab.addNotice(
         state === "completed"
           ? `Downloaded ${target}.`

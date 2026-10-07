@@ -113,7 +113,12 @@ function makeServerRuntimeServicesLayer(
     Layer.provideMerge(checkpointReactorLayer),
     Layer.provideMerge(threadGitMetadataReactorLayer),
   );
+  const desktopHostLayers = Layer.mergeAll(
+    BrowserHostLive,
+    ComputerAccessLive.pipe(Layer.provideMerge(ComputerHostLive)),
+  ).pipe(Layer.provideMerge(DesktopHostClientLive), Layer.provideMerge(runtimeServicesLayer));
   const threadDeletionReactorLayer = ThreadDeletionReactorLive.pipe(
+    Layer.provideMerge(desktopHostLayers),
     Layer.provideMerge(profileStatsArchiveLayer),
     Layer.provideMerge(OrchestrationLayerLive),
     Layer.provideMerge(TerminalLayerLive),
@@ -144,10 +149,6 @@ function makeServerRuntimeServicesLayer(
   const gitActionRunsLayer = GitActionRunsLive.pipe(
     Layer.provide(Layer.mergeAll(GitLayerLive, sessionCredentialLayer)),
   );
-  const desktopHostLayers = Layer.mergeAll(
-    BrowserHostLive,
-    ComputerAccessLive.pipe(Layer.provideMerge(ComputerHostLive)),
-  ).pipe(Layer.provideMerge(DesktopHostClientLive), Layer.provideMerge(runtimeServicesLayer));
   const agentGatewayLayer = AgentGatewayLive.pipe(
     Layer.provideMerge(desktopHostLayers),
     // The same instance the provider command reactor writes; layers are shared by reference.

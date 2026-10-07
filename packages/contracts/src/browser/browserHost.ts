@@ -66,6 +66,8 @@ export const BROWSER_HOST_METHODS = {
   "browser.upload": scoped(BrowserUploadInput),
   "browser.console": scoped(BrowserConsoleInput),
   "browser.network": scoped(BrowserNetworkInput),
+  // Sent by the server when a thread is archived or deleted; closes every tab of the thread.
+  "browser.closeThread": scoped(Schema.Struct({})),
 } as const;
 export type BrowserHostMethod = keyof typeof BROWSER_HOST_METHODS;
 export type BrowserHostParams<M extends BrowserHostMethod> =

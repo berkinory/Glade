@@ -4,6 +4,7 @@ import {
   type BrowserHostParams,
   type BrowserHostResult,
 } from "@glade/contracts/browser/browserHost";
+import type { BrowserNavigateInput } from "@glade/contracts/browser/browserTools";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { Option, Schema } from "effect";
 import { BrowserFailure } from "./browserFailure";
@@ -17,6 +18,11 @@ import { readPageText } from "./cdp/pageText";
 import { captureScreenshot } from "./cdp/screenshot";
 import { findElements, takeSnapshot } from "./cdp/snapshot";
 
+// Each stays below the server's timeout for the same call: navigation waits up to 30 s for the
+// load, and settling actions up to 10 s after the input.
+const NAVIGATION_TIMEOUT_MS = 35_000;
+const SETTLING_TIMEOUT_MS = 17_000;
+
 type Handlers = {
   readonly [M in BrowserHostMethod]: (params: BrowserHostParams<M>) => Promise<BrowserHostResult>;
 };
@@ -28,13 +34,27 @@ export function createBrowserHostDispatch(
   // Panel calls answer without draining the notices the agent has not seen yet.
   const reply = (tab: BrowserTab, message: string, actor?: "user"): BrowserHostResult =>
     actor === "user" ? { page: tab.page(), text: message, notices: [] } : tab.result(message);
-  const text = async (tab: BrowserTab, operation: () => Promise<string>, actor?: "user") =>
-    reply(tab, await tab.run(operation, actor === "user"), actor);
-  const withSettle = (tab: BrowserTab, operation: () => Promise<string>) => async () => {
-    const message = await operation();
-    await settleAfterAction(tab);
-    return message;
-  };
+  const text = async (
+    tab: BrowserTab,
+    operation: () => Promise<string>,
+    actor?: "user",
+    timeoutMs?: number,
+  ) => reply(tab, await tab.run(operation, { byUser: actor === "user", timeoutMs }), actor);
+  const settled = async (tab: BrowserTab, operation: () => Promise<string>) =>
+    text(
+      tab,
+      async () => {
+        const message = await operation();
+        await settleAfterAction(tab);
+        return message;
+      },
+      undefined,
+      SETTLING_TIMEOUT_MS,
+    );
+  const navigated = (
+    tab: BrowserTab,
+    params: typeof BrowserNavigateInput.Type & { readonly actor?: "user" | undefined },
+  ) => text(tab, () => navigate(tab, params, gladePorts()), params.actor, NAVIGATION_TIMEOUT_MS);
   const tabFor = (params: { readonly threadId: ThreadId; readonly tabId?: string | undefined }) =>
     tabs.resolve(params.threadId, params.tabId);
 
@@ -43,7 +63,7 @@ export function createBrowserHostDispatch(
       if (params.action === "open") {
         const tab = await tabs.open(params.threadId, params.workspaceDir);
         if (!params.url) return reply(tab, `Opened ${tab.id}.`, params.actor);
-        return text(tab, () => navigate(tab, params, gladePorts()), params.actor);
+        return navigated(tab, params);
       }
       if (params.action === "close") tabs.close(params.threadId, params.tabId);
       if (params.action === "select") {
@@ -65,7 +85,7 @@ export function createBrowserHostDispatch(
         params.tabId === undefined && tabs.activeId(params.threadId) === undefined
           ? await tabs.open(params.threadId, params.workspaceDir)
           : tabFor(params);
-      return text(tab, () => navigate(tab, params, gladePorts()), params.actor);
+      return navigated(tab, params);
     },
     "browser.snapshot": async (params) => {
       const tab = tabFor(params);
@@ -81,10 +101,7 @@ export function createBrowserHostDispatch(
     },
     "browser.click": async (params) => {
       const tab = tabFor(params);
-      return text(
-        tab,
-        withSettle(tab, () => click(tab.cdp, tab.refs, params)),
-      );
+      return settled(tab, () => click(tab.cdp, tab.refs, params));
     },
     "browser.hover": async (params) => {
       const tab = tabFor(params);
@@ -93,14 +110,11 @@ export function createBrowserHostDispatch(
     "browser.type": async (params) => {
       const tab = tabFor(params);
       const type = () => typeText(tab.cdp, tab.refs, params);
-      return text(tab, params.submit ? withSettle(tab, type) : type);
+      return params.submit ? settled(tab, type) : text(tab, type);
     },
     "browser.press": async (params) => {
       const tab = tabFor(params);
-      return text(
-        tab,
-        withSettle(tab, () => press(tab.cdp, params)),
-      );
+      return settled(tab, () => press(tab.cdp, params));
     },
     "browser.select": async (params) => {
       const tab = tabFor(params);
@@ -134,6 +148,11 @@ export function createBrowserHostDispatch(
       const tab = tabFor(params);
       return text(tab, () => tab.buffers.readNetwork(params));
     },
+    "browser.closeThread": async (params) => ({
+      page: null,
+      text: `Closed ${tabs.closeThread(params.threadId)} tabs.`,
+      notices: [],
+    }),
   };
 
   return async (method, rawParams) => {

@@ -59,15 +59,21 @@ while the user is clicking or typing in the page. Tab state reaches the web thro
 - Blocked by host policy, not the model: `file:`, `chrome:`, `chrome-extension:`, `devtools:`,
   `view-source:` and `javascript:` URLs, and Glade's own backend and dev UI ports on loopback. The
   check runs on every request of the browser partition, so redirects, frames and fetches are
-  covered. Other loopback ports stay reachable for testing local dev servers.
+  covered. Every loopback spelling counts (`localhost.`, `127.1`, `0.0.0.0`, IPv4-mapped IPv6).
+  Other loopback ports stay reachable for testing local dev servers.
+- Pages get no permissions: microphone, camera, geolocation, notifications, devices and external
+  protocol launches (`mailto:` and app links) are all denied.
 - There is no credential vault. When a page needs a sign-in, the agent says so and the user signs
   in inside the panel; credentials never pass through Glade or the model.
 - Page dialogs are disabled: Electron dismisses them and the tool result reports what the page
   asked. `browser_dialog` arms a one-shot answer for the next alert, confirm or prompt, and the
   agent repeats its action. The panel offers no dialog prompts.
-- Downloads go to `<workspace>/.glade/downloads/`. Uploads accept only regular files inside the chat
-  workspace. Popups open as tabs and keep `window.opener`, so sign-in popups work.
+- Downloads go to `<workspace>/.glade/downloads/`; a symlinked `.glade` or `downloads` folder
+  cancels them. Uploads accept only regular files inside the chat workspace. Popups open as tabs and keep `window.opener`, so sign-in popups work.
 - Console and network logs are ring buffers of 500 entries per tab, read on demand.
+- Each call on a tab gets 12 s (longer for navigation and settling actions). A page that stops
+  answering has its script terminated, or is crashed and reloaded if it keeps blocking.
+- Archiving or deleting a chat closes its tabs.
 - Out-of-process iframes can be read and clicked but not picked. Keyboard shortcuts do not reach
   Glade while focus is inside a page.
 

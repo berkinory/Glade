@@ -7,8 +7,18 @@ const BLOCKED_SCHEMES = new Set([
   "javascript:",
 ]);
 
+// WHATWG URL parsing already folds IPv4 shorthand (127.1, 0x7f.1, 2130706433, 0) into dotted form
+// and writes IPv4-mapped IPv6 in hex ([::ffff:7f00:1]), so only that form needs decoding.
+function embeddedIpv4(host: string): string {
+  const mapped = /^\[::(?:ffff:)?([0-9a-f]{1,4}):([0-9a-f]{1,4})\]$/u.exec(host);
+  if (!mapped) return host;
+  const high = Number.parseInt(mapped[1]!, 16);
+  const low = Number.parseInt(mapped[2]!, 16);
+  return [high >> 8, high & 255, low >> 8, low & 255].join(".");
+}
+
 function isLoopbackHost(hostname: string): boolean {
-  const host = hostname.toLowerCase();
+  const host = embeddedIpv4(hostname.toLowerCase().replace(/\.+$/u, ""));
   return (
     host === "localhost" ||
     host.endsWith(".localhost") ||

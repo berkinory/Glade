@@ -46,6 +46,7 @@ export class BrowserTab {
       const mainFrameCommit =
         method === "Page.frameNavigated" && sessionId === undefined && !params.frame.parentId;
       if (mainFrameCommit || method === "Glade.detached") this.refs.invalidate();
+      if (method === "Target.detachedFromTarget") this.refs.dropSession(params.sessionId);
     });
     // CDP input arrives through the same pipeline, so only input outside agent operations counts.
     webContents.on("input-event", (_event, input) => {
@@ -75,17 +76,20 @@ export class BrowserTab {
 
   // Runs one operation on this tab: serialized, attached, and for agent calls after a short pause
   // for a human who is using the tab.
-  run<T>(operation: () => Promise<T>, byUser = false): Promise<T> {
-    return this.cdp.exclusive(async () => {
-      await this.cdp.ensureAttached();
-      if (!byUser) await this.waitForHumanQuiet();
-      this.agentActing = true;
-      try {
-        return await operation();
-      } finally {
+  run<T>(
+    operation: () => Promise<T>,
+    options: { readonly byUser?: boolean; readonly timeoutMs?: number | undefined } = {},
+  ): Promise<T> {
+    return this.cdp
+      .exclusive(async () => {
+        await this.cdp.ensureAttached();
+        if (!options.byUser) await this.waitForHumanQuiet();
+        this.agentActing = true;
+        return operation();
+      }, options.timeoutMs)
+      .finally(() => {
         this.agentActing = false;
-      }
-    });
+      });
   }
 
   destroy(): void {

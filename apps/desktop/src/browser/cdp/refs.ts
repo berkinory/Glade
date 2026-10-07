@@ -9,6 +9,9 @@ const STALE =
   "is stale or unknown. Take a new browser_snapshot (or browser_find) and use its refs.";
 
 const MAX_LABEL_NAME = 60;
+// The last two cover an out-of-process frame whose target or session is already gone.
+const STALE_NODE_ERROR =
+  /No node|Could not find node|Node is detached|No target with given id|Session with given id not found/iu;
 
 // Refs are stable for one document: the same node keeps its ref across snapshots until the main
 // frame commits a navigation or the debugger reattaches.
@@ -50,6 +53,16 @@ export class RefTable {
     return target;
   }
 
+  // An out-of-process frame that navigated or went away takes its nodes with its session.
+  dropSession(sessionId: string): void {
+    for (const [ref, target] of this.byRef) {
+      if (target.sessionId !== sessionId) continue;
+      this.byRef.delete(ref);
+      this.byKey.delete(`${sessionId}:${target.backendNodeId}`);
+      this.labels.delete(ref);
+    }
+  }
+
   invalidate(): void {
     this.byRef.clear();
     this.byKey.clear();
@@ -62,7 +75,7 @@ export class RefTable {
 export function rethrowStaleNode(ref: string) {
   return (error: unknown): never => {
     const message = error instanceof Error ? error.message : String(error);
-    if (/No node|Could not find node|Node is detached|No target with given id/iu.test(message)) {
+    if (STALE_NODE_ERROR.test(message)) {
       throw new BrowserFailure("stale_ref", `Ref ${ref} ${STALE}`);
     }
     throw error;
