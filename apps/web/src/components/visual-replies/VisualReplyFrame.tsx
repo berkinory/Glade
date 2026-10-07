@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   visualReplyDocument,
   visualReplyThemeForAppearance,
@@ -56,7 +56,8 @@ export function VisualReplyFrame({
     });
     return () => observer.disconnect();
   }, []);
-  useEffect(() => {
+  // A fast page can report its size before passive effects run.
+  useLayoutEffect(() => {
     const receive = (event: MessageEvent) => {
       if (
         event.source !== frame.current?.contentWindow ||

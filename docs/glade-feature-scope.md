@@ -181,10 +181,10 @@ use managed attachment quotas and cleanup. Activity history caps preserve visual
 reply references. The authenticated source endpoint serves plain text; generic HTML
 attachments download with a restrictive sandbox policy.
 
-Inline visuals use a transparent canvas with no default body padding and rounded frame corners when content paints a background. Agents keep the outer page unframed and use intentional themed inner surfaces; live theme variables include surfaces, controls, categorical chart colors, radius and monospace typography.
+Inline visuals use a transparent canvas with no default body padding and rounded frame corners when content paints a background. Agents keep the outer page unframed and use intentional themed inner surfaces with at least 16 pixels of padding; live theme variables include surfaces, controls, categorical chart colors, radius and monospace typography.
 Published replies retain the requested height and optional width measurements. Inline height uses the larger measurement bracketing the current width until the iframe reports its live content height. An explicitly shorter height scrolls; otherwise narrow layouts may grow up to 2000 pixels. Existing replies without measurements still use live sizing.
 Preview defaults to dark at a 728-pixel width, supports an explicit light appearance, and crops screenshots to content within the requested height.
-Inline visuals blend into the transcript; save and expand icons appear on hover or keyboard focus (always on touch screens). The expanded dialog retains its toolbar.
+Inline visuals load when first visible and stay mounted when scrolled offscreen, preserving in-memory edits. Inline visuals blend into the transcript; save and expand icons appear on hover or keyboard focus (always on touch screens). The expanded dialog retains its toolbar.
 Visuals run their local scripts immediately in an opaque iframe with no same-origin
 access, popups, form submission, downloads or host bridge. Inline height follows content between 80 and 2000 pixels, with internal scrolling beyond that limit. Expanded views use a fixed viewport. View and expanded modes render the
 original HTML at display resolution in the application theme; PNG previews are for

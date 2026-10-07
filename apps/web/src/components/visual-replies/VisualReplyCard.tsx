@@ -43,8 +43,10 @@ export function VisualReplyCard({
     const element = container.current;
     if (!element) return;
     const observer = new IntersectionObserver((entries) => {
-      const inView = entries.some((entry) => entry.isIntersecting);
-      setVisible(inView);
+      if (!entries.some((entry) => entry.isIntersecting)) return;
+      // Leaving the viewport must not discard edits held inside the sandbox.
+      setVisible(true);
+      observer.disconnect();
     });
     observer.observe(element);
     return () => observer.disconnect();
