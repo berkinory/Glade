@@ -67,6 +67,8 @@ export function useTimelineNavigationController({
 
   const jumpHighlightTimeoutRef = useRef<number | null>(null);
 
+  const scrollbarHideTimeoutRef = useRef<number | null>(null);
+
   const findFineScrollFrameRef = useRef<number | null>(null);
 
   useEffect(
@@ -77,8 +79,11 @@ export function useTimelineNavigationController({
       if (findFineScrollFrameRef.current !== null) {
         window.cancelAnimationFrame(findFineScrollFrameRef.current);
       }
+      if (scrollbarHideTimeoutRef.current !== null) {
+        window.clearTimeout(scrollbarHideTimeoutRef.current);
+      }
     },
-    [jumpHighlightTimeoutRef, findFineScrollFrameRef],
+    [jumpHighlightTimeoutRef, findFineScrollFrameRef, scrollbarHideTimeoutRef],
   );
 
   useEffect(() => {
@@ -346,6 +351,17 @@ export function useTimelineNavigationController({
   const handleListScroll = useCallback<NonNullable<MessagesTimelineProps["onMessagesScroll"]>>(
     (event) => {
       onMessagesScroll?.(event);
+      const scrollNode = resolvedListRef.current?.getScrollableNode?.();
+      if (scrollNode instanceof HTMLElement) {
+        scrollNode.dataset.scrolling = "true";
+        if (scrollbarHideTimeoutRef.current !== null) {
+          window.clearTimeout(scrollbarHideTimeoutRef.current);
+        }
+        scrollbarHideTimeoutRef.current = window.setTimeout(() => {
+          scrollbarHideTimeoutRef.current = null;
+          delete scrollNode.dataset.scrolling;
+        }, 700);
+      }
       const state = readLegendListState(resolvedListRef);
       if (!state) {
         return;
@@ -374,6 +390,7 @@ export function useTimelineNavigationController({
       resolvedListRef,
       tailExpansionScrollSuppressedRef,
       listScrollFrameRef,
+      scrollbarHideTimeoutRef,
     ],
   );
 

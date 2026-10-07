@@ -674,6 +674,21 @@ input {
   background-color: rgba(255, 255, 255, 0.14);
 }
 
+/* The transcript scrollbar shows only while scrolling; the navigation controller
+   sets data-scrolling on scroll and clears it shortly after. */
+[data-chat-scroll-container]::-webkit-scrollbar-thumb,
+.dark [data-chat-scroll-container]::-webkit-scrollbar-thumb {
+  background-color: transparent;
+}
+
+[data-chat-scroll-container][data-scrolling]::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.dark [data-chat-scroll-container][data-scrolling]::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.07);
+}
+
 .turn-chip-strip {
   scrollbar-width: none;
   -ms-overflow-style: none;
