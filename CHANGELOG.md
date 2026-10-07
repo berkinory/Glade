@@ -15,6 +15,7 @@
 - Browser Use handles custom dropdowns and autocompletes, scrolls sidebars and long lists, waits for toasts and slow results, says where downloads were saved, and asks you to complete CAPTCHAs in the panel instead of attempting them.
 - Computer Use tells agents what each action changed, stops them from repeating actions that do nothing, waits while you are using the mouse or keyboard, keeps browsers read-only and terminals click-only unless you grant full control, and can be stopped everywhere at once with Control-Option-Command-Escape (Control-Alt-Shift-Escape on Windows and Linux).
 - Computer Use saves and opens files through macOS Open and Save panels in one step without overwriting existing files, recovers from misspelled menu commands, and reads app windows with far fewer tokens.
+- Computer Use can launch apps that are not running and open files, folders or web links in them.
 - Claude chats load core Glade tools automatically and discover other tools as needed, reducing context usage.
 
 - Subagent rows use stable names instead of Claude task descriptions, show model names or aliases without extra labels, and keep task prompts, agent types and redundant background-agent banners out of the compact panels.

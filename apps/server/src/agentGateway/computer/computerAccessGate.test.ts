@@ -248,6 +248,14 @@ describe("computer access gate", () => {
     ],
     ["a browser can still be read", "browser", "read", "computer_window_state", {}, undefined],
     [
+      "a browser is never launched with pages to open",
+      "browser",
+      "full",
+      "computer_open_app",
+      { app: "Safari", open: ["https://example.com"] },
+      "browser_read_only",
+    ],
+    [
       "a terminal refuses typing under act",
       "terminal",
       "act",

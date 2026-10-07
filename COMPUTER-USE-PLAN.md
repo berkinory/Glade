@@ -126,7 +126,7 @@ Action results are one line plus URL and title. They never embed a fresh snapsho
 
 Two layers over the same Cua connection.
 
-1. _Structured_ (primary): `computer_apps` (running apps and windows), `computer_window_state` (accessibility tree for a window, screenshot only when `include_screenshot: true`), `computer_act` (click, type, press, scroll, set value, menu, by `element_token` with `delivery: background | foreground`), `computer_request_access` (asks the user to grant an app or window), `computer_stop`.
+1. _Structured_ (primary): `computer_apps` (running apps and windows), `computer_open_app` (launch or reuse an app, optionally opening files or URLs in it; see 8h), `computer_window_state` (accessibility tree for a window, screenshot only when `include_screenshot: true`), `computer_act` (click, type, press, scroll, set value, menu, by `element_token` with `delivery: background | foreground`), `computer_request_access` (asks the user to grant an app or window), `computer_stop`.
 2. _Pixel_ (fallback, Anthropic-shaped vocabulary): `computer_screenshot`, `computer_zoom`, `computer_left_click`, `computer_right_click`, `computer_double_click`, `computer_triple_click`, `computer_left_click_drag`, `computer_mouse_move`, `computer_scroll`, `computer_type`, `computer_key`, `computer_hold_key`, `computer_wait`. Coordinates are in the pixel space of the last returned screenshot; screenshots are downscaled before they leave the server, with a per-turn runaway cap (Phase 10).
 
 Guidance in `harnessPolicy.ts` says: prefer structured, screenshot only after an `unverifiable` or `refused` effect or when the tree lacks the target, zoom before taking a higher-resolution screenshot.
@@ -574,6 +574,12 @@ Measured on the same scripted TextEdit run through the real tool handlers, HEAD 
 Live (Dev app via `open`, isolated `GLADE_HOME`, port offset 40; a scratch script driving the real handlers against the live daemon with in-memory full-access grants and no idle reading): TextEdit save into a scratch folder in one call (file on disk, title changed, Rich Text format picked); the same name again refused with `file_exists`, then replaced with `overwrite: true`; Preview open of a PDF in one call (7.3 s, new window); `"format > font > bold ⌘B"` ran Format ▸ Font ▸ Bold; `"File → Sav"` and `["Fiel", "Save"]` refused with the File menu's and the menu bar's titles. Not exercised: a provider turn, the access card, the user-activity yield with a real idle reading, Open panels hosted as sheets, non-English panels, and Windows or Linux (the tool assumes the macOS panel).
 
 Found during probing: a desktop-scoped key sent after focus had moved to another app lands in that app (two probe Returns reached the Claude app), which is why the tool checks the frontmost pid right before each key.
+
+## 8h. Launching apps (2026-10-07, macOS arm64)
+
+Revision to the computer tool surface (section 3): benchmark agents stopped after `computer_apps` whenever TextEdit or Preview was not running, since no tool could start an app (Claude's own computer use has `open_application`). `computer_open_app` takes `app` (name or bundle id) and optional `open` targets and calls Cua's `launch_app` in the background, reusing a running app. It needs `act` through the usual grant gate; a browser is never handed targets (`browser_read_only`, one gate-table case), and terminals and IDEs launch but keep the click-only tier for later input. Targets are existing absolute paths, `file:` URLs or http(s) URLs only, so no other URL handler is ever fired. The result reports the app, pid and window count, waits up to 5 s for a window per target and lists titles inside `APP_CONTENT`. Guidance gained one line pointing to it, including passing a document in `open` instead of driving the Open panel.
+
+Cua 0.34 implements `launch_app` on all three platforms, but on Windows (`ShellExecuteEx`) and Linux (`xdg-open`, which replaces the launch) `urls` go to the system default handler rather than the named app, so `open` is refused there with `unsupported_platform` and only the launch runs. Not verified live yet: the benchmark agent runs it against the Dev app.
 
 ## 9. Open items
 

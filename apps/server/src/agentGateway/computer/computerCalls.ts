@@ -143,6 +143,21 @@ export const callCua = (
     ),
   );
 
+// The app's own windows as Cua lists them now.
+export const appWindows = (services: ComputerToolServices, context: ToolContext, pid: number) =>
+  callCua(services, context, "list_windows", { pid }).pipe(
+    Effect.map((result) =>
+      Schema.decodeUnknownOption(CuaListWindows)(result.structuredContent).pipe(
+        Option.map((value) => value.windows.filter((window) => window.pid === pid)),
+        Option.getOrElse((): ReadonlyArray<CuaWindow> => []),
+      ),
+    ),
+  );
+
+// One window as computer_apps and computer_open_app list it, inside an APP_CONTENT block.
+export const windowSummary = (window: CuaWindow) =>
+  `window ${window.window_id} ${JSON.stringify(window.title)}${window.is_on_screen ? "" : " (off screen)"}${window.minimized ? " (minimized)" : ""}`;
+
 const requireComputerUse = (services: ComputerToolServices, context: ToolContext) =>
   isComputerUseOn(services, context.callerThreadId)
     ? Effect.void

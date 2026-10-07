@@ -71,7 +71,8 @@ connection and every policy decision, and providers only see gateway tools.
   `set_value` and menus need `full`.
 - Calls outside a grant return typed errors the model can read (`computer_use_off`,
   `window_not_found`, `access_required`, `browser_read_only`, `click_only`, `unknown_element`,
-  `no_progress`, `user_active`, `menu_item_not_found`, `file_exists`, `stopped`, or Cua's own
+  `no_progress`, `user_active`, `menu_item_not_found`, `file_exists`, `app_not_found`,
+  `unsupported_target`, `target_not_found`, `unsupported_platform`, `stopped`, or Cua's own
   code).
 - Stop (or the turn interrupt) cancels in-flight Cua calls, refuses the rest of that turn and ends
   the chat's Cua session, which releases held input. Cua holds no keys or buttons between calls
@@ -89,11 +90,26 @@ connection and every policy decision, and providers only see gateway tools.
 
 ## Tools
 
-Structured (preferred): `computer_apps`, `computer_window_state` (accessibility tree, screenshot
+Structured (preferred): `computer_apps`, `computer_open_app`, `computer_window_state` (accessibility tree, screenshot
 only on request), `computer_act` (click, type, keys, scroll, set value, menu by element index, with
 background or foreground delivery), `computer_file_dialog` (a macOS Open or Save panel in one call),
 `computer_verify` (Cua's `verify_state`: waits up to 10 s for element conditions with stable
 samples), `computer_request_access`, `computer_stop`.
+
+`computer_open_app` takes an app name or bundle id (resolved through Cua's `list_apps`, which also
+lists installed apps that are not running) and optional `open` targets, and calls Cua's
+`launch_app` in the background. An app that is already running is reused: the targets open in it.
+Targets must be absolute paths that exist (or `file:` URLs) or http(s) URLs; every other scheme
+(`x-apple…`, `javascript:`, `tel:`, custom handlers) is refused with `unsupported_target`, so a
+launch never fires a URL handler. The call needs `act` on the app through the same grant gate as
+every other tool. Browsers can be launched but never handed targets (`browser_read_only`, pointing
+to the `browser_*` tools); terminals and IDEs launch normally and their later input still meets the
+click-only tier. The result names the app, its pid and window count, then waits up to 5 s for a
+window per target (titled with the file or folder name, or new for a URL) and says which window
+each target opened in; window titles are listed inside `APP_CONTENT`. Opening targets is
+macOS-only: Cua 0.34 on Windows and Linux hands `urls` to the system's default handler (the
+default browser, `xdg-open`) instead of the named app, so there the call refuses `open` with
+`unsupported_platform` and only launches.
 
 Menus: `computer_act` `menu` takes the path as an array or one string with `>`, `▸` or `→`. Cua's
 `invoke_menu` matches titles exactly except `...` for `…`, so Glade retries a segment Cua cannot
@@ -196,13 +212,15 @@ See [dependency maintenance](dependencies.md#cua-driver).
 1. `bun run build:desktop` (fetches and verifies the driver) and `bun run check`.
 2. Contract and trust tests: `apps/server/src/computer/cuaResults.test.ts` decodes fixtures
    captured from the pinned release; `apps/server/src/agentGateway/computer/computerAccessGate.test.ts`
-   covers the grant gate, the app category tiers (including the file dialog's full-control rule) and
+   covers the grant gate, the app category tiers (including the file dialog's full-control rule and
+   the browser launch rule) and
    the progress guard.
 3. Launch the Dev app through LaunchServices, grant both permissions, and confirm Settings shows the
    driver ready. Turn on `/computer` in a chat, grant TextEdit and ask the agent to type a sentence
    and read it back, then exercise a screenshot and zoom. Save the document into a scratch folder
    with `computer_file_dialog`, once more under the same name (refused with `file_exists`), and open
-   a PDF in Preview with it.
+   a PDF in Preview with it. Quit Preview and open the PDF with `computer_open_app` (launched, the
+   target's window confirmed), again while it runs (reused), and try a `tel:` target (refused).
 4. Kill the `cua-driver` process: Settings recovers with a new generation within a few seconds.
    Quitting Glade stops the daemon and the proxy.
 5. While an agent works in TextEdit, press the kill switch: the turn stops as with Stop. Ask for

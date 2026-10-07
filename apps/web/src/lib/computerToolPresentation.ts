@@ -13,6 +13,7 @@ import {
 
 const COMPUTER_TOOL_WORDING = {
   computer_apps: ["Listing apps", "Listed apps", "list apps"],
+  computer_open_app: ["Opening", "Opened", "open the app"],
   computer_window_state: ["Reading window", "Read window", "read the window"],
   computer_act: ["Using app", "Used app", "use the app"],
   computer_request_access: ["Requesting access", "Requested access", "get access"],
@@ -203,6 +204,24 @@ export function describeComputerToolCall(call: GatewayToolCall): GatewayToolPres
           : COMPUTER_TOOL_WORDING.computer_apps,
         call,
         null,
+      );
+    }
+    case "computer_open_app": {
+      // `Opened TextEdit`, `Opened bench.pdf · Preview`; a bundle id argument gives way to the
+      // app name the result reports.
+      const app =
+        (call.output ? computerToolTarget(call.output)?.app : null) ?? stringArg(args, "app");
+      const opened = Array.isArray(args.open)
+        ? args.open.filter((entry): entry is string => typeof entry === "string")
+        : [];
+      const first = opened[0]?.split(/[\\/]/u).findLast(Boolean) ?? opened[0];
+      const what = first
+        ? shortPreview(opened.length > 1 ? `${first} +${opened.length - 1}` : first)
+        : app;
+      return presentGatewayToolCall(
+        COMPUTER_TOOL_WORDING.computer_open_app,
+        call,
+        first ? previewAt(what, app) : what,
       );
     }
     case "computer_verify":

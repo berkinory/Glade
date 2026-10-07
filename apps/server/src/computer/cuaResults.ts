@@ -51,6 +51,13 @@ export const CuaListApps = Schema.Struct({
   ),
 });
 
+// launch_app also returns the app's windows; Glade lists them itself while it waits for targets.
+export const CuaLaunchedApp = Schema.Struct({
+  pid: Schema.Int,
+  name: Schema.String,
+  bundle_id: NullableString,
+});
+
 export const CuaElement = Schema.Struct({
   element_index: Schema.Int,
   element_token: Schema.String,

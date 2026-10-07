@@ -16,11 +16,13 @@ import {
   refuse,
   windowFor,
   windowLine,
+  windowSummary,
   type ComputerToolServices,
 } from "./computerCalls.ts";
 import { renderElements, sheetLines } from "./elementText.ts";
 import { makeFileDialogTool } from "./fileDialogTool.ts";
 import { invokeMenu } from "./menuInvoke.ts";
+import { makeOpenAppTool } from "./openAppTool.ts";
 import { makeVerifyTool } from "./verifyTool.ts";
 import { readWindow } from "./windowRead.ts";
 
@@ -198,10 +200,7 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
           });
           const own = windows
             .filter((window) => window.pid === app.pid)
-            .map(
-              (window) =>
-                `  window ${window.window_id} ${JSON.stringify(window.title)}${window.is_on_screen ? "" : " (off screen)"}${window.minimized ? " (minimized)" : ""}`,
-            );
+            .map((window) => `  ${windowSummary(window)}`);
           return [
             `${app.name} pid ${app.pid}${app.active ? " (frontmost)" : ""}${CATEGORY_NOTE[category]}`,
             ...own,
@@ -385,6 +384,7 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
 
   return [
     apps,
+    makeOpenAppTool(services),
     windowState,
     act,
     makeFileDialogTool(services),

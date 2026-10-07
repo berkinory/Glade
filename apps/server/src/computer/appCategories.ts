@@ -176,3 +176,17 @@ export function categoryRefusal(
   }
   return null;
 }
+
+// Why launching the app with open targets is refused, or null when it may go ahead. Any app may be
+// launched (later input still meets categoryRefusal), but a browser is never handed pages or
+// files: web work goes through Browser Use.
+export function launchRefusal(
+  app: AppIdentity,
+  opensTargets: boolean,
+): { readonly code: string; readonly message: string } | null {
+  if (!opensTargets || appCategory(app) !== "browser") return null;
+  return {
+    code: "browser_read_only",
+    message: `${app.name} is a web browser, so Computer Use does not open pages or files in it. Use the browser_* tools in Glade's own browser instead.`,
+  };
+}

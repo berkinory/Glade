@@ -1,12 +1,13 @@
-import { Effect, Option, Schema } from "effect";
+import { Effect, Schema } from "effect";
 import * as FS from "node:fs/promises";
 
-import { CuaListWindows, type CuaWindow } from "../../computer/cuaResults.ts";
+import type { CuaWindow } from "../../computer/cuaResults.ts";
 import type { IndexedElement } from "../../computer/windowSnapshots.ts";
 import type { ToolContext, ToolEntry } from "../toolRuntime.ts";
 import { yieldToUser } from "./computerActions.ts";
 import {
   appContent,
+  appWindows,
   callCua,
   callCuaResult,
   callerThread,
@@ -128,16 +129,6 @@ export const makeFileDialogTool = (services: ComputerToolServices): ToolEntry =>
       ).pipe(Effect.ensuring(Effect.sync(() => services.access.tasks.markRealInput())));
     });
 
-  const windowsOf = (context: ToolContext, pid: number) =>
-    callCua(services, context, "list_windows", { pid }).pipe(
-      Effect.map((result) =>
-        Schema.decodeUnknownOption(CuaListWindows)(result.structuredContent).pipe(
-          Option.map((value) => value.windows.filter((window) => window.pid === pid)),
-          Option.getOrElse((): ReadonlyArray<CuaWindow> => []),
-        ),
-      ),
-    );
-
   // The window showing the panel: the given one, or a panel the app opens through its File menu
   // (a sheet on the same window, or a new standalone window).
   const openPanel = (context: ToolContext, input: FileDialogInput) =>
@@ -145,7 +136,9 @@ export const makeFileDialogTool = (services: ComputerToolServices): ToolEntry =>
       const given = { pid: input.pid, window_id: input.window_id };
       const first = yield* read(context, given);
       if (first.panel) return given;
-      const before = new Set((yield* windowsOf(context, input.pid)).map((w) => w.window_id));
+      const before = new Set(
+        (yield* appWindows(services, context, input.pid)).map((w) => w.window_id),
+      );
       for (const path of MENUS[input.action]) {
         const ran = yield* invokeMenu(services, context, given, path).pipe(
           Effect.as(true),
@@ -155,7 +148,7 @@ export const makeFileDialogTool = (services: ComputerToolServices): ToolEntry =>
         const deadline = Date.now() + SHEET_WAIT_MS;
         while (Date.now() < deadline) {
           if ((yield* read(context, given)).panel) return given;
-          for (const window of yield* windowsOf(context, input.pid)) {
+          for (const window of yield* appWindows(services, context, input.pid)) {
             if (before.has(window.window_id)) continue;
             const host = { pid: input.pid, window_id: window.window_id };
             yield* windowFor(services, context, host, { scope: "full", action: "input" });
@@ -315,7 +308,7 @@ export const makeFileDialogTool = (services: ComputerToolServices): ToolEntry =>
             Effect.catch(() => Effect.succeed(null)),
           )
         : null;
-      const windows = yield* windowsOf(context, input.pid);
+      const windows = yield* appWindows(services, context, input.pid);
       const now = windows.find((entry) => entry.window_id === window.window_id) ?? window;
       const verb = input.action === "save" ? "Saved" : "Opened";
       const fileLine =
