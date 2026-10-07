@@ -28,7 +28,6 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: read
-      actions: read
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -56,29 +55,6 @@ jobs:
           for key in CSC_LINK CSC_KEY_PASSWORD APPLE_API_KEY APPLE_API_KEY_ID APPLE_API_ISSUER APPLE_TEAM_ID; do
             if [[ -z "${!key}" ]]; then echo "::error::Missing macOS release secret: $key"; exit 1; fi
           done
-      - name: Require green main CI for this exact commit
-        if: env.PUBLISH_RELEASE == 'true'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          previous=""
-          for ((attempt=0; attempt<180; attempt++)); do
-            run="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&branch=main&event=push&per_page=20" \
-              --jq '.workflow_runs | sort_by(.created_at, .id) | reverse | .[0] | [.status, .conclusion] | @tsv')"
-            if [[ "$run" != "$previous" ]]; then
-              echo "Exact-commit main CI: ${run:-not found yet}"
-              previous="$run"
-            fi
-            case "$run" in
-              $'completed\tsuccess') echo "Exact-commit main CI passed."; exit 0 ;;
-              $'completed\t'*) echo "::error::Exact-commit main CI failed: $run"; exit 1 ;;
-            esac
-            sleep 10
-          done
-          echo "::error::No successful main CI run for release commit $GITHUB_SHA."
-          exit 1
       - uses: ./.github/actions/setup-workspace
         if: env.PUBLISH_RELEASE != 'true'
       - name: Run checks for unpublished manual builds
@@ -91,9 +67,36 @@ jobs:
           node scripts/check-windows-runtime-boundary.ts
           node scripts/check-migration-lineage.ts
 
+  # The web, server and Electron bundles are platform-independent, so every
+  # platform packages the same bytes. Build-time env such as
+  # AZURE_TRUSTED_SIGNING_SUBJECT_DN must be set on this job.
+  portable:
+    name: Build portable JavaScript
+    needs: checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: ./.github/actions/setup-workspace
+        with:
+          turbo: "true"
+      - name: Build desktop, server and web bundles
+        run: bun run build:desktop
+      - name: Upload portable bundles
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: portable-javascript
+          path: |
+            apps/desktop/dist-electron/
+            apps/server/dist/
+          if-no-files-found: error
+          retention-days: 1
+
   build:
     name: Build ${{ matrix.id }}
-    needs: checks
+    needs: portable
     strategy:
       fail-fast: false
       matrix:
@@ -141,13 +144,37 @@ jobs:
     name: Assemble release
     needs: [checks, build]
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 45
     permissions:
       contents: write
       actions: read
     steps:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      # Builds run alongside main CI; only publication waits for it.
+      - name: Require green main CI for this exact commit
+        if: env.PUBLISH_RELEASE == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          previous=""
+          for ((attempt=0; attempt<180; attempt++)); do
+            run="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&branch=main&event=push&per_page=20" \
+              --jq '.workflow_runs | sort_by(.created_at, .id) | reverse | .[0] | [.status, .conclusion] | @tsv')"
+            if [[ "$run" != "$previous" ]]; then
+              echo "Exact-commit main CI: ${run:-not found yet}"
+              previous="$run"
+            fi
+            case "$run" in
+              $'completed\tsuccess') echo "Exact-commit main CI passed."; exit 0 ;;
+              $'completed\t'*) echo "::error::Exact-commit main CI failed: $run"; exit 1 ;;
+            esac
+            sleep 10
+          done
+          echo "::error::No successful main CI run for release commit $GITHUB_SHA."
+          exit 1
       - uses: ./.github/actions/setup-node
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:

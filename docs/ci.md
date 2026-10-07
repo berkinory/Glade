@@ -5,8 +5,8 @@
 | Workflow            | Trigger                          | Responsibility                                                                                                                                              |
 | ------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ci.yml`            | Every PR and push to `main`      | Static checks, immutable migration lineage, full Linux unit suite, desktop build and Electron lifecycle, relevant Windows process checks, final status gate |
-| `release.yml`       | Version tags; manual             | Verify source and publication credentials, require exact-commit main CI, orchestrate four builds, assemble and publish verified artifacts                   |
-| `release-build.yml` | Called by release                | Build, verify startup and provenance, upload one platform's distribution assets                                                                             |
+| `release.yml`       | Version tags; manual             | Verify source and publication credentials, build portable bundles once, orchestrate four builds, require exact-commit main CI, publish verified artifacts   |
+| `release-build.yml` | Called by release                | Package the portable bundles, verify startup and provenance, upload one platform's distribution assets                                                      |
 | `sync-homebrew.yml` | Called after publication; manual | Dispatch the tap update and verify its version and architecture checksums                                                                                   |
 
 CI always reports `Format, Lint, Typecheck, Test, Browser Test, Build`. Documentation-only changes
@@ -25,7 +25,8 @@ Independent static checks and the web suite still report when an earlier check f
 
 Main CI keeps its complete checks: releases require its result for the exact source commit, and
 direct pushes must remain checked. Publication and an unpublished manual build have different gates:
-publication reuses main CI, while an unpublished build runs checks itself. Release concurrency never
+publication reuses main CI, while an unpublished build runs checks itself. Platform builds run while
+main CI is still running; only the publish job waits for its result. Release concurrency never
 cancels active publication. See [release instructions](release.md).
 
 ## Cache ownership
@@ -41,9 +42,10 @@ accelerate installation; they never replace dependency validation or check execu
 - Dependency keys include OS, architecture, lockfile, workspace manifests, toolchain pins, patches
   and setup action. Dependencies are saved before downloading Electron or generating build outputs.
   The redundant full Bun package archive and Electron-specific dependency trees are gone.
-- Main CI desktop build owns the Electron download cache and Turbo output cache. Releases may reuse
-  those outputs on a matching OS/architecture. Other architectures build cold until a compatible
-  producer exists; no cross-platform native cache reuse is allowed.
+- Main CI desktop build owns the Electron download cache and Turbo output cache. The release's
+  Linux portable job reuses those outputs, and every platform packages the same uploaded bundles.
+  Native modules are always built on their target platform; no cross-platform native cache reuse
+  is allowed.
 - Tests and typechecks remain uncached. Setup prints exact-hit information in each job's summary.
 
 Third-party actions are pinned to full commit SHAs. Dependabot groups weekly GitHub Actions updates.
