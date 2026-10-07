@@ -1,6 +1,6 @@
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { BrowserPanelCommand } from "@glade/contracts/transport/ws/browserRpc";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { isElectron } from "~/env";
 import { useDesktopTopBarWindowControlsGutterClassName } from "~/hooks/useDesktopTopBarGutter";
 import { disclosureWidthClassName } from "~/lib/disclosureMotion";
@@ -47,6 +47,13 @@ function BrowserPanelContent(props: { threadId: ThreadId; onClose: () => void })
   const [contentElement, setContentElement] = useState<HTMLDivElement | null>(null);
   const gutterClassName = useDesktopTopBarWindowControlsGutterClassName();
   const frozenFrame = useBrowserViewPlacement(threadId, activeTab?.tabId ?? null, contentElement);
+  // Only the first tab list after opening decides; closing the last tab later leaves it empty.
+  const checkedFirstList = useRef(false);
+  useEffect(() => {
+    if (tabs === null || checkedFirstList.current) return;
+    checkedFirstList.current = true;
+    if (tabs.length === 0) runCommand({ threadId, action: "open" });
+  }, [tabs, threadId]);
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
