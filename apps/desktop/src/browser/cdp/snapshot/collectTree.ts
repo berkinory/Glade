@@ -1,5 +1,5 @@
 import type { CdpSession } from "../cdpSession";
-import type { RefTable } from "../refs";
+import type { RefTable, RefTarget } from "../refs";
 import { PageLayout } from "./pageLayout";
 
 export interface SnapshotNode {
@@ -9,6 +9,9 @@ export interface SnapshotNode {
   readonly states: readonly string[];
   readonly ref: string | undefined;
   readonly interactive: boolean;
+  // For text: the element that renders it, which browser_find can hand out as a ref when no
+  // listed element contains the text.
+  readonly owner?: RefTarget;
   children: SnapshotNode[];
 }
 
@@ -154,10 +157,11 @@ async function collectDocument(
   const documentFrameId = root?.frameId ?? frameId;
   const frames: Array<{ holder: SnapshotNode; backendNodeId: number }> = [];
 
-  const convert = (node: AxNode): SnapshotNode[] => {
+  // `ownerId` is the nearest ancestor DOM node, ignored or flattened ones included.
+  const convert = (node: AxNode, ownerId: number | undefined): SnapshotNode[] => {
     const children = (node.childIds ?? []).flatMap((id) => {
       const child = byId.get(id);
-      return child ? convert(child) : [];
+      return child ? convert(child, node.backendDOMNodeId ?? ownerId) : [];
     });
     if (node.ignored) return children;
     const role = String(node.role?.value ?? "");
@@ -177,6 +181,9 @@ async function collectDocument(
               states: [],
               ref: undefined,
               interactive: false,
+              ...(ownerId === undefined
+                ? {}
+                : { owner: { backendNodeId: ownerId, sessionId, frameId: documentFrameId } }),
               children: [],
             },
           ]
@@ -238,7 +245,7 @@ async function collectDocument(
     return [out];
   };
 
-  const roots = root ? convert(root) : [];
+  const roots = root ? convert(root, undefined) : [];
   if (frameDepth >= MAX_FRAME_DEPTH) return roots;
   for (const frame of frames) {
     if (context.framesLeft <= 0) break;

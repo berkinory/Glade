@@ -5,6 +5,7 @@ import {
   BrowserClickInput,
   BrowserConsoleInput,
   BrowserDialogInput,
+  BrowserDragInput,
   BrowserEvaluateInput,
   BrowserFillInput,
   BrowserFindInput,
@@ -86,7 +87,7 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     title: "Read page text",
     readOnly: true,
     description:
-      "Readable text of the page's main content with headings marked, capped at maxChars (default 12000). For reading, not for acting.",
+      "Readable text of the page's main content, or of ref's subtree, with headings marked, capped at maxChars (default 12000). For reading, not for acting.",
   },
   browser_click: {
     method: "browser.click",
@@ -94,7 +95,7 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     title: "Click an element",
     readOnly: false,
     description:
-      "Click ref with real mouse events after scrolling it into view; count 2 double-clicks. Fails with covered when another element (a modal, a banner) would receive the click. Waits for a navigation it starts or for the page to settle, then reports what changed: URL or title, new elements, a dialog, a new tab, a download. Checkbox and radio clicks report the resulting state.",
+      "Click ref with real mouse events after scrolling it into view; count 2 double-clicks. Fails with covered when another element (a modal, a banner) would receive the click. Instead of ref, x and y click a point in the last browser_screenshot's pixels (viewport CSS px if none was taken), for targets without a ref like canvas content; it hits whatever is there. Waits for a navigation it starts or for the page to settle, then reports what changed: URL or title, new elements, a dialog, a new tab, a download. Checkbox and radio clicks report the resulting state.",
     action: true,
   },
   browser_hover: {
@@ -102,7 +103,17 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     input: BrowserHoverInput,
     title: "Hover an element",
     readOnly: false,
-    description: "Move the mouse over ref, for menus and tooltips.",
+    description:
+      "Move the mouse over ref, or over x and y as in browser_click, for menus and tooltips. The mouse stays there, so a hover menu stays open for the next snapshot and click.",
+    action: true,
+  },
+  browser_drag: {
+    method: "browser.drag",
+    input: BrowserDragInput,
+    title: "Drag an element",
+    readOnly: false,
+    description:
+      "Drag from one target to another, each {ref} or {x, y} as in browser_click. Works for HTML5 drag and drop and for pointer-driven drags (sliders, sortable lists).",
     action: true,
   },
   browser_type: {
@@ -156,7 +167,7 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     title: "Take a screenshot",
     readOnly: true,
     description:
-      "JPEG of the viewport, a ref or a region in CSS px, at most 1280 px on the long edge. For seeing layout and visuals; act through refs, not coordinates. Works while the browser panel is hidden.",
+      "JPEG of the viewport, a ref or a region in CSS px, at most 1280 px on the long edge. For seeing layout and visuals; prefer refs, and use its pixels as x and y only for targets without one. Works while the browser panel is hidden.",
   },
   browser_dialog: {
     method: "browser.dialog",

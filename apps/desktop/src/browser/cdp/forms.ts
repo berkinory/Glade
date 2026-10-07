@@ -118,7 +118,7 @@ async function replaceText(cdp: CdpSession, refs: RefTable, ref: string, text: s
   }
   await cdp
     .send("DOM.focus", { backendNodeId: target.backendNodeId }, target.sessionId)
-    .catch(async () => click(cdp, refs, { ref }))
+    .catch(async () => click(cdp, refs, null, { ref }))
     .catch(rethrowStaleNode(ref));
   await callOn(cdp, target, SELECT_CONTENTS).catch(rethrowStaleNode(ref));
   if (text.length === 0) await pressKey(cdp, parseKeyChord("Backspace").key, 0);
@@ -169,7 +169,7 @@ export async function fillFields(
     try {
       if (field.kind === "toggle") {
         const wanted = value === true || value === "true";
-        if (field.checked !== wanted) await click(cdp, refs, { ref });
+        if (field.checked !== wanted) await click(cdp, refs, null, { ref });
         const after = await describeField(cdp, refs, ref);
         lines.push(
           after.checked === wanted

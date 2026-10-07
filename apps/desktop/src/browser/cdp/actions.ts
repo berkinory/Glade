@@ -1,12 +1,16 @@
 import type {
   BrowserClickInput,
+  BrowserDragInput,
   BrowserPressInput,
   BrowserScrollInput,
+  BrowserTarget,
 } from "@glade/contracts/browser/browserTools";
 import type { CdpSession } from "./cdpSession";
+import { dragBetween } from "./drag";
 import { modifierKey, modifierMask, parseKeyChord, pressKey } from "./keyboard";
-import { callOn, clickPoint, mouse } from "./pointer";
+import { callOn, clickPoint, mouse, resolveTarget } from "./pointer";
 import type { RefTable } from "./refs";
+import type { ScreenshotFrame } from "./screenshotFrame";
 
 const BUTTON_BITS = { left: 1, right: 2, middle: 4 } as const;
 
@@ -21,11 +25,14 @@ const TOGGLE_STATE = `function () {
 export async function click(
   cdp: CdpSession,
   refs: RefTable,
-  input: Pick<typeof BrowserClickInput.Type, "ref" | "button" | "modifiers" | "count">,
+  screenshot: ScreenshotFrame | null,
+  input: Omit<typeof BrowserClickInput.Type, "tabId">,
 ): Promise<string> {
-  const { x, y } = await clickPoint(cdp, refs, input.ref);
-  const target = refs.resolve(input.ref);
-  const before = await callOn<boolean | null>(cdp, target, TOGGLE_STATE).catch(() => null);
+  const { x, y, label, ref } = await resolveTarget(cdp, refs, screenshot, input);
+  const target = ref === undefined ? undefined : refs.resolve(ref);
+  const before = target
+    ? await callOn<boolean | null>(cdp, target, TOGGLE_STATE).catch(() => null)
+    : null;
   const button = input.button ?? "left";
   const modifiers = modifierMask(input.modifiers ?? []);
   await mouse(cdp, { type: "mouseMoved", x, y, modifiers });
@@ -43,8 +50,8 @@ export async function click(
   }
   const verb =
     input.count === 2 ? "Double-clicked" : input.count === 3 ? "Triple-clicked" : "Clicked";
-  const done = `${verb} ${refs.describe(input.ref)}.`;
-  if (before === null) return done;
+  const done = `${verb} ${label}.`;
+  if (!target || before === null) return done;
   // A page that ignores the click or flips the state back leaves the toggle where it was.
   const after = await callOn<boolean | null>(cdp, target, TOGGLE_STATE).catch(() => null);
   if (after === null) return done;
@@ -53,10 +60,30 @@ export async function click(
     : `${done} It is now ${after ? "checked" : "unchecked"}.`;
 }
 
-export async function hover(cdp: CdpSession, refs: RefTable, ref: string): Promise<string> {
-  const { x, y } = await clickPoint(cdp, refs, ref);
+// The mouse stays where it ends, so a menu opened by hovering stays open for the next call.
+export async function hover(
+  cdp: CdpSession,
+  refs: RefTable,
+  screenshot: ScreenshotFrame | null,
+  input: typeof BrowserTarget.Type,
+): Promise<string> {
+  const { x, y, label } = await resolveTarget(cdp, refs, screenshot, input);
   await mouse(cdp, { type: "mouseMoved", x, y });
-  return `Hovered ${refs.describe(ref)}.`;
+  return `Hovered ${label}.`;
+}
+
+export async function drag(
+  cdp: CdpSession,
+  refs: RefTable,
+  screenshot: ScreenshotFrame | null,
+  input: typeof BrowserDragInput.Type,
+): Promise<string> {
+  // Bringing `to` into view can scroll `from` away, so `to` is resolved again afterwards.
+  if (input.to.ref !== undefined) await resolveTarget(cdp, refs, screenshot, input.to);
+  const from = await resolveTarget(cdp, refs, screenshot, input.from);
+  const to = await resolveTarget(cdp, refs, screenshot, input.to);
+  await dragBetween(cdp, from, to);
+  return `Dragged ${from.label} to ${to.label}.`;
 }
 
 export async function press(

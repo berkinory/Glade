@@ -13,7 +13,7 @@ import { BrowserFailure } from "./browserFailure";
 import { navigate } from "./browserNavigation";
 import type { BrowserTab } from "./browserTab";
 import type { BrowserTabs } from "./browserTabs";
-import { click, hover, press, scroll } from "./cdp/actions";
+import { click, drag, hover, press, scroll } from "./cdp/actions";
 import type { PageRead } from "./cdp/buffers";
 import { uploadFiles } from "./cdp/fileChooser";
 import { fillFields, selectOptions, typeText } from "./cdp/forms";
@@ -174,15 +174,19 @@ export function createBrowserHostDispatch(
     },
     "browser.getText": async (params) => {
       const tab = tabFor("browser.getText", params);
-      return readText(tab, () => readPageText(tab.cdp, params.maxChars));
+      return readText(tab, () => readPageText(tab.cdp, tab.refs, params));
     },
     "browser.click": async (params) => {
       const tab = tabFor("browser.click", params);
-      return act(tab, () => click(tab.cdp, tab.refs, params), params.actor);
+      return act(tab, () => click(tab.cdp, tab.refs, tab.lastScreenshot(), params), params.actor);
     },
     "browser.hover": async (params) => {
       const tab = tabFor("browser.hover", params);
-      return act(tab, () => hover(tab.cdp, tab.refs, params.ref), params.actor);
+      return act(tab, () => hover(tab.cdp, tab.refs, tab.lastScreenshot(), params), params.actor);
+    },
+    "browser.drag": async (params) => {
+      const tab = tabFor("browser.drag", params);
+      return act(tab, () => drag(tab.cdp, tab.refs, tab.lastScreenshot(), params), params.actor);
     },
     "browser.type": async (params) => {
       const tab = tabFor("browser.type", params);
@@ -206,11 +210,13 @@ export function createBrowserHostDispatch(
     },
     "browser.screenshot": async (params) => {
       const tab = tabFor("browser.screenshot", params);
-      const image = await run(
+      const { frame, ...image } = await run(
         tab,
         () => captureScreenshot(tab.cdp, tab.refs, tab.webContents, params),
         params.actor,
       );
+      // Only screenshots the agent saw define its coordinates.
+      if (params.actor !== "user") tab.recordScreenshot(frame);
       const { notices } = tab.result("");
       return { page: tab.page(), image: { ...image, mimeType: "image/jpeg" }, notices };
     },

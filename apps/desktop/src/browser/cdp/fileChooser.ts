@@ -58,7 +58,7 @@ export async function uploadFiles(
     );
   try {
     await intercept(true);
-    await click(cdp, refs, { ref: input.ref });
+    await click(cdp, refs, null, { ref: input.ref });
     const chooser = await withTimeout(
       opened,
       CHOOSER_TIMEOUT_MS,

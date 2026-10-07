@@ -42,6 +42,20 @@ app and is exposed to every provider as `browser_*` gateway tools.
   its length), date and time inputs are set through the native value setter, and `<select>`
   options match by value or by label ignoring case and spacing. `browser_fill` sets several fields
   in one call.
+- **Coordinates, hover and drag.** `browser_click`, `browser_hover` and each end of `browser_drag`
+  take either a ref or `x`/`y`. Points are in the pixels of the tab's latest agent
+  `browser_screenshot` (each tab keeps that screenshot's viewport rect and image size, so a
+  downscaled or element screenshot maps back to viewport CSS pixels); before any screenshot they are
+  viewport CSS pixels. A point is not hit-tested against overlays: it clicks whatever is there, and
+  the result names what it hit (`<canvas#game> at (310, 140)`). The virtual mouse stays where the
+  last action left it and snapshots never move it, so a CSS `:hover` menu opened by
+  `browser_hover` stays open for the next snapshot and click. `browser_drag` presses, moves in ten
+  steps and releases; with `Input.setInterceptDrags` on, a page `dragstart` turns the rest of the
+  gesture into `Input.dispatchDragEvent` dragEnter, dragOver and drop with the page's drag data
+  (Chromium never starts HTML5 drag and drop from synthetic mouse events alone), and pointer-driven
+  drags get the plain mouse events. `browser_find` also matches plain text in no listed control
+  and returns a ref for the element that renders it, so a hover trigger without a role or pointer
+  cursor can still be targeted by text.
 - **Server (`apps/server/src/browser`, `apps/server/src/desktopHost`).** `DesktopHostClient` holds
   the RPC connection and reconnects with backoff; `BrowserHost` makes typed browser calls and keeps
   the latest tab list per chat. The gateway passes the chat from the session lease, never from
@@ -63,13 +77,17 @@ messages described in [Computer Use](computer-use.md). Schemas live in
 ## Tools
 
 `browser_tabs`, `browser_navigate`, `browser_snapshot`, `browser_find`, `browser_get_text`,
-`browser_click`, `browser_hover`, `browser_type`, `browser_fill`, `browser_press`, `browser_select`,
-`browser_scroll`, `browser_screenshot`, `browser_dialog`, `browser_upload`, `browser_console`,
-`browser_network` and `browser_batch` (an ordered list that stops at the first failure). Action
-results are one line naming the element plus what changed; they never embed a new snapshot. Other
-results end with the tab's URL and title. Console and network reads return 20 entries per page,
-newest page first, and group repeated console messages.
-`browser_evaluate` is not listed and always refuses until a per-chat setting exists.
+`browser_click`, `browser_hover`, `browser_drag`, `browser_type`, `browser_fill`, `browser_press`,
+`browser_select`, `browser_scroll`, `browser_screenshot`, `browser_dialog`, `browser_upload`,
+`browser_console`, `browser_network` and `browser_batch` (an ordered list that stops at the first
+failure). Action results are one line naming the element plus what changed; they never embed a
+new snapshot. Other results end with the tab's URL and title. `browser_get_text` reads the main
+content or, with a ref, that element's subtree. Console and network reads return 20 entries per
+page, newest page first, and group repeated console messages.
+`browser_evaluate` is not listed and always refuses until a per-chat setting exists. For Claude,
+`browser_navigate`, `browser_snapshot`, `browser_find`, `browser_click`, `browser_type` and
+`browser_fill` are marked `anthropic/alwaysLoad` so the core loop needs no tool search; the rest
+stay deferred.
 
 Everything a result takes from the page (snapshot lines, find matches, page text, console and
 network output, a dialog's message, tab titles in the tab list) is wrapped in a block that starts

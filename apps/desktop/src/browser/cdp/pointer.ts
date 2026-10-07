@@ -1,6 +1,8 @@
+import type { BrowserTarget } from "@glade/contracts/browser/browserTools";
 import { BrowserFailure } from "../browserFailure";
 import type { CdpSession } from "./cdpSession";
 import { rethrowStaleNode, type RefTable, type RefTarget } from "./refs";
+import { viewportPoint, type ScreenshotFrame } from "./screenshotFrame";
 
 type Quad = readonly number[];
 interface BoxModel {
@@ -104,18 +106,23 @@ export async function elementBounds(cdp: CdpSession, refs: RefTable, ref: string
   return { ...box, x: box.x + offset.x, y: box.y + offset.y };
 }
 
+// `<tag#id.class> "text"` for a hit-tested node, which may be a text node.
+const DESCRIBE_NODE = `(node) => {
+  const el = node.nodeType === 1 ? node : node.parentElement;
+  if (!el) return "another element";
+  const id = el.id ? "#" + el.id : "";
+  const classes = typeof el.className === "string" && el.className.trim() ? "." + el.className.trim().split(/\\s+/).slice(0, 2).join(".") : "";
+  const text = (el.innerText || el.textContent || "").replace(/\\s+/g, " ").trim().slice(0, 80);
+  return "<" + el.localName + id + classes + ">" + (text ? " " + JSON.stringify(text) : "");
+}`;
+
 // Null when the hit node is the target, inside it (shadow trees included) or inside one of its
 // labels; otherwise a short description of what is on top.
 const HIT_BELONGS = `function (hit) {
   const within = (node, root) => { for (let n = node; n; n = n.parentNode || n.host) if (n === root) return true; return false; };
   if (within(hit, this)) return null;
   for (const label of this.labels || []) if (within(hit, label)) return null;
-  const el = hit.nodeType === 1 ? hit : hit.parentElement;
-  if (!el) return "another element";
-  const id = el.id ? "#" + el.id : "";
-  const classes = typeof el.className === "string" && el.className.trim() ? "." + el.className.trim().split(/\\s+/).slice(0, 2).join(".") : "";
-  const text = (el.innerText || el.textContent || "").replace(/\\s+/g, " ").trim().slice(0, 80);
-  return "<" + el.localName + id + classes + ">" + (text ? " " + JSON.stringify(text) : "");
+  return (${DESCRIBE_NODE})(hit);
 }`;
 
 // Points inside the box to try, center first: a sticky header or a badge can cover part of it.
@@ -171,3 +178,51 @@ export async function clickPoint(cdp: CdpSession, refs: RefTable, ref: string) {
 
 export const mouse = (cdp: CdpSession, event: Record<string, unknown>) =>
   cdp.send("Input.dispatchMouseEvent", event);
+
+export interface PointerTarget {
+  readonly x: number;
+  readonly y: number;
+  // `button "Save" (e12)` for a ref, `<canvas#game> at (310, 140)` for a point.
+  readonly label: string;
+  readonly ref: string | undefined;
+}
+
+// A point means whatever is there, overlays included, so it is not hit-tested against anything;
+// the label names what it hits.
+export async function resolveTarget(
+  cdp: CdpSession,
+  refs: RefTable,
+  screenshot: ScreenshotFrame | null,
+  input: typeof BrowserTarget.Type,
+): Promise<PointerTarget> {
+  const hasPoint = input.x !== undefined || input.y !== undefined;
+  if (input.ref !== undefined && !hasPoint) {
+    const point = await clickPoint(cdp, refs, input.ref);
+    return { ...point, label: refs.describe(input.ref), ref: input.ref };
+  }
+  if (input.ref !== undefined || input.x === undefined || input.y === undefined) {
+    throw new BrowserFailure("invalid_input", "Pass either ref, or both x and y.");
+  }
+  const { cssLayoutViewport: viewport } = await cdp.send<{
+    cssLayoutViewport: { clientWidth: number; clientHeight: number };
+  }>("Page.getLayoutMetrics");
+  const point = viewportPoint(screenshot, input.x, input.y, {
+    width: viewport.clientWidth,
+    height: viewport.clientHeight,
+  });
+  const hit = await cdp
+    .send<{ backendNodeId: number }>("DOM.getNodeForLocation", {
+      x: Math.round(point.x),
+      y: Math.round(point.y),
+      includeUserAgentShadowDOM: false,
+    })
+    .catch(() => null);
+  const what = hit
+    ? await callOn<string>(
+        cdp,
+        { backendNodeId: hit.backendNodeId, sessionId: undefined },
+        `function () { return (${DESCRIBE_NODE})(this); }`,
+      ).catch(() => "the page")
+    : "the page";
+  return { ...point, label: `${what} at (${input.x}, ${input.y})`, ref: undefined };
+}

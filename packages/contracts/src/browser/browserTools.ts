@@ -41,21 +41,39 @@ export const BrowserFindInput = Schema.Struct({
 
 export const BrowserGetTextInput = Schema.Struct({
   maxChars: Schema.optional(Count(500, 60_000)),
+  ref: Schema.optional(BrowserRef),
   ...tab,
 });
 
 export const BrowserModifier = Schema.Literals(["Alt", "Control", "Meta", "Shift"]);
 export type BrowserModifier = typeof BrowserModifier.Type;
 
+const Coordinate = Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 100_000 }));
+// Either ref, or x and y in the pixels of the tab's latest browser_screenshot (viewport CSS pixels
+// before any screenshot). The desktop rejects any other combination.
+const target = {
+  ref: Schema.optional(BrowserRef),
+  x: Schema.optional(Coordinate),
+  y: Schema.optional(Coordinate),
+};
+export const BrowserTarget = Schema.Struct(target);
+export type BrowserTarget = typeof BrowserTarget.Type;
+
 export const BrowserClickInput = Schema.Struct({
-  ref: BrowserRef,
+  ...target,
   button: Schema.optional(Schema.Literals(["left", "right", "middle"])),
   modifiers: Schema.optional(Schema.Array(BrowserModifier)),
   count: Schema.optional(Count(1, 3)),
   ...tab,
 });
 
-export const BrowserHoverInput = Schema.Struct({ ref: BrowserRef, ...tab });
+export const BrowserHoverInput = Schema.Struct({ ...target, ...tab });
+
+export const BrowserDragInput = Schema.Struct({
+  from: BrowserTarget,
+  to: BrowserTarget,
+  ...tab,
+});
 
 export const BrowserTypeInput = Schema.Struct({
   ref: Schema.optional(BrowserRef),
@@ -157,6 +175,7 @@ export const BROWSER_BATCH_TOOLS = [
   "browser_get_text",
   "browser_click",
   "browser_hover",
+  "browser_drag",
   "browser_type",
   "browser_fill",
   "browser_press",

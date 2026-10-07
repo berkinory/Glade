@@ -5,6 +5,7 @@ import { BrowserFailure } from "./browserFailure";
 import { PageBuffers } from "./cdp/buffers";
 import { CdpSession } from "./cdp/cdpSession";
 import { RefTable } from "./cdp/refs";
+import type { ScreenshotFrame } from "./cdp/screenshotFrame";
 import { PageDialogs } from "./pageDialogs";
 
 export const BROWSER_PARTITION = "persist:glade-browser";
@@ -39,6 +40,8 @@ export class BrowserTab {
   private lastHumanInputAt = 0;
   private agentActing = false;
   private picking = false;
+  // Coordinates in click, hover and drag refer to this tab's latest screenshot.
+  private screenshot: ScreenshotFrame | null = null;
 
   constructor(
     readonly id: string,
@@ -84,6 +87,14 @@ export class BrowserTab {
 
   page() {
     return { tabId: this.id, url: this.webContents.getURL(), title: this.webContents.getTitle() };
+  }
+
+  recordScreenshot(frame: ScreenshotFrame): void {
+    this.screenshot = frame;
+  }
+
+  lastScreenshot(): ScreenshotFrame | null {
+    return this.screenshot;
   }
 
   addNotice(text: string): void {

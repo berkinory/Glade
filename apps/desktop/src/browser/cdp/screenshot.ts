@@ -4,6 +4,7 @@ import { BrowserFailure, withTimeout } from "../browserFailure";
 import { elementBounds } from "./pointer";
 import type { CdpSession } from "./cdpSession";
 import type { RefTable } from "./refs";
+import type { ScreenshotFrame } from "./screenshotFrame";
 
 const MAX_EDGE_PX = 1280;
 const JPEG_QUALITY = 70;
@@ -20,10 +21,11 @@ export interface CapturedImage {
   readonly data: string;
   readonly width: number;
   readonly height: number;
+  readonly frame: ScreenshotFrame;
 }
 
-// Screenshots are for seeing, not for coordinates: they are downscaled to a fixed longest edge and
-// clipped in viewport CSS pixels.
+// Downscaled to a fixed longest edge and clipped in viewport CSS pixels; `frame` maps points on
+// the image back to the viewport.
 export async function captureScreenshot(
   cdp: CdpSession,
   refs: RefTable,
@@ -51,6 +53,7 @@ export async function captureScreenshot(
   );
   const width = Math.round(rect.width * scale * deviceScale);
   const height = Math.round(rect.height * scale * deviceScale);
+  const frame = { rect, imageWidth: width, imageHeight: height };
   try {
     const { data } = await withTimeout(
       cdp.send<{ data: string }>("Page.captureScreenshot", {
@@ -67,7 +70,7 @@ export async function captureScreenshot(
       CAPTURE_TIMEOUT_MS,
       "Screenshot",
     );
-    return { data, width, height };
+    return { data, width, height, frame };
   } catch (error) {
     // Chromium can stop compositing a view that is not on screen; the window-level capture is the
     // only other path and is bounded the same way.
@@ -85,6 +88,6 @@ export async function captureScreenshot(
     });
     if (image.isEmpty()) throw error;
     const resized = image.resize({ width, height, quality: "good" });
-    return { data: resized.toJPEG(JPEG_QUALITY).toString("base64"), width, height };
+    return { data: resized.toJPEG(JPEG_QUALITY).toString("base64"), width, height, frame };
   }
 }

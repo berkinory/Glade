@@ -116,15 +116,21 @@ export async function findElements(
   const matches: SnapshotMatch[] = [];
   candidates.forEach((entry, index) => {
     if (!hits[index]) return;
-    // Text has no ref; the nearest element that does is what the model can act on.
+    // Text has no ref; the nearest element that does is what the model can act on. Text in
+    // no listed control (a hover menu's plain trigger) gets a ref for its own element instead.
     const chain = [...entry.ancestors, entry.node];
     const targetIndex = chain.findLastIndex((node) => node.ref !== undefined);
-    const target = chain[targetIndex];
+    const listed = chain[targetIndex];
+    let target = listed;
+    const owner = listed?.interactive ? undefined : entry.node.owner;
+    if (owner && refs.refFor(owner) !== listed?.ref) {
+      target = { ...entry.node, ref: refs.refFor(owner, { role: "text", name: entry.node.name }) };
+    }
     if (!target?.ref || seen.has(target.ref)) return;
     seen.add(target.ref);
     const context = chain.slice(0, targetIndex).findLast((node) => node.name.length > 0);
     // Matched text inside an element is what the model searched for; show it.
-    const text = entry.node.role === "text" && entry.node !== target ? entry.node.name : undefined;
+    const text = entry.node.role === "text" && target.role !== "text" ? entry.node.name : undefined;
     matches.push({ node: target, context, text });
   });
   return renderMatches(matches.slice(0, FIND_MAX_MATCHES), matches.length);
