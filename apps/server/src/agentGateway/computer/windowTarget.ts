@@ -35,15 +35,27 @@ export interface WindowTargetInput {
 
 type ListedApp = (typeof CuaListApps.Type)["apps"][number];
 
-// Apps whose name or bundle id is the query, ignoring case and a trailing ".app"; a running entry
-// first, so it wins over an installed copy with the same name.
-export const matchApps = (apps: ReadonlyArray<ListedApp>, query: string) => {
-  const wanted = query
+const appKey = (value: string) =>
+  value
     .trim()
     .toLowerCase()
-    .replace(/\.app$/u, "");
+    .replace(/\.(app|exe)$/u, "");
+
+// Apps whose name, bundle id or executable is the query, ignoring case and a trailing ".app" or
+// ".exe" (Windows lists running apps by process image, "msedge.exe", unless Cua matched an installed
+// entry, "Microsoft Edge"); a running entry first, so it wins over an installed copy with the same
+// name.
+export const matchApps = (apps: ReadonlyArray<ListedApp>, query: string) => {
+  const wanted = appKey(query);
+  const executable = (path: string | null | undefined) =>
+    path ? appKey(path.split(/[\\/]/u).pop() ?? "") : null;
   return apps
-    .filter((app) => app.name.toLowerCase() === wanted || app.bundle_id?.toLowerCase() === wanted)
+    .filter(
+      (app) =>
+        appKey(app.name) === wanted ||
+        app.bundle_id?.toLowerCase() === wanted ||
+        executable(app.launch_path) === wanted,
+    )
     .toSorted((left, right) => Number(right.running) - Number(left.running));
 };
 

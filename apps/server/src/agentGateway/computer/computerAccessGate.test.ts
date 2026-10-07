@@ -39,6 +39,7 @@ const APPS = {
   browser: { pid: 101, window_id: 11, name: "Safari", bundle: "com.apple.Safari" },
   terminal: { pid: 102, window_id: 12, name: "Terminal", bundle: "com.apple.Terminal" },
   other: { pid: 103, window_id: 13, name: "TextEdit", bundle: "com.apple.TextEdit" },
+  windowsTerminal: { pid: 104, window_id: 14, name: "WindowsTerminal.exe", bundle: null },
 } as const;
 const APP_LIST = [
   ...Object.values(APPS),
@@ -258,6 +259,14 @@ describe("computer access gate", () => {
     [
       "a terminal refuses typing under act",
       "terminal",
+      "act",
+      "computer_type",
+      typing,
+      "click_only",
+    ],
+    [
+      "a Windows terminal listed by its process refuses typing under act",
+      "windowsTerminal",
       "act",
       "computer_type",
       typing,

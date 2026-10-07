@@ -169,6 +169,11 @@ export function appCategory(app: AppIdentity): AppCategory {
     const executables = EXECUTABLES[category];
     if (bundleId && executables.includes(executableName(bundleId))) return category;
     if (launchPath && executables.includes(executableName(launchPath))) return category;
+    // Windows names a running app by its process image when Cua finds no installed entry for it
+    // (Windows Terminal, cmd, PowerShell).
+    if (/\.exe$/iu.test(app.name) && executables.includes(executableName(app.name))) {
+      return category;
+    }
   }
   return "other";
 }

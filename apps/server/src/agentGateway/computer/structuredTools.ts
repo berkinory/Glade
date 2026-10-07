@@ -24,7 +24,7 @@ import { makeOpenAppTool } from "./openAppTool.ts";
 import { makeVerifyTool } from "./verifyTool.ts";
 import { makeWindowFrameTool } from "./windowFrameTool.ts";
 import { readWindow } from "./windowRead.ts";
-import { targetFor, WindowTarget } from "./windowTarget.ts";
+import { matchApps, targetFor, WindowTarget } from "./windowTarget.ts";
 
 const WindowStateInput = Schema.Struct({
   ...WindowTarget,
@@ -141,11 +141,7 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
         if (input.scope !== "read") {
           const listed = yield* callCua(services, context, "list_apps", {});
           const app = Schema.decodeUnknownOption(CuaListApps)(listed.structuredContent).pipe(
-            Option.flatMap((value) =>
-              Option.fromNullishOr(
-                value.apps.find((entry) => entry.name.toLowerCase() === input.app.toLowerCase()),
-              ),
-            ),
+            Option.flatMap((value) => Option.fromNullishOr(matchApps(value.apps, input.app)[0])),
           );
           if (
             Option.isSome(app) &&
