@@ -120,6 +120,9 @@ export default defineConfig(({ mode }) => ({
     tsconfigPaths: true,
   },
   server: {
+    // "localhost" resolves to ::1 first on most Linux hosts, while the desktop launcher's wait-on probe
+    // and Node clients connect to 127.0.0.1; one fixed loopback address works for both.
+    host: "127.0.0.1",
     port,
     strictPort: true,
     hmr: {
