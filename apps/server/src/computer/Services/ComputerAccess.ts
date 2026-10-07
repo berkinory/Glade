@@ -3,7 +3,7 @@ import type { ComputerAccessScope } from "@glade/contracts/computer/computerUse"
 import { ServiceMap, type Effect } from "effect";
 
 import type { AppIdentities } from "../appIdentities.ts";
-import type { ClipboardReadOutcome, ClipboardReadRequest } from "../clipboardConsent.ts";
+import type { ClipboardPolicy } from "../clipboardConsent.ts";
 import type { ComputerGrant, ComputerGrants } from "../computerGrants.ts";
 import type { ComputerProgressGuard } from "../computerProgressGuard.ts";
 import type { ComputerTasks } from "../computerTask.ts";
@@ -40,9 +40,9 @@ export interface ComputerAccessShape {
   readonly grantFor: (request: ComputerGrantRequest) => Effect.Effect<ComputerGrant | null>;
   // Shows the access card in the thread (or joins the open one for the same target) and waits.
   readonly requestAccess: (request: ComputerAccessRequest) => Effect.Effect<ComputerAccessOutcome>;
-  // Whether the thread may read the clipboard: yes in Full access, otherwise asked once per thread
-  // with a card, waiting up to waitMs for the answer.
-  readonly clipboardRead: (request: ClipboardReadRequest) => Effect.Effect<ClipboardReadOutcome>;
+  // Clipboard reads: free while the clipboard holds the agent's own text, otherwise asked once per
+  // thread with a card in every permission mode.
+  readonly clipboard: ClipboardPolicy;
 }
 
 export class ComputerAccess extends ServiceMap.Service<ComputerAccess, ComputerAccessShape>()(

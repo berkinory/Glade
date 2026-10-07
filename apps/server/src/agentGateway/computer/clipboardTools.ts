@@ -14,6 +14,7 @@ import {
 } from "./computerCalls.ts";
 
 const CONSENT_WAIT_MS = 45_000;
+const MAX_READ_CHARS = 20_000;
 
 const ClipboardWriteInput = Schema.Struct({
   text: Schema.optionalKey(Schema.String),
@@ -25,16 +26,43 @@ const ClipboardWriteInput = Schema.Struct({
   ),
 });
 
-const typesLine = (result: { readonly structuredContent?: Record<string, unknown> | undefined }) =>
+type CuaResult = { readonly structuredContent?: Record<string, unknown> | undefined };
+
+const typesLine = (result: CuaResult) =>
   Schema.decodeUnknownOption(CuaClipboard)(result.structuredContent).pipe(
     Option.map((value) => `Clipboard types: ${value.types.join(", ") || "none"}.`),
     Option.getOrElse(() => ""),
   );
 
+const textOf = (result: CuaResult) =>
+  Schema.decodeUnknownOption(CuaClipboard)(result.structuredContent).pipe(
+    Option.flatMap((value) => Option.fromNullishOr(value.text)),
+    Option.getOrNull,
+  );
+
+const readResult = (result: CuaResult) => {
+  const text = textOf(result);
+  const lines =
+    text === null
+      ? ["The clipboard holds no plain text."]
+      : [
+          text.length > MAX_READ_CHARS
+            ? `Clipboard text (${text.length} characters, the first ${MAX_READ_CHARS} shown):`
+            : `Clipboard text (${text.length} characters):`,
+          untrustedContent("APP_CONTENT", "source=clipboard", text.slice(0, MAX_READ_CHARS)),
+        ];
+  return {
+    content: [
+      { type: "text" as const, text: [...lines, typesLine(result)].filter(Boolean).join("\n") },
+    ],
+  };
+};
+
 // The clipboard has no app or window, so writing it is a thread-level capability that Computer
 // Use being on allows; pasting it into an app is input that meets that app's grant. Reading it can
-// expose anything the user copied, so it needs the thread's clipboard consent. Neither tool ever
-// echoes or logs what it wrote, and read text reaches the model only inside APP_CONTENT.
+// expose anything the user copied, so it needs the thread's clipboard consent unless the clipboard
+// still holds the agent's own text. Neither tool ever echoes or logs clipboard text, and read text
+// reaches the model only inside APP_CONTENT.
 export function makeClipboardTools(services: ComputerToolServices): ToolEntry[] {
   const write = computerTool(services, {
     name: "computer_clipboard_write",
@@ -71,6 +99,7 @@ export function makeClipboardTools(services: ComputerToolServices): ToolEntry[] 
         const result = yield* callCua(services, context, "clipboard_write", {
           [given[0]!]: input.text ?? path,
         });
+        services.access.clipboard.recordWrite(callerThread(context), input.text ?? null);
         const what =
           input.text !== undefined
             ? `text (${input.text.length} characters)`
@@ -89,13 +118,18 @@ export function makeClipboardTools(services: ComputerToolServices): ToolEntry[] 
     name: "computer_clipboard_read",
     title: "Read the clipboard",
     description:
-      "Plain text on the system clipboard and its types, e.g. to check a copy or paste. Outside Full access the user is asked once per chat; if the answer is pending, call again to keep waiting.",
+      "Plain text on the system clipboard and its types, e.g. to check a copy or paste. Text you wrote with computer_clipboard_write is read directly; anything else asks the user once per chat, and if the answer is pending, call again to keep waiting.",
     input: Schema.Struct({}),
     readOnly: true,
     run: (_input, context) =>
       Effect.gen(function* () {
-        const consent = yield* services.access.clipboardRead({
-          threadId: callerThread(context),
+        const threadId = callerThread(context);
+        const current = yield* callCua(services, context, "clipboard_read", { include_text: true });
+        if (services.access.clipboard.mayRead(threadId, textOf(current))) {
+          return readResult(current);
+        }
+        const consent = yield* services.access.clipboard.request({
+          threadId,
           turnId: context.callerTurnId,
           waitMs: CONSENT_WAIT_MS,
         });
@@ -115,19 +149,10 @@ export function makeClipboardTools(services: ComputerToolServices): ToolEntry[] 
             ],
           };
         }
-        const result = yield* callCua(services, context, "clipboard_read", { include_text: true });
-        const text = Schema.decodeUnknownOption(CuaClipboard)(result.structuredContent).pipe(
-          Option.flatMap((value) => Option.fromNullishOr(value.text)),
-          Option.getOrNull,
+        // The card may have waited a while; return what the clipboard holds now.
+        return readResult(
+          yield* callCua(services, context, "clipboard_read", { include_text: true }),
         );
-        const lines = [
-          text === null
-            ? "The clipboard holds no plain text."
-            : `Clipboard text (${text.length} characters):`,
-          ...(text === null ? [] : [untrustedContent("APP_CONTENT", "source=clipboard", text)]),
-          typesLine(result),
-        ];
-        return { content: [{ type: "text", text: lines.filter(Boolean).join("\n") }] };
       }),
   });
 

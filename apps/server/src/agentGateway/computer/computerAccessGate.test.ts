@@ -1,9 +1,13 @@
 import { assert, describe, it } from "@effect/vitest";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { Effect, Fiber, Layer, Schema, Stream } from "effect";
+import { Effect, Fiber, Layer, Queue, Schema, ServiceMap, Stream } from "effect";
 import * as FS from "node:fs";
 
-import type { ComputerAccessScope } from "@glade/contracts/computer/computerUse";
+import {
+  COMPUTER_ACCESS_QUESTION_ID,
+  COMPUTER_CLIPBOARD_ANSWERS,
+  type ComputerAccessScope,
+} from "@glade/contracts/computer/computerUse";
 import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import type { RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
 
@@ -60,23 +64,31 @@ const cuaResult = (structuredContent: Record<string, unknown>) =>
     }),
   );
 
-// Cua itself is stubbed with captured results. Input actions answer with `effect`, or never
-// finish when it is null so Stop has something to stop. The engine records dispatched commands and
-// holds only the thread's permission mode.
+// Cua itself is stubbed with captured results and a text clipboard that starts with the user's
+// copy. Input actions answer with `effect`, or never finish when it is null so Stop has something
+// to stop. The engine records dispatched commands, holds only the thread's permission mode and
+// delivers the user's answers to cards.
 const setup = Effect.fnUntraced(function* (
   effect: "confirmed" | "unverifiable" | null = null,
   runtimeMode: RuntimeMode = "approval-required",
 ) {
   const calls: string[] = [];
+  const clipboard = { text: "user's saved password" };
+  const answers = yield* Queue.unbounded<unknown>();
   const dispatched: OrchestrationCommand[] = [];
   const windows = fixture("list_windows").structuredContent?.windows as ReadonlyArray<unknown>;
   const host: ComputerHostShape = {
     configured: true,
     status: Stream.empty,
     currentStatus: Effect.die("unused"),
-    callTool: (name) => {
+    callTool: (name, args) => {
       calls.push(name);
       switch (name) {
+        case "clipboard_write":
+          clipboard.text = String(args.text);
+          return cuaResult({ types: ["public.utf8-plain-text"], text: null });
+        case "clipboard_read":
+          return cuaResult({ types: ["public.utf8-plain-text"], text: clipboard.text });
         case "list_windows":
           return cuaResult({
             windows: [
@@ -117,15 +129,17 @@ const setup = Effect.fnUntraced(function* (
   };
   // Only the engine members ComputerAccess uses; the read model holds just this thread's mode.
   const engine = Layer.succeed(OrchestrationEngineService, {
-    streamDomainEvents: Stream.never,
+    streamDomainEvents: Stream.fromQueue(answers),
     getReadModel: () => Effect.succeed({ threads: [{ id: THREAD, runtimeMode }] }),
     dispatch: (command: OrchestrationCommand) =>
       Effect.sync(() => ({ sequence: dispatched.push(command) })),
   } as never);
-  const access = yield* ComputerAccess.asEffect().pipe(
-    Effect.provide(
+  // Built in the test's scope so the access layer's event loop keeps delivering answers.
+  const access = ServiceMap.get(
+    yield* Layer.build(
       ComputerAccessLive.pipe(Layer.provide([engine, Layer.succeed(ComputerHost, host)])),
     ),
+    ComputerAccess,
   );
   const computerUse = Effect.runSync(
     ThreadComputerUse.asEffect().pipe(Effect.provide(ThreadComputerUseLive)),
@@ -175,7 +189,26 @@ const setup = Effect.fnUntraced(function* (
     dispatched.flatMap((command) =>
       command.type === "thread.activity.append" ? [command.activity.kind] : [],
     );
-  return { access, calls, call, errorCode, grant, activityKinds };
+  const answerCard = (answer: string) =>
+    Effect.gen(function* () {
+      const card = dispatched.findLast(
+        (command) =>
+          command.type === "thread.activity.append" &&
+          command.activity.kind === "user-input.requested",
+      );
+      assert(card?.type === "thread.activity.append");
+      const { requestId } = card.activity.payload as { requestId: string };
+      yield* Queue.offer(answers, {
+        type: "thread.user-input-response-requested",
+        payload: {
+          threadId: THREAD,
+          requestId,
+          answers: { [COMPUTER_ACCESS_QUESTION_ID]: answer },
+        },
+      });
+    });
+  const cardCount = () => activityKinds().filter((kind) => kind === "user-input.requested").length;
+  return { access, calls, call, clipboard, errorCode, grant, activityKinds, answerCard, cardCount };
 });
 
 describe("computer access gate", () => {
@@ -376,20 +409,47 @@ describe("computer access gate", () => {
     }),
   );
 
+  const textOf = (result: McpToolCallResult) =>
+    result.content.flatMap((part) => (part.type === "text" ? [part.text] : [])).join("\n");
+
   it.effect.each([
-    ["full-access reads the clipboard without asking", "full-access", false],
-    ["auto asks once before reading the clipboard", "auto", true],
-    ["approval-required asks once before reading the clipboard", "approval-required", true],
-  ] as const)("%s", ([, mode, asks]) =>
+    ["full-access asks before reading text the agent did not write", "full-access", null, true],
+    ["auto asks before reading text the agent did not write", "auto", null, true],
+    [
+      "approval-required asks before reading text the agent did not write",
+      "approval-required",
+      null,
+      true,
+    ],
+    ["the agent's own text is read without asking", "approval-required", "draft", false],
+    ["full-access asks once the user copied over the agent's text", "full-access", "draft", true],
+  ] as const)("%s", ([name, mode, written, asks]) =>
     Effect.gen(function* () {
-      const { calls, call, activityKinds } = yield* setup("confirmed", mode);
+      const { call, clipboard, cardCount } = yield* setup("confirmed", mode);
+      if (written !== null) yield* call("computer_clipboard_write", { text: written });
+      if (name.includes("user copied")) clipboard.text = "user's saved password";
       const read = yield* call("computer_clipboard_read", {}).pipe(Effect.forkChild);
-      while (!read.pollUnsafe() && !activityKinds().includes("user-input.requested")) {
-        yield* Effect.yieldNow;
+      while (!read.pollUnsafe() && cardCount() === 0) yield* Effect.yieldNow;
+      assert.strictEqual(cardCount(), asks ? 1 : 0);
+      if (asks) {
+        assert.isUndefined(read.pollUnsafe());
+        yield* Fiber.interrupt(read);
+      } else {
+        assert.include(textOf(yield* Fiber.join(read)), written!);
       }
-      assert.strictEqual(activityKinds().includes("user-input.requested"), asks);
-      assert.strictEqual(calls.includes("clipboard_read"), !asks);
-      yield* Fiber.interrupt(read);
+    }),
+  );
+
+  it.effect("a thread the user allowed reads the clipboard without asking again", () =>
+    Effect.gen(function* () {
+      const { call, cardCount, answerCard } = yield* setup("confirmed", "full-access");
+      const first = yield* call("computer_clipboard_read", {}).pipe(Effect.forkChild);
+      while (!first.pollUnsafe() && cardCount() === 0) yield* Effect.yieldNow;
+      assert.strictEqual(cardCount(), 1);
+      yield* answerCard(COMPUTER_CLIPBOARD_ANSWERS.allow);
+      assert.include(textOf(yield* Fiber.join(first)), "user's saved password");
+      assert.include(textOf(yield* call("computer_clipboard_read", {})), "user's saved password");
+      assert.strictEqual(cardCount(), 1);
     }),
   );
 });

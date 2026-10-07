@@ -21,7 +21,7 @@ export const COMPUTER_ACCESS_ANSWERS = {
 
 // The card for reading the clipboard, which is gated per thread rather than per app.
 export const COMPUTER_CLIPBOARD_ANSWERS = {
-  allow: "Allow clipboard reading",
+  allow: "Allow clipboard reading in this chat",
   deny: "Deny",
 } as const;
 

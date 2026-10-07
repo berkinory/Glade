@@ -279,7 +279,7 @@ export const ComputerAccessLive = Layer.effect(
         ),
       );
 
-    const clipboard = makeClipboardConsent({ appendActivity, runtimeModeOf });
+    const clipboard = makeClipboardConsent({ appendActivity });
 
     const answerAccess = (threadId: string, requestId: string, answers: Record<string, unknown>) =>
       Effect.gen(function* () {
@@ -402,7 +402,7 @@ export const ComputerAccessLive = Layer.effect(
       apps,
       grantFor,
       requestAccess,
-      clipboardRead: clipboard.request,
+      clipboard,
     } satisfies ComputerAccessShape;
   }),
 );
