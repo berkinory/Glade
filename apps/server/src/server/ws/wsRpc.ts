@@ -26,6 +26,7 @@ import {
 import { WS_METHODS } from "@glade/contracts/transport/ws/ws";
 import { WsBootstrapRpcGroup } from "@glade/contracts/transport/ws/bootstrapRpc";
 import { WsFeatureRpcGroup } from "@glade/contracts/transport/ws/rpc";
+import { COMPUTER_WS_METHODS } from "@glade/contracts/transport/ws/computerRpc";
 import { WsRpcError } from "@glade/contracts/transport/ws/rpcErrors";
 import {
   type GitRemoveWorktreeInput,
@@ -850,7 +851,18 @@ const makeWsRpcHandlersLayer = () =>
 
       return AdmittedWsFeatureRpcGroup.of({
         ...browserHandlers,
-        ...computerHandlers,
+        // Computer Use grants reach into the owner's desktop apps; paired clients neither see nor
+        // change them.
+        [COMPUTER_WS_METHODS.subscribe]: (payload, options) =>
+          Stream.unwrap(
+            requireWsOwnerSession.pipe(
+              Effect.as(computerHandlers[COMPUTER_WS_METHODS.subscribe](payload, options)),
+            ),
+          ),
+        [COMPUTER_WS_METHODS.revokeGrant]: (target) =>
+          requireWsOwnerSession.pipe(
+            Effect.andThen(computerHandlers[COMPUTER_WS_METHODS.revokeGrant](target)),
+          ),
         [ORCHESTRATION_WS_METHODS.prepareHandoff]: (input) =>
           rpcEffect(
             handoffPreparation.prepare(input).pipe(Effect.asVoid),

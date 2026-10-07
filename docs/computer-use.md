@@ -42,7 +42,10 @@ connection and every policy decision, and providers only see gateway tools.
 - `computer_request_access` asks in the chat with a question card: allow read, act, full control,
   or deny, for one app or window. `read` covers window state, screenshots and zoom; `act` covers
   input; `full` adds foreground delivery and drags. Grants live in server memory for that chat,
-  are listed in Settings > Computer Use with Revoke, and are gone after a restart.
+  are listed in Settings > Computer Use with Revoke, and are gone after a restart. Only the owner
+  session sees and revokes them; paired devices do not. An answer only settles a card of the chat
+  it was given in.
+- Every window-scoped call checks that the window belongs to the pid it names.
 - Calls outside a grant return typed errors the model can read (`computer_use_off`,
   `window_not_found`, `access_required`, `unknown_element`, `stopped`, or Cua's own code).
 - Stop (or the turn interrupt) cancels in-flight Cua calls, refuses the rest of that turn and ends

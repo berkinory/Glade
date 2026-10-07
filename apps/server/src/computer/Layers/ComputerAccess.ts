@@ -148,7 +148,9 @@ export const ComputerAccessLive = Layer.effect(
 
     const answerAccess = (threadId: string, requestId: string, answers: Record<string, unknown>) =>
       Effect.gen(function* () {
-        const pending = pendingById.get(requestId);
+        // An answer only settles a request of the thread it was given in.
+        const candidate = pendingById.get(requestId);
+        const pending = candidate?.threadId === threadId ? candidate : undefined;
         const answer = scopeForAnswer(answers[COMPUTER_ACCESS_QUESTION_ID]);
         if (pending && answer) {
           pendingById.delete(requestId);

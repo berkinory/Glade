@@ -114,7 +114,9 @@ const resolveWindow = (
       Option.map((value) => value.windows),
       Option.getOrElse((): ReadonlyArray<CuaWindow> => []),
     );
-    const window = windows.find((entry) => entry.window_id === windowId);
+    // Cua can list other processes' windows too. Later calls pass the agent's pid to Cua, so the
+    // granted window must belong to that pid.
+    const window = windows.find((entry) => entry.window_id === windowId && entry.pid === pid);
     if (!window) {
       return yield* refuse(
         "window_not_found",

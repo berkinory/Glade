@@ -65,21 +65,32 @@ export async function openCuaMcpClient(launch: ComputerMcpLaunch): Promise<CuaMc
   let stdout = "";
   let stderrTail = "";
 
+  let closed: CuaMcpFailure | null = null;
+  const failPending = (failure: CuaMcpFailure) => {
+    closed ??= failure;
+    for (const entry of pending.values()) entry.reject(failure);
+    pending.clear();
+  };
+
   const exited = new Promise<void>((resolve) => {
     const finish = () => {
-      for (const entry of pending.values()) {
-        entry.reject(
-          new CuaMcpFailure(
-            "unavailable",
-            `The Cua MCP proxy exited.${stderrTail ? ` ${stderrTail.trim()}` : ""}`,
-          ),
-        );
-      }
-      pending.clear();
+      failPending(
+        new CuaMcpFailure(
+          "unavailable",
+          `The Cua MCP proxy exited.${stderrTail ? ` ${stderrTail.trim()}` : ""}`,
+        ),
+      );
       resolve();
     };
     child.once("exit", finish);
     child.once("error", finish);
+  });
+  // A proxy that dies mid-write raises EPIPE here; without a listener it would crash the server.
+  child.stdin.on("error", (error) => {
+    failPending(
+      new CuaMcpFailure("unavailable", `The Cua MCP proxy stopped reading: ${error.message}`),
+    );
+    void teardownChildProcessTree(child).catch(() => undefined);
   });
 
   const write = (message: unknown) => {
@@ -136,6 +147,10 @@ export async function openCuaMcpClient(launch: ComputerMcpLaunch): Promise<CuaMc
     new Promise<unknown>((resolve, reject) => {
       if (signal.aborted) {
         reject(new CuaMcpFailure("cancelled", `${method} was cancelled.`));
+        return;
+      }
+      if (closed) {
+        reject(closed);
         return;
       }
       if (child.exitCode !== null || child.signalCode !== null) {
