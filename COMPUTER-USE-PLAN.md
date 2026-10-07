@@ -639,13 +639,47 @@ Revision to the computer tool surface (section 3): on Linux an agent asked to pu
 
 On Linux the guidance gained one line: open dialogs (Save, Open, Preferences) by keyboard shortcut through `computer_key`, not `computer_menu`, since an AT-SPI menu action that opens a GTK modal freezes the app (8j).
 
+## 8k. Windows pass (2026-10-07, Windows 11 arm64 build 26300 in UTM on macOS)
+
+Environment: 4 GB VM, administrator user `glade`, reached over SSH; bun 1.4.2 (native `windows-aarch64`), Node 24.13.1 arm64, MinGit arm64, Electron 43.5.0 win32-arm64 for the scratch harnesses, all under `C:\tools` and `C:\gl`. No compilers were installed. GUI processes run in the interactive session through a scheduled task with an interactive token (`schtasks /IT /RU glade`, console hidden by a `wscript` shim); SSH alone is session 0. No provider turns: the real gateway handlers were driven from a scratch server, as in 8j.
+
+Build and packaging: the artifact is cross-built on macOS (`node scripts/build-desktop-artifact.ts --platform win --target zip --arch arm64`). It failed in `@electron/rebuild` on `msgpackr-extract`, an optional accelerator with no win32-arm64 prebuild; every required Windows native module is N-API with a prebuild (node-pty `win32-arm64`, the Cua SDK and `@ubjs` runtimes), so Windows packages now skip the Electron rebuild (`dd845d8e0`). In the zip, `resources/cua-driver/win32-arm64/cua-driver.exe` sits outside ASAR, and the node-pty, Cua and `@ubjs` natives are in `app.asar.unpacked`. `dist-electron/main.js` carries no build-machine paths. The packaged app, unzipped to `C:\gl\Glade` with `GLADE_HOME=C:\gl\ghome`, starts with its window, backend, driver and MCP proxy; closing it ends `Glade.exe` and both `cua-driver.exe` processes within a second. NSIS and `verify-packaged-desktop-startup.ts` were not run.
+
+Browser Use (scratch plain-Electron harness, the 8j scenarios):
+
+- Found and fixed (`19fe8c22e`): Windows does not render detached views either (screenshots failed after 11 s, clicks waited out the 5 s input ack), and parking alone did not help, because native occlusion tracking kept a parked view dark inside a shown, uncovered window. Windows now parks like Linux and the desktop disables `CalculateNativeWinOcclusion` before ready. Then screenshots take 20–50 ms and clicks about 280 ms.
+- Found and fixed (`a38b5d2c7`): Windows stops compositing every view of a minimized window, so each screenshot waited the 8 s CDP timeout before the window-level fallback answered. Tabs in a minimized window now use the window-level capture directly (about 40 ms, real content).
+- After the fixes every scenario gives the Linux results: print to `C:\…\.glade\downloads\Invoice.pdf`, chooser upload from a backslash path, link/blob/streamed downloads with drive-letter paths (`report (1).txt` on a name clash), closed shadow root, cross-origin frames, dialogs, refs, typing, waits, panel show/hide on parked tabs, URL policy (Glade's port, metadata, `data:`, `file:`, `chrome:`), blocker on and off; the fixture page sweep has no failures.
+
+Desktop host and server (`startDesktopHost` in plain Electron, the server's `DesktopHostClient` over `\\.\pipe\glade-host-<hex>`): the token arrives on fd 3 through Node's extra stdio pipe on Windows, and both variables are cleared from the server environment. The driver starts in about 2 s, and `health_report` passes with UIA and D3D11 capture.
+
+Computer Use (gateway handlers, in-memory grants):
+
+- Worked: `computer_apps` (screen line `1093×888, work area 1093×840`, which matches the 48 px taskbar), `computer_window_state` on Notepad (UIA tree, menu items), `computer_type` by element (UIA ValuePattern, confirmed), screenshots and `region` zooms, `computer_window_frame` (exact), clipboard write and read, and `computer.userIdle` from `GetLastInputInfo`.
+- Found and fixed (`f4de902cd`): Cua names a running app by its process image (`WindowsTerminal.exe`, `msedge.exe`) with no bundle id or launch path unless it matched an installed entry, which it then names by display name (`Microsoft Edge`). Windows Terminal, cmd and PowerShell took typing under `act`, and `app: "Notepad"` returned `app_not_found`. Now Windows Terminal typing and keys are refused `click_only`, and Edge is refused `browser_read_only` by either name.
+- Cua 0.34 limits on Windows: background keys go through PostMessage and come back `unverifiable` with a foreground escalation; typing into Windows Terminal's `CASCADIA_HOSTING_WINDOW_CLASS` is `background_unavailable`; Edge's UIA tree is empty until Chromium enables accessibility (`ax_tree_empty`); `computer_verify` reports Notepad's status bar as `untrusted_source`.
+- Open: the embedded daemon (`cua-driver serve`, spawned by the Cua SDK's Rust host without `CREATE_NO_WINDOW`) opens a visible console window, shown as a Windows Terminal tab, for as long as it runs. The SDK has no option for it; this needs an upstream fix.
+- Not run on Windows: the kill switch chord, `computer_menu` (the scratch steps used the wrong argument name), `computer_open_app`, `computer_select_text` and `computer_file_dialog`, tab suspension, and a wrong-token run.
+
+Reproduce (scripts in the session scratchpad `win/`):
+
+```
+ssh -i ~/UTM-ISO/glade_vm_ed25519 glade@192.168.64.2                                 # PowerShell 5.1
+scp win/win-install.ps1 VM:C:/Users/glade/ && powershell -File C:\Users\glade\win-install.ps1   # bun, node, git
+node scripts/build-desktop-artifact.ts --platform win --target zip --arch arm64   # on macOS; scp the zip to C:\gl\glade.zip
+win/psf 'C:\gl\glade-start.ps1'               # unzip and start the packaged app in the session, isolated home
+win/hpush && win/hrun linux                   # browser harness: rebuild, push, one scenario (sites: C:\gl\h\start-sites.ps1)
+win/cupush && win/psf 'C:\gl\cu\start-host.ps1' && win/cu.sh s1.json   # desktop host + gateway steps
+win/shot                                      # screenshot of the interactive desktop
+```
+
 ## 9. Open items
 
 - When Cua ships foreground keys to a window's attached sheet (trycua/cua#4551), send Go to Folder's keys to the window instead of the desktop and drop the frontmost check.
 - Record token measurements from the provider acceptance runs here.
 - Page dialogs reach the user through the panel bar (8c); `prompt()` stays unsupported because Electron's renderer refuses it.
 - Keyboard shortcuts do not reach Glade while focus is inside a page view.
-- Windows: check whether detached browser views render there (Linux needed the 8j parking; Windows also uses Aura). If not, enable `createBrowserViewParking` for `win32`.
+- Windows: the Cua daemon opens a visible console window (8k); needs `CREATE_NO_WINDOW` in the Cua SDK's embedded host upstream.
 - Linux apps have two names in approval-required mode: grants use the window class (`Org.xfce.mousepad`), `computer_open_app` checks the desktop entry name (`Mousepad`), so opening a granted app can ask again.
 - Toggling Computer Use restarts the provider session to change the tool list, which throws away the prompt cache of the tool block every time. Measure the cost and consider always listing the computer tools (refusing while off) or deferring them behind tool search.
 - Web: the change list in action results renders only as plain tool output.
