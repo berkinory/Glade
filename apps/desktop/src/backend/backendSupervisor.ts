@@ -1,3 +1,7 @@
+import {
+  DESKTOP_HOST_RPC_PATH_ENV,
+  DESKTOP_HOST_RPC_TOKEN_FD_ENV,
+} from "@glade/contracts/desktopHost/desktopHostRpc";
 import { GLADE_DESKTOP_BUNDLE_ID_ENV } from "@glade/shared/platform/desktopIdentity";
 import { NetService } from "@glade/shared/platform/Net";
 import { applyShellEnvironmentHydrationMarker } from "@glade/shared/platform/shell";
@@ -29,6 +33,7 @@ import {
   safeConsoleError,
   sanitizeLogValue,
 } from "../main/lifecycle/desktopLogging";
+import { isBrokenPipeError } from "../main/lifecycle/desktopProcessErrors";
 import type { ServedStaticRoot } from "../main/lifecycle/desktopResources";
 import { resolveBackendNodeArgs } from "./backendNodeOptions";
 import { captureBackendProcessOutput } from "./backendProcessOutput";
@@ -64,17 +69,25 @@ interface BackendWindows {
   getMainWindow(): BrowserWindow | null;
   createWindow(): BrowserWindow;
 }
+interface BackendDesktopHost {
+  connection(): { readonly path: string; readonly token: string } | null;
+}
 export interface BackendDependencies {
   log: DesktopLog;
   resources: BackendResources;
   lifecycle: BackendLifecycle;
   windows: BackendWindows;
+  desktopHost: BackendDesktopHost;
 }
+// The host capability token travels over this extra stdio pipe, never through the environment,
+// so processes the backend spawns cannot inherit it.
+const DESKTOP_HOST_TOKEN_FD = 3;
 export function createBackendSupervisor({
   log,
   resources,
   lifecycle,
   windows,
+  desktopHost,
 }: BackendDependencies) {
   let backendReadinessAbortController: AbortController | null = null;
   let backendPort = 0;
@@ -102,7 +115,18 @@ export function createBackendSupervisor({
 
   function backendEnv(): NodeJS.ProcessEnv {
     const servedStaticRoot = resources.resolveServedStaticRoot();
+    const host = desktopHost.connection();
+    const inherited = { ...process.env };
+    delete inherited[DESKTOP_HOST_RPC_PATH_ENV];
+    delete inherited[DESKTOP_HOST_RPC_TOKEN_FD_ENV];
     const env: NodeJS.ProcessEnv = {
+      ...inherited,
+      ...(host
+        ? {
+            [DESKTOP_HOST_RPC_PATH_ENV]: host.path,
+            [DESKTOP_HOST_RPC_TOKEN_FD_ENV]: String(DESKTOP_HOST_TOKEN_FD),
+          }
+        : {}),
       ...(servedStaticRoot?.snapshotted ? { GLADE_STATIC_DIR: servedStaticRoot.dir } : {}),
       [GLADE_DESKTOP_BUNDLE_ID_ENV]: desktopIdentity.bundleId,
       GLADE_MODE: "desktop",
@@ -310,8 +334,16 @@ export function createBackendSupervisor({
       },
       // Keep output piped in every environment so startup blockers and readiness are observable even when
       // packaged log setup is unavailable.
-      stdio: ["pipe", "pipe", "pipe"],
+      stdio: ["pipe", "pipe", "pipe", "pipe"],
     });
+    const tokenPipe = child.stdio[DESKTOP_HOST_TOKEN_FD];
+    if (tokenPipe && "end" in tokenPipe) {
+      tokenPipe.on("error", (error) => {
+        if (!isBrokenPipeError(error))
+          safeConsoleError("[desktop] desktop host token pipe failed", error);
+      });
+      tokenPipe.end(desktopHost.connection()?.token ?? "");
+    }
     const listeningDetector = new ServerListeningDetector();
     const startupBlockDetector = new BackendStartupBlockDetector();
     const outputTailDetector = new BackendOutputTailDetector();

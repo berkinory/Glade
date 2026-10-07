@@ -44,15 +44,18 @@ Keep untouched: `apps/server/src/visualReplies/**` (Puppeteer headless shell for
 ### Ownership
 
 ```
-packages/contracts/src/browser/     tool names + input/output schemas, host RPC schema
+packages/contracts/src/browser/     tool input schemas, ref grammar, host method params/results
+packages/contracts/src/desktopHost/ host RPC env names, auth, framing limits
 packages/contracts/src/computer/    tool names + input/output schemas, state + approval schemas
-packages/shared/src/browser/        snapshot text format, ref grammar (used by server + web)
+packages/shared/src/desktopHost/    frame codec (desktop + server)
 packages/shared/src/computer/       Cua tool result decoding, screenshot budget (server + web)
 
-apps/desktop/src/browser/           WebContentsView tabs, CDP sessions, snapshot engine, actions, host RPC server
+apps/desktop/src/browser/           WebContentsView tabs, CDP sessions, snapshot engine and format, actions
+apps/desktop/src/hostRpc/           desktop host RPC server (pure node:net) and its startup
 apps/desktop/src/computer/          Cua embedded host: binary resolution, lifecycle, permissions, MCP handoff
 
-apps/server/src/browser/            BrowserHost service (RPC client to desktop)
+apps/server/src/desktopHost/        DesktopHostClient service (RPC client, reconnect, notifications)
+apps/server/src/browser/            BrowserHost service (typed browser calls over DesktopHostClient)
 apps/server/src/computer/           ComputerHost service (MCP client to Cua), approval + lease state
 apps/server/src/agentGateway/browser/   browser_* gateway tools + guidance
 apps/server/src/agentGateway/computer/  computer_* gateway tools + guidance
@@ -65,21 +68,22 @@ Durable truth and side effects stay in `apps/server`; the desktop owns native su
 
 ### Transport
 
-- **Server ↔ Desktop (host RPC):** one JSON-RPC 2.0 channel over `node:net` (unix socket on macOS/Linux, named pipe on Windows), length-prefixed frames, path handed to the server through the existing desktop startup environment, with a random capability token. It carries the `browser.*` methods and the `computer.connection` state (see below). One module per side (`desktopHostRpcServer.ts`, `desktopHostRpcClient.ts`), schemas in contracts.
+- **Server ↔ Desktop (host RPC, `desktopHostRpc`):** one JSON-RPC 2.0 channel over `node:net` (unix socket `host.sock` in a fresh 0700 temp dir on macOS/Linux, `\\.\pipe\glade-host-<random>` on Windows), 4-byte big-endian length-prefixed frames capped at 16 MiB. The desktop is the server and the Effect server the client. The socket path travels in `GLADE_DESKTOP_HOST_RPC_PATH`; a random 32-byte capability token travels over the backend's stdio fd 3 (`GLADE_DESKTOP_HOST_RPC_TOKEN_FD`), and the server consumes both at startup so provider processes never inherit them. The first frame must be `auth` with the token (constant-time compare) or the socket closes. Desktop → server events are JSON-RPC notifications on the same connection (`browser.tabsChanged` today). The client reconnects with capped exponential backoff. It carries the `browser.*` methods now and `computer.*` in Phase 5. One module per side (`desktopHostRpcServer.ts`, `desktopHostRpcClient.ts`), schemas in contracts.
 - **Server ↔ Cua:** the desktop main process starts `EmbeddedCuaDriverHost` (only the permission-owning process may start the daemon) and publishes the returned `connection.mcp` (`command`, `args`, `environment`) plus its `generation` over the host RPC; it publishes again after every restart. The server launches exactly that stdio proxy and is an MCP client to it, and an MCP server to providers. No Glade code speaks Cua's socket protocol directly.
 - **Desktop ↔ Web:** Electron IPC only for things the renderer must do synchronously with the native view (bounds, focus, visibility). Everything else flows server → web over the existing WS so that state has one owner.
 - **Providers:** unchanged gateway injection (`buildClaudeMcpServers`, Codex gateway config). New tools register in `AgentGateway.ts` the same way thread tools do.
 
 ### Browser host design (desktop)
 
-- One `WebContentsView` per tab, all on one persistent session partition that the user also sees. The agent and the user share cookies and logins by construction.
+- One `WebContentsView` per tab, all on the persistent `persist:glade-browser` partition that the user also sees. The agent and the user share cookies and logins by construction. Tabs belong to one thread; the server passes the thread from the gateway session lease, never from tool input, and the desktop only resolves that thread's tabs. Tabs live for the app's lifetime, not in the database.
+- Views start detached from any window at 1280×800 bounds: they lay out, run CDP and capture screenshots while hidden (`webContents.capturePage()` does not work detached, so it is only a fallback). `Emulation.setFocusEmulationEnabled` is on for every attached tab; without it the first mouse event to an unfocused view waits out Chromium's 5 s input-ack timeout.
 - One `webContents.debugger` attachment per tab, attached lazily on the first agent call, detached when the tab closes. `Target.setAutoAttach({ autoAttach: true, flatten: true, waitForDebuggerOnStart: false })` for out-of-process iframes. One in-flight CDP command queue per tab; concurrent snapshot commands corrupt trees.
 - `backgroundThrottling: false` on every browser view so screenshots never block when the panel is hidden.
 - Snapshot engine: `Accessibility.getFullAXTree` → compact indented text with `ref=eN` refs keyed by `backendDOMNodeId` + frame id. Refs persist per tab until navigation commits; a stale ref returns a typed error that tells the model to snapshot again. `filter: interactive | all`, `depth`, `ref` subtree, hard cap with an explicit "narrow with depth or ref" tail. Never truncate in a way that drops refs.
 - Actions resolve a ref to a box via `DOM.scrollIntoViewIfNeeded` + `DOM.getBoxModel`, then dispatch real `Input.*` events (file choosers and user activation need them). Typing uses `Input.dispatchKeyEvent` for printable keys and `Input.insertText` only for bulk text.
 - Screenshots: `Page.captureScreenshot` with JPEG, optional ref or region clip (clip is in device-independent pixels), downscaled to a fixed longest edge. The tool description says screenshots are for seeing, not for coordinates, unless the tree lacks the element.
-- Dialogs: `Page.javascriptDialogOpening` is answered with dismiss by default and reported in the next tool result; `browser_dialog` can accept with text. Downloads go through `session.on("will-download")` to the thread workspace. Popups arrive through `setWindowOpenHandler` and become tabs. File uploads use `Page.setInterceptFileChooserDialog` + `DOM.setFileInputFiles`, armed before the click.
-- Console and network buffers are ring buffers per tab, read on demand, bodies opt-in.
+- Dialogs (revised in Phase 2): for a view without a window Electron shows JavaScript dialogs as a blocking native modal (`runModal`) that CDP's `Page.handleJavaScriptDialog` does not close, freezing the main process. Browser views therefore run with `disableDialogs: true`: Electron dismisses every dialog at once, CDP still reports `Page.javascriptDialogOpening`, and the tool result says what the page asked. `browser_dialog` arms a one-shot answer for the next alert/confirm/prompt in the main frame (a minimal override of `window.confirm`/`alert`/`prompt` set through `Runtime.evaluate`, gone on navigation); the model then repeats the action. Electron has no native `prompt()`, so only an armed answer can satisfy one. Phase 4 must decide how the user answers dialogs in the visible panel. Downloads go through `session.on("will-download")` to `<workspace>/.glade/downloads/` (with a `*` `.gitignore`); the server sends the workspace with each call that may create a tab. Popups arrive through `setWindowOpenHandler` and `createWindow` adopts Electron's guest `WebContents`, so `window.opener` keeps working for sign-in popups; the popup becomes the thread's active tab. File uploads set files directly on an `<input type=file>` ref, or arm `Page.setInterceptFileChooserDialog` before clicking any other ref and fill the intercepted chooser; the server first resolves every path, after symlinks, to a regular file inside the thread workspace.
+- Console and network buffers are ring buffers per tab (500 entries), read on demand, bodies opt-in. The console buffer resets when the main frame commits a navigation.
 - Human takeover: the panel is always interactive. The host records the last human input time; tool calls during active human input wait briefly, then proceed with a notice. No locks, no "human control mode".
 - Element picking: the user can point at an element and send it to the composer. This uses `Overlay.setInspectMode` and `Overlay.inspectNodeRequested` on the tab's CDP session; the returned `backendDOMNodeId` becomes a ref in the same table the agent uses, so the composer receives `ref=eN`, role, name and an optional clipped screenshot. No injected page script, no guest preload, no custom overlay.
 
@@ -130,7 +134,7 @@ Guidance in `harnessPolicy.ts` says: prefer structured, screenshot only after an
 
 ### Approval model
 
-- Browser Use needs no approval beyond gateway availability. Navigation to `file:` and loopback is blocked by host policy, not by the model.
+- Browser Use needs no approval beyond gateway availability. Host policy, not the model, blocks `file:`, `chrome:`, `chrome-extension:`, `devtools:`, `view-source:` and `javascript:` URLs and every request to Glade's own backend and dev UI ports on loopback (`webRequest.onBeforeRequest` on the browser partition, so redirects, frames and fetches are covered too). Other loopback ports stay reachable: testing the user's local dev servers is a core use case, so the original "block loopback" rule was revised in Phase 2.
 - Computer Use is off per thread by default. The user turns it on with the `/computer-use` slash command (one request) or the thread setting (sticky). The first action against an app or window produces a chat card asking for a grant with scope `read`, `act` or `full`; grants live for the thread and are listed in Settings. The server refuses tool calls outside a grant with a typed error the model can read.
 - Stop in the chat, or Escape while a task runs, cancels the task and clears foreground delivery for the turn.
 
@@ -168,9 +172,10 @@ Build `apps/desktop/src/browser/`:
 - `cdp/snapshot.ts` + `cdp/refs.ts` (tree → text, ref table, invalidation on `Page.frameNavigated` for the main frame)
 - `cdp/actions.ts` (resolve ref → box → input events; type, press, select, scroll)
 - `cdp/screenshot.ts`, `cdp/dialogs.ts`, `cdp/fileChooser.ts`, `cdp/buffers.ts` (console and network rings)
-- `browserHostRpcServer.ts` (net pipe, token, framing, dispatch to the above)
+- `cdp/snapshotFormat.ts`, `cdp/keyboard.ts`, `cdp/pageText.ts`, `browserTab.ts` (per-tab state), `browserNavigation.ts`, `browserUrlPolicy.ts`, `browserHostDispatch.ts` (RPC method → module)
+- `apps/desktop/src/hostRpc/desktopHostRpcServer.ts` (net pipe, token, framing, injected dispatch; no Electron import) and `startDesktopHost.ts`
 
-Contracts: `packages/contracts/src/browser/browserTools.ts` (names, input and output schemas, error tags), `browserHostRpc.ts`. Shared: `packages/shared/src/browser/snapshotFormat.ts` (ref grammar and rendering, used by the web for highlighting later).
+Contracts: `packages/contracts/src/browser/browserTools.ts` (tool input schemas, `BrowserRef` grammar), `browserHost.ts` (method params, results, failure codes, `browser.tabsChanged`), `packages/contracts/src/desktopHost/desktopHostRpc.ts`. Shared: `packages/shared/src/desktopHost/frameCodec.ts`. The snapshot renderer stays in `apps/desktop/src/browser/cdp/snapshotFormat.ts` because the desktop is its only consumer; it moves to shared when the web highlights refs.
 
 Checks: `bun run check`. Manual: a scratch script in the Dev app that opens a tab, snapshots, clicks a ref, types, uploads a file and screenshots with the panel hidden.
 
@@ -285,6 +290,8 @@ Commits: `fix(desktop): …` as needed per platform.
 - Browser panel docks only; no floating window.
 - No credential vault. Sign-in happens in the panel by the user; a password-manager handoff may come later as its own feature, never a Glade-held secret store.
 - Element picking returns through CDP inspect mode and the agent's own ref table (Phase 4), replacing the old annotation overlay.
+- Loopback stays reachable from the agent browser; only Glade's own ports and the dangerous schemes are blocked (Phase 2 revision, see Approval model).
+- Agent browser dialogs are dismissed and reported; `browser_dialog` arms the next answer (Phase 2 revision, see Browser host design).
 - Computer Use is available on every platform the pinned Cua release supports, including Windows, with the delivery mode that platform allows.
 
 ## 8. Phase 0 findings (2026-10-07, macOS arm64)
@@ -297,6 +304,15 @@ Commits: `fix(desktop): …` as needed per platform.
 - **CDP spike:** folded into Phase 2's manual check instead of a throwaway script; `webContents.debugger` + `Accessibility.getFullAXTree` is stable Electron API and the risk is in ref bookkeeping, which Phase 2 builds anyway.
 - **Launcher grant reset:** the dev launcher clears TCC rows whenever the bundle is re-signed. It imports `TCC_SERVICE_NAMES` from the old computer module; Phase 1 keeps that constant (moved next to the launcher's identity code) so teardown does not re-sign the bundle.
 
+## 8a. Phase 2 manual check (2026-10-07, macOS arm64, plain Electron 43.5.0)
+
+A scratch Electron main drove the built modules directly and through the RPC server, then the server `DesktopHostClient` → `BrowserHost` → gateway tool handlers drove a real desktop host with the token on fd 3. All with the view hidden (never attached to a window). Worked: open, navigate, `filter: interactive` and `all` snapshots with OOPIF content, click (also inside a cross-site iframe), type into an MDN search field, `<select>`, key chords, scroll, dialog report and armed accept, upload to a file input and through a button-opened chooser, download into `.glade/downloads`, popup as a tab, console and failed-request reads, viewport (1280×800, ~300–600 ms) and element screenshots, stale-ref, blocked-URL and cross-thread refusals, `browser.tabsChanged` notification.
+
+Snapshot size, `filter: interactive` (chars / 4): example.com ≈ 7 tokens, MDN `<input>` reference ≈ 5,550, Wikipedia "Electron (software framework)" ≈ 4,900 (`filter: all` ≈ 6,000, capped at 24,000 chars). The browser tool list costs ≈ 3,500 tokens in `tools/list`.
+
+Phase 1 had dropped the inherited environment from the backend's spawn environment; Phase 2 restores it (minus stale desktop host variables).
+
 ## 9. Open items
 
 - Record token measurements from the provider acceptance runs here.
+- Phase 4: the panel needs IPC from the renderer for the active tab's bounds and attach/detach (`WebContentsView` into the main window's `contentView`), a server WS subscription fed by `DesktopHostClient.notifications`, and a user-facing answer path for page dialogs.

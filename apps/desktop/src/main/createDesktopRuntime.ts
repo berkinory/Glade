@@ -1,6 +1,7 @@
 import { app, BrowserWindow, protocol } from "electron";
 import { isBackendReadinessAborted } from "../backend/backendReadiness";
 import { createBackendSupervisor } from "../backend/backendSupervisor";
+import { startDesktopHost, type DesktopHost } from "../hostRpc/startDesktopHost";
 import {
   DESKTOP_SCHEME,
   isDevelopment,
@@ -24,6 +25,19 @@ import { createAppIdentity } from "./window/appIdentity";
 import { configureMediaPermissions } from "./window/mediaPermissionHandlers";
 import { createMainWindow } from "./window/mainWindow";
 
+// Pages in the agent browser must not reach Glade's own backend or dev UI; other loopback ports stay
+// reachable so agents can test the user's local servers.
+function gladePorts(backendHttpUrl: string): ReadonlySet<number> {
+  const ports = new Set<number>();
+  for (const url of [backendHttpUrl, process.env.VITE_DEV_SERVER_URL]) {
+    const port = url ? Number(URL.parse(url)?.port) : Number.NaN;
+    if (port > 0) ports.add(port);
+  }
+  const configured = Number(process.env.GLADE_PORT);
+  if (configured > 0) ports.add(configured);
+  return ports;
+}
+
 export function createDesktopRuntime(): void {
   const log = createDesktopLogging();
   log.writeDesktopLogHeader(
@@ -38,7 +52,9 @@ export function createDesktopRuntime(): void {
   app.setPath("userData", userDataPath);
   const hasSingleInstanceLock = app.requestSingleInstanceLock();
   const identity = createAppIdentity(resources, () => windows.getMainWindow());
+  let desktopHost: DesktopHost | null = null;
   const backend = createBackendSupervisor({
+    desktopHost: { connection: () => desktopHost },
     log,
     resources,
     lifecycle: {
@@ -122,6 +138,12 @@ export function createDesktopRuntime(): void {
     updates.configure();
 
     await backend.reserveBackendEndpoint("bootstrap");
+    try {
+      desktopHost = await startDesktopHost({ gladePorts: () => gladePorts(backend.getHttpUrl()) });
+      app.once("will-quit", () => void desktopHost?.close());
+    } catch (error) {
+      log.writeDesktopLogHeader(`desktop host unavailable message=${formatErrorMessage(error)}`);
+    }
 
     ipc.registerIpcHandlers();
     log.writeDesktopLogHeader("bootstrap ipc handlers registered");
