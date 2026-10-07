@@ -11,6 +11,7 @@ import { browserUrlBlockReason } from "./browserUrlPolicy";
 // ever shows them.
 const DEFAULT_BOUNDS = { x: 0, y: 0, width: 1280, height: 800 };
 const CHANGE_DEBOUNCE_MS = 100;
+const ERR_BLOCKED_BY_CLIENT = -20;
 
 // Every folder below the workspace is created or checked without following links, so a symlinked
 // `.glade` or `downloads` cannot send a page's download outside the workspace.
@@ -64,7 +65,15 @@ export class BrowserTabs {
     );
     // Covers redirects, subframes and fetches too, so no page can reach Glade's own server.
     browserSession.webRequest.onBeforeRequest((details, callback) => {
-      callback({ cancel: browserUrlBlockReason(details.url, this.options.gladePorts()) !== null });
+      const kind =
+        details.resourceType === "mainFrame"
+          ? "page"
+          : details.resourceType === "subFrame"
+            ? "frame"
+            : "resource";
+      callback({
+        cancel: browserUrlBlockReason(details.url, this.options.gladePorts(), kind) !== null,
+      });
     });
   }
 
@@ -147,8 +156,15 @@ export class BrowserTabs {
     webContents.on("did-navigate-in-page", changed);
     webContents.on("page-title-updated", changed);
     webContents.once("destroyed", () => this.forget(tab));
+    // A redirect or a page script can still aim a tab at a blocked address; the request is
+    // canceled and the tab shows an empty error page, which the result should explain.
+    webContents.on("did-fail-load", (_event, code, _description, url, isMainFrame) => {
+      if (isMainFrame && code === ERR_BLOCKED_BY_CLIENT) {
+        tab.addNotice(`Glade's browser blocked loading ${url}.`);
+      }
+    });
     webContents.setWindowOpenHandler(({ url }) => {
-      if (browserUrlBlockReason(url, this.options.gladePorts())) return { action: "deny" };
+      if (browserUrlBlockReason(url, this.options.gladePorts(), "page")) return { action: "deny" };
       return {
         action: "allow",
         overrideBrowserWindowOptions: { webPreferences: BROWSER_WEB_PREFERENCES },

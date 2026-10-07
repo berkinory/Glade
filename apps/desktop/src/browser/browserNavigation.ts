@@ -34,7 +34,7 @@ export async function navigate(
   const webContents = tab.webContents;
   if (input.url !== undefined) {
     const url = normalizeNavigationUrl(input.url);
-    const blocked = browserUrlBlockReason(url, gladePorts);
+    const blocked = browserUrlBlockReason(url, gladePorts, "page");
     if (blocked) throw new BrowserFailure("blocked_url", blocked);
     const loading = webContents.loadURL(url).then(
       () => true,

@@ -93,11 +93,19 @@ agent input on that tab fails with `user_picking` instead of moving the page und
 
 ## Policy and limits
 
-- Blocked by host policy, not the model: `file:`, `chrome:`, `chrome-extension:`, `devtools:`,
-  `view-source:` and `javascript:` URLs, and Glade's own backend and dev UI ports on loopback. The
-  check runs on every request of the browser partition, so redirects, frames and fetches are
-  covered. Every loopback spelling counts (`localhost.`, `127.1`, `0.0.0.0`, IPv4-mapped IPv6).
-  Other loopback ports stay reachable for testing local dev servers.
+- Blocked by host policy, not the model: tabs and popups load only `http:` and `https:` pages
+  (and `about:blank`); iframes may also hold `data:`, `blob:` and `about:` documents; no request at
+  all may use `file:`, `chrome:`, `chrome-extension:`, `devtools:`, `view-source:` or `javascript:`.
+  Link-local addresses (169.254.0.0/16, fe80::/10, including their IPv4-mapped forms), cloud
+  metadata hosts (`metadata.google.internal`, `metadata.goog`, `metadata`, `instance-data`,
+  100.100.100.200, 192.0.0.192, fd00:ec2::254) and Glade's own backend and dev UI ports on
+  loopback are refused. The check runs in the partition's single `onBeforeRequest` listener, so
+  redirects, popups, frames, fetches and service worker requests are covered (verified with a
+  redirecting popup and a service worker fetch); a blocked main-frame load adds a note to the
+  agent's next result. Every loopback spelling counts (`localhost.`, `127.1`, `0.0.0.0`,
+  IPv4-mapped IPv6). Other loopback ports and private LAN addresses stay reachable for testing
+  local dev servers. Host names are checked as written: a public name that resolves to a blocked
+  address is not caught.
 - Pages get no permissions: microphone, camera, geolocation, notifications, devices and external
   protocol launches (`mailto:` and app links) are all denied.
 - There is no credential vault. When a page needs a sign-in, the agent says so and the user signs
