@@ -101,12 +101,6 @@ export function createBrowserHostDispatch(
   };
   const readText = (tab: BrowserTab, operation: () => Promise<string>) =>
     read(tab, async () => ({ content: await operation(), note: "" }));
-  const text = async (
-    tab: BrowserTab,
-    operation: () => Promise<string>,
-    actor?: Actor,
-    timeoutMs?: number,
-  ) => reply(tab, await run(tab, operation, actor, timeoutMs), actor);
   // Input actions wait for what they cause; one that opens a dialog reports it as its outcome.
   const act = async (
     tab: BrowserTab,
@@ -136,10 +130,33 @@ export function createBrowserHostDispatch(
       );
     }
   };
-  const navigated = (
+  // A dialog the page opens while it loads is the navigation's outcome, as for an action. One
+  // already open would keep the old page from unloading, so it is dismissed first, as Chromium
+  // does when a page navigates (tabFor has refused agents a dialog that belongs to the user).
+  const navigated = async (
     tab: BrowserTab,
     params: typeof BrowserNavigateInput.Type & { readonly actor?: Actor },
-  ) => text(tab, () => navigate(tab, params, gladePorts()), params.actor, NAVIGATION_TIMEOUT_MS);
+  ): Promise<BrowserHostResult> => {
+    const open = tab.dialogs.current();
+    if (open) tab.dialogs.answer(false, params.actor ?? "agent");
+    const dismissed = open ? `Dismissed the open ${open.type} dialog. ` : "";
+    try {
+      const report = await tab.run(() => navigate(tab, params, gladePorts()), {
+        byUser: params.actor === "user",
+        timeoutMs: NAVIGATION_TIMEOUT_MS,
+      });
+      return reply(tab, dismissed + report, params.actor);
+    } catch (error) {
+      if (!(error instanceof DialogInterrupt)) throw error;
+      const { dialog } = error;
+      return reply(
+        tab,
+        `${dismissed}While loading ${tab.webContents.getURL()}, the page opened ${article(dialog.type).toLowerCase()} ${dialog.type} dialog; it is paused until browser_dialog answers it.`,
+        params.actor,
+        dialog.message,
+      );
+    }
+  };
   const tabFor = (
     method: BrowserHostMethod,
     params: {

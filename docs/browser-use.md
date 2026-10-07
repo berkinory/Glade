@@ -248,8 +248,11 @@ agent input on that tab fails with `user_picking` instead of moving the page und
   if that internal event ever changes), so an alert or confirm pauses only its page. A dialog the
   agent's action opens is that action's result; until `browser_dialog` answers it, other page
   tools refuse with `dialog_open` (tabs, navigation, console and network keep working). A dialog
-  that opens within 2 s of the user's own input in the tab belongs to the user: the agent cannot
-  answer it or navigate away from it. The panel shows every open dialog above the page with OK and
+  a page opens while it loads is the navigation's result the same way, and the navigation stops
+  waiting for the paused load. Navigating dismisses a dialog that is still open first, since it
+  would keep the old page from unloading. A dialog that opens within 2 s of the user's own input
+  in the tab, or during a navigation the user started in the panel, belongs to the user: the agent
+  cannot answer it or navigate away from it. The panel shows every open dialog above the page with OK and
   Cancel. Electron refuses `prompt()` in the page itself.
 - Downloads go to `<workspace>/.glade/downloads/`. The result of the action that starts one
   says `Download started: <name>` with the absolute path, and `Download finished: <path> (<size>)`

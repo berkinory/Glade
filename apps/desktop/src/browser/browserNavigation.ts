@@ -26,6 +26,17 @@ export function waitForLoad(webContents: WebContents, timeoutMs: number): Promis
   });
 }
 
+// A dialog pauses the page until it is answered, and the tab's run reports it as the outcome, so the
+// wait ends there instead of running out and leaving a stale "still loading" notice.
+async function untilLoadedOrDialog(tab: BrowserTab, load: Promise<boolean>): Promise<boolean> {
+  const dialog = tab.dialogs.interruption();
+  try {
+    return await Promise.race([load, dialog.promise.catch(() => true)]);
+  } finally {
+    dialog.release();
+  }
+}
+
 export async function navigate(
   tab: BrowserTab,
   input: typeof BrowserNavigateInput.Type,
@@ -46,7 +57,10 @@ export async function navigate(
         );
       },
     );
-    const loaded = await Promise.race([loading, sleep(NAVIGATION_TIMEOUT_MS).then(() => false)]);
+    const loaded = await untilLoadedOrDialog(
+      tab,
+      Promise.race([loading, sleep(NAVIGATION_TIMEOUT_MS).then(() => false)]),
+    );
     if (!loaded) tab.addNotice(`The page is still loading after ${NAVIGATION_TIMEOUT_MS / 1000}s.`);
     return `Opened ${url}.`;
   }
@@ -62,7 +76,7 @@ export async function navigate(
   else if (input.history === "reload") webContents.reload();
   else throw new BrowserFailure("invalid_input", "Pass url or history.");
   await sleep(HISTORY_START_MS);
-  if (!(await waitForLoad(webContents, HISTORY_TIMEOUT_MS))) {
+  if (!(await untilLoadedOrDialog(tab, waitForLoad(webContents, HISTORY_TIMEOUT_MS)))) {
     tab.addNotice("The page is still loading.");
   }
   return input.history === "reload" ? "Reloaded." : `Went ${input.history}.`;

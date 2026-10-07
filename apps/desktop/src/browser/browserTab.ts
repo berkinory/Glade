@@ -57,6 +57,8 @@ export class BrowserTab {
   private previousAgentCallAt = 0;
   private lastHumanInputAt = 0;
   private agentActing = false;
+  // The user is acting through the panel (navigating from its address bar, not page input).
+  private userActing = false;
   private picking = false;
   private operations = 0;
   private lastUsedAt = Date.now();
@@ -239,6 +241,7 @@ export class BrowserTab {
           await this.cdp.ensureAttached();
           if (agent) await this.waitForHumanQuiet();
           this.agentActing = agent;
+          this.userActing = options.byUser === true;
           const interruption = this.dialogs.interruption();
           // Once a dialog wins the race, the abandoned operation may still fail later.
           const work = operation();
@@ -247,6 +250,7 @@ export class BrowserTab {
             return await Promise.race([work, interruption.promise]);
           } finally {
             interruption.release();
+            this.userActing = false;
           }
         }, options.timeoutMs),
       )
@@ -263,6 +267,7 @@ export class BrowserTab {
   }
 
   private userJustActed(): boolean {
+    if (this.userActing) return true;
     return !this.agentActing && Date.now() - this.lastHumanInputAt < USER_DIALOG_WINDOW_MS;
   }
 
