@@ -4,7 +4,12 @@ import * as Path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { launchRefusal, type AppIdentity } from "../../computer/appCategories.ts";
-import { CuaLaunchedApp, CuaListApps, type CuaWindow } from "../../computer/cuaResults.ts";
+import {
+  CuaLaunchedApp,
+  CuaListApps,
+  CuaListWindows,
+  type CuaWindow,
+} from "../../computer/cuaResults.ts";
 import type { ToolContext, ToolEntry } from "../toolRuntime.ts";
 import { untrustedContent } from "../untrustedContent.ts";
 import {
@@ -46,6 +51,8 @@ interface ResolvedApp extends AppIdentity {
 
 const POLL_MS = 250;
 const WINDOW_WAIT_MS = 5_000;
+// Windows frames every packaged app's window in this shared host process.
+const FRAME_HOST = "ApplicationFrameHost.exe";
 
 // Only web pages and existing local paths are handed to the app; any other scheme (x-apple…,
 // javascript:, tel:, a custom app handler) is refused so a launch never fires a URL handler.
@@ -101,7 +108,7 @@ export const makeOpenAppTool = (services: ComputerToolServices): ToolEntry => {
       if (!app) {
         return yield* refuse(
           "app_not_found",
-          `No installed app is named ${JSON.stringify(query)} or has that bundle id. Use the app's name as Finder shows it, or its bundle id.`,
+          `No installed app is named ${JSON.stringify(query)} or has that bundle id. Use the app's name as the system's app list shows it, or its bundle id.`,
         );
       }
       return {
@@ -125,6 +132,33 @@ export const makeOpenAppTool = (services: ComputerToolServices): ToolEntry => {
         : { name: app.name }),
     ...(targets.length > 0 ? { urls: targets.map((target) => target.value) } : {}),
   });
+
+  const desktopWindows = (context: ToolContext) =>
+    callCua(services, context, "list_windows", {}).pipe(
+      Effect.map((result) =>
+        Schema.decodeUnknownOption(CuaListWindows)(result.structuredContent).pipe(
+          Option.map((value) => value.windows),
+          Option.getOrElse((): ReadonlyArray<CuaWindow> => []),
+        ),
+      ),
+    );
+
+  // Cua starts a Windows packaged app (launch path shell:appsFolder\…) through shell activation,
+  // which reports pid 0. The app's process is the one that shows a window that was not there
+  // before, apart from the shared frame host.
+  const launchedPid = (context: ToolContext, before: ReadonlySet<number>) =>
+    Effect.gen(function* () {
+      const deadline = Date.now() + WINDOW_WAIT_MS;
+      while (Date.now() < deadline) {
+        const fresh = (yield* desktopWindows(context)).find(
+          (window) =>
+            !before.has(window.window_id) && window.pid !== null && window.app_name !== FRAME_HOST,
+        );
+        if (fresh?.pid) return fresh.pid;
+        yield* Effect.sleep(POLL_MS);
+      }
+      return null;
+    });
 
   // Polls the app's windows until every target has one (or, with no targets, any window shows).
   const awaitWindows = (
@@ -192,6 +226,11 @@ export const makeOpenAppTool = (services: ComputerToolServices): ToolEntry => {
         const pid =
           (process.platform === "darwin" ? null : app.pid) ??
           (yield* Effect.gen(function* () {
+            const shown = new Set(
+              process.platform === "win32"
+                ? (yield* desktopWindows(context)).map((window) => window.window_id)
+                : [],
+            );
             const launched = yield* callCua(
               services,
               context,
@@ -202,7 +241,15 @@ export const makeOpenAppTool = (services: ComputerToolServices): ToolEntry => {
             if (Option.isNone(result)) {
               return yield* refuse("computer_protocol", "Cua's launch_app returned no pid.");
             }
-            return result.value.pid;
+            if (result.value.pid !== 0 || process.platform !== "win32") return result.value.pid;
+            const found = yield* launchedPid(context, shown);
+            if (found === null) {
+              return yield* refuse(
+                "window_not_found",
+                `${app.name} was started, but no window of it appeared within ${WINDOW_WAIT_MS / 1000} s. Call computer_apps to find it.`,
+              );
+            }
+            return found;
           }));
         services.access.apps.set(pid, app.name, {
           name: app.name,

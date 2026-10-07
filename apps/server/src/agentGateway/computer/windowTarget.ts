@@ -41,10 +41,14 @@ const appKey = (value: string) =>
     .toLowerCase()
     .replace(/\.(app|exe)$/u, "");
 
+// Windows names a packaged app by its package display name ("Windows Calculator"), the Start menu
+// by the app's own name ("Calculator").
+const VENDOR_PREFIX = /^(?:windows|microsoft) /u;
+
 // Apps whose name, bundle id or executable is the query, ignoring case and a trailing ".app" or
 // ".exe" (Windows lists running apps by process image, "msedge.exe", unless Cua matched an installed
-// entry, "Microsoft Edge"); a running entry first, so it wins over an installed copy with the same
-// name.
+// entry, "Microsoft Edge"), or whose name is the query after a Windows vendor prefix; a running
+// entry first, so it wins over an installed copy with the same name.
 export const matchApps = (apps: ReadonlyArray<ListedApp>, query: string) => {
   const wanted = appKey(query);
   const executable = (path: string | null | undefined) =>
@@ -53,6 +57,7 @@ export const matchApps = (apps: ReadonlyArray<ListedApp>, query: string) => {
     .filter(
       (app) =>
         appKey(app.name) === wanted ||
+        appKey(app.name).replace(VENDOR_PREFIX, "") === wanted ||
         app.bundle_id?.toLowerCase() === wanted ||
         executable(app.launch_path) === wanted,
     )
