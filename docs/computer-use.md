@@ -142,7 +142,10 @@ lists installed apps that are not running) and optional `open` targets, and call
 Names also match without a leading `Windows ` or `Microsoft `, since Cua names a Windows packaged
 app by its package display name (`Windows Calculator`). Cua launches a packaged app through shell
 activation and reports pid 0; Glade then takes the pid of the window that appears outside the
-shared `ApplicationFrameHost.exe`.
+shared `ApplicationFrameHost.exe`. A running packaged app is listed only by its process image
+(`CalculatorApp.exe`), so a packaged match resolves to the image named in its package manifest and
+to the process running it: the running app is reused, and the app keeps one name. Open-app and
+access requests name a running app as its windows do, which is the name grants use.
 Targets must be absolute paths that exist (or `file:` URLs) or http(s) URLs; every other scheme
 (`x-apple…`, `javascript:`, `tel:`, custom handlers) is refused with `unsupported_target`, so a
 launch never fires a URL handler. The call needs `act` on the app through the same grant gate as

@@ -3,7 +3,7 @@ import { Effect, Option, Schema } from "effect";
 
 import { appCategory } from "../../computer/appCategories.ts";
 import { scopeCovers } from "../../computer/computerGrants.ts";
-import { CuaListApps, CuaListWindows, resultText } from "../../computer/cuaResults.ts";
+import { CuaListWindows, resultText } from "../../computer/cuaResults.ts";
 import type { ToolEntry } from "../toolRuntime.ts";
 import {
   appContent,
@@ -24,7 +24,7 @@ import { makeOpenAppTool } from "./openAppTool.ts";
 import { makeVerifyTool } from "./verifyTool.ts";
 import { makeWindowFrameTool } from "./windowFrameTool.ts";
 import { readWindow } from "./windowRead.ts";
-import { matchApps, targetFor, WindowTarget } from "./windowTarget.ts";
+import { findApp, grantName, targetFor, WindowTarget } from "./windowTarget.ts";
 
 const WindowStateInput = Schema.Struct({
   ...WindowTarget,
@@ -138,24 +138,21 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
     readOnly: false,
     run: (input, context) =>
       Effect.gen(function* () {
-        if (input.scope !== "read") {
-          const listed = yield* callCua(services, context, "list_apps", {});
-          const app = Schema.decodeUnknownOption(CuaListApps)(listed.structuredContent).pipe(
-            Option.flatMap((value) => Option.fromNullishOr(matchApps(value.apps, input.app)[0])),
+        const listed = yield* findApp(services, context, input.app);
+        const app = listed ? yield* grantName(services, context, listed) : input.app;
+        if (
+          input.scope !== "read" &&
+          listed &&
+          appCategory({
+            name: listed.name,
+            bundleId: listed.bundle_id ?? null,
+            launchPath: listed.launch_path ?? null,
+          }) === "browser"
+        ) {
+          return yield* refuse(
+            "browser_read_only",
+            `${app} is a web browser, which Computer Use can only read. Do web work with the browser_* tools in Glade's own browser, or request scope "read" to look at it.`,
           );
-          if (
-            Option.isSome(app) &&
-            appCategory({
-              name: app.value.name,
-              bundleId: app.value.bundle_id ?? null,
-              launchPath: app.value.launch_path ?? null,
-            }) === "browser"
-          ) {
-            return yield* refuse(
-              "browser_read_only",
-              `${input.app} is a web browser, which Computer Use can only read. Do web work with the browser_* tools in Glade's own browser, or request scope "read" to look at it.`,
-            );
-          }
         }
         const windowTitle =
           input.window_id === undefined
@@ -175,7 +172,7 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
         const outcome = yield* services.access.requestAccess({
           threadId: callerThread(context),
           turnId: context.callerTurnId,
-          app: input.app,
+          app,
           windowId: input.window_id ?? null,
           windowTitle,
           scope: input.scope,
@@ -185,11 +182,11 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
         const text =
           outcome.status === "granted"
             ? scopeCovers(outcome.scope, input.scope)
-              ? `Granted: ${outcome.scope} access to ${input.app}.`
-              : `Granted: ${outcome.scope} access to ${input.app}. The user chose ${outcome.scope}, not ${input.scope}; work within it and do not ask again.`
+              ? `Granted: ${outcome.scope} access to ${app}.`
+              : `Granted: ${outcome.scope} access to ${app}. The user chose ${outcome.scope}, not ${input.scope}; work within it and do not ask again.`
             : outcome.status === "denied"
-              ? `The user denied access to ${input.app}. Do not use it or ask again unless the user says so.`
-              : `Waiting for the user to answer the access card. Call computer_request_access again with app "${input.app}" to keep waiting; do not act on it yet.`;
+              ? `The user denied access to ${app}. Do not use it or ask again unless the user says so.`
+              : `Waiting for the user to answer the access card. Call computer_request_access again with app "${app}" to keep waiting; do not act on it yet.`;
         return {
           content: [{ type: "text", text }],
           ...(outcome.status === "denied" ? { isError: true } : {}),

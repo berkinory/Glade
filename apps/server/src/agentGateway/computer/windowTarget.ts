@@ -1,6 +1,7 @@
 import { Effect, Option, Schema } from "effect";
 
 import { CuaListApps, type CuaWindow } from "../../computer/cuaResults.ts";
+import { packagedExecutable } from "../../computer/windowsPackages.ts";
 import type { ToolContext } from "../toolRuntime.ts";
 import {
   appWindows,
@@ -49,7 +50,7 @@ const VENDOR_PREFIX = /^(?:windows|microsoft) /u;
 // ".exe" (Windows lists running apps by process image, "msedge.exe", unless Cua matched an installed
 // entry, "Microsoft Edge"), or whose name is the query after a Windows vendor prefix; a running
 // entry first, so it wins over an installed copy with the same name.
-export const matchApps = (apps: ReadonlyArray<ListedApp>, query: string) => {
+const matchApps = (apps: ReadonlyArray<ListedApp>, query: string) => {
   const wanted = appKey(query);
   const executable = (path: string | null | undefined) =>
     path ? appKey(path.split(/[\\/]/u).pop() ?? "") : null;
@@ -78,12 +79,42 @@ const frontmost = (windows: ReadonlyArray<CuaWindow>) => {
   return byZ.find((window) => window.is_on_screen && window.minimized !== true) ?? byZ[0] ?? null;
 };
 
-const resolveApp = (services: ComputerToolServices, context: ToolContext, query: string) =>
+// The listed app the query names, or null. Cua lists a packaged Windows app under its package
+// display name ("Windows Calculator") while it is installed and under its process image
+// ("CalculatorApp.exe") while it runs, as its windows and grants are named; a match on the
+// installed entry resolves to the process image, and to the running process when there is one.
+export const findApp = (services: ComputerToolServices, context: ToolContext, query: string) =>
   Effect.gen(function* () {
     const listed = yield* callCua(services, context, "list_apps", {});
-    const app = Schema.decodeUnknownOption(CuaListApps)(listed.structuredContent).pipe(
-      Option.flatMap((value) => Option.fromNullishOr(matchApps(value.apps, query)[0])),
+    const apps = Schema.decodeUnknownOption(CuaListApps)(listed.structuredContent).pipe(
+      Option.map((value) => value.apps),
+      Option.getOrElse((): ReadonlyArray<ListedApp> => []),
     );
+    const app = matchApps(apps, query)[0];
+    if (!app || app.running) return app ?? null;
+    const executable = yield* packagedExecutable(app.launch_path ?? null);
+    if (executable === null) return app;
+    const running = apps.find(
+      (entry) => entry.running && appKey(entry.name) === appKey(executable),
+    );
+    return running
+      ? { ...running, bundle_id: app.bundle_id, launch_path: app.launch_path }
+      : { ...app, name: executable };
+  });
+
+// The name grants and refusals use for a listed app: its windows' app name while it runs, since Cua
+// can list a running app under another name ("Microsoft Edge" for msedge.exe windows), else the
+// listed name.
+export const grantName = (services: ComputerToolServices, context: ToolContext, app: ListedApp) =>
+  app.running
+    ? appWindows(services, context, app.pid).pipe(
+        Effect.map((windows) => windows[0]?.app_name ?? app.name),
+      )
+    : Effect.succeed(app.name);
+
+const resolveApp = (services: ComputerToolServices, context: ToolContext, query: string) =>
+  Effect.gen(function* () {
+    const app = Option.fromNullishOr(yield* findApp(services, context, query));
     if (Option.isNone(app) || !app.value.running) {
       return yield* refuse(
         "app_not_found",

@@ -4,12 +4,7 @@ import * as Path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { launchRefusal, type AppIdentity } from "../../computer/appCategories.ts";
-import {
-  CuaLaunchedApp,
-  CuaListApps,
-  CuaListWindows,
-  type CuaWindow,
-} from "../../computer/cuaResults.ts";
+import { CuaLaunchedApp, CuaListWindows, type CuaWindow } from "../../computer/cuaResults.ts";
 import type { ToolContext, ToolEntry } from "../toolRuntime.ts";
 import { untrustedContent } from "../untrustedContent.ts";
 import {
@@ -22,7 +17,7 @@ import {
   windowSummary,
   type ComputerToolServices,
 } from "./computerCalls.ts";
-import { matchApps } from "./windowTarget.ts";
+import { findApp, grantName } from "./windowTarget.ts";
 
 const OpenAppInput = Schema.Struct({
   app: Schema.String.check(Schema.isMinLength(1)).annotate({
@@ -97,14 +92,9 @@ const targetWindow = (
   ) ?? null;
 
 export const makeOpenAppTool = (services: ComputerToolServices): ToolEntry => {
-  // The installed or running app the input names, as Cua's list_apps knows it.
   const resolveApp = (context: ToolContext, query: string) =>
     Effect.gen(function* () {
-      const listed = yield* callCua(services, context, "list_apps", {});
-      const app = Schema.decodeUnknownOption(CuaListApps)(listed.structuredContent).pipe(
-        Option.map((value) => matchApps(value.apps, query)[0]),
-        Option.getOrUndefined,
-      );
+      const app = yield* findApp(services, context, query);
       if (!app) {
         return yield* refuse(
           "app_not_found",
@@ -112,7 +102,7 @@ export const makeOpenAppTool = (services: ComputerToolServices): ToolEntry => {
         );
       }
       return {
-        name: app.name,
+        name: yield* grantName(services, context, app),
         bundleId: app.bundle_id ?? null,
         launchPath: app.launch_path ?? null,
         running: app.running,
