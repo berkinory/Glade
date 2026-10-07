@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { directoryChain, useExplorerRevealRequestStore } from "~/explorerRevealRequestStore";
 import type { ChatFileReference } from "~/lib/chatReferences";
 import { basenameOfPath } from "~/file-icons";
-import { selectRightDockState, useRightDockStore } from "~/rightDockStore";
+import { selectWorkspaceFileTabs, useWorkspaceFileTabsStore } from "~/workspaceFileTabsStore";
 import {
   dirtyWorkspaceEditorPaths,
   dirtyWorkspaceEditorRevision,
@@ -43,10 +43,12 @@ export const DockExplorerPane = function DockExplorerPane(props: {
   const queryClient = useQueryClient();
   const sidebarId = useId();
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const dockState = useRightDockStore((state) => selectRightDockState(props.threadId)(state));
-  const openFile = useRightDockStore((state) => state.openFile);
-  const closeFile = useRightDockStore((state) => state.closeFile);
-  const selectedFilePath = dockState.activeFilePath;
+  const fileTabs = useWorkspaceFileTabsStore((state) =>
+    selectWorkspaceFileTabs(props.threadId)(state),
+  );
+  const openFile = useWorkspaceFileTabsStore((state) => state.openFile);
+  const closeFile = useWorkspaceFileTabsStore((state) => state.closeFile);
+  const selectedFilePath = fileTabs.activeFilePath;
   const subscribeDirty = useCallback(
     (listener: () => void) => subscribeDirtyWorkspaceEditors(queryClient, listener),
     [queryClient],
@@ -174,7 +176,7 @@ export const DockExplorerPane = function DockExplorerPane(props: {
             openFile(props.threadId, path);
             setRevealPosition(undefined);
           }}
-          tabs={dockState.filePaths.map((path) => ({
+          tabs={fileTabs.filePaths.map((path) => ({
             id: path,
             label: basenameOfPath(path),
             icon: <FileEntryIcon pathValue={path} kind="file" className="size-3.5" />,
@@ -224,7 +226,7 @@ export const DockExplorerPane = function DockExplorerPane(props: {
               containerClassName="flex min-h-0 flex-1 flex-col"
               onSelectFile={handleSelectFile}
               onDeleted={(path) => {
-                for (const file of dockState.filePaths) {
+                for (const file of fileTabs.filePaths) {
                   if ((file === path || file.startsWith(`${path}/`)) && !dirtyPaths.has(file))
                     closeFile(props.threadId, file);
                 }

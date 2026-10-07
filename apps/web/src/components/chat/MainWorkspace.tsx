@@ -15,7 +15,7 @@ import {
   subscribeDirtyWorkspaceEditors,
 } from "~/lib/workspaceEditorSession";
 import { selectMainWorkspace, useMainWorkspaceStore } from "~/mainWorkspaceStore";
-import { selectRightDockState, useRightDockStore } from "~/rightDockStore";
+import { selectWorkspaceFileTabs, useWorkspaceFileTabsStore } from "~/workspaceFileTabsStore";
 import { useStore } from "~/store";
 import { cn } from "~/lib/utils";
 import { WorkspaceFilePreview } from "../WorkspaceFilePreview";
@@ -48,10 +48,10 @@ export function MainWorkspace(props: {
   const selectTab = useMainWorkspaceStore((store) => store.selectTab);
   const pinReview = useMainWorkspaceStore((store) => store.pinReview);
   const closeReview = useMainWorkspaceStore((store) => store.closeReview);
-  const dock = useRightDockStore(selectRightDockState(props.threadId));
-  const closeFile = useRightDockStore((store) => store.closeFile);
-  const openFile = useRightDockStore((store) => store.openFile);
-  const pinFile = useRightDockStore((store) => store.pinFile);
+  const fileTabs = useWorkspaceFileTabsStore(selectWorkspaceFileTabs(props.threadId));
+  const closeFile = useWorkspaceFileTabsStore((store) => store.closeFile);
+  const openFile = useWorkspaceFileTabsStore((store) => store.openFile);
+  const pinFile = useWorkspaceFileTabsStore((store) => store.pinFile);
   const provider = useStore((store) => {
     const thread = store.threadShellById?.[props.threadId];
     return thread ? resolveThreadDisplayProvider(thread) : null;
@@ -72,19 +72,19 @@ export function MainWorkspace(props: {
   const dirtyPaths = props.workspaceRoot
     ? dirtyWorkspaceEditorPaths(queryClient, props.workspaceRoot)
     : new Set<string>();
-  const previewDirty = dock.previewFilePath ? dirtyPaths.has(dock.previewFilePath) : false;
+  const previewDirty = fileTabs.previewFilePath ? dirtyPaths.has(fileTabs.previewFilePath) : false;
   useEffect(() => {
-    if (previewDirty && dock.previewFilePath) pinFile(props.threadId, dock.previewFilePath);
-  }, [previewDirty, dock.previewFilePath, pinFile, props.threadId]);
+    if (previewDirty && fileTabs.previewFilePath) pinFile(props.threadId, fileTabs.previewFilePath);
+  }, [previewDirty, fileTabs.previewFilePath, pinFile, props.threadId]);
   const tabs: PanelTab[] = [
     {
       id: "chat",
       label: chatLabel,
       icon: <ProviderIcon provider={chatProvider} tone="header" className="size-3.5" />,
     },
-    ...dock.filePaths.map((path) => ({
+    ...fileTabs.filePaths.map((path) => ({
       id: `file:${path}`,
-      preview: dock.previewFilePath === path,
+      preview: fileTabs.previewFilePath === path,
       onDoubleClick: () => pinFile(props.threadId, path),
       label: basenameOfPath(path),
       icon: <FileEntryIcon pathValue={path} kind="file" className="size-3.5" />,
@@ -113,7 +113,7 @@ export function MainWorkspace(props: {
     if (id.startsWith("file:")) {
       const path = id.slice(5);
       openFile(props.threadId, path, {
-        preview: dock.previewFilePath === path,
+        preview: fileTabs.previewFilePath === path,
       });
     } else selectTab(props.threadId, id);
   };

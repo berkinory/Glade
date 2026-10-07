@@ -9,7 +9,7 @@ import { Spinner } from "../ui/spinner";
 import { toastManager } from "../ui/toast";
 import { PanelStateMessage } from "./PanelStateMessage";
 import { PanelEmptyState } from "./PanelEmptyState";
-import type { SourceControlView } from "~/rightDockStore";
+import type { SourceControlView } from "~/workspaceFileTabsStore";
 import { PanelTabBar } from "./PanelTabBar";
 import { GitPanel } from "./GitPanel";
 import { SourceControlHistory } from "./SourceControlHistory";

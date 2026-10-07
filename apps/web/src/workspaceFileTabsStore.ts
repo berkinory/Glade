@@ -6,38 +6,39 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { useMainWorkspaceStore } from "./mainWorkspaceStore";
 import { sanitizeStringKeyedRecord } from "./persistedRecord";
 
-const RIGHT_DOCK_STORAGE_KEY = "glade:right-dock-state:v1";
+// The storage key and persisted field keep their right dock names so stored tabs survive.
+const WORKSPACE_FILE_TABS_STORAGE_KEY = "glade:right-dock-state:v1";
 
 export type SourceControlView = "changes" | "history";
 
 // Per-thread workspace file tabs and the Source Control subview. Which right sidebar view is open
 // lives in the per-window workspace sidebar store.
-interface RightDockThreadState {
+interface WorkspaceFileTabs {
   filePaths: string[];
   activeFilePath: string | null;
   previewFilePath?: string | null;
   sourceControlView: SourceControlView;
 }
 
-interface RightDockStore {
-  dockStateByThreadId: Record<string, RightDockThreadState | undefined>;
+interface WorkspaceFileTabsStore {
+  tabsByThreadId: Record<string, WorkspaceFileTabs | undefined>;
   setSourceControlView: (threadId: ThreadId, view: SourceControlView) => void;
   openFile: (threadId: ThreadId, path: string, options?: { preview?: boolean }) => void;
   pinFile: (threadId: ThreadId, path: string) => void;
   closeFile: (threadId: ThreadId, path: string) => void;
 }
 
-const DEFAULT_RIGHT_DOCK_STATE: RightDockThreadState = {
+const DEFAULT_WORKSPACE_FILE_TABS: WorkspaceFileTabs = {
   filePaths: [],
   activeFilePath: null,
   sourceControlView: "changes",
 };
-Object.freeze(DEFAULT_RIGHT_DOCK_STATE);
-Object.freeze(DEFAULT_RIGHT_DOCK_STATE.filePaths);
+Object.freeze(DEFAULT_WORKSPACE_FILE_TABS);
+Object.freeze(DEFAULT_WORKSPACE_FILE_TABS.filePaths);
 
 const isFilePath = (path: unknown): path is string => typeof path === "string" && path.length > 0;
 
-function sanitizeRightDockThreadState(value: unknown): RightDockThreadState | null {
+function sanitizeWorkspaceFileTabs(value: unknown): WorkspaceFileTabs | null {
   if (!isRecord(value)) return null;
   // Files were once dock panes; those older states still carry them under `panes`.
   const legacyFiles = (Array.isArray(value.panes) ? value.panes : [])
@@ -67,29 +68,29 @@ function sanitizeRightDockThreadState(value: unknown): RightDockThreadState | nu
 }
 
 function commit(
-  set: (fn: (store: RightDockStore) => Partial<RightDockStore>) => void,
+  set: (fn: (store: WorkspaceFileTabsStore) => Partial<WorkspaceFileTabsStore>) => void,
   threadId: ThreadId,
-  transform: (state: RightDockThreadState) => RightDockThreadState,
+  transform: (state: WorkspaceFileTabs) => WorkspaceFileTabs,
 ): void {
   set((store) => {
-    const previous = store.dockStateByThreadId[threadId] ?? DEFAULT_RIGHT_DOCK_STATE;
+    const previous = store.tabsByThreadId[threadId] ?? DEFAULT_WORKSPACE_FILE_TABS;
     const next = transform(previous);
     if (next === previous) {
       return {};
     }
     return {
-      dockStateByThreadId: {
-        ...store.dockStateByThreadId,
+      tabsByThreadId: {
+        ...store.tabsByThreadId,
         [threadId]: next,
       },
     };
   });
 }
 
-export const useRightDockStore = create<RightDockStore>()(
+export const useWorkspaceFileTabsStore = create<WorkspaceFileTabsStore>()(
   persist(
     (set) => ({
-      dockStateByThreadId: {},
+      tabsByThreadId: {},
       setSourceControlView: (threadId, sourceControlView) =>
         commit(set, threadId, (state) =>
           state.sourceControlView === sourceControlView ? state : { ...state, sourceControlView },
@@ -97,8 +98,9 @@ export const useRightDockStore = create<RightDockStore>()(
       openFile: (threadId, path, options) => {
         const workspace = useMainWorkspaceStore.getState();
         const previewReviewId = workspace.states[threadId]?.previewReviewId;
-        const dock = useRightDockStore.getState().dockStateByThreadId[threadId];
-        const replacesPreview = !dock?.filePaths.includes(path) || dock.previewFilePath === path;
+        const fileTabs = useWorkspaceFileTabsStore.getState().tabsByThreadId[threadId];
+        const replacesPreview =
+          !fileTabs?.filePaths.includes(path) || fileTabs.previewFilePath === path;
         if (options?.preview && replacesPreview && previewReviewId)
           workspace.closeReview(threadId, previewReviewId);
         commit(set, threadId, (state) => {
@@ -143,20 +145,21 @@ export const useRightDockStore = create<RightDockStore>()(
         }),
     }),
     {
-      name: RIGHT_DOCK_STORAGE_KEY,
+      name: WORKSPACE_FILE_TABS_STORAGE_KEY,
       storage: createJSONStorage(() => localStorage),
+      partialize: ({ tabsByThreadId }) => ({ dockStateByThreadId: tabsByThreadId }),
       merge: (persisted, current) => ({
         ...current,
-        dockStateByThreadId: sanitizeStringKeyedRecord(
+        tabsByThreadId: sanitizeStringKeyedRecord(
           (persisted as { dockStateByThreadId?: unknown } | undefined)?.dockStateByThreadId,
-          sanitizeRightDockThreadState,
+          sanitizeWorkspaceFileTabs,
         ),
       }),
     },
   ),
 );
 
-export function selectRightDockState(threadId: ThreadId | null) {
-  return (store: RightDockStore) =>
-    (threadId ? store.dockStateByThreadId[threadId] : undefined) ?? DEFAULT_RIGHT_DOCK_STATE;
+export function selectWorkspaceFileTabs(threadId: ThreadId | null) {
+  return (store: WorkspaceFileTabsStore) =>
+    (threadId ? store.tabsByThreadId[threadId] : undefined) ?? DEFAULT_WORKSPACE_FILE_TABS;
 }

@@ -1,6 +1,6 @@
 import type { GladeAppOpenRequest } from "@glade/contracts/provider/agentGatewayTools";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { useRightDockStore } from "../rightDockStore";
+import { useWorkspaceFileTabsStore } from "../workspaceFileTabsStore";
 import { useMainWorkspaceStore } from "../mainWorkspaceStore";
 import { useTerminalStateStore } from "../terminalStateStore";
 import { useWorkspaceSidebarStore } from "../workspaceSidebarStore";
@@ -14,10 +14,10 @@ export async function presentAppRequest(
   let error: string | undefined;
   try {
     await navigate(request.threadId);
-    const dock = useRightDockStore.getState();
+    const fileTabs = useWorkspaceFileTabsStore.getState();
     const target = request.target;
     if (target.kind === "file") {
-      dock.openFile(request.threadId, target.path);
+      fileTabs.openFile(request.threadId, target.path);
       useExplorerRevealRequestStore
         .getState()
         .requestReveal(

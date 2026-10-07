@@ -26,7 +26,7 @@ import {
   type WorkspaceFileOpener,
 } from "../../lib/workspaceFileOpener";
 import { requestExplorerFileReveal, requestExplorerReveal } from "../../explorerRevealRequestStore";
-import { selectRightDockState, useRightDockStore } from "../../rightDockStore";
+import { selectWorkspaceFileTabs, useWorkspaceFileTabsStore } from "../../workspaceFileTabsStore";
 import { useWorkspaceSidebarStore } from "../../workspaceSidebarStore";
 import { useStore } from "../../store";
 import { createProjectSelector, createThreadWorkspaceMetadataSelector } from "../../storeSelectors";
@@ -68,8 +68,8 @@ export function SingleChatSurface(props: {
   projectId: ProjectId | null;
 }) {
   const navigate = useNavigate();
-  const dockState = useRightDockStore(
-    useMemo(() => selectRightDockState(props.threadId), [props.threadId]),
+  const fileTabs = useWorkspaceFileTabsStore(
+    useMemo(() => selectWorkspaceFileTabs(props.threadId), [props.threadId]),
   );
   const selectMainTab = useMainWorkspaceStore((store) => store.selectTab);
   const openReview = useMainWorkspaceStore((store) => store.openReview);
@@ -79,7 +79,7 @@ export function SingleChatSurface(props: {
   const showView = useWorkspaceSidebarStore((store) => store.show);
   const toggleView = useWorkspaceSidebarStore((store) => store.toggle);
   const setSidebarOpen = useWorkspaceSidebarStore((store) => store.setOpen);
-  const setSourceControlView = useRightDockStore((store) => store.setSourceControlView);
+  const setSourceControlView = useWorkspaceFileTabsStore((store) => store.setSourceControlView);
   const activeProject = useStore(
     useMemo(() => createProjectSelector(props.projectId), [props.projectId]),
   );
@@ -240,8 +240,8 @@ export function SingleChatSurface(props: {
     const replacesPreview =
       !mainWorkspace.reviews.some((review) => review.id === tab.id) ||
       mainWorkspace.previewReviewId === tab.id;
-    if (preview && replacesPreview && dockState.previewFilePath) {
-      useRightDockStore.getState().closeFile(props.threadId, dockState.previewFilePath);
+    if (preview && replacesPreview && fileTabs.previewFilePath) {
+      useWorkspaceFileTabsStore.getState().closeFile(props.threadId, fileTabs.previewFilePath);
     }
     openReview(props.threadId, tab, preview);
   };
@@ -281,7 +281,7 @@ export function SingleChatSurface(props: {
                 showView("explorer");
                 requestExplorerFileReveal(props.threadId, filePath);
               }}
-              view={dockState.sourceControlView}
+              view={fileTabs.sourceControlView}
               onViewChange={(view) => setSourceControlView(props.threadId, view)}
             />
           </Suspense>
