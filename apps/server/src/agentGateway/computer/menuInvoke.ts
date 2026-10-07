@@ -55,8 +55,10 @@ export const invokeMenu = (
       if (next === null) {
         if (looked.has(index)) break;
         looked.add(index);
+        // Linux lists the menu bar's menus deeper than macOS (under the window's panes), and only
+        // that level, so there the whole tree is read.
         const read = yield* readWindow(services, context, input, {
-          maxDepth: 2 * index + 2,
+          ...(process.platform === "linux" ? {} : { maxDepth: 2 * index + 2 }),
           screenshot: "context",
         });
         const above = labels.slice(0, index);
