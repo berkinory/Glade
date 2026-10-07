@@ -2,7 +2,7 @@ import type { BrowserTabsChanged } from "@glade/contracts/browser/browserHost";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { session, WebContentsView, type DownloadItem, type WebContents } from "electron";
 import * as FS from "node:fs";
-import * as Path from "node:path";
+import { downloadTarget } from "./browserDownloads";
 import { BrowserFailure } from "./browserFailure";
 import { BROWSER_PARTITION, BROWSER_WEB_PREFERENCES, BrowserTab } from "./browserTab";
 import type { ContentBlocker } from "./contentBlocker";
@@ -13,38 +13,6 @@ import { browserUrlBlockReason } from "./browserUrlPolicy";
 const DEFAULT_BOUNDS = { x: 0, y: 0, width: 1280, height: 800 };
 const CHANGE_DEBOUNCE_MS = 100;
 const ERR_BLOCKED_BY_CLIENT = -20;
-
-// Every folder below the workspace is created or checked without following links, so a symlinked
-// `.glade` or `downloads` cannot send a page's download outside the workspace.
-function downloadTarget(workspaceDir: string, suggested: string): string {
-  let directory = FS.realpathSync(workspaceDir);
-  for (const part of [".glade", "downloads"]) {
-    directory = Path.join(directory, part);
-    FS.mkdirSync(directory, { recursive: true });
-    if (!FS.lstatSync(directory).isDirectory()) {
-      throw new Error(`${directory} is not a plain folder.`);
-    }
-  }
-  writeExclusive(Path.join(directory, ".gitignore"), "*\n");
-  const base = Path.basename(suggested).replace(/[\u0000-\u001f<>:"/\\|?*]/gu, "_") || "download";
-  const { name, ext } = Path.parse(base);
-  // Reserving the name with an exclusive create keeps two downloads from claiming the same file.
-  for (let index = 0; ; index += 1) {
-    const candidate = Path.join(directory, index === 0 ? base : `${name} (${index})${ext}`);
-    if (writeExclusive(candidate, "")) return candidate;
-  }
-}
-
-// Fails on any existing entry, including a dangling symlink, instead of writing through it.
-function writeExclusive(path: string, contents: string): boolean {
-  try {
-    FS.writeFileSync(path, contents, { flag: "wx" });
-    return true;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EEXIST") return false;
-    throw error;
-  }
-}
 
 // Owns every agent browser tab. Tabs belong to exactly one thread; callers pass the thread from
 // the authenticated server request and can only reach that thread's tabs.

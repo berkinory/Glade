@@ -1,10 +1,11 @@
 import type { BrowserViewRect } from "@glade/contracts/browser/browserView";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-import type { BrowserWindow, WebContentsView } from "electron";
+import type { BrowserWindow } from "electron";
+import type { BrowserTab } from "./browserTab";
 import type { BrowserTabs } from "./browserTabs";
 
 interface Shown {
-  readonly view: WebContentsView;
+  readonly tab: BrowserTab;
   readonly window: BrowserWindow;
 }
 
@@ -19,14 +20,16 @@ export class BrowserViewSurface {
     window: BrowserWindow,
     placement: { threadId: ThreadId; tabId: string; bounds: BrowserViewRect; zoom: number },
   ): void {
-    const { view } = this.tabs.resolve(placement.threadId, placement.tabId);
+    const tab = this.tabs.resolve(placement.threadId, placement.tabId);
+    const { view } = tab;
     const current = this.shown.get(placement.threadId);
-    if (current && (current.view !== view || current.window !== window)) {
+    if (current && (current.tab !== tab || current.window !== window)) {
       this.hide(placement.threadId);
     }
     if (!this.shown.has(placement.threadId)) {
       window.contentView.addChildView(view);
-      this.shown.set(placement.threadId, { view, window });
+      tab.setShownInPanel(true);
+      this.shown.set(placement.threadId, { tab, window });
     }
     const { bounds, zoom } = placement;
     view.setBounds({
@@ -41,7 +44,8 @@ export class BrowserViewSurface {
     const current = this.shown.get(threadId);
     if (!current) return;
     this.shown.delete(threadId);
-    if (!current.window.isDestroyed()) current.window.contentView.removeChildView(current.view);
+    current.tab.setShownInPanel(false);
+    if (!current.window.isDestroyed()) current.window.contentView.removeChildView(current.tab.view);
   }
 
   // A reloaded renderer forgets which views it placed; nothing it shows may stay covered.

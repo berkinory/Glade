@@ -21,6 +21,7 @@ const OPERATION_TIMED_OUT = Symbol("operation timed out");
 export class CdpSession {
   private readonly listeners = new Set<CdpListener>();
   private readonly children = new Map<string, ChildTarget>();
+  private readonly setups: Array<() => Promise<void>> = [];
   private attaching: Promise<void> | null = null;
   private queue: Promise<unknown> = Promise.resolve();
 
@@ -50,6 +51,7 @@ export class CdpSession {
       // Without focus emulation an unfocused or detached view holds the first mouse event for the
       // 5 s input-ack timeout, and pages see document.hasFocus() as false.
       await this.send("Emulation.setFocusEmulationEnabled", { enabled: true });
+      await Promise.all(this.setups.map((setup) => setup()));
     })();
     this.attaching.catch(() => {
       this.attaching = null;
@@ -86,6 +88,11 @@ export class CdpSession {
     const run = this.queue.then(bounded, bounded);
     this.queue = run.catch(() => undefined);
     return run;
+  }
+
+  // Runs on every fresh attachment of the main target, so page hooks survive a lost debugger.
+  onAttach(setup: () => Promise<void>): void {
+    this.setups.push(setup);
   }
 
   on(listener: CdpListener): () => void {

@@ -208,6 +208,12 @@ agent input on that tab fails with `user_picking` instead of moving the page und
   a download, which then gets 3 s); otherwise the next result carries it. `browser_tabs` lists the
   tab's last ten downloads with their state; a symlinked `.glade` or `downloads` folder
   cancels them. Uploads accept only regular files inside the chat workspace. Popups open as tabs and keep `window.opener`, so sign-in popups work.
+- A page's `window.print()` never opens a native dialog for the agent. Electron has no print hook,
+  so a script added at document start (CDP `Page.addScriptToEvaluateOnNewDocument`, every
+  same-process frame) replaces `print` with one that fires `beforeprint` and `afterprint` around a
+  CDP binding call and returns at once. A print within 2 s of the user's own input in a tab the
+  panel shows opens the normal print dialog; any other is saved with `printToPDF` into the
+  downloads folder and the result says `Printed to PDF: <path>`.
 - Console and network logs are ring buffers of 500 entries per tab, read on demand.
 - Each call on a tab gets 12 s (longer for navigation and settling actions). A page that stops
   answering has its script terminated, or is crashed and reloaded if it keeps blocking.

@@ -14,6 +14,8 @@ const REQUESTS_CAP_MS = 1_000;
 // result.
 const DOWNLOAD_START_MS = 1_500;
 const DOWNLOAD_CAP_MS = 3_000;
+// A print the action caused is saved as a PDF; one this quick lands in the action's result.
+const PRINT_CAP_MS = 5_000;
 const QUIET_MS = 100;
 const QUIET_CAP_MS = 3_000;
 const WATCH_SETUP_MS = 500;
@@ -171,6 +173,7 @@ export async function actAndSettle(
       );
     }
     await tab.downloads.settle(startedAt, DOWNLOAD_CAP_MS);
+    await tab.prints.settle(PRINT_CAP_MS);
   } finally {
     requests.stop();
     webContents.off("did-start-navigation", onNavigation);

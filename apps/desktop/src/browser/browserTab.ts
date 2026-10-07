@@ -8,6 +8,7 @@ import { CdpSession } from "./cdp/cdpSession";
 import { RefTable } from "./cdp/refs";
 import type { ScreenshotFrame } from "./cdp/screenshotFrame";
 import { PageDialogs } from "./pageDialogs";
+import { PagePrints } from "./pagePrints";
 
 export const BROWSER_PARTITION = "persist:glade-browser";
 export const BROWSER_WEB_PREFERENCES = {
@@ -28,7 +29,7 @@ const HUMAN_INPUT_TYPES = new Set(["mouseDown", "mouseWheel", "keyDown", "rawKey
 // long, but never longer than the cap.
 const HUMAN_QUIET_MS = 1_500;
 const HUMAN_MAX_WAIT_MS = 2_000;
-// A dialog opening this soon after the user's input in the tab is the user's to answer.
+// A dialog or print opening this soon after the user's input in the tab is the user's.
 const USER_DIALOG_WINDOW_MS = 2_000;
 const MAX_NOTICES = 20;
 
@@ -38,7 +39,9 @@ export class BrowserTab {
   readonly downloads = new BrowserDownloads();
   readonly buffers: PageBuffers;
   readonly dialogs: PageDialogs;
+  readonly prints: PagePrints;
   private notices: string[] = [];
+  private shownInPanel = false;
   private lastHumanInputAt = 0;
   private agentActing = false;
   private picking = false;
@@ -58,11 +61,13 @@ export class BrowserTab {
     this.cdp = new CdpSession(webContents);
     this.buffers = new PageBuffers(this.cdp);
     this.dialogs = new PageDialogs(webContents, {
-      audience: () =>
-        !this.agentActing && Date.now() - this.lastHumanInputAt < USER_DIALOG_WINDOW_MS
-          ? "user"
-          : "agent",
+      audience: () => (this.userJustActed() ? "user" : "agent"),
       onChange,
+    });
+    this.prints = new PagePrints(webContents, this.cdp, {
+      downloadDir,
+      audience: () => (this.shownInPanel && this.userJustActed() ? "user" : "agent"),
+      notify: (text) => this.addNotice(text),
     });
     webContents.on("did-navigate", () => this.noteChallenge(null));
     webContents.on("will-prevent-unload", () =>
@@ -92,6 +97,11 @@ export class BrowserTab {
 
   page() {
     return { tabId: this.id, url: this.webContents.getURL(), title: this.webContents.getTitle() };
+  }
+
+  // Set by the panel's view surface while this tab's view is on screen.
+  setShownInPanel(shown: boolean): void {
+    this.shownInPanel = shown;
   }
 
   recordScreenshot(frame: ScreenshotFrame): void {
@@ -182,6 +192,10 @@ export class BrowserTab {
   destroy(): void {
     this.cdp.detach();
     if (!this.webContents.isDestroyed()) this.webContents.close();
+  }
+
+  private userJustActed(): boolean {
+    return !this.agentActing && Date.now() - this.lastHumanInputAt < USER_DIALOG_WINDOW_MS;
   }
 
   private async waitForHumanQuiet(): Promise<void> {
