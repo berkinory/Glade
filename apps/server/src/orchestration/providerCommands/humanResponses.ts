@@ -11,6 +11,7 @@ import {
 import { type OrchestrationDispatchError } from "../Errors.ts";
 import { buildStalePendingRequestFailureDetail } from "@glade/shared/threads/threadSummary";
 import { type ProviderIntentEvent } from "../providerIntentClassification.ts";
+import { isComputerAccessRequestId } from "@glade/contracts/computer/computerUse";
 import { makeProviderThreadProjection } from "./threadProjection";
 import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
 
@@ -185,6 +186,8 @@ export function makeProviderHumanResponses(input: {
   const processUserInputResponseRequested = Effect.fnUntraced(function* (
     event: Extract<ProviderIntentEvent, { type: "thread.user-input-response-requested" }>,
   ) {
+    // Computer Use access cards belong to the ComputerAccess service; no provider is waiting.
+    if (isComputerAccessRequestId(event.payload.requestId)) return;
     const providerThreadId = yield* claimInteractionResponse({
       event,
       interactionKind: "userInput",

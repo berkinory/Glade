@@ -11,6 +11,8 @@ import { Layer } from "effect";
 import { AgentGatewayLive } from "./agentGateway/Layers/AgentGateway";
 import { BrowserHostLive } from "./browser/Layers/BrowserHost";
 import { DesktopHostClientLive } from "./desktopHost/Layers/DesktopHostClient";
+import { ComputerAccessLive } from "./computer/Layers/ComputerAccess";
+import { ComputerHostLive } from "./computer/Layers/ComputerHost";
 import { AgentGatewayOperationRepositoryLive } from "./agentGateway/Layers/AgentGatewayOperationRepository";
 import { AgentGatewayCredentialsWithSecretsLive } from "./agentGateway/Layers/AgentGatewayCredentials";
 import { CheckpointDiffQueryLive } from "./checkpointing/Layers/CheckpointDiffQuery";
@@ -141,8 +143,12 @@ function makeServerRuntimeServicesLayer(
   const gitActionRunsLayer = GitActionRunsLive.pipe(
     Layer.provide(Layer.mergeAll(GitLayerLive, sessionCredentialLayer)),
   );
+  const desktopHostLayers = Layer.mergeAll(
+    BrowserHostLive,
+    ComputerAccessLive.pipe(Layer.provideMerge(ComputerHostLive)),
+  ).pipe(Layer.provideMerge(DesktopHostClientLive), Layer.provideMerge(runtimeServicesLayer));
   const agentGatewayLayer = AgentGatewayLive.pipe(
-    Layer.provideMerge(BrowserHostLive.pipe(Layer.provideMerge(DesktopHostClientLive))),
+    Layer.provideMerge(desktopHostLayers),
     Layer.provideMerge(VisualReplyPreviewLive),
     Layer.provideMerge(AppPresentationLive),
     Layer.provideMerge(agentGatewayCredentialsLayer),

@@ -1,0 +1,67 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "Found 3 window(s)."
+    }
+  ],
+  "structuredContent": {
+    "current_space_id": 1,
+    "windows": [
+      {
+        "app_name": "Glade (Dev)",
+        "bounds": {
+          "height": 1072,
+          "width": 1710,
+          "x": 0,
+          "y": 40
+        },
+        "current_space_id": 1,
+        "is_on_screen": true,
+        "layer": 0,
+        "on_current_space": true,
+        "pid": 99747,
+        "space_ids": [1],
+        "title": "Glade (Dev)",
+        "window_id": 1546,
+        "z_index": 65
+      },
+      {
+        "app_name": "Notes",
+        "bounds": {
+          "height": 57,
+          "width": 56,
+          "x": 1294,
+          "y": 1048
+        },
+        "current_space_id": 1,
+        "is_on_screen": false,
+        "layer": 0,
+        "on_current_space": true,
+        "pid": 37908,
+        "space_ids": [1],
+        "title": "Shopping list",
+        "window_id": 1474,
+        "z_index": 59
+      },
+      {
+        "app_name": "Calculator",
+        "bounds": {
+          "height": 745,
+          "width": 960,
+          "x": 603,
+          "y": 133
+        },
+        "current_space_id": 1,
+        "is_on_screen": true,
+        "layer": 0,
+        "on_current_space": true,
+        "pid": 95352,
+        "space_ids": [1],
+        "title": "",
+        "window_id": 1445,
+        "z_index": 54
+      }
+    ]
+  }
+}
