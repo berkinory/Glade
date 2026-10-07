@@ -18,10 +18,9 @@ type OverlayCall =
 // closed shadow root keeps page CSS out. Styles go through CSSOM and motion through
 // element.animate, which a page CSP does not block the way it blocks an inline <style>.
 function installPickOverlay(theme: BrowserPickTheme): void {
-  const ease = "cubic-bezier(0.2, 0, 0, 1)";
-  const moving = theme.reducedMotion
-    ? "opacity 80ms linear"
-    : `transform 140ms ${ease}, width 140ms ${ease}, height 140ms ${ease}, opacity 120ms ${ease}`;
+  // The highlight jumps straight to the hovered element; only its appearance fades, so following
+  // the pointer never lags behind it.
+  const moving = "opacity 80ms linear";
   const host = document.createElement("div");
   host.style.cssText =
     "all: initial !important; position: fixed !important; inset: 0 !important; pointer-events: none !important; z-index: 2147483647 !important;";
@@ -57,37 +56,50 @@ function installPickOverlay(theme: BrowserPickTheme): void {
   const fadeOutAndRemove = (delay: number) => {
     box.style.opacity = "0";
     label.style.opacity = "0";
-    setTimeout(() => host.remove(), delay);
+    setTimeout(() => {
+      host.remove();
+      removeEventListener("scroll", hideNow, { capture: true });
+    }, delay);
   };
+  const hideNow = () => {
+    box.style.transition = "none";
+    label.style.transition = "none";
+    box.style.opacity = "0";
+    label.style.opacity = "0";
+    void box.offsetWidth;
+    box.style.transition = moving;
+    label.style.transition = moving;
+  };
+  // Boxes are in viewport coordinates, so a scroll would leave them behind; the next hover shows
+  // the element under the pointer again.
+  addEventListener("scroll", hideNow, { capture: true, passive: true });
 
   Object.defineProperty(globalThis, "__gladePickOverlay", {
     configurable: true,
     value: (call: OverlayCall) => {
       if (call.op === "show") place(call.box, call.label, call.size);
-      else if (call.op === "hide") {
-        // Instant, so the element screenshot that follows never contains the overlay.
-        box.style.transition = "none";
-        label.style.transition = "none";
-        box.style.opacity = "0";
-        label.style.opacity = "0";
-        void box.offsetWidth;
-        box.style.transition = moving;
-        label.style.transition = moving;
-      } else if (call.op === "confirm") {
+      // Instant, so the element screenshot that follows never contains the overlay.
+      else if (call.op === "hide") hideNow();
+      else if (call.op === "confirm") {
         if (!call.box || theme.reducedMotion) {
-          fadeOutAndRemove(150);
+          fadeOutAndRemove(80);
           return;
         }
         place(call.box, "Added to chat", "");
         box.animate(
           [
             { boxShadow: `0 0 0 0 color-mix(in srgb, ${theme.accent} 45%, transparent)` },
-            { boxShadow: "0 0 0 10px transparent" },
+            { boxShadow: "0 0 0 8px transparent" },
           ],
-          { duration: 420, easing: "ease-out" },
+          { duration: 240, easing: "ease-out" },
         );
-        setTimeout(() => fadeOutAndRemove(160), 520);
-      } else fadeOutAndRemove(theme.reducedMotion ? 0 : 140);
+        addEventListener("scroll", () => host.remove(), {
+          capture: true,
+          passive: true,
+          once: true,
+        });
+        setTimeout(() => fadeOutAndRemove(80), 300);
+      } else fadeOutAndRemove(theme.reducedMotion ? 0 : 80);
     },
   });
 }
