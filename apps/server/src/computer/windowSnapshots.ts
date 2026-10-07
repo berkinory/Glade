@@ -62,12 +62,17 @@ interface WindowTable {
 // forgets old ones, which only means a returning element gets a fresh index.
 const MAX_IDENTITIES = 20_000;
 
+// macOS AX roles, then the AT-SPI role names Cua reports on Linux.
 const TEXT_INPUT_ROLES = new Set([
   "AXTextArea",
   "AXTextField",
   "AXSearchField",
   "AXSecureTextField",
   "AXComboBox",
+  "text",
+  "entry",
+  "password text",
+  "combo box",
 ]);
 
 const windowKey = (window: WindowKey) => `${window.pid}:${window.windowId}`;
@@ -75,10 +80,13 @@ const windowKey = (window: WindowKey) => `${window.pid}:${window.windowId}`;
 // Cua numbers elements per snapshot in walk order, so its indexes shift whenever anything above
 // an element appears or disappears. Glade's identity is the parent's Glade index, role and label
 // plus the position among identical siblings; values, enabled and selected state are not part of
-// it. Text inputs often report their contents as their label (TextEdit does), and the root's
-// label is the window title, which apps change as a document is edited, so neither label is
-// part of it; otherwise typing would re-index the field or the whole window. Parents precede children in Cua's walk, so a parent's index is
-// known when its children are reached.
+// it. Text inputs often report their contents as their label (TextEdit does), and the window
+// root's label is its title, which apps change as a document is edited, so neither label is part
+// of it; otherwise typing would re-index the field or the whole window. Parents precede children
+// in Cua's macOS walk, so a parent's index is known when its children are reached. Cua on Linux
+// lists many elements without a parent (or after it), so there the depth stands in for the
+// parent, and only a macOS window root drops its label: otherwise any two parentless elements of
+// a role, or two text fields, would share an identity whenever a query read lists one of them.
 function assignIndexes(table: WindowTable, elements: ReadonlyArray<CuaElement>) {
   const byCuaIndex = new Map<number, number>();
   const seen = new Map<string, number>();
@@ -88,10 +96,11 @@ function assignIndexes(table: WindowTable, elements: ReadonlyArray<CuaElement>) 
         ? -1
         : (byCuaIndex.get(element.parent_index) ?? -2);
     const label =
-      parent === -1 || TEXT_INPUT_ROLES.has(element.role)
+      (parent === -1 && element.role === "AXWindow") || TEXT_INPUT_ROLES.has(element.role)
         ? ""
         : (element.label ?? "").slice(0, 200);
-    const base = `${parent}/${element.role}:${label}`;
+    const place = parent >= 0 ? `${parent}` : `${parent}@${element.depth ?? ""}`;
+    const base = `${place}/${element.role}:${label}`;
     const nth = seen.get(base) ?? 0;
     seen.set(base, nth + 1);
     const identity = `${base}#${nth}`;
