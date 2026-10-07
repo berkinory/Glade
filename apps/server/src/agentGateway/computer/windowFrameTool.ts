@@ -9,6 +9,7 @@ import {
   windowLine,
   type ComputerToolServices,
 } from "./computerCalls.ts";
+import { screenLine } from "./screenGeometry.ts";
 import { targetFor, WindowTarget } from "./windowTarget.ts";
 
 const Size = Schema.Finite.check(Schema.isGreaterThanOrEqualTo(1));
@@ -29,7 +30,7 @@ export const makeWindowFrameTool = (services: ComputerToolServices): ToolEntry =
     name: "computer_window_frame",
     title: "Move or resize a window",
     description:
-      "Move and resize a window to x, y, width, height in desktop points (origin at the main display's top left, as window bounds are listed). Returns the geometry the window ended up with. Needs act access.",
+      "Move and resize a window to x, y, width, height in desktop points (origin at the main display's top left, as window bounds are listed; computer_apps lists each display's size and work area in the same points). Returns the geometry the window ended up with and the displays. Needs act access.",
     input: Schema.Struct({
       ...WindowTarget,
       x: Schema.Finite,
@@ -51,14 +52,17 @@ export const makeWindowFrameTool = (services: ComputerToolServices): ToolEntry =
           width: input.width,
           height: input.height,
         });
-        const after = (yield* appWindows(services, context, target.pid)).find(
-          (entry) => entry.window_id === target.window_id,
+        const [windows, screen] = yield* Effect.all(
+          [appWindows(services, context, target.pid), screenLine(services)],
+          { concurrency: "unbounded" },
         );
+        const after = windows.find((entry) => entry.window_id === target.window_id);
         const lines = [
           after
             ? `Window frame is now ${bounds(after.bounds)} (asked ${bounds(input)}).`
             : resultText(result) || "Frame set; the window is no longer listed.",
           windowLine(after ?? window),
+          screen,
         ];
         return { content: [{ type: "text", text: lines.join("\n") }] };
       }),

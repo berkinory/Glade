@@ -110,6 +110,7 @@ const setup = Effect.fnUntraced(function* (
     endSession: () => Effect.void,
     endAllSessions: Effect.void,
     userIdleSeconds: Effect.succeed(null),
+    displays: Effect.succeed([]),
     killSwitch: Stream.empty,
     encodeJpeg: () => Effect.die("unused"),
   };

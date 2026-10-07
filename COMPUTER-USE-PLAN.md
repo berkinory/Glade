@@ -633,6 +633,12 @@ docker exec -u abc glade-linux bash -c 'mkdir -p ~/cu && cp /exchange/cu/* ~/cu/
 docker stop glade-linux                                      # kept for reuse; docker start glade-linux
 ```
 
+## 8k. Screen geometry and Linux dialog guidance (2026-10-07)
+
+Revision to the computer tool surface (section 3): on Linux an agent asked to put a window on the left half of the screen had to guess the screen size by toggling fullscreen and overflowed on its first try. Cua 0.34's `get_screen_size` returns only the main display (`width`, `height`, `scale_factor`; physical pixels on Windows), and neither `list_windows` nor `get_accessibility_tree` carries display bounds or a work area, so the geometry comes from the desktop instead: a `computer.displays` host request answers from Electron's `screen` with every display's bounds, work area and scale, primary first, converted to Cua's window coordinates (points on macOS, physical pixels via `dipToScreenRect` on Windows and the single X11 scale on Linux). `computer_apps` and `computer_window_frame` add one line, e.g. `Screen: 1710×1112 (work area x=0 y=38 1710×1031), scale 2`, or `Screens: main …; …` with origins for several displays; one host request per call, no cache. The Windows and Linux conversions are unverified on hardware.
+
+On Linux the guidance gained one line: open dialogs (Save, Open, Preferences) by keyboard shortcut through `computer_key`, not `computer_menu`, since an AT-SPI menu action that opens a GTK modal freezes the app (8j).
+
 ## 9. Open items
 
 - When Cua ships foreground keys to a window's attached sheet (trycua/cua#4551), send Go to Folder's keys to the window instead of the desktop and drop the frontmost check.

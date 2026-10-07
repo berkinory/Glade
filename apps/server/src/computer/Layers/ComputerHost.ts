@@ -1,9 +1,11 @@
 import {
   COMPUTER_CONNECTION_NOTIFICATION,
+  COMPUTER_DISPLAYS_METHOD,
   COMPUTER_ENCODE_JPEG_METHOD,
   COMPUTER_KILL_SWITCH_NOTIFICATION,
   COMPUTER_USER_IDLE_METHOD,
   ComputerConnection,
+  ComputerDisplays,
   ComputerEncodedImage,
   ComputerUserIdle,
 } from "@glade/contracts/computer/computerHost";
@@ -24,7 +26,7 @@ const HEALTH_TIMEOUT_MS = 10_000;
 const END_SESSION_TIMEOUT_MS = 5_000;
 const SESSION_ENDED = /session has ended/u;
 const ENCODE_TIMEOUT_MS = 10_000;
-const USER_IDLE_TIMEOUT_MS = 2_000;
+const HOST_QUERY_TIMEOUT_MS = 2_000;
 const JPEG_QUALITY = 75;
 // A proxy that dies while its daemon generation is still current is relaunched quickly at first,
 // then every few seconds.
@@ -221,6 +223,7 @@ export const ComputerHostLive = Layer.effect(
     );
     const decodeImage = Schema.decodeUnknownEffect(ComputerEncodedImage);
     const decodeUserIdle = Schema.decodeUnknownEffect(ComputerUserIdle);
+    const decodeDisplays = Schema.decodeUnknownEffect(ComputerDisplays);
     const endLabel = (mcp: CuaMcpClient, label: string) =>
       request(mcp, "end_session", { session: label }, END_SESSION_TIMEOUT_MS).pipe(Effect.ignore);
     return {
@@ -273,7 +276,7 @@ export const ComputerHostLive = Layer.effect(
         });
       }),
       userIdleSeconds: desktopHost
-        .request(COMPUTER_USER_IDLE_METHOD, {}, USER_IDLE_TIMEOUT_MS)
+        .request(COMPUTER_USER_IDLE_METHOD, {}, HOST_QUERY_TIMEOUT_MS)
         .pipe(
           Effect.flatMap(decodeUserIdle),
           Effect.map((idle) => idle.idleSeconds),
@@ -285,6 +288,17 @@ export const ComputerHostLive = Layer.effect(
               }),
           ),
         ),
+      displays: desktopHost.request(COMPUTER_DISPLAYS_METHOD, {}, HOST_QUERY_TIMEOUT_MS).pipe(
+        Effect.flatMap(decodeDisplays),
+        Effect.map((value) => value.displays),
+        Effect.mapError(
+          (error) =>
+            new ComputerHostError({
+              code: "protocol",
+              message: `Reading the display geometry failed: ${error.message}`,
+            }),
+        ),
+      ),
       killSwitch: desktopHost.notifications.pipe(
         Stream.filter((notification) => notification.method === COMPUTER_KILL_SWITCH_NOTIFICATION),
         Stream.map(() => undefined),

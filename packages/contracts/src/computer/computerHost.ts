@@ -56,5 +56,22 @@ export const COMPUTER_USER_IDLE_METHOD = "computer.userIdle";
 export const ComputerUserIdle = Schema.Struct({ idleSeconds: Schema.NullOr(Schema.Number) });
 export type ComputerUserIdle = typeof ComputerUserIdle.Type;
 
+// Server → desktop: every display's bounds and work area (without the menu bar, dock or taskbar)
+// in the coordinates Cua lists window bounds in, primary display first. Cua's get_screen_size
+// knows only the main display and no work area.
+export const COMPUTER_DISPLAYS_METHOD = "computer.displays";
+const ComputerRect = Schema.Struct({
+  x: Schema.Number,
+  y: Schema.Number,
+  width: Schema.Number,
+  height: Schema.Number,
+});
+export const ComputerDisplays = Schema.Struct({
+  displays: Schema.Array(
+    Schema.Struct({ bounds: ComputerRect, workArea: ComputerRect, scaleFactor: Schema.Number }),
+  ),
+});
+export type ComputerDisplays = typeof ComputerDisplays.Type;
+
 // Desktop → server: the user pressed the Computer Use kill switch shortcut.
 export const COMPUTER_KILL_SWITCH_NOTIFICATION = "computer.killSwitch";

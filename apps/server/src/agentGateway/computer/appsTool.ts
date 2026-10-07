@@ -5,6 +5,7 @@ import { CuaDesktopTree, CuaListApps, CuaListWindows } from "../../computer/cuaR
 import type { ToolContext, ToolEntry } from "../toolRuntime.ts";
 import { untrustedContent } from "../untrustedContent.ts";
 import { callCua, computerTool, refuse, type ComputerToolServices } from "./computerCalls.ts";
+import { screenLine } from "./screenGeometry.ts";
 
 // Apps whose category caps every grant are marked.
 const CATEGORY_NOTE = {
@@ -67,12 +68,15 @@ export const makeAppsTool = (services: ComputerToolServices): ToolEntry =>
     name: "computer_apps",
     title: "List apps and windows",
     description:
-      "Running apps and their on-screen windows, front to back, with the pid and window_id other computer_* tools take (or name the app instead). installed: true also lists apps that are not running, for computer_open_app. Needs no access grant.",
+      "Running apps and their on-screen windows, front to back, with the pid and window_id other computer_* tools take (or name the app instead), and each display's size and work area (without menu bar, dock or taskbar) in the coordinates window bounds use. installed: true also lists apps that are not running, for computer_open_app. Needs no access grant.",
     input: Schema.Struct({ installed: Schema.optionalKey(Schema.Boolean) }),
     readOnly: true,
     run: (input, context) =>
       Effect.gen(function* () {
-        const tree = yield* desktopOverview(services, context);
+        const [tree, screen] = yield* Effect.all(
+          [desktopOverview(services, context), screenLine(services)],
+          { concurrency: "unbounded" },
+        );
         const frontPid = tree.windows.find((window) =>
           tree.apps.some((app) => app.pid === window.pid),
         )?.pid;
@@ -116,10 +120,12 @@ export const makeAppsTool = (services: ComputerToolServices): ToolEntry =>
           ...lines,
           ...(installed.length > 0 ? [`Installed, not running: ${installed.join(", ")}`] : []),
         ];
-        const text =
+        const text = [
+          screen,
           content.length > 0
             ? `${lines.length} running ${lines.length === 1 ? "app" : "apps"}.\n${untrustedContent("APP_CONTENT", "source=computer_apps", content.join("\n"))}`
-            : "No running apps.";
+            : "No running apps.",
+        ].join("\n");
         return { content: [{ type: "text", text }] };
       }),
   });

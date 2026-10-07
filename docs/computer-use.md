@@ -27,7 +27,11 @@ connection and every policy decision, and providers only see gateway tools.
   screenshot as JPEG (`computer.encodeJpeg`), since the server has no image codec, and for the
   seconds since the user last used the mouse or keyboard (`computer.userIdle`, Electron's
   `powerMonitor.getSystemIdleTime()`, whole seconds; `null` on Linux, where Chromium cannot tell
-  outside X11). The desktop sends `computer.killSwitch` when the kill switch shortcut is pressed.
+  outside X11), and for every display's bounds, work area and scale factor (`computer.displays`,
+  Electron's `screen`, primary first, converted to the coordinates Cua lists windows in: points on
+  macOS, physical pixels on Windows and X11). Cua's `get_screen_size` reports only the main display
+  without a work area, and neither `list_windows` nor `get_accessibility_tree` carries display
+  geometry. The desktop sends `computer.killSwitch` when the kill switch shortcut is pressed.
 - **Server.** `ComputerHost` launches exactly the published stdio MCP proxy for each generation
   and is an MCP client to it; no Glade code speaks Cua's socket protocol. It runs
   `check_permissions` and `health_report` on connect, relaunches a dead proxy and reports status.
@@ -92,7 +96,8 @@ connection and every policy decision, and providers only see gateway tools.
 
 Reading: `computer_apps` (Cua's `get_accessibility_tree`: running apps and their on-screen windows
 front to back, fast and without permissions; `installed: true` adds apps that are not running from
-`list_apps`), `computer_window_state` (accessibility tree, screenshot only on request),
+`list_apps`; the first line gives each display's size, origin when not 0,0, work area and scale, as
+in `Screen: 1710×1112 (work area x=0 y=38 1710×1031), scale 2`), `computer_window_state` (accessibility tree, screenshot only on request),
 `computer_screenshot` (with `region`, a zoomed close-up), `computer_verify` (Cua's `verify_state`:
 waits up to 10 s for element conditions with stable samples). Input, one tool per action as in
 Anthropic's `computer_toolset_20260801` and Codex/Cua: `computer_left_click`, `computer_right_click`,
@@ -102,7 +107,8 @@ Anthropic's `computer_toolset_20260801` and Codex/Cua: `computer_left_click`, `c
 `computer_open_app`, `computer_file_dialog` (a macOS Open or Save panel in one call; listed on
 macOS only, and agents elsewhere set a dialog's name field to the full path),
 `computer_window_frame` (Cua's `set_window_frame`: x, y, width, height in desktop points, then the
-window is listed again and the result states the geometry it ended up with; needs `act`, and
+window is listed again and the result states the geometry it ended up with and the display line;
+needs `act`, and
 browsers refuse it like other input). Clipboard: `computer_clipboard_write`,
 `computer_clipboard_read`. Session:
 `computer_request_access`, `computer_stop`.
@@ -238,7 +244,9 @@ Clicks, typing, values and menus go through AT-SPI and stay in the background.
 A GTK3 menu item that opens a modal dialog (Mousepad's File ▸ Save As…) freezes the app when it is
 run through AT-SPI's action, as `computer_menu` does: the dialog draws but takes no input and the
 app stops answering AT-SPI until it is killed. This reproduces with a bare AT-SPI client and no Cua
-running. The same dialog opened by its shortcut works, including `set_value` on its name field.
+running. The same dialog opened by its shortcut works, including `set_value` on its name field. On
+Linux the guidance therefore tells agents to open dialogs (Save, Open, Preferences) with their
+shortcut through `computer_key` rather than `computer_menu`.
 
 macOS has been verified end to end, and Linux arm64 on X11 (XFCE on Xvfb, in a container; see the
 plan's Linux results). A Linux x64 AppImage on a real desktop, Wayland and Windows are open release

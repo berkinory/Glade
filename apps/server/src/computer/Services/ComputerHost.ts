@@ -1,4 +1,5 @@
 import type {
+  ComputerDisplays,
   ComputerEncodedImage,
   ComputerUnavailableReason,
 } from "@glade/contracts/computer/computerHost";
@@ -45,6 +46,7 @@ export interface ComputerHostShape {
   // Whole seconds since the user last touched the mouse or keyboard; null where the platform
   // cannot tell.
   readonly userIdleSeconds: Effect.Effect<number | null, ComputerHostError>;
+  readonly displays: Effect.Effect<ComputerDisplays["displays"], ComputerHostError>;
   // One element per press of the desktop's Computer Use kill switch shortcut.
   readonly killSwitch: Stream.Stream<void>;
   readonly encodeJpeg: (png: string) => Effect.Effect<ComputerEncodedImage, ComputerHostError>;
