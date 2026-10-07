@@ -2,7 +2,7 @@ import { BROWSER_GUIDANCE } from "./browser/browserGuidance.ts";
 import { COMPUTER_GUIDANCE } from "./computer/computerGuidance.ts";
 import { NATIVE_SUBAGENT_INSTRUCTIONS } from "./subagentGuidance.ts";
 
-export const GLADE_HARNESS_POLICY_VERSION = "2026-10-07.4";
+export const GLADE_HARNESS_POLICY_VERSION = "2026-10-07.5";
 export const GLADE_HARNESS_POLICY_MARKER = `[Glade harness policy ${GLADE_HARNESS_POLICY_VERSION}]`;
 
 export interface GladeHarnessCapabilities {
