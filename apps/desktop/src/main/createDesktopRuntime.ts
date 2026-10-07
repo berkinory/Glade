@@ -116,6 +116,7 @@ export function createDesktopRuntime(): void {
       requestGracefulAppQuit: lifecycle.requestGracefulAppQuit,
       isQuitting: lifecycle.isQuitting,
     },
+    desktopHost: () => desktopHost,
   });
   protocol.registerSchemesAsPrivileged([
     {

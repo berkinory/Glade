@@ -29,6 +29,11 @@ import type {
   ServerSettingsUpdatedPayload,
 } from "@glade/contracts/server/server";
 import type { TerminalStreamItem } from "@glade/contracts/transport/ws/terminalRpc";
+import type { BrowserTabsChanged } from "@glade/contracts/browser/browserHost";
+import {
+  BROWSER_WS_METHODS,
+  type BrowserTabsSubscribeInput,
+} from "@glade/contracts/transport/ws/browserRpc";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { Cause, Effect, Exit, Stream } from "effect";
 import {
@@ -313,6 +318,16 @@ export class WsTransport extends WsTransportBase {
   ): void {
     if (this.disposed) return;
     this.startStream(client, key, client[WS_METHODS.gitSubscribeStatus](input), emit, restart);
+  }
+  protected startBrowserTabsStream(
+    client: RpcClientInstance,
+    key: string,
+    input: BrowserTabsSubscribeInput,
+    emit: (event: BrowserTabsChanged) => void,
+    restart: () => void,
+  ): void {
+    if (this.disposed) return;
+    this.startStream(client, key, client[BROWSER_WS_METHODS.subscribeTabs](input), emit, restart);
   }
   protected startStream<T>(
     client: RpcClientInstance,

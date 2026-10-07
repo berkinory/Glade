@@ -41,6 +41,7 @@ import {
 } from "@glade/contracts/server/server";
 import type { TerminalEvent } from "@glade/contracts/terminal/terminal";
 import { WS_CHANNELS, WS_METHODS, type WsWelcomePayload } from "@glade/contracts/transport/ws/ws";
+import { BROWSER_WS_METHODS } from "@glade/contracts/transport/ws/browserRpc";
 import type { WsBootstrapNegotiateResult } from "@glade/contracts/transport/ws/wsCompatibility";
 import { VOICE_TRANSCRIPTION_UPLOAD_ROUTE_PATH } from "@glade/shared/transport/binaryTransfer";
 import { Option, Schema } from "effect";
@@ -451,6 +452,12 @@ export function createWsNativeApi(): NativeApi {
           await window.desktopBridge.showInFolder(path);
         }
       },
+    },
+    browser: {
+      onTabs: (input, callback) => transport.subscribeBrowserTabs(input, callback),
+      // Navigation waits for the page load on the desktop, up to 30 s.
+      command: (command) =>
+        transport.request(BROWSER_WS_METHODS.command, command, { timeoutMs: 45_000 }),
     },
     git: {
       githubRepository: (input) => transport.request(WS_METHODS.gitGithubRepository, input),

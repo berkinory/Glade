@@ -1,10 +1,12 @@
 import {
   BROWSER_FAILURE_CODES,
+  BROWSER_TABS_CHANGED_NOTIFICATION,
   BrowserHostResult,
+  BrowserTabsChanged,
   type BrowserFailureCode,
   type BrowserHostMethod,
 } from "@glade/contracts/browser/browserHost";
-import { Effect, Layer, Schema } from "effect";
+import { Effect, Layer, Option, Schema, Stream, SubscriptionRef } from "effect";
 
 import { DesktopHostClient } from "../../desktopHost/Services/DesktopHostClient.ts";
 import { BrowserHost, BrowserHostError, type BrowserHostShape } from "../Services/BrowserHost.ts";
@@ -47,6 +49,28 @@ export const BrowserHostLive = Layer.effect(
           ),
         ),
       );
-    return { available: desktopHost.configured, call } satisfies BrowserHostShape;
+
+    // The desktop sends every tab of every thread on each change and again whenever this server
+    // connects, so the latest notification is the whole truth.
+    const decodeTabs = Schema.decodeUnknownOption(BrowserTabsChanged);
+    const allTabs = yield* SubscriptionRef.make<BrowserTabsChanged["tabs"]>([]);
+    yield* desktopHost.notifications.pipe(
+      Stream.filter((notification) => notification.method === BROWSER_TABS_CHANGED_NOTIFICATION),
+      Stream.runForEach((notification) =>
+        Option.match(decodeTabs(notification.params), {
+          onNone: () => Effect.logWarning("Ignored a malformed browser tab notification."),
+          onSome: ({ tabs }) => SubscriptionRef.set(allTabs, tabs),
+        }),
+      ),
+      Effect.forkScoped,
+    );
+    const threadTabs: BrowserHostShape["threadTabs"] = (threadId) =>
+      SubscriptionRef.changes(allTabs).pipe(
+        Stream.map((tabs) => tabs.filter((tab) => tab.threadId === threadId)),
+        Stream.changesWith((left, right) => JSON.stringify(left) === JSON.stringify(right)),
+        Stream.map((tabs) => ({ tabs })),
+      );
+
+    return { available: desktopHost.configured, call, threadTabs } satisfies BrowserHostShape;
   }),
 );

@@ -1,10 +1,8 @@
-export function hasOpenKeyboardOverlay(except?: Element | null): boolean {
-  if (document.activeElement?.hasAttribute("data-keybinding-capture")) return true;
-  return Array.from(
-    document.querySelectorAll<HTMLElement>(
-      '[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"]',
-    ),
-  ).some((element) => {
+const OVERLAY_SELECTOR = '[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"]';
+
+// Open dialogs, menus and listboxes, wherever they are mounted.
+export function visibleOverlayElements(except?: Element | null): HTMLElement[] {
+  return Array.from(document.querySelectorAll<HTMLElement>(OVERLAY_SELECTOR)).filter((element) => {
     if (element === except || except?.contains(element)) return false;
     if (element.closest('[inert], [hidden], [aria-hidden="true"], [data-state="closed"]'))
       return false;
@@ -15,4 +13,9 @@ export function hasOpenKeyboardOverlay(except?: Element | null): boolean {
       element.getClientRects().length > 0
     );
   });
+}
+
+export function hasOpenKeyboardOverlay(except?: Element | null): boolean {
+  if (document.activeElement?.hasAttribute("data-keybinding-capture")) return true;
+  return visibleOverlayElements(except).length > 0;
 }

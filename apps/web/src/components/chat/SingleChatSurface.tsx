@@ -58,6 +58,7 @@ import {
 } from "../../mainWorkspaceStore";
 import { PanelStateMessage } from "./PanelStateMessage";
 import { RightDock } from "./RightDock";
+import { BrowserPanel } from "../browser/BrowserPanel";
 import { getRightDockPaneMeta } from "./rightDockPaneMeta";
 import {
   CHAT_BACKGROUND_CLASS_NAME,
@@ -588,6 +589,7 @@ export function SingleChatSurface(props: {
             </MainWorkspace>
           </RouteInsetSurface>
         </ChatPaneDropOverlay>
+        <BrowserPanel threadId={props.threadId} paneScopeId={SINGLE_CHAT_PANE_SCOPE_ID} />
         <RightDock
           state={sidebarState}
           initialWidth="fixed"

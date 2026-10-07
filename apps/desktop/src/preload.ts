@@ -139,4 +139,9 @@ contextBridge.exposeInMainWorld("desktopBridge", {
   server: {
     transcribeVoice: (input) => ipcRenderer.invoke(IPC.transcribeVoice, input),
   },
+  browser: {
+    placeView: (placement) => ipcRenderer.send(IPC.browserPlaceView, placement),
+    pickElement: (target) => ipcRenderer.invoke(IPC.browserPickElement, target),
+    cancelPick: (threadId) => ipcRenderer.send(IPC.browserCancelPick, threadId),
+  },
 } satisfies DesktopBridge);

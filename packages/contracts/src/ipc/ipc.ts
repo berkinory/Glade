@@ -5,6 +5,13 @@ import type {
   GitPublishRepositoryResult,
 } from "../git/githubRepositoryPublishing";
 import type { DesktopMenuShortcutState } from "./menuShortcuts";
+import type { BrowserTabsChanged } from "../browser/browserHost";
+import type { BrowserPanelCommand, BrowserTabsSubscribeInput } from "../transport/ws/browserRpc";
+import type {
+  BrowserPickedElement,
+  BrowserPickTarget,
+  BrowserViewPlacement,
+} from "../browser/browserView";
 import type {
   PreviewWorkspaceRestoreInput,
   WorkspaceRestorePreview,
@@ -430,6 +437,12 @@ export interface DesktopBridge {
       input: ServerVoiceTranscriptionInput,
     ) => Promise<ServerVoiceTranscriptionResult>;
   };
+  browser?: {
+    placeView: (placement: BrowserViewPlacement) => void;
+    // Resolves with null when the pick is cancelled (Escape, toggle off, another pick).
+    pickElement: (target: BrowserPickTarget) => Promise<BrowserPickedElement | null>;
+    cancelPick: (threadId: string) => void;
+  };
 }
 
 export interface NativeApi {
@@ -499,6 +512,13 @@ export interface NativeApi {
     openInEditor: (cwd: string, editor: EditorId) => Promise<void>;
     openExternal: (url: string) => Promise<void>;
     showInFolder: (path: string) => Promise<void>;
+  };
+  browser: {
+    onTabs: (
+      input: BrowserTabsSubscribeInput,
+      callback: (event: BrowserTabsChanged) => void,
+    ) => () => void;
+    command: (command: BrowserPanelCommand) => Promise<void>;
   };
   git: {
     githubRepository: (input: GitHubRepositoryInput) => Promise<GitHubRepositoryResult>;

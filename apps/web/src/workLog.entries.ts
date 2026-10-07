@@ -21,7 +21,12 @@ import {
   isGenericToolTitle,
   type GladeMcpToolStatus,
 } from "./lib/toolCallLabel.descriptors";
-import { normalizeToolTextForComparison } from "./lib/toolCallLabel.presentations";
+import {
+  extractGladeMcpToolName,
+  normalizeGladeMcpIdentifier,
+  normalizeToolTextForComparison,
+} from "./lib/toolCallLabel.presentations";
+import { browserToolResultPreview } from "./lib/browserToolPresentation";
 import { deriveWorkLogToolDetails } from "./lib/toolCallDetails";
 import { compareActivitiesByOrder } from "./workLog.ordering";
 import {
@@ -462,6 +467,14 @@ function normalizeWorkLogActivity(activity: OrchestrationThreadActivity): Derive
   const commandActionDisplay = deriveCommandActionDisplay(commandAction, activity.kind);
   if (commandActionDisplay?.preview) {
     entry.preview = commandActionDisplay.preview;
+  }
+  const gladeToolName = toolName
+    ? extractGladeMcpToolName(normalizeGladeMcpIdentifier(toolName))
+    : null;
+  const browserOutput = outputDetail ?? entry.detail;
+  if (gladeToolName && browserOutput && toolStatus !== "failed") {
+    const browserPreview = browserToolResultPreview(gladeToolName, browserOutput);
+    if (browserPreview) entry.preview = browserPreview;
   }
   if (changedFiles.length > 0) {
     entry.changedFiles = changedFiles;

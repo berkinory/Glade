@@ -96,6 +96,11 @@ export class BrowserTabs {
     tab.destroy();
   }
 
+  // Sends the full list again, for a backend that just connected and has none.
+  announce(): void {
+    this.changed();
+  }
+
   closeAll(): void {
     for (const tab of this.tabs.values()) tab.destroy();
   }

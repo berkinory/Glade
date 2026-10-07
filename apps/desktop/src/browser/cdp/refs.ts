@@ -8,21 +8,40 @@ export interface RefTarget {
 const STALE =
   "is stale or unknown. Take a new browser_snapshot (or browser_find) and use its refs.";
 
+const MAX_LABEL_NAME = 60;
+
 // Refs are stable for one document: the same node keeps its ref across snapshots until the main
 // frame commits a navigation or the debugger reattaches.
 export class RefTable {
   private readonly byRef = new Map<string, RefTarget>();
   private readonly byKey = new Map<string, string>();
+  private readonly labels = new Map<string, string>();
   private next = 1;
 
-  refFor(target: RefTarget): string {
+  // `role` and `name` are the accessible role and name the ref was listed with, if known.
+  refFor(target: RefTarget, accessible?: { readonly role: string; readonly name: string }): string {
     const key = `${target.sessionId ?? ""}:${target.backendNodeId}`;
-    const existing = this.byKey.get(key);
-    if (existing) return existing;
-    const ref = `e${this.next++}`;
-    this.byKey.set(key, ref);
-    this.byRef.set(ref, target);
+    const ref = this.byKey.get(key) ?? `e${this.next++}`;
+    if (!this.byRef.has(ref)) {
+      this.byKey.set(key, ref);
+      this.byRef.set(ref, target);
+    }
+    if (accessible?.role) {
+      const name = accessible.name.trim();
+      const shortName =
+        name.length > MAX_LABEL_NAME ? `${name.slice(0, MAX_LABEL_NAME - 1)}…` : name;
+      this.labels.set(
+        ref,
+        shortName ? `${accessible.role} ${JSON.stringify(shortName)}` : accessible.role,
+      );
+    }
     return ref;
+  }
+
+  // `button "Sign in" (e12)` when the ref was listed with a role, else the bare ref.
+  describe(ref: string): string {
+    const label = this.labels.get(ref);
+    return label ? `${label} (${ref})` : ref;
   }
 
   resolve(ref: string): RefTarget {
@@ -34,6 +53,7 @@ export class RefTable {
   invalidate(): void {
     this.byRef.clear();
     this.byKey.clear();
+    this.labels.clear();
   }
 }
 

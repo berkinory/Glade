@@ -30,6 +30,8 @@ import {
 } from "../composerInlineChip";
 import { BotIcon, Book02Icon, MessageCircleIcon } from "~/lib/icons";
 import { InlineLinkChip } from "../InlineLinkChip";
+import { BrowserElementChip } from "../browser/BrowserElementChip";
+import type { BrowserElementReference } from "~/lib/browserElementReference";
 import { ComposerPendingTerminalContextChip } from "../chat/ComposerPendingTerminalContexts";
 import { createMentionChipIconElement, type MentionChipKind } from "../chat/MentionChipIcon";
 import { ProviderIcon } from "../ProviderIcon";
@@ -65,6 +67,15 @@ export type SerializedComposerLinkNode = Spread<
   {
     url: string;
     type: "composer-link";
+    version: 1;
+  },
+  SerializedLexicalNode
+>;
+export type SerializedComposerBrowserElementNode = Spread<
+  {
+    token: string;
+    reference: BrowserElementReference;
+    type: "composer-browser-element";
     version: 1;
   },
   SerializedLexicalNode
@@ -421,6 +432,58 @@ export class ComposerLinkNode extends DecoratorNode<ReactElement> {
 export function $createComposerLinkNode(url: string): ComposerLinkNode {
   return $applyNodeReplacement(new ComposerLinkNode(url));
 }
+// The node keeps the exact prompt token so the text the agent receives never changes on a round trip.
+export class ComposerBrowserElementNode extends DecoratorNode<ReactElement> {
+  __token: string;
+  __reference: BrowserElementReference;
+  static override getType(): string {
+    return "composer-browser-element";
+  }
+  static override clone(node: ComposerBrowserElementNode): ComposerBrowserElementNode {
+    return new ComposerBrowserElementNode(node.__token, node.__reference, node.__key);
+  }
+  static override importJSON(
+    serializedNode: SerializedComposerBrowserElementNode,
+  ): ComposerBrowserElementNode {
+    return $createComposerBrowserElementNode(serializedNode.token, serializedNode.reference);
+  }
+  constructor(token: string, reference: BrowserElementReference, key?: NodeKey) {
+    super(key);
+    this.__token = token;
+    this.__reference = reference;
+  }
+  override exportJSON(): SerializedComposerBrowserElementNode {
+    return {
+      token: this.__token,
+      reference: this.__reference,
+      type: "composer-browser-element",
+      version: 1,
+    };
+  }
+  override createDOM(): HTMLElement {
+    const dom = document.createElement("span");
+    dom.className = COMPOSER_INLINE_DECORATOR_HOST_CLASS_NAME;
+    return dom;
+  }
+  override updateDOM(): false {
+    return false;
+  }
+  override decorate(): ReactElement {
+    return <BrowserElementChip reference={this.__reference} />;
+  }
+  override getTextContent(): string {
+    return this.__token;
+  }
+  override isInline(): true {
+    return true;
+  }
+}
+export function $createComposerBrowserElementNode(
+  token: string,
+  reference: BrowserElementReference,
+): ComposerBrowserElementNode {
+  return $applyNodeReplacement(new ComposerBrowserElementNode(token, reference));
+}
 function ComposerTerminalContextDecorator(props: { context: TerminalContextDraft }) {
   return <ComposerPendingTerminalContextChip context={props.context} />;
 }
@@ -477,7 +540,8 @@ export type ComposerInlineTokenNode =
   | ComposerSkillNode
   | ComposerTerminalContextNode
   | ComposerAgentMentionNode
-  | ComposerLinkNode;
+  | ComposerLinkNode
+  | ComposerBrowserElementNode;
 export function isComposerInlineTokenNode(
   candidate: unknown,
 ): candidate is ComposerInlineTokenNode {
@@ -486,7 +550,8 @@ export function isComposerInlineTokenNode(
     candidate instanceof ComposerSkillNode ||
     candidate instanceof ComposerTerminalContextNode ||
     candidate instanceof ComposerAgentMentionNode ||
-    candidate instanceof ComposerLinkNode
+    candidate instanceof ComposerLinkNode ||
+    candidate instanceof ComposerBrowserElementNode
   );
 }
 export const COMPOSER_NODE_CLASSES = [
@@ -495,4 +560,5 @@ export const COMPOSER_NODE_CLASSES = [
   ComposerTerminalContextNode,
   ComposerAgentMentionNode,
   ComposerLinkNode,
+  ComposerBrowserElementNode,
 ] as const;

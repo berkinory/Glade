@@ -69,6 +69,7 @@ function makeSocketPath(platform: NodeJS.Platform): { path: string; directory: s
 export async function startDesktopHostRpcServer(input: {
   readonly token: string;
   readonly dispatch: DesktopHostDispatch;
+  readonly onAuthenticated?: () => void;
   readonly platform?: NodeJS.Platform;
 }): Promise<DesktopHostRpcServer> {
   const expected = digest(input.token);
@@ -138,6 +139,7 @@ export async function startDesktopHostRpcServer(input: {
         clearTimeout(authTimer);
         authenticated.add(socket);
         write(socket, { jsonrpc: "2.0", id: request.id, result: {} });
+        input.onAuthenticated?.();
       }
     });
     socket.on("error", () => socket.destroy());

@@ -207,6 +207,17 @@ Checks: `bun run check`; visual check in the Dev app on light and dark, two font
 
 Commits: `feat(web): browser panel for Browser Use`.
 
+Revisions (as built):
+
+- Tab state reaches the web as one WS group in `packages/contracts/src/transport/ws/browserRpc.ts` (`browser.subscribeTabs`, `browser.command`), merged into `WsFeatureRpcGroup`; handlers live in `apps/server/src/browser/browserWsHandlers.ts`. The server keeps the latest `browser.tabsChanged` list in a `SubscriptionRef` (`BrowserHost.threadTabs`) instead of fetching an initial list: the desktop re-sends the full list whenever a backend authenticates, so a subscriber always gets the current list first with no fetch-versus-notification race. The web reads the subscription directly in the panel; nothing is copied into a store.
+- Panel commands (open, close, select, navigate) reuse `browser.tabs` and `browser.navigate` with `actor: "user"`, which skips the agent's wait for human input and leaves the agent's pending notices queued. Tool input decoding strips the field, so agents cannot set it.
+- Native placement is one IPC message, `browser.placeView({threadId, tab: {tabId, bounds} | null})`, scaled by the page zoom in main. `BrowserViewSurface` shows at most one view per thread and hides a window's views when its renderer navigates. The renderer hides the view while a modal, a menu or popover over the panel, or a resize drag is showing, by watching the portal containers beside the app root; no menu component changes were needed.
+- Element picking is `browser.pickElement` (invoke, resolves with the element or null) plus `browser.cancelPick`; Escape cancels from Glade or from the page. Out-of-process iframes are not pickable (inspect mode runs on the root target only). The pick enters the prompt as `[browser element tab=… ref=… role=… name=… url=…]`, rendered as a chip in the composer and in sent messages, and the element screenshot is attached as an image.
+- Refs remember the role and name they were listed with, so action results read `Clicked button "Sign in" (e12).`; timeline rows show `Clicked button "Sign in" · example.com` through the Glade MCP tool presentations. Screenshots do not render in the timeline: provider ingress strips image bytes from activity payloads, so there is nothing to show without persisting images.
+- The tool classification module referenced for timeline rows is not on this branch; rows use the existing Glade MCP presentation path.
+- Panel open state is per thread and not persisted (tabs do not survive a restart either); its width is remembered. The panel is not a workspace tab and has no menu item: the header globe toggle and `browser.toggle` open it.
+- Page dialogs stay dismissed and reported (Phase 2); v1 has no dialog UI for the user.
+
 ### Phase 5: Cua embedded host
 
 Build `apps/desktop/src/computer/`:
@@ -293,6 +304,7 @@ Commits: `fix(desktop): …` as needed per platform.
 - Element picking returns through CDP inspect mode and the agent's own ref table (Phase 4), replacing the old annotation overlay.
 - Loopback stays reachable from the agent browser; only Glade's own ports and the dangerous schemes are blocked (Phase 2 revision, see Approval model).
 - Agent browser dialogs are dismissed and reported; `browser_dialog` arms the next answer (Phase 2 revision, see Browser host design).
+- The browser panel is a dock beside the chat, not a workspace tab; it hides its native view whenever Glade UI must draw over it (Phase 4).
 - Computer Use is available on every platform the pinned Cua release supports, including Windows, with the delivery mode that platform allows.
 
 ## 8. Phase 0 findings (2026-10-07, macOS arm64)
@@ -316,4 +328,5 @@ Phase 1 had dropped the inherited environment from the backend's spawn environme
 ## 9. Open items
 
 - Record token measurements from the provider acceptance runs here.
-- Phase 4: the panel needs IPC from the renderer for the active tab's bounds and attach/detach (`WebContentsView` into the main window's `contentView`), a server WS subscription fed by `DesktopHostClient.notifications`, and a user-facing answer path for page dialogs.
+- Page dialogs in the visible panel: v1 dismisses and reports them. A user-facing answer path would need a non-blocking prompt in the panel.
+- Keyboard shortcuts do not reach Glade while focus is inside a page view.

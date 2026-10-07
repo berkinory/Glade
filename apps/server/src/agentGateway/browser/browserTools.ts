@@ -22,10 +22,10 @@ import {
   type BrowserBatchTool,
 } from "@glade/contracts/browser/browserTools";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { Effect, FileSystem, Option, Path, Schema } from "effect";
+import { Effect, FileSystem, Path, Schema } from "effect";
 
 import { BrowserHostError, type BrowserHostShape } from "../../browser/Services/BrowserHost.ts";
-import { resolveThreadWorkspaceCwd } from "../../checkpointing/Utils.ts";
+import { browserThreadWorkspace } from "../../browser/browserThreadWorkspace.ts";
 import type { ProjectionSnapshotQueryShape } from "../../orchestration/Services/ProjectionSnapshotQuery.ts";
 import { toolInputSchema, type McpToolCallResult } from "../protocol.ts";
 import {
@@ -210,19 +210,6 @@ export function makeBrowserTools(services: {
 }): readonly ToolEntry[] {
   const { host, snapshots, fs, path } = services;
 
-  const workspaceFor = (threadId: ThreadId) =>
-    Effect.gen(function* () {
-      const thread = yield* snapshots.getThreadShellById(threadId);
-      if (Option.isNone(thread)) return null;
-      const project = yield* snapshots.getProjectShellById(thread.value.projectId);
-      return (
-        resolveThreadWorkspaceCwd({
-          thread: thread.value,
-          projects: Option.isSome(project) ? [project.value] : [],
-        }) ?? null
-      );
-    }).pipe(Effect.catch(() => Effect.succeed(null)));
-
   // Uploads read local files into the page, so every path must resolve, after symlinks, to a
   // regular file inside the caller thread's workspace.
   const uploadPaths = (paths: readonly string[], workspaceDir: string | null) =>
@@ -282,7 +269,7 @@ export function makeBrowserTools(services: {
         ),
       );
       const threadId = ThreadId.makeUnsafe(context.callerThreadId);
-      const workspaceDir = yield* workspaceFor(threadId);
+      const workspaceDir = yield* browserThreadWorkspace(snapshots, threadId);
       const paths =
         tool === "browser_upload"
           ? yield* uploadPaths(input.paths as readonly string[], workspaceDir)

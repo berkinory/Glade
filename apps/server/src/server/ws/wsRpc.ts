@@ -163,6 +163,8 @@ import {
   shouldRejectUntrustedRequestOrigin,
 } from "../http/trustedOrigins";
 import { bufferLiveUiStream, type LiveUiStreamDropReport } from "./wsStreamBackpressure";
+import { makeBrowserWsHandlers } from "../../browser/browserWsHandlers";
+import { BrowserHost } from "../../browser/Services/BrowserHost";
 import {
   makeCursorSafeSnapshotLiveStream,
   makeResnapshotEscalationTracker,
@@ -830,7 +832,14 @@ const makeWsRpcHandlersLayer = () =>
             ),
           );
 
+      const browserHandlers = makeBrowserWsHandlers({
+        host: yield* Effect.serviceOption(BrowserHost),
+        snapshots: projectionReadModelQuery,
+        streamAdmission,
+      });
+
       return AdmittedWsFeatureRpcGroup.of({
+        ...browserHandlers,
         [ORCHESTRATION_WS_METHODS.prepareHandoff]: (input) =>
           rpcEffect(
             handoffPreparation.prepare(input).pipe(Effect.asVoid),

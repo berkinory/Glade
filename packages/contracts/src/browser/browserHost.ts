@@ -38,11 +38,14 @@ export type BrowserFailureCode = (typeof BROWSER_FAILURE_CODES)[number];
 
 // The server supplies the scope from the caller's gateway session; the desktop never trusts a
 // thread id from anywhere else. `workspaceDir` is where downloads of tabs created by this call go.
+// `actor: "user"` marks a call from the browser panel: it does not wait out human input and leaves
+// the notices queued for the agent's next call.
 const scoped = <Fields extends Schema.Struct.Fields>(input: Schema.Struct<Fields>) =>
   Schema.Struct({
     ...input.fields,
     threadId: ThreadId,
     workspaceDir: Schema.NullOr(Schema.String),
+    actor: Schema.optional(Schema.Literal("user")),
   });
 
 export const BROWSER_HOST_METHODS = {

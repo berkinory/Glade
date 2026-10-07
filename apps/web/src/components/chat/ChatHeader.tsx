@@ -28,6 +28,7 @@ import { useOpenFavoriteEditorShortcut } from "~/hooks/useOpenFavoriteEditorShor
 import type { RepoDiffTotals } from "~/hooks/useRepoDiffTotals";
 import { ProviderIcon } from "../ProviderIcon";
 import { EnvironmentToggle, type EnvironmentToggleState } from "./environment/EnvironmentToggle";
+import { BrowserPanelToggle } from "../browser/BrowserPanelToggle";
 interface ChatHeaderProps {
   activeThreadId: ThreadId;
   activeThreadTitle: string;
@@ -297,6 +298,7 @@ export function ChatHeader({
           </Tooltip>
         ) : null}
 
+        <BrowserPanelToggle threadId={activeThreadId} keybindings={keybindings} />
         {}
         {environment ? (
           <>

@@ -19,6 +19,7 @@ import {
   $createComposerAgentMentionNode,
   $createComposerTerminalContextNode,
   $createComposerLinkNode,
+  $createComposerBrowserElementNode,
 } from "./composer-nodes";
 
 function $appendTextWithLineBreaks(parent: ElementNode, text: string): void {
@@ -73,6 +74,10 @@ export function $setComposerEditorPrompt(
     }
     if (segment.type === "link") {
       paragraph.append($createComposerLinkNode(segment.url));
+      continue;
+    }
+    if (segment.type === "browser-element") {
+      paragraph.append($createComposerBrowserElementNode(segment.token, segment.reference));
       continue;
     }
     $appendTextWithLineBreaks(paragraph, segment.text);

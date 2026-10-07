@@ -96,6 +96,7 @@ import {
   WsTerminalCloseRpc,
   WsSubscribeTerminalEventsRpc,
 } from "./terminalRpc";
+import { WsBrowserCommandRpc, WsBrowserSubscribeTabsRpc } from "./browserRpc";
 import {
   WsServerGetConfigRpc,
   WsServerGetEnvironmentRpc,
@@ -220,6 +221,8 @@ export const WsFeatureRpcGroup = RpcGroup.make(
   WsTerminalRestartRpc,
   WsTerminalCloseRpc,
   WsSubscribeTerminalEventsRpc,
+  WsBrowserSubscribeTabsRpc,
+  WsBrowserCommandRpc,
   WsServerGetConfigRpc,
   WsServerGetEnvironmentRpc,
   WsServerGetSettingsRpc,

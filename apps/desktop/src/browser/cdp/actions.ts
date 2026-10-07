@@ -171,13 +171,13 @@ export async function click(
   }
   const verb =
     input.count === 2 ? "Double-clicked" : input.count === 3 ? "Triple-clicked" : "Clicked";
-  return `${verb} ${input.ref}.`;
+  return `${verb} ${refs.describe(input.ref)}.`;
 }
 
 export async function hover(cdp: CdpSession, refs: RefTable, ref: string): Promise<string> {
   const { x, y } = await locate(cdp, refs, ref);
   await mouse(cdp, { type: "mouseMoved", x, y });
-  return `Hovered ${ref}.`;
+  return `Hovered ${refs.describe(ref)}.`;
 }
 
 export async function typeText(
@@ -200,7 +200,7 @@ export async function typeText(
     await cdp.send("Input.insertText", { text: input.text });
   }
   if (input.submit) await key(cdp, characterKey("\n"), 0);
-  const where = input.ref ? ` into ${input.ref}` : "";
+  const where = input.ref ? ` into ${refs.describe(input.ref)}` : "";
   return `Typed ${input.text.length} characters${where}${input.submit ? " and pressed Enter" : ""}.`;
 }
 
@@ -249,7 +249,7 @@ export async function selectOptions(
     [input.values],
   ).catch(rethrowStaleNode(input.ref));
   if (result.error) throw new BrowserFailure("invalid_input", result.error);
-  return `Selected ${result.selected!.map((label) => JSON.stringify(label)).join(", ")} in ${input.ref}.`;
+  return `Selected ${result.selected!.map((label) => JSON.stringify(label)).join(", ")} in ${refs.describe(input.ref)}.`;
 }
 
 export async function scroll(
@@ -260,7 +260,7 @@ export async function scroll(
   let origin: { x: number; y: number };
   if (input.ref) {
     origin = await locate(cdp, refs, input.ref);
-    if (!input.direction) return `Scrolled ${input.ref} into view.`;
+    if (!input.direction) return `Scrolled ${refs.describe(input.ref)} into view.`;
   } else {
     const { cssLayoutViewport: viewport } = await cdp.send<{
       cssLayoutViewport: { clientWidth: number; clientHeight: number };
@@ -277,5 +277,5 @@ export async function scroll(
     deltaX: vertical ? 0 : sign * amount,
     deltaY: vertical ? sign * amount : 0,
   });
-  return `Scrolled ${direction} ${amount}px${input.ref ? ` inside ${input.ref}` : ""}.`;
+  return `Scrolled ${direction} ${amount}px${input.ref ? ` inside ${refs.describe(input.ref)}` : ""}.`;
 }

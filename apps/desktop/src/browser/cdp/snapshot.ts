@@ -103,7 +103,10 @@ async function collectDocument(
       ref:
         node.backendDOMNodeId === undefined
           ? undefined
-          : context.refs.refFor({ backendNodeId: node.backendDOMNodeId, sessionId }),
+          : context.refs.refFor(
+              { backendNodeId: node.backendDOMNodeId, sessionId },
+              { role, name },
+            ),
       // Text that only repeats the element's own accessible name adds tokens, not meaning.
       children: children.filter(
         (child) => child.role !== "text" || !name.includes(child.name.trim()),

@@ -185,6 +185,11 @@ const AVAILABLE_NOW_DEFINITIONS: readonly ShortcutDefinition[] = [
     description: "Open or close Source Control.",
   },
   {
+    command: "browser.toggle",
+    label: "Toggle browser",
+    description: "Show or hide the browser panel for the active chat in the desktop app.",
+  },
+  {
     command: "thread.copyId",
     label: "Copy thread ID",
     description: "Copy the active thread's ID to the clipboard.",

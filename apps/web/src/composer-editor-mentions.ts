@@ -16,6 +16,10 @@ import {
   trimTrailingLinkPunctuation,
 } from "./lib/linkChips";
 import type { ProviderMentionReference } from "@glade/contracts/provider/providerDiscovery";
+import {
+  matchBrowserElementReferences,
+  type BrowserElementReference,
+} from "./lib/browserElementReference";
 import { threadIdFromThreadMentionPath } from "@glade/shared/threads/threadMentions";
 
 export type ComposerPromptSegment =
@@ -48,6 +52,11 @@ export type ComposerPromptSegment =
   | {
       type: "link";
       url: string;
+    }
+  | {
+      type: "browser-element";
+      token: string;
+      reference: BrowserElementReference;
     };
 
 const SKILL_TOKEN_REGEX = /(^|\s)([$/])([a-zA-Z][a-zA-Z0-9_:-]*)(?=\s)/g;
@@ -107,6 +116,13 @@ type InlineTokenMatch =
       url: string;
       start: number;
       end: number;
+    }
+  | {
+      kind: "browser-element";
+      token: string;
+      reference: BrowserElementReference;
+      start: number;
+      end: number;
     };
 
 function collectInlineTokenMatches(
@@ -128,8 +144,15 @@ function collectInlineTokenMatches(
   const isReserved = (pos: number): boolean =>
     reservedRanges.some((range) => pos >= range.start && pos < range.end);
 
+  // Before links: the element's url would otherwise become a link chip inside the reference.
+  for (const { reference, start, end } of matchBrowserElementReferences(text)) {
+    reservedRanges.push({ start, end });
+    matches.push({ kind: "browser-element", token: text.slice(start, end), reference, start, end });
+  }
+
   for (const match of text.matchAll(linkRegex)) {
     const start = match.index ?? 0;
+    if (isReserved(start)) continue;
     const rawUrl = trimTrailingLinkPunctuation(match[0]);
     const url = normalizeComposerLinkUrl(rawUrl);
     if (!url) continue;
@@ -204,6 +227,8 @@ function splitTextIntoPromptSegments(
 
     if (match.kind === "link") {
       segments.push({ type: "link", url: match.url });
+    } else if (match.kind === "browser-element") {
+      segments.push({ type: "browser-element", token: match.token, reference: match.reference });
     } else if (match.kind === "mention") {
       const threadMention = findThreadProviderMentionReferenceForToken(
         match.value,

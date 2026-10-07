@@ -38,6 +38,7 @@ import { observeUserMessageOverflow } from "~/components/chat/userMessageOverflo
 import { resolveUserMessageMarkdownText } from "~/components/chat/userMessageTerminalContexts";
 import ChatMarkdown from "~/components/ChatMarkdown";
 import { InlineLinkChip } from "~/components/InlineLinkChip";
+import { BrowserElementChip } from "~/components/browser/BrowserElementChip";
 import { Button } from "~/components/ui/button";
 import { splitPromptIntoDisplaySegments } from "~/composer-editor-mentions";
 import { type ParsedTerminalContextEntry } from "~/lib/terminalContext";
@@ -177,6 +178,9 @@ function renderUserMessageInlineText(
     }
     if (segment.type === "link") {
       return [<InlineLinkChip key={`${key}:link`} url={segment.url} interactive />];
+    }
+    if (segment.type === "browser-element") {
+      return [<BrowserElementChip key={`${key}:browser-element`} reference={segment.reference} />];
     }
     return [];
   });

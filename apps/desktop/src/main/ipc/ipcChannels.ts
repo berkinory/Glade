@@ -38,6 +38,9 @@ export const DESKTOP_IPC_CHANNELS = {
   zoomFactorChanged: "desktop:zoom-factor-changed",
   wsUrl: "desktop:get-ws-url",
   transcribeVoice: "desktop:server-transcribe-voice",
+  browserPlaceView: "desktop:browser-place-view",
+  browserPickElement: "desktop:browser-pick-element",
+  browserCancelPick: "desktop:browser-cancel-pick",
 } as const;
 
 export const SERVER_TRANSCRIBE_VOICE_CHANNEL = DESKTOP_IPC_CHANNELS.transcribeVoice;

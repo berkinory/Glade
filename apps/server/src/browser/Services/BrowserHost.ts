@@ -2,9 +2,10 @@ import type {
   BrowserFailureCode,
   BrowserHostMethod,
   BrowserHostResult,
+  BrowserTabsChanged,
 } from "@glade/contracts/browser/browserHost";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { Data, ServiceMap, type Effect } from "effect";
+import { Data, ServiceMap, type Effect, type Stream } from "effect";
 
 export class BrowserHostError extends Data.TaggedError("BrowserHostError")<{
   readonly code: BrowserFailureCode;
@@ -23,6 +24,8 @@ export interface BrowserHostShape {
       readonly workspaceDir: string | null;
     },
   ) => Effect.Effect<BrowserHostResult, BrowserHostError>;
+  // One thread's tabs as the desktop last reported them: the current list, then each change.
+  readonly threadTabs: (threadId: ThreadId) => Stream.Stream<BrowserTabsChanged>;
 }
 
 export class BrowserHost extends ServiceMap.Service<BrowserHost, BrowserHostShape>()(

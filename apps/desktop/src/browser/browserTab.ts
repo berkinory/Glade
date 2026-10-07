@@ -73,12 +73,12 @@ export class BrowserTab {
     return { page: this.page(), text, notices };
   }
 
-  // Runs one tool operation on this tab: serialized, attached, and after a short pause for a human
-  // who is using the tab.
-  run<T>(operation: () => Promise<T>): Promise<T> {
+  // Runs one operation on this tab: serialized, attached, and for agent calls after a short pause
+  // for a human who is using the tab.
+  run<T>(operation: () => Promise<T>, byUser = false): Promise<T> {
     return this.cdp.exclusive(async () => {
       await this.cdp.ensureAttached();
-      await this.waitForHumanQuiet();
+      if (!byUser) await this.waitForHumanQuiet();
       this.agentActing = true;
       try {
         return await operation();

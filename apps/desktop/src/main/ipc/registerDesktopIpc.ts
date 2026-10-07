@@ -49,6 +49,8 @@ import {
 } from "./ipcValidation";
 import { registerDesktopVoiceTranscriptionHandler } from "./voiceTranscription";
 import { registerNotificationPermissionIpc } from "./notificationPermissions";
+import { registerBrowserViewIpc } from "./browserViewIpc";
+import type { DesktopHost } from "../../hostRpc/startDesktopHost";
 
 interface IpcWindow {
   setMenuShortcuts: (state: DesktopMenuShortcutState) => void;
@@ -99,6 +101,7 @@ export interface DesktopIpcDependencies {
   contextMenu: IpcMenu;
   updates: IpcUpdates;
   control: IpcControl;
+  desktopHost: () => DesktopHost | null;
 }
 export function createRegisterDesktopIpc({
   windows,
@@ -106,6 +109,7 @@ export function createRegisterDesktopIpc({
   contextMenu,
   updates,
   control,
+  desktopHost,
 }: DesktopIpcDependencies) {
   function registerIpcHandlers(): void {
     registerMenuShortcutsIpc(
@@ -496,6 +500,7 @@ export function createRegisterDesktopIpc({
         }),
     );
     registerDesktopVoiceTranscriptionHandler();
+    registerBrowserViewIpc(desktopHost);
   }
   return { registerIpcHandlers };
 }

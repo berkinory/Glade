@@ -11,6 +11,7 @@ import {
 } from "lexical";
 import {
   ComposerLinkNode,
+  ComposerBrowserElementNode,
   ComposerTerminalContextNode,
   ComposerMentionNode,
   ComposerSkillNode,
@@ -95,7 +96,11 @@ function getAbsoluteOffsetForPointInternal(
     current = nextParent;
   }
 
-  if (node instanceof ComposerLinkNode || node instanceof ComposerTerminalContextNode) {
+  if (
+    node instanceof ComposerLinkNode ||
+    node instanceof ComposerBrowserElementNode ||
+    node instanceof ComposerTerminalContextNode
+  ) {
     return getAbsoluteOffsetForInlineTokenPoint(node, offset, pointOffset, expanded);
   }
   if ($isTextNode(node)) {
@@ -137,6 +142,7 @@ function findSelectionPointAtOffset(
     node instanceof ComposerSkillNode ||
     node instanceof ComposerAgentMentionNode ||
     node instanceof ComposerLinkNode ||
+    node instanceof ComposerBrowserElementNode ||
     node instanceof ComposerTerminalContextNode
   ) {
     return findSelectionPointForInlineToken(node, remainingRef);

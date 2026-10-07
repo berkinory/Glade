@@ -25,8 +25,11 @@ export function createBrowserHostDispatch(
   tabs: BrowserTabs,
   gladePorts: () => ReadonlySet<number>,
 ): (method: string, params: unknown) => Promise<BrowserHostResult> {
-  const text = async (tab: BrowserTab, operation: () => Promise<string>) =>
-    tab.result(await tab.run(operation));
+  // Panel calls answer without draining the notices the agent has not seen yet.
+  const reply = (tab: BrowserTab, message: string, actor?: "user"): BrowserHostResult =>
+    actor === "user" ? { page: tab.page(), text: message, notices: [] } : tab.result(message);
+  const text = async (tab: BrowserTab, operation: () => Promise<string>, actor?: "user") =>
+    reply(tab, await tab.run(operation, actor === "user"), actor);
   const withSettle = (tab: BrowserTab, operation: () => Promise<string>) => async () => {
     const message = await operation();
     await settleAfterAction(tab);
@@ -39,8 +42,8 @@ export function createBrowserHostDispatch(
     "browser.tabs": async (params) => {
       if (params.action === "open") {
         const tab = await tabs.open(params.threadId, params.workspaceDir);
-        if (!params.url) return tab.result(`Opened ${tab.id}.`);
-        return text(tab, () => navigate(tab, params, gladePorts()));
+        if (!params.url) return reply(tab, `Opened ${tab.id}.`, params.actor);
+        return text(tab, () => navigate(tab, params, gladePorts()), params.actor);
       }
       if (params.action === "close") tabs.close(params.threadId, params.tabId);
       if (params.action === "select") {
@@ -54,7 +57,7 @@ export function createBrowserHostDispatch(
       });
       const listing = lines.length > 0 ? lines.join("\n") : "No tabs.";
       return active
-        ? tabs.resolve(params.threadId, active).result(listing)
+        ? reply(tabs.resolve(params.threadId, active), listing, params.actor)
         : { page: null, text: listing, notices: [] };
     },
     "browser.navigate": async (params) => {
@@ -62,7 +65,7 @@ export function createBrowserHostDispatch(
         params.tabId === undefined && tabs.activeId(params.threadId) === undefined
           ? await tabs.open(params.threadId, params.workspaceDir)
           : tabFor(params);
-      return text(tab, () => navigate(tab, params, gladePorts()));
+      return text(tab, () => navigate(tab, params, gladePorts()), params.actor);
     },
     "browser.snapshot": async (params) => {
       const tab = tabFor(params);

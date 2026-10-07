@@ -6,7 +6,9 @@ import type { Dispatch, RefObject, SetStateAction } from "react";
 import { useEffect } from "react";
 import { readStarredModelSlugs } from "~/lib/starredModels";
 import { isMacNavigatorPlatform } from "~/lib/utils";
+import { isElectron } from "../../env";
 import { resolveShortcutCommand } from "../../keybindings";
+import { useBrowserPanelStore } from "../browser/browserPanelStore";
 import { isEditableEventTarget } from "../../lib/editableEventTarget";
 import { isTerminalFocused } from "../../lib/terminalFocus";
 import type { Project } from "../../types";
@@ -463,6 +465,13 @@ export function useChatKeyboardShortcuts({
         event.preventDefault();
         event.stopPropagation();
         onToggleDiff();
+        return;
+      }
+
+      if (command === "browser.toggle" && isElectron) {
+        event.preventDefault();
+        event.stopPropagation();
+        useBrowserPanelStore.getState().toggle(activeThreadId);
         return;
       }
 

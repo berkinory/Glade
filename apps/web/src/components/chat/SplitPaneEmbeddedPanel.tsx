@@ -1,23 +1,11 @@
 import { DockExplorerPane } from "./DockExplorerPane";
 import { SplitSourceControl } from "./SplitSourceControl";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { Schema } from "effect";
-import {
-  type CSSProperties,
-  type PointerEvent as ReactPointerEvent,
-  useRef,
-  useState,
-} from "react";
+import type { CSSProperties } from "react";
 
 import type { ChatRightPanel } from "../../diffRouteSearch";
-import { getLocalStorageItem, setLocalStorageItem } from "../../hooks/useLocalStorage";
-import {
-  attachPanelPointerOverlaySession,
-  canComposerHandlePanelWidth,
-  createPanelResizeOverlay,
-  removePanelResizeOverlay,
-} from "../../lib/panelResize";
 import type { PaneId, SplitViewId, SplitViewPanePanelState } from "../../splitViewModel";
+import { PanelWidthResizeHandle, usePanelWidthResize } from "./usePanelWidthResize";
 
 const SPLIT_PANE_PANEL_DEFAULT_WIDTH_PX = 22 * 16;
 const SPLIT_PANE_CHAT_MIN_WIDTH = 20 * 16;
@@ -40,92 +28,18 @@ export function SplitPaneEmbeddedPanel(props: {
     patch: Partial<Pick<SplitViewPanePanelState, "panel" | "diffTurnId" | "diffFilePath">>,
   ) => void;
 }) {
-  const wrapperRef = useRef<HTMLDivElement>(null);
   const panelWidthStorageKey = props.panel === "diff" ? "diff" : "panel";
-  const storageKey = `${RIGHT_PANEL_SIDEBAR_WIDTH_STORAGE_KEY}:${props.splitViewId}:${props.paneId}:${panelWidthStorageKey}`;
-  const defaultPanelWidth = SPLIT_PANE_PANEL_DEFAULT_WIDTH_PX;
-  const minPanelWidth = SINGLE_PANEL_MIN_WIDTH;
-
-  const [panelWidthState, setPanelWidthState] = useState<{ key: string; value: number }>(() => ({
-    key: storageKey,
-    value: getLocalStorageItem(storageKey, Schema.Finite) ?? defaultPanelWidth,
-  }));
-  const panelWidth =
-    panelWidthState.key === storageKey
-      ? panelWidthState.value
-      : (getLocalStorageItem(storageKey, Schema.Finite) ?? defaultPanelWidth);
-
-  const startResize = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
-    const wrapper = wrapperRef.current;
-    const parent = wrapper?.parentElement;
-    if (!wrapper || !parent) return;
-
-    event.preventDefault();
-    event.stopPropagation();
-    const startX = event.clientX;
-    const startWidth = wrapper.getBoundingClientRect().width;
-    const maxWidth = Math.max(minPanelWidth, parent.clientWidth - SPLIT_PANE_CHAT_MIN_WIDTH);
-    const resizeOverlay = createPanelResizeOverlay();
-    let detachPointerSession = () => {};
-    let pendingWidth = startWidth;
-    let currentWidth = startWidth;
-    let frameId = 0;
-    let finished = false;
-
-    const applyPendingWidth = () => {
-      frameId = 0;
-      if (pendingWidth === currentWidth) return;
-      if (pendingWidth < currentWidth) {
-        currentWidth = pendingWidth;
-        wrapper.style.width = `${currentWidth}px`;
-        return;
-      }
-      const accepted = canComposerHandlePanelWidth({
-        nextWidth: pendingWidth,
-        paneScopeId: props.paneScopeId,
-        applyWidth: (width) => {
-          wrapper.style.width = `${width}px`;
-        },
-        resetWidth: () => {
-          wrapper.style.width = `${currentWidth}px`;
-        },
-      });
-      if (!accepted) return;
-      currentWidth = pendingWidth;
-      wrapper.style.width = `${currentWidth}px`;
-    };
-
-    const onPointerMove = (moveEvent: PointerEvent) => {
-      const delta = startX - moveEvent.clientX;
-      pendingWidth = Math.max(minPanelWidth, Math.min(maxWidth, startWidth + delta));
-      if (frameId === 0) frameId = window.requestAnimationFrame(applyPendingWidth);
-    };
-
-    const finish = () => {
-      if (finished) return;
-      finished = true;
-      if (frameId !== 0) window.cancelAnimationFrame(frameId);
-      applyPendingWidth();
-      detachPointerSession();
-      removePanelResizeOverlay(resizeOverlay);
-      document.body.style.removeProperty("cursor");
-      document.body.style.removeProperty("user-select");
-      if (currentWidth !== startWidth) {
-        setPanelWidthState({ key: storageKey, value: currentWidth });
-        setLocalStorageItem(storageKey, currentWidth, Schema.Finite);
-      }
-    };
-
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-    detachPointerSession = attachPanelPointerOverlaySession(resizeOverlay, {
-      onMove: onPointerMove,
-      onRelease: finish,
-      onAbort: finish,
-    });
-  };
-
+  const {
+    wrapperRef,
+    width: panelWidth,
+    startResize,
+  } = usePanelWidthResize({
+    storageKey: `${RIGHT_PANEL_SIDEBAR_WIDTH_STORAGE_KEY}:${props.splitViewId}:${props.paneId}:${panelWidthStorageKey}`,
+    defaultWidth: SPLIT_PANE_PANEL_DEFAULT_WIDTH_PX,
+    minWidth: SINGLE_PANEL_MIN_WIDTH,
+    chatMinWidth: SPLIT_PANE_CHAT_MIN_WIDTH,
+    paneScopeId: props.paneScopeId,
+  });
   if (!props.panelOpen || !props.threadId) {
     return null;
   }
@@ -138,14 +52,11 @@ export function SplitPaneEmbeddedPanel(props: {
         {
           width: `${panelWidth}px`,
           maxWidth: `calc(100% - ${SPLIT_PANE_CHAT_MIN_WIDTH}px)`,
-          minWidth: minPanelWidth,
+          minWidth: SINGLE_PANEL_MIN_WIDTH,
         } as CSSProperties
       }
     >
-      <div
-        className="absolute inset-y-0 left-0 z-20 w-2 -translate-x-1/2 cursor-col-resize bg-transparent before:absolute before:inset-y-0 before:left-1/2 before:w-px before:-translate-x-1/2 before:bg-[var(--app-surface-divider)]"
-        onPointerDown={startResize}
-      />
+      <PanelWidthResizeHandle onPointerDown={startResize} />
       {props.explorerOpen ? (
         <DockExplorerPane
           threadId={props.threadId}

@@ -32,6 +32,7 @@ import type { ChatRightPanel } from "../../diffRouteSearch";
 import { stripDiffSearchParams } from "../../diffRouteSearch";
 import { splitViewPaneScopeId } from "../../lib/chatPaneScope";
 import { SplitPaneEmbeddedPanel } from "./SplitPaneEmbeddedPanel";
+import { BrowserPanel } from "../browser/BrowserPanel";
 
 import { resolveActiveSplitView } from "../../splitViewRoute";
 import { canSubdividePane, collectLeaves, findLeafPaneById } from "../../splitView.logic";
@@ -463,6 +464,9 @@ function SplitPaneSurface(props: {
           isFocused={props.isFocused}
           onUpdatePanelState={props.onUpdatePanelState}
         />
+        {props.threadId ? (
+          <BrowserPanel threadId={props.threadId} paneScopeId={paneScopeId} />
+        ) : null}
         {props.isFocused ? (
           <div
             aria-hidden="true"
