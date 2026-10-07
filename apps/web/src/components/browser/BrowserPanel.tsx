@@ -15,6 +15,7 @@ import { toastManager } from "../ui/toast";
 import { BrowserAddressBar } from "./BrowserAddressBar";
 import { BrowserAgentActivity } from "./BrowserAgentActivity";
 import { BrowserCaptureButton } from "./BrowserCaptureButton";
+import { BrowserMoreMenu } from "./BrowserMoreMenu";
 import { BrowserPageDialog } from "./BrowserPageDialog";
 import { BrowserPickElement } from "./BrowserPickElement";
 import { BrowserSiteMenu } from "./BrowserSiteMenu";
@@ -94,6 +95,7 @@ function BrowserPanelContent(props: { threadId: ThreadId; onClose: () => void })
               runCommand({ threadId, action: "contentBlocker", tabId: activeTab.tabId, enabled });
           }}
         />
+        <BrowserMoreMenu threadId={threadId} tab={activeTab} />
       </BrowserAddressBar>
       <BrowserAgentActivity threadId={threadId} />
       <BrowserPageDialog
