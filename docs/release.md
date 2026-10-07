@@ -61,10 +61,11 @@ desktop and HTTP access.
 
 `.github/workflows/release.yml` verifies the release source and requires successful CI for the
 exact commit on `main` before publishing. It reuses that result instead of rerunning the same checks
-on the tag. An unpublished manual build runs the checks itself. A failed gate skips all four builds
-and publication. The four build jobs run in parallel through `release-build.yml`, each of which first fetches and
-verifies its target's Cua Driver; publication credentials are checked
-before those jobs start. Release jobs restore dependency and build caches without uploading duplicate
+on the tag. An unpublished manual build runs the checks itself. One Linux job builds the
+platform-independent web, server and Electron bundles; the four build jobs then package those same
+bundles in parallel through `release-build.yml`, each of which first fetches and verifies its
+target's Cua Driver. Publication credentials are checked before those jobs start. The builds run
+while main CI is still running; the publish job waits for it, and a failed CI run stops publication. Release jobs restore dependency and build caches without uploading duplicate
 archives. See [CI and automation](ci.md) for cache ownership and debugging. Pushing a stable `vX.Y.Z` tag publishes only
 after both macOS packages are signed and notarized; manual publication also requires running on that
 exact tag. Existing releases are never overwritten.
@@ -93,18 +94,8 @@ The local keychain does not transfer to GitHub runners. Missing Apple secrets st
 1. Align package versions with `node scripts/update-release-package-versions.ts X.Y.Z`, then refresh `bun.lock` with `bun install --lockfile-only --ignore-scripts`.
 2. Update `CHANGELOG.md`; the in-app What's new and release history read it at build time. Use `New` for newly available capabilities, `Improved` for refinements, `Fixed` for corrected behavior, and `Removed` for retired functionality. Keep the `## X.Y.Z - date`, `### Category` and `- entry` layout, which the app parses. Mark a version released only when it really ships.
 3. Run `bun run check`, `bun run test`, `bun scripts/check-windows-runtime-boundary.ts`, and `bun scripts/check-migration-lineage.ts`. Check the packaged app with an isolated profile on each supported platform.
-4. Commit the reviewed source on `main` and push it to `origin`. Wait for exact-commit CI before tagging that commit `vX.Y.Z` and pushing the tag. Do not push inherited upstream tags.
+4. Commit the reviewed source on `main` and push it to `origin`. Tag that commit `vX.Y.Z` and push the tag; the release builds while exact-commit CI finishes and publishes only after it passes. Do not push inherited upstream tags.
 5. Verify the GitHub Release notes link all four installers and list their SHA-256 checksums. The ten assets are four installers, two macOS update ZIPs, three platform update manifests, and the Windows blockmap. Verify both Homebrew architecture checksums.
-
-## Recovering 0.2.0
-
-`release-recover-020.yml` repairs the interrupted 0.2.0 publication without rebuilding successful
-platforms. It verifies the original tag and exact-commit CI, rebuilds only Windows x64 and macOS
-x64 from that unchanged tag, and reuses macOS arm64 and Linux artifacts from run `37447536901`.
-The Windows qualification script comes from the recovery workflow commit and runs outside the
-release checkout; packaged source and provenance still identify the original tag. All four
-artifacts pass the usual assembly verification before publication. Platform failures no longer
-cancel sibling builds. This recovery workflow is specific to the unpublished 0.2.0 release.
 
 ## Development and production
 
