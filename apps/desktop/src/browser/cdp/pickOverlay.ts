@@ -18,9 +18,12 @@ type OverlayCall =
 // closed shadow root keeps page CSS out. Styles go through CSSOM and motion through
 // element.animate, which a page CSP does not block the way it blocks an inline <style>.
 function installPickOverlay(theme: BrowserPickTheme): void {
-  // The highlight jumps straight to the hovered element; only its appearance fades, so following
-  // the pointer never lags behind it.
-  const moving = "opacity 80ms linear";
+  // A short glide between hovered elements: long enough to read as motion, short enough that the
+  // highlight never trails the pointer. The box is one fixed element, so resizing it stays cheap.
+  const ease = "cubic-bezier(0.2, 0, 0, 1)";
+  const moving = theme.reducedMotion
+    ? "opacity 80ms linear"
+    : `transform 70ms ${ease}, width 70ms ${ease}, height 70ms ${ease}, opacity 80ms linear`;
   const host = document.createElement("div");
   host.style.cssText =
     "all: initial !important; position: fixed !important; inset: 0 !important; pointer-events: none !important; z-index: 2147483647 !important;";
