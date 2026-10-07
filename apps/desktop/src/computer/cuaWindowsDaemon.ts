@@ -9,7 +9,7 @@ interface McpLaunch {
   readonly environment: { name: string; value: string }[];
 }
 
-export interface CuaDaemonConnection {
+interface CuaDaemonConnection {
   readonly generation: string;
   readonly driverVersion: string;
   readonly mcp: McpLaunch;
