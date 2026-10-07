@@ -106,9 +106,8 @@ jobs:
             platform: mac
             arch: arm64
             target: dmg
-          # Cross-packaged on Apple silicon; the startup smoke runs under Rosetta.
           - id: mac-x64
-            runner: macos-15
+            runner: macos-15-intel
             platform: mac
             arch: x64
             target: dmg

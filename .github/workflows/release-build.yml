@@ -128,12 +128,7 @@ jobs:
           BUILD_PLATFORM: ${{ inputs.platform }}
           BUILD_ARCH: ${{ inputs.arch }}
           RELEASE_VERSION: ${{ steps.source.outputs.version }}
-        run: |
-          set -euo pipefail
-          args=(--assets-dir release --platform "$BUILD_PLATFORM" --arch "$BUILD_ARCH" --version "$RELEASE_VERSION" --executable-name glade)
-          # Rosetta translates the x64 app on its first launch on Apple silicon.
-          if [[ "$BUILD_PLATFORM" == mac && "$BUILD_ARCH" == x64 ]]; then args+=(--timeout-ms 180000); fi
-          node scripts/verify-packaged-desktop-startup.ts "${args[@]}"
+        run: node scripts/verify-packaged-desktop-startup.ts --assets-dir release --platform "$BUILD_PLATFORM" --arch "$BUILD_ARCH" --version "$RELEASE_VERSION" --executable-name glade
       - name: Collect and verify distribution assets
         shell: bash
         env:
