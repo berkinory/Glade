@@ -4,7 +4,7 @@ import type { OrchestrationThreadActivity } from "@glade/contracts/orchestration
 import type { HandoffTransitionStage } from "@glade/contracts/orchestration/threadEntities";
 import type { CommandId, ProviderKind, TurnId } from "@glade/contracts/core/baseSchemas";
 import type { ApprovalRequestKind } from "@glade/shared/threads/threadSummary";
-import type { GladeMcpToolStatus } from "./lib/toolCallLabel.descriptors";
+import type { GladeMcpToolStatus } from "./lib/gatewayToolCall";
 import type { WorkLogToolDetails } from "./lib/toolCallDetails";
 import type { ChatMessage } from "./types";
 

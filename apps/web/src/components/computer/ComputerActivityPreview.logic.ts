@@ -1,11 +1,11 @@
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
-import { summarizeToolRawOutput } from "~/features/chat/timeline/toolOutputSummary";
 import {
   computerToolTarget,
   isGladeComputerToolName,
   type ComputerToolTarget,
 } from "~/lib/computerToolPresentation";
+import { gatewayToolCall } from "~/lib/gatewayToolCall";
 import { deriveGladeMcpToolTitle } from "~/lib/toolCallLabel.descriptors";
 import {
   extractGladeMcpToolName,
@@ -43,11 +43,7 @@ export function selectComputerActivity(threadId: ThreadId) {
       const callId = extractToolCallId(payload) ?? activity.id;
       if (activity.kind === "tool.completed") {
         settledCalls.add(callId);
-        // MCP results arrive as the activity detail, as the timeline reads them.
-        const output =
-          typeof payload?.detail === "string"
-            ? payload.detail
-            : summarizeToolRawOutput(asObjectRecord(payload?.data)?.rawOutput);
+        const output = gatewayToolCall(gladeTool, payload, "completed").output;
         const named: ComputerToolTarget | null =
           target === null && output ? computerToolTarget(output) : null;
         if (named) {

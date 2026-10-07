@@ -73,8 +73,8 @@ import {
   deriveGladeMcpToolTitle,
   isGladeVisualToolCall,
   sanitizeGladeMcpToolPreview,
-  type GladeMcpToolStatus,
 } from "../../lib/toolCallLabel.descriptors";
+import type { GladeMcpToolStatus } from "../../lib/gatewayToolCall";
 import {
   extractWebFetchUrl,
   normalizeToolTextForComparison,
@@ -135,6 +135,10 @@ function extractFilePathFromDetail(detail: string): string | null {
     fallbackScan: "whenUnparsed",
   });
 }
+// Gateway browser and computer rows carry their finished heading and preview from the work log.
+function ownsToolTitle(workEntry: TimelineWorkEntry): boolean {
+  return workEntry.toolKind === "browser" || workEntry.toolKind === "computer";
+}
 function workEntryPreview(workEntry: TimelineWorkEntry): string | null {
   if (isReasoningUpdateWorkEntry(workEntry)) {
     return formatAgentActivityEntryPreview(workEntry);
@@ -148,6 +152,7 @@ function workEntryPreview(workEntry: TimelineWorkEntry): string | null {
         ?.trim() ?? null
     );
   }
+  if (ownsToolTitle(workEntry)) return workEntry.preview ?? null;
   const isFileRelated = workEntry.toolKind === "read" || workEntry.toolKind === "edit";
   if (workEntry.itemType === "command_execution" || workEntry.command || workEntry.rawCommand) {
     const command = workEntry.command ?? workEntry.rawCommand;
@@ -266,7 +271,10 @@ function classifyWorkEntryTool(workEntry: TimelineWorkEntry) {
     mcpIcon,
     isGitHub: mcpIcon === GitHubIcon,
     isVisual: isGladeVisualToolCall(titleInput),
-    gladeTitle: deriveGladeMcpToolTitle(titleInput),
+    // An approval row names the tool it asks about; the tool's own heading would say it ran.
+    gladeTitle: workEntry.activityKind?.startsWith("approval.")
+      ? null
+      : deriveGladeMcpToolTitle(titleInput),
   };
 }
 export function prefersCompactWorkEntryRow(workEntry: TimelineWorkEntry): boolean {
@@ -274,6 +282,9 @@ export function prefersCompactWorkEntryRow(workEntry: TimelineWorkEntry): boolea
     return true;
   }
   if (workEntry.itemType === "command_execution" || workEntry.command || workEntry.rawCommand) {
+    return true;
+  }
+  if (workEntry.toolKind === "browser" || workEntry.toolKind === "computer") {
     return true;
   }
   const EntryIcon = workEntryIcon(workEntry);
@@ -309,6 +320,9 @@ function toolWorkEntryHeading(
   }
   if (workEntry.activityKind === "turn.tasks.updated") {
     return capitalizePhrase(workEntry.label);
+  }
+  if (workEntry.toolTitle && ownsToolTitle(workEntry)) {
+    return workEntry.toolTitle;
   }
   if (classification.gladeTitle) {
     return classification.gladeTitle;

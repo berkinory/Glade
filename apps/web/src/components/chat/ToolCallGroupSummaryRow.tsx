@@ -66,6 +66,7 @@ export function ToolCallGroupSummaryRow(props: {
         </span>
         <span className="min-w-0 truncate">
           <span className={live ? "work-text-shimmer" : undefined}>{summary.label}</span>
+          {summary.latestStep ? <span> · {summary.latestStep}</span> : null}
           {summary.failedCount > 0 ? (
             <span className="text-destructive/85"> · {summary.failedCount} failed</span>
           ) : null}

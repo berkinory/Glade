@@ -222,6 +222,31 @@ export const GLADE_MCP_TOOL_PRESENTATIONS = {
     completed: "Glade updated a thread",
     failed: "Glade couldn't update a thread",
   },
+  glade_fork_thread: {
+    running: "Glade is forking a thread",
+    completed: "Glade forked a thread",
+    failed: "Glade couldn't fork a thread",
+  },
+  glade_open_in_app: {
+    running: "Glade is opening it in the app",
+    completed: "Glade opened it in the app",
+    failed: "Glade couldn't open it in the app",
+  },
+  glade_read_turn_diff: {
+    running: "Glade is reading a turn's changes",
+    completed: "Glade read a turn's changes",
+    failed: "Glade couldn't read a turn's changes",
+  },
+  glade_read_thread_diff: {
+    running: "Glade is reading a thread's changes",
+    completed: "Glade read a thread's changes",
+    failed: "Glade couldn't read a thread's changes",
+  },
+  glade_set_thread_pull_request: {
+    running: "Glade is linking a pull request",
+    completed: "Glade linked a pull request",
+    failed: "Glade couldn't link a pull request",
+  },
   ...GLADE_BROWSER_TOOL_PRESENTATIONS,
   ...GLADE_COMPUTER_TOOL_PRESENTATIONS,
 } as const satisfies Record<string, GladeMcpToolPresentation>;

@@ -16,18 +16,21 @@ import { summarizeToolRawOutput } from "./features/chat/timeline/toolOutputSumma
 import { pluralize, stripTerminalControlSequences } from "@glade/shared/text/text";
 import { PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
 import { deriveReadableToolTitle } from "./lib/toolCallLabel.commands";
+import { COMPUTER_ACCESS_REQUEST_PREFIX } from "@glade/contracts/computer/computerUse";
+import type { ProviderApprovalDecision } from "@glade/contracts/provider/sessionPolicy";
 import {
+  deriveGladeMcpToolAction,
   deriveGladeMcpToolTitle,
   isGenericToolTitle,
-  type GladeMcpToolStatus,
 } from "./lib/toolCallLabel.descriptors";
 import {
   extractGladeMcpToolName,
   normalizeGladeMcpIdentifier,
   normalizeToolTextForComparison,
 } from "./lib/toolCallLabel.presentations";
-import { browserToolResultPreview, isGladeBrowserToolName } from "./lib/browserToolPresentation";
-import { computerToolResultPreview, isGladeComputerToolName } from "./lib/computerToolPresentation";
+import { describeBrowserToolCall, isGladeBrowserToolName } from "./lib/browserToolPresentation";
+import { describeComputerToolCall, isGladeComputerToolName } from "./lib/computerToolPresentation";
+import { gatewayToolCall, type GladeMcpToolStatus } from "./lib/gatewayToolCall";
 import { deriveWorkLogToolDetails } from "./lib/toolCallDetails";
 import { compareActivitiesByOrder } from "./workLog.ordering";
 import {
@@ -122,6 +125,7 @@ export function deriveWorkLogEntries(
         activity.kind !== "task.completed" &&
         !isQuietTurnLifecycleActivity(activity) &&
         !isRoutineApprovalAcceptance(activity) &&
+        !isUninformativeActivity(activity) &&
         activity.kind !== "account.rate-limits.updated" &&
         activity.kind !== "context-window.updated" &&
         activity.kind !== "context-window.configured" &&
@@ -199,6 +203,47 @@ function isRoutineApprovalAcceptance(activity: OrchestrationThreadActivity): boo
     payload.approvalScope === undefined &&
     payload.requestKind !== "permissions"
   );
+}
+
+// Presentation only, like routine approvals: rows that tell the user nothing the surrounding rows
+// do not. Claude's ToolSearch loads tool schemas; a Computer Use access card is reported by its
+// computer_request_access row; a resolution without a decision repeats the one that carried it.
+function isUninformativeActivity(activity: OrchestrationThreadActivity): boolean {
+  const payload = asObjectRecord(activity.payload);
+  switch (activity.kind) {
+    case "tool.started":
+    case "tool.updated":
+    case "tool.completed":
+      return extractToolName(payload) === "ToolSearch";
+    case "user-input.requested":
+    case "user-input.resolved":
+      return String(payload?.requestId ?? "").startsWith(COMPUTER_ACCESS_REQUEST_PREFIX);
+    case "approval.resolved":
+      return activity.tone !== "error" && payload?.decision === undefined;
+    default:
+      return false;
+  }
+}
+
+const APPROVAL_DECISION_TITLES: Record<ProviderApprovalDecision, string> = {
+  accept: "Allowed",
+  acceptForSession: "Always allowed",
+  decline: "Not allowed",
+  cancel: "Cancelled request",
+};
+
+// "Asked for approval" / "Not allowed" with `to click` as the preview, instead of the tool's own
+// completed heading, which would read as if the call already ran.
+function approvalTitle(
+  activity: OrchestrationThreadActivity,
+  payload: Record<string, unknown> | null,
+): string | null {
+  if (activity.kind === "approval.requested") return "Asked for approval";
+  if (activity.kind !== "approval.resolved") return null;
+  const decision = typeof payload?.decision === "string" ? payload.decision : "";
+  return Object.hasOwn(APPROVAL_DECISION_TITLES, decision)
+    ? APPROVAL_DECISION_TITLES[decision as ProviderApprovalDecision]
+    : activity.summary;
 }
 
 function isUninformativeCommandStartEntry(entry: DerivedWorkLogEntry): boolean {
@@ -472,12 +517,19 @@ function normalizeWorkLogActivity(activity: OrchestrationThreadActivity): Derive
   const gladeToolName = toolName
     ? extractGladeMcpToolName(normalizeGladeMcpIdentifier(toolName))
     : null;
-  const gladeToolOutput = outputDetail ?? entry.detail;
-  if (gladeToolName && gladeToolOutput && toolStatus !== "failed") {
-    const gladeToolPreview =
-      browserToolResultPreview(gladeToolName, gladeToolOutput) ??
-      computerToolResultPreview(gladeToolName, gladeToolOutput);
-    if (gladeToolPreview) entry.preview = gladeToolPreview;
+  const gatewayCall =
+    gladeToolName && toolStatus ? gatewayToolCall(gladeToolName, payload, toolStatus) : null;
+  const gatewayPresentation = gatewayCall
+    ? (describeBrowserToolCall(gatewayCall) ?? describeComputerToolCall(gatewayCall))
+    : null;
+  if (gatewayPresentation) {
+    // The row says everything itself; the provider's detail is the raw `tool: {args}` summary.
+    if (gatewayPresentation.preview) entry.preview = gatewayPresentation.preview;
+    if (toolStatus === "failed" && gatewayPresentation.preview) {
+      entry.detail = gatewayPresentation.preview;
+    } else {
+      delete entry.detail;
+    }
   }
   if (changedFiles.length > 0) {
     entry.changedFiles = changedFiles;
@@ -534,7 +586,12 @@ function normalizeWorkLogActivity(activity: OrchestrationThreadActivity): Derive
       entry.providerContextLifecycle = providerContextLifecycle;
     }
   }
+  const approvalHeading = approvalTitle(activity, payload);
+  const approvalAction = approvalHeading ? deriveGladeMcpToolAction(toolName) : null;
+  if (approvalAction) entry.preview = `to ${approvalAction}`;
   const readableTitle =
+    gatewayPresentation?.heading ??
+    (approvalAction ? approvalHeading : null) ??
     extractCollabActionTitle(payload) ??
     deriveGladeMcpToolTitle({
       toolName,

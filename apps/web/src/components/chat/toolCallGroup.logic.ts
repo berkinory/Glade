@@ -30,6 +30,8 @@ export interface ToolCallGroupSummary {
   failedCount: number;
 
   iconEntry: WorkLogEntry;
+  // A browser or computer run names its latest step, such as `Clicked "Sign in" · github.com`.
+  latestStep: string | null;
 }
 
 function isSummarizableToolCallEntry(entry: WorkLogEntry): boolean {
@@ -187,6 +189,9 @@ export function summarizeToolCallGroup(
     };
   });
   const label = parts.map((part) => part.label).join(", ");
+  const isStepRun =
+    populated.length > 0 &&
+    populated.every((category) => category === "browser" || category === "computer");
 
   return {
     label: label ? capitalize(label) : "Thought",
@@ -195,5 +200,14 @@ export function summarizeToolCallGroup(
     hasRunningEntry,
     failedCount,
     iconEntry: summarizable[0] ?? groupable[0]!,
+    latestStep: isStepRun ? latestStepText(summarizable) : null,
   };
+}
+
+function latestStepText(entries: ReadonlyArray<WorkLogEntry>): string | null {
+  const last = entries.at(-1);
+  const latest =
+    last?.toolStatus === "running" ? last : (entries.findLast((entry) => entry.preview) ?? last);
+  if (!latest?.toolTitle) return null;
+  return latest.preview ? `${latest.toolTitle} ${latest.preview}` : latest.toolTitle;
 }

@@ -538,11 +538,12 @@ export function extractToolName(payload: Record<string, unknown> | null): string
 export function extractToolCallId(payload: Record<string, unknown> | null): string | null {
   const data = asObjectRecord(payload?.data);
   const item = asObjectRecord(data?.item);
-  return (
-    nonEmptyTrimmed(
-      data?.toolCallId ?? data?.toolUseId ?? data?.callID ?? data?.callId ?? item?.id,
-    ) ?? null
+  const id = nonEmptyTrimmed(
+    data?.toolCallId ?? data?.toolUseId ?? data?.callID ?? data?.callId ?? item?.id,
   );
+  // Claude's progress heartbeats for a long tool call use `<tool_use_id>-heartbeat-<n>`; they
+  // belong to that call's row, not a row of their own.
+  return id?.replace(/-heartbeat-\d+$/u, "") ?? null;
 }
 
 export function stripTrailingExitCode(value: string): {

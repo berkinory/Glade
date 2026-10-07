@@ -9,6 +9,7 @@ import {
   normalizeCompactToolLabel,
   normalizeGladeMcpIdentifier,
 } from "./toolCallLabel.presentations";
+import type { GladeMcpToolStatus } from "./gatewayToolCall";
 import type {
   GladeMcpToolPresentation,
   ReadableToolTitleInput,
@@ -67,8 +68,6 @@ function resolveGladeMcpToolPresentation(
   return null;
 }
 
-export type GladeMcpToolStatus = "running" | "completed" | "failed" | "cancelled";
-
 export interface GladeMcpToolTitleInput {
   readonly toolName?: string | null | undefined;
   readonly title?: string | null | undefined;
@@ -111,6 +110,12 @@ export function deriveGladeMcpToolTitle(input: GladeMcpToolTitleInput): string |
   }
 }
 
+// What a Glade tool does, as the object of "Couldn't …": "click", "create a thread".
+export function deriveGladeMcpToolAction(toolName: string | null | undefined): string | null {
+  const presentation = resolveGladeMcpToolPresentation([toolName]);
+  return presentation ? presentation.failed.replace(/^(?:Glade )?couldn't /iu, "") : null;
+}
+
 export function sanitizeGladeMcpToolPreview(input: {
   readonly preview?: string | null | undefined;
   readonly heading: string;
@@ -142,7 +147,6 @@ export function humanizeRequestKind(
 ): string | null {
   if (requestKind === "file-read") return "Read";
   if (requestKind === "file-change" || itemType === "file_change") return "Edited";
-  if (requestKind === "tool") return "Tool";
 
   if (itemType === "web_search") return "Searched the web";
   if (itemType === "image_generation") return "Generated image";
