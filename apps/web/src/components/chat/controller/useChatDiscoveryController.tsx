@@ -204,8 +204,7 @@ export function useChatDiscoveryController({
       canOfferReviewCommand,
       canOfferForkCommand,
       canOfferExportCommand,
-      // The command needs the thread on the server; a draft gets it after its first message.
-      canOfferComputerUseCommand: isElectron && isServerThread,
+      canOfferComputerUseCommand: isElectron,
     },
   });
 

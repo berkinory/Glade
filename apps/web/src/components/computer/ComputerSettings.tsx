@@ -194,8 +194,8 @@ export function ComputerSettings() {
       <SettingsSectionShell title="Access grants" id="setting-computer-grants">
         {grants.length === 0 ? (
           <SettingsEmptyState>
-            No app access granted. Turn Computer Use on with /computer-use or the chat menu; the
-            agent asks before it uses an app. Grants last until Glade restarts.
+            No app access granted. Turn Computer Use on with /computer or the chat menu; the agent
+            asks before it uses an app. Grants last until Glade restarts.
           </SettingsEmptyState>
         ) : (
           <SettingsCard>

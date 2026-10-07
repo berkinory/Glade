@@ -29,6 +29,7 @@ import {
 import { queuedComposerDrain } from "../../lib/queuedComposerDrain";
 import { clearPendingTurnDispatch, usePendingTurnDispatchStore } from "../../pendingTurnDispatch";
 import { type Thread } from "../../types";
+import { applyDraftComputerUse } from "../computer/computerUseState";
 import {
   WorktreeSetupCancelledError,
   createWorktreeSetupResolution,
@@ -321,6 +322,7 @@ export function useChatTurnExecution({
             });
           }
           createdServerThreadForLocalDraft = true;
+          await applyDraftComputerUse(threadIdForSend);
         }
 
         if (baseBranchForWorktree && worktreeSetupResolution) {

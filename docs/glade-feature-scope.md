@@ -40,7 +40,7 @@ reported to the agent; the panel offers no dialog prompts. Browser tools, the pa
 toggle do not exist outside the desktop app.
 
 Computer Use (desktop control) is available in the desktop app on top of the bundled Cua Driver.
-It is off per conversation: `/computer-use` turns it on for the next message and the thread menu
+It is off per conversation: `/computer` turns it on for the next message and the thread menu
 turns it on or off for the conversation. The agent asks in the chat before it reads or acts on an
 app (read, act or full control); grants last until Glade restarts and can be revoked in Settings,
 which also shows the driver status and, on macOS, the Accessibility and Screen Recording

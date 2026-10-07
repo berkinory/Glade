@@ -20,7 +20,7 @@ const SLASH_COMMAND_ICONS: Record<string, IconComponent> = {
   default: MessageCircleIcon,
   review: BugIcon,
   fork: WorkflowCircle04Icon,
-  "computer-use": CursorInWindowIcon,
+  computer: CursorInWindowIcon,
   feedback: BugIcon,
 };
 export function slashCommandIcon(command: string, fallback: IconComponent): IconComponent {

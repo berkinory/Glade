@@ -1,6 +1,6 @@
 import { useThreadCompaction } from "./useThreadCompaction";
 import { useCallback } from "react";
-import { setComputerUseMode } from "../components/computer/computerUseState";
+import { markDraftComputerUse, setComputerUseMode } from "../components/computer/computerUseState";
 import { isElectron } from "../env";
 import type { ComposerCommandItem } from "../components/chat/ComposerCommandMenu";
 import { toastManager } from "../components/ui/toast";
@@ -63,11 +63,17 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
     canOfferReviewCommand: true,
     canOfferForkCommand: true,
     canOfferExportCommand,
-    canOfferComputerUseCommand: isElectron && isServerThread,
+    canOfferComputerUseCommand: isElectron,
     providerNativeCommandNames,
   });
 
   const { compact: compactProviderThread } = useThreadCompaction(activeThread?.id);
+
+  // A draft has no server thread yet; its first send applies the mode.
+  const turnOnComputerUseOnce = useCallback(async () => {
+    if (isServerThread) await setComputerUseMode(threadId, "once");
+    else markDraftComputerUse(threadId);
+  }, [isServerThread, threadId]);
 
   const setFastModeFromSlashCommand = useCallback(
     (enabled: boolean) => {
@@ -250,11 +256,11 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
       if (!slashInvocation || slashInvocation.command === "model") {
         return false;
       }
-      if (slashInvocation.command === "computer-use") {
+      if (slashInvocation.command === "computer") {
         // Text after the command stays in the composer as the task to send next.
         if (slashInvocation.args) editorActions.setComposerPromptValue(slashInvocation.args);
         else editorActions.clearComposerSlashDraft();
-        await setComputerUseMode(threadId, "once");
+        await turnOnComputerUseOnce();
         return true;
       }
       if (slashInvocation.command === "clear") {
@@ -381,7 +387,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
       runFastSlashCommand,
 
       runRenameSlashCommand,
-      threadId,
+      turnOnComputerUseOnce,
     ],
   );
 
@@ -439,13 +445,13 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
         return;
       }
 
-      if (item.command === "computer-use") {
+      if (item.command === "computer") {
         const applied = clearSlashCommandFromComposer();
         if (!wasPromptReplacementApplied(applied)) {
           return;
         }
         editorActions.setComposerHighlightedItemId(null);
-        void setComputerUseMode(threadId, "once");
+        void turnOnComputerUseOnce();
         editorActions.scheduleComposerFocus();
         return;
       }
@@ -544,7 +550,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
       supportsTextNativeReviewCommand,
       runExportSlashCommand,
       runFastSlashCommand,
-      threadId,
+      turnOnComputerUseOnce,
     ],
   );
 

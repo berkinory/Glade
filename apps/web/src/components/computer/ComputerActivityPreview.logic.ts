@@ -43,7 +43,11 @@ export function selectComputerActivity(threadId: ThreadId) {
       const callId = extractToolCallId(payload) ?? activity.id;
       if (activity.kind === "tool.completed") {
         settledCalls.add(callId);
-        const output = summarizeToolRawOutput(asObjectRecord(payload?.data)?.rawOutput);
+        // MCP results arrive as the activity detail, as the timeline reads them.
+        const output =
+          typeof payload?.detail === "string"
+            ? payload.detail
+            : summarizeToolRawOutput(asObjectRecord(payload?.data)?.rawOutput);
         const named: ComputerToolTarget | null =
           target === null && output ? computerToolTarget(output) : null;
         if (named) {

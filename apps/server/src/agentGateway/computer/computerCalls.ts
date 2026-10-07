@@ -97,7 +97,7 @@ const requireComputerUse = (services: ComputerToolServices, context: ToolContext
     ? Effect.void
     : refuse(
         "computer_use_off",
-        "Computer Use is off for this thread. Ask the user to turn it on with /computer-use or the thread menu.",
+        "Computer Use is off for this thread. Ask the user to turn it on with /computer or the thread menu.",
       );
 
 // The window as Cua lists it now: the grant check needs its app, and a pid/window pair that does
