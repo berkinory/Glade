@@ -96,8 +96,9 @@ front to back, fast and without permissions; `installed: true` adds apps that ar
 `computer_screenshot` (with `region`, a zoomed close-up), `computer_verify` (Cua's `verify_state`:
 waits up to 10 s for element conditions with stable samples). Input, one tool per action as in
 Anthropic's `computer_toolset_20260801` and Codex/Cua: `computer_left_click`, `computer_right_click`,
-`computer_double_click`, `computer_triple_click`, `computer_type`, `computer_key`, `computer_scroll`,
-`computer_set_value`, `computer_menu`, `computer_left_click_drag`. Apps and panels:
+`computer_double_click`, `computer_triple_click`, `computer_type`, `computer_key`,
+`computer_select_text`, `computer_scroll`, `computer_set_value`, `computer_menu`,
+`computer_left_click_drag`. Apps and panels:
 `computer_open_app`, `computer_file_dialog` (a macOS Open or Save panel in one call),
 `computer_window_frame` (Cua's `set_window_frame`: x, y, width, height in desktop points, then the
 window is listed again and the result states the geometry it ended up with; needs `act`, and
@@ -114,6 +115,16 @@ one shared path for all of them. Triple clicks need a coordinate (Cua repeats cl
 pixel path). `computer_key` reads xdotool and `+` syntax (`Return`, `super+c`, `cmd+shift+z`,
 `ctrl++`) and runs space-separated keys in order (`Down Down Return`); `cmd` means Command on macOS
 and Control elsewhere.
+
+`computer_select_text` selects from the caret in a text element (`element_index` focuses it) or the
+window's focused field: `all`, `line`, `word`, `to_start`, `to_end`, or `count` characters `left` or
+`right`. It sends the selecting chords (Command-A; Command-Left then Command-Shift-Right; Option-Left
+then Option-Shift-Right; Shift-arrows; Home, End and Control on Windows and Linux) with foreground
+delivery, so it needs `full` and yields to the user like other foreground input. Cua 0.34 has no
+selection-range tool and its trees do not expose the selected text. Cua's `type_text` inserts
+through the accessibility API, so typed text never picks up a style toggled by a shortcut: the
+guidance tells agents to select the text, then apply the format from the menu (Format ▸ Font ▸
+Bold).
 
 `computer_open_app` takes an app name or bundle id (resolved through Cua's `list_apps`, which also
 lists installed apps that are not running) and optional `open` targets, and calls Cua's

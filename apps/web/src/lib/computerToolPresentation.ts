@@ -27,6 +27,7 @@ const COMPUTER_TOOL_WORDING = {
   computer_scroll: ["Scrolling", "Scrolled", "scroll"],
   computer_type: ["Typing", "Typed", "type"],
   computer_key: ["Pressing", "Pressed", "press keys"],
+  computer_select_text: ["Selecting", "Selected", "select text"],
   computer_set_value: ["Setting value", "Set value", "set the value"],
   computer_menu: ["Choosing menu item", "Chose", "choose the menu item"],
   computer_verify: ["Checking window", "Checked window", "check the window"],
@@ -258,6 +259,20 @@ export function describeComputerToolCall(call: GatewayToolCall): GatewayToolPres
         call,
         previewAt(stringArg(args, "text"), where),
       );
+    case "computer_select_text": {
+      // `Selected line · TextEdit`, `Selected 3 characters left · TextEdit`.
+      const select = stringArg(args, "select")?.replace("_", " ") ?? null;
+      const count = typeof args.count === "number" ? args.count : 1;
+      const what =
+        select === "left" || select === "right"
+          ? `${count} ${pluralize(count, "character")} ${select}`
+          : select;
+      return presentGatewayToolCall(
+        COMPUTER_TOOL_WORDING.computer_select_text,
+        call,
+        previewAt(what, where),
+      );
+    }
     case "computer_scroll":
       return presentGatewayToolCall(
         COMPUTER_TOOL_WORDING.computer_scroll,

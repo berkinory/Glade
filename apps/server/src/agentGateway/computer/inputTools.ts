@@ -12,7 +12,7 @@ import {
   type ComputerToolServices,
   type WindowInput,
 } from "./computerCalls.ts";
-import { keyCalls } from "./keyChords.ts";
+import { keyCalls, selectionCalls, TEXT_SELECTIONS } from "./keyChords.ts";
 import { invokeMenu } from "./menuInvoke.ts";
 import { targetFor, WindowTarget, type WindowTargetInput } from "./windowTarget.ts";
 
@@ -71,6 +71,8 @@ interface InputPlan {
     where: Where,
   ) => CuaCall | ReadonlyArray<CuaCall> | string;
   readonly run?: (target: WindowInput) => Effect.Effect<CuaToolResult, GatewayToolError>;
+  // Leads the result of several calls instead of the key count.
+  readonly summary?: string;
 }
 
 const MODIFIER_NAMES: Record<string, string> = {
@@ -139,12 +141,15 @@ export function makeInputComputerTools(services: ComputerToolServices): ToolEntr
         Effect.forEach(calls, (call) => callCua(services, context, call.tool, call.args)).pipe(
           Effect.map((results): CuaToolResult => {
             const last = results.at(-1)!;
-            return calls.length === 1
+            return calls.length === 1 && !plan.summary
               ? last
               : {
                   ...last,
                   content: [
-                    { type: "text", text: `Sent ${calls.length} keys in order; the last:` },
+                    {
+                      type: "text",
+                      text: plan.summary ?? `Sent ${calls.length} keys in order; the last:`,
+                    },
                     ...last.content,
                   ],
                 };
@@ -239,6 +244,41 @@ export function makeInputComputerTools(services: ComputerToolServices): ToolEntr
           }));
         },
       }),
+  });
+
+  const selectTextTool = computerTool(services, {
+    name: "computer_select_text",
+    title: "Select text",
+    description:
+      "Select text from the caret in a text element (element_index) or the window's focused field with key chords sent in the foreground: all, the line, the word, to the start or end, or count characters left or right. Needs full control.",
+    input: Schema.Struct({
+      ...WindowTarget,
+      element_index: ElementIndex,
+      select: Schema.Literals(TEXT_SELECTIONS),
+      count: Schema.optionalKey(
+        Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 })).annotate({
+          description: "Characters for left or right (default 1).",
+        }),
+      ),
+    }),
+    readOnly: false,
+    run: (input, context) => {
+      const keys = selectionCalls(input.select, input.count ?? 1);
+      return perform(input, context, {
+        action: "input",
+        // Cua refuses background keys to an app with several windows (same_pid_keyboard_ambiguity),
+        // which is the usual state of a document app.
+        delivery: "foreground",
+        summary: `Selected ${input.select.replace("_", " ")}; the accessibility tree does not show selections, so zoom in with computer_screenshot to check. The last key:`,
+        build: (base, where) =>
+          typeof keys === "string"
+            ? keys
+            : keys.map((key, position) => ({
+                tool: key.tool,
+                args: { ...base, ...(position === 0 ? where.args : {}), ...key.args },
+              })),
+      });
+    },
   });
 
   const scrollTool = computerTool(services, {
@@ -353,6 +393,7 @@ export function makeInputComputerTools(services: ComputerToolServices): ToolEntr
     click("computer_triple_click", "Triple-click", "Triple-click", "click", 3),
     typeTool,
     keyTool,
+    selectTextTool,
     scrollTool,
     setValueTool,
     menuTool,

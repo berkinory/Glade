@@ -107,6 +107,16 @@ function parseChord(chord: string): CuaKeyCall | string {
     : { tool: "press_key", args: { key } };
 }
 
+function chordCalls(chords: ReadonlyArray<string>): ReadonlyArray<CuaKeyCall> | string {
+  const calls: CuaKeyCall[] = [];
+  for (const chord of chords) {
+    const call = parseChord(chord);
+    if (typeof call === "string") return call;
+    calls.push(call);
+  }
+  return calls;
+}
+
 // The Cua calls for key text in order, or why it cannot be pressed.
 export function keyCalls(text: string): ReadonlyArray<CuaKeyCall> | string {
   if (text.length > 0 && text.trim() === "") return [{ tool: "press_key", args: { key: "space" } }];
@@ -117,11 +127,41 @@ export function keyCalls(text: string): ReadonlyArray<CuaKeyCall> | string {
     .filter(Boolean);
   if (chords.length === 0) return "No keys given.";
   if (chords.length > MAX_CHORDS) return `At most ${MAX_CHORDS} keys per call.`;
-  const calls: CuaKeyCall[] = [];
-  for (const chord of chords) {
-    const call = parseChord(chord);
-    if (typeof call === "string") return call;
-    calls.push(call);
-  }
-  return calls;
+  return chordCalls(chords);
 }
+
+export const TEXT_SELECTIONS = [
+  "all",
+  "line",
+  "word",
+  "to_start",
+  "to_end",
+  "left",
+  "right",
+] as const;
+type TextSelection = (typeof TEXT_SELECTIONS)[number];
+
+// The chords that select text from the caret: macOS moves by line and document with Command and by
+// word with Option; Windows and Linux use Home, End and Control.
+function selectionKeys(select: TextSelection, count: number): ReadonlyArray<string> {
+  const mac = process.platform === "darwin";
+  switch (select) {
+    case "all":
+      return ["cmd+a"];
+    case "line":
+      return mac ? ["cmd+left", "cmd+shift+right"] : ["home", "shift+end"];
+    case "word":
+      return mac ? ["option+left", "option+shift+right"] : ["ctrl+left", "ctrl+shift+right"];
+    case "to_start":
+      return [mac ? "cmd+shift+up" : "ctrl+shift+home"];
+    case "to_end":
+      return [mac ? "cmd+shift+down" : "ctrl+shift+end"];
+    case "left":
+    case "right":
+      return Array.from({ length: count }, () => `shift+${select}`);
+  }
+}
+
+// The Cua calls that make a selection, in order.
+export const selectionCalls = (select: TextSelection, count: number) =>
+  chordCalls(selectionKeys(select, count));

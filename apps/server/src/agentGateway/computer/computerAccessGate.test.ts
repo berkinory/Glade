@@ -303,6 +303,14 @@ describe("computer access gate", () => {
       { action: "save", path: "/tmp" },
       "access_required",
     ],
+    [
+      "text selection's foreground keys need full control",
+      "other",
+      "act",
+      "computer_select_text",
+      { select: "line" },
+      "access_required",
+    ],
   ] as const)("%s", ([, app, scope, tool, args, refusal]) =>
     Effect.gen(function* () {
       const { call, errorCode, grant } = yield* setup("confirmed");
