@@ -59,9 +59,17 @@ export const matchApps = (apps: ReadonlyArray<ListedApp>, query: string) => {
     .toSorted((left, right) => Number(right.running) - Number(left.running));
 };
 
-// The window an app shows in front: the highest on-screen, unminimized window, else any window.
+// WinUI hosts an open menu or flyout in its own top-level window, above the app's real window.
+const POPUP_HOST_TITLE = "PopupHost";
+
+// The window an app shows in front: the highest on-screen, unminimized window that is not a popup
+// host, else any window.
 const frontmost = (windows: ReadonlyArray<CuaWindow>) => {
-  const byZ = windows.toSorted((left, right) => (right.z_index ?? -1) - (left.z_index ?? -1));
+  const byZ = windows.toSorted(
+    (left, right) =>
+      Number(left.title === POPUP_HOST_TITLE) - Number(right.title === POPUP_HOST_TITLE) ||
+      (right.z_index ?? -1) - (left.z_index ?? -1),
+  );
   return byZ.find((window) => window.is_on_screen && window.minimized !== true) ?? byZ[0] ?? null;
 };
 

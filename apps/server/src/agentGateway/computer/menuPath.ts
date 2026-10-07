@@ -49,15 +49,18 @@ export function menuTitles(
   const entries = (element: CuaElement) =>
     below(element, ["AXMenu"]).flatMap((menu) => below(menu, ["AXMenuItem"]));
   const bar = elements.find((element) => element.role === "AXMenuBar");
-  // Cua on Linux lists the menu bar's menus as parentless "menu" elements, without the items of
-  // closed menus, so there only the menu bar level is known.
+  const parentless = (role: string) =>
+    elements.filter(
+      (element) =>
+        element.role === role &&
+        (element.parent_index === undefined || element.parent_index === null),
+    );
+  // Cua on Linux lists the menu bar's menus as parentless "menu" elements, and on Windows as
+  // parentless "MenuItem" elements, without the items of closed menus, so there only the menu
+  // bar level is known.
   let level = bar
     ? below(bar, ["AXMenuBarItem"])
-    : elements.filter(
-        (element) =>
-          element.role === "menu" &&
-          (element.parent_index === undefined || element.parent_index === null),
-      );
+    : [...parentless("menu"), ...parentless("MenuItem")];
   for (const title of resolved) {
     const key = menuKey(title);
     const next = level.find((item) => menuKey(item.label ?? "") === key);
