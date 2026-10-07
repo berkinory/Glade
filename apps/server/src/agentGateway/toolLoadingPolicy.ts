@@ -8,13 +8,16 @@ const AUTO_LOAD_TOOLS = new Set([
   "glade_read_turn_diff",
   "glade_read_thread_diff",
   "glade_read_thread_runtime_events",
-  // The core browser loop; the rest of browser_* stays behind tool search.
+  // The core browser loop, reading and scrolling included (about 410 schema tokens for the two,
+  // less than one tool search round trip); the rest of browser_* stays behind tool search.
   "browser_navigate",
   "browser_snapshot",
   "browser_find",
+  "browser_get_text",
   "browser_click",
   "browser_type",
   "browser_fill",
+  "browser_scroll",
 ]);
 
 export function shouldAutoLoadTool(name: string): boolean {

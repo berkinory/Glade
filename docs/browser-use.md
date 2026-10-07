@@ -126,15 +126,18 @@ visibility checked), has a box on the page and is outside `aria-hidden`. Each 15
 own short tab operation that does not wait for the user to pause, so the panel and the user's
 input are never locked out while the agent waits (on a security check, for example).
 `browser_evaluate` is not listed and always refuses until a per-chat setting exists. For Claude,
-`browser_navigate`, `browser_snapshot`, `browser_find`, `browser_click`, `browser_type` and
-`browser_fill` are marked `anthropic/alwaysLoad` so the core loop needs no tool search; the rest
-stay deferred.
+`browser_navigate`, `browser_snapshot`, `browser_find`, `browser_get_text`, `browser_click`,
+`browser_type`, `browser_fill` and `browser_scroll` are marked `anthropic/alwaysLoad` so the core
+loop needs no tool search (reading and scrolling add about 410 schema tokens, less than one tool
+search round trip); the rest stay deferred.
 
 Everything a result takes from the page (snapshot lines, find matches, page text, console and
-network output, a dialog's message, tab titles in the tab list) is wrapped in a block that starts
+network output, a dialog's message, tab titles in the tab list, suggested options, items that
+appeared after a scroll, the text a wait matched) is wrapped in a block that starts
 with `--- PAGE_CONTENT nonce=<random> origin=<page origin> ---` and ends with the same nonce. The
 nonce is fresh per block, so a page cannot close the block early; the harness guidance tells the
-model that text inside is data, never instructions. This is a provenance cue for the model, not a
+model that text inside is data, never instructions, and to tell the user in one sentence when a
+page tried to instruct it. This is a provenance cue for the model, not a
 security boundary. Glade's own report lines (what an action did, scope notes, page counts, and the
 `Host:` line input actions end with for the chat timeline) stay outside the block.
 
@@ -199,7 +202,11 @@ agent input on that tab fails with `user_picking` instead of moving the page und
   that opens within 2 s of the user's own input in the tab belongs to the user: the agent cannot
   answer it or navigate away from it. The panel shows every open dialog above the page with OK and
   Cancel. Electron refuses `prompt()` in the page itself.
-- Downloads go to `<workspace>/.glade/downloads/`; a symlinked `.glade` or `downloads` folder
+- Downloads go to `<workspace>/.glade/downloads/`. The result of the action that starts one
+  says `Download started: <name>` with the absolute path, and `Download finished: <path> (<size>)`
+  when it ends within the action's wait (a navigation that never commits gets 1.5 s to turn into
+  a download, which then gets 3 s); otherwise the next result carries it. `browser_tabs` lists the
+  tab's last ten downloads with their state; a symlinked `.glade` or `downloads` folder
   cancels them. Uploads accept only regular files inside the chat workspace. Popups open as tabs and keep `window.opener`, so sign-in popups work.
 - Console and network logs are ring buffers of 500 entries per tab, read on demand.
 - Each call on a tab gets 12 s (longer for navigation and settling actions). A page that stops
