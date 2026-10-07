@@ -77,8 +77,14 @@ async function install() {
     if (artifact.archive.endsWith(".zip") && process.platform === "linux") {
       execFileSync("unzip", ["-q", archive, artifact.executable, "-d", extractDir]);
     } else {
-      // bsdtar (macOS, Windows) reads zip archives too.
-      execFileSync("tar", ["-xf", archive, "-C", extractDir, artifact.executable]);
+      // bsdtar (macOS, Windows) reads zip archives too. Git Bash puts GNU tar first on
+      // Windows, which reads `C:` paths as a remote host, so name the system bsdtar.
+      let tar = "tar";
+      if (process.platform === "win32") {
+        if (!process.env.SystemRoot) throw new Error("SystemRoot is required to locate tar.exe.");
+        tar = join(process.env.SystemRoot, "System32", "tar.exe");
+      }
+      execFileSync(tar, ["-xf", archive, "-C", extractDir, artifact.executable]);
     }
     const extracted = join(extractDir, artifact.executable);
     const executableSha = await sha256(extracted);
