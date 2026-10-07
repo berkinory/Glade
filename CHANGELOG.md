@@ -4,7 +4,7 @@
 
 ### New
 
-- Browser Use is rebuilt: each chat has its own browser panel, agents browse with your existing sign-ins, and you can pick an element on a page to send to the composer.
+- Browser Use is rebuilt: each chat has its own browser panel, agents browse with your existing sign-ins, and you can pick an element or screenshot the page to send to the composer, open the page in your default browser, open developer tools, or clear a site's data.
 - Computer Use is rebuilt on the Cua driver: agents use desktop apps after you grant access to each app in the chat, or right away when the chat has Full access.
 - Visual replies and previews can load public web resources, and visual links open in your browser.
 - Glade's browser blocks ads, trackers and cookie notices by default, with a switch in Settings and a shield in the browser panel that turns blocking off for one site; agents can do the same when blocking breaks a page.

@@ -89,6 +89,7 @@ function BrowserPanelContent(props: { threadId: ThreadId; onClose: () => void })
         }}
       >
         <BrowserSiteMenu
+          threadId={threadId}
           tab={activeTab}
           onSiteBlocking={(enabled) => {
             if (activeTab)
