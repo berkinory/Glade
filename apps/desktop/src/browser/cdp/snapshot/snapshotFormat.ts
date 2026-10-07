@@ -75,16 +75,21 @@ export interface SnapshotMatch {
   readonly text: string | undefined;
   // The row or item the match sits in, with its text, so a table cell carries its row's values.
   readonly row?: { readonly role: string; readonly text: string } | undefined;
+  // The scroll container that hides the match, described with its ref.
+  readonly offscreenIn?: string | undefined;
 }
 
 const MAX_ROW_CHARS = 160;
 
 export function renderMatches(matches: readonly SnapshotMatch[], total: number): string {
-  const lines = matches.map(({ node, context, text, row }) => {
+  const lines = matches.map(({ node, context, text, row, offscreenIn }) => {
     const line = `${formatSnapshotLine(node, 0, false)}${text ? ` text=${quote(text)}` : ""}`;
-    const head = context
+    const located = context
       ? `${line}  (in ${context.role}${context.name ? ` ${quote(context.name)}` : ""})`
       : line;
+    const head = offscreenIn
+      ? `${located}  offscreen in ${offscreenIn}; scroll that container to reveal it (a click on it scrolls there first)`
+      : located;
     if (!row) return head;
     const flat =
       row.text.length > MAX_ROW_CHARS ? `${row.text.slice(0, MAX_ROW_CHARS - 1)}…` : row.text;

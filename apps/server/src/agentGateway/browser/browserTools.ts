@@ -82,7 +82,7 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     title: "Find elements",
     readOnly: true,
     description:
-      'Find elements by a natural-language description ("search field", "add to cart button"), exact text, or a regex with regex: true. Matches role, name, value, placeholder and text, best first. Returns up to 20 refs with context and the text of the table row or list item each sits in; cheaper than a snapshot when you know what you need.',
+      'Find elements by a natural-language description ("search field", "add to cart button"), exact text, or a regex with regex: true. Matches role, name, value, placeholder and text, best first. Returns up to 20 refs with context and the text of the table row or list item each sits in, visible ones first; a match its scroll container hides is marked offscreen in that container. Cheaper than a snapshot when you know what you need.',
   },
   browser_get_text: {
     method: "browser.getText",
@@ -161,7 +161,7 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     title: "Scroll",
     readOnly: false,
     description:
-      "Scroll with the mouse wheel: scroll_direction (default down) by scroll_amount notches (1-10, default 3, about 100 CSS px each), over the page, the scroll container at ref (a sidebar, a long list) or coordinate [x, y] in screenshot pixels. pixels sets an exact distance instead, for long virtualized lists. ref without a direction scrolls that element into view. Reports the new position and what newly appeared.",
+      "Scroll with the mouse wheel: scroll_direction (default down) by scroll_amount notches (1-10, default 3, about 100 CSS px each), over the page, the scroll container at ref (a sidebar, a long list) or coordinate [x, y] in screenshot pixels. pixels sets an exact distance instead, for long virtualized lists. ref with no direction or distance scrolls that element into view. Reports the new position and what newly appeared, or what a scrolled container now shows.",
     action: true,
   },
   browser_wait: {

@@ -107,7 +107,47 @@ export async function elementBounds(cdp: CdpSession, refs: RefTable, ref: string
   return { ...box, x: box.x + offset.x, y: box.y + offset.y };
 }
 
-// The element a function called on `target` returns, in the same frame, or null.
+// Page-side predicate: whether an element scrolls its own content.
+export const SCROLLS = `(el) => {
+  const style = getComputedStyle(el);
+  return (["auto", "scroll", "overlay"].includes(style.overflowY) && el.scrollHeight > el.clientHeight + 1)
+    || (["auto", "scroll", "overlay"].includes(style.overflowX) && el.scrollWidth > el.clientWidth + 1);
+}`;
+
+// Scrolls an element its scroll container clips into that container's view, then returns it. A
+// virtualized list re-renders rows from its scroll handler and may replace the element; the
+// element with the same tag and text now at the spot it was scrolled to stands in for it, and
+// null means none is there.
+const REVEAL = `async function () {
+  const scrolls = ${SCROLLS};
+  const clipped = (scroller) => {
+    const box = this.getBoundingClientRect();
+    const outer = scroller.getBoundingClientRect();
+    const top = outer.top + scroller.clientTop;
+    const left = outer.left + scroller.clientLeft;
+    return box.top < top - 1 || box.left < left - 1
+      || box.bottom > top + scroller.clientHeight + 1 || box.right > left + scroller.clientWidth + 1;
+  };
+  let hidden = false;
+  for (let el = this.parentElement; el && el !== document.body && el !== document.documentElement; el = el.parentElement) {
+    if (scrolls(el) && clipped(el)) { hidden = true; break; }
+  }
+  if (!hidden) return this;
+  const text = this.textContent;
+  this.scrollIntoView({ block: "nearest", inline: "nearest" });
+  const box = this.getBoundingClientRect();
+  const x = box.left + box.width / 2;
+  const y = box.top + box.height / 2;
+  // Scroll handlers run with the next frame; a hidden tab may not render one, hence the timer.
+  await new Promise((resolve) => { requestAnimationFrame(() => requestAnimationFrame(resolve)); setTimeout(resolve, 150); });
+  if (this.isConnected) return this;
+  for (let el = document.elementFromPoint(x, y); el; el = el.parentElement) {
+    if (el.localName === this.localName && el.textContent === text) return el;
+  }
+  return null;
+}`;
+
+// The element a function called on `target` returns (awaited), in the same frame, or null.
 export async function elementTarget(
   cdp: CdpSession,
   target: RefTarget,
@@ -117,7 +157,7 @@ export async function elementTarget(
   const objectId = await resolveObject(cdp, target.backendNodeId, target.sessionId);
   const { result } = await cdp.send<{ result: { objectId?: string; subtype?: string } }>(
     "Runtime.callFunctionOn",
-    { objectId, functionDeclaration: fn, arguments: args },
+    { objectId, functionDeclaration: fn, arguments: args, awaitPromise: true },
     target.sessionId,
   );
   if (!result.objectId || result.subtype !== "node") return null;
@@ -188,7 +228,13 @@ export async function clickPoint(
   refs: RefTable,
   ref: string,
 ): Promise<ClickPoint> {
-  const target = refs.resolve(ref);
+  const target = await elementTarget(cdp, refs.resolve(ref), REVEAL).catch(rethrowStaleNode(ref));
+  if (!target) {
+    throw new BrowserFailure(
+      "stale_ref",
+      `${refs.describe(ref)} was replaced when its list scrolled to show it. It is in view now; run browser_find again for its new ref.`,
+    );
+  }
   const first = await probe(cdp, target, ref, true);
   if (!("cover" in first)) return first;
   const control = await elementTarget(cdp, target, LABEL_CONTROL).catch(() => null);

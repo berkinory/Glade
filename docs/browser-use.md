@@ -44,8 +44,9 @@ app and is exposed to every provider as `browser_*` gateway tools.
   stale ref is an error, never a guess. Lines of elements first listed since the previous snapshot
   start with `+`. Long trees stop at whole lines with a hint to narrow by `depth` or `ref`, so no
   ref is ever cut.
-- **Actions.** An action resolves its ref to a box (scrolling it into view; no box is
-  `not_visible`) and hit-tests the click point in the element's own frame with
+- **Actions.** An action resolves its ref to a box (scrolling it into view, first inside a scroll
+  container that clips it; a virtualized list that replaces the element while scrolling is handed
+  the element with the same tag and text now at that spot; no box is `not_visible`) and hit-tests the click point in the element's own frame with
   `DOM.getNodeForLocation` (center first, then four inset points; the call takes document
   coordinates, so the frame's scroll offset is added). A hit on the element, its descendants or
   its label is clicked. A hit on a close wrapper that holds no other control and carries the click
@@ -83,16 +84,20 @@ app and is exposed to every provider as `browser_*` gateway tools.
   list replaces the rows under the wheel), waits for the animated scroll to stop, and reports the position of the element that
   scrolled (`4,800 of 319,520px (2%)`, or that it is already at the end) and how many elements with
   text appeared, listing the first eight by heading or first line in the page content (feeds that
-  load on scroll, virtualized rows). A ref without a direction is scrolled into view.
+  load on scroll). A scrolled container instead lists the first lines of the items it now fully
+  shows, so a virtualized list's rows rendered just out of view are not reported. A ref with
+  neither a direction nor a distance is scrolled into view.
   `browser_find` takes exact text, a regex, or a natural-language description: when no element
   contains the query verbatim, role words (button, link, field, checkbox, dropdown, tab, menu item
   and synonyms) pick roles and the remaining words must appear in the element's name, value,
   description (placeholders land there) or text, or in the text of the row it sits in; words with
   digits must always match. Matches are ranked, and a query whose words match nothing but that
   names a role lists that role's elements with a note. It gives each match inside a row, list item,
-  article, tree item or option that container's text as one capped context line; with no match it
-  says whether the document is still loading, how many screens continue below the viewport, or
-  that the viewport is at the end, and points to `browser_snapshot`.
+  article, tree item or option that container's text as one capped context line. A match that
+  lies entirely outside its scroll container's visible area (a virtualized list's overscan rows)
+  is listed after the visible ones and marked offscreen in that container. With no match it says
+  whether the document is still loading, how many screens continue below the viewport and which
+  scroll containers could hold more, and points to `browser_snapshot`.
 - **Coordinates, hover and drag.** `browser_click`, `browser_hover` and each end of `browser_drag`
   take either a ref or `x`/`y`. Points are in the pixels of the tab's latest agent
   `browser_screenshot`, which always shows the whole viewport (each tab keeps its image size, so a

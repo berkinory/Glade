@@ -9,6 +9,7 @@ import { renderMatches, type SnapshotMatch } from "./snapshotFormat";
 
 const FIND_MAX_MATCHES = 20;
 const REGEX_TIMEOUT_MS = 250;
+const MAX_SCROLLERS_NOTED = 3;
 // A find match inside one of these carries the whole row's or item's text.
 const ROW_ROLES = new Set(["row", "listitem", "article", "treeitem", "option"]);
 
@@ -26,16 +27,32 @@ const shownText = (nodes: readonly SnapshotNode[]): string =>
     .replace(/\s+/gu, " ")
     .trim();
 
-// Why nothing matched may be content that has not loaded yet; say where the page stands.
-function noMatchNote(tree: CollectedTree, loading: boolean): string {
-  const read = " browser_snapshot shows what is on the page.";
+// Why nothing matched may be content that has not loaded yet; say where the page and its scroll
+// containers stand.
+function noMatchNote(
+  tree: CollectedTree,
+  loading: boolean,
+  scrollers: readonly { readonly label: string; readonly scrolled: string }[],
+): string {
   if (loading) return "No elements matched. The page is still loading; search again in a moment.";
-  if (!tree.viewport) return `No elements matched.${read}`;
-  const { y, height, contentHeight } = tree.viewport;
-  const below = Math.round(((contentHeight - y - height) / height) * 10) / 10;
-  return below >= 0.5
-    ? `No elements matched in the loaded page. It continues ${below} screens below the viewport; content that loads as you scroll appears after browser_scroll.${read}`
-    : `No elements matched.${read}`;
+  const notes = ["No elements matched."];
+  if (tree.viewport) {
+    const { y, height, contentHeight } = tree.viewport;
+    const below = Math.round(((contentHeight - y - height) / height) * 10) / 10;
+    if (below >= 0.5) {
+      notes.push(
+        `The loaded page continues ${below} screens below the viewport; content that loads as you scroll appears after browser_scroll.`,
+      );
+    }
+  }
+  if (scrollers.length > 0) {
+    const list = scrollers.map(({ label, scrolled }) => `${label} (${scrolled})`).join(", ");
+    notes.push(
+      `Scroll containers show only part of their content: ${list}; browser_scroll with that ref shows more.`,
+    );
+  }
+  notes.push("browser_snapshot shows what is on the page.");
+  return notes.join(" ");
 }
 
 function regexScores(query: string, texts: readonly string[]): number[] {
@@ -72,6 +89,7 @@ export async function findElements(
 ): Promise<string> {
   const collected = await collectTree(cdp, refs, null);
   const entries: Entry[] = [];
+  const scrollers: { label: string; scrolled: string }[] = [];
   const rowTexts = new Map<SnapshotNode, string>();
   const rowText = (row: SnapshotNode) => {
     let text = rowTexts.get(row);
@@ -94,6 +112,10 @@ export async function findElements(
       context: row ? rowText(row) : undefined,
     };
     entries.push({ node, ancestors, candidate });
+    const scrolled = node.states.find((state) => state.includes("% scrolled"));
+    if (scrolled && node.ref && scrollers.length < MAX_SCROLLERS_NOTED) {
+      scrollers.push({ label: refs.describe(node.ref), scrolled });
+    }
     for (const child of node.children) walk(child, [...ancestors, node]);
   };
   for (const root of collected.roots) walk(root, []);
@@ -140,10 +162,15 @@ export async function findElements(
       containerText && containerText !== target.name
         ? { role: container!.role, text: containerText }
         : undefined;
-    matches.push({ node: target, context, text, row });
+    const offscreenIn = target.clippedBy ? refs.describe(target.clippedBy) : undefined;
+    matches.push({ node: target, context, text, row, offscreenIn });
   }
-  if (matches.length === 0) return noMatchNote(collected, loading);
-  const list = renderMatches(matches.slice(0, FIND_MAX_MATCHES), matches.length);
+  if (matches.length === 0) return noMatchNote(collected, loading, scrollers);
+  // What the model can see right now comes first; rows a scroll container hides follow.
+  const shown = matches.toSorted(
+    (a, b) => Number(a.offscreenIn !== undefined) - Number(b.offscreenIn !== undefined),
+  );
+  const list = renderMatches(shown.slice(0, FIND_MAX_MATCHES), matches.length);
   return byRoleOnly
     ? `No element matched those words; these have the role you named:\n${list}`
     : list;

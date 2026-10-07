@@ -15,6 +15,9 @@ export interface SnapshotNode {
   // For text: the element that renders it, which browser_find can hand out as a ref when no
   // listed element contains the text.
   readonly owner?: RefTarget;
+  // Ref of the scroll container that hides this node outside its visible area; only browser_find
+  // reads it.
+  readonly clippedBy?: string;
   children: SnapshotNode[];
 }
 
@@ -188,6 +191,17 @@ async function collectDocument(
         ? layout.placement(backendNodeId, context.margin)
         : "visible";
     const name = String(node.name?.value ?? "");
+    const clipper = layout && backendNodeId !== undefined ? layout.clippedBy(backendNodeId) : null;
+    const clipped =
+      clipper === null
+        ? {}
+        : {
+            clippedBy: context.refs.refFor({
+              backendNodeId: clipper,
+              sessionId,
+              frameId: documentFrameId,
+            }),
+          };
     if (role === "StaticText") {
       return name.trim() && placement === "visible"
         ? [
@@ -198,6 +212,7 @@ async function collectDocument(
               states: [],
               ref: undefined,
               interactive: false,
+              ...clipped,
               ...(ownerId === undefined
                 ? {}
                 : { owner: { backendNodeId: ownerId, sessionId, frameId: documentFrameId } }),
@@ -266,6 +281,7 @@ async function collectDocument(
       states: nodeStates,
       ref,
       interactive,
+      ...clipped,
       // Text that repeats the element's name or value adds tokens, not meaning; a password
       // field's text is its masked value.
       children: WHOLE_VALUE_ROLES.has(role)

@@ -114,6 +114,7 @@ export class PageLayout {
   private readonly clickable: ReadonlyArray<ReadonlySet<number>>;
   private readonly opacityCache = new Map<string, number>();
   private occluders: Occluder[] | null = null;
+  private readonly scrollers = new Map<string, Element | null>();
 
   private constructor(
     private readonly captured: Captured,
@@ -193,7 +194,47 @@ export class PageLayout {
   // Null unless the element is a scroll container with content to scroll.
   scrollState(backendNodeId: number): ScrollState | null {
     const element = this.byBackendId.get(backendNodeId);
+    return element && element.layout >= 0 ? this.scrollStateOf(element) : null;
+  }
+
+  // The nearest scroll container (by backend node id) that shows no part of the node in its
+  // visible area, such as a virtualized list's overscan rows; null when none hides it.
+  clippedBy(backendNodeId: number): number | null {
+    const element = this.byBackendId.get(backendNodeId);
     if (!element || element.layout < 0) return null;
+    const rect = this.rectOf(element.doc, element.layout);
+    if (rect.width < 1 || rect.height < 1) return null;
+    for (let scroller = this.scrollerAbove(element); scroller; ) {
+      if (!intersect(rect, this.clientRectOf(scroller))) {
+        return this.captured.documents[scroller.doc]!.nodes.backendNodeId[scroller.index]!;
+      }
+      scroller = this.scrollerAbove(scroller);
+    }
+    return null;
+  }
+
+  private scrollerAbove(element: Element): Element | null {
+    const key = `${element.doc}:${element.index}`;
+    if (this.scrollers.has(key)) return this.scrollers.get(key)!;
+    const parent = this.parentWithLayout(element);
+    const scroller = !parent
+      ? null
+      : this.scrollStateOf(parent)
+        ? parent
+        : this.scrollerAbove(parent);
+    this.scrollers.set(key, scroller);
+    return scroller;
+  }
+
+  // The padding box a scroll container shows its content in.
+  private clientRectOf(element: Element): Rect {
+    const rect = this.rectOf(element.doc, element.layout);
+    const [left = 0, top = 0, width = 0, height = 0] =
+      this.captured.documents[element.doc]!.layout.clientRects?.[element.layout] ?? [];
+    return { x: rect.x + left, y: rect.y + top, width, height };
+  }
+
+  private scrollStateOf(element: Element): ScrollState | null {
     const { doc, index, layout } = element;
     const document = this.captured.documents[doc]!;
     const name = this.captured.strings[document.nodes.nodeName[index]!];

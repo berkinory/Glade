@@ -3,7 +3,7 @@ import type { ActionOutcome } from "../actionSettle";
 import { BrowserFailure } from "../browserFailure";
 import type { CdpSession } from "./cdpSession";
 import { nodeAtPoint } from "./hitTest";
-import { callOn, clickPoint, elementTarget, mouse } from "./pointer";
+import { callOn, clickPoint, elementTarget, mouse, SCROLLS } from "./pointer";
 import { rethrowStaleNode, type RefTable, type RefTarget } from "./refs";
 import { viewportPoint, type ScreenshotFrame } from "./screenshotFrame";
 
@@ -19,11 +19,7 @@ interface Position {
 // The element a wheel over `this` scrolls: itself or its nearest scrollable ancestor, or null for
 // the document. Resolved once, since a virtualized list replaces the rows under the wheel.
 const SCROLLER = `function () {
-  const scrolls = (el) => {
-    const style = getComputedStyle(el);
-    return (["auto", "scroll", "overlay"].includes(style.overflowY) && el.scrollHeight > el.clientHeight + 1)
-      || (["auto", "scroll", "overlay"].includes(style.overflowX) && el.scrollWidth > el.clientWidth + 1);
-  };
+  const scrolls = ${SCROLLS};
   let el = this && this.nodeType === 1 ? this : null;
   while (el && el !== document.body && el !== document.documentElement && !scrolls(el)) el = el.parentElement;
   return !el || el === document.body || el === document.documentElement ? null : el;
@@ -33,6 +29,34 @@ const POSITION = `function () {
   const el = this && this.nodeType === 1 ? this : document.scrollingElement || document.documentElement;
   return { top: el.scrollTop, left: el.scrollLeft, maxTop: el.scrollHeight - el.clientHeight, maxLeft: el.scrollWidth - el.clientWidth, clientHeight: el.clientHeight, clientWidth: el.clientWidth };
 }`;
+
+// First lines of the outermost elements a scroll container fully shows, and how many there are.
+const IN_VIEW = `function (limit) {
+  const outer = this.getBoundingClientRect();
+  const top = outer.top + this.clientTop;
+  const left = outer.left + this.clientLeft;
+  const bottom = top + this.clientHeight;
+  const right = left + this.clientWidth;
+  const texts = [];
+  let count = 0;
+  const visit = (el) => {
+    for (const child of el.children) {
+      const box = child.getBoundingClientRect();
+      if (box.bottom <= top || box.top >= bottom || box.right <= left || box.left >= right) continue;
+      if (box.top < top - 1 || box.bottom > bottom + 1 || box.left < left - 1 || box.right > right + 1) {
+        visit(child);
+        continue;
+      }
+      const line = (child.innerText || "").split("\\n").map((part) => part.trim()).find(Boolean);
+      if (!line) continue;
+      count += 1;
+      if (texts.length < limit) texts.push(line.length > 80 ? line.slice(0, 79) + "…" : line);
+    }
+  };
+  visit(this);
+  return { count, texts };
+}`;
+const MAX_IN_VIEW = 20;
 
 // Wheel scrolling is animated; the position is read once it stops moving, which also lets content
 // that loads on scroll start within the action's wait.
@@ -66,7 +90,8 @@ export async function scroll(
   if (input.ref !== undefined && input.coordinate !== undefined) {
     throw new BrowserFailure("invalid_input", "Pass ref or coordinate, not both.");
   }
-  if (input.ref && !input.scroll_direction) {
+  const hasDistance = input.pixels !== undefined || input.scroll_amount !== undefined;
+  if (input.ref && !input.scroll_direction && !hasDistance) {
     await clickPoint(cdp, refs, input.ref);
     return `Scrolled ${refs.describe(input.ref)} into view.`;
   }
@@ -134,6 +159,19 @@ export async function scroll(
       const position = moved
         ? ` Now at ${where(after, vertical)}.`
         : ` It did not move; it is already at the ${edge}.`;
+      // Inside a container, what it now shows matters more than what was added: a virtualized
+      // list also adds the rows it keeps rendered just out of view.
+      const inView = scroller
+        ? await callOn<{ count: number; texts: string[] }>(cdp, scroller, IN_VIEW, [
+            { value: MAX_IN_VIEW },
+          ]).catch(() => null)
+        : null;
+      if (inView && inView.count > 0) {
+        return {
+          text: `${position} It shows ${inView.count} item${inView.count === 1 ? "" : "s"}${inView.count > inView.texts.length ? "; the first are listed" : ""}.`,
+          content: inView.texts.map((text) => `- ${JSON.stringify(text)}`).join("\n"),
+        };
+      }
       if (newItems === 0) return { text: position };
       return {
         text: `${position} ${newItems} new item${newItems === 1 ? "" : "s"} appeared${newItems > newTexts.length ? "; the first are listed" : ""}.`,
