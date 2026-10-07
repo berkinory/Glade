@@ -141,5 +141,7 @@ newer event.
 
 The logging owner handles stdout/stderr EPIPE at the stream boundary. Losing a launcher
 output sink leaves the GUI running and packaged file logging active, without writing an
-error back to that pipe. Other stream errors retain the fatal path. SIGINT and SIGTERM
-continue to request graceful shutdown on POSIX.
+error back to that pipe. Other stream errors retain the fatal path. On POSIX, SIGINT and SIGTERM
+request graceful shutdown without the running-chats prompt and are bounded at 5 s, even when an
+earlier quit is still waiting: past that the app exits, and the backend, which watches its stdin
+for the desktop going away, finishes its own shutdown.

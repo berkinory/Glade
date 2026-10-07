@@ -304,16 +304,7 @@ export function createDesktopRuntime(): void {
     }
   });
   if (process.platform !== "win32") {
-    process.on("SIGINT", () => {
-      if (lifecycle.shutdownInFlight()) return;
-      log.writeDesktopLogHeader("SIGINT received");
-      lifecycle.requestGracefulAppQuit("SIGINT");
-    });
-
-    process.on("SIGTERM", () => {
-      if (lifecycle.shutdownInFlight()) return;
-      log.writeDesktopLogHeader("SIGTERM received");
-      lifecycle.requestGracefulAppQuit("SIGTERM");
-    });
+    process.on("SIGINT", () => lifecycle.quitOnSignal("SIGINT"));
+    process.on("SIGTERM", () => lifecycle.quitOnSignal("SIGTERM"));
   }
 }

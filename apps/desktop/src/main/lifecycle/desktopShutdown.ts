@@ -8,6 +8,11 @@ import {
   quitConfirmationPresentationForPlatform,
   shouldPromptForRunningChatsBeforeQuit,
 } from "./runningChatsQuitGuard";
+// A signal must end the process even when teardown stalls: the backend's graceful stop alone may
+// take 20 s and the Cua host waits behind its own pending transitions. Past this the app exits;
+// the backend sees its stdin close and finishes stopping on its own.
+const SIGNAL_QUIT_DEADLINE_MS = 5_000;
+
 interface ShutdownBackend {
   stopBackendAndWaitForExit(): Promise<void>;
   cancelBackendReadinessWait(): void;
@@ -44,6 +49,7 @@ export function createDesktopShutdown({
   let desktopShutdownPromise: Promise<void> | null = null;
   let isQuitting = false;
   let desktopShutdownComplete = false;
+  let signalDeadline: ReturnType<typeof setTimeout> | null = null;
   const runningChatsQuitGuard = makeRunningChatsQuitGuard();
   function hideDesktopWindowForImmediateQuit(): void {
     const window = getMainWindow();
@@ -166,8 +172,22 @@ export function createDesktopShutdown({
       },
     );
   }
+  // SIGINT and SIGTERM skip the running-chats prompt and are bounded, even when a quit started
+  // earlier is still waiting.
+  function quitOnSignal(signal: "SIGINT" | "SIGTERM"): void {
+    if (signalDeadline) return;
+    log.writeDesktopLogHeader(`${signal} received`);
+    signalDeadline = setTimeout(() => {
+      log.writeDesktopLogHeader(
+        `${signal} teardown did not finish within ${SIGNAL_QUIT_DEADLINE_MS} ms; exiting now`,
+      );
+      app.exit(0);
+    }, SIGNAL_QUIT_DEADLINE_MS);
+    requestGracefulAppQuit(signal);
+  }
   return {
     confirmRunningChatsThenQuit,
+    quitOnSignal,
     requestGracefulAppQuit,
     isQuitting: () => isQuitting,
     setQuitting: (value: boolean) => {
