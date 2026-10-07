@@ -216,9 +216,16 @@ availability; Settings states each platform's limits.
 | -------- | --------------------------------------------- | ----------------------------------------------------------------------------------- |
 | macOS    | Accessibility and Screen Recording, for Glade | Background for most apps; foreground when Cua escalates (drags, some Chromium apps) |
 | Windows  | None                                          | Actions that need the real pointer or keyboard bring the window to the front        |
-| Linux    | None                                          | X11 accepts background input; Wayland supports accessibility-tree actions only      |
+| Linux    | None                                          | X11 background input (see below); Wayland supports accessibility-tree actions only  |
 
-Only macOS has been verified end to end. Windows and Linux are open release checks.
+On X11, Cua 0.34 sends key presses, scrolling and right-clicks to GTK apps in the background only
+when it can write to `/dev/uinput` (Xvfb and VNC servers cannot take such a device); otherwise they
+are refused with `background_unavailable` and need foreground delivery, which takes full control.
+Clicks, typing, values and menus go through AT-SPI and stay in the background.
+
+macOS has been verified end to end, and Linux arm64 on X11 (XFCE on Xvfb, in a container; see the
+plan's Linux results). A Linux x64 AppImage on a real desktop, Wayland and Windows are open release
+checks.
 
 ## macOS permissions
 
