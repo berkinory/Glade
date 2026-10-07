@@ -420,9 +420,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
                   />
                 ) : null
               }
-              pendingStatusColorClass={
-                threadStatus?.label === "Pending Approval" ? threadStatus.colorClass : null
-              }
             />
             <div className="flex min-w-0 shrink-0 items-center">
               {renderThreadRowTrailingCluster({
@@ -566,9 +563,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
               isActive={isActive}
               variant="standard"
               subagentIndentPx={subagentIndentPx}
-              pendingStatusColorClass={
-                threadStatus?.label === "Pending Approval" ? threadStatus.colorClass : null
-              }
             />
             <div className="flex min-w-0 shrink-0 items-center">
               {renderThreadRowTrailingCluster({

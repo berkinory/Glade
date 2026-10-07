@@ -80,7 +80,6 @@ export function SidebarThreadRowContent({
   isActive,
   variant,
   subagentIndentPx: subagentIndentPxProp,
-  pendingStatusColorClass,
   projectBadge,
 }: {
   thread: SidebarThreadSummary;
@@ -89,7 +88,6 @@ export function SidebarThreadRowContent({
   isActive: boolean;
   variant: "pinned" | "standard";
   subagentIndentPx?: number;
-  pendingStatusColorClass?: string | null | undefined;
   projectBadge?: ReactNode;
 }) {
   const subagentIndentPx = subagentIndentPxProp ?? 0;
@@ -137,14 +135,6 @@ export function SidebarThreadRowContent({
         >
           {subagentPresentation?.primaryLabel ?? thread.title}
         </span>
-        {!isSubagentThread && pendingStatusColorClass ? (
-          <span
-            aria-label="Pending approval"
-            className={cn("shrink-0 text-ui-xs font-medium", pendingStatusColorClass)}
-          >
-            Pending
-          </span>
-        ) : null}
       </div>
     </>
   );
