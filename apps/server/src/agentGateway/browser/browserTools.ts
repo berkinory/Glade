@@ -30,7 +30,7 @@ import { BrowserHostError, type BrowserHostShape } from "../../browser/Services/
 import { browserThreadWorkspace } from "../../browser/browserThreadWorkspace.ts";
 import type { ProjectionSnapshotQueryShape } from "../../orchestration/Services/ProjectionSnapshotQuery.ts";
 import { toolInputSchema, type McpToolCallResult } from "../protocol.ts";
-import { untrustedPageContent } from "./untrustedContent.ts";
+import { pageOrigin, untrustedContent } from "../untrustedContent.ts";
 import {
   GatewayToolError,
   gatewayToolErrorResult,
@@ -220,7 +220,10 @@ function resultContent(
   if ("image" in result) lines.push(`Screenshot ${result.image.width}x${result.image.height}.`);
   else {
     if (result.text) lines.push(result.text);
-    if (result.content) lines.push(untrustedPageContent(result.page?.url, result.content));
+    if (result.content)
+      lines.push(
+        untrustedContent("PAGE_CONTENT", `origin=${pageOrigin(result.page?.url)}`, result.content),
+      );
   }
   if (result.page && !spec.action) {
     lines.push(
