@@ -9,8 +9,8 @@ import {
   removePanelResizeOverlay,
 } from "../../lib/panelResize";
 
-// Width of a panel docked to the right of a chat pane, dragged from its left edge and remembered
-// under `storageKey`. Growing stops where the pane's composer would no longer fit.
+// Width of a panel docked to the right of a chat pane, dragged from its left edge or set by
+// `setWidth`, and remembered under `storageKey`. Growing stops where the pane's composer would no longer fit.
 export function usePanelWidthResize(input: {
   readonly storageKey: string;
   readonly defaultWidth: number;
@@ -19,14 +19,13 @@ export function usePanelWidthResize(input: {
 }) {
   const { storageKey, defaultWidth, minWidth, chatMinWidth } = input;
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const [widthState, setWidthState] = useState<{ key: string; value: number }>(() => ({
-    key: storageKey,
-    value: getLocalStorageItem(storageKey, Schema.Finite) ?? defaultWidth,
-  }));
-  const width =
-    widthState.key === storageKey
-      ? widthState.value
-      : (getLocalStorageItem(storageKey, Schema.Finite) ?? defaultWidth);
+  const [width, setWidthState] = useState(
+    () => getLocalStorageItem(storageKey, Schema.Finite) ?? defaultWidth,
+  );
+  const setWidth = (next: number) => {
+    setWidthState(next);
+    setLocalStorageItem(storageKey, next, Schema.Finite);
+  };
 
   const startResize = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
@@ -84,10 +83,7 @@ export function usePanelWidthResize(input: {
       document.body.style.removeProperty("cursor");
       document.body.style.removeProperty("user-select");
       wrapper.style.removeProperty("transition");
-      if (currentWidth !== startWidth) {
-        setWidthState({ key: storageKey, value: currentWidth });
-        setLocalStorageItem(storageKey, currentWidth, Schema.Finite);
-      }
+      if (currentWidth !== startWidth) setWidth(currentWidth);
     };
 
     document.body.style.cursor = "col-resize";
@@ -101,7 +97,7 @@ export function usePanelWidthResize(input: {
     });
   };
 
-  return { wrapperRef, width, startResize };
+  return { wrapperRef, width, setWidth, startResize };
 }
 
 export function PanelWidthResizeHandle(props: {

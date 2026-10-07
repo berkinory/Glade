@@ -2,6 +2,10 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "re
 import { cn } from "~/lib/utils";
 import { SurfaceTabChip } from "./chatHeaderControls";
 
+// The row skin shared by panel tab rows and panel toolbars, so stacked bars read as one family.
+export const PANEL_BAR_CLASS_NAME =
+  "flex h-[calc(var(--spacing)*9+1px)] min-w-0 shrink-0 items-center gap-1 border-b border-border/70 bg-[var(--app-content-surface)] px-1.5 py-1";
+
 export interface PanelTab {
   id: string;
   label: string;
@@ -126,12 +130,7 @@ export function PanelTabBar(props: {
     );
   };
   return (
-    <div
-      className={cn(
-        "flex h-[calc(var(--spacing)*9+1px)] min-w-0 shrink-0 items-center gap-1 border-b border-border/70 bg-[var(--app-content-surface)] px-1.5 py-1",
-        props.className,
-      )}
-    >
+    <div className={cn(PANEL_BAR_CLASS_NAME, props.className)}>
       <div className="min-w-0 flex-1">
         <nav
           ref={wheelRegionRef}

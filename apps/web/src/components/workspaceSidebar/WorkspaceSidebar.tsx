@@ -3,7 +3,6 @@ import { type ReactNode, useEffect, useState } from "react";
 import { isElectron } from "~/env";
 import { useDesktopTopBarWindowControlsGutterClassName } from "~/hooks/useDesktopTopBarGutter";
 import { disclosureWidthClassName } from "~/lib/disclosureMotion";
-import { LayoutAlignRightIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { SIDEBAR_SECTION_LABEL_CLASS_NAME } from "~/sidebarRowStyles";
 import { useTerminalStateStore } from "~/terminalStateStore";
@@ -17,23 +16,18 @@ import { useBrowserTabs } from "../browser/useBrowserTabs";
 import { CHAT_SURFACE_HEADER_ROW_CLASS_NAME } from "../chat/chatHeaderControls";
 import { CHAT_BACKGROUND_CLASS_NAME } from "../chat/composerPickerStyles";
 import { PanelWidthResizeHandle, usePanelWidthResize } from "../chat/usePanelWidthResize";
-import { IconButton } from "../ui/icon-button";
 import { TerminalView } from "./TerminalView";
 import { WorkspaceActivityBar } from "./WorkspaceActivityBar";
 import { WORKSPACE_SIDEBAR_VIEW_META } from "./workspaceSidebarViews";
 
 const CHAT_MIN_WIDTH_PX = 20 * 16;
-// Explorer, Source Control and Terminal share one width; the browser keeps its own, wider one.
-const TOOL_WIDTH = {
+// Every view shares one width; the browser needs at least BROWSER_MIN_WIDTH_PX to be usable.
+const SIDEBAR_WIDTH = {
   storageKey: "workspace_sidebar_width",
-  defaultWidth: 26 * 16,
+  defaultWidth: 30 * 16,
   minWidth: 18 * 16,
 };
-const BROWSER_WIDTH = {
-  storageKey: "workspace_sidebar_browser_width",
-  defaultWidth: 44 * 16,
-  minWidth: 32 * 16,
-};
+const BROWSER_MIN_WIDTH_PX = 32 * 16;
 
 type ToolView = Exclude<WorkspaceSidebarView, "terminal" | "browser">;
 
@@ -105,12 +99,17 @@ export function WorkspaceSidebar(props: {
 }) {
   const open = useWorkspaceSidebarStore((store) => store.open);
   const view = useWorkspaceSidebarStore((store) => store.view);
-  const setOpen = useWorkspaceSidebarStore((store) => store.setOpen);
-  const sizing = view === "browser" ? BROWSER_WIDTH : TOOL_WIDTH;
-  const { wrapperRef, width, startResize } = usePanelWidthResize({
-    ...sizing,
+  const browserShown = open && view === "browser";
+  const minWidth = browserShown ? BROWSER_MIN_WIDTH_PX : SIDEBAR_WIDTH.minWidth;
+  const { wrapperRef, width, setWidth, startResize } = usePanelWidthResize({
+    ...SIDEBAR_WIDTH,
+    minWidth,
     chatMinWidth: CHAT_MIN_WIDTH_PX,
   });
+  // Showing the browser widens a narrower shared width and keeps it.
+  useEffect(() => {
+    if (browserShown && width < BROWSER_MIN_WIDTH_PX) setWidth(BROWSER_MIN_WIDTH_PX);
+  }, [browserShown, setWidth, width]);
   const gutterClassName = useDesktopTopBarWindowControlsGutterClassName();
   const browserTabs = useBrowserTabs(isElectron ? props.threadId : null);
   useTerminalViewSync(props.threadId, open && view === "terminal");
@@ -143,7 +142,7 @@ export function WorkspaceSidebar(props: {
         style={
           open
             ? {
-                width: Math.max(sizing.minWidth, width),
+                width: Math.max(minWidth, width),
                 maxWidth: `calc(100% - ${CHAT_MIN_WIDTH_PX}px)`,
               }
             : undefined
@@ -154,23 +153,11 @@ export function WorkspaceSidebar(props: {
         {open ? <PanelWidthResizeHandle onPointerDown={startResize} /> : null}
         <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
           <div
-            className={cn(
-              CHAT_SURFACE_HEADER_ROW_CLASS_NAME,
-              "drag-region gap-2 pl-3 pr-2",
-              gutterClassName,
-            )}
+            className={cn(CHAT_SURFACE_HEADER_ROW_CLASS_NAME, "drag-region px-3", gutterClassName)}
           >
-            <h2 className={cn("min-w-0 flex-1 truncate", SIDEBAR_SECTION_LABEL_CLASS_NAME)}>
+            <h2 className={cn("min-w-0 truncate", SIDEBAR_SECTION_LABEL_CLASS_NAME)}>
               {WORKSPACE_SIDEBAR_VIEW_META[view].label}
             </h2>
-            <IconButton
-              label="Collapse sidebar"
-              tooltip="Collapse sidebar"
-              tooltipSide="bottom"
-              onClick={() => setOpen(false)}
-            >
-              <LayoutAlignRightIcon className="size-3.5" />
-            </IconButton>
           </div>
           <WorkspaceSidebarViews
             key={props.threadId}

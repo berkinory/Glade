@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { ArrowLeft02Icon, ArrowRight02Icon, RefreshCwIcon } from "~/lib/icons";
+import { PANEL_BAR_CLASS_NAME } from "../chat/PanelTabBar";
 import { IconButton } from "../ui/icon-button";
 import { Input } from "../ui/input";
 import type { BrowserTab } from "./useBrowserTabs";
@@ -23,7 +24,7 @@ export function BrowserAddressBar(props: {
 
   return (
     <form
-      className="flex items-center gap-1 px-2 py-1.5"
+      className={PANEL_BAR_CLASS_NAME}
       onSubmit={(event) => {
         event.preventDefault();
         const url = value.trim();

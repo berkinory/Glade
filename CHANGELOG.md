@@ -11,7 +11,7 @@
 
 ### Improved
 
-- Explorer, Source Control, Terminal and the browser open from a new activity bar on the right edge into one right sidebar, with a shortcut for each (Explorer is Cmd/Ctrl+E). Terminal and browser tabs live inside their views, the browser keeps its own wider width, and icons show when a terminal is running or the agent is browsing.
+- Explorer, Source Control, Terminal and the browser open from a new activity bar on the right edge into one right sidebar, with a shortcut for each (Explorer is Cmd/Ctrl+E). A toggle at the top of the bar shows or hides the sidebar, all views share one width, terminal and browser tabs live inside their views, and icons show when a terminal is running or the agent is browsing.
 - Browser Use reads pages with far fewer tokens and acts more reliably: it skips hidden and covered elements, waits for what each action causes, fills whole forms at once, follows the click, scroll, key and search conventions Claude and Codex already know, and leaves page dialogs and clicks you make in the panel to you.
 - Browser Use handles custom dropdowns and autocompletes, scrolls sidebars and long lists, waits for toasts and slow results, says where downloads were saved, and asks you to complete CAPTCHAs in the panel instead of attempting them.
 - Computer Use tells agents what each action changed, stops them from repeating actions that do nothing, waits while you are using the mouse or keyboard, keeps browsers read-only and terminals click-only unless you grant full control, and can be stopped everywhere at once with Control-Option-Command-Escape (Control-Alt-Shift-Escape on Windows and Linux).
