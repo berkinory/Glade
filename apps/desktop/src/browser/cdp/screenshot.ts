@@ -1,5 +1,5 @@
 import type { BrowserZoomInput } from "@glade/contracts/browser/browserTools";
-import type { WebContents } from "electron";
+import { BaseWindow, WebContentsView, type WebContents } from "electron";
 import { BrowserFailure, withTimeout } from "../browserFailure";
 import { elementBounds } from "./pointer";
 import type { CdpSession } from "./cdpSession";
@@ -32,6 +32,16 @@ interface Rect {
   readonly height: number;
 }
 
+function inMinimizedWindow(webContents: WebContents): boolean {
+  return BaseWindow.getAllWindows().some(
+    (window) =>
+      window.isMinimized() &&
+      window.contentView.children.some(
+        (view) => view instanceof WebContentsView && view.webContents === webContents,
+      ),
+  );
+}
+
 // Downscaled to a fixed longest edge and clipped in viewport CSS pixels.
 async function capture(
   cdp: CdpSession,
@@ -48,6 +58,27 @@ async function capture(
   const scale = Math.min(maxScale, MAX_EDGE_PX / (Math.max(rect.width, rect.height) * deviceScale));
   const width = Math.round(rect.width * scale * deviceScale);
   const height = Math.round(rect.height * scale * deviceScale);
+  // The window-level capture renders a frame on demand; Chromium may have stopped compositing a
+  // view that is not on screen, and on Windows it stops every view of a minimized window.
+  const captureWindow = async (): Promise<CapturedImage | null> => {
+    const image = await withTimeout(
+      webContents.capturePage({
+        x: Math.round(rect.x),
+        y: Math.round(rect.y),
+        width: Math.round(rect.width),
+        height: Math.round(rect.height),
+      }),
+      FALLBACK_TIMEOUT_MS,
+      "Screenshot fallback",
+    ).catch(() => null);
+    if (!image || image.isEmpty()) return null;
+    const resized = image.resize({ width, height, quality: "good" });
+    return { data: resized.toJPEG(JPEG_QUALITY).toString("base64"), width, height };
+  };
+  if (process.platform === "win32" && inMinimizedWindow(webContents)) {
+    const image = await captureWindow();
+    if (image) return image;
+  }
   try {
     const { data } = await withTimeout(
       cdp.send<{ data: string }>("Page.captureScreenshot", {
@@ -66,23 +97,9 @@ async function capture(
     );
     return { data, width, height };
   } catch (error) {
-    // Chromium can stop compositing a view that is not on screen; the window-level capture is the
-    // only other path and is bounded the same way.
-    const image = await withTimeout(
-      webContents.capturePage({
-        x: Math.round(rect.x),
-        y: Math.round(rect.y),
-        width: Math.round(rect.width),
-        height: Math.round(rect.height),
-      }),
-      FALLBACK_TIMEOUT_MS,
-      "Screenshot fallback",
-    ).catch(() => {
-      throw error;
-    });
-    if (image.isEmpty()) throw error;
-    const resized = image.resize({ width, height, quality: "good" });
-    return { data: resized.toJPEG(JPEG_QUALITY).toString("base64"), width, height };
+    const image = await captureWindow();
+    if (!image) throw error;
+    return image;
   }
 }
 
