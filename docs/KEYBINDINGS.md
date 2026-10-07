@@ -63,7 +63,10 @@ Invalid rules are ignored. Invalid config files are ignored. Warnings are logged
 
 ### Available Commands
 
-- `terminal.toggle`: open/close the terminal in the main workspace
+- `explorer.toggle`: open/close Explorer in the right sidebar (Mod+E by default)
+- `diff.toggle`: open/close Source Control in the right sidebar
+- `terminal.toggle`: open/close the Terminal view in the right sidebar
+- `browser.toggle`: open/close the Browser view in the right sidebar (desktop app only)
 - `terminal.new`: create new terminal (in focused terminal context by default)
 - `terminal.close`: close/kill the focused terminal (in focused terminal context by default)
 - `chat.new`: create a new chat thread preserving the active thread's branch/worktree state

@@ -25,8 +25,8 @@ production artwork. Production updates come only from the Glade release reposito
 - Chat split views: no split routes, sidebar drag-to-split, split shortcut or multi-pane
   chat layout. Terminal splits remain available.
 - Terminal threads: no project action, creation shortcut, terminal-specific draft slot,
-  or automatic thread naming and deletion. The main workspace hosts chat terminals;
-  the bottom terminal drawer has been removed.
+  or automatic thread naming and deletion. The right sidebar's Terminal view hosts chat
+  terminals; the bottom terminal drawer has been removed.
 
 These are physical removals, not dormant implementations behind feature flags.
 
@@ -34,12 +34,12 @@ These are physical removals, not dormant implementations behind feature flags.
 
 Browser Use is available in the desktop app. Agents drive a built-in browser through the
 `browser_*` gateway tools; each conversation has its own tabs, which share sign-ins with the
-user and last until the app quits. A browser panel docks to the right of the chat (header globe
-button or the `browser.toggle` shortcut) with tabs, an address bar, a line showing what the agent
+user and last until the app quits. The right sidebar's Browser view (activity bar or the
+`browser.toggle` shortcut) has tabs, an address bar, a line showing what the agent
 is doing with Stop, and an element picker that adds the picked element to the composer as a
 reference the agent can act on, with its screenshot attached. Page dialogs are dismissed and
-reported to the agent; the panel offers no dialog prompts. Browser tools, the panel and its
-toggle do not exist outside the desktop app.
+reported to the agent; the view offers no dialog prompts. Browser tools and the Browser view
+do not exist outside the desktop app.
 
 Computer Use (desktop control) is available in the desktop app on top of the bundled Cua Driver.
 It is off per conversation: `/computer` turns it on for the next message and the thread menu
@@ -51,7 +51,7 @@ On Windows and Linux, Settings states the platform's input limits instead of per
 
 ## Workspace editing
 
-Each conversation owns main workspace tabs for chat, files, commit and turn diffs, and terminals. The chat tab uses the provider icon and name and stays at the left of the tab strip. Workspace tabs replace the chat title in the existing top bar; no extra tab row is added. Provider usage stays in the left sidebar, and chat headers do not show Open in or Commit and push actions. Explorer and Git remain navigation panels in the right sidebar. Selecting Explorer files or Git files opens or focuses their main workspace tab. Single-clicks reuse one italic preview tab across files and Git diffs; double-clicking a file or its tab, editing, or opening a chat file reference keeps it as a permanent tab. File search opens previews too. The provider chat tab cannot be closed. Cmd+W or Ctrl+W closes the active resource tab and returns to the most recently used open tab; when only the chat tab remains, the shortcut leaves the conversation without closing the app. The tab strip supports horizontal trackpad scrolling and reveals newly selected tabs. The plus menu contains only Terminal; the browser is a docked panel, not a workspace tab. Terminals use the main tab strip without an inner toolbar. File diffs share the file viewer header, offer unified and side-by-side layouts, and expose Edit to open the working file. Saved project actions, automatic setup scripts, and project Run controls are not supported. Tab selection is remembered per conversation. Configurable `workspaceTab.previous` and `workspaceTab.next` shortcuts cycle through these tabs in visual order and wrap at either end, using the same selection path as a click. Sidebar PR status appears after the workspace metadata with its accessible open action. Metadata and hover actions share an intrinsic grid width in pinned and ordinary rows, so titles reserve the actual content width as typography changes.
+Each conversation owns main workspace tabs for chat, files, and commit and turn diffs. The chat tab uses the provider icon and name and stays at the left of the tab strip. Workspace tabs replace the chat title in the existing top bar; no extra tab row is added. Provider usage stays in the left sidebar, and chat headers do not show Open in or Commit and push actions. A thin activity bar on the window's right edge opens Explorer, Source Control, Terminal and Browser (desktop only) in the right sidebar, one view at a time, with `explorer.toggle`, `diff.toggle`, `terminal.toggle` and `browser.toggle` as shortcuts. Clicking the active icon or the sidebar's collapse button closes it; the open state and view are remembered per window. Explorer, Source Control and Terminal share one resizable width and the browser keeps its own wider one; switching to or from the browser animates between them. The Terminal icon shows a dot while a terminal runs a process, and the Browser icon shows one while the chat has browser tabs, pulsing while the agent uses the browser. Selecting Explorer files or Git files opens or focuses their main workspace tab. Single-clicks reuse one italic preview tab across files and Git diffs; double-clicking a file or its tab, editing, or opening a chat file reference keeps it as a permanent tab. File search opens previews too. The provider chat tab cannot be closed. Cmd+W or Ctrl+W closes the active resource tab and returns to the most recently used open tab; when only the chat tab remains, the shortcut leaves the conversation without closing the app. The tab strip supports horizontal trackpad scrolling and reveals newly selected tabs. The tab strip has no plus menu; terminals and browser pages keep their tabs inside their sidebar views, each with its own new-tab button. File diffs share the file viewer header, offer unified and side-by-side layouts, and expose Edit to open the working file. Saved project actions, automatic setup scripts, and project Run controls are not supported. Tab selection is remembered per conversation. Configurable `workspaceTab.previous` and `workspaceTab.next` shortcuts cycle through these tabs in visual order and wrap at either end, using the same selection path as a click. Sidebar PR status appears after the workspace metadata with its accessible open action. Metadata and hover actions share an intrinsic grid width in pinned and ordinary rows, so titles reserve the actual content width as typography changes.
 
 File tabs accept tree selections, chat links and file references. Opening
 an existing file selects its tab; line and column links reveal source without changing
@@ -68,12 +68,12 @@ and refuse existing names; partial folder failures report what needs review.
 Editor and composer paste retain their existing behavior.
 
 Workspace resources share one tab bar and do not split; Explorer dragging retains file-reference
-behavior. Terminal split controls appear in the top bar when a terminal is selected. Cmd/Ctrl+D
+behavior. Terminal split controls sit in the Terminal view's tab row. With a shell focused, Cmd/Ctrl+D
 splits the focused terminal side by side, and Cmd/Ctrl+Shift+D splits it above/below. Splits remain
 inside the same terminal tab, support mixed nested directions, and divide the available viewport
 without scrolling the layout. Repeated splits redistribute space to avoid increasingly tiny tiles.
 Selecting a tile focuses that terminal; further splits target it. Cmd/Ctrl+W closes only the focused
-shell; its tab disappears when the last shell closes.
+shell; the Terminal view collapses when the last shell closes.
 Terminal tab activity includes every tile. Closing a terminal tab confirms running activity once
 and closes its sessions; when an individual shell exits, its tile collapses and siblings expand.
 Layouts survive reloads, and existing xterm views and PTY sessions remain attached while tiling.

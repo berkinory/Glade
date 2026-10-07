@@ -11,6 +11,7 @@
 
 ### Improved
 
+- Explorer, Source Control, Terminal and the browser open from a new activity bar on the right edge into one right sidebar, with a shortcut for each (Explorer is Cmd/Ctrl+E). Terminal and browser tabs live inside their views, the browser keeps its own wider width, and icons show when a terminal is running or the agent is browsing.
 - Browser Use reads pages with far fewer tokens and acts more reliably: it skips hidden and covered elements, waits for what each action causes, fills whole forms at once, follows the click, scroll, key and search conventions Claude and Codex already know, and leaves page dialogs and clicks you make in the panel to you.
 - Browser Use handles custom dropdowns and autocompletes, scrolls sidebars and long lists, waits for toasts and slow results, says where downloads were saved, and asks you to complete CAPTCHAs in the panel instead of attempting them.
 - Computer Use tells agents what each action changed, stops them from repeating actions that do nothing, waits while you are using the mouse or keyboard, keeps browsers read-only and terminals click-only unless you grant full control, and can be stopped everywhere at once with Control-Option-Command-Escape (Control-Alt-Shift-Escape on Windows and Linux).
@@ -64,9 +65,10 @@
 
 ### Removed
 
-- Removed the browser's saved-login vault; agents use the sign-ins you make in the browser panel instead.
+- Removed the browser's saved-login vault; agents use the sign-ins you make in the browser instead.
 - Removed the source-code view from visual replies.
 - Removed chat split views; terminal splits remain.
+- Removed the header buttons for the browser and right sidebar, the add-tab menu in the top tab bar, and terminal tabs in the top tab bar; use the activity bar instead.
 
 ## 0.2.0 - 2026-10-06
 
