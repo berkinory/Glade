@@ -1,10 +1,10 @@
 import { Effect, Option, Schema } from "effect";
 
 import { appCategory } from "../../computer/appCategories.ts";
-import { CuaDesktopTree, CuaListApps } from "../../computer/cuaResults.ts";
-import type { ToolEntry } from "../toolRuntime.ts";
+import { CuaDesktopTree, CuaListApps, CuaListWindows } from "../../computer/cuaResults.ts";
+import type { ToolContext, ToolEntry } from "../toolRuntime.ts";
 import { untrustedContent } from "../untrustedContent.ts";
-import { callCua, computerTool, type ComputerToolServices } from "./computerCalls.ts";
+import { callCua, computerTool, refuse, type ComputerToolServices } from "./computerCalls.ts";
 
 // Apps whose category caps every grant are marked.
 const CATEGORY_NOTE = {
@@ -13,9 +13,55 @@ const CATEGORY_NOTE = {
   other: "",
 } as const;
 
+interface Overview {
+  readonly apps: ReadonlyArray<{
+    pid: number;
+    name: string;
+    bundle_id?: string | null | undefined;
+  }>;
+  readonly windows: ReadonlyArray<{ window_id: number; pid: number | null; title: string }>;
+  readonly listed: typeof CuaListApps.Type | null;
+}
+
 // A desktop overview from Cua's get_accessibility_tree, which is fast and needs no permission:
-// running regular apps and their on-screen windows, front to back. Installed apps that are not
-// running come from list_apps, which walks the application folders, so only on request.
+// running regular apps and their on-screen windows, front to back. On Linux Cua 0.34 answers it
+// with bare processes and windows without app names, so there the running apps that own an
+// on-screen window come from list_apps and list_windows, front to back by stacking order.
+const desktopOverview = (services: ComputerToolServices, context: ToolContext) =>
+  Effect.gen(function* () {
+    const tree = Schema.decodeUnknownOption(CuaDesktopTree)(
+      (yield* callCua(services, context, "get_accessibility_tree", {})).structuredContent,
+    );
+    if (Option.isSome(tree)) return { ...tree.value, listed: null } satisfies Overview;
+    const [appsResult, windowsResult] = yield* Effect.all([
+      callCua(services, context, "list_apps", {}),
+      callCua(services, context, "list_windows", {}),
+    ]);
+    const listed = Schema.decodeUnknownOption(CuaListApps)(appsResult.structuredContent);
+    const listedWindows = Schema.decodeUnknownOption(CuaListWindows)(
+      windowsResult.structuredContent,
+    );
+    if (Option.isNone(listed) || Option.isNone(listedWindows)) {
+      return yield* refuse("cua_error", "Cua Driver did not return the running apps.");
+    }
+    const windows = listedWindows.value.windows
+      .filter((window) => window.is_on_screen)
+      .toSorted((left, right) => (right.z_index ?? 0) - (left.z_index ?? 0));
+    // Grants and refusals name an app by its windows' app_name (the X11 window class), so the list
+    // uses that name too rather than the desktop entry's.
+    const apps = listed.value.apps.flatMap((app) => {
+      const window = app.running ? windows.find((entry) => entry.pid === app.pid) : undefined;
+      return window ? [{ ...app, name: window.app_name }] : [];
+    });
+    return {
+      apps,
+      windows,
+      listed: listed.value,
+    } satisfies Overview;
+  });
+
+// Installed apps that are not running come from list_apps, which walks the application folders,
+// so only on request.
 export const makeAppsTool = (services: ComputerToolServices): ToolEntry =>
   computerTool(services, {
     name: "computer_apps",
@@ -26,9 +72,7 @@ export const makeAppsTool = (services: ComputerToolServices): ToolEntry =>
     readOnly: true,
     run: (input, context) =>
       Effect.gen(function* () {
-        const tree = Schema.decodeUnknownOption(CuaDesktopTree)(
-          (yield* callCua(services, context, "get_accessibility_tree", {})).structuredContent,
-        ).pipe(Option.getOrElse(() => ({ apps: [], windows: [] })));
+        const tree = yield* desktopOverview(services, context);
         const frontPid = tree.windows.find((window) =>
           tree.apps.some((app) => app.pid === window.pid),
         )?.pid;
@@ -53,8 +97,11 @@ export const makeAppsTool = (services: ComputerToolServices): ToolEntry =>
             ].join("\n");
           });
         const installed = input.installed
-          ? Schema.decodeUnknownOption(CuaListApps)(
-              (yield* callCua(services, context, "list_apps", {})).structuredContent,
+          ? (tree.listed
+              ? Option.some(tree.listed)
+              : Schema.decodeUnknownOption(CuaListApps)(
+                  (yield* callCua(services, context, "list_apps", {})).structuredContent,
+                )
             ).pipe(
               Option.map((value) =>
                 value.apps
