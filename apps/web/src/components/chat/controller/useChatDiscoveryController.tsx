@@ -8,7 +8,6 @@ import {
   resolveGitRepoUiState,
   resolveSettledThreadBranchMismatch,
 } from "../../ChatView.logic.worktree";
-import { shouldRenderProviderHealthBanner } from "../../ChatView.logic.session";
 import { useChatProviderStatus } from "~/components/chat/useChatProviderStatus";
 import { stripComposerTriggerText } from "~/composer-logic";
 import { canOfferForkSlashCommand, canOfferReviewSlashCommand } from "~/composerSlashCommands";
@@ -69,7 +68,6 @@ export function useChatDiscoveryController({
     diffEnvironmentPending,
     diffOpen,
     terminalState,
-    terminalWorkspaceTerminalTabActive,
   } = workspace;
   const {
     activeThread,
@@ -407,18 +405,7 @@ export function useChatDiscoveryController({
 
   const isTerminalPrimarySurface = terminalState.entryPoint === "terminal";
 
-  const isTerminalEnvironmentContext =
-    isTerminalPrimarySurface || terminalWorkspaceTerminalTabActive;
-
-  const shouldShowProviderHealthBanner =
-    shouldRenderProviderHealthBanner({
-      threadEntryPoint: terminalState.entryPoint,
-      terminalWorkspaceTerminalTabActive,
-    }) && hasNativeUserMessages;
-
-  const shouldRenderChatPaneContent = !(
-    terminalWorkspaceTerminalTabActive && terminalState.workspaceLayout === "terminal-only"
-  );
+  const shouldShowProviderHealthBanner = !isTerminalPrimarySurface && hasNativeUserMessages;
 
   const secondaryChromeThreadId = activeThread?.id ?? threadId;
 
@@ -458,9 +445,7 @@ export function useChatDiscoveryController({
     onToggleDiff,
     envLocked,
     isTerminalPrimarySurface,
-    isTerminalEnvironmentContext,
     shouldShowProviderHealthBanner,
-    shouldRenderChatPaneContent,
     secondaryChromeThreadId,
   } as const;
 }

@@ -6,7 +6,7 @@ import type {
   RuntimeMode,
 } from "@glade/contracts/provider/sessionPolicy";
 import { approvalSessionGrantWidensSessionPolicy } from "@glade/shared/threads/approvalSessionGrant";
-import type { ChatMessage, Thread, ThreadPrimarySurface } from "../types";
+import type { ChatMessage, Thread } from "../types";
 import { Schema } from "effect";
 import { deriveDisplayedUserMessageState } from "../lib/terminalContext";
 
@@ -183,13 +183,6 @@ export async function persistModelSelectionBeforeRuntimeMode(input: {
   if (runtimeChanged && !downgradesFromAuto) {
     await input.persistRuntimeMode(input.nextRuntimeMode);
   }
-}
-
-export function shouldRenderProviderHealthBanner(input: {
-  threadEntryPoint: ThreadPrimarySurface;
-  terminalWorkspaceTerminalTabActive: boolean;
-}): boolean {
-  return input.threadEntryPoint === "chat" && !input.terminalWorkspaceTerminalTabActive;
 }
 
 export function shouldEnableComposerPastedTextCollapse(input: {

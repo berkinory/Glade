@@ -15,7 +15,6 @@ import type { Project } from "../../types";
 import { type Thread } from "../../types";
 import { resolveCycledModelSlug } from "../ChatView.logic.worktree";
 import { collectForegroundRunningSubagentStripItems } from "./ComposerSubagentStrip.logic";
-import { shouldCaptureChatFindShortcut } from "./threadFind.logic";
 import { useChatProviderModels } from "./useChatProviderModels";
 import type { ThreadTerminalState } from "~/terminalStateNormalization";
 import { useChatWorkLog } from "./useChatWorkLog";
@@ -58,11 +57,8 @@ interface ChatKeyboardShortcutsInput {
   isComposerApprovalState: boolean;
   terminalState: ThreadTerminalState;
   terminalWorkspaceOpen: boolean;
-  terminalWorkspaceTerminalTabActive: boolean;
-  terminalWorkspaceChatTabActive: boolean;
   keybindings: ResolvedKeybindingsConfig;
   toggleComposerFocus: () => void;
-  shouldRenderChatPaneContent: boolean;
   setThreadFindOpen: Dispatch<SetStateAction<boolean>>;
   setThreadFindFocusNonce: Dispatch<SetStateAction<number>>;
   cycleEffort: () => boolean;
@@ -97,8 +93,6 @@ type ChatKeyboardShortcutsControllerInput = {
     | "activeThreadId"
     | "terminalState"
     | "terminalWorkspaceOpen"
-    | "terminalWorkspaceTerminalTabActive"
-    | "terminalWorkspaceChatTabActive"
     | "toggleTerminalVisibility"
     | "setTerminalOpen"
     | "closeTerminal"
@@ -145,7 +139,7 @@ type ChatKeyboardShortcutsControllerInput = {
   transcript: Pick<ChatKeyboardShortcutsInput, "isComposerApprovalState">;
   discovery: Pick<
     ChatKeyboardShortcutsInput,
-    "keybindings" | "shouldRenderChatPaneContent" | "onToggleDiff" | "showGitActions" | "isGitRepo"
+    "keybindings" | "onToggleDiff" | "showGitActions" | "isGitRepo"
   >;
 };
 export function useChatKeyboardShortcuts({
@@ -163,8 +157,6 @@ export function useChatKeyboardShortcuts({
     activeThreadId,
     terminalState,
     terminalWorkspaceOpen,
-    terminalWorkspaceTerminalTabActive,
-    terminalWorkspaceChatTabActive,
     toggleTerminalVisibility,
     setTerminalOpen,
     closeTerminal,
@@ -205,8 +197,7 @@ export function useChatKeyboardShortcuts({
     handleTraitsPickerOpenChange,
   } = composer;
   const { isComposerApprovalState } = transcript;
-  const { keybindings, shouldRenderChatPaneContent, onToggleDiff, showGitActions, isGitRepo } =
-    discovery;
+  const { keybindings, onToggleDiff, showGitActions, isGitRepo } = discovery;
   useEffect(() => {
     const handler = (event: globalThis.KeyboardEvent) => {
       if (!activeThreadId || event.defaultPrevented || event.isComposing) return;
@@ -281,8 +272,6 @@ export function useChatKeyboardShortcuts({
         terminalOpen: Boolean(terminalState.terminalOpen),
         terminalWorkspaceOpen,
         terminalWorkspaceTerminalOnly: terminalState.workspaceLayout === "terminal-only",
-        terminalWorkspaceTerminalTabActive,
-        terminalWorkspaceChatTabActive,
       };
 
       const command = resolveShortcutCommand(event, keybindings, {
@@ -322,14 +311,6 @@ export function useChatKeyboardShortcuts({
             )
         )
           return;
-        if (
-          !shouldCaptureChatFindShortcut({
-            shouldRenderChatPaneContent,
-            terminalWorkspaceTerminalTabActive,
-          })
-        ) {
-          return;
-        }
         event.preventDefault();
         event.stopPropagation();
         setThreadFindOpen(true);
@@ -494,9 +475,7 @@ export function useChatKeyboardShortcuts({
     setTerminalOpen,
     openNewFullWidthTerminal,
     keybindings,
-    terminalWorkspaceChatTabActive,
     terminalWorkspaceOpen,
-    terminalWorkspaceTerminalTabActive,
     onToggleDiff,
     onInterruptFromStopControl,
     showGitActions,
@@ -508,7 +487,6 @@ export function useChatKeyboardShortcuts({
     cancelEffortPreview,
     handleModelPickerOpenChange,
     handleTraitsPickerOpenChange,
-    shouldRenderChatPaneContent,
     isComposerApprovalState,
     isVoiceRecording,
     isVoiceTranscribing,

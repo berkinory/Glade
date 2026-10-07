@@ -9,11 +9,10 @@ import { readNativeApi } from "~/nativeApi";
 import type { ThreadTerminalState } from "~/terminalStateNormalization";
 import { useTerminalStateStore } from "~/terminalStateStore";
 import { randomTerminalId } from "../terminal/terminalIds";
-import { closeTerminalSession, releaseTerminalSession } from "../terminal/terminalSession";
+import { closeTerminalSession } from "../terminal/terminalSession";
 
 export interface ChatTerminalActionContext {
   activeThreadId: ThreadId | null;
-  requestTerminalFocus: () => void;
 }
 
 export interface ChatTerminalProjectActionContext extends ChatTerminalActionContext {
@@ -37,10 +36,6 @@ export function setChatTerminalWorkspaceTab(
   if (ctx.activeThreadId) terminalStore().setTerminalWorkspaceTab(ctx.activeThreadId, tab);
 }
 
-export function setChatTerminalHeight(ctx: ChatTerminalActionContext, height: number): void {
-  if (ctx.activeThreadId) terminalStore().setTerminalHeight(ctx.activeThreadId, height);
-}
-
 export function toggleChatTerminalVisibility(
   ctx: ChatTerminalActionContext,
   state: ThreadTerminalState,
@@ -51,14 +46,13 @@ export function toggleChatTerminalVisibility(
   setChatTerminalOpen(ctx, !state.terminalOpen);
 }
 
-export function collapseChatTerminalWorkspace(ctx: ChatTerminalActionContext): void {
+function collapseChatTerminalWorkspace(ctx: ChatTerminalActionContext): void {
   if (ctx.activeThreadId) terminalStore().setTerminalPresentationMode(ctx.activeThreadId, "drawer");
 }
 
-export function createChatTerminal(ctx: ChatTerminalActionContext): void {
+function createChatTerminal(ctx: ChatTerminalActionContext): void {
   if (!ctx.activeThreadId) return;
   terminalStore().newTerminal(ctx.activeThreadId, randomTerminalId());
-  ctx.requestTerminalFocus();
 }
 export function createChatTerminalFromShortcut(ctx: ChatTerminalActionContext): void {
   createChatTerminal(ctx);
@@ -67,13 +61,6 @@ export function createChatTerminalFromShortcut(ctx: ChatTerminalActionContext): 
 export function openNewFullWidthChatTerminal(ctx: ChatTerminalProjectActionContext): void {
   if (!ctx.activeThreadId || !ctx.activeProjectPresent) return;
   terminalStore().openNewFullWidthTerminal(ctx.activeThreadId, randomTerminalId());
-  ctx.requestTerminalFocus();
-}
-
-export function activateChatTerminal(ctx: ChatTerminalActionContext, terminalId: string): void {
-  if (!ctx.activeThreadId) return;
-  terminalStore().setActiveTerminal(ctx.activeThreadId, terminalId);
-  ctx.requestTerminalFocus();
 }
 
 export async function closeChatTerminal(
@@ -101,17 +88,6 @@ export async function closeChatTerminal(
   const threadId = ctx.activeThreadId;
   if (!(await closeTerminalSession({ api, threadId, terminalId }))) return;
   terminalStore().closeTerminal(threadId, terminalId);
-  ctx.requestTerminalFocus();
-}
-
-export function handleChatTerminalSessionExited(
-  ctx: ChatTerminalActionContext,
-  terminalId: string,
-): void {
-  if (!ctx.activeThreadId) return;
-  releaseTerminalSession({ api: readNativeApi(), threadId: ctx.activeThreadId, terminalId });
-  terminalStore().closeTerminal(ctx.activeThreadId, terminalId);
-  ctx.requestTerminalFocus();
 }
 
 export function closeActiveChatTerminalWorkspaceView(

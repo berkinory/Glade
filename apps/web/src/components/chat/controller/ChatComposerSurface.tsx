@@ -56,7 +56,6 @@ export function ChatComposerSurface({
     ),
   ).data?.nativeSubagentControls;
   const {
-    shouldRenderChatPaneContent,
     activeTurnLiveDiffState,
     settledThreadBranchMismatch,
     composerOverlayOpen,
@@ -244,7 +243,7 @@ export function ChatComposerSurface({
       </div>
     ) : null;
   }
-  return shouldRenderChatPaneContent ? (
+  return (
     <div
       className={cn(isCenteredEmptyLanding ? "w-full overflow-visible" : "contents")}
       data-empty-landing-composer-block={isCenteredEmptyLanding ? "true" : undefined}
@@ -689,5 +688,5 @@ export function ChatComposerSurface({
         </ComposerColumnFrame>
       </form>
     </div>
-  ) : null;
+  );
 }

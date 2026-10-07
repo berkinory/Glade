@@ -62,12 +62,7 @@ export function useChatComposerController({
     addComposerDraftPastedTexts,
   } = session;
   const { threadId } = useChatThreadContext();
-  const {
-    secondaryChromeThreadId,
-    voiceProviderStatus,
-    refreshProviderStatuses,
-    shouldRenderChatPaneContent,
-  } = discovery;
+  const { secondaryChromeThreadId, voiceProviderStatus, refreshProviderStatuses } = discovery;
   const { isComposerEditorDisabled } = transcript;
   const { activeProject, activeThreadId } = workspace;
   const { selectedProvider, pendingUserInputs } = provider;
@@ -315,7 +310,7 @@ export function useChatComposerController({
     ],
   );
 
-  const canAddTerminalContextToChat = activeThread !== undefined && shouldRenderChatPaneContent;
+  const canAddTerminalContextToChat = activeThread !== undefined;
 
   const addTerminalContextToDraftRef = useRef(addTerminalContextToDraft);
 
@@ -372,8 +367,6 @@ export function useChatComposerController({
     startComposerVoiceRecording,
     submitComposerVoiceRecording,
     cancelComposerVoiceRecording,
-    addTerminalContextToDraft,
-    canAddTerminalContextToChat,
     addPastedTextToDraft,
   } as const;
 }

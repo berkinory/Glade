@@ -86,7 +86,6 @@ export function useChatEnvironmentController({
     activatedThreadIdRef,
   } = session;
   const {
-    isTerminalEnvironmentContext,
     isTerminalPrimarySurface,
     threadTerminalRuntimeEnv,
     composerMenuOpen,
@@ -104,13 +103,7 @@ export function useChatEnvironmentController({
   const {
     activeProject,
     terminalState,
-    terminalFocusRequestId,
-    handleTerminalSessionExited,
     activeThreadId,
-    setTerminalHeight,
-    storeSetTerminalMetadata,
-    storeSetTerminalActivity,
-    requestTerminalFocus,
     isServerThread,
     activeThreadAssociatedWorktree,
     runtimeMode,
@@ -119,14 +112,8 @@ export function useChatEnvironmentController({
     resolvedThreadEnvMode,
     resolvedThreadWorktreePath,
     storeOpenTerminalThreadPage,
-    terminalWorkspaceOpen,
   } = workspace;
-  const {
-    canAddTerminalContextToChat,
-    addTerminalContextToDraft,
-    scheduleComposerFocus,
-    focusComposer,
-  } = composer;
+  const { scheduleComposerFocus, focusComposer } = composer;
   const {
     selectedModelSelection,
 
@@ -141,7 +128,7 @@ export function useChatEnvironmentController({
 
   const environmentEnabled = !hideHeader;
 
-  const environmentUsesFloatingOverlay = isTerminalEnvironmentContext || isMobileViewport;
+  const environmentUsesFloatingOverlay = isTerminalPrimarySurface || isMobileViewport;
 
   const environmentDefaultOpen = resolveDefaultEnvironmentPanelOpen({
     environmentEnabled,
@@ -220,44 +207,6 @@ export function useChatEnvironmentController({
     terminalCwd,
     threadTerminalRuntimeEnv,
   ]);
-
-  const terminalDrawerProps = {
-    threadId,
-    cwd: terminalCwd,
-    runtimeEnv: threadTerminalRuntimeEnv,
-    height: terminalState.terminalHeight,
-    terminalIds: terminalState.terminalIds,
-    terminalLabelsById: terminalState.terminalLabelsById,
-    terminalTitleOverridesById: terminalState.terminalTitleOverridesById,
-    terminalCliKindsById: terminalState.terminalCliKindsById,
-    terminalAttentionStatesById: terminalState.terminalAttentionStatesById ?? {},
-    runningTerminalIds: terminalState.runningTerminalIds,
-    activeTerminalId: terminalState.activeTerminalId,
-    focusRequestId: terminalFocusRequestId,
-    onTerminalSessionExited: handleTerminalSessionExited,
-    onHeightChange: setTerminalHeight,
-    onTerminalMetadataChange: (
-      terminalId: string,
-      metadata: {
-        cliKind: "codex" | "claude" | null;
-        label: string;
-      },
-    ) => {
-      if (!activeThreadId) return;
-      storeSetTerminalMetadata(activeThreadId, terminalId, metadata);
-    },
-    onTerminalActivityChange: (
-      terminalId: string,
-      activity: {
-        hasRunningSubprocess: boolean;
-        agentState: "running" | "attention" | "review" | null;
-      },
-    ) => {
-      if (!activeThreadId) return;
-      storeSetTerminalActivity(activeThreadId, terminalId, activity);
-    },
-    ...(canAddTerminalContextToChat ? { onAddTerminalContext: addTerminalContextToDraft } : {}),
-  };
 
   const stopActiveThreadSession = async () => {
     const api = readNativeApi();
@@ -600,11 +549,7 @@ export function useChatEnvironmentController({
     const previous = terminalOpenByThreadRef.current[activeThreadId] ?? false;
     const current = Boolean(terminalState.terminalOpen);
 
-    if (!previous && current) {
-      terminalOpenByThreadRef.current[activeThreadId] = current;
-      requestTerminalFocus();
-      return;
-    } else if (previous && !current) {
+    if (previous && !current) {
       terminalOpenByThreadRef.current[activeThreadId] = current;
       const frame = window.requestAnimationFrame(() => {
         focusComposer();
@@ -615,13 +560,7 @@ export function useChatEnvironmentController({
     }
 
     terminalOpenByThreadRef.current[activeThreadId] = current;
-  }, [
-    terminalOpenByThreadRef,
-    activeThreadId,
-    focusComposer,
-    requestTerminalFocus,
-    terminalState.terminalOpen,
-  ]);
+  }, [terminalOpenByThreadRef, activeThreadId, focusComposer, terminalState.terminalOpen]);
 
   useEffect(() => {
     if (!activeThreadId) {
@@ -638,28 +577,6 @@ export function useChatEnvironmentController({
     storeOpenTerminalThreadPage(activeThreadId);
   }, [activatedThreadIdRef, activeThreadId, storeOpenTerminalThreadPage, terminalState.entryPoint]);
 
-  useEffect(() => {
-    if (!terminalWorkspaceOpen) {
-      return;
-    }
-
-    if (terminalState.workspaceActiveTab === "terminal") {
-      requestTerminalFocus();
-      return;
-    }
-
-    const frame = window.requestAnimationFrame(() => {
-      focusComposer();
-    });
-    return () => {
-      window.cancelAnimationFrame(frame);
-    };
-  }, [
-    focusComposer,
-    requestTerminalFocus,
-    terminalState.workspaceActiveTab,
-    terminalWorkspaceOpen,
-  ]);
   return {
     rightDockOpen,
     environmentEnabled,
@@ -670,7 +587,6 @@ export function useChatEnvironmentController({
     closeEnvironmentPanelAfterAction,
     environmentPanelVisible,
     githubRepositoryQuery,
-    terminalDrawerProps,
     handoffBusy,
     onHandoffToLocal,
     persistRuntimeModeChange,

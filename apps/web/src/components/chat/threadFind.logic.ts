@@ -475,13 +475,6 @@ export function wrapFindQueryInHtml(
   return segments.join("");
 }
 
-export function shouldCaptureChatFindShortcut(input: {
-  shouldRenderChatPaneContent: boolean;
-  terminalWorkspaceTerminalTabActive: boolean;
-}): boolean {
-  return input.shouldRenderChatPaneContent && !input.terminalWorkspaceTerminalTabActive;
-}
-
 export interface ThreadFindHighlightStore {
   get: () => ThreadFindHighlight | null;
   set: (value: ThreadFindHighlight | null) => void;

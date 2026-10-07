@@ -1,4 +1,4 @@
-import { Suspense, useCallback } from "react";
+import { useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import BranchToolbar from "~/components/BranchToolbar";
@@ -8,7 +8,6 @@ import TaskListSidebar from "~/components/TaskListSidebar";
 import { PullRequestThreadDialog } from "~/components/PullRequestThreadDialog";
 import { RenameThreadDialog } from "~/components/RenameThreadDialog";
 import { SidebarHeaderNavigationControls } from "~/components/SidebarHeaderNavigationControls";
-import TerminalWorkspaceTabs from "~/components/TerminalWorkspaceTabs";
 import { ChatHeader } from "~/components/chat/ChatHeader";
 import { ChatSurfaceHeader } from "~/components/chat/ChatSurfaceHeader";
 import { ChatTranscriptPane } from "~/components/chat/ChatTranscriptPane";
@@ -40,7 +39,6 @@ import { cn } from "~/lib/utils";
 import { ChatComposerSurface } from "./ChatComposerSurface";
 import { undoTurnFiles } from "../chatTaskActions";
 import { createChatPresentation } from "./chatPresentation";
-import { ThreadTerminalDrawer } from "./chatViewSupport";
 import { MAX_DISMISSED_PROVIDER_HEALTH_BANNERS } from "./chatViewSupport";
 import type { ChatController } from "./useChatController";
 export function ChatControllerSurface({ controller }: { controller: ChatController }) {
@@ -92,14 +90,10 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
   const {
     activeProjectDisplayName,
     threadBreadcrumbs,
-    terminalWorkspaceTerminalTabActive,
     activeProject,
     setRenameDialogOpen,
     renameDialogOpen,
     visibleActiveRateLimitStatus,
-    terminalWorkspaceOpen,
-    terminalState,
-    setTerminalWorkspaceTab,
     onRespondToAsyncUserInput,
     closePullRequestDialog,
     handlePreparedPullRequestThread,
@@ -130,7 +124,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     keybindings,
     availableEditors,
     showGitActions,
-    shouldRenderChatPaneContent,
     shouldShowProviderHealthBanner,
     visibleActiveProviderStatus,
     activeProviderHealthBannerDismissalKey,
@@ -153,7 +146,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     showScrollToBottom,
     onScrollToBottom,
     environmentEnabled,
-    terminalDrawerProps,
     environmentPanelVisible,
     pendingTranscriptSelectionAction,
     selectionChatEnvMode,
@@ -380,22 +372,17 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
         />
       </ChatSurfaceHeader>
 
-      {shouldRenderChatPaneContent ? (
-        <ChatThreadFindHost
-          open={threadFindOpen}
-          focusNonce={threadFindFocusNonce}
-          timelineEntries={timelineEntries}
-          threadId={threadId}
-          className={cn(
-            terminalWorkspaceTerminalTabActive && "invisible",
-            desktopTopBarWindowControlsGutterClassName,
-          )}
-          onClose={() => setThreadFindOpen(false)}
-          onJump={handleThreadFindJump}
-          onHighlightChange={threadFindHighlightStore.set}
-          onActiveMatchChange={handleThreadFindActiveMatchChange}
-        />
-      ) : null}
+      <ChatThreadFindHost
+        open={threadFindOpen}
+        focusNonce={threadFindFocusNonce}
+        timelineEntries={timelineEntries}
+        threadId={threadId}
+        className={cn(desktopTopBarWindowControlsGutterClassName)}
+        onClose={() => setThreadFindOpen(false)}
+        onJump={handleThreadFindJump}
+        onHighlightChange={threadFindHighlightStore.set}
+        onActiveMatchChange={handleThreadFindActiveMatchChange}
+      />
 
       <RenameThreadDialog
         open={renameDialogOpen}
@@ -412,26 +399,10 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
         rateLimitStatus={visibleActiveRateLimitStatus}
         onDismiss={dismissActiveRateLimitBanner}
       />
-      {terminalWorkspaceOpen ? (
-        <TerminalWorkspaceTabs
-          activeTab={terminalState.workspaceActiveTab}
-          isWorking={isWorking}
-          terminalHasRunningActivity={terminalState.runningTerminalIds.length > 0}
-          terminalCount={terminalState.terminalIds.length}
-          workspaceLayout={terminalState.workspaceLayout}
-          onSelectTab={setTerminalWorkspaceTab}
-        />
-      ) : null}
       <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-          <div
-            aria-hidden={terminalWorkspaceTerminalTabActive}
-            className={cn(
-              "flex min-h-0 min-w-0 flex-1 flex-col",
-              terminalWorkspaceTerminalTabActive ? "pointer-events-none invisible" : "",
-            )}
-          >
-            {shouldRenderChatPaneContent && isCenteredEmptyLanding ? (
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            {isCenteredEmptyLanding ? (
               <div
                 className={cn(
                   "chat-pane-enter flex min-h-0 flex-1 flex-col",
@@ -502,7 +473,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
               </div>
             ) : null}
 
-            {shouldRenderChatPaneContent && !isCenteredEmptyLanding ? (
+            {!isCenteredEmptyLanding ? (
               <div className="flex min-h-0 flex-1 flex-col">
                 <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
                   <ChatTranscriptPane
@@ -571,7 +542,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                     availableEditors={availableEditors}
                     emptyStateContent={transcriptEmptyStateContent}
                     emptyStateProjectName={activeProjectDisplayName}
-                    terminalWorkspaceTerminalTabActive={terminalWorkspaceTerminalTabActive}
                     onMessagesScroll={onMessagesScroll}
                     onMessagesClickCapture={onMessagesClickCapture}
                     onMessagesMouseUp={onMessagesMouseUp}
@@ -628,7 +598,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
               </div>
             ) : null}
 
-            {shouldRenderChatPaneContent && pullRequestDialogState ? (
+            {pullRequestDialogState ? (
               <PullRequestThreadDialog
                 key={pullRequestDialogState.key}
                 open
@@ -643,27 +613,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
               />
             ) : null}
           </div>
-
-          {terminalWorkspaceOpen ? (
-            <div
-              aria-hidden={!terminalWorkspaceTerminalTabActive}
-              className={cn(
-                "absolute inset-0 min-h-0 min-w-0 transition-[opacity,transform] duration-120 ease-out motion-reduce:transition-none",
-                terminalWorkspaceTerminalTabActive
-                  ? "translate-y-0 opacity-100"
-                  : "pointer-events-none translate-y-1 opacity-0",
-              )}
-            >
-              <Suspense fallback={null}>
-                <ThreadTerminalDrawer
-                  key={`${activeThread.id}-workspace`}
-                  {...terminalDrawerProps}
-                  presentationMode="workspace"
-                  isVisible={terminalWorkspaceTerminalTabActive}
-                />
-              </Suspense>
-            </div>
-          ) : null}
 
           {environmentEnabled ? (
             <EnvironmentPanel

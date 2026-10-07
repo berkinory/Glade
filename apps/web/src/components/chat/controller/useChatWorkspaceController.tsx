@@ -1,6 +1,6 @@
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { deriveAssociatedWorktreeMetadata } from "@glade/shared/threads/threadWorkspace";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { buildThreadBreadcrumbs } from "../../ChatView.logic.subagents";
 import { hasFileUndoSettled } from "../../ChatView.logic.session";
 import { createThreadLineageSelector } from "~/components/ChatView.selectors";
@@ -8,15 +8,10 @@ import { deriveLatestRateLimitStatus } from "~/components/chat/RateLimitBanner";
 import { useAsyncUserInputResponse } from "~/components/chat/useAsyncUserInputResponse";
 import { useChatTerminalState } from "~/components/chat/useChatTerminalState";
 import {
-  activateChatTerminal,
   closeActiveChatTerminalWorkspaceView,
   closeChatTerminal,
-  collapseChatTerminalWorkspace,
-  createChatTerminal,
   createChatTerminalFromShortcut,
-  handleChatTerminalSessionExited,
   openNewFullWidthChatTerminal,
-  setChatTerminalHeight,
   setChatTerminalOpen,
   setChatTerminalWorkspaceTab,
   toggleChatTerminalVisibility,
@@ -189,20 +184,11 @@ export function useChatWorkspaceController({
   const activeProject = useStore(
     useMemo(() => createProjectSelector(activeProjectId), [activeProjectId]),
   );
-  const storeSetTerminalMetadata = useTerminalStateStore((state) => state.setTerminalMetadata);
-  const storeSetTerminalActivity = useTerminalStateStore((state) => state.setTerminalActivity);
   const storeOpenTerminalThreadPage = useTerminalStateStore(
     (state) => state.openTerminalThreadPage,
   );
 
-  const {
-    terminalState,
-    terminalFocusRequestId,
-    requestTerminalFocus,
-    terminalWorkspaceOpen,
-    terminalWorkspaceTerminalTabActive,
-    terminalWorkspaceChatTabActive,
-  } = useChatTerminalState({
+  const { terminalState, terminalWorkspaceOpen } = useChatTerminalState({
     onOpenTerminal: props.onOpenTerminal,
     threadId,
     activeThreadId,
@@ -212,29 +198,18 @@ export function useChatWorkspaceController({
       activeThreadId,
       activeProjectPresent: activeProject !== undefined,
       confirmTerminalClose: settings.confirmTerminalTabClose,
-      requestTerminalFocus,
     }),
-    [activeThreadId, activeProject, settings.confirmTerminalTabClose, requestTerminalFocus],
+    [activeThreadId, activeProject, settings.confirmTerminalTabClose],
   );
   const setTerminalOpen = (open: boolean) => setChatTerminalOpen(terminalActionContext, open);
   const setTerminalWorkspaceTab = (tab: "terminal" | "chat") =>
     setChatTerminalWorkspaceTab(terminalActionContext, tab);
-  const setTerminalHeight = (height: number) =>
-    setChatTerminalHeight(terminalActionContext, height);
   const toggleTerminalVisibility = () =>
     toggleChatTerminalVisibility(terminalActionContext, terminalState);
-  const collapseTerminalWorkspace = () => collapseChatTerminalWorkspace(terminalActionContext);
-  const createNewTerminal = () => createChatTerminal(terminalActionContext);
   const createTerminalFromShortcut = () => createChatTerminalFromShortcut(terminalActionContext);
   const openNewFullWidthTerminal = () => openNewFullWidthChatTerminal(terminalActionContext);
-  const activateTerminal = (terminalId: string) =>
-    activateChatTerminal(terminalActionContext, terminalId);
   const closeTerminal = (terminalId: string) =>
     closeChatTerminal(terminalActionContext, terminalState, terminalId);
-  const handleTerminalSessionExited = useCallback(
-    (terminalId: string) => handleChatTerminalSessionExited(terminalActionContext, terminalId),
-    [terminalActionContext],
-  );
   const closeActiveWorkspaceView = () =>
     closeActiveChatTerminalWorkspaceView(terminalActionContext, terminalState);
 
@@ -424,25 +399,14 @@ export function useChatWorkspaceController({
     activeProjectId,
     activeProject,
     terminalState,
-    terminalFocusRequestId,
-    requestTerminalFocus,
     terminalWorkspaceOpen,
-    terminalWorkspaceTerminalTabActive,
-    terminalWorkspaceChatTabActive,
     setTerminalOpen,
     setTerminalWorkspaceTab,
-    setTerminalHeight,
-    storeSetTerminalMetadata,
-    storeSetTerminalActivity,
     storeOpenTerminalThreadPage,
     toggleTerminalVisibility,
-    collapseTerminalWorkspace,
-    createNewTerminal,
     createTerminalFromShortcut,
     openNewFullWidthTerminal,
-    activateTerminal,
     closeTerminal,
-    handleTerminalSessionExited,
     closeActiveWorkspaceView,
     homeDir,
     chatWorkspaceRoot,

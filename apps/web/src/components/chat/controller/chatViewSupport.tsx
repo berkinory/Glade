@@ -6,10 +6,8 @@ import {
 import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import { type EditorId } from "@glade/contracts/settings/editor";
 import { type ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
-import { lazy } from "react";
 import { type RateLimitStatus } from "~/components/chat/RateLimitBanner";
 import { type ChatMessage, type Thread } from "~/types";
-export const ThreadTerminalDrawer = lazy(() => import("~/components/ThreadTerminalDrawer"));
 export const EMPTY_ACTIVITIES: OrchestrationThreadActivity[] = [];
 export const EMPTY_MESSAGES: ChatMessage[] = [];
 export const EMPTY_PINNED_MESSAGES: readonly PinnedMessage[] = [];

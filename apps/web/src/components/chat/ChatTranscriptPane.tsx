@@ -82,7 +82,6 @@ interface ChatTranscriptPaneProps {
   onScrollToBottom: () => void;
   resolvedTheme: "light" | "dark";
   scrollButtonVisible: boolean;
-  terminalWorkspaceTerminalTabActive: boolean;
   timelineEntries: ComponentProps<typeof MessagesTimeline>["timelineEntries"];
   messageChangeSignal?: ComponentProps<typeof MessagesTimeline>["messageChangeSignal"];
   timestampFormat: TimestampFormat;
@@ -148,7 +147,6 @@ export function ChatTranscriptPane({
   onScrollToBottom,
   resolvedTheme,
   scrollButtonVisible,
-  terminalWorkspaceTerminalTabActive,
   timelineEntries,
   messageChangeSignal,
   timestampFormat,
@@ -198,11 +196,7 @@ export function ChatTranscriptPane({
   return (
     <div
       data-chat-transcript-pane="true"
-      aria-hidden={terminalWorkspaceTerminalTabActive}
-      className={cn(
-        "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
-        terminalWorkspaceTerminalTabActive ? "pointer-events-none invisible" : "",
-      )}
+      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
     >
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="flex min-h-0 flex-1 flex-col">
