@@ -350,7 +350,7 @@ export class BrowserTabs {
               canGoBack: false,
               canGoForward: false,
               dialog: null,
-              siteBlocking: this.options.blocker.siteBlocking(entry.url),
+              site: this.options.blocker.siteState(entry.url),
             };
           }
           const { webContents } = entry;
@@ -362,7 +362,7 @@ export class BrowserTabs {
             canGoBack: webContents.navigationHistory.canGoBack(),
             canGoForward: webContents.navigationHistory.canGoForward(),
             dialog: entry.dialogs.current() ?? entry.challengeNotice(),
-            siteBlocking: this.options.blocker.siteBlocking(webContents.getURL()),
+            site: this.options.blocker.siteState(webContents.getURL()),
           };
         }),
       );

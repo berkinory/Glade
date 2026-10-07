@@ -1,4 +1,4 @@
-import { ElectronBlocker, Request } from "@ghostery/adblocker-electron";
+import { ElectronBlocker } from "@ghostery/adblocker-electron";
 import {
   ipcMain,
   type IpcMainInvokeEvent,
@@ -8,6 +8,7 @@ import {
 } from "electron";
 import * as FS from "node:fs";
 import * as Path from "node:path";
+import { siteOf } from "./browserSite";
 
 type BeforeRequestCallback = (response: Electron.CallbackResponse) => void;
 type HeadersReceivedCallback = (response: Electron.HeadersReceivedResponse) => void;
@@ -74,11 +75,11 @@ export class ContentBlocker {
     return enabled;
   }
 
-  // Whether blocking applies to the page at `url` while the blocker is on; null when the page has
-  // no site to key an exception by.
-  siteBlocking(url: string): boolean | null {
-    const site = siteOf(url);
-    return site === null ? null : !this.allowedSites.has(site);
+  // The page's site and whether blocking applies to it while the blocker is on; null when the
+  // page has no site to key an exception by.
+  siteState(url: string): { readonly domain: string; readonly blocking: boolean } | null {
+    const domain = siteOf(url);
+    return domain === null ? null : { domain, blocking: !this.allowedSites.has(domain) };
   }
 
   // Returns the site the setting now applies to. Pages pick it up on their next load.
@@ -205,11 +206,6 @@ export class ContentBlocker {
   private fromPartition(event: IpcMainInvokeEvent): boolean {
     return event.sender.session === this.session;
   }
-}
-
-function siteOf(url: string): string | null {
-  if (!/^https?:/iu.test(url)) return null;
-  return Request.fromRawDetails({ url }).domain || null;
 }
 
 // The top-level page a request belongs to: the request itself for a navigation, else the page its

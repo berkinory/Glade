@@ -10,11 +10,11 @@ export function BrowserSiteMenu(props: {
   onSiteBlocking: (enabled: boolean) => void;
 }) {
   const blocker = useBrowserContentBlocker();
-  const siteBlocking = props.tab?.siteBlocking ?? null;
-  const host = props.tab ? URL.parse(props.tab.url)?.hostname : undefined;
-  if (!blocker.available || siteBlocking === null || !host) return null;
+  const site = props.tab?.site ?? null;
+  if (!blocker.available || site === null) return null;
+  const host = site.domain;
   const globallyOff = blocker.enabled === false;
-  const blocking = siteBlocking && !globallyOff;
+  const blocking = site.blocking && !globallyOff;
 
   return (
     <BrowserToolbarMenu
@@ -27,7 +27,7 @@ export function BrowserSiteMenu(props: {
         <MenuGroupLabel className="truncate">{host}</MenuGroupLabel>
         <MenuCheckboxItem
           variant="switch"
-          checked={siteBlocking}
+          checked={site.blocking}
           disabled={globallyOff}
           onCheckedChange={(next) => props.onSiteBlocking(next)}
         >

@@ -1,35 +1,46 @@
-import type { BrowserPickedElement } from "@glade/contracts/browser/browserView";
+import type { BrowserPickedElement, BrowserPickTheme } from "@glade/contracts/browser/browserView";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useEffect, useState } from "react";
-import { useComposerDraftStore } from "~/composerDraftStore";
 import { formatBrowserElementReference } from "~/lib/browserElementReference";
 import { appendComposerPromptText } from "~/lib/chatReferences";
-import { prepareComposerImageAttachmentsFromFiles } from "~/lib/composerSend";
 import { CursorInWindowIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { CHAT_SURFACE_CONTROL_ACTIVE_CLASS_NAME } from "../chat/chatHeaderControls";
 import { IconButton } from "../ui/icon-button";
+import { ShortcutKbd } from "../ui/kbd";
 import { toastManager } from "../ui/toast";
+import { addBrowserImageToComposer } from "./browserComposerImage";
 
 // The reference goes into the prompt as text the agent can act on; the element screenshot rides
 // along as an ordinary image attachment.
 async function addToComposer(threadId: ThreadId, element: BrowserPickedElement): Promise<void> {
   appendComposerPromptText(threadId, formatBrowserElementReference(element));
   if (!element.screenshot) return;
-  const bytes = Uint8Array.from(atob(element.screenshot.data), (char) => char.charCodeAt(0));
-  const file = new File([bytes], `element-${element.ref}.jpg`, { type: "image/jpeg" });
-  const { images, error } = await prepareComposerImageAttachmentsFromFiles({
-    files: [file],
-    existingAttachmentCount: 0,
+  await addBrowserImageToComposer(threadId, {
+    data: element.screenshot.data,
+    fileName: `element-${element.ref}.jpg`,
+    warning: "Element added without its screenshot",
   });
-  const added = useComposerDraftStore.getState().addImages(threadId, images);
-  if (error || added < images.length) {
-    toastManager.add({
-      type: "warning",
-      title: "Element added without its screenshot",
-      description: error ?? "This message already has the most attachments it can carry.",
-    });
-  }
+}
+
+// The overlay is drawn inside the page, so it gets Glade's resolved colors rather than variables.
+function readPickTheme(): BrowserPickTheme {
+  const probe = document.createElement("span");
+  document.body.append(probe);
+  const color = (token: string) => {
+    probe.style.color = `var(${token})`;
+    return getComputedStyle(probe).color;
+  };
+  const theme = {
+    accent: color("--info"),
+    surface: color("--popover"),
+    foreground: color("--popover-foreground"),
+    border: color("--border"),
+    fontFamily: getComputedStyle(document.body).fontFamily,
+    reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  };
+  probe.remove();
+  return theme;
 }
 
 export function BrowserPickElement(props: { threadId: ThreadId; tabId: string | null }) {
@@ -53,7 +64,7 @@ export function BrowserPickElement(props: { threadId: ThreadId; tabId: string | 
     if (!bridge || !tabId) return;
     setPicking(true);
     bridge
-      .pickElement({ threadId, tabId })
+      .pickElement({ threadId, tabId, theme: readPickTheme() })
       .then((element) => (element ? addToComposer(threadId, element) : undefined))
       .catch((error: unknown) => {
         toastManager.add({
@@ -68,7 +79,16 @@ export function BrowserPickElement(props: { threadId: ThreadId; tabId: string | 
   return (
     <IconButton
       label={picking ? "Stop picking" : "Pick an element"}
-      tooltip={picking ? "Stop picking (Esc)" : "Pick an element to reference in chat"}
+      tooltip={
+        picking ? (
+          <span className="inline-flex items-center gap-2">
+            Stop picking
+            <ShortcutKbd shortcutLabel="Esc" />
+          </span>
+        ) : (
+          "Pick an element to reference in chat"
+        )
+      }
       tooltipSide="bottom"
       aria-pressed={picking}
       disabled={!tabId}

@@ -1,18 +1,25 @@
-import { BrowserPickTarget, BrowserViewPlacement } from "@glade/contracts/browser/browserView";
+import {
+  BrowserPickRequest,
+  BrowserTabTarget,
+  BrowserViewPlacement,
+} from "@glade/contracts/browser/browserView";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { BrowserWindow, ipcMain, type WebContents } from "electron";
 import { Option, Schema } from "effect";
 import { pickElement } from "../../browser/cdp/pickElement";
+import { captureViewport } from "../../browser/cdp/screenshot";
+import { clearSiteData } from "../../browser/siteData";
 import type { DesktopHost } from "../../hostRpc/startDesktopHost";
 import { DESKTOP_IPC_CHANNELS } from "./ipcChannels";
 
 const decodePlacement = Schema.decodeUnknownOption(BrowserViewPlacement);
-const decodePickTarget = Schema.decodeUnknownOption(BrowserPickTarget);
+const decodePickRequest = Schema.decodeUnknownOption(BrowserPickRequest);
+const decodeTabTarget = Schema.decodeUnknownOption(BrowserTabTarget);
 const decodeThreadId = Schema.decodeUnknownOption(ThreadId);
 
-// Only what must stay in step with the native views crosses here: placement, element picking and
-// the content blocker setting. Tab state and navigation go through the backend so they have one
-// owner.
+// Only what must stay in step with the native views or hands page pixels to the composer crosses
+// here: placement, element picking, captures, DevTools, site data and the content blocker
+// setting. Tab state and navigation go through the backend so they have one owner.
 export function registerBrowserViewIpc(desktopHost: () => DesktopHost | null): void {
   const picks = new Map<ThreadId, AbortController>();
   const watchedRenderers = new WeakSet<WebContents>();
@@ -48,18 +55,49 @@ export function registerBrowserViewIpc(desktopHost: () => DesktopHost | null): v
   ipcMain.removeHandler(DESKTOP_IPC_CHANNELS.browserPickElement);
   ipcMain.handle(DESKTOP_IPC_CHANNELS.browserPickElement, async (_event, raw: unknown) => {
     const host = desktopHost();
-    const target = decodePickTarget(raw);
-    if (!host || Option.isNone(target)) return null;
-    const { threadId, tabId } = target.value;
+    const request = decodePickRequest(raw, { onExcessProperty: "error" });
+    if (!host || Option.isNone(request)) return null;
+    const { threadId, tabId, theme } = request.value;
     picks.get(threadId)?.abort();
     const controller = new AbortController();
     picks.set(threadId, controller);
     try {
-      return await pickElement(host.tabs.resolve(threadId, tabId), controller.signal);
+      return await pickElement(host.tabs.resolve(threadId, tabId), theme, controller.signal);
     } finally {
       if (picks.get(threadId) === controller) picks.delete(threadId);
     }
   });
+
+  // The tab a panel action targets; only the thread's own tabs resolve.
+  const targetTab = (raw: unknown) => {
+    const host = desktopHost();
+    if (!host) throw new Error("Glade's browser is unavailable.");
+    const target = decodeTabTarget(raw, { onExcessProperty: "error" });
+    if (Option.isNone(target)) throw new Error("Invalid browser tab.");
+    return host.tabs.resolve(target.value.threadId, target.value.tabId);
+  };
+
+  // Downscaled to the agent screenshot's size cap, so the image always fits an attachment.
+  ipcMain.removeHandler(DESKTOP_IPC_CHANNELS.browserCapture);
+  ipcMain.handle(DESKTOP_IPC_CHANNELS.browserCapture, async (_event, raw: unknown) => {
+    const tab = targetTab(raw);
+    const { data } = await tab.run(() => captureViewport(tab.cdp, tab.webContents, undefined), {
+      byUser: true,
+    });
+    return { data, mimeType: "image/jpeg" as const };
+  });
+
+  ipcMain.removeAllListeners(DESKTOP_IPC_CHANNELS.browserToggleDevTools);
+  ipcMain.on(DESKTOP_IPC_CHANNELS.browserToggleDevTools, (_event, raw: unknown) => {
+    const { webContents } = targetTab(raw);
+    if (webContents.isDevToolsOpened()) webContents.closeDevTools();
+    else webContents.openDevTools({ mode: "detach" });
+  });
+
+  ipcMain.removeHandler(DESKTOP_IPC_CHANNELS.browserClearSiteData);
+  ipcMain.handle(DESKTOP_IPC_CHANNELS.browserClearSiteData, (_event, raw: unknown) =>
+    clearSiteData(targetTab(raw).webContents),
+  );
 
   ipcMain.removeHandler(DESKTOP_IPC_CHANNELS.browserContentBlockerGet);
   ipcMain.handle(DESKTOP_IPC_CHANNELS.browserContentBlockerGet, () => {

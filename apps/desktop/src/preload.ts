@@ -146,8 +146,11 @@ contextBridge.exposeInMainWorld("desktopBridge", {
   },
   browser: {
     placeView: (placement) => ipcRenderer.send(IPC.browserPlaceView, placement),
-    pickElement: (target) => ipcRenderer.invoke(IPC.browserPickElement, target),
+    pickElement: (request) => ipcRenderer.invoke(IPC.browserPickElement, request),
     cancelPick: (threadId) => ipcRenderer.send(IPC.browserCancelPick, threadId),
+    capture: (target) => ipcRenderer.invoke(IPC.browserCapture, target),
+    toggleDevTools: (target) => ipcRenderer.send(IPC.browserToggleDevTools, target),
+    clearSiteData: (target) => ipcRenderer.invoke(IPC.browserClearSiteData, target),
     contentBlocker: {
       getEnabled: () => ipcRenderer.invoke(IPC.browserContentBlockerGet),
       setEnabled: (enabled) => ipcRenderer.invoke(IPC.browserContentBlockerSet, enabled),

@@ -21,8 +21,35 @@ export const BrowserViewPlacement = Schema.Struct({
 });
 export type BrowserViewPlacement = typeof BrowserViewPlacement.Type;
 
-export const BrowserPickTarget = Schema.Struct({ threadId: ThreadId, tabId: BrowserTabId });
-export type BrowserPickTarget = typeof BrowserPickTarget.Type;
+export const BrowserTabTarget = Schema.Struct({ threadId: ThreadId, tabId: BrowserTabId });
+export type BrowserTabTarget = typeof BrowserTabTarget.Type;
+
+// Resolved CSS colors and font from Glade's theme; the picker overlay is drawn inside the page,
+// which cannot read Glade's stylesheet.
+const ThemeColor = Schema.String.check(
+  Schema.isMaxLength(128),
+  Schema.isPattern(/^[#a-z0-9(),.%/\s+-]+$/iu),
+);
+export const BrowserPickTheme = Schema.Struct({
+  accent: ThemeColor,
+  surface: ThemeColor,
+  foreground: ThemeColor,
+  border: ThemeColor,
+  fontFamily: Schema.String.check(Schema.isMaxLength(512), Schema.isPattern(/^[\w\s"',.-]*$/u)),
+  reducedMotion: Schema.Boolean,
+});
+export type BrowserPickTheme = typeof BrowserPickTheme.Type;
+
+export const BrowserPickRequest = Schema.Struct({
+  ...BrowserTabTarget.fields,
+  theme: BrowserPickTheme,
+});
+export type BrowserPickRequest = typeof BrowserPickRequest.Type;
+
+export interface BrowserCapture {
+  readonly data: string;
+  readonly mimeType: "image/jpeg";
+}
 
 export interface BrowserPickedElement {
   readonly tabId: string;

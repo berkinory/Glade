@@ -139,9 +139,9 @@ export const BrowserTabState = Schema.Struct({
   canGoForward: Schema.Boolean,
   active: Schema.Boolean,
   dialog: Schema.NullOr(BrowserPageDialog),
-  // Whether the content blocker applies to the page's site when it is on; null for pages without
-  // a site, such as about:blank.
-  siteBlocking: Schema.NullOr(Schema.Boolean),
+  // The page's registrable domain and whether the content blocker applies to it when it is on;
+  // null for pages without a site, such as about:blank.
+  site: Schema.NullOr(Schema.Struct({ domain: Schema.String, blocking: Schema.Boolean })),
 });
 export const BrowserTabsChanged = Schema.Struct({ tabs: Schema.Array(BrowserTabState) });
 export type BrowserTabsChanged = typeof BrowserTabsChanged.Type;

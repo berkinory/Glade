@@ -9,8 +9,10 @@ import type { BrowserTabsChanged } from "../browser/browserHost";
 import type { BrowserPanelCommand, BrowserTabsSubscribeInput } from "../transport/ws/browserRpc";
 import type { ComputerGrantTarget, ComputerState } from "../transport/ws/computerRpc";
 import type {
+  BrowserCapture,
   BrowserPickedElement,
-  BrowserPickTarget,
+  BrowserPickRequest,
+  BrowserTabTarget,
   BrowserViewPlacement,
 } from "../browser/browserView";
 import type {
@@ -455,8 +457,13 @@ export interface DesktopBridge {
   browser?: {
     placeView: (placement: BrowserViewPlacement) => void;
     // Resolves with null when the pick is cancelled (Escape, toggle off, another pick).
-    pickElement: (target: BrowserPickTarget) => Promise<BrowserPickedElement | null>;
+    pickElement: (request: BrowserPickRequest) => Promise<BrowserPickedElement | null>;
     cancelPick: (threadId: string) => void;
+    // What the tab shows on screen, as a JPEG.
+    capture: (target: BrowserTabTarget) => Promise<BrowserCapture>;
+    toggleDevTools: (target: BrowserTabTarget) => void;
+    // Clears cookies, storage and cache of the tab's site, then reloads the tab.
+    clearSiteData: (target: BrowserTabTarget) => Promise<void>;
     // The built-in ad, tracker and cookie-notice blocker of Glade's browser; on by default.
     contentBlocker: {
       getEnabled: () => Promise<boolean>;
