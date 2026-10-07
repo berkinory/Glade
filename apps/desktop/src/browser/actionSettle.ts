@@ -103,7 +103,7 @@ export interface ActionOutcome {
   readonly afterSettle?: (settled: Settled) => Promise<ActionReport>;
 }
 
-export interface Settled {
+interface Settled {
   // Options ([role=option]) added to the main document while the action ran.
   readonly optionsAdded: number;
   // Added elements still shown with text, and the first few of their headings or first lines.

@@ -114,7 +114,7 @@ export async function waitForOptions(cdp: CdpSession, target: RefTarget, waitMs:
 }
 
 // `- option "Lisbon, Ohio" [ref=e31] selected`, one line per option, for the model to pick from.
-export function renderOptions(
+function renderOptions(
   refs: RefTable,
   listed: { readonly options: readonly ListedOption[]; readonly total: number },
 ): string {
@@ -178,17 +178,14 @@ export const SHOWN_VALUE = `function () {
   return input ? input.value : (this.innerText || this.textContent || "").replace(/\\s+/g, " ").trim();
 }`;
 
-export interface OptionCommit {
+interface OptionCommit {
   readonly combobox: RefTarget | null;
   readonly label: string;
   readonly before: string | null;
 }
 
 // Read before clicking an option, so the result can say whether the choice was taken.
-export async function optionContext(
-  cdp: CdpSession,
-  target: RefTarget,
-): Promise<OptionCommit | null> {
+async function optionContext(cdp: CdpSession, target: RefTarget): Promise<OptionCommit | null> {
   if (!(await callOn<boolean>(cdp, target, IS_OPTION).catch(() => false))) return null;
   const label = await callOn<string>(cdp, target, OPTION_LABEL);
   const combobox = await elementTarget(cdp, target, OWNER_COMBOBOX).catch(() => null);
@@ -200,7 +197,7 @@ export async function optionContext(
 
 // Commit evidence after the page settled: the combobox shows the option (and changed), or the
 // option is marked selected.
-export async function optionCommitted(
+async function optionCommitted(
   cdp: CdpSession,
   refs: RefTable,
   option: RefTarget,
