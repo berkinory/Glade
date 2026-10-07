@@ -14,6 +14,7 @@ import {
 const COMPUTER_TOOL_WORDING = {
   computer_apps: ["Listing apps", "Listed apps", "list apps"],
   computer_open_app: ["Opening", "Opened", "open the app"],
+  computer_file_dialog: ["Saving file", "Saved", "save the file"],
   computer_window_state: ["Reading window", "Read window", "read the window"],
   computer_act: ["Using app", "Used app", "use the app"],
   computer_request_access: ["Requesting access", "Requested access", "get access"],
@@ -222,6 +223,21 @@ export function describeComputerToolCall(call: GatewayToolCall): GatewayToolPres
         COMPUTER_TOOL_WORDING.computer_open_app,
         call,
         first ? previewAt(what, app) : what,
+      );
+    }
+    case "computer_file_dialog": {
+      // `Saved report.rtf · TextEdit`; the open action reads `Opened bench.pdf · Preview`.
+      const fileName = stringArg(args, "file_name");
+      const path = stringArg(args, "path");
+      const file = fileName ?? path?.split(/[\\/]/u).findLast(Boolean) ?? null;
+      const wording: GatewayToolWording =
+        args.action === "open"
+          ? ["Opening file", "Opened", "open the file"]
+          : COMPUTER_TOOL_WORDING.computer_file_dialog;
+      return presentGatewayToolCall(
+        wording,
+        call,
+        previewAt(file ? shortPreview(file) : null, where),
       );
     }
     case "computer_verify":
