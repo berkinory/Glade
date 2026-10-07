@@ -2,6 +2,7 @@ import type { ActionOutcome } from "../actionSettle";
 import type { CdpSession } from "./cdpSession";
 import { callOn, elementTarget } from "./pointer";
 import type { RefTable, RefTarget } from "./refs";
+import { elementIds } from "./remoteElements";
 
 const MAX_LISTED = 10;
 const OPTION_WAIT_MS = 1_500;
@@ -79,38 +80,23 @@ export async function visibleOptions(
     target.sessionId,
   );
   const arrayId = list.result.objectId;
-  const [{ result: summary }, { result: properties }] = await Promise.all([
+  const [{ result: summary }, ids] = await Promise.all([
     cdp.send<{ result: { value: { total: number; info: { name: string; selected: boolean }[] } } }>(
       "Runtime.callFunctionOn",
       { objectId: arrayId, functionDeclaration: OPTION_INFO, returnByValue: true },
       target.sessionId,
     ),
-    cdp.send<{ result: ReadonlyArray<{ name: string; value?: { objectId?: string } }> }>(
-      "Runtime.getProperties",
-      { objectId: arrayId, ownProperties: true },
-      target.sessionId,
-    ),
+    elementIds(cdp, target.sessionId, arrayId),
   ]);
   const options: ListedOption[] = [];
-  for (const property of properties) {
-    const index = Number(property.name);
-    const objectId = property.value?.objectId;
-    const info = summary.value.info[index];
-    if (!Number.isInteger(index) || !objectId || !info) continue;
-    const { node } = await cdp.send<{ node: { backendNodeId: number } }>(
-      "DOM.describeNode",
-      { objectId },
-      target.sessionId,
-    );
+  summary.value.info.forEach((info, index) => {
+    const backendNodeId = ids[index];
+    if (backendNodeId === null || backendNodeId === undefined) return;
     options.push({
-      target: {
-        backendNodeId: node.backendNodeId,
-        sessionId: target.sessionId,
-        frameId: target.frameId,
-      },
+      target: { backendNodeId, sessionId: target.sessionId, frameId: target.frameId },
       ...info,
     });
-  }
+  });
   return { options, total: summary.value.total };
 }
 

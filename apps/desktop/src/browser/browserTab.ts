@@ -1,4 +1,4 @@
-import type { BrowserTextResult } from "@glade/contracts/browser/browserHost";
+import type { BrowserPageDialog, BrowserTextResult } from "@glade/contracts/browser/browserHost";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { WebContentsView } from "electron";
 import { BrowserFailure } from "./browserFailure";
@@ -40,6 +40,8 @@ export class BrowserTab {
   private lastHumanInputAt = 0;
   private agentActing = false;
   private picking = false;
+  // The vendor of a security check the user was asked to complete; cleared by navigation.
+  private challenge: string | null = null;
   // Coordinates in click, hover and drag refer to this tab's latest screenshot.
   private screenshot: ScreenshotFrame | null = null;
 
@@ -48,7 +50,7 @@ export class BrowserTab {
     readonly threadId: ThreadId,
     readonly view: WebContentsView,
     readonly downloadDir: string | null,
-    onChange: () => void,
+    private readonly onChange: () => void,
   ) {
     const webContents = view.webContents;
     this.cdp = new CdpSession(webContents);
@@ -60,6 +62,7 @@ export class BrowserTab {
           : "agent",
       onChange,
     });
+    webContents.on("did-navigate", () => this.noteChallenge(null));
     webContents.on("will-prevent-unload", () =>
       this.addNotice("The page asked to confirm leaving; it was allowed to leave."),
     );
@@ -95,6 +98,22 @@ export class BrowserTab {
 
   lastScreenshot(): ScreenshotFrame | null {
     return this.screenshot;
+  }
+
+  noteChallenge(vendor: string | null): void {
+    if (vendor === this.challenge) return;
+    this.challenge = vendor;
+    this.onChange();
+  }
+
+  // The panel's notice asking the user to complete a security check the agent must not touch.
+  challengeNotice(): BrowserPageDialog | null {
+    if (!this.challenge) return null;
+    return {
+      type: "challenge",
+      message: `This page shows a ${this.challenge} security check, which the agent does not solve. Please complete it here; press OK to hide this notice.`,
+      audience: "user",
+    };
   }
 
   addNotice(text: string): void {

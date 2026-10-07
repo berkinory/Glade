@@ -111,10 +111,11 @@ export type BrowserImageResult = typeof BrowserImageResult.Type;
 export const BrowserHostResult = Schema.Union([BrowserImageResult, BrowserTextResult]);
 export type BrowserHostResult = typeof BrowserHostResult.Type;
 
-// A page's alert or confirm waiting for an answer (Electron refuses prompt() in the page itself). `audience: "user"` marks one the user's
-// own input in the panel caused; only the user answers it.
+// A page's alert or confirm waiting for an answer (Electron refuses prompt() in the page itself),
+// or a `challenge`: a CAPTCHA or bot check on screen that only the user may complete, shown until
+// the page navigates or the user dismisses it. `audience: "user"` marks one the user answers.
 export const BrowserPageDialog = Schema.Struct({
-  type: Schema.Literals(["alert", "confirm"]),
+  type: Schema.Literals(["alert", "confirm", "challenge"]),
   message: Schema.String,
   audience: Schema.Literals(["user", "agent"]),
 });

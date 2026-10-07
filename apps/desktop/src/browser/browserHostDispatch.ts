@@ -13,12 +13,14 @@ import { BrowserFailure } from "./browserFailure";
 import { navigate } from "./browserNavigation";
 import type { BrowserTab } from "./browserTab";
 import type { BrowserTabs } from "./browserTabs";
-import { click, drag, hover, press, scroll } from "./cdp/actions";
+import { click, drag, hover, press } from "./cdp/actions";
 import type { PageRead } from "./cdp/buffers";
+import { visibleChallenge } from "./cdp/challenge";
 import { withOptionCommit } from "./cdp/combobox";
 import { uploadFiles } from "./cdp/fileChooser";
 import { fillFields, selectOptions, typeText } from "./cdp/forms";
 import { readPageText } from "./cdp/pageText";
+import { scroll } from "./cdp/scrolling";
 import { captureScreenshot } from "./cdp/screenshot";
 import { findElements, takeSnapshot } from "./cdp/snapshot/snapshot";
 import { DialogInterrupt } from "./pageDialogs";
@@ -57,6 +59,18 @@ function dialogBlock(dialog: BrowserPageDialog): BrowserFailure {
       : `${article(dialog.type)} ${dialog.type} dialog is open on this tab: ${quoted(dialog.message)}. Answer it with browser_dialog (accept true or false) before using this tab.`,
   );
 }
+
+// Records a visible security check on the tab (which shows the user a notice in the panel) and
+// tells the model to hand over instead of touching it.
+async function challengeLine(tab: BrowserTab): Promise<string> {
+  const vendor = await visibleChallenge(tab.cdp).catch(() => null);
+  tab.noteChallenge(vendor);
+  return vendor
+    ? `Challenge: a ${vendor} security check is on screen. Do not try to solve or get around it; ask the user to complete it in the browser panel, then continue.`
+    : "";
+}
+
+const joined = (...parts: string[]) => parts.filter(Boolean).join("\n");
 
 export function createBrowserHostDispatch(
   tabs: BrowserTabs,
@@ -100,10 +114,13 @@ export function createBrowserHostDispatch(
   ): Promise<BrowserHostResult> => {
     if (actor !== "user") tab.assertNotPicking();
     try {
-      const report = await tab.run(() => actAndSettle(tab, operation, settle), {
-        byUser: actor === "user",
-        timeoutMs,
-      });
+      const report = await tab.run(
+        async () => {
+          const settled = await actAndSettle(tab, operation, settle);
+          return { ...settled, text: joined(settled.text, await challengeLine(tab)) };
+        },
+        { byUser: actor === "user", timeoutMs },
+      );
       return reply(tab, report.text, actor, report.content);
     } catch (error) {
       if (!(error instanceof DialogInterrupt)) throw error;
@@ -170,11 +187,21 @@ export function createBrowserHostDispatch(
     },
     "browser.snapshot": async (params) => {
       const tab = tabFor("browser.snapshot", params);
-      return read(tab, () => takeSnapshot(tab.cdp, tab.refs, params));
+      return read(tab, async () => {
+        const snapshot = await takeSnapshot(tab.cdp, tab.refs, params);
+        return { ...snapshot, note: joined(snapshot.note, await challengeLine(tab)) };
+      });
     },
     "browser.find": async (params) => {
       const tab = tabFor("browser.find", params);
-      return readText(tab, () => findElements(tab.cdp, tab.refs, params));
+      return readText(tab, async () => {
+        // webContents.isLoading() stays true for a favicon or a beacon; the document is what counts.
+        const { result } = await tab.cdp.send<{ result: { value?: string } }>("Runtime.evaluate", {
+          expression: "document.readyState",
+          returnByValue: true,
+        });
+        return findElements(tab.cdp, tab.refs, params, result.value !== "complete");
+      });
     },
     "browser.getText": async (params) => {
       const tab = tabFor("browser.getText", params);
@@ -234,6 +261,12 @@ export function createBrowserHostDispatch(
     "browser.dialog": async (params) => {
       const tab = tabFor("browser.dialog", params);
       const actor = params.actor ?? "agent";
+      // The panel's OK on a security-check notice only hides it; there is no page dialog.
+      if (actor === "user" && !tab.dialogs.current() && tab.challengeNotice()) {
+        tab.noteChallenge(null);
+        tab.addNotice("The user dismissed the security check notice in the browser panel.");
+        return reply(tab, "Dismissed the security check notice.", params.actor);
+      }
       const dialog = tab.dialogs.answer(params.accept, actor);
       if (actor === "user" && dialog.audience === "agent") {
         tab.addNotice(

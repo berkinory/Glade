@@ -21,7 +21,14 @@ app and is exposed to every provider as `browser_*` gateway tools.
   by an opaque layer that paints above them (a modal or cookie banner; a fixed full-screen backdrop
   also hides what is scrolled away under it). Styled checkboxes and radios stay listed even when the
   input itself is invisible. Elements the tree calls plain containers but that have a click listener,
-  their own pointer cursor or an explicit tab stop are listed as `clickable`. Names and values are
+  their own pointer cursor or an explicit tab stop are listed as `clickable`. Scroll containers
+  (`overflow` auto, scroll or overlay with content past their box, read from the same DOMSnapshot
+  with `includeDOMRects`) are listed with a ref, as `scrollable` when generic, with how far they
+  are scrolled (`37% scrolled`), so `browser_scroll` can target a sidebar or a virtualized list.
+  Invalid fields carry `invalid="…"`: an explicit `aria-invalid`, or a native constraint failure on
+  a field that has a value or that the user touched (`:user-invalid`); the message is the
+  `aria-errormessage` text, else the browser's `validationMessage` (never for passwords), else the
+  `aria-describedby` text, read once per renderer. Names and values are
   cut at 100 characters, long `<select>`s show their first five options, and password values are
   never emitted (a filled one shows `filled`). A ref is keyed by (CDP session, backend node id) and
   belongs to its frame's document: it survives DOM updates, dies when that frame commits a new
@@ -61,6 +68,14 @@ app and is exposed to every provider as `browser_*` gateway tools.
   ArrowDown), clicks the options whose labels match (exact, else a unique partial match) and
   reads back what the widget shows. `browser_fill` sets several fields in one call, custom
   selects included.
+- **Scrolling and finding.** `browser_scroll` sends a real wheel event over the page or the
+  ref, waits for the animated scroll to stop, and reports the position of the element that
+  scrolled (`4,800 of 319,520px (2%)`, or that it is already at the end) and how many elements with
+  text appeared, listing the first eight by heading or first line in the page content (feeds that
+  load on scroll, virtualized rows). `browser_find` gives each match inside a row, list item,
+  article, tree item or option that container's text as one capped context line; with no match it
+  says whether the document is still loading, how many screens continue below the viewport, or
+  that the viewport is at the end.
 - **Coordinates, hover and drag.** `browser_click`, `browser_hover` and each end of `browser_drag`
   take either a ref or `x`/`y`. Points are in the pixels of the tab's latest agent
   `browser_screenshot` (each tab keeps that screenshot's viewport rect and image size, so a
@@ -159,6 +174,14 @@ agent input on that tab fails with `user_picking` instead of moving the page und
   [licenses/ghostery-adblocker.md](licenses/ghostery-adblocker.md).
 - Pages get no permissions: microphone, camera, geolocation, notifications, devices and external
   protocol launches (`mailto:` and app links) are all denied.
+- Security checks are the user's. After every action and snapshot Glade looks for a vendor
+  challenge frame (Turnstile, reCAPTCHA, hCaptcha, Arkose, DataDome, PerimeterX or a generic
+  CAPTCHA URL; invisible-mode widgets excluded) whose `<iframe>` shows at least 1,000 CSS px² on
+  screen, found through the main frame tree and the attached out-of-process iframe targets (so
+  one in a closed shadow root counts). The result then carries a `Challenge:` line telling the
+  model to hand over, and the panel shows the user an OK-only notice through the page dialog bar
+  (type `challenge` in the tab state) until the page navigates or the user dismisses it. It does
+  not block agent tools. Glade never clicks, solves or works around a challenge.
 - There is no credential vault. When a page needs a sign-in, the agent says so and the user signs
   in inside the panel; credentials never pass through Glade or the model.
 - Page dialogs wait for an answer instead of blocking anything. Glade replaces Electron's

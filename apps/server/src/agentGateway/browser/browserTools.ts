@@ -72,7 +72,7 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     title: "Snapshot the page",
     readOnly: true,
     description:
-      'Accessibility snapshot of what is on screen plus about one screen around it, iframes included: one line per element, `- role "name" [ref=eN] value=… states`; `+` instead of `-` marks elements that were not in your previous snapshot. Hidden, covered and off-screen elements are left out; a note says how many are above or below. Act on elements through these refs. filter "interactive" (default) lists controls, including elements that only look clickable; "all" adds text and structure. scope "page" lists the whole page; narrow large pages with depth or a ref subtree. Refs stay valid while their element stays in the document.',
+      'Accessibility snapshot of what is on screen plus about one screen around it, iframes included: one line per element, `- role "name" [ref=eN] value=… states`; `+` instead of `-` marks elements that were not in your previous snapshot. Hidden, covered and off-screen elements are left out; a note says how many are above or below. Invalid fields show invalid="message"; scroll containers show how far they are scrolled. Act on elements through these refs. filter "interactive" (default) lists controls, including elements that only look clickable; "all" adds text and structure. scope "page" lists the whole page; narrow large pages with depth or a ref subtree. Refs stay valid while their element stays in the document.',
   },
   browser_find: {
     method: "browser.find",
@@ -80,7 +80,7 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     title: "Find elements",
     readOnly: true,
     description:
-      "Search elements by role, name or value (case-insensitive text, or a regex with regex: true). Returns up to 20 refs with their context; cheaper than a full snapshot when you know what you need.",
+      "Search elements by role, name or value (case-insensitive text, or a regex with regex: true). Returns up to 20 refs with their context and the text of the table row or list item each sits in; cheaper than a full snapshot when you know what you need.",
   },
   browser_get_text: {
     method: "browser.getText",
@@ -159,7 +159,7 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     title: "Scroll",
     readOnly: false,
     description:
-      "Scroll the page by direction and amount in CSS px (default about one screen), or bring ref into view; with ref and direction, scroll inside that element.",
+      "Scroll the page by direction and amount in CSS px (default most of a screen), or bring ref into view; with ref and direction, scroll the scroll container at ref (a sidebar, a long list). Reports the new position and what newly appeared.",
     action: true,
   },
   browser_screenshot: {

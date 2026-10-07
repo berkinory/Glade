@@ -196,7 +196,9 @@ export async function selectOptions(
 async function selectInFill(cdp: CdpSession, refs: RefTable, ref: string, value: string) {
   const outcome = await selectCustom(cdp, refs, ref, [value]);
   await new Promise((resolve) => setTimeout(resolve, FILL_SELECT_SETTLE_MS));
-  const after = await outcome.afterSettle?.({ optionsAdded: 0 }).catch(() => ({ text: "" }));
+  const after = await outcome
+    .afterSettle?.({ optionsAdded: 0, newItems: 0, newTexts: [] })
+    .catch(() => ({ text: "" }));
   return `${outcome.line}${after?.text ?? ""}`;
 }
 

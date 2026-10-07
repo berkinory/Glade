@@ -12,6 +12,8 @@ const FIND_MAX_MATCHES = 20;
 const REGEX_TIMEOUT_MS = 250;
 // How far past the viewport the default snapshot reaches, in CSS pixels.
 const SCOPE_MARGIN = 800;
+// A find match inside one of these carries the whole row's or item's text.
+const ROW_ROLES = new Set(["row", "listitem", "article", "treeitem", "option"]);
 
 function findByRef(nodes: readonly SnapshotNode[], ref: string): SnapshotNode | undefined {
   for (const node of nodes) {
@@ -20,6 +22,31 @@ function findByRef(nodes: readonly SnapshotNode[], ref: string): SnapshotNode | 
     if (found) return found;
   }
   return undefined;
+}
+
+// What a row or item shows: text, and names of elements whose text was folded into their name
+// (table cells, links).
+const shownText = (nodes: readonly SnapshotNode[]): string =>
+  nodes
+    .map((node) =>
+      node.role === "text"
+        ? node.name
+        : [node.name, shownText(node.children)].filter(Boolean).join(" "),
+    )
+    .filter(Boolean)
+    .join(" · ")
+    .replace(/\s+/gu, " ")
+    .trim();
+
+// Why nothing matched may be content that has not loaded yet; say where the page stands.
+function noMatchNote(tree: CollectedTree, loading: boolean): string {
+  if (loading) return "No elements matched. The page is still loading; search again in a moment.";
+  if (!tree.viewport) return "No elements matched.";
+  const { y, height, contentHeight } = tree.viewport;
+  const below = Math.round(((contentHeight - y - height) / height) * 10) / 10;
+  return below >= 0.5
+    ? `No elements matched in the loaded page. It continues ${below} screens below the viewport; content that loads as you scroll appears after browser_scroll.`
+    : "No elements matched. The viewport is at the end of the page; scroll once if it loads more there.";
 }
 
 function scopeNote(tree: CollectedTree): string | null {
@@ -102,8 +129,10 @@ export async function findElements(
   cdp: CdpSession,
   refs: RefTable,
   input: typeof BrowserFindInput.Type,
+  loading: boolean,
 ): Promise<string> {
-  const { roots: tree } = await collectTree(cdp, refs, null);
+  const collected = await collectTree(cdp, refs, null);
+  const tree = collected.roots;
   const candidates: Array<{ text: string; node: SnapshotNode; ancestors: SnapshotNode[] }> = [];
   const walk = (node: SnapshotNode, ancestors: SnapshotNode[]) => {
     // Role, name and value on separate lines so ^ and $ anchor to each field.
@@ -131,7 +160,12 @@ export async function findElements(
     const context = chain.slice(0, targetIndex).findLast((node) => node.name.length > 0);
     // Matched text inside an element is what the model searched for; show it.
     const text = entry.node.role === "text" && target.role !== "text" ? entry.node.name : undefined;
-    matches.push({ node: target, context, text });
+    const container = chain.findLast((node) => ROW_ROLES.has(node.role) && node !== target);
+    const rowText = container ? shownText(container.children) || container.name : "";
+    const row =
+      rowText && rowText !== target.name ? { role: container!.role, text: rowText } : undefined;
+    matches.push({ node: target, context, text, row });
   });
+  if (matches.length === 0) return noMatchNote(collected, loading);
   return renderMatches(matches.slice(0, FIND_MAX_MATCHES), matches.length);
 }

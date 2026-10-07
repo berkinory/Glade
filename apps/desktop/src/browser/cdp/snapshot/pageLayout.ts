@@ -23,6 +23,10 @@ interface CapturedDocument {
     readonly styles: ReadonlyArray<readonly number[]>;
     readonly bounds: ReadonlyArray<readonly number[]>;
     readonly paintOrders?: readonly number[];
+    // [scrollLeft, scrollTop, scrollWidth, scrollHeight] and [clientLeft, clientTop, clientWidth,
+    // clientHeight] per layout node, in CSS pixels.
+    readonly scrollRects?: ReadonlyArray<readonly number[]>;
+    readonly clientRects?: ReadonlyArray<readonly number[]>;
   };
   readonly scrollOffsetX?: number;
   readonly scrollOffsetY?: number;
@@ -41,6 +45,8 @@ const STYLES = [
   "background-color",
   "position",
   "pointer-events",
+  "overflow-x",
+  "overflow-y",
 ];
 const OPACITY = 0;
 const VISIBILITY = 1;
@@ -48,11 +54,22 @@ const CURSOR = 2;
 const BACKGROUND = 3;
 const POSITION = 4;
 const POINTER_EVENTS = 5;
+const OVERFLOW_X = 6;
+const OVERFLOW_Y = 7;
+const SCROLLING_OVERFLOW = new Set(["auto", "scroll", "overlay"]);
+// The document scrolls through the viewport, which the scope note already describes.
+const DOCUMENT_SCROLLERS = new Set(["HTML", "BODY"]);
 // Occluders are opaque enough to hide what is under them; a dimming backdrop counts.
 const OCCLUDER_MIN_ALPHA = 0.3;
 const OCCLUDER_MIN_OPACITY = 0.8;
 
 export type Placement = "visible" | "hidden" | "occluded" | "above" | "below";
+
+// How far a scroll container is scrolled, 0 to 100, along the axis it scrolls (vertical first).
+export interface ScrollState {
+  readonly axis: "vertical" | "horizontal";
+  readonly percent: number;
+}
 
 interface Element {
   readonly doc: number;
@@ -122,7 +139,7 @@ export class PageLayout {
     const [captured, metrics] = await Promise.all([
       cdp.send<Captured>(
         "DOMSnapshot.captureSnapshot",
-        { computedStyles: STYLES, includePaintOrder: true, includeDOMRects: false },
+        { computedStyles: STYLES, includePaintOrder: true, includeDOMRects: true },
         sessionId,
       ),
       cdp.send<{
@@ -171,6 +188,30 @@ export class PageLayout {
   isPassword(backendNodeId: number): boolean {
     const element = this.byBackendId.get(backendNodeId);
     return element ? this.attribute(element, "type")?.toLowerCase() === "password" : false;
+  }
+
+  // Null unless the element is a scroll container with content to scroll.
+  scrollState(backendNodeId: number): ScrollState | null {
+    const element = this.byBackendId.get(backendNodeId);
+    if (!element || element.layout < 0) return null;
+    const { doc, index, layout } = element;
+    const document = this.captured.documents[doc]!;
+    const name = this.captured.strings[document.nodes.nodeName[index]!];
+    if (name && DOCUMENT_SCROLLERS.has(name)) return null;
+    const scroll = document.layout.scrollRects?.[layout];
+    const client = document.layout.clientRects?.[layout];
+    if (!scroll || !client) return null;
+    const [left = 0, top = 0, width = 0, height = 0] = scroll;
+    const [, , clientWidth = 0, clientHeight = 0] = client;
+    const percent = (offset: number, range: number) =>
+      Math.min(100, Math.max(0, Math.round((offset / range) * 100)));
+    if (SCROLLING_OVERFLOW.has(this.style(doc, layout, OVERFLOW_Y)) && height > clientHeight + 1) {
+      return { axis: "vertical", percent: percent(top, height - clientHeight) };
+    }
+    if (SCROLLING_OVERFLOW.has(this.style(doc, layout, OVERFLOW_X)) && width > clientWidth + 1) {
+      return { axis: "horizontal", percent: percent(left, width - clientWidth) };
+    }
+    return null;
   }
 
   // Signals a pointer user would read as "this does something", for elements the accessibility

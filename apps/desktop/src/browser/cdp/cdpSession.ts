@@ -3,7 +3,7 @@ import { BrowserFailure, withTimeout } from "../browserFailure";
 
 export type CdpListener = (method: string, params: any, sessionId: string | undefined) => void;
 
-interface ChildTarget {
+export interface ChildTarget {
   readonly targetId: string;
   readonly parentSessionId: string | undefined;
 }
@@ -102,6 +102,11 @@ export class CdpSession {
 
   childTarget(sessionId: string): ChildTarget | undefined {
     return this.children.get(sessionId);
+  }
+
+  // Out-of-process iframes attached so far, nested ones included.
+  childTargets(): ChildTarget[] {
+    return [...this.children.values()];
   }
 
   detach(): void {

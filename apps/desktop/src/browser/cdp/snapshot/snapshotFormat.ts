@@ -68,15 +68,22 @@ export interface SnapshotMatch {
   readonly node: SnapshotNode;
   readonly context: SnapshotNode | undefined;
   readonly text: string | undefined;
+  // The row or item the match sits in, with its text, so a table cell carries its row's values.
+  readonly row?: { readonly role: string; readonly text: string } | undefined;
 }
 
+const MAX_ROW_CHARS = 160;
+
 export function renderMatches(matches: readonly SnapshotMatch[], total: number): string {
-  if (matches.length === 0) return "No elements matched.";
-  const lines = matches.map(({ node, context, text }) => {
+  const lines = matches.map(({ node, context, text, row }) => {
     const line = `${formatSnapshotLine(node, 0, false)}${text ? ` text=${quote(text)}` : ""}`;
-    return context
+    const head = context
       ? `${line}  (in ${context.role}${context.name ? ` ${quote(context.name)}` : ""})`
       : line;
+    if (!row) return head;
+    const flat =
+      row.text.length > MAX_ROW_CHARS ? `${row.text.slice(0, MAX_ROW_CHARS - 1)}…` : row.text;
+    return `${head}\n  ${row.role}: ${JSON.stringify(flat)}`;
   });
   if (total > matches.length)
     lines.push(`… ${total - matches.length} more matches; refine the query.`);

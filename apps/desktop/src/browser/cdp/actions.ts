@@ -2,13 +2,12 @@ import type {
   BrowserClickInput,
   BrowserDragInput,
   BrowserPressInput,
-  BrowserScrollInput,
   BrowserTarget,
 } from "@glade/contracts/browser/browserTools";
 import type { CdpSession } from "./cdpSession";
 import { dragBetween } from "./drag";
 import { modifierKey, modifierMask, parseKeyChord, pressKey } from "./keyboard";
-import { callOn, clickPoint, mouse, resolveTarget } from "./pointer";
+import { callOn, mouse, resolveTarget } from "./pointer";
 import type { RefTable } from "./refs";
 import type { ScreenshotFrame } from "./screenshotFrame";
 
@@ -131,32 +130,4 @@ export async function press(
     }
   }
   return `Pressed ${input.key}${(input.repeat ?? 1) > 1 ? ` ×${input.repeat}` : ""}.`;
-}
-
-export async function scroll(
-  cdp: CdpSession,
-  refs: RefTable,
-  input: typeof BrowserScrollInput.Type,
-): Promise<string> {
-  let origin: { x: number; y: number };
-  if (input.ref) {
-    origin = await clickPoint(cdp, refs, input.ref);
-    if (!input.direction) return `Scrolled ${refs.describe(input.ref)} into view.`;
-  } else {
-    const { cssLayoutViewport: viewport } = await cdp.send<{
-      cssLayoutViewport: { clientWidth: number; clientHeight: number };
-    }>("Page.getLayoutMetrics");
-    origin = { x: viewport.clientWidth / 2, y: viewport.clientHeight / 2 };
-  }
-  const direction = input.direction ?? "down";
-  const vertical = direction === "up" || direction === "down";
-  const amount = input.amount ?? Math.round((vertical ? origin.y : origin.x) * 1.6);
-  const sign = direction === "up" || direction === "left" ? -1 : 1;
-  await mouse(cdp, {
-    type: "mouseWheel",
-    ...origin,
-    deltaX: vertical ? 0 : sign * amount,
-    deltaY: vertical ? sign * amount : 0,
-  });
-  return `Scrolled ${direction} ${amount}px${input.ref ? ` inside ${refs.describe(input.ref)}` : ""}.`;
 }

@@ -97,7 +97,8 @@ export const BrowserSelectInput = Schema.Struct({
 export const BrowserScrollInput = Schema.Struct({
   ref: Schema.optional(BrowserRef),
   direction: Schema.optional(Schema.Literals(["up", "down", "left", "right"])),
-  amount: Schema.optional(Count(1, 20_000)),
+  // Long virtualized lists need jumps far past one screen.
+  amount: Schema.optional(Count(1, 1_000_000)),
   ...tab,
 });
 

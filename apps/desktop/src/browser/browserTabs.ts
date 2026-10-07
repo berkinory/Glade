@@ -255,7 +255,7 @@ export class BrowserTabs {
           canGoBack: tab.webContents.navigationHistory.canGoBack(),
           canGoForward: tab.webContents.navigationHistory.canGoForward(),
           active: this.activeByThread.get(tab.threadId) === tab.id,
-          dialog: tab.dialogs.current(),
+          dialog: tab.dialogs.current() ?? tab.challengeNotice(),
         })),
       );
     }, CHANGE_DEBOUNCE_MS);

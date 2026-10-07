@@ -83,7 +83,7 @@ export class PageDialogs {
     // A page cannot open a second dialog while one is open, but a stale one is never kept.
     if (this.pending) this.pending.answer(false, "");
     const dialog: BrowserPageDialog = {
-      type: info.dialogType,
+      type: info.dialogType === "alert" ? "alert" : "confirm",
       message: info.messageText.slice(0, MAX_MESSAGE_CHARS),
       audience: this.options.audience(),
     };

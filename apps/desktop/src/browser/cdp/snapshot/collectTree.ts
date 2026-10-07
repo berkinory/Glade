@@ -1,5 +1,6 @@
 import type { CdpSession } from "../cdpSession";
 import type { RefTable, RefTarget } from "../refs";
+import { invalidFields } from "./fieldValidation";
 import { PageLayout } from "./pageLayout";
 
 export interface SnapshotNode {
@@ -121,6 +122,7 @@ interface CollectContext {
   // Extra CSS pixels kept above and below the viewport; null keeps the whole page.
   readonly margin: number | null;
   readonly layouts: Map<string, Promise<PageLayout | null>>;
+  readonly invalid: Map<string, Promise<Map<number, string>>>;
   framesLeft: number;
   above: number;
   below: number;
@@ -138,19 +140,31 @@ function layoutFor(context: CollectContext, sessionId: string | undefined) {
   return layout;
 }
 
+// Validation is read once per session too; a page that refuses the script just shows no marks.
+function invalidFor(context: CollectContext, sessionId: string | undefined) {
+  const key = sessionId ?? "";
+  let invalid = context.invalid.get(key);
+  if (!invalid) {
+    invalid = invalidFields(context.cdp, sessionId).catch(() => new Map<number, string>());
+    context.invalid.set(key, invalid);
+  }
+  return invalid;
+}
+
 async function collectDocument(
   context: CollectContext,
   sessionId: string | undefined,
   frameId: string | undefined,
   frameDepth: number,
 ): Promise<SnapshotNode[]> {
-  const [{ nodes }, layout] = await Promise.all([
+  const [{ nodes }, layout, invalid] = await Promise.all([
     context.cdp.send<{ nodes: AxNode[] }>(
       "Accessibility.getFullAXTree",
       frameId ? { frameId } : {},
       sessionId,
     ),
     layoutFor(context, sessionId),
+    invalidFor(context, sessionId),
   ]);
   const byId = new Map(nodes.map((node) => [node.nodeId, node]));
   const root = nodes.find((node) => node.parentId === undefined) ?? nodes[0];
@@ -196,8 +210,16 @@ async function collectDocument(
       backendNodeId !== undefined &&
       layout?.looksClickable(backendNodeId) === true &&
       !hasInteractive(children);
-    const interactive = INTERACTIVE_ROLES.has(role) || clickable;
-    if (FLATTENED_ROLES.has(role) && !clickable) return children;
+    // Scroll containers are listed so browser_scroll can target them, generic ones included.
+    const scrolling =
+      backendNodeId !== undefined && placement === "visible"
+        ? (layout?.scrollState(backendNodeId) ?? null)
+        : null;
+    const interactive = INTERACTIVE_ROLES.has(role) || clickable || scrolling !== null;
+    const flattened = FLATTENED_ROLES.has(role);
+    if (flattened && !clickable && !scrolling) return children;
+    const shownRole = !flattened ? role : clickable ? "clickable" : "scrollable";
+    const label = clickable && !name.trim() ? textOf(children) : name;
     // Assigned before scope filtering, so an element scrolled into view later keeps its ref and
     // is not reported as new.
     const ref =
@@ -205,7 +227,7 @@ async function collectDocument(
         ? undefined
         : context.refs.refFor(
             { backendNodeId, sessionId, frameId: documentFrameId },
-            { role: clickable && FLATTENED_ROLES.has(role) ? "clickable" : role, name },
+            { role: shownRole, name: label },
           );
     const shown =
       placement === "visible" || (placement === "hidden" && KEPT_WHEN_INVISIBLE.has(role));
@@ -220,13 +242,23 @@ async function collectDocument(
     const nodeStates = states(node);
     // Password values never leave the page, not even masked.
     if (password && hasValue) nodeStates.push("filled");
+    const invalidMessage = backendNodeId === undefined ? undefined : invalid.get(backendNodeId);
+    if (invalidMessage !== undefined) {
+      nodeStates.push(invalidMessage ? `invalid=${JSON.stringify(invalidMessage)}` : "invalid");
+    }
+    if (clickable && !flattened) nodeStates.push("clickable");
+    if (scrolling) {
+      if (shownRole !== "scrollable") nodeStates.push("scrollable");
+      nodeStates.push(
+        `${scrolling.percent}% scrolled${scrolling.axis === "horizontal" ? " sideways" : ""}`,
+      );
+    }
     const value = !hasValue || password || String(rawValue) === name ? undefined : String(rawValue);
-    const label = clickable && !name.trim() ? textOf(children) : name;
     const out: SnapshotNode = {
-      role: clickable && FLATTENED_ROLES.has(role) ? "clickable" : role,
+      role: shownRole,
       name: label,
       value,
-      states: clickable && !FLATTENED_ROLES.has(role) ? [...nodeStates, "clickable"] : nodeStates,
+      states: nodeStates,
       ref,
       interactive,
       // Text that repeats the element's name or value adds tokens, not meaning; a password
@@ -290,6 +322,7 @@ export async function collectTree(
     refs,
     margin,
     layouts: new Map(),
+    invalid: new Map(),
     framesLeft: MAX_FRAMES,
     above: 0,
     below: 0,

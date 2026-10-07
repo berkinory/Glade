@@ -24,11 +24,13 @@ const WATCH = `(() => {
   const selector = 'a[href],button,input,select,textarea,summary,[role=button],[role=link],[role=menuitem],[role=tab],[role=option],[role=checkbox],[role=radio],[role=switch],[tabindex],[contenteditable=""],[contenteditable=true],[onclick]';
   let added = 0;
   let options = 0;
+  const items = [];
   let last = performance.now();
   const observer = new MutationObserver((records) => {
     last = performance.now();
     for (const record of records) for (const node of record.addedNodes) {
       if (node.nodeType !== 1) continue;
+      if (items.length < 500) items.push(node);
       if (node.matches(selector)) added += 1;
       added += node.querySelectorAll(selector).length;
       if (node.matches("[role=option]")) options += 1;
@@ -37,6 +39,22 @@ const WATCH = `(() => {
   });
   observer.observe(document, { subtree: true, childList: true, attributes: true, characterData: true });
   const stop = () => { observer.disconnect(); delete window[key]; };
+  // Added elements still shown with text, outermost only, each named by its first heading or line.
+  const summary = () => {
+    const shown = items.filter((node) => node.isConnected && !items.some((other) => other !== node && other.contains(node))
+      && (!node.checkVisibility || node.checkVisibility({ opacityProperty: true, visibilityProperty: true })));
+    const texts = [];
+    let count = 0;
+    for (const node of shown) {
+      const heading = node.querySelector("h1, h2, h3, h4, h5, h6");
+      const line = ((heading || node).innerText || "").split("\\n").map((part) => part.trim()).find(Boolean);
+      if (!line) continue;
+      count += 1;
+      const text = line.length > 80 ? line.slice(0, 79) + "…" : line;
+      if (texts.length < 8 && !texts.includes(text)) texts.push(text);
+    }
+    return { newItems: count, newTexts: texts };
+  };
   window[key] = {
     stop,
     settle: (quietMs, capMs) => new Promise((resolve) => {
@@ -44,7 +62,7 @@ const WATCH = `(() => {
       last = Math.max(last, started);
       const tick = () => {
         const now = performance.now();
-        if (now - last >= quietMs || now - started >= capMs) { stop(); resolve({ added, options }); }
+        if (now - last >= quietMs || now - started >= capMs) { stop(); resolve({ added, options, ...summary() }); }
         else setTimeout(tick, 20);
       };
       tick();
@@ -75,13 +93,20 @@ export interface ActionReport {
 // committed value, the options that appeared), appended to its line.
 export interface ActionOutcome {
   readonly line: string;
+  // The read after settling already says what appeared.
+  readonly reportsNewItems?: boolean;
   readonly afterSettle?: (settled: Settled) => Promise<ActionReport>;
 }
 
 export interface Settled {
   // Options ([role=option]) added to the main document while the action ran.
   readonly optionsAdded: number;
+  // Added elements still shown with text, and the first few of their headings or first lines.
+  readonly newItems: number;
+  readonly newTexts: readonly string[];
 }
+
+type Watched = { added: number; options: number; newItems: number; newTexts: string[] };
 
 export interface SettleOptions {
   // How long the action's own requests may take; uploads send more.
@@ -109,7 +134,7 @@ export async function actAndSettle(
   webContents.on("did-start-navigation", onNavigation);
   const requests = new ActionRequests(tab.cdp);
   let outcome: ActionOutcome;
-  let settled: { added: number; options: number } | undefined;
+  let settled: Watched | undefined;
   try {
     await evaluate(tab, WATCH, WATCH_SETUP_MS);
     const result = await action();
@@ -127,7 +152,7 @@ export async function actAndSettle(
     } else {
       await sleep(Math.max(0, actionEnded + REQUEST_WINDOW_MS - Date.now()));
       await requests.settle(options.requestsCapMs ?? REQUESTS_CAP_MS);
-      settled = await evaluate<{ added: number; options: number }>(
+      settled = await evaluate<Watched>(
         tab,
         `window[Symbol.for("glade.settle")]?.settle(${QUIET_MS}, ${QUIET_CAP_MS})`,
         QUIET_CAP_MS + 500,
@@ -139,7 +164,13 @@ export async function actAndSettle(
   }
   // The page may have navigated or replaced the element; the action itself already happened.
   const extra: ActionReport = outcome.afterSettle
-    ? await outcome.afterSettle({ optionsAdded: settled?.options ?? 0 }).catch(() => ({ text: "" }))
+    ? await outcome
+        .afterSettle({
+          optionsAdded: settled?.options ?? 0,
+          newItems: settled?.newItems ?? 0,
+          newTexts: settled?.newTexts ?? [],
+        })
+        .catch(() => ({ text: "" }))
     : { text: "" };
   const line = `${outcome.line}${extra.text}`;
   const after = tab.page();
@@ -147,7 +178,8 @@ export async function actAndSettle(
   if (after.url !== before.url) changes.push(`URL is now ${after.url}`);
   if (after.title !== before.title) changes.push(`title is now ${JSON.stringify(after.title)}`);
   const added = settled?.added;
-  if (added) changes.push(`${added} new interactive element${added === 1 ? "" : "s"} appeared`);
+  if (added && !outcome.reportsNewItems)
+    changes.push(`${added} new interactive element${added === 1 ? "" : "s"} appeared`);
   return {
     text: changes.length > 0 ? `${line} Then ${changes.join("; ")}.` : line,
     content: extra.content,
