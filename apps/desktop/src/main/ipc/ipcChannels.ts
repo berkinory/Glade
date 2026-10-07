@@ -41,6 +41,9 @@ export const DESKTOP_IPC_CHANNELS = {
   browserPlaceView: "desktop:browser-place-view",
   browserPickElement: "desktop:browser-pick-element",
   browserCancelPick: "desktop:browser-cancel-pick",
+  computerPermissionsGet: "desktop:computer-permissions-get",
+  computerPermissionsRequest: "desktop:computer-permissions-request",
+  computerPermissionsOpenSettings: "desktop:computer-permissions-open-settings",
 } as const;
 
 export const SERVER_TRANSCRIBE_VOICE_CHANNEL = DESKTOP_IPC_CHANNELS.transcribeVoice;

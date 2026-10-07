@@ -139,6 +139,11 @@ contextBridge.exposeInMainWorld("desktopBridge", {
   server: {
     transcribeVoice: (input) => ipcRenderer.invoke(IPC.transcribeVoice, input),
   },
+  computer: {
+    getPermissions: () => ipcRenderer.invoke(IPC.computerPermissionsGet),
+    requestPermissions: () => ipcRenderer.invoke(IPC.computerPermissionsRequest),
+    openSettings: () => ipcRenderer.invoke(IPC.computerPermissionsOpenSettings),
+  },
   browser: {
     placeView: (placement) => ipcRenderer.send(IPC.browserPlaceView, placement),
     pickElement: (target) => ipcRenderer.invoke(IPC.browserPickElement, target),

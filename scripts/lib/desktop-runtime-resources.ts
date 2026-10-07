@@ -1,7 +1,8 @@
 import { Effect, FileSystem, Path } from "effect";
 
-// Copying them into the runtime tree would ship megabytes of artwork the app never resolves.
-const BUNDLE_ONLY_RESOURCE_ENTRIES = new Set(["dmgly", "Assets.car", "Glade.icns"]);
+// Copying them into the runtime tree would ship megabytes the app never resolves there: bundle
+// artwork, and the Cua Driver, which electron-builder places in Resources outside ASAR.
+const BUNDLE_ONLY_RESOURCE_ENTRIES = new Set(["dmgly", "Assets.car", "Glade.icns", "cua-driver"]);
 
 export const stageDesktopRuntimeResources = Effect.fn("stageDesktopRuntimeResources")(function* (
   buildResourcesDir: string,

@@ -2,8 +2,12 @@ import { app, BrowserWindow, protocol } from "electron";
 import { isBackendReadinessAborted } from "../backend/backendReadiness";
 import { createBackendSupervisor } from "../backend/backendSupervisor";
 import { startDesktopHost, type DesktopHost } from "../hostRpc/startDesktopHost";
+import { resolveCuaBinary } from "../computer/cuaBinary";
+import { createComputerPermissions } from "../computer/cuaPermissions";
+import * as Path from "node:path";
 import {
   DESKTOP_SCHEME,
+  desktopIdentity,
   isDevelopment,
   shellEnvironmentSync,
   userDataPath,
@@ -53,6 +57,7 @@ export function createDesktopRuntime(): void {
   const hasSingleInstanceLock = app.requestSingleInstanceLock();
   const identity = createAppIdentity(resources, () => windows.getMainWindow());
   let desktopHost: DesktopHost | null = null;
+  const computerPermissions = createComputerPermissions(process.platform);
   const backend = createBackendSupervisor({
     desktopHost: { connection: () => desktopHost },
     log,
@@ -99,6 +104,7 @@ export function createDesktopRuntime(): void {
   });
   const lifecycle = createDesktopShutdown({
     backend,
+    computer: { stop: async () => desktopHost?.computer.stop() },
     getMainWindow: windows.getMainWindow,
     updates,
     log,
@@ -117,6 +123,7 @@ export function createDesktopRuntime(): void {
       isQuitting: lifecycle.isQuitting,
     },
     desktopHost: () => desktopHost,
+    computerPermissions,
   });
   protocol.registerSchemesAsPrivileged([
     {
@@ -140,7 +147,24 @@ export function createDesktopRuntime(): void {
 
     await backend.reserveBackendEndpoint("bootstrap");
     try {
-      desktopHost = await startDesktopHost({ gladePorts: () => gladePorts(backend.getHttpUrl()) });
+      desktopHost = await startDesktopHost({
+        gladePorts: () => gladePorts(backend.getHttpUrl()),
+        computer: {
+          // Packaged builds keep the driver outside ASAR in Resources; source runs use the copy
+          // scripts/fetch-cua-driver.mjs placed in apps/desktop/resources.
+          binary: resolveCuaBinary({
+            resourcesDir: app.isPackaged
+              ? Path.join(process.resourcesPath, "cua-driver")
+              : Path.resolve(__dirname, "../resources/cua-driver"),
+            platform: process.platform,
+            arch: process.arch,
+            packaged: app.isPackaged,
+          }),
+          permissions: computerPermissions,
+          hostBundleId: desktopIdentity.bundleId,
+          log: log.writeDesktopLogHeader,
+        },
+      });
       app.once("will-quit", () => void desktopHost?.close());
     } catch (error) {
       log.writeDesktopLogHeader(`desktop host unavailable message=${formatErrorMessage(error)}`);

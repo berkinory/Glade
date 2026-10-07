@@ -306,6 +306,14 @@ export interface DesktopNotificationPermission {
   readonly canOpenSettings: boolean;
 }
 
+// Computer Use needs Accessibility and Screen Recording on macOS; other platforms report
+// "not-applicable".
+export interface DesktopComputerPermissions {
+  readonly status: "granted" | "missing" | "not-applicable";
+  readonly accessibility: boolean;
+  readonly screenRecording: boolean;
+}
+
 export interface DesktopNotificationInput {
   title: string;
   body?: string;
@@ -436,6 +444,12 @@ export interface DesktopBridge {
     transcribeVoice: (
       input: ServerVoiceTranscriptionInput,
     ) => Promise<ServerVoiceTranscriptionResult>;
+  };
+  computer?: {
+    getPermissions: () => Promise<DesktopComputerPermissions>;
+    // Prompts for Accessibility; Screen Recording has no prompt, so openSettings opens its pane.
+    requestPermissions: () => Promise<DesktopComputerPermissions>;
+    openSettings: () => Promise<void>;
   };
   browser?: {
     placeView: (placement: BrowserViewPlacement) => void;

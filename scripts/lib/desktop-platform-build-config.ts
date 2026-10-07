@@ -9,6 +9,10 @@ import {
 
 const MICROPHONE_USAGE_DESCRIPTION =
   "Glade needs microphone access so you can record voice notes and transcribe them into the chat composer.";
+const COMPUTER_USE_ACCESSIBILITY_DESCRIPTION =
+  "Glade controls the apps and windows you allow for Computer Use.";
+const COMPUTER_USE_SCREEN_CAPTURE_DESCRIPTION =
+  "Glade captures the windows you allow for Computer Use.";
 const MAC_ENTITLEMENTS_PATH = "apps/desktop/resources/entitlements.mac.plist";
 const MAC_INHERITED_ENTITLEMENTS_PATH = "apps/desktop/resources/entitlements.mac.inherit.plist";
 const WINDOWS_INSTALLER_GUID = "5ae5e85a-0788-48c2-ab48-b8fd29cfc1e1";
@@ -19,6 +23,12 @@ const MAC_ICON_ASSETS_CAR_STAGE_PATH = "apps/desktop/resources/Assets.car";
 const MAC_ICON_ASSETS_CAR_BUNDLE_PATH = "Resources/Assets.car";
 const MAC_DMG_ICON_PATH = "icon.icns";
 const NODE_PTY_ASAR_UNPACK_GLOBS = ["node_modules/node-pty/**"] as const;
+// The Cua SDK passes dlopen a library path next to its own files, so it runs from app.asar.unpacked.
+const CUA_SDK_ASAR_UNPACK_GLOBS = ["node_modules/@trycua/**", "node_modules/@ubjs/**"] as const;
+// scripts/fetch-cua-driver.mjs places the build host's verified executable here; it ships outside
+// ASAR so it keeps its executable bit and code signature.
+const CUA_DRIVER_STAGE_PATH = "apps/desktop/resources/cua-driver";
+const CUA_DRIVER_MAC_BUNDLE_PATH = "Contents/Resources/cua-driver/darwin-universal/cua-driver";
 
 export interface DesktopPlatformBuildConfig {
   readonly afterSign?: string;
@@ -79,8 +89,13 @@ export function createDesktopPlatformBuildConfig(
     diagnostics: preserveDependencyDiagnostics(process.env),
   });
   const nativePackaging = {
-    asarUnpack: [...NODE_PTY_ASAR_UNPACK_GLOBS, "apps/desktop/native-dist/*.node"],
-    files,
+    asarUnpack: [
+      ...NODE_PTY_ASAR_UNPACK_GLOBS,
+      ...CUA_SDK_ASAR_UNPACK_GLOBS,
+      "apps/desktop/native-dist/*.node",
+    ],
+    files: [...files, `!${CUA_DRIVER_STAGE_PATH}/**`],
+    extraResources: [{ from: CUA_DRIVER_STAGE_PATH, to: "cua-driver" }],
   };
 
   if (input.platform === "mac") {
@@ -97,10 +112,15 @@ export function createDesktopPlatformBuildConfig(
         : {}),
       entitlements: MAC_ENTITLEMENTS_PATH,
       entitlementsInherit: MAC_INHERITED_ENTITLEMENTS_PATH,
+      // Signed with the app identity before the app itself, so the driver runs under Glade's
+      // signature and its TCC grants.
+      binaries: [CUA_DRIVER_MAC_BUNDLE_PATH],
       x64ArchFiles:
-        "Contents/{Resources/app.asar.unpacked/node_modules/**/darwin-*/**,Resources/app.asar.unpacked/node_modules/**/*-darwin-*/**}",
+        "Contents/{Resources/cua-driver/**,Resources/app.asar.unpacked/node_modules/**/darwin-*/**,Resources/app.asar.unpacked/node_modules/**/*-darwin-*/**}",
       extendInfo: {
         NSMicrophoneUsageDescription: MICROPHONE_USAGE_DESCRIPTION,
+        NSAccessibilityUsageDescription: COMPUTER_USE_ACCESSIBILITY_DESCRIPTION,
+        NSScreenCaptureUsageDescription: COMPUTER_USE_SCREEN_CAPTURE_DESCRIPTION,
         CFBundleIconName: MAC_ICON_ASSET_NAME,
       },
     } satisfies Record<string, unknown>;
@@ -125,7 +145,7 @@ export function createDesktopPlatformBuildConfig(
 
         writeUpdateInfo: false,
       },
-      files: [...files, "apps/desktop/native-dist/*.node"],
+      files: [...nativePackaging.files, "apps/desktop/native-dist/*.node"],
       extraFiles: [
         {
           from: MAC_ICON_ASSETS_CAR_STAGE_PATH,

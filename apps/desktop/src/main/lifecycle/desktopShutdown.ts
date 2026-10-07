@@ -20,8 +20,12 @@ interface ShutdownUpdates {
 interface DisposableDomain {
   dispose(): void;
 }
+interface StoppableDomain {
+  stop(): Promise<void>;
+}
 export interface ShutdownDependencies {
   backend: ShutdownBackend;
+  computer: StoppableDomain;
   getMainWindow(): BrowserWindow | null;
   updates: ShutdownUpdates;
   log: DesktopLog;
@@ -30,6 +34,7 @@ export interface ShutdownDependencies {
 }
 export function createDesktopShutdown({
   backend,
+  computer,
   getMainWindow,
   updates,
   log,
@@ -62,8 +67,9 @@ export function createDesktopShutdown({
     isQuitting = true;
     hideDesktopWindowForImmediateQuit();
     log.writeDesktopLogHeader(`${reason} shutdown start`);
+    // The Cua daemon is a child of this process; quitting waits for it like the backend.
     const shutdown = runAfterDesktopShutdown(
-      backend.stopBackendAndWaitForExit(),
+      Promise.all([backend.stopBackendAndWaitForExit(), computer.stop()]).then(() => undefined),
       async () => {
         updates.clearTimers();
         backend.cancelBackendReadinessWait();

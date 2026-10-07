@@ -4,18 +4,19 @@
   "private": true,
   "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "bun run scripts/dev.mjs",
+    "dev": "node scripts/fetch-cua-driver.mjs && bun run scripts/dev.mjs",
     "dev:build": "bun run scripts/start-electron.mjs",
     "build:dev": "bun run build",
     "dev:bundle": "tsdown --watch",
     "dev:electron": "bun run scripts/dev-electron.mjs",
-    "build": "node scripts/build-notification-permissions.mjs && tsdown",
+    "build": "node scripts/build-notification-permissions.mjs && node scripts/fetch-cua-driver.mjs && tsdown",
     "start": "bun run scripts/start-electron.mjs",
     "typecheck": "bun ../../node_modules/@typescript/native/bin/tsc --noEmit --tsBuildInfoFile node_modules/.cache/typescript-native.tsbuildinfo",
     "test": "vitest run --passWithNoTests",
     "smoke-test": "bun scripts/smoke-test.mjs"
   },
   "dependencies": {
+    "@trycua/cua-driver": "0.34.0",
     "effect": "catalog:",
     "electron": "43.5.0",
     "electron-updater": "^6.6.2"
