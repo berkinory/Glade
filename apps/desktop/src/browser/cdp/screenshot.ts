@@ -1,5 +1,5 @@
 import type { BrowserZoomInput } from "@glade/contracts/browser/browserTools";
-import { BaseWindow, WebContentsView, type WebContents } from "electron";
+import type { WebContents } from "electron";
 import { BrowserFailure, withTimeout } from "../browserFailure";
 import { elementBounds } from "./pointer";
 import type { CdpSession } from "./cdpSession";
@@ -9,7 +9,7 @@ import { viewportRegion, type ScreenshotFrame } from "./screenshotFrame";
 const MAX_EDGE_PX = 1280;
 const JPEG_QUALITY = 70;
 const CAPTURE_TIMEOUT_MS = 8_000;
-const FALLBACK_TIMEOUT_MS = 3_000;
+const COMPOSITOR_TIMEOUT_MS = 3_000;
 // A zoom on a small region renders it larger than on screen, for detail.
 const MAX_ZOOM_SCALE = 2;
 
@@ -32,16 +32,6 @@ interface Rect {
   readonly height: number;
 }
 
-function inMinimizedWindow(webContents: WebContents): boolean {
-  return BaseWindow.getAllWindows().some(
-    (window) =>
-      window.isMinimized() &&
-      window.contentView.children.some(
-        (view) => view instanceof WebContentsView && view.webContents === webContents,
-      ),
-  );
-}
-
 // Downscaled to a fixed longest edge and clipped in viewport CSS pixels.
 async function capture(
   cdp: CdpSession,
@@ -58,9 +48,10 @@ async function capture(
   const scale = Math.min(maxScale, MAX_EDGE_PX / (Math.max(rect.width, rect.height) * deviceScale));
   const width = Math.round(rect.width * scale * deviceScale);
   const height = Math.round(rect.height * scale * deviceScale);
-  // The window-level capture renders a frame on demand; Chromium may have stopped compositing a
-  // view that is not on screen, and on Windows it stops every view of a minimized window.
-  const captureWindow = async (): Promise<CapturedImage | null> => {
+  // The compositor copy comes first: Page.captureScreenshot with a scaled clip re-lays the live
+  // page out at that scale for a moment, which the user sees as the page shrinking in the panel.
+  // It also renders a frame on demand for a view that is not on screen.
+  const captureCompositor = async (): Promise<CapturedImage | null> => {
     const image = await withTimeout(
       webContents.capturePage({
         x: Math.round(rect.x),
@@ -68,39 +59,31 @@ async function capture(
         width: Math.round(rect.width),
         height: Math.round(rect.height),
       }),
-      FALLBACK_TIMEOUT_MS,
-      "Screenshot fallback",
+      COMPOSITOR_TIMEOUT_MS,
+      "Screenshot",
     ).catch(() => null);
     if (!image || image.isEmpty()) return null;
     const resized = image.resize({ width, height, quality: "good" });
     return { data: resized.toJPEG(JPEG_QUALITY).toString("base64"), width, height };
   };
-  if (process.platform === "win32" && inMinimizedWindow(webContents)) {
-    const image = await captureWindow();
-    if (image) return image;
-  }
-  try {
-    const { data } = await withTimeout(
-      cdp.send<{ data: string }>("Page.captureScreenshot", {
-        format: "jpeg",
-        quality: JPEG_QUALITY,
-        clip: {
-          x: rect.x + metrics.cssVisualViewport.pageX,
-          y: rect.y + metrics.cssVisualViewport.pageY,
-          width: rect.width,
-          height: rect.height,
-          scale,
-        },
-      }),
-      CAPTURE_TIMEOUT_MS,
-      "Screenshot",
-    );
-    return { data, width, height };
-  } catch (error) {
-    const image = await captureWindow();
-    if (!image) throw error;
-    return image;
-  }
+  const image = await captureCompositor();
+  if (image) return image;
+  const { data } = await withTimeout(
+    cdp.send<{ data: string }>("Page.captureScreenshot", {
+      format: "jpeg",
+      quality: JPEG_QUALITY,
+      clip: {
+        x: rect.x + metrics.cssVisualViewport.pageX,
+        y: rect.y + metrics.cssVisualViewport.pageY,
+        width: rect.width,
+        height: rect.height,
+        scale,
+      },
+    }),
+    CAPTURE_TIMEOUT_MS,
+    "Screenshot",
+  );
+  return { data, width, height };
 }
 
 // The whole viewport; `frame` maps points on the image back to the viewport.

@@ -1,11 +1,16 @@
 import type { BrowserViewPlacement } from "@glade/contracts/browser/browserView";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { visibleOverlayElements } from "~/lib/keyboardOverlay";
 
 // Long enough to cover the slowest panel and sidebar slide.
 const FOLLOW_TRANSITION_MS = 450;
 const LAYOUT_TRANSITION = /width|height|left|right|top|bottom|inset|translate|transform|margin/u;
+
+// How long a cover waits for the page's frozen frame before taking the view off without one.
+const FREEZE_WAIT_MS = 150;
+// The frozen frame stays under the view a moment after it returns, so no blank frame shows.
+const UNFREEZE_DELAY_MS = 100;
 
 const intersects = (a: DOMRect, b: DOMRect) =>
   a.right > b.left && a.left < b.right && a.bottom > b.top && a.top < b.bottom;
@@ -44,35 +49,84 @@ function watchPortals(onChange: () => void): () => void {
   };
 }
 
-// Keeps the thread's active tab view over `element` while it is laid out and uncovered.
+// Keeps the thread's active tab view over `element` while it is laid out and uncovered. While Glade
+// UI covers it, returns the page's frozen frame for the caller to show in its place.
 export function useBrowserViewPlacement(
   threadId: ThreadId,
   tabId: string | null,
   element: HTMLElement | null,
-): void {
+): string | null {
+  const [frozenFrame, setFrozenFrame] = useState<string | null>(null);
+
   useEffect(() => {
     const bridge = window.desktopBridge?.browser;
     if (!bridge) return;
     let placedKey = "";
+    let viewShown = false;
     let coverDirty = true;
     let covered = false;
     let lastRectKey = "";
+    // Bumped whenever a pending freeze must be dropped.
+    let freezeGeneration = 0;
+    let freezeState: "none" | "pending" | "ready" = "none";
+    let unfreezeTimer: ReturnType<typeof setTimeout> | undefined;
     const place = (tab: BrowserViewPlacement["tab"]) => {
       // The desktop scales by page zoom, which changes devicePixelRatio but not the CSS rect.
       const key = `${JSON.stringify(tab)}@${window.devicePixelRatio}`;
+      viewShown = tab !== null;
       if (key === placedKey) return;
       placedKey = key;
       bridge.placeView({ threadId, tab });
     };
+    const unfreeze = () => {
+      freezeGeneration += 1;
+      if (freezeState === "none") return;
+      freezeState = "none";
+      clearTimeout(unfreezeTimer);
+      unfreezeTimer = setTimeout(() => setFrozenFrame(null), UNFREEZE_DELAY_MS);
+    };
+    // Keeps the view up until its frozen frame is painted underneath, then takes it off.
+    const freeze = (activeTabId: string) => {
+      freezeState = "pending";
+      const generation = ++freezeGeneration;
+      clearTimeout(unfreezeTimer);
+      const timeout = new Promise<null>((resolve) => setTimeout(resolve, FREEZE_WAIT_MS, null));
+      void Promise.race([bridge.freezeFrame({ threadId, tabId: activeTabId }), timeout])
+        .catch(() => null)
+        .then((frame) => {
+          if (generation !== freezeGeneration) return;
+          if (frame) setFrozenFrame(frame);
+          // Two frames: React commits the image, then the compositor paints it.
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => {
+              if (generation !== freezeGeneration) return;
+              freezeState = "ready";
+              sync();
+            }),
+          );
+        });
+    };
     const sync = () => {
-      if (!element || !tabId) return place(null);
+      if (!element || !tabId) {
+        unfreeze();
+        return place(null);
+      }
       const rect = element.getBoundingClientRect();
       const rectKey = `${rect.x},${rect.y},${rect.width},${rect.height}`;
       if (coverDirty || rectKey !== lastRectKey) covered = isCovered(rect);
       coverDirty = false;
       lastRectKey = rectKey;
       const { x, y, width, height } = rect;
-      place(width < 1 || height < 1 || covered ? null : { tabId, bounds: { x, y, width, height } });
+      if (width < 1 || height < 1) {
+        unfreeze();
+        return place(null);
+      }
+      if (!covered) {
+        unfreeze();
+        return place({ tabId, bounds: { x, y, width, height } });
+      }
+      if (freezeState === "ready" || (!viewShown && freezeState === "none")) return place(null);
+      if (freezeState === "none") freeze(tabId);
     };
 
     let frame = 0;
@@ -103,6 +157,9 @@ export function useBrowserViewPlacement(
     document.addEventListener("transitionrun", follow, true);
     document.addEventListener("transitionend", schedule, true);
     return () => {
+      freezeGeneration += 1;
+      clearTimeout(unfreezeTimer);
+      setFrozenFrame(null);
       cancelAnimationFrame(frame);
       resizeObserver.disconnect();
       stopWatchingPortals();
@@ -117,4 +174,6 @@ export function useBrowserViewPlacement(
     () => () => window.desktopBridge?.browser?.placeView({ threadId, tab: null }),
     [threadId],
   );
+
+  return frozenFrame;
 }

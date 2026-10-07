@@ -149,6 +149,7 @@ contextBridge.exposeInMainWorld("desktopBridge", {
     pickElement: (request) => ipcRenderer.invoke(IPC.browserPickElement, request),
     cancelPick: (threadId) => ipcRenderer.send(IPC.browserCancelPick, threadId),
     capture: (target) => ipcRenderer.invoke(IPC.browserCapture, target),
+    freezeFrame: (target) => ipcRenderer.invoke(IPC.browserFreezeFrame, target),
     toggleDevTools: (target) => ipcRenderer.send(IPC.browserToggleDevTools, target),
     clearSiteData: (target) => ipcRenderer.invoke(IPC.browserClearSiteData, target),
     contentBlocker: {

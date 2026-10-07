@@ -461,6 +461,9 @@ export interface DesktopBridge {
     cancelPick: (threadId: string) => void;
     // What the tab shows on screen, as a JPEG.
     capture: (target: BrowserTabTarget) => Promise<BrowserCapture>;
+    // The tab's last composited frame as a JPEG data URL, outside the tab's operation queue, to
+    // stand in for the view while Glade UI covers it. Null when nothing has been painted.
+    freezeFrame: (target: BrowserTabTarget) => Promise<string | null>;
     toggleDevTools: (target: BrowserTabTarget) => void;
     // Clears cookies, storage and cache of the tab's site, then reloads the tab.
     clearSiteData: (target: BrowserTabTarget) => Promise<void>;

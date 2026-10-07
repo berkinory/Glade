@@ -42,6 +42,7 @@ export const DESKTOP_IPC_CHANNELS = {
   browserPickElement: "desktop:browser-pick-element",
   browserCancelPick: "desktop:browser-cancel-pick",
   browserCapture: "desktop:browser-capture",
+  browserFreezeFrame: "desktop:browser-freeze-frame",
   browserToggleDevTools: "desktop:browser-toggle-devtools",
   browserClearSiteData: "desktop:browser-clear-site-data",
   browserContentBlockerGet: "desktop:browser-content-blocker-get",

@@ -87,6 +87,12 @@ export function registerBrowserViewIpc(desktopHost: () => DesktopHost | null): v
     return { data, mimeType: "image/jpeg" as const };
   });
 
+  ipcMain.removeHandler(DESKTOP_IPC_CHANNELS.browserFreezeFrame);
+  ipcMain.handle(DESKTOP_IPC_CHANNELS.browserFreezeFrame, async (_event, raw: unknown) => {
+    const image = await targetTab(raw).webContents.capturePage();
+    return image.isEmpty() ? null : `data:image/jpeg;base64,${image.toJPEG(85).toString("base64")}`;
+  });
+
   ipcMain.removeAllListeners(DESKTOP_IPC_CHANNELS.browserToggleDevTools);
   ipcMain.on(DESKTOP_IPC_CHANNELS.browserToggleDevTools, (_event, raw: unknown) => {
     const { webContents } = targetTab(raw);

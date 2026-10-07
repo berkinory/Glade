@@ -46,7 +46,7 @@ function BrowserPanelContent(props: { threadId: ThreadId; onClose: () => void })
   const activeTab = tabs?.find((tab) => tab.active) ?? null;
   const [contentElement, setContentElement] = useState<HTMLDivElement | null>(null);
   const gutterClassName = useDesktopTopBarWindowControlsGutterClassName();
-  useBrowserViewPlacement(threadId, activeTab?.tabId ?? null, contentElement);
+  const frozenFrame = useBrowserViewPlacement(threadId, activeTab?.tabId ?? null, contentElement);
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
@@ -107,6 +107,14 @@ function BrowserPanelContent(props: { threadId: ThreadId; onClose: () => void })
       />
       {/* The active tab's native view is placed over this box. */}
       <div ref={setContentElement} className="relative min-h-0 flex-1">
+        {frozenFrame ? (
+          <img
+            src={frozenFrame}
+            alt=""
+            aria-hidden
+            className="pointer-events-none absolute inset-0 size-full object-fill select-none"
+          />
+        ) : null}
         {tabs === null ? (
           <PanelStateMessage loadingLabel="Loading browser" />
         ) : tabs.length === 0 ? (
