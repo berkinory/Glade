@@ -11,7 +11,13 @@ import {
   type WindowInput,
 } from "./computerCalls.ts";
 import { yieldToUser } from "./computerActions.ts";
-import { ellipsisVariant, matchMenuTitle, menuSegments, menuTitles } from "./menuPath.ts";
+import {
+  ellipsisVariant,
+  gtkMenuItems,
+  matchMenuTitle,
+  menuSegments,
+  menuTitles,
+} from "./menuPath.ts";
 import { readWindow } from "./windowRead.ts";
 
 const MISSING_SEGMENT = /path segment (\d+) was not found/;
@@ -128,19 +134,13 @@ const pressInOpenMenu = (
     return withNote(result, `Ran menu ${ran.join(" ▸ ")}.`);
   });
 
-// Runs a menu bar item through Cua's exact-path invoke_menu, forgiving the ways models misspell
-// a path: case, a missing or extra ellipsis, shortcut suffixes, arrows in one string. A segment
-// Cua cannot find is resolved against the titles the window's tree lists at that level; when
-// none matches, the refusal carries those titles so the next call can name one.
-export const invokeMenu = (
+const runMenuPath = (
   services: ComputerToolServices,
   context: ToolContext,
   input: WindowInput,
-  path: string | ReadonlyArray<string>,
+  requested: ReadonlyArray<string>,
 ) =>
   Effect.gen(function* () {
-    const requested = menuSegments(path);
-    if (requested.length === 0) return yield* refuse("invalid_input", "menu_path is empty.");
     const attempt = (labels: ReadonlyArray<string>) =>
       callCuaResult(services, context, "invoke_menu", {
         pid: input.pid,
@@ -189,4 +189,95 @@ export const invokeMenu = (
     if (result.isError) return yield* refuseCuaError("invoke_menu", result);
     const ran = labels.join(" ▸ ");
     return ran === requested.join(" ▸ ") ? result : withNote(result, `Ran menu ${ran}.`);
+  });
+
+// GTK3 runs a dialog in a nested main loop inside the handler of the accessibility request that
+// opened it. Until the dialog closes the app answers no AT-SPI call on its bus connection, which
+// Cua uses, and the first key event it gets deadlocks it for good: at-spi2-atk's key snooper
+// re-enters the D-Bus dispatch still running below the dialog. A real pointer click opens the
+// dialog from X event dispatch instead. Menu items that open a dialog end in an ellipsis.
+const OPENS_DIALOG = /(?:…|\.\.\.)\s*$/u;
+
+const pressGtkMenuItem = (
+  services: ComputerToolServices,
+  context: ToolContext,
+  input: WindowInput,
+  requested: ReadonlyArray<string>,
+) =>
+  Effect.gen(function* () {
+    const parent = requested.slice(0, -1);
+    yield* runMenuPath(services, context, input, parent);
+    const deadline = Date.now() + MENU_OPEN_WAIT_MS;
+    let items: CuaElement[] = [];
+    for (;;) {
+      const read = yield* readWindow(services, context, input, { screenshot: "context" });
+      items = gtkMenuItems(
+        read.elements.map((entry) => entry.element),
+        parent.at(-1)!,
+      );
+      if (items.length > 0 || Date.now() >= deadline) break;
+      yield* Effect.sleep(MENU_OPEN_POLL_MS);
+    }
+    const title = matchMenuTitle(
+      requested.at(-1)!,
+      items.map((item) => item.label!),
+    );
+    const item = items.find((entry) => entry.label === title);
+    const above = parent.join(" ▸ ");
+    if (!item) {
+      const titles = items.map((entry) => entry.label!.trim());
+      return yield* refuse(
+        "menu_item_not_found",
+        `No menu item "${requested.at(-1)}" under "${above}", which is still open.${titles.length > 0 ? ` Available: ${titles.join(", ")}.` : ""}`,
+        { segment: requested.length - 1, requested: requested.at(-1), available: titles },
+      );
+    }
+    const label = item.label!.trim();
+    const target = { pid: input.pid, window_id: input.window_id };
+    if (!OPENS_DIALOG.test(label)) {
+      const result = yield* callCuaResult(services, context, "click", {
+        ...target,
+        element_token: item.element_token,
+      });
+      if (result.isError) return yield* refuseCuaError("click", result);
+      return withNote(result, `Ran menu ${above} ▸ ${label}.`);
+    }
+    // gtkMenuItems keeps only items with a position.
+    const frame = item.screenshot_frame!;
+    yield* windowFor(services, context, input, { scope: "full", action: "input" }).pipe(
+      Effect.catch(() =>
+        refuse(
+          "access_required",
+          `"${label}" opens a dialog. Pressed through accessibility, a dialog freezes GTK apps on Linux, so Glade clicks it with the real pointer, which needs full control. Call computer_request_access with scope "full" and run the same menu command again; the menu stays open until then.`,
+        ),
+      ),
+    );
+    yield* yieldToUser(services);
+    const result = yield* callCuaResult(services, context, "click", {
+      ...target,
+      x: frame.x + frame.w / 2,
+      y: frame.y + frame.h / 2,
+      delivery_mode: "foreground",
+    }).pipe(Effect.ensuring(Effect.sync(() => services.access.tasks.markRealInput())));
+    if (result.isError) return yield* refuseCuaError("click", result);
+    return withNote(result, `Ran menu ${above} ▸ ${label} with a real pointer click.`);
+  });
+
+// Runs a menu bar item through Cua's exact-path invoke_menu, forgiving the ways models misspell
+// a path: case, a missing or extra ellipsis, shortcut suffixes, arrows in one string. A segment
+// Cua cannot find is resolved against the titles the window's tree lists at that level; when
+// none matches, the refusal carries those titles so the next call can name one. On Linux the
+// last item is pressed in the opened menu, so one that opens a dialog gets a pointer click.
+export const invokeMenu = (
+  services: ComputerToolServices,
+  context: ToolContext,
+  input: WindowInput,
+  path: string | ReadonlyArray<string>,
+) =>
+  Effect.gen(function* () {
+    const requested = menuSegments(path);
+    if (requested.length === 0) return yield* refuse("invalid_input", "menu_path is empty.");
+    return yield* process.platform === "linux" && requested.length > 1
+      ? pressGtkMenuItem(services, context, input, requested)
+      : runMenuPath(services, context, input, requested);
   });

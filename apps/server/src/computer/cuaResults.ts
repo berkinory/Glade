@@ -89,6 +89,12 @@ export const CuaElement = Schema.Struct({
   parent_index: Schema.optional(Schema.NullOr(Schema.Int)),
   enabled: Schema.optional(Schema.Boolean),
   selected: Schema.optional(Schema.Boolean),
+  // In the pixels of the window's latest screenshot, which Cua's pixel clicks take.
+  screenshot_frame: Schema.optional(
+    Schema.NullOr(
+      Schema.Struct({ x: Schema.Number, y: Schema.Number, w: Schema.Number, h: Schema.Number }),
+    ),
+  ),
 });
 export type CuaElement = typeof CuaElement.Type;
 

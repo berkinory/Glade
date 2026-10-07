@@ -16,6 +16,12 @@ import {
 // is repeated at it.
 export const SHEET_READ_DEPTH = 5;
 
+// A GTK app goes deaf to AT-SPI while a dialog opened through an accessibility press is up, and
+// a key event then deadlocks it for good (see menuInvoke.ts); pointer input still gets through.
+const UNRESPONSIVE = "atspi_app_unresponsive";
+const FROZEN_DIALOG_HINT =
+  "On Linux this usually means a dialog opened through accessibility is up and the app ignores accessibility until it closes. Do not type or press keys in this app: that hangs it for good. Close the dialog with a foreground computer_left_click by coordinate on its Cancel button (find it with computer_screenshot), then open it again with its keyboard shortcut or computer_menu.";
+
 export interface WindowRead {
   readonly query?: string;
   readonly maxDepth?: number;
@@ -69,6 +75,9 @@ export const readWindow = (
             ? ["The tree was truncated; narrow with query or max_depth."]
             : []),
         ...(value.degraded_reason ? [`Degraded: ${value.degraded_reason}.`] : []),
+        ...(process.platform === "linux" && value.degraded_reason?.startsWith(UNRESPONSIVE)
+          ? [FROZEN_DIALOG_HINT]
+          : []),
       ],
     });
     return { result, notes, ...snapshot };

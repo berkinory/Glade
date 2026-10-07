@@ -71,6 +71,22 @@ export function menuTitles(
   return titles.length > 0 ? titles : null;
 }
 
+// The items of the open GTK menu titled `parent`, as Cua on Linux lists them: children of a "menu"
+// element. Only an open menu's items have a position on screen.
+export function gtkMenuItems(elements: ReadonlyArray<CuaElement>, parent: string): CuaElement[] {
+  const menus = elements.filter((element) => element.role === "menu" && element.label);
+  const title = matchMenuTitle(
+    parent,
+    menus.map((menu) => menu.label!),
+  );
+  const menu = menus.find((entry) => entry.label === title);
+  if (!menu) return [];
+  return elements.filter(
+    (element) =>
+      element.parent_index === menu.element_index && element.label && element.screenshot_frame,
+  );
+}
+
 // The one title that matches a requested segment; null when none or several do.
 export function matchMenuTitle(segment: string, titles: ReadonlyArray<string>) {
   const key = menuKey(segment);

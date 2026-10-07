@@ -7,11 +7,11 @@ const FILE_DIALOG_GUIDANCE =
       ? " In a GTK Open or Save dialog, set its name field to the full path with computer_set_value, then press its Save or Open button."
       : "";
 
-// On GTK/AT-SPI, opening a dialog from an accessibility menu press can freeze the app (Mousepad's
-// Save As froze even under a bare AT-SPI client) while its shortcut does not.
+// GTK apps freeze when accessibility opens a dialog (see menuInvoke.ts); computer_menu presses
+// such items with the pointer, and element clicks need the same treatment from the agent.
 const MENU_DIALOG_GUIDANCE =
   process.platform === "linux"
-    ? " On Linux open dialogs (Save, Save As, Open, Preferences) with their keyboard shortcut through computer_key, not computer_menu."
+    ? " On Linux a dialog opened through accessibility freezes its app, and a key sent to it then hangs the app for good: computer_menu clicks commands that open a dialog (titles ending in …) with the real pointer, which needs full control, or use the command's keyboard shortcut; click a button that opens a dialog by coordinate with delivery foreground."
     : "";
 
 // Cua refuses key chords to Windows 11 Notepad (WinUI) in either delivery mode; WinForms and WPF text
