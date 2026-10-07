@@ -135,6 +135,7 @@ Guidance in `harnessPolicy.ts` says: prefer structured, screenshot only after an
 ### Approval model
 
 - Browser Use needs no approval beyond gateway availability. Host policy, not the model, blocks `file:`, `chrome:`, `chrome-extension:`, `devtools:`, `view-source:` and `javascript:` URLs and every request to Glade's own backend and dev UI ports on loopback (`webRequest.onBeforeRequest` on the browser partition, so redirects, frames and fetches are covered too). Other loopback ports stay reachable: testing the user's local dev servers is a core use case, so the original "block loopback" rule was revised in Phase 2.
+- `browser_evaluate` is registered but hidden from `tools/list` and always refuses with `evaluate_disabled` until a per-thread setting exists. Phase 4 or 7 adds the setting UI, lists the tool when it is on, and adds the desktop `browser.evaluate` method.
 - Computer Use is off per thread by default. The user turns it on with the `/computer-use` slash command (one request) or the thread setting (sticky). The first action against an app or window produces a chat card asking for a grant with scope `read`, `act` or `full`; grants live for the thread and are listed in Settings. The server refuses tool calls outside a grant with a typed error the model can read.
 - Stop in the chat, or Escape while a task runs, cancels the task and clears foreground delivery for the turn.
 

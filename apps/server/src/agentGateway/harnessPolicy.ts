@@ -1,6 +1,7 @@
+import { BROWSER_GUIDANCE } from "./browser/browserGuidance.ts";
 import { NATIVE_SUBAGENT_INSTRUCTIONS } from "./subagentGuidance.ts";
 
-export const GLADE_HARNESS_POLICY_VERSION = "2026-10-07.2";
+export const GLADE_HARNESS_POLICY_VERSION = "2026-10-07.3";
 export const GLADE_HARNESS_POLICY_MARKER = `[Glade harness policy ${GLADE_HARNESS_POLICY_VERSION}]`;
 
 export interface GladeHarnessCapabilities {
@@ -26,6 +27,7 @@ export function renderGladeHarnessPolicy(capabilities: GladeHarnessCapabilities)
       ? [
           "Give a completion report: outcome, checks, limitations. Embed image artifacts as ![Result description](/absolute/path.png), also for generated images. No secrets or invented proof.",
           "Use html_render for useful visual replies: self-contained charts, diagrams, galleries, interactive tables and mockups. When the user asks to visualize something, show a visual in chat, or make an interactive view, publish it with html_render without requiring tool names or a second request; a Markdown table does not satisfy that request. Choose visuals autonomously when they materially improve understanding, but ordinary text or table requests do not require HTML. The visual appears inline in this chat. Publish straightforward visuals directly. Use html_preview only when a screenshot or console check is useful for complex visuals or debugging; it is optional and its first use downloads a pinned Chrome headless shell. Include meaningful HTML/SVG content visible before scripts run, then progressively enhance it with interactions. For interactive plans and tables, provide real editable inputs for task names, times and notes plus working completion controls, not just a decorative layout. Keep state in memory: localStorage, sessionStorage and IndexedDB are unavailable in the opaque sandbox, and edits are transient. Make visuals part of the reply, with transparent outer containers, fluid width and no outer padding, framing card or repeated banner title. Add a themed, rounded background only when the content requires a distinct inner surface or UI mockup. Keep visuals naturally sized rather than using viewport-height layouts. Follow the tool descriptions for public HTTP(S) resources, local assets, live theme variables and isolation. Do not repeat a published visual in the final answer.",
+          BROWSER_GUIDANCE,
         ]
       : []),
   ].join("\n\n");

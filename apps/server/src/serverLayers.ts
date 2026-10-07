@@ -9,6 +9,8 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { Layer } from "effect";
 
 import { AgentGatewayLive } from "./agentGateway/Layers/AgentGateway";
+import { BrowserHostLive } from "./browser/Layers/BrowserHost";
+import { DesktopHostClientLive } from "./desktopHost/Layers/DesktopHostClient";
 import { AgentGatewayOperationRepositoryLive } from "./agentGateway/Layers/AgentGatewayOperationRepository";
 import { AgentGatewayCredentialsWithSecretsLive } from "./agentGateway/Layers/AgentGatewayCredentials";
 import { CheckpointDiffQueryLive } from "./checkpointing/Layers/CheckpointDiffQuery";
@@ -140,6 +142,7 @@ function makeServerRuntimeServicesLayer(
     Layer.provide(Layer.mergeAll(GitLayerLive, sessionCredentialLayer)),
   );
   const agentGatewayLayer = AgentGatewayLive.pipe(
+    Layer.provideMerge(BrowserHostLive.pipe(Layer.provideMerge(DesktopHostClientLive))),
     Layer.provideMerge(VisualReplyPreviewLive),
     Layer.provideMerge(AppPresentationLive),
     Layer.provideMerge(agentGatewayCredentialsLayer),

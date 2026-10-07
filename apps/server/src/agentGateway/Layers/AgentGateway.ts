@@ -2,6 +2,8 @@ import { makeVisualReplyTools } from "../visualReplyTools";
 import { VisualReplyPreview } from "../../visualReplies/Services/VisualReplyPreview";
 import { ManagedAttachmentRepository } from "../../persistence/Services/ManagedAttachments";
 import { FileSystem, Path } from "effect";
+import { BrowserHost } from "../../browser/Services/BrowserHost";
+import { makeBrowserTools } from "../browser/browserTools";
 import { AppPresentation } from "../Services/AppPresentation";
 import { CheckpointDiffQuery } from "../../checkpointing/Services/CheckpointDiffQuery";
 import { makeThreadDiffTools } from "../threadDiffTools";
@@ -93,6 +95,10 @@ const makeAgentGateway = Effect.gen(function* () {
   const providerRuntimeEvents = yield* ProviderRuntimeEventRepository;
   const diagnostics = yield* ThreadDiagnosticsQuery;
   const serverConfig = yield* ServerConfig;
+  const browserHost = Option.filter(
+    yield* Effect.serviceOption(BrowserHost),
+    (host) => host.available,
+  );
   const loadProviderAvailabilities = Effect.gen(function* () {
     const [settings, statuses] = yield* Effect.all([
       serverSettings.getSettings,
@@ -566,6 +572,9 @@ const makeAgentGateway = Effect.gen(function* () {
     setThreadTitle,
     setThreadPullRequest,
     setThreadArchived,
+    ...(Option.isSome(browserHost)
+      ? makeBrowserTools({ host: browserHost.value, snapshots: snapshotQuery, fs, path })
+      : []),
   ];
 
   return {
