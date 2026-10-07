@@ -49,3 +49,12 @@ export const ComputerEncodedImage = Schema.Struct({
   height: Schema.Int,
 });
 export type ComputerEncodedImage = typeof ComputerEncodedImage.Type;
+
+// Server → desktop: seconds since the user last used the mouse or keyboard anywhere, in whole
+// seconds, or null where the platform cannot tell (Linux). Foreground delivery yields to the user.
+export const COMPUTER_USER_IDLE_METHOD = "computer.userIdle";
+export const ComputerUserIdle = Schema.Struct({ idleSeconds: Schema.NullOr(Schema.Number) });
+export type ComputerUserIdle = typeof ComputerUserIdle.Type;
+
+// Desktop → server: the user pressed the Computer Use kill switch shortcut.
+export const COMPUTER_KILL_SWITCH_NOTIFICATION = "computer.killSwitch";

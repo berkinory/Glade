@@ -1,5 +1,8 @@
 import { BROWSER_TABS_CHANGED_NOTIFICATION } from "@glade/contracts/browser/browserHost";
-import { COMPUTER_CONNECTION_NOTIFICATION } from "@glade/contracts/computer/computerHost";
+import {
+  COMPUTER_CONNECTION_NOTIFICATION,
+  COMPUTER_KILL_SWITCH_NOTIFICATION,
+} from "@glade/contracts/computer/computerHost";
 import { session } from "electron";
 import * as Crypto from "node:crypto";
 import { createBrowserHostDispatch } from "../browser/browserHostDispatch";
@@ -8,6 +11,7 @@ import { BrowserTabs } from "../browser/browserTabs";
 import { ContentBlocker } from "../browser/contentBlocker";
 import { BrowserViewSurface } from "../browser/browserViewSurface";
 import { dispatchComputerHost } from "../computer/computerHostDispatch";
+import { createComputerKillSwitch } from "../computer/computerKillSwitch";
 import type { CuaBinary } from "../computer/cuaBinary";
 import { startCuaHost, type CuaHost } from "../computer/cuaHost";
 import type { ComputerPermissions } from "../computer/cuaPermissions";
@@ -50,9 +54,16 @@ export async function startDesktopHost(input: {
     blocker,
   });
   const browserDispatch = createBrowserHostDispatch(tabs, input.gladePorts);
+  const killSwitch = createComputerKillSwitch({
+    onPressed: () => notify(COMPUTER_KILL_SWITCH_NOTIFICATION, {}),
+    log: input.computer.log,
+  });
   const computer = startCuaHost({
     ...input.computer,
-    publish: (connection) => notify(COMPUTER_CONNECTION_NOTIFICATION, connection),
+    publish: (connection) => {
+      killSwitch.setEnabled(connection.state === "ready");
+      notify(COMPUTER_CONNECTION_NOTIFICATION, connection);
+    },
   });
   const server = await startDesktopHostRpcServer({
     token,
@@ -76,6 +87,7 @@ export async function startDesktopHost(input: {
     close: async () => {
       tabs.closeAll();
       blocker.stop();
+      killSwitch.dispose();
       await computer.stop();
       await server.close();
     },
