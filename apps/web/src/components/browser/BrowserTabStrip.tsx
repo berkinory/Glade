@@ -1,5 +1,5 @@
 import { Globe02Icon, PlusIcon } from "~/lib/icons";
-import { SurfaceTabChip } from "../chat/chatHeaderControls";
+import { PanelTabBar } from "../chat/PanelTabBar";
 import { IconButton } from "../ui/icon-button";
 import { Spinner } from "../ui/spinner";
 import type { BrowserTab } from "./useBrowserTabs";
@@ -11,29 +11,23 @@ export function BrowserTabStrip(props: {
   onNewTab: () => void;
 }) {
   return (
-    <nav
-      aria-label="Browser tabs"
-      className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-    >
-      {props.tabs.map((tab) => {
-        const label = tab.title || tab.url || "New tab";
-        return (
-          <SurfaceTabChip
-            key={tab.tabId}
-            active={tab.active}
-            title={tab.url || label}
-            label={label}
-            labelClassName="max-w-[10rem]"
-            icon={tab.loading ? <Spinner aria-label="Loading" /> : <Globe02Icon />}
-            closeLabel={`Close ${label}`}
-            onSelect={() => props.onSelect(tab.tabId)}
-            onClose={() => props.onClose(tab.tabId)}
-          />
-        );
-      })}
-      <IconButton label="New tab" tooltip="New tab" tooltipSide="bottom" onClick={props.onNewTab}>
-        <PlusIcon className="size-3.5" />
-      </IconButton>
-    </nav>
+    <PanelTabBar
+      label="Browser tabs"
+      contentTabs
+      className="h-auto flex-1 border-0 bg-transparent p-0"
+      tabs={props.tabs.map((tab) => ({
+        id: tab.tabId,
+        label: tab.title || tab.url || "New tab",
+        icon: tab.loading ? <Spinner aria-label="Loading" /> : <Globe02Icon />,
+        onClose: () => props.onClose(tab.tabId),
+      }))}
+      activeId={props.tabs.find((tab) => tab.active)?.tabId ?? null}
+      onSelect={props.onSelect}
+      actions={
+        <IconButton label="New tab" tooltip="New tab" tooltipSide="bottom" onClick={props.onNewTab}>
+          <PlusIcon className="size-3.5" />
+        </IconButton>
+      }
+    />
   );
 }
