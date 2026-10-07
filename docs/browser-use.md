@@ -9,10 +9,12 @@ app and is exposed to every provider as `browser_*` gateway tools.
 - **Desktop host (`apps/desktop/src/browser`).** Every tab is an Electron `WebContentsView` on the
   persistent `persist:glade-browser` partition. Views start detached at 1280×800 and keep running
   while hidden (`backgroundThrottling: false`), so the agent can snapshot and screenshot with the
-  panel closed. Linux composites a view only inside a shown window (a detached tab gets no
-  animation frames, its mouse moves wait out a 5 s input timeout and screenshots never return), so
-  there every tab the panel does not show sits under the main window's page, which covers it and
-  keeps it rendering while the window is minimized. Automation uses raw Chrome DevTools Protocol through `webContents.debugger`,
+  panel closed. Linux renders a view only inside a shown window and not fully covered (a detached
+  tab gets no animation frames, its mouse moves wait out a 5 s input timeout and screenshots never
+  return), and a window's own page is drawn below its child views, so there every tab the panel
+  does not show keeps its size but is moved up and left of the main window until one pixel of it
+  remains in the window's top-left column, a row per tab. It keeps rendering while the window is
+  minimized. Automation uses raw Chrome DevTools Protocol through `webContents.debugger`,
   attached on the first agent call, with iframe auto-attach and one command queue per tab. Tabs
   belong to one chat and are not stored. Like Chrome's tab discarding, a tab that neither the agent
   nor the user touched for 10 minutes, or the least recently used beyond eight live tabs in a chat,
