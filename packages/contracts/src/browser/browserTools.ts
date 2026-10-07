@@ -129,6 +129,24 @@ export const BrowserScreenshotInput = Schema.Struct({
   ...tab,
 });
 
+// Exactly one field per condition; the desktop rejects a condition with none or several.
+export const BrowserWaitCondition = Schema.Struct({
+  text: Schema.optional(Text(512).check(Schema.isNonEmpty())),
+  textGone: Schema.optional(Text(512).check(Schema.isNonEmpty())),
+  url: Schema.optional(Text(2048).check(Schema.isNonEmpty())),
+  gone: Schema.optional(BrowserRef),
+});
+export type BrowserWaitCondition = typeof BrowserWaitCondition.Type;
+
+export const BrowserWaitInput = Schema.Struct({
+  conditions: Schema.Array(BrowserWaitCondition).check(
+    Schema.isMinLength(1),
+    Schema.isMaxLength(5),
+  ),
+  timeoutMs: Schema.optional(Count(100, 30_000)),
+  ...tab,
+});
+
 export const BrowserDialogInput = Schema.Struct({
   accept: Schema.Boolean,
   ...tab,
@@ -182,6 +200,7 @@ export const BROWSER_BATCH_TOOLS = [
   "browser_press",
   "browser_select",
   "browser_scroll",
+  "browser_wait",
   "browser_screenshot",
   "browser_dialog",
   "browser_upload",

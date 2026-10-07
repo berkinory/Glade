@@ -21,6 +21,7 @@ import {
   BrowserTabsInput,
   BrowserTypeInput,
   BrowserUploadInput,
+  BrowserWaitInput,
   type BrowserBatchTool,
 } from "@glade/contracts/browser/browserTools";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
@@ -161,6 +162,14 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     description:
       "Scroll the page by direction and amount in CSS px (default most of a screen), or bring ref into view; with ref and direction, scroll the scroll container at ref (a sidebar, a long list). Reports the new position and what newly appeared.",
     action: true,
+  },
+  browser_wait: {
+    method: "browser.wait",
+    input: BrowserWaitInput,
+    title: "Wait for the page",
+    readOnly: true,
+    description:
+      "Wait until one of up to 5 conditions holds, each one of: text (visible on the page), textGone, url (substring, * as wildcard) or gone (a ref that disappears). Returns which matched; fails after timeoutMs (default 10000, max 30000). Use it for toasts, slow results and pages that finish loading on their own.",
   },
   browser_screenshot: {
     method: "browser.screenshot",

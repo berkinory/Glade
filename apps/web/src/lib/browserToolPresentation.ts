@@ -26,6 +26,7 @@ const BROWSER_TOOL_WORDING = {
   browser_press: ["Pressing", "Pressed", "press keys"],
   browser_select: ["Selecting", "Selected", "select"],
   browser_scroll: ["Scrolling", "Scrolled", "scroll"],
+  browser_wait: ["Waiting for page", "Waited for page", "wait for the page"],
   browser_screenshot: ["Taking screenshot", "Took screenshot", "take a screenshot"],
   browser_dialog: ["Answering dialog", "Answered dialog", "answer the dialog"],
   browser_upload: ["Uploading", "Uploaded", "upload files"],

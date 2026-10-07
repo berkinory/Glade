@@ -112,12 +112,19 @@ messages described in [Computer Use](computer-use.md). Schemas live in
 
 `browser_tabs`, `browser_navigate`, `browser_snapshot`, `browser_find`, `browser_get_text`,
 `browser_click`, `browser_hover`, `browser_drag`, `browser_type`, `browser_fill`, `browser_press`,
-`browser_select`, `browser_scroll`, `browser_screenshot`, `browser_dialog`, `browser_upload`,
+`browser_select`, `browser_scroll`, `browser_wait`, `browser_screenshot`, `browser_dialog`, `browser_upload`,
 `browser_console`, `browser_network` and `browser_batch` (an ordered list that stops at the first
 failure). Action results are one line naming the element plus what changed; they never embed a
 new snapshot. Other results end with the tab's URL and title. `browser_get_text` reads the main
 content or, with a ref, that element's subtree. Console and network reads return 20 entries per
 page, newest page first, and group repeated console messages.
+`browser_wait` takes up to five conditions (`text` visible in the main document, `textGone`, `url`
+as a substring or a `*` pattern, `gone` for a ref that leaves or hides) and a timeout up to 30 s,
+and returns which one held, with the matching element's text as page content so a toast is read
+before it vanishes. Text counts only when its deepest containing element renders (opacity and
+visibility checked), has a box on the page and is outside `aria-hidden`. Each 150 ms poll is its
+own short tab operation that does not wait for the user to pause, so the panel and the user's
+input are never locked out while the agent waits (on a security check, for example).
 `browser_evaluate` is not listed and always refuses until a per-chat setting exists. For Claude,
 `browser_navigate`, `browser_snapshot`, `browser_find`, `browser_click`, `browser_type` and
 `browser_fill` are marked `anthropic/alwaysLoad` so the core loop needs no tool search; the rest

@@ -146,15 +146,22 @@ export class BrowserTab {
 
   // Runs one operation on this tab: serialized, attached, for agent calls after a short pause for
   // a human who is using the tab, and cut short by a page dialog (DialogInterrupt).
+  // `passive` marks an agent read that repeats while the user may be working in the tab (a wait):
+  // it neither waits for them to pause nor counts as agent input.
   run<T>(
     operation: () => Promise<T>,
-    options: { readonly byUser?: boolean; readonly timeoutMs?: number | undefined } = {},
+    options: {
+      readonly byUser?: boolean;
+      readonly passive?: boolean;
+      readonly timeoutMs?: number | undefined;
+    } = {},
   ): Promise<T> {
+    const agent = !options.byUser && !options.passive;
     return this.cdp
       .exclusive(async () => {
         await this.cdp.ensureAttached();
-        if (!options.byUser) await this.waitForHumanQuiet();
-        this.agentActing = !options.byUser;
+        if (agent) await this.waitForHumanQuiet();
+        this.agentActing = agent;
         const interruption = this.dialogs.interruption();
         // Once a dialog wins the race, the abandoned operation may still fail later.
         const work = operation();

@@ -24,6 +24,7 @@ import { scroll } from "./cdp/scrolling";
 import { captureScreenshot } from "./cdp/screenshot";
 import { findElements, takeSnapshot } from "./cdp/snapshot/snapshot";
 import { DialogInterrupt } from "./pageDialogs";
+import { waitForConditions } from "./pageWait";
 
 // Each stays below the server's timeout for the same call: navigation waits up to 30 s for the
 // load, and actions up to 5 s for a navigation they start plus the DOM settling.
@@ -66,7 +67,7 @@ async function challengeLine(tab: BrowserTab): Promise<string> {
   const vendor = await visibleChallenge(tab.cdp).catch(() => null);
   tab.noteChallenge(vendor);
   return vendor
-    ? `Challenge: a ${vendor} security check is on screen. Do not try to solve or get around it; ask the user to complete it in the browser panel, then continue.`
+    ? `Challenge: a ${vendor} security check is on screen. Do not try to solve or get around it; ask the user to complete it in the browser panel, then continue (browser_wait can wait for the page behind it).`
     : "";
 }
 
@@ -245,6 +246,13 @@ export function createBrowserHostDispatch(
     "browser.scroll": async (params) => {
       const tab = tabFor("browser.scroll", params);
       return act(tab, () => scroll(tab.cdp, tab.refs, params), params.actor);
+    },
+    "browser.wait": async (params) => {
+      const tab = tabFor("browser.wait", params);
+      const { text, content } = await waitForConditions(tab, params);
+      // Read passively too: the user may be completing a security check in this tab right now.
+      const challenge = await tab.run(() => challengeLine(tab), { passive: true });
+      return reply(tab, joined(text, challenge), params.actor, content);
     },
     "browser.screenshot": async (params) => {
       const tab = tabFor("browser.screenshot", params);

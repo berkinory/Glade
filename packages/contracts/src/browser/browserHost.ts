@@ -19,6 +19,7 @@ import {
   BrowserTabsInput,
   BrowserTypeInput,
   BrowserUploadInput,
+  BrowserWaitInput,
 } from "./browserTools";
 
 export const BROWSER_FAILURE_CODES = [
@@ -67,6 +68,7 @@ export const BROWSER_HOST_METHODS = {
   "browser.press": scoped(BrowserPressInput),
   "browser.select": scoped(BrowserSelectInput),
   "browser.scroll": scoped(BrowserScrollInput),
+  "browser.wait": scoped(BrowserWaitInput),
   "browser.screenshot": scoped(BrowserScreenshotInput),
   "browser.dialog": scoped(BrowserDialogInput),
   // Paths are absolute and already validated against the thread workspace by the server.

@@ -24,6 +24,8 @@ const TIMEOUT_MS: Partial<Record<BrowserHostMethod, number>> = {
   "browser.scroll": 20_000,
   "browser.upload": 20_000,
   "browser.fill": 32_000,
+  // Up to 30 s of polling plus one last read.
+  "browser.wait": 40_000,
 };
 const DEFAULT_TIMEOUT_MS = 15_000;
 
