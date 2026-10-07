@@ -337,6 +337,42 @@ Checklist (each needs a real machine; record results here):
 
 Commits: `fix(desktop): …` as needed per platform.
 
+### Phase 10: parity and hardening from the harness review
+
+Source: code-level review of Playwright MCP, Chrome DevTools MCP, agent-browser, browser-use, Stagehand, Nanobrowser, Cline (browser); Anthropic and OpenAI reference loops, Bytebot, Agent-S, UFO, goose, Cua's agent layer (computer); vendor docs and published injection results (Claude in Chrome, Atlas, Codex browser, Gemini, Edge, Brave; AgentDojo, WASP, "Attacker Moves Second").
+
+Product decisions (owner, 2026-10-07):
+
+- Browser Use and Computer Use stay Glade-native; provider CLIs do not ship them, so Glade owns the best harness.
+- No approval gates on ordinary work. Security comes from what the harness exposes and enforces, not from asking the user on every step.
+- The shared session is Glade's own browser (agent and user see the same tabs and logins inside Glade), never the user's system browser.
+- A built-in ad, tracker and cookie-banner blocker on the browser partition, on by default, toggle in Settings.
+
+Browser workstream:
+
+1. Snapshot: viewport plus a margin by default with "N screens above/below" notes and `scope: page` to opt out; paint-order occlusion (elements under a modal or overlay drop out); clickables found by `cursor:pointer`, `onclick`, `tabindex` and contenteditable when the AX tree misses them; only rendered text (hidden, `aria-hidden`, zero-opacity and off-screen nodes, comments and meta never reach the model); long names truncated; password values never emitted. Target: at or below browser-use's size on the reference pages (≈2.4k MDN, ≈2.9k Wikipedia).
+2. Refs: identity is (frame session, document loader, backendNodeId); a ref survives same-document DOM updates and dies with the document; numbers never reused; new elements since the previous snapshot are marked; a stale ref is an error, never a guess (browser-use #5297).
+3. Actions: scroll into view, require a box, hit-test the click point and fail with "covered by <element>" instead of clicking an overlay; each mouse event races dialog opening; after an action wait for a navigation to start (≈100 ms) and then for DOM mutations to settle (≈100 ms quiet, capped), never network idle; checkbox and radio state and typed values are read back and mismatches reported; `browser_fill` sets several fields in one call.
+4. Results: one line plus what changed (URL/title, new tab, dialog, download, count of new elements); a pending dialog blocks other page tools with a clear message until `browser_dialog` handles it.
+5. Untrusted envelope: every page-derived result (snapshot, text, find, console, network, dialog text) is wrapped in a nonce-delimited block naming its origin. It is a provenance cue for the model, not a security boundary.
+6. Navigation: http/https only via the URL parser; block link-local and cloud metadata ranges and Glade's own ports; loopback dev servers stay allowed; checks run on every request including redirects and popups.
+7. Blocker: `@ghostery/adblocker-electron` (MPL-2.0) on the browser partition with ads, tracking and cookie-notice lists, cached on disk and refreshed in the background.
+8. Shared control: the desktop records the last human input per tab; agent calls that arrive within a short window wait briefly, then proceed and say the user was active; element picking and agent clicks cannot collide.
+
+Computer workstream:
+
+1. `computer_act` returns what changed (Cua `get_window_state` diff or effect summary), not just "ok".
+2. Progress guard: repeated identical actions with no observed effect are refused with a recoverable error.
+3. Human yield: foreground delivery refuses while the user has typed or clicked within about a second; background delivery is unaffected.
+4. Replace the blind `computer_wait` with Cua's `verify_state` (conditions, stable samples, timeout).
+5. Screenshots sized for current models (Cua default long edge, window-only captures), per-turn image cap reviewed against how providers keep history.
+6. Category defaults for grants instead of extra prompts: browsers read-only (web work goes through Browser Use), terminals and IDEs click-only unless `full`; the tier is checked against the target app at action time.
+7. Kill switch: a global shortcut stops every running computer task and releases held keys and buttons.
+8. Window and AX text from apps goes through the same untrusted envelope.
+9. Pixel vocabulary aligned with Anthropic's `computer_toolset_20260801` naming where it differs.
+
+Benchmark (outside the repo, plan section 5 still forbids a new in-repo harness): local fixture site with pages that report outcomes to the fixture server; the same task list run with Claude and Codex against Glade's tools and against `@playwright/mcp` and `chrome-devtools-mcp`; injection cases adapted from published suites (AgentDojo, WASP) with a benign canary; metrics: success, tool calls, tokens, wall time, and for injections diverted vs completed. Results are recorded in section 8.
+
 ## 5. Verification policy
 
 - Run `bun run check` at every phase end, not per edit. Run `bun run build:desktop` in Phases 1, 5 and 8. Run the full `bun run test` once in Phase 8.
