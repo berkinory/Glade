@@ -1,5 +1,6 @@
 import { McpSettingsPanel } from "~/components/settings/McpSettingsPanel";
 import { PluginsSettingsPanel } from "~/components/settings/PluginsSettingsPanel";
+import { ComputerSettings } from "~/components/computer/ComputerSettings";
 import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
@@ -832,6 +833,8 @@ function SettingsRouteView() {
         return <SkillsSettingsPanel />;
       case "usage":
         return <ProviderUsageSettingsPanel />;
+      case "computer":
+        return <ComputerSettings />;
       default:
         return null;
     }

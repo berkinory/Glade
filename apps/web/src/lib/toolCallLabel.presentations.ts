@@ -1,6 +1,10 @@
 import type { ToolLifecycleItemType } from "@glade/contracts/provider/runtimeMetadata";
 import { extractToolArgumentField } from "./toolArgumentSummary";
 import { GLADE_BROWSER_TOOL_PRESENTATIONS, isBareBrowserToolName } from "./browserToolPresentation";
+import {
+  GLADE_COMPUTER_TOOL_PRESENTATIONS,
+  isBareComputerToolName,
+} from "./computerToolPresentation";
 
 export function normalizeCompactToolLabel(value: string): string {
   return value
@@ -219,6 +223,7 @@ export const GLADE_MCP_TOOL_PRESENTATIONS = {
     failed: "Glade couldn't update a thread",
   },
   ...GLADE_BROWSER_TOOL_PRESENTATIONS,
+  ...GLADE_COMPUTER_TOOL_PRESENTATIONS,
 } as const satisfies Record<string, GladeMcpToolPresentation>;
 
 export function normalizeGladeMcpIdentifier(value: string): string {
@@ -243,7 +248,7 @@ export function extractGladeMcpToolName(normalizedCandidate: string): string | n
   if (normalizedCandidate === "html_preview" || normalizedCandidate === "html_render") {
     return `glade_${normalizedCandidate}`;
   }
-  if (isBareBrowserToolName(normalizedCandidate)) {
+  if (isBareBrowserToolName(normalizedCandidate) || isBareComputerToolName(normalizedCandidate)) {
     return `glade_${normalizedCandidate}`;
   }
   if (normalizedCandidate.startsWith("mcp_glade_glade_")) {

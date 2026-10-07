@@ -275,6 +275,16 @@ Checks: `bun run check`; visual check in the Dev app, light and dark, reduced mo
 
 Commits: `feat(web): Computer Use settings, access cards and activity preview`.
 
+Revisions (as built):
+
+- State reaches the web as one WS group in `packages/contracts/src/transport/ws/computerRpc.ts`: `computer.subscribe` streams driver status plus every thread whose mode is not off or that holds grants (`{status, threads: [{threadId, mode, grants}]}`), recomputed when `ThreadComputerUse` or `ComputerGrants` report a change or the driver status moves; `computer.revokeGrant {threadId, app, windowId}` revokes from Settings. Handlers live in `apps/server/src/computer/computerWsHandlers.ts`. The mode is not derivable from orchestration events on the web (`thread.computer-use-set` is not projected and `once` ends in memory), so it travels in this group; the web sets it with the existing `thread.computer-use.set` command. The web keeps only the subscription's latest value (`components/computer/computerUseState.ts`), which the thread menu reads synchronously.
+- No default mode for new threads: the server has none, so Settings does not offer one.
+- Grants remember the window title they were granted for, so Settings lists `app · "title"`.
+- Action results end with `Window: <app> "<title>"` (`windowAction` in `computerCalls.ts`), which names the target for the model, the timeline preview (`Clicked … · TextEdit`) and the composer activity line. Timeline rows use a `computer` tool kind ("used the computer N times", cursor-in-window icon).
+- The access request uses the generic question card unchanged: its question already names the app, window and reason, and each option describes its scope. A typed (non-option) answer now settles the card and drops the pending request, so the agent's next request opens a fresh card instead of waiting on a closed one.
+- Composer: `/computer-use` (offered in the desktop app once the thread exists on the server) sets `once`; text after it stays in the composer as the task. The thread menu (sidebar context menu) toggles `on`/`off`. One stacked composer row shows the mode with a turn-off button, or, while the running turn has used the computer, the current action and the last app and window a result named, with Stop (the existing turn interrupt; `ComputerAccess` already stops Cua work on `thread.turn-interrupt-requested`). No screenshots: tool events carry no image bytes.
+- Settings > Computer Use (desktop only): Cua Driver status and health problems, macOS Accessibility and Screen Recording with Request / Open System Settings (re-read on window focus), the platform's limits elsewhere, and grants with Revoke.
+
 ### Phase 8: packaging, CI, docs
 
 - `release-build.yml` and `release.yml`: fetch and verify Cua per target, sign the executable with the app identity on macOS, include it in the bundle outside ASAR; Windows and Linux include the matching artifact; remove Rust and Swift toolchain steps
@@ -360,7 +370,6 @@ Driver started under the Dev bundle (`accessibility`/`screenRecording` true, no 
 ## 9. Open items
 
 - Phase 8: fetch per build target (cross-arch and macOS universal builds also need both darwin native SDK packages installed), and run a signed packaged build to confirm the team-signature check.
-- Phase 7: the web needs a read path for a thread's Computer Use mode and the grant list (a computer WS group); the server has no subscription for them yet.
 
 - Record token measurements from the provider acceptance runs here.
 - Page dialogs in the visible panel: v1 dismisses and reports them. A user-facing answer path would need a non-blocking prompt in the panel.

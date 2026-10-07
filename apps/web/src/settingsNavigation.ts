@@ -12,6 +12,7 @@ import {
   BlocksIcon,
   Book02Icon,
   LimitationIcon,
+  CursorInWindowIcon,
 } from "~/lib/icons";
 import type { IconComponent } from "~/lib/iconComponent";
 const SETTINGS_SECTION_IDS = [
@@ -28,6 +29,7 @@ const SETTINGS_SECTION_IDS = [
   "skills",
   "mcp",
   "plugins",
+  "computer",
   "usage",
   "advanced",
 ] as const;
@@ -49,6 +51,8 @@ export type SettingsNavItem = {
   icon: IconComponent;
 
   badge?: string;
+  // Shown only in the desktop app.
+  desktopOnly?: boolean;
 };
 
 export const SETTINGS_NAV_GROUPS: ReadonlyArray<{
@@ -158,6 +162,14 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
     label: "Plugins",
     description: "Manage native installed plugins and session loading.",
     icon: BlocksIcon,
+  },
+  {
+    id: "computer",
+    group: "agents",
+    label: "Computer Use",
+    description: "Driver status, macOS permissions, and the apps agents may use.",
+    icon: CursorInWindowIcon,
+    desktopOnly: true,
   },
   {
     id: "usage",

@@ -17,6 +17,7 @@ import { ComposerLocalDirectoryMenu } from "~/components/chat/ComposerLocalDirec
 import { ComposerPendingApprovalPanel } from "~/components/chat/ComposerPendingApprovalPanel";
 import { ComposerPendingUserInputPanel } from "~/components/chat/ComposerPendingUserInputPanel";
 import { ComposerQueuedHeader } from "~/components/chat/ComposerQueuedHeader";
+import { ComputerComposerPanel } from "~/components/computer/ComputerComposerPanel";
 import { ComposerReferenceAttachments } from "~/components/chat/ComposerReferenceAttachments";
 import { ComposerSubagentStrip } from "~/components/chat/ComposerSubagentStrip";
 import { collectRunningSubagentStripItems } from "~/components/chat/ComposerSubagentStrip.logic";
@@ -360,6 +361,18 @@ export function ChatComposerSurface({
                 showComposerSubagentStrip
               }
             />
+            {isNativeSubagent ? null : (
+              <ComputerComposerPanel
+                threadId={threadId}
+                attachedToPrevious={
+                  showComposerLiveChangesHeader ||
+                  showComposerActiveTaskListCard ||
+                  showComposerWorkflowRunCard ||
+                  showComposerSubagentStrip ||
+                  queuedComposerTurns.length > 0
+                }
+              />
+            )}
 
             {settledThreadBranchMismatch ? (
               <div className="pb-2">

@@ -2,6 +2,7 @@ import { ArrowLeft02Icon, SettingsIcon } from "~/lib/icons";
 import type { IconComponent } from "~/lib/iconComponent";
 import { type KeyboardEvent as ReactKeyboardEvent, useState } from "react";
 import { cn } from "~/lib/utils";
+import { isElectron } from "~/env";
 import { Badge } from "./ui/badge";
 import { SearchInput } from "./ui/search-input";
 import { SidebarLeadingIcon } from "./SidebarLeadingIcon";
@@ -146,7 +147,9 @@ export function SettingsSidebarNav(props: {
       ) : (
         <nav aria-label="Settings sections" className="flex flex-col">
           {SETTINGS_NAV_GROUPS.map((group) => {
-            const items = SETTINGS_NAV_ITEMS.filter((item) => item.group === group.id);
+            const items = SETTINGS_NAV_ITEMS.filter(
+              (item) => item.group === group.id && (isElectron || !item.desktopOnly),
+            );
             if (items.length === 0) {
               return null;
             }

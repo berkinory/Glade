@@ -1,6 +1,7 @@
 import type { IconComponent } from "~/lib/iconComponent";
 import {
   Brain03Icon,
+  CursorInWindowIcon,
   BugIcon,
   EraserIcon,
   EnergyFilledIcon,
@@ -19,6 +20,7 @@ const SLASH_COMMAND_ICONS: Record<string, IconComponent> = {
   default: MessageCircleIcon,
   review: BugIcon,
   fork: WorkflowCircle04Icon,
+  "computer-use": CursorInWindowIcon,
   feedback: BugIcon,
 };
 export function slashCommandIcon(command: string, fallback: IconComponent): IconComponent {

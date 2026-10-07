@@ -34,6 +34,7 @@ import {
   BROWSER_WS_METHODS,
   type BrowserTabsSubscribeInput,
 } from "@glade/contracts/transport/ws/browserRpc";
+import { COMPUTER_WS_METHODS, type ComputerState } from "@glade/contracts/transport/ws/computerRpc";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { Cause, Effect, Exit, Stream } from "effect";
 import {
@@ -328,6 +329,15 @@ export class WsTransport extends WsTransportBase {
   ): void {
     if (this.disposed) return;
     this.startStream(client, key, client[BROWSER_WS_METHODS.subscribeTabs](input), emit, restart);
+  }
+  protected startComputerStateStream(
+    client: RpcClientInstance,
+    key: string,
+    emit: (event: ComputerState) => void,
+    restart: () => void,
+  ): void {
+    if (this.disposed) return;
+    this.startStream(client, key, client[COMPUTER_WS_METHODS.subscribe]({}), emit, restart);
   }
   protected startStream<T>(
     client: RpcClientInstance,

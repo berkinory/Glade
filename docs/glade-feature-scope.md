@@ -39,8 +39,13 @@ reference the agent can act on, with its screenshot attached. Page dialogs are d
 reported to the agent; the panel offers no dialog prompts. Browser tools, the panel and its
 toggle do not exist outside the desktop app.
 
-Computer Use (desktop control) is being rebuilt and is unavailable on this branch.
-[COMPUTER-USE-PLAN.md](../COMPUTER-USE-PLAN.md) tracks the work.
+Computer Use (desktop control) is available in the desktop app on top of the bundled Cua Driver.
+It is off per conversation: `/computer-use` turns it on for the next message and the thread menu
+turns it on or off for the conversation. The agent asks in the chat before it reads or acts on an
+app (read, act or full control); grants last until Glade restarts and can be revoked in Settings,
+which also shows the driver status and, on macOS, the Accessibility and Screen Recording
+permissions. While a turn uses the computer, the composer shows the app and window with Stop.
+On Windows and Linux, Settings states the platform's input limits instead of permissions.
 
 ## Workspace editing
 

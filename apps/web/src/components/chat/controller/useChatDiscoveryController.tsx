@@ -1,3 +1,4 @@
+import { isElectron } from "~/env";
 import { terminalRuntimeEnv } from "~/lib/terminalRuntimeEnv";
 import { getRuntimeAwareModelCapabilities } from "../runtimeModelCapabilities";
 import { threadExportBlockedReason } from "@glade/shared/threads/threadExport";
@@ -203,6 +204,8 @@ export function useChatDiscoveryController({
       canOfferReviewCommand,
       canOfferForkCommand,
       canOfferExportCommand,
+      // The command needs the thread on the server; a draft gets it after its first message.
+      canOfferComputerUseCommand: isElectron && isServerThread,
     },
   });
 

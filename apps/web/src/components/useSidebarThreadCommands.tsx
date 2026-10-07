@@ -12,6 +12,8 @@ import { reconcileDeletedThreadsFromClient } from "../lib/deletedThreadClientRec
 import { useStore } from "../store";
 import { getThreadFromState } from "../threadDerivation";
 import { readNativeApi } from "../nativeApi";
+import { isElectron } from "../env";
+import { readComputerUseMode, setComputerUseMode } from "./computer/computerUseState";
 import { dispatchThreadRename } from "../lib/threadRename";
 import { quotePosixShellArgument } from "../lib/shellQuote";
 import { DEFAULT_THREAD_TERMINAL_ID, type SidebarThreadSummary } from "../types";
@@ -148,6 +150,7 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
     const threadSummary = sidebarThreadSummaryById[threadId];
     const isPinned = pinnedThreadIdSet.has(threadId);
     const threadStatus = threadSummary ? resolveThreadStatusForSidebar(threadSummary) : null;
+    const computerUseOn = readComputerUseMode(threadId) !== "off";
     const threadWorkspacePath = resolveThreadWorkspaceCwd({
       projectCwd: projectCwdById.get(thread.projectId) ?? null,
       envMode: thread.envMode,
@@ -171,6 +174,15 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
             ]
           : []),
         { id: "mark-unread", label: "Mark unread", icon: THREAD_CONTEXT_MENU_ICONS.markUnread },
+        ...(isElectron && !thread.parentThreadId
+          ? [
+              {
+                id: "toggle-computer-use",
+                label: computerUseOn ? "Turn off Computer Use" : "Turn on Computer Use",
+                icon: THREAD_CONTEXT_MENU_ICONS.computerUse,
+              },
+            ]
+          : []),
         {
           id: "copy-path",
           label: "Copy Path",
@@ -222,6 +234,10 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
     if (clicked === "mark-unread") {
       clearDismissedThreadStatus(threadId);
       markThreadUnread(threadId);
+      return;
+    }
+    if (clicked === "toggle-computer-use") {
+      await setComputerUseMode(threadId, computerUseOn ? "off" : "on");
       return;
     }
     if (clicked === "clear-notification") {

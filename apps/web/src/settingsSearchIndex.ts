@@ -343,6 +343,32 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
   },
 
   {
+    id: "computer:driver",
+    section: "computer",
+    title: "Cua Driver",
+    target: "setting-computer-driver",
+    applies: () => isElectron,
+    keywords:
+      "Computer Use driver status version running unavailable health desktop control apps windows linux wayland x11 limits",
+  },
+  {
+    id: "computer:permissions",
+    section: "computer",
+    title: "macOS permissions",
+    target: null,
+    applies: () => isElectron && isMacPlatform(getNavigatorPlatform()),
+    keywords:
+      "Computer Use Accessibility Screen Recording privacy System Settings grant request permission",
+  },
+  {
+    id: "computer:grants",
+    section: "computer",
+    title: "Access grants",
+    target: "setting-computer-grants",
+    applies: () => isElectron,
+    keywords: "Computer Use apps windows the agent may use revoke access read act full control",
+  },
+  {
     id: "usage:usage",
     section: "usage",
     title: "Usage & limits",

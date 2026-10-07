@@ -45,6 +45,7 @@ export type WorkLogToolKind =
   | "fetch"
   | "web_search"
   | "browser"
+  | "computer"
   | "agent"
   | "image_view"
   | "image_generation"

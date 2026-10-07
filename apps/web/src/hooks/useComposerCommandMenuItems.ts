@@ -283,6 +283,7 @@ export function useComposerCommandMenuItems(input: {
     canOfferReviewCommand: boolean;
     canOfferForkCommand: boolean;
     canOfferExportCommand: boolean;
+    canOfferComputerUseCommand: boolean;
   };
 }): ComposerCommandItem[] {
   const { composerTrigger } = input.trigger;
@@ -302,6 +303,7 @@ export function useComposerCommandMenuItems(input: {
     canOfferReviewCommand,
     canOfferForkCommand,
     canOfferExportCommand,
+    canOfferComputerUseCommand,
   } = input.commands;
 
   if (!composerTrigger) return [];
@@ -401,6 +403,7 @@ export function useComposerCommandMenuItems(input: {
       canOfferReviewCommand,
       canOfferForkCommand,
       canOfferExportCommand,
+      canOfferComputerUseCommand,
       providerNativeCommandNames: providerNativeCommands.map((command) => command.name),
     });
     const visibleAppCommandSet = new Set(availableCommands);

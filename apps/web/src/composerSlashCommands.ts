@@ -157,6 +157,12 @@ const COMPOSER_SLASH_COMMAND_DEFINITIONS: Record<
     description: "Fork this thread into local or a new worktree",
     source: "app",
   },
+  "computer-use": {
+    command: "computer-use",
+    label: "/computer-use",
+    description: "Let the agent use apps on this computer for the next message",
+    source: "app",
+  },
   fast: {
     command: "fast",
     label: "/fast",
@@ -315,6 +321,7 @@ export function getAvailableComposerSlashCommands(input: {
   canOfferReviewCommand: boolean;
   canOfferForkCommand: boolean;
   canOfferExportCommand: boolean;
+  canOfferComputerUseCommand: boolean;
   providerNativeCommandNames?: ReadonlyArray<string>;
 }): ComposerSlashCommand[] {
   const collidingNativeCommandNames = new Set<ComposerSlashCommand>(
@@ -337,12 +344,14 @@ export function getAvailableComposerSlashCommands(input: {
           ...(input.supportsFastSlashCommand ? (["fast"] as const) : []),
           ...(input.canOfferReviewCommand ? (["review"] as const) : []),
           ...(input.canOfferForkCommand ? (["fork"] as const) : []),
+          ...(input.canOfferComputerUseCommand ? (["computer-use"] as const) : []),
           ...(input.canOfferExportCommand ? (["export"] as const) : []),
           "rename",
           "feedback",
         ]
       : [
           ...(input.canOfferForkCommand ? (["fork"] as const) : []),
+          ...(input.canOfferComputerUseCommand ? (["computer-use"] as const) : []),
           ...(input.canOfferExportCommand ? (["export"] as const) : []),
           "rename",
           "feedback",

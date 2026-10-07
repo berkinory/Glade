@@ -27,6 +27,7 @@ import {
   normalizeToolTextForComparison,
 } from "./lib/toolCallLabel.presentations";
 import { browserToolResultPreview, isGladeBrowserToolName } from "./lib/browserToolPresentation";
+import { computerToolResultPreview, isGladeComputerToolName } from "./lib/computerToolPresentation";
 import { deriveWorkLogToolDetails } from "./lib/toolCallDetails";
 import { compareActivitiesByOrder } from "./workLog.ordering";
 import {
@@ -471,10 +472,12 @@ function normalizeWorkLogActivity(activity: OrchestrationThreadActivity): Derive
   const gladeToolName = toolName
     ? extractGladeMcpToolName(normalizeGladeMcpIdentifier(toolName))
     : null;
-  const browserOutput = outputDetail ?? entry.detail;
-  if (gladeToolName && browserOutput && toolStatus !== "failed") {
-    const browserPreview = browserToolResultPreview(gladeToolName, browserOutput);
-    if (browserPreview) entry.preview = browserPreview;
+  const gladeToolOutput = outputDetail ?? entry.detail;
+  if (gladeToolName && gladeToolOutput && toolStatus !== "failed") {
+    const gladeToolPreview =
+      browserToolResultPreview(gladeToolName, gladeToolOutput) ??
+      computerToolResultPreview(gladeToolName, gladeToolOutput);
+    if (gladeToolPreview) entry.preview = gladeToolPreview;
   }
   if (changedFiles.length > 0) {
     entry.changedFiles = changedFiles;
@@ -485,18 +488,20 @@ function normalizeWorkLogActivity(activity: OrchestrationThreadActivity): Derive
   if (requestKind) {
     entry.requestKind = requestKind;
   }
-  // Gateway browser tools arrive as generic MCP or dynamic calls; only their Glade name says what
-  // they did.
+  // Gateway browser and computer tools arrive as generic MCP or dynamic calls; only their Glade
+  // name says what they did.
   const toolKind =
     gladeToolName && isGladeBrowserToolName(gladeToolName)
       ? "browser"
-      : classifyWorkLogToolKind({
-          itemType,
-          requestKind,
-          toolName,
-          command: commandPreview.command ?? commandPreview.rawCommand,
-          commandActionType: commandAction?.type,
-        });
+      : gladeToolName && isGladeComputerToolName(gladeToolName)
+        ? "computer"
+        : classifyWorkLogToolKind({
+            itemType,
+            requestKind,
+            toolName,
+            command: commandPreview.command ?? commandPreview.rawCommand,
+            commandActionType: commandAction?.type,
+          });
   if (toolKind) {
     entry.toolKind = toolKind;
   }

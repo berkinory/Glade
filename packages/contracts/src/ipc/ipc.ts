@@ -7,6 +7,7 @@ import type {
 import type { DesktopMenuShortcutState } from "./menuShortcuts";
 import type { BrowserTabsChanged } from "../browser/browserHost";
 import type { BrowserPanelCommand, BrowserTabsSubscribeInput } from "../transport/ws/browserRpc";
+import type { ComputerGrantTarget, ComputerState } from "../transport/ws/computerRpc";
 import type {
   BrowserPickedElement,
   BrowserPickTarget,
@@ -533,6 +534,10 @@ export interface NativeApi {
       callback: (event: BrowserTabsChanged) => void,
     ) => () => void;
     command: (command: BrowserPanelCommand) => Promise<void>;
+  };
+  computer: {
+    onState: (callback: (state: ComputerState) => void) => () => void;
+    revokeGrant: (target: ComputerGrantTarget) => Promise<void>;
   };
   git: {
     githubRepository: (input: GitHubRepositoryInput) => Promise<GitHubRepositoryResult>;
