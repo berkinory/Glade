@@ -139,6 +139,10 @@ Bold).
 `computer_open_app` takes an app name or bundle id (resolved through Cua's `list_apps`, which also
 lists installed apps that are not running) and optional `open` targets, and calls Cua's
 `launch_app` in the background. An app that is already running is reused: the targets open in it.
+Names also match without a leading `Windows ` or `Microsoft `, since Cua names a Windows packaged
+app by its package display name (`Windows Calculator`). Cua launches a packaged app through shell
+activation and reports pid 0; Glade then takes the pid of the window that appears outside the
+shared `ApplicationFrameHost.exe`.
 Targets must be absolute paths that exist (or `file:` URLs) or http(s) URLs; every other scheme
 (`x-apple…`, `javascript:`, `tel:`, custom handlers) is refused with `unsupported_target`, so a
 launch never fires a URL handler. The call needs `act` on the app through the same grant gate as
@@ -173,6 +177,14 @@ find with the ellipsis flipped, then against the titles the window's tree lists 
 (ignoring case, a trailing ellipsis and `⌘` shortcut suffixes). When nothing matches it refuses
 with `menu_item_not_found` and the available titles in `details.available`. Closed menus can omit
 items an app adds only while the menu is open (TextEdit's File ▸ Save…).
+
+On Windows, apps with a WinUI menu bar (Windows 11 Notepad, Paint) open a menu's items in a
+separate `PopupHost` flyout that Cua's `invoke_menu` does not search: it expands the bar item and
+reports the next segment missing. Glade then presses the rest of the path among the open menu's
+items. A WinUI flyout opens only for the foreground window, so when the app is behind another
+window Glade needs full control: it waits for the user to pause, brings the window forward and
+expands the menu again; with `act` access it refuses with `access_required` and says so. An app's
+frontmost window never resolves to a `PopupHost`.
 
 Sheets: a Save panel or alert attached to a window is an `AXSheet` in that window's tree, and Cua
 0.34 acts on its controls by element through the window. A full-depth walk of a Save panel spends
