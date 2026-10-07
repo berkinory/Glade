@@ -233,12 +233,8 @@ export class BrowserTabs {
     item.setSavePath(target);
     item.once("done", (_event, state) => {
       if (state !== "completed") FS.rmSync(target, { force: true });
-      tab.addNotice(
-        state === "completed"
-          ? `Downloaded ${target}.`
-          : `The download of ${item.getFilename()} ${state}.`,
-      );
     });
+    tab.downloads.track(item, target, (text) => tab.addNotice(text));
   }
 
   private changed(): void {

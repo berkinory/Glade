@@ -176,6 +176,8 @@ export function createBrowserHostDispatch(
         return `${tab.id === active ? "*" : " "} ${tab.id} ${JSON.stringify(page.title)} ${page.url}${dialog}`;
       });
       if (lines.length === 0) return { page: null, text: "No tabs.", notices: [] };
+      const downloads = tabs.list(params.threadId).flatMap((tab) => tab.downloads.lines());
+      if (downloads.length > 0) lines.push("Downloads:", ...downloads.map((line) => `  ${line}`));
       // Titles come from the pages, so the listing is page content.
       return reply(tabs.resolve(params.threadId, active), "", params.actor, lines.join("\n"));
     },

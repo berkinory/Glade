@@ -9,6 +9,11 @@ const NAVIGATION_START_MS = 100;
 const NAVIGATION_LOAD_MS = 5_000;
 const REQUEST_WINDOW_MS = 150;
 const REQUESTS_CAP_MS = 1_000;
+// A navigation that never commits may be turning into a download, which starts within this
+// window; a download the action started gets DOWNLOAD_CAP_MS to finish, so its path lands in this
+// result.
+const DOWNLOAD_START_MS = 1_500;
+const DOWNLOAD_CAP_MS = 3_000;
 const QUIET_MS = 100;
 const QUIET_CAP_MS = 3_000;
 const WATCH_SETUP_MS = 500;
@@ -124,6 +129,7 @@ export async function actAndSettle(
 ): Promise<ActionReport> {
   const { webContents } = tab;
   const before = tab.page();
+  const startedAt = Date.now();
   let started: () => void = () => undefined;
   const navigationStarted = new Promise<true>((resolve) => {
     started = () => resolve(true);
@@ -131,7 +137,12 @@ export async function actAndSettle(
   const onNavigation = (details: { isMainFrame: boolean; isSameDocument: boolean }) => {
     if (details.isMainFrame && !details.isSameDocument) started();
   };
+  let committed = false;
+  const onCommit = () => {
+    committed = true;
+  };
   webContents.on("did-start-navigation", onNavigation);
+  webContents.on("did-navigate", onCommit);
   const requests = new ActionRequests(tab.cdp);
   let outcome: ActionOutcome;
   let settled: Watched | undefined;
@@ -149,6 +160,7 @@ export async function actAndSettle(
       if (!(await waitForLoad(webContents, NAVIGATION_LOAD_MS))) {
         tab.addNotice("The page is still loading.");
       }
+      if (!committed) await tab.downloads.started(startedAt, DOWNLOAD_START_MS);
     } else {
       await sleep(Math.max(0, actionEnded + REQUEST_WINDOW_MS - Date.now()));
       await requests.settle(options.requestsCapMs ?? REQUESTS_CAP_MS);
@@ -158,9 +170,11 @@ export async function actAndSettle(
         QUIET_CAP_MS + 500,
       );
     }
+    await tab.downloads.settle(startedAt, DOWNLOAD_CAP_MS);
   } finally {
     requests.stop();
     webContents.off("did-start-navigation", onNavigation);
+    webContents.off("did-navigate", onCommit);
   }
   // The page may have navigated or replaced the element; the action itself already happened.
   const extra: ActionReport = outcome.afterSettle

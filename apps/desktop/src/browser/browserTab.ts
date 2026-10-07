@@ -1,6 +1,7 @@
 import type { BrowserPageDialog, BrowserTextResult } from "@glade/contracts/browser/browserHost";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { WebContentsView } from "electron";
+import { BrowserDownloads } from "./browserDownloads";
 import { BrowserFailure } from "./browserFailure";
 import { PageBuffers } from "./cdp/buffers";
 import { CdpSession } from "./cdp/cdpSession";
@@ -34,6 +35,7 @@ const MAX_NOTICES = 20;
 export class BrowserTab {
   readonly cdp: CdpSession;
   readonly refs = new RefTable();
+  readonly downloads = new BrowserDownloads();
   readonly buffers: PageBuffers;
   readonly dialogs: PageDialogs;
   private notices: string[] = [];
