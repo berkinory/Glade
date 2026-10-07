@@ -192,8 +192,9 @@ const SCOPE_NEEDS: Record<ComputerAccessScope, string> = {
   full: "full control",
 };
 
-// The gate every window-scoped tool passes before Cua sees the call: the thread's grant, then the
-// target app's category, checked against the app that owns the window right now.
+// The gate every window-scoped tool passes before Cua sees the call: the thread's grant (recorded on
+// first use when the thread's permission mode allows), then the target app's category, checked
+// against the app that owns the window right now.
 const authorize = (
   services: ComputerToolServices,
   context: ToolContext,
@@ -201,11 +202,13 @@ const authorize = (
   need: WindowNeed,
 ) =>
   Effect.gen(function* () {
-    const grant = services.access.grants.check(
-      callerThread(context),
-      { app: window.app_name, windowId: window.window_id },
-      need.scope,
-    );
+    const grant = yield* services.access.grantFor({
+      threadId: callerThread(context),
+      turnId: context.callerTurnId,
+      app: window.app_name,
+      windowId: window.window_id,
+      scope: need.scope,
+    });
     if (!grant) {
       return yield* refuse(
         "access_required",

@@ -53,12 +53,13 @@ const threadsView = (services: ComputerServices): ReadonlyArray<ComputerThreadSt
     byThread.set(threadId, {
       threadId: id,
       mode: services.computerUse.mode(id),
-      grants: grants.map(({ app, windowId, windowTitle, scope, grantedAt }) => ({
+      grants: grants.map(({ app, windowId, windowTitle, scope, grantedAt, autoGrantedIn }) => ({
         app,
         windowId,
         windowTitle,
         scope,
         grantedAt,
+        autoGrantedIn,
       })),
     });
   }

@@ -3,6 +3,7 @@ import * as Rpc from "effect/unstable/rpc/Rpc";
 import { COMPUTER_UNAVAILABLE_REASONS } from "../../computer/computerHost";
 import { ComputerAccessScope, ComputerUseMode } from "../../computer/computerUse";
 import { ThreadId } from "../../core/baseSchemas";
+import { RuntimeMode } from "../../provider/sessionPolicy";
 import { WsRpcError } from "./rpcErrors";
 
 export const COMPUTER_WS_METHODS = {
@@ -40,6 +41,8 @@ export const ComputerGrantView = Schema.Struct({
   windowTitle: Schema.NullOr(Schema.String),
   scope: ComputerAccessScope,
   grantedAt: Schema.String,
+  // The chat's permission mode when it granted this without asking; null when the user answered.
+  autoGrantedIn: Schema.NullOr(RuntimeMode),
 });
 export type ComputerGrantView = typeof ComputerGrantView.Type;
 

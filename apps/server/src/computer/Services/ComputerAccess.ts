@@ -3,18 +3,21 @@ import type { ComputerAccessScope } from "@glade/contracts/computer/computerUse"
 import { ServiceMap, type Effect } from "effect";
 
 import type { AppIdentities } from "../appIdentities.ts";
-import type { ComputerGrants } from "../computerGrants.ts";
+import type { ComputerGrant, ComputerGrants } from "../computerGrants.ts";
 import type { ComputerProgressGuard } from "../computerProgressGuard.ts";
 import type { ComputerTasks } from "../computerTask.ts";
 import type { WindowSnapshots } from "../windowSnapshots.ts";
 
-interface ComputerAccessRequest {
+interface ComputerGrantRequest {
   readonly threadId: ThreadId;
   readonly turnId: string | null;
   readonly app: string;
   readonly windowId: number | null;
-  readonly windowTitle: string | null;
   readonly scope: ComputerAccessScope;
+}
+
+interface ComputerAccessRequest extends ComputerGrantRequest {
+  readonly windowTitle: string | null;
   readonly reason: string;
   // How long to wait for the user before answering "pending"; the card stays open either way.
   readonly waitMs: number;
@@ -31,6 +34,9 @@ export interface ComputerAccessShape {
   readonly snapshots: WindowSnapshots;
   readonly progress: ComputerProgressGuard;
   readonly apps: AppIdentities;
+  // The grant covering the request, recorded first without a card when the thread's permission
+  // mode (read at call time) allows it; null when the user has to be asked.
+  readonly grantFor: (request: ComputerGrantRequest) => Effect.Effect<ComputerGrant | null>;
   // Shows the access card in the thread (or joins the open one for the same target) and waits.
   readonly requestAccess: (request: ComputerAccessRequest) => Effect.Effect<ComputerAccessOutcome>;
 }

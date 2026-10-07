@@ -1,17 +1,17 @@
 import { assert, describe, it } from "@effect/vitest";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { Effect, Fiber, Schema, Stream } from "effect";
+import { Effect, Fiber, Layer, Schema, Stream } from "effect";
 import * as FS from "node:fs";
 
 import type { ComputerAccessScope } from "@glade/contracts/computer/computerUse";
+import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
+import type { RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
 
-import { makeAppIdentities } from "../../computer/appIdentities.ts";
-import { makeComputerGrants } from "../../computer/computerGrants.ts";
-import { makeComputerProgressGuard } from "../../computer/computerProgressGuard.ts";
-import { makeComputerTasks } from "../../computer/computerTask.ts";
-import { makeWindowSnapshots } from "../../computer/windowSnapshots.ts";
 import { CuaToolResult } from "../../computer/cuaResults.ts";
-import type { ComputerHostShape } from "../../computer/Services/ComputerHost.ts";
+import { ComputerAccessLive } from "../../computer/Layers/ComputerAccess.ts";
+import { ComputerAccess } from "../../computer/Services/ComputerAccess.ts";
+import { ComputerHost, type ComputerHostShape } from "../../computer/Services/ComputerHost.ts";
+import { OrchestrationEngineService } from "../../orchestration/Services/OrchestrationEngine.ts";
 import { ThreadComputerUseLive } from "../../orchestration/Layers/ThreadComputerUse.ts";
 import { ThreadComputerUse } from "../../orchestration/Services/ThreadComputerUse.ts";
 import type { McpToolCallResult } from "../protocol.ts";
@@ -60,9 +60,14 @@ const cuaResult = (structuredContent: Record<string, unknown>) =>
   );
 
 // Cua itself is stubbed with captured results. Input actions answer with `effect`, or never
-// finish when it is null so Stop has something to stop.
-function setup(effect: "confirmed" | "unverifiable" | null = null) {
+// finish when it is null so Stop has something to stop. The engine records dispatched commands and
+// holds only the thread's permission mode.
+const setup = Effect.fnUntraced(function* (
+  effect: "confirmed" | "unverifiable" | null = null,
+  runtimeMode: RuntimeMode = "approval-required",
+) {
   const calls: string[] = [];
+  const dispatched: OrchestrationCommand[] = [];
   const windows = fixture("list_windows").structuredContent?.windows as ReadonlyArray<unknown>;
   const host: ComputerHostShape = {
     configured: true,
@@ -108,14 +113,18 @@ function setup(effect: "confirmed" | "unverifiable" | null = null) {
     killSwitch: Stream.empty,
     encodeJpeg: () => Effect.die("unused"),
   };
-  const access = {
-    grants: makeComputerGrants(),
-    tasks: makeComputerTasks(),
-    snapshots: makeWindowSnapshots(),
-    progress: makeComputerProgressGuard(),
-    apps: makeAppIdentities(),
-    requestAccess: () => Effect.die("unused"),
-  };
+  // Only the engine members ComputerAccess uses; the read model holds just this thread's mode.
+  const engine = Layer.succeed(OrchestrationEngineService, {
+    streamDomainEvents: Stream.never,
+    getReadModel: () => Effect.succeed({ threads: [{ id: THREAD, runtimeMode }] }),
+    dispatch: (command: OrchestrationCommand) =>
+      Effect.sync(() => ({ sequence: dispatched.push(command) })),
+  } as never);
+  const access = yield* ComputerAccess.asEffect().pipe(
+    Effect.provide(
+      ComputerAccessLive.pipe(Layer.provide([engine, Layer.succeed(ComputerHost, host)])),
+    ),
+  );
   const computerUse = Effect.runSync(
     ThreadComputerUse.asEffect().pipe(Effect.provide(ThreadComputerUseLive)),
   );
@@ -158,14 +167,19 @@ function setup(effect: "confirmed" | "unverifiable" | null = null) {
       windowTitle: null,
       scope,
       grantedAt: "2026-10-07T00:00:00.000Z",
+      autoGrantedIn: null,
     });
-  return { access, calls, call, errorCode, grant };
-}
+  const activityKinds = () =>
+    dispatched.flatMap((command) =>
+      command.type === "thread.activity.append" ? [command.activity.kind] : [],
+    );
+  return { access, calls, call, errorCode, grant, activityKinds };
+});
 
 describe("computer access gate", () => {
   it.effect("refuses an ungranted window before Cua sees the call", () =>
     Effect.gen(function* () {
-      const { calls, call, errorCode } = setup();
+      const { calls, call, errorCode } = yield* setup();
       const result = yield* call("computer_window_state", WINDOW);
       assert.strictEqual(errorCode(result), "access_required");
       assert.notInclude(calls, "get_window_state");
@@ -174,13 +188,14 @@ describe("computer access gate", () => {
 
   it.effect("passes a granted window and only within the granted scope", () =>
     Effect.gen(function* () {
-      const { access, calls, call, errorCode } = setup();
+      const { access, calls, call, errorCode } = yield* setup();
       access.grants.grant(THREAD, {
         app: "glade (dev)",
         windowId: null,
         windowTitle: null,
         scope: "read",
         grantedAt: "2026-10-07T00:00:00.000Z",
+        autoGrantedIn: null,
       });
       const state = yield* call("computer_window_state", WINDOW);
       assert.isUndefined(state.isError);
@@ -192,13 +207,14 @@ describe("computer access gate", () => {
 
   it.effect("Stop cancels the in-flight call and the rest of that turn", () =>
     Effect.gen(function* () {
-      const { access, calls, call, errorCode } = setup();
+      const { access, calls, call, errorCode } = yield* setup();
       access.grants.grant(THREAD, {
         app: "Glade (Dev)",
         windowId: WINDOW.window_id,
         windowTitle: null,
         scope: "full",
         grantedAt: "2026-10-07T00:00:00.000Z",
+        autoGrantedIn: null,
       });
       yield* call("computer_window_state", WINDOW);
       const click = yield* call("computer_act", { ...WINDOW, action: "click", element: 2 }).pipe(
@@ -274,7 +290,7 @@ describe("computer access gate", () => {
     ["any other app takes typing under act", "other", "act", "computer_type", typing, undefined],
   ] as const)("%s", ([, app, scope, tool, args, refusal]) =>
     Effect.gen(function* () {
-      const { call, errorCode, grant } = setup("confirmed");
+      const { call, errorCode, grant } = yield* setup("confirmed");
       grant(APPS[app].name, scope);
       const result = yield* call(tool, { ...target(app), ...args });
       assert.strictEqual(errorCode(result), refusal);
@@ -283,7 +299,7 @@ describe("computer access gate", () => {
 
   it.live("refuses a third identical action without effect until the window is read", () =>
     Effect.gen(function* () {
-      const { calls, call, errorCode, grant } = setup("unverifiable");
+      const { calls, call, errorCode, grant } = yield* setup("unverifiable");
       grant("TextEdit", "act");
       const clickTextEdit = call("computer_left_click", { ...target("other"), ...click });
       const clicks = () => calls.filter((name) => name === "click").length;
@@ -294,6 +310,32 @@ describe("computer access gate", () => {
       yield* call("computer_window_state", target("other"));
       assert.isUndefined(errorCode(yield* clickTextEdit));
       assert.strictEqual(clicks(), 3);
+    }),
+  );
+
+  it.effect.each([
+    ["full-access grants full control on first use", "full-access", undefined, "full"],
+    ["auto grants background input on first use", "auto", undefined, "act"],
+    ["approval-required asks before any input", "approval-required", "access_required", null],
+  ] as const)("%s", ([, mode, refusal, autoScope]) =>
+    Effect.gen(function* () {
+      const { access, call, errorCode, activityKinds } = yield* setup("confirmed", mode);
+      const click = yield* call("computer_left_click", { ...target("other"), coordinate: [4, 4] });
+      assert.strictEqual(errorCode(click), refusal);
+      const granted = access.grants.check(THREAD, { app: "TextEdit", windowId: null }, "read");
+      assert.strictEqual(granted?.scope ?? null, autoScope);
+      assert.notInclude(activityKinds(), "user-input.requested");
+
+      const fullRequest = yield* call("computer_request_access", {
+        app: "TextEdit",
+        scope: "full",
+        reason: "drag a file",
+      }).pipe(Effect.forkChild);
+      while (!fullRequest.pollUnsafe() && !activityKinds().includes("user-input.requested")) {
+        yield* Effect.yieldNow;
+      }
+      assert.strictEqual(activityKinds().includes("user-input.requested"), mode !== "full-access");
+      yield* Fiber.interrupt(fullRequest);
     }),
   );
 });

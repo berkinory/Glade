@@ -1,4 +1,5 @@
 import type { ComputerAccessScope } from "@glade/contracts/computer/computerUse";
+import type { RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
 
 // A target is an app as Cua's list_windows names it, optionally narrowed to one window id.
 export interface ComputerTarget {
@@ -6,11 +7,13 @@ export interface ComputerTarget {
   readonly windowId: number | null;
 }
 
-interface ComputerGrant extends ComputerTarget {
+export interface ComputerGrant extends ComputerTarget {
   // The window's title when it was granted, for Settings; null for an app-wide grant.
   readonly windowTitle: string | null;
   readonly scope: ComputerAccessScope;
   readonly grantedAt: string;
+  // The thread's permission mode when it granted this without a card; null when the user answered.
+  readonly autoGrantedIn: RuntimeMode | null;
 }
 
 export interface ComputerGrants {
@@ -35,6 +38,8 @@ export interface ComputerGrants {
 }
 
 const RANK: Record<ComputerAccessScope, number> = { read: 0, act: 1, full: 2 };
+export const scopeCovers = (granted: ComputerAccessScope, needed: ComputerAccessScope) =>
+  RANK[granted] >= RANK[needed];
 
 const sameApp = (left: string, right: string) => left.toLowerCase() === right.toLowerCase();
 const sameTarget = (left: ComputerTarget, right: ComputerTarget) =>
@@ -58,7 +63,7 @@ export function makeComputerGrants(): ComputerGrants {
         (grant) =>
           sameApp(grant.app, target.app) &&
           (grant.windowId === null || grant.windowId === target.windowId) &&
-          RANK[grant.scope] >= RANK[scope],
+          scopeCovers(grant.scope, scope),
       ) ?? null,
     grant: (threadId, grant) => {
       const rest = (grants.get(threadId) ?? []).filter((entry) => !sameTarget(entry, grant));

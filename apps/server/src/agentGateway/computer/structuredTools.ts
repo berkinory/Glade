@@ -2,6 +2,7 @@ import { ComputerAccessScope } from "@glade/contracts/computer/computerUse";
 import { Effect, Option, Schema } from "effect";
 
 import { appCategory, type ActionClass } from "../../computer/appCategories.ts";
+import { scopeCovers } from "../../computer/computerGrants.ts";
 import { CuaListApps, CuaListWindows, resultText } from "../../computer/cuaResults.ts";
 import type { ToolEntry } from "../toolRuntime.ts";
 import { untrustedContent } from "../untrustedContent.ts";
@@ -301,7 +302,7 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
     name: "computer_request_access",
     title: "Request Computer Use access",
     description:
-      "Ask the user for access to an app (or one window) before acting on it: read, act or full. Shows a card in the chat and waits up to 45 s. If the answer is pending, call again with the same app to keep waiting; never act on the app before it is granted. A denial is final for this thread unless the user asks again. Browsers can only be granted read.",
+      "Ask the user for access to an app (or one window): read, act or full. Call it only after a tool returned access_required; other tools grant access on first use when the chat's permission mode allows. Shows a card in the chat and waits up to 45 s. If the answer is pending, call again with the same app to keep waiting; never act on the app before it is granted. A denial is final for this thread unless the user asks again. Browsers can only be granted read.",
     input: RequestAccessInput,
     readOnly: false,
     run: (input, context) =>
@@ -356,7 +357,9 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
         });
         const text =
           outcome.status === "granted"
-            ? `Granted: ${outcome.scope} access to ${input.app}.`
+            ? scopeCovers(outcome.scope, input.scope)
+              ? `Granted: ${outcome.scope} access to ${input.app}.`
+              : `Granted: ${outcome.scope} access to ${input.app}. The user chose ${outcome.scope}, not ${input.scope}; work within it and do not ask again.`
             : outcome.status === "denied"
               ? `The user denied access to ${input.app}. Do not use it or ask again unless the user says so.`
               : `Waiting for the user to answer the access card. Call computer_request_access again with app "${input.app}" to keep waiting; do not act on it yet.`;

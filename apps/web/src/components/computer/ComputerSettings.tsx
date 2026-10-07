@@ -13,6 +13,7 @@ import {
   isMacPlatform,
   isWindowsPlatform,
 } from "~/lib/utils";
+import { RUNTIME_MODE_PRESENTATION } from "~/lib/runtimeMode";
 import { readNativeApi } from "~/nativeApi";
 import { useStore } from "~/store";
 import {
@@ -156,7 +157,11 @@ function GrantRow(props: { threadId: ThreadId; grant: ComputerGrantView }) {
   return (
     <SettingsListRow
       title={threadTitle ?? "Untitled chat"}
-      description={`${target} · ${SCOPE_LABEL[grant.scope]}`}
+      description={`${target} · ${SCOPE_LABEL[grant.scope]}${
+        grant.autoGrantedIn
+          ? ` · auto (${RUNTIME_MODE_PRESENTATION[grant.autoGrantedIn].label})`
+          : ""
+      }`}
       actions={
         <Button size="sm" variant="outline" onClick={revoke}>
           Revoke

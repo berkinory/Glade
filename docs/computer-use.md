@@ -50,6 +50,18 @@ connection and every policy decision, and providers only see gateway tools.
   are listed in Settings > Computer Use with Revoke, and are gone after a restart. Only the owner
   session sees and revokes them; paired devices do not. An answer only settles a card of the chat
   it was given in.
+- Access follows the chat's permission mode, read at each call, so switching the mode applies to
+  the next call:
+  - Full access: no cards. The first call that needs an app grants `full` for the whole app and
+    goes ahead; the timeline shows one "Access granted" row noting the mode. Terminals and IDEs
+    therefore take typing and keys too, as the user's shell tools already could; browsers stay
+    read-only by category.
+  - Approve for me (`auto`): reading and background input (`act`) are granted on first use without
+    a card; `full` (foreground delivery, drags, anything that moves the real pointer or keyboard)
+    asks once per app, and that answer stands for the chat.
+  - Ask for approval: every grant comes from a card, as above.
+  - A denial given in the chat wins over any mode. Lowering the mode keeps existing grants;
+    Settings > Computer Use lists them, marking automatic ones as "auto (<mode>)", and revokes them.
 - Every window-scoped call checks that the window belongs to the pid it names.
 - App categories cap every grant without extra prompts. Apps are identified at action time by the
   bundle id of the process that owns the target window (macOS), or by executable name on Windows
