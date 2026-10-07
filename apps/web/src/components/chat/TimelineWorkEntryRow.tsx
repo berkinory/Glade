@@ -207,6 +207,7 @@ function workEntryIcon(workEntry: TimelineWorkEntry): IconComponent {
       return PencilEdit02Icon;
     case "fetch":
     case "web_search":
+    case "browser":
       return Globe02Icon;
     case "agent":
       return BotIcon;
@@ -236,6 +237,7 @@ export function workEntryLeftIcon(
 ): IconComponent {
   if (classification.isVisual) return ChartAreaIcon;
   if (classification.mcpIcon) return classification.mcpIcon;
+  if (workEntry.toolKind === "browser") return Globe02Icon;
   if (classification.gladeTitle !== null) return GladeToolIcon;
   if (workEntry.itemType === "mcp_tool_call") return McpServerIcon;
   return workEntryIcon(workEntry);

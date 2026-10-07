@@ -50,6 +50,10 @@ export const GLADE_BROWSER_TOOL_PRESENTATIONS = Object.fromEntries(
   { readonly running: string; readonly completed: string; readonly failed: string }
 >;
 
+export function isGladeBrowserToolName(gladeToolName: string): boolean {
+  return BROWSER_TOOL_NAMES.has(gladeToolName.replace(/^glade_/u, ""));
+}
+
 // Bare gateway names, as some providers report them without the server prefix.
 export function isBareBrowserToolName(normalizedName: string): boolean {
   return BROWSER_TOOL_NAMES.has(normalizedName);

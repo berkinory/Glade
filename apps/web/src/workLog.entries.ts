@@ -26,7 +26,7 @@ import {
   normalizeGladeMcpIdentifier,
   normalizeToolTextForComparison,
 } from "./lib/toolCallLabel.presentations";
-import { browserToolResultPreview } from "./lib/browserToolPresentation";
+import { browserToolResultPreview, isGladeBrowserToolName } from "./lib/browserToolPresentation";
 import { deriveWorkLogToolDetails } from "./lib/toolCallDetails";
 import { compareActivitiesByOrder } from "./workLog.ordering";
 import {
@@ -485,13 +485,18 @@ function normalizeWorkLogActivity(activity: OrchestrationThreadActivity): Derive
   if (requestKind) {
     entry.requestKind = requestKind;
   }
-  const toolKind = classifyWorkLogToolKind({
-    itemType,
-    requestKind,
-    toolName,
-    command: commandPreview.command ?? commandPreview.rawCommand,
-    commandActionType: commandAction?.type,
-  });
+  // Gateway browser tools arrive as generic MCP or dynamic calls; only their Glade name says what
+  // they did.
+  const toolKind =
+    gladeToolName && isGladeBrowserToolName(gladeToolName)
+      ? "browser"
+      : classifyWorkLogToolKind({
+          itemType,
+          requestKind,
+          toolName,
+          command: commandPreview.command ?? commandPreview.rawCommand,
+          commandActionType: commandAction?.type,
+        });
   if (toolKind) {
     entry.toolKind = toolKind;
   }

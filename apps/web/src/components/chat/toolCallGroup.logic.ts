@@ -78,6 +78,7 @@ const CATEGORY_ORDER: ReadonlyArray<ToolCallSummaryCategory> = [
   "search",
   "fetch",
   "web_search",
+  "browser",
   "agent",
   "image_view",
   "image_generation",
@@ -110,6 +111,8 @@ function summaryPartLabel(
       return `fetched ${count} ${pluralize(count, "page")}`;
     case "web_search":
       return timesLabel("searched the web", count);
+    case "browser":
+      return timesLabel("used the browser", count);
     case "agent":
       return `ran ${count} agent ${pluralize(count, "task")}`;
     case "image_view":
