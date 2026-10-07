@@ -2,10 +2,10 @@ import type {
   ComputerConnection,
   ComputerUnavailableReason,
 } from "@glade/contracts/computer/computerHost";
-import type { EmbeddedCuaDriverHostLike } from "@trycua/cua-driver";
 import type { CuaBinary } from "./cuaBinary";
 import type { ComputerPermissions } from "./cuaPermissions";
 import { loadCuaSdk } from "./cuaSdk";
+import { createWindowsCuaDaemon, type CuaDaemon } from "./cuaWindowsDaemon";
 
 export interface CuaHost {
   readonly connection: () => ComputerConnection;
@@ -46,7 +46,7 @@ export function startCuaHost(input: {
   readonly log: (message: string) => void;
 }): CuaHost {
   let current = unavailable("starting", "Cua Driver is starting.");
-  let host: EmbeddedCuaDriverHostLike | null = null;
+  let host: CuaDaemon | null = null;
   // The generation this host considers alive; cleared before any intentional stop or restart so
   // that generation's exit is not mistaken for a crash.
   let live: string | null = null;
@@ -68,8 +68,16 @@ export function startCuaHost(input: {
     return chain;
   };
 
-  const ensureHost = async (binaryPath: string) => {
+  const ensureHost = async (binaryPath: string): Promise<CuaDaemon> => {
     if (host) return host;
+    if (process.platform === "win32") {
+      host = createWindowsCuaDaemon({
+        binaryPath,
+        hostBundleId: input.hostBundleId,
+        environment: DAEMON_TELEMETRY_OFF,
+      });
+      return host;
+    }
     const sdk = await loadCuaSdk();
     host = sdk.EmbeddedCuaDriverHost.withOptions(
       sdk.EmbeddedDriverHostOptions.create({
@@ -94,7 +102,7 @@ export function startCuaHost(input: {
     }, delay);
   };
 
-  const watchExit = (driver: EmbeddedCuaDriverHostLike, generation: string, startedAt: number) => {
+  const watchExit = (driver: CuaDaemon, generation: string, startedAt: number) => {
     driver.waitForExit(generation).then(
       (exit) => {
         if (stopped || live !== generation) return;

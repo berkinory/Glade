@@ -18,7 +18,10 @@ connection and every policy decision, and providers only see gateway tools.
   every other build compares the upstream SHA-256. `cuaHost.ts` starts the
   `@trycua/cua-driver` embedded host once the platform's grants are present, restarts it with
   1–30 s backoff after an unexpected exit, stops it when a grant is revoked, and stops it on quit.
-  Daemon telemetry is turned off.
+  Daemon telemetry is turned off. On Windows the SDK host would give the console-subsystem
+  daemon a visible console window, so `cuaWindowsDaemon.ts` runs the same `serve --embedded`
+  contract itself through the shared process runtime (hidden window, parent liveness on stdin,
+  a private named pipe whose `metadata` answer must name the spawned pid).
 - **Host RPC.** After every change, and whenever a backend authenticates, the desktop publishes
   `computer.connection` over the desktop host RPC (see [Browser Use](browser-use.md#desktop-host-rpc)):
   either `ready` with the driver generation and the MCP proxy's `command`, `args` and environment,
@@ -153,11 +156,16 @@ Clipboard: `computer_clipboard_write` takes exactly one of `text`, `image_path` 
 belongs to no app, so writing is allowed whenever Computer Use is on; pasting is input to an app and
 meets that app's grant. Paste with `computer_menu` Edit > Paste, which works in the background;
 `computer_key` cmd+v lands in the foreground on an `element_index`. `computer_clipboard_read`
-returns plain text inside `APP_CONTENT` (`source=clipboard`) plus the types. Because the clipboard
-can hold anything the user copied, reading is allowed without asking only in Full access; Approve
-for me and Ask for approval show one card per chat ("Allow clipboard reading" or "Deny") and the
-answer stands for the chat until the server restarts. A denial refuses with `access_denied`. Glade
-never logs clipboard contents.
+returns plain text (capped at 20,000 characters) inside `APP_CONTENT` (`source=clipboard`) plus the
+types. The clipboard can hold anything the user copied, passwords included, and a virtual machine
+may share the host's clipboard, so the permission mode never decides a read, Full access included.
+A read goes through without asking only while the clipboard still holds exactly the text this
+chat's agent last wrote with `computer_clipboard_write`: the server keeps a SHA-256 hash of that
+text, never the text, and compares it with what the clipboard holds now. Anything else, including
+text the agent copied with cmd+c or Edit > Copy (Glade cannot know what that was), shows one card
+per chat ("Allow clipboard reading in this chat" or "Deny"), and the answer stands for the chat
+until the server restarts. A denial refuses with `access_denied`. Glade never logs clipboard
+contents.
 
 Menus: `computer_menu` takes the path as an array or one string with `>`, `▸` or `→`. Cua's
 `invoke_menu` matches titles exactly except `...` for `…`, so Glade retries a segment Cua cannot
@@ -274,15 +282,16 @@ See [dependency maintenance](dependencies.md#cua-driver).
    captured from the pinned release; `apps/server/src/agentGateway/computer/computerAccessGate.test.ts`
    covers the grant gate, the app category tiers (including the file dialog's full-control rule and
    the browser launch rule),
-   the progress guard and the clipboard read consent per permission mode.
+   the progress guard and the clipboard read consent (the agent's own text, foreign text in every
+   permission mode, an allowed chat).
 3. Launch the Dev app through LaunchServices, grant both permissions, and confirm Settings shows the
    driver ready. Turn on `/computer` in a chat, grant TextEdit and ask the agent to type a sentence
    and read it back, then exercise a screenshot and a zoomed region. Save the document into a scratch folder
    with `computer_file_dialog`, once more under the same name (refused with `file_exists`), and open
    a PDF in Preview with it. Quit Preview and open the PDF with `computer_open_app` (launched, the
    target's window confirmed), again while it runs (reused), and try a `tel:` target (refused). Copy text with
-   `computer_clipboard_write`, paste it into TextEdit with Edit > Paste and read it back (a card
-   asks first outside Full access), and resize the TextEdit window with `computer_window_frame`.
+   `computer_clipboard_write`, paste it into TextEdit with Edit > Paste and read it back (no card),
+   then copy other text yourself and read again (a card asks, in Full access too), and resize the TextEdit window with `computer_window_frame`.
 4. Kill the `cua-driver` process: Settings recovers with a new generation within a few seconds.
    Quitting Glade stops the daemon and the proxy.
 5. While an agent works in TextEdit, press the kill switch: the turn stops as with Stop. Ask for
