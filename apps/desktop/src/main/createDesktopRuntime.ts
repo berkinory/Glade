@@ -112,6 +112,7 @@ export function createDesktopRuntime(): void {
     resources,
     identity,
   });
+  lifecycle.installSignalHandlers();
   const ipc = createRegisterDesktopIpc({
     windows,
     identity,
@@ -147,6 +148,7 @@ export function createDesktopRuntime(): void {
     updates.configure();
 
     await backend.reserveBackendEndpoint("bootstrap");
+    if (lifecycle.isQuitting()) return;
     try {
       desktopHost = await startDesktopHost({
         gladePorts: () => gladePorts(backend.getHttpUrl()),
@@ -171,10 +173,15 @@ export function createDesktopRuntime(): void {
           log: log.writeDesktopLogHeader,
         },
       });
-      app.once("will-quit", () => void desktopHost?.close());
     } catch (error) {
       log.writeDesktopLogHeader(`desktop host unavailable message=${formatErrorMessage(error)}`);
     }
+    // A quit that began while the host was starting stopped a null host; close this one now.
+    if (lifecycle.isQuitting()) {
+      await desktopHost?.close();
+      return;
+    }
+    app.once("will-quit", () => void desktopHost?.close());
 
     ipc.registerIpcHandlers();
     log.writeDesktopLogHeader("bootstrap ipc handlers registered");
@@ -223,7 +230,9 @@ export function createDesktopRuntime(): void {
     app
       .whenReady()
       .then(() => {
+        lifecycle.installSignalHandlers();
         log.writeDesktopLogHeader("app ready");
+        if (lifecycle.isQuitting()) return;
         identity.configureAppIdentity();
         identity.applyInitialMacDockIcon();
         identity.refreshMacIconCacheOnVersionChange();
@@ -303,8 +312,4 @@ export function createDesktopRuntime(): void {
       app.quit();
     }
   });
-  if (process.platform !== "win32") {
-    process.on("SIGINT", () => lifecycle.quitOnSignal("SIGINT"));
-    process.on("SIGTERM", () => lifecycle.quitOnSignal("SIGTERM"));
-  }
 }

@@ -185,9 +185,26 @@ export function createDesktopShutdown({
     }, SIGNAL_QUIT_DEADLINE_MS);
     requestGracefulAppQuit(signal);
   }
+  const signalListeners = {
+    SIGINT: () => quitOnSignal("SIGINT"),
+    SIGTERM: () => quitOnSignal("SIGTERM"),
+  };
+  // Electron installs its own SIGINT/SIGTERM handlers during startup, after the main script has
+  // registered Node's. Its handler turns the signal into a plain before-quit (and the running-chats
+  // prompt), then restores the default action. Node re-installs its handler only when a signal's
+  // listener count rises from zero, so call this again once the app is ready.
+  function installSignalHandlers(): void {
+    if (process.platform === "win32") return;
+    for (const signal of ["SIGINT", "SIGTERM"] as const) {
+      const others = process.rawListeners(signal).filter((l) => l !== signalListeners[signal]);
+      process.removeAllListeners(signal);
+      process.on(signal, signalListeners[signal]);
+      for (const listener of others) process.on(signal, listener as NodeJS.SignalsListener);
+    }
+  }
   return {
     confirmRunningChatsThenQuit,
-    quitOnSignal,
+    installSignalHandlers,
     requestGracefulAppQuit,
     isQuitting: () => isQuitting,
     setQuitting: (value: boolean) => {

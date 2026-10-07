@@ -144,4 +144,6 @@ output sink leaves the GUI running and packaged file logging active, without wri
 error back to that pipe. Other stream errors retain the fatal path. On POSIX, SIGINT and SIGTERM
 request graceful shutdown without the running-chats prompt and are bounded at 5 s, even when an
 earlier quit is still waiting: past that the app exits, and the backend, which watches its stdin
-for the desktop going away, finishes its own shutdown.
+for the desktop going away, finishes its own shutdown. Electron installs its own signal handlers while
+starting, so the desktop installs its handlers again once the app is ready; a signal during
+startup skips the remaining startup work and runs the same bounded shutdown.
