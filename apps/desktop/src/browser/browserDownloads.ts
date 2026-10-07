@@ -116,6 +116,10 @@ export class BrowserDownloads {
     }
   }
 
+  inProgress(): boolean {
+    return this.items.some((item) => item.state === "progressing");
+  }
+
   lines(): string[] {
     return this.items.map((item) => {
       if (item.state === "completed") return `${item.path} (${bytes(item.received)}), finished`;

@@ -4,7 +4,12 @@ import { session, WebContentsView, type DownloadItem, type WebContents } from "e
 import * as FS from "node:fs";
 import { downloadTarget } from "./browserDownloads";
 import { BrowserFailure } from "./browserFailure";
-import { BROWSER_PARTITION, BROWSER_WEB_PREFERENCES, BrowserTab } from "./browserTab";
+import {
+  BROWSER_PARTITION,
+  BROWSER_WEB_PREFERENCES,
+  BrowserTab,
+  type CarriedTabState,
+} from "./browserTab";
 import type { ContentBlocker } from "./contentBlocker";
 import { browserUrlBlockReason } from "./browserUrlPolicy";
 
@@ -13,14 +18,44 @@ import { browserUrlBlockReason } from "./browserUrlPolicy";
 const DEFAULT_BOUNDS = { x: 0, y: 0, width: 1280, height: 800 };
 const CHANGE_DEBOUNCE_MS = 100;
 const ERR_BLOCKED_BY_CLIENT = -20;
+// Like Chrome's tab discarding: a tab nobody touched for this long, or beyond the per-thread cap
+// of live tabs (least recently used first), gives up its renderer until it is used again.
+const SUSPEND_IDLE_MS = 10 * 60_000;
+const SUSPEND_SWEEP_MS = 60_000;
+const MAX_LIVE_TABS_PER_THREAD = 8;
+
+// A tab whose view and debugger were released. It keeps its place, page and ref numbering, and
+// comes back on the next agent call or when the user selects it.
+interface SuspendedTab extends CarriedTabState {
+  readonly id: string;
+  readonly threadId: ThreadId;
+  readonly downloadDir: string | null;
+  readonly url: string;
+  readonly title: string;
+  readonly notices: readonly string[];
+}
+
+type TabEntry = BrowserTab | SuspendedTab;
+
+export interface BrowserTabListing {
+  readonly id: string;
+  readonly url: string;
+  readonly title: string;
+  readonly suspended: boolean;
+  readonly dialogOpen: boolean;
+  readonly downloads: readonly string[];
+}
+
+const isLive = (entry: TabEntry): entry is BrowserTab => entry instanceof BrowserTab;
 
 // Owns every agent browser tab. Tabs belong to exactly one thread; callers pass the thread from
 // the authenticated server request and can only reach that thread's tabs.
 export class BrowserTabs {
-  private readonly tabs = new Map<string, BrowserTab>();
+  private readonly tabs = new Map<string, TabEntry>();
   private readonly activeByThread = new Map<ThreadId, string>();
   private nextId = 1;
   private changeTimer: NodeJS.Timeout | null = null;
+  private readonly sweepTimer = setInterval(() => this.sweep(), SUSPEND_SWEEP_MS);
 
   constructor(
     private readonly options: {
@@ -66,24 +101,23 @@ export class BrowserTabs {
     return tab;
   }
 
+  // A suspended tab is restored: its page reloads and the refs taken before are stale.
   resolve(threadId: ThreadId, tabId: string | undefined): BrowserTab {
-    const id = tabId ?? this.activeByThread.get(threadId);
-    const tab = id === undefined ? undefined : this.tabs.get(id);
-    if (tab && tab.threadId === threadId) return tab;
-    if (tabId !== undefined) {
-      throw new BrowserFailure(
-        "tab_not_found",
-        `Tab ${tabId} does not exist in this thread. List tabs with browser_tabs.`,
-      );
-    }
-    throw new BrowserFailure(
-      "no_tab",
-      "This thread has no browser tab. Open one with browser_tabs or browser_navigate.",
-    );
+    const entry = this.entry(threadId, tabId);
+    return isLive(entry) ? entry : this.restore(entry);
   }
 
-  list(threadId: ThreadId): BrowserTab[] {
-    return [...this.tabs.values()].filter((tab) => tab.threadId === threadId);
+  listing(threadId: ThreadId): BrowserTabListing[] {
+    return this.entries(threadId).map((entry) => {
+      const live = isLive(entry);
+      return {
+        id: entry.id,
+        ...(live ? entry.page() : { url: entry.url, title: entry.title }),
+        suspended: !live,
+        dialogOpen: live && entry.dialogs.current() !== null,
+        downloads: entry.downloads.lines(),
+      };
+    });
   }
 
   activeId(threadId: ThreadId): string | undefined {
@@ -98,17 +132,12 @@ export class BrowserTabs {
   }
 
   close(threadId: ThreadId, tabId: string | undefined): void {
-    const tab = this.resolve(threadId, tabId);
-    this.forget(tab);
-    tab.destroy();
+    this.discard(this.entry(threadId, tabId));
   }
 
   closeThread(threadId: ThreadId): number {
-    const closing = this.list(threadId);
-    for (const tab of closing) {
-      this.forget(tab);
-      tab.destroy();
-    }
+    const closing = this.entries(threadId);
+    for (const entry of closing) this.discard(entry);
     return closing.length;
   }
 
@@ -118,16 +147,103 @@ export class BrowserTabs {
   }
 
   closeAll(): void {
-    for (const tab of this.tabs.values()) tab.destroy();
+    clearInterval(this.sweepTimer);
+    for (const entry of this.tabs.values()) if (isLive(entry)) entry.destroy();
   }
 
-  private adopt(view: WebContentsView, threadId: ThreadId, downloadDir: string | null): BrowserTab {
-    const tab = new BrowserTab(`t${this.nextId++}`, threadId, view, downloadDir, () =>
-      this.changed(),
+  private entry(threadId: ThreadId, tabId: string | undefined): TabEntry {
+    const id = tabId ?? this.activeByThread.get(threadId);
+    const entry = id === undefined ? undefined : this.tabs.get(id);
+    if (entry && entry.threadId === threadId) return entry;
+    if (tabId !== undefined) {
+      throw new BrowserFailure(
+        "tab_not_found",
+        `Tab ${tabId} does not exist in this thread. List tabs with browser_tabs.`,
+      );
+    }
+    throw new BrowserFailure(
+      "no_tab",
+      "This thread has no browser tab. Open one with browser_tabs or browser_navigate.",
+    );
+  }
+
+  private entries(threadId: ThreadId): TabEntry[] {
+    return [...this.tabs.values()].filter((entry) => entry.threadId === threadId);
+  }
+
+  private discard(entry: TabEntry): void {
+    this.forget(entry);
+    if (isLive(entry)) entry.destroy();
+  }
+
+  private sweep(): void {
+    const idleSince = Date.now() - SUSPEND_IDLE_MS;
+    for (const entry of [...this.tabs.values()]) {
+      if (isLive(entry) && entry.lastUsed() < idleSince && entry.canSuspend()) this.suspend(entry);
+    }
+  }
+
+  private enforceLiveCap(threadId: ThreadId, keep: BrowserTab): void {
+    const candidates = this.entries(threadId)
+      .filter(isLive)
+      .toSorted((a, b) => a.lastUsed() - b.lastUsed());
+    let excess = candidates.length - MAX_LIVE_TABS_PER_THREAD;
+    for (const tab of candidates) {
+      if (excess <= 0) return;
+      if (tab === keep || !tab.canSuspend()) continue;
+      this.suspend(tab);
+      excess -= 1;
+    }
+  }
+
+  // The entry replaces the tab in place before the view goes, so its `destroyed` event does not
+  // forget it.
+  private suspend(tab: BrowserTab): void {
+    const { url, title } = tab.page();
+    this.tabs.set(tab.id, {
+      id: tab.id,
+      threadId: tab.threadId,
+      downloadDir: tab.downloadDir,
+      url,
+      title,
+      refs: tab.refs,
+      downloads: tab.downloads,
+      notices: tab.takeNotices(),
+    });
+    tab.destroy();
+    this.changed();
+  }
+
+  private restore(entry: SuspendedTab): BrowserTab {
+    const view = new WebContentsView({ webPreferences: BROWSER_WEB_PREFERENCES });
+    const tab = this.adopt(view, entry.threadId, entry.downloadDir, entry);
+    entry.refs.invalidate();
+    for (const notice of entry.notices) tab.addNotice(notice);
+    tab.addNotice(
+      `This tab had been suspended while idle; Glade reloaded ${entry.url || "it"}, so refs from before no longer work. Take a new snapshot.`,
+    );
+    tab.restore(entry.url);
+    return tab;
+  }
+
+  // `restored` keeps the suspended tab's id, place and state; it does not become the active tab.
+  private adopt(
+    view: WebContentsView,
+    threadId: ThreadId,
+    downloadDir: string | null,
+    restored?: SuspendedTab,
+  ): BrowserTab {
+    const tab = new BrowserTab(
+      restored?.id ?? `t${this.nextId++}`,
+      threadId,
+      view,
+      downloadDir,
+      () => this.changed(),
+      restored,
     );
     view.setBounds(DEFAULT_BOUNDS);
     this.tabs.set(tab.id, tab);
-    this.activeByThread.set(threadId, tab.id);
+    if (!restored) this.activeByThread.set(threadId, tab.id);
     const webContents = view.webContents;
     const changed = () => this.changed();
     webContents.on("did-start-loading", changed);
@@ -165,22 +281,26 @@ export class BrowserTabs {
         },
       };
     });
+    this.enforceLiveCap(threadId, tab);
     this.changed();
     return tab;
   }
 
-  private forget(tab: BrowserTab): void {
-    if (!this.tabs.delete(tab.id)) return;
-    if (this.activeByThread.get(tab.threadId) === tab.id) {
-      const next = this.list(tab.threadId).at(-1);
-      if (next) this.activeByThread.set(tab.threadId, next.id);
-      else this.activeByThread.delete(tab.threadId);
+  private forget(entry: TabEntry): void {
+    if (this.tabs.get(entry.id) !== entry) return;
+    this.tabs.delete(entry.id);
+    if (this.activeByThread.get(entry.threadId) === entry.id) {
+      const next = this.entries(entry.threadId).at(-1);
+      if (next) this.activeByThread.set(entry.threadId, next.id);
+      else this.activeByThread.delete(entry.threadId);
     }
     this.changed();
   }
 
   private handleDownload(item: DownloadItem, webContents: WebContents): void {
-    const tab = [...this.tabs.values()].find((candidate) => candidate.webContents === webContents);
+    const tab = [...this.tabs.values()]
+      .filter(isLive)
+      .find((candidate) => candidate.webContents === webContents);
     if (!tab?.downloadDir) {
       item.cancel();
       tab?.addNotice(
@@ -210,17 +330,31 @@ export class BrowserTabs {
     this.changeTimer = setTimeout(() => {
       this.changeTimer = null;
       this.options.onChanged(
-        [...this.tabs.values()].map((tab) => ({
-          tabId: tab.id,
-          threadId: tab.threadId,
-          url: tab.webContents.getURL(),
-          title: tab.webContents.getTitle(),
-          loading: tab.webContents.isLoading(),
-          canGoBack: tab.webContents.navigationHistory.canGoBack(),
-          canGoForward: tab.webContents.navigationHistory.canGoForward(),
-          active: this.activeByThread.get(tab.threadId) === tab.id,
-          dialog: tab.dialogs.current() ?? tab.challengeNotice(),
-        })),
+        [...this.tabs.values()].map((entry) => {
+          const active = this.activeByThread.get(entry.threadId) === entry.id;
+          const base = { tabId: entry.id, threadId: entry.threadId, active };
+          if (!isLive(entry)) {
+            return {
+              ...base,
+              url: entry.url,
+              title: entry.title,
+              loading: false,
+              canGoBack: false,
+              canGoForward: false,
+              dialog: null,
+            };
+          }
+          const { webContents } = entry;
+          return {
+            ...base,
+            url: webContents.getURL(),
+            title: webContents.getTitle(),
+            loading: webContents.isLoading(),
+            canGoBack: webContents.navigationHistory.canGoBack(),
+            canGoForward: webContents.navigationHistory.canGoForward(),
+            dialog: entry.dialogs.current() ?? entry.challengeNotice(),
+          };
+        }),
       );
     }, CHANGE_DEBOUNCE_MS);
   }

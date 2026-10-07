@@ -172,15 +172,21 @@ export function createBrowserHostDispatch(
         tabs.select(params.threadId, params.tabId);
       }
       const active = tabs.activeId(params.threadId);
-      const lines = tabs.list(params.threadId).map((tab) => {
-        const page = tab.page();
-        const dialog = tab.dialogs.current() ? " (dialog open)" : "";
-        return `${tab.id === active ? "*" : " "} ${tab.id} ${JSON.stringify(page.title)} ${page.url}${dialog}`;
+      const listing = tabs.listing(params.threadId);
+      const lines = listing.map((tab) => {
+        const state = tab.dialogOpen ? " (dialog open)" : tab.suspended ? " (suspended)" : "";
+        return `${tab.id === active ? "*" : " "} ${tab.id} ${JSON.stringify(tab.title)} ${tab.url}${state}`;
       });
-      if (lines.length === 0) return { page: null, text: "No tabs.", notices: [] };
-      const downloads = tabs.list(params.threadId).flatMap((tab) => tab.downloads.lines());
+      const current = listing.find((tab) => tab.id === active);
+      if (!current) return { page: null, text: "No tabs.", notices: [] };
+      const downloads = listing.flatMap((tab) => tab.downloads);
       if (downloads.length > 0) lines.push("Downloads:", ...downloads.map((line) => `  ${line}`));
-      // Titles come from the pages, so the listing is page content.
+      // Titles come from the pages, so the listing is page content. Listing never wakes a
+      // suspended tab.
+      if (current.suspended) {
+        const page = { tabId: current.id, url: current.url, title: current.title };
+        return { page, text: "", content: lines.join("\n"), notices: [] };
+      }
       return reply(tabs.resolve(params.threadId, active), "", params.actor, lines.join("\n"));
     },
     "browser.navigate": async (params) => {

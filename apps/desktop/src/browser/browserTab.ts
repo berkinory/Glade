@@ -2,7 +2,7 @@ import type { BrowserPageDialog, BrowserTextResult } from "@glade/contracts/brow
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { WebContentsView } from "electron";
 import { BrowserDownloads } from "./browserDownloads";
-import { BrowserFailure } from "./browserFailure";
+import { BrowserFailure, withTimeout } from "./browserFailure";
 import { PageBuffers } from "./cdp/buffers";
 import { CdpSession } from "./cdp/cdpSession";
 import { RefTable } from "./cdp/refs";
@@ -33,11 +33,20 @@ const HUMAN_MAX_WAIT_MS = 2_000;
 // A dialog or print opening this soon after the user's input in the tab is the user's.
 const USER_DIALOG_WINDOW_MS = 2_000;
 const MAX_NOTICES = 20;
+// A restored tab's first load may take this long before agent calls go ahead anyway.
+const RESTORE_LOAD_MS = 5_000;
+
+// What a tab keeps across a suspension: refs keep counting so an old ref never names a new
+// element, and the downloads list survives.
+export interface CarriedTabState {
+  readonly refs: RefTable;
+  readonly downloads: BrowserDownloads;
+}
 
 export class BrowserTab {
   readonly cdp: CdpSession;
-  readonly refs = new RefTable();
-  readonly downloads = new BrowserDownloads();
+  readonly refs: RefTable;
+  readonly downloads: BrowserDownloads;
   readonly buffers: PageBuffers;
   readonly dialogs: PageDialogs;
   readonly prints: PagePrints;
@@ -49,6 +58,10 @@ export class BrowserTab {
   private lastHumanInputAt = 0;
   private agentActing = false;
   private picking = false;
+  private operations = 0;
+  private lastUsedAt = Date.now();
+  // A restored tab's reload; operations wait for it (bounded) so they see the page.
+  private ready: Promise<unknown> = Promise.resolve();
   // The vendor of a security check the user was asked to complete; cleared by navigation.
   private challenge: string | null = null;
   // Coordinates in click, hover and drag refer to this tab's latest screenshot.
@@ -60,7 +73,10 @@ export class BrowserTab {
     readonly view: WebContentsView,
     readonly downloadDir: string | null,
     private readonly onChange: () => void,
+    carried?: CarriedTabState,
   ) {
+    this.refs = carried?.refs ?? new RefTable();
+    this.downloads = carried?.downloads ?? new BrowserDownloads();
     const webContents = view.webContents;
     this.cdp = new CdpSession(webContents);
     this.buffers = new PageBuffers(this.cdp);
@@ -91,8 +107,10 @@ export class BrowserTab {
     });
     // CDP input arrives through the same pipeline, so only input outside agent operations counts.
     webContents.on("input-event", (_event, input) => {
-      if (!this.agentActing && HUMAN_INPUT_TYPES.has(input.type))
+      if (!this.agentActing && HUMAN_INPUT_TYPES.has(input.type)) {
         this.lastHumanInputAt = Date.now();
+        this.lastUsedAt = this.lastHumanInputAt;
+      }
     });
   }
 
@@ -118,6 +136,35 @@ export class BrowserTab {
   // Set by the panel's view surface while this tab's view is on screen.
   setShownInPanel(shown: boolean): void {
     this.shownInPanel = shown;
+    this.lastUsedAt = Date.now();
+  }
+
+  // Loads the page a suspended tab showed into this fresh view.
+  restore(url: string): void {
+    const loading = this.webContents.loadURL(url || "about:blank");
+    this.ready = withTimeout(loading, RESTORE_LOAD_MS, "Reload").catch(() => undefined);
+  }
+
+  lastUsed(): number {
+    return this.lastUsedAt;
+  }
+
+  // Whether destroying the view now would lose nothing the agent or user is in the middle of.
+  canSuspend(): boolean {
+    return (
+      !this.shownInPanel &&
+      !this.picking &&
+      this.operations === 0 &&
+      this.dialogs.current() === null &&
+      !this.downloads.inProgress() &&
+      !this.prints.busy()
+    );
+  }
+
+  takeNotices(): string[] {
+    const notices = this.notices;
+    this.notices = [];
+    return notices;
   }
 
   recordScreenshot(frame: ScreenshotFrame): void {
@@ -150,8 +197,7 @@ export class BrowserTab {
   }
 
   result(text: string, content?: string): BrowserTextResult {
-    const notices = this.notices;
-    this.notices = [];
+    const notices = this.takeNotices();
     return { page: this.page(), text, ...(content === undefined ? {} : { content }), notices };
   }
 
@@ -185,23 +231,29 @@ export class BrowserTab {
     } = {},
   ): Promise<T> {
     const agent = !options.byUser && !options.passive;
-    return this.cdp
-      .exclusive(async () => {
-        await this.cdp.ensureAttached();
-        if (agent) await this.waitForHumanQuiet();
-        this.agentActing = agent;
-        const interruption = this.dialogs.interruption();
-        // Once a dialog wins the race, the abandoned operation may still fail later.
-        const work = operation();
-        work.catch(() => undefined);
-        try {
-          return await Promise.race([work, interruption.promise]);
-        } finally {
-          interruption.release();
-        }
-      }, options.timeoutMs)
+    this.operations += 1;
+    this.lastUsedAt = Date.now();
+    return this.ready
+      .then(() =>
+        this.cdp.exclusive(async () => {
+          await this.cdp.ensureAttached();
+          if (agent) await this.waitForHumanQuiet();
+          this.agentActing = agent;
+          const interruption = this.dialogs.interruption();
+          // Once a dialog wins the race, the abandoned operation may still fail later.
+          const work = operation();
+          work.catch(() => undefined);
+          try {
+            return await Promise.race([work, interruption.promise]);
+          } finally {
+            interruption.release();
+          }
+        }, options.timeoutMs),
+      )
       .finally(() => {
         this.agentActing = false;
+        this.operations -= 1;
+        this.lastUsedAt = Date.now();
       });
   }
 

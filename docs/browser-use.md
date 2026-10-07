@@ -11,7 +11,13 @@ app and is exposed to every provider as `browser_*` gateway tools.
   while hidden (`backgroundThrottling: false`), so the agent can snapshot and screenshot with the
   panel closed. Automation uses raw Chrome DevTools Protocol through `webContents.debugger`,
   attached on the first agent call, with iframe auto-attach and one command queue per tab. Tabs
-  belong to one chat and live until the app quits; they are not stored.
+  belong to one chat and are not stored. Like Chrome's tab discarding, a tab that neither the agent
+  nor the user touched for 10 minutes, or the least recently used beyond eight live tabs in a chat,
+  is suspended: its view, renderer and debugger session are released and it stays in the tab list
+  with its URL, title and a `(suspended)` mark. A tab on screen in the panel, with an open dialog, a
+  running call, a download or print in progress, or a user picking an element is never suspended.
+  The next agent call on it or the user selecting it reloads the page; the result says so, and refs
+  from before are stale (numbering continues, so an old ref never names a new element).
 - **Snapshots and refs.** `browser_snapshot` merges `Accessibility.getFullAXTree` with one
   `DOMSnapshot.captureSnapshot` per renderer (layout, paint order, a few computed styles) into
   compact text with `ref=eN` handles. By default it covers the viewport plus one screen (800 CSS px)
