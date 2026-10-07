@@ -219,7 +219,8 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
     makeOpenAppTool(services),
     windowState,
     screenshot,
-    makeFileDialogTool(services),
+    // The tool drives the macOS Open and Save panel only.
+    ...(process.platform === "darwin" ? [makeFileDialogTool(services)] : []),
     makeVerifyTool(services),
     ...makeClipboardTools(services),
     makeWindowFrameTool(services),

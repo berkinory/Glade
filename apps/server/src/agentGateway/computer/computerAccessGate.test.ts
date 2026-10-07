@@ -295,14 +295,18 @@ describe("computer access gate", () => {
       undefined,
     ],
     ["any other app takes typing under act", "other", "act", "computer_type", typing, undefined],
-    [
-      "the file dialog's desktop keys need full control",
-      "other",
-      "act",
-      "computer_file_dialog",
-      { action: "save", path: "/tmp" },
-      "access_required",
-    ],
+    ...(process.platform === "darwin"
+      ? ([
+          [
+            "the file dialog's desktop keys need full control",
+            "other",
+            "act",
+            "computer_file_dialog",
+            { action: "save", path: "/tmp" },
+            "access_required",
+          ],
+        ] as const)
+      : []),
     [
       "text selection's foreground keys need full control",
       "other",

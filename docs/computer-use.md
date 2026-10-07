@@ -99,7 +99,8 @@ Anthropic's `computer_toolset_20260801` and Codex/Cua: `computer_left_click`, `c
 `computer_double_click`, `computer_triple_click`, `computer_type`, `computer_key`,
 `computer_select_text`, `computer_scroll`, `computer_set_value`, `computer_menu`,
 `computer_left_click_drag`. Apps and panels:
-`computer_open_app`, `computer_file_dialog` (a macOS Open or Save panel in one call),
+`computer_open_app`, `computer_file_dialog` (a macOS Open or Save panel in one call; listed on
+macOS only, and agents elsewhere set a dialog's name field to the full path),
 `computer_window_frame` (Cua's `set_window_frame`: x, y, width, height in desktop points, then the
 window is listed again and the result states the geometry it ended up with; needs `act`, and
 browsers refuse it like other input). Clipboard: `computer_clipboard_write`,
@@ -233,6 +234,11 @@ On X11, Cua 0.34 sends key presses, scrolling and right-clicks to GTK apps in th
 when it can write to `/dev/uinput` (Xvfb and VNC servers cannot take such a device); otherwise they
 are refused with `background_unavailable` and need foreground delivery, which takes full control.
 Clicks, typing, values and menus go through AT-SPI and stay in the background.
+
+A GTK3 menu item that opens a modal dialog (Mousepad's File ▸ Save As…) freezes the app when it is
+run through AT-SPI's action, as `computer_menu` does: the dialog draws but takes no input and the
+app stops answering AT-SPI until it is killed. This reproduces with a bare AT-SPI client and no Cua
+running. The same dialog opened by its shortcut works, including `set_value` on its name field.
 
 macOS has been verified end to end, and Linux arm64 on X11 (XFCE on Xvfb, in a container; see the
 plan's Linux results). A Linux x64 AppImage on a real desktop, Wayland and Windows are open release
