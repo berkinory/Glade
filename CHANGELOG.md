@@ -1,5 +1,15 @@
 # Glade Changelog
 
+## 0.2.2 - Unreleased
+
+### Improved
+
+- Scrollbars across the app stay hidden at rest and appear while you scroll or hover.
+
+### Fixed
+
+- Opening the browser no longer widens the right sidebar, and the sidebar edge can be dragged to resize it while the browser is open.
+
 ## 0.2.1 - 2026-10-08
 
 ### New
