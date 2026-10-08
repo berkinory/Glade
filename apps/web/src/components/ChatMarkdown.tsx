@@ -21,6 +21,7 @@ import {
   restoreLiteralDollarPlaceholders,
 } from "./markdownDollarProtection";
 import { remarkGithubAlerts, type GithubAlertKind } from "../lib/remarkGithubAlerts";
+import { remarkHtmlBreaks } from "../lib/remarkHtmlBreaks";
 import React, {
   Children,
   createContext,
@@ -208,6 +209,7 @@ const MARKDOWN_REMARK_PLUGINS: MarkdownRemarkPlugins = [
     },
   ],
   remarkGithubAlerts,
+  remarkHtmlBreaks,
 ];
 // User prompts are casual typing, not authored markdown: hard-break single newlines and skip math
 // entirely (the composer chip plugin is appended per render because it closes over the message's
@@ -927,7 +929,7 @@ function ChatMarkdown({
   codeBlockMeta,
 }: ChatMarkdownProps) {
   const isStreaming = isStreamingProp ?? false;
-  const className = classNameProp ?? "text-sm leading-relaxed";
+  const className = classNameProp ?? "text-chat leading-relaxed";
   const variant = variantProp ?? "assistant";
   const findQuery = findQueryProp ?? "";
   const findActiveRange = findActiveRangeProp ?? null;

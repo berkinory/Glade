@@ -170,6 +170,13 @@ export function AsyncUserInputCard({
                         [activeQuestion.id]: draft,
                       }));
                     }}
+                    onKeyDown={(event) => {
+                      // Same keys as the composer: Enter advances or sends, Shift+Enter breaks the line.
+                      if (event.key !== "Enter" || event.shiftKey) return;
+                      if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+                      event.preventDefault();
+                      void advance();
+                    }}
                   />
                   {error && (
                     <p role="alert" className="text-ui leading-snug text-destructive">

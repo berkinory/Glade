@@ -209,12 +209,22 @@ export function OnboardingDialog(props: {
   onComplete: () => void;
 }) {
   const [projectBusy, setProjectBusy] = useState(false);
+  const setPresented = useOnboardingDialogStore((store) => store.setPresented);
+  useEffect(() => {
+    if (props.open) setPresented(true);
+  }, [props.open, setPresented]);
   const handleOpenChange = (open: boolean) => {
     if (!open && projectBusy) return;
     props.onOpenChange(open);
   };
   return (
-    <Dialog open={props.open} onOpenChange={handleOpenChange}>
+    <Dialog
+      open={props.open}
+      onOpenChange={handleOpenChange}
+      onOpenChangeComplete={(open) => {
+        if (!open) setPresented(false);
+      }}
+    >
       <DialogPopup showCloseButton className="h-[540px] max-h-full max-w-[800px]">
         {}
         {props.open ? (

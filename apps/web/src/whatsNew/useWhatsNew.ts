@@ -3,6 +3,10 @@ import { useEffect, useRef, useState } from "react";
 
 import { APP_VERSION } from "../branding";
 import { useLocalStorage } from "../hooks/useLocalStorage";
+import {
+  selectOnboardingHoldsStartup,
+  useOnboardingDialogStore,
+} from "../onboarding/onboardingDialogStore";
 import { CHANGELOG_ENTRIES } from "./changelog";
 import {
   resolveWhatsNewState,
@@ -57,6 +61,9 @@ export function useWhatsNew(): UseWhatsNewResult {
 
   const [isPopoutVisible, setIsPopoutVisible] = useState(initialState.kind === "show");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  // Waiting behind onboarding never marks the notes seen; only an explicit
+  // dismissal or close of the shown card does.
+  const onboardingHoldsStartup = useOnboardingDialogStore(selectOnboardingHoldsStartup);
 
   // Silent bootstrap (first launch or no curated notes for this upgrade): advance the marker in the
   // background so the next upgrade is correctly detected. Done in an effect so we only touch storage
@@ -105,7 +112,7 @@ export function useWhatsNew(): UseWhatsNewResult {
     currentEntry,
     allEntries,
     currentVersion,
-    isPopoutVisible,
+    isPopoutVisible: isPopoutVisible && !onboardingHoldsStartup,
     isDialogOpen,
     openDialog,
     dismissPopout,

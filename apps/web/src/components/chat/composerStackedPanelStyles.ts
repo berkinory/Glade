@@ -8,6 +8,8 @@ export const COMPOSER_STACKED_PANEL_CHROME_CLASS_NAME = [
 
 export const COMPOSER_STACKED_PANEL_DIVIDER_CLASS_NAME = `border-t ${COMPOSER_STACKED_SURFACE_BORDER_CLASS_NAME}`;
 
+export const COMPOSER_NOTICE_CONTENT_CLASS_NAME = "px-4 py-3 text-ui-sm leading-snug";
+
 export const COMPOSER_STACKED_PANEL_ROW_CLASS_NAME =
   "flex items-center gap-2 px-2.5 py-1.5 text-ui";
 

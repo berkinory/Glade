@@ -75,6 +75,8 @@ Invalid rules are ignored. Invalid config files are ignored. Warnings are logged
 - `model.effort.next`: cycle the current model's supported effort levels while the composer or model picker owns focus (Shift+Tab by default). Unsupported models keep normal reverse-tab navigation. The existing picker briefly shows the selection; interacting with it keeps it open. Menus, dialogs, terminal input, IME composition, approvals and voice capture take priority.
 - `workspaceTab.previous` / `workspaceTab.next`: select the previous or next tab in the current conversation workspace, in visual order, wrapping at either end. Defaults are Command+Control+Left/Right on macOS and Ctrl+PageUp/PageDown on Windows/Linux. macOS chords work from terminal input; Windows/Linux defaults yield to a focused terminal. File editor input, preview tabs and the pinned chat tab use the existing workspace selection behavior. Change these bindings in Settings → Keyboard shortcuts.
 - `thread.copyId`: copy the active thread's ID to the clipboard
+- `thread.archive`: archive the open chat with the same confirmation and undo as its menu (Mod+Alt+Shift+A by default; subagent chats are skipped)
+- `thread.markUnread`: mark the open chat unread and bring back its dismissed notification (Mod+Alt+Shift+U by default). The chat stays unread while it is open until a new reply finishes or you open it again.
 - `editor.openFavorite`: open current project/worktree in the last-used editor
 - `editor.file.save`: write the focused file editor's unsaved changes back to disk
 

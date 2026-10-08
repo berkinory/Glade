@@ -436,16 +436,20 @@ export function ChatComposerSurface({
             {expiredQuestionDrafts[0] &&
             pendingUserInputs.length === 0 &&
             !activePendingApproval ? (
-              <ComposerExpiredUserInputNotice
-                threadId={threadId}
-                requestKey={expiredQuestionDrafts[0][0]}
-                draft={expiredQuestionDrafts[0][1]}
-                onRestore={(nextPrompt) => {
-                  promptRef.current = nextPrompt;
-                  setComposerCursor(collapseExpandedComposerCursor(nextPrompt, nextPrompt.length));
-                  scheduleComposerFocus();
-                }}
-              />
+              <div className="pb-2">
+                <ComposerExpiredUserInputNotice
+                  threadId={threadId}
+                  requestKey={expiredQuestionDrafts[0][0]}
+                  draft={expiredQuestionDrafts[0][1]}
+                  onRestore={(nextPrompt) => {
+                    promptRef.current = nextPrompt;
+                    setComposerCursor(
+                      collapseExpandedComposerCursor(nextPrompt, nextPrompt.length),
+                    );
+                    scheduleComposerFocus();
+                  }}
+                />
+              </div>
             ) : null}
             {emptyLandingControls}
           </div>

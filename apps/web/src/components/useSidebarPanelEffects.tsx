@@ -1,5 +1,6 @@
 import { PlusIcon } from "~/lib/icons";
 import { isShortcutComposition } from "@glade/shared/settings/shortcutEvent";
+import { hasOpenKeyboardOverlay } from "~/lib/keyboardOverlay";
 import { useSidebarDesktopUpdate } from "./useSidebarDesktopUpdate";
 import { useStore } from "../store";
 import { useSidebarStateStore } from "../sidebarStateStore";
@@ -38,6 +39,9 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
     navigate,
     isOnSettings,
     keybindings,
+    routeThreadId,
+    confirmAndArchiveThread,
+    markThreadUnread,
     newThreadShortcutLabel,
     newChatShortcutLabel,
     addProjectShortcutLabel,
@@ -213,6 +217,20 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
         });
         return;
       }
+      if (command === "thread.archive" || command === "thread.markUnread") {
+        const thread =
+          isOnSettings || !routeThreadId
+            ? undefined
+            : useStore.getState().sidebarThreadSummaryById[routeThreadId];
+        if (!thread || thread.archivedAt != null || hasOpenKeyboardOverlay()) return;
+        // Subagent chats follow their parent's archive, as in the thread menu.
+        if (command === "thread.archive" && thread.parentThreadId) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (command === "thread.archive") void confirmAndArchiveThread(thread.id);
+        else markThreadUnread(thread.id);
+        return;
+      }
       if (command === "space.previous" || command === "space.next") {
         if (
           !isProjectsSidebarSurface({
@@ -344,6 +362,9 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
     threadJumpLabelsRef,
     setShowThreadJumpHints,
     setCreateProjectDialogOpen,
+    routeThreadId,
+    confirmAndArchiveThread,
+    markThreadUnread,
   ]);
   const desktopUpdate = useSidebarDesktopUpdate();
   const searchPaletteProjects: SidebarSearchProject[] = projects

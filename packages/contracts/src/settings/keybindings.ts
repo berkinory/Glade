@@ -58,6 +58,8 @@ export const STATIC_KEYBINDING_COMMANDS = [
   "thread.jump.8",
   "thread.jump.9",
   "thread.copyId",
+  "thread.archive",
+  "thread.markUnread",
   "chat.visible.next",
   "chat.visible.previous",
   "workspaceTab.previous",

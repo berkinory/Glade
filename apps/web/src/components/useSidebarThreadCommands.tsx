@@ -47,7 +47,11 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
   const terminalStateByThreadId = useTerminalStateStore((state) => state.terminalStateByThreadId);
   const sidebarThreadSummaryById = useStore((state) => state.sidebarThreadSummaryById);
 
-  const markThreadUnread = useStore((state) => state.markThreadUnread);
+  const markThreadUnreadInStore = useStore((state) => state.markThreadUnread);
+  const markThreadUnread = (threadId: ThreadId) => {
+    clearDismissedThreadStatus(threadId);
+    markThreadUnreadInStore(threadId);
+  };
   const openChatThreadPage = useTerminalStateStore((state) => state.openChatThreadPage);
   const openTerminalThreadPage = useTerminalStateStore((state) => state.openTerminalThreadPage);
 
@@ -224,7 +228,6 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
     }
 
     if (clicked === "mark-unread") {
-      clearDismissedThreadStatus(threadId);
       markThreadUnread(threadId);
       return;
     }
@@ -360,7 +363,6 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
 
     if (clicked === "mark-unread") {
       for (const id of ids) {
-        clearDismissedThreadStatus(id);
         markThreadUnread(id);
       }
       clearSelection();
@@ -452,6 +454,7 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
   return {
     ...context,
     commitRename,
+    markThreadUnread,
     openRenameThreadDialog,
     handleThreadRenamePointerUp,
     primeThreadActivation,

@@ -17,5 +17,9 @@ export function visibleOverlayElements(except?: Element | null): HTMLElement[] {
 
 export function hasOpenKeyboardOverlay(except?: Element | null): boolean {
   if (document.activeElement?.hasAttribute("data-keybinding-capture")) return true;
-  return visibleOverlayElements(except).length > 0;
+  // Toasts are non-modal notifications; a lingering one must not swallow shortcuts. They still
+  // count as overlays for native view placement.
+  return visibleOverlayElements(except).some(
+    (element) => !element.closest('[data-slot="toast-viewport"]'),
+  );
 }

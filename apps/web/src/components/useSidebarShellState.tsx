@@ -244,7 +244,9 @@ export function useSidebarShellState() {
 
   const [searchPaletteOpen, setSearchPaletteOpen] = useState(false);
 
-  const openFeedbackDialog = useFeedbackDialogStore((state) => state.openDialog);
+  const openFeedbackDialogWithContext = useFeedbackDialogStore((state) => state.openDialog);
+  // Menu rows pass their click event; the sidebar has no thread context to add.
+  const openFeedbackDialog = () => openFeedbackDialogWithContext();
 
   const projectAdditionLockRef = useRef(false);
 

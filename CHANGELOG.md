@@ -6,6 +6,7 @@
 
 - Keep your Mac awake while agents work, or always, from Chat settings. The display can still sleep.
 - Search saved chat messages from the command palette, including chats you have not opened recently.
+- Customizable shortcuts archive the open chat or mark it unread.
 
 ### Improved
 
@@ -15,6 +16,7 @@
 - Disabled providers stay out of pickers, usage, plugin and skill lists and stop background discovery, while their saved settings and chats are kept.
 - Independent chats stay responsive while another chat prepares or starts a task.
 - Git status and task snapshots stay responsive during heavy repository activity.
+- Chat text and notices follow your font settings more consistently, and question cards can be answered from the keyboard.
 
 ### Fixed
 
@@ -23,6 +25,8 @@
 - Failed file uploads show their actual error instead of a browser connection error.
 - Claude chats recover reliably when interrupted before their first response.
 - Tasks no longer wait indefinitely for their starting file snapshot, and a missing snapshot can no longer be used to undo files.
+- Welcome and release-note prompts no longer appear on top of each other.
+- Line breaks in chat tables render as line breaks instead of literal tags.
 
 ## 0.2.1 - 2026-10-08
 

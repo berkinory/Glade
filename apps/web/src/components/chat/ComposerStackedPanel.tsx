@@ -13,6 +13,9 @@ interface ComposerStackedPanelProps extends HTMLAttributes<HTMLDivElement> {
   passthroughSideMargins?: boolean;
 
   borderless?: boolean;
+
+  /** Standalone notice above the composer: full outline and rounded bottom corners. */
+  detached?: boolean;
 }
 
 export function ComposerStackedPanel({
@@ -22,17 +25,24 @@ export function ComposerStackedPanel({
   attachedToPrevious: attachedToPreviousProp,
   passthroughSideMargins: passthroughSideMarginsProp,
   borderless: borderlessProp,
+  detached: detachedProp,
   ...rest
 }: ComposerStackedPanelProps) {
   const attachedToPrevious = attachedToPreviousProp ?? false;
   const passthroughSideMargins = passthroughSideMarginsProp ?? false;
   const borderless = borderlessProp ?? false;
+  const detached = detachedProp ?? false;
   return (
     <ComposerStackedHeaderFrame
       ref={ref}
       passthroughSideMargins={passthroughSideMargins}
       data-composer-stacked-attached={attachedToPrevious ? "true" : undefined}
-      className={cn(COMPOSER_STACKED_PANEL_CHROME_CLASS_NAME, borderless && "border-0", className)}
+      className={cn(
+        COMPOSER_STACKED_PANEL_CHROME_CLASS_NAME,
+        detached && "w-full rounded-b-[calc(var(--composer-radius)-1px)]! border-b",
+        borderless && "border-0",
+        className,
+      )}
       {...rest}
     >
       {children}

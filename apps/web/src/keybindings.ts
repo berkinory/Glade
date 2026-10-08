@@ -261,6 +261,16 @@ const DEFAULT_SHORTCUT_FALLBACKS: ResolvedKeybindingsConfig = [
     whenAst: whenModChordAllowed,
   },
   {
+    command: "thread.archive",
+    shortcut: commandShortcut("a", { altKey: true, shiftKey: true }),
+    whenAst: whenModChordAllowed,
+  },
+  {
+    command: "thread.markUnread",
+    shortcut: commandShortcut("u", { altKey: true, shiftKey: true }),
+    whenAst: whenModChordAllowed,
+  },
+  {
     command: "terminal.workspace.newFullWidth",
     shortcut: commandShortcut("j", { shiftKey: true }),
   },

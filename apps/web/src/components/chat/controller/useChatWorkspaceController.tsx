@@ -26,6 +26,7 @@ import { hasLiveTurnTailWork, isLatestTurnSettled } from "~/session-logic";
 import { useStore } from "~/store";
 import { useTerminalStateStore } from "~/terminalStateStore";
 import { createProjectSelector } from "~/storeSelectors";
+import { getThreadFromState } from "~/threadDerivation";
 import { DEFAULT_RUNTIME_MODE, type Thread } from "~/types";
 import { useWorkspacePathsStore } from "~/workspacePathsStore";
 import {
@@ -355,23 +356,22 @@ export function useChatWorkspaceController({
     });
   };
 
+  // Reads the visit stamp instead of depending on it: opening the chat or a newly
+  // finished turn marks it read, but deliberately marking it unread must stick.
+  const autoReadThreadId = activeThread?.id;
+  const activeTurnCompletedAt = activeLatestTurn?.completedAt;
   useEffect(() => {
-    if (!activeThread?.id) return;
+    if (!autoReadThreadId) return;
     if (!latestTurnSettled) return;
-    if (!activeLatestTurn?.completedAt) return;
-    const turnCompletedAt = Date.parse(activeLatestTurn.completedAt);
+    if (!activeTurnCompletedAt) return;
+    const turnCompletedAt = Date.parse(activeTurnCompletedAt);
     if (Number.isNaN(turnCompletedAt)) return;
-    const lastVisitedAt = activeThread.lastVisitedAt ? Date.parse(activeThread.lastVisitedAt) : NaN;
+    const visitedAt = getThreadFromState(useStore.getState(), autoReadThreadId)?.lastVisitedAt;
+    const lastVisitedAt = visitedAt ? Date.parse(visitedAt) : NaN;
     if (!Number.isNaN(lastVisitedAt) && lastVisitedAt >= turnCompletedAt) return;
 
-    markThreadVisited(activeThread.id);
-  }, [
-    activeThread?.id,
-    activeThread?.lastVisitedAt,
-    activeLatestTurn?.completedAt,
-    latestTurnSettled,
-    markThreadVisited,
-  ]);
+    markThreadVisited(autoReadThreadId);
+  }, [autoReadThreadId, activeTurnCompletedAt, latestTurnSettled, markThreadVisited]);
   return {
     settledThreadBranchWarningDismissedThreadId,
     setSettledThreadBranchWarningDismissedThreadId,

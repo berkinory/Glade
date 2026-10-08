@@ -37,6 +37,33 @@ function renderUserMarkdown(text: string) {
 }
 
 describe("ChatMarkdown", () => {
+  it.each([
+    {
+      name: "inline in a paragraph",
+      text: "One<br>two<BR/>three",
+      expected: "<p>One<br/>\ntwo<br/>\nthree</p>",
+    },
+    {
+      name: "inside a table cell",
+      text: "| a |\n| - |\n| x<br />y |",
+      expected: "<td>x<br/>\ny</td>",
+    },
+    {
+      name: "alone between blocks",
+      text: "Before.\n\n<br>\n\nAfter.",
+      expected: "<p>Before.</p>\n<p>After.</p>",
+    },
+    { name: "in a code span", text: "Use `<br>` here.", expected: "<code>&lt;br&gt;</code>" },
+    { name: "in a code fence", text: "```\n<br />\n```", expected: "&lt;br /&gt;" },
+    {
+      name: "only as the exact tag",
+      text: 'a<br class="x">b',
+      expected: "<p>a&lt;br class=&quot;x&quot;&gt;b</p>",
+    },
+  ])("renders <br> tags safely $name", ({ text, expected }) => {
+    expect(renderMarkdown(text)).toContain(expected);
+  });
+
   it("keeps links and code intact when math is present", () => {
     const markup = renderMarkdown(
       [

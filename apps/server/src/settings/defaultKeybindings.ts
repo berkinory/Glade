@@ -108,6 +108,8 @@ export const DEFAULT_KEYBINDINGS: ReadonlyArray<KeybindingRule> = [
   },
 
   { key: "mod+shift+c", command: "thread.copyId", when: "!terminalFocus || isMac" },
+  { key: "mod+alt+shift+a", command: "thread.archive", when: "!terminalFocus || isMac" },
+  { key: "mod+alt+shift+u", command: "thread.markUnread", when: "!terminalFocus || isMac" },
   { key: "mod+shift+]", command: "chat.visible.next", when: "!terminalFocus" },
   { key: "mod+shift+[", command: "chat.visible.previous", when: "!terminalFocus" },
   { key: "meta+ctrl+p", command: "git.commitAndPush", when: "!terminalFocus && isMac" },
