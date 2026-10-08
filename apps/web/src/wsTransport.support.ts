@@ -17,7 +17,7 @@ import {
 } from "@glade/contracts/transport/ws/ws";
 import { WsBootstrapRpcGroup } from "@glade/contracts/transport/ws/bootstrapRpc";
 import { WsFeatureRpcGroup } from "@glade/contracts/transport/ws/rpc";
-import { WS_STREAM_OVERFLOW_CODE } from "@glade/contracts/transport/ws/rpcErrors";
+import { WS_STREAM_OVERFLOW_CODE, WsRpcError } from "@glade/contracts/transport/ws/rpcErrors";
 import type {
   ProjectFileChangeEvent,
   ProjectWatchFileInput,
@@ -518,14 +518,37 @@ export function getTerminalCompatibilityError(error: unknown): WsCompatibilityEr
   return Schema.is(WsCompatibilityError)(error) && error.retryable === false ? error : null;
 }
 
+function hasStreamAdmissionCode(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const code = "code" in error ? error.code : undefined;
+  return typeof code === "string" && STREAM_ADMISSION_ERROR_CODES.has(code);
+}
+
+// A typed WsRpcError is the server answering for that one stream over a healthy socket, such as a
+// missing git executable. Replacing the socket for it would interrupt every other request in flight
+// and repeat as soon as the stream resubscribed.
 export function shouldReconnectAfterStreamFailure(cause: Cause.Cause<unknown>): boolean {
-  return !cause.reasons.some((reason) => {
-    if (!Cause.isFailReason(reason)) return false;
-    const error = reason.error;
-    if (!error || typeof error !== "object") return false;
-    const code = "code" in error ? error.code : undefined;
-    return typeof code === "string" && STREAM_ADMISSION_ERROR_CODES.has(code);
-  });
+  return !cause.reasons.some(
+    (reason) =>
+      Cause.isFailReason(reason) &&
+      (hasStreamAdmissionCode(reason.error) || Schema.is(WsRpcError)(reason.error)),
+  );
+}
+
+// 1 s doubling to 30 s: a stream the server keeps refusing is retried alone, cheaply, until the
+// cause (for example an uninstalled tool) is fixed.
+export function getServerStreamFailureRetryDelayMs(
+  cause: Cause.Cause<unknown>,
+  previousAttempts: number,
+): number | null {
+  const serverFailure = cause.reasons.some(
+    (reason) =>
+      Cause.isFailReason(reason) &&
+      Schema.is(WsRpcError)(reason.error) &&
+      !hasStreamAdmissionCode(reason.error),
+  );
+  if (!serverFailure || getSnapshotFaultRetryDelayMs(cause) !== null) return null;
+  return Math.min(30_000, 1_000 * 2 ** Math.min(previousAttempts, 5));
 }
 
 const RETRYABLE_STREAM_CAPACITY_ERROR_CODES = new Set([

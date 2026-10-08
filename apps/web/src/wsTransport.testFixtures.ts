@@ -144,6 +144,7 @@ export function makeBareTransport(): {
     streamResnapshotRetries: new Map(),
     projectFileWatchRetries: new Map(),
     streamOverflowRetries: new Map(),
+    streamFailureRetries: new Map(),
     connectionStatus: new ConnectionStatusTracker(() => null, publishConnectionStatus),
     streamCapacityRetryTimers: new Map(),
     streamCompletionRetries: new Map(),

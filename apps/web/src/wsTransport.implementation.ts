@@ -52,6 +52,7 @@ import {
   causeToError,
   getProjectFileWatchRetryDelayMs,
   getSnapshotFaultRetryDelayMs,
+  getServerStreamFailureRetryDelayMs,
   getStreamFailureCode,
   getStreamOverflowRetryDelayMs,
   isServerLifecyclePushChannel,
@@ -539,6 +540,18 @@ export class WsTransport extends WsTransportBase {
                 SNAPSHOT_FAULT_RETRY_MS,
                 restart,
               );
+              return;
+            }
+            const previousFailures =
+              performance.now() - streamStartedAt >= STABLE_STREAM_LIFETIME_MS
+                ? 0
+                : (this.streamFailureRetries.get(key) ?? 0);
+            const failureRetryDelayMs = restart
+              ? getServerStreamFailureRetryDelayMs(exit.cause, previousFailures)
+              : null;
+            if (restart && failureRetryDelayMs !== null) {
+              this.streamFailureRetries.set(key, previousFailures + 1);
+              this.scheduleStreamRestart(key, streamSessionVersion, failureRetryDelayMs, restart);
             }
           }
         },
@@ -581,6 +594,7 @@ export class WsTransport extends WsTransportBase {
       this.streamResnapshotRetries.delete(key);
       this.projectFileWatchRetries.delete(key);
       this.streamOverflowRetries.delete(key);
+      this.streamFailureRetries.delete(key);
     }
     this.streamCompletionRetries.delete(key);
     this.activeThreadStreamInputs.delete(key);

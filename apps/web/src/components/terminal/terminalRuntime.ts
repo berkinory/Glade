@@ -808,7 +808,18 @@ export function createRuntimeEntry(config: TerminalRuntimeConfig): TerminalRunti
   return entry;
 }
 
-function openTerminal(entry: TerminalRuntimeEntry): void {
+function isReconnectInterruption(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "WS_REQUEST_RECONNECTED"
+  );
+}
+
+// terminal.open is idempotent per thread and terminal id, so one retry after a socket swap cannot
+// start a second shell.
+function openTerminal(entry: TerminalRuntimeEntry, retryingAfterReconnect = false): void {
   const api = readNativeApi();
   if (!api || entry.opened || entry.disposed || !entry.container) return;
 
@@ -845,6 +856,10 @@ function openTerminal(entry: TerminalRuntimeEntry): void {
       if (entry.disposed) return;
       entry.opened = false;
       entry.applyOpenSnapshot(null);
+      if (!retryingAfterReconnect && isReconnectInterruption(error)) {
+        openTerminal(entry, true);
+        return;
+      }
       if (
         /SocketOpenError.*timeout waiting for ["']open["']/i.test(describeErrorMessage(error, ""))
       ) {

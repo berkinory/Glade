@@ -39,6 +39,7 @@
 - A new chat left open before its first message no longer reports that its updates paused.
 - An idle chat no longer stays marked as working after its model, mode or Computer Use changes.
 - Source Control shows Git's actual reason when it cannot open a folder, offers to trust folders owned by another user, and says when Git is not installed.
+- Opening a terminal no longer shows a reconnect error first, and the app no longer keeps reconnecting when Git is not installed.
 
 ### Removed
 

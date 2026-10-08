@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { WS_CHANNELS, WS_METHODS } from "@glade/contracts/transport/ws/ws";
 import { WS_PROJECT_FILE_WATCH_CAPABILITY } from "@glade/contracts/transport/ws/wsCompatibility";
-import { WS_STREAM_OVERFLOW_CODE } from "@glade/contracts/transport/ws/rpcErrors";
+import { WS_STREAM_OVERFLOW_CODE, WsRpcError } from "@glade/contracts/transport/ws/rpcErrors";
 import {
   getProjectFileWatchRetryDelayMs,
   getSnapshotFaultRetryDelayMs,
@@ -688,6 +688,14 @@ describe("stream failure policy", () => {
     {
       name: "an incompatible protocol",
       cause: failure("WS_PROTOCOL_INCOMPATIBLE"),
+      attempts: [0, 0, 0, 0],
+      admission: null,
+      reconnect: false,
+      snapshotFault: null,
+    },
+    {
+      name: "a server error for one stream, such as missing git",
+      cause: Cause.fail(new WsRpcError({ message: "spawn git ENOENT" })),
       attempts: [0, 0, 0, 0],
       admission: null,
       reconnect: false,

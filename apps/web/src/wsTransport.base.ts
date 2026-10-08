@@ -191,6 +191,7 @@ export abstract class WsTransportBase {
   protected readonly streamResnapshotRetries = new Map<string, number>();
   protected readonly projectFileWatchRetries = new Map<string, number>();
   protected readonly streamOverflowRetries = new Map<string, number>();
+  protected readonly streamFailureRetries = new Map<string, number>();
   protected readonly streamCapacityRetryTimers = new Map<string, number>();
   protected readonly streamCompletionRetries = new Map<string, number>();
   protected readonly streamCompletionRetryTimers = new Map<string, number>();
@@ -846,6 +847,7 @@ export abstract class WsTransportBase {
     this.streamResnapshotRetries.delete(key);
     this.projectFileWatchRetries.delete(key);
     this.streamOverflowRetries.delete(key);
+    this.streamFailureRetries.delete(key);
   }
   protected resetAllStreamCapacityRetries(): void {
     for (const timeoutId of this.streamCapacityRetryTimers.values()) {
@@ -858,6 +860,7 @@ export abstract class WsTransportBase {
     this.streamResnapshotRetries.clear();
     this.projectFileWatchRetries.clear();
     this.streamOverflowRetries.clear();
+    this.streamFailureRetries.clear();
   }
   protected clearStreamCompletionRetryTimer(key: string): void {
     const timeoutId = this.streamCompletionRetryTimers.get(key);
