@@ -22,6 +22,7 @@
 - Chat text and notices follow your font settings more consistently, and question cards can be answered from the keyboard.
 - Failed tasks keep their error details, which you can expand and copy, and can be continued in the same chat or with a different model.
 - Right-click menus across the app share one look with icons, and text fields and images get their own copy and paste menu.
+- The agent's cursor in Computer Use moves more naturally, taking care near small targets and gliding across long distances.
 
 ### Fixed
 

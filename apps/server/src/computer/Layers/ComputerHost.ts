@@ -24,6 +24,9 @@ import {
 
 const HEALTH_TIMEOUT_MS = 10_000;
 const END_SESSION_TIMEOUT_MS = 5_000;
+const START_SESSION_TIMEOUT_MS = 5_000;
+// Careful approach to small targets, swoops for long moves, move time scaled by Fitts's law.
+const CURSOR_MOTION = { style: "adaptive", timing: "fitts" } as const;
 const SESSION_ENDED = /session has ended/u;
 const ENCODE_TIMEOUT_MS = 10_000;
 const HOST_QUERY_TIMEOUT_MS = 2_000;
@@ -64,13 +67,12 @@ export const ComputerHostLive = Layer.effect(
     const threadHash = (threadId: string) =>
       Crypto.createHash("sha256").update(threadId).digest("hex").slice(0, 8);
     const sessionLabel = (sessions: Map<string, string>, threadId: string) => {
-      let label = sessions.get(threadId);
-      if (!label) {
-        labelCount += 1;
-        label = `glade-${threadHash(threadId)}-${processNonce}${labelCount.toString(36)}`;
-        sessions.set(threadId, label);
-      }
-      return label;
+      const existing = sessions.get(threadId);
+      if (existing) return { label: existing, fresh: false };
+      labelCount += 1;
+      const label = `glade-${threadHash(threadId)}-${processNonce}${labelCount.toString(36)}`;
+      sessions.set(threadId, label);
+      return { label, fresh: true };
     };
 
     const request = (current: CuaMcpClient, name: string, args: unknown, timeoutMs: number) =>
@@ -235,11 +237,24 @@ export const ComputerHostLive = Layer.effect(
           Effect.suspend(() => {
             const current = client;
             if (!current) return notConnected;
-            const session =
+            const labelled =
               options.threadId === undefined
-                ? {}
-                : { session: sessionLabel(current.sessions, options.threadId) };
-            return request(current.mcp, name, { ...args, ...session }, options.timeoutMs).pipe(
+                ? undefined
+                : sessionLabel(current.sessions, options.threadId);
+            const session = labelled ? { session: labelled.label } : {};
+            // Cursor motion is cosmetic: a driver that refuses it still runs the action.
+            const setup = labelled?.fresh
+              ? request(
+                  current.mcp,
+                  "start_session",
+                  { session: labelled.label, cursor_motion: CURSOR_MOTION },
+                  START_SESSION_TIMEOUT_MS,
+                ).pipe(Effect.ignore)
+              : Effect.void;
+            return setup.pipe(
+              Effect.andThen(
+                request(current.mcp, name, { ...args, ...session }, options.timeoutMs),
+              ),
               Effect.flatMap((result) => {
                 // Cua ends idle or stopped sessions; ordinary calls never revive them.
                 if (
