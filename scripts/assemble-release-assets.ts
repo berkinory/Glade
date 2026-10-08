@@ -14,10 +14,12 @@ import {
 } from "node:fs";
 import { dirname, resolve, join } from "node:path";
 
+// The release assemble job runs this file with plain Node and no workspace install, so the shared
+// module is imported by path; it has no dependencies of its own.
 import {
   remoteServerBundleName,
   type RemoteServerTarget,
-} from "@glade/shared/remote/remoteServerBundle";
+} from "../packages/shared/src/remote/remoteServerBundle.ts";
 
 import { prepareReleaseUpdateManifests } from "./lib/release-update-policy.ts";
 
