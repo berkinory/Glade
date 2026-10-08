@@ -1892,8 +1892,14 @@ const make = Effect.gen(function* () {
           (event.type === "session.started" ||
             event.type === "thread.started" ||
             event.type === "session.state.changed");
+        // A turnless "starting" session means a requested turn is in flight, and only turn requests
+        // may set it. A provider reconnecting an idle session (a settings restart) reports "starting"
+        // too; projecting that would make the next startup "ready" look like a pending turn and leave
+        // the thread starting forever.
+        const isProviderTurnlessStarting = status === "starting" && nextActiveTurnId === null;
         if (
           shouldApplyThreadLifecycle &&
+          !isProviderTurnlessStarting &&
           !(isStartupReady && isAwaitingRequestedTurn(thread.session))
         ) {
           yield* orchestrationEngine.dispatch({

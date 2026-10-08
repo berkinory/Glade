@@ -55,6 +55,39 @@ describe("ProviderRuntimeIngestion session lifecycle", () => {
     expect(thread.session?.activeTurnId).toBeNull();
   });
 
+  it("leaves an idle session ready when the provider restarts it without a turn", async () => {
+    const harness = await createHarness();
+    const base = {
+      provider: "codex",
+      threadId: asThreadId("thread-1"),
+      createdAt: new Date().toISOString(),
+    } as const;
+
+    harness.emit({
+      ...base,
+      type: "session.state.changed",
+      eventId: asEventId("evt-idle-restart-connecting"),
+      payload: { state: "starting" },
+    });
+    harness.emit({
+      ...base,
+      type: "session.state.changed",
+      eventId: asEventId("evt-idle-restart-ready"),
+      payload: { state: "ready" },
+    });
+    harness.emit({
+      ...base,
+      type: "runtime.warning",
+      eventId: asEventId("evt-idle-restart-drained"),
+      payload: { message: "drained" },
+    });
+
+    const thread = await waitForThread(harness.engine, (entry) =>
+      entry.activities.some((activity) => activity.id === "evt-idle-restart-drained"),
+    );
+    expect(thread.session).toMatchObject({ status: "ready", activeTurnId: null });
+  });
+
   it("settles a pending user-input request when its turn ends without a session restart", async () => {
     const harness = await createHarness();
 

@@ -30,6 +30,7 @@
 - Tasks no longer wait indefinitely for their starting file snapshot, and a missing snapshot can no longer be used to undo files.
 - Welcome and release-note prompts no longer appear on top of each other.
 - Line breaks in chat tables render as line breaks instead of literal tags.
+- An idle chat no longer stays marked as working after its model, mode or Computer Use changes.
 
 ### Removed
 
