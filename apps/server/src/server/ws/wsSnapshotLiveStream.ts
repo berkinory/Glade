@@ -1,6 +1,11 @@
 import { WsRpcError } from "@glade/contracts/transport/ws/rpcErrors";
 import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
-import { Cause, Effect, Queue, Scope, Stream } from "effect";
+import { Effect, Scope, Stream } from "effect";
+import {
+  makeBoundedLiveStream,
+  serializedByteLength,
+  type LiveUiStreamDropReport,
+} from "./wsStreamBackpressure";
 
 const ORCHESTRATION_SNAPSHOT_REPLAY_LIMIT = 4_096;
 
@@ -45,9 +50,12 @@ export function makeResnapshotEscalationTracker(): {
 }
 
 // Subscribe to live delivery before reading the durable fence. Cursors ahead of the journal or
-// beyond the replay budget require a fresh snapshot.
+// beyond the replay budget require a fresh snapshot. Live events are held in a bounded budget
+// (count and serialized bytes) from subscription onward, including while the snapshot loads.
 export function makeCursorSafeSnapshotLiveStream<Snapshot, E>(input: {
   readonly subscribeLive: Effect.Effect<Stream.Stream<OrchestrationEvent, E>, never, Scope.Scope>;
+  readonly liveLabel: string;
+  readonly onLiveOverflow?: (report: LiveUiStreamDropReport) => Effect.Effect<void>;
   readonly snapshot: Effect.Effect<Snapshot, E>;
   readonly snapshotSequence: (snapshot: Snapshot) => number;
   readonly getHighWaterSequence: Effect.Effect<number, E>;
@@ -65,40 +73,66 @@ export function makeCursorSafeSnapshotLiveStream<Snapshot, E>(input: {
     readonly tracker: ReturnType<typeof makeResnapshotEscalationTracker>;
   };
 }): Stream.Stream<SnapshotLiveStreamItem<Snapshot>, E | WsRpcError> {
+  const toItem = (event: OrchestrationEvent): SnapshotLiveStreamItem<Snapshot> => ({
+    kind: "event",
+    event,
+  });
   return Stream.unwrap(
     Effect.gen(function* () {
-      const live = yield* input.subscribeLive;
-      const liveQueue = yield* Queue.bounded<OrchestrationEvent, E | Cause.Done>(1);
-      yield* Stream.runIntoQueue(live, liveQueue).pipe(Effect.forkScoped);
+      const live = yield* makeBoundedLiveStream(yield* input.subscribeLive, {
+        label: input.liveLabel,
+        ...(input.onLiveOverflow ? { onOverflow: input.onLiveOverflow } : {}),
+      });
+      // Overflow while the fence or snapshot loads fails the subscription without emitting it.
+      const duringLive = <A, E2>(effect: Effect.Effect<A, E2>) =>
+        Effect.raceFirst(effect, live.failure);
+      const liveAfter = (highWaterSequence: number) =>
+        live
+          .retainOnly((event) => event.sequence > highWaterSequence)
+          .pipe(
+            Effect.as(
+              live.stream.pipe(
+                Stream.filter((event) => event.sequence > highWaterSequence),
+                Stream.map(toItem),
+              ),
+            ),
+          );
       if (input.resumeFromSequence !== undefined) {
         const resumeFromSequence = input.resumeFromSequence;
-        const highWaterSequence = yield* input.getHighWaterSequence;
+        const highWaterSequence = yield* duringLive(input.getHighWaterSequence);
         const resumeGap = highWaterSequence - resumeFromSequence;
         // Such a cursor must never be trusted for a gap replay — fall through to the full snapshot instead.
         // Sequences themselves are never reused (`sequence INTEGER PRIMARY KEY AUTOINCREMENT`), so a
         // non-negative gap cannot silently alias deleted history onto new events.
         const subjectExists =
-          input.resumeSubjectExists === undefined ? true : yield* input.resumeSubjectExists;
+          input.resumeSubjectExists === undefined
+            ? true
+            : yield* duringLive(input.resumeSubjectExists);
         if (subjectExists && resumeGap >= 0 && resumeGap <= ORCHESTRATION_SNAPSHOT_REPLAY_LIMIT) {
-          input.resnapshotEscalation?.tracker.recordHealthyStart(
-            input.resnapshotEscalation.streamKey,
-          );
-          const replay = input.replay(resumeFromSequence, highWaterSequence).pipe(
-            Stream.filter(
-              (event) => event.sequence > resumeFromSequence && event.sequence <= highWaterSequence,
+          const liveTail = yield* liveAfter(highWaterSequence);
+          const rows = yield* duringLive(
+            collectBoundedReplay(
+              input
+                .replay(resumeFromSequence, highWaterSequence)
+                .pipe(
+                  Stream.filter(
+                    (event) =>
+                      event.sequence > resumeFromSequence && event.sequence <= highWaterSequence,
+                  ),
+                ),
             ),
-            Stream.map((event): SnapshotLiveStreamItem<Snapshot> => ({ kind: "event", event })),
           );
-          const liveAfterFence = Stream.fromQueue(liveQueue).pipe(
-            Stream.filter((event) => event.sequence > highWaterSequence),
-            Stream.map((event): SnapshotLiveStreamItem<Snapshot> => ({ kind: "event", event })),
-          );
-          return Stream.concat(replay, liveAfterFence);
+          if (rows !== null) {
+            input.resnapshotEscalation?.tracker.recordHealthyStart(
+              input.resnapshotEscalation.streamKey,
+            );
+            return Stream.concat(Stream.fromIterable(rows).pipe(Stream.map(toItem)), liveTail);
+          }
         }
       }
-      const snapshot = yield* input.snapshot;
+      const snapshot = yield* duringLive(input.snapshot);
       const snapshotSequence = input.snapshotSequence(snapshot);
-      const highWaterSequence = yield* input.getHighWaterSequence;
+      const highWaterSequence = yield* duringLive(input.getHighWaterSequence);
       const replayCount = Math.max(0, highWaterSequence - snapshotSequence);
       if (replayCount > ORCHESTRATION_SNAPSHOT_REPLAY_LIMIT) {
         const report: ResnapshotReport = {
@@ -133,21 +167,41 @@ export function makeCursorSafeSnapshotLiveStream<Snapshot, E>(input: {
       }
       input.resnapshotEscalation?.tracker.recordHealthyStart(input.resnapshotEscalation.streamKey);
 
+      // Gap replay after a snapshot is pulled from the journal chunk by chunk under the RPC
+      // acknowledgement, so it is bounded by count here and never retained as a whole.
       const replay = input.replay(snapshotSequence, highWaterSequence).pipe(
         Stream.filter(
           (event) => event.sequence > snapshotSequence && event.sequence <= highWaterSequence,
         ),
-        Stream.map((event): SnapshotLiveStreamItem<Snapshot> => ({ kind: "event", event })),
+        Stream.map(toItem),
       );
-      const liveAfterFence = Stream.fromQueue(liveQueue).pipe(
-        Stream.filter((event) => event.sequence > highWaterSequence),
-        Stream.map((event): SnapshotLiveStreamItem<Snapshot> => ({ kind: "event", event })),
-      );
-
+      const liveTail = yield* liveAfter(highWaterSequence);
       return Stream.concat(
         Stream.succeed<SnapshotLiveStreamItem<Snapshot>>({ kind: "snapshot", snapshot }),
-        Stream.concat(replay, liveAfterFence),
+        Stream.concat(replay, liveTail),
       );
     }),
   );
+}
+
+// A cursor resume replays at most this much before a fresh snapshot is the cheaper, bounded answer.
+const ORCHESTRATION_RESUME_REPLAY_MAX_BYTES = 2 * 1024 * 1024;
+
+function collectBoundedReplay<E>(
+  replay: Stream.Stream<OrchestrationEvent, E>,
+): Effect.Effect<ReadonlyArray<OrchestrationEvent> | null, E> {
+  return Effect.suspend(() => {
+    const rows: Array<OrchestrationEvent> = [];
+    let bytes = 0;
+    return replay.pipe(
+      Stream.takeWhile((event) => {
+        bytes += serializedByteLength(event);
+        if (bytes > ORCHESTRATION_RESUME_REPLAY_MAX_BYTES) return false;
+        rows.push(event);
+        return true;
+      }),
+      Stream.runDrain,
+      Effect.map(() => (bytes > ORCHESTRATION_RESUME_REPLAY_MAX_BYTES ? null : rows)),
+    );
+  });
 }

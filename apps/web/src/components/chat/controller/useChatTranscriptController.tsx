@@ -28,8 +28,7 @@ import { canCreateThreadHandoff } from "~/lib/threadHandoff";
 import { isMacNavigatorPlatform, newCommandId } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
 import { deriveTimelineEntries } from "../../../workLog.timeline";
-import { useStore } from "~/store";
-import { buildThreadSubscribeInput } from "~/threadDetailResumeCursors";
+import { retryThreadDetailSync } from "~/threadDetailSyncRetry";
 import { EMPTY_MESSAGES, EMPTY_PINNED_MESSAGES, EMPTY_PINNED_TEXT } from "./chatViewSupport";
 import { useChatThreadContext } from "../ChatThreadContext";
 import type { useChatProviderController } from "./useChatProviderController";
@@ -229,19 +228,11 @@ export function useChatTranscriptController({
   const hasPendingThreadWork =
     isWorking || (activeLatestTurnState === "running" && !latestTurnSettled);
 
-  const handleRetryThreadDetailSync = () => {
-    useStore.getState().clearThreadDetailSyncFailure(threadId);
-    const api = readNativeApi();
-    void api?.orchestration
-      .subscribeThread(buildThreadSubscribeInput(threadId))
-      .catch(() => undefined);
-  };
-
   const transcriptEmptyStateContent = ((): ReactNode => {
     if (threadDetailHydration !== "ready") {
       return (
         <ThreadDetailHydrationState
-          onRetry={handleRetryThreadDetailSync}
+          onRetry={() => retryThreadDetailSync(threadId)}
           state={threadDetailHydration}
         />
       );

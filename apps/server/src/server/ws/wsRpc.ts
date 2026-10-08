@@ -27,7 +27,7 @@ import { WS_METHODS } from "@glade/contracts/transport/ws/ws";
 import { WsBootstrapRpcGroup } from "@glade/contracts/transport/ws/bootstrapRpc";
 import { WsFeatureRpcGroup } from "@glade/contracts/transport/ws/rpc";
 import { COMPUTER_WS_METHODS } from "@glade/contracts/transport/ws/computerRpc";
-import { WsRpcError } from "@glade/contracts/transport/ws/rpcErrors";
+import { WS_STREAM_OVERFLOW_CODE, WsRpcError } from "@glade/contracts/transport/ws/rpcErrors";
 import {
   type GitRemoveWorktreeInput,
   type GitWorktreeSetupProgressEvent,
@@ -120,6 +120,7 @@ import { ProfileStatsQuery } from "../../diagnostics/Services/ProfileStatsQuery"
 import { redactSensitiveProcessArgs } from "../../platform/processArgumentRedaction";
 import { ServerEnvironment } from "../../environment/Services/ServerEnvironment";
 import { ServerLifecycleEvents } from "../lifecycle/serverLifecycleEvents";
+import { ServerEventLoopMonitor } from "../runtime/eventLoopMonitor";
 import { ServerRuntimeStartup } from "../runtime/serverRuntimeStartup";
 import { ServerSettingsService } from "../../settings/serverSettings";
 import { isLoopbackHost } from "../http/startupAccess";
@@ -337,10 +338,13 @@ function toWsRpcError(cause: unknown, fallbackMessage: string) {
 
 const resnapshotEscalationTracker = makeResnapshotEscalationTracker();
 
+// These streams start with a snapshot, so a lagging subscriber restarts only its own stream.
 const failLiveUiStreamForSnapshotResync = (report: LiveUiStreamDropReport) =>
   Effect.fail(
     new WsRpcError({
       message: `${report.message}; restarting stream to refresh snapshot.`,
+      code: WS_STREAM_OVERFLOW_CODE,
+      retryable: true,
     }),
   );
 
@@ -385,6 +389,7 @@ const makeWsRpcHandlersLayer = () =>
       const providerManagement = yield* ProviderManagement;
       const providerHealth = yield* ProviderHealth;
       const lifecycleEvents = yield* ServerLifecycleEvents;
+      const eventLoopMonitor = yield* ServerEventLoopMonitor;
       const runtimeStartup = yield* ServerRuntimeStartup;
       const serverEnvironment = yield* ServerEnvironment;
       const serverSettings = yield* ServerSettingsService;
@@ -440,29 +445,23 @@ const makeWsRpcHandlersLayer = () =>
               ),
             ),
       });
-      const recordThreadStreamDrop = (threadId: string, report: LiveUiStreamDropReport) =>
+      const recordThreadStreamOverflow = (threadId: string, report: LiveUiStreamDropReport) =>
         threadDiagnostics
           .recordOperationalDiagnostic({
             threadId,
             source: "server",
-            kind: "ws.thread-stream-events-dropped",
-            severity: "error",
-            code: "THREAD_STREAM_EVENTS_DROPPED",
-            detail: {
-              label: report.label,
-              capacity: report.capacity,
-              droppedAtLeast: report.droppedAtLeast,
-            },
+            kind: "ws.thread-stream-overflow",
+            severity: "warning",
+            code: WS_STREAM_OVERFLOW_CODE,
+            detail: { label: report.label, capacity: report.capacity, message: report.message },
             occurredAt: new Date().toISOString(),
           })
           .pipe(
             Effect.catch((error) =>
-              Effect.logWarning("Failed to persist thread stream drop diagnostic.", {
+              Effect.logWarning("Failed to persist thread stream overflow diagnostic.", {
                 error: String(error),
               }),
             ),
-            (diagnostic) => Effect.sync(() => Effect.runFork(diagnostic)),
-            Effect.andThen(failLiveUiStreamForSnapshotResync(report)),
           );
       const recordThreadResnapshotRequired = (
         threadId: string,
@@ -1053,13 +1052,9 @@ const makeWsRpcHandlersLayer = () =>
                 tracker: resnapshotEscalationTracker,
               },
               subscribeLive: orchestrationEngine.subscribeDomainEvents.pipe(
-                Effect.map((stream) =>
-                  bufferLiveUiStream(stream.pipe(Stream.filter(isShellRelevantEvent)), {
-                    label: "orchestration.shell",
-                    onDroppedEvents: failLiveUiStreamForSnapshotResync,
-                  }),
-                ),
+                Effect.map((stream) => stream.pipe(Stream.filter(isShellRelevantEvent))),
               ),
+              liveLabel: "orchestration.shell",
               snapshot: projectionReadModelQuery
                 .getShellSnapshot()
                 .pipe(
@@ -1118,17 +1113,13 @@ const makeWsRpcHandlersLayer = () =>
                 recordThreadResnapshotRequired(input.threadId, report),
               subscribeLive: orchestrationEngine.subscribeDomainEvents.pipe(
                 Effect.map((stream) =>
-                  bufferLiveUiStream(
-                    stream.pipe(
-                      Stream.filter((event) => isThreadDetailEventFor(event, input.threadId)),
-                    ),
-                    {
-                      label: "orchestration.thread-detail",
-                      onDroppedEvents: (report) => recordThreadStreamDrop(input.threadId, report),
-                    },
+                  stream.pipe(
+                    Stream.filter((event) => isThreadDetailEventFor(event, input.threadId)),
                   ),
                 ),
               ),
+              liveLabel: "orchestration.thread-detail",
+              onLiveOverflow: (report) => recordThreadStreamOverflow(input.threadId, report),
               snapshot: loadThreadDetailSnapshotWithBootstrapWait(input.threadId).pipe(
                 Effect.flatMap(
                   Option.match({
@@ -1795,6 +1786,7 @@ const makeWsRpcHandlersLayer = () =>
           rpcEffect(listProviderUsage(input), "Failed to load provider usage"),
         [WS_METHODS.serverConsumeCodexResetCredit]: (input) =>
           rpcEffect(consumeCodexResetCreditEffect(input), "Failed to use Codex reset"),
+        [WS_METHODS.serverGetRuntimeStatus]: () => eventLoopMonitor.status,
         [WS_METHODS.serverGetDiagnostics]: () =>
           rpcEffect(
             Effect.gen(function* () {

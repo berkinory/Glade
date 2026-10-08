@@ -1,13 +1,17 @@
-import { Cause, Effect, Stream } from "effect";
+import { Cause, Effect, ManagedRuntime, Scope, Stream } from "effect";
 import { describe, expect, it, vi } from "vitest";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { WS_CHANNELS, WS_METHODS } from "@glade/contracts/transport/ws/ws";
 import { WS_PROJECT_FILE_WATCH_CAPABILITY } from "@glade/contracts/transport/ws/wsCompatibility";
+import { WS_STREAM_OVERFLOW_CODE } from "@glade/contracts/transport/ws/rpcErrors";
 import {
   getProjectFileWatchRetryDelayMs,
   getSnapshotFaultRetryDelayMs,
   isRuntimeInterruptFailure,
+  makeProtocolLayer,
+  makeRpcClient,
   MAX_PROJECT_FILE_WATCH_RETRY_ATTEMPTS,
+  MAX_STREAM_OVERFLOW_RETRIES,
   projectFileChangeStreamKey,
   resolveStreamAdmissionRetry,
   shouldReconnectAfterStreamFailure,
@@ -17,6 +21,7 @@ import {
 } from "./wsTransport.support";
 import { MAX_UNARY_RPC_CAPACITY_RETRY_ATTEMPTS } from "./lib/expensiveReadRetry";
 import { WsTransport } from "./wsTransport.implementation";
+import { getConnectionStatus } from "./connectionStatus";
 import {
   advanceThreadDetailResumeCursor,
   hasThreadDetailResumeCursor,
@@ -26,6 +31,8 @@ import {
   setupWsTransportTests,
   makeBareTransport,
   bindWindowTimersToCurrentGlobals,
+  MockWebSocket,
+  sockets,
   type WsTransportInternals,
 } from "./wsTransport.testFixtures";
 setupWsTransportTests();
@@ -227,6 +234,92 @@ describe("WsTransport", () => {
       vi.useRealTimers();
     }
   });
+
+  it("keeps a silent busy socket open, reports it unresponsive, and fails it only after long silence", async () => {
+    vi.useFakeTimers();
+    bindWindowTimersToCurrentGlobals();
+    const onFailure = vi.fn();
+    const responsiveness: boolean[] = [];
+    const runtime = ManagedRuntime.make(
+      makeProtocolLayer("ws://localhost:3020/ws", {
+        onFailure,
+        onResponsiveChange: (responsive) => responsiveness.push(responsive),
+      }),
+    );
+    try {
+      const scope = runtime.runSync(Scope.make());
+      void runtime.runPromise(Scope.provide(scope)(makeRpcClient));
+      await vi.advanceTimersByTimeAsync(0);
+      sockets[0]!.open();
+
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(responsiveness).toEqual([false]);
+      expect(onFailure).not.toHaveBeenCalled();
+      expect(sockets[0]!.readyState).toBe(MockWebSocket.OPEN);
+
+      sockets[0]!.receive(JSON.stringify({ _tag: "Pong" }));
+      expect(responsiveness).toEqual([false, true]);
+
+      await vi.advanceTimersByTimeAsync(179_000);
+      expect(onFailure).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(2_000);
+      expect(onFailure).toHaveBeenCalledOnce();
+    } finally {
+      await runtime.dispose();
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([
+    { key: "orchestration.thread:thread-overflow", surfaces: "thread failure" },
+    { key: "orchestration.shell", surfaces: "paused workspace notice" },
+  ])(
+    "restarts only an overflowing $key stream, keeping its cursor, then surfaces a $surfaces",
+    async ({ key }) => {
+      vi.useFakeTimers();
+      bindWindowTimersToCurrentGlobals();
+      resetThreadDetailResumeCursors();
+      try {
+        const { internals } = makeBareTransport();
+        const threadId = key.startsWith("orchestration.thread:")
+          ? ThreadId.makeUnsafe(key.slice("orchestration.thread:".length))
+          : null;
+        if (threadId) {
+          advanceThreadDetailResumeCursor(threadId, 100);
+          internals.threadSubscriptions.set(threadId, { threadId, afterSequence: 100 });
+        } else {
+          internals.shellSubscribed = true;
+        }
+        const failures: WsThreadStreamFailure[] = [];
+        internals.threadStreamFailureListeners.add((failure) => failures.push(failure));
+        const reconnect = vi.mocked(internals.reconnect);
+        const restart = vi.fn(() => start());
+        const start = () =>
+          internals.startStream(
+            {},
+            key,
+            Stream.fail({ code: WS_STREAM_OVERFLOW_CODE, retryable: true }),
+            () => undefined,
+            restart,
+          );
+
+        start();
+        await vi.advanceTimersByTimeAsync(60_000);
+
+        expect(restart).toHaveBeenCalledTimes(MAX_STREAM_OVERFLOW_RETRIES);
+        expect(reconnect).not.toHaveBeenCalled();
+        if (threadId) {
+          expect(hasThreadDetailResumeCursor(threadId)).toBe(true);
+          expect(failures.map((failure) => failure.code)).toEqual([WS_STREAM_OVERFLOW_CODE]);
+        } else {
+          expect(getConnectionStatus().shellStreamPaused).toBe(true);
+        }
+      } finally {
+        resetThreadDetailResumeCursors();
+        vi.useRealTimers();
+      }
+    },
+  );
 
   it.each([
     {

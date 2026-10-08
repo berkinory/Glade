@@ -1,6 +1,7 @@
 import { onAppPresentation } from "../wsNativeApi";
 import { presentAppRequest } from "../lib/appPresentation";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { WS_STREAM_OVERFLOW_CODE } from "@glade/contracts/transport/ws/rpcErrors";
 import { type ServerConfig } from "@glade/contracts/server/server";
 import { type ServerSettingsView } from "@glade/contracts/settings/settings";
 import { defaultTerminalTitleForCliKind } from "@glade/shared/threads/terminalThreads";
@@ -207,6 +208,10 @@ export function subscribeStreamEvents(
     if (!policy.applyFencedThreadEvent(threadId, item.event)) {
       return;
     }
+    // Only delivery from the subscription itself proves it recovered; catch-up replay does not.
+    if (useStore.getState().threadDetailSyncById?.[threadId] === "failed") {
+      useStore.getState().clearThreadDetailSyncFailure(threadId);
+    }
     if (
       item.event.type === "thread.session-set" &&
       isTerminalThreadSessionStatus(item.event.payload.session.status)
@@ -229,8 +234,12 @@ export function subscribeStreamEvents(
       return;
     }
 
-    clearThreadDetailResumeCursor(threadId);
-    state.threadSnapshotSequenceById.delete(threadId);
+    // An overflowing stream keeps its applied cursor so a retry resumes the gap; other terminal
+    // faults request a fresh snapshot.
+    if (failure.code !== WS_STREAM_OVERFLOW_CODE) {
+      clearThreadDetailResumeCursor(threadId);
+      state.threadSnapshotSequenceById.delete(threadId);
+    }
     state.threadSnapshotRequestInFlight.delete(threadId);
     state.threadSnapshotRefreshPending.delete(threadId);
     useStore.getState().markThreadDetailSyncFailed(threadId);

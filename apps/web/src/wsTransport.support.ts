@@ -17,12 +17,13 @@ import {
 } from "@glade/contracts/transport/ws/ws";
 import { WsBootstrapRpcGroup } from "@glade/contracts/transport/ws/bootstrapRpc";
 import { WsFeatureRpcGroup } from "@glade/contracts/transport/ws/rpc";
+import { WS_STREAM_OVERFLOW_CODE } from "@glade/contracts/transport/ws/rpcErrors";
 import type {
   ProjectFileChangeEvent,
   ProjectWatchFileInput,
 } from "@glade/contracts/workspace/project";
 import { Cause, Data, Effect, Layer, Option, Schema } from "effect";
-import { RpcClient, RpcSerialization } from "effect/unstable/rpc";
+import { RpcClient, RpcClientError, RpcMessage, RpcSerialization } from "effect/unstable/rpc";
 import * as Socket from "effect/unstable/socket/Socket";
 import { APP_VERSION } from "./branding";
 
@@ -166,7 +167,8 @@ export const makeBootstrapRpcClient = RpcClient.make(WsBootstrapRpcGroup);
 
 export const REQUEST_TIMEOUT_MS = 60_000;
 
-export const FEATURE_CONNECTION_PROBE_TIMEOUT_MS = 10_000;
+// Matches the socket open budget: a probe waits out the same server stalls as an upgrade.
+export const FEATURE_CONNECTION_PROBE_TIMEOUT_MS = 90_000;
 
 const INITIAL_RECONNECT_RETRY_MS = 500;
 
@@ -292,20 +294,139 @@ export async function negotiateOverHttp(
   return Option.isSome(result) ? result.value : null;
 }
 
-export function makeProtocolLayer(url: string, onFailure?: () => void) {
-  const socketLayer = Socket.layerWebSocket(url).pipe(
+// A WebSocket upgrade or readiness probe may wait out the 45-60 s server stalls seen under heavy
+// load before recovery starts; a refused connection still fails at once.
+const SOCKET_OPEN_TIMEOUT_MS = 90_000;
+// Any server frame proves liveness, so only complete silence replaces an open socket. Three
+// minutes outlasts ordinary stalls and still bounds half-open remote paths.
+const SOCKET_SILENCE_TIMEOUT_MS = 180_000;
+const KEEPALIVE_INTERVAL_MS = 5_000;
+const LIVENESS_TICK_MS = 1_000;
+// An unanswered keepalive this old with no other frame means the server is not answering yet.
+const UNRESPONSIVE_AFTER_MS = 3_000;
+
+export interface ProtocolObserver {
+  readonly onFailure?: () => void;
+  readonly onResponsiveChange?: (responsive: boolean) => void;
+}
+
+// Reuses Effect's socket, serialization and RPC acknowledgement machinery but replaces its pinger,
+// which drops the connection after one missed 5 s pong: a busy server cannot answer that pong.
+export function makeProtocolLayer(url: string, observer: ProtocolObserver = {}) {
+  const socketLayer = Socket.layerWebSocket(url, { openTimeout: SOCKET_OPEN_TIMEOUT_MS }).pipe(
     Layer.provide(Socket.layerWebSocketConstructorGlobal),
   );
 
   return Layer.effect(RpcClient.Protocol)(
-    Effect.map(RpcClient.makeProtocolSocket(), (protocol) => ({
-      ...protocol,
-      run: (writeResponse) =>
-        protocol.run((response) => {
-          if (response._tag === "ClientProtocolError") onFailure?.();
-          return writeResponse(response);
-        }),
-    })),
+    RpcClient.Protocol.make(
+      Effect.fnUntraced(function* (writeResponse) {
+        const socket = yield* Socket.Socket;
+        const parser = (yield* RpcSerialization.RpcSerialization).makeUnsafe();
+        const write = yield* socket.writer;
+        let currentError: RpcClientError.RpcClientError | undefined;
+        let open = false;
+        let lastFrameAt = performance.now();
+        let lastTickAt = lastFrameAt;
+        let lastPingAt = Number.NEGATIVE_INFINITY;
+        let unansweredPingAt: number | null = null;
+        let responsive = true;
+        const setResponsive = (next: boolean) => {
+          if (responsive === next) return;
+          responsive = next;
+          observer.onResponsiveChange?.(next);
+        };
+        const reportFailure = (reason: RpcClientError.RpcClientError["reason"]) => {
+          if (currentError) return Effect.void;
+          currentError = new RpcClientError.RpcClientError({ reason });
+          observer.onFailure?.();
+          return writeResponse({ _tag: "ClientProtocolError", error: currentError });
+        };
+
+        yield* socket
+          .runRaw(
+            (message) => {
+              lastFrameAt = performance.now();
+              unansweredPingAt = null;
+              setResponsive(true);
+              try {
+                const responses = parser.decode(message) as Array<RpcMessage.FromServerEncoded>;
+                return Effect.forEach(responses, writeResponse, { discard: true });
+              } catch (cause) {
+                return reportFailure(
+                  new RpcClientError.RpcClientDefect({ message: "Error decoding message", cause }),
+                );
+              }
+            },
+            {
+              onOpen: Effect.sync(() => {
+                open = true;
+                lastFrameAt = performance.now();
+              }),
+            },
+          )
+          .pipe(
+            Effect.flatMap(() => reportFailure(new Socket.SocketCloseError({ code: 1000 }))),
+            Effect.catchCause((cause) => {
+              if (Cause.hasInterruptsOnly(cause)) return Effect.void;
+              const error = Cause.squash(cause);
+              return reportFailure(
+                Socket.isSocketError(error)
+                  ? error.reason
+                  : new RpcClientError.RpcClientDefect({
+                      message: "Socket protocol failed",
+                      cause: error,
+                    }),
+              );
+            }),
+            Effect.forkScoped,
+          );
+
+        yield* Effect.sleep(LIVENESS_TICK_MS).pipe(
+          Effect.andThen(
+            Effect.suspend(() => {
+              const now = performance.now();
+              // A late tick means this renderer or the whole machine was paused (sleep, background
+              // throttling), so no frame could arrive. Restart both windows instead of blaming the
+              // server.
+              if (now - lastTickAt > LIVENESS_TICK_MS * 3) {
+                lastFrameAt = now;
+                unansweredPingAt = null;
+              }
+              lastTickAt = now;
+              if (currentError || !open) return Effect.void;
+              if (now - lastFrameAt >= SOCKET_SILENCE_TIMEOUT_MS) {
+                return reportFailure(
+                  new Socket.SocketReadError({
+                    cause: new Error(`No server frames for ${SOCKET_SILENCE_TIMEOUT_MS}ms`),
+                  }),
+                );
+              }
+              if (unansweredPingAt !== null && now - unansweredPingAt >= UNRESPONSIVE_AFTER_MS) {
+                setResponsive(false);
+              }
+              if (now - lastPingAt < KEEPALIVE_INTERVAL_MS) return Effect.void;
+              lastPingAt = now;
+              unansweredPingAt ??= now;
+              const encoded = parser.encode(RpcMessage.constPing);
+              return encoded === undefined ? Effect.void : write(encoded);
+            }),
+          ),
+          Effect.ignore,
+          Effect.forever,
+          Effect.forkScoped,
+        );
+
+        return {
+          send(request) {
+            if (currentError) return Effect.fail(currentError);
+            const encoded = parser.encode(request);
+            return encoded === undefined ? Effect.void : Effect.orDie(write(encoded));
+          },
+          supportsAck: true,
+          supportsTransferables: false,
+        };
+      }),
+    ),
   ).pipe(Layer.provide(Layer.mergeAll(socketLayer, RpcSerialization.layerJson)));
 }
 
@@ -328,6 +449,8 @@ const STREAM_ADMISSION_ERROR_CODES = new Set([
   "ORCHESTRATION_RESNAPSHOT_REQUIRED",
   "ORCHESTRATION_SNAPSHOT_STALLED",
   "ORCHESTRATION_PROJECTION_STATE_INCOMPLETE",
+  // Retried per subscription; a whole-transport reconnect would drop every other stream.
+  WS_STREAM_OVERFLOW_CODE,
 ]);
 
 const RESNAPSHOT_REQUIRED_ERROR_CODE = "ORCHESTRATION_RESNAPSHOT_REQUIRED";
@@ -615,6 +738,15 @@ export function getStreamFailureCode(cause: Cause.Cause<unknown>): string | null
   }
   return null;
 }
+
+export const MAX_STREAM_OVERFLOW_RETRIES = 8;
+
+// 250 ms doubling to 16 s: eight attempts span about 48 s of sustained overload.
+export function getStreamOverflowRetryDelayMs(previousAttempts: number): number {
+  return Math.min(16_000, 250 * 2 ** Math.min(previousAttempts, 6));
+}
+
+export const SHELL_STREAM_KEY = "orchestration.shell";
 
 const THREAD_STREAM_KEY_PREFIX = "orchestration.thread:";
 

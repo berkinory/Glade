@@ -36,6 +36,7 @@ import {
 } from "@glade/contracts/transport/ws/browserRpc";
 import { COMPUTER_WS_METHODS, type ComputerState } from "@glade/contracts/transport/ws/computerRpc";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { WS_STREAM_OVERFLOW_CODE } from "@glade/contracts/transport/ws/rpcErrors";
 import { Cause, Effect, Exit, Stream } from "effect";
 import {
   buildThreadSubscribeInput,
@@ -43,6 +44,8 @@ import {
 } from "./threadDetailResumeCursors";
 import {
   MAX_STREAM_CAPACITY_RETRY_MS,
+  MAX_STREAM_OVERFLOW_RETRIES,
+  SHELL_STREAM_KEY,
   SNAPSHOT_FAULT_RETRY_MS,
   STABLE_STREAM_LIFETIME_MS,
   WsTransportRpcError,
@@ -50,6 +53,7 @@ import {
   getProjectFileWatchRetryDelayMs,
   getSnapshotFaultRetryDelayMs,
   getStreamFailureCode,
+  getStreamOverflowRetryDelayMs,
   isServerLifecyclePushChannel,
   isTerminalCompatibilityFailure,
   resolveStreamAdmissionRetry,
@@ -218,6 +222,7 @@ export class WsTransport extends WsTransportBase {
         if (event.kind === "snapshot") {
           this.shellSnapshotDelivered = true;
         }
+        this.connectionStatus.setShellStreamPaused(false);
         this.emit(ORCHESTRATION_WS_CHANNELS.shellEvent, event);
       },
       restartShell,
@@ -406,6 +411,30 @@ export class WsTransport extends WsTransportBase {
           if (Exit.isFailure(exit)) {
             this.streamCompletionRetries.delete(key);
           }
+          let overflowExhausted = false;
+          if (
+            restart &&
+            Exit.isFailure(exit) &&
+            getStreamFailureCode(exit.cause) === WS_STREAM_OVERFLOW_CODE
+          ) {
+            // Only this subscription restarts, keeping its applied cursor. Its first snapshot does not
+            // prove recovery; only a stream that stays up earns a fresh retry budget.
+            const attempt =
+              performance.now() - streamStartedAt >= STABLE_STREAM_LIFETIME_MS
+                ? 0
+                : (this.streamOverflowRetries.get(key) ?? 0);
+            if (attempt < MAX_STREAM_OVERFLOW_RETRIES) {
+              this.streamOverflowRetries.set(key, attempt + 1);
+              this.scheduleStreamRestart(
+                key,
+                streamSessionVersion,
+                getStreamOverflowRetryDelayMs(attempt),
+                restart,
+              );
+              return;
+            }
+            overflowExhausted = true;
+          }
           if (restart && Exit.isFailure(exit)) {
             const admissionRetry = resolveStreamAdmissionRetry(
               exit.cause,
@@ -434,25 +463,15 @@ export class WsTransport extends WsTransportBase {
                   clearThreadDetailResumeCursor(ThreadId.makeUnsafe(threadId));
                 }
               }
-              this.clearStreamCapacityRetryTimer(key);
-              const timeoutId = window.setTimeout(
-                () => {
-                  if (this.streamCapacityRetryTimers.get(key) !== timeoutId) return;
-                  this.streamCapacityRetryTimers.delete(key);
-                  if (
-                    !this.disposed &&
-                    this.sessionVersion === streamSessionVersion &&
-                    !this.streamCleanups.has(key)
-                  ) {
-                    restart();
-                  }
-                },
+              this.scheduleStreamRestart(
+                key,
+                streamSessionVersion,
                 Math.min(
                   admissionRetry.delayMs * admissionRetry.attempt,
                   MAX_STREAM_CAPACITY_RETRY_MS,
                 ),
+                restart,
               );
-              this.streamCapacityRetryTimers.set(key, timeoutId);
               return;
             }
 
@@ -466,23 +485,18 @@ export class WsTransport extends WsTransportBase {
             );
             if (fileWatchRetryDelayMs !== null) {
               this.projectFileWatchRetries.set(key, previousFileWatchAttempts + 1);
-              this.clearStreamCapacityRetryTimer(key);
-              const timeoutId = window.setTimeout(() => {
-                if (this.streamCapacityRetryTimers.get(key) !== timeoutId) return;
-                this.streamCapacityRetryTimers.delete(key);
-                if (
-                  !this.disposed &&
-                  this.sessionVersion === streamSessionVersion &&
-                  !this.streamCleanups.has(key)
-                ) {
-                  restart();
-                }
-              }, fileWatchRetryDelayMs);
-              this.streamCapacityRetryTimers.set(key, timeoutId);
+              this.scheduleStreamRestart(key, streamSessionVersion, fileWatchRetryDelayMs, restart);
               return;
             }
           }
-          if (restart && Exit.isFailure(exit) && shouldReconnectAfterStreamFailure(exit.cause)) {
+          if (
+            restart &&
+            Exit.isFailure(exit) &&
+            (shouldReconnectAfterStreamFailure(exit.cause) ||
+              (overflowExhausted &&
+                key !== SHELL_STREAM_KEY &&
+                threadIdFromStreamKey(key) === null))
+          ) {
             window.setTimeout(
               () => {
                 if (
@@ -514,21 +528,17 @@ export class WsTransport extends WsTransportBase {
                 error,
               });
             }
+            if (overflowExhausted && key === SHELL_STREAM_KEY && this.shellSubscribed) {
+              this.connectionStatus.setShellStreamPaused(true);
+            }
 
             if (restart && getSnapshotFaultRetryDelayMs(exit.cause) !== null) {
-              this.clearStreamCapacityRetryTimer(key);
-              const timeoutId = window.setTimeout(() => {
-                if (this.streamCapacityRetryTimers.get(key) !== timeoutId) return;
-                this.streamCapacityRetryTimers.delete(key);
-                if (
-                  !this.disposed &&
-                  this.sessionVersion === streamSessionVersion &&
-                  !this.streamCleanups.has(key)
-                ) {
-                  restart();
-                }
-              }, SNAPSHOT_FAULT_RETRY_MS);
-              this.streamCapacityRetryTimers.set(key, timeoutId);
+              this.scheduleStreamRestart(
+                key,
+                streamSessionVersion,
+                SNAPSHOT_FAULT_RETRY_MS,
+                restart,
+              );
             }
           }
         },
@@ -536,6 +546,26 @@ export class WsTransport extends WsTransportBase {
     );
     this.streamCleanups.set(key, cancel);
     this.streamSettled.set(key, settled);
+  }
+  private scheduleStreamRestart(
+    key: string,
+    streamSessionVersion: number,
+    delayMs: number,
+    restart: () => void,
+  ): void {
+    this.clearStreamCapacityRetryTimer(key);
+    const timeoutId = window.setTimeout(() => {
+      if (this.streamCapacityRetryTimers.get(key) !== timeoutId) return;
+      this.streamCapacityRetryTimers.delete(key);
+      if (
+        !this.disposed &&
+        this.sessionVersion === streamSessionVersion &&
+        !this.streamCleanups.has(key)
+      ) {
+        restart();
+      }
+    }, delayMs);
+    this.streamCapacityRetryTimers.set(key, timeoutId);
   }
   protected stopStream(
     key: string,
@@ -550,6 +580,7 @@ export class WsTransport extends WsTransportBase {
       this.streamThreadBootstrapRetries.delete(key);
       this.streamResnapshotRetries.delete(key);
       this.projectFileWatchRetries.delete(key);
+      this.streamOverflowRetries.delete(key);
     }
     this.streamCompletionRetries.delete(key);
     this.activeThreadStreamInputs.delete(key);

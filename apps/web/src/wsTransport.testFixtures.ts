@@ -6,6 +6,7 @@ import {
   type WsBootstrapNegotiateResult,
 } from "@glade/contracts/transport/ws/wsCompatibility";
 import type { WsThreadStreamFailure } from "./wsTransport.support";
+import { ConnectionStatusTracker } from "./connectionStatus";
 import { WsTransport } from "./wsTransport.implementation";
 export type WsEventType = "open" | "message" | "close" | "error";
 
@@ -142,6 +143,8 @@ export function makeBareTransport(): {
     streamThreadBootstrapRetries: new Map(),
     streamResnapshotRetries: new Map(),
     projectFileWatchRetries: new Map(),
+    streamOverflowRetries: new Map(),
+    connectionStatus: new ConnectionStatusTracker(() => null),
     streamCapacityRetryTimers: new Map(),
     streamCompletionRetries: new Map(),
     streamCompletionRetryTimers: new Map(),

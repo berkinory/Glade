@@ -8,6 +8,7 @@ import type { ComputerState } from "@glade/contracts/transport/ws/computerRpc";
 import { ORCHESTRATION_WS_METHODS } from "@glade/contracts/orchestration/rpc";
 import {
   WS_GIT_ACTION_REATTACH_CAPABILITY,
+  WS_SERVER_RUNTIME_STATUS_CAPABILITY,
   WS_TURN_DISPATCH_SETTLEMENT_CAPABILITY,
   WS_BOOTSTRAP_METHOD,
   WS_BOOTSTRAP_PATH,
@@ -33,9 +34,11 @@ import type {
   ProjectFileChangeEvent,
   ProjectWatchFileInput,
 } from "@glade/contracts/workspace/project";
+import type { ServerRuntimeStatus } from "@glade/contracts/server/runtimeStatus";
 import { Effect, Exit, ManagedRuntime, Schema, Scope } from "effect";
 import { RpcClient, RpcClientError } from "effect/unstable/rpc";
 import { APP_VERSION } from "./branding";
+import { ConnectionStatusTracker } from "./connectionStatus";
 import { getUnaryRpcCapacityRetryDelayMs } from "./lib/expensiveReadRetry";
 import { resetThreadDetailResumeCursors } from "./threadDetailResumeCursors";
 import type { WsTransportState } from "./wsTransportEvents";
@@ -187,6 +190,7 @@ export abstract class WsTransportBase {
   protected readonly streamThreadBootstrapRetries = new Map<string, number>();
   protected readonly streamResnapshotRetries = new Map<string, number>();
   protected readonly projectFileWatchRetries = new Map<string, number>();
+  protected readonly streamOverflowRetries = new Map<string, number>();
   protected readonly streamCapacityRetryTimers = new Map<string, number>();
   protected readonly streamCompletionRetries = new Map<string, number>();
   protected readonly streamCompletionRetryTimers = new Map<string, number>();
@@ -213,6 +217,16 @@ export abstract class WsTransportBase {
   protected compatibility: WsBootstrapNegotiateResult | null = null;
   protected compatibilityIssue: WsCompatibilityError | null = null;
   protected lastServerInstanceId: string | null = null;
+  protected readonly connectionStatus = new ConnectionStatusTracker(() =>
+    this.state === "open" &&
+    this.compatibility?.capabilities.includes(WS_SERVER_RUNTIME_STATUS_CAPABILITY)
+      ? this.request<ServerRuntimeStatus>(
+          WS_METHODS.serverGetRuntimeStatus,
+          {},
+          { timeoutMs: 5_000 },
+        )
+      : null,
+  );
   constructor(url?: string) {
     this.explicitUrl = url ?? null;
     this.clientPromise = this.createSession().clientPromise;
@@ -243,9 +257,11 @@ export abstract class WsTransportBase {
     const requestOptions: WsRequestOptions =
       options?.timeoutMs === undefined ? { ...options, timeoutMs: REQUEST_TIMEOUT_MS } : options;
     const abortScope = makeRequestAbortScope(requestOptions);
+    let finishTracking: (() => void) | undefined;
     try {
       if (method === ORCHESTRATION_WS_METHODS.unsubscribeShell) {
         this.shellSubscribed = false;
+        this.connectionStatus.setShellStreamPaused(false);
         await awaitWithAbort(this.stopStream("orchestration.shell"), abortScope.signal);
         return undefined as T;
       }
@@ -262,6 +278,7 @@ export abstract class WsTransportBase {
       if (method === ORCHESTRATION_WS_METHODS.subscribeShell) {
         const wasSubscribed = this.shellSubscribed;
         this.shellSubscribed = true;
+        this.connectionStatus.setShellStreamPaused(false);
         this.resetStreamCapacityRetry("orchestration.shell");
         this.resetStreamCompletionRetry("orchestration.shell");
         const client = await awaitWithAbort(this.getClient(), abortScope.signal);
@@ -284,6 +301,9 @@ export abstract class WsTransportBase {
       }
 
       const client = await awaitWithAbort(this.getClient(), abortScope.signal);
+      if (method !== WS_METHODS.serverGetRuntimeStatus) {
+        finishTracking = this.connectionStatus.trackRequest(requestOptions.timeoutMs);
+      }
       if (
         method === ORCHESTRATION_WS_METHODS.settleTurnDispatch &&
         !this.compatibility?.capabilities.includes(WS_TURN_DISPATCH_SETTLEMENT_CAPABILITY)
@@ -366,6 +386,7 @@ export abstract class WsTransportBase {
       throw error;
     } finally {
       abortScope.cleanup();
+      finishTracking?.();
     }
   }
   // A dropped socket leaves the server-owned action running. Reattach to it by ID; never resend it.
@@ -572,6 +593,7 @@ export abstract class WsTransportBase {
 
     this.lifetime.abort(new Error("Transport disposed"));
     this.setState("disposed");
+    this.connectionStatus.dispose();
     this.resetAllStreamCapacityRetries();
     this.resetAllStreamCompletionRetries();
     for (const cleanup of this.streamCleanups.values()) cleanup();
@@ -667,15 +689,26 @@ export abstract class WsTransportBase {
         throw new Error("WebSocket session superseded during compatibility negotiation.");
       }
 
+      const isCurrentSession = () => !this.disposed && this.sessionVersion === sessionVersion;
       const featureRuntime = ManagedRuntime.make(
-        makeProtocolLayer(makeFeatureSocketUrl(this.explicitUrl, compatibility), () => {
-          // Teardown must leave the failing protocol fiber before closing its scope.
-          queueMicrotask(() => {
-            if (this.disposed || this.sessionVersion !== sessionVersion || this.reconnectPromise)
-              return;
-            if (this.state !== "open") this.setCompatibility(null);
-            void this.reconnect().catch(() => undefined);
-          });
+        makeProtocolLayer(makeFeatureSocketUrl(this.explicitUrl, compatibility), {
+          onFailure: () => {
+            // Teardown must leave the failing protocol fiber before closing its scope.
+            queueMicrotask(() => {
+              const recover = () => {
+                if (!isCurrentSession()) return;
+                if (this.state !== "open") this.setCompatibility(null);
+                void this.reconnect().catch(() => undefined);
+              };
+              // A close can land just after the probe opened this session while the recovery that
+              // created it is still settling; recheck afterwards so the new socket is not left dead.
+              if (this.reconnectPromise) void this.reconnectPromise.then(recover, () => undefined);
+              else recover();
+            });
+          },
+          onResponsiveChange: (responsive) => {
+            if (isCurrentSession()) this.connectionStatus.setServerResponsive(responsive);
+          },
         }),
       );
       const featureScope = featureRuntime.runSync(Scope.make());
@@ -773,6 +806,7 @@ export abstract class WsTransportBase {
   protected setState(state: WsTransportState): void {
     if (this.state === state) return;
     this.state = state;
+    if (state !== "open") this.connectionStatus.resetLiveness();
     for (const listener of this.stateListeners) {
       try {
         listener(state);
@@ -794,6 +828,7 @@ export abstract class WsTransportBase {
     this.streamThreadBootstrapRetries.delete(key);
     this.streamResnapshotRetries.delete(key);
     this.projectFileWatchRetries.delete(key);
+    this.streamOverflowRetries.delete(key);
   }
   protected resetAllStreamCapacityRetries(): void {
     for (const timeoutId of this.streamCapacityRetryTimers.values()) {
@@ -805,6 +840,7 @@ export abstract class WsTransportBase {
     this.streamThreadBootstrapRetries.clear();
     this.streamResnapshotRetries.clear();
     this.projectFileWatchRetries.clear();
+    this.streamOverflowRetries.clear();
   }
   protected clearStreamCompletionRetryTimer(key: string): void {
     const timeoutId = this.streamCompletionRetryTimers.get(key);

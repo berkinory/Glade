@@ -7,3 +7,7 @@ export class WsRpcError extends Schema.TaggedErrorClass<WsRpcError>()("WsRpcErro
   retryable: Schema.optional(Schema.Boolean),
   retryAfterMs: Schema.optional(Schema.Number),
 }) {}
+
+// A subscriber fell behind its bounded live-event budget. Only that subscription restarts, resuming
+// from the client's last applied cursor or a fresh snapshot.
+export const WS_STREAM_OVERFLOW_CODE = "WS_STREAM_OVERFLOW";

@@ -29,6 +29,8 @@ const CONTROL_METHODS = new Set<string>([
   WS_METHODS.terminalResize,
   WS_METHODS.terminalClose,
   WS_METHODS.serverStopLocalServer,
+  // Answers the busy probe; it must not queue behind the saturated work it is explaining.
+  WS_METHODS.serverGetRuntimeStatus,
 ]);
 
 const EXPENSIVE_READ_METHODS = new Set<string>([

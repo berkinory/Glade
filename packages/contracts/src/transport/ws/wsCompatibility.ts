@@ -38,6 +38,8 @@ export const WS_PROJECT_FILE_WATCH_CAPABILITY = "projects.file-watch";
 export const WS_GIT_ACTION_REATTACH_CAPABILITY = "git.action-reattach";
 // Older servers ignore `onlyIfIdle` and would deliver automatic terminal input to a busy program.
 export const WS_TERMINAL_IDLE_INPUT_CAPABILITY = "terminal.idle-input";
+// Older servers have no event-loop status; clients then explain only their own observations.
+export const WS_SERVER_RUNTIME_STATUS_CAPABILITY = "server.runtime-status";
 
 export const WS_CLIENT_REQUIRED_CAPABILITIES = [
   "orchestration.cursor-safe-streams",
@@ -55,6 +57,7 @@ export const WS_SERVER_CAPABILITIES = [
   WS_GITHUB_PROJECT_PROVISIONING_CAPABILITY,
   WS_PROJECT_FILE_WATCH_CAPABILITY,
   WS_GIT_ACTION_REATTACH_CAPABILITY,
+  WS_SERVER_RUNTIME_STATUS_CAPABILITY,
 
   "transport.http-negotiate",
 ] as const;
