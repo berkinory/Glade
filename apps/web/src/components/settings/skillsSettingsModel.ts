@@ -50,6 +50,17 @@ function skillOriginInfo(scope: string | undefined): SkillOriginInfo {
   }
 }
 
+/** Skills found only in a disabled provider's own folders stay out until it is enabled again. */
+export function withoutDisabledProviderSkills(
+  skills: ReadonlyArray<ProviderSkillDescriptor>,
+  disabledProviders: ReadonlyArray<ProviderKind>,
+): ProviderSkillDescriptor[] {
+  return skills.filter((skill) => {
+    const provider = skillOriginInfo(skill.scope).provider;
+    return provider === null || !disabledProviders.includes(provider);
+  });
+}
+
 function providersForSkillOrigin(origin: string): ProviderKind[] {
   const provider = skillOriginInfo(origin).provider;
   return provider ? [provider] : [];

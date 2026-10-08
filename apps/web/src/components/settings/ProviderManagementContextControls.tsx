@@ -1,10 +1,60 @@
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import type { ProviderManagementContext } from "@glade/contracts/provider/providerManagement";
+import { useAppSettings } from "~/appSettings";
 import { useStore } from "~/store";
 import { createAllThreadsSelector } from "~/storeSelectors";
 import { SelectItem } from "../ui/select";
 import { SettingsSelectControl } from "./SettingControls";
-import { SettingsListRow as SettingsRow, SettingsSection } from "./SettingsPanelPrimitives";
+import {
+  SettingsEmptyState,
+  SettingsListRow as SettingsRow,
+  SettingsSection,
+} from "./SettingsPanelPrimitives";
+
+const MANAGEMENT_PROVIDERS = [
+  { provider: "codex", label: "Codex" },
+  { provider: "claudeAgent", label: "Claude" },
+] as const;
+
+function useEnabledManagementProviders() {
+  const { settings } = useAppSettings();
+  return MANAGEMENT_PROVIDERS.filter(
+    (option) => !settings.disabledProviders.includes(option.provider),
+  );
+}
+
+/** The selected scope, moved to an enabled provider when its own is disabled; null when none is. */
+export function useProviderManagementContext(): readonly [
+  ProviderManagementContext | null,
+  (context: ProviderManagementContext) => void,
+] {
+  const enabledProviders = useEnabledManagementProviders();
+  const [context, setContext] = useState<ProviderManagementContext>({ provider: "codex" });
+  const fallbackProvider = enabledProviders[0]?.provider;
+  const effectiveContext = enabledProviders.some((option) => option.provider === context.provider)
+    ? context
+    : fallbackProvider
+      ? { provider: fallbackProvider }
+      : null;
+  return [effectiveContext, setContext] as const;
+}
+
+export function NoManagementProviderState() {
+  return (
+    <SettingsEmptyState>
+      No provider is enabled.{" "}
+      <Link
+        to="/settings"
+        search={{ section: "providers" }}
+        className="text-primary hover:underline"
+      >
+        Enable one in Providers
+      </Link>{" "}
+      to manage its tools.
+    </SettingsEmptyState>
+  );
+}
 
 export function ProviderManagementContextControls({
   context,
@@ -13,6 +63,7 @@ export function ProviderManagementContextControls({
   context: ProviderManagementContext;
   onChange: (context: ProviderManagementContext) => void;
 }) {
+  const enabledProviders = useEnabledManagementProviders();
   const projects = useStore((state) => state.projects);
   const [threadSelector] = useState(createAllThreadsSelector);
   const threads = useStore(threadSelector).filter(
@@ -34,11 +85,15 @@ export function ProviderManagementContextControls({
             valueContent={context.provider === "codex" ? "Codex" : "Claude"}
             ariaLabel="Provider"
             onValueChange={(provider) => {
-              if (provider === "codex" || provider === "claudeAgent") onChange({ provider });
+              const option = enabledProviders.find((entry) => entry.provider === provider);
+              if (option) onChange({ provider: option.provider });
             }}
           >
-            <SelectItem value="codex">Codex</SelectItem>
-            <SelectItem value="claudeAgent">Claude</SelectItem>
+            {enabledProviders.map((option) => (
+              <SelectItem key={option.provider} value={option.provider}>
+                {option.label}
+              </SelectItem>
+            ))}
           </SettingsSelectControl>
         }
       />

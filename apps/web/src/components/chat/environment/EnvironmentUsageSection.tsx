@@ -23,15 +23,19 @@ import {
 } from "./EnvironmentRow";
 
 export function EnvironmentUsageSection({ provider }: { provider: ProviderKind }) {
-  const usageQuery = useQuery(serverAllProviderUsageQueryOptions());
   const settingsQuery = useQuery(serverSettingsQueryOptions());
+  // Gate before the usage queries mount so a disabled provider is never polled.
+  if (settingsQuery.data?.providers[provider].enabled !== true) {
+    return null;
+  }
+  return <EnabledProviderUsageSection provider={provider} />;
+}
+
+function EnabledProviderUsageSection({ provider }: { provider: ProviderKind }) {
+  const usageQuery = useQuery(serverAllProviderUsageQueryOptions());
 
   const snapshot = (usageQuery.data ?? []).find((entry) => entry.provider === provider);
   const model = useProviderUsageMenuModel(provider, { providerSnapshot: snapshot });
-
-  if (settingsQuery.data?.providers[provider].enabled === false) {
-    return null;
-  }
 
   if (model.rows.length === 0) {
     return null;

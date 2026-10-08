@@ -12,6 +12,7 @@
 - Scrollbars across the app stay hidden at rest and appear while you scroll or hover.
 - Chats recover more reliably from connection interruptions and heavy update streams, and a busy server no longer drops the connection.
 - Find settings from the command palette and jump straight to the matching row.
+- Disabled providers stay out of pickers, usage, plugin and skill lists and stop background discovery, while their saved settings and chats are kept.
 
 ### Fixed
 

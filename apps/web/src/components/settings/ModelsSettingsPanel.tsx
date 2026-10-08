@@ -55,12 +55,16 @@ export function ModelsSettingsPanel({
       ProviderKind,
       (typeof gitWritingCatalogOptionsByProvider)[ProviderKind]
     >;
-    for (const provider of supportedProviders) {
+    // A disabled provider's models are not offered; a saved choice for it stays until changed.
+    const enabledProviders = supportedProviders.filter(
+      (provider) => !settings.disabledProviders.includes(provider),
+    );
+    for (const provider of enabledProviders) {
       discoveredOptionsByProvider[provider] = gitWritingCatalogOptionsByProvider[provider];
     }
     return getGitTextGenerationModelOptions(
       settings,
-      supportedProviders,
+      enabledProviders,
       discoveredOptionsByProvider,
     );
   }, [gitWritingCatalogOptionsByProvider, settings, supportedProviders]);
@@ -77,7 +81,8 @@ export function ModelsSettingsPanel({
       (option) =>
         option.provider === currentGitTextGenerationProvider &&
         option.slug === currentGitTextGenerationModel,
-    )?.name ?? currentGitTextGenerationModel;
+    )?.name ??
+    `${currentGitTextGenerationModel}${settings.disabledProviders.includes(currentGitTextGenerationProvider) ? " (disabled)" : ""}`;
 
   if (!active) return null;
 

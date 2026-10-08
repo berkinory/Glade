@@ -17,7 +17,11 @@ import {
   SettingsListRow as SettingsRow,
   SettingsSection,
 } from "./SettingsPanelPrimitives";
-import { ProviderManagementContextControls } from "./ProviderManagementContextControls";
+import {
+  NoManagementProviderState,
+  ProviderManagementContextControls,
+  useProviderManagementContext,
+} from "./ProviderManagementContextControls";
 
 const ACTION_LABELS = {
   install: "Install",
@@ -28,7 +32,19 @@ const ACTION_LABELS = {
 } as const;
 
 export function PluginsSettingsPanel() {
-  const [context, setContext] = useState<ProviderManagementContext>({ provider: "codex" });
+  const [context, setContext] = useProviderManagementContext();
+  return context ? (
+    <PluginsSettingsPanelContent context={context} onContextChange={setContext} />
+  ) : (
+    <NoManagementProviderState />
+  );
+}
+
+function PluginsSettingsPanelContent(props: {
+  readonly context: ProviderManagementContext;
+  readonly onContextChange: (context: ProviderManagementContext) => void;
+}) {
+  const { context, onContextChange: setContext } = props;
   const [pluginId, setPluginId] = useState("");
   const [scope, setScope] = useState<ProviderManagementScope>("user");
   const queryClient = useQueryClient();

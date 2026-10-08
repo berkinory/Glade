@@ -7,6 +7,7 @@ import { ProviderIcon } from "~/components/ProviderIcon";
 import { SettingsRow, SettingsSection } from "~/components/settings/SettingsPanelPrimitives";
 import { Switch } from "~/components/ui/switch";
 import { ensureNativeApi } from "~/nativeApi";
+import { useAppSettings } from "~/appSettings";
 import {
   providerDiscoveryQueryKeys,
   skillsCatalogQueryOptions,
@@ -17,6 +18,7 @@ import {
   buildSettingsSkillSectionsFromGroups,
   providerDisplayName,
   settingsSkillNameKey,
+  withoutDisabledProviderSkills,
 } from "./skillsSettingsModel";
 function SkillProviderStack({ providers }: { providers: ReadonlyArray<ProviderKind> }) {
   if (providers.length === 0) {
@@ -48,8 +50,15 @@ export function SkillsSettingsPanel() {
   const disabledSkillNames = new Set(
     (serverSettingsQuery.data?.skills.disabled ?? []).map((name) => settingsSkillNameKey(name)),
   );
+  const { settings } = useAppSettings();
   const catalogSkills = catalogQuery.data?.skills;
-  const skillGroups = useMemo(() => buildSettingsSkillGroups(catalogSkills ?? []), [catalogSkills]);
+  const skillGroups = useMemo(
+    () =>
+      buildSettingsSkillGroups(
+        withoutDisabledProviderSkills(catalogSkills ?? [], settings.disabledProviders),
+      ),
+    [catalogSkills, settings.disabledProviders],
+  );
   const skillSections = useMemo(
     () => buildSettingsSkillSectionsFromGroups(skillGroups),
     [skillGroups],

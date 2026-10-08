@@ -228,19 +228,23 @@ export function buildSearchableModelOptions(input: {
   modelOptionsByProvider: Record<ProviderKind, ReadonlyArray<ProviderModelOption>>;
   providerOrder: readonly ProviderKind[];
   hiddenProviders: readonly ProviderKind[];
+  disabledProviders: readonly ProviderKind[];
   protectedProviders: readonly ProviderKind[];
   lockedProvider?: ProviderKind | null;
 }): SearchableModelOption[] {
   const hiddenProviderSet = new Set(input.hiddenProviders);
+  const disabledProviderSet = new Set(input.disabledProviders);
   const protectedProviderSet = new Set(input.protectedProviders);
   return input.providerOptions
     .toSorted((left, right) =>
       compareProvidersByOrder(input.providerOrder, left.value, right.value),
     )
-    .filter((option) =>
-      input.lockedProvider
-        ? option.value === input.lockedProvider
-        : protectedProviderSet.has(option.value) || !hiddenProviderSet.has(option.value),
+    .filter(
+      (option) =>
+        !disabledProviderSet.has(option.value) &&
+        (input.lockedProvider
+          ? option.value === input.lockedProvider
+          : protectedProviderSet.has(option.value) || !hiddenProviderSet.has(option.value)),
     )
     .flatMap((option) =>
       input.modelOptionsByProvider[option.value].map(

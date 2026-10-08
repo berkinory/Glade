@@ -18,6 +18,7 @@ import React, { useMemo, type ReactNode, useDeferredValue, useState } from "reac
 import { PROVIDER_ICON_COMPONENT_BY_PROVIDER } from "./ProviderIcon";
 import { useStore } from "~/store";
 import { DEFAULT_PROVIDER_ORDER } from "~/providerOrdering";
+import { useAppSettings } from "~/appSettings";
 import {
   buildPluginSearchFields,
   buildSkillSearchFields,
@@ -299,6 +300,14 @@ function SkillGridItem({ skill }: { skill: ProviderSkillDescriptor }) {
 function SectionHeader({ title }: { title: string }) {
   return <h2 className="px-3 pb-1 pt-2 text-[15px] font-semibold text-foreground">{title}</h2>;
 }
+function NoEnabledProviderPanel() {
+  return (
+    <EmptyPanel
+      title="No provider is enabled"
+      description="Enable a provider in Settings → Providers to browse its plugins and skills."
+    />
+  );
+}
 export function PluginLibrary() {
   const desktopTopBarTrafficLightGutterClassName = useDesktopTopBarTrafficLightGutterClassName();
   const desktopTopBarWindowControlsGutterClassName =
@@ -318,16 +327,29 @@ export function PluginLibrary() {
   const deferredSkillSearch = useDeferredValue(skillSearch);
   const providerThreadId = routeThreadId;
   const serverConfigQuery = useQuery(serverConfigQueryOptions());
-  const codexCapabilitiesQuery = useQuery(providerComposerCapabilitiesQueryOptions("codex"));
-  const claudeCapabilitiesQuery = useQuery(providerComposerCapabilitiesQueryOptions("claudeAgent"));
+  const { settings } = useAppSettings();
+  const enabledProviderOrder = DEFAULT_PROVIDER_ORDER.filter(
+    (provider) => !settings.disabledProviders.includes(provider),
+  );
+  const codexEnabled = enabledProviderOrder.includes("codex");
+  const claudeEnabled = enabledProviderOrder.includes("claudeAgent");
+  const codexCapabilitiesQuery = useQuery({
+    ...providerComposerCapabilitiesQueryOptions("codex"),
+    enabled: codexEnabled,
+  });
+  const claudeCapabilitiesQuery = useQuery({
+    ...providerComposerCapabilitiesQueryOptions("claudeAgent"),
+    enabled: claudeEnabled,
+  });
+  // Cached capabilities outlive a provider being disabled, so enablement gates them here too.
   const providerCapabilities: Record<ProviderKind, ProviderCapabilities> = {
     codex: {
-      plugins: supportsPluginDiscovery(codexCapabilitiesQuery.data),
-      skills: supportsSkillDiscovery(codexCapabilitiesQuery.data),
+      plugins: codexEnabled && supportsPluginDiscovery(codexCapabilitiesQuery.data),
+      skills: codexEnabled && supportsSkillDiscovery(codexCapabilitiesQuery.data),
     },
     claudeAgent: {
-      plugins: supportsPluginDiscovery(claudeCapabilitiesQuery.data),
-      skills: supportsSkillDiscovery(claudeCapabilitiesQuery.data),
+      plugins: claudeEnabled && supportsPluginDiscovery(claudeCapabilitiesQuery.data),
+      skills: claudeEnabled && supportsSkillDiscovery(claudeCapabilitiesQuery.data),
     },
   };
   const supportsSelectedTab =
@@ -336,15 +358,22 @@ export function PluginLibrary() {
       : providerCapabilities[selectedProvider].skills;
   const providerFallbackOrder =
     selectedTab === "plugins"
-      ? DEFAULT_PROVIDER_ORDER
-      : [preferredProvider, ...DEFAULT_PROVIDER_ORDER.filter((p) => p !== preferredProvider)];
+      ? enabledProviderOrder
+      : [
+          ...enabledProviderOrder.filter((p) => p === preferredProvider),
+          ...enabledProviderOrder.filter((p) => p !== preferredProvider),
+        ];
   const effectiveProvider = supportsSelectedTab
     ? selectedProvider
     : (providerFallbackOrder.find((provider) =>
         selectedTab === "plugins"
           ? providerCapabilities[provider].plugins
           : providerCapabilities[provider].skills,
-      ) ?? selectedProvider);
+      ) ??
+      (enabledProviderOrder.includes(selectedProvider)
+        ? selectedProvider
+        : (enabledProviderOrder[0] ?? selectedProvider)));
+  const noEnabledProvider = enabledProviderOrder.length === 0;
   const discoveryCwd = resolveProviderDiscoveryCwd({
     activeThreadWorktreePath: activeThread?.worktreePath ?? null,
     activeProjectCwd: activeProject?.cwd ?? null,
@@ -442,7 +471,7 @@ export function PluginLibrary() {
           </div>
           <div className="flex-1" />
           <div className="inline-flex rounded-full border border-border/60 bg-background/60 p-0.5">
-            {DEFAULT_PROVIDER_ORDER.map((provider) => {
+            {enabledProviderOrder.map((provider) => {
               const capabilities = providerCapabilities[provider];
               const label = PROVIDER_DISPLAY_NAMES[provider];
               return (
@@ -472,7 +501,7 @@ export function PluginLibrary() {
           {}
           <div className="px-6 py-10 text-center">
             <h1 className="text-[28px] font-semibold text-foreground">
-              Make {providerLabel} work your way
+              {noEnabledProvider ? "Plugins and skills" : `Make ${providerLabel} work your way`}
             </h1>
           </div>
 
@@ -527,10 +556,14 @@ export function PluginLibrary() {
               <>
                 {!canListPlugins ? (
                   <div className="mx-auto max-w-2xl">
-                    <EmptyPanel
-                      title={`Plugins unavailable for ${providerLabel}`}
-                      description="This provider does not expose plugin discovery."
-                    />
+                    {noEnabledProvider ? (
+                      <NoEnabledProviderPanel />
+                    ) : (
+                      <EmptyPanel
+                        title={`Plugins unavailable for ${providerLabel}`}
+                        description="This provider does not expose plugin discovery."
+                      />
+                    )}
                   </div>
                 ) : pluginsQuery.isLoading && pluginEntries.length === 0 ? (
                   <div className="space-y-1">
@@ -562,10 +595,14 @@ export function PluginLibrary() {
               <>
                 {!canListSkills ? (
                   <div className="mx-auto max-w-2xl">
-                    <EmptyPanel
-                      title={`Skills unavailable for ${providerLabel}`}
-                      description="This provider does not expose skill discovery."
-                    />
+                    {noEnabledProvider ? (
+                      <NoEnabledProviderPanel />
+                    ) : (
+                      <EmptyPanel
+                        title={`Skills unavailable for ${providerLabel}`}
+                        description="This provider does not expose skill discovery."
+                      />
+                    )}
                   </div>
                 ) : skillsQuery.isLoading && discoveredSkills.length === 0 ? (
                   <div className="space-y-1">

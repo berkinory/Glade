@@ -35,6 +35,11 @@ export function SettingsGeneralPanel(props: {
 }) {
   const { settings, defaults, updateSettings } = useAppSettings();
   const { renderBooleanSettingRow } = props;
+  // A disabled default stays saved and returns when its provider is enabled again.
+  const enabledProviderOptions = PROVIDER_SELECT_OPTIONS.filter(
+    (provider) => !settings.disabledProviders.includes(provider),
+  );
+  const defaultProviderDisabled = settings.disabledProviders.includes(settings.defaultProvider);
   return (
     <div className="space-y-6">
       <SettingsSection title="New chats">
@@ -67,11 +72,11 @@ export function SettingsGeneralPanel(props: {
               valueContent={
                 <ProviderOptionLabel
                   provider={settings.defaultProvider}
-                  label={PROVIDER_DISPLAY_NAMES[settings.defaultProvider]}
+                  label={`${PROVIDER_DISPLAY_NAMES[settings.defaultProvider]}${defaultProviderDisabled ? " (disabled)" : ""}`}
                 />
               }
             >
-              {PROVIDER_SELECT_OPTIONS.map((provider) => (
+              {enabledProviderOptions.map((provider) => (
                 <SelectItem hideIndicator key={provider} value={provider}>
                   <ProviderOptionLabel
                     provider={provider}

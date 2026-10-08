@@ -149,13 +149,6 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
   const normalizedQuery = useDeferredValue(query).trim().toLowerCase();
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [wasMenuOpen, setWasMenuOpen] = useState(isMenuOpen);
-  if (wasMenuOpen !== isMenuOpen) {
-    setWasMenuOpen(isMenuOpen);
-    if (isMenuOpen) {
-      setTab(usableStarredModels.length > 0 ? STARRED_TAB : activeProvider);
-      setQuery("");
-    }
-  }
   const selectionCommittedWhileOpenRef = useRef(false);
   const setMenuOpen = (nextOpen: boolean) => {
     if (open === undefined) {
@@ -222,25 +215,45 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
     }).filter((option) => connectedProviders.has(option.value)),
     props.providers,
   );
+  const openProviderTabs = providerTabs
+    .filter((providerTab) => providerTab.unavailableLabel === null)
+    .map((providerTab) => providerTab.provider);
+  if (wasMenuOpen !== isMenuOpen) {
+    setWasMenuOpen(isMenuOpen);
+    if (isMenuOpen) {
+      // A disabled or missing composer provider has no tab; open on one that can run instead.
+      setTab(
+        usableStarredModels.length > 0
+          ? STARRED_TAB
+          : connectedProviders.has(activeProvider)
+            ? activeProvider
+            : (openProviderTabs[0] ?? STARRED_TAB),
+      );
+      setQuery("");
+    }
+  }
+  const hasRunnableProvider = openProviderTabs.length > 0;
   const rows =
-    tab === STARRED_TAB
-      ? buildStarredTabRows({
-          starredModels: usableStarredModels,
-          modelOptionsByProvider: props.modelOptionsByProvider,
-          query: normalizedQuery,
-          current: {
-            provider: activeProvider,
-            model: props.model,
-            ...resolveStarredTraits(currentTraitSelection, props.modelOptions),
-          },
-          effortLevelsFor: (provider, model) => traitSelectionFor(provider, model).effortLevels,
-        })
-      : buildProviderTabRows({
-          provider: tab,
-          options: props.modelOptionsByProvider[tab],
-          query: normalizedQuery,
-          selectedModel: tab === activeProvider ? props.model : null,
-        });
+    !hasRunnableProvider || (tab !== STARRED_TAB && !connectedProviders.has(tab))
+      ? []
+      : tab === STARRED_TAB
+        ? buildStarredTabRows({
+            starredModels: usableStarredModels,
+            modelOptionsByProvider: props.modelOptionsByProvider,
+            query: normalizedQuery,
+            current: {
+              provider: activeProvider,
+              model: props.model,
+              ...resolveStarredTraits(currentTraitSelection, props.modelOptions),
+            },
+            effortLevelsFor: (provider, model) => traitSelectionFor(provider, model).effortLevels,
+          })
+        : buildProviderTabRows({
+            provider: tab,
+            options: props.modelOptionsByProvider[tab],
+            query: normalizedQuery,
+            selectedModel: tab === activeProvider ? props.model : null,
+          });
   const traitsProvider = tab === STARRED_TAB ? props.provider : tab;
   const traitsModels = props.runtimeModelsByProvider?.[traitsProvider];
   const rememberedModel =
@@ -316,12 +329,7 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
       keepOpen,
     );
   };
-  const openTabs: ComposerModelPickerTab[] = [
-    STARRED_TAB,
-    ...providerTabs
-      .filter((providerTab) => providerTab.unavailableLabel === null)
-      .map((providerTab) => providerTab.provider),
-  ];
+  const openTabs: ComposerModelPickerTab[] = [STARRED_TAB, ...openProviderTabs];
   const cycleTab = (direction: 1 | -1) => {
     const index = openTabs.indexOf(tab);
     setTab(openTabs[(index + direction + openTabs.length) % openTabs.length] ?? STARRED_TAB);
@@ -468,11 +476,13 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
               </div>
             ) : (
               <div className="px-2 py-3 text-muted-foreground text-ui leading-relaxed">
-                {normalizedQuery.length > 0
-                  ? "No matches"
-                  : tab === STARRED_TAB
-                    ? "Star a model to pin it here together with its effort and speed, then pick it in one click."
-                    : "No models found"}
+                {!hasRunnableProvider
+                  ? "No provider is enabled and ready. Enable or set one up in Settings → Providers."
+                  : normalizedQuery.length > 0
+                    ? "No matches"
+                    : tab === STARRED_TAB
+                      ? "Star a model to pin it here together with its effort and speed, then pick it in one click."
+                      : "No models found"}
               </div>
             )}
           </div>

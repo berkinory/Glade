@@ -165,7 +165,11 @@ export function ProviderUsageSettingsPanel() {
       );
     },
   });
-  const cards = selectVisibleProviderUsageSnapshots(usageQuery.data ?? []);
+  const cards = selectVisibleProviderUsageSnapshots(
+    (usageQuery.data ?? []).filter(
+      (snapshot) => !settings.disabledProviders.includes(snapshot.provider),
+    ),
+  );
   const showInitialLoading = usageQuery.isPending && !usageQuery.data;
   const isRefreshing = usageQuery.isFetching || refreshMutation.isPending;
   return (
@@ -187,22 +191,24 @@ export function ProviderUsageSettingsPanel() {
       <SettingsCard>
         <div className="space-y-3 p-4">
           <h3 className="text-ui-lg font-medium">Sidebar usage indicators</h3>
-          {(["claudeAgent", "codex"] as const).map((provider) => (
-            <label key={provider} className="flex items-center justify-between gap-2 text-ui">
-              {providerUsageDisplayName(provider)}
-              <Switch
-                aria-label={`Show ${providerUsageDisplayName(provider)} usage in sidebar`}
-                checked={settings.sidebarUsageProviders.includes(provider)}
-                onCheckedChange={(checked) =>
-                  updateSettings({
-                    sidebarUsageProviders: checked
-                      ? [...settings.sidebarUsageProviders, provider]
-                      : settings.sidebarUsageProviders.filter((entry) => entry !== provider),
-                  })
-                }
-              />
-            </label>
-          ))}
+          {(["claudeAgent", "codex"] as const)
+            .filter((provider) => !settings.disabledProviders.includes(provider))
+            .map((provider) => (
+              <label key={provider} className="flex items-center justify-between gap-2 text-ui">
+                {providerUsageDisplayName(provider)}
+                <Switch
+                  aria-label={`Show ${providerUsageDisplayName(provider)} usage in sidebar`}
+                  checked={settings.sidebarUsageProviders.includes(provider)}
+                  onCheckedChange={(checked) =>
+                    updateSettings({
+                      sidebarUsageProviders: checked
+                        ? [...settings.sidebarUsageProviders, provider]
+                        : settings.sidebarUsageProviders.filter((entry) => entry !== provider),
+                    })
+                  }
+                />
+              </label>
+            ))}
           <label className="flex items-center justify-between gap-2 text-ui">
             Quota windows
             <select

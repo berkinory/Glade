@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   ProviderManagementContext,
@@ -12,7 +11,11 @@ import {
   SettingsListRow as SettingsRow,
   SettingsSection,
 } from "./SettingsPanelPrimitives";
-import { ProviderManagementContextControls } from "./ProviderManagementContextControls";
+import {
+  NoManagementProviderState,
+  ProviderManagementContextControls,
+  useProviderManagementContext,
+} from "./ProviderManagementContextControls";
 import { McpServerAddForm } from "./McpServerAddForm";
 
 const ACTION_LABELS = {
@@ -24,7 +27,19 @@ const ACTION_LABELS = {
 } as const;
 
 export function McpSettingsPanel() {
-  const [context, setContext] = useState<ProviderManagementContext>({ provider: "codex" });
+  const [context, setContext] = useProviderManagementContext();
+  return context ? (
+    <McpSettingsPanelContent context={context} onContextChange={setContext} />
+  ) : (
+    <NoManagementProviderState />
+  );
+}
+
+function McpSettingsPanelContent(props: {
+  readonly context: ProviderManagementContext;
+  readonly onContextChange: (context: ProviderManagementContext) => void;
+}) {
+  const { context, onContextChange: setContext } = props;
   const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: ["provider-management", "mcp", context],

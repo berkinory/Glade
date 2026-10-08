@@ -85,6 +85,17 @@ fails, Glade still deletes the chat and records the failure in the server log wi
 5. **Start a small test task.** Use a harmless objective in a test repository before relying on a
    newly configured provider for important work.
 
+## Enabled and disabled providers
+
+Turning a provider off in **Settings > Providers** keeps it out of the model picker, `/model`
+search, the default provider and Git generation choices, usage settings and the Environment usage
+row, the plugin library, and the Skills, MCP servers and Plugins settings. Glade does not start its
+CLI to discover models, skills, plugins or tools, and does not poll its usage. Its row stays in Settings > Providers so it can be
+turned back on. Saved preferences, such as the default provider or Git generation model, existing
+chats and running turns are kept; a saved choice shows as disabled until the provider returns. With
+every provider disabled the model picker says so instead of choosing another provider, and sending
+stays blocked.
+
 ## Models and effort options
 
 The installed provider supplies model IDs, names, defaults and available options. Glade does not ship a selectable model catalog. **Provider default** leaves model selection to the runtime. Each option can inherit the provider default or keep an explicit selection, including an explicit off setting.
