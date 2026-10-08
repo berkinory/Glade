@@ -210,7 +210,10 @@ function removeDevOnlyFiles(directory: string): void {
   }
 }
 
+// The container runs as root, so files it writes into the mounted bundle would be root-owned on a
+// Linux host and the work directory could not be removed afterwards. Hand them back on exit.
 function runInLinuxContainer(script: string): void {
+  const owner = `${process.getuid?.() ?? 0}:${process.getgid?.() ?? 0}`;
   run("docker", [
     "run",
     "--rm",
@@ -223,7 +226,7 @@ function runInLinuxContainer(script: string): void {
     LINUX_BUILD_IMAGE,
     "sh",
     "-ec",
-    script,
+    `trap 'chown -R ${owner} /bundle' EXIT; ${script}`,
   ]);
 }
 
