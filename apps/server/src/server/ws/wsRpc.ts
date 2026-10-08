@@ -124,8 +124,8 @@ import { ServerLifecycleEvents } from "../lifecycle/serverLifecycleEvents";
 import { ServerEventLoopMonitor } from "../runtime/eventLoopMonitor";
 import { ServerRuntimeStartup } from "../runtime/serverRuntimeStartup";
 import { ServerSettingsService } from "../../settings/serverSettings";
-import { isLoopbackHost } from "../http/startupAccess";
 import { KeepAwake } from "../../keepAwake/Services/KeepAwake";
+import { isLoopbackHost } from "../http/startupAccess";
 import { TerminalManager } from "../../terminal/Services/Manager";
 import { resolveOutOfRootFileReference } from "../../workspace/outOfRootFileReference";
 import { watchWorkspaceDirectories } from "../../workspace/workspaceDirectoryChanges";
@@ -396,9 +396,9 @@ const makeWsRpcHandlersLayer = () =>
       const runtimeStartup = yield* ServerRuntimeStartup;
       const serverEnvironment = yield* ServerEnvironment;
       const serverSettings = yield* ServerSettingsService;
+      const keepAwake = yield* KeepAwake;
       const terminalManager = yield* TerminalManager;
       const workspaceEntries = yield* WorkspaceEntries;
-      const keepAwake = yield* KeepAwake;
       const workspaceFileSystem = yield* WorkspaceFileSystem;
       const threadDiagnostics = yield* ThreadDiagnosticsQuery;
       const eventStore = yield* OrchestrationEventStore;
@@ -1792,11 +1792,11 @@ const makeWsRpcHandlersLayer = () =>
           rpcEffect(listProviderUsage(input), "Failed to load provider usage"),
         [WS_METHODS.serverConsumeCodexResetCredit]: (input) =>
           rpcEffect(consumeCodexResetCreditEffect(input), "Failed to use Codex reset"),
+        [WS_METHODS.serverGetKeepAwakeStatus]: () => keepAwake.getStatus,
         [WS_METHODS.serverGetRuntimeStatus]: () => eventLoopMonitor.status,
         [WS_METHODS.serverGetDiagnostics]: () =>
           rpcEffect(
             Effect.gen(function* () {
-        [WS_METHODS.serverGetKeepAwakeStatus]: () => keepAwake.getStatus,
               const [projection, fullChildProcesses] = yield* Effect.all([
                 projectionReadModelQuery.getCounts(),
                 Effect.promise(() => readDescendantProcesses(process.pid)),

@@ -662,9 +662,9 @@ export interface NativeApi {
       input: ServerConsumeCodexResetCreditInput,
     ) => Promise<ServerConsumeCodexResetCreditResult>;
     getDiagnostics: () => Promise<ServerDiagnosticsResult>;
+    getKeepAwakeStatus: () => Promise<ServerKeepAwakeStatus>;
     readThreadDiagnostics: (
       input: ServerReadThreadDiagnosticsInput,
-    getKeepAwakeStatus: () => Promise<ServerKeepAwakeStatus>;
     ) => Promise<ServerReadThreadDiagnosticsResult>;
     prewarmVoice?: (input: ServerVoicePrewarmInput) => Promise<ServerVoicePrewarmResult>;
     transcribeVoice: (
