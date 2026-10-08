@@ -8,6 +8,7 @@ import ArrowDownToLineGlyph from "@hugeicons/core-free-icons/ArrowDownToLineIcon
 import ArrowExpandGlyph from "@hugeicons/core-free-icons/ArrowExpandIcon";
 import ArrowLeft02Glyph from "@hugeicons/core-free-icons/ArrowLeft02Icon";
 import ArrowLeftRightGlyph from "@hugeicons/core-free-icons/ArrowLeftRightIcon";
+import ArrowTurnBackwardGlyph from "@hugeicons/core-free-icons/ArrowTurnBackwardIcon";
 import ArrowRight02Glyph from "@hugeicons/core-free-icons/ArrowRight02Icon";
 import ArrowUp02Glyph from "@hugeicons/core-free-icons/ArrowUp02Icon";
 import ArrowUpDownGlyph from "@hugeicons/core-free-icons/ArrowUpDownIcon";
@@ -191,6 +192,7 @@ export const ArrowExpandIcon = createUiIcon(ArrowExpandGlyph);
 export const ArrowLeft02Icon = createUiIcon(ArrowLeft02Glyph);
 export const ArrowLeftRightIcon = createUiIcon(ArrowLeftRightGlyph);
 export const ArrowRight02Icon = createUiIcon(ArrowRight02Glyph);
+export const ArrowTurnBackwardIcon = createUiIcon(ArrowTurnBackwardGlyph);
 export const ArrowUp02Icon = createUiIcon(ArrowUp02Glyph);
 export const ArrowUpDownIcon = createUiIcon(ArrowUpDownGlyph);
 export const ArrowUpRightIcon = createUiIcon(ArrowUpRightGlyph);

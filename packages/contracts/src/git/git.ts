@@ -824,3 +824,19 @@ export const GitUndoCommitInput = Schema.Struct({
 export type GitUndoCommitInput = typeof GitUndoCommitInput.Type;
 export const GitUndoCommitResult = Schema.Struct({ message: Schema.String });
 export type GitUndoCommitResult = typeof GitUndoCommitResult.Type;
+export const GitRevertCommitInput = Schema.Struct({
+  cwd: TrimmedNonEmptyString,
+  sha: TrimmedNonEmptyString,
+});
+export type GitRevertCommitInput = typeof GitRevertCommitInput.Type;
+// "stopped" leaves the revert in progress (conflicts or a failed hook) for continue/abort.
+export const GitRevertCommitResult = Schema.Union([
+  Schema.Struct({ status: Schema.Literal("reverted") }),
+  Schema.Struct({ status: Schema.Literal("stopped"), reason: Schema.String }),
+]);
+export type GitRevertCommitResult = typeof GitRevertCommitResult.Type;
+export const GitTrustRepositoryInput = GitStatusInput;
+export type GitTrustRepositoryInput = typeof GitTrustRepositoryInput.Type;
+// WsRpcError codes for repository checks that the client offers a specific recovery for.
+export const GIT_UNSAFE_REPOSITORY_ERROR_CODE = "GIT_UNSAFE_REPOSITORY";
+export const GIT_NOT_FOUND_ERROR_CODE = "GIT_NOT_FOUND";

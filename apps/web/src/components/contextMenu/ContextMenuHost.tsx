@@ -46,22 +46,25 @@ export function ContextMenuHost() {
             return (
               <Fragment key={item.id}>
                 {hasSeparatorBefore(menu.items, index) ? <MenuSeparator /> : null}
-                <MenuItem
-                  className={item.destructive ? undefined : SIDEBAR_CONTEXT_MENU_ITEM_CLASS_NAME}
-                  variant={item.destructive ? "destructive" : "default"}
-                  disabled={item.disabled === true}
-                  onClick={() => closeContextMenu(item.id)}
-                >
-                  <span
-                    className={cn(
-                      SIDEBAR_CONTEXT_MENU_ICON_CLASS_NAME,
-                      item.destructive && "text-current",
-                    )}
+                {/* Disabled items ignore the pointer, so the wrapper carries the hover title. */}
+                <div title={item.title}>
+                  <MenuItem
+                    className={item.destructive ? undefined : SIDEBAR_CONTEXT_MENU_ITEM_CLASS_NAME}
+                    variant={item.destructive ? "destructive" : "default"}
+                    disabled={item.disabled === true}
+                    onClick={() => closeContextMenu(item.id)}
                   >
-                    <Icon aria-hidden="true" />
-                  </span>
-                  <span className="min-w-0 truncate">{item.label}</span>
-                </MenuItem>
+                    <span
+                      className={cn(
+                        SIDEBAR_CONTEXT_MENU_ICON_CLASS_NAME,
+                        item.destructive && "text-current",
+                      )}
+                    >
+                      <Icon aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0 truncate">{item.label}</span>
+                  </MenuItem>
+                </div>
               </Fragment>
             );
           })}

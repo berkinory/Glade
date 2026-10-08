@@ -1,4 +1,4 @@
-import { Copy01Icon, HashIcon, TextIcon, UndoIcon } from "~/lib/icons";
+import { ArrowTurnBackwardIcon, Copy01Icon, HashIcon, TextIcon, UndoIcon } from "~/lib/icons";
 import {
   TagIcon,
   ArrowUp02Icon,
@@ -7,7 +7,7 @@ import {
   GitMergeIcon,
 } from "~/lib/icons";
 import { CommitDetail } from "./CommitDetail";
-import { useCommitDrafts } from "./commitDraftStore";
+import { undoCommit } from "./sourceControlUndo";
 import { gitRebaseStateQueryOptions } from "~/lib/gitReactQuery";
 import { invalidateGitQueriesForCwds } from "~/lib/gitQueryOptions";
 import type { GitRecentCommit } from "@glade/contracts/git/git";
@@ -28,15 +28,21 @@ import { ensureNativeApi } from "~/nativeApi";
 import { PanelStateMessage } from "./PanelStateMessage";
 const PAGE_SIZE = 20;
 const ROW_HEIGHT = 60;
+interface CommitActions {
+  undo: (() => void) | undefined;
+  revert: () => void;
+  // Shown on the disabled revert item.
+  revertBlockedReason: string | null;
+}
 async function showCommitContextMenu(
   commit: GitRecentCommit,
   event: MouseEvent<HTMLButtonElement>,
-  undo: (() => void) | undefined,
+  actions: CommitActions,
 ) {
   event.preventDefault();
   const action = await showContextMenu(
     [
-      ...(undo
+      ...(actions.undo
         ? [
             {
               id: "undo",
@@ -46,9 +52,17 @@ async function showCommitContextMenu(
           ]
         : []),
       {
+        id: "revert",
+        label: "Revert changes in commit",
+        icon: ArrowTurnBackwardIcon,
+        disabled: actions.revertBlockedReason !== null,
+        ...(actions.revertBlockedReason ? { title: actions.revertBlockedReason } : {}),
+      },
+      {
         id: "hash",
         label: "Copy commit hash",
         icon: Copy01Icon,
+        separatorBefore: true,
       },
       {
         id: "short-hash",
@@ -68,7 +82,11 @@ async function showCommitContextMenu(
   );
   if (!action) return;
   if (action === "undo") {
-    undo?.();
+    actions.undo?.();
+    return;
+  }
+  if (action === "revert") {
+    actions.revert();
     return;
   }
   const value =
@@ -86,7 +104,7 @@ function CommitRow(props: {
   commit: GitRecentCommit;
   selected: boolean;
   onSelect: () => void;
-  undo?: (() => void) | undefined;
+  actions: CommitActions;
 }) {
   const { commit } = props;
   const relativeTime = formatRelativeTime(commit.committedAt);
@@ -95,7 +113,7 @@ function CommitRow(props: {
       type="button"
       aria-pressed={props.selected}
       onClick={props.onSelect}
-      onContextMenu={(event) => void showCommitContextMenu(commit, event, props.undo)}
+      onContextMenu={(event) => void showCommitContextMenu(commit, event, props.actions)}
       className={cn(
         "flex h-full w-full items-center gap-2 px-3 text-left hover:bg-sidebar-accent/60",
         props.selected && "bg-sidebar-accent",
@@ -192,24 +210,54 @@ export function SourceControlHistory(props: {
     mutationKey: ["git", "mutation", "undo", props.cwd],
     mutationFn: (expectedHead: string) => {
       if (!props.cwd) throw new Error("Repository unavailable.");
-      return ensureNativeApi().git.undoCommit({
-        cwd: props.cwd,
-        expectedHead,
-      });
+      return undoCommit(queryClient, props.cwd, expectedHead);
     },
-    onSuccess: ({ message }) => {
-      if (props.cwd && !(useCommitDrafts.getState().messages[props.cwd] ?? "").trim())
-        useCommitDrafts.getState().set(props.cwd, message);
-      setSelectedSha(null);
+    onSuccess: (undone) => {
+      if (undone) setSelectedSha(null);
     },
+  });
+  const revert = useMutation({
+    mutationKey: ["git", "mutation", "revert", props.cwd],
+    mutationFn: (sha: string) => {
+      if (!props.cwd) throw new Error("Repository unavailable.");
+      return ensureNativeApi().git.revertCommit({ cwd: props.cwd, sha });
+    },
+    onSuccess: (result) =>
+      toastManager.add(
+        result.status === "reverted"
+          ? { type: "success", title: "Commit reverted" }
+          : {
+              type: "warning",
+              title: "Revert stopped. Resolve it in Changes, then continue or abort.",
+              description: result.reason,
+            },
+      ),
     onError: (error) =>
       toastManager.add({
         type: "error",
-        title: "Could not undo commit",
+        title: "Could not revert commit",
         description: error.message,
       }),
     onSettled: () =>
       props.cwd ? invalidateGitQueriesForCwds(queryClient, [props.cwd]) : undefined,
+  });
+  const operationBlocked =
+    eligibility.data?.inProgress ||
+    eligibility.data?.pendingPush ||
+    eligibility.data?.conflicts.length
+      ? "Finish or abort the current Git operation first."
+      : null;
+  const commitActions = (commit: GitRecentCommit): CommitActions => ({
+    undo:
+      !undo.isPending && eligibility.data?.undoableHead === commit.sha
+        ? () => undo.mutate(commit.sha)
+        : undefined,
+    revert: () => revert.mutate(commit.sha),
+    revertBlockedReason: commit.isMerge
+      ? "Merge commits can't be reverted here because Git needs to know which parent to keep."
+      : revert.isPending
+        ? "A revert is already running."
+        : operationBlocked,
   });
   const [filter, setFilter] = useState("");
   const search = useDeferredValue(filter.trim());
@@ -340,11 +388,7 @@ export function SourceControlHistory(props: {
               >
                 {row.index < commits.length ? (
                   <CommitRow
-                    undo={
-                      !undo.isPending && eligibility.data?.undoableHead === commits[row.index]!.sha
-                        ? () => undo.mutate(commits[row.index]!.sha)
-                        : undefined
-                    }
+                    actions={commitActions(commits[row.index]!)}
                     commit={commits[row.index]!}
                     selected={selectedSha === commits[row.index]!.sha}
                     onSelect={() => {

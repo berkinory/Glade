@@ -4,6 +4,7 @@ import { HandoffPreparation } from "../../orchestration/Services/HandoffPreparat
 import { readGitSidebarSummary } from "../../git/gitSidebarSummary";
 import { ProviderManagement } from "../../provider/Services/ProviderManagement.ts";
 import { sourceControlActions } from "../../git/sourceControlActions.ts";
+import { gitFailureReason, trustRepository } from "../../git/gitRepositoryAccess.ts";
 import { execFile } from "node:child_process";
 
 import { ORCHESTRATION_WS_METHODS } from "@glade/contracts/orchestration/rpc";
@@ -337,6 +338,11 @@ function toWsRpcError(cause: unknown, fallbackMessage: string) {
     cause,
   });
 }
+
+const toGitReasonRpcError = (fallbackMessage: string) => (cause: unknown) => {
+  const reason = gitFailureReason(cause);
+  return reason ? new WsRpcError({ ...reason, cause }) : toWsRpcError(cause, fallbackMessage);
+};
 
 const resnapshotEscalationTracker = makeResnapshotEscalationTracker();
 
@@ -1458,7 +1464,9 @@ const makeWsRpcHandlersLayer = () =>
             "Failed to prepare pull request thread",
           ),
         [WS_METHODS.gitListBranches]: (input) =>
-          rpcEffect(git.listBranches(input), "Failed to list branches"),
+          git
+            .listBranches(input)
+            .pipe(Effect.mapError(toGitReasonRpcError("Failed to list branches"))),
         [WS_METHODS.gitListRecentCommits]: (input) =>
           rpcEffect(git.listRecentCommits(input), "Failed to list recent commits"),
         [WS_METHODS.gitReadCommit]: (input) =>
@@ -1644,6 +1652,20 @@ const makeWsRpcHandlersLayer = () =>
               )
               .pipe(Effect.onExit(() => refreshGitStatusInBackground(input.cwd))),
             "Failed to undo commit",
+          ),
+        [WS_METHODS.gitRevertCommit]: (input) =>
+          git
+            .withMutation(input.cwd, sourceControlActions(git).revertCommit(input.cwd, input.sha))
+            .pipe(
+              Effect.onExit(() => refreshGitStatusInBackground(input.cwd)),
+              Effect.mapError(toGitReasonRpcError("Failed to revert commit")),
+            ),
+        [WS_METHODS.gitTrustRepository]: (input) =>
+          rpcEffect(
+            git
+              .withMutation(input.cwd, trustRepository(git, input.cwd))
+              .pipe(Effect.onExit(() => refreshGitStatusInBackground(input.cwd))),
+            "Failed to trust this folder",
           ),
         [WS_METHODS.gitRebaseState]: (input) =>
           rpcEffect(

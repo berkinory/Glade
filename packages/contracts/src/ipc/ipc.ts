@@ -101,6 +101,9 @@ import type {
   GitRebaseInput,
   GitUndoCommitInput,
   GitUndoCommitResult,
+  GitRevertCommitInput,
+  GitRevertCommitResult,
+  GitTrustRepositoryInput,
   GitRebaseStateInput,
   GitRebaseStateResult,
   GitRevertUnstagedFileResult,
@@ -601,6 +604,8 @@ export interface NativeApi {
     rebase: (input: GitRebaseInput) => Promise<void>;
     checkUndoCommit: (input: GitStatusInput) => Promise<string | null>;
     undoCommit: (input: GitUndoCommitInput) => Promise<GitUndoCommitResult>;
+    revertCommit: (input: GitRevertCommitInput) => Promise<GitRevertCommitResult>;
+    trustRepository: (input: GitTrustRepositoryInput) => Promise<void>;
     rebaseState: (input: GitRebaseStateInput) => Promise<GitRebaseStateResult>;
     revertUnstagedFile: (input: GitRevertUnstagedFileInput) => Promise<GitRevertUnstagedFileResult>;
     unstageFiles: (input: GitUnstageFilesInput) => Promise<GitUnstageFilesResult>;

@@ -1,6 +1,7 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it } from "@effect/vitest";
-import { Effect, Exit, FileSystem, Layer } from "effect";
+import { Effect, Exit, FileSystem, Layer, PlatformError, Scope } from "effect";
+import type { GitCommandError } from "./Errors.ts";
 import { expect } from "vitest";
 import * as fs from "node:fs/promises";
 import path from "node:path";
@@ -169,6 +170,103 @@ it.layer(layer)("source-control actions", (it) => {
         ).toBe("keep\n");
       }),
   );
+
+  type Repo = Effect.Success<typeof setup>;
+  const commitFile = (repo: Repo, name: string, content: string, message: string) =>
+    Effect.gen(function* () {
+      yield* repo.write(name, content);
+      yield* repo.run(["add", name]);
+      yield* repo.run(["commit", "-m", message]);
+    });
+  const eligibility: ReadonlyArray<{
+    name: string;
+    arrange: (
+      repo: Repo,
+    ) => Effect.Effect<void, GitCommandError | PlatformError.PlatformError, Scope.Scope>;
+    target?: string;
+    undo: boolean;
+    revert: "reverted" | "stopped" | "refused";
+  }> = [
+    {
+      name: "unpushed head",
+      arrange: (repo) => commitFile(repo, "file.txt", "local\n", "Local"),
+      undo: true,
+      revert: "reverted",
+    },
+    {
+      name: "pushed head",
+      arrange: (repo) =>
+        Effect.gen(function* () {
+          const remote = yield* repo.files.makeTempDirectoryScoped({ prefix: "glade-remote-" });
+          yield* repo.run(["init", "--bare", remote]);
+          yield* repo.run(["remote", "add", "origin", remote]);
+          yield* commitFile(repo, "file.txt", "pushed\n", "Pushed");
+          yield* repo.run(["push", "-u", "origin", "main"]);
+        }),
+      undo: false,
+      revert: "reverted",
+    },
+    { name: "root commit", arrange: () => Effect.void, undo: false, revert: "reverted" },
+    {
+      name: "merge head",
+      arrange: (repo) =>
+        Effect.gen(function* () {
+          yield* repo.run(["checkout", "-b", "side"]);
+          yield* commitFile(repo, "side.txt", "side\n", "Side");
+          yield* repo.run(["checkout", "main"]);
+          yield* commitFile(repo, "main.txt", "main\n", "Main");
+          yield* repo.run(["merge", "--no-ff", "side", "-m", "Merge side"]);
+        }),
+      undo: false,
+      revert: "refused",
+    },
+    {
+      name: "head during a conflicting cherry-pick",
+      arrange: (repo) =>
+        Effect.gen(function* () {
+          yield* repo.run(["checkout", "-b", "side"]);
+          yield* commitFile(repo, "file.txt", "side\n", "Side");
+          yield* repo.run(["checkout", "main"]);
+          yield* commitFile(repo, "file.txt", "main\n", "Main");
+          yield* repo.core
+            .execute({
+              cwd: repo.cwd,
+              operation: "test",
+              args: ["cherry-pick", "side"],
+              allowNonZeroExit: true,
+            })
+            .pipe(Effect.asVoid);
+        }),
+      undo: false,
+      revert: "refused",
+    },
+    {
+      name: "older commit whose revert conflicts",
+      arrange: (repo) =>
+        Effect.gen(function* () {
+          yield* commitFile(repo, "file.txt", "first\n", "First");
+          yield* commitFile(repo, "file.txt", "second\n", "Second");
+        }),
+      target: "HEAD~1",
+      undo: false,
+      revert: "stopped",
+    },
+  ];
+  for (const row of eligibility) {
+    it.effect(`undo and revert eligibility: ${row.name}`, () =>
+      Effect.gen(function* () {
+        const repo = yield* setup;
+        yield* row.arrange(repo);
+        const sha = (yield* repo.run(["rev-parse", row.target ?? "HEAD"])).stdout.trim();
+        const undoable = yield* repo.actions.checkUndoCommit(repo.cwd);
+        expect(undoable === sha).toBe(row.undo);
+        const revert = yield* Effect.exit(repo.actions.revertCommit(repo.cwd, sha));
+        expect(Exit.isSuccess(revert) ? revert.value.status : "refused").toBe(row.revert);
+        if (row.revert === "stopped")
+          expect(yield* repo.actions.rebaseState(repo.cwd)).toMatchObject({ kind: "revert" });
+      }),
+    );
+  }
 
   it.effect(
     "undo keeps conflicting local tags and rejects commits published only under remote tags",

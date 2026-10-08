@@ -18,7 +18,9 @@ import { makeEffectProcessCommand } from "../../platform/effectProcessRuntime.ts
 import { decodeJsonResult } from "../../platform/schemaJson.ts";
 import { GitProcessQueue, type GitProcessClass } from "../gitProcessQueue";
 import { makeKeyedSingleFlightCache } from "../../pullRequests/KeyedSingleFlightCache";
+import { resolveExecutable } from "@glade/shared/platform/executable";
 import { GitCommandError } from "../Errors.ts";
+import { GIT_NOT_FOUND_DETAIL } from "../gitRepositoryAccess.ts";
 import type {
   ExecuteGitInput,
   ExecuteGitProgress,
@@ -481,20 +483,29 @@ const makeGitCommands = Effect.gen(function* () {
         Effect.provideService(FileSystem.FileSystem, fileSystem),
         Effect.mapError(toGitCommandError(commandInput, "failed to create trace2 monitor.")),
       );
+      const env = {
+        ...process.env,
+        // Git runs without a usable terminal here; a prompt would wait until the timeout.
+        GIT_TERMINAL_PROMPT: "0",
+        ...input.env,
+        ...trace2Monitor.env,
+      };
       const child = yield* commandSpawner
-        .spawn(
-          makeEffectProcessCommand("git", commandInput.args, {
-            cwd: commandInput.cwd,
-            env: {
-              ...process.env,
-              // Git runs without a usable terminal here; a prompt would wait until the timeout.
-              GIT_TERMINAL_PROMPT: "0",
-              ...input.env,
-              ...trace2Monitor.env,
-            },
-          }),
-        )
-        .pipe(Effect.mapError(toGitCommandError(commandInput, "failed to spawn.")));
+        .spawn(makeEffectProcessCommand("git", commandInput.args, { cwd: commandInput.cwd, env }))
+        .pipe(
+          Effect.mapError((cause) =>
+            // A missing cwd also spawns as ENOENT, so only a failed lookup means Git is missing.
+            resolveExecutable("git", { env }) === null
+              ? createGitCommandError(
+                  commandInput.operation,
+                  commandInput.cwd,
+                  commandInput.args,
+                  GIT_NOT_FOUND_DETAIL,
+                  cause,
+                )
+              : toGitCommandError(commandInput, "failed to spawn.")(cause),
+          ),
+        );
 
       yield* Effect.addFinalizer(() => child.kill().pipe(Effect.ignore));
 

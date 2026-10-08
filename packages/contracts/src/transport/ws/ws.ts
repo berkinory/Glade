@@ -73,6 +73,8 @@ export const WS_METHODS = {
   gitRebase: "git.rebase",
   gitCheckUndoCommit: "git.checkUndoCommit",
   gitUndoCommit: "git.undoCommit",
+  gitRevertCommit: "git.revertCommit",
+  gitTrustRepository: "git.trustRepository",
   gitRebaseState: "git.rebaseState",
   gitRevertUnstagedFile: "git.revertUnstagedFile",
   gitUnstageFiles: "git.unstageFiles",

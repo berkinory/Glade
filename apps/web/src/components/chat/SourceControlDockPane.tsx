@@ -13,6 +13,7 @@ import type { SourceControlView } from "~/workspaceFileTabsStore";
 import { PanelTabBar } from "./PanelTabBar";
 import { GitPanel } from "./GitPanel";
 import { SourceControlHistory } from "./SourceControlHistory";
+import { SourceControlRepositoryError } from "./SourceControlRepositoryError";
 export function SourceControlDockPane(props: {
   onSelectCommitFile?:
     | ((commit: GitRecentCommit, path: string, preview: boolean) => void)
@@ -46,14 +47,11 @@ export function SourceControlDockPane(props: {
   ) : !repository.data && repository.isPending ? (
     <PanelStateMessage loadingLabel="Checking Git repository" />
   ) : !repository.data && repository.isError ? (
-    <PanelStateMessage>
-      <div className="flex flex-col items-center gap-2">
-        <span>Could not check this folder’s Git repository.</span>
-        <Button size="sm" variant="outline" onClick={() => void repository.refetch()}>
-          Retry
-        </Button>
-      </div>
-    </PanelStateMessage>
+    <SourceControlRepositoryError
+      cwd={props.workspaceRoot}
+      error={repository.error}
+      onRetry={() => void repository.refetch()}
+    />
   ) : repository.data?.isRepo === false ? (
     <PanelEmptyState
       icon={<WorkflowCircle04Icon className="size-12" aria-hidden="true" />}

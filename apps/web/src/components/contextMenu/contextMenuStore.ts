@@ -8,6 +8,8 @@ export interface ContextMenuItem<T extends string = string> {
   separatorBefore?: boolean;
   destructive?: boolean;
   disabled?: boolean;
+  // Explains why a disabled item is unavailable.
+  title?: string;
 }
 
 export interface ContextMenuPosition {

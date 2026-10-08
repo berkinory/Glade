@@ -2,6 +2,7 @@ import { refreshPublicationRefs } from "./gitPublication";
 import { readGitOperation } from "./gitOperationState";
 import { pushIntent } from "./pushSynchronization";
 import { undoCommitActions } from "./undoCommit";
+import { revertCommit } from "./revertCommit";
 import { constants } from "node:fs";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
@@ -51,6 +52,13 @@ export function sourceControlActions(git: GitCoreShape) {
         if ((yield* rebaseState(cwd)).undoableHead !== expectedHead)
           return yield* fail(cwd, "Finish or abort the current operation before undoing a commit.");
         return yield* undoCommitActions(git).undo(cwd, expectedHead);
+      }),
+    revertCommit: (cwd: string, sha: string) =>
+      Effect.gen(function* () {
+        const state = yield* rebaseState(cwd);
+        if (state.inProgress || state.pendingPush || state.conflicts.length)
+          return yield* fail(cwd, "Finish or abort the current Git operation before reverting.");
+        return yield* revertCommit(git, cwd, sha);
       }),
     commitStaged: (
       cwd: string,

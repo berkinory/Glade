@@ -63,6 +63,9 @@ import {
   GitRebaseInput,
   GitUndoCommitInput,
   GitUndoCommitResult,
+  GitRevertCommitInput,
+  GitRevertCommitResult,
+  GitTrustRepositoryInput,
   GitRebaseStateInput,
   GitRebaseStateResult,
   GitRevertUnstagedFileInput,
@@ -314,6 +317,18 @@ export const WsGitHandoffThreadRpc = Rpc.make(WS_METHODS.gitHandoffThread, {
 export const WsGitUndoCommitRpc = Rpc.make(WS_METHODS.gitUndoCommit, {
   payload: GitUndoCommitInput,
   success: GitUndoCommitResult,
+  error: WsRpcError,
+});
+
+export const WsGitRevertCommitRpc = Rpc.make(WS_METHODS.gitRevertCommit, {
+  payload: GitRevertCommitInput,
+  success: GitRevertCommitResult,
+  error: WsRpcError,
+});
+
+export const WsGitTrustRepositoryRpc = Rpc.make(WS_METHODS.gitTrustRepository, {
+  payload: GitTrustRepositoryInput,
+  success: Schema.Void,
   error: WsRpcError,
 });
 

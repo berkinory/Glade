@@ -11,6 +11,7 @@ import type { GitPublishContextResult } from "@glade/contracts/git/githubReposit
 import { GitPublishDialog } from "./GitPublishDialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCommitDrafts } from "./commitDraftStore";
+import { undoCommit } from "./sourceControlUndo";
 import BranchToolbar from "../BranchToolbar";
 import { Button } from "../ui/button";
 import { IconButton } from "../ui/icon-button";
@@ -155,9 +156,19 @@ export function SourceControlToolbar({
         message: message.trim(),
       });
       if ((useCommitDrafts.getState().messages[cwd] ?? "") === message) setDraft(cwd, "");
+      // Captured now so the toast's Undo targets this commit even after later commits.
+      const undoableHead = await api.git.checkUndoCommit({ cwd }).catch(() => null);
       toastManager.add({
         type: "success",
         title: "Changes committed",
+        ...(undoableHead
+          ? {
+              actionProps: {
+                children: "Undo",
+                onClick: () => void undoCommit(queryClient, cwd, undoableHead),
+              },
+            }
+          : {}),
       });
     } catch (error) {
       toastManager.add({
