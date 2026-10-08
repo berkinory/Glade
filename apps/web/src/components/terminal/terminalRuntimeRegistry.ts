@@ -71,19 +71,6 @@ class TerminalRuntimeRegistry {
     this.dispose(buildTerminalRuntimeKey(threadId, terminalId));
   }
 
-  // Disposes the runtime only after `close` succeeds, and only if it is still the one that existed
-  // when the close began; a runtime created meanwhile belongs to a reopened session.
-  async disposeTerminalAfter(
-    threadId: string,
-    terminalId: string,
-    close: () => Promise<void>,
-  ): Promise<void> {
-    const runtimeKey = buildTerminalRuntimeKey(threadId, terminalId);
-    const entry = this.entries.get(runtimeKey);
-    await close();
-    if (entry && this.entries.get(runtimeKey) === entry) this.dispose(runtimeKey);
-  }
-
   disposeThread(threadId: string): void {
     for (const [runtimeKey, entry] of this.entries) {
       if (entry.threadId === threadId) {

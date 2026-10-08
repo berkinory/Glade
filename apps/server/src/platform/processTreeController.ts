@@ -315,6 +315,14 @@ export async function captureProcessTree(
   };
 }
 
+// Terminal teardown scans without blocking the event loop on POSIX. Windows keeps the empty capture
+// and relies on `taskkill /T`: a CIM snapshot would hold the kill back for seconds.
+export function captureTerminalProcessTree(rootPid: number): Promise<CapturedProcessTree> {
+  if (process.platform === "win32")
+    return Promise.resolve(defaultProcessTreeKiller.capture(rootPid));
+  return captureProcessTree(rootPid);
+}
+
 export async function isProcessRunning(
   rootPid: number,
   options: PlatformProcessTreeOptions = {},

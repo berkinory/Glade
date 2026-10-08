@@ -86,7 +86,7 @@ export async function closeChatTerminal(
   });
   if (!confirmed) return;
   const threadId = ctx.activeThreadId;
-  if (!(await closeTerminalSession({ api, threadId, terminalId }))) return;
+  closeTerminalSession({ api, threadId, terminalId });
   terminalStore().closeTerminal(threadId, terminalId);
 }
 

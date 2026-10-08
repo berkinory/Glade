@@ -49,8 +49,11 @@ import {
 } from "../terminalHistory";
 import { TerminalHistoryStore } from "../terminalHistoryStore";
 import { createTerminalModeReplayTracker } from "../terminalModeReplay";
-import { defaultProcessTreeKiller } from "../../platform/processTreeController";
-import { type ProcessTreeKiller, type TerminalKillSignal } from "../../platform/processTreeModel";
+import {
+  captureTerminalProcessTree,
+  defaultProcessTreeKiller,
+} from "../../platform/processTreeController";
+import type { CapturedProcessTree, TerminalKillSignal } from "../../platform/processTreeModel";
 import {
   captureProcessChildrenMap,
   defaultSubprocessChecker,
@@ -672,7 +675,6 @@ interface TerminalManagerOptions {
   shellResolver?: () => string;
   subprocessChecker?: TerminalSubprocessChecker;
   processSnapshotObserver?: ProcessChildrenSnapshotObserver;
-  processTreeKiller?: ProcessTreeKiller;
   subprocessPollIntervalMs?: number;
   processKillGraceMs?: number;
   maxRetainedInactiveSessions?: number;
@@ -697,7 +699,6 @@ class TerminalManagerRuntime extends EventEmitter<TerminalManagerEvents> {
   private readonly historyStore: TerminalHistoryStore;
   private readonly threadLocks = new Map<string, Promise<void>>();
   private readonly subprocessChecker: TerminalSubprocessChecker;
-  private readonly processTreeKiller: ProcessTreeKiller;
   private readonly useDefaultSubprocessChecker: boolean;
   private readonly processSnapshotObserver: ProcessChildrenSnapshotObserver | null;
   private readonly subprocessPollIntervalMs: number;
@@ -708,6 +709,7 @@ class TerminalManagerRuntime extends EventEmitter<TerminalManagerEvents> {
 
   private currentSubprocessPollDelayMs = 0;
   private readonly killEscalationTimers = new Map<PtyProcess, KillEscalationHandle>();
+  private readonly pendingKills = new Set<Promise<void>>();
   private readonly logger = createLogger("terminal");
 
   constructor(options: TerminalManagerOptions) {
@@ -729,7 +731,6 @@ class TerminalManagerRuntime extends EventEmitter<TerminalManagerEvents> {
       sanitizePersistedTerminalHistory,
     );
     this.subprocessChecker = options.subprocessChecker ?? defaultSubprocessChecker;
-    this.processTreeKiller = options.processTreeKiller ?? defaultProcessTreeKiller;
 
     this.useDefaultSubprocessChecker = options.subprocessChecker === undefined;
     this.processSnapshotObserver =
@@ -1177,6 +1178,7 @@ class TerminalManagerRuntime extends EventEmitter<TerminalManagerEvents> {
       this.stopProcess(session);
     }
     this.threadLocks.clear();
+    await Promise.all(this.pendingKills);
     const escalationsSettled =
       this.killEscalationTimers.size > 0
         ? new Promise((resolve) =>
@@ -1644,14 +1646,34 @@ class TerminalManagerRuntime extends EventEmitter<TerminalManagerEvents> {
     this.killEscalationTimers.delete(process);
   }
 
+  // The process tree scan takes tens of milliseconds (more on a loaded machine), so it runs off the
+  // caller's path: closing a terminal must not block the event loop or wait for teardown.
   private killProcessWithEscalation(
     ptyProcess: PtyProcess,
     threadId: string,
     terminalId: string,
   ): void {
     this.clearKillEscalationTimer(ptyProcess);
+    let rootExitedDuringCapture = false;
+    const unsubscribeCaptureExit = ptyProcess.onExit(() => {
+      rootExitedDuringCapture = true;
+    });
+    const kill = captureTerminalProcessTree(ptyProcess.pid).then((tree) => {
+      unsubscribeCaptureExit();
+      this.signalWithEscalation(ptyProcess, tree, rootExitedDuringCapture, threadId, terminalId);
+    });
+    this.pendingKills.add(kill);
+    void kill.finally(() => this.pendingKills.delete(kill));
+  }
+
+  private signalWithEscalation(
+    ptyProcess: PtyProcess,
+    tree: CapturedProcessTree,
+    rootExited: boolean,
+    threadId: string,
+    terminalId: string,
+  ): void {
     const pid = ptyProcess.pid;
-    const tree = this.processTreeKiller.capture(pid);
     const retainAfterRootExit = tree.descendants.length > 0;
     const signalProcess = (signal: TerminalKillSignal) => {
       try {
@@ -1674,7 +1696,7 @@ class TerminalManagerRuntime extends EventEmitter<TerminalManagerEvents> {
       signal: TerminalKillSignal,
       options: { includeRootTree?: boolean } = {},
     ) => {
-      this.processTreeKiller.signal({
+      defaultProcessTreeKiller.signal({
         rootPid: pid,
         signal,
         tree,
@@ -1696,17 +1718,19 @@ class TerminalManagerRuntime extends EventEmitter<TerminalManagerEvents> {
       });
     };
 
-    signalTree("SIGTERM");
+    signalTree("SIGTERM", { includeRootTree: !rootExited });
+    if (rootExited && !retainAfterRootExit) return;
+    if (!rootExited) signalProcess("SIGTERM");
 
-    signalProcess("SIGTERM");
-
-    const unsubscribeExit = ptyProcess.onExit(() => {
-      const handle = this.killEscalationTimers.get(ptyProcess);
-      if (handle?.retainAfterRootExit) {
-        handle.rootExited = true;
-      }
-      this.clearKillEscalationTimer(ptyProcess, { force: false });
-    });
+    const unsubscribeExit = rootExited
+      ? null
+      : ptyProcess.onExit(() => {
+          const handle = this.killEscalationTimers.get(ptyProcess);
+          if (handle?.retainAfterRootExit) {
+            handle.rootExited = true;
+          }
+          this.clearKillEscalationTimer(ptyProcess, { force: false });
+        });
 
     const timer = setTimeout(() => {
       const handle = this.killEscalationTimers.get(ptyProcess);
@@ -1726,7 +1750,7 @@ class TerminalManagerRuntime extends EventEmitter<TerminalManagerEvents> {
       timer,
       unsubscribeExit,
       retainAfterRootExit,
-      rootExited: false,
+      rootExited,
     });
   }
 

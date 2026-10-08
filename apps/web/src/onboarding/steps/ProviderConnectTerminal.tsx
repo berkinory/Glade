@@ -2,7 +2,7 @@ import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { useEffect, useRef } from "react";
 
 import ThreadTerminalDrawer from "~/components/ThreadTerminalDrawer";
-import { releaseTerminalSession } from "~/components/terminal/terminalSession";
+import { closeTerminalSession } from "~/components/terminal/terminalSession";
 import { useTerminalSurfaceController } from "~/hooks/useTerminalSurfaceController";
 import { readNativeApi } from "~/nativeApi";
 import { runTerminalCommand } from "~/components/terminal/runTerminalCommand";
@@ -27,7 +27,7 @@ export function ProviderConnectTerminal(props: {
     () => () => {
       const api = readNativeApi();
       for (const terminalId of terminalIdsRef.current) {
-        releaseTerminalSession({ api, threadId: scopeId, terminalId });
+        closeTerminalSession({ api, threadId: scopeId, terminalId });
       }
       clearTerminalState(scopeId);
     },

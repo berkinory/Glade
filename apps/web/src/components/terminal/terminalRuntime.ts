@@ -427,10 +427,27 @@ function cancelPendingWebglLoad(entry: TerminalRuntimeEntry): void {
   }
 }
 
+// Dropping the WebGL addon makes xterm fall back to its DOM renderer, which injects <style>
+// elements and forces a whole-document style recalc: hundreds of milliseconds per terminal in this
+// app. With the wrapper out of the document the swap costs a few milliseconds.
+function disposeWebglAddonDetached(entry: TerminalRuntimeEntry, addon: WebglAddon): void {
+  const { wrapper } = entry;
+  const parent = wrapper.parentNode;
+  const nextSibling = wrapper.nextSibling;
+  wrapper.remove();
+  try {
+    addon.dispose();
+  } finally {
+    parent?.insertBefore(wrapper, nextSibling);
+  }
+}
+
 function disposeWebglAddon(entry: TerminalRuntimeEntry): void {
   cancelPendingWebglLoad(entry);
-  entry.webglAddon?.dispose();
+  const addon = entry.webglAddon;
+  if (!addon) return;
   entry.webglAddon = null;
+  disposeWebglAddonDetached(entry, addon);
 }
 
 function maybeLoadWebglAddon(entry: TerminalRuntimeEntry): void {
@@ -461,10 +478,10 @@ function maybeLoadWebglAddon(entry: TerminalRuntimeEntry): void {
       const nextWebglAddon = new WebglAddon();
       nextWebglAddon.onContextLoss(() => {
         suggestedRendererType = "dom";
-        nextWebglAddon.dispose();
         if (entry.webglAddon === nextWebglAddon) {
           entry.webglAddon = null;
         }
+        disposeWebglAddonDetached(entry, nextWebglAddon);
         entry.terminal.refresh(0, Math.max(0, entry.terminal.rows - 1));
       });
       entry.terminal.loadAddon(nextWebglAddon);
@@ -877,7 +894,8 @@ export function updateRuntimeViewState(
     } else if (!nextViewState.isVisible && wasVisible) {
       cancelScheduledVisualResize(entry);
       stopVisibilityRecovery(entry);
-      disposeWebglAddon(entry);
+      // A hidden terminal keeps its WebGL renderer. Without it xterm falls back to the DOM renderer,
+      // and each of its refreshes in a hidden container recalculates the whole document's styles.
       clearAttachDisposables(entry);
     }
   }
