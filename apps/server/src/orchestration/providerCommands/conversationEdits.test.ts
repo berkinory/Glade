@@ -107,6 +107,16 @@ describe("Provider reactor conversationEdits", () => {
       }),
     );
     await waitFor(() => harness.sendTurn.mock.calls.length === 1);
+    // The edit rewinds the turn the message belongs to, which is only known once the projection
+    // records the started turn on the message.
+    await waitFor(async () => {
+      const readModel = await Effect.runPromise(harness.engine.getReadModel());
+      return Boolean(
+        readModel.threads
+          .find((entry) => entry.id === ThreadId.makeUnsafe("thread-1"))
+          ?.messages.find((message) => message.id === asMessageId("user-message-edit"))?.turnId,
+      );
+    });
     harness.sendTurn.mockClear();
     harness.startSession.mockClear();
     await Effect.runPromise(
