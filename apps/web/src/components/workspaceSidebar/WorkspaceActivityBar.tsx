@@ -21,6 +21,10 @@ import { EMPTY_KEYBINDINGS } from "../sidebarSupport";
 import { SIDEBAR_STATUS_DOT_CLASS_NAME } from "../SidebarStatusTrailingGlyph";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { WORKSPACE_SIDEBAR_VIEW_META } from "./workspaceSidebarViews";
+import { CHAT_SURFACE_HEADER_HEIGHT_PX } from "@glade/shared/platform/desktopChrome";
+
+const BUTTON_SIZE_PX = 32;
+const SEPARATOR_GAP_PX = 10;
 
 function ActivityBarButton(props: {
   label: string;
@@ -107,7 +111,17 @@ export function WorkspaceActivityBar(props: { threadId: ThreadId; hasBrowserPage
         {captionButtonsOverlap ? null : sidebarToggle}
       </div>
       {captionButtonsOverlap ? <div className="pt-2.5">{sidebarToggle}</div> : null}
-      <div aria-hidden className="mt-2.5 h-px w-5 shrink-0 bg-[var(--app-surface-divider)]" />
+      <div
+        aria-hidden
+        className="h-px w-5 shrink-0 bg-[var(--app-surface-divider)]"
+        // Same gap above as below: the header-row toggle already sits (header − button) / 2 above
+        // the header's bottom edge.
+        style={{
+          marginTop: captionButtonsOverlap
+            ? SEPARATOR_GAP_PX
+            : SEPARATOR_GAP_PX - (CHAT_SURFACE_HEADER_HEIGHT_PX - BUTTON_SIZE_PX) / 2,
+        }}
+      />
       <div className="flex flex-col items-center gap-2 pt-2.5">
         {WORKSPACE_SIDEBAR_VIEWS.filter((view) => view !== "browser" || isElectron).map((view) => {
           const { label, Icon, command } = WORKSPACE_SIDEBAR_VIEW_META[view];
