@@ -19,6 +19,7 @@ import { ComposerPendingUserInputPanel } from "~/components/chat/ComposerPending
 import { ComposerQueuedHeader } from "~/components/chat/ComposerQueuedHeader";
 import { ComputerComposerPanel } from "~/components/computer/ComputerComposerPanel";
 import { ComposerReferenceAttachments } from "~/components/chat/ComposerReferenceAttachments";
+import { ComposerConnectionNotice } from "~/components/chat/ComposerConnectionNotice";
 import { ComposerSubagentStrip } from "~/components/chat/ComposerSubagentStrip";
 import { collectRunningSubagentStripItems } from "~/components/chat/ComposerSubagentStrip.logic";
 import { ContextWindowMeter } from "~/components/chat/ContextWindowMeter";
@@ -371,6 +372,10 @@ export function ChatComposerSurface({
               />
             )}
 
+            <ComposerConnectionNotice
+              threadId={threadId}
+              transcriptShowsSyncFailure={controller.transcript.threadDetailHydration === "failed"}
+            />
             {settledThreadBranchMismatch ? (
               <div className="pb-2">
                 <ComposerBranchMismatchBanner {...settledThreadBranchMismatch} />
