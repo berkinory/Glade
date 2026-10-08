@@ -41,7 +41,6 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
     newThreadShortcutLabel,
     newChatShortcutLabel,
     addProjectShortcutLabel,
-    usageSettingsShortcutLabel,
     setCreateProjectDialogOpen,
     setSearchPaletteOpen,
     setActivityViewEnabledSmoothly,
@@ -388,25 +387,6 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
       keywords: ["folder", "repo", "repository", "open"],
       shortcutLabel: addProjectShortcutLabel,
       run: handleStartAddProject,
-    },
-    {
-      id: "feedback",
-      label: "Feedback Glade",
-      description: "Send feedback or report an issue to the Glade team.",
-      keywords: ["feedback", "bug", "issue", "problem", "report", "support", "glade"],
-    },
-    {
-      id: "settings",
-      label: "Settings",
-      description: "Open app settings.",
-      keywords: ["preferences", "config"],
-    },
-    {
-      id: "usage-settings",
-      label: "Usage settings",
-      description: "Open provider usage and remaining credits.",
-      keywords: ["usage", "limits", "credits", "quota", "providers"],
-      shortcutLabel: usageSettingsShortcutLabel,
     },
     ...(spaces.length > 0
       ? [

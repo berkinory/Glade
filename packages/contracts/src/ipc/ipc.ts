@@ -191,6 +191,8 @@ import type {
   OrchestrationGetFullThreadDiffResult,
   OrchestrationGetThreadDetailSnapshotInput,
   OrchestrationGetThreadDetailSnapshotResult,
+  OrchestrationSearchThreadMessagesInput,
+  OrchestrationSearchThreadMessagesResult,
   OrchestrationListProviderDeliveryBlockersInput,
   OrchestrationListProviderDeliveryBlockersResult,
   OrchestrationReconcileProviderDeliveryInput,
@@ -699,6 +701,10 @@ export interface NativeApi {
     getThreadDetailSnapshot: (
       input: OrchestrationGetThreadDetailSnapshotInput,
     ) => Promise<OrchestrationGetThreadDetailSnapshotResult>;
+    searchThreadMessages: (
+      input: OrchestrationSearchThreadMessagesInput,
+      options?: { readonly signal?: AbortSignal },
+    ) => Promise<OrchestrationSearchThreadMessagesResult>;
     dispatchCommand: (command: ClientOrchestrationCommand) => Promise<{ sequence: number }>;
     prepareHandoff: (input: { threadId: ThreadId }) => Promise<void>;
     repairState: () => Promise<OrchestrationReadModel>;

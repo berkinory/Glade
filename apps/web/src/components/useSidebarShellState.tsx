@@ -234,8 +234,6 @@ export function useSidebarShellState() {
     shortcutLabelForCommand(keybindings, "sidebar.addProject") ??
     (isMacNavigatorPlatform() ? "⇧⌘O" : "Ctrl+Shift+O");
 
-  const usageSettingsShortcutLabel = shortcutLabelForCommand(keybindings, "settings.usage");
-
   const { activeProjectId: focusedProjectId } = useFocusedChatContext();
 
   const latestProjectId = useProjectPreferencesStore((state) => state.latestProjectId);
@@ -588,7 +586,6 @@ export function useSidebarShellState() {
     searchShortcutLabel,
     activityShortcutLabel,
     addProjectShortcutLabel,
-    usageSettingsShortcutLabel,
     focusedProjectId,
     latestProjectId,
     createProjectDialogOpen,

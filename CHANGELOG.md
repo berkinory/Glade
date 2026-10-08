@@ -5,11 +5,13 @@
 ### New
 
 - Keep your Mac awake while agents work, or always, from Chat settings. The display can still sleep.
+- Search saved chat messages from the command palette, including chats you have not opened recently.
 
 ### Improved
 
 - Scrollbars across the app stay hidden at rest and appear while you scroll or hover.
 - Chats recover more reliably from connection interruptions and heavy update streams, and a busy server no longer drops the connection.
+- Find settings from the command palette and jump straight to the matching row.
 
 ### Fixed
 

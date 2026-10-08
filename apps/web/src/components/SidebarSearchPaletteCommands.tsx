@@ -1,13 +1,10 @@
 import {
-  BugIcon,
   LaptopIcon,
   FolderPlusIcon,
   Moon02Icon,
   MessageCircleIcon,
   SquarePenIcon,
-  SettingsIcon,
   SunIcon,
-  LimitationIcon,
 } from "~/lib/icons";
 import type { ComponentType } from "react";
 type IconComponent = ComponentType<{
@@ -17,9 +14,6 @@ export const ACTION_ICONS: Record<string, IconComponent> = {
   "new-chat": MessageCircleIcon,
   "new-thread": SquarePenIcon,
   "add-project": FolderPlusIcon,
-  feedback: BugIcon,
-  settings: SettingsIcon,
-  "usage-settings": LimitationIcon,
 };
 export type ThemeCommandItem = {
   description: string;

@@ -60,7 +60,6 @@ export function SidebarDialogs({
     setCreateProjectSpaceId,
     searchPaletteOpen,
     setSearchPaletteOpen,
-    openFeedbackDialog,
     renameDialogThreadId,
     setRenameDialogThreadId,
     editProjectDialog,
@@ -407,17 +406,12 @@ export function SidebarDialogs({
           onCreateThread={handlePrimaryNewThread}
           onAddProjectPath={addProjectFromPath}
           homeDir={homeDir}
-          onOpenSettings={() => {
-            void navigate({
-              to: "/settings",
-            });
-          }}
-          onOpenFeedback={openFeedbackDialog}
-          onOpenUsageSettings={() => {
+          onOpenSettings={(section, target) => {
             void navigate({
               to: "/settings",
               search: {
-                section: "usage",
+                ...(section === "general" ? {} : { section }),
+                ...(target ? { target } : {}),
               },
             });
           }}

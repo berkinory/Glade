@@ -39,6 +39,7 @@ import { ServerAuthPolicyLive } from "./auth/Layers/ServerAuthPolicy";
 import { ServerSecretStoreLive } from "./auth/Layers/ServerSecretStore";
 import { SessionCredentialServiceLive } from "./auth/Layers/SessionCredentialService";
 import { ProfileStatsQueryLive } from "./diagnostics/Layers/ProfileStatsQuery";
+import { ThreadMessageSearchLive } from "./orchestration/Layers/ThreadMessageSearch";
 import { ProfileStatsArchiveLive } from "./diagnostics/profileStatsArchive";
 import { ServerLifecycleEventsLive } from "./server/lifecycle/serverLifecycleEvents";
 import { ServerEventLoopMonitorLive } from "./server/runtime/eventLoopMonitor";
@@ -195,6 +196,7 @@ function makeServerRuntimeServicesLayer(
     ServerSettingsLive,
     ServerEnvironmentLive,
     ProfileStatsQueryLive,
+    ThreadMessageSearchLive,
     authServicesLayer,
     ServerLifecycleEventsLive,
     ServerEventLoopMonitorLive,

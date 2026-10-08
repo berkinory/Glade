@@ -73,6 +73,15 @@ export const WsOrchestrationGetThreadDetailSnapshotRpc = Rpc.make(
   },
 );
 
+export const WsOrchestrationSearchThreadMessagesRpc = Rpc.make(
+  ORCHESTRATION_WS_METHODS.searchThreadMessages,
+  {
+    payload: OrchestrationRpcSchemas.searchThreadMessages.input,
+    success: OrchestrationRpcSchemas.searchThreadMessages.output,
+    error: WsRpcError,
+  },
+);
+
 export const WsOrchestrationReplayEventsRpc = Rpc.make(ORCHESTRATION_WS_METHODS.replayEvents, {
   payload: OrchestrationRpcSchemas.replayEvents.input,
   success: OrchestrationRpcSchemas.replayEvents.output,

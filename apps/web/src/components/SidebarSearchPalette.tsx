@@ -11,6 +11,16 @@ import { isGenericChatThreadTitle } from "@glade/shared/threads/chatThreads";
 import { Autocomplete as AutocompletePrimitive } from "@base-ui/react/autocomplete";
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useDebouncedValue } from "@tanstack/react-pacer";
+import { THREAD_MESSAGE_SEARCH_MIN_QUERY_LENGTH } from "@glade/contracts/orchestration/rpc";
+import { foldSearchText } from "@glade/shared/text/searchQuery";
+import { threadMessageSearchQueryOptions } from "~/lib/threadMessageSearchReactQuery";
+import { SETTINGS_NAV_ITEMS, type SettingsSectionId } from "~/settingsNavigation";
+import {
+  rankSettingsSearchEntries,
+  settingsSearchEntryTarget,
+  settingsSectionLabel,
+} from "~/settingsSearchIndex";
 import {
   ACTION_ICONS,
   buildThemeCommandItems,
@@ -39,6 +49,7 @@ import {
   type SidebarSearchProject,
   type SidebarSearchTheme,
   type SidebarSearchThread,
+  buildSidebarSearchServerThreadMatches,
   matchSidebarSearchActions,
   matchSidebarSearchProjects,
   matchSidebarSearchThemes,
@@ -67,11 +78,9 @@ const PALETTE_ICON_CLASS = "size-3.5 shrink-0 text-muted-foreground";
 const PALETTE_TEXT_CLASS = "min-w-0 flex-1 truncate text-ui";
 const PALETTE_META_CLASS = "max-w-[45%] shrink-0 truncate text-ui-meta text-muted-foreground/70";
 const PALETTE_STATUS_CLASS = "px-4 pt-1 pb-3 text-ui text-muted-foreground/79";
-const SETTINGS_ACTION_IDS: ReadonlySet<string> = new Set([
-  "settings",
-  "usage-settings",
-  "feedback",
-]);
+const SETTINGS_RESULT_LIMIT = 4;
+const THREAD_MESSAGE_SEARCH_DEBOUNCE_MS = 150;
+const SETTINGS_SECTION_ICON_BY_ID = new Map(SETTINGS_NAV_ITEMS.map((item) => [item.id, item.icon]));
 interface SidebarSearchPaletteProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -87,30 +96,19 @@ interface SidebarSearchPaletteProps {
     },
   ) => Promise<void>;
   homeDir: string | null;
-  onOpenSettings: () => void;
-  onOpenFeedback: () => void;
-  onOpenUsageSettings: () => void;
+  onOpenSettings: (section: SettingsSectionId, target: string | null) => void;
   onOpenProject: (projectId: string) => void;
   onOpenThread: (threadId: string) => void;
 }
 function actionHandler(
   actionId: string,
-  props: Pick<
-    SidebarSearchPaletteProps,
-    "onCreateChat" | "onCreateThread" | "onOpenFeedback" | "onOpenSettings" | "onOpenUsageSettings"
-  >,
+  props: Pick<SidebarSearchPaletteProps, "onCreateChat" | "onCreateThread">,
 ): (() => void) | null {
   switch (actionId) {
     case "new-chat":
       return props.onCreateChat;
     case "new-thread":
       return props.onCreateThread;
-    case "settings":
-      return props.onOpenSettings;
-    case "feedback":
-      return props.onOpenFeedback;
-    case "usage-settings":
-      return props.onOpenUsageSettings;
     default:
       return null;
   }
@@ -200,12 +198,7 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
   const browseParentPath = canBrowse ? getBrowseParentPath(query) : null;
   const canBrowseUp = canBrowse && canNavigateUp(query);
   const matchedActions =
-    isBrowsing || !trimmedQuery
-      ? []
-      : matchSidebarSearchActions(
-          props.actions.filter((action) => !SETTINGS_ACTION_IDS.has(action.id)),
-          query,
-        );
+    isBrowsing || !trimmedQuery ? [] : matchSidebarSearchActions(props.actions, query);
   const themeCommandItems = buildThemeCommandItems({
     query,
     resolvedTheme,
@@ -232,12 +225,31 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
     query.trim().length > 0 &&
     (themeCommandItems.length > 0 || matchedCurrentThemes.length > 0);
   const matchedProjects = isBrowsing ? [] : matchSidebarSearchProjects(props.projects, query);
-  const matchedThreads = useMemo(
-    () => (isBrowsing ? [] : matchSidebarSearchThreads(props.threads, query)),
-    [isBrowsing, props.threads, query],
+  // Only recently opened chats keep their messages on this client, so message hits for the rest
+  // come from the server's persisted history.
+  const [debouncedQuery] = useDebouncedValue(trimmedQuery, {
+    wait: THREAD_MESSAGE_SEARCH_DEBOUNCE_MS,
+  });
+  const { data: threadMessageSearch } = useQuery(
+    threadMessageSearchQueryOptions({ query: debouncedQuery, enabled: props.open && !isBrowsing }),
   );
+  const serverThreadMatches = useMemo(
+    () =>
+      trimmedQuery.length >= THREAD_MESSAGE_SEARCH_MIN_QUERY_LENGTH
+        ? buildSidebarSearchServerThreadMatches(threadMessageSearch, trimmedQuery)
+        : undefined,
+    [threadMessageSearch, trimmedQuery],
+  );
+  const matchedThreads = useMemo(
+    () => (isBrowsing ? [] : matchSidebarSearchThreads(props.threads, query, serverThreadMatches)),
+    [isBrowsing, props.threads, query, serverThreadMatches],
+  );
+  const matchedSettings = isBrowsing
+    ? []
+    : rankSettingsSearchEntries(trimmedQuery, SETTINGS_RESULT_LIMIT);
   const hasSearchResults =
     matchedActions.length > 0 ||
+    matchedSettings.length > 0 ||
     themeCommandItems.length > 0 ||
     matchedCurrentThemes.length > 0 ||
     matchedProjects.length > 0 ||
@@ -371,7 +383,7 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
               placeholder={
                 isBrowsing
                   ? "Enter project path (e.g. ~/projects/my-app)"
-                  : "Search chats or run a command"
+                  : "Search chats, settings and commands"
               }
               value={query}
               onChange={(event) => setQuery(event.currentTarget.value)}
@@ -452,7 +464,7 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
                   <span>{query ? "Threads" : "Recent chats"}</span>
                 </CommandGroupLabel>
                 {matchedThreads.map(({ id, matchKind, snippet, thread }) => {
-                  const normalizedQuery = trimmedQuery.replaceAll(/\s+/g, " ").toLowerCase();
+                  const normalizedQuery = foldSearchText(trimmedQuery.replaceAll(/\s+/g, " "));
                   const matchContext =
                     snippet ??
                     (matchKind === "project"
@@ -464,11 +476,9 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
                           ]),
                         ]
                           .filter((name) =>
-                            name
-                              .trim()
-                              .replaceAll(/\s+/g, " ")
-                              .toLowerCase()
-                              .includes(normalizedQuery),
+                            foldSearchText(name.trim().replaceAll(/\s+/g, " ")).includes(
+                              normalizedQuery,
+                            ),
                           )
                           .join(" · ")
                       : null);
@@ -659,6 +669,41 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
                   </CommandGroup>
                 ) : null}
               </>
+            ) : null}
+
+            {matchedSettings.length > 0 ? (
+              <CommandGroup>
+                <CommandGroupLabel className={PALETTE_GROUP_LABEL_CLASS}>
+                  <span>Settings</span>
+                </CommandGroupLabel>
+                {matchedSettings.map((entry) => {
+                  const Icon = SETTINGS_SECTION_ICON_BY_ID.get(entry.section);
+                  return (
+                    <CommandItem
+                      key={entry.id}
+                      value={`setting:${entry.id}`}
+                      className={PALETTE_ITEM_CLASS}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                      }}
+                      onClick={() => {
+                        props.onOpenChange(false);
+                        props.onOpenSettings(entry.section, settingsSearchEntryTarget(entry));
+                      }}
+                    >
+                      {Icon ? (
+                        <Icon className={PALETTE_ICON_CLASS} />
+                      ) : (
+                        <span className="size-3.5 shrink-0" aria-hidden="true" />
+                      )}
+                      <span className={PALETTE_TEXT_CLASS}>{entry.title}</span>
+                      <span className={PALETTE_META_CLASS}>
+                        {settingsSectionLabel(entry.section)}
+                      </span>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
             ) : null}
           </CommandList>
           {}

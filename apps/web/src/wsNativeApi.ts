@@ -643,6 +643,8 @@ export function createWsNativeApi(): NativeApi {
       getShellSnapshot: () => transport.request(ORCHESTRATION_WS_METHODS.getShellSnapshot),
       getThreadDetailSnapshot: (input) =>
         transport.request(ORCHESTRATION_WS_METHODS.getThreadDetailSnapshot, input),
+      searchThreadMessages: (input, options) =>
+        transport.request(ORCHESTRATION_WS_METHODS.searchThreadMessages, input, options),
       prepareHandoff: (input) =>
         transport.request(ORCHESTRATION_WS_METHODS.prepareHandoff, input, { timeoutMs: null }),
       dispatchCommand: (command) => {

@@ -21,6 +21,7 @@ export const ORCHESTRATION_WS_METHODS = {
   getSnapshot: "orchestration.getSnapshot",
   getShellSnapshot: "orchestration.getShellSnapshot",
   getThreadDetailSnapshot: "orchestration.getThreadDetailSnapshot",
+  searchThreadMessages: "orchestration.searchThreadMessages",
   dispatchCommand: "orchestration.dispatchCommand",
   settleTurnDispatch: "orchestration.settleTurnDispatch",
   prepareHandoff: "orchestration.prepareHandoff",
@@ -242,6 +243,40 @@ export const OrchestrationGetThreadDetailSnapshotResult = Schema.NullOr(
 export type OrchestrationGetThreadDetailSnapshotResult =
   typeof OrchestrationGetThreadDetailSnapshotResult.Type;
 
+export const THREAD_MESSAGE_SEARCH_MIN_QUERY_LENGTH = 2;
+export const THREAD_MESSAGE_SEARCH_MAX_QUERY_LENGTH = 200;
+export const THREAD_MESSAGE_SEARCH_MAX_LIMIT = 50;
+export const THREAD_MESSAGE_SEARCH_MAX_EXCERPT_LENGTH = 240;
+
+export const OrchestrationSearchThreadMessagesInput = Schema.Struct({
+  query: TrimmedNonEmptyString.check(
+    Schema.isMinLength(THREAD_MESSAGE_SEARCH_MIN_QUERY_LENGTH),
+    Schema.isMaxLength(THREAD_MESSAGE_SEARCH_MAX_QUERY_LENGTH),
+  ),
+  limit: Schema.optional(
+    PositiveInt.check(Schema.isLessThanOrEqualTo(THREAD_MESSAGE_SEARCH_MAX_LIMIT)),
+  ),
+});
+
+export type OrchestrationSearchThreadMessagesInput =
+  typeof OrchestrationSearchThreadMessagesInput.Type;
+
+export const OrchestrationThreadMessageSearchMatch = Schema.Struct({
+  threadId: ThreadId,
+  excerpt: Schema.String.check(Schema.isMaxLength(THREAD_MESSAGE_SEARCH_MAX_EXCERPT_LENGTH)),
+  matchCount: PositiveInt,
+});
+
+export type OrchestrationThreadMessageSearchMatch =
+  typeof OrchestrationThreadMessageSearchMatch.Type;
+
+export const OrchestrationSearchThreadMessagesResult = Schema.Struct({
+  matches: Schema.Array(OrchestrationThreadMessageSearchMatch),
+});
+
+export type OrchestrationSearchThreadMessagesResult =
+  typeof OrchestrationSearchThreadMessagesResult.Type;
+
 export const OrchestrationUnsubscribeThreadInput = Schema.Struct({
   threadId: ThreadId,
 });
@@ -262,6 +297,10 @@ export const OrchestrationRpcSchemas = {
   getThreadDetailSnapshot: {
     input: OrchestrationGetThreadDetailSnapshotInput,
     output: OrchestrationGetThreadDetailSnapshotResult,
+  },
+  searchThreadMessages: {
+    input: OrchestrationSearchThreadMessagesInput,
+    output: OrchestrationSearchThreadMessagesResult,
   },
   repairState: {
     input: OrchestrationRepairStateInput,

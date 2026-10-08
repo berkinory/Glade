@@ -3,6 +3,7 @@ import { useStore } from "../store";
 import { createAllThreadsSelector, createSidebarDisplayThreadsSelector } from "../storeSelectors";
 import { useStableValue } from "~/hooks/useStableValue";
 import { type Thread } from "../types";
+import type { SettingsSectionId } from "../settingsNavigation";
 import { SidebarSearchPalette } from "./SidebarSearchPalette";
 import {
   areSidebarSearchThreadListsEqual,
@@ -35,9 +36,7 @@ export function SidebarSearchPaletteController(props: {
   onCreateThread: () => void;
   onAddProjectPath: (path: string, options?: { createIfMissing?: boolean }) => Promise<void>;
   homeDir: string | null;
-  onOpenSettings: () => void;
-  onOpenFeedback: () => void;
-  onOpenUsageSettings: () => void;
+  onOpenSettings: (section: SettingsSectionId, target: string | null) => void;
   onOpenProject: (projectId: string) => void;
   onOpenThread: (threadId: string) => void;
 }) {
@@ -91,8 +90,6 @@ export function SidebarSearchPaletteController(props: {
       onAddProjectPath={props.onAddProjectPath}
       homeDir={props.homeDir}
       onOpenSettings={props.onOpenSettings}
-      onOpenFeedback={props.onOpenFeedback}
-      onOpenUsageSettings={props.onOpenUsageSettings}
       onOpenProject={props.onOpenProject}
       onOpenThread={props.onOpenThread}
     />

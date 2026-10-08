@@ -274,6 +274,16 @@ disk, even before staging. If Git cannot provide a complete deleted-path list, d
 falls back to the filesystem. Source Control still lists deletions, with struck-through
 filenames in Changes, Staged, History and turn diffs; directory paths stay readable and deleted versions have no Edit action.
 A staged modification remains styled as a modification if only its working copy was deleted.
+## Command palette search
+
+The sidebar command palette searches chat titles, project names, commands, themes and settings.
+Choosing a setting opens its Settings section at that row. Message search covers settled user
+and assistant messages in every chat the sidebar lists, including chats not opened recently:
+archived, deleted and subagent chats stay out, and messages still streaming are not matched
+until they finish. Every word of the query must appear in one message; letter case is ignored
+and the Turkish dotted and dotless I match each other. Message results are bounded to short
+excerpts, and replies to an older query are dropped once you type something they do not match.
+
 
 File downloads and chat exports preserve Unicode filenames using the UTF-8 download header,
 with an ASCII fallback for older clients. The web download path prefers the UTF-8 name.
