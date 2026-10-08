@@ -9,10 +9,12 @@ import { appHistory } from "./appNavigation";
 import { getRouter } from "./router";
 import { APP_DISPLAY_NAME } from "./branding";
 import { isElectron } from "./env";
+import { trackScrollActivity } from "./lib/scrollActivity";
 
 const router = getRouter(appHistory);
 
 document.title = APP_DISPLAY_NAME;
+trackScrollActivity(document);
 
 try {
   localStorage.removeItem("glade:kanban-ui:v1");
