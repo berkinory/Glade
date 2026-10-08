@@ -62,6 +62,8 @@ Model selections name native models. Unset and legacy default selections resolve
 
 `ProviderManagement` owns validation and protects managed gateway configuration before routing native MCP/plugin actions to adapters. Its contracts keep session-only actions distinct from persistent changes. Native failures retain their kind and retry state; an upstream retry without an attempt count does not acquire an invented counter. Codex account limits come from native account APIs instead of an undocumented HTTP endpoint or credential refresh implementation.
 
+Provider commands are delivered per native session owner. A chat owns its session; a native child uses its parent's, and a fork that has no live session of its own is created from its source's, so each is ordered with that owner. Different owners run concurrently, up to eight provider calls at once, so a stalled call in one chat does not hold another. Each owner keeps only sequence ranges per chat and reads its commands back from the event journal in order. The durable cursor advances only through the prefix every owner has settled. After a restart, the journal state of a command a later owner already finished, or its chat's quarantine, prevents a second send.
+
 A provider command that settles as dead or uncertain quarantines its chat. The intent source writes the blocking reason to the chat's session as soon as it settles, and once per chat at startup for a blocker that survives restart. The write merges over the latest durable session, so a running turn keeps its status and active turn, and it is dropped if a newer session lands first. Sending the next message still clears the blocker explicitly; the ambiguous command is never replayed.
 
 ## Provider-specific state

@@ -46,6 +46,62 @@ describe("Claude sessionHistory", () => {
     );
   });
 
+  it.effect("keeps a generated session id unresumable until Claude records output", () => {
+    const harness = makeHarness();
+    return Effect.gen(function* () {
+      const adapter = yield* ClaudeAdapter;
+      const readResume = Effect.map(
+        adapter.listSessions(),
+        (sessions) =>
+          (sessions[0]?.resumeCursor as { readonly resume?: string } | undefined)?.resume,
+      );
+      const awaitResume = Effect.gen(function* () {
+        for (let attempt = 0; attempt < 100; attempt += 1) {
+          const resume = yield* readResume;
+          if (resume !== undefined) return resume;
+          yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 5)));
+        }
+        return undefined;
+      });
+
+      const session = yield* adapter.startSession({
+        threadId: THREAD_ID,
+        provider: "claudeAgent",
+        runtimeMode: "full-access",
+      });
+      const generatedSessionId = harness.getLastCreateQueryInput()?.options.sessionId;
+      assert.isString(generatedSessionId);
+      assert.equal(adapter.canResumeNativeConversation?.(session.resumeCursor), false);
+
+      yield* adapter.sendTurn({ threadId: session.threadId, input: "hello", attachments: [] });
+      harness.query.emit({
+        type: "stream_event",
+        session_id: generatedSessionId,
+        uuid: "fresh-stream",
+        parent_tool_use_id: null,
+        event: { type: "message_start", message: { id: "msg-fresh" } },
+      } as unknown as SDKMessage);
+      yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 50)));
+      assert.equal(yield* readResume, undefined);
+
+      harness.query.emit({
+        type: "assistant",
+        session_id: generatedSessionId,
+        uuid: "fresh-assistant",
+        parent_tool_use_id: null,
+        message: {
+          id: "msg-fresh",
+          role: "assistant",
+          content: [{ type: "text", text: "hi" }],
+        },
+      } as unknown as SDKMessage);
+      assert.equal(yield* awaitResume, generatedSessionId);
+    }).pipe(
+      Effect.provideService(Random.Random, makeDeterministicRandomService()),
+      Effect.provide(harness.layer),
+    );
+  });
+
   it.effect("preserves durable resume ids across Claude resume hooks", () => {
     const harness = makeHarness();
     return Effect.gen(function* () {

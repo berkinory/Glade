@@ -129,7 +129,6 @@ export function makeClaudeSessionStartup(input: {
       const existingResumeSessionId = resumeState?.resume;
       const newSessionId =
         existingResumeSessionId === undefined ? yield* Random.nextUUIDv4 : undefined;
-      const sessionId = existingResumeSessionId ?? newSessionId;
 
       const promptQueue = yield* Queue.unbounded<PromptQueueItem>();
       const prompt = Stream.fromQueue(promptQueue).pipe(
@@ -391,7 +390,7 @@ export function makeClaudeSessionStartup(input: {
           ...(threadId ? { threadId } : {}),
           resumeCursor: {
             ...(threadId ? { threadId } : {}),
-            ...(sessionId ? { resume: sessionId } : {}),
+            ...(existingResumeSessionId ? { resume: existingResumeSessionId } : {}),
             ...(resumeState?.resumeSessionAt
               ? { resumeSessionAt: resumeState.resumeSessionAt }
               : {}),
@@ -431,7 +430,7 @@ export function makeClaudeSessionStartup(input: {
           firstTurnSpawnModeAuthoritative: true,
 
           currentApiModelId: apiModelId,
-          resumeSessionId: sessionId,
+          resumeSessionId: existingResumeSessionId,
           pendingApprovals,
           approvalsAlwaysAllowedForSession: false,
           pendingUserInputs,

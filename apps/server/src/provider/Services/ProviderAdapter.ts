@@ -145,6 +145,9 @@ export interface ProviderAdapterShape<TError> {
 
   readonly stopSession: (threadId: ThreadId) => Effect.Effect<void, TError>;
 
+  /** False when a stored cursor holds no saved native conversation, so a start begins fresh. */
+  readonly canResumeNativeConversation?: (resumeCursor: unknown) => boolean;
+
   readonly prepareSessionReplacement?: (input: ProviderSessionStartInput) => Effect.Effect<
     | {
         readonly previousSession: ProviderSession;

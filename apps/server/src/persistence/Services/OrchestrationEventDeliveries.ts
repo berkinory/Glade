@@ -108,9 +108,10 @@ export interface OrchestrationEventDeliveryRepositoryShape {
     readonly claimOwner: string;
     readonly completedAt: string;
   }) => Effect.Effect<boolean, PersistenceSqlError>;
-  readonly advanceCursor: (input: {
+  /** Moves the cursor forward to a prefix the caller has fully settled; never moves it back. */
+  readonly advanceCursorThrough: (input: {
     readonly consumerName: string;
-    readonly eventSequence: number;
+    readonly throughSequence: number;
     readonly updatedAt: string;
   }) => Effect.Effect<boolean, PersistenceSqlError>;
   readonly firstBlockingDelivery: (

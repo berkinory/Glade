@@ -338,6 +338,9 @@ export function makeProviderSessionConfiguration(input: {
         workspaceChanged && shouldRegisterContextBootstrap,
       );
       const restartedSession = restartedOutcome.session;
+      if (restartedOutcome.priorTranscriptBootstrapPending && shouldRegisterContextBootstrap) {
+        freshSessionContextBootstrapThreadIds.add(threadId);
+      }
       threadSessionSettings.setModelSelection(threadId, desiredModelSelection);
       threadComputerUse.markProvisioned(threadId, computerToolsListed);
       yield* Effect.logInfo("provider command reactor restarted provider session", {

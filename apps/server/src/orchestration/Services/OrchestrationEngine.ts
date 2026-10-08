@@ -58,6 +58,7 @@ export interface OrchestrationEngineShape {
     fromSequenceExclusive: number,
     throughSequenceInclusive: number,
     eventTypes?: ReadonlyArray<string>,
+    limit?: number,
   ) => Stream.Stream<OrchestrationEvent, OrchestrationEventStoreError, never>;
 
   readonly getEventHighWaterSequence: Effect.Effect<number, OrchestrationEventStoreError>;

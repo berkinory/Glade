@@ -169,6 +169,13 @@ undoing their changes.
 Checkpoint restores preserve unchanged files and the Git staging area. Committed Git history
 remains the strongest boundary for important changes.
 
+Each message's starting snapshot is taken before its task starts and is given at most ten
+seconds. A slower snapshot is cancelled, and its Git processes are stopped, before the agent
+starts. The task then runs without a starting snapshot: the chat says so, and that turn's diff
+and file Undo are unavailable. Glade never takes a replacement snapshot after the agent has
+started, because it could already contain the agent's edits. File Undo also refuses while a later
+turn has no starting snapshot; reverting the chat to a checkpoint remains available.
+
 ## Parallel work
 
 Parallelism is useful only when ownership is clear.
@@ -295,6 +302,12 @@ otherwise the pause backs off from one minute to at most fifteen minutes. Fresh 
 lookups remain available. An expired lookup reports the rate-limit error instead of
 pretending stale data is current. User-requested mutations are never retried automatically.
 Background PR association lookups use the existing lower-priority Git process queue.
+
+Git runs at most six local and three network processes at once. Checkpoint snapshots and
+interactive reads each keep a local slot that background refreshes cannot take, and user-started
+network commands keep one network slot. Work in the same class runs in arrival order; background
+work still gets a turn while foreground reads keep arriving. When a class already has a full
+backlog, new Git work fails with a busy error instead of waiting without bound.
 
 Chats in a shared checkout retain their PR association when another chat changes the
 branch or a lookup finds nothing. A positive replacement updates it; dedicated

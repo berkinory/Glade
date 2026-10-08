@@ -11,7 +11,7 @@ consistent workspace.
 | Claude Code | Your installed Claude Code runtime and authenticated account |
 | Codex       | Your installed and authenticated Codex CLI                   |
 
-Use provider settings to check installation and authentication status. Glade requires Codex 0.158.0 or newer and Claude Code 2.1.267 or newer. An older runtime shows Update required and cannot start a session.
+Use provider settings to check installation and authentication status. Glade requires Codex 0.158.0 or newer and Claude Code 2.1.267 or newer. An older runtime shows Update required and cannot start a session. Codex status checks run from the configured Codex home, so project configuration in the server's working directory cannot change them; a missing Codex home is reported instead of created.
 
 ## What Glade manages
 
@@ -323,6 +323,8 @@ is never automatically resent.
 A terminal Claude missing-conversation error clears the broken resume binding before
 queued work drains. Generation and native-turn checks prevent old failures from
 clearing a newer session. The transcript remains available for fresh-session context.
+A new Claude session becomes resumable only after Claude records conversation output. A session
+stopped or restarted before that starts fresh and carries Glade's transcript into its next turn.
 When the Codex watchdog actually retires gateway authority, its terminal event asks
 the existing lifecycle owner to renew the connection on the next send.
 

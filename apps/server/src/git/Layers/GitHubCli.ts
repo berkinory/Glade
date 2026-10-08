@@ -326,7 +326,13 @@ const makeGitHubCli = Effect.gen(function* () {
     });
     return Effect.suspend(() => {
       const paused = readOnly ? readBudget.check(identity) : null;
-      return paused ? Effect.fail(paused) : withPermit(admitted, input.priority, "network");
+      return paused
+        ? Effect.fail(paused)
+        : withPermit(admitted, input.priority, "network").pipe(
+            Effect.catchTag("GitCommandError", (busy) =>
+              Effect.fail(new GitHubCliError({ operation: "execute", detail: busy.detail })),
+            ),
+          );
     });
   };
 

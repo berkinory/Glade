@@ -52,6 +52,7 @@ import {
 } from "../commandInvariants.ts";
 import { isGitRepository } from "../../git/isRepo.ts";
 import { resolveProviderSessionThread } from "../providerSessionThread.ts";
+import { CHECKPOINT_BASELINE_SKIPPED_ACTIVITY_KIND } from "../providerCommands/preTurnBaseline.ts";
 
 type ReactorInput =
   | {
@@ -143,7 +144,6 @@ const make = Effect.gen(function* () {
   const projectionTurnRepository = yield* ProjectionTurnRepository;
   const receiptBus = yield* RuntimeReceiptBus;
   const turnCheckpointCoordinator = yield* TurnCheckpointCoordinator;
-  const pendingMessageStartByThread = new Map<ThreadId, MessageId>();
 
   const liveDiffScheduledThreads = new Set<ThreadId>();
   // Turns that started in a workspace that was not yet a git repository. A scaffolding turn (`git
@@ -292,6 +292,47 @@ const make = Effect.gen(function* () {
       createdAt: input.createdAt,
     });
 
+  // The pre-send owner may already have reported this turn's skipped snapshot. Native children
+  // share their parent's workspace without a pre-send owner, so their missing baseline is expected.
+  const appendBaselineUnavailableActivity = Effect.fnUntraced(function* (input: {
+    readonly threadId: ThreadId;
+    readonly turnId: TurnId;
+    readonly createdAt: string;
+  }) {
+    const thread = yield* getThreadDetail(input.threadId);
+    const messageId = yield* persistedTurnMessageId(input.threadId, input.turnId);
+    if (thread?.parentThreadId && messageId === undefined) return;
+    if (
+      thread?.activities.some(
+        (activity) =>
+          activity.kind === CHECKPOINT_BASELINE_SKIPPED_ACTIVITY_KIND &&
+          activity.turnId === input.turnId,
+      )
+    )
+      return;
+    yield* orchestrationEngine.dispatch({
+      type: "thread.activity.append",
+      commandId: serverCommandId("checkpoint-baseline-unavailable"),
+      threadId: input.threadId,
+      activity: {
+        id: EventId.makeUnsafe(
+          `checkpoint-baseline-skipped:${checkpointRefForThreadTurnStart(input.threadId, input.turnId)}`,
+        ),
+        tone: "info",
+        kind: CHECKPOINT_BASELINE_SKIPPED_ACTIVITY_KIND,
+        summary: "Turn ran without a file snapshot",
+        payload: {
+          detail:
+            "The workspace state from before this turn is unavailable, so its diff and file undo are unavailable. The end-of-turn checkpoint was captured.",
+          ...(messageId !== undefined ? { messageId } : {}),
+        },
+        turnId: input.turnId,
+        createdAt: input.createdAt,
+      },
+      createdAt: input.createdAt,
+    });
+  });
+
   const resolveSessionRuntimeForThread = Effect.fnUntraced(function* (threadId: ThreadId) {
     const thread = yield* projectionSnapshotQuery
       .getThreadShellById(threadId)
@@ -399,11 +440,20 @@ const make = Effect.gen(function* () {
     const fromCheckpointRef = checkpointRefForThreadTurnStart(input.threadId, input.turnId);
     const targetCheckpointRef = checkpointRefForThreadTurn(input.threadId, input.turnCount);
 
-    const fromCheckpointExists = yield* checkpointStore.hasCheckpointRef({
+    const fromCheckpointExists = yield* aliasTurnStartBaseline({
       cwd: input.cwd,
-      checkpointRef: fromCheckpointRef,
+      threadId: input.threadId,
+      turnId: input.turnId,
     });
-    if (!fromCheckpointExists) {
+    if (fromCheckpointExists) {
+      yield* ensureLegacyBaselineCheckpoint({
+        threadId: input.threadId,
+        cwd: input.cwd,
+        turnCount: input.turnCount - 1,
+        createdAt: input.createdAt,
+        fromCheckpointRef,
+      });
+    } else {
       if (input.workspaceInitializedDuringTurn) {
         yield* Effect.logDebug(
           "checkpoint capture has no pre-turn baseline: workspace became a git repository during the turn",
@@ -458,10 +508,9 @@ const make = Effect.gen(function* () {
           )
       : input.workspaceInitializedDuringTurn
         ? []
-        : yield* appendCaptureFailureActivity({
+        : yield* appendBaselineUnavailableActivity({
             threadId: input.threadId,
             turnId: input.turnId,
-            detail: "Checkpoint captured, but the turn start baseline is unavailable.",
             createdAt: input.createdAt,
           }).pipe(Effect.as([]));
 
@@ -530,7 +579,11 @@ const make = Effect.gen(function* () {
     readonly cwd: string;
     readonly turnCount: number;
     readonly createdAt: string;
+    readonly fromCheckpointRef: CheckpointRef;
   }) {
+    // Only turn zero is a baseline. A missing completed checkpoint cannot be rebuilt from a later
+    // working tree, and the first baseline is only ever an alias of a pre-send snapshot.
+    if (input.turnCount !== 0) return;
     const legacyBaselineRef = checkpointRefForThreadTurn(input.threadId, input.turnCount);
     const legacyBaselineExists = yield* checkpointStore.hasCheckpointRef({
       cwd: input.cwd,
@@ -540,16 +593,52 @@ const make = Effect.gen(function* () {
       return;
     }
 
-    yield* checkpointStore.captureCheckpoint({
+    const copied = yield* checkpointStore.copyCheckpointRef({
       cwd: input.cwd,
-      checkpointRef: legacyBaselineRef,
+      fromCheckpointRef: input.fromCheckpointRef,
+      toCheckpointRef: legacyBaselineRef,
     });
+    if (!copied) return;
     yield* receiptBus.publish({
       type: "checkpoint.baseline.captured",
       threadId: input.threadId,
       checkpointTurnCount: input.turnCount,
       checkpointRef: legacyBaselineRef,
       createdAt: input.createdAt,
+    });
+  });
+
+  const persistedTurnMessageId = (threadId: ThreadId, turnId: TurnId) =>
+    projectionTurnRepository.getByTurnId({ threadId, turnId }).pipe(
+      Effect.map((turn) => Option.getOrNull(turn)?.pendingMessageId ?? undefined),
+      Effect.catch(() => Effect.succeed(undefined)),
+    );
+
+  // Recovers only a snapshot the pre-send owner already captured, bound to this turn by its
+  // projected message. Once the provider runs it may have edited files, so a missing ref stays
+  // missing instead of being recaptured from the working tree.
+  const aliasTurnStartBaseline = Effect.fnUntraced(function* (input: {
+    readonly threadId: ThreadId;
+    readonly turnId: TurnId;
+    readonly cwd: string;
+    readonly pendingMessageId?: MessageId;
+  }) {
+    const turnStartCheckpointRef = checkpointRefForThreadTurnStart(input.threadId, input.turnId);
+    if (
+      yield* checkpointStore.hasCheckpointRef({
+        cwd: input.cwd,
+        checkpointRef: turnStartCheckpointRef,
+      })
+    ) {
+      return true;
+    }
+    const messageId =
+      (yield* persistedTurnMessageId(input.threadId, input.turnId)) ?? input.pendingMessageId;
+    if (messageId === undefined) return false;
+    return yield* checkpointStore.copyCheckpointRef({
+      cwd: input.cwd,
+      fromCheckpointRef: checkpointRefForThreadMessageStart(input.threadId, messageId),
+      toCheckpointRef: turnStartCheckpointRef,
     });
   });
 
@@ -694,9 +783,10 @@ const make = Effect.gen(function* () {
     }
 
     const fromCheckpointRef = checkpointRefForThreadTurnStart(thread.id, turnId);
-    const baselineExists = yield* checkpointStore.hasCheckpointRef({
+    const baselineExists = yield* aliasTurnStartBaseline({
       cwd: checkpointCwd,
-      checkpointRef: fromCheckpointRef,
+      threadId: thread.id,
+      turnId,
     });
     if (!baselineExists) {
       return;
@@ -799,129 +889,25 @@ const make = Effect.gen(function* () {
     const pendingTurnStart = yield* projectionTurnRepository.getPendingTurnStartByThreadId({
       threadId: thread.id,
     });
-    const messageId =
-      pendingMessageStartByThread.get(thread.id) ??
-      Option.match(pendingTurnStart, {
-        onNone: () => undefined,
-        onSome: (pending) => pending.messageId,
-      });
     const turnStartCheckpointRef = checkpointRefForThreadTurnStart(thread.id, turnId);
-    let hasTurnStartBaseline = false;
-    if (messageId !== undefined) {
-      const messageStartCheckpointRef = checkpointRefForThreadMessageStart(thread.id, messageId);
-      const copyMessageStartBaseline = checkpointStore.copyCheckpointRef({
-        cwd: checkpointCwd,
-        fromCheckpointRef: messageStartCheckpointRef,
-        toCheckpointRef: turnStartCheckpointRef,
-      });
-      let copied = yield* copyMessageStartBaseline;
-      if (!copied) {
-        yield* checkpointStore.captureCheckpoint({
-          cwd: checkpointCwd,
-          checkpointRef: messageStartCheckpointRef,
-          skipIfExists: true,
-        });
-        copied = yield* copyMessageStartBaseline;
-      }
-      hasTurnStartBaseline = copied;
-      pendingMessageStartByThread.delete(thread.id);
-      if (!copied) {
-        yield* Effect.logWarning("checkpoint turn start baseline alias missing message baseline", {
-          threadId: thread.id,
-          turnId,
-          messageId,
-        });
-      }
-    }
-    if (!hasTurnStartBaseline) {
-      const existingTurnStartBaseline = yield* checkpointStore.hasCheckpointRef({
-        cwd: checkpointCwd,
-        checkpointRef: turnStartCheckpointRef,
-      });
-      if (!existingTurnStartBaseline) {
-        yield* checkpointStore.captureCheckpoint({
-          cwd: checkpointCwd,
-          checkpointRef: turnStartCheckpointRef,
-        });
-      }
-    }
+    const hasTurnStartBaseline = yield* aliasTurnStartBaseline({
+      cwd: checkpointCwd,
+      threadId: thread.id,
+      turnId,
+      ...(Option.isSome(pendingTurnStart)
+        ? { pendingMessageId: pendingTurnStart.value.messageId }
+        : {}),
+    });
+    if (!hasTurnStartBaseline) return;
 
-    const currentTurnCount = thread.checkpoints.reduce(
-      (maxTurnCount, checkpoint) => Math.max(maxTurnCount, checkpoint.checkpointTurnCount),
-      0,
-    );
     yield* ensureLegacyBaselineCheckpoint({
       threadId: thread.id,
       cwd: checkpointCwd,
-      turnCount: currentTurnCount,
+      turnCount: thread.checkpoints
+        .filter((checkpoint) => checkpoint.turnId !== turnId)
+        .reduce((max, checkpoint) => Math.max(max, checkpoint.checkpointTurnCount), 0),
       createdAt: event.createdAt,
-    });
-  });
-
-  const ensurePreTurnBaselineFromDomainTurnStart = Effect.fnUntraced(function* (
-    event: Extract<
-      OrchestrationEvent,
-      { type: "thread.turn-start-requested" | "thread.message-sent" }
-    >,
-  ) {
-    if (event.type === "thread.message-sent") {
-      if (
-        event.payload.role !== "user" ||
-        event.payload.streaming ||
-        event.payload.turnId !== null
-      ) {
-        return;
-      }
-    }
-
-    const threadId = event.payload.threadId;
-    const thread = yield* getThreadDetail(threadId);
-    if (!thread) {
-      return;
-    }
-    const project = yield* getProjectShell(thread.projectId);
-    if (!project) {
-      return;
-    }
-
-    const checkpointCwd = yield* resolveCheckpointCwd({
-      threadId,
-      thread,
-      project,
-    });
-    if (!checkpointCwd) {
-      return;
-    }
-
-    if (event.type === "thread.turn-start-requested") {
-      pendingMessageStartByThread.set(threadId, event.payload.messageId);
-
-      const messageStartCheckpointRef = checkpointRefForThreadMessageStart(
-        threadId,
-        event.payload.messageId,
-      );
-      const messageStartCheckpointExists = yield* checkpointStore.hasCheckpointRef({
-        cwd: checkpointCwd,
-        checkpointRef: messageStartCheckpointRef,
-      });
-      if (!messageStartCheckpointExists) {
-        yield* checkpointStore.captureCheckpoint({
-          cwd: checkpointCwd,
-          checkpointRef: messageStartCheckpointRef,
-          skipIfExists: true,
-        });
-      }
-    }
-
-    const currentTurnCount = thread.checkpoints.reduce(
-      (maxTurnCount, checkpoint) => Math.max(maxTurnCount, checkpoint.checkpointTurnCount),
-      0,
-    );
-    yield* ensureLegacyBaselineCheckpoint({
-      threadId,
-      cwd: checkpointCwd,
-      turnCount: currentTurnCount,
-      createdAt: event.occurredAt,
+      fromCheckpointRef: turnStartCheckpointRef,
     });
   });
 
@@ -1054,9 +1040,39 @@ const make = Effect.gen(function* () {
         return;
       }
 
+      // A later turn without its exact starting snapshot can hold unknown overlapping edits.
+      for (const checkpoint of thread.checkpoints) {
+        if (
+          checkpoint.checkpointTurnCount <= targetCheckpoint.checkpointTurnCount ||
+          !isManagedCheckpointRefForThread(checkpoint.checkpointRef, event.payload.threadId)
+        )
+          continue;
+        const [laterTurn] = scopedTurnCheckpoints(thread, [checkpoint]);
+        if (
+          laterTurn &&
+          (yield* checkpointStore.hasCheckpointRef({
+            cwd: checkpointCwd,
+            checkpointRef: laterTurn.beforeCheckpointRef,
+          }))
+        )
+          continue;
+        yield* appendRevertFailureActivity({
+          threadId: event.payload.threadId,
+          turnCount: event.payload.turnCount,
+          detail:
+            "File Undo is unavailable because a later turn has no starting snapshot. Revert the thread to this checkpoint instead.",
+          createdAt: now,
+        }).pipe(Effect.catch(() => Effect.void));
+        return;
+      }
+
+      // File Undo reverses exactly this turn, so it never substitutes an earlier checkpoint for a
+      // missing starting snapshot.
       const scopedInput = {
         cwd: checkpointCwd,
-        turns: scopedTurnCheckpoints(thread, [targetCheckpoint]),
+        turns: scopedTurnCheckpoints(thread, [targetCheckpoint]).map(
+          ({ fallbackBeforeCheckpointRef: _fallback, ...turn }) => turn,
+        ),
       };
       const preview = yield* checkpointStore.previewScopedRestore(scopedInput).pipe(
         Effect.tap((plan) => validateRestoreConfirmation(plan, event.payload.workspaceRestore)),
@@ -1391,11 +1407,6 @@ const make = Effect.gen(function* () {
     });
 
   const processDomainEvent = Effect.fnUntraced(function* (event: OrchestrationEvent) {
-    if (event.type === "thread.turn-start-requested" || event.type === "thread.message-sent") {
-      yield* ensurePreTurnBaselineFromDomainTurnStart(event);
-      return;
-    }
-
     if (event.type === "thread.checkpoint-revert-requested") {
       yield* handleRevertRequested(event).pipe(
         Effect.catch((error) =>
@@ -1472,8 +1483,6 @@ const make = Effect.gen(function* () {
       yield* Effect.forkScoped(
         Stream.runForEach(orchestrationEngine.streamDomainEvents, (event) => {
           if (
-            event.type !== "thread.turn-start-requested" &&
-            event.type !== "thread.message-sent" &&
             event.type !== "thread.checkpoint-revert-requested" &&
             event.type !== "thread.turn-diff-completed"
           ) {

@@ -8,7 +8,19 @@ import {
 import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { makeProviderThreadProjection } from "./threadProjection";
-import { Duration, Effect, Queue, Cause, Stream, Option } from "effect";
+import {
+  Duration,
+  Effect,
+  FiberSet,
+  Queue,
+  Cause,
+  Semaphore,
+  Stream,
+  Option,
+  type Scope,
+} from "effect";
+import { makeKeyedLock } from "../../provider/core/keyedLock.ts";
+import { ProviderDeliveryLanes } from "./deliveryLanes";
 import { AgentGatewayOperationRepository } from "../../agentGateway/Services/AgentGatewayOperationRepository.ts";
 import { awaitInflightClaimSettlement, PROVIDER_COMMAND_CLAIM_LEASE_MS } from "./deliveryClaims";
 import { ProviderDeliveryGate } from "../Services/ProviderDeliveryGate.ts";
@@ -21,6 +33,7 @@ import {
   isReplaySafeClaimedProviderIntent,
   isProviderIntentEvent,
   isClaimedProviderIntent,
+  PROVIDER_INTENT_EVENT_TYPE_LIST,
 } from "../providerIntentClassification.ts";
 import {
   PROVIDER_DELIVERY_BLOCK_SUMMARY,
@@ -36,6 +49,10 @@ import {
 } from "./providerCallPolicy";
 import { makeProviderDomainEvents } from "./domainEvents";
 import { makeProviderQueuedTurns } from "./queuedTurns";
+
+// Independent native sessions call their providers concurrently up to this many at once.
+const PROVIDER_DELIVERY_CONCURRENCY = 8;
+const PROVIDER_DELIVERY_LANE_PAGE = 32;
 
 export function makeProviderIntentSource(input: {
   readonly projectionAccess: ProviderProjectionAccessShape;
@@ -104,30 +121,64 @@ export function makeProviderIntentSource(input: {
 
     const processOwner = `provider-command-reactor:${crypto.randomUUID()}`;
     let cursor = consumerState.value.lastAckedSequence;
-    const refreshCursor = Effect.gen(function* () {
-      const state = yield* deliveryRepository.getConsumerState(PROVIDER_COMMAND_REACTOR_CONSUMER);
-      if (Option.isSome(state)) cursor = state.value.lastAckedSequence;
-    });
+    const lanes = new ProviderDeliveryLanes(cursor);
+    // One owner lock per native session owner: its lane reader and reconciliation never interleave.
+    const ownerLocks = makeKeyedLock<string>();
+    const providerCallSlots = yield* Semaphore.make(PROVIDER_DELIVERY_CONCURRENCY);
+    const laneReaders = yield* FiberSet.make<void, never>();
+    const acknowledgementLock = yield* Semaphore.make(1);
 
-    const advanceCursor = Effect.fnUntraced(function* (event: OrchestrationEvent) {
-      const advanced = yield* deliveryRepository.advanceCursor({
-        consumerName: PROVIDER_COMMAND_REACTOR_CONSUMER,
-        eventSequence: event.sequence,
-        updatedAt: new Date().toISOString(),
-      });
-      if (advanced) cursor = event.sequence;
-      return advanced;
-    });
+    // The durable cursor only passes a fully settled prefix. Work a later lane already finished is
+    // replayed after a restart, where its journal state or quarantine prevents a second send.
+    const acknowledgeSettledPrefix = acknowledgementLock.withPermits(1)(
+      Effect.gen(function* () {
+        const through = lanes.settledPrefix();
+        if (through <= cursor) return;
+        const advanced = yield* deliveryRepository.advanceCursorThrough({
+          consumerName: PROVIDER_COMMAND_REACTOR_CONSUMER,
+          throughSequence: through,
+          updatedAt: new Date().toISOString(),
+        });
+        if (advanced) {
+          cursor = through;
+          return;
+        }
+        const state = yield* deliveryRepository.getConsumerState(PROVIDER_COMMAND_REACTOR_CONSUMER);
+        const durable = Option.isSome(state) ? state.value.lastAckedSequence : cursor;
+        if (durable < through) {
+          return yield* Effect.die(
+            new Error(`Provider command cursor could not advance through event ${through}`),
+          );
+        }
+        cursor = durable;
+      }),
+    );
 
-    const requireCursorAdvance = Effect.fnUntraced(function* (event: OrchestrationEvent) {
-      if (yield* advanceCursor(event)) return;
-      yield* refreshCursor;
-      if (cursor < event.sequence) {
-        return yield* Effect.die(
-          new Error(`Provider command cursor could not advance through event ${event.sequence}`),
+    // Children share their parent's native session. A fork without its own live session is created
+    // from its source's session, so it is ordered with the source until it runs on its own.
+    const resolveDeliveryOwner = Effect.fnUntraced(function* (threadId: string) {
+      const owner = yield* projectionAccess.resolveProviderSessionThread(
+        ThreadId.makeUnsafe(threadId),
+      );
+      if (!owner) return threadId;
+      const status = owner.session?.status;
+      if (owner.forkSourceThreadId && status !== "ready" && status !== "running") {
+        const source = yield* projectionAccess.resolveProviderSessionThread(
+          owner.forkSourceThreadId,
         );
+        return source?.id ?? owner.forkSourceThreadId;
       }
+      return owner.id;
     });
+    const deliveryOwnerFor = (threadId: string) =>
+      Effect.suspend(() => {
+        const lane = lanes.laneFor(threadId);
+        return lane === undefined ? resolveDeliveryOwner(threadId) : Effect.succeed(lane);
+      });
+    const withThreadOwnerLock = <A, E, R>(threadId: string, effect: Effect.Effect<A, E, R>) =>
+      deliveryOwnerFor(threadId).pipe(
+        Effect.flatMap((owner) => ownerLocks.withLock(owner, effect)),
+      );
 
     const isThreadQuarantined = Effect.fnUntraced(function* (threadId: string) {
       if (deliveryGate.isQuarantined(threadId)) return true;
@@ -219,7 +270,6 @@ export function makeProviderIntentSource(input: {
         threadId: input.event.payload.threadId,
         blockerDetail: input.detail,
       });
-      yield* requireCursorAdvance(input.event);
     });
 
     const skipQuarantinedSideEffect = Effect.fnUntraced(function* (event: ProviderIntentEvent) {
@@ -272,7 +322,6 @@ export function makeProviderIntentSource(input: {
           ),
         );
       }
-      yield* requireCursorAdvance(event);
       return true;
     });
 
@@ -285,13 +334,9 @@ export function makeProviderIntentSource(input: {
         eventSequence: event.sequence,
       });
       while (Option.isSome(existing)) {
-        if (existing.value.state === "succeeded") {
-          yield* requireCursorAdvance(event);
-          return;
-        }
+        if (existing.value.state === "succeeded") return;
         if (existing.value.state === "dead" || existing.value.state === "uncertain") {
           deliveryGate.quarantine(threadId);
-          yield* requireCursorAdvance(event);
           return;
         }
         if (existing.value.state === "inflight") {
@@ -438,7 +483,6 @@ export function makeProviderIntentSource(input: {
               );
             }
             deliveryGate.clearCompletionContext(event.sequence);
-            yield* refreshCursor;
             return;
           }
           case "safe_retry": {
@@ -483,7 +527,6 @@ export function makeProviderIntentSource(input: {
     ) {
       if (yield* skipQuarantinedSideEffect(event)) return;
       yield* processDomainEventSafely(event);
-      yield* requireCursorAdvance(event);
     });
 
     const processClaimedProviderIntentWithRecovery = Effect.fnUntraced(function* (
@@ -535,10 +578,7 @@ export function makeProviderIntentSource(input: {
 
     const processOrderedEvent = Effect.fnUntraced(function* (event: OrchestrationEvent) {
       if (event.sequence <= cursor) return;
-      if (!isProviderIntentEvent(event)) {
-        yield* requireCursorAdvance(event);
-        return;
-      }
+      if (!isProviderIntentEvent(event)) return;
       if (event.type === "thread.legacy-cache-abandoned") {
         yield* releaseLegacyCacheHold(event);
         return;
@@ -570,7 +610,8 @@ export function makeProviderIntentSource(input: {
       readonly threadId: string;
       readonly afterSequence: number;
     }) {
-      const replayThrough = cursor;
+      // Skips beyond the acknowledged prefix were already made by this thread's lane.
+      const replayThrough = lanes.processedThrough(input.threadId);
       if (replayThrough <= input.afterSequence) return;
       yield* Stream.runForEach(
         orchestrationEngine.readEventsThrough(input.afterSequence, replayThrough),
@@ -618,7 +659,8 @@ export function makeProviderIntentSource(input: {
 
     yield* deliveryGate.setReconciler((input) =>
       Effect.scoped(
-        deliveryGate.withSourceLock(
+        withThreadOwnerLock(
+          input.threadId,
           Effect.gen(function* () {
             const reconciledAt = new Date().toISOString();
             const delivery = yield* deliveryRepository.getDelivery({
@@ -846,19 +888,93 @@ export function makeProviderIntentSource(input: {
     const retryableDeliveries = yield* deliveryRepository.listRetryableDeliveries(
       PROVIDER_COMMAND_REACTOR_CONSUMER,
     );
-    yield* deliveryGate.withSourceLock(
-      Effect.forEach(retryableDeliveries, resumeRetryableDelivery, { discard: true }),
+    yield* Effect.forEach(
+      retryableDeliveries,
+      (delivery) => withThreadOwnerLock(delivery.threadId, resumeRetryableDelivery(delivery)),
+      { discard: true },
     );
 
-    const processOrderedEventSerially = (event: OrchestrationEvent) =>
-      deliveryGate.withSourceLock(processOrderedEvent(event));
+    // Reads one owner's intents back from the journal in sequence order. Lanes for different owners
+    // run concurrently; a call on one owner never delays another beyond the shared call slots.
+    const runLane = (laneKey: string): Effect.Effect<void, never, Scope.Scope> =>
+      Effect.gen(function* () {
+        while (true) {
+          const ranges = lanes.unsettledRanges(laneKey);
+          if (ranges.length === 0) {
+            if (lanes.releaseLaneIfIdle(laneKey)) return;
+            continue;
+          }
+          const pages = yield* Effect.forEach(ranges, (range) =>
+            orchestrationEngine
+              .readThreadEventsThrough(
+                range.threadId,
+                range.after,
+                range.through,
+                PROVIDER_INTENT_EVENT_TYPE_LIST,
+                PROVIDER_DELIVERY_LANE_PAGE,
+              )
+              .pipe(
+                Stream.runCollect,
+                Effect.map((events) => ({ range, events: Array.from(events) })),
+              ),
+          );
+          // Merge threads sharing this owner without passing a page that may continue.
+          const bound = Math.min(
+            ...pages
+              .filter((page) => page.events.length >= PROVIDER_DELIVERY_LANE_PAGE)
+              .map((page) => page.events.at(-1)!.sequence),
+          );
+          const batch = pages
+            .flatMap((page) => page.events)
+            .filter((event) => event.sequence <= bound)
+            .toSorted((left, right) => left.sequence - right.sequence);
+          for (const event of batch) {
+            yield* ownerLocks.withLock(
+              laneKey,
+              providerCallSlots.withPermits(1)(processOrderedEvent(event)),
+            );
+            lanes.settle(event.aggregateId, event.sequence);
+            yield* acknowledgeSettledPrefix;
+          }
+          for (const page of pages) {
+            // A short page read the whole admitted range, including rows that no longer exist.
+            if (page.events.length < PROVIDER_DELIVERY_LANE_PAGE) {
+              lanes.settle(page.range.threadId, page.range.through);
+            }
+          }
+          yield* acknowledgeSettledPrefix;
+        }
+      }).pipe(Effect.orDie);
+    // A failed lane stops the whole source, exactly like a failed serial delivery did.
+    const laneFailure = FiberSet.join(laneReaders).pipe(Effect.andThen(Effect.never));
 
+    const admitEvent = Effect.fnUntraced(function* (event: OrchestrationEvent) {
+      if (event.sequence <= lanes.admittedThrough) return;
+      if (!isProviderIntentEvent(event)) {
+        lanes.admitSettled(event.sequence);
+      } else {
+        const laneKey = yield* deliveryOwnerFor(event.payload.threadId);
+        if (lanes.admitIntent(event.aggregateId, laneKey, event.sequence)) {
+          yield* FiberSet.run(laneReaders, runLane(laneKey));
+        }
+      }
+      yield* acknowledgeSettledPrefix;
+    });
+
+    const awaitAcknowledged = (target: number): Effect.Effect<void> =>
+      Effect.suspend(() =>
+        cursor >= target
+          ? Effect.void
+          : Effect.sleep(Duration.millis(5)).pipe(Effect.andThen(awaitAcknowledged(target))),
+      );
     const replayThrough = yield* orchestrationEngine.getEventHighWaterSequence;
     yield* Stream.runForEach(
       orchestrationEngine.readEventsThrough(cursor, replayThrough),
-      processOrderedEventSerially,
+      admitEvent,
     );
-    yield* Stream.runForEach(liveEvents, processOrderedEventSerially).pipe(
+    // Startup recovery that follows expects the replayed backlog to be settled, as before.
+    yield* Effect.raceFirst(awaitAcknowledged(replayThrough), laneFailure);
+    yield* Effect.raceFirst(Stream.runForEach(liveEvents, admitEvent), laneFailure).pipe(
       Effect.catchCause((cause) =>
         Effect.logError("provider command durable source stopped", {
           cause: Cause.pretty(cause),

@@ -156,33 +156,21 @@ const makeRepository = Effect.gen(function* () {
       Effect.mapError(toPersistenceSqlError("OrchestrationEventDelivery.requeueExpired")),
     );
 
-  const advanceCursor: OrchestrationEventDeliveryRepositoryShape["advanceCursor"] = (input) =>
-    sql
-      .withTransaction(
-        Effect.gen(function* () {
-          const nextRows = yield* sql<{ readonly nextSequence: number | null }>`
-          SELECT MIN(sequence) AS "nextSequence"
-          FROM orchestration_events
-          WHERE sequence > (
-            SELECT last_acked_sequence
-            FROM orchestration_consumer_state
-            WHERE consumer_name = ${input.consumerName}
-          )
-        `;
-          if (nextRows[0]?.nextSequence !== input.eventSequence) {
-            return false;
-          }
-          const advanced = yield* sql<{ readonly consumerName: string }>`
-          UPDATE orchestration_consumer_state
-          SET last_acked_sequence = ${input.eventSequence},
-              updated_at = ${input.updatedAt}
-          WHERE consumer_name = ${input.consumerName}
-          RETURNING consumer_name AS "consumerName"
-        `;
-          return advanced.length === 1;
-        }),
-      )
-      .pipe(Effect.mapError(toPersistenceSqlError("OrchestrationEventDelivery.advanceCursor")));
+  const advanceCursorThrough: OrchestrationEventDeliveryRepositoryShape["advanceCursorThrough"] = (
+    input,
+  ) =>
+    sql<{ readonly consumerName: string }>`
+      UPDATE orchestration_consumer_state
+      SET last_acked_sequence = ${input.throughSequence},
+          updated_at = ${input.updatedAt}
+      WHERE consumer_name = ${input.consumerName}
+        AND last_acked_sequence < ${input.throughSequence}
+        AND ${input.throughSequence} <= (SELECT COALESCE(MAX(sequence), 0) FROM orchestration_events)
+      RETURNING consumer_name AS "consumerName"
+    `.pipe(
+      Effect.map((rows) => rows.length === 1),
+      Effect.mapError(toPersistenceSqlError("OrchestrationEventDelivery.advanceCursorThrough")),
+    );
 
   const complete: OrchestrationEventDeliveryRepositoryShape["complete"] = (input) =>
     sql
@@ -384,7 +372,7 @@ const makeRepository = Effect.gen(function* () {
     requeueExpired,
     markTerminalFailure,
     complete,
-    advanceCursor,
+    advanceCursorThrough,
     firstBlockingDelivery,
     firstBlockingDeliveryForThread,
     listBlockingDeliveries,

@@ -27,7 +27,7 @@ export interface OrchestrationCommandQueues<A> {
 // Membership means "this command settles work that is already in flight", so admitting it can only
 // bring the engine closer to idle. A command that starts new work must never be listed here: during
 // quiesce it would spawn a provider turn the shutdown is about to fence, orphaning it.
-function usesReservedCommandAdmission(type: OrchestrationCommand["type"]): boolean {
+export function usesReservedCommandAdmission(type: OrchestrationCommand["type"]): boolean {
   switch (type) {
     case "thread.turn.interrupt":
 
@@ -75,6 +75,8 @@ export function tryAdmitOrchestrationCommand<A>(input: {
   readonly envelope: A;
   readonly commandType: OrchestrationCommand["type"];
   readonly settleOnly?: boolean;
+  /** Admitted commands not yet finished, including those already preparing or committing. */
+  readonly outstanding: number;
   readonly policy?: OrchestrationCommandAdmissionPolicy;
 }): OrchestrationCommandAdmissionDecision {
   const policy = input.policy ?? {
@@ -105,11 +107,7 @@ export function tryAdmitOrchestrationCommand<A>(input: {
 
   const admissionLimit =
     lane === "control" ? policy.capacity : policy.capacity - policy.reservedCapacity;
-  const queued =
-    Queue.sizeUnsafe(input.queues.control) +
-    Queue.sizeUnsafe(input.queues.user) +
-    Queue.sizeUnsafe(input.queues.normal);
-  if (queued >= admissionLimit) {
+  if (input.outstanding >= admissionLimit) {
     return { accepted: false, reason: "overloaded" };
   }
   const target = input.queues[lane];

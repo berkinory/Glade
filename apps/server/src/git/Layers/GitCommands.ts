@@ -16,7 +16,7 @@ import {
 import { ChildProcessSpawner } from "effect/unstable/process";
 import { makeEffectProcessCommand } from "../../platform/effectProcessRuntime.ts";
 import { decodeJsonResult } from "../../platform/schemaJson.ts";
-import { GitProcessQueue } from "../gitProcessQueue";
+import { GitProcessQueue, type GitProcessClass } from "../gitProcessQueue";
 import { makeKeyedSingleFlightCache } from "../../pullRequests/KeyedSingleFlightCache";
 import { GitCommandError } from "../Errors.ts";
 import type {
@@ -46,7 +46,16 @@ const COALESCED_READ_COMMANDS = new Set([
 
 const NETWORK_COMMANDS = new Set(["fetch", "pull", "push", "ls-remote", "clone"]);
 
-const NETWORK_LANE_CAPACITY = 3;
+// Six local processes keep 24 simultaneous reads at a measured peak of six (performance
+// verification workload 3). One slot stays free for checkpoints and one for interactive reads, so
+// watcher and sidebar refreshes can never hold the whole lane. Remotes wait for seconds, so the
+// network lane is separate and keeps one slot for user-started pushes, pulls and fetches.
+// A queue holds at most a few seconds of work at that width; beyond it callers fail fast instead
+// of waiting behind an unbounded backlog.
+const LANE_OPTIONS = {
+  local: { limit: 6, reserved: { checkpoint: 1, foreground: 1 }, maxQueuedPerClass: 256 },
+  network: { limit: 3, reserved: { foreground: 1 }, maxQueuedPerClass: 64 },
+} as const;
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
@@ -433,9 +442,16 @@ const makeGitCommands = Effect.gen(function* () {
   const path = yield* Path.Path;
   const commandSpawner = yield* ChildProcessSpawner.ChildProcessSpawner;
   const queues: Record<GitProcessLane, GitProcessQueue> = {
-    local: new GitProcessQueue(6),
-    network: new GitProcessQueue(NETWORK_LANE_CAPACITY),
+    local: new GitProcessQueue(LANE_OPTIONS.local),
+    network: new GitProcessQueue(LANE_OPTIONS.network),
   };
+  const overloaded = (input: { readonly operation: string; readonly cwd: string }) => () =>
+    new GitCommandError({
+      operation: input.operation,
+      command: "git",
+      cwd: input.cwd,
+      detail: "Git is busy with other work. Try again when pending Git commands finish.",
+    });
   const reads = yield* makeKeyedSingleFlightCache<ExecuteGitResult, GitCommandError>({
     maxEntries: 512,
     ttlMs: 0,
@@ -444,7 +460,12 @@ const makeGitCommands = Effect.gen(function* () {
     effect: Effect.Effect<A, E, R>,
     priority: "foreground" | "background" = "foreground",
     lane: GitProcessLane = "local",
-  ) => queues[lane].run(effect, priority);
+  ) =>
+    queues[lane].run(
+      effect,
+      priority,
+      overloaded({ operation: "GitCommands.withPermit", cwd: "" }),
+    );
   const executeProcess: GitCoreShape["execute"] = Effect.fnUntraced(function* (input) {
     const commandInput = {
       ...input,
@@ -561,10 +582,13 @@ const makeGitCommands = Effect.gen(function* () {
 
   const execute: GitCoreShape["execute"] = (input) => {
     const subcommand = gitSubcommand(input.args) ?? "";
-    const command = withPermit(
+    const processClass: GitProcessClass = input.operation.startsWith("CheckpointStore.")
+      ? "checkpoint"
+      : (input.priority ?? "foreground");
+    const command = queues[NETWORK_COMMANDS.has(subcommand) ? "network" : "local"].run(
       executeProcess(input),
-      input.priority,
-      NETWORK_COMMANDS.has(subcommand) ? "network" : "local",
+      processClass,
+      overloaded(input),
     );
     if (
       !COALESCED_READ_COMMANDS.has(subcommand) ||

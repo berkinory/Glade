@@ -29,6 +29,13 @@ export function hasDurableClaudeSessionId(message: SDKMessage): boolean {
   );
 }
 
+// Claude persists a conversation once it records a prompt exchange; launch and hook system
+// messages carry the session id before anything resumable exists on disk.
+export function isClaudeConversationOutput(message: SDKMessage): boolean {
+  if (message.type === "assistant" || message.type === "user") return true;
+  return message.type === "result" && !message.is_error;
+}
+
 export function readClaudeResumeState(resumeCursor: unknown): ClaudeResumeState | undefined {
   if (!resumeCursor || typeof resumeCursor !== "object") {
     return undefined;

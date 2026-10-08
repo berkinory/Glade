@@ -19,7 +19,10 @@ import {
   asRuntimeItemId,
 } from "../claude/adapter/messageContent";
 import { ProviderAdapterValidationError } from "../core/Errors.ts";
-import { hasDurableClaudeSessionId } from "../claude/adapter/sessionResume";
+import {
+  hasDurableClaudeSessionId,
+  isClaudeConversationOutput,
+} from "../claude/adapter/sessionResume";
 
 export function makeClaudeRuntimeEventsLive(options?: ClaudeAdapterLiveOptions) {
   return Layer.effect(
@@ -164,7 +167,8 @@ export function makeClaudeRuntimeEventsLive(options?: ClaudeAdapterLiveOptions) 
             return;
           }
           const nextThreadId = message.session_id;
-          context.resumeSessionId = message.session_id;
+          // A generated session id is only a launch option until Claude records conversation output.
+          if (isClaudeConversationOutput(message)) context.resumeSessionId = nextThreadId;
           yield* updateResumeCursor(context);
 
           if (context.lastThreadStartedId !== nextThreadId) {

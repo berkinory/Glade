@@ -52,6 +52,10 @@ const PROVIDER_INTENT_EVENT_TYPES = new Set<ProviderIntentEvent["type"]>([
   "thread.session-stop-requested",
 ]);
 
+export const PROVIDER_INTENT_EVENT_TYPE_LIST: ReadonlyArray<ProviderIntentEvent["type"]> = [
+  ...PROVIDER_INTENT_EVENT_TYPES,
+];
+
 export const isProviderIntentEventType = (
   eventType: string,
 ): eventType is ProviderIntentEvent["type"] =>

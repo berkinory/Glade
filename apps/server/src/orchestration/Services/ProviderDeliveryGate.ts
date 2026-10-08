@@ -12,7 +12,6 @@ export interface ProviderDeliveryGateShape {
   readonly setReconciler: (
     reconciler: ProviderCommandReactorShape["reconcileDelivery"],
   ) => Effect.Effect<void>;
-  readonly withSourceLock: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>;
 }
 
 export class ProviderDeliveryGate extends ServiceMap.Service<

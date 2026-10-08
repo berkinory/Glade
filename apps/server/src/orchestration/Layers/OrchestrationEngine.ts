@@ -6,7 +6,7 @@ import { VISUAL_REPLY_ACTIVITY_KIND } from "@glade/contracts/orchestration/visua
 import type { ChatAttachment } from "@glade/contracts/orchestration/threadEntities";
 import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import type { OrchestrationReadModel } from "@glade/contracts/orchestration/snapshots";
-import type { ProjectId, SpaceId, ThreadId } from "@glade/contracts/core/baseSchemas";
+import type { MessageId, ProjectId, SpaceId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import { ORCHESTRATION_WS_METHODS } from "@glade/contracts/orchestration/rpc";
 import {
@@ -14,6 +14,7 @@ import {
   Deferred,
   Effect,
   Fiber,
+  FiberSet,
   Layer,
   Option,
   PubSub,
@@ -68,7 +69,9 @@ import {
   takeNextOrchestrationCommand,
   tryAdmitOrchestrationCommand,
   isQuiescingCommandAdmissible,
+  usesReservedCommandAdmission,
 } from "../orchestrationAdmission.ts";
+import { AggregateCommandOrder } from "../aggregateCommandOrder.ts";
 import { decideOrchestrationCommand } from "../decider.ts";
 import { PROJECT_METADATA_SNAPSHOT_PROJECTORS } from "../projectMetadataProjection.ts";
 import { createEmptyReadModel, projectEvent } from "../projector.ts";
@@ -89,6 +92,27 @@ const DEFERRED_PROJECTION_RETRY_DELAYS_MS = [100, 500, 2_000, 10_000, 30_000] as
 
 const PROJECTION_REPAIR_COOLDOWN_MS = 120_000;
 const REQUIRED_REPAIR_PROJECTORS = Object.values(ORCHESTRATION_PROJECTOR_NAMES);
+
+// Different aggregates prepare concurrently. SQLite still serializes their reads, so a slow
+// preparation only holds the connection per query instead of holding every other chat's commands.
+const ORCHESTRATION_PREPARATION_CONCURRENCY = 8;
+
+type DeciderOverlay = (model: OrchestrationReadModel) => OrchestrationReadModel;
+const keepReadModel: DeciderOverlay = (model) => model;
+interface PreparationStamp {
+  readonly generation: number;
+  readonly epoch: number;
+}
+type PreparedCommand =
+  | { readonly kind: "settled" }
+  | { readonly kind: "settle-only"; readonly preparedAt: PreparationStamp }
+  | {
+      readonly kind: "decide";
+      readonly preparedAt: PreparationStamp;
+      readonly command: OrchestrationCommand;
+      readonly overlay: DeciderOverlay;
+    };
+const SETTLED_COMMAND: PreparedCommand = { kind: "settled" };
 
 type CommandExecutionState = "queued" | "in-flight" | "abandoned";
 type DispatchTimeoutDecision = { kind: "abandon" } | { kind: "wait" };
@@ -147,6 +171,16 @@ function commandToAggregateRef(command: OrchestrationCommand): {
   }
 }
 
+const aggregateKey = (ref: { readonly aggregateKind: string; readonly aggregateId: string }) =>
+  `${ref.aggregateKind}:${ref.aggregateId}`;
+
+function commandDependencyKeys(command: OrchestrationCommand): ReadonlyArray<string> {
+  const own = aggregateKey(commandToAggregateRef(command));
+  return command.type === "thread.fork.create"
+    ? [own, aggregateKey({ aggregateKind: "thread", aggregateId: command.sourceThreadId })]
+    : [own];
+}
+
 function isShellMetadataEvent(event: OrchestrationEvent): event is ShellMetadataOrchestrationEvent {
   return (
     event.type === "space.created" ||
@@ -186,6 +220,21 @@ const makeOrchestrationEngine = Effect.gen(function* () {
   );
   const eventPublicationLock = yield* Semaphore.make(1);
   let lastPublishedSequence = 0;
+  // Commit history read by preparation revalidation. Owned by the commit lock holder.
+  let commitGeneration = 0;
+  let commandReadModelEpoch = 0;
+  const lastCommitGenerationByAggregate = new Map<string, number>();
+  const recordCommittedAggregates = (events: ReadonlyArray<OrchestrationEvent>) => {
+    if (events.length === 0) return;
+    commitGeneration += 1;
+    for (const event of events) {
+      lastCommitGenerationByAggregate.set(aggregateKey(event), commitGeneration);
+    }
+  };
+  const replaceCommandReadModel = (next: OrchestrationReadModel) => {
+    commandReadModel = next;
+    commandReadModelEpoch += 1;
+  };
   const initiallyIdle = yield* Deferred.make<void>();
   yield* Deferred.succeed(initiallyIdle, undefined).pipe(Effect.orDie);
   const engineAdmissionState = yield* Ref.make<EngineAdmissionState>({
@@ -500,7 +549,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
 
   const refreshCommandReadModelFromProjectionState = Effect.gen(function* () {
     const nextCommandReadModel = yield* projectionSnapshotQuery.getCommandReadModel();
-    commandReadModel = nextCommandReadModel;
+    replaceCommandReadModel(nextCommandReadModel);
     return nextCommandReadModel;
   }).pipe(
     Effect.catchCause((cause) =>
@@ -537,21 +586,21 @@ const makeOrchestrationEngine = Effect.gen(function* () {
     };
   };
 
-  const loadThreadDetailForDecider = (
+  const loadThreadOverlay = (
     command: OrchestrationCommand,
-    model: OrchestrationReadModel,
     threadId: ThreadId,
     fullHistory = false,
-  ): Effect.Effect<OrchestrationReadModel, OrchestrationDispatchError> =>
+  ): Effect.Effect<DeciderOverlay, OrchestrationDispatchError> =>
     (fullHistory
       ? projectionSnapshotQuery.getThreadDetailForExportById(threadId)
       : projectionSnapshotQuery.getThreadDetailById(threadId)
     ).pipe(
-      Effect.map((threadOption) =>
-        Option.match(threadOption, {
-          onNone: () => model,
-          onSome: (thread) => overlayThread(model, thread),
-        }),
+      Effect.map(
+        (threadOption): DeciderOverlay =>
+          Option.match(threadOption, {
+            onNone: () => keepReadModel,
+            onSome: (thread) => (model) => overlayThread(model, thread),
+          }),
       ),
       Effect.mapError(
         (error) =>
@@ -563,89 +612,148 @@ const makeOrchestrationEngine = Effect.gen(function* () {
       ),
     );
 
-  const buildDeciderReadModel = (
+  const loadStoredMessage = (
     command: OrchestrationCommand,
-  ): Effect.Effect<OrchestrationReadModel, OrchestrationDispatchError> => {
+    threadId: ThreadId,
+    messageId: MessageId,
+    failure: string,
+  ) =>
+    messageRepository.getByThreadAndMessageId({ threadId, messageId }).pipe(
+      Effect.mapError(
+        (error) =>
+          new OrchestrationCommandInternalError({
+            commandId: command.commandId,
+            commandType: command.type,
+            detail: `${failure}: ${error.message}`,
+          }),
+      ),
+    );
+
+  // Loads what the decider needs beyond the in-memory read model. The result is applied to the read
+  // model current at commit time, never to the one seen while loading.
+  const loadDeciderOverlay = (
+    command: OrchestrationCommand,
+  ): Effect.Effect<DeciderOverlay, OrchestrationDispatchError> => {
     switch (command.type) {
       case "thread.meta.update":
         return command.modelSelection !== undefined &&
           command.expectedHandoffOperationId === undefined
-          ? loadThreadDetailForDecider(command, commandReadModel, command.threadId)
-          : Effect.succeed(commandReadModel);
+          ? loadThreadOverlay(command, command.threadId)
+          : Effect.succeed(keepReadModel);
       case "thread.handoff.start":
-        return loadThreadDetailForDecider(command, commandReadModel, command.threadId, true);
+        return loadThreadOverlay(command, command.threadId, true);
       case "thread.fork.create":
-        return loadThreadDetailForDecider(command, commandReadModel, command.sourceThreadId);
-      case "thread.turn.start":
-        if (command.asyncUserInputResponse) {
-          return messageRepository
-            .getByThreadAndMessageId({
-              threadId: command.threadId,
-              messageId: command.asyncUserInputResponse.messageId,
-            })
-            .pipe(
-              Effect.mapError(
-                (error) =>
-                  new OrchestrationCommandInternalError({
-                    commandId: command.commandId,
-                    commandType: command.type,
-                    detail: `Failed to load the asynchronous question: ${error.message}`,
-                  }),
-              ),
-              Effect.map((message) => {
-                const thread = commandReadModel.threads.find(
-                  (entry) => entry.id === command.threadId,
-                );
-                if (!thread || Option.isNone(message)) return commandReadModel;
-                return overlayThread(commandReadModel, {
+        return loadThreadOverlay(command, command.sourceThreadId);
+      case "thread.turn.start": {
+        const response = command.asyncUserInputResponse;
+        if (!response) return Effect.succeed(keepReadModel);
+        return loadStoredMessage(
+          command,
+          command.threadId,
+          response.messageId,
+          "Failed to load the asynchronous question",
+        ).pipe(
+          Effect.map(
+            (message): DeciderOverlay =>
+              (model) => {
+                const thread = model.threads.find((entry) => entry.id === command.threadId);
+                if (!thread || Option.isNone(message)) return model;
+                return overlayThread(model, {
                   ...thread,
                   messages: [
                     ...thread.messages.filter((entry) => entry.id !== message.value.messageId),
                     orchestrationMessageFromStoredMessage(message.value),
                   ],
                 });
-              }),
-            );
-        }
-        return Effect.succeed(commandReadModel);
+              },
+          ),
+        );
+      }
       case "thread.conversation.rollback":
       case "thread.message.edit-and-resend":
       case "thread.approval.respond":
       case "thread.user-input.respond":
-        return loadThreadDetailForDecider(command, commandReadModel, command.threadId);
+        return loadThreadOverlay(command, command.threadId);
       case "thread.message.assistant.complete":
-        return messageRepository
-          .getByThreadAndMessageId({ threadId: command.threadId, messageId: command.messageId })
-          .pipe(
-            Effect.mapError(
-              (error) =>
-                new OrchestrationCommandInternalError({
-                  commandId: command.commandId,
-                  commandType: command.type,
-                  detail: `Failed to load the complete assistant message: ${error.message}`,
-                }),
-            ),
-            Effect.flatMap((message) => {
-              const model = commandReadModel.threads.some((entry) => entry.id === command.threadId)
-                ? Effect.succeed(commandReadModel)
-                : loadThreadDetailForDecider(command, commandReadModel, command.threadId);
-              return model.pipe(
-                Effect.map((readModel) => {
-                  const thread = readModel.threads.find((entry) => entry.id === command.threadId);
-                  // A missing projection row must not discard text still in cache. SQL failures stay errors; a
-                  // present row remains authoritative.
-                  if (!thread || Option.isNone(message)) return readModel;
-                  return overlayThread(readModel, {
-                    ...thread,
-                    messages: [orchestrationMessageFromStoredMessage(message.value)],
-                  });
-                }),
-              );
-            }),
-          );
+        return Effect.all([
+          loadStoredMessage(
+            command,
+            command.threadId,
+            command.messageId,
+            "Failed to load the complete assistant message",
+          ),
+          commandReadModel.threads.some((entry) => entry.id === command.threadId)
+            ? Effect.succeed(keepReadModel)
+            : loadThreadOverlay(command, command.threadId),
+        ]).pipe(
+          Effect.map(
+            ([message, threadOverlay]): DeciderOverlay =>
+              (model) => {
+                const readModel = model.threads.some((entry) => entry.id === command.threadId)
+                  ? model
+                  : threadOverlay(model);
+                const thread = readModel.threads.find((entry) => entry.id === command.threadId);
+                // A missing projection row must not discard text still in cache. SQL failures stay errors; a
+                // present row remains authoritative.
+                if (!thread || Option.isNone(message)) return readModel;
+                return overlayThread(readModel, {
+                  ...thread,
+                  messages: [orchestrationMessageFromStoredMessage(message.value)],
+                });
+              },
+          ),
+        );
       default:
-        return Effect.succeed(commandReadModel);
+        return Effect.succeed(keepReadModel);
     }
+  };
+
+  const resolveTurnStartAttachment = (
+    envelope: CommandEnvelope,
+    startCommand: Extract<OrchestrationCommand, { type: "thread.turn.start" }>,
+    attachment: ChatAttachment,
+  ): Effect.Effect<ChatAttachment, OrchestrationDispatchError> => {
+    if (attachment.type === "assistant-selection") {
+      return Effect.succeed<ChatAttachment>(attachment);
+    }
+    return managedAttachments
+      .findServerOwned({
+        attachmentId: attachment.id,
+        ownerThreadId: startCommand.threadId,
+        ownerKind: envelope.attachmentPrincipal.ownerKind,
+        ownerId: envelope.attachmentPrincipal.ownerId,
+        now: new Date().toISOString(),
+      })
+      .pipe(
+        Effect.flatMap((found) =>
+          Option.match(found, {
+            onNone: () =>
+              Effect.fail(
+                new OrchestrationCommandInvariantError({
+                  commandType: startCommand.type,
+                  detail: `Managed attachment ${attachment.id} is unavailable, expired, or owned by another session/thread.`,
+                }),
+              ),
+            onSome: (blob) => {
+              if (blob.kind !== "image" && blob.kind !== "file") {
+                return Effect.fail(
+                  new OrchestrationCommandInvariantError({
+                    commandType: startCommand.type,
+                    detail: `Managed attachment ${attachment.id} has unsupported kind '${blob.kind}'.`,
+                  }),
+                );
+              }
+              return Effect.succeed<ChatAttachment>({
+                type: blob.kind,
+                id: blob.attachmentId,
+                name: blob.originalName,
+                mimeType: blob.mimeType,
+                sizeBytes: blob.sizeBytes!,
+              });
+            },
+          }),
+        ),
+      );
   };
 
   const resetDerivedProjectionState = sql.withTransaction(
@@ -731,11 +839,9 @@ const makeOrchestrationEngine = Effect.gen(function* () {
       ),
     );
 
-  const processEnvelope = (envelope: CommandEnvelope): Effect.Effect<void, never> => {
-    const dispatchStartSequence = commandReadModel.snapshotSequence;
-    const remainingBudgetMs = Math.max(0, envelope.deadlineAtMs - Date.now());
-    const commandFingerprint = fingerprintOrchestrationCommand(envelope.command);
-    const reconcileCommandReadModelAfterDispatchFailure = Effect.gen(function* () {
+  // Runs under the commit lock, so no other command can have appended since `dispatchStartSequence`.
+  const reconcileCommandReadModelAfterDispatchFailure = (dispatchStartSequence: number) =>
+    Effect.gen(function* () {
       const persistedEvents = yield* Stream.runCollect(
         eventStore.readFromSequence(dispatchStartSequence),
       ).pipe(Effect.map((chunk): OrchestrationEvent[] => Array.from(chunk)));
@@ -747,28 +853,22 @@ const makeOrchestrationEngine = Effect.gen(function* () {
       for (const persistedEvent of persistedEvents) {
         nextCommandReadModel = yield* projectEvent(nextCommandReadModel, persistedEvent);
       }
-      commandReadModel = nextCommandReadModel;
+      replaceCommandReadModel(nextCommandReadModel);
+      recordCommittedAggregates(persistedEvents);
 
       for (const persistedEvent of persistedEvents) {
         yield* publishCommittedEvent(persistedEvent);
       }
     });
 
-    const runCommand = Effect.gen(function* () {
-      const shouldSkip = yield* Ref.modify(envelope.executionState, (state) => {
-        if (state === "abandoned") {
-          return [true, state] as const;
-        }
-        return [false, "in-flight"] as const;
-      });
-      if (shouldSkip) {
-        return;
-      }
-
-      if (remainingBudgetMs === 0) {
-        return yield* makeCommandTimeoutError(envelope.command);
-      }
-
+  // Preparation only reads. It records what it read so the commit can tell whether another command
+  // changed those aggregates, or the whole read model was replaced, before this one committed.
+  const prepareCommand = (
+    envelope: CommandEnvelope,
+    commandFingerprint: OrchestrationCommandFingerprint,
+  ): Effect.Effect<PreparedCommand, OrchestrationDispatchError> =>
+    Effect.gen(function* () {
+      const preparedAt = { generation: commitGeneration, epoch: commandReadModelEpoch };
       const existingReceipt = yield* commandReceiptRepository.getByCommandId({
         commandId: envelope.command.commandId,
       });
@@ -786,7 +886,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
         );
         if (identityResult._tag === "Failure") {
           yield* Deferred.fail(envelope.result, identityResult.failure);
-          return;
+          return SETTLED_COMMAND;
         }
         if (existingReceipt.value.status === "accepted") {
           if (!envelope.settleOnly)
@@ -794,7 +894,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
           yield* Deferred.succeed(envelope.result, {
             sequence: existingReceipt.value.resultSequence,
           });
-          return;
+          return SETTLED_COMMAND;
         }
         yield* Deferred.fail(
           envelope.result,
@@ -803,107 +903,16 @@ const makeOrchestrationEngine = Effect.gen(function* () {
             detail: existingReceipt.value.error ?? "Previously rejected.",
           }),
         );
-        return;
+        return SETTLED_COMMAND;
       }
-
-      if (envelope.settleOnly) {
-        if (envelope.command.type !== "thread.turn.start")
-          return yield* makeCommandInternalError(
-            envelope.command,
-            "Only turn starts can be settled.",
-          );
-        const command = envelope.command;
-        // A rejection must not let a different principal fence someone else's staged uploads.
-        for (const attachment of command.message.attachments) {
-          if (attachment.type === "assistant-selection") continue;
-          const owned = yield* managedAttachments.findServerOwned({
-            attachmentId: attachment.id,
-            ownerThreadId: command.threadId,
-            ownerKind: envelope.attachmentPrincipal.ownerKind,
-            ownerId: envelope.attachmentPrincipal.ownerId,
-            now: new Date().toISOString(),
-          });
-          if (Option.isNone(owned))
-            return yield* new OrchestrationCommandIdentityCollisionError({
-              commandId: command.commandId,
-              detail: "Cannot settle a command with unavailable or unowned uploads.",
-            });
-        }
-        const detail = "The interrupted message was not accepted. You can send it again.";
-        // The same worker serializes dispatch and settlement. This tombstone also
-        // fences original requests still preparing outside the engine.
-        const inserted = yield* commandReceiptRepository.insert({
-          commandId: command.commandId,
-          ...commandToAggregateRef(command),
-          acceptedAt: new Date().toISOString(),
-          resultSequence: commandReadModel.snapshotSequence,
-          status: "rejected",
-          error: detail,
-          fingerprintVersion: commandFingerprint.version,
-          commandFingerprint: commandFingerprint.value,
-          ownerKind: envelope.attachmentPrincipal.ownerKind,
-          ownerId: envelope.attachmentPrincipal.ownerId,
-        });
-        if (!inserted)
-          return yield* makeCommandInternalError(command, "Failed to settle message delivery.");
-        yield* Deferred.fail(
-          envelope.result,
-          new OrchestrationCommandPreviouslyRejectedError({
-            commandId: command.commandId,
-            detail,
-          }),
-        );
-        return;
-      }
+      if (envelope.settleOnly) return { kind: "settle-only", preparedAt } as const;
 
       let command: OrchestrationCommand = envelope.command;
       if (command.type === "thread.turn.start") {
         const startCommand = command;
         const attachments = yield* Effect.forEach(
           startCommand.message.attachments,
-          (attachment) => {
-            if (attachment.type === "assistant-selection") {
-              return Effect.succeed<ChatAttachment>(attachment);
-            }
-            return managedAttachments
-              .findServerOwned({
-                attachmentId: attachment.id,
-                ownerThreadId: startCommand.threadId,
-                ownerKind: envelope.attachmentPrincipal.ownerKind,
-                ownerId: envelope.attachmentPrincipal.ownerId,
-                now: new Date().toISOString(),
-              })
-              .pipe(
-                Effect.flatMap((found) =>
-                  Option.match(found, {
-                    onNone: () =>
-                      Effect.fail(
-                        new OrchestrationCommandInvariantError({
-                          commandType: startCommand.type,
-                          detail: `Managed attachment ${attachment.id} is unavailable, expired, or owned by another session/thread.`,
-                        }),
-                      ),
-                    onSome: (blob) => {
-                      if (blob.kind !== "image" && blob.kind !== "file") {
-                        return Effect.fail(
-                          new OrchestrationCommandInvariantError({
-                            commandType: startCommand.type,
-                            detail: `Managed attachment ${attachment.id} has unsupported kind '${blob.kind}'.`,
-                          }),
-                        );
-                      }
-                      return Effect.succeed<ChatAttachment>({
-                        type: blob.kind,
-                        id: blob.attachmentId,
-                        name: blob.originalName,
-                        mimeType: blob.mimeType,
-                        sizeBytes: blob.sizeBytes!,
-                      });
-                    },
-                  }),
-                ),
-              );
-          },
+          (attachment) => resolveTurnStartAttachment(envelope, startCommand, attachment),
           { concurrency: 1 },
         );
         command = {
@@ -913,207 +922,323 @@ const makeOrchestrationEngine = Effect.gen(function* () {
       }
 
       if (command.type === "thread.meta.update" && command.expectedTitleSequence !== undefined) {
+        const titleCommand = command;
         const currentTitleSequence = yield* eventStore
-          .getThreadTitleHighWaterSequence(command.threadId)
+          .getThreadTitleHighWaterSequence(titleCommand.threadId)
           .pipe(
             Effect.mapError(() =>
               makeCommandInternalError(
-                command,
+                titleCommand,
                 "Could not verify the thread title revision before the conditional update.",
               ),
             ),
           );
-        if (currentTitleSequence !== command.expectedTitleSequence) {
+        if (currentTitleSequence !== titleCommand.expectedTitleSequence) {
           return yield* new OrchestrationCommandInvariantError({
-            commandType: command.type,
-            detail: `Thread '${command.threadId}' title changed before the conditional update.`,
+            commandType: titleCommand.type,
+            detail: `Thread '${titleCommand.threadId}' title changed before the conditional update.`,
           });
         }
       }
 
-      const deciderReadModel = yield* buildDeciderReadModel(command);
-      const eventBase = yield* decideOrchestrationCommand({
-        command,
-        readModel: deciderReadModel,
-        workspacePaths: deciderWorkspacePaths,
-      });
-      const eventBases = Array.isArray(eventBase) ? eventBase : [eventBase];
-      const transactionalCommitEffect: Effect.Effect<
-        CommittedCommandResult,
-        OrchestrationDispatchError,
-        never
-      > = Effect.gen(function* () {
-        if (command.type === "thread.activity.append") {
-          yield* claimVisualReplyAttachments({
-            command,
-            principal: envelope.attachmentPrincipal,
-            repository: managedAttachments,
-          });
-        }
-        const committedEvents: OrchestrationEvent[] = [];
-        const deferredSettledSequences = new Set<number>();
-        const afterCommitEffects: Array<Effect.Effect<void>> = [];
-        let nextCommandReadModel = commandReadModel;
+      const overlay = yield* loadDeciderOverlay(command);
+      return { kind: "decide", preparedAt, command, overlay } as const;
+    });
 
-        if (command.type === "thread.turn.start") {
-          const attachmentIds = command.message.attachments
-            .filter((attachment) => attachment.type === "image" || attachment.type === "file")
-            .map((attachment) => attachment.id);
-          const claim = yield* managedAttachments.claimForAcceptedTurn({
-            attachmentIds,
-            ownerThreadId: command.threadId,
+  const isPreparationStale = (prepared: PreparedCommand, command: OrchestrationCommand) =>
+    prepared.kind !== "settled" &&
+    (prepared.preparedAt.epoch !== commandReadModelEpoch ||
+      commandDependencyKeys(command).some(
+        (key) => (lastCommitGenerationByAggregate.get(key) ?? 0) > prepared.preparedAt.generation,
+      ));
+
+  const processEnvelope = (envelope: CommandEnvelope): Effect.Effect<void, never> => {
+    const remainingBudgetMs = Math.max(0, envelope.deadlineAtMs - Date.now());
+    const commandFingerprint = fingerprintOrchestrationCommand(envelope.command);
+
+    const commitPrepared = (prepared: Exclude<PreparedCommand, { kind: "settled" }>) =>
+      Effect.gen(function* () {
+        if (prepared.kind === "settle-only") {
+          if (envelope.command.type !== "thread.turn.start")
+            return yield* makeCommandInternalError(
+              envelope.command,
+              "Only turn starts can be settled.",
+            );
+          const command = envelope.command;
+          // A rejection must not let a different principal fence someone else's staged uploads.
+          for (const attachment of command.message.attachments) {
+            if (attachment.type === "assistant-selection") continue;
+            const owned = yield* managedAttachments.findServerOwned({
+              attachmentId: attachment.id,
+              ownerThreadId: command.threadId,
+              ownerKind: envelope.attachmentPrincipal.ownerKind,
+              ownerId: envelope.attachmentPrincipal.ownerId,
+              now: new Date().toISOString(),
+            });
+            if (Option.isNone(owned))
+              return yield* new OrchestrationCommandIdentityCollisionError({
+                commandId: command.commandId,
+                detail: "Cannot settle a command with unavailable or unowned uploads.",
+              });
+          }
+          const detail = "The interrupted message was not accepted. You can send it again.";
+          // Per-aggregate order serializes dispatch and settlement. This tombstone also
+          // fences original requests still preparing outside the engine.
+          const inserted = yield* commandReceiptRepository.insert({
+            commandId: command.commandId,
+            ...commandToAggregateRef(command),
+            acceptedAt: new Date().toISOString(),
+            resultSequence: commandReadModel.snapshotSequence,
+            status: "rejected",
+            error: detail,
+            fingerprintVersion: commandFingerprint.version,
+            commandFingerprint: commandFingerprint.value,
             ownerKind: envelope.attachmentPrincipal.ownerKind,
             ownerId: envelope.attachmentPrincipal.ownerId,
-            commandId: command.commandId,
-            messageId: command.message.messageId,
-            now: new Date().toISOString(),
           });
-          if (claim.status !== "claimed") {
-            return yield* new OrchestrationCommandInvariantError({
-              commandType: command.type,
-              detail: `Managed attachment claim was rejected: ${claim.reason}.`,
+          if (!inserted)
+            return yield* makeCommandInternalError(command, "Failed to settle message delivery.");
+          yield* Deferred.fail(
+            envelope.result,
+            new OrchestrationCommandPreviouslyRejectedError({
+              commandId: command.commandId,
+              detail,
+            }),
+          );
+          return;
+        }
+
+        const { command, overlay } = prepared;
+        const eventBase = yield* decideOrchestrationCommand({
+          command,
+          readModel: overlay(commandReadModel),
+          workspacePaths: deciderWorkspacePaths,
+        });
+        const eventBases = Array.isArray(eventBase) ? eventBase : [eventBase];
+        const transactionalCommitEffect: Effect.Effect<
+          CommittedCommandResult,
+          OrchestrationDispatchError,
+          never
+        > = Effect.gen(function* () {
+          if (command.type === "thread.activity.append") {
+            yield* claimVisualReplyAttachments({
+              command,
+              principal: envelope.attachmentPrincipal,
+              repository: managedAttachments,
             });
           }
-        }
+          const committedEvents: OrchestrationEvent[] = [];
+          const deferredSettledSequences = new Set<number>();
+          const afterCommitEffects: Array<Effect.Effect<void>> = [];
+          let nextCommandReadModel = commandReadModel;
 
-        for (const nextEvent of eventBases) {
-          const savedEvent = yield* eventStore.append(nextEvent);
-          nextCommandReadModel = yield* projectEvent(nextCommandReadModel, savedEvent);
-          if (isShellMetadataEvent(savedEvent)) {
-            yield* projectionPipeline.projectMetadataEvent(savedEvent);
-          } else {
-            const { deferredPhaseSettled, afterCommit } =
-              yield* projectionPipeline.projectHotEventInCurrentTransaction(savedEvent);
-            if (deferredPhaseSettled) deferredSettledSequences.add(savedEvent.sequence);
-            afterCommitEffects.push(afterCommit);
+          if (command.type === "thread.turn.start") {
+            const attachmentIds = command.message.attachments
+              .filter((attachment) => attachment.type === "image" || attachment.type === "file")
+              .map((attachment) => attachment.id);
+            const claim = yield* managedAttachments.claimForAcceptedTurn({
+              attachmentIds,
+              ownerThreadId: command.threadId,
+              ownerKind: envelope.attachmentPrincipal.ownerKind,
+              ownerId: envelope.attachmentPrincipal.ownerId,
+              commandId: command.commandId,
+              messageId: command.message.messageId,
+              now: new Date().toISOString(),
+            });
+            if (claim.status !== "claimed") {
+              return yield* new OrchestrationCommandInvariantError({
+                commandType: command.type,
+                detail: `Managed attachment claim was rejected: ${claim.reason}.`,
+              });
+            }
           }
-          committedEvents.push(savedEvent);
-        }
 
-        const lastSavedEvent = committedEvents.at(-1) ?? null;
-        if (lastSavedEvent === null) {
-          return yield* new OrchestrationCommandInvariantError({
-            commandType: envelope.command.type,
-            detail: "Command produced no events.",
-          });
-        }
-
-        const receiptInserted = yield* commandReceiptRepository.insert({
-          commandId: envelope.command.commandId,
-          aggregateKind: lastSavedEvent.aggregateKind,
-          aggregateId: lastSavedEvent.aggregateId,
-          acceptedAt: lastSavedEvent.occurredAt,
-          resultSequence: lastSavedEvent.sequence,
-          status: "accepted",
-          error: null,
-          fingerprintVersion: commandFingerprint.version,
-          commandFingerprint: commandFingerprint.value,
-          ownerKind: envelope.attachmentPrincipal.ownerKind,
-          ownerId: envelope.attachmentPrincipal.ownerId,
-        });
-        if (!receiptInserted) {
-          return yield* new OrchestrationCommandIdentityCollisionError({
-            commandId: envelope.command.commandId,
-            detail: "A receipt with this command ID appeared while the command was committing.",
-          });
-        }
-
-        return {
-          afterCommitEffects,
-          committedEvents,
-          deferredSettledSequences,
-          lastSequence: lastSavedEvent.sequence,
-          nextCommandReadModel,
-        } as const;
-      }).pipe(
-        Effect.catchCause((cause): Effect.Effect<never, OrchestrationDispatchError, never> => {
-          if (Cause.hasInterruptsOnly(cause)) {
-            return Effect.interrupt;
+          for (const nextEvent of eventBases) {
+            const savedEvent = yield* eventStore.append(nextEvent);
+            nextCommandReadModel = yield* projectEvent(nextCommandReadModel, savedEvent);
+            if (isShellMetadataEvent(savedEvent)) {
+              yield* projectionPipeline.projectMetadataEvent(savedEvent);
+            } else {
+              const { deferredPhaseSettled, afterCommit } =
+                yield* projectionPipeline.projectHotEventInCurrentTransaction(savedEvent);
+              if (deferredPhaseSettled) deferredSettledSequences.add(savedEvent.sequence);
+              afterCommitEffects.push(afterCommit);
+            }
+            committedEvents.push(savedEvent);
           }
-          const typedFailure = Cause.findErrorOption(cause);
-          if (
-            Option.isSome(typedFailure) &&
-            (Schema.is(OrchestrationCommandInvariantError)(typedFailure.value) ||
-              Schema.is(OrchestrationCommandIdentityCollisionError)(typedFailure.value))
-          ) {
-            return Effect.fail(typedFailure.value);
-          }
-          return Effect.logError(
-            "orchestration command crashed inside persistence transaction",
-          ).pipe(
-            Effect.annotateLogs({
-              commandId: envelope.command.commandId,
+
+          const lastSavedEvent = committedEvents.at(-1) ?? null;
+          if (lastSavedEvent === null) {
+            return yield* new OrchestrationCommandInvariantError({
               commandType: envelope.command.type,
-              cause: Cause.pretty(cause),
-            }),
-            Effect.flatMap(() =>
+              detail: "Command produced no events.",
+            });
+          }
+
+          const receiptInserted = yield* commandReceiptRepository.insert({
+            commandId: envelope.command.commandId,
+            aggregateKind: lastSavedEvent.aggregateKind,
+            aggregateId: lastSavedEvent.aggregateId,
+            acceptedAt: lastSavedEvent.occurredAt,
+            resultSequence: lastSavedEvent.sequence,
+            status: "accepted",
+            error: null,
+            fingerprintVersion: commandFingerprint.version,
+            commandFingerprint: commandFingerprint.value,
+            ownerKind: envelope.attachmentPrincipal.ownerKind,
+            ownerId: envelope.attachmentPrincipal.ownerId,
+          });
+          if (!receiptInserted) {
+            return yield* new OrchestrationCommandIdentityCollisionError({
+              commandId: envelope.command.commandId,
+              detail: "A receipt with this command ID appeared while the command was committing.",
+            });
+          }
+
+          return {
+            afterCommitEffects,
+            committedEvents,
+            deferredSettledSequences,
+            lastSequence: lastSavedEvent.sequence,
+            nextCommandReadModel,
+          } as const;
+        }).pipe(
+          Effect.catchCause((cause): Effect.Effect<never, OrchestrationDispatchError, never> => {
+            if (Cause.hasInterruptsOnly(cause)) {
+              return Effect.interrupt;
+            }
+            const typedFailure = Cause.findErrorOption(cause);
+            if (
+              Option.isSome(typedFailure) &&
+              (Schema.is(OrchestrationCommandInvariantError)(typedFailure.value) ||
+                Schema.is(OrchestrationCommandIdentityCollisionError)(typedFailure.value))
+            ) {
+              return Effect.fail(typedFailure.value);
+            }
+            return Effect.logError(
+              "orchestration command crashed inside persistence transaction",
+            ).pipe(
+              Effect.annotateLogs({
+                commandId: envelope.command.commandId,
+                commandType: envelope.command.type,
+                cause: Cause.pretty(cause),
+              }),
+              Effect.flatMap(() =>
+                Effect.fail(
+                  makeCommandInternalError(
+                    envelope.command,
+                    "The command hit an unexpected internal error before it could be saved.",
+                  ),
+                ),
+              ),
+            );
+          }),
+        );
+
+        const committedCommand = yield* sql
+          .withTransaction(transactionalCommitEffect)
+          .pipe(
+            Effect.catchTag("SqlError", (sqlError) =>
               Effect.fail(
-                makeCommandInternalError(
-                  envelope.command,
-                  "The command hit an unexpected internal error before it could be saved.",
+                toPersistenceSqlError("OrchestrationEngine.processEnvelope:transaction")(sqlError),
+              ),
+            ),
+          );
+
+        commandReadModel = committedCommand.nextCommandReadModel;
+        recordCommittedAggregates(committedCommand.committedEvents);
+        yield* Effect.all(committedCommand.afterCommitEffects, { discard: true });
+        yield* Effect.forEach(
+          committedCommand.committedEvents,
+          (event) =>
+            Effect.gen(function* () {
+              if (committedCommand.deferredSettledSequences.has(event.sequence)) return;
+              const isDeferredProjectionDirty = yield* Ref.get(deferredProjectionDirty);
+              if (isDeferredProjectionDirty) {
+                yield* scheduleDeferredProjectionCatchUp({
+                  eventType: event.type,
+                  sequence: event.sequence,
+                });
+                return;
+              }
+
+              const deferredProjectionOutcome = yield* projectionPipeline
+                .projectDeferredEvent(event)
+                .pipe(
+                  Effect.matchCause({
+                    onFailure: (cause) => ({ _tag: "failure" as const, cause }),
+                    onSuccess: () => ({ _tag: "success" as const }),
+                  }),
+                );
+
+              if (deferredProjectionOutcome._tag === "success") {
+                return;
+              }
+
+              yield* Ref.set(deferredProjectionDirty, true);
+              yield* Effect.logWarning("deferred orchestration projector failed", {
+                sequence: event.sequence,
+                eventType: event.type,
+                cause: Cause.pretty(deferredProjectionOutcome.cause),
+              });
+              yield* scheduleDeferredProjectionCatchUp({
+                eventType: event.type,
+                sequence: event.sequence,
+              });
+            }),
+          { concurrency: 1 },
+        );
+        for (const event of committedCommand.committedEvents) {
+          yield* publishCommittedEvent(event);
+        }
+        yield* Deferred.succeed(envelope.result, { sequence: committedCommand.lastSequence });
+      });
+
+    const runCommand = Effect.gen(function* () {
+      const shouldSkip = yield* Ref.modify(envelope.executionState, (state) => {
+        if (state === "abandoned") {
+          return [true, state] as const;
+        }
+        return [false, "in-flight"] as const;
+      });
+      if (shouldSkip) {
+        return;
+      }
+
+      if (remainingBudgetMs === 0) {
+        return yield* makeCommandTimeoutError(envelope.command);
+      }
+
+      const prepared = yield* prepareCommand(envelope, commandFingerprint);
+      if (prepared.kind === "settled") return;
+      yield* maintenanceLock.withPermits(1)(
+        Effect.gen(function* () {
+          const dispatchStartSequence = commandReadModel.snapshotSequence;
+          yield* Effect.gen(function* () {
+            const current = isPreparationStale(prepared, envelope.command)
+              ? yield* prepareCommand(envelope, commandFingerprint)
+              : prepared;
+            if (current.kind === "settled") return;
+            yield* commitPrepared(current);
+          }).pipe(
+            Effect.onError(() =>
+              reconcileCommandReadModelAfterDispatchFailure(dispatchStartSequence).pipe(
+                Effect.catchCause((cause) =>
+                  Effect.logWarning(
+                    "failed to reconcile orchestration read model after dispatch failure",
+                  ).pipe(
+                    Effect.annotateLogs({
+                      commandId: envelope.command.commandId,
+                      snapshotSequence: commandReadModel.snapshotSequence,
+                      cause: Cause.pretty(cause),
+                    }),
+                  ),
                 ),
               ),
             ),
           );
         }),
       );
-
-      const committedCommand = yield* sql
-        .withTransaction(transactionalCommitEffect)
-        .pipe(
-          Effect.catchTag("SqlError", (sqlError) =>
-            Effect.fail(
-              toPersistenceSqlError("OrchestrationEngine.processEnvelope:transaction")(sqlError),
-            ),
-          ),
-        );
-
-      commandReadModel = committedCommand.nextCommandReadModel;
-      yield* Effect.all(committedCommand.afterCommitEffects, { discard: true });
-      yield* Effect.forEach(
-        committedCommand.committedEvents,
-        (event) =>
-          Effect.gen(function* () {
-            if (committedCommand.deferredSettledSequences.has(event.sequence)) return;
-            const isDeferredProjectionDirty = yield* Ref.get(deferredProjectionDirty);
-            if (isDeferredProjectionDirty) {
-              yield* scheduleDeferredProjectionCatchUp({
-                eventType: event.type,
-                sequence: event.sequence,
-              });
-              return;
-            }
-
-            const deferredProjectionOutcome = yield* projectionPipeline
-              .projectDeferredEvent(event)
-              .pipe(
-                Effect.matchCause({
-                  onFailure: (cause) => ({ _tag: "failure" as const, cause }),
-                  onSuccess: () => ({ _tag: "success" as const }),
-                }),
-              );
-
-            if (deferredProjectionOutcome._tag === "success") {
-              return;
-            }
-
-            yield* Ref.set(deferredProjectionDirty, true);
-            yield* Effect.logWarning("deferred orchestration projector failed", {
-              sequence: event.sequence,
-              eventType: event.type,
-              cause: Cause.pretty(deferredProjectionOutcome.cause),
-            });
-            yield* scheduleDeferredProjectionCatchUp({
-              eventType: event.type,
-              sequence: event.sequence,
-            });
-          }),
-        { concurrency: 1 },
-      );
-      for (const event of committedCommand.committedEvents) {
-        yield* publishCommittedEvent(event);
-      }
-      yield* Deferred.succeed(envelope.result, { sequence: committedCommand.lastSequence });
     }).pipe(
       Effect.timeoutOption(remainingBudgetMs),
       Effect.flatMap((outcome) =>
@@ -1124,19 +1249,6 @@ const makeOrchestrationEngine = Effect.gen(function* () {
       ),
       Effect.catch((error: OrchestrationDispatchError) =>
         Effect.gen(function* () {
-          yield* reconcileCommandReadModelAfterDispatchFailure.pipe(
-            Effect.catch(() =>
-              Effect.logWarning(
-                "failed to reconcile orchestration read model after dispatch failure",
-              ).pipe(
-                Effect.annotateLogs({
-                  commandId: envelope.command.commandId,
-                  snapshotSequence: commandReadModel.snapshotSequence,
-                }),
-              ),
-            ),
-          );
-
           if (Schema.is(OrchestrationCommandTimeoutError)(error)) {
             const resolvedTimeoutOutcome = yield* resolveStoredCommandOutcome(
               envelope.command,
@@ -1181,19 +1293,6 @@ const makeOrchestrationEngine = Effect.gen(function* () {
           return Effect.interrupt;
         }
         return Effect.gen(function* () {
-          yield* reconcileCommandReadModelAfterDispatchFailure.pipe(
-            Effect.catch(() =>
-              Effect.logWarning(
-                "failed to reconcile orchestration read model after unexpected worker failure",
-              ).pipe(
-                Effect.annotateLogs({
-                  commandId: envelope.command.commandId,
-                  snapshotSequence: commandReadModel.snapshotSequence,
-                }),
-              ),
-            ),
-          );
-
           yield* Effect.logError("orchestration worker crashed while processing command").pipe(
             Effect.annotateLogs({
               commandId: envelope.command.commandId,
@@ -1229,7 +1328,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
       }),
     );
 
-    return maintenanceLock.withPermits(1)(runCommand);
+    return runCommand;
   };
 
   yield* projectionPipeline.bootstrap;
@@ -1248,7 +1347,12 @@ const makeOrchestrationEngine = Effect.gen(function* () {
     ] as const;
   }).pipe(
     Effect.flatMap((idle) =>
-      idle === null ? Effect.void : Deferred.succeed(idle, undefined).pipe(Effect.orDie),
+      idle === null
+        ? Effect.void
+        : Effect.sync(() => {
+            // No preparation is in flight, so no stamp can refer to this history any more.
+            lastCommitGenerationByAggregate.clear();
+          }).pipe(Effect.andThen(Deferred.succeed(idle, undefined)), Effect.orDie),
     ),
   );
 
@@ -1286,8 +1390,36 @@ const makeOrchestrationEngine = Effect.gen(function* () {
       Effect.ensuring(finishEnvelope),
     );
 
+  const commandOrder = new AggregateCommandOrder<CommandEnvelope>();
+  const preparationPermits = yield* Semaphore.make(ORCHESTRATION_PREPARATION_CONCURRENCY);
+  const runningCommands = yield* FiberSet.make<void, never>();
+  // Lifecycle commands bypass the preparation bound so a stop never waits behind slow chats.
+  const launchEnvelope = (envelope: CommandEnvelope): Effect.Effect<void> => {
+    const key = aggregateKey(commandToAggregateRef(envelope.command));
+    const run =
+      envelope.settleOnly || usesReservedCommandAdmission(envelope.command.type)
+        ? runEnvelope(envelope)
+        : preparationPermits.withPermits(1)(runEnvelope(envelope));
+    return FiberSet.run(
+      runningCommands,
+      run.pipe(
+        Effect.ensuring(
+          Effect.suspend(() => {
+            const next = commandOrder.finish(key, envelope);
+            return next ? launchEnvelope(next) : Effect.void;
+          }),
+        ),
+      ),
+    ).pipe(Effect.asVoid);
+  };
   const worker = Effect.forever(
-    takeNextOrchestrationCommand(commandQueues).pipe(Effect.flatMap(runEnvelope)),
+    takeNextOrchestrationCommand(commandQueues).pipe(
+      Effect.flatMap((envelope) =>
+        commandOrder.take(aggregateKey(commandToAggregateRef(envelope.command)), envelope)
+          ? launchEnvelope(envelope)
+          : Effect.void,
+      ),
+    ),
   );
   const workerFiber = yield* Effect.forkScoped(worker);
 
@@ -1383,11 +1515,12 @@ const makeOrchestrationEngine = Effect.gen(function* () {
     fromSequenceExclusive,
     throughSequenceInclusive,
     eventTypes,
+    limit = Number.MAX_SAFE_INTEGER,
   ) =>
     eventStore.readThreadEventsFromSequence(
       threadId,
       fromSequenceExclusive,
-      Number.MAX_SAFE_INTEGER,
+      limit,
       throughSequenceInclusive,
       eventTypes,
     );
@@ -1456,10 +1589,13 @@ const makeOrchestrationEngine = Effect.gen(function* () {
             envelope,
             commandType: command.type,
             settleOnly: envelope.settleOnly,
+            outstanding: current.outstanding,
           });
           if (!decision.accepted) {
             return [decision, current] as const;
           }
+          // Recorded in the same synchronous step as the enqueue, before the worker can take it.
+          commandOrder.admit(aggregateKey(commandToAggregateRef(command)), envelope);
           return [
             decision,
             {
@@ -1592,7 +1728,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
         if (rebuildResult._tag === "Failure") {
           const restoreResult = yield* Effect.exit(restoreDerivedProjectionState);
           if (restoreResult._tag === "Failure") {
-            commandReadModel = previousCommandReadModel;
+            replaceCommandReadModel(previousCommandReadModel);
             return yield* Effect.logError(
               "failed to restore orchestration projection backup after rebuild failure",
             ).pipe(
@@ -1613,7 +1749,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
             );
           }
 
-          commandReadModel = previousCommandReadModel;
+          replaceCommandReadModel(previousCommandReadModel);
           yield* dropProjectionRepairBackup.pipe(Effect.catchCause(() => Effect.void));
           const typedFailure = Cause.findErrorOption(rebuildResult.cause);
           const repairError = Option.filter(

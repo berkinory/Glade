@@ -6,7 +6,7 @@ import { ProjectionSnapshotQuery } from "../Services/ProjectionSnapshotQuery.ts"
 import { ServerConfig } from "../../server/config.ts";
 import { ManagedAttachmentRepository } from "../../persistence/Services/ManagedAttachments.ts";
 import { ProviderService } from "../../provider/Services/ProviderService.ts";
-import { Option, Effect, Cause } from "effect";
+import { Option, Effect } from "effect";
 import {
   type ModelSelection,
   type ProviderStartOptions,
@@ -16,7 +16,7 @@ import {
 import { AgentGatewayOperationRepository } from "../../agentGateway/Services/AgentGatewayOperationRepository.ts";
 import { CheckpointStore } from "../../checkpointing/Services/CheckpointStore.ts";
 import { OrchestrationEngineService } from "../Services/OrchestrationEngine.ts";
-import { ThreadId, ProviderKind, MessageId } from "@glade/contracts/core/baseSchemas";
+import { ThreadId, ProviderKind } from "@glade/contracts/core/baseSchemas";
 import {
   type ChatAttachment,
   PROVIDER_SEND_TURN_MAX_INPUT_CHARS,
@@ -50,7 +50,11 @@ import {
   ProviderContextLifecycleEvidence,
 } from "./contextLifecycle";
 import { listPriorTranscriptMessages, buildPriorTranscriptBootstrapText } from "../handoff.ts";
-import { checkpointRefForThreadMessageStart } from "../../checkpointing/Utils.ts";
+import {
+  capturePreTurnBaseline,
+  surfaceUnavailablePreTurnBaseline,
+  type PreTurnBaseline,
+} from "./preTurnBaseline";
 import { type ProviderTurnStartResult } from "@glade/contracts/provider/provider";
 import { isStaleClaudeResumeError } from "./interactionPolicy";
 import { serverCommandId } from "./deliveryClaims";
@@ -464,35 +468,22 @@ export function makeProviderTurnDispatch(input: {
         ),
       );
 
-    const captureMessageStartCheckpoint = Effect.gen(function* () {
-      if ((input.dispatchMode ?? "queue") === "steer") {
-        return;
-      }
-
-      const currentThread = yield* resolveThread(input.threadId);
-      if (!currentThread) {
-        return;
-      }
-
-      const cwd = yield* resolveProjectedThreadWorkspaceCwd(currentThread);
-      if (!cwd || !(yield* checkpointStore.isGitRepository(cwd))) {
-        return;
-      }
-
-      yield* checkpointStore.captureCheckpoint({
-        cwd,
-        checkpointRef: checkpointRefForThreadMessageStart(
-          input.threadId,
-          MessageId.makeUnsafe(input.messageId),
+    let preTurnBaseline = { status: "not-applicable" } as PreTurnBaseline;
+    const captureMessageStartCheckpoint = capturePreTurnBaseline({
+      checkpointStore,
+      threadId: input.threadId,
+      messageId: input.messageId,
+      resolveCwd: resolveThread(input.threadId).pipe(
+        Effect.flatMap((currentThread) =>
+          currentThread
+            ? resolveProjectedThreadWorkspaceCwd(currentThread)
+            : Effect.succeed(undefined),
         ),
-        skipIfExists: true,
-      });
+      ),
     }).pipe(
-      Effect.catchCause((cause) =>
-        Effect.logWarning("failed to capture provider turn start checkpoint", {
-          threadId: input.threadId,
-          messageId: input.messageId,
-          cause: Cause.pretty(cause),
+      Effect.tap((baseline) =>
+        Effect.sync(() => {
+          preTurnBaseline = baseline;
         }),
       ),
     );
@@ -697,6 +688,16 @@ export function makeProviderTurnDispatch(input: {
       }
     }
 
+    if (startedTurn && preTurnBaseline.status === "unavailable") {
+      yield* surfaceUnavailablePreTurnBaseline({
+        orchestrationEngine,
+        threadId: input.threadId,
+        turnId: startedTurn.turnId,
+        messageId: input.messageId,
+        detail: preTurnBaseline.detail,
+        createdAt: input.createdAt,
+      });
+    }
     if (input.reviewTarget !== undefined) {
       completeInterruptEscalation(input.threadId, interruptEscalation);
     }

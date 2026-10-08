@@ -31,11 +31,12 @@ export interface ExecuteGitOptions {
 }
 
 export interface GitCommandsShape {
+  /** Fails with GitCommandError instead of queueing when the lane's backlog is full. */
   readonly withPermit: <A, E, R>(
     effect: Effect.Effect<A, E, R>,
     priority?: "foreground" | "background",
     lane?: GitProcessLane,
-  ) => Effect.Effect<A, E, R>;
+  ) => Effect.Effect<A, E | GitCommandError, R>;
   readonly execute: GitCoreShape["execute"];
   readonly executeGit: (
     operation: string,

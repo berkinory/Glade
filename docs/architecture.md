@@ -109,6 +109,14 @@ ProviderService
 ProviderAdapter
 ```
 
+The engine prepares commands for different threads, projects and spaces concurrently and commits
+them one at a time. Preparation only reads: receipts, attachments and the thread detail the decider
+needs. Commands for one aggregate run strictly in admission order, even when a later one has
+higher priority. The commit re-prepares a command when its aggregate changed or the read model
+was replaced after preparation, then decides against the current read model and writes events,
+receipt and hot projections in one transaction before publishing them in sequence order. Stop and
+other lifecycle commands keep their reserved admission and skip the preparation bound.
+
 Provider output travels back in the opposite direction:
 
 ```text

@@ -13,12 +13,16 @@
 - Chats recover more reliably from connection interruptions and heavy update streams, and a busy server no longer drops the connection.
 - Find settings from the command palette and jump straight to the matching row.
 - Disabled providers stay out of pickers, usage, plugin and skill lists and stop background discovery, while their saved settings and chats are kept.
+- Independent chats stay responsive while another chat prepares or starts a task.
+- Git status and task snapshots stay responsive during heavy repository activity.
 
 ### Fixed
 
 - Opening the browser no longer widens the right sidebar, and the sidebar edge can be dragged to resize it while the browser is open.
 - Skills with multiline descriptions display their names and descriptions correctly.
 - Failed file uploads show their actual error instead of a browser connection error.
+- Claude chats recover reliably when interrupted before their first response.
+- Tasks no longer wait indefinitely for their starting file snapshot, and a missing snapshot can no longer be used to undo files.
 
 ## 0.2.1 - 2026-10-08
 

@@ -11,6 +11,7 @@ import type { SDKUserMessage, Options as ClaudeQueryOptions } from "@anthropic-a
 import { loadClaudeAgentSdk } from "../claude/claudeAgentSdk.ts";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { PROVIDER } from "../claude/adapter/sessionTypes";
+import { readClaudeResumeState } from "../claude/adapter/sessionResume";
 import { ClaudeSessionRegistry } from "../Services/ClaudeSessionRegistry.ts";
 import { ClaudeSessionRegistryLive } from "./ClaudeSessionRegistry.ts";
 import { ClaudeSessionAccess } from "../Services/ClaudeSessionAccess.ts";
@@ -368,6 +369,8 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         supportsLiveTurnDiffPatch: false,
       },
       startSession,
+      canResumeNativeConversation: (resumeCursor) =>
+        readClaudeResumeState(resumeCursor)?.resume !== undefined,
       prepareSessionReplacement,
       sendTurn,
       compactThread: (threadId, instructions) =>

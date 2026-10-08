@@ -84,6 +84,7 @@ import {
 import { isProviderVersionSupported, providerUpgradeMessage } from "../core/compatibility.ts";
 import { collectUint8StreamText } from "../../stream/collectUint8StreamText";
 import { buildCodexProcessEnv } from "../codex/codexProcessEnv.ts";
+import { resolveBaseCodexHomePath } from "../codex/codexHomePaths.ts";
 
 class ProviderHealthProbeError extends Error {
   readonly _tag = "ProviderHealthProbeError";
@@ -509,13 +510,12 @@ const collectStreamAsString = <E>(stream: Stream.Stream<Uint8Array, E>): Effect.
 const runProviderCommand = (
   executable: string,
   args: ReadonlyArray<string>,
-  env: NodeJS.ProcessEnv,
+  options: { readonly env: NodeJS.ProcessEnv; readonly cwd?: string | undefined },
 ) =>
   Effect.gen(function* () {
     const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
     const command = makeEffectProcessCommand(executable, args, {
-      env,
-
+      ...options,
       stdin: "ignore",
     });
 
@@ -535,10 +535,11 @@ const runProviderCommand = (
 
 const runCodexCommand = (
   args: ReadonlyArray<string>,
-  executable = "codex",
-  env: NodeJS.ProcessEnv = providerCommandEnv(CODEX_PROVIDER),
+  executable: string,
+  env: NodeJS.ProcessEnv,
+  cwd: string | undefined,
 ) =>
-  runProviderCommand(executable, args, env).pipe(
+  runProviderCommand(executable, args, { env, cwd }).pipe(
     Effect.flatMap((result) =>
       isWindowsShellCommandMissingResult({ code: result.code, stderr: result.stderr })
         ? Effect.fail(new ProviderHealthProbeError(`spawn ${executable} ENOENT`))
@@ -551,7 +552,7 @@ const runClaudeCommand = (
   executable = "claude",
   env: NodeJS.ProcessEnv = buildClaudeProcessEnv(),
 ) =>
-  runProviderCommand(executable, args, env).pipe(
+  runProviderCommand(executable, args, { env }).pipe(
     Effect.flatMap((result) =>
       isWindowsShellCommandMissingResult({ code: result.code, stderr: result.stderr })
         ? Effect.fail(new ProviderHealthProbeError(`spawn ${executable} ENOENT`))
@@ -568,8 +569,7 @@ const readCodexConfigModelProviderForEnv = (env: NodeJS.ProcessEnv) =>
   Effect.gen(function* () {
     const fileSystem = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
-    const codexHome = env.CODEX_HOME?.trim() || path.join(OS.homedir(), ".codex");
-    const configPath = path.join(codexHome, "config.toml");
+    const configPath = path.join(resolveBaseCodexHomePath(env), "config.toml");
 
     const content = yield* fileSystem
       .readFileString(configPath)
@@ -599,9 +599,18 @@ const makeCheckCodexProviderStatus = (
   return Effect.gen(function* () {
     const checkedAt = new Date().toISOString();
     const probeEnv = yield* Effect.promise(() => makeCodexProbeEnv(homePath));
+    // Probes run from the provider home so account state never merges project config from the
+    // server's working directory. A missing home is reported, never created.
+    const codexHome = resolveBaseCodexHomePath(probeEnv);
+    const fileSystem = yield* FileSystem.FileSystem;
+    const codexHomeExists = yield* fileSystem.stat(codexHome).pipe(
+      Effect.map((info) => info.type === "Directory"),
+      Effect.orElseSucceed(() => false),
+    );
+    const probeCwd = codexHomeExists ? codexHome : undefined;
 
     const versionProbe = yield* probeProviderCliVersion(
-      runCodexCommand(["--version"], executable, probeEnv),
+      runCodexCommand(["--version"], executable, probeEnv, probeCwd),
       DEFAULT_TIMEOUT_MS,
     );
 
@@ -674,10 +683,25 @@ const makeCheckCodexProviderStatus = (
       } satisfies ServerProviderStatus;
     }
 
-    const authProbe = yield* runCodexCommand(CODEX_AUTH_STATUS_ARGS, executable, probeEnv).pipe(
-      Effect.timeoutOption(DEFAULT_TIMEOUT_MS),
-      Effect.result,
-    );
+    if (!codexHomeExists) {
+      return {
+        provider: CODEX_PROVIDER,
+        status: "warning" as const,
+        available: true,
+        authStatus: "unknown" as const,
+        version: parsedVersion,
+        supportsAutoRuntimeMode,
+        checkedAt,
+        message: `Could not verify Codex authentication status: the Codex home ${codexHome} does not exist. Sign in with the Codex CLI to create it.`,
+      } satisfies ServerProviderStatus;
+    }
+
+    const authProbe = yield* runCodexCommand(
+      CODEX_AUTH_STATUS_ARGS,
+      executable,
+      probeEnv,
+      codexHome,
+    ).pipe(Effect.timeoutOption(DEFAULT_TIMEOUT_MS), Effect.result);
 
     if (Result.isFailure(authProbe)) {
       const error = authProbe.failure;
