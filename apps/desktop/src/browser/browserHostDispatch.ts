@@ -18,6 +18,7 @@ import { click, drag, hover, press } from "./cdp/actions";
 import type { PageRead } from "./cdp/buffers";
 import { visibleChallenge } from "./cdp/challenge";
 import { withOptionCommit } from "./cdp/combobox";
+import { evaluateOnLocalPage } from "./cdp/evaluate";
 import { uploadFiles } from "./cdp/fileChooser";
 import { fillFields, selectOptions, typeText } from "./cdp/forms";
 import { readPageText } from "./cdp/pageText";
@@ -364,6 +365,10 @@ export function createBrowserHostDispatch(
           report.text,
         ),
       };
+    },
+    "browser.evaluate": async (params) => {
+      const tab = tabFor("browser.evaluate", params);
+      return read(tab, () => evaluateOnLocalPage(tab.cdp, params.expression), params.actor);
     },
     "browser.closeThread": async (params) => ({
       page: null,

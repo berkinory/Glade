@@ -39,10 +39,10 @@ const BROWSER_TOOL_WORDING = {
     "change the content blocker",
   ],
   browser_batch: ["Running browser steps", "Ran browser steps", "run browser steps"],
-  browser_evaluate: ["Evaluating script", "Evaluated script", "evaluate the script"],
+  browser_evaluate: ["Running script", "Ran script", "run a script"],
   // Every listed tool needs wording; the index signature admits one before the contracts list it.
 } as const satisfies Record<string, GatewayToolWording> &
-  Record<BrowserBatchTool | "browser_batch" | "browser_evaluate", GatewayToolWording>;
+  Record<BrowserBatchTool | "browser_batch", GatewayToolWording>;
 
 type BrowserToolName = keyof typeof BROWSER_TOOL_WORDING;
 

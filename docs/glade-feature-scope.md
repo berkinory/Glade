@@ -38,8 +38,10 @@ user and last until the app quits. The right sidebar's Browser view (activity ba
 `browser.toggle` shortcut) has tabs, an address bar, a line showing what the agent
 is doing with Stop, and an element picker that adds the picked element to the composer as a
 reference the agent can act on, with its screenshot attached. Page dialogs are dismissed and
-reported to the agent; the view offers no dialog prompts. Browser tools and the Browser view
-do not exist outside the desktop app.
+reported to the agent; the view offers no dialog prompts. `browser_evaluate` runs JavaScript
+only in the main frame of local pages (`localhost`, `*.localhost`, `127.0.0.1`, `[::1]`), checked
+when the script runs, so agents can inspect the user's own dev app; it refuses every other page.
+Browser tools and the Browser view do not exist outside the desktop app.
 
 Computer Use (desktop control) is available in the desktop app on top of the bundled Cua Driver.
 It is off per conversation: `/computer` turns it on for the next message and the thread menu

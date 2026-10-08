@@ -8,6 +8,7 @@
 - Search saved chat messages from the command palette, including chats you have not opened recently.
 - Customizable shortcuts archive the open chat or mark it unread.
 - Run chats on other machines over SSH from the desktop app. Host projects sit with your local ones, new chats pick the machine they run on, and Glade installs and updates its server on the host for you. Passwords and new host keys are confirmed in the app.
+- Agents can run JavaScript in the browser on your local dev pages to inspect your own app; other sites stay off limits.
 
 ### Improved
 

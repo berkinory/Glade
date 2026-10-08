@@ -230,6 +230,14 @@ const SPECS: Record<BrowserBatchTool, BrowserToolSpec> = {
     description:
       "Turn Glade's ad, tracker and cookie-notice blocker on or off for the tab's site (remembered for that site), then reload the tab.",
   },
+  browser_evaluate: {
+    method: "browser.evaluate",
+    input: BrowserEvaluateInput,
+    title: "Evaluate JavaScript",
+    readOnly: false,
+    description:
+      "Run a JavaScript expression in the page's main frame, only on localhost pages (localhost, *.localhost, 127.0.0.1, [::1]), e.g. to inspect the user's own dev app. Promises are awaited up to 10 s; the result comes back as JSON. Refused with evaluate_not_local elsewhere; use browser_snapshot, browser_find or browser_get_text there.",
+  },
 };
 
 const annotations = (spec: { readonly title: string; readonly readOnly: boolean }) => ({
@@ -468,30 +476,5 @@ export function makeBrowserTools(services: {
       }).pipe(Effect.catch((error) => Effect.succeed(failure(error)))),
   };
 
-  // Hidden until the per-thread setting exists: listing a tool that always refuses would cost
-  // every call prompt tokens for nothing. Callers that know the name get a typed refusal.
-  const evaluate: ToolEntry = {
-    requiredCapability: "thread:write",
-    requiresActiveTurn: true,
-    discoveryOnly: true,
-    definition: {
-      name: "browser_evaluate",
-      description:
-        "Evaluate JavaScript in the page. Off unless the user enables it for this thread.",
-      inputSchema: toolInputSchema(BrowserEvaluateInput),
-      annotations: annotations({ title: "Evaluate JavaScript", readOnly: false }),
-    },
-    handler: () =>
-      Effect.succeed(
-        failure(
-          new BrowserHostError({
-            code: "evaluate_disabled",
-            message:
-              "browser_evaluate is turned off for this thread. Use browser_snapshot, browser_find or browser_get_text instead.",
-          }),
-        ),
-      ),
-  };
-
-  return [...entries, batch, evaluate];
+  return [...entries, batch];
 }

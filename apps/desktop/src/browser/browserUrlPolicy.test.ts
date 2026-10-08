@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { browserUrlBlockReason, type BrowserRequestKind } from "./browserUrlPolicy";
+import { browserUrlBlockReason, isLocalPageUrl, type BrowserRequestKind } from "./browserUrlPolicy";
 
 const GLADE_PORTS = new Set([3773]);
 
@@ -44,5 +44,35 @@ describe("browser URL policy", () => {
     ["about:blank", "page", false],
   ])("%s as %s is blocked: %s", (url, kind, blocked) => {
     expect(browserUrlBlockReason(url, GLADE_PORTS, kind) !== null).toBe(blocked);
+  });
+});
+
+describe("browser_evaluate local page gate", () => {
+  it.each<[string, boolean]>([
+    ["http://localhost:5173/app", true],
+    ["https://localhost/", true],
+    ["http://foo.localhost:3000/", true],
+    ["http://127.0.0.1:8080/", true],
+    ["http://[::1]:3000/", true],
+    ["http://localhost.evil.com/", false],
+    ["http://127.0.0.1.nip.io/", false],
+    ["http://localhost@evil.com/", false],
+    ["http://evil.com/#@localhost", false],
+    ["https://example.com/", false],
+    ["http://192.168.1.10/", false],
+    ["http://10.0.0.5:3000/", false],
+    ["http://app.test/", false],
+    ["http://localhost.test/", false],
+    ["http://[::ffff:127.0.0.1]/", false],
+    ["http://localhost./", false],
+    ["file:///", false],
+    ["file://localhost/etc/passwd", false],
+    ["about:blank", false],
+    ["data:text/html,hi", false],
+    ["blob:http://localhost:3000/uuid", false],
+    ["ws://localhost:3000/", false],
+    ["not a url", false],
+  ])("%s is local: %s", (url, local) => {
+    expect(isLocalPageUrl(url)).toBe(local);
   });
 });

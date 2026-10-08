@@ -16,11 +16,18 @@ const OPERATION_TIMEOUT_MS = 12_000;
 const PROBE_TIMEOUT_MS = 1_000;
 const OPERATION_TIMED_OUT = Symbol("operation timed out");
 
+export interface MainWorldContext {
+  readonly id: number;
+  readonly origin: string;
+}
+
 // One debugger attachment per tab. Out-of-process iframes arrive through flattened auto-attach
 // and are addressed by sessionId; same-process frames share the root session.
 export class CdpSession {
   private readonly listeners = new Set<CdpListener>();
   private readonly children = new Map<string, ChildTarget>();
+  // The page's own (default) JavaScript world per same-process frame, from Runtime events.
+  private readonly mainWorlds = new Map<string, MainWorldContext>();
   private readonly setups: Array<() => Promise<void>> = [];
   private attaching: Promise<void> | null = null;
   private queue: Promise<unknown> = Promise.resolve();
@@ -31,11 +38,13 @@ export class CdpSession {
       const session = sessionId || undefined;
       if (method === "Target.attachedToTarget") this.adoptChild(params, session);
       if (method === "Target.detachedFromTarget") this.children.delete(params.sessionId);
+      if (!session) this.trackContext(method, params);
       for (const listener of this.listeners) listener(method, params, session);
     });
     // DevTools or a crashed renderer takes the debugger away; the next call reattaches.
     debuggerApi.on("detach", () => {
       this.children.clear();
+      this.mainWorlds.clear();
       this.attaching = null;
       for (const listener of this.listeners) listener("Glade.detached", {}, undefined);
     });
@@ -107,6 +116,12 @@ export class CdpSession {
     return undefined;
   }
 
+  // The current default context of a frame in the root session; a navigation replaces it, and
+  // commands sent to the replaced id fail instead of running in the new document.
+  mainWorld(frameId: string): MainWorldContext | undefined {
+    return this.mainWorlds.get(frameId);
+  }
+
   childTarget(sessionId: string): ChildTarget | undefined {
     return this.children.get(sessionId);
   }
@@ -148,6 +163,21 @@ export class CdpSession {
     )
       .then(() => true)
       .catch(() => false);
+  }
+
+  private trackContext(method: string, params: any): void {
+    if (method === "Runtime.executionContextsCleared") this.mainWorlds.clear();
+    if (method === "Runtime.executionContextCreated") {
+      const { id, origin, auxData } = params.context;
+      if (auxData?.isDefault && typeof auxData.frameId === "string") {
+        this.mainWorlds.set(auxData.frameId, { id, origin });
+      }
+    }
+    if (method === "Runtime.executionContextDestroyed") {
+      for (const [frameId, context] of this.mainWorlds) {
+        if (context.id === params.executionContextId) this.mainWorlds.delete(frameId);
+      }
+    }
   }
 
   private adoptChild(params: any, parentSessionId: string | undefined): void {

@@ -93,6 +93,21 @@ export function browserUrlBlockReason(
   return null;
 }
 
+// browser_evaluate runs only on the user's own local pages. Deliberately narrower than loopback
+// above: exact names on the parsed host, so LAN addresses, `.test` names, IPv4 shorthand or mapped
+// forms, and non-http schemes are refused.
+export function isLocalPageUrl(raw: string): boolean {
+  const url = URL.parse(raw);
+  if (!url || !PAGE_SCHEMES.has(url.protocol)) return false;
+  const host = url.hostname;
+  return (
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    host === "[::1]" ||
+    (host.endsWith(".localhost") && host.length > ".localhost".length)
+  );
+}
+
 export function normalizeNavigationUrl(raw: string): string {
   const trimmed = raw.trim();
   if (/^[a-z][a-z0-9+.-]*:/iu.test(trimmed) && !/^[^/:]+:\d+(?:[/?#]|$)/u.test(trimmed)) {

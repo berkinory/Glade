@@ -229,6 +229,7 @@ export const BROWSER_BATCH_TOOLS = [
   "browser_console",
   "browser_network",
   "browser_content_blocker",
+  "browser_evaluate",
 ] as const;
 export type BrowserBatchTool = (typeof BROWSER_BATCH_TOOLS)[number];
 

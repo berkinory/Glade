@@ -6,6 +6,7 @@ import {
   BrowserContentBlockerInput,
   BrowserDialogInput,
   BrowserDragInput,
+  BrowserEvaluateInput,
   BrowserFillInput,
   BrowserFindInput,
   BrowserGetTextInput,
@@ -40,7 +41,8 @@ export const BROWSER_FAILURE_CODES = [
   "invalid_input",
   "workspace_unavailable",
   "path_outside_workspace",
-  "evaluate_disabled",
+  "evaluate_not_local",
+  "script_error",
 ] as const;
 export type BrowserFailureCode = (typeof BROWSER_FAILURE_CODES)[number];
 
@@ -80,6 +82,8 @@ export const BROWSER_HOST_METHODS = {
   "browser.network": scoped(BrowserNetworkInput),
   // Turns the content blocker on or off for the tab's site and reloads the tab.
   "browser.contentBlocker": scoped(BrowserContentBlockerInput),
+  // Runs only in the main frame of a local page; the desktop checks that when the script runs.
+  "browser.evaluate": scoped(BrowserEvaluateInput),
   // Sent by the server when a thread is archived or deleted; closes every tab of the thread.
   "browser.closeThread": scoped(Schema.Struct({})),
 } as const;
