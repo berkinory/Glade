@@ -1,4 +1,5 @@
-import { Archive04Icon } from "~/lib/icons";
+import { Archive04Icon, ArchiveRestoreIcon, Delete02Icon } from "~/lib/icons";
+import { showContextMenu } from "../contextMenu/contextMenuStore";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { pluralize } from "@glade/shared/text/text";
 import { collectSubagentDescendants } from "@glade/shared/threads/threadHierarchy";
@@ -384,19 +385,10 @@ export function ArchivedSettingsPanel({ active }: { readonly active: boolean }) 
         y: number;
       },
     ) => {
-      const api = readNativeApi();
-      if (!api) return;
-      const clicked = await api.contextMenu.show(
+      const clicked = await showContextMenu(
         [
-          {
-            id: "restore",
-            label: "Restore",
-          },
-          {
-            id: "delete",
-            label: "Delete",
-            destructive: true,
-          },
+          { id: "restore", label: "Restore", icon: ArchiveRestoreIcon },
+          { id: "delete", label: "Delete", icon: Delete02Icon, destructive: true },
         ],
         position,
       );

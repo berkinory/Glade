@@ -1,3 +1,4 @@
+import { Copy01Icon, HashIcon, TextIcon, UndoIcon } from "~/lib/icons";
 import {
   TagIcon,
   ArrowUp02Icon,
@@ -19,8 +20,7 @@ import { Input } from "../ui/input";
 import { Spinner } from "../ui/spinner";
 import { toastManager } from "../ui/toast";
 import { copyTextToClipboard } from "../../lib/clipboard";
-import { showContextMenuFallback } from "~/contextMenuFallback";
-import { GIT_COMMIT_CONTEXT_MENU_ICONS } from "~/lib/contextMenuIcons";
+import { showContextMenu } from "~/components/contextMenu/contextMenuStore";
 import { gitQueryKeys, gitStatusQueryOptions } from "../../lib/gitQueryOptions";
 import { formatRelativeTime } from "~/lib/relativeTime";
 import { cn } from "~/lib/utils";
@@ -34,31 +34,31 @@ async function showCommitContextMenu(
   undo: (() => void) | undefined,
 ) {
   event.preventDefault();
-  const action = await showContextMenuFallback(
+  const action = await showContextMenu(
     [
       ...(undo
         ? [
             {
               id: "undo",
               label: "Undo commit",
-              icon: GIT_COMMIT_CONTEXT_MENU_ICONS.undo,
+              icon: UndoIcon,
             },
           ]
         : []),
       {
         id: "hash",
         label: "Copy commit hash",
-        icon: GIT_COMMIT_CONTEXT_MENU_ICONS.hash,
+        icon: Copy01Icon,
       },
       {
         id: "short-hash",
         label: "Copy short hash",
-        icon: GIT_COMMIT_CONTEXT_MENU_ICONS.shortHash,
+        icon: HashIcon,
       },
       {
         id: "subject",
         label: "Copy commit subject",
-        icon: GIT_COMMIT_CONTEXT_MENU_ICONS.subject,
+        icon: TextIcon,
       },
     ],
     {

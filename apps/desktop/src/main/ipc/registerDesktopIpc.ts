@@ -3,18 +3,17 @@ import type { DesktopMenuShortcutState } from "@glade/contracts/ipc/menuShortcut
 import { readDesktopClipboardFiles } from "./clipboardFiles";
 import type {
   DesktopAppIcon,
-  DesktopContextMenuItem,
+  DesktopEditCommand,
   DesktopUpdateActionResult,
   DesktopUpdateState,
 } from "@glade/contracts/ipc/ipc";
-import type { IpcMainEvent, MenuItemConstructorOptions } from "electron";
+import type { IpcMainEvent } from "electron";
 import {
   app,
   BrowserWindow,
   clipboard,
   dialog,
   ipcMain,
-  Menu,
   nativeImage,
   nativeTheme,
   Notification,
@@ -24,7 +23,6 @@ import * as FS from "node:fs";
 import * as Path from "node:path";
 import {
   DESKTOP_CUSTOM_TITLE_BAR_PATH,
-  MAC_CONTEXT_MENU_LABEL_TRAILING_PADDING,
   MAX_CLIPBOARD_IMAGE_DATA_URL_LENGTH,
 } from "../desktopEnvironment";
 import { showDesktopConfirmDialog } from "../window/confirmDialog";
@@ -81,10 +79,6 @@ interface IpcIdentity {
     options?: { reregisterTaskbarButton?: boolean; flushShellIconCache?: boolean },
   ) => Promise<void>;
 }
-interface IpcMenu {
-  createContextMenuIcon: (dataUrl: unknown, template?: boolean) => Electron.NativeImage | undefined;
-  getDestructiveMenuIcon: () => Electron.NativeImage | undefined;
-}
 interface IpcUpdates {
   getState(): DesktopUpdateState;
   check: (reason: string) => Promise<void>;
@@ -97,10 +91,20 @@ interface IpcControl {
   requestGracefulAppQuit(reason: string): void;
   isQuitting(): boolean;
 }
+const DESKTOP_EDIT_COMMANDS: ReadonlySet<string> = new Set<DesktopEditCommand>([
+  "cut",
+  "copy",
+  "paste",
+  "selectAll",
+]);
+
+function isDesktopEditCommand(value: unknown): value is DesktopEditCommand {
+  return typeof value === "string" && DESKTOP_EDIT_COMMANDS.has(value);
+}
+
 export interface DesktopIpcDependencies {
   windows: IpcWindow;
   identity: IpcIdentity;
-  contextMenu: IpcMenu;
   updates: IpcUpdates;
   control: IpcControl;
   desktopHost: () => DesktopHost | null;
@@ -109,7 +113,6 @@ export interface DesktopIpcDependencies {
 export function createRegisterDesktopIpc({
   windows,
   identity,
-  contextMenu,
   updates,
   control,
   desktopHost,
@@ -234,75 +237,20 @@ export function createRegisterDesktopIpc({
       await enqueueDesktopAppIconApply(rawIcon);
     });
 
-    ipcMain.removeHandler(DESKTOP_IPC_CHANNELS.contextMenu);
-    ipcMain.handle(
-      DESKTOP_IPC_CHANNELS.contextMenu,
-      async (_event, items: DesktopContextMenuItem[], position?: { x: number; y: number }) => {
-        const normalizedItems = items
-          .filter((item) => typeof item.id === "string" && typeof item.label === "string")
-          .map((item) => ({
-            id: item.id,
-            label: item.label,
-            separatorBefore: item.separatorBefore === true,
-            destructive: item.destructive === true,
-            icon: contextMenu.createContextMenuIcon(item.iconDataUrl, item.iconTemplate !== false),
-          }));
-        if (normalizedItems.length === 0) {
-          return null;
-        }
+    ipcMain.removeHandler(DESKTOP_IPC_CHANNELS.editCommand);
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.editCommand, (event, command: unknown) => {
+      if (!isDesktopEditCommand(command)) return;
+      event.sender[command]();
+    });
 
-        const popupPosition =
-          position &&
-          Number.isFinite(position.x) &&
-          Number.isFinite(position.y) &&
-          position.x >= 0 &&
-          position.y >= 0
-            ? {
-                x: Math.floor(position.x),
-                y: Math.floor(position.y),
-              }
-            : null;
-
-        const window = BrowserWindow.getFocusedWindow() ?? windows.getMainWindow();
-        if (!window) return null;
-
-        return new Promise<string | null>((resolve) => {
-          const template: MenuItemConstructorOptions[] = [];
-          let hasInsertedDestructiveSeparator = false;
-          for (const item of normalizedItems) {
-            const shouldInsertSeparator =
-              item.separatorBefore ||
-              (item.destructive && !hasInsertedDestructiveSeparator && template.length > 0);
-            if (shouldInsertSeparator && template.length > 0) {
-              template.push({ type: "separator" });
-            }
-            if (item.destructive) {
-              hasInsertedDestructiveSeparator = true;
-            }
-            const itemOption: MenuItemConstructorOptions = {
-              label:
-                process.platform === "darwin"
-                  ? `${item.label}${MAC_CONTEXT_MENU_LABEL_TRAILING_PADDING}`
-                  : item.label,
-              click: () => resolve(item.id),
-            };
-            const icon =
-              item.icon ?? (item.destructive ? contextMenu.getDestructiveMenuIcon() : undefined);
-            if (icon) {
-              itemOption.icon = icon;
-            }
-            template.push(itemOption);
-          }
-
-          const menu = Menu.buildFromTemplate(template);
-          menu.popup({
-            window,
-            ...popupPosition,
-            callback: () => resolve(null),
-          });
-        });
-      },
-    );
+    ipcMain.removeHandler(DESKTOP_IPC_CHANNELS.copyImageAt);
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.copyImageAt, (event, x: unknown, y: unknown) => {
+      if (typeof x !== "number" || typeof y !== "number") return;
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+      // The renderer sends CSS pixels; copyImageAt expects zoomed window coordinates.
+      const zoom = event.sender.getZoomFactor();
+      event.sender.copyImageAt(Math.round(x * zoom), Math.round(y * zoom));
+    });
 
     ipcMain.removeHandler(DESKTOP_IPC_CHANNELS.openExternal);
     ipcMain.handle(DESKTOP_IPC_CHANNELS.openExternal, async (_event, rawUrl: unknown) => {

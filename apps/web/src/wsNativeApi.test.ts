@@ -5,7 +5,7 @@ import {
   ProjectId,
   ThreadId,
 } from "@glade/contracts/core/baseSchemas";
-import { type ContextMenuItem, type NativeApi } from "@glade/contracts/ipc/ipc";
+import { type NativeApi } from "@glade/contracts/ipc/ipc";
 import {
   ORCHESTRATION_WS_CHANNELS,
   ORCHESTRATION_WS_METHODS,
@@ -24,13 +24,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const requestMock = vi.fn<(...args: Array<unknown>) => Promise<unknown>>();
 const disposeMock = vi.fn();
-const showContextMenuFallbackMock =
-  vi.fn<
-    <T extends string>(
-      items: readonly ContextMenuItem<T>[],
-      position?: { x: number; y: number },
-    ) => Promise<T | null>
-  >();
 const channelListeners = new Map<string, Set<(message: WsPush) => void>>();
 const latestPushByChannel = new Map<string, WsPush>();
 const subscribeMock = vi.fn<
@@ -79,21 +72,6 @@ vi.mock("./wsTransport.implementation", () => {
     },
   };
 });
-
-vi.mock("./contextMenuFallback", () => ({
-  showContextMenuFallback: showContextMenuFallbackMock,
-}));
-
-const withNativeMenuIconsMock = vi.fn(
-  async <T extends string>(items: readonly ContextMenuItem<T>[]) =>
-    items.map((item) =>
-      item.icon ? { ...item, iconDataUrl: `data:image/png;base64,${item.icon}` } : item,
-    ),
-);
-
-vi.mock("./lib/nativeMenuIcons", () => ({
-  withNativeMenuIcons: withNativeMenuIconsMock,
-}));
 
 let nextPushSequence = 1;
 
@@ -164,8 +142,6 @@ beforeEach(() => {
   vi.resetModules();
   requestMock.mockReset();
   disposeMock.mockReset();
-  showContextMenuFallbackMock.mockReset();
-  withNativeMenuIconsMock.mockClear();
   subscribeMock.mockClear();
   channelListeners.clear();
   latestPushByChannel.clear();
@@ -536,89 +512,6 @@ describe("wsNativeApi", () => {
       phase: "cloning",
       message: "Cloning openai/codex",
     });
-  });
-
-  it("forwards context menu metadata to desktop bridge", async () => {
-    vi.stubGlobal("navigator", { platform: "Win32" });
-    const showContextMenu = vi.fn().mockResolvedValue("delete");
-    Object.defineProperty(getWindowForTest(), "desktopBridge", {
-      configurable: true,
-      writable: true,
-      value: {
-        showContextMenu,
-      },
-    });
-
-    const { createWsNativeApi } = await import("./wsNativeApi");
-    const api = createWsNativeApi();
-    await api.contextMenu.show(
-      [
-        { id: "rename", label: "Rename thread" },
-        { id: "delete", label: "Delete", separatorBefore: true, destructive: true },
-      ],
-      { x: 200, y: 300 },
-    );
-
-    expect(showContextMenu).toHaveBeenCalledWith(
-      [
-        { id: "rename", label: "Rename thread" },
-        { id: "delete", label: "Delete", separatorBefore: true, destructive: true },
-      ],
-      { x: 200, y: 300 },
-    );
-    expect(withNativeMenuIconsMock).not.toHaveBeenCalled();
-  });
-
-  it("rasterizes context menu icons for the macOS desktop bridge", async () => {
-    vi.stubGlobal("navigator", { platform: "MacIntel" });
-    const showContextMenu = vi.fn().mockResolvedValue("rename");
-    Object.defineProperty(getWindowForTest(), "desktopBridge", {
-      configurable: true,
-      writable: true,
-      value: {
-        showContextMenu,
-      },
-    });
-
-    const { createWsNativeApi } = await import("./wsNativeApi");
-    const api = createWsNativeApi();
-    await api.contextMenu.show(
-      [
-        { id: "rename", label: "Rename thread", icon: "pencil" },
-        { id: "copy-thread-id", label: "Copy Thread ID" },
-      ],
-      { x: 200, y: 300 },
-    );
-
-    expect(showContextMenu).toHaveBeenCalledWith(
-      [
-        {
-          id: "rename",
-          label: "Rename thread",
-          icon: "pencil",
-          iconDataUrl: "data:image/png;base64,pencil",
-        },
-        { id: "copy-thread-id", label: "Copy Thread ID" },
-      ],
-      { x: 200, y: 300 },
-    );
-  });
-
-  it("uses fallback context menu when desktop bridge is unavailable", async () => {
-    showContextMenuFallbackMock.mockResolvedValue("delete");
-    Reflect.deleteProperty(getWindowForTest(), "desktopBridge");
-
-    const { createWsNativeApi } = await import("./wsNativeApi");
-    const api = createWsNativeApi();
-    await api.contextMenu.show([{ id: "delete", label: "Delete", destructive: true }], {
-      x: 20,
-      y: 30,
-    });
-
-    expect(showContextMenuFallbackMock).toHaveBeenCalledWith(
-      [{ id: "delete", label: "Delete", destructive: true }],
-      { x: 20, y: 30 },
-    );
   });
 
   it.each([

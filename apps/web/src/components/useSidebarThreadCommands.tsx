@@ -1,6 +1,17 @@
+import { showContextMenu } from "./contextMenu/contextMenuStore";
+import {
+  Archive04Icon,
+  BellIcon,
+  ComputerTerminal01Icon,
+  Copy01Icon,
+  CursorInWindowIcon,
+  Delete02Icon,
+  PencilEdit02Icon,
+  PinIcon,
+  ViewIcon,
+} from "~/lib/icons";
 import { useSidebarStateStore } from "../sidebarStateStore";
 import { pinActionLabel } from "~/lib/pin";
-import { THREAD_CONTEXT_MENU_ICONS } from "~/lib/contextMenuIcons";
 import { type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { type OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/threadEntities";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
@@ -131,13 +142,6 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
   const handleThreadContextMenu = async (
     threadId: ThreadId,
     position: { x: number; y: number },
-    options?: {
-      extraItems?: Array<{
-        id: "return-to-single-chat";
-        label: string;
-      }>;
-      onExtraAction?: (itemId: "return-to-single-chat") => Promise<void> | void;
-    },
   ) => {
     const api = readNativeApi();
     if (!api) return;
@@ -152,37 +156,37 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
       envMode: thread.envMode,
       worktreePath: thread.worktreePath,
     });
-    const clicked = await api.contextMenu.show(
+    const clicked = await showContextMenu(
       [
-        { id: "rename", label: "Rename thread", icon: THREAD_CONTEXT_MENU_ICONS.rename },
+        { id: "rename", label: "Rename thread", icon: PencilEdit02Icon },
         {
           id: "toggle-pin",
           label: pinActionLabel("thread", isPinned),
-          icon: THREAD_CONTEXT_MENU_ICONS.pin,
+          icon: PinIcon,
         },
         ...(threadStatus?.dismissible
           ? [
               {
                 id: "clear-notification",
                 label: "Clear notification",
-                icon: THREAD_CONTEXT_MENU_ICONS.clearNotification,
+                icon: BellIcon,
               },
             ]
           : []),
-        { id: "mark-unread", label: "Mark unread", icon: THREAD_CONTEXT_MENU_ICONS.markUnread },
+        { id: "mark-unread", label: "Mark unread", icon: ViewIcon },
         ...(isElectron && !thread.parentThreadId
           ? [
               {
                 id: "toggle-computer-use",
                 label: computerUseOn ? "Turn off Computer Use" : "Turn on Computer Use",
-                icon: THREAD_CONTEXT_MENU_ICONS.computerUse,
+                icon: CursorInWindowIcon,
               },
             ]
           : []),
         {
           id: "copy-path",
           label: "Copy Path",
-          icon: THREAD_CONTEXT_MENU_ICONS.copy,
+          icon: Copy01Icon,
           separatorBefore: true,
         },
         ...(threadWorkspacePath
@@ -190,12 +194,11 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
               {
                 id: "open-path-in-terminal",
                 label: "Open Path in Terminal",
-                icon: THREAD_CONTEXT_MENU_ICONS.openInTerminal,
+                icon: ComputerTerminal01Icon,
               },
             ]
           : []),
-        { id: "copy-thread-id", label: "Copy Thread ID", icon: THREAD_CONTEXT_MENU_ICONS.copy },
-        ...(options?.extraItems ?? []),
+        { id: "copy-thread-id", label: "Copy Thread ID", icon: Copy01Icon },
 
         ...(thread.parentThreadId
           ? []
@@ -203,14 +206,14 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
               {
                 id: "archive",
                 label: "Archive",
-                icon: THREAD_CONTEXT_MENU_ICONS.archive,
+                icon: Archive04Icon,
                 separatorBefore: true,
               },
             ]),
         {
           id: "delete",
           label: "Delete",
-          icon: THREAD_CONTEXT_MENU_ICONS.delete,
+          icon: Delete02Icon,
           destructive: true,
           ...(thread.parentThreadId ? { separatorBefore: true } : {}),
         },
@@ -324,10 +327,6 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
       copyThreadIdToClipboard(threadId);
       return;
     }
-    if (clicked === "return-to-single-chat") {
-      await options?.onExtraAction?.("return-to-single-chat");
-      return;
-    }
     if (clicked === "archive") {
       await confirmAndArchiveThread(threadId);
       return;
@@ -343,18 +342,18 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
     if (ids.length === 0) return;
     const count = ids.length;
 
-    const clicked = await api.contextMenu.show(
+    const clicked = await showContextMenu(
       [
         {
           id: "mark-unread",
           label: `Mark unread (${count})`,
-          icon: THREAD_CONTEXT_MENU_ICONS.markUnread,
+          icon: ViewIcon,
         },
-        { id: "archive", label: `Archive (${count})`, icon: THREAD_CONTEXT_MENU_ICONS.archive },
+        { id: "archive", label: `Archive (${count})`, icon: Archive04Icon },
         {
           id: "delete",
           label: `Delete (${count})`,
-          icon: THREAD_CONTEXT_MENU_ICONS.delete,
+          icon: Delete02Icon,
           destructive: true,
         },
       ],

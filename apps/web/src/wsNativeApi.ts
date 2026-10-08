@@ -17,7 +17,7 @@ import type {
   AuthSessionState,
   AuthWebSocketTokenResult,
 } from "@glade/contracts/transport/auth/auth";
-import type { ContextMenuItem, NativeApi } from "@glade/contracts/ipc/ipc";
+import type { NativeApi } from "@glade/contracts/ipc/ipc";
 import type {
   GitActionProgressEvent,
   GitWorktreeSetupProgressEvent,
@@ -47,10 +47,7 @@ import type { WsBootstrapNegotiateResult } from "@glade/contracts/transport/ws/w
 import { VOICE_TRANSCRIPTION_UPLOAD_ROUTE_PATH } from "@glade/shared/transport/binaryTransfer";
 import { Option, Schema } from "effect";
 import { showConfirmDialogFallback } from "./confirmDialogFallback";
-import { showContextMenuFallback } from "./contextMenuFallback";
 import { requireHttpExternalUrl } from "./lib/externalUrl";
-import { withNativeMenuIcons } from "./lib/nativeMenuIcons";
-import { isMacNavigatorPlatform } from "./lib/utils";
 import { WsTransport } from "./wsTransport.implementation";
 import type { WsThreadStreamFailure } from "./wsTransport.support";
 import { emitWsCompatibilityIssue, emitWsTransportState } from "./wsTransportEvents";
@@ -525,18 +522,6 @@ export function createWsNativeApi(): NativeApi {
         transport.request(WS_METHODS.gitPreparePullRequestThread, input),
       onActionProgress: gitActionProgressListeners.subscribe,
       onWorktreeSetupProgress: gitWorktreeSetupProgressListeners.subscribe,
-    },
-    contextMenu: {
-      show: async <T extends string>(
-        items: readonly ContextMenuItem<T>[],
-        position?: { x: number; y: number },
-      ): Promise<T | null> => {
-        if (window.desktopBridge) {
-          const desktopItems = isMacNavigatorPlatform() ? await withNativeMenuIcons(items) : items;
-          return window.desktopBridge.showContextMenu(desktopItems, position);
-        }
-        return showContextMenuFallback(items, position);
-      },
     },
     server: {
       getConfig: () => transport.request(WS_METHODS.serverGetConfig),

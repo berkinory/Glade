@@ -118,7 +118,6 @@ export function createDesktopRuntime(): void {
   const ipc = createRegisterDesktopIpc({
     windows,
     identity,
-    contextMenu: windows,
     updates,
     control: {
       getWsUrl: backend.getWsUrl,

@@ -39,7 +39,8 @@ contextBridge.exposeInMainWorld("desktopBridge", {
   },
   getAppIcon: () => ipcRenderer.invoke(IPC.getAppIcon),
   setAppIcon: (icon) => ipcRenderer.invoke(IPC.setAppIcon, icon),
-  showContextMenu: (items, position) => ipcRenderer.invoke(IPC.contextMenu, items, position),
+  editCommand: (command) => ipcRenderer.invoke(IPC.editCommand, command),
+  copyImageAt: (position) => ipcRenderer.invoke(IPC.copyImageAt, position.x, position.y),
   openExternal: (url: string) => ipcRenderer.invoke(IPC.openExternal, url),
   showInFolder: (path: string) => ipcRenderer.invoke(IPC.showInFolder, path),
   shell: {

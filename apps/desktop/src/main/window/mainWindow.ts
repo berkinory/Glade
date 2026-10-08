@@ -15,8 +15,6 @@ import * as Path from "node:path";
 import { shouldDeferDesktopWindowClose } from "../../backend/backendShutdown";
 import {
   APP_DISPLAY_NAME,
-  CONTEXT_MENU_ICON_DATA_URL_PREFIX,
-  CONTEXT_MENU_ICON_MAX_DATA_URL_LENGTH,
   DESKTOP_CUSTOM_TITLE_BAR_PATH,
   DESKTOP_LOG_FILE_NAME,
   DESKTOP_MENU_MAX_ZOOM_FACTOR,
@@ -225,47 +223,12 @@ export function createMainWindow({
         nodeIntegration: false,
         sandbox: true,
         backgroundThrottling: true,
+        spellcheck: false,
       },
     });
     attachDesktopZoomFactorSync(window);
     attachRendererCrashRecovery(window);
     attachDesktopPhysicalZoomShortcuts(window);
-
-    window.webContents.on("context-menu", (event, params) => {
-      event.preventDefault();
-
-      const menuTemplate: MenuItemConstructorOptions[] = [];
-
-      if (params.misspelledWord) {
-        for (const suggestion of params.dictionarySuggestions.slice(0, 5)) {
-          menuTemplate.push({
-            label: suggestion,
-            click: () => window.webContents.replaceMisspelling(suggestion),
-          });
-        }
-        if (params.dictionarySuggestions.length === 0) {
-          menuTemplate.push({ label: "No suggestions", enabled: false });
-        }
-        menuTemplate.push({ type: "separator" });
-      }
-
-      if (params.mediaType === "image") {
-        menuTemplate.push({
-          label: "Copy Image",
-          click: () => window.webContents.copyImageAt(params.x, params.y),
-        });
-        menuTemplate.push({ type: "separator" });
-      }
-
-      menuTemplate.push(
-        { role: "cut", enabled: params.editFlags.canCut },
-        { role: "copy", enabled: params.editFlags.canCopy },
-        { role: "paste", enabled: params.editFlags.canPaste },
-        { role: "selectAll", enabled: params.editFlags.canSelectAll },
-      );
-
-      Menu.buildFromTemplate(menuTemplate).popup({ window });
-    });
 
     // Generated srcdoc visuals may run scripts, but cannot navigate into the authenticated app
     // or issue navigation requests outside their opaque sandbox.
@@ -920,51 +883,6 @@ export function createMainWindow({
     Menu.setApplicationMenu(Menu.buildFromTemplate(template));
   }
 
-  let destructiveMenuIconCache: Electron.NativeImage | null | undefined;
-
-  function getDestructiveMenuIcon(): Electron.NativeImage | undefined {
-    if (process.platform !== "darwin") return undefined;
-    if (destructiveMenuIconCache !== undefined) {
-      return destructiveMenuIconCache ?? undefined;
-    }
-    try {
-      const icon = nativeImage.createFromNamedImage("trash").resize({
-        width: 14,
-        height: 14,
-      });
-      if (icon.isEmpty()) {
-        destructiveMenuIconCache = null;
-        return undefined;
-      }
-      icon.setTemplateImage(true);
-      destructiveMenuIconCache = icon;
-      return icon;
-    } catch {
-      destructiveMenuIconCache = null;
-      return undefined;
-    }
-  }
-
-  function createContextMenuIcon(
-    dataUrl: unknown,
-    template = true,
-  ): Electron.NativeImage | undefined {
-    if (
-      process.platform !== "darwin" ||
-      typeof dataUrl !== "string" ||
-      dataUrl.length > CONTEXT_MENU_ICON_MAX_DATA_URL_LENGTH ||
-      !dataUrl.startsWith(CONTEXT_MENU_ICON_DATA_URL_PREFIX)
-    ) {
-      return undefined;
-    }
-    const icon = nativeImage.createFromBuffer(
-      Buffer.from(dataUrl.slice(CONTEXT_MENU_ICON_DATA_URL_PREFIX.length), "base64"),
-      { scaleFactor: 2 },
-    );
-    if (icon.isEmpty()) return undefined;
-    icon.setTemplateImage(template);
-    return icon;
-  }
   return {
     getDesktopWindowState,
     getDesktopCustomTitleBarState,
@@ -982,7 +900,5 @@ export function createMainWindow({
     resolveAutoUpdateDisabledReason,
     configureApplicationMenu,
     setMenuShortcuts: menuShortcuts.apply,
-    getDestructiveMenuIcon,
-    createContextMenuIcon,
   };
 }

@@ -1,7 +1,8 @@
+import { BubbleChatIcon, Link01Icon } from "~/lib/icons";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { ReactNode } from "react";
 import { useStore } from "~/store";
-import { showContextMenuFallback } from "~/contextMenuFallback";
+import { showContextMenu } from "~/components/contextMenu/contextMenuStore";
 import { copyTextToClipboard } from "~/lib/clipboard";
 import { toastManager } from "../ui/toast";
 
@@ -55,10 +56,10 @@ export function MarkdownChatLink({
       onContextMenu={(event) => {
         event.preventDefault();
         event.stopPropagation();
-        void showContextMenuFallback(
+        void showContextMenu(
           [
-            { id: "open", label: "Open chat" },
-            { id: "copy", label: "Copy chat link" },
+            { id: "open", label: "Open chat", icon: BubbleChatIcon },
+            { id: "copy", label: "Copy chat link", icon: Link01Icon },
           ],
           { x: event.clientX, y: event.clientY },
         )

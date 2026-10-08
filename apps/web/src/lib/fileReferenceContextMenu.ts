@@ -1,10 +1,19 @@
+import {
+  Copy01Icon,
+  Delete02Icon,
+  FilePlusIcon,
+  Folder02Icon,
+  FolderPlusIcon,
+  MessageCircleIcon,
+  PencilEdit02Icon,
+} from "~/lib/icons";
+import { FinderAppIcon } from "~/components/contextMenu/FinderAppIcon";
 import { formatSelectionLabel, type ChatFileReference } from "~/lib/chatReferences";
 import { copyTextToClipboard } from "./clipboard";
 import { getNavigatorPlatform, isMacPlatform, isWindowsPlatform } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
 import { toastManager } from "~/components/ui/toast";
-import { FILE_CONTEXT_MENU_ICONS } from "./contextMenuIcons";
-import { showContextMenuFallback } from "~/contextMenuFallback";
+import { showContextMenu } from "~/components/contextMenu/contextMenuStore";
 
 function getRevealInFolderLabel(platform: string): string {
   if (isWindowsPlatform(platform)) {
@@ -55,7 +64,7 @@ export async function showFileReferenceContextMenu(input: {
       ? [
           {
             id: "reference-in-chat" as const,
-            icon: FILE_CONTEXT_MENU_ICONS.reference,
+            icon: MessageCircleIcon,
             label: rangeLabel
               ? `Reference ${rangeLabel} in chat`
               : hasSnippet
@@ -68,9 +77,7 @@ export async function showFileReferenceContextMenu(input: {
       ? [
           {
             id: "reveal-in-folder" as const,
-            icon: isMacPlatform(getNavigatorPlatform())
-              ? FILE_CONTEXT_MENU_ICONS.finder
-              : FILE_CONTEXT_MENU_ICONS.fileManager,
+            icon: isMacPlatform(getNavigatorPlatform()) ? FinderAppIcon : Folder02Icon,
             label:
               input.revealKind === "directory"
                 ? getOpenDirectoryLabel(getNavigatorPlatform())
@@ -78,13 +85,13 @@ export async function showFileReferenceContextMenu(input: {
           },
         ]
       : []),
-    { id: "copy-path" as const, label: "Copy path", icon: FILE_CONTEXT_MENU_ICONS.copy },
+    { id: "copy-path" as const, label: "Copy path", icon: Copy01Icon },
     ...(input.onCreateFile
       ? [
           {
             id: "create-file" as const,
             label: "New File",
-            icon: FILE_CONTEXT_MENU_ICONS.createFile,
+            icon: FilePlusIcon,
             separatorBefore: true,
           },
         ]
@@ -94,7 +101,7 @@ export async function showFileReferenceContextMenu(input: {
           {
             id: "create-folder" as const,
             label: "New Folder",
-            icon: FILE_CONTEXT_MENU_ICONS.createFolder,
+            icon: FolderPlusIcon,
           },
         ]
       : []),
@@ -103,7 +110,7 @@ export async function showFileReferenceContextMenu(input: {
           {
             id: "rename" as const,
             label: "Rename",
-            icon: FILE_CONTEXT_MENU_ICONS.rename,
+            icon: PencilEdit02Icon,
             separatorBefore: true,
           },
         ]
@@ -113,16 +120,14 @@ export async function showFileReferenceContextMenu(input: {
           {
             id: "delete" as const,
             label: "Delete",
-            icon: FILE_CONTEXT_MENU_ICONS.delete,
+            icon: Delete02Icon,
             destructive: true,
           },
         ]
       : []),
   ];
 
-  const clicked = input.onDelete
-    ? await showContextMenuFallback(items, input.position)
-    : await api.contextMenu.show(items, input.position);
+  const clicked = await showContextMenu(items, input.position);
   if (clicked === "reference-in-chat") {
     input.onReferenceInChat?.(reference);
     return;

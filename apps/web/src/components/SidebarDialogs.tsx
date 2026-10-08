@@ -33,6 +33,7 @@ import {
 import { CreateProjectDialog } from "./CreateProjectDialog";
 import { SpaceEditorDialog } from "./SpaceEditorDialog";
 import { SpaceIcon } from "./SpaceIcon";
+import { FinderAppIcon } from "./contextMenu/FinderAppIcon";
 import { SpaceProjectPickerDialog } from "./SpaceProjectPickerDialog";
 import { VOID_SPACE_KEY, spaceDisplayIcon, spaceKey } from "../lib/spaceGrouping";
 import {
@@ -198,9 +199,7 @@ export function SidebarDialogs({
                   )
                 }
               >
-                <span className={PROJECT_CONTEXT_MENU_ICON_CLASS_NAME}>
-                  <img src="/finder.png" alt="" className="size-3.5 object-contain" />
-                </span>
+                <ProjectContextMenuIcon icon={FinderAppIcon} />
                 <span>Open in Finder</span>
               </MenuItem>
               <MenuItem

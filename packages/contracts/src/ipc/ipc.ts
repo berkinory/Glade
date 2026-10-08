@@ -238,20 +238,7 @@ import type {
   StatsGetProfileTokenStatsResult,
 } from "../server/stats";
 
-export interface ContextMenuItem<T extends string = string> {
-  id: T;
-  label: string;
-
-  separatorBefore?: boolean;
-  destructive?: boolean;
-
-  icon?: string;
-}
-
-export interface DesktopContextMenuItem<T extends string = string> extends ContextMenuItem<T> {
-  iconDataUrl?: string;
-  iconTemplate?: boolean;
-}
+export type DesktopEditCommand = "cut" | "copy" | "paste" | "selectAll";
 
 export type DesktopUpdateStatus =
   | "disabled"
@@ -395,10 +382,8 @@ export interface DesktopBridge {
   };
   getAppIcon?: () => Promise<DesktopAppIcon>;
   setAppIcon: (icon: DesktopAppIcon) => Promise<void>;
-  showContextMenu: <T extends string>(
-    items: readonly DesktopContextMenuItem<T>[],
-    position?: { x: number; y: number },
-  ) => Promise<T | null>;
+  editCommand: (command: DesktopEditCommand) => Promise<void>;
+  copyImageAt: (position: { x: number; y: number }) => Promise<void>;
   openExternal: (url: string) => Promise<boolean>;
   showInFolder: (path: string) => Promise<void>;
   shell?: {
@@ -623,12 +608,6 @@ export interface NativeApi {
     ) => () => void;
   };
 
-  contextMenu: {
-    show: <T extends string>(
-      items: readonly ContextMenuItem<T>[],
-      position?: { x: number; y: number },
-    ) => Promise<T | null>;
-  };
   server: {
     getConfig: () => Promise<ServerConfig>;
     getEnvironment: () => Promise<ServerGetEnvironmentResult>;

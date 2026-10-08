@@ -2,6 +2,7 @@ import { useDesktopMenuShortcuts } from "../hooks/useDesktopMenuShortcuts";
 import { type WsCompatibilityError } from "@glade/contracts/transport/ws/wsCompatibility";
 import { Outlet } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { ContextMenuHost } from "../components/contextMenu/ContextMenuHost";
 import { DiffWorkerPoolProvider } from "../components/DiffWorkerPoolProvider";
 import { APP_DISPLAY_NAME, APP_VERSION } from "../branding";
 import { DesktopWindowControls } from "../components/DesktopWindowControls";
@@ -114,6 +115,7 @@ export function RootRouteView() {
             <GlobalOnboardingDialog />
 
             <DesktopProjectBootstrap />
+            <ContextMenuHost />
             <Outlet />
           </DiffWorkerPoolProvider>
         </AnchoredToastProvider>

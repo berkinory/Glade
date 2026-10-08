@@ -19,6 +19,7 @@
 - Git status and task snapshots stay responsive during heavy repository activity.
 - Chat text and notices follow your font settings more consistently, and question cards can be answered from the keyboard.
 - Failed tasks keep their error details, which you can expand and copy, and can be continued in the same chat or with a different model.
+- Right-click menus across the app share one look with icons, and text fields and images get their own copy and paste menu.
 
 ### Fixed
 
@@ -29,6 +30,10 @@
 - Tasks no longer wait indefinitely for their starting file snapshot, and a missing snapshot can no longer be used to undo files.
 - Welcome and release-note prompts no longer appear on top of each other.
 - Line breaks in chat tables render as line breaks instead of literal tags.
+
+### Removed
+
+- Spell checking and spelling suggestions in text fields.
 
 ## 0.2.1 - 2026-10-08
 

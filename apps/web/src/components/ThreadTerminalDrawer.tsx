@@ -10,7 +10,7 @@ import {
 import { Terminal } from "@xterm/xterm";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { type TerminalContextSelection } from "~/lib/terminalContext";
-import { readNativeApi } from "~/nativeApi";
+import { showContextMenu } from "./contextMenu/contextMenuStore";
 import type { ThreadTerminalPresentationMode } from "../types";
 import { cn } from "~/lib/utils";
 import { resolveTerminalVisualIdentityMap } from "../terminalVisualIdentity";
@@ -344,12 +344,9 @@ function TerminalViewport({
       clearSelectionAction();
       return;
     }
-    const api = readNativeApi();
-    if (!api) return;
     const requestId = ++selectionActionRequestIdRef.current;
     selectionActionOpenRef.current = true;
-    void api.contextMenu
-      .show(contextMenuItems, nextAction.position)
+    void showContextMenu(contextMenuItems, nextAction.position)
       .then((clicked) => {
         if (requestId !== selectionActionRequestIdRef.current || clicked !== "add-to-chat") {
           return;
