@@ -108,7 +108,8 @@ Tests exist to catch regressions that would really hurt. Fewer, stronger tests a
 - tests proving a removed feature is gone;
 - tests for features that no longer exist;
 - duplicates of the same contract at another layer;
-- tests that exist only to keep test-only exports alive (delete the export too).
+- tests that exist only to keep test-only exports alive (delete the export too);
+- vacuous tests that pass without proving anything: early returns or `if` guards that skip assertions when the expected event never arrives, and assertions that cannot fail.
 
 **Browser and UI tests:** only for critical flows. Verify presentation changes in the running app; the dedicated browser test harness is retired and is not rebuilt without a concrete, critical gap.
 
@@ -116,6 +117,8 @@ Tests exist to catch regressions that would really hurt. Fewer, stronger tests a
 
 - Tests read like good code: clear names, table-driven cases instead of near-copies, shared fixtures instead of repeated setup, and no comments unless essential.
 - Split slow suites along behavior lines; do not drop what they prove to make them faster.
+- Do not wait on real time. Drive sleeps, timeouts, retries and expiries with `TestClock`, fake timers or a stubbed deadline, and end spawned processes instead of waiting for them to exit.
+- When pruning or consolidating, keep every behavior the removed tests proved; fewer tests must not mean weaker coverage.
 - A bug regression test must fail before the fix.
 
 **Running tests:** use `bun run test`, never `bun test`, which picks a different runner. Do not edit files while Vitest is running.
