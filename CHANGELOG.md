@@ -1,76 +1,53 @@
 # Glade Changelog
 
-## 0.2.1 - Unreleased
+## 0.2.1 - 2026-10-08
 
 ### New
 
-- Browser Use is rebuilt: each chat has its own browser panel that opens with a blank tab, agents browse with your existing sign-ins, and you can pick an element or screenshot the page to send to the composer, open the page in your default browser, open developer tools, or clear a site's data. Picked elements show their role or tag and size while you hover, and give the agent where the element sits on the page, a unique selector, its text and key styles.
-- Computer Use is rebuilt on the Cua driver: agents use desktop apps after you grant access to each app in the chat, or right away when the chat has Full access.
-- Visual replies and previews can load public web resources, and visual links open in your browser.
-- Glade's browser blocks ads, trackers and cookie notices by default, with a switch in Settings and a shield in the browser panel that turns blocking off for one site; agents can do the same when blocking breaks a page.
+- Browser Use is rebuilt: each chat has its own browser panel where agents browse with your existing sign-ins, and you can pick an element or screenshot the page to send to the agent, open the page in your default browser, open developer tools, or clear a site's data. ([233b0a006](https://github.com/berkinory/Glade/commit/233b0a0063abcecb346db04271f394b8fe2f6d7d), [09ce04c48](https://github.com/berkinory/Glade/commit/09ce04c4814ee686c89e63c58a7c2c88bab5ff4e), [3abae10aa](https://github.com/berkinory/Glade/commit/3abae10aa5c266ddc9c336dac79294a672a28422), [12f99e688](https://github.com/berkinory/Glade/commit/12f99e68851932c7ce2918491ee30d0a2ef3e84a))
+- Computer Use is rebuilt on the Cua driver: agents use desktop apps after you grant access to each app in the chat, or right away when the chat has Full access. ([2985664b4](https://github.com/berkinory/Glade/commit/2985664b47210fcb470f9ae358101b6cafac9c53), [30ba21be6](https://github.com/berkinory/Glade/commit/30ba21be6dc4155f5845d71d70fbb1544bbfb175))
+- Glade's browser blocks ads, trackers and cookie notices by default, with a switch in Settings and a shield in the browser panel that turns blocking off for one site. ([d7b9e531b](https://github.com/berkinory/Glade/commit/d7b9e531b214c535a5dced8414b03b393700a170), [2d411f00b](https://github.com/berkinory/Glade/commit/2d411f00b62acb0ab1ff113d6b97b95ba65d665e))
 
 ### Improved
 
-- Explorer, Source Control, Terminal and the browser open from a new activity bar on the right edge into one right sidebar, with a shortcut for each (Explorer is Cmd/Ctrl+E). A toggle at the top of the bar shows or hides the sidebar, all views share one width, terminal and browser tabs live inside their views, and icons show when a terminal is running or the agent is browsing.
-- Browser Use reads pages with far fewer tokens and acts more reliably: it skips hidden and covered elements, waits for what each action causes, fills whole forms at once, follows the click, scroll, key and search conventions Claude and Codex already know, and leaves page dialogs and clicks you make in the panel to you.
-- Browser Use handles custom dropdowns and autocompletes, scrolls sidebars and long lists, waits for toasts and slow results, says where downloads were saved, and asks you to complete CAPTCHAs in the panel instead of attempting them.
-- Computer Use tells agents what each action changed, stops them from repeating actions that do nothing, waits while you are using the mouse or keyboard, keeps browsers read-only and terminals click-only unless you grant full control, and can be stopped everywhere at once with Control-Option-Command-Escape (Control-Alt-Shift-Escape on Windows and Linux).
-- Computer Use saves and opens files through macOS Open and Save panels in one step without overwriting existing files, recovers from misspelled menu commands, and reads app windows with far fewer tokens.
-- Computer Use can launch apps that are not running and open files, folders or web links in them.
-- Computer Use agents copy and paste between apps through the clipboard (reading anything the agent did not put there asks once per chat, in every permission mode), select and format text, move and resize windows, and address apps by name.
-- Claude chats load core Glade tools automatically and discover other tools as needed, reducing context usage.
-- Switching between Explorer, Source Control, Terminal and the browser is instant, and terminal splits close immediately.
-
-- Subagent rows use stable names instead of Claude task descriptions, show model names or aliases without extra labels, and keep task prompts, agent types and redundant background-agent banners out of the compact panels.
-- Provider transitions prepare in the chat while you continue using other chats.
-- Visual replies blend into the chat with automatic height and compact download and expand controls.
-- Visual previews require a smaller browser download while keeping local network access blocked.
-- Chat activity hides routine accepted approvals while keeping refusals, broader grants and Computer permission decisions visible.
-- Long lists of edited files scroll within the chat instead of pushing the rest of the conversation away.
-- Full Access no longer asks again before Codex uses Glade's own tools.
-- Long commits, pushes and hooks run to completion regardless of duration or output volume, and Git actions keep their progress across reconnects without running twice.
-- Background remote refreshes never open credential prompts, run once per repository across worktrees, and no longer hold up local git status.
-- Diff totals stay responsive while agents create many new files.
-- Returning to Glade, scrolling the sidebar and agent tool runs trigger far fewer git and GitHub refreshes.
-- Claude sessions, forks and skill and agent lists start faster.
-- Usage indicators use far less CPU with large Claude histories.
-- Turn change summaries appear for very large turns too.
-- The file explorer and project picker open folders faster, especially in large repositories.
-- File mentions open faster after agents change files and in large repositories.
-- Installing dependencies or running builds no longer keeps source control busy, and file watching recovers on Linux when watch limits are reached.
-- Question cards point out that you can type your own answer instead of picking an option.
+- Explorer, Source Control, Terminal and the browser open from a new activity bar into one right sidebar, with a shortcut for each view, a shared width, and indicators when a terminal is running or an agent is browsing. Switching views is instant. ([96fea7216](https://github.com/berkinory/Glade/commit/96fea7216030d2f7de6be7d7477fb6eedd31630f), [affd48927](https://github.com/berkinory/Glade/commit/affd48927913e0b690b525abc2c848104e445d90), [ab40b5398](https://github.com/berkinory/Glade/commit/ab40b539866056e3f6647f886b1ed33bae637594))
+- Browser Use reads pages with far fewer tokens and acts more reliably: it skips hidden and covered elements, fills whole forms at once, handles custom dropdowns, long lists and slow results, reports downloads, and asks you to complete CAPTCHAs in the panel. ([30a8e8ccc](https://github.com/berkinory/Glade/commit/30a8e8ccc207a9fb27491a7717da5f6d8db78496), [0dc9f6b68](https://github.com/berkinory/Glade/commit/0dc9f6b68b16990133bbf87df975915b6531e9a1), [09838f79a](https://github.com/berkinory/Glade/commit/09838f79aa90741a21d60d14b77db6e53ed57c2a), [a1adbe7db](https://github.com/berkinory/Glade/commit/a1adbe7dbf47b3a3bf07842627252667ce3e0b82))
+- Computer Use tells agents what each action changed, stops repeated actions that do nothing, waits while you use the mouse or keyboard, keeps browsers read-only and terminals click-only unless you grant full control, and can be stopped everywhere with Control-Option-Command-Escape (Control-Alt-Shift-Escape on Windows and Linux). ([51ba40765](https://github.com/berkinory/Glade/commit/51ba40765b3f5d563f7ff70cb081cf2576ff530d), [01819abcf](https://github.com/berkinory/Glade/commit/01819abcf23b0b422913d1eb679d9bb964a1bed1))
+- Computer Use agents can launch apps and open files or links in them, use macOS Open and Save panels without overwriting files, copy and paste between apps, select and format text, and move and resize windows. Reading clipboard content the agent did not put there asks once per chat. ([af5384b13](https://github.com/berkinory/Glade/commit/af5384b1312e0fc2aadfe5d142ceb5c62dc67021), [4befa4656](https://github.com/berkinory/Glade/commit/4befa4656eff24695c3f0eaee6da859196a3136c), [ccc3ae65a](https://github.com/berkinory/Glade/commit/ccc3ae65a9860ab7f523076ab05ceea698507cb7), [2f7437ac6](https://github.com/berkinory/Glade/commit/2f7437ac687769be934260e2a39628dff2c49afa), [5c519080f](https://github.com/berkinory/Glade/commit/5c519080f555af1a548ee7469097a5029828ff42))
+- Visual replies blend into the chat with automatic height and compact controls, can load public web resources, and open links in your browser. Previews need a smaller browser download and still block local network access. ([eaaf1109f](https://github.com/berkinory/Glade/commit/eaaf1109f47445930eb462e200a111b1b0e845b1), [3515d9826](https://github.com/berkinory/Glade/commit/3515d9826097fbef93d5867a1e869f1c2bc5a4eb))
+- Tool activity is grouped by kind, live groups stay steady while a turn runs, failures stand out, routine accepted approvals are hidden, and long lists of edited files scroll in place. ([caee5c87c](https://github.com/berkinory/Glade/commit/caee5c87c283d2d6746171387ef58bfac82ba246), [5168e0f63](https://github.com/berkinory/Glade/commit/5168e0f637d308da6fd80ea6f6e827aeceaa0e76), [54b7dbc9d](https://github.com/berkinory/Glade/commit/54b7dbc9df51d4bcab172bd390f49ab48ed59b98))
+- Subagents get stable short names and plainer model labels, their replies show which helper sent them, and finished helpers leave the compact panels. ([6c9e29e3a](https://github.com/berkinory/Glade/commit/6c9e29e3a357475836e182acd3e50b1e85ea60b3), [bd88f6e43](https://github.com/berkinory/Glade/commit/bd88f6e431ade730981ce4f605a7c93df660dc00), [d756a7a54](https://github.com/berkinory/Glade/commit/d756a7a5474549c9f595e4d125f437522ef8f062))
+- Long commits, pushes and hooks run to completion regardless of duration or output, and Git actions survive reconnects without running twice. ([58a9533d2](https://github.com/berkinory/Glade/commit/58a9533d269020d1e3daf14e025c77d7bbaad361))
+- Source control stays fast: background remote refreshes never prompt for credentials or hold up local status, worktrees of one repository share them, and returning to Glade or running agent tools triggers far fewer git and GitHub refreshes. ([45b2d22dc](https://github.com/berkinory/Glade/commit/45b2d22dcffdadd172f53f891d20ac37ef927143), [d420e3aea](https://github.com/berkinory/Glade/commit/d420e3aea2e8d26f94216525ec26e2b1bd078fb7))
+- The file explorer, project picker and file mentions are faster in large repositories, and installing dependencies or running builds no longer keeps source control busy. ([e5e17c9c9](https://github.com/berkinory/Glade/commit/e5e17c9c91456db6e6c9afd12f2e65139e2cfdb1))
+- Claude sessions, forks, and skill and agent lists start faster, and usage indicators use far less CPU with large histories. ([e90f5ecf0](https://github.com/berkinory/Glade/commit/e90f5ecf047c2ce770783019a0b1eb0f7eb100a5))
+- Provider handoffs prepare in the chat while you keep using other chats, and work after the original Claude session has been retired. ([2052eb68f](https://github.com/berkinory/Glade/commit/2052eb68ffdae1f7cf99fe93097f0de4347ea694))
+- Full Access no longer asks again before Codex uses Glade's own tools. ([6c0aa0179](https://github.com/berkinory/Glade/commit/6c0aa0179b6e497191acbbb2b925501722c7e6e8))
+- Question cards point out that you can type your own answer. ([91f65719c](https://github.com/berkinory/Glade/commit/91f65719c7c95184a89e706c468ea556d9d36cd1))
 
 ### Fixed
 
-- The browser page stays visible while menus or dialogs cover it and no longer shrinks for a moment when you take a screenshot or pick an element.
-- Chats keep their place in the sidebar until you send a message instead of jumping as they start, run and finish.
-- Glade tools, including visual replies, are available in Claude chats without manually naming them.
-- Continuing a Claude chat with Codex works after the Claude session has been retired.
-- Changing the app theme preserves edits and interactive state in visual replies.
-- Conversation rows stay correctly positioned as activity details change, and message navigation stays clear of the text at every chat width and side panel layout.
-- Image attachments stay reliable when the composer remounts or an image finishes preparing after you switch chats.
-- Voice dictation is available for Codex ChatGPT sign-ins, and invalid transcription responses show a clear error.
-- Chats show why they are blocked by a provider delivery failure as soon as it happens, including after a restart.
-- Glade recovers abandoned startup locks that contain only Finder metadata, and explains locks it cannot verify with a way to open the logs.
-- Quitting asks for confirmation when the app window can't respond instead of quitting without checking for running chats.
-- Opening a path in the terminal no longer types into a busy shell, and a terminal that fails to close stays open and usable.
-- Very large code blocks in chat no longer freeze the window.
-- The file explorer shows a loading state while a folder opens instead of briefly showing it empty.
-- The Windows taskbar icon recovers if its first-launch setup is interrupted.
-- Source control, history and branch changes open immediately instead of waiting for a slow remote fetch, and git commands start faster on Windows.
-- Diffs and change totals no longer fail when a project contains another Git repository.
-- Skill and agent lists use your configured Claude CLI path.
-- Custom Codex providers no longer make the app stall, and the local server list no longer hangs when system tools stop responding.
-- The last lines of terminal output are kept when you quit, and busy terminals write far less to disk.
-- Reverting or deleting a chat no longer removes attached images when the change fails to save.
-- Option numbers in question and approval cards line up with their text.
+- Glade tools, including visual replies, are available in Claude chats without naming them, and only core tools load up front. ([639316703](https://github.com/berkinory/Glade/commit/639316703794e366417b1c87a14a4bf3077f30e8))
+- Chats keep their place in the sidebar until you send a message instead of jumping as they start, run and finish. ([9e0ebaadc](https://github.com/berkinory/Glade/commit/9e0ebaadc64a2fed26727508ba913162496ccd40), [ec6838e98](https://github.com/berkinory/Glade/commit/ec6838e98451a5d92a0304a1b0e34ee8657f7c42))
+- Visual replies keep their edits and interactive state when the theme changes or they scroll out of view. ([eaaf1109f](https://github.com/berkinory/Glade/commit/eaaf1109f47445930eb462e200a111b1b0e845b1), [702a182c8](https://github.com/berkinory/Glade/commit/702a182c8bde71727db3b766f7276a2f9df97a24))
+- The browser page stays visible while menus or dialogs cover it and during screenshots. ([247676dfd](https://github.com/berkinory/Glade/commit/247676dfd573aaeebfdbed3f9e689dc4c210b458))
+- Conversation rows stay in place as activity details change, message navigation stays clear of the text at every layout, and image attachments no longer get lost while switching chats. ([5168e0f63](https://github.com/berkinory/Glade/commit/5168e0f637d308da6fd80ea6f6e827aeceaa0e76))
+- Voice dictation works with Codex ChatGPT sign-ins, and chats blocked by a provider delivery failure say why right away, including after a restart. ([6c0aa0179](https://github.com/berkinory/Glade/commit/6c0aa0179b6e497191acbbb2b925501722c7e6e8))
+- Glade recovers abandoned startup locks, explains locks it cannot verify, and asks before quitting when the window stops responding. ([b42f4f576](https://github.com/berkinory/Glade/commit/b42f4f57620d32ac74c7a3cbb401b833ff4785ea))
+- Terminals keep their last output when you quit, write far less to disk, and no longer receive typed paths while busy. ([84d1490eb](https://github.com/berkinory/Glade/commit/84d1490ebbfaf83a50d4fecbe7006135fea1aabe), [b42f4f576](https://github.com/berkinory/Glade/commit/b42f4f57620d32ac74c7a3cbb401b833ff4785ea))
+- Very large code blocks in chat no longer freeze the window. ([dc5784066](https://github.com/berkinory/Glade/commit/dc5784066432876a072f7cbd50aca22ffa07459e))
+- Diffs and change totals work in projects that contain another Git repository, and large turns keep their change summary. ([45b2d22dc](https://github.com/berkinory/Glade/commit/45b2d22dcffdadd172f53f891d20ac37ef927143), [9461860d7](https://github.com/berkinory/Glade/commit/9461860d7d996352937a042995bcf0d576cb065f))
+- Reverting or deleting a chat no longer removes attached images when the change fails to save. ([9461860d7](https://github.com/berkinory/Glade/commit/9461860d7d996352937a042995bcf0d576cb065f))
+- Codex chats keep working after their workspace folder is deleted. ([0c7338979](https://github.com/berkinory/Glade/commit/0c733897912e949952421b7ab1c5430c11910f52))
+- Skill and agent lists use your configured Claude CLI path, custom Codex providers no longer stall the app, and the local server list no longer hangs. ([e90f5ecf0](https://github.com/berkinory/Glade/commit/e90f5ecf047c2ce770783019a0b1eb0f7eb100a5))
+- The Windows taskbar icon recovers if its first-launch setup is interrupted. ([15020d142](https://github.com/berkinory/Glade/commit/15020d142d09a7af86a7a5aeb4813ae6a064c9ed))
 
 ### Removed
 
-- Removed the browser's saved-login vault; agents use the sign-ins you make in the browser instead.
-- Removed the source-code view from visual replies.
-- Removed chat split views; terminal splits remain.
-- Removed the header buttons for the browser and right sidebar, the add-tab menu in the top tab bar, and terminal tabs in the top tab bar; use the activity bar instead.
+- Removed the browser's saved-login vault; agents use the sign-ins you make in the browser instead. ([4dede481c](https://github.com/berkinory/Glade/commit/4dede481c16735bfec0b75c4f675e611335aab91))
+- Removed chat split views; terminal splits remain. ([1ddef09ed](https://github.com/berkinory/Glade/commit/1ddef09ed4b5d8360c841c8404f3c5dd16fd2312))
+- Removed the source-code view from visual replies. ([eaaf1109f](https://github.com/berkinory/Glade/commit/eaaf1109f47445930eb462e200a111b1b0e845b1))
+- Removed the header buttons for the browser and right sidebar and terminal tabs in the top tab bar; use the activity bar instead. ([96fea7216](https://github.com/berkinory/Glade/commit/96fea7216030d2f7de6be7d7477fb6eedd31630f))
 
 ## 0.2.0 - 2026-10-06
 

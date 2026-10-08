@@ -19,7 +19,7 @@
     },
     "apps/desktop": {
       "name": "@glade/desktop",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "dependencies": {
         "@ghostery/adblocker-electron": "2.18.2",
         "@ghostery/adblocker-electron-preload": "2.18.2",
@@ -41,7 +41,7 @@
     },
     "apps/server": {
       "name": "@glade/cli",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "bin": {
         "glade": "dist/index.mjs",
       },
@@ -79,7 +79,7 @@
     },
     "apps/web": {
       "name": "@glade/web",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "dependencies": {
         "@base-ui/react": "^1.5.0",
         "@dnd-kit/core": "^6.3.1",
@@ -145,7 +145,7 @@
     },
     "packages/contracts": {
       "name": "@glade/contracts",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "dependencies": {
         "effect": "catalog:",
       },
