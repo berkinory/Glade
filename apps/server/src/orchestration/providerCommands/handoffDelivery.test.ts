@@ -27,6 +27,7 @@ describe("same-chat handoff delivery", () => {
       messageId: asMessageId("original"),
       text: "Keep my database",
       createdAt: date,
+      turnId: asTurnId("original-turn"),
     });
     await Effect.runPromise(
       harness.startSession(threadId, {
@@ -313,4 +314,102 @@ describe("same-chat handoff delivery", () => {
       ).toBe(true);
     },
   );
+});
+
+describe("provider switch before any provider delivery", () => {
+  const { createHarness, readHarnessThread } = makeReactorTestHarness();
+  const threadId = ThreadId.makeUnsafe("thread-1");
+  const claude = { provider: "claudeAgent" as const, model: "claude-opus-5-5" };
+  const skills = [{ name: "release", path: "/skills/release/SKILL.md" }];
+  const date = new Date().toISOString();
+
+  it.each([
+    { reachedProvider: false, outcome: "switches directly and resends the failed message once" },
+    { reachedProvider: true, outcome: "keeps the handoff once a provider turn started" },
+  ])("$outcome", async ({ reachedProvider }) => {
+    const harness = await createHarness({
+      serverSettings: { providers: { claudeAgent: { enabled: true } } },
+    });
+    if (!reachedProvider)
+      harness.sendTurn.mockImplementationOnce(() =>
+        Effect.fail(
+          new ProviderAdapterValidationError({
+            provider: "codex",
+            operation: "sendTurn",
+            issue: "The model does not exist or you do not have access to it.",
+          }),
+        ),
+      );
+    await Effect.runPromise(
+      harness.engine.dispatch({
+        type: "thread.turn.start",
+        commandId: CommandId.makeUnsafe("first-send"),
+        threadId,
+        message: {
+          messageId: asMessageId("request"),
+          role: "user",
+          text: "Fix the build",
+          attachments: [],
+          skills,
+        },
+        runtimeMode: "approval-required",
+        createdAt: date,
+      }),
+    );
+    await harness.drain();
+    if (reachedProvider)
+      await Effect.runPromise(
+        harness.engine.dispatch({
+          type: "thread.session.set",
+          commandId: CommandId.makeUnsafe("turn-failed-after-start"),
+          threadId,
+          session: {
+            threadId,
+            providerName: "codex",
+            status: "error",
+            activeTurnId: null,
+            lastError: "Quota exceeded",
+            runtimeMode: "approval-required",
+            updatedAt: date,
+          },
+          createdAt: date,
+        }),
+      );
+
+    await Effect.runPromise(
+      harness.engine.dispatch({
+        type: "thread.handoff.start",
+        commandId: CommandId.makeUnsafe("switch-provider"),
+        threadId,
+        modelSelection: claude,
+        runtimeMode: "approval-required",
+        createdAt: date,
+      }),
+    );
+    if (!reachedProvider) await waitFor(() => harness.sendTurn.mock.calls.length === 2);
+    await harness.drain();
+
+    const thread = (await readHarnessThread(harness))!;
+    if (reachedProvider) {
+      expect(thread.handoff?.stage).toBe("preparing");
+      expect(thread.modelSelection.provider).toBe("codex");
+      expect(harness.sendTurn).toHaveBeenCalledTimes(1);
+      return;
+    }
+    expect(thread.handoff).toBeNull();
+    expect(thread.modelSelection).toEqual(claude);
+    expect(thread.messages.map((message) => message.id)).toEqual(["request"]);
+    expect(harness.sendTurn).toHaveBeenCalledTimes(2);
+    expect(harness.sendTurn.mock.calls[1]?.[0]).toMatchObject({
+      input: "Fix the build",
+      skills,
+      modelSelection: claude,
+    });
+    const restart = harness.startSessionWithOutcome.mock.calls.at(-1)?.[1];
+    expect(restart?.provider).toBe("claudeAgent");
+    expect(restart?.resumeCursor).toBeUndefined();
+    expect(
+      (await Effect.runPromise(harness.listSessions())).map((session) => session.provider),
+    ).not.toContain("codex");
+  });
 });

@@ -57,6 +57,7 @@ export interface ReactorTestHarness {
     readonly messageId: MessageId;
     readonly text: string;
     readonly createdAt: string;
+    readonly turnId?: TurnId;
   }) => Promise<void>;
   readonly drain: () => Promise<void>;
   readonly emitRuntimeEvent: (event: ProviderRuntimeEvent) => Promise<void>;

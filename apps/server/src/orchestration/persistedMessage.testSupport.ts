@@ -1,4 +1,9 @@
-import { EventId, type MessageId, type ThreadId } from "@glade/contracts/core/baseSchemas";
+import {
+  EventId,
+  type MessageId,
+  type ThreadId,
+  type TurnId,
+} from "@glade/contracts/core/baseSchemas";
 import { Effect } from "effect";
 import { OrchestrationEventStore } from "../persistence/Services/OrchestrationEventStore";
 import { OrchestrationProjectionPipeline } from "./Services/ProjectionPipeline";
@@ -9,6 +14,7 @@ export function seedUserMessage(input: {
   readonly messageId: MessageId;
   readonly text: string;
   readonly createdAt: string;
+  readonly turnId?: TurnId;
 }) {
   return Effect.gen(function* () {
     const events = yield* OrchestrationEventStore;
@@ -27,7 +33,7 @@ export function seedUserMessage(input: {
       payload: {
         ...input,
         role: "user",
-        turnId: null,
+        turnId: input.turnId ?? null,
         streaming: false,
         source: "native",
         updatedAt: input.createdAt,

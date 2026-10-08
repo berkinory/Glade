@@ -1,5 +1,7 @@
 import { Effect } from "effect";
 import { EventId } from "@glade/contracts/core/baseSchemas";
+import type { OrchestrationThread } from "@glade/contracts/orchestration/threadEntities";
+import { resolveDirectProviderSwitchMessage } from "@glade/shared/threads/directProviderSwitch";
 import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import {
@@ -36,6 +38,8 @@ export const decideHandoffStart = Effect.fnUntraced(function* ({
       commandType: command.type,
       detail: "Finish or stop active work and resolve pending requests before changing providers.",
     });
+  const resend = resolveDirectProviderSwitchMessage(thread);
+  if (resend) return decideDirectProviderSwitch(command, thread, resend);
   const messages = thread.messages.filter(
     (message) => !message.streaming && ["user", "assistant"].includes(message.role),
   );
@@ -103,3 +107,60 @@ export const decideHandoffStart = Effect.fnUntraced(function* ({
     },
   ] satisfies ReadonlyArray<Omit<OrchestrationEvent, "sequence">>;
 });
+
+// The stopped, provider-less session row makes the reactor treat the old binding as dead, so the
+// resend starts a fresh session on the new provider instead of resuming the old one.
+function decideDirectProviderSwitch(
+  command: Extract<OrchestrationCommand, { type: "thread.handoff.start" }>,
+  thread: OrchestrationThread,
+  resend: OrchestrationThread["messages"][number],
+) {
+  const base = () =>
+    withEventBase({
+      aggregateKind: "thread",
+      aggregateId: thread.id,
+      occurredAt: command.createdAt,
+      commandId: command.commandId,
+    });
+  return [
+    {
+      ...base(),
+      type: "thread.session-set",
+      payload: {
+        threadId: thread.id,
+        session: {
+          threadId: thread.id,
+          status: "stopped",
+          providerName: null,
+          runtimeMode: command.runtimeMode,
+          activeTurnId: null,
+          lastError: null,
+          updatedAt: command.createdAt,
+        },
+      },
+    },
+    {
+      ...base(),
+      type: "thread.meta-updated",
+      payload: {
+        threadId: thread.id,
+        modelSelection: command.modelSelection,
+        updatedAt: command.createdAt,
+      },
+    },
+    {
+      ...base(),
+      type: "thread.message-edit-resend-requested",
+      payload: {
+        threadId: thread.id,
+        messageId: resend.id,
+        text: resend.text,
+        rollbackTurnCount: 0,
+        removedTurnIds: [],
+        modelSelection: command.modelSelection,
+        runtimeMode: command.runtimeMode,
+        createdAt: command.createdAt,
+      },
+    },
+  ] satisfies ReadonlyArray<Omit<OrchestrationEvent, "sequence">>;
+}

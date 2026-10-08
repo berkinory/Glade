@@ -7,7 +7,13 @@ import { OrchestrationEventStore } from "../../persistence/Services/Orchestratio
 import { HandoffTransitionsLive } from "../Layers/HandoffTransitions";
 import { seedUserMessage } from "../persistedMessage.testSupport";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { CommandId, MessageId, ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
+import {
+  CommandId,
+  MessageId,
+  ProjectId,
+  ThreadId,
+  TurnId,
+} from "@glade/contracts/core/baseSchemas";
 import type { HandoffRecord } from "@glade/contracts/orchestration/threadEntities";
 import { Deferred, Effect, Fiber, Layer, ManagedRuntime, Option } from "effect";
 import { describe, expect, it } from "vitest";
@@ -110,6 +116,7 @@ const createHandoff = Effect.gen(function* () {
     messageId: MessageId.makeUnsafe("original"),
     text: "Never reset the database.",
     createdAt,
+    turnId: TurnId.makeUnsafe("original-turn"),
   });
   yield* engine.dispatch({
     type: "thread.handoff.start",

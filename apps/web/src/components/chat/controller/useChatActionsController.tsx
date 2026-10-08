@@ -1,4 +1,5 @@
 import { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
+import { resolveDirectProviderSwitchMessage } from "@glade/shared/threads/directProviderSwitch";
 import { PROVIDER_SEND_TURN_MAX_ATTACHMENTS } from "@glade/contracts/orchestration/threadEntities";
 import { type ModelSlug } from "@glade/contracts/provider/model";
 import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
@@ -121,6 +122,32 @@ export function useChatActionsController({
 
   const [providerHandoffBusy, setProviderHandoffBusy] = useState(false);
 
+  const startProviderHandoff = useCallback(
+    async (handoff: { modelSelection: ModelSelection; runtimeMode: Thread["runtimeMode"] }) => {
+      if (!activeThread || providerHandoffBusy || handoffDisabled) return false;
+      setProviderHandoffBusy(true);
+      try {
+        await createThreadHandoff(
+          activeThread,
+          handoff.modelSelection.provider,
+          handoff.modelSelection,
+          handoff.runtimeMode,
+        );
+        return true;
+      } catch (error) {
+        toastManager.add({
+          type: "error",
+          title: "Could not switch provider",
+          description: error instanceof Error ? error.message : "The handoff failed.",
+        });
+        return false;
+      } finally {
+        setProviderHandoffBusy(false);
+      }
+    },
+    [activeThread, createThreadHandoff, handoffDisabled, providerHandoffBusy],
+  );
+
   const onProviderModelSelect = useCallback(
     async (
       provider: ProviderKind,
@@ -159,6 +186,14 @@ export function useChatActionsController({
             description:
               "Wait for the current task to finish and check that the provider is enabled.",
           });
+        } else if (resolveDirectProviderSwitchMessage(activeThread)) {
+          const switched = await startProviderHandoff({
+            modelSelection: nextModelSelection,
+            runtimeMode: nextRuntimeMode,
+          });
+          if (switched)
+            setComposerDraftModelSelectionAndSticky(activeThread.id, nextModelSelection);
+          scheduleComposerFocus();
         } else {
           setPendingProviderHandoff({
             modelSelection: nextModelSelection,
@@ -194,6 +229,7 @@ export function useChatActionsController({
       runtimeModelsByProvider,
       scheduleComposerFocus,
       setComposerDraftModelSelectionAndSticky,
+      startProviderHandoff,
     ],
   );
 
@@ -328,32 +364,9 @@ export function useChatActionsController({
   });
 
   const confirmProviderHandoff = useCallback(async () => {
-    if (!activeThread || !pendingProviderHandoff || providerHandoffBusy || handoffDisabled) return;
-    setProviderHandoffBusy(true);
-    try {
-      await createThreadHandoff(
-        activeThread,
-        pendingProviderHandoff.modelSelection.provider,
-        pendingProviderHandoff.modelSelection,
-        pendingProviderHandoff.runtimeMode,
-      );
+    if (pendingProviderHandoff && (await startProviderHandoff(pendingProviderHandoff)))
       setPendingProviderHandoff(null);
-    } catch (error) {
-      toastManager.add({
-        type: "error",
-        title: "Could not switch provider",
-        description: error instanceof Error ? error.message : "The handoff failed.",
-      });
-    } finally {
-      setProviderHandoffBusy(false);
-    }
-  }, [
-    activeThread,
-    createThreadHandoff,
-    handoffDisabled,
-    pendingProviderHandoff,
-    providerHandoffBusy,
-  ]);
+  }, [pendingProviderHandoff, startProviderHandoff]);
 
   const clearComposerInput = useCallback(
     (threadId: ThreadId) => {

@@ -278,9 +278,11 @@ export function makeProviderSessionConfiguration(input: {
     if (reusableSession) {
       const existingSessionThreadId = thread.id;
       const runtimeModeChanged = desiredRuntimeMode !== thread.session?.runtimeMode;
+      // A direct switch clears the projected provider while the old runtime may still be alive.
       const providerChanged =
         requestedModelSelection !== undefined &&
-        requestedModelSelection.provider !== currentProvider;
+        (requestedModelSelection.provider !== currentProvider ||
+          requestedModelSelection.provider !== reusableSession.provider);
       const modelChanged =
         requestedModelSelection !== undefined &&
         requestedModelSelection.model !== activeSessionBeforeEnsure?.model;

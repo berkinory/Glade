@@ -4,6 +4,7 @@ import { resolveProviderModelSelection } from "~/lib/providerModelSelection";
 import { useQuery } from "@tanstack/react-query";
 import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { resolveDirectProviderSwitchMessage } from "@glade/shared/threads/directProviderSwitch";
 import { useComposerDraftStore } from "../composerDraftStore";
 import { useProviderStatusesForLocalConfig } from "./useProviderStatusesForLocalConfig";
 import { useRefreshProviderStatusesNow } from "./useProviderStatusRefresh";
@@ -66,6 +67,8 @@ export function useThreadHandoff() {
       );
     }
 
+    // The server makes the same call from the full transcript; a direct switch has nothing to prepare.
+    const switchesDirectly = resolveDirectProviderSwitchMessage(thread) !== null;
     const createdAt = new Date().toISOString();
     const { stickyModelSelectionByProvider } = useComposerDraftStore.getState();
     await api.orchestration.dispatchCommand({
@@ -100,6 +103,7 @@ export function useThreadHandoff() {
           description: cause instanceof Error ? cause.message : "Try refreshing the chat list.",
         });
       });
+    if (switchesDirectly) return thread.id;
     void api.orchestration.prepareHandoff({ threadId: thread.id }).catch((cause: unknown) => {
       toastManager.add({
         type: "error",
