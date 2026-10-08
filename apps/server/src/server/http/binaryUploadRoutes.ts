@@ -1,6 +1,6 @@
 import { Effect, Layer } from "effect";
 import { HttpServerRequest, HttpServerResponse, HttpRouter } from "effect/unstable/http";
-import { ServerConfig } from "../config";
+import { ServerConfig, type ServerConfigShape } from "../config";
 import {
   LOCAL_LOOPBACK_ATTACHMENT_PRINCIPAL,
   attachmentPrincipalForSession,
@@ -37,18 +37,12 @@ import {
 } from "./requestAuthorization";
 import { readEffectBinary, readEffectJson } from "./httpBody";
 
-const binaryUploadEffectHandler = Effect.gen(function* () {
-  const request = yield* HttpServerRequest.HttpServerRequest;
-  const url = HttpServerRequest.toURL(request);
-  if (!url) return HttpServerResponse.text("Bad Request", { status: 400 });
-  const config = yield* ServerConfig;
-  const corsHeaders = trustedMutationCorsHeaders({ request, url, config });
-  if (corsHeaders === null) {
-    return HttpServerResponse.jsonUnsafe(
-      { error: "Trusted request origin required." },
-      { status: 403 },
-    );
-  }
+const handleTrustedBinaryUpload = Effect.fnUntraced(function* (
+  request: HttpServerRequest.HttpServerRequest,
+  url: URL,
+  config: ServerConfigShape,
+  corsHeaders: Record<string, string>,
+) {
   if (request.method === "OPTIONS") {
     return HttpServerResponse.empty({ status: 204, headers: corsHeaders });
   }
@@ -208,28 +202,46 @@ const binaryUploadEffectHandler = Effect.gen(function* () {
   }
 
   return HttpServerResponse.text("Not Found", { status: 404, headers: corsHeaders });
-}).pipe(
-  Effect.catch((error) =>
-    Effect.succeed(
-      error instanceof AuthError
-        ? authErrorResponse(error)
-        : HttpServerResponse.jsonUnsafe(
-            {
-              error:
-                error instanceof Error
-                  ? error.message
-                  : String((error as { readonly message?: unknown }).message ?? error),
-            },
-            {
-              status:
-                typeof (error as { readonly status?: unknown }).status === "number"
-                  ? (error as { readonly status: number }).status
-                  : 500,
-            },
-          ),
+});
+
+function binaryUploadErrorResponse(error: unknown): HttpServerResponse.HttpServerResponse {
+  if (error instanceof AuthError) return authErrorResponse(error);
+  return HttpServerResponse.jsonUnsafe(
+    {
+      error:
+        error instanceof Error
+          ? error.message
+          : String((error as { readonly message?: unknown }).message ?? error),
+    },
+    {
+      status:
+        typeof (error as { readonly status?: unknown }).status === "number"
+          ? (error as { readonly status: number }).status
+          : 500,
+    },
+  );
+}
+
+const binaryUploadEffectHandler = Effect.gen(function* () {
+  const request = yield* HttpServerRequest.HttpServerRequest;
+  const url = HttpServerRequest.toURL(request);
+  if (!url) return HttpServerResponse.text("Bad Request", { status: 400 });
+  const config = yield* ServerConfig;
+  const corsHeaders = trustedMutationCorsHeaders({ request, url, config });
+  if (corsHeaders === null) {
+    return HttpServerResponse.jsonUnsafe(
+      { error: "Trusted request origin required." },
+      { status: 403 },
+    );
+  }
+  // Failures carry the same verified-origin CORS headers as successes, so the browser can read the
+  // actual error instead of reporting an opaque network failure.
+  return yield* handleTrustedBinaryUpload(request, url, config, corsHeaders).pipe(
+    Effect.catch((error) =>
+      Effect.succeed(HttpServerResponse.setHeaders(binaryUploadErrorResponse(error), corsHeaders)),
     ),
-  ),
-);
+  );
+});
 
 export const binaryUploadEffectRouteLayer = Layer.merge(
   HttpRouter.add("*", ATTACHMENT_UPLOAD_ROUTE_PATH, binaryUploadEffectHandler),

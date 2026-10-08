@@ -387,7 +387,7 @@ describe("providerAuthenticationRouteLayer", () => {
 });
 
 describe("binaryUploadEffectRouteLayer", () => {
-  it("rejects voice uploads before transcription when the provider is disabled", async () => {
+  it("returns readable upload errors only to trusted origins", async () => {
     const transcribeVoice = vi.fn(() => Effect.succeed({ text: "unexpected" }));
     await withAuthEffectServer(
       { host: "127.0.0.1", publicUrl: undefined } as ServerConfigShape,
@@ -400,19 +400,24 @@ describe("binaryUploadEffectRouteLayer", () => {
           sampleRateHz: "16000",
           durationMs: "250",
         });
-        const response = await fetch(
-          `${serverOrigin}${VOICE_TRANSCRIPTION_UPLOAD_ROUTE_PATH}?${params.toString()}`,
-          {
+        const upload = (origin: string) =>
+          fetch(`${serverOrigin}${VOICE_TRANSCRIPTION_UPLOAD_ROUTE_PATH}?${params.toString()}`, {
             method: "POST",
-            headers: { Authorization: "Bearer bearer-token" },
+            headers: { Authorization: "Bearer bearer-token", Origin: origin },
             body: Uint8Array.from([1]),
-          },
-        );
+          });
 
+        const response = await upload("glade://app");
         expect(response.status).toBe(409);
+        expect(response.headers.get("access-control-allow-origin")).toBe("glade://app");
+        expect(response.headers.get("access-control-allow-credentials")).toBe("true");
         await expect(response.json()).resolves.toEqual({
           error: "Codex is disabled in Settings > Providers.",
         });
+
+        const untrusted = await upload("https://evil.example.test");
+        expect(untrusted.status).toBe(403);
+        expect(untrusted.headers.get("access-control-allow-origin")).toBeNull();
         expect(transcribeVoice).not.toHaveBeenCalled();
       },
       binaryUploadEffectRouteLayer,
