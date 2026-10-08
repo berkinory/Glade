@@ -25,6 +25,20 @@ process safety and Windows launch behavior. Its source and executable output
 are both patched. Windows group cleanup invokes the system `taskkill.exe` directly
 with `windowsHide: true`, without an intermediate command shell.
 
+The same patch also fixes how the Node sink owns writable completion and errors.
+It backs child-process stdin, standard output and Node stream sinks. The
+published sink treats a `write()` that returns true as finished, ignores write
+callbacks and never listens for `error` or `close`. An asynchronous `EPIPE`
+therefore becomes an uncaught exception or a hang, a stream closed before it
+finishes waits forever for `finish`, and cancellation leaves `drain` and
+`finish` listeners behind. The patched sink waits for every accepted write's
+callback, fails on stream errors, write errors, end errors and premature close,
+and races that failure against the write loop so it never waits forever. On
+completion or cancellation it removes its drain listener and keeps its error
+listener only while an accepted write or end can still fail.
+`apps/server/src/platform/effectWritableSink.test.ts` exercises the installed,
+compiled sink and fails without the patch.
+
 Keep all five Effect packages on the same exact beta when revisiting this pin.
 Compare executable output before changing the version, then run the workspace
 checks, tests, desktop build, Windows runtime boundary and migration lineage
@@ -68,10 +82,16 @@ when displaying untrusted content.
   and [#1072](https://github.com/pierrecomputer/pierre/pull/1072); a merged PR is
   not evidence that this installed artifact contains the fix.
 - **Effect Platform Node Shared beta.25:** retained. The installed beta lacks
-  the Windows options and unsafe-PID guard described above. Related Windows
-  work is [Effect-TS/effect#7154](https://github.com/Effect-TS/effect/pull/7154),
-  merged after this beta. No matching upstream unsafe-PID PR was found during
-  the audit. Remove the patch only after comparing the replacement artifact.
+  the Windows options, the unsafe-PID guard and the writable sink fix described
+  above. Its `NodeSink` source and executable output still write without
+  callbacks and attach no `error` or `close` listener, and the sink test fails
+  against the unpatched file. Related Windows work is
+  [Effect-TS/effect#7154](https://github.com/Effect-TS/effect/pull/7154), merged
+  after this beta. No matching upstream unsafe-PID PR was found during the
+  audit. The `4.0.0-rc.118` sink still ignores write callbacks, so a newer
+  version number is not evidence of the sink fix. Remove the patch, or any of
+  its parts, only after comparing the replacement artifact and running the sink
+  and process signal tests against it.
 
 ## Cua Driver
 
