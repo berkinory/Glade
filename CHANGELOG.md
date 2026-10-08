@@ -19,6 +19,7 @@
 - Computer Use can launch apps that are not running and open files, folders or web links in them.
 - Computer Use agents copy and paste between apps through the clipboard (reading anything the agent did not put there asks once per chat, in every permission mode), select and format text, move and resize windows, and address apps by name.
 - Claude chats load core Glade tools automatically and discover other tools as needed, reducing context usage.
+- Switching between Explorer, Source Control, Terminal and the browser is instant, and terminal splits close immediately.
 
 - Subagent rows use stable names instead of Claude task descriptions, show model names or aliases without extra labels, and keep task prompts, agent types and redundant background-agent banners out of the compact panels.
 - Provider transitions prepare in the chat while you continue using other chats.
@@ -41,6 +42,7 @@
 
 ### Fixed
 
+- The browser page stays visible while menus or dialogs cover it and no longer shrinks for a moment when you take a screenshot or pick an element.
 - Chats keep their place in the sidebar until you send a message instead of jumping as they start, run and finish.
 - Glade tools, including visual replies, are available in Claude chats without manually naming them.
 - Continuing a Claude chat with Codex works after the Claude session has been retired.
