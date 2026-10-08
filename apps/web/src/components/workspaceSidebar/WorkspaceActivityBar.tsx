@@ -57,7 +57,7 @@ function ActivityBarButton(props: {
 }
 
 // The strip on the window's right edge: a toggle for the right sidebar, then one icon per view.
-export function WorkspaceActivityBar(props: { threadId: ThreadId; hasBrowserTabs: boolean }) {
+export function WorkspaceActivityBar(props: { threadId: ThreadId; hasBrowserPages: boolean }) {
   const open = useWorkspaceSidebarStore((store) => store.open);
   const activeView = useWorkspaceSidebarStore((store) => store.view);
   const toggle = useWorkspaceSidebarStore((store) => store.toggle);
@@ -79,8 +79,8 @@ export function WorkspaceActivityBar(props: { threadId: ThreadId; hasBrowserTabs
     terminal: terminalRunning ? { label: "Terminal running", pulse: false } : null,
     browser: browserAgentActive
       ? { label: "Agent is using the browser", pulse: true }
-      : props.hasBrowserTabs
-        ? { label: "Open browser tabs", pulse: false }
+      : props.hasBrowserPages
+        ? { label: "Open browser pages", pulse: false }
         : null,
   };
   const sidebarToggle = (

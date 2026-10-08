@@ -12,7 +12,7 @@ import {
   useWorkspaceSidebarStore,
 } from "~/workspaceSidebarStore";
 import { BrowserPanel } from "../browser/BrowserPanel";
-import { useBrowserTabs } from "../browser/useBrowserTabs";
+import { isBlankBrowserTab, useBrowserTabs } from "../browser/useBrowserTabs";
 import { CHAT_SURFACE_HEADER_ROW_CLASS_NAME } from "../chat/chatHeaderControls";
 import { CHAT_BACKGROUND_CLASS_NAME } from "../chat/composerPickerStyles";
 import { PanelWidthResizeHandle, usePanelWidthResize } from "../chat/usePanelWidthResize";
@@ -168,7 +168,7 @@ export function WorkspaceSidebar(props: {
       </div>
       <WorkspaceActivityBar
         threadId={props.threadId}
-        hasBrowserTabs={(browserTabs?.length ?? 0) > 0}
+        hasBrowserPages={browserTabs?.some((tab) => !isBlankBrowserTab(tab)) ?? false}
       />
     </>
   );

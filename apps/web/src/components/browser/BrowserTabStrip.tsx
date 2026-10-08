@@ -3,7 +3,7 @@ import { Globe02Icon, PlusIcon } from "~/lib/icons";
 import { PanelTabBar } from "../chat/PanelTabBar";
 import { IconButton } from "../ui/icon-button";
 import { Spinner } from "../ui/spinner";
-import type { BrowserTab } from "./useBrowserTabs";
+import { type BrowserTab, isBlankBrowserTab } from "./useBrowserTabs";
 
 export function BrowserTabStrip(props: {
   tabs: readonly BrowserTab[];
@@ -18,7 +18,7 @@ export function BrowserTabStrip(props: {
       contentTabs
       tabs={props.tabs.map((tab) => ({
         id: tab.tabId,
-        label: tab.title || tab.url || "New tab",
+        label: isBlankBrowserTab(tab) ? "New tab" : tab.title || tab.url,
         icon: tab.loading ? <Spinner aria-label="Loading" /> : <Globe02Icon />,
         onClose: () => props.onClose(tab.tabId),
       }))}

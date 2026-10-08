@@ -5,6 +5,9 @@ import { readNativeApi } from "~/nativeApi";
 
 export type BrowserTab = BrowserTabsChanged["tabs"][number];
 
+// A tab that has not loaded a page yet.
+export const isBlankBrowserTab = (tab: BrowserTab) => !tab.url || tab.url === "about:blank";
+
 // The thread's tabs straight from the server subscription; null until the first list arrives or
 // without a thread.
 export function useBrowserTabs(threadId: ThreadId | null): readonly BrowserTab[] | null {

@@ -3,7 +3,7 @@ import { ArrowLeft02Icon, ArrowRight02Icon, RefreshCwIcon } from "~/lib/icons";
 import { PANEL_BAR_CLASS_NAME } from "../chat/PanelTabBar";
 import { IconButton } from "../ui/icon-button";
 import { Input } from "../ui/input";
-import type { BrowserTab } from "./useBrowserTabs";
+import { type BrowserTab, isBlankBrowserTab } from "./useBrowserTabs";
 import { useSpinWhileLoading } from "./useSpinWhileLoading";
 
 export function BrowserAddressBar(props: {
@@ -18,7 +18,7 @@ export function BrowserAddressBar(props: {
   const [draft, setDraft] = useState<{ tabId: string | null; url: string } | null>(null);
   const tabId = tab?.tabId ?? null;
   const editing = draft !== null && draft.tabId === tabId;
-  const shownUrl = tab?.url === "about:blank" ? "" : (tab?.url ?? "");
+  const shownUrl = tab && !isBlankBrowserTab(tab) ? tab.url : "";
   const value = editing ? draft.url : shownUrl;
   const reloadIconRef = useSpinWhileLoading<HTMLSpanElement>(tab?.loading === true);
 
