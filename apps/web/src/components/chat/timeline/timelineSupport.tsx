@@ -219,6 +219,13 @@ export function WorktreeSetupCard({
     </div>
   );
 }
+/** Recovery offered on the latest failed turn while it is still the thread's current turn. */
+export interface TurnFailureRecovery {
+  readonly turnId: TurnId;
+  readonly disabled: boolean;
+  readonly onContinue: (turnId: TurnId) => void;
+  readonly onChangeModel: () => void;
+}
 export interface MessagesTimelineProps {
   hasMessages: boolean;
   isWorking: boolean;
@@ -227,6 +234,7 @@ export interface MessagesTimelineProps {
   worktreeSetup?: WorktreeSetupSnapshot | null;
   worktreeSetupPendingAction?: WorktreeSetupResolutionAction | null;
   onResolveWorktreeSetup?: (action: WorktreeSetupResolutionAction) => void;
+  turnFailureRecovery?: TurnFailureRecovery | null;
   followLiveOutput?: boolean;
   emptyStateContent?: ReactNode;
   listRef?: RefObject<LegendListRef | null>;

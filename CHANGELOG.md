@@ -17,6 +17,7 @@
 - Independent chats stay responsive while another chat prepares or starts a task.
 - Git status and task snapshots stay responsive during heavy repository activity.
 - Chat text and notices follow your font settings more consistently, and question cards can be answered from the keyboard.
+- Failed tasks keep their error details, which you can expand and copy, and can be continued in the same chat or with a different model.
 
 ### Fixed
 

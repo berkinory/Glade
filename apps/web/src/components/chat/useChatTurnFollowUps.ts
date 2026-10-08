@@ -1,5 +1,10 @@
 import { confirmWorkspaceRestore } from "./confirmWorkspaceRestore";
-import { MessageId, ThreadId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
+import {
+  MessageId,
+  ThreadId,
+  type ProviderKind,
+  type TurnId,
+} from "@glade/contracts/core/baseSchemas";
 import { resolveTailUserMessageEditTarget } from "@glade/shared/threads/conversationEdit";
 
 import { deriveAssociatedWorktreeMetadata } from "@glade/shared/threads/threadWorkspace";
@@ -34,6 +39,9 @@ import { useChatWorkLog } from "./useChatWorkLog";
 import { toastManager } from "../ui/toast";
 
 import type { LateComposerSendHandlers } from "./chatSendTypes";
+
+const CONTINUE_FAILED_TURN_PROMPT =
+  "The previous task stopped because of a provider error. Continue it in this conversation: first check which steps already completed and do not repeat them, then finish the remaining work.";
 interface ChatTurnFollowUpsInput {
   threadId: ThreadId;
   activeThread: Thread | undefined;
@@ -251,6 +259,58 @@ export function useChatTurnFollowUps({
     ],
   );
 
+  // Sent as its own message so the composer draft stays untouched. Eligibility is re-read from the
+  // store at click time: the turn, session or pending interactions may have moved on since render.
+  const onContinueFailedTurn = useCallback(
+    async (turnId: TurnId): Promise<boolean> => {
+      const current = activeThreadId
+        ? getThreadFromState(useStore.getState(), activeThreadId)
+        : undefined;
+      const lateSendHandlers = lateComposerSendHandlersRef.current;
+      if (
+        !lateSendHandlers ||
+        !isServerThread ||
+        !current ||
+        current.latestTurn?.turnId !== turnId ||
+        current.latestTurn.state === "running" ||
+        current.session?.orchestrationStatus === "running" ||
+        current.session?.orchestrationStatus === "starting" ||
+        current.hasPendingApprovals === true ||
+        current.hasPendingUserInput === true
+      )
+        return false;
+      return lateSendHandlers.send(undefined, "queue", {
+        id: randomUUID(),
+        kind: "chat",
+        createdAt: new Date().toISOString(),
+        previewText: CONTINUE_FAILED_TURN_PROMPT,
+        prompt: CONTINUE_FAILED_TURN_PROMPT,
+        images: [],
+        files: [],
+        assistantSelections: [],
+        terminalContexts: [],
+        fileComments: [],
+        pastedTexts: [],
+        pullRequestContexts: [],
+        skills: [],
+        mentions: [],
+        selectedProvider,
+        selectedModel,
+        selectedPromptEffort,
+        ...queuedChatTurnDispatchFields(turnDispatchSettings),
+      });
+    },
+    [
+      activeThreadId,
+      isServerThread,
+      lateComposerSendHandlersRef,
+      selectedProvider,
+      selectedModel,
+      selectedPromptEffort,
+      turnDispatchSettings,
+    ],
+  );
+
   const onResumeWorkflowRun = useCallback(async () => {
     if (!workflowRunState?.scriptPath || !workflowRunState.runId) return;
     const lateSendHandlers = lateComposerSendHandlersRef.current;
@@ -293,6 +353,7 @@ export function useChatTurnFollowUps({
 
   return {
     onEditUserMessage,
+    onContinueFailedTurn,
     onResumeWorkflowRun,
   };
 }

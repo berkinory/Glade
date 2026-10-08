@@ -23,6 +23,7 @@ import { cn } from "~/lib/utils";
 import { MUTED_LABEL_TEXT_CLASS_NAME } from "~/surfaceStyles";
 import { type WorkLogEntry } from "~/workLog.types";
 import { renderTimelineAssistantMessage } from "./TimelineAssistantMessage";
+import { TurnFailureNotice } from "./TurnFailureNotice";
 import { TRAIL_VIEWABILITY_CONFIG, WorktreeSetupCard } from "./timelineSupport";
 import { renderTimelineUserMessage } from "./TimelineUserMessage";
 import type { TimelineController } from "./useTimelineController";
@@ -64,6 +65,7 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
     isWorking,
 
     onResolveWorktreeSetup,
+    turnFailureRecovery,
     hasMessages,
     emptyStateContent,
     onMessagesClickCapture,
@@ -115,6 +117,13 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
     >
       {forkDividerBeforeRowId === row.id ? forkSourceDivider : null}
       {row.kind === "visual-reply" && <VisualReplyCard reply={row.reply} activityId={row.id} />}
+      {row.kind === "turn-failure" && (
+        <TurnFailureNotice
+          turnId={row.turnId}
+          message={row.message}
+          recovery={turnFailureRecovery ?? null}
+        />
+      )}
       {row.kind === "work" &&
         (() => {
           const groupId = row.id;

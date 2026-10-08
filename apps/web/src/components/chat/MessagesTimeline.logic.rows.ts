@@ -98,6 +98,17 @@ export function deriveMessagesTimelineRows(input: {
       });
       continue;
     }
+    if (timelineEntry.kind === "work" && timelineEntry.entry.turnFailure) {
+      flushPendingWorkGroup();
+      nextRows.push({
+        kind: "turn-failure",
+        id: timelineEntry.entry.id,
+        createdAt: timelineEntry.createdAt,
+        turnId: timelineEntry.entry.turnId ?? null,
+        message: timelineEntry.entry.turnFailure.message,
+      });
+      continue;
+    }
     if (timelineEntry.kind === "work") {
       if (
         ["response.started", "provider.transition"].includes(timelineEntry.entry.activityKind ?? "")
@@ -119,6 +130,7 @@ export function deriveMessagesTimelineRows(input: {
           !nextEntry ||
           nextEntry.kind !== "work" ||
           nextEntry.entry.visualReply !== undefined ||
+          nextEntry.entry.turnFailure !== undefined ||
           ["response.started", "provider.transition"].includes(nextEntry.entry.activityKind ?? "")
         )
           break;

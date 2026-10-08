@@ -160,7 +160,7 @@ export function useChatSubmissionController({
       .catch(reportChatActionFailure);
   };
 
-  const { onEditUserMessage, onResumeWorkflowRun } = useChatTurnFollowUps({
+  const { onEditUserMessage, onContinueFailedTurn, onResumeWorkflowRun } = useChatTurnFollowUps({
     session,
     workspace,
     provider,
@@ -445,6 +445,7 @@ export function useChatSubmissionController({
     onEditQueuedComposerTurn,
     onSend,
     onEditUserMessage,
+    onContinueFailedTurn,
     onResumeWorkflowRun,
 
     selectedProviderModelOptions,

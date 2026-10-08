@@ -94,6 +94,7 @@ interface ChatTranscriptPaneProps {
     typeof MessagesTimeline
   >["worktreeSetupPendingAction"];
   onResolveWorktreeSetup?: ComponentProps<typeof MessagesTimeline>["onResolveWorktreeSetup"];
+  turnFailureRecovery?: ComponentProps<typeof MessagesTimeline>["turnFailureRecovery"];
   findHighlightStore?: ThreadFindHighlightStore | null;
 }
 export function ChatTranscriptPane({
@@ -157,6 +158,7 @@ export function ChatTranscriptPane({
   worktreeSetup,
   worktreeSetupPendingAction,
   onResolveWorktreeSetup,
+  turnFailureRecovery,
   findHighlightStore: findHighlightStoreProp,
 }: ChatTranscriptPaneProps) {
   const scrollButtonFrameStyle: CSSProperties | undefined =
@@ -216,6 +218,7 @@ export function ChatTranscriptPane({
                   onResolveWorktreeSetup,
                 }
               : {})}
+            turnFailureRecovery={turnFailureRecovery ?? null}
             activeTurnId={activeTurnId ?? null}
             activeTurnInProgress={activeTurnInProgress}
             listRef={listRef}

@@ -56,6 +56,7 @@ import {
   reconcileSettledLiveActivities,
 } from "./workLog.reconciliation";
 import { classifyWorkLogToolKind } from "./workLog.toolKind";
+import { deriveTurnFailureEntries, isTurnFailureActivity } from "./workLog.turnFailures";
 import {
   collabPayloadItem,
   deriveCommandActionDisplay,
@@ -116,10 +117,13 @@ export function deriveWorkLogEntries(
 ): WorkLogEntry[] {
   const visibleTurnIds = options.visibleTurnIds;
   const ordered = orderedActivities(activities);
+  const isVisible = (activity: OrchestrationThreadActivity) =>
+    shouldKeepActivityForWorkLog(activity, latestTurnId, visibleTurnIds);
   const entries = ordered
     .filter(
       (activity) =>
-        shouldKeepActivityForWorkLog(activity, latestTurnId, visibleTurnIds) &&
+        isVisible(activity) &&
+        !isTurnFailureActivity(activity) &&
         activity.kind !== "task.started" &&
         activity.kind !== "task.updated" &&
         activity.kind !== "task.completed" &&
@@ -133,7 +137,7 @@ export function deriveWorkLogEntries(
     )
     .map(toDerivedWorkLogEntry);
 
-  return reconcileSettledLiveActivities(
+  const derived = reconcileSettledLiveActivities(
     collapseDerivedWorkLogEntries(entries),
     ordered,
     latestTurnId,
@@ -149,8 +153,10 @@ export function deriveWorkLogEntries(
         suppressStandaloneCommandStart: _suppressStandaloneCommandStart,
         taskListHasTasks: _taskListHasTasks,
         ...entry
-      }) => entry,
+      }): WorkLogEntry => entry,
     );
+  const failures = deriveTurnFailureEntries(ordered, isVisible);
+  return failures.length > 0 ? [...derived, ...failures] : derived;
 }
 
 function shouldKeepActivityForWorkLog(

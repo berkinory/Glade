@@ -391,4 +391,82 @@ projectionSnapshotLayer("Projection snapshot activityWindows", (it) => {
       );
     }),
   );
+
+  it.effect("keeps failed-turn outcomes outside the activity windows", () =>
+    Effect.gen(function* () {
+      const snapshotQuery = yield* ProjectionSnapshotQuery;
+      const sql = yield* SqlClient.SqlClient;
+
+      yield* sql`DELETE FROM projection_thread_activities`;
+      yield* sql`DELETE FROM projection_thread_messages`;
+      yield* sql`DELETE FROM projection_threads`;
+      yield* sql`DELETE FROM projection_projects`;
+      yield* sql`
+        INSERT INTO projection_projects (
+          project_id, title, workspace_root, default_model_selection_json,
+          scripts_json, created_at, updated_at, deleted_at
+        ) VALUES (
+          'project-failure-window', 'Failure window', '/tmp/failure-window',
+          '{"provider":"codex","model":"gpt-5-codex"}', '[]',
+          '2026-02-24T00:00:00.000Z', '2026-02-24T00:00:00.000Z', NULL
+        )
+      `;
+      yield* sql`
+        INSERT INTO projection_threads (
+          thread_id, project_id, title, model_selection_json, branch, worktree_path,
+          latest_turn_id, created_at, updated_at, deleted_at
+        ) VALUES (
+          'thread-failure-window', 'project-failure-window', 'Failure Window',
+          '{"provider":"codex","model":"gpt-5-codex"}', NULL, NULL, NULL,
+          '2026-02-24T00:00:00.000Z', '2026-02-24T00:00:00.000Z', NULL
+        )
+      `;
+      yield* sql`
+        INSERT INTO projection_thread_activities (
+          activity_id, thread_id, turn_id, tone, kind, summary,
+          payload_json, sequence, created_at
+        ) VALUES
+          ('failed-tool', 'thread-failure-window', 'turn-failed', 'tool', 'tool.completed',
+            'Tool completed', '{}', 1, '2026-02-24T00:00:00.000Z'),
+          ('failed-error', 'thread-failure-window', 'turn-failed', 'error', 'runtime.error',
+            'Provider runtime error', '{"message":"Model at capacity"}', 2,
+            '2026-02-24T00:00:00.000Z'),
+          ('failed-completed', 'thread-failure-window', 'turn-failed', 'error', 'turn.completed',
+            'Turn failed', '{"state":"failed"}', 3, '2026-02-24T00:00:00.000Z'),
+          ('recovered-error', 'thread-failure-window', 'turn-recovered', 'error', 'runtime.error',
+            'Provider runtime error', '{"message":"Transient"}', 4, '2026-02-24T00:00:00.000Z'),
+          ('recovered-completed', 'thread-failure-window', 'turn-recovered', 'info',
+            'turn.completed', 'Turn completed', '{"state":"completed"}', 5,
+            '2026-02-24T00:00:00.000Z')
+      `;
+      yield* sql`
+        INSERT INTO projection_thread_activities (
+          activity_id, thread_id, turn_id, tone, kind, summary,
+          payload_json, sequence, created_at
+        )
+        WITH RECURSIVE sequences(n) AS (
+          SELECT 1 UNION ALL SELECT n + 1 FROM sequences WHERE n < 2100
+        )
+        SELECT
+          'recent-' || n, 'thread-failure-window', 'turn-recent', 'tool', 'tool.completed',
+          'Tool completed', '{}', n + 10, '2026-02-24T00:00:00.000Z'
+        FROM sequences
+      `;
+
+      const kept = ["failed-error", "failed-completed", "recovered-error", "recovered-completed"];
+      const detail = yield* snapshotQuery.getThreadDetailById(asThreadId("thread-failure-window"));
+      const detailIds = Option.isSome(detail)
+        ? detail.value.activities.map((activity) => activity.id)
+        : [];
+      const snapshot = yield* snapshotQuery.getSnapshot();
+      const snapshotIds = (snapshot.threads[0]?.activities ?? []).map((activity) => activity.id);
+      for (const ids of [detailIds, snapshotIds]) {
+        assert.deepEqual(
+          kept.filter((id) => ids.includes(asEventId(id))),
+          kept,
+        );
+        assert.isFalse(ids.includes(asEventId("failed-tool")));
+      }
+    }),
+  );
 });

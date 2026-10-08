@@ -219,6 +219,14 @@ function isRowUnchanged(a: MessagesTimelineRow, b: MessagesTimelineRow): boolean
         a.reply.title === visual.reply.title
       );
     }
+    case "turn-failure": {
+      const failure = b as typeof a;
+      return (
+        a.createdAt === failure.createdAt &&
+        a.turnId === failure.turnId &&
+        a.message === failure.message
+      );
+    }
     case "working":
       return true;
 

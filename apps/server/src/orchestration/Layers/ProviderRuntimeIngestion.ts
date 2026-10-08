@@ -2405,8 +2405,17 @@ const make = Effect.gen(function* () {
             : event.type === "item.updated" && toolOutputKey
               ? withBufferedToolOutputData(event, yield* getBufferedToolOutput(toolOutputKey))
               : event;
+      // Runtime feedback without its own turn id belongs to the active turn. Bind it before session
+      // recovery clears that turn, so a failure stays attached to the turn it ended.
+      const activityTurnId = isTerminalTurnEvent ? eventTurnId : (eventTurnId ?? activeTurnId);
+      const scopedActivityEvent =
+        activityEvent.turnId === undefined &&
+        activityTurnId &&
+        (event.type === "runtime.error" || event.type === "runtime.warning" || isTerminalTurnEvent)
+          ? { ...activityEvent, turnId: activityTurnId }
+          : activityEvent;
       yield* Effect.forEach(
-        projectProviderRuntimeActivities(activityEvent, runtimeSequence),
+        projectProviderRuntimeActivities(scopedActivityEvent, runtimeSequence),
         (activity) => dispatchActivityUpdate(activityEvent, thread.id, activity),
       );
 

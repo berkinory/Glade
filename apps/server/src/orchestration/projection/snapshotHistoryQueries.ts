@@ -24,11 +24,33 @@ export function makeSnapshotHistoryQueries(input: {
 }) {
   const { sql, liveThreadScope } = input;
 
+  // Activity windows are capped, but a failed turn's outcome is transcript history. Its errors and
+  // terminal events stay, so a later success or cancellation of the same turn still supersedes them.
+  const turnFailureActivity = sql`
+    kind = 'runtime.error'
+    OR (kind = 'turn.completed' AND (
+      tone = 'error' OR json_extract(payload_json, '$.state') = 'failed'
+    ))
+  `;
+  const failedTurnTerminalActivity = (alias: "ranked" | "activity") => sql`
+    ${sql.literal(alias)}.kind IN ('runtime.error', 'turn.completed')
+    AND (${sql.literal(alias)}.thread_id, ${sql.literal(alias)}.turn_id) IN (
+      SELECT thread_id, turn_id FROM failed_turns
+    )
+  `;
+
   const listThreadActivityRows = SqlSchema.findAll({
     Request: Schema.Void,
     Result: ProjectionThreadActivityDbRowSchema,
     execute: () =>
       sql`
+        WITH failed_turns AS MATERIALIZED (
+          SELECT DISTINCT thread_id, turn_id
+          FROM projection_thread_activities
+          WHERE ${liveThreadScope}
+            AND turn_id IS NOT NULL
+            AND (${turnFailureActivity})
+        )
         SELECT
           activity_id AS "activityId",
           thread_id AS "threadId",
@@ -79,6 +101,7 @@ export function makeSnapshotHistoryQueries(input: {
         JOIN projection_thread_activities AS ranked USING (thread_id, activity_id)
         WHERE activity_rank <= ${MAX_SNAPSHOT_THREAD_ACTIVITIES}
           OR kind = ${VISUAL_REPLY_ACTIVITY_KIND}
+          OR (${failedTurnTerminalActivity("ranked")})
           OR (
             kind IN ('approval.requested', 'user-input.requested')
             AND json_extract(payload_json, '$.requestId') IS NOT NULL
@@ -291,7 +314,14 @@ export function makeSnapshotHistoryQueries(input: {
     Result: ProjectionThreadActivityDbRowSchema,
     execute: ({ threadId }) =>
       sql`
-        WITH ranked AS (
+        WITH failed_turns AS MATERIALIZED (
+          SELECT DISTINCT thread_id, turn_id
+          FROM projection_thread_activities
+          WHERE thread_id = ${threadId}
+            AND turn_id IS NOT NULL
+            AND (${turnFailureActivity})
+        ),
+        ranked AS (
           SELECT
             thread_id,
             activity_id,
@@ -380,6 +410,7 @@ export function makeSnapshotHistoryQueries(input: {
               )
             )
             OR activity.kind = ${VISUAL_REPLY_ACTIVITY_KIND}
+            OR (${failedTurnTerminalActivity("activity")})
             OR (
               kind IN ('approval.requested', 'user-input.requested')
               AND json_extract(payload_json, '$.requestId') IS NOT NULL

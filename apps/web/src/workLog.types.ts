@@ -79,6 +79,8 @@ export interface WorkLogEntry {
   subagentAction?: WorkLogSubagentAction;
   gladeThreadCreation?: WorkLogGladeThreadCreation;
   visualReply?: VisualReply;
+  // Durable provider failure of this entry's turn; session readiness never clears it.
+  turnFailure?: { message: string };
 
   providerContextLifecycle?: ProviderContextLifecycleInfo;
   providerTransition?: {

@@ -10,6 +10,7 @@ import {
   deepEqualJson,
 } from "./storeNormalization.shared";
 import type { ReadModelThread } from "./storeNormalization.shared";
+import { turnFailureRetainedActivityIds } from "./workLog.turnFailures";
 
 export function normalizeTurnDiffFiles(
   incoming: ReadonlyArray<Thread["turnDiffSummaries"][number]["files"][number]>,
@@ -218,6 +219,7 @@ export function capThreadActivities<TActivity extends Thread["activities"][numbe
     activities.length - MAX_THREAD_ACTIVITIES,
   );
   const retainedIds = new Set(activities.slice(dropCount).map((activity) => activity.id));
+  for (const id of turnFailureRetainedActivityIds(activities)) retainedIds.add(id);
   const pendingRequestIds = pendingInteractionRequestIds(activities);
   for (const activity of activities) {
     if (activity.kind === VISUAL_REPLY_ACTIVITY_KIND) retainedIds.add(activity.id);

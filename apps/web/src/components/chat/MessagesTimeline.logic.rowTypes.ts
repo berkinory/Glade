@@ -148,6 +148,7 @@ interface TimelineDiffMessage {
 
 export type MessagesTimelineRow =
   | { kind: "visual-reply"; id: string; createdAt: string; reply: VisualReply }
+  | { kind: "turn-failure"; id: string; createdAt: string; turnId: TurnId | null; message: string }
   | {
       kind: "work";
       id: string;

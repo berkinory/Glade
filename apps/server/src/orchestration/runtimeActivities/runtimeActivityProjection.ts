@@ -220,7 +220,8 @@ export function projectProviderRuntimeActivities(
           kind: "runtime.error",
           summary: "Provider runtime error",
           payload: toActivityPayload({
-            message: truncateDetail(message, 500),
+            // The failure notice offers the full error for reading and copying.
+            message: truncateDetail(message, MAX_ACTIVITY_DATA_STRING_CHARS),
             ...(errorClass ? { class: errorClass } : {}),
           }),
           turnId: toTurnId(event.turnId) ?? null,
@@ -235,6 +236,10 @@ export function projectProviderRuntimeActivities(
 
       const detailSubtype = asString((asRecord(event.payload.detail) ?? undefined)?.subtype);
       const isBackgroundMove = detailSubtype === "background_tasks_changed";
+      // A warning the provider will retry keeps the turn alive; it is not a failure.
+      const willRetry =
+        event.payload.failure?.retry.state === "retrying" ||
+        asRecord(event.payload.detail)?.willRetry === true;
       const detail = truncateDetail(
         sanitizeUnmappedProviderDetail(event.payload.message, MAX_ACTIVITY_DATA_STRING_CHARS)!,
         MAX_ACTIVITY_DATA_STRING_CHARS,
@@ -249,15 +254,18 @@ export function projectProviderRuntimeActivities(
           summary:
             detailSubtype === "api_retry"
               ? "Claude retrying"
-              : isBackgroundMove
-                ? "Moved to background"
-                : detailSubtype === "informational" || detailSubtype === "notification"
-                  ? "Claude notice"
-                  : "Runtime warning",
+              : willRetry
+                ? "Provider retrying"
+                : isBackgroundMove
+                  ? "Moved to background"
+                  : detailSubtype === "informational" || detailSubtype === "notification"
+                    ? "Claude notice"
+                    : "Runtime warning",
 
           payload: toActivityPayload({
             message,
             detail,
+            ...(willRetry ? { willRetry: true } : {}),
             ...(isBackgroundMove
               ? { nativeEventType: detailSubtype }
               : nativeType

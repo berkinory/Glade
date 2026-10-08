@@ -8,6 +8,7 @@ import TaskListSidebar from "~/components/TaskListSidebar";
 import { PullRequestThreadDialog } from "~/components/PullRequestThreadDialog";
 import { RenameThreadDialog } from "~/components/RenameThreadDialog";
 import { SidebarHeaderNavigationControls } from "~/components/SidebarHeaderNavigationControls";
+import { ChatErrorNotice } from "~/components/chat/ChatErrorNotice";
 import { ChatHeader } from "~/components/chat/ChatHeader";
 import { ChatSurfaceHeader } from "~/components/chat/ChatSurfaceHeader";
 import { ChatTranscriptPane } from "~/components/chat/ChatTranscriptPane";
@@ -36,6 +37,7 @@ import { isElectron } from "~/env";
 import { stripDiffSearchParams } from "~/diffRouteSearch";
 import { startSelectionChat } from "~/lib/selectionChat";
 import { cn } from "~/lib/utils";
+import { findLatestTurnFailure, isSameFailureMessage } from "~/workLog.turnFailures";
 import { ChatComposerSurface } from "./ChatComposerSurface";
 import { undoTurnFiles } from "../chatTaskActions";
 import { createChatPresentation } from "./chatPresentation";
@@ -155,7 +157,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     navigateExpandedImage,
   } = controller.environment;
   const { onOpenTurnDiffPanel, threadId } = controller.props;
-  const { setThreadError } = controller.composer;
+  const { setThreadError, handleModelPickerOpenChange } = controller.composer;
   const navigate = useNavigate();
   const onOpenTurnDiff = useCallback(
     (turnId: TurnId, filePath?: string) => {
@@ -223,6 +225,8 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     selectedPromptEffort,
     selectedModelSelection,
     providerOptionsForDispatch,
+    pendingApprovals,
+    pendingUserInputs,
   } = controller.provider;
   const { reportChatActionFailure } = controller.composer;
   const {
@@ -231,6 +235,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     handleResetWorkspaceToHome,
     handleForkFromMessage,
     onEditUserMessage,
+    onContinueFailedTurn,
   } = controller.submission;
   if (!activeThread) {
     return (
@@ -286,33 +291,44 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     environmentPanelProps,
     environmentOverlayVariant,
   } = presentation;
+  const latestTurnFailure = findLatestTurnFailure(timelineEntries);
+  const turnFailureRecovery =
+    latestTurnFailure?.turnId && latestTurnFailure.turnId === activeThread?.latestTurn?.turnId
+      ? {
+          turnId: latestTurnFailure.turnId,
+          disabled:
+            isWorking ||
+            hasLiveTurn ||
+            isSendBusy ||
+            isConnecting ||
+            pendingApprovals.length > 0 ||
+            pendingUserInputs.length > 0,
+          onContinue: (turnId: TurnId) => {
+            void onContinueFailedTurn(turnId).catch(reportChatActionFailure);
+          },
+          // Deferred so the opening click does not also land as the picker's outside press.
+          onChangeModel: () =>
+            window.requestAnimationFrame(() => handleModelPickerOpenChange(true)),
+        }
+      : null;
+  const threadErrorShownInTimeline =
+    activeThread?.error != null &&
+    timelineEntries.some(
+      (entry) =>
+        entry.kind === "work" &&
+        entry.entry.turnFailure !== undefined &&
+        isSameFailureMessage(activeThread.error!, entry.entry.turnFailure.message),
+    );
   const composerSection = (
     <>
-      {activeThread?.error ? (
+      {activeThread?.error && !threadErrorShownInTimeline ? (
         <div className={cn(CHAT_COLUMN_GUTTER_CLASS_NAME, "mb-2")}>
-          <div
-            role="alert"
-            className={cn(
-              CHAT_COLUMN_FRAME_CLASS_NAME,
-              "rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-ui-sm",
-            )}
-          >
-            <details>
-              <summary className="cursor-pointer text-destructive">
-                This chat encountered an error
-              </summary>
-              <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words">
-                {activeThread.error}
-              </pre>
-            </details>
-            <button
-              type="button"
-              className="mt-1 underline"
-              onClick={() => setThreadError(activeThread.id, null)}
-            >
-              Dismiss
-            </button>
-          </div>
+          <ChatErrorNotice
+            title="This chat encountered an error"
+            error={activeThread.error}
+            className={CHAT_COLUMN_FRAME_CLASS_NAME}
+            onDismiss={() => setThreadError(activeThread.id, null)}
+          />
         </div>
       ) : null}
       <ChatComposerSurface
@@ -491,6 +507,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                     worktreeSetup={activeWorktreeSetup}
                     worktreeSetupPendingAction={worktreeSetupPendingAction}
                     onResolveWorktreeSetup={onResolveWorktreeSetup}
+                    turnFailureRecovery={turnFailureRecovery}
                     activeTurnInProgress={activeTurnInProgress}
                     listRef={legendListRef}
                     timelineControllerRef={timelineControllerRef}
