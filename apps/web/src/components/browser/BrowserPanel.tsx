@@ -28,13 +28,21 @@ function runCommand(command: BrowserPanelCommand): void {
 }
 
 // The thread's browser view in the right sidebar. Desktop app only: the pages are native views the
-// desktop places over the content box. Mounted only while shown, so each showing starts a blank
+// desktop places over the content box while the panel is visible. The first showing starts a blank
 // tab when the thread has none.
-export function BrowserPanel(props: { threadId: ThreadId; tabs: readonly BrowserTab[] | null }) {
+export function BrowserPanel(props: {
+  threadId: ThreadId;
+  tabs: readonly BrowserTab[] | null;
+  visible: boolean;
+}) {
   const { threadId, tabs } = props;
   const activeTab = tabs?.find((tab) => tab.active) ?? null;
   const [contentElement, setContentElement] = useState<HTMLDivElement | null>(null);
-  const frozenFrame = useBrowserViewPlacement(threadId, activeTab?.tabId ?? null, contentElement);
+  const frozenFrame = useBrowserViewPlacement(
+    threadId,
+    activeTab?.tabId ?? null,
+    props.visible ? contentElement : null,
+  );
   // Only the first tab list after opening decides; closing the last tab later leaves it empty.
   const checkedFirstList = useRef(false);
   useEffect(() => {

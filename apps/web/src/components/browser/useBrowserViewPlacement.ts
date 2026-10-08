@@ -1,6 +1,6 @@
 import type { BrowserViewPlacement } from "@glade/contracts/browser/browserView";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { visibleOverlayElements } from "~/lib/keyboardOverlay";
 
 // Long enough to cover the slowest panel and sidebar slide.
@@ -20,7 +20,10 @@ const intersects = (a: DOMRect, b: DOMRect) =>
 // tooltips open over the page), or a resize drag in progress.
 function isCovered(rect: DOMRect): boolean {
   if (document.querySelector("[data-panel-resize-overlay]")) return true;
-  const tooltips = document.querySelectorAll('[data-slot="tooltip-popup"]');
+  // A closing tooltip (the one a click on the Browser button dismisses) no longer counts.
+  const tooltips = document.querySelectorAll(
+    '[data-slot="tooltip-popup"]:not([data-ending-style]):not([data-closed])',
+  );
   if (Array.from(tooltips).some((tooltip) => intersects(tooltip.getBoundingClientRect(), rect)))
     return true;
   return visibleOverlayElements().some(
@@ -53,8 +56,9 @@ function watchPortals(onChange: () => void): () => void {
   };
 }
 
-// Keeps the thread's active tab view over `element` while it is laid out and uncovered. While Glade
-// UI covers it, returns the page's frozen frame for the caller to show in its place.
+// Keeps the thread's active tab view over `element` while it is laid out and uncovered; a null
+// element takes the view off. While Glade UI covers it, returns the page's frozen frame for the
+// caller to show in its place.
 export function useBrowserViewPlacement(
   threadId: ThreadId,
   tabId: string | null,
@@ -62,7 +66,8 @@ export function useBrowserViewPlacement(
 ): string | null {
   const [frozenFrame, setFrozenFrame] = useState<string | null>(null);
 
-  useEffect(() => {
+  // A layout effect so the view is placed or taken off before the browser paints the panel's change.
+  useLayoutEffect(() => {
     const bridge = window.desktopBridge?.browser;
     if (!bridge) return;
     let placedKey = "";

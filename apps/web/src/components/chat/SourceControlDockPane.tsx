@@ -25,6 +25,8 @@ export function SourceControlDockPane(props: {
   onOpenFile: (filePath: string) => void;
   view: SourceControlView;
   onViewChange: (view: SourceControlView) => void;
+  // While hidden its queries stop refetching; showing it again refetches whatever went stale.
+  visible: boolean;
 }) {
   const queryClient = useQueryClient();
   const initMutation = useMutation(
@@ -37,6 +39,7 @@ export function SourceControlDockPane(props: {
     ...gitBranchesQueryOptions(props.workspaceRoot),
     enabled: props.workspaceRoot !== null,
     retry: false,
+    subscribed: props.visible,
   });
   const repositoryState = !props.workspaceRoot ? (
     <PanelStateMessage>Choose a project to use source control.</PanelStateMessage>
@@ -104,6 +107,7 @@ export function SourceControlDockPane(props: {
             cwd={props.workspaceRoot}
             onSelectCommitFile={props.onSelectCommitFile}
             onOpenFile={props.onOpenFile}
+            visible={props.visible}
           />
         ) : (
           <GitPanel
@@ -111,6 +115,7 @@ export function SourceControlDockPane(props: {
             threadId={props.threadId}
             workspaceRoot={props.workspaceRoot}
             onOpenFile={props.onOpenFile}
+            visible={props.visible}
           />
         )}
       </div>

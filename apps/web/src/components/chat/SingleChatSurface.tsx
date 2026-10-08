@@ -283,6 +283,7 @@ export function SingleChatSurface(props: {
               }}
               view={fileTabs.sourceControlView}
               onViewChange={(view) => setSourceControlView(props.threadId, view)}
+              visible={visible}
             />
           </Suspense>
         );

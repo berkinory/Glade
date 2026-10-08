@@ -181,9 +181,13 @@ export function SourceControlHistory(props: {
     | undefined;
   cwd: string | null;
   onOpenFile: (path: string) => void;
+  visible: boolean;
 }) {
   const queryClient = useQueryClient();
-  const eligibility = useQuery(gitRebaseStateQueryOptions(props.cwd));
+  const eligibility = useQuery({
+    ...gitRebaseStateQueryOptions(props.cwd),
+    subscribed: props.visible,
+  });
   const undo = useMutation({
     mutationKey: ["git", "mutation", "undo", props.cwd],
     mutationFn: (expectedHead: string) => {
@@ -214,6 +218,7 @@ export function SourceControlHistory(props: {
   const status = useQuery({
     ...gitStatusQueryOptions(props.cwd),
     enabled: props.cwd !== null,
+    subscribed: props.visible,
   });
   const history = useInfiniteQuery({
     queryKey: [...gitQueryKeys.history(props.cwd), search],
@@ -236,6 +241,7 @@ export function SourceControlHistory(props: {
     enabled: props.cwd !== null,
     staleTime: 30_000,
     refetchOnWindowFocus: true,
+    subscribed: props.visible,
   });
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;

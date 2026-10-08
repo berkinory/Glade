@@ -63,6 +63,7 @@ export function GitPanel(props: {
   onOpenFile: (path: string) => void;
   selectedFilePath?: string | null;
   onSelectDiff?: ((section: GitFileSectionId, path: string, preview: boolean) => void) | undefined;
+  visible: boolean;
 }) {
   const queryClient = useQueryClient();
   const { resolvedTheme } = useTheme();
@@ -84,7 +85,10 @@ export function GitPanel(props: {
     const timer = setTimeout(() => setSearch(filter.trim()), 250);
     return () => clearTimeout(timer);
   }, [filter]);
-  const filesQuery = useQuery(gitSourceControlFilesQueryOptions(cwd, search));
+  const filesQuery = useQuery({
+    ...gitSourceControlFilesQueryOptions(cwd, search),
+    subscribed: props.visible,
+  });
   const coverage = filesQuery.data?.coverage;
   const large = coverage?.mode === "large";
   const stagedFiles = filesQuery.data?.staged ?? [];

@@ -16,7 +16,14 @@ import {
   type WorkspaceExplorerActions,
 } from "./useWorkspaceExplorerActions";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useMemo, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useSyncExternalStore,
+} from "react";
 import { basenameOfPath } from "~/file-icons";
 import { type ChatFileReference } from "~/lib/chatReferences";
 import { showFileReferenceContextMenu } from "~/lib/fileReferenceContextMenu";
@@ -222,13 +229,26 @@ export function WorkspaceExplorerSidebar(props: {
       );
     }),
   ].toSorted();
+  const visible = props.isVisible ?? true;
   useProjectFileChangeSubscription({
     cwd: props.workspaceRoot,
     relativePath: ".",
     directoryPaths: JSON.stringify(watchedDirectories),
-    enabled: props.isVisible ?? true,
+    enabled: visible,
     onChange: onDirectoryChange,
   });
+  // The watcher is off while hidden, so showing the explorer again refreshes what it missed.
+  const wasVisible = useRef(visible);
+  const refreshWatchedDirectories = useEffectEvent(() => {
+    if (props.workspaceRoot)
+      void refreshProjectDirectories(queryClient, props.workspaceRoot, watchedDirectories).catch(
+        () => undefined,
+      );
+  });
+  useEffect(() => {
+    if (visible && !wasVisible.current) refreshWatchedDirectories();
+    wasVisible.current = visible;
+  }, [visible]);
   const prefetchEntry = useExplorerEntryPrefetch(props.workspaceRoot);
   const actions = useWorkspaceExplorerActions(
     props.workspaceRoot,

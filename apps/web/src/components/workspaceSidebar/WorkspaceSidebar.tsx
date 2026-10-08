@@ -57,16 +57,15 @@ function useTerminalViewSync(threadId: ThreadId, terminalVisible: boolean) {
   ]);
 }
 
-// Views mount the first time they show and stay mounted while hidden; the browser mounts only while
-// shown so its native page never outlives the view.
+// Views mount the first time they show and stay mounted, so switching only toggles visibility. Each
+// view gets `visible` and pauses its own live work while hidden.
 function WorkspaceSidebarViews(props: {
   visibleView: WorkspaceSidebarView | null;
   renderView: (view: WorkspaceSidebarView, visible: boolean) => ReactNode;
 }) {
   const [visited, setVisited] = useState<ReadonlySet<WorkspaceSidebarView>>(() => new Set());
   const { visibleView } = props;
-  if (visibleView && visibleView !== "browser" && !visited.has(visibleView))
-    setVisited(new Set([...visited, visibleView]));
+  if (visibleView && !visited.has(visibleView)) setVisited(new Set([...visited, visibleView]));
   return (
     <div className="relative min-h-0 flex-1">
       {WORKSPACE_SIDEBAR_VIEWS.map((view) => {
@@ -114,7 +113,8 @@ export function WorkspaceSidebar(props: {
   const browserTabs = useBrowserTabs(isElectron ? props.threadId : null);
   useTerminalViewSync(props.threadId, open && view === "terminal");
   const renderView = (shown: WorkspaceSidebarView, visible: boolean) => {
-    if (shown === "browser") return <BrowserPanel threadId={props.threadId} tabs={browserTabs} />;
+    if (shown === "browser")
+      return <BrowserPanel threadId={props.threadId} tabs={browserTabs} visible={visible} />;
     if (shown === "terminal")
       return (
         <TerminalView
