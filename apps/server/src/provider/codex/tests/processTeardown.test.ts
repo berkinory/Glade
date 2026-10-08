@@ -60,6 +60,23 @@ async function createTeardownContext(
   };
 }
 
+function acquireGatewayLease(threadId: ThreadId) {
+  const revokeSessionToken = vi.fn();
+  const gatewaySessionLease = acquireAgentGatewaySessionLease(
+    {
+      connectionForThread: () => ({
+        url: "http://127.0.0.1:48123/mcp",
+        bearerToken: "gateway-token",
+      }),
+      revokeSessionToken,
+    },
+    threadId,
+    "codex",
+    AGENT_GATEWAY_NO_CAPABILITIES,
+  );
+  return { gatewaySessionLease, revokeSessionToken };
+}
+
 describe("Codex app-server teardown", () => {
   it("keeps a live process routable when only the last turn status is error", async () => {
     const child = new FakeCodexChild(5050);
@@ -106,19 +123,7 @@ describe("Codex app-server teardown", () => {
       spawnAppServer: () => child as unknown as ChildProcessWithoutNullStreams,
     });
     const threadId = ThreadId.makeUnsafe("thread-codex-exit-proof");
-    const revokeSessionToken = vi.fn();
-    const gatewaySessionLease = acquireAgentGatewaySessionLease(
-      {
-        connectionForThread: () => ({
-          url: "http://127.0.0.1:48123/mcp",
-          bearerToken: "gateway-token",
-        }),
-        revokeSessionToken,
-      },
-      threadId,
-      "codex",
-      AGENT_GATEWAY_NO_CAPABILITIES,
-    );
+    const { gatewaySessionLease, revokeSessionToken } = acquireGatewayLease(threadId);
     const context = {
       ...(await createTeardownContext(threadId, child, manager)),
       gatewaySessionLease,
@@ -157,19 +162,7 @@ describe("Codex app-server teardown", () => {
       spawnAppServer: () => child as unknown as ChildProcessWithoutNullStreams,
     });
     const threadId = ThreadId.makeUnsafe("thread-codex-spontaneous-exit");
-    const revokeSessionToken = vi.fn();
-    const gatewaySessionLease = acquireAgentGatewaySessionLease(
-      {
-        connectionForThread: () => ({
-          url: "http://127.0.0.1:48123/mcp",
-          bearerToken: "gateway-token",
-        }),
-        revokeSessionToken,
-      },
-      threadId,
-      "codex",
-      AGENT_GATEWAY_NO_CAPABILITIES,
-    );
+    const { gatewaySessionLease, revokeSessionToken } = acquireGatewayLease(threadId);
     const context = {
       ...(await createTeardownContext(threadId, child, manager)),
       gatewaySessionLease,
@@ -267,8 +260,6 @@ describe("CodexAppServerManager process teardown", () => {
         createdAt: "2026-09-08T08:03:37.000Z",
         updatedAt: "2026-09-08T08:03:37.000Z",
       },
-      account: { type: "unknown", planType: null, sparkEnabled: true },
-      child,
       stdinWriter: { close: writerClose },
       pending: new Map([
         [
@@ -281,13 +272,7 @@ describe("CodexAppServerManager process teardown", () => {
           },
         ],
       ]),
-      pendingApprovals: new Map(),
-      pendingUserInputs: new Map(),
-      collabReceiverTurns: new Map(),
-      collabReceiverParents: new Map(),
-      reviewTurnIds: new Set(),
       nextRequestId: 8,
-      stopping: false,
       sessionAttemptId: "attempt-transport-root-cause",
     };
     const internals = manager as unknown as {
@@ -370,15 +355,6 @@ describe("CodexAppServerManager process teardown", () => {
         createdAt: "2026-02-10T00:00:00.000Z",
         updatedAt: "2026-02-10T00:00:00.000Z",
       },
-      account: { type: "unknown", planType: null, sparkEnabled: true },
-      child,
-      pending: new Map(),
-      pendingApprovals: new Map(),
-      pendingUserInputs: new Map(),
-      collabReceiverTurns: new Map(),
-      collabReceiverParents: new Map(),
-      reviewTurnIds: new Set(),
-      stopping: false,
     };
     (
       manager as unknown as {
@@ -441,15 +417,6 @@ describe("CodexAppServerManager process teardown", () => {
         createdAt: "2026-02-10T00:00:00.000Z",
         updatedAt: "2026-02-10T00:00:00.000Z",
       },
-      account: { type: "unknown", planType: null, sparkEnabled: true },
-      child,
-      pending: new Map(),
-      pendingApprovals: new Map(),
-      pendingUserInputs: new Map(),
-      collabReceiverTurns: new Map(),
-      collabReceiverParents: new Map(),
-      reviewTurnIds: new Set(),
-      stopping: false,
     };
     (
       manager as unknown as {

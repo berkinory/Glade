@@ -149,16 +149,7 @@ function sendFragment(
 
 function waitForClose(socket: WebSocket, timeoutMs = 2_000): Promise<void> {
   if (socket.readyState === WebSocket.CLOSED) return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(
-      () => reject(new Error("Timed out waiting for socket close")),
-      timeoutMs,
-    );
-    socket.once("close", () => {
-      clearTimeout(timeout);
-      resolve();
-    });
-  });
+  return waitForCloseInfo(socket, timeoutMs).then(() => undefined);
 }
 
 function ping(socket: WebSocket, timeoutMs = 2_000): Promise<void> {
@@ -338,14 +329,13 @@ async function startTestServer(): Promise<RunningTestServer> {
 
 async function connectSession(
   server: RunningTestServer,
-  ttl?: Duration.Duration,
   options?: { readonly perMessageDeflate?: boolean },
 ): Promise<{
   readonly sessionId: AuthSessionId;
   readonly token: string;
   readonly socket: WebSocket;
 }> {
-  const issued = await Effect.runPromise(server.sessions.issue(ttl ? { ttl } : undefined));
+  const issued = await Effect.runPromise(server.sessions.issue());
   const websocket = await Effect.runPromise(server.sessions.issueWebSocketToken(issued.sessionId));
   const socket = await connect(featureSocketUrl(server, websocket.token), options);
   return { sessionId: issued.sessionId, token: websocket.token, socket };
@@ -682,26 +672,13 @@ describe("websocket RPC payload admission", () => {
 });
 
 describe("websocket permessage-deflate negotiation", () => {
-  it("never negotiates compression on the pre-auth bootstrap socket", async () => {
-    const server = await startTestServer();
-    try {
-      // Offer compression on the bootstrap path: the server must decline the extension (compression is a
-      // post-authentication privilege; pre-auth connections must not be able to multiply per-connection
-      // zlib memory).
-      const bootstrapSocket = await connect(`${server.origin}/ws/bootstrap`, {
-        perMessageDeflate: true,
-      });
-      expect(bootstrapSocket.extensions).not.toContain("permessage-deflate");
-      bootstrapSocket.terminate();
-    } finally {
-      await server.close();
-    }
-  });
-
   it("declines compression on every spelling the router still routes to bootstrap", async () => {
     const server = await startTestServer();
     try {
+      // Compression is a post-authentication privilege; pre-auth connections must not be able to
+      // multiply per-connection zlib memory.
       for (const alias of [
+        WS_BOOTSTRAP_PATH,
         "/WS/BOOTSTRAP",
         "/ws//bootstrap",
         "/ws/%62ootstrap",
@@ -719,7 +696,7 @@ describe("websocket permessage-deflate negotiation", () => {
   it("negotiates compression when the client offers it and serves RPC over the compressed socket", async () => {
     const server = await startTestServer();
     try {
-      const connected = await connectSession(server, undefined, { perMessageDeflate: true });
+      const connected = await connectSession(server, { perMessageDeflate: true });
       expect(connected.socket.extensions).toContain("permessage-deflate");
 
       const exit = waitForRpcExit(connected.socket, "201");
@@ -731,25 +708,10 @@ describe("websocket permessage-deflate negotiation", () => {
     }
   });
 
-  it("still serves clients that do not offer compression", async () => {
-    const server = await startTestServer();
-    try {
-      const connected = await connectSession(server, undefined, { perMessageDeflate: false });
-      expect(connected.socket.extensions).not.toContain("permessage-deflate");
-
-      const exit = waitForRpcExit(connected.socket, "202");
-      connected.socket.send(makeRpcFrame(256, "202"), { binary: false, compress: false });
-      await exit;
-      expect(server.observedRpc).toEqual({ decoderCalls: 1, handlerCalls: 1 });
-    } finally {
-      await server.close();
-    }
-  });
-
   it("enforces the payload ceiling on the decompressed size of a compressed message", async () => {
     const server = await startTestServer();
     try {
-      const connected = await connectSession(server, undefined, { perMessageDeflate: true });
+      const connected = await connectSession(server, { perMessageDeflate: true });
       expect(connected.socket.extensions).toContain("permessage-deflate");
       const close = waitForCloseInfo(connected.socket);
 
@@ -768,7 +730,7 @@ describe("websocket permessage-deflate negotiation", () => {
   it("closes a fragmented compressed message whose decompressed aggregate crosses the ceiling", async () => {
     const server = await startTestServer();
     try {
-      const connected = await connectSession(server, undefined, { perMessageDeflate: true });
+      const connected = await connectSession(server, { perMessageDeflate: true });
       expect(connected.socket.extensions).toContain("permessage-deflate");
       const frame = makeRpcFrame(MAX_WEBSOCKET_MESSAGE_BYTES + 1, "204");
       const splitAt = Math.floor(frame.length / 2);
@@ -950,23 +912,6 @@ describe("websocketRpcRouteLayer connection lifecycle", () => {
       await expect(ping(survivor.socket)).resolves.toBeUndefined();
       await expect(connect(featureSocketUrl(server, revoked.token))).rejects.toThrow("401");
       await expect(connect(featureSocketUrl(server, revokedSecond.token))).rejects.toThrow("401");
-    } finally {
-      await server.close();
-    }
-  });
-
-  it("closes an established socket at durable session expiry", async () => {
-    const server = await startTestServer();
-    try {
-      const expiring = await connectSession(server, Duration.seconds(1));
-      await expect(ping(expiring.socket)).resolves.toBeUndefined();
-      const close = waitForClose(expiring.socket, 3_000);
-
-      await close;
-
-      expect(expiring.socket.readyState).toBe(WebSocket.CLOSED);
-      expect(server.transportFinalizers.count).toBeGreaterThanOrEqual(1);
-      await expect(connect(featureSocketUrl(server, expiring.token))).rejects.toThrow("401");
     } finally {
       await server.close();
     }

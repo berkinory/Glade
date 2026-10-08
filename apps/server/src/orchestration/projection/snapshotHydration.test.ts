@@ -420,7 +420,6 @@ projectionSnapshotLayer("Projection snapshot snapshotHydration", (it) => {
             provider: "codex",
             model: "gpt-5-codex",
           },
-
           runtimeMode: "full-access",
           envMode: "local",
           branch: null,
@@ -448,7 +447,6 @@ projectionSnapshotLayer("Projection snapshot snapshotHydration", (it) => {
           // must not resurrect stale prompts.
           hasPendingApprovals: false,
           hasPendingUserInput: false,
-
           latestTurn: {
             turnId: asTurnId("turn-1"),
             state: "completed",
@@ -485,7 +483,6 @@ projectionSnapshotLayer("Projection snapshot snapshotHydration", (it) => {
               updatedAt: "2026-02-24T00:00:05.000Z",
             },
           ],
-
           activities: [
             {
               id: asEventId("activity-1"),

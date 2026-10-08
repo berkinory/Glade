@@ -7,7 +7,7 @@ import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as Migrator from "effect/unstable/sql/Migrator";
 
 import Baseline from "./Migrations/001_Baseline.ts";
-import { migrationEntries, runMigrations } from "./Migrations.ts";
+import { runMigrations } from "./Migrations.ts";
 import { MigrationLineageUnsupportedError, MigrationSchemaTooNewError } from "./Errors.ts";
 import * as NodeSqliteClient from "./NodeSqliteClient.ts";
 
@@ -35,7 +35,7 @@ describe("baseline migrations", () => {
           },
         ],
       );
-    }).pipe(Effect.provide(NodeSqliteClient.layerMemory())),
+    }).pipe(Effect.provide(NodeSqliteClient.layer({ filename: ":memory:" }))),
   );
 
   it.effect("creates a fresh database and applies migrations after the baseline", () =>
@@ -52,23 +52,7 @@ describe("baseline migrations", () => {
         readonly title: string;
       }>`SELECT title FROM projection_projects`;
       assert.strictEqual(projects[0]?.title, "Fresh project");
-      const futureMigration = sql`ALTER TABLE projection_projects ADD COLUMN description TEXT`;
-      const nextId = Math.max(...migrationEntries.map(([id]) => id)) + 1;
-      const loader = Migrator.fromRecord(
-        Object.fromEntries([
-          ...migrationEntries.map(([id, name, migration]) => [`${id}_${name}`, migration]),
-          [`${nextId}_ProjectDescriptions`, futureMigration],
-        ]),
-      );
-      const migrate = Migrator.make({});
-      assert.deepStrictEqual(yield* migrate({ loader }), [[nextId, "ProjectDescriptions"]]);
-      yield* sql`UPDATE projection_projects SET description = 'After baseline' WHERE project_id = 'new-project'`;
-      assert.deepStrictEqual(yield* migrate({ loader }), []);
-      const updated = yield* sql<{ readonly title: string; readonly description: string }>`
-        SELECT title, description FROM projection_projects
-      `;
-      assert.deepStrictEqual(updated, [{ title: "Fresh project", description: "After baseline" }]);
-    }).pipe(Effect.provide(NodeSqliteClient.layerMemory())),
+    }).pipe(Effect.provide(NodeSqliteClient.layer({ filename: ":memory:" }))),
   );
 
   it.effect("refuses a preview database without altering it", () =>
@@ -90,7 +74,7 @@ describe("baseline migrations", () => {
         SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'projection_projects'
       `;
       assert.deepStrictEqual(tables, []);
-    }).pipe(Effect.provide(NodeSqliteClient.layerMemory())),
+    }).pipe(Effect.provide(NodeSqliteClient.layer({ filename: ":memory:" }))),
   );
 
   it.effect("refuses a newer database without altering its tracker", () =>
@@ -104,7 +88,7 @@ describe("baseline migrations", () => {
         readonly id: number;
       }>`SELECT MAX(migration_id) AS id FROM effect_sql_migrations`;
       assert.strictEqual(rows[0]?.id, 999);
-    }).pipe(Effect.provide(NodeSqliteClient.layerMemory())),
+    }).pipe(Effect.provide(NodeSqliteClient.layer({ filename: ":memory:" }))),
   );
   it.effect(
     "backfills message attribution from original journal boundaries and preserves imported unknowns and user content",
@@ -151,6 +135,6 @@ describe("baseline migrations", () => {
           rows.every((row) => row.text === "Preserve this text"),
           true,
         );
-      }).pipe(Effect.provide(NodeSqliteClient.layerMemory())),
+      }).pipe(Effect.provide(NodeSqliteClient.layer({ filename: ":memory:" }))),
   );
 });

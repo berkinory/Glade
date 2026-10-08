@@ -198,7 +198,7 @@ const make = (options?: ProviderRuntimeReconcilerLiveOptions) =>
         [
           directory.listBindings(),
           providerService.listSessions(),
-          providerService.getRuntimeEventPumpHealth?.() ?? Effect.succeed([]),
+          providerService.getRuntimeEventPumpHealth(),
           runtimeEvents.hasPendingEventsForThreads({
             consumerName: PROVIDER_RUNTIME_INGESTION_CONSUMER,
             threadIds: candidateThreadIds,

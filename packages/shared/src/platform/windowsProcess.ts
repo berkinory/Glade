@@ -1,11 +1,7 @@
 import * as Path from "node:path";
 
 import { resolveExecutable } from "./executable";
-import {
-  resolveWindowsComSpec,
-  resolveWindowsSystemRoot,
-  resolveWindowsWslExecutable,
-} from "./platformEnvironment";
+import { resolveWindowsComSpec, resolveWindowsWslExecutable } from "./platformEnvironment";
 
 export interface WindowsSafeProcessInput {
   readonly platform?: NodeJS.Platform | undefined;
@@ -31,9 +27,6 @@ const WINDOWS_PATH_SEPARATOR_PATTERN = /[\\/]/;
 const WINDOWS_BATCH_UNSAFE_TOKEN_PATTERN = /[\r\n&|<>^%]/;
 const WINDOWS_WSL_UNC_PATTERN = /^\\\\(?:wsl\.localhost|wsl\$)\\([^\\]+)(?:\\(.*))?$/i;
 
-export { resolveWindowsComSpec, resolveWindowsSystemRoot };
-export const resolveWindowsWslExe = resolveWindowsWslExecutable;
-
 export function parseWindowsWslUncPath(value: string): WindowsWslUncPath | null {
   const match = WINDOWS_WSL_UNC_PATTERN.exec(value.trim());
   if (!match) {
@@ -56,7 +49,7 @@ export function parseWindowsWslUncPath(value: string): WindowsWslUncPath | null 
   };
 }
 
-export function isWindowsBatchCommand(command: string): boolean {
+function isWindowsBatchCommand(command: string): boolean {
   return WINDOWS_BATCH_EXTENSION_PATTERN.test(command);
 }
 
@@ -69,10 +62,7 @@ function quoteWindowsBatchToken(token: string, label: string): string {
   return `"${token.replaceAll('"', '""')}"`;
 }
 
-export function buildWindowsBatchCommandArgs(
-  command: string,
-  args: ReadonlyArray<string>,
-): string[] {
+function buildWindowsBatchCommandArgs(command: string, args: ReadonlyArray<string>): string[] {
   const commandLine = [
     "call",
     quoteWindowsBatchToken(command, "command"),
@@ -89,10 +79,7 @@ function hasWindowsExecutableExtension(command: string): boolean {
   return Path.win32.extname(command).length > 0;
 }
 
-export function resolveWindowsCommandPath(
-  command: string,
-  input: WindowsSafeProcessInput = {},
-): string {
+function resolveWindowsCommandPath(command: string, input: WindowsSafeProcessInput = {}): string {
   const pathLikeCommand = isPathLikeCommand(command);
   if (pathLikeCommand && hasWindowsExecutableExtension(command)) {
     return command;
@@ -116,7 +103,7 @@ export function prepareWindowsSafeProcess(
   const wslWorkspace = input.cwd ? parseWindowsWslUncPath(input.cwd) : null;
   if (wslWorkspace) {
     return {
-      command: resolveWindowsWslExe(env),
+      command: resolveWindowsWslExecutable(env),
       args: [
         "--distribution",
         wslWorkspace.distribution,

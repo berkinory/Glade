@@ -31,15 +31,6 @@ async function runInvalidConfig(config: ServerConfigShape): Promise<ServerLifecy
 }
 
 describe("createEffectServer remote policy guard", () => {
-  it("rejects an invalid public URL before constructing runtime services", async () => {
-    const error = await runInvalidConfig(
-      failFastConfig({ publicUrl: new URL("http://glade.example.test/") }),
-    );
-
-    expect(error.operation).toBe("validateRemoteAccessPolicy");
-    expect(String(error.cause)).toContain("must be an HTTPS root origin");
-  });
-
   it("rejects a proxied dev URL before constructing runtime services", async () => {
     const error = await runInvalidConfig(
       failFastConfig({

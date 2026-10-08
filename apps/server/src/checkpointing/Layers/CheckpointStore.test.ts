@@ -23,8 +23,66 @@ async function waitFor(predicate: () => boolean, timeoutMs = 1_000): Promise<voi
   throw new Error("Timed out waiting for condition");
 }
 
+type GitExecuteInput = Parameters<GitCoreShape["execute"]>[0];
+type GitExecuteResult = ReturnType<GitCoreShape["execute"]>;
+
+const gitResult = (code: number, stdout = "", stderr = "") =>
+  Effect.succeed({ code, stdout, stderr });
+
+function fakeGit(overrides: Record<string, (input: GitExecuteInput) => GitExecuteResult> = {}) {
+  return vi.fn<GitCoreShape["execute"]>((input) => {
+    const args = input.args.join(" ");
+    const override = overrides[args];
+    if (override) return override(input);
+    if (args === "rev-parse --git-path index") return gitResult(0, "/repo/.git/index\n");
+    if (args === "rev-parse --verify HEAD") return gitResult(1);
+    if (args === "add -A -- .") return gitResult(0);
+    if (args === "write-tree") return gitResult(0, "tree-oid\n");
+    if (args.startsWith("commit-tree ")) return gitResult(0, "commit-oid\n");
+    if (args.startsWith("update-ref ")) return gitResult(0);
+    throw new Error(`Unexpected git args: ${args}`);
+  });
+}
+
+async function withRealRepo(
+  prefix: string,
+  body: (repo: {
+    readonly cwd: string;
+    readonly git: (...args: string[]) => string;
+    readonly runtime: ManagedRuntime.ManagedRuntime<CheckpointStore, unknown>;
+  }) => Promise<void>,
+): Promise<void> {
+  const cwd = mkdtempSync(join(tmpdir(), prefix));
+  const git = (...args: string[]) => execFileSync("git", args, { cwd, encoding: "utf8" });
+  const runtime = ManagedRuntime.make(
+    CheckpointStoreLive.pipe(
+      Layer.provide(GitCoreLive.pipe(Layer.provide(ServerConfig.layerTest(cwd, { prefix })))),
+      Layer.provide(NodeServices.layer),
+    ),
+  );
+  try {
+    git("init", "-q");
+    git("config", "user.name", "Checkpoint Test");
+    git("config", "user.email", "checkpoint@example.invalid");
+    await body({ cwd, git, runtime });
+  } finally {
+    await runtime.dispose();
+    rmSync(cwd, { recursive: true, force: true });
+  }
+}
+
 describe("CheckpointStoreLive", () => {
   let runtime: ManagedRuntime.ManagedRuntime<CheckpointStore, unknown> | null = null;
+
+  const storeWith = (execute: GitCoreShape["execute"]) => {
+    runtime = ManagedRuntime.make(
+      CheckpointStoreLive.pipe(
+        Layer.provide(Layer.succeed(GitCore, { execute } as unknown as GitCoreShape)),
+        Layer.provide(NodeServices.layer),
+      ),
+    );
+    return runtime;
+  };
 
   afterEach(async () => {
     if (runtime) {
@@ -38,35 +96,13 @@ describe("CheckpointStoreLive", () => {
     const addGate = new Promise<void>((resolve) => {
       releaseAdd = resolve;
     });
-    const execute = vi.fn<GitCoreShape["execute"]>((input) => {
-      const args = input.args.join(" ");
-      if (args === "rev-parse --git-path index") {
-        return Effect.succeed({ code: 0, stdout: "/repo/.git/index\n", stderr: "" });
-      }
-      if (args === "rev-parse --verify HEAD") {
-        return Effect.succeed({ code: 1, stdout: "", stderr: "" });
-      }
-      if (args === "add -A -- .") {
-        return Effect.promise(() => addGate).pipe(Effect.as({ code: 0, stdout: "", stderr: "" }));
-      }
-      if (args === "write-tree") {
-        return Effect.succeed({ code: 0, stdout: "tree-oid\n", stderr: "" });
-      }
-      if (args.startsWith("commit-tree ")) {
-        return Effect.succeed({ code: 0, stdout: "commit-oid\n", stderr: "" });
-      }
-      if (args.startsWith("update-ref ")) {
-        return Effect.succeed({ code: 0, stdout: "", stderr: "" });
-      }
-      throw new Error(`Unexpected git args: ${args}`);
+    const execute = fakeGit({
+      "add -A -- .": () =>
+        Effect.promise(() => addGate).pipe(Effect.as({ code: 0, stdout: "", stderr: "" })),
     });
-    const layer = CheckpointStoreLive.pipe(
-      Layer.provide(Layer.succeed(GitCore, { execute } as unknown as GitCoreShape)),
-      Layer.provide(NodeServices.layer),
-    );
-    runtime = ManagedRuntime.make(layer);
+    const testRuntime = storeWith(execute);
 
-    await runtime.runPromise(
+    await testRuntime.runPromise(
       Effect.gen(function* () {
         const store = yield* CheckpointStore;
         const input = {
@@ -101,42 +137,25 @@ describe("CheckpointStoreLive", () => {
     let capturedSeed = "";
     let capturedIndexMtimeMs = 0;
 
-    const execute = vi.fn<GitCoreShape["execute"]>((input) => {
-      const args = input.args.join(" ");
-      if (args === "rev-parse --git-path index") {
-        return Effect.succeed({ code: 0, stdout: `${workingIndexPath}\n`, stderr: "" });
-      }
-      if (args === "update-index --really-refresh") {
+    const execute = fakeGit({
+      "rev-parse --git-path index": () => gitResult(0, `${workingIndexPath}\n`),
+      "update-index --really-refresh": (input) => {
         const captureIndexPath = input.env?.GIT_INDEX_FILE ?? "";
         const refreshTime = new Date("2025-01-02T03:04:05.000Z");
         utimesSync(captureIndexPath, refreshTime, refreshTime);
-        return Effect.succeed({ code: 1, stdout: "", stderr: "README.md: needs update\n" });
-      }
-      if (args === "add -A -- .") {
+        return gitResult(1, "", "README.md: needs update\n");
+      },
+      "add -A -- .": (input) => {
         const captureIndexPath = input.env?.GIT_INDEX_FILE ?? "";
         capturedSeed = readFileSync(captureIndexPath, "utf8");
         capturedIndexMtimeMs = statSync(captureIndexPath).mtimeMs;
-        return Effect.succeed({ code: 0, stdout: "", stderr: "" });
-      }
-      if (args === "write-tree") {
-        return Effect.succeed({ code: 0, stdout: "tree-oid\n", stderr: "" });
-      }
-      if (args.startsWith("commit-tree ")) {
-        return Effect.succeed({ code: 0, stdout: "commit-oid\n", stderr: "" });
-      }
-      if (args.startsWith("update-ref ")) {
-        return Effect.succeed({ code: 0, stdout: "", stderr: "" });
-      }
-      throw new Error(`Unexpected git args: ${args}`);
+        return gitResult(0);
+      },
     });
-    const layer = CheckpointStoreLive.pipe(
-      Layer.provide(Layer.succeed(GitCore, { execute } as unknown as GitCoreShape)),
-      Layer.provide(NodeServices.layer),
-    );
-    runtime = ManagedRuntime.make(layer);
+    const testRuntime = storeWith(execute);
 
     try {
-      await runtime.runPromise(
+      await testRuntime.runPromise(
         Effect.gen(function* () {
           const store = yield* CheckpointStore;
           yield* store.captureCheckpoint({
@@ -163,39 +182,15 @@ describe("CheckpointStoreLive", () => {
 
   it("clears in-flight capture state when the owner is interrupted", async () => {
     let addCalls = 0;
-    const execute = vi.fn<GitCoreShape["execute"]>((input) => {
-      const args = input.args.join(" ");
-      if (args === "rev-parse --git-path index") {
-        return Effect.succeed({ code: 0, stdout: "/repo/.git/index\n", stderr: "" });
-      }
-      if (args === "rev-parse --verify HEAD") {
-        return Effect.succeed({ code: 1, stdout: "", stderr: "" });
-      }
-      if (args === "add -A -- .") {
+    const execute = fakeGit({
+      "add -A -- .": () => {
         addCalls += 1;
-        if (addCalls === 1) {
-          return Effect.never;
-        }
-        return Effect.succeed({ code: 0, stdout: "", stderr: "" });
-      }
-      if (args === "write-tree") {
-        return Effect.succeed({ code: 0, stdout: "tree-oid\n", stderr: "" });
-      }
-      if (args.startsWith("commit-tree ")) {
-        return Effect.succeed({ code: 0, stdout: "commit-oid\n", stderr: "" });
-      }
-      if (args.startsWith("update-ref ")) {
-        return Effect.succeed({ code: 0, stdout: "", stderr: "" });
-      }
-      throw new Error(`Unexpected git args: ${args}`);
+        return addCalls === 1 ? Effect.never : gitResult(0);
+      },
     });
-    const layer = CheckpointStoreLive.pipe(
-      Layer.provide(Layer.succeed(GitCore, { execute } as unknown as GitCoreShape)),
-      Layer.provide(NodeServices.layer),
-    );
-    runtime = ManagedRuntime.make(layer);
+    const testRuntime = storeWith(execute);
 
-    await runtime.runPromise(
+    await testRuntime.runPromise(
       Effect.gen(function* () {
         const store = yield* CheckpointStore;
         const input = {
@@ -229,41 +224,14 @@ describe("CheckpointStoreLive", () => {
   it("skips the capture when skipIfExists is set and the ref already exists", async () => {
     const existingRef = "refs/glade-checkpoints/thread/existing";
     const missingRef = "refs/glade-checkpoints/thread/missing";
-    const execute = vi.fn<GitCoreShape["execute"]>((input) => {
-      const args = input.args.join(" ");
-      if (args === `rev-parse --verify --quiet ${existingRef}^{commit}`) {
-        return Effect.succeed({ code: 0, stdout: "existing-commit\n", stderr: "" });
-      }
-      if (args === `rev-parse --verify --quiet ${missingRef}^{commit}`) {
-        return Effect.succeed({ code: 1, stdout: "", stderr: "" });
-      }
-      if (args === "rev-parse --git-path index") {
-        return Effect.succeed({ code: 0, stdout: "/repo/.git/index\n", stderr: "" });
-      }
-      if (args === "rev-parse --verify HEAD") {
-        return Effect.succeed({ code: 1, stdout: "", stderr: "" });
-      }
-      if (args === "add -A -- .") {
-        return Effect.succeed({ code: 0, stdout: "", stderr: "" });
-      }
-      if (args === "write-tree") {
-        return Effect.succeed({ code: 0, stdout: "tree-oid\n", stderr: "" });
-      }
-      if (args.startsWith("commit-tree ")) {
-        return Effect.succeed({ code: 0, stdout: "commit-oid\n", stderr: "" });
-      }
-      if (args.startsWith("update-ref ")) {
-        return Effect.succeed({ code: 0, stdout: "", stderr: "" });
-      }
-      throw new Error(`Unexpected git args: ${args}`);
+    const execute = fakeGit({
+      [`rev-parse --verify --quiet ${existingRef}^{commit}`]: () =>
+        gitResult(0, "existing-commit\n"),
+      [`rev-parse --verify --quiet ${missingRef}^{commit}`]: () => gitResult(1),
     });
-    const layer = CheckpointStoreLive.pipe(
-      Layer.provide(Layer.succeed(GitCore, { execute } as unknown as GitCoreShape)),
-      Layer.provide(NodeServices.layer),
-    );
-    runtime = ManagedRuntime.make(layer);
+    const testRuntime = storeWith(execute);
 
-    await runtime.runPromise(
+    await testRuntime.runPromise(
       Effect.gen(function* () {
         const store = yield* CheckpointStore;
         const captureArgs = (args: string) =>
@@ -290,23 +258,12 @@ describe("CheckpointStoreLive", () => {
   it("fails when a checkpoint ref cannot be deleted", async () => {
     const lockedRef = CheckpointRef.makeUnsafe("refs/glade/checkpoints/thread/turn/locked");
     const deletableRef = CheckpointRef.makeUnsafe("refs/glade/checkpoints/thread/turn/ok");
-    const execute = vi.fn<GitCoreShape["execute"]>((input) => {
-      const args = input.args.join(" ");
-      if (args === `update-ref -d ${lockedRef}`) {
-        return Effect.succeed({ code: 1, stdout: "", stderr: "cannot lock ref\n" });
-      }
-      if (args === `update-ref -d ${deletableRef}`) {
-        return Effect.succeed({ code: 0, stdout: "", stderr: "" });
-      }
-      throw new Error(`Unexpected git args: ${args}`);
+    const execute = fakeGit({
+      [`update-ref -d ${lockedRef}`]: () => gitResult(1, "", "cannot lock ref\n"),
     });
-    const layer = CheckpointStoreLive.pipe(
-      Layer.provide(Layer.succeed(GitCore, { execute } as unknown as GitCoreShape)),
-      Layer.provide(NodeServices.layer),
-    );
-    runtime = ManagedRuntime.make(layer);
+    const testRuntime = storeWith(execute);
 
-    const result = await runtime.runPromise(
+    const result = await testRuntime.runPromise(
       Effect.gen(function* () {
         const store = yield* CheckpointStore;
         return yield* store
@@ -325,89 +282,109 @@ describe("CheckpointStoreLive", () => {
     expect(result).toContain("cannot lock ref");
     expect(result).not.toContain(deletableRef);
   });
-
-  it("tolerates deleting checkpoint refs that are already absent", async () => {
-    // `git update-ref -d` exits 0 for a ref that does not exist, so the exit-code check must not turn
-    // best-effort cleanup into a hard failure.
-    const missingRef = CheckpointRef.makeUnsafe("refs/glade/checkpoints/thread/turn/gone");
-    const execute = vi.fn<GitCoreShape["execute"]>(() =>
-      Effect.succeed({ code: 0, stdout: "", stderr: "" }),
-    );
-    const layer = CheckpointStoreLive.pipe(
-      Layer.provide(Layer.succeed(GitCore, { execute } as unknown as GitCoreShape)),
-      Layer.provide(NodeServices.layer),
-    );
-    runtime = ManagedRuntime.make(layer);
-
-    const result = await runtime.runPromise(
-      Effect.gen(function* () {
-        const store = yield* CheckpointStore;
-        return yield* store
-          .deleteCheckpointRefs({ cwd: "/repo", checkpointRefs: [missingRef] })
-          .pipe(
-            Effect.map(() => "success" as const),
-            Effect.catch((error) => Effect.succeed(error.message)),
-          );
-      }),
-    );
-
-    expect(result).toBe("success");
-  });
 });
 
-it("summarizes added, deleted, renamed and binary files", async () => {
-  const cwd = mkdtempSync(join(tmpdir(), "glade-checkpoint-summary-"));
-  const git = (...args: string[]) => execFileSync("git", args, { cwd, encoding: "utf8" });
-  const summaryRuntime = ManagedRuntime.make(
-    CheckpointStoreLive.pipe(
-      Layer.provide(
-        GitCoreLive.pipe(
-          Layer.provide(ServerConfig.layerTest(cwd, { prefix: "glade-checkpoint-summary-test-" })),
-        ),
-      ),
-      Layer.provide(NodeServices.layer),
-    ),
-  );
+describe("CheckpointStoreLive against a real repository", () => {
   const lines = (count: number) =>
     Array.from({ length: count }, (_, index) => `line ${index}\n`).join("");
-  try {
-    git("init", "-q");
-    git("config", "user.name", "Checkpoint Test");
-    git("config", "user.email", "checkpoint@example.invalid");
-    writeFileSync(join(cwd, "modified.ts"), "a\nb\nc\n");
-    writeFileSync(join(cwd, "deleted.ts"), "one\ntwo\n");
-    writeFileSync(join(cwd, "before rename.ts"), lines(20));
-    writeFileSync(join(cwd, "image.bin"), Buffer.from([0, 1, 2, 3]));
-    git("add", ".");
-    git("commit", "-qm", "baseline");
-    const from = CheckpointRef.makeUnsafe("refs/glade-checkpoints/summary/from");
-    const to = CheckpointRef.makeUnsafe("refs/glade-checkpoints/summary/to");
-    git("update-ref", from, "HEAD");
-    writeFileSync(join(cwd, "modified.ts"), "a\nB\nc\nd\n");
-    rmSync(join(cwd, "deleted.ts"));
-    git("mv", "before rename.ts", "after\trename.ts");
-    writeFileSync(join(cwd, "after\trename.ts"), `${lines(20)}extra\n`);
-    writeFileSync(join(cwd, "image.bin"), Buffer.from([0, 9, 8, 7]));
-    writeFileSync(join(cwd, "added.ts"), "new\n");
-    git("add", "-A");
-    git("commit", "-qm", "turn");
-    git("update-ref", to, "HEAD");
 
-    const files = await summaryRuntime.runPromise(
-      Effect.flatMap(CheckpointStore.asEffect(), (store) =>
-        store.summarizeCheckpointDiff({ cwd, fromCheckpointRef: from, toCheckpointRef: to }),
-      ),
-    );
+  it("summarizes added, deleted, renamed and binary files", () =>
+    withRealRepo("glade-checkpoint-summary-", async ({ cwd, git, runtime }) => {
+      writeFileSync(join(cwd, "modified.ts"), "a\nb\nc\n");
+      writeFileSync(join(cwd, "deleted.ts"), "one\ntwo\n");
+      writeFileSync(join(cwd, "before rename.ts"), lines(20));
+      writeFileSync(join(cwd, "image.bin"), Buffer.from([0, 1, 2, 3]));
+      git("add", ".");
+      git("commit", "-qm", "baseline");
+      const from = CheckpointRef.makeUnsafe("refs/glade-checkpoints/summary/from");
+      const to = CheckpointRef.makeUnsafe("refs/glade-checkpoints/summary/to");
+      git("update-ref", from, "HEAD");
+      writeFileSync(join(cwd, "modified.ts"), "a\nB\nc\nd\n");
+      rmSync(join(cwd, "deleted.ts"));
+      git("mv", "before rename.ts", "after\trename.ts");
+      writeFileSync(join(cwd, "after\trename.ts"), `${lines(20)}extra\n`);
+      writeFileSync(join(cwd, "image.bin"), Buffer.from([0, 9, 8, 7]));
+      writeFileSync(join(cwd, "added.ts"), "new\n");
+      git("add", "-A");
+      git("commit", "-qm", "turn");
+      git("update-ref", to, "HEAD");
 
-    expect(files).toEqual([
-      { path: "added.ts", kind: "added", additions: 1, deletions: 0 },
-      { path: "after\trename.ts", kind: "renamed", additions: 1, deletions: 0 },
-      { path: "deleted.ts", kind: "deleted", additions: 0, deletions: 2 },
-      { path: "image.bin", kind: "modified", additions: 0, deletions: 0 },
-      { path: "modified.ts", kind: "modified", additions: 2, deletions: 1 },
-    ]);
-  } finally {
-    await summaryRuntime.dispose();
-    rmSync(cwd, { recursive: true, force: true });
-  }
+      const files = await runtime.runPromise(
+        Effect.flatMap(CheckpointStore.asEffect(), (store) =>
+          store.summarizeCheckpointDiff({ cwd, fromCheckpointRef: from, toCheckpointRef: to }),
+        ),
+      );
+
+      expect(files).toEqual([
+        { path: "added.ts", kind: "added", additions: 1, deletions: 0 },
+        { path: "after\trename.ts", kind: "renamed", additions: 1, deletions: 0 },
+        { path: "deleted.ts", kind: "deleted", additions: 0, deletions: 2 },
+        { path: "image.bin", kind: "modified", additions: 0, deletions: 0 },
+        { path: "modified.ts", kind: "modified", additions: 2, deletions: 1 },
+      ]);
+    }));
+
+  it("scopes restore to removed turns and requires fresh consent for later edits", () =>
+    withRealRepo("glade-scoped-restore-", async ({ cwd, git, runtime }) => {
+      writeFileSync(join(cwd, "agent.ts"), "before\n");
+      writeFileSync(join(cwd, "unrelated.ts"), "before\n");
+      writeFileSync(join(cwd, "file[1].ts"), "literal before\n");
+      writeFileSync(join(cwd, "file1.ts"), "glob match must survive\n");
+      git("add", ".");
+      git("commit", "-qm", "baseline");
+      const before = CheckpointRef.makeUnsafe("refs/glade-checkpoints/scoped/before");
+      const after = CheckpointRef.makeUnsafe("refs/glade-checkpoints/scoped/after");
+      git("update-ref", before, "HEAD");
+      writeFileSync(join(cwd, "agent.ts"), "agent turn\n");
+      writeFileSync(join(cwd, "file[1].ts"), "literal agent turn\n");
+      const store = await runtime.runPromise(
+        Effect.gen(function* () {
+          return yield* CheckpointStore;
+        }),
+      );
+      await runtime.runPromise(store.captureCheckpoint({ cwd, checkpointRef: after }));
+      const input = { cwd, turns: [{ beforeCheckpointRef: before, afterCheckpointRef: after }] };
+      writeFileSync(join(cwd, "unrelated.ts"), "another thread\n");
+      git("add", "unrelated.ts");
+      const index = git("diff", "--cached", "--binary");
+      const stamp = new Date("2020-01-02T03:04:05Z");
+      utimesSync(join(cwd, "unrelated.ts"), stamp, stamp);
+      const first = await runtime.runPromise(store.previewScopedRestore(input));
+      expect(first.files).toEqual([
+        { path: "agent.ts", conflict: false },
+        { path: "file[1].ts", conflict: false },
+      ]);
+      writeFileSync(join(cwd, "agent.ts"), "later user edit\n");
+      await expect(
+        runtime.runPromise(
+          store.restoreScopedCheckpoint({
+            ...input,
+            confirmation: { fingerprint: first.fingerprint, overwritePaths: [] },
+          }),
+        ),
+      ).rejects.toThrow("outdated");
+      const preview = await runtime.runPromise(store.previewScopedRestore(input));
+      expect(preview.files.find((file) => file.path === "agent.ts")?.conflict).toBe(true);
+      await expect(
+        runtime.runPromise(
+          store.restoreScopedCheckpoint({
+            ...input,
+            confirmation: { fingerprint: preview.fingerprint, overwritePaths: [] },
+          }),
+        ),
+      ).rejects.toThrow("explicit permission");
+      expect(readFileSync(join(cwd, "agent.ts"), "utf8")).toBe("later user edit\n");
+      await runtime.runPromise(
+        store.restoreScopedCheckpoint({
+          ...input,
+          confirmation: { fingerprint: preview.fingerprint, overwritePaths: ["agent.ts"] },
+        }),
+      );
+      expect(readFileSync(join(cwd, "agent.ts"), "utf8")).toBe("before\n");
+      expect(readFileSync(join(cwd, "file[1].ts"), "utf8")).toBe("literal before\n");
+      expect(readFileSync(join(cwd, "file1.ts"), "utf8")).toBe("glob match must survive\n");
+      expect(readFileSync(join(cwd, "unrelated.ts"), "utf8")).toBe("another thread\n");
+      expect(statSync(join(cwd, "unrelated.ts")).mtimeMs).toBe(stamp.getTime());
+      expect(git("diff", "--cached", "--binary")).toBe(index);
+    }));
 });

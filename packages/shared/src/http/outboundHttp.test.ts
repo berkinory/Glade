@@ -27,8 +27,8 @@ const policyFor = (port: number) => ({
   maxRequestBytes: 0,
   maxResponseBytes: 64 * 1024,
   maxRedirects: 0,
-  maxConcurrent: 2,
-  maxQueued: 4,
+  maxConcurrent: 1,
+  maxQueued: 0,
   requirePublicAddress: false,
 });
 
@@ -64,28 +64,18 @@ const loopbackPolicyFor = (allowedOrigins: ReadonlyArray<string>, maxRedirects =
 });
 
 describe("outbound requests that cannot connect", () => {
-  it("rejects rather than hanging", async () => {
+  it("rejects rather than hanging and releases the service's only admission slot", async () => {
     const port = await refusedPort();
 
-    await expect(
-      outboundHttp.request({
-        policy: policyFor(port),
-        url: `https://127.0.0.1:${port}/favicon.ico`,
-        headers: { Accept: "image/*" },
-      }),
-    ).rejects.toThrow(/Outbound request failed/u);
-  });
-
-  it("stays usable for the next caller after a connection failure", async () => {
-    const port = await refusedPort();
-
-    await expect(
-      outboundHttp.request({
-        policy: policyFor(port),
-        url: `https://127.0.0.1:${port}/again.ico`,
-        headers: { Accept: "image/*" },
-      }),
-    ).rejects.toThrow(/Outbound request failed/u);
+    for (const path of ["/favicon.ico", "/again.ico"]) {
+      await expect(
+        outboundHttp.request({
+          policy: policyFor(port),
+          url: `https://127.0.0.1:${port}${path}`,
+          headers: { Accept: "image/*" },
+        }),
+      ).rejects.toThrow(/Outbound request failed/u);
+    }
   });
 });
 

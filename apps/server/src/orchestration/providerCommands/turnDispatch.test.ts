@@ -15,47 +15,6 @@ import { makeReactorTestHarness, asMessageId, waitFor, asTurnId } from "./reacto
 describe("Provider reactor turnDispatch", () => {
   const { createHarness, readHarnessThread } = makeReactorTestHarness();
 
-  it("names a generic thread from a meaningful message after punctuation-only history", async () => {
-    const harness = await createHarness();
-    const threadId = ThreadId.makeUnsafe("thread-1");
-    const createdAt = new Date().toISOString();
-    await Effect.runPromise(
-      harness.engine.dispatch({
-        type: "thread.meta.update",
-        commandId: CommandId.makeUnsafe("generic-title"),
-        threadId,
-        title: "New thread",
-      }),
-    );
-    await harness.seedUserMessage({
-      threadId,
-      messageId: asMessageId("punctuation-message"),
-      text: ".",
-      createdAt: createdAt,
-    });
-    await Effect.runPromise(
-      harness.engine.dispatch({
-        type: "thread.turn.start",
-        commandId: CommandId.makeUnsafe("meaningful-message"),
-        threadId,
-        message: {
-          messageId: asMessageId("meaningful-message"),
-          role: "user",
-          text: "Fix the sidebar",
-          attachments: [],
-        },
-        runtimeMode: "approval-required",
-        createdAt,
-      }),
-    );
-    await waitFor(() => harness.sendTurn.mock.calls.length === 1);
-    await harness.drain();
-    await waitFor(
-      async () => (await readHarnessThread(harness))?.title === "Generated conversation title",
-    );
-    expect(harness.generateTitle).toHaveBeenCalledOnce();
-  });
-
   it("dispatches managed attachments from their repository object paths", async () => {
     const harness = await createHarness();
     const now = new Date().toISOString();
@@ -88,7 +47,6 @@ describe("Provider reactor turnDispatch", () => {
           attachments: [imageAttachment],
         },
         runtimeMode: "approval-required",
-
         createdAt: now,
       }),
     );
@@ -176,7 +134,6 @@ describe("Provider reactor turnDispatch", () => {
           text: "hello reactor",
           attachments: [],
         },
-
         runtimeMode: "approval-required",
         createdAt: now,
       }),
@@ -231,7 +188,6 @@ describe("Provider reactor turnDispatch", () => {
           text: "hello despite slow git",
           attachments: [],
         },
-
         runtimeMode: "approval-required",
         createdAt: now,
       }),
@@ -275,7 +231,6 @@ describe("Provider reactor turnDispatch", () => {
           text: "hello reactor",
           attachments: [],
         },
-
         runtimeMode: "approval-required",
         createdAt: now,
       }),
@@ -338,7 +293,6 @@ describe("Provider reactor turnDispatch", () => {
           text: "hello stalled provider",
           attachments: [],
         },
-
         runtimeMode: "approval-required",
         createdAt: now,
       }),

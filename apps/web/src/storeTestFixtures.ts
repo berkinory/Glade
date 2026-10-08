@@ -3,7 +3,6 @@ import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import { type OrchestrationReadModel } from "@glade/contracts/orchestration/snapshots";
 import { type OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
 
-import { getThreadsFromState } from "./threadDerivation";
 import type { AppState } from "./storeState";
 import { DEFAULT_RUNTIME_MODE, type Thread } from "./types";
 import { vi, type Mock } from "vitest";
@@ -182,8 +181,6 @@ export function makeReadModelThread(overrides: Partial<OrchestrationReadModel["t
     ...overrides,
   } satisfies OrchestrationReadModel["threads"][number];
 }
-
-export const threadsOf = getThreadsFromState;
 
 export function makeFakeWindow(storage: Map<string, string>): {
   localStorage: {

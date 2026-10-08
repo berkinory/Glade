@@ -211,7 +211,6 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
             model: "gpt-5.5",
           },
           runtimeMode: "approval-required",
-
           createdAt: turnRequestedAt,
         },
       });
@@ -336,7 +335,6 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
           messageId: MessageId.makeUnsafe("message-turn-settings-cross-provider"),
           modelSelection: { provider: "claudeAgent", model: "claude-sonnet-4-6" },
           runtimeMode: "full-access",
-
           createdAt: crossProviderRequestedAt,
         },
       });
@@ -378,7 +376,6 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
           messageId: MessageId.makeUnsafe("message-turn-settings-automation"),
           dispatchOrigin: "automation",
           runtimeMode: "approval-required",
-
           createdAt: automationRequestedAt,
         },
       });
@@ -465,7 +462,6 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
           messageId: MessageId.makeUnsafe("message-retained-error"),
           modelSelection: { provider: "codex", model: "gpt-5.6-sol" },
           runtimeMode: "full-access",
-
           dispatchMode: "queue",
           createdAt: requestedAt,
         },
@@ -629,7 +625,6 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
           messageId: MessageId.makeUnsafe("message-stale-session"),
           modelSelection,
           runtimeMode: "full-access",
-
           dispatchMode: "queue",
           createdAt: requestedAt,
         },

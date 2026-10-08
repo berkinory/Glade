@@ -35,7 +35,7 @@ type BootstrapExchangeResult = {
 const AUTHORIZATION_PREFIX = "Bearer ";
 const WEBSOCKET_TOKEN_QUERY_PARAM = "wsToken";
 
-export function toBootstrapExchangeAuthError(cause: BootstrapCredentialError): AuthError {
+function toBootstrapExchangeAuthError(cause: BootstrapCredentialError): AuthError {
   if (cause.status === 500) {
     return new AuthError({
       message: "Failed to validate bootstrap credential.",

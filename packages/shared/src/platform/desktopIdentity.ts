@@ -34,7 +34,6 @@ export interface GladeDesktopIdentity {
   readonly entryUrl: string;
   readonly userDataDirectoryName: string;
   readonly defaultHomeDirectoryName: string;
-  readonly usesScriptedUpdates: boolean;
 }
 
 export function resolveGladeDesktopFlavor(input: {
@@ -97,7 +96,6 @@ export function gladeDesktopIdentity(flavor: GladeDesktopFlavor): GladeDesktopId
       entryUrl: GLADE_DESKTOP_ENTRY_URL,
       userDataDirectoryName: "glade-dev",
       defaultHomeDirectoryName: ".glade-dev",
-      usesScriptedUpdates: false,
     };
   }
   return {
@@ -109,6 +107,5 @@ export function gladeDesktopIdentity(flavor: GladeDesktopFlavor): GladeDesktopId
     entryUrl: GLADE_DESKTOP_ENTRY_URL,
     userDataDirectoryName: "glade",
     defaultHomeDirectoryName: ".glade",
-    usesScriptedUpdates: false,
   };
 }

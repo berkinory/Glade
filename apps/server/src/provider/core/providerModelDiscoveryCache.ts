@@ -32,10 +32,6 @@ export interface ProviderModelDiscoveryCache<E> {
     key: ProviderModelDiscoveryCacheKey,
     discover: Effect.Effect<ProviderListModelsResult, E>,
   ) => Effect.Effect<ProviderListModelsResult, E | ProviderAdapterRequestError>;
-
-  readonly clear: () => void;
-
-  readonly size: () => number;
 }
 
 interface CatalogEntry {
@@ -315,15 +311,5 @@ export function makeProviderModelDiscoveryCache<E>(options?: {
       return yield* awaitDiscovery(deferred);
     });
 
-  return {
-    lookup,
-    clear: () => {
-      const hadCatalogs = catalogs.size > 0;
-      catalogs.clear();
-      confirmedScopes.clear();
-      failures.clear();
-      if (hadCatalogs) emitCatalogsChanged();
-    },
-    size: () => catalogs.size,
-  };
+  return { lookup };
 }

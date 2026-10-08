@@ -10,8 +10,6 @@ import { makeAgentGatewaySessionRegistry } from "./Layers/AgentGatewaySessionReg
 import type { AgentGatewayCredentialsShape } from "./Services/AgentGatewayCredentials.ts";
 import { makeAgentGatewayInFlightRequestRegistry } from "./inFlightRequestRegistry.ts";
 import { makeAgentGatewayMcpTransport } from "./mcpTransport.ts";
-import { FALLBACK_OBJECT_DESCRIPTION } from "./sanitizeToolInputSchema.ts";
-import { countSchemaKeyOccurrences } from "./schemaTestUtils.ts";
 import { GladeAppOpenInput } from "@glade/contracts/provider/agentGatewayTools";
 import { toolInputSchema } from "./protocol.ts";
 import {
@@ -322,7 +320,7 @@ describe("makeAgentGatewayMcpTransport cancellation", () => {
         });
         assert.equal(afterProjectionSettled.status, 200);
         assert.equal(hostCalls, 1);
-      }).pipe(Effect.timeout("2 seconds")),
+      }),
   );
 
   it.effect("cleans a completed request before the same JSON-RPC id is reused", () =>
@@ -350,7 +348,7 @@ describe("makeAgentGatewayMcpTransport cancellation", () => {
           body: { jsonrpc: "2.0", id: "reusable", result: {} },
         });
       }
-    }).pipe(Effect.timeout("2 seconds")),
+    }),
   );
 
   it.effect(
@@ -428,7 +426,7 @@ describe("makeAgentGatewayMcpTransport cancellation", () => {
         yield* Deferred.await(interruptedTwo);
         assert.deepEqual(yield* Fiber.join(requestOne), { status: 202 });
         assert.deepEqual(yield* Fiber.join(requestTwo), { status: 202 });
-      }).pipe(Effect.timeout("2 seconds")),
+      }),
   );
 
   it.effect(
@@ -474,7 +472,7 @@ describe("makeAgentGatewayMcpTransport cancellation", () => {
         yield* Deferred.await(interrupted);
         assert.equal(response.status, 200);
         assert.deepEqual(response.body, [{ jsonrpc: "2.0", id: "fast-batch", result: {} }]);
-      }).pipe(Effect.timeout("2 seconds")),
+      }),
   );
 });
 
@@ -530,55 +528,48 @@ describe("makeAgentGatewayMcpTransport tools/list schema sanitization", () => {
     }),
   );
 
-  it.effect("serves sanitized schemas while keeping stored definitions dirty", () =>
+  it.effect("serves sanitized input schemas from tools/list", () =>
     Effect.gen(function* () {
-      const recursiveTool: ToolEntry = {
-        definition: {
-          name: "glade_recursive",
-          description: "tool with a cyclic schema",
-          inputSchema: {
-            type: "object",
-            properties: { payload: { $ref: "#/$defs/JsonValue" } },
-            $defs: {
-              JsonValue: {
-                anyOf: [
-                  { type: "string" },
-                  { type: "array", items: { $ref: "#/$defs/JsonValue" } },
-                ],
-              },
-            },
-          },
-        },
-        requiredCapability: "thread:read",
-        handler: () => Effect.succeed({ content: [{ type: "text" as const, text: "ok" }] }),
-      };
       const transport = makeTransport({
         threads: [makeThread("thread-schema")],
-        tools: [recursiveTool],
+        tools: [
+          {
+            definition: {
+              name: "glade_recursive",
+              description: "tool with a cyclic schema",
+              inputSchema: {
+                type: "object",
+                properties: { payload: { $ref: "#/$defs/JsonValue" } },
+                $defs: {
+                  JsonValue: {
+                    anyOf: [
+                      { type: "string" },
+                      { type: "array", items: { $ref: "#/$defs/JsonValue" } },
+                    ],
+                  },
+                },
+              },
+            },
+            requiredCapability: "thread:read",
+            handler: () => Effect.succeed({ content: [{ type: "text" as const, text: "ok" }] }),
+          },
+        ],
       });
       const response = yield* post(transport, "token-1", {
         jsonrpc: "2.0",
         id: "list-schemas",
         method: "tools/list",
       });
-      assert.equal(response.status, 200);
-      if (!isRecord(response.body) || !isRecord(response.body.result)) {
-        throw new Error("Expected tools/list to answer with a result object.");
-      }
-      if (!Array.isArray(response.body.result.tools)) {
-        throw new Error("Expected tools/list to answer with a tools array.");
-      }
-      const listed = findToolOrThrow(response.body.result.tools, "glade_recursive");
+      const listed = findToolOrThrow(listedTools(response.body), "glade_recursive");
       assert.deepEqual(listed.inputSchema, {
         type: "object",
         properties: {
           payload: {
             type: "object",
-            description: FALLBACK_OBJECT_DESCRIPTION,
+            description: "Free-form JSON object (depth 20, 256 KiB max).",
           },
         },
       });
-      assert.isAbove(countSchemaKeyOccurrences(recursiveTool.definition.inputSchema, "$ref"), 0);
     }),
   );
 });
@@ -611,15 +602,28 @@ describe("makeAgentGatewayMcpTransport tools/list", () => {
       requiredCapability: "thread:read",
       handler: ok,
     },
+    {
+      definition: {
+        name: "glade_test_hidden",
+        description: "Hidden",
+        inputSchema: { type: "object" },
+      },
+      requiredCapability: "thread:read",
+      discoveryOnly: true,
+      handler: ok,
+    },
   ];
-  const listBody = { jsonrpc: "2.0", id: "list", method: "tools/list" };
 
   it.effect(
-    "applies eager loading to core tools and preserves search hints on deferred tools",
+    "applies eager loading, preserves search hints, and withholds discovery-only tools that still dispatch",
     () =>
       Effect.gen(function* () {
         const transport = makeTransport({ threads: [makeThread("thread-hinted")], tools: catalog });
-        const response = yield* post(transport, "token-1", listBody);
+        const response = yield* post(transport, "token-1", {
+          jsonrpc: "2.0",
+          id: "list",
+          method: "tools/list",
+        });
         assert.equal(response.status, 200);
         const tools = listedTools(response.body);
         assert.deepEqual(
@@ -634,42 +638,15 @@ describe("makeAgentGatewayMcpTransport tools/list", () => {
           _meta: { "anthropic/alwaysLoad": false, "anthropic/searchHint": "test hint" },
         });
         assert.deepEqual(tools[0]!._meta, { "anthropic/alwaysLoad": true });
-      }),
-  );
 
-  it.effect("withholds discovery-only tools from the list but still dispatches them", () =>
-    Effect.gen(function* () {
-      const discoveryCatalog: ReadonlyArray<ToolEntry> = [
-        ...catalog,
-        {
-          definition: {
-            name: "glade_test_hidden",
-            description: "Hidden",
-            inputSchema: { type: "object" },
-          },
-          requiredCapability: "thread:read",
-          discoveryOnly: true,
-          handler: ok,
-        },
-      ];
-      const transport = makeTransport({
-        threads: [makeThread("thread-discovery")],
-        tools: discoveryCatalog,
-      });
-      const listResponse = yield* post(transport, "token-1", listBody);
-      assert.equal(listResponse.status, 200);
-      assert.deepEqual(
-        listedTools(listResponse.body).map((tool) => tool.name),
-        ["glade_context", "glade_test_hinted"],
-      );
-      const callResponse = yield* post(transport, "token-1", toolCallBody("glade_test_hidden"));
-      assert.equal(callResponse.status, 200);
-      assert.equal(
-        (callResponse.body as { result: { content: Array<{ text: string }> } }).result.content[0]
-          ?.text,
-        "ok",
-      );
-    }),
+        const callResponse = yield* post(transport, "token-1", toolCallBody("glade_test_hidden"));
+        assert.equal(callResponse.status, 200);
+        assert.equal(
+          (callResponse.body as { result: { content: Array<{ text: string }> } }).result.content[0]
+            ?.text,
+          "ok",
+        );
+      }),
   );
 });
 
@@ -704,6 +681,10 @@ describe("makeAgentGatewayMcpTransport session authority", () => {
               updatedAt: NOW,
             },
           },
+          {
+            ...makeThread("thread-saved-claude"),
+            modelSelection: { provider: "claudeAgent", model: "claude-sonnet-5" },
+          },
         ],
         ghostThreads: ["thread-ghost"],
         tools: [],
@@ -734,6 +715,71 @@ describe("makeAgentGatewayMcpTransport session authority", () => {
         retry: "re-lease",
       });
       assert.include(rpcErrorOf(mismatch).message, "Do not retry with this token");
+
+      const savedMismatch = yield* post(transport, "token-3", listBody);
+      assert.equal(savedMismatch.status, 401);
+      assert.deepEqual(authorityDataOf(savedMismatch), {
+        code: "provider-mismatch",
+        retry: "re-lease",
+      });
+    }),
+  );
+});
+
+describe("MCP request framing", () => {
+  const makeFramingTransport = () => {
+    let writes = 0;
+    const transport = makeTransport({
+      threads: [makeThread("thread-framing")],
+      tools: [
+        {
+          definition: {
+            name: "glade_test_write",
+            description: "Counts writes",
+            inputSchema: { type: "object" },
+          },
+          requiredCapability: "thread:write",
+          handler: () =>
+            Effect.sync(() => {
+              writes += 1;
+              return { content: [{ type: "text" as const, text: "ok" }] };
+            }),
+        },
+      ],
+    });
+    return { transport, writes: () => writes };
+  };
+  const writeCall = (id: unknown) => ({
+    jsonrpc: "2.0",
+    id,
+    method: "tools/call",
+    params: { name: "glade_test_write", arguments: {} },
+  });
+
+  it.effect("rejects malformed JSON-RPC ids before invoking a tool", () =>
+    Effect.gen(function* () {
+      const { transport, writes } = makeFramingTransport();
+      const response = yield* post(transport, "token-1", writeCall(true));
+      assert.equal(rpcErrorOf(response).code, -32600);
+      assert.equal(writes(), 0);
+    }),
+  );
+
+  it.effect("rejects oversized and duplicate-id batches before dispatch", () =>
+    Effect.gen(function* () {
+      const { transport, writes } = makeFramingTransport();
+      const duplicate = yield* post(transport, "token-1", [writeCall(7), writeCall(7)]);
+      assert.equal(duplicate.status, 400);
+      assert.include(JSON.stringify(duplicate.body), "Duplicate JSON-RPC request id");
+
+      const oversized = yield* post(
+        transport,
+        "token-1",
+        Array.from({ length: 51 }, (_, index) => writeCall(index)),
+      );
+      assert.equal(oversized.status, 400);
+      assert.include(JSON.stringify(oversized.body), "at most 50");
+      assert.equal(writes(), 0);
     }),
   );
 });

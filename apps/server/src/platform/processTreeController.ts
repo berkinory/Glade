@@ -44,7 +44,7 @@ export function parseProcessChildrenMap(
   return childrenByParentPid;
 }
 
-export function collectDescendantProcesses(
+function collectDescendantProcesses(
   parentPid: number,
   childrenByParentPid: ProcessChildrenMap,
 ): CapturedProcess[] {
@@ -378,7 +378,7 @@ export async function inspectProcessTree(
   };
 }
 
-export function signalProcessTree(input: {
+function signalProcessTree(input: {
   readonly rootPid: number;
   readonly signal: TerminalKillSignal;
   readonly tree?: CapturedProcessTree;

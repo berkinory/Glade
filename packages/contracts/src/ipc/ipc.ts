@@ -330,11 +330,9 @@ export interface DesktopWindowState {
   isFullscreen: boolean;
 }
 
-export type DesktopQuitConfirmationPresentation = "native" | "in-app";
-
 export interface DesktopQuitConfirmationRequest {
   readonly requestId: string;
-  readonly presentation: DesktopQuitConfirmationPresentation;
+  readonly presentation: "in-app";
 }
 
 export interface DesktopQuitConfirmationChat {

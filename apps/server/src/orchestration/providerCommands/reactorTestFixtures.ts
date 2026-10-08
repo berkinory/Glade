@@ -42,7 +42,7 @@ import {
   type CheckpointStoreShape,
   CheckpointStore,
 } from "../../checkpointing/Services/CheckpointStore.ts";
-import type { ProviderForkThreadResult, ProviderSession } from "@glade/contracts/provider/provider";
+import type { ProviderSession } from "@glade/contracts/provider/provider";
 import {
   type ProviderServiceShape,
   ProviderService,
@@ -76,14 +76,10 @@ import type { OrchestrationCommand } from "@glade/contracts/orchestration/comman
 import { type OrchestrationDispatchError } from "../Errors.ts";
 import { OrchestrationEventDeliveryRepository } from "../../persistence/Services/OrchestrationEventDeliveries.ts";
 import { QueuedTurnPromotionRepository } from "../../persistence/Services/QueuedTurnPromotions.ts";
-import * as SqlClient from "effect/unstable/sql/SqlClient";
 import { ManagedAttachmentRepository } from "../../persistence/Services/ManagedAttachments.ts";
-import { ProjectionPendingInteractionRepository } from "../../persistence/Services/ProjectionPendingInteractions.ts";
 import { ProviderRuntimeEventRepository } from "../../persistence/Services/ProviderRuntimeEvents.ts";
-import { AgentGatewayOperationRepository } from "../../agentGateway/Services/AgentGatewayOperationRepository.ts";
 
 import { attachmentRelativePath } from "../../attachments/attachmentStore.ts";
-import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import { type ChatAttachment } from "@glade/contracts/orchestration/threadEntities";
 
 export const asProjectId = (value: string): ProjectId => ProjectId.makeUnsafe(value);
@@ -149,22 +145,15 @@ export function makeReactorTestHarness() {
 
   async function createHarness(input?: {
     readonly handoffContext?: string;
-    readonly baseDir?: string;
     readonly threadModelSelection?: ModelSelection;
     readonly checkpointStore?: Partial<CheckpointStoreShape>;
-    readonly forkThreadResult?: ProviderForkThreadResult;
     readonly startReactor?: boolean;
-    readonly interruptTurn?: ProviderServiceShape["interruptTurn"];
     readonly updateNativeHistory?: ProviderServiceShape["updateNativeHistory"];
     readonly commandEventTimeout?: Duration.Duration;
-    readonly gatewayOperationId?: string;
-    readonly gitWritingModelSelection?: ModelSelection;
-    readonly omitStopRuntimeSession?: boolean;
     readonly serverSettings?: DeepPartial<ServerSettings>;
-    readonly confirmNativeResume?: (resumeCursor: unknown) => boolean;
   }): Promise<ReactorTestHarness> {
     const now = new Date().toISOString();
-    const baseDir = input?.baseDir ?? fs.mkdtempSync(path.join(os.tmpdir(), "glade-reactor-"));
+    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), "glade-reactor-"));
     createdBaseDirs.add(baseDir);
     const { stateDir } = deriveServerPathsSync(baseDir, undefined);
     createdStateDirs.add(stateDir);
@@ -226,11 +215,9 @@ export function makeReactorTestHarness() {
         sessionInput.resumeCursor ?? persistedResumeCursors.get(threadId);
       const nativeResumeAttempted =
         effectiveResumeCursor !== undefined && effectiveResumeCursor !== null;
-      const nativeResumeSucceeded =
-        nativeResumeAttempted && (input?.confirmNativeResume?.(effectiveResumeCursor) ?? true);
+      const nativeResumeSucceeded = nativeResumeAttempted;
       if (
-        (outcomeOptions?.registerPriorTranscriptBootstrapOnFreshStart === true ||
-          nativeResumeAttempted) &&
+        outcomeOptions?.registerPriorTranscriptBootstrapOnFreshStart === true &&
         !nativeResumeSucceeded
       ) {
         pendingPriorTranscriptBootstraps.add(threadId);
@@ -257,13 +244,12 @@ export function makeReactorTestHarness() {
         }),
       );
     });
-    const completePriorTranscriptBootstrap = vi.fn<
-      NonNullable<ProviderServiceShape["completePriorTranscriptBootstrap"]>
-    >(({ threadId }) =>
+    const completePriorTranscriptBootstrap: NonNullable<
+      ProviderServiceShape["completePriorTranscriptBootstrap"]
+    > = ({ threadId }) =>
       Effect.sync(() => {
         pendingPriorTranscriptBootstraps.delete(threadId);
-      }),
-    );
+      });
     const sendTurn = vi.fn<ProviderServiceShape["sendTurn"]>((_: unknown) =>
       Effect.succeed({
         threadId: ThreadId.makeUnsafe("thread-1"),
@@ -308,54 +294,19 @@ export function makeReactorTestHarness() {
         turnId: asTurnId("turn-steer-1"),
       }),
     );
-    const startReview = vi.fn<ProviderServiceShape["startReview"]>((input) =>
-      Effect.succeed({
-        threadId: input.threadId,
-        turnId: asTurnId("turn-review-1"),
-      }),
-    );
-    const forkThread = vi.fn<NonNullable<ProviderServiceShape["forkThread"]>>((forkInput) =>
-      Effect.gen(function* () {
-        const result = input?.forkThreadResult;
-        if (!result)
-          return yield* Effect.die(new Error("Native fork result is required in this test"));
-        const forkModelSelection = forkInput.modelSelection ?? modelSelection;
-        if (result && !runtimeSessions.some((session) => session.threadId === forkInput.threadId)) {
-          runtimeSessions.push({
-            provider: forkModelSelection.provider,
-            status: "ready",
-            runtimeMode: forkInput.runtimeMode,
-            ...(forkModelSelection.model !== undefined ? { model: forkModelSelection.model } : {}),
-            threadId: forkInput.threadId,
-            ...(result.resumeCursor !== undefined ? { resumeCursor: result.resumeCursor } : {}),
-            createdAt: now,
-            updatedAt: now,
-          });
-        }
-        return result;
-      }),
-    );
-    const interruptTurn = vi.fn(input?.interruptTurn ?? ((_: unknown) => Effect.void));
-    const stopTask = vi.fn<ProviderServiceShape["stopTask"]>(() => Effect.void);
-    const backgroundTask = vi.fn<ProviderServiceShape["backgroundTask"]>(() => Effect.void);
-    const hasLiveRuntimeTasks = vi.fn<NonNullable<ProviderServiceShape["hasLiveRuntimeTasks"]>>(
-      () => Effect.succeed(false),
-    );
-    const respondToRequest = vi.fn<ProviderServiceShape["respondToRequest"]>(() => Effect.void);
-    const respondToUserInput = vi.fn<ProviderServiceShape["respondToUserInput"]>(() => Effect.void);
+    const interruptTurn = vi.fn((_: unknown) => Effect.void);
     const rollbackConversation = vi.fn<ProviderServiceShape["rollbackConversation"]>(
       () => Effect.void,
     );
     const isGitRepository = vi.fn<CheckpointStoreShape["isGitRepository"]>(() =>
       Effect.succeed(false),
     );
-    const captureCheckpoint = vi.fn<CheckpointStoreShape["captureCheckpoint"]>(() => Effect.void);
     const restoreScopedCheckpoint = vi.fn<CheckpointStoreShape["restoreScopedCheckpoint"]>(
       () => Effect.void,
     );
     const checkpointStore: CheckpointStoreShape = {
       isGitRepository,
-      captureCheckpoint,
+      captureCheckpoint: () => Effect.void,
       copyCheckpointRef: () => Effect.succeed(true),
       hasCheckpointRef: () => Effect.succeed(false),
       previewScopedRestore: () => Effect.succeed({ fingerprint: "empty", files: [] }),
@@ -423,29 +374,9 @@ export function makeReactorTestHarness() {
         }
       }),
     );
-    const renameBranch = vi.fn((input: unknown) =>
-      Effect.succeed({
-        branch:
-          typeof input === "object" &&
-          input !== null &&
-          "newBranch" in input &&
-          typeof input.newBranch === "string"
-            ? input.newBranch
-            : "renamed-branch",
-      }),
-    );
-    const publishBranch = vi.fn(() => Effect.void);
     const withMutation: GitCoreShape["withMutation"] = (_cwd, effect) => effect;
     const generateTitle = vi.fn<ThreadTitleGenerationShape["generate"]>(() =>
       Effect.succeed("Generated conversation title"),
-    );
-    const generateBranchName = vi.fn<TextGenerationShape["generateBranchName"]>(() =>
-      Effect.fail(
-        new TextGenerationError({
-          operation: "generateBranchName",
-          detail: "disabled in test harness",
-        }),
-      ),
     );
     const unsupported = () => Effect.die(new Error("Unsupported provider call in test")) as never;
     const service: ProviderServiceShape = {
@@ -454,22 +385,17 @@ export function makeReactorTestHarness() {
       completePriorTranscriptBootstrap,
       sendTurn: sendTurn as ProviderServiceShape["sendTurn"],
       steerTurn: steerTurn as ProviderServiceShape["steerTurn"],
-      startReview,
-      forkThread,
+      startReview: (reviewInput) =>
+        Effect.succeed({ threadId: reviewInput.threadId, turnId: asTurnId("turn-review-1") }),
+      forkThread: () => unsupported(),
       interruptTurn: interruptTurn as ProviderServiceShape["interruptTurn"],
-      stopTask,
-      backgroundTask,
-      hasLiveRuntimeTasks,
-      respondToRequest: respondToRequest as ProviderServiceShape["respondToRequest"],
-      respondToUserInput: respondToUserInput as ProviderServiceShape["respondToUserInput"],
+      stopTask: () => Effect.void,
+      backgroundTask: () => Effect.void,
+      hasLiveRuntimeTasks: () => Effect.succeed(false),
+      respondToRequest: () => Effect.void,
+      respondToUserInput: () => Effect.void,
       stopSession: stopSession as ProviderServiceShape["stopSession"],
-      ...(input?.omitStopRuntimeSession
-        ? {}
-        : {
-            stopRuntimeSession: stopRuntimeSession as NonNullable<
-              ProviderServiceShape["stopRuntimeSession"]
-            >,
-          }),
+      stopRuntimeSession: stopRuntimeSession as ProviderServiceShape["stopRuntimeSession"],
       clearSessionResumeCursor,
       listSessions,
       getCapabilities: (_provider) => Effect.succeed({}),
@@ -477,6 +403,7 @@ export function makeReactorTestHarness() {
       compactThread: () => unsupported(),
       updateNativeHistory: input?.updateNativeHistory ?? (() => unsupported()),
       closeRuntimeEvents: Effect.void,
+      getRuntimeEventPumpHealth: () => Effect.succeed([]),
       streamEvents: Stream.fromPubSub(runtimeEventPubSub),
     };
 
@@ -522,24 +449,24 @@ export function makeReactorTestHarness() {
       Layer.provideMerge(Layer.succeed(CheckpointStore, checkpointStore)),
       Layer.provideMerge(
         Layer.succeed(GitCore, {
-          renameBranch,
-          publishBranch,
+          renameBranch: (renameInput: { readonly newBranch: string }) =>
+            Effect.succeed({ branch: renameInput.newBranch }),
+          publishBranch: () => Effect.void,
           withMutation,
         } as unknown as GitCoreShape),
       ),
       Layer.provideMerge(
         Layer.succeed(TextGeneration, {
-          generateBranchName,
+          generateBranchName: () =>
+            Effect.fail(
+              new TextGenerationError({
+                operation: "generateBranchName",
+                detail: "disabled in test harness",
+              }),
+            ),
         } as unknown as TextGenerationShape),
       ),
-      Layer.provideMerge(
-        ServerSettingsService.layerTest({
-          ...input?.serverSettings,
-          ...(input?.gitWritingModelSelection
-            ? { textGenerationModelSelection: input.gitWritingModelSelection }
-            : {}),
-        }),
-      ),
+      Layer.provideMerge(ServerSettingsService.layerTest({ ...input?.serverSettings })),
       Layer.provideMerge(ServerConfig.layerTest(process.cwd(), baseDir)),
       Layer.provideMerge(NodeServices.layer),
       Layer.provideMerge(OrchestrationEventDeliveryRepositoryLive),
@@ -569,25 +496,17 @@ export function makeReactorTestHarness() {
         interceptor(command) ?? passthroughDispatch(command, context);
     };
     const reactor = await runtime.runPromise(Effect.service(ProviderCommandReactor));
-    const serverSettings = await runtime.runPromise(Effect.service(ServerSettingsService));
     const deliveryRepository = await runtime.runPromise(
       Effect.service(OrchestrationEventDeliveryRepository),
     );
     const queuedTurnPromotionRepository = await runtime.runPromise(
       Effect.service(QueuedTurnPromotionRepository),
     );
-    const sql = await runtime.runPromise(Effect.service(SqlClient.SqlClient));
     const managedAttachments = await runtime.runPromise(
       Effect.service(ManagedAttachmentRepository),
     );
-    const pendingInteractionRepository = await runtime.runPromise(
-      Effect.service(ProjectionPendingInteractionRepository),
-    );
     const runtimeEventRepository = await runtime.runPromise(
       Effect.service(ProviderRuntimeEventRepository),
-    );
-    const gatewayOperations = await runtime.runPromise(
-      Effect.service(AgentGatewayOperationRepository),
     );
     scope = await Effect.runPromise(Scope.make("sequential"));
     let reactorStarted = false;
@@ -620,17 +539,9 @@ export function makeReactorTestHarness() {
         projectId: asProjectId("project-1"),
         title: "Thread",
         modelSelection: modelSelection,
-
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
-        ...(input?.gatewayOperationId
-          ? {
-              creationSource: "glade_mcp" as const,
-              gatewayOperationId: input.gatewayOperationId,
-              gatewayOperationIndex: 0,
-            }
-          : {}),
         createdAt: now,
       }),
     );
@@ -640,46 +551,19 @@ export function makeReactorTestHarness() {
       handoffTransitions: Option.getOrUndefined(
         await runtime.runPromise(Effect.serviceOption(HandoffTransitions)),
       ),
-      seedCompletion: () =>
-        runtime!.runPromise(sql`
-        INSERT INTO agent_gateway_completions
-          (child_thread_id, creator_thread_id, initial_message_id, result_json, delivery_state, created_at)
-        VALUES ('delegated-child', 'thread-1', 'delegated-initial', '{"summary":"delegated result","childThreadId":"delegated-child"}', 'delivered', ${new Date().toISOString()})
-      `),
-      completionState: () =>
-        runtime!.runPromise(sql<{
-          context_consumed: number;
-          context_event_sequence: number | null;
-        }>`
-        SELECT context_consumed, context_event_sequence FROM agent_gateway_completions WHERE child_thread_id = 'delegated-child'
-      `),
       reactor,
-      serverSettings,
       startSession,
       startSessionWithOutcome,
-      completePriorTranscriptBootstrap,
-      pendingPriorTranscriptBootstraps,
       listSessions,
       sendTurn,
       steerTurn,
-      startReview,
-      forkThread,
       interruptTurn,
-      stopTask,
-      backgroundTask,
-      hasLiveRuntimeTasks,
-      respondToRequest,
-      respondToUserInput,
       rollbackConversation,
       isGitRepository,
-      captureCheckpoint,
       restoreScopedCheckpoint,
       stopSession,
       stopRuntimeSession,
       clearSessionResumeCursor,
-      renameBranch,
-      publishBranch,
-      generateBranchName,
       generateTitle,
       stateDir,
       stageAttachment: async (
@@ -746,98 +630,7 @@ export function makeReactorTestHarness() {
       setRuntimeSessionTurnState,
       startReactor,
       deliveryRepository,
-      sql,
-      pendingInteractionRepository,
       runtimeEventRepository,
-      reserveGatewayOperation: (operationId: string) =>
-        runtime.runPromise(
-          gatewayOperations.reserve({
-            operationId,
-            callerThreadId: "caller-thread",
-            callerTurnId: "caller-turn",
-            operationKind: "create_threads",
-            requestId: `request-${operationId}`,
-            fingerprint: `fingerprint-${operationId}`,
-            requestedCount: 1,
-            planJson: "[]",
-            now,
-          }),
-        ),
-      markGatewayOperationDispatching: (operationId: string) =>
-        runtime.runPromise(gatewayOperations.markDispatching({ operationId, now })),
-      completeGatewayOperation: (operationId: string) =>
-        runtime.runPromise(
-          gatewayOperations.complete({
-            operationId,
-            resultJson: "{}",
-            now: new Date().toISOString(),
-          }),
-        ),
-      persistWithoutLivePublication: async (
-        events: ReadonlyArray<Omit<OrchestrationEvent, "sequence">>,
-      ) => {
-        const persisted: OrchestrationEvent[] = [];
-        for (const event of events) {
-          const versions = await runtime.runPromise(sql<{ readonly version: number }>`
-            SELECT COALESCE(MAX(stream_version), -1) + 1 AS version
-            FROM orchestration_events
-            WHERE aggregate_kind = ${event.aggregateKind}
-              AND stream_id = ${event.aggregateId}
-          `);
-          const inserted = await runtime.runPromise(sql<{ readonly sequence: number }>`
-            INSERT INTO orchestration_events (
-              event_id, aggregate_kind, stream_id, stream_version, event_type,
-              occurred_at, command_id, causation_event_id, correlation_id,
-              actor_kind, payload_json, metadata_json
-            ) VALUES (
-              ${event.eventId}, ${event.aggregateKind}, ${event.aggregateId},
-              ${versions[0]!.version}, ${event.type},
-              ${event.occurredAt}, ${event.commandId}, ${event.causationEventId},
-              ${event.correlationId}, 'user', ${JSON.stringify(event.payload)},
-              ${JSON.stringify(event.metadata)}
-            )
-            RETURNING sequence
-          `);
-          const saved = { ...event, sequence: inserted[0]!.sequence } as OrchestrationEvent;
-          persisted.push(saved);
-          if (saved.type === "thread.message-sent") {
-            await runtime.runPromise(sql`
-              INSERT INTO projection_thread_messages (
-                message_id, thread_id, turn_id, role, text, is_streaming,
-                created_at, updated_at, source, sequence, dispatch_mode
-              ) VALUES (
-                ${saved.payload.messageId}, ${saved.payload.threadId}, ${saved.payload.turnId},
-                ${saved.payload.role}, ${saved.payload.text},
-                ${saved.payload.streaming ? 1 : 0}, ${saved.payload.createdAt},
-                ${saved.payload.updatedAt}, ${saved.payload.source}, ${saved.sequence},
-                ${saved.payload.dispatchMode ?? null}
-              )
-            `);
-          }
-        }
-        return persisted;
-      },
-      persistSessionWithoutLivePublication: async (input: {
-        readonly threadId: ThreadId;
-        readonly turnId: TurnId;
-        readonly updatedAt: string;
-      }) =>
-        runtime.runPromise(sql`
-          INSERT INTO projection_thread_sessions (
-            thread_id, status, provider_name, runtime_mode,
-            active_turn_id, last_error, updated_at
-          ) VALUES (
-            ${input.threadId}, 'running', 'codex', 'approval-required',
-            ${input.turnId}, NULL, ${input.updatedAt}
-          )
-          ON CONFLICT (thread_id) DO UPDATE SET
-            status = excluded.status,
-            provider_name = excluded.provider_name,
-            runtime_mode = excluded.runtime_mode,
-            active_turn_id = excluded.active_turn_id,
-            last_error = excluded.last_error,
-            updated_at = excluded.updated_at
-        `),
       queuedTurnPromotionRepository,
       interceptEngineDispatch,
     };
@@ -896,7 +689,6 @@ export function makeReactorTestHarness() {
           text: input.text,
           attachments: input.attachments ?? [],
         },
-
         runtimeMode: "approval-required",
         createdAt: input.createdAt,
       }),
@@ -955,7 +747,6 @@ export function makeReactorTestHarness() {
           attachments: [...(input.attachments ?? [])],
         },
         runtimeMode: "approval-required",
-
         createdAt: now,
       }),
     );

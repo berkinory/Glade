@@ -124,68 +124,37 @@ describe("isUpdateVersionAllowedForFlavor", () => {
 });
 
 describe("getAutoUpdateDisabledReason", () => {
-  it("reports development builds as disabled", () => {
-    expect(
-      getAutoUpdateDisabledReason({
-        isDevelopment: true,
-        isPackaged: false,
-        platform: "darwin",
-        appImage: undefined,
-        disabledByEnv: false,
-        hasUpdateFeedConfig: true,
-      }),
-    ).toContain("packaged production builds");
-  });
+  const packagedMac = {
+    isDevelopment: false,
+    isPackaged: true,
+    platform: "darwin",
+    appImage: undefined,
+    disabledByEnv: false,
+    hasUpdateFeedConfig: true,
+  } as const;
 
-  it("reports packaged builds without an update feed as disabled", () => {
-    expect(
-      getAutoUpdateDisabledReason({
-        isDevelopment: false,
-        isPackaged: true,
-        platform: "darwin",
-        appImage: undefined,
-        disabledByEnv: false,
-        hasUpdateFeedConfig: false,
-      }),
-    ).toContain("no update feed");
+  it.each([
+    {
+      name: "development builds",
+      overrides: { isDevelopment: true, isPackaged: false },
+      reason: "packaged production builds",
+    },
+    {
+      name: "packaged builds without an update feed",
+      overrides: { hasUpdateFeedConfig: false },
+      reason: "no update feed",
+    },
+    {
+      name: "env-disabled auto updates",
+      overrides: { disabledByEnv: true },
+      reason: "GLADE_DISABLE_AUTO_UPDATE",
+    },
+    { name: "linux non-AppImage builds", overrides: { platform: "linux" }, reason: "AppImage" },
+  ] as const)("reports $name as disabled", ({ overrides, reason }) => {
+    expect(getAutoUpdateDisabledReason({ ...packagedMac, ...overrides })).toContain(reason);
   });
 
   it("allows packaged builds when an update feed is configured", () => {
-    expect(
-      getAutoUpdateDisabledReason({
-        isDevelopment: false,
-        isPackaged: true,
-        platform: "darwin",
-        appImage: undefined,
-        disabledByEnv: false,
-        hasUpdateFeedConfig: true,
-      }),
-    ).toBeNull();
-  });
-
-  it("reports env-disabled auto updates", () => {
-    expect(
-      getAutoUpdateDisabledReason({
-        isDevelopment: false,
-        isPackaged: true,
-        platform: "darwin",
-        appImage: undefined,
-        disabledByEnv: true,
-        hasUpdateFeedConfig: true,
-      }),
-    ).toContain("GLADE_DISABLE_AUTO_UPDATE");
-  });
-
-  it("reports linux non-AppImage builds as disabled", () => {
-    expect(
-      getAutoUpdateDisabledReason({
-        isDevelopment: false,
-        isPackaged: true,
-        platform: "linux",
-        appImage: undefined,
-        disabledByEnv: false,
-        hasUpdateFeedConfig: true,
-      }),
-    ).toContain("AppImage");
+    expect(getAutoUpdateDisabledReason(packagedMac)).toBeNull();
   });
 });

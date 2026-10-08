@@ -5,7 +5,6 @@ import { DESKTOP_IPC_CHANNELS } from "../ipc/ipcChannels";
 import { formatErrorMessage, type DesktopLog } from "./desktopLogging";
 import {
   makeRunningChatsQuitGuard,
-  quitConfirmationPresentationForPlatform,
   shouldPromptForRunningChatsBeforeQuit,
 } from "./runningChatsQuitGuard";
 // A signal must end the process even when teardown stalls: the backend's graceful stop alone may
@@ -134,7 +133,6 @@ export function createDesktopShutdown({
     }
 
     const window = getMainWindow();
-    const presentation = quitConfirmationPresentationForPlatform();
     const allowed = await runningChatsQuitGuard.askRenderer({
       send: (request) => {
         if (!isMainRendererAvailable() || !window) {
@@ -149,7 +147,6 @@ export function createDesktopShutdown({
       },
       isRendererAvailable: isMainRendererAvailable,
       confirmWithoutRenderer: confirmQuitWithoutRenderer,
-      presentation,
     });
     if (!allowed) {
       log.writeDesktopLogHeader(`${reason} stayed because chats are still running`);

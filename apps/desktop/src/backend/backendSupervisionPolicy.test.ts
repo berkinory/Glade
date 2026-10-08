@@ -25,21 +25,6 @@ describe("backendRestartDelayMs", () => {
 });
 
 describe("BackendSupervisionPolicy backoff", () => {
-  it("grows the delay across consecutive failures instead of staying flat", () => {
-    const policy = new BackendSupervisionPolicy();
-
-    const delays: number[] = [];
-    for (let index = 0; index < BACKEND_MAX_CONSECUTIVE_START_FAILURES - 1; index += 1) {
-      const response = failure(policy);
-      expect(response.kind).toBe("retry");
-      if (response.kind === "retry") {
-        delays.push(response.delayMs);
-      }
-    }
-
-    expect(delays).toEqual([500, 1_000, 2_000, 4_000]);
-  });
-
   it("restarts the backoff only after the backend reaches readiness", () => {
     const policy = new BackendSupervisionPolicy();
 
@@ -67,13 +52,15 @@ describe("BackendSupervisionPolicy backoff", () => {
 });
 
 describe("BackendSupervisionPolicy circuit breaker", () => {
-  it("stops respawning after the configured consecutive failures", () => {
+  it("backs off across consecutive failures, then stops respawning", () => {
     const policy = new BackendSupervisionPolicy();
 
-    for (let index = 0; index < BACKEND_MAX_CONSECUTIVE_START_FAILURES - 1; index += 1) {
-      expect(failure(policy).kind).toBe("retry");
-    }
+    const delays = Array.from({ length: BACKEND_MAX_CONSECUTIVE_START_FAILURES - 1 }, () => {
+      const response = failure(policy);
+      return response.kind === "retry" ? response.delayMs : response.kind;
+    });
 
+    expect(delays).toEqual([500, 1_000, 2_000, 4_000]);
     expect(failure(policy)).toEqual({
       kind: "give-up",
       failures: BACKEND_MAX_CONSECUTIVE_START_FAILURES,

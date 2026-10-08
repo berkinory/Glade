@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { createRequestHarness } from "./requestHarness.testSupport";
+import { attachFakeGatewayLease } from "./notificationHarness.testSupport";
 
 describe("thread checkpoint control", () => {
   it("does not spawn a fork runtime after cancellation during version discovery", async () => {
@@ -261,25 +262,13 @@ describe("thread checkpoint control", () => {
   it("cancels the exact gateway turn even when Codex omits MCP cancellation notifications", async () => {
     const { manager, context, sendRequest } = createRequestHarness();
     let settleCancellation: (() => void) | undefined;
-    const cancelTurn = vi.fn(
-      () =>
+    context.session.status = "running";
+    context.session.activeTurnId = "turn-with-live-browser-wait";
+    const { cancelTurn, release } = attachFakeGatewayLease(context, {
+      cancelTurn: () =>
         new Promise<void>((resolve) => {
           settleCancellation = resolve;
         }),
-    );
-    const release = vi.fn();
-    context.session.status = "running";
-    context.session.activeTurnId = "turn-with-live-browser-wait";
-    Object.assign(context, {
-      gatewaySessionLease: {
-        connection: {
-          url: "http://127.0.0.1:48123/mcp",
-          bearerToken: "gateway-token",
-        },
-        cancelTurn,
-        retireTurn: vi.fn(() => Promise.resolve()),
-        release,
-      },
     });
     sendRequest.mockResolvedValue({});
 
@@ -304,21 +293,9 @@ describe("thread checkpoint control", () => {
 
   it("tombstones the parent gateway turn when stopping one collab child", async () => {
     const { manager, context, sendRequest } = createRequestHarness();
-    const cancelTurn = vi.fn(() => Promise.resolve());
-    const release = vi.fn();
     context.session.status = "running";
     context.session.activeTurnId = "turn-parent";
-    Object.assign(context, {
-      gatewaySessionLease: {
-        connection: {
-          url: "http://127.0.0.1:48123/mcp",
-          bearerToken: "gateway-token",
-        },
-        cancelTurn,
-        retireTurn: vi.fn(() => Promise.resolve()),
-        release,
-      },
-    });
+    const { cancelTurn, release } = attachFakeGatewayLease(context);
     sendRequest.mockResolvedValue({});
 
     await manager.interruptTurn(

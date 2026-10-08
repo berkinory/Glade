@@ -7,134 +7,22 @@ import {
   ThreadId,
   TurnId,
 } from "@glade/contracts/core/baseSchemas";
+import { Effect, Option, Stream } from "effect";
+import { describe, expect, it } from "vitest";
 
-import { type OrchestrationCommand } from "@glade/contracts/orchestration/commands";
-import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
-import { Effect, Layer, ManagedRuntime, Option, Stream } from "effect";
-import { describe, expect, it, vi } from "vitest";
-
-import { PersistenceSqlError } from "../../persistence/Errors.ts";
-import { OrchestrationCommandReceiptRepositoryLive } from "../../persistence/Layers/OrchestrationCommandReceipts.ts";
-import { OrchestrationEventStoreLive } from "../../persistence/Layers/OrchestrationEventStore.ts";
-import { SqlitePersistenceMemory } from "../../persistence/Layers/Sqlite.ts";
-import {
-  OrchestrationEventStore,
-  type OrchestrationEventStoreShape,
-} from "../../persistence/Services/OrchestrationEventStore.ts";
-import { ManagedAttachmentRepository } from "../../persistence/Services/ManagedAttachments.ts";
-import { OrchestrationEngineLive } from "./OrchestrationEngine.ts";
-import { OrchestrationProjectionPipelineLive } from "./ProjectionPipeline.ts";
-import { OrchestrationProjectionSnapshotQueryLive } from "./ProjectionSnapshotQuery.ts";
-import { OrchestrationEngineService } from "../Services/OrchestrationEngine.ts";
-import {
-  OrchestrationProjectionPipeline,
-  type OrchestrationProjectionPipelineShape,
-} from "../Services/ProjectionPipeline.ts";
-import { ServerConfig } from "../../server/config.ts";
 import { ORCHESTRATION_EVENT_PUBSUB_CAPACITY } from "../orchestrationAdmission.ts";
-import * as NodeServices from "@effect/platform-node/NodeServices";
-
-const fingerprintPoison = vi.hoisted(() => new Set<string>());
-
-vi.mock("../commandFingerprint.ts", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../commandFingerprint.ts")>();
-  return {
-    ...actual,
-    fingerprintOrchestrationCommand: (command: OrchestrationCommand) => {
-      if (fingerprintPoison.has(command.commandId)) {
-        throw new TypeError("poisoned command fingerprint");
-      }
-      return actual.fingerprintOrchestrationCommand(command);
-    },
-  };
-});
+import {
+  createOrchestrationSystem,
+  createProjectCommand,
+  createThreadCommand,
+  now,
+  seedProjectAndThread,
+} from "../testing/orchestrationEngineSystem.ts";
 
 const asProjectId = (value: string): ProjectId => ProjectId.makeUnsafe(value);
 const asMessageId = (value: string): MessageId => MessageId.makeUnsafe(value);
-
-const makeThreadEventReadMethods = (
-  events: ReadonlyArray<OrchestrationEvent>,
-): Pick<
-  OrchestrationEventStoreShape,
-  | "getThreadHighWaterSequence"
-  | "getThreadTitleHighWaterSequence"
-  | "readThreadEvents"
-  | "readThreadEventsFromSequence"
-> => ({
-  getThreadHighWaterSequence: (threadId) =>
-    Effect.succeed(
-      events.findLast((event) => event.aggregateKind === "thread" && event.aggregateId === threadId)
-        ?.sequence ?? 0,
-    ),
-  getThreadTitleHighWaterSequence: () => Effect.succeed(0),
-  readThreadEvents: (input) =>
-    Effect.succeed(
-      events
-        .filter(
-          (event) =>
-            event.aggregateKind === "thread" &&
-            event.aggregateId === input.threadId &&
-            event.sequence <= input.throughSequenceInclusive &&
-            event.sequence < (input.beforeSequenceExclusive ?? Number.MAX_SAFE_INTEGER) &&
-            (input.eventTypes === undefined || input.eventTypes.includes(event.type)),
-        )
-        .toSorted((left, right) => right.sequence - left.sequence)
-        .slice(0, input.limit),
-    ),
-  readThreadEventsFromSequence: (
-    threadId,
-    sequenceExclusive,
-    limit = 1_000,
-    throughSequenceInclusive = Number.MAX_SAFE_INTEGER,
-    eventTypes,
-  ) =>
-    Stream.fromIterable(
-      events
-        .filter(
-          (event) =>
-            event.aggregateKind === "thread" &&
-            event.aggregateId === threadId &&
-            event.sequence > sequenceExclusive &&
-            event.sequence <= throughSequenceInclusive &&
-            (eventTypes === undefined || eventTypes.includes(event.type)),
-        )
-        .slice(0, limit),
-    ),
-});
 const asTurnId = (value: string): TurnId => TurnId.makeUnsafe(value);
 const asCheckpointRef = (value: string): CheckpointRef => CheckpointRef.makeUnsafe(value);
-
-const TestServerConfigLayer = ServerConfig.layerTest(process.cwd(), {
-  prefix: "glade-orchestration-engine-test-",
-});
-
-async function createOrchestrationSystem() {
-  const ServerConfigLayer = TestServerConfigLayer;
-  const orchestrationLayer = OrchestrationEngineLive.pipe(
-    Layer.provide(OrchestrationProjectionPipelineLive),
-    Layer.provide(OrchestrationProjectionSnapshotQueryLive),
-    Layer.provide(OrchestrationEventStoreLive),
-    Layer.provide(OrchestrationCommandReceiptRepositoryLive),
-    Layer.provide(SqlitePersistenceMemory),
-    Layer.provideMerge(ServerConfigLayer),
-    Layer.provideMerge(NodeServices.layer),
-  );
-  const runtime = ManagedRuntime.make(orchestrationLayer);
-  const engine = await runtime.runPromise(Effect.service(OrchestrationEngineService));
-  const managedAttachmentRepository = await runtime.runPromise(
-    Effect.service(ManagedAttachmentRepository),
-  );
-  return {
-    engine,
-    managedAttachmentRepository,
-    run: <A, E>(effect: Effect.Effect<A, E>) => runtime.runPromise(effect),
-    dispose: () => runtime.dispose(),
-  };
-}
-
-function now() {
-  return new Date().toISOString();
-}
 
 describe("OrchestrationEngine", () => {
   it.each([false, true])(
@@ -144,7 +32,7 @@ describe("OrchestrationEngine", () => {
       const { engine } = system;
       const createdAt = now();
       const threadId = ThreadId.makeUnsafe("async-question-thread");
-      const projectId = asProjectId("async-question-project");
+      const projectId = "async-question-project";
       const questionId = asMessageId("assistant:async-question");
       const turnId = asTurnId("question-turn");
       let index = 0;
@@ -154,32 +42,7 @@ describe("OrchestrationEngine", () => {
         { title: "Any other details?" },
       ];
       try {
-        await system.run(
-          engine.dispatch({
-            type: "project.create",
-            commandId: commandId(),
-            projectId,
-            title: "Async input",
-            workspaceRoot: "/tmp/async-input",
-            defaultModelSelection: null,
-            createdAt,
-          }),
-        );
-        await system.run(
-          engine.dispatch({
-            type: "thread.create",
-            commandId: commandId(),
-            threadId,
-            projectId,
-            title: "Async input",
-            modelSelection: { provider: "codex", model: "gpt-5-codex" },
-
-            runtimeMode: "approval-required",
-            branch: null,
-            worktreePath: null,
-            createdAt,
-          }),
-        );
+        await seedProjectAndThread(system, { projectId, threadId, createdAt });
         await system.run(
           engine.dispatch({
             type: "thread.message.assistant.delta",
@@ -240,7 +103,6 @@ describe("OrchestrationEngine", () => {
             asyncUserInputResponse: { messageId: questionId, answers },
             dispatchMode: "queue",
             runtimeMode: "full-access",
-
             createdAt: new Date(Date.parse(createdAt) + 60_000).toISOString(),
           });
         await expect(system.run(answer("invalid", ["Only one answer"]))).rejects.toThrow(
@@ -273,7 +135,6 @@ describe("OrchestrationEngine", () => {
           startsNewTurn: !running,
         });
         expect(after.runtimeMode).toBe("approval-required");
-
         expect(after.session?.status).toBe(running ? "running" : "starting");
       } finally {
         await system.dispose();
@@ -285,7 +146,7 @@ describe("OrchestrationEngine", () => {
     const system = await createOrchestrationSystem();
     const { engine } = system;
     const createdAt = now();
-    const projectId = asProjectId("project-revert-sequence");
+    const projectId = "project-revert-sequence";
     const threadId = ThreadId.makeUnsafe("thread-revert-sequence");
     let commandIndex = 0;
     const commandId = () => CommandId.makeUnsafe(`revert-sequence-${++commandIndex}`);
@@ -320,32 +181,12 @@ describe("OrchestrationEngine", () => {
       );
 
     try {
-      await system.run(
-        engine.dispatch({
-          type: "project.create",
-          commandId: commandId(),
-          projectId,
-          title: "Checkpoint sequence",
-          workspaceRoot: "/tmp/checkpoint-sequence",
-          defaultModelSelection: null,
-          createdAt,
-        }),
-      );
-      await system.run(
-        engine.dispatch({
-          type: "thread.create",
-          commandId: commandId(),
-          threadId,
-          projectId,
-          title: "Checkpoint sequence",
-          modelSelection: { provider: "codex", model: "gpt-5-codex" },
-
-          runtimeMode: "full-access",
-          branch: null,
-          worktreePath: null,
-          createdAt,
-        }),
-      );
+      await seedProjectAndThread(system, {
+        projectId,
+        threadId,
+        createdAt,
+        runtimeMode: "full-access",
+      });
       await appendActivity("tool.completed", 1_000);
       await revert();
       await appendActivity("checkpoint.revert.failed");
@@ -372,7 +213,6 @@ describe("OrchestrationEngine", () => {
               text: "Continue",
               attachments: [],
             },
-
             runtimeMode: "full-access",
             createdAt,
           }),
@@ -391,32 +231,7 @@ describe("OrchestrationEngine", () => {
     const threadId = ThreadId.makeUnsafe("thread-large-response");
     const messageId = asMessageId("message-large-response");
     try {
-      await system.run(
-        engine.dispatch({
-          type: "project.create",
-          commandId: CommandId.makeUnsafe("large-project"),
-          projectId: asProjectId("large-project"),
-          title: "Large response",
-          workspaceRoot: "/tmp/large-response",
-          defaultModelSelection: null,
-          createdAt,
-        }),
-      );
-      await system.run(
-        engine.dispatch({
-          type: "thread.create",
-          commandId: CommandId.makeUnsafe("large-thread"),
-          threadId,
-          projectId: asProjectId("large-project"),
-          title: "Large response",
-          modelSelection: { provider: "codex", model: "gpt-5-codex" },
-
-          runtimeMode: "approval-required",
-          branch: null,
-          worktreePath: null,
-          createdAt,
-        }),
-      );
+      await seedProjectAndThread(system, { projectId: "large-project", threadId, createdAt });
 
       const chunks = [
         "é漢😀".repeat(30_000),
@@ -468,35 +283,11 @@ describe("OrchestrationEngine", () => {
     const createdAt = now();
     const threadId = ThreadId.makeUnsafe("thread-engine-quiesce");
 
-    await system.run(
-      system.engine.dispatch({
-        type: "project.create",
-        commandId: CommandId.makeUnsafe("cmd-engine-quiesce-project"),
-        projectId: asProjectId("project-engine-quiesce"),
-        title: "Engine quiesce",
-        workspaceRoot: "/tmp/engine-quiesce",
-        defaultModelSelection: null,
-        createdAt,
-      }),
-    );
-    await system.run(
-      system.engine.dispatch({
-        type: "thread.create",
-        commandId: CommandId.makeUnsafe("cmd-engine-quiesce-thread"),
-        threadId,
-        projectId: asProjectId("project-engine-quiesce"),
-        title: "Engine quiesce thread",
-        modelSelection: {
-          provider: "codex",
-          model: "gpt-5-codex",
-        },
-
-        runtimeMode: "approval-required",
-        branch: null,
-        worktreePath: null,
-        createdAt,
-      }),
-    );
+    await seedProjectAndThread(system, {
+      projectId: "project-engine-quiesce",
+      threadId,
+      createdAt,
+    });
 
     await system.run(system.engine.quiesce);
     const diagnostic = {
@@ -543,7 +334,6 @@ describe("OrchestrationEngine", () => {
             text: "Rejected after quiesce",
             attachments: [],
           },
-
           runtimeMode: "approval-required",
           createdAt,
         }),
@@ -638,32 +428,11 @@ describe("OrchestrationEngine", () => {
     const messageId = asMessageId("msg-managed-attachment");
     const principal = { ownerKind: "session" as const, ownerId: "session-a" };
 
-    await system.run(
-      engine.dispatch({
-        type: "project.create",
-        commandId: CommandId.makeUnsafe("cmd-managed-attachment-project"),
-        projectId: asProjectId("project-managed-attachment"),
-        title: "Managed attachment project",
-        workspaceRoot: "/tmp/project-managed-attachment",
-        defaultModelSelection: { provider: "codex", model: "gpt-5-codex" },
-        createdAt,
-      }),
-    );
-    await system.run(
-      engine.dispatch({
-        type: "thread.create",
-        commandId: CommandId.makeUnsafe("cmd-managed-attachment-thread"),
-        threadId,
-        projectId: asProjectId("project-managed-attachment"),
-        title: "Managed attachment thread",
-        modelSelection: { provider: "codex", model: "gpt-5-codex" },
-
-        runtimeMode: "approval-required",
-        branch: null,
-        worktreePath: null,
-        createdAt,
-      }),
-    );
+    await seedProjectAndThread(system, {
+      projectId: "project-managed-attachment",
+      threadId,
+      createdAt,
+    });
 
     const repository = system.managedAttachmentRepository;
     const stage = async (attachmentId: string) => {
@@ -718,7 +487,6 @@ describe("OrchestrationEngine", () => {
           },
         ],
       },
-
       runtimeMode: "approval-required" as const,
       createdAt,
     };
@@ -836,20 +604,12 @@ describe("OrchestrationEngine", () => {
   it("keeps dispatch responsive and replays every event when a subscriber falls behind", async () => {
     const system = await createOrchestrationSystem();
     const { engine } = system;
-    const projectId = asProjectId("project-slow-subscriber");
+    const projectId = "project-slow-subscriber";
 
     const count = ORCHESTRATION_EVENT_PUBSUB_CAPACITY + 510;
     try {
       const initial = await system.run(
-        engine.dispatch({
-          type: "project.create",
-          commandId: CommandId.makeUnsafe("cmd-slow-subscriber-create"),
-          projectId,
-          title: "Slow subscriber",
-          workspaceRoot: "/tmp/slow-subscriber",
-          defaultModelSelection: null,
-          createdAt: now(),
-        }),
+        engine.dispatch(createProjectCommand({ projectId, createdAt: now() })),
       );
       const result = await system.run(
         Effect.gen(function* () {
@@ -858,7 +618,7 @@ describe("OrchestrationEngine", () => {
             yield* engine.dispatch({
               type: "project.meta.update",
               commandId: CommandId.makeUnsafe(`cmd-slow-subscriber-${i}`),
-              projectId,
+              projectId: asProjectId(projectId),
               title: `Update ${i}`,
             });
           }
@@ -881,38 +641,11 @@ describe("OrchestrationEngine", () => {
     const { engine } = system;
     const createdAt = now();
 
-    await system.run(
-      engine.dispatch({
-        type: "project.create",
-        commandId: CommandId.makeUnsafe("cmd-project-turn-diff-create"),
-        projectId: asProjectId("project-turn-diff"),
-        title: "Turn Diff Project",
-        workspaceRoot: "/tmp/project-turn-diff",
-        defaultModelSelection: {
-          provider: "codex",
-          model: "gpt-5-codex",
-        },
-        createdAt,
-      }),
-    );
-    await system.run(
-      engine.dispatch({
-        type: "thread.create",
-        commandId: CommandId.makeUnsafe("cmd-thread-turn-diff-create"),
-        threadId: ThreadId.makeUnsafe("thread-turn-diff"),
-        projectId: asProjectId("project-turn-diff"),
-        title: "Turn diff thread",
-        modelSelection: {
-          provider: "codex",
-          model: "gpt-5-codex",
-        },
-
-        runtimeMode: "approval-required",
-        branch: null,
-        worktreePath: null,
-        createdAt,
-      }),
-    );
+    await seedProjectAndThread(system, {
+      projectId: "project-turn-diff",
+      threadId: "thread-turn-diff",
+      createdAt,
+    });
     await system.run(
       engine.dispatch({
         type: "thread.turn.diff.complete",
@@ -945,947 +678,71 @@ describe("OrchestrationEngine", () => {
     await system.dispose();
   });
 
-  it("keeps processing queued commands after a storage failure", async () => {
-    type StoredEvent =
-      ReturnType<OrchestrationEventStoreShape["append"]> extends Effect.Effect<infer A, any, any>
-        ? A
-        : never;
-    const events: StoredEvent[] = [];
-    let nextSequence = 1;
-    let shouldFailFirstAppend = true;
-
-    const flakyStore: OrchestrationEventStoreShape = {
-      append(event) {
-        if (shouldFailFirstAppend && event.commandId === CommandId.makeUnsafe("cmd-flaky-1")) {
-          shouldFailFirstAppend = false;
-          return Effect.fail(
-            new PersistenceSqlError({
-              operation: "test.append",
-              detail: "append failed",
-            }),
-          );
-        }
-        const savedEvent = {
-          ...event,
-          sequence: nextSequence,
-        } as StoredEvent;
-        nextSequence += 1;
-        events.push(savedEvent);
-        return Effect.succeed(savedEvent);
-      },
-      getHighWaterSequence() {
-        return Effect.succeed(events.at(-1)?.sequence ?? 0);
-      },
-      ...makeThreadEventReadMethods(events),
-      readFromSequence(sequenceExclusive) {
-        return Stream.fromIterable(events.filter((event) => event.sequence > sequenceExclusive));
-      },
-      readAll() {
-        return Stream.fromIterable(events);
-      },
-    };
-
-    const runtime = ManagedRuntime.make(
-      OrchestrationEngineLive.pipe(
-        Layer.provide(OrchestrationProjectionPipelineLive),
-        Layer.provide(OrchestrationProjectionSnapshotQueryLive),
-        Layer.provide(Layer.succeed(OrchestrationEventStore, flakyStore)),
-        Layer.provide(OrchestrationCommandReceiptRepositoryLive),
-        Layer.provide(SqlitePersistenceMemory),
-        Layer.provideMerge(TestServerConfigLayer),
-        Layer.provideMerge(NodeServices.layer),
-      ),
-    );
-    const engine = await runtime.runPromise(Effect.service(OrchestrationEngineService));
-    const createdAt = now();
-
-    await runtime.runPromise(
-      engine.dispatch({
-        type: "project.create",
-        commandId: CommandId.makeUnsafe("cmd-project-flaky-create"),
-        projectId: asProjectId("project-flaky"),
-        title: "Flaky Project",
-        workspaceRoot: "/tmp/project-flaky",
-        defaultModelSelection: {
-          provider: "codex",
-          model: "gpt-5-codex",
-        },
-        createdAt,
-      }),
-    );
-
-    await expect(
-      runtime.runPromise(
-        engine.dispatch({
-          type: "thread.create",
-          commandId: CommandId.makeUnsafe("cmd-flaky-1"),
-          threadId: ThreadId.makeUnsafe("thread-flaky-fail"),
-          projectId: asProjectId("project-flaky"),
-          title: "flaky-fail",
-          modelSelection: {
-            provider: "codex",
-            model: "gpt-5-codex",
-          },
-
-          runtimeMode: "approval-required",
-          branch: null,
-          worktreePath: null,
-          createdAt,
-        }),
-      ),
-    ).rejects.toThrow("failed unexpectedly");
-
-    const result = await runtime.runPromise(
-      engine.dispatch({
-        type: "thread.create",
-        commandId: CommandId.makeUnsafe("cmd-flaky-2"),
-        threadId: ThreadId.makeUnsafe("thread-flaky-ok"),
-        projectId: asProjectId("project-flaky"),
-        title: "flaky-ok",
-        modelSelection: {
-          provider: "codex",
-          model: "gpt-5-codex",
-        },
-
-        runtimeMode: "approval-required",
-        branch: null,
-        worktreePath: null,
-        createdAt,
-      }),
-    );
-
-    expect(result.sequence).toBe(2);
-    expect((await runtime.runPromise(engine.getReadModel())).snapshotSequence).toBe(2);
-    await runtime.dispose();
-  });
-
-  it("rolls back all events for a multi-event command when projection fails mid-dispatch", async () => {
-    let shouldFailRequestedProjection = true;
-    const flakyProjectionPipeline: OrchestrationProjectionPipelineShape = {
-      bootstrap: Effect.void,
-      projectMetadataEvent: () => Effect.void,
-      projectEvent: () => Effect.void,
-      projectHotEventInCurrentTransaction: (event) => {
-        if (
-          shouldFailRequestedProjection &&
-          event.commandId === CommandId.makeUnsafe("cmd-turn-start-atomic") &&
-          event.type === "thread.turn-start-requested"
-        ) {
-          shouldFailRequestedProjection = false;
-          return Effect.fail(
-            new PersistenceSqlError({
-              operation: "test.projection",
-              detail: "projection failed",
-            }),
-          );
-        }
-        return Effect.succeed({ deferredPhaseSettled: false, afterCommit: Effect.void });
-      },
-      projectDeferredEvent: () => Effect.void,
-    };
-
-    const runtime = ManagedRuntime.make(
-      OrchestrationEngineLive.pipe(
-        Layer.provide(Layer.succeed(OrchestrationProjectionPipeline, flakyProjectionPipeline)),
-        Layer.provide(OrchestrationProjectionSnapshotQueryLive),
-        Layer.provide(OrchestrationEventStoreLive),
-        Layer.provide(OrchestrationCommandReceiptRepositoryLive),
-        Layer.provide(SqlitePersistenceMemory),
-        Layer.provideMerge(TestServerConfigLayer),
-        Layer.provideMerge(NodeServices.layer),
-      ),
-    );
-    const engine = await runtime.runPromise(Effect.service(OrchestrationEngineService));
-    const createdAt = now();
-
-    await runtime.runPromise(
-      engine.dispatch({
-        type: "project.create",
-        commandId: CommandId.makeUnsafe("cmd-project-atomic-create"),
-        projectId: asProjectId("project-atomic"),
-        title: "Atomic Project",
-        workspaceRoot: "/tmp/project-atomic",
-        defaultModelSelection: {
-          provider: "codex",
-          model: "gpt-5-codex",
-        },
-        createdAt,
-      }),
-    );
-    await runtime.runPromise(
-      engine.dispatch({
-        type: "thread.create",
-        commandId: CommandId.makeUnsafe("cmd-thread-atomic-create"),
-        threadId: ThreadId.makeUnsafe("thread-atomic"),
-        projectId: asProjectId("project-atomic"),
-        title: "atomic",
-        modelSelection: {
-          provider: "codex",
-          model: "gpt-5-codex",
-        },
-
-        runtimeMode: "approval-required",
-        branch: null,
-        worktreePath: null,
-        createdAt,
-      }),
-    );
-
-    const turnStartCommand = {
-      type: "thread.turn.start" as const,
-      commandId: CommandId.makeUnsafe("cmd-turn-start-atomic"),
-      threadId: ThreadId.makeUnsafe("thread-atomic"),
-      message: {
-        messageId: asMessageId("msg-atomic-1"),
-        role: "user" as const,
-        text: "hello",
-        attachments: [],
-      },
-
-      runtimeMode: "approval-required" as const,
-      createdAt,
-    };
-
-    await expect(runtime.runPromise(engine.dispatch(turnStartCommand))).rejects.toThrow(
-      "failed unexpectedly",
-    );
-
-    const eventsAfterFailure = await runtime.runPromise(
-      Stream.runCollect(engine.readEvents(0)).pipe(
-        Effect.map((chunk): OrchestrationEvent[] => Array.from(chunk)),
-      ),
-    );
-    expect(eventsAfterFailure.map((event) => event.type)).toEqual([
-      "project.created",
-      "thread.created",
-    ]);
-    expect((await runtime.runPromise(engine.getReadModel())).snapshotSequence).toBe(2);
-
-    const retryResult = await runtime.runPromise(engine.dispatch(turnStartCommand));
-    expect(retryResult.sequence).toBe(4);
-
-    const eventsAfterRetry = await runtime.runPromise(
-      Stream.runCollect(engine.readEvents(0)).pipe(
-        Effect.map((chunk): OrchestrationEvent[] => Array.from(chunk)),
-      ),
-    );
-    expect(eventsAfterRetry.map((event) => event.type)).toEqual([
-      "project.created",
-      "thread.created",
-      "thread.message-sent",
-      "thread.turn-start-requested",
-    ]);
-    expect(
-      eventsAfterRetry.filter((event) => event.commandId === turnStartCommand.commandId),
-    ).toHaveLength(2);
-
-    await runtime.dispose();
-  });
-
-  it("keeps processing later commands after an unexpected worker defect", async () => {
-    type StoredEvent =
-      ReturnType<OrchestrationEventStoreShape["append"]> extends Effect.Effect<infer A, any, any>
-        ? A
-        : never;
-    const events: StoredEvent[] = [];
-    let nextSequence = 1;
-
-    const nonTransactionalStore: OrchestrationEventStoreShape = {
-      append(event) {
-        const savedEvent = {
-          ...event,
-          sequence: nextSequence,
-        } as StoredEvent;
-        nextSequence += 1;
-        events.push(savedEvent);
-        return Effect.succeed(savedEvent);
-      },
-      getHighWaterSequence() {
-        return Effect.succeed(events.at(-1)?.sequence ?? 0);
-      },
-      ...makeThreadEventReadMethods(events),
-      readFromSequence(sequenceExclusive) {
-        return Stream.fromIterable(events.filter((event) => event.sequence > sequenceExclusive));
-      },
-      readAll() {
-        return Stream.fromIterable(events);
-      },
-    };
-
-    let shouldDieProjection = true;
-    const defectiveProjectionPipeline: OrchestrationProjectionPipelineShape = {
-      bootstrap: Effect.void,
-      projectMetadataEvent: (event) => {
-        if (
-          shouldDieProjection &&
-          event.commandId === CommandId.makeUnsafe("cmd-project-defect-1")
-        ) {
-          shouldDieProjection = false;
-          return Effect.die("projection defect");
-        }
-        return Effect.void;
-      },
-      projectEvent: () => Effect.void,
-      projectHotEventInCurrentTransaction: () =>
-        Effect.succeed({ deferredPhaseSettled: false, afterCommit: Effect.void }),
-      projectDeferredEvent: () => Effect.void,
-    };
-
-    const runtime = ManagedRuntime.make(
-      OrchestrationEngineLive.pipe(
-        Layer.provide(Layer.succeed(OrchestrationProjectionPipeline, defectiveProjectionPipeline)),
-        Layer.provide(OrchestrationProjectionSnapshotQueryLive),
-        Layer.provide(Layer.succeed(OrchestrationEventStore, nonTransactionalStore)),
-        Layer.provide(OrchestrationCommandReceiptRepositoryLive),
-        Layer.provide(SqlitePersistenceMemory),
-        Layer.provideMerge(TestServerConfigLayer),
-        Layer.provideMerge(NodeServices.layer),
-      ),
-    );
-    const engine = await runtime.runPromise(Effect.service(OrchestrationEngineService));
-    const createdAt = now();
-
-    await expect(
-      runtime.runPromise(
-        engine.dispatch({
-          type: "project.create",
-          commandId: CommandId.makeUnsafe("cmd-project-defect-1"),
-          projectId: asProjectId("project-defect-1"),
-          title: "Defective Project",
-          workspaceRoot: "/tmp/project-defect-1",
-          defaultModelSelection: {
-            provider: "codex",
-            model: "gpt-5-codex",
-          },
-          createdAt,
-        }),
-      ),
-    ).rejects.toThrow("failed unexpectedly");
-
-    await expect(
-      runtime.runPromise(
-        engine.dispatch({
-          type: "project.create",
-          commandId: CommandId.makeUnsafe("cmd-project-defect-2"),
-          projectId: asProjectId("project-defect-2"),
-          title: "Recovered Project",
-          workspaceRoot: "/tmp/project-defect-2",
-          defaultModelSelection: {
-            provider: "codex",
-            model: "gpt-5-codex",
-          },
-          createdAt,
-        }),
-      ),
-    ).resolves.toEqual(
-      expect.objectContaining({
-        sequence: expect.any(Number),
-      }),
-    );
-
-    const eventsAfterRecovery = await runtime.runPromise(
-      Stream.runCollect(engine.readEvents(0)).pipe(
-        Effect.map((chunk): OrchestrationEvent[] => Array.from(chunk)),
-      ),
-    );
-    expect(eventsAfterRecovery.map((event) => event.commandId)).toEqual([
-      CommandId.makeUnsafe("cmd-project-defect-1"),
-      CommandId.makeUnsafe("cmd-project-defect-2"),
-    ]);
-    expect(eventsAfterRecovery.every((event) => event.type === "project.created")).toBe(true);
-
-    await runtime.dispose();
-  });
-
-  it("reconciles in-memory state when append persists but projection fails", async () => {
-    type StoredEvent =
-      ReturnType<OrchestrationEventStoreShape["append"]> extends Effect.Effect<infer A, any, any>
-        ? A
-        : never;
-    const events: StoredEvent[] = [];
-    let nextSequence = 1;
-
-    const nonTransactionalStore: OrchestrationEventStoreShape = {
-      append(event) {
-        const savedEvent = {
-          ...event,
-          sequence: nextSequence,
-        } as StoredEvent;
-        nextSequence += 1;
-        events.push(savedEvent);
-        return Effect.succeed(savedEvent);
-      },
-      getHighWaterSequence() {
-        return Effect.succeed(events.at(-1)?.sequence ?? 0);
-      },
-      ...makeThreadEventReadMethods(events),
-      readFromSequence(sequenceExclusive) {
-        return Stream.fromIterable(events.filter((event) => event.sequence > sequenceExclusive));
-      },
-      readAll() {
-        return Stream.fromIterable(events);
-      },
-    };
-
-    let shouldFailProjection = true;
-    const flakyProjectionPipeline: OrchestrationProjectionPipelineShape = {
-      bootstrap: Effect.void,
-      projectMetadataEvent: () => Effect.void,
-      projectEvent: () => Effect.void,
-      projectHotEventInCurrentTransaction: (event) => {
-        if (
-          shouldFailProjection &&
-          event.commandId === CommandId.makeUnsafe("cmd-thread-meta-sync-fail")
-        ) {
-          shouldFailProjection = false;
-          return Effect.fail(
-            new PersistenceSqlError({
-              operation: "test.projection",
-              detail: "projection failed",
-            }),
-          );
-        }
-        return Effect.succeed({ deferredPhaseSettled: false, afterCommit: Effect.void });
-      },
-      projectDeferredEvent: () => Effect.void,
-    };
-
-    const runtime = ManagedRuntime.make(
-      OrchestrationEngineLive.pipe(
-        Layer.provide(Layer.succeed(OrchestrationProjectionPipeline, flakyProjectionPipeline)),
-        Layer.provide(OrchestrationProjectionSnapshotQueryLive),
-        Layer.provide(Layer.succeed(OrchestrationEventStore, nonTransactionalStore)),
-        Layer.provide(OrchestrationCommandReceiptRepositoryLive),
-        Layer.provide(SqlitePersistenceMemory),
-        Layer.provideMerge(TestServerConfigLayer),
-        Layer.provideMerge(NodeServices.layer),
-      ),
-    );
-    const engine = await runtime.runPromise(Effect.service(OrchestrationEngineService));
-    const createdAt = now();
-
-    await runtime.runPromise(
-      engine.dispatch({
-        type: "project.create",
-        commandId: CommandId.makeUnsafe("cmd-project-sync-create"),
-        projectId: asProjectId("project-sync"),
-        title: "Sync Project",
-        workspaceRoot: "/tmp/project-sync",
-        defaultModelSelection: {
-          provider: "codex",
-          model: "gpt-5-codex",
-        },
-        createdAt,
-      }),
-    );
-    await runtime.runPromise(
-      engine.dispatch({
-        type: "thread.create",
-        commandId: CommandId.makeUnsafe("cmd-thread-sync-create"),
-        threadId: ThreadId.makeUnsafe("thread-sync"),
-        projectId: asProjectId("project-sync"),
-        title: "sync-before",
-        modelSelection: {
-          provider: "codex",
-          model: "gpt-5-codex",
-        },
-
-        runtimeMode: "approval-required",
-        branch: null,
-        worktreePath: null,
-        createdAt,
-      }),
-    );
-
-    await expect(
-      runtime.runPromise(
-        engine.dispatch({
-          type: "thread.meta.update",
-          commandId: CommandId.makeUnsafe("cmd-thread-meta-sync-fail"),
-          threadId: ThreadId.makeUnsafe("thread-sync"),
-          title: "sync-after-failed-projection",
-        }),
-      ),
-    ).rejects.toThrow("failed unexpectedly");
-
-    const readModelAfterFailure = await runtime.runPromise(engine.getReadModel());
-    const updatedThread = readModelAfterFailure.threads.find(
-      (thread) => thread.id === "thread-sync",
-    );
-    expect(readModelAfterFailure.snapshotSequence).toBe(3);
-    expect(updatedThread?.title).toBe("sync-after-failed-projection");
-
-    await runtime.dispose();
-  });
-
-  it("keeps projection health healthy when optional cursors do not exist yet", async () => {
-    const system = await createOrchestrationSystem();
-    const createdAt = now();
-
-    await system.run(
-      system.engine.dispatch({
-        type: "project.create",
-        commandId: CommandId.makeUnsafe("cmd-project-health-fresh"),
-        projectId: asProjectId("project-health-fresh"),
-        title: "Fresh projection health",
-        workspaceRoot: "/tmp/project-health-fresh",
-        defaultModelSelection: null,
-        createdAt,
-      }),
-    );
-
-    await expect(system.run(system.engine.getProjectionCatchUpStatus)).resolves.toMatchObject({
-      state: "healthy",
-      missingProjectors: [],
-    });
-
-    await system.dispose();
-  });
-
-  it("retries deferred projection catch-up while idle until it recovers", async () => {
-    let bootstrapCalls = 0;
-    let deferredCalls = 0;
-    let resolveRecoveryBootstrap: (() => void) | null = null;
-    const recoveryBootstrap = new Promise<void>((resolve) => {
-      resolveRecoveryBootstrap = resolve;
-    });
-
-    const flakyProjectionPipeline: OrchestrationProjectionPipelineShape = {
-      bootstrap: Effect.suspend(() => {
-        bootstrapCalls += 1;
-        if (bootstrapCalls === 2 || bootstrapCalls === 3) {
-          return Effect.fail(
-            new PersistenceSqlError({
-              operation: "test.deferredProjectionBootstrap",
-              detail: "deferred projection bootstrap failed transiently",
-            }),
-          );
-        }
-        if (bootstrapCalls === 4) {
-          resolveRecoveryBootstrap?.();
-        }
-        return Effect.void;
-      }),
-      projectMetadataEvent: () => Effect.void,
-      projectEvent: () => Effect.void,
-      projectHotEventInCurrentTransaction: () =>
-        Effect.succeed({ deferredPhaseSettled: false, afterCommit: Effect.void }),
-      projectDeferredEvent: () => {
-        deferredCalls += 1;
-        if (deferredCalls === 1) {
-          return Effect.fail(
-            new PersistenceSqlError({
-              operation: "test.deferredProjection",
-              detail: "deferred projection failed",
-            }),
-          );
-        }
-        return Effect.void;
-      },
-    };
-
-    const runtime = ManagedRuntime.make(
-      OrchestrationEngineLive.pipe(
-        Layer.provide(Layer.succeed(OrchestrationProjectionPipeline, flakyProjectionPipeline)),
-        Layer.provide(OrchestrationProjectionSnapshotQueryLive),
-        Layer.provide(OrchestrationEventStoreLive),
-        Layer.provide(OrchestrationCommandReceiptRepositoryLive),
-        Layer.provide(SqlitePersistenceMemory),
-        Layer.provideMerge(TestServerConfigLayer),
-        Layer.provideMerge(NodeServices.layer),
-      ),
-    );
-    const engine = await runtime.runPromise(Effect.service(OrchestrationEngineService));
-    const createdAt = now();
-
-    await runtime.runPromise(
-      engine.dispatch({
-        type: "project.create",
-        commandId: CommandId.makeUnsafe("cmd-project-deferred-recovery"),
-        projectId: asProjectId("project-deferred-recovery"),
-        title: "Deferred Recovery Project",
-        workspaceRoot: "/tmp/project-deferred-recovery",
-        defaultModelSelection: {
-          provider: "codex",
-          model: "gpt-5-codex",
-        },
-        createdAt,
-      }),
-    );
-    await runtime.runPromise(
-      engine.dispatch({
-        type: "thread.create",
-        commandId: CommandId.makeUnsafe("cmd-thread-deferred-recovery"),
-        threadId: ThreadId.makeUnsafe("thread-deferred-recovery"),
-        projectId: asProjectId("project-deferred-recovery"),
-        title: "deferred-recovery",
-        modelSelection: {
-          provider: "codex",
-          model: "gpt-5-codex",
-        },
-
-        runtimeMode: "approval-required",
-        branch: null,
-        worktreePath: null,
-        createdAt,
-      }),
-    );
-
-    const result = await runtime.runPromise(
-      engine.dispatch({
-        type: "thread.turn.start",
-        commandId: CommandId.makeUnsafe("cmd-turn-start-deferred-recovery"),
-        threadId: ThreadId.makeUnsafe("thread-deferred-recovery"),
-        message: {
-          messageId: asMessageId("msg-deferred-recovery"),
-          role: "user",
-          text: "hello",
-          attachments: [],
-        },
-
-        runtimeMode: "approval-required",
-        createdAt,
-      }),
-    );
-
-    await recoveryBootstrap;
-
-    expect(result.sequence).toBe(4);
-    expect(deferredCalls).toBeGreaterThanOrEqual(1);
-    expect(bootstrapCalls).toBe(4);
-    await vi.waitFor(async () => {
-      expect(await runtime.runPromise(engine.getProjectionCatchUpStatus)).toMatchObject({
-        state: "healthy",
-        inFlight: false,
-        retryAttempts: 0,
-        lastFailure: null,
-        missingProjectors: [],
-      });
-    });
-
-    await runtime.dispose();
-  });
-
-  it("restores the repair backup when rebuilt projectors do not reach the captured fence", async () => {
-    const nonAdvancingProjectionPipeline: OrchestrationProjectionPipelineShape = {
-      bootstrap: Effect.void,
-      projectMetadataEvent: () => Effect.void,
-      projectEvent: () => Effect.void,
-      projectHotEventInCurrentTransaction: () =>
-        Effect.succeed({ deferredPhaseSettled: false, afterCommit: Effect.void }),
-      projectDeferredEvent: () => Effect.void,
-    };
-    const runtime = ManagedRuntime.make(
-      OrchestrationEngineLive.pipe(
-        Layer.provide(
-          Layer.succeed(OrchestrationProjectionPipeline, nonAdvancingProjectionPipeline),
-        ),
-        Layer.provide(OrchestrationProjectionSnapshotQueryLive),
-        Layer.provide(OrchestrationEventStoreLive),
-        Layer.provide(OrchestrationCommandReceiptRepositoryLive),
-        Layer.provide(SqlitePersistenceMemory),
-        Layer.provideMerge(TestServerConfigLayer),
-        Layer.provideMerge(NodeServices.layer),
-      ),
-    );
-    const engine = await runtime.runPromise(Effect.service(OrchestrationEngineService));
-    const createdAt = now();
-
-    await runtime.runPromise(
-      engine.dispatch({
-        type: "project.create",
-        commandId: CommandId.makeUnsafe("cmd-project-repair-fence"),
-        projectId: asProjectId("project-repair-fence"),
-        title: "Repair Fence Project",
-        workspaceRoot: "/tmp/project-repair-fence",
-        defaultModelSelection: null,
-        createdAt,
-      }),
-    );
-    const beforeRepair = await runtime.runPromise(engine.getReadModel());
-
-    await expect(runtime.runPromise(engine.repairState())).rejects.toThrow(
-      "did not reach captured event fence 1",
-    );
-    await expect(runtime.runPromise(engine.getReadModel())).resolves.toEqual(beforeRepair);
-
-    await runtime.dispose();
-  });
-
-  it("coalesces concurrent projection repairs and skips an immediate repeat", async () => {
-    let bootstrapCalls = 0;
-    let repairBootstrapCalls = 0;
-    let resolveBootstrapStarted: (() => void) | undefined;
-    let releaseBootstrap: (() => void) | undefined;
-    const bootstrapStarted = new Promise<void>((resolve) => {
-      resolveBootstrapStarted = resolve;
-    });
-    const bootstrapGate = new Promise<void>((resolve) => {
-      releaseBootstrap = resolve;
-    });
-    const blockingProjectionPipeline: OrchestrationProjectionPipelineShape = {
-      bootstrap: Effect.sync(() => (bootstrapCalls += 1)).pipe(
-        Effect.flatMap((call) => {
-          if (call === 1) {
-            return Effect.void;
-          }
-          repairBootstrapCalls += 1;
-          resolveBootstrapStarted?.();
-          return Effect.promise(() => bootstrapGate);
-        }),
-      ),
-      projectMetadataEvent: () => Effect.void,
-      projectEvent: () => Effect.void,
-      projectHotEventInCurrentTransaction: () =>
-        Effect.succeed({ deferredPhaseSettled: false, afterCommit: Effect.void }),
-      projectDeferredEvent: () => Effect.void,
-    };
-    const runtime = ManagedRuntime.make(
-      OrchestrationEngineLive.pipe(
-        Layer.provide(Layer.succeed(OrchestrationProjectionPipeline, blockingProjectionPipeline)),
-        Layer.provide(OrchestrationProjectionSnapshotQueryLive),
-        Layer.provide(OrchestrationEventStoreLive),
-        Layer.provide(OrchestrationCommandReceiptRepositoryLive),
-        Layer.provide(SqlitePersistenceMemory),
-        Layer.provideMerge(TestServerConfigLayer),
-        Layer.provideMerge(NodeServices.layer),
-      ),
-    );
-    const engine = await runtime.runPromise(Effect.service(OrchestrationEngineService));
-
-    const firstRepair = runtime.runPromise(engine.repairState());
-    await bootstrapStarted;
-    const secondRepair = runtime.runPromise(engine.repairState());
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    releaseBootstrap?.();
-
-    const [firstSnapshot, secondSnapshot] = await Promise.all([firstRepair, secondRepair]);
-    expect(secondSnapshot).toEqual(firstSnapshot);
-    expect(repairBootstrapCalls).toBe(1);
-
-    await runtime.runPromise(engine.repairState());
-    expect(repairBootstrapCalls).toBe(1);
-
-    await runtime.dispose();
-  });
-
   it("retires an empty existing project when re-adding the same workspace root", async () => {
     const system = await createOrchestrationSystem();
-    const { engine } = system;
     const createdAt = now();
+    const workspaceRoot = "/tmp/readd-project";
+    try {
+      await system.run(
+        system.engine.dispatch(
+          createProjectCommand({ projectId: "project-stale", workspaceRoot, createdAt }),
+        ),
+      );
+      await expect(
+        system.run(
+          system.engine.dispatch(
+            createProjectCommand({ projectId: "project-readd", workspaceRoot, createdAt }),
+          ),
+        ),
+      ).resolves.toEqual({ sequence: 3 });
 
-    await system.run(
-      engine.dispatch({
-        type: "project.create",
-        commandId: CommandId.makeUnsafe("cmd-project-stale-create"),
-        projectId: asProjectId("project-stale"),
-        title: "Stale Project",
-        workspaceRoot: "/tmp/readd-project",
-        defaultModelSelection: {
-          provider: "codex",
-          model: "gpt-5-codex",
-        },
-        createdAt,
-      }),
-    );
-
-    await expect(
-      system.run(
-        engine.dispatch({
-          type: "project.create",
-          commandId: CommandId.makeUnsafe("cmd-project-readd-create"),
-          projectId: asProjectId("project-readd"),
-          title: "Readded Project",
-          workspaceRoot: "/tmp/readd-project",
-          defaultModelSelection: {
-            provider: "codex",
-            model: "gpt-5-codex",
-          },
-          createdAt,
-        }),
-      ),
-    ).resolves.toEqual({ sequence: 3 });
-
-    const readModel = await system.run(engine.getReadModel());
-    expect(
-      readModel.projects.find((project) => project.id === asProjectId("project-stale"))?.deletedAt,
-    ).toBe(createdAt);
-    expect(
-      readModel.projects.find((project) => project.id === asProjectId("project-readd"))?.deletedAt,
-    ).toBeNull();
-
-    await system.dispose();
+      const { projects } = await system.run(system.engine.getReadModel());
+      expect(projects.find((project) => project.id === "project-stale")?.deletedAt).toBe(createdAt);
+      expect(projects.find((project) => project.id === "project-readd")?.deletedAt).toBeNull();
+    } finally {
+      await system.dispose();
+    }
   });
 
   it("keeps rejecting a duplicate workspace root when the existing project has threads", async () => {
     const system = await createOrchestrationSystem();
-    const { engine } = system;
     const createdAt = now();
-
-    await system.run(
-      engine.dispatch({
-        type: "project.create",
-        commandId: CommandId.makeUnsafe("cmd-project-active-create"),
-        projectId: asProjectId("project-active"),
-        title: "Active Project",
-        workspaceRoot: "/tmp/active-project",
-        defaultModelSelection: {
-          provider: "codex",
-          model: "gpt-5-codex",
-        },
+    try {
+      await seedProjectAndThread(system, {
+        projectId: "project-active",
+        threadId: "thread-active",
         createdAt,
-      }),
-    );
-    await system.run(
-      engine.dispatch({
-        type: "thread.create",
-        commandId: CommandId.makeUnsafe("cmd-project-active-thread-create"),
-        threadId: ThreadId.makeUnsafe("thread-active"),
-        projectId: asProjectId("project-active"),
-        title: "active",
-        modelSelection: {
-          provider: "codex",
-          model: "gpt-5-codex",
-        },
-
-        runtimeMode: "approval-required",
-        branch: null,
-        worktreePath: null,
-        createdAt,
-      }),
-    );
-
-    await expect(
-      system.run(
-        engine.dispatch({
-          type: "project.create",
-          commandId: CommandId.makeUnsafe("cmd-project-active-duplicate-create"),
-          projectId: asProjectId("project-active-duplicate"),
-          title: "Active Duplicate",
-          workspaceRoot: "/tmp/active-project",
-          defaultModelSelection: {
-            provider: "codex",
-            model: "gpt-5-codex",
-          },
-          createdAt,
-        }),
-      ),
-    ).rejects.toThrow("already uses workspace root");
-
-    await system.dispose();
+      });
+      await expect(
+        system.run(
+          system.engine.dispatch(
+            createProjectCommand({
+              projectId: "project-active-duplicate",
+              workspaceRoot: "/tmp/project-active",
+              createdAt,
+            }),
+          ),
+        ),
+      ).rejects.toThrow("already uses workspace root");
+    } finally {
+      await system.dispose();
+    }
   });
 
   it("rejects duplicate thread creation", async () => {
     const system = await createOrchestrationSystem();
-    const { engine } = system;
     const createdAt = now();
-
-    await system.run(
-      engine.dispatch({
-        type: "project.create",
-        commandId: CommandId.makeUnsafe("cmd-project-duplicate-create"),
-        projectId: asProjectId("project-duplicate"),
-        title: "Duplicate Project",
-        workspaceRoot: "/tmp/project-duplicate",
-        defaultModelSelection: {
-          provider: "codex",
-          model: "gpt-5-codex",
-        },
-        createdAt,
-      }),
-    );
-
-    await system.run(
-      engine.dispatch({
-        type: "thread.create",
-        commandId: CommandId.makeUnsafe("cmd-thread-duplicate-1"),
-        threadId: ThreadId.makeUnsafe("thread-duplicate"),
-        projectId: asProjectId("project-duplicate"),
-        title: "duplicate",
-        modelSelection: {
-          provider: "codex",
-          model: "gpt-5-codex",
-        },
-
-        runtimeMode: "approval-required",
-        branch: null,
-        worktreePath: null,
-        createdAt,
-      }),
-    );
-
-    await expect(
-      system.run(
-        engine.dispatch({
-          type: "thread.create",
-          commandId: CommandId.makeUnsafe("cmd-thread-duplicate-2"),
-          threadId: ThreadId.makeUnsafe("thread-duplicate"),
-          projectId: asProjectId("project-duplicate"),
-          title: "duplicate",
-          modelSelection: {
-            provider: "codex",
-            model: "gpt-5-codex",
-          },
-
-          runtimeMode: "approval-required",
-          branch: null,
-          worktreePath: null,
-          createdAt,
-        }),
-      ),
-    ).rejects.toThrow("already exists");
-
-    await system.dispose();
-  });
-
-  it("keeps the worker alive when a command throws while its pipeline is built", async () => {
-    const system = await createOrchestrationSystem();
-    const createdAt = now();
-    const poisonedCommandId = CommandId.makeUnsafe("cmd-engine-poison");
-    fingerprintPoison.add(poisonedCommandId);
-
+    const thread = { projectId: "project-duplicate", threadId: "thread-duplicate", createdAt };
     try {
-      const poisonedOutcome = await system.run(
-        Effect.result(
-          system.engine.dispatch({
-            type: "project.create",
-            commandId: poisonedCommandId,
-            projectId: asProjectId("project-engine-poison"),
-            title: "Poisoned",
-            workspaceRoot: "/tmp/engine-poison",
-            defaultModelSelection: null,
-            createdAt,
-          }),
-        ).pipe(Effect.timeoutOption("5 seconds")),
-      );
-
-      expect(Option.isSome(poisonedOutcome)).toBe(true);
-      const outcome = Option.getOrThrow(poisonedOutcome);
-      expect(outcome._tag).toBe("Failure");
-      if (outcome._tag === "Failure") {
-        expect(outcome.failure).toMatchObject({ _tag: "OrchestrationCommandInternalError" });
-      }
-
+      await seedProjectAndThread(system, thread);
       await expect(
         system.run(
-          system.engine.dispatch({
-            type: "project.create",
-            commandId: CommandId.makeUnsafe("cmd-engine-poison-next"),
-            projectId: asProjectId("project-engine-poison-next"),
-            title: "After poison",
-            workspaceRoot: "/tmp/engine-poison-next",
-            defaultModelSelection: null,
-            createdAt,
-          }),
+          system.engine.dispatch(
+            createThreadCommand({ ...thread, commandId: "cmd-thread-duplicate-2" }),
+          ),
         ),
-      ).resolves.toMatchObject({ sequence: expect.any(Number) });
-
-      const drained = await system.run(
-        Effect.timeoutOption(system.engine.drain, "5 seconds").pipe(Effect.map(Option.isSome)),
-      );
-      expect(drained).toBe(true);
+      ).rejects.toThrow("already exists");
     } finally {
-      fingerprintPoison.delete(poisonedCommandId);
       await system.dispose();
     }
   });

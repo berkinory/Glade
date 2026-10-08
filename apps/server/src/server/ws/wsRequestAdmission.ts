@@ -72,7 +72,7 @@ const EXPENSIVE_READ_METHODS = new Set<string>([
   WS_METHODS.providerListAgents,
 ]);
 
-export function classifyWsRequest(method: string): WsRequestClass {
+function classifyWsRequest(method: string): WsRequestClass {
   if (method === ORCHESTRATION_WS_METHODS.settleTurnDispatch) return "settlement";
   if (method === WS_METHODS.providerListModels) return "model-discovery";
   if (CONTROL_METHODS.has(method)) return "control";

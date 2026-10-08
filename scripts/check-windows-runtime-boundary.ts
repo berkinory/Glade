@@ -77,7 +77,7 @@ for (const file of files) {
   }
   if (
     !sharedPlatform &&
-    /\b(?:parseWindowsWslUncPath|resolveWindowsWslExe|resolveWindowsComSpec)\b/.test(source)
+    /\b(?:parseWindowsWslUncPath|resolveWindowsWslExecutable|resolveWindowsComSpec)\b/.test(source)
   ) {
     report(file, "WSL and Windows shell translation belong to the shared platform boundary");
   }

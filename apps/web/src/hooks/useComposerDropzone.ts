@@ -59,7 +59,7 @@ export function shouldHandleComposerDropzoneFiles(
   return false;
 }
 
-export function shouldBlockDisabledComposerDropzoneTransfer(
+function shouldBlockDisabledComposerDropzoneTransfer(
   disabled: boolean,
   types: readonly string[],
 ): boolean {

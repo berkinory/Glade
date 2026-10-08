@@ -72,11 +72,7 @@ describe("respondToRequest", () => {
     writeMessage.mockClear();
     emitEvent.mockClear();
 
-    await (
-      manager as unknown as {
-        handleServerRequest: (context: unknown, request: Record<string, unknown>) => Promise<void>;
-      }
-    ).handleServerRequest(context, {
+    await handleServerRequestForTest(manager, context, {
       jsonrpc: "2.0",
       id: 99,
       method: "item/fileChange/requestApproval",
@@ -157,77 +153,102 @@ describe("respondToRequest", () => {
     );
   });
 
-  it("does not sweep a pending permission-profile request into always allow", async () => {
-    const { manager, context, writeMessage } = createRequestHarness("approval-required", true);
+  it.each([
+    {
+      kind: "permission-profile",
+      request: {
+        id: 101,
+        method: "item/permissions/requestApproval",
+        params: {
+          turnId: "turn_1",
+          itemId: "item_permissions",
+          permissions: { network: { enabled: true } },
+        },
+      },
+    },
+    {
+      kind: "MCP tool",
+      request: {
+        id: 101,
+        method: "mcpServer/elicitation/request",
+        params: {
+          turnId: "turn_2",
+          mode: "form",
+          message: "Approve this tool call",
+          _meta: {
+            codex_approval_kind: "mcp_tool_call",
+            persist: ["session"],
+            tool_name: "computer_launch_app",
+            tool_params_display: [{ name: "app", value: "kcalc" }],
+          },
+        },
+      },
+    },
+  ])(
+    "leaves a pending $kind request alone when a command is accepted for the session",
+    async ({ request }) => {
+      const { manager, context, writeMessage } = createRequestHarness("approval-required", true);
+      await handleServerRequestForTest(manager, context, request);
+      const pending = [...context.pendingApprovals.values()].find(
+        (approval) => String(approval.method) === request.method,
+      );
+      if (!pending) throw new Error(`Expected the ${request.method} request to remain pending.`);
+
+      await manager.respondToRequest(
+        ThreadId.makeUnsafe("thread_1"),
+        ApprovalRequestId.makeUnsafe("req-approval-1"),
+        "acceptForSession",
+      );
+
+      expect(context.pendingApprovals.has(pending.requestId)).toBe(true);
+      expect(writeMessage).not.toHaveBeenCalledWith(context, expect.objectContaining({ id: 101 }));
+    },
+  );
+
+  it("responds to permission-profile approvals with the requested native permissions", async () => {
+    const { manager, context, emitEvent, writeMessage } = createCollabNotificationHarness();
     const permissions = {
       network: { enabled: true },
+      fileSystem: { read: ["/tmp/example"] },
     };
 
     await handleServerRequestForTest(manager, context, {
-      id: 101,
+      id: 45,
       method: "item/permissions/requestApproval",
       params: {
-        turnId: "turn_1",
-        itemId: "item_permissions",
+        threadId: "provider_parent",
+        turnId: "turn_permissions",
+        itemId: "call_permissions",
+        reason: "Needs package metadata",
         permissions,
       },
     });
-    const permissionRequestId = Array.from(context.pendingApprovals.keys()).find(
-      (requestId) => requestId !== "req-approval-1",
-    );
-    if (permissionRequestId === undefined) {
-      throw new Error("Expected the permission-profile request to remain pending.");
-    }
 
-    await manager.respondToRequest(
-      ThreadId.makeUnsafe("thread_1"),
-      ApprovalRequestId.makeUnsafe("req-approval-1"),
-      "acceptForSession",
-    );
-
-    expect(context.pendingApprovals.has(permissionRequestId)).toBe(true);
-    expect(writeMessage).not.toHaveBeenCalledWith(
-      context,
+    const pendingRequest = Array.from(context.pendingApprovals.values())[0];
+    expect(pendingRequest).toEqual(
       expect.objectContaining({
-        id: 101,
+        method: "item/permissions/requestApproval",
+        requestKind: "permissions",
+        requestedPermissions: permissions,
       }),
     );
-  });
-
-  it("leaves pending MCP tool approvals alone when a command is accepted for the session", async () => {
-    const { manager, context, writeMessage } = createRequestHarness("approval-required", true);
-
-    await handleServerRequestForTest(manager, context, {
-      id: 100,
-      method: "mcpServer/elicitation/request",
-      params: {
-        turnId: "turn_2",
-        mode: "form",
-        message: "Approve this tool call",
-        _meta: {
-          codex_approval_kind: "mcp_tool_call",
-          persist: ["session"],
-          tool_name: "computer_launch_app",
-          tool_params_display: [{ name: "app", value: "kcalc" }],
-        },
-      },
-    });
-
-    const mcpRequest = [...context.pendingApprovals.values()].find(
-      (request) => String(request.method) === "mcpServer/elicitation/request",
-    );
-    if (!mcpRequest) {
-      throw new Error("Expected the MCP tool approval to remain pending.");
-    }
-
     await manager.respondToRequest(
       ThreadId.makeUnsafe("thread_1"),
-      ApprovalRequestId.makeUnsafe("req-approval-1"),
+      pendingRequest.requestId,
       "acceptForSession",
     );
 
-    expect(context.pendingApprovals.has(mcpRequest.requestId)).toBe(true);
-    expect(writeMessage).not.toHaveBeenCalledWith(context, expect.objectContaining({ id: 100 }));
+    expect(writeMessage).toHaveBeenCalledWith(context, {
+      id: 45,
+      result: { permissions, scope: "session" },
+    });
+    expect(context.sessionApprovalOverride).toBeUndefined();
+    expect(emitEvent).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        method: "item/requestApproval/decision",
+        requestKind: "permissions",
+      }),
+    );
   });
 });
 
@@ -248,28 +269,20 @@ describe("MCP tool call elicitation approvals", () => {
     },
   });
 
-  function gladeApprovalHarness() {
-    const harness = createCollabNotificationHarness();
-    const context = Object.assign(harness.context, {
-      gatewaySessionLease: { release: vi.fn() } as { release: () => void } | undefined,
-    });
-    context.session.runtimeMode = "approval-required";
-    context.session.activeTurnId = "turn_mcp";
-    return { ...harness, context };
-  }
-
   describe("in Full Access", () => {
     afterEach(() => {
       vi.unstubAllGlobals();
     });
 
     function fullAccessHarness(onCatalogRead: () => void = () => {}) {
-      const harness = gladeApprovalHarness();
-      harness.context.session.runtimeMode = "full-access";
-      harness.context.gatewaySessionLease = {
-        release: vi.fn(),
-        connection: { url: "http://127.0.0.1:1/mcp", bearerToken: "lease-token" },
-      } as { release: () => void };
+      const harness = createCollabNotificationHarness();
+      const context = Object.assign(harness.context, {
+        gatewaySessionLease: {
+          release: vi.fn(),
+          connection: { url: "http://127.0.0.1:1/mcp", bearerToken: "lease-token" },
+        } as { release: () => void } | undefined,
+      });
+      context.session.activeTurnId = "turn_mcp";
       const fetchMock = vi.fn(async (_url: unknown, init?: RequestInit) => {
         onCatalogRead();
         const { id } = JSON.parse(String(init?.body)) as { id: string };
@@ -281,7 +294,7 @@ describe("MCP tool call elicitation approvals", () => {
         return Response.json({ jsonrpc: "2.0", id, result: { tools } });
       });
       vi.stubGlobal("fetch", fetchMock);
-      return { ...harness, fetchMock };
+      return { ...harness, context, fetchMock };
     }
 
     const sendMessageParams = () => {

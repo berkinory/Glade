@@ -1,6 +1,9 @@
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { type ProviderModelOptions } from "@glade/contracts/provider/model";
+import { afterEach, beforeEach, vi } from "vitest";
+
+import { partializeComposerDraftStoreState } from "./composerDraftPersistence.serialization";
 import { useComposerDraftStore } from "./composerDraftStore";
 import type {
   ComposerFileAttachment,
@@ -142,4 +145,51 @@ export function modelSelection(
 
 export function providerModelOptions(options: ProviderModelOptions): ProviderModelOptions {
   return options;
+}
+
+type ComposerDraftStoreState = ReturnType<typeof useComposerDraftStore.getState>;
+
+export function persistedAttachmentFor(image: ComposerImageAttachment) {
+  return {
+    id: image.id,
+    name: image.name,
+    mimeType: image.mimeType,
+    sizeBytes: image.sizeBytes,
+    dataUrl: "data:image/png;base64,aGk=",
+  };
+}
+
+// Registers per-test hooks, so call it inside a describe block or at module scope.
+export function stubRevokeObjectUrl(): ReturnType<typeof vi.fn<(url: string) => void>> {
+  const revoke = vi.fn<(url: string) => void>();
+  let original: typeof URL.revokeObjectURL;
+  beforeEach(() => {
+    revoke.mockReset();
+    original = URL.revokeObjectURL;
+    URL.revokeObjectURL = revoke;
+  });
+  afterEach(() => {
+    URL.revokeObjectURL = original;
+  });
+  return revoke;
+}
+
+export function persistComposerDraftState(): {
+  draftsByThreadId?: Record<string, Record<string, unknown>>;
+} {
+  return partializeComposerDraftStoreState(useComposerDraftStore.getState()) as {
+    draftsByThreadId?: Record<string, Record<string, unknown>>;
+  };
+}
+
+export function mergePersistedComposerDraftState(persisted: unknown): ComposerDraftStoreState {
+  const persistApi = useComposerDraftStore.persist as unknown as {
+    getOptions: () => {
+      merge: (
+        persistedState: unknown,
+        currentState: ComposerDraftStoreState,
+      ) => ComposerDraftStoreState;
+    };
+  };
+  return persistApi.getOptions().merge(persisted, useComposerDraftStore.getInitialState());
 }

@@ -176,10 +176,10 @@ const setup = Effect.fnUntraced(function* (
       ? (JSON.parse(first.text) as { error?: { code?: string } }).error?.code
       : undefined;
   };
-  const grant = (app: string, scope: ComputerAccessScope) =>
+  const grant = (app: string, scope: ComputerAccessScope, windowId: number | null = null) =>
     access.grants.grant(THREAD, {
       app,
-      windowId: null,
+      windowId,
       windowTitle: null,
       scope,
       grantedAt: "2026-10-07T00:00:00.000Z",
@@ -223,15 +223,8 @@ describe("computer access gate", () => {
 
   it.effect("passes a granted window and only within the granted scope", () =>
     Effect.gen(function* () {
-      const { access, calls, call, errorCode } = yield* setup();
-      access.grants.grant(THREAD, {
-        app: "glade (dev)",
-        windowId: null,
-        windowTitle: null,
-        scope: "read",
-        grantedAt: "2026-10-07T00:00:00.000Z",
-        autoGrantedIn: null,
-      });
+      const { calls, call, errorCode, grant } = yield* setup();
+      grant("glade (dev)", "read");
       const state = yield* call("computer_window_state", WINDOW);
       assert.isUndefined(state.isError);
       assert.include(calls, "get_window_state");
@@ -242,15 +235,8 @@ describe("computer access gate", () => {
 
   it.effect("Stop cancels the in-flight call and the rest of that turn", () =>
     Effect.gen(function* () {
-      const { access, calls, call, errorCode } = yield* setup();
-      access.grants.grant(THREAD, {
-        app: "Glade (Dev)",
-        windowId: WINDOW.window_id,
-        windowTitle: null,
-        scope: "full",
-        grantedAt: "2026-10-07T00:00:00.000Z",
-        autoGrantedIn: null,
-      });
+      const { access, calls, call, errorCode, grant } = yield* setup();
+      grant("Glade (Dev)", "full", WINDOW.window_id);
       yield* call("computer_window_state", WINDOW);
       const click = yield* call("computer_left_click", { ...WINDOW, element_index: 2 }).pipe(
         Effect.forkChild,
@@ -413,21 +399,34 @@ describe("computer access gate", () => {
     result.content.flatMap((part) => (part.type === "text" ? [part.text] : [])).join("\n");
 
   it.effect.each([
-    ["full-access asks before reading text the agent did not write", "full-access", null, true],
-    ["auto asks before reading text the agent did not write", "auto", null, true],
+    [
+      "full-access asks before reading text the agent did not write",
+      "full-access",
+      null,
+      false,
+      true,
+    ],
+    ["auto asks before reading text the agent did not write", "auto", null, false, true],
     [
       "approval-required asks before reading text the agent did not write",
       "approval-required",
       null,
+      false,
       true,
     ],
-    ["the agent's own text is read without asking", "approval-required", "draft", false],
-    ["full-access asks once the user copied over the agent's text", "full-access", "draft", true],
-  ] as const)("%s", ([name, mode, written, asks]) =>
+    ["the agent's own text is read without asking", "approval-required", "draft", false, false],
+    [
+      "full-access asks once the user copied over the agent's text",
+      "full-access",
+      "draft",
+      true,
+      true,
+    ],
+  ] as const)("%s", ([, mode, written, userCopied, asks]) =>
     Effect.gen(function* () {
       const { call, clipboard, cardCount } = yield* setup("confirmed", mode);
       if (written !== null) yield* call("computer_clipboard_write", { text: written });
-      if (name.includes("user copied")) clipboard.text = "user's saved password";
+      if (userCopied) clipboard.text = "user's saved password";
       const read = yield* call("computer_clipboard_read", {}).pipe(Effect.forkChild);
       while (!read.pollUnsafe() && cardCount() === 0) yield* Effect.yieldNow;
       assert.strictEqual(cardCount(), asks ? 1 : 0);

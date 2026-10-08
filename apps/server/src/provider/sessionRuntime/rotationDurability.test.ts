@@ -66,7 +66,7 @@ rotationRetry.layer("ProviderServiceLive credential rotation event durability", 
       });
       if (provider.hasLiveRuntimeTasks) {
         yield* waitUntilEffect(
-          () => provider.hasLiveRuntimeTasks!({ threadId }),
+          () => provider.hasLiveRuntimeTasks({ threadId }),
           500,
           20,
           "background task registration before persistence retry",

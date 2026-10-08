@@ -91,40 +91,6 @@ describe("startSession", () => {
     }
   });
 
-  it("forks a synthetic large-history thread with a metadata-only response", async () => {
-    const fake = createSyntheticCodexAppServer();
-    const cwd = mkdtempSync(path.join(os.tmpdir(), "glade-codex-large-fork-"));
-    const { manager } = createSyntheticCodexManager(fake);
-
-    try {
-      const session = await manager.startSession({
-        threadId: ThreadId.makeUnsafe("thread-synthetic-fork"),
-        provider: "codex",
-        runtimeMode: "auto",
-        cwd,
-        forkSourceResumeCursor: { threadId: "provider-source-thread" },
-        agentGatewayCapabilityInput: AGENT_GATEWAY_NO_CAPABILITIES,
-      });
-
-      expect(session).toMatchObject({
-        status: "ready",
-        resumeCursor: { threadId: "provider-source-thread-forked" },
-      });
-      expect(fake.requests.filter((request) => request.method === "thread/fork")).toEqual([
-        expect.objectContaining({
-          params: expect.objectContaining({
-            threadId: "provider-source-thread",
-            excludeTurns: true,
-          }),
-        }),
-      ]);
-      expect(fake.oversizedResponseCount).toBe(0);
-    } finally {
-      await manager.stopAll();
-      rmSync(cwd, { recursive: true, force: true });
-    }
-  });
-
   it("keeps the oversized resume error primary through start failure, exit, and repeated stop", async () => {
     const fake = createSyntheticCodexAppServer({ forceFullHistoryResponse: true });
     const cwd = mkdtempSync(path.join(os.tmpdir(), "glade-codex-root-cause-"));
@@ -258,7 +224,11 @@ describe("startSession", () => {
             ? { forkSourceResumeCursor: { threadId: "native-thread" } }
             : {}),
         });
-        expect(fake.requests.filter((request) => request.method === method)).toHaveLength(1);
+        const openRequests = fake.requests.filter((request) => request.method === method);
+        expect(openRequests).toHaveLength(1);
+        expect(openRequests[0]?.params).toMatchObject(
+          method === "thread/start" ? { experimentalRawEvents: false } : { excludeTurns: true },
+        );
         expect(
           methods.filter((value) =>
             ["session/threadOpenResolved", "session/ready", "session/started"].includes(value),

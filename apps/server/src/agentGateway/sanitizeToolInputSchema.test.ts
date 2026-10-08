@@ -1,6 +1,8 @@
 import { assert, describe, it } from "@effect/vitest";
 
-import { FALLBACK_OBJECT_DESCRIPTION, sanitizeToolInputSchema } from "./sanitizeToolInputSchema.ts";
+import { sanitizeToolInputSchema } from "./sanitizeToolInputSchema.ts";
+
+const FALLBACK_OBJECT_DESCRIPTION = "Free-form JSON object (depth 20, 256 KiB max).";
 
 const cloneJson = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
 

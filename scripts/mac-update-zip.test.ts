@@ -2,7 +2,6 @@ import { assert, describe, it } from "@effect/vitest";
 
 import {
   assertMacUpdateManifestZipMetadata,
-  buildMacUpdateZipSymlinkEntries,
   isZipInfoSymlink,
   resolveMacUpdateManifestFileNames,
   resolveSingleMacUpdateZipFileName,
@@ -29,16 +28,6 @@ describe("mac-update-zip", () => {
       ),
       false,
     );
-  });
-
-  it("builds Electron framework symlink paths for the top-level app bundle", () => {
-    assert.deepStrictEqual(buildMacUpdateZipSymlinkEntries("Glade.app"), [
-      "Glade.app/Contents/Frameworks/Electron Framework.framework/Electron Framework",
-      "Glade.app/Contents/Frameworks/Electron Framework.framework/Helpers",
-      "Glade.app/Contents/Frameworks/Electron Framework.framework/Libraries",
-      "Glade.app/Contents/Frameworks/Electron Framework.framework/Resources",
-      "Glade.app/Contents/Frameworks/Electron Framework.framework/Versions/Current",
-    ]);
   });
 
   it("resolves exactly one top-level .app from update zip entries", () => {
@@ -93,59 +82,7 @@ describe("mac-update-zip", () => {
     );
   });
 
-  it("allows a missing manifest only for an explicitly scripted-update artifact", () => {
-    const artifacts = ["Glade-Cua-0.8.4-arm64.zip"];
-    assert.deepStrictEqual(resolveMacUpdateManifestFileNames(artifacts, { required: false }), []);
-    assert.throws(() => resolveMacUpdateManifestFileNames(artifacts, { required: true }));
-    assert.throws(() => resolveMacUpdateManifestFileNames(artifacts));
-  });
-
-  it("still returns present manifests for validation when a feed is optional", () => {
-    assert.deepStrictEqual(
-      resolveMacUpdateManifestFileNames(["Glade-Cua-0.8.4-arm64.zip", "latest-mac.yml"], {
-        required: false,
-      }),
-      ["latest-mac.yml"],
-    );
-  });
-
-  it("updates the macOS zip file entry and matching top-level sha", () => {
-    const manifest = `version: 0.1.4
-files:
-  - url: Glade-0.1.4-arm64.zip
-    sha512: oldzip
-    size: 100
-  - url: Glade-0.1.4-arm64.dmg
-    sha512: olddmg
-    size: 200
-path: 'Glade-0.1.4-arm64.zip'
-sha512: oldzip
-releaseDate: '2026-06-07T12:00:00.000Z'
-`;
-
-    const updated = updateMacUpdateManifestZipEntry(manifest, "Glade-0.1.4-arm64.zip", {
-      sha512: "newzip",
-      size: 12345,
-    });
-
-    assert.equal(
-      updated,
-      `version: 0.1.4
-files:
-  - url: Glade-0.1.4-arm64.zip
-    sha512: newzip
-    size: 12345
-  - url: Glade-0.1.4-arm64.dmg
-    sha512: olddmg
-    size: 200
-path: 'Glade-0.1.4-arm64.zip'
-sha512: newzip
-releaseDate: '2026-06-07T12:00:00.000Z'
-`,
-    );
-  });
-
-  it("drops the stale blockMapSize from the repacked zip entry but keeps the dmg blockMapSize", () => {
+  it("updates the zip entry and top-level sha, dropping only the zip's stale blockMapSize", () => {
     const manifest = `version: 0.1.4
 files:
   - url: Glade-0.1.4-arm64.zip

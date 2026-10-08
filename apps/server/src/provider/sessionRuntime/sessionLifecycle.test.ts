@@ -1,11 +1,7 @@
 import { Effect, Option, Fiber, Layer } from "effect";
 import { ProviderService } from "../Services/ProviderService.ts";
 import { ProviderSessionDirectory } from "../Services/ProviderSessionDirectory.ts";
-import {
-  ProviderValidationError,
-  ProviderAdapterSessionNotFoundError,
-  ProviderUnsupportedError,
-} from "../core/Errors.ts";
+import { ProviderValidationError, ProviderAdapterSessionNotFoundError } from "../core/Errors.ts";
 import { assert } from "@effect/vitest";
 import { ProviderSessionStartInput } from "@glade/contracts/provider/provider";
 import { assertFailure } from "@effect/vitest/utils";
@@ -28,6 +24,7 @@ import {
   waitUntil,
   makeProviderServiceLayer,
   makeFakeCodexAdapter,
+  singleProviderRegistry,
 } from "./providerServiceTestFixtures";
 
 routing.layer("Provider service sessionLifecycle", (it) => {
@@ -200,7 +197,6 @@ routing.layer("Provider service sessionLifecycle", (it) => {
         // Rotate the runtime generation (as a stop does), keep a live adapter session around (the zombie),
         // and rewind the persisted binding to the old generation — a turn send must not fast-path into that
         // session, whose events the stale-generation gate would reject.
-        assert.equal(typeof provider.stopRuntimeSession, "function");
         if (!provider.stopRuntimeSession) assert.fail("Expected stopRuntimeSession");
         yield* provider.stopRuntimeSession({ threadId });
         yield* directory.upsert({
@@ -370,13 +366,7 @@ routing.layer("Provider service sessionLifecycle", (it) => {
       );
 
       const firstClaude = makeFakeCodexAdapter("claudeAgent");
-      const firstRegistry: typeof ProviderAdapterRegistry.Service = {
-        getByProvider: (provider) =>
-          provider === "claudeAgent"
-            ? Effect.succeed(firstClaude.adapter)
-            : Effect.fail(new ProviderUnsupportedError({ provider })),
-        listProviders: () => Effect.succeed(["claudeAgent"]),
-      };
+      const firstRegistry = singleProviderRegistry(firstClaude.adapter);
       const firstDirectoryLayer = ProviderSessionDirectoryLive.pipe(
         Layer.provide(runtimeRepositoryLayer),
       );
@@ -401,13 +391,7 @@ routing.layer("Provider service sessionLifecycle", (it) => {
       }).pipe(Effect.provide(firstProviderLayer));
 
       const secondClaude = makeFakeCodexAdapter("claudeAgent");
-      const secondRegistry: typeof ProviderAdapterRegistry.Service = {
-        getByProvider: (provider) =>
-          provider === "claudeAgent"
-            ? Effect.succeed(secondClaude.adapter)
-            : Effect.fail(new ProviderUnsupportedError({ provider })),
-        listProviders: () => Effect.succeed(["claudeAgent"]),
-      };
+      const secondRegistry = singleProviderRegistry(secondClaude.adapter);
       const secondDirectoryLayer = ProviderSessionDirectoryLive.pipe(
         Layer.provide(runtimeRepositoryLayer),
       );
@@ -430,19 +414,10 @@ routing.layer("Provider service sessionLifecycle", (it) => {
 
       assert.equal(secondClaude.startSession.mock.calls.length, 1);
       const resumedStartInput = secondClaude.startSession.mock.calls[0]?.[0];
-      assert.equal(typeof resumedStartInput === "object" && resumedStartInput !== null, true);
-      if (resumedStartInput && typeof resumedStartInput === "object") {
-        const startPayload = resumedStartInput as {
-          provider?: string;
-          cwd?: string;
-          resumeCursor?: unknown;
-          threadId?: string;
-        };
-        assert.equal(startPayload.provider, "claudeAgent");
-        assert.equal(startPayload.cwd, "/tmp/project-claude-start");
-        assert.deepEqual(startPayload.resumeCursor, initial.resumeCursor);
-        assert.equal(startPayload.threadId, initial.threadId);
-      }
+      assert.equal(resumedStartInput?.provider, "claudeAgent");
+      assert.equal(resumedStartInput?.cwd, "/tmp/project-claude-start");
+      assert.deepEqual(resumedStartInput?.resumeCursor, initial.resumeCursor);
+      assert.equal(resumedStartInput?.threadId, initial.threadId);
 
       fs.rmSync(tempDir, { recursive: true, force: true });
     }).pipe(Effect.provide(NodeServices.layer)),

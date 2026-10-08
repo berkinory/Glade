@@ -5,13 +5,20 @@ import * as Path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import {
-  buildWindowsBatchCommandArgs,
-  isWindowsBatchCommand,
-  prepareWindowsSafeProcess,
-  resolveWindowsCommandPath,
-  resolveWindowsComSpec,
-} from "./windowsProcess";
+import { prepareWindowsSafeProcess } from "./windowsProcess";
+
+const COM_SPEC = "C:\\Windows\\System32\\cmd.exe";
+
+const prepareOnWindows = (
+  command: string,
+  args: ReadonlyArray<string>,
+  input: { readonly cwd?: string; readonly env?: NodeJS.ProcessEnv } = {},
+) =>
+  prepareWindowsSafeProcess(command, args, {
+    platform: "win32",
+    cwd: input.cwd,
+    env: { ComSpec: COM_SPEC, SystemRoot: "C:\\Windows", ...input.env },
+  });
 
 describe("windowsProcess", () => {
   let root: string;
@@ -32,18 +39,6 @@ describe("windowsProcess", () => {
     ).toEqual({ command: "codex", args: ["app-server"], shell: false });
   });
 
-  it("resolves PATH shims and skips extensionless npm scripts", () => {
-    const commandPath = Path.join(root, "codex.CMD");
-    writeFileSync(Path.join(root, "codex"), "#!/bin/sh\n");
-    writeFileSync(commandPath, "@echo off\r\n");
-    expect(
-      resolveWindowsCommandPath("codex", {
-        platform: "win32",
-        env: { PATH: root, PATHEXT: ".COM;.EXE;.BAT;.CMD" },
-      }),
-    ).toBe(commandPath);
-  });
-
   it("does not search the working directory unless it is on PATH", () => {
     const workingDirectory = Path.join(root, "working");
     const pathDirectory = Path.join(root, "bin");
@@ -53,54 +48,24 @@ describe("windowsProcess", () => {
     const commandPath = Path.join(pathDirectory, "codex.CMD");
     writeFileSync(commandPath, "@echo off\r\n");
     expect(
-      resolveWindowsCommandPath("codex", {
-        platform: "win32",
+      prepareOnWindows("codex", [], {
         cwd: workingDirectory,
         env: { PATH: pathDirectory, PATHEXT: ".CMD" },
-      }),
-    ).toBe(commandPath);
+      }).args,
+    ).toEqual(["/d", "/s", "/v:off", "/c", `call "${commandPath}"`]);
   });
 
-  it("resolves extensionless qualified shims through the same filesystem lookup", () => {
-    const command = Path.join(root, "codex");
-    writeFileSync(command, "#!/bin/sh\n");
-    writeFileSync(`${command}.CMD`, "@echo off\r\n");
-    expect(
-      resolveWindowsCommandPath(command, {
-        platform: "win32",
-        env: { PATH: "", PATHEXT: ".CMD" },
-      }),
-    ).toBe(`${command}.CMD`);
-  });
-
-  it("keeps explicit path-like Windows executables without resolving", () => {
-    expect(
-      resolveWindowsCommandPath("C:\\Users\\test\\AppData\\Roaming\\npm\\codex.cmd", {
-        platform: "win32",
-        cwd: "C:\\projects\\synara",
-        env: { SystemRoot: "C:\\Windows" },
-      }),
-    ).toBe("C:\\Users\\test\\AppData\\Roaming\\npm\\codex.cmd");
-    expect(
-      resolveWindowsCommandPath("C:\\Program Files\\Codex\\codex.exe", {
-        platform: "win32",
-        cwd: "C:\\projects\\synara",
-        env: { SystemRoot: "C:\\Windows" },
-      }),
-    ).toBe("C:\\Program Files\\Codex\\codex.exe");
-  });
-
-  it("wraps filesystem-resolved .cmd shims through cmd.exe without shell true", () => {
+  it("wraps filesystem-resolved .cmd shims through cmd.exe, skipping extensionless npm scripts", () => {
     const commandPath = Path.join(root, "codex.CMD");
+    writeFileSync(Path.join(root, "codex"), "#!/bin/sh\n");
     writeFileSync(commandPath, "@echo off\r\n");
     for (const command of ["codex", Path.join(root, "codex")]) {
       expect(
-        prepareWindowsSafeProcess(command, ["app-server"], {
-          platform: "win32",
-          env: { PATH: root, PATHEXT: ".CMD", ComSpec: "C:\\Windows\\System32\\cmd.exe" },
+        prepareOnWindows(command, ["app-server"], {
+          env: { PATH: root, PATHEXT: ".COM;.EXE;.BAT;.CMD" },
         }),
       ).toEqual({
-        command: "C:\\Windows\\System32\\cmd.exe",
+        command: COM_SPEC,
         args: ["/d", "/s", "/v:off", "/c", `call "${commandPath}" "app-server"`],
         shell: false,
         windowsHide: true,
@@ -109,92 +74,66 @@ describe("windowsProcess", () => {
     }
   });
 
-  it("wraps a configured .cmd Codex path without truncating it", () => {
-    const customPath = "C:\\Users\\Test User\\AppData\\Roaming\\npm\\codex.cmd";
-
-    expect(
-      prepareWindowsSafeProcess(customPath, ["app-server"], {
-        platform: "win32",
-        cwd: "C:\\projects\\synara",
-        env: { ComSpec: "C:\\Windows\\System32\\cmd.exe", SystemRoot: "C:\\Windows" },
-      }),
-    ).toEqual({
-      command: "C:\\Windows\\System32\\cmd.exe",
+  it.each([
+    {
+      name: "quoted command and argument tokens",
+      command: "C:\\Users\\Test User\\npm\\tool.cmd",
+      args: ["path with spaces", "flag=value"],
+      line: 'call "C:\\Users\\Test User\\npm\\tool.cmd" "path with spaces" "flag=value"',
+    },
+    {
+      name: "literal quotes in Codex config arguments",
+      command: "C:\\tools\\codex.cmd",
       args: [
-        "/d",
-        "/s",
-        "/v:off",
-        "/c",
-        'call "C:\\Users\\Test User\\AppData\\Roaming\\npm\\codex.cmd" "app-server"',
-      ],
-      shell: false,
-      windowsHide: true,
-      windowsVerbatimArguments: true,
-    });
-  });
-
-  it("encodes one cmd.exe command line with quoted command and argument tokens", () => {
-    expect(
-      buildWindowsBatchCommandArgs("C:\\Users\\Test User\\npm\\tool.cmd", [
-        "path with spaces",
-        "flag=value",
-      ]),
-    ).toEqual([
-      "/d",
-      "/s",
-      "/v:off",
-      "/c",
-      'call "C:\\Users\\Test User\\npm\\tool.cmd" "path with spaces" "flag=value"',
-    ]);
-  });
-
-  it("preserves literal quotes in existing Codex config arguments", () => {
-    expect(
-      buildWindowsBatchCommandArgs("C:\\tools\\codex.cmd", [
         "exec",
         "--config",
         'approval_policy="never"',
         "--config",
         'model_reasoning_effort="high"',
-      ]),
-    ).toEqual([
-      "/d",
-      "/s",
-      "/v:off",
-      "/c",
-      'call "C:\\tools\\codex.cmd" "exec" "--config" "approval_policy=""never""" "--config" "model_reasoning_effort=""high"""',
-    ]);
+      ],
+      line: 'call "C:\\tools\\codex.cmd" "exec" "--config" "approval_policy=""never""" "--config" "model_reasoning_effort=""high"""',
+    },
+    {
+      name: "a path with spaces and parentheses",
+      command: "C:\\Program Files (x86)\\Tool\\tool.cmd",
+      args: ["--version"],
+      line: 'call "C:\\Program Files (x86)\\Tool\\tool.cmd" "--version"',
+    },
+    {
+      name: "a path with parentheses but no spaces",
+      command: "C:\\tools(x86)\\codex.cmd",
+      args: ["--version"],
+      line: 'call "C:\\tools(x86)\\codex.cmd" "--version"',
+    },
+  ])("encodes one cmd.exe command line for $name", ({ command, args, line }) => {
+    expect(prepareOnWindows(command, args)).toMatchObject({
+      command: COM_SPEC,
+      args: ["/d", "/s", "/v:off", "/c", line],
+      windowsVerbatimArguments: true,
+    });
   });
 
-  it("rejects batch tokens with cmd.exe control characters", () => {
-    expect(() => buildWindowsBatchCommandArgs("C:\\tools\\bad%path\\codex.cmd", [])).toThrow(
+  it.each([
+    [
+      "a command with %",
+      "C:\\tools\\bad%path\\codex.cmd",
+      [],
       /Cannot safely execute Windows batch command/,
-    );
-    expect(() => buildWindowsBatchCommandArgs("C:\\tools\\codex.cmd", ["one&two"])).toThrow(
+    ],
+    [
+      "an argument with &",
+      "C:\\tools\\codex.cmd",
+      ["one&two"],
       /Cannot safely execute Windows batch argument/,
-    );
-  });
-
-  it("allows batch paths with spaces and parentheses", () => {
-    expect(
-      buildWindowsBatchCommandArgs("C:\\Program Files (x86)\\Tool\\tool.cmd", ["--version"]),
-    ).toEqual([
-      "/d",
-      "/s",
-      "/v:off",
-      "/c",
-      'call "C:\\Program Files (x86)\\Tool\\tool.cmd" "--version"',
-    ]);
-  });
-
-  it("quotes batch paths containing parentheses even without spaces", () => {
-    expect(buildWindowsBatchCommandArgs("C:\\tools(x86)\\codex.cmd", ["--version"])).toEqual([
-      "/d",
-      "/s",
-      "/v:off",
-      "/c",
-      'call "C:\\tools(x86)\\codex.cmd" "--version"',
-    ]);
+    ],
+    [
+      "an argument with a line break",
+      "C:\\tools\\codex.cmd",
+      ["line\nbreak"],
+      /Cannot safely execute Windows batch argument/,
+    ],
+  ])("rejects %s", (_label, command, args, error) => {
+    expect(() => prepareOnWindows(command, args)).toThrow(error);
   });
 
   it.runIf(process.platform === "win32")(
@@ -237,12 +176,6 @@ describe("windowsProcess", () => {
     },
   );
 
-  it("rejects batch tokens with line breaks", () => {
-    expect(() => buildWindowsBatchCommandArgs("C:\\tools\\codex.cmd", ["line\nbreak"])).toThrow(
-      /Cannot safely execute Windows batch argument/,
-    );
-  });
-
   it("keeps resolved .exe commands direct", () => {
     const commandPath = Path.join(root, "codex.EXE");
     writeFileSync(commandPath, "native");
@@ -278,18 +211,5 @@ describe("windowsProcess", () => {
       shell: false,
       windowsHide: true,
     });
-  });
-
-  it("resolves ComSpec from environment before falling back", () => {
-    expect(resolveWindowsComSpec({ ComSpec: "D:\\cmd.exe" })).toBe("D:\\cmd.exe");
-    expect(resolveWindowsComSpec({ SystemRoot: "D:\\Windows" })).toBe(
-      "D:\\Windows\\System32\\cmd.exe",
-    );
-  });
-
-  it("detects batch shims by extension", () => {
-    expect(isWindowsBatchCommand("codex.cmd")).toBe(true);
-    expect(isWindowsBatchCommand("tool.bat")).toBe(true);
-    expect(isWindowsBatchCommand("tool.exe")).toBe(false);
   });
 });

@@ -50,9 +50,6 @@ it.layer(makeDirectoryLayer(SqlitePersistenceMemory))("ProviderSessionDirectoryL
         threadId: initialThreadId,
         provider: "codex",
       });
-      if (Option.isSome(resolvedBinding)) {
-        assert.equal(resolvedBinding.value.threadId, initialThreadId);
-      }
 
       const nextThreadId = ThreadId.makeUnsafe("thread-2");
 
@@ -182,7 +179,6 @@ it.layer(makeDirectoryLayer(SqlitePersistenceMemory))("ProviderSessionDirectoryL
 
       yield* Effect.gen(function* () {
         const directory = yield* ProviderSessionDirectory;
-        const sql = yield* SqlClient.SqlClient;
         const provider = yield* directory.getProvider(threadId);
         assert.equal(provider, "codex");
 
@@ -191,22 +187,12 @@ it.layer(makeDirectoryLayer(SqlitePersistenceMemory))("ProviderSessionDirectoryL
           threadId,
           provider: "codex",
         });
-        if (Option.isSome(resolvedBinding)) {
-          assert.equal(resolvedBinding.value.threadId, threadId);
-        }
-
-        const legacyTableRows = yield* sql<{ readonly name: string }>`
-          SELECT name
-          FROM sqlite_master
-          WHERE type = 'table' AND name = 'provider_sessions'
-        `;
-        assert.equal(legacyTableRows.length, 0);
       }).pipe(Effect.provide(directoryLayer));
 
       fs.rmSync(tempDir, { recursive: true, force: true });
     }));
 
-  it("skips legacy bindings with unknown provider names when listing all bindings", () =>
+  it("treats a binding with an unknown provider name as no binding", () =>
     Effect.gen(function* () {
       const directory = yield* ProviderSessionDirectory;
       const runtimeRepository = yield* ProviderSessionRuntimeRepository;
@@ -235,29 +221,7 @@ it.layer(makeDirectoryLayer(SqlitePersistenceMemory))("ProviderSessionDirectoryL
         bindings.map((binding) => binding.threadId),
         [codexThreadId],
       );
-    }));
-
-  it("treats a binding with an unknown provider name as no binding", () =>
-    Effect.gen(function* () {
-      const directory = yield* ProviderSessionDirectory;
-      const runtimeRepository = yield* ProviderSessionRuntimeRepository;
-
-      const legacyThreadId = ThreadId.makeUnsafe("thread-unknown-provider-binding");
-      yield* runtimeRepository.upsert({
-        threadId: legacyThreadId,
-        providerName: "kilo",
-        adapterKey: "kilo",
-        runtimeMode: "full-access",
-        status: "running",
-        lifecycleGeneration: "legacy-test-kilo",
-        lastSeenAt: new Date().toISOString(),
-        resumeCursor: null,
-        runtimePayload: null,
-      });
-
-      const binding = yield* directory.getBinding(legacyThreadId);
-      assert.isTrue(Option.isNone(binding));
-
+      assert.isTrue(Option.isNone(yield* directory.getBinding(legacyThreadId)));
       const providerResult = yield* directory.getProvider(legacyThreadId).pipe(Effect.result);
       assertFailure(
         providerResult,

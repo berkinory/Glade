@@ -56,73 +56,61 @@ beforeEach(() => {
 });
 
 describe("releaseOrphanedWorktreeAfterArchive", () => {
-  it("does nothing while the setting is off", async () => {
+  it.each([
+    {
+      name: "does nothing while the setting is off",
+      threads: () => [archivedThread()],
+      enabled: false,
+      outcome: "skipped",
+      removedPath: null,
+    },
+    {
+      name: "asks the server to validate a worktree another thread may still use",
+      threads: () => [
+        archivedThread(),
+        makeThread({ id: SIBLING_ID, envMode: "worktree", worktreePath: WORKTREE_PATH }),
+      ],
+      enabled: true,
+      outcome: "removed",
+      removedPath: WORKTREE_PATH,
+    },
+    {
+      name: "asks the server to validate an associated worktree after moving local",
+      threads: () => [
+        archivedThread({ worktreePath: null, associatedWorktreePath: WORKTREE_PATH }),
+      ],
+      enabled: true,
+      outcome: "removed",
+      removedPath: WORKTREE_PATH,
+    },
+    {
+      name: "skips a thread that was restored before cleanup",
+      threads: () => [archivedThread({ archivedAt: null })],
+      enabled: true,
+      outcome: "skipped",
+      removedPath: null,
+    },
+  ])("$name", async ({ threads, enabled, outcome, removedPath }) => {
+    harness.state = makeStateWithThreads(threads());
     const removeWorktree = vi.fn();
 
     await expect(
       releaseOrphanedWorktreeAfterArchive({
         threadId: ARCHIVED_ID,
         archiveSequence: ARCHIVE_SEQUENCE,
-        enabled: false,
+        enabled,
         removeWorktree,
       }),
-    ).resolves.toBe("skipped");
+    ).resolves.toBe(outcome);
 
-    expect(removeWorktree).not.toHaveBeenCalled();
-    expect(harness.toast).not.toHaveBeenCalled();
-  });
-
-  it("asks the server to validate a worktree another thread may still use", async () => {
-    harness.state = makeStateWithThreads([
-      archivedThread(),
-      makeThread({ id: SIBLING_ID, envMode: "worktree", worktreePath: WORKTREE_PATH }),
-    ]);
-    const removeWorktree = vi.fn();
-
-    await expect(
-      releaseOrphanedWorktreeAfterArchive({
-        threadId: ARCHIVED_ID,
-        archiveSequence: ARCHIVE_SEQUENCE,
-        enabled: true,
-        removeWorktree,
-      }),
-    ).resolves.toBe("removed");
-
-    expect(removeWorktree).toHaveBeenCalledOnce();
-  });
-
-  it("asks the server to validate an associated worktree after moving local", async () => {
-    harness.state = makeStateWithThreads([
-      archivedThread({ worktreePath: null, associatedWorktreePath: WORKTREE_PATH }),
-    ]);
-    const removeWorktree = vi.fn();
-
-    await expect(
-      releaseOrphanedWorktreeAfterArchive({
-        threadId: ARCHIVED_ID,
-        archiveSequence: ARCHIVE_SEQUENCE,
-        enabled: true,
-        removeWorktree,
-      }),
-    ).resolves.toBe("removed");
-
-    expect(removeWorktree).toHaveBeenCalledWith(expect.objectContaining({ path: WORKTREE_PATH }));
-  });
-
-  it("skips a thread that was restored before cleanup", async () => {
-    harness.state = makeStateWithThreads([archivedThread({ archivedAt: null })]);
-    const removeWorktree = vi.fn();
-
-    await expect(
-      releaseOrphanedWorktreeAfterArchive({
-        threadId: ARCHIVED_ID,
-        archiveSequence: ARCHIVE_SEQUENCE,
-        enabled: true,
-        removeWorktree,
-      }),
-    ).resolves.toBe("skipped");
-
-    expect(removeWorktree).not.toHaveBeenCalled();
+    if (removedPath) {
+      expect(removeWorktree).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ path: removedPath }),
+      );
+    } else {
+      expect(removeWorktree).not.toHaveBeenCalled();
+      expect(harness.toast).not.toHaveBeenCalled();
+    }
   });
 
   it("removes an orphaned worktree without forcing it", async () => {

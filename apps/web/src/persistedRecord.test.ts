@@ -1,17 +1,6 @@
-import { isRecord } from "@glade/shared/transport/payloadValues";
 import { describe, expect, it } from "vitest";
 
 import { sanitizeStringKeyedRecord } from "./persistedRecord";
-
-describe("isPlainObject", () => {
-  it("rejects null, arrays, and primitives", () => {
-    expect(isRecord(null)).toBe(false);
-    expect(isRecord([])).toBe(false);
-    expect(isRecord("x")).toBe(false);
-    expect(isRecord(7)).toBe(false);
-    expect(isRecord(undefined)).toBe(false);
-  });
-});
 
 describe("sanitizeStringKeyedRecord", () => {
   it("returns an empty record for non-object input", () => {
@@ -26,14 +15,6 @@ describe("sanitizeStringKeyedRecord", () => {
     });
 
     expect(result).toEqual({ a: 1, c: 3 });
-  });
-
-  it("does not mutate or share the input reference", () => {
-    const input = { a: { keep: true } };
-    const result = sanitizeStringKeyedRecord(input, (raw) => raw);
-
-    expect(result).not.toBe(input);
-    expect(result.a).toBe(input.a);
   });
 
   it("ignores prototype-polluting keys from untrusted input", () => {

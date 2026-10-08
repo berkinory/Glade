@@ -45,7 +45,6 @@ function makeReadModel(input: {
           provider: "codex",
           model: "gpt-5-codex",
         },
-
         runtimeMode: "full-access",
         branch: null,
         worktreePath: null,
@@ -56,7 +55,6 @@ function makeReadModel(input: {
         messages: [],
         session: input.session === undefined ? null : input.session,
         activities: [],
-
         checkpoints: [],
         deletedAt: null,
       },
@@ -118,7 +116,6 @@ describe("checkpoint revert decider", () => {
             text: "start work",
             attachments: [],
           },
-
           runtimeMode: "full-access",
           createdAt: NOW,
         },
@@ -186,7 +183,6 @@ describe("checkpoint revert decider", () => {
               text: "race the revert",
               attachments: [],
             },
-
             runtimeMode: "full-access",
             createdAt: NOW,
           },
@@ -249,7 +245,6 @@ describe("checkpoint revert decider", () => {
               text: "must remain blocked",
               attachments: [],
             },
-
             runtimeMode: "full-access",
             createdAt: NOW,
           },
@@ -290,7 +285,6 @@ describe("checkpoint revert decider", () => {
             threadId: THREAD_ID,
             messageId: MessageId.makeUnsafe("message-during-revert"),
             text: "edited",
-
             runtimeMode: "full-access",
             createdAt: NOW,
           },
@@ -362,7 +356,6 @@ describe("checkpoint revert decider", () => {
             text: "original",
             attachments: [],
           },
-
           runtimeMode: "full-access",
           createdAt: NOW,
         },
@@ -394,7 +387,6 @@ describe("checkpoint revert decider", () => {
           threadId: THREAD_ID,
           messageId: MessageId.makeUnsafe("message-to-edit"),
           text: "edited",
-
           runtimeMode: "full-access",
           createdAt: NOW,
         },

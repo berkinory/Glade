@@ -1,9 +1,8 @@
 import { ApprovalRequestId, MessageId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { QueuedComposerTurn } from "../composerDraftDomain";
 import { useComposerDraftStore } from "../composerDraftStore";
-import { resetComposerDraftStore } from "../composerDraftStoreTestFixtures";
+import { makeQueuedTurn, resetComposerDraftStore } from "../composerDraftStoreTestFixtures";
 import { useStore } from "../store";
 import { initialState } from "../storeState";
 import { makeActivity, makeState, makeThread } from "../storeTestFixtures";
@@ -15,35 +14,6 @@ let stopDrain: () => void = () => {};
 
 const THREAD_ID = ThreadId.makeUnsafe("thread-1");
 const LIVE_TURN_ID = TurnId.makeUnsafe("turn-live");
-
-function makeQueuedChatTurn(id: string): QueuedComposerTurn {
-  return {
-    id,
-    kind: "chat",
-    createdAt: "2026-03-13T12:00:00.000Z",
-    previewText: `queued ${id}`,
-    prompt: `queued ${id}`,
-    images: [],
-    files: [],
-    assistantSelections: [],
-    terminalContexts: [],
-    fileComments: [],
-    pastedTexts: [],
-    pullRequestContexts: [],
-    skills: [],
-    mentions: [],
-    selectedProvider: "codex",
-    selectedModel: "gpt-5",
-    selectedPromptEffort: null,
-    modelSelection: {
-      provider: "codex",
-      model: "gpt-5",
-    },
-    runtimeMode: "full-access",
-
-    envMode: "local",
-  };
-}
 
 function makeSession(status: ThreadSession["status"], activeTurnId?: TurnId): ThreadSession {
   return {
@@ -91,9 +61,7 @@ describe("queued composer drain watcher", () => {
 
   it("blocks drain while disconnected, connecting, or send-busy", async () => {
     seedThread(makeThread({ id: THREAD_ID, session: makeSession("closed") }));
-    useComposerDraftStore
-      .getState()
-      .enqueueQueuedTurn(THREAD_ID, makeQueuedChatTurn("blocked-state"));
+    useComposerDraftStore.getState().enqueueQueuedTurn(THREAD_ID, makeQueuedTurn("blocked-state"));
     await flushDrain();
     expect(dispatch).not.toHaveBeenCalled();
     seedThread(makeThread({ id: THREAD_ID, session: makeSession("connecting") }));
@@ -118,7 +86,7 @@ describe("queued composer drain watcher", () => {
     });
     useComposerDraftStore
       .getState()
-      .enqueueQueuedTurn(THREAD_ID, makeQueuedChatTurn("blocked-interaction"));
+      .enqueueQueuedTurn(THREAD_ID, makeQueuedTurn("blocked-interaction"));
     await flushDrain();
     expect(dispatch).not.toHaveBeenCalled();
     seedThread({
@@ -128,8 +96,27 @@ describe("queued composer drain watcher", () => {
         makeActivity({
           id: "pending-approval",
           kind: "approval.requested",
-          payload: { requestId: "req-blocked-approval", requestKind: "command" },
+          payload: {
+            requestId: "req-blocked-approval",
+            lifecycleGeneration: "generation-drain",
+            requestKind: "command",
+          },
         }),
+      ],
+      pendingInteractions: [
+        {
+          interactionKind: "approval",
+          requestId: ApprovalRequestId.makeUnsafe("req-blocked-approval"),
+          threadId: THREAD_ID,
+          turnId: null,
+          lifecycleGeneration: "generation-drain",
+          status: "pending",
+          decision: null,
+          responseCommandId: null,
+          responseRequestedAt: null,
+          createdAt: "2026-02-13T00:00:01.000Z",
+          resolvedAt: null,
+        },
       ],
     });
     drain.clearQueuedComposerSteerGate(THREAD_ID);
@@ -167,7 +154,7 @@ describe("queued composer drain watcher", () => {
     seedThread(makeThread({ id: THREAD_ID, session: makeSession("ready") }));
     useComposerDraftStore
       .getState()
-      .enqueueQueuedTurn(THREAD_ID, makeQueuedChatTurn("queued-owner-stop"));
+      .enqueueQueuedTurn(THREAD_ID, makeQueuedTurn("queued-owner-stop"));
     stopDrain();
     await flushDrain();
     expect(dispatch).not.toHaveBeenCalled();
@@ -189,7 +176,7 @@ describe("queued composer drain watcher", () => {
         session: makeSession("running", LIVE_TURN_ID),
       }),
     );
-    useComposerDraftStore.getState().enqueueQueuedTurn(THREAD_ID, makeQueuedChatTurn("queued-1"));
+    useComposerDraftStore.getState().enqueueQueuedTurn(THREAD_ID, makeQueuedTurn("queued-1"));
 
     await flushDrain();
     expect(dispatch).not.toHaveBeenCalled();
@@ -223,8 +210,8 @@ describe("queued composer drain watcher", () => {
         session: makeSession("ready"),
       }),
     );
-    useComposerDraftStore.getState().enqueueQueuedTurn(THREAD_ID, makeQueuedChatTurn("queued-1"));
-    useComposerDraftStore.getState().enqueueQueuedTurn(THREAD_ID, makeQueuedChatTurn("queued-2"));
+    useComposerDraftStore.getState().enqueueQueuedTurn(THREAD_ID, makeQueuedTurn("queued-1"));
+    useComposerDraftStore.getState().enqueueQueuedTurn(THREAD_ID, makeQueuedTurn("queued-2"));
 
     await vi.waitFor(() => {
       expect(dispatch).toHaveBeenCalledTimes(1);
@@ -270,9 +257,7 @@ describe("queued composer drain watcher", () => {
         session: makeSession("ready"),
       }),
     );
-    useComposerDraftStore
-      .getState()
-      .enqueueQueuedTurn(THREAD_ID, makeQueuedChatTurn("queued-failing"));
+    useComposerDraftStore.getState().enqueueQueuedTurn(THREAD_ID, makeQueuedTurn("queued-failing"));
 
     await flushDrain();
     expect(dispatch).toHaveBeenCalledTimes(1);
@@ -299,7 +284,7 @@ describe("queued composer drain watcher", () => {
     drain.claimQueuedComposerAutoDispatch(THREAD_ID);
     useComposerDraftStore
       .getState()
-      .enqueueQueuedTurn(THREAD_ID, makeQueuedChatTurn("queued-claimed-failing"));
+      .enqueueQueuedTurn(THREAD_ID, makeQueuedTurn("queued-claimed-failing"));
 
     drain.recordQueuedComposerAutoDispatchFailure(THREAD_ID, "queued-claimed-failing");
     expect(drain.getQueuedComposerAutoDispatchRetryDelay(THREAD_ID, "queued-claimed-failing")).toBe(
@@ -361,7 +346,7 @@ describe("queued composer drain watcher", () => {
     );
     useComposerDraftStore
       .getState()
-      .enqueueQueuedTurn(THREAD_ID, makeQueuedChatTurn("queued-streaming"));
+      .enqueueQueuedTurn(THREAD_ID, makeQueuedTurn("queued-streaming"));
     await flushDrain();
     expect(dispatch).not.toHaveBeenCalled();
     now.mockClear();
@@ -387,9 +372,7 @@ describe("queued composer drain watcher", () => {
       }),
     );
     drain.claimQueuedComposerAutoDispatch(THREAD_ID);
-    useComposerDraftStore
-      .getState()
-      .enqueueQueuedTurn(THREAD_ID, makeQueuedChatTurn("queued-open"));
+    useComposerDraftStore.getState().enqueueQueuedTurn(THREAD_ID, makeQueuedTurn("queued-open"));
 
     await flushDrain();
     expect(dispatch).not.toHaveBeenCalled();
@@ -405,50 +388,6 @@ describe("queued composer drain watcher", () => {
     expect(useComposerDraftStore.getState().draftsByThreadId[THREAD_ID]?.queuedTurns ?? []).toEqual(
       [],
     );
-  });
-
-  it("does not drain while an approval is pending", async () => {
-    seedThread(
-      makeThread({
-        id: THREAD_ID,
-        session: makeSession("ready"),
-        hasPendingApprovals: true,
-        activities: [
-          makeActivity({
-            id: "approval-requested",
-            kind: "approval.requested",
-            summary: "Command approval requested",
-            tone: "approval",
-            payload: {
-              requestId: "req-drain-approval",
-              lifecycleGeneration: "generation-drain",
-              requestKind: "command",
-            },
-          }),
-        ],
-        pendingInteractions: [
-          {
-            interactionKind: "approval",
-            requestId: ApprovalRequestId.makeUnsafe("req-drain-approval"),
-            threadId: THREAD_ID,
-            turnId: null,
-            lifecycleGeneration: "generation-drain",
-            status: "pending",
-            decision: null,
-            responseCommandId: null,
-            responseRequestedAt: null,
-            createdAt: "2026-02-13T00:00:01.000Z",
-            resolvedAt: null,
-          },
-        ],
-      }),
-    );
-    useComposerDraftStore
-      .getState()
-      .enqueueQueuedTurn(THREAD_ID, makeQueuedChatTurn("queued-approval"));
-
-    await flushDrain();
-    expect(dispatch).not.toHaveBeenCalled();
   });
 
   it("does not let ChatView send the same queue head the watcher already started", async () => {
@@ -467,7 +406,7 @@ describe("queued composer drain watcher", () => {
     );
     useComposerDraftStore
       .getState()
-      .enqueueQueuedTurn(THREAD_ID, makeQueuedChatTurn("queued-overlap-focus"));
+      .enqueueQueuedTurn(THREAD_ID, makeQueuedTurn("queued-overlap-focus"));
 
     await vi.waitFor(() => {
       expect(dispatch).toHaveBeenCalledTimes(1);
@@ -495,7 +434,7 @@ describe("queued composer drain watcher", () => {
     drain.claimQueuedComposerAutoDispatch(THREAD_ID);
     useComposerDraftStore
       .getState()
-      .enqueueQueuedTurn(THREAD_ID, makeQueuedChatTurn("queued-overlap-unmount"));
+      .enqueueQueuedTurn(THREAD_ID, makeQueuedTurn("queued-overlap-unmount"));
     expect(drain.tryBeginQueuedComposerAutoDispatch(THREAD_ID)).toBe(true);
 
     drain.releaseQueuedComposerAutoDispatch(THREAD_ID);
@@ -523,7 +462,7 @@ describe("queued composer drain watcher", () => {
     drain.armQueuedComposerSteerGate(THREAD_ID, armedGate);
     useComposerDraftStore
       .getState()
-      .enqueueQueuedTurn(THREAD_ID, makeQueuedChatTurn("queued-steer-remount"));
+      .enqueueQueuedTurn(THREAD_ID, makeQueuedTurn("queued-steer-remount"));
 
     drain.claimQueuedComposerAutoDispatch(THREAD_ID);
     drain.releaseQueuedComposerAutoDispatch(THREAD_ID);

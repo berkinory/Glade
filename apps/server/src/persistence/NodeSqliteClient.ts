@@ -1,7 +1,6 @@
 import { DatabaseSync, type StatementSync } from "node:sqlite";
 
 import * as Cache from "effect/Cache";
-import * as Config from "effect/Config";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
@@ -37,11 +36,6 @@ export interface SqliteClientConfig {
   readonly transformResultNames?: ((str: string) => string) | undefined;
   readonly transformQueryNames?: ((str: string) => string) | undefined;
 }
-
-export interface SqliteMemoryClientConfig extends Omit<
-  SqliteClientConfig,
-  "filename" | "readonly"
-> {}
 
 // Verify that the current Node.js version includes the `node:sqlite` APIs used by
 // `NodeSqliteClient` — specifically `StatementSync.columns()` (added in Node 22.16.0 / 23.11.0).
@@ -208,47 +202,9 @@ const make = (
       }),
   );
 
-const makeMemory = (
-  config: SqliteMemoryClientConfig = {},
-): Effect.Effect<Client.SqlClient, never, Scope.Scope | Reactivity.Reactivity> =>
-  makeWithDatabase(
-    {
-      ...config,
-      filename: ":memory:",
-      readonly: false,
-    },
-    () => {
-      const database = new DatabaseSync(":memory:", {
-        allowExtension: config.allowExtension ?? false,
-      });
-      return database;
-    },
-  );
-
-export const layerConfig = (
-  config: Config.Wrap<SqliteClientConfig>,
-): Layer.Layer<Client.SqlClient, Config.ConfigError> =>
-  Layer.effectServices(
-    Config.unwrap(config)
-      .asEffect()
-      .pipe(
-        Effect.flatMap(make),
-        Effect.map((client) =>
-          ServiceMap.make(SqliteClient, client).pipe(ServiceMap.add(Client.SqlClient, client)),
-        ),
-      ),
-  ).pipe(Layer.provide(Reactivity.layer));
-
 export const layer = (config: SqliteClientConfig): Layer.Layer<Client.SqlClient> =>
   Layer.effectServices(
     Effect.map(make(config), (client) =>
-      ServiceMap.make(SqliteClient, client).pipe(ServiceMap.add(Client.SqlClient, client)),
-    ),
-  ).pipe(Layer.provide(Reactivity.layer));
-
-export const layerMemory = (config: SqliteMemoryClientConfig = {}): Layer.Layer<Client.SqlClient> =>
-  Layer.effectServices(
-    Effect.map(makeMemory(config), (client) =>
       ServiceMap.make(SqliteClient, client).pipe(ServiceMap.add(Client.SqlClient, client)),
     ),
   ).pipe(Layer.provide(Reactivity.layer));

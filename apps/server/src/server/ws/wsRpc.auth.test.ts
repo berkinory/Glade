@@ -1,140 +1,48 @@
 import { assert, it } from "@effect/vitest";
-import { Effect } from "effect";
+import { Effect, Exit } from "effect";
 import { vi } from "vitest";
 
 import { AuthError } from "../../auth/Services/ServerAuth";
 import { authenticateRpcWebSocketUpgrade } from "./wsRpc";
 
-it.effect("rejects an unauthorized websocket upgrade on a non-loopback bind", () =>
+it.effect.each([
+  {
+    name: "a non-loopback bind ignores a matching legacy query token",
+    config: { host: "192.168.1.50", authToken: "secret", publicUrl: undefined },
+    delegates: true,
+  },
+  {
+    name: "a loopback desktop bind accepts the legacy query token",
+    config: { host: "127.0.0.1", authToken: "secret", publicUrl: undefined },
+    delegates: false,
+  },
+  {
+    name: "an HTTPS public origin disables the loopback legacy query token",
+    config: {
+      host: "127.0.0.1",
+      authToken: "secret",
+      publicUrl: new URL("https://glade.example.test/"),
+    },
+    delegates: true,
+  },
+])("websocket upgrade auth: $name", ({ config, delegates }) =>
   Effect.gen(function* () {
     const authenticateWebSocketUpgrade = vi.fn(() =>
-      Effect.fail(
-        new AuthError({
-          message: "Authentication required.",
-          status: 401,
-        }),
-      ),
+      Effect.fail(new AuthError({ message: "Authentication required.", status: 401 })),
     );
 
-    const error = yield* authenticateRpcWebSocketUpgrade({
-      config: { host: "0.0.0.0", authToken: "remote-secret", publicUrl: undefined },
-      legacyToken: null,
+    const exit = yield* authenticateRpcWebSocketUpgrade({
+      config,
+      legacyToken: "secret",
       request: {
         headers: {},
         cookies: {},
-        url: new URL("http://192.168.1.50:3773/ws"),
+        url: new URL(`http://${config.host}:3773/ws?token=secret`),
       },
       serverAuth: { authenticateWebSocketUpgrade },
-    }).pipe(Effect.flip);
+    }).pipe(Effect.exit);
 
-    assert.equal(error.status, 401);
-    assert.equal(authenticateWebSocketUpgrade.mock.calls.length, 1);
+    assert.equal(authenticateWebSocketUpgrade.mock.calls.length, delegates ? 1 : 0);
+    assert.isTrue(delegates ? Exit.isFailure(exit) : Exit.isSuccess(exit) && exit.value === null);
   }),
-);
-
-it.effect("does not accept a legacy query token on a non-loopback bind", () =>
-  Effect.gen(function* () {
-    const authenticateWebSocketUpgrade = vi.fn(() =>
-      Effect.fail(
-        new AuthError({
-          message: "Authentication required.",
-          status: 401,
-        }),
-      ),
-    );
-
-    const error = yield* authenticateRpcWebSocketUpgrade({
-      config: { host: "192.168.1.50", authToken: "remote-secret", publicUrl: undefined },
-      legacyToken: "remote-secret",
-      request: {
-        headers: {},
-        cookies: {},
-        url: new URL("http://192.168.1.50:3773/ws?token=remote-secret"),
-      },
-      serverAuth: { authenticateWebSocketUpgrade },
-    }).pipe(Effect.flip);
-
-    assert.equal(error.status, 401);
-    assert.equal(authenticateWebSocketUpgrade.mock.calls.length, 1);
-  }),
-);
-
-it.effect("accepts an authenticated session on a non-loopback bind", () =>
-  Effect.gen(function* () {
-    const authenticatedSession = {
-      sessionId: "remote-session" as never,
-      subject: "owner-bootstrap",
-      method: "browser-session-cookie" as const,
-      role: "owner" as const,
-    };
-    const authenticateWebSocketUpgrade = vi.fn(() => Effect.succeed(authenticatedSession));
-
-    const session = yield* authenticateRpcWebSocketUpgrade({
-      config: { host: "0.0.0.0", authToken: "remote-secret", publicUrl: undefined },
-      legacyToken: "remote-secret",
-      request: {
-        headers: {},
-        cookies: { "glade-session": "paired-session-credential" },
-        url: new URL("http://192.168.1.50:3773/ws?token=remote-secret"),
-      },
-      serverAuth: { authenticateWebSocketUpgrade },
-    });
-
-    assert.equal(session, authenticatedSession);
-    assert.equal(authenticateWebSocketUpgrade.mock.calls.length, 1);
-  }),
-);
-
-it.effect("preserves the legacy query token for loopback desktop sessions", () =>
-  Effect.gen(function* () {
-    const authenticateWebSocketUpgrade = vi.fn(() =>
-      Effect.fail(new AuthError({ message: "Unexpected authentication call.", status: 500 })),
-    );
-
-    const session = yield* authenticateRpcWebSocketUpgrade({
-      config: { host: "127.0.0.1", authToken: "desktop-secret", publicUrl: undefined },
-      legacyToken: "desktop-secret",
-      request: {
-        headers: {},
-        cookies: {},
-        url: new URL("http://127.0.0.1:3773/ws?token=desktop-secret"),
-      },
-      serverAuth: { authenticateWebSocketUpgrade },
-    });
-
-    assert.equal(session, null);
-    assert.equal(authenticateWebSocketUpgrade.mock.calls.length, 0);
-  }),
-);
-
-it.effect(
-  "disables the legacy loopback query token when an HTTPS public origin is configured",
-  () =>
-    Effect.gen(function* () {
-      const authenticatedSession = {
-        sessionId: "proxy-session" as never,
-        subject: "owner-bootstrap",
-        method: "browser-session-cookie" as const,
-        role: "owner" as const,
-      };
-      const authenticateWebSocketUpgrade = vi.fn(() => Effect.succeed(authenticatedSession));
-
-      const session = yield* authenticateRpcWebSocketUpgrade({
-        config: {
-          host: "127.0.0.1",
-          authToken: "proxy-secret",
-          publicUrl: new URL("https://glade.example.test/"),
-        },
-        legacyToken: "proxy-secret",
-        request: {
-          headers: {},
-          cookies: { "glade-session": "paired-session-credential" },
-          url: new URL("http://127.0.0.1:3773/ws?token=proxy-secret"),
-        },
-        serverAuth: { authenticateWebSocketUpgrade },
-      });
-
-      assert.equal(session, authenticatedSession);
-      assert.equal(authenticateWebSocketUpgrade.mock.calls.length, 1);
-    }),
 );

@@ -22,10 +22,6 @@ const composerAttachmentPersistenceQueueByThreadId = new Map<string, Promise<voi
 
 const composerAttachmentSyncGenerationByKey = new Map<string, number>();
 
-export function pendingComposerAttachmentSyncGenerationCount(): number {
-  return composerAttachmentSyncGenerationByKey.size;
-}
-
 function enqueueComposerAttachmentPersistence<Result>(
   threadId: ThreadId,
   operation: () => Promise<Result> | Result,

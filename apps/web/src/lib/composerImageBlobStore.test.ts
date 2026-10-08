@@ -2,49 +2,52 @@ import { describe, expect, it } from "vitest";
 
 import { selectOrphanedComposerImageBlobKeys } from "./composerImageBlobStore";
 
+const hourMs = 60 * 60 * 1000;
+const nowMs = 10 * hourMs;
+
 describe("selectOrphanedComposerImageBlobKeys", () => {
-  const hourMs = 60 * 60 * 1000;
-  const nowMs = 10 * hourMs;
-
-  it("keeps referenced blobs regardless of age", () => {
-    const keys = selectOrphanedComposerImageBlobKeys(
-      [
-        { key: "thread-1:image-1", updatedAt: 0 },
-        { key: "thread-1:image-2", updatedAt: 0 },
+  it.each([
+    {
+      name: "keeps referenced blobs regardless of age",
+      records: [
+        { key: "a", updatedAt: 0 },
+        { key: "b", updatedAt: 0 },
       ],
-      { isReferenced: (key) => key === "thread-1:image-1", nowMs },
-    );
-
-    expect(keys).toEqual(["thread-1:image-2"]);
-  });
-
-  it("keeps unreferenced blobs written within the minimum age window", () => {
-    const keys = selectOrphanedComposerImageBlobKeys(
-      [
-        { key: "thread-1:image-1", updatedAt: nowMs - hourMs / 2 },
-        { key: "thread-1:image-2", updatedAt: nowMs - 2 * hourMs },
+      isReferenced: (key: string) => key === "a",
+      minAgeMs: undefined,
+      expected: ["b"],
+    },
+    {
+      name: "keeps unreferenced blobs written within the default minimum age",
+      records: [
+        { key: "a", updatedAt: nowMs - hourMs / 2 },
+        { key: "b", updatedAt: nowMs - 2 * hourMs },
       ],
-      { isReferenced: () => false, nowMs },
-    );
-
-    expect(keys).toEqual(["thread-1:image-2"]);
-  });
-
-  it("honors an explicit minimum age", () => {
-    const keys = selectOrphanedComposerImageBlobKeys(
-      [{ key: "thread-1:image-1", updatedAt: nowMs - hourMs / 2 }],
-      { isReferenced: () => false, nowMs, minAgeMs: hourMs / 4 },
-    );
-
-    expect(keys).toEqual(["thread-1:image-1"]);
-  });
-
-  it("treats records without a write time as old", () => {
-    const keys = selectOrphanedComposerImageBlobKeys([{ key: "thread-1:image-1" }], {
       isReferenced: () => false,
-      nowMs,
-    });
-
-    expect(keys).toEqual(["thread-1:image-1"]);
+      minAgeMs: undefined,
+      expected: ["b"],
+    },
+    {
+      name: "honors an explicit minimum age",
+      records: [{ key: "a", updatedAt: nowMs - hourMs / 2 }],
+      isReferenced: () => false,
+      minAgeMs: hourMs / 4,
+      expected: ["a"],
+    },
+    {
+      name: "treats records without a write time as old",
+      records: [{ key: "a" }],
+      isReferenced: () => false,
+      minAgeMs: undefined,
+      expected: ["a"],
+    },
+  ])("$name", ({ records, isReferenced, minAgeMs, expected }) => {
+    expect(
+      selectOrphanedComposerImageBlobKeys(records, {
+        isReferenced,
+        nowMs,
+        ...(minAgeMs === undefined ? {} : { minAgeMs }),
+      }),
+    ).toEqual(expected);
   });
 });

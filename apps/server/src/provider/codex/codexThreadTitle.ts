@@ -23,7 +23,6 @@ export async function generateCodexThreadTitle(
   signal: AbortSignal,
 ): Promise<string> {
   const requests = new JsonRpcStdioRequestRegistry();
-  requests.processStarted();
   let nativeThreadId: string | undefined;
   let turnId: string | undefined;
   let result = "";

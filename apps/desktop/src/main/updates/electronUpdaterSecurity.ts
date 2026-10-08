@@ -5,8 +5,6 @@ import { matchesDistinguishedName, parseDistinguishedName } from "./windowsCerti
 import { execProcessFile, spawnProcessSync } from "@glade/shared/platform/processRuntime";
 import { resolveWindowsPowerShellExecutable } from "@glade/shared/platform/platformEnvironment";
 
-export { parseDistinguishedName } from "./windowsCertificate";
-
 type Logger = {
   info?(message: string): void;
   warn?(message: string): void;
@@ -56,11 +54,11 @@ interface SignatureVerifierOptions {
   readonly env?: NodeJS.ProcessEnv;
 }
 
-export function buildPowerShellExecutablePath(env: NodeJS.ProcessEnv = process.env): string {
+function buildPowerShellExecutablePath(env: NodeJS.ProcessEnv = process.env): string {
   return resolveWindowsPowerShellExecutable(env);
 }
 
-export function buildPowerShellExecArgs(command: string): string[] {
+function buildPowerShellExecArgs(command: string): string[] {
   const utf8Preamble =
     "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; " +
     "$OutputEncoding = [System.Text.Encoding]::UTF8;";

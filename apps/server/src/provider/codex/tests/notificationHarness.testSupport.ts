@@ -1,9 +1,11 @@
-import { vi } from "vitest";
+import { type Mock, type MockInstance, vi } from "vitest";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { CodexAppServerManager } from "../codexAppServerManager";
 
-export function createCollabNotificationHarness() {
-  const manager = new CodexAppServerManager();
+export function createCollabNotificationHarness(
+  managerOptions?: ConstructorParameters<typeof CodexAppServerManager>[1],
+) {
+  const manager = new CodexAppServerManager(undefined, managerOptions);
   const context = {
     session: {
       provider: "codex",
@@ -83,4 +85,53 @@ export async function handleServerRequestForTest(
       handleServerRequest: (context: unknown, request: Record<string, unknown>) => Promise<void>;
     }
   ).handleServerRequest(context, request);
+}
+
+// Routes provider reads through the manager's private session map and transport boundary.
+export function spyOnSessionRequests(
+  manager: CodexAppServerManager,
+  context: { readonly session: { readonly threadId: ThreadId } },
+): {
+  readonly sessions: Map<ThreadId, unknown>;
+  readonly sendRequest: MockInstance<(...args: unknown[]) => Promise<unknown>>;
+} {
+  const boundary = manager as unknown as {
+    sessions: Map<ThreadId, unknown>;
+    sendRequest: (...args: unknown[]) => Promise<unknown>;
+  };
+  boundary.sessions.set(context.session.threadId, context);
+  return { sessions: boundary.sessions, sendRequest: vi.spyOn(boundary, "sendRequest") };
+}
+
+interface FakeGatewayLease {
+  readonly connection: { readonly url: string; readonly bearerToken: string };
+  readonly cancelTurn: Mock<(turnId: string) => Promise<void>>;
+  readonly retireTurn: Mock<(turnId: string) => Promise<void>>;
+  readonly release: Mock<() => void>;
+  readonly registerNativeToolCall?: (call: unknown) => void;
+}
+
+export function attachFakeGatewayLease(
+  context: object,
+  overrides: {
+    readonly cancelTurn?: (turnId: string) => Promise<void>;
+    readonly retireTurn?: (turnId: string) => Promise<void>;
+    readonly registerNativeToolCall?: (call: unknown) => void;
+  } = {},
+): FakeGatewayLease {
+  const lease: FakeGatewayLease = {
+    connection: { url: "http://127.0.0.1:48123/mcp", bearerToken: "gateway-token" },
+    cancelTurn: vi.fn<(turnId: string) => Promise<void>>(
+      overrides.cancelTurn ?? (() => Promise.resolve()),
+    ),
+    retireTurn: vi.fn<(turnId: string) => Promise<void>>(
+      overrides.retireTurn ?? (() => Promise.resolve()),
+    ),
+    release: vi.fn<() => void>(),
+    ...(overrides.registerNativeToolCall
+      ? { registerNativeToolCall: overrides.registerNativeToolCall }
+      : {}),
+  };
+  Object.assign(context, { gatewaySessionLease: lease });
+  return lease;
 }

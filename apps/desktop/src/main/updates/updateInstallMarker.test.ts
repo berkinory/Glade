@@ -115,41 +115,45 @@ describe("updateInstallMarker", () => {
     });
   });
 
-  it("resolves values outside the marker schema as invalid", () => {
-    expect(resolveInstallMarkerOutcome({}, "1.0.0", "2026-07-02T00:00:00.000Z")).toBe("invalid");
-  });
-
-  it("resolves successful installs at or beyond the target version", () => {
-    const value = marker();
-
-    expect(resolveInstallMarkerOutcome(value, "1.1.0", "2026-07-02T00:00:00.000Z")).toBe("success");
-    expect(resolveInstallMarkerOutcome(value, "1.2.0", "2026-07-02T00:00:00.000Z")).toBe("success");
-  });
-
-  it("resolves an old current version as a new failure", () => {
-    expect(resolveInstallMarkerOutcome(marker(), "1.0.0", "2026-07-02T00:00:00.000Z")).toBe(
-      "failure",
-    );
-  });
-
-  it("does not count an already-recorded failure twice", () => {
-    const value = marker({
-      phase: "failed",
-      consecutiveFailures: 2,
-      lastFailureAt: "2026-07-02T00:00:00.000Z",
-    });
-
-    expect(resolveInstallMarkerOutcome(value, "1.0.0", "2026-07-03T00:00:00.000Z")).toBe(
-      "already-failed",
-    );
-    expect(value.consecutiveFailures).toBe(2);
-  });
-
-  it("quarantines attempts older than seven days", () => {
-    expect(resolveInstallMarkerOutcome(marker(), "1.0.0", "2026-07-08T00:00:00.001Z")).toBe(
-      "stale",
-    );
-  });
+  it.each([
+    { name: "values outside the marker schema", value: {}, expected: "invalid" },
+    {
+      name: "an install at the target version",
+      value: marker(),
+      current: "1.1.0",
+      expected: "success",
+    },
+    {
+      name: "an install beyond the target version",
+      value: marker(),
+      current: "1.2.0",
+      expected: "success",
+    },
+    { name: "an old current version", value: marker(), expected: "failure" },
+    {
+      name: "an already-recorded failure",
+      value: marker({
+        phase: "failed",
+        consecutiveFailures: 2,
+        lastFailureAt: "2026-07-02T00:00:00.000Z",
+      }),
+      now: "2026-07-03T00:00:00.000Z",
+      expected: "already-failed",
+    },
+    {
+      name: "an attempt older than seven days",
+      value: marker(),
+      now: "2026-07-08T00:00:00.001Z",
+      expected: "stale",
+    },
+  ])(
+    "resolves $name as $expected",
+    ({ value, current = "1.0.0", now = "2026-07-02T00:00:00.000Z", expected }) => {
+      const before = structuredClone(value);
+      expect(resolveInstallMarkerOutcome(value, current, now)).toBe(expected);
+      expect(value).toEqual(before);
+    },
+  );
 
   it("synchronously records the updater handoff", () => {
     const filePath = createMarkerPath();

@@ -22,33 +22,30 @@ describe("local image URL helpers", () => {
     expect(isLocalImageMarkdownSrc("/Users/me/file.txt")).toBe(false);
   });
 
-  it("builds preview and download routes (no window context)", () => {
-    expect(
-      buildLocalImageUrl({
-        src: "/Users/me/.codex/generated_images/thread/call.png",
-        cwd: "/Users/me/project",
-      }),
-    ).toBe(
-      "/api/local-image?path=%2FUsers%2Fme%2F.codex%2Fgenerated_images%2Fthread%2Fcall.png&cwd=%2FUsers%2Fme%2Fproject",
-    );
-
-    expect(
-      buildLocalImageUrl({
-        src: "/tmp/generated image.png",
-        cwd: undefined,
-        download: true,
-      }),
-    ).toBe("/api/local-image?path=%2Ftmp%2Fgenerated+image.png&download=1");
-  });
-
-  it("includes local preview grants when present", () => {
-    expect(
-      buildLocalImageUrl({
-        src: "/Users/me/Downloads/shot.png",
-        cwd: undefined,
-        grant: "grant-token",
-      }),
-    ).toBe("/api/local-image?path=%2FUsers%2Fme%2FDownloads%2Fshot.png&grant=grant-token");
+  it.each([
+    {
+      name: "preview route with cwd",
+      input: { src: "/Users/me/.codex/generated_images/thread/call.png", cwd: "/Users/me/project" },
+      expected:
+        "/api/local-image?path=%2FUsers%2Fme%2F.codex%2Fgenerated_images%2Fthread%2Fcall.png&cwd=%2FUsers%2Fme%2Fproject",
+    },
+    {
+      name: "download route",
+      input: { src: "/tmp/generated image.png", cwd: undefined, download: true },
+      expected: "/api/local-image?path=%2Ftmp%2Fgenerated+image.png&download=1",
+    },
+    {
+      name: "local preview grant",
+      input: { src: "/Users/me/Downloads/shot.png", cwd: undefined, grant: "grant-token" },
+      expected: "/api/local-image?path=%2FUsers%2Fme%2FDownloads%2Fshot.png&grant=grant-token",
+    },
+    {
+      name: "cache-busted preview reload",
+      input: { src: "preview.png", cwd: "/Users/me/project", cacheKey: 3 },
+      expected: "/api/local-image?path=preview.png&cwd=%2FUsers%2Fme%2Fproject&v=3",
+    },
+  ])("builds the $name without a window context", ({ input, expected }) => {
+    expect(buildLocalImageUrl(input)).toBe(expected);
   });
 
   it("uses the same decoded absolute path for grants and image requests", () => {
@@ -64,16 +61,6 @@ describe("local image URL helpers", () => {
     for (const src of ["./shot.png", "../shot.png", "shot.png", "https://example.com/shot.png"]) {
       expect(localImageAbsolutePath(src)).toBeNull();
     }
-  });
-
-  it("cache-busts explicit preview reloads", () => {
-    expect(
-      buildLocalImageUrl({
-        src: "preview.png",
-        cwd: "/Users/me/project",
-        cacheKey: 3,
-      }),
-    ).toBe("/api/local-image?path=preview.png&cwd=%2FUsers%2Fme%2Fproject&v=3");
   });
 
   it("forwards the desktop bridge legacy token so <img> requests stay authenticated", () => {

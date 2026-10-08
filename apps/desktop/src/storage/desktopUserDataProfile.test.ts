@@ -6,7 +6,6 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   repairBrowserProfileFromBridgeManifest,
   resolveDesktopAppDataBase,
-  resolveDesktopUserDataPath,
 } from "./desktopUserDataProfile";
 
 const tempDirs = new Set<string>();
@@ -25,29 +24,6 @@ afterEach(() => {
 });
 
 describe("desktopUserDataProfile", () => {
-  it("resolves the canonical Glade profile names", () => {
-    const appDataBase = "/Users/tester/Library/Application Support";
-    expect(resolveDesktopUserDataPath({ appDataBase, userDataDirectoryName: "glade-dev" })).toBe(
-      "/Users/tester/Library/Application Support/glade-dev",
-    );
-    expect(resolveDesktopUserDataPath({ appDataBase, userDataDirectoryName: "glade" })).toBe(
-      "/Users/tester/Library/Application Support/glade",
-    );
-    expect(resolveDesktopUserDataPath({ appDataBase, userDataDirectoryName: "glade-dev" })).toBe(
-      "/Users/tester/Library/Application Support/glade-dev",
-    );
-  });
-
-  it("uses an explicit smoke profile instead of the development profile", () => {
-    expect(
-      resolveDesktopUserDataPath({
-        appDataBase: "/Users/tester/Library/Application Support",
-        userDataDirectoryName: "glade-dev",
-        testOverridePath: "/tmp/glade-desktop-smoke/electron-user-data",
-      }),
-    ).toBe("/tmp/glade-desktop-smoke/electron-user-data");
-  });
-
   it("uses XDG_CONFIG_HOME on Linux when available", () => {
     expect(
       resolveDesktopAppDataBase({

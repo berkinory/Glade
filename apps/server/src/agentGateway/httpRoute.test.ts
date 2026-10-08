@@ -12,7 +12,7 @@ import {
   AgentGatewayCredentials,
   type AgentGatewayCredentialsShape,
 } from "./Services/AgentGatewayCredentials.ts";
-import { AGENT_GATEWAY_MCP_MAX_BODY_BYTES, agentGatewayRouteLayer } from "./httpRoute.ts";
+import { agentGatewayRouteLayer } from "./httpRoute.ts";
 
 const VALID_TOKEN = "sagw_session_http_route_test";
 
@@ -107,7 +107,7 @@ async function withGatewayServer(
 describe("agentGatewayRouteLayer", () => {
   it("authenticates before reading the body and enforces the 1 MiB limit", async () => {
     await withGatewayServer(async ({ origin, handledBodies }) => {
-      const oversizedBody = "x".repeat(AGENT_GATEWAY_MCP_MAX_BODY_BYTES + 1);
+      const oversizedBody = "x".repeat(1024 * 1024 + 1);
       const unauthorized = await fetch(`${origin}/mcp`, {
         method: "POST",
         headers: { Authorization: "Bearer invalid" },

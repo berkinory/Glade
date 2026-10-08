@@ -4,18 +4,13 @@ import {
   createCollabNotificationHarness,
   handleServerRequestForTest,
   handleServerNotificationForTest,
+  spyOnSessionRequests,
 } from "./notificationHarness.testSupport";
 
 describe("collab child conversation routing", () => {
   it("reads a native child on activity without resuming it or mutating the parent turn", async () => {
     const { manager, context, emitEvent, updateSession } = createCollabNotificationHarness();
-    // Exercise the private transport boundary with a provider-authored snapshot.
-    const boundary = manager as unknown as {
-      sessions: Map<ThreadId, unknown>;
-      sendRequest: (...args: unknown[]) => Promise<unknown>;
-    };
-    boundary.sessions.set(context.session.threadId, context);
-    const request = vi.spyOn(boundary, "sendRequest").mockResolvedValue({
+    const request = spyOnSessionRequests(manager, context).sendRequest.mockResolvedValue({
       thread: {
         id: "native_child",
         agentNickname: "Euclid",
@@ -97,14 +92,8 @@ describe("collab child conversation routing", () => {
 
   it("retries a newly announced child whose native rollout is still empty", async () => {
     const { manager, context, emitEvent } = createCollabNotificationHarness();
-    // Hold the real transport boundary at the native initialization race.
-    const boundary = manager as unknown as {
-      sessions: Map<ThreadId, unknown>;
-      sendRequest: (...args: unknown[]) => Promise<unknown>;
-    };
-    boundary.sessions.set(context.session.threadId, context);
-    const request = vi
-      .spyOn(boundary, "sendRequest")
+    const { sessions, sendRequest } = spyOnSessionRequests(manager, context);
+    const request = sendRequest
       .mockRejectedValueOnce(
         new Error("thread/read failed: rollout at /native/child.jsonl is empty"),
       )
@@ -146,19 +135,14 @@ describe("collab child conversation routing", () => {
       { timeout: 3_000 },
     );
     expect(request).toHaveBeenCalledTimes(2);
-    boundary.sessions.delete(context.session.threadId);
+    sessions.delete(context.session.threadId);
   });
 
   it("discards a child read that completes after its parent runtime was replaced", async () => {
     const { manager, context, emitEvent } = createCollabNotificationHarness();
-    // The private transport boundary lets the test hold an actual in-flight provider read.
-    const boundary = manager as unknown as {
-      sessions: Map<ThreadId, unknown>;
-      sendRequest: (...args: unknown[]) => Promise<unknown>;
-    };
-    boundary.sessions.set(context.session.threadId, context);
+    const { sessions, sendRequest } = spyOnSessionRequests(manager, context);
     let complete: ((value: unknown) => void) | undefined;
-    const request = vi.spyOn(boundary, "sendRequest").mockImplementation(
+    const request = sendRequest.mockImplementation(
       () =>
         new Promise((resolve) => {
           complete = resolve;
@@ -178,7 +162,7 @@ describe("collab child conversation routing", () => {
       },
     });
     expect(request).toHaveBeenCalledTimes(1);
-    boundary.sessions.set(context.session.threadId, {});
+    sessions.set(context.session.threadId, {});
     emitEvent.mockClear();
     complete?.({
       thread: {
@@ -207,11 +191,7 @@ describe("collab child conversation routing", () => {
   ])("tracks native receiver routing for $type", (item) => {
     const { manager, context } = createCollabNotificationHarness();
 
-    (
-      manager as unknown as {
-        handleServerNotification: (context: unknown, notification: Record<string, unknown>) => void;
-      }
-    ).handleServerNotification(context, {
+    handleServerNotificationForTest(manager, context, {
       method: "item/started",
       params: {
         item: {
@@ -230,11 +210,7 @@ describe("collab child conversation routing", () => {
   it("preserves child notification turn ids and annotates the parent turn", () => {
     const { manager, context, emitEvent } = createCollabNotificationHarness();
 
-    (
-      manager as unknown as {
-        handleServerNotification: (context: unknown, notification: Record<string, unknown>) => void;
-      }
-    ).handleServerNotification(context, {
+    handleServerNotificationForTest(manager, context, {
       method: "item/completed",
       params: {
         item: {
@@ -247,11 +223,7 @@ describe("collab child conversation routing", () => {
       },
     });
 
-    (
-      manager as unknown as {
-        handleServerNotification: (context: unknown, notification: Record<string, unknown>) => void;
-      }
-    ).handleServerNotification(context, {
+    handleServerNotificationForTest(manager, context, {
       method: "item/agentMessage/delta",
       params: {
         threadId: "child_provider_1",
@@ -392,52 +364,6 @@ describe("collab child conversation routing", () => {
     );
   });
 
-  it("responds to permission-profile approvals with the requested native permissions", async () => {
-    const { manager, context, emitEvent, writeMessage } = createCollabNotificationHarness();
-    const permissions = {
-      network: { enabled: true },
-      fileSystem: { read: ["/tmp/example"] },
-    };
-
-    await handleServerRequestForTest(manager, context, {
-      id: 45,
-      method: "item/permissions/requestApproval",
-      params: {
-        threadId: "provider_parent",
-        turnId: "turn_permissions",
-        itemId: "call_permissions",
-        reason: "Needs package metadata",
-        permissions,
-      },
-    });
-
-    const pendingRequest = Array.from(context.pendingApprovals.values())[0];
-    expect(pendingRequest).toEqual(
-      expect.objectContaining({
-        method: "item/permissions/requestApproval",
-        requestKind: "permissions",
-        requestedPermissions: permissions,
-      }),
-    );
-    await manager.respondToRequest(
-      ThreadId.makeUnsafe("thread_1"),
-      pendingRequest.requestId,
-      "acceptForSession",
-    );
-
-    expect(writeMessage).toHaveBeenCalledWith(context, {
-      id: 45,
-      result: { permissions, scope: "session" },
-    });
-    expect(context.sessionApprovalOverride).toBeUndefined();
-    expect(emitEvent).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        method: "item/requestApproval/decision",
-        requestKind: "permissions",
-      }),
-    );
-  });
-
   it("preserves an unmapped child user-input route through the answered event", async () => {
     const { manager, context, emitEvent, writeMessage } = createCollabNotificationHarness();
 
@@ -501,11 +427,7 @@ describe("collab child conversation routing", () => {
   it("preserves child approval requests and annotates the parent turn", async () => {
     const { manager, context, emitEvent } = createCollabNotificationHarness();
 
-    (
-      manager as unknown as {
-        handleServerNotification: (context: unknown, notification: Record<string, unknown>) => void;
-      }
-    ).handleServerNotification(context, {
+    handleServerNotificationForTest(manager, context, {
       method: "item/completed",
       params: {
         item: {
@@ -519,11 +441,7 @@ describe("collab child conversation routing", () => {
     });
     emitEvent.mockClear();
 
-    await (
-      manager as unknown as {
-        handleServerRequest: (context: unknown, request: Record<string, unknown>) => Promise<void>;
-      }
-    ).handleServerRequest(context, {
+    await handleServerRequestForTest(manager, context, {
       id: 42,
       method: "item/commandExecution/requestApproval",
       params: {

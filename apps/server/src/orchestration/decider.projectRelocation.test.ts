@@ -42,7 +42,6 @@ async function fixture(workingDirectory: string | null = null) {
     title: "Earlier conversation",
     modelSelection: { provider: "claudeAgent", model: "claude-sonnet-4-6" },
     runtimeMode: "approval-required",
-
     envMode: "local",
     branch: null,
     worktreePath: null,
@@ -202,6 +201,8 @@ describe("project relocation", () => {
       workspaceRoot: "/restored/repo",
       createdAt: now,
     });
-    await expect(apply(before, relocation)).rejects.toThrow();
+    await expect(apply(before, relocation)).rejects.toThrow(
+      "Project 'project-2' already uses workspace root",
+    );
   });
 });

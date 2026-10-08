@@ -3,14 +3,12 @@ import { Effect, Stream, Fiber, Random, Layer, Exit, ServiceMap } from "effect";
 import { ClaudeAdapter } from "../../Services/ClaudeAdapter.ts";
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { type ClaudeOwnedProcess } from "./adapterConfiguration.ts";
-import { ServerConfig } from "../../../server/config.ts";
-import * as NodeServices from "@effect/platform-node/NodeServices";
 import {
   makeHarness,
   THREAD_ID,
   makeDeterministicRandomService,
   FakeClaudeQuery,
-  makeClaudeAdapterLive,
+  makeClaudeAdapterTestLayer,
   makeMultiQueryHarness,
   makeGatewayCredentialsHarness,
 } from "./adapterTestFixtures";
@@ -19,14 +17,8 @@ describe("Claude processLifecycle", () => {
   it.effect("keeps separately built adapters isolated in one parent scope", () => {
     const firstQuery = new FakeClaudeQuery();
     const secondQuery = new FakeClaudeQuery();
-    const firstLayer = makeClaudeAdapterLive({ createQuery: () => firstQuery }).pipe(
-      Layer.provideMerge(ServerConfig.layerTest("/tmp/claude-adapter-test", "/tmp")),
-      Layer.provideMerge(NodeServices.layer),
-    );
-    const secondLayer = makeClaudeAdapterLive({ createQuery: () => secondQuery }).pipe(
-      Layer.provideMerge(ServerConfig.layerTest("/tmp/claude-adapter-test", "/tmp")),
-      Layer.provideMerge(NodeServices.layer),
-    );
+    const firstLayer = makeClaudeAdapterTestLayer({ createQuery: () => firstQuery });
+    const secondLayer = makeClaudeAdapterTestLayer({ createQuery: () => secondQuery });
 
     return Effect.scoped(
       Effect.gen(function* () {
@@ -250,7 +242,7 @@ describe("Claude processLifecycle", () => {
       exitCode: 0,
       signalCode: null,
     } as unknown as ClaudeOwnedProcess;
-    const layer = makeClaudeAdapterLive({
+    const layer = makeClaudeAdapterTestLayer({
       spawnClaudeCodeProcess: () => ownedProcess,
       teardownProcessTree: async () => {
         teardownCalls += 1;
@@ -266,10 +258,7 @@ describe("Claude processLifecycle", () => {
         });
         return query;
       },
-    }).pipe(
-      Layer.provideMerge(ServerConfig.layerTest("/tmp/claude-adapter-test", "/tmp")),
-      Layer.provideMerge(NodeServices.layer),
-    );
+    });
 
     return Effect.gen(function* () {
       const adapter = yield* ClaudeAdapter;
@@ -304,7 +293,7 @@ describe("Claude processLifecycle", () => {
       exitCode: 0,
       signalCode: null,
     } as unknown as ClaudeOwnedProcess;
-    const layer = makeClaudeAdapterLive({
+    const layer = makeClaudeAdapterTestLayer({
       spawnClaudeCodeProcess: () => ownedProcess,
       teardownProcessTree: async () => {
         teardownCalls += 1;
@@ -322,10 +311,7 @@ describe("Claude processLifecycle", () => {
         });
         return query;
       },
-    }).pipe(
-      Layer.provideMerge(ServerConfig.layerTest("/tmp/claude-adapter-test", "/tmp")),
-      Layer.provideMerge(NodeServices.layer),
-    );
+    });
 
     return Effect.gen(function* () {
       const adapter = yield* ClaudeAdapter;
@@ -362,7 +348,7 @@ describe("Claude processLifecycle", () => {
       once: () => undefined,
       removeListener: () => undefined,
     } as unknown as ClaudeOwnedProcess;
-    const layer = makeClaudeAdapterLive({
+    const layer = makeClaudeAdapterTestLayer({
       spawnClaudeCodeProcess: () => {
         spawnCalls += 1;
         return ownedProcess;
@@ -387,10 +373,7 @@ describe("Claude processLifecycle", () => {
         }
         return query;
       },
-    }).pipe(
-      Layer.provideMerge(ServerConfig.layerTest("/tmp/claude-adapter-test", "/tmp")),
-      Layer.provideMerge(NodeServices.layer),
-    );
+    });
 
     return Effect.gen(function* () {
       const adapter = yield* ClaudeAdapter;
@@ -435,7 +418,7 @@ describe("Claude processLifecycle", () => {
       once: () => undefined,
       removeListener: () => undefined,
     } as unknown as ClaudeOwnedProcess;
-    const layer = makeClaudeAdapterLive({
+    const layer = makeClaudeAdapterTestLayer({
       spawnClaudeCodeProcess: () => {
         spawnCalls += 1;
         return ownedProcess;
@@ -456,10 +439,7 @@ describe("Claude processLifecycle", () => {
         });
         return query;
       },
-    }).pipe(
-      Layer.provideMerge(ServerConfig.layerTest("/tmp/claude-adapter-test", "/tmp")),
-      Layer.provideMerge(NodeServices.layer),
-    );
+    });
 
     return Effect.gen(function* () {
       const adapter = yield* ClaudeAdapter;

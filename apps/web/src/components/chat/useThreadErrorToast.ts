@@ -24,7 +24,7 @@ function threadErrorToastTitle(error: string): string {
   return title.length > 180 ? `${title.slice(0, 179).trimEnd()}…` : title;
 }
 
-export function buildThreadErrorToastOptions(input: {
+function buildThreadErrorToastOptions(input: {
   error: string;
   onClose: () => void;
   threadId: ThreadId;

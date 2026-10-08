@@ -1,4 +1,4 @@
-import { constants as fsConstants, type Stats } from "node:fs";
+import { constants as fsConstants } from "node:fs";
 import * as fs from "node:fs/promises";
 
 const UNSUPPORTED_DIRECTORY_SYNC_CODES = new Set(["EINVAL", "ENOTSUP", "EBADF"]);
@@ -25,29 +25,4 @@ export async function syncDirectoryEntry(
   } finally {
     await handle.close();
   }
-}
-
-// Flushes a regular file created by Glade. Windows FlushFileBuffers requires write access; POSIX
-// additionally retains no-follow protection.
-export async function syncRegularFile(
-  filePath: string,
-  platform: NodeJS.Platform = process.platform,
-): Promise<void> {
-  const flags = supportsPosixPermissions(platform)
-    ? fsConstants.O_RDWR | fsConstants.O_NOFOLLOW
-    : fsConstants.O_RDWR;
-  const handle = await fs.open(filePath, flags);
-  try {
-    await handle.sync();
-  } finally {
-    await handle.close();
-  }
-}
-
-export function sameFileIdentity(
-  left: Pick<Stats, "dev" | "ino">,
-  right: Pick<Stats, "dev" | "ino">,
-  platform: NodeJS.Platform = process.platform,
-): boolean {
-  return !supportsPosixPermissions(platform) || (left.dev === right.dev && left.ino === right.ino);
 }

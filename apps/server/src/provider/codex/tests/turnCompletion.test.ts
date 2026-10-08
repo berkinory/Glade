@@ -1,45 +1,24 @@
 import { describe, expect, it, vi } from "vitest";
-import { CodexAppServerManager } from "../codexAppServerManager";
 import { AGENT_GATEWAY_TURN_AUTHORITY_RETIRED } from "../../../agentGateway/sessionLease.ts";
 import {
+  attachFakeGatewayLease,
   createCollabNotificationHarness,
   handleServerNotificationForTest,
 } from "./notificationHarness.testSupport";
 
-describe("handleServerNotification error normalization", () => {
+describe("turn completion", () => {
   it("recovers a missing turn/completed after legacy task_complete", () => {
     vi.useFakeTimers();
     try {
-      const manager = new CodexAppServerManager(undefined, {
+      const { manager, context, emitEvent, updateSession } = createCollabNotificationHarness({
         taskCompleteFallbackGraceMs: 25,
       });
-      const harness = createCollabNotificationHarness();
-      const context = harness.context;
-      const emitEvent = vi
-        .spyOn(manager as unknown as { emitEvent: (...args: unknown[]) => void }, "emitEvent")
-        .mockImplementation(() => {});
-      const cancelTurn = vi.fn(() => Promise.resolve());
-      const retireTurn = vi.fn(() => {
-        expect(emitEvent).not.toHaveBeenCalled();
-        return Promise.resolve();
-      });
-      Object.assign(context, {
-        gatewaySessionLease: {
-          connection: {
-            url: "http://127.0.0.1:48123/mcp",
-            bearerToken: "gateway-token",
-          },
-          cancelTurn,
-          retireTurn,
-          release: vi.fn(),
+      const lease = attachFakeGatewayLease(context, {
+        retireTurn: () => {
+          expect(emitEvent).not.toHaveBeenCalled();
+          return Promise.resolve();
         },
       });
-      const updateSession = vi
-        .spyOn(
-          manager as unknown as { updateSession: (...args: unknown[]) => void },
-          "updateSession",
-        )
-        .mockImplementation(() => {});
 
       handleServerNotificationForTest(manager, context, {
         method: "codex/event/task_complete",
@@ -54,9 +33,9 @@ describe("handleServerNotification error normalization", () => {
       });
       vi.advanceTimersByTime(25);
 
-      expect(retireTurn).toHaveBeenCalledOnce();
-      expect(retireTurn).toHaveBeenCalledWith("turn_parent");
-      expect(cancelTurn).not.toHaveBeenCalled();
+      expect(lease.retireTurn).toHaveBeenCalledOnce();
+      expect(lease.retireTurn).toHaveBeenCalledWith("turn_parent");
+      expect(lease.cancelTurn).not.toHaveBeenCalled();
       expect(context.gatewayCredentialRetired).toBe(true);
       expect(updateSession).toHaveBeenCalledWith(context, {
         status: "ready",
@@ -78,66 +57,55 @@ describe("handleServerNotification error normalization", () => {
     }
   });
 
-  it("retires gateway authority before publishing every terminal parent-turn notification", () => {
-    const terminalNotifications = [
-      {
-        expectedTurnId: "turn-completed",
-        notification: {
-          method: "turn/completed",
-          params: {
-            threadId: "provider_parent",
-            turn: { id: "turn-completed", status: "completed" },
-          },
+  it.each([
+    {
+      expectedTurnId: "turn-completed",
+      notification: {
+        method: "turn/completed",
+        params: {
+          threadId: "provider_parent",
+          turn: { id: "turn-completed", status: "completed" },
         },
       },
-      {
-        expectedTurnId: "turn-aborted",
-        notification: {
-          method: "turn/aborted",
-          params: {
-            threadId: "provider_parent",
-            turn: { id: "turn-aborted", status: "interrupted" },
-          },
+    },
+    {
+      expectedTurnId: "turn-aborted",
+      notification: {
+        method: "turn/aborted",
+        params: {
+          threadId: "provider_parent",
+          turn: { id: "turn-aborted", status: "interrupted" },
         },
       },
-      {
-        expectedTurnId: "turn-error",
-        notification: {
-          method: "error",
-          params: {
-            threadId: "provider_parent",
-            turnId: "turn-error",
-            error: { message: "terminal provider failure" },
-            willRetry: false,
-          },
+    },
+    {
+      expectedTurnId: "turn-error",
+      notification: {
+        method: "error",
+        params: {
+          threadId: "provider_parent",
+          turnId: "turn-error",
+          error: { message: "terminal provider failure" },
+          willRetry: false,
         },
       },
-    ];
-
-    for (const { expectedTurnId, notification } of terminalNotifications) {
+    },
+  ])(
+    "retires gateway authority before publishing terminal $notification.method",
+    ({ expectedTurnId, notification }) => {
       const { manager, context, emitEvent } = createCollabNotificationHarness();
-      const cancelTurn = vi.fn(() => Promise.resolve());
-      const retireTurn = vi.fn(() => {
-        expect(emitEvent).not.toHaveBeenCalled();
-        return Promise.resolve();
-      });
-      Object.assign(context, {
-        gatewaySessionLease: {
-          connection: {
-            url: "http://127.0.0.1:48123/mcp",
-            bearerToken: "gateway-token",
-          },
-          cancelTurn,
-          retireTurn,
-          release: vi.fn(),
+      const lease = attachFakeGatewayLease(context, {
+        retireTurn: () => {
+          expect(emitEvent).not.toHaveBeenCalled();
+          return Promise.resolve();
         },
       });
 
       handleServerNotificationForTest(manager, context, notification);
 
-      expect(retireTurn).toHaveBeenCalledOnce();
-      expect(retireTurn).toHaveBeenCalledWith(expectedTurnId);
-      expect(cancelTurn).not.toHaveBeenCalled();
+      expect(lease.retireTurn).toHaveBeenCalledOnce();
+      expect(lease.retireTurn).toHaveBeenCalledWith(expectedTurnId);
+      expect(lease.cancelTurn).not.toHaveBeenCalled();
       expect(context.gatewayCredentialRetired).toBe(true);
       expect(emitEvent).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -146,22 +114,13 @@ describe("handleServerNotification error normalization", () => {
           }),
         }),
       );
-    }
-  });
+    },
+  );
 
   it("keeps a proven-call runtime reusable after fencing a completed turn", () => {
     const { manager, context, emitEvent } = createCollabNotificationHarness();
     const registerNativeToolCall = vi.fn();
-    const retireTurn = vi.fn(() => Promise.resolve());
-    Object.assign(context, {
-      gatewaySessionLease: {
-        connection: { url: "http://localhost/mcp", bearerToken: "test" },
-        registerNativeToolCall,
-        retireTurn,
-        cancelTurn: vi.fn(),
-        release: vi.fn(),
-      },
-    });
+    const lease = attachFakeGatewayLease(context, { registerNativeToolCall });
     handleServerNotificationForTest(manager, context, {
       method: "item/started",
       params: {
@@ -182,7 +141,7 @@ describe("handleServerNotification error normalization", () => {
         turn: { id: "turn_parent", status: "completed" },
       },
     });
-    expect(retireTurn).toHaveBeenCalledWith("turn_parent");
+    expect(lease.retireTurn).toHaveBeenCalledWith("turn_parent");
     expect(context.gatewayCredentialRetired).not.toBe(true);
     expect(emitEvent).not.toHaveBeenCalledWith(
       expect.objectContaining({
@@ -197,11 +156,7 @@ describe("handleServerNotification error normalization", () => {
     context.reviewTurnIds.add("turn_child");
     context.session.activeTurnId = "turn_child";
 
-    (
-      manager as unknown as {
-        handleServerNotification: (context: unknown, notification: Record<string, unknown>) => void;
-      }
-    ).handleServerNotification(context, {
+    handleServerNotificationForTest(manager, context, {
       method: "item/completed",
       params: {
         item: {
@@ -237,11 +192,7 @@ describe("handleServerNotification error normalization", () => {
   it("clears the running session turn when Codex aborts a turn", () => {
     const { manager, context, updateSession } = createCollabNotificationHarness();
 
-    (
-      manager as unknown as {
-        handleServerNotification: (context: unknown, notification: Record<string, unknown>) => void;
-      }
-    ).handleServerNotification(context, {
+    handleServerNotificationForTest(manager, context, {
       method: "turn/aborted",
       params: {
         threadId: "provider_parent",

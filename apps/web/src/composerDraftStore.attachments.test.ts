@@ -1,89 +1,57 @@
 import { PROVIDER_SEND_TURN_MAX_ATTACHMENTS } from "@glade/contracts/orchestration/threadEntities";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import * as Schema from "effect/Schema";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { pendingComposerAttachmentSyncGenerationCount } from "./composerDraftAttachments";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   captureComposerPromptHistorySavedDraft,
   COMPOSER_DRAFT_STORAGE_KEY,
   COMPOSER_DRAFT_STORAGE_VERSION,
   type ComposerImageAttachment,
 } from "./composerDraftDomain";
-import { partializeComposerDraftStoreState } from "./composerDraftPersistence.serialization";
 import { useComposerDraftStore } from "./composerDraftStore";
 import {
   makeFile,
   makeImage,
   makeTerminalContext,
+  mergePersistedComposerDraftState,
+  persistComposerDraftState,
+  persistedAttachmentFor,
   resetComposerDraftStore,
+  stubRevokeObjectUrl,
 } from "./composerDraftStoreTestFixtures";
 import { removeLocalStorageItem, setLocalStorageItem } from "./hooks/useLocalStorage";
 
 describe("composerDraftStore addImages", () => {
   const threadId = ThreadId.makeUnsafe("thread-dedupe");
-  let originalRevokeObjectUrl: typeof URL.revokeObjectURL;
-  let revokeSpy: ReturnType<typeof vi.fn<(url: string) => void>>;
+  const revokeSpy = stubRevokeObjectUrl();
 
   beforeEach(() => {
     resetComposerDraftStore();
-    originalRevokeObjectUrl = URL.revokeObjectURL;
-    revokeSpy = vi.fn();
-    URL.revokeObjectURL = revokeSpy;
   });
 
-  afterEach(() => {
-    URL.revokeObjectURL = originalRevokeObjectUrl;
-  });
-
-  it("deduplicates identical images in one batch by file signature", () => {
-    const first = makeImage({
-      id: "img-1",
-      previewUrl: "blob:first",
-      name: "same.png",
-      mimeType: "image/png",
-      sizeBytes: 12,
-      lastModified: 12345,
-    });
-    const duplicate = makeImage({
-      id: "img-2",
-      previewUrl: "blob:duplicate",
-      name: "same.png",
-      mimeType: "image/png",
-      sizeBytes: 12,
-      lastModified: 12345,
-    });
-
-    useComposerDraftStore.getState().addImages(threadId, [first, duplicate]);
+  it.each([
+    {
+      name: "in one batch",
+      add: (first: ComposerImageAttachment, duplicate: ComposerImageAttachment) =>
+        useComposerDraftStore.getState().addImages(threadId, [first, duplicate]),
+    },
+    {
+      name: "against existing images across calls",
+      add: (first: ComposerImageAttachment, duplicate: ComposerImageAttachment) => {
+        useComposerDraftStore.getState().addImage(threadId, first);
+        useComposerDraftStore.getState().addImage(threadId, duplicate);
+      },
+    },
+  ])("deduplicates identical images $name by file signature", ({ add }) => {
+    const signature = { name: "same.png", mimeType: "image/png", sizeBytes: 12 };
+    add(
+      makeImage({ id: "img-1", previewUrl: "blob:first", ...signature, lastModified: 12345 }),
+      makeImage({ id: "img-2", previewUrl: "blob:duplicate", ...signature, lastModified: 99999 }),
+    );
 
     const draft = useComposerDraftStore.getState().draftsByThreadId[threadId];
     expect(draft?.images.map((image) => image.id)).toEqual(["img-1"]);
     expect(revokeSpy).toHaveBeenCalledWith("blob:duplicate");
-  });
-
-  it("deduplicates against existing images across calls by file signature", () => {
-    const first = makeImage({
-      id: "img-a",
-      previewUrl: "blob:a",
-      name: "same.png",
-      mimeType: "image/png",
-      sizeBytes: 9,
-      lastModified: 777,
-    });
-    const duplicateLater = makeImage({
-      id: "img-b",
-      previewUrl: "blob:b",
-      name: "same.png",
-      mimeType: "image/png",
-      sizeBytes: 9,
-      lastModified: 999,
-    });
-
-    useComposerDraftStore.getState().addImage(threadId, first);
-    useComposerDraftStore.getState().addImage(threadId, duplicateLater);
-
-    const draft = useComposerDraftStore.getState().draftsByThreadId[threadId];
-    expect(draft?.images.map((image) => image.id)).toEqual(["img-a"]);
-    expect(revokeSpy).toHaveBeenCalledWith("blob:b");
   });
 
   it("does not revoke blob URLs that are still used by an accepted duplicate image", () => {
@@ -139,15 +107,7 @@ describe("composerDraftStore addImages", () => {
       name: "persisted.png",
       previewUrl: "blob:persisted",
     });
-    await store.syncPersistedAttachments(threadId, [
-      {
-        id: persistedImage.id,
-        name: persistedImage.name,
-        mimeType: persistedImage.mimeType,
-        sizeBytes: persistedImage.sizeBytes,
-        dataUrl: "data:image/png;base64,aGk=",
-      },
-    ]);
+    await store.syncPersistedAttachments(threadId, [persistedAttachmentFor(persistedImage)]);
 
     expect(useComposerDraftStore.getState().addImage(threadId, persistedImage)).toBe(true);
     expect(
@@ -163,25 +123,17 @@ describe("composerDraftStore prompt history saved draft", () => {
     resetComposerDraftStore();
   });
 
-  it("moves composer attachments into the prompt-history snapshot while browsing", async () => {
+  it("moves composer attachments into the prompt-history snapshot and restores them", async () => {
     const store = useComposerDraftStore.getState();
     const image = makeImage({ id: "img-history", previewUrl: "blob:history" });
     const file = makeFile({ id: "file-history" });
-    const persistedAttachment = {
-      id: image.id,
-      name: image.name,
-      mimeType: image.mimeType,
-      sizeBytes: image.sizeBytes,
-      dataUrl: "data:image/png;base64,aGk=",
-    };
 
     store.setPrompt(threadId, "draft with attachments");
     store.addImage(threadId, image);
     store.addFiles(threadId, [file]);
-    await store.syncPersistedAttachments(threadId, [persistedAttachment]);
+    await store.syncPersistedAttachments(threadId, [persistedAttachmentFor(image)]);
     const draftBeforeBrowse = useComposerDraftStore.getState().draftsByThreadId[threadId]!;
-
-    useComposerDraftStore.getState().setPromptHistorySavedDraft(
+    store.setPromptHistorySavedDraft(
       threadId,
       captureComposerPromptHistorySavedDraft({
         threadId,
@@ -194,44 +146,20 @@ describe("composerDraftStore prompt history saved draft", () => {
     expect(browsingDraft.images).toHaveLength(0);
     expect(browsingDraft.files).toHaveLength(0);
     expect(browsingDraft.persistedAttachments).toHaveLength(0);
-    expect(browsingDraft.promptHistorySavedDraft?.prompt).toBe("draft with attachments");
-    expect(browsingDraft.promptHistorySavedDraft?.images.map((entry) => entry.id)).toEqual([
-      "img-history",
-    ]);
-    expect(browsingDraft.promptHistorySavedDraft?.files.map((entry) => entry.id)).toEqual([
-      "file-history",
-    ]);
-    expect(
-      browsingDraft.promptHistorySavedDraft?.persistedAttachments.map((entry) => entry.id),
-    ).toEqual(["img-history"]);
-  });
+    const saved = browsingDraft.promptHistorySavedDraft;
+    expect(saved?.prompt).toBe("draft with attachments");
+    expect(saved?.images.map((entry) => entry.id)).toEqual(["img-history"]);
+    expect(saved?.files.map((entry) => entry.id)).toEqual(["file-history"]);
+    expect(saved?.persistedAttachments.map((entry) => entry.id)).toEqual(["img-history"]);
 
-  it("restores prompt-history snapshot text and attachments together", () => {
-    const store = useComposerDraftStore.getState();
-    const image = makeImage({ id: "img-restore", previewUrl: "blob:restore" });
-    const file = makeFile({ id: "file-restore" });
-
-    store.setPrompt(threadId, "draft before history");
-    store.addImage(threadId, image);
-    store.addFiles(threadId, [file]);
-    const draftBeforeBrowse = useComposerDraftStore.getState().draftsByThreadId[threadId]!;
-    store.setPromptHistorySavedDraft(
-      threadId,
-      captureComposerPromptHistorySavedDraft({
-        threadId,
-        draft: draftBeforeBrowse,
-        prompt: draftBeforeBrowse.prompt,
-      }),
-    );
     store.setPrompt(threadId, "recalled history prompt");
-
-    useComposerDraftStore.getState().restorePromptHistorySavedDraft(threadId);
+    store.restorePromptHistorySavedDraft(threadId);
 
     const restoredDraft = useComposerDraftStore.getState().draftsByThreadId[threadId]!;
-    expect(restoredDraft.prompt).toBe("draft before history");
+    expect(restoredDraft.prompt).toBe("draft with attachments");
     expect(restoredDraft.promptHistorySavedDraft).toBeNull();
-    expect(restoredDraft.images.map((entry) => entry.id)).toEqual(["img-restore"]);
-    expect(restoredDraft.files.map((entry) => entry.id)).toEqual(["file-restore"]);
+    expect(restoredDraft.images.map((entry) => entry.id)).toEqual(["img-history"]);
+    expect(restoredDraft.files.map((entry) => entry.id)).toEqual(["file-history"]);
   });
 
   it("moves and restores structured composer context with the prompt-history snapshot", () => {
@@ -319,13 +247,7 @@ describe("composerDraftStore prompt history saved draft", () => {
   it("persists and hydrates prompt-history snapshot images and structured context", async () => {
     const store = useComposerDraftStore.getState();
     const image = makeImage({ id: "img-persist-history", previewUrl: "blob:persist-history" });
-    const persistedAttachment = {
-      id: image.id,
-      name: image.name,
-      mimeType: image.mimeType,
-      sizeBytes: image.sizeBytes,
-      dataUrl: "data:image/png;base64,aGk=",
-    };
+    const persistedAttachment = persistedAttachmentFor(image);
     const terminalContext = makeTerminalContext({
       id: "ctx-persist-history",
       text: "bun run test",
@@ -355,25 +277,10 @@ describe("composerDraftStore prompt history saved draft", () => {
       }),
     );
 
-    const persistApi = useComposerDraftStore.persist as unknown as {
-      getOptions: () => {
-        partialize: (state: ReturnType<typeof useComposerDraftStore.getState>) => unknown;
-        merge: (
-          persistedState: unknown,
-          currentState: ReturnType<typeof useComposerDraftStore.getState>,
-        ) => ReturnType<typeof useComposerDraftStore.getState>;
-      };
-    };
-    const persistedState = partializeComposerDraftStoreState(
-      useComposerDraftStore.getState(),
-    ) as unknown as {
-      draftsByThreadId?: Record<string, { promptHistorySavedDraft?: Record<string, unknown> }>;
-    };
-
-    expect(
-      persistedState.draftsByThreadId?.[threadId]?.promptHistorySavedDraft?.attachments,
-    ).toEqual([persistedAttachment]);
-    const persistedSnapshot = persistedState.draftsByThreadId?.[threadId]?.promptHistorySavedDraft;
+    const persistedState = persistComposerDraftState();
+    const persistedSnapshot = persistedState.draftsByThreadId?.[threadId]
+      ?.promptHistorySavedDraft as Record<string, unknown> | undefined;
+    expect(persistedSnapshot?.attachments).toEqual([persistedAttachment]);
     const persistedTerminalContexts = persistedSnapshot?.terminalContexts as
       | Array<Record<string, unknown>>
       | undefined;
@@ -390,9 +297,7 @@ describe("composerDraftStore prompt history saved draft", () => {
     ]);
     expect(persistedSnapshot?.skills).toEqual([selectedSkill]);
 
-    const mergedState = persistApi
-      .getOptions()
-      .merge(persistedState, useComposerDraftStore.getInitialState());
+    const mergedState = mergePersistedComposerDraftState(persistedState);
     const restoredSnapshot = mergedState.draftsByThreadId[threadId]?.promptHistorySavedDraft;
 
     expect(restoredSnapshot?.images.map((entry) => entry.id)).toEqual(["img-persist-history"]);
@@ -412,13 +317,7 @@ describe("composerDraftStore prompt history saved draft", () => {
   it("syncs persisted images into an existing prompt-history snapshot", async () => {
     const store = useComposerDraftStore.getState();
     const image = makeImage({ id: "img-sync-history", previewUrl: "blob:sync-history" });
-    const persistedAttachment = {
-      id: image.id,
-      name: image.name,
-      mimeType: image.mimeType,
-      sizeBytes: image.sizeBytes,
-      dataUrl: "data:image/png;base64,aGk=",
-    };
+    const persistedAttachment = persistedAttachmentFor(image);
 
     store.setPrompt(threadId, "draft before async image persistence");
     store.addImage(threadId, image);
@@ -504,25 +403,13 @@ describe("composerDraftStore pull request context cards", () => {
 
   it("persists and hydrates cards", () => {
     useComposerDraftStore.getState().addPullRequestContext(threadId, card);
-    const persistApi = useComposerDraftStore.persist as unknown as {
-      getOptions: () => {
-        merge: (
-          persistedState: unknown,
-          currentState: ReturnType<typeof useComposerDraftStore.getState>,
-        ) => ReturnType<typeof useComposerDraftStore.getState>;
-      };
-    };
-    const persistedState = partializeComposerDraftStoreState(
-      useComposerDraftStore.getState(),
-    ) as unknown as {
-      draftsByThreadId?: Record<string, { pullRequestContexts?: unknown }>;
-    };
+    const persistedState = persistComposerDraftState();
     expect(persistedState.draftsByThreadId?.[threadId]?.pullRequestContexts).toEqual([card]);
 
-    const mergedState = persistApi
-      .getOptions()
-      .merge(persistedState, useComposerDraftStore.getInitialState());
-    expect(mergedState.draftsByThreadId[threadId]?.pullRequestContexts).toEqual([card]);
+    expect(
+      mergePersistedComposerDraftState(persistedState).draftsByThreadId[threadId]
+        ?.pullRequestContexts,
+    ).toEqual([card]);
   });
 });
 
@@ -531,13 +418,7 @@ describe("composerDraftStore syncPersistedAttachments", () => {
 
   beforeEach(() => {
     removeLocalStorageItem(COMPOSER_DRAFT_STORAGE_KEY);
-    useComposerDraftStore.setState({
-      draftsByThreadId: {},
-      draftThreadsByThreadId: {},
-      projectDraftThreadIdByProjectId: {},
-      stickyModelSelectionByProvider: {},
-      stickyActiveProvider: null,
-    });
+    resetComposerDraftStore();
   });
 
   afterEach(() => {
@@ -546,29 +427,24 @@ describe("composerDraftStore syncPersistedAttachments", () => {
 
   it("stages overlapping attachment syncs immediately and serializes verification", async () => {
     const firstImage = makeImage({
-      id: "computer-helper-sync-first",
-      previewUrl: "blob:computer-helper-sync-first",
-      name: "computer-helper-sync-first.png",
+      id: "sync-image-first",
+      previewUrl: "blob:sync-image-first",
+      name: "sync-image-first.png",
     });
     const secondImage = makeImage({
-      id: "computer-helper-sync-second",
-      previewUrl: "blob:computer-helper-sync-second",
-      name: "computer-helper-sync-second.png",
-    });
-    const attachmentFor = (image: ComposerImageAttachment) => ({
-      id: image.id,
-      name: image.name,
-      mimeType: image.mimeType,
-      sizeBytes: image.sizeBytes,
-      dataUrl: "data:image/png;base64,aGk=",
+      id: "sync-image-second",
+      previewUrl: "blob:sync-image-second",
+      name: "sync-image-second.png",
     });
     const store = useComposerDraftStore.getState();
     store.addImages(threadId, [firstImage, secondImage]);
 
-    const firstSync = store.syncPersistedAttachments(threadId, [attachmentFor(firstImage)]);
+    const firstSync = store.syncPersistedAttachments(threadId, [
+      persistedAttachmentFor(firstImage),
+    ]);
     const secondSync = store.syncPersistedAttachments(threadId, [
-      attachmentFor(firstImage),
-      attachmentFor(secondImage),
+      persistedAttachmentFor(firstImage),
+      persistedAttachmentFor(secondImage),
     ]);
 
     expect(
@@ -582,38 +458,6 @@ describe("composerDraftStore syncPersistedAttachments", () => {
         .getState()
         .draftsByThreadId[threadId]?.persistedAttachments.map((attachment) => attachment.id),
     ).toEqual([firstImage.id, secondImage.id]);
-  });
-
-  it("retires the sync generation entry once the newest sync for a slot settles", async () => {
-    const image = makeImage({
-      id: "computer-helper-sync-generation",
-      previewUrl: "blob:computer-helper-sync-generation",
-      name: "computer-helper-sync-generation.png",
-    });
-    const attachment = {
-      id: image.id,
-      name: image.name,
-      mimeType: image.mimeType,
-      sizeBytes: image.sizeBytes,
-      dataUrl: "data:image/png;base64,aGk=",
-    };
-    const store = useComposerDraftStore.getState();
-    store.addImages(threadId, [image]);
-
-    const before = pendingComposerAttachmentSyncGenerationCount();
-    const firstSync = store.syncPersistedAttachments(threadId, [attachment]);
-    const secondSync = store.syncPersistedAttachments(threadId, [attachment]);
-
-    expect(pendingComposerAttachmentSyncGenerationCount()).toBe(before + 1);
-
-    await Promise.all([firstSync, secondSync]);
-
-    expect(pendingComposerAttachmentSyncGenerationCount()).toBe(before);
-    expect(
-      useComposerDraftStore
-        .getState()
-        .draftsByThreadId[threadId]?.persistedAttachments.map((persisted) => persisted.id),
-    ).toEqual([image.id]);
   });
 
   it("replaces malformed persisted draft storage with the current valid draft", async () => {

@@ -18,7 +18,6 @@ describe("shared JSON-RPC stdio transport", () => {
 
     expect(framer.push(encoded.subarray(0, emojiStart + 2))).toEqual([]);
     expect(framer.push(encoded.subarray(emojiStart + 2))).toEqual(['{"text":"A😀B"}', '{"id":2}']);
-    framer.finish();
 
     expect(() => new JsonRpcStdioFramer(8).push(Buffer.from("123456789"))).toThrowError(
       expect.objectContaining({ reason: "frame-too-large" }),
@@ -97,6 +96,9 @@ describe("shared JSON-RPC stdio transport", () => {
     expect(writer.bufferedBytes).toBeGreaterThan(0);
     expect(stream.chunks).toHaveLength(1);
     const second = writer.write({ id: 2, payload: "x".repeat(16) });
+    await expect(writer.write({ id: 3, payload: "x".repeat(30) })).rejects.toMatchObject({
+      reason: "write-overloaded",
+    });
     let firstSettled = false;
     void write.then(() => {
       firstSettled = true;
@@ -109,7 +111,7 @@ describe("shared JSON-RPC stdio transport", () => {
     stream.callback?.();
     stream.emit("drain");
     await second;
-    expect(writer.bufferedBytes).toBeGreaterThanOrEqual(0);
+    expect(writer.bufferedBytes).toBe(0);
     writer.close();
   });
 
@@ -138,24 +140,11 @@ describe("shared JSON-RPC stdio transport", () => {
     await expect(pending).rejects.toThrow("JSON-RPC stdio stdin closed during write");
   });
 
-  it("correlates responses, times out, and exposes respawn lifecycle hooks", async () => {
+  it("correlates responses and times out", async () => {
     const messages: unknown[] = [];
-    const lifecycle = {
-      spawned: [] as number[],
-      respawned: [] as number[],
-      exited: [] as Error[],
-    };
-    const registry = new JsonRpcStdioRequestRegistry({
-      requestTimeoutMs: 10,
-      lifecycle: {
-        onSpawn: (generation) => lifecycle.spawned.push(generation),
-        onRespawn: (generation) => lifecycle.respawned.push(generation),
-        onExit: (error) => lifecycle.exited.push(error),
-      },
-    });
+    const registry = new JsonRpcStdioRequestRegistry({ requestTimeoutMs: 10 });
 
-    registry.processStarted();
-    const result = registry.request("ping", { value: true }, (message) => {
+    const result = registry.requestWithId(1, "ping", { value: true }, (message) => {
       messages.push(message);
     });
     await Promise.resolve();
@@ -163,21 +152,16 @@ describe("shared JSON-RPC stdio transport", () => {
     expect(registry.handleResponse({ id: 1, result: "pong" })).toBe(true);
     await expect(result).resolves.toBe("pong");
 
-    await expect(registry.request("slow", {}, () => undefined, 1)).rejects.toThrow(
+    await expect(registry.requestWithId(2, "slow", {}, () => undefined, 1)).rejects.toThrow(
       "Timed out waiting for slow.",
     );
-    const exit = new Error("process exited");
-    registry.processExited(exit);
-    registry.processStarted();
-    expect(lifecycle.spawned).toEqual([1, 2]);
-    expect(lifecycle.respawned).toEqual([2]);
-    expect(lifecycle.exited).toEqual([exit]);
+    expect(registry.size).toBe(0);
   });
 
   it("writes a request synchronously before a following notification", async () => {
     const messages: unknown[] = [];
     const registry = new JsonRpcStdioRequestRegistry();
-    const result = registry.request("request", {}, (message) => {
+    const result = registry.requestWithId(1, "request", {}, (message) => {
       messages.push(message);
     });
 
@@ -196,7 +180,7 @@ describe("shared JSON-RPC stdio transport", () => {
     let request: Promise<unknown> | undefined;
 
     expect(() => {
-      request = registry.request("write", {}, () => {
+      request = registry.requestWithId(1, "write", {}, () => {
         throw failure;
       });
     }).not.toThrow();

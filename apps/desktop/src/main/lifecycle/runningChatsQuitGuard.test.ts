@@ -4,7 +4,6 @@ import {
   makeRunningChatsQuitGuard,
   parseQuitConfirmationRequest,
   parseQuitConfirmationResponse,
-  quitConfirmationPresentationForPlatform,
   shouldPromptForRunningChatsBeforeQuit,
 } from "./runningChatsQuitGuard";
 
@@ -24,16 +23,9 @@ describe("running chats quit guard", () => {
     expect(shouldPromptForRunningChatsBeforeQuit("custom-title-bar-relaunch")).toBe(false);
   });
 
-  it("uses the in-app dialog on every desktop platform", () => {
-    expect(quitConfirmationPresentationForPlatform()).toBe("in-app");
-  });
-
-  it("parses quit requests and defaults unknown presentation to in-app", () => {
+  it("parses quit requests", () => {
     expect(parseQuitConfirmationRequest(null)).toBeNull();
-    expect(parseQuitConfirmationRequest({ requestId: "q1", presentation: "native" })).toEqual({
-      requestId: "q1",
-      presentation: "native",
-    });
+    expect(parseQuitConfirmationRequest({ requestId: " " })).toBeNull();
     expect(parseQuitConfirmationRequest({ requestId: "q1" })).toEqual({
       requestId: "q1",
       presentation: "in-app",
@@ -229,50 +221,5 @@ describe("running chats quit guard", () => {
     expect(send).toHaveBeenCalledWith({ requestId: "q2", presentation: "in-app" });
     guard.receiveResponse({ requestId: "q2", phase: "decision", allow: true });
     await expect(second).resolves.toBe(true);
-  });
-
-  it("shows the native sheet after the renderer reports running chats", async () => {
-    const guard = makeRunningChatsQuitGuard(() => "q1");
-    const presentNativeConfirmation = vi.fn(async () => false);
-    const decision = guard.askRenderer({
-      send: vi.fn(),
-      isRendererAvailable: () => true,
-      confirmWithoutRenderer: unexpectedNativeConfirmation,
-      presentation: "native",
-      presentNativeConfirmation,
-    });
-
-    guard.receiveResponse({
-      requestId: "q1",
-      phase: "ready",
-      runningCount: 1,
-      chats: [{ id: "a", title: "Fix the tray" }],
-    });
-
-    await expect(decision).resolves.toBe(false);
-    expect(presentNativeConfirmation).toHaveBeenCalledWith([{ id: "a", title: "Fix the tray" }]);
-    expect(guard.hasAllowedQuit()).toBe(false);
-  });
-
-  it("stays if the native sheet presenter throws", async () => {
-    const guard = makeRunningChatsQuitGuard(() => "q1");
-    const decision = guard.askRenderer({
-      send: vi.fn(),
-      isRendererAvailable: () => true,
-      confirmWithoutRenderer: unexpectedNativeConfirmation,
-      presentation: "native",
-      presentNativeConfirmation: () => {
-        throw new Error("sheet failed");
-      },
-    });
-
-    guard.receiveResponse({
-      requestId: "q1",
-      phase: "ready",
-      runningCount: 1,
-      chats: [{ id: "a", title: "Fix the tray" }],
-    });
-
-    await expect(decision).resolves.toBe(false);
   });
 });

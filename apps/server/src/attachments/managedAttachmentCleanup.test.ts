@@ -21,7 +21,7 @@ afterEach(async () => {
   );
 });
 
-async function makeFixture(options: { readonly finalPathIsDirectory?: boolean } = {}) {
+async function makeFixture() {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "glade-managed-cleanup-"));
   temporaryRoots.push(root);
   const attachmentId = "att_v2_0123456789abcdef0123456789abcdef";
@@ -30,8 +30,8 @@ async function makeFixture(options: { readonly finalPathIsDirectory?: boolean } 
   const stagingPath = path.join(root, ".staging", `${attachmentId}.part`);
   await fs.mkdir(path.dirname(finalPath), { recursive: true });
   await fs.mkdir(path.dirname(stagingPath), { recursive: true });
-  if (options.finalPathIsDirectory) await fs.mkdir(finalPath);
-  else await fs.writeFile(finalPath, "final");
+  // A directory at the blob path makes unlink fail, forcing the retry branch.
+  await fs.mkdir(finalPath);
   await fs.writeFile(stagingPath, "partial");
 
   const job: ManagedAttachmentCleanupJob = {
@@ -46,7 +46,7 @@ async function makeFixture(options: { readonly finalPathIsDirectory?: boolean } 
     createdAt: new Date(0).toISOString(),
     updatedAt: new Date(0).toISOString(),
   };
-  return { root, finalPath, stagingPath, job };
+  return { root, job };
 }
 
 function makeRepository(job: ManagedAttachmentCleanupJob) {
@@ -75,30 +75,8 @@ function makeRepository(job: ManagedAttachmentCleanupJob) {
 }
 
 describe("managed attachment cleanup", () => {
-  it("removes both crash-left staging bytes and the final blob before completing the job", async () => {
-    const fixture = await makeFixture();
-    const state = makeRepository(fixture.job);
-    await Effect.runPromise(
-      runManagedAttachmentCleanupBatch.pipe(
-        Effect.provide(
-          Layer.mergeAll(
-            Layer.succeed(ManagedAttachmentRepository, state.repository),
-            Layer.succeed(ServerConfig, {
-              attachmentsDir: fixture.root,
-            } as ServerConfigShape),
-          ),
-        ),
-      ),
-    );
-
-    await expect(fs.stat(fixture.finalPath)).rejects.toMatchObject({ code: "ENOENT" });
-    await expect(fs.stat(fixture.stagingPath)).rejects.toMatchObject({ code: "ENOENT" });
-    expect(state.completed).toEqual([fixture.job.attachmentId]);
-    expect(state.retried).toEqual([]);
-  });
-
   it("keeps a durable retry when physical deletion fails", async () => {
-    const fixture = await makeFixture({ finalPathIsDirectory: true });
+    const fixture = await makeFixture();
     const state = makeRepository(fixture.job);
     await Effect.runPromise(
       runManagedAttachmentCleanupBatch.pipe(

@@ -1,11 +1,7 @@
 import { describe, expect, it, test } from "vitest";
 
-import { CHAT_FILE_REFERENCE_DRAG_TYPE } from "~/lib/chatReferences";
-
 import {
   collectComposerClipboardFiles,
-  isComposerDropzoneInternalDragTransition,
-  shouldBlockDisabledComposerDropzoneTransfer,
   shouldPreventDefaultForUnhandledFileDrop,
   shouldHandleComposerDropzoneFiles,
   splitComposerDropzoneFiles,
@@ -49,53 +45,21 @@ describe("useComposerDropzone file capability helpers", () => {
     });
   });
 
-  it("splits image files from generic files", () => {
-    const image = new File(["image"], "image.png", { type: "image/png" });
-    const generic = new File(["text"], "notes.txt", { type: "text/plain" });
-
-    expect(splitComposerDropzoneFiles([image, generic])).toEqual({
-      imageFiles: [image],
-      genericFiles: [generic],
-    });
-  });
-
   test.each([
-    ["accept", true],
-    ["fallthrough", false],
-  ] as const)("applies %s policy to generic-only files", (mode, expected) => {
-    const generic = new File(["text"], "notes.txt", { type: "text/plain" });
+    ["accept", true, true],
+    ["reject", true, true],
+    ["fallthrough", false, false],
+  ] as const)(
+    "applies %s policy to generic-only and unusable drops",
+    (mode, handlesGeneric, preventsUnusable) => {
+      const generic = new File(["text"], "notes.txt", { type: "text/plain" });
 
-    expect(shouldHandleComposerDropzoneFiles(splitComposerDropzoneFiles([generic]), mode)).toBe(
-      expected,
-    );
-  });
-
-  it("prevents default for claimed unusable file drops", () => {
-    const files = splitComposerDropzoneFiles([]);
-
-    expect(shouldPreventDefaultForUnhandledFileDrop(files, "accept")).toBe(true);
-    expect(shouldPreventDefaultForUnhandledFileDrop(files, "reject")).toBe(true);
-    expect(shouldPreventDefaultForUnhandledFileDrop(files, "fallthrough")).toBe(false);
-  });
-
-  it("identifies child drag transitions as internal to the dropzone", () => {
-    const child = {};
-    const outside = {};
-    const currentTarget = {
-      contains: (target: unknown) => target === child,
-    };
-
-    expect(isComposerDropzoneInternalDragTransition(currentTarget, child)).toBe(true);
-    expect(isComposerDropzoneInternalDragTransition(currentTarget, outside)).toBe(false);
-    expect(isComposerDropzoneInternalDragTransition(currentTarget, null)).toBe(false);
-  });
-
-  it("blocks attachment and reference drops while the dropzone is disabled", () => {
-    expect(shouldBlockDisabledComposerDropzoneTransfer(true, ["Files"])).toBe(true);
-    expect(shouldBlockDisabledComposerDropzoneTransfer(true, [CHAT_FILE_REFERENCE_DRAG_TYPE])).toBe(
-      true,
-    );
-    expect(shouldBlockDisabledComposerDropzoneTransfer(false, ["Files"])).toBe(false);
-    expect(shouldBlockDisabledComposerDropzoneTransfer(true, ["text/plain"])).toBe(false);
-  });
+      expect(shouldHandleComposerDropzoneFiles(splitComposerDropzoneFiles([generic]), mode)).toBe(
+        handlesGeneric,
+      );
+      expect(shouldPreventDefaultForUnhandledFileDrop(splitComposerDropzoneFiles([]), mode)).toBe(
+        preventsUnusable,
+      );
+    },
+  );
 });

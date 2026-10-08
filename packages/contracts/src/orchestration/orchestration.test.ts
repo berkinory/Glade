@@ -148,28 +148,13 @@ it.effect("preserves thread activity payloads through the RPC JSON codec", () =>
   }),
 );
 
-it.effect("rejects turn diff input when fromTurnCount > toTurnCount", () =>
+it.effect.each([
+  ["turn diff input", decodeTurnDiffInput],
+  ["thread turn diff", decodeThreadTurnDiff],
+] as const)("rejects %s when fromTurnCount > toTurnCount", ([, decode]) =>
   Effect.gen(function* () {
     const result = yield* Effect.exit(
-      decodeTurnDiffInput({
-        threadId: "thread-1",
-        fromTurnCount: 3,
-        toTurnCount: 2,
-      }),
-    );
-    assert.strictEqual(result._tag, "Failure");
-  }),
-);
-
-it.effect("rejects thread turn diff when fromTurnCount > toTurnCount", () =>
-  Effect.gen(function* () {
-    const result = yield* Effect.exit(
-      decodeThreadTurnDiff({
-        threadId: "thread-1",
-        fromTurnCount: 3,
-        toTurnCount: 2,
-        diff: "patch",
-      }),
+      decode({ threadId: "thread-1", fromTurnCount: 3, toTurnCount: 2, diff: "patch" }),
     );
     assert.strictEqual(result._tag, "Failure");
   }),
@@ -219,7 +204,7 @@ it.effect("trims branded ids and command string fields at decode boundaries", ()
   }),
 );
 
-it.effect("decodes historical project.created payloads with a default provider", () =>
+it.effect("defaults isPinned for historical project.created payloads", () =>
   Effect.gen(function* () {
     const parsed = yield* decodeProjectCreatedPayload({
       projectId: "project-1",
@@ -232,7 +217,6 @@ it.effect("decodes historical project.created payloads with a default provider",
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
-    assert.strictEqual(parsed.defaultModelSelection?.provider, "codex");
     assert.strictEqual(parsed.isPinned, false);
   }),
 );
@@ -360,31 +344,6 @@ it.effect("strips client-sent dispatchOrigin from thread.turn.start commands", (
   }),
 );
 
-it.effect("strips client-sent agent dispatchOrigin from thread.turn.start commands", () =>
-  Effect.gen(function* () {
-    // The "agent" origin is reserved for turns dispatched through the Glade agent gateway; WS clients
-    // must not be able to spoof it either.
-    const command = yield* decodeClientOrchestrationCommand({
-      type: "thread.turn.start",
-      commandId: "cmd-turn-start-agent-origin",
-      threadId: "thread-1",
-      message: {
-        messageId: "message-1",
-        role: "user",
-        text: "hello",
-        attachments: [],
-      },
-      dispatchMode: "queue",
-      dispatchOrigin: "agent",
-      runtimeMode: "full-access",
-
-      createdAt: "2026-01-01T00:00:00.000Z",
-    });
-    assert.strictEqual(command.type, "thread.turn.start");
-    assert.strictEqual("dispatchOrigin" in command, false);
-  }),
-);
-
 it.effect("rejects oversized thread notes payloads", () =>
   Effect.gen(function* () {
     const failed = yield* decodeThreadMetaUpdatedPayload({
@@ -401,63 +360,40 @@ it.effect("rejects oversized thread notes payloads", () =>
   }),
 );
 
-it.effect("rejects normalized thread.turn.start commands with too many attachments", () =>
+it.effect.each([
+  ["normalized", decodeThreadTurnStartCommand, (index: number) => `attachment-${index}`],
+  [
+    "client",
+    decodeClientOrchestrationCommand,
+    (index: number) => `thread-1-00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+  ],
+] as const)("rejects %s thread.turn.start commands with too many attachments", ([, decode, id]) =>
   Effect.gen(function* () {
-    const failed = yield* decodeThreadTurnStartCommand({
-      type: "thread.turn.start",
-      commandId: "cmd-turn-too-many-attachments",
-      threadId: "thread-1",
-      message: {
-        messageId: "msg-too-many-attachments",
-        role: "user",
-        text: "hello",
-        attachments: Array.from({ length: PROVIDER_SEND_TURN_MAX_ATTACHMENTS + 1 }, (_, index) => ({
-          type: "image",
-          id: `attachment-${index}`,
-          name: `image-${index}.png`,
-          mimeType: "image/png",
-          sizeBytes: 1,
-        })),
-      },
-      createdAt: "2026-01-01T00:00:00.000Z",
-    }).pipe(
-      Effect.match({
-        onFailure: () => true,
-        onSuccess: () => false,
+    const result = yield* Effect.exit(
+      decode({
+        type: "thread.turn.start",
+        commandId: "cmd-turn-too-many-attachments",
+        threadId: "thread-1",
+        message: {
+          messageId: "msg-too-many-attachments",
+          role: "user",
+          text: "hello",
+          attachments: Array.from(
+            { length: PROVIDER_SEND_TURN_MAX_ATTACHMENTS + 1 },
+            (_, index) => ({
+              type: "image",
+              id: id(index),
+              name: `image-${index}.png`,
+              mimeType: "image/png",
+              sizeBytes: 1,
+            }),
+          ),
+        },
+        runtimeMode: "full-access",
+        createdAt: "2026-01-01T00:00:00.000Z",
       }),
     );
-    assert.strictEqual(failed, true);
-  }),
-);
-
-it.effect("rejects client thread.turn.start commands with too many upload attachments", () =>
-  Effect.gen(function* () {
-    const failed = yield* decodeClientOrchestrationCommand({
-      type: "thread.turn.start",
-      commandId: "cmd-client-turn-too-many-attachments",
-      threadId: "thread-1",
-      message: {
-        messageId: "msg-client-too-many-attachments",
-        role: "user",
-        text: "hello",
-        attachments: Array.from({ length: PROVIDER_SEND_TURN_MAX_ATTACHMENTS + 1 }, (_, index) => ({
-          type: "image",
-          id: `thread-1-00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
-          name: `image-${index}.png`,
-          mimeType: "image/png",
-          sizeBytes: 1,
-        })),
-      },
-      runtimeMode: "full-access",
-
-      createdAt: "2026-01-01T00:00:00.000Z",
-    }).pipe(
-      Effect.match({
-        onFailure: () => true,
-        onSuccess: () => false,
-      }),
-    );
-    assert.strictEqual(failed, true);
+    assert.strictEqual(result._tag, "Failure");
   }),
 );
 

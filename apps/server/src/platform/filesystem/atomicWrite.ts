@@ -6,12 +6,8 @@ import { randomUUID } from "node:crypto";
 
 import { Effect } from "effect";
 
-import {
-  PRIVATE_DIRECTORY_MODE,
-  PRIVATE_FILE_MODE,
-  syncDirectoryEntry,
-  supportsPosixPermissions,
-} from "./privatePathPermissions";
+import { supportsPosixPermissions, syncDirectoryEntry } from "../filesystemPlatform";
+import { PRIVATE_DIRECTORY_MODE, PRIVATE_FILE_MODE } from "./privatePathPermissions";
 
 async function ensurePrivateDirectory(directoryPath: string): Promise<void> {
   const missingDirectories: Array<string> = [];

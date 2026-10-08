@@ -148,7 +148,7 @@ function errnoCode(cause: unknown): string | undefined {
   return (cause as NodeJS.ErrnoException | undefined)?.code;
 }
 
-export function classifyProviderStartupFailure(cause: unknown): ProviderStartupFailureReason {
+function classifyProviderStartupFailure(cause: unknown): ProviderStartupFailureReason {
   if (cause instanceof ExecutableNotFoundError || errnoCode(cause) === "ENOENT") {
     return "ExecutableNotFound";
   }

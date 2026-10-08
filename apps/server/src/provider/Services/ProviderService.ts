@@ -110,11 +110,11 @@ export interface ProviderServiceShape {
     input: ProviderStopSessionInput,
   ) => Effect.Effect<void, ProviderServiceError>;
 
-  readonly stopRuntimeSession?: (input: {
+  readonly stopRuntimeSession: (input: {
     readonly threadId: ThreadId;
   }) => Effect.Effect<void, ProviderServiceError>;
 
-  readonly hasLiveRuntimeTasks?: (input: { readonly threadId: ThreadId }) => Effect.Effect<boolean>;
+  readonly hasLiveRuntimeTasks: (input: { readonly threadId: ThreadId }) => Effect.Effect<boolean>;
 
   readonly clearSessionResumeCursor?: (input: {
     readonly threadId: ThreadId;
@@ -142,7 +142,7 @@ export interface ProviderServiceShape {
 
   readonly closeRuntimeEvents: Effect.Effect<void>;
 
-  readonly getRuntimeEventPumpHealth?: () => Effect.Effect<
+  readonly getRuntimeEventPumpHealth: () => Effect.Effect<
     ReadonlyArray<ProviderRuntimeEventPumpHealth>
   >;
 

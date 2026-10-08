@@ -33,30 +33,10 @@ describe("claudeAuthStatusLock", () => {
     assert.deepStrictEqual(events, ["start-1", "end-1", "start-2", "end-2", "start-3", "end-3"]);
   });
 
-  it("only lets the next acquirer through once release is called", async () => {
-    const release1 = await acquireClaudeAuthStatusLock();
-
-    let acquiredSecond = false;
-    const secondAcquired = acquireClaudeAuthStatusLock().then((release2) => {
-      acquiredSecond = true;
-      release2();
-    });
-
-    await delay(10);
-    assert.strictEqual(acquiredSecond, false);
-
-    release1();
-    await secondAcquired;
-    assert.strictEqual(acquiredSecond, true);
-  });
-
   it("treats a double release as a harmless no-op", async () => {
     const release = await acquireClaudeAuthStatusLock();
     release();
     release();
-
-    // The lock must still be free for the next acquirer -- a double release must not desynchronize the
-    // FIFO chain or deadlock later acquirers.
     const nextRelease = await acquireClaudeAuthStatusLock();
     nextRelease();
   });

@@ -168,7 +168,7 @@ export const ProviderSessionTeardownLive = Layer.effect(
     const stopRuntimeSession: StopRuntimeSession = (rawInput) =>
       stopRuntimeSessionInternal(rawInput);
 
-    const hasLiveRuntimeTasks: NonNullable<ProviderServiceShape["hasLiveRuntimeTasks"]> = (input) =>
+    const hasLiveRuntimeTasks: ProviderServiceShape["hasLiveRuntimeTasks"] = (input) =>
       Effect.sync(() => idle.hasLiveTasks(input.threadId));
 
     const clearSessionResumeCursor: NonNullable<

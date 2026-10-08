@@ -103,7 +103,6 @@ describe("Provider reactor conversationEdits", () => {
           mentions: [mention],
         },
         runtimeMode: "approval-required",
-
         createdAt: now,
       }),
     );
@@ -136,7 +135,6 @@ describe("Provider reactor conversationEdits", () => {
         messageId: asMessageId("user-message-edit"),
         text: "edited prompt",
         runtimeMode: "approval-required",
-
         createdAt: now,
       }),
     );
@@ -202,7 +200,6 @@ describe("Provider reactor conversationEdits", () => {
           attachments: [],
         },
         runtimeMode: "approval-required",
-
         createdAt: now,
       }),
     );
@@ -219,7 +216,6 @@ describe("Provider reactor conversationEdits", () => {
         messageId: asMessageId("msg-queued-before-edit"),
         text: "edited queued prompt",
         runtimeMode: "approval-required",
-
         createdAt: now,
       }),
     );
@@ -281,7 +277,6 @@ describe("Provider reactor conversationEdits", () => {
           attachments: [imageAttachment],
         },
         runtimeMode: "approval-required",
-
         createdAt: now,
       }),
     );
@@ -316,7 +311,6 @@ describe("Provider reactor conversationEdits", () => {
         messageId: asMessageId("msg-image-edit"),
         text: "edited image prompt",
         runtimeMode: "approval-required",
-
         createdAt: now,
       }),
     );
@@ -363,7 +357,6 @@ describe("Provider reactor conversationEdits", () => {
         messageId: asMessageId("user-message-checkpoint-edit"),
         text: "edited checkpoint prompt",
         runtimeMode: "approval-required",
-
         createdAt: now,
       }),
     );
@@ -401,7 +394,6 @@ describe("Provider reactor conversationEdits", () => {
         messageId: asMessageId("user-message-restart-edit"),
         text: "edited after stop",
         runtimeMode: "approval-required",
-
         createdAt: now,
       }),
     );
@@ -464,7 +456,6 @@ describe("Provider reactor conversationEdits", () => {
         messageId,
         text: "edited prompt",
         runtimeMode: "approval-required",
-
         createdAt: now,
       }),
     );
@@ -500,7 +491,6 @@ describe("Provider reactor conversationEdits", () => {
         messageId: asMessageId("user-message-stale"),
         text: "corrected prompt",
         runtimeMode: "approval-required",
-
         createdAt: now,
       }),
     );

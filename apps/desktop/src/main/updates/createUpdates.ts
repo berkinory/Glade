@@ -16,7 +16,7 @@ import {
   reduceDesktopUpdateStateOnInstallFailure,
 } from "./updateMachine";
 import { desktopFlavor } from "../desktopEnvironment";
-import { desktopIdentity, isDevelopment } from "../desktopEnvironment";
+import { isDevelopment } from "../desktopEnvironment";
 import { getAutoUpdateDisabledReason } from "./updateState";
 
 export interface UpdateResources {
@@ -47,8 +47,7 @@ export function createUpdates(input: {
       isPackaged: app.isPackaged,
       platform: process.platform,
       appImage: process.env.APPIMAGE,
-      disabledByEnv:
-        desktopIdentity.usesScriptedUpdates || process.env.GLADE_DISABLE_AUTO_UPDATE === "1",
+      disabledByEnv: process.env.GLADE_DISABLE_AUTO_UPDATE === "1",
       hasUpdateFeedConfig:
         resources.readAppUpdateYml() !== null || Boolean(process.env.GLADE_DESKTOP_MOCK_UPDATES),
     });

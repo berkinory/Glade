@@ -9,7 +9,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildDownloadHeaders,
   classifyDownloadResponse,
-  computeProgressInfo,
   computeRetryDelayMs,
   DEFAULT_RESUMABLE_DOWNLOAD_CONFIG,
   isCrossOrigin,
@@ -24,44 +23,16 @@ import {
   type UpdaterHttpExecutorLike,
 } from "./resumableUpdateDownload";
 
-describe("computeProgressInfo", () => {
-  it("computes percent and throughput", () => {
-    const info = computeProgressInfo({
-      transferred: 50,
-      total: 200,
-      delta: 10,
-      elapsedMs: 2000,
-    });
-    expect(info).toEqual({
-      total: 200,
-      delta: 10,
-      transferred: 50,
-      percent: 25,
-      bytesPerSecond: 25,
-    });
-  });
-
-  it("avoids divide-by-zero on total and elapsed", () => {
-    const info = computeProgressInfo({ transferred: 0, total: 0, delta: 0, elapsedMs: 0 });
-    expect(info.percent).toBe(0);
-    expect(Number.isFinite(info.bytesPerSecond)).toBe(true);
-  });
-});
-
 describe("parseContentRangeTotal", () => {
-  it("extracts the total from a satisfied range", () => {
-    expect(parseContentRangeTotal("bytes 200-1000/1001")).toBe(1001);
-  });
-
-  it("extracts the total from an unsatisfied range", () => {
-    expect(parseContentRangeTotal("bytes */1001")).toBe(1001);
-  });
-
-  it("returns null for missing or unknown totals", () => {
-    expect(parseContentRangeTotal(null)).toBeNull();
-    expect(parseContentRangeTotal(undefined)).toBeNull();
-    expect(parseContentRangeTotal("bytes 0-100/*")).toBeNull();
-    expect(parseContentRangeTotal("garbage")).toBeNull();
+  it.each([
+    ["bytes 200-1000/1001", 1001],
+    ["bytes */1001", 1001],
+    [null, null],
+    [undefined, null],
+    ["bytes 0-100/*", null],
+    ["garbage", null],
+  ])("parses %s as %s", (header, total) => {
+    expect(parseContentRangeTotal(header)).toBe(total);
   });
 });
 
@@ -78,49 +49,19 @@ describe("selectSha512Encoding", () => {
 });
 
 describe("isCrossOrigin", () => {
-  it("treats identical scheme/host/port as same-origin", () => {
-    expect(
-      isCrossOrigin(
-        new URL("https://github.com/owner/repo/releases/download/v1/app.zip"),
-        new URL("https://github.com/owner/repo/releases/download/v1/app.zip"),
-      ),
-    ).toBe(false);
-  });
-
-  it("ignores path and query differences on the same origin", () => {
-    expect(
-      isCrossOrigin(
-        new URL("https://github.com/a/app.zip"),
-        new URL("https://github.com/b/app.zip?token=signed"),
-      ),
-    ).toBe(false);
-  });
-
-  it("flags a different host as cross-origin (GitHub -> signed CDN)", () => {
-    expect(
-      isCrossOrigin(
-        new URL("https://github.com/owner/repo/releases/download/v1/app.zip"),
-        new URL("https://objects.githubusercontent.com/storage/app.zip?token=signed"),
-      ),
-    ).toBe(true);
-  });
-
-  it("flags a scheme change as cross-origin", () => {
-    expect(isCrossOrigin(new URL("https://host/x"), new URL("http://host/x"))).toBe(true);
-  });
-
-  it("treats an explicit default port as same-origin", () => {
-    expect(isCrossOrigin(new URL("https://host:443/x"), new URL("https://host/x"))).toBe(false);
-  });
-
-  it("flags a non-default port as cross-origin", () => {
-    expect(isCrossOrigin(new URL("https://host:8443/x"), new URL("https://host/x"))).toBe(true);
-  });
-
-  it("compares hostnames case-insensitively", () => {
-    expect(isCrossOrigin(new URL("https://GitHub.com/x"), new URL("https://github.com/x"))).toBe(
-      false,
-    );
+  it.each([
+    ["https://github.com/a/app.zip", "https://github.com/b/app.zip?token=signed", false],
+    ["https://host:443/x", "https://host/x", false],
+    ["https://GitHub.com/x", "https://github.com/x", false],
+    [
+      "https://github.com/owner/repo/releases/download/v1/app.zip",
+      "https://objects.githubusercontent.com/storage/app.zip?token=signed",
+      true,
+    ],
+    ["https://host/x", "http://host/x", true],
+    ["https://host:8443/x", "https://host/x", true],
+  ])("%s -> %s is cross-origin: %s", (from, to, crossOrigin) => {
+    expect(isCrossOrigin(new URL(from), new URL(to))).toBe(crossOrigin);
   });
 });
 
@@ -178,74 +119,54 @@ describe("buildDownloadHeaders", () => {
 });
 
 describe("classifyDownloadResponse", () => {
-  it("appends on 206 using Content-Range total", () => {
-    expect(
-      classifyDownloadResponse({
-        statusCode: 206,
+  const response = (
+    statusCode: number,
+    overrides: Partial<Parameters<typeof classifyDownloadResponse>[0]> = {},
+  ) => ({
+    statusCode,
+    contentRange: null,
+    contentLength: null,
+    bytesAlreadyDownloaded: 0,
+    ...overrides,
+  });
+
+  it.each([
+    {
+      name: "appends on 206 using the Content-Range total",
+      input: response(206, {
         contentRange: "bytes 100-1000/1001",
         contentLength: 901,
         bytesAlreadyDownloaded: 100,
       }),
-    ).toEqual({ kind: "append", total: 1001 });
-  });
-
-  it("derives total from Content-Length + offset on 206 without Content-Range", () => {
-    expect(
-      classifyDownloadResponse({
-        statusCode: 206,
-        contentRange: null,
-        contentLength: 900,
-        bytesAlreadyDownloaded: 100,
-      }),
-    ).toEqual({ kind: "append", total: 1000 });
-  });
-
-  it("restarts from zero on 200 (server ignored Range)", () => {
-    expect(
-      classifyDownloadResponse({
-        statusCode: 200,
-        contentRange: null,
-        contentLength: 1001,
-        bytesAlreadyDownloaded: 500,
-      }),
-    ).toEqual({ kind: "fromStart", total: 1001 });
-  });
-
-  it("treats 416 as already complete", () => {
-    expect(
-      classifyDownloadResponse({
-        statusCode: 416,
-        contentRange: "bytes */1001",
-        contentLength: null,
-        bytesAlreadyDownloaded: 1001,
-      }),
-    ).toEqual({ kind: "complete" });
-  });
-
-  it("marks 429 and 5xx as retryable", () => {
-    for (const statusCode of [429, 500, 502, 503, 504]) {
-      expect(
-        classifyDownloadResponse({
-          statusCode,
-          contentRange: null,
-          contentLength: null,
-          bytesAlreadyDownloaded: 0,
-        }),
-      ).toEqual({ kind: "retryable", statusCode });
-    }
-  });
-
-  it("marks other 4xx as fatal", () => {
-    for (const statusCode of [400, 403, 404]) {
-      expect(
-        classifyDownloadResponse({
-          statusCode,
-          contentRange: null,
-          contentLength: null,
-          bytesAlreadyDownloaded: 0,
-        }),
-      ).toEqual({ kind: "fatal", statusCode });
-    }
+      expected: { kind: "append", total: 1001 },
+    },
+    {
+      name: "derives the 206 total from Content-Length plus the offset",
+      input: response(206, { contentLength: 900, bytesAlreadyDownloaded: 100 }),
+      expected: { kind: "append", total: 1000 },
+    },
+    {
+      name: "restarts from zero when the server ignores Range",
+      input: response(200, { contentLength: 1001, bytesAlreadyDownloaded: 500 }),
+      expected: { kind: "fromStart", total: 1001 },
+    },
+    {
+      name: "treats 416 as already complete",
+      input: response(416, { contentRange: "bytes */1001", bytesAlreadyDownloaded: 1001 }),
+      expected: { kind: "complete" },
+    },
+    ...[429, 500, 502, 503, 504].map((statusCode) => ({
+      name: `retries ${statusCode}`,
+      input: response(statusCode),
+      expected: { kind: "retryable", statusCode },
+    })),
+    ...[400, 403, 404].map((statusCode) => ({
+      name: `fails on ${statusCode}`,
+      input: response(statusCode),
+      expected: { kind: "fatal", statusCode },
+    })),
+  ])("$name", ({ input, expected }) => {
+    expect(classifyDownloadResponse(input)).toEqual(expected);
   });
 });
 
@@ -447,10 +368,6 @@ describe("installResumableUpdateDownloader (integration)", () => {
       },
     };
   }
-
-  it("returns false when the executor is not yet available", () => {
-    expect(installResumableUpdateDownloader({ httpExecutor: null })).toBe(false);
-  });
 
   it("resumes from the on-disk offset after a mid-stream drop and verifies sha512", async () => {
     let fullRequests = 0;

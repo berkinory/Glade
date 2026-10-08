@@ -16,8 +16,12 @@ import type {
   SDKControlInitializeResponse,
   McpServerStatus,
   SDKControlReloadPluginsResponse,
+  CanUseTool,
 } from "@anthropic-ai/claude-agent-sdk";
-import { Layer } from "effect";
+import { Effect, Layer, Option, Stream } from "effect";
+import { assert } from "@effect/vitest";
+import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
+import { ClaudeAdapter } from "../../Services/ClaudeAdapter.ts";
 import { ServerConfig } from "../../../server/config.ts";
 import { ServerSettingsService } from "../../../settings/serverSettings.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -43,11 +47,23 @@ afterAll(() => {
   rmSync(fakeClaudeBinDir, { recursive: true, force: true });
 });
 
-export function makeClaudeAdapterLive(options?: ClaudeAdapterLiveOptions) {
+function makeClaudeAdapterLive(options?: ClaudeAdapterLiveOptions) {
   return makeClaudeAdapterLiveBase({
     readClaudeCliVersion: async () => PROVIDER_COMPATIBILITY.claudeAgent.minimumVersion,
     ...options,
   }).pipe(Layer.provide(ServerSettingsService.layerTest()));
+}
+
+export function makeClaudeAdapterTestLayer(
+  options?: ClaudeAdapterLiveOptions,
+  config?: { readonly cwd?: string; readonly baseDir?: string },
+) {
+  return makeClaudeAdapterLive(options).pipe(
+    Layer.provideMerge(
+      ServerConfig.layerTest(config?.cwd ?? "/tmp/claude-adapter-test", config?.baseDir ?? "/tmp"),
+    ),
+    Layer.provideMerge(NodeServices.layer),
+  );
 }
 
 export class FakeClaudeQuery implements AsyncIterable<SDKMessage> {
@@ -64,20 +80,11 @@ export class FakeClaudeQuery implements AsyncIterable<SDKMessage> {
   public readonly backgroundTasksCalls: Array<string | undefined> = [];
   public readonly setModelCalls: Array<string | undefined> = [];
   public readonly setPermissionModeCalls: Array<string> = [];
-  public readonly setMaxThinkingTokensCalls: Array<number | null> = [];
   public readonly applyFlagSettingsCalls: Array<Record<string, unknown>> = [];
-  public readonly reconnectMcpServerCalls: string[] = [];
-  public readonly toggleMcpServerCalls: Array<{ name: string; enabled: boolean }> = [];
-  public mcpStatuses: McpServerStatus[] = [];
-  public getContextUsageCalls = 0;
-  public getContextUsageDetails: Array<"summary" | "full" | undefined> = [];
   public iteratorNextCalls = 0;
-  private contextUsageResponse: SDKControlGetContextUsageResponse | undefined;
-  private contextUsageNeverResolves = false;
   public closeCalls = 0;
   public supportedCommandList: Array<{ name: string; description: string; argumentHint: string }> =
     [];
-  public supportedCommandsNeverResolves = false;
 
   emit(message: SDKMessage): void {
     if (this.done) {
@@ -134,42 +141,21 @@ export class FakeClaudeQuery implements AsyncIterable<SDKMessage> {
     this.setPermissionModeCalls.push(mode);
   };
 
-  readonly setMaxThinkingTokens = async (maxThinkingTokens: number | null): Promise<void> => {
-    this.setMaxThinkingTokensCalls.push(maxThinkingTokens);
-  };
+  readonly setMaxThinkingTokens = async (_maxThinkingTokens: number | null): Promise<void> => {};
 
   readonly applyFlagSettings = async (settings: Record<string, unknown>): Promise<void> => {
     this.applyFlagSettingsCalls.push(settings);
   };
 
-  setContextUsageResponse(response: SDKControlGetContextUsageResponse): void {
-    this.contextUsageResponse = response;
-  }
-
-  setContextUsageNeverResolves(): void {
-    this.contextUsageNeverResolves = true;
-  }
-
-  readonly getContextUsage = async (options?: {
+  readonly getContextUsage = async (_options?: {
     readonly detail?: "summary" | "full";
   }): Promise<SDKControlGetContextUsageResponse> => {
-    this.getContextUsageCalls += 1;
-    this.getContextUsageDetails.push(options?.detail);
-    if (this.contextUsageNeverResolves) {
-      return new Promise<SDKControlGetContextUsageResponse>(() => {});
-    }
-    if (!this.contextUsageResponse) {
-      throw new Error("Context usage unavailable in this test.");
-    }
-    return this.contextUsageResponse;
+    throw new Error("Context usage unavailable in this test.");
   };
 
   readonly supportedCommands = async (): Promise<
     Array<{ name: string; description: string; argumentHint: string }>
-  > => {
-    if (this.supportedCommandsNeverResolves) return new Promise(() => {});
-    return this.supportedCommandList;
-  };
+  > => this.supportedCommandList;
 
   readonly supportedModels = async (): Promise<Array<ModelInfo>> => {
     return [
@@ -200,15 +186,11 @@ export class FakeClaudeQuery implements AsyncIterable<SDKMessage> {
       available_output_styles: [],
     }) as SDKControlInitializeResponse;
 
-  readonly mcpServerStatus = async (): Promise<McpServerStatus[]> => this.mcpStatuses;
+  readonly mcpServerStatus = async (): Promise<McpServerStatus[]> => [];
 
-  readonly reconnectMcpServer = async (name: string): Promise<void> => {
-    this.reconnectMcpServerCalls.push(name);
-  };
+  readonly reconnectMcpServer = async (_name: string): Promise<void> => {};
 
-  readonly toggleMcpServer = async (name: string, enabled: boolean): Promise<void> => {
-    this.toggleMcpServerCalls.push({ name, enabled });
-  };
+  readonly toggleMcpServer = async (_name: string, _enabled: boolean): Promise<void> => {};
 
   readonly reloadPlugins = async (): Promise<SDKControlReloadPluginsResponse> => ({
     plugins: [],
@@ -258,14 +240,7 @@ export class FakeClaudeQuery implements AsyncIterable<SDKMessage> {
   }
 }
 
-export function makeHarness(config?: {
-  readonly nativeEventLogPath?: string;
-  readonly nativeEventLogger?: ClaudeAdapterLiveOptions["nativeEventLogger"];
-  readonly cwd?: string;
-  readonly baseDir?: string;
-  readonly workflowRuntimePollIntervalMs?: number;
-  readonly onCreate?: (options: ClaudeQueryOptions) => void;
-}) {
+export function makeHarness(config?: { readonly cwd?: string; readonly baseDir?: string }) {
   const query = new FakeClaudeQuery();
   let createInput:
     | {
@@ -274,38 +249,15 @@ export function makeHarness(config?: {
       }
     | undefined;
 
-  const adapterOptions: ClaudeAdapterLiveOptions = {
-    createQuery: (input) => {
-      createInput = input;
-      config?.onCreate?.(input.options);
-      return query;
-    },
-    ...(config?.nativeEventLogger
-      ? {
-          nativeEventLogger: config.nativeEventLogger,
-        }
-      : {}),
-    ...(config?.nativeEventLogPath
-      ? {
-          nativeEventLogPath: config.nativeEventLogPath,
-        }
-      : {}),
-    ...(config?.workflowRuntimePollIntervalMs !== undefined
-      ? {
-          workflowRuntimePollIntervalMs: config.workflowRuntimePollIntervalMs,
-        }
-      : {}),
-  };
-
   return {
-    layer: makeClaudeAdapterLive(adapterOptions).pipe(
-      Layer.provideMerge(
-        ServerConfig.layerTest(
-          config?.cwd ?? "/tmp/claude-adapter-test",
-          config?.baseDir ?? "/tmp",
-        ),
-      ),
-      Layer.provideMerge(NodeServices.layer),
+    layer: makeClaudeAdapterTestLayer(
+      {
+        createQuery: (input) => {
+          createInput = input;
+          return query;
+        },
+      },
+      config,
     ),
     query,
     getLastCreateQueryInput: () => createInput,
@@ -322,14 +274,13 @@ export function makeMultiQueryHarness(config?: {
   >;
   readonly failCreateAt?: number;
   readonly gatewayCredentials?: AgentGatewayCredentialsShape;
-  readonly onCreate?: (options: ClaudeQueryOptions) => void;
 }) {
   const queries: Array<FakeClaudeQuery> = [];
   const createInputs: Array<{
     readonly prompt: AsyncIterable<SDKUserMessage>;
     readonly options: ClaudeQueryOptions;
   }> = [];
-  let layer = makeClaudeAdapterLive({
+  let layer = makeClaudeAdapterTestLayer({
     deleteNativeSession: async () => {},
     ...config?.nativeHistory,
     createQuery: (input) => {
@@ -339,13 +290,9 @@ export function makeMultiQueryHarness(config?: {
       const query = new FakeClaudeQuery();
       queries.push(query);
       createInputs.push(input);
-      config?.onCreate?.(input.options);
       return query;
     },
-  }).pipe(
-    Layer.provideMerge(ServerConfig.layerTest("/tmp/claude-adapter-test", "/tmp")),
-    Layer.provideMerge(NodeServices.layer),
-  );
+  });
   if (config?.gatewayCredentials) {
     layer = layer.pipe(
       Layer.provideMerge(Layer.succeed(AgentGatewayCredentials, config.gatewayCredentials)),
@@ -470,3 +417,20 @@ export async function readFirstPromptMessage(
 export const THREAD_ID = ThreadId.makeUnsafe("thread-claude-1");
 
 export const RESUME_THREAD_ID = ThreadId.makeUnsafe("thread-claude-resume");
+
+// A missing event leaves the stream waiting until the suite's test timeout; a wrong one fails here.
+export const nextEvent = <T extends ProviderRuntimeEvent["type"]>(type: T) =>
+  Effect.gen(function* () {
+    const adapter = yield* ClaudeAdapter;
+    const next = yield* Stream.runHead(adapter.streamEvents);
+    assert.equal(Option.isSome(next) ? next.value.type : "<stream ended>", type);
+    return Option.getOrThrow(next) as Extract<ProviderRuntimeEvent, { readonly type: T }>;
+  });
+
+export function requireCanUseTool(harness: {
+  readonly getLastCreateQueryInput: () => { readonly options: ClaudeQueryOptions } | undefined;
+}): CanUseTool {
+  const canUseTool = harness.getLastCreateQueryInput()?.options.canUseTool;
+  if (!canUseTool) return assert.fail("Expected the Claude query to receive canUseTool.");
+  return canUseTool;
+}

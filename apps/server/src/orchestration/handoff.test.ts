@@ -81,53 +81,43 @@ describe("buildPriorTranscriptBootstrapText", () => {
     expect(text!.indexOf("marker-250")).toBeLessThan(text!.indexOf("marker-290"));
   });
 
-  it("never lets the omission header push the newest message past the budget", () => {
-    const earlierMessages = Array.from({ length: 5 }, (_, index) =>
-      message(index, index % 2 === 0 ? "user" : "assistant", `EARLY-${index} ${"e".repeat(60)}`),
-    );
-    const recentPlainMessages = Array.from({ length: 5 }, (_, index) =>
-      message(5 + index, index % 2 === 0 ? "user" : "assistant", `plain-recent-${index}`),
-    );
-    const newestMessage = message(
-      10,
-      "assistant",
-      `NEWEST-START ${"r".repeat(10)} NEWEST-END-UNIQUE-MARKER`,
-    );
-    const currentMessage = message(11, "user", "current turn");
-    const messages = [...earlierMessages, ...recentPlainMessages, newestMessage, currentMessage];
+  it.each([
+    { earlyCount: 5, filler: "e".repeat(60), budget: 800, omittedDigits: 1 },
+    { earlyCount: 150, filler: "z".repeat(40), budget: 1_600, omittedDigits: 3 },
+  ])(
+    "keeps the newest message within budget when $earlyCount earlier messages need an omission header",
+    ({ earlyCount, filler, budget, omittedDigits }) => {
+      const role = (index: number) => (index % 2 === 0 ? "user" : "assistant");
+      const messages = [
+        ...Array.from({ length: earlyCount }, (_, index) =>
+          message(index, role(index), `EARLY-${index} ${filler}`),
+        ),
+        ...Array.from({ length: 5 }, (_, index) =>
+          message(earlyCount + index, role(index), `plain-recent-${index}`),
+        ),
+        message(
+          earlyCount + 5,
+          "assistant",
+          `NEWEST-START ${"r".repeat(10)} NEWEST-END-UNIQUE-MARKER`,
+        ),
+        message(earlyCount + 6, "user", "current turn"),
+      ];
 
-    const text = buildPriorTranscriptBootstrapText(thread(messages), "message-11", 800);
+      const text = buildPriorTranscriptBootstrapText(
+        thread(messages),
+        `message-${earlyCount + 6}`,
+        budget,
+      );
 
-    expect(text).not.toBeNull();
-    expect(text!.length).toBeLessThanOrEqual(800);
-
-    expect(text).toContain("NEWEST-START");
-    expect(text).toContain("NEWEST-END-UNIQUE-MARKER");
-    expect(text).toContain("omitted to fit the context budget");
-  });
-
-  it("reserves header budget correctly when the omitted count reaches three digits", () => {
-    const filler = "z".repeat(40);
-    const earlierMessages = Array.from({ length: 150 }, (_, index) =>
-      message(index, index % 2 === 0 ? "user" : "assistant", `EARLY-${index} ${filler}`),
-    );
-    const recentPlainMessages = Array.from({ length: 5 }, (_, index) =>
-      message(150 + index, index % 2 === 0 ? "user" : "assistant", `plain-recent-${index}`),
-    );
-    const newestMessage = message(
-      155,
-      "assistant",
-      `NEWEST-START ${"r".repeat(10)} NEWEST-END-UNIQUE-MARKER`,
-    );
-    const currentMessage = message(156, "user", "current turn");
-    const messages = [...earlierMessages, ...recentPlainMessages, newestMessage, currentMessage];
-
-    const text = buildPriorTranscriptBootstrapText(thread(messages), "message-156", 1_600);
-
-    expect(text).not.toBeNull();
-    expect(text!.length).toBeLessThanOrEqual(1_600);
-    expect(text).toMatch(/\(\d{3,} older messages omitted to fit the context budget\):/);
-    expect(text).toContain("NEWEST-START");
-    expect(text).toContain("NEWEST-END-UNIQUE-MARKER");
-  });
+      expect(text).not.toBeNull();
+      expect(text!.length).toBeLessThanOrEqual(budget);
+      expect(text).toContain("NEWEST-START");
+      expect(text).toContain("NEWEST-END-UNIQUE-MARKER");
+      expect(text).toMatch(
+        new RegExp(
+          `\\(\\d{${omittedDigits},} older messages? omitted to fit the context budget\\):`,
+        ),
+      );
+    },
+  );
 });

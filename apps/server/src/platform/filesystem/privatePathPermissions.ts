@@ -2,7 +2,6 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { supportsPosixPermissions } from "../filesystemPlatform";
-export { supportsPosixPermissions, syncDirectoryEntry } from "../filesystemPlatform";
 
 export const PRIVATE_DIRECTORY_MODE = 0o700;
 export const PRIVATE_FILE_MODE = 0o600;

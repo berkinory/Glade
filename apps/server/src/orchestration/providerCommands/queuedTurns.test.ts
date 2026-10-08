@@ -300,7 +300,6 @@ describe("Provider reactor queuedTurns", () => {
             attachments: [],
           },
           runtimeMode: "approval-required",
-
           createdAt: now,
         }),
       );
@@ -394,7 +393,6 @@ describe("Provider reactor queuedTurns", () => {
         parentThreadId: ThreadId.makeUnsafe("thread-1"),
         title: "Child",
         modelSelection: { provider: "codex", model: "gpt-5-codex" },
-
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
@@ -421,7 +419,6 @@ describe("Provider reactor queuedTurns", () => {
           attachments: [],
         },
         runtimeMode: "approval-required",
-
         createdAt: now,
       }),
     );

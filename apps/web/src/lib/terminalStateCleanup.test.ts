@@ -25,63 +25,47 @@ it("cleans up loaded runtimes synchronously without a stale registration replaci
   expect(newCleanup).toHaveBeenCalledOnce();
 });
 
+const live = (id: string) => ({ id: threadId(id), deletedAt: null, archivedAt: null });
+const deleted = (id: string) => ({ ...live(id), deletedAt: "2026-03-05T08:00:00.000Z" });
+const archived = (id: string) => ({ ...live(id), archivedAt: "2026-03-05T09:00:00.000Z" });
+
 describe("collectActiveTerminalThreadIds", () => {
-  it("ignores deleted server threads and keeps local draft threads", () => {
-    const activeThreadIds = collectActiveTerminalThreadIds({
-      snapshotThreads: [
-        { id: threadId("server-active"), deletedAt: null, archivedAt: null },
-        {
-          id: threadId("server-deleted"),
-          deletedAt: "2026-03-05T08:00:00.000Z",
-          archivedAt: null,
-        },
-      ],
-      draftThreadIds: [threadId("local-draft")],
-    });
-
-    expect(activeThreadIds).toEqual(new Set([threadId("server-active"), threadId("local-draft")]));
-  });
-
-  it("retains explicitly provided terminal scopes", () => {
-    const activeThreadIds = collectActiveTerminalThreadIds({
+  it.each([
+    {
+      name: "ignores deleted server threads and keeps local draft threads",
+      snapshotThreads: [live("server-active"), deleted("server-deleted")],
+      draftThreadIds: ["local-draft"],
+      retainedThreadIds: [],
+      expected: ["server-active", "local-draft"],
+    },
+    {
+      name: "retains explicitly provided terminal scopes",
       snapshotThreads: [],
       draftThreadIds: [],
-      retainedThreadIds: [threadId("retained:alpha"), threadId("retained:beta")],
-    });
-
-    expect(activeThreadIds).toEqual(
-      new Set([threadId("retained:alpha"), threadId("retained:beta")]),
-    );
-  });
-
-  it("ignores archived server threads", () => {
-    const activeThreadIds = collectActiveTerminalThreadIds({
-      snapshotThreads: [
-        { id: threadId("server-active"), deletedAt: null, archivedAt: null },
-        {
-          id: threadId("server-archived"),
-          deletedAt: null,
-          archivedAt: "2026-03-05T09:00:00.000Z",
-        },
-      ],
+      retainedThreadIds: ["retained:alpha", "retained:beta"],
+      expected: ["retained:alpha", "retained:beta"],
+    },
+    {
+      name: "ignores archived server threads",
+      snapshotThreads: [live("server-active"), archived("server-archived")],
       draftThreadIds: [],
-    });
-
-    expect(activeThreadIds).toEqual(new Set([threadId("server-active")]));
-  });
-
-  it("does not retain draft-linked state for archived server threads", () => {
-    const activeThreadIds = collectActiveTerminalThreadIds({
-      snapshotThreads: [
-        {
-          id: threadId("server-archived"),
-          deletedAt: null,
-          archivedAt: "2026-03-05T09:00:00.000Z",
-        },
-      ],
-      draftThreadIds: [threadId("server-archived"), threadId("local-draft")],
-    });
-
-    expect(activeThreadIds).toEqual(new Set([threadId("local-draft")]));
+      retainedThreadIds: [],
+      expected: ["server-active"],
+    },
+    {
+      name: "does not retain draft-linked state for archived server threads",
+      snapshotThreads: [archived("server-archived")],
+      draftThreadIds: ["server-archived", "local-draft"],
+      retainedThreadIds: [],
+      expected: ["local-draft"],
+    },
+  ])("$name", ({ snapshotThreads, draftThreadIds, retainedThreadIds, expected }) => {
+    expect(
+      collectActiveTerminalThreadIds({
+        snapshotThreads,
+        draftThreadIds: draftThreadIds.map(threadId),
+        retainedThreadIds: retainedThreadIds.map(threadId),
+      }),
+    ).toEqual(new Set(expected.map(threadId)));
   });
 });

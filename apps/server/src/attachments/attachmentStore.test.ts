@@ -11,19 +11,9 @@ import {
 } from "./attachmentStore.ts";
 
 describe("attachmentStore", () => {
-  it("sanitizes thread ids when creating attachment ids", () => {
-    const attachmentId = createAttachmentId("thread.folder/unsafe space");
-    expect(attachmentId).toBeTruthy();
-    if (!attachmentId) {
-      return;
-    }
-
-    const threadSegment = parseThreadSegmentFromAttachmentId(attachmentId);
-    expect(threadSegment).toBeTruthy();
-    expect(threadSegment).toMatch(/^[a-z0-9_-]+$/i);
-    expect(threadSegment).not.toContain(".");
-    expect(threadSegment).not.toContain("%");
-    expect(threadSegment).not.toContain("/");
+  it("sanitizes and lowercases thread ids when creating attachment ids", () => {
+    const attachmentId = createAttachmentId("Thread.Folder/unsafe space");
+    expect(parseThreadSegmentFromAttachmentId(attachmentId!)).toBe("thread-folder-unsafe-space");
   });
 
   it("parses exact thread segments from attachment ids without prefix collisions", () => {
@@ -34,15 +24,6 @@ describe("attachmentStore", () => {
     expect(parseThreadSegmentFromAttachmentId(fooBarId)).toBe("foo-bar");
   });
 
-  it("normalizes created thread segments to lowercase", () => {
-    const attachmentId = createAttachmentId("Thread.Foo");
-    expect(attachmentId).toBeTruthy();
-    if (!attachmentId) {
-      return;
-    }
-    expect(parseThreadSegmentFromAttachmentId(attachmentId)).toBe("thread-foo");
-  });
-
   it("resolves attachment path by id using the extension that exists on disk", () => {
     const attachmentsDir = fs.mkdtempSync(path.join(os.tmpdir(), "glade-attachment-store-"));
     try {
@@ -50,24 +31,10 @@ describe("attachmentStore", () => {
       const pngPath = path.join(attachmentsDir, `${attachmentId}.png`);
       fs.writeFileSync(pngPath, Buffer.from("hello"));
 
-      const resolved = resolveAttachmentPathById({
-        attachmentsDir,
-        attachmentId,
-      });
-      expect(resolved).toBe(pngPath);
-    } finally {
-      fs.rmSync(attachmentsDir, { recursive: true, force: true });
-    }
-  });
-
-  it("returns null when no attachment file exists for the id", () => {
-    const attachmentsDir = fs.mkdtempSync(path.join(os.tmpdir(), "glade-attachment-store-"));
-    try {
-      const resolved = resolveAttachmentPathById({
-        attachmentsDir,
-        attachmentId: "thread-1-missing",
-      });
-      expect(resolved).toBeNull();
+      expect(resolveAttachmentPathById({ attachmentsDir, attachmentId })).toBe(pngPath);
+      expect(
+        resolveAttachmentPathById({ attachmentsDir, attachmentId: "thread-1-missing" }),
+      ).toBeNull();
     } finally {
       fs.rmSync(attachmentsDir, { recursive: true, force: true });
     }

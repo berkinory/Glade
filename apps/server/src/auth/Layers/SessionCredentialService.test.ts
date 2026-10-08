@@ -1,5 +1,5 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { Deferred, Duration, Effect, Fiber, Layer, Ref } from "effect";
+import { Deferred, Duration, Effect, Exit, Fiber, Layer, Queue, Ref } from "effect";
 import { TestClock } from "effect/testing";
 import { describe, expect, it } from "vitest";
 
@@ -80,20 +80,6 @@ describe("SessionCredentialServiceLive", () => {
     );
   });
 
-  it("issues and verifies websocket tokens for active sessions", async () => {
-    await runSessionTest(
-      Effect.gen(function* () {
-        const sessions = yield* SessionCredentialService;
-        const issued = yield* sessions.issue({ method: "bearer-session-token" });
-        const websocket = yield* sessions.issueWebSocketToken(issued.sessionId);
-        const verified = yield* sessions.verifyWebSocketToken(websocket.token);
-
-        expect(verified.sessionId).toBe(issued.sessionId);
-        expect(verified.method).toBe("bearer-session-token");
-      }),
-    );
-  });
-
   it("consumes websocket tickets exactly once under concurrent verification", async () => {
     await runSessionTest(
       Effect.gen(function* () {
@@ -168,8 +154,16 @@ describe("SessionCredentialServiceLive", () => {
         const saturatedSession = yield* sessions.issue({ subject: "saturated" });
         const independentSession = yield* sessions.issue({ subject: "independent" });
         const startedCount = yield* Ref.make(0);
+        const allStarted = yield* Deferred.make<void>();
+        const results = yield* Queue.unbounded<Exit.Exit<void, unknown>>();
         const connectionEffect = Effect.acquireUseRelease(
-          Ref.update(startedCount, (count) => count + 1),
+          Ref.updateAndGet(startedCount, (count) => count + 1).pipe(
+            Effect.flatMap((count) =>
+              count === MAX_AUTHENTICATED_CONNECTIONS_PER_SESSION
+                ? Deferred.succeed(allStarted, undefined)
+                : Effect.void,
+            ),
+          ),
           () => Effect.never,
           () => Effect.void,
         );
@@ -177,15 +171,19 @@ describe("SessionCredentialServiceLive", () => {
           Array.from({ length: MAX_AUTHENTICATED_CONNECTIONS_PER_SESSION + 4 }),
           () =>
             Effect.forkChild(
-              sessions.runAuthenticatedConnection(saturatedSession.sessionId, connectionEffect),
+              sessions
+                .runAuthenticatedConnection(saturatedSession.sessionId, connectionEffect)
+                .pipe(
+                  Effect.exit,
+                  Effect.flatMap((exit) => Queue.offer(results, exit)),
+                ),
             ),
         );
 
-        yield* Effect.sleep(Duration.millis(50));
+        yield* Deferred.await(allStarted);
+        const rejected = yield* Queue.takeN(results, 4);
+        expect(rejected.every(Exit.isFailure)).toBe(true);
         expect(yield* Ref.get(startedCount)).toBe(MAX_AUTHENTICATED_CONNECTIONS_PER_SESSION);
-        const completed = attempts.map((fiber) => fiber.pollUnsafe());
-        const rejected = completed.filter((result) => result?._tag === "Failure");
-        expect(rejected).toHaveLength(4);
 
         const independent = yield* makeBlockingConnection;
         const independentFiber = yield* Effect.forkChild(

@@ -629,7 +629,6 @@ it.effect("restores pending turn-start metadata across projection pipeline resta
         payload: {
           threadId,
           messageId,
-
           runtimeMode: "approval-required",
           createdAt: turnStartedAt,
         },
@@ -699,7 +698,6 @@ it.effect("restores pending turn-start metadata across projection pipeline resta
       {
         turnId: "turn-restart",
         userMessageId: "message-restart",
-
         requestedAt: turnStartedAt,
         startedAt: sessionSetAt,
       },

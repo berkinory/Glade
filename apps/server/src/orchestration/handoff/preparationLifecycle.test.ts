@@ -23,8 +23,7 @@ import { ProviderDiscoveryService } from "../../provider/Services/ProviderDiscov
 import { ProviderValidationError } from "../../provider/core/Errors";
 import { ServerSettingsService } from "../../settings/serverSettings";
 
-const target = ThreadId.makeUnsafe("source");
-const source = ThreadId.makeUnsafe("source");
+const threadId = ThreadId.makeUnsafe("source");
 const record: HandoffRecord = {
   objective: { text: "Preserve the database.", state: "fact", sourceRefs: ["message:original"] },
   scopeChanges: [],
@@ -97,7 +96,7 @@ const createHandoff = Effect.gen(function* () {
   yield* engine.dispatch({
     type: "thread.create",
     commandId: CommandId.makeUnsafe("source"),
-    threadId: source,
+    threadId,
     projectId,
     title: "Source",
     modelSelection: { provider: "claudeAgent", model: "unavailable-source" },
@@ -107,7 +106,7 @@ const createHandoff = Effect.gen(function* () {
     createdAt,
   });
   yield* seedUserMessage({
-    threadId: source,
+    threadId,
     messageId: MessageId.makeUnsafe("original"),
     text: "Never reset the database.",
     createdAt,
@@ -115,7 +114,7 @@ const createHandoff = Effect.gen(function* () {
   yield* engine.dispatch({
     type: "thread.handoff.start",
     commandId: CommandId.makeUnsafe("handoff"),
-    threadId: target,
+    threadId,
     modelSelection: { provider: "codex", model: "selected-destination" },
     runtimeMode: "approval-required",
     createdAt,
@@ -145,21 +144,20 @@ describe("handoff preparation lifecycle", () => {
           yield* createHandoff;
           const preparation = yield* HandoffPreparation;
           const query = yield* ProjectionSnapshotQuery;
-          expect((yield* preparation.prepare({ threadId: target }).pipe(Effect.result))._tag).toBe(
+          expect((yield* preparation.prepare({ threadId }).pipe(Effect.result))._tag).toBe(
             "Failure",
           );
-          const text = yield* preparation.prepare({ threadId: target });
+          const text = yield* preparation.prepare({ threadId });
           expect(text).toContain("Never reset the database.");
-          expect(yield* preparation.prepare({ threadId: target })).toBe(text);
+          expect(yield* preparation.prepare({ threadId })).toBe(text);
           expect(calls).toBe(2);
-          const saved = Option.getOrThrow(yield* query.getThreadDetailById(target));
+          const saved = Option.getOrThrow(yield* query.getThreadDetailById(threadId));
           expect(saved.handoff?.bootstrapStatus).toBe("pending");
           expect(saved.handoff?.preparation?.passes).toBe(2);
           expect(saved.handoff?.preparation?.inputTokens).toBeNull();
-          expect(saved.messages).toHaveLength(1);
-          expect(
-            Option.getOrThrow(yield* query.getThreadDetailById(source)).messages[0]?.text,
-          ).toBe("Never reset the database.");
+          expect(saved.messages.map((message) => message.text)).toEqual([
+            "Never reset the database.",
+          ]);
         }),
       );
     } finally {
@@ -167,7 +165,7 @@ describe("handoff preparation lifecycle", () => {
     }
   });
 
-  it("cancels isolated preparation without completing bootstrap or removing the source", async () => {
+  it("cancels isolated preparation without completing bootstrap", async () => {
     const entered = Deferred.makeUnsafe<void>();
     const runtime = runtimeFor(() =>
       Deferred.succeed(entered, undefined).pipe(Effect.andThen(Effect.never)),
@@ -179,16 +177,15 @@ describe("handoff preparation lifecycle", () => {
           const preparation = yield* HandoffPreparation;
           const query = yield* ProjectionSnapshotQuery;
           const fiber = yield* Effect.forkChild(
-            preparation.prepare({ threadId: target }).pipe(Effect.result),
+            preparation.prepare({ threadId }).pipe(Effect.result),
           );
           yield* Deferred.await(entered);
-          expect(yield* preparation.cancel(target)).toBe(true);
+          expect(yield* preparation.cancel(threadId)).toBe(true);
           expect((yield* Fiber.join(fiber))._tag).toBe("Failure");
-          const saved = Option.getOrThrow(yield* query.getThreadDetailById(target));
+          const saved = Option.getOrThrow(yield* query.getThreadDetailById(threadId));
           expect(saved.handoff?.bootstrapStatus).toBe("pending");
           expect(saved.handoff?.preparation).toBeUndefined();
           expect(saved.activities.at(-1)?.kind).toBe("handoff.preparation.cancelled");
-          expect(Option.isSome(yield* query.getThreadShellById(source))).toBe(true);
         }),
       );
     } finally {
@@ -212,25 +209,25 @@ describe("handoff preparation lifecycle", () => {
             const directory = yield* ProviderSessionDirectory;
             if (change === "generation")
               yield* directory.upsert({
-                threadId: source,
+                threadId,
                 provider: "claudeAgent",
                 lifecycleGeneration: "source-generation",
               });
             yield* createHandoff;
             const preparation = yield* HandoffPreparation;
             const fiber = yield* Effect.forkChild(
-              preparation.prepare({ threadId: target }).pipe(Effect.result),
+              preparation.prepare({ threadId }).pipe(Effect.result),
             );
             yield* Deferred.await(entered);
             if (change === "generation")
               yield* directory.upsert({
-                threadId: source,
+                threadId,
                 provider: "claudeAgent",
                 lifecycleGeneration: "replacement-generation",
               });
             else
               yield* seedUserMessage({
-                threadId: source,
+                threadId,
                 messageId: MessageId.makeUnsafe("changed-source"),
                 text: "A newer instruction",
                 createdAt: new Date().toISOString(),
@@ -238,7 +235,7 @@ describe("handoff preparation lifecycle", () => {
             yield* Deferred.succeed(finish, undefined);
             expect((yield* Fiber.join(fiber))._tag).toBe("Failure");
             const query = yield* ProjectionSnapshotQuery;
-            const saved = Option.getOrThrow(yield* query.getThreadDetailById(target));
+            const saved = Option.getOrThrow(yield* query.getThreadDetailById(threadId));
             expect(saved.handoff?.preparation).toBeUndefined();
             expect(saved.handoff?.stage).toBe("failed");
             expect(saved.modelSelection.provider).toBe("claudeAgent");
@@ -263,37 +260,36 @@ describe("handoff preparation lifecycle", () => {
           const transitions = yield* HandoffTransitions;
           const query = yield* ProjectionSnapshotQuery;
           const engine = yield* OrchestrationEngineService;
-          yield* preparation.prepare({ threadId: target });
-          const first = Option.getOrThrow(yield* query.getThreadDetailById(target));
+          yield* preparation.prepare({ threadId });
+          const first = Option.getOrThrow(yield* query.getThreadDetailById(threadId));
           yield* engine.dispatch({
             type: "thread.meta.update",
             commandId: CommandId.makeUnsafe("activated-first"),
-            threadId: target,
+            threadId,
             expectedHandoffOperationId: CommandId.makeUnsafe("handoff"),
             modelSelection: first.handoff!.destinationModelSelection!,
           });
-          yield* transitions.update(target, CommandId.makeUnsafe("handoff"), {
+          yield* transitions.update(threadId, CommandId.makeUnsafe("handoff"), {
             stage: "delivered",
             bootstrapStatus: "completed",
           });
           yield* engine.dispatch({
             type: "thread.handoff.start",
             commandId: CommandId.makeUnsafe("return-provider"),
-            threadId: target,
+            threadId,
             modelSelection: { provider: "claudeAgent", model: "return-model" },
             runtimeMode: "approval-required",
             createdAt: new Date().toISOString(),
           });
           yield* engine.refreshCommandReadModel();
-          const second = Option.getOrThrow(yield* query.getThreadDetailForExportById(target));
-          expect(second.id).toBe(source);
+          const second = Option.getOrThrow(yield* query.getThreadDetailForExportById(threadId));
           expect(second.handoff!.sourceBoundarySequence!).toBeGreaterThan(
             first.handoff!.sourceBoundarySequence!,
           );
           const events = yield* OrchestrationEventStore;
           const frozen = yield* readHandoffEvidenceSnapshot(
             events,
-            source,
+            threadId,
             second.handoff!.sourceBoundarySequence!,
           );
           expect(frozen.messages.map((message) => message.id)).toEqual(["original"]);
@@ -305,9 +301,9 @@ describe("handoff preparation lifecycle", () => {
             second.activities.find((activity) => activity.id === "handoff-transition:handoff")
               ?.summary,
           ).toContain("delivered");
-          yield* preparation.prepare({ threadId: target });
+          yield* preparation.prepare({ threadId });
           expect(
-            Option.getOrThrow(yield* query.getThreadShellById(target)).handoff?.preparation
+            Option.getOrThrow(yield* query.getThreadShellById(threadId)).handoff?.preparation
               ?.modelSelection.model,
           ).toBe("return-model");
         }),

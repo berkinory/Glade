@@ -1,14 +1,9 @@
 import { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { expect, it } from "vitest";
 import { applyOrchestrationEvents } from "./storeEventReducer.batch";
+import { getThreadsFromState } from "./threadDerivation";
 import { applyShellEvent, syncServerThreadDetailHotPath } from "./storeProjection.synchronization";
-import {
-  makeDomainEvent,
-  makeReadModelThread,
-  makeState,
-  makeThread,
-  threadsOf,
-} from "./storeTestFixtures";
+import { makeDomainEvent, makeReadModelThread, makeState, makeThread } from "./storeTestFixtures";
 
 it("keeps stop available across delayed session snapshots and accepts actual completion", () => {
   const threadId = ThreadId.makeUnsafe("thread-1");
@@ -34,7 +29,7 @@ it("keeps stop available across delayed session snapshots and accepts actual com
   let state = applyOrchestrationEvents(makeState(makeThread()), [
     makeDomainEvent("thread.session-set", { threadId, session: runningSession }),
   ]);
-  const runningTurn = threadsOf(state)[0]!.latestTurn;
+  const runningTurn = getThreadsFromState(state)[0]!.latestTurn;
 
   const delayed = makeReadModelThread({ session: readySession, latestTurn: runningTurn });
   state = applyShellEvent(state, {
@@ -47,15 +42,15 @@ it("keeps stop available across delayed session snapshots and accepts actual com
       hasPendingUserInput: false,
     },
   });
-  expect(threadsOf(state)[0]!.session?.status).toBe("running");
+  expect(getThreadsFromState(state)[0]!.session?.status).toBe("running");
   state = syncServerThreadDetailHotPath(state, delayed, 2);
-  expect(threadsOf(state)[0]!.session?.status).toBe("running");
+  expect(getThreadsFromState(state)[0]!.session?.status).toBe("running");
   state = applyOrchestrationEvents(state, [
     makeDomainEvent("thread.session-set", { threadId, session: readySession }, { sequence: 3 }),
   ]);
-  expect(threadsOf(state)[0]!.session?.status).toBe("running");
-  expect(threadsOf(state)[0]!.session?.activeTurnId).toBe(turnId);
-  expect(threadsOf(state)[0]!.latestTurn?.completedAt).toBeNull();
+  expect(getThreadsFromState(state)[0]!.session?.status).toBe("running");
+  expect(getThreadsFromState(state)[0]!.session?.activeTurnId).toBe(turnId);
+  expect(getThreadsFromState(state)[0]!.latestTurn?.completedAt).toBeNull();
 
   state = applyOrchestrationEvents(state, [
     makeDomainEvent(
@@ -68,6 +63,6 @@ it("keeps stop available across delayed session snapshots and accepts actual com
     ),
     makeDomainEvent("thread.session-set", { threadId, session: runningSession }, { sequence: 5 }),
   ]);
-  expect(threadsOf(state)[0]!.session?.status).toBe("ready");
-  expect(threadsOf(state)[0]!.latestTurn?.completedAt).toBe(completedAt);
+  expect(getThreadsFromState(state)[0]!.session?.status).toBe("ready");
+  expect(getThreadsFromState(state)[0]!.latestTurn?.completedAt).toBe(completedAt);
 });

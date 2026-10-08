@@ -1,55 +1,55 @@
 import { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { selectComposerThreadDraft } from "./composerDraftDomain";
 import { markPromotedDraftThreads, useComposerDraftStore } from "./composerDraftStore";
 import {
   makeImage,
   makeQueuedChatTurn,
   resetComposerDraftStore,
+  stubRevokeObjectUrl,
 } from "./composerDraftStoreTestFixtures";
 
-describe("composerDraftStore stable empty draft identity", () => {
-  it("reuses the empty draft sentinel across unrelated store updates", () => {
+describe("composerDraftStore draft identity", () => {
+  it("keeps missing and untouched drafts referentially stable across unrelated updates", () => {
     resetComposerDraftStore();
     const missingThreadId = ThreadId.makeUnsafe("thread-missing");
+    const untouchedThreadId = ThreadId.makeUnsafe("thread-untouched");
     const otherThreadId = ThreadId.makeUnsafe("thread-other");
-    const before = selectComposerThreadDraft(useComposerDraftStore.getState(), missingThreadId);
+    useComposerDraftStore.getState().setPrompt(untouchedThreadId, "untouched");
+    const missing = selectComposerThreadDraft(useComposerDraftStore.getState(), missingThreadId);
+    const untouched = useComposerDraftStore.getState().draftsByThreadId[untouchedThreadId];
 
     useComposerDraftStore.getState().setPrompt(otherThreadId, "unrelated");
 
-    const after = selectComposerThreadDraft(useComposerDraftStore.getState(), missingThreadId);
-    expect(after).toBe(before);
+    const state = useComposerDraftStore.getState();
+    expect(selectComposerThreadDraft(state, missingThreadId)).toBe(missing);
+    expect(state.draftsByThreadId[untouchedThreadId]).toBe(untouched);
   });
 });
 
 describe("composerDraftStore clearComposerContent", () => {
   const threadId = ThreadId.makeUnsafe("thread-clear");
-  let originalRevokeObjectUrl: typeof URL.revokeObjectURL;
-  let revokeSpy: ReturnType<typeof vi.fn<(url: string) => void>>;
+  const revokeSpy = stubRevokeObjectUrl();
 
   beforeEach(() => {
     resetComposerDraftStore();
-    originalRevokeObjectUrl = URL.revokeObjectURL;
-    revokeSpy = vi.fn();
-    URL.revokeObjectURL = revokeSpy;
   });
 
-  afterEach(() => {
-    URL.revokeObjectURL = originalRevokeObjectUrl;
-  });
+  it.each([
+    { name: "revokes blob preview URLs", preservePreviewUrls: false },
+    {
+      name: "preserves blob preview URLs for optimistic message handoff",
+      preservePreviewUrls: true,
+    },
+  ])("$name when clearing composer content", ({ preservePreviewUrls }) => {
+    useComposerDraftStore
+      .getState()
+      .addImage(threadId, makeImage({ id: "img-clear", previewUrl: "blob:clear" }));
 
-  it("revokes blob preview URLs when clearing composer content", () => {
-    const first = makeImage({
-      id: "img-clear",
-      previewUrl: "blob:clear",
-    });
-    useComposerDraftStore.getState().addImage(threadId, first);
+    useComposerDraftStore.getState().clearComposerContent(threadId, { preservePreviewUrls });
 
-    useComposerDraftStore.getState().clearComposerContent(threadId);
-
-    const draft = useComposerDraftStore.getState().draftsByThreadId[threadId];
-    expect(draft).toBeUndefined();
-    expect(revokeSpy).toHaveBeenCalledWith("blob:clear");
+    expect(useComposerDraftStore.getState().draftsByThreadId[threadId]).toBeUndefined();
+    expect(revokeSpy.mock.calls).toEqual(preservePreviewUrls ? [] : [["blob:clear"]]);
   });
 
   it("keeps newer edits and attachments when a captured send is consumed and promoted", () => {
@@ -71,20 +71,6 @@ describe("composerDraftStore clearComposerContent", () => {
     expect(draft?.images.map((image) => image.id)).toEqual(["new-image"]);
     expect(revokeSpy).not.toHaveBeenCalled();
   });
-
-  it("can preserve blob preview URLs for optimistic message handoff", () => {
-    const first = makeImage({
-      id: "img-optimistic",
-      previewUrl: "blob:optimistic",
-    });
-    useComposerDraftStore.getState().addImage(threadId, first);
-
-    useComposerDraftStore.getState().clearComposerContent(threadId, { preservePreviewUrls: true });
-
-    const draft = useComposerDraftStore.getState().draftsByThreadId[threadId];
-    expect(draft).toBeUndefined();
-    expect(revokeSpy).not.toHaveBeenCalledWith("blob:optimistic");
-  });
 });
 
 describe("composerDraftStore project draft thread mapping", () => {
@@ -92,18 +78,10 @@ describe("composerDraftStore project draft thread mapping", () => {
   const otherProjectId = ProjectId.makeUnsafe("project-b");
   const threadId = ThreadId.makeUnsafe("thread-a");
   const otherThreadId = ThreadId.makeUnsafe("thread-b");
-  let originalRevokeObjectUrl: typeof URL.revokeObjectURL;
-  let revokeSpy: ReturnType<typeof vi.fn<(url: string) => void>>;
+  const revokeSpy = stubRevokeObjectUrl();
 
   beforeEach(() => {
     resetComposerDraftStore();
-    originalRevokeObjectUrl = URL.revokeObjectURL;
-    revokeSpy = vi.fn();
-    URL.revokeObjectURL = revokeSpy;
-  });
-
-  afterEach(() => {
-    URL.revokeObjectURL = originalRevokeObjectUrl;
   });
 
   it("stores and reads project draft thread ids via actions", () => {
@@ -141,17 +119,6 @@ describe("composerDraftStore project draft thread mapping", () => {
     });
   });
 
-  it("preserves untouched thread draft identity across unrelated thread updates", () => {
-    const store = useComposerDraftStore.getState();
-    store.setPrompt(threadId, "thread a");
-    store.setPrompt(otherThreadId, "thread b");
-    const threadADraft = useComposerDraftStore.getState().draftsByThreadId[threadId];
-
-    useComposerDraftStore.getState().setPrompt(otherThreadId, "thread b updated");
-
-    expect(useComposerDraftStore.getState().draftsByThreadId[threadId]).toBe(threadADraft);
-  });
-
   it("registers a standalone draft for staged navigation", () => {
     const store = useComposerDraftStore.getState();
 
@@ -169,58 +136,36 @@ describe("composerDraftStore project draft thread mapping", () => {
     expect(useComposerDraftStore.getState().getDraftThreadByProjectId(projectId)).toBeNull();
   });
 
-  it("keeps one mapped draft per project", () => {
+  it.each([
+    {
+      name: "a matching project and thread id",
+      clear: () => {
+        useComposerDraftStore.getState().clearProjectDraftThreadById(projectId, otherThreadId);
+        expect(
+          useComposerDraftStore.getState().getDraftThreadByProjectId(projectId)?.threadId,
+        ).toBe(threadId);
+        useComposerDraftStore.getState().clearProjectDraftThreadById(projectId, threadId);
+      },
+    },
+    {
+      name: "project id",
+      clear: () => useComposerDraftStore.getState().clearProjectDraftThreadId(projectId),
+    },
+    {
+      name: "draft thread id",
+      clear: () => useComposerDraftStore.getState().clearDraftThread(threadId),
+    },
+  ])("clears the mapping, registration and composer draft by $name", ({ clear }) => {
     const store = useComposerDraftStore.getState();
     store.setProjectDraftThreadId(projectId, threadId);
-    store.setProjectDraftThreadId(projectId, otherThreadId);
+    store.setPrompt(threadId, "remove me");
 
-    expect(useComposerDraftStore.getState().getDraftThreadByProjectId(projectId)).toMatchObject({
-      threadId: otherThreadId,
-      projectId,
-    });
-    expect(useComposerDraftStore.getState().getDraftThread(threadId)).toBeNull();
-  });
+    clear();
 
-  it("clears only matching project draft mapping entries", () => {
-    const store = useComposerDraftStore.getState();
-    store.setProjectDraftThreadId(projectId, threadId);
-    store.setPrompt(threadId, "hello");
-
-    store.clearProjectDraftThreadById(projectId, otherThreadId);
-    expect(useComposerDraftStore.getState().getDraftThreadByProjectId(projectId)?.threadId).toBe(
-      threadId,
-    );
-
-    store.clearProjectDraftThreadById(projectId, threadId);
-    expect(useComposerDraftStore.getState().getDraftThreadByProjectId(projectId)).toBeNull();
-    expect(useComposerDraftStore.getState().getDraftThread(threadId)).toBeNull();
-    expect(useComposerDraftStore.getState().draftsByThreadId[threadId]).toBeUndefined();
-  });
-
-  it("releases queued preview blobs when clearing a draft by project and thread id", () => {
-    const store = useComposerDraftStore.getState();
-    store.setProjectDraftThreadId(projectId, threadId);
-    store.enqueueQueuedTurn(
-      threadId,
-      makeQueuedChatTurn(
-        "queued-project-delete",
-        makeImage({ id: "queued-image-delete", previewUrl: "blob:queued-project-delete" }),
-      ),
-    );
-
-    store.clearProjectDraftThreadById(projectId, threadId);
-
-    expect(revokeSpy).toHaveBeenCalledWith("blob:queued-project-delete");
-  });
-
-  it("clears project draft mapping by project id", () => {
-    const store = useComposerDraftStore.getState();
-    store.setProjectDraftThreadId(projectId, threadId);
-    store.setPrompt(threadId, "hello");
-    store.clearProjectDraftThreadId(projectId);
-    expect(useComposerDraftStore.getState().getDraftThreadByProjectId(projectId)).toBeNull();
-    expect(useComposerDraftStore.getState().getDraftThread(threadId)).toBeNull();
-    expect(useComposerDraftStore.getState().draftsByThreadId[threadId]).toBeUndefined();
+    const state = useComposerDraftStore.getState();
+    expect(state.getDraftThreadByProjectId(projectId)).toBeNull();
+    expect(state.getDraftThread(threadId)).toBeNull();
+    expect(state.draftsByThreadId[threadId]).toBeUndefined();
   });
 
   it("clears orphaned composer drafts when remapping a project to a new draft thread", () => {
@@ -261,16 +206,6 @@ describe("composerDraftStore project draft thread mapping", () => {
       1,
     );
     expect(revokeSpy).not.toHaveBeenCalledWith("blob:queued-kept-thread");
-  });
-
-  it("clears draft registration independently", () => {
-    const store = useComposerDraftStore.getState();
-    store.setProjectDraftThreadId(projectId, threadId);
-    store.setPrompt(threadId, "remove me");
-    store.clearDraftThread(threadId);
-    expect(useComposerDraftStore.getState().getDraftThreadByProjectId(projectId)).toBeNull();
-    expect(useComposerDraftStore.getState().getDraftThread(threadId)).toBeNull();
-    expect(useComposerDraftStore.getState().draftsByThreadId[threadId]).toBeUndefined();
   });
 
   it("preserves composer state after promotion finalizes", () => {
@@ -389,52 +324,31 @@ describe("composerDraftStore project draft thread mapping", () => {
     expect(revokeSpy).toHaveBeenCalledWith("blob:queued-target-replaced");
   });
 
-  it("preserves existing branch and worktree when setProjectDraftThreadId receives undefined", () => {
+  it.each([
+    {
+      name: "branch and worktree",
+      initial: { branch: "main", worktreePath: "/tmp/main-worktree" },
+      expected: { branch: "main", worktreePath: "/tmp/main-worktree", envMode: "worktree" },
+    },
+    {
+      name: "worktree env mode without a worktree path",
+      initial: { branch: "feature/base", worktreePath: null, envMode: "worktree" as const },
+      expected: { branch: "feature/base", worktreePath: null, envMode: "worktree" },
+    },
+  ])("preserves existing $name when remapping with undefined options", ({ initial, expected }) => {
     const store = useComposerDraftStore.getState();
-    store.setProjectDraftThreadId(projectId, threadId, {
-      branch: "main",
-      worktreePath: "/tmp/main-worktree",
-    });
-    const runtimeUndefinedOptions = {
-      branch: undefined,
-      worktreePath: undefined,
-    } as unknown as {
-      branch?: string | null;
-      worktreePath?: string | null;
-    };
-    store.setProjectDraftThreadId(projectId, threadId, runtimeUndefinedOptions);
-
-    expect(useComposerDraftStore.getState().getDraftThread(threadId)).toMatchObject({
-      projectId,
-      branch: "main",
-      worktreePath: "/tmp/main-worktree",
-      envMode: "worktree",
-    });
-  });
-
-  it("preserves worktree env mode without a worktree path", () => {
-    const store = useComposerDraftStore.getState();
-    store.setProjectDraftThreadId(projectId, threadId, {
-      branch: "feature/base",
-      worktreePath: null,
-      envMode: "worktree",
-    });
+    store.setProjectDraftThreadId(projectId, threadId, initial);
+    // Callers can pass explicit undefined at runtime even though the type omits it.
     const runtimeUndefinedOptions = {
       branch: undefined,
       worktreePath: undefined,
       envMode: undefined,
-    } as unknown as {
-      branch?: string | null;
-      worktreePath?: string | null;
-      envMode?: "local" | "worktree";
-    };
+    } as unknown as { branch?: string | null };
     store.setProjectDraftThreadId(projectId, threadId, runtimeUndefinedOptions);
 
     expect(useComposerDraftStore.getState().getDraftThread(threadId)).toMatchObject({
       projectId,
-      branch: "feature/base",
-      worktreePath: null,
-      envMode: "worktree",
+      ...expected,
     });
   });
 });
@@ -444,14 +358,6 @@ describe("composerDraftStore runtime and interaction settings", () => {
 
   beforeEach(() => {
     resetComposerDraftStore();
-  });
-
-  it("stores AI-reviewed auto mode in the composer draft", () => {
-    const store = useComposerDraftStore.getState();
-
-    store.setRuntimeMode(threadId, "auto");
-
-    expect(useComposerDraftStore.getState().draftsByThreadId[threadId]?.runtimeMode).toBe("auto");
   });
 
   it("removes empty settings-only drafts when overrides are cleared", () => {

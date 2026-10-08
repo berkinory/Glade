@@ -165,7 +165,6 @@ projectionSnapshotLayer("Projection snapshot threadShell", (it) => {
             provider: "codex",
             model: "gpt-5-codex",
           },
-
           runtimeMode: "full-access",
           envMode: "local",
           branch: null,
@@ -187,7 +186,6 @@ projectionSnapshotLayer("Projection snapshot threadShell", (it) => {
           subagentRole: null,
           forkSourceThreadId: null,
           lastKnownPr: null,
-
           latestTurn: {
             turnId: asTurnId("turn-shell"),
             state: "completed",
@@ -201,7 +199,6 @@ projectionSnapshotLayer("Projection snapshot threadShell", (it) => {
           backgroundWork: { taskIds: [], failed: false, settledAt: null },
           hasPendingApprovals: true,
           hasPendingUserInput: true,
-
           createdAt: "2026-03-03T00:00:02.000Z",
           updatedAt: "2026-03-03T00:00:03.000Z",
           archivedAt: null,

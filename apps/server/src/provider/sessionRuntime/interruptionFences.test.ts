@@ -47,7 +47,7 @@ routing.layer("Provider service interruptionFences", (it) => {
         });
         if (provider.hasLiveRuntimeTasks) {
           yield* waitUntilEffect(
-            () => provider.hasLiveRuntimeTasks!({ threadId }),
+            () => provider.hasLiveRuntimeTasks({ threadId }),
             500,
             20,
             "background task ownership before terminal rotation",

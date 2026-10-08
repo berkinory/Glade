@@ -5,7 +5,10 @@ import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { writeReleaseArtifactProvenance } from "./release-artifact-provenance.ts";
+import {
+  writeReleaseArtifactProvenance,
+  type ReleaseArtifactProvenanceInput,
+} from "./release-artifact-provenance.ts";
 
 const temporaryRoots: string[] = [];
 
@@ -15,39 +18,55 @@ afterEach(() => {
   }
 });
 
-function createAssets(): string {
+function createAssets(files: Readonly<Record<string, string>>): string {
   const root = mkdtempSync(join(tmpdir(), "glade-artifact-provenance-test-"));
   temporaryRoots.push(root);
-  writeFileSync(join(root, "Glade-1.2.3-x64.AppImage"), "app-image-bytes");
-  writeFileSync(join(root, "latest-linux.yml"), "version: 1.2.3\n");
+  for (const [name, contents] of Object.entries(files)) writeFileSync(join(root, name), contents);
   return root;
 }
 
-function createWindowsAssets(): string {
-  const root = mkdtempSync(join(tmpdir(), "glade-windows-provenance-test-"));
-  temporaryRoots.push(root);
-  writeFileSync(join(root, "Glade-1.2.3-x64.exe"), "unsigned-windows-bytes");
-  writeFileSync(join(root, "latest.yml"), "version: 1.2.3\n");
-  return root;
-}
+const linuxInput = (
+  overrides: Partial<ReleaseArtifactProvenanceInput> = {},
+): ReleaseArtifactProvenanceInput => ({
+  assetsDirectory:
+    overrides.assetsDirectory ??
+    createAssets({
+      "Glade-1.2.3-x64.AppImage": "app-image-bytes",
+      "latest-linux.yml": "version: 1.2.3\n",
+    }),
+  platform: "linux",
+  arch: "x64",
+  target: "AppImage",
+  version: "1.2.3",
+  sourceCommit: "a".repeat(40),
+  sourceTag: null,
+  lockfileSha256: "b".repeat(64),
+  publication: false,
+  signed: false,
+  ...overrides,
+});
+
+const windowsPublicationInput = (
+  overrides: Partial<ReleaseArtifactProvenanceInput> = {},
+): ReleaseArtifactProvenanceInput =>
+  linuxInput({
+    assetsDirectory: createAssets({
+      "Glade-1.2.3-x64.exe": "unsigned-windows-bytes",
+      "latest.yml": "version: 1.2.3\n",
+    }),
+    platform: "win",
+    target: "nsis",
+    sourceTag: "v1.2.3",
+    publication: true,
+    ...overrides,
+  });
 
 describe("release artifact provenance", () => {
   it("hashes the exact collected Linux assets into a deterministic manifest", async () => {
-    const assetsDirectory = createAssets();
-    const result = await writeReleaseArtifactProvenance({
-      assetsDirectory,
-      platform: "linux",
-      arch: "x64",
-      target: "AppImage",
-      version: "1.2.3",
-      sourceCommit: "a".repeat(40),
-      sourceTag: null,
-      lockfileSha256: "b".repeat(64),
-      publication: false,
-      signed: false,
-    });
+    const input = linuxInput();
+    const result = await writeReleaseArtifactProvenance(input);
 
-    expect(result.path).toBe(join(assetsDirectory, "artifact-linux-x64.provenance.json"));
+    expect(result.path).toBe(join(input.assetsDirectory, "artifact-linux-x64.provenance.json"));
     expect(result.manifest.target).toBe("AppImage");
     expect(result.manifest.signing).toEqual({
       status: "not-applicable",
@@ -67,36 +86,15 @@ describe("release artifact provenance", () => {
   });
 
   it("rejects publication without an exact source tag", async () => {
-    await expect(
-      writeReleaseArtifactProvenance({
-        assetsDirectory: createAssets(),
-        platform: "linux",
-        arch: "x64",
-        target: "AppImage",
-        version: "1.2.3",
-        sourceCommit: "a".repeat(40),
-        sourceTag: null,
-        lockfileSha256: "b".repeat(64),
-        publication: true,
-        signed: false,
-      }),
-    ).rejects.toThrow("requires an exact source tag");
+    await expect(writeReleaseArtifactProvenance(linuxInput({ publication: true }))).rejects.toThrow(
+      "requires an exact source tag",
+    );
   });
 
   it("records an explicit version-scoped unsigned Windows publication", async () => {
-    const result = await writeReleaseArtifactProvenance({
-      assetsDirectory: createWindowsAssets(),
-      platform: "win",
-      arch: "x64",
-      target: "nsis",
-      version: "1.2.3",
-      sourceCommit: "a".repeat(40),
-      sourceTag: "v1.2.3",
-      lockfileSha256: "b".repeat(64),
-      publication: true,
-      signed: false,
-      allowUnsignedWindowsPublication: true,
-    });
+    const result = await writeReleaseArtifactProvenance(
+      windowsPublicationInput({ allowUnsignedWindowsPublication: true }),
+    );
 
     expect(result.manifest.signing).toEqual({
       status: "unsigned-explicit-release",
@@ -107,19 +105,8 @@ describe("release artifact provenance", () => {
   });
 
   it("still rejects unsigned Windows publication without the explicit exception", async () => {
-    await expect(
-      writeReleaseArtifactProvenance({
-        assetsDirectory: createWindowsAssets(),
-        platform: "win",
-        arch: "x64",
-        target: "nsis",
-        version: "1.2.3",
-        sourceCommit: "a".repeat(40),
-        sourceTag: "v1.2.3",
-        lockfileSha256: "b".repeat(64),
-        publication: true,
-        signed: false,
-      }),
-    ).rejects.toThrow("requires verified signing");
+    await expect(writeReleaseArtifactProvenance(windowsPublicationInput())).rejects.toThrow(
+      "requires verified signing",
+    );
   });
 });

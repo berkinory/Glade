@@ -12,49 +12,40 @@ async function importStorePersistence(storage: Map<string, string>) {
   return import("./storePersistence");
 }
 
+async function readSeededPersistence(payload: unknown) {
+  const storage = new Map([[PERSISTED_STATE_KEY, JSON.stringify(payload)]]);
+  const persistence = await importStorePersistence(storage);
+  persistence.readPersistedState(initialState);
+  return { ...persistence, storage, remembered: persistence.getRememberedProjectUiState() };
+}
+
 describe("storePersistence", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it("ignores malformed persisted shapes and falls back to defaults", async () => {
-    const storage = new Map<string, string>();
-    storage.set(
-      PERSISTED_STATE_KEY,
-      JSON.stringify({
-        projectOrderCwds: "not-an-array",
-        expandedProjectCwds: "also-not-an-array",
-        projectNamesByCwd: ["not-a-record"],
-      }),
-    );
-    const { readPersistedState, getRememberedProjectUiState } =
-      await importStorePersistence(storage);
-    expect(() => readPersistedState(initialState)).not.toThrow();
-    const remembered = getRememberedProjectUiState();
+    const { remembered } = await readSeededPersistence({
+      projectOrderCwds: "not-an-array",
+      expandedProjectCwds: "also-not-an-array",
+      projectNamesByCwd: ["not-a-record"],
+    });
     expect(remembered.expandedProjectCount).toBe(0);
     expect(remembered.projectOrderCount).toBe(0);
     expect(remembered.projectNameForCwd("/tmp/project-1")).toBeUndefined();
   });
 
   it("keeps only persisted project appearances it can render", async () => {
-    const storage = new Map<string, string>();
-    storage.set(
-      PERSISTED_STATE_KEY,
-      JSON.stringify({
-        projectOrderCwds: [],
-        projectAppearanceByCwd: {
-          "/tmp/unknown-icon": { kind: "icon", icon: "../../etc/passwd", color: "red" },
-          "/tmp/unknown-color": { kind: "icon", icon: "rocket", color: "chartreuse" },
-          "/tmp/default-folder": { kind: "icon", icon: "folder-2", color: null },
-          "/tmp/text": { kind: "emoji", emoji: "hi" },
-          "/tmp/two-emoji": { kind: "emoji", emoji: "🐱🐶" },
-          "/tmp/zwj-emoji": { kind: "emoji", emoji: "🧑‍💻" },
-          "/tmp/keycap-emoji": { kind: "emoji", emoji: "1️⃣" },
-        },
-      }),
-    );
-    const { readPersistedState, getRememberedProjectUiState } =
-      await importStorePersistence(storage);
-    readPersistedState(initialState);
-    const remembered = getRememberedProjectUiState();
+    const { remembered } = await readSeededPersistence({
+      projectOrderCwds: [],
+      projectAppearanceByCwd: {
+        "/tmp/unknown-icon": { kind: "icon", icon: "../../etc/passwd", color: "red" },
+        "/tmp/unknown-color": { kind: "icon", icon: "rocket", color: "chartreuse" },
+        "/tmp/default-folder": { kind: "icon", icon: "folder-2", color: null },
+        "/tmp/text": { kind: "emoji", emoji: "hi" },
+        "/tmp/two-emoji": { kind: "emoji", emoji: "🐱🐶" },
+        "/tmp/zwj-emoji": { kind: "emoji", emoji: "🧑‍💻" },
+        "/tmp/keycap-emoji": { kind: "emoji", emoji: "1️⃣" },
+      },
+    });
     expect(remembered.projectAppearanceForCwd("/tmp/unknown-icon")).toBeUndefined();
     expect(remembered.projectAppearanceForCwd("/tmp/unknown-color")).toEqual({
       kind: "icon",
@@ -75,35 +66,17 @@ describe("storePersistence", () => {
   });
 
   it("preserves legacy payloads that contain only expandedProjectCwds", async () => {
-    const storage = new Map<string, string>();
-    storage.set(
-      PERSISTED_STATE_KEY,
-      JSON.stringify({
-        expandedProjectCwds: ["/tmp/project-1"],
-      }),
-    );
-    const { readPersistedState, getRememberedProjectUiState } =
-      await importStorePersistence(storage);
-    readPersistedState(initialState);
-    const remembered = getRememberedProjectUiState();
+    const { remembered } = await readSeededPersistence({ expandedProjectCwds: ["/tmp/project-1"] });
     expect(remembered.projectOrderCount).toBe(0);
     expect(remembered.isProjectExpanded("/tmp/project-1")).toBe(true);
     expect(remembered.isProjectExpanded("/tmp/project-2")).toBe(false);
   });
 
   it("does not treat a modern empty persisted payload as a legacy all-collapsed list", async () => {
-    const storage = new Map<string, string>();
-    storage.set(
-      PERSISTED_STATE_KEY,
-      JSON.stringify({
-        projectOrderCwds: [],
-        expandedProjectCwds: [],
-      }),
-    );
-    const { readPersistedState, getRememberedProjectUiState } =
-      await importStorePersistence(storage);
-    readPersistedState(initialState);
-    const remembered = getRememberedProjectUiState();
+    const { remembered } = await readSeededPersistence({
+      projectOrderCwds: [],
+      expandedProjectCwds: [],
+    });
     expect(remembered.isLegacyExpansionPayload).toBe(false);
     expect(remembered.projectOrderCount).toBe(0);
     expect(remembered.expandedProjectCount).toBe(0);
@@ -173,49 +146,24 @@ describe("storePersistence", () => {
     expect(getRememberedProjectUiState().projectOrderIndexForCwd("/tmp/project-1")).toBe(1);
   });
 
-  it("resets remembered state when the persisted key disappears on a later read", async () => {
-    const storage = new Map<string, string>();
-    storage.set(
-      PERSISTED_STATE_KEY,
-      JSON.stringify({
+  it.each([
+    ["disappears", (storage: Map<string, string>) => storage.delete(PERSISTED_STATE_KEY)],
+    ["becomes corrupt", (storage: Map<string, string>) => storage.set(PERSISTED_STATE_KEY, '"{"')],
+  ])("resets remembered state when the stored value %s on a later read", async (_case, mutate) => {
+    const { storage, readPersistedState, getRememberedProjectUiState } =
+      await readSeededPersistence({
         projectOrderCwds: ["/tmp/project-1"],
         expandedProjectCwds: ["/tmp/project-1"],
         projectNamesByCwd: { "/tmp/project-1": "alpha" },
-      }),
-    );
-    const { readPersistedState, getRememberedProjectUiState } =
-      await importStorePersistence(storage);
-    readPersistedState(initialState);
+      });
     expect(getRememberedProjectUiState().projectOrderCount).toBe(1);
 
-    storage.delete(PERSISTED_STATE_KEY);
+    mutate(storage);
     readPersistedState(initialState);
     const remembered = getRememberedProjectUiState();
     expect(remembered.projectOrderCount).toBe(0);
     expect(remembered.expandedProjectCount).toBe(0);
     expect(remembered.projectNameForCwd("/tmp/project-1")).toBeUndefined();
-    expect(remembered.isLegacyExpansionPayload).toBe(false);
-  });
-
-  it("resets remembered state when the stored value becomes corrupt on a later read", async () => {
-    const storage = new Map<string, string>();
-    storage.set(
-      PERSISTED_STATE_KEY,
-      JSON.stringify({
-        projectOrderCwds: ["/tmp/project-1"],
-        expandedProjectCwds: ["/tmp/project-1"],
-      }),
-    );
-    const { readPersistedState, getRememberedProjectUiState } =
-      await importStorePersistence(storage);
-    readPersistedState(initialState);
-    expect(getRememberedProjectUiState().projectOrderCount).toBe(1);
-
-    storage.set(PERSISTED_STATE_KEY, '"{"');
-    readPersistedState(initialState);
-    const remembered = getRememberedProjectUiState();
-    expect(remembered.projectOrderCount).toBe(0);
-    expect(remembered.expandedProjectCount).toBe(0);
     expect(remembered.isLegacyExpansionPayload).toBe(false);
   });
 

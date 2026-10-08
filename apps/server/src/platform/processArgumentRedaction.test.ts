@@ -26,40 +26,32 @@ describe("redactSensitiveProcessArgs", () => {
     ).toBe("glade mcp pair --code [redacted] [redacted]");
   });
 
-  it("redacts common secret key environment names", () => {
-    for (const name of [
-      "AWS_SECRET_ACCESS_KEY",
-      "PRIVATE_KEY",
-      "SECRET_KEY",
-      "AWS_SESSION_TOKEN",
-      "JWT_SIGNING_KEY",
-      "ENCRYPTION_KEY",
-      "MASTER_KEY",
-      "AUTH",
-      "CREDENTIAL",
-      "DB_PASS",
-      "PASSWORD",
-      "TOKEN",
-    ]) {
-      expect(redactProcessTableArgs(`env ${name}=secret bun run dev`)).toBe(
-        `env ${name}=[redacted]`,
-      );
-    }
+  it.each([
+    "AWS_SECRET_ACCESS_KEY",
+    "PRIVATE_KEY",
+    "SECRET_KEY",
+    "AWS_SESSION_TOKEN",
+    "JWT_SIGNING_KEY",
+    "ENCRYPTION_KEY",
+    "MASTER_KEY",
+    "AUTH",
+    "CREDENTIAL",
+    "DB_PASS",
+    "PASSWORD",
+    "TOKEN",
+  ])("redacts the common secret environment name %s", (name) => {
+    expect(redactProcessTableArgs(`env ${name}=secret bun run dev`)).toBe(`env ${name}=[redacted]`);
   });
 
-  it("redacts complete shell-composed assignment values", () => {
-    for (const assignment of [
-      'PASSWORD="correct horse"battery',
-      "DB_PASSWORD=correct\\ horse\\ battery",
-      "TOKEN=prefix'middle'suffix",
-      "DB_PASSWORD=$(printf supersecret)",
-      "DB_PASSWORD=`printf supersecret`",
-    ]) {
-      const name = assignment.slice(0, assignment.indexOf("="));
-      expect(redactProcessTableArgs(`env ${assignment} bun run dev`)).toBe(
-        `env ${name}=[redacted]`,
-      );
-    }
+  it.each([
+    'PASSWORD="correct horse"battery',
+    "DB_PASSWORD=correct\\ horse\\ battery",
+    "TOKEN=prefix'middle'suffix",
+    "DB_PASSWORD=$(printf supersecret)",
+    "DB_PASSWORD=`printf supersecret`",
+  ])("redacts the complete shell-composed assignment value %s", (assignment) => {
+    const name = assignment.slice(0, assignment.indexOf("="));
+    expect(redactProcessTableArgs(`env ${assignment} bun run dev`)).toBe(`env ${name}=[redacted]`);
   });
 
   it("fails closed when process-table output loses a spaced secret's argv boundary", () => {
@@ -68,102 +60,76 @@ describe("redactSensitiveProcessArgs", () => {
     );
   });
 
-  it("recognizes sensitive assignments after flattened shell separators", () => {
-    for (const separator of [";", "&&", "||", "("]) {
+  it.each([";", "&&", "||", "("])(
+    "recognizes sensitive assignments after the flattened shell separator %s",
+    (separator) => {
       expect(redactProcessTableArgs(`/bin/sh -c echo ready${separator}PASSWORD=secret app`)).toBe(
         `/bin/sh -c echo ready${separator}PASSWORD=[redacted]`,
       );
-    }
+    },
+  );
+
+  it.each(["'", '"'])("recognizes sensitive assignments quoted with %s", (quote) => {
+    expect(redactProcessTableArgs(`sh -c env ${quote}PASSWORD=secret${quote} sleep 30`)).toBe(
+      `sh -c env ${quote}PASSWORD=[redacted]`,
+    );
   });
 
-  it("recognizes sensitive assignments quoted as complete shell words", () => {
-    for (const quote of ["'", '"']) {
-      expect(redactProcessTableArgs(`sh -c env ${quote}PASSWORD=secret${quote} sleep 30`)).toBe(
-        `sh -c env ${quote}PASSWORD=[redacted]`,
-      );
-    }
-  });
-
-  it("redacts complete externally quoted and nested bounded assignment values", () => {
-    expect(redactSensitiveProcessArgs("'PASSWORD=correct horse' remains useful")).toBe(
-      "'PASSWORD=[redacted]' remains useful",
-    );
-    expect(
-      redactSensitiveProcessArgs('PASSWORD=$(printf x "$(printf y)")supersecret remains useful'),
-    ).toBe("PASSWORD=[redacted]");
-    expect(
-      redactSensitiveProcessArgs('"PASSWORD=$(printf x "$(printf y)")supersecret" remains useful'),
-    ).toBe('"PASSWORD=[redacted]');
-    expect(
-      redactSensitiveProcessArgs("PASSWORD=${UNSET:-correct horse}suffix remains useful"),
-    ).toBe("PASSWORD=[redacted] remains useful");
-    expect(redactSensitiveProcessArgs("PASSWORD=$((1 + (2 * 3)))supersecret remains useful")).toBe(
-      "PASSWORD=[redacted] remains useful",
-    );
-    expect(redactSensitiveProcessArgs("PASSWORD=$[1 + 2]supersecret remains useful")).toBe(
-      "PASSWORD=[redacted] remains useful",
-    );
-    expect(
-      redactSensitiveProcessArgs(
-        "PASSWORD=$(case x in x) printf supersecret;; esac)suffix remains useful",
-      ),
-    ).toBe("PASSWORD=[redacted]");
-    expect(
-      redactSensitiveProcessArgs(
-        "PASSWORD=$(case y in x) printf esac;; y) printf supersecret;; esac)suffix remains useful",
-      ),
-    ).toBe("PASSWORD=[redacted]");
-    expect(
-      redactSensitiveProcessArgs(
-        "PASSWORD=$(case case in case) printf supersecret;; esac)suffix remains useful",
-      ),
-    ).toBe("PASSWORD=[redacted]");
-    expect(
-      redactSensitiveProcessArgs(
-        "PASSWORD=$(case 1 in 1) printf supersecret;; esac)suffix remains useful",
-      ),
-    ).toBe("PASSWORD=[redacted]");
-    expect(
-      redactSensitiveProcessArgs(
-        "PASSWORD=$(case \\x in x) printf supersecret;; esac)suffix remains useful",
-      ),
-    ).toBe("PASSWORD=[redacted]");
-    expect(
-      redactSensitiveProcessArgs(
-        "PASSWORD=$(case y in x) printf noop;; # esac\ny) printf supersecret;; esac)suffix remains useful",
-      ),
-    ).toBe("PASSWORD=[redacted]");
-    expect(
-      redactSensitiveProcessArgs(
-        "PASSWORD=$(printf noop\ncase y in y) printf supersecret;; esac\n)suffix remains useful",
-      ),
-    ).toBe("PASSWORD=[redacted]");
-    expect(
-      redactSensitiveProcessArgs(
-        "PASSWORD=$(if true; then case y in y) printf supersecret;; esac; fi)suffix remains useful",
-      ),
-    ).toBe("PASSWORD=[redacted]");
-    expect(
-      redactSensitiveProcessArgs(
-        "PASSWORD=$(time case y in y) printf supersecret;; esac)suffix remains useful",
-      ),
-    ).toBe("PASSWORD=[redacted]");
-    expect(
-      redactSensitiveProcessArgs(
-        "PASSWORD=$(case y in\nx) cat <<EOF\n;;\nesac\nEOF\n;;\ny) printf supersecret;;\nesac\n)suffix remains useful",
-      ),
-    ).toBe("PASSWORD=[redacted]");
-    expect(redactSensitiveProcessArgs("PASSWORD=$(printf case)supersecret remains useful")).toBe(
+  it.each([
+    ["'PASSWORD=correct horse' remains useful", "'PASSWORD=[redacted]' remains useful"],
+    ['PASSWORD=$(printf x "$(printf y)")supersecret remains useful', "PASSWORD=[redacted]"],
+    ['"PASSWORD=$(printf x "$(printf y)")supersecret" remains useful', '"PASSWORD=[redacted]'],
+    ["PASSWORD=${UNSET:-correct horse}suffix remains useful", "PASSWORD=[redacted] remains useful"],
+    ["PASSWORD=$((1 + (2 * 3)))supersecret remains useful", "PASSWORD=[redacted] remains useful"],
+    ["PASSWORD=$[1 + 2]supersecret remains useful", "PASSWORD=[redacted] remains useful"],
+    [
+      "PASSWORD=$(case x in x) printf supersecret;; esac)suffix remains useful",
       "PASSWORD=[redacted]",
-    );
-    expect(redactSensitiveProcessArgs("PASSWORD=$(printf [)supersecret remains useful")).toBe(
+    ],
+    [
+      "PASSWORD=$(case y in x) printf esac;; y) printf supersecret;; esac)suffix remains useful",
       "PASSWORD=[redacted]",
-    );
-    expect(
-      redactSensitiveProcessArgs(
-        "PASSWORD=$(</dev/null case x in x) printf supersecret;; esac)suffix remains useful",
-      ),
-    ).toBe("PASSWORD=[redacted]");
+    ],
+    [
+      "PASSWORD=$(case case in case) printf supersecret;; esac)suffix remains useful",
+      "PASSWORD=[redacted]",
+    ],
+    [
+      "PASSWORD=$(case 1 in 1) printf supersecret;; esac)suffix remains useful",
+      "PASSWORD=[redacted]",
+    ],
+    [
+      "PASSWORD=$(case \\x in x) printf supersecret;; esac)suffix remains useful",
+      "PASSWORD=[redacted]",
+    ],
+    [
+      "PASSWORD=$(case y in x) printf noop;; # esac\ny) printf supersecret;; esac)suffix remains useful",
+      "PASSWORD=[redacted]",
+    ],
+    [
+      "PASSWORD=$(printf noop\ncase y in y) printf supersecret;; esac\n)suffix remains useful",
+      "PASSWORD=[redacted]",
+    ],
+    [
+      "PASSWORD=$(if true; then case y in y) printf supersecret;; esac; fi)suffix remains useful",
+      "PASSWORD=[redacted]",
+    ],
+    [
+      "PASSWORD=$(time case y in y) printf supersecret;; esac)suffix remains useful",
+      "PASSWORD=[redacted]",
+    ],
+    [
+      "PASSWORD=$(case y in\nx) cat <<EOF\n;;\nesac\nEOF\n;;\ny) printf supersecret;;\nesac\n)suffix remains useful",
+      "PASSWORD=[redacted]",
+    ],
+    ["PASSWORD=$(printf case)supersecret remains useful", "PASSWORD=[redacted]"],
+    ["PASSWORD=$(printf [)supersecret remains useful", "PASSWORD=[redacted]"],
+    [
+      "PASSWORD=$(</dev/null case x in x) printf supersecret;; esac)suffix remains useful",
+      "PASSWORD=[redacted]",
+    ],
+  ])("redacts the complete nested bounded assignment value in %j", (args, expected) => {
+    expect(redactSensitiveProcessArgs(args)).toBe(expected);
   });
 
   it("fails closed for adjacent shell segments after an externally quoted assignment", () => {
@@ -179,19 +145,13 @@ describe("redactSensitiveProcessArgs", () => {
     );
   });
 
-  it("fails closed for process substitution in a sensitive assignment", () => {
-    expect(redactSensitiveProcessArgs("PASSWORD=<(printf supersecret) remains useful")).toBe(
-      "PASSWORD=[redacted]",
-    );
-    expect(redactSensitiveProcessArgs("PASSWORD=>(cat supersecret) remains useful")).toBe(
-      "PASSWORD=[redacted]",
-    );
-    expect(
-      redactSensitiveProcessArgs(`'PASSWORD=prefix'<(printf supersecret) remains useful`),
-    ).toBe(`'PASSWORD=[redacted]`);
-    expect(redactSensitiveProcessArgs("PASSWORD=(correct horse) remains useful")).toBe(
-      "PASSWORD=[redacted]",
-    );
+  it.each([
+    ["PASSWORD=<(printf supersecret) remains useful", "PASSWORD=[redacted]"],
+    ["PASSWORD=>(cat supersecret) remains useful", "PASSWORD=[redacted]"],
+    ["'PASSWORD=prefix'<(printf supersecret) remains useful", "'PASSWORD=[redacted]"],
+    ["PASSWORD=(correct horse) remains useful", "PASSWORD=[redacted]"],
+  ])("fails closed for process substitution in %j", (args, expected) => {
+    expect(redactSensitiveProcessArgs(args)).toBe(expected);
   });
 
   it("recognizes append-style sensitive assignments", () => {
@@ -218,16 +178,17 @@ describe("redactSensitiveProcessArgs", () => {
     );
   });
 
-  it("redacts established database credential environment names", () => {
-    for (const name of ["PGPASSWORD", "MYSQL_PWD", "REDISCLI_AUTH"]) {
+  it.each(["PGPASSWORD", "MYSQL_PWD", "REDISCLI_AUTH"])(
+    "redacts the established database credential environment name %s",
+    (name) => {
       expect(redactProcessTableArgs(`env ${name}=supersecret server`)).toBe(
         `env ${name}=[redacted]`,
       );
       expect(redactSensitiveProcessArgs(`${name}=supersecret remains useful`)).toBe(
         `${name}=[redacted] remains useful`,
       );
-    }
-  });
+    },
+  );
 
   it("redacts credential-bearing environment URLs in process tables", () => {
     expect(
@@ -245,14 +206,12 @@ describe("redactSensitiveProcessArgs", () => {
     ).toBe("connection postgres://[redacted]@db.example/app failed without retry");
   });
 
-  it("does not confuse query or fragment emails with URL credentials", () => {
-    for (const url of [
-      "https://example.com?email=alice@example.com",
-      "https://example.com#alice@example.com",
-    ]) {
+  it.each(["https://example.com?email=alice@example.com", "https://example.com#alice@example.com"])(
+    "does not confuse the query or fragment email in %s with URL credentials",
+    (url) => {
       expect(redactSensitiveProcessArgs(`open ${url} now`)).toBe(`open ${url} now`);
-    }
-  });
+    },
+  );
 
   it("preserves generic diagnostic context after a bounded assignment value", () => {
     expect(redactSensitiveProcessArgs("Configuration KEY=value is invalid at line 42")).toBe(

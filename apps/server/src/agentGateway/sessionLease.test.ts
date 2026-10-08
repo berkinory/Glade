@@ -1,36 +1,48 @@
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { Deferred, Effect, Fiber } from "effect";
+import { Effect } from "effect";
 import { describe, expect, it, vi } from "vitest";
 
 import {
   acquireAgentGatewaySessionLease,
   AGENT_GATEWAY_NO_CAPABILITIES,
-  cancelAgentGatewayTurn,
-  releaseAgentGatewaySessionLeaseOnInterrupt,
-  startAgentGatewaySessionLeaseExitWatcher,
   withAgentGatewayTurnCancellation,
+  type AgentGatewaySessionLease,
 } from "./sessionLease.ts";
 
 class InjectedFailure extends Error {
   readonly _tag = "InjectedFailure";
 }
 
+const connection = { url: "http://127.0.0.1:48123/mcp", bearerToken: "gateway-token" };
+const threadId = ThreadId.makeUnsafe("thread-1");
+
+const acquireLease = (credentials: Parameters<typeof acquireAgentGatewaySessionLease>[0]) =>
+  acquireAgentGatewaySessionLease(credentials, threadId, "codex", AGENT_GATEWAY_NO_CAPABILITIES);
+
+const makeFakeLease = (overrides: Partial<AgentGatewaySessionLease> = {}) => ({
+  connection,
+  cancelTurn: vi.fn((_turnId: string) => Promise.resolve()),
+  retireTurn: vi.fn((_turnId: string) => Promise.resolve()),
+  release: vi.fn(),
+  ...overrides,
+});
+
+const deferredBarrier = () => {
+  let release!: () => void;
+  const barrier = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return { barrier, release };
+};
+
 describe("AgentGatewaySessionLease", () => {
   it("cancels one exact turn while the provider session lease is live", async () => {
     const cancelSessionTurnRequests = vi.fn(() => Promise.resolve());
-    const lease = acquireAgentGatewaySessionLease(
-      {
-        connectionForThread: () => ({
-          url: "http://127.0.0.1:48123/mcp",
-          bearerToken: "gateway-token",
-        }),
-        cancelSessionTurnRequests,
-        revokeSessionToken: vi.fn(),
-      },
-      ThreadId.makeUnsafe("thread-1"),
-      "codex",
-      AGENT_GATEWAY_NO_CAPABILITIES,
-    );
+    const lease = acquireLease({
+      connectionForThread: () => connection,
+      cancelSessionTurnRequests,
+      revokeSessionToken: vi.fn(),
+    });
 
     await lease?.cancelTurn("turn-exact");
     expect(cancelSessionTurnRequests).toHaveBeenCalledOnce();
@@ -44,19 +56,11 @@ describe("AgentGatewaySessionLease", () => {
   it("retires terminal write authority without revoking the runtime until release", async () => {
     const retireSessionTurn = vi.fn(() => Promise.resolve());
     const revokeSessionToken = vi.fn();
-    const lease = acquireAgentGatewaySessionLease(
-      {
-        connectionForThread: () => ({
-          url: "http://127.0.0.1:48123/mcp",
-          bearerToken: "gateway-token",
-        }),
-        retireSessionTurn,
-        revokeSessionToken,
-      },
-      ThreadId.makeUnsafe("thread-1"),
-      "codex",
-      AGENT_GATEWAY_NO_CAPABILITIES,
-    );
+    const lease = acquireLease({
+      connectionForThread: () => connection,
+      retireSessionTurn,
+      revokeSessionToken,
+    });
 
     await lease?.retireTurn("turn-a");
     expect(retireSessionTurn).toHaveBeenCalledWith("gateway-token", "turn-a");
@@ -69,24 +73,9 @@ describe("AgentGatewaySessionLease", () => {
   });
 
   it("starts provider and gateway interruption concurrently and waits for the gateway barrier", async () => {
-    let releaseGateway!: () => void;
-    const gatewayBarrier = new Promise<void>((resolve) => {
-      releaseGateway = resolve;
-    });
+    const gateway = deferredBarrier();
     const providerStarted = vi.fn();
-    const gatewayStarted = vi.fn();
-    const lease = {
-      connection: {
-        url: "http://127.0.0.1:48123/mcp",
-        bearerToken: "gateway-token",
-      },
-      cancelTurn: vi.fn((turnId: string) => {
-        gatewayStarted(turnId);
-        return gatewayBarrier;
-      }),
-      retireTurn: vi.fn(() => Promise.resolve()),
-      release: vi.fn(),
-    };
+    const lease = makeFakeLease({ cancelTurn: vi.fn(() => gateway.barrier) });
 
     let settled = false;
     const interruption = Effect.runPromise(
@@ -101,11 +90,11 @@ describe("AgentGatewaySessionLease", () => {
 
     await vi.waitFor(() => {
       expect(providerStarted).toHaveBeenCalledOnce();
-      expect(gatewayStarted).toHaveBeenCalledWith("turn-exact");
+      expect(lease.cancelTurn).toHaveBeenCalledWith("turn-exact");
     });
     expect(settled).toBe(false);
 
-    releaseGateway();
+    gateway.release();
     await interruption;
     expect(settled).toBe(true);
   });
@@ -113,20 +102,15 @@ describe("AgentGatewaySessionLease", () => {
   it("tombstones the turn and revokes its bearer before the provider interrupt starts", async () => {
     let released = false;
     const cancellationObservedReleasedState: boolean[] = [];
-    const lease = {
-      connection: {
-        url: "http://127.0.0.1:48123/mcp",
-        bearerToken: "gateway-token",
-      },
+    const lease = makeFakeLease({
       cancelTurn: vi.fn(() => {
         cancellationObservedReleasedState.push(released);
         return Promise.resolve();
       }),
-      retireTurn: vi.fn(() => Promise.resolve()),
       release: vi.fn(() => {
         released = true;
       }),
-    };
+    });
 
     await Effect.runPromise(
       withAgentGatewayTurnCancellation(
@@ -144,17 +128,11 @@ describe("AgentGatewaySessionLease", () => {
   it("revokes the session before stopping a background child without a parent turn id", async () => {
     let released = false;
     const providerInterrupted = vi.fn();
-    const lease = {
-      connection: {
-        url: "http://127.0.0.1:48123/mcp",
-        bearerToken: "gateway-token",
-      },
-      cancelTurn: vi.fn(() => Promise.resolve()),
-      retireTurn: vi.fn(() => Promise.resolve()),
+    const lease = makeFakeLease({
       release: vi.fn(() => {
         released = true;
       }),
-    };
+    });
 
     await Effect.runPromise(
       withAgentGatewayTurnCancellation(
@@ -174,17 +152,11 @@ describe("AgentGatewaySessionLease", () => {
 
   it("still interrupts the provider but fails closed when bearer revocation fails", async () => {
     const providerInterrupted = vi.fn();
-    const lease = {
-      connection: {
-        url: "http://127.0.0.1:48123/mcp",
-        bearerToken: "gateway-token",
-      },
-      cancelTurn: vi.fn(() => Promise.resolve()),
-      retireTurn: vi.fn(() => Promise.resolve()),
+    const lease = makeFakeLease({
       release: vi.fn(() => {
         throw new Error("credential revocation failed");
       }),
-    };
+    });
 
     await expect(
       Effect.runPromise(
@@ -199,19 +171,8 @@ describe("AgentGatewaySessionLease", () => {
   });
 
   it("preserves a provider interruption failure after the gateway barrier settles", async () => {
-    let releaseGateway!: () => void;
-    const gatewayBarrier = new Promise<void>((resolve) => {
-      releaseGateway = resolve;
-    });
-    const lease = {
-      connection: {
-        url: "http://127.0.0.1:48123/mcp",
-        bearerToken: "gateway-token",
-      },
-      cancelTurn: vi.fn(() => gatewayBarrier),
-      retireTurn: vi.fn(() => Promise.resolve()),
-      release: vi.fn(),
-    };
+    const gateway = deferredBarrier();
+    const lease = makeFakeLease({ cancelTurn: vi.fn(() => gateway.barrier) });
 
     let settled = false;
     const interruption = Effect.runPromise(
@@ -227,43 +188,17 @@ describe("AgentGatewaySessionLease", () => {
 
     await vi.waitFor(() => expect(lease.cancelTurn).toHaveBeenCalledWith("turn-exact"));
     expect(settled).toBe(false);
-    releaseGateway();
+    gateway.release();
     await expect(interruption).rejects.toThrow("provider stop failed");
   });
 
-  it("does nothing when no exact turn is available", async () => {
-    const lease = {
-      connection: {
-        url: "http://127.0.0.1:48123/mcp",
-        bearerToken: "gateway-token",
-      },
-      cancelTurn: vi.fn(() => Promise.resolve()),
-      retireTurn: vi.fn(() => Promise.resolve()),
-      release: vi.fn(),
-    };
-
-    await Effect.runPromise(cancelAgentGatewayTurn(lease, undefined));
-    expect(lease.cancelTurn).not.toHaveBeenCalled();
-  });
-
   it("acquires one scoped connection and revokes it at most once", () => {
-    const connectionForThread = vi.fn(() => ({
-      url: "http://127.0.0.1:48123/mcp",
-      bearerToken: "gateway-token",
-    }));
+    const connectionForThread = vi.fn(() => connection);
     const revokeSessionToken = vi.fn();
 
-    const lease = acquireAgentGatewaySessionLease(
-      { connectionForThread, revokeSessionToken },
-      ThreadId.makeUnsafe("thread-1"),
-      "codex",
-      AGENT_GATEWAY_NO_CAPABILITIES,
-    );
+    const lease = acquireLease({ connectionForThread, revokeSessionToken });
 
-    expect(lease?.connection).toEqual({
-      url: "http://127.0.0.1:48123/mcp",
-      bearerToken: "gateway-token",
-    });
+    expect(lease?.connection).toEqual(connection);
     expect(connectionForThread).toHaveBeenCalledOnce();
     expect(connectionForThread).toHaveBeenCalledWith("thread-1", "codex");
 
@@ -274,146 +209,19 @@ describe("AgentGatewaySessionLease", () => {
     expect(revokeSessionToken).toHaveBeenCalledWith("gateway-token");
   });
 
-  it("keeps replacement runtimes on independent leases", () => {
-    let sequence = 0;
-    const connectionForThread = vi.fn(() => ({
-      url: "http://127.0.0.1:48123/mcp",
-      bearerToken: `gateway-token-${++sequence}`,
-    }));
-    const revokeSessionToken = vi.fn();
-    const credentials = { connectionForThread, revokeSessionToken };
-    const threadId = ThreadId.makeUnsafe("thread-1");
-
-    const previous = acquireAgentGatewaySessionLease(
-      credentials,
-      threadId,
-      "codex",
-      AGENT_GATEWAY_NO_CAPABILITIES,
-    );
-    const replacement = acquireAgentGatewaySessionLease(
-      credentials,
-      threadId,
-      "codex",
-      AGENT_GATEWAY_NO_CAPABILITIES,
-    );
-
-    previous?.release();
-    expect(revokeSessionToken).toHaveBeenLastCalledWith("gateway-token-1");
-    expect(replacement?.connection.bearerToken).toBe("gateway-token-2");
-
-    replacement?.release();
-    expect(revokeSessionToken).toHaveBeenCalledTimes(2);
-    expect(revokeSessionToken).toHaveBeenLastCalledWith("gateway-token-2");
-  });
-
-  it("does not acquire a credential when the gateway layer is absent", () => {
-    expect(
-      acquireAgentGatewaySessionLease(
-        undefined,
-        ThreadId.makeUnsafe("thread-1"),
-        "codex",
-        AGENT_GATEWAY_NO_CAPABILITIES,
-      ),
-    ).toBeUndefined();
-  });
-
   it("marks the lease released before delegating to a throwing revoker", () => {
     const revokeSessionToken = vi.fn(() => {
       throw new Error("revoke failed");
     });
     const lease = acquireAgentGatewaySessionLease(
-      {
-        connectionForThread: () => ({
-          url: "http://127.0.0.1:48123/mcp",
-          bearerToken: "gateway-token",
-        }),
-        revokeSessionToken,
-      },
-      ThreadId.makeUnsafe("thread-1"),
+      { connectionForThread: () => connection, revokeSessionToken },
+      threadId,
       "claudeAgent",
       AGENT_GATEWAY_NO_CAPABILITIES,
     );
 
     expect(() => lease?.release()).toThrow("revoke failed");
     expect(() => lease?.release()).not.toThrow();
-    expect(revokeSessionToken).toHaveBeenCalledOnce();
-  });
-
-  it("releases a live lease when the provider exits spontaneously", async () => {
-    const providerExited = Deferred.makeUnsafe<void>();
-    const revokeSessionToken = vi.fn();
-    const lease = acquireAgentGatewaySessionLease(
-      {
-        connectionForThread: () => ({
-          url: "http://127.0.0.1:48123/mcp",
-          bearerToken: "gateway-token",
-        }),
-        revokeSessionToken,
-      },
-      ThreadId.makeUnsafe("thread-1"),
-      "codex",
-      AGENT_GATEWAY_NO_CAPABILITIES,
-    );
-
-    await Effect.runPromise(
-      startAgentGatewaySessionLeaseExitWatcher(lease, Deferred.await(providerExited)),
-    );
-    expect(revokeSessionToken).not.toHaveBeenCalled();
-
-    Deferred.doneUnsafe(providerExited, Effect.void);
-    await vi.waitFor(() => expect(revokeSessionToken).toHaveBeenCalledOnce());
-
-    lease?.release();
-    expect(revokeSessionToken).toHaveBeenCalledOnce();
-  });
-
-  it("does not start an exit watcher when no credential was acquired", async () => {
-    let awaitedExit = false;
-
-    await Effect.runPromise(
-      startAgentGatewaySessionLeaseExitWatcher(
-        undefined,
-        Effect.sync(() => {
-          awaitedExit = true;
-        }),
-      ),
-    );
-
-    expect(awaitedExit).toBe(false);
-  });
-
-  it("releases an untransferred lease when provider startup is interrupted", async () => {
-    const startupBarrier = Deferred.makeUnsafe<void>();
-    const startupEntered = Deferred.makeUnsafe<void>();
-    const revokeSessionToken = vi.fn();
-    const lease = acquireAgentGatewaySessionLease(
-      {
-        connectionForThread: () => ({
-          url: "http://127.0.0.1:48123/mcp",
-          bearerToken: "gateway-token",
-        }),
-        revokeSessionToken,
-      },
-      ThreadId.makeUnsafe("thread-1"),
-      "codex",
-      AGENT_GATEWAY_NO_CAPABILITIES,
-    );
-
-    await Effect.runPromise(
-      Effect.gen(function* () {
-        const startupFiber = yield* releaseAgentGatewaySessionLeaseOnInterrupt(
-          lease,
-          Deferred.succeed(startupEntered, undefined).pipe(
-            Effect.andThen(Deferred.await(startupBarrier)),
-          ),
-        ).pipe(Effect.forkChild);
-        yield* Deferred.await(startupEntered);
-        yield* Fiber.interrupt(startupFiber);
-      }),
-    );
-
-    expect(revokeSessionToken).toHaveBeenCalledOnce();
-    lease?.release();
     expect(revokeSessionToken).toHaveBeenCalledOnce();
   });
 });

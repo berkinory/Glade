@@ -21,6 +21,8 @@ function deterministicClock() {
   };
 }
 
+type SignalRecord = { signal: TerminalKillSignal; includeRootTree: boolean | undefined };
+
 function deferred<T>() {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((complete) => {
@@ -78,8 +80,7 @@ describe("teardownProviderProcessTree", () => {
       const captureStarted = deferred<void>();
       const capturedTree = deferred<CapturedProcessTree>();
       const rootExit = deferred<void>();
-      const signals: Array<{ signal: TerminalKillSignal; includeRootTree: boolean | undefined }> =
-        [];
+      const signals: SignalRecord[] = [];
       const clock = deterministicClock();
 
       const teardown = teardownProviderProcessTree(
@@ -136,11 +137,8 @@ describe("teardownProviderProcessTree", () => {
       captureComplete: true,
     };
     const runningDescendants = new Map<number, CapturedProcess>([[102, tree.descendants[0]!]]);
-    const signals: Array<{ signal: TerminalKillSignal; includeRootTree: boolean | undefined }> = [];
-    let resolveRootExit: (() => void) | undefined;
-    const rootExited = new Promise<void>((resolve) => {
-      resolveRootExit = resolve;
-    });
+    const signals: SignalRecord[] = [];
+    const rootExit = deferred<void>();
     const processTreeKiller: ProcessTreeKiller = {
       capture: () => tree,
       inspect: () => ({ verified: true, survivors: [...runningDescendants.values()] }),
@@ -148,7 +146,7 @@ describe("teardownProviderProcessTree", () => {
         signals.push({ signal, includeRootTree });
         if (signal === "SIGKILL") {
           runningDescendants.clear();
-          resolveRootExit?.();
+          rootExit.resolve(undefined);
         }
       },
     };
@@ -156,7 +154,7 @@ describe("teardownProviderProcessTree", () => {
 
     await expect(
       teardownProviderProcessTree(
-        { rootPid: 101, rootExited, termGraceMs: 10, forceExitMs: 10, pollMs: 5 },
+        { rootPid: 101, rootExited: rootExit.promise, termGraceMs: 10, forceExitMs: 10, pollMs: 5 },
         {
           isRootRunning: async () => true,
           processTreeKiller,
@@ -176,11 +174,8 @@ describe("teardownProviderProcessTree", () => {
       captureComplete: true,
     };
     let descendantsRunning = true;
-    let resolveRootExit: (() => void) | undefined;
-    const rootExited = new Promise<void>((resolve) => {
-      resolveRootExit = resolve;
-    });
-    const signals: Array<{ signal: TerminalKillSignal; includeRootTree: boolean | undefined }> = [];
+    const rootExit = deferred<void>();
+    const signals: SignalRecord[] = [];
     const processTreeKiller: ProcessTreeKiller = {
       capture: () => tree,
       inspect: () => ({
@@ -189,7 +184,7 @@ describe("teardownProviderProcessTree", () => {
       }),
       signal: ({ signal, includeRootTree }) => {
         signals.push({ signal, includeRootTree });
-        if (signal === "SIGTERM") resolveRootExit?.();
+        if (signal === "SIGTERM") rootExit.resolve(undefined);
         if (signal === "SIGKILL") descendantsRunning = false;
       },
     };
@@ -197,7 +192,7 @@ describe("teardownProviderProcessTree", () => {
 
     await expect(
       teardownProviderProcessTree(
-        { rootPid: 201, rootExited, termGraceMs: 10, forceExitMs: 10, pollMs: 5 },
+        { rootPid: 201, rootExited: rootExit.promise, termGraceMs: 10, forceExitMs: 10, pollMs: 5 },
         {
           isRootRunning: async () => true,
           processTreeKiller,
@@ -224,10 +219,7 @@ describe("teardownProviderProcessTree", () => {
       captureComplete: true,
     };
     let descendantsRunning = true;
-    let resolveRootExit: (() => void) | undefined;
-    const rootExited = new Promise<void>((resolve) => {
-      resolveRootExit = resolve;
-    });
+    const rootExit = deferred<void>();
     const signals: Array<{
       signal: TerminalKillSignal;
       includeRootTree: boolean | undefined;
@@ -243,7 +235,7 @@ describe("teardownProviderProcessTree", () => {
           verifiedDescendants,
           descendants: [...signalTree.descendants],
         });
-        if (signal === "SIGTERM") resolveRootExit?.();
+        if (signal === "SIGTERM") rootExit.resolve(undefined);
         if (signal === "SIGKILL") descendantsRunning = false;
       },
     };
@@ -251,7 +243,7 @@ describe("teardownProviderProcessTree", () => {
 
     await expect(
       teardownProviderProcessTree(
-        { rootPid: 801, rootExited, termGraceMs: 5, forceExitMs: 5, pollMs: 5 },
+        { rootPid: 801, rootExited: rootExit.promise, termGraceMs: 5, forceExitMs: 5, pollMs: 5 },
         {
           platform: "win32",
           isRootRunning: async () => true,
@@ -259,7 +251,6 @@ describe("teardownProviderProcessTree", () => {
           captureProcessTree: async () => tree,
           inspectProcessTree: async () => ({
             verified: true,
-
             survivors: descendantsRunning ? [grandchild] : [],
           }),
           ...clock,
@@ -277,7 +268,7 @@ describe("teardownProviderProcessTree", () => {
 
   it("does not accept root exit as descendant proof when the snapshot failed", async () => {
     const tree: CapturedProcessTree = { descendants: [], captureComplete: false };
-    const signals: Array<{ signal: TerminalKillSignal; includeRootTree: boolean | undefined }> = [];
+    const signals: SignalRecord[] = [];
     const clock = deterministicClock();
 
     const failure = await teardownProviderProcessTree(
@@ -399,16 +390,13 @@ describe("teardownProviderProcessTree", () => {
     };
     let inspectCalls = 0;
     let sleepCalls = 0;
-    let resolveRootExit: (() => void) | undefined;
-    const rootExited = new Promise<void>((resolve) => {
-      resolveRootExit = resolve;
-    });
+    const rootExit = deferred<void>();
     let now = 0;
 
     await teardownProviderProcessTree(
       {
         rootPid: 701,
-        rootExited,
+        rootExited: rootExit.promise,
         termGraceMs: 1_000,
         forceExitMs: 1_000,
         pollMs: 25,
@@ -422,7 +410,7 @@ describe("teardownProviderProcessTree", () => {
             return { verified: true, survivors: tree.descendants };
           },
           signal: ({ signal }) => {
-            if (signal === "SIGTERM") resolveRootExit?.();
+            if (signal === "SIGTERM") rootExit.resolve(undefined);
           },
         },
         now: () => now,
@@ -483,7 +471,6 @@ describe("teardownProviderProcessTree", () => {
       captureComplete: true,
     };
     let inspectCalls = 0;
-    let now = 0;
 
     const failure = await teardownProviderProcessTree(
       {
@@ -504,10 +491,7 @@ describe("teardownProviderProcessTree", () => {
           },
           signal: () => undefined,
         },
-        now: () => now,
-        sleep: async (milliseconds) => {
-          now += milliseconds;
-        },
+        ...deterministicClock(),
       },
     ).catch((error: unknown) => error);
 

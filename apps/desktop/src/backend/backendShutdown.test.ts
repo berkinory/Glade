@@ -58,6 +58,33 @@ function makePendingRequest(
   };
 }
 
+const posixInput = (
+  child: BackendShutdownProcess,
+  overrides: Partial<Parameters<typeof stopPosixBackendAndWait>[0]> = {},
+) => ({
+  child,
+  backendHttpUrl: "http://127.0.0.1:3773",
+  shutdownToken: "desktop-only-token",
+  terminateDelayMs: 6_000,
+  forceKillDelayMs: 8_000,
+  timeoutMs: 10_000,
+  startRequest: () => makePendingRequest(),
+  ...overrides,
+});
+
+const windowsInput = (
+  child: BackendShutdownProcess,
+  overrides: Partial<Parameters<typeof stopWindowsBackendAndWait>[0]> = {},
+) => ({
+  child,
+  backendHttpUrl: "http://127.0.0.1:3773",
+  shutdownToken: "desktop-only-token",
+  forceKillDelayMs: 8_000,
+  timeoutMs: 10_000,
+  startRequest: () => makePendingRequest(),
+  ...overrides,
+});
+
 async function expectPromisePending(promise: Promise<unknown>): Promise<void> {
   let settled = false;
   void promise.then(
@@ -100,15 +127,7 @@ describe("stopPosixBackendAndWait", () => {
       Promise.resolve({ type: "response", statusCode: 202 }),
     );
     const startRequest = vi.fn(() => pendingRequest);
-    const shutdown = stopPosixBackendAndWait({
-      child,
-      backendHttpUrl: "http://127.0.0.1:3773",
-      shutdownToken: "desktop-only-token",
-      terminateDelayMs: 6_000,
-      forceKillDelayMs: 8_000,
-      timeoutMs: 10_000,
-      startRequest,
-    });
+    const shutdown = stopPosixBackendAndWait(posixInput(child, { startRequest }));
 
     expect(startRequest).toHaveBeenCalledOnce();
     expect(child.killSignals).toEqual([]);
@@ -135,15 +154,7 @@ describe("stopPosixBackendAndWait", () => {
         child.exit(0);
         return acceptedRequest;
       });
-    const shutdown = stopPosixBackendAndWait({
-      child,
-      backendHttpUrl: "http://127.0.0.1:3773",
-      shutdownToken: "desktop-only-token",
-      terminateDelayMs: 6_000,
-      forceKillDelayMs: 8_000,
-      timeoutMs: 10_000,
-      startRequest,
-    });
+    const shutdown = stopPosixBackendAndWait(posixInput(child, { startRequest }));
 
     await vi.advanceTimersByTimeAsync(249);
     expect(startRequest).toHaveBeenCalledOnce();
@@ -160,15 +171,14 @@ describe("stopPosixBackendAndWait", () => {
     const child = makeTestBackendShutdownProcess();
     child.exitOnKill = true;
     const startRequest = vi.fn(() => makePendingRequest(Promise.resolve({ type: "error" })));
-    const shutdown = stopPosixBackendAndWait({
-      child,
-      backendHttpUrl: "http://127.0.0.1:3773",
-      shutdownToken: "desktop-only-token",
-      terminateDelayMs: 600,
-      forceKillDelayMs: 800,
-      timeoutMs: 1_000,
-      startRequest,
-    });
+    const shutdown = stopPosixBackendAndWait(
+      posixInput(child, {
+        terminateDelayMs: 600,
+        forceKillDelayMs: 800,
+        timeoutMs: 1_000,
+        startRequest,
+      }),
+    );
 
     await vi.advanceTimersByTimeAsync(599);
     expect(startRequest).toHaveBeenCalledTimes(3);
@@ -183,15 +193,7 @@ describe("stopPosixBackendAndWait", () => {
 
   it("escalates from graceful shutdown to TERM and KILL while still requiring exit", async () => {
     const child = makeTestBackendShutdownProcess();
-    const shutdown = stopPosixBackendAndWait({
-      child,
-      backendHttpUrl: "http://127.0.0.1:3773",
-      shutdownToken: "desktop-only-token",
-      terminateDelayMs: 6_000,
-      forceKillDelayMs: 8_000,
-      timeoutMs: 10_000,
-      startRequest: () => makePendingRequest(),
-    });
+    const shutdown = stopPosixBackendAndWait(posixInput(child));
 
     await vi.advanceTimersByTimeAsync(5_999);
     expect(child.killSignals).toEqual([]);
@@ -207,36 +209,19 @@ describe("stopPosixBackendAndWait", () => {
 
   it("rejects instead of allowing updater handoff while the child is still alive", async () => {
     const child = makeTestBackendShutdownProcess();
-    const shutdown = stopPosixBackendAndWait({
-      child,
-      backendHttpUrl: "http://127.0.0.1:3773",
-      shutdownToken: "desktop-only-token",
-      terminateDelayMs: 6_000,
-      forceKillDelayMs: 8_000,
-      timeoutMs: 10_000,
-      startRequest: () => makePendingRequest(),
-    });
+    const shutdown = stopPosixBackendAndWait(posixInput(child));
 
-    const rejection = expect(shutdown).rejects.toMatchObject({
-      name: "PosixBackendShutdownTimeoutError",
-      forced: true,
-    });
+    const outcome = shutdown.catch((error: unknown) => error);
     await vi.advanceTimersByTimeAsync(10_000);
-    await rejection;
+    const error = await outcome;
+    expect(error).toBeInstanceOf(PosixBackendShutdownTimeoutError);
+    expect(error).toMatchObject({ forced: true });
     expect(child.killSignals).toEqual(["SIGTERM", "SIGKILL"]);
   });
 
   it("shares duplicate shutdown calls for the same process", async () => {
     const child = makeTestBackendShutdownProcess();
-    const input = {
-      child,
-      backendHttpUrl: "http://127.0.0.1:3773",
-      shutdownToken: "desktop-only-token",
-      terminateDelayMs: 6_000,
-      forceKillDelayMs: 8_000,
-      timeoutMs: 10_000,
-      startRequest: vi.fn(() => makePendingRequest()),
-    };
+    const input = posixInput(child, { startRequest: vi.fn(() => makePendingRequest()) });
 
     const first = stopPosixBackendAndWait(input);
     const second = stopPosixBackendAndWait(input);
@@ -252,51 +237,25 @@ describe("stopPosixBackendAndWait", () => {
     const child = makeTestBackendShutdownProcess();
 
     await expect(
-      stopPosixBackendAndWait({
-        child,
-        backendHttpUrl: "http://127.0.0.1:3773",
-        shutdownToken: "desktop-only-token",
-        terminateDelayMs: 8_000,
-        forceKillDelayMs: 10_000,
-        timeoutMs: 10_000,
-      }),
+      stopPosixBackendAndWait(
+        posixInput(child, { terminateDelayMs: 8_000, forceKillDelayMs: 10_000 }),
+      ),
     ).rejects.toThrow(RangeError);
     expect(child.killSignals).toEqual([]);
-  });
-
-  it("exposes whether the force-kill attempt ran before timeout", async () => {
-    const child = makeTestBackendShutdownProcess();
-    const shutdown = stopPosixBackendAndWait({
-      child,
-      backendHttpUrl: "http://127.0.0.1:3773",
-      shutdownToken: "desktop-only-token",
-      terminateDelayMs: 6_000,
-      forceKillDelayMs: 8_000,
-      timeoutMs: 10_000,
-      startRequest: () => makePendingRequest(),
-    });
-
-    const rejection = expect(shutdown).rejects.toBeInstanceOf(PosixBackendShutdownTimeoutError);
-    await vi.advanceTimersByTimeAsync(10_000);
-    await rejection;
   });
 
   it("cancels a request created during a synchronous child-exit race", async () => {
     const child = makeTestBackendShutdownProcess();
     const pendingRequest = makePendingRequest();
 
-    const shutdown = stopPosixBackendAndWait({
-      child,
-      backendHttpUrl: "http://127.0.0.1:3773",
-      shutdownToken: "desktop-only-token",
-      terminateDelayMs: 6_000,
-      forceKillDelayMs: 8_000,
-      timeoutMs: 10_000,
-      startRequest: () => {
-        child.exit(0);
-        return pendingRequest;
-      },
-    });
+    const shutdown = stopPosixBackendAndWait(
+      posixInput(child, {
+        startRequest: () => {
+          child.exit(0);
+          return pendingRequest;
+        },
+      }),
+    );
 
     await expect(shutdown).resolves.toBeUndefined();
     expect(pendingRequest.cancel).toHaveBeenCalledOnce();
@@ -320,14 +279,7 @@ describe("stopWindowsBackendAndWait", () => {
     );
     const startRequest = vi.fn(() => pendingRequest);
 
-    const shutdown = stopWindowsBackendAndWait({
-      child,
-      backendHttpUrl: "http://127.0.0.1:3773",
-      shutdownToken: "desktop-only-token",
-      forceKillDelayMs: 8_000,
-      timeoutMs: 10_000,
-      startRequest,
-    });
+    const shutdown = stopWindowsBackendAndWait(windowsInput(child, { startRequest }));
 
     expect(startRequest).toHaveBeenCalledOnce();
     expect(startRequest).toHaveBeenCalledWith({
@@ -349,14 +301,7 @@ describe("stopWindowsBackendAndWait", () => {
     const child = makeTestBackendShutdownProcess();
     const pendingRequest = makePendingRequest();
     const startRequest = vi.fn(() => pendingRequest);
-    const input = {
-      child,
-      backendHttpUrl: "http://127.0.0.1:3773",
-      shutdownToken: "desktop-only-token",
-      forceKillDelayMs: 8_000,
-      timeoutMs: 10_000,
-      startRequest,
-    };
+    const input = windowsInput(child, { startRequest });
 
     const first = stopWindowsBackendAndWait(input);
     const duplicate = stopWindowsBackendAndWait(input);
@@ -373,17 +318,14 @@ describe("stopWindowsBackendAndWait", () => {
     const child = makeTestBackendShutdownProcess();
     const pendingRequest = makePendingRequest();
 
-    const shutdown = stopWindowsBackendAndWait({
-      child,
-      backendHttpUrl: "http://127.0.0.1:3773",
-      shutdownToken: "desktop-only-token",
-      forceKillDelayMs: 8_000,
-      timeoutMs: 10_000,
-      startRequest: () => {
-        child.exit(0);
-        return pendingRequest;
-      },
-    });
+    const shutdown = stopWindowsBackendAndWait(
+      windowsInput(child, {
+        startRequest: () => {
+          child.exit(0);
+          return pendingRequest;
+        },
+      }),
+    );
 
     await expect(shutdown).resolves.toEqual({ type: "exited", forced: false });
     expect(pendingRequest.cancel).toHaveBeenCalledOnce();
@@ -398,14 +340,7 @@ describe("stopWindowsBackendAndWait", () => {
     const child = makeTestBackendShutdownProcess();
     child.exitOnKill = true;
     const startRequest = vi.fn(() => makePendingRequest(makeOutcome()));
-    const shutdown = stopWindowsBackendAndWait({
-      child,
-      backendHttpUrl: "http://127.0.0.1:3773",
-      shutdownToken: "desktop-only-token",
-      forceKillDelayMs: 8_000,
-      timeoutMs: 10_000,
-      startRequest,
-    });
+    const shutdown = stopWindowsBackendAndWait(windowsInput(child, { startRequest }));
 
     await vi.advanceTimersByTimeAsync(7_999);
     expect(child.killSignals).toEqual([]);
@@ -444,15 +379,9 @@ describe("stopWindowsBackendAndWait", () => {
     const forceTerminate = vi.fn((processHandle: BackendShutdownProcess) => {
       processHandle.kill("SIGTERM");
     });
-    const shutdown = stopWindowsBackendAndWait({
-      child,
-      backendHttpUrl: "http://127.0.0.1:3773",
-      shutdownToken: "desktop-only-token",
-      forceKillDelayMs: 8_000,
-      timeoutMs: 10_000,
-      startRequest: () => pendingRequest,
-      forceTerminate,
-    });
+    const shutdown = stopWindowsBackendAndWait(
+      windowsInput(child, { startRequest: () => pendingRequest, forceTerminate }),
+    );
 
     await vi.advanceTimersByTimeAsync(8_000);
     expect(forceTerminate).toHaveBeenCalledOnce();
@@ -469,15 +398,9 @@ describe("stopWindowsBackendAndWait", () => {
 
     const retryRequest = makePendingRequest();
     const startRetryRequest = vi.fn(() => retryRequest);
-    const retry = stopWindowsBackendAndWait({
-      child,
-      backendHttpUrl: "http://127.0.0.1:3773",
-      shutdownToken: "desktop-only-token",
-      forceKillDelayMs: 8_000,
-      timeoutMs: 10_000,
-      startRequest: startRetryRequest,
-      forceTerminate,
-    });
+    const retry = stopWindowsBackendAndWait(
+      windowsInput(child, { startRequest: startRetryRequest, forceTerminate }),
+    );
 
     expect(retry).not.toBe(shutdown);
     expect(startRetryRequest).toHaveBeenCalledOnce();
@@ -492,16 +415,9 @@ describe("stopWindowsBackendAndWait", () => {
     child.exitCode = 0;
     const startRequest = vi.fn(() => makePendingRequest());
 
-    await expect(
-      stopWindowsBackendAndWait({
-        child,
-        backendHttpUrl: "http://127.0.0.1:3773",
-        shutdownToken: "desktop-only-token",
-        forceKillDelayMs: 8_000,
-        timeoutMs: 10_000,
-        startRequest,
-      }),
-    ).resolves.toEqual({ type: "already-exited", forced: false });
+    await expect(stopWindowsBackendAndWait(windowsInput(child, { startRequest }))).resolves.toEqual(
+      { type: "already-exited", forced: false },
+    );
     expect(startRequest).not.toHaveBeenCalled();
     expect(child.killSignals).toEqual([]);
   });
@@ -509,14 +425,7 @@ describe("stopWindowsBackendAndWait", () => {
   it("lets child state at the force boundary win without a force call", async () => {
     const child = makeTestBackendShutdownProcess();
     setTimeout(() => child.exit(0), 8_000);
-    const shutdown = stopWindowsBackendAndWait({
-      child,
-      backendHttpUrl: "http://127.0.0.1:3773",
-      shutdownToken: "desktop-only-token",
-      forceKillDelayMs: 8_000,
-      timeoutMs: 10_000,
-      startRequest: () => makePendingRequest(),
-    });
+    const shutdown = stopWindowsBackendAndWait(windowsInput(child));
 
     await vi.advanceTimersByTimeAsync(8_000);
 
@@ -527,14 +436,7 @@ describe("stopWindowsBackendAndWait", () => {
   it("accepts actual child exit at the overall deadline as exit proof", async () => {
     const child = makeTestBackendShutdownProcess();
     setTimeout(() => child.exit(0), 10_000);
-    const shutdown = stopWindowsBackendAndWait({
-      child,
-      backendHttpUrl: "http://127.0.0.1:3773",
-      shutdownToken: "desktop-only-token",
-      forceKillDelayMs: 8_000,
-      timeoutMs: 10_000,
-      startRequest: () => makePendingRequest(),
-    });
+    const shutdown = stopWindowsBackendAndWait(windowsInput(child));
 
     await vi.advanceTimersByTimeAsync(10_000);
 
@@ -547,15 +449,7 @@ describe("stopWindowsBackendAndWait", () => {
     const forceTerminate = vi.fn(() => {
       throw new Error("force failed");
     });
-    const shutdown = stopWindowsBackendAndWait({
-      child,
-      backendHttpUrl: "http://127.0.0.1:3773",
-      shutdownToken: "desktop-only-token",
-      forceKillDelayMs: 8_000,
-      timeoutMs: 10_000,
-      startRequest: () => makePendingRequest(),
-      forceTerminate,
-    });
+    const shutdown = stopWindowsBackendAndWait(windowsInput(child, { forceTerminate }));
 
     await vi.advanceTimersByTimeAsync(10_000);
 
@@ -579,15 +473,9 @@ describe("stopWindowsBackendAndWait", () => {
       order.push("force");
     });
 
-    const shutdown = stopWindowsBackendAndWait({
-      child,
-      backendHttpUrl: "http://127.0.0.1:3773",
-      shutdownToken: "desktop-only-token",
-      forceKillDelayMs: 0,
-      timeoutMs,
-      startRequest,
-      forceTerminate,
-    });
+    const shutdown = stopWindowsBackendAndWait(
+      windowsInput(child, { forceKillDelayMs: 0, timeoutMs, startRequest, forceTerminate }),
+    );
 
     expect(order).toEqual(["request", "force"]);
     expect(startRequest).toHaveBeenCalledOnce();
@@ -609,15 +497,9 @@ describe("stopWindowsBackendAndWait", () => {
   ])("retains the positive timer path for %s", async (_label, timeoutMs, forceKillDelayMs) => {
     const child = makeTestBackendShutdownProcess();
     const forceTerminate = vi.fn();
-    const shutdown = stopWindowsBackendAndWait({
-      child,
-      backendHttpUrl: "http://127.0.0.1:3773",
-      shutdownToken: "desktop-only-token",
-      forceKillDelayMs,
-      timeoutMs,
-      startRequest: () => makePendingRequest(),
-      forceTerminate,
-    });
+    const shutdown = stopWindowsBackendAndWait(
+      windowsInput(child, { forceKillDelayMs, timeoutMs, forceTerminate }),
+    );
 
     expect(forceTerminate).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(forceKillDelayMs);
@@ -638,15 +520,9 @@ describe("stopWindowsBackendAndWait", () => {
     const forceTerminate = vi.fn(() => {
       throw new Error("force failed");
     });
-    const shutdown = stopWindowsBackendAndWait({
-      child,
-      backendHttpUrl: "http://127.0.0.1:3773",
-      shutdownToken: "desktop-only-token",
-      forceKillDelayMs: 0,
-      timeoutMs: 0.5,
-      startRequest: () => makePendingRequest(),
-      forceTerminate,
-    });
+    const shutdown = stopWindowsBackendAndWait(
+      windowsInput(child, { forceKillDelayMs: 0, timeoutMs: 0.5, forceTerminate }),
+    );
 
     expect(forceTerminate).toHaveBeenCalledOnce();
     await expectPromisePending(shutdown);
@@ -661,13 +537,7 @@ describe("stopWindowsBackendAndWait", () => {
   it("rejects timing configurations that cannot preserve a force-before-deadline bound", () => {
     const child = makeTestBackendShutdownProcess();
     expect(() =>
-      stopWindowsBackendAndWait({
-        child,
-        backendHttpUrl: "http://127.0.0.1:3773",
-        shutdownToken: "desktop-only-token",
-        forceKillDelayMs: 10_000,
-        timeoutMs: 10_000,
-      }),
+      stopWindowsBackendAndWait(windowsInput(child, { forceKillDelayMs: 10_000 })),
     ).toThrow(RangeError);
   });
 });
@@ -801,43 +671,24 @@ describe("startDesktopBackendShutdownRequest", () => {
     }
   });
 
-  it("reports a rejected credential response without treating it as transport success", async () => {
-    const { server, baseUrl } = await listen((request, response) => {
-      response
-        .writeHead(request.headers.authorization === "Bearer expected-token" ? 202 : 401)
-        .end();
-    });
-
-    try {
-      const pending = startDesktopBackendShutdownRequest({
-        backendHttpUrl: baseUrl,
-        shutdownToken: "wrong-token",
-      });
-      await expect(pending.outcome).resolves.toEqual({ type: "response", statusCode: 401 });
-      pending.cancel();
-    } finally {
-      await closeServer(server);
-    }
-  });
-
-  it("reports connection refusal as an error outcome", async () => {
-    const { server, baseUrl } = await listen((_request, response) => response.end());
-    await closeServer(server);
-
-    const pending = startDesktopBackendShutdownRequest({
-      backendHttpUrl: baseUrl,
-      shutdownToken: "desktop-only-token",
-    });
-
-    await expect(pending.outcome).resolves.toEqual({ type: "error" });
-    pending.cancel();
-  });
-
-  it("reports a reset connection as an error outcome", async () => {
-    const { server, baseUrl } = await listen((request) => {
-      request.socket.destroy();
-    });
-
+  it.each([
+    [
+      "connection refusal",
+      async () => {
+        const { server, baseUrl } = await listen((_request, response) => response.end());
+        await closeServer(server);
+        return { baseUrl, close: async () => {} };
+      },
+    ],
+    [
+      "a reset connection",
+      async () => {
+        const { server, baseUrl } = await listen((request) => request.socket.destroy());
+        return { baseUrl, close: () => closeServer(server) };
+      },
+    ],
+  ])("reports %s as an error outcome", async (_label, startServer) => {
+    const { baseUrl, close } = await startServer();
     try {
       const pending = startDesktopBackendShutdownRequest({
         backendHttpUrl: baseUrl,
@@ -846,7 +697,7 @@ describe("startDesktopBackendShutdownRequest", () => {
       await expect(pending.outcome).resolves.toEqual({ type: "error" });
       pending.cancel();
     } finally {
-      await closeServer(server);
+      await close();
     }
   });
 

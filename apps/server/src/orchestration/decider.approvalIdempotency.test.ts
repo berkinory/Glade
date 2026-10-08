@@ -64,7 +64,6 @@ async function createThreadReadModel(now: string): Promise<OrchestrationReadMode
           provider: "codex",
           model: "gpt-5-codex",
         },
-
         runtimeMode: DEFAULT_RUNTIME_MODE,
         envMode: "local",
         branch: null,

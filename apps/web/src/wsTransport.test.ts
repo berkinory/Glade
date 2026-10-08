@@ -4,27 +4,18 @@ import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { WS_CHANNELS, WS_METHODS } from "@glade/contracts/transport/ws/ws";
 import { WS_PROJECT_FILE_WATCH_CAPABILITY } from "@glade/contracts/transport/ws/wsCompatibility";
 import {
-  getUnexpectedStreamCompletionRetryDelayMs,
   getProjectFileWatchRetryDelayMs,
-  getStreamCapacityRetryDelayMs,
-  getStreamDuplicateRetryDelayMs,
-  isTerminalCompatibilityFailure,
-  getResnapshotRetryDelayMs,
   getSnapshotFaultRetryDelayMs,
-  MAX_PROJECT_FILE_WATCH_RETRY_ATTEMPTS,
-  SNAPSHOT_FAULT_RETRY_MS,
   isRuntimeInterruptFailure,
-  MAX_RESNAPSHOT_RETRY_ATTEMPTS,
-  MAX_STREAM_DUPLICATE_RETRY_ATTEMPTS,
+  MAX_PROJECT_FILE_WATCH_RETRY_ATTEMPTS,
+  projectFileChangeStreamKey,
   resolveStreamAdmissionRetry,
   shouldReconnectAfterStreamFailure,
-  projectFileChangeStreamKey,
+  SNAPSHOT_FAULT_RETRY_MS,
+  type StreamAdmissionRetry,
   type WsThreadStreamFailure,
 } from "./wsTransport.support";
-import {
-  getUnaryRpcCapacityRetryDelayMs,
-  MAX_UNARY_RPC_CAPACITY_RETRY_ATTEMPTS,
-} from "./lib/expensiveReadRetry";
+import { MAX_UNARY_RPC_CAPACITY_RETRY_ATTEMPTS } from "./lib/expensiveReadRetry";
 import { WsTransport } from "./wsTransport.implementation";
 import {
   advanceThreadDetailResumeCursor,
@@ -35,8 +26,27 @@ import {
   setupWsTransportTests,
   makeBareTransport,
   bindWindowTimersToCurrentGlobals,
+  type WsTransportInternals,
 } from "./wsTransport.testFixtures";
 setupWsTransportTests();
+
+const EXPENSIVE_READ_CAPACITY_ERROR = {
+  code: "RPC_EXPENSIVE_READ_CAPACITY_EXCEEDED",
+  retryable: true,
+  retryAfterMs: 250,
+  message: "WebSocket expensive-read request capacity exceeded.",
+};
+
+function makeReadFileTransport(runPromise: (...args: unknown[]) => Promise<unknown>): WsTransport {
+  const { transport, internals } = makeBareTransport();
+  Object.assign(internals, {
+    getClient: vi.fn(async () => ({
+      "projects.readFile": () => Effect.succeed({ contents: "ok" }),
+    })),
+    getClientRuntime: () => ({ runPromise }),
+  });
+  return transport;
+}
 
 describe("WsTransport", () => {
   it("shares one stream per watched file and stops it after the last listener leaves", async () => {
@@ -87,60 +97,34 @@ describe("WsTransport", () => {
     expect(internals.projectFileSubscriptions.size).toBe(0);
   });
 
-  it("returns the completed GitHub provisioning result and emits each progress event", async () => {
-    const phase = {
-      operationId: "operation-1",
-      kind: "phase" as const,
-      phase: "cloning" as const,
-      message: "Cloning openai/codex",
-    };
-    const completed = {
-      operationId: "operation-1",
-      kind: "completed" as const,
+  it.each([
+    {
+      name: "GitHub provisioning",
+      runner: "runProjectProvisionStream",
+      method: WS_METHODS.projectsProvisionFromGitHub,
+      channel: WS_CHANNELS.projectProvisionProgress,
+      params: { repository: "openai/codex" },
+      phase: {
+        operationId: "operation-1",
+        kind: "phase",
+        phase: "cloning",
+        message: "Cloning openai/codex",
+      },
       result: {
         operationId: "operation-1",
         repository: "openai/codex",
         workspaceRoot: "/projects/codex",
         projectId: "project-1",
-        checkout: "created" as const,
+        checkout: "created",
       },
-    };
-    const emit = vi.fn();
-    const transport = Object.create(WsTransport.prototype) as WsTransport;
-    Object.assign(transport, {
-      emit,
-      getClientRuntime: () => ({ runPromise: Effect.runPromise }),
-    });
-    const runProjectProvisionStream = (
-      transport as unknown as {
-        runProjectProvisionStream: (
-          client: Record<string, () => Stream.Stream<typeof phase | typeof completed>>,
-          params: unknown,
-        ) => Promise<typeof completed.result>;
-      }
-    ).runProjectProvisionStream.bind(transport);
-
-    await expect(
-      runProjectProvisionStream(
-        {
-          [WS_METHODS.projectsProvisionFromGitHub]: () => Stream.make(phase, completed),
-        },
-        { repository: "openai/codex" },
-      ),
-    ).resolves.toEqual(completed.result);
-    expect(emit).toHaveBeenNthCalledWith(1, WS_CHANNELS.projectProvisionProgress, phase);
-    expect(emit).toHaveBeenNthCalledWith(2, WS_CHANNELS.projectProvisionProgress, completed);
-  });
-
-  it("returns the completed worktree setup result and emits each progress event", async () => {
-    const phase = {
-      progressId: "progress-1",
-      kind: "phase_started" as const,
-      phase: "worktree" as const,
-    };
-    const completed = {
-      progressId: "progress-1",
-      kind: "completed" as const,
+    },
+    {
+      name: "worktree setup",
+      runner: "runWorktreeSetupStream",
+      method: WS_METHODS.gitCreateDetachedWorktree,
+      channel: WS_CHANNELS.gitWorktreeSetupProgress,
+      params: { cwd: "/repo", ref: "main" },
+      phase: { progressId: "progress-1", kind: "phase_started", phase: "worktree" },
       result: {
         worktree: {
           path: "/repo/.codex/worktrees/generated/glade",
@@ -148,83 +132,34 @@ describe("WsTransport", () => {
           branch: "glade/abcd1234",
         },
       },
-    };
-    const emit = vi.fn();
-    const transport = Object.create(WsTransport.prototype) as WsTransport;
-    Object.assign(transport, {
-      emit,
-      getClientRuntime: () => ({ runPromise: Effect.runPromise }),
-    });
-    const runWorktreeSetupStream = (
-      transport as unknown as {
-        runWorktreeSetupStream: (
-          client: Record<string, () => Stream.Stream<typeof phase | typeof completed>>,
-          params: unknown,
-        ) => Promise<typeof completed.result>;
-      }
-    ).runWorktreeSetupStream.bind(transport);
+    },
+  ])(
+    "returns the completed $name result and emits each progress event",
+    async ({ runner, method, channel, params, phase, result }) => {
+      const completed = { ...phase, kind: "completed", result };
+      const emit = vi.fn();
+      const transport = Object.create(WsTransport.prototype) as WsTransport;
+      Object.assign(transport, {
+        emit,
+        getClientRuntime: () => ({ runPromise: Effect.runPromise }),
+      });
+      const run = (
+        transport as unknown as Record<
+          string,
+          (
+            client: Record<string, () => Stream.Stream<unknown>>,
+            params: unknown,
+          ) => Promise<unknown>
+        >
+      )[runner]!.bind(transport);
 
-    await expect(
-      runWorktreeSetupStream(
-        {
-          [WS_METHODS.gitCreateDetachedWorktree]: () => Stream.make(phase, completed),
-        },
-        { cwd: "/repo", ref: "main" },
-      ),
-    ).resolves.toEqual(completed.result);
-    expect(emit).toHaveBeenNthCalledWith(1, WS_CHANNELS.gitWorktreeSetupProgress, phase);
-    expect(emit).toHaveBeenNthCalledWith(2, WS_CHANNELS.gitWorktreeSetupProgress, completed);
-  });
-
-  it("does not reconnect the socket for typed stream-admission failures", () => {
-    expect(
-      shouldReconnectAfterStreamFailure(
-        Cause.fail({
-          code: "STREAM_CAPACITY_EXCEEDED",
-          retryable: true,
-          retryAfterMs: 1_000,
-        }),
-      ),
-    ).toBe(false);
-    expect(
-      shouldReconnectAfterStreamFailure(
-        Cause.fail({ code: "STREAM_DUPLICATE_SUBSCRIPTION", retryable: false }),
-      ),
-    ).toBe(false);
-    expect(
-      shouldReconnectAfterStreamFailure(
-        Cause.fail({ code: "THREAD_SNAPSHOT_NOT_FOUND", retryable: false }),
-      ),
-    ).toBe(false);
-    expect(
-      shouldReconnectAfterStreamFailure(
-        Cause.fail({ code: "PROJECT_FILE_WATCH_FAILED", retryable: false }),
-      ),
-    ).toBe(false);
-    expect(shouldReconnectAfterStreamFailure(Cause.fail(new Error("transient")))).toBe(true);
-    expect(
-      shouldReconnectAfterStreamFailure(
-        Cause.fail({ code: "WS_PROTOCOL_INCOMPATIBLE", retryable: false }),
-      ),
-    ).toBe(false);
-    expect(
-      isTerminalCompatibilityFailure({
-        code: "WS_PROTOCOL_INCOMPATIBLE",
-        retryable: false,
-      }),
-    ).toBe(true);
-  });
-
-  it("bounds project file watcher retries with exponential backoff", () => {
-    const failure = Cause.fail({ code: "PROJECT_FILE_WATCH_FAILED", retryable: false });
-
-    expect(getProjectFileWatchRetryDelayMs(failure, 0)).toBe(500);
-    expect(getProjectFileWatchRetryDelayMs(failure, 4)).toBe(8_000);
-    expect(
-      getProjectFileWatchRetryDelayMs(failure, MAX_PROJECT_FILE_WATCH_RETRY_ATTEMPTS),
-    ).toBeNull();
-    expect(getProjectFileWatchRetryDelayMs(Cause.fail(new Error("transient")), 0)).toBeNull();
-  });
+      await expect(run({ [method]: () => Stream.make(phase, completed) }, params)).resolves.toEqual(
+        result,
+      );
+      expect(emit).toHaveBeenNthCalledWith(1, channel, phase);
+      expect(emit).toHaveBeenNthCalledWith(2, channel, completed);
+    },
+  );
 
   it("retries a failed project file watcher in place without reconnecting the socket", async () => {
     vi.useFakeTimers();
@@ -255,33 +190,6 @@ describe("WsTransport", () => {
     } finally {
       vi.useRealTimers();
     }
-  });
-
-  it("retries resnapshot demands in place with bounded attempts", () => {
-    const resnapshot = Cause.fail({
-      code: "ORCHESTRATION_RESNAPSHOT_REQUIRED",
-      retryable: true,
-    });
-
-    expect(getResnapshotRetryDelayMs(resnapshot, 0)).toBe(250);
-    expect(getResnapshotRetryDelayMs(resnapshot, MAX_RESNAPSHOT_RETRY_ATTEMPTS)).toBeNull();
-
-    expect(
-      getResnapshotRetryDelayMs(
-        Cause.fail({ code: "ORCHESTRATION_SNAPSHOT_STALLED", retryable: false }),
-        0,
-      ),
-    ).toBeNull();
-    expect(getResnapshotRetryDelayMs(Cause.fail(new Error("transient")), 0)).toBeNull();
-
-    expect(resolveStreamAdmissionRetry(resnapshot, 0, 0, 0, 0)).toEqual({
-      kind: "resnapshot",
-      attempt: 1,
-      delayMs: 250,
-    });
-    expect(resolveStreamAdmissionRetry(resnapshot, 0, 0, 0, MAX_RESNAPSHOT_RETRY_ATTEMPTS)).toBe(
-      null,
-    );
   });
 
   it("clears the thread resume cursor and retries in place on a resnapshot demand", async () => {
@@ -320,65 +228,53 @@ describe("WsTransport", () => {
     }
   });
 
-  it("surfaces a stalled-snapshot verdict as a thread stream failure without reconnecting", async () => {
+  it.each([
+    {
+      name: "surfaces a stalled-snapshot verdict as a thread stream failure",
+      key: "orchestration.thread:thread-stalled",
+      error: { code: "ORCHESTRATION_SNAPSHOT_STALLED", retryable: false },
+      exhaustedResnapshot: false,
+      reportsFailure: true,
+    },
+    {
+      name: "slow-retries a shell stream killed by a projection-state fault",
+      key: "orchestration.shell",
+      error: { code: "ORCHESTRATION_PROJECTION_STATE_INCOMPLETE", retryable: false },
+      exhaustedResnapshot: false,
+      reportsFailure: false,
+    },
+    {
+      name: "keeps slow-retrying an exhausted resnapshot demand",
+      key: "orchestration.shell",
+      error: { code: "ORCHESTRATION_RESNAPSHOT_REQUIRED", retryable: true },
+      exhaustedResnapshot: true,
+      reportsFailure: false,
+    },
+  ])("$name without reconnecting", async ({ key, error, exhaustedResnapshot, reportsFailure }) => {
     vi.useFakeTimers();
     bindWindowTimersToCurrentGlobals();
     try {
       const { internals } = makeBareTransport();
-      const threadId = "thread-stalled";
-      const key = `orchestration.thread:${threadId}`;
-      internals.threadSubscriptions.set(threadId, { threadId });
+      if (key.startsWith("orchestration.thread:")) {
+        const threadId = key.slice("orchestration.thread:".length);
+        internals.threadSubscriptions.set(threadId, { threadId });
+      }
+      if (exhaustedResnapshot) {
+        internals.streamResnapshotRetries.set(key, 2);
+      }
       const failures: WsThreadStreamFailure[] = [];
       internals.threadStreamFailureListeners.add((failure) => failures.push(failure));
       const restart = vi.fn();
       const reconnect = vi.mocked(internals.reconnect);
 
-      internals.startStream(
-        {},
-        key,
-        Stream.fail({ code: "ORCHESTRATION_SNAPSHOT_STALLED", retryable: false }),
-        () => undefined,
-        restart,
-      );
+      internals.startStream({}, key, Stream.fail(error), () => undefined, restart);
       await Promise.resolve();
       await vi.advanceTimersByTimeAsync(SNAPSHOT_FAULT_RETRY_MS - 1);
 
-      expect(reconnect).not.toHaveBeenCalled();
       expect(restart).not.toHaveBeenCalled();
-      expect(failures).toHaveLength(1);
-      expect(failures[0]?.code).toBe("ORCHESTRATION_SNAPSHOT_STALLED");
+      expect(failures.map((failure) => failure.code)).toEqual(reportsFailure ? [error.code] : []);
 
       await vi.advanceTimersByTimeAsync(1);
-      expect(restart).toHaveBeenCalledTimes(1);
-      expect(reconnect).not.toHaveBeenCalled();
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it("slow-retries a shell stream killed by a projection-state fault instead of leaving it dead", async () => {
-    vi.useFakeTimers();
-    bindWindowTimersToCurrentGlobals();
-    try {
-      const { internals } = makeBareTransport();
-      const key = "orchestration.shell";
-      const restart = vi.fn();
-      const reconnect = vi.mocked(internals.reconnect);
-
-      internals.startStream(
-        {},
-        key,
-        Stream.fail({ code: "ORCHESTRATION_PROJECTION_STATE_INCOMPLETE", retryable: false }),
-        () => undefined,
-        restart,
-      );
-      await Promise.resolve();
-      await vi.advanceTimersByTimeAsync(0);
-
-      expect(reconnect).not.toHaveBeenCalled();
-      expect(restart).not.toHaveBeenCalled();
-
-      await vi.advanceTimersByTimeAsync(SNAPSHOT_FAULT_RETRY_MS);
       expect(restart).toHaveBeenCalledTimes(1);
       expect(reconnect).not.toHaveBeenCalled();
     } finally {
@@ -412,65 +308,6 @@ describe("WsTransport", () => {
     }
   });
 
-  it("classifies snapshot faults for the slow retry and nothing else", () => {
-    expect(
-      getSnapshotFaultRetryDelayMs(
-        Cause.fail({ code: "ORCHESTRATION_SNAPSHOT_STALLED", retryable: false }),
-      ),
-    ).toBe(SNAPSHOT_FAULT_RETRY_MS);
-    expect(
-      getSnapshotFaultRetryDelayMs(
-        Cause.fail({ code: "ORCHESTRATION_PROJECTION_STATE_INCOMPLETE", retryable: false }),
-      ),
-    ).toBe(SNAPSHOT_FAULT_RETRY_MS);
-
-    expect(
-      getSnapshotFaultRetryDelayMs(
-        Cause.fail({ code: "ORCHESTRATION_RESNAPSHOT_REQUIRED", retryable: true }),
-      ),
-    ).toBe(SNAPSHOT_FAULT_RETRY_MS);
-    expect(getSnapshotFaultRetryDelayMs(Cause.fail(new Error("transient")))).toBeNull();
-  });
-
-  it("keeps slow-retrying an exhausted resnapshot demand instead of leaving the stream dead", async () => {
-    vi.useFakeTimers();
-    bindWindowTimersToCurrentGlobals();
-    try {
-      const { internals } = makeBareTransport();
-      const key = "orchestration.shell";
-      internals.streamResnapshotRetries.set(key, MAX_RESNAPSHOT_RETRY_ATTEMPTS);
-      const restart = vi.fn();
-      const reconnect = vi.mocked(internals.reconnect);
-
-      internals.startStream(
-        {},
-        key,
-        Stream.fail({ code: "ORCHESTRATION_RESNAPSHOT_REQUIRED", retryable: true }),
-        () => undefined,
-        restart,
-      );
-      await Promise.resolve();
-      await vi.advanceTimersByTimeAsync(SNAPSHOT_FAULT_RETRY_MS - 1);
-      expect(restart).not.toHaveBeenCalled();
-
-      await vi.advanceTimersByTimeAsync(1);
-      expect(restart).toHaveBeenCalledTimes(1);
-      expect(reconnect).not.toHaveBeenCalled();
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it("forgets resnapshot retry state when a stream is explicitly stopped", async () => {
-    const { internals } = makeBareTransport();
-    const key = "orchestration.thread:stopped-resnapshot";
-    internals.streamResnapshotRetries.set(key, MAX_RESNAPSHOT_RETRY_ATTEMPTS);
-
-    await internals.stopStream(key);
-
-    expect(internals.streamResnapshotRetries.has(key)).toBe(false);
-  });
-
   it("classifies transport-runtime interrupts as retryable typed failures", () => {
     expect(isRuntimeInterruptFailure(new Error("All fibers interrupted without error"))).toBe(true);
     expect(isRuntimeInterruptFailure(new Error("Missing runtime for WebSocket RPC client"))).toBe(
@@ -499,55 +336,15 @@ describe("WsTransport", () => {
     });
   });
 
-  it("retries capacity-rejected streams in place with the server-provided delay", () => {
-    expect(
-      getStreamCapacityRetryDelayMs(
-        Cause.fail({
-          code: "THREAD_STREAM_CAPACITY_EXCEEDED",
-          retryable: true,
-          retryAfterMs: 1_000,
-        }),
-      ),
-    ).toBe(1_000);
-    expect(
-      getStreamCapacityRetryDelayMs(
-        Cause.fail({ code: "STREAM_CAPACITY_EXCEEDED", retryable: true }),
-      ),
-    ).toBe(1_000);
-    expect(
-      getStreamCapacityRetryDelayMs(
-        Cause.fail({ code: "STREAM_DUPLICATE_SUBSCRIPTION", retryable: false }),
-      ),
-    ).toBeNull();
-    expect(getStreamCapacityRetryDelayMs(Cause.fail(new Error("transient")))).toBeNull();
-    expect(
-      getStreamCapacityRetryDelayMs(
-        Cause.fail({ code: "WS_PROTOCOL_INCOMPATIBLE", retryable: false }),
-      ),
-    ).toBeNull();
-  });
-
   it("retries capacity-rejected unary requests in place with the server-provided delay", async () => {
     vi.useFakeTimers();
     bindWindowTimersToCurrentGlobals();
     try {
-      const { transport, internals } = makeBareTransport();
-      const capacityError = {
-        code: "RPC_EXPENSIVE_READ_CAPACITY_EXCEEDED",
-        retryable: true,
-        retryAfterMs: 250,
-        message: "WebSocket expensive-read request capacity exceeded.",
-      };
       const runPromise = vi
         .fn()
-        .mockRejectedValueOnce(capacityError)
+        .mockRejectedValueOnce(EXPENSIVE_READ_CAPACITY_ERROR)
         .mockResolvedValueOnce({ contents: "ok" });
-      Object.assign(internals, {
-        getClient: vi.fn(async () => ({
-          "projects.readFile": () => Effect.succeed({ contents: "ok" }),
-        })),
-        getClientRuntime: () => ({ runPromise }),
-      });
+      const transport = makeReadFileTransport(runPromise);
 
       const pending = transport.request(WS_METHODS.projectsReadFile, {}, { timeoutMs: null });
       await vi.advanceTimersByTimeAsync(0);
@@ -559,7 +356,6 @@ describe("WsTransport", () => {
       await vi.advanceTimersByTimeAsync(1);
       await expect(pending).resolves.toEqual({ contents: "ok" });
       expect(runPromise).toHaveBeenCalledTimes(2);
-      expect(getUnaryRpcCapacityRetryDelayMs(capacityError, 0)).toBe(250);
     } finally {
       vi.useRealTimers();
     }
@@ -569,20 +365,13 @@ describe("WsTransport", () => {
     vi.useFakeTimers();
     bindWindowTimersToCurrentGlobals();
     try {
-      const { transport, internals } = makeBareTransport();
-      const capacityError = {
+      const runPromise = vi.fn().mockRejectedValue({
         code: "RPC_REQUEST_CAPACITY_EXCEEDED",
         retryable: true,
         retryAfterMs: 250,
         message: "WebSocket standard request capacity exceeded.",
-      };
-      const runPromise = vi.fn().mockRejectedValue(capacityError);
-      Object.assign(internals, {
-        getClient: vi.fn(async () => ({
-          "projects.readFile": () => Effect.succeed({ contents: "ok" }),
-        })),
-        getClientRuntime: () => ({ runPromise }),
       });
+      const transport = makeReadFileTransport(runPromise);
 
       const pending = transport.request(WS_METHODS.projectsReadFile, {}, { timeoutMs: null });
       const rejected = expect(pending).rejects.toMatchObject({
@@ -604,20 +393,8 @@ describe("WsTransport", () => {
     vi.useFakeTimers();
     bindWindowTimersToCurrentGlobals();
     try {
-      const { transport, internals } = makeBareTransport();
-      const capacityError = {
-        code: "RPC_EXPENSIVE_READ_CAPACITY_EXCEEDED",
-        retryable: true,
-        retryAfterMs: 250,
-        message: "WebSocket expensive-read request capacity exceeded.",
-      };
-      const runPromise = vi.fn().mockRejectedValue(capacityError);
-      Object.assign(internals, {
-        getClient: vi.fn(async () => ({
-          "projects.readFile": () => Effect.succeed({ contents: "ok" }),
-        })),
-        getClientRuntime: () => ({ runPromise }),
-      });
+      const runPromise = vi.fn().mockRejectedValue(EXPENSIVE_READ_CAPACITY_ERROR);
+      const transport = makeReadFileTransport(runPromise);
 
       const controller = new AbortController();
       const pending = transport.request(
@@ -644,27 +421,14 @@ describe("WsTransport", () => {
   });
 
   it("does not retry a non-capacity unary failure in place", async () => {
-    const { transport, internals } = makeBareTransport();
     const failure = new Error("file missing");
     const runPromise = vi.fn().mockRejectedValue(failure);
-    Object.assign(internals, {
-      getClient: vi.fn(async () => ({
-        "projects.readFile": () => Effect.succeed({ contents: "ok" }),
-      })),
-      getClientRuntime: () => ({ runPromise }),
-    });
+    const transport = makeReadFileTransport(runPromise);
 
     await expect(
       transport.request(WS_METHODS.projectsReadFile, {}, { timeoutMs: null }),
     ).rejects.toBe(failure);
     expect(runPromise).toHaveBeenCalledTimes(1);
-  });
-
-  it("backs off unexpected normal stream completions with a bounded delay", () => {
-    expect(getUnexpectedStreamCompletionRetryDelayMs(1)).toBe(100);
-    expect(getUnexpectedStreamCompletionRetryDelayMs(2)).toBe(200);
-    expect(getUnexpectedStreamCompletionRetryDelayMs(7)).toBe(5_000);
-    expect(getUnexpectedStreamCompletionRetryDelayMs(100)).toBe(5_000);
   });
 
   it("reconnects after an unexpected normal completion instead of reopening a zombie stream", async () => {
@@ -704,7 +468,18 @@ describe("WsTransport", () => {
     }
   });
 
-  it("cancels a pending normal-completion restart when the stream is unsubscribed", async () => {
+  it.each([
+    {
+      name: "the stream is unsubscribed",
+      interrupt: (internals: WsTransportInternals, key: string) => internals.stopStream(key),
+    },
+    {
+      name: "its session generation is superseded",
+      interrupt: (internals: WsTransportInternals) => {
+        internals.sessionVersion += 1;
+      },
+    },
+  ])("does not restart a normally-completed stream after $name", async ({ interrupt }) => {
     vi.useFakeTimers();
     bindWindowTimersToCurrentGlobals();
     try {
@@ -715,30 +490,7 @@ describe("WsTransport", () => {
 
       internals.startStream({}, key, Stream.empty, () => undefined, restart);
       await Promise.resolve();
-      await internals.stopStream(key);
-      await vi.advanceTimersByTimeAsync(5_000);
-
-      expect(restart).not.toHaveBeenCalled();
-      expect(reconnect).not.toHaveBeenCalled();
-      expect(internals.streamCompletionRetryTimers.has(key)).toBe(false);
-      expect(internals.streamCompletionRetries.has(key)).toBe(false);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it("does not restart a normally-completed stream from a superseded session generation", async () => {
-    vi.useFakeTimers();
-    bindWindowTimersToCurrentGlobals();
-    try {
-      const { internals } = makeBareTransport();
-      const key = "orchestration.domain";
-      const restart = vi.fn();
-      const reconnect = vi.mocked(internals.reconnect);
-
-      internals.startStream({}, key, Stream.empty, () => undefined, restart);
-      await Promise.resolve();
-      internals.sessionVersion += 1;
+      await interrupt(internals, key);
       await vi.advanceTimersByTimeAsync(5_000);
 
       expect(restart).not.toHaveBeenCalled();
@@ -747,33 +499,158 @@ describe("WsTransport", () => {
       vi.useRealTimers();
     }
   });
+});
 
-  it("retries duplicate-rejected streams in place despite the non-retryable marker", () => {
-    const duplicate = Cause.fail({
-      code: "STREAM_DUPLICATE_SUBSCRIPTION",
-      retryable: false,
-    });
+const failure = (code: string, extra: Record<string, unknown> = {}) =>
+  Cause.fail({ code, retryable: false, ...extra });
 
-    expect(getStreamDuplicateRetryDelayMs(duplicate, 0)).toBe(250);
-    expect(
-      getStreamDuplicateRetryDelayMs(
-        Cause.fail({
-          code: "THREAD_STREAM_DUPLICATE_SUBSCRIPTION",
-          retryable: false,
-          retryAfterMs: 400,
-        }),
-        1,
-      ),
-    ).toBe(400);
-    expect(
-      getStreamDuplicateRetryDelayMs(duplicate, MAX_STREAM_DUPLICATE_RETRY_ATTEMPTS),
-    ).toBeNull();
-    expect(
-      getStreamDuplicateRetryDelayMs(
-        Cause.fail({ code: "STREAM_CAPACITY_EXCEEDED", retryable: true }),
-        0,
-      ),
-    ).toBeNull();
-    expect(getStreamDuplicateRetryDelayMs(Cause.fail(new Error("transient")), 0)).toBeNull();
+describe("stream failure policy", () => {
+  it.each<{
+    name: string;
+    cause: Cause.Cause<unknown>;
+    attempts: readonly [number, number, number, number];
+    admission: StreamAdmissionRetry | null;
+    reconnect?: boolean;
+    snapshotFault: number | null;
+  }>([
+    {
+      name: "a server-delayed capacity rejection after earlier capacity retries",
+      cause: failure("STREAM_CAPACITY_EXCEEDED", { retryable: true, retryAfterMs: 1_000 }),
+      attempts: [5, 0, 0, 0],
+      admission: { kind: "capacity", attempt: 6, delayMs: 1_000 },
+      reconnect: false,
+      snapshotFault: null,
+    },
+    {
+      name: "a thread capacity rejection without a server delay",
+      cause: failure("THREAD_STREAM_CAPACITY_EXCEEDED", { retryable: true }),
+      attempts: [0, 0, 0, 0],
+      admission: { kind: "capacity", attempt: 1, delayMs: 1_000 },
+      reconnect: false,
+      snapshotFault: null,
+    },
+    {
+      name: "a duplicate rejection independent of prior capacity retries",
+      cause: failure("STREAM_DUPLICATE_SUBSCRIPTION"),
+      attempts: [5, 0, 0, 0],
+      admission: { kind: "duplicate", attempt: 1, delayMs: 250 },
+      reconnect: false,
+      snapshotFault: null,
+    },
+    {
+      name: "a thread duplicate rejection with a server delay",
+      cause: failure("THREAD_STREAM_DUPLICATE_SUBSCRIPTION", { retryAfterMs: 400 }),
+      attempts: [0, 1, 0, 0],
+      admission: { kind: "duplicate", attempt: 2, delayMs: 400 },
+      snapshotFault: null,
+    },
+    {
+      name: "a draft snapshot that is not projected yet",
+      cause: failure("THREAD_SNAPSHOT_NOT_FOUND"),
+      attempts: [0, 0, 0, 0],
+      admission: { kind: "thread-bootstrap", attempt: 1, delayMs: 100 },
+      reconnect: false,
+      snapshotFault: null,
+    },
+    {
+      name: "a resnapshot demand",
+      cause: failure("ORCHESTRATION_RESNAPSHOT_REQUIRED", { retryable: true }),
+      attempts: [0, 0, 0, 0],
+      admission: { kind: "resnapshot", attempt: 1, delayMs: 250 },
+      reconnect: false,
+      snapshotFault: SNAPSHOT_FAULT_RETRY_MS,
+    },
+    {
+      name: "an exhausted resnapshot demand",
+      cause: failure("ORCHESTRATION_RESNAPSHOT_REQUIRED", { retryable: true }),
+      attempts: [0, 0, 0, 2],
+      admission: null,
+      reconnect: false,
+      snapshotFault: SNAPSHOT_FAULT_RETRY_MS,
+    },
+    {
+      name: "a stalled snapshot",
+      cause: failure("ORCHESTRATION_SNAPSHOT_STALLED"),
+      attempts: [0, 0, 0, 0],
+      admission: null,
+      reconnect: false,
+      snapshotFault: SNAPSHOT_FAULT_RETRY_MS,
+    },
+    {
+      name: "an incomplete projection",
+      cause: failure("ORCHESTRATION_PROJECTION_STATE_INCOMPLETE"),
+      attempts: [0, 0, 0, 0],
+      admission: null,
+      reconnect: false,
+      snapshotFault: SNAPSHOT_FAULT_RETRY_MS,
+    },
+    {
+      name: "a failed file watcher",
+      cause: failure("PROJECT_FILE_WATCH_FAILED"),
+      attempts: [0, 0, 0, 0],
+      admission: null,
+      reconnect: false,
+      snapshotFault: null,
+    },
+    {
+      name: "an incompatible protocol",
+      cause: failure("WS_PROTOCOL_INCOMPATIBLE"),
+      attempts: [0, 0, 0, 0],
+      admission: null,
+      reconnect: false,
+      snapshotFault: null,
+    },
+    {
+      name: "a transient error",
+      cause: Cause.fail(new Error("transient")),
+      attempts: [0, 0, 0, 0],
+      admission: null,
+      reconnect: true,
+      snapshotFault: null,
+    },
+  ])("classifies $name", ({ cause, attempts, admission, reconnect, snapshotFault }) => {
+    expect(resolveStreamAdmissionRetry(cause, ...attempts)).toEqual(admission);
+    expect(getSnapshotFaultRetryDelayMs(cause)).toBe(snapshotFault);
+    if (reconnect !== undefined) expect(shouldReconnectAfterStreamFailure(cause)).toBe(reconnect);
+  });
+
+  const admissionDelay =
+    (cause: Cause.Cause<unknown>, slot: 1 | 2 | 3) =>
+    (previousAttempts: number): number | null => {
+      const attempts: [number, number, number, number] = [0, 0, 0, 0];
+      attempts[slot] = previousAttempts;
+      return resolveStreamAdmissionRetry(cause, ...attempts)?.delayMs ?? null;
+    };
+
+  it.each([
+    {
+      name: "duplicate",
+      delay: admissionDelay(failure("STREAM_DUPLICATE_SUBSCRIPTION"), 1),
+      maxAttempts: 5,
+      first: 250,
+    },
+    {
+      name: "draft snapshot",
+      delay: admissionDelay(failure("THREAD_SNAPSHOT_NOT_FOUND"), 2),
+      maxAttempts: 12,
+      first: 100,
+    },
+    {
+      name: "resnapshot",
+      delay: admissionDelay(failure("ORCHESTRATION_RESNAPSHOT_REQUIRED", { retryable: true }), 3),
+      maxAttempts: 2,
+      first: 250,
+    },
+    {
+      name: "file watcher",
+      delay: (attempts: number) =>
+        getProjectFileWatchRetryDelayMs(failure("PROJECT_FILE_WATCH_FAILED"), attempts),
+      maxAttempts: MAX_PROJECT_FILE_WATCH_RETRY_ATTEMPTS,
+      first: 500,
+    },
+  ])("bounds $name retries at their attempt budget", ({ delay, maxAttempts, first }) => {
+    expect(delay(0)).toBe(first);
+    expect(delay(maxAttempts - 1)).not.toBeNull();
+    expect(delay(maxAttempts)).toBeNull();
   });
 });

@@ -607,13 +607,9 @@ export function makeProviderTurnDispatch(input: {
 
             // Stale-resume errors can be transient CLI/session-file races, so retry the native resume id once
             // before paying the transcript bootstrap.
-            if (!providerService.stopRuntimeSession) {
-              return yield* replayWithTranscriptBootstrap(error);
-            }
-
-            const liveBackgroundTasks = providerService.hasLiveRuntimeTasks
-              ? yield* providerService.hasLiveRuntimeTasks({ threadId: input.threadId })
-              : false;
+            const liveBackgroundTasks = yield* providerService.hasLiveRuntimeTasks({
+              threadId: input.threadId,
+            });
             if (liveBackgroundTasks) {
               yield* Effect.logWarning(
                 "provider command reactor skipping native resume retry: live background tasks",

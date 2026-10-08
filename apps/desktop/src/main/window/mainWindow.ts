@@ -724,8 +724,7 @@ export function createMainWindow({
       isPackaged: app.isPackaged,
       platform: process.platform,
       appImage: process.env.APPIMAGE,
-      disabledByEnv:
-        desktopIdentity.usesScriptedUpdates || process.env.GLADE_DISABLE_AUTO_UPDATE === "1",
+      disabledByEnv: process.env.GLADE_DISABLE_AUTO_UPDATE === "1",
       hasUpdateFeedConfig: hasConfiguredUpdateFeed(),
     });
   }

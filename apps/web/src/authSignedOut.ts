@@ -17,16 +17,8 @@ function renderSignedOutScreen(): void {
   root.querySelector<HTMLElement>("h1")?.focus();
 }
 
-export function bootstrapSignedOutScreen(
-  input: {
-    readonly pathname: string;
-    readonly render: () => void;
-  } = {
-    pathname: window.location.pathname,
-    render: renderSignedOutScreen,
-  },
-): boolean {
-  if (input.pathname !== AUTH_SIGNED_OUT_PATH) return false;
-  input.render();
+export function bootstrapSignedOutScreen(): boolean {
+  if (window.location.pathname !== AUTH_SIGNED_OUT_PATH) return false;
+  renderSignedOutScreen();
   return true;
 }

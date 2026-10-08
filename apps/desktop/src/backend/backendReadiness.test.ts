@@ -124,12 +124,12 @@ describe("waitForHttpReady", () => {
   it("aborts an in-flight readiness wait", async () => {
     const controller = new AbortController();
     const fetchImpl = vi.fn<typeof fetch>().mockImplementation(
-      () =>
+      (_input, init) =>
         new Promise((_resolve, reject) => {
-          controller.signal.addEventListener(
+          init?.signal?.addEventListener(
             "abort",
             () => {
-              reject(new BackendReadinessAbortedError());
+              reject(new DOMException("The operation was aborted.", "AbortError"));
             },
             { once: true },
           );

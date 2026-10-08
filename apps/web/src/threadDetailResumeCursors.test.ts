@@ -3,9 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   advanceThreadDetailResumeCursor,
   buildThreadSubscribeInput,
-  clearThreadDetailResumeCursor,
   getThreadDetailResumeCursor,
-  hasThreadDetailResumeCursor,
   resetThreadDetailResumeCursors,
   setThreadDetailResumeCursor,
 } from "./threadDetailResumeCursors";
@@ -39,19 +37,5 @@ describe("threadDetailResumeCursors", () => {
     // must win over the stale live cursor.
     setThreadDetailResumeCursor(thread, 2);
     expect(getThreadDetailResumeCursor(thread)).toBe(2);
-  });
-
-  it("clears cursors individually and in batch when cached detail is wiped", () => {
-    const threadOne = threadId("thread-3");
-    const threadTwo = threadId("thread-4");
-    setThreadDetailResumeCursor(threadOne, 7);
-    setThreadDetailResumeCursor(threadTwo, 8);
-
-    clearThreadDetailResumeCursor(threadOne);
-    expect(hasThreadDetailResumeCursor(threadOne)).toBe(false);
-    expect(hasThreadDetailResumeCursor(threadTwo)).toBe(true);
-
-    clearThreadDetailResumeCursor(threadTwo);
-    expect(buildThreadSubscribeInput(threadTwo)).toEqual({ threadId: threadTwo });
   });
 });

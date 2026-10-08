@@ -87,122 +87,75 @@ function makeSnapshot(overrides: Partial<OrchestrationReadModel> = {}): Orchestr
 function makeShellSnapshot(
   overrides: Partial<OrchestrationShellSnapshot> = {},
 ): OrchestrationShellSnapshot {
-  const project = makeProject();
-  const thread = makeThread();
+  const { deletedAt: _projectDeletedAt, ...project } = makeProject();
+  const {
+    deletedAt: _threadDeletedAt,
+    messages: _messages,
+    activities: _activities,
+    checkpoints: _checkpoints,
+    ...thread
+  } = makeThread();
   return {
     snapshotSequence: 1,
     spaces: [],
     updatedAt: "2026-04-20T08:00:00.000Z",
-    projects: [
-      {
-        id: project.id,
-        kind: project.kind,
-        title: project.title,
-        workspaceRoot: project.workspaceRoot,
-        defaultModelSelection: project.defaultModelSelection,
-        createdAt: project.createdAt,
-        updatedAt: project.updatedAt,
-      },
-    ],
-    threads: [
-      {
-        id: thread.id,
-        projectId: thread.projectId,
-        title: thread.title,
-        modelSelection: thread.modelSelection,
-        runtimeMode: thread.runtimeMode,
-
-        envMode: thread.envMode,
-        branch: thread.branch,
-        worktreePath: thread.worktreePath,
-        associatedWorktreePath: thread.associatedWorktreePath,
-        associatedWorktreeBranch: thread.associatedWorktreeBranch,
-        associatedWorktreeRef: thread.associatedWorktreeRef,
-        createBranchFlowCompleted: thread.createBranchFlowCompleted,
-        parentThreadId: thread.parentThreadId,
-        subagentAgentId: thread.subagentAgentId,
-        subagentNickname: thread.subagentNickname,
-        subagentRole: thread.subagentRole,
-        forkSourceThreadId: thread.forkSourceThreadId,
-        lastKnownPr: thread.lastKnownPr,
-        latestTurn: thread.latestTurn,
-        latestUserMessageAt: thread.latestUserMessageAt,
-        hasPendingApprovals: thread.hasPendingApprovals,
-        hasPendingUserInput: thread.hasPendingUserInput,
-
-        createdAt: thread.createdAt,
-        updatedAt: thread.updatedAt,
-        archivedAt: thread.archivedAt,
-        handoff: thread.handoff,
-        session: thread.session,
-      },
-    ],
+    projects: [project],
+    threads: [thread],
     ...overrides,
   };
 }
 
+const deletedAt = "2026-04-20T09:00:00.000Z";
+
 describe("desktopProjectRecovery", () => {
-  it("does not repair a valid empty first-run snapshot", () => {
-    expect(
-      shouldRepairDesktopProjectSnapshot(
-        makeShellSnapshot({
-          projects: [],
-          threads: [],
-        }),
-      ),
-    ).toBe(false);
+  it.each([
+    {
+      name: "a valid empty first-run snapshot",
+      snapshot: { projects: [], threads: [] },
+      expected: false,
+    },
+    {
+      name: "an empty shell the server marked for repair",
+      snapshot: { requiresEmptyProjectShellRepair: true, projects: [], threads: [] },
+      expected: true,
+    },
+    {
+      name: "a populated shell even when marked for repair",
+      snapshot: { requiresEmptyProjectShellRepair: true },
+      expected: false,
+    },
+  ])("decides repair for $name", ({ snapshot, expected }) => {
+    expect(shouldRepairDesktopProjectSnapshot(makeShellSnapshot(snapshot))).toBe(expected);
   });
 
-  it("repairs an empty shell only when the server found an active durable project", () => {
-    expect(
-      shouldRepairDesktopProjectSnapshot(
-        makeShellSnapshot({
-          requiresEmptyProjectShellRepair: true,
-          projects: [],
-          threads: [],
-        }),
-      ),
-    ).toBe(true);
-    expect(
-      shouldRepairDesktopProjectSnapshot(
-        makeShellSnapshot({ requiresEmptyProjectShellRepair: true }),
-      ),
-    ).toBe(false);
-  });
-
-  it("returns false when live threads still have live project rows", () => {
-    const snapshot = makeSnapshot();
-
-    expect(hasLiveThreadsWithMissingProjects(snapshot)).toBe(false);
-  });
-
-  it("returns true when a live thread references a missing project row", () => {
-    const snapshot = makeSnapshot({
-      projects: [],
-    });
-
-    expect(hasLiveThreadsWithMissingProjects(snapshot)).toBe(true);
-  });
-
-  it("returns true when a live thread references a deleted project row", () => {
-    const snapshot = makeSnapshot({
-      projects: [makeProject({ deletedAt: "2026-04-20T09:00:00.000Z" })],
-    });
-
-    expect(hasLiveThreadsWithMissingProjects(snapshot)).toBe(true);
-  });
-
-  it("ignores deleted threads when deciding whether repair is needed", () => {
-    const snapshot = makeSnapshot({
-      projects: [],
-      threads: [makeThread({ deletedAt: "2026-04-20T09:00:00.000Z" })],
-    });
-
-    expect(hasLiveThreadsWithMissingProjects(snapshot)).toBe(false);
-  });
-
-  it("accepts shell snapshots that do not carry deleted markers", () => {
-    expect(hasLiveThreadsWithMissingProjects(makeShellSnapshot())).toBe(false);
-    expect(hasLiveThreadsWithMissingProjects(makeShellSnapshot({ projects: [] }))).toBe(true);
+  it.each([
+    { name: "live threads with live project rows", snapshot: makeSnapshot(), expected: false },
+    {
+      name: "a live thread whose project row is missing",
+      snapshot: makeSnapshot({ projects: [] }),
+      expected: true,
+    },
+    {
+      name: "a live thread whose project row is deleted",
+      snapshot: makeSnapshot({ projects: [makeProject({ deletedAt })] }),
+      expected: true,
+    },
+    {
+      name: "only deleted threads",
+      snapshot: makeSnapshot({ projects: [], threads: [makeThread({ deletedAt })] }),
+      expected: false,
+    },
+    {
+      name: "a shell snapshot without deleted markers",
+      snapshot: makeShellSnapshot(),
+      expected: false,
+    },
+    {
+      name: "a shell snapshot missing project rows",
+      snapshot: makeShellSnapshot({ projects: [] }),
+      expected: true,
+    },
+  ])("detects missing projects for $name", ({ snapshot, expected }) => {
+    expect(hasLiveThreadsWithMissingProjects(snapshot)).toBe(expected);
   });
 });

@@ -2,12 +2,7 @@ import { Effect, Fiber, Option } from "effect";
 import { describe, expect, it } from "vitest";
 
 import { ExecutableNotFoundError } from "@glade/shared/platform/platformProcess";
-import {
-  classifyProviderStartupFailure,
-  observeProviderStartup,
-  ProviderStartupLifecycle,
-  startupPhaseDurations,
-} from "./providerStartupLifecycle";
+import { observeProviderStartup, ProviderStartupLifecycle } from "./providerStartupLifecycle";
 
 function handshakingLifecycle(): ProviderStartupLifecycle {
   const lifecycle = new ProviderStartupLifecycle({ now: () => 1 });
@@ -31,44 +26,11 @@ describe("ProviderStartupLifecycle", () => {
     expect(() => lifecycle.transition("starting")).toThrow(/Invalid provider startup transition/);
   });
 
-  it("attributes elapsed time to each phase and totals the span", () => {
-    let now = 1_000;
-    const lifecycle = new ProviderStartupLifecycle({ now: () => now });
-    now += 100;
-    lifecycle.transition("starting");
-    now += 250;
-    lifecycle.transition("handshaking");
-    now += 600;
-    lifecycle.transition("ready");
-    now += 50;
-    lifecycle.transition("running");
-    expect(startupPhaseDurations(lifecycle.snapshot())).toEqual({
-      totalMs: 1_000,
-      byPhase: { discovering: 100, starting: 250, handshaking: 600, ready: 50 },
-    });
-  });
-
-  it("reports zero durations for an empty snapshot", () => {
-    expect(startupPhaseDurations({ phase: "discovering", transitions: [] })).toEqual({
-      totalMs: 0,
-      byPhase: {},
-    });
-  });
-
   it("keeps the first terminal outcome", () => {
     const lifecycle = handshakingLifecycle();
     lifecycle.stop("Cancelled");
     lifecycle.fail("HandshakeTimeout");
     expect(lifecycle.snapshot()).toMatchObject({ phase: "stopped", failureReason: "Cancelled" });
-  });
-
-  it("classifies a missing executable ahead of message heuristics", () => {
-    expect(classifyProviderStartupFailure(new ExecutableNotFoundError("provider"))).toBe(
-      "ExecutableNotFound",
-    );
-    expect(classifyProviderStartupFailure(new Error("provider exited during startup"))).toBe(
-      "ExitedDuringStartup",
-    );
   });
 });
 

@@ -12,21 +12,6 @@ export class ByteAccumulator {
     this.length += chunk.byteLength;
   }
 
-  readUInt32LE(offset: number): number {
-    if (offset < 0 || offset + 4 > this.length) {
-      throw new RangeError("Byte accumulator u32 read is out of range");
-    }
-    const first = this.chunks[0];
-    if (first && first.byteLength >= offset + 4) return first.readUInt32LE(offset);
-    return (
-      (this.byteAt(offset) |
-        (this.byteAt(offset + 1) << 8) |
-        (this.byteAt(offset + 2) << 16) |
-        (this.byteAt(offset + 3) << 24)) >>>
-      0
-    );
-  }
-
   take(byteLength: number): Buffer {
     const first = this.chunks[0];
     if (first && first.byteLength >= byteLength) {
@@ -39,7 +24,7 @@ export class ByteAccumulator {
     return taken;
   }
 
-  skip(byteLength: number): void {
+  private skip(byteLength: number): void {
     this.checkRange(byteLength);
     let remaining = byteLength;
     while (remaining > 0) {
@@ -64,14 +49,5 @@ export class ByteAccumulator {
     if (!Number.isSafeInteger(byteLength) || byteLength < 0 || byteLength > this.length) {
       throw new RangeError("Byte accumulator range is out of bounds");
     }
-  }
-
-  private byteAt(index: number): number {
-    let offset = index;
-    for (const chunk of this.chunks) {
-      if (offset < chunk.byteLength) return chunk[offset]!;
-      offset -= chunk.byteLength;
-    }
-    throw new RangeError("Byte accumulator index is out of range");
   }
 }

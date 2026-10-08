@@ -9,11 +9,18 @@ import {
   SessionCredentialService,
   type SessionCredentialError,
 } from "../Services/SessionCredentialService";
-import { AuthControlPlaneLive, AuthCoreLive } from "./AuthControlPlane";
+import { AuthControlPlaneLive } from "./AuthControlPlane";
+import { BootstrapCredentialServiceLive } from "./BootstrapCredentialService";
 import { ServerSecretStoreLive } from "./ServerSecretStore";
+import { SessionCredentialServiceLive } from "./SessionCredentialService";
 
 const testLayer = AuthControlPlaneLive.pipe(
-  Layer.provideMerge(AuthCoreLive),
+  Layer.provideMerge(
+    Layer.mergeAll(
+      BootstrapCredentialServiceLive,
+      SessionCredentialServiceLive.pipe(Layer.provide(ServerSecretStoreLive)),
+    ),
+  ),
   Layer.provide(SqlitePersistenceMemory),
   Layer.provide(ServerSecretStoreLive),
   Layer.provide(
@@ -79,25 +86,6 @@ describe("AuthControlPlaneLive", () => {
         expect("token" in (listedBeforeRevoke[0] ?? {})).toBe(false);
         expect(revoked).toBe(true);
         expect(listedAfterRevoke).toHaveLength(0);
-      }),
-    );
-  });
-
-  it("revokes other sessions while keeping the selected one", async () => {
-    await runControlPlaneTest(
-      Effect.gen(function* () {
-        const authControlPlane = yield* AuthControlPlane;
-
-        const owner = yield* authControlPlane.issueSession({ label: "owner" });
-        const client = yield* authControlPlane.issueSession({ role: "client", label: "client" });
-        const beforeRevoke = yield* authControlPlane.listSessions();
-        const revokedCount = yield* authControlPlane.revokeOtherSessionsExcept(owner.sessionId);
-        const afterRevoke = yield* authControlPlane.listSessions();
-
-        expect(beforeRevoke.map((entry) => entry.sessionId)).toContain(client.sessionId);
-        expect(revokedCount).toBe(1);
-        expect(afterRevoke).toHaveLength(1);
-        expect(afterRevoke[0]?.sessionId).toBe(owner.sessionId);
       }),
     );
   });

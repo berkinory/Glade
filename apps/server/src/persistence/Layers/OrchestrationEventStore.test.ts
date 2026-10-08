@@ -15,6 +15,26 @@ const layer = it.layer(
   OrchestrationEventStoreLive.pipe(Layer.provideMerge(SqlitePersistenceMemory)),
 );
 
+const insertRawEvent = (row: {
+  readonly eventId: string;
+  readonly aggregateKind: "project" | "thread";
+  readonly streamId: string;
+  readonly streamVersion: number;
+  readonly eventType: string;
+  readonly occurredAt: string;
+  readonly payloadJson: string;
+  readonly metadataJson: string;
+}) =>
+  Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`INSERT INTO orchestration_events
+      (event_id, aggregate_kind, stream_id, stream_version, event_type, occurred_at,
+       command_id, causation_event_id, correlation_id, actor_kind, payload_json, metadata_json)
+      VALUES (${row.eventId}, ${row.aggregateKind}, ${row.streamId}, ${row.streamVersion},
+        ${row.eventType}, ${row.occurredAt}, ${null}, ${null}, ${null}, ${"server"},
+        ${row.payloadJson}, ${row.metadataJson})`;
+  });
+
 layer("OrchestrationEventStore", (it) => {
   it.effect("projector replay pages keep the primary-key range scan for every filter shape", () =>
     Effect.gen(function* () {
@@ -235,8 +255,6 @@ layer("OrchestrationEventStore", (it) => {
         WHERE event_id = ${appended.eventId}
       `;
       assert.equal(storedRows.length, 1);
-      assert.equal(typeof storedRows[0]?.payloadJson, "string");
-      assert.equal(typeof storedRows[0]?.metadataJson, "string");
       assert.equal(JSON.parse(storedRows[0]!.metadataJson).persistedEventSchemaVersion, 1);
 
       const replayed = yield* Stream.runCollect(
@@ -297,7 +315,6 @@ layer("OrchestrationEventStore", (it) => {
   it.effect("replays retired feature events and preserves supported metadata", () =>
     Effect.gen(function* () {
       const eventStore = yield* OrchestrationEventStore;
-      const sql = yield* SqlClient.SqlClient;
       const now = "2026-09-30T12:00:00.000Z";
       const threadId = ThreadId.makeUnsafe("thread-retired-goal");
       const startSequence = yield* eventStore.getHighWaterSequence();
@@ -338,11 +355,16 @@ layer("OrchestrationEventStore", (it) => {
           },
         ],
       ] as const) {
-        yield* sql`INSERT INTO orchestration_events
-          (event_id, aggregate_kind, stream_id, stream_version, event_type, occurred_at,
-           command_id, causation_event_id, correlation_id, actor_kind, payload_json, metadata_json)
-          VALUES (${`evt-retired-goal-${index}`}, ${"thread"}, ${threadId}, ${index}, ${type},
-            ${now}, ${null}, ${null}, ${null}, ${"server"}, ${JSON.stringify(payload)}, ${JSON.stringify({ persistedEventSchemaVersion: 1 })})`;
+        yield* insertRawEvent({
+          eventId: `evt-retired-goal-${index}`,
+          aggregateKind: "thread",
+          streamId: threadId,
+          streamVersion: index,
+          eventType: type,
+          occurredAt: now,
+          payloadJson: JSON.stringify(payload),
+          metadataJson: JSON.stringify({ persistedEventSchemaVersion: 1 }),
+        });
       }
       const replayed = Array.from(
         yield* Stream.runCollect(eventStore.readFromSequence(startSequence, 10)),
@@ -352,125 +374,63 @@ layer("OrchestrationEventStore", (it) => {
       assert.deepEqual(replayed[0]?.payload, { threadId, title: "Kept title", updatedAt: now });
       assert.equal(replayed[1]?.type, "thread.goal-continuation-requested");
       assert.deepEqual(replayed[1]?.payload, { threadId, createdAt: now });
-      assert.deepEqual(replayed[2]?.payload, {
-        threadId,
-
-        updatedAt: now,
-      });
+      assert.deepEqual(replayed[2]?.payload, { threadId, updatedAt: now });
       assert.deepEqual(replayed[3]?.payload, { threadId });
       assert.deepEqual(replayed[4]?.payload, { threadId, updatedAt: now });
     }),
   );
 
-  it.effect("fails with PersistenceDecodeError when stored json is invalid", () =>
-    Effect.gen(function* () {
-      const eventStore = yield* OrchestrationEventStore;
-      const sql = yield* SqlClient.SqlClient;
-      const now = new Date().toISOString();
-      const startSequence = yield* eventStore.getHighWaterSequence();
+  it.effect.each([
+    {
+      name: "invalid stored json",
+      eventId: "evt-store-invalid-json",
+      payloadJson: "{",
+      metadataJson: "{}",
+      issue: "Stored payload_json is not valid JSON",
+    },
+    {
+      name: "a future event schema version",
+      eventId: "evt-store-future-schema",
+      payloadJson: JSON.stringify({
+        projectId: "project-future-schema",
+        title: "Future schema",
+        workspaceRoot: "/tmp/project-future-schema",
+        defaultModelSelection: null,
+        createdAt: "2026-07-20T12:00:00.000Z",
+        updatedAt: "2026-07-20T12:00:00.000Z",
+      }),
+      metadataJson: JSON.stringify({ persistedEventSchemaVersion: 2 }),
+      issue: "Unsupported persisted event schema version 2",
+    },
+  ])(
+    "fails replay with exact row diagnostics for $name",
+    ({ eventId, payloadJson, metadataJson, issue }) =>
+      Effect.gen(function* () {
+        const eventStore = yield* OrchestrationEventStore;
+        const startSequence = yield* eventStore.getHighWaterSequence();
+        yield* insertRawEvent({
+          eventId,
+          aggregateKind: "project",
+          streamId: `${eventId}-project`,
+          streamVersion: 0,
+          eventType: "project.created",
+          occurredAt: "2026-07-20T12:00:00.000Z",
+          payloadJson,
+          metadataJson,
+        });
 
-      yield* sql`
-        INSERT INTO orchestration_events (
-          event_id,
-          aggregate_kind,
-          stream_id,
-          stream_version,
-          event_type,
-          occurred_at,
-          command_id,
-          causation_event_id,
-          correlation_id,
-          actor_kind,
-          payload_json,
-          metadata_json
-        )
-        VALUES (
-          ${EventId.makeUnsafe("evt-store-invalid-json")},
-          ${"project"},
-          ${ProjectId.makeUnsafe("project-invalid-json")},
-          ${0},
-          ${"project.created"},
-          ${now},
-          ${CommandId.makeUnsafe("cmd-store-invalid-json")},
-          ${null},
-          ${null},
-          ${"server"},
-          ${"{"},
-          ${"{}"}
-        )
-      `;
-
-      const replayResult = yield* Effect.result(
-        Stream.runCollect(eventStore.readFromSequence(startSequence, 10)),
-      );
-      assert.equal(replayResult._tag, "Failure");
-      if (replayResult._tag === "Failure") {
-        assert.ok(Schema.is(PersistenceDecodeError)(replayResult.failure));
-        assert.match(
-          replayResult.failure.operation,
-          /OrchestrationEventStore\.readFromSequence:rowToEvent\(sequence=\d+, type=project\.created\)/,
+        const replayResult = yield* Effect.result(
+          Stream.runCollect(eventStore.readFromSequence(startSequence, 10)),
         );
-      }
-    }),
-  );
-
-  it.effect("rejects future event schema versions with exact row diagnostics", () =>
-    Effect.gen(function* () {
-      const eventStore = yield* OrchestrationEventStore;
-      const sql = yield* SqlClient.SqlClient;
-      const now = new Date().toISOString();
-      const startSequence = yield* eventStore.getHighWaterSequence();
-
-      yield* sql`
-        INSERT INTO orchestration_events (
-          event_id,
-          aggregate_kind,
-          stream_id,
-          stream_version,
-          event_type,
-          occurred_at,
-          command_id,
-          causation_event_id,
-          correlation_id,
-          actor_kind,
-          payload_json,
-          metadata_json
-        )
-        VALUES (
-          ${EventId.makeUnsafe("evt-store-future-schema")},
-          ${"project"},
-          ${ProjectId.makeUnsafe("project-future-schema")},
-          ${0},
-          ${"project.created"},
-          ${now},
-          ${CommandId.makeUnsafe("cmd-store-future-schema")},
-          ${null},
-          ${null},
-          ${"server"},
-          ${JSON.stringify({
-            projectId: "project-future-schema",
-            title: "Future schema",
-            workspaceRoot: "/tmp/project-future-schema",
-            defaultModelSelection: null,
-            createdAt: now,
-            updatedAt: now,
-          })},
-          ${JSON.stringify({ persistedEventSchemaVersion: 2 })}
-        )
-      `;
-
-      const replayResult = yield* Effect.result(
-        Stream.runCollect(eventStore.readFromSequence(startSequence, 10)),
-      );
-      assert.equal(replayResult._tag, "Failure");
-      if (replayResult._tag === "Failure") {
-        assert.ok(Schema.is(PersistenceDecodeError)(replayResult.failure));
-        assert.match(replayResult.failure.operation, /sequence=\d+, type=project\.created/);
-        assert.ok(
-          replayResult.failure.issue.includes("Unsupported persisted event schema version 2"),
-          replayResult.failure.issue,
-        );
-      }
-    }),
+        assert.equal(replayResult._tag, "Failure");
+        if (replayResult._tag === "Failure") {
+          assert.ok(Schema.is(PersistenceDecodeError)(replayResult.failure));
+          assert.match(
+            replayResult.failure.operation,
+            /OrchestrationEventStore\.readFromSequence:rowToEvent\(sequence=\d+, type=project\.created\)/,
+          );
+          assert.include(replayResult.failure.issue, issue);
+        }
+      }),
   );
 });

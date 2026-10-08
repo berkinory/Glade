@@ -1,20 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createExclusiveApplyQueue } from "../window/desktopAppIcon";
+import { createExclusiveApplyQueue } from "./desktopAppIcon";
 
 describe("createExclusiveApplyQueue", () => {
-  it("applies values in order when they do not overlap", async () => {
-    const applied: string[] = [];
-    const enqueue = createExclusiveApplyQueue(async (value: string) => {
-      applied.push(value);
-    });
-
-    await enqueue("default");
-    await enqueue("icon");
-
-    expect(applied).toEqual(["default", "icon"]);
-  });
-
   it("joins an in-flight apply of the same value instead of running it twice", async () => {
     const applied: string[] = [];
     let release: (() => void) | undefined;

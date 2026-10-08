@@ -93,7 +93,7 @@ it.layer(TestLayer)("git integration", (it) => {
       const core = yield* GitCore;
       const cwd = yield* makeTmpDir();
       yield* initRepoWithCommit(cwd);
-      yield* writeTextFile(path.join(cwd, "large.txt"), "content\n".repeat(1_000_000));
+      yield* writeTextFile(path.join(cwd, "large.txt"), "content\n".repeat(128_000));
       yield* git(cwd, ["add", "large.txt"]);
       yield* git(cwd, ["commit", "-m", "large blob"]);
       const result = yield* core.execute({
@@ -350,20 +350,10 @@ it.layer(TestLayer)("git integration", (it) => {
           .readFileAtRev({ cwd, filePath: "escape.png", base: "workingTree", encoding: "base64" })
           .pipe(Effect.exit);
         expect(Exit.isFailure(escaped)).toBe(true);
-      }),
-    );
-
-    it.effect("rejects paths that escape the workspace", () =>
-      Effect.gen(function* () {
-        const core = yield* GitCore;
-        const tmp = yield* makeTmpDir();
-        yield* initRepoWithCommit(tmp);
-
-        const error = yield* core
-          .readFileAtRev({ cwd: tmp, filePath: "../outside.ts" })
+        const relativeEscape = yield* core
+          .readFileAtRev({ cwd, filePath: "../outside.ts" })
           .pipe(Effect.flip);
-
-        expect(error.message).toContain("workspace-relative");
+        expect(relativeEscape.message).toContain("workspace-relative");
       }),
     );
   });

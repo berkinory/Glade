@@ -54,62 +54,43 @@ describe("browserDownload", () => {
     URL.revokeObjectURL = originalRevokeObjectUrl;
   });
 
-  it("falls back to the caller filename when Content-Disposition is absent", async () => {
-    globalThis.fetch = vi.fn(() => Promise.resolve(new Response("<svg />", { status: 200 })));
-
-    await downloadUrlAsBlob({
-      url: "http://127.0.0.1:5733/api/local-image?download=1",
-      filename: "favicon.svg",
-    });
-
-    expect(globalThis.fetch).toHaveBeenCalledWith(
-      "http://127.0.0.1:5733/api/local-image?download=1",
+  it.each([
+    {
+      name: "falls back to the caller filename without",
+      disposition: null,
+      expected: "fallback.zip",
+    },
+    {
+      name: "prefers the server filename from",
+      disposition: 'attachment; filename="glade-thread-pretty.zip"',
+      expected: "glade-thread-pretty.zip",
+    },
+    {
+      name: "falls back to the caller filename for a malformed",
+      disposition: "attachment; filename=",
+      expected: "fallback.zip",
+    },
+  ])("$name Content-Disposition", async ({ disposition, expected }) => {
+    const url = "http://127.0.0.1:5733/api/thread-export?threadId=thread-1";
+    globalThis.fetch = vi.fn(() =>
+      Promise.resolve(
+        new Response("zip", {
+          status: 200,
+          headers: disposition ? { "Content-Disposition": disposition } : {},
+        }),
+      ),
     );
+
+    await downloadUrlAsBlob({ url, filename: "fallback.zip" });
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(url);
     expect(URL.createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
     expect(link.href).toBe("blob:download");
-    expect(link.download).toBe("favicon.svg");
+    expect(link.download).toBe(expected);
     expect(appended).toEqual([link]);
     expect(click).toHaveBeenCalledTimes(1);
     expect(link.remove).toHaveBeenCalledTimes(1);
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:download");
-  });
-
-  it("prefers the server filename from Content-Disposition", async () => {
-    globalThis.fetch = vi.fn(() =>
-      Promise.resolve(
-        new Response("zip", {
-          status: 200,
-          headers: { "Content-Disposition": 'attachment; filename="glade-thread-pretty.zip"' },
-        }),
-      ),
-    );
-
-    await downloadUrlAsBlob({
-      url: "http://127.0.0.1:5733/api/thread-export?threadId=thread-1",
-      filename: "glade-thread-thread-1.zip",
-    });
-
-    expect(link.download).toBe("glade-thread-pretty.zip");
-    expect(click).toHaveBeenCalledTimes(1);
-  });
-
-  it("falls back to the caller filename when Content-Disposition is malformed", async () => {
-    globalThis.fetch = vi.fn(() =>
-      Promise.resolve(
-        new Response("zip", {
-          status: 200,
-          headers: { "Content-Disposition": "attachment; filename=" },
-        }),
-      ),
-    );
-
-    await downloadUrlAsBlob({
-      url: "http://127.0.0.1:5733/api/thread-export?threadId=thread-1",
-      filename: "glade-thread-thread-1.zip",
-    });
-
-    expect(link.download).toBe("glade-thread-thread-1.zip");
-    expect(click).toHaveBeenCalledTimes(1);
   });
 
   it("surfaces the response body reason when the server blocks the download", async () => {

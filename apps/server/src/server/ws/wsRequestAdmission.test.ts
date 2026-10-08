@@ -3,23 +3,9 @@ import { WS_METHODS } from "@glade/contracts/transport/ws/ws";
 import { Deferred, Effect, Fiber } from "effect";
 import { describe, expect, it } from "vitest";
 
-import { classifyWsRequest, makeWsRequestAdmission } from "./wsRequestAdmission";
+import { makeWsRequestAdmission } from "./wsRequestAdmission";
 
 describe("WsRequestAdmission", () => {
-  it("keeps lightweight shell reads out of the expensive lane", () => {
-    expect(classifyWsRequest(ORCHESTRATION_WS_METHODS.getShellSnapshot)).toBe("standard");
-    expect(classifyWsRequest(ORCHESTRATION_WS_METHODS.getThreadDetailSnapshot)).toBe(
-      "expensive-read",
-    );
-    expect(classifyWsRequest(ORCHESTRATION_WS_METHODS.getTurnDiff)).toBe("expensive-read");
-    expect(classifyWsRequest(ORCHESTRATION_WS_METHODS.repairState)).toBe("expensive-read");
-    expect(classifyWsRequest(WS_METHODS.serverPrewarmVoice)).toBe("expensive-read");
-    expect(classifyWsRequest(WS_METHODS.projectsResolveWorkspaceFileReferences)).toBe(
-      "expensive-read",
-    );
-    expect(classifyWsRequest(WS_METHODS.terminalAckOutput)).toBe("control");
-  });
-
   it("reserves bounded model discovery and control capacity during an expensive-read flood", async () => {
     await Effect.runPromise(
       Effect.gen(function* () {
@@ -34,6 +20,9 @@ describe("WsRequestAdmission", () => {
         if (rejected._tag === "Failure") {
           expect(String(rejected.cause)).toContain("RPC_EXPENSIVE_READ_CAPACITY_EXCEEDED");
         }
+        const shell = yield* admission.acquire(1, ORCHESTRATION_WS_METHODS.getShellSnapshot);
+        expect(shell.requestClass).toBe("standard");
+        yield* admission.release(shell);
 
         const control = yield* admission.acquire(1, WS_METHODS.terminalAckOutput);
         expect(control.requestClass).toBe("control");
@@ -50,8 +39,8 @@ describe("WsRequestAdmission", () => {
         yield* admission.release(modelTwo);
         expect(yield* admission.snapshot).toMatchObject({
           active: 0,
-          admittedTotal: 5,
-          releasedTotal: 5,
+          admittedTotal: 6,
+          releasedTotal: 6,
           rejectedTotal: 2,
         });
       }),

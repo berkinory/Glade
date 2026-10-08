@@ -91,7 +91,7 @@ export interface ManagedWorktreeThreadRef {
 
 type ManagedWorktreeRemovalReason = "deleted" | "archived-retention";
 
-export interface ManagedWorktreeRemovalCandidate {
+interface ManagedWorktreeRemovalCandidate {
   readonly entry: ServerManagedWorktree;
   readonly thread: ManagedWorktreeThreadRef;
   readonly reason: ManagedWorktreeRemovalReason;
@@ -229,7 +229,7 @@ function snapshotOutputPath(input: {
 }
 
 // Active owners are never reclaim candidates.
-export function classifyManagedWorktreeRemovalCandidates(input: {
+function classifyManagedWorktreeRemovalCandidates(input: {
   readonly inventory: ReadonlyArray<ServerManagedWorktree>;
   readonly threads: ReadonlyArray<ManagedWorktreeThreadRef>;
   readonly canonicalByRecordedPath: ReadonlyMap<string, string>;

@@ -11,9 +11,6 @@ import {
   type IssuedBearerSession,
   type IssuedPairingLink,
 } from "../Services/AuthControlPlane";
-import { BootstrapCredentialServiceLive } from "./BootstrapCredentialService";
-import { ServerSecretStoreLive } from "./ServerSecretStore";
-import { SessionCredentialServiceLive } from "./SessionCredentialService";
 
 const bySessionPriority = (left: AuthClientSession, right: AuthClientSession) => {
   if (left.role !== right.role) return left.role === "owner" ? -1 : 1;
@@ -146,8 +143,3 @@ const makeAuthControlPlane = Effect.gen(function* () {
 });
 
 export const AuthControlPlaneLive = Layer.effect(AuthControlPlane, makeAuthControlPlane);
-
-export const AuthCoreLive = Layer.mergeAll(
-  BootstrapCredentialServiceLive,
-  SessionCredentialServiceLive.pipe(Layer.provide(ServerSecretStoreLive)),
-);

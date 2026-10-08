@@ -16,10 +16,7 @@ import {
   PROVIDER_RUNTIME_INGESTION_CONSUMER,
   ProviderRuntimeEventRepository,
 } from "../Services/ProviderRuntimeEvents.ts";
-import {
-  ProviderRuntimeEventRepositoryLive,
-  truncateUtf8ToBytes,
-} from "./ProviderRuntimeEvents.ts";
+import { ProviderRuntimeEventRepositoryLive } from "./ProviderRuntimeEvents.ts";
 import { SqlitePersistenceMemory } from "./Sqlite.ts";
 import { assignDerivedProviderRuntimeEventIds } from "../../provider/core/providerRuntimeEventIdentity.ts";
 
@@ -490,14 +487,17 @@ layer("ProviderRuntimeEventRepository", (it) => {
   it.effect("journals an oversized raw-less event by truncating its payload leaves", () =>
     Effect.gen(function* () {
       const repository = yield* ProviderRuntimeEventRepository;
-      const oversizedDelta = "y".repeat(PROVIDER_RUNTIME_EVENT_MAX_BYTES * 2);
+      const oversizedDelta = "a" + "🙂".repeat(PROVIDER_RUNTIME_EVENT_MAX_BYTES / 2);
       const oversizedEvent = runtimeEvent("runtime-event-oversized-payload", oversizedDelta);
 
       const persisted = yield* repository.append(oversizedEvent);
       assert.strictEqual(persisted.event.eventId, oversizedEvent.eventId);
       assert.strictEqual(persisted.event.raw, undefined);
       if (persisted.event.type === "content.delta") {
-        assert.isBelow(persisted.event.payload.delta.length, oversizedDelta.length);
+        const storedDelta = persisted.event.payload.delta;
+        assert.isBelow(storedDelta.length, oversizedDelta.length);
+        assert.isFalse(storedDelta.includes("\uFFFD"));
+        assert.isAtMost(Buffer.byteLength(storedDelta, "utf8"), 64 * 1024);
       }
     }),
   );
@@ -526,14 +526,6 @@ layer("ProviderRuntimeEventRepository", (it) => {
       assert.strictEqual(failure._tag, "PersistenceDecodeError");
     }),
   );
-
-  it("truncateUtf8ToBytes never splits a UTF-8 code point", () => {
-    const emoji = "🙂".repeat(10_000);
-    const truncated = truncateUtf8ToBytes(emoji, 999);
-    assert.isBelow(Buffer.byteLength(truncated, "utf8"), 1_000);
-    assert.isFalse(truncated.includes("\uFFFD"));
-    assert.strictEqual(Buffer.from(truncated, "utf8").toString("utf8"), truncated);
-  });
 
   it.effect("journals every canonical event derived from one provider notification", () =>
     Effect.gen(function* () {

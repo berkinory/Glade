@@ -283,27 +283,17 @@ routing.layer("Provider service sessionOperations", (it) => {
 
       assert.equal(routing.claude.startSession.mock.calls.length, 1);
       const resumedStartInput = routing.claude.startSession.mock.calls[0]?.[0];
-      assert.equal(typeof resumedStartInput === "object" && resumedStartInput !== null, true);
-      if (resumedStartInput && typeof resumedStartInput === "object") {
-        const startPayload = resumedStartInput as {
-          provider?: string;
-          cwd?: string;
-          modelSelection?: unknown;
-          resumeCursor?: unknown;
-          threadId?: string;
-        };
-        assert.equal(startPayload.provider, "claudeAgent");
-        assert.equal(startPayload.cwd, "/tmp/project-claude-send-turn");
-        assert.deepEqual(startPayload.modelSelection, {
-          provider: "claudeAgent",
-          model: "claude-opus-4-6",
-          options: {
-            effort: "max",
-          },
-        });
-        assert.deepEqual(startPayload.resumeCursor, initial.resumeCursor);
-        assert.equal(startPayload.threadId, initial.threadId);
-      }
+      assert.equal(resumedStartInput?.provider, "claudeAgent");
+      assert.equal(resumedStartInput?.cwd, "/tmp/project-claude-send-turn");
+      assert.deepEqual(resumedStartInput?.modelSelection, {
+        provider: "claudeAgent",
+        model: "claude-opus-4-6",
+        options: {
+          effort: "max",
+        },
+      });
+      assert.deepEqual(resumedStartInput?.resumeCursor, initial.resumeCursor);
+      assert.equal(resumedStartInput?.threadId, initial.threadId);
       assert.equal(routing.claude.sendTurn.mock.calls.length, 1);
     }),
   );

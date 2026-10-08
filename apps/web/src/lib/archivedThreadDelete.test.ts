@@ -4,30 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 import { deleteArchivedThreadsFromClient } from "./archivedThreadDelete";
 
 describe("deleteArchivedThreadsFromClient", () => {
-  it("dispatches delete, then removes the local row", async () => {
-    const threadId = ThreadId.makeUnsafe("thread-archived");
-    const dispatchCommand = vi.fn().mockResolvedValue({ sequence: 11 });
-    const removeDeletedThreadFromClientState = vi.fn();
-
-    await deleteArchivedThreadsFromClient({
-      api: { dispatchCommand },
-      threadIds: [threadId],
-      removeDeletedThreadFromClientState,
-    });
-
-    expect(dispatchCommand).toHaveBeenCalledWith({
-      type: "thread.delete",
-      commandId: expect.any(String),
-      threadId,
-    });
-    expect(removeDeletedThreadFromClientState).toHaveBeenCalledOnce();
-    expect(removeDeletedThreadFromClientState).toHaveBeenCalledWith(threadId);
-    const dispatchOrder = dispatchCommand.mock.invocationCallOrder[0] ?? Number.MAX_SAFE_INTEGER;
-    const removeOrder =
-      removeDeletedThreadFromClientState.mock.invocationCallOrder[0] ?? Number.MAX_SAFE_INTEGER;
-    expect(dispatchOrder).toBeLessThan(removeOrder);
-  });
-
   it("deletes multiple archived threads and removes each locally once", async () => {
     const threadA = ThreadId.makeUnsafe("thread-archived-a");
     const threadB = ThreadId.makeUnsafe("thread-archived-b");

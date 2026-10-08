@@ -175,25 +175,3 @@ export function acquireAgentGatewaySessionLease(
     },
   };
 }
-
-// The watcher is detached because adapter-owned scopes are themselves closed by normal teardown;
-// the idempotent lease reconciles whichever signal (explicit stop or process exit) arrives first.
-export function startAgentGatewaySessionLeaseExitWatcher(
-  lease: AgentGatewaySessionLease | undefined,
-  awaitProviderExit: Effect.Effect<void>,
-): Effect.Effect<void> {
-  if (lease === undefined) return Effect.void;
-  return awaitProviderExit.pipe(
-    Effect.andThen(Effect.sync(lease.release)),
-    Effect.forkDetach,
-    Effect.asVoid,
-  );
-}
-
-export function releaseAgentGatewaySessionLeaseOnInterrupt<A, E, R>(
-  lease: AgentGatewaySessionLease | undefined,
-  startup: Effect.Effect<A, E, R>,
-): Effect.Effect<A, E, R> {
-  if (lease === undefined) return startup;
-  return startup.pipe(Effect.onInterrupt(() => Effect.sync(lease.release)));
-}

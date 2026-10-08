@@ -34,11 +34,11 @@ function digestToken(token: string): Buffer {
   return createHash("sha256").update(token, "utf8").digest();
 }
 
-export function matchesDesktopShutdownToken(expected: string, presented: string): boolean {
+function matchesDesktopShutdownToken(expected: string, presented: string): boolean {
   return timingSafeEqual(digestToken(expected), digestToken(presented));
 }
 
-export function isDesktopShutdownLoopbackPeer(remoteAddress: string | null | undefined): boolean {
+function isDesktopShutdownLoopbackPeer(remoteAddress: string | null | undefined): boolean {
   const normalized = remoteAddress?.trim().toLowerCase();
   return normalized === "127.0.0.1" || normalized === "::1" || normalized === "::ffff:127.0.0.1";
 }

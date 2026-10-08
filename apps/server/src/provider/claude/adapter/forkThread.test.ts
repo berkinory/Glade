@@ -4,14 +4,12 @@ import { mkdtempSync, rmSync } from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { type ClaudeAdapterLiveOptions } from "./adapterConfiguration.ts";
-import { Layer, Effect, Random } from "effect";
-import { ServerConfig } from "../../../server/config.ts";
-import * as NodeServices from "@effect/platform-node/NodeServices";
+import { Effect, Random } from "effect";
 import { ClaudeAdapter } from "../../Services/ClaudeAdapter.ts";
 import { ProviderAdapterValidationError, ProviderAdapterRequestError } from "../../core/Errors.ts";
 import { Schema } from "effect";
 import {
-  makeClaudeAdapterLive,
+  makeClaudeAdapterTestLayer,
   THREAD_ID,
   RESUME_THREAD_ID,
   makeDeterministicRandomService,
@@ -33,10 +31,7 @@ describe("ClaudeAdapterLive forkThread", () => {
   function makeForkLayer(
     forkNativeSession: NonNullable<ClaudeAdapterLiveOptions["forkNativeSession"]>,
   ) {
-    return makeClaudeAdapterLive({ forkNativeSession }).pipe(
-      Layer.provideMerge(ServerConfig.layerTest("/tmp/claude-adapter-test", "/tmp")),
-      Layer.provideMerge(NodeServices.layer),
-    );
+    return makeClaudeAdapterTestLayer({ forkNativeSession });
   }
 
   it.effect("forks at the selected native message instead of the later persisted cursor", () => {
@@ -91,16 +86,13 @@ describe("ClaudeAdapterLive forkThread", () => {
   it.effect("refuses a native fork while the source turn is in flight", () => {
     const query = new FakeClaudeQuery();
     let forkCalls = 0;
-    const layer = makeClaudeAdapterLive({
+    const layer = makeClaudeAdapterTestLayer({
       createQuery: () => query,
       forkNativeSession: async () => {
         forkCalls += 1;
         return { sessionId: "unexpected" };
       },
-    }).pipe(
-      Layer.provideMerge(ServerConfig.layerTest("/tmp/claude-adapter-test", "/tmp")),
-      Layer.provideMerge(NodeServices.layer),
-    );
+    });
 
     return Effect.gen(function* () {
       const adapter = yield* ClaudeAdapter;

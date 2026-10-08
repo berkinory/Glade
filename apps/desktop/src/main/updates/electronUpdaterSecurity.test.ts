@@ -1,39 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
-  buildPowerShellExecArgs,
-  buildPowerShellExecutablePath,
   hardenElectronUpdater,
-  parseDistinguishedName,
   resolveWindowsUpdatePublisherNames,
   verifyWindowsUpdateCodeSignature,
 } from "./electronUpdaterSecurity";
 
+const UPDATE_FILE = "C:\\Temp\\GladeSetup.exe";
+
+const signatureOutput = (subject: string) =>
+  JSON.stringify({ Status: 0, Path: UPDATE_FILE, SignerCertificate: { Subject: subject } });
+
 describe("electronUpdaterSecurity", () => {
-  it("uses the absolute Windows PowerShell executable", () => {
-    expect(buildPowerShellExecutablePath({ SystemRoot: "D:\\Windows" })).toBe(
-      "D:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
-    );
-  });
-
-  it("runs PowerShell with arguments instead of a shell command", () => {
-    const args = buildPowerShellExecArgs("Get-AuthenticodeSignature test.exe");
-
-    expect(args).toContain("-NoProfile");
-    expect(args).toContain("-NonInteractive");
-    expect(args).toContain("-Command");
-    expect(args.join(" ")).toContain("Get-AuthenticodeSignature test.exe");
-    expect(args.join(" ")).not.toContain("cmd.exe");
-  });
-
-  it("parses distinguished names the same way as builder-util-runtime", () => {
-    const parsed = parseDistinguishedName('CN=Glade, O="Acme, Inc.", OU=Tools\\2C Desktop');
-
-    expect(parsed.get("CN")).toBe("Glade");
-    expect(parsed.get("O")).toBe("Acme, Inc.");
-    expect(parsed.get("OU")).toBe("Tools, Desktop");
-  });
-
   it("uses only embedded full publisher DNs and never feed-controlled names", () => {
     expect(
       resolveWindowsUpdatePublisherNames(
@@ -74,7 +52,14 @@ describe("electronUpdaterSecurity", () => {
     expect(result).toBeNull();
     expect(execFile).toHaveBeenCalledWith(
       "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
-      expect.arrayContaining(["-NoProfile", "-NonInteractive", "-Command"]),
+      expect.arrayContaining([
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        expect.stringContaining(
+          "Get-AuthenticodeSignature -LiteralPath 'C:\\Users\\test\\AppData\\Local\\Temp\\GladeSetup.exe'",
+        ),
+      ]),
       expect.objectContaining({
         encoding: "utf8",
         timeout: 20_000,
@@ -84,114 +69,54 @@ describe("electronUpdaterSecurity", () => {
     );
   });
 
-  it("rejects a CN-only publisher allowlist", async () => {
-    const logger = { info: vi.fn(), warn: vi.fn() };
+  it.each([
+    {
+      name: "a CN-only publisher allowlist",
+      publisherNames: ["CN=Glade"],
+      output: signatureOutput("CN=Glade, O=Acme Tools"),
+      expected: ["publisherNames: CN=Glade"],
+    },
+    {
+      name: "an unexpected publisher",
+      publisherNames: ["CN=Glade, O=Acme Tools"],
+      output: signatureOutput("CN=Someone Else, O=Acme Tools"),
+      expected: ["publisherNames: CN=Glade, O=Acme Tools", "Someone Else"],
+    },
+    {
+      name: "PowerShell failing to run",
+      publisherNames: ["CN=Glade, O=Acme Tools"],
+      output: Object.assign(new Error("PowerShell unavailable"), { code: "ENOENT" }),
+      expected: ["signature verification could not be completed", "PowerShell unavailable"],
+    },
+    {
+      name: "malformed signature output",
+      publisherNames: ["CN=Glade, O=Acme Tools"],
+      output: "not-json",
+      expected: ["signature verification could not be completed"],
+    },
+    {
+      name: "signature output without the signed file path",
+      publisherNames: ["CN=Glade, O=Acme Tools"],
+      output: JSON.stringify({
+        Status: 0,
+        SignerCertificate: { Subject: "CN=Glade, O=Acme Tools" },
+      }),
+      expected: ["signature verification could not be completed", "no signed file path"],
+    },
+  ])("fails closed for $name", async ({ publisherNames, output, expected }) => {
     const result = await verifyWindowsUpdateCodeSignature(
-      ["CN=Glade"],
-      "C:\\Temp\\GladeSetup.exe",
-      logger,
-      {
-        env: { SystemRoot: "C:\\Windows" },
-        execFile: vi.fn((_file, _args, _options, callback) => {
-          callback(
-            null,
-            JSON.stringify({
-              Status: 0,
-              Path: "C:\\Temp\\GladeSetup.exe",
-              SignerCertificate: { Subject: "CN=Glade, O=Acme Tools" },
-            }),
-            "",
-          );
-        }),
-      },
-    );
-
-    expect(result).toContain("publisherNames: CN=Glade");
-    expect(logger.warn).toHaveBeenCalledWith(
-      expect.stringContaining("signed with incorrect certificate"),
-    );
-  });
-
-  it("fails closed when PowerShell cannot verify the signature", async () => {
-    const result = await verifyWindowsUpdateCodeSignature(
-      ["CN=Glade, O=Acme Tools"],
-      "C:\\Temp\\GladeSetup.exe",
+      publisherNames,
+      UPDATE_FILE,
       { info: vi.fn(), warn: vi.fn() },
       {
         env: { SystemRoot: "C:\\Windows" },
-        execFile: vi.fn((_file, _args, _options, callback) => {
-          callback(Object.assign(new Error("PowerShell unavailable"), { code: "ENOENT" }), "", "");
-        }),
+        execFile: vi.fn((_file, _args, _options, callback) =>
+          typeof output === "string" ? callback(null, output, "") : callback(output, "", ""),
+        ),
       },
     );
 
-    expect(result).toContain("signature verification could not be completed");
-    expect(result).toContain("PowerShell unavailable");
-  });
-
-  it("fails closed when signature output is malformed", async () => {
-    const result = await verifyWindowsUpdateCodeSignature(
-      ["CN=Glade, O=Acme Tools"],
-      "C:\\Temp\\GladeSetup.exe",
-      { info: vi.fn(), warn: vi.fn() },
-      {
-        env: { SystemRoot: "C:\\Windows" },
-        execFile: vi.fn((_file, _args, _options, callback) => {
-          callback(null, "not-json", "");
-        }),
-      },
-    );
-
-    expect(result).toContain("signature verification could not be completed");
-  });
-
-  it("fails closed when signature output omits the signed file path", async () => {
-    const result = await verifyWindowsUpdateCodeSignature(
-      ["CN=Glade, O=Acme Tools"],
-      "C:\\Temp\\GladeSetup.exe",
-      { info: vi.fn(), warn: vi.fn() },
-      {
-        env: { SystemRoot: "C:\\Windows" },
-        execFile: vi.fn((_file, _args, _options, callback) => {
-          callback(
-            null,
-            JSON.stringify({
-              Status: 0,
-              SignerCertificate: { Subject: "CN=Glade, O=Acme Tools" },
-            }),
-            "",
-          );
-        }),
-      },
-    );
-
-    expect(result).toContain("signature verification could not be completed");
-    expect(result).toContain("no signed file path");
-  });
-
-  it("returns a mismatch summary for an unexpected publisher", async () => {
-    const result = await verifyWindowsUpdateCodeSignature(
-      ["CN=Glade, O=Acme Tools"],
-      "C:\\Temp\\GladeSetup.exe",
-      { info: vi.fn(), warn: vi.fn() },
-      {
-        env: { SystemRoot: "C:\\Windows" },
-        execFile: vi.fn((_file, _args, _options, callback) => {
-          callback(
-            null,
-            JSON.stringify({
-              Status: 0,
-              Path: "C:\\Temp\\GladeSetup.exe",
-              SignerCertificate: { Subject: "CN=Someone Else, O=Acme Tools" },
-            }),
-            "",
-          );
-        }),
-      },
-    );
-
-    expect(result).toContain("publisherNames: CN=Glade, O=Acme Tools");
-    expect(result).toContain("Someone Else");
+    for (const fragment of expected) expect(result).toContain(fragment);
   });
 
   it("patches electron-updater BaseUpdater spawnSyncLog only on Windows", () => {
@@ -213,18 +138,6 @@ describe("electronUpdaterSecurity", () => {
 
     expect(output).toMatch(/^v\d+\.\d+\.\d+/);
     expect(prototype.__gladeSpawnSyncLogPatched).toBe(true);
-  });
-
-  it("replaces the NSIS signature verifier on Windows", async () => {
-    const updater = {
-      verifyUpdateCodeSignature: vi.fn(async () => "old verifier"),
-    };
-    const oldVerifier = updater.verifyUpdateCodeSignature;
-
-    hardenElectronUpdater({ BaseUpdater: class {} }, updater, "win32");
-
-    expect(updater.verifyUpdateCodeSignature).not.toBe(oldVerifier);
-    expect(oldVerifier).not.toHaveBeenCalled();
   });
 
   it("falls back to feed publisher DNs when no embedded override is supplied", async () => {

@@ -239,7 +239,7 @@ export function makeFeatureSocketUrl(
   return url.toString();
 }
 
-export function makeNegotiateHttpUrl(explicitUrl: string | null): string {
+function makeNegotiateHttpUrl(explicitUrl: string | null): string {
   const url = new URL(makeSocketUrl(explicitUrl, WS_NEGOTIATE_HTTP_PATH));
   url.protocol = url.protocol === "wss:" ? "https:" : "http:";
   url.searchParams.set(WS_NEGOTIATE_QUERY.clientBuild, APP_VERSION);
@@ -455,7 +455,7 @@ export function getUnexpectedStreamCompletionRetryDelayMs(attempt: number): numb
   );
 }
 
-export function getStreamCapacityRetryDelayMs(cause: Cause.Cause<unknown>): number | null {
+function getStreamCapacityRetryDelayMs(cause: Cause.Cause<unknown>): number | null {
   for (const reason of cause.reasons) {
     if (!Cause.isFailReason(reason)) continue;
     const error = reason.error;
@@ -478,19 +478,19 @@ const RETRYABLE_STREAM_DUPLICATE_ERROR_CODES = new Set([
 
 const DEFAULT_STREAM_DUPLICATE_RETRY_MS = 250;
 
-export const MAX_STREAM_DUPLICATE_RETRY_ATTEMPTS = 5;
+const MAX_STREAM_DUPLICATE_RETRY_ATTEMPTS = 5;
 
 const THREAD_SNAPSHOT_BOOTSTRAP_ERROR_CODE = "THREAD_SNAPSHOT_NOT_FOUND";
 
 const DEFAULT_THREAD_SNAPSHOT_BOOTSTRAP_RETRY_MS = 100;
 
-export const MAX_THREAD_SNAPSHOT_BOOTSTRAP_RETRY_ATTEMPTS = 12;
+const MAX_THREAD_SNAPSHOT_BOOTSTRAP_RETRY_ATTEMPTS = 12;
 
 // Duplicate rejections arrive marked `retryable: false` because one socket may not hold two leases
 // for the same stream. A cancel→fast-resubscribe still races the server-side lease release (the
 // lease frees only when the server stream scope closes), so a bounded in-place retry is required to
 // let the stale lease drain instead of leaving the stream permanently dead.
-export function getStreamDuplicateRetryDelayMs(
+function getStreamDuplicateRetryDelayMs(
   cause: Cause.Cause<unknown>,
   previousAttempts: number,
 ): number | null {
@@ -512,7 +512,7 @@ export function getStreamDuplicateRetryDelayMs(
 // A visible local draft subscribes before its `thread.create` projection exists so it cannot miss
 // the first provider events. Retry only that admission race in place; bounded attempts still
 // surface genuinely missing or deleted thread ids.
-export function getThreadSnapshotBootstrapRetryDelayMs(
+function getThreadSnapshotBootstrapRetryDelayMs(
   cause: Cause.Cause<unknown>,
   previousAttempts: number,
 ): number | null {
@@ -533,13 +533,13 @@ export function getThreadSnapshotBootstrapRetryDelayMs(
 
 const DEFAULT_RESNAPSHOT_RETRY_MS = 250;
 
-export const MAX_RESNAPSHOT_RETRY_ATTEMPTS = 2;
+const MAX_RESNAPSHOT_RETRY_ATTEMPTS = 2;
 
 // The server asks for a stream restart because its snapshot fence trails the journal beyond the
 // replay limit. The attempts are deliberately few — the server escalates a non-advancing fence to
 // the non-retryable ORCHESTRATION_SNAPSHOT_STALLED on the repeat demand, so more client-side
 // patience only delays surfacing the fault.
-export function getResnapshotRetryDelayMs(
+function getResnapshotRetryDelayMs(
   cause: Cause.Cause<unknown>,
   previousAttempts: number,
 ): number | null {

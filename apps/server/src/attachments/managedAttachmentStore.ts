@@ -18,8 +18,8 @@ import type {
 import {
   ensurePrivateDirectorySync,
   repairPrivateFile,
-  syncDirectoryEntry,
 } from "../platform/filesystem/privatePathPermissions";
+import { syncDirectoryEntry } from "../platform/filesystemPlatform";
 
 const MANAGED_ATTACHMENT_STAGING_TTL_MS = 60 * 60 * 1_000;
 const MANAGED_ATTACHMENT_ID_PREFIX = "att_v2_";

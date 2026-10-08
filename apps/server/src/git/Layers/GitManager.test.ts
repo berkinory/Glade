@@ -6,7 +6,6 @@ import { it } from "@effect/vitest";
 import { Effect, FileSystem, Layer, PlatformError, Scope } from "effect";
 import { expect } from "vitest";
 import type { GitActionProgressEvent } from "@glade/contracts/git/git";
-import type { ModelSelection, ProviderStartOptions } from "@glade/contracts/provider/sessionPolicy";
 
 import { GitCommandError, TextGenerationError } from "../Errors.ts";
 import { type GitManagerShape } from "../Services/GitManager.ts";
@@ -18,51 +17,6 @@ import { createGitHubCliWithFakeGh, type FakeGhScenario } from "../testing/fakeG
 import { makeGitManager } from "./GitManager.ts";
 import { GitHandoffLive } from "./GitHandoff.ts";
 import { ServerConfig } from "../../server/config.ts";
-
-interface FakeGitTextGeneration {
-  generateCommitMessage: (input: {
-    cwd: string;
-    branch: string | null;
-    stagedSummary: string;
-    stagedPatch: string;
-    codexHomePath?: string;
-    providerOptions?: ProviderStartOptions;
-    includeBranch?: boolean;
-    model?: string;
-    modelSelection?: ModelSelection;
-  }) => Effect.Effect<
-    { subject: string; body: string; branch?: string | undefined },
-    TextGenerationError
-  >;
-  generatePrContent: (input: {
-    cwd: string;
-    baseBranch: string;
-    headBranch: string;
-    commitSummary: string;
-    diffSummary: string;
-    diffPatch: string;
-    prTemplate?: string | undefined;
-    codexHomePath?: string;
-    providerOptions?: ProviderStartOptions;
-    model?: string;
-    modelSelection?: ModelSelection;
-  }) => Effect.Effect<{ title: string; body: string }, TextGenerationError>;
-  generateDiffSummary: (input: {
-    cwd: string;
-    patch: string;
-    codexHomePath?: string;
-    providerOptions?: ProviderStartOptions;
-    model?: string;
-    modelSelection?: ModelSelection;
-  }) => Effect.Effect<{ summary: string }, TextGenerationError>;
-  generateBranchName: (input: {
-    cwd: string;
-    message: string;
-    providerOptions?: ProviderStartOptions;
-    model?: string;
-    modelSelection?: ModelSelection;
-  }) => Effect.Effect<{ branch: string }, TextGenerationError>;
-}
 
 function makeTempDir(
   prefix: string,
@@ -123,8 +77,8 @@ function createBareRemote(): Effect.Effect<
   });
 }
 
-function createTextGeneration(overrides: Partial<FakeGitTextGeneration> = {}): TextGenerationShape {
-  const implementation: FakeGitTextGeneration = {
+function createTextGeneration(overrides: Partial<TextGenerationShape> = {}): TextGenerationShape {
+  return {
     generateCommitMessage: (input) =>
       Effect.succeed({
         subject: "Implement stacked git actions",
@@ -140,58 +94,8 @@ function createTextGeneration(overrides: Partial<FakeGitTextGeneration> = {}): T
       Effect.succeed({
         summary: "## Summary\n- Explain the selected diff\n\n## Files Changed\n- Not run",
       }),
-    generateBranchName: () =>
-      Effect.succeed({
-        branch: "update-workflow",
-      }),
+    generateBranchName: () => Effect.succeed({ branch: "update-workflow" }),
     ...overrides,
-  };
-
-  return {
-    generateCommitMessage: (input) =>
-      implementation.generateCommitMessage(input).pipe(
-        Effect.mapError(
-          (cause) =>
-            new TextGenerationError({
-              operation: "generateCommitMessage",
-              detail: "fake text generation failed",
-              ...(cause !== undefined ? { cause } : {}),
-            }),
-        ),
-      ),
-    generatePrContent: (input) =>
-      implementation.generatePrContent(input).pipe(
-        Effect.mapError(
-          (cause) =>
-            new TextGenerationError({
-              operation: "generatePrContent",
-              detail: "fake text generation failed",
-              ...(cause !== undefined ? { cause } : {}),
-            }),
-        ),
-      ),
-    generateDiffSummary: (input) =>
-      implementation.generateDiffSummary(input).pipe(
-        Effect.mapError(
-          (cause) =>
-            new TextGenerationError({
-              operation: "generateDiffSummary",
-              detail: "fake text generation failed",
-              ...(cause !== undefined ? { cause } : {}),
-            }),
-        ),
-      ),
-    generateBranchName: (input) =>
-      implementation.generateBranchName(input).pipe(
-        Effect.mapError(
-          (cause) =>
-            new TextGenerationError({
-              operation: "generateBranchName",
-              detail: "fake text generation failed",
-              ...(cause !== undefined ? { cause } : {}),
-            }),
-        ),
-      ),
   };
 }
 
@@ -220,16 +124,9 @@ function runStackedAction(
   );
 }
 
-function preparePullRequestThread(
-  manager: GitManagerShape,
-  input: { cwd: string; reference: string; mode: "local" | "worktree" },
-) {
-  return manager.preparePullRequestThread(input);
-}
-
 function makeManager(input?: {
   ghScenario?: FakeGhScenario;
-  textGeneration?: Partial<FakeGitTextGeneration>;
+  textGeneration?: Partial<TextGenerationShape>;
 }) {
   const { service: gitHubCli, ghCalls } = createGitHubCliWithFakeGh(input?.ghScenario);
   const textGeneration = createTextGeneration(input?.textGeneration);
@@ -489,13 +386,17 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
     30_000,
   );
 
-  it.effect(
-    "rejects create_pr with uncommitted changes unless the caller opts out of the guard",
-    () =>
+  it.effect.each([
+    ["create_pr", "Commit local changes before creating a PR.", "created"],
+    ["push", "Commit or stash local changes before pushing.", "skipped_not_requested"],
+  ] as const)(
+    "rejects %s with uncommitted changes unless the caller opts out of the guard",
+    ([action, message, expectedPrStatus]) =>
       Effect.gen(function* () {
+        const branch = `feature/dirty-${action}`;
         const repoDir = yield* makeTempDir("glade-git-manager-");
         yield* initRepo(repoDir);
-        yield* runGit(repoDir, ["checkout", "-b", "feature/dirty-create-pr"]);
+        yield* runGit(repoDir, ["checkout", "-b", branch]);
         const remoteDir = yield* createBareRemote();
         yield* runGit(repoDir, ["remote", "add", "origin", remoteDir]);
         fs.writeFileSync(path.join(repoDir, "committed.txt"), "committed\n");
@@ -515,71 +416,28 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
                   title: "Committed work",
                   url: "https://github.com/example-org/sample-repo/pull/92",
                   baseRefName: "main",
-                  headRefName: "feature/dirty-create-pr",
+                  headRefName: branch,
                 },
               ]),
             ],
           },
         });
-        const guardedError = yield* runStackedAction(manager, {
-          cwd: repoDir,
-          action: "create_pr",
-        }).pipe(
+        const guardedError = yield* runStackedAction(manager, { cwd: repoDir, action }).pipe(
           Effect.flip,
           Effect.map((error) => error.message),
         );
-        expect(guardedError).toContain("Commit local changes before creating a PR.");
+        expect(guardedError).toContain(message);
         expect(ghCalls.some((call) => call.startsWith("pr create "))).toBe(false);
 
         const result = yield* runStackedAction(manager, {
           cwd: repoDir,
-          action: "create_pr",
+          action,
           allowDirtyWorkingTree: true,
         });
 
         expect(result.commit.status).toBe("skipped_not_requested");
         expect(result.push.status).toBe("pushed");
-        expect(result.pr.status).toBe("created");
-        const status = yield* runGit(repoDir, ["status", "--porcelain"]).pipe(
-          Effect.map((gitResult) => gitResult.stdout),
-        );
-        expect(status).toContain("uncommitted.txt");
-      }),
-    30_000,
-  );
-
-  it.effect(
-    "rejects push with uncommitted changes unless the caller opts out of the guard",
-    () =>
-      Effect.gen(function* () {
-        const repoDir = yield* makeTempDir("glade-git-manager-");
-        yield* initRepo(repoDir);
-        yield* runGit(repoDir, ["checkout", "-b", "feature/dirty-push"]);
-        const remoteDir = yield* createBareRemote();
-        yield* runGit(repoDir, ["remote", "add", "origin", remoteDir]);
-        fs.writeFileSync(path.join(repoDir, "committed.txt"), "committed\n");
-        yield* runGit(repoDir, ["add", "committed.txt"]);
-        yield* runGit(repoDir, ["commit", "-m", "Committed work"]);
-        fs.writeFileSync(path.join(repoDir, "uncommitted.txt"), "left out\n");
-
-        const { manager } = yield* makeManager();
-        const guardedError = yield* runStackedAction(manager, {
-          cwd: repoDir,
-          action: "push",
-        }).pipe(
-          Effect.flip,
-          Effect.map((error) => error.message),
-        );
-        expect(guardedError).toContain("Commit or stash local changes before pushing.");
-
-        const result = yield* runStackedAction(manager, {
-          cwd: repoDir,
-          action: "push",
-          allowDirtyWorkingTree: true,
-        });
-
-        expect(result.commit.status).toBe("skipped_not_requested");
-        expect(result.push.status).toBe("pushed");
+        expect(result.pr.status).toBe(expectedPrStatus);
         const status = yield* runGit(repoDir, ["status", "--porcelain"]).pipe(
           Effect.map((gitResult) => gitResult.stdout),
         );
@@ -644,7 +502,7 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
         },
       });
 
-      const result = yield* preparePullRequestThread(manager, {
+      const result = yield* manager.preparePullRequestThread({
         cwd: repoDir,
         reference: "81",
         mode: "worktree",
@@ -673,7 +531,7 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
         "fork-seed",
         "https://github.com/octocat/sample-repo.git",
       ]);
-      const reused = yield* preparePullRequestThread(manager, {
+      const reused = yield* manager.preparePullRequestThread({
         cwd: repoDir,
         reference: "81",
         mode: "local",
@@ -686,11 +544,13 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
         "fork-seed",
         "https://github.com/another-owner/sample-repo.git",
       ]);
-      const rejected = yield* preparePullRequestThread(manager, {
-        cwd: repoDir,
-        reference: "81",
-        mode: "worktree",
-      }).pipe(Effect.flip);
+      const rejected = yield* manager
+        .preparePullRequestThread({
+          cwd: repoDir,
+          reference: "81",
+          mode: "worktree",
+        })
+        .pipe(Effect.flip);
       expect(rejected.message).toContain("verified remote");
       expect(
         (yield* runGit(repoDir, ["config", "--get", "remote.fork-seed.url"])).stdout.trim(),
@@ -740,7 +600,7 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
           },
         });
 
-        const result = yield* preparePullRequestThread(manager, {
+        const result = yield* manager.preparePullRequestThread({
           cwd: repoDir,
           reference: "92",
           mode: "worktree",

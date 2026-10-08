@@ -6,13 +6,16 @@ import { ServerConfig } from "../../server/config";
 import { SqlitePersistenceMemory } from "../../persistence/Layers/Sqlite";
 import { AuthControlPlaneLive } from "./AuthControlPlane";
 import { BootstrapCredentialServiceLive } from "./BootstrapCredentialService";
-import { ServerAuthLive, toBootstrapExchangeAuthError } from "./ServerAuth";
+import { ServerAuthLive } from "./ServerAuth";
 import { ServerAuthPolicyLive } from "./ServerAuthPolicy";
 import { ServerSecretStoreLive } from "./ServerSecretStore";
 import { SessionCredentialServiceLive } from "./SessionCredentialService";
-import { BootstrapCredentialError } from "../Services/BootstrapCredentialService";
-import { AuthError, ServerAuth, type AuthRequest } from "../Services/ServerAuth";
-import { authenticateRpcWebSocketUpgrade } from "../../server/ws/wsRpc";
+import {
+  AuthError,
+  ServerAuth,
+  type AuthRequest,
+  type ServerAuthShape,
+} from "../Services/ServerAuth";
 
 const sessionCredentialLayer = SessionCredentialServiceLive.pipe(
   Layer.provide(ServerSecretStoreLive),
@@ -52,36 +55,22 @@ function makeCookieRequest(sessionToken: string): AuthRequest {
   };
 }
 
+const exchangeStartupOwner = (serverAuth: ServerAuthShape, baseUrl = "http://127.0.0.1:3773") =>
+  Effect.gen(function* () {
+    const pairingUrl = yield* serverAuth.issueStartupPairingUrl(baseUrl);
+    const token = new URLSearchParams(new URL(pairingUrl).hash.slice(1)).get("token") ?? "";
+    const exchanged = yield* serverAuth.exchangeBootstrapCredential(token, requestMetadata);
+    const session = yield* serverAuth.authenticateHttpRequest(
+      makeCookieRequest(exchanged.sessionToken),
+    );
+    return { sessionToken: exchanged.sessionToken, session };
+  });
+
 const runServerAuthTest = (effect: Effect.Effect<void, AuthError, ServerAuth>) =>
   effect.pipe(Effect.provide(testLayer), Effect.scoped, Effect.runPromise);
 
 describe("ServerAuthLive", () => {
-  it("maps invalid bootstrap credential failures to 401", () => {
-    const error = toBootstrapExchangeAuthError(
-      new BootstrapCredentialError({
-        message: "Unknown bootstrap credential.",
-        status: 401,
-      }),
-    );
-
-    expect(error.status).toBe(401);
-    expect(error.message).toBe("Invalid bootstrap credential.");
-  });
-
-  it("maps unexpected bootstrap failures to 500", () => {
-    const error = toBootstrapExchangeAuthError(
-      new BootstrapCredentialError({
-        message: "Failed to consume bootstrap credential.",
-        status: 500,
-        cause: new Error("sqlite is unavailable"),
-      }),
-    );
-
-    expect(error.status).toBe(500);
-    expect(error.message).toBe("Failed to validate bootstrap credential.");
-  });
-
-  it("issues client pairing credentials by default", async () => {
+  it("issues client pairing credentials by default and rejects their reuse", async () => {
     await runServerAuthTest(
       Effect.gen(function* () {
         const serverAuth = yield* ServerAuth;
@@ -98,6 +87,12 @@ describe("ServerAuthLive", () => {
         expect(verified.sessionId.length).toBeGreaterThan(0);
         expect(verified.role).toBe("client");
         expect(verified.subject).toBe("one-time-token");
+
+        const reused = yield* Effect.flip(
+          serverAuth.exchangeBootstrapCredential(pairingCredential.credential, requestMetadata),
+        ).pipe(Effect.orDie);
+        expect(reused.status).toBe(401);
+        expect(reused.message).toBe("Invalid bootstrap credential.");
       }),
     );
   });
@@ -107,25 +102,15 @@ describe("ServerAuthLive", () => {
       Effect.gen(function* () {
         const serverAuth = yield* ServerAuth;
 
-        const pairingUrl = yield* serverAuth.issueStartupPairingUrl("http://127.0.0.1:3773");
-        const token = new URLSearchParams(new URL(pairingUrl).hash.slice(1)).get("token");
         const listedPairingLinks = yield* serverAuth.listPairingLinks();
-
-        expect(token).toBeTruthy();
         expect(
           listedPairingLinks.some((pairingLink) => pairingLink.subject === "owner-bootstrap"),
         ).toBe(false);
 
-        const exchanged = yield* serverAuth.exchangeBootstrapCredential(
-          token ?? "",
-          requestMetadata,
-        );
-        const verified = yield* serverAuth.authenticateHttpRequest(
-          makeCookieRequest(exchanged.sessionToken),
-        );
+        const { session } = yield* exchangeStartupOwner(serverAuth);
 
-        expect(verified.role).toBe("owner");
-        expect(verified.subject).toBe("owner-bootstrap");
+        expect(session.role).toBe("owner");
+        expect(session.subject).toBe("owner-bootstrap");
       }),
     );
   });
@@ -135,16 +120,7 @@ describe("ServerAuthLive", () => {
       Effect.gen(function* () {
         const serverAuth = yield* ServerAuth;
 
-        const ownerPairingUrl = yield* serverAuth.issueStartupPairingUrl("http://127.0.0.1:3773");
-        const ownerToken =
-          new URLSearchParams(new URL(ownerPairingUrl).hash.slice(1)).get("token") ?? "";
-        const ownerExchange = yield* serverAuth.exchangeBootstrapCredential(
-          ownerToken,
-          requestMetadata,
-        );
-        const ownerSession = yield* serverAuth.authenticateHttpRequest(
-          makeCookieRequest(ownerExchange.sessionToken),
-        );
+        const { session: ownerSession } = yield* exchangeStartupOwner(serverAuth);
 
         const pairingCredential = yield* serverAuth.issuePairingCredential({ label: "CI phone" });
         const clientExchange = yield* serverAuth.exchangeBootstrapCredential(
@@ -180,16 +156,7 @@ describe("ServerAuthLive", () => {
       Effect.gen(function* () {
         const serverAuth = yield* ServerAuth;
 
-        const pairingUrl = yield* serverAuth.issueStartupPairingUrl("http://127.0.0.1:3773");
-        const bootstrapToken =
-          new URLSearchParams(new URL(pairingUrl).hash.slice(1)).get("token") ?? "";
-        const exchanged = yield* serverAuth.exchangeBootstrapCredential(
-          bootstrapToken,
-          requestMetadata,
-        );
-        const session = yield* serverAuth.authenticateHttpRequest(
-          makeCookieRequest(exchanged.sessionToken),
-        );
+        const { session } = yield* exchangeStartupOwner(serverAuth);
         const websocketToken = yield* serverAuth.issueWebSocketToken(session);
         const upgraded = yield* serverAuth.authenticateWebSocketUpgrade({
           headers: {},
@@ -275,47 +242,28 @@ describe("ServerAuthLive", () => {
     );
   });
 
-  it("bootstraps a remote owner session without accepting the legacy websocket token", async () => {
+  it("authenticates cookie websocket upgrades and ignores the legacy query token", async () => {
     await runServerAuthTest(
       Effect.gen(function* () {
         const serverAuth = yield* ServerAuth;
-        const config = {
-          host: "0.0.0.0",
-          authToken: "remote-startup-secret",
-          publicUrl: undefined,
-        } as const;
+        const legacyUrl = new URL("ws://192.168.1.50:3773/ws?token=remote-startup-secret");
 
-        const legacyError = yield* authenticateRpcWebSocketUpgrade({
-          config,
-          legacyToken: "remote-startup-secret",
-          request: {
-            headers: {},
-            cookies: {},
-            url: new URL("ws://192.168.1.50:3773/ws?token=remote-startup-secret"),
-          },
-          serverAuth,
-        }).pipe(Effect.flip, Effect.orDie);
+        const legacyError = yield* Effect.flip(
+          serverAuth.authenticateWebSocketUpgrade({ headers: {}, cookies: {}, url: legacyUrl }),
+        ).pipe(Effect.orDie);
         expect(legacyError.status).toBe(401);
 
-        const pairingUrl = yield* serverAuth.issueStartupPairingUrl("http://192.168.1.50:3773");
-        const bootstrapToken =
-          new URLSearchParams(new URL(pairingUrl).hash.slice(1)).get("token") ?? "";
-        const exchanged = yield* serverAuth.exchangeBootstrapCredential(
-          bootstrapToken,
-          requestMetadata,
-        );
-        const upgraded = yield* authenticateRpcWebSocketUpgrade({
-          config,
-          legacyToken: "remote-startup-secret",
-          request: {
-            ...makeCookieRequest(exchanged.sessionToken),
-            url: new URL("ws://192.168.1.50:3773/ws?token=remote-startup-secret"),
-          },
+        const { sessionToken } = yield* exchangeStartupOwner(
           serverAuth,
+          "http://192.168.1.50:3773",
+        );
+        const upgraded = yield* serverAuth.authenticateWebSocketUpgrade({
+          ...makeCookieRequest(sessionToken),
+          url: legacyUrl,
         });
 
-        expect(upgraded?.role).toBe("owner");
-        expect(upgraded?.subject).toBe("owner-bootstrap");
+        expect(upgraded.role).toBe("owner");
+        expect(upgraded.subject).toBe("owner-bootstrap");
       }),
     );
   });

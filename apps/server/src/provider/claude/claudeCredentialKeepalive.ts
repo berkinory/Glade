@@ -9,7 +9,7 @@ const execFileAsync = promisify(execProcessFile);
 const DEFAULT_INTERVAL_MINUTES = 30;
 const COMMAND_TIMEOUT_MS = 20_000;
 export const CLAUDE_CREDENTIAL_KEEPALIVE_MAX_INTERVAL_MS = 2_147_483_647;
-export const CLAUDE_CREDENTIAL_KEEPALIVE_AUTH_STATUS_ARGS = ["auth", "status"] as const;
+const CLAUDE_CREDENTIAL_KEEPALIVE_AUTH_STATUS_ARGS = ["auth", "status"] as const;
 
 function envFlagEnabled(value: string | undefined): boolean {
   const normalized = value?.trim().toLowerCase();
@@ -27,7 +27,7 @@ export function isClaudeCredentialKeepaliveEnabled(
   return platform === "darwin" && envFlagEnabled(env.GLADE_CLAUDE_KEEPALIVE);
 }
 
-export function resolveClaudeCredentialKeepaliveBinaryPath(binaryPath: string | undefined): string {
+function resolveClaudeCredentialKeepaliveBinaryPath(binaryPath: string | undefined): string {
   return binaryPath?.trim() || "claude";
 }
 

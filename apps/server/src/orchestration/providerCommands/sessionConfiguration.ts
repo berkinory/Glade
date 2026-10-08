@@ -265,11 +265,7 @@ export function makeProviderSessionConfiguration(input: {
       activeSessionBeforeEnsure !== undefined &&
       providerWorkspaceChanged(activeSessionBeforeEnsure.cwd, effectiveCwd);
 
-    if (
-      workspaceChanged &&
-      providerService.hasLiveRuntimeTasks &&
-      (yield* providerService.hasLiveRuntimeTasks({ threadId }))
-    ) {
+    if (workspaceChanged && (yield* providerService.hasLiveRuntimeTasks({ threadId }))) {
       return yield* new ProviderAdapterValidationError({
         provider: preferredProvider,
         operation: "thread.turn.start",

@@ -13,7 +13,7 @@ const testLayer = BootstrapCredentialServiceLive.pipe(
 );
 
 describe("BootstrapCredentialServiceLive", () => {
-  it("issues, lists, and consumes one-time pairing credentials", async () => {
+  it("issues, lists, and consumes one-time pairing credentials exactly once", async () => {
     await Effect.gen(function* () {
       const service = yield* BootstrapCredentialService;
       const issued = yield* service.issueOneTimeToken({ label: "Test device" });
@@ -28,17 +28,9 @@ describe("BootstrapCredentialServiceLive", () => {
 
       const afterConsume = yield* service.listActive();
       expect(afterConsume).toEqual([]);
-    }).pipe(Effect.provide(testLayer), Effect.runPromise);
-  });
 
-  it("rejects consumed credentials", async () => {
-    await Effect.gen(function* () {
-      const service = yield* BootstrapCredentialService;
-      const issued = yield* service.issueOneTimeToken();
-      yield* service.consume(issued.credential);
-
-      const exit = yield* service.consume(issued.credential).pipe(Effect.exit);
-      expect(Exit.isFailure(exit)).toBe(true);
+      const reused = yield* service.consume(issued.credential).pipe(Effect.exit);
+      expect(Exit.isFailure(reused)).toBe(true);
     }).pipe(Effect.provide(testLayer), Effect.runPromise);
   });
 

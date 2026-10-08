@@ -22,21 +22,6 @@ describe("remote access policy", () => {
     ).toContain("without GLADE_AUTH_TOKEN");
   });
 
-  it("rejects invalid public URLs in the shared embedded-server policy", () => {
-    for (const publicUrl of [
-      new URL("http://glade.example.test/"),
-      new URL("https://glade.example.test/app"),
-    ]) {
-      expect(
-        remoteAccessPolicyError({
-          ...remoteBase,
-          host: "127.0.0.1",
-          publicUrl,
-        }),
-      ).toContain("must be an HTTPS root origin");
-    }
-  });
-
   it("accepts only credential-free HTTPS root origins", () => {
     expect(normalizeHttpsPublicOrigin(new URL("https://glade.example.test/"))?.origin).toBe(
       "https://glade.example.test",
@@ -48,7 +33,11 @@ describe("remote access policy", () => {
       "https://glade.example.test/?query=1",
       "https://glade.example.test/#fragment",
     ]) {
-      expect(normalizeHttpsPublicOrigin(new URL(value))).toBeNull();
+      const publicUrl = new URL(value);
+      expect(normalizeHttpsPublicOrigin(publicUrl)).toBeNull();
+      expect(remoteAccessPolicyError({ ...remoteBase, host: "127.0.0.1", publicUrl })).toContain(
+        "must be an HTTPS root origin",
+      );
     }
   });
 });

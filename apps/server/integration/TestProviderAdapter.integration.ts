@@ -48,8 +48,6 @@ type FixtureProviderRuntimeEvent = {
   readonly [key: string]: unknown;
 };
 
-export type LegacyProviderRuntimeEvent = FixtureProviderRuntimeEvent;
-
 interface SessionState {
   session: ProviderSession;
   readonly lifecycleGeneration: string | undefined;

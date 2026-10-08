@@ -18,58 +18,40 @@ describe("resolveElectronUpdaterCacheDirName", () => {
 });
 
 describe("resolveElectronUpdaterPendingCacheDir", () => {
-  it("matches electron-updater's pending cache path on macOS", () => {
-    expect(
-      resolveElectronUpdaterPendingCacheDir({
-        cacheDirName: "Glade-updater",
-        platform: "darwin",
-        homeDir: "/Users/test",
-      }),
-    ).toBe("/Users/test/Library/Caches/Glade-updater/pending");
-  });
-
-  it("matches electron-updater's pending cache path on Windows", () => {
-    expect(
-      resolveElectronUpdaterPendingCacheDir({
-        cacheDirName: "Glade-updater",
+  it.each([
+    {
+      name: "macOS",
+      input: { platform: "darwin", homeDir: "/Users/test" },
+      expected: "/Users/test/Library/Caches/Glade-updater/pending",
+    },
+    {
+      name: "Windows",
+      input: {
         platform: "win32",
         homeDir: "C:\\Users\\test",
         localAppData: "C:\\Users\\test\\AppData\\Local",
-      }),
-    ).toBe("C:\\Users\\test\\AppData\\Local\\Glade-updater\\pending");
-  });
-
-  it("falls back from an empty Windows cache env var like electron-updater", () => {
-    expect(
-      resolveElectronUpdaterPendingCacheDir({
-        cacheDirName: "Glade-updater",
-        platform: "win32",
-        homeDir: "C:\\Users\\test",
-        localAppData: "",
-      }),
-    ).toBe("C:\\Users\\test\\AppData\\Local\\Glade-updater\\pending");
-  });
-
-  it("matches electron-updater's pending cache path on Linux", () => {
-    expect(
-      resolveElectronUpdaterPendingCacheDir({
-        cacheDirName: "Glade-updater",
-        platform: "linux",
-        homeDir: "/home/test",
-        xdgCacheHome: "/tmp/cache",
-      }),
-    ).toBe("/tmp/cache/Glade-updater/pending");
-  });
-
-  it("falls back from an empty Linux cache env var like electron-updater", () => {
-    expect(
-      resolveElectronUpdaterPendingCacheDir({
-        cacheDirName: "Glade-updater",
-        platform: "linux",
-        homeDir: "/home/test",
-        xdgCacheHome: "",
-      }),
-    ).toBe("/home/test/.cache/Glade-updater/pending");
+      },
+      expected: "C:\\Users\\test\\AppData\\Local\\Glade-updater\\pending",
+    },
+    {
+      name: "Windows with an empty cache env var",
+      input: { platform: "win32", homeDir: "C:\\Users\\test", localAppData: "" },
+      expected: "C:\\Users\\test\\AppData\\Local\\Glade-updater\\pending",
+    },
+    {
+      name: "Linux",
+      input: { platform: "linux", homeDir: "/home/test", xdgCacheHome: "/tmp/cache" },
+      expected: "/tmp/cache/Glade-updater/pending",
+    },
+    {
+      name: "Linux with an empty cache env var",
+      input: { platform: "linux", homeDir: "/home/test", xdgCacheHome: "" },
+      expected: "/home/test/.cache/Glade-updater/pending",
+    },
+  ] as const)("matches electron-updater's pending cache path on $name", ({ input, expected }) => {
+    expect(resolveElectronUpdaterPendingCacheDir({ cacheDirName: "Glade-updater", ...input })).toBe(
+      expected,
+    );
   });
 
   it("returns null when no cache dir is configured", () => {

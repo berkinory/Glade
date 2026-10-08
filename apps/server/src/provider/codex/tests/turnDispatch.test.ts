@@ -67,54 +67,48 @@ describe("sendTurn", () => {
     );
   });
 
-  it("sends text and image user input items to turn/start", async () => {
-    const { manager, context, requireSession, sendRequest, updateSession } = createRequestHarness();
+  it.each(["ready", "running"] as const)(
+    "starts a fresh native turn with text and image input from a %s session",
+    async (status) => {
+      const { manager, context, requireSession, sendRequest, updateSession } =
+        createRequestHarness();
+      context.session.status = status;
+      context.session.activeTurnId = status === "running" ? "turn_active" : undefined;
 
-    const result = await manager.sendTurn({
-      threadId: ThreadId.makeUnsafe("thread_1"),
-      input: "Inspect this image",
-      attachments: [
-        {
-          type: "image",
-          url: "data:image/png;base64,AAAA",
-        },
-      ],
-      model: "gpt-5.3",
-      serviceTier: "fast",
-      effort: "high",
-    });
+      const result = await manager.sendTurn({
+        threadId: ThreadId.makeUnsafe("thread_1"),
+        input: "Inspect this image",
+        attachments: [{ type: "image", url: "data:image/png;base64,AAAA" }],
+        model: "gpt-5.3",
+        serviceTier: "fast",
+        effort: "high",
+      });
 
-    expect(result).toEqual({
-      threadId: "thread_1",
-      turnId: "turn_1",
-      resumeCursor: { threadId: "thread_1" },
-    });
-    expect(requireSession).toHaveBeenCalledWith("thread_1");
-    expect(sendRequest).toHaveBeenCalledWith(context, "turn/start", {
-      threadId: "thread_1",
-      ...fullAccessTurnOverrides,
-      summary: "auto",
-      input: [
-        {
-          type: "text",
-          text: "Inspect this image",
-          text_elements: [],
-        },
-        {
-          type: "image",
-          url: "data:image/png;base64,AAAA",
-        },
-      ],
-      model: "gpt-5.3",
-      serviceTier: "fast",
-      effort: "high",
-    });
-    expect(updateSession).toHaveBeenCalledWith(context, {
-      status: "running",
-      activeTurnId: "turn_1",
-      resumeCursor: { threadId: "thread_1" },
-    });
-  });
+      expect(result).toEqual({
+        threadId: "thread_1",
+        turnId: "turn_1",
+        resumeCursor: { threadId: "thread_1" },
+      });
+      expect(requireSession).toHaveBeenCalledWith("thread_1");
+      expect(sendRequest).toHaveBeenCalledWith(context, "turn/start", {
+        threadId: "thread_1",
+        ...fullAccessTurnOverrides,
+        summary: "auto",
+        input: [
+          { type: "text", text: "Inspect this image", text_elements: [] },
+          { type: "image", url: "data:image/png;base64,AAAA" },
+        ],
+        model: "gpt-5.3",
+        serviceTier: "fast",
+        effort: "high",
+      });
+      expect(updateSession).toHaveBeenCalledWith(context, {
+        status: "running",
+        activeTurnId: "turn_1",
+        resumeCursor: { threadId: "thread_1" },
+      });
+    },
+  );
 
   it.each([
     { runtimeMode: "approval-required", expected: approvalRequiredTurnOverrides },
@@ -136,60 +130,6 @@ describe("sendTurn", () => {
       });
     },
   );
-
-  it("starts a fresh turn even when the session currently reports running", async () => {
-    const { manager, context, sendRequest, updateSession } = createRequestHarness();
-    context.session.status = "running";
-    context.session.activeTurnId = "turn_active";
-    const respond = sendRequest.getMockImplementation()!;
-    sendRequest.mockImplementation(async (context, method, ...rest) =>
-      method === "turn/start" ? { turn: { id: "turn_next" } } : respond(context, method, ...rest),
-    );
-
-    const result = await manager.sendTurn({
-      threadId: ThreadId.makeUnsafe("thread_1"),
-      input: "Focus on the failing tests first",
-      attachments: [
-        {
-          type: "image",
-          url: "data:image/png;base64,AAAA",
-        },
-      ],
-      model: "gpt-5.4",
-      serviceTier: "fast",
-      effort: "high",
-    });
-
-    expect(result).toEqual({
-      threadId: "thread_1",
-      turnId: "turn_next",
-      resumeCursor: { threadId: "thread_1" },
-    });
-    expect(sendRequest).toHaveBeenCalledWith(context, "turn/start", {
-      threadId: "thread_1",
-      ...fullAccessTurnOverrides,
-      summary: "auto",
-      input: [
-        {
-          type: "text",
-          text: "Focus on the failing tests first",
-          text_elements: [],
-        },
-        {
-          type: "image",
-          url: "data:image/png;base64,AAAA",
-        },
-      ],
-      model: "gpt-5.4",
-      serviceTier: "fast",
-      effort: "high",
-    });
-    expect(updateSession).toHaveBeenCalledWith(context, {
-      status: "running",
-      activeTurnId: "turn_next",
-      resumeCursor: { threadId: "thread_1" },
-    });
-  });
 });
 
 describe("steerTurn", () => {

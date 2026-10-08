@@ -347,36 +347,20 @@ export interface JsonRpcPendingRequest {
   readonly reject: (error: Error) => void;
 }
 
-export interface JsonRpcStdioLifecycleHooks {
-  readonly onSpawn?: (generation: number) => void;
-  readonly onRespawn?: (generation: number) => void;
-  readonly onExit?: (error: Error) => void;
-}
-
 export interface JsonRpcStdioRequestRegistryOptions {
   readonly pending?: Map<string, JsonRpcPendingRequest>;
   readonly requestTimeoutMs?: number;
-  readonly includeJsonRpcVersion?: boolean;
-  readonly nextRequestId?: number;
-  readonly timeoutError?: (method: string) => Error;
   readonly responseError?: (input: {
     readonly method: string;
     readonly id: JsonRpcId;
     readonly error: NonNullable<JsonRpcResponse["error"]>;
   }) => Error;
-  readonly lifecycle?: JsonRpcStdioLifecycleHooks;
 }
 
 export class JsonRpcStdioRequestRegistry {
   private readonly pending: Map<string, JsonRpcPendingRequest>;
   private readonly requestTimeoutMs: number;
-  private readonly includeJsonRpcVersion: boolean;
-  private readonly timeoutError: (method: string) => Error;
   private readonly responseError: NonNullable<JsonRpcStdioRequestRegistryOptions["responseError"]>;
-  private readonly lifecycle: JsonRpcStdioLifecycleHooks;
-  private nextId: number;
-  private generation = 0;
-  private processActive = false;
 
   constructor(options: JsonRpcStdioRequestRegistryOptions = {}) {
     this.pending = options.pending ?? new Map();
@@ -384,35 +368,16 @@ export class JsonRpcStdioRequestRegistry {
     if (!Number.isSafeInteger(this.requestTimeoutMs) || this.requestTimeoutMs <= 0) {
       throw new RangeError("JSON-RPC request timeout must be a positive safe integer");
     }
-    this.includeJsonRpcVersion = options.includeJsonRpcVersion ?? false;
-    this.nextId = options.nextRequestId ?? 1;
-    this.timeoutError =
-      options.timeoutError ?? ((method) => new JsonRpcStdioRequestTimeoutError(method));
     this.responseError =
       options.responseError ??
       ((input) =>
         new Error(
           `${input.method} failed: ${input.error.message ?? "JSON-RPC peer reported an error"}`,
         ));
-    this.lifecycle = options.lifecycle ?? {};
   }
 
   get size(): number {
     return this.pending.size;
-  }
-
-  get nextRequestId(): number {
-    return this.nextId;
-  }
-
-  request(
-    method: string,
-    params: unknown,
-    write: (message: unknown) => Promise<void> | void,
-    timeoutMs = this.requestTimeoutMs,
-  ): Promise<unknown> {
-    const id = this.nextId++;
-    return this.requestWithId(id, method, params, write, timeoutMs);
   }
 
   requestWithId(
@@ -435,16 +400,11 @@ export class JsonRpcStdioRequestRegistry {
     return new Promise<unknown>((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.pending.delete(key);
-        reject(this.timeoutError(method));
+        reject(new JsonRpcStdioRequestTimeoutError(method));
       }, timeoutMs);
       timeout.unref?.();
       this.pending.set(key, { method, timeout, resolve, reject });
-      const message = {
-        ...(this.includeJsonRpcVersion ? { jsonrpc: "2.0" as const } : {}),
-        id,
-        method,
-        params,
-      };
+      const message = { id, method, params };
       const rejectPending = (cause: unknown) => {
         const request = this.pending.get(key);
         if (!request) return;
@@ -486,21 +446,6 @@ export class JsonRpcStdioRequestRegistry {
       request.reject(error);
     }
     this.pending.clear();
-  }
-
-  processStarted(): void {
-    const wasStarted = this.generation > 0;
-    this.generation += 1;
-    this.processActive = true;
-    this.lifecycle.onSpawn?.(this.generation);
-    if (wasStarted) this.lifecycle.onRespawn?.(this.generation);
-  }
-
-  processExited(error: Error): void {
-    this.rejectAll(error);
-    if (!this.processActive) return;
-    this.processActive = false;
-    this.lifecycle.onExit?.(error);
   }
 }
 

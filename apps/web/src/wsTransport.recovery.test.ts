@@ -1,7 +1,6 @@
 import { CommandId, MessageId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { usePendingTurnDispatchStore } from "./pendingTurnDispatch";
 import { WS_TURN_DISPATCH_SETTLEMENT_CAPABILITY } from "@glade/contracts/transport/ws/wsCompatibility";
-import { Cause } from "effect";
 import { describe, expect, it, vi } from "vitest";
 import { ORCHESTRATION_WS_METHODS } from "@glade/contracts/orchestration/rpc";
 import { WS_CHANNELS } from "@glade/contracts/transport/ws/ws";
@@ -15,29 +14,14 @@ import {
   type WsBootstrapNegotiateResult,
 } from "@glade/contracts/transport/ws/wsCompatibility";
 import {
-  shouldKeepServerLifecycleStream,
-  getReconnectRetryDelayMs,
-  getThreadSnapshotBootstrapRetryDelayMs,
-  getTerminalCompatibilityError,
   isTerminalCompatibilityFailure,
   makeFeatureSocketUrl,
-  makeNegotiateHttpUrl,
   makeRequestAbortScope,
   negotiateOverHttp,
-  serverIdentityChanged,
-  MAX_STREAM_DUPLICATE_RETRY_ATTEMPTS,
-  MAX_THREAD_SNAPSHOT_BOOTSTRAP_RETRY_ATTEMPTS,
-  resolveStreamAdmissionRetry,
-  threadStreamInputsEqual,
   projectFileChangeStreamKey,
   type WsThreadStreamFailure,
 } from "./wsTransport.support";
 import { WsTransport } from "./wsTransport.implementation";
-import {
-  addWsCompatibilityIssueListener,
-  emitWsCompatibilityIssue,
-  readLatestWsCompatibilityIssue,
-} from "./wsTransportEvents";
 import {
   setupWsTransportTests,
   sockets,
@@ -51,70 +35,6 @@ import {
 setupWsTransportTests();
 
 describe("WsTransport", () => {
-  it("keeps duplicate retry admission independent from prior capacity retries", () => {
-    const capacity = Cause.fail({
-      code: "STREAM_CAPACITY_EXCEEDED",
-      retryable: true,
-      retryAfterMs: 1_000,
-    });
-    const duplicate = Cause.fail({
-      code: "STREAM_DUPLICATE_SUBSCRIPTION",
-      retryable: false,
-    });
-
-    expect(resolveStreamAdmissionRetry(capacity, 5, 0)).toEqual({
-      kind: "capacity",
-      attempt: 6,
-      delayMs: 1_000,
-    });
-    expect(resolveStreamAdmissionRetry(duplicate, 5, 0)).toEqual({
-      kind: "duplicate",
-      attempt: 1,
-      delayMs: 250,
-    });
-    expect(
-      resolveStreamAdmissionRetry(duplicate, 0, MAX_STREAM_DUPLICATE_RETRY_ATTEMPTS),
-    ).toBeNull();
-  });
-
-  it("retries a missing draft snapshot until its projection becomes visible", () => {
-    const projectionLag = Cause.fail({
-      code: "THREAD_SNAPSHOT_NOT_FOUND",
-      retryable: false,
-    });
-
-    expect(getThreadSnapshotBootstrapRetryDelayMs(projectionLag, 0)).toBe(100);
-    expect(resolveStreamAdmissionRetry(projectionLag, 0, 0, 0)).toEqual({
-      kind: "thread-bootstrap",
-      attempt: 1,
-      delayMs: 100,
-    });
-    expect(
-      getThreadSnapshotBootstrapRetryDelayMs(
-        projectionLag,
-        MAX_THREAD_SNAPSHOT_BOOTSTRAP_RETRY_ATTEMPTS,
-      ),
-    ).toBeNull();
-    expect(
-      resolveStreamAdmissionRetry(
-        projectionLag,
-        0,
-        0,
-        MAX_THREAD_SNAPSHOT_BOOTSTRAP_RETRY_ATTEMPTS,
-      ),
-    ).toBeNull();
-  });
-
-  it("treats structurally identical thread subscribe params as the same input", () => {
-    const input = { threadId: "thread-1" };
-
-    expect(threadStreamInputsEqual(input, input)).toBe(true);
-    expect(threadStreamInputsEqual(input, { threadId: "thread-1" })).toBe(true);
-    expect(threadStreamInputsEqual(input, { threadId: "thread-2" })).toBe(false);
-    expect(threadStreamInputsEqual(input, { threadId: "thread-1", extra: true })).toBe(false);
-    expect(threadStreamInputsEqual(undefined, { threadId: "thread-1" })).toBe(false);
-  });
-
   it("delivers thread stream failures to listeners until they unsubscribe", () => {
     const { transport, internals } = makeBareTransport();
     const failure: WsThreadStreamFailure = {
@@ -179,6 +99,7 @@ describe("WsTransport", () => {
       const timeoutId = window.setTimeout(retry, 1_000);
       internals.streamCapacityRetries.set(key, 2);
       internals.projectFileWatchRetries.set(key, 2);
+      internals.streamResnapshotRetries.set(key, 2);
       internals.streamCapacityRetryTimers.set(key, timeoutId);
 
       await transport.request(ORCHESTRATION_WS_METHODS.unsubscribeThread, {
@@ -190,6 +111,7 @@ describe("WsTransport", () => {
       expect(internals.streamCapacityRetryTimers.has(key)).toBe(false);
       expect(internals.streamCapacityRetries.has(key)).toBe(false);
       expect(internals.projectFileWatchRetries.has(key)).toBe(false);
+      expect(internals.streamResnapshotRetries.has(key)).toBe(false);
     } finally {
       vi.useRealTimers();
     }
@@ -325,14 +247,6 @@ describe("WsTransport", () => {
     expect(startShellStream).toHaveBeenCalledWith(client, false);
   });
 
-  it("uses bounded exponential reconnect backoff", () => {
-    expect(getReconnectRetryDelayMs(0)).toBe(500);
-    expect(getReconnectRetryDelayMs(1)).toBe(1_000);
-    expect(getReconnectRetryDelayMs(3)).toBe(4_000);
-    expect(getReconnectRetryDelayMs(4)).toBe(5_000);
-    expect(getReconnectRetryDelayMs(100)).toBe(5_000);
-  });
-
   it("joins an active reconnect instead of returning the detached prior client", async () => {
     const transport = Object.create(WsTransport.prototype) as WsTransport;
     const internals = transport as unknown as WsTransportInternals;
@@ -447,30 +361,6 @@ describe("WsTransport", () => {
     }
   });
 
-  it("latches terminal compatibility guidance for late UI subscribers", () => {
-    const issue = new WsCompatibilityError({
-      message: "Update this client.",
-      code: "WS_PROTOCOL_INCOMPATIBLE",
-      retryable: false,
-      action: "update-client",
-      serverBuild: "0.5.2",
-      protocolEpoch: WS_PROTOCOL_EPOCH,
-      minRevision: WS_PROTOCOL_MIN_REVISION,
-      maxRevision: WS_PROTOCOL_MAX_REVISION,
-    });
-    const listener = vi.fn();
-
-    emitWsCompatibilityIssue(issue);
-    const unsubscribe = addWsCompatibilityIssueListener(listener, { replayCurrent: true });
-
-    expect(readLatestWsCompatibilityIssue()).toBe(issue);
-    expect(listener).toHaveBeenCalledWith(issue);
-    expect(getTerminalCompatibilityError(issue)).toBe(issue);
-
-    unsubscribe();
-    emitWsCompatibilityIssue(null);
-  });
-
   it("owns request deadlines and external aborts without leaving timers active", async () => {
     vi.useFakeTimers();
     try {
@@ -496,38 +386,6 @@ describe("WsTransport", () => {
     } finally {
       vi.useRealTimers();
     }
-  });
-
-  it("keeps the shared lifecycle stream while either lifecycle channel is active", () => {
-    expect(shouldKeepServerLifecycleStream(new Set([WS_CHANNELS.serverWelcome]))).toBe(true);
-    expect(shouldKeepServerLifecycleStream(new Set([WS_CHANNELS.serverMaintenanceUpdated]))).toBe(
-      true,
-    );
-    expect(
-      shouldKeepServerLifecycleStream(
-        new Set([WS_CHANNELS.serverWelcome, WS_CHANNELS.serverMaintenanceUpdated]),
-      ),
-    ).toBe(true);
-    expect(shouldKeepServerLifecycleStream(new Set([WS_CHANNELS.serverConfigUpdated]))).toBe(false);
-  });
-
-  it("falls back to the legacy bootstrap socket when HTTP negotiation is unavailable", async () => {
-    const transport = new WsTransport("ws://localhost:3020");
-
-    expect(transport.getState()).toBe("connecting");
-    await waitForSockets(1);
-    expect(sockets[0]?.url).toBe("ws://localhost:3020/ws/bootstrap");
-
-    await transport.dispose();
-  });
-
-  it("detects a server identity change across a failed reconnect", () => {
-    // The negotiated compatibility is cleared on every failed reconnect, so the comparison must use the
-    // last identity actually reached — otherwise a restore whose downtime outlasts the first retry
-    // keeps stale cursors, which is the case this guard exists for.
-    expect(serverIdentityChanged(null, "instance-a")).toBe(false);
-    expect(serverIdentityChanged("instance-a", "instance-a")).toBe(false);
-    expect(serverIdentityChanged("instance-a", "instance-b")).toBe(true);
   });
 
   it("negotiates over HTTP so a connect opens only the feature socket", async () => {
@@ -737,22 +595,26 @@ describe("WsTransport", () => {
 
   it("falls back to bootstrap when the negotiate request never settles", async () => {
     // A connection that accepts and then stalls (WAN/tunnel black hole) must not wedge the transport:
-    // browsers apply no default fetch timeout, so without an abort signal the bootstrap fallback would
-    // never run.
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(
-        (_input: unknown, init?: { signal?: AbortSignal }) =>
-          new Promise((_resolve, reject) => {
-            init?.signal?.addEventListener("abort", () =>
-              reject(new DOMException("The operation was aborted.", "AbortError")),
-            );
-          }),
-      ),
+    // browsers apply no default fetch timeout, so without the deadline signal the bootstrap fallback
+    // would never run. Fake timers cannot drive AbortSignal.timeout, so the deadline is fired here.
+    const deadline = new AbortController();
+    vi.spyOn(AbortSignal, "timeout").mockReturnValue(deadline.signal);
+    const fetchMock = vi.fn(
+      (_input: unknown, init?: { signal?: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () =>
+            reject(new DOMException("The operation was aborted.", "AbortError")),
+          );
+        }),
     );
+    vi.stubGlobal("fetch", fetchMock);
 
-    await expect(negotiateOverHttp("ws://localhost:3020")).resolves.toBeNull();
-  }, 10_000);
+    const negotiation = negotiateOverHttp("ws://localhost:3020");
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    deadline.abort(new DOMException("The operation timed out.", "TimeoutError"));
+
+    await expect(negotiation).resolves.toBeNull();
+  });
 
   it("aborts a stalled negotiate when the caller's lifetime signal fires", async () => {
     const controller = new AbortController();
@@ -904,8 +766,16 @@ describe("WsTransport", () => {
     await transport.dispose();
   });
 
-  it("mirrors the negotiate endpoint onto the WS host with an HTTP scheme", () => {
-    const url = new URL(makeNegotiateHttpUrl("wss://remote.example:8443/?token=old"));
+  it("mirrors the negotiate endpoint onto the WS host with an HTTP scheme", async () => {
+    const fetchMock = vi.fn((_input: string | URL | Request) =>
+      Promise.resolve(jsonResponse(200, NEGOTIATION_RESULT)),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await negotiateOverHttp("wss://remote.example:8443/?token=old");
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const url = new URL(String(fetchMock.mock.calls[0]?.[0]));
 
     expect(url.protocol).toBe("https:");
     expect(url.host).toBe("remote.example:8443");

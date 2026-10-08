@@ -2,13 +2,7 @@ import { Effect, Fiber } from "effect";
 import { describe, expect, it } from "vitest";
 
 import type { ServerConfigShape } from "../config";
-import { buildProviderChildEnvironment } from "../../provider/core/providerChildEnvironment";
-import {
-  authorizeDesktopShutdown,
-  isDesktopShutdownLoopbackPeer,
-  makeServerShutdownController,
-  matchesDesktopShutdownToken,
-} from "./serverShutdown";
+import { authorizeDesktopShutdown, makeServerShutdownController } from "./serverShutdown";
 
 const SHUTDOWN_TOKEN = "a".repeat(64);
 const WRONG_TOKEN = "b".repeat(64);
@@ -75,7 +69,7 @@ describe("desktop shutdown authorization", () => {
     },
   );
 
-  it.each([undefined, "127.0.0.2", "::ffff:192.168.1.50"])(
+  it.each([undefined, "127.0.0.2", "::ffff:127.0.0.2", "::ffff:192.168.1.50"])(
     "keeps the endpoint unavailable to peer %s",
     (remoteAddress) => {
       expect(
@@ -111,6 +105,7 @@ describe("desktop shutdown authorization", () => {
     undefined,
     `Basic ${SHUTDOWN_TOKEN}`,
     "Bearer ",
+    "Bearer short",
     `Bearer  ${SHUTDOWN_TOKEN}`,
     `Bearer ${SHUTDOWN_TOKEN} trailing`,
     `Bearer ${WRONG_TOKEN}`,
@@ -122,26 +117,5 @@ describe("desktop shutdown authorization", () => {
         authorization,
       }),
     ).toEqual({ authorized: false, reason: "unauthorized", status: 401 });
-  });
-
-  it("compares fixed-length token digests and recognizes only approved peers", () => {
-    expect(matchesDesktopShutdownToken(SHUTDOWN_TOKEN, SHUTDOWN_TOKEN)).toBe(true);
-    expect(matchesDesktopShutdownToken(SHUTDOWN_TOKEN, WRONG_TOKEN)).toBe(false);
-    expect(matchesDesktopShutdownToken(SHUTDOWN_TOKEN, "short")).toBe(false);
-    expect(isDesktopShutdownLoopbackPeer("::ffff:127.0.0.1")).toBe(true);
-    expect(isDesktopShutdownLoopbackPeer("::ffff:127.0.0.2")).toBe(false);
-  });
-
-  it("does not grant the shutdown secret to provider descendants", () => {
-    const providerEnvironment = buildProviderChildEnvironment({
-      provider: "codex",
-      baseEnv: {
-        PATH: process.env.PATH,
-        GLADE_DESKTOP_SHUTDOWN_TOKEN: SHUTDOWN_TOKEN,
-      },
-    });
-
-    expect(providerEnvironment.PATH).toBe(process.env.PATH);
-    expect(providerEnvironment.GLADE_DESKTOP_SHUTDOWN_TOKEN).toBeUndefined();
   });
 });

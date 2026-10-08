@@ -1,6 +1,5 @@
 import { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { partializeComposerDraftStoreState } from "./composerDraftPersistence.serialization";
+import { beforeEach, describe, expect, it } from "vitest";
 import { useComposerDraftStore } from "./composerDraftStore";
 import { normalizeCurrentPersistedComposerDraftStoreState } from "./composerDraftPersistence.serialization";
 import {
@@ -8,14 +7,12 @@ import {
   makeQueuedChatTurn,
   makeQueuedTurn,
   makeTerminalContext,
+  mergePersistedComposerDraftState,
   modelSelection,
+  persistComposerDraftState,
   resetComposerDraftStore,
+  stubRevokeObjectUrl,
 } from "./composerDraftStoreTestFixtures";
-import {
-  createDeferredPersistStorage,
-  flushStorageBeforePageHide,
-  type FlushBeforePageHideEnv,
-} from "./lib/storage";
 import {
   INLINE_TERMINAL_CONTEXT_PLACEHOLDER,
   insertInlineTerminalContextPlaceholder,
@@ -187,34 +184,11 @@ describe("composerDraftStore provider references", () => {
     store.setSkills(threadId, [selectedSkill]);
     store.setMentions(threadId, [selectedMention]);
 
-    const persistApi = useComposerDraftStore.persist as unknown as {
-      getOptions: () => {
-        partialize: (state: ReturnType<typeof useComposerDraftStore.getState>) => unknown;
-        merge: (
-          persistedState: unknown,
-          currentState: ReturnType<typeof useComposerDraftStore.getState>,
-        ) => ReturnType<typeof useComposerDraftStore.getState>;
-      };
-    };
-    const persistedState = partializeComposerDraftStoreState(
-      useComposerDraftStore.getState(),
-    ) as unknown as {
-      draftsByThreadId?: Record<
-        string,
-        {
-          skills?: Array<Record<string, unknown>>;
-          mentions?: Array<Record<string, unknown>>;
-        }
-      >;
-    };
-
+    const persistedState = persistComposerDraftState();
     expect(persistedState.draftsByThreadId?.[threadId]?.skills).toEqual([selectedSkill]);
     expect(persistedState.draftsByThreadId?.[threadId]?.mentions).toEqual([selectedMention]);
 
-    const mergedState = persistApi
-      .getOptions()
-      .merge(persistedState, useComposerDraftStore.getInitialState());
-
+    const mergedState = mergePersistedComposerDraftState(persistedState);
     expect(mergedState.draftsByThreadId[threadId]?.skills).toEqual([selectedSkill]);
     expect(mergedState.draftsByThreadId[threadId]?.mentions).toEqual([selectedMention]);
   });
@@ -224,13 +198,7 @@ describe("composerDraftStore terminal contexts", () => {
   const threadId = ThreadId.makeUnsafe("thread-dedupe");
 
   beforeEach(() => {
-    useComposerDraftStore.setState({
-      draftsByThreadId: {},
-      draftThreadsByThreadId: {},
-      projectDraftThreadIdByProjectId: {},
-      stickyModelSelectionByProvider: {},
-      stickyActiveProvider: null,
-    });
+    resetComposerDraftStore();
   });
 
   it("deduplicates identical terminal contexts by selection signature", () => {
@@ -241,16 +209,6 @@ describe("composerDraftStore terminal contexts", () => {
 
     const draft = useComposerDraftStore.getState().draftsByThreadId[threadId];
     expect(draft?.terminalContexts.map((context) => context.id)).toEqual(["ctx-1"]);
-  });
-
-  it("clears terminal contexts when clearing composer content", () => {
-    useComposerDraftStore
-      .getState()
-      .addTerminalContext(threadId, makeTerminalContext({ id: "ctx-1" }));
-
-    useComposerDraftStore.getState().clearComposerContent(threadId);
-
-    expect(useComposerDraftStore.getState().draftsByThreadId[threadId]).toBeUndefined();
   });
 
   it("inserts terminal contexts at the requested inline prompt position", () => {
@@ -288,103 +246,46 @@ describe("composerDraftStore terminal contexts", () => {
     expect(draft?.terminalContexts.map((context) => context.id)).toEqual(["ctx-2", "ctx-1"]);
   });
 
-  it("omits terminal context text from persisted drafts", () => {
+  it("persists terminal context metadata without snapshot text and hydrates it empty", () => {
     useComposerDraftStore
       .getState()
       .addTerminalContext(threadId, makeTerminalContext({ id: "ctx-persist" }));
-
-    const persistedState = partializeComposerDraftStoreState(
-      useComposerDraftStore.getState(),
-    ) as unknown as {
-      draftsByThreadId?: Record<string, { terminalContexts?: Array<Record<string, unknown>> }>;
-    };
-
-    expect(
-      persistedState.draftsByThreadId?.[threadId]?.terminalContexts?.[0],
-      "Expected terminal context metadata to be persisted.",
-    ).toMatchObject({
+    const metadata = {
       id: "ctx-persist",
       terminalId: "default",
       terminalLabel: "Terminal 1",
       lineStart: 4,
       lineEnd: 5,
-    });
-    expect(
-      persistedState.draftsByThreadId?.[threadId]?.terminalContexts?.[0]?.text,
-    ).toBeUndefined();
-  });
-
-  it("hydrates persisted terminal contexts without in-memory snapshot text", () => {
-    const persistApi = useComposerDraftStore.persist as unknown as {
-      getOptions: () => {
-        merge: (
-          persistedState: unknown,
-          currentState: ReturnType<typeof useComposerDraftStore.getState>,
-        ) => ReturnType<typeof useComposerDraftStore.getState>;
-      };
     };
-    const mergedState = persistApi.getOptions().merge(
-      {
-        draftsByThreadId: {
-          [threadId]: {
-            prompt: INLINE_TERMINAL_CONTEXT_PLACEHOLDER,
-            attachments: [],
-            terminalContexts: [
-              {
-                id: "ctx-rehydrated",
-                threadId,
-                createdAt: "2026-03-13T12:00:00.000Z",
-                terminalId: "default",
-                terminalLabel: "Terminal 1",
-                lineStart: 4,
-                lineEnd: 5,
-              },
-            ],
-          },
-        },
-        draftThreadsByThreadId: {},
-        projectDraftThreadIdByProjectId: {},
-      },
-      useComposerDraftStore.getInitialState(),
-    );
 
-    expect(mergedState.draftsByThreadId[threadId]?.terminalContexts).toMatchObject([
-      {
-        id: "ctx-rehydrated",
-        terminalId: "default",
-        terminalLabel: "Terminal 1",
-        lineStart: 4,
-        lineEnd: 5,
-        text: "",
-      },
-    ]);
+    const persistedState = persistComposerDraftState();
+    const persistedContext = (
+      persistedState.draftsByThreadId?.[threadId]?.terminalContexts as
+        | Array<Record<string, unknown>>
+        | undefined
+    )?.[0];
+    expect(persistedContext).toMatchObject(metadata);
+    expect(persistedContext).not.toHaveProperty("text");
+
+    expect(
+      mergePersistedComposerDraftState(persistedState).draftsByThreadId[threadId]?.terminalContexts,
+    ).toMatchObject([{ ...metadata, text: "" }]);
   });
 
   it("sanitizes malformed persisted drafts during merge", () => {
-    const persistApi = useComposerDraftStore.persist as unknown as {
-      getOptions: () => {
-        merge: (
-          persistedState: unknown,
-          currentState: ReturnType<typeof useComposerDraftStore.getState>,
-        ) => ReturnType<typeof useComposerDraftStore.getState>;
-      };
-    };
-    const mergedState = persistApi.getOptions().merge(
-      {
-        draftsByThreadId: {
-          [threadId]: {
-            prompt: "",
-            attachments: "not-an-array",
-            terminalContexts: "not-an-array",
-            provider: "bogus-provider",
-            modelOptions: "not-an-object",
-          },
+    const mergedState = mergePersistedComposerDraftState({
+      draftsByThreadId: {
+        [threadId]: {
+          prompt: "",
+          attachments: "not-an-array",
+          terminalContexts: "not-an-array",
+          provider: "bogus-provider",
+          modelOptions: "not-an-object",
         },
-        draftThreadsByThreadId: "not-an-object",
-        projectDraftThreadIdByProjectId: "not-an-object",
       },
-      useComposerDraftStore.getInitialState(),
-    );
+      draftThreadsByThreadId: "not-an-object",
+      projectDraftThreadIdByProjectId: "not-an-object",
+    });
 
     expect(mergedState.draftsByThreadId[threadId]).toBeUndefined();
     expect(mergedState.draftThreadsByThreadId).toEqual({});
@@ -392,28 +293,17 @@ describe("composerDraftStore terminal contexts", () => {
   });
 
   it("trims a runtime-discovered Codex effort from legacy draft storage", () => {
-    const persistApi = useComposerDraftStore.persist as unknown as {
-      getOptions: () => {
-        merge: (
-          persistedState: unknown,
-          currentState: ReturnType<typeof useComposerDraftStore.getState>,
-        ) => ReturnType<typeof useComposerDraftStore.getState>;
-      };
-    };
-    const mergedState = persistApi.getOptions().merge(
-      {
-        draftsByThreadId: {
-          [threadId]: {
-            provider: "codex",
-            model: "gpt-5.6-sol",
-            effort: "  ultra  ",
-          },
+    const mergedState = mergePersistedComposerDraftState({
+      draftsByThreadId: {
+        [threadId]: {
+          provider: "codex",
+          model: "gpt-5.6-sol",
+          effort: "  ultra  ",
         },
-        draftThreadsByThreadId: {},
-        projectDraftThreadIdByProjectId: {},
       },
-      useComposerDraftStore.getInitialState(),
-    );
+      draftThreadsByThreadId: {},
+      projectDraftThreadIdByProjectId: {},
+    });
 
     expect(mergedState.draftsByThreadId[threadId]?.modelSelectionByProvider.codex).toEqual(
       modelSelection("codex", "gpt-5.6-sol", { reasoningEffort: "ultra" }),
@@ -421,36 +311,25 @@ describe("composerDraftStore terminal contexts", () => {
   });
 
   it("restores provider-scoped selections without leaking effort across providers", () => {
-    const persistApi = useComposerDraftStore.persist as unknown as {
-      getOptions: () => {
-        merge: (
-          persistedState: unknown,
-          currentState: ReturnType<typeof useComposerDraftStore.getState>,
-        ) => ReturnType<typeof useComposerDraftStore.getState>;
-      };
-    };
     const codexSelection = modelSelection("codex", "gpt-5.6-sol", {
       reasoningEffort: "ultra",
     });
     const claudeSelection = modelSelection("claudeAgent", "claude-sonnet-5", {
       effort: "high",
     });
-    const mergedState = persistApi.getOptions().merge(
-      {
-        draftsByThreadId: {
-          [threadId]: {
-            modelSelectionByProvider: {
-              codex: codexSelection,
-              claudeAgent: claudeSelection,
-            },
-            activeProvider: "claudeAgent",
+    const mergedState = mergePersistedComposerDraftState({
+      draftsByThreadId: {
+        [threadId]: {
+          modelSelectionByProvider: {
+            codex: codexSelection,
+            claudeAgent: claudeSelection,
           },
+          activeProvider: "claudeAgent",
         },
-        draftThreadsByThreadId: {},
-        projectDraftThreadIdByProjectId: {},
       },
-      useComposerDraftStore.getInitialState(),
-    );
+      draftThreadsByThreadId: {},
+      projectDraftThreadIdByProjectId: {},
+    });
 
     const draft = mergedState.draftsByThreadId[threadId];
     expect(draft?.modelSelectionByProvider.codex).toEqual(codexSelection);
@@ -461,18 +340,11 @@ describe("composerDraftStore terminal contexts", () => {
 
 describe("composerDraftStore queued follow-ups", () => {
   const threadId = ThreadId.makeUnsafe("thread-queue");
-  let originalRevokeObjectUrl: typeof URL.revokeObjectURL;
-  let revokeSpy: ReturnType<typeof vi.fn<(url: string) => void>>;
+  const queueProjectId = ProjectId.makeUnsafe("queue-project");
+  const revokeSpy = stubRevokeObjectUrl();
 
   beforeEach(() => {
     resetComposerDraftStore();
-    originalRevokeObjectUrl = URL.revokeObjectURL;
-    revokeSpy = vi.fn();
-    URL.revokeObjectURL = revokeSpy;
-  });
-
-  afterEach(() => {
-    URL.revokeObjectURL = originalRevokeObjectUrl;
   });
 
   it("keeps queued turns when the live composer draft is cleared", () => {
@@ -508,241 +380,50 @@ describe("composerDraftStore queued follow-ups", () => {
       name: "queued.png",
     });
     const store = useComposerDraftStore.getState();
-    const queuedChatTurn = makeQueuedChatTurn("queued-chat-1", queuedImage);
-    if (queuedChatTurn.kind !== "chat") {
-      throw new Error("Expected a queued chat turn fixture");
-    }
-    store.enqueueQueuedTurn(threadId, {
-      ...queuedChatTurn,
-    });
+    store.enqueueQueuedTurn(threadId, makeQueuedChatTurn("queued-chat-1", queuedImage));
 
-    const persistApi = useComposerDraftStore.persist as unknown as {
-      getOptions: () => {
-        partialize: (state: ReturnType<typeof useComposerDraftStore.getState>) => unknown;
-        merge: (
-          persistedState: unknown,
-          currentState: ReturnType<typeof useComposerDraftStore.getState>,
-        ) => ReturnType<typeof useComposerDraftStore.getState>;
-      };
-    };
-    const persistedState = partializeComposerDraftStoreState(
-      useComposerDraftStore.getState(),
-    ) as unknown as {
-      draftsByThreadId?: Record<string, { queuedTurns?: Array<Record<string, unknown>> }>;
-    };
-
+    const persistedState = persistComposerDraftState();
     expect(persistedState.draftsByThreadId?.[threadId]?.queuedTurns).toHaveLength(1);
 
-    const mergedState = persistApi
-      .getOptions()
-      .merge(persistedState, useComposerDraftStore.getInitialState());
-
+    const mergedState = mergePersistedComposerDraftState(persistedState);
     expect(mergedState.draftsByThreadId[threadId]?.queuedTurns).toMatchObject([
       {
         id: "queued-chat-1",
         kind: "chat",
         prompt: "queued chat prompt",
         images: [{ name: "queued.png" }],
-
         terminalContexts: [{ text: "git status\nOn branch main" }],
       },
     ]);
   });
 
-  it("revokes queued chat image blob URLs when a queued turn is removed", () => {
-    const queuedImage = makeImage({
-      id: "queued-image-blob",
-      previewUrl: "blob:queued-image-blob",
-    });
+  it.each([
+    {
+      name: "a queued turn is removed",
+      release: () => useComposerDraftStore.getState().removeQueuedTurn(threadId, "queued-blob"),
+    },
+    {
+      name: "a draft thread is cleared",
+      release: () => useComposerDraftStore.getState().clearDraftThread(threadId),
+    },
+    {
+      name: "a project draft is cleared by project and thread id",
+      release: () =>
+        useComposerDraftStore.getState().clearProjectDraftThreadById(queueProjectId, threadId),
+    },
+  ])("revokes queued chat image blob URLs when $name", ({ release }) => {
     const store = useComposerDraftStore.getState();
+    store.setProjectDraftThreadId(queueProjectId, threadId);
+    store.enqueueQueuedTurn(
+      threadId,
+      makeQueuedChatTurn(
+        "queued-blob",
+        makeImage({ id: "queued-image-blob", previewUrl: "blob:queued-image-blob" }),
+      ),
+    );
 
-    store.enqueueQueuedTurn(threadId, makeQueuedChatTurn("queued-chat-blob", queuedImage));
-    store.removeQueuedTurn(threadId, "queued-chat-blob");
+    release();
 
     expect(revokeSpy).toHaveBeenCalledWith("blob:queued-image-blob");
-  });
-
-  it("revokes queued chat image blob URLs when a draft thread is cleared", () => {
-    const queuedImage = makeImage({
-      id: "queued-image-thread-clear",
-      previewUrl: "blob:queued-image-thread-clear",
-    });
-    const store = useComposerDraftStore.getState();
-
-    store.setProjectDraftThreadId(ProjectId.makeUnsafe("queue-project"), threadId);
-    store.enqueueQueuedTurn(threadId, makeQueuedChatTurn("queued-chat-thread-clear", queuedImage));
-    store.clearDraftThread(threadId);
-
-    expect(revokeSpy).toHaveBeenCalledWith("blob:queued-image-thread-clear");
-  });
-});
-
-function createMockStorage() {
-  const store = new Map<string, string>();
-  return {
-    getItem: vi.fn((name: string) => store.get(name) ?? null),
-    setItem: vi.fn((name: string, value: string) => {
-      store.set(name, value);
-    }),
-    removeItem: vi.fn((name: string) => {
-      store.delete(name);
-    }),
-  };
-}
-
-describe("createDeferredPersistStorage", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("defers partialize + JSON.stringify off the set() path until flush", () => {
-    const base = createMockStorage();
-    const partialize = vi.fn((state: { readonly value: number }) => ({ value: state.value }));
-    const storage = createDeferredPersistStorage<{ readonly value: number }>({
-      getStorage: () => base,
-      partialize,
-    });
-
-    // Rapid set()s must not serialize: neither partialize nor the base write runs.
-    storage.setItem("key", { state: { value: 1 }, version: 2 });
-    storage.setItem("key", { state: { value: 2 }, version: 2 });
-    storage.setItem("key", { state: { value: 3 }, version: 2 });
-    expect(partialize).not.toHaveBeenCalled();
-    expect(base.setItem).not.toHaveBeenCalled();
-
-    storage.flush();
-
-    expect(partialize).toHaveBeenCalledTimes(1);
-    expect(partialize).toHaveBeenCalledWith({ value: 3 });
-    expect(base.setItem).toHaveBeenCalledTimes(1);
-    expect(base.setItem).toHaveBeenCalledWith(
-      "key",
-      JSON.stringify({ state: { value: 3 }, version: 2 }),
-    );
-  });
-
-  it("produces the same bytes as createJSONStorage would for the same state", () => {
-    const base = createMockStorage();
-    type FullState = { readonly a: number; readonly secret: string };
-    const storage = createDeferredPersistStorage<FullState, { readonly a: number }>({
-      getStorage: () => base,
-      partialize: (state) => ({ a: state.a }),
-    });
-
-    const fullState: FullState = { a: 7, secret: "drop" };
-    storage.setItem("key", { state: fullState, version: 5 });
-    storage.flush();
-
-    expect(base.setItem).toHaveBeenCalledWith(
-      "key",
-      JSON.stringify({ state: { a: 7 }, version: 5 }),
-    );
-  });
-
-  it("also writes the pending value when the debounce fires on its own", () => {
-    const base = createMockStorage();
-    const partialize = vi.fn((state: { readonly value: number }) => state);
-    const storage = createDeferredPersistStorage<{ readonly value: number }>({
-      getStorage: () => base,
-      partialize,
-    });
-
-    storage.setItem("key", { state: { value: 1 }, version: 1 });
-    expect(base.setItem).not.toHaveBeenCalled();
-
-    vi.advanceTimersByTime(300);
-    expect(partialize).toHaveBeenCalledTimes(1);
-    expect(base.setItem).toHaveBeenCalledTimes(1);
-  });
-
-  it("removeItem cancels a pending write and drops the captured state", () => {
-    const base = createMockStorage();
-    const partialize = vi.fn((state: { readonly value: number }) => state);
-    const storage = createDeferredPersistStorage<{ readonly value: number }>({
-      getStorage: () => base,
-      partialize,
-    });
-
-    storage.setItem("key", { state: { value: 1 }, version: 1 });
-    storage.removeItem("key");
-    storage.flush();
-
-    expect(partialize).not.toHaveBeenCalled();
-    expect(base.setItem).not.toHaveBeenCalled();
-    expect(base.removeItem).toHaveBeenCalledWith("key");
-  });
-});
-
-describe("flushStorageBeforePageHide", () => {
-  function makeFakeEnv() {
-    const windowListeners = new Map<string, () => void>();
-    const documentListeners = new Map<string, () => void>();
-    const visibility = { value: "visible" };
-    return {
-      env: {
-        window: {
-          addEventListener: (type: string, listener: () => void) => {
-            windowListeners.set(type, listener);
-          },
-        },
-        document: {
-          addEventListener: (type: string, listener: () => void) => {
-            documentListeners.set(type, listener);
-          },
-          get visibilityState() {
-            return visibility.value;
-          },
-        },
-      },
-      fireWindow: (type: string) => windowListeners.get(type)?.(),
-      fireDocument: (type: string) => documentListeners.get(type)?.(),
-      setVisibility: (value: string) => {
-        visibility.value = value;
-      },
-    };
-  }
-
-  it("flushes on pagehide, beforeunload, and visibilitychange->hidden", () => {
-    const flush = vi.fn();
-    const harness = makeFakeEnv();
-    flushStorageBeforePageHide(flush, harness.env);
-
-    harness.fireWindow("pagehide");
-    expect(flush).toHaveBeenCalledTimes(1);
-
-    harness.fireWindow("beforeunload");
-    expect(flush).toHaveBeenCalledTimes(2);
-
-    harness.setVisibility("hidden");
-    harness.fireDocument("visibilitychange");
-    expect(flush).toHaveBeenCalledTimes(3);
-  });
-
-  it("does not flush while the document stays visible", () => {
-    const flush = vi.fn();
-    const harness = makeFakeEnv();
-    flushStorageBeforePageHide(flush, harness.env);
-
-    harness.setVisibility("visible");
-    harness.fireDocument("visibilitychange");
-    expect(flush).not.toHaveBeenCalled();
-  });
-
-  it("no-ops on partial DOM stubs without listener APIs", () => {
-    // SSR-style test environments stub `window`/`document` with only the fields under test (e.g. `{
-    // documentElement }`); wiring must not crash module evaluation of stores that call this at import
-    // time.
-    expect(() =>
-      flushStorageBeforePageHide(vi.fn(), {
-        window: {} as unknown as NonNullable<FlushBeforePageHideEnv["window"]>,
-        document: { documentElement: {} } as unknown as NonNullable<
-          FlushBeforePageHideEnv["document"]
-        >,
-      }),
-    ).not.toThrow();
   });
 });

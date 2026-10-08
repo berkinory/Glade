@@ -1,6 +1,5 @@
 import type {
   DesktopQuitConfirmationChat,
-  DesktopQuitConfirmationPresentation,
   DesktopQuitConfirmationRequest,
   DesktopQuitConfirmationResponse,
 } from "@glade/contracts/ipc/ipc";
@@ -9,10 +8,6 @@ const DEFAULT_READY_TIMEOUT_MS = 3000;
 
 export function shouldPromptForRunningChatsBeforeQuit(reason: string): boolean {
   return reason === "window-close" || reason === "before-quit";
-}
-
-export function quitConfirmationPresentationForPlatform(): DesktopQuitConfirmationPresentation {
-  return "in-app";
 }
 
 export function parseQuitConfirmationRequest(
@@ -25,11 +20,7 @@ export function parseQuitConfirmationRequest(
   if (typeof requestId !== "string" || requestId.trim().length === 0) {
     return null;
   }
-  const presentationRaw = (payload as { readonly presentation?: unknown }).presentation;
-  return {
-    requestId,
-    presentation: presentationRaw === "native" ? "native" : "in-app",
-  };
+  return { requestId, presentation: "in-app" };
 }
 
 function parseQuitConfirmationChats(value: unknown): DesktopQuitConfirmationChat[] {
@@ -104,19 +95,11 @@ export interface RunningChatsQuitGuard {
     readonly isRendererAvailable: () => boolean;
     readonly confirmWithoutRenderer: () => Promise<boolean>;
     readonly readyTimeoutMs?: number;
-    readonly presentation?: DesktopQuitConfirmationPresentation;
-    readonly presentNativeConfirmation?: (
-      chats: ReadonlyArray<DesktopQuitConfirmationChat>,
-    ) => boolean | Promise<boolean>;
   }) => Promise<boolean>;
 }
 
 interface PendingQuitConfirmation {
   readonly requestId: string;
-  readonly presentation: DesktopQuitConfirmationPresentation;
-  readonly presentNativeConfirmation:
-    | ((chats: ReadonlyArray<DesktopQuitConfirmationChat>) => boolean | Promise<boolean>)
-    | undefined;
   readonly confirmWithoutRenderer: () => Promise<boolean>;
   waitingForDecision: boolean;
   readyTimer: ReturnType<typeof setTimeout> | null;
@@ -162,32 +145,6 @@ export function makeRunningChatsQuitGuard(
     void confirmNatively(current.confirmWithoutRenderer).then((allow) => settle(current, allow));
   };
 
-  const presentNativeSheet = (
-    current: PendingQuitConfirmation,
-    chats: ReadonlyArray<DesktopQuitConfirmationChat>,
-  ): void => {
-    const presenter = current.presentNativeConfirmation;
-    if (!presenter) {
-      fallBackToNativeConfirmation();
-      return;
-    }
-    const requestId = current.requestId;
-    void Promise.resolve()
-      .then(() => presenter(chats))
-      .then(
-        (allow) => {
-          if (pending?.requestId === requestId) {
-            finish(allow);
-          }
-        },
-        () => {
-          if (pending?.requestId === requestId) {
-            finish(false);
-          }
-        },
-      );
-  };
-
   return {
     hasAllowedQuit: () => allowed,
     cancelPending(): void {
@@ -217,9 +174,6 @@ export function makeRunningChatsQuitGuard(
         return;
       }
       pending.waitingForDecision = true;
-      if (pending.presentation === "native") {
-        presentNativeSheet(pending, response.chats);
-      }
     },
     askRenderer(input): Promise<boolean> {
       if (allowed) {
@@ -240,11 +194,8 @@ export function makeRunningChatsQuitGuard(
 
       inFlight = new Promise<boolean>((resolve) => {
         const requestId = createRequestId();
-        const presentation = input.presentation ?? "in-app";
         pending = {
           requestId,
-          presentation,
-          presentNativeConfirmation: input.presentNativeConfirmation,
           confirmWithoutRenderer: input.confirmWithoutRenderer,
           waitingForDecision: false,
           readyTimer: setTimeout(() => {
@@ -258,7 +209,7 @@ export function makeRunningChatsQuitGuard(
           },
         };
         try {
-          input.send({ requestId, presentation });
+          input.send({ requestId, presentation: "in-app" });
         } catch {
           fallBackToNativeConfirmation();
         }

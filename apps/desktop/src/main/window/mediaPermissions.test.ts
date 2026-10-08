@@ -6,26 +6,16 @@ import {
 } from "./mediaPermissions";
 
 describe("shouldAllowMediaPermissionRequest", () => {
-  it("allows requests when Electron omits mediaTypes", () => {
-    expect(shouldAllowMediaPermissionRequest({})).toBe(true);
-  });
-
-  it("allows requests when Electron reports audio capture", () => {
-    expect(shouldAllowMediaPermissionRequest({ mediaTypes: ["audio"] })).toBe(true);
-  });
-
-  it("rejects requests that only ask for video capture", () => {
-    expect(shouldAllowMediaPermissionRequest({ mediaTypes: ["video"] })).toBe(false);
-  });
-
-  it("rejects mixed audio and video capture", () => {
-    expect(shouldAllowMediaPermissionRequest({ mediaTypes: ["audio", "video"] })).toBe(false);
-  });
-
-  it("handles Electron permission checks that report one mediaType", () => {
-    expect(shouldAllowMediaPermissionRequest({ mediaType: "audio" })).toBe(true);
-    expect(shouldAllowMediaPermissionRequest({ mediaType: "video" })).toBe(false);
-    expect(shouldAllowMediaPermissionRequest({ mediaType: "unknown" })).toBe(false);
+  it.each([
+    [{}, true],
+    [{ mediaTypes: ["audio"] }, true],
+    [{ mediaTypes: ["video"] }, false],
+    [{ mediaTypes: ["audio", "video"] }, false],
+    [{ mediaType: "audio" }, true],
+    [{ mediaType: "video" }, false],
+    [{ mediaType: "unknown" }, false],
+  ] as const)("allows only audio capture for %o: %s", (details, allowed) => {
+    expect(shouldAllowMediaPermissionRequest(details)).toBe(allowed);
   });
 });
 

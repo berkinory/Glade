@@ -93,55 +93,71 @@ $$
     expect(markup).toContain('href="/src/_chat.$threadId.tsx"');
   });
 
-  it("preserves brackets inside inline math and ordinary prose beside links", () => {
-    const markup = renderMarkdown(
-      String.raw`[note] $x[0]+y[1]$ and $\left[f(x)\right]$; [route](/src/$id.tsx). Price $5.`,
-    );
+  it.each<{
+    name: string;
+    text: string;
+    cwd?: string;
+    katex: number;
+    contains: string[];
+    absent?: string[];
+  }>([
+    {
+      name: "preserves brackets inside inline math and ordinary prose beside links",
+      text: String.raw`[note] $x[0]+y[1]$ and $\left[f(x)\right]$; [route](/src/$id.tsx). Price $5.`,
+      katex: 2,
+      contains: ["[note]", 'href="/src/$id.tsx"', "Price $5."],
+    },
+    {
+      name: "keeps dollar signs in markdown file links from becoming math",
+      text: "Files touched:\n\n- [_chat.$threadId.tsx](/Users/julius/project/apps/web/src/routes/_chat.$threadId.tsx:1192)",
+      cwd: "/Users/julius/project",
+      katex: 0,
+      contains: [
+        'href="/Users/julius/project/apps/web/src/routes/_chat.$threadId.tsx:1192"',
+        "_chat.$threadId.tsx",
+      ],
+      absent: ["CHATMARKDOWNLITERALDOLLARPLACEHOLDER"],
+    },
+    {
+      name: "keeps literal dollars before Markdown links",
+      text: "Price $5/month; [plan](/pricing/$tier).",
+      katex: 0,
+      contains: ["Price $5/month;", 'href="/pricing/$tier"'],
+    },
+    {
+      name: "keeps literal dollars before Markdown images without consuming their URLs",
+      text: "Use $ASSET for ![preview](https://example.com/assets/$variant.png).",
+      katex: 0,
+      contains: ["Use $ASSET for", 'src="https://example.com/assets/$variant.png"'],
+    },
+    {
+      name: "preserves bracketed TeX that also resembles a dollar-free Markdown link",
+      text: "Math $[f](x)$ and $2[f](x)$.",
+      katex: 2,
+      contains: [],
+      absent: ['href="x"'],
+    },
+    {
+      name: "does not turn ordinary dollar text or escaped dollars into math",
+      text: "It costs $5 to $10 per seat. Escape \\$E=mc^2\\$ when you want literal TeX.",
+      katex: 0,
+      contains: ["$5 to $10", "$E=mc^2$"],
+    },
+    {
+      name: "renders numeric expressions while keeping prices and code literal",
+      text:
+        String.raw`Prices $5, $5 to $10, $5-$10 and $29.470. Math $2x$, $2.5x$, $2 + 3 = 5$, $2^{10}$ and $2\pi$.` +
+        " Code `$2d_kd_v$`.",
+      katex: 5,
+      contains: ["$5 to $10", "$5-$10", "$29.470", "<code>$2d_kd_v$</code>"],
+    },
+  ])("$name", ({ text, cwd, katex, contains, absent = [] }) => {
+    const markup = renderMarkdown(text, cwd);
 
-    expect(markup.match(/class="katex"/g) ?? []).toHaveLength(2);
+    expect(markup.match(/class="katex"/g) ?? []).toHaveLength(katex);
     expect(markup).not.toContain("katex-error");
-    expect(markup).toContain("[note]");
-    expect(markup).toContain('href="/src/$id.tsx"');
-    expect(markup).toContain("Price $5.");
-  });
-
-  it("keeps dollar signs in markdown file links from becoming math", () => {
-    const source =
-      "Files touched:\n\n- [_chat.$threadId.tsx](/Users/julius/project/apps/web/src/routes/_chat.$threadId.tsx:1192)";
-    const markup = renderMarkdown(source, "/Users/julius/project");
-
-    expect(markup).toContain(
-      'href="/Users/julius/project/apps/web/src/routes/_chat.$threadId.tsx:1192"',
-    );
-    expect(markup).toContain("_chat.$threadId.tsx");
-    expect(markup).not.toContain('class="katex"');
-    expect(markup).not.toContain("CHATMARKDOWNLITERALDOLLARPLACEHOLDER");
-  });
-
-  it("keeps literal dollars before Markdown links", () => {
-    const markup = renderMarkdown("Price $5/month; [plan](/pricing/$tier).");
-
-    expect(markup).toContain("Price $5/month;");
-    expect(markup).toContain('href="/pricing/$tier"');
-    expect(markup).not.toContain('class="katex"');
-  });
-
-  it("keeps literal dollars before Markdown images without consuming their URLs", () => {
-    const markup = renderMarkdown(
-      "Use $ASSET for ![preview](https://example.com/assets/$variant.png).",
-    );
-
-    expect(markup).toContain("Use $ASSET for");
-    expect(markup).toContain('src="https://example.com/assets/$variant.png"');
-    expect(markup).not.toContain('class="katex"');
-  });
-
-  it("preserves bracketed TeX that also resembles a dollar-free Markdown link", () => {
-    const markup = renderMarkdown("Math $[f](x)$ and $2[f](x)$.");
-
-    expect(markup.match(/class="katex"/g) ?? []).toHaveLength(2);
-    expect(markup).not.toContain("katex-error");
-    expect(markup).not.toContain('href="x"');
+    for (const fragment of contains) expect(markup).toContain(fragment);
+    for (const fragment of absent) expect(markup).not.toContain(fragment);
   });
 
   it.each([
@@ -160,29 +176,6 @@ $$
       expect(markup).toContain('href="/src/$id.tsx"');
       expect(markup).not.toContain("katex-error");
     }
-  });
-
-  it("does not turn ordinary dollar text or escaped dollars into math", () => {
-    const markup = renderMarkdown(
-      "It costs $5 to $10 per seat. Escape \\$E=mc^2\\$ when you want literal TeX.",
-    );
-
-    expect(markup).toContain("$5 to $10");
-    expect(markup).toContain("$E=mc^2$");
-    expect(markup).not.toContain('class="katex"');
-  });
-
-  it("renders numeric expressions while keeping prices and code literal", () => {
-    const markup = renderMarkdown(
-      String.raw`Prices $5, $5 to $10, $5-$10 and $29.470. Math $2x$, $2.5x$, $2 + 3 = 5$, $2^{10}$ and $2\pi$.` +
-        " Code `$2d_kd_v$`.",
-    );
-    expect(markup.match(/class="katex"/g) ?? []).toHaveLength(5);
-    expect(markup).not.toContain("katex-error");
-    expect(markup).toContain("$5 to $10");
-    expect(markup).toContain("$5-$10");
-    expect(markup).toContain("$29.470");
-    expect(markup).toContain("<code>$2d_kd_v$</code>");
   });
 
   it("renders a table whose delimiter row is missing cells", () => {
@@ -239,51 +232,21 @@ $$
     expect(markup).toContain("Error");
   });
 
-  it("keeps active find offsets aligned inside inline file chips", () => {
-    const text = "See `/tmp/error.ts` for details.";
-    const startOffset = text.indexOf("error");
-    const markup = renderToStaticMarkup(
-      <ChatMarkdown
-        text={text}
-        cwd={undefined}
-        isStreaming={false}
-        findQuery="error"
-        findActiveRange={{ startOffset, endOffset: startOffset + "error".length }}
-      />,
-    );
+  it.each([
+    ["scripts/delete_uploadthing.py", "scripts/delete_uploadthing.py"],
+    ["SKILL.md:1", "SKILL.md"],
+  ])(
+    "resolves the relative chip %s against a directory declared in the same message",
+    (chip, path) => {
+      const markup = renderMarkdown(
+        ["**Dir:** `/Users/tester/.agents/skills/annotate-pr`", "", `- \`${chip}\``].join("\n"),
+        "/Users/tester/Documents/Glade/thread",
+      );
 
-    expect(markup).toContain('data-chat-find-match="active"');
-    expect(markup).toContain(`data-chat-find-start="${String(startOffset)}"`);
-    expect(markup).toContain(">error</span>");
-  });
-
-  it("joins a relative chip onto a directory declared in the same message", () => {
-    const markup = renderMarkdown(
-      [
-        "**Dir:** `/Users/tester/.agents/skills/annotate-pr`",
-        "",
-        "- `scripts/delete_uploadthing.py`",
-      ].join("\n"),
-      "/Users/tester/Documents/Glade/thread",
-    );
-
-    expect(markup).toContain(
-      'title="/Users/tester/.agents/skills/annotate-pr/scripts/delete_uploadthing.py"',
-    );
-    expect(markup).not.toContain(
-      'href="/Users/tester/Documents/Glade/thread/scripts/delete_uploadthing.py"',
-    );
-  });
-
-  it("chips a line-suffixed relative file against a directory declared in the same message", () => {
-    const markup = renderMarkdown(
-      ["**Dir:** `/Users/tester/.agents/skills/annotate-pr`", "", "- `SKILL.md:1`"].join("\n"),
-      "/Users/tester/Documents/Glade/thread",
-    );
-
-    expect(markup).toContain('title="/Users/tester/.agents/skills/annotate-pr/SKILL.md"');
-    expect(markup).not.toContain('href="/Users/tester/Documents/Glade/thread/SKILL.md"');
-  });
+      expect(markup).toContain(`title="/Users/tester/.agents/skills/annotate-pr/${path}"`);
+      expect(markup).not.toContain(`href="/Users/tester/Documents/Glade/thread/${path}"`);
+    },
+  );
 });
 
 describe("ChatMarkdown user variant", () => {
@@ -312,37 +275,44 @@ describe("ChatMarkdown user variant", () => {
   });
 });
 
-it("opens Obsidian aliases relative to the vault and leaves code unchanged", () => {
-  const markup = renderWithQueryClient(
-    <ChatMarkdown
-      text={
-        "Read [[03-Resources/papers/Qwen-3.8-Flash-Next.pdf|论文]] and [[My note]]. Code `[[literal|text]]`."
-      }
-      cwd="/vault/02-Areas/Career"
-      wikiLinkRoot="/vault"
-    />,
-  );
-  expect(markup).toContain('href="/vault/03-Resources/papers/Qwen-3.8-Flash-Next.pdf"');
-  expect(markup).toContain("论文");
-  expect(markup).toContain('href="/vault/My%20note.md"');
-  expect(markup).toContain("<code>[[literal|text]]</code>");
-  expect(markup).not.toContain("[[03-Resources");
-});
-
-it.each(["\n", "\r\n"])("keeps wiki links on the first line of a GitHub alert (%j)", (eol) => {
-  const markup = renderWithQueryClient(
-    <ChatMarkdown
-      text={`> [!NOTE]${eol}> See [[My note]] now`}
-      cwd="/vault"
-      wikiLinkRoot="/vault"
-    />,
-  );
-  expect(markup).toContain('data-github-alert="note"');
-  expect(markup).toContain('href="/vault/My%20note.md"');
-  expect(markup).not.toContain("[[My note]]");
-});
-
 describe("workspace Wiki links", () => {
+  it.each([
+    {
+      name: "Obsidian aliases relative to the vault while code stays literal",
+      text: "Read [[03-Resources/papers/Qwen-3.8-Flash-Next.pdf|论文]] and [[My note]]. Code `[[literal|text]]`.",
+      cwd: "/vault/02-Areas/Career",
+      contains: [
+        'href="/vault/03-Resources/papers/Qwen-3.8-Flash-Next.pdf"',
+        "论文",
+        'href="/vault/My%20note.md"',
+        "<code>[[literal|text]]</code>",
+      ],
+      absent: ["[[03-Resources"],
+    },
+    ...["\n", "\r\n"].map((eol) => ({
+      name: `the first line of a GitHub alert (${JSON.stringify(eol)})`,
+      text: `> [!NOTE]${eol}> See [[My note]] now`,
+      cwd: "/vault",
+      contains: ['data-github-alert="note"', 'href="/vault/My%20note.md"'],
+      absent: ["[[My note]]"],
+    })),
+    ...["> First line\n> [[note|Read note]] after", "- First line\n  [[note|Read note]] after"].map(
+      (text) => ({
+        name: `a Markdown continuation line: ${JSON.stringify(text)}`,
+        text,
+        cwd: "/vault",
+        contains: ['href="/vault/note.md"', "Read note"],
+        absent: [],
+      }),
+    ),
+  ])("opens wiki links in $name", ({ text, cwd, contains, absent }) => {
+    const markup = renderWithQueryClient(
+      <ChatMarkdown text={text} cwd={cwd} wikiLinkRoot="/vault" />,
+    );
+    for (const fragment of contains) expect(markup).toContain(fragment);
+    for (const fragment of absent) expect(markup).not.toContain(fragment);
+  });
+
   it.each([
     ["/vault/root #1", "/vault/root%20%231/My%20%2520%20note.md", "/vault/root #1/My %20 note.md"],
     [
@@ -365,6 +335,7 @@ describe("workspace Wiki links", () => {
   });
 
   it.each([
+    "See `/tmp/after.ts` for details.",
     "Before [[note|Alias]] after",
     "Escaped \\* and &amp; Before [[note]] after",
     "First line\r\nBefore [[note]] after",
@@ -399,15 +370,6 @@ describe("workspace Wiki links", () => {
     expect(markup).not.toContain("href=");
   });
 });
-
-it.each(["> First line\n> [[note|Read note]] after", "- First line\n  [[note|Read note]] after"])(
-  "opens Wiki links on Markdown continuation lines: %s",
-  (text) => {
-    const markup = renderMarkdown(text, "/vault");
-    expect(markup).toContain('href="/vault/note.md"');
-    expect(markup).toContain("Read note");
-  },
-);
 
 it("keeps dollar filenames separate from math and rejects escaped delimiters", () => {
   const text = String.raw`Use $PATH: [[notes/$threadId.tsx|Route]]. Formula $2x[0]$; \[\[literal\]\]. [[foo\]] [[note\|alias]]`;

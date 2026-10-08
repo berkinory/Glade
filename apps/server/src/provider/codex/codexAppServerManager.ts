@@ -545,7 +545,7 @@ type CodexThreadOpenRequest =
       };
     };
 
-export function buildCodexThreadOpenRequest(input: {
+function buildCodexThreadOpenRequest(input: {
   readonly forkSourceThreadId?: string;
   readonly resumeThreadId?: string;
   readonly sessionOverrides: CodexThreadSessionOverrides;
@@ -3297,7 +3297,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
   }
 
   private attachProcessListeners(context: CodexSessionContext): void {
-    this.requestRegistry(context).processStarted();
     const unsubscribe = context.processLease.subscribe({
       line: (line) => {
         try {
@@ -3312,7 +3311,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       exit: (code, signal) => {
         if (context.stopping) return;
         const message = `codex app-server exited (code=${code ?? "null"}, signal=${signal ?? "null"}).`;
-        this.requestRegistry(context).processExited(new Error(message));
+        this.requestRegistry(context).rejectAll(new Error(message));
         void this.settlePendingHumanRequests(context, "session exited");
         this.updateSession(context, {
           status: "closed",

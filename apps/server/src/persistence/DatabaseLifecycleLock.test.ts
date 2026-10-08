@@ -15,6 +15,7 @@ import {
 } from "./DatabaseLifecycleLock.ts";
 import { makeSqlitePersistenceLive } from "./Layers/Sqlite.ts";
 
+const DEAD_PID = 2_147_483_647;
 const tempDirectories: Array<string> = [];
 
 async function makeDbPath(): Promise<string> {
@@ -51,10 +52,7 @@ describe("database lifecycle lock", () => {
       await expect(Effect.runPromise(acquireDatabaseLifecycleLock(dbPath))).rejects.toBeInstanceOf(
         DatabaseLifecycleLockedError,
       );
-      const parentEntries = await fs.readdir(path.dirname(dbPath));
-      expect(parentEntries.some((entry) => entry.includes(".lifecycle-lock.acquiring."))).toBe(
-        false,
-      );
+      expect(await fs.readdir(path.dirname(dbPath))).toEqual([path.basename(first.lockPath)]);
       await expect(fs.readFile(path.join(first.lockPath, "owner.json"), "utf8")).resolves.toContain(
         first.owner.token,
       );
@@ -68,43 +66,14 @@ describe("database lifecycle lock", () => {
 
     const next = await Effect.runPromise(acquireDatabaseLifecycleLock(dbPath));
     await Effect.runPromise(releaseDatabaseLifecycleLock(next));
-    const releasedEntries = await fs.readdir(path.dirname(dbPath));
-    expect(releasedEntries.some((entry) => entry.includes(".lifecycle-lock.released."))).toBe(
-      false,
-    );
-  });
-
-  it("recovers a well-formed lock owned by a dead process", async () => {
-    const dbPath = await makeDbPath();
-    const lockPath = `${dbPath}.lifecycle-lock`;
-    await writeOwnedDirectory(lockPath, 2_147_483_647);
-
-    const acquired = await Effect.runPromise(acquireDatabaseLifecycleLock(dbPath));
-    expect(acquired.owner.pid).toBe(process.pid);
-    await Effect.runPromise(releaseDatabaseLifecycleLock(acquired));
-    await expect(fs.stat(`${lockPath}.reaper`)).rejects.toMatchObject({ code: "ENOENT" });
-  });
-
-  it("recovers a reaper guard whose owner process died", async () => {
-    const dbPath = await makeDbPath();
-    const lockPath = `${dbPath}.lifecycle-lock`;
-    const reaperPath = `${lockPath}.reaper`;
-    await writeOwnedDirectory(lockPath, 2_147_483_647);
-    await writeOwnedDirectory(reaperPath, 2_147_483_647);
-
-    const acquired = await Effect.runPromise(acquireDatabaseLifecycleLock(dbPath));
-    expect(acquired.owner.pid).toBe(process.pid);
-    await Effect.runPromise(releaseDatabaseLifecycleLock(acquired));
-
-    const entries = await fs.readdir(path.dirname(dbPath));
-    expect(entries.some((entry) => entry.includes(".lifecycle-lock.reaper"))).toBe(false);
+    expect(await fs.readdir(path.dirname(dbPath))).toEqual([]);
   });
 
   it("does not take over a reaper guard owned by a live process", async () => {
     const dbPath = await makeDbPath();
     const lockPath = `${dbPath}.lifecycle-lock`;
     const reaperPath = `${lockPath}.reaper`;
-    await writeOwnedDirectory(lockPath, 2_147_483_647);
+    await writeOwnedDirectory(lockPath, DEAD_PID);
     await writeOwnedDirectory(reaperPath, process.pid);
 
     await expect(Effect.runPromise(acquireDatabaseLifecycleLock(dbPath))).rejects.toBeInstanceOf(
@@ -114,19 +83,37 @@ describe("database lifecycle lock", () => {
     await expect(fs.stat(reaperPath)).resolves.toBeDefined();
   });
 
-  it("recovers an ownerless directory and fails closed for an owner-file symlink", async () => {
+  it.each([
+    { name: "a dead owner's lock", lock: "dead", reaper: "none" },
+    { name: "a dead owner's lock and reaper guard", lock: "dead", reaper: "dead" },
+    { name: "an ownerless lock directory", lock: "empty", reaper: "none" },
+    { name: "an ownerless lock holding only Finder metadata", lock: "finder", reaper: "none" },
+    { name: "an ownerless reaper holding only Finder metadata", lock: "dead", reaper: "finder" },
+  ] as const)("recovers $name", async ({ lock, reaper }) => {
+    const dbPath = await makeDbPath();
+    const lockPath = `${dbPath}.lifecycle-lock`;
+    for (const [directoryPath, layout] of [
+      [lockPath, lock],
+      [`${lockPath}.reaper`, reaper],
+    ] as const) {
+      if (layout === "dead") await writeOwnedDirectory(directoryPath, DEAD_PID);
+      if (layout === "empty" || layout === "finder") await fs.mkdir(directoryPath, { mode: 0o700 });
+      if (layout === "finder")
+        await fs.writeFile(path.join(directoryPath, ".DS_Store"), "Finder metadata");
+    }
+
+    await Effect.runPromise(withDatabaseLifecycleLock(dbPath, Effect.void));
+
+    expect(await fs.readdir(path.dirname(dbPath))).toEqual([]);
+  });
+
+  it("fails closed for an owner-file symlink", async () => {
     const dbPath = await makeDbPath();
     const lockPath = `${dbPath}.lifecycle-lock`;
     await fs.mkdir(lockPath, { mode: 0o700 });
-
-    const recovered = await Effect.runPromise(acquireDatabaseLifecycleLock(dbPath));
-    expect(recovered.owner.pid).toBe(process.pid);
-    await Effect.runPromise(releaseDatabaseLifecycleLock(recovered));
-
-    await fs.mkdir(lockPath, { mode: 0o700 });
     const outsideOwner = path.join(path.dirname(dbPath), "outside-owner.json");
     const outsideContents = `${JSON.stringify({
-      pid: 2_147_483_647,
+      pid: DEAD_PID,
       token: randomUUID(),
       createdAt: new Date().toISOString(),
     })}\n`;
@@ -139,21 +126,6 @@ describe("database lifecycle lock", () => {
     expect(await fs.readFile(outsideOwner, "utf8")).toBe(outsideContents);
     expect((await fs.lstat(path.join(lockPath, "owner.json"))).isSymbolicLink()).toBe(true);
   });
-
-  it.each(["", ".reaper"])(
-    "recovers an ownerless lock%s directory holding only Finder metadata",
-    async (suffix) => {
-      const dbPath = await makeDbPath();
-      const lockPath = `${dbPath}.lifecycle-lock`;
-      if (suffix) await writeOwnedDirectory(lockPath, 2_147_483_647);
-      await fs.mkdir(`${lockPath}${suffix}`, { mode: 0o700 });
-      await fs.writeFile(path.join(`${lockPath}${suffix}`, ".DS_Store"), "Finder metadata");
-
-      await Effect.runPromise(withDatabaseLifecycleLock(dbPath, Effect.void));
-
-      expect(await fs.readdir(path.dirname(dbPath))).toEqual([]);
-    },
-  );
 
   it("preserves an unverifiable lock that also holds Finder metadata", async () => {
     const dbPath = await makeDbPath();

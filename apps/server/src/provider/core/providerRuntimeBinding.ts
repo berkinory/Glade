@@ -14,7 +14,7 @@ import { Schema, Option } from "effect";
 import { type ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import { AGENT_GATEWAY_TURN_AUTHORITY_RETIRED } from "../../agentGateway/sessionLease.ts";
 
-export type StopRuntimeSession = NonNullable<ProviderServiceShape["stopRuntimeSession"]>;
+export type StopRuntimeSession = ProviderServiceShape["stopRuntimeSession"];
 
 export type StopRuntimeSessionInput = Parameters<StopRuntimeSession>[0];
 

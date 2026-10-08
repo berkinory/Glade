@@ -10,7 +10,7 @@ class HttpRouteError extends Error {
   readonly _tag = "HttpRouteError";
 }
 
-export const AGENT_GATEWAY_MCP_MAX_BODY_BYTES = 1024 * 1024;
+const AGENT_GATEWAY_MCP_MAX_BODY_BYTES = 1024 * 1024;
 
 const BODY_TOO_LARGE = Symbol("AgentGatewayMcpBodyTooLarge");
 

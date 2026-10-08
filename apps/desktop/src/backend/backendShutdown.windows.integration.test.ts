@@ -547,19 +547,6 @@ async function buildRealServerEntrypoint(resources: TestResources): Promise<stri
 const describeWindows = process.platform === "win32" ? describe : describe.skip;
 
 describeWindows("Windows desktop backend shutdown integration", () => {
-  it("retains only the final raw diagnostic bytes before decoding", () => {
-    const tail = new BoundedByteTail();
-    const input = Buffer.alloc(MAX_CAPTURED_CHILD_OUTPUT_BYTES + 9);
-    for (let index = 0; index < input.byteLength; index += 1) {
-      input[index] = index % 251;
-    }
-
-    tail.append(input);
-
-    expect(tail.byteLength).toBe(MAX_CAPTURED_CHILD_OUTPUT_BYTES);
-    expect(tail.toBuffer()).toEqual(input.subarray(9));
-  });
-
   it("authenticates a real server, deduplicates shutdown, drains its runtime, and clears its finalizer artifact", async () => {
     const resources = new TestResources();
     try {
@@ -739,40 +726,4 @@ describeWindows("Windows desktop backend shutdown integration", () => {
       await resources.dispose();
     }
   }, 10_000);
-
-  it("does not request or force an already-exited test-owned child", async () => {
-    const resources = new TestResources();
-    try {
-      const { child } = await spawnCapturedChild(
-        resources,
-        process.execPath,
-        ["-e", "process.exit(0);"],
-        {},
-      );
-      await resources.waitForChildExit(child, 2_000, "short-lived direct child exit");
-      let requestCalls = 0;
-      let forceCalls = 0;
-
-      await expect(
-        stopWindowsBackendAndWait({
-          child: child as BackendShutdownProcess,
-          backendHttpUrl: "http://127.0.0.1:1",
-          shutdownToken: Crypto.randomBytes(32).toString("hex"),
-          forceKillDelayMs: 150,
-          timeoutMs: 2_000,
-          startRequest: () => {
-            requestCalls += 1;
-            throw new Error("already-exited child must not create a request");
-          },
-          forceTerminate: () => {
-            forceCalls += 1;
-          },
-        }),
-      ).resolves.toEqual({ type: "already-exited", forced: false });
-      expect(requestCalls).toBe(0);
-      expect(forceCalls).toBe(0);
-    } finally {
-      await resources.dispose();
-    }
-  });
 });

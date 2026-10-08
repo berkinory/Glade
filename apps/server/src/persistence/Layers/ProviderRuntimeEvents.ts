@@ -31,7 +31,7 @@ const decodeStoredRow = Schema.decodeUnknownEffect(StoredRowSchema);
 const SequenceRowSchema = Schema.Struct({ sequence: NonNegativeInt });
 const decodeSequenceRow = Schema.decodeUnknownEffect(SequenceRowSchema);
 
-export const truncateUtf8ToBytes = (value: string, maxBytes: number): string => {
+const truncateUtf8ToBytes = (value: string, maxBytes: number): string => {
   const encoded = Buffer.from(value, "utf8");
   if (encoded.byteLength <= maxBytes) return value;
   let prefixEnd = maxBytes;

@@ -6,21 +6,17 @@ import {
 } from "./AgentGatewayCredentials.ts";
 
 describe("resolveAgentGatewayEndpointHost", () => {
-  it("falls back to IPv4 loopback for default and wildcard binds", () => {
-    expect(resolveAgentGatewayEndpointHost(undefined)).toBe("127.0.0.1");
-    expect(resolveAgentGatewayEndpointHost("0.0.0.0")).toBe("127.0.0.1");
-    expect(resolveAgentGatewayEndpointHost("::")).toBe("127.0.0.1");
-    expect(resolveAgentGatewayEndpointHost("[::]")).toBe("127.0.0.1");
-  });
-
-  it("reuses an explicit bind host so child processes can reach the listener", () => {
-    expect(resolveAgentGatewayEndpointHost("localhost")).toBe("localhost");
-    expect(resolveAgentGatewayEndpointHost("192.168.1.20")).toBe("192.168.1.20");
-  });
-
-  it("brackets IPv6 hosts for URL use", () => {
-    expect(resolveAgentGatewayEndpointHost("::1")).toBe("[::1]");
-    expect(resolveAgentGatewayEndpointHost("[::1]")).toBe("[::1]");
+  it.each([
+    [undefined, "127.0.0.1"],
+    ["0.0.0.0", "127.0.0.1"],
+    ["::", "127.0.0.1"],
+    ["[::]", "127.0.0.1"],
+    ["localhost", "localhost"],
+    ["192.168.1.20", "192.168.1.20"],
+    ["::1", "[::1]"],
+    ["[::1]", "[::1]"],
+  ])("resolves bind host %s to endpoint host %s", (bindHost, expected) => {
+    expect(resolveAgentGatewayEndpointHost(bindHost)).toBe(expected);
   });
 
   it("updates connections after a dynamic listen port is resolved", () => {

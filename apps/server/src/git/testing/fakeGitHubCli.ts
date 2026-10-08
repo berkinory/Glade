@@ -11,9 +11,6 @@ import {
 
 export interface FakeGhScenario {
   prListSequence?: string[];
-  prListByHeadSelector?: Record<string, string>;
-  createdPrUrl?: string;
-  defaultBranch?: string;
   pullRequest?: {
     number: number;
     title: string;
@@ -26,12 +23,13 @@ export interface FakeGhScenario {
     headRepositoryOwnerLogin?: string | null;
   };
   repositoryCloneUrls?: Record<string, { url: string; sshUrl: string }>;
-  failWith?: GitHubCliError;
-  createPullRequestError?: GitHubCliError;
-  viewerLogin?: string;
 }
 
 type FakePullRequest = NonNullable<FakeGhScenario["pullRequest"]>;
+
+function ok(stdout: string) {
+  return { stdout, stderr: "", code: 0, signal: null, timedOut: false };
+}
 
 function runGitSyncForFakeGh(cwd: string, args: readonly string[]): void {
   const result = spawnSync("git", args, {
@@ -67,42 +65,12 @@ export function createGitHubCliWithFakeGh(scenario: FakeGhScenario = {}): {
     const args = [...input.args];
     ghCalls.push(args.join(" "));
 
-    if (scenario.failWith) {
-      return Effect.fail(scenario.failWith);
-    }
-
     if (args[0] === "pr" && args[1] === "list") {
-      const headSelectorIndex = args.findIndex((value) => value === "--head");
-      const headSelector =
-        headSelectorIndex >= 0 && headSelectorIndex < args.length - 1
-          ? args[headSelectorIndex + 1]
-          : undefined;
-      const mappedStdout =
-        typeof headSelector === "string"
-          ? scenario.prListByHeadSelector?.[headSelector]
-          : undefined;
-      const stdout = (mappedStdout ?? prListQueue.shift() ?? "[]") + "\n";
-      return Effect.succeed({
-        stdout,
-        stderr: "",
-        code: 0,
-        signal: null,
-        timedOut: false,
-      });
+      return Effect.succeed(ok(`${prListQueue.shift() ?? "[]"}\n`));
     }
 
     if (args[0] === "pr" && args[1] === "create") {
-      if (scenario.createPullRequestError) {
-        return Effect.fail(scenario.createPullRequestError);
-      }
-      return Effect.succeed({
-        stdout:
-          (scenario.createdPrUrl ?? "https://github.com/example-org/sample-repo/pull/101") + "\n",
-        stderr: "",
-        code: 0,
-        signal: null,
-        timedOut: false,
-      });
+      return Effect.succeed(ok("https://github.com/example-org/sample-repo/pull/101\n"));
     }
 
     if (args[0] === "pr" && args[1] === "view") {
@@ -114,8 +82,8 @@ export function createGitHubCliWithFakeGh(scenario: FakeGhScenario = {}): {
         headRefName: "feature/pull-request",
         state: "open",
       };
-      return Effect.succeed({
-        stdout:
+      return Effect.succeed(
+        ok(
           JSON.stringify({
             ...pullRequest,
             ...(pullRequest.headRepositoryNameWithOwner
@@ -133,11 +101,8 @@ export function createGitHubCliWithFakeGh(scenario: FakeGhScenario = {}): {
                 }
               : {}),
           }) + "\n",
-        stderr: "",
-        code: 0,
-        signal: null,
-        timedOut: false,
-      });
+        ),
+      );
     }
 
     if (args[0] === "pr" && args[1] === "checkout") {
@@ -159,13 +124,7 @@ export function createGitHubCliWithFakeGh(scenario: FakeGhScenario = {}): {
               runGitSyncForFakeGh(input.cwd, ["checkout", "-b", headBranch]);
             }
           }
-          return {
-            stdout: "",
-            stderr: "",
-            code: 0,
-            signal: null,
-            timedOut: false,
-          };
+          return ok("");
         },
         catch: (error) =>
           isGitHubCliError(error)
@@ -192,26 +151,17 @@ export function createGitHubCliWithFakeGh(scenario: FakeGhScenario = {}): {
             }),
           );
         }
-        return Effect.succeed({
-          stdout:
+        return Effect.succeed(
+          ok(
             JSON.stringify({
               nameWithOwner: repository,
               url: cloneUrls.url,
               sshUrl: cloneUrls.sshUrl,
             }) + "\n",
-          stderr: "",
-          code: 0,
-          signal: null,
-          timedOut: false,
-        });
+          ),
+        );
       }
-      return Effect.succeed({
-        stdout: `${scenario.defaultBranch ?? "main"}\n`,
-        stderr: "",
-        code: 0,
-        signal: null,
-        timedOut: false,
-      });
+      return Effect.succeed(ok("main\n"));
     }
 
     return Effect.fail(
@@ -246,9 +196,7 @@ export function createGitHubCliWithFakeGh(scenario: FakeGhScenario = {}): {
       execute,
       getViewerLogin: (input) => {
         ghCalls.push(`api user --jq .login [cwd=${input.cwd}]`);
-        return scenario.failWith
-          ? Effect.fail(scenario.failWith)
-          : Effect.succeed(scenario.viewerLogin ?? "viewer");
+        return Effect.succeed("viewer");
       },
       listOpenPullRequests: (input) =>
         listPullRequestsWithState(input, { state: "open", defaultLimit: 1 }),

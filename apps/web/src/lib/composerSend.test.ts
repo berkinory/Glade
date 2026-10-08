@@ -19,6 +19,43 @@ import {
 } from "./composerSend";
 import { effectiveComposerAttachmentCount } from "./composerAttachmentCapacity";
 
+const ATTACHMENT_IDS = [
+  "thread-1-11111111-1111-4111-8111-111111111111",
+  "thread-1-22222222-2222-4222-8222-222222222222",
+];
+
+function pngFile(name: string): File {
+  return new File([name], name, { type: "image/png" });
+}
+
+function draftImage(file: File, index: number): ComposerImageAttachment {
+  return {
+    type: "image",
+    id: `draft-${index}`,
+    name: file.name,
+    mimeType: file.type,
+    sizeBytes: file.size,
+    previewUrl: `blob:${file.name}`,
+    file,
+  };
+}
+
+function uploadedResponse(file: File, id: string): Response {
+  return Response.json(
+    { type: "image", id, name: file.name, mimeType: file.type, sizeBytes: file.size },
+    { status: 201 },
+  );
+}
+
+function stageImages(files: readonly File[]) {
+  return stageUploadComposerAttachments({
+    threadId: "thread-1",
+    images: files.map(draftImage),
+    files: [],
+    assistantSelections: [],
+  });
+}
+
 describe("composerSend attachment builders", () => {
   const originalCreateObjectUrl = URL.createObjectURL;
 
@@ -133,201 +170,58 @@ describe("composerSend attachment builders", () => {
   });
 
   it("uploads binary files outside RPC and returns persisted attachment ids", async () => {
-    const imageFile = new File(["png"], "screen.png", { type: "image/png" });
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({
-          type: "image",
-          id: "thread-1-11111111-1111-4111-8111-111111111111",
-          name: "screen.png",
-          mimeType: "image/png",
-          sizeBytes: imageFile.size,
-        }),
-        { status: 201, headers: { "Content-Type": "application/json" } },
-      ),
-    );
+    const imageFile = pngFile("screen.png");
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(uploadedResponse(imageFile, ATTACHMENT_IDS[0]!));
     vi.stubGlobal("fetch", fetchMock);
 
-    const { attachments } = await stageUploadComposerAttachments({
-      threadId: "thread-1",
-      images: [
-        {
-          type: "image",
-          id: "draft-image",
-          name: imageFile.name,
-          mimeType: imageFile.type,
-          sizeBytes: imageFile.size,
-          previewUrl: "blob:screen.png",
-          file: imageFile,
-        },
-      ],
-      files: [],
-      assistantSelections: [],
-    });
+    const { attachments } = await stageImages([imageFile]);
 
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/api/attachments/upload?"),
       expect.objectContaining({ method: "POST", body: imageFile }),
     );
-    expect(attachments).toEqual([
-      expect.objectContaining({ id: "thread-1-11111111-1111-4111-8111-111111111111" }),
-    ]);
+    expect(attachments).toEqual([expect.objectContaining({ id: ATTACHMENT_IDS[0] })]);
   });
 
-  it("cancels an earlier staged attachment when a later sequential upload fails", async () => {
-    const firstFile = new File(["one"], "one.png", { type: "image/png" });
-    const secondFile = new File(["two"], "two.png", { type: "image/png" });
-    const firstId = "thread-1-11111111-1111-4111-8111-111111111111";
-    const fetchMock = vi
-      .fn<typeof fetch>()
-      .mockResolvedValueOnce(
-        Response.json(
-          {
-            type: "image",
-            id: firstId,
-            name: firstFile.name,
-            mimeType: firstFile.type,
-            sizeBytes: firstFile.size,
-          },
-          { status: 201 },
-        ),
-      )
-      .mockResolvedValueOnce(Response.json({ error: "Second upload failed." }, { status: 507 }))
-      .mockResolvedValueOnce(Response.json({ cancelled: true }, { status: 200 }));
-    vi.stubGlobal("fetch", fetchMock);
+  it.each([
+    ["succeeds", () => Promise.resolve(Response.json({ cancelled: true }, { status: 200 }))],
+    ["fails", () => Promise.reject(new Error("Cancellation transport failed."))],
+  ])(
+    "cancels an earlier staged attachment and keeps the upload failure when cancellation %s",
+    async (_case, cancel) => {
+      const files = [pngFile("one.png"), pngFile("two.png")];
+      const fetchMock = vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(uploadedResponse(files[0]!, ATTACHMENT_IDS[0]!))
+        .mockResolvedValueOnce(Response.json({ error: "Second upload failed." }, { status: 507 }))
+        .mockImplementationOnce(cancel);
+      vi.stubGlobal("fetch", fetchMock);
 
-    await expect(
-      stageUploadComposerAttachments({
-        threadId: "thread-1",
-        images: [
-          {
-            type: "image",
-            id: "draft-one",
-            name: firstFile.name,
-            mimeType: firstFile.type,
-            sizeBytes: firstFile.size,
-            previewUrl: "blob:one.png",
-            file: firstFile,
-          },
-          {
-            type: "image",
-            id: "draft-two",
-            name: secondFile.name,
-            mimeType: secondFile.type,
-            sizeBytes: secondFile.size,
-            previewUrl: "blob:two.png",
-            file: secondFile,
-          },
-        ],
-        files: [],
-        assistantSelections: [],
-      }),
-    ).rejects.toThrow("Second upload failed.");
+      await expect(stageImages(files)).rejects.toThrow("Second upload failed.");
 
-    expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(fetchMock.mock.calls[2]).toEqual([
-      expect.stringContaining("/api/attachments/cancel"),
-      expect.objectContaining({
-        method: "POST",
-        credentials: "include",
-        body: JSON.stringify({ attachmentId: firstId }),
-      }),
-    ]);
-  });
-
-  it("preserves the upload failure when best-effort cancellation also fails", async () => {
-    const firstFile = new File(["one"], "one.png", { type: "image/png" });
-    const secondFile = new File(["two"], "two.png", { type: "image/png" });
-    const fetchMock = vi
-      .fn<typeof fetch>()
-      .mockResolvedValueOnce(
-        Response.json(
-          {
-            type: "image",
-            id: "thread-1-11111111-1111-4111-8111-111111111111",
-            name: firstFile.name,
-            mimeType: firstFile.type,
-            sizeBytes: firstFile.size,
-          },
-          { status: 201 },
-        ),
-      )
-      .mockResolvedValueOnce(Response.json({ error: "Original upload failure." }, { status: 500 }))
-      .mockRejectedValueOnce(new Error("Cancellation transport failed."));
-    vi.stubGlobal("fetch", fetchMock);
-
-    await expect(
-      stageUploadComposerAttachments({
-        threadId: "thread-1",
-        images: [
-          {
-            type: "image",
-            id: "draft-one",
-            name: firstFile.name,
-            mimeType: firstFile.type,
-            sizeBytes: firstFile.size,
-            previewUrl: "blob:one.png",
-            file: firstFile,
-          },
-          {
-            type: "image",
-            id: "draft-two",
-            name: secondFile.name,
-            mimeType: secondFile.type,
-            sizeBytes: secondFile.size,
-            previewUrl: "blob:two.png",
-            file: secondFile,
-          },
-        ],
-        files: [],
-        assistantSelections: [],
-      }),
-    ).rejects.toThrow("Original upload failure.");
-    expect(fetchMock).toHaveBeenCalledTimes(3);
-  });
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+      expect(fetchMock.mock.calls[2]).toEqual([
+        expect.stringContaining("/api/attachments/cancel"),
+        expect.objectContaining({
+          method: "POST",
+          credentials: "include",
+          body: JSON.stringify({ attachmentId: ATTACHMENT_IDS[0] }),
+        }),
+      ]);
+    },
+  );
 
   it("cancels every staged managed attachment when dispatch rejects", async () => {
-    const files = [
-      new File(["one"], "one.png", { type: "image/png" }),
-      new File(["two"], "two.png", { type: "image/png" }),
-    ];
-    const ids = [
-      "thread-1-11111111-1111-4111-8111-111111111111",
-      "thread-1-22222222-2222-4222-8222-222222222222",
-    ];
+    const files = [pngFile("one.png"), pngFile("two.png")];
     const fetchMock = vi.fn<typeof fetch>();
     for (const [index, file] of files.entries()) {
-      fetchMock.mockResolvedValueOnce(
-        Response.json(
-          {
-            type: "image",
-            id: ids[index],
-            name: file.name,
-            mimeType: file.type,
-            sizeBytes: file.size,
-          },
-          { status: 201 },
-        ),
-      );
+      fetchMock.mockResolvedValueOnce(uploadedResponse(file, ATTACHMENT_IDS[index]!));
     }
-    fetchMock
-      .mockResolvedValueOnce(Response.json({ cancelled: true }, { status: 200 }))
-      .mockResolvedValueOnce(Response.json({ cancelled: true }, { status: 200 }));
+    fetchMock.mockResolvedValue(Response.json({ cancelled: true }, { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
-    const staged = await stageUploadComposerAttachments({
-      threadId: "thread-1",
-      images: files.map((file, index) => ({
-        type: "image" as const,
-        id: `draft-${index}`,
-        name: file.name,
-        mimeType: file.type,
-        sizeBytes: file.size,
-        previewUrl: `blob:${file.name}`,
-        file,
-      })),
-      files: [],
-      assistantSelections: [],
-    });
+    const staged = await stageImages(files);
     const dispatchError = new Error("Dispatch rejected.");
 
     await expect(staged.runWithDispatch(async () => Promise.reject(dispatchError))).rejects.toBe(
@@ -339,40 +233,16 @@ describe("composerSend attachment builders", () => {
       .slice(2)
       .map(([, options]) => JSON.parse(String(options?.body)).attachmentId)
       .toSorted();
-    expect(cancelledIds).toEqual(ids.toSorted());
+    expect(cancelledIds).toEqual(ATTACHMENT_IDS.toSorted());
   });
 
   it("commits successful dispatches so later cleanup does not cancel", async () => {
-    const imageFile = new File(["png"], "screen.png", { type: "image/png" });
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
-      Response.json(
-        {
-          type: "image",
-          id: "thread-1-11111111-1111-4111-8111-111111111111",
-          name: imageFile.name,
-          mimeType: imageFile.type,
-          sizeBytes: imageFile.size,
-        },
-        { status: 201 },
-      ),
-    );
+    const imageFile = pngFile("screen.png");
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(uploadedResponse(imageFile, ATTACHMENT_IDS[0]!));
     vi.stubGlobal("fetch", fetchMock);
-    const staged = await stageUploadComposerAttachments({
-      threadId: "thread-1",
-      images: [
-        {
-          type: "image",
-          id: "draft-image",
-          name: imageFile.name,
-          mimeType: imageFile.type,
-          sizeBytes: imageFile.size,
-          previewUrl: "blob:screen.png",
-          file: imageFile,
-        },
-      ],
-      files: [],
-      assistantSelections: [],
-    });
+    const staged = await stageImages([imageFile]);
 
     await expect(staged.runWithDispatch(async () => "accepted")).resolves.toBe("accepted");
     await staged.cleanup();
@@ -382,26 +252,28 @@ describe("composerSend attachment builders", () => {
 });
 
 describe("effectiveComposerAttachmentCount", () => {
-  it("counts live images, files, and assistant selections", () => {
+  it.each([
+    {
+      name: "counts live images, files, and assistant selections",
+      persistedAttachments: [],
+      assistantSelections: [{}],
+      expected: 4,
+    },
+    {
+      name: "counts a hydrated persisted image once and a pending one separately",
+      persistedAttachments: [{ id: "image-1" }, { id: "pending-2" }],
+      assistantSelections: [],
+      expected: 4,
+    },
+  ])("$name", ({ persistedAttachments, assistantSelections, expected }) => {
     expect(
       effectiveComposerAttachmentCount({
         images: [{ id: "image-1" }, { id: "image-2" }],
         files: [{}],
-        assistantSelections: [{}],
-        persistedAttachments: [],
+        assistantSelections,
+        persistedAttachments,
       }),
-    ).toBe(4);
-  });
-
-  it("mixes hydrated and pending persisted attachments correctly", () => {
-    expect(
-      effectiveComposerAttachmentCount({
-        images: [{ id: "image-1" }],
-        files: [{}],
-        assistantSelections: [],
-        persistedAttachments: [{ id: "image-1" }, { id: "pending-2" }],
-      }),
-    ).toBe(3);
+    ).toBe(expected);
   });
 });
 
@@ -409,11 +281,11 @@ function persistedImageAttachment(
   overrides: Partial<PersistedComposerImageAttachment> = {},
 ): PersistedComposerImageAttachment {
   return {
-    id: "computer-helper-1",
+    id: "image-1",
     name: "capture.png",
     mimeType: "image/png",
     sizeBytes: 4,
-    blobKey: "thread-1:computer-helper-1",
+    blobKey: "thread-1:image-1",
     ...overrides,
   };
 }
@@ -424,7 +296,7 @@ function composerImageAttachment(
   const file = new File(["png"], "capture.png", { type: "image/png" });
   return {
     type: "image",
-    id: "computer-helper-1",
+    id: "image-1",
     name: "capture.png",
     mimeType: "image/png",
     sizeBytes: 4,
@@ -438,30 +310,17 @@ describe("findPendingBlobComposerAttachments", () => {
   it("returns blob-backed persisted attachments not yet hydrated into images", () => {
     const pending = persistedImageAttachment({ id: "pending-1" });
     const hydrated = persistedImageAttachment({ id: "hydrated-1" });
+    const { blobKey: _blobKey, ...inline } = persistedImageAttachment({
+      id: "inline-1",
+      dataUrl: "data:x",
+    });
 
     const result = findPendingBlobComposerAttachments({
-      persistedAttachments: [pending, hydrated],
+      persistedAttachments: [pending, hydrated, inline],
       images: [composerImageAttachment({ id: "hydrated-1" })],
     });
 
     expect(result).toEqual([pending]);
-  });
-
-  it("ignores dataUrl-backed persisted attachments (no blobKey)", () => {
-    const inlineAttachment: PersistedComposerImageAttachment = {
-      id: "inline-1",
-      name: "capture.png",
-      mimeType: "image/png",
-      sizeBytes: 4,
-      dataUrl: "data:x",
-    };
-
-    const result = findPendingBlobComposerAttachments({
-      persistedAttachments: [inlineAttachment],
-      images: [],
-    });
-
-    expect(result).toEqual([]);
   });
 });
 
@@ -486,28 +345,22 @@ describe("hydratePendingBlobComposerAttachments", () => {
     expect(result).toEqual([
       expect.objectContaining({
         type: "image",
-        id: "computer-helper-1",
+        id: "image-1",
         previewUrl: "blob:capture.png",
         file: blobFile,
       }),
     ]);
   });
 
-  it("skips an attachment whose blob is missing without throwing", async () => {
-    vi.spyOn(composerImageBlobStore, "readComposerImageBlob").mockResolvedValue(null);
-
-    const result = await hydratePendingBlobComposerAttachments([persistedImageAttachment()]);
-
-    expect(result).toEqual([]);
-  });
-
-  it("skips an attachment whose blob read rejects, without blocking the rest", async () => {
+  it("skips attachments whose blob is missing or unreadable without blocking the rest", async () => {
     vi.spyOn(composerImageBlobStore, "readComposerImageBlob")
       .mockRejectedValueOnce(new Error("boom"))
+      .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(new File(["png"], "ok.png", { type: "image/png" }));
 
     const result = await hydratePendingBlobComposerAttachments([
       persistedImageAttachment({ id: "broken" }),
+      persistedImageAttachment({ id: "missing", blobKey: "thread-1:missing" }),
       persistedImageAttachment({ id: "ok", blobKey: "thread-1:ok" }),
     ]);
 

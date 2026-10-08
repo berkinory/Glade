@@ -228,10 +228,9 @@ export function resolveGitHubUpdateSource(
   };
 }
 
-export function buildGitHubReleasesPageUrl(source: GitHubUpdateSource, tag?: string): string {
-  const path =
-    tag && tag.trim().length > 0
-      ? `/${source.owner}/${source.repo}/releases/tag/${tag.trim()}`
-      : `/${source.owner}/${source.repo}/releases/latest`;
-  return new URL(path, `${source.protocol}://${source.host}`).toString();
+export function buildGitHubReleasesPageUrl(source: GitHubUpdateSource): string {
+  return new URL(
+    `/${source.owner}/${source.repo}/releases/latest`,
+    `${source.protocol}://${source.host}`,
+  ).toString();
 }

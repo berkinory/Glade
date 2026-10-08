@@ -5,7 +5,7 @@ import {
   ProjectId,
   ThreadId,
 } from "@glade/contracts/core/baseSchemas";
-import { type ContextMenuItem } from "@glade/contracts/ipc/ipc";
+import { type ContextMenuItem, type NativeApi } from "@glade/contracts/ipc/ipc";
 import {
   ORCHESTRATION_WS_CHANNELS,
   ORCHESTRATION_WS_METHODS,
@@ -122,6 +122,34 @@ function getWindowForTest(): Window & typeof globalThis & { desktopBridge?: unkn
   return testGlobal.window;
 }
 
+const projectCreateCommand = {
+  type: "project.create",
+  commandId: CommandId.makeUnsafe("cmd-1"),
+  projectId: ProjectId.makeUnsafe("project-1"),
+  kind: "project",
+  title: "Project",
+  workspaceRoot: "/tmp/project",
+  defaultModelSelection: { provider: "codex", model: "gpt-5-codex" },
+  createdAt: "2026-02-24T00:00:00.000Z",
+} as const;
+
+const voiceInput = {
+  provider: "codex" as const,
+  cwd: "/repo",
+  audioBase64: "AQID",
+  mimeType: "audio/wav",
+  sampleRateHz: 24_000,
+  durationMs: 1000,
+};
+
+function stubDesktopBridge(extra: Record<string, unknown> = {}): void {
+  Object.defineProperty(getWindowForTest(), "desktopBridge", {
+    configurable: true,
+    writable: true,
+    value: { getWsUrl: () => "ws://127.0.0.1:3773/ws?token=desktop-secret", ...extra },
+  });
+}
+
 const defaultProviders: ReadonlyArray<ServerProviderStatus> = [
   {
     provider: "codex",
@@ -151,153 +179,68 @@ afterEach(() => {
 });
 
 describe("wsNativeApi", () => {
-  it("gives a slow provider refresh a bounded deadline beyond the generic RPC timeout", async () => {
-    const { createWsNativeApi } = await import("./wsNativeApi");
-    const api = createWsNativeApi();
-    requestMock.mockResolvedValue({ providers: defaultProviders });
-
-    await expect(api.server.refreshProviders()).resolves.toEqual({
-      providers: defaultProviders,
-    });
-    expect(requestMock).toHaveBeenCalledExactlyOnceWith(
-      WS_METHODS.serverRefreshProviders,
-      undefined,
-      { timeoutMs: 180_000 },
-    );
-  });
-
-  it("delivers and caches valid server.welcome payloads", async () => {
-    const { createWsNativeApi, onServerWelcome } = await import("./wsNativeApi");
-
-    createWsNativeApi();
-    const listener = vi.fn();
-    onServerWelcome(listener);
-
-    const payload = { cwd: "/tmp/workspace", homeDir: "/Users/tester", projectName: "glade-code" };
-    emitPush(WS_CHANNELS.serverWelcome, payload);
-
-    expect(listener).toHaveBeenCalledTimes(1);
-    expect(listener).toHaveBeenCalledWith(expect.objectContaining(payload));
-
-    const lateListener = vi.fn();
-    onServerWelcome(lateListener);
-
-    expect(lateListener).toHaveBeenCalledTimes(1);
-    expect(lateListener).toHaveBeenCalledWith(expect.objectContaining(payload));
-  });
-
-  it("delivers successive server.welcome payloads to active listeners", async () => {
-    const { createWsNativeApi, onServerWelcome } = await import("./wsNativeApi");
-
-    createWsNativeApi();
-    const listener = vi.fn();
-    onServerWelcome(listener);
-
-    emitPush(WS_CHANNELS.serverWelcome, {
-      cwd: "/tmp/one",
-      homeDir: "/Users/tester",
-      projectName: "one",
-    });
-    emitPush(WS_CHANNELS.serverWelcome, {
-      cwd: "/tmp/workspace",
-      homeDir: "/Users/tester",
-      projectName: "glade-code",
-    });
-
-    expect(listener).toHaveBeenCalledTimes(2);
-    expect(listener).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        cwd: "/tmp/workspace",
-        homeDir: "/Users/tester",
-        projectName: "glade-code",
-      }),
-    );
-  });
-
-  it("delivers and caches valid server.configUpdated payloads", async () => {
-    const { createWsNativeApi, onServerConfigUpdated } = await import("./wsNativeApi");
-
-    createWsNativeApi();
-    const listener = vi.fn();
-    onServerConfigUpdated(listener);
-
-    const payload = {
-      issues: [
-        {
-          kind: "keybindings.invalid-entry",
-          index: 1,
-          message: "Entry at index 1 is invalid.",
-        },
-      ],
-      providers: defaultProviders,
-    } as const;
-    emitPush(WS_CHANNELS.serverConfigUpdated, payload);
-
-    expect(listener).toHaveBeenCalledTimes(1);
-    expect(listener).toHaveBeenCalledWith(payload);
-
-    const lateListener = vi.fn();
-    onServerConfigUpdated(lateListener);
-    expect(lateListener).toHaveBeenCalledTimes(1);
-    expect(lateListener).toHaveBeenCalledWith(payload);
-  });
-
-  it("delivers and caches provider-only status updates", async () => {
-    const { createWsNativeApi, onServerProviderStatusesUpdated } = await import("./wsNativeApi");
-
-    createWsNativeApi();
-    const listener = vi.fn();
-    onServerProviderStatusesUpdated(listener);
-
-    const payload = {
-      providers: defaultProviders,
-    } as const;
-    emitPush(WS_CHANNELS.serverProviderStatusesUpdated, payload);
-
-    expect(listener).toHaveBeenCalledTimes(1);
-    expect(listener).toHaveBeenCalledWith(payload);
-
-    const lateListener = vi.fn();
-    onServerProviderStatusesUpdated(lateListener);
-    expect(lateListener).toHaveBeenCalledTimes(1);
-    expect(lateListener).toHaveBeenCalledWith(payload);
-  });
-
-  it("delivers and caches server settings updates", async () => {
-    const { createWsNativeApi, onServerSettingsUpdated } = await import("./wsNativeApi");
-
-    createWsNativeApi();
-    const listener = vi.fn();
-    onServerSettingsUpdated(listener);
-
-    const payload = {
-      settings: {
-        enableAssistantStreaming: true,
-        enableProviderUpdateChecks: true,
-        defaultThreadEnvMode: "local",
-        addProjectBaseDirectory: "",
-        textGenerationModelSelection: { provider: "codex", model: "gpt-5.4-mini" },
-        providers: {
-          codex: { enabled: true, binaryPath: "codex", homePath: "" },
-          claudeAgent: {
-            enabled: true,
-            binaryPath: "claude",
-            launchArgs: "",
-            enableArtifacts: false,
-          },
-        },
-        skills: { disabled: [] },
+  it.each([
+    {
+      name: "server.welcome",
+      subscribe: "onServerWelcome",
+      channel: WS_CHANNELS.serverWelcome,
+      payload: { cwd: "/tmp/workspace", homeDir: "/Users/tester", projectName: "glade-code" },
+    },
+    {
+      name: "server.configUpdated",
+      subscribe: "onServerConfigUpdated",
+      channel: WS_CHANNELS.serverConfigUpdated,
+      payload: {
+        issues: [
+          { kind: "keybindings.invalid-entry", index: 1, message: "Entry at index 1 is invalid." },
+        ],
+        providers: defaultProviders,
       },
-    } as const;
-    emitPush(WS_CHANNELS.serverSettingsUpdated, payload);
+    },
+    {
+      name: "provider-only status",
+      subscribe: "onServerProviderStatusesUpdated",
+      channel: WS_CHANNELS.serverProviderStatusesUpdated,
+      payload: { providers: defaultProviders },
+    },
+    {
+      name: "server settings",
+      subscribe: "onServerSettingsUpdated",
+      channel: WS_CHANNELS.serverSettingsUpdated,
+      payload: {
+        settings: {
+          enableAssistantStreaming: true,
+          enableProviderUpdateChecks: true,
+          defaultThreadEnvMode: "local",
+          addProjectBaseDirectory: "",
+          textGenerationModelSelection: { provider: "codex", model: "gpt-5.4-mini" },
+          providers: {
+            codex: { enabled: true, binaryPath: "codex", homePath: "" },
+            claudeAgent: {
+              enabled: true,
+              binaryPath: "claude",
+              launchArgs: "",
+              enableArtifacts: false,
+            },
+          },
+          skills: { disabled: [] },
+        },
+      },
+    },
+  ] as const)("delivers $name pushes and replays the latest to late listeners", async (row) => {
+    const wsNativeApi = await import("./wsNativeApi");
+    const subscribe = wsNativeApi[row.subscribe] as (listener: (payload: unknown) => void) => void;
 
-    expect(listener).toHaveBeenCalledTimes(1);
-    expect(listener).toHaveBeenCalledWith(payload);
+    wsNativeApi.createWsNativeApi();
+    const listener = vi.fn();
+    subscribe(listener);
+    emitPush(row.channel, row.payload as never);
+
+    expect(listener).toHaveBeenCalledExactlyOnceWith(expect.objectContaining(row.payload));
 
     const lateListener = vi.fn();
-    onServerSettingsUpdated(lateListener);
-    expect(lateListener).toHaveBeenCalledTimes(1);
-    expect(lateListener).toHaveBeenCalledWith(payload);
+    subscribe(lateListener);
+    expect(lateListener).toHaveBeenCalledExactlyOnceWith(expect.objectContaining(row.payload));
   });
 
   it("forwards valid terminal and orchestration events", async () => {
@@ -385,29 +328,57 @@ describe("wsNativeApi", () => {
     });
   });
 
-  it("wraps orchestration dispatch commands in the command envelope", async () => {
+  it.each<{
+    name: string;
+    call: (api: NativeApi, signal: AbortSignal) => Promise<unknown>;
+    expected: (signal: AbortSignal) => readonly unknown[];
+  }>([
+    {
+      name: "gives a slow provider refresh a bounded deadline beyond the generic RPC timeout",
+      call: (api) => api.server.refreshProviders(),
+      expected: () => [WS_METHODS.serverRefreshProviders, undefined, { timeoutMs: 180_000 }],
+    },
+    {
+      name: "wraps orchestration dispatch commands in the command envelope",
+      call: (api) => api.orchestration.dispatchCommand(projectCreateCommand),
+      expected: () => [ORCHESTRATION_WS_METHODS.dispatchCommand, { command: projectCreateCommand }],
+    },
+    {
+      name: "forwards an abort signal on projects.readFile",
+      call: (api, signal) =>
+        api.projects.readFile({ cwd: "/tmp/project", relativePath: "src/app.ts" }, { signal }),
+      expected: (signal) => [
+        WS_METHODS.projectsReadFile,
+        { cwd: "/tmp/project", relativePath: "src/app.ts" },
+        { signal },
+      ],
+    },
+    {
+      name: "uses no client timeout for git.runStackedAction",
+      call: (api) =>
+        api.git.runStackedAction({ actionId: "action-1", cwd: "/repo", action: "commit" }),
+      expected: () => [
+        WS_METHODS.gitRunStackedAction,
+        { actionId: "action-1", cwd: "/repo", action: "commit" },
+        { timeoutMs: null },
+      ],
+    },
+    {
+      name: "scopes orchestration replay requests to the visible thread",
+      call: (api) => api.orchestration.replayEvents(41, ThreadId.makeUnsafe("thread-1")),
+      expected: () => [
+        ORCHESTRATION_WS_METHODS.replayEvents,
+        { fromSequenceExclusive: 41, threadId: "thread-1" },
+      ],
+    },
+  ])("$name", async ({ call, expected }) => {
     requestMock.mockResolvedValue(undefined);
     const { createWsNativeApi } = await import("./wsNativeApi");
 
-    const api = createWsNativeApi();
-    const command = {
-      type: "project.create",
-      commandId: CommandId.makeUnsafe("cmd-1"),
-      projectId: ProjectId.makeUnsafe("project-1"),
-      kind: "project",
-      title: "Project",
-      workspaceRoot: "/tmp/project",
-      defaultModelSelection: {
-        provider: "codex",
-        model: "gpt-5-codex",
-      },
-      createdAt: "2026-02-24T00:00:00.000Z",
-    } as const;
-    await api.orchestration.dispatchCommand(command);
+    const signal = new AbortController().signal;
+    await call(createWsNativeApi(), signal);
 
-    expect(requestMock).toHaveBeenCalledWith(ORCHESTRATION_WS_METHODS.dispatchCommand, {
-      command,
-    });
+    expect(requestMock).toHaveBeenCalledExactlyOnceWith(...expected(signal));
   });
 
   it("omits null user-input answers before dispatching to orchestration", async () => {
@@ -437,37 +408,6 @@ describe("wsNativeApi", () => {
         },
       },
     });
-  });
-
-  it("forwards an abort signal on projects.readFile to the transport", async () => {
-    requestMock.mockResolvedValue({
-      relativePath: "src/app.ts",
-      contents: "export {};\n",
-      truncated: false,
-      version: `sha256:${"1".repeat(64)}`,
-      encoding: "utf8",
-      lineEnding: "lf",
-    });
-    const { createWsNativeApi } = await import("./wsNativeApi");
-    const controller = new AbortController();
-    const api = createWsNativeApi();
-
-    await api.projects.readFile(
-      {
-        cwd: "/tmp/project",
-        relativePath: "src/app.ts",
-      },
-      { signal: controller.signal },
-    );
-
-    expect(requestMock).toHaveBeenCalledWith(
-      WS_METHODS.projectsReadFile,
-      {
-        cwd: "/tmp/project",
-        relativePath: "src/app.ts",
-      },
-      { signal: controller.signal },
-    );
   });
 
   it("fetches auth session state over HTTP", async () => {
@@ -550,26 +490,6 @@ describe("wsNativeApi", () => {
     expect(disposeMock).toHaveBeenCalledTimes(1);
   });
 
-  it("uses no client timeout for git.runStackedAction", async () => {
-    requestMock.mockResolvedValue({
-      action: "commit",
-      branch: { status: "skipped_not_requested" },
-      commit: { status: "created", commitSha: "abc1234", subject: "Test" },
-      push: { status: "skipped_not_requested" },
-      pr: { status: "skipped_not_requested" },
-    });
-    const { createWsNativeApi } = await import("./wsNativeApi");
-
-    const api = createWsNativeApi();
-    await api.git.runStackedAction({ actionId: "action-1", cwd: "/repo", action: "commit" });
-
-    expect(requestMock).toHaveBeenCalledWith(
-      WS_METHODS.gitRunStackedAction,
-      { actionId: "action-1", cwd: "/repo", action: "commit" },
-      { timeoutMs: null },
-    );
-  });
-
   it("forwards cancellable GitHub project provisioning and its progress events", async () => {
     const input = {
       operationId: "operation-1",
@@ -615,19 +535,6 @@ describe("wsNativeApi", () => {
       kind: "phase",
       phase: "cloning",
       message: "Cloning openai/codex",
-    });
-  });
-
-  it("scopes orchestration replay requests to the visible thread when provided", async () => {
-    requestMock.mockResolvedValue([]);
-    const { createWsNativeApi } = await import("./wsNativeApi");
-    const api = createWsNativeApi();
-
-    await api.orchestration.replayEvents(41, ThreadId.makeUnsafe("thread-1"));
-
-    expect(requestMock).toHaveBeenCalledWith(ORCHESTRATION_WS_METHODS.replayEvents, {
-      fromSequenceExclusive: 41,
-      threadId: "thread-1",
     });
   });
 
@@ -714,78 +621,26 @@ describe("wsNativeApi", () => {
     );
   });
 
-  it("uses the bounded server upload even when the desktop bridge is available", async () => {
-    const transcribeVoice = vi.fn().mockResolvedValue({ text: "hello" });
-    Object.defineProperty(getWindowForTest(), "desktopBridge", {
-      configurable: true,
-      writable: true,
-      value: {
-        getWsUrl: () => "ws://127.0.0.1:3773/ws?token=desktop-secret",
-        server: {
-          transcribeVoice,
-        },
-      },
-    });
-
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(JSON.stringify({ text: "hello" }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
-    vi.stubGlobal("fetch", fetchMock);
-    const { createWsNativeApi } = await import("./wsNativeApi");
-    const api = createWsNativeApi();
-    await api.server.transcribeVoice({
-      provider: "codex",
-      cwd: "/repo",
-      audioBase64: "UklGRgAAAAAAAAAAAAAAAAAAAAA=",
-      mimeType: "audio/wav",
-      sampleRateHz: 24_000,
-      durationMs: 1000,
-    });
-
-    expect(transcribeVoice).not.toHaveBeenCalled();
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/api/voice/transcribe?"),
-      expect.objectContaining({ method: "POST" }),
-    );
-    expect(requestMock).not.toHaveBeenCalledWith(
-      WS_METHODS.serverTranscribeVoice,
-      expect.anything(),
-    );
-  });
-
-  it("uses the bounded HTTP upload instead of WebSocket RPC for browser voice", async () => {
-    Object.defineProperty(getWindowForTest(), "desktopBridge", {
-      configurable: true,
-      writable: true,
-      value: { getWsUrl: () => "ws://127.0.0.1:3773/ws?token=desktop-secret" },
-    });
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(JSON.stringify({ text: "hello" }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
+  it.each([
+    ["even when the desktop bridge can transcribe", { transcribeVoice: vi.fn() }],
+    ["for browser voice", undefined],
+  ])("uses the bounded HTTP upload instead of WebSocket RPC %s", async (_case, server) => {
+    stubDesktopBridge(server ? { server } : {});
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(Response.json({ text: "hello" }, { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
 
     const { createWsNativeApi } = await import("./wsNativeApi");
-    const api = createWsNativeApi();
-    const result = await api.server.transcribeVoice({
-      provider: "codex",
-      cwd: "/repo",
-      audioBase64: "AQID",
-      mimeType: "audio/wav",
-      sampleRateHz: 24_000,
-      durationMs: 1000,
+    await expect(createWsNativeApi().server.transcribeVoice(voiceInput)).resolves.toEqual({
+      text: "hello",
     });
 
-    expect(result).toEqual({ text: "hello" });
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/api/voice/transcribe?"),
       expect.objectContaining({ method: "POST", body: Uint8Array.from([1, 2, 3]) }),
     );
+    if (server) expect(server.transcribeVoice).not.toHaveBeenCalled();
     expect(requestMock).not.toHaveBeenCalledWith(
       WS_METHODS.serverTranscribeVoice,
       expect.anything(),
@@ -795,11 +650,7 @@ describe("wsNativeApi", () => {
   it.each([404, 405])(
     "falls back immediately from a stalled voice HTTP %i body",
     async (status) => {
-      Object.defineProperty(getWindowForTest(), "desktopBridge", {
-        configurable: true,
-        writable: true,
-        value: { getWsUrl: () => "ws://127.0.0.1:3773/ws?token=desktop-secret" },
-      });
+      stubDesktopBridge();
       const fetchMock = vi
         .fn<typeof fetch>()
         .mockResolvedValue(new Response(new ReadableStream({ start() {} }), { status }));
@@ -808,19 +659,10 @@ describe("wsNativeApi", () => {
 
       const { createWsNativeApi } = await import("./wsNativeApi");
       const api = createWsNativeApi();
-      const input = {
-        provider: "codex" as const,
-        cwd: "/repo",
-        audioBase64: "AQID",
-        mimeType: "audio/wav",
-        sampleRateHz: 24_000,
-        durationMs: 1000,
-      };
-
-      await expect(api.server.transcribeVoice(input)).resolves.toEqual({
+      await expect(api.server.transcribeVoice(voiceInput)).resolves.toEqual({
         text: "legacy transport",
       });
-      expect(requestMock).toHaveBeenCalledWith(WS_METHODS.serverTranscribeVoice, input, {
+      expect(requestMock).toHaveBeenCalledWith(WS_METHODS.serverTranscribeVoice, voiceInput, {
         timeoutMs: null,
       });
     },
@@ -836,11 +678,7 @@ describe("wsNativeApi", () => {
   ])(
     "rejects a $status voice response $body without a second transcription",
     async ({ status, body, message }) => {
-      Object.defineProperty(getWindowForTest(), "desktopBridge", {
-        configurable: true,
-        writable: true,
-        value: { getWsUrl: () => "ws://127.0.0.1:3773/ws?token=desktop-secret" },
-      });
+      stubDesktopBridge();
       vi.stubGlobal(
         "fetch",
         vi.fn<typeof fetch>().mockResolvedValue(new Response(body, { status })),
@@ -849,16 +687,7 @@ describe("wsNativeApi", () => {
       const { createWsNativeApi } = await import("./wsNativeApi");
       const api = createWsNativeApi();
 
-      await expect(
-        api.server.transcribeVoice({
-          provider: "codex",
-          cwd: "/repo",
-          audioBase64: "AQID",
-          mimeType: "audio/wav",
-          sampleRateHz: 24_000,
-          durationMs: 1000,
-        }),
-      ).rejects.toThrow(message);
+      await expect(api.server.transcribeVoice(voiceInput)).rejects.toThrow(message);
       expect(requestMock).not.toHaveBeenCalledWith(
         WS_METHODS.serverTranscribeVoice,
         expect.anything(),

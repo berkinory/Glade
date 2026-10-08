@@ -3,6 +3,9 @@ import { Effect } from "effect";
 import { ChildProcessSpawner } from "effect/unstable/process";
 import { createRequire, syncBuiltinESMExports } from "node:module";
 import { EventEmitter } from "node:events";
+import * as fs from "node:fs/promises";
+import * as os from "node:os";
+import * as path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 import { makeEffectProcessCommand } from "./effectProcessRuntime";
@@ -66,18 +69,9 @@ describe("Effect process signal guards", () => {
   );
 });
 
-it("does not replace the process-wide signal function when the controller is imported", async () => {
-  const originalKill = process.kill;
-  await import("./processTreeController");
-  expect(process.kill).toBe(originalKill);
-});
-
 it.skipIf(process.platform === "win32")(
   "cleans an owned group after its leader exits nonzero",
   async () => {
-    const fs = await import("node:fs/promises");
-    const path = await import("node:path");
-    const os = await import("node:os");
     const directory = await fs.mkdtemp(path.join(os.tmpdir(), "synara-group-exit-"));
     const marker = path.join(directory, "descendant-stopped");
     const descendant = `

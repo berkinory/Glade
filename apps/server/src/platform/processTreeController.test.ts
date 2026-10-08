@@ -41,7 +41,7 @@ describe("Windows process-tree controller", () => {
     });
   });
 
-  it("captures process trees larger than the former traversal cap", async () => {
+  it("captures deep process trees without a traversal cap", async () => {
     const childrenByParentPid: ProcessChildrenMap = new Map();
     for (let pid = 100; pid < 400; pid += 1) {
       childrenByParentPid.set(pid, [{ pid: pid + 1, command: `worker-${pid + 1}` }]);
@@ -207,20 +207,9 @@ function sessionSnapshot(): ProcessChildrenMap {
   ]);
 }
 
-describe("unsafe process-tree root guard", () => {
-  it("refuses to collect a tree rooted at pid 1", () => {
-    const killer = createProcessTreeKiller({ captureChildrenMap: sessionSnapshot });
-    expect(killer.capture(1)).toEqual({ descendants: [], captureComplete: false });
-  });
-
-  it("refuses to collect a tree rooted at the current process", () => {
-    const killer = createProcessTreeKiller({ captureChildrenMap: sessionSnapshot });
-    expect(killer.capture(process.pid)).toEqual({ descendants: [], captureComplete: false });
-  });
-
-  // Positive capture outcomes go through captureProcessTree's injected win32 path: `capture()`
-  // refuses to run on Windows hosts (the sync API cannot query CIM), so asserting `captureComplete:
-  // true` there is platform-bound.
+describe("process-tree root snapshots", () => {
+  // `capture()` refuses to run on Windows hosts, so positive outcomes go through captureProcessTree's
+  // injected win32 path.
   it("proves absence when the root pid is missing from a complete snapshot", async () => {
     const tree = await captureProcessTree(0x7fff_fffe, {
       platform: "win32",
@@ -239,72 +228,33 @@ describe("unsafe process-tree root guard", () => {
       captureComplete: true,
     });
   });
-
-  it.each([1, process.pid])(
-    "never signals descendants or the root tree for unsafe root pid %s",
-    (rootPid) => {
-      const signalled: number[] = [];
-      const treeKilled: number[] = [];
-      const killer = createProcessTreeKiller({
-        captureChildrenMap: sessionSnapshot,
-        signalPid: (pid) => {
-          signalled.push(pid);
-          return null;
-        },
-        signalTree: (pid) => {
-          treeKilled.push(pid);
-        },
-      });
-
-      killer.signal({
-        rootPid,
-        signal: "SIGTERM",
-        // Even a caller-supplied tree claiming launchd's descendants must not be honored; signalTree runs
-        // its own live walk for pid 1.
-        tree: {
-          captureComplete: true,
-          descendants: [{ pid: 501, command: "loginwindow" }],
-        },
-        includeRootTree: true,
-        onError: () => undefined,
-      });
-
-      expect(signalled).toEqual([]);
-      expect(treeKilled).toEqual([]);
-    },
-  );
-
-  it("refuses unsafe roots through captureProcessTree before any snapshot", async () => {
-    let snapshots = 0;
-    const killer = createProcessTreeKiller({
-      captureChildrenMap: () => {
-        snapshots += 1;
-        return sessionSnapshot();
-      },
-    });
-
-    await expect(
-      captureProcessTree(1, { platform: "darwin", processTreeKiller: killer }),
-    ).resolves.toEqual({ descendants: [], captureComplete: false });
-    expect(snapshots).toBe(0);
-  });
 });
 
 describe("signal target and captured identity safeguards", () => {
-  it.each([0, 1, -1, -42, 1.5, NaN, Infinity, 2 ** 32 + 1])(
+  it.each([0, 1, process.pid, -1, -42, 1.5, NaN, Infinity, 2 ** 32 + 1])(
     "does not inspect or signal unsafe root %s",
     async (rootPid) => {
-      const captureChildrenMap = vi.fn(() => new Map());
+      const captureChildrenMap = vi.fn(sessionSnapshot);
       const signalPid = vi.fn(() => null);
       const signalTree = vi.fn();
       const captureWindowsChildren = vi.fn(async () => new Map());
       const killer = createProcessTreeKiller({ captureChildrenMap, signalPid, signalTree });
-      expect(killer.capture(rootPid).captureComplete).toBe(false);
-      await captureProcessTree(rootPid, { platform: "win32", captureWindowsChildren });
+      expect(killer.capture(rootPid)).toEqual({ descendants: [], captureComplete: false });
+      for (const options of [
+        { platform: "win32" as const, captureWindowsChildren },
+        { platform: "darwin" as const, processTreeKiller: killer },
+      ]) {
+        await expect(captureProcessTree(rootPid, options)).resolves.toEqual({
+          descendants: [],
+          captureComplete: false,
+        });
+      }
       killer.signal({
         rootPid,
         signal: "SIGTERM",
-        tree: { descendants: [{ pid: 20, command: "child" }] },
+        // A caller-supplied tree claiming descendants of an unsafe root must never be honored.
+        tree: { captureComplete: true, descendants: [{ pid: 501, command: "loginwindow" }] },
+        includeRootTree: true,
         onError: vi.fn(),
       });
       expect(captureChildrenMap).not.toHaveBeenCalled();
@@ -357,19 +307,29 @@ describe("signal target and captured identity safeguards", () => {
     expect(killer.inspect?.(tree)).toEqual({ verified: true, survivors: [unchanged] });
   });
 
-  it("does not downgrade a captured start time when the new snapshot lacks it", () => {
+  it.each([
+    ["the new snapshot lacks the captured start time", { pid: 101, command: "worker" }],
+    [
+      "the command differs although second-resolution start times match",
+      { pid: 101, command: "unrelated worker", startedAt: "Fri Sep 18 10:00:00 2026" },
+    ],
+  ])("does not signal a descendant when %s", (_name, current) => {
+    const captured = { pid: 101, command: "worker", startedAt: "Fri Sep 18 10:00:00 2026" };
     const signalPid = vi.fn(() => null);
-    createProcessTreeKiller({
+    const killer = createProcessTreeKiller({
       signalPid,
-      readCurrentProcesses: () => new Map([[101, { pid: 101, command: "worker" }]]),
-    }).signal({
+      readCurrentProcesses: () => new Map([[101, current]]),
+    });
+    const tree = { descendants: [captured] };
+    killer.signal({
       rootPid: 100,
       signal: "SIGKILL",
-      tree: { descendants: [{ pid: 101, command: "worker", startedAt: "old" }] },
+      tree,
       includeRootTree: false,
       onError: vi.fn(),
     });
     expect(signalPid).not.toHaveBeenCalled();
+    expect(killer.inspect?.(tree)).toEqual({ verified: true, survivors: [] });
   });
 });
 
@@ -404,25 +364,6 @@ describe("owned child signals", () => {
   });
 });
 
-it("rejects a different command even when second-resolution start times match", () => {
-  const captured = { pid: 101, command: "owned worker", startedAt: "Fri Sep 18 10:00:00 2026" };
-  const signalPid = vi.fn(() => null);
-  const killer = createProcessTreeKiller({
-    signalPid,
-    readCurrentProcesses: () => new Map([[101, { ...captured, command: "unrelated worker" }]]),
-  });
-  const tree = { descendants: [captured] };
-  killer.signal({
-    rootPid: 100,
-    signal: "SIGKILL",
-    tree,
-    includeRootTree: false,
-    onError: vi.fn(),
-  });
-  expect(signalPid).not.toHaveBeenCalled();
-  expect(killer.inspect?.(tree)).toEqual({ verified: true, survivors: [] });
-});
-
 it.skipIf(process.platform !== "darwin")(
   "captures and verifies native start times independently of the parent locale",
   async () => {
@@ -432,12 +373,12 @@ it.skipIf(process.platform !== "darwin")(
     // it below.
     const child = spawn("/bin/sh", ["-c", "sleep 3 & wait"], { stdio: "ignore" });
     const exited = once(child, "exit");
+    let captured: CapturedProcess | undefined;
     try {
       await once(child, "spawn");
       process.env.LC_ALL = "ja_JP.UTF-8";
       const killer = createProcessTreeKiller();
       const deadline = Date.now() + 5_000;
-      let captured: CapturedProcess | undefined;
       while (Date.now() < deadline) {
         captured = killer
           .capture(child.pid as number)
@@ -460,6 +401,9 @@ it.skipIf(process.platform !== "darwin")(
     } finally {
       if (previousLocale === undefined) delete process.env.LC_ALL;
       else process.env.LC_ALL = previousLocale;
+      // Ending the sleep lets the shell's `wait` return instead of idling out the full sleep.
+      if (captured) process.kill(captured.pid, "SIGKILL");
+      else child.kill("SIGKILL");
       await exited;
     }
   },

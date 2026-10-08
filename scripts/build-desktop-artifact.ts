@@ -830,11 +830,7 @@ const createBuildConfig = Effect.fn("createBuildConfig")(function* (
     forceCodeSigning: signed,
   };
   const publishConfig = resolveGitHubPublishConfig();
-  if (artifactIdentity.identity.usesScriptedUpdates) {
-    // Experimental bundles must never contain a Stable updater feed, even when built from a shell used
-    // by the release workflow.
-    buildConfig.publish = null;
-  } else if (publishConfig) {
+  if (publishConfig) {
     buildConfig.publish = [publishConfig];
   } else if (mockUpdates) {
     buildConfig.publish = [
@@ -1292,10 +1288,6 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
             stageDistDir,
             signed: options.signed,
             verbose: options.verbose,
-            requireUpdateManifest: !artifactIdentity.identity.usesScriptedUpdates,
-            ...(artifactIdentity.identity.usesScriptedUpdates
-              ? { expectedBundleIdentifier: artifactIdentity.identity.bundleId }
-              : {}),
           }),
         catch: (cause) =>
           new BuildScriptError({

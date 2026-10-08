@@ -11,30 +11,10 @@ import {
   THREAD_ID,
   makeDeterministicRandomService,
   FakeClaudeQuery,
-  makeClaudeAdapterLive,
+  makeClaudeAdapterTestLayer,
 } from "./adapterTestFixtures";
 
 describe("Claude configuration", () => {
-  it.effect("derives bypass permission mode from full-access runtime policy", () => {
-    const harness = makeHarness();
-    return Effect.gen(function* () {
-      const adapter = yield* ClaudeAdapter;
-      yield* adapter.startSession({
-        threadId: THREAD_ID,
-        provider: "claudeAgent",
-        runtimeMode: "full-access",
-      });
-
-      const createInput = harness.getLastCreateQueryInput();
-      assert.deepEqual(createInput?.options.settingSources, ["user", "project", "local"]);
-      assert.equal(createInput?.options.permissionMode, "bypassPermissions");
-      assert.equal(createInput?.options.allowDangerouslySkipPermissions, true);
-    }).pipe(
-      Effect.provideService(Random.Random, makeDeterministicRandomService()),
-      Effect.provide(harness.layer),
-    );
-  });
-
   it.effect("rejects Auto on an unsupported selected Claude binary before session startup", () => {
     const query = new FakeClaudeQuery();
     let createQueryCalls = 0;
@@ -77,40 +57,41 @@ describe("Claude configuration", () => {
     );
   });
 
-  it.effect("loads Claude filesystem settings sources for SDK sessions", () => {
-    const harness = makeHarness();
-    return Effect.gen(function* () {
-      const adapter = yield* ClaudeAdapter;
-      yield* adapter.startSession({
-        threadId: THREAD_ID,
-        provider: "claudeAgent",
-        runtimeMode: "approval-required",
-      });
+  it.effect.each([
+    { runtimeMode: "full-access", permissionMode: "bypassPermissions", skipPermissions: true },
+    { runtimeMode: "approval-required", permissionMode: undefined, skipPermissions: undefined },
+  ] as const)(
+    "loads Claude filesystem settings and the Glade prompt for $runtimeMode sessions",
+    ({ runtimeMode, permissionMode, skipPermissions }) => {
+      const harness = makeHarness();
+      return Effect.gen(function* () {
+        const adapter = yield* ClaudeAdapter;
+        yield* adapter.startSession({ threadId: THREAD_ID, provider: "claudeAgent", runtimeMode });
 
-      const createInput = harness.getLastCreateQueryInput();
-      assert.deepEqual(createInput?.options.settingSources, ["user", "project", "local"]);
-      assert.equal(createInput?.options.permissionMode, undefined);
-      assert.equal(createInput?.options.allowDangerouslySkipPermissions, undefined);
-      const systemPrompt = createInput?.options.systemPrompt;
-      if (
-        systemPrompt === undefined ||
-        typeof systemPrompt === "string" ||
-        Array.isArray(systemPrompt) ||
-        systemPrompt.type !== "preset"
-      ) {
-        return assert.fail("Expected Claude preset system prompt.");
-      }
-      assert.equal(systemPrompt.preset, "claude_code");
-      assert.equal(systemPrompt.excludeDynamicSections, true);
-      assert.include(systemPrompt.append ?? "", GLADE_HARNESS_POLICY_MARKER);
-      assert.include(systemPrompt.append ?? "", "Glade is the host application");
-
-      assert.include(systemPrompt.append ?? "", "Glade MCP control is unavailable");
-    }).pipe(
-      Effect.provideService(Random.Random, makeDeterministicRandomService()),
-      Effect.provide(harness.layer),
-    );
-  });
+        const createInput = harness.getLastCreateQueryInput();
+        assert.deepEqual(createInput?.options.settingSources, ["user", "project", "local"]);
+        assert.equal(createInput?.options.permissionMode, permissionMode);
+        assert.equal(createInput?.options.allowDangerouslySkipPermissions, skipPermissions);
+        const systemPrompt = createInput?.options.systemPrompt;
+        if (
+          systemPrompt === undefined ||
+          typeof systemPrompt === "string" ||
+          Array.isArray(systemPrompt) ||
+          systemPrompt.type !== "preset"
+        ) {
+          return assert.fail("Expected Claude preset system prompt.");
+        }
+        assert.equal(systemPrompt.preset, "claude_code");
+        assert.equal(systemPrompt.excludeDynamicSections, true);
+        assert.include(systemPrompt.append ?? "", GLADE_HARNESS_POLICY_MARKER);
+        assert.include(systemPrompt.append ?? "", "Glade is the host application");
+        assert.include(systemPrompt.append ?? "", "Glade MCP control is unavailable");
+      }).pipe(
+        Effect.provideService(Random.Random, makeDeterministicRandomService()),
+        Effect.provide(harness.layer),
+      );
+    },
+  );
 
   it.effect("discovers Claude model capabilities before a session starts", () => {
     const query = new FakeClaudeQuery();
@@ -139,15 +120,12 @@ describe("Claude configuration", () => {
         },
       ];
     };
-    const layer = makeClaudeAdapterLive({
+    const layer = makeClaudeAdapterTestLayer({
       createQuery: () => {
         createQueryCalls += 1;
         return query;
       },
-    }).pipe(
-      Layer.provideMerge(ServerConfig.layerTest("/tmp/claude-adapter-test", "/tmp")),
-      Layer.provideMerge(NodeServices.layer),
-    );
+    });
 
     return Effect.gen(function* () {
       const adapter = yield* ClaudeAdapter;
@@ -179,15 +157,12 @@ describe("Claude configuration", () => {
 
   it.effect("listSkills uses the configured Claude binary", () => {
     const executables: Array<string | undefined> = [];
-    const layer = makeClaudeAdapterLive({
+    const layer = makeClaudeAdapterTestLayer({
       createQuery: (input) => {
         executables.push(input.options.pathToClaudeCodeExecutable);
         return new FakeClaudeQuery();
       },
-    }).pipe(
-      Layer.provideMerge(ServerConfig.layerTest("/tmp/claude-adapter-test", "/tmp")),
-      Layer.provideMerge(NodeServices.layer),
-    );
+    });
 
     return Effect.gen(function* () {
       const adapter = yield* ClaudeAdapter;
@@ -232,10 +207,7 @@ describe("Claude configuration", () => {
         supportsAutoMode: true,
       },
     ];
-    const layer = makeClaudeAdapterLive({ createQuery: () => query }).pipe(
-      Layer.provideMerge(ServerConfig.layerTest("/tmp/claude-adapter-test", "/tmp")),
-      Layer.provideMerge(NodeServices.layer),
-    );
+    const layer = makeClaudeAdapterTestLayer({ createQuery: () => query });
 
     return Effect.gen(function* () {
       const adapter = yield* ClaudeAdapter;

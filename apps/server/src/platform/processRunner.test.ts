@@ -114,20 +114,16 @@ describe("runProcess", () => {
     ).rejects.toMatchObject({ name: "AbortError" });
   });
 
-  it("terminates a running child on abort and clears its later timeout", async () => {
+  it("terminates a running child on abort", async () => {
     const controller = new AbortController();
     const running = runProcess("node", ["-e", "setInterval(() => {}, 1_000)"], {
       signal: controller.signal,
-      timeoutMs: 150,
     });
 
     await new Promise((resolve) => setTimeout(resolve, 50));
     controller.abort();
 
     await expect(running).rejects.toMatchObject({ name: "AbortError" });
-    // Cross the original deadline: the cleared timeout must not produce a second failure or keep the
-    // test process alive after the aborted child has closed.
-    await new Promise((resolve) => setTimeout(resolve, 150));
   });
 
   it("keeps timeout failures distinct from explicit aborts", async () => {

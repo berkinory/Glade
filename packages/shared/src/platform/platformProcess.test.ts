@@ -167,7 +167,7 @@ describe("prepareProcess", () => {
     }
   });
 
-  it("supports manual executable paths with spaces, empty args, and Unicode", () => {
+  it("accepts an explicit Unicode executable path independently of PATHEXT", () => {
     const executable = path.join(root, "Tools 日本語", "provider.exe");
     mkdirSync(path.dirname(executable), { recursive: true });
     writeFileSync(executable, "native");
@@ -175,29 +175,12 @@ describe("prepareProcess", () => {
     expect(
       prepareProcess(executable, ["", "two words", "日本語"], {
         platform: "win32",
-        env: windowsEnv(),
-        requireExecutable: true,
-      }),
-    ).toMatchObject({
-      command: executable,
-      args: ["", "two words", "日本語"],
-      resolvedCommand: executable,
-    });
-  });
-
-  it("accepts an explicit Windows executable independently of PATHEXT", () => {
-    const executable = path.join(root, "Tools", "provider.exe");
-    mkdirSync(path.dirname(executable), { recursive: true });
-    writeFileSync(executable, "native");
-
-    expect(
-      prepareProcess(executable, [], {
-        platform: "win32",
         env: { ...windowsEnv(), PATHEXT: ".COM;.CMD" },
         requireExecutable: true,
       }),
     ).toMatchObject({
       command: executable,
+      args: ["", "two words", "日本語"],
       resolvedCommand: executable,
       executionBackend: "native",
     });

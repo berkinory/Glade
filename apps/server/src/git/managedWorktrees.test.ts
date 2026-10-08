@@ -11,7 +11,6 @@ import type { GitCoreShape } from "./Services/GitCore.ts";
 import type { ProjectionSnapshotQueryShape } from "../orchestration/Services/ProjectionSnapshotQuery.ts";
 import {
   archivedWorktreeHasNoOtherOwners,
-  classifyManagedWorktreeRemovalCandidates,
   discardManagedWorktreeResidue,
   isManagedWorktreePath,
   isManagedWorktreePathCanonical,
@@ -22,37 +21,6 @@ import {
   pruneExpiredManagedWorktreeSnapshots,
   pruneProjectedArchivedManagedWorktrees,
 } from "./managedWorktrees.ts";
-
-it("keeps an archived checkout when another task reaches it through a symlink", async () => {
-  const root = await makeTemporaryRoot();
-  const managed = path.join(root, "managed");
-  const alias = path.join(root, "alias");
-  const worktree = path.join(managed, "project", "task");
-  await fs.mkdir(worktree, { recursive: true });
-  await fs.symlink(managed, alias);
-
-  expect(
-    await Effect.runPromise(
-      isManagedWorktreePathCanonical({ worktreesDir: alias, worktreePath: worktree }),
-    ),
-  ).toBe(true);
-  expect(
-    await Effect.runPromise(
-      archivedWorktreeHasNoOtherOwners({
-        worktreePath: worktree,
-        threadId: "archived",
-        threads: [
-          { id: "archived", archivedAt: "2026-09-25T00:00:00.000Z", worktreePath: worktree },
-          {
-            id: "other",
-            archivedAt: "2026-09-25T00:00:00.000Z",
-            worktreePath: path.join(alias, "project", "task"),
-          },
-        ],
-      }),
-    ),
-  ).toBe(false);
-});
 
 const temporaryRoots: string[] = [];
 
@@ -69,30 +37,16 @@ async function makeManagedRoot(count: number) {
   return { root, paths };
 }
 
-function cleanStatusDetails() {
+function statusDetails(dirty: boolean) {
   return Effect.succeed({
     isRepo: true,
     hasOriginRemote: false,
     isDefaultBranch: false,
     upstreamRef: null,
     branch: "glade/test",
-    hasWorkingTreeChanges: false,
+    hasWorkingTreeChanges: dirty,
     stagedCount: 0,
-    unstagedCount: 0,
-    untrackedCount: 0,
-  });
-}
-
-function dirtyStatusDetails() {
-  return Effect.succeed({
-    isRepo: true,
-    hasOriginRemote: false,
-    isDefaultBranch: false,
-    upstreamRef: null,
-    branch: "glade/test",
-    hasWorkingTreeChanges: true,
-    stagedCount: 0,
-    unstagedCount: 1,
+    unstagedCount: dirty ? 1 : 0,
     untrackedCount: 0,
   });
 }
@@ -114,8 +68,7 @@ function makeGit(input: {
       Effect.sync(() => {
         input.snapshots?.push(outputPath);
       }),
-    statusDetails: (cwd: string) =>
-      input.dirtyPaths?.has(cwd) ? dirtyStatusDetails() : cleanStatusDetails(),
+    statusDetails: (cwd: string) => statusDetails(input.dirtyPaths?.has(cwd) ?? false),
     removeWorktree: ({ path: worktreePath }: { path: string }) =>
       Effect.sync(() => input.removals.push(worktreePath)),
   } as unknown as GitCoreShape;
@@ -157,16 +110,40 @@ afterEach(async () => {
 });
 
 describe("managed worktrees", () => {
+  it("keeps an archived checkout when another task reaches it through a symlink", async () => {
+    const root = await makeTemporaryRoot();
+    const managed = path.join(root, "managed");
+    const alias = path.join(root, "alias");
+    const worktree = path.join(managed, "project", "task");
+    await fs.mkdir(worktree, { recursive: true });
+    await fs.symlink(managed, alias);
+
+    expect(
+      await Effect.runPromise(
+        isManagedWorktreePathCanonical({ worktreesDir: alias, worktreePath: worktree }),
+      ),
+    ).toBe(true);
+    expect(
+      await Effect.runPromise(
+        archivedWorktreeHasNoOtherOwners({
+          worktreePath: worktree,
+          threadId: "archived",
+          threads: [
+            { id: "archived", archivedAt: "2026-09-25T00:00:00.000Z", worktreePath: worktree },
+            {
+              id: "other",
+              archivedAt: "2026-09-25T00:00:00.000Z",
+              worktreePath: path.join(alias, "project", "task"),
+            },
+          ],
+        }),
+      ),
+    ).toBe(false);
+  });
+
   it("discovers linked worktrees and reports their primary checkout", async () => {
     const { root, paths } = await makeManagedRoot(2);
-    const git = {
-      execute: ({ cwd }: { cwd: string }) =>
-        Effect.succeed({
-          code: 0,
-          stdout: `worktree /repo/project\nHEAD abc\nbranch refs/heads/main\n\nworktree ${cwd}\nHEAD abc\ndetached\n`,
-          stderr: "",
-        }),
-    } as unknown as GitCoreShape;
+    const git = makeGit({ removals: [] });
 
     await expect(
       Effect.runPromise(listManagedWorktrees({ worktreesDir: root, git })),
@@ -280,44 +257,10 @@ describe("managed worktrees", () => {
     expect(removals).toEqual([paths[0]]);
   });
 
-  it("removes a clean soft-deleted worktree even when it was never archived", async () => {
-    const { root, paths } = await makeManagedRoot(2);
+  it("removes only a deleted owner's worktree and its emptied parent", async () => {
+    const { root, paths } = await makeManagedRoot(3);
+    const [activePath, deletedPath, unownedPath] = paths as [string, string, string];
     const removals: string[] = [];
-    const git = makeGit({ removals });
-    const threads = [
-      {
-        id: "thread-active",
-        worktreePath: paths[0],
-        associatedWorktreePath: paths[0],
-        archivedAt: null,
-        deletedAt: null,
-      },
-      {
-        id: "thread-deleted",
-        worktreePath: paths[1],
-        associatedWorktreePath: paths[1],
-        archivedAt: null,
-        deletedAt: "2026-08-01T00:00:00.000Z",
-      },
-    ] as unknown as OrchestrationThread[];
-
-    await Effect.runPromise(
-      pruneArchivedManagedWorktrees({
-        worktreesDir: root,
-        snapshotsDir: path.join(root, "snapshots"),
-        threads,
-        git,
-      }),
-    );
-
-    expect(removals).toEqual([paths[1]]);
-  });
-
-  it("removes the emptied per-worktree parent after an automatic removal", async () => {
-    const { root, paths } = await makeManagedRoot(2);
-    const [activePath, deletedPath] = paths as [string, string];
-    const removals: string[] = [];
-
     const git = {
       ...makeGit({ removals }),
       removeWorktree: ({ path: worktreePath }: { path: string }) =>
@@ -329,21 +272,21 @@ describe("managed worktrees", () => {
     const threads = [
       {
         id: "thread-active",
-        worktreePath: paths[0],
-        associatedWorktreePath: paths[0],
+        worktreePath: activePath,
+        associatedWorktreePath: activePath,
         archivedAt: null,
         deletedAt: null,
       },
       {
         id: "thread-deleted",
-        worktreePath: paths[1],
-        associatedWorktreePath: paths[1],
+        worktreePath: deletedPath,
+        associatedWorktreePath: deletedPath,
         archivedAt: null,
         deletedAt: "2026-08-01T00:00:00.000Z",
       },
     ] as unknown as OrchestrationThread[];
 
-    await Effect.runPromise(
+    const remaining = await Effect.runPromise(
       pruneArchivedManagedWorktrees({
         worktreesDir: root,
         snapshotsDir: path.join(root, "snapshots"),
@@ -353,6 +296,7 @@ describe("managed worktrees", () => {
     );
 
     expect(removals).toEqual([deletedPath]);
+    expect(remaining.map((entry) => entry.path)).toEqual([activePath, unownedPath]);
     await expect(fs.access(path.dirname(deletedPath))).rejects.toMatchObject({ code: "ENOENT" });
     await expect(fs.access(path.dirname(activePath))).resolves.toBeUndefined();
   });
@@ -388,106 +332,6 @@ describe("managed worktrees", () => {
     expect(removals).toEqual([]);
     expect(snapshots).toHaveLength(1);
     expect(remaining).toEqual([{ path: paths[0], workspaceRoot: "/repo/project" }]);
-  });
-
-  it("preserves managed worktrees with no projected thread owner", async () => {
-    const { root, paths } = await makeManagedRoot(2);
-    const removals: string[] = [];
-    const git = makeGit({ removals });
-    const threads = [
-      {
-        id: "thread-active",
-        worktreePath: paths[0],
-        associatedWorktreePath: paths[0],
-        archivedAt: null,
-        deletedAt: null,
-      },
-    ] as unknown as OrchestrationThread[];
-
-    await Effect.runPromise(
-      pruneArchivedManagedWorktrees({
-        worktreesDir: root,
-        snapshotsDir: path.join(root, "snapshots"),
-        threads,
-        git,
-      }),
-    );
-
-    expect(removals).toEqual([]);
-  });
-
-  it("never removes active worktrees", async () => {
-    const { root, paths } = await makeManagedRoot(2);
-    const removals: string[] = [];
-    const git = makeGit({ removals });
-    const threads = paths.map(
-      (worktreePath, index) =>
-        ({
-          id: `thread-${index}`,
-          worktreePath,
-          associatedWorktreePath: worktreePath,
-          archivedAt: null,
-          deletedAt: null,
-        }) as unknown as OrchestrationThread,
-    );
-
-    const remaining = await Effect.runPromise(
-      pruneArchivedManagedWorktrees({
-        worktreesDir: root,
-        snapshotsDir: path.join(root, "snapshots"),
-        threads,
-        git,
-      }),
-    );
-
-    expect(removals).toEqual([]);
-    expect(remaining).toHaveLength(2);
-  });
-
-  it("classifies deleted candidates without touching active or unowned worktrees", () => {
-    const inventory = [
-      { path: "/wt/active", workspaceRoot: "/repo" },
-      { path: "/wt/deleted", workspaceRoot: "/repo" },
-      { path: "/wt/archived-old", workspaceRoot: "/repo" },
-      { path: "/wt/archived-new", workspaceRoot: "/repo" },
-      { path: "/wt/orphan", workspaceRoot: "/repo" },
-    ];
-    const canonicalByRecordedPath = new Map(inventory.map((entry) => [entry.path, entry.path]));
-
-    const candidates = classifyManagedWorktreeRemovalCandidates({
-      inventory,
-      canonicalByRecordedPath,
-      threads: [
-        {
-          id: "active",
-          worktreePath: "/wt/active",
-          archivedAt: null,
-          deletedAt: null,
-        },
-        {
-          id: "deleted",
-          worktreePath: "/wt/deleted",
-          archivedAt: null,
-          deletedAt: "2026-08-01T00:00:00.000Z",
-        },
-        {
-          id: "archived-old",
-          worktreePath: "/wt/archived-old",
-          archivedAt: "2026-01-01T00:00:00.000Z",
-          deletedAt: null,
-        },
-        {
-          id: "archived-new",
-          worktreePath: "/wt/archived-new",
-          archivedAt: "2026-02-01T00:00:00.000Z",
-          deletedAt: null,
-        },
-      ],
-    });
-
-    expect(candidates.map((candidate) => [candidate.entry.path, candidate.reason])).toEqual([
-      ["/wt/deleted", "deleted"],
-    ]);
   });
 });
 

@@ -1,7 +1,7 @@
 import * as FS from "node:fs/promises";
 import * as Path from "node:path";
 
-import { resolveWindowsSystemRoot } from "@glade/shared/platform/windowsProcess";
+import { resolveWindowsSystemRoot } from "@glade/shared/platform/platformEnvironment";
 import { Effect } from "effect";
 
 import { runProcess } from "../platform/processRunner.ts";

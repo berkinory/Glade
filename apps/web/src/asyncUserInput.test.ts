@@ -1,7 +1,8 @@
 import { MessageId, ThreadId, TurnId, CheckpointRef } from "@glade/contracts/core/baseSchemas";
 import { it, expect } from "vitest";
 import { applyOrchestrationEvents } from "./storeEventReducer.batch";
-import { makeState, makeThread, makeDomainEvent, threadsOf } from "./storeTestFixtures";
+import { getThreadsFromState } from "./threadDerivation";
+import { makeState, makeThread, makeDomainEvent } from "./storeTestFixtures";
 import { normalizeChatMessage } from "./storeNormalization.messages";
 
 it("answer metadata preserves the originating turn's final message and completion time", () => {
@@ -52,9 +53,11 @@ it("answer metadata preserves the originating turn's final message and completio
       response: { messageId: MessageId.makeUnsafe("answer"), answers: ["A"] },
     }),
   ]);
-  expect(threadsOf(next)[0]!.latestTurn).toEqual(latestTurn);
-  expect(threadsOf(next)[0]!.messages[0]!.completedAt).toBe(asked);
-  expect(threadsOf(next)[0]!.messages[0]!.asyncUserInput?.response?.answers).toEqual(["A"]);
+  expect(getThreadsFromState(next)[0]!.latestTurn).toEqual(latestTurn);
+  expect(getThreadsFromState(next)[0]!.messages[0]!.completedAt).toBe(asked);
+  expect(getThreadsFromState(next)[0]!.messages[0]!.asyncUserInput?.response?.answers).toEqual([
+    "A",
+  ]);
 });
 
 it.each(["rollback", "checkpoint"])(
@@ -113,7 +116,7 @@ it.each(["rollback", "checkpoint"])(
             { sequence: 10 },
           )
         : makeDomainEvent("thread.reverted", { threadId, turnCount: 1 }, { sequence: 10 });
-    const next = threadsOf(applyOrchestrationEvents(initial, [event]))[0]!;
+    const next = getThreadsFromState(applyOrchestrationEvents(initial, [event]))[0]!;
     expect(next.messages.map((m) => m.id)).toEqual([question.id]);
     const reopened = next.messages[0]!;
     expect(reopened.asyncUserInput).toEqual({
@@ -128,8 +131,8 @@ it.each(["rollback", "checkpoint"])(
       asyncUserInput: { questions: question.asyncUserInput.questions, responseSequence: 10 },
     };
     expect(
-      normalizeChatMessage(rollbackSnapshot, threadsOf(initial)[0]!.messages[0]).asyncUserInput
-        ?.response,
+      normalizeChatMessage(rollbackSnapshot, getThreadsFromState(initial)[0]!.messages[0])
+        .asyncUserInput?.response,
     ).toBeUndefined();
   },
 );

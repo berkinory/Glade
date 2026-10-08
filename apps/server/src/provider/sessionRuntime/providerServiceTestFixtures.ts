@@ -265,7 +265,6 @@ export function makeFakeCodexAdapter(provider: ProviderKind = "codex") {
 
   return {
     adapter,
-    prepareSessionReplacement,
     emit,
     waitForRuntimeSubscribers,
     updateSession,
@@ -325,6 +324,16 @@ export const waitUntilEffect = <E = never, R = never>(
     }
   });
 
+export const singleProviderRegistry = (
+  adapter: ProviderAdapterShape<ProviderAdapterError>,
+): typeof ProviderAdapterRegistry.Service => ({
+  getByProvider: (provider) =>
+    provider === adapter.provider
+      ? Effect.succeed(adapter)
+      : Effect.fail(new ProviderUnsupportedError({ provider })),
+  listProviders: () => Effect.succeed([adapter.provider]),
+});
+
 export function makeProviderServiceLayer(options?: Parameters<typeof makeProviderServiceLive>[0]) {
   const codex = makeFakeCodexAdapter("codex");
   const claude = makeFakeCodexAdapter("claudeAgent");
@@ -359,7 +368,6 @@ export function makeProviderServiceLayer(options?: Parameters<typeof makeProvide
     codex,
     claude,
     layer,
-    rawLayer,
   };
 }
 

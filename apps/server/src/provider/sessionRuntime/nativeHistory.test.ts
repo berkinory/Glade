@@ -47,36 +47,28 @@ routing.layer("Native history ownership", (it) => {
       }),
   );
 
-  it.effect(
-    "forwards Codex archive and unarchive without removing ownership, and leaves Claude history alone",
-    () =>
-      Effect.gen(function* () {
-        const provider = yield* ProviderService;
-        const directory = yield* ProviderSessionDirectory;
-        for (const kind of ["codex", "claudeAgent"] as const) {
-          const threadId = asThreadId(`archive-${kind}`);
-          yield* provider.startSession(threadId, {
-            threadId,
-            provider: kind,
-            runtimeMode: "full-access",
-          });
-          const adapter = kind === "codex" ? routing.codex : routing.claude;
-          const before = adapter.updateNativeHistory.mock.calls.length;
-          yield* provider.updateNativeHistory({ threadId, action: { type: "archive" } });
-          yield* provider.updateNativeHistory({ threadId, action: { type: "unarchive" } });
-          assert.equal(Option.isSome(yield* directory.getBinding(threadId)), true);
-          assert.equal(
-            adapter.updateNativeHistory.mock.calls.length - before,
-            kind === "codex" ? 2 : 0,
-          );
-          if (kind === "codex")
-            assert.deepEqual(
-              adapter.updateNativeHistory.mock.calls
-                .slice(before)
-                .map(([input]) => input.action.type),
-              ["archive", "unarchive"],
-            );
-        }
-      }),
+  it.effect.each([
+    { kind: "codex", forwarded: ["archive", "unarchive"] },
+    { kind: "claudeAgent", forwarded: [] },
+  ] as const)("keeps ownership through archive and unarchive on $kind", ({ kind, forwarded }) =>
+    Effect.gen(function* () {
+      const provider = yield* ProviderService;
+      const directory = yield* ProviderSessionDirectory;
+      const threadId = asThreadId(`archive-${kind}`);
+      yield* provider.startSession(threadId, {
+        threadId,
+        provider: kind,
+        runtimeMode: "full-access",
+      });
+      const adapter = kind === "codex" ? routing.codex : routing.claude;
+      const before = adapter.updateNativeHistory.mock.calls.length;
+      yield* provider.updateNativeHistory({ threadId, action: { type: "archive" } });
+      yield* provider.updateNativeHistory({ threadId, action: { type: "unarchive" } });
+      assert.equal(Option.isSome(yield* directory.getBinding(threadId)), true);
+      assert.deepEqual(
+        adapter.updateNativeHistory.mock.calls.slice(before).map(([input]) => input.action.type),
+        [...forwarded],
+      );
+    }),
   );
 });
