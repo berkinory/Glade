@@ -1,7 +1,7 @@
 import { Schema } from "effect";
 import * as Rpc from "effect/unstable/rpc/Rpc";
 import { COMPUTER_UNAVAILABLE_REASONS } from "../../computer/computerHost";
-import { ComputerAccessScope, ComputerUseMode } from "../../computer/computerUse";
+import { ComputerAccessScope } from "../../computer/computerUse";
 import { ThreadId } from "../../core/baseSchemas";
 import { RuntimeMode } from "../../provider/sessionPolicy";
 import { WsRpcError } from "./rpcErrors";
@@ -46,10 +46,9 @@ export const ComputerGrantView = Schema.Struct({
 });
 export type ComputerGrantView = typeof ComputerGrantView.Type;
 
-// Threads with Computer Use not off or with grants; every other thread is off with no grants.
+// Threads with grants; every other thread has none.
 export const ComputerThreadState = Schema.Struct({
   threadId: ThreadId,
-  mode: ComputerUseMode,
   grants: Schema.Array(ComputerGrantView),
 });
 export type ComputerThreadState = typeof ComputerThreadState.Type;

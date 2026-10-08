@@ -160,7 +160,7 @@ const COMPOSER_SLASH_COMMAND_DEFINITIONS: Record<
   computer: {
     command: "computer",
     label: "/computer",
-    description: "Let the agent use apps on this computer for the next message",
+    description: "Ask the agent to use apps on this computer for this request",
     source: "app",
   },
   fast: {
@@ -385,6 +385,9 @@ export function buildSlashReviewComposerPrompt(args: string): string {
   }
   return `${basePrompt}\nFocus especially on: ${trimmedArgs}`;
 }
+
+// /computer only words the request; whether agents may use the computer is the Settings permission.
+export const COMPUTER_USE_PROMPT_PREFIX = "Use Computer Use for this request: ";
 
 export function parseForkSlashCommandArgs(args: string): {
   target: ForkSlashCommandTarget | null;

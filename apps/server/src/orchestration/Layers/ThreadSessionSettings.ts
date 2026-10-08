@@ -9,6 +9,7 @@ export const ThreadSessionSettingsLive = Layer.effect(
       const modelSelections = new Map<string, ModelSelection>();
       const providerOptions = new Map<string, ProviderStartOptions>();
       const editResendStartKeys = new Set<string>();
+      const computerToolsListed = new Set<string>();
       const clearEditResendStartsForThread = (threadId: string) => {
         const prefix = `${threadId}:`;
         for (const key of editResendStartKeys) {
@@ -32,9 +33,15 @@ export const ThreadSessionSettingsLive = Layer.effect(
           editResendStartKeys.delete(`${threadId}:${messageId}`);
         },
         clearEditResendStartsForThread,
+        computerToolsListed: (threadId: string) => computerToolsListed.has(threadId),
+        setComputerToolsListed: (threadId: string, listed: boolean) => {
+          if (listed) computerToolsListed.add(threadId);
+          else computerToolsListed.delete(threadId);
+        },
         clearThread: (threadId: string) => {
           modelSelections.delete(threadId);
           providerOptions.delete(threadId);
+          computerToolsListed.delete(threadId);
           clearEditResendStartsForThread(threadId);
         },
       };
@@ -44,6 +51,7 @@ export const ThreadSessionSettingsLive = Layer.effect(
           modelSelections.clear();
           providerOptions.clear();
           editResendStartKeys.clear();
+          computerToolsListed.clear();
         },
       };
     }),

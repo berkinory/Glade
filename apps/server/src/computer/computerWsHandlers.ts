@@ -9,7 +9,6 @@ import {
 import { WsRpcError } from "@glade/contracts/transport/ws/rpcErrors";
 import { Effect, Option, Queue, Stream } from "effect";
 
-import type { ThreadComputerUseShape } from "../orchestration/Services/ThreadComputerUse.ts";
 import type { ComputerAccessShape } from "./Services/ComputerAccess.ts";
 import type { ComputerHostShape, ComputerStatus } from "./Services/ComputerHost.ts";
 
@@ -24,7 +23,6 @@ interface StreamAdmission {
 interface ComputerServices {
   readonly host: ComputerHostShape;
   readonly access: ComputerAccessShape;
-  readonly computerUse: ThreadComputerUseShape;
 }
 
 const unavailable = () =>
@@ -43,40 +41,29 @@ const statusView = (status: ComputerStatus): ComputerDriverStatus =>
       }
     : status;
 
-const threadsView = (services: ComputerServices): ReadonlyArray<ComputerThreadState> => {
-  const byThread = new Map<string, ComputerThreadState>();
-  for (const { threadId, mode } of services.computerUse.enabled()) {
-    byThread.set(threadId, { threadId, mode, grants: [] });
-  }
-  for (const { threadId, grants } of services.access.grants.list()) {
-    const id = ThreadId.makeUnsafe(threadId);
-    byThread.set(threadId, {
-      threadId: id,
-      mode: services.computerUse.mode(id),
-      grants: grants.map(({ app, windowId, windowTitle, scope, grantedAt, autoGrantedIn }) => ({
-        app,
-        windowId,
-        windowTitle,
-        scope,
-        grantedAt,
-        autoGrantedIn,
-      })),
-    });
-  }
-  return [...byThread.values()];
-};
+const threadsView = (services: ComputerServices): ReadonlyArray<ComputerThreadState> =>
+  services.access.grants.list().map(({ threadId, grants }) => ({
+    threadId: ThreadId.makeUnsafe(threadId),
+    grants: grants.map(({ app, windowId, windowTitle, scope, grantedAt, autoGrantedIn }) => ({
+      app,
+      windowId,
+      windowTitle,
+      scope,
+      grantedAt,
+      autoGrantedIn,
+    })),
+  }));
 
-// Mode and grant changes are synchronous in their owners; the stream recomputes the whole (small)
-// state on each change or driver status update.
+// Grant changes are synchronous in their owner; the stream recomputes the whole (small) state on
+// each change or driver status update.
 const stateStream = (services: ComputerServices): Stream.Stream<ComputerState> => {
   const changes = Stream.callback<void>(
     (queue) =>
       Effect.acquireRelease(
-        Effect.sync(() => {
-          const notify = () => Queue.offerUnsafe(queue, undefined);
-          return [services.access.grants.onChange(notify), services.computerUse.onChange(notify)];
-        }),
-        (unsubscribes) => Effect.sync(() => unsubscribes.forEach((unsubscribe) => unsubscribe())),
+        Effect.sync(() =>
+          services.access.grants.onChange(() => Queue.offerUnsafe(queue, undefined)),
+        ),
+        (unsubscribe) => Effect.sync(unsubscribe),
       ),
     { bufferSize: 1, strategy: "sliding" },
   );
@@ -90,18 +77,16 @@ const stateStream = (services: ComputerServices): Stream.Stream<ComputerState> =
   );
 };
 
-// Computer Use state for the web: driver status, each thread's mode and grants, and revoking a
-// grant from Settings. The mode itself is set with the thread.computer-use.set command.
+// Computer Use state for the web: driver status, each thread's grants, and revoking a grant from
+// Settings.
 export function makeComputerWsHandlers(input: {
   readonly host: Option.Option<ComputerHostShape>;
   readonly access: Option.Option<ComputerAccessShape>;
-  readonly computerUse: Option.Option<ThreadComputerUseShape>;
   readonly streamAdmission: StreamAdmission;
 }) {
   const services = Option.all({
     host: input.host,
     access: input.access,
-    computerUse: input.computerUse,
   }).pipe(Option.filter((value) => value.host.configured));
 
   return {

@@ -23,14 +23,12 @@ import { isAwaitingRequestedTurn } from "../turnStartSession.ts";
 import { PendingInterruptEscalation } from "./runtimeState";
 import { makeProviderContextBootstrap } from "./contextBootstrap";
 import { ThreadSessionSettings } from "../Services/ThreadSessionSettings.ts";
-import { ThreadComputerUse } from "../Services/ThreadComputerUse.ts";
 import { ProviderDeliveryGate } from "../Services/ProviderDeliveryGate.ts";
 
 export function makeProviderSessionConfiguration(input: {
   readonly projectionAccess: ProviderProjectionAccessShape;
   readonly orchestrationEngine: Pick<OrchestrationEngineShape, "readThreadEvents">;
   readonly threadSessionSettings: ServiceMap.Service.Shape<typeof ThreadSessionSettings>;
-  readonly threadComputerUse: ServiceMap.Service.Shape<typeof ThreadComputerUse>;
   readonly deliveryGate: ServiceMap.Service.Shape<typeof ProviderDeliveryGate>;
 
   readonly suppressContextBootstrapOnNextStartThreadIds: Set<string>;
@@ -49,7 +47,6 @@ export function makeProviderSessionConfiguration(input: {
 }) {
   const {
     threadSessionSettings,
-    threadComputerUse,
     deliveryGate,
 
     suppressContextBootstrapOnNextStartThreadIds,
@@ -69,7 +66,6 @@ export function makeProviderSessionConfiguration(input: {
   const clearThreadRuntimeCaches = (threadId: ThreadId) =>
     Effect.sync(() => {
       threadSessionSettings.clearThread(threadId);
-      threadComputerUse.clear(threadId);
       deliveryGate.releaseQuarantine(threadId);
 
       suppressContextBootstrapOnNextStartThreadIds.delete(threadId);
@@ -257,9 +253,9 @@ export function makeProviderSessionConfiguration(input: {
       });
     });
 
-    // Providers read the gateway's tool list once per session, so turning Computer Use on or off
-    // takes effect when the session next (re)starts.
-    const computerToolsListed = threadComputerUse.mode(threadId) !== "off";
+    // Providers read the gateway's tool list once per session, so allowing or disallowing Computer
+    // Use in Settings takes effect when the session next (re)starts.
+    const computerToolsListed = settings.allowComputerUse;
     const activeSessionBeforeEnsure = yield* resolveActiveSession(threadId);
     const workspaceChanged =
       activeSessionBeforeEnsure !== undefined &&
@@ -287,7 +283,8 @@ export function makeProviderSessionConfiguration(input: {
         requestedModelSelection !== undefined &&
         requestedModelSelection.model !== activeSessionBeforeEnsure?.model;
 
-      const computerToolsChanged = computerToolsListed !== threadComputerUse.provisioned(threadId);
+      const computerToolsChanged =
+        computerToolsListed !== threadSessionSettings.computerToolsListed(threadId);
       const reuse = {
         activeSessionBeforeEnsure,
         activeSession: reusableSession,
@@ -344,7 +341,7 @@ export function makeProviderSessionConfiguration(input: {
         freshSessionContextBootstrapThreadIds.add(threadId);
       }
       threadSessionSettings.setModelSelection(threadId, desiredModelSelection);
-      threadComputerUse.markProvisioned(threadId, computerToolsListed);
+      threadSessionSettings.setComputerToolsListed(threadId, computerToolsListed);
       yield* Effect.logInfo("provider command reactor restarted provider session", {
         threadId,
         previousSessionId: existingSessionThreadId,
@@ -401,7 +398,7 @@ export function makeProviderSessionConfiguration(input: {
       });
       if (forked) {
         threadSessionSettings.setModelSelection(threadId, desiredModelSelection);
-        threadComputerUse.markProvisioned(threadId, computerToolsListed);
+        threadSessionSettings.setComputerToolsListed(threadId, computerToolsListed);
         const forkedSession =
           (yield* resolveActiveSession(threadId)) ??
           ({
@@ -447,7 +444,7 @@ export function makeProviderSessionConfiguration(input: {
     const startedSession = startOutcome.session;
 
     threadSessionSettings.setModelSelection(threadId, desiredModelSelection);
-    threadComputerUse.markProvisioned(threadId, computerToolsListed);
+    threadSessionSettings.setComputerToolsListed(threadId, computerToolsListed);
     yield* bindSessionToThread(startedSession);
     suppressContextBootstrapOnNextStartThreadIds.delete(threadId);
     return {

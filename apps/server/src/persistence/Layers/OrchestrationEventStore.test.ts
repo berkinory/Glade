@@ -354,6 +354,7 @@ layer("OrchestrationEventStore", (it) => {
             updatedAt: now,
           },
         ],
+        [5, "thread.computer-use-set", { threadId, computerUse: "on", updatedAt: now }],
       ] as const) {
         yield* insertRawEvent({
           eventId: `evt-retired-goal-${index}`,
@@ -369,7 +370,7 @@ layer("OrchestrationEventStore", (it) => {
       const replayed = Array.from(
         yield* Stream.runCollect(eventStore.readFromSequence(startSequence, 10)),
       );
-      assert.equal(replayed.length, 5);
+      assert.equal(replayed.length, 6);
       assert.equal(replayed[0]?.type, "thread.meta-updated");
       assert.deepEqual(replayed[0]?.payload, { threadId, title: "Kept title", updatedAt: now });
       assert.equal(replayed[1]?.type, "thread.goal-continuation-requested");
@@ -377,6 +378,8 @@ layer("OrchestrationEventStore", (it) => {
       assert.deepEqual(replayed[2]?.payload, { threadId, updatedAt: now });
       assert.deepEqual(replayed[3]?.payload, { threadId });
       assert.deepEqual(replayed[4]?.payload, { threadId, updatedAt: now });
+      assert.equal(replayed[5]?.type, "thread.computer-use-set");
+      assert.deepEqual(replayed[5]?.payload, { threadId, updatedAt: now });
     }),
   );
 

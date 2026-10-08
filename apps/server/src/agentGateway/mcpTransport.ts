@@ -120,13 +120,18 @@ export function makeAgentGatewayMcpTransport(input: {
           );
         case "ping":
           return jsonRpcResult(request.id, {});
-        case "tools/list":
+        case "tools/list": {
+          const candidates = filterToolsByCapability(
+            input.tools,
+            context.callerCapabilities,
+          ).filter((tool) => tool.discoveryOnly !== true);
+          const listed = yield* Effect.forEach(
+            candidates,
+            (tool) => tool.listed ?? Effect.succeed(true),
+          );
           return jsonRpcResult(request.id, {
-            tools: filterToolsByCapability(input.tools, context.callerCapabilities)
-              .filter(
-                (tool) =>
-                  tool.discoveryOnly !== true && (tool.listedFor?.(context.callerThreadId) ?? true),
-              )
+            tools: candidates
+              .filter((_, index) => listed[index])
               .map(
                 (tool) =>
                   servedDefinitionByToolName.get(tool.definition.name) ?? {
@@ -142,6 +147,7 @@ export function makeAgentGatewayMcpTransport(input: {
                   },
               ),
           });
+        }
         case "tools/call": {
           const toolName = request.params.name;
           if (typeof toolName !== "string") {

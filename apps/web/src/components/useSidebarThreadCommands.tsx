@@ -1,11 +1,9 @@
-import { environmentOfThread } from "~/environments/environmentStores";
 import { showContextMenu } from "./contextMenu/contextMenuStore";
 import {
   Archive04Icon,
   BellIcon,
   ComputerTerminal01Icon,
   Copy01Icon,
-  CursorInWindowIcon,
   Delete02Icon,
   PencilEdit02Icon,
   PinIcon,
@@ -23,8 +21,6 @@ import { reconcileDeletedThreadsFromClient } from "../lib/deletedThreadClientRec
 import { useStore } from "../store";
 import { getThreadFromState } from "../threadDerivation";
 import { readNativeApi } from "../nativeApi";
-import { isElectron } from "../env";
-import { readComputerUseMode, setComputerUseMode } from "./computer/computerUseState";
 import { dispatchThreadRename } from "../lib/threadRename";
 import { quotePosixShellArgument } from "../lib/shellQuote";
 import { DEFAULT_THREAD_TERMINAL_ID, type SidebarThreadSummary } from "../types";
@@ -151,7 +147,6 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
     const threadSummary = sidebarThreadSummaryById[threadId];
     const isPinned = pinnedThreadIdSet.has(threadId);
     const threadStatus = threadSummary ? resolveThreadStatusForSidebar(threadSummary) : null;
-    const computerUseOn = readComputerUseMode(threadId) !== "off";
     const threadWorkspacePath = resolveThreadWorkspaceCwd({
       projectCwd: projectCwdById.get(thread.projectId) ?? null,
       envMode: thread.envMode,
@@ -175,16 +170,6 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
             ]
           : []),
         { id: "mark-unread", label: "Mark unread", icon: ViewIcon },
-        // Computer Use drives this machine, so a thread on an SSH host has no such toggle.
-        ...(isElectron && !thread.parentThreadId && environmentOfThread(threadId) === null
-          ? [
-              {
-                id: "toggle-computer-use",
-                label: computerUseOn ? "Turn off Computer Use" : "Turn on Computer Use",
-                icon: CursorInWindowIcon,
-              },
-            ]
-          : []),
         {
           id: "copy-path",
           label: "Copy Path",
@@ -234,10 +219,6 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
 
     if (clicked === "mark-unread") {
       markThreadUnread(threadId);
-      return;
-    }
-    if (clicked === "toggle-computer-use") {
-      await setComputerUseMode(threadId, computerUseOn ? "off" : "on");
       return;
     }
     if (clicked === "clear-notification") {

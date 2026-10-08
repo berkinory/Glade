@@ -16,8 +16,6 @@ import { ComputerAccessLive } from "../../computer/Layers/ComputerAccess.ts";
 import { ComputerAccess } from "../../computer/Services/ComputerAccess.ts";
 import { ComputerHost, type ComputerHostShape } from "../../computer/Services/ComputerHost.ts";
 import { OrchestrationEngineService } from "../../orchestration/Services/OrchestrationEngine.ts";
-import { ThreadComputerUseLive } from "../../orchestration/Layers/ThreadComputerUse.ts";
-import { ThreadComputerUse } from "../../orchestration/Services/ThreadComputerUse.ts";
 import type { McpToolCallResult } from "../protocol.ts";
 import type { ToolContext, ToolEntry } from "../toolRuntime.ts";
 import { makeInputComputerTools } from "./inputTools.ts";
@@ -141,11 +139,9 @@ const setup = Effect.fnUntraced(function* (
     ),
     ComputerAccess,
   );
-  const computerUse = Effect.runSync(
-    ThreadComputerUse.asEffect().pipe(Effect.provide(ThreadComputerUseLive)),
-  );
-  computerUse.set(THREAD, "on");
-  const services = { host, access, computerUse };
+  // The Settings permission, on unless a test turns it off.
+  const permission = { allowed: true };
+  const services = { host, access, allowed: Effect.sync(() => permission.allowed) };
   const tools = new Map(
     [...makeStructuredComputerTools(services), ...makeInputComputerTools(services)].map(
       (tool): [string, ToolEntry] => [tool.definition.name, tool],
@@ -208,10 +204,34 @@ const setup = Effect.fnUntraced(function* (
       });
     });
   const cardCount = () => activityKinds().filter((kind) => kind === "user-input.requested").length;
-  return { access, calls, call, clipboard, errorCode, grant, activityKinds, answerCard, cardCount };
+  return {
+    access,
+    calls,
+    call,
+    clipboard,
+    errorCode,
+    grant,
+    activityKinds,
+    answerCard,
+    cardCount,
+    permission,
+    tools,
+  };
 });
 
 describe("computer access gate", () => {
+  it.effect("lists no computer tool and refuses every call while Settings disallows it", () =>
+    Effect.gen(function* () {
+      const { calls, call, errorCode, grant, permission, tools } = yield* setup();
+      grant("Glade (Dev)", "full");
+      permission.allowed = false;
+      for (const tool of tools.values()) assert.isFalse(yield* tool.listed!);
+      const result = yield* call("computer_window_state", WINDOW);
+      assert.strictEqual(errorCode(result), "computer_use_off");
+      assert.deepEqual(calls, []);
+    }),
+  );
+
   it.effect("refuses an ungranted window before Cua sees the call", () =>
     Effect.gen(function* () {
       const { calls, call, errorCode } = yield* setup();

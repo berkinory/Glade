@@ -57,9 +57,9 @@ export interface ToolEntry {
   readonly requiresActiveTurn?: boolean;
 
   readonly discoveryOnly?: boolean;
-  // Listed only for threads where this holds (Computer Use). Providers read tools/list once per
-  // session, so whatever flips it also restarts the session.
-  readonly listedFor?: (threadId: string) => boolean;
+  // Listed only while this holds (Computer Use allowed in Settings). Providers read tools/list once
+  // per session, so whatever flips it also restarts the session.
+  readonly listed?: Effect.Effect<boolean>;
 }
 
 // The gateway builds its catalog once and gates per call, so without this a `tools/list` advertises

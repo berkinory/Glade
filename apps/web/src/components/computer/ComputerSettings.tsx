@@ -1,5 +1,7 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ComputerAccessScope } from "@glade/contracts/computer/computerUse";
 import type { DesktopComputerPermissions } from "@glade/contracts/ipc/ipc";
+import type { ServerSettings } from "@glade/contracts/settings/settings";
 import type {
   ComputerDriverStatus,
   ComputerGrantView,
@@ -14,7 +16,8 @@ import {
   isWindowsPlatform,
 } from "~/lib/utils";
 import { RUNTIME_MODE_PRESENTATION } from "~/lib/runtimeMode";
-import { readNativeApi } from "~/nativeApi";
+import { serverQueryKeys, serverSettingsQueryOptions } from "~/lib/serverReactQuery";
+import { ensureNativeApi, readNativeApi } from "~/nativeApi";
 import { useStore } from "~/store";
 import {
   SettingsEmptyState,
@@ -26,6 +29,7 @@ import {
 } from "../settings/SettingsPanelPrimitives";
 import { BrowserContentBlockerRow } from "../browser/BrowserContentBlockerRow";
 import { Button } from "../ui/button";
+import { Switch } from "../ui/switch";
 import { toastManager } from "../ui/toast";
 import { ComputerKillSwitchKbd } from "./ComputerKillSwitchKbd";
 import { useComputerState } from "./computerUseState";
@@ -44,6 +48,44 @@ function platformLimits(platform: string): string {
     return "On Linux with X11, clicks, typing and menus run in the background; key presses, scrolling and right-clicks in GTK apps bring the window to the front unless Cua Driver can write to /dev/uinput. On Wayland only accessibility-tree actions work; screenshot-driven actions need the window in front.";
   }
   return "Computer Use is not supported on this platform.";
+}
+
+// The permission itself: on lets agents use the computer in every chat, off lists no computer tools.
+function AllowComputerUseRow() {
+  const queryClient = useQueryClient();
+  const allowed = useQuery(serverSettingsQueryOptions()).data?.allowComputerUse;
+  const setAllowed = (allowComputerUse: boolean) => {
+    const latest = queryClient.getQueryData<ServerSettings>(serverQueryKeys.settings());
+    if (latest)
+      queryClient.setQueryData(serverQueryKeys.settings(), { ...latest, allowComputerUse });
+    void ensureNativeApi()
+      .server.updateSettings({ allowComputerUse })
+      .then((next) => queryClient.setQueryData(serverQueryKeys.settings(), next))
+      .catch((error: unknown) => {
+        void queryClient.invalidateQueries({ queryKey: serverQueryKeys.settings() });
+        toastManager.add({
+          type: "error",
+          title: "Could not change Computer Use",
+          description: error instanceof Error ? error.message : String(error),
+        });
+      });
+  };
+  return (
+    <SettingsRow
+      id="setting-allow-computer-use"
+      title="Allow Computer Use"
+      description="Agents may use apps on this computer in any chat when you ask or a task needs a desktop app. They still ask before using each app."
+      control={
+        allowed === undefined ? null : (
+          <Switch
+            checked={allowed}
+            onCheckedChange={(checked) => setAllowed(Boolean(checked))}
+            aria-label="Allow Computer Use"
+          />
+        )
+      }
+    />
+  );
 }
 
 function DriverRow(props: { status: ComputerDriverStatus | null }) {
@@ -187,6 +229,7 @@ export function ComputerSettings() {
         <BrowserContentBlockerRow />
       </SettingsSection>
       <SettingsSection title="Computer Use">
+        <AllowComputerUseRow />
         <DriverRow status={state?.status ?? null} />
         <SettingsRow
           id="setting-computer-kill-switch"
@@ -210,8 +253,8 @@ export function ComputerSettings() {
       <SettingsSectionShell title="Access grants" id="setting-computer-grants">
         {grants.length === 0 ? (
           <SettingsEmptyState>
-            No app access granted. Turn Computer Use on with /computer or the chat menu; the agent
-            asks before it uses an app. Grants last until Glade restarts.
+            No app access granted. Once Computer Use is allowed, the agent asks before it uses an
+            app. Grants last until Glade restarts.
           </SettingsEmptyState>
         ) : (
           <SettingsCard>

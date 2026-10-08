@@ -1,11 +1,12 @@
 import { useThreadCompaction } from "./useThreadCompaction";
+import { useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
-import { markDraftComputerUse, setComputerUseMode } from "../components/computer/computerUseState";
 import { useLocalDesktopActive } from "~/environments/activeEnvironment";
 import type { ComposerCommandItem } from "../components/chat/ComposerCommandMenu";
 import { toastManager } from "../components/ui/toast";
 import {
   buildSlashReviewComposerPrompt,
+  COMPUTER_USE_PROMPT_PREFIX,
   getAvailableComposerSlashCommands,
   hasProviderNativeSlashCommand,
   parseComposerSlashInvocationForCommands,
@@ -15,6 +16,7 @@ import {
 import { extendReplacementRangeForTrailingSpace } from "../composerTriggerInsertion";
 import { useFeedbackDialogStore } from "../feedbackDialogStore";
 import { downloadUrlAsBlob } from "../lib/browserDownload";
+import { serverSettingsQueryOptions } from "../lib/serverReactQuery";
 import { resolveWsHttpUrl } from "../lib/wsHttpUrl";
 import { readNativeApi } from "../nativeApi";
 import { buildNextProviderOptions } from "../providerModelOptions";
@@ -37,7 +39,6 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
     activeThread,
     environmentMode,
     runtimeMode,
-    isServerThread,
 
     threadId,
     handleClearConversation,
@@ -56,6 +57,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
     setComposerDraftProviderModelOptions,
   } = input.provider;
   const { openForkTargetPicker, openReviewTargetPicker, editorActions } = input.editor;
+  const allowComputerUse = useQuery(serverSettingsQueryOptions()).data?.allowComputerUse === true;
   const providerNativeCommandNames = providerNativeCommands.map((command) => command.name);
   const availableBuiltInSlashCommands = getAvailableComposerSlashCommands({
     provider: selectedProvider,
@@ -64,17 +66,11 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
     canOfferReviewCommand: true,
     canOfferForkCommand: true,
     canOfferExportCommand,
-    canOfferComputerUseCommand: isLocalDesktop,
+    canOfferComputerUseCommand: isLocalDesktop && allowComputerUse,
     providerNativeCommandNames,
   });
 
   const { compact: compactProviderThread } = useThreadCompaction(activeThread?.id);
-
-  // A draft has no server thread yet; its first send applies the mode.
-  const turnOnComputerUseOnce = useCallback(async () => {
-    if (isServerThread) await setComputerUseMode(threadId, "once");
-    else markDraftComputerUse(threadId);
-  }, [isServerThread, threadId]);
 
   const setFastModeFromSlashCommand = useCallback(
     (enabled: boolean) => {
@@ -258,10 +254,9 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
         return false;
       }
       if (slashInvocation.command === "computer") {
-        // Text after the command stays in the composer as the task to send next.
-        if (slashInvocation.args) editorActions.setComposerPromptValue(slashInvocation.args);
-        else editorActions.clearComposerSlashDraft();
-        await turnOnComputerUseOnce();
+        editorActions.setComposerPromptValue(
+          `${COMPUTER_USE_PROMPT_PREFIX}${slashInvocation.args.trim()}`,
+        );
         return true;
       }
       if (slashInvocation.command === "clear") {
@@ -388,7 +383,6 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
       runFastSlashCommand,
 
       runRenameSlashCommand,
-      turnOnComputerUseOnce,
     ],
   );
 
@@ -447,13 +441,16 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
       }
 
       if (item.command === "computer") {
-        const applied = clearSlashCommandFromComposer();
-        if (!wasPromptReplacementApplied(applied)) {
-          return;
+        const applied = editorActions.applyPromptReplacement(
+          trigger.rangeStart,
+          trigger.rangeEnd,
+          COMPUTER_USE_PROMPT_PREFIX,
+          { expectedText: snapshot.value.slice(trigger.rangeStart, trigger.rangeEnd) },
+        );
+        if (wasPromptReplacementApplied(applied)) {
+          editorActions.setComposerHighlightedItemId(null);
+          editorActions.scheduleComposerFocus();
         }
-        editorActions.setComposerHighlightedItemId(null);
-        void turnOnComputerUseOnce();
-        editorActions.scheduleComposerFocus();
         return;
       }
 
@@ -551,7 +548,6 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
       supportsTextNativeReviewCommand,
       runExportSlashCommand,
       runFastSlashCommand,
-      turnOnComputerUseOnce,
     ],
   );
 

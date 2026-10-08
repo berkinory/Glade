@@ -1,9 +1,5 @@
 import { Schema } from "effect";
 
-// Per-thread Computer Use: "once" covers the next turn only and reverts to "off" when it ends.
-export const ComputerUseMode = Schema.Literals(["off", "once", "on"]);
-export type ComputerUseMode = typeof ComputerUseMode.Type;
-
 export const ComputerAccessScope = Schema.Literals(["read", "act", "full"]);
 export type ComputerAccessScope = typeof ComputerAccessScope.Type;
 

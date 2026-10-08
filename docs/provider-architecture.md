@@ -115,10 +115,12 @@ Glade renders harness policy once per provider. Codex receives it as `developerI
 
 `agentGateway/toolLoadingPolicy.ts` selects the core host tools for automatic loading: context, capabilities, interrupt, title, diagnosis, app presentation, turn diff, thread diff and runtime events. All other tools, including visual rendering and preview, remain discoverable. The MCP transport projects this policy into Claude's per-tool `anthropic/alwaysLoad` metadata; the managed server does not force the whole catalog into context. Codex controls discovery through its native MCP path; clients that ignore loading metadata may expose or defer the catalog according to their own capabilities. Claude metadata does not override that decision. New adapters must map the shared policy onto supported loading controls and teach their actual discovery mechanism. The shared harness policy requires discovery before reporting a host capability unavailable. Capability filtering and call authorization apply independently of loading. Tool input schemas preserve their union constraints while declaring the object root required by MCP.
 
-Browser Use and Computer Use reach providers only as gateway tools. `browser_*` tools are registered when the server runs under the desktop app; `computer_*` tools are listed only while the chat's
-Computer Use mode is on, and because both providers read `tools/list` once per session, changing
-that mode restarts the provider session with its resume cursor (immediately when idle, otherwise at
-the next turn start). The chat comes from the gateway session lease, never from tool input.
+Browser Use and Computer Use reach providers only as gateway tools. `browser_*` tools are registered when the server runs under the desktop app; `computer_*` tools are listed only while Settings
+allows Computer Use, and calls are refused otherwise. They are never loaded automatically: Claude
+defers them behind tool search through `anthropic/alwaysLoad: false`, and Codex defers MCP tools
+behind its own tool search when the model supports it. Because both providers read `tools/list` once
+per session, a session started under the other setting restarts with its resume cursor at its next
+turn start. The chat comes from the gateway session lease, never from tool input.
 
 Edit, revert and file undo preview scoped checkpoint restores before confirmation. Each removed turn contributes its git diff paths, with the first affected turn start as the restore target and the last affected turn end as the expected workspace state. Later file changes require explicit consent per path, and a fingerprint is revalidated before provider rollback and again before restoring. The real git index and unrelated files are preserved. Claude rollback starts its replacement native session before deleting the superseded history.
 

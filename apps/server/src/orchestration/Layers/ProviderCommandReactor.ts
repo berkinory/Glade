@@ -30,8 +30,6 @@ import {
 } from "../Services/ProviderCommandReactor.ts";
 import { ThreadSessionSettings } from "../Services/ThreadSessionSettings.ts";
 import { ThreadSessionSettingsLive } from "./ThreadSessionSettings.ts";
-import { ThreadComputerUse } from "../Services/ThreadComputerUse.ts";
-import { ThreadComputerUseLive } from "./ThreadComputerUse.ts";
 import { QueuedDispatchState } from "../Services/QueuedDispatchState.ts";
 import { QueuedDispatchStateLive } from "./QueuedDispatchState.ts";
 import { ProviderContextLifecycleActivityRecord } from "../providerCommands/contextLifecycle";
@@ -103,7 +101,6 @@ const make = Effect.gen(function* () {
   });
 
   const threadSessionSettings = yield* ThreadSessionSettings;
-  const threadComputerUse = yield* ThreadComputerUse;
 
   const queuedDispatchState = yield* QueuedDispatchState;
 
@@ -175,7 +172,6 @@ const make = Effect.gen(function* () {
       orchestrationEngine,
       projectionAccess,
       threadSessionSettings,
-      threadComputerUse,
       deliveryGate,
 
       suppressContextBootstrapOnNextStartThreadIds,
@@ -311,7 +307,6 @@ const make = Effect.gen(function* () {
     queuedDispatchState,
     drainQueuedTurnsForSession,
     threadSessionSettings,
-    threadComputerUse,
     queuedTurnPromotions,
     clearStaleProviderResumeState,
     clearThreadRuntimeCaches,
@@ -405,8 +400,6 @@ export const makeProviderCommandReactorLive = (options?: ProviderCommandReactorL
       ),
     ),
     Layer.provide(ProviderProjectionAccessLive),
-    // Not fresh: the agent gateway reads the same per-thread Computer Use state.
-    Layer.provide(ThreadComputerUseLive),
   );
 
 export const ProviderCommandReactorLive = makeProviderCommandReactorLive();

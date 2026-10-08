@@ -6,7 +6,6 @@ import { BrowserHost } from "../../browser/Services/BrowserHost";
 import { makeBrowserTools } from "../browser/browserTools";
 import { ComputerAccess } from "../../computer/Services/ComputerAccess";
 import { ComputerHost } from "../../computer/Services/ComputerHost";
-import { ThreadComputerUse } from "../../orchestration/Services/ThreadComputerUse";
 import { makeInputComputerTools } from "../computer/inputTools";
 import { makeStructuredComputerTools } from "../computer/structuredTools";
 import { AppPresentation } from "../Services/AppPresentation";
@@ -104,13 +103,24 @@ const makeAgentGateway = Effect.gen(function* () {
     yield* Effect.serviceOption(BrowserHost),
     (host) => host.available,
   );
-  // Registered whenever the desktop app hosts the driver; each thread lists them only while its
-  // Computer Use setting is on.
+  // Registered whenever the desktop app hosts the driver; listed only while Settings allows Computer
+  // Use. Unreadable settings count as not allowed.
   const computerServices = Option.all({
     host: Option.filter(yield* Effect.serviceOption(ComputerHost), (host) => host.configured),
     access: yield* Effect.serviceOption(ComputerAccess),
-    computerUse: yield* Effect.serviceOption(ThreadComputerUse),
-  });
+  }).pipe(
+    Option.map((services) => ({
+      ...services,
+      allowed: serverSettings.getSettings.pipe(
+        Effect.map((settings) => settings.allowComputerUse),
+        Effect.catch((error) =>
+          Effect.logWarning("computer tools could not read settings", {
+            detail: error.detail,
+          }).pipe(Effect.as(false)),
+        ),
+      ),
+    })),
+  );
   const loadProviderAvailabilities = Effect.gen(function* () {
     const [settings, statuses] = yield* Effect.all([
       serverSettings.getSettings,

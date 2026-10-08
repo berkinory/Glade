@@ -1,5 +1,4 @@
 import { WorkspaceRestoreConfirmation } from "./workspaceRestore";
-import { ComputerUseMode } from "../computer/computerUse";
 import { ProviderForkPoint } from "../provider/provider";
 import { Schema } from "effect";
 import {
@@ -300,12 +299,6 @@ export const ThreadRuntimeModeSetPayload = Schema.Struct({
   updatedAt: IsoDateTime,
 });
 
-export const ThreadComputerUseSetPayload = Schema.Struct({
-  threadId: ThreadId,
-  computerUse: ComputerUseMode,
-  updatedAt: IsoDateTime,
-});
-
 export const ThreadMessageSentPayload = Schema.Struct({
   modelSelection: Schema.optional(ModelSelection),
   providerMessageId: Schema.optional(TrimmedNonEmptyString),
@@ -592,10 +585,11 @@ export const OrchestrationEvent = Schema.Union([
     type: Schema.Literal("thread.runtime-mode-set"),
     payload: ThreadRuntimeModeSetPayload,
   }),
+  // Retired per-chat Computer Use mode (0.2.1). Stored events still decode and project to nothing.
   Schema.Struct({
     ...EventBaseFields,
     type: Schema.Literal("thread.computer-use-set"),
-    payload: ThreadComputerUseSetPayload,
+    payload: Schema.Struct({ threadId: ThreadId, updatedAt: IsoDateTime }),
   }),
   Schema.Struct({
     ...EventBaseFields,

@@ -11,6 +11,10 @@ export interface ThreadSessionSettingsShape {
   readonly markEditResendStart: (threadId: ThreadId, messageId: string) => void;
   readonly clearEditResendStart: (threadId: ThreadId, messageId: string) => void;
   readonly clearEditResendStartsForThread: (threadId: ThreadId) => void;
+  // Whether the running provider session was started with the computer tools listed. Providers
+  // read tools/list once per session, so a mismatch with Settings restarts it at the next check.
+  readonly computerToolsListed: (threadId: ThreadId) => boolean;
+  readonly setComputerToolsListed: (threadId: ThreadId, listed: boolean) => void;
   readonly clearThread: (threadId: ThreadId) => void;
 }
 

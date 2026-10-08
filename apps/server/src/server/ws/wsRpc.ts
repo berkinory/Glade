@@ -173,7 +173,6 @@ import { BrowserHost } from "../../browser/Services/BrowserHost";
 import { makeComputerWsHandlers } from "../../computer/computerWsHandlers";
 import { ComputerAccess } from "../../computer/Services/ComputerAccess";
 import { ComputerHost } from "../../computer/Services/ComputerHost";
-import { ThreadComputerUse } from "../../orchestration/Services/ThreadComputerUse";
 import {
   makeCursorSafeSnapshotLiveStream,
   makeResnapshotEscalationTracker,
@@ -854,7 +853,6 @@ const makeWsRpcHandlersLayer = () =>
       const computerHandlers = makeComputerWsHandlers({
         host: yield* Effect.serviceOption(ComputerHost),
         access: yield* Effect.serviceOption(ComputerAccess),
-        computerUse: yield* Effect.serviceOption(ThreadComputerUse),
         streamAdmission,
       });
 

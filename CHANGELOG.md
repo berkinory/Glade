@@ -25,6 +25,7 @@
 - Right-click menus across the app share one look with icons, and text fields and images get their own copy and paste menu.
 - The agent's cursor in Computer Use moves more naturally, taking care near small targets and gliding across long distances.
 - Switching to another provider in a chat whose messages never reached the provider switches right away and resends your last message instead of handing off an empty conversation.
+- Computer Use is allowed once in Settings for every chat, off by default; agents use it when you ask, in words or with /computer, or when a task needs a desktop app.
 
 ### Fixed
 
@@ -42,6 +43,7 @@
 ### Removed
 
 - Spell checking and spelling suggestions in text fields.
+- Turning Computer Use on or off per chat from the chat menu or the composer.
 
 ## 0.2.1 - 2026-10-08
 

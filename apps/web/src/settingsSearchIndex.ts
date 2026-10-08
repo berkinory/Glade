@@ -369,6 +369,15 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
       "Browser ad blocker adblock trackers tracking privacy cookie banners consent notices filter lists Ghostery built-in browser",
   },
   {
+    id: "computer:allow",
+    section: "computer",
+    title: "Allow Computer Use",
+    target: "setting-allow-computer-use",
+    applies: () => isElectron,
+    keywords:
+      "Computer Use permission enable disable turn on off desktop control apps agents every chat",
+  },
+  {
     id: "computer:driver",
     section: "computer",
     title: "Cua Driver",

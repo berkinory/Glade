@@ -44,8 +44,11 @@ when the script runs, so agents can inspect the user's own dev app; it refuses e
 Browser tools and the Browser view do not exist outside the desktop app.
 
 Computer Use (desktop control) is available in the desktop app on top of the bundled Cua Driver.
-It is off per conversation: `/computer` turns it on for the next message and the thread menu
-turns it on or off for the conversation. The agent asks in the chat before it reads or acts on an
+Settings' Allow Computer Use switch (off by default) is the permission: on, agents may use the
+computer in any chat; off, no computer tools exist anywhere. There is no per-chat mode. Agents use
+it only when the user asks, in words or with `/computer`, which prefixes the request with an
+instruction to use Computer Use, or when a task clearly needs a desktop app that no other tool
+covers. The agent asks in the chat before it reads or acts on an
 app (read, act or full control); grants last until Glade restarts and can be revoked in Settings,
 which also shows the driver status and, on macOS, the Accessibility and Screen Recording
 permissions. While a turn uses the computer, the composer shows the app with Stop.

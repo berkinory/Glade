@@ -20,7 +20,6 @@ import {
 } from "../../computer/cuaResults.ts";
 import type { ComputerAccessShape } from "../../computer/Services/ComputerAccess.ts";
 import { ComputerHostError, type ComputerHostShape } from "../../computer/Services/ComputerHost.ts";
-import type { ThreadComputerUseShape } from "../../orchestration/Services/ThreadComputerUse.ts";
 import { toolInputSchema, type McpToolCallResult } from "../protocol.ts";
 import {
   GatewayToolError,
@@ -33,7 +32,8 @@ import { untrustedContent } from "../untrustedContent.ts";
 export interface ComputerToolServices {
   readonly host: ComputerHostShape;
   readonly access: ComputerAccessShape;
-  readonly computerUse: ThreadComputerUseShape;
+  // The Settings permission, read on every listing and call.
+  readonly allowed: Effect.Effect<boolean>;
 }
 
 export interface WindowInput {
@@ -64,9 +64,6 @@ export const refuse = (code: string, message: string, details?: unknown) =>
 
 // Thread ownership comes from the gateway session (context.callerThreadId), never tool input.
 export const callerThread = (context: ToolContext) => ThreadId.makeUnsafe(context.callerThreadId);
-
-const isComputerUseOn = (services: ComputerToolServices, threadId: string) =>
-  services.computerUse.mode(ThreadId.makeUnsafe(threadId)) !== "off";
 
 // App-provided text (titles, accessibility labels and values) handed to the model.
 export const appContent = (window: CuaWindow, text: string) =>
@@ -158,13 +155,15 @@ export const appWindows = (services: ComputerToolServices, context: ToolContext,
 export const windowSummary = (window: CuaWindow) =>
   `window ${window.window_id} ${JSON.stringify(window.title)}${window.is_on_screen ? "" : " (off screen)"}${window.minimized ? " (minimized)" : ""}`;
 
-const requireComputerUse = (services: ComputerToolServices, context: ToolContext) =>
-  isComputerUseOn(services, context.callerThreadId)
-    ? Effect.void
-    : refuse(
-        "computer_use_off",
-        "Computer Use is off for this thread. Ask the user to turn it on with /computer or the thread menu.",
-      );
+const requireComputerUse = (services: ComputerToolServices) =>
+  Effect.flatMap(services.allowed, (allowed) =>
+    allowed
+      ? Effect.void
+      : refuse(
+          "computer_use_off",
+          "Computer Use is not allowed. The user can allow it in Settings > Browser & Computer Use.",
+        ),
+  );
 
 // The window as Cua lists it now: the grant check needs its app, and a pid/window pair that does
 // not match is refused before anything acts on it.
@@ -332,7 +331,7 @@ export function computerTool<Input>(
   return {
     requiredCapability: "thread:write",
     requiresActiveTurn: true,
-    listedFor: (threadId) => isComputerUseOn(services, threadId),
+    listed: services.allowed,
     definition: {
       name: spec.name,
       description: spec.description,
@@ -346,7 +345,7 @@ export function computerTool<Input>(
       },
     },
     handler: (args, context) =>
-      requireComputerUse(services, context).pipe(
+      requireComputerUse(services).pipe(
         Effect.andThen(
           decode(args).pipe(
             Effect.mapError((error) =>

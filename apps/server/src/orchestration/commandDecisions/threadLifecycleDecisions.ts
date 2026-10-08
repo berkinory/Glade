@@ -48,7 +48,6 @@ export function decideThreadLifecycleCommand({
         | "thread.pinned-message.remove"
         | "thread.pinned-message.label.set"
         | "thread.runtime-mode.set"
-        | "thread.computer-use.set"
         | "thread.session.stop"
         | "thread.session.set";
     }
@@ -511,29 +510,6 @@ export function decideThreadLifecycleCommand({
           },
         };
       }
-      case "thread.computer-use.set": {
-        yield* requireThread({
-          readModel,
-          command,
-          threadId: command.threadId,
-        });
-        const occurredAt = nowIso();
-        return {
-          ...withEventBase({
-            aggregateKind: "thread",
-            aggregateId: command.threadId,
-            occurredAt,
-            commandId: command.commandId,
-          }),
-          type: "thread.computer-use-set",
-          payload: {
-            threadId: command.threadId,
-            computerUse: command.computerUse,
-            updatedAt: occurredAt,
-          },
-        };
-      }
-
       case "thread.session.stop": {
         yield* requireThread({
           readModel,
