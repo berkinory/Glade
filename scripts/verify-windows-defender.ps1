@@ -29,7 +29,22 @@ try {
   Get-MpComputerStatus | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $evidenceRoot 'status-initial.json')
   # Hosted runner images may disable these modes; only strengthen the disposable CI machine.
   Set-MpPreference -DisableRealtimeMonitoring $false -DisableArchiveScanning $false -DisableIOAVProtection $false -DisableBehaviorMonitoring $false -DisableScriptScanning $false
-  Update-MpSignature
+  # The update service fails intermittently on hosted runners. Retry across sources; if every attempt
+  # fails, Assert-Protection still refuses signatures older than 24 hours.
+  $signatureUpdate = 'failed'
+  :update foreach ($source in @('MicrosoftUpdateServer', 'MMPC')) {
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
+      try {
+        Update-MpSignature -UpdateSource $source
+        $signatureUpdate = "$source (attempt $attempt)"
+        break update
+      } catch {
+        Write-Warning "Defender signature update from $source failed (attempt $attempt): $($_.Exception.Message)"
+        Start-Sleep -Seconds 15
+      }
+    }
+  }
+  $report.signatureUpdate = $signatureUpdate
   for ($attempt = 0; $attempt -lt 12; $attempt++) {
     if ((Get-MpComputerStatus).RealTimeProtectionEnabled) { break }
     Start-Sleep -Seconds 5
