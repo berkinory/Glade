@@ -3,6 +3,7 @@ import {
   SquarePenIcon,
   SearchIcon,
   SettingsIcon,
+  Home01Icon,
   TriangleAlertIcon,
   ExpandIcon,
   CollapseIcon,
@@ -582,27 +583,28 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
                 </Suspense>
               ) : null}
               <div className="flex items-center gap-2">
-                {!isOnSettings && (
-                  <SidebarMenuButton
-                    size="sm"
-                    className={cn(
-                      SIDEBAR_HEADER_ROW_CLASS_NAME,
-                      SIDEBAR_ROW_IDLE_TEXT_CLASS_NAME,
-                      SIDEBAR_ROW_HOVER_CLASS_NAME,
-                      "flex-1",
-                    )}
-                    onClick={() =>
-                      void navigate({
-                        to: "/settings",
-                      })
-                    }
-                  >
-                    <SidebarLeadingIcon size="sm" tone={SIDEBAR_ROW_LABEL_TEXT_CLASS_NAME}>
-                      <SidebarGlyph icon={SettingsIcon} variant="leading" />
-                    </SidebarLeadingIcon>
-                    <span>Settings</span>
-                  </SidebarMenuButton>
-                )}
+                <SidebarMenuButton
+                  size="sm"
+                  className={cn(
+                    SIDEBAR_HEADER_ROW_CLASS_NAME,
+                    SIDEBAR_ROW_IDLE_TEXT_CLASS_NAME,
+                    SIDEBAR_ROW_HOVER_CLASS_NAME,
+                    "flex-1",
+                  )}
+                  onClick={
+                    isOnSettings
+                      ? handleBackToAppFromSettings
+                      : () => void navigate({ to: "/settings" })
+                  }
+                >
+                  <SidebarLeadingIcon size="sm" tone={SIDEBAR_ROW_LABEL_TEXT_CLASS_NAME}>
+                    <SidebarGlyph
+                      icon={isOnSettings ? Home01Icon : SettingsIcon}
+                      variant="leading"
+                    />
+                  </SidebarLeadingIcon>
+                  <span>{isOnSettings ? "Home" : "Settings"}</span>
+                </SidebarMenuButton>
                 <SidebarUsageIndicators />
                 {showDesktopUpdateButton ? (
                   <Tooltip>
