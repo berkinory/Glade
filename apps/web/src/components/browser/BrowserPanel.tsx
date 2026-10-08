@@ -94,7 +94,8 @@ export function BrowserPanel(props: {
         }}
       />
       {/* The active tab's native view is placed over this box. */}
-      <div ref={setContentElement} className="relative min-h-0 flex-1">
+      {/* Inset from the left edge so the native view never covers the sidebar's resize handle. */}
+      <div ref={setContentElement} className="relative ml-1 min-h-0 flex-1">
         {frozenFrame ? (
           <img
             src={frozenFrame}

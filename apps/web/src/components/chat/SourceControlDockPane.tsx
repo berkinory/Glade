@@ -83,6 +83,7 @@ export function SourceControlDockPane(props: {
     <div className="flex h-full min-h-0 w-full flex-col">
       <PanelTabBar
         label="Source control views"
+        contentTabs
         activeId={props.view}
         tabs={[
           {

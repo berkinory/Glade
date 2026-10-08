@@ -9,8 +9,8 @@ import {
   removePanelResizeOverlay,
 } from "../../lib/panelResize";
 
-// Width of a panel docked to the right of a chat pane, dragged from its left edge or set by
-// `setWidth`, and remembered under `storageKey`. Growing stops where the pane's composer would no longer fit.
+// Width of a panel docked to the right of a chat pane, dragged from its left edge and remembered
+// under `storageKey`. Growing stops where the pane's composer would no longer fit.
 export function usePanelWidthResize(input: {
   readonly storageKey: string;
   readonly defaultWidth: number;
@@ -97,7 +97,7 @@ export function usePanelWidthResize(input: {
     });
   };
 
-  return { wrapperRef, width, setWidth, startResize };
+  return { wrapperRef, width, startResize };
 }
 
 export function PanelWidthResizeHandle(props: {

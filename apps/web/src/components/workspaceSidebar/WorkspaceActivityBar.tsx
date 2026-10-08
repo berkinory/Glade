@@ -106,8 +106,9 @@ export function WorkspaceActivityBar(props: { threadId: ThreadId; hasBrowserPage
       >
         {captionButtonsOverlap ? null : sidebarToggle}
       </div>
+      {captionButtonsOverlap ? <div className="pt-2.5">{sidebarToggle}</div> : null}
+      <div aria-hidden className="mt-2.5 h-px w-5 shrink-0 bg-[var(--app-surface-divider)]" />
       <div className="flex flex-col items-center gap-2 pt-2.5">
-        {captionButtonsOverlap ? <div className="pb-2.5">{sidebarToggle}</div> : null}
         {WORKSPACE_SIDEBAR_VIEWS.filter((view) => view !== "browser" || isElectron).map((view) => {
           const { label, Icon, command } = WORKSPACE_SIDEBAR_VIEW_META[view];
           const shortcut = shortcutLabelForCommand(keybindings, command);

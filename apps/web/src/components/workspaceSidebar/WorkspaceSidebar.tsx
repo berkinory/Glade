@@ -21,13 +21,13 @@ import { WorkspaceActivityBar } from "./WorkspaceActivityBar";
 import { WORKSPACE_SIDEBAR_VIEW_META } from "./workspaceSidebarViews";
 
 const CHAT_MIN_WIDTH_PX = 20 * 16;
-// Every view shares one width; the browser needs at least BROWSER_MIN_WIDTH_PX to be usable.
+// Every view shares one width. The minimum is the narrowest the browser stays usable at (pages
+// switch to their small-screen layout), so switching views never changes the width.
 const SIDEBAR_WIDTH = {
   storageKey: "workspace_sidebar_width",
-  defaultWidth: 30 * 16,
-  minWidth: 18 * 16,
+  defaultWidth: 36 * 16,
+  minWidth: 24 * 16,
 };
-const BROWSER_MIN_WIDTH_PX = 32 * 16;
 
 type ToolView = Exclude<WorkspaceSidebarView, "terminal" | "browser">;
 
@@ -98,17 +98,10 @@ export function WorkspaceSidebar(props: {
 }) {
   const open = useWorkspaceSidebarStore((store) => store.open);
   const view = useWorkspaceSidebarStore((store) => store.view);
-  const browserShown = open && view === "browser";
-  const minWidth = browserShown ? BROWSER_MIN_WIDTH_PX : SIDEBAR_WIDTH.minWidth;
-  const { wrapperRef, width, setWidth, startResize } = usePanelWidthResize({
+  const { wrapperRef, width, startResize } = usePanelWidthResize({
     ...SIDEBAR_WIDTH,
-    minWidth,
     chatMinWidth: CHAT_MIN_WIDTH_PX,
   });
-  // Showing the browser widens a narrower shared width and keeps it.
-  useEffect(() => {
-    if (browserShown && width < BROWSER_MIN_WIDTH_PX) setWidth(BROWSER_MIN_WIDTH_PX);
-  }, [browserShown, setWidth, width]);
   const gutterClassName = useDesktopTopBarWindowControlsGutterClassName();
   const browserTabs = useBrowserTabs(isElectron ? props.threadId : null);
   useTerminalViewSync(props.threadId, open && view === "terminal");
@@ -142,7 +135,7 @@ export function WorkspaceSidebar(props: {
         style={
           open
             ? {
-                width: Math.max(minWidth, width),
+                width: Math.max(SIDEBAR_WIDTH.minWidth, width),
                 maxWidth: `calc(100% - ${CHAT_MIN_WIDTH_PX}px)`,
               }
             : undefined
