@@ -34,6 +34,7 @@ import {
 import { ProjectionSnapshotQuery } from "../../orchestration/Services/ProjectionSnapshotQuery";
 import { ProjectionPendingInteractionRepository } from "../../persistence/Services/ProjectionPendingInteractions";
 import { ThreadDeletionReactor } from "../../orchestration/Services/ThreadDeletionReactor";
+import { KeepAwake } from "../../keepAwake/Services/KeepAwake";
 import {
   claimQuitResumeRecordAtStartup,
   resumeQuitInterruptedChats,
@@ -79,6 +80,7 @@ export interface ServerShape {
     | ServerRuntimeStartup
     | ServerSettingsService
     | ThreadDeletionReactor
+    | KeepAwake
     | SqlClient.SqlClient
   >;
   readonly stopSignal: Effect.Effect<void, never>;
@@ -162,6 +164,7 @@ export const createEffectServer = Effect.fn(function* (
   const runtimeStartup = yield* ServerRuntimeStartup;
   const serverSettings = yield* ServerSettingsService;
   const threadDeletionReactor = yield* ThreadDeletionReactor;
+  const keepAwake = yield* KeepAwake;
   const readiness = yield* makeServerReadiness;
 
   yield* keybindings.syncDefaultKeybindingsOnStartup.pipe(
@@ -236,7 +239,7 @@ export const createEffectServer = Effect.fn(function* (
     reconcileRestartStuckTurns: reconcileRestartStuckTurns.pipe(
       Effect.provide(ProjectionPendingInteractionRepositoryLive),
     ),
-    reactors: [threadDeletionReactor, providerSessionReaper, providerRuntimeReconciler],
+    reactors: [threadDeletionReactor, providerSessionReaper, providerRuntimeReconciler, keepAwake],
     subscriptionsScope,
   });
   yield* readiness.markOrchestrationSubscriptionsReady;

@@ -5,6 +5,7 @@ import type {
   GitPublishRepositoryResult,
 } from "../git/githubRepositoryPublishing";
 import type { DesktopMenuShortcutState } from "./menuShortcuts";
+import type { ServerKeepAwakeStatus } from "../server/keepAwake";
 import type { BrowserTabsChanged } from "../browser/browserHost";
 import type { BrowserPanelCommand, BrowserTabsSubscribeInput } from "../transport/ws/browserRpc";
 import type { ComputerGrantTarget, ComputerState } from "../transport/ws/computerRpc";
@@ -661,6 +662,7 @@ export interface NativeApi {
     getDiagnostics: () => Promise<ServerDiagnosticsResult>;
     readThreadDiagnostics: (
       input: ServerReadThreadDiagnosticsInput,
+    getKeepAwakeStatus: () => Promise<ServerKeepAwakeStatus>;
     ) => Promise<ServerReadThreadDiagnosticsResult>;
     prewarmVoice?: (input: ServerVoicePrewarmInput) => Promise<ServerVoicePrewarmResult>;
     transcribeVoice: (

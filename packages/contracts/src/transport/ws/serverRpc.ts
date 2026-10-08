@@ -40,6 +40,7 @@ import {
   StatsGetProfileTokenStatsInput,
   StatsGetProfileTokenStatsResult,
 } from "../../server/stats";
+import { ServerKeepAwakeStatus } from "../../server/keepAwake";
 import { ServerRuntimeStatus } from "../../server/runtimeStatus";
 import { WsRpcError } from "./rpcErrors";
 
@@ -136,6 +137,12 @@ export const WsStatsGetProfileTokenStatsRpc = Rpc.make(WS_METHODS.statsGetProfil
 export const WsServerGetDiagnosticsRpc = Rpc.make(WS_METHODS.serverGetDiagnostics, {
   payload: Schema.Struct({}),
   success: ServerDiagnosticsResult,
+  error: WsRpcError,
+});
+
+export const WsServerGetKeepAwakeStatusRpc = Rpc.make(WS_METHODS.serverGetKeepAwakeStatus, {
+  payload: Schema.Struct({}),
+  success: ServerKeepAwakeStatus,
   error: WsRpcError,
 });
 

@@ -54,6 +54,7 @@ import { ThreadDiagnosticsQueryLive } from "./diagnostics/Layers/ThreadDiagnosti
 import { ManagedAttachmentCleanupLive } from "./attachments/managedAttachmentCleanup";
 import { ProviderHealthLive } from "./provider/Layers/ProviderHealth";
 import { makeServerProviderLayer } from "./provider/core/runtimeLayer";
+import { KeepAwakeLive } from "./keepAwake/Layers/KeepAwake";
 
 function makeServerRuntimeServicesLayer(
   options: {
@@ -127,6 +128,11 @@ function makeServerRuntimeServicesLayer(
   );
 
   const sessionCredentialLayer = SessionCredentialServiceLive.pipe(
+  const keepAwakeLayer = KeepAwakeLive.pipe(
+    Layer.provideMerge(OrchestrationLayerLive),
+    Layer.provideMerge(ServerSettingsLive),
+  );
+
     Layer.provide(ServerSecretStoreLive),
   );
   const authControlPlaneLayer = AuthControlPlaneLive.pipe(
@@ -181,6 +187,7 @@ function makeServerRuntimeServicesLayer(
     threadGitMetadataReactorLayer,
     threadDeletionReactorLayer,
     GitLayerLive,
+    keepAwakeLayer,
     gitActionRunsLayer,
     TextGenerationLayerLive,
     TerminalLayerLive,

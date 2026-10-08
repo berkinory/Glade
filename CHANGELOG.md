@@ -2,6 +2,10 @@
 
 ## 0.2.2 - Unreleased
 
+### New
+
+- Keep your Mac awake while agents work, or always, from Chat settings. The display can still sleep.
+
 ### Improved
 
 - Scrollbars across the app stay hidden at rest and appear while you scroll or hover.

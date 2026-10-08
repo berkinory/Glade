@@ -61,6 +61,7 @@ import { SkillsSettingsPanel } from "../components/settings/SkillsSettingsPanel"
 import { ThemeModePicker } from "../components/settings/ThemeModePicker";
 import { SidebarHeaderNavigationControls } from "../components/SidebarHeaderNavigationControls";
 import { ThemePicker } from "../components/settings/ThemePicker";
+import { KeepAwakeSettingsRow } from "../components/settings/KeepAwakeSettingsRow";
 import { WindowMaterialSettingsRow } from "../components/settings/WindowMaterialSettingsRow";
 import { ThemeFontSettings } from "../components/settings/ThemeFontSettings";
 import {
@@ -750,6 +751,10 @@ function SettingsRouteView() {
           resetLabel: "send dictation with Enter",
           ariaLabel: "Send dictation with Enter",
         })}
+      </SettingsSection>
+
+      <SettingsSection title="Power">
+        <KeepAwakeSettingsRow />
       </SettingsSection>
 
       <SettingsSection title="Confirmations">

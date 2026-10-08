@@ -7,6 +7,7 @@ import {
 } from "@glade/contracts/provider/sessionPolicy";
 import { DesktopAppIcon } from "@glade/contracts/ipc/ipc";
 import {
+  DEFAULT_KEEP_AWAKE_MODE,
   DEFAULT_SERVER_SETTINGS,
   DEFAULT_SERVER_SETTINGS_VIEW,
   type ServerSettingsView,
@@ -890,10 +891,12 @@ export function useAppSettings() {
       const currentServerSettings =
         queryClient.getQueryData<ServerSettingsView>(serverQueryKeys.settings()) ??
         serverSettingsQuery.data;
-      const serverPatch = appSettingsPatchToServerSettingsPatch(
-        resettableDefaults,
-        currentServerSettings,
-      );
+      const serverPatch: ServerSettingsPatch = {
+        ...appSettingsPatchToServerSettingsPatch(resettableDefaults, currentServerSettings),
+        ...(currentServerSettings?.keepAwakeMode !== DEFAULT_KEEP_AWAKE_MODE
+          ? { keepAwakeMode: DEFAULT_KEEP_AWAKE_MODE }
+          : {}),
+      };
       const providerSettingsChanged = Boolean(
         serverPatch.providers && Object.keys(serverPatch.providers).length > 0,
       );

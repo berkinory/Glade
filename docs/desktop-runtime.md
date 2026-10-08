@@ -63,6 +63,9 @@ the backend. `browser` owns the agent browser's tabs, CDP sessions and panel pla
 (renderer IPC `desktop:computer-permissions-get`, `-request` and `-open-settings`). Desktop shutdown
 stops the driver after the backend has exited.
 
+Keeping the Mac awake is not a desktop primitive. The backend owns the assertion because it owns
+agent activity; see [provider architecture](provider-architecture.md#keeping-the-host-awake).
+
 ## Verification
 
 Run the existing desktop tests with `bun run --cwd apps/desktop test`. Tests live

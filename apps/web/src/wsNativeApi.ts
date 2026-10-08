@@ -600,6 +600,7 @@ export function createWsNativeApi(): NativeApi {
       consumeCodexResetCredit: (input) =>
         transport.request(WS_METHODS.serverConsumeCodexResetCredit, input),
       getDiagnostics: () => transport.request(WS_METHODS.serverGetDiagnostics),
+      getKeepAwakeStatus: () => transport.request(WS_METHODS.serverGetKeepAwakeStatus),
       readThreadDiagnostics: (input) =>
         transport.request(WS_METHODS.serverReadThreadDiagnostics, input),
       prewarmVoice: (input) => transport.request(WS_METHODS.serverPrewarmVoice, input),

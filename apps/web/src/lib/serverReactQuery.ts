@@ -11,6 +11,7 @@ import { ensureNativeApi } from "~/nativeApi";
 
 const LOCAL_SERVERS_VISIBLE_REFETCH_INTERVAL_MS = 10_000;
 const LOCAL_SERVERS_DEFAULT_STALE_TIME_MS = 3_000;
+const KEEP_AWAKE_STATUS_REFETCH_INTERVAL_MS = 2_000;
 
 export const serverQueryKeys = {
   all: ["server"] as const,
@@ -18,6 +19,7 @@ export const serverQueryKeys = {
   authSession: () => ["server", "auth", "session"] as const,
   environment: () => ["server", "environment"] as const,
   settings: () => ["server", "settings"] as const,
+  keepAwakeStatus: () => ["server", "keepAwakeStatus"] as const,
   worktrees: () => ["server", "worktrees"] as const,
   localServers: () => ["server", "localServers"] as const,
   providerUsage: (provider: ProviderKind | null | undefined, homePath?: string | null) =>
@@ -161,6 +163,19 @@ export function serverSettingsQueryOptions() {
       return api.server.getSettings();
     },
     staleTime: Infinity,
+  });
+}
+
+// Polled only while a consumer is mounted: the assertion follows agent work, not client actions.
+export function serverKeepAwakeStatusQueryOptions() {
+  return queryOptions({
+    queryKey: serverQueryKeys.keepAwakeStatus(),
+    queryFn: async () => {
+      const api = ensureNativeApi();
+      return api.server.getKeepAwakeStatus();
+    },
+    staleTime: 0,
+    refetchInterval: KEEP_AWAKE_STATUS_REFETCH_INTERVAL_MS,
   });
 }
 

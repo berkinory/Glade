@@ -253,6 +253,14 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     keywords: "Show token-by-token output while a response is in progress. streaming",
   },
   {
+    id: "behavior:keep-awake",
+    section: "behavior",
+    title: "Keep Mac awake",
+    target: "setting-keep-awake",
+    keywords:
+      "Prevent idle sleep while agents work, or always. caffeinate sleep power battery macOS display",
+  },
+  {
     id: "behavior:diff-line-wrapping",
     section: "files",
     title: "Diff line wrapping",

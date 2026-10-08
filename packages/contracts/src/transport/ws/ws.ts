@@ -104,6 +104,7 @@ export const WS_METHODS = {
   statsGetProfileTokenStats: "stats.getProfileTokenStats",
   serverGetDiagnostics: "server.getDiagnostics",
   serverGetRuntimeStatus: "server.getRuntimeStatus",
+  serverGetKeepAwakeStatus: "server.getKeepAwakeStatus",
   serverReadThreadDiagnostics: "server.readThreadDiagnostics",
   serverPrewarmVoice: "server.prewarmVoice",
   serverTranscribeVoice: "server.transcribeVoice",
