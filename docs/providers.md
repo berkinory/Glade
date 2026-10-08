@@ -165,6 +165,8 @@ link in its reply.
 
 Shared skills load through each provider's native loader. Claude uses a local skills-only plugin bridge that links the original folders, preserving bundled resources; Codex receives additional native skill roots. Skill contents are not pasted into outgoing prompts. Claude enablement controls apply to Glade sessions, with changes taking effect in a new session. The allowlist governs Skill tool invocation; it does not restrict filesystem access through other tools.
 
+Glade reads a skill's name, description, short description (top level or under `metadata`) and `disable-model-invocation` from its `SKILL.md` YAML frontmatter, including block scalars. Only top-level string and boolean values count. Frontmatter that is not valid YAML falls back to unindented single-line `key: value` pairs. Frontmatter that does not close within the first 64 KiB, or that expands too many aliases, is ignored, and the skill is listed under its folder name.
+
 ## Switching providers
 
 To switch providers in an existing task, select a model from another provider in the model picker

@@ -4,8 +4,11 @@ import * as nodePath from "node:path";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ProviderSkillDescriptor } from "@glade/contracts/provider/providerDiscovery";
 import { discoverClaudePluginSkillRoots } from "../claude/claudePluginSkills.ts";
-
-type FrontmatterValue = string | boolean;
+import {
+  type FrontmatterValue,
+  parseSkillFrontmatter,
+  readSkillFileHead,
+} from "./skillFrontmatter.ts";
 
 interface SkillRoot {
   readonly path: string;
@@ -15,52 +18,6 @@ interface SkillRoot {
   readonly namespace?: string;
 
   readonly followSymlinks?: boolean;
-}
-
-function stripYamlQuotes(value: string): string {
-  const trimmed = value.trim();
-  if (
-    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-    (trimmed.startsWith("'") && trimmed.endsWith("'"))
-  ) {
-    return trimmed.slice(1, -1).trim();
-  }
-  return trimmed;
-}
-
-function parseYamlScalar(value: string): FrontmatterValue {
-  const unquoted = stripYamlQuotes(value);
-  const normalized = unquoted.toLowerCase();
-  if (normalized === "true") return true;
-  if (normalized === "false") return false;
-  return unquoted;
-}
-
-function parseSkillFrontmatter(markdown: string): Record<string, FrontmatterValue> {
-  const normalized = markdown.replace(/\r\n/g, "\n");
-  const match = /^---\s*\n([\s\S]*?)\n---\s*(?:\n|$)/.exec(normalized);
-  if (!match) {
-    return {};
-  }
-
-  const record: Record<string, FrontmatterValue> = {};
-  for (const line of (match[1] ?? "").split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) {
-      continue;
-    }
-    const separatorIndex = trimmed.indexOf(":");
-    if (separatorIndex <= 0) {
-      continue;
-    }
-    const key = trimmed.slice(0, separatorIndex).trim();
-    const value = trimmed.slice(separatorIndex + 1).trim();
-    if (!key || !value) {
-      continue;
-    }
-    record[key] = parseYamlScalar(value);
-  }
-  return record;
 }
 
 function readStringField(
@@ -216,7 +173,7 @@ async function readSkillDescriptor(input: {
 }): Promise<ProviderSkillDescriptor | null> {
   let raw: string;
   try {
-    raw = await fs.readFile(input.skillPath, "utf8");
+    raw = await readSkillFileHead(input.skillPath);
   } catch {
     return null;
   }
