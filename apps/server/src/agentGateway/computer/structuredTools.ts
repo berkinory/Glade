@@ -63,7 +63,7 @@ export function makeStructuredComputerTools(services: ComputerToolServices): Too
     name: "computer_window_state",
     title: "Read a window",
     description:
-      'Accessibility tree of one window: one line per element, `[index] role "label" = value`, long text cut to an excerpt with its length. Attached sheets (Save panels, alerts) are named first and listed in the tree; the menu bar is one line of menu titles. Act on elements by index (element_index in the input tools); an index keeps meaning the same element across reads and actions until the element disappears. include_screenshot adds a JPEG only when the tree is not enough. Needs read access.',
+      'Accessibility tree of one window: one line per element, `[index] role "label" = value`, long text cut to an excerpt with its length. Attached sheets (Save panels, alerts) are named first and listed in the tree; the menu bar is one line of menu titles. Act on elements by index (element_index in the input tools); an index keeps meaning the same element across reads and actions until the element disappears. include_screenshot adds a JPEG only when the tree is not enough. Read a window here, then act with one input tool per action by element_index; use coordinate (pixels of the latest computer_screenshot) only when the tree lacks the target. Each action result lists what changed, so read it before acting again, use computer_verify instead of guessing, and never repeat an action that showed no effect without looking again. Stay in background delivery unless an escalation asks for foreground. Needs read access.',
     input: WindowStateInput,
     readOnly: true,
     run: (input, context) =>

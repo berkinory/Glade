@@ -48,5 +48,6 @@ export function providerStartOptionsFromServerSettings(
       ...(claudeBinaryPath ? { binaryPath: claudeBinaryPath } : {}),
       enableArtifacts: providers.claudeAgent.enableArtifacts,
     },
+    allowComputerUse: settings.allowComputerUse,
   };
 }

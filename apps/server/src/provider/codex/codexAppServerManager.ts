@@ -487,12 +487,6 @@ function readCodexAccountSnapshot(response: unknown): CodexAccountSnapshot {
   };
 }
 
-function buildCodexDeveloperInstructions(input: {
-  readonly gatewayControlAvailable: boolean;
-}): string {
-  return renderGladeHarnessPolicy(input);
-}
-
 function mapCodexRuntimeMode(runtimeMode: RuntimeMode): {
   readonly approvalPolicy: CodexApprovalPolicy;
   readonly approvalsReviewer: CodexApprovalsReviewer;
@@ -1035,8 +1029,9 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         ...(gatewaySessionLease
           ? { config: buildCodexThreadGatewayConfig(gatewaySessionLease.connection) }
           : {}),
-        developerInstructions: buildCodexDeveloperInstructions({
+        developerInstructions: renderGladeHarnessPolicy({
           gatewayControlAvailable: gatewaySessionLease !== undefined,
+          computerUseAllowed: input.providerOptions?.allowComputerUse === true,
         }),
         model: normalizedModel ?? null,
         ...(input.serviceTier !== undefined ? { serviceTier: input.serviceTier } : {}),

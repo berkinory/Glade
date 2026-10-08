@@ -118,7 +118,8 @@ Glade renders harness policy once per provider. Codex receives it as `developerI
 Browser Use and Computer Use reach providers only as gateway tools. `browser_*` tools are registered when the server runs under the desktop app; `computer_*` tools are listed only while Settings
 allows Computer Use, and calls are refused otherwise. They are never loaded automatically: Claude
 defers them behind tool search through `anthropic/alwaysLoad: false`, and Codex defers MCP tools
-behind its own tool search when the model supports it. Because both providers read `tools/list` once
+behind its own tool search when the model supports it. The harness policy carries a short computer
+policy only while the setting is on; workflow detail lives in the tool descriptions. Because both providers read `tools/list` once
 per session, a session started under the other setting restarts with its resume cursor at its next
 turn start. The chat comes from the gateway session lease, never from tool input.
 

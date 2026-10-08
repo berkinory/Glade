@@ -167,7 +167,7 @@ export const makeFileDialogTool = (services: ComputerToolServices): ToolEntry =>
     name: "computer_file_dialog",
     title: "Use an Open or Save panel",
     description:
-      "Drive the macOS Open or Save panel of a granted app in one call: opens it through the File menu when none is showing, goes to the folder with Go to Folder, sets the file name (and the format when the extension implies one), confirms, and reports the saved or opened file. An existing file is never replaced unless overwrite is true. Sends a few keys to the app while it is frontmost, so it needs full control and waits while the user is typing or clicking.",
+      "Drive the macOS Open or Save panel of a granted app in one call: opens it through the File menu when none is showing, goes to the folder with Go to Folder, sets the file name (and the format when the extension implies one), confirms, and reports the saved or opened file. An existing file is never replaced unless overwrite is true. Sends a few keys to the app while it is frontmost, so it needs full control and waits while the user is typing or clicking. Use it instead of clicking through a panel, and never type a full path into a panel's name field.",
     input: FileDialogInput,
     readOnly: false,
     run: (input, context) =>

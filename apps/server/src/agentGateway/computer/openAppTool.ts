@@ -175,7 +175,7 @@ export const makeOpenAppTool = (services: ComputerToolServices): ToolEntry => {
     name: "computer_open_app",
     title: "Open an app",
     description:
-      "Launch an app in the background (or reuse it if running) and optionally open files, folders or http(s) URLs in it (macOS only). Returns its pid and windows. Needs act access; browsers take no targets.",
+      "Launch an app in the background (or reuse it if running) and optionally open files, folders or http(s) URLs in it (macOS only). Pass a document in open instead of using the app's Open panel. Returns its pid and windows. Needs act access; browsers take no targets.",
     input: OpenAppInput,
     readOnly: false,
     run: (input: OpenAppInput, context) =>

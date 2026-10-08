@@ -12,6 +12,7 @@ import {
   type ComputerToolServices,
   type WindowInput,
 } from "./computerCalls.ts";
+import { GTK_FILE_DIALOG_NOTE, MENU_DIALOG_NOTE, SELECT_TEXT_NOTE } from "./computerGuidance.ts";
 import { keyCalls, selectionCalls, TEXT_SELECTIONS } from "./keyChords.ts";
 import { invokeMenu } from "./menuInvoke.ts";
 import { targetFor, WindowTarget, type WindowTargetInput } from "./windowTarget.ts";
@@ -249,8 +250,7 @@ export function makeInputComputerTools(services: ComputerToolServices): ToolEntr
   const selectTextTool = computerTool(services, {
     name: "computer_select_text",
     title: "Select text",
-    description:
-      "Select text from the caret in a text element (element_index) or the window's focused field with key chords sent in the foreground: all, the line, the word, to the start or end, or count characters left or right. Needs full control.",
+    description: `Select text from the caret in a text element (element_index) or the window's focused field with key chords sent in the foreground: all, the line, the word, to the start or end, or count characters left or right. Needs full control.${SELECT_TEXT_NOTE}`,
     input: Schema.Struct({
       ...WindowTarget,
       element_index: ElementIndex,
@@ -314,8 +314,7 @@ export function makeInputComputerTools(services: ComputerToolServices): ToolEntr
   const setValueTool = computerTool(services, {
     name: "computer_set_value",
     title: "Set a value",
-    description:
-      "Set an element's value directly (text field, slider, pop-up, checkbox), replacing what it held. Same as Codex set_value. Needs act access.",
+    description: `Set an element's value directly (text field, slider, pop-up, checkbox), replacing what it held. Same as Codex set_value. Needs act access.${GTK_FILE_DIALOG_NOTE}`,
     input: Schema.Struct({
       ...WindowTarget,
       element_index: Schema.Int.annotate({
@@ -338,8 +337,7 @@ export function makeInputComputerTools(services: ComputerToolServices): ToolEntr
   const menuTool = computerTool(services, {
     name: "computer_menu",
     title: "Run a menu command",
-    description:
-      'Run a menu bar item of the window\'s app by path, e.g. "File > Save As…" or ["Format", "Font", "Bold"]. Case, a trailing "…" and shortcut suffixes do not matter; an unknown title returns the titles at that level. Needs act access.',
+    description: `Run a menu bar item of the window's app by path, e.g. "File > Save As…" or ["Format", "Font", "Bold"]. Case, a trailing "…" and shortcut suffixes do not matter; an unknown title returns the titles at that level. To format text, select it, then apply the format here rather than with a shortcut; typed text does not pick up shortcut-toggled styles. Needs act access.${MENU_DIALOG_NOTE}`,
     input: Schema.Struct({
       ...WindowTarget,
       menu_path: Schema.Union([

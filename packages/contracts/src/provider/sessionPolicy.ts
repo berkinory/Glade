@@ -55,6 +55,8 @@ export const ClaudeProviderStartOptions = Schema.Struct({
 export const ProviderStartOptions = Schema.Struct({
   codex: Schema.optional(CodexProviderStartOptions),
   claudeAgent: Schema.optional(ClaudeProviderStartOptions),
+  // Settings allows Computer Use, so the harness policy carries the computer guidance.
+  allowComputerUse: Schema.optional(Schema.Boolean),
 });
 
 export type ProviderStartOptions = typeof ProviderStartOptions.Type;
