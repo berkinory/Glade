@@ -59,18 +59,16 @@ export const ComputerHostLive = Layer.effect(
     // it and never revives an ended one from another, so labels are unique per connection and a
     // thread gets a fresh label after its session ends. The daemon outlives a backend restart and
     // remembers the ended labels of the previous backend, so each server process adds its own
-    // nonce.
+    // nonce. Cua shows the label in the badge under its agent cursor, so it leads with "Glade".
     let client: { readonly mcp: CuaMcpClient; readonly sessions: Map<string, string> } | null =
       null;
     let labelCount = 0;
     const processNonce = Crypto.randomBytes(3).toString("hex");
-    const threadHash = (threadId: string) =>
-      Crypto.createHash("sha256").update(threadId).digest("hex").slice(0, 8);
     const sessionLabel = (sessions: Map<string, string>, threadId: string) => {
       const existing = sessions.get(threadId);
       if (existing) return { label: existing, fresh: false };
       labelCount += 1;
-      const label = `glade-${threadHash(threadId)}-${processNonce}${labelCount.toString(36)}`;
+      const label = `Glade-${processNonce}${labelCount.toString(36)}`;
       sessions.set(threadId, label);
       return { label, fresh: true };
     };
