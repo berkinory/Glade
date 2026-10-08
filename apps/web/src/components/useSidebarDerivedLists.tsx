@@ -1,6 +1,10 @@
 import { SquarePenIcon } from "~/lib/icons";
 import { useStore } from "../store";
+import { selectAllEnvironmentsHydrated } from "../storeState";
+import { useProjectWorkspacePathsOf } from "../environments/projectWorkspacePaths";
+import { useProjectSpaceIdOf } from "../spacesUiStore";
 import { useSidebarStateStore } from "../sidebarStateStore";
+import { useSidebarProjectOrderStore } from "../sidebarProjectOrderStore";
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 import { ProjectId, SpaceId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { MAX_PINNED_PROJECTS } from "@glade/contracts/orchestration/threadEntities";
@@ -38,6 +42,7 @@ import {
   SidebarNavItemDescriptor,
 } from "./sidebarSupport";
 export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProjectCommands>) {
+  const allEnvironmentsHydrated = useStore(selectAllEnvironmentsHydrated);
   const {
     projects,
     chatSpaceByThreadId,
@@ -118,16 +123,18 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     }
     renameProjectLocally(projectId, trimmed.length > 0 ? trimmed : null);
   };
+  const projectOrder = useSidebarProjectOrderStore((state) => state.projectOrder);
+  const pruneProjectOrder = useSidebarProjectOrderStore((state) => state.pruneProjectOrder);
   const sortedProjects = sortProjectsForSidebar(
     projects,
     sidebarThreads,
     appSettings.sidebarProjectSortOrder,
+    projectOrder,
   );
+  const workspacePathsOf = useProjectWorkspacePathsOf({ homeDir, chatWorkspaceRoot });
+  const projectSpaceIdOf = useProjectSpaceIdOf();
   const chatProjects = sortedProjects.filter((project) =>
-    isHomeChatContainerProject(project, {
-      homeDir,
-      chatWorkspaceRoot,
-    }),
+    isHomeChatContainerProject(project, workspacePathsOf(project)),
   );
   const visibleChatThreadRows = (() => {
     if (!chatSectionExpanded) {
@@ -149,10 +156,7 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
   })();
   const visibleChatThreadIds = visibleChatThreadRows.map((row) => row.thread.id);
   const allStandardProjectsBase = sortedProjects.filter((project) =>
-    isOrdinarySpaceProject(project, {
-      homeDir,
-      chatWorkspaceRoot,
-    }),
+    isOrdinarySpaceProject(project, workspacePathsOf(project)),
   );
   const unreadSpaceIds = new Set<SpaceId | null>(
     allStandardProjectsBase
@@ -161,10 +165,10 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
           (thread) => resolveThreadStatusForSidebar(thread)?.label === "Completed",
         ),
       )
-      .map((project) => project.spaceId ?? null),
+      .map((project) => projectSpaceIdOf(project)),
   );
   const standardProjectsBase = allStandardProjectsBase.filter(
-    (project) => (project.spaceId ?? null) === activeSpaceId,
+    (project) => projectSpaceIdOf(project) === activeSpaceId,
   );
   const pinnedProjectIds = derivePinnedIds({
     items: standardProjectsBase,
@@ -178,7 +182,7 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     projectCount: standardProjects.length,
     threadsHydrated,
   });
-  const standardProjectSidebarDataById: ReadonlyMap<ProjectId, SidebarDerivedProjectData> =
+  const surfaceProjectSidebarDataById: ReadonlyMap<ProjectId, SidebarDerivedProjectData> =
     deriveSidebarProjectData({
       projects: standardProjects,
       sortedSidebarThreadsByProjectId,
@@ -191,7 +195,6 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
       resolveThreadStatus: resolveThreadStatusForSidebar,
     });
   const surfaceProjects = standardProjects;
-  const surfaceProjectSidebarDataById = standardProjectSidebarDataById;
   const allProjectsExpanded =
     standardProjects.length > 0 && standardProjects.every((project) => project.expanded);
   useEffect(() => {
@@ -207,12 +210,20 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     return () => window.clearTimeout(settle);
   }, [standardProjects, setThreadListExtraPagesByProjectCwd]);
   useEffect(() => {
-    if (!threadsHydrated) {
+    if (!allEnvironmentsHydrated) {
       return;
     }
     prunePinnedProjects(allStandardProjectsBase.map((project) => project.id));
-  }, [allStandardProjectsBase, prunePinnedProjects, threadsHydrated]);
+    pruneProjectOrder(projects.map((project) => project.id));
+  }, [
+    allEnvironmentsHydrated,
+    allStandardProjectsBase,
+    projects,
+    pruneProjectOrder,
+    prunePinnedProjects,
+  ]);
   useEffect(() => {
+    if (!allEnvironmentsHydrated) return;
     const retainedThreadIds = new Set(sidebarThreads.map((thread) => thread.id));
     const settle = window.setTimeout(() => {
       setDismissedThreadStatusKeyByThreadId((current) => {
@@ -226,7 +237,7 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
       });
     }, 0);
     return () => window.clearTimeout(settle);
-  }, [sidebarThreads, setDismissedThreadStatusKeyByThreadId]);
+  }, [allEnvironmentsHydrated, sidebarThreads, setDismissedThreadStatusKeyByThreadId]);
   useEffect(() => {
     if (isOnSettings || routeThreadId === null) {
       return;

@@ -1,6 +1,7 @@
 import { Spinner } from "~/components/ui/spinner";
 import { SquarePenIcon } from "~/lib/icons";
 import { SidebarDraftIndicator } from "./SidebarDraftIndicator";
+import { ProjectHostChip } from "./ProjectHostChip";
 import { SIDEBAR_TRAILING_ICON_FORCE_CLASS } from "./sidebarGlyphs";
 import { useTerminalStateStore } from "../terminalStateStore";
 import { useSidebarStateStore } from "../sidebarStateStore";
@@ -735,6 +736,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
               >
                 <span className={SIDEBAR_PROJECT_NAME_CLASS_NAME}>{projectRowLabel}</span>
               </div>
+              <ProjectHostChip project={project} />
               {collapsedProjectStatus ? (
                 <span
                   aria-label={`Project status: ${collapsedProjectStatus.label}`}

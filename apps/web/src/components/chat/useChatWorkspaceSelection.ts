@@ -6,7 +6,11 @@ import { workspaceRootsEqual } from "@glade/shared/threads/threadWorkspace";
 import type { RefObject } from "react";
 import { useCallback } from "react";
 import { newCommandId } from "~/lib/utils";
-import { readNativeApi } from "~/nativeApi";
+import { activeEnvironment } from "~/environments/activeEnvironment";
+import { LOCAL_ENVIRONMENT, type EnvironmentKey } from "~/environments/environmentKey";
+import { environmentStore } from "~/environments/environmentStores";
+import { ensureHostChatProject } from "~/environments/hostProjects";
+import { ensureEnvironmentNativeApi, readNativeApi } from "~/nativeApi";
 import type { DraftThreadEnvMode } from "../../composerDraftDomain";
 import { useComposerDraftStore } from "../../composerDraftStore";
 import { ensureHomeChatProject } from "../../lib/chatProjects";
@@ -172,6 +176,14 @@ export function useChatWorkspaceSelection({
     // Picker-menu resets still restore focus because the editor is no longer active in that path.
     const restoreComposerFocus = !composerEditorRef.current?.isFocused();
     if (isLocalDraftThread) {
+      const environmentKey = activeEnvironment();
+      if (environmentKey !== LOCAL_ENVIRONMENT) {
+        return (async () => {
+          moveEmptyDraftToLocalProject(await ensureHostChatProject(environmentKey), {
+            restoreComposerFocus,
+          });
+        })();
+      }
       if (!isHomeChatContainer) {
         return (async () => {
           if (!homeDir) {
@@ -305,13 +317,13 @@ export function useChatWorkspaceSelection({
       if (!isLocalDraftThread) {
         return;
       }
-      const api = readNativeApi();
-      if (!api) {
-        throw new Error("App is still connecting. Try again in a moment.");
-      }
+      // The typed path is on the machine of the chat on screen.
+      const environmentKey = activeEnvironment();
+      const api = ensureEnvironmentNativeApi(environmentKey);
+      const environmentStoreApi = environmentStore(environmentKey);
 
-      const existingProject = useStore
-        .getState()
+      const existingProject = environmentStoreApi
+        ?.getState()
         .projects.find(
           (project) =>
             project.kind === "project" && workspaceRootsEqual(project.cwd, workspaceRoot),
@@ -329,7 +341,7 @@ export function useChatWorkspaceSelection({
         loadSnapshot: () => api.orchestration.getShellSnapshot().catch(() => null),
       });
       if (creationResult.snapshot) {
-        syncServerShellSnapshot(creationResult.snapshot);
+        environmentStoreApi?.getState().syncServerShellSnapshot(creationResult.snapshot);
       }
       if (!creationResult.created && !creationResult.project) {
         throw new Error(PROJECT_CREATE_EXISTING_SYNC_ERROR);
@@ -344,11 +356,40 @@ export function useChatWorkspaceSelection({
       isLocalDraftThread,
       moveEmptyDraftToLocalProject,
       defaultProvider,
+    ],
+  );
+  // Moves an empty draft to the Home chats of another environment; its project picker then lists
+  // that machine's projects.
+  const handleSelectEnvironmentForEmptyDraft = useCallback(
+    async (environmentKey: EnvironmentKey) => {
+      if (!isLocalDraftThread) return;
+      if (environmentKey !== LOCAL_ENVIRONMENT) {
+        moveEmptyDraftToLocalProject(await ensureHostChatProject(environmentKey));
+        return;
+      }
+      if (!homeDir) throw new Error("Home folder is not available yet.");
+      const homeProjectId = await ensureHomeChatProject({ homeDir, chatWorkspaceRoot });
+      if (!homeProjectId) throw new Error("Unable to prepare a normal chat.");
+      if (!useStore.getState().projects.some((project) => project.id === homeProjectId)) {
+        const api = ensureEnvironmentNativeApi(LOCAL_ENVIRONMENT);
+        const { project, snapshot } = await waitForShellProjectById(api, homeProjectId);
+        if (!project || !snapshot) throw new Error(PROJECT_CREATE_SYNC_ERROR);
+        syncServerShellSnapshot(snapshot);
+      }
+      moveEmptyDraftToLocalProject(homeProjectId);
+    },
+    [
+      chatWorkspaceRoot,
+      homeDir,
+      isLocalDraftThread,
+      moveEmptyDraftToLocalProject,
       syncServerShellSnapshot,
     ],
   );
+
   return {
     onEnvModeChange,
+    handleSelectEnvironmentForEmptyDraft,
     handleResetWorkspaceToHome,
     handleSelectWorkspaceRoot,
     handleSelectProjectForEmptyDraft,

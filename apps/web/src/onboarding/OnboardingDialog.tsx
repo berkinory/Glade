@@ -1,3 +1,4 @@
+import { LOCAL_ENVIRONMENT } from "~/environments/environmentKey";
 import { CheckIcon } from "~/lib/icons";
 import { PROVIDER_DESCRIPTORS as VISIBLE_PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
 import { useEffect, useState } from "react";
@@ -65,7 +66,7 @@ function OnboardingFlow(props: {
   const [step, setStep] = useState<OnboardingStep>("welcome");
   const [projectResults, setProjectResults] = useState<ReadonlyArray<OnboardingProjectResult>>([]);
   const { settings } = useAppSettings();
-  const statuses = useProviderStatusesForLocalConfig();
+  const statuses = useProviderStatusesForLocalConfig(LOCAL_ENVIRONMENT);
   const providerDetection = useProviderDetection();
   const { activeTheme } = useTheme();
   const goBack = () => setStep(previousOnboardingStep(step));

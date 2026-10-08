@@ -124,6 +124,7 @@ export function createStreamPolicy(state: StreamState, operations: StreamOperati
     state.threadSnapshotRequestInFlight.delete(threadId);
     state.threadSnapshotRefreshPending.delete(threadId);
     state.threadSnapshotNotFoundRetryAttempted.delete(threadId);
+    state.threadsAwaitingCreation.delete(threadId);
     state.threadProjectionReconcileInFlight.delete(threadId);
     state.threadProjectionReconcilePendingById.delete(threadId);
     clearThreadProjectionTerminalFence(threadId);

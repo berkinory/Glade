@@ -1,7 +1,7 @@
 import { useThreadCompaction } from "./useThreadCompaction";
 import { useCallback } from "react";
 import { markDraftComputerUse, setComputerUseMode } from "../components/computer/computerUseState";
-import { isElectron } from "../env";
+import { useLocalDesktopActive } from "~/environments/activeEnvironment";
 import type { ComposerCommandItem } from "../components/chat/ComposerCommandMenu";
 import { toastManager } from "../components/ui/toast";
 import {
@@ -30,6 +30,7 @@ function wasPromptReplacementApplied(result: number | false): boolean {
 }
 
 export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
+  const isLocalDesktop = useLocalDesktopActive();
   const openGlobalFeedbackDialog = useFeedbackDialogStore((state) => state.openDialog);
   const {
     activeProject,
@@ -63,7 +64,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
     canOfferReviewCommand: true,
     canOfferForkCommand: true,
     canOfferExportCommand,
-    canOfferComputerUseCommand: isElectron,
+    canOfferComputerUseCommand: isLocalDesktop,
     providerNativeCommandNames,
   });
 

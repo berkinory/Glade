@@ -30,6 +30,8 @@ import { createUpdates } from "./updates/createUpdates";
 import { createAppIdentity } from "./window/appIdentity";
 import { configureMediaPermissions } from "./window/mediaPermissionHandlers";
 import { createMainWindow } from "./window/mainWindow";
+import { registerSshHostsIpc } from "./ipc/sshHostsIpc";
+import { createRemoteHosts } from "../remote/createRemoteHosts";
 
 // Pages in the agent browser must not reach Glade's own backend or dev UI; other loopback ports stay
 // reachable so agents can test the user's local servers.
@@ -115,6 +117,11 @@ export function createDesktopRuntime(): void {
     identity,
   });
   lifecycle.installSignalHandlers();
+  const remoteHosts = createRemoteHosts({
+    readAppUpdateYml: resources.readAppUpdateYml,
+    log: log.writeDesktopLogHeader,
+  });
+  app.once("will-quit", () => remoteHosts.stop());
   const ipc = createRegisterDesktopIpc({
     windows,
     identity,
@@ -186,6 +193,7 @@ export function createDesktopRuntime(): void {
     app.once("will-quit", () => void desktopHost?.close());
 
     ipc.registerIpcHandlers();
+    registerSshHostsIpc(remoteHosts);
     log.writeDesktopLogHeader("bootstrap ipc handlers registered");
     backend.startBackend();
     log.writeDesktopLogHeader("bootstrap backend start requested");

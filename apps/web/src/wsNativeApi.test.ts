@@ -59,6 +59,9 @@ vi.mock("./wsTransport.implementation", () => {
       onCompatibilityIssue() {
         return () => undefined;
       }
+      onConnectionStatusChange() {
+        return () => undefined;
+      }
       onThreadStreamFailure() {
         return () => undefined;
       }

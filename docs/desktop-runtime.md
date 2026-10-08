@@ -17,6 +17,8 @@ source directory depth does not change runtime resource or preload paths.
 - `backend` owns server readiness, supervision, process output and shutdown.
 - `storage` owns profile state and persistent desktop preferences.
 - `windowsShell` owns taskbar artwork and AppUserModel integration.
+- `remote` owns saved SSH hosts, host discovery, server bundle installation and tunnels; see
+  [SSH hosts](ssh-hosts.md).
 
 ## Instance state and startup
 

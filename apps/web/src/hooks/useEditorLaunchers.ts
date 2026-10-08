@@ -8,6 +8,9 @@ import {
 } from "../editorMetadata";
 import { usePreferredEditor } from "../editorPreferences";
 import { shortcutLabelForCommand } from "../keybindings";
+import { activeEnvironment } from "../environments/activeEnvironment";
+import { LOCAL_ENVIRONMENT } from "../environments/environmentKey";
+import { openInRemoteEditor } from "../environments/remoteEditors";
 import { readNativeApi } from "../nativeApi";
 
 export interface EditorLaunchers {
@@ -57,7 +60,9 @@ export function useEditorLaunchers({
     if (!api || !openInTarget) return;
     const editor = editorId ?? effectivePreferred;
     if (!editor) return;
-    void api.shell.openInEditor(openInTarget, editor);
+    const environment = activeEnvironment();
+    if (environment === LOCAL_ENVIRONMENT) void api.shell.openInEditor(openInTarget, editor);
+    else void openInRemoteEditor(environment, openInTarget, editor);
     setDefaultEditor(editor);
   };
 

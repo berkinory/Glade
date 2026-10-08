@@ -1,3 +1,4 @@
+import { useActiveEnvironment } from "~/environments/activeEnvironment";
 import { isShortcutComposition } from "@glade/shared/settings/shortcutEvent";
 import { hasOpenKeyboardOverlay } from "~/lib/keyboardOverlay";
 import type { ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
@@ -237,7 +238,7 @@ function ChatRouteGlobalShortcuts() {
   const serverConfigQuery = useQuery(serverConfigQueryOptions());
   const keybindings = serverConfigQuery.data?.keybindings ?? EMPTY_KEYBINDINGS;
   const platform = getNavigatorPlatform();
-  const providerStatuses = useProviderStatusesForLocalConfig();
+  const providerStatuses = useProviderStatusesForLocalConfig(useActiveEnvironment());
   const refreshProviderStatuses = useRefreshProviderStatusesNow();
   const activeThreadTerminalState = activeContextThreadId
     ? selectThreadTerminalState(terminalStateByThreadId, activeContextThreadId)
@@ -459,6 +460,10 @@ function ChatRouteGlobalShortcuts() {
     const unsubscribe = onMenuAction((action) => {
       if (action === "toggle-sidebar") {
         toggleSidebar();
+        return;
+      }
+      if (action === "open-ssh-hosts") {
+        void navigate({ to: "/settings", search: { section: "ssh" } });
         return;
       }
       if (action !== "open-settings") return;

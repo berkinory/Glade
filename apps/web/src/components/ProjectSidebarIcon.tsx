@@ -8,6 +8,7 @@ import {
   type ProjectColor,
 } from "~/lib/projectAppearance";
 import { cn } from "~/lib/utils";
+import { environmentOfPath } from "~/environments/environmentStores";
 import { resolveWsHttpUrl } from "~/lib/wsHttpUrl";
 const projectFaviconPresence = new Map<string, boolean>();
 function resolveProjectFaviconUrl(cwd: string): string {
@@ -15,7 +16,7 @@ function resolveProjectFaviconUrl(cwd: string): string {
     cwd,
     fallback: "none",
   });
-  return resolveWsHttpUrl(`/api/project-favicon?${params.toString()}`);
+  return resolveWsHttpUrl(`/api/project-favicon?${params.toString()}`, environmentOfPath(cwd));
 }
 function colorStyle(color: ProjectColor | null): CSSProperties | undefined {
   return color

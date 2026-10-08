@@ -1,10 +1,14 @@
+import { isLocalDesktopActive } from "~/environments/activeEnvironment";
+
 export interface ComposerDroppedFileItem {
   readonly kind: string;
   readonly getAsFile: () => File | null;
   readonly webkitGetAsEntry?: (() => { readonly isDirectory?: boolean } | null) | undefined;
 }
 
+// Paths on this machine mean nothing to a server running on an SSH host.
 export function resolveDroppedFileAbsolutePath(file: File): string | null {
+  if (!isLocalDesktopActive()) return null;
   const bridge = typeof window !== "undefined" ? window.desktopBridge : undefined;
   const getPath = bridge?.getPathForFile;
   if (typeof getPath !== "function") {

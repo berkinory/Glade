@@ -1,3 +1,4 @@
+import { useActiveEnvironment } from "~/environments/activeEnvironment";
 import { usePendingTurnDispatchStore } from "../pendingTurnDispatch";
 import { type ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useNavigate, useRouter } from "@tanstack/react-router";
@@ -42,7 +43,7 @@ export function useHandleNewThread() {
   const queryClient = useQueryClient();
   const serverConfigQuery = useQuery(serverConfigQueryOptions());
   const serverCwd = serverConfigQuery.data?.cwd ?? null;
-  const providerStatuses = useProviderStatusesForLocalConfig();
+  const providerStatuses = useProviderStatusesForLocalConfig(useActiveEnvironment());
   const providerStatusesReconciled = hasReconciledServerProviderStatuses(queryClient);
   const navigate = useNavigate();
   const router = useRouter();

@@ -34,7 +34,8 @@ import {
   GlobalShortcutsDialog,
   GlobalWhatsNewSurface,
 } from "./-rootDialogs";
-import { EventRouter } from "./-rootEventRouter";
+import { SshPromptDialog } from "../components/SshPromptDialog";
+import { EnvironmentRouters } from "./-rootEnvironmentRouters";
 import { ProviderStatusRefreshCoordinator } from "./-rootProviders";
 export function RootRouteView() {
   useAppTypography();
@@ -104,7 +105,8 @@ export function RootRouteView() {
         <AnchoredToastProvider>
           <DiffWorkerPoolProvider>
             <GitProgressToastPreviewDev />
-            <EventRouter />
+            <EnvironmentRouters />
+            <SshPromptDialog />
             <ProviderStatusRefreshCoordinator />
             <GlobalShortcutsDialog />
             <GlobalFeedbackDialog />

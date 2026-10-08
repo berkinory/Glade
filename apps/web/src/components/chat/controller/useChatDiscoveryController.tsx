@@ -1,4 +1,8 @@
-import { isElectron } from "~/env";
+import { useQuery } from "@tanstack/react-query";
+import { useActiveEnvironment, useLocalDesktopActive } from "~/environments/activeEnvironment";
+import { editorsForEnvironment } from "~/environments/remoteEditors";
+import { LOCAL_ENVIRONMENT } from "~/environments/environmentKey";
+import { environmentServerConfigQueryOptions } from "~/lib/serverReactQuery";
 import { terminalRuntimeEnv } from "~/lib/terminalRuntimeEnv";
 import { getRuntimeAwareModelCapabilities } from "../runtimeModelCapabilities";
 import { threadExportBlockedReason } from "@glade/shared/threads/threadExport";
@@ -42,6 +46,8 @@ export function useChatDiscoveryController({
   provider: ReturnType<typeof useChatProviderController>;
   props: ChatViewProps;
 }) {
+  const isLocalDesktop = useLocalDesktopActive();
+  const activeEnvironment = useActiveEnvironment();
   const {
     gitStatusQuery,
     branchesQuery,
@@ -202,7 +208,7 @@ export function useChatDiscoveryController({
       canOfferReviewCommand,
       canOfferForkCommand,
       canOfferExportCommand,
-      canOfferComputerUseCommand: isElectron,
+      canOfferComputerUseCommand: isLocalDesktop,
     },
   });
 
@@ -284,13 +290,19 @@ export function useChatDiscoveryController({
   })();
 
   const keybindings = serverConfigQuery.data?.keybindings ?? EMPTY_KEYBINDINGS;
+  // Providers run on the chat's machine, so their statuses come from that machine's server.
+  const environmentServerConfig = useQuery(environmentServerConfigQueryOptions(activeEnvironment));
 
-  const availableEditors = serverConfigQuery.data?.availableEditors ?? EMPTY_AVAILABLE_EDITORS;
+  const availableEditors = editorsForEnvironment(
+    activeEnvironment,
+    serverConfigQuery.data?.availableEditors ?? EMPTY_AVAILABLE_EDITORS,
+  );
 
   const { rememberCustomBinaryPathForDispatch, providerStatuses } = useChatProviderStatus({
     activeThread,
     settings,
-    configuredProviderStatuses: serverConfigQuery.data?.providers,
+    configuredProviderStatuses: environmentServerConfig.data?.providers,
+    local: activeEnvironment === LOCAL_ENVIRONMENT,
   });
 
   const handoffTargetProviders = activeThread

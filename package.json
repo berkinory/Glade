@@ -37,6 +37,7 @@
     "package:mac:x64": "node scripts/build-desktop-artifact.ts --platform mac --target dmg --arch x64",
     "package:linux": "node scripts/build-desktop-artifact.ts --platform linux --target AppImage --arch x64",
     "package:win": "node scripts/build-desktop-artifact.ts --platform win --target nsis --arch x64",
+    "package:remote-server": "node scripts/build-remote-server.ts",
     "check:architecture": "bun scripts/checks/moduleBoundaries.ts && knip",
     "check:typed-lint": "oxlint --type-aware -A all -D typescript/no-floating-promises -D typescript/no-misused-promises -D typescript/await-thenable -D typescript/no-implied-eval --deny-warnings"
   },

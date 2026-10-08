@@ -34,6 +34,7 @@ export function createStreamState() {
     threadSnapshotRequestInFlight: new Set<ThreadId>(),
     threadSnapshotRefreshPending: new Set<ThreadId>(),
     threadSnapshotNotFoundRetryAttempted: new Set<ThreadId>(),
+    threadsAwaitingCreation: new Set<ThreadId>(),
     threadReplayRequestInFlight: new Set<ThreadId>(),
     threadProjectionReconcileInFlight: new Map<ThreadId, number>(),
     threadProjectionReconcilePendingById: new Map<ThreadId, number>(),

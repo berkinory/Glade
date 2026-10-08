@@ -1,7 +1,7 @@
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { isElectron } from "~/env";
+import { useLocalDesktopActive } from "~/environments/activeEnvironment";
 import { useDesktopTopBarWindowControlsGutterClassName } from "~/hooks/useDesktopTopBarGutter";
 import { shortcutLabelForCommand } from "~/keybindings";
 import { LayoutAlignRightIcon } from "~/lib/icons";
@@ -62,6 +62,7 @@ function ActivityBarButton(props: {
 
 // The strip on the window's right edge: a toggle for the right sidebar, then one icon per view.
 export function WorkspaceActivityBar(props: { threadId: ThreadId; hasBrowserPages: boolean }) {
+  const isLocalDesktop = useLocalDesktopActive();
   const open = useWorkspaceSidebarStore((store) => store.open);
   const activeView = useWorkspaceSidebarStore((store) => store.view);
   const toggle = useWorkspaceSidebarStore((store) => store.toggle);
@@ -123,35 +124,37 @@ export function WorkspaceActivityBar(props: { threadId: ThreadId; hasBrowserPage
         }}
       />
       <div className="flex flex-col items-center gap-2 pt-2.5">
-        {WORKSPACE_SIDEBAR_VIEWS.filter((view) => view !== "browser" || isElectron).map((view) => {
-          const { label, Icon, command } = WORKSPACE_SIDEBAR_VIEW_META[view];
-          const shortcut = shortcutLabelForCommand(keybindings, command);
-          const dot = dots[view];
-          return (
-            <ActivityBarButton
-              key={view}
-              label={label}
-              tooltip={shortcut ? `${label} (${shortcut})` : label}
-              active={open && activeView === view}
-              onClick={() => toggle(view)}
-            >
-              <span className="relative flex">
-                <Icon className="size-4" aria-hidden />
-                {dot ? (
-                  <span
-                    role="img"
-                    aria-label={dot.label}
-                    className={cn(
-                      SIDEBAR_STATUS_DOT_CLASS_NAME,
-                      "absolute -right-1 -top-1",
-                      dot.pulse && "animate-pulse motion-reduce:animate-none",
-                    )}
-                  />
-                ) : null}
-              </span>
-            </ActivityBarButton>
-          );
-        })}
+        {WORKSPACE_SIDEBAR_VIEWS.filter((view) => view !== "browser" || isLocalDesktop).map(
+          (view) => {
+            const { label, Icon, command } = WORKSPACE_SIDEBAR_VIEW_META[view];
+            const shortcut = shortcutLabelForCommand(keybindings, command);
+            const dot = dots[view];
+            return (
+              <ActivityBarButton
+                key={view}
+                label={label}
+                tooltip={shortcut ? `${label} (${shortcut})` : label}
+                active={open && activeView === view}
+                onClick={() => toggle(view)}
+              >
+                <span className="relative flex">
+                  <Icon className="size-4" aria-hidden />
+                  {dot ? (
+                    <span
+                      role="img"
+                      aria-label={dot.label}
+                      className={cn(
+                        SIDEBAR_STATUS_DOT_CLASS_NAME,
+                        "absolute -right-1 -top-1",
+                        dot.pulse && "animate-pulse motion-reduce:animate-none",
+                      )}
+                    />
+                  ) : null}
+                </span>
+              </ActivityBarButton>
+            );
+          },
+        )}
       </div>
     </nav>
   );

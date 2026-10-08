@@ -1,13 +1,30 @@
-export function resolveWsHttpUrl(rawPath: string): string {
-  if (typeof window === "undefined") return rawPath;
+import { activeEnvironment } from "../environments/activeEnvironment";
+import { LOCAL_ENVIRONMENT, type EnvironmentKey } from "../environments/environmentKey";
+import {
+  currentNormalizingEnvironment,
+  environmentWsUrl,
+} from "../environments/environmentEndpoints";
+
+function localWsUrl(): string | null {
   const bridgeWsUrl = window.desktopBridge?.getWsUrl?.();
   const envWsUrl = import.meta.env.VITE_WS_URL as string | undefined;
+  return typeof bridgeWsUrl === "string" && bridgeWsUrl.length > 0
+    ? bridgeWsUrl
+    : typeof envWsUrl === "string" && envWsUrl.length > 0
+      ? envWsUrl
+      : null;
+}
+
+// An HTTP URL on an environment's server, defaulting to the chat on screen. An SSH host that is not
+// connected has no address, so its URLs fall back to the page origin and fail rather than reaching
+// the local server with another server's ids.
+export function resolveWsHttpUrl(
+  rawPath: string,
+  environmentKey: EnvironmentKey = activeEnvironment(),
+): string {
+  if (typeof window === "undefined") return rawPath;
   const wsCandidate =
-    typeof bridgeWsUrl === "string" && bridgeWsUrl.length > 0
-      ? bridgeWsUrl
-      : typeof envWsUrl === "string" && envWsUrl.length > 0
-        ? envWsUrl
-        : null;
+    environmentKey === LOCAL_ENVIRONMENT ? localWsUrl() : environmentWsUrl(environmentKey);
   if (!wsCandidate) return new URL(rawPath, window.location.origin).toString();
   try {
     const wsUrl = new URL(wsCandidate);
@@ -29,7 +46,7 @@ export function resolveWsHttpUrl(rawPath: string): string {
 
 export function toAttachmentPreviewUrl(rawUrl: string): string {
   if (rawUrl.startsWith("/")) {
-    return resolveWsHttpUrl(rawUrl);
+    return resolveWsHttpUrl(rawUrl, currentNormalizingEnvironment() ?? activeEnvironment());
   }
   return rawUrl;
 }

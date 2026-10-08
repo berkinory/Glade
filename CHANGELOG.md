@@ -7,6 +7,7 @@
 - Keep your Mac awake while agents work, or always, from Chat settings. The display can still sleep.
 - Search saved chat messages from the command palette, including chats you have not opened recently.
 - Customizable shortcuts archive the open chat or mark it unread.
+- Run chats on other machines over SSH from the desktop app. Host projects sit with your local ones, new chats pick the machine they run on, and Glade installs and updates its server on the host for you. Passwords and new host keys are confirmed in the app.
 
 ### Improved
 
@@ -30,6 +31,7 @@
 - Tasks no longer wait indefinitely for their starting file snapshot, and a missing snapshot can no longer be used to undo files.
 - Welcome and release-note prompts no longer appear on top of each other.
 - Line breaks in chat tables render as line breaks instead of literal tags.
+- A new chat left open before its first message no longer reports that its updates paused.
 - An idle chat no longer stays marked as working after its model, mode or Computer Use changes.
 
 ### Removed

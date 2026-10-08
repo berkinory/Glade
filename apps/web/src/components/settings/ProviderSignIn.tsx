@@ -9,6 +9,7 @@ import {
   type ProviderAuthenticationRequest,
 } from "@glade/contracts/provider/providerAuthentication";
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
+import { LOCAL_ENVIRONMENT } from "~/environments/environmentKey";
 import { resolveWsHttpUrl } from "~/lib/wsHttpUrl";
 import { providerDiscoveryQueryKeys } from "~/lib/providerDiscoveryReactQuery";
 import { useRefreshProviderStatusesNow } from "~/hooks/useProviderStatusRefresh";
@@ -24,7 +25,7 @@ type Provider = ProviderAuthenticationRequest["provider"];
 async function request(
   input: ProviderAuthenticationRequest,
 ): Promise<ProviderAuthenticationStatus | null> {
-  const response = await fetch(resolveWsHttpUrl(PROVIDER_AUTHENTICATION_PATH), {
+  const response = await fetch(resolveWsHttpUrl(PROVIDER_AUTHENTICATION_PATH, LOCAL_ENVIRONMENT), {
     method: "POST",
     credentials: "include",
     cache: "no-store",

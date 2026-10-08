@@ -1,5 +1,6 @@
 import { useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { isLocalDesktopActive } from "~/environments/activeEnvironment";
 import { ensureNativeApi } from "~/nativeApi";
 import { collectComposerClipboardFiles } from "~/hooks/useComposerDropzone";
 import { CHAT_FILE_REFERENCE_DRAG_TYPE } from "~/lib/chatReferences";
@@ -68,6 +69,7 @@ export function useExplorerIntake(cwd: string | null, selectedDirectory: string)
   };
   const pasteNativeFiles = async (directory: string) => {
     try {
+      if (!isLocalDesktopActive()) return false;
       const files = await window.desktopBridge?.clipboard?.readFiles?.();
       if (!files?.length) return false;
       await importEntries(

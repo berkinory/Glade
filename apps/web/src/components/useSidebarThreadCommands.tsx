@@ -1,3 +1,4 @@
+import { environmentOfThread } from "~/environments/environmentStores";
 import { showContextMenu } from "./contextMenu/contextMenuStore";
 import {
   Archive04Icon,
@@ -174,7 +175,8 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
             ]
           : []),
         { id: "mark-unread", label: "Mark unread", icon: ViewIcon },
-        ...(isElectron && !thread.parentThreadId
+        // Computer Use drives this machine, so a thread on an SSH host has no such toggle.
+        ...(isElectron && !thread.parentThreadId && environmentOfThread(threadId) === null
           ? [
               {
                 id: "toggle-computer-use",

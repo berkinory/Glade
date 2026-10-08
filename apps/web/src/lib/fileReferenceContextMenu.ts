@@ -10,6 +10,7 @@ import {
 import { FinderAppIcon } from "~/components/contextMenu/FinderAppIcon";
 import { formatSelectionLabel, type ChatFileReference } from "~/lib/chatReferences";
 import { copyTextToClipboard } from "./clipboard";
+import { isLocalDesktopActive } from "~/environments/activeEnvironment";
 import { getNavigatorPlatform, isMacPlatform, isWindowsPlatform } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
 import { toastManager } from "~/components/ui/toast";
@@ -49,10 +50,7 @@ export async function showFileReferenceContextMenu(input: {
   if (!api) {
     return;
   }
-  const revealPath =
-    input.revealPath && typeof window !== "undefined" && window.desktopBridge
-      ? input.revealPath
-      : undefined;
+  const revealPath = input.revealPath && isLocalDesktopActive() ? input.revealPath : undefined;
   const reference: ChatFileReference = {
     path: input.path,
     ...input.selection,

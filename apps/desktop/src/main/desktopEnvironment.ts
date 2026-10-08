@@ -55,6 +55,7 @@ export const DESKTOP_WINDOW_MATERIAL_PATH = Path.join(STATE_DIR, "desktop-window
 export const DESKTOP_CONTENT_BLOCKER_PATH = Path.join(STATE_DIR, "desktop-content-blocker.json");
 
 export const DESKTOP_CUSTOM_TITLE_BAR_PATH = Path.join(STATE_DIR, "desktop-custom-title-bar.json");
+export const DESKTOP_SSH_HOSTS_PATH = Path.join(STATE_DIR, "desktop-ssh-hosts.json");
 export const DESKTOP_SCHEME = desktopIdentity.scheme;
 export const ROOT_DIR = Path.resolve(__dirname, "../../..");
 export const APP_DISPLAY_NAME = desktopIdentity.displayName;

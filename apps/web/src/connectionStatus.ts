@@ -38,7 +38,9 @@ export function subscribeConnectionStatus(listener: () => void): () => void {
   };
 }
 
-function publish(snapshot: ConnectionStatusSnapshot): void {
+// The local server's status, which the composer notice reads. SSH hosts report through their own
+// transport so a slow host never reads as this machine being unresponsive.
+export function publishConnectionStatus(snapshot: ConnectionStatusSnapshot): void {
   latest = snapshot;
   for (const listener of listeners) {
     try {
@@ -65,7 +67,14 @@ export class ConnectionStatusTracker {
   private episode = 0;
   private disposed = false;
 
-  constructor(private readonly readRuntimeStatus: () => Promise<ServerRuntimeStatus> | null) {}
+  constructor(
+    private readonly readRuntimeStatus: () => Promise<ServerRuntimeStatus> | null,
+    private readonly onChange: (snapshot: ConnectionStatusSnapshot) => void,
+  ) {}
+
+  current(): ConnectionStatusSnapshot {
+    return this.snapshot;
+  }
 
   private update(patch: Partial<ConnectionStatusSnapshot>): void {
     const next = { ...this.snapshot, ...patch };
@@ -77,7 +86,7 @@ export class ConnectionStatusTracker {
     )
       return;
     this.snapshot = next;
-    if (!this.disposed) publish(next);
+    if (!this.disposed) this.onChange(next);
   }
 
   trackRequest(timeoutMs: number | null | undefined): () => void {
@@ -144,7 +153,7 @@ export class ConnectionStatusTracker {
     for (const entry of this.pending.values()) globalThis.clearTimeout(entry.timer);
     this.pending.clear();
     globalThis.clearTimeout(this.recoveredTimer);
-    publish(EMPTY);
+    this.onChange(EMPTY);
     this.disposed = true;
   }
 }

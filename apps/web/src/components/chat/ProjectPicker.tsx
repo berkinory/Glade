@@ -11,7 +11,11 @@ import {
 } from "react";
 import { type ProjectDirectoryEntry } from "@glade/contracts/workspace/project";
 import { type ProjectId, type SpaceId } from "@glade/contracts/core/baseSchemas";
-import { readNativeApi } from "../../nativeApi";
+import { ensureEnvironmentNativeApi, readNativeApi } from "../../nativeApi";
+import { useRemoteEnvironments } from "~/environments/remoteEnvironments";
+import type { NativeApi } from "@glade/contracts/ipc/ipc";
+import { useActiveEnvironment, useLocalDesktopActive } from "~/environments/activeEnvironment";
+import { LOCAL_ENVIRONMENT } from "~/environments/environmentKey";
 import { useStore } from "../../store";
 import { getLocalFoldersGroupLabel } from "~/lib/localFoldersGroupLabel";
 import type { ProjectAppearance } from "~/lib/projectAppearance";
@@ -136,6 +140,7 @@ export const ProjectPicker = memo(function ProjectPicker({
   resetActionLabel: resetActionLabelProp,
   searchPlaceholder: searchPlaceholderProp,
 }: ProjectPickerProps) {
+  const isLocalDesktop = useLocalDesktopActive();
   const align = alignProp ?? "start";
   const side = sideProp ?? "bottom";
   const selectionMode = selectionModeProp ?? "workspace-root";
@@ -145,11 +150,22 @@ export const ProjectPicker = memo(function ProjectPicker({
   const emptyTriggerLabel = emptyTriggerLabelProp ?? "Work in a project";
   const resetActionLabel = resetActionLabelProp ?? "Don't work in a project";
   const searchPlaceholder = searchPlaceholderProp ?? "Search projects";
-  const projects = useStore((state) => state.projects);
+  const activeEnvironmentKey = useActiveEnvironment();
+  const allProjects = useStore((state) => state.projects);
+  // A chat runs on one machine, so it can only move to projects of that machine.
+  const projects = allProjects.filter(
+    (project) => (project.environmentKey ?? LOCAL_ENVIRONMENT) === activeEnvironmentKey,
+  );
   const spaces = useStore((state) => state.spaces);
   const activeSpaceId = useSpacesUiStore((state) => state.activeSpaceId);
   const voidSpace = useVoidSpace();
-  const homeDir = useWorkspacePathsStore((state) => state.homeDir);
+  const localHomeDir = useWorkspacePathsStore((state) => state.homeDir);
+  const remoteEnvironments = useRemoteEnvironments();
+  const homeDir =
+    activeEnvironmentKey === LOCAL_ENVIRONMENT
+      ? localHomeDir
+      : (remoteEnvironments.find((environment) => environment.key === activeEnvironmentKey)
+          ?.workspacePaths?.homeDir ?? null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
@@ -301,9 +317,11 @@ export const ProjectPicker = memo(function ProjectPicker({
     let cancelled = false;
     const timeoutId = window.setTimeout(() => {
       if (cancelled) return;
-      const api = readNativeApi();
-      if (!api) {
-        setErrorMessage("App is still connecting. Try again in a moment.");
+      let api: NativeApi;
+      try {
+        api = ensureEnvironmentNativeApi(activeEnvironmentKey);
+      } catch (error) {
+        setErrorMessage(error instanceof Error ? error.message : "App is still connecting.");
         return;
       }
       setIsLoadingDirectories(true);
@@ -342,7 +360,14 @@ export const ProjectPicker = memo(function ProjectPicker({
       cancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [directoryEntries.length, homeDir, isLoadingDirectories, isProjectSelectionMode, open]);
+  }, [
+    activeEnvironmentKey,
+    directoryEntries.length,
+    homeDir,
+    isLoadingDirectories,
+    isProjectSelectionMode,
+    open,
+  ]);
   const handleSelectActiveFolder = (folder: ActiveFolderOption) => {
     try {
       const selection = startActiveFolderSelection(folder, {
@@ -569,20 +594,22 @@ export const ProjectPicker = memo(function ProjectPicker({
           }
           footer={
             <>
-              <button
-                type="button"
-                className={cn(
-                  PICKER_PANEL_ACTION_ROW_CLASS_NAME,
-                  "disabled:cursor-not-allowed disabled:opacity-60",
-                )}
-                onClick={() => void handleAddNewProject()}
-                disabled={isPicking}
-              >
-                <PlusIcon className={PICKER_PANEL_ROW_ICON_CLASS_NAME} />
-                <span className="truncate">
-                  {isPicking ? loadingAddProjectLabel : addProjectLabel}
-                </span>
-              </button>
+              {isLocalDesktop ? (
+                <button
+                  type="button"
+                  className={cn(
+                    PICKER_PANEL_ACTION_ROW_CLASS_NAME,
+                    "disabled:cursor-not-allowed disabled:opacity-60",
+                  )}
+                  onClick={() => void handleAddNewProject()}
+                  disabled={isPicking}
+                >
+                  <PlusIcon className={PICKER_PANEL_ROW_ICON_CLASS_NAME} />
+                  <span className="truncate">
+                    {isPicking ? loadingAddProjectLabel : addProjectLabel}
+                  </span>
+                </button>
+              ) : null}
               {shouldShowResetToHome ? (
                 <button
                   type="button"

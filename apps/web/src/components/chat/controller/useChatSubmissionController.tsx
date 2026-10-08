@@ -313,6 +313,7 @@ export function useChatSubmissionController({
 
   const {
     onEnvModeChange,
+    handleSelectEnvironmentForEmptyDraft,
     handleResetWorkspaceToHome,
     handleSelectWorkspaceRoot,
     handleSelectProjectForEmptyDraft,
@@ -456,6 +457,7 @@ export function useChatSubmissionController({
     composerPickerControls,
     toggleFastMode,
     onEnvModeChange,
+    handleSelectEnvironmentForEmptyDraft,
     handleResetWorkspaceToHome,
     handleSelectWorkspaceRoot,
     handleSelectProjectForEmptyDraft,

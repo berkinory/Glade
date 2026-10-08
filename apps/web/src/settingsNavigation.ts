@@ -13,6 +13,7 @@ import {
   Book02Icon,
   LimitationIcon,
   CursorInWindowIcon,
+  ServerStack01Icon,
 } from "~/lib/icons";
 import type { IconComponent } from "~/lib/iconComponent";
 const SETTINGS_SECTION_IDS = [
@@ -32,6 +33,7 @@ const SETTINGS_SECTION_IDS = [
   "computer",
   "usage",
   "advanced",
+  "ssh",
 ] as const;
 
 export type SettingsSectionId = (typeof SETTINGS_SECTION_IDS)[number];
@@ -99,6 +101,15 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
     label: "Activity",
     description: "Your local activity, streaks, and a shareable stats card.",
     icon: User02Icon,
+  },
+  {
+    id: "ssh",
+    group: "app",
+    label: "SSH hosts",
+    description:
+      "Run chats on other machines over SSH. Their projects sit in the sidebar with yours.",
+    icon: ServerStack01Icon,
+    desktopOnly: true,
   },
   {
     id: "advanced",

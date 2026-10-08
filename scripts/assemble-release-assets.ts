@@ -14,6 +14,11 @@ import {
 } from "node:fs";
 import { dirname, resolve, join } from "node:path";
 
+import {
+  remoteServerBundleName,
+  type RemoteServerTarget,
+} from "@glade/shared/remote/remoteServerBundle";
+
 import { prepareReleaseUpdateManifests } from "./lib/release-update-policy.ts";
 
 interface ArtifactDigest {
@@ -63,6 +68,11 @@ if (publish && process.env.GITHUB_REPOSITORY !== "berkinory/Glade") {
   throw new Error("Glade releases may only publish to berkinory/Glade.");
 }
 const lockfileSha256 = createHash("sha256").update(readFileSync("bun.lock")).digest("hex");
+// The server bundle the desktop installs on SSH hosts, with the checksum file it verifies.
+const remoteServerFiles = (target: RemoteServerTarget) => {
+  const archive = `${remoteServerBundleName(version, target)}.tar.gz`;
+  return [archive, `${archive}.sha256`] as const;
+};
 const platforms = [
   {
     id: "mac-arm64",
@@ -72,6 +82,7 @@ const platforms = [
       `Glade-${version}-macOS-arm64.dmg`,
       `Glade-${version}-macOS-arm64.zip`,
       "latest-mac-arm64.yml",
+      ...remoteServerFiles("darwin-arm64"),
     ],
     manifest: "latest-mac-arm64.yml",
     download: `Glade-${version}-macOS-arm64.zip`,
@@ -85,6 +96,7 @@ const platforms = [
       `Glade-${version}-macOS-x64.dmg`,
       `Glade-${version}-macOS-x64.zip`,
       "latest-mac-x64.yml",
+      ...remoteServerFiles("darwin-x64"),
     ],
     manifest: "latest-mac-x64.yml",
     download: `Glade-${version}-macOS-x64.zip`,
@@ -94,7 +106,11 @@ const platforms = [
     id: "linux-x64",
     platform: "linux",
     arch: "x64",
-    files: [`Glade-${version}-Linux-x86_64.AppImage`, "latest-linux.yml"],
+    files: [
+      `Glade-${version}-Linux-x86_64.AppImage`,
+      "latest-linux.yml",
+      ...remoteServerFiles("linux-x64"),
+    ],
     manifest: "latest-linux.yml",
     download: `Glade-${version}-Linux-x86_64.AppImage`,
     signing: "not-applicable",
@@ -197,7 +213,9 @@ for (const platform of platforms) {
       throw new Error(`Release asset has changed since verification: ${artifact.fileName}.`);
     }
   }
-  binaries.push(...platform.files.filter((name) => !name.endsWith(".yml")));
+  binaries.push(
+    ...platform.files.filter((name) => !name.endsWith(".yml") && !name.endsWith(".sha256")),
+  );
 }
 
 if (rawEntries.length !== expectedRaw.size || rawEntries.some((name) => !expectedRaw.has(name))) {

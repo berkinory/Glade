@@ -1,4 +1,4 @@
-import { ConnectionStatusTracker } from "./connectionStatus";
+import { ConnectionStatusTracker, publishConnectionStatus } from "./connectionStatus";
 import { CommandId, MessageId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { usePendingTurnDispatchStore } from "./pendingTurnDispatch";
 import { WS_TURN_DISPATCH_SETTLEMENT_CAPABILITY } from "@glade/contracts/transport/ws/wsCompatibility";
@@ -291,7 +291,7 @@ describe("WsTransport", () => {
         disposed: false,
         state: "closed",
         stateListeners: new Set(),
-        connectionStatus: new ConnectionStatusTracker(() => null),
+        connectionStatus: new ConnectionStatusTracker(() => null, publishConnectionStatus),
         reconnectFailures: 0,
         lifetime: new AbortController(),
         listeners: new Map([[WS_CHANNELS.serverWelcome, new Set([vi.fn()])]]),
@@ -346,7 +346,7 @@ describe("WsTransport", () => {
         disposed: false,
         state: "closed",
         stateListeners: new Set(),
-        connectionStatus: new ConnectionStatusTracker(() => null),
+        connectionStatus: new ConnectionStatusTracker(() => null, publishConnectionStatus),
         reconnectFailures: 0,
         lifetime,
         createSession,

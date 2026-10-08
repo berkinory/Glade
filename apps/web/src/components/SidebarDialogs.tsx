@@ -9,6 +9,8 @@ import {
   XIcon,
 } from "~/lib/icons";
 import { useStore } from "../store";
+import { useProjectSpaceIdOf } from "../spacesUiStore";
+import { isElectron } from "~/env";
 import { createClientPointMenuAnchor } from "~/lib/clientPointMenuAnchor";
 import { useMemo } from "react";
 import { pinActionLabel } from "~/lib/pin";
@@ -97,6 +99,7 @@ export function SidebarDialogs({
     sidebarThreads,
     pinnedProjectIdSet,
   } = context;
+  const projectSpaceIdOf = useProjectSpaceIdOf();
   const sidebarThreadSummaryById = useStore((state) => state.sidebarThreadSummaryById);
   const relocateProjectDialogProject = relocateProjectDialogId
     ? (projectById.get(relocateProjectDialogId) ?? null)
@@ -190,18 +193,20 @@ export function SidebarDialogs({
             className={PROJECT_CONTEXT_MENU_PANEL_CLASS_NAME}
           >
             <MenuGroup>
-              <MenuItem
-                className={PROJECT_CONTEXT_MENU_ITEM_CLASS_NAME}
-                onClick={() =>
-                  void handleProjectContextMenuAction(
-                    projectContextMenuState.projectId,
-                    "open-in-finder",
-                  )
-                }
-              >
-                <ProjectContextMenuIcon icon={FinderAppIcon} />
-                <span>Open in Finder</span>
-              </MenuItem>
+              {isElectron && projectContextMenuProject.environmentKey === undefined ? (
+                <MenuItem
+                  className={PROJECT_CONTEXT_MENU_ITEM_CLASS_NAME}
+                  onClick={() =>
+                    void handleProjectContextMenuAction(
+                      projectContextMenuState.projectId,
+                      "open-in-finder",
+                    )
+                  }
+                >
+                  <ProjectContextMenuIcon icon={FinderAppIcon} />
+                  <span>Open in Finder</span>
+                </MenuItem>
+              ) : null}
               <MenuItem
                 className={PROJECT_CONTEXT_MENU_ITEM_CLASS_NAME}
                 onClick={() =>
@@ -221,14 +226,18 @@ export function SidebarDialogs({
                   {}
                   <span className={PROJECT_CONTEXT_MENU_ICON_CLASS_NAME}>
                     <SpaceIcon
-                      icon={spaceDisplayIcon(projectContextMenuProject.spaceId, spaces, voidSpace)}
+                      icon={spaceDisplayIcon(
+                        projectSpaceIdOf(projectContextMenuProject),
+                        spaces,
+                        voidSpace,
+                      )}
                     />
                   </span>
                   <span>Move to space</span>
                 </MenuSubTrigger>
                 <ComposerPickerMenuSubPopup className="min-w-48">
                   <MenuRadioGroup
-                    value={spaceKey(projectContextMenuProject.spaceId ?? null)}
+                    value={spaceKey(projectSpaceIdOf(projectContextMenuProject))}
                     onValueChange={(value) => {
                       void handleMoveProjectToSpace(
                         projectContextMenuProject.id,

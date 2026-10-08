@@ -1,6 +1,6 @@
 import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ReactNode, useEffect, useState } from "react";
-import { isElectron } from "~/env";
+import { useLocalDesktopActive } from "~/environments/activeEnvironment";
 import { useDesktopTopBarWindowControlsGutterClassName } from "~/hooks/useDesktopTopBarGutter";
 import { disclosureWidthClassName } from "~/lib/disclosureMotion";
 import { cn } from "~/lib/utils";
@@ -96,6 +96,7 @@ export function WorkspaceSidebar(props: {
   workspaceRoot: string | null;
   renderToolView: (view: ToolView, visible: boolean) => ReactNode;
 }) {
+  const isLocalDesktop = useLocalDesktopActive();
   const open = useWorkspaceSidebarStore((store) => store.open);
   const view = useWorkspaceSidebarStore((store) => store.view);
   const { wrapperRef, width, startResize } = usePanelWidthResize({
@@ -103,7 +104,7 @@ export function WorkspaceSidebar(props: {
     chatMinWidth: CHAT_MIN_WIDTH_PX,
   });
   const gutterClassName = useDesktopTopBarWindowControlsGutterClassName();
-  const browserTabs = useBrowserTabs(isElectron ? props.threadId : null);
+  const browserTabs = useBrowserTabs(isLocalDesktop ? props.threadId : null);
   useTerminalViewSync(props.threadId, open && view === "terminal");
   const renderView = (shown: WorkspaceSidebarView, visible: boolean) => {
     if (shown === "browser")

@@ -1,6 +1,7 @@
 import { McpSettingsPanel } from "~/components/settings/McpSettingsPanel";
 import { PluginsSettingsPanel } from "~/components/settings/PluginsSettingsPanel";
 import { ComputerSettings } from "~/components/computer/ComputerSettings";
+import { SshHostsSettingsPanel } from "~/components/settings/SshHostsSettingsPanel";
 import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
@@ -840,6 +841,8 @@ function SettingsRouteView() {
         return <ProviderUsageSettingsPanel />;
       case "computer":
         return <ComputerSettings />;
+      case "ssh":
+        return <SshHostsSettingsPanel />;
       default:
         return null;
     }

@@ -4,6 +4,8 @@ import {
 } from "@glade/contracts/transport/ws/wsCompatibility";
 import { type NativeApi } from "@glade/contracts/ipc/ipc";
 
+import { type EnvironmentKey } from "./environments/environmentKey";
+import { createRoutedNativeApi, environmentApi } from "./environments/routedNativeApi";
 import {
   createWsNativeApi,
   onWsServerCapabilitiesChange,
@@ -11,8 +13,10 @@ import {
 } from "./wsNativeApi";
 
 let cachedDesktopApi: NativeApi | undefined;
+let routed: { readonly local: NativeApi; readonly api: NativeApi } | null = null;
 
-export function readNativeApi(): NativeApi | undefined {
+// The local server's own API, for code that must talk to it whatever chat is on screen.
+export function readLocalNativeApi(): NativeApi | undefined {
   if (typeof window === "undefined") return undefined;
   if (cachedDesktopApi && window.nativeApi === cachedDesktopApi) return cachedDesktopApi;
 
@@ -22,6 +26,21 @@ export function readNativeApi(): NativeApi | undefined {
   }
 
   return createWsNativeApi();
+}
+
+// Routes each call to the environment its thread, project or path belongs to.
+export function readNativeApi(): NativeApi | undefined {
+  const local = readLocalNativeApi();
+  if (!local) return undefined;
+  if (routed?.local !== local) routed = { local, api: createRoutedNativeApi(local) };
+  return routed.api;
+}
+
+// For calls that pick an environment on purpose, such as creating a project or chat on a host.
+export function ensureEnvironmentNativeApi(key: EnvironmentKey): NativeApi {
+  const local = readLocalNativeApi();
+  if (!local) throw new Error("Native API not found");
+  return environmentApi(key, local);
 }
 
 export function ensureNativeApi(): NativeApi {

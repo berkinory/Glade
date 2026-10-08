@@ -11,6 +11,7 @@ import {
   runEmptyRouteRestoreRefresh,
 } from "../routeRestoreRefreshCoordinator";
 import { useStore } from "../store";
+import { selectAllEnvironmentsHydrated } from "../storeState";
 import { getThreadsFromState } from "../threadDerivation";
 import {
   buildThreadSubscribeInput,
@@ -56,6 +57,7 @@ export function createStreamSubscriptions(
       state.threadSnapshotRequestInFlight.delete(threadId);
       state.threadSnapshotRefreshPending.delete(threadId);
       state.threadSnapshotNotFoundRetryAttempted.delete(threadId);
+      state.threadsAwaitingCreation.delete(threadId);
       state.threadReplayRequestInFlight.delete(threadId);
       state.threadProjectionReconcileInFlight.delete(threadId);
       state.threadProjectionReconcilePendingById.delete(threadId);
@@ -136,7 +138,7 @@ export function createStreamSubscriptions(
     if (state.disposed) {
       return false;
     }
-    const currentState = useStore.getState();
+    const currentState = context.store.getState();
     if (!currentState.threadsHydrated) {
       return true;
     }
@@ -225,15 +227,18 @@ export function createStreamSubscriptions(
     }, SHELL_SNAPSHOT_BOOTSTRAP_FALLBACK_DELAY_MS);
   };
 
-  const unregisterEmptyRouteRestoreRefresh = registerEmptyRouteRestoreRefresh(() =>
-    runEmptyRouteRestoreRefresh({
-      getShellSnapshot: () => context.api.orchestration.getShellSnapshot(),
-      getSnapshot: () => context.api.orchestration.getSnapshot(),
-      repairState: () => context.api.orchestration.repairState(),
-      applyShellSnapshot: applyQueriedShellSnapshot,
-      hasThreads: () => (useStore.getState().threadIds?.length ?? 0) > 0,
-    }),
-  );
+  // Empty-route recovery restores the local server's projection; SSH hosts never own the index route.
+  const unregisterEmptyRouteRestoreRefresh = context.local
+    ? registerEmptyRouteRestoreRefresh(() =>
+        runEmptyRouteRestoreRefresh({
+          getShellSnapshot: () => context.api.orchestration.getShellSnapshot(),
+          getSnapshot: () => context.api.orchestration.getSnapshot(),
+          repairState: () => context.api.orchestration.repairState(),
+          applyShellSnapshot: applyQueriedShellSnapshot,
+          hasThreads: () => (context.store.getState().threadIds?.length ?? 0) > 0,
+        }),
+      )
+    : () => undefined;
 
   const ensureScopedSubscriptions = () => {
     if (state.scopedSubscriptionRefresh) {
@@ -288,7 +293,10 @@ export function createStreamSubscriptions(
     return refresh;
   };
 
+  // Terminal state is kept per thread across environments. Until every environment has applied a
+  // snapshot, an absent thread may simply belong to a host that is still connecting.
   const removeOrphanedTerminalsForCurrentState = () => {
+    if (!context.local || !selectAllEnvironmentsHydrated(useStore.getState())) return;
     const draftThreadIds = Object.keys(
       useComposerDraftStore.getState().draftThreadsByThreadId,
     ) as ThreadId[];

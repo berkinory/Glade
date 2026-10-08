@@ -1,3 +1,4 @@
+import { environmentOfThread } from "~/environments/environmentStores";
 import type { ComputerUseMode } from "@glade/contracts/computer/computerUse";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { ComputerGrantView, ComputerState } from "@glade/contracts/transport/ws/computerRpc";
@@ -81,14 +82,18 @@ export function markDraftComputerUse(threadId: ThreadId) {
   setDraftComputerUse(threadId, true);
 }
 
+// Computer Use drives this machine's screen. A host's server would restart its provider session to
+// list tools it cannot use, so threads on SSH hosts never get the command.
 const dispatchMode = (threadId: ThreadId, mode: ComputerUseMode) =>
-  readNativeApi()?.orchestration.dispatchCommand({
-    type: "thread.computer-use.set",
-    commandId: newCommandId(),
-    threadId,
-    computerUse: mode,
-    createdAt: new Date().toISOString(),
-  });
+  environmentOfThread(threadId) !== null
+    ? Promise.resolve()
+    : readNativeApi()?.orchestration.dispatchCommand({
+        type: "thread.computer-use.set",
+        commandId: newCommandId(),
+        threadId,
+        computerUse: mode,
+        createdAt: new Date().toISOString(),
+      });
 
 // Called by the first send of a draft after thread.create and before thread.turn.start. The server
 // handles both commands' events in order, so the provider session starts with the tools listed.

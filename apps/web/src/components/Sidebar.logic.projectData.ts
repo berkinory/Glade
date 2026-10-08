@@ -80,9 +80,16 @@ export function sortProjectsForSidebar<
   projects: readonly TProject[],
   threads: readonly TThread[],
   sortOrder: SidebarProjectSortOrder,
+  manualOrder: readonly TProject["id"][],
 ): TProject[] {
   if (sortOrder === "manual") {
-    return [...projects];
+    // Projects never placed by hand keep the order their servers give them, after the placed ones.
+    const position = new Map(manualOrder.map((id, index) => [id, index]));
+    return [...projects].toSorted(
+      (left, right) =>
+        (position.get(left.id) ?? Number.POSITIVE_INFINITY) -
+        (position.get(right.id) ?? Number.POSITIVE_INFINITY),
+    );
   }
 
   const threadsByProjectId = new Map<string, TThread[]>();

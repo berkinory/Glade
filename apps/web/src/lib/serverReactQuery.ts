@@ -7,7 +7,8 @@ import type {
   ServerStopLocalServerInput,
 } from "@glade/contracts/server/server";
 import { mutationOptions, queryOptions, type QueryClient } from "@tanstack/react-query";
-import { ensureNativeApi } from "~/nativeApi";
+import { LOCAL_ENVIRONMENT, type EnvironmentKey } from "~/environments/environmentKey";
+import { ensureEnvironmentNativeApi, ensureNativeApi } from "~/nativeApi";
 
 const LOCAL_SERVERS_VISIBLE_REFETCH_INTERVAL_MS = 10_000;
 const LOCAL_SERVERS_DEFAULT_STALE_TIME_MS = 3_000;
@@ -44,6 +45,19 @@ export function serverConfigQueryOptions() {
       return api.server.getConfig();
     },
     staleTime: Infinity,
+  });
+}
+
+// An SSH host's config, for chats that run there. Hosts do not push config changes to this window,
+// so it is refetched on a short interval instead of the local config's push invalidation.
+export function environmentServerConfigQueryOptions(environmentKey: EnvironmentKey) {
+  const local = environmentKey === LOCAL_ENVIRONMENT;
+  return queryOptions({
+    queryKey: local
+      ? (serverQueryKeys.config() as readonly string[])
+      : [...serverQueryKeys.config(), environmentKey],
+    queryFn: () => ensureEnvironmentNativeApi(environmentKey).server.getConfig(),
+    staleTime: local ? Infinity : 30_000,
   });
 }
 

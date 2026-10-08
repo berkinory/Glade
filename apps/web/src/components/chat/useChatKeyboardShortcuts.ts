@@ -6,7 +6,7 @@ import type { Dispatch, RefObject, SetStateAction } from "react";
 import { useEffect } from "react";
 import { readStarredModelSlugs } from "~/lib/starredModels";
 import { isMacNavigatorPlatform } from "~/lib/utils";
-import { isElectron } from "../../env";
+import { useLocalDesktopActive } from "~/environments/activeEnvironment";
 import { resolveShortcutCommand } from "../../keybindings";
 import { useWorkspaceSidebarStore } from "~/workspaceSidebarStore";
 import { isEditableEventTarget } from "../../lib/editableEventTarget";
@@ -152,6 +152,7 @@ export function useChatKeyboardShortcuts({
   transcript,
   discovery,
 }: ChatKeyboardShortcutsControllerInput) {
+  const isLocalDesktop = useLocalDesktopActive();
   const { onToggleTerminal, onOpenTerminal } = props;
   const {
     activeThreadId,
@@ -422,7 +423,7 @@ export function useChatKeyboardShortcuts({
         return;
       }
 
-      if (command === "explorer.toggle" || (command === "browser.toggle" && isElectron)) {
+      if (command === "explorer.toggle" || (command === "browser.toggle" && isLocalDesktop)) {
         event.preventDefault();
         event.stopPropagation();
         useWorkspaceSidebarStore
@@ -460,6 +461,7 @@ export function useChatKeyboardShortcuts({
     window.addEventListener("keydown", handler, { capture: true });
     return () => window.removeEventListener("keydown", handler, { capture: true });
   }, [
+    isLocalDesktop,
     composerFormRef,
     setThreadFindOpen,
     setThreadFindFocusNonce,

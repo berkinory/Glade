@@ -19,7 +19,7 @@ export async function explorerImportFromFile(
     file.name ||
     `pasted-${crypto.randomUUID()}${file.type === "image/png" ? ".png" : file.type === "image/jpeg" ? ".jpg" : ".bin"}`;
   if (path) return { name, kind: directory ? "directory" : "file", source: { type: "path", path } };
-  if (directory) throw new Error("Folder imports require the desktop app.");
+  if (directory) throw new Error("Folders can only be imported from the machine Glade runs on.");
   if (file.size > PROJECT_IMPORT_CONTENT_MAX_BYTES)
     throw new Error(
       "This clipboard attachment is too large. Drop the original file from your file manager instead.",

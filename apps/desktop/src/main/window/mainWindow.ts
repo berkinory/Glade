@@ -827,6 +827,11 @@ export function createMainWindow({
                 { type: "separator" as const },
               ]),
           {
+            label: "Connect to SSH Host...",
+            click: () => dispatchMenuAction("open-ssh-hosts"),
+          },
+          { type: "separator" as const },
+          {
             label: "Close Tab",
             accelerator: "CmdOrCtrl+W",
             click: () => dispatchMenuAction("close-workspace-tab"),

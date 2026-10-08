@@ -2,7 +2,13 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { Spinner } from "~/components/ui/spinner";
-import { getConnectionStatus, subscribeConnectionStatus } from "~/connectionStatus";
+import {
+  getConnectionStatus,
+  subscribeConnectionStatus,
+  type ConnectionStatusSnapshot,
+} from "~/connectionStatus";
+import { useActiveEnvironment } from "~/environments/activeEnvironment";
+import { LOCAL_ENVIRONMENT } from "~/environments/environmentKey";
 import { readNativeApi } from "~/nativeApi";
 import { useStore } from "~/store";
 import { retryThreadDetailSync } from "~/threadDetailSyncRetry";
@@ -11,6 +17,13 @@ import { ComposerStackedPanel } from "./ComposerStackedPanel";
 import { resolveConnectionNotice } from "./ComposerConnectionNotice.logic";
 import { COMPOSER_INLINE_ACTION_PILL_CLASS_NAME } from "./composerPickerStyles";
 import { COMPOSER_NOTICE_CONTENT_CLASS_NAME } from "./composerStackedPanelStyles";
+
+const CALM_STATUS: ConnectionStatusSnapshot = {
+  serverUnresponsive: false,
+  slowRequests: 0,
+  recoveredStallMs: null,
+  shellStreamPaused: false,
+};
 
 // Short drops recover before anyone notices; recovery clears the notice at once.
 const RECONNECT_NOTICE_DELAY_MS = 1_500;
@@ -58,10 +71,13 @@ export function ComposerConnectionNotice({
     getConnectionStatus,
   );
   const threadSyncFailed = useStore((state) => state.threadDetailSyncById?.[threadId] === "failed");
+  // These notices describe this machine's server. A chat on an SSH host shows its host's state in the
+  // composer's host chip instead.
+  const local = useActiveEnvironment() === LOCAL_ENVIRONMENT;
   const notice = resolveConnectionNotice({
-    transportState: transport.state,
-    reconnectNoticeDue: transport.reconnectNoticeDue,
-    status,
+    transportState: local ? transport.state : "open",
+    reconnectNoticeDue: local && transport.reconnectNoticeDue,
+    status: local ? status : CALM_STATUS,
     threadUpdatesPaused: threadSyncFailed && !transcriptShowsSyncFailure,
   });
   if (notice === null) return null;

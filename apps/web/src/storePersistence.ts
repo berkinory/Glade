@@ -1,3 +1,5 @@
+import { currentNormalizingEnvironment } from "./environments/environmentEndpoints";
+import { LOCAL_ENVIRONMENT } from "./environments/environmentKey";
 import { persistThreadVisits } from "./threadVisitPersistence";
 import { normalizeWorkspaceRootForComparison } from "@glade/shared/threads/threadWorkspace";
 
@@ -42,8 +44,23 @@ export function projectCwdKey(cwd: string): string {
   return normalizeWorkspaceRootForComparison(cwd);
 }
 
+const NOTHING_REMEMBERED: RememberedProjectUiState = {
+  expandedProjectCount: 0,
+  isLegacyExpansionPayload: false,
+  isProjectExpanded: () => false,
+  projectOrderCount: 0,
+  projectOrderIndexForCwd: () => undefined,
+  projectNameForCwd: () => undefined,
+  projectAppearanceForCwd: () => undefined,
+};
+
+// Remembered names, appearance, order and expansion are keyed by folder paths on this machine. A
+// host's folder at the same path is a different project and must not inherit them.
 export function getRememberedProjectUiState(): RememberedProjectUiState {
-  return rememberedProjectUiState;
+  const environment = currentNormalizingEnvironment();
+  return environment === null || environment === LOCAL_ENVIRONMENT
+    ? rememberedProjectUiState
+    : NOTHING_REMEMBERED;
 }
 
 function resetRememberedProjectState(): void {

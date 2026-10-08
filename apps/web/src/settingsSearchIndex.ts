@@ -351,6 +351,15 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
   },
 
   {
+    id: "ssh:hosts",
+    section: "ssh",
+    title: "SSH hosts",
+    target: null,
+    applies: () => isElectron,
+    keywords:
+      "remote server machine host connect devbox vm linux cloud tunnel ssh config agent key window",
+  },
+  {
     id: "computer:content-blocker",
     section: "computer",
     title: "Block ads, trackers and cookie notices",

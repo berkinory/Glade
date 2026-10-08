@@ -1,3 +1,4 @@
+import type { EnvironmentKey } from "./environments/environmentKey";
 import type { BackgroundWork } from "@glade/shared/threads/backgroundWork";
 import type {
   ModelSelection,
@@ -125,6 +126,8 @@ export interface Project {
   spaceId?: SpaceId | null;
   createdAt?: string | undefined;
   updatedAt?: string | undefined;
+  // Set on projects of an SSH host in the merged view; absent for the local server's projects.
+  environmentKey?: EnvironmentKey;
 }
 
 export type Space = OrchestrationSpaceShell;

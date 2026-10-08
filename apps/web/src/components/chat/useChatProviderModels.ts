@@ -1,3 +1,4 @@
+import { useActiveEnvironment } from "~/environments/activeEnvironment";
 import { ThreadId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { type ServerProviderStatus } from "@glade/contracts/server/server";
@@ -5,7 +6,12 @@ import { normalizeModelSlug } from "@glade/shared/provider/model";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 import { useProviderStatusesForLocalConfig } from "~/hooks/useProviderStatusesForLocalConfig";
-import { resolveAvailableProviderPreference } from "~/lib/providerAvailability";
+import {
+  findProviderStatus,
+  isProviderUsable,
+  resolveAvailableProviderPreference,
+} from "~/lib/providerAvailability";
+import { LOCAL_ENVIRONMENT } from "~/environments/environmentKey";
 import { resolveProviderDiscoveryCwd } from "~/lib/providerDiscovery";
 import {
   hasReconciledServerProviderStatuses,
@@ -77,15 +83,28 @@ export function useChatProviderModels({
     ? (sessionProvider ?? threadProvider ?? selectedProviderByThreadId ?? null)
     : null;
   const serverConfigQuery = useQuery(serverConfigQueryOptions());
-  const localProviderStatuses = useProviderStatusesForLocalConfig();
+  const environmentKey = useActiveEnvironment();
+  const localProviderStatuses = useProviderStatusesForLocalConfig(environmentKey);
   const preferredDraftProvider =
     selectedProviderByThreadId ?? threadProvider ?? settings.defaultProvider;
-  const providerStatusesReconciled = hasReconciledServerProviderStatuses(queryClient);
+  // The local server pushes reconciled statuses; a host's are fetched, so any answer counts.
+  const providerStatusesReconciled =
+    environmentKey === LOCAL_ENVIRONMENT
+      ? hasReconciledServerProviderStatuses(queryClient)
+      : localProviderStatuses.length > 0;
+  // A provider picked for an earlier draft may not exist on this chat's machine (a host without
+  // Claude); an unstarted chat then falls back like any other unavailable preference.
+  const draftProvider =
+    selectedProviderByThreadId !== null &&
+    (!providerStatusesReconciled ||
+      isProviderUsable(findProviderStatus(localProviderStatuses, selectedProviderByThreadId)))
+      ? selectedProviderByThreadId
+      : null;
   const selectedProvider = useMemo<ProviderKind>(
     () =>
       handoffSelection?.provider ??
       lockedProvider ??
-      selectedProviderByThreadId ??
+      draftProvider ??
       resolveAvailableProviderPreference({
         preferredProvider: preferredDraftProvider,
         statuses: providerStatusesReconciled ? localProviderStatuses : EMPTY_PROVIDER_STATUSES,
@@ -98,7 +117,7 @@ export function useChatProviderModels({
       lockedProvider,
       preferredDraftProvider,
       providerStatusesReconciled,
-      selectedProviderByThreadId,
+      draftProvider,
       settings.hiddenProviders,
       settings.providerOrder,
     ],

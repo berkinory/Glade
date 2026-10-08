@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { useStore } from "../store";
+import { useProjectSpaceIdOf } from "../spacesUiStore";
 import { useEffect, startTransition } from "react";
 import { MAX_PINNED_PROJECTS } from "@glade/contracts/orchestration/threadEntities";
 import { type OrchestrationShellSnapshot } from "@glade/contracts/orchestration/snapshots";
@@ -533,8 +534,9 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
     setCreateProjectDialogOpen(true);
   };
 
+  const projectSpaceIdOf = useProjectSpaceIdOf();
   const activeSpaceProjects = ordinarySpaceProjects.filter(
-    (project) => (project.spaceId ?? null) === activeSpaceId,
+    (project) => projectSpaceIdOf(project) === activeSpaceId,
   );
 
   const currentProjectShortcutTargetId = resolveCurrentProjectTargetId(

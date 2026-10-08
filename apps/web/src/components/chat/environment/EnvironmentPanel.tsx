@@ -24,6 +24,8 @@ import { IconButton } from "~/components/ui/icon-button";
 import type { RepoDiffTotals } from "~/hooks/useRepoDiffTotals";
 import { cn } from "~/lib/utils";
 import { useWorkspacePathsStore } from "~/workspacePathsStore";
+import { useActiveEnvironment } from "~/environments/activeEnvironment";
+import { LOCAL_ENVIRONMENT } from "~/environments/environmentKey";
 import { EnvironmentEditorSection } from "./EnvironmentEditorSection";
 import { EnvironmentDirectoryPath } from "./EnvironmentDirectoryPath";
 import { formatEnvironmentDirectory } from "./EnvironmentPanel.logic";
@@ -120,6 +122,7 @@ export function EnvironmentPanel({
   const navigate = useNavigate();
   const { settings } = useAppSettings();
   const homeDir = useWorkspacePathsStore((state) => state.homeDir);
+  const isLocalEnvironment = useActiveEnvironment() === LOCAL_ENVIRONMENT;
   const workingDirectory = worktree.pending ? worktree.baseDirectory : (openInTarget ?? gitCwd);
   const { additions, deletions, hasChanges } = diffTotals;
 
@@ -198,7 +201,7 @@ export function EnvironmentPanel({
         </div>
       </EnvironmentLabeledSection>
 
-      <EnvironmentLocalServersSection enabled={open} />
+      {isLocalEnvironment ? <EnvironmentLocalServersSection enabled={open} /> : null}
 
       {/* Each renders its own leading divider only when it actually shows, so toggling any section via the
        header gear menu never leaves a doubled or dangling rule. */}

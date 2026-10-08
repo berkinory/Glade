@@ -21,6 +21,9 @@ export interface AppState {
   projects: Project[];
   sidebarThreadSummaryById: Record<string, SidebarThreadSummary>;
   threadsHydrated: boolean;
+  // Merged view only: every environment's store has applied a snapshot. Persisted client state that
+  // is pruned against the known threads waits for this, so an offline host keeps its pins and drafts.
+  allEnvironmentsHydrated?: boolean;
   threadIds?: ThreadId[];
   threadShellById?: Record<ThreadId, ThreadShell>;
   threadSessionById?: Record<ThreadId, ThreadSession | null>;
@@ -78,3 +81,7 @@ export const initialState: AppState = {
   deletedProjectIdsById: {},
   deletedThreadIdsById: {},
 };
+
+export function selectAllEnvironmentsHydrated(state: AppState): boolean {
+  return state.allEnvironmentsHydrated ?? state.threadsHydrated;
+}

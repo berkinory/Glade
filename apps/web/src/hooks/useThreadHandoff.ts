@@ -1,3 +1,4 @@
+import { useActiveEnvironment } from "~/environments/activeEnvironment";
 import { toastManager } from "../components/ui/toast";
 import { resolveProviderModelSelection } from "~/lib/providerModelSelection";
 import { useQuery } from "@tanstack/react-query";
@@ -21,7 +22,7 @@ import { type Thread } from "../types";
 export function useThreadHandoff() {
   const projects = useStore((store) => store.projects);
   const syncServerShellSnapshot = useStore((store) => store.syncServerShellSnapshot);
-  const providerStatuses = useProviderStatusesForLocalConfig();
+  const providerStatuses = useProviderStatusesForLocalConfig(useActiveEnvironment());
   const refreshProviderStatuses = useRefreshProviderStatusesNow();
   const serverSettingsQuery = useQuery(serverSettingsQueryOptions());
 

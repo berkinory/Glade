@@ -1,4 +1,4 @@
-import { isElectron } from "~/env";
+import { useLocalDesktopActive } from "~/environments/activeEnvironment";
 import { formatShortcutLabel } from "~/keybindings";
 import { getNavigatorPlatform, isMacPlatform } from "~/lib/utils";
 import { ShortcutKbd } from "../ui/kbd";
@@ -27,7 +27,8 @@ export function ComputerKillSwitchKbd() {
 // The composer's reminder that the shortcut stops Computer Use from any app; desktop only, since
 // only the desktop registers it.
 export function ComputerKillSwitchHint() {
-  if (!isElectron) return null;
+  const isLocalDesktop = useLocalDesktopActive();
+  if (!isLocalDesktop) return null;
   return (
     <span className="hidden shrink-0 sm:inline-flex" title="Stops Computer Use from any app">
       <ComputerKillSwitchKbd />

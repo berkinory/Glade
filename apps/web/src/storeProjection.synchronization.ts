@@ -3,10 +3,6 @@ import type {
   OrchestrationShellSnapshot,
   OrchestrationShellStreamEvent,
 } from "@glade/contracts/orchestration/snapshots";
-import {
-  resetThreadDetailResumeCursors,
-  retainThreadDetailResumeCursors,
-} from "./threadDetailResumeCursors";
 import { getThreadFromState, getThreadsFromState } from "./threadDerivation";
 import {
   mapProjects,
@@ -18,13 +14,9 @@ import {
   mergeReadModelThreadDetailWithLiveHotPath,
 } from "./storeNormalization.messages";
 import { recordsShallowEqual } from "./storeNormalization.shared";
-import {
-  projectCwdKey,
-  rememberProjectState,
-  resetStaleRememberedProjectState,
-} from "./storePersistence";
+import { projectCwdKey } from "./storePersistence";
+import { LOCAL_STORE_SIDE_EFFECTS, type StoreSideEffects } from "./storeSideEffects";
 import { initialState, type AppState } from "./storeState";
-import { initializeVisitScope } from "./threadVisitPersistence";
 import type { SidebarThreadSummary } from "./types";
 import {
   commitThreadProjection,
@@ -53,15 +45,16 @@ import {
 export function syncServerShellSnapshot(
   state: AppState,
   snapshot: OrchestrationShellSnapshot,
+  effects: StoreSideEffects = LOCAL_STORE_SIDE_EFFECTS,
 ): AppState {
-  if (initializeVisitScope(snapshot.persistenceScope)) {
-    resetThreadDetailResumeCursors();
+  if (effects.enterPersistenceScope(snapshot.persistenceScope)) {
+    effects.resetResumeCursors();
     state = initialState;
   }
   if (isStaleSnapshot(state, snapshot.snapshotSequence)) {
     return state;
   }
-  rememberProjectState(state.projects);
+  effects.rememberProjects(state.projects);
   const deletedProjectIdsById = state.deletedProjectIdsById ?? {};
   const deletedThreadIdsById = state.deletedThreadIdsById ?? {};
   const snapshotThreads = snapshot.threads.filter(
@@ -73,15 +66,15 @@ export function syncServerShellSnapshot(
     (project) => deletedProjectIdsById[project.id] === undefined,
   );
 
-  resetStaleRememberedProjectState(
+  effects.forgetProjectsMissingFrom(
     new Set(snapshotProjects.map((project) => projectCwdKey(project.workspaceRoot))),
   );
   const spaces = mapSpaces(snapshot.spaces ?? [], state.spaces ?? []);
   const projects = mapProjects(snapshotProjects, state.projects);
-  rememberProjectState(projects);
+  effects.rememberProjects(projects);
   const nextThreadIds = new Set(snapshotThreads.map((thread) => thread.id));
 
-  retainThreadDetailResumeCursors(nextThreadIds);
+  effects.retainResumeCursors(nextThreadIds);
 
   const normalizedState: AppState = {
     ...state,
@@ -209,15 +202,19 @@ export function applyShellEvent(state: AppState, event: OrchestrationShellStream
   }
 }
 
-export function syncServerReadModel(state: AppState, readModel: OrchestrationReadModel): AppState {
-  if (initializeVisitScope(readModel.persistenceScope)) {
-    resetThreadDetailResumeCursors();
+export function syncServerReadModel(
+  state: AppState,
+  readModel: OrchestrationReadModel,
+  effects: StoreSideEffects = LOCAL_STORE_SIDE_EFFECTS,
+): AppState {
+  if (effects.enterPersistenceScope(readModel.persistenceScope)) {
+    effects.resetResumeCursors();
     state = initialState;
   }
   if (isStaleSnapshot(state, readModel.snapshotSequence)) {
     return state;
   }
-  rememberProjectState(state.projects);
+  effects.rememberProjects(state.projects);
   const deletedProjectIdsById = state.deletedProjectIdsById ?? {};
   const deletedThreadIdsById = state.deletedThreadIdsById ?? {};
 
@@ -235,11 +232,11 @@ export function syncServerReadModel(state: AppState, readModel: OrchestrationRea
     (project) => project.deletedAt === null && deletedProjectIdsById[project.id] === undefined,
   );
 
-  resetStaleRememberedProjectState(
+  effects.forgetProjectsMissingFrom(
     new Set(liveProjects.map((project) => projectCwdKey(project.workspaceRoot))),
   );
   const projects = mapProjects(liveProjects, state.projects);
-  rememberProjectState(projects);
+  effects.rememberProjects(projects);
   const nextThreads = readModel.threads
     .filter(
       (thread) =>
@@ -259,7 +256,7 @@ export function syncServerReadModel(state: AppState, readModel: OrchestrationRea
     });
   const nextThreadIds = new Set(nextThreads.map((thread) => thread.id));
 
-  resetThreadDetailResumeCursors();
+  effects.resetResumeCursors();
   let normalizedState: AppState = {
     ...state,
     threadIds: reuseThreadIdRegistry(state.threadIds, nextThreadIds),

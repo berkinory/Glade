@@ -122,6 +122,23 @@ jobs:
             win) bun run package:win -- "${args[@]}" ;;
             *) exit 1 ;;
           esac
+      # Built and smoke-tested on the matching OS; Linux compiles node-pty in a Debian bullseye
+      # container so the bundle runs on hosts with glibc 2.31 or newer.
+      - name: Build remote server bundle
+        if: inputs.platform != 'win'
+        shell: bash
+        env:
+          BUILD_PLATFORM: ${{ inputs.platform }}
+          BUILD_ARCH: ${{ inputs.arch }}
+          RELEASE_VERSION: ${{ steps.source.outputs.version }}
+        run: |
+          set -euo pipefail
+          case "$BUILD_PLATFORM" in
+            mac) target="darwin-$BUILD_ARCH" ;;
+            linux) target="linux-$BUILD_ARCH" ;;
+            *) exit 1 ;;
+          esac
+          node scripts/build-remote-server.ts --target "$target" --version "$RELEASE_VERSION" --output-dir release
       - name: Verify packaged startup
         shell: bash
         env:
@@ -145,14 +162,14 @@ jobs:
           mkdir -p release-publish
           case "$BUILD_PLATFORM" in
             mac)
-              cp release/*.dmg release/*.zip release-publish/
+              cp release/*.dmg release/*.zip release/glade-remote-server-* release-publish/
               if [[ "$BUILD_ARCH" == x64 ]]; then
                 cp release/latest-mac-x64.yml release-publish/latest-mac-x64.yml
               else
                 cp release/latest-mac.yml release-publish/latest-mac-arm64.yml
               fi
               ;;
-            linux) cp release/*.AppImage release/latest-linux.yml release-publish/ ;;
+            linux) cp release/*.AppImage release/latest-linux.yml release/glade-remote-server-* release-publish/ ;;
             win) cp release/*.exe release/latest.yml release-publish/ ;;
             *) exit 1 ;;
           esac

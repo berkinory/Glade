@@ -20,6 +20,46 @@ function getDesktopWsUrl(): string | null {
 
 contextBridge.exposeInMainWorld("desktopBridge", {
   getWsUrl: getDesktopWsUrl,
+  sshHosts: {
+    list: () => ipcRenderer.invoke(IPC.sshHostsList),
+    discover: () => ipcRenderer.invoke(IPC.sshHostsDiscover),
+    save: (input) => ipcRenderer.invoke(IPC.sshHostsSave, input),
+    remove: (hostId) => ipcRenderer.invoke(IPC.sshHostsRemove, hostId),
+    connect: (hostId, options) =>
+      ipcRenderer.invoke(IPC.sshHostsConnect, {
+        hostId,
+        interactive: options.interactive,
+        ...(options.repair ? { repair: true } : {}),
+      }),
+    getStates: () => ipcRenderer.invoke(IPC.sshHostsGetStates),
+    onStates: (listener) => {
+      const wrappedListener = (_event: Electron.IpcRendererEvent, states: unknown) => {
+        if (Array.isArray(states)) listener(states as Parameters<typeof listener>[0]);
+      };
+      ipcRenderer.on(IPC.sshHostStates, wrappedListener);
+      return () => {
+        ipcRenderer.removeListener(IPC.sshHostStates, wrappedListener);
+      };
+    },
+    onPrompts: (listener) => {
+      let live = false;
+      const wrappedListener = (_event: Electron.IpcRendererEvent, prompts: unknown) => {
+        live = true;
+        if (Array.isArray(prompts)) listener(prompts as Parameters<typeof listener>[0]);
+      };
+      ipcRenderer.on(IPC.sshHostPrompts, wrappedListener);
+      // A pushed update is newer than the replay, which must not overwrite it.
+      void ipcRenderer.invoke(IPC.sshHostsGetPrompts).then((prompts: unknown) => {
+        if (!live && Array.isArray(prompts)) listener(prompts as Parameters<typeof listener>[0]);
+      });
+      return () => {
+        ipcRenderer.removeListener(IPC.sshHostPrompts, wrappedListener);
+      };
+    },
+    answerPrompt: (promptId, answer) =>
+      ipcRenderer.invoke(IPC.sshHostsAnswerPrompt, { promptId, answer }),
+    openInEditor: (input) => ipcRenderer.invoke(IPC.sshHostsOpenInEditor, input),
+  },
 
   getPathForFile: (file: File) => {
     try {

@@ -12,6 +12,11 @@ import {
   waitForEmptyRouteRestoreFallbackDelay,
 } from "../chatRouteRecovery";
 import { useComposerDraftStore } from "../composerDraftStore";
+import {
+  remoteEnvironmentsSettled,
+  useRemoteEnvironments,
+} from "../environments/remoteEnvironments";
+import { useActiveThreadEnvironment } from "../environments/threadEnvironment";
 import { parseDiffRouteSearch } from "../diffRouteSearch";
 import { readNativeApi } from "../nativeApi";
 import { useStore } from "../store";
@@ -20,12 +25,15 @@ import { SingleChatSurface } from "../components/chat/SingleChatSurface";
 import { resolveSingleProjectId } from "./-chatThreadRoute.logic";
 
 function ChatThreadRouteView() {
-  const threadsHydrated = useStore((store) => store.threadsHydrated);
+  useRemoteEnvironments();
+  const localThreadsHydrated = useStore((store) => store.threadsHydrated);
+  const remoteEnvironmentsSettledNow = useStore(() => remoteEnvironmentsSettled());
   const hasKnownServerThreads = useStore((store) => (store.threadIds?.length ?? 0) > 0);
   const threadId = Route.useParams({
     select: (params) => ThreadId.makeUnsafe(params.threadId),
   });
   const search = Route.useSearch();
+  useActiveThreadEnvironment(threadId);
   const threadProjectIdSelector = createThreadProjectIdSelector(threadId);
   const threadExistsSelector = createThreadExistsSelector(threadId);
   const threadProjectId: ProjectId | null = useStore(threadProjectIdSelector);
@@ -74,7 +82,8 @@ function ChatThreadRouteView() {
   }, [missingThreadRecoveryState, routeThreadExists]);
 
   useEffect(() => {
-    if (!threadsHydrated) {
+    // A thread on an SSH host that is still connecting is not missing yet.
+    if (!localThreadsHydrated || (!routeThreadExists && !remoteEnvironmentsSettledNow)) {
       return;
     }
 
@@ -124,13 +133,15 @@ function ChatThreadRouteView() {
   }, [
     hasKnownServerThreads,
     missingThreadRecoveryState,
+    localThreadsHydrated,
     navigate,
+    remoteEnvironmentsSettledNow,
     routeThreadExists,
-    threadsHydrated,
   ]);
 
   if (
-    !threadsHydrated ||
+    !localThreadsHydrated ||
+    (!routeThreadExists && !remoteEnvironmentsSettledNow) ||
     shouldHoldMissingThreadRouteFallback({
       hasKnownServerThreads,
       recoveryState: missingThreadRecoveryState,

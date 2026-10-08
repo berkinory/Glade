@@ -10,6 +10,7 @@ Glade's version history starts at **0.0.1**. One stable GitHub Release contains 
 - Artifact filenames include the platform and architecture: `Glade-X.Y.Z-macOS-arm64.dmg`, `Glade-X.Y.Z-macOS-x64.dmg`, `Glade-X.Y.Z-Linux-x86_64.AppImage`, and `Glade-X.Y.Z-Windows-x64.exe`. macOS update ZIPs use the same `macOS` prefix.
 - Published assets from older releases keep their filenames and URLs; their display labels use the platform-aware filename format without breaking updater or Homebrew references. Update manifests keep their original display names.
 - The macOS ZIP is for automatic updates; the DMG is for manual installation. The Linux AppImage and Windows NSIS installer serve both purposes.
+- The macOS and Linux jobs also publish `glade-remote-server-X.Y.Z-<target>.tar.gz` and its `.sha256` file, the server the desktop installs on SSH hosts. See [SSH hosts](ssh-hosts.md).
 - Windows is intentionally unsigned. The installer runs, but Windows SmartScreen may display an unrecognized-app warning until signing and reputation are established.
 
 The release workflow hashes and checks all platform artifacts against their source commit and `bun.lock`, verifies both signed macOS apps, then puts installer links and SHA-256 checksums in the release notes. The four platform provenance records and `latest-*` manifests are verified in CI but are not published as release assets. Release metadata and the ZIP describe the final signed, notarized app. Do not edit a packaged app after signing.

@@ -3,13 +3,19 @@ import { useQuery } from "@tanstack/react-query";
 
 import { getCustomBinaryPathForProvider, useAppSettings } from "../appSettings";
 import { normalizeProviderStatusForLocalConfig } from "../lib/providerAvailability";
-import { serverConfigQueryOptions } from "../lib/serverReactQuery";
+import { LOCAL_ENVIRONMENT, type EnvironmentKey } from "../environments/environmentKey";
+import { environmentServerConfigQueryOptions } from "../lib/serverReactQuery";
 
 const EMPTY_PROVIDER_STATUSES: ServerProviderStatus[] = [];
 
-export function useProviderStatusesForLocalConfig(): readonly ServerProviderStatus[] {
+// Provider statuses of one machine's server, with this app's provider settings applied. Custom binary
+// paths name files on this machine, so they only apply to the local server.
+export function useProviderStatusesForLocalConfig(
+  environmentKey: EnvironmentKey,
+): readonly ServerProviderStatus[] {
   const { settings } = useAppSettings();
-  const serverConfigQuery = useQuery(serverConfigQueryOptions());
+  const isLocal = environmentKey === LOCAL_ENVIRONMENT;
+  const serverConfigQuery = useQuery(environmentServerConfigQueryOptions(environmentKey));
   const disabledProviders = new Set(settings.disabledProviders);
 
   return (serverConfigQuery.data?.providers ?? EMPTY_PROVIDER_STATUSES)
@@ -17,7 +23,9 @@ export function useProviderStatusesForLocalConfig(): readonly ServerProviderStat
       normalizeProviderStatusForLocalConfig({
         provider: status.provider,
         status,
-        customBinaryPath: getCustomBinaryPathForProvider(settings, status.provider),
+        customBinaryPath: isLocal
+          ? getCustomBinaryPathForProvider(settings, status.provider)
+          : null,
         disabled: disabledProviders.has(status.provider),
       }),
     )

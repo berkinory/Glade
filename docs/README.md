@@ -8,6 +8,7 @@ This folder contains the Glade documentation and repository guides.
 - [Core concepts](./core-concepts.md) — projects, tasks, environments, provider sessions, and Git ownership.
 - [Providers](./providers.md) — what Glade manages and what stays provider-owned.
 - [Keybindings](./KEYBINDINGS.md) — default shortcuts and custom keymaps.
+- [SSH hosts](./ssh-hosts.md) — run chats on other machines over SSH from the desktop app.
 - [Remote access](./REMOTE.md) — server options and access from another device.
 
 ## Developing Glade

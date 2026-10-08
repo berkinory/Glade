@@ -3,6 +3,7 @@ import { isShortcutComposition } from "@glade/shared/settings/shortcutEvent";
 import { hasOpenKeyboardOverlay } from "~/lib/keyboardOverlay";
 import { useSidebarDesktopUpdate } from "./useSidebarDesktopUpdate";
 import { useStore } from "../store";
+import { useProjectSpaceIdOf } from "../spacesUiStore";
 import { useSidebarStateStore } from "../sidebarStateStore";
 import { useEffect } from "react";
 import { ProjectId, SpaceId } from "@glade/contracts/core/baseSchemas";
@@ -68,6 +69,7 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
     showThreadJumpHintsRef,
   } = context;
   const toggleProject = useStore((state) => state.toggleProject);
+  const projectSpaceIdOf = useProjectSpaceIdOf();
   const selectedThreadIds = useSidebarStateStore((state) => state.selectedThreadIds);
   const clearSelection = useSidebarStateStore((state) => state.clearSelection);
   const setThreadListExtraPagesByProjectCwd = useSidebarStateStore(
@@ -382,7 +384,7 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
       localName: project.localName,
       appearance: project.appearance ?? null,
       cwd: project.cwd,
-      spaceName: spaceDisplayName(project.spaceId, spaces, voidSpace),
+      spaceName: spaceDisplayName(projectSpaceIdOf(project), spaces, voidSpace),
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
     }));

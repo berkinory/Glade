@@ -1,3 +1,4 @@
+import { useActiveEnvironment } from "~/environments/activeEnvironment";
 import { useShallow } from "zustand/react/shallow";
 import { hasUnsentComposerDraft } from "../composerDraftDomain";
 import { buildSidebarThreadSummary } from "../storeProjection.records";
@@ -22,6 +23,7 @@ import { useAppSettings } from "../appSettings";
 import { isMacNavigatorPlatform } from "../lib/utils";
 import { isOrdinarySpaceProject } from "../lib/spaces";
 import { useStore } from "../store";
+import { useProjectWorkspacePathsOf } from "../environments/projectWorkspacePaths";
 import { shortcutLabelForCommand } from "../keybindings";
 import {
   createProjectLastActivityAtSelector,
@@ -53,7 +55,7 @@ import { normalizeSettingsSection } from "../settingsNavigation";
 import { useSidebarThreadActions } from "../hooks/useSidebarThreadActions";
 import { useWorkspacePathsStore } from "../workspacePathsStore";
 import { useFocusedChatContext } from "../focusedChatContext";
-import { useSpacesUiStore } from "../spacesUiStore";
+import { useProjectSpaceIdOf, useSpacesUiStore } from "../spacesUiStore";
 import { resolveActiveSpaceId } from "../lib/spaceGrouping";
 import {
   EMPTY_KEYBINDINGS,
@@ -214,7 +216,7 @@ export function useSidebarShellState() {
 
   const serverCwd = serverCwdQuery.data ?? null;
 
-  const providerStatuses = useProviderStatusesForLocalConfig();
+  const providerStatuses = useProviderStatusesForLocalConfig(useActiveEnvironment());
 
   const newThreadShortcutLabel =
     shortcutLabelForCommand(keybindings, "chat.new") ??
@@ -519,12 +521,14 @@ export function useSidebarShellState() {
     ? (projectById.get(activeRouteProjectId) ?? null)
     : null;
 
+  const workspacePathsOf = useProjectWorkspacePathsOf({ homeDir, chatWorkspaceRoot });
+  const projectSpaceIdOf = useProjectSpaceIdOf();
   const activeSpaceSidebarTreeThreads = sidebarTreeThreads.filter((thread) => {
     const project = projectById.get(thread.projectId);
-    return isHomeChatContainerProject(project, { homeDir, chatWorkspaceRoot })
+    const paths = project ? workspacePathsOf(project) : { homeDir, chatWorkspaceRoot };
+    return isHomeChatContainerProject(project, paths)
       ? (chatSpaceByThreadId[thread.id] ?? null) === activeSpaceId
-      : !isOrdinarySpaceProject(project, { homeDir, chatWorkspaceRoot }) ||
-          (project.spaceId ?? null) === activeSpaceId;
+      : !isOrdinarySpaceProject(project, paths) || projectSpaceIdOf(project) === activeSpaceId;
   });
 
   const pinnedThreads = getPinnedItems(activeSpaceSidebarTreeThreads, pinnedThreadIds);

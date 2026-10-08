@@ -17,6 +17,9 @@ import { openExternalLink } from "~/lib/linkChips";
 import { resolveSubagentPresentationForThread } from "~/lib/subagentPresentation";
 import { buildDraftThreadRenameCreateInput, dispatchThreadRename } from "~/lib/threadRename";
 import { cn } from "~/lib/utils";
+import { isElectron } from "~/env";
+import { EnvironmentPicker } from "../EnvironmentPicker";
+import { RemoteEnvironmentStatusChip } from "../RemoteEnvironmentStatusChip";
 import { COMPOSER_EXTRAS_PANEL_ID } from "./chatViewSupport";
 import type { ChatController } from "./useChatController";
 export function createChatPresentation(
@@ -101,6 +104,7 @@ export function createChatPresentation(
     onEnvModeChange,
     handleSelectWorkspaceRoot,
     handleResetWorkspaceToHome,
+    handleSelectEnvironmentForEmptyDraft,
     handleSelectProjectForEmptyDraft,
     handleCreateProjectFromPickerPath,
   } = controller.submission;
@@ -172,6 +176,7 @@ export function createChatPresentation(
           hideLabel={options.iconOnly}
         />
       ) : null}
+      {isCenteredEmptyLanding ? null : <RemoteEnvironmentStatusChip />}
     </>
   );
   const branchToolbarProps = {
@@ -190,8 +195,12 @@ export function createChatPresentation(
   };
   const showEmptyLandingBranchToolbar =
     isCenteredEmptyLanding && activeProject?.kind === "project" && !isHomeChatContainer;
+  // A host's Home chats have no project picker of their own, so they offer the host's projects.
   const showEmptyLandingProjectPicker =
-    isCenteredEmptyLanding && isLocalDraftThread && activeProject?.kind === "project";
+    isCenteredEmptyLanding &&
+    isLocalDraftThread &&
+    (activeProject?.kind === "project" || activeProject?.environmentKey !== undefined);
+  const showEnvironmentPicker = isElectron && isCenteredEmptyLanding && isLocalDraftThread;
   const showContainerChatWorkspacePicker = isEmptyChatLanding && isHomeChatContainer;
   const emptyLandingProjectChip =
     !showContainerChatWorkspacePicker &&
@@ -209,7 +218,8 @@ export function createChatPresentation(
     ) : null;
   const showEmptyLandingControls =
     isCenteredEmptyLanding &&
-    (isEmptyChatLanding ||
+    (showEnvironmentPicker ||
+      isEmptyChatLanding ||
       showEmptyLandingProjectPicker ||
       emptyLandingProjectChip !== null ||
       showEmptyLandingBranchToolbar);
@@ -218,6 +228,16 @@ export function createChatPresentation(
       data-empty-landing-controls="true"
       className="chat-composer-shell mx-auto flex min-h-8 w-full min-w-0 flex-nowrap items-center gap-x-1.5 overflow-hidden !rounded-b-none !rounded-t-[var(--composer-radius)] px-1.5 py-1 transition-colors duration-100 ease-out motion-reduce:transition-none sm:min-h-7"
     >
+      {showEnvironmentPicker ? (
+        <EnvironmentPicker
+          onSelectEnvironment={handleSelectEnvironmentForEmptyDraft}
+          triggerClassName={cn(
+            "h-8 px-2 py-1 sm:h-7 sm:px-2.5",
+            COMPOSER_FOLDER_PICKER_CAPSULE_HOVER_CLASS_NAME,
+            COMPOSER_TOOLBAR_TRIGGER_TEXT_CLASS_NAME,
+          )}
+        />
+      ) : null}
       {showContainerChatWorkspacePicker ? (
         <ProjectPicker
           align="start"
@@ -246,9 +266,9 @@ export function createChatPresentation(
             COMPOSER_TOOLBAR_TRIGGER_TEXT_CLASS_NAME,
           )}
           selectionMode="project"
-          selectedProjectId={activeProject.id}
-          selectedWorkspaceRoot={activeProject.cwd}
-          showResetToHome
+          selectedProjectId={activeProject.kind === "project" ? activeProject.id : null}
+          selectedWorkspaceRoot={activeProject.kind === "project" ? activeProject.cwd : null}
+          showResetToHome={activeProject.kind === "project"}
           onSelectProject={handleSelectProjectForEmptyDraft}
           onCreateProjectFromPath={handleCreateProjectFromPickerPath}
           onResetToHome={handleResetWorkspaceToHome}

@@ -2,7 +2,9 @@ import { useState } from "react";
 import type { ProjectId } from "@glade/contracts/core/baseSchemas";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { ensureNativeApi } from "../nativeApi";
+import { LOCAL_ENVIRONMENT } from "../environments/environmentKey";
+import { environmentOfProject } from "../environments/environmentStores";
+import { ensureEnvironmentNativeApi } from "../nativeApi";
 import { relocateProjectFromClient } from "../lib/projectRelocation";
 import { hasUnsavedWorkspaceEditors } from "../lib/workspaceEditorSession";
 import { RenameDialog } from "./RenameDialog";
@@ -28,11 +30,16 @@ export function RelocateProjectDialog(props: {
           if (hasUnsavedWorkspaceEditors(queryClient)) {
             throw new Error("Save or discard unsaved file edits before changing a project path.");
           }
-          await relocateProjectFromClient(ensureNativeApi().orchestration, {
-            projectId: props.projectId,
-            previousWorkspaceRoot: originalWorkspaceRoot,
-            workspaceRoot,
-          });
+          // The snapshot read names no project, so it is sent to the project's own machine.
+          const environmentKey = environmentOfProject(props.projectId) ?? LOCAL_ENVIRONMENT;
+          await relocateProjectFromClient(
+            ensureEnvironmentNativeApi(environmentKey).orchestration,
+            {
+              projectId: props.projectId,
+              previousWorkspaceRoot: originalWorkspaceRoot,
+              workspaceRoot,
+            },
+          );
           toastManager.add({
             type: "success",
             title: "Project path updated",

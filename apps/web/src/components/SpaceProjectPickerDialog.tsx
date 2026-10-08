@@ -5,8 +5,7 @@ import type { Project, Space } from "~/types";
 import { groupItemsBySpace, spaceDisplayName } from "~/lib/spaceGrouping";
 import { isOrdinarySpaceProject } from "~/lib/spaces";
 import { cn } from "~/lib/utils";
-import { useSpacesUiStore } from "~/spacesUiStore";
-import { useVoidSpace } from "~/spacesUiStore";
+import { useProjectSpaceIdOf, useSpacesUiStore, useVoidSpace } from "~/spacesUiStore";
 import { useWorkspacePathsStore } from "~/workspacePathsStore";
 import { ProjectSidebarIcon } from "./ProjectSidebarIcon";
 import { SpaceIcon } from "./SpaceIcon";
@@ -46,6 +45,7 @@ export function SpaceProjectPickerDialog(props: {
     setSubmitting(false);
     setError(null);
   }, [props.open, props.targetSpace?.id]);
+  const projectSpaceIdOf = useProjectSpaceIdOf();
   const targetSpaceId = props.targetSpace?.id ?? null;
   const movableProjects = useMemo(
     () =>
@@ -54,9 +54,9 @@ export function SpaceProjectPickerDialog(props: {
           isOrdinarySpaceProject(project, {
             homeDir,
             chatWorkspaceRoot,
-          }) && (project.spaceId ?? null) !== targetSpaceId,
+          }) && projectSpaceIdOf(project) !== targetSpaceId,
       ),
-    [chatWorkspaceRoot, homeDir, props.projects, targetSpaceId],
+    [chatWorkspaceRoot, homeDir, projectSpaceIdOf, props.projects, targetSpaceId],
   );
   const candidates = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase();
@@ -66,22 +66,22 @@ export function SpaceProjectPickerDialog(props: {
           normalizedQuery.length === 0 ||
           project.name.toLocaleLowerCase().includes(normalizedQuery) ||
           project.cwd.toLocaleLowerCase().includes(normalizedQuery) ||
-          spaceDisplayName(project.spaceId, props.spaces, voidSpace)
+          spaceDisplayName(projectSpaceIdOf(project), props.spaces, voidSpace)
             .toLocaleLowerCase()
             .includes(normalizedQuery),
       )
       .toSorted((left, right) => left.name.localeCompare(right.name));
-  }, [movableProjects, props.spaces, query, voidSpace]);
+  }, [movableProjects, projectSpaceIdOf, props.spaces, query, voidSpace]);
   const candidateGroups = useMemo(
     () =>
       groupItemsBySpace({
         items: candidates,
         spaces: props.spaces,
         activeSpaceId,
-        spaceIdOf: (project) => project.spaceId ?? null,
+        spaceIdOf: projectSpaceIdOf,
         voidSpace,
       }),
-    [activeSpaceId, candidates, props.spaces, voidSpace],
+    [activeSpaceId, candidates, projectSpaceIdOf, props.spaces, voidSpace],
   );
   const submit = async () => {
     if (selectedIds.size === 0 || submitting) return;

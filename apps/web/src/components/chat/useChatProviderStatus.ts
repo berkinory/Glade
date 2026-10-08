@@ -48,12 +48,15 @@ interface ChatProviderStatusInput {
   activeThread: Thread | undefined;
   settings: AppSettings;
   configuredProviderStatuses: readonly ServerProviderStatus[] | undefined;
+  // The chat runs on this machine's server rather than an SSH host.
+  local: boolean;
 }
 
 export function useChatProviderStatus({
   activeThread,
   settings,
   configuredProviderStatuses,
+  local,
 }: ChatProviderStatusInput) {
   const [confirmedCustomBinaryPathsByProvider, setConfirmedCustomBinaryPathsByProvider] = useState<
     Partial<Record<ProviderKind, string>>
@@ -132,17 +135,22 @@ export function useChatProviderStatus({
     () =>
       (configuredProviderStatuses ?? EMPTY_PROVIDER_STATUSES)
         .map((status) => {
-          const customBinaryPath = getCustomBinaryPathForProvider(settings, status.provider);
+          // Custom binary paths name files on this machine.
+          const customBinaryPath = local
+            ? getCustomBinaryPathForProvider(settings, status.provider)
+            : null;
           return normalizeProviderStatusForLocalConfig({
             provider: status.provider,
             status,
             customBinaryPath,
-            confirmedCustomBinaryPath: confirmedCustomBinaryPathsByProvider[status.provider],
+            confirmedCustomBinaryPath: local
+              ? confirmedCustomBinaryPathsByProvider[status.provider]
+              : undefined,
             disabled: settings.disabledProviders.includes(status.provider),
           });
         })
         .flatMap((status) => (status ? [status] : [])),
-    [confirmedCustomBinaryPathsByProvider, configuredProviderStatuses, settings],
+    [confirmedCustomBinaryPathsByProvider, configuredProviderStatuses, local, settings],
   );
   return { rememberCustomBinaryPathForDispatch, providerStatuses };
 }

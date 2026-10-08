@@ -27,6 +27,7 @@ import { EDITORS, type EditorId } from "@glade/contracts/settings/editor";
 import { EDITOR_ICON_ROUTE_PATH } from "@glade/shared/workspace/editorIcons";
 import { createElement, useEffect, useState } from "react";
 import { isMacPlatform, isWindowsPlatform } from "./lib/utils";
+import { LOCAL_ENVIRONMENT } from "./environments/environmentKey";
 import { resolveWsHttpUrl } from "./lib/wsHttpUrl";
 export interface EditorOption {
   readonly value: EditorId;
@@ -82,7 +83,7 @@ function resolveEditorNativeIconUrl(editorId: EditorId): string {
   const params = new URLSearchParams({
     id: editorId,
   });
-  return resolveWsHttpUrl(`${EDITOR_ICON_ROUTE_PATH}?${params.toString()}`);
+  return resolveWsHttpUrl(`${EDITOR_ICON_ROUTE_PATH}?${params.toString()}`, LOCAL_ENVIRONMENT);
 }
 function resolveNativeEditorIcon(editorId: EditorId): IconComponent {
   const cached = NATIVE_EDITOR_ICON_COMPONENTS.get(editorId);

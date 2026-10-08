@@ -5,6 +5,14 @@ import type {
   GitPublishRepositoryResult,
 } from "../git/githubRepositoryPublishing";
 import type { DesktopMenuShortcutState } from "./menuShortcuts";
+import type {
+  DesktopSshConnectionState,
+  DesktopSshDiscoveredHost,
+  DesktopSshHost,
+  DesktopSshHostInput,
+  DesktopSshPrompt,
+  DesktopSshRemoteEditor,
+} from "./sshHosts";
 import type { ServerKeepAwakeStatus } from "../server/keepAwake";
 import type { BrowserTabsChanged } from "../browser/browserHost";
 import type { BrowserPanelCommand, BrowserTabsSubscribeInput } from "../transport/ws/browserRpc";
@@ -366,6 +374,33 @@ export interface DesktopWindowMaterialState {
 
 export interface DesktopBridge {
   getWsUrl: () => string | null;
+  sshHosts?: {
+    list: () => Promise<ReadonlyArray<DesktopSshHost>>;
+    discover: () => Promise<ReadonlyArray<DesktopSshDiscoveredHost>>;
+    save: (input: DesktopSshHostInput) => Promise<DesktopSshHost>;
+    remove: (hostId: string) => Promise<void>;
+    // Resolves once the host's server is reachable; progress arrives through onStates. Only an
+    // interactive connect may ask the user for a password or host key; background connects use
+    // what the user already answered.
+    // `repair` is the user's explicit reconnect from settings: it drops the current connection, adopts
+    // the machine the host entry reaches now, and reinstalls Glade there if it is missing.
+    connect: (
+      hostId: string,
+      options: { readonly interactive: boolean; readonly repair?: boolean },
+    ) => Promise<void>;
+    getStates: () => Promise<ReadonlyArray<DesktopSshConnectionState>>;
+    onStates: (listener: (states: ReadonlyArray<DesktopSshConnectionState>) => void) => () => void;
+    // Every question still waiting for an answer, oldest first. Replayed on subscribe.
+    onPrompts: (listener: (prompts: ReadonlyArray<DesktopSshPrompt>) => void) => () => void;
+    // `null` declines the prompt.
+    answerPrompt: (promptId: string, answer: string | null) => Promise<void>;
+    // Opens a folder on the host in a local editor through its Remote-SSH extension.
+    openInEditor: (input: {
+      readonly hostId: string;
+      readonly path: string;
+      readonly editor: DesktopSshRemoteEditor;
+    }) => Promise<void>;
+  };
 
   getPathForFile?: (file: File) => string | null;
   pickFolder: () => Promise<string | null>;

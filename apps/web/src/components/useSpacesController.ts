@@ -16,7 +16,7 @@ import {
   updateSpace,
 } from "../lib/spaces";
 import { readNativeApi } from "../nativeApi";
-import { useSpacesUiStore } from "../spacesUiStore";
+import { projectSpaceId, useSpacesUiStore } from "../spacesUiStore";
 import { useStore } from "../store";
 import { createSidebarThreadSummariesSelector } from "../storeSelectors";
 import type { Space } from "../types";
@@ -66,6 +66,8 @@ export function useSpacesController(input: {
   const shellSnapshotSequence = useStore((store) => store.shellSnapshotSequence ?? 0);
   const activeSpaceId = useSpacesUiStore((store) => store.activeSpaceId);
   const chatSpaceByThreadId = useSpacesUiStore((store) => store.chatSpaceByThreadId);
+  const hostProjectSpaceById = useSpacesUiStore((store) => store.hostProjectSpaceById);
+  const assignHostProject = useSpacesUiStore((store) => store.assignHostProject);
   const setActiveSpaceId = useSpacesUiStore((store) => store.setActiveSpaceId);
   const setOptimisticActiveSpaceId = useSpacesUiStore((store) => store.setOptimisticActiveSpaceId);
   const rememberSpaceThread = useSpacesUiStore((store) => store.rememberThread);
@@ -101,7 +103,10 @@ export function useSpacesController(input: {
     isHomeChatContainerProject(routeSpaceProject, workspacePaths)
       ? { projectId: routeSpaceProject.id, spaceId: chatSpaceByThreadId[routeThreadId] ?? null }
       : isOrdinarySpaceProject(routeSpaceProject, workspacePaths)
-        ? { projectId: routeSpaceProject.id, spaceId: routeSpaceProject.spaceId ?? null }
+        ? {
+            projectId: routeSpaceProject.id,
+            spaceId: projectSpaceId(routeSpaceProject, hostProjectSpaceById),
+          }
         : null;
   const routeSpaceProjectId = routeSpaceContext?.projectId ?? null;
   const routeSpaceId = routeSpaceContext ? routeSpaceContext.spaceId : undefined;
@@ -117,7 +122,9 @@ export function useSpacesController(input: {
       activeSpaceIds: new Set(spaces.map((space) => space.id)),
       snapshotSequence: shellSnapshotSequence,
       projectSpaceById: new Map(
-        ordinarySpaceProjects.map((project) => [project.id, project.spaceId ?? null] as const),
+        ordinarySpaceProjects.map(
+          (project) => [project.id, projectSpaceId(project, hostProjectSpaceById)] as const,
+        ),
       ),
       threadProjectById: new Map(
         sidebarThreads
@@ -126,6 +133,7 @@ export function useSpacesController(input: {
       ),
     });
   }, [
+    hostProjectSpaceById,
     ordinarySpaceProjects,
     reconcileSpacesUi,
     shellSnapshotSequence,
@@ -159,7 +167,10 @@ export function useSpacesController(input: {
       return;
     }
     if (routeThreadId && isOrdinarySpaceProject(currentRouteSpaceProject, workspacePaths)) {
-      rememberSpaceThread(currentRouteSpaceProject.spaceId ?? null, routeThreadId);
+      rememberSpaceThread(
+        projectSpaceId(currentRouteSpaceProject, useSpacesUiStore.getState().hostProjectSpaceById),
+        routeThreadId,
+      );
     } else if (
       routeThreadId &&
       isHomeChatContainerProject(currentRouteSpaceProject, workspacePaths)
@@ -299,7 +310,11 @@ export function useSpacesController(input: {
       const projectId = spaceEditorState.projectIdAfterCreate;
       if (projectId) {
         try {
-          await moveProjectToSpace({ api, projectId, spaceId });
+          if (projectById.get(projectId)?.environmentKey !== undefined) {
+            assignHostProject(projectId, spaceId);
+          } else {
+            await moveProjectToSpace({ api, projectId, spaceId });
+          }
         } catch (error) {
           toastManager.add({
             type: "error",
@@ -322,7 +337,9 @@ export function useSpacesController(input: {
     },
     [
       activeRouteProjectId,
+      assignHostProject,
       handleSelectSpace,
+      projectById,
       selectSpaceForNavigation,
       setOptimisticActiveSpaceId,
       setVoidSpace,
@@ -337,7 +354,7 @@ export function useSpacesController(input: {
       const space = spaces.find((candidate) => candidate.id === spaceId);
       if (!api || !space) return;
       const projectCount = ordinarySpaceProjects.filter(
-        (project) => (project.spaceId ?? null) === spaceId,
+        (project) => projectSpaceId(project, hostProjectSpaceById) === spaceId,
       ).length;
       const confirmed = await api.dialogs.confirm(
         projectCount > 0
@@ -369,6 +386,7 @@ export function useSpacesController(input: {
     [
       activeRouteProject,
       activeSpaceId,
+      hostProjectSpaceById,
       navigate,
       ordinarySpaceProjects,
       selectSpaceForNavigation,
@@ -430,22 +448,30 @@ export function useSpacesController(input: {
     async (projectIds: ReadonlyArray<ProjectId>, spaceId: SpaceId) => {
       const api = readNativeApi();
       if (!api) throw new Error("The app server is unavailable.");
-      const result = await moveProjectsToSpace({ api, projectIds, spaceId });
+      // Host projects keep their space on this machine; the local server never sees them.
+      const hostProjectIds = projectIds.filter(
+        (projectId) => projectById.get(projectId)?.environmentKey !== undefined,
+      );
+      for (const projectId of hostProjectIds) assignHostProject(projectId, spaceId);
+      const localProjectIds = projectIds.filter((projectId) => !hostProjectIds.includes(projectId));
+      if (localProjectIds.length === 0) return [];
+      const result = await moveProjectsToSpace({ api, projectIds: localProjectIds, spaceId });
       return result.failedProjectIds;
     },
-    [],
+    [assignHostProject, projectById],
   );
 
   const handleMoveProjectToSpace = useCallback(
     async (projectId: ProjectId, spaceId: SpaceId | null) => {
       const api = readNativeApi();
       const project = projectById.get(projectId);
-      if (!api || !project || (project.spaceId ?? null) === spaceId) return;
+      if (!api || !project || projectSpaceId(project, hostProjectSpaceById) === spaceId) return;
       onCloseProjectContextMenu();
 
       const movesTheRoutedProject = activeRouteProjectId === projectId;
       try {
-        await moveProjectToSpace({ api, projectId, spaceId });
+        if (project.environmentKey !== undefined) assignHostProject(projectId, spaceId);
+        else await moveProjectToSpace({ api, projectId, spaceId });
         if (movesTheRoutedProject) {
           selectSpaceForNavigation(spaceId);
         }
@@ -457,7 +483,14 @@ export function useSpacesController(input: {
         });
       }
     },
-    [activeRouteProjectId, onCloseProjectContextMenu, projectById, selectSpaceForNavigation],
+    [
+      activeRouteProjectId,
+      assignHostProject,
+      hostProjectSpaceById,
+      onCloseProjectContextMenu,
+      projectById,
+      selectSpaceForNavigation,
+    ],
   );
 
   const openSpaceCreator = useCallback((projectIdAfterCreate: ProjectId | null = null) => {

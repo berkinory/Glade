@@ -22,7 +22,6 @@ import {
   serverSettingsQueryOptions,
 } from "../lib/serverReactQuery";
 import { hasPendingTurnDispatch } from "../pendingTurnDispatch";
-import { useStore } from "../store";
 import { terminalActivityFromEvent } from "../terminalActivity";
 import { selectThreadTerminalState, useTerminalStateStore } from "../terminalStateStore";
 import { getThreadFromState } from "../threadDerivation";
@@ -36,8 +35,6 @@ import {
   onServerConfigUpdated,
   onServerProviderStatusesUpdated,
   onServerSettingsUpdated,
-  onServerWelcome,
-  onThreadStreamFailure,
 } from "../wsNativeApi";
 import { addWsTransportStateListener } from "../wsTransportEvents";
 import {
@@ -73,8 +70,21 @@ export function subscribeStreamEvents(
   projection: ReturnType<typeof createStreamProjection>,
   batching: ReturnType<typeof createStreamBatching>,
 ) {
+  // Server settings, provider status, keybindings and app presentation belong to the local server;
+  // an SSH host's runtime only follows its projects and threads.
+  const whenLocal = (subscribe: () => () => void): (() => void) =>
+    context.local ? subscribe() : () => undefined;
+
   context.reconcileThreadSubscriptionsRef.current = (threadIds) =>
     subscriptions.enqueueThreadSubscriptionReconcile(threadIds);
+
+  const resubscribeCreatedThreads = (threadIds: readonly ThreadId[]) => {
+    for (const threadId of threadIds) {
+      if (state.threadsAwaitingCreation.delete(threadId)) {
+        void subscriptions.refreshThreadSnapshot(threadId);
+      }
+    }
+  };
 
   const unsubShellEvent = context.api.orchestration.onShellEvent((item) => {
     if (item.kind === "snapshot") {
@@ -85,6 +95,7 @@ export function subscribeStreamEvents(
       state.shellSnapshotSequence = item.snapshot.snapshotSequence;
       context.syncServerShellSnapshot(item.snapshot);
       reconcilePromotedDraftsFromShellThreads(item.snapshot.threads);
+      resubscribeCreatedThreads(item.snapshot.threads.map((thread) => thread.id));
       subscriptions.flushShellBuffer(item.snapshot.snapshotSequence);
       operations.removeOrphanedTerminalsForCurrentState();
       subscriptions.reconcileMissingSubscribedThreadProjections(promotedDraftThreadIds);
@@ -102,6 +113,7 @@ export function subscribeStreamEvents(
     context.applyShellEvent(item);
     if (item.kind === "thread-upserted") {
       reconcilePromotedDraftsFromShellThreads([item.thread]);
+      resubscribeCreatedThreads([item.thread.id]);
     }
     if (
       item.kind === "thread-removed" ||
@@ -164,7 +176,7 @@ export function subscribeStreamEvents(
       // it; committing the cursor or the stream fence first would leave resume bookkeeping vouching for
       // detail that was never stored. `threadDetailSyncById` flips to "synced" only when the detail was
       // actually applied.
-      if (useStore.getState().threadDetailSyncById?.[threadId] !== "synced") {
+      if (context.store.getState().threadDetailSyncById?.[threadId] !== "synced") {
         state.threadSnapshotSequenceById.delete(threadId);
         state.pendingThreadEventsById.delete(threadId);
         clearThreadDetailResumeCursor(threadId);
@@ -209,8 +221,8 @@ export function subscribeStreamEvents(
       return;
     }
     // Only delivery from the subscription itself proves it recovered; catch-up replay does not.
-    if (useStore.getState().threadDetailSyncById?.[threadId] === "failed") {
-      useStore.getState().clearThreadDetailSyncFailure(threadId);
+    if (context.store.getState().threadDetailSyncById?.[threadId] === "failed") {
+      context.store.getState().clearThreadDetailSyncFailure(threadId);
     }
     if (
       item.event.type === "thread.session-set" &&
@@ -228,7 +240,7 @@ export function subscribeStreamEvents(
     }
   });
 
-  const unsubThreadStreamFailure = onThreadStreamFailure((failure) => {
+  const unsubThreadStreamFailure = context.onThreadStreamFailure((failure) => {
     const threadId = ThreadId.makeUnsafe(failure.threadId);
     if (state.disposed || !state.subscribedThreadIds.has(threadId)) {
       return;
@@ -242,14 +254,23 @@ export function subscribeStreamEvents(
     }
     state.threadSnapshotRequestInFlight.delete(threadId);
     state.threadSnapshotRefreshPending.delete(threadId);
-    useStore.getState().markThreadDetailSyncFailed(threadId);
+    // A draft's thread does not exist until its first send outlasts the server's bootstrap wait. That
+    // is not a failed sync: the stream subscribes again once the thread appears in the shell.
+    if (
+      failure.code === "THREAD_SNAPSHOT_NOT_FOUND" &&
+      !getThreadFromState(context.store.getState(), threadId)
+    ) {
+      state.threadsAwaitingCreation.add(threadId);
+      return;
+    }
+    context.store.getState().markThreadDetailSyncFailed(threadId);
     if (
       failure.code === "THREAD_SNAPSHOT_NOT_FOUND" &&
       !state.threadSnapshotNotFoundRetryAttempted.has(threadId) &&
-      getThreadFromState(useStore.getState(), threadId)
+      getThreadFromState(context.store.getState(), threadId)
     ) {
       state.threadSnapshotNotFoundRetryAttempted.add(threadId);
-      useStore.getState().clearThreadDetailSyncFailure(threadId);
+      context.store.getState().clearThreadDetailSyncFailure(threadId);
       void subscriptions.refreshThreadSnapshot(threadId);
     }
   });
@@ -263,11 +284,13 @@ export function subscribeStreamEvents(
     void subscriptions.refreshThreadSnapshot(threadId);
   });
 
-  const unsubAppPresentation = onAppPresentation((request) => {
-    void presentAppRequest(request, async (threadId) => {
-      await context.navigate({ to: "/$threadId", params: { threadId } });
-    }).catch((error) => console.warn("Glade view acknowledgement failed", error));
-  });
+  const unsubAppPresentation = whenLocal(() =>
+    onAppPresentation((request) => {
+      void presentAppRequest(request, async (threadId) => {
+        await context.navigate({ to: "/$threadId", params: { threadId } });
+      }).catch((error) => console.warn("Glade view acknowledgement failed", error));
+    }),
+  );
 
   const unsubTerminalEvent = context.api.terminal.onEvent((event) => {
     const terminalThreadId = ThreadId.makeUnsafe(event.threadId);
@@ -293,14 +316,16 @@ export function subscribeStreamEvents(
     });
   });
 
-  const unsubWelcome = onServerWelcome((payload) => {
+  const unsubWelcome = context.onWelcome((payload) => {
     void (async () => {
-      context.setServerWorkspacePaths({
-        homeDir: payload.homeDir,
-        chatWorkspaceRoot: payload.chatWorkspaceRoot,
-      });
+      if (context.local) {
+        context.setServerWorkspacePaths({
+          homeDir: payload.homeDir,
+          chatWorkspaceRoot: payload.chatWorkspaceRoot,
+        });
+      }
       await subscriptions.ensureScopedSubscriptions();
-      if (state.disposed) {
+      if (state.disposed || !context.local) {
         return;
       }
 
@@ -324,92 +349,103 @@ export function subscribeStreamEvents(
     })().catch(() => undefined);
   });
 
-  const unsubServerConfigUpdated = onServerConfigUpdated((payload) => {
-    void context.queryClient.invalidateQueries({ queryKey: serverQueryKeys.config() });
-    if (!state.subscribed) return;
-    const issue = payload.issues.find((entry) => entry.kind.startsWith("keybindings."));
-    if (!issue) {
-      return;
-    }
+  const unsubServerConfigUpdated = whenLocal(() =>
+    onServerConfigUpdated((payload) => {
+      void context.queryClient.invalidateQueries({ queryKey: serverQueryKeys.config() });
+      if (!state.subscribed) return;
+      const issue = payload.issues.find((entry) => entry.kind.startsWith("keybindings."));
+      if (!issue) {
+        return;
+      }
 
-    toastManager.add({
-      type: "warning",
-      title: "Invalid keybindings configuration",
-      description: issue.message,
-      actionProps: {
-        children: "Open keybindings.json",
-        onClick: () => {
-          void context.queryClient
-            .ensureQueryData(serverConfigQueryOptions())
-            .then((config) => {
-              const editor = resolveAndPersistPreferredEditor(config.availableEditors);
-              if (!editor) {
-                throw new Error("No available editors found.");
-              }
-              return context.api.shell.openInEditor(config.keybindingsConfigPath, editor);
-            })
-            .catch((error) => {
-              toastManager.add({
-                type: "error",
-                title: "Unable to open keybindings file",
-                description: error instanceof Error ? error.message : "Unknown error opening file.",
+      toastManager.add({
+        type: "warning",
+        title: "Invalid keybindings configuration",
+        description: issue.message,
+        actionProps: {
+          children: "Open keybindings.json",
+          onClick: () => {
+            void context.queryClient
+              .ensureQueryData(serverConfigQueryOptions())
+              .then((config) => {
+                const editor = resolveAndPersistPreferredEditor(config.availableEditors);
+                if (!editor) {
+                  throw new Error("No available editors found.");
+                }
+                return context.api.shell.openInEditor(config.keybindingsConfigPath, editor);
+              })
+              .catch((error) => {
+                toastManager.add({
+                  type: "error",
+                  title: "Unable to open keybindings file",
+                  description:
+                    error instanceof Error ? error.message : "Unknown error opening file.",
+                });
               });
-            });
+          },
         },
-      },
-    });
-  });
-
-  const unsubProviderStatusesUpdated = onServerProviderStatusesUpdated((payload) => {
-    const nextProviderDiscoveryFingerprint = providerModelDiscoveryInvalidationFingerprint(
-      payload.providers,
-    );
-    const currentConfig = context.queryClient.getQueryData<ServerConfig>(serverQueryKeys.config());
-    const previousProviderDiscoveryFingerprint =
-      state.providerDiscoveryInvalidationFingerprint ??
-      (currentConfig
-        ? providerModelDiscoveryInvalidationFingerprint(currentConfig.providers)
-        : null);
-    const shouldInvalidateProviderDiscovery =
-      previousProviderDiscoveryFingerprint !== null &&
-      previousProviderDiscoveryFingerprint !== nextProviderDiscoveryFingerprint;
-    state.providerDiscoveryInvalidationFingerprint = nextProviderDiscoveryFingerprint;
-
-    void reconcileServerProviderStatuses(context.queryClient, payload.providers).catch(
-      () => undefined,
-    );
-    if (shouldInvalidateProviderDiscovery) {
-      void context.queryClient.invalidateQueries({
-        queryKey: providerDiscoveryQueryKeys.modelsAll,
       });
-    }
-  });
-
-  const unsubWsTransportState = addWsTransportStateListener(
-    (state) => {
-      if (state !== "open") return;
-      // Reopening the socket is a projection boundary. React Query otherwise keeps the previous
-      // infinite-stale config and can strand "Checking".
-      void refreshServerConfigAfterTransportOpen(context.queryClient).catch(() => undefined);
-    },
-    { replayCurrent: true },
+    }),
   );
 
-  const unsubServerSettingsUpdated = onServerSettingsUpdated((payload) => {
-    const previousSettings = context.queryClient.getQueryData<ServerSettingsView>(
-      serverQueryKeys.settings(),
-    );
-    context.queryClient.setQueryData(serverQueryKeys.settings(), payload.settings);
-    if (didProviderEnablementChange(previousSettings, payload.settings)) {
-      void context.queryClient.invalidateQueries({ queryKey: providerDiscoveryQueryKeys.all });
-      void invalidateProviderUsageQueries(context.queryClient);
-    } else if (didProviderCommandDiscoverySettingsChange(previousSettings, payload.settings)) {
-      void context.queryClient.invalidateQueries({ queryKey: providerDiscoveryQueryKeys.all });
-    }
-    void context.queryClient.invalidateQueries({
-      queryKey: serverSettingsQueryOptions().queryKey,
-    });
-  });
+  const unsubProviderStatusesUpdated = whenLocal(() =>
+    onServerProviderStatusesUpdated((payload) => {
+      const nextProviderDiscoveryFingerprint = providerModelDiscoveryInvalidationFingerprint(
+        payload.providers,
+      );
+      const currentConfig = context.queryClient.getQueryData<ServerConfig>(
+        serverQueryKeys.config(),
+      );
+      const previousProviderDiscoveryFingerprint =
+        state.providerDiscoveryInvalidationFingerprint ??
+        (currentConfig
+          ? providerModelDiscoveryInvalidationFingerprint(currentConfig.providers)
+          : null);
+      const shouldInvalidateProviderDiscovery =
+        previousProviderDiscoveryFingerprint !== null &&
+        previousProviderDiscoveryFingerprint !== nextProviderDiscoveryFingerprint;
+      state.providerDiscoveryInvalidationFingerprint = nextProviderDiscoveryFingerprint;
+
+      void reconcileServerProviderStatuses(context.queryClient, payload.providers).catch(
+        () => undefined,
+      );
+      if (shouldInvalidateProviderDiscovery) {
+        void context.queryClient.invalidateQueries({
+          queryKey: providerDiscoveryQueryKeys.modelsAll,
+        });
+      }
+    }),
+  );
+
+  const unsubWsTransportState = whenLocal(() =>
+    addWsTransportStateListener(
+      (state) => {
+        if (state !== "open") return;
+        // Reopening the socket is a projection boundary. React Query otherwise keeps the previous
+        // infinite-stale config and can strand "Checking".
+        void refreshServerConfigAfterTransportOpen(context.queryClient).catch(() => undefined);
+      },
+      { replayCurrent: true },
+    ),
+  );
+
+  const unsubServerSettingsUpdated = whenLocal(() =>
+    onServerSettingsUpdated((payload) => {
+      const previousSettings = context.queryClient.getQueryData<ServerSettingsView>(
+        serverQueryKeys.settings(),
+      );
+      context.queryClient.setQueryData(serverQueryKeys.settings(), payload.settings);
+      if (didProviderEnablementChange(previousSettings, payload.settings)) {
+        void context.queryClient.invalidateQueries({ queryKey: providerDiscoveryQueryKeys.all });
+        void invalidateProviderUsageQueries(context.queryClient);
+      } else if (didProviderCommandDiscoverySettingsChange(previousSettings, payload.settings)) {
+        void context.queryClient.invalidateQueries({ queryKey: providerDiscoveryQueryKeys.all });
+      }
+      void context.queryClient.invalidateQueries({
+        queryKey: serverSettingsQueryOptions().queryKey,
+      });
+    }),
+  );
 
   state.subscribed = true;
 

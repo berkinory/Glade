@@ -1,6 +1,12 @@
 import { resolveProviderModelSelection } from "~/lib/providerModelSelection";
 import { useComposerDraftStore } from "../composerDraftStore";
 import { useStore } from "../store";
+import { useSidebarProjectOrderStore } from "../sidebarProjectOrderStore";
+import { sortProjectsForSidebar } from "./Sidebar.logic.projectData";
+import { LOCAL_ENVIRONMENT } from "../environments/environmentKey";
+import { addProjectOnHost } from "../environments/hostProjects";
+import { useHandleNewThread } from "../hooks/useHandleNewThread";
+import { useSpacesUiStore } from "../spacesUiStore";
 import { useCallback } from "react";
 import {
   type DragCancelEvent,
@@ -64,7 +70,10 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
     activateThreadFromSidebarIntent,
     handleCloseProjectContextMenu,
   } = context;
-  const reorderProjects = useStore((state) => state.reorderProjects);
+  const { handleNewThread } = useHandleNewThread();
+  const setProjectExpanded = useStore((state) => state.setProjectExpanded);
+  const assignHostProject = useSpacesUiStore((state) => state.assignHostProject);
+  const moveProject = useSidebarProjectOrderStore((state) => state.moveProject);
   const clearProjectDraftThreads = useComposerDraftStore((state) => state.clearProjectDraftThreads);
 
   const {
@@ -104,8 +113,12 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
   ) => {
     const previousSpaceId = activeSpaceId;
     const existingProject =
-      value.source === "local"
-        ? findWorkspaceRootMatch(projects, value.workspaceRoot, (project) => project.cwd)
+      value.source === "local" && value.environmentKey === LOCAL_ENVIRONMENT
+        ? findWorkspaceRootMatch(
+            projects.filter((project) => project.environmentKey === undefined),
+            value.workspaceRoot,
+            (project) => project.cwd,
+          )
         : null;
 
     const destinationSpaceId = existingProject ? (existingProject.spaceId ?? null) : value.spaceId;
@@ -175,6 +188,16 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
             );
           }
         });
+      } else if (value.environmentKey !== LOCAL_ENVIRONMENT) {
+        const projectId = await addProjectOnHost({
+          environmentKey: value.environmentKey,
+          workspaceRoot: value.workspaceRoot,
+          defaultProvider: appSettings.defaultProvider,
+        });
+        assignHostProject(projectId, value.spaceId);
+        handleSelectSpaceForIncomingProject(value.spaceId);
+        setProjectExpanded(projectId, true);
+        await handleNewThread(projectId).catch(() => undefined);
       } else {
         handleSelectSpaceForIncomingProject(destinationSpaceId);
         await addProjectFromPath(value.workspaceRoot, {
@@ -344,9 +367,20 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
       const activeProject = projects.find((project) => project.id === active.id);
       const overProject = projects.find((project) => project.id === over.id);
       if (!activeProject || !overProject) return;
-      reorderProjects(activeProject.id, overProject.id);
+      // Dragging only exists in manual order, so this is the order the sidebar shows.
+      const shownOrder = sortProjectsForSidebar(
+        projects,
+        sidebarThreads,
+        "manual",
+        useSidebarProjectOrderStore.getState().projectOrder,
+      );
+      moveProject(
+        activeProject.id,
+        overProject.id,
+        shownOrder.map((project) => project.id),
+      );
     },
-    [appSettings.sidebarProjectSortOrder, projects, reorderProjects, dragInProgressRef],
+    [appSettings.sidebarProjectSortOrder, projects, sidebarThreads, moveProject, dragInProgressRef],
   );
 
   const handleProjectDragStart = useCallback(

@@ -38,7 +38,7 @@ import type { ServerRuntimeStatus } from "@glade/contracts/server/runtimeStatus"
 import { Effect, Exit, ManagedRuntime, Schema, Scope } from "effect";
 import { RpcClient, RpcClientError } from "effect/unstable/rpc";
 import { APP_VERSION } from "./branding";
-import { ConnectionStatusTracker } from "./connectionStatus";
+import { ConnectionStatusTracker, type ConnectionStatusSnapshot } from "./connectionStatus";
 import { getUnaryRpcCapacityRetryDelayMs } from "./lib/expensiveReadRetry";
 import { resetThreadDetailResumeCursors } from "./threadDetailResumeCursors";
 import type { WsTransportState } from "./wsTransportEvents";
@@ -217,15 +217,22 @@ export abstract class WsTransportBase {
   protected compatibility: WsBootstrapNegotiateResult | null = null;
   protected compatibilityIssue: WsCompatibilityError | null = null;
   protected lastServerInstanceId: string | null = null;
-  protected readonly connectionStatus = new ConnectionStatusTracker(() =>
-    this.state === "open" &&
-    this.compatibility?.capabilities.includes(WS_SERVER_RUNTIME_STATUS_CAPABILITY)
-      ? this.request<ServerRuntimeStatus>(
-          WS_METHODS.serverGetRuntimeStatus,
-          {},
-          { timeoutMs: 5_000 },
-        )
-      : null,
+  private readonly connectionStatusListeners = new Set<
+    (snapshot: ConnectionStatusSnapshot) => void
+  >();
+  protected readonly connectionStatus = new ConnectionStatusTracker(
+    () =>
+      this.state === "open" &&
+      this.compatibility?.capabilities.includes(WS_SERVER_RUNTIME_STATUS_CAPABILITY)
+        ? this.request<ServerRuntimeStatus>(
+            WS_METHODS.serverGetRuntimeStatus,
+            {},
+            { timeoutMs: 5_000 },
+          )
+        : null,
+    (snapshot) => {
+      for (const listener of this.connectionStatusListeners) listener(snapshot);
+    },
   );
   constructor(url?: string) {
     this.explicitUrl = url ?? null;
@@ -570,6 +577,16 @@ export abstract class WsTransportBase {
     if (options?.replayCurrent) listener(this.compatibilityIssue);
     return () => {
       this.compatibilityListeners.delete(listener);
+    };
+  }
+  onConnectionStatusChange(
+    listener: (snapshot: ConnectionStatusSnapshot) => void,
+    options?: { readonly replayCurrent?: boolean },
+  ): () => void {
+    this.connectionStatusListeners.add(listener);
+    if (options?.replayCurrent) listener(this.connectionStatus.current());
+    return () => {
+      this.connectionStatusListeners.delete(listener);
     };
   }
   onThreadStreamFailure(listener: (failure: WsThreadStreamFailure) => void): () => void {

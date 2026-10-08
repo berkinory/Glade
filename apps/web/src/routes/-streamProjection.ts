@@ -1,5 +1,4 @@
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { useStore } from "../store";
 import { getThreadFromState } from "../threadDerivation";
 import { advanceThreadDetailResumeCursor } from "../threadDetailResumeCursors";
 import {
@@ -110,7 +109,7 @@ export function createStreamProjection(
       if (snapshot.snapshotSequence < currentSequence) {
         return;
       }
-      const currentThread = getThreadFromState(useStore.getState(), threadId);
+      const currentThread = getThreadFromState(context.store.getState(), threadId);
       const projectionRepairsTerminalFence =
         state.threadProjectionTerminalFencePending.has(threadId);
       const projectionSettlesCurrentTurn =
@@ -140,7 +139,7 @@ export function createStreamProjection(
       );
       advanceThreadDetailResumeCursor(threadId, snapshot.snapshotSequence);
 
-      const stateBeforeProjectionApply = useStore.getState();
+      const stateBeforeProjectionApply = context.store.getState();
 
       const catchupEntryBeforeApply = policy.resolveThreadCatchupBackoff(threadId);
       context.syncServerThreadDetailHotPath(snapshot.thread, snapshot.snapshotSequence);
@@ -152,7 +151,7 @@ export function createStreamProjection(
       policy.noteThreadReconcileResult(
         threadId,
         snapshot.snapshotSequence <= currentSequence &&
-          useStore.getState() === stateBeforeProjectionApply,
+          context.store.getState() === stateBeforeProjectionApply,
       );
       if (projectionSettlesCurrentTurn || projectionRepairsTerminalFence) {
         state.pendingCheckpointDiffThreadIds.add(threadId);

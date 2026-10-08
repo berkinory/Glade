@@ -2,7 +2,7 @@ import { type ProjectId } from "@glade/contracts/core/baseSchemas";
 import { matchesLegacyHomeChatWorkspaceRoot } from "@glade/shared/threads/projectContainers";
 import { isWorkspaceRootWithin, workspaceRootsEqual } from "@glade/shared/threads/threadWorkspace";
 import type { Project } from "../types";
-import { readNativeApi } from "../nativeApi";
+import { readLocalNativeApi } from "../nativeApi";
 import { useStore } from "../store";
 import { getThreadFromState } from "../threadDerivation";
 import {
@@ -32,7 +32,7 @@ interface HomeChatContainerCandidate {
 }
 
 async function updateHomeChatProjectMetadata(
-  api: NonNullable<ReturnType<typeof readNativeApi>>,
+  api: NonNullable<ReturnType<typeof readLocalNativeApi>>,
   projectId: ProjectId,
 ): Promise<void> {
   await api.orchestration.dispatchCommand({
@@ -76,7 +76,7 @@ function findHomeChatContainerCandidateById<T extends HomeChatContainerCandidate
 }
 
 async function findDuplicateHomeChatContainer(
-  api: NonNullable<ReturnType<typeof readNativeApi>>,
+  api: NonNullable<ReturnType<typeof readLocalNativeApi>>,
   projectId: ProjectId,
   paths: ServerWorkspacePaths,
 ): Promise<HomeChatContainerCandidate | null> {
@@ -176,7 +176,7 @@ function findCanonicalHomeProject(input: ServerWorkspacePaths): {
 }
 
 async function fixupHomeChatProject(input: ServerWorkspacePaths): Promise<void> {
-  const api = readNativeApi();
+  const api = readLocalNativeApi();
   if (!api) {
     return;
   }
@@ -219,7 +219,7 @@ function scheduleHomeChatFixup(input: ServerWorkspacePaths): void {
 export async function ensureHomeChatProject(
   paths: ServerWorkspacePaths,
 ): Promise<ProjectId | null> {
-  const api = readNativeApi();
+  const api = readLocalNativeApi();
   if (!api) {
     return null;
   }

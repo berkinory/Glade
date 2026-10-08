@@ -1,10 +1,25 @@
-import { FolderIcon, FolderPlusIcon, PlusIcon } from "~/lib/icons";
+import {
+  ChevronDownIcon,
+  ComputerTerminal01Icon,
+  FolderIcon,
+  FolderPlusIcon,
+  PlusIcon,
+  ServerStack01Icon,
+} from "~/lib/icons";
 import { type GitHubProjectProvisionProgressEvent } from "@glade/contracts/git/githubProjectProvisioning";
 import { type SpaceId } from "@glade/contracts/core/baseSchemas";
 import { parseGitHubRepositoryInput } from "@glade/shared/git/githubRepository";
 import { normalizeProjectDirectoryName } from "@glade/shared/threads/projectDirectoryName";
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
-import { isElectron } from "../env";
+import { isElectron } from "~/env";
+import { LOCAL_ENVIRONMENT, type EnvironmentKey } from "~/environments/environmentKey";
+import { useRemoteEnvironments } from "~/environments/remoteEnvironments";
+import { remoteHostAvailability } from "~/environments/remoteEnvironmentStatus";
+import { EnvironmentMenuItems } from "./chat/EnvironmentMenuItems";
+import { ComposerPickerMenuPopup } from "./chat/ComposerPickerMenuPopup";
+import { HostFolderField } from "./HostFolderField";
+import { HostStatusDot } from "./HostStatusDot";
+import { Menu, MenuTrigger } from "./ui/menu";
 import { useWindowFolderDrop } from "../hooks/useWindowFolderDrop";
 import { VOID_SPACE_KEY, spaceKey, toSpaceIconName } from "../lib/spaceGrouping";
 import { createSpace } from "../lib/spaces";
@@ -13,6 +28,7 @@ import { randomUUID } from "../lib/utils";
 import { joinProjectPath } from "../lib/projectPaths";
 import type { Space } from "../types";
 import { useVoidSpace } from "../spacesUiStore";
+import { useWorkspacePathsStore } from "../workspacePathsStore";
 import { cn } from "~/lib/utils";
 import {
   CreateGitHubProjectFields,
@@ -37,6 +53,8 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "./ui/input-group";
 import { Select, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 interface CreateLocalProjectSubmitValue {
   readonly source: "local";
+  // The machine the folder is on: this one or an SSH host.
+  readonly environmentKey: EnvironmentKey;
   readonly workspaceRoot: string;
   readonly spaceId: SpaceId | null;
   readonly createIfMissing: boolean;
@@ -64,6 +82,13 @@ export function CreateProjectDialog(props: {
   onOpenChange: (open: boolean) => void;
   onSubmit: (value: CreateProjectSubmitValue, options: CreateProjectSubmitOptions) => Promise<void>;
 }) {
+  const environments = useRemoteEnvironments();
+  const localHomeDir = useWorkspacePathsStore((state) => state.homeDir);
+  const [environmentKey, setEnvironmentKey] = useState<EnvironmentKey>(LOCAL_ENVIRONMENT);
+  const host = environments.find((environment) => environment.key === environmentKey) ?? null;
+  // Folder pickers, dropped folders and GitHub clones act on this machine.
+  const isLocalDesktop = isElectron && host === null;
+  const githubAvailable = props.githubProvisioningAvailable && host === null;
   const [source, setSource] = useState<"local" | "github">("local");
   const [path, setPath] = useState("");
   const [repositoryInput, setRepositoryInput] = useState("");
@@ -92,11 +117,13 @@ export function CreateProjectDialog(props: {
   const submitButtonId = `${fieldId}-submit`;
   const sourceFolderLabelId = `${fieldId}-source-folder`;
   const spaceLabelId = `${fieldId}-space`;
+  const machineLabelId = `${fieldId}-machine`;
   const errorId = `${fieldId}-error`;
   useEffect(() => {
     if (props.open === openedRef.current) return;
     openedRef.current = props.open;
     if (!props.open) return;
+    setEnvironmentKey(LOCAL_ENVIRONMENT);
     setSource("local");
     setPath("");
     setRepositoryInput("");
@@ -117,10 +144,10 @@ export function CreateProjectDialog(props: {
     return () => cancelAnimationFrame(frame);
   }, [pathInputId, props.activeSpaceId, props.defaultCloneParent, props.open]);
   useEffect(() => {
-    if (!props.githubProvisioningAvailable && source === "github") {
+    if (!githubAvailable && source === "github") {
       setSource("local");
     }
-  }, [props.githubProvisioningAvailable, source]);
+  }, [githubAvailable, source]);
   const trimmedPath = path.trim();
   const parsedRepository = parseGitHubRepositoryInput(repositoryInput);
   const trimmedDestinationParent = destinationParent.trim();
@@ -182,7 +209,7 @@ export function CreateProjectDialog(props: {
     setIsPickingFolder(false);
   };
   const isDropTarget = useWindowFolderDrop({
-    enabled: props.open && isElectron && source === "local",
+    enabled: props.open && isLocalDesktop && source === "local",
     onFolder: applyPickedFolder,
     onError: setFormError,
   });
@@ -237,6 +264,7 @@ export function CreateProjectDialog(props: {
         await props.onSubmit(
           {
             source: "local",
+            environmentKey,
             workspaceRoot: trimmedPath,
             spaceId,
             createIfMissing: trimmedPath !== pickedPath,
@@ -306,11 +334,60 @@ export function CreateProjectDialog(props: {
           <DialogTitle>Create project</DialogTitle>
         </DialogHeader>
         <DialogPanel className="space-y-4 px-5">
+          {isElectron ? (
+            <div className="mt-4 space-y-2">
+              <span
+                id={machineLabelId}
+                className={cn("block", dialogFieldLabelClassName, "text-ui text-foreground")}
+              >
+                Machine
+              </span>
+              <Menu>
+                <MenuTrigger
+                  render={
+                    <Button
+                      variant="outline"
+                      aria-labelledby={machineLabelId}
+                      className={cn(
+                        PROJECT_DIALOG_FIELD_CONTROL_CLASS_NAME,
+                        "w-full min-w-0 justify-between px-3 font-normal",
+                      )}
+                    />
+                  }
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    {host ? (
+                      <ServerStack01Icon aria-hidden className="size-3.5 shrink-0 opacity-70" />
+                    ) : (
+                      <ComputerTerminal01Icon
+                        aria-hidden
+                        className="size-3.5 shrink-0 opacity-70"
+                      />
+                    )}
+                    <span className="truncate">{host?.host.label ?? "Local"}</span>
+                    {host ? <HostStatusDot tone={remoteHostAvailability(host).tone} /> : null}
+                  </span>
+                  <ChevronDownIcon aria-hidden className="size-3.5 shrink-0 opacity-60" />
+                </MenuTrigger>
+                <ComposerPickerMenuPopup align="start">
+                  <EnvironmentMenuItems
+                    onSelect={(nextKey) => {
+                      setEnvironmentKey(nextKey);
+                      setPickedPath(null);
+                      setPath("");
+                      setFormError(null);
+                    }}
+                  />
+                </ComposerPickerMenuPopup>
+              </Menu>
+            </div>
+          ) : null}
+
           <ProjectSourceSegmentedPicker
             className="mt-4"
             value={source}
             disabled={submitting}
-            githubAvailable={props.githubProvisioningAvailable}
+            githubAvailable={githubAvailable}
             onValueChange={(nextSource) => {
               setSource(nextSource);
               setFormError(null);
@@ -325,33 +402,49 @@ export function CreateProjectDialog(props: {
 
           {source === "local" ? (
             <>
-              <InputGroup className={PROJECT_DIALOG_FIELD_CONTROL_CLASS_NAME}>
-                <InputGroupAddon className="w-10 self-stretch border-e border-foreground/12 ps-0">
-                  <FolderIcon className="size-4 text-muted-foreground/70" aria-hidden="true" />
-                </InputGroupAddon>
-                <InputGroupInput
+              {host ? (
+                <HostFolderField
                   id={pathInputId}
+                  environmentKey={host.key}
+                  className={PROJECT_DIALOG_FIELD_CONTROL_CLASS_NAME}
                   value={path}
-                  aria-label="Project folder path"
-                  aria-invalid={formError ? true : undefined}
-                  {...(formError
-                    ? {
-                        "aria-describedby": errorId,
-                      }
-                    : {})}
-                  placeholder="/path/to/project"
-                  spellCheck={false}
-                  autoCorrect="off"
-                  autoCapitalize="off"
-                  onChange={(event) => {
-                    setPath(event.target.value);
+                  invalid={formError !== null}
+                  placeholder={`${host.workspacePaths?.homeDir ?? "~"}/`}
+                  onChange={(next) => {
+                    setPath(next);
                     setFormError(null);
                   }}
-                  onKeyDown={submitOnEnter}
+                  onSubmit={() => void submit()}
                 />
-              </InputGroup>
+              ) : (
+                <InputGroup className={PROJECT_DIALOG_FIELD_CONTROL_CLASS_NAME}>
+                  <InputGroupAddon className="w-10 self-stretch border-e border-foreground/12 ps-0">
+                    <FolderIcon className="size-4 text-muted-foreground/70" aria-hidden="true" />
+                  </InputGroupAddon>
+                  <InputGroupInput
+                    id={pathInputId}
+                    value={path}
+                    aria-label="Project folder path"
+                    aria-invalid={formError ? true : undefined}
+                    {...(formError
+                      ? {
+                          "aria-describedby": errorId,
+                        }
+                      : {})}
+                    placeholder={localHomeDir ? `${localHomeDir}/` : "~/"}
+                    spellCheck={false}
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    onChange={(event) => {
+                      setPath(event.target.value);
+                      setFormError(null);
+                    }}
+                    onKeyDown={submitOnEnter}
+                  />
+                </InputGroup>
+              )}
 
-              {isElectron ? (
+              {isLocalDesktop ? (
                 <div className="space-y-2">
                   <span
                     id={sourceFolderLabelId}
@@ -399,7 +492,7 @@ export function CreateProjectDialog(props: {
               finalClonePath={finalClonePath}
               formError={formError}
               provisionProgress={provisionProgress}
-              isElectron={isElectron}
+              isElectron={isLocalDesktop}
               isPickingFolder={isPickingFolder}
               submitting={submitting}
               onRepositoryChange={(nextInput) => {

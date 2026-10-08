@@ -1,5 +1,6 @@
 import type { ProjectId } from "@glade/contracts/core/baseSchemas";
 import type { AppState } from "./storeState";
+import { LOCAL_ENVIRONMENT } from "./environments/environmentKey";
 import { resolveWsHttpUrl } from "./lib/wsHttpUrl";
 
 const MAX_VISITS = 5000;
@@ -36,7 +37,7 @@ function readVisits(): Record<string, string> {
 export function initializeVisitScope(profile: string | undefined): boolean {
   const next =
     profile && typeof window !== "undefined"
-      ? `glade:visits:v1:${new URL(resolveWsHttpUrl("/")).origin}:${profile}`
+      ? `glade:visits:v1:${new URL(resolveWsHttpUrl("/", LOCAL_ENVIRONMENT)).origin}:${profile}`
       : undefined;
   if (next === storageKey) return false;
   const changed = storageKey !== undefined;

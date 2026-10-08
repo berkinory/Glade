@@ -6,6 +6,7 @@ export default defineConfig({
   entry: {
     index: "src/index.ts",
     runtimeDependencySmoke: "src/platform/runtimeDependencySmoke.ts",
+    remoteLauncher: "src/remote/remoteLauncher.ts",
   },
   format: ["esm"],
   outDir: "dist",

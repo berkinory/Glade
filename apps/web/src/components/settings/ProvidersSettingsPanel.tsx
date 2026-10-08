@@ -24,6 +24,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import type { AppSettings, AppSettingsBinding } from "~/appSettings";
+import { LOCAL_ENVIRONMENT } from "~/environments/environmentKey";
 import { useProviderStatusesForLocalConfig } from "~/hooks/useProviderStatusesForLocalConfig";
 import { useRefreshProviderStatusesNow } from "~/hooks/useProviderStatusRefresh";
 import {
@@ -448,7 +449,8 @@ export function ProvidersSettingsPanel({
   resetEpoch,
 }: ProvidersSettingsPanelProps) {
   const queryClient = useQueryClient();
-  const localProviderStatuses = useProviderStatusesForLocalConfig();
+  // Settings belong to this machine, whichever chat is on screen.
+  const localProviderStatuses = useProviderStatusesForLocalConfig(LOCAL_ENVIRONMENT);
   const refreshProviderStatuses = useRefreshProviderStatusesNow();
   const [refreshingProviders, setRefreshingProviders] = useState(false);
   const refreshProvidersInFlightRef = useRef(false);

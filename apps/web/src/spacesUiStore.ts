@@ -2,6 +2,8 @@ import type { ProjectId, SpaceId, ThreadId } from "@glade/contracts/core/baseSch
 import { SPACE_NAME_MAX_LENGTH } from "@glade/contracts/orchestration/threadEntities";
 import { create } from "zustand";
 
+import type { Project } from "./types";
+
 import {
   DEFAULT_VOID_SPACE,
   isVoidSpaceIconName,
@@ -11,6 +13,7 @@ import {
 
 const STORAGE_KEY = "glade:spaces-ui:v1";
 const CHAT_SPACE_STORAGE_KEY = "glade:chat-spaces:v1";
+const HOST_PROJECT_SPACE_STORAGE_KEY = "glade:host-project-spaces:v1";
 const VOID_SPACE_STORAGE_KEY = "glade:void-space:v1";
 
 function normalizeVoidSpace(value: unknown): VoidSpacePresentation {
@@ -49,10 +52,10 @@ function persistVoidSpace(voidSpace: VoidSpacePresentation): void {
   }
 }
 
-function readChatSpaceAssignments(): Record<string, SpaceId> {
+function readSpaceAssignments(storageKey: string): Record<string, SpaceId> {
   if (typeof window === "undefined") return {};
   try {
-    const value: unknown = JSON.parse(window.localStorage.getItem(CHAT_SPACE_STORAGE_KEY) ?? "{}");
+    const value: unknown = JSON.parse(window.localStorage.getItem(storageKey) ?? "{}");
     if (!value || typeof value !== "object" || Array.isArray(value)) return {};
     return Object.fromEntries(
       Object.entries(value).filter(
@@ -63,6 +66,35 @@ function readChatSpaceAssignments(): Record<string, SpaceId> {
     return {};
   }
 }
+
+function writeSpaceAssignments(storageKey: string, value: Record<string, SpaceId>): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(value));
+  } catch {
+    // A blocked storage API must not make Space switching unusable.
+  }
+}
+
+function assignSpace(
+  current: Record<string, SpaceId>,
+  key: string,
+  spaceId: SpaceId | null,
+): Record<string, SpaceId> | null {
+  if ((current[key] ?? null) === spaceId) return null;
+  const next = { ...current };
+  if (spaceId === null) delete next[key];
+  else next[key] = spaceId;
+  return next;
+}
+
+const keepActiveSpaces = (
+  assignments: Record<string, SpaceId>,
+  activeSpaceIds: ReadonlySet<SpaceId>,
+): Record<string, SpaceId> =>
+  Object.fromEntries(
+    Object.entries(assignments).filter(([, spaceId]) => activeSpaceIds.has(spaceId)),
+  );
 
 interface PersistedSpacesUiState {
   activeSpaceId: SpaceId | null;
@@ -139,6 +171,10 @@ interface SpacesUiState extends PersistedSpacesUiState {
   chatSpaceByThreadId: Record<string, SpaceId>;
   assignChatThread: (threadId: ThreadId, spaceId: SpaceId | null) => void;
   getChatThreadSpaceId: (threadId: ThreadId) => SpaceId | null;
+  // Spaces belong to this machine's server, so a project that exists only on an SSH host keeps its
+  // space here. A host project that shares a sidebar entry with a local one follows the local one.
+  hostProjectSpaceById: Record<string, SpaceId>;
+  assignHostProject: (projectId: ProjectId, spaceId: SpaceId | null) => void;
   pendingActiveSpace: { spaceId: SpaceId; minSequence: number } | null;
   setActiveSpaceId: (spaceId: SpaceId | null) => void;
   setOptimisticActiveSpaceId: (spaceId: SpaceId, minSequence: number) => void;
@@ -175,21 +211,21 @@ export const useSpacesUiStore = create<SpacesUiState>((set, get) => ({
     set({ voidSpace: DEFAULT_VOID_SPACE });
     persistVoidSpace(DEFAULT_VOID_SPACE);
   },
-  chatSpaceByThreadId: readChatSpaceAssignments(),
+  chatSpaceByThreadId: readSpaceAssignments(CHAT_SPACE_STORAGE_KEY),
   assignChatThread: (threadId, spaceId) => {
-    const previous = get().chatSpaceByThreadId[threadId] ?? null;
-    if (previous === spaceId) return;
-    const next = { ...get().chatSpaceByThreadId };
-    if (spaceId === null) delete next[threadId];
-    else next[threadId] = spaceId;
-    if (typeof window !== "undefined") {
-      try {
-        window.localStorage.setItem(CHAT_SPACE_STORAGE_KEY, JSON.stringify(next));
-      } catch {}
-    }
+    const next = assignSpace(get().chatSpaceByThreadId, threadId, spaceId);
+    if (!next) return;
+    writeSpaceAssignments(CHAT_SPACE_STORAGE_KEY, next);
     set({ chatSpaceByThreadId: next });
   },
   getChatThreadSpaceId: (threadId) => get().chatSpaceByThreadId[threadId] ?? null,
+  hostProjectSpaceById: readSpaceAssignments(HOST_PROJECT_SPACE_STORAGE_KEY),
+  assignHostProject: (projectId, spaceId) => {
+    const next = assignSpace(get().hostProjectSpaceById, projectId, spaceId);
+    if (!next) return;
+    writeSpaceAssignments(HOST_PROJECT_SPACE_STORAGE_KEY, next);
+    set({ hostProjectSpaceById: next });
+  },
   pendingActiveSpace: null,
   setActiveSpaceId: (activeSpaceId) => {
     set({ activeSpaceId, pendingActiveSpace: null });
@@ -219,17 +255,13 @@ export const useSpacesUiStore = create<SpacesUiState>((set, get) => ({
   getLastDraftThreadId: (spaceId) => get().lastDraftThreadIdBySpace[spaceKey(spaceId)] ?? null,
   reconcile: ({ activeSpaceIds, snapshotSequence, projectSpaceById, threadProjectById }) => {
     const current = get();
-    const chatSpaceByThreadId = Object.fromEntries(
-      Object.entries(current.chatSpaceByThreadId).filter(([, spaceId]) =>
-        activeSpaceIds.has(spaceId),
-      ),
-    ) as Record<string, SpaceId>;
+    const chatSpaceByThreadId = keepActiveSpaces(current.chatSpaceByThreadId, activeSpaceIds);
     if (!recordsEqual(chatSpaceByThreadId, current.chatSpaceByThreadId)) {
-      try {
-        window.localStorage.setItem(CHAT_SPACE_STORAGE_KEY, JSON.stringify(chatSpaceByThreadId));
-      } catch {
-        // A blocked storage API must not make Space switching unusable.
-      }
+      writeSpaceAssignments(CHAT_SPACE_STORAGE_KEY, chatSpaceByThreadId);
+    }
+    const hostProjectSpaceById = keepActiveSpaces(current.hostProjectSpaceById, activeSpaceIds);
+    if (!recordsEqual(hostProjectSpaceById, current.hostProjectSpaceById)) {
+      writeSpaceAssignments(HOST_PROJECT_SPACE_STORAGE_KEY, hostProjectSpaceById);
     }
     const pendingActiveSpace =
       current.pendingActiveSpace !== null &&
@@ -262,7 +294,8 @@ export const useSpacesUiStore = create<SpacesUiState>((set, get) => ({
       activeSpaceId === current.activeSpaceId &&
       pendingActiveSpace === current.pendingActiveSpace &&
       recordsEqual(lastThreadIdBySpace, current.lastThreadIdBySpace) &&
-      recordsEqual(chatSpaceByThreadId, current.chatSpaceByThreadId)
+      recordsEqual(chatSpaceByThreadId, current.chatSpaceByThreadId) &&
+      recordsEqual(hostProjectSpaceById, current.hostProjectSpaceById)
     ) {
       return;
     }
@@ -271,6 +304,7 @@ export const useSpacesUiStore = create<SpacesUiState>((set, get) => ({
       pendingActiveSpace,
       lastThreadIdBySpace,
       chatSpaceByThreadId,
+      hostProjectSpaceById,
     });
     persist(get());
   },
@@ -289,4 +323,21 @@ if (typeof window !== "undefined") {
 
 export function useVoidSpace(): VoidSpacePresentation {
   return useSpacesUiStore((state) => state.voidSpace);
+}
+
+// Spaces live on this machine's server; a host project's space is kept in this store instead.
+export function projectSpaceId(
+  project: Pick<Project, "id" | "spaceId" | "environmentKey">,
+  hostProjectSpaceById: Readonly<Record<string, SpaceId>>,
+): SpaceId | null {
+  return project.environmentKey === undefined
+    ? (project.spaceId ?? null)
+    : (hostProjectSpaceById[project.id] ?? null);
+}
+
+export function useProjectSpaceIdOf(): (
+  project: Pick<Project, "id" | "spaceId" | "environmentKey">,
+) => SpaceId | null {
+  const hostProjectSpaceById = useSpacesUiStore((store) => store.hostProjectSpaceById);
+  return (project) => projectSpaceId(project, hostProjectSpaceById);
 }
