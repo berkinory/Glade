@@ -1,50 +1,41 @@
 # Glade Changelog
 
-## 0.2.2 - Unreleased
+## 0.2.2 - 2026-10-09
 
 ### New
 
-- Keep your Mac awake while agents work, or always, from Chat settings. The display can still sleep.
-- Search saved chat messages from the command palette, including chats you have not opened recently.
-- Customizable shortcuts archive the open chat or mark it unread.
-- Run chats on other machines over SSH from the desktop app. Host projects sit with your local ones, new chats pick the machine they run on, and Glade installs and updates its server on the host for you. Passwords and new host keys are confirmed in the app.
-- Agents can run JavaScript in the browser on your local dev pages to inspect your own app; other sites stay off limits.
-- Revert the changes from any commit in Source Control history, and undo a fresh commit straight from its confirmation.
+- Run chats on other machines over SSH from the desktop app. Glade installs and updates its server on the host, and passwords and new host keys are confirmed in the app. ([87114d6c8](https://github.com/berkinory/Glade/commit/87114d6c8d59517b8656a46d3bbbd5c04fd993bc))
+- Search saved chat messages and settings from the command palette. ([e98eea50d](https://github.com/berkinory/Glade/commit/e98eea50d2b6db0dee536a9f3750de003cdf5908))
+- Keep your Mac awake while agents work, from Chat settings. ([96dc9a5e7](https://github.com/berkinory/Glade/commit/96dc9a5e722bf9d63cdbdc0fe77a5b78323bc645))
+- Revert the changes from any commit in Source Control history, and undo a new commit right from its confirmation. ([953654a84](https://github.com/berkinory/Glade/commit/953654a849fb69d2ccb148e259eec8937c79b6e9))
+- Agents can run JavaScript in the browser on your local development pages; other sites stay off limits. ([8a966b7e5](https://github.com/berkinory/Glade/commit/8a966b7e5a7c288ab5b0adf803adee94a96ebf72))
+- Shortcuts to archive the open chat or mark it unread. ([f7f3f1b2c](https://github.com/berkinory/Glade/commit/f7f3f1b2caa9e3bbe6b20fe99a05c70e799dc0de))
 
 ### Improved
 
-- Scrollbars across the app stay hidden at rest and appear while you scroll or hover.
-- Chats recover more reliably from connection interruptions and heavy update streams, and a busy server no longer drops the connection.
-- Connection and server-busy notices above the composer explain delays, offer a retry when updates pause, and leave your draft alone.
-- Find settings from the command palette and jump straight to the matching row.
-- Disabled providers stay out of pickers, usage, plugin and skill lists and stop background discovery, while their saved settings and chats are kept.
-- Independent chats stay responsive while another chat prepares or starts a task.
-- Git status and task snapshots stay responsive during heavy repository activity.
-- Chat text and notices follow your font settings more consistently, and question cards can be answered from the keyboard.
-- Failed tasks keep their error details, which you can expand and copy, and can be continued in the same chat or with a different model.
-- Right-click menus across the app share one look with icons, and text fields and images get their own copy and paste menu.
-- The agent's cursor in Computer Use moves more naturally, taking care near small targets and gliding across long distances.
-- Switching to another provider in a chat whose messages never reached the provider switches right away and resends your last message instead of handing off an empty conversation.
-- Computer Use is allowed once in Settings for every chat, off by default; agents use it when you ask, in words or with /computer, or when a task needs a desktop app.
+- Computer Use is allowed once in Settings for every chat, off by default. Agents use it when you ask, in words or with /computer, or when a task needs a desktop app, and its cursor moves more naturally. ([473f87106](https://github.com/berkinory/Glade/commit/473f8710600b99bbf0a097e9cbf3dd62f65a44b0), [248ceb731](https://github.com/berkinory/Glade/commit/248ceb731e16ccac86c800b33b9cb0f6590c697d), [507bdcb07](https://github.com/berkinory/Glade/commit/507bdcb07e47e240164f3b0047f47d1cfbe0f7ba))
+- Chats stay connected and recover more reliably from interruptions, with one clear notice above the composer when the connection or server is busy. ([ae302e0e0](https://github.com/berkinory/Glade/commit/ae302e0e0002cd0c5a3ef413811616eb06eef581), [0058ec66f](https://github.com/berkinory/Glade/commit/0058ec66f49105f36f2a9e55f3f827fcc64ca3ea), [c379e02be](https://github.com/berkinory/Glade/commit/c379e02bed62472c95830401b208c321d9b29529))
+- Chats stay responsive while other chats prepare or start tasks and during heavy repository activity. ([1c785250b](https://github.com/berkinory/Glade/commit/1c785250b827b982bf31f63ab7985b4b84429041))
+- Failed tasks keep their error details and can be continued in the same chat or with another model. Switching providers in a chat that never reached its provider switches right away and resends your message. ([0af462882](https://github.com/berkinory/Glade/commit/0af4628826cfbb66ac5a6b6e6f840db6211d0db9), [2871882b6](https://github.com/berkinory/Glade/commit/2871882b6299dd4da21c3ecb93d63e87e32109a2))
+- Disabled providers stay out of pickers, usage, plugin and skill lists and stop background discovery. ([35f725dfa](https://github.com/berkinory/Glade/commit/35f725dfa10e40c0afab0c664e2d7e4df6615cf4))
+- Right-click menus share one look with icons, and text fields and images have copy and paste menus. ([44af8427b](https://github.com/berkinory/Glade/commit/44af8427b5fda2c001838b5dc28bc6b111a93ffb))
+- Text follows your font settings more consistently, and question cards can be answered from the keyboard. ([f7f3f1b2c](https://github.com/berkinory/Glade/commit/f7f3f1b2caa9e3bbe6b20fe99a05c70e799dc0de))
+- Scrollbars stay hidden until you scroll or hover. ([d1fe47c48](https://github.com/berkinory/Glade/commit/d1fe47c48c0dc3268429e00bb525f88637c03444))
 
 ### Fixed
 
-- Opening the browser no longer widens the right sidebar, and the sidebar edge can be dragged to resize it while the browser is open.
-- Skills with multiline descriptions display their names and descriptions correctly.
-- Failed file uploads show their actual error instead of a browser connection error.
-- Claude chats recover reliably when interrupted before their first response.
-- Tasks no longer wait indefinitely for their starting file snapshot, and a missing snapshot can no longer be used to undo files.
-- Welcome and release-note prompts no longer appear on top of each other.
-- Line breaks in chat tables render as line breaks instead of literal tags.
-- A new chat left open before its first message no longer reports that its updates paused.
-- An idle chat no longer stays marked as working after its model, mode or Computer Use changes.
-- Source Control shows Git's actual reason when it cannot open a folder, offers to trust folders owned by another user, and says when Git is not installed.
-- Opening a terminal no longer shows a reconnect error first, and the app no longer keeps reconnecting when Git is not installed.
+- Source Control explains why it cannot open a folder, offers to trust folders owned by another user, and says when Git is not installed. ([953654a84](https://github.com/berkinory/Glade/commit/953654a849fb69d2ccb148e259eec8937c79b6e9))
+- Opening a terminal no longer shows a reconnect error, and Glade no longer keeps reconnecting when Git is missing. ([ecf87d62a](https://github.com/berkinory/Glade/commit/ecf87d62ac1f45067d2ee9005aa12ed898002a81))
+- Claude chats recover when interrupted before their first response, and tasks no longer wait indefinitely for their starting file snapshot. ([1c785250b](https://github.com/berkinory/Glade/commit/1c785250b827b982bf31f63ab7985b4b84429041))
+- An idle chat no longer stays marked as working after its settings change. ([c734669cf](https://github.com/berkinory/Glade/commit/c734669cf512001018c6df6786caef2ee8669b54))
+- Failed file uploads show their actual error. ([f60b89a06](https://github.com/berkinory/Glade/commit/f60b89a06f84f68483f4a20b4c295c5173c2e961))
+- Skills with multiline descriptions display correctly. ([070278a65](https://github.com/berkinory/Glade/commit/070278a65383833a3fa9907ebac9d620f1f79ea9))
+- Opening the browser no longer widens the right sidebar, and the sidebar can be resized while the browser is open. ([355067b1b](https://github.com/berkinory/Glade/commit/355067b1b637c8e7f8d7a2e61323a65417999c2b))
 
 ### Removed
 
-- Spell checking and spelling suggestions in text fields.
-- Turning Computer Use on or off per chat from the chat menu or the composer.
+- Spell checking in text fields. ([44af8427b](https://github.com/berkinory/Glade/commit/44af8427b5fda2c001838b5dc28bc6b111a93ffb))
+- Turning Computer Use on or off per chat; it is one setting now. ([473f87106](https://github.com/berkinory/Glade/commit/473f8710600b99bbf0a097e9cbf3dd62f65a44b0))
 
 ## 0.2.1 - 2026-10-08
 
