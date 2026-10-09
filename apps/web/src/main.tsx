@@ -9,6 +9,7 @@ import { appHistory } from "./appNavigation";
 import { getRouter } from "./router";
 import { APP_DISPLAY_NAME } from "./branding";
 import { isElectron } from "./env";
+import { watchSessionRevocation } from "./authRevocation";
 import { trackScrollActivity } from "./lib/scrollActivity";
 
 const router = getRouter(appHistory);
@@ -24,6 +25,8 @@ try {
 
 if (isElectron) {
   document.documentElement.dataset.runtime = "electron";
+} else {
+  watchSessionRevocation();
 }
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(

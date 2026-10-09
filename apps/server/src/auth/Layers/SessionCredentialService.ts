@@ -133,7 +133,10 @@ const makeSessionCredentialService = Effect.gen(function* () {
   const outstandingWebSocketTicketsRef = yield* Ref.make<OutstandingWebSocketTickets>(new Map());
   const activeConnectionsSemaphore = yield* Semaphore.make(1);
   const changesPubSub = yield* PubSub.unbounded<SessionCredentialChange>();
-  const cookieName = resolveSessionCookieName({ mode: serverConfig.mode, port: serverConfig.port });
+  const cookieName = resolveSessionCookieName({
+    mode: serverConfig.mode,
+    stateDir: serverConfig.stateDir,
+  });
 
   const emitUpsert = (clientSession: AuthClientSession) =>
     PubSub.publish(changesPubSub, { type: "clientUpserted", clientSession }).pipe(Effect.asVoid);

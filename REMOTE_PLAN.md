@@ -97,13 +97,16 @@ methods.
 
 ### 2. Exposure on the desktop
 
-- **Settings → Remote access**, off by default. Turning it on restarts only the backend, not the
-  app, with remote binding enabled. Turning it off restores loopback-only and leaves sessions
-  intact but unreachable.
-- The backend binds a wildcard address and accepts connections only when the socket's local
-  address is loopback or private: RFC 1918, IPv6 ULA, link-local and the CGNAT range Tailscale
-  uses. Binding a wildcard keeps working when the machine changes Wi-Fi or a VPN comes up, without
-  a restart. Public addresses are refused at accept time.
+- **Settings → Remote access**, off by default. Turning it on opens a second listener in the
+  running server (no restart, chats keep running) that hands its connections to the same HTTP
+  server. Turning it off closes the listener and every device connection; sessions stay paired.
+- The listener binds a wildcard address and accepts a connection only when the socket's local
+  address is loopback (Tailscale Serve) or, with the local network allowed, private: RFC 1918, IPv6
+  ULA, link-local and the CGNAT range Tailscale uses. Binding a wildcard keeps working when the
+  machine changes Wi-Fi or a VPN comes up. Public addresses are refused at accept time.
+- Requests from the listener pass one gate: only the app, auth, WebSocket, file and upload routes
+  are reachable, and the request sees the server as a wildcard bind, so the desktop's loopback
+  token, unauthenticated loopback access and the Vite dev redirect never apply.
 - **Plain HTTP** on LAN or VPN requires a one-time acknowledgement in Settings, worded plainly:
   traffic is unencrypted on networks you don't trust. This maps to the existing
   `allow-insecure-remote` policy.
@@ -119,9 +122,9 @@ methods.
 
 ### 3. Routes the server reports
 
-- An authenticated endpoint returns the environment's current shareable routes: LAN and VPN
-  interface addresses, tailnet address, tailnet HTTPS URL and user HTTPS URL, ordered by
-  preference (HTTPS first, then direct addresses). Never loopback.
+- The owner's remote access status carries the current shareable routes: tailnet HTTPS URL, user
+  HTTPS URL, then tailnet, LAN and VPN addresses (IPv6 only when a kind has no IPv4). Never
+  loopback. A read endpoint for paired devices' learned routes comes with the client runtime.
 - Interfaces are read with `os.networkInterfaces()` on every platform. Kinds are labelled from the
   address range and interface name; the label is for display only.
 - Clients save these as **learned routes**. A learned route that the server stops reporting is
@@ -206,13 +209,14 @@ will follow.
 
 Each phase ships on its own, with docs and a changelog entry.
 
-1. **Server foundation.** Descriptor endpoint, pairing hardening (hashed secrets, metadata-only
+1. **Server foundation (done).** Descriptor endpoint, pairing hardening (hashed secrets, metadata-only
    list, rate limits, single use), scopes with declared RPC authorization. WebSocket tickets for
    bearer clients already exist. The shareable routes endpoint moves to phase 2, where the server
    knows how it is exposed.
-2. **Desktop exposure.** Remote access setting, backend restart with remote binding, private-address
-   accept filter, plain-HTTP acknowledgement, Tailscale HTTPS toggle, user HTTPS URL, pair-a-device
-   QR, Devices list with revoke.
+2. **Desktop exposure (done).** Remote access setting with a live second listener, private-address
+   accept filter, remote request gate, plain-HTTP acknowledgement, Tailscale HTTPS toggle, pairing
+   QR, Devices list with revoke, signed-out handling in revoked browsers, per-install session
+   cookie names that survive restarts.
 3. **Hosts and headless servers.** `glade pair` CLI and "Pair a device" for SSH hosts.
 4. **Client runtime and desktop as a client.** Saved catalog, route walk, supervisor, learned
    routes, Add environment.

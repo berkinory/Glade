@@ -228,7 +228,9 @@ const ServerConfigLive = (input: CliInput) =>
         env.logWebSocketEvents,
         false,
       );
-      const staticDir = devUrl ? undefined : yield* cliConfig.resolveStaticDir;
+      // Resolved in dev too: requests from other devices never follow the Vite redirect, so they
+      // need the built client when one exists.
+      const staticDir = yield* cliConfig.resolveStaticDir;
 
       const host = Option.getOrUndefined(input.host) ?? env.host ?? "127.0.0.1";
       const remotePolicyError = remoteAccessPolicyError({

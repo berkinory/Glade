@@ -172,6 +172,8 @@ import { bufferLiveUiStream, type LiveUiStreamDropReport } from "./wsStreamBackp
 import { makeBrowserWsHandlers } from "../../browser/browserWsHandlers";
 import { BrowserHost } from "../../browser/Services/BrowserHost";
 import { makeComputerWsHandlers } from "../../computer/computerWsHandlers";
+import { makeRemoteAccessWsHandlers } from "../../remoteAccess/remoteAccessWsHandlers";
+import { RemoteAccess } from "../../remoteAccess/Services/RemoteAccess";
 import { ComputerAccess } from "../../computer/Services/ComputerAccess";
 import { ComputerHost } from "../../computer/Services/ComputerHost";
 import {
@@ -863,8 +865,14 @@ const makeWsRpcHandlersLayer = () =>
         streamAdmission,
       });
 
+      const remoteAccessHandlers = makeRemoteAccessWsHandlers({
+        remoteAccess: yield* RemoteAccess,
+        streamAdmission,
+      });
+
       return AdmittedWsFeatureRpcGroup.of({
         ...browserHandlers,
+        ...remoteAccessHandlers,
         [COMPUTER_WS_METHODS.subscribe]: computerHandlers[COMPUTER_WS_METHODS.subscribe],
         [COMPUTER_WS_METHODS.revokeGrant]: computerHandlers[COMPUTER_WS_METHODS.revokeGrant],
         [ORCHESTRATION_WS_METHODS.prepareHandoff]: (input) =>

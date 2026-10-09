@@ -37,7 +37,6 @@ describe("ServerAuthPolicyLive", () => {
       overrides: { mode: "desktop", host: "127.0.0.1", port: 3773 },
       policy: "desktop-managed-local",
       bootstrapMethods: ["desktop-bootstrap"],
-      sessionCookieName: "glade_session_3773",
     },
     {
       overrides: { mode: "desktop", host: "0.0.0.0" },
@@ -74,4 +73,17 @@ describe("ServerAuthPolicyLive", () => {
       if (sessionCookieName) expect(descriptor.sessionCookieName).toBe(sessionCookieName);
     },
   );
+
+  it("keeps a desktop install's session cookie across port changes and apart from other installs", async () => {
+    const cookieName = (overrides: Partial<ServerConfigShape>) =>
+      getDescriptor.pipe(
+        Effect.provide(makeLayer({ mode: "desktop", host: "127.0.0.1", ...overrides })),
+        Effect.scoped,
+        Effect.map((descriptor) => descriptor.sessionCookieName),
+        Effect.runPromise,
+      );
+    const first = await cookieName({ port: 51001, stateDir: "/installs/a/userdata" });
+    expect(await cookieName({ port: 62002, stateDir: "/installs/a/userdata" })).toBe(first);
+    expect(await cookieName({ port: 51001, stateDir: "/installs/b/userdata" })).not.toBe(first);
+  });
 });

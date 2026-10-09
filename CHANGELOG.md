@@ -2,6 +2,10 @@
 
 ## 0.2.3 - Unreleased
 
+### New
+
+- Use Glade from your phone or another computer: turn on Remote access in Settings, pair a device with a QR code, and reach this machine over Tailscale HTTPS or your local network. Paired devices stay signed in across restarts and can be removed at any time.
+
 ### Improved
 
 - Provider updates on an SSH host are offered in that host's chats and install on the host.

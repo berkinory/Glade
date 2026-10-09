@@ -34,7 +34,6 @@ import {
   BROWSER_WS_METHODS,
   type BrowserTabsSubscribeInput,
 } from "@glade/contracts/transport/ws/browserRpc";
-import { COMPUTER_WS_METHODS, type ComputerState } from "@glade/contracts/transport/ws/computerRpc";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { WS_STREAM_OVERFLOW_CODE } from "@glade/contracts/transport/ws/rpcErrors";
 import { Cause, Effect, Exit, Stream } from "effect";
@@ -65,6 +64,7 @@ import {
 } from "./wsTransport.support";
 import type { ProjectFileChangeSubscription, RpcClientInstance } from "./wsTransport.support";
 import { WsTransportBase } from "./wsTransport.base";
+import type { StateStreamMethod } from "./wsStateStreams";
 export class WsTransport extends WsTransportBase {
   protected startChannelStream(channel: WsPushChannel): void {
     const requestedSessionVersion = this.sessionVersion;
@@ -336,14 +336,14 @@ export class WsTransport extends WsTransportBase {
     if (this.disposed) return;
     this.startStream(client, key, client[BROWSER_WS_METHODS.subscribeTabs](input), emit, restart);
   }
-  protected startComputerStateStream(
+  protected startStateStream(
     client: RpcClientInstance,
-    key: string,
-    emit: (event: ComputerState) => void,
+    method: StateStreamMethod,
+    emit: (event: unknown) => void,
     restart: () => void,
   ): void {
     if (this.disposed) return;
-    this.startStream(client, key, client[COMPUTER_WS_METHODS.subscribe]({}), emit, restart);
+    this.startStream(client, method, client[method]({}), emit, restart);
   }
   protected startStream<T>(
     client: RpcClientInstance,

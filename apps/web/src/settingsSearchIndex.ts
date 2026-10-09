@@ -360,6 +360,15 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
       "remote server machine host connect devbox vm linux cloud tunnel ssh config agent key window",
   },
   {
+    id: "remote:access",
+    section: "remote",
+    title: "Allow other devices",
+    target: "setting-remote-access",
+    applies: () => isElectron,
+    keywords:
+      "remote access phone mobile tablet ipad iphone android pair device qr code tailscale lan wifi network https away",
+  },
+  {
     id: "computer:content-blocker",
     section: "computer",
     title: "Block ads, trackers and cookie notices",

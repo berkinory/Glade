@@ -66,6 +66,7 @@ const RULES: { readonly [N in Namespace]: { readonly default: Rule } & Record<st
   shell: { default: toLocal, openInEditor: (args) => environmentOfPath(args[0]) },
   browser: { default: toLocal },
   computer: { default: toLocal },
+  remoteAccess: { default: toLocal },
   git: { default: byCwdInput, handoffThread: byThreadInput },
   // Settings, keybindings, auth and usage are the local server's; only thread-bound work moves.
   server: {

@@ -30,10 +30,7 @@ const makeServerAuthPolicy = Effect.gen(function* () {
     policy,
     bootstrapMethods,
     sessionMethods: ["browser-session-cookie", "bearer-session-token"],
-    sessionCookieName: resolveSessionCookieName({
-      mode: config.mode,
-      port: config.port,
-    }),
+    sessionCookieName: resolveSessionCookieName({ mode: config.mode, stateDir: config.stateDir }),
   };
 
   return {

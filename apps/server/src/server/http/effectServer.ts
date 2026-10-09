@@ -4,7 +4,7 @@ import http from "node:http";
 
 import type { ServerSettingsError } from "@glade/contracts/settings/settings";
 import { Effect, Exit, FileSystem, Layer, Path, Schema, Scope, ServiceMap } from "effect";
-import { HttpRouter } from "effect/unstable/http";
+import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
 import { agentGatewayRouteLayer } from "../../agentGateway/httpRoute";
@@ -35,6 +35,12 @@ import { ProjectionSnapshotQuery } from "../../orchestration/Services/Projection
 import { ProjectionPendingInteractionRepository } from "../../persistence/Services/ProjectionPendingInteractions";
 import { ThreadDeletionReactor } from "../../orchestration/Services/ThreadDeletionReactor";
 import { KeepAwake } from "../../keepAwake/Services/KeepAwake";
+import { RemoteAccess } from "../../remoteAccess/Services/RemoteAccess";
+import {
+  isRemoteRequest,
+  isRemoteRequestPathAllowed,
+  remoteRequestConfig,
+} from "../../remoteAccess/remoteRequests";
 import {
   claimQuitResumeRecordAtStartup,
   resumeQuitInterruptedChats,
@@ -165,6 +171,7 @@ export const createEffectServer = Effect.fn(function* (
   const serverSettings = yield* ServerSettingsService;
   const threadDeletionReactor = yield* ThreadDeletionReactor;
   const keepAwake = yield* KeepAwake;
+  const remoteAccess = yield* RemoteAccess;
   const readiness = yield* makeServerReadiness;
 
   yield* keybindings.syncDefaultKeybindingsOnStartup.pipe(
@@ -197,7 +204,20 @@ export const createEffectServer = Effect.fn(function* (
     agentGatewayRouteLayer,
     serverRuntimeRouteLayer,
   );
-  const httpApp = yield* HttpRouter.toHttpEffect(routesLayer);
+  const routedApp = yield* HttpRouter.toHttpEffect(routesLayer);
+  // Every request from another device passes here: it may reach only the routes devices need, and
+  // it sees the server as a wildcard bind so loopback-only shortcuts never apply to it.
+  const httpApp = Effect.gen(function* () {
+    const request = yield* HttpServerRequest.HttpServerRequest;
+    if (!isRemoteRequest(request)) return yield* routedApp;
+    const url = HttpServerRequest.toURL(request);
+    if (!url || !isRemoteRequestPathAllowed(request.method, url.pathname)) {
+      return HttpServerResponse.text("Not Found", { status: 404 });
+    }
+    return yield* routedApp.pipe(
+      Effect.provideService(ServerConfig, remoteRequestConfig(config, request)),
+    );
+  });
   yield* httpServer
     .serve(httpApp)
     .pipe(
@@ -209,6 +229,7 @@ export const createEffectServer = Effect.fn(function* (
     config.port,
   );
   agentGatewayCredentials.setListeningPort(listeningPort);
+  if (nodeServer) yield* remoteAccess.attach(nodeServer);
   yield* persistServerRuntimeState({
     path: config.serverRuntimeStatePath,
     state: makePersistedServerRuntimeState({

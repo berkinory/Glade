@@ -18,6 +18,12 @@ import type { BrowserTabsChanged } from "../browser/browserHost";
 import type { BrowserPanelCommand, BrowserTabsSubscribeInput } from "../transport/ws/browserRpc";
 import type { ComputerGrantTarget, ComputerState } from "../transport/ws/computerRpc";
 import type {
+  RemoteAccessDevices,
+  RemoteAccessPairing,
+  RemoteAccessStatus,
+  RemoteAccessUpdateInput,
+} from "../transport/ws/remoteAccessRpc";
+import type {
   BrowserCapture,
   BrowserPickedElement,
   BrowserPickRequest,
@@ -223,7 +229,7 @@ import type {
   OrchestrationThreadStreamItem,
 } from "../orchestration/snapshots";
 import type { EditorId } from "../settings/editor";
-import type { ThreadId } from "../core/baseSchemas";
+import type { AuthSessionId, ThreadId } from "../core/baseSchemas";
 import type {
   ProviderComposerCapabilities,
   ProviderGetComposerCapabilitiesInput,
@@ -577,6 +583,14 @@ export interface NativeApi {
   computer: {
     onState: (callback: (state: ComputerState) => void) => () => void;
     revokeGrant: (target: ComputerGrantTarget) => Promise<void>;
+  };
+  // Letting other devices reach this machine's server, and the devices paired with it.
+  remoteAccess: {
+    onStatus: (callback: (status: RemoteAccessStatus) => void) => () => void;
+    update: (input: RemoteAccessUpdateInput) => Promise<RemoteAccessStatus>;
+    createPairing: () => Promise<RemoteAccessPairing>;
+    onDevices: (callback: (devices: RemoteAccessDevices) => void) => () => void;
+    revokeDevice: (input: { readonly sessionId: AuthSessionId }) => Promise<void>;
   };
   git: {
     githubRepository: (input: GitHubRepositoryInput) => Promise<GitHubRepositoryResult>;

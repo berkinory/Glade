@@ -298,6 +298,7 @@ describe("WsTransport", () => {
         shellSubscribed: true,
         threadSubscriptions: new Map([[threadId, input]]),
         projectFileSubscriptions: new Map([[fileKey, watchedFile]]),
+        stateStreamSubscriptions: new Map(),
         startProjectFileChangeStream,
         runtime: null,
         clientScope: null,

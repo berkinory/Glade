@@ -1,6 +1,7 @@
 interface Subscription<Input, Event> {
   readonly input: Input;
   readonly listeners: Set<(event: Event) => void>;
+  latest?: { readonly event: Event };
 }
 
 export class WsScopedSubscriptions<Client, Input, Event> {
@@ -18,6 +19,9 @@ export class WsScopedSubscriptions<Client, Input, Event> {
         emit: (event: Event) => void,
         restart: () => void,
       ) => void;
+      // For streams whose every event is the whole state: a listener that joins a running stream
+      // gets the latest state at once instead of waiting for the next change.
+      readonly replayLatest?: boolean;
     },
   ) {}
 
@@ -35,6 +39,7 @@ export class WsScopedSubscriptions<Client, Input, Event> {
       key,
       subscription.input,
       (event) => {
+        if (this.source.replayLatest) subscription.latest = { event };
         for (const listener of subscription.listeners) {
           try {
             listener(event);
@@ -56,6 +61,7 @@ export class WsScopedSubscriptions<Client, Input, Event> {
       this.entries.set(key, subscription);
     }
     subscription.listeners.add(listener);
+    if (subscription.latest) listener(subscription.latest.event);
     const selected = subscription;
     if (isNew)
       void this.source

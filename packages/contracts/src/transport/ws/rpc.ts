@@ -102,6 +102,13 @@ import {
 import { WsBrowserCommandRpc, WsBrowserSubscribeTabsRpc } from "./browserRpc";
 import { WsComputerRevokeGrantRpc, WsComputerSubscribeRpc } from "./computerRpc";
 import {
+  WsRemoteAccessCreatePairingRpc,
+  WsRemoteAccessRevokeDeviceRpc,
+  WsRemoteAccessSubscribeDevicesRpc,
+  WsRemoteAccessSubscribeRpc,
+  WsRemoteAccessUpdateRpc,
+} from "./remoteAccessRpc";
+import {
   WsServerGetConfigRpc,
   WsServerGetEnvironmentRpc,
   WsServerGetSettingsRpc,
@@ -234,6 +241,11 @@ export const WsFeatureRpcGroup = RpcGroup.make(
   WsBrowserCommandRpc,
   WsComputerSubscribeRpc,
   WsComputerRevokeGrantRpc,
+  WsRemoteAccessSubscribeRpc,
+  WsRemoteAccessUpdateRpc,
+  WsRemoteAccessCreatePairingRpc,
+  WsRemoteAccessSubscribeDevicesRpc,
+  WsRemoteAccessRevokeDeviceRpc,
   WsServerGetConfigRpc,
   WsServerGetEnvironmentRpc,
   WsServerGetSettingsRpc,

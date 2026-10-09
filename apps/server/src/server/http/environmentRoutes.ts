@@ -8,17 +8,21 @@ import {
   WS_PROTOCOL_MIN_REVISION,
 } from "@glade/contracts/transport/ws/wsCompatibility";
 import { Effect } from "effect";
-import { HttpRouter, HttpServerResponse } from "effect/unstable/http";
+import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
 
 import { ServerAuth } from "../../auth/Services/ServerAuth";
 import { ServerEnvironment } from "../../environment/Services/ServerEnvironment";
+import { authDescriptorFor } from "../../remoteAccess/remoteRequests";
 
 export const environmentDescriptorRouteLayer = HttpRouter.add(
   "GET",
   ENVIRONMENT_DESCRIPTOR_PATH,
   Effect.gen(function* () {
     const environment = yield* (yield* ServerEnvironment).getDescriptor;
-    const auth = yield* (yield* ServerAuth).getDescriptor();
+    const auth = authDescriptorFor(
+      yield* HttpServerRequest.HttpServerRequest,
+      yield* (yield* ServerAuth).getDescriptor(),
+    );
     return HttpServerResponse.jsonUnsafe(
       {
         environmentId: environment.environmentId,

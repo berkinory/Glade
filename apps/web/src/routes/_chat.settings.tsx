@@ -2,6 +2,7 @@ import { McpSettingsPanel } from "~/components/settings/McpSettingsPanel";
 import { PluginsSettingsPanel } from "~/components/settings/PluginsSettingsPanel";
 import { ComputerSettings } from "~/components/computer/ComputerSettings";
 import { SshHostsSettingsPanel } from "~/components/settings/SshHostsSettingsPanel";
+import { RemoteAccessSettingsPanel } from "~/components/settings/remoteAccess/RemoteAccessSettingsPanel";
 import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
@@ -843,6 +844,8 @@ function SettingsRouteView() {
         return <ComputerSettings />;
       case "ssh":
         return <SshHostsSettingsPanel />;
+      case "remote":
+        return <RemoteAccessSettingsPanel />;
       default:
         return null;
     }

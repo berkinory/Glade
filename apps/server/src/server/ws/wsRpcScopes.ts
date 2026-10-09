@@ -2,6 +2,7 @@ import { ORCHESTRATION_WS_METHODS } from "@glade/contracts/orchestration/rpc";
 import type { AuthScope } from "@glade/contracts/transport/auth/auth";
 import { BROWSER_WS_METHODS } from "@glade/contracts/transport/ws/browserRpc";
 import { COMPUTER_WS_METHODS } from "@glade/contracts/transport/ws/computerRpc";
+import { REMOTE_ACCESS_WS_METHODS } from "@glade/contracts/transport/ws/remoteAccessRpc";
 import type { WsFeatureRpcGroup } from "@glade/contracts/transport/ws/rpc";
 import { WS_METHODS } from "@glade/contracts/transport/ws/ws";
 import type * as RpcGroup from "effect/unstable/rpc/RpcGroup";
@@ -105,6 +106,11 @@ export const WS_RPC_REQUIRED_SCOPES: Record<WsFeatureRpcTag, AuthScope> = {
   [BROWSER_WS_METHODS.command]: "orchestration:operate",
   [COMPUTER_WS_METHODS.subscribe]: "host:control",
   [COMPUTER_WS_METHODS.revokeGrant]: "host:control",
+  [REMOTE_ACCESS_WS_METHODS.subscribe]: "access:write",
+  [REMOTE_ACCESS_WS_METHODS.update]: "access:write",
+  [REMOTE_ACCESS_WS_METHODS.createPairing]: "access:write",
+  [REMOTE_ACCESS_WS_METHODS.subscribeDevices]: "access:write",
+  [REMOTE_ACCESS_WS_METHODS.revokeDevice]: "access:write",
 
   [WS_METHODS.serverGetConfig]: "orchestration:read",
   [WS_METHODS.serverGetEnvironment]: "orchestration:read",

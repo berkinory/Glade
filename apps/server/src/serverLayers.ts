@@ -54,6 +54,7 @@ import { ThreadDiagnosticsQueryLive } from "./diagnostics/Layers/ThreadDiagnosti
 import { ManagedAttachmentCleanupLive } from "./attachments/managedAttachmentCleanup";
 import { ProviderHealthLive } from "./provider/Layers/ProviderHealth";
 import { KeepAwakeLive } from "./keepAwake/Layers/KeepAwake";
+import { RemoteAccessLive } from "./remoteAccess/Layers/RemoteAccess";
 import { makeServerProviderLayer } from "./provider/core/runtimeLayer";
 
 function makeServerRuntimeServicesLayer(
@@ -153,6 +154,10 @@ function makeServerRuntimeServicesLayer(
     authControlPlaneLayer,
     serverAuthLayer,
   );
+  const remoteAccessLayer = RemoteAccessLive.pipe(
+    Layer.provide(authServicesLayer),
+    Layer.provide(ServerEnvironmentLive),
+  );
   const gitActionRunsLayer = GitActionRunsLive.pipe(
     Layer.provide(Layer.mergeAll(GitLayerLive, sessionCredentialLayer)),
   );
@@ -195,6 +200,7 @@ function makeServerRuntimeServicesLayer(
     ProfileStatsQueryLive,
     ThreadMessageSearchLive,
     authServicesLayer,
+    remoteAccessLayer,
     ServerLifecycleEventsLive,
     ServerEventLoopMonitorLive,
     ServerRuntimeStartupLive,

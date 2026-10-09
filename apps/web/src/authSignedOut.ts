@@ -11,7 +11,7 @@ function renderSignedOutScreen(): void {
         <div aria-hidden="true" style="position:absolute;inset:0 0 auto auto;width:128px;height:8px;background:#d6ff55"></div>
         <p style="margin:0 0 22px;color:#d6ff55;font:600 12px/1.2 'JetBrains Mono',monospace;letter-spacing:.16em;text-transform:uppercase">Session closed</p>
         <h1 id="signed-out-title" tabindex="-1" style="max-width:470px;margin:0;color:#fffdf7;font-size:clamp(36px,7vw,58px);font-weight:600;line-height:.96;letter-spacing:-.05em">This browser no longer controls Glade.</h1>
-        <p style="max-width:440px;margin:26px 0 0;color:#b8bbb2;font-size:16px;line-height:1.65">The session and its live connections were revoked. To reconnect, generate a fresh pairing link from an active owner session and open it in this browser.</p>
+        <p style="max-width:440px;margin:26px 0 0;color:#b8bbb2;font-size:16px;line-height:1.65">This device was removed from Glade. To use it again, pair it from Settings → Remote access on the machine running Glade.</p>
       </section>
     </main>`;
   root.querySelector<HTMLElement>("h1")?.focus();

@@ -11,6 +11,7 @@ import { ServerAuth } from "../../auth/Services/ServerAuth";
 import { SessionCredentialService } from "../../auth/Services/SessionCredentialService";
 import { makeEffectAuthRequest } from "../../auth/effectHttp";
 import { roleHasScope } from "../../auth/sessionScopes";
+import { authDescriptorFor } from "../../remoteAccess/remoteRequests";
 import { deriveAuthClientMetadata } from "../../auth/utils";
 import { readEffectJson, mapPayloadError } from "./httpBody";
 import { requireAuthenticatedMutationRequest } from "./requestAuthorization";
@@ -51,7 +52,11 @@ export const authEffectRouteLayer = HttpRouter.add(
     const authRequest = makeEffectAuthRequest(request);
 
     if (request.method === "GET" && url.pathname === "/api/auth/session") {
-      return HttpServerResponse.jsonUnsafe(yield* serverAuth.getSessionState(authRequest));
+      const state = yield* serverAuth.getSessionState(authRequest);
+      return HttpServerResponse.jsonUnsafe({
+        ...state,
+        auth: authDescriptorFor(request, state.auth),
+      });
     }
 
     if (request.method === "POST" && url.pathname === "/api/auth/bootstrap") {

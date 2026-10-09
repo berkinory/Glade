@@ -14,6 +14,7 @@ import {
   LimitationIcon,
   CursorInWindowIcon,
   ServerStack01Icon,
+  ComputerPhoneSyncIcon,
 } from "~/lib/icons";
 import type { IconComponent } from "~/lib/iconComponent";
 const SETTINGS_SECTION_IDS = [
@@ -34,6 +35,7 @@ const SETTINGS_SECTION_IDS = [
   "usage",
   "advanced",
   "ssh",
+  "remote",
 ] as const;
 
 export type SettingsSectionId = (typeof SETTINGS_SECTION_IDS)[number];
@@ -109,6 +111,15 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
     description:
       "Run chats on other machines over SSH. Their projects sit in the sidebar with yours.",
     icon: ServerStack01Icon,
+    desktopOnly: true,
+  },
+  {
+    id: "remote",
+    group: "app",
+    label: "Remote access",
+    description:
+      "Use Glade from your phone or another computer. Paired devices connect straight to this machine.",
+    icon: ComputerPhoneSyncIcon,
     desktopOnly: true,
   },
   {

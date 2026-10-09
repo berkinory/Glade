@@ -4,7 +4,7 @@ import { WsScopedSubscriptions } from "./wsScopedSubscriptions";
 import type { GitStatusWatchInput, GitStatusStreamEvent } from "@glade/contracts/git/git";
 import type { BrowserTabsChanged } from "@glade/contracts/browser/browserHost";
 import type { BrowserTabsSubscribeInput } from "@glade/contracts/transport/ws/browserRpc";
-import type { ComputerState } from "@glade/contracts/transport/ws/computerRpc";
+import type { StateStreamEvents, StateStreamMethod } from "./wsStateStreams";
 import { ORCHESTRATION_WS_METHODS } from "@glade/contracts/orchestration/rpc";
 import {
   WS_GIT_ACTION_REATTACH_CAPABILITY,
@@ -128,10 +128,10 @@ export abstract class WsTransportBase {
     emit: (event: BrowserTabsChanged) => void,
     restart: () => void,
   ): void;
-  protected abstract startComputerStateStream(
+  protected abstract startStateStream(
     client: RpcClientInstance,
-    key: string,
-    emit: (event: ComputerState) => void,
+    method: StateStreamMethod,
+    emit: (event: unknown) => void,
     restart: () => void,
   ): void;
   protected abstract refreshThreadSubscriptionInput(threadId: string): unknown;
@@ -210,11 +210,10 @@ export abstract class WsTransportBase {
     BrowserTabsSubscribeInput,
     BrowserTabsChanged
   > | null = null;
-  private computerStateSubscriptions: WsScopedSubscriptions<
-    RpcClientInstance,
-    null,
-    ComputerState
-  > | null = null;
+  private readonly stateStreamSubscriptions = new Map<
+    StateStreamMethod,
+    WsScopedSubscriptions<RpcClientInstance, null, unknown>
+  >();
   protected compatibility: WsBootstrapNegotiateResult | null = null;
   protected compatibilityIssue: WsCompatibilityError | null = null;
   protected lastServerInstanceId: string | null = null;
@@ -527,15 +526,24 @@ export abstract class WsTransportBase {
     });
     return this.browserTabsSubscriptions.subscribe(input, listener);
   }
-  subscribeComputerState(listener: (event: ComputerState) => void): () => void {
-    this.computerStateSubscriptions ??= new WsScopedSubscriptions({
-      key: () => "computer.state",
-      getClient: () => this.getClient(),
-      stop: (key) => this.stopStream(key),
-      start: (client, key, _input, emit, restart) =>
-        this.startComputerStateStream(client, key, emit, restart),
-    });
-    return this.computerStateSubscriptions.subscribe(null, listener);
+  // One server stream per method, shared by every listener and restarted after a reconnect.
+  subscribeStateStream<M extends StateStreamMethod>(
+    method: M,
+    listener: (event: StateStreamEvents[M]) => void,
+  ): () => void {
+    let subscriptions = this.stateStreamSubscriptions.get(method);
+    if (!subscriptions) {
+      subscriptions = new WsScopedSubscriptions({
+        key: () => method,
+        getClient: () => this.getClient(),
+        stop: (key) => this.stopStream(key),
+        start: (client, _key, _input, emit, restart) =>
+          this.startStateStream(client, method, emit, restart),
+        replayLatest: true,
+      });
+      this.stateStreamSubscriptions.set(method, subscriptions);
+    }
+    return subscriptions.subscribe(null, listener as (event: unknown) => void);
   }
   getLatestPush<C extends WsPushChannel>(channel: C): WsPushMessage<C> | null {
     const latest = this.latestPushByChannel.get(channel);
@@ -620,7 +628,7 @@ export abstract class WsTransportBase {
     this.projectFileSubscriptions.clear();
     this.gitStatusSubscriptions?.dispose();
     this.browserTabsSubscriptions?.dispose();
-    this.computerStateSubscriptions?.dispose();
+    for (const subscriptions of this.stateStreamSubscriptions.values()) subscriptions.dispose();
     this.threadStreamFailureListeners.clear();
     // Dispose can race with initial connection or reconnect promises. Mark them handled before closing
     // the runtime so test/browser teardown stays quiet.
@@ -968,7 +976,9 @@ export abstract class WsTransportBase {
         }
         this.gitStatusSubscriptions?.restart(client);
         this.browserTabsSubscriptions?.restart(client);
-        this.computerStateSubscriptions?.restart(client);
+        for (const subscriptions of this.stateStreamSubscriptions.values()) {
+          subscriptions.restart(client);
+        }
         this.reconnectFailures = 0;
         return client;
       } catch (error) {

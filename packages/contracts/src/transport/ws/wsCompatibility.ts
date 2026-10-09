@@ -40,6 +40,8 @@ export const WS_GIT_ACTION_REATTACH_CAPABILITY = "git.action-reattach";
 export const WS_TERMINAL_IDLE_INPUT_CAPABILITY = "terminal.idle-input";
 // Older servers have no event-loop status; clients then explain only their own observations.
 export const WS_SERVER_RUNTIME_STATUS_CAPABILITY = "server.runtime-status";
+// Older servers cannot open a listener for other devices or pair them.
+export const WS_REMOTE_ACCESS_CAPABILITY = "server.remote-access";
 
 export const WS_CLIENT_REQUIRED_CAPABILITIES = [
   "orchestration.cursor-safe-streams",
@@ -58,6 +60,7 @@ export const WS_SERVER_CAPABILITIES = [
   WS_PROJECT_FILE_WATCH_CAPABILITY,
   WS_GIT_ACTION_REATTACH_CAPABILITY,
   WS_SERVER_RUNTIME_STATUS_CAPABILITY,
+  WS_REMOTE_ACCESS_CAPABILITY,
 
   "transport.http-negotiate",
 ] as const;

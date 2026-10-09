@@ -44,6 +44,7 @@ import type { TerminalEvent } from "@glade/contracts/terminal/terminal";
 import { WS_CHANNELS, WS_METHODS, type WsWelcomePayload } from "@glade/contracts/transport/ws/ws";
 import { BROWSER_WS_METHODS } from "@glade/contracts/transport/ws/browserRpc";
 import { COMPUTER_WS_METHODS } from "@glade/contracts/transport/ws/computerRpc";
+import { REMOTE_ACCESS_WS_METHODS } from "@glade/contracts/transport/ws/remoteAccessRpc";
 import type { WsBootstrapNegotiateResult } from "@glade/contracts/transport/ws/wsCompatibility";
 import { VOICE_TRANSCRIPTION_UPLOAD_ROUTE_PATH } from "@glade/shared/transport/binaryTransfer";
 import { Option, Schema } from "effect";
@@ -497,8 +498,18 @@ function buildNativeApi(transport: WsTransport, listeners: NativeApiListeners): 
         transport.request(BROWSER_WS_METHODS.command, command, { timeoutMs: 45_000 }),
     },
     computer: {
-      onState: (callback) => transport.subscribeComputerState(callback),
+      onState: (callback) =>
+        transport.subscribeStateStream(COMPUTER_WS_METHODS.subscribe, callback),
       revokeGrant: (target) => transport.request(COMPUTER_WS_METHODS.revokeGrant, target),
+    },
+    remoteAccess: {
+      onStatus: (callback) =>
+        transport.subscribeStateStream(REMOTE_ACCESS_WS_METHODS.subscribe, callback),
+      update: (input) => transport.request(REMOTE_ACCESS_WS_METHODS.update, input),
+      createPairing: () => transport.request(REMOTE_ACCESS_WS_METHODS.createPairing, {}),
+      onDevices: (callback) =>
+        transport.subscribeStateStream(REMOTE_ACCESS_WS_METHODS.subscribeDevices, callback),
+      revokeDevice: (input) => transport.request(REMOTE_ACCESS_WS_METHODS.revokeDevice, input),
     },
     git: {
       githubRepository: (input) => transport.request(WS_METHODS.gitGithubRepository, input),

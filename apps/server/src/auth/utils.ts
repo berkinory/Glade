@@ -7,11 +7,16 @@ import * as Crypto from "node:crypto";
 
 const SESSION_COOKIE_NAME = "glade_session";
 
+// Browsers share cookies across ports of one host, so each desktop install needs its own name. It is
+// derived from the install's state directory rather than its port: the desktop picks a new port on
+// every launch, and a name that changed with it would sign every paired device out.
 export function resolveSessionCookieName(input: {
   readonly mode: "web" | "desktop";
-  readonly port: number;
+  readonly stateDir: string;
 }): string {
-  return input.mode === "desktop" ? `${SESSION_COOKIE_NAME}_${input.port}` : SESSION_COOKIE_NAME;
+  if (input.mode !== "desktop") return SESSION_COOKIE_NAME;
+  const install = Crypto.createHash("sha256").update(input.stateDir).digest("hex").slice(0, 12);
+  return `${SESSION_COOKIE_NAME}_${install}`;
 }
 
 export function base64UrlEncode(input: string | Uint8Array): string {
