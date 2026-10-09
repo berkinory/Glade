@@ -2,6 +2,7 @@ import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ReactNode, useEffect, useState } from "react";
 import { useLocalDesktopActive } from "~/environments/activeEnvironment";
 import { useDesktopTopBarWindowControlsGutterClassName } from "~/hooks/useDesktopTopBarGutter";
+import { useIsMobile } from "~/hooks/useMediaQuery";
 import { disclosureWidthClassName } from "~/lib/disclosureMotion";
 import { cn } from "~/lib/utils";
 import { SIDEBAR_SECTION_LABEL_CLASS_NAME } from "~/sidebarRowStyles";
@@ -97,6 +98,7 @@ export function WorkspaceSidebar(props: {
   renderToolView: (view: ToolView, visible: boolean) => ReactNode;
 }) {
   const isLocalDesktop = useLocalDesktopActive();
+  const isMobile = useIsMobile();
   const open = useWorkspaceSidebarStore((store) => store.open);
   const view = useWorkspaceSidebarStore((store) => store.view);
   const { wrapperRef, width, startResize } = usePanelWidthResize({
@@ -124,6 +126,43 @@ export function WorkspaceSidebar(props: {
       );
     return props.renderToolView(shown, visible);
   };
+  const hasBrowserPages = browserTabs?.some((tab) => !isBlankBrowserTab(tab)) ?? false;
+  const title = (
+    <h2 className={cn("min-w-0 truncate", SIDEBAR_SECTION_LABEL_CLASS_NAME)}>
+      {WORKSPACE_SIDEBAR_VIEW_META[view].label}
+    </h2>
+  );
+  const views = (
+    <WorkspaceSidebarViews
+      key={props.threadId}
+      visibleView={open ? view : null}
+      renderView={renderView}
+    />
+  );
+  // A phone has no room beside the chat, so the views cover it and switch from a row in the header.
+  if (isMobile) {
+    return (
+      <div
+        className={cn(
+          "fixed inset-0 z-40 flex flex-col",
+          CHAT_BACKGROUND_CLASS_NAME,
+          !open && "hidden",
+        )}
+        aria-hidden={open ? undefined : true}
+        inert={!open}
+      >
+        <div className={cn(CHAT_SURFACE_HEADER_ROW_CLASS_NAME, "justify-between gap-2 px-3")}>
+          {title}
+          <WorkspaceActivityBar
+            threadId={props.threadId}
+            hasBrowserPages={hasBrowserPages}
+            layout="row"
+          />
+        </div>
+        {views}
+      </div>
+    );
+  }
   return (
     <>
       <div
@@ -149,21 +188,12 @@ export function WorkspaceSidebar(props: {
           <div
             className={cn(CHAT_SURFACE_HEADER_ROW_CLASS_NAME, "drag-region px-3", gutterClassName)}
           >
-            <h2 className={cn("min-w-0 truncate", SIDEBAR_SECTION_LABEL_CLASS_NAME)}>
-              {WORKSPACE_SIDEBAR_VIEW_META[view].label}
-            </h2>
+            {title}
           </div>
-          <WorkspaceSidebarViews
-            key={props.threadId}
-            visibleView={open ? view : null}
-            renderView={renderView}
-          />
+          {views}
         </div>
       </div>
-      <WorkspaceActivityBar
-        threadId={props.threadId}
-        hasBrowserPages={browserTabs?.some((tab) => !isBlankBrowserTab(tab)) ?? false}
-      />
+      <WorkspaceActivityBar threadId={props.threadId} hasBrowserPages={hasBrowserPages} />
     </>
   );
 }

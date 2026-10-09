@@ -11,11 +11,18 @@
 
 - Provider updates on an SSH host are offered in that host's chats and install on the host.
 - Pairing links are stored only in hashed form, repeated wrong pairing attempts are slowed down, and paired devices cannot pair or remove other devices.
+- Glade on a phone: the sidebar closes after you pick or start a chat, project buttons work on the first tap, the permission menu opens and fits the screen, and files, Git and the terminal open full screen from the chat header instead of a side strip.
+- A phone that cannot reach the computer for a while says it may be asleep, offline or have remote access off, instead of only "Reconnecting".
+- A machine cannot be added both as an SSH host and as a paired machine, so its projects never show twice.
+- Provider update prompts appear only on the computer running Glade, not on paired phones.
 
 ### Fixed
 
 - Opening a pairing link in a browser signs it in instead of always reporting that the link could not be used.
 - Adding a project on an SSH host with a path that starts with `~` no longer fails with a missing folder error.
+- When every remote access port is taken, Settings explains how to fix it instead of showing a system error.
+- "Pair a device" no longer looks available while no address can reach this machine.
+- The context usage gauge in the composer no longer looks like a loading spinner.
 
 ## 0.2.2 - 2026-10-09
 

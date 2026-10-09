@@ -1,7 +1,7 @@
 import type { DesktopPairedMachine } from "@glade/contracts/ipc/pairedMachines";
 import type { DesktopSshConnectionState } from "@glade/contracts/ipc/sshHosts";
-import { ENVIRONMENT_DESCRIPTOR_PATH } from "@glade/contracts/workspace/environment";
 import * as Crypto from "node:crypto";
+import { readEnvironmentDescriptor as readDescriptor } from "../environmentDescriptor";
 import { createMachineProxy, type MachineProxy } from "./machineProxy";
 import type { PairedMachineRecord, PairedMachinesStore } from "./pairedMachinesStore";
 import { parsePairingLink } from "./pairingLink";
@@ -16,6 +16,8 @@ export interface PairedMachines {
   add(link: string): Promise<DesktopPairedMachine>;
   remove(id: string): Promise<void>;
   connect(id: string): Promise<void>;
+  // The paired machine serving this environment, so an SSH host cannot add the same server twice.
+  pairedAs(environmentId: string): string | null;
   connectAll(): void;
   stop(): Promise<void>;
 }
@@ -27,23 +29,6 @@ function publicView(record: PairedMachineRecord): DesktopPairedMachine {
     environmentId: record.environmentId,
     address: record.address,
   };
-}
-
-async function readDescriptor(
-  baseUrl: string,
-): Promise<{ environmentId: string; label: string } | null> {
-  try {
-    const response = await fetch(new URL(ENVIRONMENT_DESCRIPTOR_PATH, baseUrl), {
-      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
-    });
-    if (!response.ok) return null;
-    const body = (await response.json()) as { environmentId?: unknown; label?: unknown };
-    return typeof body.environmentId === "string" && typeof body.label === "string"
-      ? { environmentId: body.environmentId, label: body.label }
-      : null;
-  } catch {
-    return null;
-  }
 }
 
 type RouteLookup =
@@ -283,6 +268,16 @@ export function createPairedMachines(input: {
     add,
     remove,
     connect,
+    pairedAs: (environmentId) => {
+      try {
+        return (
+          input.store.list().find((machine) => machine.environmentId === environmentId)?.label ??
+          null
+        );
+      } catch {
+        return null;
+      }
+    },
     connectAll: () => {
       let machines: ReadonlyArray<PairedMachineRecord>;
       try {

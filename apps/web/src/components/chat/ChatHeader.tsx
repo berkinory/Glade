@@ -1,4 +1,5 @@
-import { WorkflowCircle04Icon, PencilEdit02Icon } from "~/lib/icons";
+import { LayoutAlignRightIcon, WorkflowCircle04Icon, PencilEdit02Icon } from "~/lib/icons";
+import { useWorkspaceSidebarStore } from "~/workspaceSidebarStore";
 import { type EditorId } from "@glade/contracts/settings/editor";
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
@@ -154,6 +155,15 @@ export function ChatHeader({
         ) : null}
 
         {environment ? <EnvironmentToggle environment={environment} /> : null}
+        {/* The workspace views' own bar would take a tenth of a phone screen; this opens them. */}
+        {isMobile && !minimalChrome ? (
+          <ChatHeaderIconButton
+            label="Files, Git and terminal"
+            onClick={() => useWorkspaceSidebarStore.getState().setOpen(true)}
+          >
+            <LayoutAlignRightIcon className="size-3.5" />
+          </ChatHeaderIconButton>
+        ) : null}
       </div>
     </div>
   );

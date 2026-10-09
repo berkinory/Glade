@@ -5,6 +5,7 @@ import type { WsTransportState } from "~/wsTransportEvents";
 export interface ConnectionNotice {
   readonly kind:
     | "reconnecting"
+    | "unreachable"
     | "unresponsive"
     | "thread-paused"
     | "workspace-paused"
@@ -21,14 +22,23 @@ const seconds = (ms: number) => `${(ms / 1000).toFixed(1)} s`;
 export function resolveConnectionNotice(input: {
   readonly transportState: WsTransportState | null;
   readonly reconnectNoticeDue: boolean;
+  // A device reaching this machine over the network, whose outage has lasted long enough that it is
+  // likely the machine (asleep, offline, remote access off) rather than a blip.
+  readonly remoteOutageLong: boolean;
   readonly status: ConnectionStatusSnapshot;
   readonly threadUpdatesPaused: boolean;
 }): ConnectionNotice | null {
   const { status } = input;
   if (input.transportState === "connecting" || input.transportState === "closed") {
-    return input.reconnectNoticeDue
-      ? { kind: "reconnecting", message: `Reconnecting to ${APP_BASE_NAME}…` }
-      : null;
+    if (!input.reconnectNoticeDue) return null;
+    // Nothing answers whether the machine sleeps or turned remote access off, so the notice names
+    // every cause the user can check rather than guessing one.
+    return input.remoteOutageLong
+      ? {
+          kind: "unreachable",
+          message: `Can't reach the computer running ${APP_BASE_NAME}. It may be asleep or offline, or its remote access may be off. Still trying.`,
+        }
+      : { kind: "reconnecting", message: `Reconnecting to ${APP_BASE_NAME}…` };
   }
   if (input.transportState !== "open") return null;
   if (status.serverUnresponsive) {

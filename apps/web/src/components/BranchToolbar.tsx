@@ -170,7 +170,7 @@ export function RuntimeUsageControls({
           <ComposerPickerMenuPopup
             align="start"
             side="top"
-            className="runtime-mode-menu w-[26rem] min-w-[26rem]"
+            className="runtime-mode-menu w-[min(26rem,calc(100vw-1rem))] min-w-0"
           >
             <MenuRadioGroup
               className="flex flex-col gap-1"

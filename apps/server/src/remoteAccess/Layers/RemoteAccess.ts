@@ -73,8 +73,21 @@ interface ActiveListener {
   readonly sockets: Set<net.Socket>;
 }
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+// The settings row shows this as is, so it names the fix rather than the system error.
+function listenerFailureMessage(
+  preferredPort: number,
+  error: NodeJS.ErrnoException | null,
+): string {
+  const lastPort = preferredPort + PORT_ATTEMPTS - 1;
+  switch (error?.code) {
+    case "EADDRINUSE":
+      return `Other apps are using ports ${preferredPort} to ${lastPort}. Quit one of them, then turn remote access off and on again.`;
+    case "EACCES":
+    case "EPERM":
+      return `This system does not let Glade listen on port ${preferredPort}. Check your firewall or security software.`;
+    default:
+      return `Glade could not open a port for other devices${error?.code ? ` (${error.code})` : ""}. Turn remote access off and on again.`;
+  }
 }
 
 function listenOnce(
@@ -210,7 +223,7 @@ const make = Effect.gen(function* () {
         return { servers, port, sockets } satisfies ActiveListener;
       }
       return yield* new RemoteAccessError({
-        message: `Could not open port ${preferredPort} for other devices: ${errorMessage(lastError)}`,
+        message: listenerFailureMessage(preferredPort, lastError),
         cause: lastError,
       });
     });

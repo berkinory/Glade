@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useLocalDesktopActive } from "~/environments/activeEnvironment";
 import { useDesktopTopBarWindowControlsGutterClassName } from "~/hooks/useDesktopTopBarGutter";
 import { shortcutLabelForCommand } from "~/keybindings";
-import { LayoutAlignRightIcon } from "~/lib/icons";
+import { LayoutAlignRightIcon, XIcon } from "~/lib/icons";
 import { serverConfigQueryOptions } from "~/lib/serverReactQuery";
 import { cn } from "~/lib/utils";
 import {
@@ -61,12 +61,17 @@ function ActivityBarButton(props: {
 }
 
 // The strip on the window's right edge: a toggle for the right sidebar, then one icon per view.
-export function WorkspaceActivityBar(props: { threadId: ThreadId; hasBrowserPages: boolean }) {
+export function WorkspaceActivityBar(props: {
+  threadId: ThreadId;
+  hasBrowserPages: boolean;
+  layout?: "rail" | "row";
+}) {
   const isLocalDesktop = useLocalDesktopActive();
   const open = useWorkspaceSidebarStore((store) => store.open);
   const activeView = useWorkspaceSidebarStore((store) => store.view);
   const toggle = useWorkspaceSidebarStore((store) => store.toggle);
   const setOpen = useWorkspaceSidebarStore((store) => store.setOpen);
+  const show = useWorkspaceSidebarStore((store) => store.show);
   // Window caption buttons cover the top right corner, so the toggle moves below them.
   const captionButtonsOverlap = useDesktopTopBarWindowControlsGutterClassName() !== null;
   const keybindings =
@@ -88,6 +93,48 @@ export function WorkspaceActivityBar(props: { threadId: ThreadId; hasBrowserPage
         ? { label: "Open browser pages", pulse: false }
         : null,
   };
+  const viewButtons = WORKSPACE_SIDEBAR_VIEWS.filter(
+    (view) => view !== "browser" || isLocalDesktop,
+  ).map((view) => {
+    const { label, Icon, command } = WORKSPACE_SIDEBAR_VIEW_META[view];
+    const shortcut = shortcutLabelForCommand(keybindings, command);
+    const dot = dots[view];
+    return (
+      <ActivityBarButton
+        key={view}
+        label={label}
+        tooltip={shortcut ? `${label} (${shortcut})` : label}
+        active={open && activeView === view}
+        onClick={() => (props.layout === "row" ? show(view) : toggle(view))}
+      >
+        <span className="relative flex">
+          <Icon className="size-4" aria-hidden />
+          {dot ? (
+            <span
+              role="img"
+              aria-label={dot.label}
+              className={cn(
+                SIDEBAR_STATUS_DOT_CLASS_NAME,
+                "absolute -right-1 -top-1",
+                dot.pulse && "animate-pulse motion-reduce:animate-none",
+              )}
+            />
+          ) : null}
+        </span>
+      </ActivityBarButton>
+    );
+  });
+  // On a phone the views open full screen; their buttons sit in a row in its header, with a close.
+  if (props.layout === "row") {
+    return (
+      <nav aria-label="Workspace views" className="flex items-center gap-1">
+        {viewButtons}
+        <ActivityBarButton label="Close" tooltip="Close" onClick={() => setOpen(false)}>
+          <XIcon className="size-4" aria-hidden />
+        </ActivityBarButton>
+      </nav>
+    );
+  }
   const sidebarToggle = (
     <ActivityBarButton
       label="Toggle sidebar"
@@ -123,39 +170,7 @@ export function WorkspaceActivityBar(props: { threadId: ThreadId; hasBrowserPage
             : SEPARATOR_GAP_PX - (CHAT_SURFACE_HEADER_HEIGHT_PX - BUTTON_SIZE_PX) / 2,
         }}
       />
-      <div className="flex flex-col items-center gap-2 pt-2.5">
-        {WORKSPACE_SIDEBAR_VIEWS.filter((view) => view !== "browser" || isLocalDesktop).map(
-          (view) => {
-            const { label, Icon, command } = WORKSPACE_SIDEBAR_VIEW_META[view];
-            const shortcut = shortcutLabelForCommand(keybindings, command);
-            const dot = dots[view];
-            return (
-              <ActivityBarButton
-                key={view}
-                label={label}
-                tooltip={shortcut ? `${label} (${shortcut})` : label}
-                active={open && activeView === view}
-                onClick={() => toggle(view)}
-              >
-                <span className="relative flex">
-                  <Icon className="size-4" aria-hidden />
-                  {dot ? (
-                    <span
-                      role="img"
-                      aria-label={dot.label}
-                      className={cn(
-                        SIDEBAR_STATUS_DOT_CLASS_NAME,
-                        "absolute -right-1 -top-1",
-                        dot.pulse && "animate-pulse motion-reduce:animate-none",
-                      )}
-                    />
-                  ) : null}
-                </span>
-              </ActivityBarButton>
-            );
-          },
-        )}
-      </div>
+      <div className="flex flex-col items-center gap-2 pt-2.5">{viewButtons}</div>
     </nav>
   );
 }

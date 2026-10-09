@@ -55,8 +55,9 @@ export interface DesktopSshConnectionState {
   readonly progress: DesktopSshTransferProgress | null;
   // Why a failed connection needs the user rather than another automatic try: the host's Glade data
   // is not the one this app connected to before (reset on the host, or the address now reaches
-  // another machine), or ssh asks for a password, passphrase or host key nobody answered.
-  readonly issue: "machine-changed" | "needs-sign-in" | null;
+  // another machine), ssh asks for a password, passphrase or host key nobody answered, or the host's
+  // Glade is already paired with this app under Remote access.
+  readonly issue: "machine-changed" | "needs-sign-in" | "already-paired" | null;
   // The host server's address through the local tunnel. It stays the same across tunnel
   // reconnects and changes only when the host's server is replaced (a new token).
   readonly wsUrl: string | null;

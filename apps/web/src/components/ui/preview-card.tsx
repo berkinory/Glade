@@ -1,5 +1,6 @@
 import { PreviewCard as PreviewCardPrimitive } from "@base-ui/react/preview-card";
 
+import { useMediaQuery } from "~/hooks/useMediaQuery";
 import { cn } from "~/lib/utils";
 import { UI_MOTION_POPUP_CLASS } from "~/lib/uiMotion";
 import { APP_TOOLTIP_SURFACE_CLASS_NAME } from "../chat/composerPickerStyles";
@@ -7,7 +8,11 @@ import { APP_TOOLTIP_SURFACE_CLASS_NAME } from "../chat/composerPickerStyles";
 // Hover-triggered, interactive card (Base UI PreviewCard). Unlike a Tooltip it
 // stays open while the pointer moves into the popup, so its content can hold
 // clickable controls (used by the sidebar project/folder hover card).
-const PreviewCard = PreviewCardPrimitive.Root;
+function PreviewCard(props: PreviewCardPrimitive.Root.Props) {
+  // Touch screens have no hover: a tap would open the card and swallow the tap meant for the row.
+  const touch = useMediaQuery({ pointer: "coarse" });
+  return <PreviewCardPrimitive.Root {...props} open={touch ? false : props.open} />;
+}
 
 function PreviewCardTrigger(props: PreviewCardPrimitive.Trigger.Props) {
   return <PreviewCardPrimitive.Trigger data-slot="preview-card-trigger" {...props} />;

@@ -11,6 +11,7 @@ import {
   goForwardInAppHistory,
   resolveAppNavigationState,
 } from "../appNavigation";
+import { MobileSidebarAutoClose } from "../components/MobileSidebarAutoClose";
 import ShortcutsDialog from "../components/ShortcutsDialog";
 import { RecentViewSwitcher } from "../components/RecentViewSwitcher";
 import { shouldRenderTerminalWorkspace } from "../components/ChatView.logic.subagents";
@@ -544,6 +545,7 @@ function ChatRouteLayout() {
     >
       <ThreadRetentionMaintenanceToast />
       <ChatRouteGlobalShortcuts />
+      <MobileSidebarAutoClose />
       {sidebarElement}
       {mainContentShell}
     </SidebarProvider>

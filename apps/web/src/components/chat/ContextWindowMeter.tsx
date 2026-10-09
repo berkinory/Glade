@@ -58,7 +58,8 @@ export function ContextWindowMeter(props: {
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
-                  className="text-muted-foreground/25 dark:text-muted-foreground/40"
+                  // A faint track with a short arc reads as a loading spinner; a visible track reads as a gauge.
+                  className="text-muted-foreground/45 dark:text-muted-foreground/55"
                 />
                 <circle
                   cx="8"

@@ -7,6 +7,7 @@ import type {
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import * as Net from "node:net";
 import { waitForHttpReady } from "../backend/backendReadiness";
+import { readEnvironmentDescriptor } from "./environmentDescriptor";
 import type { RemoteServerBundleSource } from "./remoteServerBundle";
 import { ensureRemoteServer } from "./remoteServerInstall";
 import type { SshAskpass } from "./sshAskpass";
@@ -39,6 +40,8 @@ interface RemoteConnectionOptions {
   // The machine this host reached before, or null before its first connection.
   readonly knownMachine: () => string | null;
   readonly rememberMachine: (machineId: string) => void;
+  // The paired machine's name when this host's Glade is already paired with this app.
+  readonly pairedAs: (environmentId: string) => string | null;
   readonly onState: (state: DesktopSshConnectionState) => void;
   // A background reconnect needs the user (a password, a host key) and stopped retrying.
   readonly onGaveUp: () => void;
@@ -67,6 +70,9 @@ function errorMessage(error: unknown): string {
 // The host entry now reaches another machine (a reused alias or address). Its projects and chats
 // live on the first machine, so connecting would mix two machines' data under one host.
 class HostMachineChanged extends Error {}
+
+// The host's Glade is already paired with this app; connecting would show its data twice.
+class HostAlreadyPaired extends Error {}
 
 function declinedMessage(kind: DesktopSshPrompt["kind"], host: DesktopSshHost): string {
   switch (kind) {
@@ -211,6 +217,15 @@ export function createRemoteConnection(options: RemoteConnectionOptions): Remote
       tunnel?.kill();
       return;
     }
+    const identity = await readEnvironmentDescriptor(`http://127.0.0.1:${localPort}`);
+    const pairedAs = identity ? options.pairedAs(identity.environmentId) : null;
+    if (pairedAs !== null) {
+      tunnel?.kill();
+      failureIssue = "already-paired";
+      throw new HostAlreadyPaired(
+        `${host.label} is already paired as ${pairedAs} in Remote access. Remove it there to use it over SSH.`,
+      );
+    }
     stableTimer = setTimeout(() => {
       retryAttempt = 0;
     }, STABLE_CONNECTION_MS);
@@ -268,7 +283,11 @@ export function createRemoteConnection(options: RemoteConnectionOptions): Remote
       connect().catch((error: unknown) => {
         const message = describeFailure(error);
         options.log(`ssh reconnect to ${host.destination} failed: ${message}`);
-        if (session.declined() === null && !(error instanceof HostMachineChanged)) {
+        if (
+          session.declined() === null &&
+          !(error instanceof HostMachineChanged) &&
+          !(error instanceof HostAlreadyPaired)
+        ) {
           scheduleReconnect(message);
           return;
         }

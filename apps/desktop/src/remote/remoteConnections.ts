@@ -10,6 +10,7 @@ interface RemoteConnectionsOptions {
   readonly version: string;
   readonly devUrl: string | null;
   readonly askpass: SshAskpass;
+  readonly pairedAs: (environmentId: string) => string | null;
   readonly publish: (states: ReadonlyArray<DesktopSshConnectionState>) => void;
   readonly log: (message: string) => void;
 }
@@ -104,6 +105,7 @@ export function createRemoteConnections(options: RemoteConnectionsOptions): Remo
           askpass: options.askpass,
           knownMachine: () => options.store.machineOf(hostId),
           rememberMachine: (machineId) => options.store.rememberMachine(hostId, machineId),
+          pairedAs: options.pairedAs,
           onState: publish,
           onGaveUp: () => {
             recordFailure(hostId, entry.connection.state());

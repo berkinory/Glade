@@ -146,11 +146,14 @@ export function RemoteAccessControls(props: { readonly api: RemoteAccessApi }) {
 
       <SettingsSectionShell
         title="Devices"
+        // Without a route there is nothing to pair with; the empty state says what to turn on.
         action={
-          <Button size="xs" variant="outline" disabled={!canPair} onClick={() => setPairing(true)}>
-            <PlusIcon aria-hidden />
-            Pair a device
-          </Button>
+          canPair ? (
+            <Button size="xs" variant="outline" onClick={() => setPairing(true)}>
+              <PlusIcon aria-hidden />
+              Pair a device
+            </Button>
+          ) : null
         }
       >
         <SettingsCard>

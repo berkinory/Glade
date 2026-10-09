@@ -73,9 +73,11 @@ export function remoteHostAvailability(environment: {
       selectable: false,
       needsUser: true,
       reason:
-        environment.kind === "ssh"
-          ? "Needs attention. Reconnect it from SSH settings."
-          : "Needs attention. Pair it again from Remote access settings.",
+        environment.connection.issue === "already-paired"
+          ? "Already connected under Remote. Remove one of the two to use the other."
+          : environment.kind === "ssh"
+            ? "Needs attention. Reconnect it from SSH settings."
+            : "Needs attention. Pair it again from Remote access settings.",
     };
   }
   if (environment.incompatible) {

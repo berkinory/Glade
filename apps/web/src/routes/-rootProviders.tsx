@@ -28,6 +28,7 @@ import {
   withProviderUpdateTimeout,
 } from "../providerUpdates";
 import { prefetchModelsForNewThread } from "../lib/providerModelPrefetch";
+import { isRemoteClient } from "../lib/remoteClient";
 import { SETTINGS_TARGETS } from "../settingsNavigation";
 import { addWsTransportStateListener } from "../wsTransportEvents";
 
@@ -107,7 +108,9 @@ export function ProviderStatusRefreshCoordinator() {
     <ProviderUpdateNotifications
       environmentKey={LOCAL_ENVIRONMENT}
       hostLabel={null}
-      visible
+      // Updating provider CLIs is a decision for whoever sits at this machine; a paired phone
+      // finds pending updates in Settings → Providers instead of a prompt.
+      visible={!isRemoteClient}
       liveVersionCheckCompleted={providerUpdateRefreshEnabled && liveVersionCheckCompleted}
     />
   );

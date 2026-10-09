@@ -9,6 +9,7 @@ import {
 } from "~/connectionStatus";
 import { useActiveEnvironment } from "~/environments/activeEnvironment";
 import { LOCAL_ENVIRONMENT } from "~/environments/environmentKey";
+import { isRemoteClient } from "~/lib/remoteClient";
 import { readNativeApi } from "~/nativeApi";
 import { useStore } from "~/store";
 import { retryThreadDetailSync } from "~/threadDetailSyncRetry";
@@ -27,32 +28,40 @@ const CALM_STATUS: ConnectionStatusSnapshot = {
 
 // Short drops recover before anyone notices; recovery clears the notice at once.
 const RECONNECT_NOTICE_DELAY_MS = 1_500;
+const LONG_OUTAGE_MS = 15_000;
 
 function useTransportState() {
   const [state, setState] = useState<WsTransportState | null>(null);
   const [reconnectNoticeDue, setReconnectNoticeDue] = useState(false);
+  const [outageLong, setOutageLong] = useState(false);
   useEffect(() => {
     let timer: number | undefined;
+    let longTimer: number | undefined;
     const unsubscribe = addWsTransportStateListener(
       (next) => {
         setState(next);
         if (next === "connecting" || next === "closed") {
           // Closed and connecting alternate during one outage; keep the first deadline.
           timer ??= window.setTimeout(() => setReconnectNoticeDue(true), RECONNECT_NOTICE_DELAY_MS);
+          longTimer ??= window.setTimeout(() => setOutageLong(true), LONG_OUTAGE_MS);
           return;
         }
         window.clearTimeout(timer);
+        window.clearTimeout(longTimer);
         timer = undefined;
+        longTimer = undefined;
         setReconnectNoticeDue(false);
+        setOutageLong(false);
       },
       { replayCurrent: true },
     );
     return () => {
       unsubscribe();
       window.clearTimeout(timer);
+      window.clearTimeout(longTimer);
     };
   }, []);
-  return { state, reconnectNoticeDue };
+  return { state, reconnectNoticeDue, outageLong };
 }
 
 // Lives outside the editor so it never takes focus or touches the draft, and outside the
@@ -77,6 +86,7 @@ export function ComposerConnectionNotice({
   const notice = resolveConnectionNotice({
     transportState: local ? transport.state : "open",
     reconnectNoticeDue: local && transport.reconnectNoticeDue,
+    remoteOutageLong: isRemoteClient && transport.outageLong,
     status: local ? status : CALM_STATUS,
     threadUpdatesPaused: threadSyncFailed && !transcriptShowsSyncFailure,
   });
@@ -92,7 +102,10 @@ export function ComposerConnectionNotice({
               .catch(() => undefined)
         : null;
   const waiting =
-    notice.kind === "reconnecting" || notice.kind === "unresponsive" || notice.kind === "slow";
+    notice.kind === "reconnecting" ||
+    notice.kind === "unreachable" ||
+    notice.kind === "unresponsive" ||
+    notice.kind === "slow";
   return (
     <div className="pb-2">
       <ComposerStackedPanel

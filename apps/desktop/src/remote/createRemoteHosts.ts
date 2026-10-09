@@ -60,6 +60,8 @@ export function createRemoteHosts(dependencies: RemoteHostsDependencies): {
           : null,
     }),
     askpass,
+    // Paired machines are created below; the lookup runs only once a host connects.
+    pairedAs: (environmentId) => pairedMachines.pairedAs(environmentId),
     publish: (states) => sendToWindows(DESKTOP_IPC_CHANNELS.sshHostStates, states),
     log: dependencies.log,
   });
