@@ -44,8 +44,9 @@ host's editor, or read thread diagnostics; those stay with the machine's owner.
 - **A phone cannot open the link on the local network**: check that both are on the same network
   and that the machine's firewall allows incoming connections for Glade (Windows asks the first
   time).
-- **The Tailscale address does not open on the Mac itself**: macOS Tailscale cannot reach its own
-  Serve address. Other devices on the tailnet can.
+- **The Tailscale address hangs right after turning on HTTPS**: the first connection waits while
+  Tailscale gets the machine's certificate, which can take a few minutes. Later connections are
+  immediate.
 - **Chats stop when the Mac sleeps**: turn on **Keep Mac awake** in Chat settings.
 
 ## SSH hosts
