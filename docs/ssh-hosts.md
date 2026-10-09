@@ -17,7 +17,7 @@ your machine.
   The project picker of a chat on that host adds projects too.
 - **Host status** is a dot wherever a host is offered: green connected, amber connecting, grey
   unreachable, red waiting for you. Grey hosts are not offered and are retried in the background
-  every 45 s (and on wake); red hosts wait for you and open **Settings → SSH hosts** when clicked.
+  with growing pauses from 15 s up to 5 minutes (and right away on wake); red hosts wait for you and open **Settings → SSH hosts** when clicked.
 - **Reconnect** in a host's **…** menu in **Settings → SSH hosts** repairs it: it drops the
   connection, forgets the recorded machine, connects again asking any sign-in questions, and installs
   Glade there when it is missing. A healthy host just reconnects; nothing is reinstalled.

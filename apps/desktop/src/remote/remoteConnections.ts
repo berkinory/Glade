@@ -1,5 +1,6 @@
 import type { DesktopSshConnectionState } from "@glade/contracts/ipc/sshHosts";
 import { createRemoteConnection, type RemoteConnection } from "./remoteConnection";
+import { retryDelayMs, type RetryPolicy } from "./retryBackoff";
 import type { RemoteServerBundleSource } from "./remoteServerBundle";
 import type { SshAskpass } from "./sshAskpass";
 import type { SshHostsStore } from "./sshHostsStore";
@@ -18,7 +19,7 @@ interface RemoteConnectionsOptions {
 // A host that could not be reached (offline, asleep, network down) is tried again in the background,
 // so the sidebar and pickers show it as soon as it answers. Failures that need the user (a changed
 // machine, a password or host key) wait for them instead.
-const BACKGROUND_RETRY_MS = 45_000;
+const BACKGROUND_RETRY: RetryPolicy = { baseMs: 15_000, maxMs: 5 * 60_000 };
 
 interface OpenConnection {
   readonly connection: RemoteConnection;
@@ -42,6 +43,7 @@ export function createRemoteConnections(options: RemoteConnectionsOptions): Remo
   const open = new Map<string, OpenConnection>();
   const failures = new Map<string, DesktopSshConnectionState>();
   const retryTimers = new Map<string, NodeJS.Timeout>();
+  const retryAttempts = new Map<string, number>();
 
   function cancelRetry(hostId: string): void {
     const timer = retryTimers.get(hostId);
@@ -53,13 +55,18 @@ export function createRemoteConnections(options: RemoteConnectionsOptions): Remo
     failures.set(hostId, state);
     cancelRetry(hostId);
     if (state.issue !== null) return;
+    const attempt = retryAttempts.get(hostId) ?? 0;
+    retryAttempts.set(hostId, attempt + 1);
     retryTimers.set(
       hostId,
-      setTimeout(() => {
-        retryTimers.delete(hostId);
-        if (open.has(hostId) || !failures.has(hostId)) return;
-        void connections.connect(hostId, { interactive: false }).catch(() => undefined);
-      }, BACKGROUND_RETRY_MS),
+      setTimeout(
+        () => {
+          retryTimers.delete(hostId);
+          if (open.has(hostId) || !failures.has(hostId)) return;
+          void connections.connect(hostId, { interactive: false }).catch(() => undefined);
+        },
+        retryDelayMs(attempt, BACKGROUND_RETRY),
+      ),
     );
   }
 
@@ -117,6 +124,9 @@ export function createRemoteConnections(options: RemoteConnectionsOptions): Remo
       open.set(hostId, entry);
       entry.starting = entry.connection
         .start({ interactive })
+        .then(() => {
+          retryAttempts.delete(hostId);
+        })
         .catch((error: unknown) => {
           recordFailure(hostId, entry.connection.state());
           if (open.get(hostId) === entry) close(hostId);
@@ -131,6 +141,7 @@ export function createRemoteConnections(options: RemoteConnectionsOptions): Remo
     forget(hostId) {
       close(hostId);
       cancelRetry(hostId);
+      retryAttempts.delete(hostId);
       failures.delete(hostId);
       publish();
     },
@@ -140,6 +151,7 @@ export function createRemoteConnections(options: RemoteConnectionsOptions): Remo
       for (const [hostId, state] of failures) {
         if (state.issue !== null || !retryTimers.has(hostId)) continue;
         cancelRetry(hostId);
+        retryAttempts.delete(hostId);
         void connections.connect(hostId, { interactive: false }).catch(() => undefined);
       }
     },

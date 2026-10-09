@@ -2,12 +2,17 @@ import type { DesktopPairedMachine } from "@glade/contracts/ipc/pairedMachines";
 import type { DesktopSshConnectionState } from "@glade/contracts/ipc/sshHosts";
 import * as Crypto from "node:crypto";
 import { readEnvironmentDescriptor as readDescriptor } from "../environmentDescriptor";
+import { retryDelayMs, type RetryPolicy } from "../retryBackoff";
 import { createMachineProxy, type MachineProxy } from "./machineProxy";
 import type { PairedMachineRecord, PairedMachinesStore } from "./pairedMachinesStore";
 import { parsePairingLink } from "./pairingLink";
 
 const PROBE_TIMEOUT_MS = 5_000;
-const RETRY_MS = 15_000;
+const RETRY: RetryPolicy = { baseMs: 2_000, maxMs: 30_000 };
+// The proxy only notices a lost machine when the window sends something; a quiet connection (or one
+// whose network vanished without closing it) is noticed by this probe instead.
+const HEALTH_INTERVAL_MS = 10_000;
+const HEALTH_MISSES_BEFORE_RECONNECT = 2;
 const CLIENT_LABEL = "Glade desktop";
 
 export interface PairedMachines {
@@ -78,6 +83,8 @@ export function createPairedMachines(input: {
   const proxies = new Map<string, MachineProxy>();
   const stateById = new Map<string, DesktopSshConnectionState>();
   const retryTimers = new Map<string, NodeJS.Timeout>();
+  const retryAttempts = new Map<string, number>();
+  const healthTimers = new Map<string, NodeJS.Timeout>();
   const inFlight = new Map<string, Promise<void>>();
   const upstreamUrlById = new Map<string, string>();
 
@@ -91,12 +98,57 @@ export function createPairedMachines(input: {
 
   const scheduleRetry = (id: string) => {
     if (retryTimers.has(id)) return;
+    const attempt = retryAttempts.get(id) ?? 0;
+    retryAttempts.set(id, attempt + 1);
     retryTimers.set(
       id,
-      setTimeout(() => {
-        retryTimers.delete(id);
-        void connect(id).catch(() => undefined);
-      }, RETRY_MS),
+      setTimeout(
+        () => {
+          retryTimers.delete(id);
+          void connect(id).catch(() => undefined);
+        },
+        retryDelayMs(attempt, RETRY),
+      ),
+    );
+  };
+
+  const stopHealth = (id: string) => {
+    clearInterval(healthTimers.get(id));
+    healthTimers.delete(id);
+  };
+
+  // Clears pending retries and the backoff, for a connection someone asked for now.
+  const resetRetry = (id: string) => {
+    clearTimeout(retryTimers.get(id));
+    retryTimers.delete(id);
+    retryAttempts.delete(id);
+  };
+
+  // The route stopped answering as this machine: look for it again, keeping the window's address.
+  const lose = (id: string) => {
+    const state = stateById.get(id);
+    if (state?.phase !== "connected") return;
+    stopHealth(id);
+    upstreamUrlById.delete(id);
+    setState(id, { phase: "reconnecting", detail: null, issue: null, wsUrl: state.wsUrl });
+    void connect(id).catch(() => undefined);
+  };
+
+  const watchHealth = (id: string, url: string, environmentId: string) => {
+    stopHealth(id);
+    let misses = 0;
+    healthTimers.set(
+      id,
+      setInterval(() => {
+        void readDescriptor(url).then((descriptor) => {
+          if (descriptor?.environmentId === environmentId) {
+            misses = 0;
+            return;
+          }
+          misses += 1;
+          if (misses >= HEALTH_MISSES_BEFORE_RECONNECT) lose(id);
+        });
+      }, HEALTH_INTERVAL_MS),
     );
   };
 
@@ -105,13 +157,7 @@ export function createPairedMachines(input: {
     if (existing) return existing;
     const proxy = await createMachineProxy({
       allowedOrigins: input.allowedOrigins,
-      onUpstreamLost: () => {
-        const state = stateById.get(id);
-        if (state?.phase !== "connected") return;
-        upstreamUrlById.delete(id);
-        setState(id, { phase: "reconnecting", detail: null, issue: null, wsUrl: state.wsUrl });
-        void connect(id).catch(() => undefined);
-      },
+      onUpstreamLost: () => lose(id),
     });
     proxies.set(id, proxy);
     return proxy;
@@ -120,13 +166,22 @@ export function createPairedMachines(input: {
   const establish = async (id: string): Promise<void> => {
     const record = input.store.get(id);
     if (!record) throw new Error("This machine is no longer paired.");
+    stopHealth(id);
     const previous = stateById.get(id);
-    setState(id, {
-      phase: previous?.phase === "connected" ? "reconnecting" : "connecting",
-      detail: null,
-      issue: null,
-      wsUrl: previous?.wsUrl ?? null,
-    });
+    // A background retry of an unreachable machine stays quiet; flipping between "Connecting" and
+    // "Could not connect" on every attempt is noise. The user's own attempts show progress.
+    const quietRetry = previous?.phase === "failed" && retryAttempts.has(id);
+    if (!quietRetry) {
+      setState(id, {
+        phase:
+          previous?.phase === "connected" || previous?.phase === "reconnecting"
+            ? "reconnecting"
+            : "connecting",
+        detail: null,
+        issue: null,
+        wsUrl: previous?.wsUrl ?? null,
+      });
+    }
     const signedOut = (): never => {
       setState(id, {
         phase: "failed",
@@ -167,6 +222,8 @@ export function createPairedMachines(input: {
       proxy.setUpstream({ baseUrl: new URL(route.url), sessionToken });
       upstreamUrlById.set(id, route.url);
     }
+    retryAttempts.delete(id);
+    watchHealth(id, route.url, route.environmentId);
     setState(id, { phase: "connected", detail: null, issue: null, wsUrl: proxy.wsUrl });
   };
 
@@ -244,8 +301,8 @@ export function createPairedMachines(input: {
 
   const remove: PairedMachines["remove"] = async (id) => {
     const record = input.store.get(id);
-    clearTimeout(retryTimers.get(id));
-    retryTimers.delete(id);
+    resetRetry(id);
+    stopHealth(id);
     await proxies.get(id)?.close();
     proxies.delete(id);
     upstreamUrlById.delete(id);
@@ -267,7 +324,10 @@ export function createPairedMachines(input: {
     states: () => [...stateById.values()],
     add,
     remove,
-    connect,
+    connect: (id) => {
+      resetRetry(id);
+      return connect(id);
+    },
     pairedAs: (environmentId) => {
       try {
         return (
@@ -289,11 +349,17 @@ export function createPairedMachines(input: {
         );
         return;
       }
-      for (const machine of machines) void connect(machine.id).catch(() => undefined);
+      // Startup and wake: the network may be back, so nobody waits out a long backoff.
+      for (const machine of machines) {
+        resetRetry(machine.id);
+        void connect(machine.id).catch(() => undefined);
+      }
     },
     stop: async () => {
       for (const timer of retryTimers.values()) clearTimeout(timer);
+      for (const timer of healthTimers.values()) clearInterval(timer);
       retryTimers.clear();
+      healthTimers.clear();
       await Promise.all([...proxies.values()].map((proxy) => proxy.close()));
       proxies.clear();
     },

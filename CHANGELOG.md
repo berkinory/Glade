@@ -14,6 +14,7 @@
 - Glade on a phone: the sidebar closes after you pick or start a chat, project buttons work on the first tap, the permission menu opens and fits the screen, and files, Git and the terminal open full screen from the chat header instead of a side strip.
 - A phone that cannot reach the computer for a while says it may be asleep, offline or have remote access off, instead of only "Reconnecting".
 - A machine cannot be added both as an SSH host and as a paired machine, so its projects never show twice.
+- Paired machines and SSH hosts that drop are retried with growing pauses instead of on a fixed timer, and a paired machine that stops answering is noticed within seconds even when idle.
 - Provider update prompts appear only on the computer running Glade, not on paired phones.
 
 ### Fixed
