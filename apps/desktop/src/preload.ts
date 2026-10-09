@@ -60,6 +60,22 @@ contextBridge.exposeInMainWorld("desktopBridge", {
       ipcRenderer.invoke(IPC.sshHostsAnswerPrompt, { promptId, answer }),
     openInEditor: (input) => ipcRenderer.invoke(IPC.sshHostsOpenInEditor, input),
   },
+  pairedMachines: {
+    list: () => ipcRenderer.invoke(IPC.pairedMachinesList),
+    add: (link) => ipcRenderer.invoke(IPC.pairedMachinesAdd, link),
+    remove: (id) => ipcRenderer.invoke(IPC.pairedMachinesRemove, id),
+    connect: (id) => ipcRenderer.invoke(IPC.pairedMachinesConnect, id),
+    getStates: () => ipcRenderer.invoke(IPC.pairedMachinesGetStates),
+    onStates: (listener) => {
+      const wrappedListener = (_event: Electron.IpcRendererEvent, states: unknown) => {
+        if (Array.isArray(states)) listener(states as Parameters<typeof listener>[0]);
+      };
+      ipcRenderer.on(IPC.pairedMachineStates, wrappedListener);
+      return () => {
+        ipcRenderer.removeListener(IPC.pairedMachineStates, wrappedListener);
+      };
+    },
+  },
 
   getPathForFile: (file: File) => {
     try {

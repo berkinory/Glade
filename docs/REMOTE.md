@@ -57,6 +57,22 @@ apply to the host, with its own Tailscale and network addresses. A device paired
 working while this computer is off. On Linux, Tailscale HTTPS needs permission once:
 `sudo tailscale set --operator=$USER` on the host.
 
+## Using another machine's Glade
+
+The desktop app can also be the paired device. On the other machine, turn on remote access, choose
+**Pair a device** and copy the link. Here, open **Settings → Remote access**, choose **Pair with a
+machine** under **Other machines** and paste it. The machine's projects and chats appear in the
+sidebar, and new chats can run there from **Paired** in the composer's machine menu.
+
+The desktop keeps the machine's session encrypted with the system keychain and connects through a
+small proxy on loopback, so the session never appears in an address the window can see. It tries the
+machine's addresses in order and confirms each answers as the paired machine before using it. An
+unreachable machine is retried every 15 seconds and after the computer wakes. A machine that removes
+this app shows that it has to be paired again; pairing with a new link replaces the old entry.
+
+A machine already added under **SSH hosts** cannot also be paired, because its projects would
+appear twice. The paired app has the same limits as any paired device.
+
 ## Command-line server
 
 The server reads these options as flags or environment variables:

@@ -53,7 +53,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "./ui/input-group";
 import { Select, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 interface CreateLocalProjectSubmitValue {
   readonly source: "local";
-  // The machine the folder is on: this one or an SSH host.
+  // The machine the folder is on: this one, an SSH host or a paired machine.
   readonly environmentKey: EnvironmentKey;
   readonly workspaceRoot: string;
   readonly spaceId: SpaceId | null;

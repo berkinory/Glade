@@ -1,3 +1,4 @@
+import type { DesktopPairedMachine } from "@glade/contracts/ipc/pairedMachines";
 import type { DesktopSshConnectionState, DesktopSshHost } from "@glade/contracts/ipc/sshHosts";
 import { useSyncExternalStore } from "react";
 import type { StoreApi } from "zustand";
@@ -6,12 +7,16 @@ import { REMOTE_STORE_SIDE_EFFECTS } from "../storeSideEffects";
 import { initialState } from "../storeState";
 import { createEnvironmentNativeApi, type EnvironmentNativeApi } from "../wsNativeApi";
 import { setEnvironmentWsUrl } from "./environmentEndpoints";
-import { sshEnvironmentKey, type EnvironmentKey } from "./environmentKey";
+import { pairedEnvironmentKey, sshEnvironmentKey, type EnvironmentKey } from "./environmentKey";
 import { registerEnvironmentStore, unregisterEnvironmentStore } from "./environmentStores";
 
-export interface RemoteEnvironment {
+// A machine this window reaches: a saved SSH host, or another machine's Glade paired with this app.
+export type RemoteMachine =
+  | { readonly kind: "ssh"; readonly host: DesktopSshHost }
+  | { readonly kind: "paired"; readonly host: DesktopPairedMachine };
+
+export type RemoteEnvironment = RemoteMachine & {
   readonly key: EnvironmentKey;
-  readonly host: DesktopSshHost;
   readonly connection: DesktopSshConnectionState | null;
   // Present while the host's server is reachable through its tunnel.
   readonly api: EnvironmentNativeApi | null;
@@ -20,10 +25,11 @@ export interface RemoteEnvironment {
   // The host's server speaks a protocol this app does not. The desktop never downgrades a host, so
   // the host runs a newer Glade than this app.
   readonly incompatible: boolean;
-}
+};
 
 interface Entry {
-  host: DesktopSshHost;
+  readonly key: EnvironmentKey;
+  machine: RemoteMachine;
   connection: DesktopSshConnectionState | null;
   api: { readonly url: string; readonly value: EnvironmentNativeApi; stop: () => void } | null;
   readonly store: StoreApi<AppStore>;
@@ -31,17 +37,17 @@ interface Entry {
   incompatible: boolean;
 }
 
-// Every saved SSH host is an environment of this window, connected or not. A host's store keeps its
-// last projects and threads while it is offline, so the sidebar can still show them.
-const entries = new Map<string, Entry>();
+// Every saved SSH host and paired machine is an environment of this window, connected or not. Its
+// store keeps the last projects and threads while it is offline, so the sidebar can still show them.
+const entries = new Map<EnvironmentKey, Entry>();
 const listeners = new Set<() => void>();
 let snapshot: ReadonlyArray<RemoteEnvironment> = [];
 let started = false;
 
 function publish(): void {
   snapshot = [...entries.values()].map((entry) => ({
-    key: sshEnvironmentKey(entry.host.id),
-    host: entry.host,
+    ...entry.machine,
+    key: entry.key,
     connection: entry.connection,
     api: entry.api?.value ?? null,
     store: entry.store,
@@ -52,7 +58,7 @@ function publish(): void {
 }
 
 function closeApi(entry: Entry): void {
-  setEnvironmentWsUrl(sshEnvironmentKey(entry.host.id), null);
+  setEnvironmentWsUrl(entry.key, null);
   entry.incompatible = false;
   if (!entry.api) return;
   entry.api.stop();
@@ -93,44 +99,56 @@ function syncApi(entry: Entry): void {
       stopCompatibility();
     },
   };
-  setEnvironmentWsUrl(sshEnvironmentKey(entry.host.id), url);
+  setEnvironmentWsUrl(entry.key, url);
 }
 
-function applyHosts(hosts: ReadonlyArray<DesktopSshHost>): void {
-  const savedIds = new Set(hosts.map((host) => host.id));
-  for (const [hostId, entry] of entries) {
-    if (savedIds.has(hostId)) continue;
+function keyOf(machine: RemoteMachine): EnvironmentKey {
+  return machine.kind === "ssh"
+    ? sshEnvironmentKey(machine.host.id)
+    : pairedEnvironmentKey(machine.host.id);
+}
+
+function applyMachines(kind: RemoteMachine["kind"], machines: ReadonlyArray<RemoteMachine>): void {
+  const savedKeys = new Set(machines.map(keyOf));
+  for (const [key, entry] of entries) {
+    if (entry.machine.kind !== kind || savedKeys.has(key)) continue;
     closeApi(entry);
-    entries.delete(hostId);
-    unregisterEnvironmentStore(sshEnvironmentKey(hostId));
+    entries.delete(key);
+    unregisterEnvironmentStore(key);
   }
-  for (const host of hosts) {
-    const existing = entries.get(host.id);
+  for (const machine of machines) {
+    const key = keyOf(machine);
+    const existing = entries.get(key);
     if (existing) {
-      existing.host = host;
+      existing.machine = machine;
       continue;
     }
     const store = createAppStore({
-      environmentKey: sshEnvironmentKey(host.id),
+      environmentKey: key,
       initialState,
       effects: REMOTE_STORE_SIDE_EFFECTS,
       onProjectUiStateChanged: () => undefined,
     });
-    entries.set(host.id, {
-      host,
+    entries.set(key, {
+      key,
+      machine,
       connection: null,
       api: null,
       store,
       workspacePaths: null,
       incompatible: false,
     });
-    registerEnvironmentStore(sshEnvironmentKey(host.id), store);
+    registerEnvironmentStore(key, store);
   }
 }
 
-function applyStates(states: ReadonlyArray<DesktopSshConnectionState>): void {
-  for (const [hostId, entry] of entries) {
-    entry.connection = states.find((state) => state.hostId === hostId) ?? null;
+function applyStates(
+  kind: RemoteMachine["kind"],
+  states: ReadonlyArray<DesktopSshConnectionState>,
+): void {
+  for (const entry of entries.values()) {
+    if (entry.machine.kind !== kind) continue;
+    entry.connection = states.find((state) => state.hostId === entry.machine.host.id) ?? null;
     syncApi(entry);
   }
   publish();
@@ -139,22 +157,41 @@ function applyStates(states: ReadonlyArray<DesktopSshConnectionState>): void {
 async function refreshHosts(): Promise<void> {
   const api = window.desktopBridge?.sshHosts;
   if (!api) return;
-  applyHosts(await api.list());
-  applyStates(await api.getStates());
+  applyMachines(
+    "ssh",
+    (await api.list()).map((host) => ({ kind: "ssh", host })),
+  );
+  applyStates("ssh", await api.getStates());
 }
 
-// Loads saved hosts and connects them, so their projects appear without a visit to settings.
+async function refreshPairedMachines(): Promise<void> {
+  const api = window.desktopBridge?.pairedMachines;
+  if (!api) return;
+  applyMachines(
+    "paired",
+    (await api.list()).map((host) => ({ kind: "paired", host })),
+  );
+  applyStates("paired", await api.getStates());
+}
+
+// Loads saved hosts and paired machines and connects them, so their projects appear without a visit
+// to settings. The desktop connects paired machines on its own.
 export function startRemoteEnvironments(): void {
   const api = window.desktopBridge?.sshHosts;
   if (started || !api) return;
   started = true;
-  api.onStates(applyStates);
+  api.onStates((states) => applyStates("ssh", states));
   void refreshHosts().then(() => {
     // Nobody asked for these connections, so they never open a password or host key prompt.
-    for (const hostId of entries.keys()) {
-      void api.connect(hostId, { interactive: false }).catch(() => undefined);
+    for (const entry of entries.values()) {
+      if (entry.machine.kind !== "ssh") continue;
+      void api.connect(entry.machine.host.id, { interactive: false }).catch(() => undefined);
     }
   });
+  const paired = window.desktopBridge?.pairedMachines;
+  if (!paired) return;
+  paired.onStates((states) => applyStates("paired", states));
+  void refreshPairedMachines();
 }
 
 export async function saveRemoteHost(
@@ -176,6 +213,29 @@ export async function removeRemoteHost(hostId: string): Promise<void> {
 // Resolves once the host's server answers through its tunnel; progress arrives as state updates.
 export async function connectRemoteHost(hostId: string): Promise<void> {
   await window.desktopBridge?.sshHosts?.connect(hostId, { interactive: true });
+}
+
+// Pairs this app with another machine's Glade from a pairing link made in its Remote access settings.
+export async function addPairedMachine(link: string): Promise<DesktopPairedMachine> {
+  const api = window.desktopBridge?.pairedMachines;
+  if (!api) throw new Error("Pairing with another machine is available in the Glade desktop app.");
+  const machine = await api.add(link);
+  await refreshPairedMachines();
+  return machine;
+}
+
+export async function removePairedMachine(machineId: string): Promise<void> {
+  await window.desktopBridge?.pairedMachines?.remove(machineId);
+  await refreshPairedMachines();
+}
+
+// The user picked this machine or asked to retry it. An SSH host may ask for a password or a host key.
+export async function connectRemoteEnvironment(environment: RemoteMachine): Promise<void> {
+  if (environment.kind === "ssh") {
+    await connectRemoteHost(environment.host.id);
+    return;
+  }
+  await window.desktopBridge?.pairedMachines?.connect(environment.host.id);
 }
 
 // The user's reconnect from settings: starts the connection over, accepts the machine the host

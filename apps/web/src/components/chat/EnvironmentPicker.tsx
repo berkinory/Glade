@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useActiveEnvironment } from "~/environments/activeEnvironment";
 import type { EnvironmentKey } from "~/environments/environmentKey";
 import {
-  connectRemoteHost,
+  connectRemoteEnvironment,
   useRemoteEnvironments,
   type RemoteEnvironment,
 } from "~/environments/remoteEnvironments";
@@ -20,8 +20,8 @@ function pendingLabel(environment: RemoteEnvironment): string | null {
   return status.tone === "busy" && !status.reachable ? status.label : null;
 }
 
-// Where a new chat runs: this machine or one of the saved SSH hosts. Picking a host that is not
-// connected connects it first, installing Glade there when needed.
+// Where a new chat runs: this machine, a saved SSH host or a paired machine. Picking one that is not
+// connected connects it first, installing Glade on an SSH host when needed.
 export function EnvironmentPicker(props: {
   readonly onSelectEnvironment: (environmentKey: EnvironmentKey) => Promise<void>;
   readonly triggerClassName?: string;
@@ -33,10 +33,11 @@ export function EnvironmentPicker(props: {
   const pendingRemote = environments.find((environment) => environment.key === pendingKey);
   const pendingProgress = pendingRemote ? pendingLabel(pendingRemote) : null;
 
-  const select = async (environmentKey: EnvironmentKey, hostId: string | null) => {
+  const select = async (environmentKey: EnvironmentKey) => {
     setPendingKey(environmentKey);
     try {
-      if (hostId) await connectRemoteHost(hostId);
+      const remote = environments.find((environment) => environment.key === environmentKey);
+      if (remote) await connectRemoteEnvironment(remote);
       await props.onSelectEnvironment(environmentKey);
     } catch (error) {
       toastManager.add({
@@ -74,15 +75,7 @@ export function EnvironmentPicker(props: {
         }
       />
       <ComposerPickerMenuPopup align="start" side="top">
-        <EnvironmentMenuItems
-          onSelect={(environmentKey) =>
-            void select(
-              environmentKey,
-              environments.find((environment) => environment.key === environmentKey)?.host.id ??
-                null,
-            )
-          }
-        />
+        <EnvironmentMenuItems onSelect={(environmentKey) => void select(environmentKey)} />
       </ComposerPickerMenuPopup>
     </Menu>
   );

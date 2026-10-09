@@ -369,6 +369,15 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
       "remote access phone mobile tablet ipad iphone android pair device qr code tailscale lan wifi network https away",
   },
   {
+    id: "remote:machines",
+    section: "remote",
+    title: "Pair with a machine",
+    target: null,
+    applies: () => isElectron,
+    keywords:
+      "paired machines other computer another mac linux server glade link connect environment remote",
+  },
+  {
     id: "computer:content-blocker",
     section: "computer",
     title: "Block ads, trackers and cookie notices",

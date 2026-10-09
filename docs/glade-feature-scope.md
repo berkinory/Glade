@@ -68,7 +68,9 @@ are answered in the app; Windows hosts are not supported. See [SSH hosts](ssh-ho
 The desktop app can let paired phones, tablets and other computers use Glade on this machine,
 over Tailscale HTTPS or the local network, with no relay. Devices pair once with a one-time QR
 code, can be removed at any time, and cannot pair other devices, use Computer Use or open the
-host's editor. A native mobile app is not part of the product yet. See
+host's editor. The desktop app can also pair with another machine's Glade from a pairing link and
+show its projects next to local ones, like an SSH host. A native mobile app is not part of the
+product yet. See
 [Remote access](./REMOTE.md).
 
 ## Workspace editing

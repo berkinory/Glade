@@ -1,11 +1,19 @@
 import { app, BrowserWindow, powerMonitor } from "electron";
 import * as Path from "node:path";
-import { DESKTOP_SSH_HOSTS_PATH, isDevelopment, ROOT_DIR } from "../main/desktopEnvironment";
+import { GLADE_DESKTOP_ORIGIN } from "@glade/shared/platform/desktopIdentity";
+import {
+  DESKTOP_PAIRED_MACHINES_PATH,
+  DESKTOP_SSH_HOSTS_PATH,
+  isDevelopment,
+  ROOT_DIR,
+} from "../main/desktopEnvironment";
 import { DESKTOP_IPC_CHANNELS } from "../main/ipc/ipcChannels";
 import { createRemoteConnections, type RemoteConnections } from "./remoteConnections";
 import { createRemoteServerBundleSource } from "./remoteServerBundle";
 import { createSshAskpass, type SshAskpass } from "./sshAskpass";
 import { createSshHostsStore, type SshHostsStore } from "./sshHostsStore";
+import { createPairedMachines, type PairedMachines } from "./paired/pairedMachines";
+import { createPairedMachinesStore } from "./paired/pairedMachinesStore";
 
 interface RemoteHostsDependencies {
   readAppUpdateYml(): Record<string, string> | null;
@@ -28,6 +36,7 @@ export function createRemoteHosts(dependencies: RemoteHostsDependencies): {
   readonly store: SshHostsStore;
   readonly connections: RemoteConnections;
   readonly askpass: SshAskpass;
+  readonly pairedMachines: PairedMachines;
   stop(): void;
 } {
   const store = createSshHostsStore(DESKTOP_SSH_HOSTS_PATH);
@@ -35,11 +44,12 @@ export function createRemoteHosts(dependencies: RemoteHostsDependencies): {
     publish: (prompts) => sendToWindows(DESKTOP_IPC_CHANNELS.sshHostPrompts, prompts),
   });
   const updateConfig = dependencies.readAppUpdateYml();
+  const devUrl = isDevelopment ? (process.env.VITE_DEV_SERVER_URL ?? null) : null;
   const connections = createRemoteConnections({
     store,
     version: app.getVersion(),
     // The development renderer is served by Vite; host servers must trust it as an origin.
-    devUrl: isDevelopment ? (process.env.VITE_DEV_SERVER_URL ?? null) : null,
+    devUrl,
     bundles: createRemoteServerBundleSource({
       version: app.getVersion(),
       localDirectory: localBundleDirectory(),
@@ -52,15 +62,34 @@ export function createRemoteHosts(dependencies: RemoteHostsDependencies): {
     publish: (states) => sendToWindows(DESKTOP_IPC_CHANNELS.sshHostStates, states),
     log: dependencies.log,
   });
+  const pairedMachines = createPairedMachines({
+    store: createPairedMachinesStore(DESKTOP_PAIRED_MACHINES_PATH),
+    // Only this app's own windows may read what a paired machine answers.
+    allowedOrigins: new Set([GLADE_DESKTOP_ORIGIN, ...(devUrl ? [new URL(devUrl).origin] : [])]),
+    otherServerUrls: () =>
+      connections
+        .states()
+        .flatMap((state) => (state.wsUrl ? [state.wsUrl.replace(/^ws/u, "http")] : [])),
+    publish: (states) => sendToWindows(DESKTOP_IPC_CHANNELS.pairedMachineStates, states),
+    log: dependencies.log,
+  });
   // Tunnels rarely survive sleep; waiting out the backoff would leave hosts offline after wake.
-  void app.whenReady().then(() => powerMonitor.on("resume", () => connections.wakeAll()));
+  void app.whenReady().then(() => {
+    pairedMachines.connectAll();
+    powerMonitor.on("resume", () => {
+      connections.wakeAll();
+      pairedMachines.connectAll();
+    });
+  });
   return {
     store,
     connections,
     askpass,
+    pairedMachines,
     stop() {
       connections.stopAll();
       askpass.close();
+      void pairedMachines.stop();
     },
   };
 }

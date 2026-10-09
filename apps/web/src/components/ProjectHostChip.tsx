@@ -6,13 +6,13 @@ import type { Project } from "../types";
 import { SidebarMetaChipStack } from "./SidebarMetaChip";
 import { SidebarGlyph } from "./sidebarGlyphs";
 
-// Marks a project that lives on an SSH host, like a thread's fork or worktree chip. The host's
+// Marks a project that lives on an SSH host or a paired machine, like a thread's fork or worktree chip. The host's
 // connection state shows next to the composer of its chats, not here.
 export function ProjectHostChip(props: { readonly project: Project }) {
-  const host = useRemoteEnvironments().find(
-    (environment) => environment.key === props.project.environmentKey,
-  )?.host;
-  if (!host) return null;
+  const environment = useRemoteEnvironments().find(
+    (candidate) => candidate.key === props.project.environmentKey,
+  );
+  if (!environment) return null;
   return (
     <div
       className={cn(
@@ -24,7 +24,10 @@ export function ProjectHostChip(props: { readonly project: Project }) {
         chips={[
           {
             id: "ssh-host",
-            tooltip: `On ${host.label} over SSH`,
+            tooltip:
+              environment.kind === "ssh"
+                ? `On ${environment.host.label} over SSH`
+                : `On ${environment.host.label}`,
             icon: (
               <SidebarGlyph
                 icon={ServerStack01Icon}

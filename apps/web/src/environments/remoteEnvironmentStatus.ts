@@ -1,4 +1,5 @@
 import type { DesktopSshConnectionState } from "@glade/contracts/ipc/sshHosts";
+import type { SettingsSectionId } from "../settingsNavigation";
 
 export interface RemoteEnvironmentStatus {
   readonly label: string;
@@ -46,14 +47,22 @@ export interface RemoteHostAvailability {
   readonly tone: "connected" | "busy" | "offline" | "attention";
   // A chat or project can be placed on the host: only while it is connected.
   readonly selectable: boolean;
-  // The host waits for the user in Settings → SSH hosts: a changed machine, or a password or host key.
+  // The host waits for the user in its settings section: a changed machine, a password or host key,
+  // or a paired machine that signed this app out.
   readonly needsUser: boolean;
   readonly reason: string;
 }
 
+// Where the user fixes a machine that needs them: SSH hosts are repaired in the SSH settings, paired
+// machines are paired again from Remote access.
+export function remoteMachineSettingsSection(kind: "ssh" | "paired"): SettingsSectionId {
+  return kind === "ssh" ? "ssh" : "remote";
+}
+
 // Whether pickers offer a host. Only connected hosts are offered; unreachable ones are retried in the
-// background, and ones that need the user point to the SSH settings, where Reconnect repairs them.
+// background, and ones that need the user point to their settings.
 export function remoteHostAvailability(environment: {
+  readonly kind: "ssh" | "paired";
   readonly connection: DesktopSshConnectionState | null;
   readonly incompatible: boolean;
 }): RemoteHostAvailability {
@@ -63,7 +72,10 @@ export function remoteHostAvailability(environment: {
       tone: "attention",
       selectable: false,
       needsUser: true,
-      reason: "Needs attention. Reconnect it from SSH settings.",
+      reason:
+        environment.kind === "ssh"
+          ? "Needs attention. Reconnect it from SSH settings."
+          : "Needs attention. Pair it again from Remote access settings.",
     };
   }
   if (environment.incompatible) {

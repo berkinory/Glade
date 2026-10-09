@@ -21,6 +21,7 @@ import {
   SettingsSectionShell,
 } from "../SettingsPanelPrimitives";
 import { PairDeviceDialog } from "./PairDeviceDialog";
+import { PairedMachinesSection } from "./PairedMachinesSection";
 import { deviceActivity, deviceName, reachabilityText } from "./remoteAccess.logic";
 
 const TAILSCALE_DOWNLOAD_URL = "https://tailscale.com/download";
@@ -48,7 +49,12 @@ function useRemoteAccessDevices(api: RemoteAccessApi): RemoteAccessDevices | nul
 }
 
 export function RemoteAccessSettingsPanel() {
-  return <RemoteAccessControls api={ensureEnvironmentNativeApi(LOCAL_ENVIRONMENT).remoteAccess} />;
+  return (
+    <div className="space-y-6">
+      <RemoteAccessControls api={ensureEnvironmentNativeApi(LOCAL_ENVIRONMENT).remoteAccess} />
+      <PairedMachinesSection />
+    </div>
+  );
 }
 
 // Remote access of one machine: this one in Settings, or an SSH host from its menu. Each machine

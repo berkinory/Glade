@@ -2,13 +2,14 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useActiveEnvironment } from "~/environments/activeEnvironment";
 import {
-  connectRemoteHost,
+  connectRemoteEnvironment,
   useRemoteEnvironments,
   type RemoteEnvironment,
 } from "~/environments/remoteEnvironments";
 import {
   describeRemoteEnvironment,
   remoteHostAvailability,
+  remoteMachineSettingsSection,
   type RemoteEnvironmentStatus,
 } from "~/environments/remoteEnvironmentStatus";
 import { ServerStack01Icon } from "~/lib/icons";
@@ -69,12 +70,16 @@ export function RemoteEnvironmentStatusChip() {
   const status = chipStatus(environment, transport);
   const availability = remoteHostAvailability(environment);
   const tone = status.tone === "busy" ? "busy" : availability.tone;
-  // A host that needs the user is fixed in the SSH settings; an unreachable one can be retried here.
+  // A host that needs the user is fixed in its settings; an unreachable one can be retried here.
   const action = availability.needsUser
-    ? () => void navigate({ to: "/settings", search: { section: "ssh" } })
+    ? () =>
+        void navigate({
+          to: "/settings",
+          search: { section: remoteMachineSettingsSection(environment.kind) },
+        })
     : status.reachable
       ? null
-      : () => void connectRemoteHost(environment.host.id).catch(() => undefined);
+      : () => void connectRemoteEnvironment(environment).catch(() => undefined);
   const detail = status.tone === "connected" ? null : environment.connection?.detail;
 
   return (
@@ -108,7 +113,7 @@ export function RemoteEnvironmentStatusChip() {
           status.label,
           detail,
           availability.needsUser
-            ? "Click to open SSH settings."
+            ? `Click to open ${environment.kind === "ssh" ? "SSH" : "Remote access"} settings.`
             : action
               ? "Click to reconnect."
               : null,

@@ -12,14 +12,16 @@ function isRemoteEditor(editor: EditorId): editor is DesktopSshRemoteEditor {
 
 // Every installed editor opens local folders. On an SSH host only editors with a Remote-SSH
 // extension can, and only when the user's ssh config alone reaches the host (no port or key file
-// saved just in Glade).
+// saved just in Glade). A paired machine has no editor route from here.
 export function editorsForEnvironment(
   environmentKey: EnvironmentKey,
   installed: ReadonlyArray<EditorId>,
 ): ReadonlyArray<EditorId> {
   if (environmentKey === LOCAL_ENVIRONMENT) return installed;
-  const host = remoteEnvironment(environmentKey)?.host;
-  if (!host || host.port !== null || host.identityFile !== null) return [];
+  const environment = remoteEnvironment(environmentKey);
+  if (environment?.kind !== "ssh") return [];
+  const { host } = environment;
+  if (host.port !== null || host.identityFile !== null) return [];
   return installed.filter(isRemoteEditor);
 }
 
@@ -28,7 +30,11 @@ export async function openInRemoteEditor(
   path: string,
   editor: EditorId,
 ): Promise<void> {
-  const host = remoteEnvironment(environmentKey)?.host;
-  if (!host || !isRemoteEditor(editor)) return;
-  await window.desktopBridge?.sshHosts?.openInEditor({ hostId: host.id, path, editor });
+  const environment = remoteEnvironment(environmentKey);
+  if (environment?.kind !== "ssh" || !isRemoteEditor(editor)) return;
+  await window.desktopBridge?.sshHosts?.openInEditor({
+    hostId: environment.host.id,
+    path,
+    editor,
+  });
 }

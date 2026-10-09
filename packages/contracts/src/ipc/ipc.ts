@@ -13,6 +13,7 @@ import type {
   DesktopSshPrompt,
   DesktopSshRemoteEditor,
 } from "./sshHosts";
+import type { DesktopPairedMachine } from "./pairedMachines";
 import type { ServerKeepAwakeStatus } from "../server/keepAwake";
 import type { BrowserTabsChanged } from "../browser/browserHost";
 import type { BrowserPanelCommand, BrowserTabsSubscribeInput } from "../transport/ws/browserRpc";
@@ -409,6 +410,16 @@ export interface DesktopBridge {
       readonly path: string;
       readonly editor: DesktopSshRemoteEditor;
     }) => Promise<void>;
+  };
+
+  pairedMachines?: {
+    list: () => Promise<ReadonlyArray<DesktopPairedMachine>>;
+    // Pairs with the machine behind a link from its Pair a device dialog and connects to it.
+    add: (link: string) => Promise<DesktopPairedMachine>;
+    remove: (id: string) => Promise<void>;
+    connect: (id: string) => Promise<void>;
+    getStates: () => Promise<ReadonlyArray<DesktopSshConnectionState>>;
+    onStates: (listener: (states: ReadonlyArray<DesktopSshConnectionState>) => void) => () => void;
   };
 
   getPathForFile?: (file: File) => string | null;

@@ -31,6 +31,7 @@ import { createAppIdentity } from "./window/appIdentity";
 import { configureMediaPermissions } from "./window/mediaPermissionHandlers";
 import { createMainWindow } from "./window/mainWindow";
 import { registerSshHostsIpc } from "./ipc/sshHostsIpc";
+import { registerPairedMachinesIpc } from "./ipc/pairedMachinesIpc";
 import { createRemoteHosts } from "../remote/createRemoteHosts";
 
 // Pages in the agent browser must not reach Glade's own backend or dev UI; other loopback ports stay
@@ -194,6 +195,7 @@ export function createDesktopRuntime(): void {
 
     ipc.registerIpcHandlers();
     registerSshHostsIpc(remoteHosts);
+    registerPairedMachinesIpc(remoteHosts.pairedMachines);
     log.writeDesktopLogHeader("bootstrap ipc handlers registered");
     backend.startBackend();
     log.writeDesktopLogHeader("bootstrap backend start requested");

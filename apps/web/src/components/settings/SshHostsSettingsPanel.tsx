@@ -18,6 +18,7 @@ import {
   PlusIcon,
   RefreshCwIcon,
 } from "~/lib/icons";
+import { ipcErrorMessage } from "~/lib/ipcErrorMessage";
 import { HostStatusDot } from "../HostStatusDot";
 import { readLocalNativeApi } from "~/nativeApi";
 import { Button } from "../ui/button";
@@ -33,15 +34,11 @@ import {
   SettingsSectionShell,
 } from "./SettingsPanelPrimitives";
 
-// Electron prefixes errors thrown across IPC with the channel; the user only needs the message.
-function ipcErrorMessage(error: unknown, fallback: string): string {
-  if (!(error instanceof Error)) return fallback;
-  return error.message.replace(/^Error invoking remote method '[^']+':\s*(Error:\s*)?/u, "");
-}
-
 function hostAddress(host: DesktopSshHost): string {
   return host.port === null ? host.destination : `${host.destination}:${host.port}`;
 }
+
+type SshEnvironment = Extract<RemoteEnvironment, { readonly kind: "ssh" }>;
 
 function reportConnectFailure(host: DesktopSshHost, error: unknown): void {
   toastManager.add({
@@ -53,7 +50,9 @@ function reportConnectFailure(host: DesktopSshHost, error: unknown): void {
 
 export function SshHostsSettingsPanel() {
   const api = window.desktopBridge?.sshHosts;
-  const environments = useRemoteEnvironments();
+  const environments = useRemoteEnvironments().filter(
+    (environment): environment is SshEnvironment => environment.kind === "ssh",
+  );
   const [dialog, setDialog] = useState<{ readonly host: DesktopSshHost | null } | null>(null);
   const [remoteAccessKey, setRemoteAccessKey] = useState<string | null>(null);
   const discoveredQuery = useQuery({
@@ -187,7 +186,7 @@ export function SshHostsSettingsPanel() {
 }
 
 function SshHostRow(props: {
-  readonly environment: RemoteEnvironment;
+  readonly environment: SshEnvironment;
   readonly removing: boolean;
   readonly onReconnect: () => void;
   readonly onEdit: () => void;

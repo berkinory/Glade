@@ -118,7 +118,7 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
     group: "app",
     label: "Remote access",
     description:
-      "Use Glade from your phone or another computer. Paired devices connect straight to this machine.",
+      "Use Glade from your phone or another computer, or use another computer's Glade from here.",
     icon: ComputerPhoneSyncIcon,
     desktopOnly: true,
   },
