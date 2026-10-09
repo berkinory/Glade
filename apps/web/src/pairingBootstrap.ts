@@ -40,7 +40,8 @@ export async function bootstrapPairingSession(
   dependencies: PairingBootstrapDependencies = {
     location: window.location,
     history: window.history,
-    fetch: globalThis.fetch,
+    // Called as a method of this object, so the bare global would throw "Illegal invocation".
+    fetch: (input, init) => globalThis.fetch(input, init),
     renderFailure: renderPairingFailure,
   },
 ): Promise<PairingBootstrapResult> {

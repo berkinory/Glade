@@ -7,6 +7,10 @@
 - Provider updates on an SSH host are offered in that host's chats and install on the host.
 - Pairing links are stored only in hashed form, repeated wrong pairing attempts are slowed down, and paired devices cannot pair or remove other devices.
 
+### Fixed
+
+- Opening a pairing link in a browser signs it in instead of always reporting that the link could not be used.
+
 ## 0.2.2 - 2026-10-09
 
 ### New
