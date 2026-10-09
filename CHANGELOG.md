@@ -14,6 +14,7 @@
 ### Fixed
 
 - Opening a pairing link in a browser signs it in instead of always reporting that the link could not be used.
+- Adding a project on an SSH host with a path that starts with `~` no longer fails with a missing folder error.
 
 ## 0.2.2 - 2026-10-09
 

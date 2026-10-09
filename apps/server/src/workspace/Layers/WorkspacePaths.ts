@@ -1,5 +1,3 @@
-import * as OS from "node:os";
-
 import { Effect, FileSystem, Layer, Path } from "effect";
 
 import {
@@ -10,19 +8,10 @@ import {
   WorkspaceRootNotExistsError,
   type WorkspacePathsShape,
 } from "../Services/WorkspacePaths";
+import { expandHomePath } from "../homePath";
 
 function toPosixRelativePath(input: string): string {
   return input.replaceAll("\\", "/");
-}
-
-function expandHomePath(input: string, path: Path.Path): string {
-  if (input === "~") {
-    return OS.homedir();
-  }
-  if (input.startsWith("~/") || input.startsWith("~\\")) {
-    return path.join(OS.homedir(), input.slice(2));
-  }
-  return input;
 }
 
 const makeWorkspacePaths = Effect.gen(function* () {
@@ -32,7 +21,7 @@ const makeWorkspacePaths = Effect.gen(function* () {
   const normalizeWorkspaceRoot: WorkspacePathsShape["normalizeWorkspaceRoot"] = Effect.fn(
     "WorkspacePaths.normalizeWorkspaceRoot",
   )(function* (workspaceRoot, options) {
-    const normalizedWorkspaceRoot = path.resolve(expandHomePath(workspaceRoot.trim(), path));
+    const normalizedWorkspaceRoot = path.resolve(expandHomePath(workspaceRoot.trim()));
     let workspaceStat = yield* fileSystem
       .stat(normalizedWorkspaceRoot)
       .pipe(Effect.catch(() => Effect.succeed(null)));

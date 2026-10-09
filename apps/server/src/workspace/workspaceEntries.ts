@@ -2,7 +2,6 @@ import { WorkspaceEntrySearch } from "./search/workspaceEntrySearch";
 import { WorkspaceContentSearch } from "./WorkspaceContentSearch";
 import fs from "node:fs/promises";
 import type { Dirent } from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import {
   filterGitIgnoredPaths,
@@ -39,6 +38,7 @@ import {
   isWindowsAbsolutePath,
   isWorkspaceRelativePathSafe,
 } from "@glade/shared/platform/path";
+import { expandHomePath } from "./homePath";
 import { resolveRealPathWithinRoot } from "./realPathContainment";
 
 const EXPLORER_EXCLUDED_NAMES = new Set([".git", ".svn", ".hg", ".jj", ".DS_Store", "Thumbs.db"]);
@@ -53,16 +53,6 @@ function normalizeLocalSearchQuery(input: string): string {
     query = query.startsWith("./") ? query.slice(2) : query.slice(1);
   }
   return query;
-}
-
-function expandHomePath(input: string): string {
-  if (input === "~") {
-    return os.homedir();
-  }
-  if (input.startsWith("~/") || input.startsWith("~\\")) {
-    return path.join(os.homedir(), input.slice(2));
-  }
-  return input;
 }
 
 function resolveBrowseTarget(input: FilesystemBrowseInput): string {

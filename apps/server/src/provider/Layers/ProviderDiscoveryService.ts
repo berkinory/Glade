@@ -35,6 +35,14 @@ import {
   writeProviderModelCatalogCache,
 } from "../core/providerModelCatalogCache.ts";
 import { filterDisabledSkills } from "../core/skillsCatalog.ts";
+import { expandHomePath } from "../../workspace/homePath";
+
+// A project typed as "~/…" (often on an SSH host) reaches discovery before the server canonicalizes
+// it; the provider would otherwise look for a folder literally named "~".
+function withExpandedCwd<A>(decoded: A): A {
+  const cwd = (decoded as { readonly cwd?: unknown }).cwd;
+  return typeof cwd === "string" ? { ...decoded, cwd: expandHomePath(cwd) } : decoded;
+}
 
 const decodeInputOrValidationError = <S extends Schema.Top>(input: {
   readonly operation: string;
@@ -42,6 +50,7 @@ const decodeInputOrValidationError = <S extends Schema.Top>(input: {
   readonly payload: unknown;
 }) =>
   Schema.decodeUnknownEffect(input.schema)(input.payload).pipe(
+    Effect.map(withExpandedCwd),
     Effect.mapError(
       (schemaError) =>
         new ProviderValidationError({
