@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 // Builds the self-contained server bundle the desktop installs on SSH hosts: the pinned official
-// Node.js runtime, apps/server/dist and its production node_modules. Linux native modules are
+// Node.js runtime, apps/server/dist with the web client and its production node_modules. Linux native modules are
 // compiled and smoke-tested inside a Debian bullseye container so the bundle runs on any host
 // with glibc 2.31 or newer, whatever machine builds it.
 //
 //   node scripts/build-remote-server.ts --target linux-x64 [--version 0.2.1]
 //                                       [--output-dir release/remote] [--skip-smoke]
 //
-// Requires apps/server/dist (bun run --cwd apps/server build:dev), bun, tar and, for Linux
-// targets, docker.
+// Requires apps/server/dist (bun run --cwd apps/server build:dev), the web client (bun run --cwd
+// apps/web build), bun, tar and, for Linux targets, docker.
 
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -100,6 +100,12 @@ for (const entry of ["index.mjs", "remoteLauncher.mjs", "runtimeDependencySmoke.
     fail(`apps/server/dist/${entry} is missing; build the server first.`);
   }
 }
+// Devices paired with a host load the app from the host's own server. A release build copies the
+// client into the server's dist; a development build only has the web app's own output.
+const clientDist = [join(serverDist, "client"), join(repoRoot, "apps/web/dist")].find((dir) =>
+  existsSync(join(dir, "index.html")),
+);
+if (!clientDist) fail("The web client is missing; build it with: bun run --cwd apps/web build");
 
 const bundleName = remoteServerBundleName(version, target);
 const workDir = mkdtempSync(join(tmpdir(), "glade-remote-server-"));
@@ -145,6 +151,10 @@ try {
   cpSync(serverDist, join(bundleDir, "dist"), {
     recursive: true,
     filter: (source) => !source.startsWith(join(serverDist, "client")) && !source.endsWith(".map"),
+  });
+  cpSync(clientDist!, join(bundleDir, "dist", "client"), {
+    recursive: true,
+    filter: (source) => !source.endsWith(".map"),
   });
   writeFileSync(
     join(bundleDir, "package.json"),

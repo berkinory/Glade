@@ -1,3 +1,4 @@
+import type { NativeApi } from "@glade/contracts/ipc/ipc";
 import type {
   RemoteAccessDevices,
   RemoteAccessStatus,
@@ -7,7 +8,8 @@ import type { AuthClientSession } from "@glade/contracts/transport/auth/auth";
 import { useEffect, useState } from "react";
 
 import { PlusIcon } from "~/lib/icons";
-import { ensureNativeApi, readLocalNativeApi } from "~/nativeApi";
+import { LOCAL_ENVIRONMENT } from "~/environments/environmentKey";
+import { ensureEnvironmentNativeApi, readLocalNativeApi } from "~/nativeApi";
 import { Button } from "../../ui/button";
 import { Switch } from "../../ui/switch";
 import { toastManager } from "../../ui/toast";
@@ -31,21 +33,30 @@ function reportError(title: string, error: unknown): void {
   });
 }
 
-function useRemoteAccessStatus(): RemoteAccessStatus | null {
+type RemoteAccessApi = NativeApi["remoteAccess"];
+
+function useRemoteAccessStatus(api: RemoteAccessApi): RemoteAccessStatus | null {
   const [status, setStatus] = useState<RemoteAccessStatus | null>(null);
-  useEffect(() => ensureNativeApi().remoteAccess.onStatus(setStatus), []);
+  useEffect(() => api.onStatus(setStatus), [api]);
   return status;
 }
 
-function useRemoteAccessDevices(): RemoteAccessDevices | null {
+function useRemoteAccessDevices(api: RemoteAccessApi): RemoteAccessDevices | null {
   const [devices, setDevices] = useState<RemoteAccessDevices | null>(null);
-  useEffect(() => ensureNativeApi().remoteAccess.onDevices(setDevices), []);
+  useEffect(() => api.onDevices(setDevices), [api]);
   return devices;
 }
 
 export function RemoteAccessSettingsPanel() {
-  const status = useRemoteAccessStatus();
-  const devices = useRemoteAccessDevices();
+  return <RemoteAccessControls api={ensureEnvironmentNativeApi(LOCAL_ENVIRONMENT).remoteAccess} />;
+}
+
+// Remote access of one machine: this one in Settings, or an SSH host from its menu. Each machine
+// runs its own server, so devices pair with it directly.
+export function RemoteAccessControls(props: { readonly api: RemoteAccessApi }) {
+  const { api } = props;
+  const status = useRemoteAccessStatus(api);
+  const devices = useRemoteAccessDevices(api);
   const [pending, setPending] = useState(false);
   const [pairing, setPairing] = useState(false);
 
@@ -55,8 +66,8 @@ export function RemoteAccessSettingsPanel() {
 
   const update = (input: RemoteAccessUpdateInput) => {
     setPending(true);
-    void ensureNativeApi()
-      .remoteAccess.update(input)
+    void api
+      .update(input)
       .catch((error: unknown) => reportError("Could not change remote access", error))
       .finally(() => setPending(false));
   };
@@ -138,7 +149,9 @@ export function RemoteAccessSettingsPanel() {
       >
         <SettingsCard>
           {devices && devices.devices.length > 0 ? (
-            devices.devices.map((device) => <DeviceRow key={device.sessionId} device={device} />)
+            devices.devices.map((device) => (
+              <DeviceRow key={device.sessionId} device={device} api={api} />
+            ))
           ) : (
             <SettingsEmptyState layout="status">
               {canPair
@@ -151,6 +164,7 @@ export function RemoteAccessSettingsPanel() {
 
       <PairDeviceDialog
         open={pairing}
+        createPairing={api.createPairing}
         pendingPairingIds={devices?.pendingPairingIds ?? []}
         onOpenChange={setPairing}
       />
@@ -208,16 +222,16 @@ function TailscaleRow(props: {
   );
 }
 
-function DeviceRow(props: { readonly device: AuthClientSession }) {
-  const { device } = props;
+function DeviceRow(props: { readonly device: AuthClientSession; readonly api: RemoteAccessApi }) {
+  const { device, api } = props;
   const remove = async () => {
     const name = deviceName(device);
     const confirmed = await readLocalNativeApi()?.dialogs.confirm(
       `Remove ${name}?\n\nIt is signed out right away and has to be paired again to come back.`,
     );
     if (!confirmed) return;
-    void ensureNativeApi()
-      .remoteAccess.revokeDevice({ sessionId: device.sessionId })
+    void api
+      .revokeDevice({ sessionId: device.sessionId })
       .catch((error: unknown) => reportError(`Could not remove ${name}`, error));
   };
   return (

@@ -3,7 +3,6 @@ import { DateTime } from "effect";
 import { useEffect, useState } from "react";
 
 import { CheckmarkCircle02Icon, Copy01Icon } from "~/lib/icons";
-import { ensureNativeApi } from "~/nativeApi";
 import { Button } from "../../ui/button";
 import {
   Dialog,
@@ -29,6 +28,7 @@ type PairingState =
 export function PairDeviceDialog(props: {
   readonly open: boolean;
   readonly pendingPairingIds: ReadonlyArray<string>;
+  readonly createPairing: () => Promise<RemoteAccessPairing>;
   readonly onOpenChange: (open: boolean) => void;
 }) {
   const [state, setState] = useState<PairingState>({ kind: "loading" });
@@ -37,14 +37,13 @@ export function PairDeviceDialog(props: {
   // The device list learns about a new code a moment after it is created; until the code has shown
   // up there, its absence does not mean it was used.
   const [listedId, setListedId] = useState<string | null>(null);
-  const { open, onOpenChange } = props;
+  const { open, onOpenChange, createPairing } = props;
 
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
     setState({ kind: "loading" });
-    ensureNativeApi()
-      .remoteAccess.createPairing()
+    createPairing()
       .then((pairing) => {
         if (!cancelled) setState({ kind: "ready", pairing });
       })
@@ -59,7 +58,7 @@ export function PairDeviceDialog(props: {
     return () => {
       cancelled = true;
     };
-  }, [open, attempt]);
+  }, [open, attempt, createPairing]);
 
   useEffect(() => {
     if (!open) return;

@@ -126,14 +126,14 @@ local server's persisted project UI state or visit scope.
 `scripts/build-remote-server.ts --target <linux-x64|linux-arm64|darwin-x64|darwin-arm64>` builds
 `glade-remote-server-<version>-<target>.tar.gz` and its `.sha256` file. A bundle contains the pinned
 official Node.js runtime (`scripts/remote-node-runtime.json`, verified by SHA-256),
-`apps/server/dist` without the web client, and production `node_modules` installed from `bun.lock`
+`apps/server/dist` with the web client (devices paired with the host load the app from it), and production `node_modules` installed from `bun.lock`
 without type declarations or source maps. Linux targets compile node-pty and run the smoke tests
 inside a `node:22-bullseye` container, which needs Docker; macOS targets use node-pty's prebuilds and
 run the smoke tests when the build host matches.
 
 - **Source and development builds** read bundles from `release/remote/` (or
-  `GLADE_REMOTE_SERVER_BUNDLE_DIR`). Build one with `bun run --cwd apps/server build:dev` and then
-  `bun run package:remote-server -- --target linux-x64`.
+  `GLADE_REMOTE_SERVER_BUNDLE_DIR`). Build one with `bun run --cwd apps/web build`,
+  `bun run --cwd apps/server build:dev` and then `bun run package:remote-server -- --target linux-x64`.
 - **Packaged builds** read the bundle's `.sha256` file from the GitHub release for their own version
   and have the host download the bundle itself. Releases publish `darwin-arm64`, `darwin-x64` and
   `linux-x64` bundles. There is no Linux arm64 release runner yet, so arm64 Linux hosts need a source

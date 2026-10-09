@@ -150,11 +150,13 @@ methods.
   replayed secret consumes nothing else.
 - Where pairing is started:
   - **Desktop host**: Settings → Remote access → Pair a device, which shows the QR code.
-  - **SSH host**: "Pair a device" in the host's menu in Settings → SSH hosts. The desktop asks the
-    host's server, over the existing tunnel and its owner session, to mint a grant, and shows the
-    QR code locally. The device then connects to the host directly.
-  - **Headless server**: `glade pair` prints the QR code in the terminal and refuses to print a
-    loopback-only link.
+  - **SSH host**: "Remote access" in the host's menu in Settings → SSH hosts shows the same controls
+    for the host's own server, over the existing tunnel and its owner session. The device then
+    connects to the host directly and keeps working while the desktop is off. Host bundles carry the
+    web client so the host can serve the app.
+  - **Command-line server**: a server started with `--host` prints a one-time owner pairing link at
+    startup. A separate `glade pair` command needs a local admin credential for a running server and
+    is left for the mobile client work.
 - Pairing the same environment again from the same device replaces that device's saved grant and
   adds any new routes; it does not create a second machine.
 
@@ -217,7 +219,8 @@ Each phase ships on its own, with docs and a changelog entry.
    accept filter, remote request gate, plain-HTTP acknowledgement, Tailscale HTTPS toggle, pairing
    QR, Devices list with revoke, signed-out handling in revoked browsers, per-install session
    cookie names that survive restarts.
-3. **Hosts and headless servers.** `glade pair` CLI and "Pair a device" for SSH hosts.
+3. **Hosts (done).** Remote access for SSH hosts from the host's menu, with the web client in host
+   bundles.
 4. **Client runtime and desktop as a client.** Saved catalog, route walk, supervisor, learned
    routes, Add environment.
 5. **Mobile client (later, separate plan).** DPoP binding, moving the runtime to a shared package,

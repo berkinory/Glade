@@ -10,7 +10,14 @@ import {
   type RemoteEnvironment,
 } from "~/environments/remoteEnvironments";
 import { remoteHostAvailability } from "~/environments/remoteEnvironmentStatus";
-import { Delete02Icon, EllipsisIcon, PencilEdit02Icon, PlusIcon, RefreshCwIcon } from "~/lib/icons";
+import {
+  ComputerPhoneSyncIcon,
+  Delete02Icon,
+  EllipsisIcon,
+  PencilEdit02Icon,
+  PlusIcon,
+  RefreshCwIcon,
+} from "~/lib/icons";
 import { HostStatusDot } from "../HostStatusDot";
 import { readLocalNativeApi } from "~/nativeApi";
 import { Button } from "../ui/button";
@@ -18,6 +25,7 @@ import { ComposerPickerMenuPopup } from "../chat/ComposerPickerMenuPopup";
 import { Menu, MenuItem, MenuTrigger } from "../ui/menu";
 import { toastManager } from "../ui/toast";
 import { SshHostDialog } from "./SshHostDialog";
+import { HostRemoteAccessDialog } from "./remoteAccess/HostRemoteAccessDialog";
 import {
   SettingsCard,
   SettingsEmptyState,
@@ -47,6 +55,7 @@ export function SshHostsSettingsPanel() {
   const api = window.desktopBridge?.sshHosts;
   const environments = useRemoteEnvironments();
   const [dialog, setDialog] = useState<{ readonly host: DesktopSshHost | null } | null>(null);
+  const [remoteAccessKey, setRemoteAccessKey] = useState<string | null>(null);
   const discoveredQuery = useQuery({
     queryKey: ["desktop", "ssh-discovered-hosts"],
     queryFn: () => api?.discover() ?? Promise.resolve([]),
@@ -110,6 +119,7 @@ export function SshHostsSettingsPanel() {
                   )
                 }
                 onEdit={() => setDialog({ host: environment.host })}
+                onRemoteAccess={() => setRemoteAccessKey(environment.key)}
                 onRemove={() => void remove(environment.host)}
               />
             ))
@@ -146,6 +156,17 @@ export function SshHostsSettingsPanel() {
         </SettingsSectionShell>
       ) : null}
 
+      <HostRemoteAccessDialog
+        environment={
+          environments.find(
+            (environment) => environment.key === remoteAccessKey && environment.api !== null,
+          ) ?? null
+        }
+        onOpenChange={(open) => {
+          if (!open) setRemoteAccessKey(null);
+        }}
+      />
+
       <SshHostDialog
         open={dialog !== null}
         host={dialog?.host ?? null}
@@ -170,6 +191,7 @@ function SshHostRow(props: {
   readonly removing: boolean;
   readonly onReconnect: () => void;
   readonly onEdit: () => void;
+  readonly onRemoteAccess: () => void;
   readonly onRemove: () => void;
 }) {
   const { host } = props.environment;
@@ -215,6 +237,14 @@ function SshHostRow(props: {
               <MenuItem onClick={props.onEdit}>
                 <PencilEdit02Icon aria-hidden className="size-3.5 opacity-70" />
                 Edit
+              </MenuItem>
+              <MenuItem
+                disabled={!availability.selectable}
+                title={availability.selectable ? undefined : availability.reason}
+                onClick={props.onRemoteAccess}
+              >
+                <ComputerPhoneSyncIcon aria-hidden className="size-3.5 opacity-70" />
+                Remote access
               </MenuItem>
               <MenuItem variant="destructive" onClick={props.onRemove}>
                 <Delete02Icon aria-hidden className="size-3.5" />

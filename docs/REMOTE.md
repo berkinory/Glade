@@ -46,6 +46,14 @@ host's editor, or read thread diagnostics; those stay with the machine's owner.
   time).
 - **Chats stop when the Mac sleeps**: turn on **Keep Mac awake** in Chat settings.
 
+## SSH hosts
+
+An SSH host runs its own Glade server, so a device can pair with it directly. In
+**Settings → SSH hosts**, open the host's **…** menu and choose **Remote access**: the same controls
+apply to the host, with its own Tailscale and network addresses. A device paired there keeps
+working while this computer is off. On Linux, Tailscale HTTPS needs permission once:
+`sudo tailscale set --operator=$USER` on the host.
+
 ## Command-line server
 
 The server reads these options as flags or environment variables:

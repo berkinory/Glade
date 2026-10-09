@@ -113,6 +113,14 @@ export async function serveHttps(cli: string, port: number): Promise<TailscaleSe
   if (node.dnsName && node.httpsProxy === localProxyTarget(port)) {
     return { kind: "serving", url: `https://${node.dnsName}` };
   }
+  // Linux only lets root or the configured operator change Serve.
+  if (/access denied/i.test(output)) {
+    return {
+      kind: "failed",
+      message:
+        'Tailscale needs permission first. Run "sudo tailscale set --operator=$USER" on this machine, then try again.',
+    };
+  }
   const reason = output
     .trim()
     .split("\n")
