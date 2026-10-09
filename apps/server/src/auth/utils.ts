@@ -27,6 +27,12 @@ export function signPayload(payload: string, secret: Uint8Array): string {
   return Crypto.createHmac("sha256", Buffer.from(secret)).update(payload).digest("base64url");
 }
 
+// Pairing secrets are stored and looked up only by this digest, so the database never holds a
+// usable credential. They are short-lived and single-use, which makes an unsalted digest enough.
+export function hashPairingCredential(credential: string): string {
+  return Crypto.createHash("sha256").update(credential, "utf8").digest("hex");
+}
+
 export function timingSafeEqualBase64Url(left: string, right: string): boolean {
   const leftBuffer = Buffer.from(left, "base64url");
   const rightBuffer = Buffer.from(right, "base64url");

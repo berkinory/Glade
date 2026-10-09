@@ -1,6 +1,7 @@
 import { Schema } from "effect";
 
 import { EnvironmentId, TrimmedNonEmptyString } from "../core/baseSchemas";
+import { ServerAuthDescriptor } from "../transport/auth/auth";
 
 export const ExecutionEnvironmentPlatformOs = Schema.Literals([
   "darwin",
@@ -32,3 +33,21 @@ export const ExecutionEnvironmentDescriptor = Schema.Struct({
   capabilities: ExecutionEnvironmentCapabilities,
 });
 export type ExecutionEnvironmentDescriptor = typeof ExecutionEnvironmentDescriptor.Type;
+
+export const ENVIRONMENT_DESCRIPTOR_PATH = "/.well-known/glade/environment";
+
+// Served without authentication. A client checks it on a route before sending any credential, so
+// an address that now reaches another machine never receives one.
+export const PublicEnvironmentDescriptor = Schema.Struct({
+  environmentId: EnvironmentId,
+  label: TrimmedNonEmptyString,
+  platform: ExecutionEnvironmentPlatform,
+  serverVersion: TrimmedNonEmptyString,
+  protocol: Schema.Struct({
+    epoch: Schema.Number,
+    minRevision: Schema.Number,
+    maxRevision: Schema.Number,
+  }),
+  auth: ServerAuthDescriptor,
+});
+export type PublicEnvironmentDescriptor = typeof PublicEnvironmentDescriptor.Type;

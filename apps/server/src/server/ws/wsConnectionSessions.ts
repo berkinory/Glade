@@ -7,15 +7,8 @@ import {
   type ManagedAttachmentPrincipal,
 } from "../../attachments/managedAttachmentPrincipal";
 
-export type WsSessionRole = "owner" | "client";
-
-export const CurrentWsSessionRole = ServiceMap.Reference<WsSessionRole>(
-  "glade/ws/CurrentSessionRole",
-  { defaultValue: () => "client" },
-);
-
 export interface WsConnectionSession {
-  readonly role: WsSessionRole;
+  readonly role: "owner" | "client";
   readonly attachmentPrincipal: ManagedAttachmentPrincipal;
 }
 
@@ -59,7 +52,6 @@ export function provideWsConnectionSession<A, E, R>(
 ): Effect.Effect<A, E, R> {
   return session
     ? effect.pipe(
-        Effect.provideService(CurrentWsSessionRole, session.role),
         Effect.provideService(CurrentManagedAttachmentPrincipal, session.attachmentPrincipal),
       )
     : effect;

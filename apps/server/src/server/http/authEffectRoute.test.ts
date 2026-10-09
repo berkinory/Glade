@@ -43,7 +43,10 @@ function makeSessionCredentialService(): SessionCredentialServiceShape {
   } as SessionCredentialServiceShape;
 }
 
-function makeServerAuth(sideEffects: { count: number }): ServerAuthShape {
+function makeServerAuth(
+  sideEffects: { count: number },
+  role: "owner" | "client" = "owner",
+): ServerAuthShape {
   const expiresAt = DateTime.toUtc(Effect.runSync(DateTime.now));
   const descriptor = {
     policy: "remote-reachable" as const,
@@ -93,9 +96,9 @@ function makeServerAuth(sideEffects: { count: number }): ServerAuthShape {
       }
       return Effect.succeed({
         sessionId: currentSessionId,
-        subject: "owner",
+        subject: role,
         method: bearer ? "bearer-session-token" : "browser-session-cookie",
-        role: "owner",
+        role,
         expiresAt,
         credentialSource: bearer ? "bearer" : "cookie",
       });
@@ -319,6 +322,40 @@ describe("authEffectRouteLayer", () => {
       }
       expect(sideEffects.count).toBe(mutationRoutes.length * 2);
     });
+  });
+
+  it("keeps pairing and device management with the owner", async () => {
+    const sideEffects = { count: 0 };
+    const config = { host: "127.0.0.1", publicUrl: undefined } as ServerConfigShape;
+    await withAuthEffectServer(
+      config,
+      makeServerAuth(sideEffects, "client"),
+      async (serverOrigin) => {
+        const ownerOnly = [
+          ...mutationRoutes
+            .filter((route) => !["/api/auth/ws-token", "/api/auth/logout"].includes(route.path))
+            .map((route) => ({ ...route, method: "POST" })),
+          { path: "/api/auth/pairing-links", method: "GET" },
+          { path: "/api/auth/clients", method: "GET" },
+        ];
+        for (const route of ownerOnly) {
+          const response = await fetch(`${serverOrigin}${route.path}`, {
+            ...mutationRequest({
+              credential: "bearer",
+              ...("body" in route && route.body !== undefined ? { body: route.body } : {}),
+            }),
+            method: route.method,
+          });
+          expect(response.status, `${route.method} ${route.path}`).toBe(403);
+        }
+        const ticket = await fetch(
+          `${serverOrigin}/api/auth/ws-token`,
+          mutationRequest({ credential: "bearer" }),
+        );
+        expect(ticket.status).toBe(200);
+        expect(sideEffects.count).toBe(1);
+      },
+    );
   });
 
   it("logs out either role and clears the exact cookie with secure public-mode attributes", async () => {

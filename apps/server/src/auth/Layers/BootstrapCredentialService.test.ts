@@ -21,6 +21,11 @@ describe("BootstrapCredentialServiceLive", () => {
 
       expect(active.map((link) => link.id)).toEqual([issued.id]);
       expect(active[0]?.label).toBe("Test device");
+      expect(JSON.stringify(active)).not.toContain(issued.credential);
+      const repository = yield* AuthPairingLinkRepository;
+      expect(
+        yield* repository.getByCredentialHash({ credentialHash: issued.credential }),
+      ).toSatisfy(Option.isNone);
 
       const grant = yield* service.consume(issued.credential);
       expect(grant.method).toBe("one-time-token");
@@ -54,7 +59,7 @@ describe("BootstrapCredentialServiceLive", () => {
 
       yield* repository.create({
         id: "expired-link",
-        credential: "EXPIREDTOKEN",
+        credentialHash: "expired-token-hash",
         method: "one-time-token",
         role: "client",
         subject: "test",
@@ -64,9 +69,9 @@ describe("BootstrapCredentialServiceLive", () => {
       });
 
       expect(yield* service.listActive()).toEqual([]);
-      expect(yield* repository.getByCredential({ credential: "EXPIREDTOKEN" })).toSatisfy(
-        Option.isSome,
-      );
+      expect(
+        yield* repository.getByCredentialHash({ credentialHash: "expired-token-hash" }),
+      ).toSatisfy(Option.isSome);
     }).pipe(Effect.provide(testLayer), Effect.runPromise);
   });
 });

@@ -5,6 +5,7 @@
 ### Improved
 
 - Provider updates on an SSH host are offered in that host's chats and install on the host.
+- Pairing links are stored only in hashed form, repeated wrong pairing attempts are slowed down, and paired devices cannot pair or remove other devices.
 
 ## 0.2.2 - 2026-10-09
 

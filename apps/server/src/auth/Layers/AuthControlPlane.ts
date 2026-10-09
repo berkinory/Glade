@@ -60,7 +60,6 @@ const makeAuthControlPlane = Effect.gen(function* () {
               ? ({ ...pairingLink, label: pairingLink.label } satisfies AuthPairingLink)
               : ({
                   id: pairingLink.id,
-                  credential: pairingLink.credential,
                   role: pairingLink.role,
                   subject: pairingLink.subject,
                   createdAt: pairingLink.createdAt,

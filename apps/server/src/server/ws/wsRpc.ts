@@ -146,7 +146,8 @@ import { ThreadDiagnosticsQuery } from "../../diagnostics/Services/ThreadDiagnos
 import { makeOwnerThreadDiagnosticReader } from "../../diagnostics/ownerThreadDiagnostics";
 import { OrchestrationEventStore } from "../../persistence/Services/OrchestrationEventStore";
 import { ProviderRuntimeEventRepository } from "../../persistence/Services/ProviderRuntimeEvents";
-import { requireWsOwnerSession } from "./wsOwnerAuthorization";
+import { WS_RPC_REQUIRED_SCOPES, type WsFeatureRpcTag } from "./wsRpcScopes";
+import { roleHasScope } from "../../auth/sessionScopes";
 import { makeWsRequestAdmission } from "./wsRequestAdmission";
 import { voiceUploadAdmissionGate } from "../../voice/voiceUploadAdmission";
 import {
@@ -208,10 +209,16 @@ const wsRequestAdmissionMiddlewareLayer = Layer.effect(
     const admission = yield* makeWsRequestAdmission;
     const connectionSessions = yield* WsConnectionSessions;
     return ((effect, options) => {
-      const scoped = provideWsConnectionSession(
-        effect,
-        connectionSessions.lookup(Headers.get(options.headers, WS_CONNECTION_SESSION_HEADER)),
+      const session = connectionSessions.lookup(
+        Headers.get(options.headers, WS_CONNECTION_SESSION_HEADER),
       );
+      const requiredScope = WS_RPC_REQUIRED_SCOPES[options.rpc._tag as WsFeatureRpcTag];
+      if (!requiredScope || !roleHasScope(session?.role ?? "client", requiredScope)) {
+        return Effect.fail(
+          new WsRpcError({ message: "This device is not allowed to do that on this machine." }),
+        );
+      }
+      const scoped = provideWsConnectionSession(effect, session);
       return RpcSchema.isStreamSchema(options.rpc.successSchema)
         ? scoped
         : admission.guard(options.clientId, options.rpc._tag, scoped);
@@ -858,18 +865,8 @@ const makeWsRpcHandlersLayer = () =>
 
       return AdmittedWsFeatureRpcGroup.of({
         ...browserHandlers,
-        // Computer Use grants reach into the owner's desktop apps; paired clients neither see nor
-        // change them.
-        [COMPUTER_WS_METHODS.subscribe]: (payload, options) =>
-          Stream.unwrap(
-            requireWsOwnerSession.pipe(
-              Effect.as(computerHandlers[COMPUTER_WS_METHODS.subscribe](payload, options)),
-            ),
-          ),
-        [COMPUTER_WS_METHODS.revokeGrant]: (target) =>
-          requireWsOwnerSession.pipe(
-            Effect.andThen(computerHandlers[COMPUTER_WS_METHODS.revokeGrant](target)),
-          ),
+        [COMPUTER_WS_METHODS.subscribe]: computerHandlers[COMPUTER_WS_METHODS.subscribe],
+        [COMPUTER_WS_METHODS.revokeGrant]: computerHandlers[COMPUTER_WS_METHODS.revokeGrant],
         [ORCHESTRATION_WS_METHODS.prepareHandoff]: (input) =>
           rpcEffect(
             handoffPreparation.prepare(input).pipe(Effect.asVoid),
@@ -1848,11 +1845,7 @@ const makeWsRpcHandlersLayer = () =>
             "Failed to load server diagnostics",
           ),
         [WS_METHODS.serverReadThreadDiagnostics]: (input) =>
-          requireWsOwnerSession.pipe(
-            Effect.andThen(
-              rpcEffect(readOwnerThreadDiagnostics(input), "Failed to read thread diagnostics"),
-            ),
-          ),
+          rpcEffect(readOwnerThreadDiagnostics(input), "Failed to read thread diagnostics"),
         [WS_METHODS.serverPrewarmVoice]: (input) =>
           rpcEffect(
             getEnabledProviderAdapter(input.provider, serverSettings, providerAdapterRegistry).pipe(

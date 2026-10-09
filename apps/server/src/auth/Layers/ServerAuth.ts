@@ -8,6 +8,8 @@ import type {
 } from "@glade/contracts/transport/auth/auth";
 import { DateTime, Effect, Layer } from "effect";
 
+import { makeBootstrapAttempts } from "../bootstrapAttempts";
+import { scopesForRole } from "../sessionScopes";
 import { AuthControlPlane } from "../Services/AuthControlPlane";
 import {
   BootstrapCredentialError,
@@ -82,6 +84,19 @@ const makeServerAuth = Effect.gen(function* () {
   const authControlPlane = yield* AuthControlPlane;
   const sessions = yield* SessionCredentialService;
   const descriptor = yield* policy.getDescriptor();
+  const bootstrapAttempts = yield* makeBootstrapAttempts;
+
+  const consumeBootstrapCredential = (credential: string, address: string | undefined) =>
+    bootstrapAttempts.admit(address).pipe(
+      Effect.andThen(
+        bootstrapCredentials
+          .consume(credential)
+          .pipe(Effect.mapError(toBootstrapExchangeAuthError)),
+      ),
+      Effect.tapError((error) =>
+        error.status === 401 ? bootstrapAttempts.recordFailure(address) : Effect.void,
+      ),
+    );
 
   const authenticateToken = (token: string): Effect.Effect<AuthenticatedSession, AuthError> =>
     sessions.verify(token).pipe(
@@ -128,6 +143,7 @@ const makeServerAuth = Effect.gen(function* () {
             authenticated: true,
             auth: descriptor,
             role: session.role,
+            scopes: scopesForRole(session.role),
             sessionMethod: session.method,
             ...(session.expiresAt ? { expiresAt: DateTime.toUtc(session.expiresAt) } : {}),
           }) satisfies AuthSessionState,
@@ -144,8 +160,7 @@ const makeServerAuth = Effect.gen(function* () {
     credential,
     requestMetadata,
   ) =>
-    bootstrapCredentials.consume(credential).pipe(
-      Effect.mapError(toBootstrapExchangeAuthError),
+    consumeBootstrapCredential(credential, requestMetadata.ipAddress).pipe(
       Effect.flatMap((grant) =>
         sessions
           .issue({
@@ -184,8 +199,7 @@ const makeServerAuth = Effect.gen(function* () {
 
   const exchangeBootstrapCredentialForBearerSession: ServerAuthShape["exchangeBootstrapCredentialForBearerSession"] =
     (credential, requestMetadata) =>
-      bootstrapCredentials.consume(credential).pipe(
-        Effect.mapError(toBootstrapExchangeAuthError),
+      consumeBootstrapCredential(credential, requestMetadata.ipAddress).pipe(
         Effect.flatMap((grant) =>
           sessions
             .issue({

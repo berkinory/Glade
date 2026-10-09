@@ -1,5 +1,7 @@
 import MessageAttribution from "./Migrations/004_MessageAttribution";
 import VisualReplyAttachments from "./Migrations/006_VisualReplyAttachments";
+import AuthPairingCredentialHashes from "./Migrations/007_AuthPairingCredentialHashes";
+import * as Crypto from "node:crypto";
 import { assert, it } from "@effect/vitest";
 import { Effect } from "effect";
 import { describe } from "vitest";
@@ -35,6 +37,25 @@ describe("baseline migrations", () => {
           },
         ],
       );
+    }).pipe(Effect.provide(NodeSqliteClient.layer({ filename: ":memory:" }))),
+  );
+
+  it.effect("keeps pending pairing links usable while replacing their stored secrets", () =>
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      yield* Baseline;
+      yield* sql`INSERT INTO auth_pairing_links (
+        id, credential, method, role, subject, label, created_at, expires_at
+      ) VALUES ('pending', 'ABCDEF234567', 'one-time-token', 'client', 'one-time-token', NULL,
+        '2026-10-01', '2026-10-02')`;
+      yield* AuthPairingCredentialHashes;
+      yield* AuthPairingCredentialHashes;
+      assert.deepStrictEqual(yield* sql`SELECT id, credential_hash FROM auth_pairing_links`, [
+        {
+          id: "pending",
+          credential_hash: Crypto.createHash("sha256").update("ABCDEF234567").digest("hex"),
+        },
+      ]);
     }).pipe(Effect.provide(NodeSqliteClient.layer({ filename: ":memory:" }))),
   );
 

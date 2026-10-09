@@ -10,6 +10,7 @@ import { ServerConfig } from "../config";
 import { ServerAuth } from "../../auth/Services/ServerAuth";
 import { SessionCredentialService } from "../../auth/Services/SessionCredentialService";
 import { makeEffectAuthRequest } from "../../auth/effectHttp";
+import { roleHasScope } from "../../auth/sessionScopes";
 import { deriveAuthClientMetadata } from "../../auth/utils";
 import { readEffectJson, mapPayloadError } from "./httpBody";
 import { requireAuthenticatedMutationRequest } from "./requestAuthorization";
@@ -100,9 +101,9 @@ export const authEffectRouteLayer = HttpRouter.add(
 
     if (request.method === "POST" && url.pathname === "/api/auth/pairing-token") {
       const session = yield* authenticatedMutationSession;
-      if (session.role !== "owner")
+      if (!roleHasScope(session.role, "access:write"))
         return HttpServerResponse.jsonUnsafe(
-          { error: "Only owner sessions can create pairing credentials." },
+          { error: "Only the machine's owner can pair devices." },
           { status: 403 },
         );
       const payload =
@@ -132,27 +133,19 @@ export const authEffectRouteLayer = HttpRouter.add(
       );
     }
 
-    const ownerSession = Effect.gen(function* () {
-      const session = yield* serverAuth.authenticateHttpRequest(authRequest);
-      if (session.role !== "owner") {
-        return yield* Effect.fail({
-          message: "Only owner sessions can manage network access.",
-          status: 403 as const,
-        });
-      }
-      return session;
-    });
-
-    const ownerMutationSession = Effect.gen(function* () {
-      const session = yield* authenticatedMutationSession;
-      if (session.role !== "owner") {
-        return yield* Effect.fail({
-          message: "Only owner sessions can manage network access.",
-          status: 403 as const,
-        });
-      }
-      return session;
-    });
+    const requireAccessManagement = <A extends { readonly role: "owner" | "client" }, E, R>(
+      authenticate: Effect.Effect<A, E, R>,
+    ) =>
+      Effect.flatMap(authenticate, (session) =>
+        roleHasScope(session.role, "access:write")
+          ? Effect.succeed(session)
+          : Effect.fail({
+              message: "Only the machine's owner can manage devices.",
+              status: 403 as const,
+            }),
+      );
+    const ownerSession = requireAccessManagement(serverAuth.authenticateHttpRequest(authRequest));
+    const ownerMutationSession = requireAccessManagement(authenticatedMutationSession);
 
     if (request.method === "GET" && url.pathname === "/api/auth/pairing-links") {
       yield* ownerSession;

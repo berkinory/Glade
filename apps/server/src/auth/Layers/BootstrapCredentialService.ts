@@ -12,6 +12,7 @@ import {
   type BootstrapGrant,
   type IssuedBootstrapCredential,
 } from "../Services/BootstrapCredentialService";
+import { hashPairingCredential } from "../utils";
 
 interface StoredBootstrapGrant extends BootstrapGrant {
   readonly remainingUses: number | "unbounded";
@@ -35,7 +36,6 @@ const toBootstrapCredentialError = (message: string, status: 401 | 500, cause?: 
 
 const toPairingLink = (row: {
   readonly id: string;
-  readonly credential: string;
   readonly role: "owner" | "client";
   readonly subject: string;
   readonly label: string | null;
@@ -43,7 +43,6 @@ const toPairingLink = (row: {
   readonly expiresAt: DateTime.Utc;
 }): AuthPairingLink => ({
   id: row.id,
-  credential: row.credential,
   role: row.role,
   subject: row.subject,
   ...(row.label ? { label: row.label } : {}),
@@ -104,7 +103,7 @@ const makeBootstrapCredentialService = Effect.gen(function* () {
 
       yield* pairingLinks.create({
         id,
-        credential,
+        credentialHash: hashPairingCredential(credential),
         method: "one-time-token",
         role,
         subject,
@@ -115,7 +114,6 @@ const makeBootstrapCredentialService = Effect.gen(function* () {
 
       const pairingLink = toPairingLink({
         id,
-        credential,
         role,
         subject,
         label: label ?? null,
@@ -181,8 +179,9 @@ const makeBootstrapCredentialService = Effect.gen(function* () {
         } satisfies BootstrapGrant;
       }
 
+      const credentialHash = hashPairingCredential(credential);
       const consumed = yield* pairingLinks.consumeAvailable({
-        credential,
+        credentialHash,
         consumedAt: now,
         now,
       });
@@ -198,7 +197,7 @@ const makeBootstrapCredentialService = Effect.gen(function* () {
         } satisfies BootstrapGrant;
       }
 
-      const matching = yield* pairingLinks.getByCredential({ credential });
+      const matching = yield* pairingLinks.getByCredentialHash({ credentialHash });
       if (Option.isNone(matching)) {
         return yield* toBootstrapCredentialError("Unknown bootstrap credential.", 401);
       }

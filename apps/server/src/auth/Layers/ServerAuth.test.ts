@@ -70,6 +70,31 @@ const runServerAuthTest = (effect: Effect.Effect<void, AuthError, ServerAuth>) =
   effect.pipe(Effect.provide(testLayer), Effect.scoped, Effect.runPromise);
 
 describe("ServerAuthLive", () => {
+  it("throttles failed pairing attempts per address without blocking other devices", async () => {
+    await runServerAuthTest(
+      Effect.gen(function* () {
+        const serverAuth = yield* ServerAuth;
+        for (let attempt = 0; attempt < 10; attempt += 1) {
+          const status = yield* serverAuth
+            .exchangeBootstrapCredential("WRONGSECRET2", requestMetadata)
+            .pipe(Effect.match({ onFailure: (error) => error.status, onSuccess: () => 200 }));
+          expect(status).toBe(401);
+        }
+        const valid = yield* serverAuth.issuePairingCredential();
+        const throttled = yield* serverAuth
+          .exchangeBootstrapCredential(valid.credential, requestMetadata)
+          .pipe(Effect.match({ onFailure: (error) => error.status, onSuccess: () => 200 }));
+        expect(throttled).toBe(429);
+
+        const exchanged = yield* serverAuth.exchangeBootstrapCredential(valid.credential, {
+          ...requestMetadata,
+          ipAddress: "192.168.1.24",
+        });
+        expect(exchanged.response.authenticated).toBe(true);
+      }),
+    );
+  });
+
   it("issues client pairing credentials by default and rejects their reuse", async () => {
     await runServerAuthTest(
       Effect.gen(function* () {

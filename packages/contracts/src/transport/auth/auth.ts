@@ -22,6 +22,22 @@ export type ServerAuthSessionMethod = typeof ServerAuthSessionMethod.Type;
 export const AuthSessionRole = Schema.Literals(["owner", "client"]);
 export type AuthSessionRole = typeof AuthSessionRole.Type;
 
+// What a session may do. Every RPC and HTTP route declares the scope it needs; roles are named sets
+// of scopes. Clients may read their granted scopes to hide controls, but only the server enforces.
+export const AuthScope = Schema.Literals([
+  "orchestration:read",
+  "orchestration:operate",
+  "filesystem:read",
+  "filesystem:write",
+  "source-control:write",
+  "settings:write",
+  "providers:manage",
+  "access:write",
+  "host:control",
+  "diagnostics:read",
+]);
+export type AuthScope = typeof AuthScope.Type;
+
 export const ServerAuthDescriptor = Schema.Struct({
   policy: ServerAuthPolicy,
   bootstrapMethods: Schema.Array(ServerAuthBootstrapMethod),
@@ -71,9 +87,9 @@ export const AuthPairingCredentialResult = Schema.Struct({
 });
 export type AuthPairingCredentialResult = typeof AuthPairingCredentialResult.Type;
 
+// The secret is returned once, when a link is created; listings never carry it.
 export const AuthPairingLink = Schema.Struct({
   id: TrimmedNonEmptyString,
-  credential: TrimmedNonEmptyString,
   role: AuthSessionRole,
   subject: TrimmedNonEmptyString,
   label: Schema.optionalKey(TrimmedNonEmptyString),
@@ -140,6 +156,7 @@ export const AuthSessionState = Schema.Struct({
   authenticated: Schema.Boolean,
   auth: ServerAuthDescriptor,
   role: Schema.optionalKey(AuthSessionRole),
+  scopes: Schema.optionalKey(Schema.Array(AuthScope)),
   sessionMethod: Schema.optionalKey(ServerAuthSessionMethod),
   expiresAt: Schema.optionalKey(Schema.DateTimeUtc),
 });

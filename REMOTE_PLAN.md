@@ -87,8 +87,7 @@ methods.
 
 ### 1. Environment identity and descriptor
 
-- Keep the existing `environmentId` file. An empty or damaged file must not silently mint a new
-  identity under a running server; repair keeps a recovery copy so concurrent starts agree.
+- Keep the existing `environmentId` file, written atomically and read once at startup.
 - Add an unauthenticated descriptor endpoint (`GET /.well-known/glade/environment`) returning
   `environmentId`, label, server version, protocol version, capabilities and supported auth
   methods. It reveals nothing else. Clients call it on every route before sending a credential,
@@ -158,15 +157,14 @@ methods.
 
 ### 5. Sessions, permissions and transport
 
-- Replace the `owner` / `client` split with scopes, keeping the roles as presets:
-  `orchestration:read`, `orchestration:operate`, `filesystem:read`, `filesystem:write`,
-  `source-control:write`, `settings:write`, `providers:manage`, `access:write`, and owner-only
-  `computer-use` and diagnostics.
+- Authorization is expressed in scopes: `orchestration:read`, `orchestration:operate`,
+  `filesystem:read`, `filesystem:write`, `source-control:write`, `settings:write`,
+  `providers:manage`, and owner-only `access:write`, `host:control` and `diagnostics:read`. The
+  `owner` and `client` roles are named sets of these scopes, so no stored session changes; a
+  narrower role (for example view-only) is a new preset, not a new mechanism.
 - Every RPC and HTTP route declares its scope in one table; a middleware checks it before any
   handler runs. A route without a declaration fails closed. Unknown scopes in a request are
   dropped; a request left with no scopes fails before spending a grant.
-- Existing sessions migrate to scopes by role in a new, idempotent migration. Released migrations
-  stay untouched.
 - Browsers authenticate the WebSocket upgrade with their cookie. Bearer clients fetch a short-lived
   WebSocket ticket over authenticated HTTP, so long-lived tokens never appear in socket URLs. The
   existing `ws-token` route becomes this ticket.
@@ -208,9 +206,10 @@ will follow.
 
 Each phase ships on its own, with docs and a changelog entry.
 
-1. **Server foundation.** Descriptor endpoint and identity repair, pairing hardening (hashed
-   secrets, metadata-only list, rate limits, single use), scopes with declared RPC authorization
-   and the role migration, WebSocket tickets for bearer clients, shareable routes endpoint.
+1. **Server foundation.** Descriptor endpoint, pairing hardening (hashed secrets, metadata-only
+   list, rate limits, single use), scopes with declared RPC authorization. WebSocket tickets for
+   bearer clients already exist. The shareable routes endpoint moves to phase 2, where the server
+   knows how it is exposed.
 2. **Desktop exposure.** Remote access setting, backend restart with remote binding, private-address
    accept filter, plain-HTTP acknowledgement, Tailscale HTTPS toggle, user HTTPS URL, pair-a-device
    QR, Devices list with revoke.
@@ -231,7 +230,7 @@ boundary:
 - a revoked session loses its socket and cannot get a ticket;
 - a public local address is refused while private ones are accepted;
 - a route that answers with another `environmentId` never receives a credential;
-- the role-to-scope migration is idempotent and keeps every existing session's access.
+- pending pairing links keep working across the secret-hashing migration.
 
 Exposure, Tailscale and pairing UI are verified in the running app against a phone and the home
 server, not with UI tests.

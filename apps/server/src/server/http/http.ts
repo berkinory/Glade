@@ -5,6 +5,7 @@ import { type ServerShutdownController } from "../lifecycle/serverShutdown";
 import { Layer } from "effect";
 import { makeHealthEffectRouteLayer, makeDesktopShutdownEffectRouteLayer } from "./lifecycleRoutes";
 import { authEffectRouteLayer } from "./authRoutes";
+import { environmentDescriptorRouteLayer } from "./environmentRoutes";
 import { projectFaviconEffectRouteLayer, siteFaviconEffectRouteLayer } from "./faviconRoutes";
 import { threadExportEffectRouteLayer } from "./threadExportRoute";
 import { editorIconEffectRouteLayer } from "./editorIconRoute";
@@ -20,6 +21,7 @@ export function makeEffectHttpRouteLayer(
     makeHealthEffectRouteLayer(readiness),
     makeDesktopShutdownEffectRouteLayer(shutdownController),
     authEffectRouteLayer,
+    environmentDescriptorRouteLayer,
     providerAuthenticationRouteLayer,
     projectFaviconEffectRouteLayer,
     threadExportEffectRouteLayer,
