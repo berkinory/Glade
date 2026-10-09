@@ -23,13 +23,15 @@ const decodeMachinesFile = Schema.decodeUnknownOption(Schema.fromJsonString(Mach
 
 export interface PairedMachineRecord extends DesktopPairedMachine {
   readonly routes: ReadonlyArray<string>;
-  readonly sessionToken: string;
+  // Null when the keychain no longer opens it (a reset keychain, a copied profile); the machine then
+  // has to be paired again, but stays listed so it can be.
+  readonly sessionToken: string | null;
 }
 
 export interface PairedMachinesStore {
   list(): ReadonlyArray<PairedMachineRecord>;
   get(id: string): PairedMachineRecord | null;
-  put(record: PairedMachineRecord): void;
+  put(record: PairedMachineRecord & { readonly sessionToken: string }): void;
   remove(id: string): void;
 }
 
@@ -62,17 +64,23 @@ export function createPairedMachinesStore(filePath: string): PairedMachinesStore
     FS.renameSync(temporary, filePath);
   }
 
-  const toRecord = (stored: StoredMachine): PairedMachineRecord => {
-    requireEncryption();
-    return {
-      id: stored.id,
-      label: stored.label,
-      environmentId: stored.environmentId,
-      address: stored.address,
-      routes: stored.routes,
-      sessionToken: safeStorage.decryptString(Buffer.from(stored.sessionToken, "base64")),
-    };
+  const readToken = (encrypted: string): string | null => {
+    if (!safeStorage.isEncryptionAvailable()) return null;
+    try {
+      return safeStorage.decryptString(Buffer.from(encrypted, "base64"));
+    } catch {
+      return null;
+    }
   };
+
+  const toRecord = (stored: StoredMachine): PairedMachineRecord => ({
+    id: stored.id,
+    label: stored.label,
+    environmentId: stored.environmentId,
+    address: stored.address,
+    routes: stored.routes,
+    sessionToken: readToken(stored.sessionToken),
+  });
 
   return {
     list: () => readFile().map(toRecord),

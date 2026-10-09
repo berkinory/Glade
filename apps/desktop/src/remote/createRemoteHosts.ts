@@ -17,6 +17,7 @@ import { createPairedMachinesStore } from "./paired/pairedMachinesStore";
 
 interface RemoteHostsDependencies {
   readAppUpdateYml(): Record<string, string> | null;
+  localServerUrl(): string;
   log(message: string): void;
 }
 
@@ -66,7 +67,8 @@ export function createRemoteHosts(dependencies: RemoteHostsDependencies): {
     store: createPairedMachinesStore(DESKTOP_PAIRED_MACHINES_PATH),
     // Only this app's own windows may read what a paired machine answers.
     allowedOrigins: new Set([GLADE_DESKTOP_ORIGIN, ...(devUrl ? [new URL(devUrl).origin] : [])]),
-    otherServerUrls: () =>
+    localServerUrl: dependencies.localServerUrl,
+    sshServerUrls: () =>
       connections
         .states()
         .flatMap((state) => (state.wsUrl ? [state.wsUrl.replace(/^ws/u, "http")] : [])),

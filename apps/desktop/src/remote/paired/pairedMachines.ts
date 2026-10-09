@@ -46,27 +46,47 @@ async function readDescriptor(
   }
 }
 
-// The first route that answers as the expected machine. A route that answers as another machine (a
+type RouteLookup =
+  | {
+      readonly kind: "found";
+      readonly url: string;
+      readonly environmentId: string;
+      readonly label: string;
+    }
+  | { readonly kind: "other-machine"; readonly label: string }
+  | { readonly kind: "unreachable" };
+
+// The first route, in the link's order, that answers as the expected machine. Routes are probed at
+// once so a dead address costs one timeout, not one each. A route that answers as another machine (a
 // LAN address reused on another network) is skipped before it ever sees the session token.
 async function findRoute(
   routes: ReadonlyArray<string>,
   environmentId: string | null,
-): Promise<{ url: string; environmentId: string; label: string } | null> {
-  for (const url of routes) {
-    const descriptor = await readDescriptor(url);
-    if (descriptor && (environmentId === null || descriptor.environmentId === environmentId)) {
-      return { url, ...descriptor };
+): Promise<RouteLookup> {
+  const probes = routes.map((url) =>
+    readDescriptor(url).then((descriptor) => ({ url, descriptor })),
+  );
+  let otherLabel: string | null = null;
+  for (const probe of probes) {
+    const { url, descriptor } = await probe;
+    if (!descriptor) continue;
+    if (environmentId === null || descriptor.environmentId === environmentId) {
+      return { kind: "found", url, ...descriptor };
     }
+    otherLabel ??= descriptor.label;
   }
-  return null;
+  return otherLabel === null
+    ? { kind: "unreachable" }
+    : { kind: "other-machine", label: otherLabel };
 }
 
 export function createPairedMachines(input: {
   readonly store: PairedMachinesStore;
   readonly allowedOrigins: ReadonlySet<string>;
-  // Servers this app already reaches another way (SSH host tunnels). The same server under two
-  // environments would show every project and chat twice.
-  readonly otherServerUrls: () => ReadonlyArray<string>;
+  // Servers this app already reaches another way: its own, and SSH host tunnels. The same server
+  // under two environments would show every project and chat twice.
+  readonly localServerUrl: () => string;
+  readonly sshServerUrls: () => ReadonlyArray<string>;
   readonly publish: (states: ReadonlyArray<DesktopSshConnectionState>) => void;
   readonly log: (message: string) => void;
 }): PairedMachines {
@@ -122,24 +142,7 @@ export function createPairedMachines(input: {
       issue: null,
       wsUrl: previous?.wsUrl ?? null,
     });
-    const route = await findRoute(record.routes, record.environmentId);
-    if (!route) {
-      setState(id, {
-        phase: "failed",
-        detail: `${record.label} is not reachable at any of its addresses.`,
-        issue: null,
-        wsUrl: null,
-      });
-      scheduleRetry(id);
-      throw new Error(`${record.label} is not reachable.`);
-    }
-    const session = await fetch(new URL("/api/auth/session", route.url), {
-      headers: { authorization: `Bearer ${record.sessionToken}` },
-      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
-    })
-      .then((response) => response.json() as Promise<{ authenticated?: boolean }>)
-      .catch(() => null);
-    if (session?.authenticated !== true) {
+    const signedOut = (): never => {
       setState(id, {
         phase: "failed",
         detail: `${record.label} no longer accepts this app. Pair it again from its Remote access settings.`,
@@ -147,13 +150,36 @@ export function createPairedMachines(input: {
         wsUrl: null,
       });
       throw new Error(`${record.label} no longer accepts this app.`);
+    };
+    const { sessionToken } = record;
+    if (sessionToken === null) return signedOut();
+    const route = await findRoute(record.routes, record.environmentId);
+    if (route.kind !== "found") {
+      setState(id, {
+        phase: "failed",
+        detail:
+          route.kind === "other-machine"
+            ? `${record.label}'s addresses now reach ${route.label}. Glade keeps looking for ${record.label}.`
+            : `${record.label} is not reachable at any of its addresses.`,
+        issue: null,
+        wsUrl: null,
+      });
+      scheduleRetry(id);
+      throw new Error(`${record.label} is not reachable.`);
     }
+    const session = await fetch(new URL("/api/auth/session", route.url), {
+      headers: { authorization: `Bearer ${sessionToken}` },
+      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+    })
+      .then((response) => response.json() as Promise<{ authenticated?: boolean }>)
+      .catch(() => null);
+    if (session?.authenticated !== true) return signedOut();
     if (route.url !== record.address || route.label !== record.label) {
-      input.store.put({ ...record, address: route.url, label: route.label });
+      input.store.put({ ...record, sessionToken, address: route.url, label: route.label });
     }
     const proxy = await proxyFor(id);
     if (upstreamUrlById.get(id) !== route.url) {
-      proxy.setUpstream({ baseUrl: new URL(route.url), sessionToken: record.sessionToken });
+      proxy.setUpstream({ baseUrl: new URL(route.url), sessionToken });
       upstreamUrlById.set(id, route.url);
     }
     setState(id, { phase: "connected", detail: null, issue: null, wsUrl: proxy.wsUrl });
@@ -173,16 +199,28 @@ export function createPairedMachines(input: {
       parsed.routes.map((route) => route.url),
       parsed.environmentId,
     );
-    if (!route) {
+    if (route.kind === "other-machine") {
+      throw new Error(
+        `That link's addresses now reach ${route.label}, not the machine that made it. Create a new link on that machine.`,
+      );
+    }
+    if (route.kind === "unreachable") {
       throw new Error(
         "Glade could not reach that machine. Check that both are on the same network or tailnet, and that its remote access is on.",
       );
     }
-    const descriptors = await Promise.all(input.otherServerUrls().map(readDescriptor));
-    const known = descriptors.find((entry) => entry?.environmentId === route.environmentId);
-    if (known) {
+    const [local, ...sshHosts] = await Promise.all(
+      [input.localServerUrl(), ...input.sshServerUrls()].map(readDescriptor),
+    );
+    if (local?.environmentId === route.environmentId) {
       throw new Error(
-        `${known.label} is already added as an SSH host. Remove it from SSH hosts to pair with it instead.`,
+        "That link is from this computer. Open it on another device to pair with it.",
+      );
+    }
+    const sshHost = sshHosts.find((entry) => entry?.environmentId === route.environmentId);
+    if (sshHost) {
+      throw new Error(
+        `${sshHost.label} is already added as an SSH host. Remove it from SSH hosts to pair with it instead.`,
       );
     }
     const response = await fetch(new URL("/api/auth/bootstrap/bearer", route.url), {
@@ -204,7 +242,7 @@ export function createPairedMachines(input: {
     const existing = input.store
       .list()
       .find((machine) => machine.environmentId === route.environmentId);
-    const record: PairedMachineRecord = {
+    const record = {
       id: existing?.id ?? Crypto.randomUUID(),
       label: route.label,
       environmentId: route.environmentId,
@@ -230,7 +268,7 @@ export function createPairedMachines(input: {
     input.store.remove(id);
     input.publish([...stateById.values()]);
     // Signing out on the other machine is a courtesy; an offline machine keeps a session nobody holds.
-    if (record) {
+    if (record?.sessionToken) {
       await fetch(new URL("/api/auth/logout", record.address), {
         method: "POST",
         headers: { authorization: `Bearer ${record.sessionToken}` },
@@ -246,7 +284,17 @@ export function createPairedMachines(input: {
     remove,
     connect,
     connectAll: () => {
-      for (const machine of input.store.list()) void connect(machine.id).catch(() => undefined);
+      let machines: ReadonlyArray<PairedMachineRecord>;
+      try {
+        machines = input.store.list();
+      } catch (error) {
+        // An unreadable file is reported when the window lists machines; it is never rewritten here.
+        input.log(
+          `paired machines not loaded: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        return;
+      }
+      for (const machine of machines) void connect(machine.id).catch(() => undefined);
     },
     stop: async () => {
       for (const timer of retryTimers.values()) clearTimeout(timer);

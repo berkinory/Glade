@@ -62,7 +62,7 @@ working while this computer is off. On Linux, Tailscale HTTPS needs permission o
 The desktop app can also be the paired device. On the other machine, turn on remote access, choose
 **Pair a device** and copy the link. Here, open **Settings → Remote access**, choose **Pair with a
 machine** under **Other machines** and paste it. The machine's projects and chats appear in the
-sidebar, and new chats can run there from **Paired** in the composer's machine menu.
+sidebar, and new chats can run there from **Remote** in the composer's machine menu.
 
 The desktop keeps the machine's session encrypted with the system keychain and connects through a
 small proxy on loopback, so the session never appears in an address the window can see. It tries the

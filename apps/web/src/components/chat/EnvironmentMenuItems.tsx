@@ -13,7 +13,7 @@ import { ComposerPickerMenuSubPopup } from "./ComposerPickerMenuPopup";
 
 const GROUPS = [
   { kind: "ssh", label: "SSH", icon: ServerStack01Icon, addLabel: "Add SSH host…" },
-  { kind: "paired", label: "Paired", icon: LaptopIcon, addLabel: "Pair with a machine…" },
+  { kind: "paired", label: "Remote", icon: LaptopIcon, addLabel: "Pair with a machine…" },
 ] as const satisfies ReadonlyArray<{
   kind: RemoteEnvironment["kind"];
   label: string;
@@ -22,7 +22,7 @@ const GROUPS = [
 }>;
 
 // Where something runs: this machine, a saved SSH host under "SSH", or another machine's Glade under
-// "Paired". The same items serve every place that picks a machine, so they read and behave alike.
+// "Remote". The same items serve every place that picks a machine, so they read and behave alike.
 export function EnvironmentMenuItems(props: {
   readonly onSelect: (environmentKey: EnvironmentKey) => void;
 }) {

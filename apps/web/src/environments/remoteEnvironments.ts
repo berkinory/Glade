@@ -3,6 +3,8 @@ import type { DesktopSshConnectionState, DesktopSshHost } from "@glade/contracts
 import { useSyncExternalStore } from "react";
 import type { StoreApi } from "zustand";
 import { createAppStore, type AppStore } from "../appStore";
+import { toastManager } from "../components/ui/toast";
+import { ipcErrorMessage } from "../lib/ipcErrorMessage";
 import { REMOTE_STORE_SIDE_EFFECTS } from "../storeSideEffects";
 import { initialState } from "../storeState";
 import { createEnvironmentNativeApi, type EnvironmentNativeApi } from "../wsNativeApi";
@@ -190,8 +192,15 @@ export function startRemoteEnvironments(): void {
   });
   const paired = window.desktopBridge?.pairedMachines;
   if (!paired) return;
-  paired.onStates((states) => applyStates("paired", states));
-  void refreshPairedMachines();
+  // Machines can be added or removed from another window, so every update rereads the list.
+  paired.onStates(() => void refreshPairedMachines().catch(() => undefined));
+  void refreshPairedMachines().catch((error: unknown) =>
+    toastManager.add({
+      type: "error",
+      title: "Could not load paired machines",
+      description: ipcErrorMessage(error, "Try restarting Glade."),
+    }),
+  );
 }
 
 export async function saveRemoteHost(

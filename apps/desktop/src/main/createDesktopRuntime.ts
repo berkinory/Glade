@@ -120,6 +120,7 @@ export function createDesktopRuntime(): void {
   lifecycle.installSignalHandlers();
   const remoteHosts = createRemoteHosts({
     readAppUpdateYml: resources.readAppUpdateYml,
+    localServerUrl: () => backend.getHttpUrl(),
     log: log.writeDesktopLogHeader,
   });
   app.once("will-quit", () => remoteHosts.stop());
