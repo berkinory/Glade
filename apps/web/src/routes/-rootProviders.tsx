@@ -2,20 +2,23 @@ import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import { QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import type { NativeApi } from "@glade/contracts/ipc/ipc";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSettings } from "../appSettings";
 import { toastManager } from "../components/ui/toast";
+import { useActiveEnvironment } from "../environments/activeEnvironment";
+import { LOCAL_ENVIRONMENT, type EnvironmentKey } from "../environments/environmentKey";
 import {
   PROVIDER_AUTH_REFRESH_MIN_INTERVAL_MS,
   useProviderAuthRefreshOnFocus,
 } from "../hooks/useProviderAuthRefreshOnFocus";
 import { useProviderStatusRefresh } from "../hooks/useProviderStatusRefresh";
 import {
+  environmentServerConfigQueryOptions,
   serverConfigQueryOptions,
-  serverQueryKeys,
   serverSettingsQueryOptions,
 } from "../lib/serverReactQuery";
-import { ensureNativeApi } from "../nativeApi";
+import { ensureEnvironmentNativeApi } from "../nativeApi";
 import {
   PROVIDER_UPDATE_INITIAL_REFRESH_DELAY_MS,
   PROVIDER_UPDATE_REFRESH_INTERVAL_MS,
@@ -102,11 +105,63 @@ export function ProviderStatusRefreshCoordinator() {
 
   return (
     <ProviderUpdateNotifications
+      environmentKey={LOCAL_ENVIRONMENT}
+      hostLabel={null}
+      visible
       liveVersionCheckCompleted={providerUpdateRefreshEnabled && liveVersionCheckCompleted}
     />
   );
 }
+
+// A host's server checks its own provider CLIs: once per connection, so its chats know which
+// providers it has, and hourly for updates. Its update prompt shows only in that host's chats.
+export function HostProviderUpdates(props: {
+  readonly environmentKey: EnvironmentKey;
+  readonly hostLabel: string;
+  readonly api: NativeApi;
+}) {
+  const { settings } = useAppSettings();
+  const queryClient = useQueryClient();
+  const activeEnvironment = useActiveEnvironment();
+  const [checked, setChecked] = useState(false);
+  const { api, environmentKey } = props;
+  const updateChecks = settings.enableProviderUpdateChecks;
+
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = () =>
+      void api.server
+        .refreshProviders()
+        .then(() => {
+          if (cancelled) return;
+          setChecked(true);
+          void queryClient.invalidateQueries({
+            queryKey: environmentServerConfigQueryOptions(environmentKey).queryKey,
+          });
+        })
+        .catch(() => undefined);
+    refresh();
+    const interval = updateChecks
+      ? window.setInterval(refresh, PROVIDER_UPDATE_REFRESH_INTERVAL_MS)
+      : null;
+    return () => {
+      cancelled = true;
+      if (interval !== null) window.clearInterval(interval);
+    };
+  }, [api, environmentKey, queryClient, updateChecks]);
+
+  return (
+    <ProviderUpdateNotifications
+      environmentKey={environmentKey}
+      hostLabel={props.hostLabel}
+      visible={activeEnvironment === environmentKey}
+      liveVersionCheckCompleted={checked && updateChecks}
+    />
+  );
+}
 async function runProviderUpdateAll(params: {
+  environmentKey: EnvironmentKey;
+  hostLabel: string | null;
   providers: ReadonlyArray<ServerProviderStatus>;
   queryClient: QueryClient;
   activeToastRef: { current: ActiveProviderUpdateToast | null };
@@ -115,6 +170,8 @@ async function runProviderUpdateAll(params: {
   setIsUpdatingAll: (value: boolean) => void;
 }): Promise<void> {
   const {
+    environmentKey,
+    hostLabel,
     providers,
     queryClient,
     activeToastRef,
@@ -123,6 +180,7 @@ async function runProviderUpdateAll(params: {
     setIsUpdatingAll,
   } = params;
   const activeNotificationKey = providerUpdateNotificationKey(providers);
+  const onMachine = hostLabel ? ` on ${hostLabel}` : "";
   if (isUpdatingAllRef.current || providers.length === 0 || !activeNotificationKey) {
     return;
   }
@@ -135,7 +193,7 @@ async function runProviderUpdateAll(params: {
     trackedToast?.toastId ??
     toastManager.add({
       type: "loading",
-      title: "Updating providers...",
+      title: `Updating providers${onMachine}...`,
       description:
         providers.length === 1
           ? `Updating ${PROVIDER_DISPLAY_NAMES[providers[0]!.provider]}.`
@@ -153,7 +211,7 @@ async function runProviderUpdateAll(params: {
 
   toastManager.update(toastId, {
     type: "loading",
-    title: "Updating providers...",
+    title: `Updating providers${onMachine}...`,
     description:
       providers.length === 1
         ? `Updating ${PROVIDER_DISPLAY_NAMES[providers[0]!.provider]}.`
@@ -166,7 +224,7 @@ async function runProviderUpdateAll(params: {
   const failures: Array<{ provider: ServerProviderStatus; reason: string }> = [];
 
   try {
-    const api = ensureNativeApi();
+    const api = ensureEnvironmentNativeApi(environmentKey);
     for (const provider of providers) {
       try {
         const result = await withProviderUpdateTimeout({
@@ -204,7 +262,7 @@ async function runProviderUpdateAll(params: {
   } finally {
     // Refresh is best-effort UI sync; it must not keep the progress toast alive.
     await queryClient
-      .invalidateQueries({ queryKey: serverQueryKeys.config() })
+      .invalidateQueries({ queryKey: environmentServerConfigQueryOptions(environmentKey).queryKey })
       .catch(() => undefined);
     isUpdatingAllRef.current = false;
     setIsUpdatingAll(false);
@@ -234,8 +292,8 @@ async function runProviderUpdateAll(params: {
       type: "error",
       title:
         failures.length === providers.length
-          ? "Provider updates failed"
-          : "Some provider updates failed",
+          ? `Provider updates failed${onMachine}`
+          : `Some provider updates failed${onMachine}`,
       description:
         manualCommands.length > 0
           ? `${failureLines}\n\nCopy the command${manualCommands.length === 1 ? "" : "s"} below to update manually in a terminal.`
@@ -254,22 +312,29 @@ async function runProviderUpdateAll(params: {
     type: "success",
     title:
       providers.length === 1
-        ? `${PROVIDER_DISPLAY_NAMES[providers[0]!.provider]} updated`
-        : `${providers.length} providers updated`,
+        ? `${PROVIDER_DISPLAY_NAMES[providers[0]!.provider]} updated${onMachine}`
+        : `${providers.length} providers updated${onMachine}`,
     description: "New sessions will use the refreshed provider tools.",
     data: { onClose: dismissProgressToast },
     timeout: 6000,
   });
 }
 function ProviderUpdateNotifications({
+  environmentKey,
+  hostLabel,
+  visible,
   liveVersionCheckCompleted,
 }: {
+  readonly environmentKey: EnvironmentKey;
+  readonly hostLabel: string | null;
+  // Shown only while the user works on this machine; a hidden prompt waits until they do.
+  readonly visible: boolean;
   readonly liveVersionCheckCompleted: boolean;
 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { settings } = useAppSettings();
-  const serverConfigQuery = useQuery(serverConfigQueryOptions());
+  const serverConfigQuery = useQuery(environmentServerConfigQueryOptions(environmentKey));
   const serverSettingsQuery = useQuery(serverSettingsQueryOptions());
   const providerUpdateServerSettings = serverSettingsQuery.data
     ? {
@@ -290,11 +355,14 @@ function ProviderUpdateNotifications({
   const oneClickProviders = outdatedProviders.filter(
     (provider) => !isProviderUpdateActive(provider),
   );
-  const notificationKey = providerUpdateNotificationKey(outdatedProviders);
+  const providersKey = providerUpdateNotificationKey(outdatedProviders);
+  const notificationKey = providersKey ? `${environmentKey}|${providersKey}` : null;
 
   const updateAll = useCallback(
     (providers: ReadonlyArray<ServerProviderStatus>) =>
       runProviderUpdateAll({
+        environmentKey,
+        hostLabel,
         providers,
         queryClient,
         activeToastRef,
@@ -302,7 +370,7 @@ function ProviderUpdateNotifications({
         progressToastDismissedRef,
         setIsUpdatingAll,
       }),
-    [queryClient],
+    [environmentKey, hostLabel, queryClient],
   );
 
   useEffect(() => {
@@ -313,6 +381,7 @@ function ProviderUpdateNotifications({
     }
 
     if (
+      !visible ||
       outdatedProviders.length === 0 ||
       oneClickProviders.length === 0 ||
       !notificationKey ||
@@ -328,10 +397,11 @@ function ProviderUpdateNotifications({
     const firstProvider = outdatedProviders[0]!;
     const additionalCount = outdatedProviders.length - 1;
     const providerName = PROVIDER_DISPLAY_NAMES[firstProvider.provider];
+    const onMachine = hostLabel ? ` on ${hostLabel}` : "";
     const title =
       outdatedProviders.length === 1
-        ? `${providerName} update available`
-        : `${outdatedProviders.length} provider updates available`;
+        ? `${providerName} update available${onMachine}`
+        : `${outdatedProviders.length} provider updates available${onMachine}`;
     const description =
       outdatedProviders.length === 1
         ? `${providerName} has a newer version available.`
@@ -349,31 +419,51 @@ function ProviderUpdateNotifications({
       title,
       description,
       timeout: 0,
-      actionProps: {
-        children: "Review updates",
-        onClick: () => {
-          if (activeToastRef.current?.toastId === toastId) {
-            toastManager.close(toastId);
-            activeToastRef.current = null;
+      ...(hostLabel
+        ? {
+            // Settings lists this machine's providers only, so a host's prompt updates in place.
+            actionProps: {
+              children: "Update",
+              onClick: () => void updateAll(oneClickProviders),
+            },
+            data: { onClose: closeTrackedPrompt },
           }
-          void navigate({
-            to: "/settings",
-            search: { section: "providers", target: SETTINGS_TARGETS.providerUpdates },
-          });
-        },
-      },
-      data: {
-        onClose: closeTrackedPrompt,
-        secondaryActionProps: {
-          children: "Update all",
-          onClick: () => {
-            void updateAll(oneClickProviders);
-          },
-        },
-      },
+        : {
+            actionProps: {
+              children: "Review updates",
+              onClick: () => {
+                if (activeToastRef.current?.toastId === toastId) {
+                  toastManager.close(toastId);
+                  activeToastRef.current = null;
+                }
+                void navigate({
+                  to: "/settings",
+                  search: { section: "providers", target: SETTINGS_TARGETS.providerUpdates },
+                });
+              },
+            },
+            data: {
+              onClose: closeTrackedPrompt,
+              secondaryActionProps: {
+                children: "Update all",
+                onClick: () => {
+                  void updateAll(oneClickProviders);
+                },
+              },
+            },
+          }),
     });
     activeToastRef.current = { kind: "prompt", key: notificationKey, toastId };
-  }, [isUpdatingAll, navigate, notificationKey, oneClickProviders, outdatedProviders, updateAll]);
+  }, [
+    hostLabel,
+    isUpdatingAll,
+    navigate,
+    notificationKey,
+    oneClickProviders,
+    outdatedProviders,
+    updateAll,
+    visible,
+  ]);
 
   return null;
 }

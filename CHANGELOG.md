@@ -1,5 +1,11 @@
 # Glade Changelog
 
+## 0.2.3 - Unreleased
+
+### Improved
+
+- Provider updates on an SSH host are offered in that host's chats and install on the host.
+
 ## 0.2.2 - 2026-10-09
 
 ### New

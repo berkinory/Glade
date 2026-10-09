@@ -28,6 +28,9 @@ your machine.
   message.
 - **A chat on a host** shows the host's name and a status dot beside the composer's controls. Hovering
   explains the state; clicking reconnects a host that is not connected.
+- **Provider updates on a host** are checked when it connects and hourly, following the update-check
+  setting. The prompt appears once per new version, only in that host's chats, and updates the CLI
+  on the host.
 - **Manual project order** spans machines and is kept on this machine; a host's projects keep their
   place while it is offline.
 - **Spaces** hold host projects too; a host project's space is kept on this machine, since spaces

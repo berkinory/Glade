@@ -1,40 +1,12 @@
-import type { NativeApi } from "@glade/contracts/ipc/ipc";
-import { useQueryClient } from "@tanstack/react-query";
 import { Fragment, useEffect, useMemo, useRef } from "react";
 import { toastManager } from "../components/ui/toast";
-import { LOCAL_ENVIRONMENT, type EnvironmentKey } from "../environments/environmentKey";
-import { environmentServerConfigQueryOptions } from "../lib/serverReactQuery";
+import { LOCAL_ENVIRONMENT } from "../environments/environmentKey";
 import { environmentStore } from "../environments/environmentStores";
 import { startRemoteEnvironments, useRemoteEnvironments } from "../environments/remoteEnvironments";
 import { readLocalNativeApi } from "../nativeApi";
 import { onServerWelcome, onThreadStreamFailure } from "../wsNativeApi";
 import { EnvironmentEventRouter } from "./-rootEventRouter";
-
-// A server probes its providers only when a client asks. This app asks its own server at startup;
-// a host's server is asked once per connection, so its chats know which providers it has.
-function HostProviderRefresh(props: {
-  readonly environmentKey: EnvironmentKey;
-  readonly api: NativeApi;
-}) {
-  const queryClient = useQueryClient();
-  const { api, environmentKey } = props;
-  useEffect(() => {
-    let cancelled = false;
-    void api.server
-      .refreshProviders()
-      .then(() => {
-        if (cancelled) return;
-        void queryClient.invalidateQueries({
-          queryKey: environmentServerConfigQueryOptions(environmentKey).queryKey,
-        });
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [api, environmentKey, queryClient]);
-  return null;
-}
+import { HostProviderUpdates } from "./-rootProviders";
 
 // One stream runtime per environment: the local server, plus every SSH host that is reachable.
 export function EnvironmentRouters() {
@@ -86,7 +58,11 @@ export function EnvironmentRouters() {
               connection={environment.api}
               store={environment.store}
             />
-            <HostProviderRefresh environmentKey={environment.key} api={environment.api.api} />
+            <HostProviderUpdates
+              environmentKey={environment.key}
+              hostLabel={environment.host.label}
+              api={environment.api.api}
+            />
           </Fragment>
         ) : null,
       )}
