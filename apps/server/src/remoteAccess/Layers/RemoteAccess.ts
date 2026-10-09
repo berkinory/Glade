@@ -68,7 +68,7 @@ const readSettings = (filePath: string) =>
   );
 
 interface ActiveListener {
-  readonly server: net.Server;
+  readonly servers: ReadonlyArray<net.Server>;
   readonly port: number;
   readonly sockets: Set<net.Socket>;
 }
@@ -156,13 +156,20 @@ const make = Effect.gen(function* () {
       ),
     );
 
+  const closeServers = (servers: ReadonlyArray<net.Server>) =>
+    Effect.forEach(
+      servers,
+      (server) => Effect.callback<void>((resume) => void server.close(() => resume(Effect.void))),
+      { discard: true },
+    );
+
   const openListener = (httpServer: http.Server, preferredPort: number) =>
     Effect.gen(function* () {
-      let lastError: unknown = null;
+      let lastError: NodeJS.ErrnoException | null = null;
       for (let offset = 0; offset < PORT_ATTEMPTS; offset += 1) {
         const port = preferredPort + offset;
         const sockets = new Set<net.Socket>();
-        const server = net.createServer((socket) => {
+        const accept = (socket: net.Socket) => {
           const local = socket.localAddress ?? "";
           const allowed = acceptPlainHttp
             ? isPrivateNetworkAddress(local)
@@ -175,22 +182,32 @@ const make = Effect.gen(function* () {
           socket.once("close", () => sockets.delete(socket));
           markRemoteSocket(socket);
           httpServer.emit("connection", socket);
-        });
-        // Dual-stack first; hosts without IPv6 only take the IPv4 wildcard.
-        const bound = yield* listenOnce(server, { host: "::", port, ipv6Only: false }).pipe(
-          Effect.catch((error) =>
-            error.code === "EAFNOSUPPORT" || error.code === "EADDRNOTAVAIL"
-              ? listenOnce(server, { host: "0.0.0.0", port })
-              : Effect.fail(error),
-          ),
-          Effect.as(true),
-          Effect.catch((error) => {
-            lastError = error;
-            return Effect.succeed(false);
-          }),
+        };
+        // IPv4 and IPv6 get separate sockets: macOS grants a dual-stack bind while another app
+        // holds the IPv4 port, and every IPv4 device would then reach that app instead.
+        const ipv4 = net.createServer(accept);
+        const ipv6 = net.createServer(accept);
+        const ipv4Error = yield* listenOnce(ipv4, { host: "0.0.0.0", port }).pipe(
+          Effect.as(null),
+          Effect.catch((error) => Effect.succeed(error)),
         );
-        if (bound) return { server, port, sockets } satisfies ActiveListener;
-        if ((lastError as NodeJS.ErrnoException | null)?.code !== "EADDRINUSE") break;
+        if (ipv4Error) {
+          lastError = ipv4Error;
+          if (ipv4Error.code === "EADDRINUSE") continue;
+          break;
+        }
+        const ipv6Error = yield* listenOnce(ipv6, { host: "::", port, ipv6Only: true }).pipe(
+          Effect.as(null),
+          Effect.catch((error) => Effect.succeed(error)),
+        );
+        if (ipv6Error?.code === "EADDRINUSE") {
+          lastError = ipv6Error;
+          yield* closeServers([ipv4]);
+          continue;
+        }
+        // Hosts without IPv6 serve IPv4 only.
+        const servers = ipv6Error ? [ipv4] : [ipv4, ipv6];
+        return { servers, port, sockets } satisfies ActiveListener;
       }
       return yield* new RemoteAccessError({
         message: `Could not open port ${preferredPort} for other devices: ${errorMessage(lastError)}`,
@@ -199,10 +216,9 @@ const make = Effect.gen(function* () {
     });
 
   const closeListener = (listener: ActiveListener) =>
-    Effect.callback<void>((resume) => {
+    Effect.sync(() => {
       for (const socket of listener.sockets) socket.destroy();
-      listener.server.close(() => resume(Effect.void));
-    });
+    }).pipe(Effect.andThen(closeServers(listener.servers)));
 
   const routesFor = (
     settings: RemoteAccessSettings,
