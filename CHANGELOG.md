@@ -1,30 +1,21 @@
 # Glade Changelog
 
-## 0.2.3 - Unreleased
+## 0.2.3 - 2026-10-10
 
 ### New
 
-- Use Glade from your phone or another computer: turn on Remote access in Settings, pair a device with a QR code, and reach this machine over Tailscale HTTPS or your local network. Paired devices stay signed in across restarts and can be removed at any time. SSH hosts get the same from their menu, so a phone can work with a host while this computer is off.
-- Install Glade on a Linux server or a Mac with one command, without the desktop app. It verifies the download, starts on boot, and shows a QR code to pair your phone; the `glade` command then pairs devices, turns remote access on or off, updates and uninstalls.
-- Pair the desktop app with Glade on another computer from its pairing link. Its projects and chats appear next to yours under Remote, the way SSH hosts do.
+- Use Glade from your phone or another computer: turn on Remote access in Settings, pair a device with a QR code, and reach this machine over Tailscale HTTPS or your local network. Paired devices stay signed in across restarts, can be removed at any time, and get a layout made for phones. SSH hosts offer the same from their menu, so a phone can keep working with a host while this computer is off. ([d185d89c9](https://github.com/berkinory/Glade/commit/d185d89c9052082dfb301f48f9a4ca9a2b2090cf), [05bf3af80](https://github.com/berkinory/Glade/commit/05bf3af804a7417c1ad2eb06f5eea94f8ca7d7f9), [2a57c51e8](https://github.com/berkinory/Glade/commit/2a57c51e80af766109a8cac2d0a094a88e45684e), [d9ae58744](https://github.com/berkinory/Glade/commit/d9ae5874492dbce64076150e9dd4dc067a1534d8))
+- Install Glade on a Linux server or a Mac with one command, without the desktop app. It verifies the download, starts on boot, and shows a QR code to pair your phone; the `glade` command then pairs devices, turns remote access on or off, updates and uninstalls. ([bef89898d](https://github.com/berkinory/Glade/commit/bef89898d8b212b7284268cc218e5f01552327b5))
+- Pair the desktop app with Glade on another computer from its pairing link. Its projects and chats appear next to yours under Remote, the way SSH hosts do. ([e2bb4f62f](https://github.com/berkinory/Glade/commit/e2bb4f62f0205e6e1ef7f7f9675d98e41913d0ea), [87d2b6543](https://github.com/berkinory/Glade/commit/87d2b6543a414c9dab8f98a4cdd1b1313434df77))
 
 ### Improved
 
-- Provider updates on an SSH host are offered in that host's chats and install on the host.
-- Pairing links are stored only in hashed form, repeated wrong pairing attempts are slowed down, and paired devices cannot pair or remove other devices.
-- Glade on a phone: the sidebar closes after you pick or start a chat, project buttons work on the first tap, the permission menu opens and fits the screen, and files, Git and the terminal open full screen from the chat header instead of a side strip.
-- A phone that cannot reach the computer for a while says it may be asleep, offline or have remote access off, instead of only "Reconnecting".
-- A machine cannot be added both as an SSH host and as a paired machine, so its projects never show twice.
-- Paired machines and SSH hosts that drop are retried with growing pauses instead of on a fixed timer, and a paired machine that stops answering is noticed within seconds even when idle.
-- Provider update prompts appear only on the computer running Glade, not on paired phones.
+- Provider updates for an SSH host are offered in that host's chats and install on the host. ([807c33f8d](https://github.com/berkinory/Glade/commit/807c33f8d045aacbc73c8348dbd9bb67a5c52d4e))
+- SSH hosts and paired machines that drop are retried with growing pauses instead of on a fixed timer, and an unresponsive paired machine is noticed within seconds. ([a9cc2bfee](https://github.com/berkinory/Glade/commit/a9cc2bfee62d45b21dc5092a21b7403311cf53cd))
 
 ### Fixed
 
-- Opening a pairing link in a browser signs it in instead of always reporting that the link could not be used.
-- Adding a project on an SSH host with a path that starts with `~` no longer fails with a missing folder error.
-- When every remote access port is taken, Settings explains how to fix it instead of showing a system error.
-- "Pair a device" no longer looks available while no address can reach this machine.
-- The context usage gauge in the composer no longer looks like a loading spinner.
+- Adding a project on an SSH host with a path that starts with `~` no longer fails with a missing folder error. ([1b3b3dcc2](https://github.com/berkinory/Glade/commit/1b3b3dcc28294a72fc877894e9fa016362018854))
 
 ## 0.2.2 - 2026-10-09
 
