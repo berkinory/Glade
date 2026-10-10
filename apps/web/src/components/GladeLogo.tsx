@@ -1,5 +1,5 @@
 import type { SVGProps } from "react";
-import { GLADE_MARK_QUADRANT, GLADE_MARK_ROTATIONS, GLADE_MARK_VIEWBOX } from "~/assets/gladeMark";
+import { GLADE_MARK_PATH, GLADE_MARK_VIEWBOX } from "~/assets/gladeMark";
 import { cn } from "~/lib/utils";
 
 export function GladeLogo({ className, ...props }: SVGProps<SVGSVGElement>) {
@@ -14,14 +14,7 @@ export function GladeLogo({ className, ...props }: SVGProps<SVGSVGElement>) {
       {...props}
       className={cn("shrink-0 text-foreground", className)}
     >
-      {GLADE_MARK_ROTATIONS.map((rotation) => (
-        <path
-          key={rotation}
-          d={GLADE_MARK_QUADRANT}
-          transform={`rotate(${rotation} 512 512)`}
-          fill="currentColor"
-        />
-      ))}
+      <path d={GLADE_MARK_PATH} fill="currentColor" />
     </svg>
   );
 }

@@ -4,13 +4,11 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Resvg } from "@resvg/resvg-js";
-import { GLADE_MARK_QUADRANT, GLADE_MARK_ROTATIONS } from "../apps/web/src/assets/gladeMark.ts";
+import { GLADE_MARK_PATH } from "../apps/web/src/assets/gladeMark.ts";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const scratch = mkdtempSync(join(tmpdir(), "glade-brand-"));
-const paths = GLADE_MARK_ROTATIONS.map(
-  (angle) => `<path d="${GLADE_MARK_QUADRANT}" transform="rotate(${angle} 512 512)"/>`,
-).join("");
+const paths = `<path d="${GLADE_MARK_PATH}"/>`;
 const tile =
   "M300 100H724C858 100 924 166 924 300V724C924 858 858 924 724 924H300C166 924 100 858 100 724V300C100 166 166 100 300 100Z";
 
@@ -52,6 +50,13 @@ function render(content: string, target: string, size = 1024) {
   writeFileSync(join(root, target), image.asPng());
 }
 
+function artwork(variant: "light" | "dark" | "dev") {
+  const source = readFileSync(join(root, `assets/brand/artwork/${variant}.png`)).toString("base64");
+  return svg(
+    `<defs><clipPath id="tile"><path d="${tile}"/></clipPath></defs><image width="1024" height="1024" clip-path="url(#tile)" xlink:href="data:image/png;base64,${source}"/>`,
+  );
+}
+
 function ico(source: string, target: string, sizes = "256,128,64,48,32,16") {
   run("magick", [join(root, source), "-define", `icon:auto-resize=${sizes}`, join(root, target)]);
 }
@@ -73,19 +78,9 @@ function icns(source: string, target: string) {
 }
 
 try {
-  const gradients = `<defs><linearGradient id="light" x2="0" y2="1"><stop stop-color="#ffffff"/><stop offset="1" stop-color="#e9ebef"/></linearGradient><linearGradient id="dark" x2="0" y2="1"><stop stop-color="#34383e"/><stop offset="1" stop-color="#111316"/></linearGradient><linearGradient id="silver" x2="0" y2="1"><stop stop-color="#ffffff"/><stop offset="1" stop-color="#dce0e7"/></linearGradient><clipPath id="tile"><path d="${tile}"/></clipPath></defs>`;
-  const light = svg(
-    `${gradients}<path d="${tile}" fill="url(#light)" stroke="#d8dbe0" stroke-width="2"/>${mark("#111318")}`,
-  );
-  const dark = svg(
-    `${gradients}<path d="${tile}" fill="url(#dark)" stroke="#484c53" stroke-width="2"/>${mark("url(#silver)")}`,
-  );
-  const blueprintBackground = readFileSync(
-    join(root, "assets/dev/Glade.icon/Assets/background.png"),
-  ).toString("base64");
-  const dev = svg(
-    `${gradients}<g clip-path="url(#tile)"><image width="1024" height="1024" xlink:href="data:image/png;base64,${blueprintBackground}"/></g><path d="${tile}" fill="none" stroke="#2069bb" stroke-width="2"/>${mark("url(#silver)")}`,
-  );
+  const light = artwork("light");
+  const dark = artwork("dark");
+  const dev = artwork("dev");
 
   write("assets/brand/glade.svg", `${svg(`<g fill="#000">${paths}</g>`)}\n`);
   write(
@@ -93,8 +88,23 @@ try {
     `${svg(`<style>path{fill:#1c2933}@media(prefers-color-scheme:dark){path{fill:#f5f5f5}}</style>${paths}`)}\n`,
   );
   render(svg(mark("#000", 736)), "assets/brand/glade-master.png", 2048);
-  render(svg(mark("#000")), "assets/prod/Glade.icon/Assets/glyph.png");
-  render(svg(`${gradients}${mark("url(#silver)")}`), "assets/dev/Glade.icon/Assets/glyph.png");
+  // Icon Composer applies the platform mask itself; keep its source edge-to-edge.
+  run("magick", [
+    "assets/brand/artwork/light.png",
+    "-resize",
+    "1024x1024!",
+    "assets/prod/Glade.icon/Assets/background.png",
+  ]);
+  run("magick", [
+    "assets/brand/artwork/logo-mask.png",
+    "-resize",
+    "1024x1024!",
+    "-background",
+    "#f4f9fd",
+    "-alpha",
+    "Shape",
+    "assets/dev/Glade.icon/Assets/glyph.png",
+  ]);
 
   for (const filename of [
     "black-macos-1024.png",
