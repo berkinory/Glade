@@ -6,6 +6,7 @@ import { Layer } from "effect";
 import { makeHealthEffectRouteLayer, makeDesktopShutdownEffectRouteLayer } from "./lifecycleRoutes";
 import { authEffectRouteLayer } from "./authRoutes";
 import { environmentDescriptorRouteLayer } from "./environmentRoutes";
+import { remoteAccessCliRouteLayer } from "./remoteAccessRoutes";
 import { projectFaviconEffectRouteLayer, siteFaviconEffectRouteLayer } from "./faviconRoutes";
 import { threadExportEffectRouteLayer } from "./threadExportRoute";
 import { editorIconEffectRouteLayer } from "./editorIconRoute";
@@ -22,6 +23,7 @@ export function makeEffectHttpRouteLayer(
     makeDesktopShutdownEffectRouteLayer(shutdownController),
     authEffectRouteLayer,
     environmentDescriptorRouteLayer,
+    remoteAccessCliRouteLayer,
     providerAuthenticationRouteLayer,
     projectFaviconEffectRouteLayer,
     threadExportEffectRouteLayer,

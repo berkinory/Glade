@@ -57,6 +57,39 @@ apply to the host, with its own Tailscale and network addresses. A device paired
 working while this computer is off. On Linux, Tailscale HTTPS needs permission once:
 `sudo tailscale set --operator=$USER` on the host.
 
+## On a server
+
+To run Glade on a Linux server or a Mac without the desktop app, install it from a terminal there:
+
+```bash
+curl -fsSL https://github.com/berkinory/Glade/releases/latest/download/install.sh | sh
+```
+
+The installer needs no root. It picks the build for the machine (Linux x64 with glibc 2.31 or
+newer, or macOS), verifies it against the checksum published with the release, and installs it
+into `~/.glade`. Glade then starts on boot through a systemd user service or a launchd agent,
+turns on remote access over Tailscale HTTPS when Tailscale runs, and shows a QR code to pair your
+phone. Add `--lan` to also accept devices on the local network, `--version X.Y.Z` to install a
+specific release, and `--no-service` to skip starting on boot. Provider CLIs (`claude`, `codex`)
+still need to be installed and signed in on the server.
+
+Afterwards, manage it with the `glade` command:
+
+| Command                          | What it does                                                 |
+| -------------------------------- | ------------------------------------------------------------ |
+| `glade status`                   | Whether Glade runs, and the addresses devices use            |
+| `glade pair`                     | A QR code and link that pair one device, valid for 5 minutes |
+| `glade remote on [--lan]`        | Lets paired devices in                                       |
+| `glade remote off`               | Closes access and disconnects every device                   |
+| `glade start`, `stop`, `restart` | Controls the server                                          |
+| `glade logs [-f]`                | The server log                                               |
+| `glade update`                   | Installs the latest release and restarts                     |
+| `glade uninstall [--purge]`      | Removes Glade; `--purge` also removes projects and chats     |
+
+The install uses the same layout as the desktop app's SSH hosts, so a server installed this way can
+also be added under **Settings → SSH hosts**, and the desktop reuses it rather than installing again.
+On Windows, install the desktop app and turn on remote access instead.
+
 ## Using another machine's Glade
 
 The desktop app can also be the paired device. On the other machine, turn on remote access, choose

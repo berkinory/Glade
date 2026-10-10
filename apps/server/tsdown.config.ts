@@ -7,6 +7,7 @@ export default defineConfig({
     index: "src/index.ts",
     runtimeDependencySmoke: "src/platform/runtimeDependencySmoke.ts",
     remoteLauncher: "src/remote/remoteLauncher.ts",
+    glade: "src/remote/cli/gladeCli.ts",
   },
   format: ["esm"],
   outDir: "dist",

@@ -95,7 +95,12 @@ const version = option("version") ?? serverPackageJson.version;
 const outputDir = resolve(option("output-dir") ?? join(repoRoot, "release/remote"));
 const skipSmoke = process.argv.includes("--skip-smoke");
 const serverDist = join(repoRoot, "apps/server/dist");
-for (const entry of ["index.mjs", "remoteLauncher.mjs", "runtimeDependencySmoke.mjs"]) {
+for (const entry of [
+  "index.mjs",
+  "remoteLauncher.mjs",
+  "glade.mjs",
+  "runtimeDependencySmoke.mjs",
+]) {
   if (!existsSync(join(serverDist, entry))) {
     fail(`apps/server/dist/${entry} is missing; build the server first.`);
   }

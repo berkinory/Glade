@@ -5,6 +5,7 @@
 ### New
 
 - Use Glade from your phone or another computer: turn on Remote access in Settings, pair a device with a QR code, and reach this machine over Tailscale HTTPS or your local network. Paired devices stay signed in across restarts and can be removed at any time. SSH hosts get the same from their menu, so a phone can work with a host while this computer is off.
+- Install Glade on a Linux server or a Mac with one command, without the desktop app. It verifies the download, starts on boot, and shows a QR code to pair your phone; the `glade` command then pairs devices, turns remote access on or off, updates and uninstalls.
 - Pair the desktop app with Glade on another computer from its pairing link. Its projects and chats appear next to yours under Remote, the way SSH hosts do.
 
 ### Improved

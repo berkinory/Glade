@@ -230,6 +230,14 @@ for (const name of rawEntries) {
   if (name.endsWith(".provenance.json")) continue;
   copyFileSync(join(raw, name), join(destination, name), constants.COPYFILE_EXCL);
 }
+// The server installer ships beside the bundles it installs, so `releases/latest/download/install.sh`
+// always installs the release it came with.
+copyFileSync(
+  join(import.meta.dirname, "install.sh"),
+  join(destination, "install.sh"),
+  constants.COPYFILE_EXCL,
+);
+binaries.push("install.sh");
 const manifests = prepareReleaseUpdateManifests(destination);
 for (const name of manifests.filter((name) => name.startsWith("latest"))) {
   unlinkSync(join(destination, name));
