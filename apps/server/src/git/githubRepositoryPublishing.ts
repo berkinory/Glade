@@ -1,5 +1,5 @@
 import path from "node:path";
-import { Effect, Schema } from "effect";
+import { Effect } from "effect";
 import {
   GitPublishContextInput,
   GitPublishContextResult,
@@ -7,16 +7,15 @@ import {
   GitPublishRepositoryResult,
 } from "@glade/contracts/git/githubRepositoryPublishing";
 import { isValidGitHubRepositoryNameWithOwner } from "@glade/shared/git/githubRepository";
-import { TrimmedNonEmptyString } from "@glade/contracts/core/baseSchemas";
-import { GitCommandError, GitHubCliError } from "./Errors";
+import { GitCommandError, GitHubError } from "./Errors";
 import { GitCore } from "./Services/GitCore";
-import { GitHubCli } from "./Services/GitHubCli";
+import { GitHub } from "./Services/GitHub";
 import { readGitOperation } from "./gitOperationState";
 
 export function readGitPublishContext(input: GitPublishContextInput) {
   return Effect.gen(function* () {
     const git = yield* GitCore;
-    const github = yield* GitHubCli;
+    const github = yield* GitHub;
     const root = yield* git.execute({
       cwd: input.cwd,
       operation: "publish context",
@@ -28,35 +27,18 @@ export function readGitPublishContext(input: GitPublishContextInput) {
       args: ["remote"],
     });
     const hasRemote = Boolean(remotes.stdout.trim());
-    const owner = hasRemote ? null : yield* github.getViewerLogin({ cwd: input.cwd });
+    const viewer = hasRemote ? null : yield* github.getViewer();
     let owners: GitPublishContextResult["owners"] = [];
-    if (owner) {
-      const organizations = yield* github.execute({
-        cwd: input.cwd,
-        args: ["api", "user/orgs?per_page=100", "--paginate", "--slurp"],
-      });
-      const decoded = yield* Schema.decodeEffect(
-        Schema.fromJsonString(
-          Schema.Array(Schema.Array(Schema.Struct({ login: TrimmedNonEmptyString }))),
-        ),
-      )(organizations.stdout).pipe(
-        Effect.mapError(
-          (cause) =>
-            new GitHubCliError({
-              operation: "publish context",
-              detail: "GitHub returned an invalid organization list.",
-              cause,
-            }),
-        ),
-      );
+    if (viewer) {
+      const organizations = yield* github.listViewerOrganizations();
       owners = [
-        { login: owner, kind: "user" },
-        ...decoded.flat().map(({ login }) => ({ login, kind: "organization" as const })),
+        { ...viewer, kind: "user" },
+        ...organizations.map((account) => ({ ...account, kind: "organization" as const })),
       ];
     }
     return {
       hasRemote,
-      owner,
+      owner: viewer?.login ?? null,
       owners,
       name: path.basename(root.stdout.trim()),
     } satisfies GitPublishContextResult;
@@ -66,7 +48,7 @@ export function readGitPublishContext(input: GitPublishContextInput) {
 export function publishGitHubRepository(input: GitPublishRepositoryInput) {
   return Effect.gen(function* () {
     const git = yield* GitCore;
-    const github = yield* GitHubCli;
+    const github = yield* GitHub;
     const repository = `${input.owner}/${input.name}`;
     const fail = (detail: string) =>
       Effect.fail(
@@ -125,7 +107,7 @@ export function publishGitHubRepository(input: GitPublishRepositoryInput) {
       .pipe(
         Effect.mapError(
           (error) =>
-            new GitHubCliError({
+            new GitHubError({
               operation: "publish repository",
               detail: `${error.detail} Repository creation may have completed; check ${url} and local remotes before retrying.`,
               ...(error.reason ? { reason: error.reason } : {}),

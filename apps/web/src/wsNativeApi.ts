@@ -567,6 +567,17 @@ function buildNativeApi(transport: WsTransport, listeners: NativeApiListeners): 
         transport.request(WS_METHODS.gitRevertCommit, input, { timeoutMs: null }),
       pullRequestReview: (input) => transport.request(WS_METHODS.gitPullRequestReview, input),
       githubConnection: () => transport.request(WS_METHODS.gitGithubConnection, {}),
+      listPullRequests: (input) => transport.request(WS_METHODS.gitListPullRequests, input),
+      pullRequestDetail: (input) => transport.request(WS_METHODS.gitPullRequestDetail, input),
+      pullRequestDiff: (input) =>
+        transport.request(WS_METHODS.gitPullRequestDiff, input, { timeoutMs: null }),
+      pullRequestCheckLog: (input) =>
+        transport.request(WS_METHODS.gitPullRequestCheckLog, input, { timeoutMs: null }),
+      rerunFailedJobs: (input) => transport.request(WS_METHODS.gitRerunFailedJobs, input),
+      setPullRequestWatch: (input) => transport.request(WS_METHODS.gitSetPullRequestWatch, input),
+      pullRequestWatchStatus: (input) =>
+        transport.request(WS_METHODS.gitPullRequestWatchStatus, input),
+      commitAuthorAvatars: (input) => transport.request(WS_METHODS.gitCommitAuthorAvatars, input),
       pullRequestAction: (input) =>
         transport.request(WS_METHODS.gitPullRequestAction, input, { timeoutMs: null }),
       trustRepository: (input) => transport.request(WS_METHODS.gitTrustRepository, input),

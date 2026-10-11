@@ -11,6 +11,7 @@ export const GitPublishContextResult = Schema.Struct({
     Schema.Struct({
       login: TrimmedNonEmptyString,
       kind: Schema.Literals(["user", "organization"]),
+      avatarUrl: Schema.NullOr(Schema.String),
     }),
   ),
   name: TrimmedNonEmptyString,

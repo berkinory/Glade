@@ -1,68 +1,54 @@
-import { CircleCheckIcon, GitPullRequestIcon, MinusIcon, XIcon } from "~/lib/icons";
+import { ArrowUpRightIcon, GitPullRequestIcon, ViewIcon } from "~/lib/icons";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-import type {
-  GitPullRequestActionInput,
-  GitPullRequestCheckState,
-} from "@glade/contracts/git/pullRequestReview";
+import type { GitStatusResult } from "@glade/contracts/git/git";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { useComposerDraftStore } from "~/composerDraftStore";
 import { cn } from "~/lib/utils";
+import { useMainWorkspaceStore } from "~/mainWorkspaceStore";
 import { ensureNativeApi } from "~/nativeApi";
 import {
   gitPullRequestReviewQueryOptions,
+  gitPullRequestWatchStatusQueryOptions,
   gitStatusQueryOptions,
-  invalidateGitQueries,
 } from "../../../lib/gitQueryOptions";
+import {
+  CHECK_TONE_CLASS,
+  CheckStateIcon,
+  PullRequestCheckList,
+} from "../../pullRequest/PullRequestCheckList";
+import { AuthorAvatar } from "../../AuthorAvatar";
+import { DiffStat } from "../../ui/diff-stat";
+import { ELEVATED_HOVER_SURFACE_CLASS_NAME } from "~/surfaceStyles";
 import {
   PR_STATE_PRESENTATION_ICONS,
   resolvePrStatePresentation,
 } from "../../pullRequest/pullRequestStatePresentation";
-import { Button } from "../../ui/button";
+import { buildReviewCommentsPrompt } from "../../pullRequest/pullRequestPrompts";
 import {
-  Dialog,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogPopup,
-  DialogTitle,
-} from "../../ui/dialog";
+  MergePullRequestDialog,
+  usePullRequestActions,
+} from "../../pullRequest/usePullRequestActions";
+import { Button } from "../../ui/button";
+import { IconButton } from "../../ui/icon-button";
 import { Popover, PopoverPopup, PopoverTrigger } from "../../ui/popover";
 import { Spinner } from "../../ui/spinner";
 import { toastManager } from "../../ui/toast";
-import { ENVIRONMENT_ROW_CLASS_NAME, EnvironmentLabeledSection } from "./EnvironmentRow";
 import {
-  buildReviewCommentsPrompt,
-  MERGE_METHOD_LABELS,
+  ENVIRONMENT_ROW_CLASS_NAME,
+  ENVIRONMENT_ROW_ICON_CLASS_NAME,
+  EnvironmentLabeledSection,
+  EnvironmentRowBody,
+} from "./EnvironmentRow";
+
+const SECONDARY_TEXT_CLASS_NAME = "text-[var(--color-text-foreground-secondary)]";
+const INLINE_TRIGGER_CLASS_NAME = cn(
+  "inline-flex items-center gap-1 rounded-md px-1",
+  ELEVATED_HOVER_SURFACE_CLASS_NAME,
+);
+import {
   resolvePullRequestNextStep,
   summarizePullRequestChecks,
-} from "./EnvironmentPullRequestSection.logic";
-
-const PULL_REQUEST_ACTION_SUCCESS = {
-  merge: (number: number) => `Merged #${number}`,
-  ready: (number: number) => `#${number} is ready for review`,
-  update_branch: (number: number) => `Updated #${number} with its base branch`,
-} as const;
-
-const PULL_REQUEST_ACTION_FAILURE = {
-  merge: "Could not merge",
-  ready: "Could not mark ready",
-  update_branch: "Could not update the branch",
-} as const;
-
-const CHECK_TONE_CLASS = {
-  success: "text-status-success",
-  failure: "text-status-failure",
-  pending: "text-warning",
-  neutral: "text-muted-foreground",
-} as const;
-
-function CheckStateIcon({ state }: { state: GitPullRequestCheckState }) {
-  if (state === "pending") return <Spinner variant="action" className="size-3 text-warning" />;
-  const Icon = state === "success" ? CircleCheckIcon : state === "failure" ? XIcon : MinusIcon;
-  const tone = state === "success" ? "success" : state === "failure" ? "failure" : "neutral";
-  return <Icon aria-hidden className={cn("size-3 shrink-0", CHECK_TONE_CLASS[tone])} />;
-}
+} from "../../pullRequest/pullRequestNextStep";
 
 export function EnvironmentPullRequestSection({
   gitCwd,
@@ -79,73 +65,141 @@ export function EnvironmentPullRequestSection({
   onOpenUrl: (url: string) => void;
   onClose: () => void;
 }) {
-  const queryClient = useQueryClient();
-  const [confirmingMerge, setConfirmingMerge] = useState(false);
   const { data: status } = useQuery(gitStatusQueryOptions(gitCwd, enabled));
   const pr = status?.pr ?? null;
+  if (!pr || !gitCwd) return null;
+  return (
+    <PullRequestRow
+      cwd={gitCwd}
+      pr={pr}
+      enabled={enabled}
+      threadId={activeThreadId}
+      showDiffColors={showDiffColors}
+      onOpenUrl={onOpenUrl}
+      onClose={onClose}
+    />
+  );
+}
+
+function PullRequestRow(props: {
+  cwd: string;
+  pr: NonNullable<GitStatusResult["pr"]>;
+  enabled: boolean;
+  threadId: ThreadId | null;
+  showDiffColors: boolean;
+  onOpenUrl: (url: string) => void;
+  onClose: () => void;
+}) {
+  const { pr, cwd } = props;
+  const queryClient = useQueryClient();
+  const [confirmingMerge, setConfirmingMerge] = useState(false);
   const { data: review } = useQuery(
     gitPullRequestReviewQueryOptions({
-      cwd: gitCwd,
-      number: pr?.number ?? null,
-      enabled: enabled && pr?.state === "open",
+      cwd,
+      number: pr.number,
+      enabled: props.enabled && pr.state === "open",
     }),
   );
-  const action = useMutation({
-    mutationFn: (input: GitPullRequestActionInput) =>
-      ensureNativeApi().git.pullRequestAction(input),
-    onSuccess: (_result, input) => {
-      setConfirmingMerge(false);
+  const watchQuery = gitPullRequestWatchStatusQueryOptions(props.threadId);
+  const { data: watch } = useQuery({
+    ...watchQuery,
+    enabled: props.enabled && props.threadId !== null,
+  });
+  const watching = watch?.number === pr.number;
+  const toggleWatch = useMutation({
+    mutationFn: (enabled: boolean) =>
+      ensureNativeApi().git.setPullRequestWatch({
+        threadId: props.threadId as ThreadId,
+        cwd,
+        number: pr.number,
+        enabled,
+      }),
+    onSuccess: (_result, enabled) =>
       toastManager.add({
         type: "success",
-        title: PULL_REQUEST_ACTION_SUCCESS[input.action.kind](input.number),
-      });
-    },
-    onError: (error, input) =>
+        title: enabled ? `Watching #${pr.number}` : `Stopped watching #${pr.number}`,
+        ...(enabled
+          ? {
+              description:
+                "The agent is told when checks finish, reviews arrive or conflicts appear.",
+            }
+          : {}),
+      }),
+    onError: (error) =>
       toastManager.add({
         type: "error",
-        title: PULL_REQUEST_ACTION_FAILURE[input.action.kind],
+        title: "Could not update the watch",
         description: error.message,
       }),
-    onSettled: () => invalidateGitQueries(queryClient),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: watchQuery.queryKey }),
   });
-  if (!pr || !gitCwd) return null;
-  const runAction = (prAction: GitPullRequestActionInput["action"]) =>
-    action.mutate({ cwd: gitCwd, number: pr.number, action: prAction });
+  const actions = usePullRequestActions({
+    cwd,
+    number: pr.number,
+    threadId: props.threadId,
+    onPromptDrafted: props.onClose,
+  });
   const presentation = resolvePrStatePresentation(pr);
   const Icon = PR_STATE_PRESENTATION_ICONS[presentation.iconKind] ?? GitPullRequestIcon;
   const nextStep = review ? resolvePullRequestNextStep(pr, review) : null;
   const checks = review ? summarizePullRequestChecks(review.checks) : null;
-  const draftPrompt = (prompt: string) => {
-    if (!activeThreadId) return;
-    useComposerDraftStore.getState().setPrompt(activeThreadId, prompt);
-    onClose();
+  const openDetail = () => {
+    if (!props.threadId) return props.onOpenUrl(pr.url);
+    useMainWorkspaceStore.getState().openReview(props.threadId, {
+      id: `pr:${pr.number}`,
+      kind: "pullRequest",
+      cwd,
+      number: pr.number,
+      title: pr.title,
+    });
+    props.onClose();
   };
   return (
     <EnvironmentLabeledSection label="Pull request">
       <div className="flex flex-col gap-0.5">
-        <button
-          type="button"
-          className={ENVIRONMENT_ROW_CLASS_NAME}
-          title={`Open #${pr.number} on GitHub`}
-          onClick={() => {
-            onOpenUrl(pr.url);
-            onClose();
-          }}
+        <div className="flex items-center">
+          <button
+            type="button"
+            className={cn(ENVIRONMENT_ROW_CLASS_NAME, "min-w-0 flex-1")}
+            aria-label={`Open pull request #${pr.number}`}
+            onClick={openDetail}
+          >
+            <EnvironmentRowBody
+              icon={
+                <Icon
+                  className={cn(ENVIRONMENT_ROW_ICON_CLASS_NAME, presentation.colorClass)}
+                  aria-hidden
+                />
+              }
+              label={`#${pr.number} ${pr.title}`}
+              trailing={
+                <span className={cn("text-ui-xs", SECONDARY_TEXT_CLASS_NAME)}>
+                  {presentation.label}
+                </span>
+              }
+            />
+          </button>
+          <IconButton
+            size="icon-xs"
+            label="Open on GitHub"
+            tooltip="Open on GitHub"
+            onClick={() => props.onOpenUrl(pr.url)}
+          >
+            <ArrowUpRightIcon className="size-3.5" />
+          </IconButton>
+        </div>
+        <div
+          className={cn(
+            "flex min-h-7 items-center gap-1.5 px-2 text-ui-xs",
+            SECONDARY_TEXT_CLASS_NAME,
+          )}
         >
-          <Icon className={`size-4 shrink-0 ${presentation.colorClass}`} aria-hidden />
-          <span className="min-w-0 flex-1 truncate">
-            #{pr.number} {pr.title}
-          </span>
-          <span className="shrink-0 text-ui-xs text-muted-foreground">{presentation.label}</span>
-        </button>
-        <div className="flex min-h-7 items-center gap-2 px-2 text-ui-xs text-muted-foreground">
           {pr.additions !== null && pr.deletions !== null ? (
-            <span className="tabular-nums">
-              <span className={showDiffColors ? "text-success" : undefined}>+{pr.additions}</span>{" "}
-              <span className={showDiffColors ? "text-destructive" : undefined}>
-                −{pr.deletions}
-              </span>
-            </span>
+            <DiffStat
+              insertions={pr.additions}
+              deletions={pr.deletions}
+              colored={props.showDiffColors}
+            />
           ) : null}
           {checks && review ? (
             <Popover>
@@ -154,7 +208,7 @@ export function EnvironmentPullRequestSection({
                 render={
                   <button
                     type="button"
-                    className={cn("inline-flex items-center gap-1", CHECK_TONE_CLASS[checks.tone])}
+                    className={cn(INLINE_TRIGGER_CLASS_NAME, CHECK_TONE_CLASS[checks.tone])}
                   />
                 }
               >
@@ -169,25 +223,8 @@ export function EnvironmentPullRequestSection({
                 />
                 {checks.label}
               </PopoverTrigger>
-              <PopoverPopup side="left" align="start" className="w-64">
-                <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto text-ui-sm">
-                  {review.checks.map((check) => (
-                    <li key={`${check.name}-${check.url}`} className="flex items-center gap-2">
-                      <CheckStateIcon state={check.state} />
-                      {check.url ? (
-                        <button
-                          type="button"
-                          className="min-w-0 flex-1 truncate text-left hover:underline"
-                          onClick={() => check.url && onOpenUrl(check.url)}
-                        >
-                          {check.name}
-                        </button>
-                      ) : (
-                        <span className="min-w-0 flex-1 truncate">{check.name}</span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+              <PopoverPopup side="left" align="start" className="max-h-72 w-72 overflow-y-auto">
+                <PullRequestCheckList checks={review.checks} />
               </PopoverPopup>
             </Popover>
           ) : null}
@@ -195,7 +232,7 @@ export function EnvironmentPullRequestSection({
             <Popover>
               <PopoverTrigger
                 openOnHover
-                render={<button type="button" className="inline-flex items-center gap-1" />}
+                render={<button type="button" className={INLINE_TRIGGER_CLASS_NAME} />}
               >
                 {review.comments.length} {review.comments.length === 1 ? "comment" : "comments"}
               </PopoverTrigger>
@@ -206,7 +243,10 @@ export function EnvironmentPullRequestSection({
                       key={`${comment.url ?? comment.author}-${index}`}
                       className="flex flex-col gap-1"
                     >
-                      <span className="text-ui-xs text-muted-foreground">
+                      <span className="flex items-center gap-1.5 text-ui-xs text-muted-foreground">
+                        <AuthorAvatar
+                          actor={{ login: comment.author, avatarUrl: comment.authorAvatarUrl }}
+                        />
                         {comment.author}
                         {comment.path
                           ? ` · ${comment.path}${comment.line ? `:${comment.line}` : ""}`
@@ -214,11 +254,13 @@ export function EnvironmentPullRequestSection({
                       </span>
                       <p className="line-clamp-3 whitespace-pre-wrap">{comment.body}</p>
                       <Button
-                        size="xs"
-                        variant="outline"
+                        size="chip"
+                        variant="ghost"
                         className="self-start"
-                        disabled={!activeThreadId}
-                        onClick={() => draftPrompt(buildReviewCommentsPrompt(pr.number, [comment]))}
+                        disabled={!actions.canDraft}
+                        onClick={() =>
+                          actions.draftPrompt(buildReviewCommentsPrompt(pr.number, [comment]))
+                        }
                       >
                         Fix
                       </Button>
@@ -229,57 +271,75 @@ export function EnvironmentPullRequestSection({
             </Popover>
           ) : null}
           <span className="flex-1" />
+          {props.threadId && pr.state === "open" ? (
+            <IconButton
+              size="icon-xs"
+              label={watching ? "Stop watching" : "Watch for changes"}
+              tooltip={
+                watching
+                  ? `Watching${watch?.lastEvent ? `: ${watch.lastEvent}` : ""}. Click to stop.`
+                  : "Wake the agent when checks finish, reviews arrive or conflicts appear"
+              }
+              disabled={toggleWatch.isPending}
+              aria-pressed={watching}
+              className="aria-pressed:bg-primary/15 aria-pressed:text-foreground aria-pressed:ring-1 aria-pressed:ring-inset aria-pressed:ring-primary/60"
+              onClick={() => toggleWatch.mutate(!watching)}
+            >
+              <ViewIcon className="size-3.5" />
+            </IconButton>
+          ) : null}
+          {review && nextStep?.kind === "fix_checks" && actions.canRerun(review.checks) ? (
+            <Button
+              size="xs"
+              variant="ghost"
+              disabled={actions.busy}
+              onClick={() => actions.rerunFailed(review.checks)}
+            >
+              Rerun
+            </Button>
+          ) : null}
           {nextStep?.kind === "wait" ? <span>{nextStep.label}</span> : null}
-          {nextStep && nextStep.kind !== "wait" ? (
+          {review && nextStep && nextStep.kind !== "wait" ? (
             <Button
               size="xs"
               variant={nextStep.kind === "merge" ? "default" : "outline"}
               disabled={
-                action.isPending ||
-                ((nextStep.kind === "fix" || nextStep.kind === "resolve") && !activeThreadId)
+                actions.busy ||
+                ((nextStep.kind === "fix" ||
+                  nextStep.kind === "resolve" ||
+                  nextStep.kind === "fix_checks") &&
+                  !actions.canDraft)
               }
               onClick={() => {
-                if (nextStep.kind === "fix" || nextStep.kind === "resolve")
-                  draftPrompt(nextStep.prompt);
+                if (nextStep.kind === "fix_checks") void actions.draftFixChecks(review.checks);
+                else if (nextStep.kind === "fix" || nextStep.kind === "resolve")
+                  actions.draftPrompt(nextStep.prompt);
                 else if (nextStep.kind === "ready" || nextStep.kind === "update_branch")
-                  runAction({ kind: nextStep.kind });
+                  actions.run({ kind: nextStep.kind });
                 else setConfirmingMerge(true);
               }}
             >
-              {action.isPending ? <Spinner variant="action" /> : null}
+              {actions.busy ? <Spinner variant="action" /> : null}
               {nextStep.label}
             </Button>
           ) : null}
         </div>
       </div>
-      <Dialog open={confirmingMerge} onOpenChange={setConfirmingMerge}>
-        <DialogPopup className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Merge #{pr.number}?</DialogTitle>
-            <DialogDescription>
-              {pr.title} will be merged into {pr.baseBranch} on GitHub.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setConfirmingMerge(false)}>
-              Cancel
-            </Button>
-            {nextStep?.kind === "merge"
-              ? nextStep.methods.map((method, index) => (
-                  <Button
-                    key={method}
-                    size="sm"
-                    variant={index === 0 ? "default" : "outline"}
-                    disabled={action.isPending}
-                    onClick={() => runAction({ kind: "merge", method })}
-                  >
-                    {MERGE_METHOD_LABELS[method]}
-                  </Button>
-                ))
-              : null}
-          </DialogFooter>
-        </DialogPopup>
-      </Dialog>
+      {nextStep?.kind === "merge" ? (
+        <MergePullRequestDialog
+          open={confirmingMerge}
+          onOpenChange={setConfirmingMerge}
+          number={pr.number}
+          title={pr.title}
+          baseBranch={pr.baseBranch}
+          methods={nextStep.methods}
+          busy={actions.busy}
+          onMerge={(method) => {
+            setConfirmingMerge(false);
+            actions.run({ kind: "merge", method });
+          }}
+        />
+      ) : null}
     </EnvironmentLabeledSection>
   );
 }

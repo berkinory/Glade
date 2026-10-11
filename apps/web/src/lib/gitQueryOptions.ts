@@ -3,7 +3,10 @@ import type {
   GitReadSourceControlFilesInput,
   GitSourceControlFilesResult,
   GitReadRequestOptions,
+  GitRecentCommit,
 } from "@glade/contracts/git/git";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
+import type { GitPullRequestListFilter } from "@glade/contracts/git/pullRequests";
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { ensureNativeApi } from "../nativeApi";
 import {
@@ -521,6 +524,92 @@ export function gitPullRequestReviewQueryOptions(input: {
         : false,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
+  });
+}
+
+export function gitPullRequestListQueryOptions(input: {
+  cwd: string | null;
+  filter: GitPullRequestListFilter;
+  enabled: boolean;
+}) {
+  return queryOptions({
+    queryKey: [...gitQueryKeys.pullRequest(input.cwd), "list", input.filter] as const,
+    queryFn: async () => {
+      if (!input.cwd) throw new Error("Pull requests are unavailable.");
+      return ensureNativeApi().git.listPullRequests({ cwd: input.cwd, filter: input.filter });
+    },
+    enabled: input.enabled && input.cwd !== null,
+    staleTime: 30_000,
+    // Failures here are configuration (no GitHub remote, signed out), so surface them at once.
+    retry: false,
+    refetchOnWindowFocus: true,
+  });
+}
+
+export function gitPullRequestDetailQueryOptions(cwd: string, number: number) {
+  return queryOptions({
+    queryKey: [...gitQueryKeys.pullRequest(cwd), "detail", number] as const,
+    queryFn: () => ensureNativeApi().git.pullRequestDetail({ cwd, number }),
+    staleTime: 60_000,
+    retry: false,
+  });
+}
+
+export function gitPullRequestDiffQueryOptions(cwd: string, number: number, enabled: boolean) {
+  return queryOptions({
+    queryKey: [...gitQueryKeys.pullRequest(cwd), "diff", number] as const,
+    queryFn: () => ensureNativeApi().git.pullRequestDiff({ cwd, number }),
+    enabled,
+    staleTime: 60_000,
+    retry: false,
+  });
+}
+
+/** One commit per author email, preferring pushed ones, since GitHub can only resolve pushed commits. */
+export function gitCommitAuthorAvatarsQueryOptions(
+  cwd: string | null,
+  commits: ReadonlyArray<GitRecentCommit>,
+) {
+  const byEmail = new Map<string, GitRecentCommit>();
+  for (const commit of commits) {
+    const email = commit.authorEmail.trim().toLowerCase();
+    const current = byEmail.get(email);
+    if (
+      email &&
+      (!current || (commit.pushStatus === "pushed" && current.pushStatus !== "pushed"))
+    ) {
+      byEmail.set(email, commit);
+    }
+  }
+  const entries = [...byEmail.entries()]
+    .map(([email, commit]) => [email, commit.sha] as const)
+    .toSorted(([a], [b]) => a.localeCompare(b))
+    .slice(0, 200);
+  return queryOptions({
+    queryKey: ["git", "commit-author-avatars", cwd, entries.map(([email]) => email)] as const,
+    queryFn: () => {
+      if (!cwd) throw new Error("Commit authors are unavailable.");
+      return ensureNativeApi().git.commitAuthorAvatars({
+        cwd,
+        commits: entries.map(([email, sha]) => ({ email, sha })),
+      });
+    },
+    enabled: cwd !== null && entries.length > 0,
+    staleTime: 60 * 60_000,
+    retry: false,
+    placeholderData: (previous) => previous,
+  });
+}
+
+export function gitPullRequestWatchStatusQueryOptions(threadId: ThreadId | null) {
+  return queryOptions({
+    queryKey: ["git", "pull-request-watch", threadId] as const,
+    queryFn: () => {
+      if (!threadId) throw new Error("No chat to watch from.");
+      return ensureNativeApi().git.pullRequestWatchStatus({ threadId });
+    },
+    enabled: threadId !== null,
+    staleTime: 30_000,
   });
 }
 

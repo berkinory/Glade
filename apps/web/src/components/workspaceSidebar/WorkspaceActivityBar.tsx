@@ -1,6 +1,6 @@
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useQuery } from "@tanstack/react-query";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { useLocalDesktopActive } from "~/environments/activeEnvironment";
 import { useDesktopTopBarWindowControlsGutterClassName } from "~/hooks/useDesktopTopBarGutter";
 import { shortcutLabelForCommand } from "~/keybindings";
@@ -86,6 +86,7 @@ export function WorkspaceActivityBar(props: {
   const dots = {
     explorer: null,
     git: null,
+    pullRequests: null,
     terminal: terminalRunning ? { label: "Terminal running", pulse: false } : null,
     browser: browserAgentActive
       ? { label: "Agent is using the browser", pulse: true }
@@ -99,7 +100,7 @@ export function WorkspaceActivityBar(props: {
     const { label, Icon, command } = WORKSPACE_SIDEBAR_VIEW_META[view];
     const shortcut = shortcutLabelForCommand(keybindings, command);
     const dot = dots[view];
-    return (
+    const button = (
       <ActivityBarButton
         key={view}
         label={label}
@@ -122,6 +123,15 @@ export function WorkspaceActivityBar(props: {
           ) : null}
         </span>
       </ActivityBarButton>
+    );
+    // Pull requests are repository-wide rather than about this workspace, so they sit in their own group.
+    return view === "pullRequests" && props.layout !== "row" ? (
+      <Fragment key={view}>
+        <div aria-hidden className="h-px w-5 shrink-0 bg-[var(--app-surface-divider)]" />
+        {button}
+      </Fragment>
+    ) : (
+      button
     );
   });
   // On a phone the views open full screen; their buttons sit in a row in its header, with a close.

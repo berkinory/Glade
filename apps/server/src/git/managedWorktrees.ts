@@ -11,7 +11,7 @@ import { Effect } from "effect";
 import type { GitCoreShape } from "./Services/GitCore.ts";
 import type { ProjectionSnapshotQueryShape } from "../orchestration/Services/ProjectionSnapshotQuery.ts";
 import type { ServerSettingsShape } from "../settings/serverSettings.ts";
-import type { GitHubCliShape } from "./Services/GitHubCli.ts";
+import type { GitHubShape } from "./Services/GitHub.ts";
 
 class ManagedWorktreeError extends Error {
   readonly _tag = "ManagedWorktreeError";
@@ -456,6 +456,26 @@ function removeManagedWorktreeSafely(input: {
     );
 }
 
+export function snapshotManagedWorktree(input: {
+  readonly snapshotsDir: string;
+  readonly worktreePath: string;
+  readonly git: GitCoreShape;
+}): Effect.Effect<void, TaggedFailure> {
+  return ensureSnapshotsDir(input.snapshotsDir).pipe(
+    Effect.andThen(
+      input.git.snapshotWorktree({
+        cwd: input.worktreePath,
+        outputPath: snapshotOutputPath({
+          snapshotsDir: input.snapshotsDir,
+          threadId: "deleted",
+          worktreePath: input.worktreePath,
+        }),
+      }),
+    ),
+    Effect.mapError((error) => normalizeOperationError(error)),
+  );
+}
+
 export function pruneArchivedManagedWorktrees(input: {
   readonly worktreesDir: string;
   readonly snapshotsDir: string;
@@ -504,7 +524,7 @@ export function pruneProjectedArchivedManagedWorktrees(input: {
   readonly git: GitCoreShape;
   readonly settings: ServerSettingsShape;
   // Archived chats rarely refresh their PR, so the periodic sweep re-reads ones still marked open.
-  readonly github?: GitHubCliShape;
+  readonly github?: GitHubShape;
 }): Effect.Effect<ReadonlyArray<ServerManagedWorktree>, TaggedFailure> {
   return Effect.gen(function* () {
     const settings = yield* input.settings.getSettings;

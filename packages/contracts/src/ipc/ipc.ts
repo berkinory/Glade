@@ -130,6 +130,8 @@ import type {
   GitSummarizeDiffResult,
   GitUnstageFilesInput,
   GitUnstageFilesResult,
+  GitCommitAuthorAvatarsInput,
+  GitCommitAuthorAvatarsResult,
 } from "../git/git";
 import type {
   GitHubProjectProvisionInput,
@@ -138,9 +140,21 @@ import type {
 } from "../git/githubProjectProvisioning";
 import type {
   GitPullRequestActionInput,
-  GitPullRequestReviewInput,
   GitPullRequestReviewResult,
 } from "../git/pullRequestReview";
+import type {
+  GitPullRequestCheckLogInput,
+  GitPullRequestCheckLogResult,
+  GitPullRequestDetail,
+  GitPullRequestDiffResult,
+  GitPullRequestListInput,
+  GitPullRequestListResult,
+  GitPullRequestNumberInput,
+  GitPullRequestRerunInput,
+  GitPullRequestWatchInput,
+  GitPullRequestWatchStatus,
+  GitPullRequestWatchStatusInput,
+} from "../git/pullRequests";
 import type { GitHubConnectionStatus } from "../git/githubConnection";
 import type {
   ProjectCreateLocalFilePreviewGrantInput,
@@ -636,8 +650,22 @@ export interface NativeApi {
     checkUndoCommit: (input: GitStatusInput) => Promise<string | null>;
     undoCommit: (input: GitUndoCommitInput) => Promise<GitUndoCommitResult>;
     revertCommit: (input: GitRevertCommitInput) => Promise<GitRevertCommitResult>;
-    pullRequestReview: (input: GitPullRequestReviewInput) => Promise<GitPullRequestReviewResult>;
+    pullRequestReview: (input: GitPullRequestNumberInput) => Promise<GitPullRequestReviewResult>;
+    listPullRequests: (input: GitPullRequestListInput) => Promise<GitPullRequestListResult>;
+    pullRequestDetail: (input: GitPullRequestNumberInput) => Promise<GitPullRequestDetail>;
+    pullRequestDiff: (input: GitPullRequestNumberInput) => Promise<GitPullRequestDiffResult>;
+    pullRequestCheckLog: (
+      input: GitPullRequestCheckLogInput,
+    ) => Promise<GitPullRequestCheckLogResult>;
+    rerunFailedJobs: (input: GitPullRequestRerunInput) => Promise<void>;
+    setPullRequestWatch: (input: GitPullRequestWatchInput) => Promise<void>;
+    pullRequestWatchStatus: (
+      input: GitPullRequestWatchStatusInput,
+    ) => Promise<GitPullRequestWatchStatus>;
     pullRequestAction: (input: GitPullRequestActionInput) => Promise<void>;
+    commitAuthorAvatars: (
+      input: GitCommitAuthorAvatarsInput,
+    ) => Promise<GitCommitAuthorAvatarsResult>;
     githubConnection: () => Promise<GitHubConnectionStatus>;
     trustRepository: (input: GitTrustRepositoryInput) => Promise<void>;
     rebaseState: (input: GitRebaseStateInput) => Promise<GitRebaseStateResult>;

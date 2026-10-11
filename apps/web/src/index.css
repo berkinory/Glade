@@ -1277,6 +1277,24 @@ label:has(> select#reasoning-effort) select {
   margin-top: 0;
 }
 
+.editor-markdown-preview--inline {
+  min-height: 0;
+  padding: 0;
+}
+
+.editor-markdown-preview--inline .editor-markdown-preview__body {
+  max-width: none;
+  padding-bottom: 0;
+}
+
+.editor-markdown-preview--inline .chat-markdown > :first-child {
+  margin-top: 0;
+}
+
+.editor-markdown-preview--inline .chat-markdown > :last-child {
+  margin-bottom: 0;
+}
+
 /* Document typography for Explorer Markdown previews. Scoped here so the chat transcript
    keeps its compact message styling; Tailwind's preflight otherwise leaves
    headings indistinguishable from body text. */

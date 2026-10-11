@@ -69,12 +69,27 @@ export const GitRecentCommit = Schema.Struct({
   subject: Schema.String,
   committedAt: Schema.String,
   authorName: Schema.String,
+  authorEmail: Schema.String,
   isMerge: Schema.Boolean,
   branches: Schema.Array(Schema.String),
   pushStatus: Schema.Literals(["pushed", "unpushed", "unknown"]),
   tags: Schema.Array(Schema.String),
 });
 export type GitRecentCommit = typeof GitRecentCommit.Type;
+
+export const GitCommitAuthorAvatarsInput = Schema.Struct({
+  cwd: TrimmedNonEmptyStringSchema,
+  commits: Schema.Array(
+    Schema.Struct({ sha: TrimmedNonEmptyStringSchema, email: Schema.String }),
+  ).check(Schema.isMaxLength(200)),
+});
+export type GitCommitAuthorAvatarsInput = typeof GitCommitAuthorAvatarsInput.Type;
+
+export const GitCommitAuthorAvatarsResult = Schema.Struct({
+  // Keyed by lowercased author email.
+  avatars: Schema.Record(Schema.String, Schema.String),
+});
+export type GitCommitAuthorAvatarsResult = typeof GitCommitAuthorAvatarsResult.Type;
 
 const GitWorktree = Schema.Struct({
   path: TrimmedNonEmptyStringSchema,
@@ -305,6 +320,9 @@ export const GitRemoveWorktreeInput = Schema.Struct({
   // user-named branches are never touched. Handoff flows leave this unset because they re-home the
   // branch into the root checkout instead.
   reclaimTemporaryBranch: Schema.optional(Schema.Boolean),
+  // A deliberate delete of a managed worktree snapshots its state first and keeps the snapshot for
+  // the usual retention, so a forced removal stays recoverable.
+  keepSnapshot: Schema.optional(Schema.Boolean),
 });
 export type GitRemoveWorktreeInput = typeof GitRemoveWorktreeInput.Type;
 

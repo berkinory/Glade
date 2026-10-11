@@ -1,10 +1,11 @@
-import { LockKeyholeIcon, Globe02Icon, UsersIcon, User02Icon } from "~/lib/icons";
+import { LockKeyholeIcon, Globe02Icon } from "~/lib/icons";
 import { useId, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { GitPublishContextResult } from "@glade/contracts/git/githubRepositoryPublishing";
 import { isValidGitHubRepositoryNameWithOwner } from "@glade/shared/git/githubRepository";
 import { ensureNativeApi } from "~/nativeApi";
 import { invalidateGitQueriesForCwds } from "~/lib/gitQueryOptions";
+import { AuthorAvatar } from "../AuthorAvatar";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Toggle } from "../ui/toggle";
@@ -92,11 +93,7 @@ export function GitPublishDialog(props: {
               <SelectTrigger aria-labelledby={ownerId} className="w-full">
                 <SelectValue>
                   <span className="flex min-w-0 items-center gap-2">
-                    {selectedOwner?.kind === "organization" ? (
-                      <UsersIcon className="size-4" aria-hidden="true" />
-                    ) : (
-                      <User02Icon className="size-4" aria-hidden="true" />
-                    )}
+                    <AuthorAvatar actor={selectedOwner ?? { login: owner }} />
                     <span className="truncate">{owner}</span>
                   </span>
                 </SelectValue>
@@ -105,11 +102,7 @@ export function GitPublishDialog(props: {
                 {props.context.owners.map((candidate) => (
                   <SelectItem key={candidate.login} value={candidate.login}>
                     <span className="flex items-center gap-2">
-                      {candidate.kind === "organization" ? (
-                        <UsersIcon className="size-4" aria-hidden="true" />
-                      ) : (
-                        <User02Icon className="size-4" aria-hidden="true" />
-                      )}
+                      <AuthorAvatar actor={candidate} />
                       {candidate.login}
                     </span>
                   </SelectItem>

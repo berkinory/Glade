@@ -2,13 +2,20 @@ import type {
   GitPullRequestMergeMethod,
   GitPullRequestReviewResult,
 } from "@glade/contracts/git/pullRequestReview";
+import type {
+  GitPullRequestCheckLogInput,
+  GitPullRequestCheckLogResult,
+  GitPullRequestDetail,
+  GitPullRequestDiffResult,
+  GitPullRequestListInput,
+  GitPullRequestListResult,
+  GitPullRequestNumberInput,
+  GitPullRequestRerunInput,
+} from "@glade/contracts/git/pullRequests";
 import { ServiceMap, type Effect } from "effect";
 
 import type { ProcessRunResult } from "../../platform/processRunner";
-import type { GitHubCliError } from "../Errors.ts";
-
-export const PULL_REQUEST_SUMMARY_JSON_FIELDS =
-  "number,title,url,baseRefName,headRefName,state,mergedAt,isDraft,mergeable,additions,deletions,changedFiles,isCrossRepository,headRepository,headRepositoryOwner,updatedAt";
+import type { GitHubError } from "../Errors.ts";
 
 export interface GitHubPullRequestSummary {
   readonly number: number;
@@ -29,13 +36,18 @@ export interface GitHubPullRequestSummary {
   readonly updatedAt?: string | null;
 }
 
-export interface GitHubRepositoryCloneUrls {
+interface GitHubRepositoryCloneUrls {
   readonly nameWithOwner: string;
   readonly url: string;
   readonly sshUrl: string;
 }
 
-export interface GitHubCliShape {
+export interface GitHubAccount {
+  readonly login: string;
+  readonly avatarUrl: string | null;
+}
+
+export interface GitHubShape {
   readonly execute: (input: {
     readonly priority?: "foreground" | "background";
     readonly cwd: string;
@@ -49,34 +61,40 @@ export interface GitHubCliShape {
     readonly env?: NodeJS.ProcessEnv;
     readonly onStdoutChunk?: (chunk: string) => void;
     readonly onStderrChunk?: (chunk: string) => void;
-  }) => Effect.Effect<ProcessRunResult, GitHubCliError>;
+  }) => Effect.Effect<ProcessRunResult, GitHubError>;
 
-  readonly getViewerLogin: (input: {
+  readonly getViewer: () => Effect.Effect<GitHubAccount, GitHubError>;
+
+  readonly listViewerOrganizations: () => Effect.Effect<ReadonlyArray<GitHubAccount>, GitHubError>;
+
+  /** Maps commit author emails to GitHub avatars; emails without a GitHub account are left out. */
+  readonly resolveCommitAuthorAvatars: (input: {
     readonly cwd: string;
-  }) => Effect.Effect<string, GitHubCliError>;
+    readonly commits: ReadonlyArray<{ readonly sha: string; readonly email: string }>;
+  }) => Effect.Effect<Readonly<Record<string, string>>, GitHubError>;
 
   readonly listOpenPullRequests: (input: {
     readonly cwd: string;
     readonly headSelector: string;
     readonly limit?: number;
-  }) => Effect.Effect<ReadonlyArray<GitHubPullRequestSummary>, GitHubCliError>;
+  }) => Effect.Effect<ReadonlyArray<GitHubPullRequestSummary>, GitHubError>;
 
   readonly listPullRequests: (input: {
     readonly cwd: string;
     readonly headSelector?: string;
     readonly limit?: number;
     readonly priority?: "foreground" | "background";
-  }) => Effect.Effect<ReadonlyArray<GitHubPullRequestSummary>, GitHubCliError>;
+  }) => Effect.Effect<ReadonlyArray<GitHubPullRequestSummary>, GitHubError>;
 
   readonly getPullRequest: (input: {
     readonly cwd: string;
     readonly reference: string;
-  }) => Effect.Effect<GitHubPullRequestSummary, GitHubCliError>;
+  }) => Effect.Effect<GitHubPullRequestSummary, GitHubError>;
 
   readonly getRepositoryCloneUrls: (input: {
     readonly cwd: string;
     readonly repository: string;
-  }) => Effect.Effect<GitHubRepositoryCloneUrls, GitHubCliError>;
+  }) => Effect.Effect<GitHubRepositoryCloneUrls, GitHubError>;
 
   readonly createPullRequest: (input: {
     readonly cwd: string;
@@ -85,40 +103,59 @@ export interface GitHubCliShape {
     readonly title: string;
     readonly bodyFile: string;
     readonly draft?: boolean;
-  }) => Effect.Effect<void, GitHubCliError>;
+  }) => Effect.Effect<void, GitHubError>;
 
   readonly getDefaultBranch: (input: {
     readonly cwd: string;
-  }) => Effect.Effect<string | null, GitHubCliError>;
+  }) => Effect.Effect<string | null, GitHubError>;
 
   readonly getPullRequestReview: (input: {
     readonly cwd: string;
     readonly number: number;
-  }) => Effect.Effect<GitPullRequestReviewResult, GitHubCliError>;
+    readonly priority?: "foreground" | "background";
+  }) => Effect.Effect<GitPullRequestReviewResult, GitHubError>;
 
   readonly mergePullRequest: (input: {
     readonly cwd: string;
     readonly number: number;
     readonly method: GitPullRequestMergeMethod;
-  }) => Effect.Effect<void, GitHubCliError>;
+  }) => Effect.Effect<void, GitHubError>;
 
   readonly markPullRequestReady: (input: {
     readonly cwd: string;
     readonly number: number;
-  }) => Effect.Effect<void, GitHubCliError>;
+  }) => Effect.Effect<void, GitHubError>;
 
   readonly updatePullRequestBranch: (input: {
     readonly cwd: string;
     readonly number: number;
-  }) => Effect.Effect<void, GitHubCliError>;
+  }) => Effect.Effect<void, GitHubError>;
 
   readonly checkoutPullRequest: (input: {
     readonly cwd: string;
     readonly reference: string;
     readonly force?: boolean;
-  }) => Effect.Effect<void, GitHubCliError>;
+  }) => Effect.Effect<void, GitHubError>;
+
+  readonly listRepositoryPullRequests: (
+    input: GitPullRequestListInput,
+  ) => Effect.Effect<GitPullRequestListResult, GitHubError>;
+
+  readonly getPullRequestDetail: (
+    input: GitPullRequestNumberInput,
+  ) => Effect.Effect<GitPullRequestDetail, GitHubError>;
+
+  readonly getPullRequestDiff: (
+    input: GitPullRequestNumberInput,
+  ) => Effect.Effect<GitPullRequestDiffResult, GitHubError>;
+
+  readonly getCheckLog: (
+    input: GitPullRequestCheckLogInput,
+  ) => Effect.Effect<GitPullRequestCheckLogResult, GitHubError>;
+
+  readonly rerunFailedJobs: (input: GitPullRequestRerunInput) => Effect.Effect<void, GitHubError>;
 }
 
-export class GitHubCli extends ServiceMap.Service<GitHubCli, GitHubCliShape>()(
-  "glade/git/Services/GitHubCli",
+export class GitHub extends ServiceMap.Service<GitHub, GitHubShape>()(
+  "glade/git/Services/GitHub",
 ) {}

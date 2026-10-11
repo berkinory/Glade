@@ -29,7 +29,7 @@ import {
 import { GitCore } from "../Services/GitCore.ts";
 import { GitHandoff } from "../Services/GitHandoff.ts";
 import { GitHandoffLive } from "./GitHandoff.ts";
-import { GitHubCli, type GitHubPullRequestSummary } from "../Services/GitHubCli.ts";
+import { GitHub, type GitHubPullRequestSummary } from "../Services/GitHub.ts";
 import { TextGeneration } from "../Services/TextGeneration.ts";
 import { detectPrTemplate } from "../PrTemplateDetection.ts";
 import { buildGitTextGenerationCallInput } from "../textGenerationSelection.ts";
@@ -471,7 +471,7 @@ function inferPullRequestHeadRemoteInfoFromSelector(
 export const makeGitManager = Effect.gen(function* () {
   const { handoffThread } = yield* GitHandoff;
   const gitCore = yield* GitCore;
-  const gitHubCli = yield* GitHubCli;
+  const gitHub = yield* GitHub;
   const textGeneration = yield* TextGeneration;
   const messageFlights = yield* makeKeyedSingleFlightCache<
     CommitMessageGenerationResult,
@@ -507,7 +507,7 @@ export const makeGitManager = Effect.gen(function* () {
     repositoryNameWithOwner: string,
   ) =>
     Effect.gen(function* () {
-      const cloneUrls = yield* gitHubCli.getRepositoryCloneUrls({
+      const cloneUrls = yield* gitHub.getRepositoryCloneUrls({
         cwd,
         repository: repositoryNameWithOwner,
       });
@@ -724,7 +724,7 @@ export const makeGitManager = Effect.gen(function* () {
   ) =>
     Effect.gen(function* () {
       for (const headSelector of headContext.headSelectors) {
-        const pullRequests = yield* gitHubCli.listOpenPullRequests({
+        const pullRequests = yield* gitHub.listOpenPullRequests({
           cwd,
           headSelector,
           limit: OPEN_PR_LOOKUP_LIMIT,
@@ -760,7 +760,7 @@ export const makeGitManager = Effect.gen(function* () {
           headSelector,
           headContext,
         );
-        const pullRequests = yield* gitHubCli.listPullRequests({
+        const pullRequests = yield* gitHub.listPullRequests({
           cwd,
           headSelector,
           limit: PR_LOOKUP_ALL_STATES_LIMIT,
@@ -800,7 +800,7 @@ export const makeGitManager = Effect.gen(function* () {
     Effect.gen(function* () {
       const pullRequestUrl = extractPullRequestUrlFromError(error);
       if (pullRequestUrl) {
-        const pullRequest = yield* gitHubCli
+        const pullRequest = yield* gitHub
           .getPullRequest({ cwd, reference: pullRequestUrl })
           .pipe(Effect.catch(() => Effect.succeed(null)));
         if (pullRequest) {
@@ -833,7 +833,7 @@ export const makeGitManager = Effect.gen(function* () {
         }
       }
 
-      const defaultFromGh = yield* gitHubCli
+      const defaultFromGh = yield* gitHub
         .getDefaultBranch({ cwd })
         .pipe(Effect.catch(() => Effect.succeed(null)));
       if (defaultFromGh) {
@@ -1242,7 +1242,7 @@ export const makeGitManager = Effect.gen(function* () {
             gitManagerError("runPrStep", "Failed to write pull request body temp file.", cause),
           ),
         );
-      const existingAfterCreateConflict = yield* gitHubCli
+      const existingAfterCreateConflict = yield* gitHub
         .createPullRequest({
           cwd,
           baseBranch,
@@ -1316,7 +1316,7 @@ export const makeGitManager = Effect.gen(function* () {
             upstreamRef: details.upstreamRef,
           }).pipe(
             Effect.catch((error) =>
-              error._tag === "GitHubCliError" && error.reason === "rate-limited"
+              error._tag === "GitHubError" && error.reason === "rate-limited"
                 ? Effect.fail(error)
                 : Effect.succeed(null),
             ),
@@ -1463,7 +1463,7 @@ export const makeGitManager = Effect.gen(function* () {
 
   const resolvePullRequest: GitManagerShape["resolvePullRequest"] = Effect.fnUntraced(
     function* (input) {
-      const pullRequest = yield* gitHubCli
+      const pullRequest = yield* gitHub
         .getPullRequest({
           cwd: input.cwd,
           reference: normalizePullRequestReference(input.reference),
@@ -1478,7 +1478,7 @@ export const makeGitManager = Effect.gen(function* () {
     function* (input) {
       const normalizedReference = normalizePullRequestReference(input.reference);
       const rootWorktreePath = canonicalizeExistingPath(input.cwd);
-      const pullRequestSummary = yield* gitHubCli.getPullRequest({
+      const pullRequestSummary = yield* gitHub.getPullRequest({
         cwd: input.cwd,
         reference: normalizedReference,
       });
@@ -1576,7 +1576,7 @@ export const makeGitManager = Effect.gen(function* () {
         };
       }
       if (input.mode === "local") {
-        yield* gitHubCli.checkoutPullRequest({
+        yield* gitHub.checkoutPullRequest({
           cwd: input.cwd,
           reference: normalizedReference,
           force: false,

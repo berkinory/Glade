@@ -185,6 +185,11 @@ const AVAILABLE_NOW_DEFINITIONS: readonly ShortcutDefinition[] = [
     description: "Open or close Source Control in the right sidebar.",
   },
   {
+    command: "pullRequests.toggle",
+    label: "Toggle Pull Requests",
+    description: "Open or close the project's pull requests in the right sidebar.",
+  },
+  {
     command: "browser.toggle",
     label: "Toggle browser",
     description: "Open or close the browser in the right sidebar in the desktop app.",

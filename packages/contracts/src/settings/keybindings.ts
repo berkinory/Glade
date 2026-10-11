@@ -32,6 +32,7 @@ export const STATIC_KEYBINDING_COMMANDS = [
   "browser.toggle",
   "explorer.toggle",
   "diff.toggle",
+  "pullRequests.toggle",
   "composer.focus.toggle",
   "chat.find",
   "modelPicker.toggle",

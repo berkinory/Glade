@@ -11,7 +11,7 @@ import { randomUUID } from "node:crypto";
 import { ServerConfig } from "../server/config";
 import { GitCore } from "../git/Services/GitCore";
 import { pruneProjectedArchivedManagedWorktrees } from "../git/managedWorktrees";
-import { GitHubCli } from "../git/Services/GitHubCli";
+import { GitHub } from "../git/Services/GitHub";
 import { ServerSettingsService } from "../settings/serverSettings";
 import type { OrchestrationEngineShape } from "./Services/OrchestrationEngine";
 import type { ProjectionSnapshotQueryShape } from "./Services/ProjectionSnapshotQuery";
@@ -265,7 +265,7 @@ export const startThreadRetentionJob = Effect.fn("startThreadRetentionJob")(func
   const config = yield* ServerConfig;
   const git = yield* GitCore;
   const settings = yield* ServerSettingsService;
-  const github = yield* GitHubCli;
+  const github = yield* GitHub;
   const pruneArchivedManagedWorktrees = pruneProjectedArchivedManagedWorktrees({
     homeDir: config.homeDir,
     worktreesDir: config.worktreesDir,

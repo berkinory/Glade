@@ -128,6 +128,7 @@ export function WorktreesSettingsPanel({ active }: { readonly active: boolean })
           cwd: input.workspaceRoot,
           path: input.worktreePath,
           force: true,
+          keepSnapshot: true,
         });
         await queryClient.invalidateQueries({
           queryKey: serverQueryKeys.worktrees(),

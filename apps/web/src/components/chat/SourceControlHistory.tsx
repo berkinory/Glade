@@ -21,7 +21,11 @@ import { Spinner } from "../ui/spinner";
 import { toastManager } from "../ui/toast";
 import { copyTextToClipboard } from "../../lib/clipboard";
 import { showContextMenu } from "~/components/contextMenu/contextMenuStore";
-import { gitQueryKeys, gitStatusQueryOptions } from "../../lib/gitQueryOptions";
+import {
+  gitCommitAuthorAvatarsQueryOptions,
+  gitQueryKeys,
+  gitStatusQueryOptions,
+} from "../../lib/gitQueryOptions";
 import { formatRelativeTime } from "~/lib/relativeTime";
 import { cn } from "~/lib/utils";
 import { ensureNativeApi } from "~/nativeApi";
@@ -102,6 +106,7 @@ async function showCommitContextMenu(
 }
 function CommitRow(props: {
   commit: GitRecentCommit;
+  avatarUrl: string | null;
   selected: boolean;
   onSelect: () => void;
   actions: CommitActions;
@@ -174,12 +179,7 @@ function CommitRow(props: {
           ) : null}
         </span>
         <span className="mt-1 flex items-center gap-1.5 text-ui-xs text-muted-foreground">
-          <AuthorAvatar
-            actor={{
-              name: commit.authorName,
-            }}
-            size="md"
-          />
+          <AuthorAvatar actor={{ name: commit.authorName, avatarUrl: props.avatarUrl }} size="md" />
           <span className="min-w-0 truncate">{commit.authorName || "Unknown author"}</span>
           <span className="shrink-0 font-mono">{commit.shortSha}</span>
           <span
@@ -298,6 +298,7 @@ export function SourceControlHistory(props: {
     () => history.data?.pages.flatMap((page) => page.commits) ?? [],
     [history.data],
   );
+  const avatars = useQuery(gitCommitAuthorAvatarsQueryOptions(props.cwd, commits)).data?.avatars;
   const selected = commits.find((commit) => commit.sha === selectedSha) ?? null;
   const virtualizer = useVirtualizer({
     count: commits.length + (history.hasNextPage ? 1 : 0),
@@ -390,6 +391,9 @@ export function SourceControlHistory(props: {
                   <CommitRow
                     actions={commitActions(commits[row.index]!)}
                     commit={commits[row.index]!}
+                    avatarUrl={
+                      avatars?.[commits[row.index]!.authorEmail.trim().toLowerCase()] ?? null
+                    }
                     selected={selectedSha === commits[row.index]!.sha}
                     onSelect={() => {
                       const commit = commits[row.index]!;

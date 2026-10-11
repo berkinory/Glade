@@ -9,11 +9,11 @@ import type { GitActionProgressEvent } from "@glade/contracts/git/git";
 
 import { GitCommandError, TextGenerationError } from "../Errors.ts";
 import { type GitManagerShape } from "../Services/GitManager.ts";
-import { GitHubCli } from "../Services/GitHubCli.ts";
+import { GitHub } from "../Services/GitHub.ts";
 import { type TextGenerationShape, TextGeneration } from "../Services/TextGeneration.ts";
 import { GitCoreLive } from "./GitCore.ts";
 import { GitCore } from "../Services/GitCore.ts";
-import { createGitHubCliWithFakeGh, type FakeGhScenario } from "../testing/fakeGitHubCli.ts";
+import { createFakeGitHub, type FakeGhScenario } from "../testing/fakeGitHub.ts";
 import { makeGitManager } from "./GitManager.ts";
 import { GitHandoffLive } from "./GitHandoff.ts";
 import { ServerConfig } from "../../server/config.ts";
@@ -128,7 +128,7 @@ function makeManager(input?: {
   ghScenario?: FakeGhScenario;
   textGeneration?: Partial<TextGenerationShape>;
 }) {
-  const { service: gitHubCli, ghCalls } = createGitHubCliWithFakeGh(input?.ghScenario);
+  const { service: gitHub, ghCalls } = createFakeGitHub(input?.ghScenario);
   const textGeneration = createTextGeneration(input?.textGeneration);
   const ServerConfigLayer = ServerConfig.layerTest(process.cwd(), {
     prefix: "glade-git-manager-test-",
@@ -137,7 +137,7 @@ function makeManager(input?: {
   const gitServicesLayer = GitHandoffLive.pipe(Layer.provideMerge(GitCoreLive));
 
   const managerLayer = Layer.mergeAll(
-    Layer.succeed(GitHubCli, gitHubCli),
+    Layer.succeed(GitHub, gitHub),
     Layer.succeed(TextGeneration, textGeneration),
     gitServicesLayer,
   ).pipe(Layer.provideMerge(ServerConfigLayer), Layer.provideMerge(NodeServices.layer));

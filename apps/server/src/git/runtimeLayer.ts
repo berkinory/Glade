@@ -2,7 +2,7 @@ import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { Effect, Layer } from "effect";
 
 import { GitCoreLive } from "./Layers/GitCore";
-import { GitHubCliLive } from "./Layers/GitHubCli";
+import { GitHubLive } from "./Layers/GitHub";
 import { GitManagerLive } from "./Layers/GitManager";
 import { GitStatusBroadcasterLive } from "./Layers/GitStatusBroadcaster";
 import { CodexTextGenerationServiceLive } from "./Layers/CodexTextGeneration";
@@ -40,7 +40,7 @@ export const TextGenerationLayerLive = ProviderTextGenerationLive.pipe(
 
 const GitManagerLayerLive = GitManagerLive.pipe(
   Layer.provideMerge(GitCoreLive),
-  Layer.provideMerge(GitHubCliLive),
+  Layer.provideMerge(GitHubLive),
   Layer.provideMerge(TextGenerationLayerLive),
 );
 
@@ -50,7 +50,7 @@ const GitStatusBroadcasterLayerLive = GitStatusBroadcasterLive.pipe(
 
 export const GitLayerLive = Layer.mergeAll(
   GitCoreLive,
-  GitHubCliLive,
+  GitHubLive,
   GitManagerLayerLive,
   GitStatusBroadcasterLayerLive,
 );

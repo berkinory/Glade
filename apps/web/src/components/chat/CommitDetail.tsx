@@ -1,21 +1,20 @@
-import { ChevronDownIcon, Copy01Icon, GitCommitHorizontalIcon, XIcon } from "~/lib/icons";
+import { Copy01Icon, GitCommitHorizontalIcon, XIcon } from "~/lib/icons";
 import type { GitRecentCommit } from "@glade/contracts/git/git";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTheme } from "~/hooks/useTheme";
 import { copyTextToClipboard } from "~/lib/clipboard";
 import { getRenderablePatch, resolveFileDiffPath } from "~/lib/diffRendering";
-import { cn } from "~/lib/utils";
 import { ensureNativeApi } from "~/nativeApi";
 import { Button } from "../ui/button";
 import { IconButton } from "../ui/icon-button";
 import { toastManager } from "../ui/toast";
 import { ExplorerLoadingRows } from "./ExplorerLoadingRows";
-import { FileDiffCard, FileDiffSurface } from "./FileDiffView";
+import { FileDiffSurface } from "./FileDiffView";
 import { GitMediaPreview, isGitMediaPath } from "./GitMediaPreview";
 import { PanelStateMessage } from "./PanelStateMessage";
 import { WorkspaceDiffFile } from "./WorkspaceDiffFile";
-import { EditSourceFile } from "./EditSourceFile";
+import { PatchFileCards } from "./PatchFileCards";
 export function CommitDetail(props: {
   filePath?: string | undefined;
   onSelectFile?: ((path: string, preview: boolean) => void) | undefined;
@@ -25,7 +24,6 @@ export function CommitDetail(props: {
   onOpenFile: (path: string) => void;
 }) {
   const { resolvedTheme } = useTheme();
-  const [expandedPaths, setExpandedPaths] = useState<ReadonlySet<string>>(() => new Set());
   const detail = useQuery({
     queryKey: ["git", "history-commit", props.cwd, props.commit.sha],
     queryFn: () =>
@@ -105,59 +103,19 @@ export function CommitDetail(props: {
             </p>
           ) : null}
           {renderable?.kind === "files" ? (
-            renderable.files
-              .filter((file) => !props.filePath || resolveFileDiffPath(file) === props.filePath)
-              .map((file) => {
-                const path = resolveFileDiffPath(file);
-                const expanded = Boolean(props.filePath) || expandedPaths.has(path);
-                return (
-                  <div
-                    key={`${props.commit.sha}:${path}`}
-                    className="diff-render-file mb-2 rounded-md"
-                    onClickCapture={(event) => {
-                      const target = event.target as HTMLElement;
-                      if (target.closest("button") || !target.closest("[data-diff-file-header]"))
-                        return;
-                      if (props.onSelectFile) {
-                        props.onSelectFile(path, event.detail !== 2);
-                        return;
-                      }
-                      setExpandedPaths((current) => {
-                        const next = new Set(current);
-                        if (next.has(path)) next.delete(path);
-                        else next.add(path);
-                        return next;
-                      });
-                    }}
-                  >
-                    <FileDiffCard
-                      fileDiff={file}
-                      theme={resolvedTheme as "light" | "dark"}
-                      collapsed={!expanded}
-                      renderHeaderTrailing={() => (
-                        <>
-                          {!props.onSelectFile ? (
-                            <EditSourceFile
-                              cwd={props.cwd}
-                              file={file}
-                              onOpenFile={props.onOpenFile}
-                            />
-                          ) : null}
-                          <ChevronDownIcon
-                            className={cn(
-                              "size-3.5 text-muted-foreground transition-transform",
-                              expanded && "rotate-180",
-                            )}
-                          />
-                        </>
-                      )}
-                    />
-                    {expanded && isGitMediaPath(path) ? (
-                      <GitMediaPreview cwd={props.cwd} path={path} revision={props.commit.sha} />
-                    ) : null}
-                  </div>
-                );
-              })
+            <PatchFileCards
+              cwd={props.cwd}
+              keyPrefix={props.commit.sha}
+              files={renderable.files}
+              filePath={props.filePath}
+              onSelectFile={props.onSelectFile}
+              onOpenFile={props.onOpenFile}
+              renderBelow={(path) =>
+                isGitMediaPath(path) ? (
+                  <GitMediaPreview cwd={props.cwd} path={path} revision={props.commit.sha} />
+                ) : null
+              }
+            />
           ) : renderable?.kind === "raw" ? (
             <pre className="overflow-auto whitespace-pre-wrap break-all font-mono text-ui-xs">
               {renderable.text}

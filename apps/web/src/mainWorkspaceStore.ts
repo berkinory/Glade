@@ -7,7 +7,8 @@ import { sanitizeStringKeyedRecord } from "./persistedRecord";
 export type WorkspaceReviewTab =
   | { id: string; kind: "commit"; sha: string; subject: string; filePath?: string }
   | { id: string; kind: "gitFile"; filePath: string; scope: "staged" | "unstaged" }
-  | { id: string; kind: "diff"; turnId: TurnId; filePath: string | null };
+  | { id: string; kind: "diff"; turnId: TurnId; filePath: string | null }
+  | { id: string; kind: "pullRequest"; cwd: string; number: number; title: string };
 
 interface MainWorkspaceState {
   previewReviewId: string | null;
@@ -41,6 +42,21 @@ function sanitizeWorkspace(value: unknown): MainWorkspaceState | null {
         (tab.scope === "staged" || tab.scope === "unstaged")
       ) {
         reviews.push({ id: tab.id, kind: "gitFile", filePath: tab.filePath, scope: tab.scope });
+      } else if (
+        tab.kind === "pullRequest" &&
+        typeof tab.cwd === "string" &&
+        typeof tab.title === "string" &&
+        typeof tab.number === "number" &&
+        Number.isInteger(tab.number) &&
+        tab.number > 0
+      ) {
+        reviews.push({
+          id: tab.id,
+          kind: "pullRequest",
+          cwd: tab.cwd,
+          number: tab.number,
+          title: tab.title,
+        });
       } else if (tab.kind === "diff" && typeof tab.turnId === "string") {
         reviews.push({
           id: tab.id,

@@ -3,7 +3,13 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { isLocalDesktopActive } from "./environments/activeEnvironment";
 
-export const WORKSPACE_SIDEBAR_VIEWS = ["explorer", "git", "terminal", "browser"] as const;
+export const WORKSPACE_SIDEBAR_VIEWS = [
+  "explorer",
+  "git",
+  "terminal",
+  "browser",
+  "pullRequests",
+] as const;
 export type WorkspaceSidebarView = (typeof WORKSPACE_SIDEBAR_VIEWS)[number];
 
 interface WorkspaceSidebarStore {

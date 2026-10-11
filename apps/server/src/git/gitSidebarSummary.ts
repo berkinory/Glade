@@ -2,13 +2,13 @@ import type { GitSidebarSummaryInput, GitSidebarSummaryResult } from "@glade/con
 import { Effect } from "effect";
 
 import type { GitCoreShape } from "./Services/GitCore";
-import type { GitHubCliShape } from "./Services/GitHubCli";
+import type { GitHubShape } from "./Services/GitHub";
 import { toResolvedPullRequest } from "./gitPullRequestSummary";
 
 export function readGitSidebarSummary(
   input: GitSidebarSummaryInput,
   git: Pick<GitCoreShape, "summary">,
-  github: Pick<GitHubCliShape, "listPullRequests">,
+  github: Pick<GitHubShape, "listPullRequests">,
 ) {
   return Effect.all(
     {

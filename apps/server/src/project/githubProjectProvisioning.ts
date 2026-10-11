@@ -12,10 +12,10 @@ import {
 import { normalizeProjectDirectoryName } from "@glade/shared/threads/projectDirectoryName";
 import { Effect, FileSystem, Path, PlatformError, Schema, Semaphore } from "effect";
 
-import { GitCommandError, GitHubCliError } from "../git/Errors";
+import { GitCommandError, GitHubError } from "../git/Errors";
 import { NON_INTERACTIVE_GIT_ENV } from "../git/Services/GitCommands";
 import type { GitCoreShape } from "../git/Services/GitCore";
-import type { GitHubCliShape } from "../git/Services/GitHubCli";
+import type { GitHubShape } from "../git/Services/GitHub";
 
 const CLONE_TIMEOUT_MS = 30 * 60 * 1_000;
 const CLONE_OUTPUT_LIMIT_BYTES = 2 * 1_024 * 1_024;
@@ -64,7 +64,7 @@ interface GitHubProjectProvisionerDependencies {
   readonly fileSystem: FileSystem.FileSystem;
   readonly path: Path.Path;
   readonly git: GitCoreShape;
-  readonly github: GitHubCliShape;
+  readonly github: GitHubShape;
 }
 
 export interface GitHubProjectProvisioner {
@@ -130,7 +130,7 @@ function classifyCloneFailure(cause: unknown): GitHubProjectProvisioningError {
   if (Schema.is(GitHubProjectProvisioningError)(cause)) return cause;
 
   const detail =
-    Schema.is(GitHubCliError)(cause) || Schema.is(GitCommandError)(cause)
+    Schema.is(GitHubError)(cause) || Schema.is(GitCommandError)(cause)
       ? cause.detail
       : cause instanceof Error
         ? cause.message
@@ -141,7 +141,7 @@ function classifyCloneFailure(cause: unknown): GitHubProjectProvisioningError {
     (Schema.is(GitCommandError)(cause) &&
       cause.operation === "clone public GitHub project" &&
       lower.endsWith(" timed out.")) ||
-    (Schema.is(GitHubCliError)(cause) &&
+    (Schema.is(GitHubError)(cause) &&
       lower.includes("gh repo clone") &&
       lower.includes(" timed out."));
   if (exceededConfiguredCloneTimeout) {
@@ -366,7 +366,7 @@ export const makeGitHubProjectProvisioner = Effect.fn(function* (
     reporter: GitHubProjectProvisioningProgressReporter,
   ) {
     const publishChunk = createCloneProgressChunkHandler(input.operationId, reporter);
-    const githubCliReady = yield* github.getViewerLogin({ cwd: parent }).pipe(
+    const githubCliReady = yield* github.getViewer().pipe(
       Effect.as(true),
       Effect.catch(() => Effect.succeed(false)),
     );

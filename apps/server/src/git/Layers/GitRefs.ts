@@ -28,8 +28,15 @@ function parseRecentCommitLines(stdout: string): ReadonlyArray<GitRecentCommit> 
   const commits: GitRecentCommit[] = [];
   for (const line of stdout.split("\n")) {
     if (line.length === 0) continue;
-    const [sha = "", shortSha = "", subject = "", committedAt = "", authorName = "", parents = ""] =
-      line.split(RECENT_COMMIT_FIELD_SEPARATOR);
+    const [
+      sha = "",
+      shortSha = "",
+      subject = "",
+      committedAt = "",
+      authorName = "",
+      authorEmail = "",
+      parents = "",
+    ] = line.split(RECENT_COMMIT_FIELD_SEPARATOR);
     if (sha.length === 0 || shortSha.length === 0) continue;
     commits.push({
       sha,
@@ -37,6 +44,7 @@ function parseRecentCommitLines(stdout: string): ReadonlyArray<GitRecentCommit> 
       subject,
       committedAt,
       authorName,
+      authorEmail,
       isMerge: parents.trim().split(/\s+/).filter(Boolean).length > 1,
       branches: [],
       pushStatus: "unknown",
@@ -346,7 +354,7 @@ const makeGitRefs = Effect.gen(function* () {
         input.cwd,
         [
           "log",
-          "--format=%H%x1f%h%x1f%s%x1f%cI%x1f%an%x1f%P",
+          "--format=%H%x1f%h%x1f%s%x1f%cI%x1f%an%x1f%ae%x1f%P",
           "-n",
           String(limit + 1),
           "--skip",

@@ -57,6 +57,11 @@ const SourceControlDockPane = lazy(() =>
     default: module.SourceControlDockPane,
   })),
 );
+const PullRequestsPane = lazy(() =>
+  import("../pullRequest/PullRequestsPane").then((module) => ({
+    default: module.PullRequestsPane,
+  })),
+);
 const DockExplorerPane = lazy(() =>
   import("./DockExplorerPane").then((module) => ({
     default: module.DockExplorerPane,
@@ -246,8 +251,34 @@ export function SingleChatSurface(props: {
     openReview(props.threadId, tab, preview);
   };
 
-  const renderToolView = (view: "explorer" | "git", visible: boolean): ReactNode => {
+  const renderToolView = (
+    view: "explorer" | "git" | "pullRequests",
+    visible: boolean,
+  ): ReactNode => {
     switch (view) {
+      case "pullRequests":
+        return (
+          <Suspense fallback={<PanelStateMessage loadingLabel="Loading pull requests" />}>
+            <PullRequestsPane
+              cwd={workspaceRoot}
+              visible={visible}
+              onSelect={(item, preview) =>
+                workspaceRoot
+                  ? openGitPreview(
+                      {
+                        id: `pr:${item.number}`,
+                        kind: "pullRequest",
+                        cwd: workspaceRoot,
+                        number: item.number,
+                        title: item.title,
+                      },
+                      preview,
+                    )
+                  : undefined
+              }
+            />
+          </Suspense>
+        );
       case "git":
         return (
           <Suspense fallback={<PanelStateMessage loadingLabel="Loading source control" />}>

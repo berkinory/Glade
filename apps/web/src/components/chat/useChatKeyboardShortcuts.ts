@@ -423,12 +423,22 @@ export function useChatKeyboardShortcuts({
         return;
       }
 
-      if (command === "explorer.toggle" || (command === "browser.toggle" && isLocalDesktop)) {
+      if (
+        command === "explorer.toggle" ||
+        command === "pullRequests.toggle" ||
+        (command === "browser.toggle" && isLocalDesktop)
+      ) {
         event.preventDefault();
         event.stopPropagation();
         useWorkspaceSidebarStore
           .getState()
-          .toggle(command === "explorer.toggle" ? "explorer" : "browser");
+          .toggle(
+            command === "explorer.toggle"
+              ? "explorer"
+              : command === "pullRequests.toggle"
+                ? "pullRequests"
+                : "browser",
+          );
         return;
       }
 

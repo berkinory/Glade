@@ -1,4 +1,4 @@
-import { GitCommitHorizontalIcon, PlusMinusSquare01Icon } from "~/lib/icons";
+import { GitCommitHorizontalIcon, GitPullRequestIcon, PlusMinusSquare01Icon } from "~/lib/icons";
 import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -22,6 +22,7 @@ import { WorkspaceFilePreview } from "../WorkspaceFilePreview";
 import type { ChatFileReference } from "~/lib/chatReferences";
 import { WorkspaceGitDiff } from "./WorkspaceGitDiff";
 import { CommitDetail } from "./CommitDetail";
+import { PullRequestDetail } from "../pullRequest/PullRequestDetail";
 import { SourceControlTurnChanges } from "./SourceControlTurnChanges";
 import { FileEntryIcon } from "./FileEntryIcon";
 import { PanelTabBar, type PanelTab } from "./PanelTabBar";
@@ -93,15 +94,20 @@ export function MainWorkspace(props: {
     })),
     ...state.reviews.map((tab) => ({
       id: tab.id,
-      label: tab.filePath
-        ? basenameOfPath(tab.filePath)
-        : tab.kind === "commit"
-          ? tab.subject || tab.sha.slice(0, 7)
-          : "Turn changes",
+      label:
+        tab.kind === "pullRequest"
+          ? `#${tab.number} ${tab.title}`
+          : tab.filePath
+            ? basenameOfPath(tab.filePath)
+            : tab.kind === "commit"
+              ? tab.subject || tab.sha.slice(0, 7)
+              : "Turn changes",
       preview: state.previewReviewId === tab.id,
       onDoubleClick: () => pinReview(props.threadId, tab.id),
       icon:
-        tab.kind === "commit" ? (
+        tab.kind === "pullRequest" ? (
+          <GitPullRequestIcon className="size-3.5" />
+        ) : tab.kind === "commit" ? (
           <GitCommitHorizontalIcon className="size-3.5" />
         ) : (
           <PlusMinusSquare01Icon className="size-3.5" />
@@ -210,6 +216,15 @@ export function MainWorkspace(props: {
               cwd={props.workspaceRoot}
               filePath={review.filePath}
               scope={review.scope}
+              onOpenFile={(path) => openFile(props.threadId, path)}
+            />
+          ) : null}
+          {review?.kind === "pullRequest" ? (
+            <PullRequestDetail
+              key={review.id}
+              cwd={review.cwd}
+              number={review.number}
+              threadId={props.threadId}
               onOpenFile={(path) => openFile(props.threadId, path)}
             />
           ) : null}

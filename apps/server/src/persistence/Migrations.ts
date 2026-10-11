@@ -8,6 +8,7 @@ import { MigrationLineageUnsupportedError, MigrationSchemaTooNewError } from "./
 import Baseline from "./Migrations/001_Baseline.ts";
 import VisualReplyAttachments from "./Migrations/006_VisualReplyAttachments.ts";
 import AuthPairingCredentialHashes from "./Migrations/007_AuthPairingCredentialHashes.ts";
+import ThreadPullRequestWatches from "./Migrations/008_ThreadPullRequestWatches.ts";
 
 import ProfileTurnLookup from "./Migrations/002_ProfileTurnLookup.ts";
 
@@ -21,6 +22,7 @@ export const migrationEntries = [
   [5, "CommandReceiptOwner", CommandReceiptOwner],
   [6, "VisualReplyAttachments", VisualReplyAttachments],
   [7, "AuthPairingCredentialHashes", AuthPairingCredentialHashes],
+  [8, "ThreadPullRequestWatches", ThreadPullRequestWatches],
 ] as const;
 
 const LATEST_MIGRATION_ID = Math.max(...migrationEntries.map(([id]) => id));

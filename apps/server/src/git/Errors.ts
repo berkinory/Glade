@@ -26,17 +26,17 @@ export class GitCheckoutDirtyWorktreeError extends Schema.TaggedErrorClass<GitCh
   }
 }
 
-export class GitHubCliError extends Schema.TaggedErrorClass<GitHubCliError>()("GitHubCliError", {
+export class GitHubError extends Schema.TaggedErrorClass<GitHubError>()("GitHubError", {
   operation: Schema.String,
   detail: Schema.String,
   reason: Schema.optional(
-    Schema.Literals(["not-installed", "not-authenticated", "rate-limited", "other"]),
+    Schema.Literals(["not-installed", "not-authenticated", "rate-limited", "not-found", "other"]),
   ),
   retryAt: Schema.optional(Schema.Number),
   cause: Schema.optional(Schema.Defect),
 }) {
   override get message(): string {
-    return `GitHub CLI failed in ${this.operation}: ${this.detail}`;
+    return `GitHub ${this.operation} failed: ${this.detail}`;
   }
 }
 
@@ -89,5 +89,5 @@ export type GitManagerServiceError =
   | GitManagerError
   | GitCommandError
   | GitCheckoutDirtyWorktreeError
-  | GitHubCliError
+  | GitHubError
   | TextGenerationError;

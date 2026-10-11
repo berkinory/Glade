@@ -75,7 +75,7 @@ product yet. See
 
 ## Workspace editing
 
-Each conversation owns main workspace tabs for chat, files, and commit and turn diffs. The chat tab uses the provider icon and name and stays at the left of the tab strip. Workspace tabs replace the chat title in the existing top bar; no extra tab row is added. Provider usage stays in the left sidebar, and chat headers do not show Open in or Commit and push actions. A thin activity bar on the window's right edge opens Explorer, Source Control, Terminal and Browser (desktop only) in the right sidebar, one view at a time, with `explorer.toggle`, `diff.toggle`, `terminal.toggle` and `browser.toggle` as shortcuts. The bar's top icon shows or hides the sidebar, and clicking the active view's icon also closes it; the open state and view are remembered per window. All views share one resizable width; opening the browser widens it to at least 32rem. The Terminal icon shows a dot while a terminal runs a process, and the Browser icon shows one while the chat has browser tabs, pulsing while the agent uses the browser. Selecting Explorer files or Git files opens or focuses their main workspace tab. Single-clicks reuse one italic preview tab across files and Git diffs; double-clicking a file or its tab, editing, or opening a chat file reference keeps it as a permanent tab. File search opens previews too. The provider chat tab cannot be closed. Cmd+W or Ctrl+W closes the active resource tab and returns to the most recently used open tab; when only the chat tab remains, the shortcut leaves the conversation without closing the app. The tab strip supports horizontal trackpad scrolling and reveals newly selected tabs. The tab strip has no plus menu; terminals and browser pages keep their tabs inside their sidebar views, each with its own new-tab button. File diffs share the file viewer header, offer unified and side-by-side layouts, and expose Edit to open the working file. Saved project actions, automatic setup scripts, and project Run controls are not supported. Tab selection is remembered per conversation. Configurable `workspaceTab.previous` and `workspaceTab.next` shortcuts cycle through these tabs in visual order and wrap at either end, using the same selection path as a click. Sidebar PR status appears after the workspace metadata with its accessible open action. Metadata and hover actions share an intrinsic grid width in pinned and ordinary rows, so titles reserve the actual content width as typography changes.
+Each conversation owns main workspace tabs for chat, files, and commit and turn diffs. The chat tab uses the provider icon and name and stays at the left of the tab strip. Workspace tabs replace the chat title in the existing top bar; no extra tab row is added. Provider usage stays in the left sidebar, and chat headers do not show Open in or Commit and push actions. A thin activity bar on the window's right edge opens Explorer, Source Control, Pull Requests, Terminal and Browser (desktop only) in the right sidebar, one view at a time, with `explorer.toggle`, `diff.toggle`, `pullRequests.toggle`, `terminal.toggle` and `browser.toggle` as shortcuts. The bar's top icon shows or hides the sidebar, and clicking the active view's icon also closes it; the open state and view are remembered per window. All views share one resizable width; opening the browser widens it to at least 32rem. The Terminal icon shows a dot while a terminal runs a process, and the Browser icon shows one while the chat has browser tabs, pulsing while the agent uses the browser. Selecting Explorer files or Git files opens or focuses their main workspace tab. Single-clicks reuse one italic preview tab across files and Git diffs; double-clicking a file or its tab, editing, or opening a chat file reference keeps it as a permanent tab. File search opens previews too. The provider chat tab cannot be closed. Cmd+W or Ctrl+W closes the active resource tab and returns to the most recently used open tab; when only the chat tab remains, the shortcut leaves the conversation without closing the app. The tab strip supports horizontal trackpad scrolling and reveals newly selected tabs. The tab strip has no plus menu; terminals and browser pages keep their tabs inside their sidebar views, each with its own new-tab button. File diffs share the file viewer header, offer unified and side-by-side layouts, and expose Edit to open the working file. Saved project actions, automatic setup scripts, and project Run controls are not supported. Tab selection is remembered per conversation. Configurable `workspaceTab.previous` and `workspaceTab.next` shortcuts cycle through these tabs in visual order and wrap at either end, using the same selection path as a click. Sidebar PR status appears after the workspace metadata with its accessible open action. Metadata and hover actions share an intrinsic grid width in pinned and ordinary rows, so titles reserve the actual content width as typography changes.
 
 File tabs accept tree selections, chat links and file references. Opening
 an existing file selects its tab; line and column links reveal source without changing
@@ -214,7 +214,27 @@ only touches worktrees of archived or deleted chats: it keeps the 15 most recent
 worktrees, and can also remove those whose pull request was merged (on by default) or that were
 archived longer than a chosen number of days. It never removes a worktree with uncommitted
 changes or unreadable state, never deletes a branch holding commits found nowhere else, and
-keeps a snapshot for 30 days.
+keeps a snapshot for 30 days. Deleting a managed worktree from Settings also snapshots it first.
+
+Pull Requests lists the project's pull requests by filter (open, yours, review requested,
+closed) with optional search, showing checks, review decision and comment counts. A pull
+request opens in a main workspace tab, previewed on single click and kept on double click,
+with Conversation (description, reviews and comments rendered as Markdown), Checks and Files
+(read-only diffs). Failing GitHub Actions checks show the tail of their job log inline; Fix
+drafts a message that includes those log tails, and Rerun failed reruns the failed jobs.
+Watching a pull request from the Environment panel wakes the chat's agent with a message when
+checks newly fail, the required checks pass, unresolved review feedback from someone else
+arrives, or the branch starts to conflict. A watch ends when the pull request is merged or
+closed, the chat is archived or deleted, after ten wakes in a row caused only by comments, or
+after repeated read failures, which the agent is told about.
+
+GitHub reads and writes use the GitHub API with the GitHub CLI's token (or `GH_TOKEN`); the CLI
+itself is only used for signing in, `gh pr checkout`, cloning and creating repositories.
+Rate limits are tracked from GitHub's response headers: background work stops short of the last
+tenth of a quota, rate-limited hosts pause until GitHub's reset time while user actions still go
+through, and branch lookups from concurrent status refreshes share batched GraphQL documents.
+Pull request reviews revalidate with conditional requests, so polling an unchanged pull request
+does not spend the rate limit.
 
 ## Existing data
 

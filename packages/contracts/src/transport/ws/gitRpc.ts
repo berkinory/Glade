@@ -4,15 +4,26 @@ import {
   GitPublishRepositoryInput,
   GitPublishRepositoryResult,
 } from "../../git/githubRepositoryPublishing";
+import { GitPullRequestActionInput, GitPullRequestReviewResult } from "../../git/pullRequestReview";
 import {
-  GitPullRequestActionInput,
-  GitPullRequestReviewInput,
-  GitPullRequestReviewResult,
-} from "../../git/pullRequestReview";
+  GitPullRequestCheckLogInput,
+  GitPullRequestCheckLogResult,
+  GitPullRequestDetail,
+  GitPullRequestDiffResult,
+  GitPullRequestListInput,
+  GitPullRequestListResult,
+  GitPullRequestNumberInput,
+  GitPullRequestRerunInput,
+  GitPullRequestWatchInput,
+  GitPullRequestWatchStatus,
+  GitPullRequestWatchStatusInput,
+} from "../../git/pullRequests";
 import { GitHubConnectionStatus } from "../../git/githubConnection";
 import * as Rpc from "effect/unstable/rpc/Rpc";
 import { WS_METHODS } from "./ws";
 import {
+  GitCommitAuthorAvatarsInput,
+  GitCommitAuthorAvatarsResult,
   GitStatusInput,
   GitStatusWatchInput,
   GitStatusStreamEvent,
@@ -333,8 +344,56 @@ export const WsGitRevertCommitRpc = Rpc.make(WS_METHODS.gitRevertCommit, {
 });
 
 export const WsGitPullRequestReviewRpc = Rpc.make(WS_METHODS.gitPullRequestReview, {
-  payload: GitPullRequestReviewInput,
+  payload: GitPullRequestNumberInput,
   success: GitPullRequestReviewResult,
+  error: WsRpcError,
+});
+
+export const WsGitListPullRequestsRpc = Rpc.make(WS_METHODS.gitListPullRequests, {
+  payload: GitPullRequestListInput,
+  success: GitPullRequestListResult,
+  error: WsRpcError,
+});
+
+export const WsGitPullRequestDetailRpc = Rpc.make(WS_METHODS.gitPullRequestDetail, {
+  payload: GitPullRequestNumberInput,
+  success: GitPullRequestDetail,
+  error: WsRpcError,
+});
+
+export const WsGitPullRequestDiffRpc = Rpc.make(WS_METHODS.gitPullRequestDiff, {
+  payload: GitPullRequestNumberInput,
+  success: GitPullRequestDiffResult,
+  error: WsRpcError,
+});
+
+export const WsGitPullRequestCheckLogRpc = Rpc.make(WS_METHODS.gitPullRequestCheckLog, {
+  payload: GitPullRequestCheckLogInput,
+  success: GitPullRequestCheckLogResult,
+  error: WsRpcError,
+});
+
+export const WsGitRerunFailedJobsRpc = Rpc.make(WS_METHODS.gitRerunFailedJobs, {
+  payload: GitPullRequestRerunInput,
+  success: Schema.Void,
+  error: WsRpcError,
+});
+
+export const WsGitSetPullRequestWatchRpc = Rpc.make(WS_METHODS.gitSetPullRequestWatch, {
+  payload: GitPullRequestWatchInput,
+  success: Schema.Void,
+  error: WsRpcError,
+});
+
+export const WsGitPullRequestWatchStatusRpc = Rpc.make(WS_METHODS.gitPullRequestWatchStatus, {
+  payload: GitPullRequestWatchStatusInput,
+  success: GitPullRequestWatchStatus,
+  error: WsRpcError,
+});
+
+export const WsGitCommitAuthorAvatarsRpc = Rpc.make(WS_METHODS.gitCommitAuthorAvatars, {
+  payload: GitCommitAuthorAvatarsInput,
+  success: GitCommitAuthorAvatarsResult,
   error: WsRpcError,
 });
 

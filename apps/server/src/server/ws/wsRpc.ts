@@ -67,7 +67,8 @@ import {
   publishGitHubRepository,
   readGitPublishContext,
 } from "../../git/githubRepositoryPublishing";
-import { GitHubCli } from "../../git/Services/GitHubCli";
+import { GitHub } from "../../git/Services/GitHub";
+import { PullRequestWatch } from "../../pullRequests/Services/PullRequestWatch";
 import { GitManager } from "../../git/Services/GitManager";
 import { GitActionRuns } from "../../git/Services/GitActionRuns";
 import { GitStatusBroadcaster } from "../../git/Services/GitStatusBroadcaster";
@@ -89,6 +90,7 @@ import {
   listManagedWorktrees,
   managedWorktreeSnapshotsDir,
   pruneProjectedArchivedManagedWorktrees,
+  snapshotManagedWorktree,
 } from "../../git/managedWorktrees";
 import {
   attachmentPrincipalForSession,
@@ -392,7 +394,8 @@ const makeWsRpcHandlersLayer = () =>
       const config = yield* ServerConfig;
       const fileSystem = yield* FileSystem.FileSystem;
       const git = yield* GitCore;
-      const github = yield* GitHubCli;
+      const github = yield* GitHub;
+      const pullRequestWatch = yield* PullRequestWatch;
       const gitManager = yield* GitManager;
       const gitActionRuns = yield* GitActionRuns;
       const textGenerationProviders = yield* TextGenerationProviders;
@@ -1469,9 +1472,9 @@ const makeWsRpcHandlersLayer = () =>
         [WS_METHODS.gitResolvePullRequest]: (input) =>
           rpcEffect(gitManager.resolvePullRequest(input), "Failed to resolve pull request"),
         [WS_METHODS.gitGithubConnection]: () =>
-          github.getViewerLogin({ cwd: config.homeDir }).pipe(
-            Effect.map((login) => ({ state: "connected" as const, login })),
-            Effect.catchTag("GitHubCliError", (error) =>
+          github.getViewer().pipe(
+            Effect.map(({ login }) => ({ state: "connected" as const, login })),
+            Effect.catchTag("GitHubError", (error) =>
               Effect.succeed(
                 error.reason === "not-installed"
                   ? { state: "not_installed" as const }
@@ -1480,6 +1483,28 @@ const makeWsRpcHandlersLayer = () =>
                     : { state: "error" as const, detail: error.detail },
               ),
             ),
+          ),
+        [WS_METHODS.gitListPullRequests]: (input) =>
+          rpcEffect(github.listRepositoryPullRequests(input), "Failed to list pull requests"),
+        [WS_METHODS.gitPullRequestDetail]: (input) =>
+          rpcEffect(github.getPullRequestDetail(input), "Failed to load pull request"),
+        [WS_METHODS.gitPullRequestDiff]: (input) =>
+          rpcEffect(github.getPullRequestDiff(input), "Failed to load pull request changes"),
+        [WS_METHODS.gitPullRequestCheckLog]: (input) =>
+          rpcEffect(github.getCheckLog(input), "Failed to load check log"),
+        [WS_METHODS.gitRerunFailedJobs]: (input) =>
+          rpcEffect(github.rerunFailedJobs(input), "Failed to rerun failed jobs"),
+        [WS_METHODS.gitSetPullRequestWatch]: (input) =>
+          rpcEffect(pullRequestWatch.setWatch(input), "Failed to update the pull request watch"),
+        [WS_METHODS.gitPullRequestWatchStatus]: (input) =>
+          rpcEffect(
+            pullRequestWatch.status(input.threadId),
+            "Failed to read the pull request watch",
+          ),
+        [WS_METHODS.gitCommitAuthorAvatars]: (input) =>
+          rpcEffect(
+            github.resolveCommitAuthorAvatars(input).pipe(Effect.map((avatars) => ({ avatars }))),
+            "Failed to resolve commit author avatars",
           ),
         [WS_METHODS.gitPullRequestReview]: (input) =>
           rpcEffect(github.getPullRequestReview(input), "Failed to read pull request checks"),
@@ -1553,6 +1578,24 @@ const makeWsRpcHandlersLayer = () =>
                 input.cwd,
                 validateArchiveWorktreeRemoval(input).pipe(
                   Effect.andThen(
+                    input.keepSnapshot && !input.archiveCleanup
+                      ? isManagedWorktreePathCanonical({
+                          worktreesDir: config.worktreesDir,
+                          worktreePath: input.path,
+                        }).pipe(
+                          Effect.flatMap((managed) =>
+                            managed
+                              ? snapshotManagedWorktree({
+                                  snapshotsDir: managedWorktreeSnapshotsDir(config.homeDir),
+                                  worktreePath: input.path,
+                                  git,
+                                })
+                              : Effect.void,
+                          ),
+                        )
+                      : Effect.void,
+                  ),
+                  Effect.andThen(
                     git.removeWorktree(
                       input.archiveCleanup
                         ? { ...input, force: false, reclaimTemporaryBranch: false }
@@ -1568,7 +1611,7 @@ const makeWsRpcHandlersLayer = () =>
                       Effect.flatMap((managed) =>
                         !managed
                           ? Effect.void
-                          : input.archiveCleanup
+                          : input.archiveCleanup || input.keepSnapshot
                             ? discardEmptyManagedWorktreeParent({
                                 worktreesDir: config.worktreesDir,
                                 worktreePath: input.path,

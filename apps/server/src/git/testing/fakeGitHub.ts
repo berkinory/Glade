@@ -1,13 +1,24 @@
 import { spawnSync } from "node:child_process";
 import { Effect } from "effect";
 
-import { GitHubCliError } from "../Errors.ts";
-import { decodePullRequestListJson } from "../Layers/GitHubCli.ts";
-import {
-  type GitHubCliShape,
-  type GitHubPullRequestSummary,
-  PULL_REQUEST_SUMMARY_JSON_FIELDS,
-} from "../Services/GitHubCli.ts";
+import { GitHubError } from "../Errors.ts";
+import { decodePullRequestSummaries } from "../github/pullRequestQueries.ts";
+import { type GitHubShape, type GitHubPullRequestSummary } from "../Services/GitHub.ts";
+
+const PULL_REQUEST_SUMMARY_JSON_FIELDS =
+  "number,title,url,baseRefName,headRefName,state,mergedAt,isDraft,mergeable,additions,deletions,changedFiles,isCrossRepository,headRepository,headRepositoryOwner,updatedAt";
+
+// Scenario fixtures are `gh --json` output; it shares field names with the GraphQL nodes the live
+// layer decodes, so both go through the same normalization.
+const decodePullRequestListJson = (stdout: string) =>
+  Effect.try({
+    try: () => decodePullRequestSummaries(stdout.trim() ? (JSON.parse(stdout) as unknown[]) : []),
+    catch: () =>
+      new GitHubError({ operation: "listPullRequests", detail: "Invalid PR list JSON fixture." }),
+  });
+
+const unmodeled = (name: string) =>
+  Effect.die(new Error(`The fake GitHub service does not model ${name}.`));
 
 export interface FakeGhScenario {
   prListSequence?: string[];
@@ -39,29 +50,29 @@ function runGitSyncForFakeGh(cwd: string, args: readonly string[]): void {
   if (result.status === 0) {
     return;
   }
-  throw new GitHubCliError({
+  throw new GitHubError({
     operation: "execute",
     detail: `Failed to simulate gh checkout with git ${args.join(" ")}: ${result.stderr?.trim() || "unknown error"}`,
   });
 }
 
-function isGitHubCliError(error: unknown): error is GitHubCliError {
+function isGitHubError(error: unknown): error is GitHubError {
   return (
     typeof error === "object" &&
     error !== null &&
     "_tag" in error &&
-    (error as { _tag?: unknown })._tag === "GitHubCliError"
+    (error as { _tag?: unknown })._tag === "GitHubError"
   );
 }
 
-export function createGitHubCliWithFakeGh(scenario: FakeGhScenario = {}): {
-  service: GitHubCliShape;
+export function createFakeGitHub(scenario: FakeGhScenario = {}): {
+  service: GitHubShape;
   ghCalls: string[];
 } {
   const prListQueue = [...(scenario.prListSequence ?? [])];
   const ghCalls: string[] = [];
 
-  const execute: GitHubCliShape["execute"] = (input) => {
+  const execute: GitHubShape["execute"] = (input) => {
     const args = [...input.args];
     ghCalls.push(args.join(" "));
 
@@ -127,9 +138,9 @@ export function createGitHubCliWithFakeGh(scenario: FakeGhScenario = {}): {
           return ok("");
         },
         catch: (error) =>
-          isGitHubCliError(error)
+          isGitHubError(error)
             ? error
-            : new GitHubCliError({
+            : new GitHubError({
                 operation: "execute",
                 detail:
                   error instanceof Error
@@ -145,7 +156,7 @@ export function createGitHubCliWithFakeGh(scenario: FakeGhScenario = {}): {
         const cloneUrls = scenario.repositoryCloneUrls?.[repository];
         if (!cloneUrls) {
           return Effect.fail(
-            new GitHubCliError({
+            new GitHubError({
               operation: "execute",
               detail: `Unexpected repository lookup: ${repository}`,
             }),
@@ -165,7 +176,7 @@ export function createGitHubCliWithFakeGh(scenario: FakeGhScenario = {}): {
     }
 
     return Effect.fail(
-      new GitHubCliError({
+      new GitHubError({
         operation: "execute",
         detail: `Unexpected gh command: ${args.join(" ")}`,
       }),
@@ -194,9 +205,9 @@ export function createGitHubCliWithFakeGh(scenario: FakeGhScenario = {}): {
   return {
     service: {
       execute,
-      getViewerLogin: (input) => {
-        ghCalls.push(`api user --jq .login [cwd=${input.cwd}]`);
-        return Effect.succeed("viewer");
+      getViewer: () => {
+        ghCalls.push("api user --jq .login");
+        return Effect.succeed({ login: "viewer", avatarUrl: null });
       },
       listOpenPullRequests: (input) =>
         listPullRequestsWithState(input, { state: "open", defaultLimit: 1 }),
@@ -244,7 +255,14 @@ export function createGitHubCliWithFakeGh(scenario: FakeGhScenario = {}): {
           cwd: input.cwd,
           args: ["pr", "checkout", input.reference, ...(input.force ? ["--force"] : [])],
         }).pipe(Effect.asVoid),
-      getPullRequestReview: () => Effect.die(new Error("The fake gh does not model PR reviews.")),
+      getPullRequestReview: () => unmodeled("PR reviews"),
+      listRepositoryPullRequests: () => unmodeled("PR search"),
+      listViewerOrganizations: () => unmodeled("organizations"),
+      resolveCommitAuthorAvatars: () => unmodeled("commit author avatars"),
+      getPullRequestDetail: () => unmodeled("PR details"),
+      getPullRequestDiff: () => unmodeled("PR diffs"),
+      getCheckLog: () => unmodeled("check logs"),
+      rerunFailedJobs: () => unmodeled("reruns"),
       mergePullRequest: (input) =>
         execute({
           cwd: input.cwd,
