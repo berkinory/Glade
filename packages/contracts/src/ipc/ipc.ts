@@ -151,9 +151,6 @@ import type {
   GitPullRequestListResult,
   GitPullRequestNumberInput,
   GitPullRequestRerunInput,
-  GitPullRequestWatchInput,
-  GitPullRequestWatchStatus,
-  GitPullRequestWatchStatusInput,
 } from "../git/pullRequests";
 import type { GitHubConnectionStatus } from "../git/githubConnection";
 import type {
@@ -658,10 +655,6 @@ export interface NativeApi {
       input: GitPullRequestCheckLogInput,
     ) => Promise<GitPullRequestCheckLogResult>;
     rerunFailedJobs: (input: GitPullRequestRerunInput) => Promise<void>;
-    setPullRequestWatch: (input: GitPullRequestWatchInput) => Promise<void>;
-    pullRequestWatchStatus: (
-      input: GitPullRequestWatchStatusInput,
-    ) => Promise<GitPullRequestWatchStatus>;
     pullRequestAction: (input: GitPullRequestActionInput) => Promise<void>;
     commitAuthorAvatars: (
       input: GitCommitAuthorAvatarsInput,

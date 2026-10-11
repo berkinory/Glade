@@ -5,8 +5,7 @@ import type {
   GitReadRequestOptions,
   GitRecentCommit,
 } from "@glade/contracts/git/git";
-import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-import type { GitPullRequestListFilter } from "@glade/contracts/git/pullRequests";
+import type { GitPullRequestListState } from "@glade/contracts/git/pullRequests";
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { ensureNativeApi } from "../nativeApi";
 import {
@@ -529,14 +528,14 @@ export function gitPullRequestReviewQueryOptions(input: {
 
 export function gitPullRequestListQueryOptions(input: {
   cwd: string | null;
-  filter: GitPullRequestListFilter;
+  state: GitPullRequestListState;
   enabled: boolean;
 }) {
   return queryOptions({
-    queryKey: [...gitQueryKeys.pullRequest(input.cwd), "list", input.filter] as const,
+    queryKey: [...gitQueryKeys.pullRequest(input.cwd), "list", input.state] as const,
     queryFn: async () => {
       if (!input.cwd) throw new Error("Pull requests are unavailable.");
-      return ensureNativeApi().git.listPullRequests({ cwd: input.cwd, filter: input.filter });
+      return ensureNativeApi().git.listPullRequests({ cwd: input.cwd, state: input.state });
     },
     enabled: input.enabled && input.cwd !== null,
     staleTime: 30_000,
@@ -598,18 +597,6 @@ export function gitCommitAuthorAvatarsQueryOptions(
     staleTime: 60 * 60_000,
     retry: false,
     placeholderData: (previous) => previous,
-  });
-}
-
-export function gitPullRequestWatchStatusQueryOptions(threadId: ThreadId | null) {
-  return queryOptions({
-    queryKey: ["git", "pull-request-watch", threadId] as const,
-    queryFn: () => {
-      if (!threadId) throw new Error("No chat to watch from.");
-      return ensureNativeApi().git.pullRequestWatchStatus({ threadId });
-    },
-    enabled: threadId !== null,
-    staleTime: 30_000,
   });
 }
 

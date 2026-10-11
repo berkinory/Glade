@@ -1,5 +1,4 @@
 import { serverRuntimeRouteLayer } from "../runtime/serverRuntimeRoute";
-import { PullRequestWatch } from "../../pullRequests/Services/PullRequestWatch";
 import { ProjectionPendingInteractionRepositoryLive } from "../../persistence/Layers/ProjectionPendingInteractions";
 import http from "node:http";
 
@@ -171,7 +170,6 @@ export const createEffectServer = Effect.fn(function* (
   const runtimeStartup = yield* ServerRuntimeStartup;
   const serverSettings = yield* ServerSettingsService;
   const threadDeletionReactor = yield* ThreadDeletionReactor;
-  const pullRequestWatch = yield* PullRequestWatch;
   const keepAwake = yield* KeepAwake;
   const remoteAccess = yield* RemoteAccess;
   const readiness = yield* makeServerReadiness;
@@ -262,13 +260,7 @@ export const createEffectServer = Effect.fn(function* (
     reconcileRestartStuckTurns: reconcileRestartStuckTurns.pipe(
       Effect.provide(ProjectionPendingInteractionRepositoryLive),
     ),
-    reactors: [
-      threadDeletionReactor,
-      pullRequestWatch,
-      providerSessionReaper,
-      providerRuntimeReconciler,
-      keepAwake,
-    ],
+    reactors: [threadDeletionReactor, providerSessionReaper, providerRuntimeReconciler, keepAwake],
     subscriptionsScope,
   });
   yield* readiness.markOrchestrationSubscriptionsReady;

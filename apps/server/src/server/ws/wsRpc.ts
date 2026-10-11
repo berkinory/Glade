@@ -68,7 +68,6 @@ import {
   readGitPublishContext,
 } from "../../git/githubRepositoryPublishing";
 import { GitHub } from "../../git/Services/GitHub";
-import { PullRequestWatch } from "../../pullRequests/Services/PullRequestWatch";
 import { GitManager } from "../../git/Services/GitManager";
 import { GitActionRuns } from "../../git/Services/GitActionRuns";
 import { GitStatusBroadcaster } from "../../git/Services/GitStatusBroadcaster";
@@ -395,7 +394,6 @@ const makeWsRpcHandlersLayer = () =>
       const fileSystem = yield* FileSystem.FileSystem;
       const git = yield* GitCore;
       const github = yield* GitHub;
-      const pullRequestWatch = yield* PullRequestWatch;
       const gitManager = yield* GitManager;
       const gitActionRuns = yield* GitActionRuns;
       const textGenerationProviders = yield* TextGenerationProviders;
@@ -1494,13 +1492,6 @@ const makeWsRpcHandlersLayer = () =>
           rpcEffect(github.getCheckLog(input), "Failed to load check log"),
         [WS_METHODS.gitRerunFailedJobs]: (input) =>
           rpcEffect(github.rerunFailedJobs(input), "Failed to rerun failed jobs"),
-        [WS_METHODS.gitSetPullRequestWatch]: (input) =>
-          rpcEffect(pullRequestWatch.setWatch(input), "Failed to update the pull request watch"),
-        [WS_METHODS.gitPullRequestWatchStatus]: (input) =>
-          rpcEffect(
-            pullRequestWatch.status(input.threadId),
-            "Failed to read the pull request watch",
-          ),
         [WS_METHODS.gitCommitAuthorAvatars]: (input) =>
           rpcEffect(
             github.resolveCommitAuthorAvatars(input).pipe(Effect.map((avatars) => ({ avatars }))),

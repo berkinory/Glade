@@ -216,17 +216,15 @@ archived longer than a chosen number of days. It never removes a worktree with u
 changes or unreadable state, never deletes a branch holding commits found nowhere else, and
 keeps a snapshot for 30 days. Deleting a managed worktree from Settings also snapshots it first.
 
-Pull Requests lists the project's pull requests by filter (open, yours, review requested,
-closed) with optional search, showing checks, review decision and comment counts. A pull
-request opens in a main workspace tab, previewed on single click and kept on double click,
-with Conversation (description, reviews and comments rendered as Markdown), Checks and Files
-(read-only diffs). Failing GitHub Actions checks show the tail of their job log inline; Fix
-drafts a message that includes those log tails, and Rerun failed reruns the failed jobs.
-Watching a pull request from the Environment panel wakes the chat's agent with a message when
-checks newly fail, the required checks pass, unresolved review feedback from someone else
-arrives, or the branch starts to conflict. A watch ends when the pull request is merged or
-closed, the chat is archived or deleted, after ten wakes in a row caused only by comments, or
-after repeated read failures, which the agent is told about.
+Pull Requests lists the project's open or closed pull requests, split into the viewer's own
+and everyone else's, with a search box, showing checks, review decision and comment counts. A
+pull request opens in a main workspace tab, previewed on single click and kept on double click,
+with a Summary (branch, reviewers, checks, what blocks the merge, description, checks and
+comments rendered as Markdown) and Changes (read-only diffs). The tab bar keeps one primary
+action (Ready for review or Merge, with the blocking reason in a tooltip) next to Fix,
+Resolve or Address, which draft a message for the agent, and a rerun button for failed jobs.
+Failing GitHub Actions checks show the tail of their job log inline, and Fix includes those log
+tails in its message. Nothing watches a pull request in the background or wakes the agent.
 
 GitHub reads and writes use the GitHub API with the GitHub CLI's token (or `GH_TOKEN`); the CLI
 itself is only used for signing in, `gh pr checkout`, cloning and creating repositories.

@@ -1,19 +1,14 @@
 import { Schema } from "effect";
-import { NonNegativeInt, PositiveInt, ThreadId, TrimmedNonEmptyString } from "../core/baseSchemas";
+import { NonNegativeInt, PositiveInt, TrimmedNonEmptyString } from "../core/baseSchemas";
 
 const PullRequestState = Schema.Literals(["open", "closed", "merged"]);
 
-export const GitPullRequestListFilter = Schema.Literals([
-  "open",
-  "mine",
-  "review_requested",
-  "closed",
-]);
-export type GitPullRequestListFilter = typeof GitPullRequestListFilter.Type;
+export const GitPullRequestListState = Schema.Literals(["open", "closed"]);
+export type GitPullRequestListState = typeof GitPullRequestListState.Type;
 
 export const GitPullRequestListInput = Schema.Struct({
   cwd: TrimmedNonEmptyString,
-  filter: GitPullRequestListFilter,
+  state: GitPullRequestListState,
 });
 export type GitPullRequestListInput = typeof GitPullRequestListInput.Type;
 
@@ -38,6 +33,8 @@ export type GitPullRequestListItem = typeof GitPullRequestListItem.Type;
 
 export const GitPullRequestListResult = Schema.Struct({
   repository: Schema.String,
+  // Lets the list split the viewer's own pull requests from everyone else's.
+  viewerLogin: Schema.NullOr(Schema.String),
   items: Schema.Array(GitPullRequestListItem),
 });
 export type GitPullRequestListResult = typeof GitPullRequestListResult.Type;
@@ -108,23 +105,3 @@ export const GitPullRequestRerunInput = Schema.Struct({
   runId: PositiveInt,
 });
 export type GitPullRequestRerunInput = typeof GitPullRequestRerunInput.Type;
-
-export const GitPullRequestWatchInput = Schema.Struct({
-  threadId: ThreadId,
-  cwd: TrimmedNonEmptyString,
-  number: PositiveInt,
-  enabled: Schema.Boolean,
-});
-export type GitPullRequestWatchInput = typeof GitPullRequestWatchInput.Type;
-
-export const GitPullRequestWatchStatusInput = Schema.Struct({ threadId: ThreadId });
-export type GitPullRequestWatchStatusInput = typeof GitPullRequestWatchStatusInput.Type;
-
-export const GitPullRequestWatchStatus = Schema.NullOr(
-  Schema.Struct({
-    number: PositiveInt,
-    startedAt: Schema.String,
-    lastEvent: Schema.NullOr(Schema.String),
-  }),
-);
-export type GitPullRequestWatchStatus = typeof GitPullRequestWatchStatus.Type;

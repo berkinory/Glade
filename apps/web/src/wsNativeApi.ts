@@ -574,9 +574,6 @@ function buildNativeApi(transport: WsTransport, listeners: NativeApiListeners): 
       pullRequestCheckLog: (input) =>
         transport.request(WS_METHODS.gitPullRequestCheckLog, input, { timeoutMs: null }),
       rerunFailedJobs: (input) => transport.request(WS_METHODS.gitRerunFailedJobs, input),
-      setPullRequestWatch: (input) => transport.request(WS_METHODS.gitSetPullRequestWatch, input),
-      pullRequestWatchStatus: (input) =>
-        transport.request(WS_METHODS.gitPullRequestWatchStatus, input),
       commitAuthorAvatars: (input) => transport.request(WS_METHODS.gitCommitAuthorAvatars, input),
       pullRequestAction: (input) =>
         transport.request(WS_METHODS.gitPullRequestAction, input, { timeoutMs: null }),

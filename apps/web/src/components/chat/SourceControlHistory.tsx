@@ -104,6 +104,8 @@ async function showCommitContextMenu(
     });
   }
 }
+const AVATAR_WAIT_MS = 1_500;
+
 function CommitRow(props: {
   commit: GitRecentCommit;
   avatarUrl: string | null;
@@ -298,7 +300,19 @@ export function SourceControlHistory(props: {
     () => history.data?.pages.flatMap((page) => page.commits) ?? [],
     [history.data],
   );
-  const avatars = useQuery(gitCommitAuthorAvatarsQueryOptions(props.cwd, commits)).data?.avatars;
+  const avatarsQuery = useQuery(gitCommitAuthorAvatarsQueryOptions(props.cwd, commits));
+  const avatars = avatarsQuery.data?.avatars;
+  // Rows wait briefly for the first avatar lookup so initials do not flash before the photos
+  // replace them. Later pages keep the previous result as placeholder data, so only the first load
+  // waits, and a slow GitHub never holds the history back for longer than the cap.
+  const [avatarWaitExpired, setAvatarWaitExpired] = useState(false);
+  const lookingUpAvatars = avatarsQuery.isPending && avatarsQuery.fetchStatus === "fetching";
+  useEffect(() => {
+    if (!lookingUpAvatars) return;
+    const timer = window.setTimeout(() => setAvatarWaitExpired(true), AVATAR_WAIT_MS);
+    return () => window.clearTimeout(timer);
+  }, [lookingUpAvatars]);
+  const awaitingAvatars = lookingUpAvatars && !avatarWaitExpired;
   const selected = commits.find((commit) => commit.sha === selectedSha) ?? null;
   const virtualizer = useVirtualizer({
     count: commits.length + (history.hasNextPage ? 1 : 0),
@@ -354,7 +368,7 @@ export function SourceControlHistory(props: {
         ref={scrollRef}
         className={cn("min-h-0 overflow-y-auto", selected ? "max-h-[40%] shrink-0" : "flex-1")}
       >
-        {history.isPending ? (
+        {history.isPending || awaitingAvatars ? (
           <PanelStateMessage>
             <Spinner className="size-4" aria-label="Loading history" />
           </PanelStateMessage>

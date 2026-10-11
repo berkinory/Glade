@@ -419,7 +419,7 @@ const makeGitHub = Effect.gen(function* () {
         args: ["pr", "checkout", input.reference, ...(input.force ? ["--force"] : [])],
       }).pipe(Effect.asVoid),
     listRepositoryPullRequests: (input) =>
-      withRepository(input.cwd, (repository) => searchPullRequests(http, repository, input.filter)),
+      withRepository(input.cwd, (repository) => searchPullRequests(http, repository, input.state)),
     getPullRequestDetail: (input) =>
       withRepository(input.cwd, (repository) =>
         readPullRequestDetail(http, repository, input.number),

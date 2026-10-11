@@ -2,7 +2,7 @@ import type {
   GitPullRequestCheckLogResult,
   GitPullRequestDetail,
   GitPullRequestDiffResult,
-  GitPullRequestListFilter,
+  GitPullRequestListState,
   GitPullRequestListItem,
 } from "@glade/contracts/git/pullRequests";
 import { Effect } from "effect";
@@ -19,14 +19,13 @@ const DIFF_MAX_CHARS = 4_000_000;
 const LOG_MAX_LINES = 150;
 const LOG_MAX_CHARS = 12_000;
 
-const FILTERS: Record<GitPullRequestListFilter, string> = {
+const STATE_QUALIFIERS: Record<GitPullRequestListState, string> = {
   open: "is:open",
-  mine: "is:open author:@me",
-  review_requested: "is:open review-requested:@me",
   closed: "is:closed",
 };
 
 const LIST_QUERY = `query($q: String!, $first: Int!) {
+  viewer { login }
   search(query: $q, type: ISSUE, first: $first) {
     nodes {
       ... on PullRequest {
@@ -101,9 +100,9 @@ function reviewDecision(
 export function listPullRequests(
   http: GitHubHttp,
   repository: GitHubRepositoryRef,
-  filter: GitPullRequestListFilter,
+  state: GitPullRequestListState,
 ) {
-  const q = `repo:${repository.nameWithOwner} is:pr ${FILTERS[filter]} sort:updated-desc`;
+  const q = `repo:${repository.nameWithOwner} is:pr ${STATE_QUALIFIERS[state]} sort:updated-desc`;
   return http
     .graphql({
       operation: "listRepositoryPullRequests",
@@ -113,7 +112,11 @@ export function listPullRequests(
     })
     .pipe(
       Effect.map((data) => {
-        const nodes = (data as { search?: { nodes?: ListNode[] } } | null)?.search?.nodes ?? [];
+        const result = data as {
+          viewer?: { login?: string };
+          search?: { nodes?: ListNode[] };
+        } | null;
+        const nodes = result?.search?.nodes ?? [];
         const items = nodes.flatMap((node): GitPullRequestListItem[] =>
           typeof node.number === "number" && node.title && node.url
             ? [
@@ -135,7 +138,11 @@ export function listPullRequests(
               ]
             : [],
         );
-        return { repository: repository.nameWithOwner, items };
+        return {
+          repository: repository.nameWithOwner,
+          viewerLogin: result?.viewer?.login ?? null,
+          items,
+        };
       }),
     );
 }

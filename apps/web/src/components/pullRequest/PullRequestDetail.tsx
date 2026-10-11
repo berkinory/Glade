@@ -3,15 +3,15 @@ import type { GitPullRequestDetail } from "@glade/contracts/git/pullRequests";
 import type { GitPullRequestReviewResult } from "@glade/contracts/git/pullRequestReview";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { GitHubIcon } from "~/lib/brandIcons";
 import { copyTextToClipboard } from "~/lib/clipboard";
 import {
-  ArrowUpRightIcon,
   EllipsisIcon,
   File02Icon,
   Link01Icon,
   PlusMinusSquare01Icon,
   RefreshCwIcon,
-  WrenchIcon,
+  ToolsIcon,
 } from "~/lib/icons";
 import {
   gitPullRequestDetailQueryOptions,
@@ -31,8 +31,8 @@ import { toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { PullRequestFiles } from "./PullRequestFiles";
 import { PullRequestSummary } from "./PullRequestSummary";
-import { resolveMergeBlocker } from "./pullRequestNextStep";
-import { buildConflictPrompt, buildReviewCommentsPrompt } from "./pullRequestPrompts";
+import { resolveMergeBlocker, resolvePullRequestNextStep } from "./pullRequestNextStep";
+import { buildReviewCommentsPrompt } from "./pullRequestPrompts";
 import {
   MergePullRequestDialog,
   type PullRequestActions,
@@ -93,13 +93,66 @@ function PrimaryAction(props: {
   );
 }
 
+// Fixing, resolving and rerunning are what a blocked PR needs next, so they stay visible in the bar.
+function UnblockActions(props: {
+  pr: GitPullRequestDetail;
+  review: GitPullRequestReviewResult | null;
+  actions: PullRequestActions;
+}) {
+  const { pr, review, actions } = props;
+  if (!review) return null;
+  const nextStep = resolvePullRequestNextStep(pr, review);
+  const canRerun = actions.canRerun(review.checks);
+  const fix = actions.canDraft && nextStep && "hint" in nextStep ? nextStep : null;
+  return (
+    <>
+      {canRerun ? (
+        <IconButton
+          size="icon-xs"
+          label="Rerun failed jobs"
+          tooltip="Rerun failed jobs"
+          disabled={actions.busy}
+          onClick={() => actions.rerunFailed(review.checks)}
+        >
+          <RefreshCwIcon className="size-3.5" />
+        </IconButton>
+      ) : null}
+      {fix ? (
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                size="xs"
+                variant="outline"
+                disabled={actions.busy}
+                onClick={() => {
+                  if (fix.kind === "fix_checks") void actions.draftFixChecks(review.checks);
+                  else actions.draftPrompt(fix.prompt);
+                }}
+              />
+            }
+          >
+            <ToolsIcon aria-hidden className="size-3.5" />
+            {fix.label}
+          </TooltipTrigger>
+          <TooltipPopup side="bottom">{fix.hint}</TooltipPopup>
+        </Tooltip>
+      ) : null}
+    </>
+  );
+}
+
 function OverflowMenu(props: {
   pr: GitPullRequestDetail;
   review: GitPullRequestReviewResult | null;
   actions: PullRequestActions;
 }) {
   const { pr, review, actions } = props;
-  const failing = review?.checks.some((check) => check.state === "failure") ?? false;
+  const nextStep = review ? resolvePullRequestNextStep(pr, review) : null;
+  // The bar already offers the next step; the menu only holds what it leaves out.
+  const addressComments =
+    review && review.comments.length > 0 && actions.canDraft && nextStep?.kind !== "fix";
+  const updateBranch = review?.mergeState === "behind" && nextStep?.kind !== "update_branch";
   const copyLink = () =>
     void copyTextToClipboard(pr.url).then(
       () => toastManager.add({ type: "success", title: "Link copied" }),
@@ -116,43 +169,23 @@ function OverflowMenu(props: {
         <EllipsisIcon aria-hidden />
       </MenuTrigger>
       <ComposerPickerMenuPopup align="end">
-        {review && failing && actions.canDraft ? (
-          <MenuItem onClick={() => void actions.draftFixChecks(review.checks)}>
-            <WrenchIcon aria-hidden className="size-3.5 opacity-70" />
-            Fix failing checks
-          </MenuItem>
-        ) : null}
-        {review && actions.canRerun(review.checks) ? (
-          <MenuItem onClick={() => actions.rerunFailed(review.checks)}>
-            <RefreshCwIcon aria-hidden className="size-3.5 opacity-70" />
-            Rerun failed jobs
-          </MenuItem>
-        ) : null}
-        {review && review.comments.length > 0 && actions.canDraft ? (
+        {review && addressComments ? (
           <MenuItem
             onClick={() =>
               actions.draftPrompt(buildReviewCommentsPrompt(pr.number, review.comments))
             }
           >
-            <WrenchIcon aria-hidden className="size-3.5 opacity-70" />
+            <ToolsIcon aria-hidden className="size-3.5 opacity-70" />
             Address review comments
           </MenuItem>
         ) : null}
-        {review?.mergeState === "conflicting" && actions.canDraft ? (
-          <MenuItem
-            onClick={() => actions.draftPrompt(buildConflictPrompt(pr.number, pr.baseBranch))}
-          >
-            <WrenchIcon aria-hidden className="size-3.5 opacity-70" />
-            Resolve conflicts
-          </MenuItem>
-        ) : null}
-        {review?.mergeState === "behind" ? (
+        {updateBranch ? (
           <MenuItem onClick={() => actions.run({ kind: "update_branch" })}>
             <RefreshCwIcon aria-hidden className="size-3.5 opacity-70" />
             Update branch
           </MenuItem>
         ) : null}
-        {review ? <MenuSeparator /> : null}
+        {addressComments || updateBranch ? <MenuSeparator /> : null}
         <MenuItem onClick={copyLink}>
           <Link01Icon aria-hidden className="size-3.5 opacity-70" />
           Copy link
@@ -213,9 +246,10 @@ export function PullRequestDetail(props: {
                 tooltip="Open on GitHub"
                 onClick={() => openExternalLink(pr.url)}
               >
-                <ArrowUpRightIcon className="size-3.5" />
+                <GitHubIcon className="size-3.5" />
               </IconButton>
               <OverflowMenu pr={pr} review={review} actions={actions} />
+              <UnblockActions pr={pr} review={review} actions={actions} />
               <PrimaryAction
                 pr={pr}
                 review={review}

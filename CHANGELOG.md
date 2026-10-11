@@ -8,9 +8,8 @@
 - Settings show whether the GitHub CLI is installed and signed in.
 - Choose whether a new worktree copies your uncommitted changes, or starts from the latest version of its branch on the remote.
 - Worktrees of archived chats can be removed once their pull request is merged or after a chosen number of days.
-- Browse a project's pull requests from the right sidebar, filtered by open, yours, review requested or closed, and open any of them in a tab with a summary of its branch, reviewers, checks and comments, its changed files, and one main action with the rest in a menu.
+- Browse a project's pull requests from the right sidebar, open or closed and split into yours and everyone else's, and open any of them in a tab with a summary of its branch, reviewers, checks and comments, its changed files, and Merge or Ready for review next to Fix and Rerun.
 - Read the end of a failing GitHub Actions log right next to the check, rerun failed jobs, and have Fix hand the agent the failing log.
-- Watch a pull request from a chat: the agent is woken when checks fail or pass, review feedback arrives or the branch starts to conflict.
 
 ### Improved
 

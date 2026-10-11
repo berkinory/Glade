@@ -1,16 +1,10 @@
 import type {
-  GitPullRequestListFilter,
   GitPullRequestListItem,
+  GitPullRequestListState,
 } from "@glade/contracts/git/pullRequests";
 import { useQuery } from "@tanstack/react-query";
 import { useDeferredValue, useState } from "react";
-import {
-  Archive04Icon,
-  GitPullRequestIcon,
-  RefreshCwIcon,
-  User02Icon,
-  ViewIcon,
-} from "~/lib/icons";
+import { Archive04Icon, GitPullRequestIcon, RefreshCwIcon } from "~/lib/icons";
 import { gitPullRequestListQueryOptions } from "~/lib/gitQueryOptions";
 import { formatRelativeTime } from "~/lib/relativeTime";
 import { cn } from "~/lib/utils";
@@ -28,14 +22,12 @@ import {
   resolvePrStatePresentation,
 } from "./pullRequestStatePresentation";
 
-const FILTERS: ReadonlyArray<{
-  id: GitPullRequestListFilter;
+const STATES: ReadonlyArray<{
+  id: GitPullRequestListState;
   label: string;
   icon: typeof GitPullRequestIcon;
 }> = [
   { id: "open", label: "Open", icon: GitPullRequestIcon },
-  { id: "mine", label: "Mine", icon: User02Icon },
-  { id: "review_requested", label: "Review", icon: ViewIcon },
   { id: "closed", label: "Closed", icon: Archive04Icon },
 ];
 
@@ -101,27 +93,35 @@ export function PullRequestsPane(props: {
   visible: boolean;
   onSelect: (item: GitPullRequestListItem, preview: boolean) => void;
 }) {
-  const [filter, setFilter] = useState<GitPullRequestListFilter>("open");
+  const [state, setState] = useState<GitPullRequestListState>("open");
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search.trim());
   const list = useQuery(
-    gitPullRequestListQueryOptions({ cwd: props.cwd, filter, enabled: props.visible }),
+    gitPullRequestListQueryOptions({ cwd: props.cwd, state, enabled: props.visible }),
   );
   if (!props.cwd)
     return <PanelStateMessage>Open a project to see its pull requests.</PanelStateMessage>;
   const items = list.data?.items.filter((item) => matches(item, deferredSearch)) ?? [];
+  const viewer = list.data?.viewerLogin ?? null;
+  // Without a known viewer there is nothing to split by, so the list stays one unlabeled group.
+  const sections = viewer
+    ? [
+        { label: "Yours", items: items.filter((item) => item.author === viewer) },
+        { label: "Others", items: items.filter((item) => item.author !== viewer) },
+      ]
+    : [{ label: null, items }];
   return (
     <div className="flex h-full min-h-0 w-full flex-col">
       <PanelTabBar
-        label="Pull request filters"
+        label="Pull request state"
         contentTabs
-        activeId={filter}
-        tabs={FILTERS.map((entry) => ({
+        activeId={state}
+        tabs={STATES.map((entry) => ({
           id: entry.id,
           label: entry.label,
           icon: <entry.icon className="size-3.5" />,
         }))}
-        onSelect={(id) => setFilter(FILTERS.find((entry) => entry.id === id)?.id ?? "open")}
+        onSelect={(id) => setState(id === "closed" ? "closed" : "open")}
         actions={
           <IconButton
             size="icon-xs"
@@ -171,9 +171,21 @@ export function PullRequestsPane(props: {
           </PanelStateMessage>
         ) : (
           <div className="flex flex-col py-1">
-            {items.map((item) => (
-              <PullRequestRow key={item.number} item={item} onSelect={props.onSelect} />
-            ))}
+            {sections.map((section) =>
+              section.items.length > 0 ? (
+                <section key={section.label} className="flex flex-col">
+                  {section.label ? (
+                    <h3 className="flex items-center gap-1.5 px-3 pt-2 pb-1 text-ui-xs font-medium text-muted-foreground">
+                      {section.label}
+                      <span className="font-normal tabular-nums">{section.items.length}</span>
+                    </h3>
+                  ) : null}
+                  {section.items.map((item) => (
+                    <PullRequestRow key={item.number} item={item} onSelect={props.onSelect} />
+                  ))}
+                </section>
+              ) : null,
+            )}
           </div>
         )}
       </div>

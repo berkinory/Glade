@@ -1,6 +1,4 @@
 import { VisualReplyPreviewLive } from "./visualReplies/Layers/VisualReplyPreview";
-import { PullRequestWatchLive } from "./pullRequests/Layers/PullRequestWatch";
-import { PullRequestWatchRepositoryLive } from "./persistence/Layers/PullRequestWatches";
 import { HandoffTransitionsLive } from "./orchestration/Layers/HandoffTransitions";
 import { ThreadTitleGenerationLive } from "./orchestration/Layers/ThreadTitleGeneration";
 import { AppPresentationLive } from "./agentGateway/Layers/AppPresentation";
@@ -131,12 +129,6 @@ function makeServerRuntimeServicesLayer(
     Layer.provideMerge(ServerSettingsLive),
   );
 
-  const pullRequestWatchLayer = PullRequestWatchLive.pipe(
-    Layer.provideMerge(OrchestrationLayerLive),
-    Layer.provideMerge(GitLayerLive),
-    Layer.provideMerge(PullRequestWatchRepositoryLive),
-  );
-
   const keepAwakeLayer = KeepAwakeLive.pipe(
     Layer.provideMerge(OrchestrationLayerLive),
     Layer.provideMerge(ServerSettingsLive),
@@ -198,7 +190,6 @@ function makeServerRuntimeServicesLayer(
     providerCommandReactorLayer,
     threadGitMetadataReactorLayer,
     threadDeletionReactorLayer,
-    pullRequestWatchLayer,
     keepAwakeLayer,
     GitLayerLive,
     gitActionRunsLayer,

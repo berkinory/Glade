@@ -1,14 +1,13 @@
-import { ArrowUpRightIcon, GitPullRequestIcon, ViewIcon } from "~/lib/icons";
+import { GitPullRequestIcon, RefreshCwIcon, ToolsIcon } from "~/lib/icons";
+import { GitHubIcon } from "~/lib/brandIcons";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { GitStatusResult } from "@glade/contracts/git/git";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { cn } from "~/lib/utils";
 import { useMainWorkspaceStore } from "~/mainWorkspaceStore";
-import { ensureNativeApi } from "~/nativeApi";
 import {
   gitPullRequestReviewQueryOptions,
-  gitPullRequestWatchStatusQueryOptions,
   gitStatusQueryOptions,
 } from "../../../lib/gitQueryOptions";
 import {
@@ -32,7 +31,7 @@ import { Button } from "../../ui/button";
 import { IconButton } from "../../ui/icon-button";
 import { Popover, PopoverPopup, PopoverTrigger } from "../../ui/popover";
 import { Spinner } from "../../ui/spinner";
-import { toastManager } from "../../ui/toast";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "../../ui/tooltip";
 import {
   ENVIRONMENT_ROW_CLASS_NAME,
   ENVIRONMENT_ROW_ICON_CLASS_NAME,
@@ -91,7 +90,6 @@ function PullRequestRow(props: {
   onClose: () => void;
 }) {
   const { pr, cwd } = props;
-  const queryClient = useQueryClient();
   const [confirmingMerge, setConfirmingMerge] = useState(false);
   const { data: review } = useQuery(
     gitPullRequestReviewQueryOptions({
@@ -100,39 +98,6 @@ function PullRequestRow(props: {
       enabled: props.enabled && pr.state === "open",
     }),
   );
-  const watchQuery = gitPullRequestWatchStatusQueryOptions(props.threadId);
-  const { data: watch } = useQuery({
-    ...watchQuery,
-    enabled: props.enabled && props.threadId !== null,
-  });
-  const watching = watch?.number === pr.number;
-  const toggleWatch = useMutation({
-    mutationFn: (enabled: boolean) =>
-      ensureNativeApi().git.setPullRequestWatch({
-        threadId: props.threadId as ThreadId,
-        cwd,
-        number: pr.number,
-        enabled,
-      }),
-    onSuccess: (_result, enabled) =>
-      toastManager.add({
-        type: "success",
-        title: enabled ? `Watching #${pr.number}` : `Stopped watching #${pr.number}`,
-        ...(enabled
-          ? {
-              description:
-                "The agent is told when checks finish, reviews arrive or conflicts appear.",
-            }
-          : {}),
-      }),
-    onError: (error) =>
-      toastManager.add({
-        type: "error",
-        title: "Could not update the watch",
-        description: error.message,
-      }),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: watchQuery.queryKey }),
-  });
   const actions = usePullRequestActions({
     cwd,
     number: pr.number,
@@ -168,15 +133,10 @@ function PullRequestRow(props: {
               icon={
                 <Icon
                   className={cn(ENVIRONMENT_ROW_ICON_CLASS_NAME, presentation.colorClass)}
-                  aria-hidden
+                  aria-label={presentation.label}
                 />
               }
               label={`#${pr.number} ${pr.title}`}
-              trailing={
-                <span className={cn("text-ui-xs", SECONDARY_TEXT_CLASS_NAME)}>
-                  {presentation.label}
-                </span>
-              }
             />
           </button>
           <IconButton
@@ -185,7 +145,7 @@ function PullRequestRow(props: {
             tooltip="Open on GitHub"
             onClick={() => props.onOpenUrl(pr.url)}
           >
-            <ArrowUpRightIcon className="size-3.5" />
+            <GitHubIcon className="size-3.5" />
           </IconButton>
         </div>
         <div
@@ -271,52 +231,55 @@ function PullRequestRow(props: {
             </Popover>
           ) : null}
           <span className="flex-1" />
-          {props.threadId && pr.state === "open" ? (
+          {review && nextStep?.kind === "fix_checks" && actions.canRerun(review.checks) ? (
             <IconButton
               size="icon-xs"
-              label={watching ? "Stop watching" : "Watch for changes"}
-              tooltip={
-                watching
-                  ? `Watching${watch?.lastEvent ? `: ${watch.lastEvent}` : ""}. Click to stop.`
-                  : "Wake the agent when checks finish, reviews arrive or conflicts appear"
-              }
-              disabled={toggleWatch.isPending}
-              aria-pressed={watching}
-              className="aria-pressed:bg-primary/15 aria-pressed:text-foreground aria-pressed:ring-1 aria-pressed:ring-inset aria-pressed:ring-primary/60"
-              onClick={() => toggleWatch.mutate(!watching)}
-            >
-              <ViewIcon className="size-3.5" />
-            </IconButton>
-          ) : null}
-          {review && nextStep?.kind === "fix_checks" && actions.canRerun(review.checks) ? (
-            <Button
-              size="xs"
-              variant="ghost"
+              label="Rerun failed jobs"
+              tooltip="Rerun failed jobs"
               disabled={actions.busy}
               onClick={() => actions.rerunFailed(review.checks)}
             >
-              Rerun
-            </Button>
+              <RefreshCwIcon className="size-3.5" />
+            </IconButton>
           ) : null}
           {nextStep?.kind === "wait" ? <span>{nextStep.label}</span> : null}
-          {review && nextStep && nextStep.kind !== "wait" ? (
+          {review && nextStep && "hint" in nextStep ? (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    disabled={actions.busy || !actions.canDraft}
+                    onClick={() => {
+                      if (nextStep.kind === "fix_checks")
+                        void actions.draftFixChecks(review.checks);
+                      else actions.draftPrompt(nextStep.prompt);
+                    }}
+                  />
+                }
+              >
+                {actions.busy ? (
+                  <Spinner variant="action" />
+                ) : (
+                  <ToolsIcon aria-hidden className="size-3.5" />
+                )}
+                {nextStep.label}
+              </TooltipTrigger>
+              <TooltipPopup side="bottom">{nextStep.hint}</TooltipPopup>
+            </Tooltip>
+          ) : null}
+          {review &&
+          (nextStep?.kind === "merge" ||
+            nextStep?.kind === "ready" ||
+            nextStep?.kind === "update_branch") ? (
             <Button
               size="xs"
               variant={nextStep.kind === "merge" ? "default" : "outline"}
-              disabled={
-                actions.busy ||
-                ((nextStep.kind === "fix" ||
-                  nextStep.kind === "resolve" ||
-                  nextStep.kind === "fix_checks") &&
-                  !actions.canDraft)
-              }
+              disabled={actions.busy}
               onClick={() => {
-                if (nextStep.kind === "fix_checks") void actions.draftFixChecks(review.checks);
-                else if (nextStep.kind === "fix" || nextStep.kind === "resolve")
-                  actions.draftPrompt(nextStep.prompt);
-                else if (nextStep.kind === "ready" || nextStep.kind === "update_branch")
-                  actions.run({ kind: nextStep.kind });
-                else setConfirmingMerge(true);
+                if (nextStep.kind === "merge") setConfirmingMerge(true);
+                else actions.run({ kind: nextStep.kind });
               }}
             >
               {actions.busy ? <Spinner variant="action" /> : null}

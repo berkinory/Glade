@@ -81,8 +81,6 @@ export const WS_METHODS = {
   gitPullRequestDiff: "git.pullRequestDiff",
   gitPullRequestCheckLog: "git.pullRequestCheckLog",
   gitRerunFailedJobs: "git.rerunFailedJobs",
-  gitSetPullRequestWatch: "git.setPullRequestWatch",
-  gitPullRequestWatchStatus: "git.pullRequestWatchStatus",
   gitCommitAuthorAvatars: "git.commitAuthorAvatars",
   gitPullRequestAction: "git.pullRequestAction",
   gitTrustRepository: "git.trustRepository",

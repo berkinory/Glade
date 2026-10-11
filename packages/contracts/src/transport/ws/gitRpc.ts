@@ -14,9 +14,6 @@ import {
   GitPullRequestListResult,
   GitPullRequestNumberInput,
   GitPullRequestRerunInput,
-  GitPullRequestWatchInput,
-  GitPullRequestWatchStatus,
-  GitPullRequestWatchStatusInput,
 } from "../../git/pullRequests";
 import { GitHubConnectionStatus } from "../../git/githubConnection";
 import * as Rpc from "effect/unstable/rpc/Rpc";
@@ -376,18 +373,6 @@ export const WsGitPullRequestCheckLogRpc = Rpc.make(WS_METHODS.gitPullRequestChe
 export const WsGitRerunFailedJobsRpc = Rpc.make(WS_METHODS.gitRerunFailedJobs, {
   payload: GitPullRequestRerunInput,
   success: Schema.Void,
-  error: WsRpcError,
-});
-
-export const WsGitSetPullRequestWatchRpc = Rpc.make(WS_METHODS.gitSetPullRequestWatch, {
-  payload: GitPullRequestWatchInput,
-  success: Schema.Void,
-  error: WsRpcError,
-});
-
-export const WsGitPullRequestWatchStatusRpc = Rpc.make(WS_METHODS.gitPullRequestWatchStatus, {
-  payload: GitPullRequestWatchStatusInput,
-  success: GitPullRequestWatchStatus,
   error: WsRpcError,
 });
 

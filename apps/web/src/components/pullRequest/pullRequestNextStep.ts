@@ -5,8 +5,8 @@ import type {
 import { buildConflictPrompt, buildReviewCommentsPrompt } from "./pullRequestPrompts";
 
 export type PullRequestNextStep =
-  | { kind: "fix_checks"; label: string }
-  | { kind: "fix" | "resolve"; label: string; prompt: string }
+  | { kind: "fix_checks"; label: string; hint: string }
+  | { kind: "fix" | "resolve"; label: string; hint: string; prompt: string }
   | { kind: "ready" | "update_branch"; label: string }
   | { kind: "merge"; label: string; methods: readonly GitPullRequestMergeMethod[] }
   | { kind: "wait"; label: string };
@@ -22,16 +22,22 @@ export function resolvePullRequestNextStep(
     return {
       kind: "resolve",
       label: "Resolve",
+      hint: "Ask the agent to resolve the merge conflicts",
       prompt: buildConflictPrompt(pr.number, pr.baseBranch),
     };
   }
   if (review.checks.some((check) => check.state === "failure")) {
-    return { kind: "fix_checks", label: "Fix" };
+    return {
+      kind: "fix_checks",
+      label: "Fix",
+      hint: "Ask the agent to fix the failing checks, with their logs",
+    };
   }
   if (review.reviewDecision === "changes_requested" && review.comments.length > 0) {
     return {
       kind: "fix",
       label: "Address",
+      hint: "Ask the agent to address the requested changes",
       prompt: buildReviewCommentsPrompt(pr.number, review.comments),
     };
   }
