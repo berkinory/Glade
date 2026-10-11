@@ -267,7 +267,7 @@ export interface GitCoreShape {
     cwd: string,
     scope: GitDiffScope,
     ref?: string,
-    includeUntrackedFiles?: boolean,
+    includeFiles?: boolean,
   ) => Effect.Effect<GitWorkingTreeDiffStatsResult, GitCommandError>;
 
   readonly prepareCommitContext: (

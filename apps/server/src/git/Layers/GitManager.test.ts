@@ -290,6 +290,54 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
     }),
   );
 
+  it.effect.each([
+    {
+      name: "commits an exactly selected index as staged, keeping partial hunks",
+      filePaths: ["a.txt"],
+      committed: { "a.txt": "one\nstaged\n" },
+      staysStaged: [],
+      porcelain: [" M a.txt", " M b.txt"],
+    },
+    {
+      name: "commits other files without discarding the user's staged changes",
+      filePaths: ["b.txt"],
+      committed: { "b.txt": "two\nunstaged\n", "a.txt": "one\n" },
+      staysStaged: ["a.txt"],
+      porcelain: ["MM a.txt"],
+    },
+  ])("$name", ({ filePaths, committed, staysStaged, porcelain }) =>
+    Effect.gen(function* () {
+      const repoDir = yield* makeTempDir("glade-git-manager-");
+      yield* initRepo(repoDir);
+      fs.writeFileSync(path.join(repoDir, "a.txt"), "one\n");
+      fs.writeFileSync(path.join(repoDir, "b.txt"), "two\n");
+      yield* runGit(repoDir, ["add", "a.txt", "b.txt"]);
+      yield* runGit(repoDir, ["commit", "-m", "Seed files"]);
+      fs.writeFileSync(path.join(repoDir, "a.txt"), "one\nstaged\n");
+      yield* runGit(repoDir, ["add", "a.txt"]);
+      fs.writeFileSync(path.join(repoDir, "a.txt"), "one\nstaged\nunstaged\n");
+      fs.writeFileSync(path.join(repoDir, "b.txt"), "two\nunstaged\n");
+
+      const { manager } = yield* makeManager();
+      const result = yield* runStackedAction(manager, {
+        cwd: repoDir,
+        action: "commit",
+        commitMessage: "Commit selection",
+        filePaths,
+      });
+
+      expect(result.commit.status).toBe("created");
+      for (const [file, contents] of Object.entries(committed)) {
+        expect((yield* runGit(repoDir, ["show", `HEAD:${file}`])).stdout).toBe(contents);
+      }
+      for (const file of staysStaged) {
+        expect((yield* runGit(repoDir, ["show", `:${file}`])).stdout).toBe("one\nstaged\n");
+      }
+      const status = (yield* runGit(repoDir, ["status", "--porcelain"])).stdout;
+      expect(status.split("\n").filter(Boolean)).toEqual(porcelain);
+    }),
+  );
+
   it.effect(
     "creates feature branch, pushes, and opens PR for already-committed work",
     () =>

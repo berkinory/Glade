@@ -1,5 +1,11 @@
 # Glade Changelog
 
+## Unreleased
+
+### Fixed
+
+- Committing selected files from the Environment panel no longer discards changes you staged in Source Control, and keeps partially staged files as staged.
+
 ## 0.2.3 - 2026-10-10
 
 ### New

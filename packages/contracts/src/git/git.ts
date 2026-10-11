@@ -127,7 +127,7 @@ export const GitReadWorkingTreeDiffInput = Schema.Struct({
 
   filePath: Schema.optional(TrimmedNonEmptyStringSchema),
 
-  includeUntrackedFiles: Schema.optional(Schema.Boolean),
+  includeFiles: Schema.optional(Schema.Boolean),
 });
 export type GitReadWorkingTreeDiffInput = typeof GitReadWorkingTreeDiffInput.Type;
 
@@ -562,7 +562,7 @@ export const GitWorkingTreeDiffStatsResult = Schema.Struct({
   additions: NonNegativeInt,
   deletions: NonNegativeInt,
   fileCount: NonNegativeInt,
-  untrackedFiles: Schema.optional(
+  files: Schema.optional(
     Schema.Array(
       Schema.Struct({
         path: TrimmedNonEmptyStringSchema,

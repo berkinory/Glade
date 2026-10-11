@@ -940,6 +940,53 @@ export const makeGitManager = Effect.gen(function* () {
       return sanitizeCommitMessage(generated);
     });
 
+  // Commits only the chosen files without discarding staging done elsewhere. A selection that matches
+  // the index exactly commits it untouched, keeping partially staged hunks; otherwise the other staged
+  // paths are parked and later restored from the pre-commit index tree.
+  const stageSelection = (cwd: string, filePaths: readonly string[] | undefined) =>
+    Effect.gen(function* () {
+      if (!filePaths?.length) {
+        yield* gitCore.stageFiles(cwd, [], true);
+        return null;
+      }
+      const staged = (yield* gitCore.execute({
+        operation: "GitManager.stageSelection.staged",
+        cwd,
+        args: ["diff", "--cached", "--name-only", "--no-renames", "-z"],
+      })).stdout
+        .split("\0")
+        .filter((path) => path.length > 0);
+      const selected = new Set(filePaths);
+      const parked = staged.filter((path) => !selected.has(path));
+      if (parked.length === 0 && staged.length === selected.size) return null;
+      const indexTree = (yield* gitCore.execute({
+        operation: "GitManager.stageSelection.indexTree",
+        cwd,
+        args: ["write-tree"],
+      })).stdout.trim();
+      if (parked.length > 0) yield* gitCore.unstageFiles(cwd, parked);
+      yield* gitCore.stageFiles(cwd, filePaths);
+      return parked.length > 0 ? { indexTree, parked } : null;
+    });
+
+  const restoreParkedSelection = (
+    cwd: string,
+    selection: { readonly indexTree: string; readonly parked: readonly string[] },
+  ) =>
+    gitCore
+      .execute({
+        operation: "GitManager.restoreParkedSelection",
+        cwd,
+        args: [
+          "reset",
+          "-q",
+          selection.indexTree,
+          "--",
+          ...selection.parked.map((path) => `:(literal)${path}`),
+        ],
+      })
+      .pipe(Effect.asVoid);
+
   const resolveCommitAndBranchSuggestion = (
     input: {
       cwd: string;
@@ -947,39 +994,9 @@ export const makeGitManager = Effect.gen(function* () {
       commitMessage?: string;
 
       includeBranch?: boolean;
-      filePaths?: readonly string[];
     } & GitTextGenerationParams,
   ) =>
     Effect.gen(function* () {
-      if (input.filePaths?.length) {
-        const reset = yield* gitCore.execute({
-          operation: "GitManager.stageSelection",
-          cwd: input.cwd,
-          args: ["reset"],
-          allowNonZeroExit: true,
-        });
-        if (reset.code !== 0) {
-          const head = yield* gitCore.execute({
-            operation: "GitManager.stageSelection.head",
-            cwd: input.cwd,
-            args: ["rev-parse", "--verify", "HEAD"],
-            allowNonZeroExit: true,
-          });
-          if (head.code === 0) return yield* gitManagerError("stageSelection", reset.stderr);
-          yield* gitCore.execute({
-            operation: "GitManager.stageSelection.unborn",
-            cwd: input.cwd,
-            args: ["rm", "--cached", "-r", "--ignore-unmatch", "."],
-          });
-        }
-        yield* gitCore.stageFiles(input.cwd, input.filePaths);
-      } else {
-        yield* gitCore.execute({
-          operation: "GitManager.stageAll",
-          cwd: input.cwd,
-          args: ["add", "-A"],
-        });
-      }
       const context = yield* readCommitContext(input.cwd);
       if (!context) {
         return null;
@@ -1014,7 +1031,6 @@ export const makeGitManager = Effect.gen(function* () {
     branch: string | null,
     commitMessage?: string,
     preResolvedSuggestion?: CommitAndBranchSuggestion,
-    filePaths?: readonly string[],
     textGenerationParams?: GitTextGenerationParams,
     progressReporter?: GitActionProgressReporter,
     actionId?: string,
@@ -1044,7 +1060,6 @@ export const makeGitManager = Effect.gen(function* () {
           cwd,
           branch,
           ...(commitMessage ? { commitMessage } : {}),
-          ...(filePaths ? { filePaths } : {}),
           ...textGenerationParams,
         });
       }
@@ -1389,13 +1404,13 @@ export const makeGitManager = Effect.gen(function* () {
             "A branch or commit is required to compare the working tree against.",
           );
         }
-        return yield* gitCore.readDiffStats(input.cwd, "ref", compareRef);
+        return yield* gitCore.readDiffStats(input.cwd, "ref", compareRef, input.includeFiles);
       }
       return yield* gitCore.readDiffStats(
         input.cwd,
         input.scope ?? "workingTree",
         undefined,
-        input.includeUntrackedFiles,
+        input.includeFiles,
       );
     },
   );
@@ -1639,7 +1654,6 @@ export const makeGitManager = Effect.gen(function* () {
     cwd: string,
     branch: string | null,
     commitMessage?: string,
-    filePaths?: readonly string[],
     textGenerationParams?: GitTextGenerationParams,
     options?: FeatureBranchStepOptions,
   ) =>
@@ -1648,7 +1662,6 @@ export const makeGitManager = Effect.gen(function* () {
         cwd,
         branch,
         ...(commitMessage ? { commitMessage } : {}),
-        ...(filePaths ? { filePaths } : {}),
         includeBranch: true,
         ...textGenerationParams,
       });
@@ -1766,6 +1779,7 @@ export const makeGitManager = Effect.gen(function* () {
     function* (input, options) {
       const progress = createProgressEmitter(input, options);
       let currentPhase: GitActionProgressPhase | null = null;
+      let parkedSelection: { indexTree: string; parked: readonly string[] } | null = null;
 
       const runAction = Effect.gen(function* () {
         const operation = yield* readGitOperation(input.cwd, gitCore.execute);
@@ -1838,6 +1852,9 @@ export const makeGitManager = Effect.gen(function* () {
               })
             : null;
 
+        if (input.featureBranch || wantsCommit)
+          parkedSelection = yield* stageSelection(input.cwd, input.filePaths);
+
         let branchStep: { status: "created" | "skipped_not_requested"; name?: string };
         let commitMessageForStep =
           input.commitMessage?.trim() ||
@@ -1855,7 +1872,6 @@ export const makeGitManager = Effect.gen(function* () {
             input.cwd,
             initialStatus.branch,
             commitMessageForStep,
-            input.filePaths,
             textGenerationParams,
             {
               allowCommittedHead: !wantsCommit,
@@ -1880,13 +1896,17 @@ export const makeGitManager = Effect.gen(function* () {
                 currentBranch,
                 commitMessageForStep,
                 preResolvedCommitSuggestion,
-                input.filePaths,
                 textGenerationParams,
                 options?.progressReporter,
                 progress.actionId,
               );
             })
           : { status: "skipped_not_requested" as const };
+        if (parkedSelection) {
+          const selection = parkedSelection;
+          parkedSelection = null;
+          yield* restoreParkedSelection(input.cwd, selection);
+        }
 
         const push = wantsPush
           ? yield* progress
@@ -1945,6 +1965,11 @@ export const makeGitManager = Effect.gen(function* () {
       });
 
       return yield* runAction.pipe(
+        Effect.onError(() =>
+          parkedSelection
+            ? restoreParkedSelection(input.cwd, parkedSelection).pipe(Effect.ignore({ log: true }))
+            : Effect.void,
+        ),
         Effect.catch((error) =>
           progress
             .emit({

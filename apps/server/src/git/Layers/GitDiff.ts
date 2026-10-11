@@ -788,7 +788,7 @@ const makeGitDiff = Effect.gen(function* () {
       );
     });
 
-  const readDiffStats: GitCoreShape["readDiffStats"] = (cwd, scope, ref, includeUntrackedFiles) =>
+  const readDiffStats: GitCoreShape["readDiffStats"] = (cwd, scope, ref, includeFiles) =>
     Effect.gen(function* () {
       let trackedArgs: ReadonlyArray<string>;
       let includeUntracked = false;
@@ -841,6 +841,7 @@ const makeGitDiff = Effect.gen(function* () {
                   additions: totals.insertions,
                   deletions: totals.deletions,
                   fileCount: totals.files.length,
+                  ...(includeFiles ? { files: totals.files } : {}),
                 };
               }),
           );
@@ -876,9 +877,7 @@ const makeGitDiff = Effect.gen(function* () {
         additions: totals.insertions,
         deletions: totals.deletions,
         fileCount: totals.files.length,
-        ...(scope === "unstaged" && includeUntrackedFiles
-          ? { untrackedFiles: summarizeGitNumstatOutputs([untracked]).files }
-          : {}),
+        ...(includeFiles ? { files: totals.files } : {}),
       };
     });
   return {

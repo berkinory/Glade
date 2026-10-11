@@ -53,10 +53,10 @@ export const gitQueryKeys = {
     cwd: string | null,
     scope: GitReadWorkingTreeDiffInput["scope"] = "workingTree",
     compareRef: string | null = null,
-    includeUntrackedFiles = false,
+    includeFiles = false,
   ) =>
-    includeUntrackedFiles
-      ? (["git", "working-tree-diff", cwd, scope, compareRef, "stats", "untracked-files"] as const)
+    includeFiles
+      ? (["git", "working-tree-diff", cwd, scope, compareRef, "stats", "files"] as const)
       : (["git", "working-tree-diff", cwd, scope, compareRef, "stats"] as const),
   blameLine: (
     cwd: string | null,
@@ -503,18 +503,13 @@ export function gitWorkingTreeDiffStatsQueryOptions(input: {
   compareRef?: string | null;
   enabled?: boolean;
   refetchInterval?: number | false;
-  includeUntrackedFiles?: boolean;
+  includeFiles?: boolean;
 }) {
   const scope = input.scope ?? "workingTree";
   const compareRef = resolveGitCompareRef(scope, input.compareRef);
   const refetchInterval = input.refetchInterval;
   return queryOptions({
-    queryKey: gitQueryKeys.workingTreeDiffStats(
-      input.cwd,
-      scope,
-      compareRef,
-      input.includeUntrackedFiles,
-    ),
+    queryKey: gitQueryKeys.workingTreeDiffStats(input.cwd, scope, compareRef, input.includeFiles),
     queryFn: async () => {
       const api = ensureNativeApi();
       if (!input.cwd) {
@@ -524,7 +519,7 @@ export function gitWorkingTreeDiffStatsQueryOptions(input: {
         cwd: input.cwd,
         scope,
         ...(compareRef ? { compareRef } : {}),
-        ...(input.includeUntrackedFiles ? { includeUntrackedFiles: true } : {}),
+        ...(input.includeFiles ? { includeFiles: true } : {}),
       });
     },
     enabled: (input.enabled ?? true) && input.cwd !== null && (scope !== "ref" || !!compareRef),
