@@ -49,7 +49,6 @@ export function createChatPresentation(
     resolvedThreadWorktreePath,
     resolvedDiffOpen,
     diffDisabledReason,
-    activeProjectId,
     latestTurnLive,
   } = controller.workspace;
   const {
@@ -305,7 +304,6 @@ export function createChatPresentation(
       pending: activeThread.envMode === "worktree" && !activeThread.worktreePath,
     },
     githubRepository: githubRepositoryQuery.data?.repository ?? null,
-    githubRepositories: githubRepositoryQuery.data?.repositories ?? [],
     isGitRepo,
     keybindings,
     availableEditors,
@@ -319,7 +317,6 @@ export function createChatPresentation(
     pinnedMessages,
     pinnedMessageTextById,
     notes: threadNotes,
-    activeProjectId,
     onToggleDiff,
     onOpenGithubRepository: openExternalLink,
     onJumpToPinnedMessage: handleJumpToPinnedMessage,

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### New
+
+- Pull requests in the Environment panel show their checks and open review comments and offer the next step: fix failing checks, conflicts or review feedback with the agent, update a branch that fell behind, mark a draft ready, or merge once nothing blocks it.
+- Settings show whether the GitHub CLI is installed and signed in.
+
 ### Improved
 
 - The Environment panel's Git button always shows the next step for your branch, why it is unavailable when it is, and live progress while it runs.

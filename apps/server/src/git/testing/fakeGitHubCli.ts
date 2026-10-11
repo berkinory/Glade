@@ -244,6 +244,20 @@ export function createGitHubCliWithFakeGh(scenario: FakeGhScenario = {}): {
           cwd: input.cwd,
           args: ["pr", "checkout", input.reference, ...(input.force ? ["--force"] : [])],
         }).pipe(Effect.asVoid),
+      getPullRequestReview: () => Effect.die(new Error("The fake gh does not model PR reviews.")),
+      mergePullRequest: (input) =>
+        execute({
+          cwd: input.cwd,
+          args: ["pr", "merge", String(input.number), `--${input.method}`],
+        }).pipe(Effect.asVoid),
+      updatePullRequestBranch: (input) =>
+        execute({ cwd: input.cwd, args: ["pr", "update-branch", String(input.number)] }).pipe(
+          Effect.asVoid,
+        ),
+      markPullRequestReady: (input) =>
+        execute({ cwd: input.cwd, args: ["pr", "ready", String(input.number)] }).pipe(
+          Effect.asVoid,
+        ),
     },
     ghCalls,
   };

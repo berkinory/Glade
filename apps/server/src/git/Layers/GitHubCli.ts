@@ -5,6 +5,15 @@ import { isValidGitHubRepositoryNameWithOwner } from "@glade/shared/git/githubRe
 
 import { runProcess, type ProcessRunResult } from "../../platform/processRunner";
 import { makeKeyedSingleFlightCache } from "../../pullRequests/KeyedSingleFlightCache";
+import {
+  normalizePullRequestReview,
+  PULL_REQUEST_REVIEW_JSON_FIELDS,
+  RawPullRequestReview,
+  RawRepositoryMergeSettings,
+  RawReviewThreads,
+  REPOSITORY_MERGE_SETTINGS_JSON_FIELDS,
+  REVIEW_THREADS_QUERY,
+} from "../pullRequestReview";
 import { GitCommands } from "../Services/GitCommands";
 import { GitCommandsLive } from "./GitCommands";
 import { GitHubCliError } from "../Errors.ts";
@@ -20,6 +29,9 @@ function isReadOnly(args: ReadonlyArray<string>): boolean {
   return (
     (args[0] === "pr" && ["list", "view", "diff", "checks"].includes(args[1] ?? "")) ||
     (args[0] === "repo" && args[1] === "view") ||
+    (args[0] === "api" &&
+      args[1] === "graphql" &&
+      args.some((arg) => arg.startsWith("query=query("))) ||
     (args[0] === "api" &&
       ["user", "user/orgs?per_page=100"].includes(args[1] ?? "") &&
       !args.includes("--method") &&
@@ -214,6 +226,7 @@ function decodeGitHubJson<S extends Schema.Top>(
     | "listOpenPullRequests"
     | "listPullRequests"
     | "getPullRequest"
+    | "getPullRequestReview"
     | "getRepositoryCloneUrls",
   invalidDetail: string,
 ): Effect.Effect<S["Type"], GitHubCliError, S["DecodingServices"]> {
@@ -280,6 +293,12 @@ const makeGitHubCli = Effect.gen(function* () {
     maxEntries: PULL_REQUEST_LOOKUP_CACHE_MAX_ENTRIES,
     ttlMs: PULL_REQUEST_LOOKUP_CACHE_TTL_MS,
   });
+
+  // Merge settings change rarely, while the review is polled while checks run.
+  const repositoryMergeSettingsCache = yield* makeKeyedSingleFlightCache<
+    typeof RawRepositoryMergeSettings.Type,
+    GitHubCliError
+  >({ maxEntries: 64, ttlMs: 10 * 60_000 });
 
   const invalidatePullRequestLookups = Effect.all(
     [pullRequestLookupCache.invalidateAll, pullRequestHeadListCache.invalidateAll],
@@ -515,6 +534,90 @@ const makeGitHubCli = Effect.gen(function* () {
           return trimmed.length > 0 ? trimmed : null;
         }),
       ),
+    getPullRequestReview: (input) =>
+      Effect.all(
+        [
+          execute({
+            cwd: input.cwd,
+            args: ["pr", "view", String(input.number), "--json", PULL_REQUEST_REVIEW_JSON_FIELDS],
+          }).pipe(
+            Effect.flatMap((result) =>
+              decodeGitHubJson(
+                result.stdout.trim(),
+                RawPullRequestReview,
+                "getPullRequestReview",
+                "GitHub CLI returned invalid pull request review JSON.",
+              ),
+            ),
+          ),
+          repositoryMergeSettingsCache.get(
+            [gitHubBudgetIdentity(process.env), input.cwd].join("\u0000"),
+            execute({
+              cwd: input.cwd,
+              args: ["repo", "view", "--json", REPOSITORY_MERGE_SETTINGS_JSON_FIELDS],
+            }).pipe(
+              Effect.flatMap((result) =>
+                decodeGitHubJson(
+                  result.stdout.trim(),
+                  RawRepositoryMergeSettings,
+                  "getPullRequestReview",
+                  "GitHub CLI returned invalid repository settings JSON.",
+                ),
+              ),
+            ),
+          ),
+        ],
+        { concurrency: 2 },
+      ).pipe(
+        Effect.flatMap(([review, settings]) => {
+          const [owner, name] = settings.nameWithOwner.split("/");
+          if (review.state.toUpperCase() !== "OPEN" || !owner || !name)
+            return Effect.succeed(normalizePullRequestReview(review, settings, null));
+          return execute({
+            cwd: input.cwd,
+            args: [
+              "api",
+              "graphql",
+              "-f",
+              `query=${REVIEW_THREADS_QUERY}`,
+              "-F",
+              `owner=${owner}`,
+              "-F",
+              `name=${name}`,
+              "-F",
+              `number=${input.number}`,
+            ],
+          }).pipe(
+            Effect.flatMap((result) =>
+              decodeGitHubJson(
+                result.stdout.trim(),
+                RawReviewThreads,
+                "getPullRequestReview",
+                "GitHub CLI returned invalid review thread JSON.",
+              ),
+            ),
+            // Checks and merge state stay useful when review threads cannot be read.
+            Effect.tapError((error) =>
+              Effect.logWarning("Pull request review threads unavailable", {
+                detail: error.detail,
+              }),
+            ),
+            Effect.orElseSucceed(() => null),
+            Effect.map((threads) => normalizePullRequestReview(review, settings, threads)),
+          );
+        }),
+      ),
+    mergePullRequest: (input) =>
+      execute({
+        cwd: input.cwd,
+        args: ["pr", "merge", String(input.number), `--${input.method}`],
+      }).pipe(Effect.asVoid),
+    markPullRequestReady: (input) =>
+      execute({ cwd: input.cwd, args: ["pr", "ready", String(input.number)] }).pipe(Effect.asVoid),
+    updatePullRequestBranch: (input) =>
+      execute({ cwd: input.cwd, args: ["pr", "update-branch", String(input.number)] }).pipe(
+        Effect.asVoid,
+      ),
     checkoutPullRequest: (input) =>
       execute({
         cwd: input.cwd,
@@ -538,6 +641,12 @@ const makeGitHubCli = Effect.gen(function* () {
       ),
     createPullRequest: (input) =>
       service.createPullRequest(input).pipe(Effect.ensuring(invalidatePullRequestLookups)),
+    mergePullRequest: (input) =>
+      service.mergePullRequest(input).pipe(Effect.ensuring(invalidatePullRequestLookups)),
+    markPullRequestReady: (input) =>
+      service.markPullRequestReady(input).pipe(Effect.ensuring(invalidatePullRequestLookups)),
+    updatePullRequestBranch: (input) =>
+      service.updatePullRequestBranch(input).pipe(Effect.ensuring(invalidatePullRequestLookups)),
   } satisfies GitHubCliShape;
 });
 

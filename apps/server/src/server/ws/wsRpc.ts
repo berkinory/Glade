@@ -378,6 +378,12 @@ function isShellRelevantEvent(event: OrchestrationEvent): boolean {
   );
 }
 
+const PULL_REQUEST_ACTION_FAILURES = {
+  merge: "Failed to merge pull request",
+  ready: "Failed to mark pull request ready",
+  update_branch: "Failed to update pull request branch",
+} as const;
+
 const makeWsRpcHandlersLayer = () =>
   AdmittedWsFeatureRpcGroup.toLayer(
     Effect.gen(function* () {
@@ -1461,6 +1467,33 @@ const makeWsRpcHandlersLayer = () =>
           ),
         [WS_METHODS.gitResolvePullRequest]: (input) =>
           rpcEffect(gitManager.resolvePullRequest(input), "Failed to resolve pull request"),
+        [WS_METHODS.gitGithubConnection]: () =>
+          github.getViewerLogin({ cwd: config.homeDir }).pipe(
+            Effect.map((login) => ({ state: "connected" as const, login })),
+            Effect.catchTag("GitHubCliError", (error) =>
+              Effect.succeed(
+                error.reason === "not-installed"
+                  ? { state: "not_installed" as const }
+                  : error.reason === "not-authenticated"
+                    ? { state: "signed_out" as const }
+                    : { state: "error" as const, detail: error.detail },
+              ),
+            ),
+          ),
+        [WS_METHODS.gitPullRequestReview]: (input) =>
+          rpcEffect(github.getPullRequestReview(input), "Failed to read pull request checks"),
+        [WS_METHODS.gitPullRequestAction]: (input) =>
+          rpcEffect(
+            refreshGitStatusAfter(
+              input.cwd,
+              input.action.kind === "merge"
+                ? github.mergePullRequest({ ...input, method: input.action.method })
+                : input.action.kind === "ready"
+                  ? github.markPullRequestReady(input)
+                  : github.updatePullRequestBranch(input),
+            ),
+            PULL_REQUEST_ACTION_FAILURES[input.action.kind],
+          ),
         [WS_METHODS.gitPreparePullRequestThread]: (input) =>
           rpcEffect(
             refreshGitStatusAfter(input.cwd, gitManager.preparePullRequestThread(input)),

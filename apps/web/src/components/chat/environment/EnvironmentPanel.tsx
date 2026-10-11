@@ -2,12 +2,7 @@ import { EnvironmentSubagentsSection } from "./EnvironmentSubagentsSection";
 import { GitHubIcon } from "~/lib/brandIcons";
 import { ArrowUpRightIcon, PlusMinusSquare01Icon, SettingsIcon } from "~/lib/icons";
 import type { EditorId } from "@glade/contracts/settings/editor";
-import type {
-  MessageId,
-  ProjectId,
-  ProviderKind,
-  ThreadId,
-} from "@glade/contracts/core/baseSchemas";
+import type { MessageId, ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { PinnedMessage } from "@glade/contracts/orchestration/threadEntities";
 import type { ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import { useNavigate } from "@tanstack/react-router";
@@ -58,9 +53,6 @@ export interface EnvironmentPanelProps {
     readonly nameWithOwner: string;
     readonly url: string;
   } | null;
-  githubRepositories?: ReadonlyArray<{
-    readonly nameWithOwner: string;
-  }>;
   isGitRepo: boolean;
   keybindings: ResolvedKeybindingsConfig;
   availableEditors: ReadonlyArray<EditorId>;
@@ -75,7 +67,6 @@ export interface EnvironmentPanelProps {
   pinnedMessages: readonly PinnedMessage[];
   pinnedMessageTextById: ReadonlyMap<MessageId, string>;
   notes: string;
-  activeProjectId: ProjectId | null;
   onToggleDiff: () => void;
   onOpenGithubRepository?: (url: string) => void;
   onJumpToPinnedMessage: (messageId: MessageId) => void;
@@ -92,7 +83,6 @@ export function EnvironmentPanel({
   openInTarget,
   worktree,
   githubRepository: githubRepositoryProp,
-  githubRepositories: githubRepositoriesProp,
   isGitRepo,
   keybindings,
   availableEditors,
@@ -106,7 +96,6 @@ export function EnvironmentPanel({
   pinnedMessages,
   pinnedMessageTextById,
   notes,
-  activeProjectId,
   onToggleDiff,
   onOpenGithubRepository,
   onJumpToPinnedMessage,
@@ -117,7 +106,6 @@ export function EnvironmentPanel({
   onRegisterCommitAndPushTrigger,
 }: EnvironmentPanelProps) {
   const githubRepository = githubRepositoryProp ?? null;
-  const githubRepositories = githubRepositoriesProp ?? [];
   const diffDisabledReason = diffDisabledReasonProp ?? null;
   const navigate = useNavigate();
   const { settings } = useAppSettings();
@@ -225,8 +213,6 @@ export function EnvironmentPanel({
           gitCwd={gitCwd}
           enabled={open}
           activeThreadId={activeThreadId}
-          projectId={activeProjectId}
-          configuredRepositories={githubRepositories}
           showDiffColors={settings.showPullRequestDiffColors}
           onOpenUrl={onOpenGithubRepository}
           onClose={onClose}

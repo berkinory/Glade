@@ -4,6 +4,12 @@ import {
   GitPublishRepositoryInput,
   GitPublishRepositoryResult,
 } from "../../git/githubRepositoryPublishing";
+import {
+  GitPullRequestActionInput,
+  GitPullRequestReviewInput,
+  GitPullRequestReviewResult,
+} from "../../git/pullRequestReview";
+import { GitHubConnectionStatus } from "../../git/githubConnection";
 import * as Rpc from "effect/unstable/rpc/Rpc";
 import { WS_METHODS } from "./ws";
 import {
@@ -323,6 +329,24 @@ export const WsGitUndoCommitRpc = Rpc.make(WS_METHODS.gitUndoCommit, {
 export const WsGitRevertCommitRpc = Rpc.make(WS_METHODS.gitRevertCommit, {
   payload: GitRevertCommitInput,
   success: GitRevertCommitResult,
+  error: WsRpcError,
+});
+
+export const WsGitPullRequestReviewRpc = Rpc.make(WS_METHODS.gitPullRequestReview, {
+  payload: GitPullRequestReviewInput,
+  success: GitPullRequestReviewResult,
+  error: WsRpcError,
+});
+
+export const WsGitGithubConnectionRpc = Rpc.make(WS_METHODS.gitGithubConnection, {
+  payload: Schema.Struct({}),
+  success: GitHubConnectionStatus,
+  error: WsRpcError,
+});
+
+export const WsGitPullRequestActionRpc = Rpc.make(WS_METHODS.gitPullRequestAction, {
+  payload: GitPullRequestActionInput,
+  success: Schema.Void,
   error: WsRpcError,
 });
 

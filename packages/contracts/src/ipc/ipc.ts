@@ -137,6 +137,12 @@ import type {
   GitHubProjectProvisionResult,
 } from "../git/githubProjectProvisioning";
 import type {
+  GitPullRequestActionInput,
+  GitPullRequestReviewInput,
+  GitPullRequestReviewResult,
+} from "../git/pullRequestReview";
+import type { GitHubConnectionStatus } from "../git/githubConnection";
+import type {
   ProjectCreateLocalFilePreviewGrantInput,
   ProjectCreateLocalFilePreviewGrantResult,
   ProjectListDirectoriesInput,
@@ -630,6 +636,9 @@ export interface NativeApi {
     checkUndoCommit: (input: GitStatusInput) => Promise<string | null>;
     undoCommit: (input: GitUndoCommitInput) => Promise<GitUndoCommitResult>;
     revertCommit: (input: GitRevertCommitInput) => Promise<GitRevertCommitResult>;
+    pullRequestReview: (input: GitPullRequestReviewInput) => Promise<GitPullRequestReviewResult>;
+    pullRequestAction: (input: GitPullRequestActionInput) => Promise<void>;
+    githubConnection: () => Promise<GitHubConnectionStatus>;
     trustRepository: (input: GitTrustRepositoryInput) => Promise<void>;
     rebaseState: (input: GitRebaseStateInput) => Promise<GitRebaseStateResult>;
     revertUnstagedFile: (input: GitRevertUnstagedFileInput) => Promise<GitRevertUnstagedFileResult>;

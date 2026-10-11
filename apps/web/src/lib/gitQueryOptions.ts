@@ -497,6 +497,33 @@ export function gitResolvePullRequestQueryOptions(input: {
   });
 }
 
+const PULL_REQUEST_CHECKS_POLL_MS = 30_000;
+
+export function gitPullRequestReviewQueryOptions(input: {
+  cwd: string | null;
+  number: number | null;
+  enabled: boolean;
+}) {
+  return queryOptions({
+    queryKey: [...gitQueryKeys.pullRequest(input.cwd), "review", input.number] as const,
+    queryFn: async () => {
+      if (!input.cwd || input.number === null) {
+        throw new Error("Pull request checks are unavailable.");
+      }
+      return ensureNativeApi().git.pullRequestReview({ cwd: input.cwd, number: input.number });
+    },
+    enabled: input.enabled && input.cwd !== null && input.number !== null,
+    staleTime: 15_000,
+    // Poll only while a check is still running; settled results change on push, which refetches.
+    refetchInterval: (query) =>
+      query.state.data?.checks.some((check) => check.state === "pending")
+        ? PULL_REQUEST_CHECKS_POLL_MS
+        : false,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+  });
+}
+
 export function gitWorkingTreeDiffStatsQueryOptions(input: {
   cwd: string | null;
   scope?: GitReadWorkingTreeDiffInput["scope"];

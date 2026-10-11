@@ -1,4 +1,5 @@
 import { McpSettingsPanel } from "~/components/settings/McpSettingsPanel";
+import { GitHubConnectionSettings } from "../components/settings/GitHubConnectionSettings";
 import { PluginsSettingsPanel } from "~/components/settings/PluginsSettingsPanel";
 import { ComputerSettings } from "~/components/computer/ComputerSettings";
 import { SshHostsSettingsPanel } from "~/components/settings/SshHostsSettingsPanel";
@@ -921,6 +922,7 @@ function SettingsRouteView() {
                 />
                 {activeSection === "worktrees" ? (
                   <div className="mt-6 space-y-6">
+                    <GitHubConnectionSettings />
                     <SettingsSection title="Worktree cleanup">
                       {renderBooleanSettingRow({
                         settingKey: "archiveDeletesOrphanedWorktree",

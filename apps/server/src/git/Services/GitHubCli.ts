@@ -1,3 +1,7 @@
+import type {
+  GitPullRequestMergeMethod,
+  GitPullRequestReviewResult,
+} from "@glade/contracts/git/pullRequestReview";
 import { ServiceMap, type Effect } from "effect";
 
 import type { ProcessRunResult } from "../../platform/processRunner";
@@ -86,6 +90,27 @@ export interface GitHubCliShape {
   readonly getDefaultBranch: (input: {
     readonly cwd: string;
   }) => Effect.Effect<string | null, GitHubCliError>;
+
+  readonly getPullRequestReview: (input: {
+    readonly cwd: string;
+    readonly number: number;
+  }) => Effect.Effect<GitPullRequestReviewResult, GitHubCliError>;
+
+  readonly mergePullRequest: (input: {
+    readonly cwd: string;
+    readonly number: number;
+    readonly method: GitPullRequestMergeMethod;
+  }) => Effect.Effect<void, GitHubCliError>;
+
+  readonly markPullRequestReady: (input: {
+    readonly cwd: string;
+    readonly number: number;
+  }) => Effect.Effect<void, GitHubCliError>;
+
+  readonly updatePullRequestBranch: (input: {
+    readonly cwd: string;
+    readonly number: number;
+  }) => Effect.Effect<void, GitHubCliError>;
 
   readonly checkoutPullRequest: (input: {
     readonly cwd: string;

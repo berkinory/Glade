@@ -565,6 +565,10 @@ function buildNativeApi(transport: WsTransport, listeners: NativeApiListeners): 
         transport.request(WS_METHODS.gitUndoCommit, input, { timeoutMs: null }),
       revertCommit: (input) =>
         transport.request(WS_METHODS.gitRevertCommit, input, { timeoutMs: null }),
+      pullRequestReview: (input) => transport.request(WS_METHODS.gitPullRequestReview, input),
+      githubConnection: () => transport.request(WS_METHODS.gitGithubConnection, {}),
+      pullRequestAction: (input) =>
+        transport.request(WS_METHODS.gitPullRequestAction, input, { timeoutMs: null }),
       trustRepository: (input) => transport.request(WS_METHODS.gitTrustRepository, input),
       rebaseState: (input) => transport.request(WS_METHODS.gitRebaseState, input),
       revertUnstagedFile: (input) => transport.request(WS_METHODS.gitRevertUnstagedFile, input),
