@@ -91,7 +91,7 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     newThread: {
       icon: SquarePenIcon,
       iconClassName: "size-3.5",
-      label: "New thread",
+      label: "New chat",
       active: false,
       badge: null,
       onClick: handlePrimaryNewThread,

@@ -11,7 +11,7 @@ export function SidebarLeadingControls({ className }: { className?: string }) {
     <div className={cn("flex shrink-0 items-center gap-0.5", className)}>
       <SidebarTrigger
         className="size-7 shrink-0 text-muted-foreground/75 hover:text-foreground"
-        aria-label="Toggle thread sidebar"
+        aria-label="Toggle chat sidebar"
       />
       <AppNavigationButtons className="ms-0" />
     </div>

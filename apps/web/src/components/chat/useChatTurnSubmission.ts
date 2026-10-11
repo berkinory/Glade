@@ -424,7 +424,7 @@ export function useChatTurnSubmission({
           } catch (error) {
             toastManager.add({
               type: "error",
-              title: "Could not resume thread",
+              title: "Could not resume chat",
               description:
                 error instanceof Error
                   ? error.message

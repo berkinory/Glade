@@ -640,7 +640,7 @@ export function renderTimelineAssistantMessage(
               ) : null}
               {showForkAction ? (
                 <MessageActionButton
-                  label="Fork thread from this turn"
+                  label="Fork chat from this turn"
                   tooltip="Fork from here"
                   onClick={() => onForkFromMessage?.(row.message.id)}
                 >

@@ -212,7 +212,7 @@ function PullRequestThreadDialogContent({
       : preparePullRequestThreadMutation.error instanceof Error
         ? preparePullRequestThreadMutation.error.message
         : preparePullRequestThreadMutation.error
-          ? "Failed to prepare pull request thread."
+          ? "Could not prepare the pull request chat."
           : null);
 
   return (
@@ -220,7 +220,7 @@ function PullRequestThreadDialogContent({
       <DialogHeader>
         <DialogTitle>Checkout Pull Request</DialogTitle>
         <DialogDescription>
-          Resolve a GitHub pull request, then create the draft thread in the main repo or in a
+          Resolve a GitHub pull request, then create the draft chat in the main repo or in a
           dedicated worktree.
         </DialogDescription>
       </DialogHeader>

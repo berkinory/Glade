@@ -191,7 +191,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
         type: "warning",
         title: "Export is unavailable",
         description:
-          "Open a server-backed thread and wait for the current turn to finish before exporting.",
+          "Open a server-backed chat and wait for the current turn to finish before exporting.",
       });
       return;
     }
@@ -202,7 +202,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
     }).catch((error: unknown) => {
       toastManager.add({
         type: "error",
-        title: "Could not export thread",
+        title: "Could not export chat",
         description:
           error instanceof Error ? error.message : "An error occurred while exporting the thread.",
       });
@@ -274,7 +274,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
         void runRenameSlashCommand(slashInvocation.args).catch((error) => {
           toastManager.add({
             type: "error",
-            title: "Could not rename thread",
+            title: "Could not rename chat",
             description:
               error instanceof Error
                 ? error.message
@@ -354,7 +354,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
         } catch (error) {
           toastManager.add({
             type: "error",
-            title: "Could not fork thread",
+            title: "Could not fork chat",
             description:
               error instanceof Error
                 ? error.message

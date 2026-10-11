@@ -130,19 +130,19 @@ const COMPOSER_SLASH_COMMAND_DEFINITIONS: Record<
   clear: {
     command: "clear",
     label: "/clear",
-    description: "Start a fresh thread and clear the current conversation context",
+    description: "Start a fresh chat and clear the current conversation context",
     source: "shared",
   },
   compact: {
     command: "compact",
     label: "/compact",
-    description: "Compact the current thread context to free space",
+    description: "Compact the current chat context to free space",
     source: "app",
   },
   model: {
     command: "model",
     label: "/model",
-    description: "Switch response model for this thread",
+    description: "Switch response model for this chat",
     source: "shared",
   },
   review: {
@@ -154,7 +154,7 @@ const COMPOSER_SLASH_COMMAND_DEFINITIONS: Record<
   fork: {
     command: "fork",
     label: "/fork",
-    description: "Fork this thread into local or a new worktree",
+    description: "Fork this chat into local or a new worktree",
     source: "app",
   },
   computer: {
@@ -166,20 +166,20 @@ const COMPOSER_SLASH_COMMAND_DEFINITIONS: Record<
   fast: {
     command: "fast",
     label: "/fast",
-    description: "Turn fast mode on or off for this thread",
+    description: "Turn fast mode on or off for this chat",
     source: "app",
   },
   export: {
     command: "export",
     label: "/export",
-    description: "Download this thread as a ZIP archive (thread.json + transcript.md)",
+    description: "Download this chat as a ZIP archive (chat.json + transcript.md)",
     source: "app",
   },
 
   rename: {
     command: "rename",
     label: "/rename",
-    description: "Regenerate this thread title, or set an exact title",
+    description: "Regenerate this chat title, or set an exact title",
     source: "app",
   },
   feedback: {

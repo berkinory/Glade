@@ -533,7 +533,7 @@ export function PluginLibrary() {
             <div className="mx-auto max-w-2xl space-y-1.5 px-6 pb-4">
               {!discoveryCwd && selectedTab === "skills" ? (
                 <InlineWarning>
-                  Skills need a workspace path. Open a project or thread first.
+                  Skills need a workspace path. Open a project or chat first.
                 </InlineWarning>
               ) : null}
               {selectedTab === "plugins" && pluginsQuery.data?.remoteSyncError ? (

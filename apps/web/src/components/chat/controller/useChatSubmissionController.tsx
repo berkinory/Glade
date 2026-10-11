@@ -371,7 +371,7 @@ export function useChatSubmissionController({
           toastManager.add({
             type: "warning",
             title: "Clear is unavailable",
-            description: "Open a project before starting a fresh thread.",
+            description: "Open a project before starting a fresh chat.",
           });
           return;
         }

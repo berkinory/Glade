@@ -398,8 +398,8 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
     },
     {
       id: "new-thread",
-      label: "New thread",
-      description: "Start a fresh thread in the current or most recently used project.",
+      label: "New chat",
+      description: "Start a fresh chat in the current or most recently used project.",
       keywords: ["thread", "new", "project"],
       shortcutLabel: newThreadShortcutLabel,
     },

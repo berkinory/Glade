@@ -1498,7 +1498,7 @@ const makeWsRpcHandlersLayer = () =>
         [WS_METHODS.gitPreparePullRequestThread]: (input) =>
           rpcEffect(
             refreshGitStatusAfter(input.cwd, gitManager.preparePullRequestThread(input)),
-            "Failed to prepare pull request thread",
+            "Failed to prepare pull request chat",
           ),
         [WS_METHODS.gitListBranches]: (input) =>
           git
@@ -1777,7 +1777,7 @@ const makeWsRpcHandlersLayer = () =>
               yield* completeGitHandoff(commandId);
               return result;
             }),
-            "Failed to hand off thread",
+            "Failed to hand off chat",
           ),
 
         [WS_METHODS.terminalOpen]: (input) =>

@@ -199,7 +199,7 @@ export function resolveThreadRowMetaChips(input: {
   if (input.thread.forkSourceThreadId) {
     chips.push({
       id: "fork",
-      tooltip: "Forked thread",
+      tooltip: "Forked chat",
       icon: (
         <SidebarGlyph
           icon={GitForkIcon}

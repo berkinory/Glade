@@ -15,7 +15,7 @@ function OriginContent(): ReactNode {
       <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground/70">
         <GladeLogo className="h-4 w-auto" aria-label="Glade" />
       </span>
-      <span className="truncate">Sent by Glade from another thread</span>
+      <span className="truncate">Sent by Glade from another chat</span>
     </>
   );
 }
@@ -40,7 +40,7 @@ export const CrossTaskOriginLabel = memo(function CrossTaskOriginLabel({
         type="button"
         className={className}
         data-cross-task-origin="true"
-        aria-label="Open source thread"
+        aria-label="Open source chat"
         onClick={() => onOpenSourceThread(origin.sourceThreadId)}
       >
         <OriginContent />

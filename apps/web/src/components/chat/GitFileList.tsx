@@ -111,8 +111,8 @@ function GitFileRow(props: {
             <IconButton
               size="icon-xs"
               variant="ghost"
-              label="Open file in Explorer"
-              tooltip="Open file in Explorer"
+              label="Open file"
+              tooltip="Open file"
               onClick={() => props.onOpenFile(filePath)}
             >
               <ViewIcon className="size-3.5" />
@@ -122,8 +122,8 @@ function GitFileRow(props: {
             <IconButton
               size="icon-xs"
               variant="ghost"
-              label="Revert changes"
-              tooltip="Revert changes"
+              label="Discard changes"
+              tooltip="Discard changes"
               disabled={props.actionDisabled}
               onClick={() => props.onRevert?.(props.file)}
             >

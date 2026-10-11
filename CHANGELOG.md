@@ -16,6 +16,8 @@
 - The commit dialog starts from the files you staged and shows line counts for each file.
 - Creating a branch no longer publishes it right away; it is published on its first push.
 - The commit-and-push shortcut runs the Git panel's next step.
+- File changes in Source Control are discarded with Discard, separate from reverting a commit.
+- Chats are called chats everywhere in the app.
 
 ### Fixed
 

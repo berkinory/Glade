@@ -194,7 +194,7 @@ function ProfileContent({
               label="Total skills used"
               value={formatNumber(stats.insights.totalSkillsUsed)}
             />
-            <InsightRow label="Total threads" value={formatNumber(stats.activity.totalThreads)} />
+            <InsightRow label="Total chats" value={formatNumber(stats.activity.totalThreads)} />
           </dl>
           <ProfileUsageCoverage unavailableProviders={topProvider.unavailableProviders} />
         </section>

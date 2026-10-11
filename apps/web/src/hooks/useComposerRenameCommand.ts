@@ -18,7 +18,7 @@ export function useComposerRenameCommand(input: {
         toastManager.add({
           type: "warning",
           title: "Rename is unavailable",
-          description: "Open a thread before renaming it.",
+          description: "Open a chat before renaming it.",
         });
         return;
       }
@@ -36,11 +36,11 @@ export function useComposerRenameCommand(input: {
             : undefined,
         });
         if (outcome === "renamed") {
-          toastManager.add({ type: "success", title: "Thread renamed" });
+          toastManager.add({ type: "success", title: "Chat renamed" });
         } else if (outcome === "unavailable") {
           toastManager.add({ type: "warning", title: "Rename is unavailable" });
         } else {
-          toastManager.add({ type: "info", title: "Thread title is unchanged" });
+          toastManager.add({ type: "info", title: "Chat title is unchanged" });
         }
         return;
       }

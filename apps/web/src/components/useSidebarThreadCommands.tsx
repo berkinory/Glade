@@ -76,7 +76,7 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
     }).catch((error) => {
       toastManager.add({
         type: "error",
-        title: "Failed to rename thread",
+        title: "Failed to rename chat",
         description: error instanceof Error ? error.message : "An error occurred.",
       });
       return null;
@@ -85,7 +85,7 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
     if (outcome === "empty") {
       toastManager.add({
         type: "warning",
-        title: "Thread title cannot be empty",
+        title: "Chat title cannot be empty",
       });
     }
   };
@@ -154,7 +154,7 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
     });
     const clicked = await showContextMenu(
       [
-        { id: "rename", label: "Rename thread", icon: PencilEdit02Icon },
+        { id: "rename", label: "Rename chat", icon: PencilEdit02Icon },
         {
           id: "toggle-pin",
           label: pinActionLabel("thread", isPinned),
@@ -185,7 +185,7 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
               },
             ]
           : []),
-        { id: "copy-thread-id", label: "Copy Thread ID", icon: Copy01Icon },
+        { id: "copy-thread-id", label: "Copy Chat ID", icon: Copy01Icon },
 
         ...(thread.parentThreadId
           ? []
@@ -230,7 +230,7 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
         toastManager.add({
           type: "error",
           title: "Path unavailable",
-          description: "This thread does not have a workspace path to copy.",
+          description: "This chat does not have a workspace path to copy.",
         });
         return;
       }
@@ -242,7 +242,7 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
         toastManager.add({
           type: "error",
           title: "Path unavailable",
-          description: "This thread does not have a workspace path to open.",
+          description: "This chat does not have a workspace path to open.",
         });
         return;
       }

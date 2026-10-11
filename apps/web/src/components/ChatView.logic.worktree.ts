@@ -230,7 +230,7 @@ export function buildLocalDraftThread(
     id: threadId,
     codexThreadId: null,
     projectId: draftThread.projectId,
-    title: "New thread",
+    title: "New chat",
     modelSelection: fallbackModelSelection,
     runtimeMode: draftThread.runtimeMode,
 

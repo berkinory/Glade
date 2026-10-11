@@ -18,8 +18,8 @@ export function ThreadArchiveActionButton({
   return (
     <SidebarIconButton
       icon={Archive04Icon}
-      label="Archive thread"
-      title="Archive thread"
+      label="Archive chat"
+      title="Archive chat"
       data-testid={`thread-archive-${threadId}`}
       size={isCompact ? "sm" : "md"}
       iconClassName={isCompact ? sidebarGlyphClass("compact") : SIDEBAR_TRAILING_ICON_CLASS}

@@ -51,7 +51,7 @@ export function useThreadWorkspaceHandoff(input: {
       setThreadWorkspace(input.activeThread.id, resolveWorktreeHandoffWorkspaceMetadata(result));
       toastManager.add({
         type: result.conflictsDetected ? "warning" : "success",
-        title: "Thread handed off to local",
+        title: "Chat handed off to local",
         ...(result.message ? { description: result.message } : {}),
       });
     } catch (error) {

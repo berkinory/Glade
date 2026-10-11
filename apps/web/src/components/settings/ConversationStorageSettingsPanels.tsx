@@ -285,13 +285,13 @@ export function ArchivedSettingsPanel({ active }: { readonly active: boolean }) 
       await unarchiveThreadFromClient(api.orchestration, threadId);
       toastManager.add({
         type: "success",
-        title: "Thread restored",
-        description: "The thread has been moved back to the sidebar.",
+        title: "Chat restored",
+        description: "The chat has been moved back to the sidebar.",
       });
     } catch (error) {
       toastManager.add({
         type: "error",
-        title: "Could not restore thread",
+        title: "Could not restore chat",
         description: error instanceof Error ? error.message : "Unable to restore the thread.",
       });
     }
@@ -325,13 +325,13 @@ export function ArchivedSettingsPanel({ active }: { readonly active: boolean }) 
         });
         toastManager.add({
           type: "success",
-          title: "Thread deleted",
+          title: "Chat deleted",
           description: "The archived chat has been permanently removed.",
         });
       } catch (error) {
         toastManager.add({
           type: "error",
-          title: "Could not delete thread",
+          title: "Could not delete chat",
           description: error instanceof Error ? error.message : "Unable to delete the thread.",
         });
       }
@@ -363,7 +363,7 @@ export function ArchivedSettingsPanel({ active }: { readonly active: boolean }) 
       });
       toastManager.add({
         type: "success",
-        title: "Archived threads deleted",
+        title: "Archived chats deleted",
         description: `${rootThreadIds.length} archived ${pluralize(rootThreadIds.length, "thread was", "threads were")} permanently removed.`,
       });
     } catch (error) {

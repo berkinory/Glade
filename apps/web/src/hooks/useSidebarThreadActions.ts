@@ -529,8 +529,8 @@ export function useSidebarThreadActions(input: {
           if (!currentThread) {
             toastManager.add({
               type: "error",
-              title: "Could not restore thread",
-              description: "The thread no longer exists.",
+              title: "Could not restore chat",
+              description: "The chat no longer exists.",
             });
             return false;
           }
@@ -547,7 +547,7 @@ export function useSidebarThreadActions(input: {
         } catch (error) {
           toastManager.add({
             type: "error",
-            title: "Could not restore thread",
+            title: "Could not restore chat",
             description: error instanceof Error ? error.message : "Unable to restore the thread.",
           });
           return false;
@@ -604,7 +604,7 @@ export function useSidebarThreadActions(input: {
     } catch (error) {
       toastManager.add({
         type: "error",
-        title: "Could not archive thread",
+        title: "Could not archive chat",
         description: error instanceof Error ? error.message : "Unable to archive the thread.",
       });
     }
@@ -638,7 +638,7 @@ export function useSidebarThreadActions(input: {
       toastManager.add({
         type: "info",
         title: "Nothing to archive",
-        description: `"${project.name}" has no threads to archive.`,
+        description: `"${project.name}" has no chats to archive.`,
       });
       return;
     }
@@ -679,7 +679,7 @@ export function useSidebarThreadActions(input: {
     } else if (failureCount > 0) {
       toastManager.add({
         type: "error",
-        title: "Failed to archive threads",
+        title: "Failed to archive chats",
         description: `Could not archive ${failureCount} ${pluralize(failureCount, "thread")} in "${project.name}".`,
       });
     }
@@ -698,7 +698,7 @@ export function useSidebarThreadActions(input: {
         toastManager.add({
           type: "info",
           title: "Nothing to delete",
-          description: `"${project.name}" has no threads to delete.`,
+          description: `"${project.name}" has no chats to delete.`,
         });
       }
       return {
@@ -764,7 +764,7 @@ export function useSidebarThreadActions(input: {
       } else if (failureCount > 0) {
         toastManager.add({
           type: "error",
-          title: "Failed to delete threads",
+          title: "Failed to delete chats",
           description: `Could not delete ${failureCount} ${pluralize(failureCount, "thread")} in "${project.name}".`,
         });
       }

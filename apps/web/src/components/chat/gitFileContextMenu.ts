@@ -41,7 +41,7 @@ export function showGitFileContextMenu(
         ? [
             {
               id: "revert" as const,
-              label: count === 1 ? "Revert changes" : `Revert ${count} files`,
+              label: count === 1 ? "Discard changes" : `Discard changes in ${count} files`,
               icon: UndoIcon,
               destructive: true,
             },

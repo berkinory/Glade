@@ -317,7 +317,7 @@ export function SidebarDialogs({
                   }
                 >
                   <ProjectContextMenuIcon icon={Archive04Icon} />
-                  <span>Archive threads</span>
+                  <span>Archive chats</span>
                 </MenuItem>
               ) : null}
               {projectContextMenuHasAnyThreads ? (
@@ -331,7 +331,7 @@ export function SidebarDialogs({
                   }
                 >
                   <ProjectContextMenuIcon icon={Delete02Icon} />
-                  <span>Delete threads</span>
+                  <span>Delete chats</span>
                 </MenuItem>
               ) : null}
               <MenuSeparator />

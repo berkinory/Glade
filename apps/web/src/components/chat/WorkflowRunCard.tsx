@@ -141,7 +141,7 @@ function WorkflowAgentDetail({
             className="h-5 shrink-0 px-1.5 text-ui-xs text-muted-foreground/70"
             onClick={() => onOpenThread(threadId)}
           >
-            Open thread
+            Open chat
           </Button>
         ) : null}
       </div>

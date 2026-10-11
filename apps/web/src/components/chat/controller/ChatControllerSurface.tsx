@@ -250,7 +250,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
             <div className="flex items-center gap-2">
               <SidebarHeaderTrigger className="size-7 shrink-0" />
               <span className="text-ui-lg font-medium text-[var(--color-text-foreground)]">
-                Threads
+                Chats
               </span>
             </div>
           </header>
@@ -265,13 +265,13 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
             )}
           >
             <SidebarHeaderNavigationControls />
-            <span className="text-ui leading-snug text-muted-foreground/50">No active thread</span>
+            <span className="text-ui leading-snug text-muted-foreground/50">No active chat</span>
           </div>
         )}
         <div className="flex flex-1 items-center justify-center">
           <div className="text-center">
             <p className="text-ui leading-snug">
-              Select a thread or create a new one to get started.
+              Select a chat or create a new one to get started.
             </p>
           </div>
         </div>

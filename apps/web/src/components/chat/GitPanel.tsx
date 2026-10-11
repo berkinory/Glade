@@ -347,7 +347,7 @@ export function GitPanel(props: {
   const error = filesQuery.isError && !recovering ? filesQuery.error : null;
   const hasChanges = (coverage?.count ?? stagedFiles.length + unstagedFiles.length) > 0;
   if (!cwd) {
-    return <PanelStateMessage>Source control is unavailable for this thread.</PanelStateMessage>;
+    return <PanelStateMessage>Source control is unavailable for this chat.</PanelStateMessage>;
   }
   return (
     <div className="flex h-full min-h-0 w-full flex-col">

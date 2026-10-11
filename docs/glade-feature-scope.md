@@ -141,7 +141,7 @@ repository and origin remain available for another Push after resolving the erro
 
 Changes sorts paths by folder within each staged/unstaged group. New filter queries can reuse the same bounded Git inventory for up to two seconds; refreshes, repository updates and mutations read a fresh inventory. Capacity and transport interruptions recover automatically without a manual refresh; persistent failures expose their error details. Selection stays in
 one group, and selected rows keep their applicable actions visible. Stage, Unstage
-and Revert apply to that selection; deleted rows have no View action.
+and Discard apply to that selection; deleted rows have no View action.
 
 Below 5,000 unique changed paths, Changes uses its normal virtualized list. Larger
 checkouts show a folder/count summary and bounded, searchable results. A partially

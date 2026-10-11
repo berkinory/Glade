@@ -44,7 +44,7 @@ export function RelocateProjectDialog(props: {
             type: "success",
             title: "Project path updated",
             description:
-              "Continue in your existing threads. A blocked thread resumes automatically when you send a message.",
+              "Continue in your existing chats. A blocked chat resumes automatically when you send a message.",
           });
         } catch (error) {
           toastManager.add({

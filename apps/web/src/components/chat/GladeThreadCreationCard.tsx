@@ -24,7 +24,7 @@ export const GladeThreadCreationCard = memo(function GladeThreadCreationCard({
   const title = singleThread ? "Thread created" : `${creation.createdCount} threads created`;
   const summary = singleThread
     ? singleThread.title
-    : `${creation.createdCount}/${creation.requestedCount} requested threads created`;
+    : `${creation.createdCount}/${creation.requestedCount} requested chats created`;
 
   return (
     <div
@@ -55,7 +55,7 @@ export const GladeThreadCreationCard = memo(function GladeThreadCreationCard({
             className="shrink-0"
             onClick={() => onOpenThread(singleThread.threadId)}
           >
-            Open thread
+            Open chat
           </Button>
         ) : null}
       </div>

@@ -39,7 +39,11 @@ export function GitRevertDialog(props: {
       <AlertDialogPopup className="max-w-sm">
         <AlertDialogHeader>
           <AlertDialogTitle className="truncate" title={files?.[0]?.path}>
-            {files?.length === 1 ? "Revert changes?" : `Revert ${files?.length ?? 0} files?`}
+            {files?.length === 1
+              ? files[0]?.status === "U"
+                ? "Delete untracked file?"
+                : "Discard changes?"
+              : `Discard changes in ${files?.length ?? 0} files?`}
           </AlertDialogTitle>
           <AlertDialogDescription>
             {files?.length === 1
@@ -63,7 +67,7 @@ export function GitRevertDialog(props: {
                 if (hasUnsavedWorkspaceEditors(queryClient, cwd)) {
                   toastManager.add({
                     type: "warning",
-                    title: "Save open files before reverting changes.",
+                    title: "Save open files before discarding changes.",
                   });
                   return;
                 }
@@ -92,16 +96,16 @@ export function GitRevertDialog(props: {
                       "message" in error &&
                       typeof error.message === "string"
                         ? error.message
-                        : "Could not revert file.",
+                        : "Could not discard changes.",
                     ...(completed > 0
-                      ? { description: `${completed} of ${files.length} files reverted.` }
+                      ? { description: `${completed} of ${files.length} files discarded.` }
                       : {}),
                   });
                 }
               })();
             }}
           >
-            Revert
+            {files?.length === 1 && files[0]?.status === "U" ? "Delete" : "Discard"}
           </Button>
         </AlertDialogFooter>
       </AlertDialogPopup>

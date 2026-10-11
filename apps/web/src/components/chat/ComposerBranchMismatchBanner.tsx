@@ -22,12 +22,12 @@ export function ComposerBranchMismatchBanner({
       />
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium text-foreground/95">
-          Sending a message will move this thread to the current branch
+          Sending a message will move this chat to the current branch
         </p>
         <div className="mt-0.5 flex min-w-0 items-center gap-2">
           <code
             className="max-w-[40%] truncate text-muted-foreground/80"
-            title={`Thread branch: ${threadBranch}`}
+            title={`Chat branch: ${threadBranch}`}
           >
             {threadBranch}
           </code>

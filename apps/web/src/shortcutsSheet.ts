@@ -191,8 +191,8 @@ const AVAILABLE_NOW_DEFINITIONS: readonly ShortcutDefinition[] = [
   },
   {
     command: "thread.copyId",
-    label: "Copy thread ID",
-    description: "Copy the active thread's ID to the clipboard.",
+    label: "Copy chat ID",
+    description: "Copy the active chat's ID to the clipboard.",
   },
   {
     command: "thread.archive",
@@ -235,7 +235,7 @@ const THREAD_JUMP_DEFINITIONS: readonly ShortcutDefinition[] = Array.from(
   { length: 9 },
   (_, index) => ({
     command: `thread.jump.${index + 1}` as KeybindingCommand,
-    label: `Jump to visible thread ${index + 1}`,
+    label: `Jump to visible chat ${index + 1}`,
     description: "Focus a visible chat directly from the sidebar number row.",
   }),
 );

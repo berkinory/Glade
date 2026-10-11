@@ -96,7 +96,7 @@ export function usePinnedMessageActions({
       toastManager.add({
         type: "warning",
         title: "Pinned message limit reached",
-        description: `You can keep up to ${PINNED_MESSAGES_MAX_COUNT} pinned messages in a thread.`,
+        description: `You can keep up to ${PINNED_MESSAGES_MAX_COUNT} pinned messages in a chat.`,
       });
       return;
     }

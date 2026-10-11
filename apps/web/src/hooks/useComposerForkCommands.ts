@@ -50,7 +50,7 @@ export function useComposerForkCommands(input: {
         toastManager.add({
           type: "warning",
           title: "Fork is unavailable",
-          description: "Only existing server-backed threads can be forked right now.",
+          description: "Only existing server-backed chats can be forked right now.",
         });
         return true;
       }
@@ -126,7 +126,7 @@ export function useComposerForkCommands(input: {
         toastManager.add({
           type: "warning",
           title: "Review is unavailable",
-          description: "Open a project thread before starting a native review.",
+          description: "Open a project chat before starting a native review.",
         });
         return false;
       }
@@ -249,7 +249,7 @@ export function useComposerForkCommands(input: {
       } catch (error) {
         toastManager.add({
           type: "error",
-          title: "Could not fork thread",
+          title: "Could not fork chat",
           description:
             error instanceof Error
               ? error.message
