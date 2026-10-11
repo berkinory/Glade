@@ -1,4 +1,5 @@
 import { Brain03Icon, EnergyFilledIcon, LimitationIcon } from "~/lib/icons";
+import { CLAUDE_FAST_MODE_BILLING_NOTE } from "~/lib/fastModeStatus";
 import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
 import { useState, type ReactNode } from "react";
@@ -25,6 +26,7 @@ function TraitRow(props: {
   options: ReadonlyArray<TraitOption>;
   triggerIcon?: ReactNode;
   disabled?: boolean;
+  note?: ReactNode;
   onValueChange: (value: string) => void;
 }) {
   const selectedOption = props.options.find((option) => option.value === props.value);
@@ -60,6 +62,11 @@ function TraitRow(props: {
             </MenuRadioItem>
           ))}
         </MenuRadioGroup>
+        {props.note ? (
+          <div className="max-w-56 px-2 pt-1.5 pb-1 text-muted-foreground text-ui-xs leading-snug">
+            {props.note}
+          </div>
+        ) : null}
       </ComposerPickerMenuSubPopup>
     </MenuSub>
   );
@@ -71,6 +78,7 @@ export function ComposerModelPickerTraitRows(props: {
   runtimeModel: ProviderModelDescriptor | undefined;
   modelOptions: ProviderOptions | undefined;
   prompt: string;
+  fastModeNotice: string | null;
 }) {
   const { provider, threadId, model, modelOptions, prompt } = props;
   const selection = getComposerTraitSelection(
@@ -126,11 +134,21 @@ export function ComposerModelPickerTraitRows(props: {
       const fastValue = descriptor.type === "boolean" ? "on" : fastOption?.id;
       if (!fastValue) continue;
       const current = modelOptions?.[descriptor.id as keyof ProviderOptions];
+      const isFast = current === true || current === fastValue;
+      const notice = isFast ? props.fastModeNotice : null;
       rows.push(
         <TraitRow
           key={descriptor.id}
           label="Speed"
-          value={current === true || current === fastValue ? fastValue : "__inherit__"}
+          value={isFast ? fastValue : "__inherit__"}
+          {...(notice
+            ? { triggerIcon: <EnergyFilledIcon className="size-3.5 shrink-0 text-warning" /> }
+            : {})}
+          {...(notice
+            ? { note: <span className="text-warning">{notice}</span> }
+            : provider === "claudeAgent"
+              ? { note: CLAUDE_FAST_MODE_BILLING_NOTE }
+              : {})}
           options={[
             defaultOption,
             {

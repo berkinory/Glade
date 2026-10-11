@@ -96,6 +96,7 @@ type ComposerModelPickerProps = {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   shortcutLabel?: string | null;
+  fastModeNotice?: string | null;
 };
 function groupRowElements(
   rows: ReadonlyArray<PickerRow>,
@@ -369,6 +370,7 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
         modelLabel={modelLabel}
         statusLabel={resolveComposerTraitStatusLabel(currentTraitSelection)}
         showsFastBadge={showsComposerFastModeBadge(currentTraitSelection)}
+        fastModeNotice={props.fastModeNotice ?? null}
         hideModelLabel={props.hideModelLabel}
         hideStatusLabel={props.hideStatusLabel}
         disabled={props.disabled}
@@ -496,6 +498,9 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
               traitsRuntimeModel?.optionDescriptors ?? [],
             )}
             prompt={promptFor(traitsProvider)}
+            fastModeNotice={
+              traitsProvider === props.provider ? (props.fastModeNotice ?? null) : null
+            }
           />
         </div>
       </ComposerPickerMenuPopup>

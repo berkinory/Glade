@@ -225,21 +225,22 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         backfillAssistantTextBlocksFromSnapshot,
         maybeEmitContextUsageWarning,
       });
-    const { handleSdkTelemetryMessage, handleSystemMessage } = makeClaudeSystemMessages({
-      settlePendingHumanInteractionsForAgent,
-      stopWorkflowRuntimePoller,
-      makeEventStamp,
-      offerRuntimeEvent,
-      completeTurn,
-      updateResumeCursor,
-      emitRuntimeWarning,
-      emitCompactionProgress,
-      ensureSubagentRun,
-      emitRuntimeError,
-      resolveWorkflowScriptText,
-      fileSystem,
-      warnUnhandledSdkKind,
-    });
+    const { handleSdkTelemetryMessage, handleSystemMessage, syncFastModeState } =
+      makeClaudeSystemMessages({
+        settlePendingHumanInteractionsForAgent,
+        stopWorkflowRuntimePoller,
+        makeEventStamp,
+        offerRuntimeEvent,
+        completeTurn,
+        updateResumeCursor,
+        emitRuntimeWarning,
+        emitCompactionProgress,
+        ensureSubagentRun,
+        emitRuntimeError,
+        resolveWorkflowScriptText,
+        fileSystem,
+        warnUnhandledSdkKind,
+      });
     const { runSdkStream, handleStreamExit } = makeClaudeSdkStream({
       emitRuntimeError,
       completeTurn,
@@ -254,6 +255,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       ensureThreadId,
       updateResumeCursor,
       handleSystemMessage,
+      syncFastModeState,
       warnUnhandledSdkKind,
       emitTrackedTasksUpdated,
     });

@@ -133,6 +133,7 @@ export function deriveWorkLogEntries(
         activity.kind !== "account.rate-limits.updated" &&
         activity.kind !== "context-window.updated" &&
         activity.kind !== "context-window.configured" &&
+        activity.kind !== "fast-mode.updated" &&
         activity.summary !== "Checkpoint captured",
     )
     .map(toDerivedWorkLogEntry);

@@ -7,7 +7,11 @@ import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvent
 import { makeClaudeTurnCompletion } from "./turnCompletion";
 import { makeClaudeToolTracking } from "./toolTracking";
 import { ClaudeSessionContext, PROVIDER } from "./sessionTypes";
-import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
+import type {
+  FastModeDisabledReason,
+  FastModeState,
+  SDKMessage,
+} from "@anthropic-ai/claude-agent-sdk";
 import {
   subagentRunForTask,
   sdkNativeMethod,
@@ -283,7 +287,7 @@ export function makeClaudeSystemMessages(input: {
         case "init":
           context.initSkillNames = new Set(message.skills);
           context.loadedPluginNames = new Set(message.plugins.map((plugin) => plugin.name));
-          context.fastModeState = message.fast_mode_state;
+          yield* syncFastModeState(context, message);
           context.effectiveEffort = message.effort;
           if (Array.isArray(message.tools)) {
             context.initToolNames = new Set(message.tools);
@@ -653,6 +657,41 @@ export function makeClaudeSystemMessages(input: {
       }
     });
 
+  // Claude Code serves standard speed without an error when fast mode is blocked (no usage
+  // credits, cooldown, org policy), so the client shows the state Claude Code reports, not the toggle.
+  const syncFastModeState = (
+    context: ClaudeSessionContext,
+    report: {
+      readonly fast_mode_state?: FastModeState;
+      readonly fast_mode_disabled_reason?: FastModeDisabledReason;
+    },
+  ): Effect.Effect<void> =>
+    Effect.gen(function* () {
+      const state = report.fast_mode_state;
+      const disabledReason = report.fast_mode_disabled_reason;
+      if (state === undefined) return;
+      if (state === context.fastModeState && disabledReason === context.fastModeDisabledReason) {
+        return;
+      }
+      context.fastModeState = state;
+      context.fastModeDisabledReason = disabledReason;
+      const stamp = yield* makeEventStamp();
+      yield* offerRuntimeEvent(context, {
+        type: "session.configured",
+        eventId: stamp.eventId,
+        provider: PROVIDER,
+        createdAt: stamp.createdAt,
+        threadId: context.session.threadId,
+        payload: {
+          config: {
+            fastModeState: state,
+            ...(disabledReason ? { fastModeDisabledReason: disabledReason } : {}),
+          },
+        },
+        providerRefs: nativeProviderRefs(context),
+      });
+    });
+
   const handleSdkTelemetryMessage = (
     context: ClaudeSessionContext,
     message: SDKMessage,
@@ -731,5 +770,5 @@ export function makeClaudeSystemMessages(input: {
         return;
       }
     });
-  return { handleSdkTelemetryMessage, handleSystemMessage };
+  return { handleSdkTelemetryMessage, handleSystemMessage, syncFastModeState };
 }

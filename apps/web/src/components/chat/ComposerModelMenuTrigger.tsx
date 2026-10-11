@@ -18,6 +18,7 @@ export function ComposerModelMenuTrigger(props: {
   modelLabel: string;
   statusLabel: string | null;
   showsFastBadge: boolean;
+  fastModeNotice?: string | null | undefined;
   hideModelLabel?: boolean | undefined;
   hideStatusLabel?: boolean | undefined;
   disabled?: boolean | undefined;
@@ -103,10 +104,17 @@ export function ComposerModelMenuTrigger(props: {
             </span>
           )}
           {label.showsFastBadge ? (
-            <EnergyFilledIcon
-              aria-hidden="true"
-              className={cn("size-3.5 shrink-0", COMPOSER_MUTED_ACCENT_TEXT_CLASS_NAME)}
-            />
+            props.fastModeNotice ? (
+              <span className="flex shrink-0" title={props.fastModeNotice}>
+                <EnergyFilledIcon aria-hidden="true" className="size-3.5 text-warning" />
+                <span className="sr-only">{props.fastModeNotice}</span>
+              </span>
+            ) : (
+              <EnergyFilledIcon
+                aria-hidden="true"
+                className={cn("size-3.5 shrink-0", COMPOSER_MUTED_ACCENT_TEXT_CLASS_NAME)}
+              />
+            )
           ) : null}
           {label.statusLabel ? (
             props.hideStatusLabel ? (

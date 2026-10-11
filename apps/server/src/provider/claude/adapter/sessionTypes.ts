@@ -11,6 +11,7 @@ import type {
   SDKMessage,
   PermissionMode,
   ModelInfo,
+  FastModeDisabledReason,
   FastModeState,
 } from "@anthropic-ai/claude-agent-sdk";
 import { ThreadId, TurnId, ApprovalRequestId } from "@glade/contracts/core/baseSchemas";
@@ -181,6 +182,7 @@ export interface ClaudeSessionQuery {
   currentApiModelId: string | undefined;
   availableModels: ReadonlyArray<ModelInfo>;
   fastModeState: FastModeState | undefined;
+  fastModeDisabledReason: FastModeDisabledReason | undefined;
   readonly warnedUnhandledSdkKinds: Set<string>;
 }
 

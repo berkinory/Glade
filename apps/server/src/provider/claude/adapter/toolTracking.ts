@@ -55,6 +55,7 @@ export function makeClaudeToolTracking(input: {
         currentApiModelId: undefined,
         availableModels: context.availableModels,
         fastModeState: context.fastModeState,
+        fastModeDisabledReason: context.fastModeDisabledReason,
         resumeSessionId: undefined,
         pendingApprovals: new Map(),
         approvalsAlwaysAllowedForSession: false,

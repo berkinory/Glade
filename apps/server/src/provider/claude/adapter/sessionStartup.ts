@@ -445,6 +445,7 @@ export function makeClaudeSessionStartup(input: {
           interruptRequestedTurnId: undefined,
           availableModels: initialization.models,
           fastModeState: initialization.fast_mode_state,
+          fastModeDisabledReason: initialization.fast_mode_disabled_reason,
           lastKnownContextWindow: undefined,
           currentAlwaysThinkingEnabled: thinking,
           currentEffort: effectiveEffort,
@@ -514,6 +515,12 @@ export function makeClaudeSessionStartup(input: {
                   : {}),
                 ...(fastMode ? { fastMode: true } : {}),
                 ...(ultracode ? { ultracode: true } : {}),
+                ...(initialization.fast_mode_state
+                  ? { fastModeState: initialization.fast_mode_state }
+                  : {}),
+                ...(initialization.fast_mode_disabled_reason
+                  ? { fastModeDisabledReason: initialization.fast_mode_disabled_reason }
+                  : {}),
               },
             },
             providerRefs: {},

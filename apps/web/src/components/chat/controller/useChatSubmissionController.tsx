@@ -18,6 +18,7 @@ import { collapseExpandedComposerCursor, detectComposerTrigger } from "~/compose
 
 import { useComposerSlashCommands } from "~/hooks/useComposerSlashCommands";
 import { formatContextWindowTokens } from "~/lib/contextWindow";
+import { deriveFastModeUnavailableNotice } from "~/lib/fastModeStatus";
 import { buildNextProviderOptions } from "~/providerModelOptions";
 import { type ChatViewProps } from "./chatViewSupport";
 import type { useChatActionsController } from "./useChatActionsController";
@@ -292,6 +293,11 @@ export function useChatSubmissionController({
       open={isComposerModelEffortPickerOpen}
       onOpenChange={handleComposerModelEffortPickerOpenChange}
       shortcutLabel={modelPickerShortcutLabel}
+      fastModeNotice={
+        selectedProvider === "claudeAgent" && fastModeEnabled
+          ? deriveFastModeUnavailableNotice(activeThread?.activities ?? [])
+          : null
+      }
     />
   );
 

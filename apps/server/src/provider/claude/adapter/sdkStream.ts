@@ -44,6 +44,7 @@ export function makeClaudeSdkStream(input: {
   readonly ensureThreadId: ClaudeRuntimeEventsShape["ensureThreadId"];
   readonly updateResumeCursor: ClaudeRuntimeEventsShape["updateResumeCursor"];
   readonly handleSystemMessage: ReturnType<typeof makeClaudeSystemMessages>["handleSystemMessage"];
+  readonly syncFastModeState: ReturnType<typeof makeClaudeSystemMessages>["syncFastModeState"];
   readonly warnUnhandledSdkKind: ClaudeRuntimeEventsShape["warnUnhandledSdkKind"];
   readonly emitTrackedTasksUpdated: ReturnType<
     typeof makeClaudeTaskPresentation
@@ -63,6 +64,7 @@ export function makeClaudeSdkStream(input: {
     ensureThreadId,
     updateResumeCursor,
     handleSystemMessage,
+    syncFastModeState,
     warnUnhandledSdkKind,
     emitTrackedTasksUpdated,
   } = input;
@@ -76,9 +78,7 @@ export function makeClaudeSdkStream(input: {
       }
       if (message.uuid && context.lastResultUuid === message.uuid) return;
       context.lastResultUuid = message.uuid;
-      if (message.fast_mode_state !== undefined) {
-        context.fastModeState = message.fast_mode_state;
-      }
+      yield* syncFastModeState(context, message);
 
       const assistantError = context.turnState?.assistantError;
       let status: RuntimeTurnState;

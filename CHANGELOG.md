@@ -28,6 +28,7 @@
 
 - Automatic worktree cleanup never removes a worktree whose state cannot be read and never deletes commits that exist nowhere else.
 - Committing selected files from the Environment panel no longer discards changes you staged in Source Control, and keeps partially staged files as staged.
+- Claude fast mode warns when Claude serves requests at standard speed, for example without usage credits or during a rate-limit cooldown, and notes that fast mode is billed from usage credits.
 
 ## 0.2.3 - 2026-10-10
 

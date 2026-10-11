@@ -22,6 +22,7 @@ import {
   buildContextWindowActivityPayload,
   compactTurnModelUsage,
 } from "./contextWindowPayloads";
+import { buildFastModeActivityPayload } from "./fastModePayloads";
 import {
   requestKindFromCanonicalRequestType,
   requestedPermissionProfile,
@@ -128,22 +129,40 @@ export function projectProviderRuntimeActivities(
         },
       ];
     case "session.configured": {
-      const payload = buildConfiguredContextWindowPayload(event);
-      if (!payload) {
-        return [];
-      }
-
+      const contextWindow = buildConfiguredContextWindowPayload(event);
+      const fastMode = buildFastModeActivityPayload(event);
+      const turnId = toTurnId(event.turnId) ?? null;
       return [
-        {
-          id: event.eventId,
-          createdAt: event.createdAt,
-          tone: "info",
-          kind: "context-window.configured",
-          summary: "Context window configured",
-          payload,
-          turnId: toTurnId(event.turnId) ?? null,
-          ...maybeSequence,
-        },
+        ...(contextWindow
+          ? [
+              {
+                id: event.eventId,
+                createdAt: event.createdAt,
+                tone: "info" as const,
+                kind: "context-window.configured",
+                summary: "Context window configured",
+                payload: contextWindow,
+                turnId,
+                ...maybeSequence,
+              },
+            ]
+          : []),
+        ...(fastMode
+          ? [
+              {
+                id: contextWindow
+                  ? EventId.makeUnsafe(`${event.eventId}:fast-mode`)
+                  : event.eventId,
+                createdAt: event.createdAt,
+                tone: "info" as const,
+                kind: "fast-mode.updated",
+                summary: "Fast mode state updated",
+                payload: fastMode,
+                turnId,
+                ...maybeSequence,
+              },
+            ]
+          : []),
       ];
     }
 
