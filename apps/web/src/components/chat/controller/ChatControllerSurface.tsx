@@ -363,7 +363,8 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
         className={cn(
           CHAT_SURFACE_HEADER_DIVIDER_CLASS_NAME,
           CHAT_SURFACE_HEADER_PADDING_X_CLASS,
-          "flex items-center pl-2 sm:pl-3",
+          // The trailing icon sits 12px from the right border, like the workspace rail's icons.
+          "flex items-center pl-2 sm:pl-3 sm:pr-1.5",
           CHAT_SURFACE_HEADER_HEIGHT_CLASS,
           isElectron && "drag-region",
           desktopTopBarTrafficLightGutterClassName,
