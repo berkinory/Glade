@@ -138,8 +138,6 @@ export function TerminalView(props: {
         }}
         actions={
           <div className="flex items-center gap-1">
-            <TerminalSplitButton direction="horizontal" onSplit={terminal.splitTerminal} />
-            <TerminalSplitButton direction="vertical" onSplit={terminal.splitTerminal} />
             <IconButton
               label="New terminal"
               tooltip="New terminal"
@@ -148,6 +146,8 @@ export function TerminalView(props: {
             >
               <PlusIcon className="size-3.5" />
             </IconButton>
+            <TerminalSplitButton direction="horizontal" onSplit={terminal.splitTerminal} />
+            <TerminalSplitButton direction="vertical" onSplit={terminal.splitTerminal} />
           </div>
         }
       />
