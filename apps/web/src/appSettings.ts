@@ -80,7 +80,7 @@ const DEFAULT_SIDEBAR_PROJECT_SORT_ORDER: SidebarProjectSortOrder = "manual";
 
 export const FollowUpBehavior = Schema.Literals(["queue", "steer"]);
 export type FollowUpBehavior = typeof FollowUpBehavior.Type;
-const DEFAULT_FOLLOW_UP_BEHAVIOR: FollowUpBehavior = "queue";
+const DEFAULT_FOLLOW_UP_BEHAVIOR: FollowUpBehavior = "steer";
 export const UiDensity = Schema.Literals(UI_DENSITY_MODES);
 export type UiDensity = typeof UiDensity.Type;
 export { DEFAULT_UI_DENSITY };
