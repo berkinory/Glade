@@ -6,6 +6,7 @@
 
 - Pull requests in the Environment panel show their checks and open review comments and offer the next step: fix failing checks, conflicts or review feedback with the agent, update a branch that fell behind, mark a draft ready, or merge once nothing blocks it.
 - Settings show whether the GitHub CLI is installed and signed in.
+- Choose whether a new worktree copies your uncommitted changes, or starts from the latest version of its branch on the remote.
 
 ### Improved
 

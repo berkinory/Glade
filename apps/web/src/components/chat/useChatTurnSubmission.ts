@@ -455,6 +455,12 @@ export function useChatTurnSubmission({
           resolvedThreadWorktreePath,
           runtimeModeForSend,
           envModeForSend,
+          copyLocalChangesToWorktree:
+            useComposerDraftStore.getState().getDraftThread(activeThread.id)?.copyLocalChanges ??
+            true,
+          startWorktreeFromRemote:
+            useComposerDraftStore.getState().getDraftThread(activeThread.id)?.startFromRemote ??
+            false,
           currentActiveGitBranch,
           isContainerLandingProject,
           api,
@@ -486,6 +492,7 @@ export function useChatTurnSubmission({
           currentActiveGitBranchForSend,
           baseBranchForWorktree,
           worktreeCopiesLocalChanges,
+          worktreeStartsFromRemote,
         } = workspace;
         const messageIdForSend = newMessageId();
         const worktreeSetupResolution = baseBranchForWorktree
@@ -632,6 +639,7 @@ export function useChatTurnSubmission({
           worktreeSetupResolution,
           baseBranchForWorktree,
           worktreeCopiesLocalChanges,
+          worktreeStartsFromRemote,
           selectedModelSelectionForSend,
           selectedModelForSend,
           targetProjectDefaultModelSelectionForSend,

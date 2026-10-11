@@ -230,6 +230,8 @@ const PersistedDraftThreadState = Schema.Struct({
   workingDirectory: Schema.optionalKey(Schema.NullOr(Schema.String)),
   lastKnownPr: Schema.optionalKey(Schema.NullOr(OrchestrationThreadPullRequest)),
   envMode: DraftThreadEnvModeSchema,
+  copyLocalChanges: Schema.optionalKey(Schema.Boolean),
+  startFromRemote: Schema.optionalKey(Schema.Boolean),
 
   promotedTo: Schema.optionalKey(ThreadId),
 });

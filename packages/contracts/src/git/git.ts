@@ -252,6 +252,8 @@ export const GitCreateDetachedWorktreeInput = Schema.Struct({
   ref: TrimmedNonEmptyStringSchema,
   path: Schema.NullOr(TrimmedNonEmptyStringSchema),
   copyChangesFrom: Schema.optional(TrimmedNonEmptyStringSchema),
+  // Fetch the branch's remote counterpart and start from it instead of the local branch.
+  startFromRemote: Schema.optional(Schema.Boolean),
 
   newBranch: Schema.optional(TrimmedNonEmptyStringSchema),
 

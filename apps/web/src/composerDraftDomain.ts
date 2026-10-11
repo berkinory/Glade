@@ -147,6 +147,9 @@ export interface DraftThreadState {
   workingDirectory?: string | null;
   lastKnownPr?: OrchestrationThreadPullRequest | null;
   envMode: DraftThreadEnvMode;
+  // Unset keeps the default: a new worktree based on the checked-out branch carries its local changes.
+  copyLocalChanges?: boolean;
+  startFromRemote?: boolean;
 
   promotedTo?: ThreadId;
 }
@@ -159,6 +162,8 @@ export interface DraftThreadMutationOptions {
   createdAt?: string;
 
   envMode?: DraftThreadEnvMode | undefined;
+  copyLocalChanges?: boolean;
+  startFromRemote?: boolean;
   runtimeMode?: RuntimeMode;
 }
 
@@ -327,6 +332,8 @@ export function buildDraftThreadState(input: {
       ? (existingThread?.worktreePath ?? null)
       : (options.worktreePath ?? null);
   const nextPromotedTo = existingThread?.promotedTo;
+  const nextCopyLocalChanges = options?.copyLocalChanges ?? existingThread?.copyLocalChanges;
+  const nextStartFromRemote = options?.startFromRemote ?? existingThread?.startFromRemote;
 
   return {
     projectId: input.projectId,
@@ -350,6 +357,8 @@ export function buildDraftThreadState(input: {
         : (options.lastKnownPr ?? null),
     envMode:
       options?.envMode ?? (nextWorktreePath ? "worktree" : (existingThread?.envMode ?? "local")),
+    ...(nextCopyLocalChanges !== undefined ? { copyLocalChanges: nextCopyLocalChanges } : {}),
+    ...(nextStartFromRemote !== undefined ? { startFromRemote: nextStartFromRemote } : {}),
 
     ...(nextPromotedTo ? { promotedTo: nextPromotedTo } : {}),
   };
@@ -372,6 +381,8 @@ export function draftThreadStatesEqual(
     (left.workingDirectory ?? null) === (right.workingDirectory ?? null) &&
     Equal.equals(left.lastKnownPr ?? null, right.lastKnownPr ?? null) &&
     left.envMode === right.envMode &&
+    left.copyLocalChanges === right.copyLocalChanges &&
+    left.startFromRemote === right.startFromRemote &&
     left.promotedTo === right.promotedTo
   );
 }

@@ -50,6 +50,8 @@ interface Input {
   resolvedThreadWorktreePath: string | null;
   runtimeModeForSend: RuntimeMode;
   envModeForSend: DraftThreadEnvMode;
+  copyLocalChangesToWorktree: boolean;
+  startWorktreeFromRemote: boolean;
   currentActiveGitBranch: string | null;
   isContainerLandingProject: boolean;
   api: NonNullable<ReturnType<typeof readNativeApi>>;
@@ -83,6 +85,8 @@ export async function prepareChatSendWorkspace({
   resolvedThreadWorktreePath,
   runtimeModeForSend,
   envModeForSend,
+  copyLocalChangesToWorktree,
+  startWorktreeFromRemote,
   currentActiveGitBranch,
   isContainerLandingProject,
   api,
@@ -294,7 +298,11 @@ export async function prepareChatSendWorkspace({
   }
 
   const worktreeCopiesLocalChanges =
-    Boolean(baseBranchForWorktree) && baseBranchForWorktree === activeRootBranch;
+    copyLocalChangesToWorktree &&
+    Boolean(baseBranchForWorktree) &&
+    baseBranchForWorktree === activeRootBranch &&
+    !startWorktreeFromRemote;
+  const worktreeStartsFromRemote = Boolean(baseBranchForWorktree) && startWorktreeFromRemote;
   return {
     threadIdForSend,
     title,
@@ -314,5 +322,6 @@ export async function prepareChatSendWorkspace({
     currentActiveGitBranchForSend,
     baseBranchForWorktree,
     worktreeCopiesLocalChanges,
+    worktreeStartsFromRemote,
   };
 }

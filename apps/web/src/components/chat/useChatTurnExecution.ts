@@ -54,6 +54,7 @@ interface PreparedChatTurn {
   worktreeSetupResolution: ReturnType<typeof createWorktreeSetupResolution> | null;
   baseBranchForWorktree: string | null;
   worktreeCopiesLocalChanges: boolean;
+  worktreeStartsFromRemote: boolean;
   selectedModelSelectionForSend: ModelSelection;
   selectedModelForSend: string;
   targetProjectDefaultModelSelectionForSend: ModelSelection | null;
@@ -179,6 +180,7 @@ export function useChatTurnExecution({
         worktreeSetupResolution,
         baseBranchForWorktree,
         worktreeCopiesLocalChanges,
+        worktreeStartsFromRemote,
         selectedModelSelectionForSend,
         targetProjectIdForSend,
         title,
@@ -335,6 +337,7 @@ export function useChatTurnExecution({
                 newBranch: buildTemporaryWorktreeBranchName(),
                 progressId: worktreeProgressId,
                 ...(worktreeCopiesLocalChanges ? { copyChangesFrom: targetProjectCwdForSend } : {}),
+                ...(worktreeStartsFromRemote ? { startFromRemote: true } : {}),
               }),
             resolution: worktreeSetupResolution,
             onCreationStep: (stepId) =>

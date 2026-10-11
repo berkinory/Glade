@@ -1,6 +1,6 @@
 import { ChevronDownIcon, GitForkIcon, HandIcon, ShieldCheckIcon, ShieldIcon } from "~/lib/icons";
 import { useQuery } from "@tanstack/react-query";
-import { gitBranchesQueryOptions } from "../lib/gitQueryOptions";
+import { gitBranchesQueryOptions, gitStatusQueryOptions } from "../lib/gitQueryOptions";
 import { Checkbox } from "./ui/checkbox";
 import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
@@ -41,7 +41,7 @@ import type { ContextWindowSnapshot } from "../lib/contextWindow";
 import { ComposerPickerMenuPopup } from "./chat/ComposerPickerMenuPopup";
 import { ComposerEnvironmentPicker } from "./chat/ComposerEnvironmentPicker";
 import { Button } from "./ui/button";
-import { Menu, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "./ui/menu";
+import { Menu, MenuCheckboxItem, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "./ui/menu";
 import type { ThreadWorkspacePatch } from "../types";
 function WorktreeGlyph({ className }: { className?: string }) {
   return <GitForkIcon className={className} />;
@@ -252,6 +252,10 @@ export default function BranchToolbar({
     ...gitBranchesQueryOptions(branchCwd),
     enabled: !hasServerThread && Boolean(branchCwd),
   });
+  const draftStatus = useQuery({
+    ...gitStatusQueryOptions(branchCwd),
+    enabled: !hasServerThread && Boolean(branchCwd) && draftGit.data?.isRepo === true,
+  });
   const effectiveEnvMode = resolveEffectiveEnvMode({
     activeWorktreePath,
     hasServerThread,
@@ -357,6 +361,25 @@ export default function BranchToolbar({
   );
   const canSwitchToLocal = Boolean(!envLocked && effectiveEnvMode === "worktree");
   const showEnvPicker = effectiveEnvMode === "local" || canSwitchToLocal;
+  // Mirrors the send-time rule: only a worktree based on the checked-out branch can carry its changes.
+  const canStartFromRemote =
+    !hasServerThread &&
+    effectiveEnvMode === "worktree" &&
+    !activeWorktreePath &&
+    activeThreadBranch !== null &&
+    (draftGit.data?.branches.some(
+      (branch) => branch.isRemote === true && branch.name.endsWith(`/${activeThreadBranch}`),
+    ) ??
+      false);
+  const startFromRemote = canStartFromRemote && draftThread?.startFromRemote === true;
+  const canCopyLocalChanges =
+    !startFromRemote &&
+    !hasServerThread &&
+    effectiveEnvMode === "worktree" &&
+    !activeWorktreePath &&
+    draftStatus.data?.hasWorkingTreeChanges === true &&
+    activeThreadBranch !== null &&
+    activeThreadBranch === draftStatus.data.branch;
   if (!activeThreadId || !activeProject) return null;
   return (
     <div
@@ -405,23 +428,70 @@ export default function BranchToolbar({
 
         {showEnvironment ? (
           !hasServerThread ? (
-            <label
-              className={cn(
-                "inline-flex shrink-0 items-center gap-2 text-ui-sm text-muted-foreground",
-                !isPanel && "ml-auto px-2 sm:px-2.5",
-              )}
-            >
-              <Checkbox
-                checked={effectiveEnvMode === "worktree"}
-                disabled={
-                  envLocked ||
-                  (effectiveEnvMode !== "worktree" &&
-                    (!canSwitchToWorktree || draftGit.data?.isRepo !== true))
-                }
-                onCheckedChange={(checked) => onEnvModeChange(checked ? "worktree" : "local")}
-              />
-              Worktree
-            </label>
+            <>
+              <label
+                className={cn(
+                  "inline-flex shrink-0 items-center gap-2 text-ui-sm text-muted-foreground",
+                  !isPanel && "ml-auto px-2 sm:px-2.5",
+                )}
+              >
+                <Checkbox
+                  checked={effectiveEnvMode === "worktree"}
+                  disabled={
+                    envLocked ||
+                    (effectiveEnvMode !== "worktree" &&
+                      (!canSwitchToWorktree || draftGit.data?.isRepo !== true))
+                  }
+                  onCheckedChange={(checked) => onEnvModeChange(checked ? "worktree" : "local")}
+                />
+                Worktree
+              </label>
+              {canStartFromRemote || canCopyLocalChanges ? (
+                <Menu>
+                  <MenuTrigger
+                    disabled={envLocked}
+                    render={
+                      <button
+                        type="button"
+                        aria-label="Worktree options"
+                        title="Worktree options"
+                        className={cn(
+                          "inline-flex shrink-0 items-center gap-1 rounded-md px-1 text-ui-sm text-muted-foreground hover:text-foreground",
+                          !isPanel && "mr-2 sm:mr-2.5",
+                        )}
+                      />
+                    }
+                  >
+                    {startFromRemote ? "From origin" : "From local"}
+                    <ChevronDownIcon aria-hidden className="size-3 opacity-60" />
+                  </MenuTrigger>
+                  <ComposerPickerMenuPopup align="end" side="top" className="min-w-60">
+                    {canStartFromRemote ? (
+                      <MenuCheckboxItem
+                        checked={startFromRemote}
+                        variant="switch"
+                        onCheckedChange={(checked) =>
+                          setDraftThreadContext(threadId, { startFromRemote: Boolean(checked) })
+                        }
+                      >
+                        Start from the latest remote branch
+                      </MenuCheckboxItem>
+                    ) : null}
+                    {canCopyLocalChanges ? (
+                      <MenuCheckboxItem
+                        checked={draftThread?.copyLocalChanges ?? true}
+                        variant="switch"
+                        onCheckedChange={(checked) =>
+                          setDraftThreadContext(threadId, { copyLocalChanges: Boolean(checked) })
+                        }
+                      >
+                        Copy uncommitted changes
+                      </MenuCheckboxItem>
+                    ) : null}
+                  </ComposerPickerMenuPopup>
+                </Menu>
+              ) : null}
+            </>
           ) : showEnvPicker ? (
             <ComposerEnvironmentPicker
               environmentPresentation={environmentPresentation}
