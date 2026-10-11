@@ -6,16 +6,9 @@ import { useState, type ReactNode } from "react";
 import { useEditorLaunchers, type EditorLaunchers } from "~/hooks/useEditorLaunchers";
 import { serverConfigQueryOptions } from "~/lib/serverReactQuery";
 import { cn } from "~/lib/utils";
-import {
-  Menu,
-  MenuRadioGroup,
-  MenuRadioItem,
-  MenuShortcut,
-  MenuTrigger,
-  MenuItem,
-  MenuSeparator,
-} from "../ui/menu";
+import { Menu, MenuRadioGroup, MenuTrigger, MenuItem, MenuSeparator } from "../ui/menu";
 import { ComposerPickerMenuPopup } from "./ComposerPickerMenuPopup";
+import { EditorMenuRadioItem } from "./EditorMenuRadioItem";
 import {
   ChatHeaderButton,
   ChatHeaderIconButton,
@@ -256,26 +249,14 @@ function OpenInPickerMenuPopup({
         value={preferredEditor ?? ""}
         onValueChange={(value) => setDefaultEditor(value as EditorId)}
       >
-        {displayedOptions.map(({ label, Icon, value }) => (
-          <MenuRadioItem
-            key={value}
-            preserveChildLayout
-            trailing={
-              value === preferredEditor && openFavoriteShortcutLabel ? (
-                <MenuShortcut>{openFavoriteShortcutLabel}</MenuShortcut>
-              ) : null
-            }
-            value={value}
+        {displayedOptions.map((option) => (
+          <EditorMenuRadioItem
+            key={option.value}
+            option={option}
+            shortcutLabel={option.value === preferredEditor ? openFavoriteShortcutLabel : null}
             disabled={!openInTarget}
-            onClick={() => openInEditor(value)}
-          >
-            <span className="flex min-w-0 items-center gap-2">
-              <span className="shrink-0">
-                <Icon aria-hidden="true" className="size-3.5 text-muted-foreground" />
-              </span>
-              <span className="truncate">{label}</span>
-            </span>
-          </MenuRadioItem>
+            onOpen={() => openInEditor(option.value)}
+          />
         ))}
       </MenuRadioGroup>
       {additionalMenuItems ? (
