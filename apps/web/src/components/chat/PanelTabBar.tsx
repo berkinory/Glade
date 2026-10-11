@@ -83,8 +83,9 @@ export function PanelTabBar(props: {
         }
         className={cn(
           "[-webkit-app-region:no-drag]",
-          content
-            ? "workspace-content-tab min-w-[min(9em,100%)] max-w-[24em] basis-[max-content] shrink text-ui-sm"
+          content && "workspace-content-tab text-ui-sm",
+          content && tab.onClose
+            ? "min-w-[min(9em,100%)] max-w-[24em] basis-[max-content] shrink"
             : "shrink-0",
           frozenWidth !== undefined && "!min-w-0 !shrink-0",
         )}
