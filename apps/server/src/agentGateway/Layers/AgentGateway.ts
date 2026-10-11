@@ -561,6 +561,7 @@ const makeAgentGateway = Effect.gen(function* () {
               worktreesDir: serverConfig.worktreesDir,
               snapshotQuery,
               git,
+              settings: serverSettings,
             }).pipe(
               Effect.catchCause((cause) =>
                 Effect.logWarning("agent gateway managed worktree retention failed", {

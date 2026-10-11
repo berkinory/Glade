@@ -7,6 +7,7 @@
 - Pull requests in the Environment panel show their checks and open review comments and offer the next step: fix failing checks, conflicts or review feedback with the agent, update a branch that fell behind, mark a draft ready, or merge once nothing blocks it.
 - Settings show whether the GitHub CLI is installed and signed in.
 - Choose whether a new worktree copies your uncommitted changes, or starts from the latest version of its branch on the remote.
+- Worktrees of archived chats can be removed once their pull request is merged or after a chosen number of days.
 
 ### Improved
 
@@ -18,6 +19,7 @@
 
 ### Fixed
 
+- Automatic worktree cleanup never removes a worktree whose state cannot be read and never deletes commits that exist nowhere else.
 - Committing selected files from the Environment panel no longer discards changes you staged in Source Control, and keeps partially staged files as staged.
 
 ## 0.2.3 - 2026-10-10

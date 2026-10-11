@@ -200,6 +200,7 @@ projectionSnapshotLayer("Projection snapshot threadReconciliation", (it) => {
           deletedAt: null,
           worktreePath: "/tmp/wt/active",
           associatedWorktreePath: null,
+          lastKnownPr: null,
         },
         {
           id: asThreadId("thread-worktree-deleted"),
@@ -207,6 +208,7 @@ projectionSnapshotLayer("Projection snapshot threadReconciliation", (it) => {
           deletedAt: "2026-07-24T00:00:09.000Z",
           worktreePath: "/tmp/wt/deleted",
           associatedWorktreePath: "/tmp/wt/deleted-assoc",
+          lastKnownPr: null,
         },
       ]);
     }),

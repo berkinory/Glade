@@ -119,6 +119,9 @@ export function makeSnapshotThreadLookup(input: {
               deletedAt: row.deletedAt ?? null,
               worktreePath: row.worktreePath ?? null,
               associatedWorktreePath: row.associatedWorktreePath ?? null,
+              lastKnownPr: row.lastKnownPr
+                ? { number: row.lastKnownPr.number, state: row.lastKnownPr.state }
+                : null,
             }),
           ),
         ),

@@ -730,6 +730,7 @@ const makeWsRpcHandlersLayer = () =>
         worktreesDir: config.worktreesDir,
         snapshotQuery: projectionReadModelQuery,
         git,
+        settings: serverSettings,
       }).pipe(
         // A retention failure must not present as an empty inventory: fall back to a plain scan so listing
         // callers still see the real worktrees.

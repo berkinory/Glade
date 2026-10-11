@@ -1,4 +1,5 @@
 import { McpSettingsPanel } from "~/components/settings/McpSettingsPanel";
+import { WorktreeCleanupPolicyRows } from "../components/settings/WorktreeCleanupPolicyRows";
 import { GitHubConnectionSettings } from "../components/settings/GitHubConnectionSettings";
 import { PluginsSettingsPanel } from "~/components/settings/PluginsSettingsPanel";
 import { ComputerSettings } from "~/components/computer/ComputerSettings";
@@ -932,6 +933,7 @@ function SettingsRouteView() {
                         resetLabel: "delete worktree on archive",
                         ariaLabel: "Delete worktree on archive",
                       })}
+                      <WorktreeCleanupPolicyRows />
                     </SettingsSection>
                     <SettingsSectionShell title="Managed worktrees" id="setting-managed-worktrees">
                       <WorktreesSettingsPanel active />

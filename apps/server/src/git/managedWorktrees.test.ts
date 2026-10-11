@@ -9,6 +9,9 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import type { GitCoreShape } from "./Services/GitCore.ts";
 import type { ProjectionSnapshotQueryShape } from "../orchestration/Services/ProjectionSnapshotQuery.ts";
+import { DEFAULT_SERVER_SETTINGS } from "@glade/contracts/settings/settings";
+import type { ServerSettingsShape } from "../settings/serverSettings.ts";
+import { GitCommandError } from "./Errors.ts";
 import {
   archivedWorktreeHasNoOtherOwners,
   discardManagedWorktreeResidue,
@@ -37,13 +40,13 @@ async function makeManagedRoot(count: number) {
   return { root, paths };
 }
 
-function statusDetails(dirty: boolean) {
+function statusDetails(dirty: boolean, branch: string | null = "glade/test") {
   return Effect.succeed({
     isRepo: true,
     hasOriginRemote: false,
     isDefaultBranch: false,
     upstreamRef: null,
-    branch: "glade/test",
+    branch,
     hasWorkingTreeChanges: dirty,
     stagedCount: 0,
     unstagedCount: dirty ? 1 : 0,
@@ -55,12 +58,19 @@ function makeGit(input: {
   readonly removals: string[];
   readonly snapshots?: string[];
   readonly dirtyPaths?: ReadonlySet<string>;
+  readonly detachedPaths?: ReadonlySet<string>;
+  readonly unreadablePaths?: ReadonlySet<string>;
+  readonly unreachableCommits?: ReadonlyMap<string, number>;
+  readonly reclaimedBranches?: boolean[];
 }) {
   return {
-    execute: ({ cwd }: { cwd: string }) =>
+    execute: ({ cwd, args }: { cwd: string; args: ReadonlyArray<string> }) =>
       Effect.succeed({
         code: 0,
-        stdout: `worktree /repo/project\nHEAD abc\nbranch refs/heads/main\n\nworktree ${cwd}\nHEAD abc\ndetached\n`,
+        stdout:
+          args[0] === "rev-list"
+            ? `${input.unreachableCommits?.get(cwd) ?? 0}\n`
+            : `worktree /repo/project\nHEAD abc\nbranch refs/heads/main\n\nworktree ${cwd}\nHEAD abc\ndetached\n`,
         stderr: "",
       }),
     withMutation: <A, E, R>(_cwd: string, effect: Effect.Effect<A, E, R>) => effect,
@@ -68,9 +78,31 @@ function makeGit(input: {
       Effect.sync(() => {
         input.snapshots?.push(outputPath);
       }),
-    statusDetails: (cwd: string) => statusDetails(input.dirtyPaths?.has(cwd) ?? false),
-    removeWorktree: ({ path: worktreePath }: { path: string }) =>
-      Effect.sync(() => input.removals.push(worktreePath)),
+    statusDetails: (cwd: string) =>
+      input.unreadablePaths?.has(cwd)
+        ? Effect.fail(
+            new GitCommandError({
+              operation: "test",
+              command: "git status",
+              cwd,
+              detail: "status unavailable",
+            }),
+          )
+        : statusDetails(
+            input.dirtyPaths?.has(cwd) ?? false,
+            input.detachedPaths?.has(cwd) ? null : "glade/test",
+          ),
+    removeWorktree: ({
+      path: worktreePath,
+      reclaimTemporaryBranch,
+    }: {
+      path: string;
+      reclaimTemporaryBranch: boolean;
+    }) =>
+      Effect.sync(() => {
+        input.removals.push(worktreePath);
+        input.reclaimedBranches?.push(reclaimTemporaryBranch);
+      }),
   } as unknown as GitCoreShape;
 }
 
@@ -251,6 +283,9 @@ describe("managed worktrees", () => {
         worktreesDir: root,
         snapshotQuery,
         git,
+        settings: {
+          getSettings: Effect.succeed(DEFAULT_SERVER_SETTINGS),
+        } as unknown as ServerSettingsShape,
       }),
     );
 
@@ -332,6 +367,86 @@ describe("managed worktrees", () => {
     expect(removals).toEqual([]);
     expect(snapshots).toHaveLength(1);
     expect(remaining).toEqual([{ path: paths[0], workspaceRoot: "/repo/project" }]);
+  });
+});
+
+describe("managed worktree cleanup policies", () => {
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const nowMs = Date.UTC(2026, 5, 1);
+
+  it("reclaims merged and expired archived worktrees inside the retention count", async () => {
+    const { root, paths } = await makeManagedRoot(4);
+    const [mergedPath, expiredPath, recentPath, activePath] = paths as [
+      string,
+      string,
+      string,
+      string,
+    ];
+    const removals: string[] = [];
+    const archived = (worktreePath: string, ageDays: number, prState?: "open" | "merged") => ({
+      id: `thread-${path.basename(path.dirname(worktreePath))}`,
+      worktreePath,
+      associatedWorktreePath: worktreePath,
+      archivedAt: new Date(nowMs - ageDays * DAY_MS).toISOString(),
+      deletedAt: null,
+      lastKnownPr: prState ? { number: 1, state: prState } : null,
+    });
+    const threads = [
+      archived(mergedPath, 1, "merged"),
+      archived(expiredPath, 40),
+      archived(recentPath, 2, "open"),
+      { ...archived(activePath, 0, "merged"), archivedAt: null },
+    ];
+
+    await Effect.runPromise(
+      pruneArchivedManagedWorktrees({
+        worktreesDir: root,
+        snapshotsDir: path.join(root, "snapshots"),
+        threads,
+        git: makeGit({ removals }),
+        policy: { deleteMerged: true, archivedMaxAgeMs: 30 * DAY_MS, nowMs },
+      }),
+    );
+
+    expect(removals.toSorted()).toEqual([mergedPath, expiredPath].toSorted());
+  });
+
+  it.each([
+    { name: "clean branch", git: {}, removed: true, reclaimed: true },
+    { name: "branch-only commits", git: { commits: 2 }, removed: true, reclaimed: false },
+    { name: "detached commits", git: { commits: 1, detached: true }, removed: false },
+    { name: "unreadable status", git: { unreadable: true }, removed: false },
+  ])("keeps every commit reachable: $name", async ({ git: scenario, removed, reclaimed }) => {
+    const { root, paths } = await makeManagedRoot(1);
+    const worktreePath = paths[0]!;
+    const removals: string[] = [];
+    const reclaimedBranches: boolean[] = [];
+    const commits = "commits" in scenario ? scenario.commits : 0;
+    await Effect.runPromise(
+      pruneArchivedManagedWorktrees({
+        worktreesDir: root,
+        snapshotsDir: path.join(root, "snapshots"),
+        threads: [
+          {
+            id: "thread-deleted",
+            worktreePath,
+            associatedWorktreePath: worktreePath,
+            archivedAt: null,
+            deletedAt: "2026-08-01T00:00:00.000Z",
+          },
+        ],
+        git: makeGit({
+          removals,
+          reclaimedBranches,
+          unreachableCommits: new Map([[worktreePath, commits]]),
+          detachedPaths: new Set("detached" in scenario ? [worktreePath] : []),
+          unreadablePaths: new Set("unreadable" in scenario ? [worktreePath] : []),
+        }),
+      }),
+    );
+
+    expect(removals).toEqual(removed ? [worktreePath] : []);
+    expect(reclaimedBranches).toEqual(removed ? [reclaimed] : []);
   });
 });
 

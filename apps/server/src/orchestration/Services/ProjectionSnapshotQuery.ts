@@ -82,6 +82,10 @@ export interface ProjectionManagedWorktreeThread {
   readonly deletedAt: string | null;
   readonly worktreePath: string | null;
   readonly associatedWorktreePath: string | null;
+  readonly lastKnownPr: {
+    readonly number: number;
+    readonly state: "open" | "closed" | "merged";
+  } | null;
 }
 
 export interface ProjectionSnapshotQueryShape {

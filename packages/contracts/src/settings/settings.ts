@@ -45,6 +45,8 @@ export const KeepAwakeMode = Schema.Literals(["off", "agent", "always"]);
 export type KeepAwakeMode = typeof KeepAwakeMode.Type;
 export const DEFAULT_KEEP_AWAKE_MODE: KeepAwakeMode = "off";
 
+const ArchivedWorktreeMaxAgeDays = Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 365 }));
+
 export const ServerSettings = Schema.Struct({
   enableAssistantStreaming: Schema.Boolean.pipe(Schema.withDecodingDefault(() => true)),
   enableProviderUpdateChecks: Schema.Boolean.pipe(Schema.withDecodingDefault(() => true)),
@@ -61,6 +63,11 @@ export const ServerSettings = Schema.Struct({
     claudeAgent: ClaudeServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
   }).pipe(Schema.withDecodingDefault(() => ({}))),
   skills: SkillsServerSettings.pipe(Schema.withDecodingDefault(() => ({}))),
+  // Both apply only to archived chats, and only to clean worktrees whose commits stay reachable.
+  deleteMergedArchivedWorktrees: Schema.Boolean.pipe(Schema.withDecodingDefault(() => true)),
+  archivedWorktreeMaxAgeDays: Schema.NullOr(ArchivedWorktreeMaxAgeDays).pipe(
+    Schema.withDecodingDefault(() => null),
+  ),
 
   onboardingCompletedAt: Schema.optionalKey(Schema.NullOr(IsoDateTime)),
 });
@@ -116,6 +123,8 @@ export const ServerSettingsPatch = Schema.Struct({
       disabled: Schema.optionalKey(Schema.Array(Schema.String.check(Schema.isMaxLength(256)))),
     }),
   ),
+  deleteMergedArchivedWorktrees: Schema.optionalKey(Schema.Boolean),
+  archivedWorktreeMaxAgeDays: Schema.optionalKey(Schema.NullOr(ArchivedWorktreeMaxAgeDays)),
   onboardingCompletedAt: Schema.optionalKey(Schema.NullOr(IsoDateTime)),
 });
 export type ServerSettingsPatch = typeof ServerSettingsPatch.Type;

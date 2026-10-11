@@ -193,6 +193,29 @@ by rebase conflicts retains its recovery intent across restart.
 File menus add selected untracked files to the repository-root `.gitignore` using
 literal, rooted paths; tracked files remain tracked and existing ignore rules are preserved.
 
+The Environment panel's Git row shows the next step for the branch (Commit, Commit & push,
+Commit, push & PR, Push & create PR, Pull, Create PR or Publish repository) with a short
+status line, and shows live progress while an action runs; a disabled row states why. Its
+commit dialog starts from the files staged in Source Control when there are any, shows
+per-file line counts, and commits a selection without discarding other staged changes; a
+selection equal to the index commits it as staged, including partial hunks. On a pull
+request, the panel lists checks and unresolved review comments and offers the one action that
+unblocks it next: Resolve, Fix or Address drafts a message for the agent, Update merges the
+base branch into a branch that fell behind, Ready marks a draft ready for review, and Merge,
+offered only when nothing blocks it, merges on GitHub with a method the repository allows.
+Each review comment can also be sent to the agent on its own. Checks refresh while any are
+running. A new worktree based on the checked-out branch copies local changes unless Copy
+changes is turned off; From origin instead fetches the branch's remote counterpart and starts
+there. Creating a branch does not publish it; the first push does. The commit-and-push
+shortcut runs the panel's next step.
+
+Settings under Git & worktrees show the GitHub CLI sign-in state. Automatic worktree cleanup
+only touches worktrees of archived or deleted chats: it keeps the 15 most recent archived
+worktrees, and can also remove those whose pull request was merged (on by default) or that were
+archived longer than a chosen number of days. It never removes a worktree with uncommitted
+changes or unreadable state, never deletes a branch holding commits found nowhere else, and
+keeps a snapshot for 30 days.
+
 ## Existing data
 
 Databases start from the single baseline at migration 1, released in 0.1.0. Databases

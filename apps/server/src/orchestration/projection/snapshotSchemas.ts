@@ -89,6 +89,7 @@ export const ProjectionManagedWorktreeThreadRowSchema = Schema.Struct({
   deletedAt: ProjectionThread.fields.deletedAt,
   worktreePath: ProjectionThread.fields.worktreePath,
   associatedWorktreePath: ProjectionThread.fields.associatedWorktreePath,
+  lastKnownPr: Schema.NullOr(Schema.fromJsonString(OrchestrationThreadPullRequest)),
 });
 
 export const ProjectionThreadActivityDbRowSchema = ProjectionThreadActivity.mapFields(

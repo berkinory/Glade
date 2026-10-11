@@ -10,6 +10,8 @@ import { Effect } from "effect";
 
 import type { GitCoreShape } from "./Services/GitCore.ts";
 import type { ProjectionSnapshotQueryShape } from "../orchestration/Services/ProjectionSnapshotQuery.ts";
+import type { ServerSettingsShape } from "../settings/serverSettings.ts";
+import type { GitHubCliShape } from "./Services/GitHubCli.ts";
 
 class ManagedWorktreeError extends Error {
   readonly _tag = "ManagedWorktreeError";
@@ -87,9 +89,29 @@ export interface ManagedWorktreeThreadRef {
   readonly deletedAt?: string | null | undefined;
   readonly worktreePath?: string | null | undefined;
   readonly associatedWorktreePath?: string | null | undefined;
+  readonly lastKnownPr?:
+    | { readonly number: number; readonly state: "open" | "closed" | "merged" }
+    | null
+    | undefined;
 }
 
-type ManagedWorktreeRemovalReason = "deleted" | "archived-retention";
+// Policies only ever reclaim worktrees whose chats are archived; an open chat keeps its workspace.
+export interface ManagedWorktreeCleanupPolicy {
+  readonly deleteMerged: boolean;
+  readonly archivedMaxAgeMs: number | null;
+  readonly nowMs: number;
+}
+
+const COUNT_ONLY_POLICY: Omit<ManagedWorktreeCleanupPolicy, "nowMs"> = {
+  deleteMerged: false,
+  archivedMaxAgeMs: null,
+};
+
+type ManagedWorktreeRemovalReason =
+  | "deleted"
+  | "archived-retention"
+  | "archived-merged"
+  | "archived-expired";
 
 interface ManagedWorktreeRemovalCandidate {
   readonly entry: ServerManagedWorktree;
@@ -233,6 +255,7 @@ function classifyManagedWorktreeRemovalCandidates(input: {
   readonly inventory: ReadonlyArray<ServerManagedWorktree>;
   readonly threads: ReadonlyArray<ManagedWorktreeThreadRef>;
   readonly canonicalByRecordedPath: ReadonlyMap<string, string>;
+  readonly policy: ManagedWorktreeCleanupPolicy;
 }): ReadonlyArray<ManagedWorktreeRemovalCandidate> {
   const canonicalThreadPath = (thread: ManagedWorktreeThreadRef): string | null => {
     const recordedPath = threadManagedWorktreePath(thread);
@@ -289,15 +312,30 @@ function classifyManagedWorktreeRemovalCandidates(input: {
       return true;
     });
 
-  const archivedRetentionCandidates = archivedKeepers.slice(MANAGED_WORKTREE_RETENTION_COUNT).map(
-    ({ thread, entry }): ManagedWorktreeRemovalCandidate => ({
-      entry,
-      thread,
-      reason: "archived-retention",
-    }),
+  const archivedPolicyReason = (
+    thread: ManagedWorktreeThreadRef,
+    index: number,
+  ): ManagedWorktreeRemovalReason | null => {
+    if (input.policy.deleteMerged && thread.lastKnownPr?.state === "merged")
+      return "archived-merged";
+    const archivedAtMs = Date.parse(thread.archivedAt ?? "");
+    if (
+      input.policy.archivedMaxAgeMs !== null &&
+      Number.isFinite(archivedAtMs) &&
+      input.policy.nowMs - archivedAtMs > input.policy.archivedMaxAgeMs
+    ) {
+      return "archived-expired";
+    }
+    return index >= MANAGED_WORKTREE_RETENTION_COUNT ? "archived-retention" : null;
+  };
+  const archivedCandidates = archivedKeepers.flatMap(
+    ({ thread, entry }, index): ManagedWorktreeRemovalCandidate[] => {
+      const reason = archivedPolicyReason(thread, index);
+      return reason ? [{ entry, thread, reason }] : [];
+    },
   );
 
-  return [...deletedCandidates, ...archivedRetentionCandidates];
+  return [...deletedCandidates, ...archivedCandidates];
 }
 
 const ensureSnapshotsDir = (snapshotsDir: string) =>
@@ -351,7 +389,8 @@ function removeManagedWorktreeSafely(input: {
             }).pipe(Effect.as(null)),
           ),
         );
-        if (status?.hasWorkingTreeChanges) {
+        if (status === null) return false;
+        if (status.hasWorkingTreeChanges) {
           yield* Effect.logWarning(
             "managed worktree cleanup skipped dirty worktree; refusing silent data loss",
             {
@@ -364,11 +403,38 @@ function removeManagedWorktreeSafely(input: {
           return false;
         }
 
+        // Commits reachable only from this worktree's own branch or detached HEAD would be lost with it.
+        const unreachableCommits = yield* input.git
+          .execute({
+            operation: "ManagedWorktrees.countUnreachableCommits",
+            cwd: entry.path,
+            args: [
+              "rev-list",
+              "--count",
+              "HEAD",
+              "--not",
+              ...(status.branch ? [`--exclude=refs/heads/${status.branch}`] : []),
+              "--branches",
+              "--remotes",
+              "--tags",
+            ],
+          })
+          .pipe(Effect.map((result) => Number.parseInt(result.stdout.trim(), 10)));
+        const keepsUnreachableCommits =
+          !Number.isFinite(unreachableCommits) || unreachableCommits > 0;
+        if (keepsUnreachableCommits && status.branch === null) {
+          yield* Effect.logWarning(
+            "managed worktree cleanup kept a detached worktree with unreachable commits",
+            { threadId: thread.id, worktreePath: entry.path, reason },
+          );
+          return false;
+        }
+
         yield* input.git.removeWorktree({
           cwd: entry.workspaceRoot,
           path: entry.path,
           force: false,
-          reclaimTemporaryBranch: true,
+          reclaimTemporaryBranch: !keepsUnreachableCommits,
         });
 
         yield* discardEmptyManagedWorktreeParent({
@@ -395,6 +461,7 @@ export function pruneArchivedManagedWorktrees(input: {
   readonly snapshotsDir: string;
   readonly threads: ReadonlyArray<ManagedWorktreeThreadRef>;
   readonly git: GitCoreShape;
+  readonly policy?: ManagedWorktreeCleanupPolicy;
 }): Effect.Effect<ReadonlyArray<ServerManagedWorktree>, TaggedFailure> {
   return Effect.gen(function* () {
     const inventory = yield* listManagedWorktrees(input);
@@ -403,6 +470,7 @@ export function pruneArchivedManagedWorktrees(input: {
       inventory,
       threads: input.threads,
       canonicalByRecordedPath,
+      policy: input.policy ?? { ...COUNT_ONLY_POLICY, nowMs: Date.now() },
     });
     const removedPaths = new Set<string>();
     if (removalCandidates.length > 0) {
@@ -434,14 +502,50 @@ export function pruneProjectedArchivedManagedWorktrees(input: {
   readonly worktreesDir: string;
   readonly snapshotQuery: ProjectionSnapshotQueryShape;
   readonly git: GitCoreShape;
+  readonly settings: ServerSettingsShape;
+  // Archived chats rarely refresh their PR, so the periodic sweep re-reads ones still marked open.
+  readonly github?: GitHubCliShape;
 }): Effect.Effect<ReadonlyArray<ServerManagedWorktree>, TaggedFailure> {
   return Effect.gen(function* () {
-    const threads = yield* input.snapshotQuery.listManagedWorktreeThreads();
+    const settings = yield* input.settings.getSettings;
+    const projected = yield* input.snapshotQuery.listManagedWorktreeThreads();
+    const github = settings.deleteMergedArchivedWorktrees ? input.github : undefined;
+    const threads = github
+      ? yield* Effect.forEach(
+          projected,
+          (thread) => {
+            const worktreePath = threadManagedWorktreePath(thread);
+            const pr = thread.lastKnownPr;
+            if (
+              !isArchivedOnlyManagedWorktreeThread(thread) ||
+              !worktreePath ||
+              pr?.state !== "open"
+            )
+              return Effect.succeed(thread);
+            return github.getPullRequest({ cwd: worktreePath, reference: String(pr.number) }).pipe(
+              Effect.map((latest) => ({
+                ...thread,
+                lastKnownPr: { number: pr.number, state: latest.state ?? pr.state },
+              })),
+              Effect.catch(() => Effect.succeed(thread)),
+            );
+          },
+          { concurrency: 2 },
+        )
+      : projected;
     return yield* pruneArchivedManagedWorktrees({
       worktreesDir: input.worktreesDir,
       snapshotsDir: managedWorktreeSnapshotsDir(input.homeDir),
       threads,
       git: input.git,
+      policy: {
+        deleteMerged: settings.deleteMergedArchivedWorktrees,
+        archivedMaxAgeMs:
+          settings.archivedWorktreeMaxAgeDays === null
+            ? null
+            : settings.archivedWorktreeMaxAgeDays * 24 * 60 * 60 * 1000,
+        nowMs: Date.now(),
+      },
     });
   });
 }

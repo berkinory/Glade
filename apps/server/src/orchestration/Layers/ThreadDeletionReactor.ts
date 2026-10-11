@@ -11,6 +11,7 @@ import { BrowserHost } from "../../browser/Services/BrowserHost";
 import { ServerConfig } from "../../server/config";
 import { GitCore } from "../../git/Services/GitCore";
 import { pruneProjectedArchivedManagedWorktrees } from "../../git/managedWorktrees";
+import { ServerSettingsService } from "../../settings/serverSettings";
 import { ProfileStatsArchive } from "../../diagnostics/profileStatsArchive";
 import { ProviderService } from "../../provider/Services/ProviderService";
 import { TerminalManager, type TerminalManagerShape } from "../../terminal/Services/Manager";
@@ -98,6 +99,7 @@ const make = Effect.gen(function* () {
   const projectionSnapshotQuery = yield* ProjectionSnapshotQuery;
   const serverConfig = yield* ServerConfig;
   const git = yield* GitCore;
+  const serverSettings = yield* ServerSettingsService;
 
   const pruneManagedWorktreesAfterLifecycle = (context: {
     readonly eventType: ThreadDeletedEvent["type"];
@@ -108,6 +110,7 @@ const make = Effect.gen(function* () {
       worktreesDir: serverConfig.worktreesDir,
       snapshotQuery: projectionSnapshotQuery,
       git,
+      settings: serverSettings,
     }).pipe(
       Effect.asVoid,
       Effect.catch((error) =>

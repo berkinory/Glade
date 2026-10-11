@@ -33,7 +33,8 @@ export function makeSnapshotThreadQueries(input: { readonly sql: SqlClient.SqlCl
           archived_at AS "archivedAt",
           deleted_at AS "deletedAt",
           worktree_path AS "worktreePath",
-          associated_worktree_path AS "associatedWorktreePath"
+          associated_worktree_path AS "associatedWorktreePath",
+          last_known_pr_json AS "lastKnownPr"
         FROM projection_threads
         WHERE worktree_path IS NOT NULL
            OR associated_worktree_path IS NOT NULL
