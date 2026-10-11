@@ -20,9 +20,9 @@ export const CHAT_SURFACE_HEADER_ROW_CLASS_NAME = cn(
   CHAT_SURFACE_HEADER_HEIGHT_CLASS,
   CHAT_SURFACE_HEADER_DIVIDER_CLASS_NAME,
 );
-export const CHAT_HEADER_ICON_STRENGTH_CLASS_NAME =
+const CHAT_HEADER_ICON_STRENGTH_CLASS_NAME =
   "text-[var(--color-text-foreground)] [&_svg]:!opacity-100";
-export const CHAT_HEADER_CONTROL_CLASS_NAME = "!h-7 shrink-0 rounded-lg";
+const CHAT_HEADER_CONTROL_CLASS_NAME = "!h-7 shrink-0 rounded-lg";
 const CHAT_SURFACE_CONTROL_IDLE_TEXT_CLASS_NAME = "text-[var(--color-text-foreground-secondary)]";
 export const CHAT_SURFACE_CONTROL_ACTIVE_CLASS_NAME =
   "bg-[var(--color-background-button-secondary)] text-[var(--color-text-foreground)]";

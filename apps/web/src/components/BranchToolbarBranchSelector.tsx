@@ -1,4 +1,5 @@
 import { ChevronDownIcon, PlusIcon, SearchIcon, WorkflowCircle04Icon } from "~/lib/icons";
+import { CreateBranchDialog } from "./CreateBranchDialog";
 import type { GitBranch, GitStashInfoResult, GitStatusResult } from "@glade/contracts/git/git";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -50,7 +51,6 @@ import {
   ComboboxPopup,
   ComboboxTrigger,
 } from "./ui/combobox";
-import { Input } from "./ui/input";
 import { toBranchActionErrorMessage, handleCheckoutError } from "./branchCheckoutRecovery";
 import { toastManager } from "./ui/toast";
 import {
@@ -153,7 +153,6 @@ export function BranchToolbarBranchSelector({
     () => dedupeRemoteBranchesWithLocalMatches(branchesQuery.data?.branches ?? []),
     [branchesQuery.data?.branches],
   );
-  const hasOriginRemote = branchesQuery.data?.hasOriginRemote ?? false;
   const currentGitBranch =
     branchStatusQuery.data?.branch ?? branches.find((branch) => branch.current)?.name ?? null;
   const canonicalActiveBranch = resolveBranchToolbarValue({
@@ -405,7 +404,6 @@ export function BranchToolbarBranchSelector({
         await api.git.createBranch({
           cwd: branchCwd,
           branch: name,
-          publish: hasOriginRemote,
         });
         try {
           await api.git.checkout({
@@ -707,82 +705,14 @@ export function BranchToolbarBranchSelector({
           </div>
         ) : null}
       </ComboboxPopup>
-      <Dialog
+      <CreateBranchDialog
         open={isCreateBranchDialogOpen}
-        onOpenChange={(open) => {
-          setIsCreateBranchDialogOpen(open);
-          if (!open) {
-            setCreateBranchName("");
-          }
-        }}
-      >
-        <DialogPopup className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Create Branch</DialogTitle>
-            <DialogDescription>
-              {`Create and switch to a new branch from ${resolvedActiveBranch ?? currentGitBranch ?? "the current HEAD"}.`}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogPanel className="space-y-3">
-            <form
-              className="space-y-3"
-              onSubmit={(event) => {
-                event.preventDefault();
-                const nextName = createBranchName.trim();
-                if (!nextName || branchByName.has(nextName)) {
-                  return;
-                }
-                setIsCreateBranchDialogOpen(false);
-                createBranch(nextName);
-              }}
-            >
-              <div className="space-y-1.5">
-                <label
-                  className="block font-medium text-ui leading-snug"
-                  htmlFor="branch-create-name"
-                >
-                  Branch name
-                </label>
-                <Input
-                  autoFocus
-                  id="branch-create-name"
-                  placeholder="feature/my-change"
-                  value={createBranchName}
-                  onChange={(event) => setCreateBranchName(event.target.value)}
-                />
-              </div>
-              {branchByName.has(createBranchName.trim()) ? (
-                <p className="text-destructive text-ui leading-snug">
-                  A branch with this name already exists.
-                </p>
-              ) : null}
-              <DialogFooter variant="bare">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  type="button"
-                  onClick={() => {
-                    setIsCreateBranchDialogOpen(false);
-                    setCreateBranchName("");
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={
-                    createBranchName.trim().length === 0 ||
-                    branchByName.has(createBranchName.trim())
-                  }
-                >
-                  Create and switch
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogPanel>
-        </DialogPopup>
-      </Dialog>
+        onOpenChange={setIsCreateBranchDialogOpen}
+        baseLabel={resolvedActiveBranch ?? currentGitBranch ?? "the current HEAD"}
+        initialName={createBranchName}
+        isNameTaken={(name) => branchByName.has(name)}
+        onCreate={createBranch}
+      />
       <Dialog
         open={stashDiscardDialog !== null}
         onOpenChange={(open) => {

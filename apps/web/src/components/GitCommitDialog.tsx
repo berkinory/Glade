@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
@@ -19,6 +20,10 @@ import {
   GitDialogShell,
 } from "./GitDialogChrome";
 import { cn } from "~/lib/utils";
+import {
+  gitSourceControlFilesQueryOptions,
+  gitWorkingTreeDiffStatsQueryOptions,
+} from "~/lib/gitQueryOptions";
 
 export interface GitCommitDialogSubmission {
   action: GitCommitDialogAction["action"];
@@ -38,6 +43,8 @@ interface GitCommitDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   context: GitDialogContext;
+  gitCwd: string | null;
+  primaryActionId: "commit" | "commit_push";
   onSubmit: (submission: GitCommitDialogSubmission) => void;
   onOpenFile: (filePath: string) => void;
 }
@@ -46,22 +53,69 @@ export function GitCommitDialog({
   open,
   onOpenChange,
   context,
+  gitCwd,
+  primaryActionId,
   onSubmit,
   onOpenFile,
 }: GitCommitDialogProps) {
   const [message, setMessage] = useState("");
   const [excludedFiles, setExcludedFiles] = useState<ReadonlySet<string>>(new Set());
   const [isEditingFiles, setIsEditingFiles] = useState(false);
+  const [selectionSeeded, setSelectionSeeded] = useState(false);
+  const sourceFiles = useQuery({
+    ...gitSourceControlFilesQueryOptions(gitCwd),
+    enabled: open && gitCwd !== null,
+  });
+  const workingTreeStats = useQuery(
+    gitWorkingTreeDiffStatsQueryOptions({ cwd: gitCwd, includeFiles: true, enabled: open }),
+  );
+  const stagedStats = useQuery(
+    gitWorkingTreeDiffStatsQueryOptions({
+      cwd: gitCwd,
+      scope: "staged",
+      includeFiles: true,
+      enabled: open,
+    }),
+  );
 
   useEffect(() => {
     if (!open) return;
     setMessage("");
     setExcludedFiles(new Set());
     setIsEditingFiles(false);
+    setSelectionSeeded(false);
   }, [open]);
 
   const gitStatus = context.gitStatus;
-  const allFiles = useMemo(() => gitStatus?.workingTree.files ?? [], [gitStatus]);
+  const stagedPaths = useMemo(
+    () => new Set(sourceFiles.data?.staged.map((file) => file.path) ?? []),
+    [sourceFiles.data],
+  );
+  const statusFiles = useMemo(() => gitStatus?.workingTree.files ?? [], [gitStatus]);
+  // A selection equal to the index is committed as staged, so its counts come from the index.
+  const commitsIndexAsStaged =
+    stagedPaths.size > 0 &&
+    statusFiles.every((file) => excludedFiles.has(file.path) !== stagedPaths.has(file.path));
+  const allFiles = useMemo(() => {
+    const source = commitsIndexAsStaged ? stagedStats.data : workingTreeStats.data;
+    const stats = new Map(source?.files?.map((file) => [file.path, file]));
+    return statusFiles.map((file) => {
+      const stat = stats.get(file.path);
+      return stat ? { ...file, insertions: stat.insertions, deletions: stat.deletions } : file;
+    });
+  }, [commitsIndexAsStaged, stagedStats.data, statusFiles, workingTreeStats.data]);
+
+  // Staged files are the user's explicit selection from Source Control, so the dialog starts there
+  // instead of silently widening the commit to every change.
+  useEffect(() => {
+    if (!open || selectionSeeded || !sourceFiles.data) return;
+    setSelectionSeeded(true);
+    if (stagedPaths.size === 0) return;
+    setExcludedFiles(
+      new Set(allFiles.filter((file) => !stagedPaths.has(file.path)).map((file) => file.path)),
+    );
+    setIsEditingFiles(true);
+  }, [allFiles, open, selectionSeeded, sourceFiles.data, stagedPaths]);
   const selectedFiles = useMemo(
     () => allFiles.filter((file) => !excludedFiles.has(file.path)),
     [allFiles, excludedFiles],
@@ -88,7 +142,7 @@ export function GitCommitDialog({
   };
 
   const submitPrimary = () => {
-    const primary = actions.find((action) => action.id === "commit");
+    const primary = actions.find((action) => action.id === primaryActionId);
     if (primary) submit(primary);
   };
 
@@ -166,6 +220,7 @@ export function GitCommitDialog({
                     key={file.path}
                     file={file}
                     excluded={excludedFiles.has(file.path)}
+                    staged={stagedPaths.has(file.path)}
                     selectable={isEditingFiles && !incomplete}
                     onToggle={() => toggleFile(file.path)}
                     onOpen={() => onOpenFile(file.path)}
@@ -180,12 +235,12 @@ export function GitCommitDialog({
         {actions.map((action) => (
           <GitDialogActionRow
             key={action.id}
-            highlighted={action.id === "commit"}
+            highlighted={action.id === primaryActionId}
             disabled={action.disabled}
             disabledReason={action.disabledReason}
             icon={<GitActionGlyph name={action.icon} className="size-4" />}
             label={action.label}
-            {...(action.id === "commit" ? { trailing: <SubmitShortcutKbd /> } : {})}
+            {...(action.id === primaryActionId ? { trailing: <SubmitShortcutKbd /> } : {})}
             onClick={() => submit(action)}
           />
         ))}
@@ -203,12 +258,14 @@ function summarizeSelection(total: number, selected: number, allSelected: boolea
 function ChangedFileRow({
   file,
   excluded,
+  staged,
   selectable,
   onToggle,
   onOpen,
 }: {
   file: ChangedFile;
   excluded: boolean;
+  staged: boolean;
   selectable: boolean;
   onToggle: () => void;
   onOpen: () => void;
@@ -216,7 +273,6 @@ function ChangedFileRow({
   return (
     <div className="flex w-full items-center gap-2 rounded-md px-2 py-1 font-mono text-ui leading-snug transition-colors hover:bg-[var(--color-background-button-secondary-hover)]">
       {selectable ? <Checkbox checked={!excluded} onCheckedChange={onToggle} /> : null}
-      {}
       <button
         type="button"
         className="group flex flex-1 items-center justify-between gap-3 truncate text-left"
@@ -230,7 +286,10 @@ function ChangedFileRow({
         >
           {file.path}
         </span>
-        <span className="shrink-0">
+        <span className="flex shrink-0 items-center gap-2">
+          {staged ? (
+            <span className="font-sans text-ui-xs text-muted-foreground">Staged</span>
+          ) : null}
           {excluded ? (
             <span className="text-muted-foreground">Excluded</span>
           ) : (

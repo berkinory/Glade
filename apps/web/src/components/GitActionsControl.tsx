@@ -1,4 +1,3 @@
-import { ChevronDownIcon } from "~/lib/icons";
 import { ComposerPickerMenuPopup } from "~/components/chat/ComposerPickerMenuPopup";
 import { Button } from "~/components/ui/button";
 import {
@@ -6,39 +5,27 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogPanel,
   DialogPopup,
   DialogTitle,
 } from "~/components/ui/dialog";
-import { Input } from "~/components/ui/input";
 import { Menu, MenuGroup, MenuGroupLabel, MenuSeparator, MenuTrigger } from "~/components/ui/menu";
 import { Popover, PopoverPopup, PopoverTrigger } from "~/components/ui/popover";
+import { Spinner } from "~/components/ui/spinner";
 import { cn } from "~/lib/utils";
-import {
-  CHAT_HEADER_CONTROL_CLASS_NAME,
-  CHAT_HEADER_ICON_CONTROL_CLASS_NAME,
-  CHAT_HEADER_ICON_STRENGTH_CLASS_NAME,
-  CHAT_HEADER_SPLIT_LEADING_CLASS_NAME,
-  CHAT_HEADER_SPLIT_TRAILING_CLASS_NAME,
-  ChatHeaderButton,
-  ChatHeaderSplitDivider,
-  ChatHeaderSplitGroup,
-} from "./chat/chatHeaderControls";
+import { ChatHeaderButton } from "./chat/chatHeaderControls";
 import {
   ENVIRONMENT_ROW_CLASS_NAME,
   ENVIRONMENT_ROW_ICON_CLASS_NAME,
   EnvironmentRow,
-  EnvironmentRowBody,
   EnvironmentRowChevron,
 } from "./chat/environment/EnvironmentRow";
 import { GitActionGlyph } from "./gitActionGlyphs";
-import { type GitGlyphName } from "./GitActionsControl.logic";
+import { CreateBranchDialog } from "./CreateBranchDialog";
 import { GitCommitDialog } from "./GitCommitDialog";
 import { GitCreatePrDialog } from "./GitCreatePrDialog";
 import {
   GitPickerMenuRow,
   GitQuickActionIcon,
-  findRunnableCommitPushMenuItem,
   type GitActionsControlProps,
 } from "./gitActionsControlModel";
 import { useGitActionsControl } from "./useGitActionsControl";
@@ -50,7 +37,6 @@ export default function GitActionsControl(props: GitActionsControlProps) {
     promotedPull,
     isGitActionRunning,
     runSyncWithRemote,
-    gitActionMenuItems,
     gitPickerMenuItems,
     gitStatusForActions,
     isGitStatusOutOfSync,
@@ -73,20 +59,22 @@ export default function GitActionsControl(props: GitActionsControlProps) {
     continuePendingDefaultBranchAction,
     isCreateBranchDialogOpen,
     setIsCreateBranchDialogOpen,
-    setCreateBranchName,
-    createBranchName,
-    createBranchNameConflicts,
-    createBranchNameFieldId,
+    suggestedCreateBranchName,
+    isCreateBranchNameTaken,
+    currentBranchName,
     createAndCheckoutBranch,
-    isPanel,
-    showPromotedPullAction,
-    openDialogForMenuItem,
     requestGitActionAvailabilityRefresh,
     isRepo,
     initMutation,
     quickActionDisabledReason,
     quickAction,
+    quickActionContext,
     runQuickAction,
+    commitDialogPrimary,
+    publishDialog,
+    isPublishPending,
+    gitCwd,
+    actionProgress,
   } = model;
   if (visibleWhen === "pull-available") {
     if (!promotedPull) return null;
@@ -107,7 +95,6 @@ export default function GitActionsControl(props: GitActionsControlProps) {
       </ChatHeaderButton>
     );
   }
-  const runnableCommitPushMenuItem = findRunnableCommitPushMenuItem(gitActionMenuItems);
   const gitMenuContent = (
     <>
       <MenuGroup>
@@ -190,6 +177,8 @@ export default function GitActionsControl(props: GitActionsControlProps) {
           if (!open) setIsCommitDialogOpen(false);
         }}
         context={commitDialogContext}
+        gitCwd={gitCwd}
+        primaryActionId={commitDialogPrimary}
         onSubmit={handleCommitDialogSubmit}
         onOpenFile={openChangedFileInEditor}
       />
@@ -211,7 +200,7 @@ export default function GitActionsControl(props: GitActionsControlProps) {
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setPendingDefaultBranchAction(null)}>
-              Abort
+              Cancel
             </Button>
             <Button size="sm" onClick={continuePendingDefaultBranchAction}>
               {pendingDefaultBranchActionCopy?.continueLabel ?? "Continue"}
@@ -220,232 +209,61 @@ export default function GitActionsControl(props: GitActionsControlProps) {
         </DialogPopup>
       </Dialog>
 
-      <Dialog
+      <CreateBranchDialog
         open={isCreateBranchDialogOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setIsCreateBranchDialogOpen(false);
-            setCreateBranchName("");
-          }
-        }}
-      >
-        <DialogPopup className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Create Branch</DialogTitle>
-            <DialogDescription>
-              Create and switch to a branch from the current HEAD. Future commits, pushes, and PRs
-              will use it.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogPanel className="space-y-3">
-            <form
-              className="space-y-3"
-              onSubmit={(event) => {
-                event.preventDefault();
-                const trimmedName = createBranchName.trim();
-                if (!trimmedName || createBranchNameConflicts) {
-                  return;
-                }
-                void createAndCheckoutBranch(trimmedName);
-              }}
-            >
-              <div className="space-y-1.5">
-                <label
-                  className="block font-medium text-ui leading-snug"
-                  htmlFor={createBranchNameFieldId}
-                >
-                  Branch name
-                </label>
-                <Input
-                  autoFocus
-                  id={createBranchNameFieldId}
-                  placeholder="feature/my-change"
-                  value={createBranchName}
-                  onChange={(event) => setCreateBranchName(event.target.value)}
-                />
-              </div>
-              {createBranchNameConflicts ? (
-                <p className="text-destructive text-ui leading-snug">
-                  A branch with this name already exists.
-                </p>
-              ) : null}
-              <DialogFooter variant="bare">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  type="button"
-                  onClick={() => {
-                    setIsCreateBranchDialogOpen(false);
-                    setCreateBranchName("");
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={createBranchName.trim().length === 0 || createBranchNameConflicts}
-                >
-                  Create Branch
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogPanel>
-        </DialogPopup>
-      </Dialog>
+        onOpenChange={setIsCreateBranchDialogOpen}
+        baseLabel={currentBranchName ?? "the current HEAD"}
+        initialName={suggestedCreateBranchName}
+        isNameTaken={isCreateBranchNameTaken}
+        onCreate={(name) => void createAndCheckoutBranch(name)}
+      />
     </>
   );
-  if (isPanel) {
-    const showPanelPullRow = showPromotedPullAction;
-    const panelPrimaryLabel = showPanelPullRow
-      ? (promotedPull?.label ?? "Pull")
-      : (runnableCommitPushMenuItem?.label ?? "Commit and Push");
-    const panelPrimaryGlyph: GitGlyphName = showPanelPullRow ? "sync" : "push";
-    const runPanelPrimaryAction = () => {
-      if (showPanelPullRow) {
-        runSyncWithRemote();
-        return;
-      }
-      if (runnableCommitPushMenuItem) {
-        openDialogForMenuItem(runnableCommitPushMenuItem);
-      }
-    };
-    const panelGitActionsMenu = (
-      <Menu
-        onOpenChange={(open) => {
-          if (open) requestGitActionAvailabilityRefresh();
-        }}
-      >
-        <MenuTrigger
-          render={
-            <button
-              type="button"
-              className={cn(ENVIRONMENT_ROW_CLASS_NAME, "w-auto shrink-0 px-1.5")}
-              aria-label="Git action options"
-              title="More Git actions"
-            />
-          }
-        >
-          <EnvironmentRowChevron />
-        </MenuTrigger>
-        <ComposerPickerMenuPopup align="start" side="bottom" className="w-60 min-w-60">
-          {gitMenuContent}
-        </ComposerPickerMenuPopup>
-      </Menu>
-    );
-    return (
-      <>
-        {!isRepo ? (
-          <EnvironmentRow
-            icon={<GitActionGlyph name="branch" className={ENVIRONMENT_ROW_ICON_CLASS_NAME} />}
-            label={initMutation.isPending ? "Initializing..." : "Initialize Git"}
-            disabled={initMutation.isPending}
-            onClick={() => initMutation.mutate()}
-          />
-        ) : (
-          <div className="flex w-full items-center">
-            <button
-              type="button"
-              className={cn(ENVIRONMENT_ROW_CLASS_NAME, "min-w-0 flex-1")}
-              aria-label={panelPrimaryLabel}
-              title={panelPrimaryLabel}
-              disabled={isGitActionRunning || (!showPanelPullRow && !runnableCommitPushMenuItem)}
-              onClick={runPanelPrimaryAction}
-            >
-              <EnvironmentRowBody
-                icon={
-                  <GitActionGlyph
-                    name={panelPrimaryGlyph}
-                    className={ENVIRONMENT_ROW_ICON_CLASS_NAME}
-                  />
-                }
-                label={panelPrimaryLabel}
-              />
-            </button>
-            {panelGitActionsMenu}
-          </div>
-        )}
-        {gitActionDialogs}
-      </>
-    );
-  }
+  const quickActionUnavailable = quickAction.disabled || isPublishPending;
+  const primaryLabel =
+    actionProgress?.title ?? (isGitActionRunning ? "Running Git action..." : quickAction.label);
+  const primaryDetail = actionProgress
+    ? actionProgress.detail
+    : (quickActionDisabledReason ?? quickActionContext);
   return (
     <>
       {!isRepo ? (
-        <Button
-          variant="chrome-outline"
-          size="xs"
-          className={cn(CHAT_HEADER_CONTROL_CLASS_NAME, CHAT_HEADER_ICON_STRENGTH_CLASS_NAME)}
+        <EnvironmentRow
+          icon={<GitActionGlyph name="branch" className={ENVIRONMENT_ROW_ICON_CLASS_NAME} />}
+          label={initMutation.isPending ? "Initializing..." : "Initialize Git"}
           disabled={initMutation.isPending}
           onClick={() => initMutation.mutate()}
-        >
-          {initMutation.isPending ? "Initializing..." : "Initialize Git"}
-        </Button>
+        />
       ) : (
-        <ChatHeaderSplitGroup label="Git actions">
-          {promotedPull ? (
-            <Button
-              variant="chrome-outline"
-              size="xs"
-              className={cn(
-                CHAT_HEADER_CONTROL_CLASS_NAME,
-                CHAT_HEADER_ICON_STRENGTH_CLASS_NAME,
-                CHAT_HEADER_SPLIT_LEADING_CLASS_NAME,
-              )}
-              disabled={isGitActionRunning}
-              aria-label={promotedPull.label}
-              title={promotedPull.label}
-              onClick={runSyncWithRemote}
-            >
-              <GitActionGlyph name="sync" />
-              <span className="font-normal">{promotedPull.label}</span>
-            </Button>
-          ) : quickActionDisabledReason ? (
-            <Popover>
-              <PopoverTrigger
-                openOnHover
-                render={
-                  <Button
-                    aria-label={quickAction.label}
-                    aria-disabled="true"
-                    className={cn(
-                      CHAT_HEADER_CONTROL_CLASS_NAME,
-                      CHAT_HEADER_ICON_STRENGTH_CLASS_NAME,
-                      CHAT_HEADER_SPLIT_LEADING_CLASS_NAME,
-                      "cursor-not-allowed opacity-64",
-                    )}
-                    size="xs"
-                    variant="chrome-outline"
-                    title={quickAction.label}
-                  />
-                }
-              >
+        <div className="flex w-full items-start">
+          <button
+            type="button"
+            className={cn(
+              ENVIRONMENT_ROW_CLASS_NAME,
+              "min-w-0 flex-1 items-start",
+              quickActionUnavailable && "cursor-default",
+            )}
+            aria-label={primaryLabel}
+            aria-disabled={quickActionUnavailable || undefined}
+            disabled={isGitActionRunning}
+            onClick={quickActionUnavailable ? undefined : runQuickAction}
+          >
+            <span className="flex h-[1.5em] size-[1.143em] shrink-0 items-center justify-center [&>svg]:size-full">
+              {isGitActionRunning || isPublishPending ? (
+                <Spinner variant="action" className={ENVIRONMENT_ROW_ICON_CLASS_NAME} />
+              ) : (
                 <GitQuickActionIcon quickAction={quickAction} />
-                <span className="font-normal">{quickAction.label}</span>
-              </PopoverTrigger>
-              <PopoverPopup tooltipStyle side="bottom" align="start">
-                {quickActionDisabledReason}
-              </PopoverPopup>
-            </Popover>
-          ) : (
-            <Button
-              variant="chrome-outline"
-              size="xs"
-              className={cn(
-                CHAT_HEADER_CONTROL_CLASS_NAME,
-                CHAT_HEADER_ICON_STRENGTH_CLASS_NAME,
-                CHAT_HEADER_SPLIT_LEADING_CLASS_NAME,
               )}
-              disabled={isGitActionRunning || quickAction.disabled}
-              aria-label={quickAction.label}
-              title={quickAction.label}
-              onClick={runQuickAction}
-            >
-              <GitQuickActionIcon quickAction={quickAction} />
-              <span className="font-normal">{quickAction.label}</span>
-            </Button>
-          )}
-          <ChatHeaderSplitDivider />
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className={cn("truncate", quickActionUnavailable && "text-muted-foreground")}>
+                {primaryLabel}
+              </span>
+              {primaryDetail ? (
+                <span className="truncate text-ui-xs text-muted-foreground">{primaryDetail}</span>
+              ) : null}
+            </span>
+          </button>
           <Menu
             onOpenChange={(open) => {
               if (open) requestGitActionAvailabilityRefresh();
@@ -453,29 +271,24 @@ export default function GitActionsControl(props: GitActionsControlProps) {
           >
             <MenuTrigger
               render={
-                <Button
-                  aria-label="Git action options"
-                  size="icon-xs"
-                  variant="chrome-outline"
-                  className={cn(
-                    CHAT_HEADER_ICON_CONTROL_CLASS_NAME,
-                    CHAT_HEADER_ICON_STRENGTH_CLASS_NAME,
-                    CHAT_HEADER_SPLIT_TRAILING_CLASS_NAME,
-                  )}
+                <button
+                  type="button"
+                  className={cn(ENVIRONMENT_ROW_CLASS_NAME, "w-auto shrink-0 self-stretch px-1.5")}
+                  aria-label="More Git actions"
+                  title="More Git actions"
                 />
               }
-              disabled={isGitActionRunning}
             >
-              <ChevronDownIcon aria-hidden="true" className="size-3.5" />
+              <EnvironmentRowChevron />
             </MenuTrigger>
-            <ComposerPickerMenuPopup align="end" side="bottom" className="w-50 min-w-50">
+            <ComposerPickerMenuPopup align="start" side="bottom" className="w-60 min-w-60">
               {gitMenuContent}
             </ComposerPickerMenuPopup>
           </Menu>
-        </ChatHeaderSplitGroup>
+        </div>
       )}
-
       {gitActionDialogs}
+      {publishDialog}
     </>
   );
 }

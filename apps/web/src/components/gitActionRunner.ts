@@ -112,7 +112,13 @@ type GitActionRunnerDeps = {
   runAction: (input: RunStackedActionVariables) => Promise<GitRunStackedActionResult>;
   threadToastData: { threadId: ThreadId } | undefined;
   setPendingDefaultBranchAction: Dispatch<SetStateAction<PendingDefaultBranchAction | null>>;
+  onProgressChange: (progress: GitActionProgressView | null) => void;
 };
+
+export interface GitActionProgressView {
+  title: string;
+  detail: string | undefined;
+}
 
 export function useGitActionRunner(deps: GitActionRunnerDeps) {
   const {
@@ -125,6 +131,7 @@ export function useGitActionRunner(deps: GitActionRunnerDeps) {
     runAction,
     threadToastData,
     setPendingDefaultBranchAction,
+    onProgressChange,
   } = deps;
   return useCallback(
     async function runGitActionWithToast({
@@ -236,14 +243,18 @@ export function useGitActionRunner(deps: GitActionRunnerDeps) {
 
       let failedMessage: string | null = null;
       let failedPhase: string | null = null;
-      const updateProgress = () =>
+      const updateProgress = () => {
+        const detail = resolveProgressDescription(progress);
+        onProgressChange({ title: progress.title, detail });
         toastManager.update(resolvedProgressToastId, {
           type: "loading",
           title: progress.title,
-          description: resolveProgressDescription(progress),
+          description: detail,
           timeout: 0,
           data: threadToastData,
         });
+      };
+      onProgressChange({ title: progress.title, detail: undefined });
       const unsubscribe = readNativeApi()?.git.onActionProgress((event: GitActionProgressEvent) => {
         if (event.actionId !== actionId) return;
         const now = Date.now();
@@ -428,6 +439,7 @@ export function useGitActionRunner(deps: GitActionRunnerDeps) {
       } finally {
         unsubscribe?.();
         window.clearInterval(interval);
+        onProgressChange(null);
       }
     },
     [
@@ -435,6 +447,7 @@ export function useGitActionRunner(deps: GitActionRunnerDeps) {
       gitStatusForActions,
       hasOriginRemote,
       isDefaultBranch,
+      onProgressChange,
       openCreatePrDialog,
       persistThreadPr,
       runAction,

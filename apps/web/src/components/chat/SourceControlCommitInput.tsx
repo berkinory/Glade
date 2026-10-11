@@ -1,10 +1,12 @@
-import { SparkleIcon, GitCommitHorizontalIcon } from "~/lib/icons";
+import { ChevronDownIcon, SparkleIcon, GitCommitHorizontalIcon } from "~/lib/icons";
 import { useMutation } from "@tanstack/react-query";
 import { getProviderStartOptions, useAppSettings } from "~/appSettings";
 import { ensureNativeApi } from "~/nativeApi";
 import { useCopyToClipboard } from "~/lib/clipboard";
 import { useCommitDrafts } from "./commitDraftStore";
 import { Button } from "../ui/button";
+import { Menu, MenuItem, MenuTrigger } from "../ui/menu";
+import { ComposerPickerMenuPopup } from "./ComposerPickerMenuPopup";
 import { IconButton } from "../ui/icon-button";
 import { Textarea } from "../ui/textarea";
 import { Spinner } from "../ui/spinner";
@@ -19,6 +21,7 @@ export function SourceControlCommitInput(props: {
   onChange: (message: string) => void;
   onGenerated: (message: string, scope: CommitScope) => void;
   onCommit: () => void;
+  onCommitAndPush: () => void;
 }) {
   const { settings } = useAppSettings();
   const generationError = useCommitDrafts((state) => state.generationErrors[props.cwd]);
@@ -105,15 +108,36 @@ export function SourceControlCommitInput(props: {
             }}
           />
         </div>
-        <Button
-          size="xs"
-          variant="default"
-          className="h-7.5 sm:h-7.5"
-          disabled={!props.canCommit || generation.isPending}
-          onClick={props.onCommit}
-        >
-          {props.committing ? <Spinner variant="action" /> : <GitCommitHorizontalIcon />} Commit
-        </Button>
+        <div className="flex shrink-0">
+          <Button
+            size="xs"
+            variant="default"
+            className="h-7.5 rounded-r-none sm:h-7.5"
+            disabled={!props.canCommit || generation.isPending}
+            onClick={props.onCommit}
+          >
+            {props.committing ? <Spinner variant="action" /> : <GitCommitHorizontalIcon />} Commit
+          </Button>
+          <Menu>
+            <MenuTrigger
+              disabled={!props.canCommit || generation.isPending}
+              render={
+                <Button
+                  size="xs"
+                  variant="default"
+                  aria-label="More commit actions"
+                  className="h-7.5 rounded-l-none border-l border-l-primary-foreground/20 px-1 sm:h-7.5"
+                />
+              }
+            >
+              <ChevronDownIcon aria-hidden className="size-3.5" />
+            </MenuTrigger>
+            <ComposerPickerMenuPopup align="end" side="bottom" className="min-w-44">
+              <MenuItem onClick={props.onCommit}>Commit</MenuItem>
+              <MenuItem onClick={props.onCommitAndPush}>Commit &amp; push</MenuItem>
+            </ComposerPickerMenuPopup>
+          </Menu>
+        </div>
       </div>
       {generationError && (
         <div

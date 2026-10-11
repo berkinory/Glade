@@ -445,7 +445,7 @@ export function useChatKeyboardShortcuts({
           event.stopPropagation();
           toastManager.add({
             type: "info",
-            title: "Nothing to commit or push.",
+            title: "No Git action is available here.",
           });
         }
         return;

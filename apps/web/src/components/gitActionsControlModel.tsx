@@ -2,12 +2,11 @@ import { InfoIcon } from "~/lib/icons";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { GitStatusResult } from "@glade/contracts/git/git";
 import { GIT_ACTION_ICON_CLASS, GitActionGlyph } from "./gitActionGlyphs";
-import type { GitActionMenuItem, GitGlyphName, GitQuickAction } from "./GitActionsControl.logic";
+import type { GitGlyphName, GitQuickAction } from "./GitActionsControl.logic";
 import { MenuItem } from "./ui/menu";
 export interface GitActionsControlProps {
   gitCwd: string | null;
   activeThreadId: ThreadId | null;
-  variant?: "header" | "panel";
   visibleWhen?: "always" | "pull-available";
   // Lets a parent capture "run commit & push for this instance's repo" so a global keyboard shortcut
   // can trigger it without duplicating the action logic. Called with `null` on unmount/dependency
@@ -44,14 +43,6 @@ export function GitQuickActionIcon({ quickAction }: { quickAction: GitQuickActio
   const name = resolveGitQuickActionGlyph(quickAction);
   if (name) return <GitActionGlyph name={name} />;
   return <InfoIcon className={GIT_ACTION_ICON_CLASS} />;
-}
-export function findRunnableCommitPushMenuItem(
-  items: GitActionMenuItem[],
-): GitActionMenuItem | null {
-  return (
-    items.find((item) => (item.id === "commit_push" || item.id === "push") && !item.disabled) ??
-    null
-  );
 }
 export function GitPickerMenuRow({ item }: { item: GitPickerMenuItem }) {
   return (

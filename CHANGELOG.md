@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Improved
+
+- The Environment panel's Git button always shows the next step for your branch, why it is unavailable when it is, and live progress while it runs.
+- Source Control replaces separate pull and push buttons with one sync button that shows what will happen, and adds Commit & push to the commit button.
+- The commit dialog starts from the files you staged and shows line counts for each file.
+- Creating a branch no longer publishes it right away; it is published on its first push.
+- The commit-and-push shortcut runs the Git panel's next step.
+
 ### Fixed
 
 - Committing selected files from the Environment panel no longer discards changes you staged in Source Control, and keeps partially staged files as staged.

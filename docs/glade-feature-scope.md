@@ -160,8 +160,10 @@ focus. Ordinary file edits refresh working-copy data without resetting History.
 Ref/HEAD movements refresh active history and branch queries; remote fetch remains
 separate from filesystem notifications. Retry controls remain for actual failures.
 
-Source Control shows outgoing and incoming commit counts to the left of Fetch when
-the branch has an upstream. Incoming counts reflect the last fetched remote state.
+Beside Fetch, one sync button names the next remote step with its commit counts: Publish
+branch without an upstream, Pull when only behind, Push when only ahead, and Sync when
+diverged, which runs Push's integration. An up-to-date branch shows Up to date. Incoming
+counts reflect the last fetched remote state.
 
 History pages through commits on the current branch as the virtualized list scrolls.
 Filtering searches commit messages across the branch, including unloaded pages.
@@ -177,7 +179,8 @@ on the commit each branch currently points to; this is not a branch graph.
 Repositories without a remote upstream show neither icon.
 
 The right dock commits staged changes, or explicitly stages all Changes when the index
-is empty, with a workspace-scoped message draft and Cmd/Ctrl+Enter. AI generation
+is empty, with a workspace-scoped message draft and Cmd/Ctrl+Enter. Its Commit menu also
+offers Commit & push. AI generation
 reads staged changes when present, otherwise all Changes, without index or commit
 mutations. The dock also supports fetch across configured remotes, fast-forward-only
 pull, push of existing commits, and the

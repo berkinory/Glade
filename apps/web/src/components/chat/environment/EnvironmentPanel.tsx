@@ -170,7 +170,6 @@ export function EnvironmentPanel({
         <GitActionsControl
           gitCwd={gitCwd}
           activeThreadId={activeThreadId}
-          variant="panel"
           onRegisterCommitAndPushTrigger={onRegisterCommitAndPushTrigger}
         />
       ) : null}

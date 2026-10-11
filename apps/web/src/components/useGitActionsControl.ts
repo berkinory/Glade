@@ -1,7 +1,7 @@
 import type { GitStatusResult } from "@glade/contracts/git/git";
 import type { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useId, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getProviderStartOptions, useAppSettings } from "~/appSettings";
 import { toastManager } from "~/components/ui/toast";
 import { openInPreferredEditor } from "~/editorPreferences";
@@ -23,9 +23,15 @@ import {
   isGitExpensiveReadCapacityError,
   refreshGitActionAvailability,
 } from "../lib/gitQueryOptions";
-import { useGitActionRunner, type PendingDefaultBranchAction } from "./gitActionRunner";
+import { useGitPublishFlow } from "./chat/useGitPublishFlow";
+import {
+  useGitActionRunner,
+  type GitActionProgressView,
+  type PendingDefaultBranchAction,
+} from "./gitActionRunner";
 import {
   buildMenuItems,
+  describeGitActionContext,
   requiresFeatureBranchForDefaultBranchAction,
   resolveCreatePrBaseBranch,
   resolveCreatePrDialogRuntimeStatus,
@@ -49,7 +55,6 @@ import {
 
 import {
   encodeBranchForCompareUrl,
-  findRunnableCommitPushMenuItem,
   type CreatePrDialogState,
   type GitActionsControlProps,
   type GitPickerMenuItem,
@@ -57,14 +62,10 @@ import {
 export function useGitActionsControl({
   gitCwd,
   activeThreadId,
-  variant: variantProp,
   visibleWhen: visibleWhenProp,
   onRegisterCommitAndPushTrigger,
 }: GitActionsControlProps) {
-  const variant = variantProp ?? "header";
   const visibleWhen = visibleWhenProp ?? "always";
-  const isPanel = variant === "panel";
-  const createBranchNameFieldId = useId();
   const { settings } = useAppSettings();
 
   const providerOptions = useMemo(() => getProviderStartOptions(settings), [settings]);
@@ -89,10 +90,13 @@ export function useGitActionsControl({
   );
   const queryClient = useQueryClient();
   const [isCommitDialogOpen, setIsCommitDialogOpen] = useState(false);
+  const [actionProgress, setActionProgress] = useState<GitActionProgressView | null>(null);
+  const [commitDialogPrimary, setCommitDialogPrimary] = useState<"commit" | "commit_push">(
+    "commit",
+  );
   const [pendingDefaultBranchAction, setPendingDefaultBranchAction] =
     useState<PendingDefaultBranchAction | null>(null);
   const [isCreateBranchDialogOpen, setIsCreateBranchDialogOpen] = useState(false);
-  const [createBranchName, setCreateBranchName] = useState("");
   const [createPrDialog, setCreatePrDialog] = useState<CreatePrDialogState | null>(null);
   const { data: branchListData, isSuccess: branchListReady } = useQuery(
     gitBranchesQueryOptions(gitCwd),
@@ -377,9 +381,9 @@ export function useGitActionsControl({
   const runSyncWithRemote = useCallback(() => {
     const promise = pullMutation.mutateAsync();
     void toastManager.promise(promise, {
-      loading: { title: "Syncing with remote...", data: threadToastData },
+      loading: { title: "Pulling...", data: threadToastData },
       success: (result) => ({
-        title: result.status === "pulled" ? "Remote synced" : "Already up to date",
+        title: result.status === "pulled" ? "Pulled" : "Already up to date",
         description:
           result.status === "pulled"
             ? `Updated ${result.branch} from ${result.upstreamBranch ?? "upstream"}`
@@ -387,7 +391,7 @@ export function useGitActionsControl({
         data: threadToastData,
       }),
       error: (err) => ({
-        title: "Sync failed",
+        title: "Could not pull",
         description: err instanceof Error ? err.message : "An error occurred.",
         data: threadToastData,
       }),
@@ -405,6 +409,7 @@ export function useGitActionsControl({
     runAction: runImmediateGitActionMutation.mutateAsync,
     threadToastData,
     setPendingDefaultBranchAction,
+    onProgressChange: setActionProgress,
   });
 
   const createPrDialogRuntimeStatus = useMemo(
@@ -555,9 +560,14 @@ export function useGitActionsControl({
   );
 
   const openCreateBranchDialog = useCallback(() => {
-    setCreateBranchName(suggestedCreateBranchName);
     setIsCreateBranchDialogOpen(true);
-  }, [suggestedCreateBranchName]);
+  }, []);
+
+  const publishFlow = useGitPublishFlow(gitCwd);
+  const openCommitDialog = useCallback((primary: "commit" | "commit_push" = "commit") => {
+    setCommitDialogPrimary(primary);
+    setIsCommitDialogOpen(true);
+  }, []);
 
   const runQuickAction = useCallback(() => {
     if (quickAction.kind === "open_pr") {
@@ -570,6 +580,10 @@ export function useGitActionsControl({
     }
     if (quickAction.kind === "create_branch") {
       openCreateBranchDialog();
+      return;
+    }
+    if (quickAction.kind === "publish") {
+      publishFlow.start(() => void runGitActionWithToast({ action: "push" }));
       return;
     }
     if (quickAction.kind === "show_hint") {
@@ -586,28 +600,30 @@ export function useGitActionsControl({
         openCreatePrDialog();
         return;
       }
+      if (quickAction.action === "commit" || quickAction.action === "commit_push") {
+        openCommitDialog(quickAction.action);
+        return;
+      }
       void runGitActionWithToast({ action: quickAction.action });
     }
   }, [
+    openCommitDialog,
     openCreateBranchDialog,
     openCreatePrDialog,
     openExistingPr,
+    publishFlow,
     quickAction,
     runGitActionWithToast,
     runSyncWithRemote,
     threadToastData,
   ]);
 
-  const openCommitDialog = useCallback(() => {
-    setIsCommitDialogOpen(true);
-  }, []);
-
   const normalizedCurrentBranchName = currentBranchName?.trim().toLowerCase() ?? "";
-  const normalizedCreateBranchName = createBranchName.trim().toLowerCase();
-  const createBranchNameConflicts =
-    normalizedCreateBranchName.length > 0 &&
-    normalizedCreateBranchName !== normalizedCurrentBranchName &&
-    branchNames.has(normalizedCreateBranchName);
+  // Re-entering the current branch's name confirms it instead of counting as a conflict.
+  const isCreateBranchNameTaken = (name: string) => {
+    const normalized = name.trim().toLowerCase();
+    return normalized !== normalizedCurrentBranchName && branchNames.has(normalized);
+  };
 
   const createAndCheckoutBranch = useCallback(
     async (branchName: string) => {
@@ -618,7 +634,6 @@ export function useGitActionsControl({
       if (!trimmedName) return;
 
       setIsCreateBranchDialogOpen(false);
-      setCreateBranchName("");
 
       if (trimmedName.toLowerCase() === normalizedCurrentBranchName) {
         if (activeThreadId) {
@@ -655,7 +670,7 @@ export function useGitActionsControl({
       });
 
       try {
-        await api.git.createBranch({ cwd: gitCwd, branch: trimmedName, publish: hasOriginRemote });
+        await api.git.createBranch({ cwd: gitCwd, branch: trimmedName });
         await api.git.checkout({ cwd: gitCwd, branch: trimmedName });
         if (activeThreadId) {
           void api.orchestration
@@ -702,7 +717,6 @@ export function useGitActionsControl({
       activeThread?.worktreePath,
       activeThreadId,
       gitCwd,
-      hasOriginRemote,
       normalizedCurrentBranchName,
       queryClient,
       setThreadWorkspaceAction,
@@ -739,14 +753,9 @@ export function useGitActionsControl({
     // Pull-only header instances must not steal the Environment panel's commit & push shortcut
     // registration, including while they are hidden.
     if (visibleWhen === "pull-available") return;
-    const target = findRunnableCommitPushMenuItem(gitActionMenuItems);
-    if (!target) {
-      onRegisterCommitAndPushTrigger(null);
-      return;
-    }
-    onRegisterCommitAndPushTrigger(() => openDialogForMenuItem(target));
+    onRegisterCommitAndPushTrigger(runQuickAction);
     return () => onRegisterCommitAndPushTrigger(null);
-  }, [gitActionMenuItems, onRegisterCommitAndPushTrigger, openDialogForMenuItem, visibleWhen]);
+  }, [onRegisterCommitAndPushTrigger, runQuickAction, visibleWhen]);
 
   const gitPickerMenuItems = useMemo<GitPickerMenuItem[]>(() => {
     const items: GitPickerMenuItem[] = [];
@@ -926,12 +935,10 @@ export function useGitActionsControl({
     continuePendingDefaultBranchAction,
     isCreateBranchDialogOpen,
     setIsCreateBranchDialogOpen,
-    setCreateBranchName,
-    createBranchName,
-    createBranchNameConflicts,
-    createBranchNameFieldId,
+    suggestedCreateBranchName,
+    isCreateBranchNameTaken,
+    currentBranchName,
     createAndCheckoutBranch,
-    isPanel,
     showPromotedPullAction,
     openDialogForMenuItem,
     requestGitActionAvailabilityRefresh,
@@ -939,6 +946,12 @@ export function useGitActionsControl({
     initMutation,
     quickActionDisabledReason,
     quickAction,
+    quickActionContext: describeGitActionContext(gitStatusForActions, hasOriginRemote),
     runQuickAction,
+    commitDialogPrimary,
+    publishDialog: publishFlow.dialog,
+    actionProgress,
+    gitCwd,
+    isPublishPending: publishFlow.isPending,
   };
 }

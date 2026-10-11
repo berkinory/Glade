@@ -1,14 +1,13 @@
 import {
   CloudDownloadIcon,
-  ArrowDownToLineIcon,
-  ArrowUpToLineIcon,
+  CloudUploadIcon,
   RefreshCwIcon,
   ArrowUp02Icon,
   ArrowDown02Icon,
 } from "~/lib/icons";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-import type { GitPublishContextResult } from "@glade/contracts/git/githubRepositoryPublishing";
-import { GitPublishDialog } from "./GitPublishDialog";
+import type { GitStatusResult } from "@glade/contracts/git/git";
+import { useGitPublishFlow } from "./useGitPublishFlow";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCommitDrafts } from "./commitDraftStore";
 import { undoCommit } from "./sourceControlUndo";
@@ -66,14 +65,8 @@ export function SourceControlToolbar({
       queryClient,
     }),
   );
-  const [publishContext, setPublishContext] = useState<GitPublishContextResult | null>(null);
-  const publishContextMutation = useMutation({
-    mutationFn: () =>
-      ensureNativeApi().git.publishContext({
-        cwd,
-      }),
-  });
-  const disabled = busy || mutation.isPending || checkingCommit || publishContextMutation.isPending;
+  const publishFlow = useGitPublishFlow(cwd);
+  const disabled = busy || mutation.isPending || checkingCommit || publishFlow.isPending;
   const rebasing = rebase.data?.inProgress ?? false;
   const canCommit =
     !disabled &&
@@ -86,7 +79,9 @@ export function SourceControlToolbar({
     !files.isError &&
     message.trim().length > 0;
   const run = (request: SourceControlAction) => {
-    if (disabled) return;
+    if (!disabled) execute(request);
+  };
+  const execute = (request: SourceControlAction) => {
     if (
       (request.action === "pull" || request.action === "rebase") &&
       hasUnsavedWorkspaceEditors(queryClient, cwd)
@@ -110,11 +105,11 @@ export function SourceControlToolbar({
             type: "success",
             title:
               request.action === "fetch"
-                ? "Fetch complete"
+                ? "Fetched"
                 : request.action === "pull"
-                  ? "Pull complete"
+                  ? "Pulled"
                   : request.action === "push"
-                    ? "Push complete"
+                    ? "Pushed"
                     : "Git operation updated",
           });
       },
@@ -126,7 +121,7 @@ export function SourceControlToolbar({
         }),
     });
   };
-  const commit = async () => {
+  const commit = async (thenPush: boolean) => {
     if (!canCommit || !files.data) return;
     setCheckingCommit(true);
     try {
@@ -170,6 +165,7 @@ export function SourceControlToolbar({
             }
           : {}),
       });
+      if (thenPush) publishFlow.start(() => execute({ action: "push" }));
     } catch (error) {
       toastManager.add({
         type: "error",
@@ -185,22 +181,11 @@ export function SourceControlToolbar({
   };
   const push = () => {
     if (disabled) return;
-    publishContextMutation.mutate(undefined, {
-      onSuccess: (context) => {
-        if (context.hasRemote)
-          run({
-            action: "push",
-          });
-        else setPublishContext(context);
-      },
-      onError: (error) =>
-        toastManager.add({
-          type: "error",
-          title: "Could not prepare push",
-          description: error.message,
-        }),
-    });
+    publishFlow.start(() => run({ action: "push" }));
   };
+  const sync = resolveSourceControlSync(status.data);
+  const integrationBlocked =
+    rebasing || rebase.isPending || rebase.isError || Boolean(rebase.data?.conflicts.length);
   return (
     <div className="flex shrink-0 flex-col gap-1.5 border-b border-border/70 px-2 py-1.5">
       <div className="flex min-w-0 items-center gap-1">
@@ -215,33 +200,6 @@ export function SourceControlToolbar({
             className="!m-0 !w-auto !p-0"
           />
         </div>
-        {status.data?.hasUpstream ? (
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <span
-                  tabIndex={0}
-                  className="inline-flex shrink-0 items-center gap-1.5 px-1 text-ui-xs text-muted-foreground tabular-nums"
-                  aria-label={`${status.data.aheadCount} outgoing commits, ${status.data.behindCount} incoming commits`}
-                />
-              }
-            >
-              <span className="inline-flex items-center gap-0.5">
-                <ArrowUp02Icon aria-hidden className="size-3" />
-                {status.data.aheadCount}
-              </span>
-              <span className="inline-flex items-center gap-0.5">
-                <ArrowDown02Icon aria-hidden className="size-3" />
-                {status.data.behindCount}
-              </span>
-            </TooltipTrigger>
-            <TooltipPopup>
-              {status.data.aheadCount} outgoing · {status.data.behindCount} incoming
-              <br />
-              Compared with {status.data.upstreamBranch ?? "upstream"}. Fetch to update.
-            </TooltipPopup>
-          </Tooltip>
-        ) : null}
         <div className="flex-1" />
         <IconButton
           label="Fetch all remotes"
@@ -259,47 +217,44 @@ export function SourceControlToolbar({
             <CloudDownloadIcon className="size-4" />
           )}
         </IconButton>
-        <IconButton
-          label="Pull (fast-forward only)"
-          tooltip="Pull"
-          disabled={
-            disabled ||
-            rebasing ||
-            rebase.isPending ||
-            rebase.isError ||
-            Boolean(rebase.data?.conflicts.length)
-          }
-          onClick={() =>
-            run({
-              action: "pull",
-            })
-          }
-        >
-          {mutation.isPending && mutation.variables?.action === "pull" ? (
-            <Spinner variant="action" />
-          ) : (
-            <ArrowDownToLineIcon className="size-4" />
-          )}
-        </IconButton>
-        <IconButton
-          label="Push commits"
-          tooltip="Push"
-          disabled={
-            disabled ||
-            rebasing ||
-            rebase.isPending ||
-            rebase.isError ||
-            Boolean(rebase.data?.conflicts.length)
-          }
-          onClick={push}
-        >
-          {publishContextMutation.isPending ||
-          (mutation.isPending && mutation.variables?.action === "push") ? (
-            <Spinner variant="action" className="size-4" />
-          ) : (
-            <ArrowUpToLineIcon className="size-4" />
-          )}
-        </IconButton>
+        {sync ? (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  size="xs"
+                  variant="outline"
+                  className="shrink-0 gap-1 tabular-nums"
+                  disabled={disabled || integrationBlocked}
+                  onClick={() => (sync.kind === "pull" ? run({ action: "pull" }) : push())}
+                />
+              }
+            >
+              {mutation.isPending &&
+              (mutation.variables?.action === "pull" || mutation.variables?.action === "push") ? (
+                <Spinner variant="action" />
+              ) : sync.kind === "publish" ? (
+                <CloudUploadIcon className="size-3.5" />
+              ) : null}
+              {sync.label}
+              {sync.behind > 0 ? (
+                <span className="inline-flex items-center">
+                  <ArrowDown02Icon aria-hidden className="size-3" />
+                  {sync.behind}
+                </span>
+              ) : null}
+              {sync.ahead > 0 ? (
+                <span className="inline-flex items-center">
+                  <ArrowUp02Icon aria-hidden className="size-3" />
+                  {sync.ahead}
+                </span>
+              ) : null}
+            </TooltipTrigger>
+            <TooltipPopup>{sync.description}</TooltipPopup>
+          </Tooltip>
+        ) : status.data ? (
+          <span className="shrink-0 px-1 text-ui-xs text-muted-foreground">Up to date</span>
+        ) : null}
       </div>
       {rebase.isError ? (
         <button
@@ -379,17 +334,58 @@ export function SourceControlToolbar({
             }
           }}
           onCommit={() => {
-            void commit();
+            void commit(false);
+          }}
+          onCommitAndPush={() => {
+            void commit(true);
           }}
         />
       )}
-      {publishContext ? (
-        <GitPublishDialog
-          cwd={cwd}
-          context={publishContext}
-          onClose={() => setPublishContext(null)}
-        />
-      ) : null}
+      {publishFlow.dialog}
     </div>
   );
+}
+
+function resolveSourceControlSync(status: GitStatusResult | undefined): {
+  kind: "pull" | "push" | "publish";
+  label: string;
+  description: string;
+  ahead: number;
+  behind: number;
+} | null {
+  if (!status || status.branch === null) return null;
+  const ahead = status.aheadCount;
+  const behind = status.behindCount;
+  if (!status.hasUpstream) {
+    return {
+      kind: "publish",
+      label: "Publish branch",
+      description: "Push this branch and track it on the remote.",
+      ahead: 0,
+      behind: 0,
+    };
+  }
+  const upstream = status.upstreamBranch ?? "upstream";
+  if (ahead > 0 && behind > 0) {
+    return {
+      kind: "push",
+      label: "Sync",
+      description: `Rebase ${ahead} local commits onto ${upstream}, then push.`,
+      ahead,
+      behind,
+    };
+  }
+  if (behind > 0) {
+    return {
+      kind: "pull",
+      label: "Pull",
+      description: `Fast-forward from ${upstream}.`,
+      ahead,
+      behind,
+    };
+  }
+  if (ahead > 0) {
+    return { kind: "push", label: "Push", description: `Push to ${upstream}.`, ahead, behind };
+  }
+  return null;
 }

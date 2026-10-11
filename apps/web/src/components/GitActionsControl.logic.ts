@@ -23,7 +23,7 @@ export interface GitActionMenuItem {
 export interface GitQuickAction {
   label: string;
   disabled: boolean;
-  kind: "run_action" | "run_pull" | "open_pr" | "show_hint" | "create_branch";
+  kind: "run_action" | "run_pull" | "open_pr" | "show_hint" | "create_branch" | "publish";
   action?: GitStackedAction;
   hint?: string;
 }
@@ -377,7 +377,7 @@ export function buildMenuItems(
       : []),
     {
       id: "push",
-      label: isDefaultBranch ? "Commit & push" : "Push",
+      label: isDefaultBranch && hasChanges ? "Commit & push" : "Push",
       disabled: !(isDefaultBranch ? canCommitPush : canPush),
       icon: "push",
       kind: "open_dialog",
@@ -684,12 +684,7 @@ export function resolveQuickAction(
       if (hasOpenPr && !isAhead) {
         return { label: "View PR", disabled: false, kind: "open_pr" };
       }
-      return {
-        label: "Push",
-        disabled: true,
-        kind: "show_hint",
-        hint: 'Add an "origin" remote before pushing or creating a PR.',
-      };
+      return { label: "Publish repository", disabled: false, kind: "publish" };
     }
     if (!isAhead) {
       if (hasOpenPr) {
@@ -704,7 +699,7 @@ export function resolveQuickAction(
     }
     if (hasOpenPr || isDefaultBranch) {
       return {
-        label: isDefaultBranch ? "Commit & push" : "Push",
+        label: "Push",
         disabled: false,
         kind: "run_action",
         action: isDefaultBranch ? "commit_push" : "push",
@@ -721,7 +716,7 @@ export function resolveQuickAction(
   if (isAhead) {
     if (hasOpenPr || isDefaultBranch) {
       return {
-        label: isDefaultBranch ? "Commit & push" : "Push",
+        label: "Push",
         disabled: false,
         kind: "run_action",
         action: isDefaultBranch ? "commit_push" : "push",
@@ -745,6 +740,22 @@ export function resolveQuickAction(
     kind: "show_hint",
     hint: "Branch is up to date. No action needed.",
   };
+}
+
+export function describeGitActionContext(
+  gitStatus: GitStatusResult | null,
+  hasOriginRemote: boolean,
+): string | null {
+  if (!gitStatus) return null;
+  const fileCount = gitStatus.workingTree.files.length;
+  const parts = [
+    fileCount > 0 ? `${fileCount} ${fileCount === 1 ? "file" : "files"} changed` : null,
+    gitStatus.aheadCount > 0 ? `${gitStatus.aheadCount} to push` : null,
+    gitStatus.behindCount > 0 ? `${gitStatus.behindCount} to pull` : null,
+    !hasOriginRemote ? "No remote" : gitStatus.hasUpstream ? null : "Not published",
+    gitStatus.pr?.state === "open" ? `PR #${gitStatus.pr.number} open` : null,
+  ].filter((part) => part !== null);
+  return parts.length > 0 ? parts.join(" · ") : "Up to date";
 }
 
 export function resolveCreatePrActionAvailability(input: {
