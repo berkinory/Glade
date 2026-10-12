@@ -436,6 +436,13 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                     <GladeLogo aria-label="Glade logo" className="size-10" />
                     <h2
                       data-testid="empty-landing-heading"
+                      // A combobox adds its value, not its text, to the heading's name, which
+                      // read as "What should we do in ?".
+                      aria-label={
+                        isEmptyChatLanding
+                          ? undefined
+                          : `What should we do in ${activeProjectDisplayName ?? "this folder"}?`
+                      }
                       className="text-[26px] font-normal leading-[1.15] tracking-[-0.015em] text-foreground/95 sm:text-[30px]"
                     >
                       {isEmptyChatLanding ? (
@@ -458,6 +465,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                                 <button
                                   type="button"
                                   data-testid="empty-landing-heading-project-trigger"
+                                  aria-label={`Project: ${activeProjectDisplayName ?? "this folder"}`}
                                   className="relative cursor-pointer rounded-sm text-inherit transition-colors duration-100 ease-out after:absolute after:inset-x-[0.08em] after:bottom-0 after:border-b-[1.5px] after:border-dotted after:border-current hover:text-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 motion-reduce:transition-none"
                                 >
                                   {activeProjectDisplayName ?? "this folder"}

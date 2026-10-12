@@ -9,6 +9,7 @@ import type {
 } from "@glade/contracts/provider/providerDiscovery";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ServerConfig } from "@glade/contracts/server/server";
+import { expensiveReadErrorRefetchInterval, shouldRetryExpensiveRead } from "./expensiveReadRetry";
 import { serverQueryKeys } from "./serverReactQuery";
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { ensureNativeApi } from "~/nativeApi";
@@ -415,8 +416,9 @@ export function providerModelsQueryOptions(
         },
       ),
     enabled: input.enabled ?? true,
-
-    retry: 3,
+    // The transport already spent its capacity retries; repeating them here multiplies one saturated
+    // startup into dozens of probes that hold the provider's discovery slot. Recover by polling.
+    retry: shouldRetryExpensiveRead,
 
     gcTime: 24 * 60 * 60_000,
     placeholderData: () =>
@@ -425,7 +427,9 @@ export function providerModelsQueryOptions(
         : queryClient.getQueryData<ProviderListModelsResult>(globalQueryKey),
     staleTime: (query) => (query.state.data?.stale ? 0 : 30 * 60_000),
     refetchInterval: (query) =>
-      query.state.data?.stale && !query.state.data.error ? 1_000 : false,
+      query.state.data?.stale && !query.state.data.error
+        ? 1_000
+        : expensiveReadErrorRefetchInterval(query),
   });
 }
 
