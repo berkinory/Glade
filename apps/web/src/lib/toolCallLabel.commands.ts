@@ -67,9 +67,7 @@ export function deriveReadableCommandDisplay(
   const primaryCommand = firstShellCommandSegment(command);
   const [tool, args] = splitToolAndArgs(primaryCommand);
 
-  const inspect = Object.hasOwn(INSPECT_COMMAND_PRESENTATIONS, tool)
-    ? INSPECT_COMMAND_PRESENTATIONS[tool]
-    : undefined;
+  const inspect = inspectPresentation(primaryCommand);
   if (inspect) {
     const [running, completed, targetKind] = inspect;
     const target =
@@ -159,6 +157,15 @@ const INSPECT_COMMAND_PRESENTATIONS: Record<string, InspectPresentation> = Objec
   ),
 );
 
+// `cat <<'EOF' | wc -l` feeds text it writes inline; it reads no file.
+function inspectPresentation(primaryCommand: string): InspectPresentation | undefined {
+  const [tool] = splitToolAndArgs(primaryCommand);
+  if (!Object.hasOwn(INSPECT_COMMAND_PRESENTATIONS, tool) || containsHeredoc(primaryCommand)) {
+    return undefined;
+  }
+  return INSPECT_COMMAND_PRESENTATIONS[tool];
+}
+
 function firstCommandExecutable(rawCommand: string): string {
   const trimmed = rawCommand.trim();
   const match = /^(?:"([^"]+)"|'([^']+)'|(\S+))/u.exec(trimmed);
@@ -186,9 +193,9 @@ export function deriveFriendlyCommandTarget(rawCommand: string): string {
 
 export function classifyInspectCommand(rawCommand: string): "read" | "search" | "list" | null {
   const command = stripCommandDisplayWrappers(unwrapShellCommandIfPresent(rawCommand));
-  const [tool] = splitToolAndArgs(firstShellCommandSegment(command));
-  if (!Object.hasOwn(INSPECT_COMMAND_PRESENTATIONS, tool)) return null;
-  switch (INSPECT_COMMAND_PRESENTATIONS[tool]![2]) {
+  const inspect = inspectPresentation(firstShellCommandSegment(command));
+  if (!inspect) return null;
+  switch (inspect[2]) {
     case "file":
       return "read";
     case "directory":
@@ -201,8 +208,9 @@ export function classifyInspectCommand(rawCommand: string): "read" | "search" | 
 
 export function resolveCommandVisualKind(rawCommand: string): CommandVisualKind {
   const command = stripCommandDisplayWrappers(unwrapShellCommandIfPresent(rawCommand));
-  const [tool] = splitToolAndArgs(firstShellCommandSegment(command));
-  if (Object.hasOwn(INSPECT_COMMAND_PRESENTATIONS, tool)) {
+  const primaryCommand = firstShellCommandSegment(command);
+  const [tool] = splitToolAndArgs(primaryCommand);
+  if (inspectPresentation(primaryCommand)) {
     return "inspect";
   }
   if (tool === "git") {
