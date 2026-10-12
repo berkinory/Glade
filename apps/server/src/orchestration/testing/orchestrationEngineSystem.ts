@@ -18,6 +18,7 @@ import { OrchestrationEngineLive } from "../Layers/OrchestrationEngine.ts";
 import { OrchestrationProjectionPipelineLive } from "../Layers/ProjectionPipeline.ts";
 import { OrchestrationProjectionSnapshotQueryLive } from "../Layers/ProjectionSnapshotQuery.ts";
 import { OrchestrationEngineService } from "../Services/OrchestrationEngine.ts";
+import { ProjectionSnapshotQuery } from "../Services/ProjectionSnapshotQuery.ts";
 import {
   OrchestrationProjectionPipeline,
   type OrchestrationProjectionPipelineShape,
@@ -43,7 +44,7 @@ export async function createOrchestrationSystem(overrides?: {
           ? Layer.succeed(OrchestrationProjectionPipeline, overrides.projectionPipeline)
           : OrchestrationProjectionPipelineLive,
       ),
-      Layer.provide(OrchestrationProjectionSnapshotQueryLive),
+      Layer.provideMerge(OrchestrationProjectionSnapshotQueryLive),
       Layer.provide(
         overrides?.eventStore
           ? Layer.succeed(OrchestrationEventStore, overrides.eventStore)
@@ -58,11 +59,13 @@ export async function createOrchestrationSystem(overrides?: {
     ),
   );
   const engine = await runtime.runPromise(Effect.service(OrchestrationEngineService));
+  const snapshotQuery = await runtime.runPromise(Effect.service(ProjectionSnapshotQuery));
   const managedAttachmentRepository = await runtime.runPromise(
     Effect.service(ManagedAttachmentRepository),
   );
   return {
     engine,
+    snapshotQuery,
     managedAttachmentRepository,
     run: <A, E>(effect: Effect.Effect<A, E>) => runtime.runPromise(effect),
     dispose: () => runtime.dispose(),

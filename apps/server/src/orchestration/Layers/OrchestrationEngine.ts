@@ -77,6 +77,7 @@ import { AggregateCommandOrder } from "../aggregateCommandOrder.ts";
 import { decideOrchestrationCommand } from "../decider.ts";
 import { PROJECT_METADATA_SNAPSHOT_PROJECTORS } from "../projectMetadataProjection.ts";
 import { createEmptyReadModel, projectEvent } from "../projector.ts";
+import { retainCommandReadModelEvent } from "../commandReadModelRetention.ts";
 import {
   OrchestrationProjectionPipeline,
   type ShellMetadataOrchestrationEvent,
@@ -854,7 +855,10 @@ const makeOrchestrationEngine = Effect.gen(function* () {
 
       let nextCommandReadModel = commandReadModel;
       for (const persistedEvent of persistedEvents) {
-        nextCommandReadModel = yield* projectEvent(nextCommandReadModel, persistedEvent);
+        nextCommandReadModel = retainCommandReadModelEvent(
+          yield* projectEvent(nextCommandReadModel, persistedEvent),
+          persistedEvent,
+        );
       }
       replaceCommandReadModel(nextCommandReadModel);
       recordCommittedAggregates(persistedEvents);
@@ -1075,7 +1079,10 @@ const makeOrchestrationEngine = Effect.gen(function* () {
 
           for (const nextEvent of eventBases) {
             const savedEvent = yield* eventStore.append(nextEvent);
-            nextCommandReadModel = yield* projectEvent(nextCommandReadModel, savedEvent);
+            nextCommandReadModel = retainCommandReadModelEvent(
+              yield* projectEvent(nextCommandReadModel, savedEvent),
+              savedEvent,
+            );
             if (isShellMetadataEvent(savedEvent)) {
               yield* projectionPipeline.projectMetadataEvent(savedEvent);
             } else {

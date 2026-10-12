@@ -29,7 +29,7 @@ describe("ProviderRuntimeIngestion session lifecycle", () => {
     });
 
     await waitForThread(
-      harness.engine,
+      harness,
       (thread) =>
         thread.session?.status === "running" &&
         thread.session?.activeTurnId === "turn-ready-clears",
@@ -48,7 +48,7 @@ describe("ProviderRuntimeIngestion session lifecycle", () => {
     });
 
     const thread = await waitForThread(
-      harness.engine,
+      harness,
       (entry) => entry.session?.status === "ready" && entry.session?.activeTurnId === null,
     );
     expect(thread.session?.status).toBe("ready");
@@ -82,7 +82,7 @@ describe("ProviderRuntimeIngestion session lifecycle", () => {
       payload: { message: "drained" },
     });
 
-    const thread = await waitForThread(harness.engine, (entry) =>
+    const thread = await waitForThread(harness, (entry) =>
       entry.activities.some((activity) => activity.id === "evt-idle-restart-drained"),
     );
     expect(thread.session).toMatchObject({ status: "ready", activeTurnId: null });

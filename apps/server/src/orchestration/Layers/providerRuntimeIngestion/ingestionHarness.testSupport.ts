@@ -39,10 +39,7 @@ import { OrchestrationEngineLive } from "../OrchestrationEngine.ts";
 import { OrchestrationProjectionPipelineLive } from "../ProjectionPipeline.ts";
 import { OrchestrationProjectionSnapshotQueryLive } from "../ProjectionSnapshotQuery.ts";
 import { ProviderRuntimeIngestionLive } from "../ProviderRuntimeIngestion.ts";
-import {
-  OrchestrationEngineService,
-  type OrchestrationEngineShape,
-} from "../../Services/OrchestrationEngine.ts";
+import { OrchestrationEngineService } from "../../Services/OrchestrationEngine.ts";
 import { ProviderRuntimeIngestionService } from "../../Services/ProviderRuntimeIngestion.ts";
 import { ProjectionSnapshotQuery } from "../../Services/ProjectionSnapshotQuery.ts";
 
@@ -168,15 +165,16 @@ function createProviderServiceHarness(options?: { readonly persistedStream?: boo
 }
 
 export async function waitForThread(
-  engine: OrchestrationEngineShape,
+  harness: {
+    readonly readProjectedThread: (threadId?: ThreadId) => Promise<OrchestrationThread | undefined>;
+  },
   predicate: (thread: ProviderRuntimeTestThread) => boolean,
   timeoutMs = 2000,
   threadId: ThreadId = asThreadId("thread-1"),
 ) {
   const deadline = Date.now() + timeoutMs;
   const poll = async (): Promise<ProviderRuntimeTestThread> => {
-    const readModel = await Effect.runPromise(engine.getReadModel());
-    const thread = readModel.threads.find((entry) => entry.id === threadId);
+    const thread = await harness.readProjectedThread(threadId);
     if (thread && predicate(thread)) {
       return thread;
     }

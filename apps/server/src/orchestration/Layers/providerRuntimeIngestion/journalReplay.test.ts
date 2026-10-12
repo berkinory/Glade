@@ -90,7 +90,7 @@ describe("ProviderRuntimeIngestion journal replay", () => {
     const persisted = await Effect.runPromise(harness.runtimeEventRepository.append(event));
 
     await harness.startIngestion();
-    await waitForThread(harness.engine, (thread) =>
+    await waitForThread(harness, (thread) =>
       thread.activities.some((activity) => activity.id === event.eventId),
     );
     expect(
@@ -99,10 +99,9 @@ describe("ProviderRuntimeIngestion journal replay", () => {
       ),
     ).toBe(persisted.sequence);
 
-    const readModel = await Effect.runPromise(harness.engine.getReadModel());
-    const recoveredActivities = readModel.threads
-      .find((thread) => thread.id === asThreadId("thread-1"))
-      ?.activities.filter((activity) => activity.id === event.eventId);
+    const recoveredActivities = (await harness.readProjectedThread())?.activities.filter(
+      (activity) => activity.id === event.eventId,
+    );
     expect(recoveredActivities).toHaveLength(1);
     expect(
       await Effect.runPromise(
@@ -230,7 +229,7 @@ describe("ProviderRuntimeIngestion journal replay", () => {
     await harness.startIngestion();
     await harness.drain();
 
-    const thread = await waitForThread(harness.engine, (entry) =>
+    const thread = await waitForThread(harness, (entry) =>
       entry.messages.some(
         (message) =>
           message.id === `assistant:${itemId}` &&
@@ -293,7 +292,7 @@ describe("ProviderRuntimeIngestion journal replay", () => {
     );
     await harness.drain();
 
-    const thread = await waitForThread(harness.engine, (entry) =>
+    const thread = await waitForThread(harness, (entry) =>
       entry.messages.some(
         (message) =>
           message.id === "assistant:item-buffered-restart" &&
@@ -416,7 +415,7 @@ describe("ProviderRuntimeIngestion journal replay", () => {
     );
     await harness.drain();
     const parent = await waitForThread(
-      harness.engine,
+      harness,
       (entry) =>
         entry.activities.some(
           (activity: ProviderRuntimeTestActivity) =>
@@ -462,7 +461,7 @@ describe("ProviderRuntimeIngestion journal replay", () => {
     });
 
     const thread = await waitForThread(
-      harness.engine,
+      harness,
       (entry) =>
         entry.session?.status === "error" &&
         entry.session?.activeTurnId === "turn-after-failure" &&

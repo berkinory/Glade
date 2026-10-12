@@ -69,7 +69,7 @@ describe("ProviderRuntimeIngestion buffered output", () => {
     });
 
     const stableActivityId = "provider-reasoning:thread-1:reasoning-buffered-1";
-    const thread = await waitForThread(harness.engine, (entry) =>
+    const thread = await waitForThread(harness, (entry) =>
       entry.activities.some(
         (activity: ProviderRuntimeTestActivity) => activity.id === stableActivityId,
       ),
@@ -133,7 +133,7 @@ describe("ProviderRuntimeIngestion buffered output", () => {
       eventId: asEventId("thinking-drained"),
       payload: { message: "drained" },
     });
-    const thread = await waitForThread(harness.engine, (entry) =>
+    const thread = await waitForThread(harness, (entry) =>
       entry.activities.some((activity) => activity.id === "thinking-drained"),
     );
     const activities = thread.activities.filter(
@@ -165,7 +165,7 @@ describe("ProviderRuntimeIngestion buffered output", () => {
         turnId: asTurnId(`turn-${key}`),
       });
       await waitForThread(
-        harness.engine,
+        harness,
         (thread) =>
           thread.session?.status === "running" && thread.session?.activeTurnId === `turn-${key}`,
       );
@@ -213,7 +213,7 @@ describe("ProviderRuntimeIngestion buffered output", () => {
         threadId: asThreadId("thread-1"),
       });
 
-      const thread = await waitForThread(harness.engine, (entry) =>
+      const thread = await waitForThread(harness, (entry) =>
         entry.messages.some(
           (message: ProviderRuntimeTestMessage) =>
             message.id === `assistant:item-${key}` && message.streaming === false,
@@ -240,7 +240,7 @@ describe("ProviderRuntimeIngestion buffered output", () => {
       turnId: asTurnId("turn-buffer-spill"),
     });
     await waitForThread(
-      harness.engine,
+      harness,
       (thread) =>
         thread.session?.status === "running" &&
         thread.session?.activeTurnId === "turn-buffer-spill",
@@ -273,7 +273,7 @@ describe("ProviderRuntimeIngestion buffered output", () => {
       },
     });
 
-    const thread = await waitForThread(harness.engine, (entry) =>
+    const thread = await waitForThread(harness, (entry) =>
       entry.messages.some(
         (message: ProviderRuntimeTestMessage) =>
           message.id === "assistant:item-buffer-spill" && !message.streaming,
@@ -328,7 +328,7 @@ describe("ProviderRuntimeIngestion buffered output", () => {
       },
     });
 
-    const thread = await waitForThread(harness.engine, (entry) =>
+    const thread = await waitForThread(harness, (entry) =>
       entry.activities.some((activity) => activity.id === "evt-empty-stream-completed"),
     );
     const activity = thread.activities.find((entry) => entry.id === "evt-empty-stream-completed");

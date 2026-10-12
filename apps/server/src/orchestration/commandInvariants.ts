@@ -63,13 +63,17 @@ const CHECKPOINT_REVERT_LIFECYCLE_ACTIVITY_KINDS = new Set([
   CHECKPOINT_REVERT_FAILED_ACTIVITY_KIND,
 ]);
 
+export function isCheckpointRevertLifecycleActivityKind(kind: string): boolean {
+  return CHECKPOINT_REVERT_LIFECYCLE_ACTIVITY_KINDS.has(kind);
+}
+
 export function threadHasCheckpointRevertInProgress(thread: {
   readonly activities: ReadonlyArray<
     Pick<OrchestrationThreadActivity, "createdAt" | "id" | "kind" | "sequence">
   >;
 }): boolean {
   const latestLifecycleActivity = thread.activities
-    .filter((activity) => CHECKPOINT_REVERT_LIFECYCLE_ACTIVITY_KINDS.has(activity.kind))
+    .filter((activity) => isCheckpointRevertLifecycleActivityKind(activity.kind))
     .toSorted(
       (left, right) =>
         (right.sequence ?? -1) - (left.sequence ?? -1) ||

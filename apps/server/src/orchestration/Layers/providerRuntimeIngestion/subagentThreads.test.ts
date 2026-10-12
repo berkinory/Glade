@@ -66,7 +66,7 @@ describe("ProviderRuntimeIngestion subagent threads", () => {
     });
 
     const childThread = await waitForThread(
-      harness.engine,
+      harness,
       (entry) =>
         entry.parentThreadId === "thread-1" &&
         entry.subagentNickname === "Locke" &&
@@ -82,7 +82,7 @@ describe("ProviderRuntimeIngestion subagent threads", () => {
     expect(childThread.sourceThreadId).toBe("thread-1");
     expect(childThread.sourceTurnId).toBe("turn-parent");
 
-    const parentThread = await waitForThread(harness.engine, (entry) =>
+    const parentThread = await waitForThread(harness, (entry) =>
       entry.activities.some(
         (activity: ProviderRuntimeTestActivity) =>
           activity.id === "evt-collab-updated" && activity.kind === "tool.updated",
@@ -125,7 +125,7 @@ describe("ProviderRuntimeIngestion subagent threads", () => {
     });
     await harness.drain();
     await waitForThread(
-      harness.engine,
+      harness,
       (entry) => entry.parentThreadId === "thread-1",
       2000,
       childThreadId,
@@ -162,7 +162,7 @@ describe("ProviderRuntimeIngestion subagent threads", () => {
       payload: { message: "still ingesting" },
     });
     await harness.drain();
-    const parent = await waitForThread(harness.engine, (entry) =>
+    const parent = await waitForThread(harness, (entry) =>
       entry.activities.some(
         (activity: ProviderRuntimeTestActivity) => activity.id === "evt-after-deleted-child",
       ),
@@ -212,7 +212,7 @@ describe("ProviderRuntimeIngestion subagent threads", () => {
           thread.gatewayOperationId === null,
       ),
     ).toBe(true);
-    const parent = readModel.threads.find((thread) => thread.id === "thread-1");
+    const parent = await harness.readProjectedThread();
     expect(
       parent?.activities.filter((activity) => activity.kind === "subagent.materialization.capped"),
     ).toHaveLength(1);

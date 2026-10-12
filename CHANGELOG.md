@@ -21,6 +21,7 @@
 - Tool output takes much less space in the local database.
 - The local database drops replay records it no longer needs, and its write log shrinks back after large writes.
 - Streaming replies do far less database reading per update.
+- Server memory no longer grows with every chat used during a session.
 
 ### Fixed
 

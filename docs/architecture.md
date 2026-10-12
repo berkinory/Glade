@@ -115,7 +115,10 @@ needs. Commands for one aggregate run strictly in admission order, even when a l
 higher priority. The commit re-prepares a command when its aggregate changed or the read model
 was replaced after preparation, then decides against the current read model and writes events,
 receipt and hot projections in one transaction before publishing them in sequence order. Stop and
-other lifecycle commands keep their reserved admission and skip the preparation bound.
+other lifecycle commands keep their reserved admission and skip the preparation bound. The
+in-memory read model keeps thread metadata, sessions, message identity and user text, but no
+assistant text, tool activity or checkpoint file lists; commands that need the transcript load it
+from the projection.
 
 Provider output travels back in the opposite direction:
 

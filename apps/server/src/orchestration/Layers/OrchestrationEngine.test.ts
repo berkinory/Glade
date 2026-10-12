@@ -266,8 +266,8 @@ describe("OrchestrationEngine", () => {
         (event) => event.type === "thread.message-sent",
       );
       expect(completed?.payload).toMatchObject({ streaming: false, text: expected });
-      const model = await system.run(engine.getReadModel());
-      const message = model.threads.find((thread) => thread.id === threadId)?.messages[0];
+      const thread = await system.run(system.snapshotQuery.getThreadDetailById(threadId));
+      const message = Option.getOrThrow(thread).messages[0];
       expect(message?.text).toBe(expected);
       expect(message?.textSegments?.map((segment) => segment.text)).toEqual([
         chunks[0],

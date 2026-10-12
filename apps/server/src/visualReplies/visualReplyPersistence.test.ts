@@ -142,10 +142,9 @@ it("publishes owned HTML atomically, retains it through replay and forks, and pr
       ),
     );
     expect(result.isError, JSON.stringify(result)).not.toBe(true);
-    const model = await runtime.runPromise(engine.getReadModel());
-    const activity = model.threads[0]!.activities.find(
-      (entry) => entry.kind === VISUAL_REPLY_ACTIVITY_KIND,
-    )!;
+    const activity = Option.getOrThrow(
+      await runtime.runPromise(snapshots.getThreadDetailById(threadId)),
+    ).activities.find((entry) => entry.kind === VISUAL_REPLY_ACTIVITY_KIND)!;
     const reply = Schema.decodeUnknownSync(VisualReply)(activity.payload);
     expect(reply.height).toBe(340);
     const claimed = Option.getOrThrow(

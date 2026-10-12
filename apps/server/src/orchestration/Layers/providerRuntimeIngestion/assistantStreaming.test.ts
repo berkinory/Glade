@@ -112,7 +112,7 @@ describe("ProviderRuntimeIngestion assistant streaming", () => {
     });
     await harness.drain();
 
-    const thread = await waitForThread(harness.engine, (entry) =>
+    const thread = await waitForThread(harness, (entry) =>
       entry.messages.some(
         (message) =>
           message.id === "assistant:item-segment-interleave" && message.streaming === false,
@@ -184,7 +184,7 @@ describe("ProviderRuntimeIngestion assistant streaming", () => {
       payload: { itemType: "assistant_message", status: "completed" },
     });
 
-    await waitForThread(harness.engine, (thread) =>
+    await waitForThread(harness, (thread) =>
       thread.messages.some(
         (message) =>
           message.id === "assistant:answer-replay" &&
@@ -221,7 +221,7 @@ describe("ProviderRuntimeIngestion assistant streaming", () => {
       payload: { state: "completed" },
     });
 
-    await waitForThread(harness.engine, (entry) =>
+    await waitForThread(harness, (entry) =>
       entry.messages.some(
         (message) =>
           message.id === "assistant:answer-replay" &&
@@ -229,15 +229,11 @@ describe("ProviderRuntimeIngestion assistant streaming", () => {
       ),
     );
 
-    const eventCountBeforeReplay = await Effect.runPromise(
-      harness.engine.getReadModel().pipe(
-        Effect.map((readModel) => {
-          const thread = readModel.threads.find((entry) => entry.id === asThreadId("thread-1"));
-          const message = thread?.messages.find((entry) => entry.id === "assistant:answer-replay");
-          return message?.text ?? "";
-        }),
-      ),
-    );
+    const readAnswerText = async () =>
+      (await harness.readProjectedThread())?.messages.find(
+        (entry) => entry.id === "assistant:answer-replay",
+      )?.text ?? "";
+    const eventCountBeforeReplay = await readAnswerText();
 
     // Replay the same image_generation_end event with a fresh eventId (provider would use a new id even
     // for an idempotent replay). The dedup guard should prevent any further delta or complete
@@ -249,15 +245,7 @@ describe("ProviderRuntimeIngestion assistant streaming", () => {
 
     await new Promise((resolve) => setTimeout(resolve, 50));
 
-    const finalText = await Effect.runPromise(
-      harness.engine.getReadModel().pipe(
-        Effect.map((readModel) => {
-          const thread = readModel.threads.find((entry) => entry.id === asThreadId("thread-1"));
-          const message = thread?.messages.find((entry) => entry.id === "assistant:answer-replay");
-          return message?.text ?? "";
-        }),
-      ),
-    );
+    const finalText = await readAnswerText();
 
     expect(finalText).toBe(eventCountBeforeReplay);
     const occurrences = finalText.split(`![Generated image](${imagePath})`).length - 1;
@@ -342,7 +330,7 @@ describe("ProviderRuntimeIngestion assistant streaming", () => {
     });
     await harness.drain();
 
-    const liveThread = await waitForThread(harness.engine, (thread) =>
+    const liveThread = await waitForThread(harness, (thread) =>
       thread.messages.some(
         (message: ProviderRuntimeTestMessage) =>
           message.id === "assistant:item-same-thread-streaming" &&
@@ -367,7 +355,7 @@ describe("ProviderRuntimeIngestion assistant streaming", () => {
       itemId: asItemId("item-same-thread-buffered"),
       payload: { itemType: "assistant_message", status: "completed" },
     });
-    await waitForThread(harness.engine, (thread) =>
+    await waitForThread(harness, (thread) =>
       thread.messages.some(
         (message: ProviderRuntimeTestMessage) =>
           message.id === "assistant:item-same-thread-buffered" &&
@@ -489,7 +477,7 @@ describe("ProviderRuntimeIngestion assistant streaming", () => {
     await harness.drain();
 
     const streamingThread = await waitForThread(
-      harness.engine,
+      harness,
       (thread) =>
         thread.messages.some(
           (message: ProviderRuntimeTestMessage) =>
@@ -526,7 +514,7 @@ describe("ProviderRuntimeIngestion assistant streaming", () => {
     });
 
     const completedBufferedThread = await waitForThread(
-      harness.engine,
+      harness,
       (thread) =>
         thread.messages.some(
           (message: ProviderRuntimeTestMessage) =>
@@ -553,7 +541,7 @@ describe("ProviderRuntimeIngestion assistant streaming", () => {
       payload: { state: "completed" },
     });
     await waitForThread(
-      harness.engine,
+      harness,
       (thread) => thread.session?.status === "ready" && thread.session.activeTurnId === null,
       2_000,
       secondThreadId,
@@ -592,7 +580,7 @@ describe("ProviderRuntimeIngestion assistant streaming", () => {
       ),
     ).toBe(false);
     await waitForThread(
-      harness.engine,
+      harness,
       (thread) =>
         thread.messages.some(
           (message: ProviderRuntimeTestMessage) =>
@@ -615,7 +603,7 @@ describe("ProviderRuntimeIngestion assistant streaming", () => {
       payload: { itemType: "assistant_message", status: "completed" },
     });
     await waitForThread(
-      harness.engine,
+      harness,
       (thread) =>
         thread.messages.some(
           (message: ProviderRuntimeTestMessage) =>
@@ -642,7 +630,7 @@ describe("ProviderRuntimeIngestion assistant streaming", () => {
     });
 
     await waitForThread(
-      harness.engine,
+      harness,
       (thread) =>
         thread.session?.status === "running" &&
         thread.session?.activeTurnId === "turn-complete-dedup",
@@ -687,7 +675,7 @@ describe("ProviderRuntimeIngestion assistant streaming", () => {
     });
 
     await waitForThread(
-      harness.engine,
+      harness,
       (thread) =>
         thread.session?.status === "ready" &&
         thread.session?.activeTurnId === null &&
@@ -730,7 +718,7 @@ describe("ProviderRuntimeIngestion assistant streaming", () => {
       eventId: asEventId("evt-identity-start"),
       turnId,
     });
-    await waitForThread(harness.engine, (thread) => thread.session?.activeTurnId === turnId);
+    await waitForThread(harness, (thread) => thread.session?.activeTurnId === turnId);
     harness.emit({
       ...base,
       type: "content.delta",
@@ -756,7 +744,7 @@ describe("ProviderRuntimeIngestion assistant streaming", () => {
     });
 
     const thread = await waitForThread(
-      harness.engine,
+      harness,
       (entry) => entry.session?.activeTurnId === null && entry.session?.status === "ready",
     );
     const texts = Object.fromEntries(
