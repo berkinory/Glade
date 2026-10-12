@@ -229,7 +229,7 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
           </SidebarHeader>
         </>
       ) : (
-        <SidebarHeader className="gap-3 px-3 py-2.5 font-system-ui sm:gap-2.5 sm:px-4 sm:py-3">
+        <SidebarHeader className="gap-3 px-3 py-2.5 font-system-ui sm:gap-2.5 sm:px-4 sm:py-3 md:pe-2.5">
           {wordmark}
         </SidebarHeader>
       )}
