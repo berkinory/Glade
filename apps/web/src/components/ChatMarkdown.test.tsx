@@ -41,24 +41,28 @@ describe("ChatMarkdown", () => {
     {
       name: "inline in a paragraph",
       text: "One<br>two<BR/>three",
-      expected: "<p>One<br/>\ntwo<br/>\nthree</p>",
+      expected: '<p dir="auto">One<br/>\ntwo<br/>\nthree</p>',
     },
     {
       name: "inside a table cell",
       text: "| a |\n| - |\n| x<br />y |",
-      expected: "<td>x<br/>\ny</td>",
+      expected: '<td dir="auto">x<br/>\ny</td>',
     },
     {
       name: "alone between blocks",
       text: "Before.\n\n<br>\n\nAfter.",
-      expected: "<p>Before.</p>\n<p>After.</p>",
+      expected: '<p dir="auto">Before.</p>\n<p dir="auto">After.</p>',
     },
-    { name: "in a code span", text: "Use `<br>` here.", expected: "<code>&lt;br&gt;</code>" },
+    {
+      name: "in a code span",
+      text: "Use `<br>` here.",
+      expected: '<code dir="ltr">&lt;br&gt;</code>',
+    },
     { name: "in a code fence", text: "```\n<br />\n```", expected: "&lt;br /&gt;" },
     {
       name: "only as the exact tag",
       text: 'a<br class="x">b',
-      expected: "<p>a&lt;br class=&quot;x&quot;&gt;b</p>",
+      expected: '<p dir="auto">a&lt;br class=&quot;x&quot;&gt;b</p>',
     },
   ])("renders <br> tags safely $name", ({ text, expected }) => {
     expect(renderMarkdown(text)).toContain(expected);
@@ -84,7 +88,7 @@ describe("ChatMarkdown", () => {
     expect(markup).toContain(
       'href="https://example.com" target="_blank" rel="noopener noreferrer"',
     );
-    expect(markup).toContain("<code>$z$</code>");
+    expect(markup).toContain('<code dir="ltr">$z$</code>');
     expect(markup).toContain("const price = &quot;$5&quot;;");
     expect(markup.match(/class="katex"/g) ?? []).toHaveLength(1);
   });
@@ -116,7 +120,7 @@ $$
     expect(markup).not.toContain("katex-error");
     expect(markup).not.toMatch(/<h[12][ >]/);
     expect(markup).toContain("<strong>仍然加粗</strong>");
-    expect(markup).toContain("<table>");
+    expect(markup).toContain('<table dir="ltr">');
     expect(markup).toContain('href="/src/_chat.$threadId.tsx"');
   });
 
@@ -176,7 +180,7 @@ $$
         String.raw`Prices $5, $5 to $10, $5-$10 and $29.470. Math $2x$, $2.5x$, $2 + 3 = 5$, $2^{10}$ and $2\pi$.` +
         " Code `$2d_kd_v$`.",
       katex: 5,
-      contains: ["$5 to $10", "$5-$10", "$29.470", "<code>$2d_kd_v$</code>"],
+      contains: ["$5 to $10", "$5-$10", "$29.470", '<code dir="ltr">$2d_kd_v$</code>'],
     },
   ])("$name", ({ text, cwd, katex, contains, absent = [] }) => {
     const markup = renderMarkdown(text, cwd);
@@ -216,16 +220,16 @@ $$
       ].join("\n"),
     );
 
-    expect(markup).toContain("<table>");
-    expect(markup).toContain("<th>Advanced</th>");
-    expect(markup).toContain("<td>Purpose</td>");
+    expect(markup).toContain('<table dir="ltr">');
+    expect(markup).toContain('<th dir="auto">Advanced</th>');
+    expect(markup).toContain('<td dir="auto">Purpose</td>');
     expect(markup).not.toContain("|---|");
   });
 
   it("keeps pipe-and-dash lines inside code fences out of table repair", () => {
     const markup = renderMarkdown(["```", "| a | b |", "|---|", "```"].join("\n"));
 
-    expect(markup).not.toContain("<table>");
+    expect(markup).not.toContain("<table");
     expect(markup).toContain("|---|");
   });
 
@@ -354,7 +358,7 @@ describe("ChatMarkdown user variant", () => {
   it("keeps composer tokens literal inside inline code", () => {
     const markup = renderUserMarkdown("literal `$deep-research` here");
 
-    expect(markup).toContain("<code>$deep-research</code>");
+    expect(markup).toContain('<code dir="ltr">$deep-research</code>');
     expect(markup).not.toContain("Deep Research");
   });
 
@@ -362,7 +366,7 @@ describe("ChatMarkdown user variant", () => {
     for (const token of ["constructor", "__proto__", '"constructor"', '"__proto__"']) {
       const markup = renderUserMarkdown(`what if a key is \`${token}\``);
 
-      expect(markup).toContain("<code>");
+      expect(markup).toContain('<code dir="ltr">');
       expect(markup).not.toContain('data-slot="central-icon"');
     }
   });
@@ -378,7 +382,7 @@ describe("workspace Wiki links", () => {
         'href="/vault/03-Resources/papers/Qwen-3.8-Flash-Next.pdf"',
         "论文",
         'href="/vault/My%20note.md"',
-        "<code>[[literal|text]]</code>",
+        '<code dir="ltr">[[literal|text]]</code>',
       ],
       absent: ["[[03-Resources"],
     },

@@ -96,6 +96,7 @@ import {
   FindAwareShikiHtml,
   remarkFindableText,
 } from "./ChatMarkdownFind";
+import { rehypeBlockDirection } from "./ChatMarkdownDirection";
 import { AUTHORED_HTML_REHYPE_PLUGINS } from "./ChatMarkdownHtml";
 import { IncrementalShikiCodeBlock } from "./IncrementalShikiCodeBlock";
 import { createIncrementalMarkdownPlugin } from "../markdownIncremental";
@@ -221,7 +222,7 @@ const MARKDOWN_REMARK_PLUGINS: MarkdownRemarkPlugins = [
 // entirely (the composer chip plugin is appended per render because it closes over the message's
 // mention references).
 const USER_MARKDOWN_REMARK_PLUGINS: MarkdownRemarkPlugins = [remarkGfm, remarkBreaks];
-const USER_MARKDOWN_REHYPE_PLUGINS: MarkdownRehypePlugins = [];
+const USER_MARKDOWN_REHYPE_PLUGINS: MarkdownRehypePlugins = [rehypeBlockDirection];
 function markdownUrlTransform(href: string): string {
   const restoredHref = restoreLiteralDollarPlaceholders(href);
   return rewriteMarkdownFileUriHref(restoredHref) ?? defaultUrlTransform(restoredHref);
@@ -254,6 +255,7 @@ const MARKDOWN_REHYPE_PLUGINS: MarkdownRehypePlugins = [
     },
   ],
   rehypeRestoreLiteralDollars,
+  rehypeBlockDirection,
 ];
 // KaTeX runs after the sanitizer so its generated markup does not widen the allowlist.
 const AUTHORED_HTML_MARKDOWN_REHYPE_PLUGINS: MarkdownRehypePlugins = [
@@ -407,7 +409,7 @@ function MarkdownCodeBlock({
     [],
   );
   return (
-    <div className="chat-markdown-codeblock" data-wrap={wrap ? "true" : "false"}>
+    <div className="chat-markdown-codeblock" dir="ltr" data-wrap={wrap ? "true" : "false"}>
       <div className="chat-markdown-codeblock__header">
         <CodeBlockHeaderTitle fence={fence} />
         <div className="chat-markdown-codeblock__actions">
