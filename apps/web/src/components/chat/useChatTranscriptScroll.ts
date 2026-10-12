@@ -294,15 +294,44 @@ export function useChatTranscriptScroll({
     },
     [legendListRef, cancelPendingInteractionAnchorAdjustment],
   );
+  // A press pauses follow so a text selection or scrollbar drag is not pulled along by new output.
+  const pointerPressRef = useRef<{ container: HTMLElement; scrollTop: number } | null>(null);
   const onMessagesPointerDownBase = useCallback(() => {
+    const container = legendListRef.current?.getScrollableNode();
+    pointerPressRef.current =
+      container instanceof HTMLElement && isAtEndRef.current && !isUserScrollDetachedRef.current
+        ? { container, scrollTop: container.scrollTop }
+        : null;
     clearTranscriptAutoFollow(true);
-  }, [clearTranscriptAutoFollow]);
+  }, [legendListRef, clearTranscriptAutoFollow]);
   const releaseTranscriptScrollGesture = useCallback(() => {
     const state = legendListRef.current?.getState();
     if (state) onIsAtEndChange(state.isAtEnd);
   }, [legendListRef, onIsAtEndChange]);
-  const onMessagesPointerCancelBase = releaseTranscriptScrollGesture;
-  const onMessagesPointerUpBase = releaseTranscriptScrollGesture;
+  const onMessagesPointerCancelBase = useCallback(() => {
+    pointerPressRef.current = null;
+    releaseTranscriptScrollGesture();
+  }, [releaseTranscriptScrollGesture]);
+  const onMessagesPointerUpBase = useCallback(() => {
+    const press = pointerPressRef.current;
+    pointerPressRef.current = null;
+    const container = legendListRef.current?.getScrollableNode();
+    // Output keeps growing during a click, so the list is rarely still at its end on release. A press
+    // that started at the end, did not scroll and selected nothing was a click, not a scroll away.
+    if (
+      press &&
+      container === press.container &&
+      Math.abs(container.scrollTop - press.scrollTop) < 1 &&
+      (window.getSelection()?.isCollapsed ?? true)
+    ) {
+      isAtEndRef.current = true;
+      setTranscriptScrollDetached(false);
+      showScrollDebouncer.current.cancel();
+      setShowScrollToBottom(false);
+      return;
+    }
+    releaseTranscriptScrollGesture();
+  }, [legendListRef, releaseTranscriptScrollGesture, setTranscriptScrollDetached]);
   const onMessagesScrollBase = useCallback(() => {}, []);
   const onMessagesTouchEndBase = releaseTranscriptScrollGesture;
   const onMessagesTouchMoveBase = useCallback(() => {
@@ -593,19 +622,19 @@ export function useChatTranscriptScroll({
   ]);
 
   const previousThreadIdRef = useRef(activeThreadId);
-  const pendingStreamingThreadRef = useRef<ThreadId | null>(null);
+  const pendingLiveThreadRef = useRef<ThreadId | null>(null);
   useEffect(() => {
     if (previousThreadIdRef.current !== activeThreadId) {
       previousThreadIdRef.current = activeThreadId;
-      pendingStreamingThreadRef.current = activeThreadId;
+      pendingLiveThreadRef.current = activeThreadId;
     }
     if (
       activeThreadId === null ||
       !transcriptFollowsLiveTail ||
-      pendingStreamingThreadRef.current !== activeThreadId
+      pendingLiveThreadRef.current !== activeThreadId
     )
       return;
-    pendingStreamingThreadRef.current = null;
+    pendingLiveThreadRef.current = null;
 
     let cancelled = false;
     const settleAtEnd = async () => {

@@ -78,6 +78,13 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
 
   const followLiveOutput = followLiveOutputProp ?? false;
 
+  // Follow covers the whole live turn, which begins at send. The slide to a sent message only skips
+  // its easing when a reply is already streaming text below it, so it cannot fight the growing row.
+  const hasStreamingAssistantText = timelineEntries.some(
+    (entry) =>
+      entry.kind === "message" && entry.message.role === "assistant" && entry.message.streaming,
+  );
+
   const enteringUserMessageIds = enteringUserMessageIdsProp ?? EMPTY_MESSAGE_ID_SET;
 
   const tailAnchorMessageId = tailAnchorMessageIdProp ?? null;
@@ -220,7 +227,7 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
     onAnchorSlideFinished: handleTailAnchorSlideFinished,
     contentChangeSignal: timelineEntries,
     messageChangeSignal: messageChangeSignalProp ?? timelineEntries,
-    animateAnchorSlide: !followLiveOutput,
+    animateAnchorSlide: !(followLiveOutput && hasStreamingAssistantText),
   });
 
   const presentedWorktreeSetup = useWorktreeSetupPresentation(worktreeSetup);
