@@ -10,12 +10,17 @@ export function MarkdownToolCodeBlock(props: {
   language: string;
   children: string;
   elapsed?: string | null;
+  // Short content that must be read whole, such as a command, wraps instead of scrolling sideways.
+  wrap?: boolean;
 }) {
   return (
     <ChatMarkdown
       text={createMarkdownCodeFence(props.language, props.children)}
       cwd={undefined}
-      className={TOOL_DETAILS_MARKDOWN_CLASS_NAME}
+      className={cn(
+        TOOL_DETAILS_MARKDOWN_CLASS_NAME,
+        props.wrap && "[&_pre]:break-words [&_pre]:whitespace-pre-wrap",
+      )}
       codeBlockMeta={props.elapsed ?? undefined}
     />
   );

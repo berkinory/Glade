@@ -8,6 +8,7 @@
 - Returning to a provider you used earlier in a chat resumes its own session and only tells it what happened while another provider was working.
 - Everything that opens and closes in the chat uses the same motion, including tool details, subagent cards, pasted text, error details and long messages.
 - Icons of tool calls, tool groups, subagent cards and notices in the chat line up in one column.
+- Command details show the command and its output in separate boxes.
 
 ### Fixed
 

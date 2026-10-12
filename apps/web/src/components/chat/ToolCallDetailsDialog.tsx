@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { formatShellTranscript } from "~/lib/toolCallDetailsFormatting";
+import { formatShellCommand, formatToolOutputText } from "~/lib/toolCallDetailsFormatting";
 import { cn } from "~/lib/utils";
 import type { WorkLogToolDetails, WorkLogToolOutputDetails } from "../../lib/toolCallDetails";
 import type { WorkLogLiveActivity, WorkLogToolKind } from "../../workLog.types";
@@ -34,6 +34,7 @@ export function ToolCallDetailsContent({
 
   if (!hasToolCallDetailsContent(details, activity)) return null;
   if (details?.kind === "tool") return <ToolIoDetails details={details} toolKind={toolKind} />;
+  const commandOutputText = details?.command ? formatToolOutputText(details.output) : null;
 
   return (
     <>
@@ -45,9 +46,12 @@ export function ToolCallDetailsContent({
 
       {details?.command ? (
         <div className="space-y-2">
-          <MarkdownToolCodeBlock language="bash" elapsed={elapsed}>
-            {formatShellTranscript(details.command, details.output)}
+          <MarkdownToolCodeBlock language="bash" elapsed={elapsed} wrap>
+            {formatShellCommand(details.command)}
           </MarkdownToolCodeBlock>
+          {commandOutputText ? (
+            <MarkdownToolCodeBlock language="text">{commandOutputText}</MarkdownToolCodeBlock>
+          ) : null}
           {details.output ? <ToolOutputMetadata output={details.output} /> : null}
         </div>
       ) : null}

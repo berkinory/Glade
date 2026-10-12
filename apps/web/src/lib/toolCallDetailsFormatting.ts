@@ -1,23 +1,13 @@
 import type { WorkLogToolOutputDetails } from "./toolCallDetails";
 
-function formatShellCommand(command: string): string {
+export function formatShellCommand(command: string): string {
   return command
     .split(/\r?\n/)
     .map((line, index) => (index === 0 ? `$ ${line}` : line))
     .join("\n");
 }
 
-export function formatShellTranscript(
-  command: string,
-  output: WorkLogToolOutputDetails | undefined,
-): string {
-  const outputText = formatToolOutputText(output);
-  return outputText
-    ? `${formatShellCommand(command)}\n\n${outputText}`
-    : formatShellCommand(command);
-}
-
-function formatToolOutputText(output: WorkLogToolOutputDetails | undefined): string | null {
+export function formatToolOutputText(output: WorkLogToolOutputDetails | undefined): string | null {
   if (!output) {
     return null;
   }
