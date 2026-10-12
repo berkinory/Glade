@@ -34,7 +34,7 @@ import { type ClaudeApiEffort } from "@glade/contracts/provider/model";
 import { ClaudeRequestUsage } from "../claudeRequestUsage.ts";
 import { type ClaudeWorkflowRuntimeState } from "../claudeWorkflowRuntime.ts";
 import { ClaudeQueryRuntime, ClaudeProcessOwner } from "./adapterConfiguration";
-import type { ClaudeMonitorEventCursor } from "./monitorEvents";
+import type { ClaudeMonitorEventCursor } from "../claudeMonitorEvents.ts";
 
 export const PROVIDER = "claudeAgent" as const;
 

@@ -41,7 +41,7 @@ import { withClaudeArtifactOptIn } from "../claudeProcessEnv.ts";
 import { buildClaudeMcpServers } from "../../../agentGateway/mcpInjection.ts";
 import { toMessage } from "./streamErrors";
 import { cancellableClaudeMessageStream } from "./sdkProcessRuntime";
-import { makeClaudeMonitorEventCursor } from "./monitorEvents";
+import { makeClaudeMonitorEventCursor } from "../claudeMonitorEvents.ts";
 import { type ProviderSession } from "@glade/contracts/provider/provider";
 import { ClaudeRequestUsage } from "../claudeRequestUsage.ts";
 import { makeClaudeDiscovery } from "./discovery";
