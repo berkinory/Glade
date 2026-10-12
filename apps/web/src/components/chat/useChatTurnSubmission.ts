@@ -36,7 +36,6 @@ import {
   resolveQueuedTurnDispatchSettings,
 } from "../ChatView.logic.subagents";
 import { createWorktreeSetupResolution, deriveComposerSendState } from "../ChatView.logic.dispatch";
-import { resolveEnvironmentPanelPreferenceAfterFirstSend } from "../ChatView.logic.worktree";
 import { toastManager } from "../ui/toast";
 import type { ChatTurnSubmissionControllerInput } from "./chatSendTypes";
 import { prepareChatSendWorkspace } from "./prepareChatSendWorkspace";
@@ -127,13 +126,8 @@ export function useChatTurnSubmission({
     clearComposerDraftContent,
     setComposerCursor,
   } = session;
-  const {
-    setEnvironmentPanelPreferenceOpen,
-    environmentPanelPreferenceOpen,
-    turnDispatchSettings,
-    armTranscriptAutoFollow,
-    tailAnchorScrollInFlightRef,
-  } = environment;
+  const { turnDispatchSettings, armTranscriptAutoFollow, tailAnchorScrollInFlightRef } =
+    environment;
   const {
     scheduleComposerFocus,
     setThreadError,
@@ -152,7 +146,6 @@ export function useChatTurnSubmission({
     threadWorkspaceCwd,
     activeRootBranch,
     gitBranchSourceCwd,
-    isCenteredEmptyLanding,
     setTailAnchor,
     setOptimisticUserMessages,
   } = transcript;
@@ -632,19 +625,7 @@ export function useChatTurnSubmission({
             sizeBytes: file.sizeBytes,
           })),
         ];
-        // Sending the first message flips the centered empty landing into a normal transcript. Clear
-        // session-only landing overrides when default-open is enabled; otherwise keep the transition
-        // closed.
         if (activeThreadIdRef.current === threadIdForSend) {
-          if (isCenteredEmptyLanding) {
-            setEnvironmentPanelPreferenceOpen(
-              resolveEnvironmentPanelPreferenceAfterFirstSend({
-                isCenteredEmptyLanding,
-                settingsDefaultOpen: settings.environmentPanelDefaultOpen,
-                currentPreferenceOpen: environmentPanelPreferenceOpen,
-              }),
-            );
-          }
           setOptimisticUserMessages((existing) => [
             ...existing,
             {
@@ -784,9 +765,6 @@ export function useChatTurnSubmission({
       gitBranchSourceCwd,
       setStoreThreadError,
       queryClient,
-      isCenteredEmptyLanding,
-      setEnvironmentPanelPreferenceOpen,
-      environmentPanelPreferenceOpen,
       setTailAnchor,
       setThreadError,
       setComposerHighlightedItemId,

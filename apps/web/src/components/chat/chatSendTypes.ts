@@ -69,9 +69,6 @@ export interface ChatTurnSubmissionInput {
   gitBranchSourceCwd: string | null;
   setStoreThreadError: (threadId: ThreadId, error: string | null) => void;
   queryClient: QueryClient;
-  isCenteredEmptyLanding: boolean;
-  setEnvironmentPanelPreferenceOpen: Dispatch<SetStateAction<boolean | null>>;
-  environmentPanelPreferenceOpen: boolean | null;
   setTailAnchor: Dispatch<SetStateAction<{ threadId: ThreadId; messageId: MessageId } | null>>;
   setThreadError: (targetThreadId: ThreadId | null, error: string | null) => void;
   setComposerHighlightedItemId: Dispatch<SetStateAction<string | null>>;
@@ -291,8 +288,6 @@ export type ChatTurnSubmissionControllerInput = {
   environment: Pick<
     ChatTurnSubmissionInput,
     | "turnDispatchSettings"
-    | "setEnvironmentPanelPreferenceOpen"
-    | "environmentPanelPreferenceOpen"
     | "armTranscriptAutoFollow"
     | "tailAnchorScrollInFlightRef"
     | "persistThreadSettingsForNextTurn"
@@ -321,7 +316,6 @@ export type ChatTurnSubmissionControllerInput = {
     | "threadWorkspaceCwd"
     | "activeRootBranch"
     | "gitBranchSourceCwd"
-    | "isCenteredEmptyLanding"
     | "setTailAnchor"
     | "setOptimisticUserMessages"
   >;

@@ -92,7 +92,6 @@ export function useChatEnvironmentController({
     composerMenuItems,
   } = discovery;
   const {
-    isCenteredEmptyLanding,
     gitBranchSourceCwd,
     gitCwd,
     activeRootBranch,
@@ -132,7 +131,6 @@ export function useChatEnvironmentController({
 
   const environmentDefaultOpen = resolveDefaultEnvironmentPanelOpen({
     environmentEnabled,
-    isCenteredEmptyLanding,
     isTerminalPrimarySurface,
     isConstrainedChatLayout: environmentUsesFloatingOverlay,
     settingsDefaultOpen: settings.environmentPanelDefaultOpen,
@@ -581,8 +579,6 @@ export function useChatEnvironmentController({
     rightDockOpen,
     environmentEnabled,
     environmentUsesFloatingOverlay,
-    environmentPanelPreferenceOpen,
-    setEnvironmentPanelPreferenceOpen,
     setEnvironmentPanelOpenPreference,
     closeEnvironmentPanelAfterAction,
     environmentPanelVisible,

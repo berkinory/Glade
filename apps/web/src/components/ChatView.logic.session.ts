@@ -421,7 +421,6 @@ export function resolvePromptHistoryNavigation(input: {
 
 export function resolveDefaultEnvironmentPanelOpen(input: {
   environmentEnabled: boolean;
-  isCenteredEmptyLanding: boolean;
   isTerminalPrimarySurface: boolean;
   isConstrainedChatLayout: boolean;
   settingsDefaultOpen?: boolean;
@@ -430,7 +429,6 @@ export function resolveDefaultEnvironmentPanelOpen(input: {
   return (
     input.environmentEnabled &&
     settingsDefaultOpen &&
-    !input.isCenteredEmptyLanding &&
     !input.isTerminalPrimarySurface &&
     !input.isConstrainedChatLayout
   );

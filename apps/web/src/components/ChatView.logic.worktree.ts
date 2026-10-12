@@ -67,17 +67,6 @@ export function resolveEnvironmentPanelPreferenceUpdate(input: {
   };
 }
 
-export function resolveEnvironmentPanelPreferenceAfterFirstSend(input: {
-  isCenteredEmptyLanding: boolean;
-  settingsDefaultOpen: boolean;
-  currentPreferenceOpen: boolean | null;
-}): boolean | null {
-  if (!input.isCenteredEmptyLanding) {
-    return input.currentPreferenceOpen;
-  }
-  return input.settingsDefaultOpen ? null : false;
-}
-
 export function resolveEnvironmentPanelVisible(input: {
   environmentEnabled: boolean;
   environmentPanelOpen: boolean;
