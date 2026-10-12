@@ -33,10 +33,12 @@ export function readWindowMaterialState(): DesktopWindowMaterialState {
   }
 }
 
+export function opaqueWindowBackgroundColor(): string {
+  return nativeTheme.shouldUseDarkColors ? "#181818" : "#ffffff";
+}
+
 export function windowMaterialOptions(enabled: boolean): BrowserWindowConstructorOptions {
-  if (!enabled) {
-    return { backgroundColor: nativeTheme.shouldUseDarkColors ? "#181818" : "#ffffff" };
-  }
+  if (!enabled) return { backgroundColor: opaqueWindowBackgroundColor() };
   // Native backdrops keep the window opaque to the window manager; transparent windows
   // introduce a separate compositor path with different shadow and resize behavior.
   return {

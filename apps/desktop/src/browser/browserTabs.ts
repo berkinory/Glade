@@ -1,7 +1,14 @@
 import type { BrowserTabsChanged } from "@glade/contracts/browser/browserHost";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { session, WebContentsView, type DownloadItem, type WebContents } from "electron";
+import {
+  nativeTheme,
+  session,
+  WebContentsView,
+  type DownloadItem,
+  type WebContents,
+} from "electron";
 import * as FS from "node:fs";
+import { opaqueWindowBackgroundColor } from "../main/window/desktopWindowMaterial";
 import { downloadTarget } from "./browserDownloads";
 import { BrowserFailure } from "./browserFailure";
 import {
@@ -57,6 +64,10 @@ export class BrowserTabs {
   private nextId = 1;
   private changeTimer: NodeJS.Timeout | null = null;
   private readonly sweepTimer = setInterval(() => this.sweep(), SUSPEND_SWEEP_MS);
+  private readonly syncViewBackgrounds = () => {
+    const color = opaqueWindowBackgroundColor();
+    for (const entry of this.tabs.values()) if (isLive(entry)) entry.view.setBackgroundColor(color);
+  };
 
   constructor(
     private readonly options: {
@@ -66,6 +77,7 @@ export class BrowserTabs {
       readonly parking: BrowserViewParking;
     },
   ) {
+    nativeTheme.on("updated", this.syncViewBackgrounds);
     const browserSession = session.fromPartition(BROWSER_PARTITION);
     const { blocker } = options;
     browserSession.on("will-download", (_event, item, webContents) =>
@@ -150,6 +162,7 @@ export class BrowserTabs {
 
   closeAll(): void {
     clearInterval(this.sweepTimer);
+    nativeTheme.off("updated", this.syncViewBackgrounds);
     for (const entry of this.tabs.values()) if (isLive(entry)) this.release(entry);
   }
 
@@ -244,6 +257,9 @@ export class BrowserTabs {
       restored,
     );
     view.setBounds(DEFAULT_BOUNDS);
+    // Restored and new tabs show the view's backdrop until the page paints, which defaults to
+    // black. It stays opaque even with window vibrancy because pages assume an opaque canvas.
+    view.setBackgroundColor(opaqueWindowBackgroundColor());
     this.options.parking.park(view);
     this.tabs.set(tab.id, tab);
     if (!restored) this.activeByThread.set(threadId, tab.id);
