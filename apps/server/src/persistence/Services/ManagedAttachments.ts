@@ -64,6 +64,10 @@ type ReserveManagedAttachmentResult =
   | { readonly status: "quota-exceeded" }
   | { readonly status: "id-conflict" };
 
+type ReserveManagedAttachmentCopyResult =
+  | ReserveManagedAttachmentResult
+  | { readonly status: "source-unavailable" };
+
 type FinalizeManagedAttachmentResult =
   | { readonly status: "staged"; readonly attachment: ManagedAttachmentBlob }
   | { readonly status: "not-uploading" };
@@ -106,6 +110,17 @@ export interface ManagedAttachmentRepositoryShape {
     readonly relativePath: string;
     readonly now: string;
   }) => Effect.Effect<ReserveManagedAttachmentResult, PersistenceSqlError>;
+  // Takes its metadata from a claimed source row. Principal staging limits bound client uploads and
+  // do not apply to server copies of stored content; home limits still do.
+  readonly reserveCopy: (input: {
+    readonly sourceAttachmentId: string;
+    readonly attachmentId: string;
+    readonly ownerThreadId: string;
+    readonly ownerKind: string;
+    readonly ownerId: string;
+    readonly relativePath: string;
+    readonly now: string;
+  }) => Effect.Effect<ReserveManagedAttachmentCopyResult, PersistenceSqlError>;
   readonly finalizeStaged: (input: {
     readonly attachmentId: string;
     readonly ownerThreadId: string;

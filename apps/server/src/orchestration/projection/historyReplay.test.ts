@@ -296,7 +296,7 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
       }),
   );
 
-  it.effect("does not fallback-retain messages whose turnId is removed by revert", () =>
+  it.effect("keeps imported history and drops messages whose turnId is removed by revert", () =>
     Effect.gen(function* () {
       const projectionPipeline = yield* OrchestrationProjectionPipeline;
       const eventStore = yield* OrchestrationEventStore;
@@ -346,6 +346,29 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
           worktreePath: null,
           createdAt: "2026-02-26T12:00:01.000Z",
           updatedAt: "2026-02-26T12:00:01.000Z",
+        },
+      });
+
+      yield* appendAndProject({
+        type: "thread.message-sent",
+        eventId: EventId.makeUnsafe("evt-revert-imported"),
+        aggregateKind: "thread",
+        aggregateId: ThreadId.makeUnsafe("thread-revert"),
+        occurredAt: "2026-02-26T12:00:01.000Z",
+        commandId: CommandId.makeUnsafe("cmd-revert-2"),
+        causationEventId: null,
+        correlationId: CorrelationId.makeUnsafe("cmd-revert-2"),
+        metadata: {},
+        payload: {
+          threadId: ThreadId.makeUnsafe("thread-revert"),
+          messageId: MessageId.makeUnsafe("imported-user"),
+          role: "user",
+          text: "imported",
+          turnId: TurnId.makeUnsafe("source-turn"),
+          streaming: false,
+          source: "fork-import",
+          createdAt: "2026-02-26T11:00:00.000Z",
+          updatedAt: "2026-02-26T11:00:00.000Z",
         },
       });
 
@@ -493,6 +516,11 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
         ORDER BY created_at ASC, message_id ASC
       `;
       assert.deepEqual(messageRows, [
+        {
+          messageId: "imported-user",
+          turnId: "source-turn",
+          role: "user",
+        },
         {
           messageId: "assistant-keep",
           turnId: "turn-1",

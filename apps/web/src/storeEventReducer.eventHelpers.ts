@@ -1,5 +1,6 @@
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import { isInProgressTurnDiff } from "@glade/shared/threads/inProgressTurnDiff";
+import { isImportedHistoryMessage } from "@glade/shared/threads/importedHistory";
 import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import type { OrchestrationPendingInteraction } from "@glade/contracts/orchestration/threadEntities";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
@@ -367,7 +368,7 @@ export function retainThreadMessagesAfterRevert(
 ): ChatMessage[] {
   const retainedMessageIds = new Set<string>();
   for (const message of messages) {
-    if (message.role === "system") {
+    if (message.role === "system" || isImportedHistoryMessage(message)) {
       retainedMessageIds.add(message.id);
       continue;
     }
@@ -379,10 +380,12 @@ export function retainThreadMessagesAfterRevert(
       retainedMessageIds.add(message.id);
     }
   }
+  const countsTowardTurns = (message: ChatMessage, role: "user" | "assistant") =>
+    message.role === role &&
+    !isImportedHistoryMessage(message) &&
+    retainedMessageIds.has(message.id);
 
-  const retainedUserCount = messages.filter(
-    (message) => message.role === "user" && retainedMessageIds.has(message.id),
-  ).length;
+  const retainedUserCount = messages.filter((message) => countsTowardTurns(message, "user")).length;
   const missingUserCount = Math.max(0, turnCount - retainedUserCount);
   if (missingUserCount > 0) {
     const fallbackUserMessages = messages
@@ -404,8 +407,8 @@ export function retainThreadMessagesAfterRevert(
     }
   }
 
-  const retainedAssistantCount = messages.filter(
-    (message) => message.role === "assistant" && retainedMessageIds.has(message.id),
+  const retainedAssistantCount = messages.filter((message) =>
+    countsTowardTurns(message, "assistant"),
   ).length;
   const missingAssistantCount = Math.max(0, turnCount - retainedAssistantCount);
   if (missingAssistantCount > 0) {

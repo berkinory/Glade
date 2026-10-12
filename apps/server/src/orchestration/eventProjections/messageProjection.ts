@@ -1,3 +1,4 @@
+import { isImportedHistoryMessage } from "@glade/shared/threads/importedHistory";
 import {
   OrchestrationMessage,
   type OrchestrationMessageTextSegment,
@@ -137,7 +138,7 @@ export function projectMessageEvent(
             role: payload.role,
             ...(payload.modelSelection
               ? { modelSelection: payload.modelSelection }
-              : ["handoff-import", "fork-import"].includes(payload.source)
+              : isImportedHistoryMessage(payload)
                 ? {}
                 : { modelSelection: thread.modelSelection }),
             text: payload.text,

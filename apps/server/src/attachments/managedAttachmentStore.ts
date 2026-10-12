@@ -26,7 +26,25 @@ const MANAGED_ATTACHMENT_ID_PREFIX = "att_v2_";
 
 export type BinaryChatAttachment = ChatImageAttachment | ChatFileAttachment;
 
-class ManagedAttachmentStoreError extends Error {
+export function isManagedAttachmentId(attachmentId: string): boolean {
+  return attachmentId.startsWith(MANAGED_ATTACHMENT_ID_PREFIX);
+}
+
+// Derived ids let a retried preparation and the pure decider agree on a copy's id without sharing
+// state. The seed must be unique per copy.
+export function derivedManagedAttachmentId(seed: string): string {
+  return `${MANAGED_ATTACHMENT_ID_PREFIX}${createHash("sha256").update(seed).digest("hex").slice(0, 32)}`;
+}
+
+function managedAttachmentRelativePath(attachmentId: string, extension: string): string {
+  const shard = attachmentId.slice(
+    MANAGED_ATTACHMENT_ID_PREFIX.length,
+    MANAGED_ATTACHMENT_ID_PREFIX.length + 2,
+  );
+  return `objects/${shard}/${attachmentId}${extension}`;
+}
+
+export class ManagedAttachmentStoreError extends Error {
   readonly status: number;
   readonly code: string;
 
@@ -100,8 +118,10 @@ export function reserveManagedAttachmentUpload(input: {
             }),
     });
     const attachmentId = `${MANAGED_ATTACHMENT_ID_PREFIX}${randomUUID().replaceAll("-", "")}`;
-    const extension = extensionFor({ type: input.type, ...metadata });
-    const relativePath = `objects/${attachmentId.slice(MANAGED_ATTACHMENT_ID_PREFIX.length, MANAGED_ATTACHMENT_ID_PREFIX.length + 2)}/${attachmentId}${extension}`;
+    const relativePath = managedAttachmentRelativePath(
+      attachmentId,
+      extensionFor({ type: input.type, ...metadata }),
+    );
     const result = yield* input.repository.reserve({
       attachmentId,
       ownerThreadId: input.threadId,
@@ -268,5 +288,76 @@ export function persistReservedManagedAttachment(input: {
       mimeType: finalized.attachment.mimeType,
       sizeBytes: finalized.attachment.sizeBytes!,
     };
+  });
+}
+
+// Copies get their own row and file so each conversation's cleanup stays scoped to what it owns.
+// The bytes are verified against the source's recorded identity before anything is reserved.
+export function copyClaimedManagedAttachment(input: {
+  readonly source: ManagedAttachmentBlob;
+  readonly attachmentId: string;
+  readonly ownerThreadId: string;
+  readonly attachmentsDir: string;
+  readonly now: string;
+  readonly principal: ManagedAttachmentPrincipal;
+  readonly repository: ManagedAttachmentRepositoryShape;
+}): Effect.Effect<BinaryChatAttachment, Error> {
+  return Effect.gen(function* () {
+    const damaged = () =>
+      new ManagedAttachmentStoreError("Source attachment content is missing or damaged.", {
+        status: 409,
+        code: "attachment_source_damaged",
+      });
+    const sourcePath = resolveAttachmentRelativePath({
+      attachmentsDir: input.attachmentsDir,
+      relativePath: input.source.relativePath,
+    });
+    if (!sourcePath) return yield* Effect.fail(damaged());
+    const bytes = yield* Effect.tryPromise({
+      try: () => fs.readFile(sourcePath),
+      catch: () => damaged(),
+    });
+    if (
+      bytes.byteLength !== input.source.sizeBytes ||
+      createHash("sha256").update(bytes).digest("hex") !== input.source.sha256
+    ) {
+      return yield* Effect.fail(damaged());
+    }
+    const result = yield* input.repository.reserveCopy({
+      sourceAttachmentId: input.source.attachmentId,
+      attachmentId: input.attachmentId,
+      ownerThreadId: input.ownerThreadId,
+      ownerKind: input.principal.ownerKind,
+      ownerId: input.principal.ownerId,
+      relativePath: managedAttachmentRelativePath(
+        input.attachmentId,
+        path.extname(input.source.relativePath),
+      ),
+      now: input.now,
+    });
+    if (result.status !== "reserved") {
+      return yield* Effect.fail(
+        result.status === "quota-exceeded"
+          ? new ManagedAttachmentStoreError("Managed attachment storage quota exceeded.", {
+              status: 507,
+              code: "attachment_quota_exceeded",
+            })
+          : new ManagedAttachmentStoreError("Could not reserve the attachment copy.", {
+              status: 409,
+              code:
+                result.status === "source-unavailable"
+                  ? "attachment_source_unavailable"
+                  : "attachment_reservation_conflict",
+            }),
+      );
+    }
+    return yield* persistReservedManagedAttachment({
+      reservation: result.attachment,
+      bytes,
+      attachmentsDir: input.attachmentsDir,
+      now: input.now,
+      principal: input.principal,
+      repository: input.repository,
+    });
   });
 }

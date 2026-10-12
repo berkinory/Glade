@@ -14,6 +14,10 @@ import {
 import { maxIso } from "../turnLifecycle.ts";
 import { clearRemovedAsyncUserInputResponses } from "@glade/shared/threads/asyncUserInput";
 import {
+  importedHistoryTurnIds,
+  isImportedHistoryMessage,
+} from "@glade/shared/threads/importedHistory";
+import {
   ProjectionEffect,
   decodeForEvent,
   updateThread,
@@ -35,7 +39,7 @@ function retainThreadMessagesAfterRevert(
 ): ReadonlyArray<OrchestrationMessage> {
   const retainedMessageIds = new Set<string>();
   for (const message of messages) {
-    if (message.role === "system") {
+    if (message.role === "system" || isImportedHistoryMessage(message)) {
       retainedMessageIds.add(message.id);
       continue;
     }
@@ -43,10 +47,12 @@ function retainThreadMessagesAfterRevert(
       retainedMessageIds.add(message.id);
     }
   }
+  const countsTowardTurns = (message: OrchestrationMessage, role: "user" | "assistant") =>
+    message.role === role &&
+    !isImportedHistoryMessage(message) &&
+    retainedMessageIds.has(message.id);
 
-  const retainedUserCount = messages.filter(
-    (message) => message.role === "user" && retainedMessageIds.has(message.id),
-  ).length;
+  const retainedUserCount = messages.filter((message) => countsTowardTurns(message, "user")).length;
   const missingUserCount = Math.max(0, turnCount - retainedUserCount);
   if (missingUserCount > 0) {
     const fallbackUserMessages = messages
@@ -62,8 +68,8 @@ function retainThreadMessagesAfterRevert(
     }
   }
 
-  const retainedAssistantCount = messages.filter(
-    (message) => message.role === "assistant" && retainedMessageIds.has(message.id),
+  const retainedAssistantCount = messages.filter((message) =>
+    countsTowardTurns(message, "assistant"),
   ).length;
   const missingAssistantCount = Math.max(0, turnCount - retainedAssistantCount);
   if (missingAssistantCount > 0) {
@@ -221,7 +227,10 @@ export function projectHistoryEvent(
             .filter((entry) => entry.checkpointTurnCount <= payload.turnCount)
             .toSorted((left, right) => left.checkpointTurnCount - right.checkpointTurnCount)
             .slice(-(historyLimit ?? MAX_THREAD_CHECKPOINTS));
-          const retainedTurnIds = new Set(checkpoints.map((checkpoint) => checkpoint.turnId));
+          const retainedTurnIds = new Set([
+            ...checkpoints.map((checkpoint) => checkpoint.turnId),
+            ...importedHistoryTurnIds(thread.messages),
+          ]);
           const retainedMessages = retainThreadMessagesAfterRevert(
             thread.messages,
             retainedTurnIds,

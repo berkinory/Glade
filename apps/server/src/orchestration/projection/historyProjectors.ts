@@ -3,11 +3,13 @@ import { visualReplyAttachmentIds } from "../../visualReplies/visualReplyAttachm
 import { VISUAL_REPLY_ACTIVITY_KIND } from "@glade/contracts/orchestration/visualReply";
 import type { ServiceMap } from "effect";
 
+import { ProjectionThreadMessageRepository } from "../../persistence/Services/ProjectionThreadMessages.ts";
 import { ProjectionTurnRepository } from "../../persistence/Services/ProjectionTurns.ts";
 import { ProjectionThreadActivityRepository } from "../../persistence/Services/ProjectionThreadActivities.ts";
 import { ProjectionThreadSessionRepository } from "../../persistence/Services/ProjectionThreadSessions.ts";
 import { ProjectionThreadRepository } from "../../persistence/Services/ProjectionThreads.ts";
 import { Effect, Option } from "effect";
+import { importedHistoryTurnIds } from "@glade/shared/threads/importedHistory";
 import { deriveTurnStartSession } from "../turnStartSession.ts";
 import { ProjectorDefinition } from "./projectorRegistration";
 import {
@@ -17,6 +19,9 @@ import {
 
 export function makeHistoryProjectors(input: {
   readonly managedAttachments: ServiceMap.Service.Shape<typeof ManagedAttachmentRepository>;
+  readonly projectionThreadMessageRepository: ServiceMap.Service.Shape<
+    typeof ProjectionThreadMessageRepository
+  >;
   readonly projectionTurnRepository: ServiceMap.Service.Shape<typeof ProjectionTurnRepository>;
   readonly projectionThreadActivityRepository: ServiceMap.Service.Shape<
     typeof ProjectionThreadActivityRepository
@@ -28,6 +33,7 @@ export function makeHistoryProjectors(input: {
 }) {
   const {
     managedAttachments,
+    projectionThreadMessageRepository,
     projectionTurnRepository,
     projectionThreadActivityRepository,
     projectionThreadSessionRepository,
@@ -71,6 +77,11 @@ export function makeHistoryProjectors(input: {
                     threadId: event.payload.threadId,
                   }),
                   event.payload.turnCount,
+                  importedHistoryTurnIds(
+                    yield* projectionThreadMessageRepository.listByThreadId({
+                      threadId: event.payload.threadId,
+                    }),
+                  ),
                 )
               : retainTurnScopedProjectionRowsAfterConversationRollback(
                   existingRows,

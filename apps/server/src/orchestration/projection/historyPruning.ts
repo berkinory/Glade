@@ -1,5 +1,6 @@
 import { type ProjectionTurn } from "../../persistence/Services/ProjectionTurns.ts";
 import { type ProjectionThreadMessage } from "../../persistence/Services/ProjectionThreadMessages.ts";
+import { isImportedHistoryMessage } from "@glade/shared/threads/importedHistory";
 
 export function retainProjectionTurnsAfterRevert(
   turns: ReadonlyArray<ProjectionTurn>,
@@ -34,7 +35,7 @@ export function retainProjectionMessagesAfterRevert(
   }
 
   for (const message of messages) {
-    if (message.role === "system") {
+    if (message.role === "system" || isImportedHistoryMessage(message)) {
       retainedMessageIds.add(message.messageId);
       continue;
     }
@@ -45,7 +46,10 @@ export function retainProjectionMessagesAfterRevert(
 
   for (const role of ["user", "assistant"] as const) {
     const retainedCount = messages.filter(
-      (message) => message.role === role && retainedMessageIds.has(message.messageId),
+      (message) =>
+        message.role === role &&
+        !isImportedHistoryMessage(message) &&
+        retainedMessageIds.has(message.messageId),
     ).length;
     const missingCount = Math.max(0, turnCount - retainedCount);
     if (missingCount > 0) {
@@ -71,12 +75,14 @@ export function retainTurnScopedProjectionRowsAfterRevert<
   rows: ReadonlyArray<Row>,
   turns: ReadonlyArray<ProjectionTurn>,
   turnCount: number,
+  importedTurnIds: ReadonlySet<string>,
 ): ReadonlyArray<Row> {
-  const retainedTurnIds = new Set(
-    retainProjectionTurnsAfterRevert(turns, turnCount).flatMap((turn) =>
+  const retainedTurnIds = new Set([
+    ...retainProjectionTurnsAfterRevert(turns, turnCount).flatMap((turn) =>
       turn.turnId === null ? [] : [turn.turnId],
     ),
-  );
+    ...importedTurnIds,
+  ]);
   return rows.filter((row) => row.turnId === null || retainedTurnIds.has(row.turnId));
 }
 

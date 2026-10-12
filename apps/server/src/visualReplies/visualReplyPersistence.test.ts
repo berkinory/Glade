@@ -31,7 +31,7 @@ import type { ToolContext } from "../agentGateway/toolRuntime";
 import { VisualReplyPreviewLive } from "./Layers/VisualReplyPreview";
 import { VisualReplyPreview } from "./Services/VisualReplyPreview";
 
-it("publishes owned HTML atomically, retains it through replay and prunes it with its turn", async () => {
+it("publishes owned HTML atomically, retains it through replay and forks, and prunes it with its turn", async () => {
   const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "glade-visual-persistence-"));
   const runtime = ManagedRuntime.make(
     OrchestrationEngineLive.pipe(
@@ -202,6 +202,49 @@ it("publishes owned HTML atomically, retains it through replay and prunes it wit
       render.handler({ title: "Late chart", html: "<h1>Late</h1>" }, context),
     );
     expect(stale.isError).toBe(true);
+    const forkMessageId = MessageId.makeUnsafe("visual-final");
+    await runtime.runPromise(
+      engine.dispatch({
+        type: "thread.message.assistant.complete",
+        commandId: commandId(),
+        threadId,
+        messageId: forkMessageId,
+        turnId,
+        createdAt: new Date().toISOString(),
+      }),
+    );
+    const forkThreadId = ThreadId.makeUnsafe("visual-fork");
+    await runtime.runPromise(
+      engine.dispatch({
+        type: "thread.fork.create",
+        commandId: commandId(),
+        threadId: forkThreadId,
+        sourceThreadId: threadId,
+        projectId,
+        title: "Visual",
+        modelSelection: { provider: "codex", model: "gpt-5-codex" },
+        runtimeMode: "approval-required",
+        branch: null,
+        worktreePath: null,
+        forkMessageId,
+        createdAt: new Date().toISOString(),
+      }),
+    );
+    const forkActivity = Option.getOrThrow(
+      await runtime.runPromise(snapshots.getThreadDetailById(forkThreadId)),
+    ).activities.find((entry) => entry.kind === VISUAL_REPLY_ACTIVITY_KIND)!;
+    const forkReply = Schema.decodeUnknownSync(VisualReply)(forkActivity.payload);
+    expect(forkReply.threadId).toBe(forkThreadId);
+    const forkBlob = Option.getOrThrow(
+      await runtime.runPromise(
+        attachments.findClaimedById({ attachmentId: forkReply.attachmentId }),
+      ),
+    );
+    expect(forkBlob).toMatchObject({
+      ownerThreadId: forkThreadId,
+      claimMessageId: forkActivity.id,
+      sha256: claimed.sha256,
+    });
     await runtime.runPromise(
       engine.dispatch({
         type: "thread.conversation.rollback.complete",
@@ -223,6 +266,16 @@ it("publishes owned HTML atomically, retains it through replay and prunes it wit
         await runtime.runPromise(snapshots.getThreadDetailById(threadId)),
       ).activities.some((entry) => entry.id === activity.id),
     ).toBe(false);
+    expect(
+      Option.isSome(
+        await runtime.runPromise(
+          attachments.findClaimedById({ attachmentId: forkReply.attachmentId }),
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      await fs.readFile(path.join(config.attachmentsDir, forkBlob.relativePath), "utf8"),
+    ).toContain("Persisted chart");
   } finally {
     await runtime.dispose();
     await fs.rm(workspace, { recursive: true, force: true });

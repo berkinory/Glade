@@ -3,6 +3,8 @@ import {
   visualReplyAttachmentIds,
 } from "../../visualReplies/visualReplyAttachments";
 import { VISUAL_REPLY_ACTIVITY_KIND } from "@glade/contracts/orchestration/visualReply";
+import { claimForkAttachmentCopies, stageForkAttachmentCopies } from "../forkAttachmentCopies";
+import { selectForkImport } from "../forkImport";
 import type { ChatAttachment } from "@glade/contracts/orchestration/threadEntities";
 import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import type { OrchestrationReadModel } from "@glade/contracts/orchestration/snapshots";
@@ -642,8 +644,9 @@ const makeOrchestrationEngine = Effect.gen(function* () {
           : Effect.succeed(keepReadModel);
       case "thread.handoff.start":
         return loadThreadOverlay(command, command.threadId, true);
+      // A fork imports the whole conversation, not the capped window clients render.
       case "thread.fork.create":
-        return loadThreadOverlay(command, command.sourceThreadId);
+        return loadThreadOverlay(command, command.sourceThreadId, true);
       case "thread.turn.start": {
         const response = command.asyncUserInputResponse;
         if (!response) return Effect.succeed(keepReadModel);
@@ -861,8 +864,9 @@ const makeOrchestrationEngine = Effect.gen(function* () {
       }
     });
 
-  // Preparation only reads. It records what it read so the commit can tell whether another command
-  // changed those aggregates, or the whole read model was replaced, before this one committed.
+  // Preparation only reads, except for staging fork attachment copies, which nothing references
+  // until the commit claims them. It records what it read so the commit can tell whether another
+  // command changed those aggregates, or the whole read model was replaced, before this one committed.
   const prepareCommand = (
     envelope: CommandEnvelope,
     commandFingerprint: OrchestrationCommandFingerprint,
@@ -942,6 +946,22 @@ const makeOrchestrationEngine = Effect.gen(function* () {
       }
 
       const overlay = yield* loadDeciderOverlay(command);
+      if (command.type === "thread.fork.create") {
+        const forkCommand = command;
+        const source = overlay(commandReadModel).threads.find(
+          (thread) => thread.id === forkCommand.sourceThreadId,
+        );
+        const forkImport = source ? selectForkImport(source, forkCommand.forkMessageId) : null;
+        if (forkImport) {
+          yield* stageForkAttachmentCopies({
+            command: forkCommand,
+            forkImport,
+            attachmentsDir: serverConfig.attachmentsDir,
+            principal: envelope.attachmentPrincipal,
+            repository: managedAttachments,
+          });
+        }
+      }
       return { kind: "decide", preparedAt, command, overlay } as const;
     });
 
@@ -1065,6 +1085,15 @@ const makeOrchestrationEngine = Effect.gen(function* () {
               afterCommitEffects.push(afterCommit);
             }
             committedEvents.push(savedEvent);
+          }
+
+          if (command.type === "thread.fork.create") {
+            yield* claimForkAttachmentCopies({
+              command,
+              events: committedEvents,
+              principal: envelope.attachmentPrincipal,
+              repository: managedAttachments,
+            });
           }
 
           const lastSavedEvent = committedEvents.at(-1) ?? null;

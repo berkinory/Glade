@@ -111,6 +111,64 @@ const makeRepository = (limits: ManagedAttachmentLimits) =>
           : { status: "quota-exceeded" as const };
       }).pipe(Effect.mapError(toPersistenceSqlError("ManagedAttachment.reserve")));
 
+    const reserveCopy: ManagedAttachmentRepositoryShape["reserveCopy"] = (input) =>
+      Effect.gen(function* () {
+        const inserted = yield* sql<ManagedAttachmentBlob>`
+          INSERT INTO managed_attachment_blobs (
+            attachment_id, owner_thread_id, owner_kind, owner_id,
+            kind, purpose, original_name, mime_type, reserved_bytes, size_bytes, sha256,
+            relative_path, state, staging_expires_at,
+            claim_command_id, claim_message_id, claimed_at,
+            delete_reason, delete_requested_at, deleted_at,
+            created_at, updated_at
+          )
+          SELECT
+            ${input.attachmentId}, ${input.ownerThreadId}, ${input.ownerKind}, ${input.ownerId},
+            source.kind, source.purpose, source.original_name, source.mime_type, source.size_bytes, NULL, NULL,
+            ${input.relativePath}, 'uploading', NULL,
+            NULL, NULL, NULL,
+            NULL, NULL, NULL,
+            ${input.now}, ${input.now}
+          FROM managed_attachment_blobs AS source
+          WHERE source.attachment_id = ${input.sourceAttachmentId}
+            AND source.state = 'claimed'
+            AND (
+              SELECT COALESCE(SUM(
+                CASE WHEN state = 'uploading' THEN reserved_bytes
+                     ELSE COALESCE(size_bytes, reserved_bytes) END
+              ), 0)
+              FROM managed_attachment_blobs
+              WHERE state <> 'deleted'
+            ) + source.size_bytes <= ${limits.homeBytes}
+            AND (
+              SELECT COUNT(*)
+              FROM managed_attachment_blobs
+              WHERE state <> 'deleted'
+            ) + 1 <= ${limits.homeCount}
+          ON CONFLICT DO NOTHING
+          RETURNING ${blobColumns(sql)}
+        `;
+        if (inserted[0]) {
+          return { status: "reserved" as const, attachment: inserted[0] };
+        }
+        const [source] = yield* sql<{ readonly state: string }>`
+          SELECT state
+          FROM managed_attachment_blobs
+          WHERE attachment_id = ${input.sourceAttachmentId}
+        `;
+        if (source?.state !== "claimed") return { status: "source-unavailable" as const };
+        const conflicts = yield* sql<{ readonly value: number }>`
+          SELECT 1 AS value
+          FROM managed_attachment_blobs
+          WHERE attachment_id = ${input.attachmentId}
+             OR relative_path = ${input.relativePath}
+          LIMIT 1
+        `;
+        return conflicts.length > 0
+          ? { status: "id-conflict" as const }
+          : { status: "quota-exceeded" as const };
+      }).pipe(Effect.mapError(toPersistenceSqlError("ManagedAttachment.reserveCopy")));
+
     const finalizeStaged: ManagedAttachmentRepositoryShape["finalizeStaged"] = (input) =>
       sql<ManagedAttachmentBlob>`
         UPDATE managed_attachment_blobs
@@ -608,6 +666,7 @@ const makeRepository = (limits: ManagedAttachmentLimits) =>
 
     return {
       reserve,
+      reserveCopy,
       finalizeStaged,
       findServerOwned,
       findClaimedById,

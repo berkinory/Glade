@@ -108,6 +108,7 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
   });
   const { applyThreadActivitiesProjection, applyThreadSessionsProjection } = makeHistoryProjectors({
     managedAttachments,
+    projectionThreadMessageRepository,
     projectionTurnRepository,
     projectionThreadActivityRepository,
     projectionThreadSessionRepository,

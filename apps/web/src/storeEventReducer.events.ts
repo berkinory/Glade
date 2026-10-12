@@ -10,6 +10,7 @@ import {
   setPinnedMessageDone,
   setPinnedMessageLabel,
 } from "@glade/shared/threads/pinnedMessages";
+import { importedHistoryTurnIds } from "@glade/shared/threads/importedHistory";
 import { deriveThreadSummaryMetadata } from "@glade/shared/threads/threadSummary";
 import {
   MAX_THREAD_MESSAGES,
@@ -665,7 +666,10 @@ export function applyOrchestrationEvent(
                 (left.checkpointTurnCount ?? Number.MAX_SAFE_INTEGER) -
                 (right.checkpointTurnCount ?? Number.MAX_SAFE_INTEGER),
             );
-          const retainedTurnIds = new Set(turnDiffSummaries.map((entry) => entry.turnId));
+          const retainedTurnIds = new Set([
+            ...turnDiffSummaries.map((entry) => entry.turnId),
+            ...importedHistoryTurnIds(thread.messages),
+          ]);
           const retainedMessages = retainThreadMessagesAfterRevert(
             thread.messages,
             retainedTurnIds,
