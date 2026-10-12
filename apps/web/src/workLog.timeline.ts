@@ -1,6 +1,6 @@
 import type { ChatMessage } from "./types";
 import type { TimelineEntry, WorkLogEntry } from "./workLog.types";
-import { compareTimelineEntries } from "./workLog.ordering";
+import { compareIsoTimestamps, compareTimelineEntries } from "./workLog.ordering";
 
 type TimelineComparator = (left: TimelineEntry, right: TimelineEntry) => number;
 
@@ -190,11 +190,11 @@ export function deriveTimelineEntries(
   const turnOrder = new Map<string, number>();
   const messagesOrdered = messages.every(
     (message, index) =>
-      index === 0 || messages[index - 1]!.createdAt.localeCompare(message.createdAt) <= 0,
+      index === 0 || compareIsoTimestamps(messages[index - 1]!.createdAt, message.createdAt) <= 0,
   );
   const orderedMessages = messagesOrdered
     ? messages
-    : messages.toSorted((a, b) => a.createdAt.localeCompare(b.createdAt));
+    : messages.toSorted((a, b) => compareIsoTimestamps(a.createdAt, b.createdAt));
   for (const message of orderedMessages) {
     const startsNewTurn =
       message.startsNewTurn ??
@@ -213,7 +213,7 @@ export function deriveTimelineEntries(
     let high = userStarts.length;
     while (low < high) {
       const mid = (low + high) >>> 1;
-      if (userStarts[mid]!.localeCompare(createdAt) <= 0) low = mid + 1;
+      if (compareIsoTimestamps(userStarts[mid]!, createdAt) <= 0) low = mid + 1;
       else high = mid;
     }
     return low;

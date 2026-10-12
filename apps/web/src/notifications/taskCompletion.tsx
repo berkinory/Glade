@@ -8,7 +8,7 @@ import { toastManager } from "../components/ui/toast";
 import { resolveVisibleToastThreadIds } from "../components/ui/toastRouteVisibility";
 import { useAppSettings } from "../appSettings";
 import { useStore } from "../store";
-import { createAllThreadsSelector } from "../storeSelectors";
+import { createAllThreadsSelector, createRootThreadErrorsSelector } from "../storeSelectors";
 import { useTerminalStateStore } from "../terminalStateStore";
 import type { Thread } from "../types";
 import {
@@ -121,10 +121,12 @@ export function TaskCompletionNotifications() {
   const threads = useStore(allThreadsSelector).filter((thread) => !thread.parentThreadId);
   const threadsHydrated = useStore((store) => store.threadsHydrated);
   const terminalStateByThreadId = useTerminalStateStore((store) => store.terminalStateByThreadId);
+  const [rootThreadErrorsSelector] = useState(() => createRootThreadErrorsSelector());
+  const errorsByThreadId = useStore(rootThreadErrorsSelector);
   const visibleThreadIds = resolveVisibleToastThreadIds(activeThreadId);
   useThreadErrorNotifications({
-    threads,
-    visibleThreadIds: new Set(visibleThreadIds),
+    errorsByThreadId,
+    visibleThreadIds,
     hydrated: threadsHydrated,
     onOpen: (threadId) => focusThread(threadId, navigate),
   });

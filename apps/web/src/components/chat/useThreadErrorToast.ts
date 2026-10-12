@@ -2,7 +2,6 @@ import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { isProviderDeliveryBlockDetail } from "@glade/shared/provider/providerDeliveryBlock";
 import { useEffect, useRef } from "react";
 
-import type { Thread } from "~/types";
 import { toastManager } from "../ui/toast";
 
 type ThreadErrorToastOptions = Parameters<typeof toastManager.add>[0];
@@ -41,40 +40,31 @@ function buildThreadErrorToastOptions(input: {
 }
 
 export function useThreadErrorNotifications(input: {
-  threads: readonly Thread[];
+  errorsByThreadId: ReadonlyMap<ThreadId, string>;
   visibleThreadIds: ReadonlySet<ThreadId>;
   hydrated: boolean;
   onOpen: (threadId: ThreadId) => void;
 }): void {
-  const previous = useRef<Map<ThreadId, string | null> | null>(null);
+  const { errorsByThreadId, visibleThreadIds, hydrated, onOpen } = input;
+  const previous = useRef<ReadonlyMap<ThreadId, string> | null>(null);
   useEffect(() => {
-    if (!input.hydrated) return;
-    const errors = new Map(input.threads.map((thread) => [thread.id, thread.error]));
+    if (!hydrated) return;
     if (previous.current) {
       for (const [threadId] of previous.current) {
-        if (!errors.get(threadId) || input.visibleThreadIds.has(threadId))
+        if (!errorsByThreadId.has(threadId) || visibleThreadIds.has(threadId))
           toastManager.close(threadErrorToastId(threadId));
       }
-      for (const thread of input.threads) {
-        if (
-          !thread.error ||
-          input.visibleThreadIds.has(thread.id) ||
-          previous.current.get(thread.id) === thread.error
-        )
-          continue;
+      for (const [threadId, error] of errorsByThreadId) {
+        if (visibleThreadIds.has(threadId) || previous.current.get(threadId) === error) continue;
         toastManager.add({
-          ...buildThreadErrorToastOptions({
-            error: thread.error,
-            threadId: thread.id,
-            onClose: () => {},
-          }),
-          data: { copyText: thread.error, threadId: thread.id, allowCrossThreadVisibility: true },
-          actionProps: { children: "Open chat", onClick: () => input.onOpen(thread.id) },
+          ...buildThreadErrorToastOptions({ error, threadId, onClose: () => {} }),
+          data: { copyText: error, threadId, allowCrossThreadVisibility: true },
+          actionProps: { children: "Open chat", onClick: () => onOpen(threadId) },
         });
       }
     }
-    previous.current = errors;
-  }, [input]);
+    previous.current = errorsByThreadId;
+  }, [errorsByThreadId, visibleThreadIds, hydrated, onOpen]);
   useEffect(
     () => () => {
       for (const [threadId] of previous.current ?? [])

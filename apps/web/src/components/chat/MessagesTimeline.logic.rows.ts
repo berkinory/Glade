@@ -291,13 +291,11 @@ export function deriveMessagesTimelineRows(input: {
     });
   }
 
-  collapseSettledTurns(nextRows, {
+  return collapseSettledTurns(nextRows, {
     terminalAssistantMessageIds,
     activeTurnInProgress: input.activeTurnInProgress ?? false,
     activeTurnId: input.activeTurnId ?? null,
   });
-
-  return nextRows;
 }
 
 function findTailTerminalAssistantMessageId(
@@ -321,11 +319,13 @@ function findTailTerminalAssistantMessageId(
 // The stop or failure row that closes this turn, found before the next message.
 function findTurnOutcome(
   rows: ReadonlyArray<MessagesTimelineRow>,
+  removedIndices: ReadonlySet<number>,
   messageIndex: number,
   turnId: TurnId | null,
 ): { kind: "turn-stop" | "turn-failure"; index: number } | null {
   if (turnId === null) return null;
   for (let index = messageIndex + 1; index < rows.length; index += 1) {
+    if (removedIndices.has(index)) continue;
     const row = rows[index]!;
     if (row.kind === "message" || row.kind === "message-segment") return null;
     if ((row.kind === "turn-stop" || row.kind === "turn-failure") && row.turnId === turnId) {
@@ -342,8 +342,11 @@ function collapseSettledTurns(
     activeTurnInProgress: boolean;
     activeTurnId: TurnId | null;
   },
-): void {
+): MessagesTimelineRow[] {
   const { terminalAssistantMessageIds, activeTurnInProgress, activeTurnId } = options;
+  // Folded rows are dropped in one pass at the end. Fold scans only look below their own pass, so a later
+  // turn's folded rows never reach an earlier fold; the forward outcome scan skips them explicitly.
+  const removedIndices = new Set<number>();
   const lastTerminalAssistantMessageId = activeTurnInProgress
     ? findTailTerminalAssistantMessageId(rows, terminalAssistantMessageIds)
     : null;
@@ -453,10 +456,10 @@ function collapseSettledTurns(
       const elapsed = formatElapsed(collapsedStart, message.completedAt);
       row.collapsedTurnItems = collapsedItems;
       row.collapsedWorkElapsed = elapsed ?? null;
-      const outcome = findTurnOutcome(rows, pass, turnId);
+      const outcome = findTurnOutcome(rows, removedIndices, pass, turnId);
       if (outcome?.kind === "turn-stop") {
         row.turnOutcome = "stopped";
-        rows.splice(outcome.index, 1);
+        removedIndices.add(outcome.index);
       } else if (outcome?.kind === "turn-failure") {
         row.turnOutcome = "failed";
       }
@@ -465,12 +468,10 @@ function collapseSettledTurns(
       delete row.inlineWorkEntries;
       delete row.inlineWorkGroupId;
 
-      for (const index of foldIndices.toSorted((a, b) => b - a)) {
-        rows.splice(index, 1);
-      }
-      pass -= foldIndices.length;
+      for (const index of foldIndices) removedIndices.add(index);
     }
   }
+  return removedIndices.size === 0 ? rows : rows.filter((_, index) => !removedIndices.has(index));
 }
 
 export function stringArraysEqual(

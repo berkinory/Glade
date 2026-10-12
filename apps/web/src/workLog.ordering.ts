@@ -2,6 +2,12 @@ import type { OrchestrationThreadActivity } from "@glade/contracts/orchestration
 import { isContextCompactionProgressLabel } from "./workLog.reconciliation";
 import type { TimelineEntry } from "./workLog.types";
 
+// Code-unit order matches chronological order for the fixed-width ISO-8601 timestamps the server emits,
+// and costs far less than a locale collation in these hot sorts.
+export function compareIsoTimestamps(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
 export function compareActivitiesByOrder(
   left: OrchestrationThreadActivity,
   right: OrchestrationThreadActivity,
@@ -16,7 +22,7 @@ export function compareActivitiesByOrder(
     return -1;
   }
 
-  const createdAtComparison = left.createdAt.localeCompare(right.createdAt);
+  const createdAtComparison = compareIsoTimestamps(left.createdAt, right.createdAt);
   if (createdAtComparison !== 0) {
     return createdAtComparison;
   }
@@ -63,7 +69,7 @@ function compareActivityLifecycleRank(kind: string): number {
 // breaks same-time ties; sequence-first let one server row with a low sequence lead its block's work
 // and pushed every message of the block above that work.
 export function compareTimelineEntries(left: TimelineEntry, right: TimelineEntry): number {
-  const createdAtComparison = left.createdAt.localeCompare(right.createdAt);
+  const createdAtComparison = compareIsoTimestamps(left.createdAt, right.createdAt);
   if (createdAtComparison !== 0) {
     return createdAtComparison;
   }

@@ -150,6 +150,7 @@ function workLogLiveActivitiesEqual(
 }
 
 function workLogEntryContentEqual(a: WorkLogEntry, b: WorkLogEntry): boolean {
+  if (a === b) return true;
   return (
     a.id === b.id &&
     a.createdAt === b.createdAt &&
@@ -198,6 +199,7 @@ function collapsedTurnItemsEqual(
   if (left.length !== right.length) return false;
   return left.every((item, index) => {
     const other = right[index]!;
+    if (item === other) return true;
     if (item.kind !== other.kind || item.id !== other.id) return false;
     if (item.kind === "work" && other.kind === "work") {
       return workLogEntryContentEqual(item.entry, other.entry);

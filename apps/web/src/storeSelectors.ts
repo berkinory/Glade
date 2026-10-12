@@ -107,6 +107,44 @@ export function createAllThreadsSelector(): (state: AppState) => readonly Thread
   };
 }
 
+const EMPTY_THREAD_ERRORS: ReadonlyMap<ThreadId, string> = new Map();
+
+// Errors of top-level threads. Shells change on every streamed delta, so the map keeps its identity
+// until an error itself appears, changes or clears.
+export function createRootThreadErrorsSelector(): (
+  state: AppState,
+) => ReadonlyMap<ThreadId, string> {
+  let previousThreadIds: AppState["threadIds"] | undefined;
+  let previousThreadShellById: AppState["threadShellById"] | undefined;
+  let previousResult = EMPTY_THREAD_ERRORS;
+
+  return (state) => {
+    if (
+      previousThreadIds === state.threadIds &&
+      previousThreadShellById === state.threadShellById
+    ) {
+      return previousResult;
+    }
+    previousThreadIds = state.threadIds;
+    previousThreadShellById = state.threadShellById;
+
+    const nextResult = new Map<ThreadId, string>();
+    for (const threadId of state.threadIds ?? []) {
+      const shell = state.threadShellById?.[threadId];
+      if (shell?.error && !shell.parentThreadId) {
+        nextResult.set(threadId, shell.error);
+      }
+    }
+    const unchanged =
+      nextResult.size === previousResult.size &&
+      [...nextResult].every(([threadId, error]) => previousResult.get(threadId) === error);
+    if (!unchanged) {
+      previousResult = nextResult.size > 0 ? nextResult : EMPTY_THREAD_ERRORS;
+    }
+    return previousResult;
+  };
+}
+
 export interface AccountRateLimitThreadActivities {
   readonly activities: Thread["activities"];
 }
