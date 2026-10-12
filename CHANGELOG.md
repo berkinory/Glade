@@ -9,6 +9,7 @@
 - Everything that opens and closes in the chat uses the same motion, including tool details, subagent cards, pasted text, error details and long messages.
 - Icons of tool calls, tool groups, subagent cards and notices in the chat line up in one column.
 - Command details show the command and its output in separate boxes.
+- The pull request dialog says once that an empty title and description are generated, instead of repeating it in both fields.
 
 ### Fixed
 

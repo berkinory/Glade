@@ -92,7 +92,7 @@ export function GitCreatePrDialog({
           aria-label="Pull request title"
           className={GIT_DIALOG_FIELD_CLASS}
           maxLength={300}
-          placeholder="Title (leave empty to generate)"
+          placeholder="Title"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
         />
@@ -100,11 +100,14 @@ export function GitCreatePrDialog({
           aria-label="Pull request description"
           className={cn(GIT_DIALOG_FIELD_CLASS, "resize-none")}
           maxLength={60_000}
-          placeholder="Description (leave empty to generate)"
+          placeholder="Description"
           rows={2}
           value={body}
           onChange={(event) => setBody(event.target.value)}
         />
+        <p className="text-muted-foreground text-ui-sm leading-snug">
+          Leave empty to generate the title and description.
+        </p>
         {view.showCommitToggle && (
           <label className="flex cursor-pointer items-center gap-2 py-1 text-ui leading-snug">
             <Checkbox
