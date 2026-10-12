@@ -62,7 +62,6 @@
   },
   "devDependencies": {
     "@babel/core": "^8.0.1",
-    "@effect/language-service": "catalog:",
     "@rolldown/plugin-babel": "^0.2.0",
     "@tailwindcss/vite": "^4.0.0",
     "@tanstack/router-plugin": "^1.161.0",

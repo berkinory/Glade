@@ -66,7 +66,6 @@
         "zod": "4.3.6",
       },
       "devDependencies": {
-        "@effect/language-service": "catalog:",
         "@effect/vitest": "catalog:",
         "@glade/contracts": "workspace:*",
         "@glade/shared": "workspace:*",
@@ -132,7 +131,6 @@
       },
       "devDependencies": {
         "@babel/core": "^8.0.1",
-        "@effect/language-service": "catalog:",
         "@rolldown/plugin-babel": "^0.2.0",
         "@tailwindcss/vite": "^4.0.0",
         "@tanstack/router-plugin": "^1.161.0",
@@ -155,7 +153,6 @@
         "effect": "catalog:",
       },
       "devDependencies": {
-        "@effect/language-service": "catalog:",
         "@effect/vitest": "catalog:",
         "tsdown": "catalog:",
         "typescript": "catalog:",
@@ -170,7 +167,6 @@
         "effect": "catalog:",
       },
       "devDependencies": {
-        "@effect/language-service": "catalog:",
         "@effect/vitest": "catalog:",
         "@types/node": "catalog:",
         "typescript": "catalog:",
@@ -185,7 +181,6 @@
         "effect": "catalog:",
       },
       "devDependencies": {
-        "@effect/language-service": "catalog:",
         "@effect/vitest": "catalog:",
         "@resvg/resvg-js": "2.6.2",
         "@types/bun": "catalog:",

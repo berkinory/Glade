@@ -47,7 +47,6 @@
     "zod": "4.3.6"
   },
   "devDependencies": {
-    "@effect/language-service": "catalog:",
     "@effect/vitest": "catalog:",
     "@glade/contracts": "workspace:*",
     "@glade/shared": "workspace:*",
