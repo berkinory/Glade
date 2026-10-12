@@ -51,16 +51,38 @@ function resolveUniqueBranchName(
 ): string {
   const existingNames = new Set(existingBranchNames.map((branch) => branch.toLowerCase()));
 
-  if (!existingNames.has(resolvedBase)) {
-    return resolvedBase;
-  }
+  // Git stores refs as paths, so a branch cannot sit beside a folder of the same name:
+  // `feature/foo` blocks `feature/foo/bar` and the reverse.
+  const conflictingSegment = (name: string): number | undefined => {
+    const segments = name.split("/");
+    for (let index = 0; index < segments.length; index += 1) {
+      if (existingNames.has(segments.slice(0, index + 1).join("/"))) return index;
+    }
+    const folder = `${name}/`;
+    for (const existing of existingNames) {
+      if (existing.startsWith(folder)) return segments.length - 1;
+    }
+    return undefined;
+  };
 
+  let segment = conflictingSegment(resolvedBase);
+  if (segment === undefined) return resolvedBase;
+
+  const segments = resolvedBase.split("/");
   let suffix = 2;
-  while (existingNames.has(`${resolvedBase}-${suffix}`)) {
-    suffix += 1;
+  for (;;) {
+    const candidate = segments
+      .map((part, index) => (index === segment ? `${part}-${suffix}` : part))
+      .join("/");
+    const conflict = conflictingSegment(candidate);
+    if (conflict === undefined) return candidate;
+    if (conflict < segment) {
+      segment = conflict;
+      suffix = 2;
+    } else {
+      suffix += 1;
+    }
   }
-
-  return `${resolvedBase}-${suffix}`;
 }
 
 export function resolveAutoFeatureBranchName(
