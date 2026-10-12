@@ -1,99 +1,62 @@
 # Glade Changelog
 
-## Unreleased
+## 0.2.4 - 2026-10-12
 
 ### New
 
-- Pull requests in the Environment panel show their checks and open review comments and offer the next step: fix failing checks, conflicts or review feedback with the agent, update a branch that fell behind, mark a draft ready, or merge once nothing blocks it.
-- Settings show whether the GitHub CLI is installed and signed in.
-- Choose whether a new worktree copies your uncommitted changes, or starts from the latest version of its branch on the remote.
-- Worktrees of archived chats can be removed once their pull request is merged or after a chosen number of days.
-- Browse a project's pull requests from the right sidebar, open or closed and split into yours and everyone else's, and open any of them in a tab with a summary of its branch, reviewers, checks and comments, its changed files, and Merge or Ready for review next to Fix and Rerun.
-- Read the end of a failing GitHub Actions log right next to the check, rerun failed jobs, and have Fix hand the agent the failing log.
-- Answered agent questions stay visible in the conversation with your answer.
-- Each turn shows how long it worked and whether it finished, was stopped or failed.
+- Pull requests get their own screens: browse a project's pull requests from the right sidebar and open any of them in a tab with its summary, checks, reviews, comments and changed files. ([4754881a0](https://github.com/berkinory/Glade/commit/4754881a0215649c1c5f12537fbd2960f8833df8), [1076c8a36](https://github.com/berkinory/Glade/commit/1076c8a36f0b177f89af1ebfd24ebcdd3bf15cd4))
+- Pull requests in the Environment panel show their checks and review comments and offer the next step: fix failing checks, conflicts or review feedback with the agent, update a branch that fell behind, mark a draft ready, or merge. ([66a61f3c4](https://github.com/berkinory/Glade/commit/66a61f3c4e00880ab03dcc36cc7f383b147351d5))
+- Failing GitHub Actions checks show the end of their log next to the check, failed jobs can be rerun, and Fix hands the agent the failing log. ([4754881a0](https://github.com/berkinory/Glade/commit/4754881a0215649c1c5f12537fbd2960f8833df8))
+- Choose whether a new worktree copies your uncommitted changes or starts from the latest version of its branch on the remote. ([577d932fb](https://github.com/berkinory/Glade/commit/577d932fb81f05a0d21722dd8c984b02bd9fca1b))
+- Worktrees of archived chats can be cleaned up automatically once their pull request is merged or after a chosen number of days. ([1117a5e67](https://github.com/berkinory/Glade/commit/1117a5e6701c9c0f4332b7c8ae7ada26e271c871))
+- Each turn shows how long it worked and whether it finished, was stopped or failed. ([c8e72acb0](https://github.com/berkinory/Glade/commit/c8e72acb0d9c08168e584f995eb89e9263f3767b))
+- Answered agent questions stay in the conversation together with your answer. ([3f498be92](https://github.com/berkinory/Glade/commit/3f498be921458a225d51f93fb02c76cc336e810f))
+- What's new and the changelog show a visual overview for releases that have one. ([75dd9f026](https://github.com/berkinory/Glade/commit/75dd9f02613ba98dea05b3b022ad68eac8d727bb))
 
 ### Improved
 
-- The Environment panel's Git button always shows the next step for your branch, why it is unavailable when it is, and live progress while it runs.
-- Source Control replaces separate pull and push buttons with one sync button that shows what will happen, and adds Commit & push to the commit button.
-- The commit dialog starts from the files you staged and shows line counts for each file.
-- Creating a branch no longer publishes it right away; it is published on its first push.
-- The commit-and-push shortcut runs the Git panel's next step.
-- File changes in Source Control are discarded with Discard, separate from reverting a commit.
-- Chats are called chats everywhere in the app.
-- GitHub data loads over GitHub's API instead of the GitHub CLI, using far fewer requests and pausing background refreshes before the rate limit runs out.
-- Deleting a worktree from Settings keeps a snapshot of its state for 30 days.
-- Source Control history, pull request comments and the Publish to GitHub dialog show GitHub avatars.
-- Subagents launched together share one card in the chat that shows each one's live step, result, duration and token use, opens its chat with a click, and stops it from its row.
-- Subagents have new icons.
-- The subagent list above the composer and in the Environment panel collapses to a row of avatars with running and done counts and remembers whether it is open. Above the composer it shows the current turn's subagents and any still running, and goes away once they finish.
-- The Environment panel scrolls its subagent list on its own and no longer shows a scrollbar.
-- When Claude picks a finished subagent back up, the follow-up shows in that subagent's chat and on its own card.
-- A subagent's chat labels its first message as the brief from its parent chat.
-- Subagents in the sidebar sit indented under their chat.
-- Tool calls open to show what the agent passed in and what came back: file reads as highlighted code, web pages as text, JSON formatted and errors in plain words. Files appear as chips with their icon.
-- Groups of tool calls have a shorter title that names what the agent did, such as "Explored 3 files · ran 2 commands", and hang their calls off a rail when opened.
-- Subagent cards share the tool groups' rail, and subagent lists show reasoning effort the way the model picker does.
-- Tool output in the chat keeps much more of a long result before it is shortened.
-- Opening a file from the chat, the file search or Source Control opens it in the main view without switching the right sidebar to the Explorer.
-- Claude chats show the Monitor event that woke the agent, instead of a reply with no prompt.
-- Queued messages pause after you stop a turn or it fails, with Resume and Edit options.
-- File and content search shortcuts can be changed in Settings, and file search opens pasted absolute or home paths directly.
-- Markdown previews render embedded HTML safely.
-- Right-to-left text in replies displays in the correct direction.
-- Explorer reopens with the current file's folders expanded when you switch chats.
-- The Activity list scrolls to the chat you open.
-- Grouped tool calls show an icon for the kind of work they did.
+- Queued messages pause after a turn is stopped or fails, with options to resume or edit them. ([53e16e56d](https://github.com/berkinory/Glade/commit/53e16e56d2569471f75c6e5b37b95598c1679649))
+- The Git button always shows the next step for your branch and why it is unavailable, Source Control has a single sync button and Commit & push, and new branches are published on their first push. ([fec393a65](https://github.com/berkinory/Glade/commit/fec393a65384ee4d3f8cf8b91425a6ffa052ebdf))
+- The commit dialog starts from your staged files and shows line counts per file. ([fec393a65](https://github.com/berkinory/Glade/commit/fec393a65384ee4d3f8cf8b91425a6ffa052ebdf))
+- GitHub data loads directly from GitHub instead of through the GitHub CLI, using far fewer requests and pausing background refreshes before the rate limit runs out. Settings show whether the GitHub CLI is installed and signed in. ([4754881a0](https://github.com/berkinory/Glade/commit/4754881a0215649c1c5f12537fbd2960f8833df8), [66a61f3c4](https://github.com/berkinory/Glade/commit/66a61f3c4e00880ab03dcc36cc7f383b147351d5))
+- GitHub avatars appear in Source Control history, pull request comments and the Publish to GitHub dialog. ([4754881a0](https://github.com/berkinory/Glade/commit/4754881a0215649c1c5f12537fbd2960f8833df8))
+- Deleting a worktree from Settings keeps a snapshot of it for 30 days. ([4754881a0](https://github.com/berkinory/Glade/commit/4754881a0215649c1c5f12537fbd2960f8833df8))
+- Subagents launched together share one card in the chat with each one's live progress, result and usage, and can be opened or stopped from it. When Claude resumes a finished subagent, the follow-up shows in its own chat. ([17e120520](https://github.com/berkinory/Glade/commit/17e12052051fc3618f9ae81ea61cbdbe2bbe94f7), [f508f9ca4](https://github.com/berkinory/Glade/commit/f508f9ca427eeba8cfbc393c7419d15ddf4ed12b))
+- Subagent lists collapse to a compact row of avatars with running and done counts, and subagents sit under their parent chat in the sidebar. ([4d6193784](https://github.com/berkinory/Glade/commit/4d6193784078893e47cacfa6b89c756a2728587c), [54f84015c](https://github.com/berkinory/Glade/commit/54f84015c31906f98212e4c12623199de3e93a48))
+- Tool calls open to show what the agent sent and what came back, formatted for the kind of result, and groups of calls get short titles and icons that say what the agent did. ([c3acd300f](https://github.com/berkinory/Glade/commit/c3acd300ff4511f4a8b68cfec88eb09d80189534), [0cdc54b65](https://github.com/berkinory/Glade/commit/0cdc54b65e34f0b19f199a8d0f64c5e7d6ff104f), [64bdac1ec](https://github.com/berkinory/Glade/commit/64bdac1ec18cac803bc8df726051752ded266b7f))
+- Long tool output keeps much more before it is shortened. ([17d672da8](https://github.com/berkinory/Glade/commit/17d672da87551f200f3176c9a51fbb2dbe0d4966))
+- Claude chats show the Monitor event that woke the agent. ([563a470dc](https://github.com/berkinory/Glade/commit/563a470dc085552d178b1f2b17d7bcf242b360b3), [a83d3f073](https://github.com/berkinory/Glade/commit/a83d3f07376ae5c2de866dfaa58a35a91f37c8f1))
+- Opening a file from the chat, file search or Source Control no longer switches the right sidebar to the Explorer. ([493dc458b](https://github.com/berkinory/Glade/commit/493dc458bb102702f4bfe1d881a4f7a50786de48))
+- File and content search shortcuts can be changed, and file search opens pasted paths directly. ([f4632a6bb](https://github.com/berkinory/Glade/commit/f4632a6bbac749254012e6ef40167917895da4e6), [cb811413e](https://github.com/berkinory/Glade/commit/cb811413ed96ef6588dec47d722d117ea013690c))
+- Markdown previews render embedded HTML safely, and right-to-left text displays in the correct direction. ([8d7ac5e74](https://github.com/berkinory/Glade/commit/8d7ac5e74ac0fe754d2eab5510ce64de0bed957b), [9812480f4](https://github.com/berkinory/Glade/commit/9812480f47d0fd0e06ec12cb078214153d12c6cb))
+- The Help menu opens the full changelog from a single item. ([75dd9f026](https://github.com/berkinory/Glade/commit/75dd9f02613ba98dea05b3b022ad68eac8d727bb))
 
 ### Fixed
 
-- Automatic worktree cleanup never removes a worktree whose state cannot be read and never deletes commits that exist nowhere else.
-- Committing selected files from the Environment panel no longer discards changes you staged in Source Control, and keeps partially staged files as staged.
-- Claude MCP tools whose names mention "agent" are no longer shown as subagents.
-- Stopping a single Codex subagent no longer fails with a turn mismatch.
-- Codex commands that finish quickly show their output.
-- Claude fast mode warns when Claude serves requests at standard speed, for example without usage credits or during a rate-limit cooldown, and notes that fast mode is billed from usage credits.
-- Quitting no longer leaves idle Claude processes running in the background.
-- Claude background tasks whose description ends in whitespace are no longer dropped.
-- Subagents stopped with their parent chat show as stopped instead of failed, no longer stay running, and no longer show up under the next turn.
-- Replies started by background events are no longer attributed to the wrong subagent.
-- Claude image generation tools show as image generation instead of file edits.
-- Claude turns that fail on pending organization verification or cloud credentials say why and recover after you fix it.
-- Stopped turns no longer appear as completed after reopening the app.
-- Replies cut off by a restart or a stopped session no longer stay stuck as still streaming, and multi-part replies no longer finish the wrong part early.
-- Stop settles immediately when the agent had already finished.
-- Chats no longer stay stuck on "Starting" long after the agent failed to start.
-- Changing access on an idle chat no longer makes it look busy or restart the agent before you send.
-- Questions from a stopped agent no longer reappear as unanswered later, and a crashed or stopped agent's pending request no longer locks the message box.
-- Replies no longer appear above the tool activity and answered questions that came before them.
-- Scrolling down while reading earlier messages no longer jumps you to the end of the chat, and the chat keeps following a streaming reply when message rows resize.
-- Chats stay in sync with the agent after reconnects and catch-ups, without flickering when reopened, duplicated text, missing reply endings or finished turns showing as running.
-- The open or working chat no longer jumps into Drafts while you type.
-- New chat no longer stops responding after an interrupted navigation, and text typed while a new chat opens is no longer overwritten.
-- New chats are dated when they're created, not when their draft was opened.
-- Send explains why it can't send yet instead of silently doing nothing.
-- Text you type right after sending or steering no longer gets the sent message stuck in front of it.
-- "Add new project" in the composer works in the browser and on paired devices.
-- Chat hover cards show the reasoning effort, and Fast only when Claude is actually serving it.
-- Sidebar text no longer turns blurry after moving between displays or changing zoom.
-- Activity rows show the project folder before the branch name when space is tight.
-- Edits to the keybindings file apply without restarting, and Cmd+Ctrl+P runs Commit and push again instead of opening file search.
-- Tab strips scroll with a regular mouse wheel, and files keep their scroll position when you switch tabs.
-- Diffs remember your unified or side-by-side choice.
-- Creating a branch no longer fails when its name clashes with an existing branch folder.
-- Diffs and worktree copies are no longer altered by custom Git diff drivers.
-- A slow or stuck branch push no longer holds up creating other branches and worktrees.
-- The branch picker shows "Detached HEAD" instead of an outdated branch name.
-- Undo refuses to change files while another chat is working in the same folder.
-- Usage stats no longer undercount tokens after switching a chat between providers or from stopped Claude turns that ran subagents.
-- Provider usage loads behind proxies that use fake-IP DNS.
-- Text in light-themed terminals is easier to read.
-- The voice recording waveform fills the full width of wide chats.
-- Revealing a macOS app bundle shows it in Finder instead of launching it.
-- Restored browser tabs no longer flash black while loading.
-- On Windows, a program in the project folder can no longer stand in for an installed agent CLI, and relative command paths resolve from the project folder.
-- Glade picks up your PATH when your login shell is Nushell.
+- Automatic worktree cleanup never removes a worktree it cannot read and never deletes commits that exist nowhere else. ([1117a5e67](https://github.com/berkinory/Glade/commit/1117a5e6701c9c0f4332b7c8ae7ada26e271c871))
+- Committing selected files no longer discards changes you staged in Source Control. ([f95f79a35](https://github.com/berkinory/Glade/commit/f95f79a35fcdff3b648ad30c876a70aff1b579f5))
+- Stopping, restarting or losing an agent no longer leaves chats stuck as starting, running or streaming, and stopped turns no longer reappear as completed. ([9af394adf](https://github.com/berkinory/Glade/commit/9af394adff71b281b54fa85da0481aba05b1292a), [cf2ea67dc](https://github.com/berkinory/Glade/commit/cf2ea67dce00b6665e17495f2d238c6243327568), [c042efad5](https://github.com/berkinory/Glade/commit/c042efad5a05089ac7d97cf7744de506c2c460db), [c4ca5a6af](https://github.com/berkinory/Glade/commit/c4ca5a6af7f32aa1498ea2fcff869d1983109a1b), [1e8110868](https://github.com/berkinory/Glade/commit/1e811086825df161fed3194e24870dce1a7eb82d))
+- Chats stay in sync after reconnects without flickering, duplicated text, missing reply endings or replies shown out of order. ([4a235e276](https://github.com/berkinory/Glade/commit/4a235e276795dc039d9e46a383bebb9e11b73c42), [2feafa9fd](https://github.com/berkinory/Glade/commit/2feafa9fd5fae4ba4cb175bd85b5be98405e02b3), [d2a553582](https://github.com/berkinory/Glade/commit/d2a553582c0834f89c5742fc1290e6c28b957e8b), [45d65211d](https://github.com/berkinory/Glade/commit/45d65211dfe39fa0abfa086a53947cecf33c3799), [123a94f18](https://github.com/berkinory/Glade/commit/123a94f18d971f83a9a9fd6b67c5f1bc77e7cf0c), [26858e799](https://github.com/berkinory/Glade/commit/26858e799d17af5fa15d8456d49f80bc3b20d0e6))
+- Scrolling up to read earlier messages no longer jumps you back to the end of the chat. ([c240bc078](https://github.com/berkinory/Glade/commit/c240bc0788086df3b7f0b330fe56d31b21230d39))
+- Questions from a stopped agent no longer come back as unanswered, and a crashed agent no longer locks the message box. ([4806a6af0](https://github.com/berkinory/Glade/commit/4806a6af025c2f21801e394e84fbe721ae7a4982), [8b207f3e8](https://github.com/berkinory/Glade/commit/8b207f3e87929e894b4ce7fecfeb250e5013c1bf))
+- Sent messages leave the composer right away and no longer get stuck in front of the text you type next. ([e76fa3452](https://github.com/berkinory/Glade/commit/e76fa3452c468336e88f207564ed9b823cc33287), [8f74d5858](https://github.com/berkinory/Glade/commit/8f74d585824929800a519d4257bcfe7e3e5e0dc7))
+- Send explains why it can't send yet instead of doing nothing. ([28790d1b0](https://github.com/berkinory/Glade/commit/28790d1b0d37aedc747302298599c7314bbba3da))
+- New chat no longer stops responding after an interrupted navigation, and the chat you are in no longer jumps into Drafts. ([2afa0a02b](https://github.com/berkinory/Glade/commit/2afa0a02b559f2c264f063879324f75e2ffe4e02), [d6d68cc12](https://github.com/berkinory/Glade/commit/d6d68cc128e37d8edeb00dd98b55cb4089c9b93b), [ff281472f](https://github.com/berkinory/Glade/commit/ff281472fde1aa3c18b993d66908a2afea7eb154))
+- Changing access on an idle chat no longer restarts the agent. ([3718a9673](https://github.com/berkinory/Glade/commit/3718a9673f7ad19d9ac78a6fde9896175fe52391))
+- Subagents are tracked correctly: stopping one no longer fails, ones stopped with their chat show as stopped, and their work and replies stay with the right chat and turn. ([a7440a916](https://github.com/berkinory/Glade/commit/a7440a91603188f41052f944673f4c6abd7b34b2), [745376f48](https://github.com/berkinory/Glade/commit/745376f48c652a7840ba10c7a4fa3dc69bb52dc4), [f12231560](https://github.com/berkinory/Glade/commit/f12231560045c81639f20085f2c6fbd8ac98f91b), [3e8a4b206](https://github.com/berkinory/Glade/commit/3e8a4b206cbf116d7ce43a138850969522600705), [e6edf9eba](https://github.com/berkinory/Glade/commit/e6edf9ebac33131af790b5b8772e1245dacabb0b))
+- Claude fast mode warns when requests are actually served at standard speed. ([603030e84](https://github.com/berkinory/Glade/commit/603030e845e6de98b7c758cdd8f9634a70330119))
+- Claude turns that fail on organization verification or cloud credentials say why and recover once fixed. ([4276adbcb](https://github.com/berkinory/Glade/commit/4276adbcbe067992ddae9565446cfda3672639be))
+- Quitting no longer leaves idle Claude processes running. ([9688911b6](https://github.com/berkinory/Glade/commit/9688911b6db50093f4c16bea2fececbed24e0bd5))
+- Usage stats no longer undercount tokens after switching providers or stopping turns that ran subagents. ([f5444d632](https://github.com/berkinory/Glade/commit/f5444d632b798372caf063d5a29d53270c9d2c42), [84928417b](https://github.com/berkinory/Glade/commit/84928417b89b24e35677d2c93c9ffc7dda522c1d))
+- Provider usage loads behind proxies that use fake-IP DNS. ([58f14f220](https://github.com/berkinory/Glade/commit/58f14f2206ed462c615675eb1be7468175fc0b5d))
+- Creating branches and worktrees no longer fails on name clashes or waits behind a slow push. ([c1c7d1caa](https://github.com/berkinory/Glade/commit/c1c7d1caa9f23a26fa0dfef581c6857e7e80faa4), [e02c7992b](https://github.com/berkinory/Glade/commit/e02c7992bd7f32bb0ca44aaaf4b9100750983171))
+- Diffs and worktree copies are no longer altered by custom Git diff drivers. ([17f3d787d](https://github.com/berkinory/Glade/commit/17f3d787dbfe9bb8df40592324f7c6cc08767be0))
+- Undo refuses to change files while another chat is working in the same folder. ([49afe3da0](https://github.com/berkinory/Glade/commit/49afe3da0c24a6760576c3422b77c3c6906b9f3a))
+- Edits to the keybindings file apply without restarting. ([a53d3b801](https://github.com/berkinory/Glade/commit/a53d3b801fe9ebbd66bccac2e7f7accc8e7d4207))
+- Tab strips scroll with a regular mouse wheel, files keep their scroll position across tabs, and diffs remember your layout choice. ([f9e02487a](https://github.com/berkinory/Glade/commit/f9e02487a2d6930b75893120617ded3b151095d1), [e66d92c82](https://github.com/berkinory/Glade/commit/e66d92c82b61a32d0ab335fdade1e26ba77b2108), [bee5cba21](https://github.com/berkinory/Glade/commit/bee5cba21534be0f7282eb9c12ae7657b87bc2fd))
+- Add new project in the composer works in the browser and on paired devices. ([9beba2312](https://github.com/berkinory/Glade/commit/9beba2312533d07fd55a0ae2abc66b4c2f7f35f0))
+- On Windows, a program in the project folder can no longer stand in for an installed agent CLI. ([3b7540110](https://github.com/berkinory/Glade/commit/3b75401101682b1bbe7f0330d7559122b2d87eb2))
+- Glade picks up your PATH when your login shell is Nushell. ([e2552b348](https://github.com/berkinory/Glade/commit/e2552b3482214ea93c3751f03a50355ab96a4603))
 
 ## 0.2.3 - 2026-10-10
 
