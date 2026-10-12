@@ -6,7 +6,7 @@ function record(value: unknown): Record<string, unknown> | undefined {
     : undefined;
 }
 
-export function codexMessageRoute(line: string): {
+export function codexMessageRoute(value: unknown): {
   responseId?: string | number;
   request: boolean;
   threadId?: string;
@@ -14,7 +14,7 @@ export function codexMessageRoute(line: string): {
   childThreadIds: readonly string[];
   threadStarted: boolean;
 } {
-  const message = record(JSON.parse(line));
+  const message = record(value);
   const params = record(message?.params);
   const thread = record(params?.thread);
   const source = record(thread?.source);

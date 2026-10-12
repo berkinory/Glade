@@ -13,7 +13,8 @@ import { codexMessageRoute } from "./codexProcessRouting";
 const log = createLogger("codex-process");
 
 interface ProcessListener {
-  readonly line: (line: string) => void;
+  /** `message` is the parsed line, or `undefined` when the line is not JSON. */
+  readonly line: (line: string, message: unknown) => void;
   readonly failure: (error: Error) => void;
   readonly exit: (code: number | null, signal: NodeJS.Signals | null) => void;
 }
@@ -121,18 +122,19 @@ export class CodexPooledProcess {
   };
 
   private route(line: string): void {
-    let route;
+    let message: unknown;
     try {
-      route = codexMessageRoute(line);
+      message = JSON.parse(line);
     } catch {
       // Let the existing protocol boundary classify non-JSON diagnostic lines.
-      for (const state of this.leases.values()) state.listener?.line(line);
+      for (const state of this.leases.values()) state.listener?.line(line, undefined);
       return;
     }
+    const route = codexMessageRoute(message);
     if (route.responseId !== undefined) {
       const owner =
         typeof route.responseId === "number" ? this.requests.get(route.responseId) : undefined;
-      if (owner) this.leases.get(owner)?.listener?.line(line);
+      if (owner) this.leases.get(owner)?.listener?.line(line, message);
       return;
     }
     if (route.threadId) {
@@ -144,7 +146,7 @@ export class CodexPooledProcess {
       for (const child of route.childThreadIds) {
         if (!this.threads.has(child)) this.threads.set(child, owner);
       }
-      this.leases.get(owner)?.listener?.line(line);
+      this.leases.get(owner)?.listener?.line(line, message);
       return;
     }
     if (route.request) {
@@ -152,10 +154,10 @@ export class CodexPooledProcess {
         this.opening ??
         [...this.leases].find(([, state]) => !state.discovery)?.[0] ??
         this.leases.keys().next().value;
-      if (owner) this.leases.get(owner)?.listener?.line(line);
+      if (owner) this.leases.get(owner)?.listener?.line(line, message);
       return;
     }
-    for (const state of this.leases.values()) state.listener?.line(line);
+    for (const state of this.leases.values()) state.listener?.line(line, message);
   }
 
   async available(): Promise<void> {

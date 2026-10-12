@@ -44,54 +44,73 @@ import type { GetAccountResponse } from "./generated/types/v2/GetAccountResponse
 import type { GetAccountRateLimitsResponse } from "./generated/types/v2/GetAccountRateLimitsResponse";
 import type { ErrorNotification } from "./generated/types/v2/ErrorNotification";
 
-function fromPinnedSchema(value: unknown) {
+type PinnedSchema = Parameters<typeof z.fromJSONSchema>[0];
+type Validator = ReturnType<typeof z.fromJSONSchema>;
+
+const validators = new Map<object, Validator>();
+
+// Compiling the generated documents costs tens of megabytes of heap, so each one is compiled on
+// first use and kept for the life of the process.
+function validatorFor(document: object): Validator {
+  const cached = validators.get(document);
+  if (cached) return cached;
   // JSON imports widen literal schema keywords; the pinned generator supplies Draft-07 documents.
-  return z.fromJSONSchema(value as Parameters<typeof z.fromJSONSchema>[0]);
+  const validator = z.fromJSONSchema(document as PinnedSchema);
+  validators.set(document, validator);
+  return validator;
 }
 
-const responseSchemas = {
-  "thread/approveGuardianDeniedAction": fromPinnedSchema(guardianOverrideSchema),
-  "thread/list": fromPinnedSchema(threadListSchema),
-  "project/list": fromPinnedSchema(projectListSchema),
-  "model/list": fromPinnedSchema(modelListSchema),
-  "skills/list": fromPinnedSchema(skillsListSchema),
-  "plugin/list": fromPinnedSchema(pluginListSchema),
-  "plugin/read": fromPinnedSchema(pluginReadSchema),
-  "account/read": fromPinnedSchema(accountReadSchema),
-  "account/rateLimits/read": fromPinnedSchema(accountRateLimitsReadSchema),
-  "review/start": fromPinnedSchema(reviewStartSchema),
-  "skills/extraRoots/set": fromPinnedSchema(skillsExtraRootsSetSchema),
-  "thread/compact/start": fromPinnedSchema(threadCompactStartSchema),
-  "thread/fork": fromPinnedSchema(threadForkSchema),
-  "thread/read": fromPinnedSchema(threadReadSchema),
-  "thread/resume": fromPinnedSchema(threadResumeSchema),
-  "thread/revert": fromPinnedSchema(threadRevertSchema),
-  "thread/start": fromPinnedSchema(threadStartSchema),
-  "thread/turns/list": fromPinnedSchema(threadTurnsListSchema),
-  "turn/interrupt": fromPinnedSchema(turnInterruptSchema),
-  "turn/start": fromPinnedSchema(turnStartSchema),
-  "turn/steer": fromPinnedSchema(turnSteerSchema),
-  "mcpServerStatus/list": fromPinnedSchema(mcpStatusListSchema),
-  "config/read": fromPinnedSchema(configReadSchema),
-  "config/value/write": fromPinnedSchema(configWriteSchema),
-  "config/batchWrite": fromPinnedSchema(configWriteSchema),
-  "mcpServer/oauth/login": fromPinnedSchema(mcpOauthLoginSchema),
-  "config/mcpServer/reload": fromPinnedSchema(mcpRefreshSchema),
-  "plugin/installed": fromPinnedSchema(pluginInstalledSchema),
-  "plugin/install": fromPinnedSchema(pluginInstallSchema),
-  "plugin/uninstall": fromPinnedSchema(pluginUninstallSchema),
+// A message's `method` selects exactly one `oneOf` variant, so validating against that variant
+// alone (with the shared definitions) accepts and rejects the same payloads as the whole union.
+function documentsByMethod(union: {
+  readonly oneOf: ReadonlyArray<{
+    readonly properties: { readonly method: { readonly enum: ReadonlyArray<string> } };
+  }>;
+}): ReadonlyMap<string, object> {
+  return new Map(
+    union.oneOf.flatMap((variant) =>
+      variant.properties.method.enum.map(
+        (method) => [method, { ...union, oneOf: [variant] }] as const,
+      ),
+    ),
+  );
+}
+
+const responseDocuments: Readonly<Record<string, object>> = {
+  "thread/approveGuardianDeniedAction": guardianOverrideSchema,
+  "thread/list": threadListSchema,
+  "project/list": projectListSchema,
+  "model/list": modelListSchema,
+  "skills/list": skillsListSchema,
+  "plugin/list": pluginListSchema,
+  "plugin/read": pluginReadSchema,
+  "account/read": accountReadSchema,
+  "account/rateLimits/read": accountRateLimitsReadSchema,
+  "review/start": reviewStartSchema,
+  "skills/extraRoots/set": skillsExtraRootsSetSchema,
+  "thread/compact/start": threadCompactStartSchema,
+  "thread/fork": threadForkSchema,
+  "thread/read": threadReadSchema,
+  "thread/resume": threadResumeSchema,
+  "thread/revert": threadRevertSchema,
+  "thread/start": threadStartSchema,
+  "thread/turns/list": threadTurnsListSchema,
+  "turn/interrupt": turnInterruptSchema,
+  "turn/start": turnStartSchema,
+  "turn/steer": turnSteerSchema,
+  "mcpServerStatus/list": mcpStatusListSchema,
+  "config/read": configReadSchema,
+  "config/value/write": configWriteSchema,
+  "config/batchWrite": configWriteSchema,
+  "mcpServer/oauth/login": mcpOauthLoginSchema,
+  "config/mcpServer/reload": mcpRefreshSchema,
+  "plugin/installed": pluginInstalledSchema,
+  "plugin/install": pluginInstallSchema,
+  "plugin/uninstall": pluginUninstallSchema,
 };
 
-const notificationSchema = fromPinnedSchema(serverNotificationSchema);
-const requestSchema = fromPinnedSchema(serverRequestSchema);
-const errorSchema = fromPinnedSchema(jsonRpcErrorSchema);
-const errorParamsSchema = fromPinnedSchema(errorNotificationSchema);
-const knownNotificationMethods = new Set(
-  serverNotificationSchema.oneOf.flatMap((entry) => entry.properties.method.enum),
-);
-const knownRequestMethods = new Set(
-  serverRequestSchema.oneOf.flatMap((entry) => entry.properties.method.enum),
-);
+const notificationDocuments = documentsByMethod(serverNotificationSchema);
+const requestDocuments = documentsByMethod(serverRequestSchema);
 
 class CodexProtocolError extends Error {
   constructor(
@@ -104,12 +123,12 @@ class CodexProtocolError extends Error {
 }
 
 function decode<T>(
-  schema: ReturnType<typeof z.fromJSONSchema>,
+  document: object,
   value: unknown,
   method: string,
   direction: CodexProtocolError["direction"],
 ): T {
-  const parsed = schema.safeParse(value);
+  const parsed = validatorFor(document).safeParse(value);
   if (!parsed.success) throw new CodexProtocolError(method, direction);
   return parsed.data as T;
 }
@@ -127,16 +146,17 @@ export function decodeCodexResponse(
 ): GetAccountRateLimitsResponse;
 export function decodeCodexResponse(method: string, value: unknown): unknown;
 export function decodeCodexResponse(method: string, value: unknown): unknown {
-  const schema = responseSchemas[method as keyof typeof responseSchemas];
-  return schema ? decode(schema, value, method, "response") : value;
+  const document = Object.hasOwn(responseDocuments, method) ? responseDocuments[method] : undefined;
+  return document ? decode(document, value, method, "response") : value;
 }
 
 export function decodeCodexNotification(value: {
   method: string;
   params?: unknown;
 }): "unknown" | "valid" {
-  if (!knownNotificationMethods.has(value.method)) return "unknown";
-  decode(notificationSchema, value, value.method, "notification");
+  const document = notificationDocuments.get(value.method);
+  if (!document) return "unknown";
+  decode(document, value, value.method, "notification");
   return "valid";
 }
 
@@ -144,26 +164,22 @@ export function decodeCodexServerRequest(value: {
   method: string;
   params?: unknown;
 }): "unknown" | "valid" {
-  if (!knownRequestMethods.has(value.method)) return "unknown";
-  decode(requestSchema, value, value.method, "request");
+  const document = requestDocuments.get(value.method);
+  if (!document) return "unknown";
+  decode(document, value, value.method, "request");
   return "valid";
 }
 
 export function decodeCodexRpcError(value: unknown): void {
-  decode(errorSchema, value, "JSON-RPC error", "response");
+  decode(jsonRpcErrorSchema, value, "JSON-RPC error", "response");
 }
 
 export function decodeCodexErrorParams(value: unknown): ErrorNotification {
-  return decode(errorParamsSchema, value, "error", "notification");
+  return decode(errorNotificationSchema, value, "error", "notification");
 }
 
 export function decodeCodexGuardianReview(
   value: unknown,
 ): ItemGuardianApprovalReviewCompletedNotification {
-  return decode(
-    fromPinnedSchema(guardianReviewSchema),
-    value,
-    "item/autoApprovalReview/completed",
-    "notification",
-  );
+  return decode(guardianReviewSchema, value, "item/autoApprovalReview/completed", "notification");
 }

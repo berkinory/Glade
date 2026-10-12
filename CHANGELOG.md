@@ -1,5 +1,11 @@
 # Glade Changelog
 
+## Unreleased
+
+### Improved
+
+- Glade starts faster and uses much less memory, and Codex replies take far less work to process.
+
 ## 0.2.5 - 2026-10-13
 
 ### New

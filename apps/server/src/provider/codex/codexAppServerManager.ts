@@ -3320,9 +3320,9 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
 
   private attachProcessListeners(context: CodexSessionContext): void {
     const unsubscribe = context.processLease.subscribe({
-      line: (line) => {
+      line: (line, message) => {
         try {
-          this.handleStdoutLine(context, line);
+          this.handleStdoutLine(context, line, message);
         } catch (cause) {
           context.processLease.invalidate(
             cause instanceof Error ? cause : new Error("Codex protocol failed", { cause }),
@@ -3398,16 +3398,13 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     });
   }
 
-  private handleStdoutLine(context: CodexSessionContext, rawLine: string): void {
+  private handleStdoutLine(context: CodexSessionContext, rawLine: string, parsed: unknown): void {
     const line = normalizeCodexProcessLine(rawLine);
     if (isIgnorableCodexProcessLine(line)) {
       return;
     }
 
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(rawLine);
-    } catch {
+    if (parsed === undefined) {
       logIgnoredCodexStdout(rawLine, line, "invalid JSON fragment");
       return;
     }
