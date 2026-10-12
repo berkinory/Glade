@@ -33,6 +33,11 @@ import { PanelTabBar, type PanelTab } from "./PanelTabBar";
 import { useWorkspaceShortcuts } from "./useWorkspaceShortcuts";
 import { useWorkspaceTabSelection } from "./useWorkspaceTabSelection";
 import { useWorkspaceSidebarStore } from "~/workspaceSidebarStore";
+
+// Recently viewed files stay mounted (hidden, like the chat tab) so switching tabs keeps their
+// scroll, cursor and undo state. Each one holds its rendered contents, so only a few are kept.
+const MOUNTED_FILE_PREVIEW_LIMIT = 3;
+
 export function MainWorkspace(props: {
   threadId: ThreadId;
   projectId: ProjectId | null;
@@ -126,6 +131,16 @@ export function MainWorkspace(props: {
     onSelect: select,
   });
   const filePath = resolvedId.startsWith("file:") ? resolvedId.slice(5) : null;
+  const [recentFilePaths, setRecentFilePaths] = useState<readonly string[]>([]);
+  if (filePath && recentFilePaths[0] !== filePath) {
+    setRecentFilePaths(
+      [filePath, ...recentFilePaths.filter((path) => path !== filePath)].slice(
+        0,
+        MOUNTED_FILE_PREVIEW_LIMIT,
+      ),
+    );
+  }
+  const mountedFilePaths = recentFilePaths.filter((path) => fileTabs.filePaths.includes(path));
   const review = state.reviews.find((tab) => tab.id === resolvedId);
   useWorkspaceShortcuts({
     threadId: props.threadId,
@@ -181,18 +196,27 @@ export function MainWorkspace(props: {
           >
             {props.children}
           </div>
-          {filePath ? (
-            <WorkspaceFilePreview
-              key={filePath}
-              workspaceRoot={props.workspaceRoot}
-              filePath={filePath}
-              editable
-              onEdit={() => pinFile(props.threadId, filePath)}
-              liveRevalidationEnabled
-              revealPosition={revealPosition?.filePath === filePath ? revealPosition : undefined}
-              onReferenceInChat={props.onReferenceInChat}
-            />
-          ) : null}
+          {mountedFilePaths.map((path) => (
+            <div
+              key={path}
+              className={cn(
+                "absolute inset-0 flex min-h-0 flex-col",
+                path !== filePath && "invisible pointer-events-none",
+              )}
+              inert={path !== filePath}
+              aria-hidden={path !== filePath}
+            >
+              <WorkspaceFilePreview
+                workspaceRoot={props.workspaceRoot}
+                filePath={path}
+                editable
+                onEdit={() => pinFile(props.threadId, path)}
+                liveRevalidationEnabled={path === filePath}
+                revealPosition={revealPosition?.filePath === path ? revealPosition : undefined}
+                onReferenceInChat={props.onReferenceInChat}
+              />
+            </div>
+          ))}
           {review?.kind === "commit" && props.workspaceRoot ? (
             <div className="flex h-full min-h-0 flex-col">
               <CommitDetail
