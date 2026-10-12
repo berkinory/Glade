@@ -185,12 +185,14 @@ export function makeProviderDomainEvents(input: {
     Effect.gen(function* () {
       switch (event.type) {
         case "thread.session-set": {
-          const thread = yield* resolveThread(event.payload.threadId);
           if (
-            thread &&
-            event.payload.session.status !== "stopped" &&
-            !threadSessionSettings.hasModelSelection(event.payload.threadId)
+            event.payload.session.status === "stopped" ||
+            threadSessionSettings.hasModelSelection(event.payload.threadId)
           ) {
+            return;
+          }
+          const thread = yield* resolveThread(event.payload.threadId);
+          if (thread) {
             threadSessionSettings.setModelSelection(event.payload.threadId, thread.modelSelection);
           }
           return;
@@ -314,7 +316,14 @@ export function makeProviderDomainEvents(input: {
           yield* processTurnQueued(event);
           return;
         case "thread.turn-start-requested": {
-          const thread = yield* resolveThread(event.payload.threadId);
+          // The engine still holds the user message it just committed; a request replayed after a
+          // restart reads it from the projection.
+          const thread =
+            (yield* orchestrationEngine.getReadModel()).threads.find(
+              (entry) =>
+                entry.id === event.payload.threadId &&
+                entry.messages.some((message) => message.id === event.payload.messageId),
+            ) ?? (yield* resolveThread(event.payload.threadId));
           const message = thread?.messages.find(
             (message) => message.id === event.payload.messageId,
           );

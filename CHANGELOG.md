@@ -20,6 +20,7 @@
 - Long chats open faster, and opening one no longer pauses other chats' streaming.
 - Tool output takes much less space in the local database.
 - The local database drops replay records it no longer needs, and its write log shrinks back after large writes.
+- Streaming replies do far less database reading per update.
 
 ### Fixed
 

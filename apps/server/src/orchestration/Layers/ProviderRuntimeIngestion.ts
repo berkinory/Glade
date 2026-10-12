@@ -14,7 +14,6 @@ import {
   type OrchestrationProjectShell,
   type OrchestrationThreadActivity,
   type OrchestrationThread,
-  type OrchestrationThreadShell,
 } from "@glade/contracts/orchestration/threadEntities";
 import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import {
@@ -110,6 +109,8 @@ import {
 } from "../runtimeActivities/runtimeActivityProjection.ts";
 import { ProjectionThreadActivityRepositoryLive } from "../../persistence/Layers/ProjectionThreadActivities";
 import { ProjectionThreadActivityRepository } from "../../persistence/Services/ProjectionThreadActivities";
+import { ProjectionThreadMessageRepositoryLive } from "../../persistence/Layers/ProjectionThreadMessages.ts";
+import { ProjectionThreadMessageRepository } from "../../persistence/Services/ProjectionThreadMessages.ts";
 import { runtimePayloadRecord } from "../runtimeActivities/activityPayloads.ts";
 
 const providerTurnKey = (threadId: ThreadId, turnId: TurnId) => `${threadId}:${turnId}`;
@@ -203,21 +204,12 @@ type NativeChildSlotState = {
   readonly childIds: Set<string>;
 };
 
-function threadDetailFromShell(shell: OrchestrationThreadShell): OrchestrationThread {
-  return {
-    ...shell,
-    deletedAt: null,
-    messages: [],
-
-    activities: [],
-    checkpoints: [],
-  };
-}
-
 function eventNeedsHeavyThreadDetail(event: ProviderRuntimeEvent): boolean {
   if (event.type === "item.completed") {
+    // A completion naming its item resolves its message without the transcript and reads only that
+    // message's stored text.
     return (
-      event.payload.itemType === "assistant_message" ||
+      (event.payload.itemType === "assistant_message" && event.itemId === undefined) ||
       generatedImagePathFromRuntimeEvent(event) !== undefined
     );
   }
@@ -573,6 +565,7 @@ const make = Effect.gen(function* () {
   const pendingInteractions = yield* ProjectionPendingInteractionRepository;
   const runtimeEvents = yield* ProviderRuntimeEventRepository;
   const commandReceipts = yield* OrchestrationCommandReceiptRepository;
+  const messageRepository = yield* ProjectionThreadMessageRepository;
   const outstandingTurnIdsByThreadRef = yield* Ref.make<ReadonlyMap<ThreadId, ReadonlySet<TurnId>>>(
     new Map(),
   );
@@ -900,18 +893,17 @@ const make = Effect.gen(function* () {
     );
   });
 
-  // PERF: cheap counterpart to getThreadDetail for events that never read the heavy thread arrays.
-  // Loads only the shell projection and promotes it with empty arrays. See
-  // eventNeedsHeavyThreadDetail.
+  // Cheap counterpart to getThreadDetail for events that never read the heavy thread arrays (see
+  // eventNeedsHeavyThreadDetail). Their handlers read metadata, lineage and the session, which the
+  // engine's command read model holds current as of every commit, so streamed events cost no SQL read.
   const getThreadShellDetail = Effect.fnUntraced(function* (
     threadId: ThreadId,
   ): Effect.fn.Return<OrchestrationThread | undefined> {
-    const shell = Option.getOrUndefined(
-      yield* projectionSnapshotQuery
-        .getThreadShellById(threadId)
-        .pipe(Effect.catch(() => Effect.succeed(Option.none()))),
+    const readModel = yield* orchestrationEngine.getReadModel();
+    const thread = readModel.threads.find(
+      (entry) => entry.id === threadId && entry.deletedAt === null,
     );
-    return shell ? threadDetailFromShell(shell) : undefined;
+    return thread ? { ...thread, messages: [], activities: [], checkpoints: [] } : undefined;
   });
 
   const getProjectShell = Effect.fnUntraced(function* (
@@ -1632,10 +1624,7 @@ const make = Effect.gen(function* () {
           // otherwise use the cheap shell.
           const existingThread = needsHeavyThreadDetail
             ? yield* projectionSnapshotQuery.getThreadDetailById(childThreadId)
-            : Option.map(
-                yield* projectionSnapshotQuery.getThreadShellById(childThreadId),
-                threadDetailFromShell,
-              );
+            : Option.fromUndefinedOr(yield* getThreadShellDetail(childThreadId));
           // Reuse the parent's full selection when the models match so capability flags (e.g.
           // supportsAutoMode) survive; a diverging subagent model gets a bare selection because the parent's
           // flags don't describe it.
@@ -2206,9 +2195,16 @@ const make = Effect.gen(function* () {
                 thread,
                 ...(turnId ? { turnId } : {}),
               });
-        const existingAssistantMessage = thread.messages.find(
-          (entry) => entry.id === assistantMessageId,
-        );
+        const existingAssistantMessage =
+          assistantCompletion.fallbackText === undefined
+            ? undefined
+            : (thread.messages.find((entry) => entry.id === assistantMessageId) ??
+              Option.getOrUndefined(
+                yield* messageRepository.getByThreadAndMessageId({
+                  threadId: thread.id,
+                  messageId: assistantMessageId,
+                }),
+              ));
         const shouldApplyFallbackCompletionText =
           !existingAssistantMessage || existingAssistantMessage.text.length === 0;
         if (turnId) {
@@ -3052,6 +3048,7 @@ export const ProviderRuntimeIngestionLive = Layer.effect(
   Layer.provide(
     Layer.mergeAll(
       ProjectionThreadActivityRepositoryLive,
+      ProjectionThreadMessageRepositoryLive,
       ProjectionTurnRepositoryLive,
       ProjectionPendingInteractionRepositoryLive,
       ProviderRuntimeEventRepositoryLive,
