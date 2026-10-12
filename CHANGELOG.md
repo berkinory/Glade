@@ -24,6 +24,7 @@
 ### Fixed
 
 - Reading an image no longer shows an expand arrow that opens nothing.
+- Images in replies show on their own line at a readable size instead of as small thumbnails next to the text.
 - The chat stays scrolled to the end while a turn runs tools, opens tool groups or asks for approval, until you scroll away.
 - Actions in the commit and pull request dialogs have space between them, so a hovered action no longer merges with the highlighted one.
 - Starting a chat in a collapsed project expands the project, so a project's first chat no longer stays hidden.

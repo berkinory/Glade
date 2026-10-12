@@ -785,12 +785,20 @@ const MARKDOWN_COMPONENTS: Components = {
         />
       );
     }
-    const image = <img {...props} src={restoredSrc || undefined} alt={alt} loading="lazy" />;
+    const image = (
+      <img
+        {...props}
+        src={restoredSrc || undefined}
+        alt={alt}
+        loading="lazy"
+        className="max-h-(--chat-markdown-image-max-height)"
+      />
+    );
     if (linked || !onImageExpand || !restoredSrc) return image;
     return (
       <button
         type="button"
-        className="inline-block cursor-zoom-in rounded-sm focus-visible:outline-2"
+        className="my-[0.55rem] block w-fit max-w-full cursor-zoom-in rounded-sm focus-visible:outline-2"
         aria-label={`Expand ${alt || "image"}`}
         onClick={() =>
           onImageExpand({

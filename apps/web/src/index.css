@@ -740,6 +740,7 @@ label:has(> select#reasoning-effort) select {
 
 /* Chat markdown rendering */
 .chat-markdown {
+  --chat-markdown-image-max-height: 440px;
   min-width: 0;
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -1656,14 +1657,14 @@ label:has(> select#reasoning-effort) select {
   word-break: break-word;
 }
 
-/* Generated image preview/download card rendered inline from markdown ![alt](file.png) */
+/* Markdown images get their own line: agents often put a label and an image in one
+   paragraph with only a soft break between them. */
 .chat-generated-image {
   position: relative;
-  display: inline-block;
+  display: block;
   margin: 0.55rem 0;
   width: fit-content;
-  max-width: min(255px, 100%);
-  vertical-align: top;
+  max-width: 100%;
   isolation: isolate;
 }
 
@@ -1694,15 +1695,14 @@ label:has(> select#reasoning-effort) select {
 }
 
 .chat-generated-image[data-status="loading"] .chat-generated-image__frame {
+  min-width: 160px;
   min-height: 78px;
 }
 
 .chat-generated-image__img {
   display: block;
-  width: 100%;
   max-width: 100%;
-  max-height: 235px;
-  object-fit: contain;
+  max-height: var(--chat-markdown-image-max-height);
   background: transparent;
   user-select: none;
   -webkit-user-drag: none;
