@@ -273,7 +273,8 @@ export function makeProviderSessionConfiguration(input: {
       thread.session && thread.session.status !== "stopped" ? activeSessionBeforeEnsure : undefined;
     if (reusableSession) {
       const existingSessionThreadId = thread.id;
-      const runtimeModeChanged = desiredRuntimeMode !== thread.session?.runtimeMode;
+      // The projection can predate a failed rebind; the live process says whether its mode differs.
+      const runtimeModeChanged = desiredRuntimeMode !== reusableSession.runtimeMode;
       // A direct switch clears the projected provider while the old runtime may still be alive.
       const providerChanged =
         requestedModelSelection !== undefined &&

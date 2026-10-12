@@ -138,6 +138,7 @@ const make = Effect.gen(function* () {
   } = makeProviderThreadProjection({
     projectionAccess,
     orchestrationEngine,
+    providerService,
   });
 
   const { processApprovalResponseRequested, processUserInputResponseRequested } =

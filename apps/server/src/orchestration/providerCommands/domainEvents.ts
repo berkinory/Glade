@@ -305,26 +305,10 @@ export function makeProviderDomainEvents(input: {
           );
           return;
         }
-        case "thread.runtime-mode-set": {
-          const thread = yield* resolveThread(event.payload.threadId);
-          if (!thread?.session || thread.session.status === "stopped") {
-            return;
-          }
-          if (thread.session.activeTurnId !== null) {
-            return;
-          }
-          const cachedProviderOptions = threadSessionSettings.getProviderOptions(
-            event.payload.threadId,
-          );
-          yield* ensureSessionForThread(event.payload.threadId, event.occurredAt, {
-            ...(cachedProviderOptions !== undefined
-              ? { providerOptions: cachedProviderOptions }
-              : {}),
-            modelSelection: thread.modelSelection,
-            runtimeMode: event.payload.runtimeMode,
-          });
+        case "thread.runtime-mode-set":
+          // The thread already stores the desired mode, and the next turn's ensure applies it.
+          // Restarting an idle session here would publish `starting` with no turn.
           return;
-        }
         case "thread.legacy-cache-abandoned":
           yield* drainQueuedTurnsForSession(event.payload.threadId);
           return;

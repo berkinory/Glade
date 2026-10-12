@@ -8,12 +8,14 @@ import { DEFAULT_RUNTIME_MODE } from "./contextLifecycle";
 
 import { type ProviderIntentEvent } from "../providerIntentClassification.ts";
 import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
+import { ProviderService } from "../../provider/Services/ProviderService.ts";
 
 export function makeProviderThreadProjection(input: {
   readonly projectionAccess: ProviderProjectionAccessShape;
   readonly orchestrationEngine: ServiceMap.Service.Shape<typeof OrchestrationEngineService>;
+  readonly providerService: Pick<ServiceMap.Service.Shape<typeof ProviderService>, "listSessions">;
 }) {
-  const { orchestrationEngine, projectionAccess } = input;
+  const { orchestrationEngine, projectionAccess, providerService } = input;
   const { resolveThread } = projectionAccess;
   const appendProviderFailureActivity = (input: {
     readonly threadId: ThreadId;
@@ -87,13 +89,22 @@ export function makeProviderThreadProjection(input: {
     if (!thread) {
       return;
     }
+    // A failed rebind can leave the previous process alive; report the mode it actually runs with.
+    // The requested mode stays on the thread for the next ensure.
+    const liveSession = (yield* providerService.listSessions()).find(
+      (session) => session.threadId === input.threadId,
+    );
     yield* setThreadSession({
       threadId: input.threadId,
       session: {
         threadId: input.threadId,
         status: "error",
         providerName: thread.session?.providerName ?? thread.modelSelection.provider,
-        runtimeMode: input.runtimeMode ?? thread.session?.runtimeMode ?? DEFAULT_RUNTIME_MODE,
+        runtimeMode:
+          liveSession?.runtimeMode ??
+          input.runtimeMode ??
+          thread.session?.runtimeMode ??
+          DEFAULT_RUNTIME_MODE,
         activeTurnId: null,
         lastError: input.detail,
         updatedAt: input.createdAt,
