@@ -34,6 +34,7 @@ import { type ClaudeApiEffort } from "@glade/contracts/provider/model";
 import { ClaudeRequestUsage } from "../claudeRequestUsage.ts";
 import { type ClaudeWorkflowRuntimeState } from "../claudeWorkflowRuntime.ts";
 import { ClaudeQueryRuntime, ClaudeProcessOwner } from "./adapterConfiguration";
+import type { ClaudeMonitorEventCursor } from "./monitorEvents";
 
 export const PROVIDER = "claudeAgent" as const;
 
@@ -160,6 +161,10 @@ interface ClaudeSessionIdentity {
   readonly startedAt: string;
   readonly skillBridgeCleanup?: () => Promise<void>;
   readonly allowedSkillNames: ReadonlySet<string>;
+  // Root sessions only: where the CLI keeps this session's transcript, and the Monitor event read
+  // position in it.
+  readonly claudeConfigDir?: string;
+  readonly monitorEventCursor?: ClaudeMonitorEventCursor;
   resumeSessionId: string | undefined;
   lastThreadStartedId: string | undefined;
   stopped: boolean;

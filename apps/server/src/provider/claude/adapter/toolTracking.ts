@@ -12,6 +12,7 @@ import {
 import { asCanonicalTurnId, asRuntimeItemId, nativeProviderRefs } from "./messageContent";
 import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 import { makeClaudeTaskPresentation } from "./taskPresentation";
+import { makeClaudeMonitorEvents } from "./monitorEvents";
 
 export function makeClaudeToolTracking(input: {
   readonly makeEventStamp: () => Effect.Effect<{ eventId: EventId; createdAt: string }>;
@@ -20,8 +21,10 @@ export function makeClaudeToolTracking(input: {
     typeof makeClaudeTaskPresentation
   >["emitTodoTasksUpdated"];
   readonly nowIso: Effect.Effect<string>;
+  readonly emitMonitorEvents: ReturnType<typeof makeClaudeMonitorEvents>["emitMonitorEvents"];
 }) {
-  const { makeEventStamp, offerRuntimeEvent, emitTodoTasksUpdated, nowIso } = input;
+  const { makeEventStamp, offerRuntimeEvent, emitTodoTasksUpdated, nowIso, emitMonitorEvents } =
+    input;
   const ensureSubagentRun = (
     context: ClaudeSessionContext,
     toolUseId: string,
@@ -247,6 +250,8 @@ export function makeClaudeToolTracking(input: {
           payload,
         },
       });
+      // A turn without a user prompt may have been started by a Monitor event.
+      yield* emitMonitorEvents(context);
     });
 
   return { openInFlightTool, ensureSyntheticTurn, ensureSubagentRun };

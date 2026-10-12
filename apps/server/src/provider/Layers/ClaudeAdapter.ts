@@ -29,6 +29,7 @@ import { makeClaudeInteractionSettlement } from "../claude/adapter/interactionSe
 import { makeClaudeTurnCompletion } from "../claude/adapter/turnCompletion";
 import { makeClaudeWorkflowRuntime } from "../claude/adapter/workflowRuntime";
 import { makeClaudeToolTracking } from "../claude/adapter/toolTracking";
+import { makeClaudeMonitorEvents } from "../claude/adapter/monitorEvents";
 import { type ClaudeAdapterShape, ClaudeAdapter } from "../Services/ClaudeAdapter.ts";
 import { settleConcurrentTeardowns } from "../core/settleConcurrentTeardowns.ts";
 import { makeClaudeSessionTeardown } from "../claude/adapter/sessionTeardown";
@@ -186,11 +187,17 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         offerRuntimeEvent,
         runSdkFork,
       });
+    const { emitMonitorEvents } = makeClaudeMonitorEvents({
+      fileSystem,
+      makeEventStamp,
+      offerRuntimeEvent,
+    });
     const { openInFlightTool, ensureSyntheticTurn, ensureSubagentRun } = makeClaudeToolTracking({
       makeEventStamp,
       offerRuntimeEvent,
       emitTodoTasksUpdated,
       nowIso,
+      emitMonitorEvents,
     });
     const {
       resolveClaudeStartPreflight,
@@ -258,6 +265,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       syncFastModeState,
       warnUnhandledSdkKind,
       emitTrackedTasksUpdated,
+      emitMonitorEvents,
     });
     const {
       verifyClaudeAutoModelSupport,

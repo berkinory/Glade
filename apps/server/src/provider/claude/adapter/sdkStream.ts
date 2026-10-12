@@ -25,6 +25,7 @@ import { makeClaudeSessionTeardown } from "./sessionTeardown";
 import { makeClaudeContentMessages } from "./contentMessages";
 import { makeClaudeSystemMessages } from "./systemMessages";
 import { claudeAssistantFailure } from "./failures.ts";
+import { makeClaudeMonitorEvents } from "./monitorEvents";
 
 export function makeClaudeSdkStream(input: {
   readonly emitRuntimeError: ClaudeRuntimeEventsShape["emitRuntimeError"];
@@ -49,6 +50,7 @@ export function makeClaudeSdkStream(input: {
   readonly emitTrackedTasksUpdated: ReturnType<
     typeof makeClaudeTaskPresentation
   >["emitTrackedTasksUpdated"];
+  readonly emitMonitorEvents: ReturnType<typeof makeClaudeMonitorEvents>["emitMonitorEvents"];
 }) {
   const {
     emitRuntimeError,
@@ -67,6 +69,7 @@ export function makeClaudeSdkStream(input: {
     syncFastModeState,
     warnUnhandledSdkKind,
     emitTrackedTasksUpdated,
+    emitMonitorEvents,
   } = input;
   const handleResultMessage = (
     context: ClaudeSessionContext,
@@ -79,6 +82,8 @@ export function makeClaudeSdkStream(input: {
       if (message.uuid && context.lastResultUuid === message.uuid) return;
       context.lastResultUuid = message.uuid;
       yield* syncFastModeState(context, message);
+      // Retry in case the CLI had not yet written the notification when the turn started.
+      if (message.origin?.kind === "task-notification") yield* emitMonitorEvents(context);
 
       const assistantError = context.turnState?.assistantError;
       let status: RuntimeTurnState;

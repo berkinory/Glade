@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { EffortLevel } from "@anthropic-ai/claude-agent-sdk";
 import type { ClaudeSessionRegistryShape } from "../../Services/ClaudeSessionRegistry.ts";
 import type { Fiber } from "effect";
@@ -40,6 +41,7 @@ import { withClaudeArtifactOptIn } from "../claudeProcessEnv.ts";
 import { buildClaudeMcpServers } from "../../../agentGateway/mcpInjection.ts";
 import { toMessage } from "./streamErrors";
 import { cancellableClaudeMessageStream } from "./sdkProcessRuntime";
+import { makeClaudeMonitorEventCursor } from "./monitorEvents";
 import { type ProviderSession } from "@glade/contracts/provider/provider";
 import { ClaudeRequestUsage } from "../claudeRequestUsage.ts";
 import { makeClaudeDiscovery } from "./discovery";
@@ -176,6 +178,10 @@ export function makeClaudeSessionStartup(input: {
       };
       const { claudeSdkEnv, binaryPath, snapshotSupported } =
         preflight ?? (yield* resolveClaudeStartPreflight(input));
+      // The CLI keeps session transcripts under CLAUDE_CONFIG_DIR, else under HOME/.claude.
+      const claudeConfigDir =
+        claudeSdkEnv.CLAUDE_CONFIG_DIR?.trim() ||
+        (claudeSdkEnv.HOME ? path.join(claudeSdkEnv.HOME, ".claude") : undefined);
       const disabledSkillNames = yield* getDisabledSkillNames.pipe(
         Effect.mapError(
           (cause) =>
@@ -427,6 +433,8 @@ export function makeClaudeSessionStartup(input: {
           startedAt,
           skillBridgeCleanup: skillBridge.cleanup,
           allowedSkillNames: new Set(skillBridge.enabledSkills),
+          ...(claudeConfigDir ? { claudeConfigDir } : {}),
+          monitorEventCursor: makeClaudeMonitorEventCursor(),
           basePermissionMode: permissionMode,
           // A fresh CLI starts in `permissionMode` when queryOptions provides one, otherwise the SDK's
           // "default" mode (queryOptions omits it).

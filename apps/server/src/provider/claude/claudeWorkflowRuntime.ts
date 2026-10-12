@@ -204,10 +204,11 @@ export function claudeWorkflowRuntimeSnapshots(
   });
 }
 
-const readAppendedLines = (
+export const readAppendedLines = (
   fileSystem: FileSystem.FileSystem,
   path: string,
   offset: number,
+  maxFileBytes = MAX_CLAUDE_WORKFLOW_FILE_BYTES,
 ): Effect.Effect<{ lines: Array<string>; nextOffset: number; skipped: boolean } | undefined> =>
   Effect.gen(function* () {
     const info = yield* fileSystem.stat(path);
@@ -215,7 +216,7 @@ const readAppendedLines = (
     if (!Number.isFinite(size) || size <= offset) {
       return undefined;
     }
-    if (size > MAX_CLAUDE_WORKFLOW_FILE_BYTES) {
+    if (size > maxFileBytes) {
       return { lines: [], nextOffset: offset, skipped: true };
     }
     const file = yield* fileSystem.open(path);

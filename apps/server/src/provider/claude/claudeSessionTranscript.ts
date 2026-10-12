@@ -92,7 +92,7 @@ function claudeConfigDir(configDir?: string): string {
   );
 }
 
-async function findClaudeSessionTranscriptPath(input: {
+export async function findClaudeSessionTranscriptPath(input: {
   readonly sessionId: string;
   readonly configDir?: string;
 }): Promise<string | undefined> {
