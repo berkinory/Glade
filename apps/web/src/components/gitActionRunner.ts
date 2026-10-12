@@ -57,7 +57,6 @@ export interface RunGitActionWithToastInput {
   prBody?: string;
   prDraft?: boolean;
   allowDirtyWorkingTree?: boolean;
-  afterSuccess?: (result: GitRunStackedActionResult) => void;
 }
 
 function formatElapsedDescription(startedAtMs: number | null): string | undefined {
@@ -149,7 +148,6 @@ export function useGitActionRunner(deps: GitActionRunnerDeps) {
       prBody,
       prDraft,
       allowDirtyWorkingTree,
-      afterSuccess,
     }: RunGitActionWithToastInput) {
       const forcePushOnlyProgress = forcePushOnlyProgressProp ?? false;
       const skipDefaultBranchPrompt = skipDefaultBranchPromptProp ?? false;
@@ -422,7 +420,6 @@ export function useGitActionRunner(deps: GitActionRunnerDeps) {
                   }
                 : {}),
         });
-        afterSuccess?.(result);
       } catch (err) {
         toastManager.update(resolvedProgressToastId, {
           type: "error",

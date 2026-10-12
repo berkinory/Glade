@@ -165,7 +165,7 @@ function extractTrackedBranchName(upstreamBranch: string | null | undefined): st
   return branchName.length > 0 ? branchName : null;
 }
 
-export function resolveCreatePrBaseBranch(
+function resolveCreatePrBaseBranch(
   gitStatus: GitStatusResult | null,
   defaultBranchName?: string | null,
 ): string {
@@ -263,28 +263,6 @@ export function resolveCreatePrDialogView(context: GitDialogContext): CreatePrDi
     insertions: gitStatus?.workingTree.insertions ?? 0,
     deletions: gitStatus?.workingTree.deletions ?? 0,
   };
-}
-
-export type CreatePrBrowserPreparation =
-  | { kind: "run_action"; action: "commit_push" | "push" }
-  | { kind: "open_compare" }
-  | { kind: "open_pr" }
-  | { kind: "unavailable"; hint: string };
-
-export function resolveCreatePrBrowserPreparation(
-  context: GitDialogContext,
-  includeLocalChanges: boolean,
-): CreatePrBrowserPreparation {
-  const execution = resolveCreatePrDialogExecution(context, includeLocalChanges);
-  if (execution.kind !== "run_action") return execution;
-  if (execution.action === "commit_push_pr") {
-    return { kind: "run_action", action: "commit_push" };
-  }
-  const gitStatus = context.gitStatus;
-  if (!gitStatus?.hasUpstream || gitStatus.aheadCount > 0) {
-    return { kind: "run_action", action: "push" };
-  }
-  return { kind: "open_compare" };
 }
 
 export function summarizeGitResult(result: GitRunStackedActionResult): {

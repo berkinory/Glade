@@ -33,7 +33,6 @@ import {
   buildMenuItems,
   describeGitActionContext,
   requiresFeatureBranchForDefaultBranchAction,
-  resolveCreatePrBaseBranch,
   resolveCreatePrDialogRuntimeStatus,
   resolveCreatePrExecution,
   resolveDefaultBranchActionDialogCopy,
@@ -48,13 +47,9 @@ import {
   type GitDialogContext,
 } from "./GitActionsControl.logic";
 import { type GitCommitDialogSubmission } from "./GitCommitDialog";
-import {
-  type GitCreatePrDialogBrowserRequest,
-  type GitCreatePrDialogSubmission,
-} from "./GitCreatePrDialog";
+import { type GitCreatePrDialogSubmission } from "./GitCreatePrDialog";
 
 import {
-  encodeBranchForCompareUrl,
   type CreatePrDialogState,
   type GitActionsControlProps,
   type GitPickerMenuItem,
@@ -340,44 +335,6 @@ export function useGitActionsControl({
     ],
   );
 
-  const openComparePage = useCallback(
-    async (headBranch: string | null, baseBranch: string) => {
-      const api = readNativeApi();
-      if (!api || !gitCwd || !headBranch) {
-        toastManager.add({
-          type: "error",
-          title: "Unable to open compare page.",
-          data: threadToastData,
-        });
-        return;
-      }
-      try {
-        const repoResult = await api.git.githubRepository({ cwd: gitCwd });
-        const repoUrl = repoResult.repository?.url ?? null;
-        if (!repoUrl) {
-          toastManager.add({
-            type: "error",
-            title: "Unable to open compare page",
-            description: "No GitHub repository detected for this project.",
-            data: threadToastData,
-          });
-          return;
-        }
-        await api.shell.openExternal(
-          `${repoUrl}/compare/${encodeBranchForCompareUrl(baseBranch)}...${encodeBranchForCompareUrl(headBranch)}?expand=1`,
-        );
-      } catch (error) {
-        toastManager.add({
-          type: "error",
-          title: "Unable to open compare page",
-          description: error instanceof Error ? error.message : "An error occurred.",
-          data: threadToastData,
-        });
-      }
-    },
-    [gitCwd, threadToastData],
-  );
-
   const runSyncWithRemote = useCallback(() => {
     const promise = pullMutation.mutateAsync();
     void toastManager.promise(promise, {
@@ -446,61 +403,6 @@ export function useGitActionsControl({
       });
     },
     [createPrDialogRuntimeStatus, runGitActionWithToast],
-  );
-
-  const handleCreatePrDialogBrowser = useCallback(
-    (request: GitCreatePrDialogBrowserRequest) => {
-      setCreatePrDialog(null);
-      const actionStatus = createPrDialogRuntimeStatus.gitStatus;
-      const actionIsDefaultBranch = createPrDialogRuntimeStatus.isDefaultBranch;
-      const preparation = request.preparation;
-      if (preparation.kind === "open_pr") {
-        void openExistingPr();
-        return;
-      }
-      if (preparation.kind === "unavailable") {
-        toastManager.add({
-          type: "info",
-          title: "Create PR unavailable",
-          description: preparation.hint,
-          data: threadToastData,
-        });
-        return;
-      }
-      if (preparation.kind === "open_compare") {
-        void openComparePage(
-          actionStatus?.branch ?? null,
-          resolveCreatePrBaseBranch(actionStatus, defaultBranchName),
-        );
-        return;
-      }
-      const excludesDirtyChanges =
-        !request.includeLocalChanges && actionStatus?.hasWorkingTreeChanges === true;
-      void runGitActionWithToast({
-        action: preparation.action,
-        ...(createPrDialogRuntimeStatus.statusOverride
-          ? { statusOverride: createPrDialogRuntimeStatus.statusOverride }
-          : {}),
-        isDefaultBranchOverride: actionIsDefaultBranch,
-        ...(actionIsDefaultBranch ? { featureBranch: true } : {}),
-        skipDefaultBranchPrompt: true,
-        ...(excludesDirtyChanges ? { allowDirtyWorkingTree: true } : {}),
-        afterSuccess: (result) => {
-          void openComparePage(
-            result.push.branch ?? result.branch.name ?? actionStatus?.branch ?? null,
-            resolveCreatePrBaseBranch(actionStatus, defaultBranchName),
-          );
-        },
-      });
-    },
-    [
-      createPrDialogRuntimeStatus,
-      defaultBranchName,
-      openComparePage,
-      openExistingPr,
-      runGitActionWithToast,
-      threadToastData,
-    ],
   );
 
   const createPrDialogContext = useMemo<GitDialogContext>(
@@ -923,7 +825,6 @@ export function useGitActionsControl({
     setCreatePrDialog,
     createPrDialogContext,
     handleCreatePrDialogSubmit,
-    handleCreatePrDialogBrowser,
     isCommitDialogOpen,
     setIsCommitDialogOpen,
     commitDialogContext,

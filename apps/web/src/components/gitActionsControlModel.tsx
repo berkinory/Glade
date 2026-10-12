@@ -26,9 +26,6 @@ export interface GitPickerMenuItem {
   icon: GitGlyphName;
   onSelect: () => void;
 }
-export function encodeBranchForCompareUrl(branch: string): string {
-  return branch.split("/").map(encodeURIComponent).join("/");
-}
 function resolveGitQuickActionGlyph(quickAction: GitQuickAction): GitGlyphName | null {
   if (quickAction.kind === "open_pr") return "pr";
   if (quickAction.kind === "run_pull") return "sync";

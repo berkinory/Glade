@@ -1,12 +1,10 @@
-import { ArrowUpRightIcon, GitPullRequestDraftIcon, GitPullRequestIcon } from "~/lib/icons";
+import { GitPullRequestDraftIcon, GitPullRequestIcon } from "~/lib/icons";
 import { useEffect, useMemo, useState } from "react";
 import { Checkbox } from "~/components/ui/checkbox";
 import { DiffStat } from "~/components/ui/diff-stat";
 import { SubmitShortcutKbd } from "~/components/ui/kbd";
 import {
-  type CreatePrBrowserPreparation,
   type GitDialogContext,
-  resolveCreatePrBrowserPreparation,
   resolveCreatePrDialogExecution,
   resolveCreatePrDialogView,
 } from "./GitActionsControl.logic";
@@ -26,23 +24,17 @@ export interface GitCreatePrDialogSubmission {
   title: string | null;
   body: string | null;
 }
-export interface GitCreatePrDialogBrowserRequest {
-  preparation: CreatePrBrowserPreparation;
-  includeLocalChanges: boolean;
-}
 interface GitCreatePrDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   context: GitDialogContext;
   onSubmit: (submission: GitCreatePrDialogSubmission) => void;
-  onOpenInBrowser: (request: GitCreatePrDialogBrowserRequest) => void;
 }
 export function GitCreatePrDialog({
   open,
   onOpenChange,
   context,
   onSubmit,
-  onOpenInBrowser,
 }: GitCreatePrDialogProps) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -58,12 +50,7 @@ export function GitCreatePrDialog({
     () => resolveCreatePrDialogExecution(context, includeLocalChanges),
     [context, includeLocalChanges],
   );
-  const browserPreparation = useMemo(
-    () => resolveCreatePrBrowserPreparation(context, includeLocalChanges),
-    [context, includeLocalChanges],
-  );
   const canCreate = execution.kind === "run_action";
-  const canOpenInBrowser = browserPreparation.kind !== "unavailable";
   const unavailableHint = execution.kind === "unavailable" ? execution.hint : null;
   const submit = (draft: boolean) => {
     if (execution.kind !== "run_action") return;
@@ -140,17 +127,6 @@ export function GitCreatePrDialog({
           label="Create PR"
           trailing={<SubmitShortcutKbd />}
           onClick={() => submit(false)}
-        />
-        <GitDialogActionRow
-          disabled={!canOpenInBrowser}
-          icon={<ArrowUpRightIcon />}
-          label="Open PR in browser"
-          onClick={() =>
-            onOpenInBrowser({
-              preparation: browserPreparation,
-              includeLocalChanges,
-            })
-          }
         />
       </GitDialogActionList>
     </GitDialogShell>

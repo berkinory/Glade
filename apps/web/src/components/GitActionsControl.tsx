@@ -47,7 +47,6 @@ export default function GitActionsControl(props: GitActionsControlProps) {
     setCreatePrDialog,
     createPrDialogContext,
     handleCreatePrDialogSubmit,
-    handleCreatePrDialogBrowser,
     isCommitDialogOpen,
     setIsCommitDialogOpen,
     commitDialogContext,
@@ -168,7 +167,6 @@ export default function GitActionsControl(props: GitActionsControlProps) {
         }}
         context={createPrDialogContext}
         onSubmit={handleCreatePrDialogSubmit}
-        onOpenInBrowser={handleCreatePrDialogBrowser}
       />
 
       <GitCommitDialog
