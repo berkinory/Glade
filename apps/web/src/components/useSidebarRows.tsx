@@ -194,47 +194,47 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
       slotOccupied: Boolean(input.threadJumpLabel),
     });
     return (
-      <div className="flex min-w-0 shrink-0 items-center gap-1">
-        <div className="relative grid min-w-0 items-center">
-          <div className="col-start-1 row-start-1 flex min-w-0 items-center justify-end gap-1">
-            {!input.threadJumpLabel && input.metadata.chips.length > 0 ? (
-              <div className={THREAD_ROW_META_CHIP_HOVER_FADE_CLASS_NAME}>
-                <SidebarMetaChipStack chips={input.metadata.chips} />
-              </div>
-            ) : null}
-            {input.threadJumpLabel ? (
-              <ShortcutKbd
-                shortcutLabel={input.threadJumpLabel}
-                className={cn("max-w-[8em]", THREAD_ROW_META_CHIP_HOVER_FADE_CLASS_NAME)}
-              />
-            ) : null}
-            {trailingStatus ? (
-              <span
-                title={trailingStatus.label}
-                className={threadRowStatusSlotClassName(
-                  input.isSubagentThread,
-                  input.timestampToneClassName,
-                )}
-              >
-                <SidebarStatusTrailingGlyph status={trailingStatus} />
-              </span>
-            ) : null}
-            {input.draftIndicator}
-            {input.metadata.projectLabel ? (
-              <span
-                aria-label={input.metadata.projectLabel}
-                className={cn(
-                  "max-w-[8em] shrink-0 truncate text-right text-ui-xs text-muted-foreground/38",
-                  sidebarHoverRevealHideClassName("thread-row"),
-                )}
-              >
-                {input.metadata.projectLabel}
-              </span>
-            ) : null}
-          </div>
-          {input.hoverActions}
+      <div className="relative grid min-w-0 shrink-0 items-center">
+        <div className="col-start-1 row-start-1 flex min-w-0 items-center justify-end gap-1">
+          {!input.threadJumpLabel && input.metadata.chips.length > 0 ? (
+            <div className={THREAD_ROW_META_CHIP_HOVER_FADE_CLASS_NAME}>
+              <SidebarMetaChipStack chips={input.metadata.chips} />
+            </div>
+          ) : null}
+          {input.threadJumpLabel ? (
+            <ShortcutKbd
+              shortcutLabel={input.threadJumpLabel}
+              className={cn("max-w-[8em]", THREAD_ROW_META_CHIP_HOVER_FADE_CLASS_NAME)}
+            />
+          ) : null}
+          {trailingStatus ? (
+            <span
+              title={trailingStatus.label}
+              className={threadRowStatusSlotClassName(
+                input.isSubagentThread,
+                input.timestampToneClassName,
+              )}
+            >
+              <SidebarStatusTrailingGlyph status={trailingStatus} />
+            </span>
+          ) : null}
+          {input.draftIndicator}
+          {input.metadata.projectLabel ? (
+            <span
+              aria-label={input.metadata.projectLabel}
+              className={cn(
+                "max-w-[8em] shrink-0 truncate text-right text-ui-xs text-muted-foreground/38",
+                sidebarHoverRevealHideClassName("thread-row"),
+              )}
+            >
+              {input.metadata.projectLabel}
+            </span>
+          ) : null}
+          {input.pr ? (
+            <div className={THREAD_ROW_META_CHIP_HOVER_FADE_CLASS_NAME}>{input.pr}</div>
+          ) : null}
         </div>
-        {input.pr}
+        {input.hoverActions}
       </div>
     );
   }
