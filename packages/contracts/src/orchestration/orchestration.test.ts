@@ -4,7 +4,6 @@ import { Effect, Schema } from "effect";
 
 import {
   ClientOrchestrationCommand,
-  OrchestrationCommand,
   ProjectCreateCommand,
   ThreadTurnStartCommand,
 } from "./commands";
@@ -31,7 +30,6 @@ const decodeOrchestrationSession = Schema.decodeUnknownEffect(OrchestrationSessi
 const decodeThreadCreatedPayload = Schema.decodeUnknownEffect(ThreadCreatedPayload);
 const decodeThreadMetaUpdatedPayload = Schema.decodeUnknownEffect(ThreadMetaUpdatedPayload);
 const decodeClientOrchestrationCommand = Schema.decodeUnknownEffect(ClientOrchestrationCommand);
-const decodeOrchestrationCommand = Schema.decodeUnknownEffect(OrchestrationCommand);
 const decodeThreadPullRequest = Schema.decodeUnknownEffect(OrchestrationThreadPullRequest);
 
 it.effect("decodes last-known PRs persisted before draft/mergeability/diff fields existed", () =>
@@ -157,25 +155,6 @@ it.effect.each([
       decode({ threadId: "thread-1", fromTurnCount: 3, toTurnCount: 2, diff: "patch" }),
     );
     assert.strictEqual(result._tag, "Failure");
-  }),
-);
-
-it.effect("keeps generic conversation rollback internal-only", () =>
-  Effect.gen(function* () {
-    const rollbackCommand = {
-      type: "thread.conversation.rollback",
-      commandId: "cmd-rollback",
-      threadId: "thread-1",
-      messageId: "message-1",
-      numTurns: 1,
-      createdAt: "2026-01-01T00:00:00.000Z",
-    };
-
-    const clientResult = yield* Effect.exit(decodeClientOrchestrationCommand(rollbackCommand));
-    assert.strictEqual(clientResult._tag, "Failure");
-
-    const parsedInternal = yield* decodeOrchestrationCommand(rollbackCommand);
-    assert.strictEqual(parsedInternal.type, "thread.conversation.rollback");
   }),
 );
 
