@@ -71,6 +71,22 @@ function firstOutputText(...values: unknown[]): string | undefined {
   return undefined;
 }
 
+// A Claude tool result carries its text as a string or as text blocks. The server drops the streamed copy
+// from `rawOutput.output` when the result already holds the same text, so this is the fallback.
+function toolResultContentText(value: unknown): string | undefined {
+  if (!Array.isArray(value)) {
+    return firstOutputText(value);
+  }
+  return firstOutputText(
+    value
+      .map((block) => {
+        const record = asRecord(block);
+        return record?.type === "text" && typeof record.text === "string" ? record.text : "";
+      })
+      .join(""),
+  );
+}
+
 function asRawOutputRecord(value: unknown): Record<string, unknown> | null {
   const record = asRecord(value);
   if (record) {
@@ -148,7 +164,7 @@ function extractToolOutputDetails(input: {
       itemResult?.output,
       itemResult?.content,
       result?.output,
-      result?.content,
+      toolResultContentText(result?.content),
       partialResult?.output,
       partialResult?.content,
       rawOutputDetails?.output,
