@@ -42,6 +42,29 @@ import { prepareChatSendWorkspace } from "./prepareChatSendWorkspace";
 import { buildQueuedComposerPreviewText } from "./queuedComposerPreview";
 import { useChatTurnExecution } from "./useChatTurnExecution";
 
+type BlockedSendReason = "send-in-flight" | "session-starting" | "no-project";
+
+const BLOCKED_SEND_TOAST_COPY: Record<
+  BlockedSendReason,
+  { type: "info" | "warning"; title: string; description: string }
+> = {
+  "send-in-flight": {
+    type: "info",
+    title: "Still sending your last message",
+    description: "Wait for it to show in the chat before sending again.",
+  },
+  "session-starting": {
+    type: "info",
+    title: "The session is still starting",
+    description: "Send again once it is ready. Your message stays in the composer.",
+  },
+  "no-project": {
+    type: "warning",
+    title: "This chat has no project",
+    description: "Choose a project for this chat, then send again.",
+  },
+};
+
 export function useChatTurnSubmission({
   props,
   provider,
@@ -164,20 +187,35 @@ export function useChatTurnSubmission({
       e?.preventDefault();
       const api = readNativeApi();
       const lateSendHandlers = lateComposerSendHandlersRef.current;
-      if (
-        !api ||
-        !lateSendHandlers ||
-        !activeThread ||
-        isSendBusy ||
-        isConnecting ||
-        isVoiceTranscribing ||
-        sendPreflightInFlightRef.current ||
-        sendInFlightRef.current
-      ) {
+      if (!api || !lateSendHandlers || !activeThread || isVoiceTranscribing) {
+        return false;
+      }
+      // Queue drains retry on their own; only a person pressing Send with content needs to hear why.
+      const notifyBlockedSend = (reason: BlockedSendReason) => {
+        const hasComposerContent =
+          (composerEditorRef.current?.readSnapshot().value ?? promptRef.current).trim().length >
+            0 ||
+          composerImages.length > 0 ||
+          composerFiles.length > 0;
+        if (queuedTurn || !hasComposerContent) return;
+        toastManager.add({
+          id: `composer-send-blocked:${activeThread.id}`,
+          ...BLOCKED_SEND_TOAST_COPY[reason],
+        });
+      };
+      if (isSendBusy || sendPreflightInFlightRef.current || sendInFlightRef.current) {
+        notifyBlockedSend("send-in-flight");
+        return false;
+      }
+      if (isConnecting) {
+        notifyBlockedSend("session-starting");
         return false;
       }
       const pendingDispatch = usePendingTurnDispatchStore.getState();
-      if (!pendingDispatch.beginSubmission(activeThread.id)) return false;
+      if (!pendingDispatch.beginSubmission(activeThread.id)) {
+        notifyBlockedSend("send-in-flight");
+        return false;
+      }
       try {
         sendPreflightInFlightRef.current = true;
         const editorSaved = !hasUnsavedWorkspaceEditors(
@@ -351,7 +389,10 @@ export function useChatTurnSubmission({
           }
           return false;
         }
-        if (!activeProject) return false;
+        if (!activeProject) {
+          notifyBlockedSend("no-project");
+          return false;
+        }
 
         sendPreflightInFlightRef.current = true;
         const sendProviderAvailability = await resolveProviderSendAvailabilityWithRefresh({
