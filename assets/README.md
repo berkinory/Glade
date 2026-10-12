@@ -3,14 +3,16 @@
 The Glade mark is two rounded brackets around a centered square. Its monochrome geometry
 lives in `apps/web/src/assets/gladeMark.ts`, shared by the UI and asset exporter.
 `brand/glade.svg` and `brand/glade-master.png` are the portable vector and
-transparent 2048px exports. `brand/artwork/` preserves the approved light, dark,
-and dev raster artwork and their shared foreground mask.
+transparent 2048px exports. `brand/artwork/` holds the approved light, dark,
+and dev ASCII-field backgrounds as 1024px plates without the mark.
 
-Prod uses a dark mark on a warm light particle field, with a separate dark
-appearance. Both share identical geometry and particle placement. Dev uses the
-same mark in white on the blue blueprint background. The production macOS
-catalog uses the complete light artwork to preserve its texture; the dev
-Icon Composer source keeps the white foreground and blueprint separate.
+The exporter places every plate in the icon tile and draws the vector mark on
+top at the same size and exact center, so all variants share one alignment.
+Prod uses a dark mark on a warm light ASCII field, with a separate dark
+appearance in cream on black. Dev uses a white mark on a blueprint-blue field.
+The production macOS catalog flattens plate and mark into one layer; the dev
+Icon Composer source keeps the glass mark and blueprint separate. Frames of
+16px and below use a flat tile, because the texture is only noise at that size.
 
 To regenerate every platform export, use macOS with ImageMagick and Xcode 26:
 
