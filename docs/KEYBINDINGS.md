@@ -33,7 +33,9 @@ configuration errors and prevent automatic rewriting of the file.
   { "key": "shift+tab", "command": "model.effort.next", "when": "!terminalFocus" },
   { "key": "cmd+l", "command": "composer.focus.toggle", "when": "!terminalFocus" },
   { "key": "mod+o", "command": "editor.openFavorite" },
-  { "key": "mod+s", "command": "editor.file.save", "when": "!terminalFocus" }
+  { "key": "mod+s", "command": "editor.file.save", "when": "!terminalFocus" },
+  { "key": "mod+p", "command": "search.files", "when": "!terminalFocus" },
+  { "key": "mod+shift+f", "command": "search.content", "when": "!terminalFocus" }
 ]
 ```
 
@@ -79,6 +81,8 @@ Invalid rules are ignored. Invalid config files are ignored. Warnings are logged
 - `thread.markUnread`: mark the open chat unread and bring back its dismissed notification (Mod+Alt+Shift+U by default). The chat stays unread while it is open until a new reply finishes or you open it again.
 - `editor.openFavorite`: open current project/worktree in the last-used editor
 - `editor.file.save`: write the focused file editor's unsaved changes back to disk
+- `search.files`: open the workspace file search palette (Mod+P by default)
+- `search.content`: open the workspace content search palette (Mod+Shift+F by default)
 
 ### Key Syntax
 

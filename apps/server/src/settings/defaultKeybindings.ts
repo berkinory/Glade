@@ -121,6 +121,8 @@ export const DEFAULT_KEYBINDINGS: ReadonlyArray<KeybindingRule> = [
   { key: "ctrl+pagedown", command: "workspaceTab.next", when: "!terminalFocus && !isMac" },
   { key: "mod+o", command: "editor.openFavorite" },
   { key: "mod+s", command: "editor.file.save", when: "!terminalFocus" },
+  { key: "mod+p", command: "search.files", when: "!terminalFocus" },
+  { key: "mod+shift+f", command: "search.content", when: "!terminalFocus" },
 ];
 
 export const DEFAULT_RESOLVED_KEYBINDINGS = compileResolvedKeybindingsConfig(DEFAULT_KEYBINDINGS);

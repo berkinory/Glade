@@ -1,7 +1,9 @@
 import { isTerminalFocused } from "~/lib/terminalFocus";
 import { hasOpenKeyboardOverlay } from "~/lib/keyboardOverlay";
+import { resolveShortcutCommand } from "~/keybindings";
+import { serverConfigQueryOptions } from "~/lib/serverReactQuery";
 import type { ProjectId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
   lazy,
@@ -31,6 +33,7 @@ import { useWorkspaceSidebarStore } from "../../workspaceSidebarStore";
 import { useStore } from "../../store";
 import { createProjectSelector, createThreadWorkspaceMetadataSelector } from "../../storeSelectors";
 import { DeferredChatView } from "./ChatThreadSurfacePrimitives";
+import { EMPTY_KEYBINDINGS } from "./controller/chatViewSupport";
 import { MainWorkspace } from "./MainWorkspace";
 import {
   selectMainWorkspace,
@@ -73,6 +76,7 @@ export function SingleChatSurface(props: {
   projectId: ProjectId | null;
 }) {
   const navigate = useNavigate();
+  const keybindings = useQuery(serverConfigQueryOptions()).data?.keybindings ?? EMPTY_KEYBINDINGS;
   const fileTabs = useWorkspaceFileTabsStore(
     useMemo(() => selectWorkspaceFileTabs(props.threadId), [props.threadId]),
   );
@@ -145,29 +149,22 @@ export function SingleChatSurface(props: {
 
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (
-        event.defaultPrevented ||
-        event.isComposing ||
-        hasOpenKeyboardOverlay() ||
-        isTerminalFocused() ||
-        event.repeat ||
-        event.altKey
-      )
+      if (event.defaultPrevented || event.isComposing || event.repeat || hasOpenKeyboardOverlay())
         return;
-      const isPrimaryModifier = event.ctrlKey || event.metaKey;
-      if (!isPrimaryModifier) return;
-      const key = event.key.toLowerCase();
-      if (key !== "p" && key !== "f") return;
-      if (key === "f" && !event.shiftKey) return;
-      if (key === "p" && event.shiftKey) return;
+      const command = resolveShortcutCommand(event, keybindings, {
+        context: { terminalFocus: isTerminalFocused() },
+      });
+      const mode =
+        command === "search.files" ? "files" : command === "search.content" ? "snippets" : null;
+      if (mode === null) return;
       event.preventDefault();
       event.stopPropagation();
-      setSearchPaletteMode(key === "p" ? "files" : "snippets");
+      setSearchPaletteMode(mode);
       setSearchPaletteOpen(true);
     };
     window.addEventListener("keydown", onKeyDown, { capture: true });
     return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
-  }, []);
+  }, [keybindings]);
 
   const handleReferenceInChat = (reference: ChatFileReference) => {
     appendChatFileReference(props.threadId, reference);

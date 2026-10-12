@@ -68,6 +68,8 @@ export const STATIC_KEYBINDING_COMMANDS = [
   "editor.openFavorite",
   "editor.file.save",
   "git.commitAndPush",
+  "search.files",
+  "search.content",
 ] as const;
 
 export const THREAD_JUMP_KEYBINDING_COMMANDS = [

@@ -160,6 +160,16 @@ const AVAILABLE_NOW_DEFINITIONS: readonly ShortcutDefinition[] = [
     description: "Search the current transcript and jump to each matching message.",
   },
   {
+    command: "search.files",
+    label: "Search files",
+    description: "Find a file in the workspace by name, or open a pasted path.",
+  },
+  {
+    command: "search.content",
+    label: "Search in files",
+    description: "Search the text of the workspace files.",
+  },
+  {
     command: "explorer.toggle",
     label: "Toggle Explorer",
     description: "Open or close Explorer in the right sidebar.",
