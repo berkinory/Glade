@@ -146,8 +146,15 @@ export function makeProviderTaskControl(input: {
     }
 
     const providerThreadId = resolveSubagentProviderThreadId(thread.id, providerThread.id);
-    const liveTurnId = yield* resolveLiveProviderTurnId(input.threadId);
-    const turnId = liveTurnId ?? input.turnId ?? thread.session?.activeTurnId ?? undefined;
+    // A native child runs its own provider turn; the session's live turn belongs to the parent, and
+    // Codex rejects an interrupt that names the parent's turn for the child's thread.
+    const turnId = providerThreadId
+      ? (input.turnId ??
+        (thread.latestTurn?.state === "running" ? thread.latestTurn.turnId : undefined))
+      : ((yield* resolveLiveProviderTurnId(input.threadId)) ??
+        input.turnId ??
+        thread.session?.activeTurnId ??
+        undefined);
     const children = providerThreadId ? [] : yield* readActiveNativeChildren(providerThread.id);
     const result = yield* runBoundedProviderCall({
       label: "The provider interrupt",
