@@ -127,3 +127,23 @@ describe("loopback HTTP transport", () => {
     }
   });
 });
+
+describe("fake-IP DNS addresses", () => {
+  const fakeIpOrigin = "https://198.18.0.1";
+  const requestFakeIp = (allowFakeIpDnsAddresses: boolean) =>
+    outboundHttp.request({
+      policy: {
+        ...policyFor(0),
+        allowedOrigins: [fakeIpOrigin],
+        timeoutMs: 100,
+        requirePublicAddress: true,
+        allowFakeIpDnsAddresses,
+      },
+      url: `${fakeIpOrigin}/usage`,
+    });
+
+  it("stay blocked unless the request opts in", async () => {
+    await expect(requestFakeIp(false)).rejects.toMatchObject({ code: "private-address" });
+    await expect(requestFakeIp(true)).rejects.not.toMatchObject({ code: "private-address" });
+  });
+});

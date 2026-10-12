@@ -38,6 +38,8 @@ export async function fetchJson(input: {
       maxConcurrent: 4,
       maxQueued: 8,
       requirePublicAddress: true,
+      // Usage requests only go to hard-coded provider origins.
+      allowFakeIpDnsAddresses: true,
       ...(input.allowLoopbackHttp === true ? { allowLoopbackHttp: true } : {}),
     },
     url: input.url,
