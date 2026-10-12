@@ -10,7 +10,9 @@ import {
   projectSearchContentQueryOptions,
   projectSearchEntriesQueryOptions,
 } from "~/lib/projectReactQuery";
+import { useWorkspacePathsStore } from "~/workspacePathsStore";
 import { ContentSearchMatchText } from "./ContentSearchMatchText";
+import { type PalettePathTarget, resolvePalettePathTarget } from "./WorkspaceSearchPalette.logic";
 import { cn } from "~/lib/utils";
 import {
   Command,
@@ -85,6 +87,8 @@ interface WorkspaceSearchPaletteProps {
   onOpenFile: (relativePath: string) => void;
 
   onOpenDirectory: (relativePath: string) => void;
+
+  onOpenPath: (path: string) => void;
 }
 
 function splitPath(path: string): { base: string; dir: string } {
@@ -130,6 +134,26 @@ const FileResultRow = memo(function FileResultRow(props: {
   );
 });
 
+function PathResultRow(props: { target: PalettePathTarget; onOpenPath: (path: string) => void }) {
+  const { base, dir } = splitPath(props.target.displayPath.replace(/\/+$/, ""));
+  return (
+    <CommandItem
+      index={0}
+      value={`path:${props.target.path}`}
+      className={`items-center ${ITEM_CLASS}`}
+      onClick={() => props.onOpenPath(props.target.path)}
+    >
+      <FileEntryIcon
+        pathValue={props.target.displayPath}
+        kind={props.target.kind}
+        className={ICON_CLASS}
+      />
+      <span className="min-w-0 flex-1 truncate text-ui-lg">{base}</span>
+      {dir ? <DirectoryText className="max-w-[45%] shrink-0" dir={dir} /> : null}
+    </CommandItem>
+  );
+}
+
 const SnippetResultRow = memo(function SnippetResultRow(props: {
   match: ProjectContentMatch;
   index: number;
@@ -172,6 +196,7 @@ export function WorkspaceSearchPalette(props: WorkspaceSearchPaletteProps) {
           cwd={props.cwd}
           onOpenFile={props.onOpenFile}
           onOpenDirectory={props.onOpenDirectory}
+          onOpenPath={props.onOpenPath}
         />
       </CommandDialogPopup>
     </CommandDialog>
@@ -184,6 +209,9 @@ function WorkspaceSearchPaletteContent(props: WorkspaceSearchPaletteProps) {
   const [query, setQuery] = useState("");
   const trimmedQuery = query.trim();
   const [debouncedQuery] = useDebouncedValue(trimmedQuery, { wait: SEARCH_DEBOUNCE_MS });
+  const homeDir = useWorkspacePathsStore((store) => store.homeDir);
+  const pathTarget =
+    props.mode === "files" ? resolvePalettePathTarget(trimmedQuery, props.cwd, homeDir) : null;
 
   useEffect(() => {
     prewarmProjectSearchIndex(props.cwd);
@@ -199,7 +227,8 @@ function WorkspaceSearchPaletteContent(props: WorkspaceSearchPaletteProps) {
       cwd: props.cwd,
       query: debouncedQuery,
       limit: SEARCH_LIMIT,
-      enabled: props.open && props.mode === "files" && debouncedQuery.length > 0,
+      enabled:
+        props.open && props.mode === "files" && debouncedQuery.length > 0 && pathTarget === null,
       staleTime: SEARCH_STALE_TIME_MS,
     }),
   );
@@ -218,7 +247,7 @@ function WorkspaceSearchPaletteContent(props: WorkspaceSearchPaletteProps) {
   );
 
   const fileEntries =
-    props.mode === "files" && hasUsableQuery
+    props.mode === "files" && hasUsableQuery && pathTarget === null
       ? (fileSearchQuery.data?.entries ?? EMPTY_FILE_ENTRIES)
       : EMPTY_FILE_ENTRIES;
   const snippetMatches =
@@ -226,21 +255,24 @@ function WorkspaceSearchPaletteContent(props: WorkspaceSearchPaletteProps) {
       ? (snippetSearchQuery.data?.matches ?? EMPTY_SNIPPET_MATCHES)
       : EMPTY_SNIPPET_MATCHES;
 
+  const pathItemValue = pathTarget ? `path:${pathTarget.path}` : null;
   const itemValues = useMemo(
     () =>
-      props.mode === "files"
-        ? fileEntries.map((entry) => `${entry.kind}:${entry.path}`)
-        : snippetMatches.map((match) => `snippet:${match.path}:${match.lineNumber}`),
-    [props.mode, fileEntries, snippetMatches],
+      pathItemValue
+        ? [pathItemValue]
+        : props.mode === "files"
+          ? fileEntries.map((entry) => `${entry.kind}:${entry.path}`)
+          : snippetMatches.map((match) => `snippet:${match.path}:${match.lineNumber}`),
+    [pathItemValue, props.mode, fileEntries, snippetMatches],
   );
 
   const activeQuery = props.mode === "files" ? fileSearchQuery : snippetSearchQuery;
   // Only a settled response may claim "no results" — otherwise every keystroke would flash the
   // no-results state before data lands.
   const isSettled = trimmedQuery === debouncedQuery && !activeQuery.isFetching;
-  const hasRows = fileEntries.length > 0 || snippetMatches.length > 0;
+  const hasRows = pathTarget !== null || fileEntries.length > 0 || snippetMatches.length > 0;
 
-  const { onOpenChange, onOpenFile, onOpenDirectory } = props;
+  const { onOpenChange, onOpenFile, onOpenDirectory, onOpenPath } = props;
   const handleOpenFile = useCallback(
     (relativePath: string) => {
       onOpenChange(false);
@@ -255,6 +287,11 @@ function WorkspaceSearchPaletteContent(props: WorkspaceSearchPaletteProps) {
     },
     [onOpenChange, onOpenDirectory],
   );
+
+  const handleOpenPath = (path: string) => {
+    onOpenChange(false);
+    onOpenPath(path);
+  };
 
   const statusMessage = !hasRows
     ? activeQuery.isError
@@ -295,6 +332,12 @@ function WorkspaceSearchPaletteContent(props: WorkspaceSearchPaletteProps) {
       </CommandStatus>
 
       <CommandList className={LIST_CLASS}>
+        {pathTarget ? (
+          <CommandGroup>
+            <CommandGroupLabel className={GROUP_LABEL_CLASS}>Open path</CommandGroupLabel>
+            <PathResultRow target={pathTarget} onOpenPath={handleOpenPath} />
+          </CommandGroup>
+        ) : null}
         {props.mode === "files" && fileEntries.length > 0 ? (
           <CommandGroup>
             <CommandGroupLabel className={GROUP_LABEL_CLASS}>{copy.groupLabel}</CommandGroupLabel>

@@ -368,6 +368,7 @@ export function SingleChatSurface(props: {
           cwd={workspaceRoot}
           onOpenFile={handleOpenWorkspaceSearchFile}
           onOpenDirectory={handleOpenWorkspaceSearchDirectory}
+          onOpenPath={dockFileOpener.openFile}
         />
       </div>
     </WorkspaceFileOpenerContext.Provider>
