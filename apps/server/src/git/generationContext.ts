@@ -4,6 +4,7 @@ import path from "node:path";
 import { Effect } from "effect";
 import type { GitCoreShape, GitGenerationContext } from "./Services/GitCore";
 import { GitCommandError } from "./Errors";
+import { RAW_DIFF_ARGS } from "./Layers/GitCommands";
 
 const INVENTORY_BYTES = 6_000;
 const COMMIT_CONTENT_BYTES = 20_000;
@@ -276,7 +277,7 @@ export function readGenerationContext(
     // Patch size, rather than file count or blob size, determines evidence coverage.
     // Prefix capture stops Git at the budget; reserve room for the evidence footer.
     const full = yield* read(
-      ["diff", ...diffArgs, "--patch", "--no-ext-diff", "--no-textconv", "--no-renames"],
+      ["diff", ...diffArgs, "--patch", ...RAW_DIFF_ARGS, "--no-renames"],
       budget - 256,
     );
     if (!full.stdoutTruncated) stagedPatch = full.stdout;
@@ -310,8 +311,7 @@ export function readGenerationContext(
             "diff",
             ...diffArgs,
             "--patch",
-            "--no-ext-diff",
-            "--no-textconv",
+            ...RAW_DIFF_ARGS,
             "--no-renames",
             "--",
             `:(literal)${entry.file}`,

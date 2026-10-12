@@ -10,7 +10,7 @@ import { GitCommands } from "../Services/GitCommands.ts";
 import { GitWorktrees } from "../Services/GitWorktrees.ts";
 import { GitCommandError } from "../Errors.ts";
 import { ServerConfig } from "../../server/config.ts";
-import { commandLabel, createGitCommandError } from "./GitCommands.ts";
+import { commandLabel, createGitCommandError, RAW_DIFF_ARGS } from "./GitCommands.ts";
 import { hasNodeErrorCode } from "./GitStatus.ts";
 
 const AUTO_DETACHED_WORKTREE_DIRNAME = "glade";
@@ -131,13 +131,13 @@ const makeGitWorktrees = Effect.gen(function* () {
           executeGit(
             "GitCore.readWorktreeStateHash.staged",
             cwd,
-            ["diff", "--cached", "--binary", "--full-index", "HEAD", "--"],
+            ["diff", "--cached", "--binary", "--full-index", ...RAW_DIFF_ARGS, "HEAD", "--"],
             { maxOutputBytes: WORKTREE_TRANSFER_MAX_OUTPUT_BYTES },
           ),
           executeGit(
             "GitCore.readWorktreeStateHash.unstaged",
             cwd,
-            ["diff", "--binary", "--full-index", "--"],
+            ["diff", "--binary", "--full-index", ...RAW_DIFF_ARGS, "--"],
             { maxOutputBytes: WORKTREE_TRANSFER_MAX_OUTPUT_BYTES },
           ),
           listWorktreeTransferPaths(cwd),
@@ -182,7 +182,7 @@ const makeGitWorktrees = Effect.gen(function* () {
           executeGit(
             "GitCore.copyCheckoutChanges.patch",
             sourceCwd,
-            ["diff", "--binary", "--full-index", "HEAD", "--"],
+            ["diff", "--binary", "--full-index", ...RAW_DIFF_ARGS, "HEAD", "--"],
             { maxOutputBytes: WORKTREE_TRANSFER_MAX_OUTPUT_BYTES },
           ).pipe(Effect.map((result) => result.stdout)),
           listWorktreeTransferPaths(sourceCwd),
@@ -277,7 +277,7 @@ const makeGitWorktrees = Effect.gen(function* () {
           executeGit(
             "GitCore.snapshotWorktree.patch",
             input.cwd,
-            ["diff", "--binary", "--full-index", "HEAD", "--"],
+            ["diff", "--binary", "--full-index", ...RAW_DIFF_ARGS, "HEAD", "--"],
             { maxOutputBytes: WORKTREE_TRANSFER_MAX_OUTPUT_BYTES },
           ).pipe(Effect.map((result) => result.stdout)),
           listWorktreeTransferPaths(input.cwd),

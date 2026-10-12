@@ -63,6 +63,10 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 
 export const DEFAULT_MAX_OUTPUT_BYTES = 1_000_000;
 
+// Output we parse, show or apply must be plain Git patches, never what a user's diff
+// driver or textconv filter renders.
+export const RAW_DIFF_ARGS = ["--no-ext-diff", "--no-textconv"] as const;
+
 type TraceTailState = {
   processedBytes: number;
 

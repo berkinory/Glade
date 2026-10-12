@@ -6,7 +6,7 @@ import type { GitCoreShape } from "../Services/GitCore.ts";
 import { GitCommands } from "../Services/GitCommands.ts";
 import { GitRefs } from "../Services/GitRefs.ts";
 import { parseRemoteNames } from "./GitStatus.ts";
-import { createGitCommandError, isMissingGitCwdError } from "./GitCommands.ts";
+import { createGitCommandError, isMissingGitCwdError, RAW_DIFF_ARGS } from "./GitCommands.ts";
 
 const RECENT_COMMIT_FIELD_SEPARATOR = "\u001f";
 
@@ -464,7 +464,7 @@ const makeGitRefs = Effect.gen(function* () {
           "--first-parent",
           "--patch",
           "--no-color",
-          "--no-ext-diff",
+          ...RAW_DIFF_ARGS,
           input.sha,
         ],
         { timeoutMs: 10_000, maxOutputBytes: 5_000_000, outputMode: "truncate" },

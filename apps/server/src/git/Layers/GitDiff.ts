@@ -18,6 +18,7 @@ import { withIntentToAddIndex } from "../gitIntentToAddIndex.ts";
 import {
   DEFAULT_MAX_OUTPUT_BYTES,
   createGitCommandError,
+  RAW_DIFF_ARGS,
   truncateUtf8Prefix,
 } from "./GitCommands.ts";
 
@@ -152,7 +153,7 @@ const makeGitDiff = Effect.gen(function* () {
               "diff",
               "--patch",
               "--no-color",
-              "--no-ext-diff",
+              ...RAW_DIFF_ARGS,
               "--no-renames",
               "--relative",
               "--src-prefix=a/",
@@ -193,7 +194,7 @@ const makeGitDiff = Effect.gen(function* () {
           executeGit(
             `${operationPrefix}.untrackedNumstat`,
             cwd,
-            ["diff", "--numstat", "-z", "--no-renames", "--no-ext-diff", "--relative"],
+            ["diff", "--numstat", "-z", "--no-renames", ...RAW_DIFF_ARGS, "--relative"],
             { env, timeoutMs: WORKING_TREE_DIFF_TIMEOUT_MS, maxOutputBytes: 10_000_000 },
           ).pipe(Effect.map((result) => result.stdout)),
       );
@@ -257,7 +258,7 @@ const makeGitDiff = Effect.gen(function* () {
           "diff",
           "--patch",
           "--no-color",
-          "--no-ext-diff",
+          ...RAW_DIFF_ARGS,
           ...(filePath ? ["--", `:(literal)${filePath}`] : []),
         ],
         {
@@ -303,7 +304,7 @@ const makeGitDiff = Effect.gen(function* () {
           "--cached",
           "--patch",
           "--no-color",
-          "--no-ext-diff",
+          ...RAW_DIFF_ARGS,
           ...(filePath ? ["--", `:(literal)${filePath}`] : []),
         ],
         {
@@ -416,7 +417,7 @@ const makeGitDiff = Effect.gen(function* () {
           yield* executeGit(
             "GitCore.readWorkingTreePatch.renamePaths",
             cwd,
-            ["diff", "--name-status", "-z", "--diff-filter=R", "--no-ext-diff", "HEAD"],
+            ["diff", "--name-status", "-z", "--diff-filter=R", ...RAW_DIFF_ARGS, "HEAD"],
             {
               timeoutMs: WORKING_TREE_DIFF_TIMEOUT_MS,
               outputMode: "truncate",
@@ -441,7 +442,7 @@ const makeGitDiff = Effect.gen(function* () {
           "diff",
           "--patch",
           "--no-color",
-          "--no-ext-diff",
+          ...RAW_DIFF_ARGS,
           headExists ? "HEAD" : EMPTY_TREE_OBJECT_ID,
           ...(filePath === undefined ? [] : ["--", ...paths.map((path) => `:(literal)${path}`)]),
         ],
@@ -561,7 +562,7 @@ const makeGitDiff = Effect.gen(function* () {
       const tracked = yield* executeGit(
         "GitCore.readBranchPatch.trackedPatch",
         cwd,
-        ["diff", "--patch", "--minimal", "--no-color", "--no-ext-diff", mergeBase],
+        ["diff", "--patch", "--minimal", "--no-color", ...RAW_DIFF_ARGS, mergeBase],
         {
           timeoutMs: WORKING_TREE_DIFF_TIMEOUT_MS,
           maxOutputBytes: 10_000_000,
@@ -736,7 +737,7 @@ const makeGitDiff = Effect.gen(function* () {
           "--no-renames",
           "--diff-filter=A",
           "-z",
-          "--no-ext-diff",
+          ...RAW_DIFF_ARGS,
           resolvedRef,
         ],
         { env: { GIT_OPTIONAL_LOCKS: "0" }, timeoutMs: WORKING_TREE_DIFF_TIMEOUT_MS },
@@ -755,7 +756,7 @@ const makeGitDiff = Effect.gen(function* () {
           const tracked = yield* executeGit(
             "GitCore.readRefPatch.trackedPatch",
             cwd,
-            ["diff", "--patch", "--no-color", "--no-ext-diff", resolvedRef],
+            ["diff", "--patch", "--no-color", ...RAW_DIFF_ARGS, resolvedRef],
             {
               env,
               timeoutMs: WORKING_TREE_DIFF_TIMEOUT_MS,
@@ -794,15 +795,15 @@ const makeGitDiff = Effect.gen(function* () {
       let includeUntracked = false;
       switch (scope) {
         case "staged":
-          trackedArgs = ["diff", "--cached", "--numstat", "-z", "--no-ext-diff"];
+          trackedArgs = ["diff", "--cached", "--numstat", "-z", ...RAW_DIFF_ARGS];
           break;
         case "unstaged":
-          trackedArgs = ["diff", "--numstat", "-z", "--no-ext-diff"];
+          trackedArgs = ["diff", "--numstat", "-z", ...RAW_DIFF_ARGS];
           includeUntracked = true;
           break;
         case "branch": {
           const mergeBase = yield* resolveBranchMergeBase(cwd);
-          trackedArgs = ["diff", "--numstat", "-z", "--minimal", "--no-ext-diff", mergeBase];
+          trackedArgs = ["diff", "--numstat", "-z", "--minimal", ...RAW_DIFF_ARGS, mergeBase];
           includeUntracked = true;
           break;
         }
@@ -822,7 +823,7 @@ const makeGitDiff = Effect.gen(function* () {
                 const tracked = yield* executeGit(
                   "GitCore.readDiffStats.tracked",
                   cwd,
-                  ["diff", "--numstat", "-z", "--no-ext-diff", resolvedRef],
+                  ["diff", "--numstat", "-z", ...RAW_DIFF_ARGS, resolvedRef],
                   { env, timeoutMs: WORKING_TREE_DIFF_TIMEOUT_MS, maxOutputBytes: 10_000_000 },
                 ).pipe(Effect.map((result) => result.stdout));
                 const untracked = yield* readUntrackedNumstats(
@@ -858,7 +859,7 @@ const makeGitDiff = Effect.gen(function* () {
             "diff",
             "--numstat",
             "-z",
-            "--no-ext-diff",
+            ...RAW_DIFF_ARGS,
             headExists ? "HEAD" : EMPTY_TREE_OBJECT_ID,
           ];
           includeUntracked = true;
