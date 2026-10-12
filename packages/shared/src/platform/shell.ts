@@ -143,11 +143,25 @@ function envCaptureEnd(name: string): string {
   return `__GLADE_ENV_${name}_END__`;
 }
 
-function buildEnvironmentCaptureCommand(names: ReadonlyArray<string>): string {
+export function isNushell(shell: string): boolean {
+  return /(?:^|[\\/])nu(?:\.exe)?$/i.test(shell);
+}
+
+function buildEnvironmentCaptureCommand(names: ReadonlyArray<string>, nushell: boolean): string {
   return names
     .map((name) => {
       if (!SHELL_ENV_NAME_PATTERN.test(name)) {
         throw new Error(`Unsupported environment variable name: ${name}`);
+      }
+
+      if (nushell) {
+        // External printenv applies Nu's ENV_CONVERSIONS, which turn its list-valued PATH back
+        // into a delimited string. `complete` tolerates an unset variable without POSIX `||`.
+        return [
+          `print '${envCaptureStart(name)}'`,
+          `do { ^printenv ${name} } | complete | get stdout | print --no-newline`,
+          `print '${envCaptureEnd(name)}'`,
+        ].join("; ");
       }
 
       return [
@@ -195,7 +209,10 @@ export const readEnvironmentFromLoginShell: ShellEnvironmentReader = (
     return {};
   }
 
-  const output = execFile(shell, ["-ilc", buildEnvironmentCaptureCommand(names)], {
+  const nushell = isNushell(shell);
+  const command = buildEnvironmentCaptureCommand(names, nushell);
+  const args = nushell ? ["--login", "--interactive", "--commands", command] : ["-ilc", command];
+  const output = execFile(shell, args, {
     encoding: "utf8",
     timeout: 5000,
   });

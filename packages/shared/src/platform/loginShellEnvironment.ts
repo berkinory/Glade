@@ -2,7 +2,7 @@ import * as FS from "node:fs";
 import * as OS from "node:os";
 import * as Path from "node:path";
 
-import { readEnvironmentFromLoginShell, type ShellEnvironmentReader } from "./shell";
+import { isNushell, readEnvironmentFromLoginShell, type ShellEnvironmentReader } from "./shell";
 import { resolveGladeHomeDirectory } from "./gladeHome";
 
 export const LOGIN_SHELL_ENVIRONMENT_NAMES = [
@@ -62,7 +62,11 @@ interface LoginShellEnvironmentCacheEntry {
   readonly environment: Record<string, string>;
 }
 
-function listShellStartupFiles(shell: string, homeDirectory: string): ReadonlyArray<string> {
+function listShellStartupFiles(
+  shell: string,
+  homeDirectory: string,
+  platform: NodeJS.Platform,
+): ReadonlyArray<string> {
   const home = (...segments: ReadonlyArray<string>): string =>
     Path.join(homeDirectory, ...segments);
   const shellName = Path.basename(shell);
@@ -96,6 +100,16 @@ function listShellStartupFiles(shell: string, homeDirectory: string): ReadonlyAr
   }
   if (shellName === "fish") {
     return ["/etc/fish/config.fish", home(".config", "fish", "config.fish")];
+  }
+  if (isNushell(shell)) {
+    // Nu reads none of the POSIX profiles; these are its default config locations.
+    const configDirectory =
+      platform === "darwin"
+        ? home("Library", "Application Support", "nushell")
+        : platform === "win32"
+          ? home("AppData", "Roaming", "nushell")
+          : home(".config", "nushell");
+    return ["env.nu", "config.nu", "login.nu"].map((name) => Path.join(configDirectory, name));
   }
 
   return ["/etc/profile", home(".profile")];
@@ -134,7 +148,10 @@ function computeCacheKey(input: {
   readonly shell: string;
   readonly homeDirectory: string;
 }): LoginShellEnvironmentCacheKey {
-  const startupFiles = [input.shell, ...listShellStartupFiles(input.shell, input.homeDirectory)]
+  const startupFiles = [
+    input.shell,
+    ...listShellStartupFiles(input.shell, input.homeDirectory, input.platform),
+  ]
     .map(fingerprintFile)
     .filter((fingerprint): fingerprint is StartupFileFingerprint => fingerprint !== null);
 
