@@ -6,6 +6,8 @@ const MAX_ACTIVITY_DATA_JSON_CHARS = 16_000;
 
 export const MAX_ACTIVITY_DATA_STRING_CHARS = 2_000;
 
+const ADAPTIVE_STRING_LIMITS = [12_000, 6_000, 3_000, MAX_ACTIVITY_DATA_STRING_CHARS] as const;
+
 const MAX_ACTIVITY_DATA_ARRAY_ITEMS = 24;
 
 const MAX_ACTIVITY_DATA_OBJECT_KEYS = 64;
@@ -270,15 +272,20 @@ export function boundActivityData(value: unknown): unknown {
     preview: truncateJsonString(serialized, MAX_ACTIVITY_DATA_STRING_CHARS),
   });
 
-  const compact = truncateJsonValue(value, {
-    stringLimit: MAX_ACTIVITY_DATA_STRING_CHARS,
-    arrayItems: MAX_ACTIVITY_DATA_ARRAY_ITEMS,
-    objectKeys: MAX_ACTIVITY_DATA_OBJECT_KEYS,
-    depth: 6,
-  });
-  const compactWithMetadata = withTruncationMetadata(compact);
-  if (stringifyJsonLike(compactWithMetadata).length <= MAX_ACTIVITY_DATA_JSON_CHARS) {
-    return compactWithMetadata;
+  // A tool's output is usually one long string beside small fields. The longest string limit that
+  // still fits keeps as much of it as the budget allows instead of cutting every string alike.
+  for (const stringLimit of ADAPTIVE_STRING_LIMITS) {
+    const compactWithMetadata = withTruncationMetadata(
+      truncateJsonValue(value, {
+        stringLimit,
+        arrayItems: MAX_ACTIVITY_DATA_ARRAY_ITEMS,
+        objectKeys: MAX_ACTIVITY_DATA_OBJECT_KEYS,
+        depth: 6,
+      }),
+    );
+    if (stringifyJsonLike(compactWithMetadata).length <= MAX_ACTIVITY_DATA_JSON_CHARS) {
+      return compactWithMetadata;
+    }
   }
 
   const bounded = withTruncationMetadata(

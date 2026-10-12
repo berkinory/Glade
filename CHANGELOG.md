@@ -30,6 +30,7 @@
 - When Claude picks a finished subagent back up, the follow-up shows in that subagent's chat and on its own card.
 - A subagent's chat labels its first message as the brief from its parent chat.
 - Subagents in the sidebar sit indented under their chat.
+- Tool output in the chat keeps much more of a long result before it is shortened.
 - Opening a file from the chat, the file search or Source Control opens it in the main view without switching the right sidebar to the Explorer.
 
 ### Fixed
