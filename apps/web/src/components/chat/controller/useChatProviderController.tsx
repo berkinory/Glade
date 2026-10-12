@@ -266,11 +266,10 @@ export function useChatProviderController({
   const isWorking =
     hasLiveTurn || isSendBusy || isConnecting || isRevertingCheckpoint || isAwaitingTurnStart;
 
-  const hasStreamingAssistantText =
-    activeThread?.messages.some((message) => message.role === "assistant" && message.streaming) ??
-    false;
-
   const activeTurnLayoutLive = isWorking || !latestTurnSettled || activeBackgroundTasks !== null;
+  // The transcript stays at its end while a turn is live and the reader has not scrolled away: new
+  // text, tool rows, groups that open on their own and approvals all grow the same live tail.
+  const transcriptFollowsLiveTail = activeTurnLayoutLive;
   return {
     lockedProvider,
     serverConfigQuery,
@@ -355,7 +354,7 @@ export function useChatProviderController({
     hasQueueableLiveTurn,
     activeThreadIdRef,
     isWorking,
-    hasStreamingAssistantText,
+    transcriptFollowsLiveTail,
     activeTurnLayoutLive,
   } as const;
 }

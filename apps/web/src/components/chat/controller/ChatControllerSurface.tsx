@@ -209,7 +209,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     worktreeSetupPendingAction,
     onResolveWorktreeSetup,
     editableUserMessageId,
-    hasStreamingAssistantText,
+    transcriptFollowsLiveTail,
     getAgentActivityDetail,
     activeTaskList,
     selectedPromptEffort,
@@ -545,7 +545,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                     editableUserMessageId={editableUserMessageId}
                     isRevertingCheckpoint={isRevertingCheckpoint}
                     onExpandTimelineImage={setExpandedImage}
-                    followLiveOutput={hasStreamingAssistantText && !isUserScrollDetached}
+                    followLiveOutput={transcriptFollowsLiveTail && !isUserScrollDetached}
                     onIsAtEndChange={onIsAtEndChange}
                     onNavigate={onTranscriptNavigate}
                     markdownCwd={threadWorkspaceCwd ?? undefined}

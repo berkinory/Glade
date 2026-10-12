@@ -117,7 +117,7 @@ export function useChatEnvironmentController({
   const {
     selectedModelSelection,
 
-    hasStreamingAssistantText,
+    transcriptFollowsLiveTail,
     pendingUserInputs,
     providerOptionsForDispatch,
   } = provider;
@@ -265,7 +265,7 @@ export function useChatEnvironmentController({
     activeThreadId,
     legendListRef,
     timelineEntries,
-    hasStreamingAssistantText,
+    transcriptFollowsLiveTail,
     composerTranscriptInsetPx,
   });
 

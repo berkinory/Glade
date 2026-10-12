@@ -12,6 +12,7 @@
 
 ### Fixed
 
+- The chat stays scrolled to the end while a turn runs tools, opens tool groups or asks for approval, until you scroll away.
 - Sites without an icon show a globe that follows the theme instead of a black one that disappeared on dark themes.
 - Claude subagents no longer add a "Moved to background" row each; their card marks the ones running in the background.
 - When an agent looks up a chat that runs on an SSH host or a paired machine, Glade tells it the chat is only visible from that machine instead of saying it was not found.

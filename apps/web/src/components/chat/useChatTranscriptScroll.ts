@@ -26,7 +26,7 @@ interface ChatTranscriptScrollInput {
   activeThreadId: ThreadId | null;
   legendListRef: RefObject<LegendListRef | null>;
   timelineEntries: readonly TimelineEntry[];
-  hasStreamingAssistantText: boolean;
+  transcriptFollowsLiveTail: boolean;
   composerTranscriptInsetPx: number;
 }
 
@@ -34,7 +34,7 @@ export function useChatTranscriptScroll({
   activeThreadId,
   legendListRef,
   timelineEntries,
-  hasStreamingAssistantText,
+  transcriptFollowsLiveTail,
   composerTranscriptInsetPx,
 }: ChatTranscriptScrollInput) {
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
@@ -187,14 +187,14 @@ export function useChatTranscriptScroll({
       }
       if (!isAtEnd && !isUserScrollDetachedRef.current) {
         if (
-          hasStreamingAssistantText &&
+          transcriptFollowsLiveTail &&
           container instanceof HTMLElement &&
           !isScrollContainerNearBottom(container, 1) &&
           !tailAnchorScrollInFlightRef.current &&
           !settledScrollInFlightRef.current &&
           pendingFollowCorrectionTimerRef.current === null
         ) {
-          // This may be the only notification for a growing streamed row, so a correction that lands inside
+          // This may be the only notification for a growing live row, so a correction that lands inside
           // the programmatic-scroll guard waits for the guard instead of being dropped.
           const request = settledScrollRequestRef.current;
           const correctAtEnd = () => {
@@ -252,7 +252,7 @@ export function useChatTranscriptScroll({
       }
       isAtEndRef.current = atEnd;
     },
-    [legendListRef, hasStreamingAssistantText, scrollToEnd, setTranscriptScrollDetached],
+    [legendListRef, transcriptFollowsLiveTail, scrollToEnd, setTranscriptScrollDetached],
   );
   const cancelPendingInteractionAnchorAdjustment = useCallback(() => {
     const pendingFrame = pendingInteractionAnchorFrameRef.current;
@@ -601,7 +601,7 @@ export function useChatTranscriptScroll({
     }
     if (
       activeThreadId === null ||
-      !hasStreamingAssistantText ||
+      !transcriptFollowsLiveTail ||
       pendingStreamingThreadRef.current !== activeThreadId
     )
       return;
@@ -640,7 +640,7 @@ export function useChatTranscriptScroll({
       cancelled = true;
       window.cancelAnimationFrame(frameId);
     };
-  }, [activeThreadId, hasStreamingAssistantText, legendListRef]);
+  }, [activeThreadId, transcriptFollowsLiveTail, legendListRef]);
 
   return {
     showScrollToBottom,
