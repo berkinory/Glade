@@ -408,6 +408,9 @@ const MAX_PENDING_CONTROL_SEQUENCE_LENGTH = 65_536;
 
 const STRING_TERMINATOR = "\u001b\\";
 
+// ESC, and the C1 introducers for DCS, CSI, OSC, PM and APC.
+const CONTROL_SEQUENCE_START = /[\u001b\u0090\u009b\u009d-\u009f]/g;
+
 function sanitizeTerminalHistoryChunk(
   pendingControlSequence: string,
   data: string,
@@ -563,8 +566,10 @@ function sanitizeTerminalHistoryChunk(
       continue;
     }
 
-    append(input[index] ?? "");
-    index += 1;
+    CONTROL_SEQUENCE_START.lastIndex = index + 1;
+    const plainEnd = CONTROL_SEQUENCE_START.exec(input)?.index ?? input.length;
+    append(input.slice(index, plainEnd));
+    index = plainEnd;
   }
 
   return { visibleText, pendingControlSequence: "", titleSignals, hookEvents };

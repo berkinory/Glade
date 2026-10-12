@@ -7,6 +7,7 @@
 - Glade starts faster and uses much less memory, and Codex replies take far less work to process.
 - Long Claude sessions use less memory.
 - The visual reply preview browser loads only when a preview is first needed, so Glade starts lighter.
+- Busy terminals use less CPU.
 
 ### Fixed
 

@@ -109,4 +109,40 @@ describe.skipIf(process.platform === "win32")("terminal history persistence", ()
 
     expect(reopened.history).toContain("last line before quit");
   });
+
+  it("keeps plain text and control sequences split across output batches", async () => {
+    const cases = [
+      {
+        head: "plain \u001b[3",
+        tail: "1mred\u001b[0m end",
+        history: "plain \u001b[31mred\u001b[0m end",
+      },
+      { head: "a\u001b[2", tail: "Jb", history: "ab" },
+      { head: "t\u001b]0;ti", tail: "tle\u0007y", history: "t\u001b]0;title\u0007y" },
+      { head: "q\u001b", tail: "7r", history: "qr" },
+      { head: "c1 \u009b2", tail: "Jcsi", history: "c1 csi" },
+    ];
+    // A full output batch is sanitized on its own, so each head's trailing partial sequence has to
+    // carry into the batch that reopening flushes.
+    const padding = "x".repeat(131_072);
+    const pty = ptyRunning("read line");
+    const histories = await Effect.gen(function* () {
+      const manager = yield* TerminalManager;
+      yield* manager.open(session);
+      const histories: string[] = [];
+      for (const { head, tail } of cases) {
+        pty.emit(`${padding}${head}`);
+        pty.emit(tail);
+        const { history } = yield* manager.open(session);
+        histories.push(history.slice(history.lastIndexOf(padding) + padding.length));
+      }
+      return histories;
+    }).pipe(
+      Effect.provide(terminalLayer(pty, { prefix: "glade-terminal-" })),
+      Effect.scoped,
+      Effect.runPromise,
+    );
+
+    expect(histories).toEqual(cases.map(({ history }) => history));
+  });
 });
