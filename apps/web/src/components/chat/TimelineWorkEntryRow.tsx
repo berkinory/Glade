@@ -56,10 +56,7 @@ import {
 import { describeLinkChip } from "~/lib/linkChips";
 import { cn } from "~/lib/utils";
 import { isFileChangeWorkLogEntry, type WorkLogEntry } from "../../workLog.types";
-import {
-  isCodexActivityStatusWorkEntry,
-  isPlainRuntimeNoticeWorkEntry,
-} from "./agentActivity.logic";
+import { isStatusOnlyCommandWorkEntry, isPlainRuntimeNoticeWorkEntry } from "./agentActivity.logic";
 import { ReasoningWorkRow } from "./ReasoningWorkRow";
 import { DiffStatLabel } from "./DiffStatLabel";
 import { type ExpandedImagePreview } from "./ExpandedImagePreview";
@@ -280,7 +277,7 @@ function classifyWorkEntryTool(workEntry: TimelineWorkEntry) {
   };
 }
 export function prefersCompactWorkEntryRow(workEntry: TimelineWorkEntry): boolean {
-  if (isCodexActivityStatusWorkEntry(workEntry) || workEntry.monitorNotification) {
+  if (isStatusOnlyCommandWorkEntry(workEntry) || workEntry.monitorNotification) {
     return true;
   }
   if (workEntry.itemType === "command_execution" || workEntry.command || workEntry.rawCommand) {
@@ -366,7 +363,9 @@ function workEntryDisplayParts(
       : rawPreview;
   const displayText = webFetchUrl
     ? describeLinkChip(webFetchUrl).label
-    : combineWorkEntryDisplayText(heading, preview);
+    : isStatusOnlyCommandWorkEntry(workEntry) && workEntry.toolStatus === "running"
+      ? "Running command"
+      : combineWorkEntryDisplayText(heading, preview);
   return {
     heading,
     preview,
@@ -435,7 +434,6 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
   const textFontSizePx = textFontSizePxProp ?? chatMetaFontSizePx;
   const density = densityProp ?? "default";
   const compact = density === "compact";
-  const isCodexStatusRow = isCodexActivityStatusWorkEntry(workEntry);
   const isPlainRuntimeNoticeRow = isPlainRuntimeNoticeWorkEntry(workEntry);
   const EntryIcon = workEntryIcon(workEntry);
   const linkIconUrl = workEntryLinkIconUrl(workEntry);
@@ -582,7 +580,7 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
         (() => {
           const rowContentChildren = (
             <>
-              {!isCodexStatusRow && !isPlainRuntimeNoticeRow ? (
+              {!isPlainRuntimeNoticeRow ? (
                 <span
                   className={cn(
                     WORK_ROW_ICON_SLOT_CLASS_NAME,
@@ -611,7 +609,6 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
                     isPlainRuntimeNoticeRow && "italic",
                   )}
                   data-runtime-notice-row={isPlainRuntimeNoticeRow ? "true" : undefined}
-                  data-codex-status-row={isCodexStatusRow ? "true" : undefined}
                   style={{
                     fontSize: `${rowFontSizePx}px`,
                   }}

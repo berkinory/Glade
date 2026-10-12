@@ -40,7 +40,9 @@ export function createAgentActivityTimelineSelector() {
   };
 }
 
-export function isCodexActivityStatusWorkEntry(entry: WorkLogEntry): boolean {
+// A command row whose command has not arrived yet: Claude opens a tool call before its input
+// streams in, and Codex reports bare command execution status.
+export function isStatusOnlyCommandWorkEntry(entry: WorkLogEntry): boolean {
   const isStatusOnlyCommand =
     entry.itemType === "command_execution" && !entry.command && !entry.rawCommand;
   return (
