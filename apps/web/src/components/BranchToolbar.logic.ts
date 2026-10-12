@@ -42,11 +42,14 @@ export function resolveBranchToolbarValue(input: {
   activeWorktreePath: string | null;
   activeThreadBranch: string | null;
   currentGitBranch: string | null;
+  gitStatusResolved: boolean;
 }): string | null {
   const { envMode, activeWorktreePath, activeThreadBranch, currentGitBranch } = input;
   if (envMode === "worktree" && !activeWorktreePath) {
     return activeThreadBranch ?? currentGitBranch;
   }
+  // A resolved null branch is a detached HEAD; stale thread metadata must not stand in for it.
+  if (input.gitStatusResolved) return currentGitBranch;
   return currentGitBranch ?? activeThreadBranch;
 }
 

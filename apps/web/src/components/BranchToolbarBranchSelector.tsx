@@ -101,10 +101,11 @@ function getBranchTriggerLabel(input: {
   activeWorktreePath: string | null;
   effectiveEnvMode: EnvMode;
   resolvedActiveBranch: string | null;
+  isDetachedCheckout: boolean;
 }): string {
   const { activeWorktreePath, effectiveEnvMode, resolvedActiveBranch } = input;
   if (!resolvedActiveBranch) {
-    return "Select branch";
+    return input.isDetachedCheckout ? "Detached HEAD" : "Select branch";
   }
   if (effectiveEnvMode === "worktree" && !activeWorktreePath) {
     return `From ${resolvedActiveBranch}`;
@@ -153,13 +154,16 @@ export function BranchToolbarBranchSelector({
     () => dedupeRemoteBranchesWithLocalMatches(branchesQuery.data?.branches ?? []),
     [branchesQuery.data?.branches],
   );
-  const currentGitBranch =
-    branchStatusQuery.data?.branch ?? branches.find((branch) => branch.current)?.name ?? null;
+  const gitStatusResolved = branchStatusQuery.data !== undefined;
+  const currentGitBranch = gitStatusResolved
+    ? branchStatusQuery.data.branch
+    : (branches.find((branch) => branch.current)?.name ?? null);
   const canonicalActiveBranch = resolveBranchToolbarValue({
     envMode: effectiveEnvMode,
     activeWorktreePath,
     activeThreadBranch,
     currentGitBranch,
+    gitStatusResolved,
   });
   const branchNames = useMemo(() => branches.map((branch) => branch.name), [branches]);
   const branchByName = useMemo(
@@ -525,6 +529,10 @@ export function BranchToolbarBranchSelector({
     activeWorktreePath,
     effectiveEnvMode,
     resolvedActiveBranch,
+    isDetachedCheckout:
+      branchesQuery.data?.isRepo === true &&
+      branchStatusQuery.data?.branch === null &&
+      (effectiveEnvMode !== "worktree" || activeWorktreePath !== null),
   });
   function renderPickerItem(itemValue: string, index: number, style?: CSSProperties) {
     if (checkoutPullRequestItemValue && itemValue === checkoutPullRequestItemValue) {
