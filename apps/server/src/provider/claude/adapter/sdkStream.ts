@@ -82,8 +82,15 @@ export function makeClaudeSdkStream(input: {
       if (message.uuid && context.lastResultUuid === message.uuid) return;
       context.lastResultUuid = message.uuid;
       yield* syncFastModeState(context, message);
-      // Retry in case the CLI had not yet written the notification when the turn started.
-      if (message.origin?.kind === "task-notification") yield* emitMonitorEvents(context);
+      // A woken turn retries in case the CLI had not yet written its notification when the turn
+      // started. Any turn of a session running a Monitor also takes the events that arrived while it
+      // worked, so they are not read later into the next woken turn.
+      if (
+        message.origin?.kind === "task-notification" ||
+        context.monitorEventCursor?.monitorStarted === true
+      ) {
+        yield* emitMonitorEvents(context);
+      }
 
       const assistantError = context.turnState?.assistantError;
       let status: RuntimeTurnState;

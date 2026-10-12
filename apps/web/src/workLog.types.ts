@@ -113,6 +113,9 @@ export interface WorkLogMonitorNotification {
   name: string;
   output: string;
   outcome: "updated" | "completed" | "failed" | "stopped";
+  // Arrived while its turn was already working: an update inside that reply, not the wake-up that
+  // started one.
+  midTurn?: true;
 }
 
 export interface WorkLogUserInputExchangeItem {

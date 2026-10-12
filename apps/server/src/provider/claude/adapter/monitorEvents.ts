@@ -12,14 +12,16 @@ export function makeClaudeMonitorEvents(input: {
 }) {
   const { fileSystem, makeEventStamp, offerRuntimeEvent } = input;
 
-  // Emits the Monitor events that woke the agent into the current turn. Runs inline before the
-  // turn's reply is handled, so the rows never land inside the reply they prompted.
+  // Emits the Monitor events read since the last read into the current turn: the ones that woke the
+  // agent, inline before the turn's reply is handled so they never land inside the reply they
+  // prompted, and the ones that arrived while the turn worked.
   const emitMonitorEvents = (context: ClaudeSessionContext): Effect.Effect<void> =>
     Effect.gen(function* () {
       const cursor = context.monitorEventCursor;
       const sessionId = context.resumeSessionId;
       if (!cursor || !context.turnState || !sessionId) return;
       const turnId = asCanonicalTurnId(context.turnState.turnId);
+      const turnStartedAtMs = Date.parse(context.turnState.startedAt);
       const events = yield* readClaudeMonitorEvents(fileSystem, cursor, {
         sessionId,
         configDir: context.claudeConfigDir,
@@ -27,6 +29,9 @@ export function makeClaudeMonitorEvents(input: {
       });
       for (const event of events) {
         if (context.stopped) return;
+        // The CLI writes the notification that wakes the agent before that turn starts. One written
+        // after the turn started arrived while the agent was working and is an update inside the turn.
+        const midTurn = Date.parse(event.createdAt) >= turnStartedAtMs;
         const stamp = yield* makeEventStamp();
         yield* offerRuntimeEvent(context, {
           type: "runtime.warning",
@@ -45,6 +50,7 @@ export function makeClaudeMonitorEvents(input: {
               name: event.name,
               output: event.output,
               outcome: event.outcome,
+              ...(midTurn ? { mid_turn: true } : {}),
             },
           },
           providerRefs: nativeProviderRefs(context),

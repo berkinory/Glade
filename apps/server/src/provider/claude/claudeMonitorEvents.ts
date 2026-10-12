@@ -26,11 +26,24 @@ export interface ClaudeMonitorEventCursor {
   sessionId: string | undefined;
   path: string | undefined;
   offset: number | undefined;
+  monitorStarted: boolean;
   readonly seenIds: Set<string>;
 }
 
 export function makeClaudeMonitorEventCursor(): ClaudeMonitorEventCursor {
-  return { sessionId: undefined, path: undefined, offset: undefined, seenIds: new Set() };
+  return {
+    sessionId: undefined,
+    path: undefined,
+    offset: undefined,
+    monitorStarted: false,
+    seenIds: new Set(),
+  };
+}
+
+// Only sessions that started a Monitor read the transcript after every turn; the first read scans the
+// config directory for the transcript.
+export function markClaudeMonitorStarted(cursor: ClaudeMonitorEventCursor): void {
+  cursor.monitorStarted = true;
 }
 
 function truncate(text: string): string {

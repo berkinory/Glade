@@ -18,7 +18,7 @@ function isResponseBoundaryEntry(entry: WorkLogEntry): boolean {
   return (
     entry.activityKind === "response.started" ||
     entry.activityKind === "provider.transition" ||
-    entry.monitorNotification !== undefined
+    (entry.monitorNotification !== undefined && entry.monitorNotification.midTurn !== true)
   );
 }
 

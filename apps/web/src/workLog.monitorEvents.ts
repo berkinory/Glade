@@ -15,7 +15,7 @@ function monitorOutcome(value: unknown): WorkLogMonitorNotification["outcome"] {
   return value === "completed" || value === "failed" || value === "stopped" ? value : "updated";
 }
 
-/** Claude reports the Monitor events that woke it as runtime warnings with a `monitor_event` detail. */
+/** Claude reports Monitor events as runtime warnings with a `monitor_event` detail. */
 export function monitorNotificationEntryFields(
   activity: OrchestrationThreadActivity,
 ): Pick<WorkLogEntry, "label" | "tone" | "monitorNotification"> | undefined {
@@ -29,6 +29,11 @@ export function monitorNotificationEntryFields(
   return {
     label: `Monitor${name ? ` · ${name}` : ""} ${OUTCOME_LABELS[outcome]}`,
     tone: outcome === "failed" ? "error" : "info",
-    monitorNotification: { name, output: stripTerminalControlSequences(output), outcome },
+    monitorNotification: {
+      name,
+      output: stripTerminalControlSequences(output),
+      outcome,
+      ...(data.mid_turn === true ? { midTurn: true as const } : {}),
+    },
   };
 }

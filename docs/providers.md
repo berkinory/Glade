@@ -53,7 +53,7 @@ Claude tool summaries follow their associated tools. Native retry notices report
 
 A parent reply started after background work gets its own response boundary and work clock, even without another user message. Earlier final replies, copy actions and checkpoints remain available. Owned background tasks keep the foreground work section open and show a waiting status until they settle. Successful completion notifications still wait for all owned background work; stopped or replaced sessions cannot revive it. Activity updates and waiting indicators do not drive transcript auto-follow.
 
-Claude's Monitor tool wakes the agent with notifications that the SDK stream does not forward. Glade reads them back from the bounded tail of the live session's transcript and shows each as a compact Monitor row, dated at the notification and placed above the reply it prompted, with its output behind a disclosure. The text is display-only and truncated; when the transcript cannot be read, the row is simply missing.
+Claude's Monitor tool wakes the agent with notifications that the SDK stream does not forward. Glade reads them back from the bounded tail of the live session's transcript and shows each as a compact Monitor row, dated at the notification and placed above the reply it prompted, with its output behind a disclosure. A notification that arrives while the agent is already working is shown inside that turn's work instead of starting a new reply. The text is display-only and truncated; when the transcript cannot be read, the row is simply missing.
 
 ## Conversation titles and history
 
