@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { TurnId, EventId, ApprovalRequestId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { nonEmptyTrimmed } from "@glade/shared/text/text";
 import { type ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
@@ -974,11 +975,17 @@ export function providerActivityUpdateDedupeKey(
   return toolUpdateId ? `${prefix}:${toolUpdateId}` : undefined;
 }
 
+// A digest, not the serialized payload: the dedupe cache holds thousands of entries and a tool
+// payload can reach the activity size limit.
 export function providerActivityUpdateFingerprint(activity: OrchestrationThreadActivity): string {
-  return stringifyJsonLike({
-    kind: activity.kind,
-    summary: activity.summary,
-    payload: activity.payload,
-    turnId: activity.turnId,
-  });
+  return createHash("sha256")
+    .update(
+      stringifyJsonLike({
+        kind: activity.kind,
+        summary: activity.summary,
+        payload: activity.payload,
+        turnId: activity.turnId,
+      }),
+    )
+    .digest("base64");
 }
