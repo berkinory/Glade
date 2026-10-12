@@ -757,4 +757,64 @@ describe("ProviderRuntimeIngestion assistant streaming", () => {
       "assistant:item-identity-b": "second part",
     });
   });
+
+  it.each([
+    { order: "native name first", nativeFirst: true, finalEvents: 1 },
+    { order: "block completion first", nativeFirst: false, finalEvents: 2 },
+  ])(
+    "records a Claude message's native id when the $order",
+    async ({ nativeFirst, finalEvents }) => {
+      const harness = await createHarness();
+      const base = {
+        provider: "claudeAgent" as const,
+        threadId: asThreadId("thread-1"),
+        turnId: asTurnId("turn-native-id"),
+        itemId: asItemId("item-native-id"),
+        createdAt: "2026-10-13T10:00:00.000Z",
+      };
+      const push = (event: ProviderRuntimeEvent) =>
+        Effect.runPromise(harness.runtimeEventRepository.append(event));
+      const named: ProviderRuntimeEvent = {
+        ...base,
+        type: "item.updated",
+        eventId: asEventId("evt-native-id-named"),
+        payload: {
+          itemType: "assistant_message",
+          status: "completed",
+          data: { nativeMessageId: "native-message-1" },
+        },
+      };
+      const completed: ProviderRuntimeEvent = {
+        ...base,
+        type: "item.completed",
+        eventId: asEventId("evt-native-id-completed"),
+        payload: { itemType: "assistant_message", status: "completed", detail: "Answer." },
+      };
+
+      await push({
+        ...base,
+        type: "content.delta",
+        eventId: asEventId("evt-native-id-delta"),
+        payload: { streamKind: "assistant_text", delta: "Answer." },
+      });
+      for (const event of nativeFirst ? [named, completed] : [completed, named]) {
+        await push(event);
+      }
+      await harness.drain();
+
+      const thread = await harness.readProjectedThread();
+      expect(
+        thread?.messages.find((message) => message.id === "assistant:item-native-id"),
+      ).toMatchObject({ text: "Answer.", streaming: false, providerMessageId: "native-message-1" });
+      const finals = await Effect.runPromise(
+        harness.sql<{ count: number }>`
+          SELECT COUNT(*) AS "count" FROM orchestration_events
+          WHERE event_type = 'thread.message-sent'
+            AND json_extract(payload_json, '$.messageId') = 'assistant:item-native-id'
+            AND json_extract(payload_json, '$.streaming') = 0
+        `,
+      );
+      expect(finals[0]?.count).toBe(finalEvents);
+    },
+  );
 });

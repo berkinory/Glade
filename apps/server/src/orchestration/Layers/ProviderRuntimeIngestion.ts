@@ -12,6 +12,7 @@ import {
 import {
   type OrchestrationCheckpointFile,
   type OrchestrationProjectShell,
+  type OrchestrationSession,
   type OrchestrationThreadActivity,
   type OrchestrationThread,
 } from "@glade/contracts/orchestration/threadEntities";
@@ -126,6 +127,11 @@ const TURN_MESSAGE_IDS_BY_TURN_CACHE_CAPACITY = 2_048;
 const TURN_MESSAGE_IDS_BY_TURN_TTL = Duration.minutes(60);
 const BUFFERED_MESSAGE_TEXT_BY_MESSAGE_ID_CACHE_CAPACITY = 1_024;
 const BUFFERED_MESSAGE_TEXT_BY_MESSAGE_ID_TTL = Duration.minutes(60);
+const FINALIZED_ASSISTANT_MESSAGE_CACHE_CAPACITY = 1_024;
+const FINALIZED_ASSISTANT_MESSAGE_TTL = Duration.minutes(60);
+// Providers report "running" on every model request. An unchanged session is re-stamped at most this
+// often so the stale-turn reconciler, which reads the session timestamp, still sees a live turn.
+const UNCHANGED_SESSION_REFRESH_MS = 60_000;
 
 const BUFFERED_TOOL_OUTPUT_BY_KEY_CACHE_CAPACITY = 2_048;
 const BUFFERED_TOOL_OUTPUT_BY_KEY_TTL = Duration.minutes(60);
@@ -442,6 +448,22 @@ function withBufferedToolOutputData(
   } as ProviderRuntimeEvent;
 }
 
+function isUnchangedSessionHeartbeat(
+  current: OrchestrationSession | null,
+  next: Omit<OrchestrationSession, "updatedAt">,
+  now: string,
+): boolean {
+  return (
+    current !== null &&
+    current.status === next.status &&
+    current.activeTurnId === next.activeTurnId &&
+    current.lastError === next.lastError &&
+    current.providerName === next.providerName &&
+    current.runtimeMode === next.runtimeMode &&
+    Date.parse(now) - Date.parse(current.updatedAt) < UNCHANGED_SESSION_REFRESH_MS
+  );
+}
+
 function normalizeNonEmptyString(value: string | undefined): string | undefined {
   return value?.trim() || undefined;
 }
@@ -747,6 +769,18 @@ const make = Effect.gen(function* () {
     capacity: BUFFERED_MESSAGE_TEXT_BY_MESSAGE_ID_CACHE_CAPACITY,
     timeToLive: BUFFERED_MESSAGE_TEXT_BY_MESSAGE_ID_TTL,
     lookup: () => Effect.succeed(""),
+  });
+
+  // Claude completes a text block and then names its native message, each with its own completion
+  // event. The second completion only matters when it adds text, questions or the native id.
+  const finalizedAssistantMessageByKey = yield* Cache.make<
+    string,
+    | { readonly turnId: TurnId | undefined; readonly providerMessageId: string | undefined }
+    | undefined
+  >({
+    capacity: FINALIZED_ASSISTANT_MESSAGE_CACHE_CAPACITY,
+    timeToLive: FINALIZED_ASSISTANT_MESSAGE_TTL,
+    lookup: () => Effect.succeed(undefined),
   });
 
   const bufferedToolOutputByKey = yield* Cache.make<string, BufferedToolOutput | undefined>({
@@ -1376,6 +1410,22 @@ const make = Effect.gen(function* () {
             ? input.fallbackText!
             : "";
 
+      const finalizedKey = assistantMessageSegmentKey(input.threadId, input.messageId);
+      const finalized = Option.getOrUndefined(
+        yield* Cache.getOption(finalizedAssistantMessageByKey, finalizedKey),
+      );
+      if (
+        finalized !== undefined &&
+        finalized.turnId === input.turnId &&
+        !hasRenderableAssistantText(text) &&
+        !input.asyncQuestions &&
+        (input.providerMessageId === undefined ||
+          input.providerMessageId === finalized.providerMessageId)
+      ) {
+        yield* clearAssistantMessageState(input.threadId, input.messageId);
+        return;
+      }
+
       if (hasRenderableAssistantText(text)) {
         yield* dispatchFinalAssistantTextSegments({
           event: input.event,
@@ -1401,6 +1451,10 @@ const make = Effect.gen(function* () {
         ...(input.providerMessageId ? { providerMessageId: input.providerMessageId } : {}),
         ...(input.turnId ? { turnId: input.turnId } : {}),
         createdAt: input.createdAt,
+      });
+      yield* Cache.set(finalizedAssistantMessageByKey, finalizedKey, {
+        turnId: input.turnId,
+        providerMessageId: input.providerMessageId ?? finalized?.providerMessageId,
       });
       yield* clearAssistantMessageState(input.threadId, input.messageId);
     });
@@ -1940,24 +1994,25 @@ const make = Effect.gen(function* () {
         // too; projecting that would make the next startup "ready" look like a pending turn and leave
         // the thread starting forever.
         const isProviderTurnlessStarting = status === "starting" && nextActiveTurnId === null;
+        const nextSession = {
+          threadId: thread.id,
+          status,
+          providerName: event.provider,
+          runtimeMode: thread.session?.runtimeMode ?? "full-access",
+          activeTurnId: nextActiveTurnId,
+          lastError,
+        } as const;
         if (
           shouldApplyThreadLifecycle &&
           !isProviderTurnlessStarting &&
-          !(isStartupReady && isAwaitingRequestedTurn(thread.session))
+          !(isStartupReady && isAwaitingRequestedTurn(thread.session)) &&
+          !isUnchangedSessionHeartbeat(thread.session, nextSession, now)
         ) {
           yield* orchestrationEngine.dispatch({
             type: "thread.session.set",
             commandId: providerCommandId(event, "thread-session-set", thread.id),
             threadId: thread.id,
-            session: {
-              threadId: thread.id,
-              status,
-              providerName: event.provider,
-              runtimeMode: thread.session?.runtimeMode ?? "full-access",
-              activeTurnId: nextActiveTurnId,
-              lastError,
-              updatedAt: now,
-            },
+            session: { ...nextSession, updatedAt: now },
             createdAt: now,
           });
         }

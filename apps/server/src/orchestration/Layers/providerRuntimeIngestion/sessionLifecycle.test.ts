@@ -1,4 +1,6 @@
 import { ApprovalRequestId } from "@glade/contracts/core/baseSchemas";
+import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
+import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -53,6 +55,48 @@ describe("ProviderRuntimeIngestion session lifecycle", () => {
     );
     expect(thread.session?.status).toBe("ready");
     expect(thread.session?.activeTurnId).toBeNull();
+  });
+
+  it("records session transitions and refreshes an unchanged running session once a minute", async () => {
+    const harness = await createHarness();
+    const startedAt = Date.parse("2026-10-13T10:00:00.000Z");
+    const at = (seconds: number) => new Date(startedAt + seconds * 1_000).toISOString();
+    const emitAt = (seconds: number, event: Record<string, unknown>) =>
+      Effect.runPromise(
+        harness.runtimeEventRepository.append({
+          provider: "codex",
+          threadId: asThreadId("thread-1"),
+          turnId: asTurnId("turn-heartbeat"),
+          eventId: asEventId(`evt-heartbeat-${seconds}`),
+          createdAt: at(seconds),
+          ...event,
+        } as ProviderRuntimeEvent),
+      );
+
+    await emitAt(0, { type: "turn.started", payload: {} });
+    for (const seconds of [2, 4, 6]) {
+      await emitAt(seconds, { type: "session.state.changed", payload: { state: "running" } });
+    }
+    await emitAt(8, { type: "session.state.changed", payload: { state: "waiting" } });
+    await emitAt(61, { type: "session.state.changed", payload: { state: "running" } });
+    await emitAt(63, { type: "session.state.changed", payload: { state: "running" } });
+    await emitAt(70, { type: "turn.completed", payload: { state: "completed" } });
+    await harness.drain();
+
+    const sessions = await Effect.runPromise(
+      harness.sql<{ status: string; updatedAt: string }>`
+        SELECT json_extract(payload_json, '$.session.status') AS "status",
+          json_extract(payload_json, '$.session.updatedAt') AS "updatedAt"
+        FROM orchestration_events
+        WHERE event_type = 'thread.session-set' AND stream_id = 'thread-1'
+        ORDER BY sequence
+      `,
+    );
+    expect(sessions.slice(1)).toEqual([
+      { status: "running", updatedAt: at(0) },
+      { status: "running", updatedAt: at(61) },
+      { status: "ready", updatedAt: at(70) },
+    ]);
   });
 
   it("leaves an idle session ready when the provider restarts it without a turn", async () => {
